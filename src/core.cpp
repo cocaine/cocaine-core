@@ -75,31 +75,28 @@ core_t::~core_t() {
 //   specified source and publishes it via the PUB socket. Plugin
 //   will be invoked every 'timeout' microsecods, for 'ttl' seconds
 //   or forever if ttl = 0:
-//   -> subscribe[timeout;ttl;scheme://parameters]
-//   <- key|failure
+//   -> s timeout ttl scheme://parameters
+//   <- ok|e scheme|e resources
 //
 // * Unsubscribe - shuts down the specified thread.
 //   Remaining messages will stay orphaned in the queue,
 //   so it's a good idea to drain it after the unsubscription:
-//   -> unsubscribe[key]
-//   <- success|failure
+//   -> u uri
+//   <- ok|e uri
 //
-// * Once - one-time plugin invocation. For one-time invocations,
+// * [!] Once - one-time plugin invocation. For one-time invocations,
 //   you have no means to filter the data by categories or fields:
-//   -> once[scheme://parameters]
-//   <- message|failure
+//   -> once scheme://parameters
+//   <- key=value key2=value2... @timestamp|e scheme
 //
-// * History - fetch historical data without plugin invocation. 
+// * [!] History - fetch historical data without plugin invocation. 
 //   You can't fetch more messages than there were invocations:
-//   -> history[depth;scheme://parameters]
-//   <- n-part message, where n = max(depth, history-length)
+//   -> history depth scheme://parameters
+//   <- n-part once-like message, where n = max(depth, history-length)
 //
 // Publishing format:
 // ------------------
-//   key:category:field:value
-//
-//   The following format allows for subscription to all fields
-//   of the plugin data, some fields or only one field.
+//   uri key=value @timestamp
 
 void core_t::run() {
     zmq::message_t message;
