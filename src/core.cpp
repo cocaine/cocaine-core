@@ -1,8 +1,6 @@
-#include <map>
-#include <sstream>
-#include <boost/tuple/tuple.hpp>
-
 #include <cstdlib>
+#include <sstream>
+
 #include <signal.h>
 
 #include "core.hpp"
