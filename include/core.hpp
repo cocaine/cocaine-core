@@ -10,7 +10,6 @@
 #include <zmq.hpp>
 
 #include "source.hpp"
-#include "digest.hpp"
 
 #define clock_advance(tsa, tsb)      \
     do {                             \
@@ -31,18 +30,18 @@
 // Message structure used by the engines to
 // pass events back to the core
 struct event_t {
-    event_t(const hash_t& id_):
-        id(id_),
+    event_t(const std::string& uri_):
+        uri(uri_),
         dict(NULL) {}
 
-    hash_t id;
+    std::string uri;
     dict_t* dict;
 };
 
 // Engine workload
 struct workload_t {
-    workload_t(const hash_t& id_, source_t* source_, zmq::context_t& context_, time_t interval_):
-        id(id_),
+    workload_t(const std::string& uri_, source_t* source_, zmq::context_t& context_, time_t interval_):
+        uri(uri_),
         running(true),
         source(source_),
         context(context_)
@@ -55,12 +54,12 @@ struct workload_t {
         pthread_spin_destroy(&lock);
     }
 
-    bool running;
-    hash_t id;
+    std::string uri;
     source_t* source;
     zmq::context_t& context;
     timespec interval;
     pthread_spinlock_t lock;
+    bool running;
 };
 
 // Engine
@@ -68,7 +67,7 @@ class engine_t {
     public:
         static void* poll(void *arg);
 
-        engine_t(const hash_t& id, source_t* source, zmq::context_t& context,
+        engine_t(const std::string& uri, source_t* source, zmq::context_t& context,
             time_t interval, time_t ttl);
         ~engine_t();
 
@@ -109,9 +108,8 @@ class core_t {
         void dispatch(const std::string& request);
 
         // Request handlers
-        void subscribe(const std::string& scheme, const std::string& args,
-            time_t interval, time_t ttl);
-        void unsubscribe(const std::string& key);
+        void subscribe(const std::string& uri, time_t interval, time_t ttl);
+        void unsubscribe(const std::string& uri);
 
         // A helper to respond with a string
         void respond(const std::string& response);
@@ -120,11 +118,8 @@ class core_t {
         void feed(event_t& event);
 
     private:
-        // Hasher
-        digest_t m_keygen;
-
         // Collectors
-        typedef std::map<hash_t, engine_t*> engines_t;
+        typedef std::map<std::string, engine_t*> engines_t;
         engines_t m_engines;
 
         // Events pending for publishing

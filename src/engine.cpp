@@ -1,11 +1,11 @@
 #include "core.hpp"
 
-engine_t::engine_t(const hash_t& id, source_t* source, zmq::context_t& context, time_t interval, time_t ttl): 
+engine_t::engine_t(const std::string& uri, source_t* source, zmq::context_t& context, time_t interval, time_t ttl): 
     m_refs(1),
     m_ttl(ttl),
-    m_workload(id, source, context, interval)
+    m_workload(uri, source, context, interval)
 {
-    syslog(LOG_DEBUG, "starting engine %s", id.c_str());
+    syslog(LOG_DEBUG, "starting engine %s", uri.c_str());
     
     // Remeber the time when we started, then start
     clock_gettime(CLOCK_REALTIME, &m_timestamp);
@@ -18,7 +18,7 @@ engine_t::engine_t(const hash_t& id, source_t* source, zmq::context_t& context, 
 }
 
 engine_t::~engine_t() {
-    syslog(LOG_DEBUG, "stopping engine %s", m_workload.id.c_str());
+    syslog(LOG_DEBUG, "stopping engine %s", m_workload.uri.c_str());
 
     // Set the stop flag
     // And wait for it to stop
@@ -31,7 +31,7 @@ engine_t::~engine_t() {
 
 void engine_t::subscribe(time_t interval, time_t ttl) {
     syslog(LOG_DEBUG, "updating engine %s with interval: %lu, ttl: %lu",
-        m_workload.id.c_str(), interval, ttl);
+        m_workload.uri.c_str(), interval, ttl);
 
     // Incrementing the reference counter
     m_refs++;
@@ -65,7 +65,7 @@ void* engine_t::poll(void* arg) {
     socket.connect("inproc://events");
 
     // Preparing
-    event_t event(workload->id);
+    event_t event(workload->uri);
     timespec timer;
 
     while(workload->running) {

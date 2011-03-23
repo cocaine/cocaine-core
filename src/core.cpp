@@ -7,6 +7,9 @@
 
 #include "core.hpp"
 
+// Temporary
+#include "mysql.hpp"
+
 const char core_t::identity[] = "yappi";
 const int core_t::version[] = { 0, 0, 1 };
 
@@ -191,29 +194,25 @@ void core_t::run() {
 }
 
 void core_t::dispatch(const std::string& request) {
-    std::string cmd;
+    std::string cmd, uri;
     std::istringstream fmt(request);
 
     fmt >> std::skipws >> cmd;
 
     if(regexec(&r_subscribe, request.c_str(), 0, 0, 0) == 0) {
         // 2.1. Subscription
-        std::string scheme, args;
         time_t interval, ttl;
         
-        fmt >> interval >> ttl >> args;
-        scheme = args.substr(0, args.find_first_of(':'));
-        subscribe(scheme, args, interval, ttl);
+        fmt >> interval >> ttl >> uri;
+        subscribe(uri, interval, ttl);
    
         return;
     }
 
     if(regexec(&r_unsubscribe, request.c_str(), 0, 0, 0) == 0) {
         // 2.2. Unsubscription
-        std::string key;
-        
-        fmt >> key;
-        unsubscribe(key);
+        fmt >> uri;
+        unsubscribe(uri);
         
         return;
     }
@@ -222,12 +221,9 @@ void core_t::dispatch(const std::string& request) {
     respond("e request");
 }
 
-void core_t::subscribe(const std::string& scheme, const std::string& args, time_t interval, time_t ttl) {
-    // 3.1. Generate the key
-    std::string key(m_keygen.get(scheme + args));
-
+void core_t::subscribe(const std::string& uri, time_t interval, time_t ttl) {
     // 3.2. Search for the engine
-    engines_t::iterator it = m_engines.find(key);
+    engines_t::iterator it = m_engines.find(uri);
     engine_t* engine;
 
     if(it != m_engines.end()) {
@@ -237,27 +233,27 @@ void core_t::subscribe(const std::string& scheme, const std::string& args, time_
     } else {
         // 3.3b. Start a new engine
         try {
-            engine = new engine_t(key, new foobar_t(), m_context, interval, ttl);
+            engine = new engine_t(uri, new mysql_t(uri), m_context, interval, ttl);
         } catch(const std::exception&) {
             respond("e resources");
             return;
         }
         
-        syslog(LOG_DEBUG, "created a new %s engine with id: %s, interval: %lu, ttl: %lu, args: %s",
-            scheme.c_str(), key.c_str(), interval, ttl, args.c_str());
-        m_engines.insert(std::make_pair(key, engine));
+        syslog(LOG_DEBUG, "created a new engine with uri: %s, interval: %lu, ttl: %lu",
+            uri.c_str(), interval, ttl);
+        m_engines.insert(std::make_pair(uri, engine));
     }
 
     // 3.4. Return the key
-    respond(key);
+    respond("ok");
 }
 
-void core_t::unsubscribe(const std::string& key) {
+void core_t::unsubscribe(const std::string& uri) {
     // 4.1. Search for the engine 
-    engines_t::iterator it = m_engines.find(key);
+    engines_t::iterator it = m_engines.find(uri);
     if(it == m_engines.end()) {
-        syslog(LOG_ERR, "got an invalid key: %s", key.c_str());
-        respond("e key");
+        syslog(LOG_ERR, "got an invalid uri: %s", uri.c_str());
+        respond("e uri");
         return;
     }
 
@@ -276,18 +272,18 @@ void core_t::respond(const std::string& response) {
 }
 
 void core_t::feed(event_t& event) {
-    if(m_engines.find(event.id) == m_engines.end()) {
+    if(m_engines.find(event.uri) == m_engines.end()) {
         // 5.1. Outstanding event from a stopped engine
-        syslog(LOG_DEBUG, "discarding event for %s", event.id.c_str());
+        syslog(LOG_DEBUG, "discarding event for %s", event.uri.c_str());
         delete event.dict;
         return;
     }
 
     // 6. Disassemble
     for(dict_t::iterator it = event.dict->begin(); it != event.dict->end(); ++it) {
-        std::ostringstream formatter;
-        formatter << event.id << " " << it->first << " " << it->second << " @" << m_now.tv_sec;
-        m_pending.push_back(formatter.str());
+        std::ostringstream fmt;
+        fmt << event.uri << " " << it->first << "=" << it->second << " @" << m_now.tv_sec;
+        m_pending.push_back(fmt.str());
     }
 
     delete event.dict;
