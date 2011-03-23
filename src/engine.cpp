@@ -1,29 +1,29 @@
 #include "core.hpp"
 
-engine_t::engine_t(const std::string& uri, source_t* source, zmq::context_t& context, time_t interval, time_t ttl): 
+engine_t::engine_t(const std::string& key, source_t* source, zmq::context_t& context, time_t interval, time_t ttl): 
     m_refs(1),
     m_ttl(ttl),
-    m_workload(uri, source, context, interval)
+    m_workload(key, source, context, interval)
 {
-    syslog(LOG_DEBUG, "starting engine %s", uri.c_str());
+    syslog(LOG_DEBUG, "starting engine %s", key.c_str());
     
-    // Remeber the time when we started, then start
+    // Remeber the time when we started and fire off the thread
     clock_gettime(CLOCK_REALTIME, &m_timestamp);
     int result = pthread_create(&m_thread, NULL, &poll, &m_workload);
     
     if(result == EAGAIN) {
-        syslog(LOG_ERR, "thread limit exceeded");
-        throw std::exception();
+        throw std::runtime_error("thread limit exceeded");
     }
 }
 
 engine_t::~engine_t() {
-    syslog(LOG_DEBUG, "stopping engine %s", m_workload.uri.c_str());
+    syslog(LOG_DEBUG, "stopping engine %s", m_workload.key.c_str());
 
-    // Set the stop flag
-    // And wait for it to stop
-    m_workload.running = false;
+    // Signal the termination
+    pthread_cond_signal(&m_workload.sleepcond);
     pthread_join(m_thread, NULL);
+    // Deallocate the source object, which was allocated by the plugin registry
+    delete m_workload.source;
 
     // Reset reference counter, so the engine could be reaped
     m_refs = 0;
@@ -31,7 +31,7 @@ engine_t::~engine_t() {
 
 void engine_t::subscribe(time_t interval, time_t ttl) {
     syslog(LOG_DEBUG, "updating engine %s with interval: %lu, ttl: %lu",
-        m_workload.uri.c_str(), interval, ttl);
+        m_workload.key.c_str(), interval, ttl);
 
     // Incrementing the reference counter
     m_refs++;
@@ -47,9 +47,9 @@ void engine_t::subscribe(time_t interval, time_t ttl) {
 
     // Send updated interval to the thread
     // TODO: Check if its shorter than the previous
-    pthread_spin_lock(&m_workload.lock);
+    pthread_spin_lock(&m_workload.datalock);
     clock_parse(interval, m_workload.interval);
-    pthread_spin_unlock(&m_workload.lock);
+    pthread_spin_unlock(&m_workload.datalock);
 }
 
 bool engine_t::reapable(const timespec& now) {
@@ -65,10 +65,11 @@ void* engine_t::poll(void* arg) {
     socket.connect("inproc://events");
 
     // Preparing
-    event_t event(workload->uri);
+    int control;
+    event_t event(workload->key);
     timespec timer;
 
-    while(workload->running) {
+    while(true) {
         clock_gettime(CLOCK_REALTIME, &timer);
         
         // Fetch new data
@@ -81,9 +82,13 @@ void* engine_t::poll(void* arg) {
         socket.send(message);
 
         // Sleeping
-        pthread_spin_lock(&workload->lock);
+        pthread_spin_lock(&workload->datalock);
         clock_advance(timer, workload->interval);
-        pthread_spin_unlock(&workload->lock);
-        clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &timer, NULL);
+        pthread_spin_unlock(&workload->datalock);
+        // Using a timed wait to sleep here, so the engine could be able
+        // to signal the termination conditition
+        if(pthread_cond_timedwait(&workload->sleepcond, &workload->sleeplock, &timer) == 0) {
+            return NULL;
+        }
     }
 }

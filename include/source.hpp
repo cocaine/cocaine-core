@@ -3,6 +3,8 @@
 
 typedef std::map<std::string, std::string> dict_t;
 
-struct source_t {
-    virtual dict_t fetch() = 0;
+class source_t {
+    public:
+        virtual dict_t fetch() = 0;
 };
+

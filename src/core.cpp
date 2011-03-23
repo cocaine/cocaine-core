@@ -5,9 +5,6 @@
 
 #include "core.hpp"
 
-// Temporary
-#include "mysql.hpp"
-
 const char core_t::identity[] = "yappi";
 const int core_t::version[] = { 0, 0, 1 };
 
@@ -189,13 +186,14 @@ void core_t::run() {
 }
 
 void core_t::dispatch(const std::string& request) {
-    std::string cmd, uri;
+    std::string cmd;
     std::istringstream fmt(request);
 
     fmt >> std::skipws >> cmd;
 
     if(regexec(&r_subscribe, request.c_str(), 0, 0, 0) == 0) {
         // 2.1. Subscription
+        std::string uri;
         time_t interval, ttl;
         
         fmt >> interval >> ttl >> uri;
@@ -206,8 +204,10 @@ void core_t::dispatch(const std::string& request) {
 
     if(regexec(&r_unsubscribe, request.c_str(), 0, 0, 0) == 0) {
         // 2.2. Unsubscription
-        fmt >> uri;
-        unsubscribe(uri);
+        std::string key;
+        
+        fmt >> key;
+        unsubscribe(key);
         
         return;
     }
@@ -217,44 +217,53 @@ void core_t::dispatch(const std::string& request) {
 }
 
 void core_t::subscribe(const std::string& uri, time_t interval, time_t ttl) {
+    // 3.1. Generating the key
+    std::string scheme(uri.substr(0, uri.find_first_of(':')));
+    std::string key = scheme + ":" + m_keygen.get(uri);
+    
     // 3.2. Search for the engine
-    engines_t::iterator it = m_engines.find(uri);
-    engine_t* engine;
+    engines_t::iterator it = m_engines.find(key);
 
     if(it != m_engines.end()) {
         // 3.3a. Increment reference counter and update timers
-        engine = it->second;
-        engine->subscribe(interval, ttl);
+        it->second->subscribe(interval, ttl);
     } else {
         // 3.3b. Start a new engine
         try {
-            engine = new engine_t(uri, new mysql_t(uri), m_context, interval, ttl);
-        } catch(const std::exception&) {
-            respond("e resources");
+            engine_t* engine = new engine_t(key, m_registry.create(scheme, uri), m_context, interval, ttl);
+            m_engines.insert(std::make_pair(key, engine));
+            syslog(LOG_DEBUG, "created a new engine with uri: %s, interval: %lu, ttl: %lu",
+                uri.c_str(), interval, ttl);
+        } catch(const std::runtime_error& e) {
+            syslog(LOG_ERR, "thread creation failed: %s", e.what());
+            respond("e runtime");
+            return;
+        } catch(const std::invalid_argument& e) {
+            syslog(LOG_ERR, "invalid uri: %s", e.what());
+            respond("e arguments");
+            return;
+        } catch(const std::domain_error& e) {
+            syslog(LOG_ERR, "unknown source type: %s", e.what());
+            respond("e source");
             return;
         }
-        
-        syslog(LOG_DEBUG, "created a new engine with uri: %s, interval: %lu, ttl: %lu",
-            uri.c_str(), interval, ttl);
-        m_engines.insert(std::make_pair(uri, engine));
     }
 
     // 3.4. Return the key
-    respond("ok");
+    respond(key);
 }
 
-void core_t::unsubscribe(const std::string& uri) {
+void core_t::unsubscribe(const std::string& key) {
     // 4.1. Search for the engine 
-    engines_t::iterator it = m_engines.find(uri);
+    engines_t::iterator it = m_engines.find(key);
     if(it == m_engines.end()) {
-        syslog(LOG_ERR, "got an invalid uri: %s", uri.c_str());
-        respond("e uri");
+        syslog(LOG_ERR, "got an invalid key: %s", key.c_str());
+        respond("e key");
         return;
     }
 
     // 4.2. Decrement reference counter
-    engine_t* engine = it->second;
-    engine->unsubscribe();
+    it->second->unsubscribe();
 
     respond("ok");
 }
@@ -267,9 +276,9 @@ void core_t::respond(const std::string& response) {
 }
 
 void core_t::feed(event_t& event) {
-    if(m_engines.find(event.uri) == m_engines.end()) {
+    if(m_engines.find(event.key) == m_engines.end()) {
         // 5.1. Outstanding event from a stopped engine
-        syslog(LOG_DEBUG, "discarding event for %s", event.uri.c_str());
+        syslog(LOG_DEBUG, "discarding event for %s", event.key.c_str());
         delete event.dict;
         return;
     }
@@ -277,7 +286,7 @@ void core_t::feed(event_t& event) {
     // 6. Disassemble
     for(dict_t::iterator it = event.dict->begin(); it != event.dict->end(); ++it) {
         std::ostringstream fmt;
-        fmt << event.uri << " " << it->first << "=" << it->second << " @" << m_now.tv_sec;
+        fmt << event.key << " " << it->first << "=" << it->second << " @" << m_now.tv_sec;
         m_pending.push_back(fmt.str());
     }
 
@@ -309,8 +318,8 @@ int main(int argc, char* argv[]) {
         // TODO: Customize it via argv
         char r_ep[] = "tcp://*:1710";
         char e_ep[] = "tcp://*:1711";
-        time_t interval = 5000;
-        int64_t watermark = 100;
+        time_t interval = 2500;
+        int64_t watermark = 1000000;
         unsigned int io_threads = 10;
 
         theCore = new core_t(r_ep, e_ep, interval, watermark, io_threads);

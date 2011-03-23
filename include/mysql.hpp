@@ -1,3 +1,4 @@
+#include <sstream>
 #include <mysql/mysql.h>
 
 class mysql_t: public source_t {

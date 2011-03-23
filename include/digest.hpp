@@ -2,8 +2,6 @@
 #include <sstream>
 #include <openssl/evp.h>
 
-typedef std::string hash_t;
-
 class digest_t {
     public:
         digest_t():
@@ -14,7 +12,7 @@ class digest_t {
             EVP_MD_CTX_destroy(m_context);
         }
 
-        hash_t get(const std::string& data) {
+        std::string get(const std::string& data) {
             EVP_DigestInit_ex(m_context, EVP_md5(), NULL);
             EVP_DigestUpdate(m_context, data.data(), data.length());
             EVP_DigestFinal_ex(m_context, m_hash, &m_size);

@@ -1,7 +1,7 @@
 #include <string>
 #include <vector>
 #include <map>
-#include <exception>
+#include <stdexcept>
 
 #include <time.h>
 #include <syslog.h>
@@ -10,7 +10,8 @@
 
 #include <zmq.hpp>
 
-#include "source.hpp"
+#include "digest.hpp"
+#include "registry.hpp"
 
 #define clock_advance(tsa, tsb)      \
     do {                             \
@@ -31,36 +32,42 @@
 // Message structure used by the engines to
 // pass events back to the core
 struct event_t {
-    event_t(const std::string& uri_):
-        uri(uri_),
+    event_t(const std::string& key_):
+        key(key_),
         dict(NULL) {}
 
-    std::string uri;
+    std::string key;
     dict_t* dict;
 };
 
 // Engine workload
 struct workload_t {
-    workload_t(const std::string& uri_, source_t* source_, zmq::context_t& context_, time_t interval_):
-        uri(uri_),
-        running(true),
+    workload_t(const std::string& key_, source_t* source_, zmq::context_t& context_, time_t interval_):
+        key(key_),
         source(source_),
         context(context_)
     {
         clock_parse(interval_, interval);
-        pthread_spin_init(&lock, PTHREAD_PROCESS_PRIVATE);
+        pthread_spin_init(&datalock, PTHREAD_PROCESS_PRIVATE);
+        pthread_mutex_init(&sleeplock, NULL);
+        pthread_cond_init(&sleepcond, NULL);
     }
 
     ~workload_t() {
-        pthread_spin_destroy(&lock);
+        pthread_cond_destroy(&sleepcond);
+        pthread_mutex_destroy(&sleeplock);
+        pthread_spin_destroy(&datalock);
     }
 
-    std::string uri;
+    std::string key;
     source_t* source;
     zmq::context_t& context;
     timespec interval;
-    pthread_spinlock_t lock;
-    bool running;
+    
+    // Flow control
+    pthread_spinlock_t datalock;
+    pthread_mutex_t sleeplock;
+    pthread_cond_t sleepcond;
 };
 
 // Engine
@@ -68,7 +75,7 @@ class engine_t {
     public:
         static void* poll(void *arg);
 
-        engine_t(const std::string& uri, source_t* source, zmq::context_t& context,
+        engine_t(const std::string& key, source_t* source, zmq::context_t& context,
             time_t interval, time_t ttl);
         ~engine_t();
 
@@ -119,7 +126,13 @@ class core_t {
         void feed(event_t& event);
 
     private:
-        // Collectors
+        // Key generator
+        digest_t m_keygen;
+
+        // Plugin registry
+        registry_t m_registry;
+
+        // Engines
         typedef std::map<std::string, engine_t*> engines_t;
         engines_t m_engines;
 
