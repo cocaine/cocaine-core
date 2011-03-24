@@ -1,8 +1,11 @@
 #include <stdexcept>
 
-#include "engine.hpp"
+#include "engines.hpp"
 
-engine_t::engine_t(const std::string& key, source_t* source, zmq::context_t& context, time_t interval, time_t ttl): 
+using namespace yappi::engines;
+using namespace yappi::plugins;
+
+loop_t::loop_t(const std::string& key, source_t* source, zmq::context_t& context, time_t interval, time_t ttl): 
     m_refs(1),
     m_ttl(ttl),
     m_workload(key, source, context, interval)
@@ -18,7 +21,7 @@ engine_t::engine_t(const std::string& key, source_t* source, zmq::context_t& con
     }
 }
 
-engine_t::~engine_t() {
+loop_t::~loop_t() {
     syslog(LOG_DEBUG, "stopping engine %s", m_workload.key.c_str());
 
     // Signal the termination
@@ -32,7 +35,7 @@ engine_t::~engine_t() {
     m_refs = 0;
 }
 
-void engine_t::subscribe(time_t interval, time_t ttl) {
+void loop_t::subscribe(time_t interval, time_t ttl) {
     syslog(LOG_DEBUG, "updating engine %s with interval: %lu, ttl: %lu",
         m_workload.key.c_str(), interval, ttl);
 
@@ -55,12 +58,12 @@ void engine_t::subscribe(time_t interval, time_t ttl) {
     pthread_spin_unlock(&m_workload.datalock);
 }
 
-bool engine_t::reapable(const timespec& now) {
+bool loop_t::reapable(const timespec& now) {
     return ((m_ttl && (now.tv_sec > m_timestamp.tv_sec + m_ttl)) ||
        !m_refs);
 }
 
-void* engine_t::poll(void* arg) {
+void* loop_t::poll(void* arg) {
     workload_t* workload = reinterpret_cast<workload_t*>(arg);
 
     // Connecting

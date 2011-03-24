@@ -8,6 +8,8 @@
 #include "common.hpp"
 #include "plugin.hpp"
 
+namespace yappi { namespace engines {
+
 // Message structure used by the engines to
 // pass events back to the core
 struct event_t {
@@ -16,12 +18,12 @@ struct event_t {
         dict(NULL) {}
 
     std::string key;
-    dict_t* dict;
+    plugins::dict_t* dict;
 };
 
 // Engine workload
 struct workload_t {
-    workload_t(const std::string& key_, source_t* source_, zmq::context_t& context_, time_t interval_):
+    workload_t(const std::string& key_, plugins::source_t* source_, zmq::context_t& context_, time_t interval_):
         key(key_),
         source(source_),
         context(context_)
@@ -39,7 +41,7 @@ struct workload_t {
     }
 
     std::string key;
-    source_t* source;
+    plugins::source_t* source;
     zmq::context_t& context;
     timespec interval;
     
@@ -49,14 +51,14 @@ struct workload_t {
     pthread_cond_t terminate;
 };
 
-// Engine
-class engine_t {
+// Threaded loop engine
+class loop_t {
     public:
         static void* poll(void *arg);
 
-        engine_t(const std::string& key, source_t* source, zmq::context_t& context,
+        loop_t(const std::string& key, plugins::source_t* source, zmq::context_t& context,
             time_t interval, time_t ttl);
-        ~engine_t();
+        ~loop_t();
 
         void subscribe(time_t interval, time_t ttl);
         void unsubscribe() { if(m_refs) m_refs--; }
@@ -74,5 +76,7 @@ class engine_t {
         pthread_t m_thread;
         workload_t m_workload;
 };
+
+}}
 
 #endif

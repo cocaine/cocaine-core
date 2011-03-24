@@ -10,8 +10,10 @@
 #include <zmq.hpp>
 
 #include "common.hpp"
-#include "engine.hpp"
+#include "engines.hpp"
 #include "digest.hpp"
+
+namespace yappi { namespace core {
 
 // Event loop and networking
 class core_t {
@@ -39,14 +41,14 @@ class core_t {
 
         // Responce helpers
         void respond(const std::string& response);
-        void publish(const event_t& event);
+        void publish(const engines::event_t& event);
 
     protected:
         // Key generator
-        digest_t m_keygen;
+        helpers::digest_t m_keygen;
 
         // Engines
-        typedef std::map<std::string, engine_t*> engines_t;
+        typedef std::map<std::string, engines::loop_t*> engines_t;
         engines_t m_engines;
 
         // Networking
@@ -61,5 +63,7 @@ class core_t {
         // Command regexps
         regex_t r_loop, r_unloop, r_once;
 };
+
+}}
 
 #endif

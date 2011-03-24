@@ -6,6 +6,8 @@
 
 #define MAX_SOURCES_PER_PLUGIN 10
 
+namespace yappi { namespace plugins {
+
 typedef void* (*factory_t)(const char*);
 
 struct plugin_info_t {
@@ -23,5 +25,7 @@ class source_t {
     public:
         virtual dict_t fetch() = 0;
 };
+
+}}
 
 #endif

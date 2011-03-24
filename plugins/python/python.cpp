@@ -11,18 +11,19 @@
 class python_t: public source_t {
     public:
         python_t(const std::string& uri):
-            m_path(uri.substr(uri.find_first_of(":") + 3)) {}
+            m_target(uri.substr(uri.find_first_of(":") + 3)) {}
 
         virtual dict_t fetch() {
             dict_t dict;
-            FILE *file = fopen(m_path.c_str(), "r");
+            FILE *file = fopen(m_target.c_str(), "r");
             
             if(!file) {
                 dict["error"] = strerror(errno);
                 return dict;
             }
-                
-            m_state = PyGILState_Ensure();
+            
+            // Getting the thread state
+            PyGILState_STATE state = PyGILState_Ensure();
                 
             PyObject *globals = PyDict_New();
             PyObject *locals = PyDict_New();
@@ -81,14 +82,13 @@ class python_t: public source_t {
             Py_DecRef(locals);
             Py_DecRef(name);
 
-            PyGILState_Release(m_state);
+            PyGILState_Release(state);
             
             return dict;
         }
 
     private:
-        std::string m_path;
-        PyGILState_STATE m_state;
+        std::string m_target;
 };
 
 void* create_python_instance(const char* uri) {
@@ -104,7 +104,11 @@ static const plugin_info_t plugin_info = {
 
 extern "C" {
     const plugin_info_t* get_plugin_info() {
+        // This is called in the main thread
+        // during registry initialization
         Py_InitializeEx(0);
+        PyEval_InitThreads();
+        PyEval_ReleaseLock();
 
         return &plugin_info;
     }

@@ -3,6 +3,8 @@
 #include "registry.hpp"
 #include "core.hpp"
 
+using namespace yappi::core;
+
 registry_t* theRegistry;
 core_t* theCore;
 

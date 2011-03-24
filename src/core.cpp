@@ -7,6 +7,10 @@
 #include "core.hpp"
 #include "registry.hpp"
 
+using namespace yappi::core;
+using namespace yappi::engines;
+using namespace yappi::plugins;
+
 const char core_t::identity[] = "yappi";
 const int core_t::version[] = { 0, 0, 1 };
 
@@ -283,7 +287,7 @@ void core_t::loop(const std::string& uri, time_t interval, time_t ttl) {
     } else {
         // 2.1.4. Start a new engine
         try {
-            engine_t* engine = new engine_t(key, theRegistry->create(scheme, uri), m_context, interval, ttl);
+            loop_t* engine = new loop_t(key, theRegistry->create(scheme, uri), m_context, interval, ttl);
             m_engines.insert(std::make_pair(key, engine));
             syslog(LOG_DEBUG, "created a new engine with uri: %s, interval: %lu, ttl: %lu",
                 uri.c_str(), interval, ttl);

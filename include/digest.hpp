@@ -6,6 +6,8 @@
 
 #include <openssl/evp.h>
 
+namespace yappi { namespace helpers {
+
 class digest_t {
     public:
         digest_t():
@@ -34,5 +36,7 @@ class digest_t {
         unsigned int m_size;
         unsigned char m_hash[EVP_MAX_MD_SIZE];
 };
+
+}}
 
 #endif

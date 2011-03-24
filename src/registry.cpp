@@ -10,6 +10,9 @@
 #include "common.hpp"
 #include "registry.hpp"
 
+using namespace yappi::core;
+using namespace yappi::plugins;
+
 namespace {
     int filter(const dirent *entry) {
         return (entry->d_type == DT_REG && strstr(entry->d_name, ".so"));
