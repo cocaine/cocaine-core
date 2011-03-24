@@ -1,4 +1,6 @@
-#include "core.hpp"
+#include <stdexcept>
+
+#include "engine.hpp"
 
 engine_t::engine_t(const std::string& key, source_t* source, zmq::context_t& context, time_t interval, time_t ttl): 
     m_refs(1),

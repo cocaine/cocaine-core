@@ -1,5 +1,8 @@
+#include <string>
 #include <sstream>
 #include <mysql/mysql.h>
+
+#include "plugin.hpp"
 
 class mysql_t: public source_t {
     public:
@@ -8,7 +11,7 @@ class mysql_t: public source_t {
             m_read_timeout(1),
             m_write_timeout(1)
         {
-            // uri: mysql://user:pass@lrrr.yandex.net:3306/f7
+            // uri: mysql://user:pass@host.yandex.net:3306/db
             size_t s, e;
 
             s = uri.find_first_of(':') + 3;
@@ -35,7 +38,6 @@ class mysql_t: public source_t {
         dict_t fetch() {
             dict_t dict;
 
-            my_init();
             MYSQL handle;
             mysql_init(&handle);
 
@@ -64,3 +66,20 @@ class mysql_t: public source_t {
         std::string m_host, m_username, m_password, m_db;
         unsigned int m_port, m_connect_timeout, m_read_timeout, m_write_timeout;
 };
+
+void* create_instance(const char* uri) {
+    return new mysql_t(uri);
+}
+
+static const plugin_info_t plugin_info = {
+    1, 
+    {
+        { "mysql", &create_instance }
+    }
+};
+
+extern "C" {
+    const plugin_info_t* get_plugin_info() {
+        return &plugin_info;
+    }
+}

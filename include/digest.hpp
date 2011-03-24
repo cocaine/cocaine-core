@@ -1,5 +1,9 @@
+#ifndef YAPPI_DIGEST_HPP
+#define YAPPI_DIGEST_HPP
+
 #include <string>
 #include <sstream>
+
 #include <openssl/evp.h>
 
 class digest_t {
@@ -30,3 +34,5 @@ class digest_t {
         unsigned int m_size;
         unsigned char m_hash[EVP_MAX_MD_SIZE];
 };
+
+#endif
