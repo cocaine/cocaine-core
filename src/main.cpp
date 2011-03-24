@@ -33,10 +33,10 @@ int main(int argc, char* argv[]) {
         unsigned int io_threads = 10;
 
         theRegistry = new registry_t("/home/kobolog/Code/yappi/plugins");
-        theCore = new poll_core_t(r_ep, e_ep, watermark, io_threads, interval);
+        theCore = new core_t(r_ep, e_ep, watermark, io_threads, interval);
         
         // This call blocks
-        theCore->start();
+        theCore->run();
 
         // Cleanup
         delete theCore;

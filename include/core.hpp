@@ -16,11 +16,12 @@
 // Event loop and networking
 class core_t {
     public:
-        core_t(char* ep_req, char* ep_export, int64_t watermark, unsigned int io_threads);
+        core_t(char* ep_req, char* ep_export, int64_t watermark,
+            unsigned int io_threads, time_t interval);
         virtual ~core_t();
 
         // The event loop
-        virtual void start() = 0;
+        virtual void run();
         void signal(int signal) { m_signal = signal; }
     
     public:
@@ -32,11 +33,12 @@ class core_t {
         void dispatch(const std::string& request);
 
         // Request handlers
-        void subscribe(const std::string& uri, time_t interval, time_t ttl);
-        void unsubscribe(const std::string& uri);
+        void loop(const std::string& uri, time_t interval, time_t ttl);
+        void unloop(const std::string& uri);
 
-        // A helper to respond with a string
+        // Responce helpers
         void respond(const std::string& response);
+        void publish(const event_t& event);
 
     protected:
         // Key generator
@@ -52,24 +54,11 @@ class core_t {
 
         // Loop control
         int m_signal;
+        time_t m_interval;
         timespec m_now;
     
         // Command regexps
-        regex_t r_subscribe, r_unsubscribe;
-};
-
-class poll_core_t: public core_t {
-    public:
-        poll_core_t(char* ep_req, char* ep_export, int64_t watermark, unsigned int io_threads, time_t interval);
-        virtual void start();
-
-    private:
-        // Processes and disassemble the events
-        void publish(event_t& event);
-    
-    private:
-        // Interval
-        time_t m_interval;
+        regex_t r_loop, r_unloop;
 };
 
 #endif
