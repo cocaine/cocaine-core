@@ -67,7 +67,6 @@ void* engine_t::poll(void* arg) {
     socket.connect("inproc://events");
 
     // Preparing
-    int control;
     event_t event(workload->key);
     timespec timer;
 
@@ -83,10 +82,11 @@ void* engine_t::poll(void* arg) {
         memcpy(message.data(), &event, sizeof(event));
         socket.send(message);
 
-        // Sleeping
+        // Preparing to sleep
         pthread_spin_lock(&workload->datalock);
         clock_advance(timer, workload->interval);
         pthread_spin_unlock(&workload->datalock);
+        
         // Using a timed wait to sleep here, so the engine could be able
         // to signal the termination conditition
         if(pthread_cond_timedwait(&workload->sleepcond, &workload->sleeplock, &timer) == 0) {

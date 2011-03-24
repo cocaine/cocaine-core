@@ -3,6 +3,7 @@
 #include <stdexcept>
 
 #include "core.hpp"
+#include "registry.hpp"
 
 const char core_t::identity[] = "yappi";
 const int core_t::version[] = { 0, 0, 1 };

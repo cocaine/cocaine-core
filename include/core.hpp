@@ -11,7 +11,6 @@
 
 #include "common.hpp"
 #include "engine.hpp"
-#include "registry.hpp"
 #include "digest.hpp"
 
 // Event loop and networking
