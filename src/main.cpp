@@ -7,8 +7,8 @@ registry_t* theRegistry;
 core_t* theCore;
 
 void terminate(int signum) {
-    theCore->stop();
-};
+    theCore->signal(signum);
+}
 
 int main(int argc, char* argv[]) {
     // Setting up the syslog
@@ -33,7 +33,7 @@ int main(int argc, char* argv[]) {
         unsigned int io_threads = 10;
 
         theRegistry = new registry_t("/home/kobolog/Code/yappi/plugins");
-        theCore = new timed_core_t(r_ep, e_ep, watermark, io_threads, interval);
+        theCore = new poll_core_t(r_ep, e_ep, watermark, io_threads, interval);
         
         // This call blocks
         theCore->start();

@@ -21,7 +21,7 @@ class core_t {
 
         // The event loop
         virtual void start() = 0;
-        virtual void stop() = 0;
+        void signal(int signal) { m_signal = signal; }
     
     public:
         static const char identity[];
@@ -51,32 +51,25 @@ class core_t {
         zmq::socket_t s_events, s_requests, s_export;
 
         // Loop control
+        int m_signal;
         timespec m_now;
-        unsigned int m_watermark;
-        bool m_running;
     
         // Command regexps
         regex_t r_subscribe, r_unsubscribe;
 };
 
-class timed_core_t: public core_t {
+class poll_core_t: public core_t {
     public:
-        timed_core_t(char* ep_req, char* ep_export, int64_t watermark, unsigned int io_threads, time_t interval);
-
+        poll_core_t(char* ep_req, char* ep_export, int64_t watermark, unsigned int io_threads, time_t interval);
         virtual void start();
-        virtual void stop();
 
     private:
         // Processes and disassemble the events
-        void feed(event_t& event);
+        void publish(event_t& event);
     
     private:
-        // Events pending for publishing
-        typedef std::vector<std::string> pending_t;
-        pending_t m_pending;
-
         // Interval
-        timespec m_interval;
+        time_t m_interval;
 };
 
 #endif

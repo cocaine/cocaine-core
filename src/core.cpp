@@ -15,8 +15,7 @@ core_t::core_t(char* ep_req, char* ep_export, int64_t watermark, unsigned int io
     s_requests(m_context, ZMQ_REP),
     s_events(m_context, ZMQ_PULL),
     s_export(m_context, ZMQ_PUB),
-    m_watermark(watermark),
-    m_running(false)
+    m_signal(0)
 {
     // Version dump
     int minor, major, patch;
