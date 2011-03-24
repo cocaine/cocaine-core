@@ -3,9 +3,9 @@
 #include <stdexcept>
 
 #include <dlfcn.h>
-#include <string.h>
 #include <dirent.h>
 #include <errno.h>
+#include <string.h>
 
 #include "common.hpp"
 #include "registry.hpp"
@@ -31,13 +31,13 @@ registry_t::registry_t(const std::string& directory) {
     }
 
     void *plugin;
-    std::string fullpath; 
+    std::string path; 
     const plugin_info_t* (*get_plugin_info)(void);
 
     while(count--) {
         // Load the plugin
-        fullpath = directory + '/' + namelist[count]->d_name;
-        plugin = dlopen(fullpath.c_str(), RTLD_LAZY);
+        path = directory + '/' + namelist[count]->d_name;
+        plugin = dlopen(path.c_str(), RTLD_LAZY);
         
         if(!plugin) {
             syslog(LOG_ERR, "failed to load %s", dlerror());
@@ -64,7 +64,7 @@ registry_t::registry_t(const std::string& directory) {
     }
     
     if(!m_factories.size()) {
-        syslog(LOG_ERR, "no sources found, terminating");
+        syslog(LOG_ERR, "no plugins found, terminating");
         exit(EXIT_FAILURE);
     }
 

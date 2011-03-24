@@ -34,7 +34,8 @@ class core_t {
 
         // Request handlers
         void loop(const std::string& uri, time_t interval, time_t ttl);
-        void unloop(const std::string& uri);
+        void unloop(const std::string& key);
+        void once(const std::string& uri);
 
         // Responce helpers
         void respond(const std::string& response);
@@ -58,7 +59,7 @@ class core_t {
         timespec m_now;
     
         // Command regexps
-        regex_t r_loop, r_unloop;
+        regex_t r_loop, r_unloop, r_once;
 };
 
 #endif

@@ -22,8 +22,9 @@ engine_t::~engine_t() {
     syslog(LOG_DEBUG, "stopping engine %s", m_workload.key.c_str());
 
     // Signal the termination
-    pthread_cond_signal(&m_workload.sleepcond);
+    pthread_cond_signal(&m_workload.terminate);
     pthread_join(m_thread, NULL);
+    
     // Deallocate the source object, which was allocated by the plugin registry
     delete m_workload.source;
 
@@ -89,7 +90,7 @@ void* engine_t::poll(void* arg) {
         
         // Using a timed wait to sleep here, so the engine could be able
         // to signal the termination conditition
-        if(pthread_cond_timedwait(&workload->sleepcond, &workload->sleeplock, &timer) == 0) {
+        if(pthread_cond_timedwait(&workload->terminate, &workload->sleeplock, &timer) == 0) {
             return NULL;
         }
     }

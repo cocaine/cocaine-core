@@ -29,11 +29,11 @@ struct workload_t {
         clock_parse(interval_, interval);
         pthread_spin_init(&datalock, PTHREAD_PROCESS_PRIVATE);
         pthread_mutex_init(&sleeplock, NULL);
-        pthread_cond_init(&sleepcond, NULL);
+        pthread_cond_init(&terminate, NULL);
     }
 
     ~workload_t() {
-        pthread_cond_destroy(&sleepcond);
+        pthread_cond_destroy(&terminate);
         pthread_mutex_destroy(&sleeplock);
         pthread_spin_destroy(&datalock);
     }
@@ -46,7 +46,7 @@ struct workload_t {
     // Flow control
     pthread_spinlock_t datalock;
     pthread_mutex_t sleeplock;
-    pthread_cond_t sleepcond;
+    pthread_cond_t terminate;
 };
 
 // Engine

@@ -6,18 +6,16 @@
 
 #define MAX_SOURCES_PER_PLUGIN 10
 
-typedef void*(*factory_t)(const char*);
+typedef void* (*factory_t)(const char*);
 
-extern "C" {
-    struct plugin_info_t {
-        unsigned int count;
+struct plugin_info_t {
+    unsigned int count;
     
-        struct source_info_t {
-            const char* scheme;
-            factory_t factory;
-        } source[MAX_SOURCES_PER_PLUGIN];
-    };
-}
+    struct source_info_t {
+        const char* scheme;
+        factory_t factory;
+    } source[MAX_SOURCES_PER_PLUGIN];
+};
 
 typedef std::map<std::string, std::string> dict_t;        
 

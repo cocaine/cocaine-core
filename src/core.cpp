@@ -53,8 +53,9 @@ core_t::core_t(char* ep_req, char* ep_export, int64_t watermark, unsigned int io
     s_events.setsockopt(ZMQ_HWM, &watermark, sizeof(watermark));
 
     // Initializing regexps
-    regcomp(&r_loop, "loop ([0-9]+) ([0-9]+) ([a-z]+)://(.*)", REG_EXTENDED | REG_NOSUB);
-    regcomp(&r_unloop, "unloop ([a-z]+://[[:alnum:]]{32})", REG_EXTENDED | REG_NOSUB);
+    regcomp(&r_loop, "loop [0-9]+ [0-9]+ [a-z]+://.*", REG_EXTENDED | REG_NOSUB);
+    regcomp(&r_unloop, "unloop [a-z]+://[[:alnum:]]{32}", REG_EXTENDED | REG_NOSUB);
+    regcomp(&r_once, "once [a-z]+://.*", REG_EXTENDED | REG_NOSUB);
 }
 
 core_t::~core_t() {
@@ -66,6 +67,7 @@ core_t::~core_t() {
     // Destroying regexps
     regfree(&r_loop);
     regfree(&r_unloop);
+    regfree(&r_once);
 }
 
 void core_t::run() {
@@ -89,11 +91,15 @@ void core_t::run() {
     //     2.2. If it's an unsubscription:
     //          2.2.1. Check if there is an active engine for the key
     //          2.2.2. If there is, decrement its reference counter by one
+    //     2.3. If it's a one-time request
+    //          2.3.1. Obtain the source
+    //          2.3.2. Fetch the data
+    //          2.3.3. Return the formatted response
     //  3. Loop until there are no requests left in the queue
     //  4. Reap all reapable engines
     //  5. Fetch next event
-    //     4.1. If there no engines with the specified id, discard it
-    //     4.2. If there is, dissassemle it into fields and publish
+    //     5.1. If there no engines with the specified id, discard it
+    //     5.2. If there is, dissassemle it into fields and publish
     //  6. Loop until there are no events left in the queue
     //  7. Sleep until something happends
 
@@ -118,8 +124,8 @@ void core_t::run() {
         }
 
         // 4. Reap all reapable engines
-        // This kills those engines whose ttl has expired
-        // or whose reference counter dropped to zero
+        // It kills those engines whose TTL has expired
+        // or whose reference counter has dropped to zero
         engines_t::iterator it = m_engines.begin();
         while(it != m_engines.end()) {
             if(it->second->reapable(m_now)) {
@@ -146,7 +152,7 @@ void core_t::run() {
             }
         }
 
-        // 8. Sleeping
+        // 7. Sleeping
         // TODO: Make it absolute again
         try {
             sockets[0].events = ZMQ_POLLIN;
@@ -154,10 +160,11 @@ void core_t::run() {
             zmq::poll(sockets, 2, m_interval);
         } catch(const zmq::error_t& e) {
             if(e.num() == EINTR && (m_signal == SIGINT || m_signal == SIGTERM)) {
-                return;
+                // Got termination signal, so stop the loop
+                break;
             } else {
                 syslog(LOG_ERR, "something bad happened: %s", e.what());
-                return;
+                break;
             }
         }
     }
@@ -172,7 +179,7 @@ void core_t::publish(const event_t& event) {
         return;
     }
 
-    // 6. Disassemble and publish
+    // 5.2. Disassemble and publish
     for(dict_t::iterator it = event.dict->begin(); it != event.dict->end(); ++it) {
         std::ostringstream fmt;
         fmt << event.key << " " << it->first << "=" << it->second << " @" << m_now.tv_sec;
@@ -198,7 +205,7 @@ void core_t::publish(const event_t& event) {
 //   -> unloop key
 //   <- ok|e key
 //
-// * [!] Once - one-time plugin invocation. For one-time invocations,
+// * Once - one-time plugin invocation. For one-time invocations,
 //   you have no means to filter the data by categories or fields:
 //   -> once source://parameters
 //   <- field=value field2=value2... @timestamp|e source
@@ -216,6 +223,9 @@ void core_t::dispatch(const std::string& request) {
     std::string cmd;
     std::istringstream fmt(request);
 
+    // NOTE: This is unused for now, but might come in handy
+    // If I decide to drop regex and use something else
+    // for command validation
     fmt >> std::skipws >> cmd;
 
     if(regexec(&r_loop, request.c_str(), 0, 0, 0) == 0) {
@@ -239,12 +249,22 @@ void core_t::dispatch(const std::string& request) {
         return;
     }
 
+    if(regexec(&r_once, request.c_str(), 0, 0, 0) == 0) {
+        // 2.3. Once
+        std::string uri;
+
+        fmt >> uri;
+        once(uri);
+
+        return;
+    }
+
     syslog(LOG_ERR, "got an unsupported request: %s", request.c_str());
     respond("e request");
 }
 
 void core_t::loop(const std::string& uri, time_t interval, time_t ttl) {
-    // 3.1. Generating the key
+    // 2.1.1. Generating the key
     std::string scheme(uri.substr(0, uri.find_first_of(':')));
     std::string key = scheme + "://" + m_keygen.get(uri);
     
@@ -252,24 +272,23 @@ void core_t::loop(const std::string& uri, time_t interval, time_t ttl) {
     if(ttl < m_interval / 1000) {
         syslog(LOG_WARNING, "ttl requested is less than core interval");
         ttl = m_interval / 1000;
-        return;
     }
     
-    // 3.2. Search for the engine
+    // 2.1.2. Search for the engine
     engines_t::iterator it = m_engines.find(key);
 
     if(it != m_engines.end()) {
-        // 3.3a. Increment reference counter and update timers
+        // 2.1.3. Increment reference counter and update timers
         it->second->subscribe(interval, ttl);
     } else {
-        // 3.3b. Start a new engine
+        // 2.1.4. Start a new engine
         try {
             engine_t* engine = new engine_t(key, theRegistry->create(scheme, uri), m_context, interval, ttl);
             m_engines.insert(std::make_pair(key, engine));
             syslog(LOG_DEBUG, "created a new engine with uri: %s, interval: %lu, ttl: %lu",
                 uri.c_str(), interval, ttl);
         } catch(const std::runtime_error& e) {
-            syslog(LOG_ERR, "thread creation failed: %s", e.what());
+            syslog(LOG_ERR, "engine creation failed: %s", e.what());
             respond("e runtime");
             return;
         } catch(const std::invalid_argument& e) {
@@ -283,23 +302,58 @@ void core_t::loop(const std::string& uri, time_t interval, time_t ttl) {
         }
     }
 
-    // 3.4. Return the key
+    // 2.1.5. Return the key
     respond(key);
 }
 
 void core_t::unloop(const std::string& key) {
-    // 4.1. Search for the engine 
+    // 2.2.1. Search for the engine 
     engines_t::iterator it = m_engines.find(key);
+    
     if(it == m_engines.end()) {
         syslog(LOG_ERR, "got an invalid key: %s", key.c_str());
         respond("e key");
         return;
     }
 
-    // 4.2. Decrement reference counter
+    // 2.2.2. Decrement reference counter
     it->second->unsubscribe();
-
     respond("ok");
+}
+
+void core_t::once(const std::string& uri) {
+    std::string scheme(uri.substr(0, uri.find_first_of(':')));
+    std::ostringstream fmt;
+    source_t* source;
+        
+    try {
+        // 2.3.1. Create a new source
+        source = theRegistry->create(scheme, uri);
+    } catch(const std::invalid_argument& e) {
+        syslog(LOG_ERR, "invalid uri: %s", e.what());
+        respond("e arguments");
+        return;
+    } catch(const std::domain_error& e) {
+        syslog(LOG_ERR, "unknown source type: %s", e.what());
+        respond("e source");
+        return;
+    }
+
+    // 2.3.2. Fetch the data once
+    dict_t dict = source->fetch();
+    
+    // Cleanup
+    delete source;
+
+    // Prepare the response
+    for(dict_t::iterator it = dict.begin(); it != dict.end(); ++it) {
+        fmt << it->first << "=" << it->second << " ";    
+    }
+
+    fmt << "@" << m_now.tv_sec;
+    
+    // 2.3.3. Send it away
+    respond(fmt.str());
 }
 
 void core_t::respond(const std::string& response) {
