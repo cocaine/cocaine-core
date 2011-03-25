@@ -104,6 +104,8 @@ static const plugin_info_t plugin_info = {
     }
 };
 
+#include <stdio.h>
+
 extern "C" {
     const plugin_info_t* initialize() {
         // This is called in the main thread
@@ -113,5 +115,9 @@ extern "C" {
         PyEval_ReleaseLock();
 
         return &plugin_info;
+    }
+
+    __attribute__((destructor)) void finalize() {
+        Py_Finalize();
     }
 }

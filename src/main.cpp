@@ -18,7 +18,7 @@ void terminate(int signum) {
 }
 
 int main(int argc, char* argv[]) {
-    char option;
+    char option = 0;
 
     bool daemonize = false;
     std::vector<std::string> export_eps;
@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
     std::string pluginpath = "/";
     time_t interval = 1000;
     unsigned int watermark = 100;
-    unsigned int threads = 5;
+    unsigned int threads = 1;
 
     while((option = getopt(argc, argv, "de:l:i:w:t:p:h")) != -1) {
         switch(option) {
@@ -55,7 +55,7 @@ int main(int argc, char* argv[]) {
             default:
                 std::cout << "Yappi " << core_t::version << " - The information devourer" << std::endl;
                 std::cout << std::endl;
-                std::cout << "Usage: yappi -d -l endpoint -e endpoint -p path [-i 1000] [-w 100] [-t 5]" << std::endl;
+                std::cout << "Usage: yappi -d -l endpoint -e endpoint -p path [-i 1000] [-w 100] [-t 1]" << std::endl;
                 std::cout << "  -d\tdaemonize" << std::endl;
                 std::cout << "  -l\tendpoint for listening for requests, might be used multiple times" << std::endl;
                 std::cout << "  -e\tendpoint for exporting events, might be used multiple times" << std::endl;

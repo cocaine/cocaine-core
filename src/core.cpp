@@ -20,7 +20,7 @@ core_t::core_t(const std::vector<std::string>& listen_eps, const std::vector<std
                int64_t watermark, unsigned int threads, time_t interval):
     m_context(threads),
     s_events(m_context, ZMQ_PULL),
-    s_requests(m_context, ZMQ_REP),
+    s_listen(m_context, ZMQ_REP),
     s_export(m_context, ZMQ_PUB),
     m_signal(0),
     m_interval(interval * 1000)
@@ -44,7 +44,7 @@ core_t::core_t(const std::vector<std::string>& listen_eps, const std::vector<std
     int count = 0;
     for(std::vector<std::string>::const_iterator it = listen_eps.begin(); it != listen_eps.end(); ++it) {
         try {
-            s_requests.bind(it->c_str());
+            s_listen.bind(it->c_str());
             syslog(LOG_INFO, "listening on %s", it->c_str());
             count++;
         } catch(const zmq::error_t& e) {
@@ -60,7 +60,7 @@ core_t::core_t(const std::vector<std::string>& listen_eps, const std::vector<std
     count = 0;
     for(std::vector<std::string>::const_iterator it = export_eps.begin(); it != export_eps.end(); ++it) {
         try {
-            s_requests.bind(it->c_str());
+            s_export.bind(it->c_str());
             syslog(LOG_INFO, "exporting on %s", it->c_str());
             count++;
         } catch(const zmq::error_t& e) {
@@ -95,9 +95,10 @@ core_t::~core_t() {
 }
 
 void core_t::run() {
-    zmq_pollitem_t sockets[2];
-    sockets[0].socket = (void*)s_requests;
-    sockets[1].socket = (void*)s_events;
+    zmq_pollitem_t sockets[] = {
+        { (void*)s_listen, 0, 0, 0 },
+        { (void*)s_events, 0, 0, 0 }
+    };
 
     zmq::message_t message;
 
@@ -128,13 +129,28 @@ void core_t::run() {
     //  7. Sleep until something happends
 
     while(true) {
+        // 7. Sleep
+        try {
+            sockets[0].events = ZMQ_POLLIN;
+            sockets[1].events = ZMQ_POLLIN;
+            zmq::poll(sockets, 2, m_interval);
+        } catch(const zmq::error_t& e) {
+            if(e.num() == EINTR && (m_signal == SIGINT || m_signal == SIGTERM)) {
+                // Got termination signal, so stop the loop
+                break;
+            } else {
+                syslog(LOG_ERR, "something bad happened: %s", e.what());
+                break;
+            }
+        }
+
         // 1. Store the current time
         clock_gettime(CLOCK_REALTIME, &m_now);
-
+        
         // 2. Fetching requests, if any
-        if(sockets[0].revents == ZMQ_POLLIN) {
+        if(sockets[0].revents & ZMQ_POLLIN) {
             for(int32_t cnt = 0;; ++cnt) {
-                if(!s_requests.recv(&message, ZMQ_NOBLOCK)) {
+                if(!s_listen.recv(&message, ZMQ_NOBLOCK)) {
                     syslog(LOG_DEBUG, "dispatched %d requests", cnt);
                     break;
                 }
@@ -162,7 +178,7 @@ void core_t::run() {
         }
 
         // 5. Fetching new events, if any
-        if(sockets[1].revents == ZMQ_POLLIN) {
+        if(sockets[1].revents & ZMQ_POLLIN) {
             for(int32_t cnt = 0;; ++cnt) {
                 if(!s_events.recv(&message, ZMQ_NOBLOCK)) {
                     syslog(LOG_DEBUG, "processed %d events", cnt);
@@ -175,23 +191,7 @@ void core_t::run() {
                 delete event->dict;
             }
         }
-
-        // 7. Sleeping
-        // TODO: Make it absolute again
-        try {
-            sockets[0].events = ZMQ_POLLIN;
-            sockets[1].events = ZMQ_POLLIN;
-            zmq::poll(sockets, 2, m_interval);
-        } catch(const zmq::error_t& e) {
-            if(e.num() == EINTR && (m_signal == SIGINT || m_signal == SIGTERM)) {
-                // Got termination signal, so stop the loop
-                break;
-            } else {
-                syslog(LOG_ERR, "something bad happened: %s", e.what());
-                break;
-            }
-        }
-    }
+    } // Loop
 }
 
 void core_t::publish(const event_t& event) {
@@ -378,5 +378,5 @@ void core_t::respond(const std::string& response) {
     zmq::message_t message(response.length());
     memcpy(message.data(), response.data(), response.length()); 
 
-    s_requests.send(message, ZMQ_NOBLOCK);
+    s_listen.send(message, ZMQ_NOBLOCK);
 }

@@ -9,6 +9,10 @@
 
 #include <zmq.hpp>
 
+#if ZMQ_VERSION < 20100
+    #error ZeroMQ version 2.1.0+ required!
+#endif
+
 #include "common.hpp"
 #include "engines.hpp"
 #include "digest.hpp"
@@ -53,7 +57,7 @@ class core_t {
 
         // Networking
         zmq::context_t m_context;
-        zmq::socket_t s_events, s_requests, s_export;
+        zmq::socket_t s_events, s_listen, s_export;
 
         // Loop control
         int m_signal;

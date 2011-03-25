@@ -42,12 +42,14 @@ registry_t::registry_t(const std::string& directory) {
     while(count--) {
         // Load the plugin
         path = directory + '/' + namelist[count]->d_name;
-        plugin = dlopen(path.c_str(), RTLD_LAZY);
+        plugin = dlopen(path.c_str(), RTLD_NOW);
         
         if(!plugin) {
             syslog(LOG_ERR, "failed to load %s", dlerror());
             continue;
         }
+
+        m_plugins.push_back(plugin);
 
         // Get the plugin info
         initialize = reinterpret_cast<initialize_fn_t>(dlsym(plugin, "initialize"));
@@ -67,6 +69,8 @@ registry_t::registry_t(const std::string& directory) {
         // Free the directory entry
         free(namelist[count]);
     }
+
+    free(namelist);
     
     if(!m_factories.size()) {
         throw std::runtime_error("no plugins found, terminating");
@@ -78,6 +82,12 @@ registry_t::registry_t(const std::string& directory) {
     }
 
     syslog(LOG_INFO, "available sources:%s", fmt.str().c_str());
+}
+
+registry_t::~registry_t() {
+    for(plugins_t::iterator it = m_plugins.begin(); it != m_plugins.end(); ++it) {
+        dlclose(*it);
+    }
 }
 
 source_t* registry_t::create(const std::string& scheme, const std::string& uri) {

@@ -1,10 +1,20 @@
 #!/usr/bin/scons
 
 env = Environment()
-yappi = env.Program(
-    target = "bin/yappi",
-    source = Glob("src/*.cpp"),
+
+yappi_library = env.SharedLibrary(
+    target = "lib/yappi",
+    source = ["src/registry.cpp", "src/engines.cpp", "src/core.cpp"],
     CPPPATH = ["include", "/usr/include", "/usr/local/include"],
-    CXXFLAGS = ["-O2", "-Wall", "-pedantic", "-pthread"],
+    CXXFLAGS = ["-g", "-O2", "-Wall", "-pedantic", "-pthread", "-fpic", "-DPIC", "-rdynamic"],
     LIBS = ["zmq", "crypto", "dl"],
-    LIBPATH = ["/usr/lib", "/usr/local/lib"])
+    LIBPATH = ["/usr/lib", "/usr/local/lib"],
+    LINKFLAGS = ['-Wl,-Bsymbolic', '-Wl,-soname=libyappi.so.1'])
+
+yappi_binary = env.Program(
+    target = "bin/yappi",
+    source = "src/main.cpp",
+    CPPPATH = ["include", "/usr/include", "/usr/local/include"],
+    CXXFLAGS = ["-g", "-O2", "-Wall", "-pedantic", "-pthread", "-fpic", "-DPIC", "-rdynamic"],
+    LIBS = ["yappi"],
+    LIBPATH = ["/usr/lib", "/usr/local/lib", "./lib"])
