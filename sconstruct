@@ -1,8 +1,6 @@
 #!/usr/bin/scons
 
 env = Environment()
-
-# libyandex-smartrouting.so
 yappi = env.Program(
     target = "bin/yappi",
     source = Glob("src/*.cpp"),
