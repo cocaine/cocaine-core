@@ -131,12 +131,7 @@ void core_t::run() {
         
         // 2. Fetching requests, if any
         if(sockets[0].revents & ZMQ_POLLIN) {
-            for(int32_t cnt = 0;; ++cnt) {
-                if(!s_listen.recv(&message, ZMQ_NOBLOCK)) {
-                    syslog(LOG_DEBUG, "dispatched %d requests", cnt);
-                    break;
-                }
-
+            while(s_listen.recv(&message, ZMQ_NOBLOCK)) {
                 // 2.*. Dispatch the request
                 std::string request(
                     reinterpret_cast<char*>(message.data()),
@@ -162,12 +157,7 @@ void core_t::run() {
 
         // 5. Fetching new events, if any
         if(sockets[1].revents & ZMQ_POLLIN) {
-            for(int32_t cnt = 0;; ++cnt) {
-                if(!s_events.recv(&message, ZMQ_NOBLOCK)) {
-                    syslog(LOG_DEBUG, "processed %d events", cnt);
-                    break;
-                }
-
+            while(s_events.recv(&message, ZMQ_NOBLOCK)) {
                 // 5.*. Publish the event
                 event_t *event = reinterpret_cast<event_t*>(message.data());
                 publish(*event);
@@ -188,16 +178,15 @@ void core_t::publish(const event_t& event) {
 
     // 5.2. Disassemble and publish in the envelope
     for(dict_t::iterator it = event.dict->begin(); it != event.dict->end(); ++it) {
-        std::ostringstream envelope, pair;
+        std::ostringstream envelope;
         
-        envelope << event.key << " @" << m_now.tv_sec;
+        envelope << event.key << " " << it->first << " @" << (m_now.tv_sec * 1000 + m_now.tv_nsec / 1e+6);
         message.rebuild(envelope.str().length());
         memcpy(message.data(), envelope.str().data(), envelope.str().length());
         s_export.send(message, ZMQ_SNDMORE);
 
-        pair << it->first << "=" << it->second;
-        message.rebuild(pair.str().length());
-        memcpy(message.data(), pair.str().data(), pair.str().length());
+        message.rebuild(it->second.length());
+        memcpy(message.data(), it->second.data(), it->second.length());
         s_export.send(message); 
     }
 }

@@ -27,5 +27,5 @@ plugins = SConscript("plugins/sconscript")
 
 env.Alias("install", prefix)
 env.Install(prefix + "usr/bin", binary)
-env.Install(prefix + "usr/lib", library)
+env.InstallAs(prefix + "usr/lib/libyappi.so.1", library)
 env.Install(prefix + "usr/lib/yappi", plugins)
