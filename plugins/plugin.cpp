@@ -7,6 +7,8 @@
 // * std::runtime_error
 // * std::invalid_argument
 
+using namespace yappi::plugins;
+
 class plugin_t: public source_t {
     public:
         plugin_t(const std::string& uri) {
@@ -34,7 +36,7 @@ static const plugin_info_t plugin_info = {
 };
 
 extern "C" {
-    const plugin_info_t* get_plugin_info() {
+    const plugin_info_t* initialize() {
         return &plugin_info;
     }
 }

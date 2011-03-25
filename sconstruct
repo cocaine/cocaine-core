@@ -1,0 +1,12 @@
+#!/usr/bin/scons
+
+env = Environment()
+
+# libyandex-smartrouting.so
+yappi = env.Program(
+    target = "bin/yappi",
+    source = Glob("src/*.cpp"),
+    CPPPATH = ["include", "/usr/include", "/usr/local/include"],
+    CXXFLAGS = ["-O2", "-Wall", "-pedantic", "-pthread"],
+    LIBS = ["zmq", "crypto", "dl"],
+    LIBPATH = ["/usr/lib", "/usr/local/lib"])

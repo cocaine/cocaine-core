@@ -5,6 +5,8 @@
 
 #include "plugin.hpp"
 
+using namespace yappi::plugins;
+
 class sysinfo_t: public source_t {
     public:
         sysinfo_t(const std::string& uri) {
@@ -45,7 +47,7 @@ static const plugin_info_t plugin_info = {
 };
 
 extern "C" {
-    const plugin_info_t* get_plugin_info() {
+    const plugin_info_t* initialize() {
         return &plugin_info;
     }
 }

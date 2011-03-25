@@ -8,6 +8,8 @@
 // * std::runtime_error
 // * std::invalid_argument
 
+using namespace yappi::plugins;
+
 class python_t: public source_t {
     public:
         python_t(const std::string& uri):
@@ -103,7 +105,7 @@ static const plugin_info_t plugin_info = {
 };
 
 extern "C" {
-    const plugin_info_t* get_plugin_info() {
+    const plugin_info_t* initialize() {
         // This is called in the main thread
         // during registry initialization
         Py_InitializeEx(0);

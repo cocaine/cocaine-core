@@ -29,13 +29,15 @@ registry_t::registry_t(const std::string& directory) {
         alphasort);
 
     if(count == -1) {
-        syslog(LOG_DEBUG, "%s: %s", directory.c_str(), strerror(errno));
-        exit(EXIT_FAILURE);
+        std::string message = directory + ": " + strerror(errno);
+        throw std::runtime_error(message);
     }
 
     void *plugin;
     std::string path; 
-    const plugin_info_t* (*get_plugin_info)(void);
+    
+    typedef const plugin_info_t* (*initialize_fn_t)(void);
+    initialize_fn_t initialize;
 
     while(count--) {
         // Load the plugin
@@ -48,17 +50,17 @@ registry_t::registry_t(const std::string& directory) {
         }
 
         // Get the plugin info
-        *(void **)(&get_plugin_info) = dlsym(plugin, "get_plugin_info");
+        initialize = reinterpret_cast<initialize_fn_t>(dlsym(plugin, "initialize"));
 
-        if(!get_plugin_info) {
+        if(!initialize) {
             syslog(LOG_ERR, "invalid plugin interface: %s", dlerror());
             continue;
         }
 
-        const plugin_info_t* info = get_plugin_info();
+        const plugin_info_t* info = initialize();
 
         // Fetch all supported sources from it
-        for(int i = 0; i < info->count; ++i) {
+        for(unsigned int i = 0; i < info->count; ++i) {
             m_factories[info->source[i].scheme] = info->source[i].factory;
         }
 
@@ -67,8 +69,7 @@ registry_t::registry_t(const std::string& directory) {
     }
     
     if(!m_factories.size()) {
-        syslog(LOG_ERR, "no plugins found, terminating");
-        exit(EXIT_FAILURE);
+        throw std::runtime_error("no plugins found, terminating");
     }
 
     std::ostringstream fmt;

@@ -4,6 +4,8 @@
 
 #include "plugin.hpp"
 
+using namespace yappi::plugins;
+
 class mysql_t: public source_t {
     public:
         mysql_t(const std::string& uri):
@@ -79,7 +81,7 @@ static const plugin_info_t plugin_info = {
 };
 
 extern "C" {
-    const plugin_info_t* get_plugin_info() {
+    const plugin_info_t* initialize() {
         return &plugin_info;
     }
 }

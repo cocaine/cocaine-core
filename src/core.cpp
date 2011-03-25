@@ -12,46 +12,66 @@ using namespace yappi::engines;
 using namespace yappi::plugins;
 
 const char core_t::identity[] = "yappi";
-const int core_t::version[] = { 0, 0, 1 };
+const char core_t::version[] = "version 0.0.1";
 
 extern registry_t* theRegistry;
 
-core_t::core_t(char* ep_req, char* ep_export, int64_t watermark, unsigned int io_threads, time_t interval):
-    m_context(io_threads),
-    s_requests(m_context, ZMQ_REP),
+core_t::core_t(const std::vector<std::string>& listen_eps, const std::vector<std::string>& export_eps,
+               int64_t watermark, unsigned int threads, time_t interval):
+    m_context(threads),
     s_events(m_context, ZMQ_PULL),
+    s_requests(m_context, ZMQ_REP),
     s_export(m_context, ZMQ_PUB),
-    m_interval(interval * 1000),
-    m_signal(0)
+    m_signal(0),
+    m_interval(interval * 1000)
 {
     // Version dump
     int minor, major, patch;
     zmq_version(&major, &minor, &patch);
-    syslog(LOG_INFO, "using libzmq v%d.%d.%d",
+    syslog(LOG_INFO, "using libzmq version %d.%d.%d",
         major, minor, patch);
 
     // Argument dump
-    syslog(LOG_INFO, "interval: %lu, watermark: %llu events, %d io threads",
-        interval, watermark, io_threads);
+    if(watermark) {
+        syslog(LOG_INFO, "poll timeout: %lums, watermark: %d events, %d threads",
+            interval, static_cast<int32_t>(watermark), threads);
+    } else {
+        syslog(LOG_INFO, "poll timeout: %lums, watermark: disabled, %d threads",
+            interval, threads);
+    }
 
-    // Socket for requests
-    try {
-        s_requests.bind(ep_req);
-        syslog(LOG_INFO, "listening on %s", ep_req);
-    } catch(const zmq::error_t& e) {
-        syslog(LOG_EMERG, "cannot bind to %s: %s", ep_req, e.what());
-        exit(EXIT_FAILURE);
+    // Binding request endpoints
+    int count = 0;
+    for(std::vector<std::string>::const_iterator it = listen_eps.begin(); it != listen_eps.end(); ++it) {
+        try {
+            s_requests.bind(it->c_str());
+            syslog(LOG_INFO, "listening on %s", it->c_str());
+            count++;
+        } catch(const zmq::error_t& e) {
+            syslog(LOG_ERR, "cannot bind on %s: %s", it->c_str(), e.what());
+        }
+    }
+
+    if(!count) {
+        throw std::runtime_error("no valid listen endpoints");
     }
     
-    // Socket for exporting data
-    try {
-        s_export.bind(ep_export);
-        syslog(LOG_INFO, "exporting on %s", ep_export);
-    } catch(const zmq::error_t& e) {
-        syslog(LOG_EMERG, "cannot bind to %s: %s", ep_export, e.what());
-        exit(EXIT_FAILURE);
+    // Binding export endpoints
+    count = 0;
+    for(std::vector<std::string>::const_iterator it = export_eps.begin(); it != export_eps.end(); ++it) {
+        try {
+            s_requests.bind(it->c_str());
+            syslog(LOG_INFO, "exporting on %s", it->c_str());
+            count++;
+        } catch(const zmq::error_t& e) {
+            syslog(LOG_EMERG, "cannot bind on %s: %s", it->c_str(), e.what());
+        }
     }
 
+    if(!count) {
+        throw std::runtime_error("no valid export endpoints");
+    }
+    
     // Socket for event collection
     s_events.bind("inproc://events");
     s_events.setsockopt(ZMQ_HWM, &watermark, sizeof(watermark));
@@ -271,12 +291,6 @@ void core_t::loop(const std::string& uri, time_t interval, time_t ttl) {
     // 2.1.1. Generating the key
     std::string scheme(uri.substr(0, uri.find_first_of(':')));
     std::string key = scheme + "://" + m_keygen.get(uri);
-    
-    // Validating TTL. It's meaningless to set it shorter than the core interval
-    if(ttl < m_interval / 1000) {
-        syslog(LOG_WARNING, "ttl requested is less than core interval");
-        ttl = m_interval / 1000;
-    }
     
     // 2.1.2. Search for the engine
     engines_t::iterator it = m_engines.find(key);

@@ -18,8 +18,8 @@ namespace yappi { namespace core {
 // Event loop and networking
 class core_t {
     public:
-        core_t(char* ep_req, char* ep_export, int64_t watermark,
-            unsigned int io_threads, time_t interval);
+        core_t(const std::vector<std::string>& request_eps, const std::vector<std::string>& export_eps,
+            int64_t watermark, unsigned int threads, time_t interval);
         virtual ~core_t();
 
         // The event loop
@@ -28,7 +28,7 @@ class core_t {
     
     public:
         static const char identity[];
-        static const int version[];
+        static const char version[];
 
     protected:
         // Request dispatcher
