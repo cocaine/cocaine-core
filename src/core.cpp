@@ -58,6 +58,7 @@ core_t::core_t(const std::vector<std::string>& listen_eps, const std::vector<std
     
     // Binding export endpoints
     count = 0;
+    s_export.setsockopt(ZMQ_HWM, &watermark, sizeof(watermark));
     for(std::vector<std::string>::const_iterator it = export_eps.begin(); it != export_eps.end(); ++it) {
         try {
             s_export.bind(it->c_str());
