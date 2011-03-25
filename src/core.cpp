@@ -32,54 +32,37 @@ core_t::core_t(const std::vector<std::string>& listen_eps, const std::vector<std
         major, minor, patch);
 
     // Argument dump
-    if(watermark) {
-        syslog(LOG_INFO, "poll timeout: %lums, watermark: %d events, %d threads",
-            interval, static_cast<int32_t>(watermark), threads);
-    } else {
-        syslog(LOG_INFO, "poll timeout: %lums, watermark: disabled, %d threads",
-            interval, threads);
-    }
+    syslog(LOG_INFO, "poll timeout: %lums, watermark: %d events, %d threads",
+        interval, static_cast<int32_t>(watermark), threads);
 
     // Binding request endpoints
-    int count = 0;
-    for(std::vector<std::string>::const_iterator it = listen_eps.begin(); it != listen_eps.end(); ++it) {
-        try {
-            s_listen.bind(it->c_str());
-            syslog(LOG_INFO, "listening on %s", it->c_str());
-            count++;
-        } catch(const zmq::error_t& e) {
-            syslog(LOG_ERR, "cannot bind on %s: %s", it->c_str(), e.what());
-        }
-    }
-
-    if(!count) {
-        throw std::runtime_error("no valid listen endpoints");
+    if(!listen_eps.size()) {
+        throw std::runtime_error("no listen endpoints specified");
     }
     
+    for(std::vector<std::string>::const_iterator it = listen_eps.begin(); it != listen_eps.end(); ++it) {
+        s_listen.bind(it->c_str());
+        syslog(LOG_INFO, "listening on %s", it->c_str());
+    }
+
     // Binding export endpoints
-    count = 0;
-    s_export.setsockopt(ZMQ_HWM, &watermark, sizeof(watermark));
-    for(std::vector<std::string>::const_iterator it = export_eps.begin(); it != export_eps.end(); ++it) {
-        try {
+    if(!export_eps.size()) {
+        syslog(LOG_WARNING, "no export endpoints specified, loop/unloop commands will be useless");
+    } else {
+        s_export.setsockopt(ZMQ_HWM, &watermark, sizeof(watermark));
+        for(std::vector<std::string>::const_iterator it = export_eps.begin(); it != export_eps.end(); ++it) {
             s_export.bind(it->c_str());
             syslog(LOG_INFO, "exporting on %s", it->c_str());
-            count++;
-        } catch(const zmq::error_t& e) {
-            syslog(LOG_EMERG, "cannot bind on %s: %s", it->c_str(), e.what());
         }
     }
 
-    if(!count) {
-        throw std::runtime_error("no valid export endpoints");
-    }
-    
-    // Socket for event collection
-    s_events.bind("inproc://events");
+    // Binding event collection endpoint
     s_events.setsockopt(ZMQ_HWM, &watermark, sizeof(watermark));
+    s_events.bind("inproc://events");
 
     // Initializing regexps
     regcomp(&r_loop, "loop [0-9]+ [0-9]+ [a-z]+://.*", REG_EXTENDED | REG_NOSUB);
-    regcomp(&r_unloop, "unloop [a-z]+://[[:alnum:]]{32}", REG_EXTENDED | REG_NOSUB);
+    regcomp(&r_unloop, "unloop [a-z]+://[[:alnum:]]{16}", REG_EXTENDED | REG_NOSUB);
     regcomp(&r_once, "once [a-z]+://.*", REG_EXTENDED | REG_NOSUB);
 }
 
@@ -97,8 +80,8 @@ core_t::~core_t() {
 
 void core_t::run() {
     zmq_pollitem_t sockets[] = {
-        { (void*)s_listen, 0, 0, 0 },
-        { (void*)s_events, 0, 0, 0 }
+        { (void*)s_listen, 0, ZMQ_POLLIN, 0 },
+        { (void*)s_events, 0, ZMQ_POLLIN, 0 }
     };
 
     zmq::message_t message;
@@ -132,8 +115,6 @@ void core_t::run() {
     while(true) {
         // 7. Sleep
         try {
-            sockets[0].events = ZMQ_POLLIN;
-            sockets[1].events = ZMQ_POLLIN;
             zmq::poll(sockets, 2, m_interval);
         } catch(const zmq::error_t& e) {
             if(e.num() == EINTR && (m_signal == SIGINT || m_signal == SIGTERM)) {
@@ -168,6 +149,7 @@ void core_t::run() {
         // It kills those engines whose TTL has expired
         // or whose reference counter has dropped to zero
         engines_t::iterator it = m_engines.begin();
+        
         while(it != m_engines.end()) {
             if(it->second->reapable(m_now)) {
                 syslog(LOG_DEBUG, "reaping engine %s", it->first.c_str());
@@ -204,14 +186,19 @@ void core_t::publish(const event_t& event) {
         return;
     }
 
-    // 5.2. Disassemble and publish
+    // 5.2. Disassemble and publish in the envelope
     for(dict_t::iterator it = event.dict->begin(); it != event.dict->end(); ++it) {
-        std::ostringstream fmt;
-        fmt << event.key << " " << it->first << "=" << it->second << " @" << m_now.tv_sec;
-    
-        message.rebuild(fmt.str().length());
-        memcpy(message.data(), fmt.str().data(), fmt.str().length());
-        s_export.send(message);    
+        std::ostringstream envelope, pair;
+        
+        envelope << event.key << " @" << m_now.tv_sec;
+        message.rebuild(envelope.str().length());
+        memcpy(message.data(), envelope.str().data(), envelope.str().length());
+        s_export.send(message, ZMQ_SNDMORE);
+
+        pair << it->first << "=" << it->second;
+        message.rebuild(pair.str().length());
+        memcpy(message.data(), pair.str().data(), pair.str().length());
+        s_export.send(message); 
     }
 }
 
@@ -342,7 +329,6 @@ void core_t::unloop(const std::string& key) {
 
 void core_t::once(const std::string& uri) {
     std::string scheme(uri.substr(0, uri.find_first_of(':')));
-    std::ostringstream fmt;
     source_t* source;
         
     try {
@@ -360,19 +346,19 @@ void core_t::once(const std::string& uri) {
 
     // 2.3.2. Fetch the data once
     dict_t dict = source->fetch();
-    
-    // Cleanup
     delete source;
 
     // Prepare the response
+    std::ostringstream response;
+    
     for(dict_t::iterator it = dict.begin(); it != dict.end(); ++it) {
-        fmt << it->first << "=" << it->second << " ";    
+        response << it->first << "=" << it->second << " ";    
     }
 
-    fmt << "@" << m_now.tv_sec;
+    response << "@" << m_now.tv_sec;
     
     // 2.3.3. Send it away
-    respond(fmt.str());
+    respond(response.str());
 }
 
 void core_t::respond(const std::string& response) {

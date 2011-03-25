@@ -1,0 +1,16 @@
+#!/usr/bin/scons
+
+import os, sys
+python_version = 'python%d.%d' % sys.version_info[:2]
+
+Import(['env'])
+
+plugin = env.SharedLibrary(
+    target = "#build/plugins/python",
+    SHLIBPREFIX = "",
+    source = ["python.cpp"],
+    CPPPATH = ["#include", os.path.join("/", "usr", "include", python_version)],
+    LIBS = [python_version],
+    LINKFLAGS = ["-Wl,-Bsymbolic"])
+
+Return("plugin")

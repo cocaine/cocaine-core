@@ -1,0 +1,12 @@
+#!/usr/bin/scons
+
+Import(['env'])
+
+plugin = env.SharedLibrary(
+    target = "#build/plugins/sysinfo",
+    SHLIBPREFIX = "",
+    source = ["sysinfo.cpp"],
+    CPPPATH = ["#include"],
+    LINKFLAGS = ["-Wl,-Bsymbolic"])
+
+Return("plugin")

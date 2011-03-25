@@ -93,7 +93,10 @@ int main(int argc, char* argv[]) {
         theRegistry = new registry_t(pluginpath);
         theCore = new core_t(listen_eps, export_eps, watermark, threads, interval);
     } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "%s", e.what());
+        syslog(LOG_ERR, "runtime error: %s", e.what());
+        return EXIT_FAILURE;
+    } catch(const zmq::error_t& e) {
+        syslog(LOG_ERR, "network error: %s", e.what());
         return EXIT_FAILURE;
     }
 

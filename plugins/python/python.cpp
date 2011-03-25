@@ -116,8 +116,4 @@ extern "C" {
 
         return &plugin_info;
     }
-
-    __attribute__((destructor)) void finalize() {
-        Py_Finalize();
-    }
 }

@@ -1,0 +1,13 @@
+#!/usr/bin/scons
+
+Import(['env'])
+
+plugin = env.SharedLibrary(
+    target = "#build/plugins/mysql",
+    SHLIBPREFIX = "",
+    source = ["mysql.cpp"],
+    CPPPATH = ["#include"],
+    LIBS = ["mysqlclient"],
+    LINKFLAGS = ["-Wl,-Bsymbolic"])
+
+Return("plugin")
