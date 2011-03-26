@@ -2,39 +2,27 @@
 #include <sstream>
 #include <mysql/mysql.h>
 
+#include "uri.hpp"
 #include "plugin.hpp"
 
 using namespace yappi::plugins;
 
 class mysql_t: public source_t {
     public:
-        mysql_t(const std::string& uri):
+        mysql_t(const std::string& uri_):
             m_connect_timeout(1),
             m_read_timeout(1),
             m_write_timeout(1)
         {
             // uri: mysql://user:pass@host.yandex.net:3306/db
-            size_t s, e;
+            yappi::helpers::uri_t uri(uri_);
+    
+            m_host = uri.host;
+            m_port = uri.port;
+            m_db = uri.path.back();
 
-            s = uri.find_first_of(':') + 3;
-            e = uri.find_first_of(':', s);
-            m_username = uri.substr(s, e - s);
-
-            s = e + 1;
-            e = uri.find_first_of('@', s);
-            m_password = uri.substr(s, e - s);
-            
-            s = e + 1;
-            e = uri.find_first_of(':', s);
-            m_host = uri.substr(s, e - s);
-            
-            s = e + 1;
-            e = uri.find_first_of('/', s);
-            std::istringstream ss(uri.substr(s, e - s));
-            ss >> m_port;
-
-            s = e + 1;
-            m_db = uri.substr(s);
+            m_username = uri.userinfo.substr(0, uri.userinfo.find_first_of(":"));
+            m_password = uri.userinfo.substr(uri.userinfo.find_first_of(":") + 1);
         }
 
         dict_t fetch() {
