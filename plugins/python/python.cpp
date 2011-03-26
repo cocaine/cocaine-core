@@ -5,6 +5,7 @@
 #include <stdexcept>
 
 #include "plugin.hpp"
+#include "uri.hpp"
 #include "track.hpp"
 
 // Allowed exceptions:
@@ -20,24 +21,27 @@ class python_t: public source_t {
         typedef track<PyGILState_STATE, PyGILState_Release> thread_state_t;
         typedef track<PyObject*, Py_DecRef> object_t;
         
-        python_t(const std::string& uri):
+        python_t(const std::string& uri_):
             m_code(NULL)
         {
-            // uri: python:///home/kobolog/test.py/main?arg=val&arg2=val2
-            m_path = "/home/kobolog/test.py";
-            m_name = "test";
-            m_function = "func";
-            m_args["text"] = "abc";
-            m_args["num"] = "10";
+            // Unpack the URI
+            // Format: python:///path/to/file.py/func?arg1=val1&arg2=...
+            yappi::helpers::uri_t uri(uri_);
+
+            m_function = uri.path.back();
+            uri.path.pop_back();
+            
+            std::string path = uri.joinpath();
+            m_args = uri.query;
 
             // Try to open the file
             std::ifstream input;
-            input.exceptions(std::ifstream::badbit | std::ifstream::failbit);
+            input.exceptions(std::ifstream::badbit|std::ifstream::failbit);
             
             try {
-                input.open(m_path.c_str(), std::ifstream::in);
+                input.open(path.c_str(), std::ifstream::in);
             } catch(const std::ifstream::failure& e) {
-                throw std::invalid_argument("cannot open " + m_path);
+                throw std::invalid_argument("cannot open " + path);
             }
 
             // Read the code
@@ -50,7 +54,7 @@ class python_t: public source_t {
             // Compile the source
             m_code = Py_CompileString(
                 code.str().c_str(),
-                m_path.c_str(),
+                path.c_str(),
                 Py_file_input);
 
             if(PyErr_Occurred()) {
@@ -60,7 +64,7 @@ class python_t: public source_t {
             // Validate the code object
             // It should be loadable as a module
             object_t module = PyImport_ExecCodeModule(
-                const_cast<char*>(m_name.c_str()), m_code);
+                module_name, m_code);
             
             if(PyErr_Occurred()) {
                 throw std::runtime_error(exception());
@@ -77,11 +81,13 @@ class python_t: public source_t {
             thread_state_t state = PyGILState_Ensure();
 
             // Importing the code as module
-            // Doing this every time to avoid clashes with other plugin instances
-            // No error checks needed here, as they are done in the constructor
+            // Doing this every time to avoid clashes with
+            // other plugin instances. No error checks are
+            // needed here, as they are done in the constructor
             object_t module = PyImport_ExecCodeModule(
-                const_cast<char*>(m_name.c_str()), m_code);
-            object_t function = PyObject_GetAttrString(module, m_function.c_str());
+                module_name, m_code);
+            object_t function = PyObject_GetAttrString(module,
+                m_function.c_str());
 
             // Empty args and kwargs for the function
             object_t args = PyTuple_New(0);
@@ -119,7 +125,8 @@ class python_t: public source_t {
                             PyString_AsString(v)));
                     }
                 } else if(result != Py_None) {
-                    // We got something else, convert it to string and return as-is
+                    // We got something else
+                    // Convert it to string and return as-is
                     object_t string = PyObject_Str(result);
                     dict["result"] = PyString_AsString(string);
                 }
@@ -147,9 +154,12 @@ class python_t: public source_t {
     private:
         object_t m_code;
 
-        std::string m_path, m_name, m_function;
+        static char module_name[];
+        std::string m_function;
         dict_t m_args;
 };
+
+char python_t::module_name[] = "temporary";
 
 extern "C" {
     // Source factories

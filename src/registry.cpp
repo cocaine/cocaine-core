@@ -92,13 +92,13 @@ registry_t::~registry_t() {
     }
 }
 
-source_t* registry_t::create(const std::string& scheme, const std::string& uri) {
-    factories_t::iterator it = m_factories.find(scheme);
+source_t* registry_t::create(const helpers::uri_t& uri) {
+    factories_t::iterator it = m_factories.find(uri.scheme);
 
     if(it == m_factories.end()) {
-        throw std::domain_error(scheme);
+        throw std::domain_error(uri.scheme);
     }
 
     factory_fn_t factory = it->second;
-    return reinterpret_cast<source_t*>(factory(uri.c_str()));
+    return reinterpret_cast<source_t*>(factory(uri.source.c_str()));
 }

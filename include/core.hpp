@@ -16,7 +16,7 @@
 #include "common.hpp"
 #include "engines.hpp"
 #include "registry.hpp"
-#include "digest.hpp"
+#include "uri.hpp"
 
 namespace yappi { namespace core {
 
@@ -40,9 +40,9 @@ class core_t {
         void dispatch(const std::string& request);
 
         // Request handlers
-        void loop(const std::string& uri, time_t interval, time_t ttl);
+        void loop(const helpers::uri_t& uri, time_t interval, time_t ttl);
         void unloop(const std::string& key);
-        void once(const std::string& uri);
+        void once(const helpers::uri_t& uri);
 
         // Response helpers
         void send(const std::string& response);
@@ -51,9 +51,6 @@ class core_t {
     protected:
         // Plugin registry
         registry_t m_registry;
-
-        // Key generator
-        helpers::digest_t m_keygen;
 
         // Engines
         typedef std::map<std::string, engines::loop_t*> engines_t;

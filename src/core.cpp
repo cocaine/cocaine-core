@@ -259,7 +259,7 @@ void core_t::dispatch(const std::string& request) {
         time_t interval, ttl;
         
         fmt >> interval >> ttl >> uri;
-        loop(uri, interval, ttl);
+        loop(helpers::uri_t(uri), interval, ttl);
    
         return;
     }
@@ -279,7 +279,7 @@ void core_t::dispatch(const std::string& request) {
         std::string uri;
 
         fmt >> uri;
-        once(uri);
+        once(helpers::uri_t(uri));
 
         return;
     }
@@ -288,13 +288,9 @@ void core_t::dispatch(const std::string& request) {
     send("e request");
 }
 
-void core_t::loop(const std::string& uri, time_t interval, time_t ttl) {
-    // 2.1.1. Generating the key
-    std::string scheme(uri.substr(0, uri.find_first_of(':')));
-    std::string key = scheme + ':' + m_keygen.get(uri);
-    
+void core_t::loop(const helpers::uri_t& uri, time_t interval, time_t ttl) {
     // 2.1.2. Search for the engine
-    engines_t::iterator it = m_engines.find(key);
+    engines_t::iterator it = m_engines.find(uri.hash);
 
     if(it != m_engines.end()) {
         // 2.1.3. Increment reference counter and update timers
@@ -302,8 +298,10 @@ void core_t::loop(const std::string& uri, time_t interval, time_t ttl) {
     } else {
         // 2.1.4. Start a new engine
         try {
-            loop_t* engine = new loop_t(key, m_registry.create(scheme, uri), m_context, interval, ttl);
-            m_engines.insert(std::make_pair(key, engine));
+            loop_t* engine = new loop_t(uri.hash,
+                m_registry.create(uri),
+                m_context, interval, ttl);
+            m_engines[uri.hash] = engine;
         } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "failed to instantiate the source: %s", e.what());
             send("e runtime");
@@ -320,7 +318,7 @@ void core_t::loop(const std::string& uri, time_t interval, time_t ttl) {
     }
 
     // 2.1.5. Return the key
-    send(key);
+    send(uri.hash);
 }
 
 void core_t::unloop(const std::string& key) {
@@ -338,13 +336,12 @@ void core_t::unloop(const std::string& key) {
     send("ok");
 }
 
-void core_t::once(const std::string& uri) {
+void core_t::once(const helpers::uri_t& uri) {
     // 2.3.1. Create a new source
-    std::string scheme(uri.substr(0, uri.find_first_of(':')));
     source_t* source;
         
     try {
-        source = m_registry.create(scheme, uri);
+        source = m_registry.create(uri);
     } catch(const std::runtime_error& e) {
         syslog(LOG_ERR, "failed to instantiate the source: %s", e.what());
         send("e runtime");
@@ -361,7 +358,6 @@ void core_t::once(const std::string& uri) {
 
     // 2.3.2. Fetch the data once
     dict_t dict = source->fetch();
-    delete source;
 
     if(!dict.size()) {
         send("e empty");
@@ -379,4 +375,6 @@ void core_t::once(const std::string& uri) {
 
         send(response);
     }
+    
+    delete source;
 }

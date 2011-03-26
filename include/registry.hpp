@@ -6,6 +6,7 @@
 #include <map>
 
 #include "plugin.hpp"
+#include "uri.hpp"
 
 namespace yappi { namespace core {
 
@@ -14,7 +15,7 @@ class registry_t {
         registry_t(const std::string& directory);
         ~registry_t();
 
-        plugins::source_t* create(const std::string& scheme, const std::string& uri);
+        plugins::source_t* create(const helpers::uri_t& uri);
 
     private:
         typedef std::vector<void*> plugins_t;
