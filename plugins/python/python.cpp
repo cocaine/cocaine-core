@@ -4,8 +4,6 @@
 #include <sstream>
 #include <stdexcept>
 
-#include "syslog.h"
-
 #include "plugin.hpp"
 #include "track.hpp"
 
