@@ -69,19 +69,17 @@ class mysql_t: public source_t {
         unsigned int m_port, m_connect_timeout, m_read_timeout, m_write_timeout;
 };
 
-void* create_instance(const char* uri) {
-    return new mysql_t(uri);
-}
-
-static const plugin_info_t plugin_info = {
-    1, 
-    {
-        { "mysql", &create_instance }
-    }
-};
-
 extern "C" {
+    void* create_instance(const char* uri) {
+        return new mysql_t(uri);
+    }
+
+    const plugin_info_t info = {
+        1,
+        {{ "mysql", &create_instance }}
+    };
+
     const plugin_info_t* initialize() {
-        return &plugin_info;
+        return &info;
     }
 }
