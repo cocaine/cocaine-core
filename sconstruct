@@ -1,16 +1,17 @@
 #!/usr/bin/scons
 
-prefix = ARGUMENTS.get("DESTDIR", "/")
+prefix = ARGUMENTS.get("PREFIX", "")
 
 env = Environment()
-env.Append(CXXFLAGS = ["-g", "-Wall", "-pedantic", "-pthread", "-rdynamic"])
+env.Alias("install", '.')
+env.Append(CXXFLAGS = ["-g", "-O2", "-Wall", "-pthread", "-rdynamic"])
 env.Append(CPPPATH = ["/usr/lib", "/usr/local/lib"])
 
 library = env.SharedLibrary(
     target = "build/yappi",
     source = ["src/registry.cpp", "src/engines.cpp", "src/core.cpp"],
     CPPPATH = ["include"],
-    LIBS = ["zmq", "crypto", "dl"],
+    LIBS = ["zmq", "crypto", "dl", "pthread", "rt"],
     LINKFLAGS = ["-Wl,-soname=libyappi.so.1", "-Wl,-Bsymbolic"])
 
 binary = env.Program(
@@ -25,7 +26,6 @@ env.Requires(binary, library)
 Export(['env'])
 plugins = SConscript("plugins/sconscript")
 
-env.Alias("install", prefix)
-env.Install(prefix + "usr/bin", binary)
-env.InstallAs(prefix + "usr/lib/libyappi.so.1", library)
-env.Install(prefix + "usr/lib/yappi", plugins)
+env.Install(prefix + "/usr/bin", binary)
+env.InstallAs(prefix + "/usr/lib/libyappi.so.1.0.0", library)
+env.Install(prefix + "/usr/lib/yappi", plugins)
