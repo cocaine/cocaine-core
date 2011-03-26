@@ -4,19 +4,18 @@
 #include <string>
 #include <map>
 
-#define MAX_SOURCES_PER_PLUGIN 10
+#define MAX_FACTORIES 10
 
 namespace yappi { namespace plugins {
 
-typedef void* (*factory_t)(const char*);
+typedef void* (*factory_fn_t)(const char*);
 
 struct plugin_info_t {
     unsigned int count;
-    
-    struct source_info_t {
+    struct {
         const char* scheme;
-        factory_t factory;
-    } source[MAX_SOURCES_PER_PLUGIN];
+        factory_fn_t factory;
+    } factories[MAX_FACTORIES];
 };
 
 typedef std::map<std::string, std::string> dict_t;        

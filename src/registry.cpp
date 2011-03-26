@@ -63,7 +63,9 @@ registry_t::registry_t(const std::string& directory) {
 
         // Fetch all supported sources from it
         for(unsigned int i = 0; i < info->count; ++i) {
-            m_factories[info->source[i].scheme] = info->source[i].factory;
+            m_factories.insert(std::make_pair(
+                info->factories[i].scheme,
+                info->factories[i].factory));
         }
 
         // Free the directory entry
@@ -97,6 +99,6 @@ source_t* registry_t::create(const std::string& scheme, const std::string& uri) 
         throw std::domain_error(scheme);
     }
 
-    factory_t factory = it->second;
+    factory_fn_t factory = it->second;
     return reinterpret_cast<source_t*>(factory(uri.c_str()));
 }

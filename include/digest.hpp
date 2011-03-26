@@ -24,7 +24,7 @@ class digest_t {
             EVP_DigestFinal_ex(m_context, m_hash, &m_size);
 
             std::ostringstream formatter;
-            for(unsigned int i = 0; i < m_size; i++) {
+            for(unsigned int i = 0; i < 4; i++) {
                 formatter << std::hex << static_cast<unsigned int>(m_hash[i]);
             }
 

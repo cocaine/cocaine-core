@@ -15,6 +15,7 @@
 
 #include "common.hpp"
 #include "engines.hpp"
+#include "registry.hpp"
 #include "digest.hpp"
 
 namespace yappi { namespace core {
@@ -22,8 +23,8 @@ namespace yappi { namespace core {
 // Event loop and networking
 class core_t {
     public:
-        core_t(const std::vector<std::string>& request_eps, const std::vector<std::string>& export_eps,
-            int64_t watermark, unsigned int threads, time_t interval);
+        core_t(const std::vector<std::string>& ctl_eps, const std::vector<std::string>& pub_eps,
+            const std::string& path, int64_t watermark, unsigned int threads, time_t interval);
         virtual ~core_t();
 
         // The event loop
@@ -43,11 +44,14 @@ class core_t {
         void unloop(const std::string& key);
         void once(const std::string& uri);
 
-        // Responce helpers
-        void respond(const std::string& response);
-        void publish(const engines::event_t& event);
+        // Response helpers
+        void send(const std::string& response);
+        void send(const std::vector<std::string>& response);
 
     protected:
+        // Plugin registry
+        registry_t m_registry;
+
         // Key generator
         helpers::digest_t m_keygen;
 
@@ -57,7 +61,7 @@ class core_t {
 
         // Networking
         zmq::context_t m_context;
-        zmq::socket_t s_events, s_listen, s_export;
+        zmq::socket_t s_events, s_ctl, s_pub;
 
         // Loop control
         int m_signal;

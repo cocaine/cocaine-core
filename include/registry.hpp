@@ -20,7 +20,7 @@ class registry_t {
         typedef std::vector<void*> plugins_t;
         plugins_t m_plugins;
 
-        typedef std::map<std::string, plugins::factory_t> factories_t;
+        typedef std::map<std::string, plugins::factory_fn_t> factories_t;
         factories_t m_factories;
 };
 
