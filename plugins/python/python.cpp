@@ -1,7 +1,13 @@
 #include <Python.h>
 
+#include <fstream>
+#include <sstream>
 #include <stdexcept>
+
+#include "syslog.h"
+
 #include "plugin.hpp"
+#include "track.hpp"
 
 // Allowed exceptions:
 // -------------------
@@ -9,111 +15,165 @@
 // * std::invalid_argument
 
 using namespace yappi::plugins;
+using namespace yandex::helpers;
 
 class python_t: public source_t {
     public:
+        typedef track<PyGILState_STATE, PyGILState_Release> thread_state_t;
+        typedef track<PyObject*, Py_DecRef> object_t;
+        
         python_t(const std::string& uri):
-            m_target(uri.substr(uri.find_first_of(":") + 3)) {}
+            m_code(NULL)
+        {
+            // uri: python:///home/kobolog/test.py/main?arg=val&arg2=val2
+            m_path = "/home/kobolog/test.py";
+            m_name = "test";
+            m_function = "func";
+            m_args["text"] = "abc";
+            m_args["num"] = "10";
 
-        virtual dict_t fetch() {
-            dict_t dict;
-            FILE *file = fopen(m_target.c_str(), "r");
+            // Try to open the file
+            std::ifstream input;
+            input.exceptions(std::ifstream::badbit | std::ifstream::failbit);
             
-            if(!file) {
-                dict["error"] = strerror(errno);
-                return dict;
+            try {
+                input.open(m_path.c_str(), std::ifstream::in);
+            } catch(const std::ifstream::failure& e) {
+                throw std::invalid_argument("cannot open " + m_path);
             }
-            
-            // Getting the thread state
-            PyGILState_STATE state = PyGILState_Ensure();
-                
-            PyObject *globals = PyDict_New();
-            PyObject *locals = PyDict_New();
-            PyObject *name = PyString_FromString("__main__");
-            PyDict_SetItemString(globals, "__builtins__", PyEval_GetBuiltins());
-            PyDict_SetItemString(globals, "__name__", name);
 
-            // Run the script
-            PyRun_FileEx(
-                file,
-                "__yappi__",
-                Py_file_input,
-                globals, locals, true);
+            // Read the code
+            std::stringstream code;
+            code << input.rdbuf();
+
+            // Get the thread state
+            thread_state_t state = PyGILState_Ensure();
+            
+            // Compile the source
+            m_code = Py_CompileString(
+                code.str().c_str(),
+                m_path.c_str(),
+                Py_file_input);
 
             if(PyErr_Occurred()) {
-                PyObject *type, *message, *traceback;
-                PyErr_Fetch(&type, &message, &traceback);
-                    
-                PyObject *typestr = PyObject_Str(type);
-                PyObject *messagestr = PyObject_Str(message);
+                throw std::runtime_error(exception());
+            }
 
-                dict["exception:type"] = PyString_AsString(typestr);
-                dict["exception:message"] = PyString_AsString(messagestr);
+            // Validate the code object
+            // It should be loadable as a module
+            object_t module = PyImport_ExecCodeModule(
+                const_cast<char*>(m_name.c_str()), m_code);
+            
+            if(PyErr_Occurred()) {
+                throw std::runtime_error(exception());
+            }
 
-                Py_DecRef(typestr);
-                Py_DecRef(messagestr);
-                Py_DecRef(type);
-                Py_DecRef(message);
-                Py_DecRef(traceback);
+            // And the function specified have to be there
+            if(!PyObject_HasAttrString(module, m_function.c_str())) {
+                throw std::invalid_argument("function not found");
+            }
+        }
+
+        virtual dict_t fetch() {
+            // Get the thread state
+            thread_state_t state = PyGILState_Ensure();
+
+            // Importing the code as module
+            // Doing this every time to avoid clashes with other plugin instances
+            // No error checks needed here, as they are done in the constructor
+            object_t module = PyImport_ExecCodeModule(
+                const_cast<char*>(m_name.c_str()), m_code);
+            object_t function = PyObject_GetAttrString(module, m_function.c_str());
+
+            // Empty args and kwargs for the function
+            object_t args = PyTuple_New(0);
+            object_t kwargs = PyDict_New();
+
+            for(dict_t::iterator it = m_args.begin(); it != m_args.end(); ++it) {
+                object_t temp = PyString_FromString(it->second.c_str());
+                PyDict_SetItemString(
+                    kwargs,
+                    it->first.c_str(),
+                    temp);
+            }
+
+            // Invoke the function
+            object_t result = PyObject_Call(function, args, kwargs);
+            dict_t dict;
+
+            if(!result.valid() || PyErr_Occurred()) {
+                dict["exception"] = exception();
             } else {
-                PyObject *result = PyDict_GetItemString(locals, "result");
+                // We got a dict
+                if(PyDict_Check(result)) {
+                    // Borrowed references, so no need to track them
+                    PyObject *key, *value;
+                    object_t k(NULL), v(NULL);
+                    Py_ssize_t position = 0;
 
-                if(result) {
-                    if(PyDict_Check(result)) {
-                        PyObject *key, *value;
-                        PyObject *keystr, *valuestr;
-                        Py_ssize_t position = 0;
-
-                        while(PyDict_Next(result, &position, &key, &value)) {
-                            keystr = PyObject_Str(key);
-                            valuestr = PyObject_Str(value);
-
-                            dict.insert(std::make_pair(PyString_AsString(keystr), PyString_AsString(valuestr)));
-
-                            Py_DecRef(keystr);
-                            Py_DecRef(valuestr);
-                        }
+                    // Iterate and convert everything to strings
+                    while(PyDict_Next(result, &position, &key, &value)) {
+                        k = PyObject_Str(key);
+                        v = PyObject_Str(value);
+                        
+                        dict.insert(std::make_pair(
+                            PyString_AsString(k),
+                            PyString_AsString(v)));
                     }
-                
-                    Py_DecRef(result);
+                } else if(result != Py_None) {
+                    // We got something else, convert it to string and return as-is
+                    object_t string = PyObject_Str(result);
+                    dict["result"] = PyString_AsString(string);
                 }
             }
-                
-            // Cleanup
-            Py_DecRef(globals);
-            Py_DecRef(locals);
-            Py_DecRef(name);
-
-            PyGILState_Release(state);
             
             return dict;
         }
 
+        std::string exception() {
+            object_t type(NULL), object(NULL), trackback(NULL);
+            PyErr_Fetch(&type, &object, &trackback);
+
+            object_t name = PyObject_Str(type);
+            object_t message = PyObject_Str(object);
+           
+            std::ostringstream result;
+            result << PyString_AsString(name)
+                   << ": "
+                   << PyString_AsString(message);
+
+            PyErr_Clear();
+            return result.str();
+        }
+
     private:
-        std::string m_target;
+        object_t m_code;
+
+        std::string m_path, m_name, m_function;
+        dict_t m_args;
 };
-
-void* create_python_instance(const char* uri) {
-    return new python_t(uri);
-}
-
-static const plugin_info_t plugin_info = {
-    1,
-    {
-        { "python", &create_python_instance }
-    }
-};
-
-#include <stdio.h>
 
 extern "C" {
+    // Source factories
+    void* create_instance(const char* uri) {
+        return new python_t(uri);
+    }
+
+    // Source factories table
+    const plugin_info_t info = {
+        1,
+        {{ "python", &create_instance }}
+    };
+
+    // Called by plugin registry on load
     const plugin_info_t* initialize() {
-        // This is called in the main thread
-        // during registry initialization
+        // Initializes the Python subsystem
         Py_InitializeEx(0);
+        
+        // Initializes and releases GIL
         PyEval_InitThreads();
         PyEval_ReleaseLock();
 
-        return &plugin_info;
+        return &info;
     }
 }
