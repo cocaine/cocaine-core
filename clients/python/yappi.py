@@ -17,13 +17,13 @@ class Flow(object):
     def __iter__(self):
         return self
 
-    def __next__(self):
+    def next(self):
         try:
             envelope, data = self.socket.recv_multipart(zmq.NOBLOCK)
         except zmq.ZMQError, e:
             raise StopIteration
 
-        key, field, timestamp = envelope
+        key, field, timestamp = envelope.split(' ')
 
         return (field, data)
 
@@ -34,15 +34,15 @@ class Client(object):
         self.socket.connect(requests)
         self.export = export
 
-    def subscribe(self, uri, timeout, ttl):
+    def subscribe(self, uri, timeout, ttl, fieldset = []):
         self.socket.send('loop %d %d %s' % (timeout, ttl, uri))
         result = self.socket.recv()
         
         if not result.startswith('e'):
-            return Flow(self.context, sub_ep, result)
+            return Flow(self.context, self.export, result, fieldset)
         else:
             raise RuntimeError(result)
 
-    def unsubscribe(flow):
+    def unsubscribe(self, flow):
         self.socket.send('unloop %s' % flow.key)
         flow.socket.close()
