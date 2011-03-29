@@ -45,4 +45,8 @@ class Client(object):
 
     def unsubscribe(self, flow):
         self.socket.send('unloop %s' % flow.key)
-        flow.socket.close()
+        result = self.socket.recv()
+        if result == "ok":
+            flow.socket.close()
+        else:
+            raise RuntimeError(result)
