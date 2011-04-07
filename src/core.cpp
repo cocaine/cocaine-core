@@ -144,9 +144,9 @@ void core_t::run() {
                     memcpy(message.data(), it->second.data(), it->second.length());
                     s_publisher.send(message); 
                 }
-            }
             
-            delete dict;
+                delete dict;
+            }
         }
     }
 }
