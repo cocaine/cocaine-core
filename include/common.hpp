@@ -20,7 +20,4 @@
         ts.tv_nsec = (interval % 1000) * 1e+6;  \
     } while(0);
 
-#define clock_unparse(ts)                       \
-    ts.tv_sec * 1000 + ts.tv_usec / 1000000     \
-
 #endif
