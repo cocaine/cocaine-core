@@ -5,7 +5,7 @@
 #include "uri.hpp"
 #include "plugin.hpp"
 
-using namespace yappi::plugins;
+using namespace yappi::plugin;
 
 class mysql_t: public source_t {
     public:

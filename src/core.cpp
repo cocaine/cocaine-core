@@ -8,26 +8,19 @@
 #include "core.hpp"
 
 using namespace yappi::core;
-using namespace yappi::engines;
-using namespace yappi::plugins;
+using namespace yappi::engine;
+using namespace yappi::plugin;
 
 const char core_t::identity[] = "yappi";
-const char core_t::version[] = "version 0.0.1";
 
-#define TIMESTAMP " @"                      \
-    << m_now.tv_sec << "."                  \
-    << std::setw(3) << std::setfill('0')    \
-    << m_now.tv_nsec / 1000000
-
-core_t::core_t(const std::vector<std::string>& ctl_eps, const std::vector<std::string>& pub_eps,
-               const std::string& path, int64_t watermark, unsigned int threads, time_t interval):
-    m_registry(path),
-    m_context(threads),
-    s_events(m_context, ZMQ_PULL),
-    s_ctl(m_context, ZMQ_REP),
-    s_pub(m_context, ZMQ_PUB),
-    m_signal(0),
-    m_interval(interval * 1000)
+core_t::core_t(const std::vector<std::string>& listeners, const std::vector<std::string>& publishers,
+               const std::string& plugin_path):
+    m_registry(plugin_path),
+    m_context(1),
+    s_sink(m_context, ZMQ_PULL),
+    s_listener(m_context, ZMQ_REP),
+    s_publisher(m_context, ZMQ_PUB),
+    m_signal(0)
 {
     // Version dump
     int minor, major, patch;
@@ -35,44 +28,42 @@ core_t::core_t(const std::vector<std::string>& ctl_eps, const std::vector<std::s
     syslog(LOG_INFO, "using libzmq version %d.%d.%d",
         major, minor, patch);
 
-    // Argument dump
-    syslog(LOG_INFO, "poll timeout: %lums, watermark: %d events, %d threads",
-        interval, static_cast<int32_t>(watermark), threads);
+    syslog(LOG_INFO, "using libev version %d.%d",
+        ev_version_major(), ev_version_minor());
 
     // Binding request endpoints
-    if(!ctl_eps.size()) {
-        throw std::runtime_error("no controlling endpoints specified");
+    if(!listeners.size()) {
+        throw std::runtime_error("no listeners specified");
     }
     
-    for(std::vector<std::string>::const_iterator it = ctl_eps.begin(); it != ctl_eps.end(); ++it) {
-        s_ctl.bind(it->c_str());
+    for(std::vector<std::string>::const_iterator it = listeners.begin(); it != listeners.end(); ++it) {
+        s_listener.bind(it->c_str());
         syslog(LOG_INFO, "listening on %s", it->c_str());
     }
 
     // Binding export endpoints
-    if(!pub_eps.size()) {
-        throw std::runtime_error("no publishing endpoints specified");
+    if(!publishers.size()) {
+        throw std::runtime_error("no publishers specified");
     }
 
-    s_pub.setsockopt(ZMQ_HWM, &watermark, sizeof(watermark));
-    for(std::vector<std::string>::const_iterator it = pub_eps.begin(); it != pub_eps.end(); ++it) {
-        s_pub.bind(it->c_str());
+    for(std::vector<std::string>::const_iterator it = publishers.begin(); it != publishers.end(); ++it) {
+        s_publisher.bind(it->c_str());
         syslog(LOG_INFO, "publishing on %s", it->c_str());
     }
     
     // Binding event collection endpoint
-    s_events.setsockopt(ZMQ_HWM, &watermark, sizeof(watermark));
-    s_events.bind("inproc://events");
+    s_sink.bind("inproc://sink");
 
     // Initializing regexps
-    regcomp(&r_loop, "loop [0-9]+ [0-9]+ [a-z]+://.*", REG_EXTENDED | REG_NOSUB);
-    regcomp(&r_unloop, "unloop [a-z]+:[[:alnum:]]{8}", REG_EXTENDED | REG_NOSUB);
+    regcomp(&r_loop, "loop [0-9]+ [a-z]+://.*", REG_EXTENDED | REG_NOSUB);
+    regcomp(&r_unloop, "unloop [a-z]+:[[:alnum:]]{40}", REG_EXTENDED | REG_NOSUB);
     regcomp(&r_once, "once [a-z]+://.*", REG_EXTENDED | REG_NOSUB);
 }
 
 core_t::~core_t() {
     syslog(LOG_DEBUG, "shutting down the engines");
-    for(engines_t::iterator it = m_engines.begin(); it != m_engines.end(); ++it) {
+
+    for(engine_map_t::iterator it = m_engines.begin(); it != m_engines.end(); ++it) {
         delete it->second;
     }
 
@@ -83,43 +74,24 @@ core_t::~core_t() {
 }
 
 void core_t::run() {
-    zmq_pollitem_t sockets[] = {
-        { (void*)s_ctl,    0, ZMQ_POLLIN, 0 },
-        { (void*)s_events, 0, ZMQ_POLLIN, 0 }
-    };
-
     zmq::message_t message;
 
-    // Loop structure:
-    // ---------------
-    //  1. Store the current time
-    //  2. Fetch next request
-    //     2.1. If it's a subscribtion:
-    //          2.1.1. Generate the key
-    //          2.1.2. Check if there is an active engine for the key
-    //          2.1.3. If there is, adjust interval and ttl with max(old, new)
-    //                 and increment reference counter by one
-    //          2.1.4. If there is not, launch a new one
-    //          2.1.5. Return the key
-    //     2.2. If it's an unsubscription:
-    //          2.2.1. Check if there is an active engine for the key
-    //          2.2.2. If there is, decrement its reference counter by one
-    //     2.3. If it's a one-time request
-    //          2.3.1. Obtain the source
-    //          2.3.2. Fetch the data
-    //          2.3.3. Return the formatted response
-    //  3. Loop until there are no requests left in the queue
-    //  4. Reap all reapable engines
-    //  5. Fetch next event
-    //     5.1. If there no engines with the specified id, discard it
-    //     5.2. If there is, dissassemle it into fields and publish
-    //  6. Loop until there are no events left in the queue
-    //  7. Sleep until something happends
+    zmq_pollitem_t sockets[] = {
+        { (void*)s_listener, 0, ZMQ_POLLIN, 0 },
+        { (void*)s_sink,     0, ZMQ_POLLIN, 0 }
+    };
+
+    std::string key;
+    ev::tstamp timestamp;
+    source_t::dict_t* dict = NULL;
 
     while(true) {
-        // 7. Sleep
+        if(m_signal == SIGINT || m_signal == SIGTERM) {
+            break;
+        }
+
         try {
-            zmq::poll(sockets, 2, m_interval);
+            zmq::poll(sockets, 2, -1);
         } catch(const zmq::error_t& e) {
             if(e.num() == EINTR && (m_signal == SIGINT || m_signal == SIGTERM)) {
                 // Got termination signal, so stop the loop
@@ -130,13 +102,10 @@ void core_t::run() {
             }
         }
 
-        // 1. Store the current time
-        clock_gettime(CLOCK_REALTIME, &m_now);
-        
-        // 2. Fetching requests, if any
+        // Fetching requests
         if(sockets[0].revents & ZMQ_POLLIN) {
-            while(s_ctl.recv(&message, ZMQ_NOBLOCK)) {
-                // 2.*. Dispatch the request
+            while(s_listener.recv(&message, ZMQ_NOBLOCK)) {
+                // Dispatch the request
                 std::string request(
                     reinterpret_cast<char*>(message.data()),
                     message.size());
@@ -144,47 +113,39 @@ void core_t::run() {
             }
         }
 
-        // 4. Reap all reapable engines
-        // It kills those engines whose TTL has expired
-        // or whose reference counter has dropped to zero
-        engines_t::iterator it = m_engines.begin();
-        
-        while(it != m_engines.end()) {
-            if(it->second->reapable(m_now)) {
-                syslog(LOG_DEBUG, "reaping engine %s", it->first.c_str());
-                delete it->second;
-                m_engines.erase(it++);
-            } else {
-                ++it;
-            }
-        }
-
-        // 5. Fetching new events, if any
+        // Fetching new events
         if(sockets[1].revents & ZMQ_POLLIN) {
-            while(s_events.recv(&message, ZMQ_NOBLOCK)) {
-                event_t *event = reinterpret_cast<event_t*>(message.data());
-                
-                // 5.1. Dropping events from stopped engines
-                if(m_engines.find(event->key) != m_engines.end()) {
-                    zmq::message_t publication;
-                        
-                    // 5.2. Disassemble and send in the envelopes
-                    for(dict_t::iterator it = event->dict->begin(); it != event->dict->end(); ++it) {
-                        std::ostringstream envelope;
-                        envelope << event->key << " " << it->first << TIMESTAMP;
+            while(s_sink.recv(&message, ZMQ_NOBLOCK)) {
+                // Key
+                key.assign(
+                    reinterpret_cast<char*>(message.data()),
+                    message.size()
+                );
+            
+                // Timestamp
+                s_sink.recv(&message);
+                memcpy(&timestamp, message.data(), message.size());
 
-                        publication.rebuild(envelope.str().length());
-                        memcpy(publication.data(), envelope.str().data(), envelope.str().length());
-                        s_pub.send(publication, ZMQ_SNDMORE);
+                // Data
+                s_sink.recv(&message);
+                dict = reinterpret_cast<source_t::dict_t*>(message.data());
 
-                        publication.rebuild(it->second.length());
-                        memcpy(publication.data(), it->second.data(), it->second.length());
-                        s_pub.send(publication); 
-                    }
+                // Disassemble and send in the envelopes
+                for(source_t::dict_t::const_iterator it = dict->begin(); it != dict->end(); ++it) {
+                    std::ostringstream envelope;
+                    envelope << key << " " << it->first << " @" << timestamp;
+
+                    message.rebuild(envelope.str().length());
+                    memcpy(message.data(), envelope.str().data(), envelope.str().length());
+                    s_publisher.send(message, ZMQ_SNDMORE);
+    
+                    message.rebuild(it->second.length());
+                    memcpy(message.data(), it->second.data(), it->second.length());
+                    s_publisher.send(message); 
                 }
-
-                delete event->dict;
             }
+            
+            delete dict;
         }
     }
 }
@@ -193,7 +154,7 @@ void core_t::send(const std::string& response) {
     zmq::message_t message(response.length());
     memcpy(message.data(), response.data(), response.length()); 
     
-    s_ctl.send(message, ZMQ_NOBLOCK);
+    s_listener.send(message);
 }
 
 void core_t::send(const std::vector<std::string>& response) {
@@ -205,10 +166,10 @@ void core_t::send(const std::vector<std::string>& response) {
         memcpy(message.data(), it->data(), it->length());
    
         if(++it == response.end()) {
-            s_ctl.send(message, ZMQ_NOBLOCK);
+            s_listener.send(message);
             break;
         } else {
-            s_ctl.send(message, ZMQ_SNDMORE);
+            s_listener.send(message, ZMQ_SNDMORE);
         }
     }
 }
@@ -217,9 +178,8 @@ void core_t::send(const std::vector<std::string>& response) {
 // --------------
 // * Loop - launches a thread which fetches data from the
 //   specified source and publishes it via the PUB socket. Plugin
-//   will be invoked every 'timeout' microsecods, for 'ttl' seconds
-//   or forever if ttl = 0:
-//   -> loop interval-in-ms ttl-in-s source://parameters
+//   will be invoked every 'timeout' milliseconds
+//   -> loop interval-in-ms source://parameters
 //   <- key|e source|e argument|e runtime
 //
 // * Unloop - shuts down the specified thread.
@@ -231,7 +191,7 @@ void core_t::send(const std::vector<std::string>& response) {
 // * Once - one-time plugin invocation. For one-time invocations,
 //   you have no means to filter the data by categories or fields:
 //   -> once source://parameters
-//   <- multipart: [field @timestamp, data]|e source|e argument|e runtime
+//   <- multipart: [field @timestamp] [value]|e source|e argument|e runtime
 //      all timestamps are equal, message count = field count
 //
 // * [!] History - fetch historical data without plugin invocation. 
@@ -242,7 +202,7 @@ void core_t::send(const std::vector<std::string>& response) {
 //
 // Publishing format:
 // ------------------
-//   key field=value @timestamp
+//   multipart: [key field @timestamp] [value]
 
 void core_t::dispatch(const std::string& request) {
     std::string cmd;
@@ -254,18 +214,16 @@ void core_t::dispatch(const std::string& request) {
     fmt >> std::skipws >> cmd;
 
     if(regexec(&r_loop, request.c_str(), 0, 0, 0) == 0) {
-        // 2.1. Loop
         std::string uri;
-        time_t interval, ttl;
+        time_t interval;
         
-        fmt >> interval >> ttl >> uri;
-        loop(helpers::uri_t(uri), interval, ttl);
+        fmt >> interval >> uri;
+        loop(helpers::uri_t(uri), interval);
    
         return;
     }
 
     if(regexec(&r_unloop, request.c_str(), 0, 0, 0) == 0) {
-        // 2.2. Unloop
         std::string key;
         
         fmt >> key;
@@ -275,7 +233,6 @@ void core_t::dispatch(const std::string& request) {
     }
 
     if(regexec(&r_once, request.c_str(), 0, 0, 0) == 0) {
-        // 2.3. Once
         std::string uri;
 
         fmt >> uri;
@@ -288,20 +245,16 @@ void core_t::dispatch(const std::string& request) {
     send("e request");
 }
 
-void core_t::loop(const helpers::uri_t& uri, time_t interval, time_t ttl) {
-    // 2.1.2. Search for the engine
-    engines_t::iterator it = m_engines.find(uri.hash);
+void core_t::loop(const helpers::uri_t& uri, time_t interval) {
+    engine_t* engine;
+    
+    // Search for the engine
+    engine_map_t::iterator it = m_engines.find(uri.hash);
 
-    if(it != m_engines.end()) {
-        // 2.1.3. Increment reference counter and update timers
-        it->second->subscribe(interval, ttl);
-    } else {
-        // 2.1.4. Start a new engine
+    if(it == m_engines.end()) {
+        // If no engine is currently up, start one
         try {
-            loop_t* engine = new loop_t(uri.hash,
-                m_registry.create(uri),
-                m_context, interval, ttl);
-            m_engines[uri.hash] = engine;
+            engine = new engine_t(uri.hash, *m_registry.create(uri), m_context);
         } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "failed to instantiate the source: %s", e.what());
             send("e runtime");
@@ -315,15 +268,18 @@ void core_t::loop(const helpers::uri_t& uri, time_t interval, time_t ttl) {
             send("e source");
             return;
         }
+    
+        m_engines.insert(std::make_pair(uri.hash, engine));
+    } else {
+        engine = it->second;
     }
 
-    // 2.1.5. Return the key
-    send(uri.hash);
+    send(engine->subscribe(interval));
 }
 
 void core_t::unloop(const std::string& key) {
-    // 2.2.1. Search for the engine 
-    engines_t::iterator it = m_engines.find(key);
+    // Search for the engine
+    engine_map_t::iterator it = m_engines.find(key);
     
     if(it == m_engines.end()) {
         syslog(LOG_ERR, "got an invalid key: %s", key.c_str());
@@ -331,13 +287,13 @@ void core_t::unloop(const std::string& key) {
         return;
     }
 
-    // 2.2.2. Decrement reference counter
-    it->second->unsubscribe();
+    // Unsubscribe the client (which stops the slave in the engine)
+    it->second->unsubscribe(key);
     send("ok");
 }
 
 void core_t::once(const helpers::uri_t& uri) {
-    // 2.3.1. Create a new source
+    // Create a new source
     source_t* source;
         
     try {
@@ -356,19 +312,19 @@ void core_t::once(const helpers::uri_t& uri) {
         return;
     }
 
-    // 2.3.2. Fetch the data once
-    dict_t dict = source->fetch();
+    // Fetch the data once
+    source_t::dict_t dict = source->fetch();
 
     if(!dict.size()) {
         send("e empty");
     } else {
-        // 2.3.3. Return the formatted response
+        // Return the formatted response
         std::vector<std::string> response;
         
-        for(dict_t::iterator it = dict.begin(); it != dict.end(); ++it) {
+        for(source_t::dict_t::iterator it = dict.begin(); it != dict.end(); ++it) {
             std::ostringstream envelope;
             
-            envelope << it->first << TIMESTAMP;
+            envelope << it->first;
             response.push_back(envelope.str());
             response.push_back(it->second);
         }

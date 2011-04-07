@@ -14,7 +14,7 @@
 #endif
 
 #include "common.hpp"
-#include "engines.hpp"
+#include "engine.hpp"
 #include "registry.hpp"
 #include "uri.hpp"
 
@@ -23,8 +23,8 @@ namespace yappi { namespace core {
 // Event loop and networking
 class core_t {
     public:
-        core_t(const std::vector<std::string>& ctl_eps, const std::vector<std::string>& pub_eps,
-            const std::string& path, int64_t watermark, unsigned int threads, time_t interval);
+        core_t(const std::vector<std::string>& listeners, const std::vector<std::string>& publishers,
+            const std::string& plugin_path);
         virtual ~core_t();
 
         // The event loop
@@ -33,14 +33,13 @@ class core_t {
     
     public:
         static const char identity[];
-        static const char version[];
 
     protected:
         // Request dispatcher
         void dispatch(const std::string& request);
 
         // Request handlers
-        void loop(const helpers::uri_t& uri, time_t interval, time_t ttl);
+        void loop(const helpers::uri_t& uri, time_t interval);
         void unloop(const std::string& key);
         void once(const helpers::uri_t& uri);
 
@@ -53,17 +52,15 @@ class core_t {
         registry_t m_registry;
 
         // Engines
-        typedef std::map<std::string, engines::loop_t*> engines_t;
-        engines_t m_engines;
+        typedef std::map<std::string, engine::engine_t*> engine_map_t;
+        engine_map_t m_engines;
 
         // Networking
         zmq::context_t m_context;
-        zmq::socket_t s_events, s_ctl, s_pub;
+        zmq::socket_t s_sink, s_listener, s_publisher;
 
         // Loop control
         int m_signal;
-        time_t m_interval;
-        timespec m_now;
     
         // Command regexps
         regex_t r_loop, r_unloop, r_once;

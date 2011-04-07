@@ -2,79 +2,87 @@
 #define YAPPI_ENGINE_HPP
 
 #include <string>
+#include <set>
+#include <map>
 
 #include <zmq.hpp>
+#include <ev++.h>
 
 #include "common.hpp"
 #include "plugin.hpp"
+#include "digest.hpp"
 
-namespace yappi { namespace engines {
+namespace yappi { namespace engine {
 
-// Message structure used by the engines to
-// pass events back to the core
-struct event_t {
-    event_t(const std::string& key_):
-        key(key_),
-        dict(NULL) {}
-
-    std::string key;
-    plugins::dict_t* dict;
-};
-
-// Engine workload
-struct workload_t {
-    workload_t(const std::string& key_, plugins::source_t* source_, zmq::context_t& context_, time_t interval_):
-        key(key_),
-        source(source_),
-        context(context_)
-    {
-        clock_parse(interval_, interval);
-        pthread_spin_init(&datalock, PTHREAD_PROCESS_PRIVATE);
-        pthread_mutex_init(&sleeplock, NULL);
-        pthread_cond_init(&terminate, NULL);
-    }
-
-    ~workload_t() {
-        pthread_cond_destroy(&terminate);
-        pthread_mutex_destroy(&sleeplock);
-        pthread_spin_destroy(&datalock);
-    }
-
-    std::string key;
-    plugins::source_t* source;
-    zmq::context_t& context;
-    timespec interval;
-    
-    // Flow control
-    pthread_spinlock_t datalock;
-    pthread_mutex_t sleeplock;
-    pthread_cond_t terminate;
-};
-
-// Threaded loop engine
-class loop_t {
+class engine_t {
     public:
-        static void* poll(void *arg);
+        engine_t(const std::string& id, plugin::source_t& source, zmq::context_t& context);
+        ~engine_t();
 
-        loop_t(const std::string& key, plugins::source_t* source, zmq::context_t& context,
-            time_t interval, time_t ttl);
-        ~loop_t();
-
-        void subscribe(time_t interval, time_t ttl);
-        void unsubscribe() { if(m_refs) m_refs--; }
-
-        // This also checks whether the engine has expired, and
-        // if it is, stops it
-        bool reapable(const timespec& now);
+        std::string subscribe(time_t interval);
+        bool unsubscribe(const std::string& key);
 
     private:
-        unsigned int m_refs;
-        timespec m_timestamp;
-        time_t m_ttl;
+        // Key management
+        std::string m_id;
+        helpers::digest_t m_digest;
+        std::set<std::string> m_keys;
 
-    private:
+        // Thread entry point
+        static void* bootstrap(void* arg);
+        
+        // Thread, in person
         pthread_t m_thread;
-        workload_t m_workload;
+        
+        // 0MQ thread control socket
+        zmq::socket_t m_socket;
+        
+        // Thread workload structure
+        struct task_t {
+            task_t(const std::string& id_, plugin::source_t& source_, zmq::context_t& context_):
+                id(id_),
+                source(source_),
+                context(context_) {}
+
+            std::string id;
+            plugin::source_t& source;
+            zmq::context_t& context;
+        };
+
+        class slave_t {
+            public:
+                slave_t(ev::dynamic_loop& loop, task_t& task,
+                    const std::string& key, time_t interval);
+                ~slave_t();
+
+                void operator()(ev::timer& timer, int revents);
+                
+            private:
+                ev::timer m_timer;
+                
+                plugin::source_t& m_source;
+                zmq::socket_t m_socket;
+                
+                std::string m_key;
+        };
+
+        class overseer_t {
+            public:
+                overseer_t(task_t& task);
+                ~overseer_t();
+
+                void operator()(ev::io& io, int revents);
+                void run();
+            
+            private:
+                ev::dynamic_loop m_loop;
+                ev::io m_io;
+
+                task_t& m_task;
+                zmq::socket_t m_socket;
+
+                std::map<std::string, slave_t*> m_slaves;
+        };
 };
 
 }}

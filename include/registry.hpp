@@ -10,19 +10,22 @@
 
 namespace yappi { namespace core {
 
+using namespace helpers;
+
 class registry_t {
     public:
         registry_t(const std::string& directory);
         ~registry_t();
 
-        plugins::source_t* create(const helpers::uri_t& uri);
+        plugin::source_t* create(const uri_t& uri);
 
     private:
-        typedef std::vector<void*> plugins_t;
-        plugins_t m_plugins;
+        // This is needed to dlclose() all the opened plugins
+        std::vector<void*> m_plugins;
 
-        typedef std::map<std::string, plugins::factory_fn_t> factories_t;
-        factories_t m_factories;
+        // This is the actual source registry
+        typedef std::map<std::string, plugin::factory_t> factory_map_t;
+        factory_map_t m_factories;
 };
 
 }}
