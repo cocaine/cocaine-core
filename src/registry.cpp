@@ -20,8 +20,10 @@ namespace {
     }
 }
 
+typedef const plugin_info_t* (*initialize_t)(void);
+
 registry_t::registry_t(const std::string& directory) {
-    dirent **namelist;
+    dirent** namelist;
     
     // Scan for all files in the specified directory
     int count = scandir(
@@ -34,12 +36,10 @@ registry_t::registry_t(const std::string& directory) {
         std::string message = directory + ": " + strerror(errno);
         throw std::runtime_error(message);
     }
-
-    typedef const plugin_info_t* (*initialize_t)(void);
     
-    void *plugin;
+    void* plugin;
     std::string path; 
-    initialize_t initialize;
+    initialize_t initializer;
 
     while(count--) {
         // Load the plugin
@@ -52,18 +52,17 @@ registry_t::registry_t(const std::string& directory) {
             continue;
         }
 
-
         // Get the plugin info
-        initialize = reinterpret_cast<initialize_t>(dlsym(plugin, "initialize"));
+        initializer = reinterpret_cast<initialize_t>(dlsym(plugin, "initialize"));
 
-        if(!initialize) {
+        if(!initializer) {
             syslog(LOG_ERR, "invalid plugin interface: %s", dlerror());
             dlclose(plugin);
             continue;
         }
         
         m_plugins.push_back(plugin);
-        const plugin_info_t* info = initialize();
+        const plugin_info_t* info = initializer();
 
         // Fetch all the available sources from it
         for(unsigned int i = 0; i < info->count; ++i) {
@@ -78,15 +77,15 @@ registry_t::registry_t(const std::string& directory) {
     free(namelist);
     
     if(!m_factories.size()) {
-        throw std::runtime_error("no plugins found, terminating");
+        throw std::runtime_error("no plugins found");
     }
 
-    std::ostringstream formatter;
+    std::ostringstream fmt;
     for(factory_map_t::iterator it = m_factories.begin(); it != m_factories.end(); ++it) {
-        formatter << " " << it->first;
+        fmt << " " << it->first;
     }
 
-    syslog(LOG_INFO, "available sources:%s", formatter.str().c_str());
+    syslog(LOG_INFO, "available sources:%s", fmt.str().c_str());
 }
 
 registry_t::~registry_t() {

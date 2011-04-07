@@ -3,8 +3,6 @@
 #include <iomanip>
 #include <stdexcept>
 
-#include <signal.h>
-
 #include "core.hpp"
 
 using namespace yappi::core;
@@ -86,10 +84,12 @@ void core_t::run() {
     source_t::dict_t* dict = NULL;
 
     while(true) {
+        // Check for a pending signal
         if(m_signal == SIGINT || m_signal == SIGTERM) {
             break;
         }
 
+        // Poll sockets
         try {
             zmq::poll(sockets, 2, -1);
         } catch(const zmq::error_t& e) {
@@ -102,7 +102,7 @@ void core_t::run() {
             }
         }
 
-        // Fetching requests
+        // Fetch new requests
         if(sockets[0].revents & ZMQ_POLLIN) {
             while(s_listener.recv(&message, ZMQ_NOBLOCK)) {
                 // Dispatch the request
@@ -113,27 +113,28 @@ void core_t::run() {
             }
         }
 
-        // Fetching new events
+        // Fetch new events
         if(sockets[1].revents & ZMQ_POLLIN) {
             while(s_sink.recv(&message, ZMQ_NOBLOCK)) {
-                // Key
+                // Get key
                 key.assign(
                     reinterpret_cast<char*>(message.data()),
                     message.size()
                 );
             
-                // Timestamp
+                // Get timestamp
                 s_sink.recv(&message);
                 memcpy(&timestamp, message.data(), message.size());
 
-                // Data
+                // Get data
                 s_sink.recv(&message);
                 memcpy(&dict, message.data(), message.size());
 
                 // Disassemble and send in the envelopes
                 for(source_t::dict_t::const_iterator it = dict->begin(); it != dict->end(); ++it) {
                     std::ostringstream envelope;
-                    envelope << key << " " << it->first << " @" << timestamp;
+                    envelope << key << " " << it->first
+                             << " @" << std::fixed << timestamp;
 
                     message.rebuild(envelope.str().length());
                     memcpy(message.data(), envelope.str().data(), envelope.str().length());
@@ -150,13 +151,14 @@ void core_t::run() {
     }
 }
 
+// Send a string
 void core_t::send(const std::string& response) {
     zmq::message_t message(response.length());
     memcpy(message.data(), response.data(), response.length()); 
-    
     s_listener.send(message);
 }
 
+// Send a muliple strings
 void core_t::send(const std::vector<std::string>& response) {
     std::vector<std::string>::const_iterator it = response.begin();
     zmq::message_t message;
@@ -176,25 +178,25 @@ void core_t::send(const std::vector<std::string>& response) {
 
 // Message types:
 // --------------
-// * Loop - launches a thread which fetches data from the
+// * Start - launches a thread which fetches data from the
 //   specified source and publishes it via the PUB socket. Plugin
 //   will be invoked every 'timeout' milliseconds
-//   -> loop interval-in-ms source://parameters
+//   -> start interval-in-ms source://parameters
 //   <- key|e source|e argument|e runtime
 //
-// * Unloop - shuts down the specified thread.
+// * Stop - shuts down the specified thread.
 //   Remaining messages will stay orphaned in the queue,
 //   so it's a good idea to drain it after the unsubscription:
-//   -> unloop key
+//   -> stop key
 //   <- ok|e key
 //
 // * Once - one-time plugin invocation. For one-time invocations,
 //   you have no means to filter the data by categories or fields:
 //   -> once source://parameters
-//   <- multipart: [field @timestamp] [value]|e source|e argument|e runtime
+//   <- multipart: [field1 @timestamp] [value1] ... |e source|e argument|e runtime
 //      all timestamps are equal, message count = field count
 //
-// * [!] History - fetch historical data without plugin invocation. 
+// * [x] History - fetch historical data without plugin invocation. 
 //   You can't fetch more messages than there were invocations:
 //   -> history depth source://parameters
 //   <- multipart: [field @timestamp, data]|e empty

@@ -38,7 +38,7 @@ engine_t::~engine_t() {
 std::string engine_t::subscribe(time_t interval) {
     // Generating the subscription key
     std::ostringstream fmt;
-    fmt << m_id << ':' << interval;
+    fmt << m_id << interval;
     std::string key = m_digest.get(fmt.str());
 
     // Sending the data to the thread
