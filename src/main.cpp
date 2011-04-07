@@ -37,7 +37,7 @@ int main(int argc, char* argv[]) {
             default:
                 std::cout << "Yappi - The Information Devourer" << std::endl;
                 std::cout << std::endl;
-                std::cout << "Usage: yappi -d -l endpoint -e endpoint [-p /usr/lib/yappi] [-i 1000] [-w 100] [-t 1]" << std::endl;
+                std::cout << "Usage: yappi -d -l endpoint -e endpoint" << std::endl;
                 std::cout << "  -d\tdaemonize" << std::endl;
                 std::cout << "  -l\tendpoint for listening for requests, might be used multiple times" << std::endl;
                 std::cout << "  -e\tendpoint for exporting events, might be used multiple times" << std::endl;
