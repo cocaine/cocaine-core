@@ -11,7 +11,7 @@ library = env.SharedLibrary(
     target = "build/yappi",
     source = ["src/registry.cpp", "src/engine.cpp", "src/core.cpp"],
     CPPPATH = ["include"],
-    LIBS = ["zmq", "crypto", "uriparser", "ev"],
+    LIBS = ["zmq", "ev", "crypto", "uriparser"],
     LINKFLAGS = ["-Wl,-soname=libyappi.so.1", "-Wl,-Bsymbolic"])
 
 binary = env.Program(
