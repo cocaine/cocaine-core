@@ -22,7 +22,8 @@ namespace {
 
 typedef const plugin_info_t* (*initialize_t)(void);
 
-registry_t::registry_t(const std::string& directory) {
+registry_t::registry_t() {
+    std::string directory = "/usr/lib/yappi";
     dirent** namelist;
     
     // Scan for all files in the specified directory

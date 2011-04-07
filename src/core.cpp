@@ -11,9 +11,9 @@ using namespace yappi::plugin;
 
 const char core_t::identity[] = "yappi";
 
-core_t::core_t(const std::vector<std::string>& listeners, const std::vector<std::string>& publishers,
-               const std::string& plugin_path):
-    m_registry(plugin_path),
+core_t::core_t(const std::vector<std::string>& listeners,
+               const std::vector<std::string>& publishers):
+    m_registry(),
     m_context(1),
     s_sink(m_context, ZMQ_PULL),
     s_listener(m_context, ZMQ_REP),

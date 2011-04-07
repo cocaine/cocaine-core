@@ -23,18 +23,18 @@ namespace yappi { namespace core {
 // Event loop and networking
 class core_t {
     public:
-        core_t(const std::vector<std::string>& listeners, const std::vector<std::string>& publishers,
-            const std::string& plugin_path);
+        core_t(const std::vector<std::string>& listeners,
+               const std::vector<std::string>& publishers);
         virtual ~core_t();
 
         // The event loop
-        virtual void run();
+        void run();
         void signal(int signal) { m_signal = signal; }
     
     public:
         static const char identity[];
 
-    protected:
+    private:
         // Request dispatcher
         void dispatch(const std::string& request);
 
@@ -47,7 +47,7 @@ class core_t {
         void send(const std::string& response);
         void send(const std::vector<std::string>& response);
 
-    protected:
+    private:
         // Plugin registry
         registry_t m_registry;
 

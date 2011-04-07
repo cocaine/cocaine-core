@@ -14,7 +14,7 @@ using namespace helpers;
 
 class registry_t {
     public:
-        registry_t(const std::string& directory);
+        registry_t();
         ~registry_t();
 
         plugin::source_t* create(const uri_t& uri);

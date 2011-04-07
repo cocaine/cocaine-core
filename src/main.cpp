@@ -21,7 +21,6 @@ int main(int argc, char* argv[]) {
     bool daemonize = false;
     std::vector<std::string> listeners;
     std::vector<std::string> publishers;
-    std::string plugin_path = "/usr/lib/yappi";
 
     while((option = getopt(argc, argv, "de:l:p:h")) != -1) {
         switch(option) {
@@ -34,9 +33,6 @@ int main(int argc, char* argv[]) {
             case 'e':
                 publishers.push_back(optarg);
                 break;
-            case 'p':
-                plugin_path = optarg;
-                break;
             case 'h':
             default:
                 std::cout << "Yappi - The Information Devourer" << std::endl;
@@ -45,7 +41,6 @@ int main(int argc, char* argv[]) {
                 std::cout << "  -d\tdaemonize" << std::endl;
                 std::cout << "  -l\tendpoint for listening for requests, might be used multiple times" << std::endl;
                 std::cout << "  -e\tendpoint for exporting events, might be used multiple times" << std::endl;
-                std::cout << "  -p\tplugin path" << std::endl;
                 std::cout << std::endl;
                 std::cout << "Endpoint types:" << std::endl;
                 std::cout << "  * ipc://pathname" << std::endl;
@@ -70,7 +65,7 @@ int main(int argc, char* argv[]) {
     syslog(LOG_INFO, "yappi is starting");
 
     try {
-        theCore = new core_t(listeners, publishers, plugin_path);
+        theCore = new core_t(listeners, publishers);
     } catch(const std::runtime_error& e) {
         syslog(LOG_ERR, "runtime error: %s", e.what());
         return EXIT_FAILURE;
