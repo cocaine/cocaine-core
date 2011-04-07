@@ -79,8 +79,9 @@ class engine_t {
 
                 task_t& m_task;
                 zmq::socket_t m_socket;
-
-                std::map<std::string, slave_t*> m_slaves;
+    
+                typedef std::map<std::string, slave_t*> slave_map_t;
+                slave_map_t m_slaves;
         };
 };
 

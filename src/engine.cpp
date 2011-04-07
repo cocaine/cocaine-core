@@ -118,6 +118,7 @@ void engine_t::overseer_t::operator()(ev::io& io, int revents) {
     size_t size = sizeof(event);
 
     m_socket.getsockopt(ZMQ_EVENTS, &event, &size);
+
     if(!(event & ZMQ_POLLIN)) {
         return;
     }
@@ -125,6 +126,7 @@ void engine_t::overseer_t::operator()(ev::io& io, int revents) {
     // Receive the actual message
     zmq::message_t message;
     m_socket.recv(&message);
+
     std::string cmd(
         reinterpret_cast<char*>(message.data()),
         message.size()
@@ -162,7 +164,8 @@ void engine_t::overseer_t::operator()(ev::io& io, int revents) {
         syslog(LOG_DEBUG, "stopping %s slave %s",
             m_task.id.c_str(), key.c_str());
         
-        std::map<std::string, slave_t*>::iterator it = m_slaves.find(key);
+        slave_map_t::iterator it = m_slaves.find(key);
+            
         delete it->second;
         m_slaves.erase(it);
 
@@ -170,7 +173,7 @@ void engine_t::overseer_t::operator()(ev::io& io, int revents) {
         syslog(LOG_DEBUG, "stopping %s overseer", m_task.id.c_str());
 
         // Kill all the slaves
-        for(std::map<std::string, slave_t*>::iterator it = m_slaves.begin(); it != m_slaves.end(); ++it) {
+        for(slave_map_t::iterator it = m_slaves.begin(); it != m_slaves.end(); ++it) {
             delete it->second;
         }
 
