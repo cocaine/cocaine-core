@@ -1,0 +1,11 @@
+0.2
+* Socket identity support
+* HTTP plugin
+
+0.3
+* Skynet plugin
+* Statistics
+
+0.4
+* Forking engine
+* Command plugins support
