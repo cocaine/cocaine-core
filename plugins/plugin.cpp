@@ -7,7 +7,7 @@
 // * std::runtime_error
 // * std::invalid_argument
 
-using namespace yappi::plugins;
+using namespace yappi::plugin;
 
 class plugin_t: public source_t {
     public:
