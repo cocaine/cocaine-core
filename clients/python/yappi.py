@@ -34,8 +34,8 @@ class Client(object):
         self.socket.connect(requests)
         self.export = export
 
-    def subscribe(self, uri, timeout, ttl, fieldset = []):
-        self.socket.send('loop %d %d %s' % (timeout, ttl, uri))
+    def subscribe(self, uri, timeout, fieldset = []):
+        self.socket.send('start %d %s' % (timeout, uri))
         result = self.socket.recv()
         
         if not result.startswith('e'):
@@ -44,8 +44,9 @@ class Client(object):
             raise RuntimeError(result)
 
     def unsubscribe(self, flow):
-        self.socket.send('unloop %s' % flow.key)
+        self.socket.send('stop %s' % flow.key)
         result = self.socket.recv()
+
         if result == "ok":
             flow.socket.close()
         else:
