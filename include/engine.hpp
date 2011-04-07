@@ -20,13 +20,12 @@ class engine_t {
         ~engine_t();
 
         std::string subscribe(time_t interval);
-        bool unsubscribe(const std::string& key);
+        void unsubscribe(const std::string& key);
 
     private:
         // Key management
         std::string m_id;
         helpers::digest_t m_digest;
-        std::set<std::string> m_keys;
 
         // Thread entry point
         static void* bootstrap(void* arg);
@@ -58,6 +57,7 @@ class engine_t {
                 void operator()(ev::timer& timer, int revents);
                 
             private:
+                ev::dynamic_loop& m_loop;
                 ev::timer m_timer;
                 
                 plugin::source_t& m_source;
@@ -69,7 +69,6 @@ class engine_t {
         class overseer_t {
             public:
                 overseer_t(task_t& task);
-                ~overseer_t();
 
                 void operator()(ev::io& io, int revents);
                 void run();

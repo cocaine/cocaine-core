@@ -53,7 +53,7 @@ class core_t {
 
         // Engines
         typedef std::map<std::string, engine::engine_t*> engine_map_t;
-        engine_map_t m_engines;
+        engine_map_t m_engines, m_active;
 
         // Networking
         zmq::context_t m_context;

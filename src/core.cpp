@@ -55,8 +55,8 @@ core_t::core_t(const std::vector<std::string>& listeners, const std::vector<std:
     s_sink.bind("inproc://sink");
 
     // Initializing regexps
-    regcomp(&r_loop, "loop [0-9]+ [a-z]+://.*", REG_EXTENDED | REG_NOSUB);
-    regcomp(&r_unloop, "unloop [a-z]+:[[:alnum:]]{40}", REG_EXTENDED | REG_NOSUB);
+    regcomp(&r_loop, "start [0-9]+ [a-z]+://.*", REG_EXTENDED | REG_NOSUB);
+    regcomp(&r_unloop, "stop [a-z0-9]+", REG_EXTENDED | REG_NOSUB);
     regcomp(&r_once, "once [a-z]+://.*", REG_EXTENDED | REG_NOSUB);
 }
 
@@ -128,7 +128,7 @@ void core_t::run() {
 
                 // Data
                 s_sink.recv(&message);
-                dict = reinterpret_cast<source_t::dict_t*>(message.data());
+                memcpy(&dict, message.data(), message.size());
 
                 // Disassemble and send in the envelopes
                 for(source_t::dict_t::const_iterator it = dict->begin(); it != dict->end(); ++it) {
@@ -248,13 +248,14 @@ void core_t::dispatch(const std::string& request) {
 void core_t::loop(const helpers::uri_t& uri, time_t interval) {
     engine_t* engine;
     
-    // Search for the engine
+    // Check if we have an engine for the specified source
     engine_map_t::iterator it = m_engines.find(uri.hash);
 
     if(it == m_engines.end()) {
-        // If no engine is currently up, start one
+        // No engine, launch one
         try {
             engine = new engine_t(uri.hash, *m_registry.create(uri), m_context);
+            m_engines[uri.hash] = engine;
         } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "failed to instantiate the source: %s", e.what());
             send("e runtime");
@@ -268,27 +269,33 @@ void core_t::loop(const helpers::uri_t& uri, time_t interval) {
             send("e source");
             return;
         }
-    
-        m_engines.insert(std::make_pair(uri.hash, engine));
     } else {
         engine = it->second;
     }
 
-    send(engine->subscribe(interval));
+    // Get the subscription key and store it into
+    // active task list
+    std::string key = engine->subscribe(interval);
+    m_active[key] = engine;
+
+    send(key);
 }
 
 void core_t::unloop(const std::string& key) {
     // Search for the engine
-    engine_map_t::iterator it = m_engines.find(key);
+    engine_map_t::iterator it = m_active.find(key);
     
-    if(it == m_engines.end()) {
+    if(it == m_active.end()) {
         syslog(LOG_ERR, "got an invalid key: %s", key.c_str());
         send("e key");
         return;
     }
 
     // Unsubscribe the client (which stops the slave in the engine)
+    // and remove the key from the active task list
     it->second->unsubscribe(key);
+    m_active.erase(it);
+
     send("ok");
 }
 
