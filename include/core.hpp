@@ -50,10 +50,6 @@ class core_t {
         // Plugin registry
         registry_t m_registry;
 
-        // Engine mappings
-        typedef std::map<std::string, std::string> identity_map_t;
-        identity_map_t m_identities;
-
         typedef std::map<std::string, engine::engine_t*> engine_map_t;
         engine_map_t m_engines, m_subscriptions;
 
