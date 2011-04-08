@@ -7,7 +7,7 @@ plugin = env.SharedLibrary(
     SHLIBPREFIX = "",
     source = ["mysql.cpp"],
     CPPPATH = ["#include"],
-    LIBS = ["mysqlclient"],
+    LIBS = ["uriparser", "mysqlclient"],
     LINKFLAGS = ["-Wl,-Bsymbolic"])
 
 Return("plugin")

@@ -24,7 +24,7 @@ class engine_t {
 
     private:
         // Key management
-        std::string m_id;
+        std::string m_uri;
         helpers::digest_t m_digest;
 
         // Thread entry point
@@ -38,12 +38,12 @@ class engine_t {
         
         // Thread workload structure
         struct task_t {
-            task_t(const std::string& id_, plugin::source_t& source_, zmq::context_t& context_):
-                id(id_),
+            task_t(const std::string& uri_, plugin::source_t& source_, zmq::context_t& context_):
+                uri(uri_),
                 source(source_),
                 context(context_) {}
 
-            std::string id;
+            std::string uri;
             plugin::source_t& source;
             zmq::context_t& context;
         };

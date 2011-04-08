@@ -7,19 +7,17 @@ using namespace yappi::engine;
 using namespace yappi::plugin;
 
 engine_t::engine_t(const std::string& uri, source_t& source, zmq::context_t& context):
+    m_uri(uri),
     m_socket(context, ZMQ_PAIR)
 {
-    std::string scheme(uri.substr(0, uri.find_first_of(':') + 1));
-    m_id = scheme + m_digest.get(uri);
-
     // Bind the controlling socket
-    m_socket.bind(("inproc://" + m_id).c_str());
+    m_socket.bind(("inproc://" + m_uri).c_str());
     
     // Create a new task object for the thread
     // It is created on the heap so we could be able to detach
     // and forget about the thread (which, in turn, will deallocate
     // these resources at some point of time)
-    task_t* task = new task_t(m_id, source, context);
+    task_t* task = new task_t(m_uri, source, context);
 
     // And start the thread
     if(pthread_create(&m_thread, NULL, &bootstrap, task) == EAGAIN) {
@@ -40,7 +38,7 @@ engine_t::~engine_t() {
 std::string engine_t::subscribe(time_t interval) {
     // Generating the subscription key
     std::ostringstream fmt;
-    fmt << m_id << interval;
+    fmt << m_uri << interval;
     std::string key = m_digest.get(fmt.str());
 
     // Sending the data to the thread
@@ -94,10 +92,10 @@ engine_t::overseer_t::overseer_t(task_t& task):
     m_task(task),
     m_socket(m_task.context, ZMQ_PAIR)
 {
-    syslog(LOG_DEBUG, "starting %s overseer", m_task.id.c_str());
+    syslog(LOG_DEBUG, "starting %s overseer", m_task.uri.c_str());
     
     // Connecting to the engine's controlling socket
-    m_socket.connect(("inproc://" + m_task.id).c_str());
+    m_socket.connect(("inproc://" + m_task.uri).c_str());
     
     // Integrating 0MQ into libev event loop
     int fd;
@@ -153,7 +151,7 @@ void engine_t::overseer_t::operator()(ev::io& io, int revents) {
 
         // Fire off a new slave
         syslog(LOG_DEBUG, "starting %s slave %s with interval: %lums",
-            m_task.id.c_str(), key.c_str(), interval);
+            m_task.uri.c_str(), key.c_str(), interval);
         slave_t* slave = new slave_t(m_loop, m_task, key, interval);
     
         // And store it into the slave map
@@ -169,7 +167,7 @@ void engine_t::overseer_t::operator()(ev::io& io, int revents) {
 
         // Kill the slave
         syslog(LOG_DEBUG, "stopping %s slave %s",
-            m_task.id.c_str(), key.c_str());
+            m_task.uri.c_str(), key.c_str());
         
         slave_map_t::iterator it = m_slaves.find(key);
             
@@ -177,7 +175,7 @@ void engine_t::overseer_t::operator()(ev::io& io, int revents) {
         m_slaves.erase(it);
 
     } else if(cmd == "stop") {
-        syslog(LOG_DEBUG, "stopping %s overseer", m_task.id.c_str());
+        syslog(LOG_DEBUG, "stopping %s overseer", m_task.uri.c_str());
 
         // Kill all the slaves
         for(slave_map_t::iterator it = m_slaves.begin(); it != m_slaves.end(); ++it) {
