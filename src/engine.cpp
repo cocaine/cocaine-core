@@ -144,6 +144,11 @@ void engine_t::overseer_t::operator()(ev::io& io, int revents) {
         m_socket.recv(&message);
         memcpy(&interval, message.data(), message.size());
 
+        // Check if we have the slave running already
+        if(m_slaves.find(key) != m_slaves.end()) {
+            return;
+        }
+
         // Fire off a new slave
         syslog(LOG_DEBUG, "starting %s slave %s with interval: %lums",
             m_task.id.c_str(), key.c_str(), interval);
