@@ -6,10 +6,12 @@
 using namespace yappi::engine;
 using namespace yappi::plugin;
 
-engine_t::engine_t(const std::string& id, source_t& source, zmq::context_t& context):
-    m_id(id),
+engine_t::engine_t(const std::string& uri, source_t& source, zmq::context_t& context):
     m_socket(context, ZMQ_PAIR)
 {
+    std::string scheme(uri.substr(0, uri.find_first_of(':') + 1));
+    m_id = scheme + m_digest.get(uri);
+
     // Bind the controlling socket
     m_socket.bind(("inproc://" + m_id).c_str());
     
@@ -188,8 +190,7 @@ void engine_t::overseer_t::operator()(ev::io& io, int revents) {
 }
 
 engine_t::slave_t::slave_t(ev::dynamic_loop& loop, task_t& task, const std::string& key, time_t interval):
-    m_loop(loop),
-    m_timer(m_loop),
+    m_timer(loop),
     m_source(task.source),
     m_socket(task.context, ZMQ_PUSH),
     m_key(key)
@@ -207,12 +208,12 @@ engine_t::slave_t::~slave_t() {
 }
 
 void engine_t::slave_t::operator()(ev::timer& timer, int revents) {
-    source_t::dict_t* dict;
+    dict_t* dict;
 
     try {
-        dict = new source_t::dict_t(m_source.fetch());
+        dict = new dict_t(m_source.fetch());
     } catch(const std::exception& e) {
-        dict = new source_t::dict_t();
+        dict = new dict_t();
         dict->insert(std::make_pair("exception", e.what()));
     }   
 
@@ -220,11 +221,6 @@ void engine_t::slave_t::operator()(ev::timer& timer, int revents) {
     memcpy(message.data(), m_key.data(), m_key.length());
     m_socket.send(message, ZMQ_SNDMORE);
 
-    ev::tstamp now = m_loop.now();
-    message.rebuild(sizeof(now));
-    memcpy(message.data(), &now, sizeof(now));
-    m_socket.send(message, ZMQ_SNDMORE);
-    
     message.rebuild(sizeof(dict));
     memcpy(message.data(), &dict, sizeof(dict));
     m_socket.send(message);

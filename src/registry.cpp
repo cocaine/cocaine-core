@@ -20,8 +20,6 @@ namespace {
     }
 }
 
-typedef const plugin_info_t* (*initialize_t)(void);
-
 registry_t::registry_t() {
     std::string directory = "/usr/lib/yappi";
     dirent** namelist;
@@ -68,8 +66,8 @@ registry_t::registry_t() {
         // Fetch all the available sources from it
         for(unsigned int i = 0; i < info->count; ++i) {
             m_factories.insert(std::make_pair(
-                info->factories[i].scheme,
-                info->factories[i].factory));
+                info->sources[i].scheme,
+                info->sources[i].factory));
         }
 
         free(namelist[count]);
@@ -95,13 +93,14 @@ registry_t::~registry_t() {
     }
 }
 
-source_t* registry_t::create(const uri_t& uri) {
-    factory_map_t::iterator it = m_factories.find(uri.scheme);
+source_t* registry_t::instantiate(const std::string& uri) {
+    std::string scheme(uri.substr(0, uri.find_first_of(':')));
+    factory_map_t::iterator it = m_factories.find(scheme);
 
     if(it == m_factories.end()) {
-        throw std::domain_error(uri.scheme);
+        throw std::domain_error(scheme);
     }
 
-    factory_t factory = it->second;
-    return reinterpret_cast<source_t*>(factory(uri.source.c_str()));
+    factory_fn_t factory = it->second;
+    return reinterpret_cast<source_t*>(factory(uri.c_str()));
 }

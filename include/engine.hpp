@@ -16,7 +16,7 @@ namespace yappi { namespace engine {
 
 class engine_t {
     public:
-        engine_t(const std::string& id, plugin::source_t& source, zmq::context_t& context);
+        engine_t(const std::string& uri, plugin::source_t& source, zmq::context_t& context);
         ~engine_t();
 
         std::string subscribe(time_t interval);
@@ -57,7 +57,6 @@ class engine_t {
                 void operator()(ev::timer& timer, int revents);
                 
             private:
-                ev::dynamic_loop& m_loop;
                 ev::timer m_timer;
                 
                 plugin::source_t& m_source;

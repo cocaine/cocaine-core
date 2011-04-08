@@ -82,7 +82,7 @@ void core_t::run() {
 
     timespec now;
     std::string key;
-    source_t::dict_t* dict = NULL;
+    dict_t* dict = NULL;
 
     while(true) {
         // Check for a pending signal
@@ -130,7 +130,7 @@ void core_t::run() {
                 memcpy(&dict, message.data(), message.size());
 
                 // Disassemble and send in the envelopes
-                for(source_t::dict_t::const_iterator it = dict->begin(); it != dict->end(); ++it) {
+                for(dict_t::const_iterator it = dict->begin(); it != dict->end(); ++it) {
                     std::ostringstream envelope;
                     envelope << key << " " << it->first << " @" 
                              << std::fixed << now.tv_sec * 1000 << "." << now.tv_nsec / 1000000;
@@ -219,7 +219,7 @@ void core_t::dispatch(const std::string& request) {
         time_t interval;
         
         fmt >> interval >> uri;
-        start(helpers::uri_t(uri), interval);
+        start(uri, interval);
    
         return;
     }
@@ -237,7 +237,7 @@ void core_t::dispatch(const std::string& request) {
         std::string uri;
 
         fmt >> uri;
-        once(helpers::uri_t(uri));
+        once(uri);
 
         return;
     }
@@ -246,17 +246,19 @@ void core_t::dispatch(const std::string& request) {
     send("e request");
 }
 
-void core_t::start(const helpers::uri_t& uri, time_t interval) {
+void core_t::start(const std::string& uri, time_t interval) {
     engine_t* engine;
     
-    // Check if we have an engine for the specified source
-    engine_map_t::iterator it = m_engines.find(uri.hash);
+    // Check if we have an engine for the given uri
+    engine_map_t::iterator it = m_engines.find(uri); 
 
-    if(it == m_engines.end()) {
-        // No engine, launch one
+    if(it != m_engines.end()) {
+        engine = it->second;
+    } else {
+        // There's no engine for the given identity, so start one
         try {
-            engine = new engine_t(uri.hash, *m_registry.create(uri), m_context);
-            m_engines[uri.hash] = engine;
+            engine = new engine_t(uri, *m_registry.instantiate(uri), m_context);
+            m_engines[uri] = engine;
         } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "failed to instantiate the source: %s", e.what());
             send("e runtime");
@@ -270,23 +272,21 @@ void core_t::start(const helpers::uri_t& uri, time_t interval) {
             send("e source");
             return;
         }
-    } else {
-        engine = it->second;
     }
 
     // Get the subscription key and store it into
     // active task list
     std::string key = engine->subscribe(interval);
-    m_active[key] = engine;
+    m_subscriptions[key] = engine;
 
     send(key);
 }
 
 void core_t::stop(const std::string& key) {
     // Search for the engine
-    engine_map_t::iterator it = m_active.find(key);
+    engine_map_t::iterator it = m_subscriptions.find(key);
     
-    if(it == m_active.end()) {
+    if(it == m_subscriptions.end()) {
         syslog(LOG_ERR, "got an invalid key: %s", key.c_str());
         send("e key");
         return;
@@ -295,17 +295,17 @@ void core_t::stop(const std::string& key) {
     // Unsubscribe the client (which stops the slave in the engine)
     // and remove the key from the active task list
     it->second->unsubscribe(key);
-    m_active.erase(it);
+    m_subscriptions.erase(it);
 
     send("ok");
 }
 
-void core_t::once(const helpers::uri_t& uri) {
+void core_t::once(const std::string& uri) {
     // Create a new source
     source_t* source;
         
     try {
-        source = m_registry.create(uri);
+        source = m_registry.instantiate(uri);
     } catch(const std::runtime_error& e) {
         syslog(LOG_ERR, "failed to instantiate the source: %s", e.what());
         send("e runtime");
@@ -321,7 +321,7 @@ void core_t::once(const helpers::uri_t& uri) {
     }
 
     // Fetch the data once
-    source_t::dict_t dict = source->fetch();
+    dict_t dict = source->fetch();
 
     if(!dict.size()) {
         send("e empty");
@@ -329,7 +329,7 @@ void core_t::once(const helpers::uri_t& uri) {
         // Return the formatted response
         std::vector<std::string> response;
         
-        for(source_t::dict_t::iterator it = dict.begin(); it != dict.end(); ++it) {
+        for(dict_t::iterator it = dict.begin(); it != dict.end(); ++it) {
             std::ostringstream envelope;
             
             envelope << it->first;

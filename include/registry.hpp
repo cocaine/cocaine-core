@@ -17,15 +17,15 @@ class registry_t {
         registry_t();
         ~registry_t();
 
-        plugin::source_t* create(const uri_t& uri);
+        plugin::source_t* instantiate(const std::string& uri);
 
     private:
-        // This is needed to dlclose() all the opened plugins
-        std::vector<void*> m_plugins;
-
-        // This is the actual source registry
-        typedef std::map<std::string, plugin::factory_t> factory_map_t;
+        // Used to instantiate plugin instances
+        typedef std::map<std::string, plugin::factory_fn_t> factory_map_t;
         factory_map_t m_factories;
+
+        // Used to dlclose() all the plugins on shutdown
+        std::vector<void*> m_plugins;
 };
 
 }}
