@@ -39,8 +39,8 @@ class core_t {
         void dispatch(const std::string& request);
 
         // Request handlers
-        void loop(const helpers::uri_t& uri, time_t interval);
-        void unloop(const std::string& key);
+        void start(const helpers::uri_t& uri, time_t interval);
+        void stop(const std::string& key);
         void once(const helpers::uri_t& uri);
 
         // Response helpers
@@ -63,7 +63,7 @@ class core_t {
         int m_signal;
     
         // Command regexps
-        regex_t r_loop, r_unloop, r_once;
+        regex_t r_start, r_stop, r_once;
 };
 
 }}

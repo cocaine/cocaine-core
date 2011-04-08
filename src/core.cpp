@@ -53,21 +53,22 @@ core_t::core_t(const std::vector<std::string>& listeners,
     s_sink.bind("inproc://sink");
 
     // Initializing regexps
-    regcomp(&r_loop, "start [0-9]+ [a-z]+://.*", REG_EXTENDED | REG_NOSUB);
-    regcomp(&r_unloop, "stop [a-z0-9]+", REG_EXTENDED | REG_NOSUB);
+    regcomp(&r_start, "start [0-9]+ [a-z]+://.*", REG_EXTENDED | REG_NOSUB);
+    regcomp(&r_stop, "stop [a-z0-9]+", REG_EXTENDED | REG_NOSUB);
     regcomp(&r_once, "once [a-z]+://.*", REG_EXTENDED | REG_NOSUB);
 }
 
 core_t::~core_t() {
     syslog(LOG_DEBUG, "shutting down the engines");
 
+    // Stopping the engines
     for(engine_map_t::iterator it = m_engines.begin(); it != m_engines.end(); ++it) {
         delete it->second;
     }
 
     // Destroying regexps
-    regfree(&r_loop);
-    regfree(&r_unloop);
+    regfree(&r_start);
+    regfree(&r_stop);
     regfree(&r_once);
 }
 
@@ -79,8 +80,8 @@ void core_t::run() {
         { (void*)s_sink,     0, ZMQ_POLLIN, 0 }
     };
 
+    timespec now;
     std::string key;
-    ev::tstamp timestamp;
     source_t::dict_t* dict = NULL;
 
     while(true) {
@@ -115,6 +116,8 @@ void core_t::run() {
 
         // Fetch new events
         if(sockets[1].revents & ZMQ_POLLIN) {
+            clock_gettime(CLOCK_REALTIME, &now);
+
             while(s_sink.recv(&message, ZMQ_NOBLOCK)) {
                 // Get key
                 key.assign(
@@ -122,10 +125,6 @@ void core_t::run() {
                     message.size()
                 );
             
-                // Get timestamp
-                s_sink.recv(&message);
-                memcpy(&timestamp, message.data(), message.size());
-
                 // Get data
                 s_sink.recv(&message);
                 memcpy(&dict, message.data(), message.size());
@@ -133,8 +132,8 @@ void core_t::run() {
                 // Disassemble and send in the envelopes
                 for(source_t::dict_t::const_iterator it = dict->begin(); it != dict->end(); ++it) {
                     std::ostringstream envelope;
-                    envelope << key << " " << it->first
-                             << " @" << std::fixed << timestamp;
+                    envelope << key << " " << it->first << " @" 
+                             << std::fixed << now.tv_sec * 1000 << "." << now.tv_nsec / 1000000;
 
                     message.rebuild(envelope.str().length());
                     memcpy(message.data(), envelope.str().data(), envelope.str().length());
@@ -158,7 +157,7 @@ void core_t::send(const std::string& response) {
     s_listener.send(message);
 }
 
-// Send a muliple strings
+// Send muliple strings
 void core_t::send(const std::vector<std::string>& response) {
     std::vector<std::string>::const_iterator it = response.begin();
     zmq::message_t message;
@@ -215,21 +214,21 @@ void core_t::dispatch(const std::string& request) {
     // for command validation
     fmt >> std::skipws >> cmd;
 
-    if(regexec(&r_loop, request.c_str(), 0, 0, 0) == 0) {
+    if(regexec(&r_start, request.c_str(), 0, 0, 0) == 0) {
         std::string uri;
         time_t interval;
         
         fmt >> interval >> uri;
-        loop(helpers::uri_t(uri), interval);
+        start(helpers::uri_t(uri), interval);
    
         return;
     }
 
-    if(regexec(&r_unloop, request.c_str(), 0, 0, 0) == 0) {
+    if(regexec(&r_stop, request.c_str(), 0, 0, 0) == 0) {
         std::string key;
         
         fmt >> key;
-        unloop(key);
+        stop(key);
         
         return;
     }
@@ -247,7 +246,7 @@ void core_t::dispatch(const std::string& request) {
     send("e request");
 }
 
-void core_t::loop(const helpers::uri_t& uri, time_t interval) {
+void core_t::start(const helpers::uri_t& uri, time_t interval) {
     engine_t* engine;
     
     // Check if we have an engine for the specified source
@@ -283,7 +282,7 @@ void core_t::loop(const helpers::uri_t& uri, time_t interval) {
     send(key);
 }
 
-void core_t::unloop(const std::string& key) {
+void core_t::stop(const std::string& key) {
     // Search for the engine
     engine_map_t::iterator it = m_active.find(key);
     
