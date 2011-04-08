@@ -1,4 +1,3 @@
-#include <boost/function.hpp>
 #include <algorithm>
 
 namespace yandex { namespace helpers {
@@ -61,5 +60,3 @@ namespace yandex { namespace helpers {
             T m_object;
     };
 }}
-    
-
