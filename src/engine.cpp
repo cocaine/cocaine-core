@@ -79,7 +79,7 @@ void* engine_t::bootstrap(void* arg) {
     overseer_t overseer(*task);
     overseer.run();
 
-    // The thread is detached at this point
+    // Cleanup
     delete &task->source;
     delete task;
 
@@ -103,6 +103,9 @@ engine_t::overseer_t::overseer_t(task_t& task):
 
     m_socket.getsockopt(ZMQ_FD, &fd, &size);
     m_io.set(this);
+
+    // Gotta poll on both event types here
+    // due to the strange 0MQ behavior
     m_io.start(fd, EV_READ | EV_WRITE);
 }
 
