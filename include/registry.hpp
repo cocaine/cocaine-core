@@ -1,16 +1,10 @@
 #ifndef YAPPI_REGISTRY_HPP
 #define YAPPI_REGISTRY_HPP
 
-#include <string>
-#include <vector>
-#include <map>
-
+#include "common.hpp"
 #include "plugin.hpp"
-#include "uri.hpp"
 
 namespace yappi { namespace core {
-
-using namespace helpers;
 
 class registry_t {
     public:

@@ -1,19 +1,10 @@
 #include <iostream>
 #include <stdexcept>
 
-#include <unistd.h>
-#include <signal.h>
-
 #include "common.hpp"
 #include "core.hpp"
 
 using namespace yappi::core;
-
-core_t* theCore;
-
-void terminate(int signum) {
-    theCore->signal(signum);
-}
 
 int main(int argc, char* argv[]) {
     char option = 0;
@@ -63,9 +54,10 @@ int main(int argc, char* argv[]) {
     }
 
     syslog(LOG_INFO, "yappi is starting");
+    core_t* core;
 
     try {
-        theCore = new core_t(listeners, publishers);
+        core = new core_t(listeners, publishers);
     } catch(const std::runtime_error& e) {
         syslog(LOG_ERR, "runtime error: %s", e.what());
         return EXIT_FAILURE;
@@ -74,14 +66,11 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    signal(SIGINT, terminate);
-    signal(SIGTERM, terminate);
-
     // This call blocks
-    theCore->run();
+    core->run();
 
     // Cleanup
-    delete theCore;
+    delete core;
 
     syslog(LOG_INFO, "yappi has terminated");    
     return EXIT_SUCCESS;

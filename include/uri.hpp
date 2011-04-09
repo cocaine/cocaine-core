@@ -1,14 +1,11 @@
 #ifndef YAPPI_URI_HPP
 #define YAPPI_URI_HPP
 
-#include <stdexcept>
 #include <sstream>
 #include <vector>
 #include <map>
 
 #include <uriparser/Uri.h>
-
-#include "digest.hpp"
 
 // TODO: Make it beautiful
 
@@ -31,10 +28,6 @@ namespace yappi { namespace helpers {
             // Scheme
             scheme = std::string(uri.scheme.first, uri.scheme.afterLast);
                 
-            // 8-character minihash
-            digest_t digest;
-            hash = scheme + ':' + digest.get(source);
-
             // Userinfo
             userinfo = std::string(uri.userInfo.first, uri.userInfo.afterLast);
             
@@ -96,7 +89,7 @@ namespace yappi { namespace helpers {
             return result;
         }
 
-        std::string source, hash, scheme, userinfo, host, fragment;
+        std::string source, scheme, userinfo, host, fragment;
         std::vector<std::string> path;
         std::map<std::string, std::string> query;
         unsigned int port;

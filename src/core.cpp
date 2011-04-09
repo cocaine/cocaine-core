@@ -13,12 +13,10 @@ const char core_t::identity[] = "yappi";
 
 core_t::core_t(const std::vector<std::string>& listeners,
                const std::vector<std::string>& publishers):
-    m_registry(),
     m_context(1),
     s_sink(m_context, ZMQ_PULL),
     s_listener(m_context, ZMQ_REP),
-    s_publisher(m_context, ZMQ_PUB),
-    m_signal(0)
+    s_publisher(m_context, ZMQ_PUB)
 {
     // Version dump
     int minor, major, patch;
@@ -29,33 +27,50 @@ core_t::core_t(const std::vector<std::string>& listeners,
     syslog(LOG_INFO, "using libev version %d.%d",
         ev_version_major(), ev_version_minor());
 
-    // Binding request endpoints
-    if(!listeners.size()) {
-        throw std::runtime_error("no listeners specified");
+    // Initializing sockets
+    int fd;
+    size_t size = sizeof(fd);
+
+    if(!listeners.size() || !publishers.size()) {
+        throw std::runtime_error("at least one listening and one publishing endpoint required");
     }
     
+    // Internal event sink socket
+    s_sink.bind("inproc://sink");
+    s_sink.getsockopt(ZMQ_FD, &fd, &size);
+    e_sink.set<core_t, &core_t::publish>(this);
+    e_sink.start(fd, EV_READ | EV_WRITE);
+
+    // Listening socket
     for(std::vector<std::string>::const_iterator it = listeners.begin(); it != listeners.end(); ++it) {
         s_listener.bind(it->c_str());
         syslog(LOG_INFO, "listening on %s", it->c_str());
     }
 
-    // Binding export endpoints
-    if(!publishers.size()) {
-        throw std::runtime_error("no publishers specified");
-    }
+    s_listener.getsockopt(ZMQ_FD, &fd, &size);
+    e_listener.set<core_t, &core_t::dispatch>(this);
+    e_listener.start(fd, EV_READ | EV_WRITE);
 
+    // Publishing socket
     for(std::vector<std::string>::const_iterator it = publishers.begin(); it != publishers.end(); ++it) {
         s_publisher.bind(it->c_str());
         syslog(LOG_INFO, "publishing on %s", it->c_str());
     }
     
-    // Binding event collection endpoint
-    s_sink.bind("inproc://sink");
-
     // Initializing regexps
     regcomp(&r_start, "start [0-9]+ [a-z]+://.*", REG_EXTENDED | REG_NOSUB);
     regcomp(&r_stop, "stop [a-z0-9]+", REG_EXTENDED | REG_NOSUB);
     regcomp(&r_once, "once [a-z]+://.*", REG_EXTENDED | REG_NOSUB);
+
+    // Initializing signal watchers
+    e_sigint.set<core_t, &core_t::terminate>(this);
+    e_sigint.start(SIGINT);
+
+    e_sigterm.set<core_t, &core_t::terminate>(this);
+    e_sigterm.start(SIGTERM);
+
+    e_sigquit.set<core_t, &core_t::terminate>(this);
+    e_sigquit.start(SIGQUIT);
 }
 
 core_t::~core_t() {
@@ -73,106 +88,7 @@ core_t::~core_t() {
 }
 
 void core_t::run() {
-    zmq::message_t message;
-
-    zmq_pollitem_t sockets[] = {
-        { (void*)s_listener, 0, ZMQ_POLLIN, 0 },
-        { (void*)s_sink,     0, ZMQ_POLLIN, 0 }
-    };
-
-    timespec now;
-    std::string key;
-    dict_t* dict = NULL;
-
-    while(true) {
-        // Check for a pending signal
-        if(m_signal == SIGINT || m_signal == SIGTERM) {
-            break;
-        }
-
-        // Poll sockets
-        try {
-            zmq::poll(sockets, 2, -1);
-        } catch(const zmq::error_t& e) {
-            if(e.num() == EINTR && (m_signal == SIGINT || m_signal == SIGTERM)) {
-                // Got termination signal, so stop the loop
-                break;
-            } else {
-                syslog(LOG_ERR, "something bad happened: %s", e.what());
-                break;
-            }
-        }
-
-        // Fetch new requests
-        if(sockets[0].revents & ZMQ_POLLIN) {
-            while(s_listener.recv(&message, ZMQ_NOBLOCK)) {
-                // Dispatch the request
-                std::string request(
-                    reinterpret_cast<char*>(message.data()),
-                    message.size());
-                dispatch(request);
-            }
-        }
-
-        // Fetch new events
-        if(sockets[1].revents & ZMQ_POLLIN) {
-            clock_gettime(CLOCK_REALTIME, &now);
-
-            while(s_sink.recv(&message, ZMQ_NOBLOCK)) {
-                // Get key
-                key.assign(
-                    reinterpret_cast<char*>(message.data()),
-                    message.size()
-                );
-            
-                // Get data
-                s_sink.recv(&message);
-                memcpy(&dict, message.data(), message.size());
-
-                // Disassemble and send in the envelopes
-                for(dict_t::const_iterator it = dict->begin(); it != dict->end(); ++it) {
-                    std::ostringstream envelope;
-                    envelope << key << " " << it->first << " @" 
-                             << std::fixed << now.tv_sec * 1000 << "." << now.tv_nsec / 1000000;
-
-                    message.rebuild(envelope.str().length());
-                    memcpy(message.data(), envelope.str().data(), envelope.str().length());
-                    s_publisher.send(message, ZMQ_SNDMORE);
-    
-                    message.rebuild(it->second.length());
-                    memcpy(message.data(), it->second.data(), it->second.length());
-                    s_publisher.send(message); 
-                }
-            
-                delete dict;
-            }
-        }
-    }
-}
-
-// Send a string
-void core_t::send(const std::string& response) {
-    zmq::message_t message(response.length());
-    memcpy(message.data(), response.data(), response.length()); 
-    s_listener.send(message);
-}
-
-// Send muliple strings
-void core_t::send(const std::vector<std::string>& response) {
-    std::vector<std::string>::const_iterator it = response.begin();
-    zmq::message_t message;
-    
-    while(it != response.end()) {
-        message.rebuild(it->length());
-        memcpy(message.data(), it->data(), it->length());
-   
-        if(++it == response.end()) {
-            s_listener.send(message);
-            break;
-        } else {
-            s_listener.send(message, ZMQ_SNDMORE);
-        }
-    }
+    m_loop.loop();
 }
 
 // Message types:
@@ -193,19 +109,34 @@ void core_t::send(const std::vector<std::string>& response) {
 //   you have no means to filter the data by categories or fields:
 //   -> once source://parameters
 //   <- multipart: [field1 @timestamp] [value1] ... |e source|e argument|e runtime
-//      all timestamps are equal, message count = field count
 //
 // * [x] History - fetch historical data without plugin invocation. 
 //   You can't fetch more messages than there were invocations:
 //   -> history depth source://parameters
 //   <- multipart: [field @timestamp, data]|e empty
 //      message count = min(depth, history-length)
-//
-// Publishing format:
-// ------------------
-//   multipart: [key field @timestamp] [value]
 
-void core_t::dispatch(const std::string& request) {
+void core_t::dispatch(ev::io& io, int revents) {
+    // Check if we really have a message
+    unsigned long events;
+    size_t size = sizeof(events);
+
+    s_listener.getsockopt(ZMQ_EVENTS, &events, &size);
+
+    if(!(events & ZMQ_POLLIN)) {
+        return;
+    }
+
+    // If we do, receive it
+    zmq::message_t message;
+    s_listener.recv(&message);
+
+    std::string request(
+        reinterpret_cast<char*>(message.data()),
+        message.size()
+    );
+
+    // Try to match the request against the templates
     std::string cmd;
     std::istringstream fmt(request);
 
@@ -341,4 +272,78 @@ void core_t::once(const std::string& uri) {
     }
     
     delete source;
+}
+
+// Publishing format:
+// ------------------
+//   multipart: [key field @timestamp] [value]
+
+void core_t::publish(ev::io& io, int revents) {
+    // Check if we really have a message
+    unsigned long events;
+    size_t size = sizeof(events);
+
+    s_sink.getsockopt(ZMQ_EVENTS, &events, &size);
+
+    if(!(events & ZMQ_POLLIN)) {
+        return;
+    }
+
+    // If we do, receive it
+    zmq::message_t message;
+    
+    // Subscription key
+    s_sink.recv(&message);
+    std::string key(
+        reinterpret_cast<char*>(message.data()),
+        message.size());
+    
+    // Event data
+    s_sink.recv(&message);
+    dict_t* dict = NULL;
+    memcpy(&dict, message.data(), message.size());
+
+    // Disassemble and send in the envelopes
+    for(dict_t::const_iterator it = dict->begin(); it != dict->end(); ++it) {
+        std::ostringstream envelope;
+        envelope << key << " " << it->first << " @" 
+                 << std::fixed << m_loop.now();
+
+        message.rebuild(envelope.str().length());
+        memcpy(message.data(), envelope.str().data(), envelope.str().length());
+        s_publisher.send(message, ZMQ_SNDMORE);
+
+        message.rebuild(it->second.length());
+        memcpy(message.data(), it->second.data(), it->second.length());
+        s_publisher.send(message);
+    }
+
+    delete dict;   
+}
+
+void core_t::terminate(ev::sig& sig, int revents) {
+    m_loop.unloop();
+}
+
+void core_t::send(const std::string& response) {
+    zmq::message_t message(response.length());
+    memcpy(message.data(), response.data(), response.length()); 
+    s_listener.send(message);
+}
+
+void core_t::send(const std::vector<std::string>& response) {
+    std::vector<std::string>::const_iterator it = response.begin();
+    zmq::message_t message;
+    
+    while(it != response.end()) {
+        message.rebuild(it->length());
+        memcpy(message.data(), it->data(), it->length());
+   
+        if(++it == response.end()) {
+            s_listener.send(message);
+            break;
+        } else {
+            s_listener.send(message, ZMQ_SNDMORE);
+        }
+    }
 }

@@ -1,11 +1,12 @@
 #ifndef YAPPI_ENGINE_HPP
 #define YAPPI_ENGINE_HPP
 
-#include <string>
-#include <set>
-#include <map>
-
 #include <zmq.hpp>
+
+#if ZMQ_VERSION < 20100
+    #error ZeroMQ version 2.1.0+ required!
+#endif
+
 #include <ev++.h>
 
 #include "common.hpp"
@@ -23,20 +24,15 @@ class engine_t {
         void unsubscribe(const std::string& key);
 
     private:
-        // Key management
+        // Subscription key management
         std::string m_uri;
         helpers::digest_t m_digest;
 
-        // Thread entry point
+        // Threading
         static void* bootstrap(void* arg);
-        
-        // Thread, in person
         pthread_t m_thread;
-        
-        // 0MQ thread control socket
         zmq::socket_t m_socket;
         
-        // Thread workload structure
         struct task_t {
             task_t(const std::string& uri_, plugin::source_t& source_, zmq::context_t& context_):
                 uri(uri_),
@@ -48,6 +44,7 @@ class engine_t {
             zmq::context_t& context;
         };
 
+        // Event fetcher
         class slave_t {
             public:
                 slave_t(ev::dynamic_loop& loop, task_t& task,
@@ -65,6 +62,7 @@ class engine_t {
                 std::string m_key;
         };
 
+        // Event fetching and subscription manager
         class overseer_t {
             public:
                 overseer_t(task_t& task);

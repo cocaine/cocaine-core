@@ -60,7 +60,6 @@ std::string engine_t::subscribe(time_t interval) {
 }
 
 void engine_t::unsubscribe(const std::string& key) {
-    // Send a message
     std::string cmd = "unsubscribe";
     zmq::message_t message(cmd.length());
     memcpy(message.data(), cmd.data(), cmd.length());
@@ -117,12 +116,12 @@ void engine_t::overseer_t::operator()(ev::io& io, int revents) {
     // Check if we have a right event on the socket
     // According to the 0MQ manual, the situation when the fd is ready
     // but we have no events on the 0MQ socket is valid
-    unsigned long event;
-    size_t size = sizeof(event);
+    unsigned long events;
+    size_t size = sizeof(events);
 
-    m_socket.getsockopt(ZMQ_EVENTS, &event, &size);
+    m_socket.getsockopt(ZMQ_EVENTS, &events, &size);
 
-    if(!(event & ZMQ_POLLIN)) {
+    if(!(events & ZMQ_POLLIN)) {
         return;
     }
     
