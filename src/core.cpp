@@ -27,6 +27,8 @@ core_t::core_t(const std::vector<std::string>& listeners,
     syslog(LOG_INFO, "using libev version %d.%d",
         ev_version_major(), ev_version_minor());
 
+    m_loop.set_io_collect_interval(0.5);
+
     // Initializing sockets
     int fd;
     size_t size = sizeof(fd);

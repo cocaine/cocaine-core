@@ -96,6 +96,8 @@ engine_t::overseer_t::overseer_t(task_t& task):
     // Connecting to the engine's controlling socket
     m_socket.connect(("inproc://" + m_task.uri).c_str());
     
+    m_loop.set_io_collect_interval(0.5);
+    
     // Integrating 0MQ into libev event loop
     int fd;
     size_t size = sizeof(fd);
