@@ -17,7 +17,7 @@ namespace yappi { namespace engine {
 
 class engine_t {
     public:
-        engine_t(const std::string& uri, plugin::source_t& source, zmq::context_t& context);
+        engine_t(const std::string& uri, plugin::source_t* source, zmq::context_t& context);
         ~engine_t();
 
         std::string subscribe(time_t interval);
@@ -34,13 +34,13 @@ class engine_t {
         zmq::socket_t m_socket;
         
         struct task_t {
-            task_t(const std::string& uri_, plugin::source_t& source_, zmq::context_t& context_):
+            task_t(const std::string& uri_, plugin::source_t* source_, zmq::context_t& context_):
                 uri(uri_),
                 source(source_),
                 context(context_) {}
 
             std::string uri;
-            plugin::source_t& source;
+            plugin::source_t* source;
             zmq::context_t& context;
         };
 
@@ -56,7 +56,7 @@ class engine_t {
             private:
                 ev::timer m_timer;
                 
-                plugin::source_t& m_source;
+                plugin::source_t* m_source;
                 zmq::socket_t m_socket;
                 
                 std::string m_key;

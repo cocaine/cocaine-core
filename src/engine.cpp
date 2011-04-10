@@ -6,7 +6,7 @@
 using namespace yappi::engine;
 using namespace yappi::plugin;
 
-engine_t::engine_t(const std::string& uri, source_t& source, zmq::context_t& context):
+engine_t::engine_t(const std::string& uri, source_t* source, zmq::context_t& context):
     m_uri(uri),
     m_socket(context, ZMQ_PAIR)
 {
@@ -14,9 +14,6 @@ engine_t::engine_t(const std::string& uri, source_t& source, zmq::context_t& con
     m_socket.bind(("inproc://" + m_uri).c_str());
     
     // Create a new task object for the thread
-    // It is created on the heap so we could be able to detach
-    // and forget about the thread (which, in turn, will deallocate
-    // these resources at some point of time)
     task_t* task = new task_t(m_uri, source, context);
 
     // And start the thread
@@ -36,12 +33,12 @@ engine_t::~engine_t() {
 }
 
 std::string engine_t::subscribe(time_t interval) {
-    // Generating the subscription key
+    // Generate the subscription key
     std::ostringstream fmt;
     fmt << m_uri << interval;
     std::string key = m_digest.get(fmt.str());
 
-    // Sending the data to the thread
+    // Send it over to the thread
     std::string cmd = "subscribe";
     zmq::message_t message(cmd.length());
     memcpy(message.data(), cmd.data(), cmd.length());
@@ -79,7 +76,7 @@ void* engine_t::bootstrap(void* arg) {
     overseer.run();
 
     // Cleanup
-    delete &task->source;
+    delete task->source;
     delete task;
 
     return NULL;
@@ -93,21 +90,20 @@ engine_t::overseer_t::overseer_t(task_t& task):
 {
     syslog(LOG_DEBUG, "starting %s overseer", m_task.uri.c_str());
     
-    // Connecting to the engine's controlling socket
-    m_socket.connect(("inproc://" + m_task.uri).c_str());
-    
-    m_loop.set_io_collect_interval(0.5);
-    
-    // Integrating 0MQ into libev event loop
+    // Set the socket watcher
     int fd;
     size_t size = sizeof(fd);
 
     m_socket.getsockopt(ZMQ_FD, &fd, &size);
     m_io.set(this);
+    m_io.start(fd, EV_READ);
 
-    // Gotta poll on both event types here
-    // due to the strange 0MQ behavior
-    m_io.start(fd, EV_READ | EV_WRITE);
+    // Connect to the engine's controlling socket
+    m_socket.connect(("inproc://" + m_task.uri).c_str());
+
+    // And trigger an event in the loop, as we probably
+    // already have subscription request on the socket
+    m_loop.feed_fd_event(fd, EV_READ);   
 }
 
 void engine_t::overseer_t::run() {
@@ -115,79 +111,78 @@ void engine_t::overseer_t::run() {
 }
 
 void engine_t::overseer_t::operator()(ev::io& io, int revents) {
-    // Check if we have a right event on the socket
-    // According to the 0MQ manual, the situation when the fd is ready
-    // but we have no events on the 0MQ socket is valid
     unsigned long events;
     size_t size = sizeof(events);
-
-    m_socket.getsockopt(ZMQ_EVENTS, &events, &size);
-
-    if(!(events & ZMQ_POLLIN)) {
-        return;
-    }
     
-    // Receive the actual message
     zmq::message_t message;
-    m_socket.recv(&message);
+    std::string cmd;
 
-    std::string cmd(
-        reinterpret_cast<char*>(message.data()),
-        message.size()
-    );
-
-    if(cmd == "subscribe") {
-        // Receive the key
+    while(true) {
+        // Check if we actually have something in the socket
+        m_socket.getsockopt(ZMQ_EVENTS, &events, &size);
+        if(!(events & ZMQ_POLLIN)) {
+            break;
+        }
+   
+        // And if we do, receive it 
         m_socket.recv(&message);
-        std::string key(
+        cmd.assign(
             reinterpret_cast<char*>(message.data()),
             message.size());
+
+        if(cmd == "subscribe") {
+            // Receive the key
+            m_socket.recv(&message);
+            std::string key(
+                reinterpret_cast<char*>(message.data()),
+                message.size());
  
-        // Receive the interval
-        time_t interval;
-        m_socket.recv(&message);
-        memcpy(&interval, message.data(), message.size());
+            // Receive the interval
+            time_t interval;
 
-        // Check if we have the slave running already
-        if(m_slaves.find(key) != m_slaves.end()) {
-            return;
-        }
+            m_socket.recv(&message);
+            memcpy(&interval, message.data(), message.size());
 
-        // Fire off a new slave
-        syslog(LOG_DEBUG, "starting %s slave %s with interval: %lums",
-            m_task.uri.c_str(), key.c_str(), interval);
-        slave_t* slave = new slave_t(m_loop, m_task, key, interval);
+            // Check if we have the slave running already
+            if(m_slaves.find(key) != m_slaves.end()) {
+                return;
+            }
+
+            // Fire off a new slave
+            syslog(LOG_DEBUG, "starting %s slave %s with interval: %lums",
+                m_task.uri.c_str(), key.c_str(), interval);
+            slave_t* slave = new slave_t(m_loop, m_task, key, interval);
     
-        // And store it into the slave map
-        m_slaves[key] = slave;
+            // And store it into the slave map
+            m_slaves[key] = slave;
     
-    } else if(cmd == "unsubscribe") {
-        // Receive the key
-        m_socket.recv(&message);
-        std::string key(
-            reinterpret_cast<char*>(message.data()),
-            message.size()
-        );  
+        } else if(cmd == "unsubscribe") {
+            // Receive the key
+            m_socket.recv(&message);
+            std::string key(
+                reinterpret_cast<char*>(message.data()),
+                message.size());  
 
-        // Kill the slave
-        syslog(LOG_DEBUG, "stopping %s slave %s",
-            m_task.uri.c_str(), key.c_str());
+            // Kill the slave
+            syslog(LOG_DEBUG, "stopping %s slave %s",
+                m_task.uri.c_str(), key.c_str());
         
-        slave_map_t::iterator it = m_slaves.find(key);
+            slave_map_t::iterator it = m_slaves.find(key);
             
-        delete it->second;
-        m_slaves.erase(it);
-
-    } else if(cmd == "stop") {
-        syslog(LOG_DEBUG, "stopping %s overseer", m_task.uri.c_str());
-
-        // Kill all the slaves
-        for(slave_map_t::iterator it = m_slaves.begin(); it != m_slaves.end(); ++it) {
             delete it->second;
-        }
+            m_slaves.erase(it);
 
-        // After this, the event loop should unroll
-        m_io.stop();
+        } else if(cmd == "stop") {
+            syslog(LOG_DEBUG, "stopping %s overseer", m_task.uri.c_str());
+
+            // Kill all the slaves
+            for(slave_map_t::iterator it = m_slaves.begin(); it != m_slaves.end(); ++it) {
+                delete it->second;
+            }
+
+            // After this, the event loop should unroll
+            m_io.stop();
+        }
     }
 }
 
@@ -213,7 +208,7 @@ void engine_t::slave_t::operator()(ev::timer& timer, int revents) {
     dict_t* dict;
 
     try {
-        dict = new dict_t(m_source.fetch());
+        dict = new dict_t(m_source->fetch());
     } catch(const std::exception& e) {
         dict = new dict_t();
         dict->insert(std::make_pair("exception", e.what()));
