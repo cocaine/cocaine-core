@@ -90,20 +90,19 @@ engine_t::overseer_t::overseer_t(task_t& task):
 {
     syslog(LOG_DEBUG, "starting %s overseer", m_task.uri.c_str());
     
+    // Damn you, 0MQ
+    m_loop.set_io_collect_interval(0.5);
+
     // Set the socket watcher
     int fd;
     size_t size = sizeof(fd);
 
     m_socket.getsockopt(ZMQ_FD, &fd, &size);
     m_io.set(this);
-    m_io.start(fd, EV_READ);
+    m_io.start(fd, EV_READ | EV_WRITE);
 
     // Connect to the engine's controlling socket
     m_socket.connect(("inproc://" + m_task.uri).c_str());
-
-    // And trigger an event in the loop, as we probably
-    // already have subscription request on the socket
-    m_loop.feed_fd_event(fd, EV_READ);   
 }
 
 void engine_t::overseer_t::run() {
@@ -123,7 +122,7 @@ void engine_t::overseer_t::operator()(ev::io& io, int revents) {
         if(!(events & ZMQ_POLLIN)) {
             break;
         }
-   
+
         // And if we do, receive it 
         m_socket.recv(&message);
         cmd.assign(
@@ -157,6 +156,7 @@ void engine_t::overseer_t::operator()(ev::io& io, int revents) {
             m_slaves[key] = slave;
     
         } else if(cmd == "unsubscribe") {
+            syslog(LOG_DEBUG, "overseer unsub");
             // Receive the key
             m_socket.recv(&message);
             std::string key(

@@ -15,7 +15,7 @@ core_t::core_t(const std::vector<std::string>& listeners,
                const std::vector<std::string>& publishers):
     m_context(1),
     s_sink(m_context, ZMQ_PULL),
-    s_listener(m_context, ZMQ_REP),
+    s_listener(m_context, ZMQ_ROUTER),
     s_publisher(m_context, ZMQ_PUB),
     m_loop(EVFLAG_SIGNALFD)
 {
@@ -125,7 +125,7 @@ void core_t::dispatch(ev::io& io, int revents) {
     size_t size = sizeof(events);
 
     zmq::message_t message;
-    std::string request, cmd;
+    std::string client, request, cmd;
     
     while(true) {
         // Check if we really have something
@@ -134,7 +134,17 @@ void core_t::dispatch(ev::io& io, int revents) {
             break;
         }
 
-        // And if we do, receive it
+        // Receive the client identity
+        s_listener.recv(&message);
+        client.assign(
+            reinterpret_cast<char*>(message.data()),
+            message.size());
+
+        // Receive and drop the delimiter
+        s_listener.recv(&message);
+        assert(message.size() == 0);
+        
+        // Receive the actual request
         s_listener.recv(&message);
         request.assign(
             reinterpret_cast<char*>(message.data()),
@@ -142,7 +152,7 @@ void core_t::dispatch(ev::io& io, int revents) {
 
         // NOTE: This is unused for now, but might come in handy
         // If I decide to drop regex and use something else
-        // for command validation
+        // for command format validation
         std::istringstream fmt(request);
         fmt >> std::skipws >> cmd;
 
@@ -152,32 +162,29 @@ void core_t::dispatch(ev::io& io, int revents) {
             time_t interval;
         
             fmt >> interval >> uri;
-            start(uri, interval);
-            return;
+            return start(client, uri, interval);
         }
 
         if(regexec(&r_stop, request.c_str(), 0, 0, 0) == 0) {
             std::string key;
         
             fmt >> key;
-            stop(key);
-            return;
+            return stop(client, key);
         }
 
         if(regexec(&r_once, request.c_str(), 0, 0, 0) == 0) {
             std::string uri;
 
             fmt >> uri;
-            once(uri);
-            return;
+            return once(client, uri);
         }
 
         syslog(LOG_ERR, "got an unsupported request: %s", request.c_str());
-        send("e request");
+        return send(client, "invalid request");
     }
 }
 
-void core_t::start(const std::string& uri, time_t interval) {
+void core_t::start(const std::string& client, const std::string& uri, time_t interval) {
     engine_t* engine;
     
     // Check if we have an engine for the given uri
@@ -192,43 +199,65 @@ void core_t::start(const std::string& uri, time_t interval) {
             m_engines[uri] = engine;
         } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "failed to instantiate the source: %s", e.what());
-            send("e runtime");
-            return;
+            return send(client, "runtime error");
         } catch(const std::invalid_argument& e) {
             syslog(LOG_ERR, "invalid uri: %s", e.what());
-            send("e argument");
-            return;
+            return send(client, "invalid argument");
         } catch(const std::domain_error& e) {
             syslog(LOG_ERR, "unknown source type: %s", e.what());
-            send("e source");
-            return;
+            return send(client, "unknown source");
         }
     }
 
-    // Get the subscription key and store it into
-    // active task list
+    // Get the subscription key
     std::string key = engine->subscribe(interval);
-    m_subscriptions[key] = engine;
-    send(key);
-}
 
-void core_t::stop(const std::string& key) {
-    // Search for the engine
-    engine_map_t::iterator it = m_subscriptions.find(key);
+    // Store the subscription information
+    m_subscriptions.insert(std::make_pair(key, client));
     
-    if(it != m_subscriptions.end()) {
-        // Unsubscribe the client (which stops the slave in the engine)
-        // and remove the key from the active task list
-        it->second->unsubscribe(key);
-        m_subscriptions.erase(it);
-        send("ok");
-    } else {
-        syslog(LOG_ERR, "got an invalid key: %s", key.c_str());
-        send("e key");
+    // And if its the first subscription for the specified key
+    // Store that into active engines list
+    if(m_active.find(key) == m_active.end()) {
+        m_active[key] = engine;
     }
+
+    // And send the key back to the client
+    return send(client, key);
 }
 
-void core_t::once(const std::string& uri) {
+void core_t::stop(const std::string& client, const std::string& key) {
+    // Check if we have such a subscription at all
+    engine_map_t::iterator engine = m_active.find(key);
+    if(engine == m_active.end()) {
+        syslog(LOG_ERR, "got an invalid unsubscription request for key: %s", key.c_str());
+        return send(client, "invalid key");
+    }
+
+    // Check if the client is subscribed to it 
+    std::pair<subscription_map_t::iterator, subscription_map_t::iterator> bounds =
+        m_subscriptions.equal_range(key);
+    for(subscription_map_t::iterator it = bounds.first; it != bounds.second; ++it) {
+        if(it->second == client) {
+            // It is subscribed, so we can drop it
+            m_subscriptions.erase(it);
+
+            // If it was last one, stop the slave
+            if(m_subscriptions.count(key) == 0) {
+                engine->second->unsubscribe(key);
+                m_active.erase(engine);
+            }
+
+            return send(client, "success");
+        }
+    }
+
+    // Client is not subscribed
+    syslog(LOG_ERR, "got an unauthorized unsubscription request for key: %s",
+        key.c_str());
+    return send(client, "not authorized");
+}
+
+void core_t::once(const std::string& client, const std::string& uri) {
     // Create a new source
     source_t* source;
         
@@ -236,23 +265,20 @@ void core_t::once(const std::string& uri) {
         source = m_registry.instantiate(uri);
     } catch(const std::runtime_error& e) {
         syslog(LOG_ERR, "failed to instantiate the source: %s", e.what());
-        send("e runtime");
-        return;
+        return send(client, "runtime error");
     } catch(const std::invalid_argument& e) {
         syslog(LOG_ERR, "invalid argument: %s", e.what());
-        send("e argument");
-        return;
+        return send(client, "invalid argument");
     } catch(const std::domain_error& e) {
         syslog(LOG_ERR, "unknown source type: %s", e.what());
-        send("e source");
-        return;
+        return send(client, "unknown source");
     }
 
     // Fetch the data once
     dict_t dict = source->fetch();
 
     if(!dict.size()) {
-        send("e empty");
+        send(client, "no data");
     } else {
         // Return the formatted response
         std::vector<std::string> response;
@@ -264,7 +290,7 @@ void core_t::once(const std::string& uri) {
             response.push_back(it->second);
         }
 
-        send(response);
+        send(client, response);
     }
     
     delete source;
@@ -302,7 +328,7 @@ void core_t::publish(ev::io& io, int revents) {
         for(dict_t::const_iterator it = dict->begin(); it != dict->end(); ++it) {
             std::ostringstream envelope;
             envelope << key << " " << it->first << " @" 
-                     << std::fixed << m_loop.now();
+                     << std::fixed << std::setprecision(3) << m_loop.now();
 
             message.rebuild(envelope.str().length());
             memcpy(message.data(), envelope.str().data(), envelope.str().length());
@@ -321,16 +347,28 @@ void core_t::terminate(ev::sig& sig, int revents) {
     m_loop.unloop();
 }
 
-void core_t::send(const std::string& response) {
-    zmq::message_t message(response.length());
+void core_t::send(const std::string& client, const std::string& response) {
+    zmq::message_t message(client.length());
+    memcpy(message.data(), client.data(), client.length());
+    s_listener.send(message, ZMQ_SNDMORE);
+
+    message.rebuild(0);
+    s_listener.send(message, ZMQ_SNDMORE);
+
+    message.rebuild(response.length());
     memcpy(message.data(), response.data(), response.length()); 
     s_listener.send(message);
 }
 
-void core_t::send(const std::vector<std::string>& response) {
+void core_t::send(const std::string& client, const std::vector<std::string>& response) {
+    zmq::message_t message(client.length());
+    memcpy(message.data(), client.data(), client.length());
+    s_listener.send(message, ZMQ_SNDMORE);
+
+    message.rebuild(0);
+    s_listener.send(message, ZMQ_SNDMORE);
+
     std::vector<std::string>::const_iterator it = response.begin();
-    zmq::message_t message;
-    
     while(it != response.end()) {
         message.rebuild(it->length());
         memcpy(message.data(), it->data(), it->length());

@@ -32,9 +32,9 @@ class core_t {
     private:
         // Request dispatching and processing
         void dispatch(ev::io& io, int revents);
-        void start(const std::string& uri, time_t interval);
-        void stop(const std::string& key);
-        void once(const std::string& uri);
+        void start(const std::string& client, const std::string& uri, time_t interval);
+        void stop(const std::string& client, const std::string& key);
+        void once(const std::string& client, const std::string& uri);
 
         // Event processing
         void publish(ev::io& io, int revents);
@@ -43,8 +43,8 @@ class core_t {
         void terminate(ev::sig& sig, int revents);
 
         // Messaging helpers
-        void send(const std::string& response);
-        void send(const std::vector<std::string>& response);
+        void send(const std::string& client, const std::string& response);
+        void send(const std::string& client, const std::vector<std::string>& response);
 
     private:
         // Plugins
@@ -52,7 +52,16 @@ class core_t {
 
         // Engines
         typedef std::map<std::string, engine::engine_t*> engine_map_t;
-        engine_map_t m_engines, m_subscriptions;
+        
+        // URI -> Engine mapping
+        engine_map_t m_engines;
+
+        // Key -> Engine mapping
+        engine_map_t m_active;
+
+        // Key -> Clients multimapping
+        typedef std::multimap<std::string, std::string> subscription_map_t;
+        subscription_map_t m_subscriptions;
 
         // Networking
         zmq::context_t m_context;
