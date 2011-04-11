@@ -20,13 +20,16 @@ class engine_t {
         engine_t(const std::string& uri, plugin::source_t* source, zmq::context_t& context);
         ~engine_t();
 
-        std::string subscribe(time_t interval);
-        void unsubscribe(const std::string& key);
+        std::string schedule(const std::string& client, time_t interval);
+        void deschedule(const std::string& client, time_t interval);
 
     private:
         // Subscription key management
         std::string m_uri;
         helpers::digest_t m_digest;
+
+        typedef std::multimap<std::string, std::string> subscription_map_t;
+        subscription_map_t m_subscriptions;
 
         // Threading
         static void* bootstrap(void* arg);

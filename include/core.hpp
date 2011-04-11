@@ -33,7 +33,7 @@ class core_t {
         // Request dispatching and processing
         void dispatch(ev::io& io, int revents);
         void start(const std::string& client, const std::string& uri, time_t interval);
-        void stop(const std::string& client, const std::string& key);
+        void stop(const std::string& client, const std::string& uri, time_t interval);
         void once(const std::string& client, const std::string& uri);
 
         // Event processing
@@ -52,16 +52,7 @@ class core_t {
 
         // Engines
         typedef std::map<std::string, engine::engine_t*> engine_map_t;
-        
-        // URI -> Engine mapping
         engine_map_t m_engines;
-
-        // Key -> Engine mapping
-        engine_map_t m_active;
-
-        // Key -> Clients multimapping
-        typedef std::multimap<std::string, std::string> subscription_map_t;
-        subscription_map_t m_subscriptions;
 
         // Networking
         zmq::context_t m_context;

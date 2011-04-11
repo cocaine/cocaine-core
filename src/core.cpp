@@ -101,13 +101,13 @@ void core_t::run() {
 //   specified source and publishes it via the PUB socket. Plugin
 //   will be invoked every 'timeout' milliseconds
 //   -> start interval-in-ms source://parameters
-//   <- key|e source|e argument|e runtime
+//   <- key|error
 //
-// * Stop - shuts down the specified thread.
+// * Stop - shuts down the specified collector.
 //   Remaining messages will stay orphaned in the queue,
 //   so it's a good idea to drain it after the unsubscription:
-//   -> stop key
-//   <- ok|e key
+//   -> stop interval-in-ms source://parameters
+//   <- success|error
 //
 // * Once - one-time plugin invocation. For one-time invocations,
 //   you have no means to filter the data by categories or fields:
@@ -141,6 +141,7 @@ void core_t::dispatch(ev::io& io, int revents) {
             message.size());
 
         // Receive and drop the delimiter
+        // TODO: Correctly handle router chains
         s_listener.recv(&message);
         assert(message.size() == 0);
         
@@ -166,10 +167,11 @@ void core_t::dispatch(ev::io& io, int revents) {
         }
 
         if(regexec(&r_stop, request.c_str(), 0, 0, 0) == 0) {
-            std::string key;
+            std::string uri;
+            time_t interval;
         
-            fmt >> key;
-            return stop(client, key);
+            fmt >> interval >> uri;
+            return stop(client, uri, interval);
         }
 
         if(regexec(&r_once, request.c_str(), 0, 0, 0) == 0) {
@@ -179,7 +181,7 @@ void core_t::dispatch(ev::io& io, int revents) {
             return once(client, uri);
         }
 
-        syslog(LOG_ERR, "got an unsupported request: %s", request.c_str());
+        syslog(LOG_ERR, "invalid request: %s", request.c_str());
         return send(client, "invalid request");
     }
 }
@@ -198,63 +200,42 @@ void core_t::start(const std::string& client, const std::string& uri, time_t int
             engine = new engine_t(uri, m_registry.instantiate(uri), m_context);
             m_engines[uri] = engine;
         } catch(const std::runtime_error& e) {
-            syslog(LOG_ERR, "failed to instantiate the source: %s", e.what());
+            syslog(LOG_ERR, "runtime error: %s", e.what());
             return send(client, "runtime error");
         } catch(const std::invalid_argument& e) {
-            syslog(LOG_ERR, "invalid uri: %s", e.what());
+            syslog(LOG_ERR, "invalid argument: %s", e.what());
             return send(client, "invalid argument");
         } catch(const std::domain_error& e) {
-            syslog(LOG_ERR, "unknown source type: %s", e.what());
+            syslog(LOG_ERR, "unknown source: %s", e.what());
             return send(client, "unknown source");
         }
     }
 
     // Get the subscription key
-    std::string key = engine->subscribe(interval);
-
-    // Store the subscription information
-    m_subscriptions.insert(std::make_pair(key, client));
-    
-    // And if its the first subscription for the specified key
-    // Store that into active engines list
-    if(m_active.find(key) == m_active.end()) {
-        m_active[key] = engine;
-    }
+    std::string key = engine->schedule(client, interval);
 
     // And send the key back to the client
     return send(client, key);
 }
 
-void core_t::stop(const std::string& client, const std::string& key) {
-    // Check if we have such a subscription at all
-    engine_map_t::iterator engine = m_active.find(key);
-    if(engine == m_active.end()) {
-        syslog(LOG_ERR, "got an invalid unsubscription request for key: %s", key.c_str());
-        return send(client, "invalid key");
+void core_t::stop(const std::string& client, const std::string& uri, time_t interval) {
+    // Check if we have an engine for that URI
+    engine_map_t::iterator e = m_engines.find(uri);
+
+    if(e == m_engines.end()) {
+        syslog(LOG_ERR, "uri not found: %s", uri.c_str());
+        return send(client, "not found");
     }
 
-    // Check if the client is subscribed to it 
-    std::pair<subscription_map_t::iterator, subscription_map_t::iterator> bounds =
-        m_subscriptions.equal_range(key);
-    for(subscription_map_t::iterator it = bounds.first; it != bounds.second; ++it) {
-        if(it->second == client) {
-            // It is subscribed, so we can drop it
-            m_subscriptions.erase(it);
-
-            // If it was last one, stop the slave
-            if(m_subscriptions.count(key) == 0) {
-                engine->second->unsubscribe(key);
-                m_active.erase(engine);
-            }
-
-            return send(client, "success");
-        }
+    // Try to unsubscribe the client
+    try {
+        e->second->deschedule(client, interval);
+    } catch(const std::invalid_argument& e) {
+        syslog(LOG_ERR, "not authorized: %s", e.what());
+        return send(client, "not authorized");
     }
 
-    // Client is not subscribed
-    syslog(LOG_ERR, "got an unauthorized unsubscription request for key: %s",
-        key.c_str());
-    return send(client, "not authorized");
+    return send(client, "success");
 }
 
 void core_t::once(const std::string& client, const std::string& uri) {
@@ -264,13 +245,13 @@ void core_t::once(const std::string& client, const std::string& uri) {
     try {
         source = m_registry.instantiate(uri);
     } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "failed to instantiate the source: %s", e.what());
+        syslog(LOG_ERR, "runtime error: %s", e.what());
         return send(client, "runtime error");
     } catch(const std::invalid_argument& e) {
         syslog(LOG_ERR, "invalid argument: %s", e.what());
         return send(client, "invalid argument");
     } catch(const std::domain_error& e) {
-        syslog(LOG_ERR, "unknown source type: %s", e.what());
+        syslog(LOG_ERR, "unknown source: %s", e.what());
         return send(client, "unknown source");
     }
 
@@ -278,7 +259,7 @@ void core_t::once(const std::string& client, const std::string& uri) {
     dict_t dict = source->fetch();
 
     if(!dict.size()) {
-        send(client, "no data");
+        send(client, "");
     } else {
         // Return the formatted response
         std::vector<std::string> response;

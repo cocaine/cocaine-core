@@ -32,39 +32,66 @@ engine_t::~engine_t() {
     pthread_join(m_thread, NULL);
 }
 
-std::string engine_t::subscribe(time_t interval) {
+std::string engine_t::schedule(const std::string& client, time_t interval) {
     // Generate the subscription key
     std::ostringstream fmt;
     fmt << m_uri << interval;
     std::string key = m_digest.get(fmt.str());
 
-    // Send it over to the thread
-    std::string cmd = "subscribe";
-    zmq::message_t message(cmd.length());
-    memcpy(message.data(), cmd.data(), cmd.length());
-    m_socket.send(message, ZMQ_SNDMORE);
+    if(m_subscriptions.count(key) == 0) {
+        // Slave is not running yet, start it
+        std::string cmd = "schedule";
+        zmq::message_t message(cmd.length());
+        memcpy(message.data(), cmd.data(), cmd.length());
+        m_socket.send(message, ZMQ_SNDMORE);
 
-    message.rebuild(key.length());
-    memcpy(message.data(), key.data(), key.length());
-    m_socket.send(message, ZMQ_SNDMORE);
+        message.rebuild(key.length());
+        memcpy(message.data(), key.data(), key.length());
+        m_socket.send(message, ZMQ_SNDMORE);
 
-    message.rebuild(sizeof(interval));
-    memcpy(message.data(), &interval, sizeof(interval));
-    m_socket.send(message);
+        message.rebuild(sizeof(interval));
+        memcpy(message.data(), &interval, sizeof(interval));
+        m_socket.send(message);
+    }
+
+    // Do some housekeeping
+    m_subscriptions.insert(std::make_pair(key, client));
 
     // Return the subscription key
     return key;
 }
 
-void engine_t::unsubscribe(const std::string& key) {
-    std::string cmd = "unsubscribe";
-    zmq::message_t message(cmd.length());
-    memcpy(message.data(), cmd.data(), cmd.length());
-    m_socket.send(message, ZMQ_SNDMORE);
+void engine_t::deschedule(const std::string& client, time_t interval) {
+    // Generate the subscription key
+    std::ostringstream fmt;
+    fmt << m_uri << interval;
+    std::string key = m_digest.get(fmt.str());
 
-    message.rebuild(key.length());
-    memcpy(message.data(), key.data(), key.length());
-    m_socket.send(message);
+    // Unsubscribe the client if it is a subscriber
+    std::pair<subscription_map_t::iterator, subscription_map_t::iterator> bounds =
+        m_subscriptions.equal_range(key);
+
+    for(subscription_map_t::iterator it = bounds.first; it != bounds.second; ++it) {
+        if(it->second == client) {
+            m_subscriptions.erase(it);
+
+            // If it was the last subscriber, stop the slave
+            if(m_subscriptions.count(key) == 0) {
+                std::string cmd = "deschedule";
+                zmq::message_t message(cmd.length());
+                memcpy(message.data(), cmd.data(), cmd.length());
+                m_socket.send(message, ZMQ_SNDMORE);
+
+                message.rebuild(key.length());
+                memcpy(message.data(), key.data(), key.length());
+                m_socket.send(message);
+            }
+
+            return;
+        } 
+    }
+
+    throw std::invalid_argument("client is not a subscriber");
 }
 
 void* engine_t::bootstrap(void* arg) {
@@ -129,7 +156,7 @@ void engine_t::overseer_t::operator()(ev::io& io, int revents) {
             reinterpret_cast<char*>(message.data()),
             message.size());
 
-        if(cmd == "subscribe") {
+        if(cmd == "schedule") {
             // Receive the key
             m_socket.recv(&message);
             std::string key(
@@ -142,11 +169,6 @@ void engine_t::overseer_t::operator()(ev::io& io, int revents) {
             m_socket.recv(&message);
             memcpy(&interval, message.data(), message.size());
 
-            // Check if we have the slave running already
-            if(m_slaves.find(key) != m_slaves.end()) {
-                return;
-            }
-
             // Fire off a new slave
             syslog(LOG_DEBUG, "starting %s slave %s with interval: %lums",
                 m_task.uri.c_str(), key.c_str(), interval);
@@ -155,8 +177,7 @@ void engine_t::overseer_t::operator()(ev::io& io, int revents) {
             // And store it into the slave map
             m_slaves[key] = slave;
     
-        } else if(cmd == "unsubscribe") {
-            syslog(LOG_DEBUG, "overseer unsub");
+        } else if(cmd == "deschedule") {
             // Receive the key
             m_socket.recv(&message);
             std::string key(
