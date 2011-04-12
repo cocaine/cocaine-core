@@ -230,6 +230,12 @@ void engine_t::slave_t::operator()(ev::timer& timer, int revents) {
 
     try {
         dict = new dict_t(m_source->fetch());
+        
+        // Do nothing if plugin has returned an empty dict
+        if(dict->size() == 0) {
+            delete dict;
+            return;
+        }
     } catch(const std::exception& e) {
         dict = new dict_t();
         dict->insert(std::make_pair("exception", e.what()));
