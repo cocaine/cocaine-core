@@ -16,8 +16,7 @@ core_t::core_t(const std::vector<std::string>& listeners,
     m_context(1),
     s_sink(m_context, ZMQ_PULL),
     s_listener(m_context, ZMQ_ROUTER),
-    s_publisher(m_context, ZMQ_PUB),
-    m_loop(EVFLAG_SIGNALFD)
+    s_publisher(m_context, ZMQ_PUB)
 {
     // Version dump
     int minor, major, patch;

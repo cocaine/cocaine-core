@@ -32,6 +32,7 @@ class core_t {
     private:
         // Request dispatching and processing
         void dispatch(ev::io& io, int revents);
+
         void start(const std::string& client, const std::string& uri, time_t interval);
         void stop(const std::string& client, const std::string& uri, time_t interval);
         void once(const std::string& client, const std::string& uri);
