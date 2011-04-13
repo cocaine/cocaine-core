@@ -61,9 +61,9 @@ core_t::core_t(const std::vector<std::string>& listeners,
     }
     
     // Initializing regexps
-    regcomp(&r_start, "start [0-9]+ [a-z]+://.*", REG_EXTENDED | REG_NOSUB);
-    regcomp(&r_stop, "stop [a-z0-9]+", REG_EXTENDED | REG_NOSUB);
-    regcomp(&r_once, "once [a-z]+://.*", REG_EXTENDED | REG_NOSUB);
+    regcomp(&r_start, "start [0-9]+ [a-z\\+]+://.*", REG_EXTENDED | REG_NOSUB);
+    regcomp(&r_stop, "stop [0-9]+ [a-z\\+]+://.*", REG_EXTENDED | REG_NOSUB);
+    regcomp(&r_once, "once [a-z\\+]+://.*", REG_EXTENDED | REG_NOSUB);
 
     // Initializing signal watchers
     e_sigint.set<core_t, &core_t::terminate>(this);
