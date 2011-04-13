@@ -3,9 +3,13 @@
 prefix = ARGUMENTS.get("PREFIX", "")
 
 env = Environment()
+
 env.Alias("install", '.')
+
 env.Append(CXXFLAGS = ["-g", "-O2", "-Wall", "-pthread", "-rdynamic"])
 env.Append(CPPPATH = ["/usr/lib", "/usr/local/lib"])
+
+Export(['env', 'prefix'])
 
 library = env.SharedLibrary(
     target = "build/yappi",
@@ -21,12 +25,13 @@ binary = env.Program(
     LIBS = ["yappi"],
     LIBPATH = ["build"])
 
-env.Requires(binary, library)
+dev = env.File(["include/plugin.hpp"])
 
-Export(['env', 'prefix'])
+env.Requires(binary, library)
 
 plugins = SConscript("plugins/sconscript")
 
 env.Install(prefix + "/usr/bin", binary)
 env.InstallAs(prefix + "/usr/lib/libyappi.so.1", library)
+env.Install(prefix + "/usr/include/yappi", dev)
 env.Install(prefix + "/usr/lib/yappi", plugins)
