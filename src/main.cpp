@@ -6,6 +6,18 @@
 
 using namespace yappi::core;
 
+void usage() {
+        std::cout << "Usage: yappi -d -l endpoint -e endpoint" << std::endl;
+        std::cout << "  -d\tdaemonize" << std::endl;
+        std::cout << "  -l\tendpoint for listening for requests, might be used multiple times" << std::endl;
+        std::cout << "  -e\tendpoint for exporting events, might be used multiple times" << std::endl;
+        std::cout << std::endl;
+        std::cout << "Endpoint types:" << std::endl;
+        std::cout << "  * ipc://pathname" << std::endl;
+        std::cout << "  * tcp://(name|address|*):port" << std::endl;
+        std::cout << "  * epgm://(name|address);multicast-address:port [export only]" << std::endl;
+}
+
 int main(int argc, char* argv[]) {
     char option = 0;
 
@@ -26,19 +38,16 @@ int main(int argc, char* argv[]) {
                 break;
             case 'h':
             default:
-                std::cout << "Yappi - The Information Devourer" << std::endl;
-                std::cout << std::endl;
-                std::cout << "Usage: yappi -d -l endpoint -e endpoint" << std::endl;
-                std::cout << "  -d\tdaemonize" << std::endl;
-                std::cout << "  -l\tendpoint for listening for requests, might be used multiple times" << std::endl;
-                std::cout << "  -e\tendpoint for exporting events, might be used multiple times" << std::endl;
-                std::cout << std::endl;
-                std::cout << "Endpoint types:" << std::endl;
-                std::cout << "  * ipc://pathname" << std::endl;
-                std::cout << "  * tcp://(name|address|*):port" << std::endl;
-                std::cout << "  * epgm://(name|address);multicast-address:port [export only]" << std::endl;
-                return EXIT_FAILURE;
+                usage();
+                return EXIT_SUCCESS;
         }
+    }
+
+    if(!listeners.size() || !publishers.size()) {
+        std::cerr << "Invalid arguments" << std::endl;
+        usage();
+
+        return EXIT_FAILURE;
     }
 
     // Daemonizing, if needed
@@ -49,7 +58,7 @@ int main(int argc, char* argv[]) {
         }
 
         // Setting up the syslog
-        openlog(core_t::identity, LOG_PERROR | LOG_PID | LOG_NDELAY, LOG_USER);
+        openlog(core_t::identity, LOG_PID | LOG_NDELAY, LOG_USER);
         setlogmask(LOG_UPTO(LOG_DEBUG));
     }
 
