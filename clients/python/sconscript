@@ -1,9 +1,0 @@
-#!/usr/bin/scons
-
-import os, sys
-python_version = 'python%d.%d' % sys.version_info[:2]
-
-Import(['env', 'prefix'])
-
-env.Install(prefix + "/usr/lib/" + python_version + "/site-packages/yappi",
-            Glob("*.py"))
