@@ -24,11 +24,15 @@ namespace yandex { namespace helpers {
                 return m_object;
             }
 
+            inline const T operator*() const {
+                return m_object;
+            }
+
             inline T* operator&() {
                 return &m_object;
             }
 
-            inline const T operator*() const {
+            inline T operator->() {
                 return m_object;
             }
 
