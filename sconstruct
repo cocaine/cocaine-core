@@ -23,9 +23,12 @@ binary = env.Program(
 
 env.Requires(binary, library)
 
-Export(['env'])
+Export(['env', 'prefix'])
+
 plugins = SConscript("plugins/sconscript")
 
 env.Install(prefix + "/usr/bin", binary)
 env.InstallAs(prefix + "/usr/lib/libyappi.so.1", library)
 env.Install(prefix + "/usr/lib/yappi", plugins)
+
+SConscript(Glob("clients/*/sconscript"))
