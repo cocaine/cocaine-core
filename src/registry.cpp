@@ -9,6 +9,7 @@
 
 #include "common.hpp"
 #include "registry.hpp"
+#include "uri.hpp"
 
 using namespace yappi::core;
 using namespace yappi::plugin;
@@ -93,14 +94,14 @@ registry_t::~registry_t() {
     }
 }
 
-source_t* registry_t::instantiate(const std::string& uri) {
-    std::string scheme(uri.substr(0, uri.find_first_of(':')));
-    factory_map_t::iterator it = m_factories.find(scheme);
+source_t* registry_t::instantiate(const std::string& uri_) {
+    helpers::uri_t uri(uri_);    
+    factory_map_t::iterator it = m_factories.find(uri.scheme());
 
     if(it == m_factories.end()) {
-        throw std::domain_error(scheme);
+        throw std::domain_error(uri.scheme());
     }
 
     factory_fn_t factory = it->second;
-    return reinterpret_cast<source_t*>(factory(uri.c_str()));
+    return reinterpret_cast<source_t*>(factory(uri.source().c_str()));
 }
