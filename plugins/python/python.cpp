@@ -28,20 +28,33 @@ class python_t: public source_t {
             // Format: python:///path/to/file.py/func?arg1=val1&arg2=...
             yappi::helpers::uri_t uri(uri_);
 
-            m_function = uri.path.back();
-            uri.path.pop_back();
+            m_args = uri.query();
             
-            std::string path = uri.joinpath();
-            m_args = uri.query;
+            std::vector<std::string> path = uri.path();
+            m_function = path.back();
+           
+            // Join path components 
+            path.pop_back();
+            std::vector<std::string>::iterator it = path.begin();
+            std::string result("/");
+
+            while(true) {
+                result += *it;
+
+                if(++it != path.end())
+                    result += '/';
+                else
+                    break;
+            }
 
             // Try to open the file
             std::ifstream input;
             input.exceptions(std::ifstream::badbit|std::ifstream::failbit);
             
             try {
-                input.open(path.c_str(), std::ifstream::in);
+                input.open(result.c_str(), std::ifstream::in);
             } catch(const std::ifstream::failure& e) {
-                throw std::invalid_argument("cannot open " + path);
+                throw std::invalid_argument("cannot open " + result);
             }
 
             // Read the code
@@ -54,7 +67,7 @@ class python_t: public source_t {
             // Compile the source
             m_code = Py_CompileString(
                 code.str().c_str(),
-                path.c_str(),
+                result.c_str(),
                 Py_file_input);
 
             if(PyErr_Occurred()) {

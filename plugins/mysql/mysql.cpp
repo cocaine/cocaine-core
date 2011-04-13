@@ -17,12 +17,12 @@ class mysql_t: public source_t {
             // uri: mysql://user:pass@host.yandex.net:3306/db
             yappi::helpers::uri_t uri(uri_);
     
-            m_host = uri.host;
-            m_port = uri.port;
-            m_db = uri.path.back();
+            m_host = uri.host();
+            m_port = uri.port();
+            m_db = uri.path().back();
 
-            m_username = uri.userinfo.substr(0, uri.userinfo.find_first_of(":"));
-            m_password = uri.userinfo.substr(uri.userinfo.find_first_of(":") + 1);
+            m_username = uri.userinfo().substr(0, uri.userinfo().find_first_of(":"));
+            m_password = uri.userinfo().substr(uri.userinfo().find_first_of(":") + 1);
         }
 
         dict_t fetch() {
