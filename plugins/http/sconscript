@@ -1,0 +1,13 @@
+#!/usr/bin/scons
+
+Import(['env'])
+
+plugin = env.SharedLibrary(
+    target = "#build/plugins/http",
+    SHLIBPREFIX = "",
+    source = ["http.cpp"],
+    CPPPATH = ["#include"],
+    LIBS = ["uriparser", "curl"],
+    LINKFLAGS = ["-Wl,-Bsymbolic"])
+
+Return("plugin")
