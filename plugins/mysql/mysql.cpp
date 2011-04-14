@@ -35,7 +35,7 @@ class mysql_t: public source_t {
             mysql_options(&handle, MYSQL_OPT_READ_TIMEOUT, reinterpret_cast<const char*>(&m_read_timeout));
             mysql_options(&handle, MYSQL_OPT_WRITE_TIMEOUT, reinterpret_cast<const char*>(&m_write_timeout));
             MYSQL* result = mysql_real_connect(&handle, m_host.c_str(), m_username.c_str(), m_password.c_str(), m_db.c_str(), m_port, NULL, 0);
-            dict["alive"] = result ? "yes" : "no";
+            dict["availability"] = result ? "available" : "down";
 
             if(result) {
                 MYSQL_RES* result = mysql_list_processes(&handle);
