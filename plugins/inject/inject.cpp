@@ -20,8 +20,13 @@ class inject_t: public source_t {
             m_socket(*g_context, ZMQ_PULL)
         {
             yappi::helpers::uri_t uri(uri_);
+            std::string path = "/var/run/yappi/" + uri.host();
 
-            m_socket.bind(("ipc://var/run/yappi/" + uri.host()).c_str());
+            try {
+                m_socket.bind(("ipc://" + path).c_str());
+            } catch(const zmq::error_t& e) {
+                throw std::runtime_error("cannot bind on " + path + " - " + e.what());
+            }
         }
     
         virtual dict_t fetch() {
