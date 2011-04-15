@@ -3,11 +3,11 @@
 Import(['env'])
 
 plugin = env.SharedLibrary(
-    target = "#build/plugins/http",
+    target = "#build/plugins/inject",
     SHLIBPREFIX = "",
-    source = ["http.cpp"],
+    source = ["inject.cpp"],
     CPPPATH = ["#include"],
-    LIBS = ["curl"],
+    LIBS = ["uriparser", "zmq"],
     LINKFLAGS = ["-Wl,-Bsymbolic"])
 
 Return("plugin")
