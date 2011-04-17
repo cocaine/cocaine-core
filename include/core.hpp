@@ -20,7 +20,8 @@ namespace yappi { namespace core {
 class core_t {
     public:
         core_t(const std::vector<std::string>& listeners,
-               const std::vector<std::string>& publishers);
+               const std::vector<std::string>& publishers,
+               uint64_t hwm, int64_t swap);
         virtual ~core_t();
 
         // Event loop

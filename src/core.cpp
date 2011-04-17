@@ -12,7 +12,8 @@ using namespace yappi::plugin;
 const char core_t::identity[] = "yappi";
 
 core_t::core_t(const std::vector<std::string>& listeners,
-               const std::vector<std::string>& publishers):
+               const std::vector<std::string>& publishers,
+               uint64_t hwm, int64_t swap):
     m_context(1),
     s_sink(m_context, ZMQ_PULL),
     s_listener(m_context, ZMQ_ROUTER),
@@ -36,7 +37,11 @@ core_t::core_t(const std::vector<std::string>& listeners,
     }
 
     // Internal event sink socket
+    uint64_t sink_hwm = 1000;
+    s_sink.setsockopt(ZMQ_HWM, &sink_hwm, sizeof(sink_hwm));
+
     s_sink.bind("inproc://sink");
+
     s_sink.getsockopt(ZMQ_FD, &fd, &size);
     e_sink.set<core_t, &core_t::publish>(this);
     e_sink.start(fd, EV_READ);
@@ -55,6 +60,9 @@ core_t::core_t(const std::vector<std::string>& listeners,
     e_listener.start(fd, EV_READ | EV_WRITE);
 
     // Publishing socket
+    s_publisher.setsockopt(ZMQ_HWM, &hwm, sizeof(hwm));
+    s_publisher.setsockopt(ZMQ_SWAP, &swap, sizeof(swap));
+
     for(std::vector<std::string>::const_iterator it = publishers.begin(); it != publishers.end(); ++it) {
         s_publisher.bind(it->c_str());
         syslog(LOG_INFO, "publishing on %s", it->c_str());
