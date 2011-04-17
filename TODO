@@ -1,11 +1,8 @@
-0.2
 v Socket identity support
-* HTTP plugin
+v HTTP plugin
+* JSON command protocol + bulk commands
+* Python + DHT torrent plugin
 
-0.3
-* Skynet plugin
 * Statistics
-
-0.4
-* Forking engine
-* Command plugins support
+* Forking engine?
+* Command plugins support?
