@@ -31,6 +31,7 @@ class core_t {
         // Built-in commands
         void subscribe(const std::deque<std::string>& identity, const std::string& uri, Json::Value& args);
         void unsubscribe(const std::deque<std::string>& identity, const std::string& uri, Json::Value& args);
+        void once(const std::deque<std::string>& identity, const std::string& uri, Json::Value& args);
 
         // Event processing
         void publish(ev::io& io, int revents);

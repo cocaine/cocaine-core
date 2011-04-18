@@ -39,10 +39,6 @@ std::string engine_t::schedule(const std::deque<std::string>& identity, time_t i
     std::string key = m_digest.get(fmt.str());
 
     if(m_subscriptions.count(key) == 0) {
-        if(interval <= 0) {
-            throw std::invalid_argument("interval is too small");
-        }
-
         // Slave is not running yet, start it
         std::string cmd = "schedule";
         zmq::message_t message(cmd.length());
