@@ -15,6 +15,7 @@ json = env.StaticLibrary(
     source = ["foreign/jsoncpp-0.5.0/src/lib_json/json_reader.cpp",
               "foreign/jsoncpp-0.5.0/src/lib_json/json_writer.cpp",
               "foreign/jsoncpp-0.5.0/src/lib_json/json_value.cpp"],
+    CXXFLAGS = ["-fPIC"],
     CPPPATH = ["foreign/jsoncpp-0.5.0/include"])
 
 library = env.SharedLibrary(
