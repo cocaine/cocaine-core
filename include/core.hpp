@@ -1,19 +1,12 @@
 #ifndef YAPPI_CORE_HPP
 #define YAPPI_CORE_HPP
 
-#include <regex.h>
-
-#include <zmq.hpp>
-
-#if ZMQ_VERSION < 20100
-    #error ZeroMQ version 2.1.0+ required!
-#endif
-
-#include <ev++.h>
+#include <boost/function.hpp>
 
 #include "common.hpp"
 #include "engine.hpp"
 #include "registry.hpp"
+#include "json/json.h"
 
 namespace yappi { namespace core {
 
@@ -33,10 +26,11 @@ class core_t {
     private:
         // Request dispatching and processing
         void dispatch(ev::io& io, int revents);
+        void reply(const std::deque<std::string>& identity, const Json::Value& root);
 
-        void start(const std::string& client, const std::string& uri, time_t interval);
-        void stop(const std::string& client, const std::string& uri, time_t interval);
-        void once(const std::string& client, const std::string& uri);
+        // Built-in commands
+        void subscribe(const std::deque<std::string>& identity, const std::string& uri, Json::Value& args);
+        void unsubscribe(const std::deque<std::string>& identity, const std::string& uri, Json::Value& args);
 
         // Event processing
         void publish(ev::io& io, int revents);
@@ -44,13 +38,16 @@ class core_t {
         // Signal processing
         void terminate(ev::sig& sig, int revents);
 
-        // Messaging helpers
-        void send(const std::string& client, const std::string& response);
-        void send(const std::string& client, const std::vector<std::string>& response);
-
     private:
         // Plugins
         registry_t m_registry;
+
+        // Command dispatch table
+        typedef boost::function<void(
+            const std::deque<std::string>&,
+            const std::string&,
+            Json::Value&)> command_fn_t;
+        std::map<std::string, command_fn_t> m_dispatch;
 
         // Engines
         typedef std::map<std::string, engine::engine_t*> engine_map_t;
@@ -64,9 +61,6 @@ class core_t {
         ev::default_loop m_loop;
         ev::io e_sink, e_listener;
         ev::sig e_sigint, e_sigterm, e_sigquit;
-
-        // Command templates
-        regex_t r_start, r_stop, r_once;
 };
 
 }}

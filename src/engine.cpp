@@ -32,13 +32,17 @@ engine_t::~engine_t() {
     pthread_join(m_thread, NULL);
 }
 
-std::string engine_t::schedule(const std::string& client, time_t interval) {
+std::string engine_t::schedule(const std::deque<std::string>& identity, time_t interval) {
     // Generate the subscription key
     std::ostringstream fmt;
     fmt << m_uri << interval;
     std::string key = m_digest.get(fmt.str());
 
     if(m_subscriptions.count(key) == 0) {
+        if(interval <= 0) {
+            throw std::invalid_argument("interval is too small");
+        }
+
         // Slave is not running yet, start it
         std::string cmd = "schedule";
         zmq::message_t message(cmd.length());
@@ -55,13 +59,13 @@ std::string engine_t::schedule(const std::string& client, time_t interval) {
     }
 
     // Do some housekeeping
-    m_subscriptions.insert(std::make_pair(key, client));
+    m_subscriptions.insert(std::make_pair(key, identity.back()));
 
     // Return the subscription key
     return key;
 }
 
-void engine_t::deschedule(const std::string& client, time_t interval) {
+void engine_t::deschedule(const std::deque<std::string>& identity, time_t interval) {
     // Generate the subscription key
     std::ostringstream fmt;
     fmt << m_uri << interval;
@@ -72,7 +76,7 @@ void engine_t::deschedule(const std::string& client, time_t interval) {
         m_subscriptions.equal_range(key);
 
     for(subscription_map_t::iterator it = bounds.first; it != bounds.second; ++it) {
-        if(it->second == client) {
+        if(it->second == identity.back()) {
             m_subscriptions.erase(it);
 
             // If it was the last subscriber, stop the slave

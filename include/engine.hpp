@@ -1,14 +1,6 @@
 #ifndef YAPPI_ENGINE_HPP
 #define YAPPI_ENGINE_HPP
 
-#include <zmq.hpp>
-
-#if ZMQ_VERSION < 20100
-    #error ZeroMQ version 2.1.0+ required!
-#endif
-
-#include <ev++.h>
-
 #include "common.hpp"
 #include "plugin.hpp"
 #include "digest.hpp"
@@ -20,8 +12,8 @@ class engine_t {
         engine_t(const std::string& uri, plugin::source_t* source, zmq::context_t& context);
         ~engine_t();
 
-        std::string schedule(const std::string& client, time_t interval);
-        void deschedule(const std::string& client, time_t interval);
+        std::string schedule(const std::deque<std::string>& identity, time_t interval);
+        void deschedule(const std::deque<std::string>& identity, time_t interval);
 
     private:
         // Subscription key management

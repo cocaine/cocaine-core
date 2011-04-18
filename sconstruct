@@ -7,21 +7,27 @@ env = Environment()
 env.Alias("install", '.')
 
 env.Append(CXXFLAGS = ["-g", "-O2", "-Wall", "-pthread", "-rdynamic"])
-env.Append(CPPPATH = ["/usr/lib", "/usr/local/lib"])
 
 Export(['env', 'prefix'])
+
+json = env.StaticLibrary(
+    target = "build/json",
+    source = ["foreign/jsoncpp-0.5.0/src/lib_json/json_reader.cpp",
+              "foreign/jsoncpp-0.5.0/src/lib_json/json_writer.cpp",
+              "foreign/jsoncpp-0.5.0/src/lib_json/json_value.cpp"],
+    CPPPATH = ["foreign/jsoncpp-0.5.0/include"])
 
 library = env.SharedLibrary(
     target = "build/yappi",
     source = ["src/registry.cpp", "src/engine.cpp", "src/core.cpp"],
-    CPPPATH = ["include"],
-    LIBS = ["zmq", "ev", "crypto", "uriparser"],
+    CPPPATH = ["foreign/jsoncpp-0.5.0/include", "include"],
+    LIBS = ["zmq", "ev", "crypto", "uriparser", json],
     LINKFLAGS = ["-Wl,-soname=libyappi.so.1", "-Wl,-Bsymbolic"])
 
 binary = env.Program(
     target = "build/yappi",
     source = ["src/main.cpp"],
-    CPPPATH = ["include"],
+    CPPPATH = ["foreign/jsoncpp-0.5.0/include", "include"],
     LIBS = ["yappi"],
     LIBPATH = ["build"])
 

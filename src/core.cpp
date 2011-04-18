@@ -3,6 +3,8 @@
 #include <iomanip>
 #include <stdexcept>
 
+#include <boost/bind.hpp>
+
 #include "core.hpp"
 
 using namespace yappi::core;
@@ -68,11 +70,6 @@ core_t::core_t(const std::vector<std::string>& listeners,
         syslog(LOG_INFO, "publishing on %s", it->c_str());
     }
     
-    // Initializing regexps
-    regcomp(&r_start, "start [0-9]+ [a-z\\+]+://.*", REG_EXTENDED | REG_NOSUB);
-    regcomp(&r_stop, "stop [0-9]+ [a-z\\+]+://.*", REG_EXTENDED | REG_NOSUB);
-    regcomp(&r_once, "once [a-z\\+]+://.*", REG_EXTENDED | REG_NOSUB);
-
     // Initializing signal watchers
     e_sigint.set<core_t, &core_t::terminate>(this);
     e_sigint.start(SIGINT);
@@ -82,6 +79,10 @@ core_t::core_t(const std::vector<std::string>& listeners,
 
     e_sigquit.set<core_t, &core_t::terminate>(this);
     e_sigquit.start(SIGQUIT);
+
+    // Initializing built-in command handlers
+    m_dispatch["subscribe"] = boost::bind(&core_t::subscribe, this, _1, _2, _3);
+    m_dispatch["unsubscribe"] = boost::bind(&core_t::unsubscribe, this, _1, _2, _3);
 }
 
 core_t::~core_t() {
@@ -91,11 +92,6 @@ core_t::~core_t() {
     for(engine_map_t::iterator it = m_engines.begin(); it != m_engines.end(); ++it) {
         delete it->second;
     }
-
-    // Destroying regexps
-    regfree(&r_start);
-    regfree(&r_stop);
-    regfree(&r_once);
 }
 
 void core_t::run() {
@@ -128,160 +124,187 @@ void core_t::run() {
 //      message count = min(depth, history-length)
 
 void core_t::dispatch(ev::io& io, int revents) {
-    unsigned long events;
+    uint32_t events;
     size_t size = sizeof(events);
 
     zmq::message_t message;
-    std::string client, request, cmd;
-    
+    std::deque<std::string> identity;
+    std::string request;
+
+    Json::Reader reader(Json::Features::strictMode());
+    Json::Value root;
+   
     while(true) {
-        // Check if we really have something
+        // Check if we have pending messages
         s_listener.getsockopt(ZMQ_EVENTS, &events, &size);
+
         if(!(events & ZMQ_POLLIN)) {
+            // No more messages, so break the loop
             break;
         }
 
-        // Receive the client identity
-        s_listener.recv(&message);
-        client.assign(
-            reinterpret_cast<char*>(message.data()),
-            message.size());
+        // Fetch the client's identity
+        while(true) {
+            s_listener.recv(&message);
 
-        // Receive and drop the delimiter
-        // TODO: Correctly handle router chains
-        s_listener.recv(&message);
-        assert(message.size() == 0);
-        
+            if(message.size() == 0) {
+                // Break if we got a delimiter
+                break;
+            }  
+
+            identity.push_back(std::string(
+                reinterpret_cast<char*>(message.data()),
+                message.size()));
+        }
+
         // Receive the actual request
         s_listener.recv(&message);
         request.assign(
             reinterpret_cast<char*>(message.data()),
             message.size());
 
-        // NOTE: This is unused for now, but might come in handy
-        // If I decide to drop regex and use something else
-        // for command format validation
-        std::istringstream fmt(request);
-        fmt >> std::skipws >> cmd;
+        // Try to parse the incoming JSON document
+        if(!reader.parse(request, root)) {
+            syslog(LOG_ERR, "invalid json: %s", reader.getFormatedErrorMessages().c_str());
 
-        // Try to match the request against the templates
-        if(regexec(&r_start, request.c_str(), 0, 0, 0) == 0) {
-            std::string uri;
-            time_t interval;
-        
-            fmt >> interval >> uri;
-            return start(client, uri, interval);
+            root["error"] = reader.getFormatedErrorMessages();
+            reply(identity, root);
+            continue;
+        } 
+
+        // Root is guaranteed to be an object, as we use strict mode for parsing
+        const Json::Value::Members methods = root.getMemberNames();
+
+        // Iterate over all commands
+        for(Json::Value::Members::const_iterator name = methods.begin(); name != methods.end(); ++name) {
+            // Check if the command is valid
+            if(m_dispatch.find(*name) == m_dispatch.end()) {
+                syslog(LOG_ERR, "method %s is not supported", name->c_str());
+
+                root[*name].clear();
+                root[*name]["error"] = "not supported";
+                continue;
+            }
+            
+            Json::Value method = root[*name];
+
+            // Check if the command is a mapped container
+            if(!method.isObject()) {
+                syslog(LOG_ERR, "invalid method arguments: mapping expected");
+
+                root[*name].clear();
+                root[*name]["error"] = "mapping expected";
+                continue;
+            }
+
+            const Json::Value::Members uris = method.getMemberNames();
+
+            // Iterate over all the requests
+            for(Json::Value::Members::const_iterator uri = uris.begin(); uri != uris.end(); ++uri) {
+                Json::Value args = root[*name][*uri];
+
+                if(!args.isObject()) {
+                    syslog(LOG_ERR, "invalid request arguments: mapping expected");
+
+                    root[*name][*uri].clear();
+                    root[*name][*uri]["error"] = "mapping expected";
+                    continue;
+                }
+
+                m_dispatch[*name](identity, *uri, args);
+                root[*name][*uri] = args;
+            }
         }
 
-        if(regexec(&r_stop, request.c_str(), 0, 0, 0) == 0) {
-            std::string uri;
-            time_t interval;
-        
-            fmt >> interval >> uri;
-            return stop(client, uri, interval);
-        }
-
-        if(regexec(&r_once, request.c_str(), 0, 0, 0) == 0) {
-            std::string uri;
-
-            fmt >> uri;
-            return once(client, uri);
-        }
-
-        syslog(LOG_ERR, "invalid request: %s", request.c_str());
-        return send(client, "invalid request");
+        reply(identity, root);
     }
 }
 
-void core_t::start(const std::string& client, const std::string& uri, time_t interval) {
-    engine_t* engine;
+void core_t::subscribe(const std::deque<std::string>& identity, const std::string& uri, Json::Value& args) {
+    time_t interval;
+
+    // Validate arguments
+    try {
+        interval = args.get("interval", 0).asUInt();
+    } catch(const std::runtime_error& e) {
+        syslog(LOG_ERR, "invalid interval type: %s", e.what());
+
+        args.clear();
+        args["error"] = std::string("invalid interval type: ") + e.what();
+        return;
+    }
+
+    // Clear the node, as we will put the response in it
+    args.clear();
     
     // Check if we have an engine for the given uri
     engine_map_t::iterator it = m_engines.find(uri); 
+    engine_t* engine;
 
     if(it != m_engines.end()) {
         engine = it->second;
     } else {
-        // There's no engine for the given identity, so start one
+        // No engine, so start a new one
         try {
             engine = new engine_t(uri, m_registry.instantiate(uri), m_context);
             m_engines[uri] = engine;
         } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "runtime error: %s", e.what());
-            return send(client, "runtime error");
+            args["error"] = std::string("runtime error: ") + e.what();
+            return;
         } catch(const std::invalid_argument& e) {
             syslog(LOG_ERR, "invalid argument: %s", e.what());
-            return send(client, "invalid argument");
+            args["error"] = std::string("invalid argument: ") + e.what();
+            return;
         } catch(const std::domain_error& e) {
             syslog(LOG_ERR, "unknown source: %s", e.what());
-            return send(client, "unknown source");
+            args["error"] = std::string("unknown source: ") + e.what();
+            return;
         }
     }
 
-    // Get the subscription key
-    std::string key = engine->schedule(client, interval);
-
-    // And send the key back to the client
-    return send(client, key);
-}
-
-void core_t::stop(const std::string& client, const std::string& uri, time_t interval) {
-    // Check if we have an engine for that URI
-    engine_map_t::iterator e = m_engines.find(uri);
-
-    if(e == m_engines.end()) {
-        syslog(LOG_ERR, "uri not found: %s", uri.c_str());
-        return send(client, "not found");
-    }
-
-    // Try to unsubscribe the client
     try {
-        e->second->deschedule(client, interval);
-    } catch(const std::invalid_argument& e) {
-        syslog(LOG_ERR, "not authorized: %s", e.what());
-        return send(client, "not authorized");
-    }
-
-    return send(client, "success");
-}
-
-void core_t::once(const std::string& client, const std::string& uri) {
-    // Create a new source
-    source_t* source;
-        
-    try {
-        source = m_registry.instantiate(uri);
-    } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "runtime error: %s", e.what());
-        return send(client, "runtime error");
+        // Try to schedule a new slave and return the subscription key
+        args["result"] = engine->schedule(identity, interval);
     } catch(const std::invalid_argument& e) {
         syslog(LOG_ERR, "invalid argument: %s", e.what());
-        return send(client, "invalid argument");
-    } catch(const std::domain_error& e) {
-        syslog(LOG_ERR, "unknown source: %s", e.what());
-        return send(client, "unknown source");
+        args["error"] = std::string("invalid argument: ") + e.what();
     }
+}
 
-    // Fetch the data once
-    dict_t dict = source->fetch();
+void core_t::unsubscribe(const std::deque<std::string>& identity, const std::string& uri, Json::Value& args) {
+    time_t interval;
 
-    if(!dict.size()) {
-        send(client, "");
-    } else {
-        // Return the formatted response
-        std::vector<std::string> response;
+    // Validate the arguments
+    try {
+        interval = args.get("interval", 0).asUInt();
+    } catch(const std::runtime_error& e) {
+        syslog(LOG_ERR, "invalid interval type: %s", e.what());
         
-        for(dict_t::iterator it = dict.begin(); it != dict.end(); ++it) {
-            std::ostringstream envelope;
-            envelope << it->first;
-            response.push_back(envelope.str());
-            response.push_back(it->second);
-        }
-
-        send(client, response);
+        args.clear();
+        args["error"] = std::string("invalid interval type: ") + e.what();
+        return;
     }
+
+    // Clear the node, as we will put the response in it
+    args.clear();
     
-    delete source;
+    // Check if we have an engine for that URI
+    engine_map_t::iterator it = m_engines.find(uri);
+
+    if(it == m_engines.end()) {
+        syslog(LOG_ERR, "no engine for uri: %s", uri.c_str());
+        args["error"] = "not found";
+    } else {
+        // Try to unsubscribe the client
+        try {
+            it->second->deschedule(identity, interval);
+            args["result"] = "success";
+        } catch(const std::invalid_argument& e) {
+            syslog(LOG_ERR, "invalid argument: %s", e.what());
+            args["error"] = std::string("invalid argument: ") + e.what();
+        }
+    }
 }
 
 // Publishing format:
@@ -335,37 +358,25 @@ void core_t::terminate(ev::sig& sig, int revents) {
     m_loop.unloop();
 }
 
-void core_t::send(const std::string& client, const std::string& response) {
-    zmq::message_t message(client.length());
-    memcpy(message.data(), client.data(), client.length());
-    s_listener.send(message, ZMQ_SNDMORE);
+void core_t::reply(const std::deque<std::string>& identity, const Json::Value& root) {
+    zmq::message_t message;
 
+    // Send the identity
+    for(std::deque<std::string>::const_iterator it = identity.begin(); it != identity.end(); ++it) {
+        message.rebuild(it->length());    
+        memcpy(message.data(), it->data(), it->length());
+        s_listener.send(message, ZMQ_SNDMORE);
+    }
+
+    // Send the delimiter
     message.rebuild(0);
     s_listener.send(message, ZMQ_SNDMORE);
+
+    // Send the json
+    Json::FastWriter writer;
+    std::string response = writer.write(root);
 
     message.rebuild(response.length());
-    memcpy(message.data(), response.data(), response.length()); 
+    memcpy(message.data(), response.data(), response.length());
     s_listener.send(message);
-}
-
-void core_t::send(const std::string& client, const std::vector<std::string>& response) {
-    zmq::message_t message(client.length());
-    memcpy(message.data(), client.data(), client.length());
-    s_listener.send(message, ZMQ_SNDMORE);
-
-    message.rebuild(0);
-    s_listener.send(message, ZMQ_SNDMORE);
-
-    std::vector<std::string>::const_iterator it = response.begin();
-    while(it != response.end()) {
-        message.rebuild(it->length());
-        memcpy(message.data(), it->data(), it->length());
-   
-        if(++it == response.end()) {
-            s_listener.send(message);
-            break;
-        } else {
-            s_listener.send(message, ZMQ_SNDMORE);
-        }
-    }
 }
