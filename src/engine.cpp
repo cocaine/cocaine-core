@@ -176,7 +176,6 @@ void engine_t::overseer_t::operator()(ev::io& io, int revents) {
     
             // And store it into the slave map
             m_slaves[key] = slave;
-    
         } else if(cmd == "deschedule") {
             // Receive the key
             m_socket.recv(&message);
@@ -192,7 +191,6 @@ void engine_t::overseer_t::operator()(ev::io& io, int revents) {
             
             delete it->second;
             m_slaves.erase(it);
-
         } else if(cmd == "stop") {
             syslog(LOG_DEBUG, "stopping %s overseer", m_task.uri.c_str());
 

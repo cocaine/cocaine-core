@@ -48,6 +48,7 @@ class core_t {
             const std::deque<std::string>&,
             const std::string&,
             Json::Value&)> command_fn_t;
+
         std::map<std::string, command_fn_t> m_dispatch;
 
         // Engines

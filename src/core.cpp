@@ -54,7 +54,6 @@ core_t::core_t(const std::vector<std::string>& listeners,
         syslog(LOG_INFO, "listening on %s", it->c_str());
     }
 
-    // Damn it
     m_loop.set_io_collect_interval(0.5);
 
     s_listener.getsockopt(ZMQ_FD, &fd, &size);
@@ -133,7 +132,7 @@ void core_t::dispatch(ev::io& io, int revents) {
                 message.size()));
         }
 
-        // Receive the actual request
+        // Fetch the actual request
         s_listener.recv(&message);
         request.assign(
             reinterpret_cast<char*>(message.data()),
@@ -142,7 +141,7 @@ void core_t::dispatch(ev::io& io, int revents) {
         // Try to parse the incoming JSON document
         if(!reader.parse(request, root)) {
             syslog(LOG_ERR, "invalid json: %s", reader.getFormatedErrorMessages().c_str());
-            root.clear();
+            root = Json::Value();
             root["error"] = reader.getFormatedErrorMessages();
             reply(identity, root);
             continue;
@@ -151,21 +150,21 @@ void core_t::dispatch(ev::io& io, int revents) {
         // Check if root is a mapping
         if(!root.isObject()) {
             syslog(LOG_ERR, "invalid request: mapping expected");
-            root.clear();
+            root = Json::Value();
             root["error"] = "mapping expected";
             reply(identity, root);
             continue;
         }
         
-        // Get all the requested methods' names
+        // Get all the requested method names
         const Json::Value::Members methods = root.getMemberNames();
 
-        // Iterate over all the methods
+        // Iterate over all the method bodies
         for(Json::Value::Members::const_iterator name = methods.begin(); name != methods.end(); ++name) {
             // Check if the method is supported
             if(m_dispatch.find(*name) == m_dispatch.end()) {
                 syslog(LOG_ERR, "method %s is not supported", name->c_str());
-                root[*name].clear();
+                root[*name] = Json::Value();
                 root[*name]["error"] = "not supported";
                 continue;
             }
@@ -175,37 +174,60 @@ void core_t::dispatch(ev::io& io, int revents) {
 
             // And check if it's a mapping
             if(!method.isObject()) {
-                syslog(LOG_ERR, "invalid method arguments: mapping expected");
-                root[*name].clear();
+                syslog(LOG_ERR, "invalid method body: mapping expected");
+                root[*name] = Json::Value();
                 root[*name]["error"] = "mapping expected";
                 continue;
             }
 
-            // Get the requested URIs
+            // Get all the requested URIs
             const Json::Value::Members uris = method.getMemberNames();
 
-            // Iterate over all the requested URIs
+            // Iterate over all the requested URI arguments
             for(Json::Value::Members::const_iterator uri = uris.begin(); uri != uris.end(); ++uri) {
-                // Get the requested URI's body
+                // Get the requested URI argument
                 Json::Value args = root[*name][*uri];
 
                 // And check if it's a mapping
                 if(!args.isObject()) {
-                    syslog(LOG_ERR, "invalid URI arguments: mapping expected");
-                    root[*name][*uri].clear();
+                    syslog(LOG_ERR, "invalid uri arguments: mapping expected");
+                    root[*name][*uri] = Json::Value();
                     root[*name][*uri]["error"] = "mapping expected";
                     continue;
                 }
 
                 // Dispatch the requested URI and replace the arguments with the result
                 m_dispatch[*name](identity, *uri, args);
-                root[*name][*uri] = args;
+                root[*name][*uri].swap(args);
             }
         }
 
         // Send the response back to the client
         reply(identity, root);
     }
+}
+
+void core_t::reply(const std::deque<std::string>& identity, const Json::Value& root) {
+    zmq::message_t message;
+
+    // Send the identity
+    for(std::deque<std::string>::const_iterator it = identity.begin(); it != identity.end(); ++it) {
+        message.rebuild(it->length());    
+        memcpy(message.data(), it->data(), it->length());
+        s_listener.send(message, ZMQ_SNDMORE);
+    }
+
+    // Send the delimiter
+    message.rebuild(0);
+    s_listener.send(message, ZMQ_SNDMORE);
+
+    // Send the json
+    Json::FastWriter writer;
+    std::string response = writer.write(root);
+
+    message.rebuild(response.length());
+    memcpy(message.data(), response.data(), response.length());
+    s_listener.send(message);
 }
 
 // Built-in commands:
@@ -231,20 +253,20 @@ void core_t::subscribe(const std::deque<std::string>& identity, const std::strin
     try {
         interval = args.get("interval", 0).asUInt();
     } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "invalid interval type: %s", e.what());
+        syslog(LOG_ERR, "invalid interval value: %s", e.what());
         args.clear();
-        args["error"] = std::string("invalid interval type: ") + e.what();
+        args["error"] = std::string("invalid interval value: ") + e.what();
         return;
     }
 
-    // Clear the node, as we will put the response in it
+    // Clear the node, as we will put the response into it
     args.clear();
     
     // Validate the interval
     if(interval <= 0) {
-        syslog(LOG_ERR, "invalid interval specified");
-        args["error"] = "invalid interval";
-        return;    
+        syslog(LOG_ERR, "invalid interval value: interval is too low");
+        args["error"] = "invalid interval: interval is too low";
+        return;
     }
 
     // Check if we have an engine running for the given uri
@@ -295,9 +317,9 @@ void core_t::unsubscribe(const std::deque<std::string>& identity, const std::str
     
     // Validate the interval
     if(interval <= 0) {
-        syslog(LOG_ERR, "invalid interval specified");
-        args["error"] = "invalid interval";
-        return;    
+        syslog(LOG_ERR, "invalid interval value: interval is too low");
+        args["error"] = "invalid interval: interval is too low";
+        return;
     }
 
     // Check if we have an engine for that URI
@@ -322,12 +344,15 @@ void core_t::once(const std::deque<std::string>& identity, const std::string& ur
     // No arguments for that type of command
     args.clear();
 
-    // Instantiate the source
     source_t* source;
 
     try {
         // Try to instantiate the source
         source = m_registry.instantiate(uri);
+    } catch(const std::runtime_error& e) {
+        syslog(LOG_ERR, "runtime error: %s", e.what());
+        args["error"] = std::string("runtime error: ") + e.what();
+        return;
     } catch(const std::invalid_argument& e) {
         syslog(LOG_ERR, "invalid argument: %s", e.what());
         args["error"] = std::string("invalid argument: ") + e.what();
@@ -348,7 +373,7 @@ void core_t::once(const std::deque<std::string>& identity, const std::string& ur
     }
 }
 
-// Publishing format:
+// Publishing format (not JSON, as it will render subscription mechanics pointless):
 // ------------------
 //   multipart: [key field @timestamp] [value]
 
@@ -397,27 +422,4 @@ void core_t::publish(ev::io& io, int revents) {
 
 void core_t::terminate(ev::sig& sig, int revents) {
     m_loop.unloop();
-}
-
-void core_t::reply(const std::deque<std::string>& identity, const Json::Value& root) {
-    zmq::message_t message;
-
-    // Send the identity
-    for(std::deque<std::string>::const_iterator it = identity.begin(); it != identity.end(); ++it) {
-        message.rebuild(it->length());    
-        memcpy(message.data(), it->data(), it->length());
-        s_listener.send(message, ZMQ_SNDMORE);
-    }
-
-    // Send the delimiter
-    message.rebuild(0);
-    s_listener.send(message, ZMQ_SNDMORE);
-
-    // Send the json
-    Json::FastWriter writer;
-    std::string response = writer.write(root);
-
-    message.rebuild(response.length());
-    memcpy(message.data(), response.data(), response.length());
-    s_listener.send(message);
 }
