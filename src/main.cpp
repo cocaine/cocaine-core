@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <stdexcept>
 
 #include "common.hpp"
@@ -7,12 +8,13 @@
 using namespace yappi::core;
 
 void usage() {
-        std::cout << "Usage: yappi -d -l endpoint -e endpoint [-m hwm] [-s swap]" << std::endl;
+        std::cout << "Usage: yappi -d -l endpoint -e endpoint [-m 0] [-s 0] [-f /var/run/yappi.pid]" << std::endl;
         std::cout << "  -d\tdaemonize" << std::endl;
         std::cout << "  -l\tendpoint for listening for requests, might be used multiple times" << std::endl;
         std::cout << "  -e\tendpoint for exporting events, might be used multiple times" << std::endl;
-        std::cout << "  -m\tin-memory message cache, in messages (default - unlimited)" << std::endl;
-        std::cout << "  -s\ton-disk message cache, in bytes (default - off)" << std::endl;
+        std::cout << "  -m\tin-memory message cache, in messages (0 - unlimited)" << std::endl;
+        std::cout << "  -s\ton-disk message cache, in bytes (0 - off)" << std::endl;
+        std::cout << "  -f\tpidfile location" << std::endl;
         std::cout << std::endl;
         std::cout << "Endpoint types:" << std::endl;
         std::cout << "  * ipc://pathname" << std::endl;
@@ -24,12 +26,13 @@ int main(int argc, char* argv[]) {
     char option = 0;
 
     bool daemonize = false;
+    std::string pidfile = "/var/run/yappi.pid";
     std::vector<std::string> listeners;
     std::vector<std::string> publishers;
     uint64_t hwm = 0;
     int64_t swap = 0;
 
-    while((option = getopt(argc, argv, "de:l:p:h:m:s:")) != -1) {
+    while((option = getopt(argc, argv, "de:l:p:h:m:s:f:")) != -1) {
         switch(option) {
             case 'd':
                 daemonize = true;
@@ -45,6 +48,9 @@ int main(int argc, char* argv[]) {
                 break;
             case 's':
                 swap = atoi(optarg);
+                break;
+            case 'f':
+                pidfile = optarg;
                 break;
             case 'h':
             default:
@@ -70,6 +76,20 @@ int main(int argc, char* argv[]) {
         // Setting up the syslog
         openlog(core_t::identity, LOG_PID | LOG_NDELAY, LOG_USER);
         setlogmask(LOG_UPTO(LOG_DEBUG));
+        
+        // Write the pidfile
+        std::ofstream file;
+        file.exceptions(std::ofstream::badbit | std::ofstream::failbit);
+
+        try {
+            file.open(pidfile.c_str(), std::ofstream::out | std::ofstream::trunc);
+        } catch(const std::ofstream::failure& e) {
+            syslog(LOG_ERR, "failed to write %s", pidfile.c_str());
+            return EXIT_FAILURE;
+        }     
+
+        file << getpid();
+        file.close();
     }
 
     syslog(LOG_INFO, "yappi is starting");
@@ -90,6 +110,7 @@ int main(int argc, char* argv[]) {
 
     // Cleanup
     delete core;
+    std::remove(pidfile.c_str());
 
     syslog(LOG_INFO, "yappi has terminated");    
     return EXIT_SUCCESS;
