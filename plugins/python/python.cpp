@@ -23,7 +23,7 @@ class python_t: public source_t {
         typedef track<PyGILState_STATE, PyGILState_Release> thread_state_t;
         typedef track<PyObject*, Py_DecRef> object_t;
         
-        // Format: python:///path/to/file.py/class?arg1=val1&arg2=...
+        // Format: python:///path/to/file.py/callable?arg1=val1&arg2=...
         python_t(const std::string& uri_):
             m_module(NULL),
             m_object(NULL)
@@ -31,20 +31,21 @@ class python_t: public source_t {
             // Parse the URI
             yappi::helpers::uri_t uri(uri_);
              
-            // Get the class name
-            std::vector<std::string> url = uri.path();
-            std::string classname = url.back();
-            url.pop_back();
+            // Get the callable name
+            std::vector<std::string> path = uri.path();
+            
+            std::string name = path.back();
+            path.pop_back();
            
-            // Get the file path
-            std::vector<std::string>::iterator it = url.begin();
-            std::string path("/");
+            // Get the code location
+            std::vector<std::string>::iterator it = path.begin();
+            std::string location("/");
 
             while(true) {
-                path += *it;
+                location += *it;
 
-                if(++it != url.end())
-                    path += '/';
+                if(++it != path.end())
+                    location += '/';
                 else
                     break;
             }
@@ -54,9 +55,9 @@ class python_t: public source_t {
             input.exceptions(std::ifstream::badbit | std::ifstream::failbit);
             
             try {
-                input.open(path.c_str(), std::ifstream::in);
+                input.open(location.c_str(), std::ifstream::in);
             } catch(const std::ifstream::failure& e) {
-                throw std::invalid_argument("cannot open " + path);
+                throw std::invalid_argument("cannot open " + location);
             }
 
             // Read the code
@@ -69,7 +70,7 @@ class python_t: public source_t {
             // Compile the code
             object_t code = Py_CompileString(
                 contents.str().c_str(),
-                path.c_str(),
+                location.c_str(),
                 Py_file_input);
 
             if(PyErr_Occurred()) {
@@ -84,26 +85,29 @@ class python_t: public source_t {
                 throw std::runtime_error(exception());
             }
 
-            // Check if the class is there
-            object_t type = PyObject_GetAttrString(m_module,
-                classname.c_str());
+            // Check if the callable is there
+            object_t callable = PyObject_GetAttrString(m_module,
+                name.c_str());
 
             if(PyErr_Occurred()) {
-                throw std::runtime_error(exception());
+                throw std::invalid_argument(exception());
             }
 
-            // And check if it's a type object
-            if(!PyType_Check(type)) {
-                throw std::runtime_error(classname + " is not a type object");
+            // And check if it's, well, callable
+            if(!PyCallable_Check(callable)) {
+                throw std::invalid_argument(name + " is not callable");
             }
 
-            // Finalize the type object
-            if(PyType_Ready(reinterpret_cast<PyTypeObject*>(*type)) != 0) {
-                throw std::runtime_error(exception());
+            // If it's a type object, finalize it
+            if(PyType_Check(callable)) {
+                if(PyType_Ready(reinterpret_cast<PyTypeObject*>(*callable)) != 0) {
+                    throw std::runtime_error(exception());
+                }
             }
 
-            // Create the instance
+            // Call it to create an instance
             dict_t parameters = uri.query();
+
             object_t args = PyTuple_New(0);
             object_t kwargs = PyDict_New();
 
@@ -116,15 +120,16 @@ class python_t: public source_t {
                     temp);
             }
             
-            m_object = PyObject_Call(type, args, kwargs);
+            m_object = PyObject_Call(callable, args, kwargs);
 
             if(PyErr_Occurred()) {
                 throw std::runtime_error(exception());
             }
 
-            // And check if it's iterable
+            // And check if the instance is iterable, i.e. a generator
+            // or an iterable object
             if(!PyIter_Check(m_object)) {
-                throw std::runtime_error("object is not iterable");
+                throw std::invalid_argument("object is not iterable");
             }
         }
 
@@ -142,8 +147,9 @@ class python_t: public source_t {
                 if(PyDict_Check(result)) {
                     // Borrowed references, so no need to track them
                     PyObject *key, *value;
-                    object_t k(NULL), v(NULL);
                     Py_ssize_t position = 0;
+                    
+                    object_t k(NULL), v(NULL);
 
                     // Iterate and convert everything to strings
                     while(PyDict_Next(result, &position, &key, &value)) {
@@ -168,16 +174,11 @@ class python_t: public source_t {
             object_t type(NULL), object(NULL), trackback(NULL);
             PyErr_Fetch(&type, &object, &trackback);
 
-            object_t name = PyObject_Str(type);
             object_t message = PyObject_Str(object);
            
-            std::ostringstream result;
-            result << PyString_AsString(name)
-                   << ": "
-                   << PyString_AsString(message);
-
             PyErr_Clear();
-            return result.str();
+            
+            return PyString_AsString(message);
         }
 
     protected:
