@@ -1,10 +1,7 @@
 #include <Python.h>
 
 #include <fstream>
-#include <sstream>
 #include <stdexcept>
-
-#include <syslog.h>
 
 #include "plugin.hpp"
 #include "uri.hpp"
