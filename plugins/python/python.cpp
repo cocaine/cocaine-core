@@ -4,6 +4,8 @@
 #include <sstream>
 #include <stdexcept>
 
+#include <syslog.h>
+
 #include "plugin.hpp"
 #include "uri.hpp"
 #include "track.hpp"
@@ -21,72 +23,108 @@ class python_t: public source_t {
         typedef track<PyGILState_STATE, PyGILState_Release> thread_state_t;
         typedef track<PyObject*, Py_DecRef> object_t;
         
+        // Format: python:///path/to/file.py/class?arg1=val1&arg2=...
         python_t(const std::string& uri_):
-            m_code(NULL),
-            m_state(PyDict_New())
+            m_module(NULL),
+            m_object(NULL)
         {
-            // Unpack the URI
-            // Format: python:///path/to/file.py/func?arg1=val1&arg2=...
+            // Parse the URI
             yappi::helpers::uri_t uri(uri_);
-
-            m_args = uri.query();
-            
-            std::vector<std::string> path = uri.path();
-            m_function = path.back();
+             
+            // Get the class name
+            std::vector<std::string> url = uri.path();
+            std::string classname = url.back();
+            url.pop_back();
            
-            // Join path components 
-            path.pop_back();
-            std::vector<std::string>::iterator it = path.begin();
-            std::string result("/");
+            // Get the file path
+            std::vector<std::string>::iterator it = url.begin();
+            std::string path("/");
 
             while(true) {
-                result += *it;
+                path += *it;
 
-                if(++it != path.end())
-                    result += '/';
+                if(++it != url.end())
+                    path += '/';
                 else
                     break;
             }
 
             // Try to open the file
             std::ifstream input;
-            input.exceptions(std::ifstream::badbit|std::ifstream::failbit);
+            input.exceptions(std::ifstream::badbit | std::ifstream::failbit);
             
             try {
-                input.open(result.c_str(), std::ifstream::in);
+                input.open(path.c_str(), std::ifstream::in);
             } catch(const std::ifstream::failure& e) {
-                throw std::invalid_argument("cannot open " + result);
+                throw std::invalid_argument("cannot open " + path);
             }
 
             // Read the code
-            std::stringstream code;
-            code << input.rdbuf();
+            std::stringstream contents;
+            contents << input.rdbuf();
 
             // Get the thread state
             thread_state_t state = PyGILState_Ensure();
             
-            // Compile the source
-            m_code = Py_CompileString(
-                code.str().c_str(),
-                result.c_str(),
+            // Compile the code
+            object_t code = Py_CompileString(
+                contents.str().c_str(),
+                path.c_str(),
                 Py_file_input);
 
             if(PyErr_Occurred()) {
                 throw std::runtime_error(exception());
             }
 
-            // Validate the code object
-            // It should be loadable as a module
-            object_t module = PyImport_ExecCodeModule(
-                module_name, m_code);
+            // Execute the code
+            m_module = PyImport_ExecCodeModule(
+                module_name, code);
             
             if(PyErr_Occurred()) {
                 throw std::runtime_error(exception());
             }
 
-            // And the function specified have to be there
-            if(!PyObject_HasAttrString(module, m_function.c_str())) {
-                throw std::invalid_argument("function not found");
+            // Check if the class is there
+            object_t type = PyObject_GetAttrString(m_module,
+                classname.c_str());
+
+            if(PyErr_Occurred()) {
+                throw std::runtime_error(exception());
+            }
+
+            // And check if it's a type object
+            if(!PyType_Check(type)) {
+                throw std::runtime_error(classname + " is not a type object");
+            }
+
+            // Finalize the type object
+            if(PyType_Ready(reinterpret_cast<PyTypeObject*>(*type)) != 0) {
+                throw std::runtime_error(exception());
+            }
+
+            // Create the instance
+            dict_t parameters = uri.query();
+            object_t args = PyTuple_New(0);
+            object_t kwargs = PyDict_New();
+
+            for(dict_t::iterator it = parameters.begin(); it != parameters.end(); ++it) {
+                object_t temp = PyString_FromString(it->second.c_str());
+                
+                PyDict_SetItemString(
+                    kwargs,
+                    it->first.c_str(),
+                    temp);
+            }
+            
+            m_object = PyObject_Call(type, args, kwargs);
+
+            if(PyErr_Occurred()) {
+                throw std::runtime_error(exception());
+            }
+
+            // And check if it's iterable
+            if(!PyIter_Check(m_object)) {
+                throw std::runtime_error("object is not iterable");
             }
         }
 
@@ -94,40 +132,13 @@ class python_t: public source_t {
             // Get the thread state
             thread_state_t state = PyGILState_Ensure();
 
-            // Importing the code as module
-            // Doing this every time to avoid clashes with
-            // other plugin instances. No error checks are
-            // needed here, as they are done in the constructor
-            object_t module = PyImport_ExecCodeModule(
-                module_name, m_code);
-            
-            // Add a persistent state
-            Py_INCREF(m_state);
-            PyModule_AddObject(module, "state", m_state);
-            
-            object_t function = PyObject_GetAttrString(module,
-                m_function.c_str());
-
-            // Empty args and kwargs for the function
-            object_t args = PyTuple_New(0);
-            object_t kwargs = PyDict_New();
-
-            for(dict_t::iterator it = m_args.begin(); it != m_args.end(); ++it) {
-                object_t temp = PyString_FromString(it->second.c_str());
-                PyDict_SetItemString(
-                    kwargs,
-                    it->first.c_str(),
-                    temp);
-            }
-
             // Invoke the function
-            object_t result = PyObject_Call(function, args, kwargs);
             dict_t dict;
+            object_t result = PyIter_Next(m_object);
 
             if(!result.valid() || PyErr_Occurred()) {
                 dict["exception"] = exception();
             } else {
-                // We got a dict
                 if(PyDict_Check(result)) {
                     // Borrowed references, so no need to track them
                     PyObject *key, *value;
@@ -144,7 +155,6 @@ class python_t: public source_t {
                             PyString_AsString(v)));
                     }
                 } else if(result != Py_None) {
-                    // We got something else
                     // Convert it to string and return as-is
                     object_t string = PyObject_Str(result);
                     dict["result"] = PyString_AsString(string);
@@ -170,13 +180,9 @@ class python_t: public source_t {
             return result.str();
         }
 
-    private:
-        object_t m_code;
-        object_t m_state;
-
+    protected:
+        object_t m_module, m_object;
         static char module_name[];
-        std::string m_function;
-        dict_t m_args;
 };
 
 char python_t::module_name[] = "yappi";
