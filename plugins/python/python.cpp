@@ -22,7 +22,8 @@ class python_t: public source_t {
         typedef track<PyObject*, Py_DecRef> object_t;
         
         python_t(const std::string& uri_):
-            m_code(NULL)
+            m_code(NULL),
+            m_state(PyDict_New())
         {
             // Unpack the URI
             // Format: python:///path/to/file.py/func?arg1=val1&arg2=...
@@ -99,6 +100,11 @@ class python_t: public source_t {
             // needed here, as they are done in the constructor
             object_t module = PyImport_ExecCodeModule(
                 module_name, m_code);
+            
+            // Add a persistent state
+            Py_INCREF(m_state);
+            PyModule_AddObject(module, "state", m_state);
+            
             object_t function = PyObject_GetAttrString(module,
                 m_function.c_str());
 
@@ -166,13 +172,14 @@ class python_t: public source_t {
 
     private:
         object_t m_code;
+        object_t m_state;
 
         static char module_name[];
         std::string m_function;
         dict_t m_args;
 };
 
-char python_t::module_name[] = "temporary";
+char python_t::module_name[] = "yappi";
 
 extern "C" {
     // Source factories

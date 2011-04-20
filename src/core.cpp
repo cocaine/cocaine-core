@@ -371,6 +371,8 @@ void core_t::once(const std::deque<std::string>& identity, const std::string& ur
             args[it->first] = it->second;
         }
     }
+
+    delete source;
 }
 
 // Publishing format (not JSON, as it will render subscription mechanics pointless):
