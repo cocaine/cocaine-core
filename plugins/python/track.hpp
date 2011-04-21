@@ -1,6 +1,6 @@
 #include <algorithm>
 
-namespace yandex { namespace helpers {
+namespace yappi { namespace helpers {
     template<typename T, void (*D)(T)> struct track {
         public:
             track(T object):
