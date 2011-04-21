@@ -235,7 +235,9 @@ void engine_t::slave_t::operator()(ev::timer& timer, int revents) {
             return;
         }
     } catch(const std::exception& e) {
+        delete dict;
         dict = new dict_t();
+
         dict->insert(std::make_pair("exception", e.what()));
     }   
 

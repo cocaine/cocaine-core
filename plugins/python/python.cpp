@@ -138,9 +138,9 @@ class python_t: public source_t {
             dict_t dict;
             object_t result = PyIter_Next(m_object);
 
-            if(!result.valid() || PyErr_Occurred()) {
+            if(PyErr_Occurred()) {
                 dict["exception"] = exception();
-            } else {
+            } else if(result.valid()) {
                 if(PyDict_Check(result)) {
                     // Borrowed references, so no need to track them
                     PyObject *key, *value;
@@ -207,5 +207,9 @@ extern "C" {
         PyEval_ReleaseLock();
 
         return &info;
+    }
+
+    __attribute__((destructor)) void finalize() {
+        Py_Finalize();
     }
 }
