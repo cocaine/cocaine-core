@@ -11,7 +11,7 @@ plugin = env.SharedLibrary(
     source = ["python.cpp"],
     CXXFLAGS = ["-Wno-longlong"],
     CPPPATH = ["#include", os.path.join("/", "usr", "include", python_version)],
-    LIBS = ["uriparser", python_version],
+    LIBS = ["uriparser", python_version, "curl"],
     LINKFLAGS = ["-Wl,-Bsymbolic"])
 
 Return("plugin")
