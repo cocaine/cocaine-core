@@ -18,6 +18,7 @@ engine_t::engine_t(const std::string& uri, source_t* source, zmq::context_t& con
 
     // And start the thread
     if(pthread_create(&m_thread, NULL, &bootstrap, task) == EAGAIN) {
+        delete task;
         throw std::runtime_error("system thread limit exceeded");
     }
 }
