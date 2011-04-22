@@ -1,7 +1,9 @@
 #include "python.hpp"
 
-#include <fstream>
 #include <stdexcept>
+#include <fstream>
+
+#include <curl/curl.h>
 
 #include "uri.hpp"
 
@@ -14,49 +16,80 @@ namespace yappi { namespace plugin {
 
 char python_t::identity[] = "yappi";
 
+size_t stream_writer(void* data, size_t size, size_t nmemb, void* stream) {
+    std::stringstream* out = reinterpret_cast<std::stringstream*>(stream);
+    out->write(reinterpret_cast<char*>(data), size * nmemb);
+
+    return size * nmemb;
+}
+
 python_t::python_t(const std::string& uri_):
     m_module(NULL),
     m_object(NULL)
 {
     // Parse the URI
     helpers::uri_t uri(uri_);
-     
-    // Get the callable name
-    std::vector<std::string> path = uri.path();
-    std::string name = path.back();
-    path.pop_back();
-   
-    // Get the code location
-    std::vector<std::string>::iterator it = path.begin();
-    std::string location("/");
-
-    while(true) {
-        location += *it;
-
-        if(++it != path.end())
-            location += '/';
-        else
-            break;
-    }
-
-    // Try to open the file
-    std::ifstream input;
-    input.exceptions(std::ifstream::badbit | std::ifstream::failbit);
     
-    try {
-        input.open(location.c_str(), std::ifstream::in);
-    } catch(const std::ifstream::failure& e) {
-        throw std::invalid_argument("cannot open " + location);
+    // Get the callable name
+    std::vector<std::string> target = uri.path();
+    std::string name = target.back();
+    target.pop_back();
+
+    // Join the path components
+    std::string path;
+    std::vector<std::string>::const_iterator it = target.begin();
+       
+    do {
+        path += ('/' + *it);
+        ++it;
+    } while(it != target.end());
+    
+    // Get the code
+    std::stringstream code;
+    
+    if(uri.host().length()) {
+        // The code is stored on some remote host
+        char error_message[CURL_ERROR_SIZE];
+        CURL* curl = curl_easy_init();
+
+        if(!curl) {
+            throw std::runtime_error("failed to initialize libcurl");
+        }
+
+        curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1);
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 0);
+        curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, &error_message);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &stream_writer);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &code);
+        curl_easy_setopt(curl, CURLOPT_URL, ("http://" + uri.host() + path).c_str());
+        curl_easy_setopt(curl, CURLOPT_USERAGENT, "Yappi/0.1");
+        curl_easy_setopt(curl, CURLOPT_HTTPGET, 1);
+        curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 1000);
+        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, 1000);
+        curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
+
+        if(curl_easy_perform(curl) != 0) {
+            throw std::runtime_error(error_message);
+        }
+
+        curl_easy_cleanup(curl);
+    } else {
+        // The code is stored locally
+        std::ifstream input(path.c_str());
+        
+        if(!input.is_open()) {
+            throw std::invalid_argument("cannot open " + path);
+        }
+
+        // Read the code
+        code << input.rdbuf();
     }
 
-    // Read the code
-    std::stringstream code;
-    code << input.rdbuf();
-
-    instantiate(code.str(), name, uri.query());
+    create(code.str(), name, uri.query());
 }
 
-void python_t::instantiate(const std::string& code,
+void python_t::create(const std::string& code,
                            const std::string& name,
                            const dict_t& parameters)
 {

@@ -8,16 +8,19 @@
 
 namespace yappi { namespace plugin {
 
-// Format: python:///path/to/file.py/callable?arg1=val1&arg2=...
+// Format: python://[hostname]/path/to/file.py/callable?arg1=val1&arg2=...
 class python_t: public source_t {
     public:
+        // The source protocol implementation
         python_t(const std::string& uri);
-
-        void instantiate(const std::string& code,
-                         const std::string& name, 
-                         const dict_t& parameters);
         virtual dict_t fetch();
 
+        // Instantiates the iterable object from the supplied code
+        void create(const std::string& code,
+                    const std::string& name, 
+                    const dict_t& parameters);
+
+        // Fetches and formats current Python exception as a string
         std::string exception();
 
     protected:
