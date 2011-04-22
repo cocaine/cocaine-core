@@ -264,7 +264,7 @@ void core_t::subscribe(const std::deque<std::string>& identity, const std::strin
     
     // Validate the interval
     if(interval <= 0) {
-        syslog(LOG_ERR, "invalid interval value: interval is too low");
+        syslog(LOG_ERR, "invalid interval: interval is too low");
         args["error"] = "invalid interval: interval is too low";
         return;
     }
@@ -317,7 +317,7 @@ void core_t::unsubscribe(const std::deque<std::string>& identity, const std::str
     
     // Validate the interval
     if(interval <= 0) {
-        syslog(LOG_ERR, "invalid interval value: interval is too low");
+        syslog(LOG_ERR, "invalid interval: interval is too low");
         args["error"] = "invalid interval: interval is too low";
         return;
     }
