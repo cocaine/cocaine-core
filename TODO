@@ -1,6 +1,7 @@
 v Socket identity support
 v HTTP plugin
 v JSON command protocol + bulk commands
+* Fix libev+zmq integration
 * Python + DHT torrent plugin
 
 * Statistics
