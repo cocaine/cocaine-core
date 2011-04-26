@@ -1,6 +1,8 @@
 #include <stdexcept>
 #include <sstream>
 
+#include <msgpack.hpp>
+
 #include "engine.hpp"
 
 using namespace yappi::engine;
@@ -154,14 +156,14 @@ void engine_t::overseer_t::operator()(ev::io& io, int revents) {
         // And if we do, receive it 
         m_socket.recv(&message);
         cmd.assign(
-            reinterpret_cast<char*>(message.data()),
+            reinterpret_cast<const char*>(message.data()),
             message.size());
 
         if(cmd == "schedule") {
             // Receive the key
             m_socket.recv(&message);
             std::string key(
-                reinterpret_cast<char*>(message.data()),
+                reinterpret_cast<const char*>(message.data()),
                 message.size());
  
             // Receive the interval
@@ -181,7 +183,7 @@ void engine_t::overseer_t::operator()(ev::io& io, int revents) {
             // Receive the key
             m_socket.recv(&message);
             std::string key(
-                reinterpret_cast<char*>(message.data()),
+                reinterpret_cast<const char*>(message.data()),
                 message.size());  
 
             // Kill the slave
@@ -225,28 +227,29 @@ engine_t::slave_t::~slave_t() {
 }
 
 void engine_t::slave_t::operator()(ev::timer& timer, int revents) {
-    dict_t* dict;
+    dict_t dict;
 
     try {
-        dict = new dict_t(m_source->fetch());
-        
-        // Do nothing if plugin has returned an empty dict
-        if(dict->size() == 0) {
-            delete dict;
-            return;
-        }
+        dict = m_source->fetch();
     } catch(const std::exception& e) {
-        delete dict;
-        dict = new dict_t();
-
-        dict->insert(std::make_pair("exception", e.what()));
+        syslog(LOG_ERR, "plugin %s invocation failed: %s", m_key.c_str(), e.what());
+        return;
     }   
+        
+    // Do nothing if plugin has returned an empty dict
+    if(dict.size() == 0) {
+        return;
+    }
 
     zmq::message_t message(m_key.length());
     memcpy(message.data(), m_key.data(), m_key.length());
     m_socket.send(message, ZMQ_SNDMORE);
 
-    message.rebuild(sizeof(dict));
-    memcpy(message.data(), &dict, sizeof(dict));
+    // Serialize the dict
+    msgpack::sbuffer buffer;
+    msgpack::pack(buffer, dict);
+
+    message.rebuild(buffer.size());
+    memcpy(message.data(), buffer.data(), buffer.size());
     m_socket.send(message);
 }

@@ -4,6 +4,7 @@
 #include <stdexcept>
 
 #include <boost/bind.hpp>
+#include <msgpack.hpp>
 
 #include "core.hpp"
 
@@ -29,6 +30,9 @@ core_t::core_t(const std::vector<std::string>& listeners,
     
     syslog(LOG_INFO, "using libev version %d.%d",
         ev_version_major(), ev_version_minor());
+
+    syslog(LOG_INFO, "using msgpack version %s",
+        msgpack_version());
 
     // Initialize sockets
     int fd;
@@ -98,6 +102,10 @@ void core_t::run() {
     m_loop.loop();
 }
 
+void core_t::terminate(ev::sig& sig, int revents) {
+    m_loop.unloop();
+}
+
 void core_t::dispatch(ev::io& io, int revents) {
     uint32_t events;
     size_t size = sizeof(events);
@@ -128,14 +136,14 @@ void core_t::dispatch(ev::io& io, int revents) {
             }  
 
             identity.push_back(std::string(
-                reinterpret_cast<char*>(message.data()),
+                reinterpret_cast<const char*>(message.data()),
                 message.size()));
         }
 
         // Fetch the actual request
         s_listener.recv(&message);
         request.assign(
-            reinterpret_cast<char*>(message.data()),
+            reinterpret_cast<const char*>(message.data()),
             message.size());
 
         // Try to parse the incoming JSON document
@@ -253,9 +261,9 @@ void core_t::subscribe(const std::deque<std::string>& identity, const std::strin
     try {
         interval = args.get("interval", 0).asUInt();
     } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "invalid interval value: %s", e.what());
+        syslog(LOG_ERR, "invalid interval type: %s", e.what());
         args.clear();
-        args["error"] = std::string("invalid interval value: ") + e.what();
+        args["error"] = std::string("invalid interval type: ") + e.what();
         return;
     }
 
@@ -264,8 +272,8 @@ void core_t::subscribe(const std::deque<std::string>& identity, const std::strin
     
     // Validate the interval
     if(interval <= 0) {
-        syslog(LOG_ERR, "invalid interval: interval is too low");
-        args["error"] = "invalid interval: interval is too low";
+        syslog(LOG_ERR, "invalid interval value: interval is too low");
+        args["error"] = "invalid interval value: interval is too low";
         return;
     }
 
@@ -296,7 +304,7 @@ void core_t::subscribe(const std::deque<std::string>& identity, const std::strin
     }
 
     // Schedule the URI and return the subscription key
-    args["result"] = engine->schedule(identity, interval);
+    args["key"] = engine->schedule(identity, interval);
 }
 
 void core_t::unsubscribe(const std::deque<std::string>& identity, const std::string& uri, Json::Value& args) {
@@ -317,8 +325,8 @@ void core_t::unsubscribe(const std::deque<std::string>& identity, const std::str
     
     // Validate the interval
     if(interval <= 0) {
-        syslog(LOG_ERR, "invalid interval: interval is too low");
-        args["error"] = "invalid interval: interval is too low";
+        syslog(LOG_ERR, "invalid interval value: interval is too low");
+        args["error"] = "invalid interval value: interval is too low";
         return;
     }
 
@@ -327,7 +335,7 @@ void core_t::unsubscribe(const std::deque<std::string>& identity, const std::str
 
     if(it == m_engines.end()) {
         syslog(LOG_ERR, "no engine was found for uri: %s", uri.c_str());
-        args["error"] = "not found";
+        args["error"] = "no engine was found for uri";
     } else {
         try {
             // Try to unsubscribe the client
@@ -385,7 +393,7 @@ void core_t::publish(ev::io& io, int revents) {
 
     zmq::message_t message;
     std::string key;
-    dict_t* dict = NULL;
+    dict_t dict;
     
     while(true) {
         // Check if we really have a message
@@ -394,17 +402,24 @@ void core_t::publish(ev::io& io, int revents) {
             break;
         }
 
-        // If we do, receive it
+        // Receive the key
         s_sink.recv(&message);
         key.assign(
-            reinterpret_cast<char*>(message.data()),
+            reinterpret_cast<const char*>(message.data()),
             message.size());
     
+        // Receive the data
         s_sink.recv(&message);
-        memcpy(&dict, message.data(), message.size());
+        
+        msgpack::unpacked unpacked;
+        msgpack::unpack(&unpacked,
+            reinterpret_cast<const char*>(message.data()),
+            message.size());
+        msgpack::object object = unpacked.get();
+        object.convert(&dict);
 
         // Disassemble and send in the envelopes
-        for(dict_t::const_iterator it = dict->begin(); it != dict->end(); ++it) {
+        for(dict_t::const_iterator it = dict.begin(); it != dict.end(); ++it) {
             std::ostringstream envelope;
             envelope << key << " " << it->first << " @" 
                      << std::fixed << std::setprecision(3) << m_loop.now();
@@ -418,10 +433,6 @@ void core_t::publish(ev::io& io, int revents) {
             s_publisher.send(message);
         }
 
-        delete dict;
+        dict.clear();
     }
-}
-
-void core_t::terminate(ev::sig& sig, int revents) {
-    m_loop.unloop();
 }

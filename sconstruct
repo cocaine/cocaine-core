@@ -22,7 +22,7 @@ library = env.SharedLibrary(
     target = "build/yappi",
     source = ["src/registry.cpp", "src/engine.cpp", "src/core.cpp"],
     CPPPATH = ["foreign/jsoncpp-0.5.0/include", "include"],
-    LIBS = ["pthread", "dl", "zmq", "ev", "crypto", "uriparser", json],
+    LIBS = ["pthread", "dl", "zmq", "ev", "crypto", "uriparser", json, "msgpack"],
     LINKFLAGS = ["-Wl,-soname=libyappi.so.1", "-Wl,-Bsymbolic"])
 
 binary = env.Program(
