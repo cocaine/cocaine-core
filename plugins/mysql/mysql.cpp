@@ -5,7 +5,7 @@
 #include "uri.hpp"
 #include "plugin.hpp"
 
-using namespace yappi::plugin;
+namespace yappi { namespace plugin {
 
 class mysql_t: public source_t {
     public:
@@ -58,17 +58,21 @@ class mysql_t: public source_t {
         unsigned int m_port, m_connect_timeout, m_read_timeout, m_write_timeout;
 };
 
-extern "C" {
-    void* create_instance(const char* uri) {
-        return new mysql_t(uri);
+void* create_mysql_instance(const char* uri) {
+    return new mysql_t(uri);
+}
+
+const plugin_info_t plugin_info = {
+    1,
+    {
+        { "mysql", &create_mysql_instance }
     }
+};
 
-    const plugin_info_t info = {
-        1,
-        {{ "mysql", &create_instance }}
-    };
-
+extern "C" {
     const plugin_info_t* initialize() {
-        return &info;
+        return &plugin_info;
     }
 }
+
+}}

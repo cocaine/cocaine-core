@@ -10,7 +10,7 @@
 // * std::runtime_error
 // * std::invalid_argument
 
-using namespace yappi::plugin;
+namespace yappi { namespace plugin {
 
 zmq::context_t* g_context;
 
@@ -77,3 +77,5 @@ extern "C" {
         delete g_context;
     }
 }
+
+}}

@@ -208,19 +208,16 @@ std::string python_t::exception() {
     return PyString_AsString(message);
 }
 
+void* create_python_instance(const char* uri) {
+    return new python_t(uri);
+}
+
+const plugin_info_t plugin_info = {
+    1,
+    {{ "python", &create_python_instance }}
+};
+
 extern "C" {
-    // Source factories
-    void* create_instance(const char* uri) {
-        return new python_t(uri);
-    }
-
-    // Source factories table
-    const plugin_info_t info = {
-        1,
-        {{ "python", &create_instance }}
-    };
-
-    // Called by plugin registry on load
     const plugin_info_t* initialize() {
         // Initializes the Python subsystem
         Py_InitializeEx(0);
@@ -229,7 +226,7 @@ extern "C" {
         PyEval_InitThreads();
         PyEval_ReleaseLock();
 
-        return &info;
+        return &plugin_info;
     }
 
     __attribute__((destructor)) void finalize() {
