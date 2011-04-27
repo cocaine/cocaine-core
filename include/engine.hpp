@@ -42,6 +42,7 @@ class engine_t {
         class fetcher_t {
             public:
                 fetcher_t(task_t& task, const std::string& key);
+
                 void operator()(ev::timer& timer, int revents);
                 
             private:

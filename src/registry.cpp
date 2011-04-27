@@ -103,6 +103,5 @@ source_t* registry_t::instantiate(const std::string& uri_) {
     }
 
     factory_fn_t factory = it->second;
-    
     return reinterpret_cast<source_t*>(factory(uri.source().c_str()));
 }

@@ -31,7 +31,7 @@ core_t::core_t(const std::vector<std::string>& listeners,
     syslog(LOG_INFO, "using libev version %d.%d",
         ev_version_major(), ev_version_minor());
 
-    syslog(LOG_INFO, "using msgpack version %s",
+    syslog(LOG_INFO, "using libmsgpack version %s",
         msgpack_version());
 
     // Initialize sockets
@@ -395,6 +395,7 @@ void core_t::publish(ev::io& io, int revents) {
     while(true) {
         // Check if we really have a message
         s_sink.getsockopt(ZMQ_EVENTS, &events, &size);
+
         if(!(events & ZMQ_POLLIN)) {
             break;
         }
