@@ -11,7 +11,9 @@ using namespace yappi::plugin;
 
 class plugin_t: public source_t {
     public:
-        plugin_t(const std::string& uri) {
+        plugin_t(const std::string& uri):
+            source_t(uri)
+        {
             // Your code to initialize the plugin instance
         }
     
@@ -37,6 +39,14 @@ static const plugin_info_t plugin_info = {
 
 extern "C" {
     const plugin_info_t* initialize() {
+        // Global initialization logic
+        // This function will be called once, from the main thread
+
         return &plugin_info;
     }
+
+    // __attribute__((destructor)) void finalize() {
+        // This is guaranteed to be called from the main thread,
+        // when there're no more plugin instances left running
+    // }
 }
