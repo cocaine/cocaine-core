@@ -4,19 +4,20 @@
 #include <msgpack.hpp>
 
 #include "engine.hpp"
+#include "digest.hpp"
 
 using namespace yappi::engine;
 using namespace yappi::plugin;
 
-engine_t::engine_t(const std::string& uri, source_t* source, zmq::context_t& context):
-    m_uri(uri),
+engine_t::engine_t(source_t* source, zmq::context_t& context):
+    m_hash(helpers::digest_t().get(source->uri())),
     m_socket(context, ZMQ_PAIR)
 {
     // Bind the controlling socket
-    m_socket.bind(("inproc://" + m_uri).c_str());
+    m_socket.bind(("inproc://" + m_hash).c_str());
     
     // Create a new task object for the thread
-    task_t* task = new task_t(m_uri, source, context);
+    task_t* task = new task_t(source, context);
 
     // And start the thread
     if(pthread_create(&m_thread, NULL, &bootstrap, task) == EAGAIN) {
@@ -35,11 +36,11 @@ engine_t::~engine_t() {
     pthread_join(m_thread, NULL);
 }
 
-std::string engine_t::schedule(const std::deque<std::string>& identity, time_t interval) {
+std::string engine_t::schedule(const identity_t& identity, time_t interval) {
     // Generate the subscription key
     std::ostringstream fmt;
-    fmt << m_uri << interval;
-    std::string key = m_digest.get(fmt.str());
+    fmt << m_hash << ':' << interval;
+    std::string key = fmt.str();
 
     if(m_subscriptions.count(key) == 0) {
         // Slave is not running yet, start it
@@ -64,11 +65,11 @@ std::string engine_t::schedule(const std::deque<std::string>& identity, time_t i
     return key;
 }
 
-void engine_t::deschedule(const std::deque<std::string>& identity, time_t interval) {
+void engine_t::deschedule(const identity_t& identity, time_t interval) {
     // Generate the subscription key
     std::ostringstream fmt;
-    fmt << m_uri << interval;
-    std::string key = m_digest.get(fmt.str());
+    fmt << m_hash << ':' << interval;
+    std::string key = fmt.str();
 
     // Unsubscribe the client if it is a subscriber
     std::pair<subscription_map_t::iterator, subscription_map_t::iterator> bounds =
@@ -99,15 +100,11 @@ void engine_t::deschedule(const std::deque<std::string>& identity, time_t interv
 
 void* engine_t::bootstrap(void* arg) {
     // Unpack the task
-    task_t* task = reinterpret_cast<task_t*>(arg);
+    std::auto_ptr<task_t> task(reinterpret_cast<task_t*>(arg));
 
     // Start the overseer. This blocks until stopped manually
     overseer_t overseer(*task);
     overseer.run();
-
-    // Cleanup
-    delete task->source;
-    delete task;
 
     return NULL;
 }
@@ -118,7 +115,7 @@ engine_t::overseer_t::overseer_t(task_t& task):
     m_task(task),
     m_socket(m_task.context, ZMQ_PAIR)
 {
-    syslog(LOG_DEBUG, "starting %s overseer", m_task.uri.c_str());
+    syslog(LOG_DEBUG, "starting %s overseer", m_task.source->uri().c_str());
     
     // Damn you, 0MQ
     m_loop.set_io_collect_interval(0.5);
@@ -132,7 +129,8 @@ engine_t::overseer_t::overseer_t(task_t& task):
     m_io.start(fd, EV_READ | EV_WRITE);
 
     // Connect to the engine's controlling socket
-    m_socket.connect(("inproc://" + m_task.uri).c_str());
+    m_socket.connect(("inproc://" + helpers::digest_t().get(
+        m_task.source->uri())).c_str());
 }
 
 void engine_t::overseer_t::run() {
@@ -149,6 +147,7 @@ void engine_t::overseer_t::operator()(ev::io& io, int revents) {
     while(true) {
         // Check if we actually have something in the socket
         m_socket.getsockopt(ZMQ_EVENTS, &events, &size);
+
         if(!(events & ZMQ_POLLIN)) {
             break;
         }
@@ -172,13 +171,16 @@ void engine_t::overseer_t::operator()(ev::io& io, int revents) {
             m_socket.recv(&message);
             memcpy(&interval, message.data(), message.size());
 
-            // Fire off a new slave
+            // Start a new slave
             syslog(LOG_DEBUG, "starting %s slave %s with interval: %lums",
-                m_task.uri.c_str(), key.c_str(), interval);
-            slave_t* slave = new slave_t(m_loop, m_task, key, interval);
-    
-            // And store it into the slave map
-            m_slaves[key] = slave;
+                m_task.source->uri().c_str(), key.c_str(), interval);
+            
+            ev::timer* slave = new ev::timer(m_loop);
+            slave->set(new fetcher_t(m_task, key));
+            slave->start(interval / 1000.0, interval / 1000.0);
+            
+            m_slaves.insert(key, slave);
+
         } else if(cmd == "deschedule") {
             // Receive the key
             m_socket.recv(&message);
@@ -188,19 +190,25 @@ void engine_t::overseer_t::operator()(ev::io& io, int revents) {
 
             // Kill the slave
             syslog(LOG_DEBUG, "stopping %s slave %s",
-                m_task.uri.c_str(), key.c_str());
+                m_task.source->uri().c_str(), key.c_str());
         
             slave_map_t::iterator it = m_slaves.find(key);
             
-            delete it->second;
+            it->second->stop();
+            delete static_cast<fetcher_t*>(it->second->data);
+            
             m_slaves.erase(it);
+
         } else if(cmd == "stop") {
-            syslog(LOG_DEBUG, "stopping %s overseer", m_task.uri.c_str());
+            syslog(LOG_DEBUG, "stopping %s overseer", m_task.source->uri().c_str());
 
             // Kill all the slaves
             for(slave_map_t::iterator it = m_slaves.begin(); it != m_slaves.end(); ++it) {
-                delete it->second;
+                it->second->stop();
+                delete static_cast<fetcher_t*>(it->second->data);
             }
+
+            m_slaves.clear();
 
             // After this, the event loop should unroll
             m_io.stop();
@@ -208,33 +216,25 @@ void engine_t::overseer_t::operator()(ev::io& io, int revents) {
     }
 }
 
-engine_t::slave_t::slave_t(ev::dynamic_loop& loop, task_t& task, const std::string& key, time_t interval):
-    m_timer(loop),
-    m_source(task.source),
-    m_socket(task.context, ZMQ_PUSH),
-    m_key(key)
+engine_t::fetcher_t::fetcher_t(task_t& task, const std::string& key):
+    m_key(key),
+    m_task(task),
+    m_socket(task.context, ZMQ_PUSH)
 {
     // Connect to the core
     m_socket.connect("inproc://sink");
-   
-    // Start up the timer 
-    m_timer.set(this);
-    m_timer.start(interval / 1000.0, interval / 1000.0);
 }
 
-engine_t::slave_t::~slave_t() {
-    m_timer.stop();
-}
-
-void engine_t::slave_t::operator()(ev::timer& timer, int revents) {
+void engine_t::fetcher_t::operator()(ev::timer& timer, int revents) {
     dict_t dict;
 
     try {
-        dict = m_source->fetch();
+        dict = m_task.source->fetch();
     } catch(const std::exception& e) {
-        syslog(LOG_ERR, "plugin %s invocation failed: %s", m_key.c_str(), e.what());
+        syslog(LOG_ERR, "plugin %s invocation failed: %s",
+            m_task.source->uri().c_str(), e.what());
         return;
-    }   
+    }
         
     // Do nothing if plugin has returned an empty dict
     if(dict.size() == 0) {

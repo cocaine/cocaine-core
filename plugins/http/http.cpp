@@ -14,7 +14,9 @@ using namespace yappi::plugin;
 
 class http_t: public source_t {
     public:
-        http_t(const std::string& uri) {
+        http_t(const std::string& uri):
+            source_t(uri)
+        {
             m_curl = curl_easy_init();
             
             if(!m_curl) {

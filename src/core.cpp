@@ -93,9 +93,7 @@ core_t::~core_t() {
     syslog(LOG_DEBUG, "shutting down the engines");
 
     // Stopping the engines
-    for(engine_map_t::iterator it = m_engines.begin(); it != m_engines.end(); ++it) {
-        delete it->second;
-    }
+    m_engines.clear();
 }
 
 void core_t::run() {
@@ -111,7 +109,7 @@ void core_t::dispatch(ev::io& io, int revents) {
     size_t size = sizeof(events);
 
     zmq::message_t message;
-    std::deque<std::string> identity;
+    identity_t identity;
     std::string request;
 
     Json::Reader reader(Json::Features::strictMode());
@@ -129,7 +127,6 @@ void core_t::dispatch(ev::io& io, int revents) {
         // Fetch the client's identity
         while(true) {
             s_listener.recv(&message);
-
             if(message.size() == 0) {
                 // Break if we got a delimiter
                 break;
@@ -215,11 +212,11 @@ void core_t::dispatch(ev::io& io, int revents) {
     }
 }
 
-void core_t::reply(const std::deque<std::string>& identity, const Json::Value& root) {
+void core_t::reply(const identity_t& identity, const Json::Value& root) {
     zmq::message_t message;
 
     // Send the identity
-    for(std::deque<std::string>::const_iterator it = identity.begin(); it != identity.end(); ++it) {
+    for(identity_t::const_iterator it = identity.begin(); it != identity.end(); ++it) {
         message.rebuild(it->length());    
         memcpy(message.data(), it->data(), it->length());
         s_listener.send(message, ZMQ_SNDMORE);
@@ -254,7 +251,7 @@ void core_t::reply(const std::deque<std::string>& identity, const Json::Value& r
 // * [x] History - fetch historical data without plugin invocation. 
 //   You can't fetch more messages than there were invocations:
 
-void core_t::subscribe(const std::deque<std::string>& identity, const std::string& uri, Json::Value& args) {
+void core_t::subscribe(const identity_t& identity, const std::string& uri, Json::Value& args) {
     time_t interval;
 
     // Validate arguments
@@ -286,8 +283,8 @@ void core_t::subscribe(const std::deque<std::string>& identity, const std::strin
     } else {
         try {
             // No engine was found, so try to start a new one
-            engine = new engine_t(uri, m_registry.instantiate(uri), m_context);
-            m_engines[uri] = engine;
+            engine = new engine_t(m_registry.instantiate(uri), m_context);
+            m_engines.insert(uri, engine);
         } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "runtime error: %s", e.what());
             args["error"] = std::string("runtime error: ") + e.what();
@@ -307,7 +304,7 @@ void core_t::subscribe(const std::deque<std::string>& identity, const std::strin
     args["key"] = engine->schedule(identity, interval);
 }
 
-void core_t::unsubscribe(const std::deque<std::string>& identity, const std::string& uri, Json::Value& args) {
+void core_t::unsubscribe(const identity_t& identity, const std::string& uri, Json::Value& args) {
     time_t interval;
 
     // Validate the arguments
@@ -348,7 +345,7 @@ void core_t::unsubscribe(const std::deque<std::string>& identity, const std::str
     }
 }
 
-void core_t::once(const std::deque<std::string>& identity, const std::string& uri, Json::Value& args) {
+void core_t::once(const identity_t& identity, const std::string& uri, Json::Value& args) {
     // No arguments for that type of command
     args.clear();
 

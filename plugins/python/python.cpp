@@ -24,6 +24,7 @@ size_t stream_writer(void* data, size_t size, size_t nmemb, void* stream) {
 }
 
 python_t::python_t(const std::string& uri_):
+    source_t(uri_),
     m_module(NULL),
     m_object(NULL)
 {

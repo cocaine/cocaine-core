@@ -17,6 +17,7 @@ zmq::context_t* g_context;
 class inject_t: public source_t {
     public:
         inject_t(const std::string& uri_):
+            source_t(uri_),
             m_socket(*g_context, ZMQ_PULL)
         {
             yappi::helpers::uri_t uri(uri_);

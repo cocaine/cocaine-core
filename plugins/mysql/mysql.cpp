@@ -10,6 +10,7 @@ using namespace yappi::plugin;
 class mysql_t: public source_t {
     public:
         mysql_t(const std::string& uri_):
+            source_t(uri_),
             m_connect_timeout(1),
             m_read_timeout(1),
             m_write_timeout(1)

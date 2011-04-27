@@ -22,5 +22,6 @@
     #error ZeroMQ version 2.1.0+ required!
 #endif
 
+typedef std::deque<std::string> identity_t;
 
 #endif
