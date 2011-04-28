@@ -45,7 +45,7 @@ registry_t::registry_t() {
         // Load the plugin
         // TODO: Make this portable, too.
         path = directory + '/' + namelist[count]->d_name;
-        plugin = dlopen(path.c_str(), RTLD_NOW);
+        plugin = dlopen(path.c_str(), RTLD_NOW | RTLD_GLOBAL);
         
         if(!plugin) {
             syslog(LOG_ERR, "failed to load %s", dlerror());

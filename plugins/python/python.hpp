@@ -23,9 +23,10 @@ class python_t: public source_t {
         // Fetches and formats current Python exception as a string
         std::string exception();
 
-    protected:
+    public:
         static char identity[];
 
+    private:
         typedef helpers::track<PyGILState_STATE, PyGILState_Release> thread_state_t;
         typedef helpers::track<PyObject*, Py_DecRef> object_t;
         

@@ -217,10 +217,15 @@ const plugin_info_t plugin_info = {
     {{ "python", &create_python_instance }}
 };
 
+static char* argv[] = { python_t::identity };
+
 extern "C" {
     const plugin_info_t* initialize() {
         // Initializes the Python subsystem
         Py_InitializeEx(0);
+
+        // Set the argc/argv in sys module
+        PySys_SetArgv(1, argv);
         
         // Initializes and releases GIL
         PyEval_InitThreads();
