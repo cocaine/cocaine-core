@@ -58,11 +58,9 @@ core_t::core_t(const std::vector<std::string>& listeners,
         syslog(LOG_INFO, "listening on %s", it->c_str());
     }
 
-    m_loop.set_io_collect_interval(0.5);
-
     s_listener.getsockopt(ZMQ_FD, &fd, &size);
     e_listener.set<core_t, &core_t::dispatch>(this);
-    e_listener.start(fd, EV_READ | EV_WRITE);
+    e_listener.start(fd, EV_READ);
 
     // Publishing socket
     s_publisher.setsockopt(ZMQ_HWM, &hwm, sizeof(hwm));
@@ -130,7 +128,7 @@ void core_t::dispatch(ev::io& io, int revents) {
             if(message.size() == 0) {
                 // Break if we got a delimiter
                 break;
-            }  
+            }
 
             identity.push_back(std::string(
                 reinterpret_cast<const char*>(message.data()),

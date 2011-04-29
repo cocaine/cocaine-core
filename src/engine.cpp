@@ -117,20 +117,19 @@ engine_t::overseer_t::overseer_t(task_t& task):
 {
     syslog(LOG_DEBUG, "starting %s overseer", m_task.source->uri().c_str());
     
-    // Damn you, 0MQ
-    m_loop.set_io_collect_interval(0.5);
-
     // Set the socket watcher
     int fd;
     size_t size = sizeof(fd);
+
+    // Connect to the engine's controlling socket
+    m_socket.connect(("inproc://" + helpers::digest_t().get(
+        m_task.source->uri())).c_str());
 
     m_socket.getsockopt(ZMQ_FD, &fd, &size);
     m_io.set(this);
     m_io.start(fd, EV_READ | EV_WRITE);
 
-    // Connect to the engine's controlling socket
-    m_socket.connect(("inproc://" + helpers::digest_t().get(
-        m_task.source->uri())).c_str());
+    m_loop.set_io_collect_interval(0.5);
 }
 
 void engine_t::overseer_t::run() {
@@ -138,7 +137,7 @@ void engine_t::overseer_t::run() {
 }
 
 void engine_t::overseer_t::operator()(ev::io& io, int revents) {
-    unsigned long events;
+    uint32_t events;
     size_t size = sizeof(events);
     
     zmq::message_t message;
