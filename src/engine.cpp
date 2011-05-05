@@ -65,12 +65,7 @@ std::string engine_t::schedule(const identity_t& identity, time_t interval) {
     return key;
 }
 
-void engine_t::deschedule(const identity_t& identity, time_t interval) {
-    // Generate the subscription key
-    std::ostringstream fmt;
-    fmt << m_hash << ':' << interval;
-    std::string key = fmt.str();
-
+void engine_t::deschedule(const identity_t& identity, const std::string& key) {
     // Unsubscribe the client if it is a subscriber
     std::pair<subscription_map_t::iterator, subscription_map_t::iterator> bounds =
         m_subscriptions.equal_range(key);

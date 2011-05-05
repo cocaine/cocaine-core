@@ -14,7 +14,7 @@ class engine_t {
         ~engine_t();
 
         std::string schedule(const identity_t& identity, time_t interval);
-        void deschedule(const identity_t& identity, time_t interval);
+        void deschedule(const identity_t& identity, const std::string& key);
 
     private:
         // Source hash for subscription key construction

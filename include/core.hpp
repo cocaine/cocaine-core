@@ -30,9 +30,14 @@ class core_t {
         void reply(const identity_t& identity, const Json::Value& root);
 
         // Built-in commands
-        void subscribe(const identity_t& identity, const std::string& uri, Json::Value& args);
-        void unsubscribe(const identity_t& identity, const std::string& uri, Json::Value& args);
-        void once(const identity_t& identity, const std::string& uri, Json::Value& args);
+        Json::Value push(const identity_t& identity,
+            const std::string& target, const Json::Value& args);
+        
+        Json::Value drop(const identity_t& identity,
+            const std::string& target, const Json::Value& args);
+        
+        Json::Value once(const identity_t& identity,
+            const std::string& target, const Json::Value& args);
 
         // Event processing
         void publish(ev::io& io, int revents);
@@ -44,17 +49,21 @@ class core_t {
         // Plugins
         registry_t m_registry;
 
-        // Command dispatch table
-        typedef boost::function<void(
+        // Command dispatching
+        typedef boost::function<Json::Value(
             const identity_t&,
             const std::string&,
-            Json::Value&)> command_fn_t;
+            const Json::Value&)> handler_fn_t;
 
-        std::map<std::string, command_fn_t> m_dispatch;
+        typedef std::map<std::string, handler_fn_t> dispatch_map_t;
+        dispatch_map_t m_dispatch;
 
-        // Engines
+        // Engine management
         typedef boost::ptr_map<const std::string, engine::engine_t> engine_map_t;
         engine_map_t m_engines;
+
+        typedef std::map<const std::string, engine::engine_t*> weak_engine_map_t;
+        weak_engine_map_t m_subscriptions;
 
         // Networking
         zmq::context_t m_context;

@@ -4,6 +4,8 @@
 #include <stdexcept>
 
 #include <boost/bind.hpp>
+#include <boost/tuple/tuple.hpp>
+
 #include <msgpack.hpp>
 
 #include "core.hpp"
@@ -82,8 +84,8 @@ core_t::core_t(const std::vector<std::string>& listeners,
     e_sigquit.start(SIGQUIT);
 
     // Initialize built-in command handlers
-    m_dispatch["subscribe"] = boost::bind(&core_t::subscribe, this, _1, _2, _3);
-    m_dispatch["unsubscribe"] = boost::bind(&core_t::unsubscribe, this, _1, _2, _3);
+    m_dispatch["push"] = boost::bind(&core_t::push, this, _1, _2, _3);
+    m_dispatch["drop"] = boost::bind(&core_t::drop, this, _1, _2, _3);
     m_dispatch["once"] = boost::bind(&core_t::once, this, _1, _2, _3);
 }
 
@@ -108,11 +110,12 @@ void core_t::dispatch(ev::io& io, int revents) {
 
     zmq::message_t message;
     identity_t identity;
+    
     std::string request;
-
     Json::Reader reader(Json::Features::strictMode());
-    Json::Value root;
-   
+    
+    Json::Value root, response;
+    
     while(true) {
         // Check if we have pending messages
         s_listener.getsockopt(ZMQ_EVENTS, &events, &size);
@@ -125,6 +128,7 @@ void core_t::dispatch(ev::io& io, int revents) {
         // Fetch the client's identity
         while(true) {
             s_listener.recv(&message);
+
             if(message.size() == 0) {
                 // Break if we got a delimiter
                 break;
@@ -137,6 +141,7 @@ void core_t::dispatch(ev::io& io, int revents) {
 
         // Fetch the actual request
         s_listener.recv(&message);
+        
         request.assign(
             reinterpret_cast<const char*>(message.data()),
             message.size());
@@ -144,69 +149,86 @@ void core_t::dispatch(ev::io& io, int revents) {
         // Try to parse the incoming JSON document
         if(!reader.parse(request, root)) {
             syslog(LOG_ERR, "invalid json: %s", reader.getFormatedErrorMessages().c_str());
-            root = Json::Value();
-            root["error"] = reader.getFormatedErrorMessages();
-            reply(identity, root);
+            
+            response["error"] = reader.getFormatedErrorMessages();
+            reply(identity, response);
+            
             continue;
         } 
 
-        // Check if root is a mapping
+        // Check if root is an object
         if(!root.isObject()) {
-            syslog(LOG_ERR, "invalid request: mapping expected");
-            root = Json::Value();
-            root["error"] = "mapping expected";
-            reply(identity, root);
+            syslog(LOG_ERR, "invalid request: object expected");
+            
+            response["error"] = "object expected";
+            reply(identity, response);
+            
             continue;
         }
+       
+        // Get the action
+        Json::Value action = root["action"];
+
+        if(action == Json::Value::null || !action.isString()) {
+            syslog(LOG_ERR, "invalid request: invalid action");
+
+            response["error"] = "invalid action";
+            reply(identity, response);
+            
+            continue;
+        }
+
+        response["action"] = action;
         
-        // Get all the requested method names
-        const Json::Value::Members methods = root.getMemberNames();
+        // Check if the action is supported
+        dispatch_map_t::iterator it = m_dispatch.find(action.asString());
 
-        // Iterate over all the method bodies
-        for(Json::Value::Members::const_iterator name = methods.begin(); name != methods.end(); ++name) {
-            // Check if the method is supported
-            if(m_dispatch.find(*name) == m_dispatch.end()) {
-                syslog(LOG_ERR, "method %s is not supported", name->c_str());
-                root[*name] = Json::Value();
-                root[*name]["error"] = "not supported";
+        if(it == m_dispatch.end()) {
+            syslog(LOG_ERR, "invalid request: action '%s' is not supported", action.asCString());
+            
+            response["error"] = "action is not supported";
+            reply(identity, response);
+            
+            continue;
+        }
+
+        handler_fn_t& handler = it->second;
+
+        // Check if we have any targets for the action
+        Json::Value targets = root["targets"];
+        
+        if(targets == Json::Value::null || !targets.isObject()) {
+            syslog(LOG_ERR, "invalid request: no targets specified");
+
+            response["error"] = "no targets specified";
+            reply(identity, response);
+            
+            continue;
+        }
+
+        // Iterate over all the targets
+        Json::Value::Members names = targets.getMemberNames();
+
+        for(Json::Value::Members::const_iterator name = names.begin(); name != names.end(); ++name) {
+            // Get the target args
+            Json::Value body = targets[*name];
+
+            // And check if it's an object
+            if(!body.isObject()) {
+                syslog(LOG_ERR, "invalid request target: object expected");
+
+                response["results"][*name] = Json::Value();
+                response["results"][*name]["error"] = "object expected";
+                
                 continue;
             }
-           
-            // Get the method body
-            Json::Value method = root[*name];
 
-            // And check if it's a mapping
-            if(!method.isObject()) {
-                syslog(LOG_ERR, "invalid method body: mapping expected");
-                root[*name] = Json::Value();
-                root[*name]["error"] = "mapping expected";
-                continue;
-            }
-
-            // Get all the requested URIs
-            const Json::Value::Members uris = method.getMemberNames();
-
-            // Iterate over all the requested URI arguments
-            for(Json::Value::Members::const_iterator uri = uris.begin(); uri != uris.end(); ++uri) {
-                // Get the requested URI argument
-                Json::Value args = root[*name][*uri];
-
-                // And check if it's a mapping
-                if(!args.isObject()) {
-                    syslog(LOG_ERR, "invalid uri arguments: mapping expected");
-                    root[*name][*uri] = Json::Value();
-                    root[*name][*uri]["error"] = "mapping expected";
-                    continue;
-                }
-
-                // Dispatch the requested URI and replace the arguments with the result
-                m_dispatch[*name](identity, *uri, args);
-                root[*name][*uri].swap(args);
-            }
+            // Dispatch
+            response["results"][*name] = handler(identity, *name, body);
         }
 
         // Send the response back to the client
-        reply(identity, root);
+        reply(identity, response);
     }
 }
 
@@ -235,11 +257,11 @@ void core_t::reply(const identity_t& identity, const Json::Value& root) {
 
 // Built-in commands:
 // --------------
-// * Subscribe - launches a thread which fetches data from the
+// * Push - launches a thread which fetches data from the
 //   specified source and publishes it via the PUB socket. Plugin
 //   will be invoked every 'timeout' milliseconds
 //
-// * Unsubscribe - shuts down the specified collector.
+// * Drop - shuts down the specified collector.
 //   Remaining messages will stay orphaned in the queue,
 //   so it's a good idea to drain it after the unsubscription:
 //
@@ -249,133 +271,108 @@ void core_t::reply(const identity_t& identity, const Json::Value& root) {
 // * [x] History - fetch historical data without plugin invocation. 
 //   You can't fetch more messages than there were invocations:
 
-void core_t::subscribe(const identity_t& identity, const std::string& uri, Json::Value& args) {
+Json::Value core_t::push(const identity_t& identity, const std::string& target, const Json::Value& args) {
+    Json::Value response;
     time_t interval;
 
-    // Validate arguments
+    // Parse the arguments
     try {
-        interval = args.get("interval", 0).asUInt();
+        interval = args.get("interval", 1000).asUInt();
     } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "invalid interval type: %s", e.what());
-        args.clear();
-        args["error"] = std::string("invalid interval type: ") + e.what();
-        return;
-    }
-
-    // Clear the node, as we will put the response into it
-    args.clear();
-    
-    // Validate the interval
-    if(interval <= 0) {
-        syslog(LOG_ERR, "invalid interval value: interval is too low");
-        args["error"] = "invalid interval value: interval is too low";
-        return;
+        syslog(LOG_ERR, "invalid interval: %s", e.what());
+        
+        response["error"] = std::string("invalid interval: ") + e.what();
+        return response;
     }
 
     // Check if we have an engine running for the given uri
-    engine_map_t::iterator it = m_engines.find(uri); 
-    engine_t* engine;
+    engine_map_t::iterator it = m_engines.find(target); 
 
-    if(it != m_engines.end()) {
-        engine = it->second;
-    } else {
+    if(it == m_engines.end()) {
         try {
             // No engine was found, so try to start a new one
-            engine = new engine_t(m_registry.instantiate(uri), m_context);
-            m_engines.insert(uri, engine);
+            engine_t* engine = new engine_t(m_registry.instantiate(target), m_context);
+            boost::tie(it, boost::tuples::ignore) = m_engines.insert(target, engine);
         } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "runtime error: %s", e.what());
-            args["error"] = std::string("runtime error: ") + e.what();
-            return;
+            response["error"] = std::string("runtime error: ") + e.what();
         } catch(const std::invalid_argument& e) {
             syslog(LOG_ERR, "invalid argument: %s", e.what());
-            args["error"] = std::string("invalid argument: ") + e.what();
-            return;
+            response["error"] = std::string("invalid argument: ") + e.what();
         } catch(const std::domain_error& e) {
             syslog(LOG_ERR, "unknown source: %s", e.what());
-            args["error"] = std::string("unknown source: ") + e.what();
-            return;
+            response["error"] = std::string("unknown source: ") + e.what();
         }
     }
 
-    // Schedule the URI and return the subscription key
-    args["key"] = engine->schedule(identity, interval);
+    if(!response.isMember("error")) {
+        // Schedule
+        std::string key = it->second->schedule(identity, interval);
+        
+        // Store the key into a weak mapping
+        m_subscriptions[key] = it->second;
+        response["key"] = key;
+    }
+
+    return response;
 }
 
-void core_t::unsubscribe(const identity_t& identity, const std::string& uri, Json::Value& args) {
-    time_t interval;
+Json::Value core_t::drop(const identity_t& identity, const std::string& target, const Json::Value& args) {
+    Json::Value response;
 
-    // Validate the arguments
-    try {
-        interval = args.get("interval", 0).asUInt();
-    } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "invalid interval type: %s", e.what());
-        args.clear();
-        args["error"] = std::string("invalid interval type: ") + e.what();
-        return;
-    }
+    // Check if we have such a subscription
+    weak_engine_map_t::iterator it = m_subscriptions.find(target);
 
-    // Clear the node, as we will put the response in it
-    args.clear();
-    
-    // Validate the interval
-    if(interval <= 0) {
-        syslog(LOG_ERR, "invalid interval value: interval is too low");
-        args["error"] = "invalid interval value: interval is too low";
-        return;
-    }
-
-    // Check if we have an engine for that URI
-    engine_map_t::iterator it = m_engines.find(uri);
-
-    if(it == m_engines.end()) {
-        syslog(LOG_ERR, "no engine was found for uri: %s", uri.c_str());
-        args["error"] = "no engine was found for uri";
+    if(it == m_subscriptions.end()) {
+        syslog(LOG_ERR, "subscription key not found: %s", target.c_str());
+        response["error"] = "not found";
     } else {
         try {
             // Try to unsubscribe the client
-            it->second->deschedule(identity, interval);
-            args["result"] = "success";
+            it->second->deschedule(identity, target);
+            m_subscriptions.erase(it);
+            response["result"] = "success";
         } catch(const std::invalid_argument& e) {
             syslog(LOG_ERR, "invalid argument: %s", e.what());
-            args["error"] = std::string("invalid argument: ") + e.what();
+            response["error"] = std::string("invalid argument: ") + e.what();
         }
     }
+
+    return response;
 }
 
-void core_t::once(const identity_t& identity, const std::string& uri, Json::Value& args) {
-    // No arguments for that type of command
-    args.clear();
-
-    source_t* source;
+Json::Value core_t::once(const identity_t& identity, const std::string& target, const Json::Value& args) {
+    Json::Value response;
+    source_t* source = NULL;
 
     try {
         // Try to instantiate the source
-        source = m_registry.instantiate(uri);
+        source = m_registry.instantiate(target);
     } catch(const std::runtime_error& e) {
         syslog(LOG_ERR, "runtime error: %s", e.what());
-        args["error"] = std::string("runtime error: ") + e.what();
-        return;
+        response["error"] = std::string("runtime error: ") + e.what();
     } catch(const std::invalid_argument& e) {
         syslog(LOG_ERR, "invalid argument: %s", e.what());
-        args["error"] = std::string("invalid argument: ") + e.what();
-        return;
+        response["error"] = std::string("invalid argument: ") + e.what();
     } catch(const std::domain_error& e) {
         syslog(LOG_ERR, "unknown source: %s", e.what());
-        args["error"] = std::string("unknown source: ") + e.what();
-        return;
+        response["error"] = std::string("unknown source: ") + e.what();
     }
 
-    // Fetch the data
-    dict_t dict = source->fetch();
+    if(!response.isMember("error") && source) {
+        // Fetch the data
+        dict_t dict = source->fetch();
 
-    if(dict.size()) {
-        for(dict_t::const_iterator it = dict.begin(); it != dict.end(); ++it) {
-            args[it->first] = it->second;
+        if(dict.size()) {
+            for(dict_t::const_iterator it = dict.begin(); it != dict.end(); ++it) {
+                response[it->first] = it->second;
+            }
         }
+
+        delete source;
     }
 
-    delete source;
+    return response;
 }
 
 // Publishing format (not JSON, as it will render subscription mechanics pointless):
