@@ -178,8 +178,6 @@ void core_t::dispatch(ev::io& io, int revents) {
             continue;
         }
 
-        response["action"] = action;
-        
         // Check if the action is supported
         dispatch_map_t::iterator it = m_dispatch.find(action.asString());
 
@@ -217,14 +215,14 @@ void core_t::dispatch(ev::io& io, int revents) {
             if(!body.isObject()) {
                 syslog(LOG_ERR, "invalid request target: object expected");
 
-                response["results"][*name] = Json::Value();
-                response["results"][*name]["error"] = "object expected";
+                response[*name] = Json::Value();
+                response[*name]["error"] = "object expected";
                 
                 continue;
             }
 
             // Dispatch
-            response["results"][*name] = handler(identity, *name, body);
+            response[*name] = handler(identity, *name, body);
         }
 
         // Send the response back to the client
