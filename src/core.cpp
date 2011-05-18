@@ -60,9 +60,11 @@ core_t::core_t(const std::vector<std::string>& listeners,
         syslog(LOG_INFO, "listening on %s", it->c_str());
     }
 
+    m_loop.set_io_collect_interval(0.5);
+
     s_listener.getsockopt(ZMQ_FD, &fd, &size);
     e_listener.set<core_t, &core_t::dispatch>(this);
-    e_listener.start(fd, EV_READ);
+    e_listener.start(fd, EV_READ | EV_WRITE);
 
     // Publishing socket
     s_publisher.setsockopt(ZMQ_HWM, &hwm, sizeof(hwm));
