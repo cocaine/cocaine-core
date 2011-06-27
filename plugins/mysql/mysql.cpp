@@ -29,27 +29,17 @@ class mysql_t: public source_t {
         dict_t fetch() {
             dict_t dict;
 
-            MYSQL handle;
-            mysql_init(&handle);
+            MYSQL connection;
+            mysql_init(&connection);
 
             mysql_options(&handle, MYSQL_OPT_CONNECT_TIMEOUT, reinterpret_cast<const char*>(&m_connect_timeout));
             mysql_options(&handle, MYSQL_OPT_READ_TIMEOUT, reinterpret_cast<const char*>(&m_read_timeout));
             mysql_options(&handle, MYSQL_OPT_WRITE_TIMEOUT, reinterpret_cast<const char*>(&m_write_timeout));
-            MYSQL* result = mysql_real_connect(&handle, m_host.c_str(), m_username.c_str(), m_password.c_str(), m_db.c_str(), m_port, NULL, 0);
-            dict["availability"] = result ? "available" : "down";
-
-            if(result) {
-                MYSQL_RES* result = mysql_list_processes(&handle);
-                
-                // Getting the number of processes
-                std::ostringstream s_total;
-                s_total << mysql_num_rows(result);
-                dict["processes:total"] = s_total.str();
-
-                mysql_free_result(result);
-            }
+            mysql = mysql_real_connect(&connection, m_host.c_str(), m_username.c_str(), m_password.c_str(), m_db.c_str(), m_port, NULL, 0);
             
-            mysql_close(&handle);
+            dict["availability"] = connection ? "available" : "down";
+
+            mysql_close(&connection);
             return dict;
         }
 
