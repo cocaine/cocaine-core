@@ -16,7 +16,7 @@ using namespace yappi::plugin;
 
 namespace {
     // TODO: Make this portable
-    int filter(const dirent *entry) {
+    int filter(dirent *entry) {
         return (entry->d_type == DT_REG && strstr(entry->d_name, ".so"));
     }
 }
