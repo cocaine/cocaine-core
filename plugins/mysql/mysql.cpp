@@ -28,18 +28,21 @@ class mysql_t: public source_t {
 
         dict_t fetch() {
             dict_t dict;
+            MYSQL* connection = mysql_init(NULL);
 
-            MYSQL connection;
-            mysql_init(&connection);
+            if(!connection) {
+                dict["availability"] = "down";
+                return dict;
+            }
 
-            mysql_options(&handle, MYSQL_OPT_CONNECT_TIMEOUT, reinterpret_cast<const char*>(&m_connect_timeout));
-            mysql_options(&handle, MYSQL_OPT_READ_TIMEOUT, reinterpret_cast<const char*>(&m_read_timeout));
-            mysql_options(&handle, MYSQL_OPT_WRITE_TIMEOUT, reinterpret_cast<const char*>(&m_write_timeout));
-            mysql = mysql_real_connect(&connection, m_host.c_str(), m_username.c_str(), m_password.c_str(), m_db.c_str(), m_port, NULL, 0);
+            mysql_options(connection, MYSQL_OPT_CONNECT_TIMEOUT, reinterpret_cast<const char*>(&m_connect_timeout));
+            mysql_options(connection, MYSQL_OPT_READ_TIMEOUT, reinterpret_cast<const char*>(&m_read_timeout));
+            mysql_options(connection, MYSQL_OPT_WRITE_TIMEOUT, reinterpret_cast<const char*>(&m_write_timeout));
+            connection = mysql_real_connect(connection, m_host.c_str(), m_username.c_str(), m_password.c_str(), m_db.c_str(), m_port, NULL, 0);
             
             dict["availability"] = connection ? "available" : "down";
 
-            mysql_close(&connection);
+            mysql_close(connection);
             return dict;
         }
 
