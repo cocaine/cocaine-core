@@ -8,8 +8,6 @@ env.Alias("install", '.')
 
 env.Append(CXXFLAGS = ["-g", "-O2", "-Wall", "-pthread", "-rdynamic"])
 
-Export(['env', 'prefix'])
-
 json = env.StaticLibrary(
     target = "build/json",
     source = ["foreign/jsoncpp-0.5.0/src/lib_json/json_reader.cpp",
@@ -17,6 +15,8 @@ json = env.StaticLibrary(
               "foreign/jsoncpp-0.5.0/src/lib_json/json_value.cpp"],
     CXXFLAGS = ["-fPIC"],
     CPPPATH = ["foreign/jsoncpp-0.5.0/include"])
+
+Export(['env', 'prefix', 'json'])
 
 library = env.SharedLibrary(
     target = "build/yappi",
@@ -37,6 +37,7 @@ dev = env.File(["include/plugin.hpp", "include/uri.hpp"])
 env.Requires(binary, library)
 
 plugins = SConscript("plugins/sconscript")
+clients = SConscript("clients/sconscript")
 
 env.Install(prefix + "/usr/bin", binary)
 env.InstallAs(prefix + "/usr/lib/libyappi.so.1", library)

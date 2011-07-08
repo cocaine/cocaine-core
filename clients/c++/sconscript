@@ -1,0 +1,17 @@
+#!/usr/bin/scons
+
+Import(['env', 'prefix', 'json'])
+
+client = env.SharedLibrary(
+    target = "#build/yappi-client",
+    source = ["client.cpp"],
+    CPPPATH = ["#include", "#foreign/jsoncpp-0.5.0/include"],
+    LIBS = ["uuid", "zmq", json],
+    LINKFLAGS = ["-Wl,-soname=libyappi-client.so.1", "-Wl,-Bsymbolic"])
+
+dev = env.File("client.hpp")
+
+env.InstallAs(prefix + "/usr/lib/libyappi-client.so.1", client)
+env.Install(prefix + "/usr/include/yappi", dev)
+
+Return("client")
