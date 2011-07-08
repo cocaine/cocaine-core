@@ -37,9 +37,10 @@ dev = env.File(["include/plugin.hpp", "include/uri.hpp", "clients/c++/client.hpp
 env.Requires(binary, library)
 
 plugins = SConscript("plugins/sconscript")
-clients = SConscript("clients/sconscript")
+client = SConscript("clients/c++/sconscript")
 
 env.Install(prefix + "/usr/bin", binary)
 env.InstallAs(prefix + "/usr/lib/libyappi.so.1", library)
+env.InstallAs(prefix + "/usr/lib/libyappi-client.so.1", client)
 env.Install(prefix + "/usr/include/yappi", dev)
 env.Install(prefix + "/usr/lib/yappi", plugins)

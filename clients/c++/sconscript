@@ -11,7 +11,4 @@ client = env.SharedLibrary(
 
 dev = env.File("client.hpp")
 
-env.InstallAs(prefix + "/usr/lib/libyappi-client.so.1", client)
-env.Install(prefix + "/usr/include/yappi", dev)
-
 Return("client")
