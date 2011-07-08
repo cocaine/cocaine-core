@@ -32,7 +32,7 @@ binary = env.Program(
     LIBS = ["yappi"],
     LIBPATH = ["build"])
 
-dev = env.File(["include/plugin.hpp", "include/uri.hpp"])
+dev = env.File(["include/plugin.hpp", "include/uri.hpp", "clients/c++/client.hpp"])
 
 env.Requires(binary, library)
 
