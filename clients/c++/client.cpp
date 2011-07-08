@@ -113,7 +113,7 @@ bool client_t::subscribe(const std::vector<std::string>& urls, const std::string
         std::string key = subscriptions[*source]["key"].asString();
        
         // Store the target-key relationship
-        m_sources[*source] = key;
+        m_sources[key] = *source;
        
         // Setup the dispatcher
         m_dispatch.insert(std::make_pair(
