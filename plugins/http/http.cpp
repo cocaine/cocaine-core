@@ -59,6 +59,8 @@ class http_t: public source_t {
                 dict["code"] = fmt.str();
                 dict["availability"] = (retcode >= 200 && retcode < 300) ? "available" : "down";
             } else {
+                dict["code"] = "0";
+                dict["avalability"] = "down";
                 dict["exception"] = std::string(m_error_message);
             }
         
