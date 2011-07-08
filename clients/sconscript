@@ -1,0 +1,8 @@
+#!/usr/bin/scons
+
+clients = []
+
+for script in Glob("*/sconscript"):
+    clients += SConscript(script)
+
+Return("clients")
