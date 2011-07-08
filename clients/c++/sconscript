@@ -6,7 +6,7 @@ client = env.SharedLibrary(
     target = "#build/yappi-client",
     source = ["client.cpp"],
     CPPPATH = ["#include", "#foreign/jsoncpp-0.5.0/include"],
-    LIBS = ["uuid", "zmq", json],
+    LIBS = ["uuid", "zmq", json, "boost_thread"],
     LINKFLAGS = ["-Wl,-soname=libyappi-client.so.1", "-Wl,-Bsymbolic"])
 
 dev = env.File("client.hpp")
