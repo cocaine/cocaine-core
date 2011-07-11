@@ -10,9 +10,8 @@
 
 using namespace yappi::client;
 
-consumer_base_t::consumer_base_t(client_t& parent, const std::string& field):
-    m_parent(parent),
-    m_field(field)
+consumer_base_t::consumer_base_t(client_t& parent):
+    m_parent(parent)
 {
     uuid_t uuid;
     char unparsed_uuid[UUID_STRING_SIZE];
@@ -22,12 +21,19 @@ consumer_base_t::consumer_base_t(client_t& parent, const std::string& field):
     m_uuid = unparsed_uuid;
 }
 
-bool consumer_base_t::subscribe(const std::vector<std::string>& urls) {
-    return m_parent.subscribe(urls, m_field, this);
+consumer_base_t::~consumer_base_t() {
+    m_parent.unsubscribe(m_uuid);
 }
 
-void consumer_base_t::unsubscribe() {
-    m_parent.unsubscribe(m_uuid);
+bool consumer_base_t::subscribe(const std::vector<std::string>& urls, const std::string& field) {
+    return m_parent.subscribe(urls, field, this);
+}
+
+bool consumer_base_t::subscribe(const std::string& url, const std::string& field) {
+    std::vector<std::string> urls;
+    urls.push_back(url);
+
+    return m_parent.subscribe(urls, field, this);
 }
 
 client_t::client_t():

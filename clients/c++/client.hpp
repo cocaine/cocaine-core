@@ -7,6 +7,8 @@
 #include <map>
 
 #include <boost/thread.hpp>
+#include <boost/function.hpp>
+
 #include <zmq.hpp>
 
 namespace yappi { namespace client {
@@ -16,26 +18,30 @@ class client_t;
 // Generic interface
 class consumer_base_t {
     public:
-        consumer_base_t(client_t& parent, const std::string& field);
-        inline std::string uuid() { return m_uuid; }
+        consumer_base_t(client_t& parent);
+        virtual ~consumer_base_t();
         
-        virtual void dispatch(const std::string& source, const std::string& payload, time_t timestamp) = 0;
+        bool subscribe(const std::string& url, const std::string& field);
+        bool subscribe(const std::vector<std::string>& urls, const std::string& field);
 
-        bool subscribe(const std::vector<std::string>& urls);
-        void unsubscribe();
+        virtual void dispatch(const std::string& source, const std::string& payload, time_t timestamp) = 0;
+        
+        inline std::string uuid() { return m_uuid; }
 
     private:
         client_t& m_parent;
-        std::string m_field;
         std::string m_uuid;
 };
 
 // Templated facade
-template<class Container, class T = std::string>
+template<class T = std::string>
 class consumer_t: public consumer_base_t {
     public:
-        consumer_t(client_t& parent, const std::string& field):
-            consumer_base_t(parent, field)
+        typedef boost::function<void(const std::string&, T, time_t)> callback_t;
+
+        consumer_t(client_t& parent, callback_t callback):
+            consumer_base_t(parent),
+            m_callback(callback)
         {}
 
         inline virtual void dispatch(
@@ -47,9 +53,11 @@ class consumer_t: public consumer_base_t {
             T message;
 
             xtr >> message;
-
-            static_cast<Container*>(this)->consume(source, message, timestamp);
+            m_callback(source, message, timestamp);
         }
+
+    private:
+        callback_t m_callback;
 };
 
 // The client
