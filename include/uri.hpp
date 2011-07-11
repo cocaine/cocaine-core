@@ -16,12 +16,15 @@ struct uri_t {
     {
         // URI parser initialization
         UriParserStateA state;
+        int result;
 
         state.uri = &m_uri;
-   
-        int result;
+        
         if((result = uriParseUriA(&state, m_source.c_str())) != URI_SUCCESS) {
-            throw std::runtime_error(strerror(result));
+            char buffer[256];
+            strerror_r(result, buffer, 256);
+            
+            throw std::runtime_error(buffer);
         }
     }
 
