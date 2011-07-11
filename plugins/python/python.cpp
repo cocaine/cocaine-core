@@ -37,7 +37,7 @@ python_t::python_t(const std::string& uri_):
     target.pop_back();
 
     // Join the path components
-    std::string path;
+    std::string path("/usr/lib/yappi/python");
     std::vector<std::string>::const_iterator it = target.begin();
        
     do {
@@ -91,8 +91,8 @@ python_t::python_t(const std::string& uri_):
 }
 
 void python_t::create(const std::string& code,
-                           const std::string& name,
-                           const dict_t& parameters)
+                      const std::string& name,
+                      const dict_t& parameters)
 {
     // Get the thread state
     thread_state_t state = PyGILState_Ensure();
