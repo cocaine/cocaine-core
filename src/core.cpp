@@ -302,6 +302,9 @@ Json::Value core_t::push(const identity_t& identity, const std::string& target, 
         } catch(const std::domain_error& e) {
             syslog(LOG_ERR, "unknown source: %s", e.what());
             response["error"] = std::string("unknown source: ") + e.what();
+        } catch(const std::exception& e) {
+            syslog(LOG_ERR, "exception: %s", e.what());
+            response["error"] = e.what();
         }
     }
 
@@ -357,6 +360,9 @@ Json::Value core_t::once(const identity_t& identity, const std::string& target, 
     } catch(const std::domain_error& e) {
         syslog(LOG_ERR, "unknown source: %s", e.what());
         response["error"] = std::string("unknown source: ") + e.what();
+    } catch(const std::exception& e) {
+        syslog(LOG_ERR, "exception: %s", e.what());
+        response["error"] = e.what();
     }
 
     if(!response.isMember("error") && source) {
