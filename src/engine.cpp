@@ -90,7 +90,7 @@ void engine_t::deschedule(const identity_t& identity, const std::string& key) {
         } 
     }
 
-    throw std::invalid_argument("client is not a subscriber");
+    throw std::runtime_error("client is not a subscriber");
 }
 
 void* engine_t::bootstrap(void* arg) {

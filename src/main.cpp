@@ -95,6 +95,7 @@ int main(int argc, char* argv[]) {
     syslog(LOG_INFO, "yappi is starting");
     core_t* core;
 
+    // Initializing the core
     try {
         core = new core_t(listeners, publishers, hwm, swap);
     } catch(const std::runtime_error& e) {

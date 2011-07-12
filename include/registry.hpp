@@ -15,7 +15,7 @@ class registry_t {
 
     private:
         // Used to instantiate plugin instances
-        typedef std::map<std::string, plugin::factory_fn_t> factory_map_t;
+        typedef std::map<const std::string, plugin::factory_fn_t> factory_map_t;
         factory_map_t m_factories;
 
         // Used to dlclose() all the plugins on shutdown

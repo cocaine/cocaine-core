@@ -7,6 +7,8 @@
 #include <errno.h>
 #include <string.h>
 
+#include <boost/algorithm/string/join.hpp>
+
 #include "common.hpp"
 #include "registry.hpp"
 #include "uri.hpp"
@@ -33,6 +35,7 @@ registry_t::registry_t() {
         alphasort);
 
     if(count == -1) {
+        // No need for strerror_r here, as this is only executed from the main thread
         std::string message = directory + ": " + strerror(errno);
         throw std::runtime_error(message);
     }
@@ -40,6 +43,7 @@ registry_t::registry_t() {
     void* plugin;
     std::string path; 
     initialize_t initializer;
+    std::vector<std::string> schemes;
 
     while(count--) {
         // Load the plugin
@@ -69,6 +73,7 @@ registry_t::registry_t() {
             m_factories.insert(std::make_pair(
                 info->sources[i].scheme,
                 info->sources[i].factory));
+            schemes.push_back(info->sources[i].scheme);
         }
 
         free(namelist[count]);
@@ -80,12 +85,8 @@ registry_t::registry_t() {
         throw std::runtime_error("no plugins found");
     }
 
-    std::ostringstream fmt;
-    for(factory_map_t::iterator it = m_factories.begin(); it != m_factories.end(); ++it) {
-        fmt << " " << it->first;
-    }
-
-    syslog(LOG_INFO, "available sources:%s", fmt.str().c_str());
+    std::string plugins = boost::algorithm::join(schemes, ", ");
+    syslog(LOG_INFO, "available sources: %s", plugins.c_str());
 }
 
 registry_t::~registry_t() {
@@ -95,11 +96,11 @@ registry_t::~registry_t() {
 }
 
 source_t* registry_t::instantiate(const std::string& uri_) {
-    helpers::uri_t uri(uri_);    
+    helpers::uri_t uri(uri_); 
     factory_map_t::iterator it = m_factories.find(uri.scheme());
 
     if(it == m_factories.end()) {
-        throw std::domain_error(uri.scheme());
+        throw std::runtime_error(uri.scheme() + " plugin not found");
     }
 
     factory_fn_t factory = it->second;

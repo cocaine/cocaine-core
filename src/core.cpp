@@ -150,7 +150,7 @@ void core_t::dispatch(ev::io& io, int revents) {
 
         // Try to parse the incoming JSON document
         if(!reader.parse(request, root)) {
-            syslog(LOG_ERR, "invalid json: %s", reader.getFormatedErrorMessages().c_str());
+            syslog(LOG_ERR, "invalid request: %s", reader.getFormatedErrorMessages().c_str());
             
             response["error"] = reader.getFormatedErrorMessages();
             reply(identity, response);
@@ -172,9 +172,9 @@ void core_t::dispatch(ev::io& io, int revents) {
         Json::Value action = root["action"];
 
         if(action == Json::Value::null || !action.isString()) {
-            syslog(LOG_ERR, "invalid request: invalid action");
+            syslog(LOG_ERR, "invalid request: action expected");
 
-            response["error"] = "invalid action";
+            response["error"] = "action expected";
             reply(identity, response);
             
             continue;
@@ -215,10 +215,10 @@ void core_t::dispatch(ev::io& io, int revents) {
 
             // And check if it's an object
             if(!body.isObject()) {
-                syslog(LOG_ERR, "invalid request target: object expected");
+                syslog(LOG_ERR, "invalid request: target object expected");
 
                 response[*name] = Json::Value();
-                response[*name]["error"] = "object expected";
+                response[*name]["error"] = "target object expected";
                 
                 continue;
             }
@@ -280,8 +280,7 @@ Json::Value core_t::push(const identity_t& identity, const std::string& target, 
         interval = args.get("interval", 1000).asUInt();
     } catch(const std::runtime_error& e) {
         syslog(LOG_ERR, "invalid interval: %s", e.what());
-        
-        response["error"] = std::string("invalid interval: ") + e.what();
+        response["error"] = e.what();
         return response;
     }
 
@@ -293,18 +292,12 @@ Json::Value core_t::push(const identity_t& identity, const std::string& target, 
             // No engine was found, so try to start a new one
             engine_t* engine = new engine_t(m_registry.instantiate(target), m_context);
             boost::tie(it, boost::tuples::ignore) = m_engines.insert(target, engine);
-        } catch(const std::runtime_error& e) {
-            syslog(LOG_ERR, "runtime error: %s", e.what());
-            response["error"] = std::string("runtime error: ") + e.what();
-        } catch(const std::invalid_argument& e) {
-            syslog(LOG_ERR, "invalid argument: %s", e.what());
-            response["error"] = std::string("invalid argument: ") + e.what();
-        } catch(const std::domain_error& e) {
-            syslog(LOG_ERR, "unknown source: %s", e.what());
-            response["error"] = std::string("unknown source: ") + e.what();
         } catch(const std::exception& e) {
             syslog(LOG_ERR, "exception: %s", e.what());
             response["error"] = e.what();
+        } catch(...) {
+            syslog(LOG_ERR, "unexpected exception in core_t::push()");
+            abort();
         }
     }
 
@@ -328,16 +321,16 @@ Json::Value core_t::drop(const identity_t& identity, const std::string& target, 
 
     if(it == m_subscriptions.end()) {
         syslog(LOG_ERR, "subscription key not found: %s", target.c_str());
-        response["error"] = "not found";
+        response["error"] = "key not found";
     } else {
         try {
             // Try to unsubscribe the client
             it->second->deschedule(identity, target);
             m_subscriptions.erase(it);
             response["result"] = "success";
-        } catch(const std::invalid_argument& e) {
+        } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "invalid argument: %s", e.what());
-            response["error"] = std::string("invalid argument: ") + e.what();
+            response["error"] = e.what();
         }
     }
 
@@ -351,18 +344,12 @@ Json::Value core_t::once(const identity_t& identity, const std::string& target, 
     try {
         // Try to instantiate the source
         source = m_registry.instantiate(target);
-    } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "runtime error: %s", e.what());
-        response["error"] = std::string("runtime error: ") + e.what();
-    } catch(const std::invalid_argument& e) {
-        syslog(LOG_ERR, "invalid argument: %s", e.what());
-        response["error"] = std::string("invalid argument: ") + e.what();
-    } catch(const std::domain_error& e) {
-        syslog(LOG_ERR, "unknown source: %s", e.what());
-        response["error"] = std::string("unknown source: ") + e.what();
     } catch(const std::exception& e) {
         syslog(LOG_ERR, "exception: %s", e.what());
         response["error"] = e.what();
+    } catch(...) {
+        syslog(LOG_ERR, "unexpected exception in core_t::once()");
+        abort();
     }
 
     if(!response.isMember("error") && source) {
