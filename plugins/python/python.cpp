@@ -37,7 +37,7 @@ python_t::python_t(const std::string& uri_):
     target.pop_back();
 
     // Join the path components
-    std::string path("/usr/lib/yappi/python");
+    std::string path("/usr/lib/yappi/python.d");
     std::vector<std::string>::const_iterator it = target.begin();
        
     do {
