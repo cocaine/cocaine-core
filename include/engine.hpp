@@ -2,74 +2,99 @@
 #define YAPPI_ENGINE_HPP
 
 #include <boost/ptr_container/ptr_map.hpp>
+#include <boost/thread.hpp>
 
 #include "common.hpp"
 #include "plugin.hpp"
+#include "digest.hpp"
+
+namespace yappi { namespace core {
+
+class future_t;
+
+}}
 
 namespace yappi { namespace engine {
 
+// Thread controller
 class engine_t {
     public:
-        engine_t(plugin::source_t* source, zmq::context_t& context);
+        engine_t(zmq::context_t& context, plugin::source_t* source);
         ~engine_t();
 
-        std::string schedule(const identity_t& identity, time_t interval);
-        void deschedule(const identity_t& identity, const std::string& key);
+        inline std::string id() const { return m_id.get(); }
+        inline std::string hash() const { return m_hash; }
+
+        void schedule(const core::future_t& future, time_t interval);
+        void deschedule(const core::future_t& future, time_t interval);
+        void once(const core::future_t& future);
+
+        bool stale() const;
 
     private:
-        // Source hash for subscription key construction
+        // Worker thread bootstrap
+        void bootstrap();
+
+    private:
+        // Engine ID, for interthread pipe identification
+        helpers::id_t m_id;
+
+        // Worker thread
+        boost::thread* m_thread;
+
+        // Data source
+        plugin::source_t* m_source;
+        std::string m_hash;
+        
+        // Messaging
+        zmq::context_t& m_context;
+        core::json_socket_t m_pipe;
+};
+
+// Event fetcher
+class fetcher_t {
+    public:
+        fetcher_t(zmq::context_t& context, plugin::source_t* source, const std::string& key);
+        void operator()(ev::timer& timer, int revents);
+        
+    private:
+        // Data source
+        plugin::source_t* m_source;
+        
+        // Messaging
+        zmq::socket_t m_uplink;
+        
+        // Subscription key
+        std::string m_key;
+};
+
+// Thread manager
+class overseer_t {
+    public:
+        overseer_t(zmq::context_t& context, plugin::source_t* source, const std::string& hash, const helpers::id_t& id);
+        void operator()(ev::io& io, int revents);
+        void run();
+    
+    private:
+        // Event loop
+        ev::dynamic_loop m_loop;
+        ev::io m_io;
+        
+        // Data source
+        plugin::source_t* m_source;
         std::string m_hash;
 
-        typedef std::multimap<std::string, std::string> subscription_map_t;
-        subscription_map_t m_subscriptions;
-
-        // Threading
-        static void* bootstrap(void* arg);
-        pthread_t m_thread;
-
-        zmq::socket_t m_socket;
+        // Messaging
+        zmq::context_t& m_context;
+        core::json_socket_t m_pipe, m_uplink;
         
-        struct task_t {
-            task_t(plugin::source_t* source_, zmq::context_t& context_):
-                source(source_),
-                context(context_) {}
+        // Timers
+        typedef boost::ptr_map<time_t, ev::timer> slave_map_t;
+        slave_map_t m_slaves;
 
-            std::auto_ptr<plugin::source_t> source;
-            zmq::context_t& context;
-        };
-
-        // Event fetcher
-        class fetcher_t {
-            public:
-                fetcher_t(task_t& task, const std::string& key);
-
-                void operator()(ev::timer& timer, int revents);
-                
-            private:
-                std::string m_key;
-                
-                task_t& m_task;
-                zmq::socket_t m_socket;
-        };
-
-        // Thread manager
-        class overseer_t {
-            public:
-                overseer_t(task_t& task);
-
-                void operator()(ev::io& io, int revents);
-                void run();
-            
-            private:
-                ev::dynamic_loop m_loop;
-                ev::io m_io;
-
-                typedef boost::ptr_map<const std::string, ev::timer> slave_map_t;
-                slave_map_t m_slaves;
-                
-                task_t& m_task;
-                zmq::socket_t m_socket;
-        };
+        // Subscriptions
+        typedef std::multimap<time_t, std::string> subscription_map_t;
+        subscription_map_t m_subscriptions;
 };
 
 }}

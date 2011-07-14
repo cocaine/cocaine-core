@@ -79,8 +79,9 @@ bool client_t::subscribe(const std::vector<std::string>& urls, const std::string
     Json::Value root;
 
     // Request JSON header
+    root["version"] = 2;
+    root["token"] = "yandex-blogs";
     root["action"] = "push";
-    root["version"] = "1";
 
     // Preparing the request JSON
     for(std::vector<std::string>::const_iterator it = urls.begin(); it != urls.end(); ++it) {
@@ -186,7 +187,7 @@ void client_t::processor() {
             std::istringstream xtr(envelope);
             
             xtr >> std::skipws >> key >> field >> time;
-            timestamp = atoi(time.substr(1, time.find_first_of(".")).c_str());
+            timestamp = atoi(time.substr(0, time.find_first_of(".")).c_str());
 
             // Get the payload
             m_sink.recv(&msg);

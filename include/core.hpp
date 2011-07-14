@@ -7,9 +7,11 @@
 #include "common.hpp"
 #include "engine.hpp"
 #include "registry.hpp"
-#include "json/json.h"
+#include "persistance.hpp"
 
 namespace yappi { namespace core {
+
+class future_t;
 
 class core_t {
     public:
@@ -24,55 +26,78 @@ class core_t {
     public:
         static const char identity[];
 
+    protected:
+        friend class future_t;
+
+        // Responder
+        void seal(const std::string& future_id);
+
     private:
-        // Request dispatching and processing
-        void dispatch(ev::io& io, int revents);
-        void reply(const identity_t& identity, const Json::Value& root);
+        // Request dispatching
+        void request(ev::io& io, int revents);
 
         // Built-in commands
-        Json::Value push(const identity_t& identity,
+        void push(future_t& future,
             const std::string& target, const Json::Value& args);
         
-        Json::Value drop(const identity_t& identity,
+        void drop(future_t& future,
             const std::string& target, const Json::Value& args);
         
-        Json::Value once(const identity_t& identity,
+        void once(future_t& future,
             const std::string& target, const Json::Value& args);
 
-        // Event processing
-        void publish(ev::io& io, int revents);
+        // Internal event processing
+        void event(ev::io& io, int revents);
+
+        // Future processing
+        void future(ev::io& io, int revents);
+
+        // Stale engine reaping
+        void reap(ev::timer& timer, int revents);
 
         // Signal processing
         void terminate(ev::sig& sig, int revents);
+
+        // Task recovery
+        void recover();
 
     private:
         // Plugins
         registry_t m_registry;
 
-        // Command dispatching
-        typedef boost::function<Json::Value(
-            const identity_t&,
-            const std::string&,
-            const Json::Value&)> handler_fn_t;
+        // Task persistance
+        persistance::file_storage_t m_storage;
 
-        typedef std::map<std::string, handler_fn_t> dispatch_map_t;
+        // Command dispatching
+        typedef boost::function<void(
+            future_t&,
+            const std::string&,
+            const Json::Value&)
+        > handler_fn_t;
+
+        typedef std::map<const std::string, handler_fn_t> dispatch_map_t;
         dispatch_map_t m_dispatch;
 
-        // Engine management
+        // Engine management (Key->Engine)
         typedef boost::ptr_map<const std::string, engine::engine_t> engine_map_t;
         engine_map_t m_engines;
 
-        typedef std::map<const std::string, engine::engine_t*> weak_engine_map_t;
-        weak_engine_map_t m_subscriptions;
+        // Future management
+        typedef boost::ptr_map<const std::string, future_t> future_map_t;
+        future_map_t m_futures;
 
         // Networking
         zmq::context_t m_context;
-        zmq::socket_t s_sink, s_listener, s_publisher;
+        zmq::socket_t s_events, s_requests, s_publisher;
+        json_socket_t s_futures;
         
         // Event loop
         ev::default_loop m_loop;
-        ev::io e_sink, e_listener;
+        ev::io e_events, e_futures, e_requests;
         ev::sig e_sigint, e_sigterm, e_sigquit;
+
+        // Stale engine reaper
+        ev::timer e_reaper;
 };
 
 }}

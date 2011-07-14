@@ -34,9 +34,10 @@ typedef std::map<std::string, std::string> dict_t;
 class source_t {
     public:
         source_t(const std::string& uri):
-            m_uri(uri) {}
+            m_uri(uri)
+        {}
 
-        inline std::string uri() { return m_uri; }
+        inline std::string uri() const { return m_uri; }
 
         // This method will be called by the scheduler with specified intervals to
         // fetch the new data for publishing

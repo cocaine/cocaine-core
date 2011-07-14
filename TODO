@@ -1,9 +1,10 @@
 v Socket identity support
 v HTTP plugin
 v JSON command protocol + bulk commands
-* Fix libev+zmq integration
-* Python + DHT torrent plugin
-
+v Forking engine (via inject plugin)
+* Local persistance
+v Async core
+v Fix libev+zmq integration
+* Global persistance
 * Statistics
-~ Forking engine?
 ~ Command plugins support?

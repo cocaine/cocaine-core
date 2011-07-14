@@ -3,6 +3,7 @@
 #include <stdexcept>
 
 #include "common.hpp"
+#include "future.hpp"
 #include "core.hpp"
 
 using namespace yappi::core;

@@ -1,200 +1,250 @@
 #include <stdexcept>
 #include <sstream>
+#include <functional>
 
+#include <boost/lambda/bind.hpp>
 #include <msgpack.hpp>
 
 #include "engine.hpp"
-#include "digest.hpp"
+#include "future.hpp"
 
+using namespace yappi::core;
 using namespace yappi::engine;
 using namespace yappi::plugin;
 
-engine_t::engine_t(source_t* source, zmq::context_t& context):
+engine_t::engine_t(zmq::context_t& context, source_t* source):
+    m_id(),
+    m_thread(NULL),
+    m_source(source),
     m_hash(helpers::digest_t().get(source->uri())),
-    m_socket(context, ZMQ_PAIR)
+    m_context(context),
+    m_pipe(m_context, ZMQ_PAIR)
 {
-    // Bind the controlling socket
-    m_socket.bind(("inproc://" + m_hash).c_str());
-    
-    // Create a new task object for the thread
-    task_t* task = new task_t(source, context);
-
-    // And start the thread
-    if(pthread_create(&m_thread, NULL, &bootstrap, task) == EAGAIN) {
-        delete task;
-        throw std::runtime_error("system thread limit exceeded");
-    }
+    // Bind the controlling socket and fire of the thread
+    m_pipe.bind("inproc://" + m_id.get());
+    m_thread = new boost::thread(boost::lambda::bind(&engine_t::bootstrap, this));
 }
 
 engine_t::~engine_t() {
-    std::string cmd = "stop";
-    zmq::message_t message(cmd.length());
-    memcpy(message.data(), cmd.data(), cmd.length());
-    m_socket.send(message);
-    
+    Json::Value message;
+
+    message["command"] = "stop";
+    m_pipe.send(message);
+
     // Wait for it to stop
-    pthread_join(m_thread, NULL);
+    m_thread->join();
+    delete m_thread;
 }
 
-std::string engine_t::schedule(const identity_t& identity, time_t interval) {
-    // Generate the subscription key
-    std::ostringstream fmt;
-    fmt << m_hash << ':' << interval;
-    std::string key = fmt.str();
-
-    if(m_subscriptions.count(key) == 0) {
-        // Slave is not running yet, start it
-        std::string cmd = "schedule";
-        zmq::message_t message(cmd.length());
-        memcpy(message.data(), cmd.data(), cmd.length());
-        m_socket.send(message, ZMQ_SNDMORE);
-
-        message.rebuild(key.length());
-        memcpy(message.data(), key.data(), key.length());
-        m_socket.send(message, ZMQ_SNDMORE);
-
-        message.rebuild(sizeof(interval));
-        memcpy(message.data(), &interval, sizeof(interval));
-        m_socket.send(message);
-    }
-
-    // Do some housekeeping
-    m_subscriptions.insert(std::make_pair(key, identity.back()));
-
-    // Return the subscription key
-    return key;
+bool engine_t::stale() const {
+    return false;
 }
 
-void engine_t::deschedule(const identity_t& identity, const std::string& key) {
-    // Unsubscribe the client if it is a subscriber
-    std::pair<subscription_map_t::iterator, subscription_map_t::iterator> bounds =
-        m_subscriptions.equal_range(key);
+void engine_t::schedule(const future_t& future, time_t interval) {
+    Json::Value message;
 
-    for(subscription_map_t::iterator it = bounds.first; it != bounds.second; ++it) {
-        if(it->second == identity.back()) {
-            m_subscriptions.erase(it);
-
-            // If it was the last subscriber, stop the slave
-            if(m_subscriptions.count(key) == 0) {
-                std::string cmd = "deschedule";
-                zmq::message_t message(cmd.length());
-                memcpy(message.data(), cmd.data(), cmd.length());
-                m_socket.send(message, ZMQ_SNDMORE);
-
-                message.rebuild(key.length());
-                memcpy(message.data(), key.data(), key.length());
-                m_socket.send(message);
-            }
-
-            return;
-        } 
-    }
-
-    throw std::runtime_error("client is not a subscriber");
+    message["command"] = "schedule";
+    message["future"] = future.id();
+    message["token"] = future.token();
+    message["interval"] = Json::UInt(interval);
+    
+    m_pipe.send(message);
 }
 
-void* engine_t::bootstrap(void* arg) {
-    // Unpack the task
-    std::auto_ptr<task_t> task(reinterpret_cast<task_t*>(arg));
+void engine_t::deschedule(const future_t& future, time_t interval) {
+    Json::Value message;
 
-    // Start the overseer. This blocks until stopped manually
-    overseer_t overseer(*task);
+    message["command"] = "deschedule";
+    message["future"] = future.id();
+    message["token"] = future.token();
+    message["interval"] = Json::UInt(interval);
+    
+    m_pipe.send(message);
+}
+
+void engine_t::once(const future_t& future) {
+    Json::Value message;
+
+    message["command"] = "once";
+    message["future"] = future.id();
+
+    m_pipe.send(message);
+}
+
+void engine_t::bootstrap() {
+    // This blocks until stopped manually
+    overseer_t overseer(m_context, m_source, m_hash, m_id);
     overseer.run();
-
-    return NULL;
 }
 
-engine_t::overseer_t::overseer_t(task_t& task):
+overseer_t::overseer_t(zmq::context_t& context, source_t* source, const std::string& hash, const helpers::id_t& id):
     m_loop(),
     m_io(m_loop),
-    m_task(task),
-    m_socket(m_task.context, ZMQ_PAIR)
+    m_source(source),
+    m_hash(hash),
+    m_context(context),
+    m_pipe(m_context, ZMQ_PAIR),
+    m_uplink(m_context, ZMQ_PUSH)
 {
-    syslog(LOG_DEBUG, "starting %s overseer", m_task.source->uri().c_str());
+    syslog(LOG_DEBUG, "starting an overseer for %s, id: %s",
+        m_source->uri().c_str(), id.get().c_str());
     
-    // Set the socket watcher
+    // Connect to the engine's controlling socket
+    // and set the socket watcher
     int fd;
     size_t size = sizeof(fd);
 
-    // Connect to the engine's controlling socket
-    m_socket.connect(("inproc://" + helpers::digest_t().get(
-        m_task.source->uri())).c_str());
+    m_loop.set_io_collect_interval(0.5);
 
-    m_socket.getsockopt(ZMQ_FD, &fd, &size);
+    m_pipe.connect("inproc://" + id.get());
+    m_pipe.getsockopt(ZMQ_FD, &fd, &size);
     m_io.set(this);
     m_io.start(fd, EV_READ | EV_WRITE);
 
-    m_loop.set_io_collect_interval(0.5);
+    // Connecting to the core's future sink
+    m_uplink.connect("inproc://futures");
 }
 
-void engine_t::overseer_t::run() {
+void overseer_t::run() {
     m_loop.loop();
 }
 
-void engine_t::overseer_t::operator()(ev::io& io, int revents) {
-    uint32_t events;
-    size_t size = sizeof(events);
+void overseer_t::operator()(ev::io& io, int revents) {
+    std::string command;
     
-    zmq::message_t message;
-    std::string cmd;
+    using namespace boost::lambda;
 
-    while(true) {
-        // Check if we actually have something in the socket
-        m_socket.getsockopt(ZMQ_EVENTS, &events, &size);
+    while(m_pipe.pending()) {
+        // And if we do, receive it
+        Json::Value message, response, result;
+        
+        m_pipe.recv(message);
+        command = message["command"].asString();
 
-        if(!(events & ZMQ_POLLIN)) {
-            break;
+        if(command == "schedule") {
+            // Unpack
+            time_t interval = message["interval"].asUInt();
+            std::string token = message["token"].asString();
+
+            // Generate the subscription key
+            std::ostringstream key;
+            key << m_hash << ":" << interval;
+
+            // If there's no slave for this interval yet, start a new one
+            if(m_slaves.find(interval) == m_slaves.end()) {
+                syslog(LOG_DEBUG, "%s overseer: scheduling for execution every %lums",
+                    m_source->uri().c_str(), interval);
+            
+                ev::timer* slave = new ev::timer(m_loop);
+                slave->set(new fetcher_t(m_context, m_source, key.str()));
+                slave->start(interval / 1000.0, interval / 1000.0);
+                m_slaves.insert(interval, slave);
+            }
+
+            // Save token to control unsubscription access rights, if it's not there already
+            subscription_map_t::iterator begin, end;
+            subscription_map_t::value_type subscription = std::make_pair(interval, token);
+            boost::tie(begin, end) = m_subscriptions.equal_range(interval);
+            std::equal_to<subscription_map_t::value_type> predicate;
+            
+            if(std::find_if(begin, end, bind(predicate, subscription, _1)) == end) {
+                m_subscriptions.insert(subscription);
+            }
+
+            // Report to the core
+            result["key"] = key.str();
+            response["future"] = message["future"];
+            response["target"] = m_source->uri();
+            response["result"] = result;
+
+            m_uplink.send(response);
+
+            continue;
         }
 
-        // And if we do, receive it 
-        m_socket.recv(&message);
-        cmd.assign(
-            reinterpret_cast<const char*>(message.data()),
-            message.size());
+        if(command == "deschedule") {
+            // Unpack
+            time_t interval = message["interval"].asUInt();
+            std::string token = message["token"].asString();
 
-        if(cmd == "schedule") {
-            // Receive the key
-            m_socket.recv(&message);
-            std::string key(
-                reinterpret_cast<const char*>(message.data()),
-                message.size());
- 
-            // Receive the interval
-            time_t interval;
+            // Check if we have such a slave
+            slave_map_t::iterator slave = m_slaves.find(interval);
 
-            m_socket.recv(&message);
-            memcpy(&interval, message.data(), message.size());
+            if(slave == m_slaves.end()) {
+                result["error"] = "not found";
+                response["future"] = message["future"];
+                response["target"] = m_source->uri();
+                response["result"] = result;
+                m_uplink.send(response);
+                continue;
+            }
 
-            // Start a new slave
-            syslog(LOG_DEBUG, "starting %s slave %s with interval: %lums",
-                m_task.source->uri().c_str(), key.c_str(), interval);
+            // Check if the client is eligible for unsubscription
+            subscription_map_t::iterator begin, end, it;
+            subscription_map_t::value_type subscription = std::make_pair(interval, token);
+            boost::tie(begin, end) = m_subscriptions.equal_range(interval);
+            std::equal_to<subscription_map_t::value_type> predicate;
             
-            ev::timer* slave = new ev::timer(m_loop);
-            slave->set(new fetcher_t(m_task, key));
-            slave->start(interval / 1000.0, interval / 1000.0);
+            if((it = std::find_if(begin, end, bind(predicate, subscription, _1))) == end) {
+                result["error"] = "not authorized";
+                response["future"] = message["future"];
+                response["target"] = m_source->uri();
+                response["result"] = result;
+                m_uplink.send(response);
+                continue;
+            }
+
+            syslog(LOG_DEBUG, "%s overseer: descheduling from execution every %lums",
+                m_source->uri().c_str(), interval);
             
-            m_slaves.insert(key, slave);
+            // Unsubscribe
+            slave->second->stop();
+            delete static_cast<fetcher_t*>(slave->second->data);
 
-        } else if(cmd == "deschedule") {
-            // Receive the key
-            m_socket.recv(&message);
-            std::string key(
-                reinterpret_cast<const char*>(message.data()),
-                message.size());  
+            m_slaves.erase(slave);
+            m_subscriptions.erase(it);
 
-            // Kill the slave
-            syslog(LOG_DEBUG, "stopping %s slave %s",
-                m_task.source->uri().c_str(), key.c_str());
+            result["status"] = "success";
+            response["future"] = message["future"];
+            response["target"] = m_source->uri();
+            response["result"] = result;
+            m_uplink.send(response);
+
+            continue;
+        }
+
+        if(command == "once") {
+            dict_t dict;
+
+            try {
+                dict = m_source->fetch();
+            } catch(const std::exception& e) {
+                syslog(LOG_ERR, "plugin %s invocation failed: %s",
+                    m_source->uri().c_str(), e.what());
+                
+                result["error"] = "invocation failed";
+                response["future"] = message["future"];
+                response["target"] = m_source->uri();
+                response["result"] = result;
+                m_uplink.send(response);
+                
+                continue;
+            }
+                
+            for(dict_t::const_iterator it = dict.begin(); it != dict.end(); ++it) {
+                result[it->first] = it->second;
+            }
+
+            response["future"] = message["future"];
+            response["target"] = m_source->uri();
+            response["result"] = result;
+            m_uplink.send(response);
+            
+            continue;
+        }
         
-            slave_map_t::iterator it = m_slaves.find(key);
-            
-            it->second->stop();
-            delete static_cast<fetcher_t*>(it->second->data);
-            
-            m_slaves.erase(it);
-
-        } else if(cmd == "stop") {
-            syslog(LOG_DEBUG, "stopping %s overseer", m_task.source->uri().c_str());
+        if(command == "stop") {
+            syslog(LOG_DEBUG, "%s overseer: stopping", m_source->uri().c_str());
 
             // Kill all the slaves
             for(slave_map_t::iterator it = m_slaves.begin(); it != m_slaves.end(); ++it) {
@@ -202,31 +252,32 @@ void engine_t::overseer_t::operator()(ev::io& io, int revents) {
                 delete static_cast<fetcher_t*>(it->second->data);
             }
 
+            // Delete all the watchers and unroll the event loop
             m_slaves.clear();
-
-            // After this, the event loop should unroll
             m_io.stop();
+
+            return;
         }
     }
 }
 
-engine_t::fetcher_t::fetcher_t(task_t& task, const std::string& key):
-    m_key(key),
-    m_task(task),
-    m_socket(task.context, ZMQ_PUSH)
+fetcher_t::fetcher_t(zmq::context_t& context, source_t* source, const std::string& key):
+    m_source(source),
+    m_uplink(context, ZMQ_PUSH),
+    m_key(key)
 {
     // Connect to the core
-    m_socket.connect("inproc://sink");
+    m_uplink.connect("inproc://events");
 }
 
-void engine_t::fetcher_t::operator()(ev::timer& timer, int revents) {
+void fetcher_t::operator()(ev::timer& timer, int revents) {
     dict_t dict;
 
     try {
-        dict = m_task.source->fetch();
+        dict = m_source->fetch();
     } catch(const std::exception& e) {
         syslog(LOG_ERR, "plugin %s invocation failed: %s",
-            m_task.source->uri().c_str(), e.what());
+            m_source->uri().c_str(), e.what());
         return;
     }
         
@@ -237,13 +288,14 @@ void engine_t::fetcher_t::operator()(ev::timer& timer, int revents) {
 
     zmq::message_t message(m_key.length());
     memcpy(message.data(), m_key.data(), m_key.length());
-    m_socket.send(message, ZMQ_SNDMORE);
+    m_uplink.send(message, ZMQ_SNDMORE);
 
     // Serialize the dict
     msgpack::sbuffer buffer;
     msgpack::pack(buffer, dict);
 
+    // And send it
     message.rebuild(buffer.size());
     memcpy(message.data(), buffer.data(), buffer.size());
-    m_socket.send(message);
+    m_uplink.send(message);
 }
