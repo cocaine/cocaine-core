@@ -2,7 +2,8 @@
 #include <sstream>
 #include <functional>
 
-#include <boost/lambda/bind.hpp>
+#include <boost/bind.hpp>
+#include <boost/tuple/tuple.hpp>
 #include <msgpack.hpp>
 
 #include "engine.hpp"
@@ -22,7 +23,7 @@ engine_t::engine_t(zmq::context_t& context, source_t* source):
 {
     // Bind the controlling socket and fire of the thread
     m_pipe.bind("inproc://" + m_id.get());
-    m_thread = new boost::thread(boost::lambda::bind(&engine_t::bootstrap, this));
+    m_thread = new boost::thread(boost::bind(&engine_t::bootstrap, this));
 }
 
 engine_t::~engine_t() {
@@ -177,14 +178,12 @@ void overseer_t::push(const Json::Value& message) {
     }
 
     // Save token to control unsubscription access rights, if it's not there already
-    using namespace boost::lambda;
-
     subscription_map_t::iterator begin, end;
     subscription_map_t::value_type subscription = std::make_pair(interval, token);
     boost::tie(begin, end) = m_subscriptions.equal_range(interval);
     std::equal_to<subscription_map_t::value_type> predicate;
     
-    if(std::find_if(begin, end, bind(predicate, subscription, boost::lambda::_1)) == end) {
+    if(std::find_if(begin, end, boost::bind(predicate, subscription, _1)) == end) {
         m_subscriptions.insert(subscription);
     }
 
@@ -219,14 +218,12 @@ void overseer_t::drop(const Json::Value& message) {
         result["error"] = "not found";
     } else {
         // Check if the client is eligible for unsubscription
-        using namespace boost::lambda;
-
         subscription_map_t::iterator begin, end, subscriber;
         subscription_map_t::value_type subscription = std::make_pair(interval, token);
         boost::tie(begin, end) = m_subscriptions.equal_range(interval);
         std::equal_to<subscription_map_t::value_type> predicate;
         
-        subscriber = std::find_if(begin, end, bind(predicate, subscription, boost::lambda::_1));
+        subscriber = std::find_if(begin, end, boost::bind(predicate, subscription, _1));
 
         if(subscriber == end) {
             result["error"] = "not authorized";

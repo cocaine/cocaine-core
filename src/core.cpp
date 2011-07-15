@@ -3,7 +3,8 @@
 #include <iomanip>
 #include <stdexcept>
 
-#include <boost/lambda/bind.hpp>
+#include <boost/bind.hpp>
+#include <boost/tuple/tuple.hpp>
 #include <msgpack.hpp>
 
 #include "core.hpp"
@@ -94,10 +95,9 @@ core_t::core_t(const std::vector<std::string>& listeners,
     e_sigquit.start(SIGQUIT);
 
     // Initialize built-in command handlers
-    using namespace boost::lambda;
-    m_dispatch["push"] = bind(&core_t::push, this, _1, _2, _3);
-    m_dispatch["drop"] = bind(&core_t::drop, this, _1, _2, _3);
-    m_dispatch["once"] = bind(&core_t::once, this, _1, _2, _3);
+    m_dispatch["push"] = boost::bind(&core_t::push, this, _1, _2, _3);
+    m_dispatch["drop"] = boost::bind(&core_t::drop, this, _1, _2, _3);
+    m_dispatch["once"] = boost::bind(&core_t::once, this, _1, _2, _3);
 
     // Try to recover persistent tasks
     recover();
