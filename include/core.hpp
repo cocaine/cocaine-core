@@ -13,6 +13,9 @@ namespace yappi { namespace core {
 
 class future_t;
 
+class reaper_t {
+};
+
 class core_t {
     public:
         core_t(const std::vector<std::string>& listeners,
@@ -37,13 +40,13 @@ class core_t {
         void request(ev::io& io, int revents);
 
         // Built-in commands
-        void push(future_t& future,
+        void push(future_t* future,
             const std::string& target, const Json::Value& args);
         
-        void drop(future_t& future,
+        void drop(future_t* future,
             const std::string& target, const Json::Value& args);
         
-        void once(future_t& future,
+        void once(future_t* future,
             const std::string& target, const Json::Value& args);
 
         // Internal event processing
@@ -52,8 +55,8 @@ class core_t {
         // Future processing
         void future(ev::io& io, int revents);
 
-        // Stale engine reaping
-        void reap(ev::timer& timer, int revents);
+        // Engine reaper
+        void reap(ev::io& io, int revents);
 
         // Signal processing
         void terminate(ev::sig& sig, int revents);
@@ -70,7 +73,7 @@ class core_t {
 
         // Command dispatching
         typedef boost::function<void(
-            future_t&,
+            future_t*,
             const std::string&,
             const Json::Value&)
         > handler_fn_t;
@@ -88,16 +91,13 @@ class core_t {
 
         // Networking
         zmq::context_t m_context;
-        zmq::socket_t s_events, s_requests, s_publisher;
-        json_socket_t s_futures;
+        blob_socket_t s_events, s_requests, s_publisher;
+        json_socket_t s_futures, s_reaper;
         
         // Event loop
         ev::default_loop m_loop;
-        ev::io e_events, e_futures, e_requests;
+        ev::io e_events, e_requests, e_futures, e_reaper;
         ev::sig e_sigint, e_sigterm, e_sigquit;
-
-        // Stale engine reaper
-        ev::timer e_reaper;
 };
 
 }}

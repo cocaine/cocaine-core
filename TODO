@@ -1,10 +1,12 @@
+Version: 0.2.0
+
 v Socket identity support
 v HTTP plugin
 v JSON command protocol + bulk commands
 v Forking engine (via inject plugin)
-* Local persistance
 v Async core
 v Fix libev+zmq integration
+> Local persistance
 * Global persistance
 * Statistics
 ~ Command plugins support?

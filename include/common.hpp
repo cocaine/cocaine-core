@@ -25,6 +25,6 @@
 #include <boost/noncopyable.hpp>
 
 #include "id.hpp"
-#include "json_socket.hpp"
+#include "sockets.hpp"
 
 #endif

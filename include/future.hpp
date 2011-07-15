@@ -12,9 +12,10 @@ class core_t;
 class future_t: boost::noncopyable {
     public:
         // Initialize the client's future with it's 0MQ identity
-        future_t(core_t& core, const std::vector<std::string>& identity):
+        future_t(core_t* core, const std::vector<std::string>& identity):
             m_core(core),
             m_identity(identity),
+            m_fulfilled(0),
             m_expecting(1)
         {
             syslog(LOG_DEBUG, "future created, id: %s", m_id.get().c_str());
@@ -33,12 +34,15 @@ class future_t: boost::noncopyable {
         // Push a new slice into this future
         template<class T>
         void fulfill(const std::string& key, const T& value) {
-            syslog(LOG_DEBUG, "future slice fulfilled, id: %s", m_id.get().c_str());
+            ++m_fulfilled;
+
+            syslog(LOG_DEBUG, "future slice %u/%u fulfilled, id: %s", 
+                    m_fulfilled, m_expecting, m_id.get().c_str());
                     
             m_root[key] = value;
 
-            if(!--m_expecting) {
-                m_core.seal(m_id.get());
+            if(m_fulfilled == m_expecting) {
+                m_core->seal(m_id.get());
             }
         }
 
@@ -55,14 +59,14 @@ class future_t: boost::noncopyable {
         helpers::id_t m_id;
 
         // Parent
-        core_t& m_core;
+        core_t* m_core;
 
         // Client identity
         std::string m_token;
         std::vector<std::string> m_identity;
 
         // Slice expectations
-        unsigned int m_expecting;
+        unsigned int m_fulfilled, m_expecting;
 
         // Resulting document
         Json::Value m_root;

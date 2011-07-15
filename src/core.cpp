@@ -24,7 +24,8 @@ core_t::core_t(const std::vector<std::string>& listeners,
     s_events(m_context, ZMQ_PULL),
     s_requests(m_context, ZMQ_ROUTER),
     s_publisher(m_context, ZMQ_PUB),
-    s_futures(m_context, ZMQ_PULL)
+    s_futures(m_context, ZMQ_PULL),
+    s_reaper(m_context, ZMQ_PULL)
 {
     // Version dump
     int minor, major, patch;
@@ -58,6 +59,12 @@ core_t::core_t(const std::vector<std::string>& listeners,
     e_futures.set<core_t, &core_t::future>(this);
     e_futures.start(fd, EV_READ);
 
+    // Internal engine reaping requests sink
+    s_reaper.bind("inproc://reaper");
+    s_reaper.getsockopt(ZMQ_FD, &fd, &size);
+    e_reaper.set<core_t, &core_t::reap>(this);
+    e_reaper.start(fd, EV_READ);
+
     // Listening socket
     for(std::vector<std::string>::const_iterator it = listeners.begin(); it != listeners.end(); ++it) {
         s_requests.bind(it->c_str());
@@ -77,10 +84,6 @@ core_t::core_t(const std::vector<std::string>& listeners,
         syslog(LOG_INFO, "publishing events on %s", it->c_str());
     }
    
-    // Initialize engine reaper
-    e_reaper.set<core_t, &core_t::reap>(this);
-    e_reaper.start(60., 60.);
-
     // Initialize signal watchers
     e_sigint.set<core_t, &core_t::terminate>(this);
     e_sigint.start(SIGINT);
@@ -119,17 +122,6 @@ void core_t::terminate(ev::sig& sig, int revents) {
     m_loop.unloop();
 }
 
-void core_t::reap(ev::timer& timer, int revents) {
-    for(engine_map_t::iterator it = m_engines.begin(); it != m_engines.end(); ++it) {
-        engine_t* engine = it->second;
-
-        if(engine->stale()) {
-            syslog(LOG_DEBUG, "reaping stale engine, id: %s", engine->id().c_str());
-            m_engines.erase(it);
-        } 
-    }
-}
-
 void core_t::recover() {
     Json::Value root = m_storage.all();
 
@@ -139,9 +131,6 @@ void core_t::recover() {
 }
 
 void core_t::request(ev::io& io, int revents) {
-    uint32_t events;
-    size_t size = sizeof(events);
-
     zmq::message_t message;
     std::vector<std::string> identity;
     
@@ -149,15 +138,7 @@ void core_t::request(ev::io& io, int revents) {
     Json::Reader reader(Json::Features::strictMode());
     Json::Value root;
     
-    while(true) {
-        // Check if we have pending messages
-        s_requests.getsockopt(ZMQ_EVENTS, &events, &size);
-
-        if(!(events & ZMQ_POLLIN)) {
-            // No more messages, so break the loop
-            break;
-        }
-
+    while(s_requests.pending()) {
         // Fetch the client's identity
         while(true) {
             s_requests.recv(&message);
@@ -173,7 +154,7 @@ void core_t::request(ev::io& io, int revents) {
         }
 
         // Construct the future!
-        future_t* future = new future_t(*this, identity);
+        future_t* future = new future_t(this, identity);
         m_futures.insert(future->id(), future);
 
         // Fetch the actual request
@@ -274,7 +255,7 @@ void core_t::request(ev::io& io, int revents) {
             }
 
             // Finally, dispatch
-            actor(*future, target, args);
+            actor(future, target, args);
         }
     }
 }
@@ -327,7 +308,7 @@ void core_t::seal(const std::string& future_id) {
 // * Once - one-time plugin invocation. For one-time invocations,
 //   you have no means to filter the data by categories or fields:
 
-void core_t::push(future_t& future, const std::string& target, const Json::Value& args) {
+void core_t::push(future_t* future, const std::string& target, const Json::Value& args) {
     Json::Value response;
     
     // Parse the arguments
@@ -339,7 +320,7 @@ void core_t::push(future_t& future, const std::string& target, const Json::Value
         transient = args.get("transient", false).asBool();
     } catch(const std::runtime_error& e) {
         response["error"] = e.what();
-        future.fulfill(target, response);
+        future->fulfill(target, response);
         return;
     }
 
@@ -357,7 +338,7 @@ void core_t::push(future_t& future, const std::string& target, const Json::Value
         } catch(const std::exception& e) {
             syslog(LOG_ERR, "exception in core_t::push() - %s", e.what());
             response["error"] = e.what();
-            future.fulfill(target, response);
+            future->fulfill(target, response);
             return;
         } catch(...) {
             syslog(LOG_ERR, "unexpected exception in core_t::push()");
@@ -368,10 +349,10 @@ void core_t::push(future_t& future, const std::string& target, const Json::Value
     }
 
     // Schedule
-    engine->schedule(future, interval);
+    engine->push(future, interval);
 }
 
-void core_t::drop(future_t& future, const std::string& target, const Json::Value& args) {
+void core_t::drop(future_t* future, const std::string& target, const Json::Value& args) {
     Json::Value response;
     engine_map_t::iterator it = m_engines.find(target);
 
@@ -382,22 +363,22 @@ void core_t::drop(future_t& future, const std::string& target, const Json::Value
         interval = args.get("interval", 60000).asUInt();
     } catch(const std::runtime_error& e) {
         response["error"] = e.what();
-        future.fulfill(target, response);
+        future->fulfill(target, response);
         return;
     }
     
     if(it == m_engines.end()) {
         syslog(LOG_ERR, "invalid engine url specified: %s", target.c_str());
         response["error"] = "engine not found";
-        future.fulfill(target, response);
+        future->fulfill(target, response);
         return;
     }
 
     engine_t* engine = it->second;
-    engine->deschedule(future, interval);
+    engine->drop(future, interval);
 }
 
-void core_t::once(future_t& future, const std::string& target, const Json::Value& args) {
+void core_t::once(future_t* future, const std::string& target, const Json::Value& args) {
     Json::Value response;
 
     // Check if we have an engine running for the given uri
@@ -414,7 +395,7 @@ void core_t::once(future_t& future, const std::string& target, const Json::Value
         } catch(const std::exception& e) {
             syslog(LOG_ERR, "exception in core_t::once() - %s", e.what());
             response["error"] = e.what();
-            future.fulfill(target, response);
+            future->fulfill(target, response);
             return;
         } catch(...) {
             syslog(LOG_ERR, "unexpected exception in core_t::once()");
@@ -432,21 +413,11 @@ void core_t::once(future_t& future, const std::string& target, const Json::Value
 //   multipart: [key field timestamp] [blob]
 
 void core_t::event(ev::io& io, int revents) {
-    unsigned long events;
-    size_t size = sizeof(events);
-
     zmq::message_t message;
     std::string key;
     dict_t dict;
     
-    while(true) {
-        // Check if we really have a message
-        s_events.getsockopt(ZMQ_EVENTS, &events, &size);
-
-        if(!(events & ZMQ_POLLIN)) {
-            break;
-        }
-
+    while(s_events.pending()) {
         // Receive the key
         s_events.recv(&message);
         key.assign(
@@ -494,11 +465,27 @@ void core_t::future(ev::io& io, int revents) {
             continue;
         }
 
-        syslog(LOG_DEBUG, "fulfilling deferred future slice, id: %s",
-            message["future"].asCString());
-
         future_t* future = it->second;
-        future->fulfill(message["target"].asString(), message["result"]);
+        future->fulfill(message["engine"].asString(), message["result"]);
     }
 }
 
+void core_t::reap(ev::io& io, int revents) {
+    while(s_reaper.pending()) {
+        Json::Value message;
+        s_reaper.recv(message);
+
+        engine_map_t::iterator it = m_engines.find(message["engine"].asString());
+
+        if(it == m_engines.end()) {
+            syslog(LOG_ERR, "orphaned stalled engine wants to be reaped: %s",
+                message["engine"].asCString());
+            continue;
+        }
+        
+        syslog(LOG_DEBUG, "reaping stalled engine %s",
+            message["engine"].asCString());
+
+        m_engines.erase(it);
+    }
+}

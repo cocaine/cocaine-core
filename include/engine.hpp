@@ -22,14 +22,11 @@ class engine_t {
         engine_t(zmq::context_t& context, plugin::source_t* source);
         ~engine_t();
 
-        inline std::string id() const { return m_id.get(); }
+        void push(const core::future_t* future, time_t interval);
+        void drop(const core::future_t* future, time_t interval);
+        void once(const core::future_t* future);
+
         inline std::string hash() const { return m_hash; }
-
-        void schedule(const core::future_t& future, time_t interval);
-        void deschedule(const core::future_t& future, time_t interval);
-        void once(const core::future_t& future);
-
-        bool stale() const;
 
     private:
         // Worker thread bootstrap
@@ -42,7 +39,7 @@ class engine_t {
         // Worker thread
         boost::thread* m_thread;
 
-        // Data source
+        // Data source and source hash
         plugin::source_t* m_source;
         std::string m_hash;
         
@@ -62,7 +59,7 @@ class fetcher_t {
         plugin::source_t* m_source;
         
         // Messaging
-        zmq::socket_t m_uplink;
+        core::blob_socket_t m_uplink;
         
         // Subscription key
         std::string m_key;
@@ -72,13 +69,22 @@ class fetcher_t {
 class overseer_t {
     public:
         overseer_t(zmq::context_t& context, plugin::source_t* source, const std::string& hash, const helpers::id_t& id);
+        
         void operator()(ev::io& io, int revents);
+        void operator()(ev::timer& timer, int revents);
+        
         void run();
-    
+
+        void push(const Json::Value& message);
+        void drop(const Json::Value& message);
+        void once(const Json::Value& message);
+        void stop(const Json::Value& message);
+
     private:
         // Event loop
         ev::dynamic_loop m_loop;
         ev::io m_io;
+        ev::timer m_stall;
         
         // Data source
         plugin::source_t* m_source;
@@ -86,7 +92,7 @@ class overseer_t {
 
         // Messaging
         zmq::context_t& m_context;
-        core::json_socket_t m_pipe, m_uplink;
+        core::json_socket_t m_pipe, m_futures, m_reaper;
         
         // Timers
         typedef boost::ptr_map<time_t, ev::timer> slave_map_t;
