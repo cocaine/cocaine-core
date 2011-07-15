@@ -3,7 +3,6 @@
 
 #include "common.hpp"
 #include "core.hpp"
-#include "id.hpp"
 
 namespace yappi { namespace core {
 
@@ -27,6 +26,7 @@ class future_t: boost::noncopyable {
             m_fulfilled(0),
             m_expecting(1)
         {
+            syslog(LOG_DEBUG, "future created, id: %s", m_id.get().c_str());
         }
 
     public:

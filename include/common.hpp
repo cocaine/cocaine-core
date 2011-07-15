@@ -6,14 +6,12 @@
 #include <string>
 #include <vector>
 #include <map>
-#include <deque>
 
 #include <time.h>
 #include <syslog.h>
 
 #define EV_USE_MONOTONIC 1
 #define EV_USE_NANOSLEEP 1
-
 #include <ev++.h>
 
 #include <zmq.hpp>

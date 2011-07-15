@@ -13,9 +13,10 @@ class file_storage_t {
 
     public:
         bool put(const std::string& key, const Json::Value& value);
-        
-        Json::Value get(const std::string& key);
-        Json::Value all();
+        bool exists(const std::string& key) const;
+
+        Json::Value get(const std::string& key) const;
+        Json::Value all() const;
 
         void remove(const std::string& key);
 

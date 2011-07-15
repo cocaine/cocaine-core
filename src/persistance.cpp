@@ -37,7 +37,12 @@ bool file_storage_t::put(const std::string& key, const Json::Value& value) {
     return true;
 }
 
-Json::Value file_storage_t::get(const std::string& key) {
+bool file_storage_t::exists(const std::string& key) const {
+    fs::path filepath = m_storage_path / key;
+    return fs::exists(filepath) && fs::is_regular(filepath);
+}
+
+Json::Value file_storage_t::get(const std::string& key) const {
     Json::Reader reader(Json::Features::strictMode());
     Json::Value root(Json::objectValue);
     fs::path filepath = m_storage_path / key;
@@ -59,7 +64,7 @@ Json::Value file_storage_t::get(const std::string& key) {
     return root;
 }
 
-Json::Value file_storage_t::all() {
+Json::Value file_storage_t::all() const {
     Json::Value root(Json::objectValue);
     Json::Reader reader(Json::Features::strictMode());
 

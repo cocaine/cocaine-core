@@ -2,6 +2,7 @@
 #define YAPPI_SOCKETS_HPP
 
 #include <zmq.hpp>
+
 #include "json/json.h"
 
 namespace yappi { namespace core {

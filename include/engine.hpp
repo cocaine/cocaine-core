@@ -104,6 +104,7 @@ class overseer_t {
         subscription_map_t m_subscriptions;
 
         // Task persistance
+        helpers::digest_t m_digest;
         persistance::file_storage_t m_storage;
 };
 

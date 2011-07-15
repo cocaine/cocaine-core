@@ -40,14 +40,12 @@ class core_t {
         void request(ev::io& io, int revents);
 
         // Built-in commands
-        void push(future_t* future,
-            const std::string& target, const Json::Value& args);
-        
-        void drop(future_t* future,
-            const std::string& target, const Json::Value& args);
-        
-        void once(future_t* future,
-            const std::string& target, const Json::Value& args);
+        void push(future_t* future, const std::string& target,
+            const Json::Value& args);
+        void drop(future_t* future, const std::string& target,
+            const Json::Value& args);
+        void once(future_t* future, const std::string& target,
+            const Json::Value& args);
 
         // Internal event processing
         void event(ev::io& io, int revents);

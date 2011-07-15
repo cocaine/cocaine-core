@@ -186,7 +186,7 @@ void overseer_t::push(const Json::Value& message) {
     }
 
     // Persist
-    std::string object_id = helpers::digest_t().get(key.str() + token);
+    std::string object_id = m_digest.get(key.str() + token);
     Json::Value object;
 
     object["url"] = m_source->uri();
@@ -239,7 +239,7 @@ void overseer_t::drop(const Json::Value& message) {
             std::ostringstream key;
             key << m_hash << ":" << interval;
 
-            std::string object_id = helpers::digest_t().get(key.str() + token);
+            std::string object_id = m_digest.get(key.str() + token);
             m_storage.remove(object_id);
             
             // Start the stall timer if this was the last slave
