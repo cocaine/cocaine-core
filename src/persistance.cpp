@@ -27,7 +27,7 @@ bool file_storage_t::put(const std::string& key, const Json::Value& value) {
     try {
         stream.open(filepath, std::ofstream::out | std::ofstream::trunc);
     } catch(const fs::ofstream::failure& e) {
-        syslog(LOG_ERR, "failed to write %s", filepath.string().c_str());
+        syslog(LOG_ERR, "storage: failed to write %s", filepath.string().c_str());
         return false;
     }     
 
@@ -57,7 +57,7 @@ Json::Value file_storage_t::get(const std::string& key) const {
     }
 
     if(!reader.parse(stream, root)) {
-        syslog(LOG_ERR, "malformed object in %s: %s",
+        syslog(LOG_ERR, "storage: malformed object in %s - %s",
             filepath.string().c_str(), reader.getFormatedErrorMessages().c_str());
     }
 

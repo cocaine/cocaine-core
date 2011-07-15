@@ -30,13 +30,13 @@ core_t::core_t(const std::vector<std::string>& listeners,
     // Version dump
     int minor, major, patch;
     zmq_version(&major, &minor, &patch);
-    syslog(LOG_INFO, "using libzmq version %d.%d.%d",
+    syslog(LOG_INFO, "core: using libzmq version %d.%d.%d",
         major, minor, patch);
     
-    syslog(LOG_INFO, "using libev version %d.%d",
+    syslog(LOG_INFO, "core: using libev version %d.%d",
         ev_version_major(), ev_version_minor());
 
-    syslog(LOG_INFO, "using libmsgpack version %s",
+    syslog(LOG_INFO, "core: using libmsgpack version %s",
         msgpack_version());
 
     // Initialize sockets
@@ -68,7 +68,7 @@ core_t::core_t(const std::vector<std::string>& listeners,
     // Listening socket
     for(std::vector<std::string>::const_iterator it = listeners.begin(); it != listeners.end(); ++it) {
         s_requests.bind(it->c_str());
-        syslog(LOG_INFO, "listening for requests on %s", it->c_str());
+        syslog(LOG_INFO, "core: listening for requests on %s", it->c_str());
     }
 
     s_requests.getsockopt(ZMQ_FD, &fd, &size);
@@ -81,7 +81,7 @@ core_t::core_t(const std::vector<std::string>& listeners,
 
     for(std::vector<std::string>::const_iterator it = publishers.begin(); it != publishers.end(); ++it) {
         s_publisher.bind(it->c_str());
-        syslog(LOG_INFO, "publishing events on %s", it->c_str());
+        syslog(LOG_INFO, "core: publishing events on %s", it->c_str());
     }
    
     // Initialize signal watchers
@@ -104,7 +104,7 @@ core_t::core_t(const std::vector<std::string>& listeners,
 }
 
 core_t::~core_t() {
-    syslog(LOG_DEBUG, "shutting down the engines");
+    syslog(LOG_DEBUG, "core: shutting down the engines");
 
     // Stopping the engines
     m_engines.clear();
@@ -125,7 +125,7 @@ void core_t::recover() {
     Json::Value root = persistance::file_storage_t("/var/spool/yappi").all();
 
     if(root.size()) {
-        syslog(LOG_DEBUG, "recovered %d task(s)", root.size());
+        syslog(LOG_DEBUG, "core: recovered %d task(s)", root.size());
         
         future_t* future = new future_t(this);
         m_futures.insert(future->id(), future);
@@ -177,14 +177,14 @@ void core_t::request(ev::io& io, int revents) {
 
         // Try to parse the incoming JSON document
         if(!reader.parse(request, root)) {
-            syslog(LOG_ERR, "invalid request: %s", reader.getFormatedErrorMessages().c_str());
+            syslog(LOG_ERR, "core: invalid request - %s", reader.getFormatedErrorMessages().c_str());
             future->fulfill("error", reader.getFormatedErrorMessages());
             continue;
         } 
 
         // Check if root is an object
         if(!root.isObject()) {
-            syslog(LOG_ERR, "invalid request: object expected");
+            syslog(LOG_ERR, "core: invalid request - object expected");
             future->fulfill("error", "object expected");
             continue;
         }
@@ -193,13 +193,13 @@ void core_t::request(ev::io& io, int revents) {
         Json::Value version = root["version"];
 
         if(version == Json::Value::null || !version.isIntegral()) {
-            syslog(LOG_ERR, "invalid request: protocol version expected");
+            syslog(LOG_ERR, "core: invalid request - protocol version expected");
             future->fulfill("error", "version expected");
             continue;
         }
 
         if(version.asInt() != 2) {
-            syslog(LOG_ERR, "invalid request: invalid protocol version");
+            syslog(LOG_ERR, "core: invalid request - invalid protocol version");
             future->fulfill("error", "invalid protocol version");
             continue;
         }
@@ -208,7 +208,7 @@ void core_t::request(ev::io& io, int revents) {
         Json::Value token = root["token"];
         
         if(token == Json::Value::null || !token.isString()) {
-            syslog(LOG_ERR, "invalid request: security token expected");
+            syslog(LOG_ERR, "core: invalid request - security token expected");
             future->fulfill("error", "security token expected");
             continue;
         } else {
@@ -219,7 +219,7 @@ void core_t::request(ev::io& io, int revents) {
         Json::Value action = root["action"];
 
         if(action == Json::Value::null || !action.isString()) {
-            syslog(LOG_ERR, "invalid request: action expected");
+            syslog(LOG_ERR, "core: invalid request - action expected");
             future->fulfill("error", "action expected");
             continue;
         }
@@ -228,7 +228,7 @@ void core_t::request(ev::io& io, int revents) {
         dispatch_map_t::iterator it = m_dispatch.find(action.asString());
 
         if(it == m_dispatch.end()) {
-            syslog(LOG_ERR, "invalid request: action '%s' is not supported", action.asCString());
+            syslog(LOG_ERR, "core: invalid request - action '%s' is not supported", action.asCString());
             future->fulfill("error", "action is not supported");
             continue;
         }
@@ -239,7 +239,7 @@ void core_t::request(ev::io& io, int revents) {
         Json::Value targets = root["targets"];
         
         if(targets == Json::Value::null || !targets.isObject() || !targets.size()) {
-            syslog(LOG_ERR, "invalid request: no targets specified");
+            syslog(LOG_ERR, "core: invalid request - no targets specified");
             future->fulfill("error", "no targets specified");
             continue;
         }
@@ -256,7 +256,7 @@ void core_t::request(ev::io& io, int revents) {
 
             // And check if it's an object
             if(!args.isObject()) {
-                syslog(LOG_ERR, "invalid request: target object expected");
+                syslog(LOG_ERR, "core: invalid request - target object expected");
                 
                 Json::Value value;
                 value["error"] = "target object expected";
@@ -276,7 +276,7 @@ void core_t::seal(const std::string& future_id) {
     future_map_t::iterator it = m_futures.find(future_id);
 
     if(it == m_futures.end()) {
-        syslog(LOG_ERR, "found an orphaned future, id: %s", future_id.c_str());
+        syslog(LOG_ERR, "core: found an orphan - future %s", future_id.c_str());
     } else {
         future_t* future = it->second;
 
@@ -289,7 +289,7 @@ void core_t::seal(const std::string& future_id) {
             return;
         }
 
-        syslog(LOG_DEBUG, "sending response, future id %s", future->id().c_str());
+        syslog(LOG_DEBUG, "core: sending response - future %s", future->id().c_str());
 
         // Send the identity
         for(std::vector<std::string>::const_iterator id = identity.begin(); id != identity.end(); ++id) {
@@ -353,12 +353,12 @@ void core_t::push(future_t* future, const std::string& target, const Json::Value
             engine = new engine_t(m_context, source);
             m_engines.insert(target, engine);
         } catch(const std::exception& e) {
-            syslog(LOG_ERR, "exception in core_t::push() - %s", e.what());
+            syslog(LOG_ERR, "core: exception in push() - %s", e.what());
             response["error"] = e.what();
             future->fulfill(target, response);
             return;
         } catch(...) {
-            syslog(LOG_ERR, "unexpected exception in core_t::push()");
+            syslog(LOG_ERR, "core: unexpected exception in push()");
             abort();
         }
     } else {
@@ -385,7 +385,7 @@ void core_t::drop(future_t* future, const std::string& target, const Json::Value
     }
     
     if(it == m_engines.end()) {
-        syslog(LOG_ERR, "invalid engine url specified: %s", target.c_str());
+        syslog(LOG_ERR, "core: nonexistent engine requested %s", target.c_str());
         response["error"] = "engine not found";
         future->fulfill(target, response);
         return;
@@ -410,12 +410,12 @@ void core_t::once(future_t* future, const std::string& target, const Json::Value
             engine = new engine_t(m_context, source);
             m_engines.insert(target, engine);
         } catch(const std::exception& e) {
-            syslog(LOG_ERR, "exception in core_t::once() - %s", e.what());
+            syslog(LOG_ERR, "core: exception in once() - %s", e.what());
             response["error"] = e.what();
             future->fulfill(target, response);
             return;
         } catch(...) {
-            syslog(LOG_ERR, "unexpected exception in core_t::once()");
+            syslog(LOG_ERR, "core: unexpected exception in once()");
             abort();
         }
     } else {
@@ -478,7 +478,7 @@ void core_t::future(ev::io& io, int revents) {
         future_map_t::iterator it = m_futures.find(message["future"].asString());
         
         if(it == m_futures.end()) {
-            syslog(LOG_ERR, "orphaned future slice received: %s", message["future"].asCString());
+            syslog(LOG_ERR, "core: found an orphan - slice for future %s", message["future"].asCString());
             continue;
         }
 
@@ -495,12 +495,12 @@ void core_t::reap(ev::io& io, int revents) {
         engine_map_t::iterator it = m_engines.find(message["engine"].asString());
 
         if(it == m_engines.end()) {
-            syslog(LOG_ERR, "orphaned stalled engine wants to be reaped: %s",
+            syslog(LOG_ERR, "core: found an orphan - engine %s",
                 message["engine"].asCString());
             continue;
         }
         
-        syslog(LOG_DEBUG, "reaping stalled engine %s",
+        syslog(LOG_DEBUG, "core: reaping stalled engine %s",
             message["engine"].asCString());
 
         m_engines.erase(it);

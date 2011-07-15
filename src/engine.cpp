@@ -89,7 +89,7 @@ overseer_t::overseer_t(zmq::context_t& context, source_t* source, const std::str
     m_reaper(m_context, ZMQ_PUSH),
     m_storage("/var/spool/yappi")
 {
-    syslog(LOG_DEBUG, "%s overseer: starting", m_source->uri().c_str());
+    syslog(LOG_DEBUG, "engine %s: starting", m_source->uri().c_str());
     
     // Connect to the engine's controlling socket
     // and set the socket watcher
@@ -162,7 +162,7 @@ void overseer_t::push(const Json::Value& message) {
 
     // If there's no slave for this interval yet, start a new one
     if(m_slaves.find(interval) == m_slaves.end()) {
-        syslog(LOG_DEBUG, "%s overseer: scheduling for execution every %lu ms",
+        syslog(LOG_DEBUG, "engine %s: scheduling for execution every %lu ms",
             m_source->uri().c_str(), interval);
     
         ev::timer* slave = new ev::timer(m_loop);
@@ -172,7 +172,7 @@ void overseer_t::push(const Json::Value& message) {
 
         // Stop the stall timer, if it was running
         if(m_stall.is_active()) {
-            syslog(LOG_DEBUG, "%s overseer: stall timer stopped", m_source->uri().c_str());
+            syslog(LOG_DEBUG, "engine %s: stall timer stopped", m_source->uri().c_str());
             m_stall.stop();
         }
     }
@@ -191,10 +191,12 @@ void overseer_t::push(const Json::Value& message) {
     std::string object_id = m_digest.get(key.str() + token);
     Json::Value object;
 
-    object["url"] = m_source->uri();
-    object["interval"] = static_cast<int32_t>(interval);
-    object["token"] = token;
-    m_storage.put(object_id, object); 
+    if(!m_storage.exists(object_id)) {
+        object["url"] = m_source->uri();
+        object["interval"] = static_cast<int32_t>(interval);
+        object["token"] = token;
+        m_storage.put(object_id, object);
+    }
 
     // Report to the core
     result["key"] = key.str();
@@ -228,7 +230,7 @@ void overseer_t::drop(const Json::Value& message) {
         if(subscriber == end) {
             result["error"] = "not authorized";
         } else {
-            syslog(LOG_DEBUG, "%s overseer: descheduling from execution every %lums",
+            syslog(LOG_DEBUG, "engine %s: descheduling from execution every %lums",
                 m_source->uri().c_str(), interval);
             
             // Unsubscribe
@@ -246,7 +248,7 @@ void overseer_t::drop(const Json::Value& message) {
             
             // Start the stall timer if this was the last slave
             if(!m_slaves.size()) {
-                syslog(LOG_DEBUG, "%s overseer: stall timer started", m_source->uri().c_str());
+                syslog(LOG_DEBUG, "engine %s: stall timer started", m_source->uri().c_str());
                 m_stall.start(60.);
             }
 
@@ -269,7 +271,7 @@ void overseer_t::once(const Json::Value& message) {
     try {
         dict = m_source->fetch();
     } catch(const std::exception& e) {
-        syslog(LOG_ERR, "plugin %s invocation failed: %s",
+        syslog(LOG_ERR, "engine %s: invocation failed - %s",
             m_source->uri().c_str(), e.what());
         result["error"] = "invocation failed";
     }
@@ -287,14 +289,14 @@ void overseer_t::once(const Json::Value& message) {
 
     // Rearm the stall timer if it's active
     if(m_stall.is_active()) {
-        syslog(LOG_DEBUG, "%s overseer: stall timer rearmed", m_source->uri().c_str());
+        syslog(LOG_DEBUG, "engine %s: stall timer rearmed", m_source->uri().c_str());
         m_stall.stop();
         m_stall.start(60.);
     }
 }
 
 void overseer_t::stop(const Json::Value& message) {
-    syslog(LOG_DEBUG, "%s overseer: stopping", m_source->uri().c_str());
+    syslog(LOG_DEBUG, "engine %s: stopping", m_source->uri().c_str());
 
     // Kill all the slaves
     for(slave_map_t::iterator it = m_slaves.begin(); it != m_slaves.end(); ++it) {
@@ -323,7 +325,7 @@ void fetcher_t::operator()(ev::timer& timer, int revents) {
     try {
         dict = m_source->fetch();
     } catch(const std::exception& e) {
-        syslog(LOG_ERR, "plugin %s invocation failed: %s",
+        syslog(LOG_ERR, "engine %s: invocation failed - %s",
             m_source->uri().c_str(), e.what());
         return;
     }

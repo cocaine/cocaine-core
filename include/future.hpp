@@ -17,7 +17,7 @@ class future_t: boost::noncopyable {
             m_fulfilled(0),
             m_expecting(1)
         {
-            syslog(LOG_DEBUG, "future created, id: %s", m_id.get().c_str());
+            syslog(LOG_DEBUG, "future %s: created", m_id.get().c_str());
         }
 
         // Initialize internal future
@@ -26,7 +26,7 @@ class future_t: boost::noncopyable {
             m_fulfilled(0),
             m_expecting(1)
         {
-            syslog(LOG_DEBUG, "future created, id: %s", m_id.get().c_str());
+            syslog(LOG_DEBUG, "future %s: created", m_id.get().c_str());
         }
 
     public:
@@ -44,8 +44,8 @@ class future_t: boost::noncopyable {
         void fulfill(const std::string& key, const T& value) {
             ++m_fulfilled;
 
-            syslog(LOG_DEBUG, "future slice %u/%u fulfilled, id: %s", 
-                    m_fulfilled, m_expecting, m_id.get().c_str());
+            syslog(LOG_DEBUG, "future %s: slice %u/%u fulfilled", 
+                    m_id.get().c_str(), m_fulfilled, m_expecting);
                     
             m_root[key] = value;
 

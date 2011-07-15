@@ -52,7 +52,7 @@ registry_t::registry_t() {
         plugin = dlopen(path.c_str(), RTLD_NOW | RTLD_GLOBAL);
         
         if(!plugin) {
-            syslog(LOG_ERR, "failed to load %s", dlerror());
+            syslog(LOG_ERR, "registry: failed to load %s", dlerror());
             continue;
         }
 
@@ -60,7 +60,7 @@ registry_t::registry_t() {
         initializer = reinterpret_cast<initialize_t>(dlsym(plugin, "initialize"));
 
         if(!initializer) {
-            syslog(LOG_ERR, "invalid plugin interface: %s", dlerror());
+            syslog(LOG_ERR, "registry: invalid plugin interface - %s", dlerror());
             dlclose(plugin);
             continue;
         }
@@ -86,7 +86,7 @@ registry_t::registry_t() {
     }
 
     std::string plugins = boost::algorithm::join(schemes, ", ");
-    syslog(LOG_INFO, "available sources: %s", plugins.c_str());
+    syslog(LOG_INFO, "registry: available sources - %s", plugins.c_str());
 }
 
 registry_t::~registry_t() {

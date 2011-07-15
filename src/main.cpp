@@ -70,7 +70,7 @@ int main(int argc, char* argv[]) {
     // Daemonizing, if needed
     if(daemonize) {
         if(daemon(0, 0) < 0) {
-            syslog(LOG_EMERG, "daemonization failed");
+            syslog(LOG_EMERG, "main: daemonization failed");
             return EXIT_FAILURE;
         }
 
@@ -85,7 +85,7 @@ int main(int argc, char* argv[]) {
         try {
             file.open(pidfile.c_str(), std::ofstream::out | std::ofstream::trunc);
         } catch(const std::ofstream::failure& e) {
-            syslog(LOG_ERR, "failed to write %s", pidfile.c_str());
+            syslog(LOG_ERR, "main: failed to write %s", pidfile.c_str());
             return EXIT_FAILURE;
         }     
 
@@ -93,17 +93,17 @@ int main(int argc, char* argv[]) {
         file.close();
     }
 
-    syslog(LOG_INFO, "yappi is starting");
+    syslog(LOG_INFO, "main: yappi is starting");
     core_t* core;
 
     // Initializing the core
     try {
         core = new core_t(listeners, publishers, hwm, swap);
     } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "runtime error: %s", e.what());
+        syslog(LOG_ERR, "main: runtime error - %s", e.what());
         return EXIT_FAILURE;
     } catch(const zmq::error_t& e) {
-        syslog(LOG_ERR, "network error: %s", e.what());
+        syslog(LOG_ERR, "main: network error - %s", e.what());
         return EXIT_FAILURE;
     }
 
@@ -114,6 +114,6 @@ int main(int argc, char* argv[]) {
     delete core;
     std::remove(pidfile.c_str());
 
-    syslog(LOG_INFO, "yappi has terminated");    
+    syslog(LOG_INFO, "main: yappi has terminated");    
     return EXIT_SUCCESS;
 }
