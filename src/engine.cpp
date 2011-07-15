@@ -34,6 +34,9 @@ engine_t::~engine_t() {
     // Wait for it to stop
     m_thread->join();
     delete m_thread;
+
+    // Get rid of the source
+    delete m_source;
 }
 
 void engine_t::push(const future_t* future, time_t interval) {
