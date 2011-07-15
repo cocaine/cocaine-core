@@ -184,7 +184,7 @@ void overseer_t::push(const Json::Value& message) {
     boost::tie(begin, end) = m_subscriptions.equal_range(interval);
     std::equal_to<subscription_map_t::value_type> predicate;
     
-    if(std::find_if(begin, end, bind(predicate, subscription, _1)) == end) {
+    if(std::find_if(begin, end, bind(predicate, subscription, boost::lambda::_1)) == end) {
         m_subscriptions.insert(subscription);
     }
 
@@ -226,7 +226,9 @@ void overseer_t::drop(const Json::Value& message) {
         boost::tie(begin, end) = m_subscriptions.equal_range(interval);
         std::equal_to<subscription_map_t::value_type> predicate;
         
-        if((subscriber = std::find_if(begin, end, bind(predicate, subscription, _1))) == end) {
+        subscriber = std::find_if(begin, end, bind(predicate, subscription, boost::lambda::_1));
+
+        if(subscriber == end) {
             result["error"] = "not authorized";
         } else {
             syslog(LOG_DEBUG, "%s overseer: descheduling from execution every %lums",
