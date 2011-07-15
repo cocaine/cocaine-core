@@ -6,6 +6,7 @@
 
 #include "common.hpp"
 #include "plugin.hpp"
+#include "persistance.hpp"
 #include "digest.hpp"
 
 namespace yappi { namespace core {
@@ -101,6 +102,9 @@ class overseer_t {
         // Subscriptions
         typedef std::multimap<time_t, std::string> subscription_map_t;
         subscription_map_t m_subscriptions;
+
+        // Task persistance
+        persistance::file_storage_t m_storage;
 };
 
 }}

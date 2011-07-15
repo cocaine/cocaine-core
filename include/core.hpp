@@ -68,9 +68,6 @@ class core_t {
         // Plugins
         registry_t m_registry;
 
-        // Task persistance
-        persistance::file_storage_t m_storage;
-
         // Command dispatching
         typedef boost::function<void(
             future_t*,

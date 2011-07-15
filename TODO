@@ -6,7 +6,7 @@ v JSON command protocol + bulk commands
 v Forking engine (via inject plugin)
 v Async core
 v Fix libev+zmq integration
-> Local persistance
+v Local persistance
 * Global persistance
 * Statistics
 ~ Command plugins support?

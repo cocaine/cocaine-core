@@ -19,7 +19,6 @@ const char core_t::identity[] = "yappi";
 core_t::core_t(const std::vector<std::string>& listeners,
                const std::vector<std::string>& publishers,
                uint64_t hwm, int64_t swap):
-    m_storage("/var/spool/yappi"),
     m_context(1),
     s_events(m_context, ZMQ_PULL),
     s_requests(m_context, ZMQ_ROUTER),
@@ -123,10 +122,22 @@ void core_t::terminate(ev::sig& sig, int revents) {
 }
 
 void core_t::recover() {
-    Json::Value root = m_storage.all();
+    Json::Value root = persistance::file_storage_t("/var/spool/yappi").all();
 
     if(root.size()) {
-        syslog(LOG_DEBUG, "recovered %d engine(s)", root.size());
+        syslog(LOG_DEBUG, "recovered %d task(s)", root.size());
+        
+        future_t* future = new future_t(this);
+        m_futures.insert(future->id(), future);
+        future->await(root.size());
+                
+        Json::Value::Members ids = root.getMemberNames();
+        
+        for(Json::Value::Members::const_iterator it = ids.begin(); it != ids.end(); ++it) {
+            Json::Value object = root[*it];
+            future->assign(object["token"].asString());
+            push(future, object["url"].asString(), object);
+        }
     }
 }
 
@@ -201,7 +212,7 @@ void core_t::request(ev::io& io, int revents) {
             future->fulfill("error", "security token expected");
             continue;
         } else {
-            future->assign(token.asString());
+            future->assign(helpers::digest_t().get(token.asString()));
         }
 
         // Get the action
@@ -271,6 +282,12 @@ void core_t::seal(const std::string& future_id) {
 
         std::string response = future->seal();
         std::vector<std::string> identity = future->identity();
+
+        if(identity.empty()) {
+            // This is an internal future, simply drop it
+            m_futures.erase(it);
+            return;
+        }
 
         syslog(LOG_DEBUG, "sending response, future id %s", future->id().c_str());
 

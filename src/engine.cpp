@@ -82,10 +82,10 @@ overseer_t::overseer_t(zmq::context_t& context, source_t* source, const std::str
     m_context(context),
     m_pipe(m_context, ZMQ_PULL),
     m_futures(m_context, ZMQ_PUSH),
-    m_reaper(m_context, ZMQ_PUSH)
+    m_reaper(m_context, ZMQ_PUSH),
+    m_storage("/var/spool/yappi")
 {
-    syslog(LOG_DEBUG, "starting an overseer for %s, id: %s",
-        m_source->uri().c_str(), id.get().c_str());
+    syslog(LOG_DEBUG, "%s overseer: starting", m_source->uri().c_str());
     
     // Connect to the engine's controlling socket
     // and set the socket watcher
@@ -185,6 +185,15 @@ void overseer_t::push(const Json::Value& message) {
         m_subscriptions.insert(subscription);
     }
 
+    // Persist
+    std::string object_id = helpers::digest_t().get(key.str() + token);
+    Json::Value object;
+
+    object["url"] = m_source->uri();
+    object["interval"] = static_cast<int32_t>(interval);
+    object["token"] = token;
+    m_storage.put(object_id, object); 
+
     // Report to the core
     result["key"] = key.str();
     response["future"] = message["future"];
@@ -226,12 +235,19 @@ void overseer_t::drop(const Json::Value& message) {
             m_slaves.erase(slave);
             m_subscriptions.erase(subscriber);
             
+            // Remove the task from the storage
+            std::ostringstream key;
+            key << m_hash << ":" << interval;
+
+            std::string object_id = helpers::digest_t().get(key.str() + token);
+            m_storage.remove(object_id);
+            
             // Start the stall timer if this was the last slave
             if(!m_slaves.size()) {
                 syslog(LOG_DEBUG, "%s overseer: stall timer started", m_source->uri().c_str());
                 m_stall.start(60.);
             }
-            
+
             result["status"] = "success";
         }
     }

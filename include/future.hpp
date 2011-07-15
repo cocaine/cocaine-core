@@ -21,6 +21,14 @@ class future_t: boost::noncopyable {
             syslog(LOG_DEBUG, "future created, id: %s", m_id.get().c_str());
         }
 
+        // Initialize internal future
+        future_t(core_t* core):
+            m_core(core),
+            m_fulfilled(0),
+            m_expecting(1)
+        {
+        }
+
     public:
         inline std::string id() const { return m_id.get(); }
         inline std::string token() const { return m_token; }
