@@ -193,6 +193,8 @@ dict_t python_t::fetch() {
             object_t string = PyObject_Str(result);
             dict["result"] = PyString_AsString(string);
         }
+    } else {
+        throw exhausted("iteration stopped");
     }
     
     return dict;

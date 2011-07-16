@@ -3,6 +3,9 @@
 
 #include <string>
 #include <map>
+#include <stdexcept>
+
+#include <boost/noncopyable.hpp>
 
 #define MAX_SOURCES 10
 
@@ -31,7 +34,7 @@ typedef std::map<std::string, std::string> dict_t;
         
 // Source factory function should return a void pointer to an object
 // implementing this interface
-class source_t {
+class source_t: public boost::noncopyable {
     public:
         source_t(const std::string& uri):
             m_uri(uri)
@@ -45,6 +48,13 @@ class source_t {
 
     protected:
         std::string m_uri;
+};
+
+class exhausted: public std::runtime_error {
+    public:
+        exhausted(const std::string& message):
+            std::runtime_error(message)
+        {}
 };
 
 }}

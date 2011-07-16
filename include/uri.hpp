@@ -6,11 +6,13 @@
 #include <vector>
 #include <map>
 
+#include <boost/noncopyable.hpp>
+
 #include <uriparser/Uri.h>
 
 namespace yappi { namespace helpers {
 
-struct uri_t {
+struct uri_t: public boost::noncopyable {
     public:
         uri_t(const std::string& source):
             m_source(source)

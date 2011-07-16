@@ -7,7 +7,7 @@
 
 namespace yappi { namespace core {
 
-class blob_socket_t {
+class blob_socket_t: public boost::noncopyable {
     public:
         blob_socket_t(zmq::context_t& context, int type):
             m_socket(context, type)

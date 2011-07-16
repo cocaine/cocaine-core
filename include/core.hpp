@@ -13,10 +13,7 @@ namespace yappi { namespace core {
 
 class future_t;
 
-class reaper_t {
-};
-
-class core_t {
+class core_t: public boost::noncopyable {
     public:
         core_t(const std::vector<std::string>& listeners,
                const std::vector<std::string>& publishers,

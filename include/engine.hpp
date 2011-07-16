@@ -18,7 +18,7 @@ class future_t;
 namespace yappi { namespace engine {
 
 // Thread controller
-class engine_t {
+class engine_t: public boost::noncopyable {
     public:
         engine_t(zmq::context_t& context, plugin::source_t* source);
         ~engine_t();
@@ -34,9 +34,6 @@ class engine_t {
         void bootstrap();
 
     private:
-        // Engine ID, for interthread pipe identification
-        helpers::id_t m_id;
-
         // Worker thread
         boost::thread* m_thread;
 
@@ -47,39 +44,44 @@ class engine_t {
         // Messaging
         zmq::context_t& m_context;
         core::json_socket_t m_pipe;
+        
+        // Engine ID, for interthread pipe identification
+        helpers::auto_uuid_t m_id;
 };
 
-// Event fetcher
-class fetcher_t {
-    public:
-        fetcher_t(zmq::context_t& context, plugin::source_t* source, const std::string& key);
-        void operator()(ev::timer& timer, int revents);
-        
-    private:
-        // Data source
-        plugin::source_t* m_source;
-        
-        // Messaging
-        core::blob_socket_t m_uplink;
-        
-        // Subscription key
-        std::string m_key;
-};
+class fetcher_t;
 
 // Thread manager
-class overseer_t {
+class overseer_t: public boost::noncopyable {
     public:
-        overseer_t(zmq::context_t& context, plugin::source_t* source, const std::string& hash, const helpers::id_t& id);
+        overseer_t(zmq::context_t& context, const helpers::auto_uuid_t& id,
+            plugin::source_t* source, const std::string& hash);
         
         void operator()(ev::io& io, int revents);
         void operator()(ev::timer& timer, int revents);
         
         void run();
 
+    protected:
+        friend class fetcher_t;
+        void suicide();
+
+    private:
         void push(const Json::Value& message);
         void drop(const Json::Value& message);
         void once(const Json::Value& message);
-        void stop(const Json::Value& message);
+        void stop();
+
+        template<class T>
+        void respond(const Json::Value& future, const T& value) {
+            Json::Value response;
+            
+            response["future"] = future;
+            response["engine"] = m_source->uri();
+            response["result"] = value;
+
+            m_futures.send(response);
+        }
 
     private:
         // Event loop
@@ -95,6 +97,9 @@ class overseer_t {
         zmq::context_t& m_context;
         core::json_socket_t m_pipe, m_futures, m_reaper;
         
+        // Engine ID, for interthread pipe identification
+        helpers::auto_uuid_t m_id;
+        
         // Timers
         typedef boost::ptr_map<time_t, ev::timer> slave_map_t;
         slave_map_t m_slaves;
@@ -106,6 +111,28 @@ class overseer_t {
         // Task persistance
         helpers::digest_t m_digest;
         persistance::file_storage_t m_storage;
+};
+
+// Event fetcher
+class fetcher_t: public boost::noncopyable {
+    public:
+        fetcher_t(zmq::context_t& context, overseer_t& overseer,
+            plugin::source_t* source, const std::string& key);
+        
+        void operator()(ev::timer& timer, int revents);
+        
+    private:
+        // Parent
+        overseer_t& m_overseer;
+
+        // Data source
+        plugin::source_t* m_source;
+        
+        // Messaging
+        core::blob_socket_t m_uplink;
+        
+        // Subscription key
+        std::string m_key;
 };
 
 }}

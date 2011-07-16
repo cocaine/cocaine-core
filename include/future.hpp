@@ -64,7 +64,7 @@ class future_t: boost::noncopyable {
 
     private:
         // Future ID
-        helpers::id_t m_id;
+        helpers::auto_uuid_t m_id;
 
         // Parent
         core_t* m_core;

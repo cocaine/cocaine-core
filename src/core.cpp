@@ -43,8 +43,8 @@ core_t::core_t(const std::vector<std::string>& listeners,
     int fd;
     size_t size = sizeof(fd);
 
-    if(!listeners.size() || !publishers.size()) {
-        throw std::runtime_error("at least one listening and one publishing address required");
+    if(!listeners.size()) {
+        throw std::runtime_error("no endpoints specified");
     }
 
     // Internal event sink socket
@@ -75,15 +75,26 @@ core_t::core_t(const std::vector<std::string>& listeners,
     e_requests.set<core_t, &core_t::request>(this);
     e_requests.start(fd, EV_READ);
 
-    // Publishing socket
-    s_publisher.setsockopt(ZMQ_HWM, &hwm, sizeof(hwm));
-    s_publisher.setsockopt(ZMQ_SWAP, &swap, sizeof(swap));
+    // Publishing socket, if applicable
+    if(!publishers.empty()) {
+        s_publisher.setsockopt(ZMQ_HWM, &hwm, sizeof(hwm));
+        s_publisher.setsockopt(ZMQ_SWAP, &swap, sizeof(swap));
 
-    for(std::vector<std::string>::const_iterator it = publishers.begin(); it != publishers.end(); ++it) {
-        s_publisher.bind(it->c_str());
-        syslog(LOG_INFO, "core: publishing events on %s", it->c_str());
-    }
+        for(std::vector<std::string>::const_iterator it = publishers.begin(); it != publishers.end(); ++it) {
+            s_publisher.bind(it->c_str());
+            syslog(LOG_INFO, "core: publishing events on %s", it->c_str());
+        }
    
+        // Built-ins
+        m_dispatch["push"] = boost::bind(&core_t::push, this, _1, _2, _3);
+        m_dispatch["drop"] = boost::bind(&core_t::drop, this, _1, _2, _3);
+
+        // Recover persistent tasks
+        recover();
+    } else {
+        syslog(LOG_INFO, "core: no publishing endpoints specified - scheduler disabled");
+    }
+        
     // Initialize signal watchers
     e_sigint.set<core_t, &core_t::terminate>(this);
     e_sigint.start(SIGINT);
@@ -94,17 +105,12 @@ core_t::core_t(const std::vector<std::string>& listeners,
     e_sigquit.set<core_t, &core_t::terminate>(this);
     e_sigquit.start(SIGQUIT);
 
-    // Initialize built-in command handlers
-    m_dispatch["push"] = boost::bind(&core_t::push, this, _1, _2, _3);
-    m_dispatch["drop"] = boost::bind(&core_t::drop, this, _1, _2, _3);
+    // Built-ins
     m_dispatch["once"] = boost::bind(&core_t::once, this, _1, _2, _3);
-
-    // Try to recover persistent tasks
-    recover();
 }
 
 core_t::~core_t() {
-    syslog(LOG_DEBUG, "core: shutting down the engines");
+    syslog(LOG_INFO, "core: shutting down the engines");
 
     // Stopping the engines
     m_engines.clear();
@@ -125,7 +131,7 @@ void core_t::recover() {
     Json::Value root = persistance::file_storage_t("/var/spool/yappi").all();
 
     if(root.size()) {
-        syslog(LOG_DEBUG, "core: recovered %d task(s)", root.size());
+        syslog(LOG_INFO, "core: recovered %d task(s)", root.size());
         
         future_t* future = new future_t(this);
         m_futures.insert(future->id(), future);
@@ -283,29 +289,26 @@ void core_t::seal(const std::string& future_id) {
         std::string response = future->seal();
         std::vector<std::string> identity = future->identity();
 
-        if(identity.empty()) {
-            // This is an internal future, simply drop it
-            m_futures.erase(it);
-            return;
-        }
+        // Send it if it's not an internal future
+        if(!identity.empty()) {
+            syslog(LOG_DEBUG, "core: sending response - future %s", future->id().c_str());
 
-        syslog(LOG_DEBUG, "core: sending response - future %s", future->id().c_str());
-
-        // Send the identity
-        for(std::vector<std::string>::const_iterator id = identity.begin(); id != identity.end(); ++id) {
-            message.rebuild(id->length());
-            memcpy(message.data(), id->data(), id->length());
+            // Send the identity
+            for(std::vector<std::string>::const_iterator id = identity.begin(); id != identity.end(); ++id) {
+                message.rebuild(id->length());
+                memcpy(message.data(), id->data(), id->length());
+                s_requests.send(message, ZMQ_SNDMORE);
+            }
+            
+            // Send the delimiter
+            message.rebuild(0);
             s_requests.send(message, ZMQ_SNDMORE);
-        }
-        
-        // Send the delimiter
-        message.rebuild(0);
-        s_requests.send(message, ZMQ_SNDMORE);
 
-        // Send the JSON
-        message.rebuild(response.length());
-        memcpy(message.data(), response.data(), response.length());
-        s_requests.send(message);
+            // Send the JSON
+            message.rebuild(response.length());
+            memcpy(message.data(), response.data(), response.length());
+            s_requests.send(message);
+        }
 
         // Release the future
         m_futures.erase(it);
@@ -371,7 +374,6 @@ void core_t::push(future_t* future, const std::string& target, const Json::Value
 
 void core_t::drop(future_t* future, const std::string& target, const Json::Value& args) {
     Json::Value response;
-    engine_map_t::iterator it = m_engines.find(target);
 
     // Parse the arguments
     time_t interval;
@@ -383,6 +385,8 @@ void core_t::drop(future_t* future, const std::string& target, const Json::Value
         future->fulfill(target, response);
         return;
     }
+    
+    engine_map_t::iterator it = m_engines.find(target);
     
     if(it == m_engines.end()) {
         syslog(LOG_ERR, "core: nonexistent engine requested %s", target.c_str());
@@ -500,7 +504,7 @@ void core_t::reap(ev::io& io, int revents) {
             continue;
         }
         
-        syslog(LOG_DEBUG, "core: reaping stalled engine %s",
+        syslog(LOG_DEBUG, "core: reaping engine %s",
             message["engine"].asCString());
 
         m_engines.erase(it);

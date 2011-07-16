@@ -6,7 +6,7 @@
 
 namespace yappi { namespace core {
 
-class registry_t {
+class registry_t: public boost::noncopyable {
     public:
         registry_t();
         ~registry_t();

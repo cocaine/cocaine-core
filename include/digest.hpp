@@ -9,7 +9,7 @@
 
 namespace yappi { namespace helpers {
 
-class digest_t {
+class digest_t: public boost::noncopyable {
     public:
         digest_t():
             m_context(EVP_MD_CTX_create()) {}
