@@ -1,12 +1,6 @@
-#include <cstdlib>
-#include <sstream>
-#include <stdexcept>
-
 #include <dlfcn.h>
-#include <dirent.h>
-#include <errno.h>
-#include <string.h>
 
+#include <boost/iterator/filter_iterator.hpp>
 #include <boost/algorithm/string/join.hpp>
 
 #include "common.hpp"
@@ -15,72 +9,59 @@
 
 using namespace yappi::core;
 using namespace yappi::plugin;
+namespace fs = boost::filesystem;
 
-namespace {
-    // TODO: Make this portable
-    int filter(const dirent *entry) {
-        return (entry->d_type == DT_REG && strstr(entry->d_name, ".so"));
+struct is_regular_file {
+    template<typename T> bool operator()(T entry) {
+        return fs::is_regular(entry);
     }
-}
+};
 
-registry_t::registry_t() {
-    std::string directory = "/usr/lib/yappi";
-    dirent** namelist;
-    
-    // Scan for all files in the specified directory
-    int count = scandir(
-        directory.c_str(),
-        &namelist,
-        &filter,
-        alphasort);
-
-    if(count == -1) {
-        // No need for strerror_r here, as this is only executed from the main thread
-        std::string message = directory + ": " + strerror(errno);
-        throw std::runtime_error(message);
+registry_t::registry_t(const std::string& plugin_path):
+    m_plugin_path(plugin_path)
+{
+    if(!fs::exists(m_plugin_path) || !fs::is_directory(m_plugin_path)) {
+        throw std::runtime_error(plugin_path + " path is invalid");
     }
-    
+
     void* plugin;
-    std::string path; 
     initialize_t initializer;
     std::vector<std::string> schemes;
 
-    while(count--) {
+    // Directory iterator
+    typedef boost::filter_iterator<is_regular_file, fs::directory_iterator> file_iterator;
+    file_iterator it = file_iterator(is_regular_file(), fs::directory_iterator(m_plugin_path)), end;
+
+    while(it != end) {
         // Load the plugin
-        // TODO: Make this portable, too.
-        path = directory + '/' + namelist[count]->d_name;
-        plugin = dlopen(path.c_str(), RTLD_NOW | RTLD_GLOBAL);
+        plugin = dlopen(it->string().c_str(), RTLD_NOW | RTLD_GLOBAL);
         
-        if(!plugin) {
+        if(plugin) {
+            // Get the plugin info
+            initializer = reinterpret_cast<initialize_t>(dlsym(plugin, "initialize"));
+
+            if(initializer) {
+                const plugin_info_t* info = initializer();
+                m_plugins.push_back(plugin);
+
+                // Fetch all the available sources from it
+                for(unsigned int i = 0; i < info->count; ++i) {
+                    m_factories.insert(std::make_pair(
+                        info->sources[i].scheme,
+                        info->sources[i].factory));
+                    schemes.push_back(info->sources[i].scheme);
+                }
+            } else {
+                syslog(LOG_ERR, "registry: invalid plugin interface - %s", dlerror());
+                dlclose(plugin);
+            }
+        } else {
             syslog(LOG_ERR, "registry: failed to load %s", dlerror());
-            continue;
         }
 
-        // Get the plugin info
-        initializer = reinterpret_cast<initialize_t>(dlsym(plugin, "initialize"));
-
-        if(!initializer) {
-            syslog(LOG_ERR, "registry: invalid plugin interface - %s", dlerror());
-            dlclose(plugin);
-            continue;
-        }
-        
-        m_plugins.push_back(plugin);
-        const plugin_info_t* info = initializer();
-
-        // Fetch all the available sources from it
-        for(unsigned int i = 0; i < info->count; ++i) {
-            m_factories.insert(std::make_pair(
-                info->sources[i].scheme,
-                info->sources[i].factory));
-            schemes.push_back(info->sources[i].scheme);
-        }
-
-        free(namelist[count]);
+        ++it;
     }
 
-    free(namelist);
-    
     if(!m_factories.size()) {
         throw std::runtime_error("no plugins found");
     }

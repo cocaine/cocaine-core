@@ -161,7 +161,7 @@ void python_t::create(const std::string& code,
     }
 }
 
-dict_t python_t::fetch() {
+python_t::dict_t python_t::fetch() {
     // Get the thread state
     thread_state_t state = PyGILState_Ensure();
 

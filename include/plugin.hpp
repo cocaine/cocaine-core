@@ -1,9 +1,9 @@
 #ifndef YAPPI_PLUGIN_HPP
 #define YAPPI_PLUGIN_HPP
 
-#include <string>
 #include <map>
 #include <stdexcept>
+#include <string>
 
 #include <boost/noncopyable.hpp>
 
@@ -30,8 +30,6 @@ struct plugin_info_t {
 // which returns all the necessary plugin info
 typedef const plugin_info_t* (*initialize_t)(void);
 
-typedef std::map<std::string, std::string> dict_t;        
-        
 // Source factory function should return a void pointer to an object
 // implementing this interface
 class source_t: public boost::noncopyable {
@@ -44,6 +42,7 @@ class source_t: public boost::noncopyable {
 
         // This method will be called by the scheduler with specified intervals to
         // fetch the new data for publishing
+        typedef std::map<std::string, std::string> dict_t;        
         virtual dict_t fetch() = 0;
 
     protected:

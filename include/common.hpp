@@ -3,12 +3,13 @@
 
 #include <stdint.h>
 
+#include <map>
+#include <stdexcept>
 #include <string>
 #include <vector>
-#include <map>
 
-#include <time.h>
 #include <syslog.h>
+#include <time.h>
 
 #define EV_USE_MONOTONIC 1
 #define EV_USE_NANOSLEEP 1
@@ -16,8 +17,8 @@
 
 #include <zmq.hpp>
 
-#if ZMQ_VERSION < 20100
-    #error ZeroMQ version 2.1.0+ required!
+#if ZMQ_VERSION < 20107
+    #error ZeroMQ version 2.1.7+ required!
 #endif
 
 #include <boost/noncopyable.hpp>

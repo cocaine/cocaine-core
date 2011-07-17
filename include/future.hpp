@@ -35,7 +35,7 @@ class future_t: boost::noncopyable {
         inline std::vector<std::string> identity() const { return m_identity; }
 
     public:
-        void assign(const std::string& token) {
+        inline void assign(const std::string& token) {
             m_token = token;
         }
 

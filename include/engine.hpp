@@ -27,26 +27,24 @@ class engine_t: public boost::noncopyable {
         void drop(const core::future_t* future, time_t interval);
         void once(const core::future_t* future);
 
-        inline std::string hash() const { return m_hash; }
-
     private:
         // Worker thread bootstrap
         void bootstrap();
 
     private:
-        // Worker thread
-        boost::thread* m_thread;
-
-        // Data source and source hash
-        plugin::source_t* m_source;
-        std::string m_hash;
-        
         // Messaging
         zmq::context_t& m_context;
         core::json_socket_t m_pipe;
         
         // Engine ID, for interthread pipe identification
         helpers::auto_uuid_t m_id;
+
+        // Data source and source hash
+        plugin::source_t* m_source;
+
+        // Worker thread
+        boost::thread* m_thread;
+        
 };
 
 class fetcher_t;
@@ -55,7 +53,7 @@ class fetcher_t;
 class overseer_t: public boost::noncopyable {
     public:
         overseer_t(zmq::context_t& context, const helpers::auto_uuid_t& id,
-            plugin::source_t* source, const std::string& hash);
+            plugin::source_t* source);
         
         void operator()(ev::io& io, int revents);
         void operator()(ev::timer& timer, int revents);
@@ -73,7 +71,7 @@ class overseer_t: public boost::noncopyable {
         void stop();
 
         template<class T>
-        void respond(const Json::Value& future, const T& value) {
+        inline void respond(const Json::Value& future, const T& value) {
             Json::Value response;
             
             response["future"] = future;
@@ -89,16 +87,19 @@ class overseer_t: public boost::noncopyable {
         ev::io m_io;
         ev::timer m_stall;
         
-        // Data source
-        plugin::source_t* m_source;
-        std::string m_hash;
-
         // Messaging
         zmq::context_t& m_context;
         core::json_socket_t m_pipe, m_futures, m_reaper;
         
         // Engine ID, for interthread pipe identification
         helpers::auto_uuid_t m_id;
+        
+        // Hashing machinery
+        helpers::digest_t m_digest;
+
+        // Data source
+        plugin::source_t* m_source;
+        std::string m_hash;
         
         // Timers
         typedef boost::ptr_map<time_t, ev::timer> slave_map_t;
@@ -109,7 +110,6 @@ class overseer_t: public boost::noncopyable {
         subscription_map_t m_subscriptions;
 
         // Task persistance
-        helpers::digest_t m_digest;
         persistance::file_storage_t m_storage;
 };
 

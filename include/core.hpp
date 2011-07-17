@@ -1,8 +1,8 @@
 #ifndef YAPPI_CORE_HPP
 #define YAPPI_CORE_HPP
 
-#include <boost/function.hpp>
 #include <boost/ptr_container/ptr_map.hpp>
+#include <boost/function.hpp>
 
 #include "common.hpp"
 #include "engine.hpp"

@@ -1,6 +1,5 @@
-#include <stdexcept>
-#include <sstream>
 #include <functional>
+#include <sstream>
 
 #include <boost/bind.hpp>
 #include <boost/tuple/tuple.hpp>
@@ -15,12 +14,11 @@ using namespace yappi::plugin;
 using namespace yappi::helpers;
 
 engine_t::engine_t(zmq::context_t& context, source_t* source):
-    m_thread(NULL),
-    m_source(source),
-    m_hash(digest_t().get(source->uri())),
     m_context(context),
     m_pipe(m_context, ZMQ_PUSH),
-    m_id()
+    m_id(),
+    m_source(source),
+    m_thread(NULL)
 {
     // Bind the controlling socket and fire of the thread
     m_pipe.bind("inproc://" + m_id.get());
@@ -74,21 +72,22 @@ void engine_t::once(const future_t* future) {
 
 void engine_t::bootstrap() {
     // This blocks until stopped manually
-    overseer_t overseer(m_context, m_id, m_source, m_hash);
+    overseer_t overseer(m_context, m_id, m_source);
     overseer.run();
 }
 
-overseer_t::overseer_t(zmq::context_t& context, const auto_uuid_t& id, source_t* source, const std::string& hash):
+overseer_t::overseer_t(zmq::context_t& context, const auto_uuid_t& id, source_t* source):
     m_loop(),
     m_io(m_loop),
     m_stall(m_loop),
-    m_source(source),
-    m_hash(hash),
     m_context(context),
     m_pipe(m_context, ZMQ_PULL),
     m_futures(m_context, ZMQ_PUSH),
     m_reaper(m_context, ZMQ_PUSH),
     m_id(id),
+    m_digest(),
+    m_source(source),
+    m_hash(m_digest.get(source->uri())),
     m_storage("/var/spool/yappi")
 {
     syslog(LOG_INFO, "engine %s: starting", m_source->uri().c_str());
@@ -147,7 +146,7 @@ void overseer_t::operator()(ev::timer& timer, int revents) {
 }
 
 void overseer_t::push(const Json::Value& message) {
-    Json::Value response, result;
+    Json::Value result;
     
     // Unpack
     time_t interval = message["interval"].asUInt();
@@ -201,7 +200,7 @@ void overseer_t::push(const Json::Value& message) {
 }
 
 void overseer_t::drop(const Json::Value& message) {
-    Json::Value response, result;
+    Json::Value result;
     
     // Unpack
     time_t interval = message["interval"].asUInt();
@@ -210,9 +209,7 @@ void overseer_t::drop(const Json::Value& message) {
     // Check if we have such a slave
     slave_map_t::iterator slave = m_slaves.find(interval);
 
-    if(slave == m_slaves.end()) {
-        result["error"] = "not found";
-    } else {
+    if(slave != m_slaves.end()) {
         // Check if the client is eligible for unsubscription
         subscription_map_t::iterator begin, end, subscriber;
         subscription_map_t::value_type subscription = std::make_pair(interval, token);
@@ -221,9 +218,7 @@ void overseer_t::drop(const Json::Value& message) {
         
         subscriber = std::find_if(begin, end, boost::bind(predicate, subscription, _1));
 
-        if(subscriber == end) {
-            result["error"] = "not authorized";
-        } else {
+        if(subscriber != end) {
             syslog(LOG_DEBUG, "engine %s: descheduling from execution every %lums",
                 m_source->uri().c_str(), interval);
             
@@ -250,7 +245,11 @@ void overseer_t::drop(const Json::Value& message) {
             }
 
             result["status"] = "success";
+        } else {
+            result["error"] = "not authorized";
         }
+    } else {
+        result["error"] = "not found";
     }
 
     // Report to the core
@@ -260,7 +259,7 @@ void overseer_t::drop(const Json::Value& message) {
 void overseer_t::once(const Json::Value& message) {
     Json::Value response, result;
     
-    dict_t dict;
+    source_t::dict_t dict;
 
     try {
         dict = m_source->fetch();
@@ -273,7 +272,7 @@ void overseer_t::once(const Json::Value& message) {
         return;
     }
         
-    for(dict_t::const_iterator it = dict.begin(); it != dict.end(); ++it) {
+    for(source_t::dict_t::const_iterator it = dict.begin(); it != dict.end(); ++it) {
         result[it->first] = it->second;
     }
 
@@ -323,7 +322,7 @@ fetcher_t::fetcher_t(zmq::context_t& context, overseer_t& overseer, source_t* so
 }
 
 void fetcher_t::operator()(ev::timer& timer, int revents) {
-    dict_t dict;
+    source_t::dict_t dict;
 
     try {
         dict = m_source->fetch();

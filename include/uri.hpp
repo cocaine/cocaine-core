@@ -1,10 +1,10 @@
 #ifndef YAPPI_URI_HPP
 #define YAPPI_URI_HPP
 
-#include <stdexcept>
 #include <sstream>
-#include <vector>
+#include <stdexcept>
 #include <map>
+#include <vector>
 
 #include <boost/noncopyable.hpp>
 
@@ -22,8 +22,9 @@ struct uri_t: public boost::noncopyable {
             int result;
 
             state.uri = &m_uri;
-            
-            if((result = uriParseUriA(&state, m_source.c_str())) != URI_SUCCESS) {
+            result = uriParseUriA(&state, m_source.c_str());
+
+            if(result != URI_SUCCESS) {
                 char buffer[256];
                 strerror_r(result, buffer, 256);
                 

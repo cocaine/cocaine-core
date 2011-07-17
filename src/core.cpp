@@ -1,7 +1,5 @@
-#include <cstdlib>
-#include <sstream>
 #include <iomanip>
-#include <stdexcept>
+#include <sstream>
 
 #include <boost/bind.hpp>
 #include <boost/tuple/tuple.hpp>
@@ -9,7 +7,6 @@
 
 #include "core.hpp"
 #include "future.hpp"
-#include "id.hpp"
 
 using namespace yappi::core;
 using namespace yappi::engine;
@@ -20,6 +17,7 @@ const char core_t::identity[] = "yappi";
 core_t::core_t(const std::vector<std::string>& listeners,
                const std::vector<std::string>& publishers,
                uint64_t hwm, int64_t swap):
+    m_registry("/usr/lib/yappi"),
     m_context(1),
     s_events(m_context, ZMQ_PULL),
     s_requests(m_context, ZMQ_ROUTER),
@@ -42,10 +40,6 @@ core_t::core_t(const std::vector<std::string>& listeners,
     // Initialize sockets
     int fd;
     size_t size = sizeof(fd);
-
-    if(!listeners.size()) {
-        throw std::runtime_error("no endpoints specified");
-    }
 
     // Internal event sink socket
     s_events.bind("inproc://events");
@@ -75,7 +69,7 @@ core_t::core_t(const std::vector<std::string>& listeners,
     e_requests.set<core_t, &core_t::request>(this);
     e_requests.start(fd, EV_READ);
 
-    // Publishing socket, if applicable
+    // Publishing socket
     if(!publishers.empty()) {
         s_publisher.setsockopt(ZMQ_HWM, &hwm, sizeof(hwm));
         s_publisher.setsockopt(ZMQ_SWAP, &swap, sizeof(swap));
@@ -283,36 +277,38 @@ void core_t::seal(const std::string& future_id) {
 
     if(it == m_futures.end()) {
         syslog(LOG_ERR, "core: found an orphan - future %s", future_id.c_str());
-    } else {
-        future_t* future = it->second;
-
-        std::string response = future->seal();
-        std::vector<std::string> identity = future->identity();
-
-        // Send it if it's not an internal future
-        if(!identity.empty()) {
-            syslog(LOG_DEBUG, "core: sending response - future %s", future->id().c_str());
-
-            // Send the identity
-            for(std::vector<std::string>::const_iterator id = identity.begin(); id != identity.end(); ++id) {
-                message.rebuild(id->length());
-                memcpy(message.data(), id->data(), id->length());
-                s_requests.send(message, ZMQ_SNDMORE);
-            }
-            
-            // Send the delimiter
-            message.rebuild(0);
-            s_requests.send(message, ZMQ_SNDMORE);
-
-            // Send the JSON
-            message.rebuild(response.length());
-            memcpy(message.data(), response.data(), response.length());
-            s_requests.send(message);
-        }
-
-        // Release the future
-        m_futures.erase(it);
+        return;
     }
+        
+    future_t* future = it->second;
+    std::vector<std::string> identity = future->identity();
+
+    // Send it if it's not an internal future
+    if(!identity.empty()) {
+        syslog(LOG_DEBUG, "core: sending response - future %s", future->id().c_str());
+
+        // Send the identity
+        for(std::vector<std::string>::const_iterator id = identity.begin(); id != identity.end(); ++id) {
+            message.rebuild(id->length());
+            memcpy(message.data(), id->data(), id->length());
+            s_requests.send(message, ZMQ_SNDMORE);
+        }
+        
+        // Send the delimiter
+        message.rebuild(0);
+        s_requests.send(message, ZMQ_SNDMORE);
+
+        // Send the JSON
+        std::string response = future->seal();
+        message.rebuild(response.length());
+        memcpy(message.data(), response.data(), response.length());
+        s_requests.send(message);
+    } else {
+        syslog(LOG_DEBUG, "core: ignoring internal future %s", future->id().c_str());
+    }
+
+    // Release the future
+    m_futures.erase(it);
 }
 
 // Built-in commands:
@@ -436,7 +432,7 @@ void core_t::once(future_t* future, const std::string& target, const Json::Value
 void core_t::event(ev::io& io, int revents) {
     zmq::message_t message;
     std::string key;
-    dict_t dict;
+    source_t::dict_t dict;
     
     while(s_events.pending()) {
         // Receive the key
@@ -456,7 +452,7 @@ void core_t::event(ev::io& io, int revents) {
         object.convert(&dict);
 
         // Disassemble and send in the envelopes
-        for(dict_t::const_iterator it = dict.begin(); it != dict.end(); ++it) {
+        for(source_t::dict_t::const_iterator it = dict.begin(); it != dict.end(); ++it) {
             std::ostringstream envelope;
             envelope << key << " " << it->first << " "
                      << std::fixed << std::setprecision(3) << m_loop.now();

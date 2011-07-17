@@ -1,9 +1,7 @@
 #include <iostream>
 #include <fstream>
-#include <stdexcept>
 
 #include "common.hpp"
-#include "future.hpp"
 #include "core.hpp"
 
 using namespace yappi::core;
@@ -60,8 +58,8 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    if(!listeners.size() || !publishers.size()) {
-        std::cerr << "Invalid arguments" << std::endl;
+    if(listeners.empty()) {
+        std::cerr << "No endpoint specified" << std::endl;
         usage();
 
         return EXIT_FAILURE;
