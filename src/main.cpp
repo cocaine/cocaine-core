@@ -7,13 +7,14 @@
 using namespace yappi::core;
 
 void usage() {
-        std::cout << "Usage: yappi -d -l endpoint -e endpoint [-m 0] [-s 0] [-f /var/run/yappi.pid]" << std::endl;
-        std::cout << "  -d\tdaemonize" << std::endl;
+        std::cout << "Usage: yappi -l endpoint [-e endpoint] [-m 0] [-s 0] [-f /var/run/yappi.pid] [-dc]" << std::endl;
         std::cout << "  -l\tendpoint for listening for requests, might be used multiple times" << std::endl;
         std::cout << "  -e\tendpoint for exporting events, might be used multiple times" << std::endl;
         std::cout << "  -m\tin-memory message cache, in messages (0 - unlimited)" << std::endl;
         std::cout << "  -s\ton-disk message cache, in bytes (0 - off)" << std::endl;
         std::cout << "  -f\tpidfile location" << std::endl;
+        std::cout << "  -d\tdaemonize" << std::endl;
+        std::cout << "  -c\tdo not try to recover previous tasks" << std::endl;
         std::cout << std::endl;
         std::cout << "Endpoint types:" << std::endl;
         std::cout << "  * ipc://pathname" << std::endl;
@@ -24,18 +25,15 @@ void usage() {
 int main(int argc, char* argv[]) {
     char option = 0;
 
-    bool daemonize = false;
+    bool daemonize = false, clean = false;
     std::string pidfile = "/var/run/yappi.pid";
     std::vector<std::string> listeners;
     std::vector<std::string> publishers;
     uint64_t hwm = 0;
     int64_t swap = 0;
 
-    while((option = getopt(argc, argv, "de:l:p:h:m:s:f:")) != -1) {
+    while((option = getopt(argc, argv, "l:e:m:s:f:dch")) != -1) {
         switch(option) {
-            case 'd':
-                daemonize = true;
-                break;
             case 'l':
                 listeners.push_back(optarg);
                 break;
@@ -50,6 +48,12 @@ int main(int argc, char* argv[]) {
                 break;
             case 'f':
                 pidfile = optarg;
+                break;
+            case 'd':
+                daemonize = true;
+                break;
+            case 'c':
+                clean = true;
                 break;
             case 'h':
             default:
@@ -96,7 +100,7 @@ int main(int argc, char* argv[]) {
 
     // Initializing the core
     try {
-        core = new core_t(listeners, publishers, hwm, swap);
+        core = new core_t(listeners, publishers, hwm, swap, clean);
     } catch(const std::runtime_error& e) {
         syslog(LOG_ERR, "main: runtime error - %s", e.what());
         return EXIT_FAILURE;

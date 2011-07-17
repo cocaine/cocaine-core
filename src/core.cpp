@@ -16,7 +16,7 @@ const char core_t::identity[] = "yappi";
 
 core_t::core_t(const std::vector<std::string>& listeners,
                const std::vector<std::string>& publishers,
-               uint64_t hwm, int64_t swap):
+               uint64_t hwm, int64_t swap, bool clean):
     m_registry("/usr/lib/yappi"),
     m_context(1),
     s_events(m_context, ZMQ_PULL),
@@ -84,7 +84,9 @@ core_t::core_t(const std::vector<std::string>& listeners,
         m_dispatch["drop"] = boost::bind(&core_t::drop, this, _1, _2, _3);
 
         // Recover persistent tasks
-        recover();
+        if(!clean) {
+            recover();
+        }
     } else {
         syslog(LOG_INFO, "core: no publishing endpoints specified - scheduler disabled");
     }
