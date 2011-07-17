@@ -16,7 +16,7 @@ const char core_t::identity[] = "yappi";
 
 core_t::core_t(const std::vector<std::string>& listeners,
                const std::vector<std::string>& publishers,
-               uint64_t hwm, int64_t swap, bool clean):
+               uint64_t hwm, bool fresh):
     m_registry("/usr/lib/yappi"),
     m_context(1),
     s_events(m_context, ZMQ_PULL),
@@ -72,7 +72,6 @@ core_t::core_t(const std::vector<std::string>& listeners,
     // Publishing socket
     if(!publishers.empty()) {
         s_publisher.setsockopt(ZMQ_HWM, &hwm, sizeof(hwm));
-        s_publisher.setsockopt(ZMQ_SWAP, &swap, sizeof(swap));
 
         for(std::vector<std::string>::const_iterator it = publishers.begin(); it != publishers.end(); ++it) {
             s_publisher.bind(it->c_str());
@@ -84,7 +83,7 @@ core_t::core_t(const std::vector<std::string>& listeners,
         m_dispatch["drop"] = boost::bind(&core_t::drop, this, _1, _2, _3);
 
         // Recover persistent tasks
-        if(!clean) {
+        if(!fresh) {
             recover();
         }
     } else {

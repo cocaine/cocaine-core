@@ -17,7 +17,7 @@ class core_t: public boost::noncopyable {
     public:
         core_t(const std::vector<std::string>& listeners,
                const std::vector<std::string>& publishers,
-               uint64_t hwm, int64_t swap, bool clean);
+               uint64_t hwm, bool fresh);
         virtual ~core_t();
 
         // Event loop
