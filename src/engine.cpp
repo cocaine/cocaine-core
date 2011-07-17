@@ -22,18 +22,18 @@ engine_t::engine_t(zmq::context_t& context, source_t* source):
 {
     // Bind the controlling socket and fire of the thread
     m_pipe.bind("inproc://" + m_id.get());
-    m_thread = new boost::thread(boost::bind(&engine_t::bootstrap, this));
+    pthread_create(&m_thread, NULL, &engine_t::bootstrap, this);
 }
 
 engine_t::~engine_t() {
     Json::Value message;
 
+    // Send a message
     message["command"] = "stop";
     m_pipe.send(message);
 
     // Wait for it to stop
-    m_thread->join();
-    delete m_thread;
+    pthread_join(m_thread, NULL);
 
     // Get rid of the source
     delete m_source;
@@ -70,10 +70,14 @@ void engine_t::once(const future_t* future) {
     m_pipe.send(message);
 }
 
-void engine_t::bootstrap() {
+void* engine_t::bootstrap(void* args) {
+    engine_t* engine = static_cast<engine_t*>(args);
+
     // This blocks until stopped manually
-    overseer_t overseer(m_context, m_id, m_source);
+    overseer_t overseer(engine->m_context, engine->m_id, engine->m_source);
     overseer.run();
+
+    return NULL;
 }
 
 overseer_t::overseer_t(zmq::context_t& context, const auto_uuid_t& id, source_t* source):

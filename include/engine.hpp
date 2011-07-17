@@ -2,7 +2,6 @@
 #define YAPPI_ENGINE_HPP
 
 #include <boost/ptr_container/ptr_map.hpp>
-#include <boost/thread.hpp>
 
 #include "common.hpp"
 #include "plugin.hpp"
@@ -29,7 +28,7 @@ class engine_t: public boost::noncopyable {
 
     private:
         // Worker thread bootstrap
-        void bootstrap();
+        static void* bootstrap(void* args);
 
     private:
         // Messaging
@@ -43,7 +42,7 @@ class engine_t: public boost::noncopyable {
         plugin::source_t* m_source;
 
         // Worker thread
-        boost::thread* m_thread;
+        pthread_t m_thread;
         
 };
 

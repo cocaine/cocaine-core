@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
     // Daemonizing, if needed
     if(config.count("daemonize")) {
         if(daemon(0, 0) < 0) {
-            syslog(LOG_EMERG, "main: daemonization failed");
+            std::cout << "Error: daemonization failed." << std::endl;
             return EXIT_FAILURE;
         }
 
