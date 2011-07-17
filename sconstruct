@@ -29,7 +29,7 @@ binary = env.Program(
     target = "build/yappi",
     source = ["src/main.cpp"],
     CPPPATH = ["foreign/jsoncpp-0.5.0/include", "include"],
-    LIBS = ["yappi"],
+    LIBS = ["yappi", "boost_program_options"],
     LIBPATH = ["build"])
 
 dev = env.File(["include/plugin.hpp", "include/uri.hpp", "clients/c++/client.hpp"])
