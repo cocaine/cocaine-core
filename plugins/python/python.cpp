@@ -237,7 +237,8 @@ extern "C" {
     }
 
     __attribute__((destructor)) void finalize() {
-        Py_Finalize();
+        // XXX: This SEGFAULTs the process for some reason during the finalization
+        // Py_Finalize();
     }
 }
 

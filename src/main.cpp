@@ -25,9 +25,12 @@ int main(int argc, char* argv[]) {
 
     options.add_options()
         ("help", "show this message")
-        ("export", po::value< std::vector<std::string> >(&exports), "endpoints to publish events from schedulers")
-        ("watermark", po::value<uint64_t>()->default_value(1000), "maximum number of messages to keep on client disconnects")
-        ("pid", po::value<fs::path>()->default_value("/var/run/yappi.pid"), "location of a pid file")
+        ("export", po::value< std::vector<std::string> >(&exports),
+            "endpoints to publish events from schedulers")
+        ("watermark", po::value<uint64_t>()->default_value(1000),
+            "maximum number of messages to keep on client disconnects")
+        ("pid", po::value<fs::path>()->default_value("/var/run/yappi.pid"),
+            "location of a pid file")
         ("daemonize", "daemonize on start")
         ("fresh", "do not try to recover tasks");
 
@@ -76,7 +79,8 @@ int main(int argc, char* argv[]) {
             file.open(config["pid"].as<fs::path>(),
                 std::ofstream::out | std::ofstream::trunc);
         } catch(const std::ofstream::failure& e) {
-            syslog(LOG_ERR, "main: failed to write %s", config["pid"].as<fs::path>().string().c_str());
+            syslog(LOG_ERR, "main: failed to write %s",
+                config["pid"].as<fs::path>().string().c_str());
             return EXIT_FAILURE;
         }     
 
@@ -107,7 +111,16 @@ int main(int argc, char* argv[]) {
 
     // Cleanup
     delete core;
-    fs::remove(config["pid"].as<fs::path>());
+
+    if(config.count("daemonize")) {
+        try {
+            fs::remove(config["pid"].as<fs::path>());
+        } catch(const std::runtime_error& e) {
+            syslog(LOG_ERR, "main: failed to remove %s",
+                config["pid"].as<fs::path>().string().c_str());
+        }
+    }
+        
     syslog(LOG_INFO, "main: yappi has terminated");
     
     return EXIT_SUCCESS;
