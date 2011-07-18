@@ -4,11 +4,13 @@
 import zmq
 from sys import argv
 
-def subscribe(target, interval):
+def subscribe(token, target, interval):
     ctx = zmq.Context()
     socket = ctx.socket(zmq.REQ)
 
     request = {
+        'version': 2,
+        'token': token,
         'action': 'push',
         'targets': {
             target: {
@@ -27,7 +29,7 @@ def subscribe(target, interval):
         print response[target]['key']
 
 if __name__ == '__main__':
-    if len(argv) != 3:
-        print "Usage: yappi-subscribe [target] [interval]"
+    if len(argv) != 4:
+        print "Usage: yappi-subscribei [token] [target] [interval]"
     else:
-        subscribe(argv[1], int(argv[2]))
+        subscribe(str(argv[1]), str(argv[2]), int(argv[3]))

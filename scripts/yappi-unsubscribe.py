@@ -4,11 +4,13 @@
 import zmq
 from sys import argv
 
-def unsubscribe(target, interval):
+def unsubscribe(token, target, interval):
     ctx = zmq.Context()
     socket = ctx.socket(zmq.REQ)
 
     request = {
+        'version': 2,
+        'token': token,
         'action': 'drop',
         'targets': {
             target: {
@@ -27,7 +29,7 @@ def unsubscribe(target, interval):
         print response[target]['result']
 
 if __name__ == '__main__':
-    if len(argv) != 3:
-        print "Usage: yappi-unsubscribe [key] [interval]"
+    if len(argv) != 4:
+        print "Usage: yappi-unsubscribe [token] [key] [interval]"
     else:
-        unsubscribe(argv[1], int(argv[2]))
+        unsubscribe(str(argv[1]), str(argv[2]), int(argv[3]))
