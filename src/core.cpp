@@ -11,6 +11,7 @@
 using namespace yappi::core;
 using namespace yappi::engine;
 using namespace yappi::plugin;
+using namespace yappi::persistance;
 
 const char core_t::identity[] = "yappi";
 
@@ -123,7 +124,7 @@ void core_t::terminate(ev::sig& sig, int revents) {
 }
 
 void core_t::recover() {
-    Json::Value root = persistance::file_storage_t("/var/spool/yappi").all();
+    Json::Value root = m_storage.all();
 
     if(root.size()) {
         syslog(LOG_INFO, "core: recovered %d task(s)", root.size());
@@ -213,7 +214,7 @@ void core_t::request(ev::io& io, int revents) {
             future->fulfill("error", "security token expected");
             continue;
         } else {
-            future->assign(helpers::digest_t().get(token.asString()));
+            future->assign(m_digest.get(token.asString()));
         }
 
         // Get the action
@@ -350,7 +351,7 @@ void core_t::push(future_t* future, const std::string& target, const Json::Value
         try {
             // If the engine wasn't found, try to start a new one
             source = m_registry.instantiate(target);
-            engine = new engine_t(m_context, source);
+            engine = new engine_t(m_context, *source, m_storage);
             m_engines.insert(target, engine);
         } catch(const std::exception& e) {
             syslog(LOG_ERR, "core: exception in push() - %s", e.what());
@@ -408,7 +409,7 @@ void core_t::once(future_t* future, const std::string& target, const Json::Value
         try {
             // If the engine wasn't found, try to start a new one
             source = m_registry.instantiate(target);
-            engine = new engine_t(m_context, source);
+            engine = new engine_t(m_context, *source, m_storage);
             m_engines.insert(target, engine);
         } catch(const std::exception& e) {
             syslog(LOG_ERR, "core: exception in once() - %s", e.what());

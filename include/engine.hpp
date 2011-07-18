@@ -6,7 +6,6 @@
 #include "common.hpp"
 #include "plugin.hpp"
 #include "persistance.hpp"
-#include "digest.hpp"
 
 namespace yappi { namespace core {
 
@@ -19,7 +18,8 @@ namespace yappi { namespace engine {
 // Thread controller
 class engine_t: public boost::noncopyable {
     public:
-        engine_t(zmq::context_t& context, plugin::source_t* source);
+        engine_t(zmq::context_t& context, plugin::source_t& source,
+            persistance::storage_t& storage);
         ~engine_t();
 
         void push(const core::future_t* future, time_t interval);
@@ -39,11 +39,13 @@ class engine_t: public boost::noncopyable {
         helpers::auto_uuid_t m_id;
 
         // Data source and source hash
-        plugin::source_t* m_source;
+        plugin::source_t& m_source;
 
         // Worker thread
         pthread_t m_thread;
-        
+       
+        // Task persistance
+        persistance::storage_t& m_storage;
 };
 
 class fetcher_t;
@@ -52,7 +54,7 @@ class fetcher_t;
 class overseer_t: public boost::noncopyable {
     public:
         overseer_t(zmq::context_t& context, const helpers::auto_uuid_t& id,
-            plugin::source_t* source);
+            plugin::source_t& source, persistance::storage_t& storage);
         
         void operator()(ev::io& io, int revents);
         void operator()(ev::timer& timer, int revents);
@@ -74,7 +76,7 @@ class overseer_t: public boost::noncopyable {
             Json::Value response;
             
             response["future"] = future;
-            response["engine"] = m_source->uri();
+            response["engine"] = m_source.uri();
             response["result"] = value;
 
             m_futures.send(response);
@@ -97,7 +99,7 @@ class overseer_t: public boost::noncopyable {
         helpers::digest_t m_digest;
 
         // Data source
-        plugin::source_t* m_source;
+        plugin::source_t& m_source;
         std::string m_hash;
         
         // Timers
@@ -109,14 +111,14 @@ class overseer_t: public boost::noncopyable {
         subscription_map_t m_subscriptions;
 
         // Task persistance
-        persistance::file_storage_t m_storage;
+        persistance::storage_t& m_storage;
 };
 
 // Event fetcher
 class fetcher_t: public boost::noncopyable {
     public:
         fetcher_t(zmq::context_t& context, overseer_t& overseer,
-            plugin::source_t* source, const std::string& key);
+            plugin::source_t& source, const std::string& key);
         
         void operator()(ev::timer& timer, int revents);
         
@@ -125,7 +127,7 @@ class fetcher_t: public boost::noncopyable {
         overseer_t& m_overseer;
 
         // Data source
-        plugin::source_t* m_source;
+        plugin::source_t& m_source;
         
         // Messaging
         core::blob_socket_t m_uplink;

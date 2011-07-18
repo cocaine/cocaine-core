@@ -11,14 +11,16 @@
 using namespace yappi::core;
 using namespace yappi::engine;
 using namespace yappi::plugin;
+using namespace yappi::persistance;
 using namespace yappi::helpers;
 
-engine_t::engine_t(zmq::context_t& context, source_t* source):
+engine_t::engine_t(zmq::context_t& context, source_t& source, storage_t& storage):
     m_context(context),
     m_pipe(m_context, ZMQ_PUSH),
     m_id(),
     m_source(source),
-    m_thread(NULL)
+    m_thread(NULL),
+    m_storage(storage)
 {
     // Bind the controlling socket and fire of the thread
     m_pipe.bind("inproc://" + m_id.get());
@@ -34,9 +36,6 @@ engine_t::~engine_t() {
 
     // Wait for it to stop
     pthread_join(m_thread, NULL);
-
-    // Get rid of the source
-    delete m_source;
 }
 
 void engine_t::push(const future_t* future, time_t interval) {
@@ -74,13 +73,14 @@ void* engine_t::bootstrap(void* args) {
     engine_t* engine = static_cast<engine_t*>(args);
 
     // This blocks until stopped manually
-    overseer_t overseer(engine->m_context, engine->m_id, engine->m_source);
+    overseer_t overseer(engine->m_context, engine->m_id,
+        engine->m_source, engine->m_storage);
     overseer.run();
 
     return NULL;
 }
 
-overseer_t::overseer_t(zmq::context_t& context, const auto_uuid_t& id, source_t* source):
+overseer_t::overseer_t(zmq::context_t& context, const auto_uuid_t& id, source_t& source, storage_t& storage):
     m_loop(),
     m_io(m_loop),
     m_stall(m_loop),
@@ -91,10 +91,10 @@ overseer_t::overseer_t(zmq::context_t& context, const auto_uuid_t& id, source_t*
     m_id(id),
     m_digest(),
     m_source(source),
-    m_hash(m_digest.get(source->uri())),
-    m_storage("/var/spool/yappi")
+    m_hash(m_digest.get(source.uri())),
+    m_storage(storage)
 {
-    syslog(LOG_INFO, "engine %s: starting", m_source->uri().c_str());
+    syslog(LOG_INFO, "engine %s: starting", m_source.uri().c_str());
     
     // Connect to the engine's controlling socket
     // and set the socket watcher
@@ -141,6 +141,7 @@ void overseer_t::operator()(ev::io& io, int revents) {
             once(message);
         } else if(command == "stop") {
             stop();
+            break;
         }
     }
 }
@@ -163,7 +164,7 @@ void overseer_t::push(const Json::Value& message) {
     // If there's no slave for this interval yet, start a new one
     if(m_slaves.find(interval) == m_slaves.end()) {
         syslog(LOG_DEBUG, "engine %s: scheduling for execution every %lu ms",
-            m_source->uri().c_str(), interval);
+            m_source.uri().c_str(), interval);
     
         ev::timer* slave = new ev::timer(m_loop);
         slave->set(new fetcher_t(m_context, *this, m_source, key.str()));
@@ -172,7 +173,7 @@ void overseer_t::push(const Json::Value& message) {
 
         // Stop the stall timer, if it was running
         if(m_stall.is_active()) {
-            syslog(LOG_DEBUG, "engine %s: stall timer stopped", m_source->uri().c_str());
+            syslog(LOG_DEBUG, "engine %s: stall timer stopped", m_source.uri().c_str());
             m_stall.stop();
         }
     }
@@ -192,7 +193,7 @@ void overseer_t::push(const Json::Value& message) {
     Json::Value object;
 
     if(!m_storage.exists(object_id)) {
-        object["url"] = m_source->uri();
+        object["url"] = m_source.uri();
         object["interval"] = static_cast<int32_t>(interval);
         object["token"] = token;
         m_storage.put(object_id, object);
@@ -224,7 +225,7 @@ void overseer_t::drop(const Json::Value& message) {
 
         if(subscriber != end) {
             syslog(LOG_DEBUG, "engine %s: descheduling from execution every %lums",
-                m_source->uri().c_str(), interval);
+                m_source.uri().c_str(), interval);
             
             // Unsubscribe
             slave->second->stop();
@@ -244,7 +245,7 @@ void overseer_t::drop(const Json::Value& message) {
             
             // Start the stall timer if this was the last slave
             if(!m_slaves.size()) {
-                syslog(LOG_DEBUG, "engine %s: stall timer started", m_source->uri().c_str());
+                syslog(LOG_DEBUG, "engine %s: stall timer started", m_source.uri().c_str());
                 m_stall.start(600.);
             }
 
@@ -266,10 +267,10 @@ void overseer_t::once(const Json::Value& message) {
     source_t::dict_t dict;
 
     try {
-        dict = m_source->fetch();
+        dict = m_source.fetch();
     } catch(const std::exception& e) {
         syslog(LOG_INFO, "engine %s exception: %s",
-            m_source->uri().c_str(), e.what());
+            m_source.uri().c_str(), e.what());
         response["error"] = e.what();
         respond(message["future"], response);
         suicide();
@@ -285,14 +286,14 @@ void overseer_t::once(const Json::Value& message) {
 
     // Rearm the stall timer if it's active
     if(m_stall.is_active()) {
-        syslog(LOG_DEBUG, "engine %s: stall timer rearmed", m_source->uri().c_str());
+        syslog(LOG_DEBUG, "engine %s: stall timer rearmed", m_source.uri().c_str());
         m_stall.stop();
         m_stall.start(600.);
     }
 }
 
 void overseer_t::stop() {
-    syslog(LOG_INFO, "engine %s: stopping", m_source->uri().c_str());
+    syslog(LOG_INFO, "engine %s: stopping", m_source.uri().c_str());
 
     // Kill all the slaves
     for(slave_map_t::iterator it = m_slaves.begin(); it != m_slaves.end(); ++it) {
@@ -304,18 +305,21 @@ void overseer_t::stop() {
     m_slaves.clear();
     m_stall.stop();
     m_io.stop();
+
+    // Get rid of the source
+    delete &m_source;
 }
 
 void overseer_t::suicide() {
     Json::Value message;
 
-    message["engine"] = m_source->uri();
+    message["engine"] = m_source.uri();
 
     // This is a suicide ;(
     m_reaper.send(message);    
 }
 
-fetcher_t::fetcher_t(zmq::context_t& context, overseer_t& overseer, source_t* source, const std::string& key):
+fetcher_t::fetcher_t(zmq::context_t& context, overseer_t& overseer, source_t& source, const std::string& key):
     m_overseer(overseer),
     m_source(source),
     m_uplink(context, ZMQ_PUSH),
@@ -329,10 +333,10 @@ void fetcher_t::operator()(ev::timer& timer, int revents) {
     source_t::dict_t dict;
 
     try {
-        dict = m_source->fetch();
+        dict = m_source.fetch();
     } catch(const std::exception& e) {
         syslog(LOG_INFO, "engine %s exception: %s",
-            m_source->uri().c_str(), e.what());
+            m_source.uri().c_str(), e.what());
         m_overseer.suicide();
         return;
     }

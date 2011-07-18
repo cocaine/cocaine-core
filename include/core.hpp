@@ -80,6 +80,7 @@ class core_t: public boost::noncopyable {
         // Future management
         typedef boost::ptr_map<const std::string, future_t> future_map_t;
         future_map_t m_futures;
+        helpers::digest_t m_digest;
 
         // Networking
         zmq::context_t m_context;
@@ -90,6 +91,9 @@ class core_t: public boost::noncopyable {
         ev::default_loop m_loop;
         ev::io e_events, e_requests, e_futures, e_reaper;
         ev::sig e_sigint, e_sigterm, e_sigquit;
+
+        // Task persistance
+        persistance::storage_t m_storage;
 };
 
 }}

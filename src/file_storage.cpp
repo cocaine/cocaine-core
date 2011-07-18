@@ -1,18 +1,23 @@
 #include <boost/filesystem/fstream.hpp>
 
-#include "persistance.hpp"
+#include "file_storage.hpp"
 
-using namespace yappi::persistance;
+using namespace yappi::helpers;
+using namespace yappi::persistance::backends;
+
 namespace fs = boost::filesystem;
 
-file_storage_t::file_storage_t(const std::string& storage_path):
-    m_storage_path(storage_path)
+file_storage_t::file_storage_t(const auto_uuid_t& id):
+    m_id(id),
+    m_storage_path("/var/spool/yappi")
 {
     if(!fs::exists(m_storage_path)) {
         try {
-            fs::create_directory(m_storage_path);
+            syslog(LOG_INFO, "storage: creating storage directory %s",
+                m_storage_path.string().c_str());
+            fs::create_directories(m_storage_path);
         } catch(const std::runtime_error& e) {
-            throw std::runtime_error("file storage path " + m_storage_path.string() + " is unavailable");
+            throw std::runtime_error("cannot create " + m_storage_path.string());
         }
     }
 }

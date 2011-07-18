@@ -1,28 +1,42 @@
 #ifndef YAPPI_PERSISTANCE_HPP
 #define YAPPI_PERSISTANCE_HPP
 
-#include <boost/filesystem.hpp>
-
 #include "common.hpp"
+#include "file_storage.hpp"
+#include "eblob_storage.hpp"
 
 namespace yappi { namespace persistance {
 
-class file_storage_t {
+template<class Backend>
+class storage_facade_t: public Backend {
     public:
-        file_storage_t(const std::string& storage_path);
+        storage_facade_t(const helpers::auto_uuid_t& id = helpers::auto_uuid_t()):
+            Backend(id)
+        {}
 
     public:
-        bool put(const std::string& key, const Json::Value& value);
-        bool exists(const std::string& key) const;
+        bool put(const std::string& key, const Json::Value& value) {
+            return static_cast<Backend*>(this)->put(key, value);
+        }
 
-        Json::Value get(const std::string& key) const;
-        Json::Value all() const;
+        bool exists(const std::string& key) {
+            return static_cast<Backend*>(this)->exists(key);
+        }
 
-        void remove(const std::string& key);
+        Json::Value get(const std::string& key) {
+            return static_cast<Backend*>(this)->get(key);
+        }
 
-    private:
-        boost::filesystem::path m_storage_path;
+        Json::Value all() {
+            return static_cast<Backend*>(this)->all();
+        }
+
+        void remove(const std::string& key) {
+            return static_cast<Backend*>(this)->remove(key);
+        }
 };
+
+typedef storage_facade_t<backends::eblob_storage_t> storage_t;
 
 }}
 

@@ -24,6 +24,7 @@
 #include <boost/noncopyable.hpp>
 
 #include "id.hpp"
+#include "digest.hpp"
 #include "sockets.hpp"
 
 #endif
