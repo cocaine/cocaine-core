@@ -18,9 +18,9 @@ const char core_t::identity[] = "yappi";
 core_t::core_t(const std::string& uuid,
                const std::vector<std::string>& listeners,
                const std::vector<std::string>& publishers,
-               uint64_t hwm, bool fresh):
+               uint64_t hwm, bool purge):
     m_uuid(uuid),
-    m_storage(m_uuid),
+    m_storage(m_uuid, purge),
     m_registry("/usr/lib/yappi"),
     m_context(1),
     s_events(m_context, ZMQ_PULL),
@@ -89,9 +89,7 @@ core_t::core_t(const std::string& uuid,
         m_dispatch["drop"] = boost::bind(&core_t::drop, this, _1, _2, _3);
 
         // Recover persistent tasks
-        if(!fresh) {
-            recover();
-        }
+        recover();
     } else {
         syslog(LOG_INFO, "core: no publishing endpoints specified - scheduler disabled");
     }
@@ -292,6 +290,8 @@ void core_t::seal(const std::string& future_id) {
 
     // Send it if it's not an internal future
     if(!identity.empty()) {
+        std::string response = future->seal();
+        
         syslog(LOG_DEBUG, "core: sending response - future %s", future->id().c_str());
 
         // Send the identity
@@ -306,7 +306,6 @@ void core_t::seal(const std::string& future_id) {
         s_requests.send(message, ZMQ_SNDMORE);
 
         // Send the JSON
-        std::string response = future->seal();
         message.rebuild(response.length());
         memcpy(message.data(), response.data(), response.length());
         s_requests.send(message);
@@ -334,19 +333,6 @@ void core_t::seal(const std::string& future_id) {
 void core_t::push(future_t* future, const std::string& target, const Json::Value& args) {
     Json::Value response;
     
-    // Parse the arguments
-    time_t interval;
-    bool transient;
-
-    try {
-        interval = args.get("interval", 60000).asUInt();
-        transient = args.get("transient", false).asBool();
-    } catch(const std::runtime_error& e) {
-        response["error"] = e.what();
-        future->fulfill(target, response);
-        return;
-    }
-
     // Check if we have an engine running for the given uri
     engine_map_t::iterator it = m_engines.find(target); 
     source_t* source = NULL;
@@ -372,23 +358,12 @@ void core_t::push(future_t* future, const std::string& target, const Json::Value
     }
 
     // Schedule
-    engine->push(future, interval);
+    engine->push(future, args);
 }
 
 void core_t::drop(future_t* future, const std::string& target, const Json::Value& args) {
     Json::Value response;
 
-    // Parse the arguments
-    time_t interval;
-
-    try {
-        interval = args.get("interval", 60000).asUInt();
-    } catch(const std::runtime_error& e) {
-        response["error"] = e.what();
-        future->fulfill(target, response);
-        return;
-    }
-    
     engine_map_t::iterator it = m_engines.find(target);
     
     if(it == m_engines.end()) {
@@ -399,7 +374,7 @@ void core_t::drop(future_t* future, const std::string& target, const Json::Value
     }
 
     engine_t* engine = it->second;
-    engine->drop(future, interval);
+    engine->drop(future, args);
 }
 
 void core_t::once(future_t* future, const std::string& target, const Json::Value& args) {

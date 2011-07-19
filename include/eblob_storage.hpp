@@ -20,9 +20,22 @@ class eblob_collector_t: public zbr::eblob_iterator_callback {
         Json::Value m_root;
 };
 
+class eblob_purger_t: public zbr::eblob_iterator_callback {
+    public:
+        typedef std::vector<zbr::eblob_key> key_list_t;
+        
+        bool callback(const zbr::eblob_disk_control* dco, const void* data, int);
+        void complete(uint64_t, uint64_t) {}
+
+        inline key_list_t keys() { return m_keys; }
+
+    private:
+        key_list_t m_keys;
+};
+
 class eblob_storage_t {
     public:
-        eblob_storage_t(const std::string& uuid);
+        eblob_storage_t(const std::string& uuid, bool purge);
         virtual ~eblob_storage_t();
 
     public:

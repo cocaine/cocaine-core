@@ -5,7 +5,7 @@ using namespace yappi::persistance::backends;
 
 namespace fs = boost::filesystem;
 
-bool eblob_collector_t::callback(const zbr::eblob_disk_control* dco, const void* data, int flags) {
+bool eblob_collector_t::callback(const zbr::eblob_disk_control* dco, const void* data, int) {
     if(dco->flags & BLOB_DISK_CTL_REMOVE) {
         return true;
     }
@@ -20,13 +20,20 @@ bool eblob_collector_t::callback(const zbr::eblob_disk_control* dco, const void*
         syslog(LOG_ERR, "storage: malformed object in eblob: %s",
             m_reader.getFormatedErrorMessages().c_str());
         return true;
-    }
-
+    } 
+    
     m_root[auto_uuid_t().get()] = object;
+    
     return true;
 }
 
-eblob_storage_t::eblob_storage_t(const std::string& uuid):
+bool eblob_purger_t::callback(const zbr::eblob_disk_control* dco, const void* data, int) {
+    m_keys.push_back(dco->key);
+    
+    return true;
+}
+
+eblob_storage_t::eblob_storage_t(const std::string& uuid, bool purge):
     m_storage_path("/var/lib/yappi/" + uuid),
     m_eblob_log_path("/var/log/yappi-storage.log"),
     m_eblob_log_flags(EBLOB_LOG_NOTICE)
@@ -41,9 +48,21 @@ eblob_storage_t::eblob_storage_t(const std::string& uuid):
        }
     }
 
-    syslog(LOG_INFO, "storage: initializing eblobs");
     m_eblob.reset(new zbr::eblob(const_cast<char*>(m_eblob_log_path.c_str()),
         m_eblob_log_flags, m_storage_path.string()));
+
+    if(purge) {
+        eblob_purger_t purger;
+
+        syslog(LOG_INFO, "storage: purging");
+        
+        zbr::eblob_iterator iterator(m_storage_path.string(), true);
+        iterator.iterate(purger, 1);
+    
+        for(eblob_purger_t::key_list_t::const_iterator it = purger.keys().begin(); it != purger.keys().end(); ++it) {
+            m_eblob->remove_all(*it);
+        }
+    }
 }
 
 eblob_storage_t::~eblob_storage_t() {

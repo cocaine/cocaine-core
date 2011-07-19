@@ -7,9 +7,14 @@ using namespace yappi::persistance::backends;
 
 namespace fs = boost::filesystem;
 
-file_storage_t::file_storage_t(const std::string& uuid):
+file_storage_t::file_storage_t(const std::string& uuid, bool purge):
     m_storage_path("/var/lib/yappi/" + uuid)
 {
+    if(purge) {
+        syslog(LOG_INFO, "storage: purging");
+        fs::remove_all(m_storage_path);
+    }
+
     if(!fs::exists(m_storage_path)) {
         try {
             syslog(LOG_INFO, "storage: creating storage directory %s",

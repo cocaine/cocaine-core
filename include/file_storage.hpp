@@ -9,7 +9,7 @@ namespace yappi { namespace persistance { namespace backends {
 
 class file_storage_t {
     public:
-        file_storage_t(const std::string& uuid);
+        file_storage_t(const std::string& uuid, bool purge);
 
     public:
         bool put(const std::string& key, const Json::Value& value);
@@ -19,6 +19,7 @@ class file_storage_t {
         Json::Value all() const;
 
         void remove(const std::string& key);
+        void purge();
 
     private:
         boost::filesystem::path m_storage_path;

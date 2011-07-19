@@ -10,8 +10,8 @@ namespace yappi { namespace persistance {
 template<class Backend>
 class storage_facade_t: public Backend {
     public:
-        storage_facade_t(const std::string& uuid):
-            Backend(uuid)
+        storage_facade_t(const std::string& uuid, bool purge):
+            Backend(uuid, purge)
         {}
 
     public:
@@ -32,7 +32,7 @@ class storage_facade_t: public Backend {
         }
 
         void remove(const std::string& key) {
-            return static_cast<Backend*>(this)->remove(key);
+            static_cast<Backend*>(this)->remove(key);
         }
 };
 

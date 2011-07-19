@@ -38,24 +38,24 @@ engine_t::~engine_t() {
     pthread_join(m_thread, NULL);
 }
 
-void engine_t::push(const future_t* future, time_t interval) {
+void engine_t::push(const future_t* future, const Json::Value& args) {
     Json::Value message;
 
     message["command"] = "push";
     message["future"] = future->id();
     message["token"] = future->token();
-    message["interval"] = Json::UInt(interval);
+    message["args"] = args;
     
     m_pipe.send(message);
 }
 
-void engine_t::drop(const future_t* future, time_t interval) {
+void engine_t::drop(const future_t* future, const Json::Value& args) {
     Json::Value message;
 
     message["command"] = "drop";
     message["future"] = future->id();
     message["token"] = future->token();
-    message["interval"] = Json::UInt(interval);
+    message["args"] = args;
     
     m_pipe.send(message);
 }
@@ -152,11 +152,20 @@ void overseer_t::operator()(ev::timer& timer, int revents) {
 
 void overseer_t::push(const Json::Value& message) {
     Json::Value result;
-    
-    // Unpack
-    time_t interval = message["interval"].asUInt();
+    time_t interval;
+    bool transient;
     std::string token = message["token"].asString();
 
+    // Unpack the arguments
+    try {
+        interval = message["args"]["interval"].asUInt();
+        transient = message["args"].get("transient", false).asBool();
+    } catch(const std::runtime_error& e) {
+        result["error"] = e.what();
+        respond(message["future"], result);
+        return;
+    } 
+        
     // Generate the subscription key
     std::ostringstream key;
     key << m_hash << ":" << interval;
@@ -189,14 +198,16 @@ void overseer_t::push(const Json::Value& message) {
     }
 
     // Persistance
-    std::string object_id = m_digest.get(key.str() + token);
-    Json::Value object;
+    if(!transient) {
+        std::string object_id = m_digest.get(key.str() + token);
+        Json::Value object;
 
-    if(!m_storage.exists(object_id)) {
-        object["url"] = m_source.uri();
-        object["interval"] = static_cast<int32_t>(interval);
-        object["token"] = token;
-        m_storage.put(object_id, object);
+        if(!m_storage.exists(object_id)) {
+            object["url"] = m_source.uri();
+            object["interval"] = static_cast<int32_t>(interval);
+            object["token"] = token;
+            m_storage.put(object_id, object);
+        }
     }
 
     // Report to the core
@@ -206,10 +217,17 @@ void overseer_t::push(const Json::Value& message) {
 
 void overseer_t::drop(const Json::Value& message) {
     Json::Value result;
-    
-    // Unpack
-    time_t interval = message["interval"].asUInt();
+    time_t interval;
     std::string token = message["token"].asString();
+
+    // Unpack the arguments
+    try {
+        interval = message["args"]["interval"].asUInt();
+    } catch(const std::runtime_error& e) {
+        result["error"] = e.what();
+        respond(message["future"], result);
+        return;
+    }
 
     // Check if we have such a slave
     slave_map_t::iterator slave = m_slaves.find(interval);

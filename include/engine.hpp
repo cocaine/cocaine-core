@@ -22,8 +22,8 @@ class engine_t: public boost::noncopyable {
             persistance::storage_t& storage);
         ~engine_t();
 
-        void push(const core::future_t* future, time_t interval);
-        void drop(const core::future_t* future, time_t interval);
+        void push(const core::future_t* future, const Json::Value& args);
+        void drop(const core::future_t* future, const Json::Value& args);
         void once(const core::future_t* future);
 
     private:
