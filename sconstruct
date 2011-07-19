@@ -23,7 +23,7 @@ library = env.SharedLibrary(
     source = ["src/registry.cpp", "src/engine.cpp", "src/core.cpp",
               "src/future.cpp", "src/file_storage.cpp", "src/eblob_storage.cpp"],
     CPPPATH = ["foreign/jsoncpp-0.5.0/include", "include"],
-    LIBS = ["dl", "uuid", "crypto", "boost_filesystem", "zmq", "ev", "msgpack",
+    LIBS = ["pthread", "dl", "uuid", "crypto", "boost_filesystem", "zmq", "ev", "msgpack",
             "uriparser", "eblob_cpp", json],
     LINKFLAGS = ["-Wl,-soname=libyappi.so.1", "-Wl,-Bsymbolic"])
 
