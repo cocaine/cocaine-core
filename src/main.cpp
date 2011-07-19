@@ -74,7 +74,8 @@ int main(int argc, char* argv[]) {
         fs::fstream::in | fs::fstream::out | fs::fstream::app);
 
     if(!uuid_file) {
-        syslog(LOG_ERR, "main: failed to access %s", config["uuid"].as<std::string>().c_str());
+        syslog(LOG_ERR, "main: failed to access %s",
+            config["uuid"].as<fs::path>().string().c_str());
         return EXIT_FAILURE;
     }
 
@@ -109,7 +110,8 @@ int main(int argc, char* argv[]) {
             fs::ofstream::out | fs::ofstream::trunc);
 
         if(!pid_file) {
-            syslog(LOG_ERR, "main: failed to write %s", config["pid"].as<std::string>().c_str());
+            syslog(LOG_ERR, "main: failed to write %s",
+                config["pid"].as<fs::path>().string().c_str());
             return EXIT_FAILURE;
         }
 
