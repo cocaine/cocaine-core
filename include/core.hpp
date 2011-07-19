@@ -15,7 +15,8 @@ class future_t;
 
 class core_t: public boost::noncopyable {
     public:
-        core_t(const std::vector<std::string>& listeners,
+        core_t(const std::string& uuid,
+               const std::vector<std::string>& listeners,
                const std::vector<std::string>& publishers,
                uint64_t hwm, bool fresh);
         virtual ~core_t();
@@ -60,6 +61,12 @@ class core_t: public boost::noncopyable {
         void recover();
 
     private:
+        // Instance ID
+        const std::string m_uuid;
+
+        // Task persistance
+        persistance::storage_t m_storage;
+
         // Plugins
         registry_t m_registry;
 
@@ -91,9 +98,6 @@ class core_t: public boost::noncopyable {
         ev::default_loop m_loop;
         ev::io e_events, e_requests, e_futures, e_reaper;
         ev::sig e_sigint, e_sigterm, e_sigquit;
-
-        // Task persistance
-        persistance::storage_t m_storage;
 };
 
 }}

@@ -10,8 +10,8 @@ namespace yappi { namespace persistance {
 template<class Backend>
 class storage_facade_t: public Backend {
     public:
-        storage_facade_t(const helpers::auto_uuid_t& id = helpers::auto_uuid_t()):
-            Backend(id)
+        storage_facade_t(const std::string& uuid):
+            Backend(uuid)
         {}
 
     public:

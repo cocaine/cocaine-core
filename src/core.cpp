@@ -15,9 +15,12 @@ using namespace yappi::persistance;
 
 const char core_t::identity[] = "yappi";
 
-core_t::core_t(const std::vector<std::string>& listeners,
+core_t::core_t(const std::string& uuid,
+               const std::vector<std::string>& listeners,
                const std::vector<std::string>& publishers,
                uint64_t hwm, bool fresh):
+    m_uuid(uuid),
+    m_storage(m_uuid),
     m_registry("/usr/lib/yappi"),
     m_context(1),
     s_events(m_context, ZMQ_PULL),
@@ -37,6 +40,8 @@ core_t::core_t(const std::vector<std::string>& listeners,
 
     syslog(LOG_INFO, "core: using libmsgpack version %s",
         msgpack_version());
+
+    syslog(LOG_INFO, "core: instance uuid - %s", m_uuid.c_str());
 
     // Initialize sockets
     int fd;

@@ -7,9 +7,8 @@ using namespace yappi::persistance::backends;
 
 namespace fs = boost::filesystem;
 
-file_storage_t::file_storage_t(const auto_uuid_t& id):
-    m_id(id),
-    m_storage_path("/var/spool/yappi")
+file_storage_t::file_storage_t(const std::string& uuid):
+    m_storage_path("/var/lib/yappi/" + uuid)
 {
     if(!fs::exists(m_storage_path)) {
         try {

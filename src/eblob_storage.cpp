@@ -26,9 +26,8 @@ bool eblob_collector_t::callback(const zbr::eblob_disk_control* dco, const void*
     return true;
 }
 
-eblob_storage_t::eblob_storage_t(const auto_uuid_t& id):
-    m_id(id),
-    m_storage_path("/var/lib/yappi/tasks"),
+eblob_storage_t::eblob_storage_t(const std::string& uuid):
+    m_storage_path("/var/lib/yappi/" + uuid),
     m_eblob_log_path("/var/log/yappi-storage.log"),
     m_eblob_log_flags(EBLOB_LOG_NOTICE)
 {
@@ -67,7 +66,7 @@ bool eblob_storage_t::put(const std::string& key, const Json::Value& value) {
 
 bool eblob_storage_t::exists(const std::string& key) const {
     std::string object;
-    
+
     try {
         object = m_eblob->read_hashed(key, 0, 0);
     } catch(...) {

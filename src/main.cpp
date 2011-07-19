@@ -13,6 +13,7 @@ namespace po = boost::program_options;
 namespace fs = boost::filesystem;
 
 int main(int argc, char* argv[]) {
+    std::string uuid;
     std::vector<std::string> exports;
     po::options_description mandatory, options("Allowed options"), combined;
     po::positional_options_description positional;
@@ -27,6 +28,8 @@ int main(int argc, char* argv[]) {
         ("help", "show this message")
         ("export", po::value< std::vector<std::string> >(&exports),
             "endpoints to publish events from schedulers")
+        ("uuid", po::value<std::string>(&uuid),
+            "instance uuid, will be generated randomly if not specified")
         ("watermark", po::value<uint64_t>()->default_value(1000),
             "maximum number of messages to keep on client disconnects")
         ("pid", po::value<fs::path>()->default_value("/var/run/yappi.pid"),
@@ -60,6 +63,18 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
+    if(uuid.empty()) {
+        uuid = yappi::helpers::auto_uuid_t().get();
+    } else {
+        uuid_t dummy;
+
+        if(uuid_parse(uuid.c_str(), dummy) == -1) {
+            std::cout << "Error: invalid instance uuid." << std::endl;
+            std::cout << "You can generate one with 'uuidgen' utility." << std::endl;
+            return EXIT_FAILURE;
+        }
+    }
+    
     // Daemonizing, if needed
     if(config.count("daemonize")) {
         if(daemon(0, 0) < 0) {
@@ -91,9 +106,11 @@ int main(int argc, char* argv[]) {
     syslog(LOG_INFO, "main: yappi is starting");
     core_t* core;
 
+
     // Initializing the core
     try {
         core = new core_t(
+            uuid,
             config["listen"].as< std::vector<std::string> >(),
             exports,
             config["watermark"].as<uint64_t>(),

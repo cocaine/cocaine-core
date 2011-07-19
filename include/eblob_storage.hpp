@@ -22,7 +22,7 @@ class eblob_collector_t: public zbr::eblob_iterator_callback {
 
 class eblob_storage_t {
     public:
-        eblob_storage_t(const helpers::auto_uuid_t& id);
+        eblob_storage_t(const std::string& uuid);
         virtual ~eblob_storage_t();
 
     public:
@@ -35,8 +35,6 @@ class eblob_storage_t {
         void remove(const std::string& key);
 
     private:
-        helpers::auto_uuid_t m_id;
-
         boost::filesystem::path m_storage_path;
         std::auto_ptr<zbr::eblob> m_eblob;
 
