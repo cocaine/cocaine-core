@@ -3,3 +3,4 @@
 *.a
 *.pyc
 .sconsign.dblite
+build
