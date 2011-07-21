@@ -43,27 +43,20 @@ core_t::core_t(const std::string& uuid,
 
     syslog(LOG_INFO, "core: instance uuid - %s", m_uuid.c_str());
 
-    // Initialize sockets
-    int fd;
-    size_t size = sizeof(fd);
-
     // Internal event sink socket
     s_events.bind("inproc://events");
-    s_events.getsockopt(ZMQ_FD, &fd, &size);
     e_events.set<core_t, &core_t::event>(this);
-    e_events.start(fd, EV_READ);
+    e_events.start(s_events.fd(), EV_READ);
 
     // Internal future sink socket
     s_futures.bind("inproc://futures");
-    s_futures.getsockopt(ZMQ_FD, &fd, &size);
     e_futures.set<core_t, &core_t::future>(this);
-    e_futures.start(fd, EV_READ);
+    e_futures.start(s_futures.fd(), EV_READ);
 
     // Internal engine reaping requests sink
     s_reaper.bind("inproc://reaper");
-    s_reaper.getsockopt(ZMQ_FD, &fd, &size);
     e_reaper.set<core_t, &core_t::reap>(this);
-    e_reaper.start(fd, EV_READ);
+    e_reaper.start(s_reaper.fd(), EV_READ);
 
     // Listening socket
     for(std::vector<std::string>::const_iterator it = listeners.begin(); it != listeners.end(); ++it) {
@@ -71,9 +64,8 @@ core_t::core_t(const std::string& uuid,
         syslog(LOG_INFO, "core: listening for requests on %s", it->c_str());
     }
 
-    s_requests.getsockopt(ZMQ_FD, &fd, &size);
     e_requests.set<core_t, &core_t::request>(this);
-    e_requests.start(fd, EV_READ);
+    e_requests.start(s_requests.fd(), EV_READ);
 
     // Publishing socket
     if(!publishers.empty()) {
@@ -104,6 +96,9 @@ core_t::core_t(const std::string& uuid,
     e_sigquit.set<core_t, &core_t::terminate>(this);
     e_sigquit.start(SIGQUIT);
 
+    e_sighup.set<core_t, &core_t::reload>(this);
+    e_sighup.start(SIGHUP);
+
     // Built-ins
     m_dispatch["once"] = boost::bind(&core_t::once, this, _1, _2, _3);
 }
@@ -126,24 +121,12 @@ void core_t::terminate(ev::sig& sig, int revents) {
     m_loop.unloop();
 }
 
-void core_t::recover() {
-    Json::Value root = m_storage.all();
+void core_t::reload(ev::sig& sig, int revents) {
+    syslog(LOG_NOTICE, "core: reloading tasks");
 
-    if(root.size()) {
-        syslog(LOG_NOTICE, "core: recovered %d task(s)", root.size());
-        
-        future_t* future = new future_t(this);
-        m_futures.insert(future->id(), future);
-        future->await(root.size());
-                
-        Json::Value::Members ids = root.getMemberNames();
-        
-        for(Json::Value::Members::const_iterator it = ids.begin(); it != ids.end(); ++it) {
-            Json::Value object = root[*it];
-            future->assign(object["token"].asString());
-            push(future, object["url"].asString(), object);
-        }
-    }
+    m_engines.clear();
+    m_futures.clear();
+    recover();
 }
 
 void core_t::request(ev::io& io, int revents) {
@@ -488,3 +471,24 @@ void core_t::reap(ev::io& io, int revents) {
         m_engines.erase(it);
     }
 }
+
+void core_t::recover() {
+    Json::Value root = m_storage.all();
+
+    if(root.size()) {
+        syslog(LOG_NOTICE, "core: loaded %d task(s)", root.size());
+        
+        future_t* future = new future_t(this);
+        m_futures.insert(future->id(), future);
+        future->await(root.size());
+                
+        Json::Value::Members ids = root.getMemberNames();
+        
+        for(Json::Value::Members::const_iterator it = ids.begin(); it != ids.end(); ++it) {
+            Json::Value object = root[*it];
+            future->assign(object["token"].asString());
+            push(future, object["url"].asString(), object);
+        }
+    }
+}
+

@@ -49,6 +49,7 @@ class blob_socket_t: public boost::noncopyable {
         }
         
         bool pending(int event = ZMQ_POLLIN);
+        int fd();
 
     private:
         zmq::socket_t m_socket;

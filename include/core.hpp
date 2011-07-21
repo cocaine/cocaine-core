@@ -56,6 +56,7 @@ class core_t: public boost::noncopyable {
 
         // Signal processing
         void terminate(ev::sig& sig, int revents);
+        void reload(ev::sig& sig, int revents);
 
         // Task recovery
         void recover();
@@ -97,7 +98,7 @@ class core_t: public boost::noncopyable {
         // Event loop
         ev::default_loop m_loop;
         ev::io e_events, e_requests, e_futures, e_reaper;
-        ev::sig e_sigint, e_sigterm, e_sigquit;
+        ev::sig e_sigint, e_sigterm, e_sigquit, e_sighup;
 };
 
 }}

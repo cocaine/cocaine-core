@@ -103,13 +103,9 @@ overseer_t::overseer_t(zmq::context_t& context, const auto_uuid_t& id, source_t&
     
     // Connect to the engine's controlling socket
     // and set the socket watcher
-    int fd;
-    size_t size = sizeof(fd);
-
     m_pipe.connect("inproc://" + id.get());
-    m_pipe.getsockopt(ZMQ_FD, &fd, &size);
     m_io.set(this);
-    m_io.start(fd, EV_READ);
+    m_io.start(m_pipe.fd(), EV_READ);
 
     // Initializing stall timer
     m_stall.set(this);
@@ -122,7 +118,7 @@ overseer_t::overseer_t(zmq::context_t& context, const auto_uuid_t& id, source_t&
     m_reaper.connect("inproc://reaper");
 
     // Signal a false event, in case core has managed to send something already
-    m_loop.feed_fd_event(fd, EV_READ);
+    m_loop.feed_fd_event(m_pipe.fd(), EV_READ);
 }
 
 void overseer_t::run() {

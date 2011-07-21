@@ -2,14 +2,6 @@
 
 using namespace yappi::core;
 
-bool blob_socket_t::pending(int event) {
-    unsigned long events;
-    size_t size = sizeof(events);
-
-    getsockopt(ZMQ_EVENTS, &events, &size);
-    return events & event;
-}
-
 bool json_socket_t::send(const Json::Value& root) {
     Json::FastWriter writer;
 
@@ -41,3 +33,20 @@ bool json_socket_t::recv(Json::Value& root, int flags) {
 
     return true;
 }
+
+bool blob_socket_t::pending(int event) {
+    unsigned long events;
+    size_t size = sizeof(events);
+
+    getsockopt(ZMQ_EVENTS, &events, &size);
+    return events & event;
+}
+
+int blob_socket_t::fd() {
+    int fd;
+    size_t size = sizeof(fd);
+
+    getsockopt(ZMQ_FD, &fd, &size);
+    return fd;
+}
+
