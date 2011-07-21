@@ -50,9 +50,7 @@ class eblob_storage_t {
     private:
         boost::filesystem::path m_storage_path;
         std::auto_ptr<zbr::eblob> m_eblob;
-
-        std::string m_eblob_log_path;
-        unsigned int m_eblob_log_flags;
+        // zbr::eblob_logger m_logger;
 };
 
 }}}

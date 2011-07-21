@@ -11,7 +11,7 @@ file_storage_t::file_storage_t(const std::string& uuid, bool purge):
     m_storage_path("/var/lib/yappi/" + uuid)
 {
     if(purge) {
-        syslog(LOG_INFO, "storage: purging");
+        syslog(LOG_NOTICE, "storage: purging");
         fs::remove_all(m_storage_path);
     }
 

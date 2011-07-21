@@ -24,7 +24,12 @@ engine_t::engine_t(zmq::context_t& context, source_t& source, storage_t& storage
 {
     // Bind the controlling socket and fire of the thread
     m_pipe.bind("inproc://" + m_id.get());
-    pthread_create(&m_thread, NULL, &engine_t::bootstrap, this);
+
+    // Launch the thread
+    if(pthread_create(&m_thread, NULL, &engine_t::bootstrap, this) == EAGAIN) {
+        delete &source;
+        throw std::runtime_error("system thread limit exceeded");
+    }
 }
 
 engine_t::~engine_t() {
@@ -287,7 +292,7 @@ void overseer_t::once(const Json::Value& message) {
     try {
         dict = m_source.fetch();
     } catch(const std::exception& e) {
-        syslog(LOG_INFO, "engine %s exception: %s",
+        syslog(LOG_NOTICE, "engine %s exception: %s",
             m_source.uri().c_str(), e.what());
         response["error"] = e.what();
         respond(message["future"], response);
@@ -353,7 +358,7 @@ void fetcher_t::operator()(ev::timer& timer, int revents) {
     try {
         dict = m_source.fetch();
     } catch(const std::exception& e) {
-        syslog(LOG_INFO, "engine %s exception: %s",
+        syslog(LOG_NOTICE, "engine %s exception: %s",
             m_source.uri().c_str(), e.what());
         m_overseer.suicide();
         return;

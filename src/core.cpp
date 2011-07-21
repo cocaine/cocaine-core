@@ -67,7 +67,7 @@ core_t::core_t(const std::string& uuid,
 
     // Listening socket
     for(std::vector<std::string>::const_iterator it = listeners.begin(); it != listeners.end(); ++it) {
-        s_requests.bind(it->c_str());
+        s_requests.bind(*it);
         syslog(LOG_INFO, "core: listening for requests on %s", it->c_str());
     }
 
@@ -80,7 +80,7 @@ core_t::core_t(const std::string& uuid,
         s_publisher.setsockopt(ZMQ_HWM, &hwm, sizeof(hwm));
 
         for(std::vector<std::string>::const_iterator it = publishers.begin(); it != publishers.end(); ++it) {
-            s_publisher.bind(it->c_str());
+            s_publisher.bind(*it);
             syslog(LOG_INFO, "core: publishing events on %s", it->c_str());
         }
    
@@ -91,7 +91,7 @@ core_t::core_t(const std::string& uuid,
         // Recover persistent tasks
         recover();
     } else {
-        syslog(LOG_INFO, "core: no publishing endpoints specified - scheduler disabled");
+        syslog(LOG_NOTICE, "core: no publishing endpoints specified - scheduler disabled");
     }
         
     // Initialize signal watchers
@@ -130,7 +130,7 @@ void core_t::recover() {
     Json::Value root = m_storage.all();
 
     if(root.size()) {
-        syslog(LOG_INFO, "core: recovered %d task(s)", root.size());
+        syslog(LOG_NOTICE, "core: recovered %d task(s)", root.size());
         
         future_t* future = new future_t(this);
         m_futures.insert(future->id(), future);
@@ -350,7 +350,7 @@ void core_t::push(future_t* future, const std::string& target, const Json::Value
             future->fulfill(target, response);
             return;
         } catch(...) {
-            syslog(LOG_ERR, "core: unexpected exception in push()");
+            syslog(LOG_CRIT, "core: unexpected exception in push()");
             abort();
         }
     } else {
@@ -397,7 +397,7 @@ void core_t::once(future_t* future, const std::string& target, const Json::Value
             future->fulfill(target, response);
             return;
         } catch(...) {
-            syslog(LOG_ERR, "core: unexpected exception in once()");
+            syslog(LOG_CRIT, "core: unexpected exception in once()");
             abort();
         }
     } else {

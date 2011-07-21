@@ -67,7 +67,7 @@ registry_t::registry_t(const std::string& plugin_path):
     }
 
     std::string plugins = boost::algorithm::join(schemes, ", ");
-    syslog(LOG_INFO, "registry: available sources - %s", plugins.c_str());
+    syslog(LOG_NOTICE, "registry: available sources - %s", plugins.c_str());
 }
 
 registry_t::~registry_t() {

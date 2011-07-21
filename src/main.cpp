@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
     // Setting up the syslog
     openlog(core_t::identity, LOG_PID | LOG_NDELAY, LOG_USER);
     setlogmask(LOG_UPTO(LOG_DEBUG));
-    syslog(LOG_INFO, "main: yappi is starting");
+    syslog(LOG_NOTICE, "main: yappi is starting");
         
     // Obtaining the instance uuid
     fs::fstream uuid_file(config["uuid"].as<fs::path>(),
@@ -152,7 +152,7 @@ int main(int argc, char* argv[]) {
         }
     }
         
-    syslog(LOG_INFO, "main: yappi has terminated");
+    syslog(LOG_NOTICE, "main: yappi has terminated");
     
     return EXIT_SUCCESS;
 }

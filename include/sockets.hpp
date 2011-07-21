@@ -3,6 +3,7 @@
 
 #include <zmq.hpp>
 
+#include "common.hpp"
 #include "json/json.h"
 
 namespace yappi { namespace core {
@@ -13,20 +14,22 @@ class blob_socket_t: public boost::noncopyable {
             m_socket(context, type)
         {}
 
-        bool pending(int event = ZMQ_POLLIN) {
-            unsigned long events;
-            size_t size = sizeof(events);
-
-            m_socket.getsockopt(ZMQ_EVENTS, &events, &size);
-            return events & event;
-        }
-
         inline bool send(zmq::message_t& message, int flags = 0) {
-            return m_socket.send(message, flags);
+            try {
+                return m_socket.send(message, flags);
+            } catch(const zmq::error_t& e) {
+                syslog(LOG_ERR, "networking: send() failed - %s", e.what());
+                return false;
+            }
         }
 
         inline bool recv(zmq::message_t* message, int flags = 0) {
-            return m_socket.recv(message, flags);
+            try {
+                return m_socket.recv(message, flags);
+            } catch(const zmq::error_t& e) {
+                syslog(LOG_ERR, "networking: recv() failed - %s", e.what());
+                return false;
+            }
         }
 
         inline void getsockopt(int name, void* value, size_t* length) {
@@ -44,8 +47,10 @@ class blob_socket_t: public boost::noncopyable {
         inline void connect(const std::string& endpoint) {
             m_socket.connect(endpoint.c_str());
         }
-    
-    protected:
+        
+        bool pending(int event = ZMQ_POLLIN);
+
+    private:
         zmq::socket_t m_socket;
 };
 
@@ -55,36 +60,8 @@ class json_socket_t: public blob_socket_t {
             blob_socket_t(context, type)
         {}
 
-        bool send(const Json::Value& root) {
-            Json::FastWriter writer;
-        
-            std::string response = writer.write(root);
-            zmq::message_t message(response.length());
-            memcpy(message.data(), response.data(), response.length());
-
-            return m_socket.send(message);
-        }
-
-        bool recv(Json::Value& root, int flags = 0) {
-            zmq::message_t message;
-            std::string request;
-            Json::Reader reader(Json::Features::strictMode());
-        
-            if(!m_socket.recv(&message, flags)) {
-                return false;
-            }
-
-            request.assign(
-                static_cast<const char*>(message.data()),
-                message.size());
-
-            if(!reader.parse(request, root)) {
-                root["error"] = reader.getFormatedErrorMessages();
-                return false;
-            }
-
-            return true;
-        }
+        bool send(const Json::Value& root);
+        bool recv(Json::Value& root, int flags = 0);
 };
 
 }}
