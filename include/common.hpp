@@ -23,7 +23,7 @@
 
 #include <boost/noncopyable.hpp>
 
-#include "id.hpp"
+#include "auto_uuid.hpp"
 #include "digest.hpp"
 #include "sockets.hpp"
 

@@ -33,7 +33,7 @@ class eblob_purger_t: public zbr::eblob_iterator_callback {
         key_list_t m_keys;
 };
 
-class eblob_storage_t {
+class eblob_storage_t: public boost::noncopyable {
     public:
         eblob_storage_t(const std::string& uuid, bool purge);
         virtual ~eblob_storage_t();
