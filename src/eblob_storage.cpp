@@ -29,8 +29,13 @@ bool eblob_collector_t::callback(const zbr::eblob_disk_control* dco, const void*
 
 bool eblob_purger_t::callback(const zbr::eblob_disk_control* dco, const void* data, int) {
     m_keys.push_back(dco->key);
-    
     return true;
+}
+
+void eblob_purger_t::complete(uint64_t, uint64_t) {
+    for(key_list_t::const_iterator it = m_keys.begin(); it != m_keys.end(); ++it) {
+        m_eblob.remove_all(*it);
+    }
 }
 
 eblob_storage_t::eblob_storage_t(const std::string& uuid, bool purge):
@@ -60,16 +65,12 @@ eblob_storage_t::eblob_storage_t(const std::string& uuid, bool purge):
     m_eblob.reset(new zbr::eblob(&cfg));
 
     if(purge) {
-        eblob_purger_t purger;
+        eblob_purger_t purger(*m_eblob);
 
         syslog(LOG_NOTICE, "storage: purging");
         
         zbr::eblob_iterator iterator(m_storage_path.string(), true);
         iterator.iterate(purger, 1);
-    
-        for(eblob_purger_t::key_list_t::const_iterator it = purger.keys().begin(); it != purger.keys().end(); ++it) {
-            m_eblob->remove_all(*it);
-        }
     }
 }
 

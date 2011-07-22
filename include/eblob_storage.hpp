@@ -22,14 +22,17 @@ class eblob_collector_t: public zbr::eblob_iterator_callback {
 
 class eblob_purger_t: public zbr::eblob_iterator_callback {
     public:
-        typedef std::vector<zbr::eblob_key> key_list_t;
-        
-        bool callback(const zbr::eblob_disk_control* dco, const void* data, int);
-        void complete(uint64_t, uint64_t) {}
+        eblob_purger_t(zbr::eblob& eblob):
+            m_eblob(eblob)
+        {}
 
-        inline key_list_t keys() { return m_keys; }
+        bool callback(const zbr::eblob_disk_control* dco, const void* data, int);
+        void complete(uint64_t, uint64_t);
 
     private:
+        zbr::eblob& m_eblob;
+
+        typedef std::vector<zbr::eblob_key> key_list_t;
         key_list_t m_keys;
 };
 
