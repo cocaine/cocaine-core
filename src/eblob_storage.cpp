@@ -34,8 +34,8 @@ bool eblob_purger_t::callback(const zbr::eblob_disk_control* dco, const void* da
 }
 
 eblob_storage_t::eblob_storage_t(const std::string& uuid, bool purge):
-    m_storage_path("/var/lib/yappi/" + uuid) /*,
-    m_logger("/var/log/yappi-storage.log", EBLOB_LOG_NOTICE) */
+    m_storage_path("/var/lib/yappi/" + uuid),
+    m_logger("/var/log/yappi-storage.log", EBLOB_LOG_NOTICE)
 {
     if(!fs::exists(m_storage_path.branch_path())) {
        try {
@@ -47,7 +47,6 @@ eblob_storage_t::eblob_storage_t(const std::string& uuid, bool purge):
        }
     }
 
-    /*
     zbr::eblob_config cfg;
 
     memset(&cfg, 0, sizeof(cfg));
@@ -59,10 +58,6 @@ eblob_storage_t::eblob_storage_t(const std::string& uuid, bool purge):
     cfg.log = m_logger.log();
 
     m_eblob.reset(new zbr::eblob(&cfg));
-    */
-
-    m_eblob.reset(new zbr::eblob("/var/log/yappi-storage.log",
-        EBLOB_LOG_NOTICE, m_storage_path.string()));
 
     if(purge) {
         eblob_purger_t purger;

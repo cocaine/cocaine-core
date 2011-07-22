@@ -50,7 +50,7 @@ class eblob_storage_t: public boost::noncopyable {
     private:
         boost::filesystem::path m_storage_path;
         std::auto_ptr<zbr::eblob> m_eblob;
-        // zbr::eblob_logger m_logger;
+        zbr::eblob_logger m_logger;
 };
 
 }}}
