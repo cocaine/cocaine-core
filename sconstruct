@@ -21,10 +21,10 @@ Export(['env', 'prefix', 'json'])
 library = env.SharedLibrary(
     target = "build/yappi",
     source = ["src/registry.cpp", "src/engine.cpp", "src/core.cpp", "src/sockets.cpp",
-              "src/future.cpp", "src/file_storage.cpp", "src/eblob_storage.cpp"],
+              "src/future.cpp", "src/file_storage.cpp"],
     CPPPATH = ["foreign/jsoncpp-0.5.0/include", "include"],
     LIBS = ["pthread", "dl", "uuid", "crypto", "boost_filesystem", "zmq", "ev", "msgpack",
-            "uriparser", "eblob_cpp", json],
+            "uriparser", json],
     LINKFLAGS = ["-Wl,-soname=libyappi.so.1", "-Wl,-Bsymbolic"])
 
 binary = env.Program(

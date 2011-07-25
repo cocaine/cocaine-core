@@ -3,7 +3,7 @@
 
 #include "common.hpp"
 #include "file_storage.hpp"
-#include "eblob_storage.hpp"
+//#include "eblob_storage.hpp"
 
 namespace yappi { namespace persistance {
 
@@ -36,7 +36,7 @@ class storage_facade_t: public Backend {
         }
 };
 
-typedef storage_facade_t<backends::eblob_storage_t> storage_t;
+typedef storage_facade_t<backends::file_storage_t> storage_t;
 
 }}
 
