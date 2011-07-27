@@ -15,7 +15,7 @@ class future_t;
 
 namespace yappi { namespace engine {
 
-// Thread controller
+// Thread pool manager
 class engine_t: public boost::noncopyable {
     public:
         engine_t(zmq::context_t& context, plugin::source_t& source,
@@ -119,8 +119,9 @@ class fetcher_t: public boost::noncopyable {
     public:
         fetcher_t(zmq::context_t& context, overseer_t& overseer,
             plugin::source_t& source, const std::string& key);
-        
-        void operator()(ev::timer& timer, int revents);
+       
+        template<class Timer> 
+        void operator()(Timer& timer, int revents);
         
     private:
         // Parent

@@ -42,6 +42,14 @@ bool blob_socket_t::pending(int event) {
     return events & event;
 }
 
+bool blob_socket_t::has_more() {
+    int64_t rcvmore;
+    size_t size = sizeof(rcvmore);
+
+    getsockopt(ZMQ_RCVMORE, &rcvmore, &size);
+    return rcvmore != 0;
+}
+
 int blob_socket_t::fd() {
     int fd;
     size_t size = sizeof(fd);

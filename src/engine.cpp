@@ -348,7 +348,8 @@ fetcher_t::fetcher_t(zmq::context_t& context, overseer_t& overseer, source_t& so
     m_uplink.connect("inproc://events");
 }
 
-void fetcher_t::operator()(ev::timer& timer, int revents) {
+template<class Timer>
+void fetcher_t::operator()(Timer& timer, int revents) {
     source_t::dict_t dict;
 
     try {

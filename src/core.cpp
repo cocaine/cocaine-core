@@ -11,7 +11,6 @@
 using namespace yappi::core;
 using namespace yappi::engine;
 using namespace yappi::plugin;
-using namespace yappi::persistance;
 
 const char core_t::identity[] = "yappi";
 
@@ -21,6 +20,7 @@ core_t::core_t(const std::string& uuid,
                uint64_t hwm, bool purge):
     m_uuid(uuid),
     m_storage(m_uuid, purge),
+    m_auth(m_uuid),
     m_registry("/usr/lib/yappi"),
     m_context(1),
     s_events(m_context, ZMQ_PULL),
@@ -130,10 +130,10 @@ void core_t::reload(ev::sig& sig, int revents) {
 }
 
 void core_t::request(ev::io& io, int revents) {
-    zmq::message_t message;
+    zmq::message_t message, signature;
+    std::string request;
     std::vector<std::string> identity;
     
-    std::string request;
     Json::Reader reader(Json::Features::strictMode());
     Json::Value root;
     
@@ -152,20 +152,27 @@ void core_t::request(ev::io& io, int revents) {
                 message.size()));
         }
 
-        // Construct the future!
+        // Construct the remote future
         future_t* future = new future_t(this, identity);
         m_futures.insert(future->id(), future);
 
-        // Fetch the actual request
+        // Fetch the request
         s_requests.recv(&message);
         
         request.assign(
             static_cast<const char*>(message.data()),
             message.size());
+        
+        // Fetch the message signature, if any
+        if(s_requests.has_more()) {
+            s_requests.recv(&signature);
+        } else {
+            signature.rebuild();
+        }
 
         // Try to parse the incoming JSON document
         if(!reader.parse(request, root)) {
-            syslog(LOG_ERR, "core: invalid request - %s", reader.getFormatedErrorMessages().c_str());
+            syslog(LOG_ERR, "core: invalid json - %s", reader.getFormatedErrorMessages().c_str());
             future->fulfill("error", reader.getFormatedErrorMessages());
             continue;
         } 
@@ -186,22 +193,31 @@ void core_t::request(ev::io& io, int revents) {
             continue;
         }
 
-        if(version.asInt() != 2) {
+        if(version.asInt() < 2) {
             syslog(LOG_ERR, "core: invalid request - invalid protocol version");
             future->fulfill("error", "invalid protocol version");
             continue;
         }
       
-        // Get the security token 
+        // Security
         Json::Value token = root["token"];
         
         if(token == Json::Value::null || !token.isString()) {
             syslog(LOG_ERR, "core: invalid request - security token expected");
             future->fulfill("error", "security token expected");
             continue;
-        } else {
-            future->assign(m_digest.get(token.asString()));
+        } else if(version.asInt() > 2) {
+            try {
+                m_auth.authenticate(request, static_cast<const unsigned char*>(signature.data()),
+                    signature.size(), token.asString());
+            } catch(const std::runtime_error& e) {
+                syslog(LOG_ERR, "core: unauthorized access - %s", e.what());
+                future->fulfill("error", "unauthorized access");
+                continue;
+            }
         }
+
+        future->assign(m_digest.get(token.asString()));
 
         // Get the action
         Json::Value action = root["action"];

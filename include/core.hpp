@@ -8,6 +8,7 @@
 #include "engine.hpp"
 #include "registry.hpp"
 #include "persistance.hpp"
+#include "security.hpp"
 
 namespace yappi { namespace core {
 
@@ -67,6 +68,9 @@ class core_t: public boost::noncopyable {
 
         // Task persistance
         persistance::storage_t m_storage;
+
+        // Security
+        security::auth_t m_auth;
 
         // Plugins
         registry_t m_registry;
