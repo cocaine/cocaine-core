@@ -60,7 +60,7 @@ Json::Value file_storage_t::get(const std::string& key) const {
     stream.exceptions(std::ofstream::badbit | std::ofstream::failbit);
 
     try {
-        stream.open(filepath, std::ifstream::in);
+        stream.open(filepath, fs::ifstream::in);
     } catch(const fs::ifstream::failure& e) {
         return root;
     }
