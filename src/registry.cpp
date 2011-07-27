@@ -20,8 +20,16 @@ struct is_regular_file {
 registry_t::registry_t(const std::string& plugin_path):
     m_plugin_path(plugin_path)
 {
-    if(!fs::exists(m_plugin_path) || !fs::is_directory(m_plugin_path)) {
-        throw std::runtime_error(plugin_path + " path is invalid");
+    if(fs::exists(m_plugin_path) && !fs::is_directory(m_plugin_path)) {
+        throw std::runtime_error(plugin_path + " is not a directory");
+    }
+
+    if(!fs::exists(m_plugin_path)) {
+        try {
+            fs::create_directories(m_plugin_path);
+        } catch(const std::runtime_error& e) {
+            throw std::runtime_error("cannot create " + m_plugin_path.string());
+        }
     }
 
     void* plugin;

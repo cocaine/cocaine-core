@@ -17,7 +17,7 @@ bool eblob_collector_t::callback(const zbr::eblob_disk_control* dco, const void*
     Json::Value object;
 
     if(!m_reader.parse(value, object)) {
-        syslog(LOG_ERR, "storage: malformed object in eblob: %s",
+        syslog(LOG_ERR, "storage: malformed json - %s",
             m_reader.getFormatedErrorMessages().c_str());
         return true;
     } 
@@ -39,7 +39,7 @@ void eblob_purger_t::complete(uint64_t, uint64_t) {
 }
 
 eblob_storage_t::eblob_storage_t(const std::string& uuid, bool purge):
-    m_storage_path("/var/lib/yappi/" + uuid),
+    m_storage_path("/var/lib/yappi/" + uuid + ".tasks"),
     m_logger("/var/log/yappi-storage.log", EBLOB_LOG_NOTICE)
 {
     if(!fs::exists(m_storage_path.branch_path())) {
@@ -55,7 +55,6 @@ eblob_storage_t::eblob_storage_t(const std::string& uuid, bool purge):
     zbr::eblob_config cfg;
 
     memset(&cfg, 0, sizeof(cfg));
-
     cfg.file = const_cast<char*>(m_storage_path.string().c_str());
     cfg.hash_size = 4096;
     cfg.iterate_threads = 1;
@@ -116,7 +115,7 @@ Json::Value eblob_storage_t::get(const std::string& key) const {
     }
 
     if(!object.empty() && !reader.parse(object, root)) {
-        syslog(LOG_ERR, "storage: malformed object in eblob - %s",
+        syslog(LOG_ERR, "storage: malformed json - %s",
             reader.getFormatedErrorMessages().c_str());
     }
 

@@ -16,47 +16,57 @@ auth_t::auth_t(const std::string& uuid):
     ERR_load_crypto_strings();
 
     // Load the credentials
-    Json::Value root;
-    Json::Reader reader(Json::Features::strictMode());
-    
-    fs::ifstream stream;
-    fs::path path = fs::path("/var/lib/yappi") / (uuid + ".credentials");
-
-    stream.exceptions(std::ofstream::badbit | std::ofstream::failbit);
-
-    try {
-        stream.open(path, fs::ifstream::in);
-    } catch(const fs::ifstream::failure& e) {
-        throw std::runtime_error("cannot load security credentials from " +
-            path.string());
+    fs::path path = fs::path("/var/lib/yappi/" + uuid + ".tokens");
+   
+    if(fs::exists(path) && !fs::is_directory(path)) {
+        throw std::runtime_error(path.string() + " is not a directory");
     }
 
-    if(!reader.parse(stream, root)) {
-        throw std::runtime_error("malformed json in " + path.string() +
-            " - " + reader.getFormatedErrorMessages());
-    }
-
-    for(Json::Value::iterator it = root.begin(); it != root.end(); ++it) {
-        Json::Value object = *it;
-
-        std::string identity = object["identity"].asString();
-        std::string key = object["key"].asString();
-
-        BIO* bio = BIO_new_mem_buf(const_cast<char*>(key.data()), key.length());
-        EVP_PKEY* pkey = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
-
-        if(pkey == NULL) {
-            syslog(LOG_ERR, "security: failed to load public key for %s - %s",
-                identity.c_str(), ERR_reason_error_string(ERR_get_error()));
-            continue;
+    if(!fs::exists(path)) {
+        try {
+            fs::create_directories(path);
+        } catch(const std::runtime_error& e) {
+            throw std::runtime_error("cannot create " + path.string());
         }
+    }
 
-        m_keys.insert(std::make_pair(identity, pkey));
+    fs::directory_iterator it(path), end;
 
-        BIO_free(bio);
+    while(it != end) {
+        if(fs::is_regular(it->status())) {
+            fs::ifstream stream;
+            stream.exceptions(std::ofstream::badbit | std::ofstream::failbit);
+
+            try {
+                stream.open(it->path(), fs::ifstream::in);
+            } catch(const fs::ifstream::failure& e) {
+                syslog(LOG_ERR, "security: cannot open %s", it->path().string().c_str());
+                ++it;
+                continue;
+            }
+
+            std::string filename = it->leaf();
+            std::string identity = filename.substr(0, filename.find_last_of("."));
+            std::ostringstream key;
+            
+            key << stream.rdbuf();
+            BIO* bio = BIO_new_mem_buf(const_cast<char*>(key.str().data()), key.str().length());
+            EVP_PKEY* rsa = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
+
+            if(rsa == NULL) {
+                syslog(LOG_ERR, "security: failed to load public key from %s - %s",
+                    it->path().string().c_str(), ERR_reason_error_string(ERR_get_error()));
+            } else {
+                m_keys.insert(std::make_pair(identity, rsa));
+            }
+
+            BIO_free(bio);
+        }
+        
+        ++it;
     }
     
-    syslog(LOG_NOTICE, "security: initialized %d credentials", m_keys.size());
+    syslog(LOG_NOTICE, "security: initialized %d credential(s)", m_keys.size());
 }
 
 auth_t::~auth_t() {
