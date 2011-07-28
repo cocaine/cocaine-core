@@ -3,9 +3,7 @@
 prefix = ARGUMENTS.get("PREFIX", "")
 
 env = Environment()
-
 env.Alias("install", '.')
-
 env.Append(CXXFLAGS = ["-g", "-O2", "-Wall", "-pthread", "-rdynamic"])
 
 json = env.StaticLibrary(

@@ -1,6 +1,12 @@
 #include <string>
 #include <sstream>
+
+// Workaround for broken libmysqlclient16-dev file placement
+#ifndef BROKEN_MYSQL_CLIENT
 #include <mysql/mysql.h>
+#else
+#include <mysql.h>
+#endif
 
 #include "uri.hpp"
 #include "plugin.hpp"

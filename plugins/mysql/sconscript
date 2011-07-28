@@ -1,8 +1,14 @@
 #!/usr/bin/scons
 
-Import(['env'])
+import os
 
-plugin = env.SharedLibrary(
+Import(['env'])
+local_env = env.Clone()
+
+if 'BROKEN_MYSQL_CLIENT' in os.environ:
+    local_env['CXXFLAGS'].append("-DBROKEN_MYSQL_CLIENT")
+
+plugin = local_env.SharedLibrary(
     target = "#build/plugins/mysql",
     SHLIBPREFIX = "",
     source = ["mysql.cpp"],
