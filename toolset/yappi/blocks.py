@@ -2,7 +2,7 @@
 
 import os
 
-class Tail(object)
+class Tail(object):
     def __init__(self, filename):
         self.filename = filename
         self.inode = 0
