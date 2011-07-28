@@ -1,0 +1,7 @@
+#!/usr/bin/env scons
+
+Import(['env'])
+
+toolset = env.Glob('yappi/*.py')
+
+Return("toolset")

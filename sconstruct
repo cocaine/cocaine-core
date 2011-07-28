@@ -1,11 +1,15 @@
 #!/usr/bin/scons
 
+import sys
+
 prefix = ARGUMENTS.get("PREFIX", "")
+python_version = 'python%d.%d' % sys.version_info[:2]
 
 env = Environment()
 env.Alias("install", '.')
 env.Append(CXXFLAGS = ["-g", "-O2", "-Wall", "-pthread", "-rdynamic"])
 
+# JSON parser
 json = env.StaticLibrary(
     target = "build/json",
     source = ["foreign/jsoncpp-0.5.0/src/lib_json/json_reader.cpp",
@@ -16,6 +20,7 @@ json = env.StaticLibrary(
 
 Export(['env', 'prefix', 'json'])
 
+# Library
 library = env.SharedLibrary(
     target = "build/yappi",
     source = ["src/core.cpp", "src/engine.cpp", "src/registry.cpp", "src/sockets.cpp",
@@ -26,6 +31,7 @@ library = env.SharedLibrary(
             "uriparser", json],
     LINKFLAGS = ["-Wl,-soname=libyappi.so.1", "-Wl,-Bsymbolic"])
 
+# Executable
 binary = env.Program(
     target = "build/yappi",
     source = ["src/main.cpp"],
@@ -33,15 +39,22 @@ binary = env.Program(
     LIBS = ["yappi", "boost_program_options"],
     LIBPATH = ["build"])
 
-dev = env.File(["include/plugin.hpp", "include/uri.hpp", "clients/c++/client.hpp"])
-
 env.Requires(binary, library)
 
-plugins = SConscript("plugins/sconscript")
-client = SConscript("clients/c++/sconscript")
+# Clients
+SConscript("clients/sconscript")
 
-env.Install(prefix + "/usr/bin", binary)
+# Plugins
+plugins = SConscript("plugins/sconscript")
+
+# Plugin development files
+dev = env.File(["include/plugin.hpp", "include/uri.hpp", "clients/c++/client.hpp"])
+
+# Python toolset
+toolset = SConscript("toolset/sconscript")
+
 env.InstallAs(prefix + "/usr/lib/libyappi.so.1", library)
-env.InstallAs(prefix + "/usr/lib/libyappi-client.so.1", client)
-env.Install(prefix + "/usr/include/yappi", dev)
+env.Install(prefix + "/usr/bin", binary)
 env.Install(prefix + "/usr/lib/yappi", plugins)
+env.Install(prefix + "/usr/include/yappi", dev)
+env.Install(prefix + "/usr/lib/" + python_version + "/site-packages/yappi", toolset)
