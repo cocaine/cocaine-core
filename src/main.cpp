@@ -1,5 +1,4 @@
 #include <iostream>
-#include <fstream>
 
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
@@ -11,6 +10,8 @@
 using namespace yappi::core;
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
+
+static const char identity[] = "yappi";
 
 int main(int argc, char* argv[]) {
     std::string uuid;
@@ -65,7 +66,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Setting up the syslog
-    openlog(core_t::identity, LOG_PID | LOG_NDELAY, LOG_USER);
+    openlog(identity, LOG_PID | LOG_NDELAY, LOG_USER);
     setlogmask(LOG_UPTO(LOG_DEBUG));
     syslog(LOG_NOTICE, "main: yappi is starting");
         

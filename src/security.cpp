@@ -9,7 +9,7 @@
 
 using namespace yappi::security;
 
-auth_t::auth_t(const std::string& uuid):
+authorizer_t::authorizer_t(const std::string& uuid):
     m_context(EVP_MD_CTX_create())
 {
     // Initialize error strings
@@ -66,10 +66,10 @@ auth_t::auth_t(const std::string& uuid):
         ++it;
     }
     
-    syslog(LOG_NOTICE, "security: initialized %d credential(s)", m_keys.size());
+    syslog(LOG_NOTICE, "security: loaded %d credential(s)", m_keys.size());
 }
 
-auth_t::~auth_t() {
+authorizer_t::~authorizer_t() {
     for(key_map_t::iterator it = m_keys.begin(); it != m_keys.end(); ++it) {
         EVP_PKEY_free(it->second);
     }
@@ -78,7 +78,7 @@ auth_t::~auth_t() {
     ERR_free_strings();
 }
 
-void auth_t::authenticate(const std::string& message, const unsigned char* signature,
+void authorizer_t::verify(const std::string& message, const unsigned char* signature,
                           size_t size, const std::string& token)
 {
     key_map_t::const_iterator it = m_keys.find(token);
@@ -95,6 +95,7 @@ void auth_t::authenticate(const std::string& message, const unsigned char* signa
     
     // Verify the signature
     if(!EVP_VerifyFinal(m_context, signature, size, it->second)) {
+        EVP_MD_CTX_cleanup(m_context);
         throw std::runtime_error("invalid signature");
     }
 

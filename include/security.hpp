@@ -9,12 +9,12 @@ namespace yappi { namespace security {
 
 namespace fs = boost::filesystem;
 
-class auth_t: public boost::noncopyable {
+class authorizer_t: public boost::noncopyable {
     public:
-        auth_t(const std::string& uuid);
-        ~auth_t();
+        authorizer_t(const std::string& uuid);
+        ~authorizer_t();
 
-        void authenticate(const std::string& message, const unsigned char* signature,
+        void verify(const std::string& message, const unsigned char* signature,
             size_t size, const std::string& token);
 
     private:

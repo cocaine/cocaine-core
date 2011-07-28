@@ -21,8 +21,6 @@ file_storage_t::file_storage_t(const std::string& uuid, bool purge):
 
     if(!fs::exists(m_storage_path)) {
         try {
-            syslog(LOG_INFO, "storage: creating storage directory %s",
-                m_storage_path.string().c_str());
             fs::create_directories(m_storage_path);
         } catch(const std::runtime_error& e) {
             throw std::runtime_error("cannot create " + m_storage_path.string());

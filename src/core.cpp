@@ -12,16 +12,13 @@ using namespace yappi::core;
 using namespace yappi::engine;
 using namespace yappi::plugin;
 
-const char core_t::identity[] = "yappi";
-
 core_t::core_t(const std::string& uuid,
                const std::vector<std::string>& listeners,
                const std::vector<std::string>& publishers,
                uint64_t hwm, bool purge):
-    m_uuid(uuid),
-    m_storage(m_uuid, purge),
-    m_auth(m_uuid),
     m_registry("/usr/lib/yappi"),
+    m_authorizer(uuid),
+    m_storage(uuid, purge),
     m_context(1),
     s_events(m_context, ZMQ_PULL),
     s_requests(m_context, ZMQ_ROUTER),
@@ -41,7 +38,7 @@ core_t::core_t(const std::string& uuid,
     syslog(LOG_INFO, "core: using libmsgpack version %s",
         msgpack_version());
 
-    syslog(LOG_INFO, "core: instance uuid - %s", m_uuid.c_str());
+    syslog(LOG_INFO, "core: instance uuid - %s", uuid.c_str());
 
     // Internal event sink socket
     s_events.bind("inproc://events");
@@ -126,6 +123,7 @@ void core_t::reload(ev::sig& sig, int revents) {
 
     m_engines.clear();
     m_futures.clear();
+
     recover();
 }
 
@@ -208,7 +206,7 @@ void core_t::request(ev::io& io, int revents) {
             continue;
         } else if(version.asInt() > 2) {
             try {
-                m_auth.authenticate(request, static_cast<const unsigned char*>(signature.data()),
+                m_authorizer.verify(request, static_cast<const unsigned char*>(signature.data()),
                     signature.size(), token.asString());
             } catch(const std::runtime_error& e) {
                 syslog(LOG_ERR, "core: unauthorized access - %s", e.what());

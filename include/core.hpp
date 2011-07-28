@@ -20,18 +20,14 @@ class core_t: public boost::noncopyable {
                const std::vector<std::string>& listeners,
                const std::vector<std::string>& publishers,
                uint64_t hwm, bool purge);
-        virtual ~core_t();
+        ~core_t();
 
         // Event loop
         void run();
         
-    public:
-        static const char identity[];
-
     protected:
-        friend class future_t;
-
         // Responder
+        friend class future_t;
         void seal(const std::string& future_id);
 
     private:
@@ -63,17 +59,15 @@ class core_t: public boost::noncopyable {
         void recover();
 
     private:
-        // Instance ID
-        const std::string m_uuid;
+        // Plugins
+        registry_t m_registry;
+
+        // Security
+        security::authorizer_t m_authorizer;
+        helpers::digest_t m_digest;
 
         // Task persistance
         persistance::storage_t m_storage;
-
-        // Security
-        security::auth_t m_auth;
-
-        // Plugins
-        registry_t m_registry;
 
         // Command dispatching
         typedef boost::function<void(
@@ -85,14 +79,13 @@ class core_t: public boost::noncopyable {
         typedef std::map<const std::string, handler_fn_t> dispatch_map_t;
         dispatch_map_t m_dispatch;
 
-        // Engine management (Key->Engine)
+        // Engine management (URI->Engine)
         typedef boost::ptr_map<const std::string, engine::engine_t> engine_map_t;
         engine_map_t m_engines;
 
         // Future management
         typedef boost::ptr_map<const std::string, future_t> future_map_t;
         future_map_t m_futures;
-        helpers::digest_t m_digest;
 
         // Networking
         zmq::context_t m_context;

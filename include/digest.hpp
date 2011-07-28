@@ -5,6 +5,8 @@
 #include <sstream>
 #include <iomanip>
 
+#include <boost/noncopyable.hpp>
+
 #include <openssl/evp.h>
 
 namespace yappi { namespace helpers {
@@ -22,9 +24,9 @@ class digest_t: public boost::noncopyable {
             unsigned int size;
             unsigned char hash[EVP_MAX_MD_SIZE];
             
-            EVP_DigestInit_ex(m_context, EVP_sha1(), NULL);
+            EVP_DigestInit(m_context, EVP_sha1());
             EVP_DigestUpdate(m_context, data.data(), data.length());
-            EVP_DigestFinal_ex(m_context, hash, &size);
+            EVP_DigestFinal(m_context, hash, &size);
 
             std::ostringstream formatter;
 

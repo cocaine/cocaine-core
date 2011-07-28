@@ -3,7 +3,7 @@
 
 #include "common.hpp"
 #include "file_storage.hpp"
-//#include "eblob_storage.hpp"
+#include "eblob_storage.hpp"
 
 namespace yappi { namespace persistance {
 
