@@ -3,16 +3,12 @@
 import os
 
 Import(['env'])
-local_env = env.Clone()
 
-if 'BROKEN_MYSQL_CLIENT' in os.environ:
-    local_env['CXXFLAGS'].append("-DBROKEN_MYSQL_CLIENT")
-
-plugin = local_env.SharedLibrary(
+plugin = env.SharedLibrary(
     target = "#build/plugins/mysql",
     SHLIBPREFIX = "",
     source = ["mysql.cpp"],
-    CPPPATH = ["#include"],
+    CPPPATH = ["#include", "/usr/include/mysql"],
     LIBS = ["uriparser", "mysqlclient"],
     LINKFLAGS = ["-Wl,-Bsymbolic"])
 

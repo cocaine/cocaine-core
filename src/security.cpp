@@ -66,7 +66,7 @@ authorizer_t::authorizer_t(const std::string& uuid):
         ++it;
     }
     
-    syslog(LOG_NOTICE, "security: loaded %d credential(s)", m_keys.size());
+    syslog(LOG_NOTICE, "security: loaded %u credential(s)", m_keys.size());
 }
 
 authorizer_t::~authorizer_t() {
