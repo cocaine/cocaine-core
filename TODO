@@ -7,7 +7,7 @@ v Async core
 v Fix libev+zmq integration
 
 Version: 0.2
-v Local persistance
+v Local persistence
 v Authentication
 * Python toolset: TimeTail, BasicSink, target aliases
 * Migrate internal variable state to a dedicated configuration object
@@ -23,6 +23,6 @@ Version: 0.3
 ? Per-engine export sockets
 
 Version: 0.4
-* Global persistance / Cluster communications
+* Global persistence / Cluster communications
 * Statistics
 ? Protocol: move action into targets
