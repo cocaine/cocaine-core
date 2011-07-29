@@ -1,13 +1,24 @@
-Version: 0.2.0
-
+Version: 0.1
 v Socket identity support
 v HTTP plugin
 v JSON command protocol + bulk commands
 v Forking engine (via inject plugin)
 v Async core
 v Fix libev+zmq integration
+
+Version: 0.2
 v Local persistance
 v Authentication
-* Global persistance
+* Migrate internal variable state to a dedicated configuration object
+* More flexible environment setup, at least all the paths should be configurable
+* Authentication replay protection (timestamps?)
+* Optional encrypted publishing
+
+Version: 0.3
+* Self-balancing engine thread pool
+* Per-plugin per-thread storage support (enables persistent state plugins)
+? Totally encrypted communications
+
+Version: 0.4
+* Global persistance / Cluster communications
 * Statistics
-~ Command plugins support?
