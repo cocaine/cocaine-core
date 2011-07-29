@@ -11,7 +11,7 @@ v Local persistance
 v Authentication
 * Python toolset: TimeTail, BasicSink, target aliases
 * Migrate internal variable state to a dedicated configuration object
-* More flexible environment setup, at least all the paths should be configurable
+* More flexible environment setup: paths, minimal protocol version
 * Authentication replay protection (timestamps?)
 * Optional encrypted publishing
 
@@ -20,7 +20,9 @@ Version: 0.3
 * Per-plugin per-thread storage support (enables persistent state plugins)
 * Python toolset: PersistentTail, PersistentTimeTail
 ? Totally encrypted communications
+? Per-engine export sockets
 
 Version: 0.4
 * Global persistance / Cluster communications
 * Statistics
+? Protocol: move action into targets
