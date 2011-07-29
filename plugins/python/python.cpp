@@ -14,7 +14,7 @@
 
 namespace yappi { namespace plugin {
 
-char python_t::identity[] = "yappi";
+char python_t::identity[] = "yappi-dynamic";
 
 size_t stream_writer(void* data, size_t size, size_t nmemb, void* stream) {
     std::stringstream* out = reinterpret_cast<std::stringstream*>(stream);
