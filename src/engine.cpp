@@ -1,3 +1,4 @@
+#include <boost/bind.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <msgpack.hpp>
 
@@ -63,11 +64,9 @@ void* engine_t::thread_t::bootstrap(void* args) {
     return NULL;
 }
 
-void engine_t::push(future_t* future, const Json::Value& args) {
+void engine_t::start(future_t* future, const Json::Value& args) {
     Json::Value message, response;
-    std::string thread_id = "default";
-    
-    thread_map_t::iterator it = m_threads.find(thread_id);
+    thread_map_t::iterator it = m_threads.find(m_default_thread_id);
 
     if(it == m_threads.end()) {
         std::auto_ptr<source_t> source;
@@ -76,7 +75,9 @@ void engine_t::push(future_t* future, const Json::Value& args) {
         try {
             source.reset(m_registry.instantiate(m_target));
             thread.reset(new thread_t(m_context, source, m_storage));
-            boost::tie(it, boost::tuples::ignore) = m_threads.insert(thread_id, thread);
+            m_default_thread_id = thread->id();
+            boost::tie(it, boost::tuples::ignore) =
+                m_threads.insert(m_default_thread_id, thread);
         } catch(const std::runtime_error& e) {
             response["error"] = e.what();
             future->fulfill(m_target, response);
@@ -91,14 +92,12 @@ void engine_t::push(future_t* future, const Json::Value& args) {
     it->second->send(message);
 }
 
-void engine_t::drop(future_t* future, const Json::Value& args) {
+void engine_t::stop(future_t* future, const Json::Value& args) {
     Json::Value message, response;
-    std::string thread_id = "default";
-
-    thread_map_t::iterator it = m_threads.find(thread_id);
+    thread_map_t::iterator it = m_threads.find(m_default_thread_id);
 
     if(it == m_threads.end()) {
-        response["error"] = "not found";
+        response["error"] = "thread not found";
         future->fulfill(m_target, response);
     } else {
         message["command"] = "stop";
@@ -109,7 +108,7 @@ void engine_t::drop(future_t* future, const Json::Value& args) {
     }
 }
 
-void engine_t::kill(const std::string& thread_id) {
+void engine_t::reap(const std::string& thread_id) {
     thread_map_t::iterator it = m_threads.find(thread_id);
 
     if(it == m_threads.end()) {
@@ -128,6 +127,7 @@ overseer_t::overseer_t(zmq::context_t& context, source_t& source, storage_t& sto
     m_reaper(m_context, ZMQ_PUSH),
     m_source(source),
     m_storage(storage),
+    m_id(uuid),
     m_loop(),
     m_io(m_loop),
     m_suicide(m_loop),
@@ -140,7 +140,7 @@ overseer_t::overseer_t(zmq::context_t& context, source_t& source, storage_t& sto
 
     // Connect to the engine's controlling socket
     // and set the socket watcher
-    m_pipe.connect("inproc://" + uuid.get());
+    m_pipe.connect("inproc://" + m_id.get());
     m_io.set(this);
     m_io.start(m_pipe.fd(), EV_READ);
 
@@ -167,6 +167,7 @@ void overseer_t::run() {
 }
 
 void overseer_t::operator()(ev::io& w, int revents) {
+    Json::Value result;
     std::string command, type;
     
     while(m_pipe.pending()) {
@@ -174,22 +175,34 @@ void overseer_t::operator()(ev::io& w, int revents) {
         
         m_pipe.recv(message);
         command = message["command"].asString();
+        type = message["args"].get("type", "auto").asString(); 
        
         if(command == "start") {
-            type = message["args"].get("type", "auto").asString(); 
-
             if(type == "auto") {
-                schedule<auto_scheduler_t>(message);
+                start<auto_scheduler_t>(message);
             } else if(type == "manual") {
-                schedule<manual_scheduler_t>(message);
+                start<manual_scheduler_t>(message);
             } else if(type == "once") {
                 once(message);
+            } else {
+                result["error"] = "invalid type";
+                respond(message["future"], result);
             }
         } else if(command == "stop") {
-            stop(message);
+            if(type == "auto") {
+                stop<auto_scheduler_t>(message);
+            } else if(type == "manual") {
+                stop<manual_scheduler_t>(message);
+            } else {
+                result["error"] = "invalid type";
+                respond(message["future"], result);
+            }
         } else if(command == "terminate") {
             terminate();
             break;
+        } else {
+            result["error"] = "invalid command";
+            respond(message["future"], result);
         }
     }
 }
@@ -219,16 +232,16 @@ source_t::dict_t overseer_t::fetch() {
 }
 
 template<class SchedulerType>
-void overseer_t::schedule(const Json::Value& message) {
+void overseer_t::start(const Json::Value& message) {
     Json::Value result;
     std::string token = message["future"]["token"].asString();
-    std::string key;
+    std::string scheduler_id;
 
     std::auto_ptr<SchedulerType> scheduler;
 
     try {
         scheduler.reset(new SchedulerType(m_context, m_source, *this, message["args"]));
-        key = scheduler->key();
+        scheduler_id = scheduler->id();
     } catch(const std::runtime_error& e) {
         result["error"] = e.what();
         respond(message["future"], result);
@@ -236,9 +249,9 @@ void overseer_t::schedule(const Json::Value& message) {
     }
     
     // Scheduling
-    if(m_slaves.find(key) == m_slaves.end()) {
+    if(m_slaves.find(scheduler_id) == m_slaves.end()) {
         scheduler->start();
-        m_slaves.insert(key, scheduler);
+        m_slaves.insert(scheduler_id, scheduler);
 
         if(m_suicide.is_active()) {
             syslog(LOG_DEBUG, "engine %s: suicide timer stopped", m_source.uri().c_str());
@@ -249,7 +262,7 @@ void overseer_t::schedule(const Json::Value& message) {
     // ACL
     subscription_map_t::const_iterator begin, end;
     boost::tie(begin, end) = m_subscriptions.equal_range(token);
-    subscription_map_t::value_type subscription = std::make_pair(token, key);
+    subscription_map_t::value_type subscription = std::make_pair(token, scheduler_id);
     std::equal_to<subscription_map_t::value_type> equality;
 
     if(std::find_if(begin, end, boost::bind(equality, subscription, _1)) == end) {
@@ -260,7 +273,7 @@ void overseer_t::schedule(const Json::Value& message) {
     
     // Persistance
     if(!message["args"].get("transient", false).asBool()) {
-        std::string object_id = m_digest.get(key + token);
+        std::string object_id = m_digest.get(scheduler_id + token);
 
         if(!m_storage.exists(object_id)) {
             Json::Value object;
@@ -274,7 +287,53 @@ void overseer_t::schedule(const Json::Value& message) {
     }
 
     // Report to the core
-    result["key"] = key;
+    result["key"] = scheduler_id;
+    respond(message["future"], result);
+}
+
+template<class SchedulerType>
+void overseer_t::stop(const Json::Value& message) {
+    Json::Value result;
+    std::string token = message["future"]["token"].asString();
+    std::string scheduler_id;
+
+    std::auto_ptr<SchedulerType> scheduler;
+
+    try {
+        scheduler.reset(new SchedulerType(m_context, m_source, *this, message["args"]));
+        scheduler_id = scheduler->id();
+    } catch(const std::runtime_error& e) {
+        result["error"] = e.what();
+        respond(message["future"], result);
+        return;
+    }
+   
+    slave_map_t::iterator slave;
+    subscription_map_t::iterator client;
+
+    if((slave = m_slaves.find(scheduler_id)) != m_slaves.end()) {
+        subscription_map_t::iterator begin, end;
+        boost::tie(begin, end) = m_subscriptions.equal_range(token);
+        subscription_map_t::value_type subscription = std::make_pair(token, scheduler_id);
+        std::equal_to<subscription_map_t::value_type> equality;
+
+        if((client = std::find_if(begin, end, boost::bind(equality, subscription, _1))) != end) {
+            m_slaves.erase(slave);
+            m_subscriptions.erase(client);
+            
+            if(m_slaves.empty()) {
+                syslog(LOG_DEBUG, "engine %s: suicide timer started", m_source.uri().c_str());
+                m_suicide.start(600.); // [CONFIG]
+            }
+
+            result["success"] = true;
+        } else {
+            result["error"] = "not authorized";
+        }
+    } else {
+        result["error"] = "scheduler not found";
+    }
+
     respond(message["future"], result);
 }
 
@@ -297,8 +356,21 @@ void overseer_t::once(const Json::Value& message) {
     }
 }
 
-void overseer_t::stop(const Json::Value& message) {
+void overseer_t::reap(const std::string& scheduler_id) {
+    slave_map_t::iterator it = m_slaves.find(scheduler_id);
 
+    if(it == m_slaves.end()) {
+        syslog(LOG_ERR, "engine %s: found an orphan - scheduler %s",
+            m_source.uri().c_str(), scheduler_id.c_str());
+        return;
+    }
+
+    m_slaves.erase(it);
+
+    if(m_slaves.empty()) {
+        syslog(LOG_DEBUG, "engine %s: suicide timer started", m_source.uri().c_str());
+        m_suicide.start(600.); // [CONFIG]
+    }
 }
 
 void overseer_t::terminate() {
@@ -313,20 +385,21 @@ void overseer_t::suicide() {
     Json::Value message;
 
     message["engine"] = m_source.uri();
-    message["thread"] = "default";
+    message["thread"] = m_id.get();
 
     // This is a suicide ;(
     m_reaper.send(message);    
 }
 
 scheduler_base_t::scheduler_base_t(zmq::context_t& context, source_t& source, overseer_t& overseer):
-    m_uplink(context, ZMQ_PUSH),
     m_source(source),
-    m_overseer(overseer)
+    m_uplink(context, ZMQ_PUSH),
+    m_overseer(overseer),
+    m_stopping(false)
 {}
 
 scheduler_base_t::~scheduler_base_t() {
-    if(m_watcher->is_active()) {
+    if(m_watcher.get() && m_watcher->is_active()) {
         m_watcher->stop();
     }
 }
@@ -341,6 +414,12 @@ void scheduler_base_t::start() {
 }
 
 void scheduler_base_t::publish(ev::periodic& w, int revents) {
+    if(m_stopping) {
+        m_watcher->stop();
+        m_overseer.reap(id());
+        return;
+    }
+    
     source_t::dict_t dict = m_overseer.fetch();
 
     // Do nothing if plugin has returned an empty dict
@@ -348,8 +427,8 @@ void scheduler_base_t::publish(ev::periodic& w, int revents) {
         return;
     }
 
-    zmq::message_t message(m_key.length());
-    memcpy(message.data(), m_key.data(), m_key.length());
+    zmq::message_t message(m_id.length());
+    memcpy(message.data(), m_id.data(), m_id.length());
     m_uplink.send(message, ZMQ_SNDMORE);
 
     // Serialize the dict

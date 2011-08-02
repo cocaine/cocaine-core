@@ -18,14 +18,6 @@ class auto_uuid_t {
             m_uuid = unparsed_uuid;
         }
 
-        auto_uuid_t(const auto_uuid_t& other):
-            m_uuid(other.get()) {}
-
-        const auto_uuid_t& operator=(const auto_uuid_t& other) {
-            m_uuid = other.get();
-            return *this;
-        }
-
         inline std::string get() const {
             return m_uuid;
         }

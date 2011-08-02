@@ -20,9 +20,10 @@ class engine_t: public boost::noncopyable {
             persistance::storage_t& storage, const std::string& target);
         ~engine_t();
 
-        void push(core::future_t* future, const Json::Value& args);
-        void drop(core::future_t* future, const Json::Value& args);
-        void kill(const std::string& thread_id);
+        // Thread interoperability
+        void start(core::future_t* future, const Json::Value& args);
+        void stop(core::future_t* future, const Json::Value& args);
+        void reap(const std::string& thread_id);
 
     private:
         zmq::context_t& m_context;
@@ -30,11 +31,15 @@ class engine_t: public boost::noncopyable {
         persistance::storage_t& m_storage;
         const std::string m_target;
 
+        std::string m_default_thread_id;
+
         class thread_t {
             public:
                 thread_t(zmq::context_t& context, std::auto_ptr<plugin::source_t> source,
                     persistance::storage_t& storage);
                 ~thread_t();
+
+                inline std::string id() const { return m_uuid.get(); }
 
                 inline void send(const Json::Value& message) {
                     m_pipe.send(message);
@@ -73,18 +78,24 @@ namespace {
             void operator()(ev::timer& w, int revents);
             void operator()(ev::prepare& w, int revents);
 
-            // Scheduler access
+            // Scheduler bindings
+            inline ev::dynamic_loop& binding() { return m_loop; }
             plugin::source_t::dict_t fetch();
-            ev::dynamic_loop& binding() { return m_loop; }
+            
+            // Scheduler termination request
+            void reap(const std::string& scheduler_id);
 
         private:
+            // Command disptach 
             template<class Scheduler>
-            void schedule(const Json::Value& message);
+            void start(const Json::Value& message);
+           
+            template<class Scheduler>
+            void stop(const Json::Value& message);
             
             void once(const Json::Value& message);
-            void stop(const Json::Value& message);
             void terminate();
-            
+
             // Thread termination request
             void suicide();
 
@@ -109,22 +120,25 @@ namespace {
             
             // Task persistance
             persistance::storage_t& m_storage;
-           
+          
+            // Thread ID
+            helpers::auto_uuid_t m_id;
+
             // Event loop
             ev::dynamic_loop m_loop;
             ev::io m_io;
             ev::timer m_suicide;
             ev::prepare m_cleanup;
             
-            // Slaves (Scheduler Key -> Scheduler)
+            // Slaves (Scheduler ID -> Scheduler)
             typedef boost::ptr_map<const std::string, scheduler_base_t> slave_map_t;
             slave_map_t m_slaves;
 
-            // Subscriptions (Scheduler Key -> Token)
+            // Subscriptions (Scheduler ID -> Tokens)
             typedef std::multimap<const std::string, std::string> subscription_map_t;
             subscription_map_t m_subscriptions;
 
-            // Hasher
+            // Hasher (for storage)
             helpers::digest_t m_digest;
 
             // Iteration cache

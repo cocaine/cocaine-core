@@ -36,6 +36,20 @@ class source_t: public boost::noncopyable {
         typedef std::map<std::string, std::string> dict_t;        
         virtual dict_t fetch() = 0;
 
+        #define CAP_NONE    1 << 0
+        #define CAP_MANUAL  1 << 1
+        #define CAP_ISOLATE 1 << 2
+
+        virtual inline uint64_t capabilities() const {
+            return CAP_NONE;
+        }
+
+        // This method will be called by the scheduler in case of manual schedling type
+        // Time is seconds.microseconds float
+        virtual float reschedule(float now) {
+            return -1;
+        }
+
     protected:
         std::string m_uri, m_hash;
 };

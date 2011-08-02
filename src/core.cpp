@@ -283,7 +283,8 @@ void core_t::seal(const std::string& future_id) {
     if(!identity.empty()) {
         std::string response = future->seal();
         
-        syslog(LOG_DEBUG, "core: sending response - future %s", future->id().c_str());
+        syslog(LOG_DEBUG, "core: sending response to %s - future %s", 
+            future->token().c_str(), future->id().c_str());
 
         // Send the identity
         for(std::vector<std::string>::const_iterator id = identity.begin(); id != identity.end(); ++id) {
@@ -344,7 +345,7 @@ void core_t::push(future_t* future, const std::string& target, const Json::Value
     }
 
     // Dispatch!
-    engine->push(future, args);
+    engine->start(future, args);
 }
 
 void core_t::drop(future_t* future, const std::string& target, const Json::Value& args) {
@@ -361,7 +362,7 @@ void core_t::drop(future_t* future, const std::string& target, const Json::Value
 
     // Dispatch!
     engine_t* engine = it->second;
-    engine->drop(future, args);
+    engine->stop(future, args);
 }
 
 // Publishing format (not JSON, as it will render subscription mechanics pointless):
@@ -443,7 +444,7 @@ void core_t::reap(ev::io& io, int revents) {
             message["thread"].asCString(), message["engine"].asCString());
 
         engine_t* engine = it->second;
-        engine->kill(message["thread"].asString());
+        engine->reap(message["thread"].asString());
     }
 }
 
