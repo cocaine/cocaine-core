@@ -1,6 +1,3 @@
-#include <sstream>
-
-#include <boost/bind.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <msgpack.hpp>
 
@@ -20,11 +17,11 @@ engine_t::engine_t(zmq::context_t& context, registry_t& registry, storage_t& sto
     m_storage(storage),
     m_target(target)
 {
-    syslog(LOG_DEBUG, "engine: starting for %s", m_target.c_str());
+    syslog(LOG_DEBUG, "engine %s: starting", m_target.c_str());
 }
 
 engine_t::~engine_t() {
-    syslog(LOG_DEBUG, "engine: terminating for %s", m_target.c_str()); 
+    syslog(LOG_DEBUG, "engine %s: terminating", m_target.c_str()); 
     m_threads.clear();
 }
 
@@ -34,7 +31,8 @@ engine_t::thread_t::thread_t(zmq::context_t& context, std::auto_ptr<source_t> so
     m_source(source),
     m_storage(storage)
 {
-    syslog(LOG_DEBUG, "threading: starting thread %s", m_uuid.get().c_str());
+    syslog(LOG_DEBUG, "engine %s: starting thread %s", m_source->uri().c_str(),
+        m_uuid.get().c_str());
 
     m_pipe.bind("inproc://" + m_uuid.get());
     
@@ -44,7 +42,8 @@ engine_t::thread_t::thread_t(zmq::context_t& context, std::auto_ptr<source_t> so
 }
 
 engine_t::thread_t::~thread_t() {
-    syslog(LOG_DEBUG, "threading: terminating thread %s", m_uuid.get().c_str());
+    syslog(LOG_DEBUG, "engine %s: terminating thread %s", m_source->uri().c_str(),
+        m_uuid.get().c_str());
     
     Json::Value message;
     message["command"] = "terminate";
@@ -85,7 +84,7 @@ void engine_t::push(future_t* future, const Json::Value& args) {
         }
     }
         
-    message["command"] = args.get("type", "simple");
+    message["command"] = "start";
     message["future"] = future->serialize();
     message["args"] = args;
     
@@ -114,7 +113,8 @@ void engine_t::kill(const std::string& thread_id) {
     thread_map_t::iterator it = m_threads.find(thread_id);
 
     if(it == m_threads.end()) {
-        syslog(LOG_DEBUG, "engine: found an orphan - thread %s", thread_id.c_str());
+        syslog(LOG_DEBUG, "engine %s: found an orphan - thread %s", 
+            m_target.c_str(), thread_id.c_str());
         return;
     }
 
@@ -167,20 +167,24 @@ void overseer_t::run() {
 }
 
 void overseer_t::operator()(ev::io& w, int revents) {
-    std::string command;
+    std::string command, type;
     
     while(m_pipe.pending()) {
         Json::Value message;
         
         m_pipe.recv(message);
         command = message["command"].asString();
-        
-        if(command == "auto") {
-            schedule<auto_scheduler_t>(message);
-        } else if(command == "manual") {
-            schedule<manual_scheduler_t>(message);
-        } else if(command == "once") {
-            once(message);
+       
+        if(command == "start") {
+            type = message["args"].get("type", "auto").asString(); 
+
+            if(type == "auto") {
+                schedule<auto_scheduler_t>(message);
+            } else if(type == "manual") {
+                schedule<manual_scheduler_t>(message);
+            } else if(type == "once") {
+                once(message);
+            }
         } else if(command == "stop") {
             stop(message);
         } else if(command == "terminate") {
@@ -205,7 +209,7 @@ source_t::dict_t overseer_t::fetch() {
             m_cache = m_source.fetch();
             m_cached = true;
         } catch(const std::exception& e) {
-            syslog(LOG_NOTICE, "overseer: exception in %s - %s",
+            syslog(LOG_NOTICE, "engine %s: exception - %s",
                 m_source.uri().c_str(), e.what());
             suicide();
         }
@@ -237,7 +241,7 @@ void overseer_t::schedule(const Json::Value& message) {
         m_slaves.insert(key, scheduler);
 
         if(m_suicide.is_active()) {
-            syslog(LOG_DEBUG, "overseer: suicide timer stopped for %s", m_source.uri().c_str());
+            syslog(LOG_DEBUG, "engine %s: suicide timer stopped", m_source.uri().c_str());
             m_suicide.stop();
         }
     }
@@ -249,8 +253,8 @@ void overseer_t::schedule(const Json::Value& message) {
     std::equal_to<subscription_map_t::value_type> equality;
 
     if(std::find_if(begin, end, boost::bind(equality, subscription, _1)) == end) {
-        syslog(LOG_DEBUG, "overseer: subscribing %s to %s", token.c_str(),
-            m_source.uri().c_str());
+        syslog(LOG_DEBUG, "engine %s: subscribing %s", m_source.uri().c_str(),
+            token.c_str());
         m_subscriptions.insert(subscription);
     }
     
@@ -287,7 +291,7 @@ void overseer_t::once(const Json::Value& message) {
 
     // Rearm the stall timer if it's active
     if(m_suicide.is_active()) {
-        syslog(LOG_DEBUG, "overseer: suicide timer rearmed for %s", m_source.uri().c_str());
+        syslog(LOG_DEBUG, "engine %s: suicide timer rearmed", m_source.uri().c_str());
         m_suicide.stop();
         m_suicide.start(600.); // [CONFIG]
     }
@@ -298,8 +302,6 @@ void overseer_t::stop(const Json::Value& message) {
 }
 
 void overseer_t::terminate() {
-    syslog(LOG_INFO, "overseer: stopping for %s", m_source.uri().c_str());
-
     // Kill everything
     m_slaves.clear();
     m_suicide.stop();
