@@ -9,20 +9,23 @@ v Fix libev+zmq integration
 Version: 0.2
 v Local persistence
 v Authentication
-* Python toolset: TimeTail, BasicSink, target aliases
+
+Version: 0.3
+v Modular scheduling engines, multiple scheduler types
+> Per-plugin per-thread storage support (enables persistent state plugins)
+> Python toolset: TimeTail, BasicSink, target aliases
 * Migrate internal variable state to a dedicated configuration object
 * More flexible environment setup: paths, minimal protocol version
 * Authentication replay protection (timestamps?)
 * Optional encrypted publishing
 
-Version: 0.3
+Version: 0.4
 * Self-balancing engine thread pool
-* Per-plugin per-thread storage support (enables persistent state plugins)
 * Python toolset: PersistentTail, PersistentTimeTail
 ? Totally encrypted communications
 ? Per-engine export sockets
 
-Version: 0.4
+Version: 0.5
 * Global persistence / Cluster communications
 * Statistics
 ? Protocol: move action into targets
