@@ -130,11 +130,11 @@ int main(int argc, char* argv[]) {
             exports,
             config["watermark"].as<uint64_t>(),
             config.count("purge"));
-    } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "main: runtime error - %s", e.what());
-        return EXIT_FAILURE;
     } catch(const zmq::error_t& e) {
         syslog(LOG_ERR, "main: network error - %s", e.what());
+        return EXIT_FAILURE;
+    } catch(const std::runtime_error& e) {
+        syslog(LOG_ERR, "main: runtime error - %s", e.what());
         return EXIT_FAILURE;
     }
 

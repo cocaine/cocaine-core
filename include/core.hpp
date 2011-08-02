@@ -16,6 +16,7 @@ class future_t;
 
 class core_t: public boost::noncopyable {
     public:
+        // TODO: CONFIG
         core_t(const std::string& uuid,
                const std::vector<std::string>& listeners,
                const std::vector<std::string>& publishers,

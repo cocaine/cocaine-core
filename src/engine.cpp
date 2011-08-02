@@ -78,7 +78,7 @@ void engine_t::start(future_t* future, const Json::Value& args) {
             m_default_thread_id = thread->id();
             boost::tie(it, boost::tuples::ignore) =
                 m_threads.insert(m_default_thread_id, thread);
-        } catch(const std::runtime_error& e) {
+        } catch(const std::exception& e) {
             response["error"] = e.what();
             future->fulfill(m_target, response);
             return;
@@ -242,7 +242,7 @@ void overseer_t::start(const Json::Value& message) {
     try {
         scheduler.reset(new SchedulerType(m_context, m_source, *this, message["args"]));
         scheduler_id = scheduler->id();
-    } catch(const std::runtime_error& e) {
+    } catch(const std::exception& e) {
         result["error"] = e.what();
         respond(message["future"], result);
         return;
@@ -302,7 +302,7 @@ void overseer_t::stop(const Json::Value& message) {
     try {
         scheduler.reset(new SchedulerType(m_context, m_source, *this, message["args"]));
         scheduler_id = scheduler->id();
-    } catch(const std::runtime_error& e) {
+    } catch(const std::exception& e) {
         result["error"] = e.what();
         respond(message["future"], result);
         return;
@@ -446,7 +446,7 @@ ev::tstamp scheduler_base_t::thunk(ev_periodic* w, ev::tstamp now) {
 
     try {
         return scheduler->reschedule(now);
-    } catch(const std::runtime_error& e) {
+    } catch(const std::exception& e) {
         syslog(LOG_ERR, "engine: %s scheduler is broken - %s",
             scheduler->id().c_str(), e.what());
         scheduler->stop();
