@@ -218,28 +218,23 @@ template<class SchedulerType>
 void overseer_t::schedule(const Json::Value& message) {
     Json::Value result;
     std::string token = message["future"]["token"].asString();
+    std::string key;
+
     std::auto_ptr<SchedulerType> scheduler;
 
     try {
         scheduler.reset(new SchedulerType(m_context, m_source, *this, message["args"]));
+        key = scheduler->key();
     } catch(const std::runtime_error& e) {
         result["error"] = e.what();
         respond(message["future"], result);
         return;
     }
     
-    boost::iterator_range<slave_map_t::iterator> range =
-        m_slaves.equal_range(scheduler->type());
-    slave_map_t::iterator slave;
-
     // Scheduling
-    if((slave = std::find_if(range.begin(), range.end(), key_equal_to(scheduler->key()))) == range.end()) {
+    if(m_slaves.find(key) == m_slaves.end()) {
         scheduler->start();
-       
-        // XXX: For some reason, release() works before type() here,
-        // so it SIGSEGVes on insert() 
-        std::string type = scheduler->type();
-        slave = m_slaves.insert(type, scheduler);
+        m_slaves.insert(key, scheduler);
 
         if(m_suicide.is_active()) {
             syslog(LOG_DEBUG, "overseer: suicide timer stopped for %s", m_source.uri().c_str());
@@ -250,7 +245,7 @@ void overseer_t::schedule(const Json::Value& message) {
     // ACL
     subscription_map_t::const_iterator begin, end;
     boost::tie(begin, end) = m_subscriptions.equal_range(token);
-    subscription_map_t::value_type subscription = std::make_pair(token, slave->second->key());
+    subscription_map_t::value_type subscription = std::make_pair(token, key);
     std::equal_to<subscription_map_t::value_type> equality;
 
     if(std::find_if(begin, end, boost::bind(equality, subscription, _1)) == end) {
@@ -261,7 +256,7 @@ void overseer_t::schedule(const Json::Value& message) {
     
     // Persistance
     if(!message["args"].get("transient", false).asBool()) {
-        std::string object_id = m_digest.get(slave->second->key() + token);
+        std::string object_id = m_digest.get(key + token);
 
         if(!m_storage.exists(object_id)) {
             Json::Value object;
@@ -275,7 +270,7 @@ void overseer_t::schedule(const Json::Value& message) {
     }
 
     // Report to the core
-    result["key"] = slave->second->key();
+    result["key"] = key;
     respond(message["future"], result);
 }
 

@@ -15,8 +15,6 @@ class scheduler_base_t: public boost::noncopyable {
         virtual ~scheduler_base_t();
         
         void start();
-        
-        virtual std::string type() const = 0;
         inline std::string key() const { return m_key; }
 
     protected:
@@ -47,18 +45,6 @@ class scheduler_base_t: public boost::noncopyable {
         std::auto_ptr<ev::periodic> m_watcher;
 };
 
-struct key_equal_to {
-    key_equal_to(const std::string& key_):
-        key(key_)
-    {}
-
-    template<class T> bool operator()(T other) {
-        return other->second->key() == key;
-    }
-
-    const std::string key;
-};
-
 // Automatic scheduler
 class auto_scheduler_t: public scheduler_base_t {
     public:
@@ -73,15 +59,13 @@ class auto_scheduler_t: public scheduler_base_t {
                 throw std::runtime_error("invalid interval");
             }
 
-            m_key = (boost::format("%1%:%2%@%3%") % type()
+            m_key = (boost::format("auto:%1%@%2%")
                 % m_source.hash() % m_interval).str();
         }
        
         inline ev::tstamp reschedule(ev::tstamp now) {
             return now + m_interval / 1000.0;
         }
-
-        inline std::string type() const { return "auto"; }
 
     private:
         time_t m_interval;
@@ -96,15 +80,13 @@ class manual_scheduler_t: public scheduler_base_t {
         ):
             scheduler_base_t(context, source, overseer) 
         {
-            m_key = type() + ":" + m_source.hash();
+            m_key = "manual:" + m_source.hash();
         }
 
         inline ev::tstamp reschedule(ev::tstamp now) {
             // return m_source.reschedule(now);
             return now + 5.;
         }
-
-        inline std::string type() const { return "manual"; }
 };
 
 }}}

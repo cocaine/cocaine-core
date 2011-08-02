@@ -116,12 +116,12 @@ namespace {
             ev::timer m_suicide;
             ev::prepare m_cleanup;
             
-            // Slaves (Type -> Schedulers)
-            typedef boost::ptr_multimap<const std::string, scheduler_base_t> slave_map_t;
+            // Slaves (Scheduler Key -> Scheduler)
+            typedef boost::ptr_map<const std::string, scheduler_base_t> slave_map_t;
             slave_map_t m_slaves;
 
-            // Subscriptions
-            typedef std::map<const std::string, std::string> subscription_map_t;
+            // Subscriptions (Scheduler Key -> Token)
+            typedef std::multimap<const std::string, std::string> subscription_map_t;
             subscription_map_t m_subscriptions;
 
             // Hasher
