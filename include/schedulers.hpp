@@ -33,7 +33,7 @@ class scheduler_base_t: public boost::noncopyable {
         // Data source
         plugin::source_t& m_source;
         
-        // Subscription key
+        // Scheduler ID
         std::string m_id;
 
     private:

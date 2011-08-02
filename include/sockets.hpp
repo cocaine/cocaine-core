@@ -18,7 +18,7 @@ class blob_socket_t: public boost::noncopyable {
             try {
                 return m_socket.send(message, flags);
             } catch(const zmq::error_t& e) {
-                syslog(LOG_ERR, "networking: send() failed - %s", e.what());
+                syslog(LOG_ERR, "net: send() failed - %s", e.what());
                 return false;
             }
         }
@@ -27,7 +27,7 @@ class blob_socket_t: public boost::noncopyable {
             try {
                 return m_socket.recv(message, flags);
             } catch(const zmq::error_t& e) {
-                syslog(LOG_ERR, "networking: recv() failed - %s", e.what());
+                syslog(LOG_ERR, "net: recv() failed - %s", e.what());
                 return false;
             }
         }

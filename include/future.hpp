@@ -69,7 +69,14 @@ class future_t: boost::noncopyable {
         }
 
         // Seal the future and return the response
-        std::string seal();
+        std::string seal() {
+            syslog(LOG_DEBUG, "future %s: sealed", m_id.get().c_str());
+            
+            Json::FastWriter writer;
+            std::string result = writer.write(m_root);
+
+            return result;
+        }
 
     private:
         // Future ID

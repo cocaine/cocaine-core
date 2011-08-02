@@ -16,6 +16,7 @@ authorizer_t::authorizer_t(const std::string& uuid):
     ERR_load_crypto_strings();
 
     // Load the credentials
+    // [CONFIG]
     fs::path path = fs::path("/var/lib/yappi/" + uuid + ".tokens");
    
     if(fs::exists(path) && !fs::is_directory(path)) {

@@ -39,8 +39,8 @@ void eblob_purger_t::complete(uint64_t, uint64_t) {
 }
 
 eblob_storage_t::eblob_storage_t(const std::string& uuid, bool purge):
-    m_storage_path("/var/lib/yappi/" + uuid + ".tasks"),
-    m_logger("/var/log/yappi-storage.log", EBLOB_LOG_NOTICE)
+    m_storage_path("/var/lib/yappi/" + uuid + ".tasks"), /* [CONFIG] */
+    m_logger("/var/log/yappi-storage.log", EBLOB_LOG_NOTICE) /* [CONFIG] */
 {
     if(!fs::exists(m_storage_path.branch_path())) {
        try {

@@ -59,8 +59,8 @@ int main(int argc, char* argv[]) {
         return EXIT_SUCCESS;
     }
 
-    if(!config.count("listen")) {
-        std::cout << "Error: no endpoints specified." << std::endl;
+    if(!config.count("listen") || !config.count("export")) {
+        std::cout << "Error: no listen/export endpoints specified." << std::endl;
         std::cout << "Try '" << argv[0] << " --help' for more information." << std::endl;
         return EXIT_FAILURE;
     }

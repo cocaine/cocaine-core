@@ -26,7 +26,7 @@ bool json_socket_t::recv(Json::Value& root, int flags) {
         message.size());
 
     if(!reader.parse(request, root)) {
-        syslog(LOG_ERR, "networking: invalid json - %s",
+        syslog(LOG_ERR, "net: invalid json - %s",
             reader.getFormatedErrorMessages().c_str());
         return false;
     }
