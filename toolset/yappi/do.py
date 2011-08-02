@@ -49,8 +49,12 @@ class Executer(object):
         request = simplejson.dumps({
             'version': 3,
             'token': self.username,
-            'action': 'once',
-            'targets': {uri: {}}
+            'action': 'push',
+            'targets': {
+                uri: {
+                    'type': 'once'
+                }
+            }
         })
 
         self.pk.sign_init()
