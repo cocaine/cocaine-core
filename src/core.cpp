@@ -371,13 +371,13 @@ void core_t::drop(future_t* future, const std::string& target, const Json::Value
 
 void core_t::event(ev::io& io, int revents) {
     zmq::message_t message;
-    std::string key;
+    std::string scheduler_id;
     source_t::dict_t dict;
     
     while(s_events.pending()) {
-        // Receive the key
+        // Receive the scheduler id
         s_events.recv(&message);
-        key.assign(
+        scheduler_id.assign(
             static_cast<const char*>(message.data()),
             message.size());
     
@@ -394,7 +394,7 @@ void core_t::event(ev::io& io, int revents) {
         // Disassemble and send in the envelopes
         for(source_t::dict_t::const_iterator it = dict.begin(); it != dict.end(); ++it) {
             std::ostringstream envelope;
-            envelope << key << " " << it->first << " "
+            envelope << scheduler_id << " " << it->first << " "
                      << std::fixed << std::setprecision(3) << m_loop.now();
 
             message.rebuild(envelope.str().length());
