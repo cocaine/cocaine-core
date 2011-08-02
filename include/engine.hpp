@@ -94,9 +94,10 @@ namespace {
             void stop(const Json::Value& message);
             
             void once(const Json::Value& message);
+
             void terminate();
 
-            // Thread termination request
+            // Suicide request
             void suicide();
 
             template<class T>

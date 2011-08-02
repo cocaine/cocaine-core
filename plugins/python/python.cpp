@@ -7,11 +7,6 @@
 
 #include "uri.hpp"
 
-// Allowed exceptions:
-// -------------------
-// * std::runtime_error
-// * std::invalid_argument
-
 namespace yappi { namespace plugin {
 
 char python_t::identity[] = "yappi-dynamic";
@@ -49,7 +44,9 @@ python_t::python_t(const std::string& uri_):
     std::stringstream code;
     
     if(uri.host().length()) {
-        // The code is stored on some remote host
+        throw std::runtime_error("remote code download feature disabled");
+        
+        /*
         char error_message[CURL_ERROR_SIZE];
         CURL* curl = curl_easy_init();
 
@@ -75,12 +72,13 @@ python_t::python_t(const std::string& uri_):
         }
 
         curl_easy_cleanup(curl);
+        */
     } else {
         // The code is stored locally
         std::ifstream input(path.c_str());
         
         if(!input.is_open()) {
-            throw std::invalid_argument("cannot open " + path);
+            throw std::runtime_error("cannot open " + path);
         }
 
         // Read the code
@@ -88,6 +86,32 @@ python_t::python_t(const std::string& uri_):
     }
 
     create(code.str(), name, uri.query());
+}
+
+uint64_t python_t::capabilities() const {
+    thread_state_t state = PyGILState_Ensure();
+    object_t reschedule = PyObject_GetAttrString(m_object, "reschedule");
+    
+    return PyCallable_Check(reschedule) ? CAP_MANUAL : CAP_NONE;
+}
+
+float python_t::reschedule(float now) {
+    thread_state_t state = PyGILState_Ensure();
+    object_t reschedule = PyObject_GetAttrString(m_object, "reschedule");
+    
+    object_t arg = PyFloat_FromDouble(now);
+    object_t args = PyTuple_Pack(1, *arg);
+    object_t result = PyObject_Call(reschedule, args, NULL);
+    
+    if(PyErr_Occurred()) {
+        throw std::runtime_error(exception());
+    }
+
+    if(!PyFloat_Check(result)) {
+        throw std::runtime_error("reschedule() returned non-float");
+    }
+
+    return PyFloat_AsDouble(result);
 }
 
 void python_t::create(const std::string& code,
@@ -120,12 +144,12 @@ void python_t::create(const std::string& code,
         name.c_str());
 
     if(PyErr_Occurred()) {
-        throw std::invalid_argument(exception());
+        throw std::runtime_error(exception());
     }
 
     // And check if it's, well, callable
     if(!PyCallable_Check(callable)) {
-        throw std::invalid_argument(name + " is not callable");
+        throw std::runtime_error(name + " is not callable");
     }
 
     // If it's a type object, finalize it
@@ -157,7 +181,7 @@ void python_t::create(const std::string& code,
     // And check if the instance is iterable, i.e. a generator
     // or an iterable object
     if(!PyIter_Check(m_object)) {
-        throw std::invalid_argument("object is not iterable");
+        throw std::runtime_error("object is not iterable");
     }
 }
 

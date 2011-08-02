@@ -36,10 +36,11 @@ class source_t: public boost::noncopyable {
         typedef std::map<std::string, std::string> dict_t;        
         virtual dict_t fetch() = 0;
 
-        #define CAP_NONE    1 << 0
-        #define CAP_MANUAL  1 << 1
-        #define CAP_ISOLATE 1 << 2
+        #define CAP_NONE    0
+        #define CAP_MANUAL  1 << 0
+        #define CAP_ISOLATE 1 << 1
 
+        // This method will be called by the scheduler to determine the source's capabilities
         virtual inline uint64_t capabilities() const {
             return CAP_NONE;
         }

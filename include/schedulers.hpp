@@ -26,19 +26,7 @@ class scheduler_base_t: public boost::noncopyable {
         virtual ev::tstamp reschedule(ev::tstamp now) = 0;
 
     private:
-        inline static ev::tstamp thunk(ev_periodic* w, ev::tstamp now) {
-            scheduler_base_t* scheduler = static_cast<scheduler_base_t*>(w->data);
-
-            try {
-                return scheduler->reschedule(now);
-            } catch(const std::runtime_error& e) {
-                syslog(LOG_ERR, "engine: %s scheduler is broken - %s",
-                    scheduler->id().c_str(), e.what());
-                scheduler->stop();
-                return now;
-            }
-        }
-        
+        static ev::tstamp thunk(ev_periodic* w, ev::tstamp now);
         void publish(ev::periodic& w, int revents);
         
     protected:
@@ -47,9 +35,6 @@ class scheduler_base_t: public boost::noncopyable {
         
         // Subscription key
         std::string m_id;
-        
-        // Timings
-        time_t m_last_start, m_last_stop;
 
     private:
         // Messaging
@@ -82,15 +67,8 @@ class auto_scheduler_t: public scheduler_base_t {
             m_id = (boost::format("auto:%1%@%2%") % source.hash() % m_interval).str();
         }
        
-        inline ev::tstamp reschedule(ev::tstamp now) {
-            time_t last_run = m_last_stop - m_last_start;
-
-            if(last_run >= m_interval) {
-                syslog(LOG_WARNING, "engine: source %s is too slow for %fs intervals",
-                    m_source.uri().c_str(), m_interval);
-            }
-
-            return max(now, now + m_interval);
+        virtual inline ev::tstamp reschedule(ev::tstamp now) {
+            return now + m_interval;
         }
 
     private:
@@ -113,7 +91,7 @@ class manual_scheduler_t: public scheduler_base_t {
             m_id = "manual:" + m_source.hash();
         }
 
-        inline ev::tstamp reschedule(ev::tstamp now) {
+        virtual inline ev::tstamp reschedule(ev::tstamp now) {
             return max(now, m_source.reschedule(now));
         }
 };

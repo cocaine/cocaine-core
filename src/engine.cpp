@@ -406,7 +406,7 @@ scheduler_base_t::~scheduler_base_t() {
 
 void scheduler_base_t::start() {
     m_uplink.connect("inproc://events");
-        
+    
     m_watcher.reset(new ev::periodic(m_overseer.binding()));
     m_watcher->set<scheduler_base_t, &scheduler_base_t::publish>(this);
     ev_periodic_set(static_cast<ev_periodic*>(m_watcher.get()), 0, 0, thunk);
@@ -439,4 +439,17 @@ void scheduler_base_t::publish(ev::periodic& w, int revents) {
     message.rebuild(buffer.size());
     memcpy(message.data(), buffer.data(), buffer.size());
     m_uplink.send(message);
+}
+
+ev::tstamp scheduler_base_t::thunk(ev_periodic* w, ev::tstamp now) {
+    scheduler_base_t* scheduler = static_cast<scheduler_base_t*>(w->data);
+
+    try {
+        return scheduler->reschedule(now);
+    } catch(const std::runtime_error& e) {
+        syslog(LOG_ERR, "engine: %s scheduler is broken - %s",
+            scheduler->id().c_str(), e.what());
+        scheduler->stop();
+        return now;
+    }
 }

@@ -8,12 +8,14 @@
 
 namespace yappi { namespace plugin {
 
-// Format: python://[hostname]/path/to/file.py/callable?arg1=val1&arg2=...
 class python_t: public source_t {
     public:
         // The source protocol implementation
         python_t(const std::string& uri);
+
         virtual dict_t fetch();
+        virtual uint64_t capabilities() const;
+        virtual float reschedule(float now);
 
         // Instantiates the iterable object from the supplied code
         void create(const std::string& code,
