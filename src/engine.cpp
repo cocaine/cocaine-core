@@ -155,7 +155,7 @@ overseer_t::overseer_t(zmq::context_t& context, source_t& source, storage_t& sto
     m_reaper.connect("inproc://reaper");
 
     // [CONFIG] Set timer compression threshold
-    // m_loop.set_timeout_collect_interval(0.500);
+    m_loop.set_timeout_collect_interval(0.500);
 
     // Signal a false event, in case the core 
     // has managed to send something already
