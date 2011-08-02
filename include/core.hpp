@@ -25,9 +25,9 @@ class core_t: public boost::noncopyable {
         // Event loop
         void run();
         
-    protected:
-        // Responder
+    private:
         friend class future_t;
+
         void seal(const std::string& future_id);
 
     private:
@@ -38,8 +38,6 @@ class core_t: public boost::noncopyable {
         void push(future_t* future, const std::string& target,
             const Json::Value& args);
         void drop(future_t* future, const std::string& target,
-            const Json::Value& args);
-        void once(future_t* future, const std::string& target,
             const Json::Value& args);
 
         // Internal event processing
@@ -79,7 +77,7 @@ class core_t: public boost::noncopyable {
         typedef std::map<const std::string, handler_fn_t> dispatch_map_t;
         dispatch_map_t m_dispatch;
 
-        // Engine management (URI->Engine)
+        // Engine management (URI -> Engine)
         typedef boost::ptr_map<const std::string, engine::engine_t> engine_map_t;
         engine_map_t m_engines;
 
@@ -89,8 +87,8 @@ class core_t: public boost::noncopyable {
 
         // Networking
         zmq::context_t m_context;
-        blob_socket_t s_events, s_requests, s_publisher;
-        json_socket_t s_futures, s_reaper;
+        net::blob_socket_t s_events, s_requests, s_publisher;
+        net::json_socket_t s_futures, s_reaper;
         
         // Event loop
         ev::default_loop m_loop;

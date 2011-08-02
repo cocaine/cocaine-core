@@ -6,7 +6,7 @@
 #include "common.hpp"
 #include "json/json.h"
 
-namespace yappi { namespace core {
+namespace yappi { namespace net {
 
 class blob_socket_t: public boost::noncopyable {
     public:

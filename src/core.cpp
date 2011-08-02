@@ -16,7 +16,7 @@ core_t::core_t(const std::string& uuid,
                const std::vector<std::string>& listeners,
                const std::vector<std::string>& publishers,
                uint64_t hwm, bool purge):
-    m_registry("/usr/lib/yappi"),
+    m_registry("/usr/lib/yappi") /* [CONFIG] */,
     m_authorizer(uuid),
     m_storage(uuid, purge),
     m_context(1),
@@ -65,24 +65,13 @@ core_t::core_t(const std::string& uuid,
     e_requests.start(s_requests.fd(), EV_READ);
 
     // Publishing socket
-    if(!publishers.empty()) {
-        s_publisher.setsockopt(ZMQ_HWM, &hwm, sizeof(hwm));
+    s_publisher.setsockopt(ZMQ_HWM, &hwm, sizeof(hwm));
 
-        for(std::vector<std::string>::const_iterator it = publishers.begin(); it != publishers.end(); ++it) {
-            s_publisher.bind(*it);
-            syslog(LOG_INFO, "core: publishing events on %s", it->c_str());
-        }
-   
-        // Built-ins
-        m_dispatch["push"] = boost::bind(&core_t::push, this, _1, _2, _3);
-        m_dispatch["drop"] = boost::bind(&core_t::drop, this, _1, _2, _3);
-
-        // Recover persistent tasks
-        recover();
-    } else {
-        syslog(LOG_NOTICE, "core: no publishing endpoints specified - scheduler disabled");
+    for(std::vector<std::string>::const_iterator it = publishers.begin(); it != publishers.end(); ++it) {
+        s_publisher.bind(*it);
+        syslog(LOG_INFO, "core: publishing events on %s", it->c_str());
     }
-        
+
     // Initialize signal watchers
     e_sigint.set<core_t, &core_t::terminate>(this);
     e_sigint.start(SIGINT);
@@ -97,17 +86,22 @@ core_t::core_t(const std::string& uuid,
     e_sighup.start(SIGHUP);
 
     // Built-ins
-    m_dispatch["once"] = boost::bind(&core_t::once, this, _1, _2, _3);
+    m_dispatch["push"] = boost::bind(&core_t::push, this, _1, _2, _3);
+    m_dispatch["drop"] = boost::bind(&core_t::drop, this, _1, _2, _3);
+    // TODO: m_dispatch["stats"] = ...
+
+    // Recover persistent tasks
+    recover();
 }
 
 core_t::~core_t() {
     syslog(LOG_INFO, "core: shutting down the engines");
 
-    // Stopping the engines
-    m_engines.clear();
-
     // Clearing up all the pending futures
     m_futures.clear();
+    
+    // Stopping the engines
+    m_engines.clear();
 }
 
 void core_t::run() {
@@ -121,16 +115,16 @@ void core_t::terminate(ev::sig& sig, int revents) {
 void core_t::reload(ev::sig& sig, int revents) {
     syslog(LOG_NOTICE, "core: reloading tasks");
 
-    m_engines.clear();
     m_futures.clear();
+    m_engines.clear();
 
     recover();
 }
 
 void core_t::request(ev::io& io, int revents) {
     zmq::message_t message, signature;
-    std::string request;
     std::vector<std::string> identity;
+    std::string request;
     
     Json::Reader reader(Json::Features::strictMode());
     Json::Value root;
@@ -323,23 +317,18 @@ void core_t::seal(const std::string& future_id) {
 // * Drop - shuts down the specified collector.
 //   Remaining messages will stay orphaned in the queue,
 //   so it's a good idea to drain it after the unsubscription:
-//
-// * Once - one-time plugin invocation. For one-time invocations,
-//   you have no means to filter the data by categories or fields:
 
 void core_t::push(future_t* future, const std::string& target, const Json::Value& args) {
     Json::Value response;
-    
+   
     // Check if we have an engine running for the given uri
     engine_map_t::iterator it = m_engines.find(target); 
-    source_t* source = NULL;
     engine_t* engine = NULL;
 
     if(it == m_engines.end()) {
         try {
             // If the engine wasn't found, try to start a new one
-            source = m_registry.instantiate(target);
-            engine = new engine_t(m_context, *source, m_storage);
+            engine = new engine_t(m_context, m_registry, m_storage, target);
             m_engines.insert(target, engine);
         } catch(const std::exception& e) {
             syslog(LOG_ERR, "core: exception in push() - %s", e.what());
@@ -354,7 +343,7 @@ void core_t::push(future_t* future, const std::string& target, const Json::Value
         engine = it->second;
     }
 
-    // Schedule
+    // Dispatch!
     engine->push(future, args);
 }
 
@@ -364,44 +353,15 @@ void core_t::drop(future_t* future, const std::string& target, const Json::Value
     engine_map_t::iterator it = m_engines.find(target);
     
     if(it == m_engines.end()) {
-        syslog(LOG_ERR, "core: nonexistent engine requested %s", target.c_str());
+        syslog(LOG_ERR, "core: engine %s not found", target.c_str());
         response["error"] = "engine not found";
         future->fulfill(target, response);
         return;
     }
 
+    // Dispatch!
     engine_t* engine = it->second;
     engine->drop(future, args);
-}
-
-void core_t::once(future_t* future, const std::string& target, const Json::Value& args) {
-    Json::Value response;
-
-    // Check if we have an engine running for the given uri
-    engine_map_t::iterator it = m_engines.find(target); 
-    source_t* source = NULL;
-    engine_t* engine = NULL;
-
-    if(it == m_engines.end()) {
-        try {
-            // If the engine wasn't found, try to start a new one
-            source = m_registry.instantiate(target);
-            engine = new engine_t(m_context, *source, m_storage);
-            m_engines.insert(target, engine);
-        } catch(const std::exception& e) {
-            syslog(LOG_ERR, "core: exception in once() - %s", e.what());
-            response["error"] = e.what();
-            future->fulfill(target, response);
-            return;
-        } catch(...) {
-            syslog(LOG_CRIT, "core: unexpected exception in once()");
-            abort();
-        }
-    } else {
-        engine = it->second;
-    }
-
-    engine->once(future);
 }
 
 // Publishing format (not JSON, as it will render subscription mechanics pointless):
@@ -479,10 +439,11 @@ void core_t::reap(ev::io& io, int revents) {
             continue;
         }
         
-        syslog(LOG_DEBUG, "core: reaping engine %s",
-            message["engine"].asCString());
+        syslog(LOG_DEBUG, "core: suicide requested for thread %s in engine %s",
+            message["thread"].asCString(), message["engine"].asCString());
 
-        m_engines.erase(it);
+        engine_t* engine = it->second;
+        engine->kill(message["thread"].asString());
     }
 }
 
@@ -501,7 +462,7 @@ void core_t::recover() {
         for(Json::Value::Members::const_iterator it = ids.begin(); it != ids.end(); ++it) {
             Json::Value object = root[*it];
             future->assign(object["token"].asString());
-            push(future, object["url"].asString(), object);
+            push(future, object["url"].asString(), object["args"]);
         }
     }
 }

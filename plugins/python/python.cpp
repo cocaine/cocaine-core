@@ -210,13 +210,15 @@ std::string python_t::exception() {
     return PyString_AsString(message);
 }
 
-void* create_python_instance(const char* uri) {
+source_t* create_python_instance(const char* uri) {
     return new python_t(uri);
 }
 
 const plugin_info_t plugin_info = {
     1,
-    {{ "python", &create_python_instance }}
+    {
+        { "python", &create_python_instance }
+    }
 };
 
 static char* argv[] = { python_t::identity };

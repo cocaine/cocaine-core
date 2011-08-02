@@ -33,7 +33,7 @@ registry_t::registry_t(const std::string& plugin_path):
     }
 
     void* plugin;
-    initialize_t initializer;
+    initialize_fn_t initializer;
     std::vector<std::string> schemes;
 
     // Directory iterator
@@ -46,7 +46,7 @@ registry_t::registry_t(const std::string& plugin_path):
         
         if(plugin) {
             // Get the plugin info
-            initializer = reinterpret_cast<initialize_t>(dlsym(plugin, "initialize"));
+            initializer = reinterpret_cast<initialize_fn_t>(dlsym(plugin, "initialize"));
 
             if(initializer) {
                 const plugin_info_t* info = initializer();
@@ -93,5 +93,5 @@ source_t* registry_t::instantiate(const std::string& uri_) {
     }
 
     factory_fn_t factory = it->second;
-    return reinterpret_cast<source_t*>(factory(uri.source().c_str()));
+    return factory(uri.source().c_str());
 }

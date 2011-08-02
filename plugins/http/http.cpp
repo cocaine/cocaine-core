@@ -5,11 +5,6 @@
 
 #include "plugin.hpp"
 
-// Allowed exceptions:
-// -------------------
-// * std::runtime_error
-// * std::invalid_argument
-
 namespace yappi { namespace plugin {
 
 class http_t: public source_t {
@@ -72,7 +67,7 @@ class http_t: public source_t {
         char m_error_message[CURL_ERROR_SIZE];
 };
 
-void* create_http_instance(const char* uri) {
+source_t* create_http_instance(const char* uri) {
     return new http_t(uri);
 }
 

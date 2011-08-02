@@ -5,11 +5,6 @@
 #include "plugin.hpp"
 #include "uri.hpp"
 
-// Allowed exceptions:
-// -------------------
-// * std::runtime_error
-// * std::invalid_argument
-
 namespace yappi { namespace plugin {
 
 zmq::context_t* g_context;
@@ -56,7 +51,7 @@ class inject_t: public source_t {
         zmq::socket_t m_socket;
 };
 
-void* create_inject_instance(const char* uri) {
+source_t* create_inject_instance(const char* uri) {
     return new inject_t(uri);
 }
 

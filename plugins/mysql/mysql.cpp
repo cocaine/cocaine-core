@@ -52,7 +52,7 @@ class mysql_t: public source_t {
         unsigned int m_port, m_connect_timeout, m_read_timeout, m_write_timeout;
 };
 
-void* create_mysql_instance(const char* uri) {
+source_t* create_mysql_instance(const char* uri) {
     return new mysql_t(uri);
 }
 

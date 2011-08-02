@@ -54,6 +54,15 @@ class future_t: boost::noncopyable {
             }
         }
 
+        Json::Value serialize() {
+            Json::Value result;
+
+            result["id"] = m_id.get();
+            result["token"] = m_token;
+
+            return result;
+        }
+
         // Set the expected slice count
         inline void await(unsigned int expectation) {
             m_expecting = expectation;

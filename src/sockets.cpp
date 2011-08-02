@@ -1,6 +1,6 @@
 #include "sockets.hpp"
 
-using namespace yappi::core;
+using namespace yappi::net;
 
 bool json_socket_t::send(const Json::Value& root) {
     Json::FastWriter writer;

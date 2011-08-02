@@ -4,13 +4,11 @@
 #include <boost/ptr_container/ptr_map.hpp>
 
 #include "common.hpp"
-#include "plugin.hpp"
+#include "registry.hpp"
 #include "persistance.hpp"
 
 namespace yappi { namespace core {
-
-class future_t;
-
+    class future_t;
 }}
 
 namespace yappi { namespace engine {
@@ -18,65 +16,83 @@ namespace yappi { namespace engine {
 // Thread pool manager
 class engine_t: public boost::noncopyable {
     public:
-        engine_t(zmq::context_t& context, plugin::source_t& source,
-            persistance::storage_t& storage);
+        engine_t(zmq::context_t& context, core::registry_t& registry,
+            persistance::storage_t& storage, const std::string& target);
         ~engine_t();
 
-        void push(const core::future_t* future, const Json::Value& args);
-        void drop(const core::future_t* future, const Json::Value& args);
-        void once(const core::future_t* future);
+        void push(core::future_t* future, const Json::Value& args);
+        void drop(core::future_t* future, const Json::Value& args);
+        void kill(const std::string& thread_id);
 
     private:
-        // Worker thread bootstrap
-        static void* bootstrap(void* args);
-
-    private:
-        // Messaging
         zmq::context_t& m_context;
-        core::json_socket_t m_pipe;
-        
-        // Engine ID, for interthread pipe identification
-        helpers::auto_uuid_t m_id;
-
-        // Data source and source hash
-        plugin::source_t& m_source;
-
-        // Worker thread
-        pthread_t m_thread;
-       
-        // Task persistance
+        core::registry_t& m_registry;
         persistance::storage_t& m_storage;
+        const std::string m_target;
+
+        class thread_t {
+            public:
+                thread_t(zmq::context_t& context, std::auto_ptr<plugin::source_t> source,
+                    persistance::storage_t& storage);
+                ~thread_t();
+
+                inline void send(const Json::Value& message) {
+                    m_pipe.send(message);
+                }
+
+            private:
+                static void* bootstrap(void* args);
+                
+                zmq::context_t& m_context;
+                net::json_socket_t m_pipe;
+                std::auto_ptr<plugin::source_t> m_source;
+                persistance::storage_t& m_storage;
+                
+                helpers::auto_uuid_t m_uuid;
+                pthread_t m_thread;
+        };
+
+        // Thread ID -> Thread
+        typedef boost::ptr_map<const std::string, thread_t> thread_map_t;
+        thread_map_t m_threads;
 };
 
-namespace { 
-    class fetcher_t;
+namespace {
+    class scheduler_base_t;
 
     // Thread manager
     class overseer_t: public boost::noncopyable {
         public:
-            overseer_t(zmq::context_t& context, const helpers::auto_uuid_t& id,
-                plugin::source_t& source, persistance::storage_t& storage);
-            
-            void operator()(ev::io& io, int revents);
-            void operator()(ev::timer& timer, int revents);
+            overseer_t(zmq::context_t& context, plugin::source_t& source,
+                persistance::storage_t& storage, const helpers::auto_uuid_t& uuid);
             
             void run();
+            
+            // Event loop callbacks
+            void operator()(ev::io& w, int revents);
+            void operator()(ev::timer& w, int revents);
+            void operator()(ev::prepare& w, int revents);
+
+            // Scheduler access
+            plugin::source_t::dict_t fetch();
+            ev::dynamic_loop& binding() { return m_loop; }
 
         private:
-            friend class fetcher_t;
-            void suicide();
-
-        private:
-            void push(const Json::Value& message);
-            void drop(const Json::Value& message);
+            template<class Scheduler>
+            void schedule(const Json::Value& message);
+            
             void once(const Json::Value& message);
-            void stop();
+            void stop(const Json::Value& message);
+            void terminate();
+            
+            // Thread termination request
+            void suicide();
 
             template<class T>
             inline void respond(const Json::Value& future, const T& value) {
                 Json::Value response;
                 
-                response["future"] = future;
+                response["future"] = future["id"];
                 response["engine"] = m_source.uri();
                 response["result"] = value;
 
@@ -84,58 +100,36 @@ namespace {
             }
 
         private:
+            // Messaging
+            zmq::context_t& m_context;
+            net::json_socket_t m_pipe, m_futures, m_reaper;
+            
+            // Data source
+            plugin::source_t& m_source;
+            
+            // Task persistance
+            persistance::storage_t& m_storage;
+           
             // Event loop
             ev::dynamic_loop m_loop;
             ev::io m_io;
-            ev::timer m_stall;
+            ev::timer m_suicide;
+            ev::prepare m_cleanup;
             
-            // Messaging
-            zmq::context_t& m_context;
-            core::json_socket_t m_pipe, m_futures, m_reaper;
-            
-            // Engine ID, for interthread pipe identification
-            helpers::auto_uuid_t m_id;
-            
-            // Hashing machinery
-            helpers::digest_t m_digest;
-
-            // Data source
-            plugin::source_t& m_source;
-            std::string m_hash;
-            
-            // Timers
-            typedef boost::ptr_map<time_t, ev::timer> slave_map_t;
+            // Slaves (Type -> Schedulers)
+            typedef boost::ptr_multimap<const std::string, scheduler_base_t> slave_map_t;
             slave_map_t m_slaves;
 
             // Subscriptions
-            typedef std::multimap<time_t, std::string> subscription_map_t;
+            typedef std::map<const std::string, std::string> subscription_map_t;
             subscription_map_t m_subscriptions;
 
-            // Task persistance
-            persistance::storage_t& m_storage;
-    };
+            // Hasher
+            helpers::digest_t m_digest;
 
-    // Event fetcher
-    class fetcher_t: public boost::noncopyable {
-        public:
-            fetcher_t(zmq::context_t& context, overseer_t& overseer,
-                plugin::source_t& source, const std::string& key);
-           
-            template<class Timer> 
-            void operator()(Timer& timer, int revents);
-            
-        private:
-            // Parent
-            overseer_t& m_overseer;
-
-            // Data source
-            plugin::source_t& m_source;
-            
-            // Messaging
-            core::blob_socket_t m_uplink;
-            
-            // Subscription key
-            std::string m_key;
+            // Iteration cache
+            plugin::source_t::dict_t m_cache;
+            bool m_cached;
     };
 }
 
