@@ -5,6 +5,8 @@
 #include <stdexcept>
 #include <string>
 
+#include <stdint.h>
+
 #include <boost/noncopyable.hpp>
 
 #include "digest.hpp"
