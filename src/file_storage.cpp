@@ -50,13 +50,11 @@ Json::Value file_storage_t::get(const std::string& key) const {
     fs::path filepath = m_storage_path / key;
     fs::ifstream stream(filepath, fs::ifstream::in);
      
-    if(!stream) { 
-        return root;
-    }
-
-    if(!reader.parse(stream, root)) {
-        syslog(LOG_ERR, "storage: malformed json in %s - %s",
-            filepath.string().c_str(), reader.getFormatedErrorMessages().c_str());
+    if(stream) { 
+        if(!reader.parse(stream, root)) {
+            syslog(LOG_ERR, "storage: malformed json in %s - %s",
+                filepath.string().c_str(), reader.getFormatedErrorMessages().c_str());
+        }
     }
 
     return root;
