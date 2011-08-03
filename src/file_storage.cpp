@@ -7,16 +7,11 @@ using namespace yappi::persistance::backends;
 
 namespace fs = boost::filesystem;
 
-file_storage_t::file_storage_t(const std::string& uuid, bool purge):
+file_storage_t::file_storage_t(const std::string& uuid):
     m_storage_path("/var/lib/yappi/" + uuid + ".tasks") /* [CONFIG] */
 {
     if(fs::exists(m_storage_path) && !fs::is_directory(m_storage_path)) {
         throw std::runtime_error(m_storage_path.string() + " is not a directory");
-    }
-
-    if(purge) {
-        syslog(LOG_NOTICE, "storage: purging");
-        fs::remove_all(m_storage_path);
     }
 
     if(!fs::exists(m_storage_path)) {
@@ -31,13 +26,9 @@ file_storage_t::file_storage_t(const std::string& uuid, bool purge):
 bool file_storage_t::put(const std::string& key, const Json::Value& value) {
     Json::StyledStreamWriter writer;
     fs::path filepath = m_storage_path / key;
-    fs::ofstream stream;
+    fs::ofstream stream(filepath, fs::ofstream::out | fs::ofstream::trunc);
    
-    stream.exceptions(std::ofstream::badbit | std::ofstream::failbit);
-
-    try {
-        stream.open(filepath, std::ofstream::out | std::ofstream::trunc);
-    } catch(const fs::ofstream::failure& e) {
+    if(!stream) {    
         syslog(LOG_ERR, "storage: failed to write %s", filepath.string().c_str());
         return false;
     }     
@@ -56,15 +47,10 @@ bool file_storage_t::exists(const std::string& key) const {
 Json::Value file_storage_t::get(const std::string& key) const {
     Json::Reader reader(Json::Features::strictMode());
     Json::Value root(Json::objectValue);
-
     fs::path filepath = m_storage_path / key;
-    fs::ifstream stream;
+    fs::ifstream stream(filepath, fs::ifstream::in);
      
-    stream.exceptions(std::ofstream::badbit | std::ofstream::failbit);
-
-    try {
-        stream.open(filepath, fs::ifstream::in);
-    } catch(const fs::ifstream::failure& e) {
+    if(!stream) { 
         return root;
     }
 
@@ -99,4 +85,11 @@ Json::Value file_storage_t::all() const {
 
 void file_storage_t::remove(const std::string& key) {
     fs::remove(m_storage_path / key);
+}
+
+void file_storage_t::purge() {
+    syslog(LOG_NOTICE, "storage: purging");
+    
+    fs::remove_all(m_storage_path);
+    fs::create_directories(m_storage_path);
 }

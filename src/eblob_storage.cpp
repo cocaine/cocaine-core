@@ -38,7 +38,7 @@ void eblob_purger_t::complete(uint64_t, uint64_t) {
     }
 }
 
-eblob_storage_t::eblob_storage_t(const std::string& uuid, bool purge):
+eblob_storage_t::eblob_storage_t(const std::string& uuid):
     m_storage_path("/var/lib/yappi/" + uuid + ".tasks"), /* [CONFIG] */
     m_logger("/var/log/yappi-storage.log", EBLOB_LOG_NOTICE) /* [CONFIG] */
 {
@@ -62,15 +62,6 @@ eblob_storage_t::eblob_storage_t(const std::string& uuid, bool purge):
     cfg.log = m_logger.log();
 
     m_eblob.reset(new zbr::eblob(&cfg));
-
-    if(purge) {
-        eblob_purger_t purger(*m_eblob);
-
-        syslog(LOG_NOTICE, "storage: purging");
-        
-        zbr::eblob_iterator iterator(m_storage_path.string(), true);
-        iterator.iterate(purger, 1);
-    }
 }
 
 eblob_storage_t::~eblob_storage_t() {
@@ -141,4 +132,13 @@ void eblob_storage_t::remove(const std::string& key) {
     } catch(const std::runtime_error& e) {
         syslog(LOG_ERR, "storage: failed to remove - %s", e.what());
     }
+}
+
+void eblob_storage_t::purge() {
+    eblob_purger_t purger(*m_eblob);
+
+    syslog(LOG_NOTICE, "storage: purging");
+    
+    zbr::eblob_iterator iterator(m_storage_path.string(), true);
+    iterator.iterate(purger, 1);
 }

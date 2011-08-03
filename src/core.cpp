@@ -18,7 +18,7 @@ core_t::core_t(const std::string& uuid,
                uint64_t hwm, bool purge):
     m_registry("/usr/lib/yappi") /* [CONFIG] */,
     m_authorizer(uuid),
-    m_storage(uuid, purge),
+    m_storage(uuid),
     m_context(1),
     s_events(m_context, ZMQ_PULL),
     s_requests(m_context, ZMQ_ROUTER),
@@ -88,7 +88,10 @@ core_t::core_t(const std::string& uuid,
     // Built-ins
     m_dispatch["push"] = boost::bind(&core_t::push, this, _1, _2, _3);
     m_dispatch["drop"] = boost::bind(&core_t::drop, this, _1, _2, _3);
-    // TODO: m_dispatch["stats"] = ...
+
+    if(purge) {
+        m_storage.purge();
+    }
 
     // Recover persistent tasks
     recover();

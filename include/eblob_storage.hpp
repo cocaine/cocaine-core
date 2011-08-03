@@ -38,7 +38,7 @@ class eblob_purger_t: public zbr::eblob_iterator_callback {
 
 class eblob_storage_t: public boost::noncopyable {
     public:
-        eblob_storage_t(const std::string& uuid, bool purge);
+        eblob_storage_t(const std::string& uuid);
         virtual ~eblob_storage_t();
 
     public:
@@ -49,6 +49,7 @@ class eblob_storage_t: public boost::noncopyable {
         Json::Value all() const;
 
         void remove(const std::string& key);
+        void purge();
 
     private:
         boost::filesystem::path m_storage_path;

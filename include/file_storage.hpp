@@ -9,7 +9,7 @@ namespace yappi { namespace persistance { namespace backends {
 
 class file_storage_t: public boost::noncopyable {
     public:
-        file_storage_t(const std::string& uuid, bool purge);
+        file_storage_t(const std::string& uuid);
 
     public:
         bool put(const std::string& key, const Json::Value& value);
