@@ -348,7 +348,7 @@ void core_t::push(future_t* future, const std::string& target, const Json::Value
     }
 
     // Dispatch!
-    engine->start(future, args);
+    engine->push(future, args);
 }
 
 void core_t::drop(future_t* future, const std::string& target, const Json::Value& args) {
@@ -365,7 +365,7 @@ void core_t::drop(future_t* future, const std::string& target, const Json::Value
 
     // Dispatch!
     engine_t* engine = it->second;
-    engine->stop(future, args);
+    engine->drop(future, args);
 }
 
 // Publishing format (not JSON, as it will render subscription mechanics pointless):
@@ -375,7 +375,7 @@ void core_t::drop(future_t* future, const std::string& target, const Json::Value
 void core_t::event(ev::io& io, int revents) {
     zmq::message_t message;
     std::string scheduler_id;
-    source_t::dict_t dict;
+    dict_t dict;
     
     while(s_events.pending()) {
         // Receive the scheduler id
@@ -395,7 +395,7 @@ void core_t::event(ev::io& io, int revents) {
         object.convert(&dict);
 
         // Disassemble and send in the envelopes
-        for(source_t::dict_t::const_iterator it = dict.begin(); it != dict.end(); ++it) {
+        for(dict_t::const_iterator it = dict.begin(); it != dict.end(); ++it) {
             std::ostringstream envelope;
             envelope << scheduler_id << " " << it->first << " "
                      << std::fixed << std::setprecision(3) << m_loop.now();

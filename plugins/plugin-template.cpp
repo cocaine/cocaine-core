@@ -5,7 +5,6 @@
 // Allowed exceptions:
 // -------------------
 // * std::runtime_error
-// * std::invalid_argument
 
 namespace yappi { namespace plugin {
 

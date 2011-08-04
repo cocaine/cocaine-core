@@ -64,7 +64,7 @@ void* engine_t::thread_t::bootstrap(void* args) {
     return NULL;
 }
 
-void engine_t::start(future_t* future, const Json::Value& args) {
+void engine_t::push(future_t* future, const Json::Value& args) {
     Json::Value message, response;
     thread_map_t::iterator it = m_threads.find(m_default_thread_id);
 
@@ -92,7 +92,7 @@ void engine_t::start(future_t* future, const Json::Value& args) {
     it->second->send(message);
 }
 
-void engine_t::stop(future_t* future, const Json::Value& args) {
+void engine_t::drop(future_t* future, const Json::Value& args) {
     Json::Value message, response;
     thread_map_t::iterator it = m_threads.find(m_default_thread_id);
 
@@ -134,18 +134,18 @@ overseer_t::overseer_t(zmq::context_t& context, source_t& source, storage_t& sto
     m_cleanup(m_loop),
     m_cached(false)
 {
-    // Cache cleanup watcher
-    m_cleanup.set(this);
-    m_cleanup.start();
-
     // Connect to the engine's controlling socket
     // and set the socket watcher
     m_pipe.connect("inproc://" + m_id.get());
-    m_io.set(this);
+    m_io.set<overseer_t, &overseer_t::request>(this);
     m_io.start(m_pipe.fd(), EV_READ);
 
+    // Cache cleanup watcher
+    m_cleanup.set<overseer_t, &overseer_t::cleanup>(this);
+    m_cleanup.start();
+
     // [CONFIG] Initializing suicide timer
-    m_suicide.set(this);
+    m_suicide.set<overseer_t, &overseer_t::timeout>(this);
     m_suicide.start(600.);
 
     // Connecting to the core's future sink
@@ -166,7 +166,7 @@ void overseer_t::run() {
     m_loop.loop();
 }
 
-void overseer_t::operator()(ev::io& w, int revents) {
+void overseer_t::request(ev::io& w, int revents) {
     Json::Value result;
     std::string command, type;
     
@@ -179,9 +179,9 @@ void overseer_t::operator()(ev::io& w, int revents) {
        
         if(command == "start") {
             if(type == "auto") {
-                start<auto_scheduler_t>(message);
+                push<auto_scheduler_t>(message);
             } else if(type == "manual") {
-                start<manual_scheduler_t>(message);
+                push<manual_scheduler_t>(message);
             } else if(type == "once") {
                 once(message);
             } else {
@@ -190,9 +190,9 @@ void overseer_t::operator()(ev::io& w, int revents) {
             }
         } else if(command == "stop") {
             if(type == "auto") {
-                stop<auto_scheduler_t>(message);
+                drop<auto_scheduler_t>(message);
             } else if(type == "manual") {
-                stop<manual_scheduler_t>(message);
+                drop<manual_scheduler_t>(message);
             } else {
                 result["error"] = "invalid type";
                 respond(message["future"], result);
@@ -207,16 +207,16 @@ void overseer_t::operator()(ev::io& w, int revents) {
     }
 }
  
-void overseer_t::operator()(ev::timer& w, int revents) {
+void overseer_t::timeout(ev::timer& w, int revents) {
     suicide();
 }
 
-void overseer_t::operator()(ev::prepare& w, int revents) {
+void overseer_t::cleanup(ev::prepare& w, int revents) {
     m_cache.clear();
     m_cached = false;
 }
 
-source_t::dict_t overseer_t::fetch() {
+dict_t overseer_t::fetch() {
     if(!m_cached) {
         try {
             m_cache = m_source.fetch();
@@ -232,7 +232,7 @@ source_t::dict_t overseer_t::fetch() {
 }
 
 template<class SchedulerType>
-void overseer_t::start(const Json::Value& message) {
+void overseer_t::push(const Json::Value& message) {
     Json::Value result;
     std::string token = message["future"]["token"].asString();
     std::string scheduler_id;
@@ -292,7 +292,7 @@ void overseer_t::start(const Json::Value& message) {
 }
 
 template<class SchedulerType>
-void overseer_t::stop(const Json::Value& message) {
+void overseer_t::drop(const Json::Value& message) {
     Json::Value result;
     std::string token = message["future"]["token"].asString();
     std::string scheduler_id;
@@ -339,9 +339,9 @@ void overseer_t::stop(const Json::Value& message) {
 
 void overseer_t::once(const Json::Value& message) {
     Json::Value result;
-    source_t::dict_t dict = fetch();
+    dict_t dict = fetch();
 
-    for(source_t::dict_t::const_iterator it = dict.begin(); it != dict.end(); ++it) {
+    for(dict_t::const_iterator it = dict.begin(); it != dict.end(); ++it) {
         result[it->first] = it->second;
     }
 
@@ -420,7 +420,7 @@ void scheduler_base_t::publish(ev::periodic& w, int revents) {
         return;
     }
     
-    source_t::dict_t dict = m_overseer.fetch();
+    dict_t dict = m_overseer.fetch();
 
     // Do nothing if plugin has returned an empty dict
     if(dict.size() == 0) {

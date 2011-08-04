@@ -21,8 +21,8 @@ class engine_t: public boost::noncopyable {
         ~engine_t();
 
         // Thread interoperability
-        void start(core::future_t* future, const Json::Value& args);
-        void stop(core::future_t* future, const Json::Value& args);
+        void push(core::future_t* future, const Json::Value& args);
+        void drop(core::future_t* future, const Json::Value& args);
         void reap(const std::string& thread_id);
 
     private:
@@ -74,13 +74,13 @@ namespace {
             void run();
             
             // Event loop callbacks
-            void operator()(ev::io& w, int revents);
-            void operator()(ev::timer& w, int revents);
-            void operator()(ev::prepare& w, int revents);
+            void request(ev::io& w, int revents);
+            void timeout(ev::timer& w, int revents);
+            void cleanup(ev::prepare& w, int revents);
 
             // Scheduler bindings
             inline ev::dynamic_loop& binding() { return m_loop; }
-            plugin::source_t::dict_t fetch();
+            plugin::dict_t fetch();
             
             // Scheduler termination request
             void reap(const std::string& scheduler_id);
@@ -88,10 +88,10 @@ namespace {
         private:
             // Command disptach 
             template<class Scheduler>
-            void start(const Json::Value& message);
+            void push(const Json::Value& message);
            
             template<class Scheduler>
-            void stop(const Json::Value& message);
+            void drop(const Json::Value& message);
             
             void once(const Json::Value& message);
 
@@ -143,7 +143,7 @@ namespace {
             helpers::digest_t m_digest;
 
             // Iteration cache
-            plugin::source_t::dict_t m_cache;
+            plugin::dict_t m_cache;
             bool m_cached;
     };
 }

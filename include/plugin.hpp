@@ -22,6 +22,8 @@ class exhausted: public std::runtime_error {
         {}
 };
 
+typedef std::map<std::string, std::string> dict_t;        
+
 // Base class for a plugin source
 class source_t: public boost::noncopyable {
     public:
@@ -35,7 +37,6 @@ class source_t: public boost::noncopyable {
 
         // This method will be called by the scheduler with specified intervals to
         // fetch the new data for publishing
-        typedef std::map<std::string, std::string> dict_t;        
         virtual dict_t fetch() = 0;
 
         #define CAP_NONE    0
