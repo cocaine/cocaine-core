@@ -15,7 +15,7 @@ class python_t: public source_t {
 
         virtual dict_t fetch();
         virtual uint64_t capabilities() const;
-        virtual float reschedule(float now);
+        virtual float reschedule();
 
         // Instantiates the iterable object from the supplied code
         void create(const std::string& code,

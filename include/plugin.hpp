@@ -50,7 +50,7 @@ class source_t: public boost::noncopyable {
 
         // This method will be called by the scheduler in case of manual schedling type
         // Time is seconds.microseconds float
-        virtual float reschedule(float now) {
+        virtual float reschedule() {
             return -1;
         }
 

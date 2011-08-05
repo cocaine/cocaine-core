@@ -13,13 +13,12 @@ namespace yappi { namespace engine { namespace {
 
 class scheduler_base_t: public boost::noncopyable {
     public:
-        scheduler_base_t(zmq::context_t& context, plugin::source_t& source,
-            overseer_t& overseer);
+        scheduler_base_t(plugin::source_t& source);
         virtual ~scheduler_base_t();
         
         inline std::string id() const { return m_id; }
         
-        void start();
+        void start(zmq::context_t& context, overseer_t* overseer);
         inline void stop() { m_stopping = true; }
 
     protected:
@@ -38,10 +37,10 @@ class scheduler_base_t: public boost::noncopyable {
 
     private:
         // Messaging
-        net::blob_socket_t m_uplink;
+        std::auto_ptr<net::blob_socket_t> m_uplink;
         
         // Parent
-        overseer_t& m_overseer;
+        overseer_t* m_overseer;
         
         // Watcher
         std::auto_ptr<ev::periodic> m_watcher;
@@ -53,11 +52,8 @@ class scheduler_base_t: public boost::noncopyable {
 // Automatic scheduler
 class auto_scheduler_t: public scheduler_base_t {
     public:
-        auto_scheduler_t(
-            zmq::context_t& context, plugin::source_t& source,
-            overseer_t& overseer, const Json::Value& args
-        ):
-            scheduler_base_t(context, source, overseer),
+        auto_scheduler_t(plugin::source_t& source, const Json::Value& args):
+            scheduler_base_t(source),
             m_interval(args.get("interval", 0).asInt() / 1000.0)
         {
             if(m_interval <= 0) {
@@ -78,11 +74,8 @@ class auto_scheduler_t: public scheduler_base_t {
 // Manual userscript scheduler
 class manual_scheduler_t: public scheduler_base_t {
     public:
-        manual_scheduler_t(
-            zmq::context_t& context, plugin::source_t& source,
-            overseer_t& overseer, const Json::Value& args
-        ):
-            scheduler_base_t(context, source, overseer) 
+        manual_scheduler_t(plugin::source_t& source, const Json::Value& args):
+            scheduler_base_t(source) 
         {
             if(!(m_source.capabilities() & CAP_MANUAL)) {
                 throw std::runtime_error("manual scheduling is not supported");
@@ -92,7 +85,7 @@ class manual_scheduler_t: public scheduler_base_t {
         }
 
         virtual inline ev::tstamp reschedule(ev::tstamp now) {
-            return max(now, m_source.reschedule(now));
+            return max(now, m_source.reschedule());
         }
 };
 

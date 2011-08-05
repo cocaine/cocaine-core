@@ -95,12 +95,11 @@ uint64_t python_t::capabilities() const {
     return PyCallable_Check(reschedule) ? CAP_MANUAL : CAP_NONE;
 }
 
-float python_t::reschedule(float now) {
+float python_t::reschedule() {
     thread_state_t state = PyGILState_Ensure();
     object_t reschedule = PyObject_GetAttrString(m_object, "reschedule");
     
-    object_t arg = PyFloat_FromDouble(now);
-    object_t args = PyTuple_Pack(1, *arg);
+    object_t args = PyTuple_New(0);
     object_t result = PyObject_Call(reschedule, args, NULL);
     
     if(PyErr_Occurred()) {
@@ -108,7 +107,7 @@ float python_t::reschedule(float now) {
     }
 
     if(!PyFloat_Check(result)) {
-        throw std::runtime_error("reschedule() returned non-float");
+        throw std::runtime_error("reschedule() has returned a non-float object");
     }
 
     return PyFloat_AsDouble(result);

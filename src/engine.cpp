@@ -140,13 +140,13 @@ overseer_t::overseer_t(zmq::context_t& context, source_t& source, storage_t& sto
     m_io.set<overseer_t, &overseer_t::request>(this);
     m_io.start(m_pipe.fd(), EV_READ);
 
-    // Cache cleanup watcher
-    m_cleanup.set<overseer_t, &overseer_t::cleanup>(this);
-    m_cleanup.start();
-
     // [CONFIG] Initializing suicide timer
     m_suicide.set<overseer_t, &overseer_t::timeout>(this);
     m_suicide.start(600.);
+    
+    // Cache cleanup watcher
+    m_cleanup.set<overseer_t, &overseer_t::cleanup>(this);
+    m_cleanup.start();
 
     // Connecting to the core's future sink
     m_futures.connect("inproc://futures");
@@ -240,7 +240,7 @@ void overseer_t::push(const Json::Value& message) {
     std::auto_ptr<SchedulerType> scheduler;
 
     try {
-        scheduler.reset(new SchedulerType(m_context, m_source, *this, message["args"]));
+        scheduler.reset(new SchedulerType(m_source, message["args"]));
         scheduler_id = scheduler->id();
     } catch(const std::exception& e) {
         result["error"] = e.what();
@@ -250,7 +250,7 @@ void overseer_t::push(const Json::Value& message) {
     
     // Scheduling
     if(m_slaves.find(scheduler_id) == m_slaves.end()) {
-        scheduler->start();
+        scheduler->start(m_context, this);
         m_slaves.insert(scheduler_id, scheduler);
 
         if(m_suicide.is_active()) {
@@ -300,7 +300,7 @@ void overseer_t::drop(const Json::Value& message) {
     std::auto_ptr<SchedulerType> scheduler;
 
     try {
-        scheduler.reset(new SchedulerType(m_context, m_source, *this, message["args"]));
+        scheduler.reset(new SchedulerType(m_source, message["args"]));
         scheduler_id = scheduler->id();
     } catch(const std::exception& e) {
         result["error"] = e.what();
@@ -375,9 +375,9 @@ void overseer_t::reap(const std::string& scheduler_id) {
 
 void overseer_t::terminate() {
     // Kill everything
-    m_slaves.clear();
     m_suicide.stop();
     m_io.stop();
+    m_slaves.clear();
     m_cleanup.stop();
 } 
 
@@ -391,10 +391,8 @@ void overseer_t::suicide() {
     m_reaper.send(message);    
 }
 
-scheduler_base_t::scheduler_base_t(zmq::context_t& context, source_t& source, overseer_t& overseer):
+scheduler_base_t::scheduler_base_t(source_t& source):
     m_source(source),
-    m_uplink(context, ZMQ_PUSH),
-    m_overseer(overseer),
     m_stopping(false)
 {}
 
@@ -404,10 +402,13 @@ scheduler_base_t::~scheduler_base_t() {
     }
 }
 
-void scheduler_base_t::start() {
-    m_uplink.connect("inproc://events");
+void scheduler_base_t::start(zmq::context_t& context, overseer_t* overseer) {
+    m_overseer = overseer;
     
-    m_watcher.reset(new ev::periodic(m_overseer.binding()));
+    m_uplink.reset(new net::blob_socket_t(context, ZMQ_PUSH));
+    m_uplink->connect("inproc://events");
+    
+    m_watcher.reset(new ev::periodic(m_overseer->binding()));
     m_watcher->set<scheduler_base_t, &scheduler_base_t::publish>(this);
     ev_periodic_set(static_cast<ev_periodic*>(m_watcher.get()), 0, 0, thunk);
     m_watcher->start();
@@ -416,11 +417,11 @@ void scheduler_base_t::start() {
 void scheduler_base_t::publish(ev::periodic& w, int revents) {
     if(m_stopping) {
         m_watcher->stop();
-        m_overseer.reap(id());
+        m_overseer->reap(id());
         return;
     }
     
-    dict_t dict = m_overseer.fetch();
+    dict_t dict = m_overseer->fetch();
 
     // Do nothing if plugin has returned an empty dict
     if(dict.size() == 0) {
@@ -429,7 +430,7 @@ void scheduler_base_t::publish(ev::periodic& w, int revents) {
 
     zmq::message_t message(m_id.length());
     memcpy(message.data(), m_id.data(), m_id.length());
-    m_uplink.send(message, ZMQ_SNDMORE);
+    m_uplink->send(message, ZMQ_SNDMORE);
 
     // Serialize the dict
     msgpack::sbuffer buffer;
@@ -438,7 +439,7 @@ void scheduler_base_t::publish(ev::periodic& w, int revents) {
     // And send it
     message.rebuild(buffer.size());
     memcpy(message.data(), buffer.data(), buffer.size());
-    m_uplink.send(message);
+    m_uplink->send(message);
 }
 
 ev::tstamp scheduler_base_t::thunk(ev_periodic* w, ev::tstamp now) {
