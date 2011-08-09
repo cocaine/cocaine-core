@@ -5,10 +5,10 @@
 #include <boost/function.hpp>
 
 #include "common.hpp"
-#include "engine.hpp"
 #include "registry.hpp"
-#include "persistance.hpp"
 #include "security.hpp"
+#include "persistance.hpp"
+#include "engine.hpp"
 
 namespace yappi { namespace core {
 
@@ -62,7 +62,6 @@ class core_t: public boost::noncopyable {
 
         // Security
         security::authorizer_t m_authorizer;
-        helpers::digest_t m_digest;
 
         // Task persistance
         persistance::storage_t m_storage;

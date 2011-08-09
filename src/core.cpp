@@ -182,13 +182,7 @@ void core_t::request(ev::io& io, int revents) {
         // Check the version
         Json::Value version = root["version"];
 
-        if(version == Json::Value::null || !version.isIntegral()) {
-            syslog(LOG_ERR, "core: invalid request - protocol version expected");
-            future->fulfill("error", "version expected");
-            continue;
-        }
-
-        if(version.asInt() < 2) {
+        if(!version.isIntegral() || version.asInt() < 2) {
             syslog(LOG_ERR, "core: invalid request - invalid protocol version");
             future->fulfill("error", "invalid protocol version");
             continue;
@@ -197,7 +191,7 @@ void core_t::request(ev::io& io, int revents) {
         // Security
         Json::Value token = root["token"];
         
-        if(token == Json::Value::null || !token.isString()) {
+        if(!token.isString()) {
             syslog(LOG_ERR, "core: invalid request - security token expected");
             future->fulfill("error", "security token expected");
             continue;
@@ -212,32 +206,12 @@ void core_t::request(ev::io& io, int revents) {
             }
         }
 
-        future->assign(m_digest.get(token.asString()));
-
-        // Get the action
-        Json::Value action = root["action"];
-
-        if(action == Json::Value::null || !action.isString()) {
-            syslog(LOG_ERR, "core: invalid request - action expected");
-            future->fulfill("error", "action expected");
-            continue;
-        }
-
-        // Check if the action is supported
-        dispatch_map_t::iterator it = m_dispatch.find(action.asString());
-
-        if(it == m_dispatch.end()) {
-            syslog(LOG_ERR, "core: invalid request - action '%s' is not supported", action.asCString());
-            future->fulfill("error", "action is not supported");
-            continue;
-        }
-
-        handler_fn_t& actor = it->second;
+        future->assign(token.asString());
 
         // Check if we have any targets for the action
         Json::Value targets = root["targets"];
         
-        if(targets == Json::Value::null || !targets.isObject() || !targets.size()) {
+        if(!targets.isObject() || !targets.size()) {
             syslog(LOG_ERR, "core: invalid request - no targets specified");
             future->fulfill("error", "no targets specified");
             continue;
@@ -252,20 +226,30 @@ void core_t::request(ev::io& io, int revents) {
 
             // Get the target args
             Json::Value args = targets[target];
+            Json::Value response;
 
             // And check if it's an object
             if(!args.isObject()) {
                 syslog(LOG_ERR, "core: invalid request - target object expected");
-                
-                Json::Value value;
-                value["error"] = "target object expected";
-                
-                future->fulfill(target, value);
+                response["error"] = "target object expected";
+                future->fulfill(target, response);
+                continue;
+            }
+
+            // Get the action, and check if it's supported
+            std::string action = args.get("action", "push").asString();
+            dispatch_map_t::iterator actor = m_dispatch.find(action);
+
+            if(actor == m_dispatch.end()) {
+                syslog(LOG_ERR, "core: invalid request - action '%s' is not supported",
+                    action.c_str());
+                response["error"] = "action is not supported";
+                future->fulfill(target, response);
                 continue;
             }
 
             // Finally, dispatch
-            actor(future, target, args);
+            actor->second(future, target, args);
         }
     }
 }
@@ -286,7 +270,7 @@ void core_t::seal(const std::string& future_id) {
     if(!identity.empty()) {
         std::string response = future->seal();
         
-        syslog(LOG_DEBUG, "core: sending response to %s - future %s", 
+        syslog(LOG_DEBUG, "core: sending response to '%s' - future %s", 
             future->token().c_str(), future->id().c_str());
 
         // Send the identity
