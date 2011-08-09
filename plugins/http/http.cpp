@@ -31,7 +31,7 @@ class http_t: public source_t {
             curl_easy_setopt(m_curl, CURLOPT_NOSIGNAL, 1);
         }
 
-        ~http_t() {
+        virtual ~http_t() {
             curl_easy_cleanup(m_curl);
         }
     

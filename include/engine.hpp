@@ -36,10 +36,10 @@ class engine_t: public boost::noncopyable {
         class thread_t {
             public:
                 thread_t(zmq::context_t& context, std::auto_ptr<plugin::source_t> source,
-                    persistance::storage_t& storage);
+                    persistance::storage_t& storage, helpers::auto_uuid_t id = helpers::auto_uuid_t());
                 ~thread_t();
 
-                inline std::string id() const { return m_uuid.get(); }
+                inline std::string id() const { return m_id.get(); }
 
                 inline void send(const Json::Value& message) {
                     m_pipe.send(message);
@@ -52,8 +52,8 @@ class engine_t: public boost::noncopyable {
                 net::json_socket_t m_pipe;
                 std::auto_ptr<plugin::source_t> m_source;
                 persistance::storage_t& m_storage;
+                helpers::auto_uuid_t m_id;
                 
-                helpers::auto_uuid_t m_uuid;
                 pthread_t m_thread;
         };
 
@@ -69,7 +69,7 @@ namespace {
     class overseer_t: public boost::noncopyable {
         public:
             overseer_t(zmq::context_t& context, plugin::source_t& source,
-                persistance::storage_t& storage, const helpers::auto_uuid_t& uuid);
+                persistance::storage_t& storage, helpers::auto_uuid_t id);
             
             void run();
             
