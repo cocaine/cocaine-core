@@ -49,9 +49,9 @@ class Executer(object):
         request = simplejson.dumps({
             'version': 3,
             'token': self.username,
-            'action': 'push',
             'targets': {
                 uri: {
+                    'action': 'push',
                     'type': 'once'
                 }
             }
