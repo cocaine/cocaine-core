@@ -12,7 +12,9 @@ using namespace yappi::plugin;
 using namespace yappi::persistance;
 using namespace yappi::helpers;
 
-engine_t::engine_t(zmq::context_t& context, registry_t& registry, storage_t& storage, const std::string& target):
+engine_t::engine_t(zmq::context_t& context, registry_t& registry, storage_t& storage,
+    const std::string& target
+):
     m_context(context),
     m_registry(registry),
     m_storage(storage),
@@ -27,14 +29,16 @@ engine_t::~engine_t() {
     m_threads.clear();
 }
 
-engine_t::thread_t::thread_t(zmq::context_t& context, std::auto_ptr<source_t> source, storage_t& storage, auto_uuid_t id): 
+engine_t::thread_t::thread_t(zmq::context_t& context, std::auto_ptr<source_t> source,
+    storage_t& storage, auto_uuid_t id
+): 
     m_context(context),
     m_pipe(m_context, ZMQ_PUSH),
     m_source(source),
     m_storage(storage),
     m_id(id)
 {
-    syslog(LOG_DEBUG, "engine %s: starting thread %s", m_source->uri().c_str(),
+    syslog(LOG_DEBUG, "engine %s: starting thread %s", m_source->uri().c_str(), 
         m_id.get().c_str());
 
     m_pipe.bind("inproc://" + m_id.get());
@@ -58,22 +62,25 @@ engine_t::thread_t::~thread_t() {
 void* engine_t::thread_t::bootstrap(void* args) {
     thread_t* thread = static_cast<thread_t*>(args);
 
-    overseer_t overseer(thread->m_context, *thread->m_source,
-        thread->m_storage, thread->m_id);
-
+    overseer_t overseer(thread->m_context, *thread->m_source, thread->m_storage, thread->m_id);
     overseer.run();
 
     return NULL;
 }
 
-void engine_t::push(future_t* future, const Json::Value& args) {
-    Json::Value message, response;
+void engine_t::push(future_t* future, const Json::Value& args_) {
+    Json::Value message, response, args(args_);
     std::string thread_id;
 
     if(!args.get("isolated", false).asBool()) {
         thread_id = m_default_thread_id;
     } else {
-        thread_id = args.get("compartment", auto_uuid_t().get()).asString();
+        if(args.isMember("compartment")) {
+            thread_id = args.get("compartment", "").asString();
+        } else {
+            thread_id = auto_uuid_t().get();
+            args["compartment"] = thread_id;
+        }
     }
     
     thread_map_t::iterator it = m_threads.find(thread_id);
@@ -87,6 +94,7 @@ void engine_t::push(future_t* future, const Json::Value& args) {
             thread.reset(new thread_t(m_context, source, m_storage, auto_uuid_t(thread_id)));
             boost::tie(it, boost::tuples::ignore) = m_threads.insert(thread_id, thread);
         } catch(const std::exception& e) {
+            syslog(LOG_ERR, "engine %s: exception - %s", m_target.c_str(), e.what());
             response["error"] = e.what();
             future->fulfill(m_target, response);
             return;
@@ -136,7 +144,9 @@ void engine_t::reap(const std::string& thread_id) {
     m_threads.erase(it);
 }
 
-overseer_t::overseer_t(zmq::context_t& context, source_t& source, storage_t& storage, auto_uuid_t id):
+overseer_t::overseer_t(zmq::context_t& context, source_t& source, storage_t& storage,
+    auto_uuid_t id
+):
     m_context(context),
     m_pipe(m_context, ZMQ_PULL),
     m_futures(m_context, ZMQ_PUSH),
@@ -238,8 +248,7 @@ dict_t overseer_t::fetch() {
             m_cache = m_source.fetch();
             m_cached = true;
         } catch(const std::exception& e) {
-            syslog(LOG_NOTICE, "engine %s: exception - %s",
-                m_source.uri().c_str(), e.what());
+            syslog(LOG_ERR, "engine %s: exception - %s", m_source.uri().c_str(), e.what());
             suicide();
         }
     }
@@ -250,8 +259,9 @@ dict_t overseer_t::fetch() {
 template<class SchedulerType>
 void overseer_t::push(const Json::Value& message) {
     Json::Value result;
-    std::string token = message["future"]["token"].asString();
     std::string scheduler_id;
+    std::string token = message["future"]["token"].asString();
+    std::string compartment = message["args"].get("compartment", "").asString();
 
     std::auto_ptr<SchedulerType> scheduler;
 
@@ -259,6 +269,7 @@ void overseer_t::push(const Json::Value& message) {
         scheduler.reset(new SchedulerType(m_source, message["args"]));
         scheduler_id = scheduler->id();
     } catch(const std::exception& e) {
+        syslog(LOG_ERR, "engine %s: exception - %s", m_source.uri().c_str(), e.what());
         result["error"] = e.what();
         respond(message["future"], result);
         return;
@@ -289,14 +300,13 @@ void overseer_t::push(const Json::Value& message) {
     
     // Persistance
     if(!message["args"].get("transient", false).asBool()) {
-        std::string object_id = m_digest.get(scheduler_id + token);
+        std::string object_id = m_digest.get(scheduler_id + token + compartment);
 
         if(!m_storage.exists(object_id)) {
             Json::Value object;
             
             object["url"] = m_source.uri();
             object["args"] = message["args"];
-            object["args"]["compartment"] = m_id.get();
             object["token"] = message["future"]["token"];
             
             m_storage.put(object_id, object);
@@ -305,7 +315,11 @@ void overseer_t::push(const Json::Value& message) {
 
     // Report to the core
     result["key"] = scheduler_id;
-    result["compartment"] = m_id.get();
+    
+    if(!compartment.empty()) {
+        result["compartment"] = compartment;
+    }
+    
     respond(message["future"], result);
 }
 
@@ -321,6 +335,7 @@ void overseer_t::drop(const Json::Value& message) {
         scheduler.reset(new SchedulerType(m_source, message["args"]));
         scheduler_id = scheduler->id();
     } catch(const std::exception& e) {
+        syslog(LOG_ERR, "engine %s: exception - %s", m_source.uri().c_str(), e.what());
         result["error"] = e.what();
         respond(message["future"], result);
         return;
@@ -385,7 +400,7 @@ void overseer_t::reap(const std::string& scheduler_id) {
     slave_map_t::iterator it = m_slaves.find(scheduler_id);
 
     if(it == m_slaves.end()) {
-        syslog(LOG_ERR, "engine %s: found an orphan - scheduler %s",
+        syslog(LOG_ERR, "engine %s: found an orphan - scheduler %s", 
             m_source.uri().c_str(), scheduler_id.c_str());
         return;
     }

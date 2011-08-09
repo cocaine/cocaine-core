@@ -29,15 +29,10 @@ core_t::core_t(const std::string& uuid,
     // Version dump
     int minor, major, patch;
     zmq_version(&major, &minor, &patch);
-    syslog(LOG_INFO, "core: using libzmq version %d.%d.%d",
-        major, minor, patch);
-    
-    syslog(LOG_INFO, "core: using libev version %d.%d",
-        ev_version_major(), ev_version_minor());
 
-    syslog(LOG_INFO, "core: using libmsgpack version %s",
-        msgpack_version());
-
+    syslog(LOG_INFO, "core: using libzmq version %d.%d.%d", major, minor, patch);
+    syslog(LOG_INFO, "core: using libev version %d.%d", ev_version_major(), ev_version_minor());
+    syslog(LOG_INFO, "core: using libmsgpack version %s", msgpack_version());
     syslog(LOG_INFO, "core: instance uuid - %s", uuid.c_str());
 
     // Internal event sink socket
@@ -167,7 +162,8 @@ void core_t::request(ev::io& io, int revents) {
 
         // Try to parse the incoming JSON document
         if(!reader.parse(request, root)) {
-            syslog(LOG_ERR, "core: invalid json - %s", reader.getFormatedErrorMessages().c_str());
+            syslog(LOG_ERR, "core: invalid json - %s",
+                reader.getFormatedErrorMessages().c_str());
             future->fulfill("error", reader.getFormatedErrorMessages());
             continue;
         } 
@@ -288,8 +284,6 @@ void core_t::seal(const std::string& future_id) {
         message.rebuild(response.length());
         memcpy(message.data(), response.data(), response.length());
         s_requests.send(message);
-    } else {
-        syslog(LOG_DEBUG, "core: ignoring internal future %s", future->id().c_str());
     }
 
     // Release the future
@@ -405,7 +399,8 @@ void core_t::future(ev::io& io, int revents) {
         future_map_t::iterator it = m_futures.find(message["future"].asString());
         
         if(it == m_futures.end()) {
-            syslog(LOG_ERR, "core: found an orphan - slice for future %s", message["future"].asCString());
+            syslog(LOG_ERR, "core: found an orphan - slice for future %s", 
+                message["future"].asCString());
             continue;
         }
 
@@ -422,8 +417,7 @@ void core_t::reap(ev::io& io, int revents) {
         engine_map_t::iterator it = m_engines.find(message["engine"].asString());
 
         if(it == m_engines.end()) {
-            syslog(LOG_ERR, "core: found an orphan - engine %s",
-                message["engine"].asCString());
+            syslog(LOG_ERR, "core: found an orphan - engine %s", message["engine"].asCString());
             continue;
         }
         

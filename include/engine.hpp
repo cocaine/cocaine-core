@@ -36,7 +36,8 @@ class engine_t: public boost::noncopyable {
         class thread_t {
             public:
                 thread_t(zmq::context_t& context, std::auto_ptr<plugin::source_t> source,
-                    persistance::storage_t& storage, helpers::auto_uuid_t id = helpers::auto_uuid_t());
+                    persistance::storage_t& storage,
+                    helpers::auto_uuid_t id = helpers::auto_uuid_t());
                 ~thread_t();
 
                 inline std::string id() const { return m_id.get(); }
