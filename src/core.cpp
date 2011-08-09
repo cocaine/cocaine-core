@@ -234,6 +234,8 @@ void core_t::request(ev::io& io, int revents) {
 
             // Get the action, and check if it's supported
             std::string action = args.get("action", "push").asString();
+            args.removeMember("action");
+            
             dispatch_map_t::iterator actor = m_dispatch.find(action);
 
             if(actor == m_dispatch.end()) {
