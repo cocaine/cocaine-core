@@ -38,7 +38,8 @@ registry_t::registry_t(const std::string& plugin_path):
 
     // Directory iterator
     typedef boost::filter_iterator<is_regular_file, fs::directory_iterator> file_iterator;
-    file_iterator it = file_iterator(is_regular_file(), fs::directory_iterator(m_plugin_path)), end;
+    file_iterator it = file_iterator(is_regular_file(),
+        fs::directory_iterator(m_plugin_path)), end;
 
     while(it != end) {
         // Load the plugin

@@ -14,6 +14,7 @@ class authorizer_t: public boost::noncopyable {
         authorizer_t(const std::string& uuid);
         ~authorizer_t();
 
+        std::string sign(const std::string& message, const std::string& token);
         void verify(const std::string& message, const unsigned char* signature,
             size_t size, const std::string& token);
 
