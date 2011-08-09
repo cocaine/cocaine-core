@@ -68,19 +68,14 @@ void* engine_t::thread_t::bootstrap(void* args) {
     return NULL;
 }
 
-void engine_t::push(future_t* future, const Json::Value& args_) {
-    Json::Value message, response, args(args_);
+void engine_t::push(future_t* future, const Json::Value& args) {
+    Json::Value message, response;
     std::string thread_id;
 
     if(!args.get("isolated", false).asBool()) {
         thread_id = m_default_thread_id;
     } else {
-        if(args.isMember("compartment")) {
-            thread_id = args.get("compartment", "").asString();
-        } else {
-            thread_id = auto_uuid_t().get();
-            args["compartment"] = thread_id;
-        }
+        thread_id = args.get("compartment", auto_uuid_t().get()).asString();
     }
     
     thread_map_t::iterator it = m_threads.find(thread_id);
@@ -261,7 +256,11 @@ void overseer_t::push(const Json::Value& message) {
     Json::Value result;
     std::string scheduler_id;
     std::string token = message["future"]["token"].asString();
-    std::string compartment = message["args"].get("compartment", "").asString();
+    std::string prefix;
+
+    if(message["args"].get("isolated", false).asBool()) {
+        prefix = m_id.get();
+    };
 
     std::auto_ptr<SchedulerType> scheduler;
 
@@ -300,13 +299,14 @@ void overseer_t::push(const Json::Value& message) {
     
     // Persistance
     if(!message["args"].get("transient", false).asBool()) {
-        std::string object_id = m_digest.get(scheduler_id + token + compartment);
+        std::string object_id = m_digest.get(prefix + scheduler_id + token);
 
         if(!m_storage.exists(object_id)) {
             Json::Value object;
             
             object["url"] = m_source.uri();
             object["args"] = message["args"];
+            object["args"]["compartment"] = m_id.get();
             object["token"] = message["future"]["token"];
             
             m_storage.put(object_id, object);
@@ -315,11 +315,7 @@ void overseer_t::push(const Json::Value& message) {
 
     // Report to the core
     result["key"] = scheduler_id;
-    
-    if(!compartment.empty()) {
-        result["compartment"] = compartment;
-    }
-    
+    result["compartment"] = m_id.get();
     respond(message["future"], result);
 }
 
