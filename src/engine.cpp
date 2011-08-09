@@ -256,10 +256,10 @@ void overseer_t::push(const Json::Value& message) {
     Json::Value result;
     std::string scheduler_id;
     std::string token = message["future"]["token"].asString();
-    std::string prefix;
+    std::string compartment;
 
     if(message["args"].get("isolated", false).asBool()) {
-        prefix = m_id.get();
+        compartment = m_id.get();
     };
 
     std::auto_ptr<SchedulerType> scheduler;
@@ -299,23 +299,30 @@ void overseer_t::push(const Json::Value& message) {
     
     // Persistance
     if(!message["args"].get("transient", false).asBool()) {
-        std::string object_id = m_digest.get(prefix + scheduler_id + token);
+        std::string object_id = m_digest.get(scheduler_id + token + compartment);
 
         if(!m_storage.exists(object_id)) {
             Json::Value object;
             
             object["url"] = m_source.uri();
             object["args"] = message["args"];
-            object["args"]["compartment"] = m_id.get();
             object["token"] = message["future"]["token"];
             
+            if(!compartment.empty()) {
+                object["args"]["compartment"] = compartment;
+            }
+
             m_storage.put(object_id, object);
         }
     }
 
     // Report to the core
     result["key"] = scheduler_id;
-    result["compartment"] = m_id.get();
+
+    if(!compartment.empty()) {
+        result["compartment"] = compartment;
+    }
+
     respond(message["future"], result);
 }
 
@@ -324,6 +331,11 @@ void overseer_t::drop(const Json::Value& message) {
     Json::Value result;
     std::string token = message["future"]["token"].asString();
     std::string scheduler_id;
+    std::string compartment;
+
+    if(message["args"].get("isolated", false).asBool()) {
+        compartment = m_id.get();
+    };
 
     std::auto_ptr<SchedulerType> scheduler;
 
@@ -355,6 +367,10 @@ void overseer_t::drop(const Json::Value& message) {
                 m_suicide.start(600.); // [CONFIG]
             }
 
+            // Un-persist
+            std::string object_id = m_digest.get(scheduler_id + token + compartment);
+            m_storage.remove(object_id);
+            
             result["result"] = "success";
         } else {
             result["error"] = "not authorized";
