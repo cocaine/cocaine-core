@@ -9,7 +9,9 @@
 
 using namespace yappi::security;
 
-authorizer_t::authorizer_t(const std::string& uuid):
+namespace fs = boost::filesystem;
+
+signing_t::signing_t(const std::string& uuid):
     m_context(EVP_MD_CTX_create())
 {
     // Initialize error strings
@@ -35,30 +37,44 @@ authorizer_t::authorizer_t(const std::string& uuid):
 
     while(it != end) {
         if(fs::is_regular(it->status())) {
-            fs::ifstream stream;
-            stream.exceptions(std::ofstream::badbit | std::ofstream::failbit);
+            fs::ifstream stream(it->path(), fs::ifstream::in);
 
-            try {
-                stream.open(it->path(), fs::ifstream::in);
-            } catch(const fs::ifstream::failure& e) {
+            if(!stream) {
                 syslog(LOG_ERR, "security: cannot open %s", it->path().string().c_str());
                 ++it;
                 continue;
             }
 
-            std::string filename = it->leaf();
-            std::string identity = filename.substr(0, filename.find_last_of("."));
-            std::ostringstream key;
-            
-            key << stream.rdbuf();
-            BIO* bio = BIO_new_mem_buf(const_cast<char*>(key.str().data()), key.str().length());
-            EVP_PKEY* rsa = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
+            EVP_PKEY* key = NULL;
 
-            if(rsa == NULL) {
-                syslog(LOG_ERR, "security: failed to load public key from %s - %s",
-                    it->path().string().c_str(), ERR_reason_error_string(ERR_get_error()));
+            std::string filename = it->leaf();
+            std::string type = filename.substr(filename.find_last_of(".") + 1);
+            std::string identity = filename.substr(0, filename.find_last_of("."));
+            std::ostringstream contents;
+            
+            contents << stream.rdbuf();
+            BIO* bio = BIO_new_mem_buf(const_cast<char*>(contents.str().data()), contents.str().length());
+            
+            if(type == "public") {
+                key = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
+                
+                if(key == NULL) {
+                    syslog(LOG_ERR, "security: failed to load a public key from %s - %s",
+                        it->path().string().c_str(), ERR_reason_error_string(ERR_get_error()));
+                } else {    
+                    m_public_keys.insert(std::make_pair(identity, key));
+                }
+            } else if(type == "private") {
+                key = PEM_read_bio_PrivateKey(bio, NULL, NULL, NULL);
+                
+                if(key == NULL) {
+                    syslog(LOG_ERR, "security: failed to load a private key from %s - %s",
+                        it->path().string().c_str(), ERR_reason_error_string(ERR_get_error()));
+                } else {    
+                    m_private_keys.insert(std::make_pair(identity, key));
+                }
             } else {
-                m_keys.insert(std::make_pair(identity, rsa));
+                syslog(LOG_WARNING, "security: unknown key type - %s", filename.c_str());
             }
 
             BIO_free(bio);
@@ -67,24 +83,48 @@ authorizer_t::authorizer_t(const std::string& uuid):
         ++it;
     }
     
-    syslog(LOG_NOTICE, "security: loaded %u credential(s)", m_keys.size());
+    syslog(LOG_NOTICE, "security: loaded %u public key(s)", m_public_keys.size());
 }
 
-authorizer_t::~authorizer_t() {
-    for(key_map_t::iterator it = m_keys.begin(); it != m_keys.end(); ++it) {
+signing_t::~signing_t() {
+    for(key_map_t::iterator it = m_public_keys.begin(); it != m_public_keys.end(); ++it) {
         EVP_PKEY_free(it->second);
     }
 
-    EVP_MD_CTX_destroy(m_context);
+    for(key_map_t::iterator it = m_private_keys.begin(); it != m_private_keys.end(); ++it) {
+        EVP_PKEY_free(it->second);
+    }
+    
     ERR_free_strings();
+    EVP_MD_CTX_destroy(m_context);
 }
 
-void authorizer_t::verify(const std::string& message, const unsigned char* signature,
-                          size_t size, const std::string& token)
+std::string signing_t::sign(const std::string& message,
+                                           const std::string& token)
 {
-    key_map_t::const_iterator it = m_keys.find(token);
+    key_map_t::const_iterator it = m_private_keys.find(token);
 
-    if(it == m_keys.end()) {
+    if(it == m_private_keys.end()) {
+        throw std::runtime_error("unauthorized user");
+    }
+ 
+    unsigned char buffer[EVP_PKEY_size(it->second)];
+    unsigned int size = 0;
+    
+    EVP_SignInit(m_context, EVP_sha1());
+    EVP_SignUpdate(m_context, message.data(), message.size());
+    EVP_SignFinal(m_context, buffer, &size, it->second);
+    EVP_MD_CTX_cleanup(m_context);
+
+    return std::string(reinterpret_cast<char*>(buffer), size);
+}
+
+void signing_t::verify(const std::string& message, const unsigned char* signature,
+                       unsigned int size, const std::string& token)
+{
+    key_map_t::const_iterator it = m_public_keys.find(token);
+
+    if(it == m_public_keys.end()) {
         throw std::runtime_error("unauthorized user");
     }
     

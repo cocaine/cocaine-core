@@ -12,9 +12,7 @@ using namespace yappi::plugin;
 using namespace yappi::persistance;
 using namespace yappi::helpers;
 
-engine_t::engine_t(zmq::context_t& context, registry_t& registry, storage_t& storage,
-    const std::string& target
-):
+engine_t::engine_t(zmq::context_t& context, registry_t& registry, storage_t& storage, const std::string& target):
     m_context(context),
     m_registry(registry),
     m_storage(storage),
@@ -29,9 +27,7 @@ engine_t::~engine_t() {
     m_threads.clear();
 }
 
-engine_t::thread_t::thread_t(zmq::context_t& context, std::auto_ptr<source_t> source,
-    storage_t& storage, auto_uuid_t id
-): 
+engine_t::thread_t::thread_t(zmq::context_t& context, std::auto_ptr<source_t> source, storage_t& storage, auto_uuid_t id):
     m_context(context),
     m_pipe(m_context, ZMQ_PUSH),
     m_source(source),
@@ -43,8 +39,10 @@ engine_t::thread_t::thread_t(zmq::context_t& context, std::auto_ptr<source_t> so
 
     m_pipe.bind("inproc://" + m_id.get());
     
-    if(pthread_create(&m_thread, NULL, &bootstrap, this) == EAGAIN) {
-        throw std::runtime_error("system thread limit exceeded");
+    try {
+        m_thread.reset(new boost::thread(boost::bind(&thread_t::bootstrap, this)));
+    } catch(const boost::thread_resource_error& e) {
+        throw std::runtime_error("thread limit reached");
     }
 }
 
@@ -56,16 +54,20 @@ engine_t::thread_t::~thread_t() {
     message["command"] = "terminate";
     
     send(message);
-    pthread_join(m_thread, NULL); 
+    m_thread->join();
 }
 
-void* engine_t::thread_t::bootstrap(void* args) {
-    thread_t* thread = static_cast<thread_t*>(args);
+void engine_t::thread_t::bootstrap() {
+    std::auto_ptr<overseer_t> overseer;
 
-    overseer_t overseer(thread->m_context, *thread->m_source, thread->m_storage, thread->m_id);
-    overseer.run();
-
-    return NULL;
+    try {
+        overseer.reset(new overseer_t(m_context, *m_source, m_storage, m_id));
+    } catch(...) {
+        syslog(LOG_ERR, "that's over the top, buddy");
+        abort();
+    }
+    
+    overseer->run();
 }
 
 void engine_t::push(future_t* future, const Json::Value& args) {
@@ -139,9 +141,7 @@ void engine_t::reap(const std::string& thread_id) {
     m_threads.erase(it);
 }
 
-overseer_t::overseer_t(zmq::context_t& context, source_t& source, storage_t& storage,
-    auto_uuid_t id
-):
+overseer_t::overseer_t(zmq::context_t& context, source_t& source, storage_t& storage, auto_uuid_t id):
     m_context(context),
     m_pipe(m_context, ZMQ_PULL),
     m_futures(m_context, ZMQ_PUSH),
@@ -329,8 +329,8 @@ void overseer_t::push(const Json::Value& message) {
 template<class SchedulerType>
 void overseer_t::drop(const Json::Value& message) {
     Json::Value result;
-    std::string token = message["future"]["token"].asString();
     std::string scheduler_id;
+    std::string token = message["future"]["token"].asString();
     std::string compartment;
 
     if(message["args"].get("isolated", false).asBool()) {

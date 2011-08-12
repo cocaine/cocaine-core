@@ -24,7 +24,7 @@ file_storage_t::file_storage_t(const std::string& uuid):
 }
 
 bool file_storage_t::put(const std::string& key, const Json::Value& value) {
-    Json::StyledStreamWriter writer;
+    Json::StyledWriter writer;
     fs::path filepath = m_storage_path / key;
     fs::ofstream stream(filepath, fs::ofstream::out | fs::ofstream::trunc);
    
@@ -33,7 +33,9 @@ bool file_storage_t::put(const std::string& key, const Json::Value& value) {
         return false;
     }     
 
-    writer.write(stream, value);
+    std::string json = writer.write(value);
+    
+    stream << json;
     stream.close();
 
     return true;

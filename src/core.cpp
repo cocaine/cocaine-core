@@ -17,7 +17,7 @@ core_t::core_t(const std::string& uuid,
                const std::vector<std::string>& publishers,
                uint64_t hwm, bool purge):
     m_registry("/usr/lib/yappi") /* [CONFIG] */,
-    m_authorizer(uuid),
+    m_signer(uuid),
     m_storage(uuid),
     m_context(1),
     s_events(m_context, ZMQ_PULL),
@@ -183,6 +183,8 @@ void core_t::request(ev::io& io, int revents) {
             future->fulfill("error", "invalid protocol version");
             continue;
         }
+
+        future->set("protocol", "2");
       
         // Security
         Json::Value token = root["token"];
@@ -193,7 +195,7 @@ void core_t::request(ev::io& io, int revents) {
             continue;
         } else if(version.asInt() > 2) {
             try {
-                m_authorizer.verify(request, static_cast<const unsigned char*>(signature.data()),
+                m_signer.verify(request, static_cast<const unsigned char*>(signature.data()),
                     signature.size(), token.asString());
             } catch(const std::runtime_error& e) {
                 syslog(LOG_ERR, "core: unauthorized access - %s", e.what());
@@ -202,7 +204,7 @@ void core_t::request(ev::io& io, int revents) {
             }
         }
 
-        future->assign(token.asString());
+        future->set("token", token.asString());
 
         // Check if we have any targets for the action
         Json::Value targets = root["targets"];
@@ -269,7 +271,7 @@ void core_t::seal(const std::string& future_id) {
         std::string response = future->seal();
         
         syslog(LOG_DEBUG, "core: sending response to '%s' - future %s", 
-            future->token().c_str(), future->id().c_str());
+            future->get("token").c_str(), future->id().c_str());
 
         // Send the identity
         for(std::vector<std::string>::const_iterator id = identity.begin(); id != identity.end(); ++id) {
@@ -285,7 +287,15 @@ void core_t::seal(const std::string& future_id) {
         // Send the JSON
         message.rebuild(response.length());
         memcpy(message.data(), response.data(), response.length());
-        s_requests.send(message);
+        s_requests.send(message, future->get("protocol") > "2" ? ZMQ_SNDMORE : 0);
+
+        if(future->get("protocol") > "2") {
+            // Send the signature
+            std::string signature = m_signer.sign(response, "yappi");
+            message.rebuild(signature.length());
+            memcpy(message.data(), signature.data(), signature.length());
+            s_requests.send(message);
+        }
     }
 
     // Release the future
@@ -437,7 +447,7 @@ void core_t::recover() {
     if(root.size()) {
         syslog(LOG_NOTICE, "core: loaded %d task(s)", root.size());
         
-        future_t* future = new future_t(this);
+        future_t* future = new future_t(this, std::vector<std::string>());
         m_futures.insert(future->id(), future);
         future->await(root.size());
                 
@@ -445,7 +455,7 @@ void core_t::recover() {
         
         for(Json::Value::Members::const_iterator it = ids.begin(); it != ids.end(); ++it) {
             Json::Value object = root[*it];
-            future->assign(object["token"].asString());
+            future->set("token", object["token"].asString());
             push(future, object["url"].asString(), object["args"]);
         }
     }

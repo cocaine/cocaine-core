@@ -2,6 +2,7 @@
 #define YAPPI_ENGINE_HPP
 
 #include <boost/ptr_container/ptr_map.hpp>
+#include <boost/thread.hpp>
 
 #include "common.hpp"
 #include "registry.hpp"
@@ -42,12 +43,12 @@ class engine_t: public boost::noncopyable {
 
                 inline std::string id() const { return m_id.get(); }
 
-                inline void send(const Json::Value& message) {
-                    m_pipe.send(message);
+                inline bool send(const Json::Value& message) {
+                    return m_pipe.send(message);
                 }
 
             private:
-                static void* bootstrap(void* args);
+                void bootstrap();
                 
                 zmq::context_t& m_context;
                 net::json_socket_t m_pipe;
@@ -55,7 +56,7 @@ class engine_t: public boost::noncopyable {
                 persistance::storage_t& m_storage;
                 helpers::auto_uuid_t m_id;
                 
-                pthread_t m_thread;
+                std::auto_ptr<boost::thread> m_thread;
         };
 
         // Thread ID -> Thread

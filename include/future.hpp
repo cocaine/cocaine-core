@@ -10,33 +10,32 @@ class core_t;
 
 class future_t: boost::noncopyable {
     public:
-        // Initialize the client's future with it's 0MQ identity
         future_t(core_t* core, const std::vector<std::string>& identity):
             m_core(core),
             m_identity(identity),
             m_fulfilled(0),
             m_expecting(1)
         {
-            syslog(LOG_DEBUG, "future %s: created", m_id.get().c_str());
-        }
-
-        // Initialize internal future
-        future_t(core_t* core):
-            m_core(core),
-            m_fulfilled(0),
-            m_expecting(1)
-        {
-            syslog(LOG_DEBUG, "future %s: created", m_id.get().c_str());
+            syslog(LOG_DEBUG, "promise %s: created", m_id.get().c_str());
         }
 
     public:
         inline std::string id() const { return m_id.get(); }
-        inline std::string token() const { return m_token; }
         inline std::vector<std::string> identity() const { return m_identity; }
 
     public:
-        inline void assign(const std::string& token) {
-            m_token = token;
+        inline void set(const std::string& key, const std::string& value) {
+            m_options[key] = value;
+        }
+
+        inline std::string get(const std::string& key) {
+            option_map_t::iterator it = m_options.find(key);
+
+            if(it != m_options.end()) {
+                return it->second;
+            } else {
+                return "";
+            }
         }
 
         // Push a new slice into this future
@@ -44,7 +43,7 @@ class future_t: boost::noncopyable {
         void fulfill(const std::string& key, const T& value) {
             ++m_fulfilled;
 
-            syslog(LOG_DEBUG, "future %s: slice %u/%u fulfilled", 
+            syslog(LOG_DEBUG, "promise %s: slice %u/%u fulfilled", 
                     m_id.get().c_str(), m_fulfilled, m_expecting);
                     
             m_root[key] = value;
@@ -58,7 +57,10 @@ class future_t: boost::noncopyable {
             Json::Value result;
 
             result["id"] = m_id.get();
-            result["token"] = m_token;
+            
+            for(option_map_t::const_iterator it = m_options.begin(); it != m_options.end(); ++it) {
+                result[it->first] = it->second;
+            }
 
             return result;
         }
@@ -70,7 +72,7 @@ class future_t: boost::noncopyable {
 
         // Seal the future and return the response
         std::string seal() {
-            syslog(LOG_DEBUG, "future %s: sealed", m_id.get().c_str());
+            syslog(LOG_DEBUG, "promise %s: sealed", m_id.get().c_str());
             
             Json::FastWriter writer;
             std::string result = writer.write(m_root);
@@ -86,7 +88,6 @@ class future_t: boost::noncopyable {
         core_t* m_core;
 
         // Client identity
-        std::string m_token;
         std::vector<std::string> m_identity;
 
         // Slice expectations
@@ -94,6 +95,10 @@ class future_t: boost::noncopyable {
 
         // Resulting document
         Json::Value m_root;
+
+        // Optional arguments
+        typedef std::map<std::string, std::string> option_map_t;
+        option_map_t m_options;
 };
 
 }}

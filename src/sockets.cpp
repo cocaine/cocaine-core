@@ -2,14 +2,14 @@
 
 using namespace yappi::net;
 
-bool json_socket_t::send(const Json::Value& root) {
+bool json_socket_t::send(const Json::Value& root, int flags) {
     Json::FastWriter writer;
 
     std::string response = writer.write(root);
     zmq::message_t message(response.length());
     memcpy(message.data(), response.data(), response.length());
 
-    return blob_socket_t::send(message);
+    return blob_socket_t::send(message, flags);
 }
 
 bool json_socket_t::recv(Json::Value& root, int flags) {
