@@ -8,7 +8,10 @@ namespace yappi { namespace core {
 
 class core_t;
 
-class future_t: boost::noncopyable {
+class future_t:
+    public boost::noncopyable,
+    public helpers::birth_control_t<future_t>
+{
     public:
         future_t(core_t* core, const std::vector<std::string>& identity):
             m_core(core),
@@ -40,7 +43,7 @@ class future_t: boost::noncopyable {
 
         // Push a new slice into this future
         template<class T>
-        void fulfill(const std::string& key, const T& value) {
+        inline void fulfill(const std::string& key, const T& value) {
             ++m_fulfilled;
 
             syslog(LOG_DEBUG, "promise %s: slice %u/%u fulfilled", 
@@ -53,7 +56,7 @@ class future_t: boost::noncopyable {
             }
         }
 
-        Json::Value serialize() {
+        inline Json::Value serialize() {
             Json::Value result;
 
             result["id"] = m_id.get();
@@ -71,7 +74,7 @@ class future_t: boost::noncopyable {
         }
 
         // Seal the future and return the response
-        std::string seal() {
+        inline std::string seal() {
             syslog(LOG_DEBUG, "promise %s: sealed", m_id.get().c_str());
             
             Json::FastWriter writer;

@@ -15,7 +15,10 @@ namespace yappi { namespace core {
 namespace yappi { namespace engine {
 
 // Thread pool manager
-class engine_t: public boost::noncopyable {
+class engine_t:
+    public boost::noncopyable,
+    public helpers::birth_control_t<engine_t>
+{
     public:
         engine_t(zmq::context_t& context, core::registry_t& registry,
             persistance::storage_t& storage, const std::string& target);
@@ -34,7 +37,9 @@ class engine_t: public boost::noncopyable {
 
         std::string m_default_thread_id;
 
-        class thread_t {
+        class thread_t:
+            public helpers::birth_control_t< thread_t, helpers::limited_t<100> >
+        {
             public:
                 thread_t(zmq::context_t& context, std::auto_ptr<plugin::source_t> source,
                     persistance::storage_t& storage,

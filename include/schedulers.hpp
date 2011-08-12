@@ -50,7 +50,10 @@ class scheduler_base_t: public boost::noncopyable {
 };
 
 // Automatic scheduler
-class auto_scheduler_t: public scheduler_base_t {
+class auto_scheduler_t:
+    public scheduler_base_t,
+    public helpers::birth_control_t<auto_scheduler_t>    
+{
     public:
         auto_scheduler_t(plugin::source_t& source, const Json::Value& args):
             scheduler_base_t(source),
@@ -72,7 +75,10 @@ class auto_scheduler_t: public scheduler_base_t {
 };
 
 // Manual userscript scheduler
-class manual_scheduler_t: public scheduler_base_t {
+class manual_scheduler_t:
+    public scheduler_base_t,
+    public helpers::birth_control_t<manual_scheduler_t>
+{
     public:
         manual_scheduler_t(plugin::source_t& source, const Json::Value& args):
             scheduler_base_t(source) 
