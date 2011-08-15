@@ -16,8 +16,8 @@ v Protocol: move action into targets
 v Engines: isolated tasks
 > Per-plugin per-thread storage support (enables persistent state plugins)
 > Python toolset: TimeTail, BasicSink, target aliases
-* Migrate internal variable state to a dedicated configuration object
-* More flexible environment setup: paths, minimal protocol version
+* Migrate internal variable state to a dedicated configuration object, 
+  more flexible environment setup: paths, minimal protocol version
 * Authentication replay protection (timestamps?)
 * Optional encrypted publishing
 

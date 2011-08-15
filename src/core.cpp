@@ -358,6 +358,19 @@ void core_t::drop(future_t* future, const std::string& target, const Json::Value
     engine->drop(future, args);
 }
 
+void core_t::stats(future_t* future) {
+    Json::Value response;
+
+    response["engines"]["total"] = engine::engine_t::objects_created;
+    response["engines"]["alive"] = engine::engine_t::objects_alive;
+    response["threads"]["total"] = engine::detail::thread_t::objects_created;
+    response["threads"]["alive"] = engine::detail::thread_t::objects_alive;
+    response["requests"]["total"] = future_t::objects_created;
+    response["requests"]["pending"] = future_t::objects_alive;
+
+    future->fulfill("stats", response);
+}
+
 // Publishing format (not JSON, as it will render subscription mechanics pointless):
 // ------------------
 //   multipart: [key field timestamp] [blob]

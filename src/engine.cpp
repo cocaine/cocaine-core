@@ -3,11 +3,14 @@
 #include <msgpack.hpp>
 
 #include "engine.hpp"
-#include "schedulers.hpp"
 #include "future.hpp"
 
-using namespace yappi::core;
+#include "schedulers.hpp"
+
 using namespace yappi::engine;
+using namespace yappi::engine::detail;
+
+using namespace yappi::core;
 using namespace yappi::plugin;
 using namespace yappi::persistance;
 using namespace yappi::helpers;
@@ -25,49 +28,6 @@ engine_t::engine_t(zmq::context_t& context, registry_t& registry, storage_t& sto
 engine_t::~engine_t() {
     syslog(LOG_DEBUG, "engine %s: terminating", m_target.c_str()); 
     m_threads.clear();
-}
-
-engine_t::thread_t::thread_t(zmq::context_t& context, std::auto_ptr<source_t> source, storage_t& storage, auto_uuid_t id):
-    m_context(context),
-    m_pipe(m_context, ZMQ_PUSH),
-    m_source(source),
-    m_storage(storage),
-    m_id(id)
-{
-    syslog(LOG_DEBUG, "engine %s: starting thread %s", m_source->uri().c_str(), 
-        m_id.get().c_str());
-
-    m_pipe.bind("inproc://" + m_id.get());
-    
-    try {
-        m_thread.reset(new boost::thread(boost::bind(&thread_t::bootstrap, this)));
-    } catch(const boost::thread_resource_error& e) {
-        throw std::runtime_error("thread limit reached");
-    }
-}
-
-engine_t::thread_t::~thread_t() {
-    syslog(LOG_DEBUG, "engine %s: terminating thread %s", m_source->uri().c_str(),
-        m_id.get().c_str());
-    
-    Json::Value message;
-    message["command"] = "terminate";
-    
-    send(message);
-    m_thread->join();
-}
-
-void engine_t::thread_t::bootstrap() {
-    std::auto_ptr<overseer_t> overseer;
-
-    try {
-        overseer.reset(new overseer_t(m_context, *m_source, m_storage, m_id));
-    } catch(...) {
-        syslog(LOG_ERR, "that's over the top, buddy");
-        abort();
-    }
-    
-    overseer->run();
 }
 
 void engine_t::push(future_t* future, const Json::Value& args) {
@@ -139,6 +99,49 @@ void engine_t::reap(const std::string& thread_id) {
     }
 
     m_threads.erase(it);
+}
+
+thread_t::thread_t(zmq::context_t& context, std::auto_ptr<source_t> source, storage_t& storage, auto_uuid_t id):
+    m_context(context),
+    m_pipe(m_context, ZMQ_PUSH),
+    m_source(source),
+    m_storage(storage),
+    m_id(id)
+{
+    syslog(LOG_DEBUG, "engine %s: starting thread %s", m_source->uri().c_str(), 
+        m_id.get().c_str());
+
+    m_pipe.bind("inproc://" + m_id.get());
+    
+    try {
+        m_thread.reset(new boost::thread(boost::bind(&thread_t::bootstrap, this)));
+    } catch(const boost::thread_resource_error& e) {
+        throw std::runtime_error("thread limit reached");
+    }
+}
+
+thread_t::~thread_t() {
+    syslog(LOG_DEBUG, "engine %s: terminating thread %s", m_source->uri().c_str(),
+        m_id.get().c_str());
+    
+    Json::Value message;
+    message["command"] = "terminate";
+    
+    send(message);
+    m_thread->join();
+}
+
+void thread_t::bootstrap() {
+    std::auto_ptr<overseer_t> overseer;
+
+    try {
+        overseer.reset(new overseer_t(m_context, *m_source, m_storage, m_id));
+    } catch(...) {
+        syslog(LOG_ERR, "that's over the top, buddy");
+        abort();
+    }
+    
+    overseer->run();
 }
 
 overseer_t::overseer_t(zmq::context_t& context, source_t& source, storage_t& storage, auto_uuid_t id):

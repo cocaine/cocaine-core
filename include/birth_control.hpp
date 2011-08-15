@@ -5,7 +5,7 @@ namespace yappi { namespace helpers {
 
 class single_t {
     public:
-        inline static bool overflow(uint64_t population) {
+        inline static bool overflow(unsigned int population) {
             return population > 1;
         }
 
@@ -16,7 +16,7 @@ class single_t {
 template<uint64_t population_limit>
 class limited_t {
     public:
-        inline static bool overflow(uint64_t population) {
+        inline static bool overflow(unsigned int population) {
             return population > population_limit;
         }
 
@@ -26,7 +26,7 @@ class limited_t {
 
 class unlimited_t {
     public:
-        inline static bool overflow(uint64_t population) {
+        inline static bool overflow(unsigned int population) {
             return false;
         }
 
@@ -37,8 +37,8 @@ class unlimited_t {
 template<class T, class Limit = unlimited_t>
 class birth_control_t  {
     public:
-        static uint64_t objects_alive;
-        static uint64_t objects_created;
+        static unsigned int objects_alive;
+        static unsigned int objects_created;
 
         birth_control_t() {
             ++objects_alive;
@@ -57,10 +57,10 @@ class birth_control_t  {
 };
 
 template<class T, class Limit>
-uint64_t birth_control_t<T, Limit>::objects_alive(0);
+unsigned int birth_control_t<T, Limit>::objects_alive(0);
 
 template<class T, class Limit>
-uint64_t birth_control_t<T, Limit>::objects_created(0);
+unsigned int birth_control_t<T, Limit>::objects_created(0);
 
 }}
 

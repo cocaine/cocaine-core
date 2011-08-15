@@ -6,10 +6,12 @@
 #include "common.hpp"
 #include "engine.hpp"
 
-namespace yappi { namespace engine { namespace {
+namespace yappi { namespace engine { namespace detail {
 
 #define max(a, b) ((a) >= (b) ? (a) : (b))
 #define min(a, b) ((a) <= (b) ? (a) : (b))
+
+class overseer_t;
 
 class scheduler_base_t: public boost::noncopyable {
     public:
