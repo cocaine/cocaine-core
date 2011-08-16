@@ -7,8 +7,8 @@ using namespace yappi::persistance::backends;
 
 namespace fs = boost::filesystem;
 
-file_storage_t::file_storage_t(const std::string& uuid):
-    m_storage_path("/var/lib/yappi/" + uuid + ".tasks") /* [CONFIG] */
+file_storage_t::file_storage_t(helpers::auto_uuid_t uuid):
+    m_storage_path("/var/lib/yappi/" + uuid.get() + ".tasks") /* [CONFIG] */
 {
     if(fs::exists(m_storage_path) && !fs::is_directory(m_storage_path)) {
         throw std::runtime_error(m_storage_path.string() + " is not a directory");

@@ -62,8 +62,8 @@ class json_socket_t: public blob_socket_t {
             blob_socket_t(context, type)
         {}
 
-        bool send(const Json::Value& root, int flags = 0);
-        bool recv(Json::Value& root, int flags = 0);
+        bool send_json(const Json::Value& root, int flags = 0);
+        bool recv_json(Json::Value& root, int flags = 0);
 };
 
 }}

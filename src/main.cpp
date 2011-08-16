@@ -14,7 +14,7 @@ namespace fs = boost::filesystem;
 static const char identity[] = "yappi";
 
 int main(int argc, char* argv[]) {
-    std::string uuid;
+    yappi::helpers::auto_uuid_t instance;
     std::vector<std::string> exports;
 
     po::options_description mandatory, options("Allowed options"), combined;
@@ -71,6 +71,8 @@ int main(int argc, char* argv[]) {
     syslog(LOG_NOTICE, "main: yappi is starting");
         
     // Obtaining the instance uuid
+    std::string uuid;
+
     fs::fstream uuid_file(config["uuid"].as<fs::path>(),
         fs::fstream::in | fs::fstream::out | fs::fstream::app);
 
@@ -84,15 +86,13 @@ int main(int argc, char* argv[]) {
     
     if(uuid.empty()) {
         syslog(LOG_INFO, "main: first run - generating the instance uuid");
-        uuid = yappi::helpers::auto_uuid_t().get();
         uuid_file.clear();
-        uuid_file << uuid;
+        uuid_file << instance.get();
     } else {
-        uuid_t dummy;
-
-        // Validate the given uuid
-        if(uuid_parse(uuid.c_str(), dummy) == -1) {
-            syslog(LOG_ERR, "main: invalid instance uuid - %s", uuid.c_str());
+        try {
+            instance = yappi::helpers::auto_uuid_t(uuid);
+        } catch(const std::runtime_error& e) {
+            syslog(LOG_ERR, "main: %s", e.what());
             return EXIT_FAILURE;
         }
     }
@@ -125,7 +125,7 @@ int main(int argc, char* argv[]) {
     // Initializing the core
     try {
         core = new core_t(
-            uuid,
+            instance,
             config["listen"].as< std::vector<std::string> >(),
             exports,
             config["watermark"].as<uint64_t>(),

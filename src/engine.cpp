@@ -197,7 +197,7 @@ void overseer_t::request(ev::io& w, int revents) {
     while(m_pipe.pending()) {
         Json::Value message;
         
-        m_pipe.recv(message);
+        m_pipe.recv_json(message);
         command = message["command"].asString();
         type = message["args"].get("type", "auto").asString(); 
        
@@ -443,7 +443,7 @@ void overseer_t::suicide() {
     message["thread"] = m_id.get();
 
     // This is a suicide ;(
-    m_reaper.send(message);    
+    m_reaper.send_json(message);    
 }
 
 scheduler_base_t::scheduler_base_t(source_t& source):

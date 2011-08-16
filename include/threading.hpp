@@ -22,7 +22,7 @@ class thread_t:
         inline std::string id() const { return m_id.get(); }
 
         inline bool send(const Json::Value& message) {
-            return m_pipe.send(message);
+            return m_pipe.send_json(message);
         }
 
     private:
@@ -82,7 +82,7 @@ class overseer_t: public boost::noncopyable {
             response["engine"] = m_source.uri();
             response["result"] = value;
 
-            m_futures.send(response);
+            m_futures.send_json(response);
         }
 
     private:

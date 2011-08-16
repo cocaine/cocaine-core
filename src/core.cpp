@@ -3,6 +3,7 @@
 
 #include <boost/bind.hpp>
 #include <boost/tuple/tuple.hpp>
+#include <boost/lexical_cast.hpp>
 #include <msgpack.hpp>
 
 #include "core.hpp"
@@ -12,7 +13,7 @@ using namespace yappi::core;
 using namespace yappi::engine;
 using namespace yappi::plugin;
 
-core_t::core_t(const std::string& uuid,
+core_t::core_t(helpers::auto_uuid_t uuid,
                const std::vector<std::string>& listeners,
                const std::vector<std::string>& publishers,
                uint64_t hwm, bool purge):
@@ -21,8 +22,8 @@ core_t::core_t(const std::string& uuid,
     m_storage(uuid),
     m_context(1),
     s_events(m_context, ZMQ_PULL),
-    s_requests(m_context, ZMQ_ROUTER),
     s_publisher(m_context, ZMQ_PUB),
+    s_requests(m_context, ZMQ_ROUTER),
     s_futures(m_context, ZMQ_PULL),
     s_reaper(m_context, ZMQ_PULL)
 {
@@ -33,7 +34,7 @@ core_t::core_t(const std::string& uuid,
     syslog(LOG_INFO, "core: using libzmq version %d.%d.%d", major, minor, patch);
     syslog(LOG_INFO, "core: using libev version %d.%d", ev_version_major(), ev_version_minor());
     syslog(LOG_INFO, "core: using libmsgpack version %s", msgpack_version());
-    syslog(LOG_INFO, "core: instance uuid - %s", uuid.c_str());
+    syslog(LOG_INFO, "core: instance uuid - %s", uuid.get().c_str());
 
     // Internal event sink socket
     s_events.bind("inproc://events");
@@ -80,10 +81,6 @@ core_t::core_t(const std::string& uuid,
     e_sighup.set<core_t, &core_t::reload>(this);
     e_sighup.start(SIGHUP);
 
-    // Built-ins
-    m_dispatch["push"] = boost::bind(&core_t::push, this, _1, _2, _3);
-    m_dispatch["drop"] = boost::bind(&core_t::drop, this, _1, _2, _3);
-
     if(purge) {
         m_storage.purge();
     }
@@ -121,14 +118,15 @@ void core_t::reload(ev::sig& sig, int revents) {
 
 void core_t::request(ev::io& io, int revents) {
     zmq::message_t message, signature;
-    std::vector<std::string> identity;
+    std::vector<std::string> route;
     std::string request;
     
     Json::Reader reader(Json::Features::strictMode());
     Json::Value root;
-    
+
     while(s_requests.pending()) {
-        // Fetch the client's identity
+        route.clear();
+        
         while(true) {
             s_requests.recv(&message);
 
@@ -137,82 +135,89 @@ void core_t::request(ev::io& io, int revents) {
                 break;
             }
 
-            identity.push_back(std::string(
+            route.push_back(std::string(
                 static_cast<const char*>(message.data()),
                 message.size()));
         }
 
-        // Construct the remote future
-        future_t* future = new future_t(this, identity);
-        m_futures.insert(future->id(), future);
-
-        // Fetch the request
+        // Receive the request
         s_requests.recv(&message);
-        
-        request.assign(
-            static_cast<const char*>(message.data()),
+
+        request.assign(static_cast<const char*>(message.data()),
             message.size());
-        
-        // Fetch the message signature, if any
+
+        // Receive the signature, if it's there
+        signature.rebuild();
+
         if(s_requests.has_more()) {
             s_requests.recv(&signature);
-        } else {
-            signature.rebuild();
         }
 
-        // Try to parse the incoming JSON document
-        if(!reader.parse(request, root)) {
+        // Construct the future
+        future_t* future = new future_t(this, route);
+        m_futures.insert(future->id(), future);
+        
+        // Parse the request
+        root.clear();
+
+        if(reader.parse(request, root)) {
+            try {
+                if(!root.isObject()) {
+                    throw std::runtime_error("object expected");
+                }
+
+                unsigned int version = root.get("version", 1).asUInt();
+                std::string token = root.get("token", "").asString();
+                
+                if(version >= 2) {
+                    future->set("protocol", boost::lexical_cast<std::string>(version));
+                } else {
+                    throw std::runtime_error("outdated protocol version");
+                }
+      
+                if(!token.empty()) {
+                    future->set("token", token);
+
+                    if(version > 2) {
+                        m_signer.verify(request, static_cast<const unsigned char*>(signature.data()),
+                            signature.size(), token);
+                    }
+                } else {
+                    throw std::runtime_error("security token expected");
+                }
+
+                dispatch(future, root); 
+            } catch(const std::exception& e) {
+                syslog(LOG_ERR, "core: invalid request - %s", e.what());
+                future->fulfill("error", e.what());
+            }
+        } else {
             syslog(LOG_ERR, "core: invalid json - %s",
                 reader.getFormatedErrorMessages().c_str());
             future->fulfill("error", reader.getFormatedErrorMessages());
-            continue;
-        } 
-
-        // Check if root is an object
-        if(!root.isObject()) {
-            syslog(LOG_ERR, "core: invalid request - object expected");
-            future->fulfill("error", "object expected");
-            continue;
         }
-       
-        // Check the version
-        Json::Value version = root["version"];
+    }
+}
 
-        if(!version.isIntegral() || version.asInt() < 2) {
-            syslog(LOG_ERR, "core: invalid request - invalid protocol version");
-            future->fulfill("error", "invalid protocol version");
-            continue;
-        }
+// Built-in commands:
+// --------------
+// * Push - launches a thread which fetches data from the
+//   specified source and publishes it via the PUB socket.
+//
+// * Drop - shuts down the specified collector.
+//   Remaining messages will stay orphaned in the queue,
+//   so it's a good idea to drain it after the unsubscription:
+//
+// * Stats - fetches the current running stats
 
-        future->set("protocol", "2");
-      
-        // Security
-        Json::Value token = root["token"];
-        
-        if(!token.isString()) {
-            syslog(LOG_ERR, "core: invalid request - security token expected");
-            future->fulfill("error", "security token expected");
-            continue;
-        } else if(version.asInt() > 2) {
-            try {
-                m_signer.verify(request, static_cast<const unsigned char*>(signature.data()),
-                    signature.size(), token.asString());
-            } catch(const std::runtime_error& e) {
-                syslog(LOG_ERR, "core: unauthorized access - %s", e.what());
-                future->fulfill("error", "unauthorized access");
-                continue;
-            }
-        }
-
-        future->set("token", token.asString());
-
-        // Check if we have any targets for the action
+void core_t::dispatch(future_t* future, const Json::Value& root) {
+    std::string action = root.get("action", "push").asString();
+    
+    if(action == "push" || action == "drop") {
         Json::Value targets = root["targets"];
-        
+
         if(!targets.isObject() || !targets.size()) {
-            syslog(LOG_ERR, "core: invalid request - no targets specified");
-            future->fulfill("error", "no targets specified");
-            continue;
+            throw std::runtime_error("no targets specified");
         }
 
         // Iterate over all the targets
@@ -228,89 +233,24 @@ void core_t::request(ev::io& io, int revents) {
 
             // And check if it's an object
             if(!args.isObject()) {
-                syslog(LOG_ERR, "core: invalid request - target object expected");
-                response["error"] = "target object expected";
+                syslog(LOG_ERR, "core: invalid request - target arguments expected");
+                response["error"] = "target arguments expected";
                 future->fulfill(target, response);
                 continue;
             }
 
-            // Get the action, and check if it's supported
-            std::string action = args.get("action", "push").asString();
-            args.removeMember("action");
-            
-            dispatch_map_t::iterator actor = m_dispatch.find(action);
-
-            if(actor == m_dispatch.end()) {
-                syslog(LOG_ERR, "core: invalid request - action '%s' is not supported",
-                    action.c_str());
-                response["error"] = "action is not supported";
-                future->fulfill(target, response);
-                continue;
+            if(action == "push") {
+                push(future, target, args);
+            } else {
+                drop(future, target, args);
             }
-
-            // Finally, dispatch
-            actor->second(future, target, args);
         }
+    } else if(action == "stats") {
+        stat(future);
+    } else {
+        throw std::runtime_error("unsupported action");
     }
 }
-
-void core_t::seal(const std::string& future_id) {
-    zmq::message_t message;
-    future_map_t::iterator it = m_futures.find(future_id);
-
-    if(it == m_futures.end()) {
-        syslog(LOG_ERR, "core: found an orphan - future %s", future_id.c_str());
-        return;
-    }
-        
-    future_t* future = it->second;
-    std::vector<std::string> identity = future->identity();
-
-    // Send it if it's not an internal future
-    if(!identity.empty()) {
-        std::string response = future->seal();
-        
-        syslog(LOG_DEBUG, "core: sending response to '%s' - future %s", 
-            future->get("token").c_str(), future->id().c_str());
-
-        // Send the identity
-        for(std::vector<std::string>::const_iterator id = identity.begin(); id != identity.end(); ++id) {
-            message.rebuild(id->length());
-            memcpy(message.data(), id->data(), id->length());
-            s_requests.send(message, ZMQ_SNDMORE);
-        }
-        
-        // Send the delimiter
-        message.rebuild(0);
-        s_requests.send(message, ZMQ_SNDMORE);
-
-        // Send the JSON
-        message.rebuild(response.length());
-        memcpy(message.data(), response.data(), response.length());
-        s_requests.send(message, future->get("protocol") > "2" ? ZMQ_SNDMORE : 0);
-
-        if(future->get("protocol") > "2") {
-            // Send the signature
-            std::string signature = m_signer.sign(response, "yappi");
-            message.rebuild(signature.length());
-            memcpy(message.data(), signature.data(), signature.length());
-            s_requests.send(message);
-        }
-    }
-
-    // Release the future
-    m_futures.erase(it);
-}
-
-// Built-in commands:
-// --------------
-// * Push - launches a thread which fetches data from the
-//   specified source and publishes it via the PUB socket. Plugin
-//   will be invoked every 'timeout' milliseconds
-//
-// * Drop - shuts down the specified collector.
-//   Remaining messages will stay orphaned in the queue,
-//   so it's a good idea to drain it after the unsubscription:
 
 void core_t::push(future_t* future, const std::string& target, const Json::Value& args) {
     Json::Value response;
@@ -358,17 +298,62 @@ void core_t::drop(future_t* future, const std::string& target, const Json::Value
     engine->drop(future, args);
 }
 
-void core_t::stats(future_t* future) {
-    Json::Value response;
+void core_t::stat(future_t* future) {
+    Json::Value engines, threads, requests;
 
-    response["engines"]["total"] = engine::engine_t::objects_created;
-    response["engines"]["alive"] = engine::engine_t::objects_alive;
-    response["threads"]["total"] = engine::detail::thread_t::objects_created;
-    response["threads"]["alive"] = engine::detail::thread_t::objects_alive;
-    response["requests"]["total"] = future_t::objects_created;
-    response["requests"]["pending"] = future_t::objects_alive;
+    future->await(3);
 
-    future->fulfill("stats", response);
+    for(engine_map_t::const_iterator it = m_engines.begin(); it != m_engines.end(); ++it) {
+        engines["list"].append(it->first);
+    }
+    
+    engines["total"] = engine::engine_t::objects_created;
+    engines["alive"] = engine::engine_t::objects_alive;
+    future->fulfill("engines", engines);
+    
+    threads["total"] = engine::detail::thread_t::objects_created;
+    threads["alive"] = engine::detail::thread_t::objects_alive;
+    future->fulfill("threads", threads);
+
+    requests["total"] = future_t::objects_created;
+    requests["pending"] = future_t::objects_alive;
+    future->fulfill("requests", requests);
+}
+
+void core_t::seal(const std::string& future_id) {
+    future_map_t::iterator it = m_futures.find(future_id);
+
+    if(it == m_futures.end()) {
+        syslog(LOG_ERR, "core: found an orphan - future %s", future_id.c_str());
+        return;
+    }
+        
+    zmq::message_t message;
+    future_t* future = it->second;
+    std::vector<std::string> route = future->route();
+
+    // Send it if it's not an internal future
+    if(!route.empty()) {
+        syslog(LOG_DEBUG, "core: sending response to '%s' - future %s", 
+            future->get("token").c_str(), future->id().c_str());
+
+        // Send the identity
+        for(std::vector<std::string>::const_iterator id = route.begin(); id != route.end(); ++id) {
+            message.rebuild(id->length());
+            memcpy(message.data(), id->data(), id->length());
+            s_requests.send(message, ZMQ_SNDMORE);
+        }
+        
+        // Send the delimiter
+        message.rebuild(0);
+        s_requests.send(message, ZMQ_SNDMORE);
+
+        // Send the JSON
+        s_requests.send_json(future->root());
+    }
+
+    // Release the future
+    m_futures.erase(it);
 }
 
 // Publishing format (not JSON, as it will render subscription mechanics pointless):
@@ -419,7 +404,7 @@ void core_t::event(ev::io& io, int revents) {
 void core_t::future(ev::io& io, int revents) {
     while(s_futures.pending()) {
         Json::Value message;
-        s_futures.recv(message);
+        s_futures.recv_json(message);
 
         future_map_t::iterator it = m_futures.find(message["future"].asString());
         
@@ -437,7 +422,7 @@ void core_t::future(ev::io& io, int revents) {
 void core_t::reap(ev::io& io, int revents) {
     while(s_reaper.pending()) {
         Json::Value message;
-        s_reaper.recv(message);
+        s_reaper.recv_json(message);
 
         engine_map_t::iterator it = m_engines.find(message["engine"].asString());
 

@@ -11,7 +11,7 @@ using namespace yappi::security;
 
 namespace fs = boost::filesystem;
 
-signing_t::signing_t(const std::string& uuid):
+signing_t::signing_t(helpers::auto_uuid_t uuid):
     m_context(EVP_MD_CTX_create())
 {
     // Initialize error strings
@@ -19,7 +19,7 @@ signing_t::signing_t(const std::string& uuid):
 
     // Load the credentials
     // [CONFIG]
-    fs::path path = fs::path("/var/lib/yappi/" + uuid + ".tokens");
+    fs::path path = fs::path("/var/lib/yappi/" + uuid.get() + ".tokens");
    
     if(fs::exists(path) && !fs::is_directory(path)) {
         throw std::runtime_error(path.string() + " is not a directory");

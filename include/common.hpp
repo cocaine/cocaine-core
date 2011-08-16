@@ -20,6 +20,7 @@
 #endif
 
 #include <boost/noncopyable.hpp>
+#include <boost/ptr_container/ptr_map.hpp>
 
 #include "auto_uuid.hpp"
 #include "digest.hpp"

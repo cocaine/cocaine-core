@@ -2,7 +2,7 @@
 
 using namespace yappi::net;
 
-bool json_socket_t::send(const Json::Value& root, int flags) {
+bool json_socket_t::send_json(const Json::Value& root, int flags) {
     Json::FastWriter writer;
 
     std::string response = writer.write(root);
@@ -12,7 +12,7 @@ bool json_socket_t::send(const Json::Value& root, int flags) {
     return blob_socket_t::send(message, flags);
 }
 
-bool json_socket_t::recv(Json::Value& root, int flags) {
+bool json_socket_t::recv_json(Json::Value& root, int flags) {
     Json::Reader reader(Json::Features::strictMode());
     zmq::message_t message;
     std::string request;

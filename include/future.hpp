@@ -13,9 +13,9 @@ class future_t:
     public helpers::birth_control_t<future_t>
 {
     public:
-        future_t(core_t* core, const std::vector<std::string>& identity):
+        future_t(core_t* core, const std::vector<std::string>& route):
             m_core(core),
-            m_identity(identity),
+            m_route(route),
             m_fulfilled(0),
             m_expecting(1)
         {
@@ -24,7 +24,7 @@ class future_t:
 
     public:
         inline std::string id() const { return m_id.get(); }
-        inline std::vector<std::string> identity() const { return m_identity; }
+        inline std::vector<std::string> route() const { return m_route; }
 
     public:
         inline void set(const std::string& key, const std::string& value) {
@@ -74,13 +74,8 @@ class future_t:
         }
 
         // Seal the future and return the response
-        inline std::string seal() {
-            syslog(LOG_DEBUG, "promise %s: sealed", m_id.get().c_str());
-            
-            Json::FastWriter writer;
-            std::string result = writer.write(m_root);
-
-            return result;
+        inline const Json::Value& root() {
+            return m_root;
         }
 
     private:
@@ -91,7 +86,7 @@ class future_t:
         core_t* m_core;
 
         // Client identity
-        std::vector<std::string> m_identity;
+        std::vector<std::string> m_route;
 
         // Slice expectations
         unsigned int m_fulfilled, m_expecting;
