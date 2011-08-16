@@ -3,6 +3,7 @@
 from __future__ import with_statement
 
 import os
+import pwd
 import zmq
 import simplejson
 from M2Crypto import EVP
@@ -10,20 +11,24 @@ from M2Crypto import EVP
 class Executer(object):
     def __init__(self):
         self.context = zmq.Context()
+        try:
+            self.user = pwd.getpwuid(os.getuid())
+        except:
+            raise RuntimeError("Can not get current user's passwd entry")
 
         try:
-            self.username = os.environ["USER"]
+            self.username = self.user.pw_name
         except:
             raise RuntimeError("Cannot determine your username")
 
         try:
-            path = os.path.join(os.environ["HOME"], ".yappi", "key.pem")
+            path = os.path.join(self.user.pw_dir, ".yappi", "key.pem")
             self.pk = EVP.load_key(path)
         except:
             raise RuntimeError("Cannot load your private key from %s" % key_path)
 
         try:
-            path = os.path.join(os.environ["HOME"], ".yappi", "aliases.json")
+            path = os.path.join(self.user.pw_dir, ".yappi", "aliases.json")
             with open(path, 'r') as file:
                 self.aliases = simplejson.load(file)
         except:
