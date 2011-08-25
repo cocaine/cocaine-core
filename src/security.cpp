@@ -83,7 +83,7 @@ signing_t::signing_t(helpers::auto_uuid_t uuid):
         ++it;
     }
     
-    syslog(LOG_NOTICE, "security: loaded %u public key(s)", m_public_keys.size());
+    syslog(LOG_NOTICE, "security: loaded %ld public key(s)", m_public_keys.size());
 }
 
 signing_t::~signing_t() {
