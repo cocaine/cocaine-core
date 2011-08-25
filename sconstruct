@@ -1,11 +1,13 @@
 #!/usr/bin/scons
 
-import sys
+import os, sys
 
 prefix = ARGUMENTS.get("PREFIX", "")
 python_version = 'python%d.%d' % sys.version_info[:2]
 
-env = Environment()
+env = Environment(
+    CXXFLAGS=os.environ.get('CXXFLAGS', '').split(' '),
+    LIBPATH=os.environ.get('LIBPATH', '').split(' '))
 env.Alias("install", '.')
 env.Append(CXXFLAGS = ["-g", "-O2", "-Wall", "-pthread", "-rdynamic"])
 
