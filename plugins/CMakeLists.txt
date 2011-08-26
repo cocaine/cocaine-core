@@ -1,0 +1,9 @@
+SET(PLUGINS
+    mysql
+    http
+    python
+    inject)
+
+FOREACH(PLUGIN ${PLUGINS})
+    ADD_SUBDIRECTORY(${PLUGIN})
+ENDFOREACH(PLUGIN)

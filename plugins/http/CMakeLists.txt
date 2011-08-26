@@ -1,0 +1,14 @@
+FIND_FILE(CURL_HEADER "curl.h" PATH_SUFFIXES "curl")
+GET_FILENAME_COMPONENT(CURL_HEADER_PATH ${CURL_HEADER} PATH)
+
+IF(NOT CURL_HEADER)
+    MESSAGE(SEND_ERROR "CURL development headers are required.")
+ENDIF()
+
+INCLUDE_DIRECTORIES(${CURL_HEADER_PATH})
+
+ADD_LIBRARY(yappi-plugin-http MODULE
+    http)
+
+TARGET_LINK_LIBRARIES(yappi-plugin-http
+    curl)

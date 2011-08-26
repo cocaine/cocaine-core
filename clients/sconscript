@@ -1,2 +1,0 @@
-for script in Glob("*/sconscript"):
-    SConscript(script)

@@ -1,6 +1,0 @@
-plugins = []
-
-for script in Glob("*/sconscript"):
-    plugins += SConscript(script)
-
-Return("plugins")
