@@ -26,14 +26,13 @@ INCLUDE_DIRECTORIES(${LIBEV_HEADER_PATH} ${LIBZMQ_HEADER_PATH} ${LIBMSGPACK_HEAD
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/foreign/jsoncpp-0.5.0/include)
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/include)
 
-ADD_DEFINITIONS(-DBOOST_FILESYSTEM_VERSION=2)
-
 ADD_LIBRARY(json
     foreign/jsoncpp-0.5.0/src/lib_json/json_value
     foreign/jsoncpp-0.5.0/src/lib_json/json_reader
     foreign/jsoncpp-0.5.0/src/lib_json/json_writer)
 
-SET_TARGET_PROPERTIES(json PROPERTIES COMPILE_FLAGS -fPIC)
+SET_TARGET_PROPERTIES(json PROPERTIES
+    COMPILE_FLAGS -fPIC)
 
 ADD_LIBRARY(yappi-core SHARED 
     src/core
@@ -54,6 +53,10 @@ TARGET_LINK_LIBRARIES(yappi-core
     msgpack
     uriparser)
 
+SET_TARGET_PROPERTIES(yappi-core PROPERTIES
+    VERSION 1
+    COMPILE_DEFINITIONS "BOOST_FILESYSTEM_VERSION=2")
+
 ADD_DEPENDENCIES(yappi-core json)
 
 ADD_EXECUTABLE(yappi src/main)
@@ -63,8 +66,5 @@ TARGET_LINK_LIBRARIES(yappi
     boost_program_options)
 
 ADD_DEPENDENCIES(yappi yappi-core)
-
-SET_TARGET_PROPERTIES(yappi-core PROPERTIES
-    VERSION 1)
 
 ADD_SUBDIRECTORY(plugins)
