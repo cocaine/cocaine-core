@@ -26,10 +26,14 @@ INCLUDE_DIRECTORIES(${LIBEV_HEADER_PATH} ${LIBZMQ_HEADER_PATH} ${LIBMSGPACK_HEAD
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/foreign/jsoncpp-0.5.0/include)
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/include)
 
+ADD_DEFINITIONS(-DBOOST_FILESYSTEM_VERSION=2)
+
 ADD_LIBRARY(json
     foreign/jsoncpp-0.5.0/src/lib_json/json_value
     foreign/jsoncpp-0.5.0/src/lib_json/json_reader
     foreign/jsoncpp-0.5.0/src/lib_json/json_writer)
+
+SET_TARGET_PROPERTIES(json PROPERTIES COMPILE_FLAGS -fPIC)
 
 ADD_LIBRARY(yappi-core SHARED 
     src/core
