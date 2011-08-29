@@ -10,9 +10,9 @@ IF(NOT PYTHON_CFLAGS OR NOT PYTHON_LDFLAGS)
     MESSAGE(FATAL_ERROR, "Python development headers are required.")
 ENDIF()
 
-FIND_FILE(CURL_HEADER "curl.h" PATH_SUFFIXES "curl")
+FIND_PATH(CURL_HEADER_PATH "curl.h" PATH_SUFFIXES "curl")
 
-IF(NOT CURL_HEADER)
+IF(NOT CURL_HEADER_PATH)
     MESSAGE(FATAL_ERROR "CURL development headers are required.")
 ENDIF()
 

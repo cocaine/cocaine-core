@@ -9,23 +9,23 @@ IF(NOT LIBEV_HEADER_PATH)
 ENDIF()
 
 # libzmq
-FIND_FILE(LIBZMQ_HEADER "zmq.hpp")
+FIND_PATH(LIBZMQ_HEADER_PATH "zmq.hpp")
 
-IF(NOT LIBZMQ_HEADER)
+IF(NOT LIBZMQ_HEADER_PATH)
     MESSAGE(FATAL_ERROR "libzmq development headers are required.")
 ENDIF()
 
 # libmsgpack
-FIND_FILE(LIBMSGPACK_HEADER "msgpack.hpp")
+FIND_PATH(LIBMSGPACK_HEADER_PATH "msgpack.hpp")
 
-IF(NOT LIBMSGPACK_HEADER)
+IF(NOT LIBMSGPACK_HEADER_PATH)
     MESSAGE(FATAL_ERROR "libmsgpack development headers are required.")
 ENDIF()
 
 # liburiparser
-FIND_FILE(LIBURIPARSER_HEADER "Uri.h" PATH_SUFFIXES "uriparser")
+FIND_PATH(LIBURIPARSER_HEADER_PATH "Uri.h" PATH_SUFFIXES "uriparser")
 
-IF(NOT LIBURIPARSER_HEADER)
+IF(NOT LIBURIPARSER_HEADER_PATH)
     MESSAGE(FATAL_ERROR "liburiparser development headers are required.")
 ENDIF()
 

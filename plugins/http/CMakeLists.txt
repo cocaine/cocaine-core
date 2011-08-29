@@ -4,8 +4,6 @@ IF(NOT CURL_HEADER_PATH)
     MESSAGE(FATAL_ERROR "CURL development headers are required.")
 ENDIF()
 
-INCLUDE_DIRECTORIES(${CURL_HEADER_PATH})
-
 ADD_LIBRARY(yappi-plugin-http MODULE
     http)
 
