@@ -82,6 +82,7 @@ ADD_DEPENDENCIES(yappi yappi-core)
 
 ADD_SUBDIRECTORY(plugins)
 ADD_SUBDIRECTORY(clients)
+ADD_SUBDIRECTORY(toolset)
 
 INSTALL(TARGETS yappi yappi-core
     RUNTIME DESTINATION bin COMPONENT runtime
