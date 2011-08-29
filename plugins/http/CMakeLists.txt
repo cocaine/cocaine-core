@@ -1,8 +1,7 @@
-FIND_FILE(CURL_HEADER "curl.h" PATH_SUFFIXES "curl" "libcurl")
-GET_FILENAME_COMPONENT(CURL_HEADER_PATH ${CURL_HEADER} PATH)
+FIND_PATH(CURL_HEADER_PATH "curl.h" PATH_SUFFIXES "curl" "libcurl")
 
-IF(NOT CURL_HEADER)
-    MESSAGE(SEND_ERROR "CURL development headers are required.")
+IF(NOT CURL_HEADER_PATH)
+    MESSAGE(FATAL_ERROR "CURL development headers are required.")
 ENDIF()
 
 INCLUDE_DIRECTORIES(${CURL_HEADER_PATH})
@@ -13,3 +12,7 @@ ADD_LIBRARY(yappi-plugin-http MODULE
 TARGET_LINK_LIBRARIES(yappi-plugin-http
     crypto
     curl)
+
+INSTALL(TARGETS yappi-plugin-http
+    LIBRARY DESTINATION lib/${PROJECT_NAME}
+    COMPONENT runtime)

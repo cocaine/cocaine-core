@@ -1,28 +1,35 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
-PROJECT(YAPPI)
+PROJECT(yappi)
 
-FIND_FILE(LIBEV_HEADER "ev++.h" PATH_SUFFIXES "ev" "libev")
-GET_FILENAME_COMPONENT(LIBEV_HEADER_PATH ${LIBEV_HEADER} PATH)
+# libev
+FIND_PATH(LIBEV_HEADER_PATH "ev++.h" PATH_SUFFIXES "libev")
 
-IF(NOT LIBEV_HEADER)
-    MESSAGE(SEND_ERROR "libev development headers are required.")
+IF(NOT LIBEV_HEADER_PATH)
+    MESSAGE(FATAL_ERROR "libev development headers are required.")
 ENDIF()
 
-FIND_FILE(LIBZMQ_HEADER "zmq.hpp" PATH_SUFFIXES "zmq" "libzmq")
-GET_FILENAME_COMPONENT(LIBZMQ_HEADER_PATH ${LIBZMQ_HEADER} PATH)
+# libzmq
+FIND_FILE(LIBZMQ_HEADER "zmq.hpp")
 
 IF(NOT LIBZMQ_HEADER)
-    MESSAGE(SEND_ERROR "libzmq development headers are required.")
+    MESSAGE(FATAL_ERROR "libzmq development headers are required.")
 ENDIF()
 
-FIND_FILE(LIBMSGPACK_HEADER "msgpack.hpp" PATH_SUFFIXES "msgpack" "libmsgpack")
-GET_FILENAME_COMPONENT(LIBMSGPACK_HEADER_PATH ${LIBMSGPACK_HEADER} PATH)
+# libmsgpack
+FIND_FILE(LIBMSGPACK_HEADER "msgpack.hpp")
 
 IF(NOT LIBMSGPACK_HEADER)
-    MESSAGE(SEND_ERROR "libmsgpack development headers are required.")
+    MESSAGE(FATAL_ERROR "libmsgpack development headers are required.")
 ENDIF()
 
-INCLUDE_DIRECTORIES(${LIBEV_HEADER_PATH} ${LIBZMQ_HEADER_PATH} ${LIBMSGPACK_HEADER_PATH})
+# liburiparser
+FIND_FILE(LIBURIPARSER_HEADER "Uri.h" PATH_SUFFIXES "uriparser")
+
+IF(NOT LIBURIPARSER_HEADER)
+    MESSAGE(FATAL_ERROR "liburiparser development headers are required.")
+ENDIF()
+
+INCLUDE_DIRECTORIES(${LIBEV_HEADER_PATH})
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/foreign/jsoncpp-0.5.0/include)
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/include)
 
@@ -53,9 +60,15 @@ TARGET_LINK_LIBRARIES(yappi-core
     msgpack
     uriparser)
 
+SET(YAPPI_HEADERS
+    include/plugin.hpp
+    include/uri.hpp
+    include/digest.hpp)
+
 SET_TARGET_PROPERTIES(yappi-core PROPERTIES
     VERSION 1
-    COMPILE_DEFINITIONS "BOOST_FILESYSTEM_VERSION=2")
+    COMPILE_DEFINITIONS "BOOST_FILESYSTEM_VERSION=2"
+    PUBLIC_HEADER "${YAPPI_HEADERS}")
 
 ADD_DEPENDENCIES(yappi-core json)
 
@@ -68,3 +81,9 @@ TARGET_LINK_LIBRARIES(yappi
 ADD_DEPENDENCIES(yappi yappi-core)
 
 ADD_SUBDIRECTORY(plugins)
+ADD_SUBDIRECTORY(clients)
+
+INSTALL(TARGETS yappi yappi-core
+    RUNTIME DESTINATION bin COMPONENT runtime
+    LIBRARY DESTINATION lib COMPONENT runtime NAMELINK_SKIP
+    PUBLIC_HEADER DESTINATION include/${PROJECT_NAME} COMPONENT development)
