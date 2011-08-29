@@ -1,6 +1,6 @@
-FIND_PATH(CURL_HEADER_PATH "curl.h" PATH_SUFFIXES "curl" "libcurl")
+FIND_PATH(LIBCURL_HEADER_PATH "curl.h" PATH_SUFFIXES "curl" "libcurl")
 
-IF(NOT CURL_HEADER_PATH)
+IF(NOT LIBCURL_HEADER_PATH)
     MESSAGE(FATAL_ERROR "CURL development headers are required.")
 ENDIF()
 
