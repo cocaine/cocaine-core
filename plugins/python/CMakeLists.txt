@@ -21,7 +21,9 @@ ADD_LIBRARY(yappi-plugin-python MODULE
     python)
 
 TARGET_LINK_LIBRARIES(yappi-plugin-python
-    curl)
+    crypto
+    curl
+    uriparser)
 
 SET_TARGET_PROPERTIES(yappi-plugin-python PROPERTIES
     COMPILE_FLAGS "${PYTHON_CFLAGS}"

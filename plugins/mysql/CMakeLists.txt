@@ -5,7 +5,8 @@ FIND_LIBRARY(LIBMYSQL "mysqlclient" PATH_SUFFIXES "mysqlclient" "libmysqlclient"
 GET_FILENAME_COMPONENT(LIBMYSQL_PATH ${LIBMYSQL} PATH)
 
 IF(NOT MYSQL_HEADER OR NOT LIBMYSQL)
-    MESSAGE(SEND_ERROR "MySQL development files are required.")
+    MESSAGE("MySQL development files are required to build mysql plugin.")
+    RETURN()
 ENDIF()
 
 INCLUDE_DIRECTORIES(${MYSQL_HEADER_PATH})
@@ -17,4 +18,6 @@ SET_TARGET_PROPERTIES(yappi-plugin-mysql PROPERTIES
     LINK_FLAGS "-L${LIBMYSQL_PATH}")
 
 TARGET_LINK_LIBRARIES(yappi-plugin-mysql
-    mysqlclient)
+    crypto
+    mysqlclient
+    uriparser)
