@@ -4,7 +4,7 @@ EXECUTE_PROCESS(
     OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 IF(NOT PYTHON_LIBRARY_PATH)
-    MESSAGE("No python distribution found on your system")
+    MESSAGE(FATAL_ERROR "No python distribution found on your system")
 ELSE()
     INSTALL(DIRECTORY yappi
         DESTINATION ${PYTHON_LIBRARY_PATH}

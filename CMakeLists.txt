@@ -53,6 +53,7 @@ TARGET_LINK_LIBRARIES(yappi-core
     json
     crypto
     dl
+    uuid
     boost_thread
     boost_filesystem
     ev
