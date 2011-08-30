@@ -8,7 +8,10 @@
 
 namespace yappi { namespace net {
 
-class blob_socket_t: public boost::noncopyable {
+class blob_socket_t: 
+    public boost::noncopyable,
+    public helpers::birth_control_t<blob_socket_t>
+{
     public:
         blob_socket_t(zmq::context_t& context, int type):
             m_socket(context, type)

@@ -6,6 +6,7 @@
 #include "common.hpp"
 #include "persistance.hpp"
 #include "plugin.hpp"
+#include "sockets.hpp"
 
 namespace yappi { namespace engine { namespace detail {
 

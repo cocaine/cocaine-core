@@ -6,6 +6,7 @@
 #include "security.hpp"
 #include "persistance.hpp"
 #include "engine.hpp"
+#include "sockets.hpp"
 
 namespace yappi { namespace core {
 

@@ -25,7 +25,6 @@
 
 #include "auto_uuid.hpp"
 #include "digest.hpp"
-#include "sockets.hpp"
 #include "birth_control.hpp"
 
 #endif
