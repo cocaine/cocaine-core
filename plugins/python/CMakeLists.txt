@@ -9,14 +9,7 @@ EXECUTE_PROCESS(
     OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 IF(NOT PYTHON_CFLAGS OR NOT PYTHON_LDFLAGS)
-    MESSAGE(WARNING "Python development files are required to build this plugin.")
-    RETURN()
-ENDIF()
-
-FIND_PACKAGE(CURL)
-
-IF(NOT CURL_FOUND)
-    MESSAGE(WARNING "CURL development files are required to build this plugin.")
+    MESSAGE(FATAL_ERROR "Python development files are required to build.")
     RETURN()
 ENDIF()
 
