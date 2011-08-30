@@ -1,35 +1,50 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
-PROJECT(yappi)
+PROJECT(Yappi)
+
+FIND_PACKAGE(PkgConfig)
+
+FIND_PACKAGE(Boost 1.34.1 REQUIRED COMPONENTS 
+    thread 
+    filesystem 
+    program_options)
+
+PKG_CHECK_MODULES(LIBCRYPTO REQUIRED libcrypto)
+PKG_CHECK_MODULES(LIBUUID REQUIRED uuid)
+PKG_CHECK_MODULES(LIBZMQ REQUIRED libzmq>=2.1.7)
+PKG_CHECK_MODULES(LIBCURL REQUIRED libcurl)
 
 # libev
-FIND_PATH(LIBEV_HEADER_PATH "ev++.h" PATH_SUFFIXES "libev")
+FIND_PATH(LIBEV_INCLUDE_DIRS NAMES "ev++.h" PATH_SUFFIXES "ev" "libev")
 
-IF(NOT LIBEV_HEADER_PATH)
+IF(NOT LIBEV_INCLUDE_DIRS)
     MESSAGE(FATAL_ERROR "libev development headers are required.")
 ENDIF()
 
-# libzmq
-FIND_PATH(LIBZMQ_HEADER_PATH "zmq.hpp")
-
-IF(NOT LIBZMQ_HEADER_PATH)
-    MESSAGE(FATAL_ERROR "libzmq development headers are required.")
-ENDIF()
-
 # libmsgpack
-FIND_PATH(LIBMSGPACK_HEADER_PATH "msgpack.hpp")
+FIND_PATH(LIBMSGPACK_INCLUDE_DIRS NAMES "msgpack.hpp" PATH_SUFFIXES "msgpack" "libmsgpack")
 
-IF(NOT LIBMSGPACK_HEADER_PATH)
+IF(NOT LIBMSGPACK_INCLUDE_DIRS)
     MESSAGE(FATAL_ERROR "libmsgpack development headers are required.")
 ENDIF()
 
 # liburiparser
-FIND_PATH(LIBURIPARSER_HEADER_PATH "Uri.h" PATH_SUFFIXES "uriparser")
+FIND_PATH(LIBURIPARSER_INCLUDE_DIRS NAMES "uriparser/Uri.h")
 
-IF(NOT LIBURIPARSER_HEADER_PATH)
+IF(NOT LIBURIPARSER_INCLUDE_DIRS)
     MESSAGE(FATAL_ERROR "liburiparser development headers are required.")
 ENDIF()
 
-INCLUDE_DIRECTORIES(${LIBEV_HEADER_PATH})
+INCLUDE_DIRECTORIES(
+    ${LIBCRYPTO_INCLUDE_DIRS}
+    ${LIBUUID_INCLUDE_DIRS}
+    ${Boost_INCLUDE_DIRS}
+    ${LIBZMQ_INCLUDE_DIRS}
+    ${LIBEV_INCLUDE_DIRS}
+    ${LIBMSGPACK_INCLUDE_DIRS}
+    ${LIBURIPARSER_INCLUDE_DIRS})
+
+LINK_DIRECTORIES(${Boost_LIBRARY_DIRS})
+
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/foreign/jsoncpp-0.5.0/include)
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/include)
 
@@ -54,10 +69,10 @@ TARGET_LINK_LIBRARIES(yappi-core
     crypto
     dl
     uuid
-    boost_thread
-    boost_filesystem
-    ev
+    boost_thread-mt
+    boost_filesystem-mt
     zmq
+    ev
     msgpack
     uriparser)
 
@@ -77,7 +92,7 @@ ADD_EXECUTABLE(yappi src/main)
 
 TARGET_LINK_LIBRARIES(yappi
     yappi-core
-    boost_program_options)
+    boost_program_options-mt)
 
 ADD_DEPENDENCIES(yappi yappi-core)
 
@@ -88,4 +103,4 @@ ADD_SUBDIRECTORY(toolset)
 INSTALL(TARGETS yappi yappi-core
     RUNTIME DESTINATION bin COMPONENT runtime
     LIBRARY DESTINATION lib COMPONENT runtime NAMELINK_SKIP
-    PUBLIC_HEADER DESTINATION include/${PROJECT_NAME} COMPONENT development)
+    PUBLIC_HEADER DESTINATION include/yappi COMPONENT development)

@@ -7,5 +7,5 @@ TARGET_LINK_LIBRARIES(yappi-plugin-inject
     uriparser)
 
 INSTALL(TARGETS yappi-plugin-inject
-    LIBRARY DESTINATION lib/${PROJECT_NAME}
+    LIBRARY DESTINATION lib/yappi
     COMPONENT runtime)

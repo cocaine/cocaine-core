@@ -4,7 +4,7 @@ ADD_LIBRARY(yappi-client-cxx SHARED
 TARGET_LINK_LIBRARIES(yappi-client-cxx
     json
     uuid
-    boost_thread
+    boost_thread-mt
     zmq)
 
 SET(YAPPI_CLIENT_CXX_HEADERS

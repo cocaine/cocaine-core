@@ -1,19 +1,15 @@
-EXECUTE_PROCESS(COMMAND python-config --includes
+EXECUTE_PROCESS(
+    COMMAND python-config --includes
     OUTPUT_VARIABLE PYTHON_CFLAGS
     OUTPUT_STRIP_TRAILING_WHITESPACE)
 
-EXECUTE_PROCESS(COMMAND python-config --libs
+EXECUTE_PROCESS(
+    COMMAND python-config --libs
     OUTPUT_VARIABLE PYTHON_LDFLAGS
     OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 IF(NOT PYTHON_CFLAGS OR NOT PYTHON_LDFLAGS)
-    MESSAGE(FATAL_ERROR, "Python development headers are required.")
-ENDIF()
-
-FIND_PATH(LIBCURL_HEADER_PATH "curl.h" PATH_SUFFIXES "curl")
-
-IF(NOT LIBCURL_HEADER_PATH)
-    MESSAGE(FATAL_ERROR "CURL development headers are required.")
+    MESSAGE(FATAL_ERROR "Python development headers are required.")
 ENDIF()
 
 ADD_LIBRARY(yappi-plugin-python MODULE
@@ -29,5 +25,5 @@ SET_TARGET_PROPERTIES(yappi-plugin-python PROPERTIES
     LINK_FLAGS "${PYTHON_LDFLAGS}")
 
 INSTALL(TARGETS yappi-plugin-python
-    LIBRARY DESTINATION lib/${PROJECT_NAME}
+    LIBRARY DESTINATION lib/yappi
     COMPONENT runtime)
