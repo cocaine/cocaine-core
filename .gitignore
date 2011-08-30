@@ -2,5 +2,7 @@
 *.os
 *.a
 *.pyc
-.sconsign.dblite
-build
+CMakeCache.txt
+CMakeFiles
+*.cmake
+Makefile
