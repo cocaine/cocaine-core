@@ -9,7 +9,15 @@ EXECUTE_PROCESS(
     OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 IF(NOT PYTHON_CFLAGS OR NOT PYTHON_LDFLAGS)
-    MESSAGE(FATAL_ERROR "Python development headers are required.")
+    MESSAGE(WARNING "Python development files are required to build this plugin.")
+    RETURN()
+ENDIF()
+
+FIND_PACKAGE(CURL)
+
+IF(NOT CURL_FOUND)
+    MESSAGE(WARNING "CURL development files are required to build this plugin.")
+    RETURN()
 ENDIF()
 
 ADD_LIBRARY(yappi-plugin-python MODULE

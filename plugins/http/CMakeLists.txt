@@ -1,3 +1,10 @@
+FIND_PACKAGE(CURL)
+
+IF(NOT CURL_FOUND)
+    MESSAGE(WARNING "libcurl development files are required to build this plugin.")
+    RETURN()
+ENDIF()
+
 ADD_LIBRARY(yappi-plugin-http MODULE
     http)
 
