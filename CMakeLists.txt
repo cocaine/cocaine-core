@@ -61,7 +61,7 @@ ADD_LIBRARY(yappi-core SHARED
 TARGET_LINK_LIBRARIES(yappi-core
     json
     crypto
-    dl
+    ${CMAKE_DL_LIBS}
     ${LIBUUID}
     ${BOOST_SYSTEM}
     boost_thread-mt
