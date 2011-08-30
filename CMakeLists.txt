@@ -6,6 +6,10 @@ FIND_PACKAGE(Boost 1.34.1 REQUIRED COMPONENTS
     filesystem 
     program_options)
 
+IF(Boost_MINOR_VERSION GREATER 34)
+    SET(BOOST_SYSTEM "boost_system-mt")
+ENDIF()
+
 FIND_PACKAGE(OpenSSL REQUIRED)
 FIND_PACKAGE(CURL REQUIRED)
 
@@ -59,7 +63,7 @@ TARGET_LINK_LIBRARIES(yappi-core
     crypto
     dl
     ${LIBUUID}
-    boost_system-mt
+    ${BOOST_SYSTEM}
     boost_thread-mt
     boost_filesystem-mt
     zmq
