@@ -13,7 +13,7 @@ class registry_t: public boost::noncopyable {
         registry_t(const std::string& plugin_path);
         ~registry_t();
 
-        plugin::source_t* instantiate(const std::string& uri);
+        boost::shared_ptr<plugin::source_t> instantiate(const std::string& uri);
 
     private:
         boost::filesystem::path m_plugin_path;

@@ -38,7 +38,7 @@ void eblob_purger_t::complete(uint64_t, uint64_t) {
     }
 }
 
-eblob_storage_t::eblob_storage_t(helpers::auto_uuid_t uuid):
+eblob_storage_t::eblob_storage_t(auto_uuid_t uuid):
     m_storage_path("/var/lib/yappi/" + uuid.get() + ".tasks"), /* [CONFIG] */
     m_logger("/var/log/yappi-storage.log", EBLOB_LOG_NOTICE) /* [CONFIG] */
 {

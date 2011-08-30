@@ -5,6 +5,12 @@
 
 namespace yappi { namespace helpers {
 
+struct overflow_t: public std::exception {
+    overflow_t():
+        std::exception()
+    {}
+};
+
 class single_t {
     public:
         inline static bool overflow(unsigned int population) {
@@ -48,7 +54,7 @@ class birth_control_t  {
 
             if(Limit::overflow(objects_alive)) {
                 --objects_alive;
-                throw std::runtime_error("object population limit reached");
+                throw overflow_t();
             }
         }
 

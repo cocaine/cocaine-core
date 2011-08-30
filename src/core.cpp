@@ -11,6 +11,7 @@
 
 using namespace yappi::core;
 using namespace yappi::engine;
+using namespace yappi::persistance;
 using namespace yappi::plugin;
 
 core_t::core_t(helpers::auto_uuid_t uuid,
@@ -83,10 +84,9 @@ core_t::core_t(helpers::auto_uuid_t uuid,
 
     if(purge) {
         m_storage.purge();
+    } else {
+        recover();
     }
-
-    // Recover persistent tasks
-    recover();
 }
 
 core_t::~core_t() {
@@ -179,7 +179,8 @@ void core_t::request(ev::io& io, int revents) {
                     future->set("token", token);
 
                     if(version > 2) {
-                        m_signer.verify(request, static_cast<const unsigned char*>(signature.data()),
+                        m_signer.verify(request,
+                            static_cast<const unsigned char*>(signature.data()),
                             signature.size(), token);
                     }
                 } else {
@@ -198,17 +199,6 @@ void core_t::request(ev::io& io, int revents) {
         }
     }
 }
-
-// Built-in commands:
-// --------------
-// * Push - launches a thread which fetches data from the
-//   specified source and publishes it via the PUB socket.
-//
-// * Drop - shuts down the specified collector.
-//   Remaining messages will stay orphaned in the queue,
-//   so it's a good idea to drain it after the unsubscription:
-//
-// * Stats - fetches the current running stats
 
 void core_t::dispatch(future_t* future, const Json::Value& root) {
     std::string action = root.get("action", "push").asString();
@@ -251,6 +241,17 @@ void core_t::dispatch(future_t* future, const Json::Value& root) {
         throw std::runtime_error("unsupported action");
     }
 }
+
+// Built-in commands:
+// --------------
+// * Push - launches a thread which fetches data from the
+//   specified source and publishes it via the PUB socket.
+//
+// * Drop - shuts down the specified collector.
+//   Remaining messages will stay orphaned in the queue,
+//   so it's a good idea to drain it after the unsubscription:
+//
+// * Stats - fetches the current running stats
 
 void core_t::push(future_t* future, const std::string& target, const Json::Value& args) {
     Json::Value response;
@@ -328,12 +329,13 @@ void core_t::seal(const std::string& future_id) {
         return;
     }
         
-    zmq::message_t message;
     future_t* future = it->second;
     std::vector<std::string> route = future->route();
 
     // Send it if it's not an internal future
     if(!route.empty()) {
+        zmq::message_t message;
+        
         syslog(LOG_DEBUG, "core: sending response to '%s' - future %s", 
             future->get("token").c_str(), future->id().c_str());
 
@@ -374,7 +376,6 @@ void core_t::event(ev::io& io, int revents) {
     
         // Receive the data
         s_events.recv(&message);
-        
         msgpack::unpacked unpacked;
         msgpack::unpack(&unpacked,
             static_cast<const char*>(message.data()),

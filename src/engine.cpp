@@ -43,13 +43,18 @@ void engine_t::push(future_t* future, const Json::Value& args) {
     thread_map_t::iterator it = m_threads.find(thread_id);
 
     if(it == m_threads.end()) {
-        std::auto_ptr<source_t> source;
+        boost::shared_ptr<source_t> source;
         std::auto_ptr<thread_t> thread;
 
         try {
-            source.reset(m_registry.instantiate(m_target));
+            source = m_registry.instantiate(m_target);
             thread.reset(new thread_t(m_context, source, m_storage, auto_uuid_t(thread_id)));
             boost::tie(it, boost::tuples::ignore) = m_threads.insert(thread_id, thread);
+        } catch(const overflow_t& e) {
+            // Too many threads are active at the moment, so queue the operation
+            syslog(LOG_INFO, "engine %s: thread population overflow, queueing", m_target.c_str());
+            m_pending.push(std::make_pair(future, args));
+            return;
         } catch(const std::exception& e) {
             syslog(LOG_ERR, "engine %s: exception - %s", m_target.c_str(), e.what());
             response["error"] = e.what();
@@ -99,9 +104,20 @@ void engine_t::reap(const std::string& thread_id) {
     }
 
     m_threads.erase(it);
+
+    // If we got something in the queue, try to invoke it
+    if(!m_pending.empty()) {
+        future_t* future;
+        Json::Value args;
+
+        boost::tie(future, args) = m_pending.front();
+        push(future, args);
+
+        m_pending.pop();
+    }
 }
 
-thread_t::thread_t(zmq::context_t& context, std::auto_ptr<source_t> source, storage_t& storage, auto_uuid_t id):
+thread_t::thread_t(zmq::context_t& context, boost::shared_ptr<source_t> source, storage_t& storage, auto_uuid_t id):
     m_context(context),
     m_pipe(m_context, ZMQ_PUSH),
     m_source(source),
@@ -132,19 +148,11 @@ thread_t::~thread_t() {
 }
 
 void thread_t::bootstrap() {
-    std::auto_ptr<overseer_t> overseer;
-
-    try {
-        overseer.reset(new overseer_t(m_context, *m_source, m_storage, m_id));
-    } catch(...) {
-        syslog(LOG_ERR, "that's over the top, buddy");
-        abort();
-    }
-    
-    overseer->run();
+    overseer_t overseer(m_context, m_source, m_storage, m_id);
+    overseer.run();
 }
 
-overseer_t::overseer_t(zmq::context_t& context, source_t& source, storage_t& storage, auto_uuid_t id):
+overseer_t::overseer_t(zmq::context_t& context, boost::shared_ptr<source_t> source, storage_t& storage, auto_uuid_t id):
     m_context(context),
     m_pipe(m_context, ZMQ_PULL),
     m_futures(m_context, ZMQ_PUSH),
@@ -243,10 +251,10 @@ void overseer_t::cleanup(ev::prepare& w, int revents) {
 dict_t overseer_t::fetch() {
     if(!m_cached) {
         try {
-            m_cache = m_source.fetch();
+            m_cache = m_source->fetch();
             m_cached = true;
         } catch(const std::exception& e) {
-            syslog(LOG_ERR, "engine %s: exception - %s", m_source.uri().c_str(), e.what());
+            syslog(LOG_ERR, "engine %s: exception - %s", m_source->uri().c_str(), e.what());
             suicide();
         }
     }
@@ -268,10 +276,10 @@ void overseer_t::push(const Json::Value& message) {
     std::auto_ptr<SchedulerType> scheduler;
 
     try {
-        scheduler.reset(new SchedulerType(m_source, message["args"]));
+        scheduler.reset(new SchedulerType(m_source, this, message["args"]));
         scheduler_id = scheduler->id();
     } catch(const std::exception& e) {
-        syslog(LOG_ERR, "engine %s: exception - %s", m_source.uri().c_str(), e.what());
+        syslog(LOG_ERR, "engine %s: exception - %s", m_source->uri().c_str(), e.what());
         result["error"] = e.what();
         respond(message["future"], result);
         return;
@@ -279,11 +287,11 @@ void overseer_t::push(const Json::Value& message) {
     
     // Scheduling
     if(m_slaves.find(scheduler_id) == m_slaves.end()) {
-        scheduler->start(m_context, this);
+        scheduler->start(m_context);
         m_slaves.insert(scheduler_id, scheduler);
 
         if(m_suicide.is_active()) {
-            syslog(LOG_DEBUG, "engine %s: suicide timer stopped", m_source.uri().c_str());
+            syslog(LOG_DEBUG, "engine %s: suicide timer stopped", m_source->uri().c_str());
             m_suicide.stop();
         }
     }
@@ -295,7 +303,7 @@ void overseer_t::push(const Json::Value& message) {
     std::equal_to<subscription_map_t::value_type> equality;
 
     if(std::find_if(begin, end, boost::bind(equality, subscription, _1)) == end) {
-        syslog(LOG_DEBUG, "engine %s: subscribing %s", m_source.uri().c_str(),
+        syslog(LOG_DEBUG, "engine %s: subscribing %s", m_source->uri().c_str(),
             token.c_str());
         m_subscriptions.insert(subscription);
     }
@@ -307,7 +315,7 @@ void overseer_t::push(const Json::Value& message) {
         if(!m_storage.exists(object_id)) {
             Json::Value object;
             
-            object["url"] = m_source.uri();
+            object["url"] = m_source->uri();
             object["args"] = message["args"];
             object["token"] = message["future"]["token"];
             
@@ -343,10 +351,10 @@ void overseer_t::drop(const Json::Value& message) {
     std::auto_ptr<SchedulerType> scheduler;
 
     try {
-        scheduler.reset(new SchedulerType(m_source, message["args"]));
+        scheduler.reset(new SchedulerType(m_source, this, message["args"]));
         scheduler_id = scheduler->id();
     } catch(const std::exception& e) {
-        syslog(LOG_ERR, "engine %s: exception - %s", m_source.uri().c_str(), e.what());
+        syslog(LOG_ERR, "engine %s: exception - %s", m_source->uri().c_str(), e.what());
         result["error"] = e.what();
         respond(message["future"], result);
         return;
@@ -364,10 +372,14 @@ void overseer_t::drop(const Json::Value& message) {
         if((client = std::find_if(begin, end, boost::bind(equality, subscription, _1))) != end) {
             m_slaves.erase(slave);
             m_subscriptions.erase(client);
-            
+           
             if(m_slaves.empty()) {
-                syslog(LOG_DEBUG, "engine %s: suicide timer started", m_source.uri().c_str());
-                m_suicide.start(600.); // [CONFIG]
+                if(message["args"].get("isolated", false).asBool()) {
+                    suicide();
+                } else {
+                    syslog(LOG_DEBUG, "engine %s: suicide timer started", m_source->uri().c_str());
+                    m_suicide.start(600.); // [CONFIG]
+                }
             }
 
             // Un-persist
@@ -405,7 +417,7 @@ void overseer_t::once(const Json::Value& message) {
 
     // Rearm the stall timer if it's active
     if(m_suicide.is_active()) {
-        syslog(LOG_DEBUG, "engine %s: suicide timer rearmed", m_source.uri().c_str());
+        syslog(LOG_DEBUG, "engine %s: suicide timer rearmed", m_source->uri().c_str());
         m_suicide.stop();
         m_suicide.start(600.); // [CONFIG]
     }
@@ -416,38 +428,36 @@ void overseer_t::reap(const std::string& scheduler_id) {
 
     if(it == m_slaves.end()) {
         syslog(LOG_ERR, "engine %s: found an orphan - scheduler %s", 
-            m_source.uri().c_str(), scheduler_id.c_str());
+            m_source->uri().c_str(), scheduler_id.c_str());
         return;
     }
 
     m_slaves.erase(it);
 
     if(m_slaves.empty()) {
-        syslog(LOG_DEBUG, "engine %s: suicide timer started", m_source.uri().c_str());
+        syslog(LOG_DEBUG, "engine %s: suicide timer started", m_source->uri().c_str());
         m_suicide.start(600.); // [CONFIG]
     }
 }
 
 void overseer_t::terminate() {
-    // Kill everything
-    m_suicide.stop();
-    m_io.stop();
     m_slaves.clear();
-    m_cleanup.stop();
+    m_loop.unloop();
 } 
 
 void overseer_t::suicide() {
     Json::Value message;
 
-    message["engine"] = m_source.uri();
+    message["engine"] = m_source->uri();
     message["thread"] = m_id.get();
 
     // This is a suicide ;(
     m_reaper.send_json(message);    
 }
 
-scheduler_base_t::scheduler_base_t(source_t& source):
+scheduler_base_t::scheduler_base_t(boost::shared_ptr<source_t> source, overseer_t *const overseer):
     m_source(source),
+    m_overseer(overseer),
     m_stopping(false)
 {}
 
@@ -457,9 +467,7 @@ scheduler_base_t::~scheduler_base_t() {
     }
 }
 
-void scheduler_base_t::start(zmq::context_t& context, overseer_t* overseer) {
-    m_overseer = overseer;
-    
+void scheduler_base_t::start(zmq::context_t& context) {
     m_uplink.reset(new net::blob_socket_t(context, ZMQ_PUSH));
     m_uplink->connect("inproc://events");
     

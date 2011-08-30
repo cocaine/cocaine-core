@@ -85,7 +85,7 @@ registry_t::~registry_t() {
     }
 }
 
-source_t* registry_t::instantiate(const std::string& uri_) {
+boost::shared_ptr<source_t> registry_t::instantiate(const std::string& uri_) {
     helpers::uri_t uri(uri_); 
     factory_map_t::iterator it = m_factories.find(uri.scheme());
 
@@ -94,5 +94,5 @@ source_t* registry_t::instantiate(const std::string& uri_) {
     }
 
     factory_fn_t factory = it->second;
-    return factory(uri.source().c_str());
+    return boost::shared_ptr<source_t>(factory(uri.source().c_str()));
 }

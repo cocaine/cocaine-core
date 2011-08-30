@@ -14,9 +14,8 @@ class thread_t:
     public helpers::birth_control_t< thread_t, helpers::limited_t<100> >
 {
     public:
-        thread_t(zmq::context_t& context, std::auto_ptr<plugin::source_t> source,
-            persistance::storage_t& storage,
-            helpers::auto_uuid_t id = helpers::auto_uuid_t());
+        thread_t(zmq::context_t& context, boost::shared_ptr<plugin::source_t> source,
+            persistance::storage_t& storage, helpers::auto_uuid_t id = helpers::auto_uuid_t());
         ~thread_t();
 
         inline std::string id() const { return m_id.get(); }
@@ -28,12 +27,20 @@ class thread_t:
     private:
         void bootstrap();
         
+        // Thread interoperability
         zmq::context_t& m_context;
         net::json_socket_t m_pipe;
-        std::auto_ptr<plugin::source_t> m_source;
+        
+        // Data source
+        boost::shared_ptr<plugin::source_t> m_source;
+        
+        // Task persistance
         persistance::storage_t& m_storage;
+
+        // Thread ID
         helpers::auto_uuid_t m_id;
         
+        // Thread container
         std::auto_ptr<boost::thread> m_thread;
 };
 
@@ -42,7 +49,7 @@ class scheduler_base_t;
 // Thread manager
 class overseer_t: public boost::noncopyable {
     public:
-        overseer_t(zmq::context_t& context, plugin::source_t& source,
+        overseer_t(zmq::context_t& context, boost::shared_ptr<plugin::source_t> source,
             persistance::storage_t& storage, helpers::auto_uuid_t id);
         
         void run();
@@ -52,8 +59,10 @@ class overseer_t: public boost::noncopyable {
         void timeout(ev::timer& w, int revents);
         void cleanup(ev::prepare& w, int revents);
 
-        // Scheduler bindings
+        // Event loop binding for schedulers
         inline ev::dynamic_loop& binding() { return m_loop; }
+        
+        // Caching data fetcher
         plugin::dict_t fetch();
         
         // Scheduler termination request
@@ -79,7 +88,7 @@ class overseer_t: public boost::noncopyable {
             Json::Value response;
             
             response["future"] = future["id"];
-            response["engine"] = m_source.uri();
+            response["engine"] = m_source->uri();
             response["result"] = value;
 
             m_futures.send_json(response);
@@ -91,7 +100,7 @@ class overseer_t: public boost::noncopyable {
         net::json_socket_t m_pipe, m_futures, m_reaper;
         
         // Data source
-        plugin::source_t& m_source;
+        boost::shared_ptr<plugin::source_t> m_source;
         
         // Task persistance
         persistance::storage_t& m_storage;
@@ -117,8 +126,8 @@ class overseer_t: public boost::noncopyable {
         helpers::digest_t m_digest;
 
         // Iteration cache
-        plugin::dict_t m_cache;
         bool m_cached;
+        plugin::dict_t m_cache;
 };
 
 }}}

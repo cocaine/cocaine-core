@@ -13,7 +13,7 @@ class future_t:
     public helpers::birth_control_t<future_t>
 {
     public:
-        future_t(core_t* core, const std::vector<std::string>& route):
+        future_t(core_t *const core, const std::vector<std::string>& route):
             m_core(core),
             m_route(route),
             m_fulfilled(0),
@@ -83,7 +83,7 @@ class future_t:
         helpers::auto_uuid_t m_id;
 
         // Parent
-        core_t* m_core;
+        core_t *const m_core;
 
         // Client identity
         std::vector<std::string> m_route;

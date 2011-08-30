@@ -60,7 +60,7 @@ class core_t: public boost::noncopyable {
 
         // Security
         security::signing_t m_signer;
-
+        
         // Task persistance
         persistance::storage_t m_storage;
 
