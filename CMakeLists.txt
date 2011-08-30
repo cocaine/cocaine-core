@@ -2,7 +2,6 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 PROJECT(Yappi)
 
 FIND_PACKAGE(Boost 1.34.1 REQUIRED COMPONENTS
-    system
     thread 
     filesystem 
     program_options)
