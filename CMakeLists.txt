@@ -16,7 +16,7 @@ FIND_PACKAGE(CURL REQUIRED)
 INCLUDE(LocateLibrary.cmake)
 
 LOCATE_LIBRARY(LIBZMQ "zmq.hpp" "zmq")
-LOCATE_LIBRARY(LIBEV "ev++.h" "ev")
+LOCATE_LIBRARY(LIBEV "ev++.h" "ev" "libev")
 LOCATE_LIBRARY(LIBMSGPACK "msgpack.hpp" "msgpack")
 LOCATE_LIBRARY(LIBURIPARSER "uriparser/Uri.h" "uriparser")
 
