@@ -7,7 +7,7 @@ FIND_PACKAGE(Boost 1.34.1 REQUIRED COMPONENTS
     program_options)
 
 IF(Boost_MINOR_VERSION GREATER 34)
-    SET(BOOST_SYSTEM "boost_system-mt")
+    SET(BOOST_SYSTEM_LIBS "boost_system-mt")
 ENDIF()
 
 FIND_PACKAGE(OpenSSL REQUIRED)
@@ -25,21 +25,19 @@ INCLUDE_DIRECTORIES(
     ${OPENSSL_INCLUDE_DIR}
     ${LIBZMQ_INCLUDE_DIRS}
     ${LIBEV_INCLUDE_DIRS}
-    ${LIBMSGPACK_INCLUDE_DIRS}
-    ${LIBURIPARSER_INCLUDE_DIRS})
+    ${LIBMSGPACK_INCLUDE_DIRS})
 
 LINK_DIRECTORIES(
     ${Boost_LIBRARY_DIRS}
     ${LIBZMQ_LIBRARY_DIRS}
     ${LIBEV_LIBRARY_DIRS}
-    ${LIBMSGPACK_LIBRARY_DIRS}
-    ${LIBURIPARSER_LIBRARY_DIRS})
+    ${LIBMSGPACK_LIBRARY_DIRS})
 
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/foreign/jsoncpp-0.5.0/include)
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/include)
 
 IF(NOT APPLE)
-    SET(LIBUUID uuid)
+    SET(UUID_LIBS uuid)
 ENDIF()
 
 ADD_LIBRARY(json
@@ -50,38 +48,65 @@ ADD_LIBRARY(json
 SET_TARGET_PROPERTIES(json PROPERTIES
     COMPILE_FLAGS -fPIC)
 
+ADD_LIBRARY(yappi-core-security SHARED
+    src/security
+    src/digest)
+
+TARGET_LINK_LIBRARIES(yappi-core-security
+    crypto
+    ${UUID_LIBS}
+    ${BOOST_SYSTEM_LIBS}
+    boost_filesystem-mt)
+
+ADD_LIBRARY(yappi-core-storage SHARED
+    src/file_storage)
+
+TARGET_LINK_LIBRARIES(yappi-core-storage
+    json
+    ${UUID_LIBS}
+    ${BOOST_SYSTEM_LIBS}
+    boost_filesystem-mt)
+
 ADD_LIBRARY(yappi-core SHARED 
     src/core
     src/engine
     src/registry
-    src/sockets
-    src/file_storage
-    src/security)
+    src/sockets)
 
 TARGET_LINK_LIBRARIES(yappi-core
     json
-    crypto
+    yappi-core-security
+    yappi-core-storage
     ${CMAKE_DL_LIBS}
-    ${LIBUUID}
-    ${BOOST_SYSTEM}
+    ${UUID_LIBS}
     boost_thread-mt
-    boost_filesystem-mt
     zmq
     ev
-    msgpack
-    uriparser)
+    msgpack)
 
 SET(YAPPI_HEADERS
     include/plugin.hpp
     include/uri.hpp
     include/digest.hpp)
 
+SET_TARGET_PROPERTIES(yappi-core yappi-core-security yappi-core-storage PROPERTIES
+    COMPILE_DEFINITIONS "BOOST_FILESYSTEM_VERSION=2")
+
 SET_TARGET_PROPERTIES(yappi-core PROPERTIES
     VERSION 1
-    COMPILE_DEFINITIONS "BOOST_FILESYSTEM_VERSION=2"
-    PUBLIC_HEADER "${YAPPI_HEADERS}")
+    PUBLIC_HEADER "include/plugin.hpp;include/uri.hpp")
 
-ADD_DEPENDENCIES(yappi-core json)
+SET_TARGET_PROPERTIES(yappi-core-security PROPERTIES
+    VERSION 1
+    PUBLIC_HEADER "include/digest.hpp")
+
+SET_TARGET_PROPERTIES(yappi-core-storage PROPERTIES
+    VERSION 1)
+
+ADD_DEPENDENCIES(yappi-core
+    json
+    yappi-core-security
+    yappi-core-storage)
 
 ADD_EXECUTABLE(yappi src/main)
 
@@ -95,7 +120,7 @@ ADD_SUBDIRECTORY(plugins)
 ADD_SUBDIRECTORY(clients)
 ADD_SUBDIRECTORY(toolset)
 
-INSTALL(TARGETS yappi yappi-core
+INSTALL(TARGETS yappi yappi-core yappi-core-security yappi-core-storage
     RUNTIME DESTINATION bin COMPONENT runtime
     LIBRARY DESTINATION lib COMPONENT runtime NAMELINK_SKIP
     PUBLIC_HEADER DESTINATION include/yappi COMPONENT development)

@@ -17,13 +17,16 @@ ADD_LIBRARY(yappi-plugin-python MODULE
     python)
 
 TARGET_LINK_LIBRARIES(yappi-plugin-python
-    crypto
+    yappi-core-security
     curl
     uriparser)
 
 SET_TARGET_PROPERTIES(yappi-plugin-python PROPERTIES
     COMPILE_FLAGS "${PYTHON_CFLAGS}"
     LINK_FLAGS "${PYTHON_LDFLAGS}")
+
+ADD_DEPENDENCIES(yappi-plugin-python
+    yappi-core-security)
 
 INSTALL(TARGETS yappi-plugin-python
     LIBRARY DESTINATION lib/yappi

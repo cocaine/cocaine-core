@@ -3,16 +3,13 @@ ADD_LIBRARY(yappi-client-cxx SHARED
 
 TARGET_LINK_LIBRARIES(yappi-client-cxx
     json
-    ${LIBUUID}
+    ${UUID_LIBS}
     boost_thread-mt
     zmq)
 
-SET(YAPPI_CLIENT_CXX_HEADERS
-    client.hpp)
-
 SET_TARGET_PROPERTIES(yappi-client-cxx PROPERTIES
     VERSION 1
-    PUBLIC_HEADER "${YAPPI_CLIENT_CXX_HEADERS}")
+    PUBLIC_HEADER "client.hpp")
 
 INSTALL(TARGETS yappi-client-cxx
     LIBRARY DESTINATION lib COMPONENT runtime

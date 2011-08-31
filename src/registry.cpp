@@ -85,14 +85,14 @@ registry_t::~registry_t() {
     }
 }
 
-boost::shared_ptr<source_t> registry_t::instantiate(const std::string& uri_) {
-    helpers::uri_t uri(uri_); 
-    factory_map_t::iterator it = m_factories.find(uri.scheme());
+boost::shared_ptr<source_t> registry_t::instantiate(const std::string& uri) {
+    std::string scheme = uri.substr(0, uri.find_first_of(":"));
+    factory_map_t::iterator it = m_factories.find(scheme);
 
     if(it == m_factories.end()) {
-        throw std::runtime_error(uri.scheme() + " plugin not found");
+        throw std::runtime_error(scheme + " plugin not found");
     }
 
     factory_fn_t factory = it->second;
-    return boost::shared_ptr<source_t>(factory(uri.source().c_str()));
+    return boost::shared_ptr<source_t>(factory(uri.c_str()));
 }
