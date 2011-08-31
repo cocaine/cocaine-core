@@ -12,7 +12,9 @@ namespace yappi { namespace core {
 
 class future_t;
 
-class core_t: public boost::noncopyable {
+class core_t:
+    public boost::noncopyable
+{
     friend class future_t;
     
     public:

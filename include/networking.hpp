@@ -59,7 +59,9 @@ class blob_socket_t:
         zmq::socket_t m_socket;
 };
 
-class json_socket_t: public blob_socket_t {
+class json_socket_t:
+    public blob_socket_t
+{
     public:
         json_socket_t(zmq::context_t& context, int type):
             blob_socket_t(context, type)

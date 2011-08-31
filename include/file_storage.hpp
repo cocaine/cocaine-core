@@ -7,7 +7,9 @@
 
 namespace yappi { namespace persistance { namespace backends {
 
-class file_storage_t: public boost::noncopyable {
+class file_storage_t:
+    public boost::noncopyable
+{
     public:
         file_storage_t(helpers::auto_uuid_t uuid);
 

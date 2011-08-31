@@ -29,7 +29,7 @@ class source_t: public boost::noncopyable {
     public:
         source_t(const std::string& uri):
             m_uri(uri),
-            m_hash(helpers::digest_t().get(m_uri))
+            m_hash(security::digest_t().get(m_uri))
         {}
 
         inline std::string uri() const { return m_uri; }

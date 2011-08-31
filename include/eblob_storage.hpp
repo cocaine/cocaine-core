@@ -8,7 +8,9 @@
 
 namespace yappi { namespace persistance { namespace backends {
 
-class eblob_collector_t: public zbr::eblob_iterator_callback {
+class eblob_collector_t:
+    public zbr::eblob_iterator_callback
+{
     public:
         bool callback(const zbr::eblob_disk_control* dco, const void* data, int);
         void complete(uint64_t, uint64_t) {}
@@ -20,7 +22,9 @@ class eblob_collector_t: public zbr::eblob_iterator_callback {
         Json::Value m_root;
 };
 
-class eblob_purger_t: public zbr::eblob_iterator_callback {
+class eblob_purger_t:
+    public zbr::eblob_iterator_callback
+{
     public:
         eblob_purger_t(zbr::eblob& eblob):
             m_eblob(eblob)
@@ -36,10 +40,12 @@ class eblob_purger_t: public zbr::eblob_iterator_callback {
         key_list_t m_keys;
 };
 
-class eblob_storage_t: public boost::noncopyable {
+class eblob_storage_t:
+    public boost::noncopyable
+{
     public:
         eblob_storage_t(helpers::auto_uuid_t uuid);
-        virtual ~eblob_storage_t();
+        ~eblob_storage_t();
 
     public:
         bool put(const std::string& key, const Json::Value& value);

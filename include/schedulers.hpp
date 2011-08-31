@@ -12,7 +12,11 @@ namespace yappi { namespace engine { namespace detail {
 #define min(a, b) ((a) <= (b) ? (a) : (b))
 
 class overseer_t;
-class scheduler_t { };
+
+class scheduler_t {
+    public:
+        virtual ~scheduler_t() {};
+};
 
 template<class WatcherType, class SchedulerType>
 class scheduler_base_t:
@@ -20,45 +24,47 @@ class scheduler_base_t:
     public scheduler_t
 {
     public:
-        scheduler_base_t(boost::shared_ptr<plugin::source_t> source,
-            overseer_t *const overseer);
+        scheduler_base_t(boost::shared_ptr<plugin::source_t> source);
         virtual ~scheduler_base_t();
 
         inline std::string id() const { return m_id; }
 
-        void start(zmq::context_t& context);
+        void start(zmq::context_t& context, overseer_t* parent);
         void stop();
 
-        void operator()(WatcherType& w, int revents);
+        void operator()(WatcherType&, int);
 
     protected:
         // Data source
         boost::shared_ptr<plugin::source_t> m_source;
         
-        // Parent
-        overseer_t *const m_overseer;
-        
         // Scheduler ID
         std::string m_id;
 
+        // Parent
+        overseer_t* m_parent;
+        
         // Messaging
-        std::auto_ptr<net::blob_socket_t> m_uplink;
+        std::auto_ptr<net::blob_socket_t> m_pipe;
         
         // Watcher
         std::auto_ptr<WatcherType> m_watcher;
-        
-        // Termination flag
-        bool m_stopping;
 };
 
 class fs_scheduler_t:
     public scheduler_base_t<ev::stat, fs_scheduler_t>
 {
     public:
-        fs_scheduler_t(boost::shared_ptr<plugin::source_t> source, overseer_t *const overseer, const Json::Value& args):
-            scheduler_base_t<ev::stat, fs_scheduler_t>(source, overseer),
+        fs_scheduler_t(boost::shared_ptr<plugin::source_t> source, const Json::Value& args):
+            scheduler_base_t<ev::stat, fs_scheduler_t>(source),
             m_path(args.get("path", "").asString())
-        {}
+        {
+            if(m_path.empty()) {
+                throw std::runtime_error("invalid path");
+            }
+
+            m_id = (boost::format("fs:%1%@%2%") % source->hash() % m_path).str();
+        }
 
         void initialize();
 
@@ -66,31 +72,33 @@ class fs_scheduler_t:
         const std::string m_path;
 };
 
+template<class TimedSchedulerType>
 class timed_scheduler_base_t:
-    public scheduler_base_t<ev::periodic, timed_scheduler_base_t>
+    public scheduler_base_t<ev::periodic, timed_scheduler_base_t<TimedSchedulerType> >
 {
     public:
-        timed_scheduler_base_t(boost::shared_ptr<plugin::source_t> source, overseer_t *const overseer):
-            scheduler_base_t<ev::periodic, timed_scheduler_base_t>(source, overseer)
+        timed_scheduler_base_t(boost::shared_ptr<plugin::source_t> source):
+            scheduler_base_t<ev::periodic, timed_scheduler_base_t>(source)
         {}
 
         void initialize();
 
-    protected:
-        virtual ev::tstamp reschedule(ev::tstamp now) = 0;
-
     private:
+        inline ev::tstamp reschedule(ev::tstamp now) {
+            static_cast<TimedSchedulerType*>(this)->reschedule(now);
+        }
+
         static ev::tstamp thunk(ev_periodic* w, ev::tstamp now);
 };
 
 // Automatic scheduler
 class auto_scheduler_t:
-    public timed_scheduler_base_t,
+    public timed_scheduler_base_t<auto_scheduler_t>,
     public helpers::birth_control_t<auto_scheduler_t>    
 {
     public:
-        auto_scheduler_t(boost::shared_ptr<plugin::source_t> source, overseer_t *const overseer, const Json::Value& args):
-            timed_scheduler_base_t(source, overseer),
+        auto_scheduler_t(boost::shared_ptr<plugin::source_t> source, const Json::Value& args):
+            timed_scheduler_base_t<auto_scheduler_t>(source),
             m_interval(args.get("interval", 0).asInt() / 1000.0)
         {
             if(m_interval <= 0) {
@@ -100,7 +108,7 @@ class auto_scheduler_t:
             m_id = (boost::format("auto:%1%@%2%") % source->hash() % m_interval).str();
         }
        
-        virtual inline ev::tstamp reschedule(ev::tstamp now) {
+        inline ev::tstamp reschedule(ev::tstamp now) {
             return now + m_interval;
         }
 
@@ -110,12 +118,12 @@ class auto_scheduler_t:
 
 // Manual userscript scheduler
 class manual_scheduler_t:
-    public timed_scheduler_base_t,
+    public timed_scheduler_base_t<manual_scheduler_t>,
     public helpers::birth_control_t<manual_scheduler_t>
 {
     public:
-        manual_scheduler_t(boost::shared_ptr<plugin::source_t> source, overseer_t *const overseer, const Json::Value& args):
-            timed_scheduler_base_t(source, overseer) 
+        manual_scheduler_t(boost::shared_ptr<plugin::source_t> source, const Json::Value& args):
+            timed_scheduler_base_t<manual_scheduler_t>(source)
         {
             if(!(m_source->capabilities() & CAP_MANUAL)) {
                 throw std::runtime_error("manual scheduling is not supported");
@@ -124,7 +132,7 @@ class manual_scheduler_t:
             m_id = "manual:" + m_source->hash();
         }
 
-        virtual inline ev::tstamp reschedule(ev::tstamp now) {
+        inline ev::tstamp reschedule(ev::tstamp now) {
             return max(now, m_source->reschedule());
         }
 };

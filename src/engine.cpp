@@ -140,7 +140,7 @@ thread_t::~thread_t() {
     
     message["command"] = "terminate";
     send(message);
-    
+
     m_thread->join();
 }
 
@@ -283,7 +283,7 @@ void overseer_t::push(const Json::Value& message) {
     std::auto_ptr<SchedulerType> scheduler;
 
     try {
-        scheduler.reset(new SchedulerType(m_source, this, message["args"]));
+        scheduler.reset(new SchedulerType(m_source, message["args"]));
         scheduler_id = scheduler->id();
     } catch(const std::exception& e) {
         syslog(LOG_ERR, "engine %s: exception - %s", m_source->uri().c_str(), e.what());
@@ -294,7 +294,7 @@ void overseer_t::push(const Json::Value& message) {
     
     // Scheduling
     if(m_slaves.find(scheduler_id) == m_slaves.end()) {
-        scheduler->start(m_context);
+        scheduler->start(m_context, this);
         m_slaves.insert(scheduler_id, scheduler);
 
         if(m_suicide.is_active()) {
@@ -358,7 +358,7 @@ void overseer_t::drop(const Json::Value& message) {
     std::auto_ptr<SchedulerType> scheduler;
 
     try {
-        scheduler.reset(new SchedulerType(m_source, this, message["args"]));
+        scheduler.reset(new SchedulerType(m_source, message["args"]));
         scheduler_id = scheduler->id();
     } catch(const std::exception& e) {
         syslog(LOG_ERR, "engine %s: exception - %s", m_source->uri().c_str(), e.what());
@@ -448,6 +448,9 @@ void overseer_t::reap(const std::string& scheduler_id) {
 }
 
 void overseer_t::terminate() {
+    m_io.stop();
+    m_suicide.stop();
+    m_cleanup.stop();
     m_slaves.clear();
     m_loop.unloop();
 } 
@@ -463,10 +466,8 @@ void overseer_t::suicide() {
 }
 
 template<class WatcherType, class SchedulerType>
-scheduler_base_t<WatcherType, SchedulerType>::scheduler_base_t(boost::shared_ptr<source_t> source, overseer_t *const overseer):
-    m_source(source),
-    m_overseer(overseer),
-    m_stopping(false)
+scheduler_base_t<WatcherType, SchedulerType>::scheduler_base_t(boost::shared_ptr<source_t> source):
+    m_source(source)
 {
     syslog(LOG_DEBUG, "scheduler created for %s", m_source->uri().c_str());
 }
@@ -481,11 +482,13 @@ scheduler_base_t<WatcherType, SchedulerType>::~scheduler_base_t() {
 }
 
 template<class WatcherType, class SchedulerType>
-void scheduler_base_t<WatcherType, SchedulerType>::start(zmq::context_t& context) {
-    m_uplink.reset(new net::blob_socket_t(context, ZMQ_PUSH));
-    m_uplink->connect("inproc://events");
+void scheduler_base_t<WatcherType, SchedulerType>::start(zmq::context_t& context, overseer_t *const parent) {
+    m_parent = parent;
+
+    m_pipe.reset(new net::blob_socket_t(context, ZMQ_PUSH));
+    m_pipe->connect("inproc://events");
     
-    m_watcher.reset(new WatcherType(m_overseer->loop()));
+    m_watcher.reset(new WatcherType(m_parent->loop()));
     m_watcher->set(this);
 
     static_cast<SchedulerType*>(this)->initialize();
@@ -495,18 +498,13 @@ void scheduler_base_t<WatcherType, SchedulerType>::start(zmq::context_t& context
 
 template<class WatcherType, class SchedulerType>
 void scheduler_base_t<WatcherType, SchedulerType>::stop() {
-    m_stopping = true;
+    m_watcher->stop();
+    m_parent->reap(id());
 }
 
 template<class WatcherType, class SchedulerType>
-void scheduler_base_t<WatcherType, SchedulerType>::operator()(WatcherType& w, int revents) {
-    if(m_stopping) {
-        m_watcher->stop();
-        m_overseer->reap(id());
-        return;
-    }
-    
-    dict_t dict = m_overseer->fetch();
+void scheduler_base_t<WatcherType, SchedulerType>::operator()(WatcherType&, int) {
+    dict_t dict = m_parent->fetch();
 
     // Do nothing if plugin has returned an empty dict
     if(dict.size() == 0) {
@@ -515,7 +513,7 @@ void scheduler_base_t<WatcherType, SchedulerType>::operator()(WatcherType& w, in
 
     zmq::message_t message(m_id.length());
     memcpy(message.data(), m_id.data(), m_id.length());
-    m_uplink->send(message, ZMQ_SNDMORE);
+    m_pipe->send(message, ZMQ_SNDMORE);
 
     // Serialize the dict
     msgpack::sbuffer buffer;
@@ -524,19 +522,22 @@ void scheduler_base_t<WatcherType, SchedulerType>::operator()(WatcherType& w, in
     // And send it
     message.rebuild(buffer.size());
     memcpy(message.data(), buffer.data(), buffer.size());
-    m_uplink->send(message);
+    m_pipe->send(message);
 }
 
 void fs_scheduler_t::initialize() {
     m_watcher->set(m_path.c_str());
 }
 
-void timed_scheduler_base_t::initialize() {
-    ev_periodic_set(static_cast<ev_periodic*>(m_watcher.get()), 0, 0, thunk);
+template<class TimedSchedulerType>
+void timed_scheduler_base_t<TimedSchedulerType>::initialize() {
+    ev_periodic_set(static_cast<ev_periodic*>(this->m_watcher.get()), 0, 0, thunk);
 }
 
-ev::tstamp timed_scheduler_base_t::thunk(ev_periodic* w, ev::tstamp now) {
-    timed_scheduler_base_t* scheduler = static_cast<timed_scheduler_base_t*>(w->data);
+template<class TimedSchedulerType>
+ev::tstamp timed_scheduler_base_t<TimedSchedulerType>::thunk(ev_periodic* w, ev::tstamp now) {
+    timed_scheduler_base_t<TimedSchedulerType>* scheduler =
+        static_cast<timed_scheduler_base_t<TimedSchedulerType>*>(w->data);
 
     try {
         return scheduler->reschedule(now);

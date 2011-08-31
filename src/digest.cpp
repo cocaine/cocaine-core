@@ -3,7 +3,7 @@
 
 #include "digest.hpp"
 
-using namespace yappi::helpers;
+using namespace yappi::security;
 
 digest_t::digest_t():
     m_context(EVP_MD_CTX_create())

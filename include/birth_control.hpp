@@ -1,8 +1,6 @@
 #ifndef YAPPI_BIRTH_CONTROL_HPP
 #define YAPPI_BIRTH_CONTROL_HPP
 
-#include "json/json.h"
-
 namespace yappi { namespace helpers {
 
 template<class T>

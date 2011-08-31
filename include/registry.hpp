@@ -8,7 +8,9 @@
 
 namespace yappi { namespace core {
 
-class registry_t: public boost::noncopyable {
+class registry_t:
+    public boost::noncopyable 
+{
     public:
         registry_t(const std::string& plugin_path);
         ~registry_t();

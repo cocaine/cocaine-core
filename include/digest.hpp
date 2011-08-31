@@ -7,9 +7,11 @@
 
 #include <openssl/evp.h>
 
-namespace yappi { namespace helpers {
+namespace yappi { namespace security {
 
-class digest_t: public boost::noncopyable {
+class digest_t:
+    public boost::noncopyable
+{
     public:
         digest_t();
         ~digest_t();

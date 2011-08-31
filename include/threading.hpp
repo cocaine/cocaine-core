@@ -7,6 +7,7 @@
 #include "plugin.hpp"
 #include "networking.hpp"
 #include "persistance.hpp"
+#include "digest.hpp"
 
 namespace yappi { namespace engine { namespace detail {
 
@@ -93,7 +94,7 @@ class overseer_t:
         subscription_map_t m_subscriptions;
 
         // Hasher (for storage)
-        helpers::digest_t m_digest;
+        security::digest_t m_digest;
 
         // Iteration cache
         bool m_cached;

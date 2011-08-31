@@ -8,7 +8,9 @@
 namespace yappi { namespace persistance {
 
 template<class Backend>
-class storage_facade_t: public Backend {
+class storage_facade_t:
+    public Backend
+{
     public:
         storage_facade_t(helpers::auto_uuid_t uuid):
             Backend(uuid)
