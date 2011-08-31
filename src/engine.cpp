@@ -186,10 +186,8 @@ overseer_t::overseer_t(zmq::context_t& context, boost::shared_ptr<source_t> sour
     // Connecting to the core's reaper sink
     m_reaper.connect("inproc://reaper");
 
-    #ifdef EV_FEATURE_API
     // [CONFIG] Set timer compression threshold
     m_loop.set_timeout_collect_interval(0.500);
-    #endif
 
     // Signal a false event, in case the core 
     // has managed to send something already
