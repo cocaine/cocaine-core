@@ -162,6 +162,8 @@ class event_t:
             if(m_endpoint.empty()) {
                 throw std::runtime_error("no endpoint specified");
             }
+
+            m_id = (boost::format("event:%1%@%2%") % m_source->hash() % m_endpoint).str();
         }
 
         void initialize() {
