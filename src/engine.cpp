@@ -468,14 +468,10 @@ void overseer_t::suicide() {
 template<class WatcherType, class SchedulerType>
 scheduler_base_t<WatcherType, SchedulerType>::scheduler_base_t(boost::shared_ptr<source_t> source):
     m_source(source)
-{
-    syslog(LOG_DEBUG, "scheduler created for %s", m_source->uri().c_str());
-}
+{}
 
 template<class WatcherType, class SchedulerType>
 scheduler_base_t<WatcherType, SchedulerType>::~scheduler_base_t() {
-    syslog(LOG_DEBUG, "scheduler died for %s", m_source->uri().c_str());
-
     if(m_watcher.get() && m_watcher->is_active()) {
         m_watcher->stop();
     }
