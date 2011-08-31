@@ -36,7 +36,7 @@ class driver_base_t:
         void start(zmq::context_t& context, threading::overseer_t* parent);
         void stop();
 
-        void operator()(WatcherType&, int);
+        virtual void operator()(WatcherType&, int);
 
     protected:
         // Data source
@@ -166,16 +166,20 @@ class event_t:
             m_id = (boost::format("event:%1%@%2%") % m_source->hash() % m_endpoint).str();
         }
 
+        virtual void operator()(ev::io&, int) {
+            // Do something
+        }
+
         void initialize() {
             m_sink.reset(new net::json_socket_t(m_parent->context(), ZMQ_PULL));
             m_sink->bind(m_endpoint);
             
-            m_watcher->set(m_sink->fd());
+            m_watcher->set(m_sink->fd(), EV_READ);
         }
 
     private:
         std::string m_endpoint;
-        std::auto_ptr<net::json_socket_t> m_sink;
+        std::auto_ptr<net::blob_socket_t> m_sink;
 };
 
 }}}
