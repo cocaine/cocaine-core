@@ -25,7 +25,7 @@ class plugin_t: public source_t {
         }
 };
 
-void* create_plugin_instance(const char* uri) {
+source_t* create_plugin_instance(const char* uri) {
     return new plugin_t(uri);
 }
 
