@@ -52,7 +52,8 @@ class scheduler_base_t:
 };
 
 class fs_scheduler_t:
-    public scheduler_base_t<ev::stat, fs_scheduler_t>
+    public scheduler_base_t<ev::stat, fs_scheduler_t>,
+    public helpers::birth_control_t<fs_scheduler_t>
 {
     public:
         fs_scheduler_t(boost::shared_ptr<plugin::source_t> source, const Json::Value& args):
