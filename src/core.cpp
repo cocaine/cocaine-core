@@ -312,8 +312,8 @@ void core_t::stat(future_t* future) {
     engines["alive"] = engine::engine_t::objects_alive;
     future->fulfill("engines", engines);
     
-    threads["total"] = engine::detail::thread_t::objects_created;
-    threads["alive"] = engine::detail::thread_t::objects_alive;
+    threads["total"] = engine::threading::thread_t::objects_created;
+    threads["alive"] = engine::threading::thread_t::objects_alive;
     future->fulfill("threads", threads);
 
     requests["total"] = future_t::objects_created;

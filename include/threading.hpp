@@ -9,9 +9,13 @@
 #include "persistance.hpp"
 #include "digest.hpp"
 
-namespace yappi { namespace engine { namespace detail {
+namespace yappi { namespace engine { 
 
-class scheduler_t;
+namespace drivers {
+    class abstract_t;
+}
+
+namespace threading {
 
 // Thread manager
 class overseer_t:
@@ -25,14 +29,15 @@ class overseer_t:
         void run(boost::shared_ptr<plugin::source_t> source);
         
     public:
-        // Caching data fetcher
-        plugin::dict_t fetch();
+        // Fetches the new data from the source
+        plugin::dict_t invoke();
         
-        // Event loop binding for schedulers
+        // Bindings for drivers
         inline ev::dynamic_loop& loop() { return m_loop; }
-        
-        // Scheduler termination request
-        void reap(const std::string& scheduler_id);
+        inline zmq::context_t& context() { return m_context; }
+
+        // Driver termination request
+        void reap(const std::string& driver_id);
 
     private:
         // Event loop callbacks
@@ -41,10 +46,10 @@ class overseer_t:
         void cleanup(ev::prepare& w, int revents);
 
         // Command disptach 
-        template<class Scheduler>
+        template<class DriverType>
         void push(const Json::Value& message);
        
-        template<class Scheduler>
+        template<class DriverType>
         void drop(const Json::Value& message);
         
         void once(const Json::Value& message);
@@ -85,11 +90,11 @@ class overseer_t:
         ev::timer m_suicide;
         ev::prepare m_cleanup;
         
-        // Slaves (Scheduler ID -> Scheduler)
-        typedef boost::ptr_map<const std::string, scheduler_t> slave_map_t;
+        // Slaves (Driver ID -> Driver)
+        typedef boost::ptr_map<const std::string, drivers::abstract_t> slave_map_t;
         slave_map_t m_slaves;
 
-        // Subscriptions (Scheduler ID -> Tokens)
+        // Subscriptions (Driver ID -> Tokens)
         typedef std::multimap<const std::string, std::string> subscription_map_t;
         subscription_map_t m_subscriptions;
 

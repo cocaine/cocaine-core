@@ -39,7 +39,7 @@ class http_t: public source_t {
             return size * nmemb;
         }
         
-        virtual dict_t fetch() {
+        virtual dict_t invoke() {
             dict_t dict;
         
             CURLcode result = curl_easy_perform(m_curl);

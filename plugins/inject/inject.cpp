@@ -25,7 +25,7 @@ class inject_t: public source_t {
             }
         }
     
-        virtual dict_t fetch() {
+        virtual dict_t invoke() {
             dict_t dict;
             zmq::message_t message;
             std::string key, value;

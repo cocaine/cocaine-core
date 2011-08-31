@@ -35,13 +35,13 @@ class source_t: public boost::noncopyable {
         inline std::string uri() const { return m_uri; }
         inline std::string hash() const { return m_hash; }
 
-        // This method will be called by the scheduler with
-        // specified intervals to fetch the new data for publishing
-        virtual dict_t fetch() = 0;
+        // This method will be called by a driver from the thread
+        virtual dict_t invoke() = 0;
 
         #define CAP_NONE    0
         #define CAP_MANUAL  1 << 0
         #define CAP_ISOLATE 1 << 1
+        #define CAP_SINK    1 << 2
 
         // This method will be called by the scheduler
         // to determine the source's capabilities

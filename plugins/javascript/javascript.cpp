@@ -50,7 +50,7 @@ class javascript_t: public source_t {
             m_script = v8::Script::Compile(source);
         }
     
-        virtual dict_t fetch() {
+        virtual dict_t invoke() {
             dict_t dict;
 
             v8::Context::Scope scope(m_context);

@@ -13,7 +13,7 @@ class python_t: public source_t {
         // The source protocol implementation
         python_t(const std::string& uri);
 
-        virtual dict_t fetch();
+        virtual dict_t invoke();
         virtual uint64_t capabilities() const;
         virtual float reschedule();
 

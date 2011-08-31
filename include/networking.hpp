@@ -1,5 +1,5 @@
-#ifndef YAPPI_SOCKETS_HPP
-#define YAPPI_SOCKETS_HPP
+#ifndef YAPPI_NETWORKING_HPP
+#define YAPPI_NETWORKING_HPP
 
 #include <zmq.hpp>
 

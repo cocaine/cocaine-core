@@ -91,8 +91,8 @@ python_t::python_t(const std::string& uri_):
 uint64_t python_t::capabilities() const {
     thread_state_t state = PyGILState_Ensure();
     object_t reschedule = PyObject_GetAttrString(m_object, "reschedule");
-    
-    return PyCallable_Check(reschedule) ? CAP_MANUAL : CAP_NONE;
+
+    return CAP_SINK | (PyCallable_Check(reschedule) ? CAP_MANUAL : CAP_NONE);
 }
 
 float python_t::reschedule() {
@@ -184,7 +184,7 @@ void python_t::create(const std::string& code,
     }
 }
 
-dict_t python_t::fetch() {
+dict_t python_t::invoke() {
     // Get the thread state
     thread_state_t state = PyGILState_Ensure();
 

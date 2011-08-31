@@ -42,7 +42,7 @@ class engine_t:
         const std::string m_default_thread_id;
 
         // Thread ID -> Thread
-        typedef boost::ptr_map<const std::string, detail::thread_t> thread_map_t;
+        typedef boost::ptr_map<const std::string, threading::thread_t> thread_map_t;
         thread_map_t m_threads;
 
         // Overflowed tasks queue

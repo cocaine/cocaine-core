@@ -6,10 +6,11 @@
 #include "engine.hpp"
 #include "future.hpp"
 
-#include "schedulers.hpp"
+#include "drivers.hpp"
 
 using namespace yappi::engine;
-using namespace yappi::engine::detail;
+using namespace yappi::engine::threading;
+using namespace yappi::engine::drivers;
 
 using namespace yappi::core;
 using namespace yappi::plugin;
@@ -203,37 +204,42 @@ void overseer_t::run(boost::shared_ptr<source_t> source) {
 
 void overseer_t::request(ev::io& w, int revents) {
     Json::Value result;
-    std::string command, type;
+    std::string command, driver;
     
     while(m_pipe.pending()) {
         Json::Value message;
         
         m_pipe.recv_json(message);
+
         command = message["command"].asString();
-        type = message["args"].get("type", "auto").asString(); 
+        driver = message["args"].get("driver", "auto").asString(); 
        
         if(command == "start") {
-            if(type == "auto") {
-                push<auto_scheduler_t>(message);
-            } else if(type == "manual") {
-                push<manual_scheduler_t>(message);
-            } else if(type == "fs") {
-                push<fs_scheduler_t>(message);
-            } else if(type == "once") {
+            if(driver == "auto") {
+                push<drivers::auto_t>(message);
+            } else if(driver == "manual") {
+                push<drivers::manual_t>(message);
+            } else if(driver == "fs") {
+                push<drivers::fs_t>(message);
+            } else if(driver == "event") {
+                push<drivers::event_t>(message);
+            } else if(driver == "once") {
                 once(message);
             } else {
-                result["error"] = "invalid type";
+                result["error"] = "invalid driver";
                 respond(message["future"], result);
             }
         } else if(command == "stop") {
-            if(type == "auto") {
-                drop<auto_scheduler_t>(message);
-            } else if(type == "manual") {
-                drop<manual_scheduler_t>(message);
-            } else if(type == "fs") {
-                drop<fs_scheduler_t>(message);
+            if(driver == "auto") {
+                drop<drivers::auto_t>(message);
+            } else if(driver == "manual") {
+                drop<drivers::manual_t>(message);
+            } else if(driver == "fs") {
+                drop<drivers::fs_t>(message);
+            } else if(driver == "event") {
+                drop<drivers::event_t>(message);
             } else {
-                result["error"] = "invalid type";
+                result["error"] = "invalid driver";
                 respond(message["future"], result);
             }
         } else if(command == "terminate") {
@@ -255,10 +261,10 @@ void overseer_t::cleanup(ev::prepare& w, int revents) {
     m_cached = false;
 }
 
-dict_t overseer_t::fetch() {
+dict_t overseer_t::invoke() {
     if(!m_cached) {
         try {
-            m_cache = m_source->fetch();
+            m_cache = m_source->invoke();
             m_cached = true;
         } catch(const std::exception& e) {
             syslog(LOG_ERR, "engine %s: exception - %s", m_source->uri().c_str(), e.what());
@@ -269,10 +275,10 @@ dict_t overseer_t::fetch() {
     return m_cache;
 }
 
-template<class SchedulerType>
+template<class DriverType>
 void overseer_t::push(const Json::Value& message) {
     Json::Value result;
-    std::string scheduler_id;
+    std::string driver_id;
     std::string token = message["future"]["token"].asString();
     std::string compartment;
 
@@ -280,11 +286,11 @@ void overseer_t::push(const Json::Value& message) {
         compartment = m_id.get();
     };
 
-    std::auto_ptr<SchedulerType> scheduler;
+    std::auto_ptr<DriverType> driver;
 
     try {
-        scheduler.reset(new SchedulerType(m_source, message["args"]));
-        scheduler_id = scheduler->id();
+        driver.reset(new DriverType(m_source, message["args"]));
+        driver_id = driver->id();
     } catch(const std::exception& e) {
         syslog(LOG_ERR, "engine %s: exception - %s", m_source->uri().c_str(), e.what());
         result["error"] = e.what();
@@ -293,9 +299,17 @@ void overseer_t::push(const Json::Value& message) {
     }
     
     // Scheduling
-    if(m_slaves.find(scheduler_id) == m_slaves.end()) {
-        scheduler->start(m_context, this);
-        m_slaves.insert(scheduler_id, scheduler);
+    if(m_slaves.find(driver_id) == m_slaves.end()) {
+        try {
+            driver->start(m_context, this);
+        } catch(const std::exception& e) {
+            syslog(LOG_ERR, "engine %s: exception - %s", m_source->uri().c_str(), e.what());
+            result["error"] = e.what();
+            respond(message["future"], result);
+            return;
+        }
+            
+        m_slaves.insert(driver_id, driver);
 
         if(m_suicide.is_active()) {
             syslog(LOG_DEBUG, "engine %s: suicide timer stopped", m_source->uri().c_str());
@@ -306,7 +320,7 @@ void overseer_t::push(const Json::Value& message) {
     // ACL
     subscription_map_t::const_iterator begin, end;
     boost::tie(begin, end) = m_subscriptions.equal_range(token);
-    subscription_map_t::value_type subscription = std::make_pair(token, scheduler_id);
+    subscription_map_t::value_type subscription = std::make_pair(token, driver_id);
     std::equal_to<subscription_map_t::value_type> equality;
 
     if(std::find_if(begin, end, boost::bind(equality, subscription, _1)) == end) {
@@ -317,7 +331,7 @@ void overseer_t::push(const Json::Value& message) {
     
     // Persistance
     if(!message["args"].get("transient", false).asBool()) {
-        std::string object_id = m_digest.get(scheduler_id + token + compartment);
+        std::string object_id = m_digest.get(driver_id + token + compartment);
 
         if(!m_storage.exists(object_id)) {
             Json::Value object;
@@ -335,7 +349,7 @@ void overseer_t::push(const Json::Value& message) {
     }
 
     // Report to the core
-    result["key"] = scheduler_id;
+    result["key"] = driver_id;
 
     if(!compartment.empty()) {
         result["compartment"] = compartment;
@@ -344,10 +358,10 @@ void overseer_t::push(const Json::Value& message) {
     respond(message["future"], result);
 }
 
-template<class SchedulerType>
+template<class DriverType>
 void overseer_t::drop(const Json::Value& message) {
     Json::Value result;
-    std::string scheduler_id;
+    std::string driver_id;
     std::string token = message["future"]["token"].asString();
     std::string compartment;
 
@@ -355,11 +369,11 @@ void overseer_t::drop(const Json::Value& message) {
         compartment = m_id.get();
     };
 
-    std::auto_ptr<SchedulerType> scheduler;
+    std::auto_ptr<DriverType> driver;
 
     try {
-        scheduler.reset(new SchedulerType(m_source, message["args"]));
-        scheduler_id = scheduler->id();
+        driver.reset(new DriverType(m_source, message["args"]));
+        driver_id = driver->id();
     } catch(const std::exception& e) {
         syslog(LOG_ERR, "engine %s: exception - %s", m_source->uri().c_str(), e.what());
         result["error"] = e.what();
@@ -370,10 +384,10 @@ void overseer_t::drop(const Json::Value& message) {
     slave_map_t::iterator slave;
     subscription_map_t::iterator client;
 
-    if((slave = m_slaves.find(scheduler_id)) != m_slaves.end()) {
+    if((slave = m_slaves.find(driver_id)) != m_slaves.end()) {
         subscription_map_t::iterator begin, end;
         boost::tie(begin, end) = m_subscriptions.equal_range(token);
-        subscription_map_t::value_type subscription = std::make_pair(token, scheduler_id);
+        subscription_map_t::value_type subscription = std::make_pair(token, driver_id);
         std::equal_to<subscription_map_t::value_type> equality;
 
         if((client = std::find_if(begin, end, boost::bind(equality, subscription, _1))) != end) {
@@ -390,7 +404,7 @@ void overseer_t::drop(const Json::Value& message) {
             }
 
             // Un-persist
-            std::string object_id = m_digest.get(scheduler_id + token + compartment);
+            std::string object_id = m_digest.get(driver_id + token + compartment);
             m_storage.remove(object_id);
             
             result["result"] = "success";
@@ -398,7 +412,7 @@ void overseer_t::drop(const Json::Value& message) {
             result["error"] = "not authorized";
         }
     } else {
-        result["error"] = "scheduler not found";
+        result["error"] = "driver not found";
     }
 
     respond(message["future"], result);
@@ -406,7 +420,7 @@ void overseer_t::drop(const Json::Value& message) {
 
 void overseer_t::once(const Json::Value& message) {
     Json::Value result;
-    dict_t dict = fetch();
+    dict_t dict = invoke();
 
     for(dict_t::const_iterator it = dict.begin(); it != dict.end(); ++it) {
         result[it->first] = it->second;
@@ -430,12 +444,12 @@ void overseer_t::once(const Json::Value& message) {
     }
 }
 
-void overseer_t::reap(const std::string& scheduler_id) {
-    slave_map_t::iterator it = m_slaves.find(scheduler_id);
+void overseer_t::reap(const std::string& driver_id) {
+    slave_map_t::iterator it = m_slaves.find(driver_id);
 
     if(it == m_slaves.end()) {
-        syslog(LOG_ERR, "engine %s: found an orphan - scheduler %s", 
-            m_source->uri().c_str(), scheduler_id.c_str());
+        syslog(LOG_ERR, "engine %s: found an orphan - driver %s", 
+            m_source->uri().c_str(), driver_id.c_str());
         return;
     }
 
@@ -465,20 +479,20 @@ void overseer_t::suicide() {
     m_reaper.send_json(message);    
 }
 
-template<class WatcherType, class SchedulerType>
-scheduler_base_t<WatcherType, SchedulerType>::scheduler_base_t(boost::shared_ptr<source_t> source):
+template<class WatcherType, class DriverType>
+driver_base_t<WatcherType, DriverType>::driver_base_t(boost::shared_ptr<source_t> source):
     m_source(source)
 {}
 
-template<class WatcherType, class SchedulerType>
-scheduler_base_t<WatcherType, SchedulerType>::~scheduler_base_t() {
+template<class WatcherType, class DriverType>
+driver_base_t<WatcherType, DriverType>::~driver_base_t() {
     if(m_watcher.get() && m_watcher->is_active()) {
         m_watcher->stop();
     }
 }
 
-template<class WatcherType, class SchedulerType>
-void scheduler_base_t<WatcherType, SchedulerType>::start(zmq::context_t& context, overseer_t *const parent) {
+template<class WatcherType, class DriverType>
+void driver_base_t<WatcherType, DriverType>::start(zmq::context_t& context, overseer_t* parent) {
     m_parent = parent;
 
     m_pipe.reset(new net::blob_socket_t(context, ZMQ_PUSH));
@@ -487,20 +501,20 @@ void scheduler_base_t<WatcherType, SchedulerType>::start(zmq::context_t& context
     m_watcher.reset(new WatcherType(m_parent->loop()));
     m_watcher->set(this);
 
-    static_cast<SchedulerType*>(this)->initialize();
+    static_cast<DriverType*>(this)->initialize();
 
     m_watcher->start();
 }
 
-template<class WatcherType, class SchedulerType>
-void scheduler_base_t<WatcherType, SchedulerType>::stop() {
+template<class WatcherType, class DriverType>
+void driver_base_t<WatcherType, DriverType>::stop() {
     m_watcher->stop();
     m_parent->reap(id());
 }
 
-template<class WatcherType, class SchedulerType>
-void scheduler_base_t<WatcherType, SchedulerType>::operator()(WatcherType&, int) {
-    dict_t dict = m_parent->fetch();
+template<class WatcherType, class DriverType>
+void driver_base_t<WatcherType, DriverType>::operator()(WatcherType&, int) {
+    dict_t dict = m_parent->invoke();
 
     // Do nothing if plugin has returned an empty dict
     if(dict.size() == 0) {
@@ -521,26 +535,17 @@ void scheduler_base_t<WatcherType, SchedulerType>::operator()(WatcherType&, int)
     m_pipe->send(message);
 }
 
-void fs_scheduler_t::initialize() {
-    m_watcher->set(m_path.c_str());
-}
-
-template<class TimedSchedulerType>
-void timed_scheduler_base_t<TimedSchedulerType>::initialize() {
-    ev_periodic_set(static_cast<ev_periodic*>(this->m_watcher.get()), 0, 0, thunk);
-}
-
-template<class TimedSchedulerType>
-ev::tstamp timed_scheduler_base_t<TimedSchedulerType>::thunk(ev_periodic* w, ev::tstamp now) {
-    timed_scheduler_base_t<TimedSchedulerType>* scheduler =
-        static_cast<timed_scheduler_base_t<TimedSchedulerType>*>(w->data);
+template<class TimedDriverType>
+ev::tstamp timed_driver_base_t<TimedDriverType>::thunk(ev_periodic* w, ev::tstamp now) {
+    timed_driver_base_t<TimedDriverType>* driver =
+        static_cast<timed_driver_base_t<TimedDriverType>*>(w->data);
 
     try {
-        return scheduler->reschedule(now);
+        return driver->reschedule(now);
     } catch(const std::exception& e) {
         syslog(LOG_ERR, "engine: %s scheduler is broken - %s",
-            scheduler->id().c_str(), e.what());
-        scheduler->stop();
+            driver->id().c_str(), e.what());
+        driver->stop();
         return now;
     }
 }

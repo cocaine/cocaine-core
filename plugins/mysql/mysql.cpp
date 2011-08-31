@@ -27,7 +27,7 @@ class mysql_t: public source_t {
             m_password = uri.userinfo().substr(uri.userinfo().find_first_of(":") + 1);
         }
 
-        dict_t fetch() {
+        dict_t invoke() {
             dict_t dict;
             MYSQL* connection = mysql_init(NULL);
 
