@@ -1,5 +1,6 @@
 #include <boost/bind.hpp>
 #include <boost/tuple/tuple.hpp>
+
 #include <msgpack.hpp>
 
 #include "engine.hpp"
@@ -216,6 +217,8 @@ void overseer_t::request(ev::io& w, int revents) {
                 push<auto_scheduler_t>(message);
             } else if(type == "manual") {
                 push<manual_scheduler_t>(message);
+            } else if(type == "fs") {
+                push<fs_scheduler_t>(message);
             } else if(type == "once") {
                 once(message);
             } else {
@@ -227,6 +230,8 @@ void overseer_t::request(ev::io& w, int revents) {
                 drop<auto_scheduler_t>(message);
             } else if(type == "manual") {
                 drop<manual_scheduler_t>(message);
+            } else if(type == "fs") {
+                drop<fs_scheduler_t>(message);
             } else {
                 result["error"] = "invalid type";
                 respond(message["future"], result);
@@ -457,29 +462,44 @@ void overseer_t::suicide() {
     m_reaper.send_json(message);    
 }
 
-scheduler_base_t::scheduler_base_t(boost::shared_ptr<source_t> source, overseer_t *const overseer):
+template<class WatcherType, class SchedulerType>
+scheduler_base_t<WatcherType, SchedulerType>::scheduler_base_t(boost::shared_ptr<source_t> source, overseer_t *const overseer):
     m_source(source),
     m_overseer(overseer),
     m_stopping(false)
-{}
+{
+    syslog(LOG_DEBUG, "scheduler created for %s", m_source->uri().c_str());
+}
 
-scheduler_base_t::~scheduler_base_t() {
+template<class WatcherType, class SchedulerType>
+scheduler_base_t<WatcherType, SchedulerType>::~scheduler_base_t() {
+    syslog(LOG_DEBUG, "scheduler died for %s", m_source->uri().c_str());
+
     if(m_watcher.get() && m_watcher->is_active()) {
         m_watcher->stop();
     }
 }
 
-void scheduler_base_t::start(zmq::context_t& context) {
+template<class WatcherType, class SchedulerType>
+void scheduler_base_t<WatcherType, SchedulerType>::start(zmq::context_t& context) {
     m_uplink.reset(new net::blob_socket_t(context, ZMQ_PUSH));
     m_uplink->connect("inproc://events");
     
-    m_watcher.reset(new ev::periodic(m_overseer->loop()));
-    m_watcher->set<scheduler_base_t, &scheduler_base_t::publish>(this);
-    ev_periodic_set(static_cast<ev_periodic*>(m_watcher.get()), 0, 0, thunk);
+    m_watcher.reset(new WatcherType(m_overseer->loop()));
+    m_watcher->set(this);
+
+    static_cast<SchedulerType*>(this)->initialize();
+
     m_watcher->start();
 }
 
-void scheduler_base_t::publish(ev::periodic& w, int revents) {
+template<class WatcherType, class SchedulerType>
+void scheduler_base_t<WatcherType, SchedulerType>::stop() {
+    m_stopping = true;
+}
+
+template<class WatcherType, class SchedulerType>
+void scheduler_base_t<WatcherType, SchedulerType>::operator()(WatcherType& w, int revents) {
     if(m_stopping) {
         m_watcher->stop();
         m_overseer->reap(id());
@@ -507,8 +527,16 @@ void scheduler_base_t::publish(ev::periodic& w, int revents) {
     m_uplink->send(message);
 }
 
-ev::tstamp scheduler_base_t::thunk(ev_periodic* w, ev::tstamp now) {
-    scheduler_base_t* scheduler = static_cast<scheduler_base_t*>(w->data);
+void fs_scheduler_t::initialize() {
+    m_watcher->set(m_path.c_str());
+}
+
+void timed_scheduler_base_t::initialize() {
+    ev_periodic_set(static_cast<ev_periodic*>(m_watcher.get()), 0, 0, thunk);
+}
+
+ev::tstamp timed_scheduler_base_t::thunk(ev_periodic* w, ev::tstamp now) {
+    timed_scheduler_base_t* scheduler = static_cast<timed_scheduler_base_t*>(w->data);
 
     try {
         return scheduler->reschedule(now);

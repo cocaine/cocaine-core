@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
 
     // Setting up the syslog
     openlog(identity, LOG_PID | LOG_NDELAY, LOG_USER);
-    setlogmask(LOG_UPTO(LOG_INFO));
+    setlogmask(LOG_UPTO(LOG_DEBUG));
     syslog(LOG_NOTICE, "main: yappi is starting");
         
     // Obtaining the instance uuid

@@ -12,56 +12,85 @@ namespace yappi { namespace engine { namespace detail {
 #define min(a, b) ((a) <= (b) ? (a) : (b))
 
 class overseer_t;
+class scheduler_t { };
 
+template<class WatcherType, class SchedulerType>
 class scheduler_base_t:
-    public boost::noncopyable
+    public boost::noncopyable,
+    public scheduler_t
 {
     public:
         scheduler_base_t(boost::shared_ptr<plugin::source_t> source,
             overseer_t *const overseer);
         virtual ~scheduler_base_t();
-        
+
         inline std::string id() const { return m_id; }
-        
+
         void start(zmq::context_t& context);
-        inline void stop() { m_stopping = true; }
+        void stop();
+
+        void operator()(WatcherType& w, int revents);
+
+    protected:
+        // Data source
+        boost::shared_ptr<plugin::source_t> m_source;
+        
+        // Parent
+        overseer_t *const m_overseer;
+        
+        // Scheduler ID
+        std::string m_id;
+
+        // Messaging
+        std::auto_ptr<net::blob_socket_t> m_uplink;
+        
+        // Watcher
+        std::auto_ptr<WatcherType> m_watcher;
+        
+        // Termination flag
+        bool m_stopping;
+};
+
+class fs_scheduler_t:
+    public scheduler_base_t<ev::stat, fs_scheduler_t>
+{
+    public:
+        fs_scheduler_t(boost::shared_ptr<plugin::source_t> source, overseer_t *const overseer, const Json::Value& args):
+            scheduler_base_t<ev::stat, fs_scheduler_t>(source, overseer),
+            m_path(args.get("path", "").asString())
+        {}
+
+        void initialize();
+
+    private:
+        const std::string m_path;
+};
+
+class timed_scheduler_base_t:
+    public scheduler_base_t<ev::periodic, timed_scheduler_base_t>
+{
+    public:
+        timed_scheduler_base_t(boost::shared_ptr<plugin::source_t> source, overseer_t *const overseer):
+            scheduler_base_t<ev::periodic, timed_scheduler_base_t>(source, overseer)
+        {}
+
+        void initialize();
 
     protected:
         virtual ev::tstamp reschedule(ev::tstamp now) = 0;
 
     private:
         static ev::tstamp thunk(ev_periodic* w, ev::tstamp now);
-        void publish(ev::periodic& w, int revents);
-        
-    protected:
-        // Data source
-        boost::shared_ptr<plugin::source_t> m_source;
-        
-        // Scheduler ID
-        std::string m_id;
-
-    private:
-        // Parent
-        overseer_t *const m_overseer;
-        
-        // Messaging
-        std::auto_ptr<net::blob_socket_t> m_uplink;
-        
-        // Watcher
-        std::auto_ptr<ev::periodic> m_watcher;
-        
-        // Termination flag
-        bool m_stopping;
 };
 
 // Automatic scheduler
 class auto_scheduler_t:
-    public scheduler_base_t,
+    public timed_scheduler_base_t,
     public helpers::birth_control_t<auto_scheduler_t>    
 {
     public:
         auto_scheduler_t(boost::shared_ptr<plugin::source_t> source, overseer_t *const overseer, const Json::Value& args):
-            scheduler_base_t(source, overseer),
+            timed_scheduler_base_t(source, overseer),
             m_interval(args.get("interval", 0).asInt() / 1000.0)
         {
             if(m_interval <= 0) {
@@ -81,12 +110,12 @@ class auto_scheduler_t:
 
 // Manual userscript scheduler
 class manual_scheduler_t:
-    public scheduler_base_t,
+    public timed_scheduler_base_t,
     public helpers::birth_control_t<manual_scheduler_t>
 {
     public:
         manual_scheduler_t(boost::shared_ptr<plugin::source_t> source, overseer_t *const overseer, const Json::Value& args):
-            scheduler_base_t(source, overseer) 
+            timed_scheduler_base_t(source, overseer) 
         {
             if(!(m_source->capabilities() & CAP_MANUAL)) {
                 throw std::runtime_error("manual scheduling is not supported");

@@ -69,9 +69,9 @@ TARGET_LINK_LIBRARIES(yappi-core-storage
 
 ADD_LIBRARY(yappi-core SHARED 
     src/core
-    src/engine
     src/registry
-    src/sockets)
+    src/networking
+    src/engine)
 
 TARGET_LINK_LIBRARIES(yappi-core
     json

@@ -3,7 +3,7 @@
 
 #include "digest.hpp"
 
-namespace yappi { namespace helpers {
+using namespace yappi::helpers;
 
 digest_t::digest_t():
     m_context(EVP_MD_CTX_create())
@@ -30,5 +30,3 @@ std::string digest_t::get(const std::string& data) {
 
     return formatter.str();
 }
-
-}}

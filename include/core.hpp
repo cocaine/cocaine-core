@@ -3,10 +3,10 @@
 
 #include "common.hpp"
 #include "registry.hpp"
-#include "security.hpp"
-#include "persistance.hpp"
+#include "networking.hpp"
 #include "engine.hpp"
-#include "sockets.hpp"
+#include "persistance.hpp"
+#include "security.hpp"
 
 namespace yappi { namespace core {
 

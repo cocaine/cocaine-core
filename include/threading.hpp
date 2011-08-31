@@ -4,13 +4,13 @@
 #include <boost/thread.hpp>
 
 #include "common.hpp"
-#include "persistance.hpp"
 #include "plugin.hpp"
-#include "sockets.hpp"
+#include "networking.hpp"
+#include "persistance.hpp"
 
 namespace yappi { namespace engine { namespace detail {
 
-class scheduler_base_t;
+class scheduler_t;
 
 // Thread manager
 class overseer_t:
@@ -85,7 +85,7 @@ class overseer_t:
         ev::prepare m_cleanup;
         
         // Slaves (Scheduler ID -> Scheduler)
-        typedef boost::ptr_map<const std::string, scheduler_base_t> slave_map_t;
+        typedef boost::ptr_map<const std::string, scheduler_t> slave_map_t;
         slave_map_t m_slaves;
 
         // Subscriptions (Scheduler ID -> Tokens)
