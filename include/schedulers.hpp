@@ -13,7 +13,9 @@ namespace yappi { namespace engine { namespace detail {
 
 class overseer_t;
 
-class scheduler_base_t: public boost::noncopyable {
+class scheduler_base_t:
+    public boost::noncopyable
+{
     public:
         scheduler_base_t(boost::shared_ptr<plugin::source_t> source,
             overseer_t *const overseer);

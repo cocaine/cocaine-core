@@ -10,66 +10,35 @@
 
 namespace yappi { namespace engine { namespace detail {
 
-// Thread facade
-class thread_t:
-    public helpers::birth_control_t< thread_t, helpers::limited_t<100> >
-{
-    public:
-        thread_t(zmq::context_t& context, boost::shared_ptr<plugin::source_t> source,
-            persistance::storage_t& storage, helpers::auto_uuid_t id = helpers::auto_uuid_t());
-        ~thread_t();
-
-        inline std::string id() const { return m_id.get(); }
-
-        inline bool send(const Json::Value& message) {
-            return m_pipe.send_json(message);
-        }
-
-    private:
-        void bootstrap();
-        
-        // Thread interoperability
-        zmq::context_t& m_context;
-        net::json_socket_t m_pipe;
-        
-        // Data source
-        boost::shared_ptr<plugin::source_t> m_source;
-        
-        // Task persistance
-        persistance::storage_t& m_storage;
-
-        // Thread ID
-        helpers::auto_uuid_t m_id;
-        
-        // Thread container
-        std::auto_ptr<boost::thread> m_thread;
-};
-
 class scheduler_base_t;
 
 // Thread manager
-class overseer_t: public boost::noncopyable {
+class overseer_t:
+    public boost::noncopyable
+{
     public:
-        overseer_t(zmq::context_t& context, boost::shared_ptr<plugin::source_t> source,
-            persistance::storage_t& storage, helpers::auto_uuid_t id);
+        overseer_t(helpers::auto_uuid_t id, zmq::context_t& context,
+            persistance::storage_t& storage);
+       
+        // Thread entry point 
+        void run(boost::shared_ptr<plugin::source_t> source);
         
-        void run();
-        
-        // Event loop callbacks
-        void request(ev::io& w, int revents);
-        void timeout(ev::timer& w, int revents);
-        void cleanup(ev::prepare& w, int revents);
-
-        // Event loop binding for schedulers
-        inline ev::dynamic_loop& binding() { return m_loop; }
-        
+    public:
         // Caching data fetcher
         plugin::dict_t fetch();
+        
+        // Event loop binding for schedulers
+        inline ev::dynamic_loop& loop() { return m_loop; }
         
         // Scheduler termination request
         void reap(const std::string& scheduler_id);
 
     private:
+        // Event loop callbacks
+        void request(ev::io& w, int revents);
+        void timeout(ev::timer& w, int revents);
+        void cleanup(ev::prepare& w, int revents);
+
         // Command disptach 
         template<class Scheduler>
         void push(const Json::Value& message);
@@ -96,19 +65,19 @@ class overseer_t: public boost::noncopyable {
         }
 
     private:
+        // Thread ID
+        helpers::auto_uuid_t m_id;
+
         // Messaging
         zmq::context_t& m_context;
         net::json_socket_t m_pipe, m_futures, m_reaper;
         
-        // Data source
-        boost::shared_ptr<plugin::source_t> m_source;
-        
         // Task persistance
         persistance::storage_t& m_storage;
       
-        // Thread ID
-        helpers::auto_uuid_t m_id;
-
+        // Data source
+        boost::shared_ptr<plugin::source_t> m_source;
+        
         // Event loop
         ev::dynamic_loop m_loop;
         ev::io m_io;
@@ -129,6 +98,27 @@ class overseer_t: public boost::noncopyable {
         // Iteration cache
         bool m_cached;
         plugin::dict_t m_cache;
+};
+
+// Thread facade
+class thread_t:
+    public boost::noncopyable,
+    public helpers::birth_control_t<thread_t>
+{
+    public:
+        thread_t(helpers::auto_uuid_t id, zmq::context_t& context, 
+            persistance::storage_t& storage);
+        ~thread_t();
+
+        void run(boost::shared_ptr<plugin::source_t> source);
+        inline bool send(const Json::Value& message) { return m_pipe.send_json(message); }
+
+    private:
+        helpers::auto_uuid_t m_id;
+        net::json_socket_t m_pipe;
+        
+        std::auto_ptr<overseer_t> m_overseer;
+        std::auto_ptr<boost::thread> m_thread;
 };
 
 }}}

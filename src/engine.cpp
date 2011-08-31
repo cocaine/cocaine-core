@@ -22,11 +22,11 @@ engine_t::engine_t(zmq::context_t& context, registry_t& registry, storage_t& sto
     m_target(target),
     m_default_thread_id(auto_uuid_t().get())
 {
-    syslog(LOG_DEBUG, "engine %s: starting", m_target.c_str());
+    syslog(LOG_INFO, "engine %s: starting", m_target.c_str());
 }
 
 engine_t::~engine_t() {
-    syslog(LOG_DEBUG, "engine %s: terminating", m_target.c_str()); 
+    syslog(LOG_INFO, "engine %s: terminating", m_target.c_str()); 
     m_threads.clear();
 }
 
@@ -43,18 +43,24 @@ void engine_t::push(future_t* future, const Json::Value& args) {
     thread_map_t::iterator it = m_threads.find(thread_id);
 
     if(it == m_threads.end()) {
-        boost::shared_ptr<source_t> source;
         std::auto_ptr<thread_t> thread;
+        boost::shared_ptr<source_t> source;
 
         try {
+            thread.reset(new thread_t(auto_uuid_t(thread_id), m_context, m_storage));
+            
             source = m_registry.instantiate(m_target);
-            thread.reset(new thread_t(m_context, source, m_storage, auto_uuid_t(thread_id)));
+            thread->run(source);
+            
             boost::tie(it, boost::tuples::ignore) = m_threads.insert(thread_id, thread);
-        } catch(const overflow_t& e) {
-            // Too many threads are active at the moment, so queue the operation
-            syslog(LOG_INFO, "engine %s: thread population overflow, queueing", m_target.c_str());
-            m_pending.push(std::make_pair(future, args));
-            return;
+        } catch(const zmq::error_t& e) {
+            if(e.num() == EMFILE) {
+                syslog(LOG_DEBUG, "engine %s: too many threads, task queued", m_target.c_str());
+                m_pending.push(std::make_pair(future, args));
+                return;
+            } else {
+                throw;
+            }
         } catch(const std::exception& e) {
             syslog(LOG_ERR, "engine %s: exception - %s", m_target.c_str(), e.what());
             response["error"] = e.what();
@@ -66,7 +72,6 @@ void engine_t::push(future_t* future, const Json::Value& args) {
     message["command"] = "start";
     message["future"] = future->serialize();
     message["args"] = args;
-    
     it->second->send(message);
 }
 
@@ -86,7 +91,6 @@ void engine_t::drop(future_t* future, const Json::Value& args) {
         message["command"] = "stop";
         message["future"] = future->serialize();
         message["args"] = args;
-    
         it->second->send(message);
     } else {
         response["error"] = "thread not found";
@@ -98,7 +102,7 @@ void engine_t::reap(const std::string& thread_id) {
     thread_map_t::iterator it = m_threads.find(thread_id);
 
     if(it == m_threads.end()) {
-        syslog(LOG_DEBUG, "engine %s: found an orphan - thread %s", 
+        syslog(LOG_WARNING, "engine %s: found an orphan - thread %s", 
             m_target.c_str(), thread_id.c_str());
         return;
     }
@@ -117,49 +121,46 @@ void engine_t::reap(const std::string& thread_id) {
     }
 }
 
-thread_t::thread_t(zmq::context_t& context, boost::shared_ptr<source_t> source, storage_t& storage, auto_uuid_t id):
-    m_context(context),
-    m_pipe(m_context, ZMQ_PUSH),
-    m_source(source),
-    m_storage(storage),
-    m_id(id)
+thread_t::thread_t(auto_uuid_t id, zmq::context_t& context, storage_t& storage):
+    m_id(id),
+    m_pipe(context, ZMQ_PUSH)
 {
-    syslog(LOG_DEBUG, "engine %s: starting thread %s", m_source->uri().c_str(), 
-        m_id.get().c_str());
-
+    // Bind the messaging pipe
     m_pipe.bind("inproc://" + m_id.get());
+ 
+    // Initialize the overseer
+    m_overseer.reset(new overseer_t(id, context, storage));
+}
+
+thread_t::~thread_t() {
+    Json::Value message;
     
+    syslog(LOG_DEBUG, "thread %s: terminating", m_id.get().c_str());
+    
+    message["command"] = "terminate";
+    send(message);
+    
+    m_thread->join();
+}
+
+void thread_t::run(boost::shared_ptr<source_t> source) {
+    syslog(LOG_DEBUG, "thread %s: starting for %s", m_id.get().c_str(),
+        source->uri().c_str());
+
     try {
-        m_thread.reset(new boost::thread(boost::bind(&thread_t::bootstrap, this)));
+        m_thread.reset(new boost::thread(boost::bind(&overseer_t::run, m_overseer.get(), source)));
     } catch(const boost::thread_resource_error& e) {
         throw std::runtime_error("thread limit reached");
     }
 }
 
-thread_t::~thread_t() {
-    syslog(LOG_DEBUG, "engine %s: terminating thread %s", m_source->uri().c_str(),
-        m_id.get().c_str());
-    
-    Json::Value message;
-    message["command"] = "terminate";
-    
-    send(message);
-    m_thread->join();
-}
-
-void thread_t::bootstrap() {
-    overseer_t overseer(m_context, m_source, m_storage, m_id);
-    overseer.run();
-}
-
-overseer_t::overseer_t(zmq::context_t& context, boost::shared_ptr<source_t> source, storage_t& storage, auto_uuid_t id):
+overseer_t::overseer_t(auto_uuid_t id, zmq::context_t& context, storage_t& storage):
+    m_id(id),
     m_context(context),
     m_pipe(m_context, ZMQ_PULL),
     m_futures(m_context, ZMQ_PUSH),
     m_reaper(m_context, ZMQ_PUSH),
-    m_source(source),
     m_storage(storage),
-    m_id(id),
     m_loop(),
     m_io(m_loop),
     m_suicide(m_loop),
@@ -196,7 +197,8 @@ overseer_t::overseer_t(zmq::context_t& context, boost::shared_ptr<source_t> sour
     m_loop.feed_fd_event(m_pipe.fd(), EV_READ);
 }
 
-void overseer_t::run() {
+void overseer_t::run(boost::shared_ptr<source_t> source) {
+    m_source = source;
     m_loop.loop();
 }
 
@@ -473,7 +475,7 @@ void scheduler_base_t::start(zmq::context_t& context) {
     m_uplink.reset(new net::blob_socket_t(context, ZMQ_PUSH));
     m_uplink->connect("inproc://events");
     
-    m_watcher.reset(new ev::periodic(m_overseer->binding()));
+    m_watcher.reset(new ev::periodic(m_overseer->loop()));
     m_watcher->set<scheduler_base_t, &scheduler_base_t::publish>(this);
     ev_periodic_set(static_cast<ev_periodic*>(m_watcher.get()), 0, 0, thunk);
     m_watcher->start();
