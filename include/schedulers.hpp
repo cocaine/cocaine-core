@@ -85,7 +85,7 @@ class timed_scheduler_base_t:
 
     private:
         inline ev::tstamp reschedule(ev::tstamp now) {
-            static_cast<TimedSchedulerType*>(this)->reschedule(now);
+            return static_cast<TimedSchedulerType*>(this)->reschedule(now);
         }
 
         static ev::tstamp thunk(ev_periodic* w, ev::tstamp now);

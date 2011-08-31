@@ -98,18 +98,11 @@ SET_TARGET_PROPERTIES(yappi-core PROPERTIES
 SET_TARGET_PROPERTIES(yappi-core yappi-core-security yappi-core-storage PROPERTIES
     COMPILE_DEFINITIONS "BOOST_FILESYSTEM_VERSION=2")
 
-ADD_DEPENDENCIES(yappi-core
-    json
-    yappi-core-security
-    yappi-core-storage)
-
 ADD_EXECUTABLE(yappi src/main)
 
 TARGET_LINK_LIBRARIES(yappi
     yappi-core
     boost_program_options-mt)
-
-ADD_DEPENDENCIES(yappi yappi-core)
 
 ADD_SUBDIRECTORY(plugins)
 ADD_SUBDIRECTORY(clients)

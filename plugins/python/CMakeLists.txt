@@ -25,9 +25,6 @@ SET_TARGET_PROPERTIES(yappi-plugin-python PROPERTIES
     COMPILE_FLAGS "${PYTHON_CFLAGS}"
     LINK_FLAGS "${PYTHON_LDFLAGS}")
 
-ADD_DEPENDENCIES(yappi-plugin-python
-    yappi-core-security)
-
 INSTALL(TARGETS yappi-plugin-python
     LIBRARY DESTINATION lib/yappi
     COMPONENT runtime)

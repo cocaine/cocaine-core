@@ -11,9 +11,6 @@ TARGET_LINK_LIBRARIES(yappi-plugin-mysql
     mysqlclient
     uriparser)
 
-ADD_DEPENDENCIES(yappi-plugin-mysql
-    yappi-core-security)
-
 INSTALL(TARGETS yappi-plugin-mysql
     LIBRARY DESTINATION lib/yappi
     COMPONENT runtime)
