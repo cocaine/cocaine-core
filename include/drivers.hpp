@@ -4,7 +4,7 @@
 #include <boost/format.hpp>
 
 #include "common.hpp"
-#include "engine.hpp"
+#include "networking.hpp"
 
 #define max(a, b) ((a) >= (b) ? (a) : (b))
 #define min(a, b) ((a) <= (b) ? (a) : (b))
@@ -56,8 +56,7 @@ class driver_base_t:
 };
 
 class fs_t:
-    public driver_base_t<ev::stat, fs_t>,
-    public helpers::birth_control_t<fs_t>
+    public driver_base_t<ev::stat, fs_t>
 {
     public:
         fs_t(boost::shared_ptr<plugin::source_t> source, const Json::Value& args):
@@ -102,8 +101,7 @@ class timed_driver_base_t:
 
 // Automatic scheduler
 class auto_t:
-    public timed_driver_base_t<auto_t>,
-    public helpers::birth_control_t<auto_t>    
+    public timed_driver_base_t<auto_t>
 {
     public:
         auto_t(boost::shared_ptr<plugin::source_t> source, const Json::Value& args):
@@ -127,8 +125,7 @@ class auto_t:
 
 // Manual userscript scheduler
 class manual_t:
-    public timed_driver_base_t<manual_t>,
-    public helpers::birth_control_t<manual_t>
+    public timed_driver_base_t<manual_t>
 {
     public:
         manual_t(boost::shared_ptr<plugin::source_t> source, const Json::Value& args):
@@ -147,8 +144,7 @@ class manual_t:
 };
 
 class event_t:
-    public driver_base_t<ev::io, event_t>,
-    public helpers::birth_control_t<event_t>
+    public driver_base_t<ev::io, event_t>
 {
     public:
         event_t(boost::shared_ptr<plugin::source_t> source, const Json::Value& args):
