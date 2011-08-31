@@ -11,6 +11,7 @@
 #include <syslog.h>
 #include <time.h>
 
+#define EV_MINIMAL 0
 #include <ev++.h>
 
 #include <zmq.hpp>
