@@ -30,7 +30,7 @@ class overseer_t:
         
     public:
         // Fetches the new data from the source
-        plugin::dict_t invoke();
+        const plugin::dict_t& invoke();
         
         // Bindings for drivers
         inline ev::dynamic_loop& loop() { return m_loop; }

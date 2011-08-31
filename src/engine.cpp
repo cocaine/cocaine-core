@@ -261,7 +261,7 @@ void overseer_t::cleanup(ev::prepare& w, int revents) {
     m_cached = false;
 }
 
-dict_t overseer_t::invoke() {
+const dict_t& overseer_t::invoke() {
     if(!m_cached) {
         try {
             m_cache = m_source->invoke();
@@ -278,7 +278,6 @@ dict_t overseer_t::invoke() {
 template<class DriverType>
 void overseer_t::push(const Json::Value& message) {
     Json::Value result;
-    std::string driver_id;
     std::string token = message["future"]["token"].asString();
     std::string compartment;
 
@@ -287,6 +286,7 @@ void overseer_t::push(const Json::Value& message) {
     };
 
     std::auto_ptr<DriverType> driver;
+    std::string driver_id;
 
     try {
         driver.reset(new DriverType(m_source, message["args"]));
@@ -361,7 +361,6 @@ void overseer_t::push(const Json::Value& message) {
 template<class DriverType>
 void overseer_t::drop(const Json::Value& message) {
     Json::Value result;
-    std::string driver_id;
     std::string token = message["future"]["token"].asString();
     std::string compartment;
 
@@ -370,6 +369,7 @@ void overseer_t::drop(const Json::Value& message) {
     };
 
     std::auto_ptr<DriverType> driver;
+    std::string driver_id;
 
     try {
         driver.reset(new DriverType(m_source, message["args"]));
@@ -420,7 +420,7 @@ void overseer_t::drop(const Json::Value& message) {
 
 void overseer_t::once(const Json::Value& message) {
     Json::Value result;
-    dict_t dict = invoke();
+    const dict_t& dict = invoke();
 
     for(dict_t::const_iterator it = dict.begin(); it != dict.end(); ++it) {
         result[it->first] = it->second;
@@ -514,7 +514,7 @@ void driver_base_t<WatcherType, DriverType>::stop() {
 
 template<class WatcherType, class DriverType>
 void driver_base_t<WatcherType, DriverType>::operator()(WatcherType&, int) {
-    dict_t dict = m_parent->invoke();
+    const dict_t& dict = m_parent->invoke();
 
     // Do nothing if plugin has returned an empty dict
     if(dict.size() == 0) {
