@@ -11,7 +11,12 @@ class factory_t {
     public:
         static boost::thread_specific_ptr<T>& open(const config_t& config) {
             if(!instance.get()) {
-                instance.reset(new T(config));
+                try {
+                    instance.reset(new T(config));
+                } catch(const std::runtime_error& e) {
+                    syslog(LOG_ERR, "%s: %s", __func__, e.what());
+                    abort();
+                }
             }
 
             return instance;
