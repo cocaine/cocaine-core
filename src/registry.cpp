@@ -5,7 +5,6 @@
 
 #include "common.hpp"
 #include "registry.hpp"
-#include "uri.hpp"
 
 using namespace yappi::core;
 using namespace yappi::plugin;
@@ -17,18 +16,18 @@ struct is_regular_file {
     }
 };
 
-registry_t::registry_t(const std::string& plugin_path):
-    m_plugin_path(plugin_path)
-{
-    if(fs::exists(m_plugin_path) && !fs::is_directory(m_plugin_path)) {
-        throw std::runtime_error(plugin_path + " is not a directory");
+registry_t::registry_t(const config_t& config) {
+    fs::path path = config.paths.plugins;
+
+    if(fs::exists(path) && !fs::is_directory(path)) {
+        throw std::runtime_error(path.string() + " is not a directory");
     }
 
-    if(!fs::exists(m_plugin_path)) {
+    if(!fs::exists(path)) {
         try {
-            fs::create_directories(m_plugin_path);
+            fs::create_directories(path);
         } catch(const std::runtime_error& e) {
-            throw std::runtime_error("cannot create " + m_plugin_path.string());
+            throw std::runtime_error("cannot create " + path.string());
         }
     }
 
@@ -39,7 +38,7 @@ registry_t::registry_t(const std::string& plugin_path):
     // Directory iterator
     typedef boost::filter_iterator<is_regular_file, fs::directory_iterator> file_iterator;
     file_iterator it = file_iterator(is_regular_file(),
-        fs::directory_iterator(m_plugin_path)), end;
+        fs::directory_iterator(path)), end;
 
     while(it != end) {
         // Load the plugin

@@ -12,6 +12,8 @@
 
 namespace yappi { namespace plugin {
 
+using namespace v8;
+
 class javascript_t: public source_t {
     public:
         javascript_t(const std::string& uri_):
@@ -44,28 +46,73 @@ class javascript_t: public source_t {
             // Read the code
             code << input.rdbuf();
 
-            // Compile the code
-            v8::Context::Scope scope(m_context);
-            v8::Handle<v8::String> source = v8::String::New(code.str().c_str());
-            m_script = v8::Script::Compile(source);
+            // Compile
+            compile(code.str(), "invoke");
+        }
+
+        void compile(const std::string& code,
+                     const std::string& name)
+        {
+            HandleScope handle_scope;
+
+            m_context = Context::New();
+            Context::Scope context_scope(m_context);
+            
+            TryCatch try_catch;
+
+            Handle<String> source = String::New(code.c_str());
+            Handle<Script> script = Script::Compile(source);
+
+            if(script.IsEmpty()) {
+                String::AsciiValue exception(try_catch.Exception());
+                throw std::runtime_error(*exception);
+            }
+
+            Handle<Value> result = script->Run();
+
+            if(result.IsEmpty()) {
+                String::AsciiValue exception(try_catch.Exception());
+                throw std::runtime_error(*exception);
+            }
+
+            Handle<String> target = String::New(name.c_str());
+            Handle<Value> object = m_context->Global()->Get(target);
+
+            if(!object->IsFunction()) {
+                throw std::runtime_error("target object is not a function");
+            }
+
+            Handle<Function> function = Handle<Function>::Cast(object);
+            m_function = Persistent<Function>::New(function);
+        }
+
+        ~javascript_t() {
+            m_function.Dispose();
+            m_context.Dispose();
         }
     
         virtual dict_t invoke() {
             dict_t dict;
 
-            v8::Context::Scope scope(m_context);
-            v8::Handle<v8::Value> result = m_script->Run();
+            HandleScope handle_scope;
+            Context::Scope context_scope(m_context);
+            TryCatch try_catch;
 
-            v8::String::AsciiValue string(result);
-            dict["result"] = *string;
+            Handle<Value> result = m_function->Call(m_context->Global(), 0, NULL);
+
+            if(!result.IsEmpty()) {
+                dict["result"] = "success";
+            } else {
+                String::AsciiValue exception(try_catch.Exception());
+                dict["exception"] = *exception;
+            }
 
             return dict;
         }
 
     private:
-        v8::HandleScope m_handle_scope;
-        v8::Persistent<v8::Context> m_context;
-        v8::Handle<v8::Script> m_script;
+        Persistent<Context> m_context;
+        Persistent<Function> m_function;
 };
 
 source_t* create_javascript_instance(const char* uri) {

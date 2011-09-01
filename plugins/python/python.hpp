@@ -13,14 +13,15 @@ class python_t: public source_t {
         // The source protocol implementation
         python_t(const std::string& uri);
 
-        virtual dict_t invoke();
-        virtual uint64_t capabilities() const;
-        virtual float reschedule();
-
         // Instantiates the iterable object from the supplied code
-        void create(const std::string& code,
-                    const std::string& name, 
-                    const dict_t& parameters);
+        void compile(const std::string& code,
+                     const std::string& name, 
+                     const dict_t& parameters);
+
+        virtual dict_t invoke();
+        virtual float reschedule();
+        
+        virtual uint64_t capabilities() const;
 
         // Fetches and formats current Python exception as a string
         std::string exception();

@@ -1,3 +1,5 @@
+LOCATE_LIBRARY(LIBV8 "v8.h" "v8")
+
 ADD_LIBRARY(yappi-plugin-javascript MODULE
     javascript)
 

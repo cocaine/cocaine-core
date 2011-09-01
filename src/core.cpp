@@ -1,26 +1,22 @@
 #include <iomanip>
 #include <sstream>
 
-#include <boost/bind.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <boost/lexical_cast.hpp>
 #include <msgpack.hpp>
 
 #include "core.hpp"
 #include "future.hpp"
+#include "plugin.hpp"
+#include "persistance.hpp"
+#include "security.hpp"
 
 using namespace yappi::core;
 using namespace yappi::engine;
-using namespace yappi::persistance;
 using namespace yappi::plugin;
 
-core_t::core_t(helpers::auto_uuid_t uuid,
-               const std::vector<std::string>& listeners,
-               const std::vector<std::string>& publishers,
-               uint64_t hwm, bool purge):
-    m_registry("/usr/lib/yappi") /* [CONFIG] */,
-    m_signer(uuid),
-    m_storage(uuid),
+core_t::core_t(const config_t& config):
+    m_config(config),
     m_context(1),
     s_events(m_context, ZMQ_PULL),
     s_publisher(m_context, ZMQ_PUB),
@@ -35,7 +31,6 @@ core_t::core_t(helpers::auto_uuid_t uuid,
     syslog(LOG_INFO, "core: using libzmq version %d.%d.%d", major, minor, patch);
     syslog(LOG_INFO, "core: using libev version %d.%d", ev_version_major(), ev_version_minor());
     syslog(LOG_INFO, "core: using libmsgpack version %s", msgpack_version());
-    syslog(LOG_INFO, "core: instance uuid - %s", uuid.get().c_str());
 
     // Internal event sink socket
     s_events.bind("inproc://events");
@@ -53,7 +48,7 @@ core_t::core_t(helpers::auto_uuid_t uuid,
     e_reaper.start(s_reaper.fd(), EV_READ);
 
     // Listening socket
-    for(std::vector<std::string>::const_iterator it = listeners.begin(); it != listeners.end(); ++it) {
+    for(std::vector<std::string>::const_iterator it = m_config.net.listen.begin(); it != m_config.net.listen.end(); ++it) {
         s_requests.bind(*it);
         syslog(LOG_INFO, "core: listening for requests on %s", it->c_str());
     }
@@ -62,9 +57,9 @@ core_t::core_t(helpers::auto_uuid_t uuid,
     e_requests.start(s_requests.fd(), EV_READ);
 
     // Publishing socket
-    s_publisher.setsockopt(ZMQ_HWM, &hwm, sizeof(hwm));
+    s_publisher.setsockopt(ZMQ_HWM, &m_config.net.watermark, sizeof(m_config.net.watermark));
 
-    for(std::vector<std::string>::const_iterator it = publishers.begin(); it != publishers.end(); ++it) {
+    for(std::vector<std::string>::const_iterator it = m_config.net.publish.begin(); it != m_config.net.publish.end(); ++it) {
         s_publisher.bind(*it);
         syslog(LOG_INFO, "core: publishing events on %s", it->c_str());
     }
@@ -82,11 +77,8 @@ core_t::core_t(helpers::auto_uuid_t uuid,
     e_sighup.set<core_t, &core_t::reload>(this);
     e_sighup.start(SIGHUP);
 
-    if(purge) {
-        m_storage.purge();
-    } else {
-        recover();
-    }
+    // Task recovery
+    recover();
 }
 
 core_t::~core_t() {
@@ -179,7 +171,7 @@ void core_t::request(ev::io& io, int revents) {
                     future->set("token", token);
 
                     if(version > 2) {
-                        m_signer.verify(request,
+                        security::signing_t::open(m_config).verify(request,
                             static_cast<const unsigned char*>(signature.data()),
                             signature.size(), token);
                     }
@@ -263,7 +255,7 @@ void core_t::push(future_t* future, const std::string& target, const Json::Value
     if(it == m_engines.end()) {
         try {
             // If the engine wasn't found, try to start a new one
-            engine = new engine_t(m_context, m_registry, m_storage, target);
+            engine = new engine_t(m_config, m_context, target);
             m_engines.insert(target, engine);
         } catch(const std::exception& e) {
             syslog(LOG_ERR, "core: exception in push() - %s", e.what());
@@ -441,7 +433,7 @@ void core_t::reap(ev::io& io, int revents) {
 }
 
 void core_t::recover() {
-    Json::Value root = m_storage.all();
+    Json::Value root = persistance::storage_t::open(m_config).all();
 
     if(root.size()) {
         syslog(LOG_NOTICE, "core: loaded %d task(s)", root.size());

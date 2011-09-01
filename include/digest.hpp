@@ -1,11 +1,9 @@
 #ifndef YAPPI_DIGEST_HPP
 #define YAPPI_DIGEST_HPP
 
-#include <string>
-
-#include <boost/noncopyable.hpp>
-
 #include <openssl/evp.h>
+
+#include "common.hpp"
 
 namespace yappi { namespace security {
 

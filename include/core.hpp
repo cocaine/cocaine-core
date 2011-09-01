@@ -2,11 +2,8 @@
 #define YAPPI_CORE_HPP
 
 #include "common.hpp"
-#include "registry.hpp"
 #include "networking.hpp"
 #include "engine.hpp"
-#include "persistance.hpp"
-#include "security.hpp"
 
 namespace yappi { namespace core {
 
@@ -18,10 +15,7 @@ class core_t:
     friend class future_t;
     
     public:
-        core_t(helpers::auto_uuid_t uuid,
-               const std::vector<std::string>& listeners,
-               const std::vector<std::string>& publishers,
-               uint64_t hwm, bool purge);
+        core_t(const config_t& config);
         ~core_t();
 
         // Event loop
@@ -58,15 +52,8 @@ class core_t:
         void recover();
 
     private:
-        // Plugins
-        registry_t m_registry;
-
-        // Security
-        security::signing_t m_signer;
+        config_t m_config;
         
-        // Task persistance
-        persistance::storage_t m_storage;
-
         // Engine management (URI -> Engine)
         typedef boost::ptr_map<const std::string, engine::engine_t> engine_map_t;
         engine_map_t m_engines;

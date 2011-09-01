@@ -5,15 +5,15 @@
 
 #include "common.hpp"
 #include "registry.hpp"
-#include "persistance.hpp"
-
 #include "threading.hpp"
 
-namespace yappi { namespace core {
+namespace yappi { 
+    
+namespace core {
     class future_t;
-}}
+}
 
-namespace yappi { namespace engine {
+namespace engine {
 
 // Thread pool manager
 class engine_t:
@@ -21,8 +21,8 @@ class engine_t:
     public helpers::birth_control_t<engine_t>
 {
     public:
-        engine_t(zmq::context_t& context, core::registry_t& registry,
-            persistance::storage_t& storage, const std::string& target);
+        engine_t(const config_t& config, zmq::context_t& context, 
+            const std::string& target);
         ~engine_t();
 
         // Commands
@@ -31,10 +31,9 @@ class engine_t:
         void reap(const std::string& thread_id);
         
     private:
+        const config_t& m_config;
         zmq::context_t& m_context;
-        core::registry_t& m_registry;
-        persistance::storage_t& m_storage;
-        
+
         // Engine URI
         const std::string m_target;
         

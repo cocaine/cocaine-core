@@ -9,17 +9,16 @@
 namespace yappi { namespace core {
 
 class registry_t:
-    public boost::noncopyable 
+    public boost::noncopyable,
+    public helpers::factory_t<registry_t>
 {
     public:
-        registry_t(const std::string& plugin_path);
+        registry_t(const config_t& config);
         ~registry_t();
 
         boost::shared_ptr<plugin::source_t> instantiate(const std::string& uri);
 
     private:
-        boost::filesystem::path m_plugin_path;
-
         // Used to instantiate plugin instances
         typedef std::map<const std::string, plugin::factory_fn_t> factory_map_t;
         factory_map_t m_factories;

@@ -4,7 +4,6 @@
 #include <zmq.hpp>
 
 #include "common.hpp"
-#include "json/json.h"
 
 namespace yappi { namespace net {
 

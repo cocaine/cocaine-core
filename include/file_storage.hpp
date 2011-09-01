@@ -11,7 +11,7 @@ class file_storage_t:
     public boost::noncopyable
 {
     public:
-        file_storage_t(helpers::auto_uuid_t uuid);
+        file_storage_t(const config_t& config);
 
     public:
         bool put(const std::string& key, const Json::Value& value);

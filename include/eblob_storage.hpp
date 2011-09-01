@@ -44,7 +44,7 @@ class eblob_storage_t:
     public boost::noncopyable
 {
     public:
-        eblob_storage_t(helpers::auto_uuid_t uuid);
+        eblob_storage_t(const config_t& config);
         ~eblob_storage_t();
 
     public:

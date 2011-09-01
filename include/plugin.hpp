@@ -2,7 +2,6 @@
 #define YAPPI_PLUGIN_HPP
 
 #include <map>
-#include <stdexcept>
 #include <string>
 
 #include <stdint.h>
@@ -12,6 +11,11 @@
 #include "digest.hpp"
 
 #define MAX_SOURCES 10
+
+#define CAP_NONE    0
+#define CAP_MANUAL  1 << 0
+#define CAP_ISOLATE 1 << 1
+#define CAP_SINK    1 << 2
 
 namespace yappi { namespace plugin {
 
@@ -37,11 +41,6 @@ class source_t: public boost::noncopyable {
 
         // This method will be called by a driver from the thread
         virtual dict_t invoke() = 0;
-
-        #define CAP_NONE    0
-        #define CAP_MANUAL  1 << 0
-        #define CAP_ISOLATE 1 << 1
-        #define CAP_SINK    1 << 2
 
         // This method will be called by the scheduler
         // to determine the source's capabilities

@@ -22,8 +22,8 @@ class overseer_t:
     public boost::noncopyable
 {
     public:
-        overseer_t(helpers::auto_uuid_t id, zmq::context_t& context,
-            persistance::storage_t& storage);
+        overseer_t(helpers::auto_uuid_t id, const config_t& config,
+            zmq::context_t& context);
        
         // Thread entry point 
         void run(boost::shared_ptr<plugin::source_t> source);
@@ -74,16 +74,19 @@ class overseer_t:
         // Thread ID
         helpers::auto_uuid_t m_id;
 
+        // Config
+        const config_t& m_config;
+
         // Messaging
         zmq::context_t& m_context;
         net::json_socket_t m_pipe, m_futures, m_reaper;
         
-        // Task persistance
-        persistance::storage_t& m_storage;
-      
         // Data source
         boost::shared_ptr<plugin::source_t> m_source;
-        
+      
+        // Storage
+        persistance::storage_t& m_storage;
+
         // Event loop
         ev::dynamic_loop m_loop;
         ev::io m_io;
@@ -112,8 +115,8 @@ class thread_t:
     public helpers::birth_control_t<thread_t>
 {
     public:
-        thread_t(helpers::auto_uuid_t id, zmq::context_t& context, 
-            persistance::storage_t& storage);
+        thread_t(helpers::auto_uuid_t id, const config_t& config,
+            zmq::context_t& context);
         ~thread_t();
 
         void run(boost::shared_ptr<plugin::source_t> source);

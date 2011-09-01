@@ -13,15 +13,14 @@ using namespace yappi::security;
 
 namespace fs = boost::filesystem;
 
-signing_t::signing_t(helpers::auto_uuid_t uuid):
+signing_t::signing_t(const config_t& config):
     m_context(EVP_MD_CTX_create())
 {
     // Initialize error strings
     ERR_load_crypto_strings();
 
     // Load the credentials
-    // [CONFIG]
-    fs::path path = fs::path("/var/lib/yappi/" + uuid.get() + ".tokens");
+    fs::path path = fs::path(config.paths.storage + ".tokens");
    
     if(fs::exists(path) && !fs::is_directory(path)) {
         throw std::runtime_error(path.string() + " is not a directory");

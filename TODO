@@ -15,9 +15,13 @@ v Modular scheduling engines, multiple scheduler types
 x Protocol: move action into targets [was a bad idea]
 v Engines: isolated tasks
 > Per-plugin per-thread storage support (enables persistent state plugins)
-> Python toolset: TimeTail, BasicSink, target aliases
-* Migrate internal variable state to a dedicated configuration object, 
+v Basic python toolset: TimeTail, BasicSink, target aliases
+v Migrate internal variable state to a dedicated configuration object, 
   more flexible environment setup: paths, minimal protocol version
+v Task queues
+v Filesystem event based driver
+v Javascript plugin, basic version
+> 0mq event based driver
 * Authentication replay protection (timestamps?)
 * Optional encrypted publishing
 
