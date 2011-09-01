@@ -25,6 +25,10 @@ struct config_t {
     struct {
         bool disabled;
     } storage;
+
+    struct {
+        unsigned int protocol;
+    } core;
 };
 
 }

@@ -50,6 +50,7 @@ int main(int argc, char* argv[]) {
         ("thread-collect-timeout", po::value<float>
             (&config.engine.collect_timeout)->default_value(0.5),
             "driver events collection timeout, in seconds")
+        ("secure", "disallow old insecure protocol")
         ("daemonize", "daemonize on start")
         ("transient", "disable storage completely");
 
@@ -80,6 +81,7 @@ int main(int argc, char* argv[]) {
     }
 
     config.storage.disabled = vm.count("transient");
+    config.core.protocol = vm.count("secure") ? 3 : 2;
 
     // Setting up the syslog
     openlog(identity, LOG_PID | LOG_NDELAY, LOG_USER);

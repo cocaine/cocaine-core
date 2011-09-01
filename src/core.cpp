@@ -168,7 +168,7 @@ void core_t::request(ev::io& io, int revents) {
                 unsigned int version = root.get("version", 1).asUInt();
                 std::string token = root.get("token", "").asString();
                 
-                if(version >= 2) {
+                if(version >= m_config.core.protocol) {
                     future->set("protocol", boost::lexical_cast<std::string>(version));
                 } else {
                     throw std::runtime_error("outdated protocol version");
