@@ -37,6 +37,9 @@ class driver_base_t:
         void stop();
 
         virtual void operator()(WatcherType&, int);
+    
+    protected:
+        void publish(const plugin::dict_t& dict);
 
     protected:
         // Data source
@@ -161,7 +164,14 @@ class event_t:
         }
 
         virtual void operator()(ev::io&, int) {
-            // Do something
+            zmq::message_t message;
+            plugin::dict_t dict;
+
+            while(m_sink->pending()) {
+                m_sink->recv(&message);
+            }
+
+            publish(dict);
         }
 
         void initialize() {

@@ -517,10 +517,14 @@ void driver_base_t<WatcherType, DriverType>::operator()(WatcherType&, int) {
         return;
     }
 
+    publish(dict);
+}
+
+template<class WatcherType, class DriverType>
+void driver_base_t<WatcherType, DriverType>::publish(const dict_t& dict) {
     zmq::message_t message(m_id.length());
     memcpy(message.data(), m_id.data(), m_id.length());
     m_pipe->send(message, ZMQ_SNDMORE);
-    
     m_pipe->send_packed(dict);
 }
 
