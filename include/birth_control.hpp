@@ -2,7 +2,6 @@
 #define YAPPI_BIRTH_CONTROL_HPP
 
 #include <boost/thread.hpp>
-#include <boost/utility/in_place_factory.hpp>
 
 namespace yappi { namespace helpers {
 
