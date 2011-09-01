@@ -42,13 +42,13 @@ class source_t: public boost::noncopyable {
         // This method will be called by a driver from the thread
         virtual dict_t invoke() = 0;
 
-        // This method will be called by the scheduler
+        // This method will be called by the driver
         // to determine the source's capabilities
         virtual inline uint64_t capabilities() const {
             return CAP_NONE;
         }
 
-        // This method will be called by the scheduler in case of manual schedling type
+        // This method will be called by the driver for manual scheduling
         // Time is seconds.microseconds float
         virtual float reschedule() {
             return -1;

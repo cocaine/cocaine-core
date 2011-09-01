@@ -32,7 +32,7 @@ int main(int argc, char* argv[]) {
         ("help", "show this message")
         ("export", po::value< std::vector<std::string> >
             (&config.net.publish),
-            "endpoints to publish events from schedulers")
+            "endpoints to publish events from the drivers")
         ("watermark", po::value<uint64_t>
             (&config.net.watermark)->default_value(1000),
             "maximum number of messages to keep on client disconnects")

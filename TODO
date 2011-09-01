@@ -11,7 +11,7 @@ v Local persistence
 v Authentication
 
 Version: 0.3
-v Modular scheduling engines, multiple scheduler types
+v Modular engines, multiple driver types
 x Protocol: move action into targets [was a bad idea]
 v Engines: isolated tasks
 > Per-plugin per-thread storage support (enables persistent state plugins)

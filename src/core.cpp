@@ -363,14 +363,14 @@ void core_t::seal(const std::string& future_id) {
 
 void core_t::event(ev::io& io, int revents) {
     zmq::message_t message;
-    std::string scheduler_id;
+    std::string driver_id;
     dict_t dict;
     
     while(s_events.pending()) {
-        // Receive the scheduler id
+        // Receive the driver id
         s_events.recv(&message);
 
-        scheduler_id.assign(
+        driver_id.assign(
             static_cast<const char*>(message.data()),
             message.size());
     
@@ -380,7 +380,7 @@ void core_t::event(ev::io& io, int revents) {
         // Disassemble and send in the envelopes
         for(dict_t::const_iterator it = dict.begin(); it != dict.end(); ++it) {
             std::ostringstream envelope;
-            envelope << scheduler_id << " " << it->first << " "
+            envelope << driver_id << " " << it->first << " "
                      << std::fixed << std::setprecision(3) << m_loop.now();
 
             message.rebuild(envelope.str().length());

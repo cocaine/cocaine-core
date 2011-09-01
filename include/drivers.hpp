@@ -99,7 +99,6 @@ class timed_driver_base_t:
         static ev::tstamp thunk(ev_periodic* w, ev::tstamp now);
 };
 
-// Automatic scheduler
 class auto_t:
     public timed_driver_base_t<auto_t>
 {
@@ -123,7 +122,6 @@ class auto_t:
         ev::tstamp m_interval;
 };
 
-// Manual userscript scheduler
 class manual_t:
     public timed_driver_base_t<manual_t>
 {

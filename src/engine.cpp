@@ -527,12 +527,12 @@ void driver_base_t<WatcherType, DriverType>::operator()(WatcherType&, int) {
 template<class TimedDriverType>
 ev::tstamp timed_driver_base_t<TimedDriverType>::thunk(ev_periodic* w, ev::tstamp now) {
     timed_driver_base_t<TimedDriverType>* driver =
-        static_cast<timed_driver_base_t<TimedDriverType>*>(w->data);
+        static_cast< timed_driver_base_t<TimedDriverType>* >(w->data);
 
     try {
         return driver->reschedule(now);
     } catch(const std::exception& e) {
-        syslog(LOG_ERR, "engine: %s scheduler is broken - %s",
+        syslog(LOG_ERR, "engine: %s driver is broken - %s",
             driver->id().c_str(), e.what());
         driver->stop();
         return now;
