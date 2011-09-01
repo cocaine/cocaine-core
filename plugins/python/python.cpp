@@ -216,11 +216,11 @@ float python_t::reschedule() {
     return PyFloat_AsDouble(result);
 }
 
-uint64_t python_t::capabilities() const {
+uint32_t python_t::capabilities() const {
     thread_state_t state = PyGILState_Ensure();
     object_t reschedule = PyObject_GetAttrString(m_object, "reschedule");
 
-    return CAP_SINK | (PyCallable_Check(reschedule) ? CAP_MANUAL : CAP_NONE);
+    return SINK | (PyCallable_Check(reschedule) ? MANUAL : NONE);
 }
 
 std::string python_t::exception() {

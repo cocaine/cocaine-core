@@ -132,7 +132,7 @@ class manual_t:
         manual_t(boost::shared_ptr<plugin::source_t> source, const Json::Value& args):
             timed_driver_base_t<manual_t>(source)
         {
-            if(!(m_source->capabilities() & CAP_MANUAL)) {
+            if(!(m_source->capabilities() & plugin::source_t::MANUAL)) {
                 throw std::runtime_error("source doesn't support manual scheduling");
             }
             
@@ -152,7 +152,7 @@ class event_t:
             driver_base_t<ev::io, event_t>(source),
             m_endpoint(args.get("endpoint", "").asString())
         {
-            if(!(m_source->capabilities() & CAP_SINK)) {
+            if(!(m_source->capabilities() & plugin::source_t::SINK)) {
                 throw std::runtime_error("source doesn't support incoming messages");
             }
 
@@ -163,21 +163,11 @@ class event_t:
             m_id = (boost::format("event:%1%@%2%") % m_source->hash() % m_endpoint).str();
         }
 
-        virtual void operator()(ev::io&, int) {
-            zmq::message_t message;
-            plugin::dict_t dict;
-
-            while(m_sink->pending()) {
-                m_sink->recv(&message);
-            }
-
-            publish(dict);
-        }
+        virtual void operator()(ev::io&, int);
 
         void initialize() {
             m_sink.reset(new net::json_socket_t(m_parent->context(), ZMQ_PULL));
             m_sink->bind(m_endpoint);
-            
             m_watcher->set(m_sink->fd(), EV_READ);
         }
 

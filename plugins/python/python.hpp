@@ -18,10 +18,10 @@ class python_t: public source_t {
                      const std::string& name, 
                      const dict_t& parameters);
 
+        // Source protocol
+        virtual uint32_t capabilities() const;
         virtual dict_t invoke();
         virtual float reschedule();
-        
-        virtual uint64_t capabilities() const;
 
         // Fetches and formats current Python exception as a string
         std::string exception();

@@ -1,10 +1,11 @@
 #ifndef YAPPI_PLUGIN_HPP
 #define YAPPI_PLUGIN_HPP
 
-#include <map>
-#include <string>
-
 #include <stdint.h>
+
+#include <string>
+#include <map>
+#include <vector>
 
 #include <boost/noncopyable.hpp>
 
@@ -12,14 +13,11 @@
 
 #define MAX_SOURCES 10
 
-#define CAP_NONE    0
-#define CAP_MANUAL  1 << 0
-#define CAP_ISOLATE 1 << 1
-#define CAP_SINK    1 << 2
-
 namespace yappi { namespace plugin {
 
-class exhausted: public std::runtime_error {
+class exhausted:
+    public std::runtime_error
+{
     public:
         exhausted(const std::string& message):
             std::runtime_error(message)
@@ -39,19 +37,33 @@ class source_t: public boost::noncopyable {
         inline std::string uri() const { return m_uri; }
         inline std::string hash() const { return m_hash; }
 
-        // This method will be called by a driver from the thread
-        virtual dict_t invoke() = 0;
+        enum capabilities_t {
+            NONE    = 0,
+            MANUAL  = 1 << 0,
+            SINK    = 1 << 1
+        };
 
         // This method will be called by the driver
-        // to determine the source's capabilities
-        virtual inline uint64_t capabilities() const {
-            return CAP_NONE;
+        // to determine this source capabilities
+        virtual inline uint32_t capabilities() const {
+            return NONE;
         }
+
+        // This method will be called by a driver from the thread
+        // This is the default way to invoke the source, so it has to be
+        // implemented
+        virtual dict_t invoke() = 0;
 
         // This method will be called by the driver for manual scheduling
         // Time is seconds.microseconds float
         virtual float reschedule() {
-            return -1;
+            throw std::runtime_error("not implemented");
+        }
+
+        // This method will be called by the driver to process
+        // some external event
+        virtual dict_t process(const std::vector<std::string>& payload) {
+            throw std::runtime_error("not implemented");
         }
 
     protected:

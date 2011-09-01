@@ -264,8 +264,8 @@ void core_t::push(future_t* future, const std::string& target, const Json::Value
             // If the engine wasn't found, try to start a new one
             engine = new engine_t(m_config, m_context, target);
             m_engines.insert(target, engine);
-        } catch(const std::exception& e) {
-            syslog(LOG_ERR, "core: exception in push() - %s", e.what());
+        } catch(const std::runtime_error& e) {
+            syslog(LOG_ERR, "core: runtime error in push() - %s", e.what());
             response["error"] = e.what();
             future->fulfill(target, response);
             return;

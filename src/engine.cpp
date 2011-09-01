@@ -60,7 +60,7 @@ void engine_t::push(future_t* future, const Json::Value& args) {
                 throw;
             }
         } catch(const std::exception& e) {
-            syslog(LOG_ERR, "engine %s: exception - %s", m_target.c_str(), e.what());
+            syslog(LOG_ERR, "engine %s: error - %s", m_target.c_str(), e.what());
             response["error"] = e.what();
             future->fulfill(m_target, response);
             return;
@@ -263,7 +263,7 @@ const dict_t& overseer_t::invoke() {
             m_cache = m_source->invoke();
             m_cached = true;
         } catch(const std::exception& e) {
-            syslog(LOG_ERR, "engine %s: exception - %s", m_source->uri().c_str(), e.what());
+            syslog(LOG_ERR, "engine %s: error - %s", m_source->uri().c_str(), e.what());
             suicide();
         }
     }
@@ -287,8 +287,8 @@ void overseer_t::push(const Json::Value& message) {
     try {
         driver.reset(new DriverType(m_source, message["args"]));
         driver_id = driver->id();
-    } catch(const std::exception& e) {
-        syslog(LOG_ERR, "engine %s: exception - %s", m_source->uri().c_str(), e.what());
+    } catch(const std::runtime_error& e) {
+        syslog(LOG_ERR, "engine %s: error - %s", m_source->uri().c_str(), e.what());
         result["error"] = e.what();
         respond(message["future"], result);
         return;
@@ -299,7 +299,7 @@ void overseer_t::push(const Json::Value& message) {
         try {
             driver->start(m_context, this);
         } catch(const std::exception& e) {
-            syslog(LOG_ERR, "engine %s: exception - %s", m_source->uri().c_str(), e.what());
+            syslog(LOG_ERR, "engine %s: error - %s", m_source->uri().c_str(), e.what());
             result["error"] = e.what();
             respond(message["future"], result);
             return;
@@ -370,8 +370,8 @@ void overseer_t::drop(const Json::Value& message) {
     try {
         driver.reset(new DriverType(m_source, message["args"]));
         driver_id = driver->id();
-    } catch(const std::exception& e) {
-        syslog(LOG_ERR, "engine %s: exception - %s", m_source->uri().c_str(), e.what());
+    } catch(const std::runtime_error& e) {
+        syslog(LOG_ERR, "engine %s: error - %s", m_source->uri().c_str(), e.what());
         result["error"] = e.what();
         respond(message["future"], result);
         return;
@@ -530,8 +530,8 @@ void driver_base_t<WatcherType, DriverType>::publish(const dict_t& dict) {
 
 template<class TimedDriverType>
 ev::tstamp timed_driver_base_t<TimedDriverType>::thunk(ev_periodic* w, ev::tstamp now) {
-    timed_driver_base_t<TimedDriverType>* driver =
-        static_cast< timed_driver_base_t<TimedDriverType>* >(w->data);
+    timed_driver_base_t<TimedDriverType>* driver = static_cast< 
+        timed_driver_base_t<TimedDriverType>* >(w->data);
 
     try {
         return driver->reschedule(now);
@@ -540,5 +540,36 @@ ev::tstamp timed_driver_base_t<TimedDriverType>::thunk(ev_periodic* w, ev::tstam
             driver->id().c_str(), e.what());
         driver->stop();
         return now;
+    }
+}
+
+void event_t::operator()(ev::io&, int) {
+    zmq::message_t message;
+   
+    dict_t dict; 
+    std::string blob;
+    std::vector<std::string> payload;
+
+    while(m_sink->pending()) {
+        payload.clear();
+
+        do {
+            m_sink->recv(&message);
+            blob.assign(
+                static_cast<char*>(message.data()),
+                message.size());
+            payload.push_back(blob);
+        } while(m_sink->has_more());
+
+        try {
+            dict = m_source->process(payload);
+        } catch(const std::exception& e) {
+            syslog(LOG_ERR, "engine: %s driver is broken - %s",
+                m_id.c_str(), e.what());
+            stop();
+            return;
+        }
+
+        publish(dict);
     }
 }
