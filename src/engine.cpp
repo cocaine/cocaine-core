@@ -48,7 +48,7 @@ void engine_t::push(future_t* future, const Json::Value& args) {
         try {
             thread.reset(new thread_t(auto_uuid_t(thread_id), m_config, m_context));
             
-            source = registry_t::open(m_config).instantiate(m_target);
+            source = registry_t::open(m_config)->instantiate(m_target);
             thread->run(source);
             
             boost::tie(it, boost::tuples::ignore) = m_threads.insert(thread_id, thread);
@@ -160,7 +160,6 @@ overseer_t::overseer_t(auto_uuid_t id, const config_t& config, zmq::context_t& c
     m_pipe(m_context, ZMQ_PULL),
     m_futures(m_context, ZMQ_PUSH),
     m_reaper(m_context, ZMQ_PUSH),
-    m_storage(storage_t::open(m_config)),
     m_loop(),
     m_io(m_loop),
     m_suicide(m_loop),
@@ -331,7 +330,7 @@ void overseer_t::push(const Json::Value& message) {
     if(!message["args"].get("transient", false).asBool()) {
         std::string object_id = m_digest.get(driver_id + token + compartment);
 
-        if(!m_storage.exists(object_id)) {
+        if(!storage_t::open(m_config)->exists(object_id)) {
             Json::Value object;
             
             object["url"] = m_source->uri();
@@ -342,7 +341,7 @@ void overseer_t::push(const Json::Value& message) {
                 object["args"]["compartment"] = compartment;
             }
 
-            m_storage.put(object_id, object);
+            storage_t::open(m_config)->put(object_id, object);
         }
     }
 
@@ -403,7 +402,7 @@ void overseer_t::drop(const Json::Value& message) {
 
             // Un-persist
             std::string object_id = m_digest.get(driver_id + token + compartment);
-            m_storage.remove(object_id);
+            storage_t::open(m_config)->remove(object_id);
             
             result["result"] = "success";
         } else {

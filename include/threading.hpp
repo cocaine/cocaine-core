@@ -84,9 +84,6 @@ class overseer_t:
         // Data source
         boost::shared_ptr<plugin::source_t> m_source;
       
-        // Storage
-        persistance::storage_t& m_storage;
-
         // Event loop
         ev::dynamic_loop m_loop;
         ev::io m_io;

@@ -25,6 +25,7 @@ class core_t:
         // Signal processing
         void terminate(ev::sig& sig, int revents);
         void reload(ev::sig& sig, int revents);
+        void purge(ev::sig& sig, int revents);
 
         // Request dispatching
         void request(ev::io& io, int revents);
@@ -70,7 +71,7 @@ class core_t:
         // Event loop
         ev::default_loop m_loop;
         ev::io e_events, e_requests, e_futures, e_reaper;
-        ev::sig e_sigint, e_sigterm, e_sigquit, e_sighup;
+        ev::sig e_sigint, e_sigterm, e_sigquit, e_sighup, e_sigusr1;
 };
 
 }}

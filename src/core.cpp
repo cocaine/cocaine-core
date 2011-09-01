@@ -77,6 +77,9 @@ core_t::core_t(const config_t& config):
     e_sighup.set<core_t, &core_t::reload>(this);
     e_sighup.start(SIGHUP);
 
+    e_sigusr1.set<core_t, &core_t::purge>(this);
+    e_sigusr1.start(SIGUSR1);
+
     // Task recovery
     recover();
 }
@@ -84,10 +87,7 @@ core_t::core_t(const config_t& config):
 core_t::~core_t() {
     syslog(LOG_INFO, "core: shutting down the engines");
 
-    // Clearing up all the pending futures
     m_futures.clear();
-    
-    // Stopping the engines
     m_engines.clear();
 }
 
@@ -106,6 +106,13 @@ void core_t::reload(ev::sig& sig, int revents) {
     m_engines.clear();
 
     recover();
+}
+
+void core_t::purge(ev::sig& sig, int revents) {
+    m_futures.clear();
+    m_engines.clear();
+
+    persistance::storage_t::open(m_config)->purge();
 }
 
 void core_t::request(ev::io& io, int revents) {
@@ -171,7 +178,7 @@ void core_t::request(ev::io& io, int revents) {
                     future->set("token", token);
 
                     if(version > 2) {
-                        security::signing_t::open(m_config).verify(request,
+                        security::signing_t::open(m_config)->verify(request,
                             static_cast<const unsigned char*>(signature.data()),
                             signature.size(), token);
                     }
@@ -433,7 +440,7 @@ void core_t::reap(ev::io& io, int revents) {
 }
 
 void core_t::recover() {
-    Json::Value root = persistance::storage_t::open(m_config).all();
+    Json::Value root = persistance::storage_t::open(m_config)->all();
 
     if(root.size()) {
         syslog(LOG_NOTICE, "core: loaded %d task(s)", root.size());

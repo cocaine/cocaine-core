@@ -9,12 +9,12 @@ namespace yappi { namespace helpers {
 template<class T>
 class factory_t {
     public:
-        static T& open(const config_t& config) {
+        static boost::thread_specific_ptr<T>& open(const config_t& config) {
             if(!instance.get()) {
                 instance.reset(new T(config));
             }
 
-            return *instance;
+            return instance;
         }
 
     private:
