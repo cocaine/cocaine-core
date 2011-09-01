@@ -506,7 +506,7 @@ void driver_base_t<WatcherType, DriverType>::start(zmq::context_t& context, over
 template<class WatcherType, class DriverType>
 void driver_base_t<WatcherType, DriverType>::stop() {
     m_watcher->stop();
-    m_parent->reap(id());
+    m_parent->reap(m_id);
 }
 
 template<class WatcherType, class DriverType>
