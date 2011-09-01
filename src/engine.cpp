@@ -1,6 +1,5 @@
 #include <boost/bind.hpp>
 #include <boost/tuple/tuple.hpp>
-#include <msgpack.hpp>
 
 #include "engine.hpp"
 #include "future.hpp"
@@ -492,7 +491,7 @@ template<class WatcherType, class DriverType>
 void driver_base_t<WatcherType, DriverType>::start(zmq::context_t& context, overseer_t* parent) {
     m_parent = parent;
 
-    m_pipe.reset(new net::blob_socket_t(context, ZMQ_PUSH));
+    m_pipe.reset(new net::msgpack_socket_t(context, ZMQ_PUSH));
     m_pipe->connect("inproc://events");
     
     m_watcher.reset(new WatcherType(m_parent->loop()));
@@ -521,15 +520,8 @@ void driver_base_t<WatcherType, DriverType>::operator()(WatcherType&, int) {
     zmq::message_t message(m_id.length());
     memcpy(message.data(), m_id.data(), m_id.length());
     m_pipe->send(message, ZMQ_SNDMORE);
-
-    // Serialize the dict
-    msgpack::sbuffer buffer;
-    msgpack::pack(buffer, dict);
-
-    // And send it
-    message.rebuild(buffer.size());
-    memcpy(message.data(), buffer.data(), buffer.size());
-    m_pipe->send(message);
+    
+    m_pipe->send_packed(dict);
 }
 
 template<class TimedDriverType>

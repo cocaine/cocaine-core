@@ -369,18 +369,13 @@ void core_t::event(ev::io& io, int revents) {
     while(s_events.pending()) {
         // Receive the scheduler id
         s_events.recv(&message);
+
         scheduler_id.assign(
             static_cast<const char*>(message.data()),
             message.size());
     
         // Receive the data
-        s_events.recv(&message);
-        msgpack::unpacked unpacked;
-        msgpack::unpack(&unpacked,
-            static_cast<const char*>(message.data()),
-            message.size());
-        msgpack::object object = unpacked.get();
-        object.convert(&dict);
+        s_events.recv_packed(dict);
 
         // Disassemble and send in the envelopes
         for(dict_t::const_iterator it = dict.begin(); it != dict.end(); ++it) {

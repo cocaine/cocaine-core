@@ -49,7 +49,7 @@ class driver_base_t:
         threading::overseer_t* m_parent;
         
         // Messaging
-        std::auto_ptr<net::blob_socket_t> m_pipe;
+        std::auto_ptr<net::msgpack_socket_t> m_pipe;
         
         // Watcher
         std::auto_ptr<WatcherType> m_watcher;

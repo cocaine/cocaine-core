@@ -2,6 +2,7 @@
 #define YAPPI_NETWORKING_HPP
 
 #include <zmq.hpp>
+#include <msgpack.hpp>
 
 #include "common.hpp"
 
@@ -68,6 +69,51 @@ class json_socket_t:
 
         bool send_json(const Json::Value& root, int flags = 0);
         bool recv_json(Json::Value& root, int flags = 0);
+};
+
+class msgpack_socket_t:
+    public blob_socket_t
+{
+    public:
+        msgpack_socket_t(zmq::context_t& context, int type):
+            blob_socket_t(context, type)
+        {}
+
+        template<class T>
+        bool send_packed(const T& value, int flags = 0) {
+            zmq::message_t message;
+            
+            msgpack::sbuffer buffer;
+            msgpack::pack(buffer, value);
+            
+            message.rebuild(buffer.size());
+            memcpy(message.data(), buffer.data(), buffer.size());
+            
+            return blob_socket_t::send(message, flags);
+        }
+
+        template<class T>
+        bool recv_packed(T& result, int flags = 0) {
+            zmq::message_t message;
+            msgpack::unpacked unpacked;
+
+            if(!blob_socket_t::recv(&message, flags)) {
+                return false;
+            }
+           
+            try { 
+                msgpack::unpack(&unpacked,
+                    static_cast<const char*>(message.data()),
+                    message.size());
+                msgpack::object object = unpacked.get();
+                object.convert(&result);
+            } catch(const std::exception& e) {
+                syslog(LOG_ERR, "net: invalid msgpack type - %s", e.what());
+                return false;
+            }
+
+            return true;
+        }
 };
 
 }}

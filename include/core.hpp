@@ -65,7 +65,8 @@ class core_t:
 
         // Networking
         zmq::context_t m_context;
-        net::blob_socket_t s_events, s_publisher;
+        net::msgpack_socket_t s_events;
+        net::blob_socket_t s_publisher;
         net::json_socket_t s_requests, s_futures, s_reaper;
         
         // Event loop
