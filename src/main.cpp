@@ -50,7 +50,7 @@ int main(int argc, char* argv[]) {
         ("thread-collect-timeout", po::value<float>
             (&config.engine.collect_timeout)->default_value(0.5),
             "driver events collection timeout, in seconds")
-#if BOOST_VERSION > 103500
+#ifdef HISTORY_ENABLED
         ("history-depth", po::value<uint32_t>
             (&config.core.history_depth)->default_value(10),
             "history depth for each source")

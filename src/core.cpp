@@ -4,6 +4,11 @@
 #include <boost/lexical_cast.hpp>
 
 #include "core.hpp"
+
+#ifdef HISTORY_ENABLED
+    #include <boost/tuple/tuple.hpp>
+#endif
+
 #include "future.hpp"
 #include "plugin.hpp"
 #include "persistance.hpp"
@@ -101,8 +106,8 @@ void core_t::reload(ev::sig& sig, int revents) {
     m_futures.clear();
     m_engines.clear();
 
-#if BOOST_VERSION > 103500
-    m_history.clear();
+#ifdef HISTORY_ENABLED
+    m_histories.clear();
 #endif
 
     recover();
@@ -112,8 +117,8 @@ void core_t::purge(ev::sig& sig, int revents) {
     m_futures.clear();
     m_engines.clear();
 
-#if BOOST_VERSION > 103500
-    m_history.clear();
+#ifdef HISTORY_ENABLED
+    m_histories.clear();
 #endif
 
     persistance::storage_t::open(m_config)->purge();
@@ -206,7 +211,7 @@ void core_t::request(ev::io& io, int revents) {
 void core_t::dispatch(future_t* future, const Json::Value& root) {
     std::string action = root.get("action", "push").asString();
 
-#if BOOST_VERSION > 103500    
+#ifdef HISTORY_ENABLED
     if(action == "push" || action == "drop" || action == "history") {
 #else
     if(action == "push" || action == "drop") {
@@ -240,7 +245,7 @@ void core_t::dispatch(future_t* future, const Json::Value& root) {
                 push(future, target, args);
             } else if(action == "drop") {
                 drop(future, target, args);
-#if BOOST_VERSION > 103500    
+#ifdef HISTORY_ENABLED   
             } else if(action == "history") {
                 history(future, target, args);
 #endif
@@ -334,32 +339,38 @@ void core_t::stat(future_t* future) {
     future->fulfill("requests", requests);
 }
 
-#if BOOST_VERSION > 103500
+#ifdef HISTORY_ENABLED
 void core_t::history(future_t* future, const std::string& key, const Json::Value& args) {
-    history_map_t::iterator it = m_history.find(key);
+    history_map_t::iterator it = m_histories.find(key);
 
-    if(it == m_history.end()) {
+    if(it == m_histories.end()) {
         Json::Value response;
         response["error"] = "history is empty";
         future->fulfill(key, response);
+        return;
     }
 
+    uint32_t depth = args.get("depth", m_config.core.history_depth).asUInt(),
+        counter = 0;
+    Json::Value result(Json::arrayValue);
     history_t* history = it->second;
-    uint32_t depth = args.get("depth", m_config.core.history_depth);
 
-    Json::Value events(Json::Value::arrayValue);
-    
-    for(history_t::const_iterator event = history->begin(); event != history->end; ++event) {
-        Json::Value object(Json::Value::objectValue);
+    for(history_t::const_iterator event = history->begin(); event != history->end(); ++event) {
+        Json::Value object(Json::objectValue);
 
-        for(dict_t::const_iterator pair = event->begin(); pair != event->end(); ++pair) {
-            object[pair->first] = pair->second;
+        for(dict_t::const_iterator pair = event->second.begin(); pair != event->second.end(); ++pair) {
+            object["event"][pair->first] = pair->second;
+            object["timestamp"] = event->first;
         }
 
-        events.append(object);
+        result.append(object);
+
+        if(++counter == depth) {
+            break;
+        }
     }
 
-    future->fulfill(key, events);
+    future->fulfill(key, result);
 }
 #endif
 
@@ -408,6 +419,7 @@ void core_t::event(ev::io& io, int revents) {
     zmq::message_t message;
     std::string driver_id;
     dict_t dict;
+    ev::tstamp now = m_loop.now();
     
     while(s_events.pending()) {
         // Receive the driver id
@@ -420,22 +432,22 @@ void core_t::event(ev::io& io, int revents) {
         // Receive the data
         s_events.recv_packed(dict);
 
-#if BOOST_VERSION > 103500
-        history_map_t::iterator history = m_history.find(driver_id);
+#ifdef HISTORY_ENABLED
+        history_map_t::iterator history = m_histories.find(driver_id);
 
-        if(history == m_history.end()) {
-            std::auto_ptr<history_t> history = new history_t(m_config.core.history_depth);
-            boost::tie(history, boost::tuples::ignore) = m_history.insert(driver_id, history);
+        if(history == m_histories.end()) {
+            std::auto_ptr<history_t> history_list(new history_t(m_config.core.history_depth));
+            boost::tie(history, boost::tuples::ignore) = m_histories.insert(driver_id, history_list);
         }
         
-        history->second->push_front(dict);
+        history->second->push_front(std::make_pair(now, dict));
 #endif
 
         // Disassemble and send in the envelopes
         for(dict_t::const_iterator it = dict.begin(); it != dict.end(); ++it) {
             std::ostringstream envelope;
             envelope << driver_id << " " << it->first << " "
-                     << std::fixed << std::setprecision(3) << m_loop.now();
+                     << std::fixed << std::setprecision(3) << now;
 
             message.rebuild(envelope.str().length());
             memcpy(message.data(), envelope.str().data(), envelope.str().length());

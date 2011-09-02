@@ -28,7 +28,7 @@ struct config_t {
 
     struct {
         unsigned int protocol;
-#if BOOST_VERSION > 103500
+#ifdef HISTORY_ENABLED
         uint32_t history_depth;
 #endif
     } core;

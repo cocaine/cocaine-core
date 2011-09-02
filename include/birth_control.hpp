@@ -13,7 +13,7 @@ class factory_t {
                 try {
                     instance.reset(new T(config));
                 } catch(const std::runtime_error& e) {
-                    syslog(LOG_ERR, "%s: %s", __func__, e.what());
+                    syslog(LOG_ERR, "internal error: %s", e.what());
                     abort();
                 }
             }

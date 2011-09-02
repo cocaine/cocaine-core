@@ -5,7 +5,7 @@
 #include "networking.hpp"
 #include "engine.hpp"
 
-#if BOOST_VERSION > 103500
+#ifdef HISTORY_ENABLED
     #include <boost/circular_buffer.hpp>
     #include "plugin.hpp"
 #endif
@@ -42,7 +42,7 @@ class core_t:
         void drop(future_t* future, const std::string& target, const Json::Value& args);
         void stat(future_t* future);
 
-#if BOOST_VERSION > 103500
+#ifdef HISTORY_ENABLED
         void history(future_t* future, const std::string& key, const Json::Value& args);
 #endif
 
@@ -72,11 +72,12 @@ class core_t:
         typedef boost::ptr_map<const std::string, future_t> future_map_t;
         future_map_t m_futures;
 
-#if BOOST_VERSION > 103500
+#ifdef HISTORY_ENABLED
         // History
-        typedef boost::circular_buffer<plugin::dict_t> history_t;
+        typedef boost::circular_buffer_space_optimized< 
+            std::pair<ev::tstamp, plugin::dict_t> > history_t;
         typedef boost::ptr_map<std::string, history_t> history_map_t;
-        history_map_t m_history;
+        history_map_t m_histories;
 #endif
 
         // Networking
