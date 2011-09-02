@@ -1,9 +1,7 @@
 #include <iomanip>
 #include <sstream>
 
-#include <boost/tuple/tuple.hpp>
 #include <boost/lexical_cast.hpp>
-#include <msgpack.hpp>
 
 #include "core.hpp"
 #include "future.hpp"
