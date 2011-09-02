@@ -20,6 +20,7 @@ std::string digest_t::get(const std::string& data) {
     EVP_DigestInit(m_context, EVP_sha1());
     EVP_DigestUpdate(m_context, data.data(), data.length());
     EVP_DigestFinal(m_context, hash, &size);
+    EVP_MD_CTX_cleanup(m_context);
 
     std::ostringstream formatter;
 
