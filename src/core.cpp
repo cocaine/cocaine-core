@@ -414,14 +414,13 @@ void core_t::event(ev::io& io, int revents) {
         // Receive the data
         s_events.recv_packed(dict);
 
+        // Maintain the history for the given driver
         history_map_t::iterator history = m_histories.find(driver_id);
 
         if(history == m_histories.end()) {
             std::auto_ptr<history_t> deque(new history_t());
             boost::tie(history, boost::tuples::ignore) = m_histories.insert(driver_id, deque);
-        }
-        
-        if(history->second->size() == m_config.core.history_depth) {
+        } else if(history->second->size() == m_config.core.history_depth) {
             history->second->pop_back();
         }
         
