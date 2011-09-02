@@ -27,7 +27,9 @@ class exhausted:
 typedef std::map<std::string, std::string> dict_t;        
 
 // Base class for a plugin source
-class source_t: public boost::noncopyable {
+class source_t:
+    public boost::noncopyable
+{
     public:
         source_t(const std::string& uri):
             m_uri(uri),
@@ -38,34 +40,29 @@ class source_t: public boost::noncopyable {
         inline std::string hash() const { return m_hash; }
 
         enum capabilities_t {
-            NONE    = 0,
-            MANUAL  = 1 << 0,
-            SINK    = 1 << 1
+            NONE        = 0,
+            ITERATOR    = 1 << 0,
+            SCHEDULER   = 1 << 1,
+            PROCESSOR   = 1 << 2
         };
 
-        // This method will be called by the driver
-        // to determine this source capabilities
-        virtual inline uint32_t capabilities() const {
-            return NONE;
+        virtual uint32_t capabilities() const = 0;
+
+        // Will be called by the auto timed driver and by the fs driver
+        virtual dict_t invoke() {
+            throw std::runtime_error("not implemented");
         }
 
-        // This method will be called by a driver from the thread
-        // This is the default way to invoke the source, so it has to be
-        // implemented
-        virtual dict_t invoke() = 0;
-
-        // This method will be called by the driver for manual scheduling
-        // Time is seconds.microseconds float
+        // Will be called by the manual timed driver
         virtual float reschedule() {
             throw std::runtime_error("not implemented");
         }
 
-        // This method will be called by the driver to process
-        // some external event
-        virtual dict_t process(const std::vector<std::string>& payload) {
+        // Will be called by the event driver
+        virtual dict_t process(const void* data, size_t data_size) {
             throw std::runtime_error("not implemented");
         }
-
+    
     protected:
         std::string m_uri, m_hash;
 };

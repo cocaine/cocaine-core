@@ -28,13 +28,14 @@ class driver_base_t:
     public abstract_t
 {
     public:
-        driver_base_t(boost::shared_ptr<plugin::source_t> source);
+        driver_base_t(boost::shared_ptr<plugin::source_t> source):
+            m_source(source) {}
         virtual ~driver_base_t();
 
         inline std::string id() const { return m_id; }
 
         void start(zmq::context_t& context, threading::overseer_t* parent);
-        void stop();
+        inline void stop() { m_parent->reap(m_id); }
 
         virtual void operator()(WatcherType&, int);
     
@@ -66,6 +67,10 @@ class fs_t:
             driver_base_t<ev::stat, fs_t>(source),
             m_path(args.get("path", "").asString())
         {
+            if(~m_source->capabilities() & plugin::source_t::ITERATOR) {
+                throw std::runtime_error("source doesn't support iteration");
+            }
+            
             if(m_path.empty()) {
                 throw std::runtime_error("no path specified");
             }
@@ -82,12 +87,12 @@ class fs_t:
 };
 
 template<class TimedDriverType>
-class timed_driver_base_t:
-    public driver_base_t<ev::periodic, timed_driver_base_t<TimedDriverType> >
+class timed_driver_t:
+    public driver_base_t<ev::periodic, timed_driver_t<TimedDriverType> >
 {
     public:
-        timed_driver_base_t(boost::shared_ptr<plugin::source_t> source):
-            driver_base_t<ev::periodic, timed_driver_base_t>(source)
+        timed_driver_t(boost::shared_ptr<plugin::source_t> source):
+            driver_base_t<ev::periodic, timed_driver_t>(source)
         {}
 
         inline void initialize() {
@@ -103,13 +108,17 @@ class timed_driver_base_t:
 };
 
 class auto_t:
-    public timed_driver_base_t<auto_t>
+    public timed_driver_t<auto_t>
 {
     public:
         auto_t(boost::shared_ptr<plugin::source_t> source, const Json::Value& args):
-            timed_driver_base_t<auto_t>(source),
+            timed_driver_t<auto_t>(source),
             m_interval(args.get("interval", 0).asInt() / 1000.0)
         {
+            if(~m_source->capabilities() & plugin::source_t::ITERATOR) {
+                throw std::runtime_error("source doesn't support iteration");
+            }
+            
             if(m_interval <= 0) {
                 throw std::runtime_error("no interval specified");
             }
@@ -126,13 +135,13 @@ class auto_t:
 };
 
 class manual_t:
-    public timed_driver_base_t<manual_t>
+    public timed_driver_t<manual_t>
 {
     public:
         manual_t(boost::shared_ptr<plugin::source_t> source, const Json::Value& args):
-            timed_driver_base_t<manual_t>(source)
+            timed_driver_t<manual_t>(source)
         {
-            if(!(m_source->capabilities() & plugin::source_t::MANUAL)) {
+            if(~m_source->capabilities() & plugin::source_t::SCHEDULER) {
                 throw std::runtime_error("source doesn't support manual scheduling");
             }
             
@@ -152,8 +161,8 @@ class event_t:
             driver_base_t<ev::io, event_t>(source),
             m_endpoint(args.get("endpoint", "").asString())
         {
-            if(!(m_source->capabilities() & plugin::source_t::SINK)) {
-                throw std::runtime_error("source doesn't support incoming messages");
+            if(~m_source->capabilities() & plugin::source_t::PROCESSOR) {
+                throw std::runtime_error("source doesn't support message processing");
             }
 
             if(m_endpoint.empty()) {

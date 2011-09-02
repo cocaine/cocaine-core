@@ -7,7 +7,9 @@
 
 namespace yappi { namespace plugin {
 
-class http_t: public source_t {
+class http_t:
+    public source_t
+{
     public:
         http_t(const std::string& uri):
             source_t(uri)
@@ -39,6 +41,10 @@ class http_t: public source_t {
             return size * nmemb;
         }
         
+        virtual uint32_t capabilities() const {
+            return ITERATOR;
+        }
+
         virtual dict_t invoke() {
             dict_t dict;
         

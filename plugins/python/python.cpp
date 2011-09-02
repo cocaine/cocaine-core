@@ -151,12 +151,18 @@ void python_t::compile(const std::string& code,
     if(PyErr_Occurred()) {
         throw std::runtime_error(exception());
     }
+}
 
-    // And check if the instance is iterable, i.e. a generator
-    // or an iterable object
-    if(!PyIter_Check(m_object)) {
-        throw std::runtime_error("object is not iterable");
-    }
+uint32_t python_t::capabilities() const {
+    thread_state_t state = PyGILState_Ensure();
+    
+    object_t reschedule = PyObject_GetAttrString(m_object, "reschedule");
+    object_t process = PyObject_GetAttrString(m_object, "process");
+
+    return NONE |
+        (PyIter_Check(*m_object) ? ITERATOR : NONE) |
+        (PyCallable_Check(reschedule) ? SCHEDULER : NONE) |
+        (PyCallable_Check(process) ? PROCESSOR : NONE);
 }
 
 dict_t python_t::invoke() {
@@ -164,38 +170,17 @@ dict_t python_t::invoke() {
     thread_state_t state = PyGILState_Ensure();
 
     // Invoke the function
-    dict_t dict;
     object_t result = PyIter_Next(m_object);
 
     if(PyErr_Occurred()) {
+        dict_t dict;
         dict["exception"] = exception();
+        return dict;
     } else if(result.valid()) {
-        if(PyDict_Check(result)) {
-            // Borrowed references, so no need to track them
-            PyObject *key, *value;
-            Py_ssize_t position = 0;
-            
-            object_t k(NULL), v(NULL);
-
-            // Iterate and convert everything to strings
-            while(PyDict_Next(result, &position, &key, &value)) {
-                k = PyObject_Str(key);
-                v = PyObject_Str(value);
-                
-                dict.insert(std::make_pair(
-                    PyString_AsString(k),
-                    PyString_AsString(v)));
-            }
-        } else if(result != Py_None) {
-            // Convert it to string and return as-is
-            object_t string = PyObject_Str(result);
-            dict["result"] = PyString_AsString(string);
-        }
+        return unwrap(result);
     } else {
         throw exhausted("iteration stopped");
     }
-    
-    return dict;
 }
 
 float python_t::reschedule() {
@@ -216,11 +201,23 @@ float python_t::reschedule() {
     return PyFloat_AsDouble(result);
 }
 
-uint32_t python_t::capabilities() const {
+dict_t python_t::process(const void* data, size_t data_size) {
     thread_state_t state = PyGILState_Ensure();
-    object_t reschedule = PyObject_GetAttrString(m_object, "reschedule");
+    
+    // This creates a read-only buffer, so it's safe to const_cast
+    object_t buffer = PyBuffer_FromMemory(const_cast<void*>(data), data_size);
+    object_t process = PyObject_GetAttrString(m_object, "process");
 
-    return SINK | (PyCallable_Check(reschedule) ? MANUAL : NONE);
+    object_t args = PyTuple_Pack(1, *buffer);
+    object_t result = PyObject_Call(process, args, NULL);
+
+    if(PyErr_Occurred()) {
+        dict_t dict;
+        dict["exception"] = exception();
+        return dict;
+    }
+
+    return unwrap(result);
 }
 
 std::string python_t::exception() {
@@ -231,6 +228,34 @@ std::string python_t::exception() {
     PyErr_Clear();
     
     return PyString_AsString(message);
+}
+
+dict_t python_t::unwrap(object_t& object) {
+    dict_t dict;
+    
+    if(PyDict_Check(object)) {
+        // Borrowed references, so no need to track them
+        PyObject *key, *value;
+        Py_ssize_t position = 0;
+        
+        object_t k(NULL), v(NULL);
+
+        // Iterate and convert everything to strings
+        while(PyDict_Next(object, &position, &key, &value)) {
+            k = PyObject_Str(key);
+            v = PyObject_Str(value);
+            
+            dict.insert(std::make_pair(
+                PyString_AsString(k),
+                PyString_AsString(v)));
+        }
+    } else if(object != Py_None) {
+        // Convert it to string and return as-is
+        object_t string = PyObject_Str(object);
+        dict["result"] = PyString_AsString(string);
+    }
+
+    return dict;
 }
 
 source_t* create_python_instance(const char* uri) {

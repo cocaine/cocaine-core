@@ -9,7 +9,9 @@ namespace yappi { namespace plugin {
 
 zmq::context_t* g_context;
 
-class inject_t: public source_t {
+class inject_t:
+    public source_t
+{
     public:
         inject_t(const std::string& uri_):
             source_t(uri_),
@@ -25,6 +27,10 @@ class inject_t: public source_t {
             }
         }
     
+        virtual uint32_t capabilities() const {
+            return ITERATOR;
+        }
+
         virtual dict_t invoke() {
             dict_t dict;
             zmq::message_t message;

@@ -8,7 +8,9 @@
 
 namespace yappi { namespace plugin {
 
-class mysql_t: public source_t {
+class mysql_t:
+    public source_t
+{
     public:
         mysql_t(const std::string& uri_):
             source_t(uri_),
@@ -25,6 +27,10 @@ class mysql_t: public source_t {
 
             m_username = uri.userinfo().substr(0, uri.userinfo().find_first_of(":"));
             m_password = uri.userinfo().substr(uri.userinfo().find_first_of(":") + 1);
+        }
+
+        virtual uint32_t capabilities() const {
+            return ITERATOR;
         }
 
         dict_t invoke() {

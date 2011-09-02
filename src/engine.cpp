@@ -476,11 +476,6 @@ void overseer_t::suicide() {
 }
 
 template<class WatcherType, class DriverType>
-driver_base_t<WatcherType, DriverType>::driver_base_t(boost::shared_ptr<source_t> source):
-    m_source(source)
-{}
-
-template<class WatcherType, class DriverType>
 driver_base_t<WatcherType, DriverType>::~driver_base_t() {
     if(m_watcher.get() && m_watcher->is_active()) {
         m_watcher->stop();
@@ -503,12 +498,6 @@ void driver_base_t<WatcherType, DriverType>::start(zmq::context_t& context, over
 }
 
 template<class WatcherType, class DriverType>
-void driver_base_t<WatcherType, DriverType>::stop() {
-    m_watcher->stop();
-    m_parent->reap(m_id);
-}
-
-template<class WatcherType, class DriverType>
 void driver_base_t<WatcherType, DriverType>::operator()(WatcherType&, int) {
     const dict_t& dict = m_parent->invoke();
 
@@ -528,10 +517,9 @@ void driver_base_t<WatcherType, DriverType>::publish(const dict_t& dict) {
     m_pipe->send_packed(dict);
 }
 
-template<class TimedDriverType>
-ev::tstamp timed_driver_base_t<TimedDriverType>::thunk(ev_periodic* w, ev::tstamp now) {
-    timed_driver_base_t<TimedDriverType>* driver = static_cast< 
-        timed_driver_base_t<TimedDriverType>* >(w->data);
+template<class T>
+ev::tstamp timed_driver_t<T>::thunk(ev_periodic* w, ev::tstamp now) {
+    timed_driver_t<T>* driver = static_cast<timed_driver_t<T>*>(w->data);
 
     try {
         return driver->reschedule(now);
@@ -545,24 +533,13 @@ ev::tstamp timed_driver_base_t<TimedDriverType>::thunk(ev_periodic* w, ev::tstam
 
 void event_t::operator()(ev::io&, int) {
     zmq::message_t message;
-   
     dict_t dict; 
-    std::string blob;
-    std::vector<std::string> payload;
 
     while(m_sink->pending()) {
-        payload.clear();
-
-        do {
-            m_sink->recv(&message);
-            blob.assign(
-                static_cast<char*>(message.data()),
-                message.size());
-            payload.push_back(blob);
-        } while(m_sink->has_more());
+        m_sink->recv(&message);
 
         try {
-            dict = m_source->process(payload);
+            dict = m_source.get()->process(message.data(), message.size());
         } catch(const std::exception& e) {
             syslog(LOG_ERR, "engine: %s driver is broken - %s",
                 m_id.c_str(), e.what());
