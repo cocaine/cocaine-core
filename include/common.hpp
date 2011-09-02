@@ -20,12 +20,6 @@
     #error ZeroMQ version 2.1.7+ required!
 #endif
 
-#include <boost/version.hpp>
-
-#if BOOST_VERSION >= 103500
-    #define HISTORY_ENABLED
-#endif
-
 #include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/ptr_container/ptr_map.hpp>

@@ -2,13 +2,9 @@
 #include <sstream>
 
 #include <boost/lexical_cast.hpp>
+#include <boost/tuple/tuple.hpp>
 
 #include "core.hpp"
-
-#ifdef HISTORY_ENABLED
-    #include <boost/tuple/tuple.hpp>
-#endif
-
 #include "future.hpp"
 #include "plugin.hpp"
 #include "persistance.hpp"
@@ -105,10 +101,7 @@ void core_t::reload(ev::sig& sig, int revents) {
 
     m_futures.clear();
     m_engines.clear();
-
-#ifdef HISTORY_ENABLED
     m_histories.clear();
-#endif
 
     recover();
 }
@@ -116,10 +109,7 @@ void core_t::reload(ev::sig& sig, int revents) {
 void core_t::purge(ev::sig& sig, int revents) {
     m_futures.clear();
     m_engines.clear();
-
-#ifdef HISTORY_ENABLED
     m_histories.clear();
-#endif
 
     persistance::storage_t::open(m_config)->purge();
 }
@@ -211,11 +201,7 @@ void core_t::request(ev::io& io, int revents) {
 void core_t::dispatch(future_t* future, const Json::Value& root) {
     std::string action = root.get("action", "push").asString();
 
-#ifdef HISTORY_ENABLED
     if(action == "push" || action == "drop" || action == "history") {
-#else
-    if(action == "push" || action == "drop") {
-#endif
         Json::Value targets = root["targets"];
 
         if(!targets.isObject() || !targets.size()) {
@@ -245,10 +231,8 @@ void core_t::dispatch(future_t* future, const Json::Value& root) {
                 push(future, target, args);
             } else if(action == "drop") {
                 drop(future, target, args);
-#ifdef HISTORY_ENABLED   
             } else if(action == "history") {
                 history(future, target, args);
-#endif
             }
         }
     } else if(action == "stats") {
@@ -339,7 +323,6 @@ void core_t::stat(future_t* future) {
     future->fulfill("requests", requests);
 }
 
-#ifdef HISTORY_ENABLED
 void core_t::history(future_t* future, const std::string& key, const Json::Value& args) {
     history_map_t::iterator it = m_histories.find(key);
 
@@ -372,7 +355,6 @@ void core_t::history(future_t* future, const std::string& key, const Json::Value
 
     future->fulfill(key, result);
 }
-#endif
 
 void core_t::seal(const std::string& future_id) {
     future_map_t::iterator it = m_futures.find(future_id);
@@ -432,16 +414,18 @@ void core_t::event(ev::io& io, int revents) {
         // Receive the data
         s_events.recv_packed(dict);
 
-#ifdef HISTORY_ENABLED
         history_map_t::iterator history = m_histories.find(driver_id);
 
         if(history == m_histories.end()) {
-            std::auto_ptr<history_t> history_list(new history_t(m_config.core.history_depth));
-            boost::tie(history, boost::tuples::ignore) = m_histories.insert(driver_id, history_list);
+            std::auto_ptr<history_t> deque(new history_t());
+            boost::tie(history, boost::tuples::ignore) = m_histories.insert(driver_id, deque);
+        }
+        
+        if(history->second->size() == m_config.core.history_depth) {
+            history->second->pop_back();
         }
         
         history->second->push_front(std::make_pair(now, dict));
-#endif
 
         // Disassemble and send in the envelopes
         for(dict_t::const_iterator it = dict.begin(); it != dict.end(); ++it) {

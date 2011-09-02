@@ -4,11 +4,7 @@
 #include "common.hpp"
 #include "networking.hpp"
 #include "engine.hpp"
-
-#ifdef HISTORY_ENABLED
-    #include <boost/circular_buffer.hpp>
-    #include "plugin.hpp"
-#endif
+#include "plugin.hpp"
 
 namespace yappi { namespace core {
 
@@ -41,10 +37,7 @@ class core_t:
         void push(future_t* future, const std::string& target, const Json::Value& args);
         void drop(future_t* future, const std::string& target, const Json::Value& args);
         void stat(future_t* future);
-
-#ifdef HISTORY_ENABLED
         void history(future_t* future, const std::string& key, const Json::Value& args);
-#endif
 
         // Response processing
         void seal(const std::string& future_id);
@@ -72,13 +65,10 @@ class core_t:
         typedef boost::ptr_map<const std::string, future_t> future_map_t;
         future_map_t m_futures;
 
-#ifdef HISTORY_ENABLED
         // History
-        typedef boost::circular_buffer_space_optimized< 
-            std::pair<ev::tstamp, plugin::dict_t> > history_t;
+        typedef std::deque< std::pair<ev::tstamp, plugin::dict_t> > history_t;
         typedef boost::ptr_map<std::string, history_t> history_map_t;
         history_map_t m_histories;
-#endif
 
         // Networking
         zmq::context_t m_context;

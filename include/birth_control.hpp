@@ -1,14 +1,12 @@
 #ifndef YAPPI_BIRTH_CONTROL_HPP
 #define YAPPI_BIRTH_CONTROL_HPP
 
-#include <boost/thread.hpp>
-
 namespace yappi { namespace helpers {
 
 template<class T>
 class factory_t {
     public:
-        static boost::thread_specific_ptr<T>& open(const config_t& config) {
+        static boost::shared_ptr<T>& open(const config_t& config) {
             if(!instance.get()) {
                 try {
                     instance.reset(new T(config));
@@ -22,11 +20,11 @@ class factory_t {
         }
 
     private:
-        static boost::thread_specific_ptr<T> instance;
+        static boost::shared_ptr<T> instance;
 };
 
 template<class T>
-boost::thread_specific_ptr<T> factory_t<T>::instance(NULL);
+boost::shared_ptr<T> factory_t<T>::instance;
 
 template<class T>
 class birth_control_t  {

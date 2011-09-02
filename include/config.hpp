@@ -28,9 +28,7 @@ struct config_t {
 
     struct {
         unsigned int protocol;
-#ifdef HISTORY_ENABLED
         uint32_t history_depth;
-#endif
     } core;
 };
 
