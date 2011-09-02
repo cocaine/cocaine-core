@@ -14,20 +14,21 @@ Version: 0.3
 v Modular engines, multiple driver types
 x Protocol: move action into targets [was a bad idea]
 v Engines: isolated tasks
-> Per-plugin per-thread storage support (enables persistent state plugins)
 v Basic python toolset: TimeTail, BasicSink, target aliases
 v Migrate internal variable state to a dedicated configuration object, 
   more flexible environment setup: paths, minimal protocol version
 v Task queues
 v Filesystem event based driver
 v Javascript plugin, basic version
-> 0mq event based driver
-* Authentication replay protection (timestamps?)
-* Optional encrypted publishing
+v 0mq event based driver
+v History
+> Per-plugin per-thread storage support
 
 Version: 0.4
 * Self-balancing engine thread pool
 * Python toolset: PersistentTail, PersistentTimeTail
+* Authentication replay protection (timestamps?)
+* Optional encrypted publishing
 ? Totally encrypted communications
 ? Per-engine export sockets
 
