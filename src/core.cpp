@@ -84,8 +84,6 @@ core_t::core_t(const config_t& config):
 
 core_t::~core_t() {
     syslog(LOG_INFO, "core: shutting down the engines");
-
-    m_futures.clear();
     m_engines.clear();
 }
 
@@ -103,12 +101,20 @@ void core_t::reload(ev::sig& sig, int revents) {
     m_futures.clear();
     m_engines.clear();
 
+#if BOOST_VERSION > 103500
+    m_history.clear();
+#endif
+
     recover();
 }
 
 void core_t::purge(ev::sig& sig, int revents) {
     m_futures.clear();
     m_engines.clear();
+
+#if BOOST_VERSION > 103500
+    m_history.clear();
+#endif
 
     persistance::storage_t::open(m_config)->purge();
 }
@@ -199,8 +205,12 @@ void core_t::request(ev::io& io, int revents) {
 
 void core_t::dispatch(future_t* future, const Json::Value& root) {
     std::string action = root.get("action", "push").asString();
-    
+
+#if BOOST_VERSION > 103500    
+    if(action == "push" || action == "drop" || action == "history") {
+#else
     if(action == "push" || action == "drop") {
+#endif
         Json::Value targets = root["targets"];
 
         if(!targets.isObject() || !targets.size()) {
@@ -228,8 +238,12 @@ void core_t::dispatch(future_t* future, const Json::Value& root) {
 
             if(action == "push") {
                 push(future, target, args);
-            } else {
+            } else if(action == "drop") {
                 drop(future, target, args);
+#if BOOST_VERSION > 103500    
+            } else if(action == "history") {
+                history(future, target, args);
+#endif
             }
         }
     } else if(action == "stats") {
@@ -249,6 +263,8 @@ void core_t::dispatch(future_t* future, const Json::Value& root) {
 //   so it's a good idea to drain it after the unsubscription:
 //
 // * Stats - fetches the current running stats
+//
+// * History - fetches the event history for the specified subscription key
 
 void core_t::push(future_t* future, const std::string& target, const Json::Value& args) {
     Json::Value response;
@@ -318,6 +334,35 @@ void core_t::stat(future_t* future) {
     future->fulfill("requests", requests);
 }
 
+#if BOOST_VERSION > 103500
+void core_t::history(future_t* future, const std::string& key, const Json::Value& args) {
+    history_map_t::iterator it = m_history.find(key);
+
+    if(it == m_history.end()) {
+        Json::Value response;
+        response["error"] = "history is empty";
+        future->fulfill(key, response);
+    }
+
+    history_t* history = it->second;
+    uint32_t depth = args.get("depth", m_config.core.history_depth);
+
+    Json::Value events(Json::Value::arrayValue);
+    
+    for(history_t::const_iterator event = history->begin(); event != history->end; ++event) {
+        Json::Value object(Json::Value::objectValue);
+
+        for(dict_t::const_iterator pair = event->begin(); pair != event->end(); ++pair) {
+            object[pair->first] = pair->second;
+        }
+
+        events.append(object);
+    }
+
+    future->fulfill(key, events);
+}
+#endif
+
 void core_t::seal(const std::string& future_id) {
     future_map_t::iterator it = m_futures.find(future_id);
 
@@ -374,6 +419,17 @@ void core_t::event(ev::io& io, int revents) {
     
         // Receive the data
         s_events.recv_packed(dict);
+
+#if BOOST_VERSION > 103500
+        history_map_t::iterator history = m_history.find(driver_id);
+
+        if(history == m_history.end()) {
+            std::auto_ptr<history_t> history = new history_t(m_config.core.history_depth);
+            boost::tie(history, boost::tuples::ignore) = m_history.insert(driver_id, history);
+        }
+        
+        history->second->push_front(dict);
+#endif
 
         // Disassemble and send in the envelopes
         for(dict_t::const_iterator it = dict.begin(); it != dict.end(); ++it) {

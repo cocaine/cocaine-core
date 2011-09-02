@@ -5,6 +5,11 @@
 #include "networking.hpp"
 #include "engine.hpp"
 
+#if BOOST_VERSION > 103500
+    #include <boost/circular_buffer.hpp>
+    #include "plugin.hpp"
+#endif
+
 namespace yappi { namespace core {
 
 class future_t;
@@ -37,6 +42,10 @@ class core_t:
         void drop(future_t* future, const std::string& target, const Json::Value& args);
         void stat(future_t* future);
 
+#if BOOST_VERSION > 103500
+        void history(future_t* future, const std::string& key, const Json::Value& args);
+#endif
+
         // Response processing
         void seal(const std::string& future_id);
 
@@ -62,6 +71,13 @@ class core_t:
         // Future management
         typedef boost::ptr_map<const std::string, future_t> future_map_t;
         future_map_t m_futures;
+
+#if BOOST_VERSION > 103500
+        // History
+        typedef boost::circular_buffer<plugin::dict_t> history_t;
+        typedef boost::ptr_map<std::string, history_t> history_map_t;
+        history_map_t m_history;
+#endif
 
         // Networking
         zmq::context_t m_context;
