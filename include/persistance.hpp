@@ -18,7 +18,7 @@ class storage_facade_t:
             m_config(config)
         {
             if(m_config.storage.disabled) {
-                syslog(LOG_DEBUG, "storage: running in transient mode");
+                syslog(LOG_DEBUG, "storage: running in a transient mode");
             }
         }
 
