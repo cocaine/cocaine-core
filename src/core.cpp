@@ -56,7 +56,11 @@ core_t::core_t(const config_t& config):
     e_requests.start(s_requests.fd(), EV_READ);
 
     // Publishing socket
+#if ZMQ_VERSION > 30000
+    s_publisher.setsockopt(ZMQ_SNDHWM, &m_config.net.watermark, sizeof(m_config.net.watermark));
+#else
     s_publisher.setsockopt(ZMQ_HWM, &m_config.net.watermark, sizeof(m_config.net.watermark));
+#endif
 
     for(std::vector<std::string>::const_iterator it = m_config.net.publish.begin(); it != m_config.net.publish.end(); ++it) {
         s_publisher.bind(*it);

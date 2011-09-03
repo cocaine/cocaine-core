@@ -36,7 +36,11 @@ class inject_t:
             zmq::message_t message;
             std::string key, value;
 
+#if ZMQ_VERSION > 30000
+            while(m_socket.recv(&message, ZMQ_DONTWAIT)) {
+#else
             while(m_socket.recv(&message, ZMQ_NOBLOCK)) {
+#endif
                 key.assign(
                     reinterpret_cast<char*>(message.data()),
                     message.size());
