@@ -54,8 +54,8 @@ signing_t::signing_t(const config_t& config):
         EVP_PKEY* key = NULL;
 
 #if BOOST_FILESYSTEM_VERSION == 3
-        std::string identity = it->path().stem();
-        std::string type = it->path().extension();
+        std::string identity = fs::basename(*it);
+        std::string type = fs::extension(*it);
 #else
         std::string filename = it->leaf();
         std::string identity = filename.substr(0, filename.find_last_of("."));
