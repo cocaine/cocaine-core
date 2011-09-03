@@ -52,7 +52,7 @@ int main(int argc, char* argv[]) {
             "driver events collection timeout, in seconds")
         ("history-depth", po::value<uint32_t>
             (&config.core.history_depth)->default_value(10),
-            "history depth for each source")
+            "history depth for each driver")
         ("secure", "disallow old insecure protocol")
         ("daemonize", "daemonize on start")
         ("transient", "disable storage completely");
