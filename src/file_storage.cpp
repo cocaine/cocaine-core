@@ -75,10 +75,18 @@ Json::Value file_storage_t::all() const {
     file_iterator it = file_iterator(is_regular_file(), fs::directory_iterator(m_storage_path)), end;
 
     while(it != end) {
+#if BOOST_FILESYSTEM_VERSION == 3
+        Json::Value value = get(it->path().filename().string());
+#else
         Json::Value value = get(it->leaf());
+#endif
 
         if(!value.empty()) {
+#if BOOST_FILESYSTEM_VERSION == 3
+            root[it->path().filename().string()] = value;
+#else
             root[it->leaf()] = value;
+#endif
         }
 
         ++it;

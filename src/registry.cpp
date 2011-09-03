@@ -36,8 +36,12 @@ registry_t::registry_t(const config_t& config) {
 
     while(it != end) {
         // Load the plugin
+#if BOOST_FILESYSTEM_VERSION == 3
+        plugin = dlopen(it->path().string().c_str(), RTLD_NOW | RTLD_GLOBAL);
+#else
         plugin = dlopen(it->string().c_str(), RTLD_NOW | RTLD_GLOBAL);
-        
+#endif
+
         if(plugin) {
             // Get the plugin info
             initializer = reinterpret_cast<initialize_fn_t>(dlsym(plugin, "initialize"));

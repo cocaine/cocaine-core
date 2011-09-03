@@ -53,15 +53,20 @@ signing_t::signing_t(const config_t& config):
 
         EVP_PKEY* key = NULL;
 
+#if BOOST_FILESYSTEM_VERSION == 3
+        std::string identity = fs::basename(*it);
+        std::string type = fs::extension(*it);
+#else
         std::string filename = it->leaf();
-        std::string type = filename.substr(filename.find_last_of(".") + 1);
         std::string identity = filename.substr(0, filename.find_last_of("."));
+        std::string type = filename.substr(filename.find_last_of(".") + 1);
+#endif
         std::ostringstream contents;
         
         contents << stream.rdbuf();
         BIO* bio = BIO_new_mem_buf(const_cast<char*>(contents.str().data()), contents.str().length());
         
-        if(type == "public") {
+        if(type == ".public") {
             key = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
             
             if(key == NULL) {
@@ -70,7 +75,7 @@ signing_t::signing_t(const config_t& config):
             } else {    
                 m_public_keys.insert(std::make_pair(identity, key));
             }
-        } else if(type == "private") {
+        } else if(type == ".private") {
             key = PEM_read_bio_PrivateKey(bio, NULL, NULL, NULL);
             
             if(key == NULL) {
@@ -80,7 +85,7 @@ signing_t::signing_t(const config_t& config):
                 m_private_keys.insert(std::make_pair(identity, key));
             }
         } else {
-            syslog(LOG_WARNING, "security: unknown key type - %s", filename.c_str());
+            syslog(LOG_WARNING, "security: unknown key type - '%s'", type.c_str());
         }
 
         BIO_free(bio);

@@ -96,9 +96,6 @@ SET_TARGET_PROPERTIES(yappi-core PROPERTIES
     VERSION 1
     PUBLIC_HEADER "include/plugin.hpp;include/uri.hpp")
 
-SET_TARGET_PROPERTIES(yappi-core yappi-core-security yappi-core-storage PROPERTIES
-    COMPILE_DEFINITIONS "BOOST_FILESYSTEM_VERSION=2")
-
 ADD_EXECUTABLE(yappi src/main)
 
 TARGET_LINK_LIBRARIES(yappi

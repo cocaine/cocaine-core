@@ -42,12 +42,24 @@ eblob_storage_t::eblob_storage_t(const config_t& config):
     m_storage_path(config.paths.storage + ".tasks"),
     m_logger(NULL, EBLOB_LOG_NOTICE)
 {
+#if BOOST_FILESYSTEM_VERSION == 3
+    if(!fs::exists(m_storage_path.parent_path())) {
+#else
     if(!fs::exists(m_storage_path.branch_path())) {
-       try {
-           fs::create_directories(m_storage_path.branch_path());
-       } catch(const std::runtime_error& e) {
-           throw std::runtime_error("cannot create " + m_storage_path.branch_path().string());
-       }
+#endif
+        try {
+#if BOOST_FILESYSTEM_VERSION == 3
+            fs::create_directories(m_storage_path.parent_path());
+#else
+            fs::create_directories(m_storage_path.branch_path());
+#endif
+        } catch(const std::runtime_error& e) {
+#if BOOST_FILESYSTEM_VERSION == 3
+            throw std::runtime_error("cannot create " + m_storage_path.parent_path().string());
+#else
+            throw std::runtime_error("cannot create " + m_storage_path.branch_path().string());
+#endif
+        }
     }
 
     zbr::eblob_config cfg;
