@@ -25,8 +25,8 @@ std::string digest_t::get(const std::string& data) {
     std::ostringstream formatter;
 
     for(unsigned int i = 0; i < size; i++) {
-        formatter << std::hex <<std::setw(2) << std::setfill('0')
-                  << static_cast<unsigned int>(hash[i]);
+        formatter << std::hex << std::setw(2) << std::setfill('0')
+                  << hash[i];
     }
 
     return formatter.str();
