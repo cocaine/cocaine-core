@@ -8,6 +8,7 @@
 
 using namespace yappi::core;
 using namespace yappi::plugin;
+
 namespace fs = boost::filesystem;
 
 struct is_regular_file {
