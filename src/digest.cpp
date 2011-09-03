@@ -26,7 +26,7 @@ std::string digest_t::get(const std::string& data) {
 
     for(unsigned int i = 0; i < size; i++) {
         formatter << std::hex << std::setw(2) << std::setfill('0')
-                  << hash[i];
+                  << static_cast<unsigned int>(hash[i]);
     }
 
     return formatter.str();

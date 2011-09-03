@@ -33,7 +33,11 @@ int main(int argc, char* argv[]) {
         ("export", po::value< std::vector<std::string> >
             (&config.net.publish),
             "endpoints to publish events from the drivers")
+#if ZMQ_VERSION > 30000
+        ("watermark", po::value<int>
+#else
         ("watermark", po::value<uint64_t>
+#endif
             (&config.net.watermark)->default_value(1000),
             "maximum number of messages to keep on client disconnects")
         ("storage", po::value<std::string>

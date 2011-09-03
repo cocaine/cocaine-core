@@ -9,7 +9,11 @@ struct config_t {
     struct {
         std::vector<std::string> listen;
         std::vector<std::string> publish;
+#if ZMQ_VERSION > 30000
+        int watermark;
+#else
         uint64_t watermark;
+#endif
     } net;
 
     struct {
