@@ -78,6 +78,7 @@ ADD_LIBRARY(yappi-core SHARED
     src/core
     src/registry
     src/networking
+    src/threading
     src/engine)
 
 TARGET_LINK_LIBRARIES(yappi-core
