@@ -19,16 +19,10 @@ struct is_regular_file {
 registry_t::registry_t(const config_t& config) {
     fs::path path = config.paths.plugins;
 
-    if(fs::exists(path) && !fs::is_directory(path)) {
-        throw std::runtime_error(path.string() + " is not a directory");
-    }
-
     if(!fs::exists(path)) {
-        try {
-            fs::create_directories(path);
-        } catch(const std::runtime_error& e) {
-            throw std::runtime_error("cannot create " + path.string());
-        }
+        throw std::runtime_error(path.string() + " does not exist");
+    } else if(fs::exists(path) && !fs::is_directory(path)) {
+        throw std::runtime_error(path.string() + " is not a directory");
     }
 
     void* plugin;
@@ -37,8 +31,7 @@ registry_t::registry_t(const config_t& config) {
 
     // Directory iterator
     typedef boost::filter_iterator<is_regular_file, fs::directory_iterator> file_iterator;
-    file_iterator it = file_iterator(is_regular_file(),
-        fs::directory_iterator(path)), end;
+    file_iterator it = file_iterator(is_regular_file(), fs::directory_iterator(path)), end;
 
     while(it != end) {
         // Load the plugin

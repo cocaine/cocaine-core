@@ -44,8 +44,6 @@ eblob_storage_t::eblob_storage_t(const config_t& config):
 {
     if(!fs::exists(m_storage_path.branch_path())) {
        try {
-           syslog(LOG_INFO, "storage: creating storage directory %s",
-               m_storage_path.branch_path().string().c_str());
            fs::create_directories(m_storage_path.branch_path());
        } catch(const std::runtime_error& e) {
            throw std::runtime_error("cannot create " + m_storage_path.branch_path().string());
@@ -65,7 +63,7 @@ eblob_storage_t::eblob_storage_t(const config_t& config):
 }
 
 eblob_storage_t::~eblob_storage_t() {
-    m_eblob.reset(NULL);
+    m_eblob.reset();
 }
 
 bool eblob_storage_t::put(const std::string& key, const Json::Value& value) {

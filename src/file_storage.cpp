@@ -1,4 +1,5 @@
 #include <boost/filesystem/fstream.hpp>
+#include <boost/iterator/filter_iterator.hpp>
 
 #include "file_storage.hpp"
 
@@ -7,19 +8,23 @@ using namespace yappi::persistance::backends;
 
 namespace fs = boost::filesystem;
 
+struct is_regular_file {
+    template<typename T> bool operator()(T entry) {
+        return fs::is_regular(entry);
+    }
+};
+
 file_storage_t::file_storage_t(const config_t& config):
     m_storage_path(config.paths.storage + ".tasks")
 {
-    if(fs::exists(m_storage_path) && !fs::is_directory(m_storage_path)) {
-        throw std::runtime_error(m_storage_path.string() + " is not a directory");
-    }
-
     if(!fs::exists(m_storage_path)) {
         try {
             fs::create_directories(m_storage_path);
         } catch(const std::runtime_error& e) {
             throw std::runtime_error("cannot create " + m_storage_path.string());
         }
+    } else if(fs::exists(m_storage_path) && !fs::is_directory(m_storage_path)) {
+        throw std::runtime_error(m_storage_path.string() + " is not a directory");
     }
 }
 
@@ -66,15 +71,14 @@ Json::Value file_storage_t::all() const {
     Json::Value root(Json::objectValue);
     Json::Reader reader(Json::Features::strictMode());
 
-    fs::directory_iterator it(m_storage_path), end;
+    typedef boost::filter_iterator<is_regular_file, fs::directory_iterator> file_iterator;
+    file_iterator it = file_iterator(is_regular_file(), fs::directory_iterator(m_storage_path)), end;
 
     while(it != end) {
-        if(fs::is_regular(it->status())) {
-            Json::Value value = get(it->leaf());
+        Json::Value value = get(it->leaf());
 
-            if(!value.empty()) {
-                root[it->leaf()] = value;
-            }
+        if(!value.empty()) {
+            root[it->leaf()] = value;
         }
 
         ++it;
