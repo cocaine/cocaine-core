@@ -5,6 +5,7 @@
 
 #include "common.hpp"
 #include "networking.hpp"
+#include "plugin.hpp"
 
 #define max(a, b) ((a) >= (b) ? (a) : (b))
 #define min(a, b) ((a) <= (b) ? (a) : (b))
@@ -30,17 +31,49 @@ class driver_base_t:
     public:
         driver_base_t(boost::shared_ptr<plugin::source_t> source):
             m_source(source) {}
-        virtual ~driver_base_t();
+        
+        virtual ~driver_base_t() {
+            if(m_watcher.get() && m_watcher->is_active()) {
+                m_watcher->stop();
+            }
+        }
 
         inline std::string id() const { return m_id; }
 
-        void start(zmq::context_t& context, threading::overseer_t* parent);
+        void start(zmq::context_t& context, threading::overseer_t* parent) {
+            m_parent = parent;
+
+            m_pipe.reset(new net::msgpack_socket_t(context, ZMQ_PUSH));
+            m_pipe->connect("inproc://events");
+            
+            m_watcher.reset(new WatcherType(m_parent->loop()));
+            m_watcher->set(this);
+
+            static_cast<DriverType*>(this)->initialize();
+
+            m_watcher->start();
+        }
+
         inline void stop() { m_parent->reap(m_id); }
 
-        virtual void operator()(WatcherType&, int);
+        virtual void operator()(WatcherType&, int) {
+            const plugin::dict_t& dict = m_parent->invoke();
+
+            // Do nothing if plugin has returned an empty dict
+            if(dict.size() == 0) {
+                return;
+            }
+
+            publish(dict);
+        }
     
     protected:
-        void publish(const plugin::dict_t& dict);
+        void publish(const plugin::dict_t& dict) {
+            zmq::message_t message(m_id.length());
+            memcpy(message.data(), m_id.data(), m_id.length());
+            m_pipe->send(message, ZMQ_SNDMORE);
+            m_pipe->send_packed(dict);
+        }
 
     protected:
         // Data source
@@ -91,6 +124,8 @@ class timed_driver_t:
     public driver_base_t<ev::periodic, timed_driver_t<TimedDriverType> >
 {
     public:
+        typedef TimedDriverType Type;
+
         timed_driver_t(boost::shared_ptr<plugin::source_t> source):
             driver_base_t<ev::periodic, timed_driver_t>(source)
         {}
@@ -101,10 +136,21 @@ class timed_driver_t:
 
     private:
         inline ev::tstamp reschedule(ev::tstamp now) {
-            return static_cast<TimedDriverType*>(this)->reschedule(now);
+            return static_cast<Type*>(this)->reschedule(now);
         }
 
-        static ev::tstamp thunk(ev_periodic* w, ev::tstamp now);
+        static ev::tstamp thunk(ev_periodic* w, ev::tstamp now) {
+            timed_driver_t<Type>* driver = static_cast<timed_driver_t<Type>*>(w->data);
+
+            try {
+                return driver->reschedule(now);
+            } catch(const std::exception& e) {
+                syslog(LOG_ERR, "engine: %s driver is broken - %s",
+                    driver->id().c_str(), e.what());
+                driver->stop();
+                return now;
+            }
+        }
 };
 
 class auto_t:
@@ -172,7 +218,25 @@ class event_t:
             m_id = (boost::format("event:%1%@%2%") % m_source->hash() % m_endpoint).str();
         }
 
-        virtual void operator()(ev::io&, int);
+        virtual void operator()(ev::io&, int) {
+            zmq::message_t message;
+            plugin::dict_t dict; 
+
+            while(m_sink->pending()) {
+                m_sink->recv(&message);
+
+                try {
+                    dict = m_source.get()->process(message.data(), message.size());
+                } catch(const std::exception& e) {
+                    syslog(LOG_ERR, "engine: %s driver is broken - %s",
+                        m_id.c_str(), e.what());
+                    stop();
+                    return;
+                }
+
+                publish(dict);
+            }
+        }
 
         void initialize() {
             m_sink.reset(new net::json_socket_t(m_parent->context(), ZMQ_PULL));
