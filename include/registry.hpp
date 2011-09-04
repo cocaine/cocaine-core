@@ -16,7 +16,7 @@ class registry_t:
         registry_t(const config_t& config);
         ~registry_t();
 
-        boost::shared_ptr<plugin::source_t> instantiate(const std::string& uri);
+        boost::shared_ptr<plugin::source_t> create(const std::string& uri);
 
     private:
         // Used to instantiate plugin instances

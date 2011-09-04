@@ -20,7 +20,7 @@ struct is_regular_file {
     }
 };
 
-signing_t::signing_t(const config_t& config):
+signatures_t::signatures_t(const config_t& config):
     m_context(EVP_MD_CTX_create())
 {
     // Initialize error strings
@@ -96,7 +96,7 @@ signing_t::signing_t(const config_t& config):
     syslog(LOG_NOTICE, "security: loaded %ld public key(s)", m_public_keys.size());
 }
 
-signing_t::~signing_t() {
+signatures_t::~signatures_t() {
     for(key_map_t::iterator it = m_public_keys.begin(); it != m_public_keys.end(); ++it) {
         EVP_PKEY_free(it->second);
     }
@@ -109,7 +109,7 @@ signing_t::~signing_t() {
     EVP_MD_CTX_destroy(m_context);
 }
 
-std::string signing_t::sign(const std::string& message, const std::string& token)
+std::string signatures_t::sign(const std::string& message, const std::string& token)
 {
     key_map_t::const_iterator it = m_private_keys.find(token);
 
@@ -128,8 +128,8 @@ std::string signing_t::sign(const std::string& message, const std::string& token
     return std::string(reinterpret_cast<char*>(buffer), size);
 }
 
-void signing_t::verify(const std::string& message, const unsigned char* signature,
-                       unsigned int size, const std::string& token)
+void signatures_t::verify(const std::string& message, const unsigned char* signature,
+                         unsigned int size, const std::string& token)
 {
     key_map_t::const_iterator it = m_public_keys.find(token);
 

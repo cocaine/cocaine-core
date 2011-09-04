@@ -6,6 +6,7 @@
 #include "common.hpp"
 #include "networking.hpp"
 #include "plugin.hpp"
+#include "digest.hpp"
 
 #define max(a, b) ((a) >= (b) ? (a) : (b))
 #define min(a, b) ((a) <= (b) ? (a) : (b))
@@ -90,6 +91,9 @@ class driver_base_t:
         
         // Watcher
         std::auto_ptr<WatcherType> m_watcher;
+
+        // Hasher
+        security::digest_t m_digest;
 };
 
 class fs_t:
@@ -108,7 +112,7 @@ class fs_t:
                 throw std::runtime_error("no path specified");
             }
 
-            m_id = (boost::format("fs:%1%@%2%") % source->hash() % m_path).str();
+            m_id = "fs:" + m_digest.get(source->uri() + m_path);
         }
 
         inline void initialize() {
@@ -169,7 +173,8 @@ class auto_t:
                 throw std::runtime_error("no interval specified");
             }
 
-            m_id = (boost::format("auto:%1%@%2%") % source->hash() % m_interval).str();
+            m_id = "auto:" + m_digest.get((boost::format("%1%%2%") 
+                % source->uri() % m_interval).str());
         }
        
         inline ev::tstamp reschedule(ev::tstamp now) {
@@ -191,7 +196,7 @@ class manual_t:
                 throw std::runtime_error("source doesn't support manual scheduling");
             }
             
-            m_id = "manual:" + m_source->hash();
+            m_id = "manual:" + m_digest.get(m_source->uri());
         }
 
         inline ev::tstamp reschedule(ev::tstamp now) {
@@ -215,7 +220,7 @@ class event_t:
                 throw std::runtime_error("no endpoint specified");
             }
 
-            m_id = (boost::format("event:%1%@%2%") % m_source->hash() % m_endpoint).str();
+            m_id = "event:" + m_digest.get(m_source->uri() + m_endpoint);
         }
 
         virtual void operator()(ev::io&, int) {

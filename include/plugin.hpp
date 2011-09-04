@@ -1,15 +1,8 @@
 #ifndef YAPPI_PLUGIN_HPP
 #define YAPPI_PLUGIN_HPP
 
-#include <stdint.h>
-
-#include <string>
-#include <map>
-#include <vector>
-
-#include <boost/noncopyable.hpp>
-
-#include "digest.hpp"
+#include "common.hpp"
+#include "storage.hpp"
 
 #define MAX_SOURCES 10
 
@@ -32,12 +25,10 @@ class source_t:
 {
     public:
         source_t(const std::string& uri):
-            m_uri(uri),
-            m_hash(security::digest_t().get(m_uri))
+            m_uri(uri)
         {}
 
         inline std::string uri() const { return m_uri; }
-        inline std::string hash() const { return m_hash; }
 
         enum capabilities_t {
             NONE        = 0,
@@ -64,7 +55,7 @@ class source_t:
         }
     
     protected:
-        std::string m_uri, m_hash;
+        std::string m_uri;
 };
 
 // Plugins are expected to supply at least one factory function
@@ -82,7 +73,9 @@ struct plugin_info_t {
     } sources[MAX_SOURCES];
 };
 
-typedef const plugin_info_t* (*initialize_fn_t)(void);
+extern "C" {
+    typedef const plugin_info_t* (*initialize_fn_t)(void);
+}
 
 }}
 

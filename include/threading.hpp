@@ -6,7 +6,6 @@
 #include "common.hpp"
 #include "plugin.hpp"
 #include "networking.hpp"
-#include "persistance.hpp"
 #include "digest.hpp"
 
 namespace yappi { namespace engine { 

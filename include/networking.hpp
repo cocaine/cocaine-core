@@ -2,6 +2,11 @@
 #define YAPPI_NETWORKING_HPP
 
 #include <zmq.hpp>
+
+#if ZMQ_VERSION < 20107
+    #error ZeroMQ version 2.1.7+ required!
+#endif
+
 #include <msgpack.hpp>
 
 #include "common.hpp"

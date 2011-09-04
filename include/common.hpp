@@ -14,12 +14,6 @@
 #define EV_MINIMAL 0
 #include <ev++.h>
 
-#include <zmq.hpp>
-
-#if ZMQ_VERSION < 20107
-    #error ZeroMQ version 2.1.7+ required!
-#endif
-
 #include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/ptr_container/ptr_map.hpp>

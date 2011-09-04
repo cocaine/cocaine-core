@@ -8,7 +8,9 @@
 
 namespace yappi { namespace plugin {
 
-class plugin_t: public source_t {
+class plugin_t:
+    public source_t
+{
     public:
         plugin_t(const std::string& uri):
             source_t(uri)
@@ -16,12 +18,8 @@ class plugin_t: public source_t {
             // Your code to initialize the plugin instance
         }
     
-        virtual dict_t fetch() {
-            dict_t dict;
-
-            // Your code to get the job done
-            
-            return dict;
+        virtual uint32_t capabilities() {
+            return NONE;
         }
 };
 

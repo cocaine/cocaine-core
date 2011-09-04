@@ -2,13 +2,15 @@
 #define YAPPI_FILE_STORAGE_HPP
 
 #include <boost/filesystem.hpp>
+#include <boost/thread/tss.hpp>
 
 #include "common.hpp"
 
-namespace yappi { namespace persistance { namespace backends {
+namespace yappi { namespace storage { namespace backends {
 
 class file_storage_t:
-    public boost::noncopyable
+    public boost::noncopyable,
+    public helpers::factory_t<file_storage_t, boost::thread_specific_ptr>
 {
     public:
         file_storage_t(const config_t& config);

@@ -1,7 +1,7 @@
 #include "eblob_storage.hpp"
 
 using namespace yappi::helpers;
-using namespace yappi::persistance::backends;
+using namespace yappi::storage::backends;
 
 namespace fs = boost::filesystem;
 

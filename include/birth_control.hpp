@@ -3,28 +3,24 @@
 
 namespace yappi { namespace helpers {
 
-template<class T>
+template< class T,
+          template<typename> class PointerType = std::auto_ptr>
 class factory_t {
     public:
-        static boost::shared_ptr<T>& open(const config_t& config) {
-            if(!instance.get()) {
-                try {
-                    instance.reset(new T(config));
-                } catch(const std::runtime_error& e) {
-                    syslog(LOG_ERR, "internal error: %s", e.what());
-                    abort();
-                }
+        static T* instance(const config_t& config) {
+            if(!object.get()) {
+                object.reset(new T(config));
             }
 
-            return instance;
+            return object.get();
         }
 
     private:
-        static boost::shared_ptr<T> instance;
+        static PointerType<T> object;
 };
 
-template<class T>
-boost::shared_ptr<T> factory_t<T>::instance;
+template< class T, template<typename> class PointerType>
+PointerType<T> factory_t<T, PointerType>::object;
 
 template<class T>
 class birth_control_t  {

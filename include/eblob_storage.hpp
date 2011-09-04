@@ -2,11 +2,13 @@
 #define YAPPI_EBLOB_STORAGE_HPP
 
 #include <boost/filesystem.hpp>
+#include <boost/thread/tss.hpp>
+
 #include <eblob/eblob.hpp>
 
 #include "common.hpp"
 
-namespace yappi { namespace persistance { namespace backends {
+namespace yappi { namespace storage { namespace backends {
 
 class eblob_collector_t:
     public zbr::eblob_iterator_callback
@@ -41,7 +43,8 @@ class eblob_purger_t:
 };
 
 class eblob_storage_t:
-    public boost::noncopyable
+    public boost::noncopyable,
+    public helpers::factory_t<eblob_storage_t, boost::thread_specific_ptr>
 {
     public:
         eblob_storage_t(const config_t& config);

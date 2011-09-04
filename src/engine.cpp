@@ -43,7 +43,7 @@ void engine_t::push(future_t* future, const Json::Value& args) {
         try {
             thread.reset(new thread_t(auto_uuid_t(thread_id), m_config, m_context));
             
-            source = registry_t::open(m_config)->instantiate(m_target);
+            source = registry_t::instance(m_config)->create(m_target);
             thread->run(source);
             
             boost::tie(it, boost::tuples::ignore) = m_threads.insert(thread_id, thread);
@@ -105,7 +105,11 @@ void engine_t::reap(const std::string& thread_id) {
 
     // If we got something in the queue, try to invoke it
     if(!m_pending.empty()) {
-        push(m_pending.front().first, m_pending.front().second);
+        future_t* future;
+        Json::Value args;
+
+        boost::tie(future, args) = m_pending.front();
+        push(future, args);
         m_pending.pop();
     }
 }

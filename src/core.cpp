@@ -7,8 +7,7 @@
 #include "core.hpp"
 #include "future.hpp"
 #include "plugin.hpp"
-#include "persistance.hpp"
-#include "security.hpp"
+#include "storage.hpp"
 
 using namespace yappi::core;
 using namespace yappi::engine;
@@ -16,6 +15,7 @@ using namespace yappi::plugin;
 
 core_t::core_t(const config_t& config):
     m_config(config),
+    m_signatures(m_config),
     m_context(1),
     s_events(m_context, ZMQ_PULL),
     s_publisher(m_context, ZMQ_PUB),
@@ -115,7 +115,11 @@ void core_t::purge(ev::sig& sig, int revents) {
     m_engines.clear();
     m_histories.clear();
 
-    persistance::storage_t::open(m_config)->purge();
+    if(m_config.storage.disabled) {
+        return;
+    }
+
+    storage::storage_t::instance(m_config)->purge();
 }
 
 void core_t::request(ev::io& io, int revents) {
@@ -181,7 +185,7 @@ void core_t::request(ev::io& io, int revents) {
                     future->set("token", token);
 
                     if(version > 2) {
-                        security::signing_t::open(m_config)->verify(request,
+                        m_signatures.verify(request,
                             static_cast<const unsigned char*>(signature.data()),
                             signature.size(), token);
                     }
@@ -264,13 +268,12 @@ void core_t::push(future_t* future, const std::string& target, const Json::Value
    
     // Check if we have an engine running for the given uri
     engine_map_t::iterator it = m_engines.find(target); 
-    engine_t* engine = NULL;
 
     if(it == m_engines.end()) {
         try {
             // If the engine wasn't found, try to start a new one
-            engine = new engine_t(m_config, m_context, target);
-            m_engines.insert(target, engine);
+            std::auto_ptr<engine_t> engine(new engine_t(m_config, m_context, target));
+            boost::tie(it, boost::tuples::ignore) = m_engines.insert(target, engine);
         } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "core: runtime error in push() - %s", e.what());
             response["error"] = e.what();
@@ -280,12 +283,10 @@ void core_t::push(future_t* future, const std::string& target, const Json::Value
             syslog(LOG_CRIT, "core: unexpected exception in push()");
             abort();
         }
-    } else {
-        engine = it->second;
     }
 
     // Dispatch!
-    engine->push(future, args);
+    it->second->push(future, args);
 }
 
 void core_t::drop(future_t* future, const std::string& target, const Json::Value& args) {
@@ -301,8 +302,7 @@ void core_t::drop(future_t* future, const std::string& target, const Json::Value
     }
 
     // Dispatch!
-    engine_t* engine = it->second;
-    engine->drop(future, args);
+    it->second->drop(future, args);
 }
 
 void core_t::stat(future_t* future) {
@@ -337,12 +337,11 @@ void core_t::history(future_t* future, const std::string& key, const Json::Value
         return;
     }
 
+    Json::Value result(Json::arrayValue);
     uint32_t depth = args.get("depth", m_config.core.history_depth).asUInt(),
         counter = 0;
-    Json::Value result(Json::arrayValue);
-    history_t* history = it->second;
 
-    for(history_t::const_iterator event = history->begin(); event != history->end(); ++event) {
+    for(history_t::const_iterator event = it->second->begin(); event != it->second->end(); ++event) {
         Json::Value object(Json::objectValue);
 
         for(dict_t::const_iterator pair = event->second.begin(); pair != event->second.end(); ++pair) {
@@ -368,15 +367,14 @@ void core_t::seal(const std::string& future_id) {
         return;
     }
         
-    future_t* future = it->second;
-    std::vector<std::string> route = future->route();
+    std::vector<std::string> route = it->second->route();
 
     // Send it if it's not an internal future
     if(!route.empty()) {
         zmq::message_t message;
         
         syslog(LOG_DEBUG, "core: sending response to '%s' - future %s", 
-            future->get("token").c_str(), future->id().c_str());
+            it->second->get("token").c_str(), it->second->id().c_str());
 
         // Send the identity
         for(std::vector<std::string>::const_iterator id = route.begin(); id != route.end(); ++id) {
@@ -390,7 +388,7 @@ void core_t::seal(const std::string& future_id) {
         s_requests.send(message, ZMQ_SNDMORE);
 
         // Send the JSON
-        s_requests.send_json(future->root());
+        s_requests.send_json(it->second->root());
     }
 
     // Release the future
@@ -462,8 +460,7 @@ void core_t::future(ev::io& io, int revents) {
             continue;
         }
 
-        future_t* future = it->second;
-        future->fulfill(message["engine"].asString(), message["result"]);
+        it->second->fulfill(message["engine"].asString(), message["result"]);
     }
 }
 
@@ -482,13 +479,16 @@ void core_t::reap(ev::io& io, int revents) {
         syslog(LOG_DEBUG, "core: suicide requested for thread %s in engine %s",
             message["thread"].asCString(), message["engine"].asCString());
 
-        engine_t* engine = it->second;
-        engine->reap(message["thread"].asString());
+        it->second->reap(message["thread"].asString());
     }
 }
 
 void core_t::recover() {
-    Json::Value root = persistance::storage_t::open(m_config)->all();
+    if(m_config.storage.disabled) {
+        return;
+    }
+
+    Json::Value root = storage::storage_t::instance(m_config)->all();
 
     if(root.size()) {
         syslog(LOG_NOTICE, "core: loaded %d task(s)", root.size());

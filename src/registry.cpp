@@ -82,7 +82,7 @@ registry_t::~registry_t() {
     }
 }
 
-boost::shared_ptr<source_t> registry_t::instantiate(const std::string& uri) {
+boost::shared_ptr<source_t> registry_t::create(const std::string& uri) {
     std::string scheme = uri.substr(0, uri.find_first_of(":"));
     factory_map_t::iterator it = m_factories.find(scheme);
 

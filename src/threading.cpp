@@ -3,12 +3,13 @@
 
 #include "threading.hpp"
 #include "drivers.hpp"
+#include "storage.hpp"
 
 using namespace yappi::engine::threading;
 using namespace yappi::engine::drivers;
 
 using namespace yappi::plugin;
-using namespace yappi::persistance;
+using namespace yappi::storage;
 using namespace yappi::helpers;
 
 overseer_t::overseer_t(auto_uuid_t id, const config_t& config, zmq::context_t& context):
@@ -185,10 +186,10 @@ void overseer_t::push(const Json::Value& message) {
     }
     
     // Persistance
-    if(!message["args"].get("transient", false).asBool()) {
+    if(!m_config.storage.disabled && !message["args"].get("transient", false).asBool()) {
         std::string object_id = m_digest.get(driver_id + token + compartment);
-
-        if(!storage_t::open(m_config)->exists(object_id)) {
+        
+        if(!storage_t::instance(m_config)->exists(object_id)) {
             Json::Value object;
             
             object["url"] = m_source->uri();
@@ -199,7 +200,7 @@ void overseer_t::push(const Json::Value& message) {
                 object["args"]["compartment"] = compartment;
             }
 
-            storage_t::open(m_config)->put(object_id, object);
+            storage_t::instance(m_config)->put(object_id, object);
         }
     }
 
@@ -259,9 +260,11 @@ void overseer_t::drop(const Json::Value& message) {
             }
 
             // Un-persist
-            std::string object_id = m_digest.get(driver_id + token + compartment);
-            storage_t::open(m_config)->remove(object_id);
-            
+            if(!m_config.storage.disabled) {
+                std::string object_id = m_digest.get(driver_id + token + compartment);
+                storage_t::instance(m_config)->remove(object_id);
+            }
+
             result["result"] = "success";
         } else {
             result["error"] = "not authorized";

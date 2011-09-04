@@ -7,13 +7,12 @@
 
 namespace yappi { namespace security {
 
-class signing_t:
-    public boost::noncopyable,
-    public helpers::factory_t<signing_t>
+class signatures_t:
+    public boost::noncopyable
 {
     public:
-        signing_t(const config_t& config);
-        ~signing_t();
+        signatures_t(const config_t& config);
+        ~signatures_t();
 
         std::string sign(const std::string& message, const std::string& token);
         

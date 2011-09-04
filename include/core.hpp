@@ -5,6 +5,7 @@
 #include "networking.hpp"
 #include "engine.hpp"
 #include "plugin.hpp"
+#include "security.hpp"
 
 namespace yappi { namespace core {
 
@@ -56,7 +57,8 @@ class core_t:
 
     private:
         config_t m_config;
-        
+        security::signatures_t m_signatures;
+
         // Engine management (URI -> Engine)
         typedef boost::ptr_map<const std::string, engine::engine_t> engine_map_t;
         engine_map_t m_engines;
