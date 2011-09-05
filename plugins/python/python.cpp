@@ -262,20 +262,23 @@ source_t* create_python_instance(const char* uri) {
     return new python_t(uri);
 }
 
-const plugin_info_t plugin_info = {
-    1,
-    {
-        { "python", &create_python_instance }
-    }
+static const source_info_t plugin_info[] = {
+    { "python", &create_python_instance },
+    { NULL, NULL }
 };
 
 static char* argv[] = { python_t::identity };
-
+    
 extern "C" {
-    const plugin_info_t* initialize() {
+    const source_info_t* initialize() {
         // Initializes the Python subsystem
         Py_InitializeEx(0);
 
+        // Initialize the storage type object
+        if(PyType_Ready(&store_object_type) < 0) {
+            return NULL;
+        }
+        
         // Set the argc/argv in sys module
         PySys_SetArgv(1, argv);
 
@@ -283,7 +286,7 @@ extern "C" {
         PyEval_InitThreads();
         PyEval_ReleaseLock();
 
-        return &plugin_info;
+        return plugin_info;
     }
 
     __attribute__((destructor)) void finalize() {

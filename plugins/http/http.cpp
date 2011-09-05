@@ -77,16 +77,14 @@ source_t* create_http_instance(const char* uri) {
     return new http_t(uri);
 }
 
-static const plugin_info_t plugin_info = {
-    1,
-    {
-        { "http", &create_http_instance }
-    }
+static const source_info_t plugin_info[] = {
+    { "http", &create_http_instance },
+    { NULL, NULL }
 };
 
 extern "C" {
-    const plugin_info_t* initialize() {
-        return &plugin_info;
+    const source_info_t* initialize() {
+        return plugin_info;
     }
 }
 

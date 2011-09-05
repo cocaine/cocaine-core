@@ -65,17 +65,15 @@ source_t* create_inject_instance(const char* uri) {
     return new inject_t(uri);
 }
 
-static const plugin_info_t plugin_info = {
-    1,
-    {
-        { "inject", &create_inject_instance }
-    }
+static const source_info_t plugin_info[] = {
+    { "inject", &create_inject_instance },
+    { NULL, NULL }
 };
 
 extern "C" {
-    const plugin_info_t* initialize() {
+    const source_info_t* initialize() {
         g_context = new zmq::context_t(1);        
-        return &plugin_info;
+        return plugin_info;
     }
 
     __attribute__((destructor)) void destructor() {

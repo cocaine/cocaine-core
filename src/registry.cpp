@@ -47,15 +47,16 @@ registry_t::registry_t() {
             initializer = reinterpret_cast<initialize_fn_t>(dlsym(plugin, "initialize"));
 
             if(initializer) {
-                const plugin_info_t* info = initializer();
+                const source_info_t* info = initializer();
                 m_plugins.push_back(plugin);
 
                 // Fetch all the available sources from it
-                for(unsigned int i = 0; i < info->count; ++i) {
+                while(info->factory) {
                     m_factories.insert(std::make_pair(
-                        info->sources[i].scheme,
-                        info->sources[i].factory));
-                    schemes.push_back(info->sources[i].scheme);
+                        info->scheme,
+                        info->factory));
+                    schemes.push_back(info->scheme);
+                    info++;
                 }
             } else {
                 syslog(LOG_ERR, "registry: invalid plugin interface - %s", dlerror());

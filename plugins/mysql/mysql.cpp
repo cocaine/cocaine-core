@@ -62,16 +62,14 @@ source_t* create_mysql_instance(const char* uri) {
     return new mysql_t(uri);
 }
 
-const plugin_info_t plugin_info = {
-    1,
-    {
-        { "mysql", &create_mysql_instance }
-    }
+static const source_info_t plugin_info[] = {
+    { "mysql", &create_mysql_instance },
+    { NULL, NULL }
 };
 
 extern "C" {
-    const plugin_info_t* initialize() {
-        return &plugin_info;
+    const source_info_t* initialize() {
+        return plugin_info;
     }
 }
 

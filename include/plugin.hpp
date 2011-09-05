@@ -3,8 +3,6 @@
 
 #include "common.hpp"
 
-#define MAX_SOURCES 10
-
 namespace yappi { namespace plugin {
 
 class exhausted:
@@ -63,17 +61,14 @@ class source_t:
 typedef source_t* (*factory_fn_t)(const char*);
 
 // Plugins are expected to have an 'initialize' function, which should
-// return a pointer to a structure of the following format
-struct plugin_info_t {
-    unsigned int count;
-    struct {
-        const char* scheme;
-        factory_fn_t factory;
-    } sources[MAX_SOURCES];
-};
+// return an array of structures of the following format
+typedef struct {
+    const char* scheme;
+    factory_fn_t factory;
+} source_info_t;
 
 extern "C" {
-    typedef const plugin_info_t* (*initialize_fn_t)(void);
+    typedef const source_info_t* (*initialize_fn_t)(void);
 }
 
 }}
