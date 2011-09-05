@@ -350,11 +350,13 @@ thread_t::~thread_t() {
     Json::Value message;
     
     syslog(LOG_DEBUG, "thread %s: terminating", m_id.get().c_str());
-    
-    message["command"] = "terminate";
-    send(message);
+   
+    if(m_thread.get()) { 
+        message["command"] = "terminate";
+        send(message);
 
-    m_thread->join();
+        m_thread->join();
+    }
 }
 
 void thread_t::run(boost::shared_ptr<source_t> source) {
