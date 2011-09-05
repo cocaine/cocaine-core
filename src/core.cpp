@@ -264,14 +264,10 @@ void core_t::dispatch(future_t* future, const Json::Value& root) {
 void core_t::push(future_t* future, const std::string& target, const Json::Value& args) {
     Json::Value response;
 
-    syslog(LOG_DEBUG, "target: %s", target.c_str());
-
     // Check if we have an engine running for the given uri
     engine_map_t::iterator it = m_engines.find(target); 
 
     if(it == m_engines.end()) {
-        syslog(LOG_DEBUG, "no engine found, starting");
-
         try {
             // If the engine wasn't found, try to start a new one
             std::auto_ptr<engine_t> engine(new engine_t(m_context, target));

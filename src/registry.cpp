@@ -51,7 +51,7 @@ registry_t::registry_t() {
                 m_plugins.push_back(plugin);
 
                 // Fetch all the available sources from it
-                while(info->factory) {
+                while(info->scheme && info->factory) {
                     m_factories.insert(std::make_pair(
                         info->scheme,
                         info->factory));
