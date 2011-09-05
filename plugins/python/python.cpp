@@ -1,15 +1,15 @@
-#include "python.hpp"
-
 #include <stdexcept>
 #include <fstream>
 
 #include <curl/curl.h>
 
+#include "python.hpp"
+#include "store.hpp"
 #include "uri.hpp"
 
 namespace yappi { namespace plugin {
 
-char python_t::identity[] = "yappi-dynamic";
+char python_t::identity[] = "<dynamic>";
 
 size_t stream_writer(void* data, size_t size, size_t nmemb, void* stream) {
     std::stringstream* out = reinterpret_cast<std::stringstream*>(stream);
