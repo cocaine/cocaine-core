@@ -38,8 +38,8 @@ void eblob_purger_t::complete(uint64_t, uint64_t) {
     }
 }
 
-eblob_storage_t::eblob_storage_t(const config_t& config):
-    m_storage_path(config.paths.storage + ".tasks"),
+eblob_storage_t::eblob_storage_t():
+    m_storage_path(config_t::get().paths.storage + ".tasks"),
     m_logger(NULL, EBLOB_LOG_NOTICE)
 {
 #if BOOST_FILESYSTEM_VERSION == 3

@@ -13,7 +13,7 @@ class file_storage_t:
     public helpers::factory_t<file_storage_t, boost::thread_specific_ptr>
 {
     public:
-        file_storage_t(const config_t& config);
+        file_storage_t();
 
     public:
         bool put(const std::string& key, const Json::Value& value);

@@ -13,7 +13,7 @@ class registry_t:
     public helpers::factory_t<registry_t>
 {
     public:
-        registry_t(const config_t& config);
+        registry_t();
         ~registry_t();
 
         boost::shared_ptr<plugin::source_t> create(const std::string& uri);

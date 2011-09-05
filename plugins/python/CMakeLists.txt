@@ -17,7 +17,6 @@ ADD_LIBRARY(yappi-plugin-python MODULE
     python)
 
 TARGET_LINK_LIBRARIES(yappi-plugin-python
-    yappi-core-security
     curl
     uriparser)
 

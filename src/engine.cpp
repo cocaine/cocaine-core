@@ -10,8 +10,7 @@ using namespace yappi::core;
 using namespace yappi::plugin;
 using namespace yappi::helpers;
 
-engine_t::engine_t(const config_t& config, zmq::context_t& context, const std::string& target):
-    m_config(config),
+engine_t::engine_t(zmq::context_t& context, const std::string& target):
     m_context(context),
     m_target(target),
     m_default_thread_id(auto_uuid_t().get())
@@ -41,9 +40,9 @@ void engine_t::push(future_t* future, const Json::Value& args) {
         boost::shared_ptr<source_t> source;
 
         try {
-            thread.reset(new thread_t(auto_uuid_t(thread_id), m_config, m_context));
+            thread.reset(new thread_t(auto_uuid_t(thread_id), m_context));
             
-            source = registry_t::instance(m_config)->create(m_target);
+            source = registry_t::instance()->create(m_target);
             thread->run(source);
             
             boost::tie(it, boost::tuples::ignore) = m_threads.insert(thread_id, thread);

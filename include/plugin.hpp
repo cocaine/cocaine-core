@@ -2,7 +2,6 @@
 #define YAPPI_PLUGIN_HPP
 
 #include "common.hpp"
-#include "storage.hpp"
 
 #define MAX_SOURCES 10
 
@@ -53,7 +52,7 @@ class source_t:
         virtual dict_t process(const void* data, size_t data_size) {
             throw std::runtime_error("not implemented");
         }
-    
+
     protected:
         std::string m_uri;
 };

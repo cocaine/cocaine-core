@@ -7,9 +7,9 @@ template< class T,
           template<typename> class PointerType = std::auto_ptr>
 class factory_t {
     public:
-        static T* instance(const config_t& config) {
+        static T* instance() {
             if(!object.get()) {
-                object.reset(new T(config));
+                object.reset(new T());
             }
 
             return object.get();

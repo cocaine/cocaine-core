@@ -1,7 +1,7 @@
 #include <boost/filesystem/fstream.hpp>
 #include <boost/iterator/filter_iterator.hpp>
 
-#include "file_storage.hpp"
+#include "detail/files.hpp"
 
 using namespace yappi::helpers;
 using namespace yappi::storage::backends;
@@ -14,8 +14,8 @@ struct is_regular_file {
     }
 };
 
-file_storage_t::file_storage_t(const config_t& config):
-    m_storage_path(config.paths.storage + ".tasks")
+file_storage_t::file_storage_t():
+    m_storage_path(config_t::get().paths.storage + ".tasks")
 {
     if(!fs::exists(m_storage_path)) {
         try {

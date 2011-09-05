@@ -13,9 +13,7 @@ using namespace yappi::core;
 using namespace yappi::engine;
 using namespace yappi::plugin;
 
-core_t::core_t(const config_t& config):
-    m_config(config),
-    m_signatures(m_config),
+core_t::core_t():
     m_context(1),
     s_events(m_context, ZMQ_PULL),
     s_publisher(m_context, ZMQ_PUB),
@@ -47,7 +45,7 @@ core_t::core_t(const config_t& config):
     e_reaper.start(s_reaper.fd(), EV_READ);
 
     // Listening socket
-    for(std::vector<std::string>::const_iterator it = m_config.net.listen.begin(); it != m_config.net.listen.end(); ++it) {
+    for(std::vector<std::string>::const_iterator it = config_t::get().net.listen.begin(); it != config_t::get().net.listen.end(); ++it) {
         s_requests.bind(*it);
         syslog(LOG_INFO, "core: listening for requests on %s", it->c_str());
     }
@@ -57,12 +55,12 @@ core_t::core_t(const config_t& config):
 
     // Publishing socket
 #if ZMQ_VERSION > 30000
-    s_publisher.setsockopt(ZMQ_SNDHWM, &m_config.net.watermark, sizeof(m_config.net.watermark));
+    s_publisher.setsockopt(ZMQ_SNDHWM, &config_t::get().net.watermark, sizeof(config_t::get().net.watermark));
 #else
-    s_publisher.setsockopt(ZMQ_HWM, &m_config.net.watermark, sizeof(m_config.net.watermark));
+    s_publisher.setsockopt(ZMQ_HWM, &config_t::get().net.watermark, sizeof(config_t::get().net.watermark));
 #endif
 
-    for(std::vector<std::string>::const_iterator it = m_config.net.publish.begin(); it != m_config.net.publish.end(); ++it) {
+    for(std::vector<std::string>::const_iterator it = config_t::get().net.publish.begin(); it != config_t::get().net.publish.end(); ++it) {
         s_publisher.bind(*it);
         syslog(LOG_INFO, "core: publishing events on %s", it->c_str());
     }
@@ -115,11 +113,11 @@ void core_t::purge(ev::sig& sig, int revents) {
     m_engines.clear();
     m_histories.clear();
 
-    if(m_config.storage.disabled) {
+    if(config_t::get().storage.disabled) {
         return;
     }
 
-    storage::storage_t::instance(m_config)->purge();
+    storage::storage_t::instance()->purge();
 }
 
 void core_t::request(ev::io& io, int revents) {
@@ -175,7 +173,7 @@ void core_t::request(ev::io& io, int revents) {
                 unsigned int version = root.get("version", 1).asUInt();
                 std::string token = root.get("token", "").asString();
                 
-                if(version >= m_config.core.protocol) {
+                if(version >= config_t::get().core.protocol) {
                     future->set("protocol", boost::lexical_cast<std::string>(version));
                 } else {
                     throw std::runtime_error("outdated protocol version");
@@ -185,7 +183,7 @@ void core_t::request(ev::io& io, int revents) {
                     future->set("token", token);
 
                     if(version > 2) {
-                        m_signatures.verify(request,
+                        security::signatures_t::instance()->verify(request,
                             static_cast<const unsigned char*>(signature.data()),
                             signature.size(), token);
                     }
@@ -272,7 +270,7 @@ void core_t::push(future_t* future, const std::string& target, const Json::Value
     if(it == m_engines.end()) {
         try {
             // If the engine wasn't found, try to start a new one
-            std::auto_ptr<engine_t> engine(new engine_t(m_config, m_context, target));
+            std::auto_ptr<engine_t> engine(new engine_t(m_context, target));
             boost::tie(it, boost::tuples::ignore) = m_engines.insert(target, engine);
         } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "core: runtime error in push() - %s", e.what());
@@ -338,7 +336,7 @@ void core_t::history(future_t* future, const std::string& key, const Json::Value
     }
 
     Json::Value result(Json::arrayValue);
-    uint32_t depth = args.get("depth", m_config.core.history_depth).asUInt(),
+    uint32_t depth = args.get("depth", config_t::get().core.history_depth).asUInt(),
         counter = 0;
 
     for(history_t::const_iterator event = it->second->begin(); event != it->second->end(); ++event) {
@@ -422,7 +420,7 @@ void core_t::event(ev::io& io, int revents) {
         if(history == m_histories.end()) {
             std::auto_ptr<history_t> deque(new history_t());
             boost::tie(history, boost::tuples::ignore) = m_histories.insert(driver_id, deque);
-        } else if(history->second->size() == m_config.core.history_depth) {
+        } else if(history->second->size() == config_t::get().core.history_depth) {
             history->second->pop_back();
         }
         
@@ -484,11 +482,11 @@ void core_t::reap(ev::io& io, int revents) {
 }
 
 void core_t::recover() {
-    if(m_config.storage.disabled) {
+    if(config_t::get().storage.disabled) {
         return;
     }
 
-    Json::Value root = storage::storage_t::instance(m_config)->all();
+    Json::Value root = storage::storage_t::instance()->all();
 
     if(root.size()) {
         syslog(LOG_NOTICE, "core: loaded %d task(s)", root.size());

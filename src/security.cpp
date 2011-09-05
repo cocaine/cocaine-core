@@ -20,14 +20,14 @@ struct is_regular_file {
     }
 };
 
-signatures_t::signatures_t(const config_t& config):
+signatures_t::signatures_t():
     m_context(EVP_MD_CTX_create())
 {
     // Initialize error strings
     ERR_load_crypto_strings();
 
     // Load the credentials
-    fs::path path = fs::path(config.paths.storage + ".tokens");
+    fs::path path = fs::path(config_t::get().paths.storage + ".tokens");
    
     if(!fs::exists(path)) {
         try {

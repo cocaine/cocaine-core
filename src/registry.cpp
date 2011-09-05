@@ -17,8 +17,8 @@ struct is_regular_file {
     }
 };
 
-registry_t::registry_t(const config_t& config) {
-    fs::path path = config.paths.plugins;
+registry_t::registry_t() {
+    fs::path path = config_t::get().paths.plugins;
 
     if(!fs::exists(path)) {
         throw std::runtime_error(path.string() + " does not exist");

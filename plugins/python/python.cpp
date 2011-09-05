@@ -278,7 +278,7 @@ extern "C" {
 
         // Set the argc/argv in sys module
         PySys_SetArgv(1, argv);
-        
+
         // Initializes and releases GIL
         PyEval_InitThreads();
         PyEval_ReleaseLock();

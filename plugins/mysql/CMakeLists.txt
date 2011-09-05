@@ -7,7 +7,6 @@ ADD_LIBRARY(yappi-plugin-mysql MODULE
     mysql.cpp)
 
 TARGET_LINK_LIBRARIES(yappi-plugin-mysql
-    yappi-core-security
     mysqlclient
     uriparser)
 

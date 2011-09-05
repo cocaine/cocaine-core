@@ -47,7 +47,7 @@ class eblob_storage_t:
     public helpers::factory_t<eblob_storage_t, boost::thread_specific_ptr>
 {
     public:
-        eblob_storage_t(const config_t& config);
+        eblob_storage_t();
         ~eblob_storage_t();
 
     public:

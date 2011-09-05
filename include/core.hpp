@@ -17,7 +17,7 @@ class core_t:
     friend class future_t;
     
     public:
-        core_t(const config_t& config);
+        core_t();
         ~core_t();
 
         // Event loop
@@ -56,9 +56,6 @@ class core_t:
         void recover();
 
     private:
-        config_t m_config;
-        security::signatures_t m_signatures;
-
         // Engine management (URI -> Engine)
         typedef boost::ptr_map<const std::string, engine::engine_t> engine_map_t;
         engine_map_t m_engines;

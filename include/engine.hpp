@@ -21,8 +21,7 @@ class engine_t:
     public helpers::birth_control_t<engine_t>
 {
     public:
-        engine_t(const config_t& config, zmq::context_t& context, 
-            const std::string& target);
+        engine_t(zmq::context_t& context, const std::string& target);
         ~engine_t();
 
         // Commands
@@ -31,7 +30,6 @@ class engine_t:
         void reap(const std::string& thread_id);
         
     private:
-        const config_t& m_config;
         zmq::context_t& m_context;
 
         // Engine URI

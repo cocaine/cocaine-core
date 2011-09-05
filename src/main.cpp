@@ -16,46 +16,44 @@ namespace fs = boost::filesystem;
 static const char identity[] = "yappi";
 
 int main(int argc, char* argv[]) {
-    config_t config;
-
     po::options_description mandatory, options("Allowed options"), combined;
     po::positional_options_description positional;
     po::variables_map vm;
 
     mandatory.add_options()
         ("listen", po::value< std::vector<std::string> >
-            (&config.net.listen));
+            (&config_t::set().net.listen));
     
     positional.add("listen", -1);
 
     options.add_options()
         ("help", "show this message")
         ("export", po::value< std::vector<std::string> >
-            (&config.net.publish),
+            (&config_t::set().net.publish),
             "endpoints to publish events from the drivers")
 #if ZMQ_VERSION > 30000
         ("watermark", po::value<int>
 #else
         ("watermark", po::value<uint64_t>
 #endif
-            (&config.net.watermark)->default_value(1000),
+            (&config_t::set().net.watermark)->default_value(1000),
             "maximum number of messages to keep on client disconnects")
         ("storage", po::value<std::string>
-            (&config.paths.storage)->default_value("/var/lib/yappi/default"),
+            (&config_t::set().paths.storage)->default_value("/var/lib/yappi/default"),
             "storage path")
         ("plugins", po::value<std::string>
-            (&config.paths.plugins)->default_value("/usr/lib/yappi"),
+            (&config_t::set().paths.plugins)->default_value("/usr/lib/yappi"),
             "plugin path")
         ("pid", po::value<fs::path>()->default_value("/var/run/yappi.pid"),
             "location of a pid file")
         ("thread-suicide-timeout", po::value<float>
-            (&config.engine.suicide_timeout)->default_value(600.0),
+            (&config_t::set().engine.suicide_timeout)->default_value(600.0),
             "stale thread suicide timeout, in seconds")
         ("thread-collect-timeout", po::value<float>
-            (&config.engine.collect_timeout)->default_value(0.5),
+            (&config_t::set().engine.collect_timeout)->default_value(0.5),
             "driver events collection timeout, in seconds")
         ("history-depth", po::value<uint32_t>
-            (&config.core.history_depth)->default_value(10),
+            (&config_t::set().core.history_depth)->default_value(10),
             "history depth for each driver")
         ("secure", "disallow old insecure protocol")
         ("daemonize", "daemonize on start")
@@ -87,8 +85,8 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    config.storage.disabled = vm.count("transient");
-    config.core.protocol = vm.count("secure") ? 3 : 2;
+    config_t::set().storage.disabled = vm.count("transient");
+    config_t::set().core.protocol = vm.count("secure") ? 3 : 2;
 
     // Setting up the syslog
     openlog(identity, LOG_PID | LOG_NDELAY, LOG_USER);
@@ -120,7 +118,7 @@ int main(int argc, char* argv[]) {
 
     // Initializing the core
     try {
-        core = new core_t(config);
+        core = new core_t();
     } catch(const zmq::error_t& e) {
         syslog(LOG_ERR, "main: network error - %s", e.what());
         return EXIT_FAILURE;

@@ -12,9 +12,8 @@ using namespace yappi::plugin;
 using namespace yappi::storage;
 using namespace yappi::helpers;
 
-overseer_t::overseer_t(auto_uuid_t id, const config_t& config, zmq::context_t& context):
+overseer_t::overseer_t(auto_uuid_t id, zmq::context_t& context):
     m_id(id),
-    m_config(config),
     m_context(context),
     m_pipe(m_context, ZMQ_PULL),
     m_futures(m_context, ZMQ_PUSH),
@@ -33,7 +32,7 @@ overseer_t::overseer_t(auto_uuid_t id, const config_t& config, zmq::context_t& c
 
     // Initializing suicide timer
     m_suicide.set<overseer_t, &overseer_t::timeout>(this);
-    m_suicide.start(m_config.engine.suicide_timeout);
+    m_suicide.start(config_t::get().engine.suicide_timeout);
     
     // Cache cleanup watcher
     m_cleanup.set<overseer_t, &overseer_t::cleanup>(this);
@@ -46,7 +45,7 @@ overseer_t::overseer_t(auto_uuid_t id, const config_t& config, zmq::context_t& c
     m_reaper.connect("inproc://reaper");
 
     // Set timer compression threshold
-    m_loop.set_timeout_collect_interval(m_config.engine.collect_timeout);
+    m_loop.set_timeout_collect_interval(config_t::get().engine.collect_timeout);
 
     // Signal a false event, in case the core 
     // has managed to send something already
@@ -186,10 +185,10 @@ void overseer_t::push(const Json::Value& message) {
     }
     
     // Persistance
-    if(!m_config.storage.disabled && !message["args"].get("transient", false).asBool()) {
+    if(!config_t::get().storage.disabled && !message["args"].get("transient", false).asBool()) {
         std::string object_id = m_digest.get(driver_id + token + compartment);
         
-        if(!storage_t::instance(m_config)->exists(object_id)) {
+        if(!storage_t::instance()->exists(object_id)) {
             Json::Value object;
             
             object["url"] = m_source->uri();
@@ -200,7 +199,7 @@ void overseer_t::push(const Json::Value& message) {
                 object["args"]["compartment"] = compartment;
             }
 
-            storage_t::instance(m_config)->put(object_id, object);
+            storage_t::instance()->put(object_id, object);
         }
     }
 
@@ -255,14 +254,14 @@ void overseer_t::drop(const Json::Value& message) {
                     suicide();
                 } else {
                     syslog(LOG_DEBUG, "engine %s: suicide timer started", m_source->uri().c_str());
-                    m_suicide.start(m_config.engine.suicide_timeout);
+                    m_suicide.start(config_t::get().engine.suicide_timeout);
                 }
             }
 
             // Un-persist
-            if(!m_config.storage.disabled) {
+            if(!config_t::get().storage.disabled) {
                 std::string object_id = m_digest.get(driver_id + token + compartment);
-                storage_t::instance(m_config)->remove(object_id);
+                storage_t::instance()->remove(object_id);
             }
 
             result["result"] = "success";
@@ -298,7 +297,7 @@ void overseer_t::once(const Json::Value& message) {
     if(m_suicide.is_active()) {
         syslog(LOG_DEBUG, "engine %s: suicide timer rearmed", m_source->uri().c_str());
         m_suicide.stop();
-        m_suicide.start(m_config.engine.suicide_timeout);
+        m_suicide.start(config_t::get().engine.suicide_timeout);
     }
 }
 
@@ -315,7 +314,7 @@ void overseer_t::reap(const std::string& driver_id) {
 
     if(m_slaves.empty()) {
         syslog(LOG_DEBUG, "engine %s: suicide timer started", m_source->uri().c_str());
-        m_suicide.start(m_config.engine.suicide_timeout);
+        m_suicide.start(config_t::get().engine.suicide_timeout);
     }
 }
 
@@ -324,7 +323,6 @@ void overseer_t::terminate() {
     m_suicide.stop();
     m_cleanup.stop();
     m_slaves.clear();
-    m_loop.unloop();
 } 
 
 void overseer_t::suicide() {
@@ -337,7 +335,7 @@ void overseer_t::suicide() {
     m_reaper.send_json(message);    
 }
 
-thread_t::thread_t(auto_uuid_t id, const config_t& config, zmq::context_t& context):
+thread_t::thread_t(auto_uuid_t id, zmq::context_t& context):
     m_id(id),
     m_pipe(context, ZMQ_PUSH)
 {
@@ -345,7 +343,7 @@ thread_t::thread_t(auto_uuid_t id, const config_t& config, zmq::context_t& conte
     m_pipe.bind("inproc://" + m_id.get());
  
     // Initialize the overseer
-    m_overseer.reset(new overseer_t(id, config, context));
+    m_overseer.reset(new overseer_t(id, context));
 }
 
 thread_t::~thread_t() {

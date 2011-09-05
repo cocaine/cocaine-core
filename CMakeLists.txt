@@ -48,11 +48,19 @@ ADD_LIBRARY(json
 SET_TARGET_PROPERTIES(json PROPERTIES
     COMPILE_FLAGS -fPIC)
 
+ADD_LIBRARY(yappi-core-config SHARED
+    src/config)
+
+SET_TARGET_PROPERTIES(yappi-core-config PROPERTIES
+    VERSION 1
+    PUBLIC_HEADER "include/config.hpp")
+
 ADD_LIBRARY(yappi-core-security SHARED
     src/security
     src/digest)
 
 TARGET_LINK_LIBRARIES(yappi-core-security
+    yappi-core-config
     crypto
     ${UUID_LIBS}
     ${BOOST_SYSTEM_LIBS}
@@ -66,13 +74,16 @@ ADD_LIBRARY(yappi-core-storage SHARED
     src/file_storage)
 
 TARGET_LINK_LIBRARIES(yappi-core-storage
+    yappi-core-config
     json
     ${UUID_LIBS}
     ${BOOST_SYSTEM_LIBS}
     boost_filesystem-mt)
 
 SET_TARGET_PROPERTIES(yappi-core-storage PROPERTIES
-    VERSION 1)
+    VERSION 1
+    PUBLIC_HEADER "include/storage.hpp"
+    PRIVATE_HEADER "include/detail/files.hpp")
 
 ADD_LIBRARY(yappi-core SHARED 
     src/core
@@ -82,9 +93,10 @@ ADD_LIBRARY(yappi-core SHARED
     src/engine)
 
 TARGET_LINK_LIBRARIES(yappi-core
-    json
+    yappi-core-config
     yappi-core-security
     yappi-core-storage
+    json
     ${CMAKE_DL_LIBS}
     ${UUID_LIBS}
     boost_thread-mt
@@ -99,6 +111,7 @@ SET_TARGET_PROPERTIES(yappi-core PROPERTIES
 ADD_EXECUTABLE(yappi src/main)
 
 TARGET_LINK_LIBRARIES(yappi
+    yappi-core-config
     yappi-core
     boost_program_options-mt)
 
@@ -106,7 +119,8 @@ ADD_SUBDIRECTORY(plugins)
 ADD_SUBDIRECTORY(clients)
 ADD_SUBDIRECTORY(toolset)
 
-INSTALL(TARGETS yappi yappi-core yappi-core-security yappi-core-storage
+INSTALL(TARGETS yappi-core-config yappi-core-security yappi-core-storage yappi-core yappi
     RUNTIME DESTINATION bin COMPONENT runtime
-    LIBRARY DESTINATION lib COMPONENT runtime NAMELINK_SKIP
-    PUBLIC_HEADER DESTINATION include/yappi COMPONENT development)
+    LIBRARY DESTINATION lib COMPONENT runtime
+    PUBLIC_HEADER DESTINATION include/yappi COMPONENT development
+    PRIVATE_HEADER DESTINATION include/yappi/detail COMPONENT development)
