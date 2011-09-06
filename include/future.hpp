@@ -52,7 +52,7 @@ class future_t:
             m_root[key] = value;
 
             if(m_fulfilled == m_expecting) {
-                m_core->seal(m_id.get());
+                commit();
             }
         }
 
@@ -76,6 +76,10 @@ class future_t:
         // Seal the future and return the response
         inline const Json::Value& root() {
             return m_root;
+        }
+
+        inline void commit() {
+            m_core->seal(m_id.get());
         }
 
     private:

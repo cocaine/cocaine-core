@@ -491,9 +491,14 @@ void core_t::recover() {
         
         for(Json::Value::Members::const_iterator it = ids.begin(); it != ids.end(); ++it) {
             Json::Value object = root[*it];
-            future->set("token", object["token"].asString());
-            push(future, object["url"].asString(), object["args"]);
+            
+            if(object.isMember("url")) {
+                future->set("token", object["token"].asString());
+                push(future, object["url"].asString(), object["args"]);
+            }
         }
+
+        future->commit();
     }
 }
 
