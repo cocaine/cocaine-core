@@ -19,6 +19,8 @@ ADD_LIBRARY(yappi-plugin-python MODULE
 TARGET_LINK_LIBRARIES(yappi-plugin-python
     yappi-core-storage
     yappi-core-security
+    ${BOOST_SYSTEM_LIBS}
+    boost_thread-mt
     curl
     uriparser)
 
