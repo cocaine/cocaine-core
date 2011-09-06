@@ -22,7 +22,7 @@ v Filesystem event based driver
 v Javascript plugin, basic version
 v 0mq event based driver
 v History
-> Per-plugin per-thread storage support
+v Per-plugin per-thread storage support
 
 Version: 0.4
 * Self-balancing engine thread pool

@@ -4,11 +4,9 @@
 #include <curl/curl.h>
 
 #include "python.hpp"
-#include "uri.hpp"
+#include "store.hpp"
 
-#if PY_VERSION_HEX > 0x02070000
-    #include "store.hpp"
-#endif
+#include "uri.hpp"
 
 namespace yappi { namespace plugin {
 
@@ -134,27 +132,26 @@ void python_t::compile(const std::string& code,
         }
     }
 
-#if PY_VERSION_HEX > 0x02070000
     // Instantiate the Store object
-    object_t capsule = PyCapsule_New(this, NULL, NULL);
+#if PY_VERSION_HEX > 0x02070000
+    object_t capsule = PyCapsule_New(static_cast<void*>(this), NULL, NULL);
+#else
+    object_t capsule = PyCObject_FromVoidPtr(static_cast<void*>(this), NULL);
+#endif
+
     object_t args = PyTuple_Pack(1, *capsule);
     object_t kwargs = PyDict_New();
 
-    PyObject* store = PyObject_Call(reinterpret_cast<PyObject*>(&store_object_type), args, kwargs);
+    PyObject* store = PyObject_Call(reinterpret_cast<PyObject*>(&store_object_type),
+        args, kwargs);
     
     if(PyErr_Occurred()) {
         throw std::runtime_error(exception());
     }
 
     // Note: steals the reference    
-    PyModule_AddObject(m_module, "store", store);
+    PyModule_AddObject(m_module, "store", store);    
     
-    args = PyTuple_New(0);
-#else
-    object_t kwargs = PyDict_New();
-    object_t args = PyTuple_New(0);
-#endif
-
     // Create the user code object instance
     for(dict_t::const_iterator it = parameters.begin(); it != parameters.end(); ++it) {
         object_t temp = PyString_FromString(it->second.c_str());
@@ -165,7 +162,8 @@ void python_t::compile(const std::string& code,
             temp);
     }
     
-    m_object = PyObject_Call(callable, args, kwargs);
+    object_t empty_args = PyTuple_New(0);
+    m_object = PyObject_Call(callable, empty_args, kwargs);
 
     if(PyErr_Occurred()) {
         throw std::runtime_error(exception());
@@ -302,12 +300,10 @@ extern "C" {
         PyEval_InitThreads();
         PyEval_ReleaseLock();
 
-#if PY_VERSION_HEX > 0x02070000
         // Initialize the storage type object
         if(PyType_Ready(&store_object_type) < 0) {
             return NULL;
         }
-#endif
 
         return plugin_info;
     }
