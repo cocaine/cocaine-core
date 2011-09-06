@@ -4,7 +4,8 @@ namespace yappi { namespace helpers {
     template<typename T, void (*D)(T)> struct track {
         public:
             track(T object):
-                m_object(object) {}
+                m_object(object)
+            {}
 
             ~track() {
                 destroy();

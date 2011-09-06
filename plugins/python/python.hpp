@@ -39,7 +39,7 @@ class python_t:
         static char identity[];
 
     private:
-        object_t m_module, m_object, m_store;
+        object_t m_module, m_object;
 };
 
 }}

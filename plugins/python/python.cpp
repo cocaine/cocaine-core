@@ -4,8 +4,11 @@
 #include <curl/curl.h>
 
 #include "python.hpp"
-#include "store.hpp"
 #include "uri.hpp"
+
+#if PY_VERSION_HEX > 0x02070000
+    #include "store.hpp"
+#endif
 
 namespace yappi { namespace plugin {
 
@@ -20,8 +23,7 @@ size_t stream_writer(void* data, size_t size, size_t nmemb, void* stream) {
 python_t::python_t(const std::string& uri_):
     source_t(uri_),
     m_module(NULL),
-    m_object(NULL),
-    m_store(NULL)
+    m_object(NULL)
 {
     // Parse the URI
     helpers::uri_t uri(uri_);
@@ -92,8 +94,7 @@ void python_t::compile(const std::string& code,
                        const std::string& name,
                        const dict_t& parameters)
 {
-    // Get the thread state
-    thread_state_t state = PyGILState_Ensure();
+    thread_state_t state(PyGILState_Ensure());
     
     // Compile the code
     object_t bytecode = Py_CompileString(
@@ -133,23 +134,28 @@ void python_t::compile(const std::string& code,
         }
     }
 
+#if PY_VERSION_HEX > 0x02070000
     // Instantiate the Store object
     object_t capsule = PyCapsule_New(this, NULL, NULL);
     object_t args = PyTuple_Pack(1, *capsule);
     object_t kwargs = PyDict_New();
 
-    m_store = PyObject_Call(reinterpret_cast<PyObject*>(&store_object_type), args, kwargs);
+    PyObject* store = PyObject_Call(reinterpret_cast<PyObject*>(&store_object_type), args, kwargs);
     
     if(PyErr_Occurred()) {
         throw std::runtime_error(exception());
     }
-    
-    Py_INCREF(m_store);
-    PyModule_AddObject(m_module, "store", m_store);
-    
-    // Create the user code object instance
-    args = PyTuple_New(0);
 
+    // Note: steals the reference    
+    PyModule_AddObject(m_module, "store", store);
+    
+    args = PyTuple_New(0);
+#else
+    object_t kwargs = PyDict_New();
+    object_t args = PyTuple_New(0);
+#endif
+
+    // Create the user code object instance
     for(dict_t::const_iterator it = parameters.begin(); it != parameters.end(); ++it) {
         object_t temp = PyString_FromString(it->second.c_str());
         
@@ -167,8 +173,8 @@ void python_t::compile(const std::string& code,
 }
 
 uint32_t python_t::capabilities() const {
-    thread_state_t state = PyGILState_Ensure();
-    
+    thread_state_t state(PyGILState_Ensure());
+
     object_t reschedule = PyObject_GetAttrString(m_object, "reschedule");
     object_t process = PyObject_GetAttrString(m_object, "process");
 
@@ -180,24 +186,25 @@ uint32_t python_t::capabilities() const {
 
 dict_t python_t::invoke() {
     // Get the thread state
-    thread_state_t state = PyGILState_Ensure();
+    thread_state_t state(PyGILState_Ensure());
 
     // Invoke the function
     object_t result = PyIter_Next(m_object);
+    dict_t dict;
 
     if(PyErr_Occurred()) {
-        dict_t dict;
         dict["exception"] = exception();
-        return dict;
     } else if(result.valid()) {
-        return unwrap(result);
+        dict = unwrap(result);
     } else {
         throw exhausted("iteration stopped");
     }
+    
+    return dict;
 }
 
 float python_t::reschedule() {
-    thread_state_t state = PyGILState_Ensure();
+    thread_state_t state(PyGILState_Ensure());
     
     object_t reschedule = PyObject_GetAttrString(m_object, "reschedule");
     
@@ -216,7 +223,7 @@ float python_t::reschedule() {
 }
 
 dict_t python_t::process(const void* data, size_t data_size) {
-    thread_state_t state = PyGILState_Ensure();
+    thread_state_t state(PyGILState_Ensure());
     
     // This creates a read-only buffer, so it's safe to const_cast
     object_t buffer = PyBuffer_FromMemory(const_cast<void*>(data), data_size);
@@ -282,7 +289,7 @@ static const source_info_t plugin_info[] = {
 };
 
 static char* argv[] = { python_t::identity };
-    
+
 extern "C" {
     const source_info_t* initialize() {
         // Initialize the Python subsystem
@@ -293,15 +300,15 @@ extern "C" {
 
         // Initialize the GIL
         PyEval_InitThreads();
-        
+        PyEval_ReleaseLock();
+
+#if PY_VERSION_HEX > 0x02070000
         // Initialize the storage type object
         if(PyType_Ready(&store_object_type) < 0) {
             return NULL;
         }
-        
-        // Release the GIL
-        PyEval_ReleaseLock();
-        
+#endif
+
         return plugin_info;
     }
 
