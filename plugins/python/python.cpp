@@ -14,14 +14,14 @@ char python_t::identity[] = "<dynamic>";
 size_t stream_writer(void* data, size_t size, size_t nmemb, void* stream) {
     std::stringstream* out = reinterpret_cast<std::stringstream*>(stream);
     out->write(reinterpret_cast<char*>(data), size * nmemb);
-
     return size * nmemb;
 }
 
 python_t::python_t(const std::string& uri_):
     source_t(uri_),
     m_module(NULL),
-    m_object(NULL)
+    m_object(NULL),
+    m_store(NULL)
 {
     // Parse the URI
     helpers::uri_t uri(uri_);
@@ -133,9 +133,22 @@ void python_t::compile(const std::string& code,
         }
     }
 
-    // Call it to create an instance
-    object_t args = PyTuple_New(0);
+    // Instantiate the Store object
+    object_t capsule = PyCapsule_New(this, NULL, NULL);
+    object_t args = PyTuple_Pack(1, *capsule);
     object_t kwargs = PyDict_New();
+
+    m_store = PyObject_Call(reinterpret_cast<PyObject*>(&store_object_type), args, kwargs);
+    
+    if(PyErr_Occurred()) {
+        throw std::runtime_error(exception());
+    }
+    
+    Py_INCREF(m_store);
+    PyModule_AddObject(m_module, "store", m_store);
+    
+    // Create the user code object instance
+    args = PyTuple_New(0);
 
     for(dict_t::const_iterator it = parameters.begin(); it != parameters.end(); ++it) {
         object_t temp = PyString_FromString(it->second.c_str());
@@ -185,6 +198,7 @@ dict_t python_t::invoke() {
 
 float python_t::reschedule() {
     thread_state_t state = PyGILState_Ensure();
+    
     object_t reschedule = PyObject_GetAttrString(m_object, "reschedule");
     
     object_t args = PyTuple_New(0);
@@ -271,21 +285,23 @@ static char* argv[] = { python_t::identity };
     
 extern "C" {
     const source_info_t* initialize() {
-        // Initializes the Python subsystem
+        // Initialize the Python subsystem
         Py_InitializeEx(0);
 
+        // Set the argc/argv in sys module
+        PySys_SetArgv(1, argv);
+
+        // Initialize the GIL
+        PyEval_InitThreads();
+        
         // Initialize the storage type object
         if(PyType_Ready(&store_object_type) < 0) {
             return NULL;
         }
         
-        // Set the argc/argv in sys module
-        PySys_SetArgv(1, argv);
-
-        // Initializes and releases GIL
-        PyEval_InitThreads();
+        // Release the GIL
         PyEval_ReleaseLock();
-
+        
         return plugin_info;
     }
 
