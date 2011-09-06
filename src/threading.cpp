@@ -185,7 +185,7 @@ void overseer_t::push(const Json::Value& message) {
     }
     
     // Persistance
-    if(!config_t::get().storage.disabled && !message["args"].get("transient", false).asBool()) {
+    if(!message["args"].get("transient", false).asBool()) {
         std::string object_id = m_digest.get(driver_id + token + compartment);
         
         if(!storage_t::instance()->exists(object_id)) {
@@ -259,10 +259,8 @@ void overseer_t::drop(const Json::Value& message) {
             }
 
             // Un-persist
-            if(!config_t::get().storage.disabled) {
-                std::string object_id = m_digest.get(driver_id + token + compartment);
-                storage_t::instance()->remove(object_id);
-            }
+            std::string object_id = m_digest.get(driver_id + token + compartment);
+            storage_t::instance()->remove(object_id);
 
             result["result"] = "success";
         } else {

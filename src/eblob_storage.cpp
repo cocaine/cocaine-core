@@ -42,6 +42,9 @@ eblob_storage_t::eblob_storage_t():
     m_storage_path(config_t::get().paths.storage + ".tasks"),
     m_logger(NULL, EBLOB_LOG_NOTICE)
 {
+    if(config_t::get().storage.disabled)
+        return;
+
 #if BOOST_FILESYSTEM_VERSION == 3
     if(!fs::exists(m_storage_path.parent_path())) {
 #else
@@ -79,6 +82,9 @@ eblob_storage_t::~eblob_storage_t() {
 }
 
 bool eblob_storage_t::put(const std::string& key, const Json::Value& value) {
+    if(config_t::get().storage.disabled)
+        return false;
+
     Json::FastWriter writer;
     std::string object = writer.write(value);    
 
@@ -93,6 +99,9 @@ bool eblob_storage_t::put(const std::string& key, const Json::Value& value) {
 }
 
 bool eblob_storage_t::exists(const std::string& key) const {
+    if(config_t::get().storage.disabled)
+        return false;
+
     std::string object;
 
     try {
@@ -105,8 +114,12 @@ bool eblob_storage_t::exists(const std::string& key) const {
 }
 
 Json::Value eblob_storage_t::get(const std::string& key) const {
-    Json::Reader reader(Json::Features::strictMode());
     Json::Value root(Json::objectValue);
+    
+    if(config_t::get().storage.disabled)
+        return root;
+
+    Json::Reader reader(Json::Features::strictMode());
     std::string object;
 
     try {
@@ -124,6 +137,9 @@ Json::Value eblob_storage_t::get(const std::string& key) const {
 }
 
 Json::Value eblob_storage_t::all() const {
+    if(config_t::get().storage.disabled)
+        return Json::Value(Json::objectValue);
+
     eblob_collector_t collector;
     
     try {
@@ -137,6 +153,9 @@ Json::Value eblob_storage_t::all() const {
 }
 
 void eblob_storage_t::remove(const std::string& key) {
+    if(config_t::get().storage.disabled)
+        return;
+
     try {
         m_eblob->remove_hashed(key);
     } catch(const std::runtime_error& e) {
@@ -145,6 +164,9 @@ void eblob_storage_t::remove(const std::string& key) {
 }
 
 void eblob_storage_t::purge() {
+    if(config_t::get().storage.disabled)
+        return;
+
     eblob_purger_t purger(*m_eblob);
 
     syslog(LOG_NOTICE, "storage: purging");

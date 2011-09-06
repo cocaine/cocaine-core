@@ -17,6 +17,9 @@ struct is_regular_file {
 file_storage_t::file_storage_t():
     m_storage_path(config_t::get().paths.storage + ".tasks")
 {
+    if(config_t::get().storage.disabled)
+        return;
+
     if(!fs::exists(m_storage_path)) {
         try {
             fs::create_directories(m_storage_path);
@@ -29,6 +32,9 @@ file_storage_t::file_storage_t():
 }
 
 bool file_storage_t::put(const std::string& key, const Json::Value& value) {
+    if(config_t::get().storage.disabled)
+        return false;
+
     Json::StyledWriter writer;
     fs::path filepath = m_storage_path / key;
     fs::ofstream stream(filepath, fs::ofstream::out | fs::ofstream::trunc);
@@ -47,13 +53,20 @@ bool file_storage_t::put(const std::string& key, const Json::Value& value) {
 }
 
 bool file_storage_t::exists(const std::string& key) const {
+    if(config_t::get().storage.disabled)
+        return false;
+
     fs::path filepath = m_storage_path / key;
     return fs::exists(filepath) && fs::is_regular(filepath);
 }
 
 Json::Value file_storage_t::get(const std::string& key) const {
-    Json::Reader reader(Json::Features::strictMode());
     Json::Value root(Json::objectValue);
+    
+    if(config_t::get().storage.disabled)
+        return root;
+
+    Json::Reader reader(Json::Features::strictMode());
     fs::path filepath = m_storage_path / key;
     fs::ifstream stream(filepath, fs::ifstream::in);
      
@@ -69,6 +82,10 @@ Json::Value file_storage_t::get(const std::string& key) const {
 
 Json::Value file_storage_t::all() const {
     Json::Value root(Json::objectValue);
+    
+    if(config_t::get().storage.disabled)
+        return root;
+
     Json::Reader reader(Json::Features::strictMode());
 
     typedef boost::filter_iterator<is_regular_file, fs::directory_iterator> file_iterator;
@@ -96,10 +113,16 @@ Json::Value file_storage_t::all() const {
 }
 
 void file_storage_t::remove(const std::string& key) {
+    if(config_t::get().storage.disabled)
+        return;
+
     fs::remove(m_storage_path / key);
 }
 
 void file_storage_t::purge() {
+    if(config_t::get().storage.disabled)
+        return;
+
     syslog(LOG_NOTICE, "storage: purging");
     
     fs::remove_all(m_storage_path);

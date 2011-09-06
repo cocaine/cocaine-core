@@ -113,10 +113,6 @@ void core_t::purge(ev::sig& sig, int revents) {
     m_engines.clear();
     m_histories.clear();
 
-    if(config_t::get().storage.disabled) {
-        return;
-    }
-
     storage::storage_t::instance()->purge();
 }
 
@@ -482,10 +478,6 @@ void core_t::reap(ev::io& io, int revents) {
 }
 
 void core_t::recover() {
-    if(config_t::get().storage.disabled) {
-        return;
-    }
-
     Json::Value root = storage::storage_t::instance()->all();
 
     if(root.size()) {
