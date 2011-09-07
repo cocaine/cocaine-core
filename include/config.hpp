@@ -12,6 +12,11 @@ class config_t {
 
     public:
         struct {
+            unsigned int protocol;
+            uint32_t history_depth;
+        } core;
+
+        struct {
             std::vector<std::string> listen;
             std::vector<std::string> publish;
 #if ZMQ_VERSION > 30000
@@ -20,11 +25,10 @@ class config_t {
             uint64_t watermark;
 #endif
         } net;
-
+        
         struct {
-            std::string plugins;
-            std::string storage;
-        } paths;
+            std::string path;
+        } registry;
 
         struct {
             float suicide_timeout;
@@ -32,13 +36,9 @@ class config_t {
         } engine;
 
         struct {
+            std::string path;
             bool disabled;
         } storage;
-
-        struct {
-            unsigned int protocol;
-            uint32_t history_depth;
-        } core;
 
     private:
         static config_t g_config;

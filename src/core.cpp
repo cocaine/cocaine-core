@@ -113,7 +113,7 @@ void core_t::purge(ev::sig& sig, int revents) {
     m_engines.clear();
     m_histories.clear();
 
-    storage::storage_t::instance()->purge();
+    storage::storage_t::instance()->purge("tasks");
 }
 
 void core_t::request(ev::io& io, int revents) {
@@ -478,7 +478,7 @@ void core_t::reap(ev::io& io, int revents) {
 }
 
 void core_t::recover() {
-    Json::Value root = storage::storage_t::instance()->all();
+    Json::Value root = storage::storage_t::instance()->all("tasks");
 
     if(root.size()) {
         syslog(LOG_NOTICE, "core: loaded %d task(s)", root.size());
@@ -492,13 +492,9 @@ void core_t::recover() {
         for(Json::Value::Members::const_iterator it = ids.begin(); it != ids.end(); ++it) {
             Json::Value object = root[*it];
             
-            if(object.isMember("url")) {
-                future->set("token", object["token"].asString());
-                push(future, object["url"].asString(), object["args"]);
-            }
+            future->set("token", object["token"].asString());
+            push(future, object["url"].asString(), object["args"]);
         }
-
-        future->commit();
     }
 }
 

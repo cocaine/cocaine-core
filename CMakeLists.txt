@@ -55,21 +55,6 @@ SET_TARGET_PROPERTIES(yappi-core-config PROPERTIES
     VERSION 1
     PUBLIC_HEADER "include/config.hpp")
 
-ADD_LIBRARY(yappi-core-security SHARED
-    src/security
-    src/digest)
-
-TARGET_LINK_LIBRARIES(yappi-core-security
-    yappi-core-config
-    crypto
-    ${UUID_LIBS}
-    ${BOOST_SYSTEM_LIBS}
-    boost_filesystem-mt)
-
-SET_TARGET_PROPERTIES(yappi-core-security PROPERTIES
-    VERSION 1
-    PUBLIC_HEADER "include/digest.hpp")
-
 ADD_LIBRARY(yappi-core-storage SHARED
     src/file_storage)
 
@@ -84,6 +69,22 @@ SET_TARGET_PROPERTIES(yappi-core-storage PROPERTIES
     VERSION 1
     PUBLIC_HEADER "include/storage.hpp"
     PRIVATE_HEADER "include/detail/files.hpp")
+
+ADD_LIBRARY(yappi-core-security SHARED
+    src/security
+    src/digest)
+
+TARGET_LINK_LIBRARIES(yappi-core-security
+    yappi-core-config
+    yappi-core-storage
+    crypto
+    ${UUID_LIBS}
+    ${BOOST_SYSTEM_LIBS}
+    boost_filesystem-mt)
+
+SET_TARGET_PROPERTIES(yappi-core-security PROPERTIES
+    VERSION 1
+    PUBLIC_HEADER "include/digest.hpp")
 
 ADD_LIBRARY(yappi-core SHARED 
     src/core

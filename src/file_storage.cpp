@@ -15,64 +15,60 @@ struct is_regular_file {
 };
 
 file_storage_t::file_storage_t():
-    m_storage_path(config_t::get().paths.storage + ".tasks")
-{
+    m_storage_path(config_t::get().storage.path)
+{}
+
+void file_storage_t::put(const std::string& store, const std::string& key, const Json::Value& value) {
     if(config_t::get().storage.disabled)
         return;
 
-    if(!fs::exists(m_storage_path)) {
-        try {
-            fs::create_directories(m_storage_path);
-        } catch(const std::runtime_error& e) {
-            throw std::runtime_error("cannot create " + m_storage_path.string());
-        }
-    } else if(fs::exists(m_storage_path) && !fs::is_directory(m_storage_path)) {
-        throw std::runtime_error(m_storage_path.string() + " is not a directory");
-    }
-}
+    fs::path store_path = m_storage_path / store;
 
-bool file_storage_t::put(const std::string& key, const Json::Value& value) {
-    if(config_t::get().storage.disabled)
-        return false;
+    if(!fs::exists(store_path)) {
+        try {
+            fs::create_directories(store_path);
+        } catch(const std::runtime_error& e) {
+            throw std::runtime_error("cannot create " + store_path.string());
+        }
+    } else if(fs::exists(store_path) && !fs::is_directory(store_path)) {
+        throw std::runtime_error(store_path.string() + " is not a directory");
+    }
 
     Json::StyledWriter writer;
-    fs::path filepath = m_storage_path / key;
+    fs::path filepath = store_path / key;
     fs::ofstream stream(filepath, fs::ofstream::out | fs::ofstream::trunc);
    
-    if(!stream) {    
-        syslog(LOG_ERR, "storage: failed to write %s", filepath.string().c_str());
-        return false;
+    if(!stream) {
+        throw std::runtime_error("failed to write " + filepath.string());
     }     
 
     std::string json = writer.write(value);
     
     stream << json;
     stream.close();
-
-    return true;
 }
 
-bool file_storage_t::exists(const std::string& key) const {
+bool file_storage_t::exists(const std::string& store, const std::string& key) const {
     if(config_t::get().storage.disabled)
         return false;
 
-    fs::path filepath = m_storage_path / key;
+    fs::path filepath = m_storage_path / store / key;
     return fs::exists(filepath) && fs::is_regular(filepath);
 }
 
-Json::Value file_storage_t::get(const std::string& key) const {
+Json::Value file_storage_t::get(const std::string& store, const std::string& key) const {
     Json::Value root(Json::objectValue);
     
     if(config_t::get().storage.disabled)
         return root;
 
     Json::Reader reader(Json::Features::strictMode());
-    fs::path filepath = m_storage_path / key;
+    fs::path filepath = m_storage_path / store / key;
     fs::ifstream stream(filepath, fs::ifstream::in);
      
     if(stream) { 
         if(!reader.parse(stream, root)) {
-            syslog(LOG_ERR, "storage: malformed json in %s - %s",
+            syslog(LOG_WARNING, "storage: malformed json in %s - %s",
                 filepath.string().c_str(), reader.getFormatedErrorMessages().c_str());
         }
     }
@@ -80,22 +76,23 @@ Json::Value file_storage_t::get(const std::string& key) const {
     return root;
 }
 
-Json::Value file_storage_t::all() const {
+Json::Value file_storage_t::all(const std::string& store) const {
     Json::Value root(Json::objectValue);
-    
-    if(config_t::get().storage.disabled)
+    fs::path store_path = m_storage_path / store;
+
+    if(config_t::get().storage.disabled || !fs::exists(store_path))
         return root;
 
     Json::Reader reader(Json::Features::strictMode());
 
     typedef boost::filter_iterator<is_regular_file, fs::directory_iterator> file_iterator;
-    file_iterator it = file_iterator(is_regular_file(), fs::directory_iterator(m_storage_path)), end;
+    file_iterator it = file_iterator(is_regular_file(), fs::directory_iterator(store_path)), end;
 
     while(it != end) {
 #if BOOST_FILESYSTEM_VERSION == 3
-        Json::Value value = get(it->path().filename().string());
+        Json::Value value = get(store, it->path().filename().string());
 #else
-        Json::Value value = get(it->leaf());
+        Json::Value value = get(store, it->leaf());
 #endif
 
         if(!value.empty()) {
@@ -112,19 +109,18 @@ Json::Value file_storage_t::all() const {
     return root;
 }
 
-void file_storage_t::remove(const std::string& key) {
+void file_storage_t::remove(const std::string& store, const std::string& key) {
     if(config_t::get().storage.disabled)
         return;
 
-    fs::remove(m_storage_path / key);
+    fs::remove(m_storage_path / store / key);
 }
 
-void file_storage_t::purge() {
+void file_storage_t::purge(const std::string& store) {
     if(config_t::get().storage.disabled)
         return;
 
     syslog(LOG_NOTICE, "storage: purging");
-    
-    fs::remove_all(m_storage_path);
-    fs::create_directories(m_storage_path);
+    fs::remove_all(m_storage_path / store);
 }
+

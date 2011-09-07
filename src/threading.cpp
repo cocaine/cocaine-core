@@ -179,7 +179,7 @@ void overseer_t::push(const Json::Value& message) {
     std::equal_to<subscription_map_t::value_type> equality;
 
     if(std::find_if(begin, end, boost::bind(equality, subscription, _1)) == end) {
-        syslog(LOG_DEBUG, "engine %s: subscribing %s", m_source->uri().c_str(),
+        syslog(LOG_DEBUG, "engine %s: subscribing '%s'", m_source->uri().c_str(),
             token.c_str());
         m_subscriptions.insert(subscription);
     }
@@ -188,7 +188,7 @@ void overseer_t::push(const Json::Value& message) {
     if(!message["args"].get("transient", false).asBool()) {
         std::string object_id = m_digest.get(driver_id + token + compartment);
         
-        if(!storage_t::instance()->exists(object_id)) {
+        if(!storage_t::instance()->exists("tasks", object_id)) {
             Json::Value object;
             
             object["url"] = m_source->uri();
@@ -199,7 +199,11 @@ void overseer_t::push(const Json::Value& message) {
                 object["args"]["compartment"] = compartment;
             }
 
-            storage_t::instance()->put(object_id, object);
+            try {
+                storage_t::instance()->put("tasks", object_id, object);
+            } catch(const std::runtime_error& e) {
+                syslog(LOG_ERR, "storage: %s", e.what());
+            }
         }
     }
 
@@ -260,7 +264,7 @@ void overseer_t::drop(const Json::Value& message) {
 
             // Un-persist
             std::string object_id = m_digest.get(driver_id + token + compartment);
-            storage_t::instance()->remove(object_id);
+            storage_t::instance()->remove("tasks", object_id);
 
             result["result"] = "success";
         } else {

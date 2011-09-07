@@ -55,10 +55,10 @@ namespace yappi { namespace plugin {
                 }
 
                 Py_BEGIN_ALLOW_THREADS
-                    store = storage::storage_t::instance()->get(*self->store_id);
+                    store = storage::storage_t::instance()->get("storage", *self->store_id);
                 Py_END_ALLOW_THREADS
                 
-                Json::Value value = store["store"][PyString_AsString(key)];
+                Json::Value value = store[PyString_AsString(key)];
 
                 if(!value.empty()) {
                     if(value.isBool()) {
@@ -80,7 +80,6 @@ namespace yappi { namespace plugin {
             }
 
             static PyObject* set(store_object_t* self, PyObject* args, PyObject* kwargs) {
-                bool result;
                 Json::Value store, object;
                 PyObject *key, *value;
                 
@@ -105,20 +104,21 @@ namespace yappi { namespace plugin {
                 }
 
                 Py_BEGIN_ALLOW_THREADS
-                    store = storage::storage_t::instance()->get(*self->store_id);
+                    store = storage::storage_t::instance()->get("storage", *self->store_id);
                 Py_END_ALLOW_THREADS
               
-                store["store"][PyString_AsString(key)] = object;
+                store[PyString_AsString(key)] = object;
 
                 Py_BEGIN_ALLOW_THREADS
-                    result = storage::storage_t::instance()->put(*self->store_id, store);
+                    try {
+                        storage::storage_t::instance()->put("storage", *self->store_id, store);
+                    } catch(const std::runtime_error& e) {
+                        PyErr_SetString(PyExc_RuntimeError, e.what());
+                        return NULL;
+                    }
                 Py_END_ALLOW_THREADS
 
-                if(result) {
-                    Py_RETURN_TRUE;
-                } else {
-                    Py_RETURN_FALSE;
-                }
+                Py_RETURN_TRUE;
             }
 
         private:

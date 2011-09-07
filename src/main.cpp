@@ -39,10 +39,10 @@ int main(int argc, char* argv[]) {
             (&config_t::set().net.watermark)->default_value(1000),
             "maximum number of messages to keep on client disconnects")
         ("storage", po::value<std::string>
-            (&config_t::set().paths.storage)->default_value("/var/lib/yappi/default"),
+            (&config_t::set().storage.path)->default_value("/var/lib/yappi/default"),
             "storage path")
         ("plugins", po::value<std::string>
-            (&config_t::set().paths.plugins)->default_value("/usr/lib/yappi"),
+            (&config_t::set().registry.path)->default_value("/usr/lib/yappi"),
             "plugin path")
         ("pid", po::value<fs::path>()->default_value("/var/run/yappi.pid"),
             "location of a pid file")
