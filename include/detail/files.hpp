@@ -27,6 +27,7 @@ class file_storage_t:
 
     private:
         boost::filesystem::path m_storage_path;
+        std::string m_instance;
 };
 
 }}}

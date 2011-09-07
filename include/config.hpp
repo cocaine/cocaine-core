@@ -12,6 +12,7 @@ class config_t {
 
     public:
         struct {
+            std::string instance;
             unsigned int protocol;
             uint32_t history_depth;
         } core;

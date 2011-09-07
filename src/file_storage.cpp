@@ -15,14 +15,15 @@ struct is_regular_file {
 };
 
 file_storage_t::file_storage_t():
-    m_storage_path(config_t::get().storage.path)
+    m_storage_path(config_t::get().storage.path),
+    m_instance(config_t::get().core.instance)
 {}
 
 void file_storage_t::put(const std::string& store, const std::string& key, const Json::Value& value) {
     if(config_t::get().storage.disabled)
         return;
 
-    fs::path store_path = m_storage_path / store;
+    fs::path store_path = m_storage_path / m_instance / store;
 
     if(!fs::exists(store_path)) {
         try {
@@ -52,7 +53,7 @@ bool file_storage_t::exists(const std::string& store, const std::string& key) co
     if(config_t::get().storage.disabled)
         return false;
 
-    fs::path filepath = m_storage_path / store / key;
+    fs::path filepath = m_storage_path / m_instance / store / key;
     return fs::exists(filepath) && fs::is_regular(filepath);
 }
 
@@ -63,7 +64,7 @@ Json::Value file_storage_t::get(const std::string& store, const std::string& key
         return root;
 
     Json::Reader reader(Json::Features::strictMode());
-    fs::path filepath = m_storage_path / store / key;
+    fs::path filepath = m_storage_path / m_instance / store / key;
     fs::ifstream stream(filepath, fs::ifstream::in);
      
     if(stream) { 
@@ -78,7 +79,7 @@ Json::Value file_storage_t::get(const std::string& store, const std::string& key
 
 Json::Value file_storage_t::all(const std::string& store) const {
     Json::Value root(Json::objectValue);
-    fs::path store_path = m_storage_path / store;
+    fs::path store_path = m_storage_path / m_instance / store;
 
     if(config_t::get().storage.disabled || !fs::exists(store_path))
         return root;
@@ -113,7 +114,7 @@ void file_storage_t::remove(const std::string& store, const std::string& key) {
     if(config_t::get().storage.disabled)
         return;
 
-    fs::remove(m_storage_path / store / key);
+    fs::remove(m_storage_path / m_instance /store / key);
 }
 
 void file_storage_t::purge(const std::string& store) {
@@ -121,6 +122,6 @@ void file_storage_t::purge(const std::string& store) {
         return;
 
     syslog(LOG_NOTICE, "storage: purging");
-    fs::remove_all(m_storage_path / store);
+    fs::remove_all(m_storage_path / m_instance / store);
 }
 

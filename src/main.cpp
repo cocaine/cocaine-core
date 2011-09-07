@@ -41,8 +41,11 @@ int main(int argc, char* argv[]) {
             (&config_t::set().net.watermark)->default_value(1000),
             "maximum number of messages to keep on client disconnects")
         ("storage", po::value<std::string>
-            (&config_t::set().storage.path)->default_value("/var/lib/yappi/default"),
+            (&config_t::set().storage.path)->default_value("/var/lib/yappi"),
             "storage path")
+        ("instance", po::value<std::string>
+            (&config_t::set().core.instance)->default_value("default"),
+            "instance name")
         ("plugins", po::value<std::string>
             (&config_t::set().registry.path)->default_value("/usr/lib/yappi"),
             "plugin path")
@@ -92,7 +95,8 @@ int main(int argc, char* argv[]) {
     config_t::set().core.protocol = vm.count("secure") ? 3 : 2;
 
     // Engage the instance lock
-    fs::path lock_path = config_t::get().storage.path + ".lock";
+    fs::path lock_path = (fs::path(config_t::get().storage.path)
+        / config_t::get().core.instance).string() + ".lock";
     int lock_file = open(lock_path.string().c_str(), O_CREAT | O_RDWR, 00600);
 
     if(lock_file < 0) {
