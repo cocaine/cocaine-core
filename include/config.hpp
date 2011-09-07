@@ -13,7 +13,6 @@ class config_t {
     public:
         struct {
             std::string instance;
-            unsigned int protocol;
             uint32_t history_depth;
         } core;
 
@@ -37,7 +36,8 @@ class config_t {
         } engine;
 
         struct {
-            std::string path;
+            std::string type;
+            std::string location;
         } storage;
 
     private:

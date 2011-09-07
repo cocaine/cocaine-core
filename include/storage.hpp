@@ -1,13 +1,19 @@
 #ifndef YAPPI_STORAGE_HPP
 #define YAPPI_STORAGE_HPP
 
-#include "detail/void.hpp"
-#include "detail/files.hpp"
-#include "detail/mongo.hpp"
-// #include "detail/eblobs.hpp"
+#include "common.hpp"
+#include "detail/abstract.hpp"
 
 namespace yappi { namespace storage {
-    typedef backends::mongo_storage_t storage_t;
+
+class storage_t {
+    public:
+        static boost::shared_ptr<abstract_storage_t> instance();
+
+    private:
+        static boost::shared_ptr<abstract_storage_t> object;
+};
+
 }}
 
 #endif

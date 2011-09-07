@@ -5,7 +5,7 @@ using namespace yappi::storage::backends;
 using namespace mongo;
 
 mongo_storage_t::mongo_storage_t():
-    m_url(config_t::get().storage.path),
+    m_url(config_t::get().storage.location),
     m_db(config_t::get().core.instance)
 {
     m_connection.reset(new mongo::DBClientConnection(true));

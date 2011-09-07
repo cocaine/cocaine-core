@@ -3,25 +3,6 @@
 
 namespace yappi { namespace helpers {
 
-template< class T,
-          template<typename> class PointerType = std::auto_ptr>
-class factory_t {
-    public:
-        static T* instance() {
-            if(!object.get()) {
-                object.reset(new T());
-            }
-
-            return object.get();
-        }
-
-    private:
-        static PointerType<T> object;
-};
-
-template< class T, template<typename> class PointerType>
-PointerType<T> factory_t<T, PointerType>::object;
-
 template<class T>
 class birth_control_t  {
     public:

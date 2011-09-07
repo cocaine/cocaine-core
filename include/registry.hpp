@@ -9,9 +9,11 @@
 namespace yappi { namespace core {
 
 class registry_t:
-    public boost::noncopyable,
-    public helpers::factory_t<registry_t>
+    public boost::noncopyable
 {
+    public:
+        static boost::shared_ptr<registry_t> instance();
+
     public:
         registry_t();
         ~registry_t();
@@ -25,6 +27,9 @@ class registry_t:
 
         // Used to dlclose() all the plugins on shutdown
         std::vector<void*> m_plugins;
+
+    private:
+        static boost::shared_ptr<registry_t> object;
 };
 
 }}

@@ -8,6 +8,7 @@
 
 #include "common.hpp"
 #include "core.hpp"
+#include "storage.hpp"
 
 using namespace yappi;
 using namespace yappi::core;
@@ -43,9 +44,12 @@ int main(int argc, char* argv[]) {
         ("instance", po::value<std::string>
             (&config_t::set().core.instance)->default_value("default"),
             "instance name")
-        ("storage", po::value<std::string>
-            (&config_t::set().storage.path)->default_value("/var/lib/yappi"),
-            "storage location")
+        ("storage-type", po::value<std::string>
+            (&config_t::set().storage.type)->default_value("files"),
+            "storage type, one of: void, files, mongo")
+        ("storage-location", po::value<std::string>
+            (&config_t::set().storage.location)->default_value("/var/lib/yappi"),
+            "storage location, format depends on the storage type")
         ("plugins", po::value<std::string>
             (&config_t::set().registry.path)->default_value("/usr/lib/yappi"),
             "plugin path")
@@ -62,7 +66,6 @@ int main(int argc, char* argv[]) {
         ("history-depth", po::value<uint32_t>
             (&config_t::set().core.history_depth)->default_value(10),
             "history depth for each driver")
-        ("secure", "disallow old insecure protocol")
         ("daemonize", "daemonize on start")
         ("verbose", "produce a lot of output");
 
@@ -91,8 +94,6 @@ int main(int argc, char* argv[]) {
         std::cout << "Try '" << argv[0] << " --help' for more information." << std::endl;
         return EXIT_FAILURE;
     }
-
-    config_t::set().core.protocol = vm.count("secure") ? 3 : 2;
 
     // Engage the instance lock
     int lock_file = open(vm["lock"].as<fs::path>().string().c_str(),

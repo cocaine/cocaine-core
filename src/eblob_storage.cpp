@@ -43,7 +43,7 @@ void eblob_purger_t::complete(uint64_t, uint64_t) {
 }
 
 eblob_storage_t::eblob_storage_t():
-    m_storage_path(config_t::get().storage.path),
+    m_storage_path(config_t::get().storage.location),
     m_logger(NULL, EBLOB_LOG_NOTICE)
 {
     if(!fs::exists(m_storage_path)) {

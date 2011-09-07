@@ -16,7 +16,7 @@ struct is_regular_file {
 };
 
 file_storage_t::file_storage_t():
-    m_storage_path(config_t::get().storage.path),
+    m_storage_path(config_t::get().storage.location),
     m_instance(config_t::get().core.instance)
 {}
 
@@ -47,12 +47,12 @@ void file_storage_t::put(const std::string& store, const std::string& key, const
     stream.close();
 }
 
-bool file_storage_t::exists(const std::string& store, const std::string& key) const {
+bool file_storage_t::exists(const std::string& store, const std::string& key) {
     fs::path filepath = m_storage_path / m_instance / store / key;
     return fs::exists(filepath) && fs::is_regular(filepath);
 }
 
-Json::Value file_storage_t::get(const std::string& store, const std::string& key) const {
+Json::Value file_storage_t::get(const std::string& store, const std::string& key) {
     Json::Value root(Json::objectValue);
     Json::Reader reader(Json::Features::strictMode());
     fs::path filepath = m_storage_path / m_instance / store / key;
@@ -67,7 +67,7 @@ Json::Value file_storage_t::get(const std::string& store, const std::string& key
     return root;
 }
 
-Json::Value file_storage_t::all(const std::string& store) const {
+Json::Value file_storage_t::all(const std::string& store) {
     Json::Value root(Json::objectValue);
     fs::path store_path = m_storage_path / m_instance / store;
 

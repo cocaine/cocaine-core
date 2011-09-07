@@ -8,8 +8,7 @@
 namespace yappi { namespace security {
 
 class signatures_t:
-    public boost::noncopyable,
-    public helpers::factory_t<signatures_t>
+    public boost::noncopyable
 {
     public:
         signatures_t();

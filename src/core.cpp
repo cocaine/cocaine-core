@@ -173,7 +173,7 @@ void core_t::request(ev::io& io, int revents) {
                 unsigned int version = root.get("version", 1).asUInt();
                 std::string token = root.get("token", "").asString();
                 
-                if(version >= config_t::get().core.protocol) {
+                if(version >= 2) {
                     future->set("protocol", boost::lexical_cast<std::string>(version));
                 } else {
                     throw std::runtime_error("outdated protocol version");
@@ -183,7 +183,7 @@ void core_t::request(ev::io& io, int revents) {
                     future->set("token", token);
 
                     if(version > 2) {
-                        security::signatures_t::instance()->verify(request,
+                        m_signatures.verify(request,
                             static_cast<const unsigned char*>(signature.data()),
                             signature.size(), token);
                     }

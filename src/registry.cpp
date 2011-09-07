@@ -94,3 +94,13 @@ boost::shared_ptr<source_t> registry_t::create(const std::string& uri) {
     factory_fn_t factory = it->second;
     return boost::shared_ptr<source_t>(factory(uri.c_str()));
 }
+
+boost::shared_ptr<registry_t> registry_t::instance() {
+    if(!object.get()) {
+        object.reset(new registry_t());
+    }
+
+    return object;
+}
+
+boost::shared_ptr<registry_t> registry_t::object;

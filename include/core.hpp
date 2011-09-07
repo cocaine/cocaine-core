@@ -56,6 +56,8 @@ class core_t:
         void recover();
 
     private:
+        security::signatures_t m_signatures;
+
         // Engine management (URI -> Engine)
         typedef boost::ptr_map<const std::string, engine::engine_t> engine_map_t;
         engine_map_t m_engines;

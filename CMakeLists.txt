@@ -56,6 +56,7 @@ SET_TARGET_PROPERTIES(yappi-core-config PROPERTIES
     PUBLIC_HEADER "include/config.hpp")
 
 ADD_LIBRARY(yappi-core-storage SHARED
+    src/storage
     src/file_storage
     src/mongo_storage)
 
