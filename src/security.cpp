@@ -16,7 +16,15 @@ signatures_t::signatures_t():
     ERR_load_crypto_strings();
 
     // Load the credentials
-    Json::Value keys = storage::storage_t::instance()->all("keys");   
+    Json::Value keys;
+   
+    try { 
+        keys = storage::storage_t::instance()->all("keys");   
+    } catch(const std::runtime_error& e) {
+        syslog(LOG_ERR, "security: storage failure - %s", e.what());
+        return;
+    }
+        
     Json::Value::Members names = keys.getMemberNames();
 
     for(Json::Value::Members::const_iterator it = names.begin(); it != names.end(); ++it) {

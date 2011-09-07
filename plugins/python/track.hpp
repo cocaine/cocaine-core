@@ -1,3 +1,6 @@
+#ifndef YAPPI_TRACK_HPP
+#define YAPPI_TRACK_HPP
+
 #include <algorithm>
 
 namespace yappi { namespace helpers {
@@ -65,3 +68,5 @@ namespace yappi { namespace helpers {
             T m_object;
     };
 }}
+
+#endif

@@ -187,23 +187,24 @@ void overseer_t::push(const Json::Value& message) {
     // Persistance
     if(!message["args"].get("transient", false).asBool()) {
         std::string object_id = m_digest.get(driver_id + token + compartment);
-        
-        if(!storage_t::instance()->exists("tasks", object_id)) {
-            Json::Value object;
-            
-            object["url"] = m_source->uri();
-            object["args"] = message["args"];
-            object["token"] = message["future"]["token"];
-            
-            if(!compartment.empty()) {
-                object["args"]["compartment"] = compartment;
-            }
+       
+        try { 
+            if(!storage_t::instance()->exists("tasks", object_id)) {
+                Json::Value object;
+                
+                object["url"] = m_source->uri();
+                object["args"] = message["args"];
+                object["token"] = message["future"]["token"];
+                
+                if(!compartment.empty()) {
+                    object["args"]["compartment"] = compartment;
+                }
 
-            try {
                 storage_t::instance()->put("tasks", object_id, object);
-            } catch(const std::runtime_error& e) {
-                syslog(LOG_ERR, "storage: %s", e.what());
             }
+        } catch(const std::runtime_error& e) {
+            syslog(LOG_ERR, "engine %s: storage failure - %s",
+                m_source->uri().c_str(), e.what());
         }
     }
 
@@ -264,7 +265,13 @@ void overseer_t::drop(const Json::Value& message) {
 
             // Un-persist
             std::string object_id = m_digest.get(driver_id + token + compartment);
-            storage_t::instance()->remove("tasks", object_id);
+            
+            try {
+                storage_t::instance()->remove("tasks", object_id);
+            } catch(const std::runtime_error& e) {
+                syslog(LOG_ERR, "engine %s: storage failure - %s",
+                    m_source->uri().c_str(), e.what());
+            }
 
             result["result"] = "success";
         } else {

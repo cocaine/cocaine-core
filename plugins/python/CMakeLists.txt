@@ -14,7 +14,8 @@ IF(NOT PYTHON_CFLAGS OR NOT PYTHON_LDFLAGS)
 ENDIF()
 
 ADD_LIBRARY(yappi-plugin-python MODULE
-    python)
+    python
+    store)
 
 TARGET_LINK_LIBRARIES(yappi-plugin-python
     yappi-core-storage

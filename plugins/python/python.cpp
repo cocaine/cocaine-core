@@ -8,7 +8,7 @@
 
 #include "uri.hpp"
 
-namespace yappi { namespace plugin {
+using namespace yappi::plugin;
 
 char python_t::identity[] = "<dynamic>";
 
@@ -313,5 +313,3 @@ extern "C" {
         // Py_Finalize();
     }
 }
-
-}}

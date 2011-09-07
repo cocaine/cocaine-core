@@ -113,7 +113,11 @@ void core_t::purge(ev::sig& sig, int revents) {
     m_engines.clear();
     m_histories.clear();
 
-    storage::storage_t::instance()->purge("tasks");
+    try {
+        storage::storage_t::instance()->purge("tasks");
+    } catch(const std::runtime_error& e) {
+        syslog(LOG_ERR, "core: storage failure - %s", e.what());
+    }    
 }
 
 void core_t::request(ev::io& io, int revents) {
@@ -478,7 +482,14 @@ void core_t::reap(ev::io& io, int revents) {
 }
 
 void core_t::recover() {
-    Json::Value root = storage::storage_t::instance()->all("tasks");
+    Json::Value root;
+    
+    try {
+        root = storage::storage_t::instance()->all("tasks");
+    } catch(const std::runtime_error& e) {
+        syslog(LOG_ERR, "core: storage failure - %s", e.what());
+        return;
+    }
 
     if(root.size()) {
         syslog(LOG_NOTICE, "core: loaded %d task(s)", root.size());
