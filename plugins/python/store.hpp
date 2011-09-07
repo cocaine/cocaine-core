@@ -109,14 +109,12 @@ namespace yappi { namespace plugin {
               
                 store[PyString_AsString(key)] = object;
 
-                Py_BEGIN_ALLOW_THREADS
-                    try {
-                        storage::storage_t::instance()->put("storage", *self->store_id, store);
-                    } catch(const std::runtime_error& e) {
-                        PyErr_SetString(PyExc_RuntimeError, e.what());
-                        return NULL;
-                    }
-                Py_END_ALLOW_THREADS
+                try {
+                    storage::storage_t::instance()->put("storage", *self->store_id, store);
+                } catch(const std::runtime_error& e) {
+                    PyErr_SetString(PyExc_RuntimeError, e.what());
+                    return NULL;
+                }
 
                 Py_RETURN_TRUE;
             }

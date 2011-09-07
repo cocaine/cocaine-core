@@ -8,8 +8,8 @@
 #include "plugin.hpp"
 #include "digest.hpp"
 
-#define max(a, b) ((a) >= (b) ? (a) : (b))
-#define min(a, b) ((a) <= (b) ? (a) : (b))
+#define MAX(a, b) ((a) >= (b) ? (a) : (b))
+#define MIN(a, b) ((a) <= (b) ? (a) : (b))
 
 namespace yappi { namespace engine { 
     
@@ -200,7 +200,7 @@ class manual_t:
         }
 
         inline ev::tstamp reschedule(ev::tstamp now) {
-            return max(now, m_source->reschedule());
+            return MAX(now, m_source->reschedule());
         }
 };
 

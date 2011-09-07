@@ -1,4 +1,7 @@
-#include "eblob_storage.hpp"
+#include <boost/tuple/tuple.hpp>
+#include <boost/format.hpp>
+
+#include "detail/eblobs.hpp"
 
 using namespace yappi::helpers;
 using namespace yappi::storage::backends;
@@ -39,138 +42,153 @@ void eblob_purger_t::complete(uint64_t, uint64_t) {
 }
 
 eblob_storage_t::eblob_storage_t():
-    m_storage_path(config_t::get().paths.storage + ".tasks"),
+    m_storage_path(config_t::get().storage.path),
     m_logger(NULL, EBLOB_LOG_NOTICE)
 {
-    if(config_t::get().storage.disabled)
-        return;
-
-#if BOOST_FILESYSTEM_VERSION == 3
-    if(!fs::exists(m_storage_path.parent_path())) {
-#else
-    if(!fs::exists(m_storage_path.branch_path())) {
-#endif
+    if(!fs::exists(m_storage_path)) {
         try {
-#if BOOST_FILESYSTEM_VERSION == 3
-            fs::create_directories(m_storage_path.parent_path());
-#else
-            fs::create_directories(m_storage_path.branch_path());
-#endif
+            fs::create_directories(m_storage_path);
         } catch(const std::runtime_error& e) {
-#if BOOST_FILESYSTEM_VERSION == 3
-            throw std::runtime_error("cannot create " + m_storage_path.parent_path().string());
-#else
-            throw std::runtime_error("cannot create " + m_storage_path.branch_path().string());
-#endif
+            throw std::runtime_error("cannot create " + m_storage_path.string());
         }
+    } else if(fs::exists(m_storage_path) && !fs::is_directory(m_storage_path)) {
+        throw std::runtime_error(m_storage_path.string() + " is not a directory");
     }
-
-    zbr::eblob_config cfg;
-
-    memset(&cfg, 0, sizeof(cfg));
-    cfg.file = const_cast<char*>(m_storage_path.string().c_str());
-    cfg.hash_size = 4096;
-    cfg.iterate_threads = 1;
-    cfg.sync = 30;
-    cfg.log = m_logger.log();
-
-    m_eblob.reset(new zbr::eblob(&cfg));
 }
 
 eblob_storage_t::~eblob_storage_t() {
-    m_eblob.reset();
+    m_eblobs.clear();
 }
 
-bool eblob_storage_t::put(const std::string& key, const Json::Value& value) {
+void eblob_storage_t::put(const std::string& store, const std::string& key, const Json::Value& value) {
     if(config_t::get().storage.disabled)
-        return false;
+        return;
 
+    eblob_map_t::iterator it = m_eblobs.find(store);
+    
+    if(it == m_eblobs.end()) {
+        zbr::eblob_config cfg;
+
+        memset(&cfg, 0, sizeof(cfg));
+        cfg.file = const_cast<char*>((m_storage_path / store).string().c_str());
+        cfg.iterate_threads = 1;
+        cfg.sync = 5;
+        cfg.log = m_logger.log();
+
+        boost::tie(it, boost::tuples::ignore) = m_eblobs.insert(store, new zbr::eblob(&cfg));
+    }
+        
     Json::FastWriter writer;
     std::string object = writer.write(value);    
 
     try {
-        m_eblob->write_hashed(key, object, BLOB_DISK_CTL_NOCSUM);
+        it->second->write_hashed(key, object, 0);
     } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "storage: failed to write - %s", e.what());
-        return false;
+        throw std::runtime_error((boost::format("failed to write '%1%' to '%2%' - %3%")
+            % key % store % e.what()).str());
     }
-        
-    return true;
 }
 
-bool eblob_storage_t::exists(const std::string& key) const {
+bool eblob_storage_t::exists(const std::string& store, const std::string& key) {
     if(config_t::get().storage.disabled)
         return false;
 
-    std::string object;
+    eblob_map_t::iterator it = m_eblobs.find(store);
+    
+    if(it != m_eblobs.end()) {
+        std::string object;
 
-    try {
-        object = m_eblob->read_hashed(key, 0, 0);
-    } catch(...) {
-        return false;
+        try {
+            object = it->second->read_hashed(key, 0, 0);
+        } catch(const std::runtime_error& e) {
+            syslog(LOG_ERR, "storage: failed to read '%s' from '%s' - %s",
+                key.c_str(), store.c_str(), e.what());
+            return false;
+        }
+
+        return !object.empty();
     }
 
-    return !object.empty();
+    return false;
 }
 
-Json::Value eblob_storage_t::get(const std::string& key) const {
+Json::Value eblob_storage_t::get(const std::string& store, const std::string& key) {
     Json::Value root(Json::objectValue);
     
     if(config_t::get().storage.disabled)
         return root;
 
-    Json::Reader reader(Json::Features::strictMode());
-    std::string object;
+    eblob_map_t::iterator it = m_eblobs.find(store);
+    
+    if(it != m_eblobs.end()) {
+        Json::Reader reader(Json::Features::strictMode());
+        std::string object;
 
-    try {
-        object = m_eblob->read_hashed(key, 0, 0);
-    } catch(...) {
-        return root;
-    }
+        try {
+            object = it->second->read_hashed(key, 0, 0);
+        } catch(const std::runtime_error& e) {
+            syslog(LOG_ERR, "storage: failed to read '%s' from '%s' - %s",
+                key.c_str(), store.c_str(), e.what());
+            return root;
+        }
 
-    if(!object.empty() && !reader.parse(object, root)) {
-        syslog(LOG_ERR, "storage: malformed json - %s",
-            reader.getFormatedErrorMessages().c_str());
+        if(!object.empty() && !reader.parse(object, root)) {
+            syslog(LOG_ERR, "storage: malformed json for '%s' in '%s' - %s",
+                key.c_str(), store.c_str(), reader.getFormatedErrorMessages().c_str());
+        }
     }
 
     return root;
 }
 
-Json::Value eblob_storage_t::all() const {
+Json::Value eblob_storage_t::all(const std::string& store) const {
     if(config_t::get().storage.disabled)
         return Json::Value(Json::objectValue);
 
     eblob_collector_t collector;
     
     try {
-        zbr::eblob_iterator iterator(m_storage_path.string(), true);
+        zbr::eblob_iterator iterator((m_storage_path / store).string(), true);
         iterator.iterate(collector, 1);
     } catch(...) {
-        syslog(LOG_DEBUG, "storage: storage is empty");
+        return Json::Value(Json::objectValue);
     }
 
     return collector.seal();
 }
 
-void eblob_storage_t::remove(const std::string& key) {
+void eblob_storage_t::remove(const std::string& store, const std::string& key) {
     if(config_t::get().storage.disabled)
         return;
 
-    try {
-        m_eblob->remove_hashed(key);
-    } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "storage: failed to remove - %s", e.what());
+    eblob_map_t::iterator it = m_eblobs.find(store);
+    
+    if(it != m_eblobs.end()) {
+        try {
+            it->second->remove_hashed(key);
+        } catch(const std::runtime_error& e) {
+            syslog(LOG_ERR, "storage: failed to remove '%s' from '%s' - %s",
+                key.c_str(), store.c_str(), e.what());
+        }
     }
 }
 
-void eblob_storage_t::purge() {
+void eblob_storage_t::purge(const std::string& store) {
     if(config_t::get().storage.disabled)
         return;
 
-    eblob_purger_t purger(*m_eblob);
+    eblob_map_t::iterator it = m_eblobs.find(store);
 
-    syslog(LOG_NOTICE, "storage: purging");
-    
-    zbr::eblob_iterator iterator(m_storage_path.string(), true);
-    iterator.iterate(purger, 1);
+    if(it != m_eblobs.end()) {
+        syslog(LOG_NOTICE, "storage: purging '%s'", store.c_str());
+        
+        eblob_purger_t purger(*it->second);
+        
+        try {
+            zbr::eblob_iterator iterator((m_storage_path / store).string(), true);
+            iterator.iterate(purger, 1);
+        } catch(...) {
+            // Nothing we can do about it
+        }
+    }
 }

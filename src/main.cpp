@@ -96,8 +96,8 @@ int main(int argc, char* argv[]) {
     int lock_file = open(lock_path.string().c_str(), O_CREAT | O_RDWR, 00600);
 
     if(lock_file < 0) {
-        std::cout << "Error: failed to access the instance lock - "
-                  << strerror(errno) << "." << std::endl;
+        std::cout << "Error: failed to access the instance lock"
+                  << " - " << strerror(errno) << std::endl;
         return EXIT_FAILURE;
     }
 

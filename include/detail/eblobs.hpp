@@ -51,18 +51,21 @@ class eblob_storage_t:
         ~eblob_storage_t();
 
     public:
-        bool put(const std::string& key, const Json::Value& value);
-        bool exists(const std::string& key) const;
+        void put(const std::string& store, const std::string& key, const Json::Value& value);
+        bool exists(const std::string& store, const std::string& key);
 
-        Json::Value get(const std::string& key) const;
-        Json::Value all() const;
+        Json::Value get(const std::string& store, const std::string& key);
+        Json::Value all(const std::string& store) const;
 
-        void remove(const std::string& key);
-        void purge();
+        void remove(const std::string& store, const std::string& key);
+        void purge(const std::string& store);
 
     private:
         boost::filesystem::path m_storage_path;
-        std::auto_ptr<zbr::eblob> m_eblob;
+
+        typedef boost::ptr_map<const std::string, zbr::eblob> eblob_map_t;
+        eblob_map_t m_eblobs;
+
         zbr::eblob_logger m_logger;
 };
 
