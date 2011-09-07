@@ -38,7 +38,6 @@ class config_t {
 
         struct {
             std::string path;
-            bool disabled;
         } storage;
 
     private:

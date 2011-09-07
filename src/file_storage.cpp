@@ -1,5 +1,6 @@
 #include <boost/filesystem/fstream.hpp>
 #include <boost/iterator/filter_iterator.hpp>
+#include <boost/format.hpp>
 
 #include "detail/files.hpp"
 
@@ -20,9 +21,6 @@ file_storage_t::file_storage_t():
 {}
 
 void file_storage_t::put(const std::string& store, const std::string& key, const Json::Value& value) {
-    if(config_t::get().storage.disabled)
-        return;
-
     fs::path store_path = m_storage_path / m_instance / store;
 
     if(!fs::exists(store_path)) {
@@ -40,7 +38,8 @@ void file_storage_t::put(const std::string& store, const std::string& key, const
     fs::ofstream stream(filepath, fs::ofstream::out | fs::ofstream::trunc);
    
     if(!stream) {
-        throw std::runtime_error("failed to write " + filepath.string());
+        throw std::runtime_error((boost::format("failed to write '%1%' to '%2%'") 
+            % key % store).str());
     }     
 
     std::string json = writer.write(value);
@@ -50,27 +49,20 @@ void file_storage_t::put(const std::string& store, const std::string& key, const
 }
 
 bool file_storage_t::exists(const std::string& store, const std::string& key) const {
-    if(config_t::get().storage.disabled)
-        return false;
-
     fs::path filepath = m_storage_path / m_instance / store / key;
     return fs::exists(filepath) && fs::is_regular(filepath);
 }
 
 Json::Value file_storage_t::get(const std::string& store, const std::string& key) const {
     Json::Value root(Json::objectValue);
-    
-    if(config_t::get().storage.disabled)
-        return root;
-
     Json::Reader reader(Json::Features::strictMode());
     fs::path filepath = m_storage_path / m_instance / store / key;
     fs::ifstream stream(filepath, fs::ifstream::in);
      
     if(stream) { 
         if(!reader.parse(stream, root)) {
-            syslog(LOG_WARNING, "storage: malformed json in %s - %s",
-                filepath.string().c_str(), reader.getFormatedErrorMessages().c_str());
+            syslog(LOG_WARNING, "storage: malformed json for %s in %s - %s",
+                key.c_str(), store.c_str(), reader.getFormatedErrorMessages().c_str());
         }
     }
 
@@ -81,7 +73,7 @@ Json::Value file_storage_t::all(const std::string& store) const {
     Json::Value root(Json::objectValue);
     fs::path store_path = m_storage_path / m_instance / store;
 
-    if(config_t::get().storage.disabled || !fs::exists(store_path))
+    if(!fs::exists(store_path))
         return root;
 
     Json::Reader reader(Json::Features::strictMode());
@@ -111,17 +103,11 @@ Json::Value file_storage_t::all(const std::string& store) const {
 }
 
 void file_storage_t::remove(const std::string& store, const std::string& key) {
-    if(config_t::get().storage.disabled)
-        return;
-
     fs::remove(m_storage_path / m_instance /store / key);
 }
 
 void file_storage_t::purge(const std::string& store) {
-    if(config_t::get().storage.disabled)
-        return;
-
-    syslog(LOG_NOTICE, "storage: purging");
+    syslog(LOG_NOTICE, "storage: purging '%s'", store.c_str());
     fs::remove_all(m_storage_path / m_instance / store);
 }
 

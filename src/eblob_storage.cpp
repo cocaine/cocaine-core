@@ -61,9 +61,6 @@ eblob_storage_t::~eblob_storage_t() {
 }
 
 void eblob_storage_t::put(const std::string& store, const std::string& key, const Json::Value& value) {
-    if(config_t::get().storage.disabled)
-        return;
-
     eblob_map_t::iterator it = m_eblobs.find(store);
     
     if(it == m_eblobs.end()) {
@@ -90,9 +87,6 @@ void eblob_storage_t::put(const std::string& store, const std::string& key, cons
 }
 
 bool eblob_storage_t::exists(const std::string& store, const std::string& key) {
-    if(config_t::get().storage.disabled)
-        return false;
-
     eblob_map_t::iterator it = m_eblobs.find(store);
     
     if(it != m_eblobs.end()) {
@@ -114,10 +108,6 @@ bool eblob_storage_t::exists(const std::string& store, const std::string& key) {
 
 Json::Value eblob_storage_t::get(const std::string& store, const std::string& key) {
     Json::Value root(Json::objectValue);
-    
-    if(config_t::get().storage.disabled)
-        return root;
-
     eblob_map_t::iterator it = m_eblobs.find(store);
     
     if(it != m_eblobs.end()) {
@@ -142,9 +132,6 @@ Json::Value eblob_storage_t::get(const std::string& store, const std::string& ke
 }
 
 Json::Value eblob_storage_t::all(const std::string& store) const {
-    if(config_t::get().storage.disabled)
-        return Json::Value(Json::objectValue);
-
     eblob_collector_t collector;
     
     try {
@@ -158,9 +145,6 @@ Json::Value eblob_storage_t::all(const std::string& store) const {
 }
 
 void eblob_storage_t::remove(const std::string& store, const std::string& key) {
-    if(config_t::get().storage.disabled)
-        return;
-
     eblob_map_t::iterator it = m_eblobs.find(store);
     
     if(it != m_eblobs.end()) {
@@ -174,9 +158,6 @@ void eblob_storage_t::remove(const std::string& store, const std::string& key) {
 }
 
 void eblob_storage_t::purge(const std::string& store) {
-    if(config_t::get().storage.disabled)
-        return;
-
     eblob_map_t::iterator it = m_eblobs.find(store);
 
     if(it != m_eblobs.end()) {

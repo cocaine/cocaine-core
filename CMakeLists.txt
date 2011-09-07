@@ -56,13 +56,15 @@ SET_TARGET_PROPERTIES(yappi-core-config PROPERTIES
     PUBLIC_HEADER "include/config.hpp")
 
 ADD_LIBRARY(yappi-core-storage SHARED
-    src/file_storage)
+    src/file_storage
+    src/mongo_storage)
 
 TARGET_LINK_LIBRARIES(yappi-core-storage
     yappi-core-config
     json
     ${BOOST_SYSTEM_LIBS}
-    boost_filesystem-mt)
+    boost_filesystem-mt
+    mongoclient)
 
 SET_TARGET_PROPERTIES(yappi-core-storage PROPERTIES
     VERSION 1

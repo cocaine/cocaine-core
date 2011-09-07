@@ -40,17 +40,19 @@ int main(int argc, char* argv[]) {
 #endif
             (&config_t::set().net.watermark)->default_value(1000),
             "maximum number of messages to keep on client disconnects")
-        ("storage", po::value<std::string>
-            (&config_t::set().storage.path)->default_value("/var/lib/yappi"),
-            "storage path")
         ("instance", po::value<std::string>
             (&config_t::set().core.instance)->default_value("default"),
             "instance name")
+        ("storage", po::value<std::string>
+            (&config_t::set().storage.path)->default_value("/var/lib/yappi"),
+            "storage location")
         ("plugins", po::value<std::string>
             (&config_t::set().registry.path)->default_value("/usr/lib/yappi"),
             "plugin path")
         ("pid", po::value<fs::path>()->default_value("/var/run/yappi.pid"),
             "location of a pid file")
+        ("lock", po::value<fs::path>()->default_value("/var/lock/yappi.lock"),
+            "location of the instance lock file")
         ("thread-suicide-timeout", po::value<float>
             (&config_t::set().engine.suicide_timeout)->default_value(600.0),
             "stale thread suicide timeout, in seconds")
@@ -62,7 +64,6 @@ int main(int argc, char* argv[]) {
             "history depth for each driver")
         ("secure", "disallow old insecure protocol")
         ("daemonize", "daemonize on start")
-        ("transient", "disable storage completely")
         ("verbose", "produce a lot of output");
 
     combined.add(mandatory).add(options);
@@ -91,13 +92,11 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    config_t::set().storage.disabled = vm.count("transient");
     config_t::set().core.protocol = vm.count("secure") ? 3 : 2;
 
     // Engage the instance lock
-    fs::path lock_path = (fs::path(config_t::get().storage.path)
-        / config_t::get().core.instance).string() + ".lock";
-    int lock_file = open(lock_path.string().c_str(), O_CREAT | O_RDWR, 00600);
+    int lock_file = open(vm["lock"].as<fs::path>().string().c_str(),
+        O_CREAT | O_RDWR, 00600);
 
     if(lock_file < 0) {
         std::cout << "Error: failed to access the instance lock"
@@ -167,7 +166,7 @@ int main(int argc, char* argv[]) {
 
     lockf(lock_file, F_ULOCK, 0);
     close(lock_file);
-    fs::remove(lock_path);   
+    fs::remove(vm["lock"].as<fs::path>());   
 
     syslog(LOG_NOTICE, "main: yappi has terminated");
     
