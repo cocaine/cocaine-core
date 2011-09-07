@@ -28,7 +28,7 @@ class eblob_purger_t:
     public zbr::eblob_iterator_callback
 {
     public:
-        eblob_purger_t(zbr::eblob& eblob):
+        eblob_purger_t(zbr::eblob* eblob):
             m_eblob(eblob)
         {}
 
@@ -36,7 +36,7 @@ class eblob_purger_t:
         void complete(uint64_t, uint64_t);
 
     private:
-        zbr::eblob& m_eblob;
+        zbr::eblob* m_eblob;
 
         typedef std::vector<zbr::eblob_key> key_list_t;
         key_list_t m_keys;
