@@ -38,8 +38,7 @@ void file_storage_t::put(const std::string& store, const std::string& key, const
     fs::ofstream stream(filepath, fs::ofstream::out | fs::ofstream::trunc);
    
     if(!stream) {
-        throw std::runtime_error((boost::format("failed to write '%1%' to '%2%'") 
-            % key % store).str());
+        throw std::runtime_error("failed to open " + filepath.string()); 
     }     
 
     std::string json = writer.write(value);
@@ -61,8 +60,7 @@ Json::Value file_storage_t::get(const std::string& store, const std::string& key
      
     if(stream) { 
         if(!reader.parse(stream, root)) {
-            syslog(LOG_WARNING, "storage: malformed json for %s in %s - %s",
-                key.c_str(), store.c_str(), reader.getFormatedErrorMessages().c_str());
+            throw std::runtime_error("corrupted data in " + filepath.string());
         }
     }
 
@@ -103,7 +101,15 @@ Json::Value file_storage_t::all(const std::string& store) const {
 }
 
 void file_storage_t::remove(const std::string& store, const std::string& key) {
-    fs::remove(m_storage_path / m_instance /store / key);
+    fs::path file_path = m_storage_path / m_instance / store / key;
+
+    if(fs::exists(file_path)) {
+        try {
+            fs::remove(file_path);
+        } catch(...) {
+            throw std::runtime_error("failed to remove " + file_path.string());
+        }
+    }
 }
 
 void file_storage_t::purge(const std::string& store) {

@@ -20,11 +20,11 @@ bool eblob_collector_t::callback(const zbr::eblob_disk_control* dco, const void*
     Json::Value object;
 
     if(!m_reader.parse(value, object)) {
-        syslog(LOG_ERR, "storage: malformed json - %s",
-            m_reader.getFormatedErrorMessages().c_str());
-        return true;
+        // XXX: Have to find out the storage name somehow
+        throw std::runtime_error("corrupted data");
     } 
-    
+   
+    // XXX: Have to find out the key somehow 
     m_root[auto_uuid_t().get()] = object;
     
     return true;
@@ -37,6 +37,7 @@ bool eblob_purger_t::callback(const zbr::eblob_disk_control* dco, const void* da
 
 void eblob_purger_t::complete(uint64_t, uint64_t) {
     for(key_list_t::const_iterator it = m_keys.begin(); it != m_keys.end(); ++it) {
+        // XXX: Is there a possibility for an exception here?
         m_eblob.remove_all(*it);
     }
 }
@@ -72,7 +73,12 @@ void eblob_storage_t::put(const std::string& store, const std::string& key, cons
         cfg.sync = 5;
         cfg.log = m_logger.log();
 
-        boost::tie(it, boost::tuples::ignore) = m_eblobs.insert(store, new zbr::eblob(&cfg));
+        try {
+            boost::tie(it, boost::tuples::ignore) = m_eblobs.insert(store, new zbr::eblob(&cfg));
+        } catch(const std::runtime_error& e) {
+            // XXX: Have to do something more sophisticated here
+            throw;
+        }
     }
         
     Json::FastWriter writer;
@@ -81,8 +87,8 @@ void eblob_storage_t::put(const std::string& store, const std::string& key, cons
     try {
         it->second->write_hashed(key, object, 0);
     } catch(const std::runtime_error& e) {
-        throw std::runtime_error((boost::format("failed to write '%1%' to '%2%' - %3%")
-            % key % store % e.what()).str());
+        // XXX: Have to do something more sophisticated here
+        throw;
     }
 }
 
@@ -95,9 +101,8 @@ bool eblob_storage_t::exists(const std::string& store, const std::string& key) {
         try {
             object = it->second->read_hashed(key, 0, 0);
         } catch(const std::runtime_error& e) {
-            syslog(LOG_ERR, "storage: failed to read '%s' from '%s' - %s",
-                key.c_str(), store.c_str(), e.what());
-            return false;
+            // XXX: Have to do something more sophisticated here
+            throw;
         }
 
         return !object.empty();
@@ -117,14 +122,12 @@ Json::Value eblob_storage_t::get(const std::string& store, const std::string& ke
         try {
             object = it->second->read_hashed(key, 0, 0);
         } catch(const std::runtime_error& e) {
-            syslog(LOG_ERR, "storage: failed to read '%s' from '%s' - %s",
-                key.c_str(), store.c_str(), e.what());
-            return root;
+            // XXX: Have to do something more sophisticated here
+            throw;
         }
 
         if(!object.empty() && !reader.parse(object, root)) {
-            syslog(LOG_ERR, "storage: malformed json for '%s' in '%s' - %s",
-                key.c_str(), store.c_str(), reader.getFormatedErrorMessages().c_str());
+            throw std::runtime_error("corrupted data in '" + store + "'");
         }
     }
 
@@ -138,6 +141,7 @@ Json::Value eblob_storage_t::all(const std::string& store) const {
         zbr::eblob_iterator iterator((m_storage_path / store).string(), true);
         iterator.iterate(collector, 1);
     } catch(...) {
+        // XXX: Does it only mean that the blob is empty?
         return Json::Value(Json::objectValue);
     }
 
@@ -151,8 +155,7 @@ void eblob_storage_t::remove(const std::string& store, const std::string& key) {
         try {
             it->second->remove_hashed(key);
         } catch(const std::runtime_error& e) {
-            syslog(LOG_ERR, "storage: failed to remove '%s' from '%s' - %s",
-                key.c_str(), store.c_str(), e.what());
+            throw std::runtime_error("failed to remove from '" + store + "'");
         }
     }
 }
@@ -169,7 +172,7 @@ void eblob_storage_t::purge(const std::string& store) {
             zbr::eblob_iterator iterator((m_storage_path / store).string(), true);
             iterator.iterate(purger, 1);
         } catch(...) {
-            // Nothing we can do about it
+            // XXX: I have no idea what thit means
         }
     }
 }

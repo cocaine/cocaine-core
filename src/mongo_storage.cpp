@@ -58,7 +58,7 @@ Json::Value mongo_storage_t::get(const std::string& store, const std::string& ke
         if(reader.parse(object.jsonString(), result)) {
             return result["value"];
         } else {
-            throw std::runtime_error("data corruption in '" + store + "'");
+            throw std::runtime_error("corrupted data in '" + store + "'");
         }
     }
 
@@ -81,7 +81,7 @@ Json::Value mongo_storage_t::all(const std::string& store) {
             if(reader.parse(cursor->nextSafe().jsonString(), result)) {
                 root[result["key"].asString()] = result["value"];
             } else {
-                throw std::runtime_error("data corruption in '" + store + "'");
+                throw std::runtime_error("corrupted data in '" + store + "'");
             }
         } catch(const AssertionException& e) {
             throw std::runtime_error(e.what());
