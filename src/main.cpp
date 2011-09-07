@@ -1,5 +1,7 @@
 #include <iostream>
 
+#include <fcntl.h>
+
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -57,7 +59,8 @@ int main(int argc, char* argv[]) {
             "history depth for each driver")
         ("secure", "disallow old insecure protocol")
         ("daemonize", "daemonize on start")
-        ("transient", "disable storage completely");
+        ("transient", "disable storage completely")
+        ("verbose", "produce a lot of output");
 
     combined.add(mandatory).add(options);
 
@@ -88,11 +91,27 @@ int main(int argc, char* argv[]) {
     config_t::set().storage.disabled = vm.count("transient");
     config_t::set().core.protocol = vm.count("secure") ? 3 : 2;
 
+    // Engage the instance lock
+    fs::path lock_path = config_t::get().storage.path + ".lock";
+    int lock_file = open(lock_path.string().c_str(), O_CREAT | O_RDWR, 00600);
+
+    if(lock_file < 0) {
+        std::cout << "Error: failed to access the instance lock - "
+                  << strerror(errno) << "." << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    if(lockf(lock_file, F_TLOCK, 0) < 0) {
+        std::cout << "Error: instance lock is active."
+                  << std::endl;
+        return EXIT_FAILURE;
+    }
+
     // Setting up the syslog
     openlog(identity, LOG_PID | LOG_NDELAY, LOG_USER);
-    setlogmask(LOG_UPTO(LOG_DEBUG));
+    setlogmask(LOG_UPTO(vm.count("verbose") ? LOG_DEBUG : LOG_INFO));
     syslog(LOG_NOTICE, "main: yappi is starting");
-        
+
     // Daemonizing, if needed
     if(vm.count("daemonize")) {
         if(daemon(0, 0) < 0) {
@@ -141,7 +160,11 @@ int main(int argc, char* argv[]) {
                 vm["pid"].as<fs::path>().string().c_str());
         }
     }
-        
+
+    lockf(lock_file, F_ULOCK, 0);
+    close(lock_file);
+    fs::remove(lock_path);   
+
     syslog(LOG_NOTICE, "main: yappi has terminated");
     
     return EXIT_SUCCESS;
