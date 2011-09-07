@@ -61,7 +61,6 @@ ADD_LIBRARY(yappi-core-storage SHARED
 TARGET_LINK_LIBRARIES(yappi-core-storage
     yappi-core-config
     json
-    ${UUID_LIBS}
     ${BOOST_SYSTEM_LIBS}
     boost_filesystem-mt)
 
@@ -75,12 +74,10 @@ ADD_LIBRARY(yappi-core-security SHARED
     src/digest)
 
 TARGET_LINK_LIBRARIES(yappi-core-security
-    yappi-core-config
     yappi-core-storage
     crypto
-    ${UUID_LIBS}
     ${BOOST_SYSTEM_LIBS}
-    boost_filesystem-mt)
+    boost_thread-mt)
 
 SET_TARGET_PROPERTIES(yappi-core-security PROPERTIES
     VERSION 1

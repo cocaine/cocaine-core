@@ -25,7 +25,7 @@ TARGET_LINK_LIBRARIES(yappi-plugin-python
     uriparser)
 
 SET_TARGET_PROPERTIES(yappi-plugin-python PROPERTIES
-    COMPILE_FLAGS "${PYTHON_CFLAGS}"
+    COMPILE_FLAGS "${PYTHON_CFLAGS} -fno-strict-aliasing"
     LINK_FLAGS "${PYTHON_LDFLAGS}")
 
 INSTALL(TARGETS yappi-plugin-python
