@@ -12,8 +12,7 @@ using namespace yappi::plugin;
 typedef yappi::helpers::track<PyObject*, Py_DecRef> object_t;
 
 PyObject* store_object_t::allocate(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
-    store_object_t* self = reinterpret_cast<store_object_t*>(
-        type->tp_alloc(type, sizeof(store_object_t)));
+    store_object_t* self = reinterpret_cast<store_object_t*>(type->tp_alloc(type, 0));
 
     if(self != NULL) {
         self->store_id = PyString_FromString("");
