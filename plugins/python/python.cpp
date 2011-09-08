@@ -88,16 +88,18 @@ python_t::python_t(const std::string& uri_):
     compile(code.str(), name, uri.query());
 }
 
+python_t::~python_t() {
+    Py_DECREF(&store_object_type);
+}
+
 void python_t::compile(const std::string& code,
                        const std::string& name,
                        const dict_t& parameters)
 {
-    thread_state_t state(PyGILState_Ensure());
-    
     // Compile the code
     object_t bytecode = Py_CompileString(
         code.c_str(),
-        "<dynamic>",
+        identity,
         Py_file_input);
 
     if(PyErr_Occurred()) {
@@ -142,6 +144,7 @@ void python_t::compile(const std::string& code,
     object_t args = PyTuple_Pack(1, *capsule);
     object_t kwargs = PyDict_New();
 
+    Py_INCREF(&store_object_type);
     PyObject* store = PyObject_Call(reinterpret_cast<PyObject*>(&store_object_type),
         args, kwargs);
     
@@ -278,6 +281,7 @@ dict_t python_t::unwrap(object_t& object) {
 }
 
 source_t* create_python_instance(const char* uri) {
+    thread_state_t state(PyGILState_Ensure());
     return new python_t(uri);
 }
 
@@ -298,12 +302,13 @@ extern "C" {
 
         // Initialize the GIL
         PyEval_InitThreads();
-        PyEval_ReleaseLock();
 
         // Initialize the storage type object
         if(PyType_Ready(&store_object_type) < 0) {
             return NULL;
         }
+        
+        PyEval_ReleaseLock();
 
         return plugin_info;
     }

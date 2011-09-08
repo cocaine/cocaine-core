@@ -17,6 +17,7 @@ class python_t:
     public:
         // The source protocol implementation
         python_t(const std::string& uri);
+        ~python_t();
 
         // Instantiates the iterable object from the supplied code
         void compile(const std::string& code,
