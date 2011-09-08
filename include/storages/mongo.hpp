@@ -26,11 +26,11 @@ class mongo_storage_t:
 
     private:
         inline std::string ns(const std::string& store) {
-            return m_db + "." + store;
+            return "yappi." + m_instance + "." + store;
         }
 
     private:
-        std::string m_db;
+        std::string m_instance;
         mongo::ConnectionString m_url;
 };
 
