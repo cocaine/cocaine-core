@@ -1,6 +1,6 @@
 #include <boost/tuple/tuple.hpp>
 
-#include "detail/eblobs.hpp"
+#include "storages/eblobs.hpp"
 
 using namespace yappi::helpers;
 using namespace yappi::storage::backends;

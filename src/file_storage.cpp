@@ -1,7 +1,7 @@
 #include <boost/filesystem/fstream.hpp>
 #include <boost/iterator/filter_iterator.hpp>
 
-#include "detail/files.hpp"
+#include "storages/files.hpp"
 
 using namespace yappi::helpers;
 using namespace yappi::storage::backends;

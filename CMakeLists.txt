@@ -70,7 +70,7 @@ TARGET_LINK_LIBRARIES(yappi-core-storage
 SET_TARGET_PROPERTIES(yappi-core-storage PROPERTIES
     VERSION 1
     PUBLIC_HEADER "include/storage.hpp"
-    PRIVATE_HEADER "include/detail/files.hpp")
+    PRIVATE_HEADER "include/storages/abstract.hpp")
 
 ADD_LIBRARY(yappi-core-security SHARED
     src/security

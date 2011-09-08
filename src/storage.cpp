@@ -1,8 +1,8 @@
 #include "storage.hpp"
 
-#include "detail/void.hpp"
-#include "detail/files.hpp"
-#include "detail/mongo.hpp"
+#include "storages/void.hpp"
+#include "storages/files.hpp"
+#include "storages/mongo.hpp"
 
 using namespace yappi::storage;
 
