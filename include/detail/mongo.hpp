@@ -30,8 +30,8 @@ class mongo_storage_t:
         }
 
     private:
-        std::string m_url, m_db;
-        std::auto_ptr<mongo::DBClientConnection> m_connection;
+        std::string m_db;
+        mongo::ConnectionString m_url;
 };
 
 }}}
