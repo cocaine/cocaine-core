@@ -80,7 +80,7 @@ int main(int argc, char* argv[]) {
             vm);
         po::notify(vm);
     } catch(const po::unknown_option& e) {
-        std::cerr << "Error: " << e.what() << "." << std::endl;
+        std::cerr << "Error: " << e.what() << std::endl;
     }
 
     if(vm.count("help")) {
@@ -90,8 +90,8 @@ int main(int argc, char* argv[]) {
     }
 
     if(!vm.count("listen") || !vm.count("export")) {
-        std::cout << "Error: no listen/export endpoints specified." << std::endl;
-        std::cout << "Try '" << argv[0] << " --help' for more information." << std::endl;
+        std::cout << "Error: no listen/export endpoints specified" << std::endl;
+        std::cout << "Try '" << argv[0] << " --help' for more information" << std::endl;
         return EXIT_FAILURE;
     }
 
@@ -106,8 +106,7 @@ int main(int argc, char* argv[]) {
     }
 
     if(lockf(lock_file, F_TLOCK, 0) < 0) {
-        std::cout << "Error: instance lock is active."
-                  << std::endl;
+        std::cout << "Error: instance lock is active" << std::endl;
         return EXIT_FAILURE;
     }
 
