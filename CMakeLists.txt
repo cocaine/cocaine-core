@@ -64,6 +64,7 @@ TARGET_LINK_LIBRARIES(yappi-core-storage
     yappi-core-config
     json
     ${BOOST_SYSTEM_LIBS}
+    boost_thread-mt
     boost_filesystem-mt
     mongoclient)
 
@@ -78,9 +79,7 @@ ADD_LIBRARY(yappi-core-security SHARED
 
 TARGET_LINK_LIBRARIES(yappi-core-security
     yappi-core-storage
-    crypto
-    ${BOOST_SYSTEM_LIBS}
-    boost_thread-mt)
+    crypto)
 
 SET_TARGET_PROPERTIES(yappi-core-security PROPERTIES
     VERSION 1
