@@ -8,19 +8,21 @@ class store_object_t {
     public:
         PyObject_HEAD
 
+        static PyObject* allocate(PyTypeObject* type, PyObject* args, PyObject* kwargs);
         static void deallocate(store_object_t* self);
         static int initialize(store_object_t* self, PyObject* args, PyObject* kwargs);
 
     public:
         static PyObject* get(store_object_t* self, PyObject* args, PyObject* kwargs);
         static PyObject* set(store_object_t* self, PyObject* args, PyObject* kwargs);
+        static PyObject* get_id(store_object_t* self, void* closure);
 
     private:
         static const char *get_kwlist[];
         static const char *set_kwlist[];
 
     private:
-        std::string* store_id;
+        PyObject* store_id;
 };
 
 static PyMethodDef store_object_methods[] = {
@@ -28,6 +30,11 @@ static PyMethodDef store_object_methods[] = {
         "Fetches the value for the specified key" },
     { "set", (PyCFunction)store_object_t::set, METH_VARARGS | METH_KEYWORDS,
         "Stores the value for the specified key" },
+    { NULL }
+};
+
+static PyGetSetDef store_object_accessors[] = {
+    { "id", (getter)store_object_t::get_id, NULL, "store id", NULL },
     { NULL }
 };
 
@@ -62,7 +69,7 @@ static PyTypeObject store_object_type = {
     0,                                      /* tp_iternext */
     store_object_methods,                   /* tp_methods */
     0,                                      /* tp_members */
-    0,                                      /* tp_getset */
+    store_object_accessors,                 /* tp_getset */
     0,                                      /* tp_base */
     0,                                      /* tp_dict */
     0,                                      /* tp_descr_get */
@@ -70,7 +77,7 @@ static PyTypeObject store_object_type = {
     0,                                      /* tp_dictoffset */
     (initproc)store_object_t::initialize,   /* tp_init */
     0,                                      /* tp_alloc */
-    PyType_GenericNew                       /* tp_new */
+    store_object_t::allocate                /* tp_new */
 };    
 
 }}

@@ -11,13 +11,29 @@ using namespace yappi::plugin;
 
 typedef yappi::helpers::track<PyObject*, Py_DecRef> object_t;
 
+PyObject* store_object_t::allocate(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
+    store_object_t* self = reinterpret_cast<store_object_t*>(
+        type->tp_alloc(type, sizeof(store_object_t)));
+
+    if(self != NULL) {
+        self->store_id = PyString_FromString("");
+
+        if(self->store_id == NULL) {
+            Py_DECREF(self);
+            return NULL;
+        }
+    }
+
+    return reinterpret_cast<PyObject*>(self);
+}
+
 void store_object_t::deallocate(store_object_t* self) {
-    delete self->store_id;
+    Py_XDECREF(self->store_id);
     self->ob_type->tp_free(reinterpret_cast<PyObject*>(self));
 }
             
 int store_object_t::initialize(store_object_t* self, PyObject* args, PyObject* kwargs) {
-    object_t source(NULL);
+    PyObject* source = NULL;
 
     if(!PyArg_ParseTuple(args, "O", &source)) {
         return -1;
@@ -41,13 +57,14 @@ int store_object_t::initialize(store_object_t* self, PyObject* args, PyObject* k
         PyCObject_AsVoidPtr(source))->uri();
 #endif
 
-    self->store_id = new std::string(security::digest_t().get(uri));
+    Py_DECREF(self->store_id);
+    self->store_id = PyString_FromString(security::digest_t().get(uri).c_str());
 
     return 0;
 }
 
 PyObject* store_object_t::get(store_object_t* self, PyObject* args, PyObject* kwargs) {
-    std::string error;
+    std::string error, store_id(PyString_AsString(self->store_id));
     Json::Value store;
     PyObject* key;
 
@@ -57,7 +74,7 @@ PyObject* store_object_t::get(store_object_t* self, PyObject* args, PyObject* kw
 
     Py_BEGIN_ALLOW_THREADS
         try {
-            store = storage::storage_t::instance()->get("storage", *self->store_id);
+            store = storage::storage_t::instance()->get("storage", store_id);
         } catch(const std::runtime_error& e) {
             error = e.what();
         }
@@ -90,7 +107,7 @@ PyObject* store_object_t::get(store_object_t* self, PyObject* args, PyObject* kw
 }
 
 PyObject* store_object_t::set(store_object_t* self, PyObject* args, PyObject* kwargs) {
-    std::string error;
+    std::string error, store_id(PyString_AsString(self->store_id));
     Json::Value store, object;
     PyObject *key, *value;
     
@@ -116,7 +133,7 @@ PyObject* store_object_t::set(store_object_t* self, PyObject* args, PyObject* kw
 
     Py_BEGIN_ALLOW_THREADS
         try {
-            store = storage::storage_t::instance()->get("storage", *self->store_id);
+            store = storage::storage_t::instance()->get("storage", store_id);
         } catch(const std::runtime_error& e) {
             error = e.what();
         }
@@ -131,7 +148,7 @@ PyObject* store_object_t::set(store_object_t* self, PyObject* args, PyObject* kw
 
     Py_BEGIN_ALLOW_THREADS
         try {
-            storage::storage_t::instance()->put("storage", *self->store_id, store);
+            storage::storage_t::instance()->put("storage", store_id, store);
         } catch(const std::runtime_error& e) {
             error = e.what();
         }
@@ -143,6 +160,11 @@ PyObject* store_object_t::set(store_object_t* self, PyObject* args, PyObject* kw
     }
 
     Py_RETURN_TRUE;
+}
+
+PyObject* store_object_t::get_id(store_object_t* self, void* closure) {
+    Py_INCREF(self->store_id);
+    return self->store_id;
 }
 
 const char* store_object_t::get_kwlist[] = { "key", NULL };

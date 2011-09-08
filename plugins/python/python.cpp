@@ -88,14 +88,12 @@ python_t::python_t(const std::string& uri_):
     compile(code.str(), name, uri.query());
 }
 
-python_t::~python_t() {
-    Py_DECREF(&store_object_type);
-}
-
 void python_t::compile(const std::string& code,
                        const std::string& name,
                        const dict_t& parameters)
 {
+    thread_state_t state(PyGILState_Ensure());
+    
     // Compile the code
     object_t bytecode = Py_CompileString(
         code.c_str(),
@@ -142,11 +140,9 @@ void python_t::compile(const std::string& code,
 #endif
 
     object_t args = PyTuple_Pack(1, *capsule);
-    object_t kwargs = PyDict_New();
-
-    Py_INCREF(&store_object_type);
+    
     PyObject* store = PyObject_Call(reinterpret_cast<PyObject*>(&store_object_type),
-        args, kwargs);
+        args, NULL);
     
     if(PyErr_Occurred()) {
         throw std::runtime_error(exception());
@@ -154,8 +150,11 @@ void python_t::compile(const std::string& code,
 
     // Note: steals the reference    
     PyModule_AddObject(m_module, "store", store);    
-    
+
     // Create the user code object instance
+    object_t empty_args = PyTuple_New(0);
+    object_t kwargs = PyDict_New();
+    
     for(dict_t::const_iterator it = parameters.begin(); it != parameters.end(); ++it) {
         object_t temp = PyString_FromString(it->second.c_str());
         
@@ -165,7 +164,6 @@ void python_t::compile(const std::string& code,
             temp);
     }
     
-    object_t empty_args = PyTuple_New(0);
     m_object = PyObject_Call(callable, empty_args, kwargs);
 
     if(PyErr_Occurred()) {
@@ -243,11 +241,10 @@ dict_t python_t::process(const void* data, size_t data_size) {
 }
 
 std::string python_t::exception() {
-    object_t type(NULL), object(NULL), trackback(NULL);
+    object_t type(NULL), object(NULL), traceback(NULL);
     
-    PyErr_Fetch(&type, &object, &trackback);
+    PyErr_Fetch(&type, &object, &traceback);
     object_t message = PyObject_Str(object);
-    PyErr_Clear();
     
     return PyString_AsString(message);
 }
@@ -281,7 +278,6 @@ dict_t python_t::unwrap(object_t& object) {
 }
 
 source_t* create_python_instance(const char* uri) {
-    thread_state_t state(PyGILState_Ensure());
     return new python_t(uri);
 }
 
