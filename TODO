@@ -23,15 +23,15 @@ v Javascript plugin, basic version
 v 0mq event based driver
 v History
 v Per-plugin per-thread storage support
+v Statistics
 
 Version: 0.4
-* Self-balancing engine thread pool
+v Global persistence
 * Python toolset: PersistentTail, PersistentTimeTail
 * Authentication replay protection (timestamps?)
 * Optional encrypted publishing
 ? Totally encrypted communications
-? Per-engine export sockets
 
 Version: 0.5
-* Global persistence / Cluster communications
-* Statistics
+* Self-balancing engine thread pool
+? Per-engine export sockets
