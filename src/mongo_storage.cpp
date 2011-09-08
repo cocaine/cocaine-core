@@ -7,8 +7,8 @@ using namespace yappi::storage::backends;
 using namespace mongo;
 
 mongo_storage_t::mongo_storage_t() try:
-    m_url(config_t::get().storage.location, ConnectionString::SET),
-    m_db(config_t::get().core.instance)
+    m_db(config_t::get().core.instance),
+    m_url(config_t::get().storage.location, ConnectionString::SET)
 {
     if(!m_url.isValid()) {
         throw std::runtime_error("invalid mongodb url");

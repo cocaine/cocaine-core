@@ -67,7 +67,7 @@ signatures_t::signatures_t():
         ++it;
     }
     
-    syslog(LOG_NOTICE, "security: loaded %ld public key(s) and %ld private keys",
+    syslog(LOG_NOTICE, "security: loaded %ld public key(s) and %ld private key(s)",
         m_public_keys.size(), m_private_keys.size());
 }
 
