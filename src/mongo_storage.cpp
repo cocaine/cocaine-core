@@ -29,6 +29,7 @@ void mongo_storage_t::put(const std::string& store, const std::string& key, cons
     
     try {
         ScopedDbConnection connection(m_url);
+        connection->ensureIndex(ns(store), BSON("key" << 1));
         connection->update(ns(store), BSON("key" << key),
             object, true);
         connection.done();
