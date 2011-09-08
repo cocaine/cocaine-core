@@ -1,5 +1,4 @@
 #include <boost/tuple/tuple.hpp>
-#include <boost/format.hpp>
 
 #include "detail/eblobs.hpp"
 

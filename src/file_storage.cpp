@@ -1,6 +1,5 @@
 #include <boost/filesystem/fstream.hpp>
 #include <boost/iterator/filter_iterator.hpp>
-#include <boost/format.hpp>
 
 #include "detail/files.hpp"
 
