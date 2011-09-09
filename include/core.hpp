@@ -1,6 +1,9 @@
 #ifndef YAPPI_CORE_HPP
 #define YAPPI_CORE_HPP
 
+#define EV_MINIMAL 0
+#include <ev++.h>
+
 #include "common.hpp"
 #include "networking.hpp"
 #include "engine.hpp"

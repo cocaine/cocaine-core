@@ -1,6 +1,9 @@
 #ifndef YAPPI_THREADING_HPP
 #define YAPPI_THREADING_HPP
 
+#define EV_MINIMAL 0
+#include <ev++.h>
+
 #include <boost/thread.hpp>
 
 #include "common.hpp"
