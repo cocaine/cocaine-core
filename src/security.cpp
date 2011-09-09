@@ -31,12 +31,12 @@ signatures_t::signatures_t():
         std::string identity = *it;
         Json::Value object = keys[identity];
 
-        if(!object.isString() || object.empty()) {
+        if(!object["key"].isString() || object["key"].empty()) {
             syslog(LOG_WARNING, "security: key for user '%s' is malformed", identity.c_str());
             continue;
         }
 
-        std::string key = object.asString();
+        std::string key = object["key"].asString();
 
         // Read the key into the BIO object
         BIO* bio = BIO_new_mem_buf(const_cast<char*>(key.data()), key.length());
