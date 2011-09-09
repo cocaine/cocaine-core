@@ -270,8 +270,8 @@ void core_t::push(future_t* future, const std::string& target, const Json::Value
     if(it == m_engines.end()) {
         try {
             // If the engine wasn't found, try to start a new one
-            std::auto_ptr<engine_t> engine(new engine_t(m_context, target));
-            boost::tie(it, boost::tuples::ignore) = m_engines.insert(target, engine);
+            boost::tie(it, boost::tuples::ignore) = m_engines.insert(target,
+                new engine_t(m_context, target));
         } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "core: runtime error in push() - %s", e.what());
             response["error"] = e.what();
@@ -337,7 +337,7 @@ void core_t::history(future_t* future, const std::string& key, const Json::Value
 
     Json::Value result(Json::arrayValue);
     uint32_t depth = args.get("depth", config_t::get().core.history_depth).asUInt(),
-        counter = 0;
+             counter = 0;
 
     for(history_t::const_iterator event = it->second->begin(); event != it->second->end(); ++event) {
         Json::Value object(Json::objectValue);
@@ -418,8 +418,7 @@ void core_t::event(ev::io& io, int revents) {
         history_map_t::iterator history = m_histories.find(driver_id);
 
         if(history == m_histories.end()) {
-            std::auto_ptr<history_t> deque(new history_t());
-            boost::tie(history, boost::tuples::ignore) = m_histories.insert(driver_id, deque);
+            boost::tie(history, boost::tuples::ignore) = m_histories.insert(driver_id, new history_t());
         } else if(history->second->size() == config_t::get().core.history_depth) {
             history->second->pop_back();
         }
