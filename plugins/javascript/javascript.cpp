@@ -125,11 +125,9 @@ source_t* create_javascript_instance(const char* uri) {
     return new javascript_t(uri);
 }
 
-static const plugin_info_t plugin_info = {
-    1,
-    {
-        { "javascript", &create_javascript_instance }
-    }
+static const source_info_t plugin_info[] = {
+    { "javascript", &create_javascript_instance },
+    { NULL, NULL }
 };
 
 extern "C" {
@@ -137,7 +135,7 @@ extern "C" {
         // Global initialization logic
         // This function will be called once, from the main thread
 
-        return &plugin_info;
+        return plugin_info;
     }
 
     // __attribute__((destructor)) void finalize() {
