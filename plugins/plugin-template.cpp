@@ -27,19 +27,14 @@ source_t* create_plugin_instance(const char* uri) {
     return new plugin_t(uri);
 }
 
-static const plugin_info_t plugin_info = {
-    1,
-    {
-        { "plugin", &create_plugin_instance }
-    }
+static const source_info_t plugin_info[] = {
+    { "plugin", &create_plugin_instance },
+    { NULL, NULL }
 };
 
 extern "C" {
-    const plugin_info_t* initialize() {
-        // Global initialization logic
-        // This function will be called once, from the main thread
-
-        return &plugin_info;
+    const source_info_t* initialize() {
+        return plugin_info;
     }
 
     // __attribute__((destructor)) void finalize() {
