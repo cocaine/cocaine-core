@@ -14,7 +14,7 @@ class signatures_t:
         signatures_t();
         ~signatures_t();
 
-        std::string sign(const std::string& message, const std::string& token);
+        // std::string sign(const std::string& message, const std::string& token);
         
         void verify(const std::string& message, const unsigned char* signature,
                     unsigned int size, const std::string& token);
@@ -23,7 +23,7 @@ class signatures_t:
         EVP_MD_CTX* m_context;
 
         typedef std::map<const std::string, EVP_PKEY*> key_map_t;
-        key_map_t m_public_keys, m_private_keys;
+        key_map_t m_keys;
 };
 
 }}

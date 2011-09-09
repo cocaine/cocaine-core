@@ -273,7 +273,7 @@ void overseer_t::drop(const Json::Value& message) {
                     m_source->uri().c_str(), e.what());
             }
 
-            result["result"] = "success";
+            result = "success";
         } else {
             result["error"] = "not authorized";
         }
