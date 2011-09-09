@@ -34,7 +34,7 @@ class Executer(object):
         except:
             self.aliases = {}
 
-    def do(self, uri, hosts, isolate = True):
+    def do(self, uri, hosts, isolated = True):
         if not uri:
             raise ValueError("No target has been specified")
 
@@ -57,8 +57,8 @@ class Executer(object):
             'action': 'push',
             'targets': {
                 uri: {
-                    'type': 'once',
-                    'isolate': isolate
+                    'driver': 'once',
+                    'isolated': isolated
                 }
             }
         })
