@@ -25,13 +25,15 @@ void mongo_storage_t::put(const std::string& store, const std::string& key, cons
     nested["value"] = value;
 
     std::string json = writer.write(nested);
+
+    // NOTE: For some reason, fromjson fails to parse strings with double null-terminator
+    // which is exactly the kind of strings JSONCPP generates, hence the chopping.
     BSONObj object = fromjson(json.substr(0, json.length() - 1));
     
     try {
         ScopedDbConnection connection(m_url);
-        connection->ensureIndex(ns(store), BSON("key" << 1));
-        connection->update(ns(store), BSON("key" << key),
-            object, true);
+        connection->ensureIndex(ns(store), BSON("key" << 1), true); // Unique index
+        connection->update(ns(store), BSON("key" << key), object, true); // Upsert
         connection.done();
     } catch(const DBException& e) {
         throw std::runtime_error(e.what());
