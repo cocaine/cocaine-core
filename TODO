@@ -23,15 +23,15 @@ v Javascript plugin, basic version
 v 0mq event based driver
 v History
 v Per-plugin per-thread storage support
-v Statistics
+v Basic statistics
 
 Version: 0.4
 v Global persistence
+> More statistics (drivers)
 * Python toolset: PersistentTail, PersistentTimeTail
 * Authentication replay protection (timestamps?)
-* Optional encrypted publishing
-? Totally encrypted communications
+* Optional encrypted responses
+* Optional encrypted publishing / Per-driver export sockets
 
 Version: 0.5
 * Self-balancing engine thread pool
-? Per-engine export sockets
