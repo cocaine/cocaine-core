@@ -55,10 +55,8 @@ class javascript_t: public source_t {
         {
             HandleScope handle_scope;
 
-            m_isolate = Isolate::New();
             m_context = Context::New();
 
-            Isolate::Scope isolate_scope(m_isolate);
             Context::Scope context_scope(m_context);
             
             TryCatch try_catch;
@@ -92,14 +90,16 @@ class javascript_t: public source_t {
         ~javascript_t() {
             m_function.Dispose();
             m_context.Dispose();
-            m_isolate->Dispose();
         }
-    
+
+        virtual uint32_t capabilities() const {
+            return ITERATOR;
+        }
+
         virtual dict_t invoke() {
             dict_t dict;
 
             HandleScope handle_scope;
-            Isolate::Scope isolate_scope(m_isolate);
             Context::Scope context_scope(m_context);
             
             TryCatch try_catch;
@@ -116,7 +116,6 @@ class javascript_t: public source_t {
         }
 
     private:
-        Isolate* m_isolate;
         Persistent<Context> m_context;
         Persistent<Function> m_function;
 };
@@ -131,7 +130,7 @@ static const source_info_t plugin_info[] = {
 };
 
 extern "C" {
-    const plugin_info_t* initialize() {
+    const source_info_t* initialize() {
         // Global initialization logic
         // This function will be called once, from the main thread
 
