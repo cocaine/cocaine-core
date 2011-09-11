@@ -32,7 +32,7 @@ signatures_t::signatures_t():
         Json::Value object = keys[identity];
 
         if(!object["key"].isString() || object["key"].empty()) {
-            syslog(LOG_WARNING, "security: key for user '%s' is malformed", identity.c_str());
+            syslog(LOG_ERR, "security: key for user '%s' is malformed", identity.c_str());
             continue;
         }
 
