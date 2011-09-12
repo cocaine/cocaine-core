@@ -104,10 +104,10 @@ TARGET_LINK_LIBRARIES(cocaine-core
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     VERSION 1)
 
-ADD_EXECUTABLE(cocaine
+ADD_EXECUTABLE(cocained
     src/main)
 
-TARGET_LINK_LIBRARIES(cocaine
+TARGET_LINK_LIBRARIES(cocained
     cocaine-core-config
     cocaine-core
     boost_program_options-mt)
@@ -123,7 +123,7 @@ INSTALL(
         cocaine-core-storage
         cocaine-core-security
         cocaine-core 
-        cocaine
+        cocained
     RUNTIME DESTINATION bin COMPONENT runtime
     LIBRARY DESTINATION lib COMPONENT runtime
     ARCHIVE DESTINATION lib COMPONENT developement)
