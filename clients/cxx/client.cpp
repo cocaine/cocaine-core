@@ -1,10 +1,13 @@
-#include "client.hpp"
+#include <sstream>
 
 #include <boost/lambda/bind.hpp>
 #include <boost/format.hpp>
 
 #include <uuid/uuid.h>
+
 #include "json/json.h"
+
+#include "client.hpp"
 
 #define UUID_STRING_SIZE 37
 
