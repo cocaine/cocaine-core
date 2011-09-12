@@ -52,8 +52,7 @@ ADD_LIBRARY(cocaine-core-config SHARED
     src/config)
 
 SET_TARGET_PROPERTIES(cocaine-core-config PROPERTIES
-    VERSION 1
-    PUBLIC_HEADER "include/config.hpp")
+    VERSION 1)
 
 ADD_LIBRARY(cocaine-core-storage SHARED
     src/storage
