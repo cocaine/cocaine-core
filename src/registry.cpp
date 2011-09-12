@@ -4,7 +4,6 @@
 #include <boost/algorithm/string/join.hpp>
 
 #include "common.hpp"
-#include "config.hpp"
 #include "registry.hpp"
 
 using namespace cocaine::core;

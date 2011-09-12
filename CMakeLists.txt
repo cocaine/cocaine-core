@@ -68,9 +68,7 @@ TARGET_LINK_LIBRARIES(cocaine-core-storage
     mongoclient)
 
 SET_TARGET_PROPERTIES(cocaine-core-storage PROPERTIES
-    VERSION 1
-    PUBLIC_HEADER "include/storage.hpp"
-    PRIVATE_HEADER "include/storage/abstract.hpp")
+    VERSION 1)
 
 ADD_LIBRARY(cocaine-core-security SHARED
     src/signatures
@@ -81,8 +79,7 @@ TARGET_LINK_LIBRARIES(cocaine-core-security
     crypto)
 
 SET_TARGET_PROPERTIES(cocaine-core-security PROPERTIES
-    VERSION 1
-    PUBLIC_HEADER "include/security/digest.hpp")
+    VERSION 1)
 
 ADD_LIBRARY(cocaine-core SHARED 
     src/core
@@ -104,9 +101,7 @@ TARGET_LINK_LIBRARIES(cocaine-core
     msgpack)
 
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
-    VERSION 1
-    PUBLIC_HEADER "include/common.hpp;include/plugin.hpp"
-    PRIVATE_HEADER "include/helpers/uri.hpp")
+    VERSION 1)
 
 ADD_EXECUTABLE(cocaine src/main)
 
@@ -121,22 +116,18 @@ ADD_SUBDIRECTORY(toolset)
 
 INSTALL(
     TARGETS
+        json 
+        cocaine-core-config
         cocaine-core-storage
-    LIBRARY DESTINATION lib COMPONENT runtime
-    PUBLIC_HEADER DESTINATION include/cocaine COMPONENT development
-    PRIVATE_HEADER DESTINATION include/cocaine/storage COMPONENT development)
-
-INSTALL(TARGETS
         cocaine-core-security
-    LIBRARY DESTINATION lib COMPONENT runtime
-    PUBLIC_HEADER DESTINATION include/cocaine/security COMPONENT development)
-
-INSTALL(
-    TARGETS 
-        cocaine-core-config 
         cocaine-core 
         cocaine
     RUNTIME DESTINATION bin COMPONENT runtime
     LIBRARY DESTINATION lib COMPONENT runtime
-    PUBLIC_HEADER DESTINATION include/cocaine COMPONENT development
-    PRIVATE_HEADER DESTINATION include/cocaine/helpers COMPONENT development)
+    ARCHIVE DESTINATION lib COMPONENT developement)
+
+INSTALL(DIRECTORY
+        include/
+        foreign/jsoncpp-0.5.0/include/
+    DESTINATION include/cocaine
+    COMPONENT development)

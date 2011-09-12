@@ -1,7 +1,6 @@
 #include <boost/filesystem/fstream.hpp>
 #include <boost/iterator/filter_iterator.hpp>
 
-#include "config.hpp"
 #include "storage/files.hpp"
 
 using namespace cocaine::helpers;

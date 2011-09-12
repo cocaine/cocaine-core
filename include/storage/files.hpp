@@ -1,8 +1,6 @@
 #ifndef COCAINE_FILE_STORAGE_HPP
 #define COCAINE_FILE_STORAGE_HPP
 
-#include <boost/filesystem.hpp>
-
 #include "common.hpp"
 #include "storage/abstract.hpp"
 

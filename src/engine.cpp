@@ -1,9 +1,5 @@
-#include <boost/tuple/tuple.hpp>
-
 #include "engine.hpp"
 #include "future.hpp"
-
-#include "helpers/auto_uuid.hpp"
 
 using namespace cocaine::engine;
 using namespace cocaine::engine::threading;

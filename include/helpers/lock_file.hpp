@@ -4,8 +4,6 @@
 #include <errno.h>
 #include <fcntl.h>
 
-#include <boost/filesystem.hpp>
-
 #include "common.hpp"
 
 namespace cocaine { namespace helpers {

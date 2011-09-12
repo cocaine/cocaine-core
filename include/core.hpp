@@ -8,6 +8,7 @@
 #include "networking.hpp"
 #include "engine.hpp"
 #include "plugin.hpp"
+
 #include "security/signatures.hpp"
 
 namespace cocaine { namespace core {

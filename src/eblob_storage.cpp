@@ -1,8 +1,4 @@
-#include <boost/tuple/tuple.hpp>
-
 #include "storage/eblobs.hpp"
-
-#include "helpers/auto_uuid.hpp"
 
 using namespace cocaine::helpers;
 using namespace cocaine::storage::backends;

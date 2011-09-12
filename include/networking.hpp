@@ -10,7 +10,6 @@
 #include <msgpack.hpp>
 
 #include "common.hpp"
-#include "helpers/birth_control.hpp"
 
 namespace cocaine { namespace net {
 

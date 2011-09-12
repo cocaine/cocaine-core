@@ -1,13 +1,10 @@
 #include <iostream>
 
 #include <boost/program_options.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 
-#include "config.hpp"
 #include "common.hpp"
 #include "core.hpp"
-#include "storage.hpp"
 
 #include "helpers/pid_file.hpp"
 

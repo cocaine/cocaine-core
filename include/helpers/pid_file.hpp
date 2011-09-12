@@ -1,7 +1,6 @@
 #ifndef COCAINE_PID_FILE_HPP
 #define COCAINE_PID_FILE_HPP
 
-#include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 
 #include "common.hpp"

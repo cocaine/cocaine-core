@@ -6,8 +6,8 @@
 #include "common.hpp"
 #include "networking.hpp"
 #include "plugin.hpp"
+
 #include "security/digest.hpp"
-#include "helpers/birth_control.hpp"
 
 #define MAX(a, b) ((a) >= (b) ? (a) : (b))
 #define MIN(a, b) ((a) <= (b) ? (a) : (b))
