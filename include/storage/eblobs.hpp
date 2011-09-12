@@ -1,6 +1,8 @@
 #ifndef COCAINE_EBLOB_STORAGE_HPP
 #define COCAINE_EBLOB_STORAGE_HPP
 
+#include <boost/filesystem.hpp>
+
 #include <eblob/eblob.hpp>
 
 #include "common.hpp"

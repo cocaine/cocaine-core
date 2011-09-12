@@ -14,7 +14,6 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/ptr_container/ptr_map.hpp>
 #include <boost/tuple/tuple.hpp>
-#include <boost/filesystem.hpp>
 
 #include "config.hpp"
 #include "helpers/auto_uuid.hpp"

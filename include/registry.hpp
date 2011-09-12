@@ -1,8 +1,6 @@
 #ifndef COCAINE_REGISTRY_HPP
 #define COCAINE_REGISTRY_HPP
 
-#include <boost/filesystem.hpp>
-
 #include "common.hpp"
 #include "plugin.hpp"
 
