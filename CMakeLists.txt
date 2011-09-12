@@ -105,7 +105,7 @@ TARGET_LINK_LIBRARIES(cocaine-core
 
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     VERSION 1
-    PUBLIC_HEADER "include/plugin.hpp"
+    PUBLIC_HEADER "include/common.hpp;include/plugin.hpp"
     PRIVATE_HEADER "include/helpers/uri.hpp")
 
 ADD_EXECUTABLE(cocaine src/main)
