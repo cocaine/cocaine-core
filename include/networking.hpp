@@ -1,5 +1,5 @@
-#ifndef YAPPI_NETWORKING_HPP
-#define YAPPI_NETWORKING_HPP
+#ifndef COCAINE_NETWORKING_HPP
+#define COCAINE_NETWORKING_HPP
 
 #include <zmq.hpp>
 
@@ -11,7 +11,7 @@
 
 #include "common.hpp"
 
-namespace yappi { namespace net {
+namespace cocaine { namespace net {
 
 class blob_socket_t: 
     public boost::noncopyable,

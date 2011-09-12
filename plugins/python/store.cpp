@@ -8,9 +8,9 @@
 #include "security/digest.hpp"
 #include "helpers/track.hpp"
 
-using namespace yappi::plugin;
+using namespace cocaine::plugin;
 
-typedef yappi::helpers::track<PyObject*, Py_DecRef> object_t;
+typedef cocaine::helpers::track<PyObject*, Py_DecRef> object_t;
 
 PyObject* store_object_t::allocate(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
     store_object_t* self = reinterpret_cast<store_object_t*>(type->tp_alloc(type, 0));

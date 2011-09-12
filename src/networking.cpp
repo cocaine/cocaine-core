@@ -1,6 +1,6 @@
 #include "networking.hpp"
 
-using namespace yappi::net;
+using namespace cocaine::net;
 
 bool json_socket_t::send_json(const Json::Value& root, int flags) {
     Json::FastWriter writer;

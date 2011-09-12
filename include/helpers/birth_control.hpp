@@ -1,7 +1,7 @@
-#ifndef YAPPI_BIRTH_CONTROL_HPP
-#define YAPPI_BIRTH_CONTROL_HPP
+#ifndef COCAINE_BIRTH_CONTROL_HPP
+#define COCAINE_BIRTH_CONTROL_HPP
 
-namespace yappi { namespace helpers {
+namespace cocaine { namespace helpers {
 
 template<class T>
 class birth_control_t  {

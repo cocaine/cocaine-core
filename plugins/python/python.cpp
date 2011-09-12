@@ -8,7 +8,7 @@
 
 #include "helpers/uri.hpp"
 
-using namespace yappi::plugin;
+using namespace cocaine::plugin;
 
 char python_t::identity[] = "<dynamic>";
 
@@ -32,7 +32,7 @@ python_t::python_t(const std::string& uri_):
     target.pop_back();
 
     // Join the path components
-    std::string path("/usr/lib/yappi/python.d");
+    std::string path("/usr/lib/cocaine/python.d");
     std::vector<std::string>::const_iterator it = target.begin();
        
     do {

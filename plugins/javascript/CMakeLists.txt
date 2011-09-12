@@ -1,12 +1,12 @@
 LOCATE_LIBRARY(LIBV8 "v8.h" "v8")
 
-ADD_LIBRARY(yappi-plugin-javascript MODULE
+ADD_LIBRARY(cocaine-plugin-javascript MODULE
     javascript)
 
-TARGET_LINK_LIBRARIES(yappi-plugin-javascript
+TARGET_LINK_LIBRARIES(cocaine-plugin-javascript
     v8
     uriparser)
 
-INSTALL(TARGETS yappi-plugin-javascript
-    LIBRARY DESTINATION lib/yappi
+INSTALL(TARGETS cocaine-plugin-javascript
+    LIBRARY DESTINATION lib/cocaine
     COMPONENT runtime)

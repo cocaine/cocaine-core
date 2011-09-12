@@ -2,7 +2,7 @@
 
 #include "storage.hpp"
 
-namespace yappi { namespace plugin {
+namespace cocaine { namespace plugin {
 
 class store_object_t {
     public:

@@ -1,12 +1,12 @@
-#ifndef YAPPI_REGISTRY_HPP
-#define YAPPI_REGISTRY_HPP
+#ifndef COCAINE_REGISTRY_HPP
+#define COCAINE_REGISTRY_HPP
 
 #include <boost/filesystem.hpp>
 
 #include "common.hpp"
 #include "plugin.hpp"
 
-namespace yappi { namespace core {
+namespace cocaine { namespace core {
 
 class registry_t:
     public boost::noncopyable

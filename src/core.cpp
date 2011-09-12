@@ -9,9 +9,9 @@
 #include "plugin.hpp"
 #include "storage.hpp"
 
-using namespace yappi::core;
-using namespace yappi::engine;
-using namespace yappi::plugin;
+using namespace cocaine::core;
+using namespace cocaine::engine;
+using namespace cocaine::plugin;
 
 core_t::core_t():
     m_context(1),

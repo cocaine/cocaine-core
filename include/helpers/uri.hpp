@@ -1,5 +1,5 @@
-#ifndef YAPPI_URI_HPP
-#define YAPPI_URI_HPP
+#ifndef COCAINE_URI_HPP
+#define COCAINE_URI_HPP
 
 #include <sstream>
 #include <stdexcept>
@@ -10,7 +10,7 @@
 
 #include <uriparser/Uri.h>
 
-namespace yappi { namespace helpers {
+namespace cocaine { namespace helpers {
 
 struct uri_t: public boost::noncopyable {
     public:

@@ -10,14 +10,14 @@
 
 #include "helpers/pid_file.hpp"
 
-using namespace yappi;
-using namespace yappi::core;
-using namespace yappi::helpers;
+using namespace cocaine;
+using namespace cocaine::core;
+using namespace cocaine::helpers;
 
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
 
-static const char identity[] = "yappi";
+static const char identity[] = "cocaine";
 
 int main(int argc, char* argv[]) {
     po::options_description mandatory, options("Allowed options"), combined;
@@ -49,12 +49,12 @@ int main(int argc, char* argv[]) {
             (&config_t::set().storage.driver)->default_value("files"),
             "storage driver, one of: void, files, mongo")
         ("storage-location", po::value<std::string>
-            (&config_t::set().storage.location)->default_value("/var/lib/yappi"),
+            (&config_t::set().storage.location)->default_value("/var/lib/cocaine"),
             "storage location, format depends on the storage type")
         ("plugins", po::value<std::string>
-            (&config_t::set().registry.path)->default_value("/usr/lib/yappi"),
+            (&config_t::set().registry.path)->default_value("/usr/lib/cocaine"),
             "plugin path")
-        ("pidfile", po::value<fs::path>()->default_value("/var/run/yappi.pid"),
+        ("pidfile", po::value<fs::path>()->default_value("/var/run/cocaine.pid"),
             "location of a pid file")
         ("thread-suicide-timeout", po::value<float>
             (&config_t::set().engine.suicide_timeout)->default_value(600.0),
@@ -98,7 +98,7 @@ int main(int argc, char* argv[]) {
     // Setting up the syslog
     openlog(identity, LOG_PID | LOG_NDELAY, LOG_USER);
     setlogmask(LOG_UPTO(vm.count("verbose") ? LOG_DEBUG : LOG_INFO));
-    syslog(LOG_NOTICE, "main: yappi is starting");
+    syslog(LOG_NOTICE, "main: inhale");
 
     // Pid file holder
     std::auto_ptr<pid_file_t> pidfile;
@@ -138,7 +138,7 @@ int main(int argc, char* argv[]) {
     // Cleanup
     delete core;
 
-    syslog(LOG_NOTICE, "main: yappi has terminated");
+    syslog(LOG_NOTICE, "main: exhale");
     
     return EXIT_SUCCESS;
 }

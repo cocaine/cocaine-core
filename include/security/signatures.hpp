@@ -1,11 +1,11 @@
-#ifndef YAPPI_SECURITY_HPP
-#define YAPPI_SECURITY_HPP
+#ifndef COCAINE_SECURITY_HPP
+#define COCAINE_SECURITY_HPP
 
 #include <openssl/evp.h>
 
 #include "common.hpp"
 
-namespace yappi { namespace security {
+namespace cocaine { namespace security {
 
 class signatures_t:
     public boost::noncopyable

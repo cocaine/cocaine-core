@@ -7,7 +7,7 @@
 
 #include "helpers/uri.hpp"
 
-namespace yappi { namespace plugin {
+namespace cocaine { namespace plugin {
 
 class mysql_t:
     public source_t
@@ -20,7 +20,7 @@ class mysql_t:
             m_write_timeout(1)
         {
             // uri: mysql://user:pass@host.yandex.net:3306/db
-            yappi::helpers::uri_t uri(uri_);
+            cocaine::helpers::uri_t uri(uri_);
     
             m_host = uri.host();
             m_port = uri.port();

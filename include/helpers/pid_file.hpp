@@ -1,12 +1,12 @@
-#ifndef YAPPI_PID_FILE_HPP
-#define YAPPI_PID_FILE_HPP
+#ifndef COCAINE_PID_FILE_HPP
+#define COCAINE_PID_FILE_HPP
 
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 
 #include "common.hpp"
 
-namespace yappi { namespace helpers {
+namespace cocaine { namespace helpers {
 
 class pid_file_t:
     public boost::noncopyable

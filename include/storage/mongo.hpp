@@ -1,12 +1,12 @@
-#ifndef YAPPI_MONGO_STORAGE_HPP
-#define YAPPI_MONGO_STORAGE_HPP
+#ifndef COCAINE_MONGO_STORAGE_HPP
+#define COCAINE_MONGO_STORAGE_HPP
 
 #include <mongo/client/dbclient.h>
 
 #include "common.hpp"
 #include "storage/abstract.hpp"
 
-namespace yappi { namespace storage { namespace backends {
+namespace cocaine { namespace storage { namespace backends {
 
 class mongo_storage_t:
     public abstract_storage_t
@@ -26,7 +26,7 @@ class mongo_storage_t:
 
     private:
         inline std::string ns(const std::string& store) {
-            return "yappi." + m_instance + "." + store;
+            return "cocaine." + m_instance + "." + store;
         }
 
     private:

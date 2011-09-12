@@ -5,12 +5,12 @@
 #include "drivers.hpp"
 #include "storage.hpp"
 
-using namespace yappi::engine::threading;
-using namespace yappi::engine::drivers;
+using namespace cocaine::engine::threading;
+using namespace cocaine::engine::drivers;
 
-using namespace yappi::plugin;
-using namespace yappi::storage;
-using namespace yappi::helpers;
+using namespace cocaine::plugin;
+using namespace cocaine::storage;
+using namespace cocaine::helpers;
 
 overseer_t::overseer_t(auto_uuid_t id, zmq::context_t& context):
     m_id(id),

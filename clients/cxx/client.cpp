@@ -8,7 +8,7 @@
 
 #define UUID_STRING_SIZE 37
 
-using namespace yappi::client;
+using namespace cocaine::client;
 
 consumer_base_t::consumer_base_t(client_t& parent):
     m_parent(parent)
@@ -49,7 +49,7 @@ client_t::client_t():
     m_sink.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
     
     // Setup the thread interconnection pipe
-    m_pipe.bind("inproc://yappi-interthread-pipe");
+    m_pipe.bind("inproc://cocaine-interthread-pipe");
 
     // Start the thread
     m_thread = new boost::thread(boost::lambda::bind(&client_t::processor, this));
@@ -159,7 +159,7 @@ void client_t::processor() {
     time_t timestamp;
 
     // Connect the controlling pipe
-    pipe.connect("inproc://yappi-interthread-pipe");
+    pipe.connect("inproc://cocaine-interthread-pipe");
 
     zmq_pollitem_t sockets[] = {
         { (void*)pipe, 0, ZMQ_POLLIN, 0 },

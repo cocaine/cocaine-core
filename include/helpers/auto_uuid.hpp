@@ -1,12 +1,12 @@
-#ifndef YAPPI_UUID_HPP
-#define YAPPI_UUID_HPP
+#ifndef COCAINE_UUID_HPP
+#define COCAINE_UUID_HPP
 
 #include <string>
 #include <stdexcept>
 
 #include <uuid/uuid.h>
 
-namespace yappi { namespace helpers {
+namespace cocaine { namespace helpers {
 
 class auto_uuid_t {
     public:

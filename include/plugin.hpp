@@ -1,9 +1,9 @@
-#ifndef YAPPI_PLUGIN_HPP
-#define YAPPI_PLUGIN_HPP
+#ifndef COCAINE_PLUGIN_HPP
+#define COCAINE_PLUGIN_HPP
 
 #include "common.hpp"
 
-namespace yappi { namespace plugin {
+namespace cocaine { namespace plugin {
 
 class exhausted:
     public std::runtime_error

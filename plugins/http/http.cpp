@@ -5,7 +5,7 @@
 
 #include "plugin.hpp"
 
-namespace yappi { namespace plugin {
+namespace cocaine { namespace plugin {
 
 class http_t:
     public source_t

@@ -1,10 +1,10 @@
-#ifndef YAPPI_FUTURE_HPP
-#define YAPPI_FUTURE_HPP
+#ifndef COCAINE_FUTURE_HPP
+#define COCAINE_FUTURE_HPP
 
 #include "common.hpp"
 #include "core.hpp"
 
-namespace yappi { namespace core {
+namespace cocaine { namespace core {
 
 class core_t;
 

@@ -1,5 +1,5 @@
-#ifndef YAPPI_COMMON_HPP
-#define YAPPI_COMMON_HPP
+#ifndef COCAINE_COMMON_HPP
+#define COCAINE_COMMON_HPP
 
 #include <stdint.h>
 

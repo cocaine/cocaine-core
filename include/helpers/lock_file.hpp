@@ -1,5 +1,5 @@
-#ifndef YAPPI_LOCK_FILE_HPP
-#define YAPPI_LOCK_FILE_HPP
+#ifndef COCAINE_LOCK_FILE_HPP
+#define COCAINE_LOCK_FILE_HPP
 
 #include <errno.h>
 #include <fcntl.h>
@@ -8,7 +8,7 @@
 
 #include "common.hpp"
 
-namespace yappi { namespace helpers {
+namespace cocaine { namespace helpers {
     
 class lock_file_t:
     public boost::noncopyable

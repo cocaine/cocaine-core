@@ -1,5 +1,5 @@
-#ifndef YAPPI_FILE_STORAGE_HPP
-#define YAPPI_FILE_STORAGE_HPP
+#ifndef COCAINE_FILE_STORAGE_HPP
+#define COCAINE_FILE_STORAGE_HPP
 
 #include <boost/filesystem.hpp>
 
@@ -8,7 +8,7 @@
 
 #include "helpers/lock_file.hpp"
 
-namespace yappi { namespace storage { namespace backends {
+namespace cocaine { namespace storage { namespace backends {
 
 class file_storage_t:
     public abstract_storage_t

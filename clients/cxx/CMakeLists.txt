@@ -1,16 +1,16 @@
-ADD_LIBRARY(yappi-client SHARED
+ADD_LIBRARY(cocaine-client SHARED
     client.cpp)
 
-TARGET_LINK_LIBRARIES(yappi-client
+TARGET_LINK_LIBRARIES(cocaine-client
     json
     ${UUID_LIBS}
     boost_thread-mt
     zmq)
 
-SET_TARGET_PROPERTIES(yappi-client PROPERTIES
+SET_TARGET_PROPERTIES(cocaine-client PROPERTIES
     VERSION 1
     PUBLIC_HEADER "client.hpp")
 
-INSTALL(TARGETS yappi-client
+INSTALL(TARGETS cocaine-client
     LIBRARY DESTINATION lib COMPONENT runtime
-    PUBLIC_HEADER DESTINATION include/yappi COMPONENT development)
+    PUBLIC_HEADER DESTINATION include/cocaine COMPONENT development)

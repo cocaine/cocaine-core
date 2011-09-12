@@ -3,12 +3,12 @@
 #include "engine.hpp"
 #include "future.hpp"
 
-using namespace yappi::engine;
-using namespace yappi::engine::threading;
+using namespace cocaine::engine;
+using namespace cocaine::engine::threading;
 
-using namespace yappi::core;
-using namespace yappi::plugin;
-using namespace yappi::helpers;
+using namespace cocaine::core;
+using namespace cocaine::plugin;
+using namespace cocaine::helpers;
 
 engine_t::engine_t(zmq::context_t& context, const std::string& target):
     m_context(context),

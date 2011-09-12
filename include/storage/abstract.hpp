@@ -1,9 +1,9 @@
-#ifndef YAPPI_ABSTRACT_STORAGE
-#define YAPPI_ABSTRACT_STORAGE
+#ifndef COCAINE_ABSTRACT_STORAGE
+#define COCAINE_ABSTRACT_STORAGE
 
 #include "common.hpp"
 
-namespace yappi { namespace storage {
+namespace cocaine { namespace storage {
 
 class abstract_storage_t:
     public boost::noncopyable

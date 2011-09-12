@@ -13,22 +13,22 @@ IF(NOT PYTHON_CFLAGS OR NOT PYTHON_LDFLAGS)
     RETURN()
 ENDIF()
 
-ADD_LIBRARY(yappi-plugin-python MODULE
+ADD_LIBRARY(cocaine-plugin-python MODULE
     python
     store)
 
-TARGET_LINK_LIBRARIES(yappi-plugin-python
-    yappi-core-storage
-    yappi-core-security
+TARGET_LINK_LIBRARIES(cocaine-plugin-python
+    cocaine-core-storage
+    cocaine-core-security
     ${BOOST_SYSTEM_LIBS}
     boost_thread-mt
     curl
     uriparser)
 
-SET_TARGET_PROPERTIES(yappi-plugin-python PROPERTIES
+SET_TARGET_PROPERTIES(cocaine-plugin-python PROPERTIES
     COMPILE_FLAGS "${PYTHON_CFLAGS} -fno-strict-aliasing"
     LINK_FLAGS "${PYTHON_LDFLAGS}")
 
-INSTALL(TARGETS yappi-plugin-python
-    LIBRARY DESTINATION lib/yappi
+INSTALL(TARGETS cocaine-plugin-python
+    LIBRARY DESTINATION lib/cocaine
     COMPONENT runtime)

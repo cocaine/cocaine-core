@@ -1,10 +1,10 @@
-#ifndef YAPPI_VOID_STORAGE_HPP
-#define YAPPI_VOID_STORAGE_HPP
+#ifndef COCAINE_VOID_STORAGE_HPP
+#define COCAINE_VOID_STORAGE_HPP
 
 #include "common.hpp"
 #include "storage/abstract.hpp"
 
-namespace yappi { namespace storage { namespace backends {
+namespace cocaine { namespace storage { namespace backends {
 
 class void_storage_t:
     public abstract_storage_t

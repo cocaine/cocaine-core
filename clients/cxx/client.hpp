@@ -1,5 +1,5 @@
-#ifndef YAPPI_CLIENT_HPP
-#define YAPPI_CLIENT_HPP
+#ifndef COCAINE_CLIENT_HPP
+#define COCAINE_CLIENT_HPP
 
 #include <string>
 #include <sstream>
@@ -11,7 +11,7 @@
 
 #include <zmq.hpp>
 
-namespace yappi { namespace client {
+namespace cocaine { namespace client {
 
 class client_t;
 
@@ -98,6 +98,6 @@ class client_t {
         boost::mutex m_mutex;
 };
 
-}} // namespace yappi::client
+}} // namespace cocaine::client
 
 #endif

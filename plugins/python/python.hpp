@@ -1,5 +1,5 @@
-#ifndef YAPPI_PYTHON_HPP
-#define YAPPI_PYTHON_HPP
+#ifndef COCAINE_PYTHON_HPP
+#define COCAINE_PYTHON_HPP
 
 #include <Python.h>
 
@@ -7,7 +7,7 @@
 
 #include "helpers/track.hpp"
 
-namespace yappi { namespace plugin {
+namespace cocaine { namespace plugin {
 
 typedef helpers::track<PyGILState_STATE, PyGILState_Release> thread_state_t;
 typedef helpers::track<PyObject*, Py_DecRef> object_t;

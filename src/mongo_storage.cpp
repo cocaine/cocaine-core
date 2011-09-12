@@ -2,8 +2,8 @@
 
 #include "storage/mongo.hpp"
 
-using namespace yappi::helpers;
-using namespace yappi::storage::backends;
+using namespace cocaine::helpers;
+using namespace cocaine::storage::backends;
 using namespace mongo;
 
 mongo_storage_t::mongo_storage_t() try:

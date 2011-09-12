@@ -1,5 +1,5 @@
-#ifndef YAPPI_EBLOB_STORAGE_HPP
-#define YAPPI_EBLOB_STORAGE_HPP
+#ifndef COCAINE_EBLOB_STORAGE_HPP
+#define COCAINE_EBLOB_STORAGE_HPP
 
 #include <boost/filesystem.hpp>
 
@@ -8,7 +8,7 @@
 #include "common.hpp"
 #include "storage/abstract.hpp"
 
-namespace yappi { namespace storage { namespace backends {
+namespace cocaine { namespace storage { namespace backends {
 
 class eblob_collector_t:
     public zbr::eblob_iterator_callback

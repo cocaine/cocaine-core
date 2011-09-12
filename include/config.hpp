@@ -1,9 +1,9 @@
-#ifndef YAPPI_CONFIG_HPP
-#define YAPPI_CONFIG_HPP
+#ifndef COCAINE_CONFIG_HPP
+#define COCAINE_CONFIG_HPP
 
 #include "common.hpp"
 
-namespace yappi {
+namespace cocaine {
 
 class config_t {
     public:

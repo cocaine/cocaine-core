@@ -2,8 +2,8 @@
 
 #include "storage/eblobs.hpp"
 
-using namespace yappi::helpers;
-using namespace yappi::storage::backends;
+using namespace cocaine::helpers;
+using namespace cocaine::storage::backends;
 
 namespace fs = boost::filesystem;
 

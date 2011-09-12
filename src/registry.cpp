@@ -6,8 +6,8 @@
 #include "common.hpp"
 #include "registry.hpp"
 
-using namespace yappi::core;
-using namespace yappi::plugin;
+using namespace cocaine::core;
+using namespace cocaine::plugin;
 
 namespace fs = boost::filesystem;
 

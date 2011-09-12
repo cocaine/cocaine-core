@@ -1,5 +1,5 @@
-#ifndef YAPPI_ENGINE_HPP
-#define YAPPI_ENGINE_HPP
+#ifndef COCAINE_ENGINE_HPP
+#define COCAINE_ENGINE_HPP
 
 #include <queue>
 
@@ -7,7 +7,7 @@
 #include "registry.hpp"
 #include "threading.hpp"
 
-namespace yappi { 
+namespace cocaine { 
     
 namespace core {
     class future_t;

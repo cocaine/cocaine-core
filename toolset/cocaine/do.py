@@ -22,13 +22,13 @@ class Executer(object):
             raise RuntimeError("Cannot determine your username")
 
         try:
-            path = os.path.join(self.user.pw_dir, ".yappi", "key.pem")
+            path = os.path.join(self.user.pw_dir, ".cocaine", "key.pem")
             self.pk = EVP.load_key(path)
         except:
             raise RuntimeError("Cannot load your private key from %s" % key_path)
 
         try:
-            path = os.path.join(self.user.pw_dir, ".yappi", "aliases.json")
+            path = os.path.join(self.user.pw_dir, ".cocaine", "aliases.json")
             with open(path, 'r') as file:
                 self.aliases = simplejson.load(file)
         except:

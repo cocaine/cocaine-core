@@ -3,7 +3,7 @@
 #include "storage/files.hpp"
 #include "storage/mongo.hpp"
 
-using namespace yappi::storage;
+using namespace cocaine::storage;
 
 boost::shared_ptr<abstract_storage_t> storage_t::instance() {
     if(!g_object.get()) {

@@ -1,11 +1,11 @@
-#ifndef YAPPI_DIGEST_HPP
-#define YAPPI_DIGEST_HPP
+#ifndef COCAINE_DIGEST_HPP
+#define COCAINE_DIGEST_HPP
 
 #include <openssl/evp.h>
 
 #include "common.hpp"
 
-namespace yappi { namespace security {
+namespace cocaine { namespace security {
 
 class digest_t:
     public boost::noncopyable

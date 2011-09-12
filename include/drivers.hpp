@@ -1,5 +1,5 @@
-#ifndef YAPPI_DRIVERS_HPP
-#define YAPPI_DRIVERS_HPP
+#ifndef COCAINE_DRIVERS_HPP
+#define COCAINE_DRIVERS_HPP
 
 #include <boost/format.hpp>
 
@@ -12,7 +12,7 @@
 #define MAX(a, b) ((a) >= (b) ? (a) : (b))
 #define MIN(a, b) ((a) <= (b) ? (a) : (b))
 
-namespace yappi { namespace engine { 
+namespace cocaine { namespace engine { 
     
 namespace threading {
     class overseer_t;

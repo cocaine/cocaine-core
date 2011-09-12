@@ -1,5 +1,5 @@
-#ifndef YAPPI_THREADING_HPP
-#define YAPPI_THREADING_HPP
+#ifndef COCAINE_THREADING_HPP
+#define COCAINE_THREADING_HPP
 
 #define EV_MINIMAL 0
 #include <ev++.h>
@@ -12,7 +12,7 @@
 
 #include "security/digest.hpp"
 
-namespace yappi { namespace engine { 
+namespace cocaine { namespace engine { 
 
 namespace drivers {
     class abstract_t;

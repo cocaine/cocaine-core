@@ -1,10 +1,10 @@
-#ifndef YAPPI_STORAGE_HPP
-#define YAPPI_STORAGE_HPP
+#ifndef COCAINE_STORAGE_HPP
+#define COCAINE_STORAGE_HPP
 
 #include "common.hpp"
 #include "storage/abstract.hpp"
 
-namespace yappi { namespace storage {
+namespace cocaine { namespace storage {
 
 class storage_t {
     public:

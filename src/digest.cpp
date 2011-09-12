@@ -3,7 +3,7 @@
 
 #include "security/digest.hpp"
 
-using namespace yappi::security;
+using namespace cocaine::security;
 
 digest_t::digest_t():
     m_context(EVP_MD_CTX_create())

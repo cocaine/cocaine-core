@@ -1,9 +1,9 @@
-#ifndef YAPPI_TRACK_HPP
-#define YAPPI_TRACK_HPP
+#ifndef COCAINE_TRACK_HPP
+#define COCAINE_TRACK_HPP
 
 #include <algorithm>
 
-namespace yappi { namespace helpers {
+namespace cocaine { namespace helpers {
     template<typename T, void (*D)(T)> struct track {
         public:
             track(T object):

@@ -1,6 +1,6 @@
 #include "config.hpp"
 
-using namespace yappi;
+using namespace cocaine;
 
 const config_t& config_t::get() {
     return g_config;

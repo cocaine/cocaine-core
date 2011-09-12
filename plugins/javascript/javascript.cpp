@@ -11,7 +11,7 @@
 // -------------------
 // * std::runtime_error
 
-namespace yappi { namespace plugin {
+namespace cocaine { namespace plugin {
 
 using namespace v8;
 
@@ -27,7 +27,7 @@ class javascript_t: public source_t {
             std::vector<std::string> target = uri.path();
 
             // Join the path components
-            std::string path("/usr/lib/yappi/javascript.d");
+            std::string path("/usr/lib/cocaine/javascript.d");
             std::vector<std::string>::const_iterator it = target.begin();
                
             do {

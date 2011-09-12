@@ -6,7 +6,7 @@
 // -------------------
 // * std::runtime_error
 
-namespace yappi { namespace plugin {
+namespace cocaine { namespace plugin {
 
 class plugin_t:
     public source_t

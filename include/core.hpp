@@ -1,5 +1,5 @@
-#ifndef YAPPI_CORE_HPP
-#define YAPPI_CORE_HPP
+#ifndef COCAINE_CORE_HPP
+#define COCAINE_CORE_HPP
 
 #define EV_MINIMAL 0
 #include <ev++.h>
@@ -11,7 +11,7 @@
 
 #include "security/signatures.hpp"
 
-namespace yappi { namespace core {
+namespace cocaine { namespace core {
 
 class future_t;
 

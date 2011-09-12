@@ -7,7 +7,7 @@
 #include "security/signatures.hpp"
 #include "storage.hpp"
 
-using namespace yappi::security;
+using namespace cocaine::security;
 
 signatures_t::signatures_t():
     m_context(EVP_MD_CTX_create())
