@@ -6,6 +6,7 @@
 #include "common.hpp"
 #include "registry.hpp"
 #include "threading.hpp"
+#include "helpers/birth_control.hpp"
 
 namespace cocaine { 
     

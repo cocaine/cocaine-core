@@ -2,13 +2,10 @@
 #define COCAINE_URI_HPP
 
 #include <sstream>
-#include <stdexcept>
-#include <map>
-#include <vector>
-
-#include <boost/noncopyable.hpp>
 
 #include <uriparser/Uri.h>
+
+#include "common.hpp"
 
 namespace cocaine { namespace helpers {
 

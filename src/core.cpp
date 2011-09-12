@@ -4,6 +4,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/tuple/tuple.hpp>
 
+#include "config.hpp"
 #include "core.hpp"
 #include "future.hpp"
 #include "plugin.hpp"

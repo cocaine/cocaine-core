@@ -1,10 +1,9 @@
 #ifndef COCAINE_UUID_HPP
 #define COCAINE_UUID_HPP
 
-#include <string>
-#include <stdexcept>
-
 #include <uuid/uuid.h>
+
+#include "common.hpp"
 
 namespace cocaine { namespace helpers {
 

@@ -1,3 +1,4 @@
+#include "config.hpp"
 #include "storage.hpp"
 #include "storage/void.hpp"
 #include "storage/files.hpp"

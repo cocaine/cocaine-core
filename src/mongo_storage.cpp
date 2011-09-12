@@ -1,8 +1,8 @@
 #include <mongo/client/connpool.h>
 
+#include "config.hpp"
 #include "storage/mongo.hpp"
 
-using namespace cocaine::helpers;
 using namespace cocaine::storage::backends;
 using namespace mongo;
 

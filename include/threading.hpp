@@ -9,8 +9,9 @@
 #include "common.hpp"
 #include "plugin.hpp"
 #include "networking.hpp"
-
 #include "security/digest.hpp"
+#include "helpers/auto_uuid.hpp"
+#include "helpers/birth_control.hpp"
 
 namespace cocaine { namespace engine { 
 

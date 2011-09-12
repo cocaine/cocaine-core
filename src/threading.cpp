@@ -1,6 +1,7 @@
 #include <boost/bind.hpp>
 #include <boost/tuple/tuple.hpp>
 
+#include "config.hpp"
 #include "threading.hpp"
 #include "drivers.hpp"
 #include "storage.hpp"

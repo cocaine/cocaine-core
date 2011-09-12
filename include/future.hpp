@@ -4,6 +4,9 @@
 #include "common.hpp"
 #include "core.hpp"
 
+#include "helpers/auto_uuid.hpp"
+#include "helpers/birth_control.hpp"
+
 namespace cocaine { namespace core {
 
 class core_t;

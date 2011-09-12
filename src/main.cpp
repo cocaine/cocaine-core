@@ -4,6 +4,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 
+#include "config.hpp"
 #include "common.hpp"
 #include "core.hpp"
 #include "storage.hpp"
