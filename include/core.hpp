@@ -8,7 +8,8 @@
 #include "networking.hpp"
 #include "engine.hpp"
 #include "plugin.hpp"
-#include "security.hpp"
+
+#include "security/signatures.hpp"
 
 namespace yappi { namespace core {
 

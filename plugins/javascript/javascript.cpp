@@ -4,7 +4,8 @@
 #include <v8.h>
 
 #include "plugin.hpp"
-#include "uri.hpp"
+
+#include "helpers/uri.hpp"
 
 // Allowed exceptions:
 // -------------------

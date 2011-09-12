@@ -96,11 +96,11 @@ boost::shared_ptr<source_t> registry_t::create(const std::string& uri) {
 }
 
 boost::shared_ptr<registry_t> registry_t::instance() {
-    if(!object.get()) {
-        object.reset(new registry_t());
+    if(!g_object.get()) {
+        g_object.reset(new registry_t());
     }
 
-    return object;
+    return g_object;
 }
 
-boost::shared_ptr<registry_t> registry_t::object;
+boost::shared_ptr<registry_t> registry_t::g_object;

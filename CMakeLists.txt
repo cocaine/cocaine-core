@@ -71,10 +71,10 @@ TARGET_LINK_LIBRARIES(yappi-core-storage
 SET_TARGET_PROPERTIES(yappi-core-storage PROPERTIES
     VERSION 1
     PUBLIC_HEADER "include/storage.hpp"
-    PRIVATE_HEADER "include/storages/abstract.hpp")
+    PRIVATE_HEADER "include/storage/abstract.hpp")
 
 ADD_LIBRARY(yappi-core-security SHARED
-    src/security
+    src/signatures
     src/digest)
 
 TARGET_LINK_LIBRARIES(yappi-core-security
@@ -83,7 +83,7 @@ TARGET_LINK_LIBRARIES(yappi-core-security
 
 SET_TARGET_PROPERTIES(yappi-core-security PROPERTIES
     VERSION 1
-    PUBLIC_HEADER "include/digest.hpp")
+    PUBLIC_HEADER "include/security/digest.hpp")
 
 ADD_LIBRARY(yappi-core SHARED 
     src/core
@@ -106,7 +106,7 @@ TARGET_LINK_LIBRARIES(yappi-core
 
 SET_TARGET_PROPERTIES(yappi-core PROPERTIES
     VERSION 1
-    PUBLIC_HEADER "include/plugin.hpp;include/uri.hpp")
+    PUBLIC_HEADER "include/plugin.hpp;include/helpers/uri.hpp")
 
 ADD_EXECUTABLE(yappi src/main)
 

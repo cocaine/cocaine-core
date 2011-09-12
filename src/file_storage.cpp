@@ -1,7 +1,7 @@
 #include <boost/filesystem/fstream.hpp>
 #include <boost/iterator/filter_iterator.hpp>
 
-#include "storages/files.hpp"
+#include "storage/files.hpp"
 
 using namespace yappi::helpers;
 using namespace yappi::storage::backends;
@@ -16,7 +16,8 @@ struct is_regular_file {
 
 file_storage_t::file_storage_t():
     m_storage_path(config_t::get().storage.location),
-    m_instance(config_t::get().core.instance)
+    m_instance(config_t::get().core.instance),
+    m_lock((m_storage_path / m_instance).string() + ".lock")
 {}
 
 void file_storage_t::put(const std::string& store, const std::string& key, const Json::Value& value) {

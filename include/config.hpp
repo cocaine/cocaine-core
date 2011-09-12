@@ -36,7 +36,7 @@ class config_t {
         } engine;
 
         struct {
-            std::string type;
+            std::string driver;
             std::string location;
         } storage;
 

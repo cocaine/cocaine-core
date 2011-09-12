@@ -3,8 +3,9 @@
 
 #include <mysql.h>
 
-#include "uri.hpp"
 #include "plugin.hpp"
+
+#include "helpers/uri.hpp"
 
 namespace yappi { namespace plugin {
 

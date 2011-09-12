@@ -4,7 +4,7 @@
 #include <openssl/pem.h>
 #include <openssl/err.h>
 
-#include "security.hpp"
+#include "security/signatures.hpp"
 #include "storage.hpp"
 
 using namespace yappi::security;

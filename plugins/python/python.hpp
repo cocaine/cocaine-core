@@ -4,7 +4,8 @@
 #include <Python.h>
 
 #include "plugin.hpp"
-#include "track.hpp"
+
+#include "helpers/track.hpp"
 
 namespace yappi { namespace plugin {
 

@@ -16,8 +16,8 @@
 #include <boost/ptr_container/ptr_map.hpp>
 
 #include "config.hpp"
-#include "auto_uuid.hpp"
-#include "birth_control.hpp"
+#include "helpers/auto_uuid.hpp"
+#include "helpers/birth_control.hpp"
 
 #include "json/json.h"
 

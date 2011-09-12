@@ -2,7 +2,7 @@
 #define YAPPI_STORAGE_HPP
 
 #include "common.hpp"
-#include "storages/abstract.hpp"
+#include "storage/abstract.hpp"
 
 namespace yappi { namespace storage {
 
@@ -11,7 +11,7 @@ class storage_t {
         static boost::shared_ptr<abstract_storage_t> instance();
 
     private:
-        static boost::shared_ptr<abstract_storage_t> object;
+        static boost::shared_ptr<abstract_storage_t> g_object;
 };
 
 }}

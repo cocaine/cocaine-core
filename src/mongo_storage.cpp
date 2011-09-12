@@ -1,6 +1,6 @@
 #include <mongo/client/connpool.h>
 
-#include "storages/mongo.hpp"
+#include "storage/mongo.hpp"
 
 using namespace yappi::helpers;
 using namespace yappi::storage::backends;

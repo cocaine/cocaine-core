@@ -2,7 +2,7 @@
 #define YAPPI_VOID_STORAGE_HPP
 
 #include "common.hpp"
-#include "storages/abstract.hpp"
+#include "storage/abstract.hpp"
 
 namespace yappi { namespace storage { namespace backends {
 

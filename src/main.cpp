@@ -1,7 +1,5 @@
 #include <iostream>
 
-#include <fcntl.h>
-
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -10,8 +8,11 @@
 #include "core.hpp"
 #include "storage.hpp"
 
+#include "helpers/pid_file.hpp"
+
 using namespace yappi;
 using namespace yappi::core;
+using namespace yappi::helpers;
 
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
@@ -44,19 +45,17 @@ int main(int argc, char* argv[]) {
         ("instance", po::value<std::string>
             (&config_t::set().core.instance)->default_value("default"),
             "instance name")
-        ("storage-type", po::value<std::string>
-            (&config_t::set().storage.type)->default_value("files"),
-            "storage type, one of: void, files, mongo")
+        ("storage-driver", po::value<std::string>
+            (&config_t::set().storage.driver)->default_value("files"),
+            "storage driver, one of: void, files, mongo")
         ("storage-location", po::value<std::string>
             (&config_t::set().storage.location)->default_value("/var/lib/yappi"),
             "storage location, format depends on the storage type")
         ("plugins", po::value<std::string>
             (&config_t::set().registry.path)->default_value("/usr/lib/yappi"),
             "plugin path")
-        ("pid", po::value<fs::path>()->default_value("/var/run/yappi.pid"),
+        ("pidfile", po::value<fs::path>()->default_value("/var/run/yappi.pid"),
             "location of a pid file")
-        ("lock", po::value<fs::path>()->default_value("/var/lock/yappi.lock"),
-            "location of the instance lock file")
         ("thread-suicide-timeout", po::value<float>
             (&config_t::set().engine.suicide_timeout)->default_value(600.0),
             "stale thread suicide timeout, in seconds")
@@ -81,6 +80,7 @@ int main(int argc, char* argv[]) {
         po::notify(vm);
     } catch(const po::unknown_option& e) {
         std::cerr << "Error: " << e.what() << std::endl;
+        return EXIT_FAILURE;
     }
 
     if(vm.count("help")) {
@@ -95,25 +95,13 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    // Engage the instance lock
-    int lock_file = open(vm["lock"].as<fs::path>().string().c_str(),
-        O_CREAT | O_RDWR, 00600);
-
-    if(lock_file < 0) {
-        std::cout << "Error: failed to access the instance lock"
-                  << " - " << strerror(errno) << std::endl;
-        return EXIT_FAILURE;
-    }
-
-    if(lockf(lock_file, F_TLOCK, 0) < 0) {
-        std::cout << "Error: instance lock is active" << std::endl;
-        return EXIT_FAILURE;
-    }
-
     // Setting up the syslog
     openlog(identity, LOG_PID | LOG_NDELAY, LOG_USER);
     setlogmask(LOG_UPTO(vm.count("verbose") ? LOG_DEBUG : LOG_INFO));
     syslog(LOG_NOTICE, "main: yappi is starting");
+
+    // Pid file holder
+    std::auto_ptr<pid_file_t> pidfile;
 
     // Daemonizing, if needed
     if(vm.count("daemonize")) {
@@ -122,20 +110,15 @@ int main(int argc, char* argv[]) {
             return EXIT_FAILURE;
         }
 
-        // Write the pidfile
-        fs::ofstream pid_file(vm["pid"].as<fs::path>(),
-            fs::ofstream::out | fs::ofstream::trunc);
-
-        if(!pid_file) {
-            syslog(LOG_ERR, "main: failed to write %s",
-                vm["pid"].as<fs::path>().string().c_str());
+        try {
+            pidfile.reset(new pid_file_t(vm["pidfile"].as<fs::path>()));
+        } catch(const std::runtime_error& e) {
+            syslog(LOG_ERR, "main: %s", e.what());
             return EXIT_FAILURE;
         }
-
-        pid_file << getpid();
-        pid_file.close();
     }
-
+    
+    // Yappi Core
     core_t* core;
 
     // Initializing the core
@@ -154,19 +137,6 @@ int main(int argc, char* argv[]) {
 
     // Cleanup
     delete core;
-
-    if(vm.count("daemonize")) {
-        try {
-            fs::remove(vm["pid"].as<fs::path>());
-        } catch(const std::runtime_error& e) {
-            syslog(LOG_ERR, "main: failed to remove %s",
-                vm["pid"].as<fs::path>().string().c_str());
-        }
-    }
-
-    lockf(lock_file, F_ULOCK, 0);
-    close(lock_file);
-    fs::remove(vm["lock"].as<fs::path>());   
 
     syslog(LOG_NOTICE, "main: yappi has terminated");
     

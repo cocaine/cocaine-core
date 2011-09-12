@@ -1,7 +1,7 @@
 #include <sstream>
 #include <iomanip>
 
-#include "digest.hpp"
+#include "security/digest.hpp"
 
 using namespace yappi::security;
 

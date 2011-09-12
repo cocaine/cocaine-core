@@ -29,7 +29,7 @@ class registry_t:
         std::vector<void*> m_plugins;
 
     private:
-        static boost::shared_ptr<registry_t> object;
+        static boost::shared_ptr<registry_t> g_object;
 };
 
 }}

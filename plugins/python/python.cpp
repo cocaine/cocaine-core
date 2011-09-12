@@ -6,7 +6,7 @@
 #include "python.hpp"
 #include "store.hpp"
 
-#include "uri.hpp"
+#include "helpers/uri.hpp"
 
 using namespace yappi::plugin;
 

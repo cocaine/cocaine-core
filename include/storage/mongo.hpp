@@ -1,18 +1,18 @@
-#ifndef YAPPI_FILE_STORAGE_HPP
-#define YAPPI_FILE_STORAGE_HPP
+#ifndef YAPPI_MONGO_STORAGE_HPP
+#define YAPPI_MONGO_STORAGE_HPP
 
-#include <boost/filesystem.hpp>
+#include <mongo/client/dbclient.h>
 
 #include "common.hpp"
-#include "storages/abstract.hpp"
+#include "storage/abstract.hpp"
 
 namespace yappi { namespace storage { namespace backends {
 
-class file_storage_t:
+class mongo_storage_t:
     public abstract_storage_t
 {
     public:
-        file_storage_t();
+        mongo_storage_t();
 
     public:
         virtual void put(const std::string& store, const std::string& key, const Json::Value& value);
@@ -25,8 +25,13 @@ class file_storage_t:
         virtual void purge(const std::string& store);
 
     private:
-        boost::filesystem::path m_storage_path;
+        inline std::string ns(const std::string& store) {
+            return "yappi." + m_instance + "." + store;
+        }
+
+    private:
         std::string m_instance;
+        mongo::ConnectionString m_url;
 };
 
 }}}

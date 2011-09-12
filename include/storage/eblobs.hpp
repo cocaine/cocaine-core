@@ -6,7 +6,7 @@
 #include <eblob/eblob.hpp>
 
 #include "common.hpp"
-#include "storages/abstract.hpp"
+#include "storage/abstract.hpp"
 
 namespace yappi { namespace storage { namespace backends {
 

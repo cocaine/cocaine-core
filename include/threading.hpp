@@ -9,7 +9,8 @@
 #include "common.hpp"
 #include "plugin.hpp"
 #include "networking.hpp"
-#include "digest.hpp"
+
+#include "security/digest.hpp"
 
 namespace yappi { namespace engine { 
 

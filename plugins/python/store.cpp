@@ -4,8 +4,9 @@
 
 #include "store.hpp"
 #include "plugin.hpp"
-#include "digest.hpp"
-#include "track.hpp"
+
+#include "security/digest.hpp"
+#include "helpers/track.hpp"
 
 using namespace yappi::plugin;
 
