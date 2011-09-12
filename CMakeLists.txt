@@ -13,7 +13,8 @@ ENDIF()
 FIND_PACKAGE(OpenSSL REQUIRED)
 FIND_PACKAGE(CURL REQUIRED)
 
-INCLUDE(LocateLibrary.cmake)
+INCLUDE(cmake/LocateLibrary.cmake)
+INCLUDE(cmake/PrecompiledHeader.cmake)
 
 LOCATE_LIBRARY(LIBZMQ "zmq.hpp" "zmq")
 LOCATE_LIBRARY(LIBEV "ev++.h" "ev" "libev")
@@ -103,7 +104,8 @@ TARGET_LINK_LIBRARIES(cocaine-core
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     VERSION 1)
 
-ADD_EXECUTABLE(cocaine src/main)
+ADD_EXECUTABLE(cocaine
+    src/main)
 
 TARGET_LINK_LIBRARIES(cocaine
     cocaine-core-config
