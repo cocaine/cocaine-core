@@ -13,4 +13,4 @@ SET_TARGET_PROPERTIES(cocaine-client PROPERTIES
 
 INSTALL(TARGETS cocaine-client
     LIBRARY DESTINATION lib COMPONENT runtime
-    PUBLIC_HEADER DESTINATION include/cocaine COMPONENT development)
+    PUBLIC_HEADER DESTINATION include/cocaine/client COMPONENT development)
