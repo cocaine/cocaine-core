@@ -2,7 +2,6 @@ SET(PLUGINS
     mysql
     http
     python
-    inject
     javascript)
 
 FOREACH(PLUGIN ${PLUGINS})
