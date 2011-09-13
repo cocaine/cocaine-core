@@ -1,12 +1,11 @@
 #ifndef COCAINE_COMMON_HPP
 #define COCAINE_COMMON_HPP
 
-#include <stdint.h>
-
 #include <map>
 #include <vector>
 #include <string>
 #include <stdexcept>
+#include <tr1/cstdint>
 
 #include <syslog.h>
 

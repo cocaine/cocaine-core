@@ -331,6 +331,7 @@ void overseer_t::terminate() {
     m_suicide.stop();
     m_cleanup.stop();
     m_slaves.clear();
+    m_loop.unloop();
 } 
 
 void overseer_t::suicide() {
