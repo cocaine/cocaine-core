@@ -2,8 +2,6 @@
 *.os
 *.a
 *.pyc
-*.so*
-cocaine
 CMakeCache.txt
 CMakeFiles
 Makefile
