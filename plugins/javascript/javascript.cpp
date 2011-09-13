@@ -1,5 +1,5 @@
-#include <stdexcept>
-#include <fstream>
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
 
 #include <v8.h>
 
@@ -15,6 +15,8 @@ namespace cocaine { namespace plugin {
 
 using namespace v8;
 
+namespace fs = boost::filesystem;
+
 class javascript_t: public source_t {
     public:
         javascript_t(const std::string& uri_):
@@ -23,25 +25,20 @@ class javascript_t: public source_t {
             // Parse the URI
             helpers::uri_t uri(uri_);
             
-            // Get the callable name
-            std::vector<std::string> target = uri.path();
-
             // Join the path components
-            std::string path("/usr/lib/cocaine/javascript.d");
-            std::vector<std::string>::const_iterator it = target.begin();
-               
-            do {
-                path += ('/' + *it);
-                ++it;
-            } while(it != target.end());
-            
+            std::vector<std::string> target = uri.path();
+            fs::path path = fs::path(config_t::get().registry.path) / "javascript.d";
+
+            for(std::vector<std::string>::const_iterator it = target.begin(); it != target.end(); ++it) {
+                path /= *it;
+            }
+       
             // Get the code
+            fs::ifstream input(path);
             std::stringstream code;
             
-            std::ifstream input(path.c_str());
-            
-            if(!input.is_open()) {
-                throw std::runtime_error("cannot open " + path);
+            if(!input) {
+                throw std::runtime_error("failed to open " + path.string());
             }
             
             // Read the code

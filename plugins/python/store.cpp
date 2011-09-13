@@ -6,6 +6,7 @@
 #include "plugin.hpp"
 
 #include "security/digest.hpp"
+
 #include "helpers/track.hpp"
 
 using namespace cocaine::plugin;

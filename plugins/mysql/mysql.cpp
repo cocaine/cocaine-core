@@ -1,6 +1,3 @@
-#include <string>
-#include <sstream>
-
 #include <mysql.h>
 
 #include "plugin.hpp"

@@ -1,4 +1,3 @@
-#include <stdexcept>
 #include <sstream>
 
 #include <curl/curl.h>

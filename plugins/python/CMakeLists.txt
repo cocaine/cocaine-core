@@ -18,10 +18,11 @@ ADD_LIBRARY(cocaine-plugin-python MODULE
     store)
 
 TARGET_LINK_LIBRARIES(cocaine-plugin-python
+    cocaine-core-config
     cocaine-core-storage
     cocaine-core-security
     ${BOOST_SYSTEM_LIBS}
-    boost_thread-mt
+    boost_filesystem-mt
     curl
     uriparser)
 

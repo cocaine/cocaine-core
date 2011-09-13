@@ -1,14 +1,17 @@
-#include <stdexcept>
-#include <fstream>
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
 
 #include <curl/curl.h>
 
+#include "config.hpp"
 #include "python.hpp"
 #include "store.hpp"
 
 #include "helpers/uri.hpp"
 
 using namespace cocaine::plugin;
+
+namespace fs = boost::filesystem;
 
 char python_t::identity[] = "<dynamic>";
 
@@ -32,19 +35,17 @@ python_t::python_t(const std::string& uri_):
     target.pop_back();
 
     // Join the path components
-    std::string path("/usr/lib/cocaine/python.d");
-    std::vector<std::string>::const_iterator it = target.begin();
+    fs::path path = fs::path(config_t::get().registry.path) / "python.d";
+
+    for(std::vector<std::string>::const_iterator it = target.begin(); it != target.end(); ++it) {
+        path /= *it;
+    }
        
-    do {
-        path += ('/' + *it);
-        ++it;
-    } while(it != target.end());
-    
     // Get the code
     std::stringstream code;
     
     if(uri.host().length()) {
-        throw std::runtime_error("remote code download feature disabled");
+        throw std::runtime_error("remote code download feature is disabled");
         
         /*
         char error_message[CURL_ERROR_SIZE];
@@ -60,7 +61,7 @@ python_t::python_t(const std::string& uri_):
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &stream_writer);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &code);
         curl_easy_setopt(curl, CURLOPT_URL, ("http://" + uri.host() + path).c_str());
-        curl_easy_setopt(curl, CURLOPT_USERAGENT, "Yappi/0.1");
+        curl_easy_setopt(curl, CURLOPT_USERAGENT, "Cocaine/0.5");
         curl_easy_setopt(curl, CURLOPT_HTTPGET, 1);
         curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
         curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 1000);
@@ -75,10 +76,10 @@ python_t::python_t(const std::string& uri_):
         */
     } else {
         // The code is stored locally
-        std::ifstream input(path.c_str());
+        fs::ifstream input(path);
         
-        if(!input.is_open()) {
-            throw std::runtime_error("cannot open " + path);
+        if(!input) {
+            throw std::runtime_error("failed to open " + path.string());
         }
 
         // Read the code

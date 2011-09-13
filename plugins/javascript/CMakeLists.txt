@@ -4,6 +4,9 @@ ADD_LIBRARY(cocaine-plugin-javascript MODULE
     javascript)
 
 TARGET_LINK_LIBRARIES(cocaine-plugin-javascript
+    cocaine-core-config
+    ${BOOST_SYSTEM_LIBS}
+    boost_filesystem-mt
     v8
     uriparser)
 
