@@ -14,10 +14,9 @@
 #include <boost/ptr_container/ptr_map.hpp>
 #include <boost/tuple/tuple.hpp>
 
-#include "config.hpp"
-#include "helpers/auto_uuid.hpp"
-#include "helpers/birth_control.hpp"
-
+#include "cocaine/config.hpp"
+#include "cocaine/helpers/auto_uuid.hpp"
+#include "cocaine/helpers/birth_control.hpp"
 #include "json/json.h"
 
 #endif

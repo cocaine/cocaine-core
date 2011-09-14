@@ -1,7 +1,7 @@
 #include <sstream>
 #include <iomanip>
 
-#include "security/digest.hpp"
+#include "cocaine/security/digest.hpp"
 
 using namespace cocaine::security;
 

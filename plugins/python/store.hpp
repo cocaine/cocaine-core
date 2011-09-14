@@ -1,6 +1,6 @@
 #include "Python.h"
 
-#include "storage.hpp"
+#include "cocaine/storage.hpp"
 
 namespace cocaine { namespace plugin {
 

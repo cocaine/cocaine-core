@@ -6,7 +6,7 @@
 
 #include <zmq.hpp>
 
-#include "common.hpp"
+#include "cocaine/common.hpp"
 
 namespace cocaine { namespace client {
 

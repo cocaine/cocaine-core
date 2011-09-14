@@ -2,12 +2,11 @@
     #include <pycapsule.h>
 #endif
 
+#include "cocaine/plugin.hpp"
+#include "cocaine/security/digest.hpp"
+#include "cocaine/helpers/track.hpp"
+
 #include "store.hpp"
-#include "plugin.hpp"
-
-#include "security/digest.hpp"
-
-#include "helpers/track.hpp"
 
 using namespace cocaine::plugin;
 

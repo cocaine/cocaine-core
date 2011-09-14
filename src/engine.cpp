@@ -1,5 +1,5 @@
-#include "engine.hpp"
-#include "future.hpp"
+#include "cocaine/engine.hpp"
+#include "cocaine/future.hpp"
 
 using namespace cocaine::engine;
 using namespace cocaine::engine::threading;

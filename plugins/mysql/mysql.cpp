@@ -1,8 +1,7 @@
 #include <mysql.h>
 
-#include "plugin.hpp"
-
-#include "helpers/uri.hpp"
+#include "cocaine/plugin.hpp"
+#include "cocaine/helpers/uri.hpp"
 
 namespace cocaine { namespace plugin {
 

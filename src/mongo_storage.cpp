@@ -1,6 +1,6 @@
 #include <mongo/client/connpool.h>
 
-#include "storage/mongo.hpp"
+#include "cocaine/storage/mongo.hpp"
 
 using namespace cocaine::storage::backends;
 using namespace mongo;

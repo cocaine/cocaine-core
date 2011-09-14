@@ -1,7 +1,7 @@
 #ifndef COCAINE_PLUGIN_HPP
 #define COCAINE_PLUGIN_HPP
 
-#include "common.hpp"
+#include "cocaine/common.hpp"
 
 namespace cocaine { namespace plugin {
 

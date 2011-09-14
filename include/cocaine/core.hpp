@@ -4,12 +4,11 @@
 #define EV_MINIMAL 0
 #include <ev++.h>
 
-#include "common.hpp"
-#include "networking.hpp"
-#include "engine.hpp"
-#include "plugin.hpp"
-
-#include "security/signatures.hpp"
+#include "cocaine/common.hpp"
+#include "cocaine/networking.hpp"
+#include "cocaine/engine.hpp"
+#include "cocaine/plugin.hpp"
+#include "cocaine/security/signatures.hpp"
 
 namespace cocaine { namespace core {
 

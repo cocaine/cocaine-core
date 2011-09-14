@@ -6,7 +6,7 @@
 
 #include <boost/filesystem.hpp>
 
-#include "common.hpp"
+#include "cocaine/common.hpp"
 
 namespace cocaine { namespace helpers {
     

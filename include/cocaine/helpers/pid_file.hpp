@@ -4,7 +4,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 
-#include "common.hpp"
+#include "cocaine/common.hpp"
 
 namespace cocaine { namespace helpers {
 

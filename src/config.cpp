@@ -1,4 +1,4 @@
-#include "config.hpp"
+#include "cocaine/config.hpp"
 
 using namespace cocaine;
 

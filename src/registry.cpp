@@ -4,8 +4,8 @@
 #include <boost/iterator/filter_iterator.hpp>
 #include <boost/algorithm/string/join.hpp>
 
-#include "common.hpp"
-#include "registry.hpp"
+#include "cocaine/common.hpp"
+#include "cocaine/registry.hpp"
 
 using namespace cocaine::core;
 using namespace cocaine::plugin;

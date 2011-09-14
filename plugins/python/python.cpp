@@ -3,11 +3,11 @@
 
 #include <curl/curl.h>
 
-#include "config.hpp"
+#include "cocaine/config.hpp"
+#include "cocaine/helpers/uri.hpp"
+
 #include "python.hpp"
 #include "store.hpp"
-
-#include "helpers/uri.hpp"
 
 using namespace cocaine::plugin;
 

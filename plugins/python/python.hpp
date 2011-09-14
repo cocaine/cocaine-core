@@ -3,9 +3,8 @@
 
 #include <Python.h>
 
-#include "plugin.hpp"
-
-#include "helpers/track.hpp"
+#include "cocaine/plugin.hpp"
+#include "cocaine/helpers/track.hpp"
 
 namespace cocaine { namespace plugin {
 

@@ -5,7 +5,7 @@
 
 #include <uriparser/Uri.h>
 
-#include "common.hpp"
+#include "cocaine/common.hpp"
 
 namespace cocaine { namespace helpers {
 

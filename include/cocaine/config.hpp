@@ -1,7 +1,7 @@
 #ifndef COCAINE_CONFIG_HPP
 #define COCAINE_CONFIG_HPP
 
-#include "common.hpp"
+#include "cocaine/common.hpp"
 
 namespace cocaine {
 

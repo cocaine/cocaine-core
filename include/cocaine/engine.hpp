@@ -3,9 +3,9 @@
 
 #include <queue>
 
-#include "common.hpp"
-#include "registry.hpp"
-#include "threading.hpp"
+#include "cocaine/common.hpp"
+#include "cocaine/registry.hpp"
+#include "cocaine/threading.hpp"
 
 namespace cocaine { 
     

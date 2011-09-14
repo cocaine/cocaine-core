@@ -3,7 +3,7 @@
 
 #include <uuid/uuid.h>
 
-#include "common.hpp"
+#include "cocaine/common.hpp"
 
 namespace cocaine { namespace helpers {
 

@@ -1,8 +1,7 @@
-#include "storage.hpp"
-
-#include "storage/void.hpp"
-#include "storage/files.hpp"
-#include "storage/mongo.hpp"
+#include "cocaine/storage.hpp"
+#include "cocaine/storage/void.hpp"
+#include "cocaine/storage/files.hpp"
+#include "cocaine/storage/mongo.hpp"
 
 using namespace cocaine::storage;
 

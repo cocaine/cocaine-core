@@ -3,9 +3,8 @@
 
 #include <v8.h>
 
-#include "plugin.hpp"
-
-#include "helpers/uri.hpp"
+#include "cocaine/plugin.hpp"
+#include "cocaine/helpers/uri.hpp"
 
 // Allowed exceptions:
 // -------------------

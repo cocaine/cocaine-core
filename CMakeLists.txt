@@ -34,8 +34,8 @@ LINK_DIRECTORIES(
     ${LIBEV_LIBRARY_DIRS}
     ${LIBMSGPACK_LIBRARY_DIRS})
 
-INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/foreign/jsoncpp-0.5.0/include)
-INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/include)
+INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/foreign/jsoncpp-0.5.0/include)
+INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/include)
 
 IF(NOT APPLE)
     SET(UUID_LIBS uuid)
@@ -133,5 +133,5 @@ INSTALL(
 INSTALL(DIRECTORY
         include/
         foreign/jsoncpp-0.5.0/include/
-    DESTINATION include/cocaine
+    DESTINATION include
     COMPONENT development)

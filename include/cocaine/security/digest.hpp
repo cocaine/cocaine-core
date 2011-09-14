@@ -3,7 +3,7 @@
 
 #include <openssl/evp.h>
 
-#include "common.hpp"
+#include "cocaine/common.hpp"
 
 namespace cocaine { namespace security {
 

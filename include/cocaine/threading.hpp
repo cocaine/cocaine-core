@@ -6,11 +6,10 @@
 
 #include <boost/thread.hpp>
 
-#include "common.hpp"
-#include "plugin.hpp"
-#include "networking.hpp"
-
-#include "security/digest.hpp"
+#include "cocaine/common.hpp"
+#include "cocaine/plugin.hpp"
+#include "cocaine/networking.hpp"
+#include "cocaine/security/digest.hpp"
 
 namespace cocaine { namespace engine { 
 

@@ -4,9 +4,8 @@
 #include <openssl/pem.h>
 #include <openssl/err.h>
 
-#include "storage.hpp"
-
-#include "security/signatures.hpp"
+#include "cocaine/storage.hpp"
+#include "cocaine/security/signatures.hpp"
 
 using namespace cocaine::security;
 

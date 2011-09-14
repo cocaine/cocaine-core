@@ -1,8 +1,8 @@
 #ifndef COCAINE_REGISTRY_HPP
 #define COCAINE_REGISTRY_HPP
 
-#include "common.hpp"
-#include "plugin.hpp"
+#include "cocaine/common.hpp"
+#include "cocaine/plugin.hpp"
 
 namespace cocaine { namespace core {
 

@@ -1,7 +1,7 @@
 #ifndef COCAINE_ABSTRACT_STORAGE
 #define COCAINE_ABSTRACT_STORAGE
 
-#include "common.hpp"
+#include "cocaine/common.hpp"
 
 namespace cocaine { namespace storage {
 

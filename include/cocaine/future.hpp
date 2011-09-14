@@ -1,8 +1,8 @@
 #ifndef COCAINE_FUTURE_HPP
 #define COCAINE_FUTURE_HPP
 
-#include "common.hpp"
-#include "core.hpp"
+#include "cocaine/common.hpp"
+#include "cocaine/core.hpp"
 
 namespace cocaine { namespace core {
 

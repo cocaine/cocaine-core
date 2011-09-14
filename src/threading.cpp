@@ -1,8 +1,8 @@
 #include <boost/bind.hpp>
 
-#include "threading.hpp"
-#include "drivers.hpp"
-#include "storage.hpp"
+#include "cocaine/threading.hpp"
+#include "cocaine/drivers.hpp"
+#include "cocaine/storage.hpp"
 
 using namespace cocaine::engine::threading;
 using namespace cocaine::engine::drivers;

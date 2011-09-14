@@ -4,10 +4,9 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 
-#include "common.hpp"
-#include "core.hpp"
-
-#include "helpers/pid_file.hpp"
+#include "cocaine/common.hpp"
+#include "cocaine/core.hpp"
+#include "cocaine/helpers/pid_file.hpp"
 
 using namespace cocaine;
 using namespace cocaine::core;

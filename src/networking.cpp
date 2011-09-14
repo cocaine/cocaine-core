@@ -1,4 +1,4 @@
-#include "networking.hpp"
+#include "cocaine/networking.hpp"
 
 using namespace cocaine::net;
 

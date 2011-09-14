@@ -3,10 +3,10 @@
 
 #include <boost/lexical_cast.hpp>
 
-#include "core.hpp"
-#include "future.hpp"
-#include "plugin.hpp"
-#include "storage.hpp"
+#include "cocaine/core.hpp"
+#include "cocaine/future.hpp"
+#include "cocaine/plugin.hpp"
+#include "cocaine/storage.hpp"
 
 using namespace cocaine::core;
 using namespace cocaine::engine;

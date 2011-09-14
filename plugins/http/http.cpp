@@ -2,7 +2,7 @@
 
 #include <curl/curl.h>
 
-#include "plugin.hpp"
+#include "cocaine/plugin.hpp"
 
 namespace cocaine { namespace plugin {
 

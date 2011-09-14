@@ -3,11 +3,10 @@
 
 #include <boost/format.hpp>
 
-#include "common.hpp"
-#include "networking.hpp"
-#include "plugin.hpp"
-
-#include "security/digest.hpp"
+#include "cocaine/common.hpp"
+#include "cocaine/networking.hpp"
+#include "cocaine/plugin.hpp"
+#include "cocaine/security/digest.hpp"
 
 #define MAX(a, b) ((a) >= (b) ? (a) : (b))
 #define MIN(a, b) ((a) <= (b) ? (a) : (b))
