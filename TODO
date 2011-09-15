@@ -1,37 +1,45 @@
 Version: 0.1
-v Socket identity support
-v HTTP plugin
-v JSON command protocol + bulk commands
-v Forking engine (via inject plugin)
-v Async core
-v Fix libev+zmq integration
+v Core: json command protocol
+v Core: bulk requests
+v Core: async core
+x Networking: identity support [dropped in favor of explicit tokens]
+v Plugins: http plugin
 
 Version: 0.2
-v Local persistence
-v Authentication
+v Networking: authentication
+v Storage: local persistence
 
 Version: 0.3
-v Modular engines, multiple driver types
-x Protocol: move action into targets [was a bad idea]
-v Engines: isolated tasks
-v Basic python toolset: TimeTail, BasicSink, target aliases
-v Migrate internal variable state to a dedicated configuration object, 
-  more flexible environment setup: paths, minimal protocol version
-v Task queues
-v Filesystem event based driver
-v Javascript plugin, basic version
-v 0mq event based driver
-v History
-v Per-plugin per-thread storage support
-v Basic statistics
+x Core: move action into targets [was a bad idea]
+v Core: migrate internal variable state to a dedicated configuration object, 
+  more flexible environment setup: paths, minimal protocol version, etc.
+v Core: history
+v Core: basic statistics
+v Engine: modular engines, multiple driver types
+v Engine: isolated tasks
+v Engine: task queues
+v Engine: 0mq event based driver
+v JS: basic version
+v Python: Tail, Executer
+v Python: authentication support
+v Python: aliases
+v Storage: filesystem event based driver
+v Storage: per-plugin per-thread storage support
 
 Version: 0.4
-v Global persistence
-> More statistics (drivers)
-* Python toolset: PersistentTail, PersistentTimeTail
-* Authentication replay protection (timestamps?)
-* Optional encrypted responses
-* Optional encrypted publishing / Per-driver export sockets
+v Packaging: drop priveleges
+v Packaging: proper development files placement
+v Core: export the hostname
+v Storage: global persistence
 
 Version: 0.5
-* Self-balancing engine thread pool
+v Cocained!
+> Core: more statistics (from drivers)
+* Core: http frontend for once-s
+* Engine: per-driver export sockets
+* Engine: an ability to kill timed out threads
+* JS: adapt portions of node.js
+* Python: PersistentTail, Sinks
+* Networking: authentication replay protection (timestamps?)
+* Networking: encrypted responses
+* Networking: encrypted publishing
