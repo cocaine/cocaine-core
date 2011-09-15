@@ -28,6 +28,16 @@ core_t::core_t():
     syslog(LOG_INFO, "core: using libev version %d.%d", ev_version_major(), ev_version_minor());
     syslog(LOG_INFO, "core: using libmsgpack version %s", msgpack_version());
 
+    // Fetching the hostname
+    char hostname[256];
+
+    if(gethostname(hostname, 256) == 0) {
+        syslog(LOG_INFO, "core: hostname is '%s'", hostname);
+        m_hostname = hostname;
+    } else {
+        throw std::runtime_error("failed to determine the hostname");
+    }
+
     // Internal event sink socket
     s_events.bind("inproc://events");
     e_events.set<core_t, &core_t::event>(this);
@@ -384,8 +394,11 @@ void core_t::seal(const std::string& future_id) {
         message.rebuild(0);
         s_requests.send(message, ZMQ_SNDMORE);
 
-        // Send the JSON
-        s_requests.send_json(it->second->root());
+        // Append the hostname and send the JSON
+        Json::Value root = it->second->root();
+        root["hostname"] = m_hostname;
+
+        s_requests.send_json(root);
     }
 
     // Release the future
@@ -394,7 +407,7 @@ void core_t::seal(const std::string& future_id) {
 
 // Publishing format (not JSON, as it will render subscription mechanics pointless):
 // ------------------
-//   multipart: [key field timestamp] [blob]
+//   multipart: [key field hostname timestamp] [blob]
 
 void core_t::event(ev::io& io, int revents) {
     zmq::message_t message;
@@ -427,7 +440,7 @@ void core_t::event(ev::io& io, int revents) {
         // Disassemble and send in the envelopes
         for(dict_t::const_iterator it = dict.begin(); it != dict.end(); ++it) {
             std::ostringstream envelope;
-            envelope << driver_id << " " << it->first << " "
+            envelope << driver_id << " " << it->first << " " << m_hostname << " "
                      << std::fixed << std::setprecision(3) << now;
 
             message.rebuild(envelope.str().length());

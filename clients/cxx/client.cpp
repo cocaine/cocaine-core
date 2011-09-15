@@ -156,7 +156,7 @@ void client_t::unsubscribe(const std::string& uuid) {
 void client_t::processor() {
     zmq::message_t msg;
     zmq::socket_t pipe(m_context, ZMQ_PAIR);
-    std::string key, field, payload, time;
+    std::string key, field, hostname, time, payload;
     time_t timestamp;
 
     // Connect the controlling pipe
@@ -187,7 +187,7 @@ void client_t::processor() {
 
             std::istringstream xtr(envelope);
             
-            xtr >> std::skipws >> key >> field >> time;
+            xtr >> std::skipws >> key >> field >> hostname >> time;
             timestamp = atoi(time.substr(0, time.find_first_of(".")).c_str());
 
             // Get the payload

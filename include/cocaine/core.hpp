@@ -84,6 +84,9 @@ class core_t:
         ev::default_loop m_loop;
         ev::io e_events, e_requests, e_futures, e_reaper;
         ev::sig e_sigint, e_sigterm, e_sigquit, e_sighup, e_sigusr1;
+
+        // Hostname
+        std::string m_hostname;
 };
 
 }}
