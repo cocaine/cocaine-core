@@ -104,9 +104,9 @@ class javascript_t: public source_t {
 
             if(!result.IsEmpty()) {
                 dict["result"] = "success";
-            } else {
+            } else if(try_catch.HasCaught()) {
                 String::AsciiValue exception(try_catch.Exception());
-                dict["exception"] = *exception;
+                dict["exception"] = std::string(*exception, exception.length());
             }
 
             return dict;
