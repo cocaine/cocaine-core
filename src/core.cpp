@@ -519,7 +519,7 @@ void core_t::recover() {
             } catch(const std::runtime_error& e) {
                 syslog(LOG_ERR, "core: error in recover() - %s", e.what());
             } catch(...) {
-                syslog(LOG_ERR, "core: unexpected error in recover() - %s", e.what());
+                syslog(LOG_ERR, "core: unexpected error in recover()");
                 abort();
             }
         }
