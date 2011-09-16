@@ -14,7 +14,7 @@
 namespace cocaine { namespace net {
 
 enum command_codes {
-    PUSH,
+    PUSH = 1,
     DROP,
     TERMINATE,
     FULFILL,

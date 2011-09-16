@@ -161,8 +161,6 @@ void eblob_storage_t::purge(const std::string& store) {
     eblob_map_t::iterator it = m_eblobs.find(store);
 
     if(it != m_eblobs.end()) {
-        syslog(LOG_NOTICE, "storage: purging '%s'", store.c_str());
-        
         eblob_purger_t purger(it->second);
         
         try {

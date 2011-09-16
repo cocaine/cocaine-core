@@ -113,7 +113,6 @@ void file_storage_t::remove(const std::string& store, const std::string& key) {
 }
 
 void file_storage_t::purge(const std::string& store) {
-    syslog(LOG_NOTICE, "storage: purging '%s'", store.c_str());
     fs::remove_all(m_storage_path / m_instance / store);
 }
 

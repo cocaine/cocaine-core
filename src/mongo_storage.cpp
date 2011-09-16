@@ -113,8 +113,6 @@ void mongo_storage_t::remove(const std::string& store, const std::string& key) {
 }
 
 void mongo_storage_t::purge(const std::string& store) {
-    syslog(LOG_NOTICE, "storage: purging '%s'", store.c_str());
-    
     try {
         ScopedDbConnection connection(m_url);
         connection->remove(ns(store), BSONObj());

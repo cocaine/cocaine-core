@@ -41,8 +41,8 @@ class core_t:
         // Request handling
         void push(future_t* future, const std::string& target, const Json::Value& args);
         void drop(future_t* future, const std::string& target, const Json::Value& args);
-        void stat(future_t* future);
         void history(future_t* future, const std::string& key, const Json::Value& args);
+        void stat(future_t* future);
 
         // Future sealing
         void seal(const std::string& future_id);

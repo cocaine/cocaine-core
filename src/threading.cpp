@@ -59,8 +59,8 @@ void overseer_t::request(ev::io& w, int revents) {
     
     while(m_pipe.pending()) {
         Json::Value message;
-        m_pipe.recv_json(message);
 
+        m_pipe.recv_json(message);
         driver = message["args"].get("driver", "auto").asString(); 
        
         switch(message["command"].asUInt()) {
