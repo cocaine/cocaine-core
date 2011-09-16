@@ -67,9 +67,7 @@ TARGET_LINK_LIBRARIES(cocaine-core-storage
     json
     ${BOOST_SYSTEM_LIBS}
     boost_filesystem-mt
-    mongoclient
-    -static
-    boost_thread-mt)
+    mongoclient)
 
 SET_TARGET_PROPERTIES(cocaine-core-storage PROPERTIES
     VERSION 1)
@@ -99,11 +97,10 @@ TARGET_LINK_LIBRARIES(cocaine-core
     json
     ${CMAKE_DL_LIBS}
     ${UUID_LIBS}
+    boost_thread-mt
     zmq
     ev
-    msgpack
-    -static
-    boost_thread-mt)
+    msgpack)
 
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     VERSION 1)

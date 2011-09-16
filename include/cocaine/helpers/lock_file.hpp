@@ -29,7 +29,7 @@ class lock_file_t:
         }
 
         ~lock_file_t() {
-            (void)lockf(m_fd, F_ULOCK, 0);
+            lockf(m_fd, F_ULOCK, 0);
             close(m_fd);
             boost::filesystem::remove(m_filepath);
         }
