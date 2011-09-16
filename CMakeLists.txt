@@ -103,7 +103,7 @@ TARGET_LINK_LIBRARIES(cocaine-core
     ev
     msgpack
     -static
-    boost_thread-mt
+    boost_thread-mt)
 
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     VERSION 1)
