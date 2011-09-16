@@ -70,7 +70,7 @@ class overseer_t:
         inline void respond(const Json::Value& future, const T& value) {
             Json::Value response;
 
-            response["type"] = net::FUTURE;            
+            response["command"] = net::FULFILL;            
             response["future"] = future["id"];
             response["engine"] = m_source->uri();
             response["result"] = value;

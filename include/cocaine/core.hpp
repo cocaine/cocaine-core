@@ -54,7 +54,7 @@ class core_t:
         void internal(ev::io& io, int revents);
 
         // Engine request handling
-        void future(const Json::Value& args);
+        void fulfill(const Json::Value& args);
         void reap(const Json::Value& args);
         
         // Task recovery

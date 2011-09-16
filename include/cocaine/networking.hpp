@@ -13,16 +13,13 @@
 
 namespace cocaine { namespace net {
 
-enum message_types {
-    FUTURE,
-    SUICIDE,
-    TRACK
-};
-
 enum command_codes {
     PUSH,
     DROP,
-    TERMINATE
+    TERMINATE,
+    FULFILL,
+    SUICIDE,
+    TRACK
 };
 
 class blob_socket_t: 

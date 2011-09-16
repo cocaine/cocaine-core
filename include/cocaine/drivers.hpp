@@ -22,6 +22,12 @@ namespace drivers {
 class abstract_t {
     public:
         virtual ~abstract_t() {};
+        
+        inline std::string id() const { return m_id; }
+
+    protected:
+        // Driver ID
+        std::string m_id;
 };
 
 template<class WatcherType, class DriverType>
@@ -38,8 +44,6 @@ class driver_base_t:
                 m_watcher->stop();
             }
         }
-
-        inline std::string id() const { return m_id; }
 
         void start(zmq::context_t& context, threading::overseer_t* parent) {
             m_parent = parent;
@@ -80,9 +84,6 @@ class driver_base_t:
         // Data source
         boost::shared_ptr<plugin::source_t> m_source;
         
-        // Driver ID
-        std::string m_id;
-
         // Parent
         threading::overseer_t* m_parent;
         

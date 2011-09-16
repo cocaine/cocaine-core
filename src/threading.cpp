@@ -337,7 +337,7 @@ void overseer_t::terminate() {
 void overseer_t::suicide() {
     Json::Value message;
 
-    message["type"] = net::SUICIDE;
+    message["command"] = net::SUICIDE;
     message["engine"] = m_source->uri();
     message["thread"] = m_id.get();
 

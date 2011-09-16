@@ -460,9 +460,9 @@ void core_t::internal(ev::io& io, int revents) {
         Json::Value message;
         s_internal.recv_json(message);
 
-        switch(message["type"].asUInt()) {
-            case net::FUTURE:
-                future(message);
+        switch(message["command"].asUInt()) {
+            case net::FULFILL:
+                fulfill(message);
                 break;
             case net::SUICIDE:
                 reap(message);
@@ -473,7 +473,7 @@ void core_t::internal(ev::io& io, int revents) {
     }
 }
 
-void core_t::future(const Json::Value& message) {
+void core_t::fulfill(const Json::Value& message) {
     future_map_t::iterator it = m_futures.find(message["future"].asString());
     
     if(it != m_futures.end()) {
