@@ -366,7 +366,7 @@ thread_t::~thread_t() {
         message["command"] = net::TERMINATE;
         m_pipe.send_json(message);
 
-        if(m_thread->timed_join(boost::posix_time::seconds(m_timeout))) {
+        if(!m_thread->timed_join(boost::posix_time::seconds(m_timeout))) {
             syslog(LOG_ERR, "thread %s: thread seems to be unresponsive", m_id.get().c_str());
             m_thread->interrupt();
         }
