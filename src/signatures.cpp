@@ -21,7 +21,7 @@ signatures_t::signatures_t():
     try { 
         keys = storage::storage_t::instance()->all("keys");   
     } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "security: storage failure - %s", e.what());
+        syslog(LOG_ERR, "security: storage failure while loading security keys - %s", e.what());
         return;
     }
         

@@ -2,6 +2,7 @@
 #include <sstream>
 
 #include <boost/lexical_cast.hpp>
+#include <boost/assign.hpp>
 
 #include "cocaine/core.hpp"
 #include "cocaine/future.hpp"
@@ -17,8 +18,7 @@ core_t::core_t():
     s_events(m_context, ZMQ_PULL),
     s_publisher(m_context, ZMQ_PUB),
     s_requests(m_context, ZMQ_ROUTER),
-    s_futures(m_context, ZMQ_PULL),
-    s_reaper(m_context, ZMQ_PULL)
+    s_internal(m_context, ZMQ_PULL)
 {
     // Version dump
     int minor, major, patch;
@@ -44,14 +44,9 @@ core_t::core_t():
     e_events.start(s_events.fd(), EV_READ);
 
     // Internal future sink socket
-    s_futures.bind("inproc://futures");
-    e_futures.set<core_t, &core_t::future>(this);
-    e_futures.start(s_futures.fd(), EV_READ);
-
-    // Internal engine reaping requests sink
-    s_reaper.bind("inproc://reaper");
-    e_reaper.set<core_t, &core_t::reap>(this);
-    e_reaper.start(s_reaper.fd(), EV_READ);
+    s_internal.bind("inproc://internal");
+    e_internal.set<core_t, &core_t::internal>(this);
+    e_internal.start(s_internal.fd(), EV_READ);
 
     // Listening socket
     for(std::vector<std::string>::const_iterator it = config_t::get().net.listen.begin(); it != config_t::get().net.listen.end(); ++it) {
@@ -125,7 +120,7 @@ void core_t::purge(ev::sig& sig, int revents) {
     try {
         storage::storage_t::instance()->purge("tasks");
     } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "core: storage failure - %s", e.what());
+        syslog(LOG_ERR, "core: storage failure while purging - %s", e.what());
     }    
 }
 
@@ -203,12 +198,12 @@ void core_t::request(ev::io& io, int revents) {
                 dispatch(future, root); 
             } catch(const std::exception& e) {
                 syslog(LOG_ERR, "core: invalid request - %s", e.what());
-                future->fulfill("error", e.what());
+                future->abort(e.what());
             }
         } else {
             syslog(LOG_ERR, "core: invalid json - %s",
                 reader.getFormatedErrorMessages().c_str());
-            future->fulfill("error", reader.getFormatedErrorMessages());
+            future->abort(reader.getFormatedErrorMessages());
         }
     }
 }
@@ -225,7 +220,7 @@ void core_t::dispatch(future_t* future, const Json::Value& root) {
 
         // Iterate over all the targets
         Json::Value::Members names = targets.getMemberNames();
-        future->await(names.size());
+        future->reserve(names);
 
         for(Json::Value::Members::const_iterator it = names.begin(); it != names.end(); ++it) {
             std::string target = *it;
@@ -315,7 +310,11 @@ void core_t::drop(future_t* future, const std::string& target, const Json::Value
 void core_t::stat(future_t* future) {
     Json::Value engines, threads, requests;
 
-    future->await(3);
+    future->reserve(boost::assign::list_of
+        ("engines")
+        ("threads")
+        ("requests")
+    );
 
     for(engine_map_t::const_iterator it = m_engines.begin(); it != m_engines.end(); ++it) {
         engines["list"].append(it->first);
@@ -456,39 +455,44 @@ void core_t::event(ev::io& io, int revents) {
     }
 }
 
-void core_t::future(ev::io& io, int revents) {
-    while(s_futures.pending()) {
+void core_t::internal(ev::io& io, int revents) {
+    while(s_internal.pending()) {
         Json::Value message;
-        s_futures.recv_json(message);
+        s_internal.recv_json(message);
 
-        future_map_t::iterator it = m_futures.find(message["future"].asString());
-        
-        if(it == m_futures.end()) {
-            syslog(LOG_ERR, "core: found an orphan - slice for future %s", 
-                message["future"].asCString());
-            continue;
+        switch(message["type"].asUInt()) {
+            case net::FUTURE:
+                future(message);
+                break;
+            case net::SUICIDE:
+                reap(message);
+                break;
+            default:
+                syslog(LOG_ERR, "core: received an unknown internal message");
         }
-
-        it->second->fulfill(message["engine"].asString(), message["result"]);
     }
 }
 
-void core_t::reap(ev::io& io, int revents) {
-    while(s_reaper.pending()) {
-        Json::Value message;
-        s_reaper.recv_json(message);
+void core_t::future(const Json::Value& message) {
+    future_map_t::iterator it = m_futures.find(message["future"].asString());
+    
+    if(it != m_futures.end()) {
+        it->second->fulfill(message["engine"].asString(), message["result"]);
+    } else {
+        syslog(LOG_ERR, "core: found an orphan - slice for future %s", 
+            message["future"].asCString());
+    }
+}
 
-        engine_map_t::iterator it = m_engines.find(message["engine"].asString());
+void core_t::reap(const Json::Value& message) {
+    engine_map_t::iterator it = m_engines.find(message["engine"].asString());
 
-        if(it == m_engines.end()) {
-            syslog(LOG_ERR, "core: found an orphan - engine %s", message["engine"].asCString());
-            continue;
-        }
-        
+    if(it != m_engines.end()) {
         syslog(LOG_DEBUG, "core: suicide requested for thread %s in engine %s",
             message["thread"].asCString(), message["engine"].asCString());
-
         it->second->reap(message["thread"].asString());
+    } else {
+        syslog(LOG_ERR, "core: found an orphan - engine %s", message["engine"].asCString());
     }
 }
 
@@ -498,7 +502,7 @@ void core_t::recover() {
     try {
         root = storage::storage_t::instance()->all("tasks");
     } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "core: storage failure - %s", e.what());
+        syslog(LOG_ERR, "core: storage failure while recovering - %s", e.what());
         return;
     }
 
@@ -507,13 +511,12 @@ void core_t::recover() {
         
         future_t* future = new future_t(this, std::vector<std::string>());
         m_futures.insert(future->id(), future);
-        future->await(root.size());
-                
-        Json::Value::Members ids = root.getMemberNames();
         
+        Json::Value::Members ids = root.getMemberNames();
+        future->reserve(ids);
+
         for(Json::Value::Members::const_iterator it = ids.begin(); it != ids.end(); ++it) {
             Json::Value object = root[*it];
-            
             future->set("token", object["token"].asString());
             push(future, object["url"].asString(), object["args"]);
         }

@@ -22,7 +22,6 @@ engine_t::~engine_t() {
 }
 
 void engine_t::push(future_t* future, const Json::Value& args) {
-    Json::Value message, response;
     std::string thread_id;
 
     if(!args.get("isolated", false).asBool()) {
@@ -54,20 +53,19 @@ void engine_t::push(future_t* future, const Json::Value& args) {
             }
         } catch(const std::exception& e) {
             syslog(LOG_ERR, "engine %s: error - %s", m_target.c_str(), e.what());
+            
+            Json::Value response;
             response["error"] = e.what();
             future->fulfill(m_target, response);
+            
             return;
         }
     }
         
-    message["command"] = "start";
-    message["future"] = future->serialize();
-    message["args"] = args;
-    it->second->send(message);
+    it->second->push(future, args);
 }
 
 void engine_t::drop(future_t* future, const Json::Value& args) {
-    Json::Value message, response;
     std::string thread_id;
 
     if(!args.get("isolated", false).asBool()) {
@@ -79,11 +77,9 @@ void engine_t::drop(future_t* future, const Json::Value& args) {
     thread_map_t::iterator it = m_threads.find(thread_id);
 
     if(it != m_threads.end()) {
-        message["command"] = "stop";
-        message["future"] = future->serialize();
-        message["args"] = args;
-        it->second->send(message);
+        it->second->drop(future, args);
     } else {
+        Json::Value response;
         response["error"] = "thread not found";
         future->fulfill(m_target, response);
     }
@@ -106,8 +102,9 @@ void engine_t::reap(const std::string& thread_id) {
         Json::Value args;
 
         boost::tie(future, args) = m_pending.front();
-        push(future, args);
         m_pending.pop();
+        
+        push(future, args);
     }
 }
 

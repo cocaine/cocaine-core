@@ -11,7 +11,13 @@
 #include "cocaine/networking.hpp"
 #include "cocaine/security/digest.hpp"
 
-namespace cocaine { namespace engine { 
+namespace cocaine {
+
+namespace core {
+    class future_t;
+}    
+    
+namespace engine {
 
 namespace drivers {
     class abstract_t;
@@ -63,12 +69,13 @@ class overseer_t:
         template<class T>
         inline void respond(const Json::Value& future, const T& value) {
             Json::Value response;
-            
+
+            response["type"] = net::FUTURE;            
             response["future"] = future["id"];
             response["engine"] = m_source->uri();
             response["result"] = value;
 
-            m_futures.send_json(response);
+            m_internal.send_json(response);
         }
 
     private:
@@ -77,7 +84,7 @@ class overseer_t:
 
         // Messaging
         zmq::context_t& m_context;
-        net::json_socket_t m_pipe, m_futures, m_reaper;
+        net::json_socket_t m_pipe, m_internal;
         
         // Data source
         boost::shared_ptr<plugin::source_t> m_source;
@@ -114,7 +121,8 @@ class thread_t:
         ~thread_t();
 
         void run(boost::shared_ptr<plugin::source_t> source);
-        inline bool send(const Json::Value& message) { return m_pipe.send_json(message); }
+        void push(core::future_t* future, const Json::Value& args);
+        void drop(core::future_t* future, const Json::Value& args);
 
     private:
         helpers::auto_uuid_t m_id;
@@ -122,6 +130,8 @@ class thread_t:
         
         std::auto_ptr<overseer_t> m_overseer;
         std::auto_ptr<boost::thread> m_thread;
+
+        float m_timeout;
 };
 
 }}}

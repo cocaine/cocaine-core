@@ -3,6 +3,7 @@
 #include "cocaine/threading.hpp"
 #include "cocaine/drivers.hpp"
 #include "cocaine/storage.hpp"
+#include "cocaine/future.hpp" 
 
 using namespace cocaine::engine::threading;
 using namespace cocaine::engine::drivers;
@@ -15,8 +16,7 @@ overseer_t::overseer_t(auto_uuid_t id, zmq::context_t& context):
     m_id(id),
     m_context(context),
     m_pipe(m_context, ZMQ_PULL),
-    m_futures(m_context, ZMQ_PUSH),
-    m_reaper(m_context, ZMQ_PUSH),
+    m_internal(m_context, ZMQ_PUSH),
     m_loop(),
     m_io(m_loop),
     m_suicide(m_loop),
@@ -37,11 +37,8 @@ overseer_t::overseer_t(auto_uuid_t id, zmq::context_t& context):
     m_cleanup.set<overseer_t, &overseer_t::cleanup>(this);
     m_cleanup.start();
 
-    // Connecting to the core's future sink
-    m_futures.connect("inproc://futures");
-
     // Connecting to the core's reaper sink
-    m_reaper.connect("inproc://reaper");
+    m_internal.connect("inproc://internal");
 
     // Set timer compression threshold
     m_loop.set_timeout_collect_interval(config_t::get().engine.collect_timeout);
@@ -58,50 +55,51 @@ void overseer_t::run(boost::shared_ptr<source_t> source) {
 
 void overseer_t::request(ev::io& w, int revents) {
     Json::Value result;
-    std::string command, driver;
+    std::string driver;
     
     while(m_pipe.pending()) {
         Json::Value message;
-        
         m_pipe.recv_json(message);
 
-        command = message["command"].asString();
         driver = message["args"].get("driver", "auto").asString(); 
        
-        if(command == "start") {
-            if(driver == "auto") {
-                push<drivers::auto_t>(message);
-            } else if(driver == "manual") {
-                push<drivers::manual_t>(message);
-            } else if(driver == "fs") {
-                push<drivers::fs_t>(message);
-            } else if(driver == "event") {
-                push<drivers::event_t>(message);
-            } else if(driver == "once") {
-                once(message);
-            } else {
-                result["error"] = "invalid driver";
+        switch(message["command"].asUInt()) {
+            case net::PUSH:
+                if(driver == "auto") {
+                    push<drivers::auto_t>(message);
+                } else if(driver == "manual") {
+                    push<drivers::manual_t>(message);
+                } else if(driver == "fs") {
+                    push<drivers::fs_t>(message);
+                } else if(driver == "event") {
+                    push<drivers::event_t>(message);
+                } else if(driver == "once") {
+                    once(message);
+                } else {
+                    result["error"] = "invalid driver";
+                    respond(message["future"], result);
+                }
+                break;
+            case net::DROP:
+                if(driver == "auto") {
+                    drop<drivers::auto_t>(message);
+                } else if(driver == "manual") {
+                    drop<drivers::manual_t>(message);
+                } else if(driver == "fs") {
+                    drop<drivers::fs_t>(message);
+                } else if(driver == "event") {
+                    drop<drivers::event_t>(message);
+                } else {
+                    result["error"] = "invalid driver";
+                    respond(message["future"], result);
+                }
+                break;
+            case net::TERMINATE:
+                terminate();
+                return;
+            default:
+                result["error"] = "invalid command";
                 respond(message["future"], result);
-            }
-        } else if(command == "stop") {
-            if(driver == "auto") {
-                drop<drivers::auto_t>(message);
-            } else if(driver == "manual") {
-                drop<drivers::manual_t>(message);
-            } else if(driver == "fs") {
-                drop<drivers::fs_t>(message);
-            } else if(driver == "event") {
-                drop<drivers::event_t>(message);
-            } else {
-                result["error"] = "invalid driver";
-                respond(message["future"], result);
-            }
-        } else if(command == "terminate") {
-            terminate();
-            break;
-        } else {
-            result["error"] = "invalid command";
-            respond(message["future"], result);
         }
     }
 }
@@ -122,7 +120,7 @@ const dict_t& overseer_t::invoke() {
             m_cached = true;
         } catch(const std::exception& e) {
             syslog(LOG_ERR, "engine %s: error - %s", m_source->uri().c_str(), e.what());
-            suicide();
+            m_cache["error"] = e.what();
         }
     }
 
@@ -202,7 +200,7 @@ void overseer_t::push(const Json::Value& message) {
                 storage_t::instance()->put("tasks", object_id, object);
             }
         } catch(const std::runtime_error& e) {
-            syslog(LOG_ERR, "engine %s: storage failure - %s",
+            syslog(LOG_ERR, "engine %s: storage failure while saving a task - %s",
                 m_source->uri().c_str(), e.what());
         }
     }
@@ -254,11 +252,11 @@ void overseer_t::drop(const Json::Value& message) {
             m_subscriptions.erase(client);
            
             if(m_slaves.empty()) {
-                if(message["args"].get("isolated", false).asBool()) {
-                    suicide();
-                } else {
+                if(!message["args"].get("isolated", false).asBool()) {
                     syslog(LOG_DEBUG, "engine %s: suicide timer started", m_source->uri().c_str());
                     m_suicide.start(config_t::get().engine.suicide_timeout);
+                } else {
+                    suicide();
                 }
             }
 
@@ -268,7 +266,7 @@ void overseer_t::drop(const Json::Value& message) {
             try {
                 storage_t::instance()->remove("tasks", object_id);
             } catch(const std::runtime_error& e) {
-                syslog(LOG_ERR, "engine %s: storage failure - %s",
+                syslog(LOG_ERR, "engine %s: storage failure while removing a task - %s",
                     m_source->uri().c_str(), e.what());
             }
 
@@ -294,18 +292,17 @@ void overseer_t::once(const Json::Value& message) {
     // Report to the core
     respond(message["future"], result);
 
-    // If it's a one-time isolated task, then it was a kamikaze mission,
-    // and we can safely kill ourselves
-    if(message["args"].get("isolated", false).asBool()) {
+    if(!message["args"].get("isolated", false).asBool()) {
+        // Rearm the stall timer if it's active
+        if(m_suicide.is_active()) {
+            syslog(LOG_DEBUG, "engine %s: suicide timer rearmed", m_source->uri().c_str());
+            m_suicide.stop();
+            m_suicide.start(config_t::get().engine.suicide_timeout);
+        }
+    } else {
+        // If it's a one-time isolated task, then it was a kamikaze mission,
+        // and we can safely kill ourselves
         suicide();
-        return;
-    }
-
-    // Rearm the stall timer if it's active
-    if(m_suicide.is_active()) {
-        syslog(LOG_DEBUG, "engine %s: suicide timer rearmed", m_source->uri().c_str());
-        m_suicide.stop();
-        m_suicide.start(config_t::get().engine.suicide_timeout);
     }
 }
 
@@ -327,9 +324,12 @@ void overseer_t::reap(const std::string& driver_id) {
 }
 
 void overseer_t::terminate() {
+    /* XXX: Is it required to stop the watchers for the loop to stop?
     m_io.stop();
     m_suicide.stop();
     m_cleanup.stop();
+    */
+
     m_slaves.clear();
     m_loop.unloop();
 } 
@@ -337,16 +337,18 @@ void overseer_t::terminate() {
 void overseer_t::suicide() {
     Json::Value message;
 
+    message["type"] = net::SUICIDE;
     message["engine"] = m_source->uri();
     message["thread"] = m_id.get();
 
     // This is a suicide ;(
-    m_reaper.send_json(message);    
+    m_internal.send_json(message);    
 }
 
 thread_t::thread_t(auto_uuid_t id, zmq::context_t& context):
     m_id(id),
-    m_pipe(context, ZMQ_PUSH)
+    m_pipe(context, ZMQ_PUSH),
+    m_timeout(config_t::get().engine.cancel_timeout)
 {
     // Bind the messaging pipe
     m_pipe.bind("inproc://" + m_id.get());
@@ -356,15 +358,18 @@ thread_t::thread_t(auto_uuid_t id, zmq::context_t& context):
 }
 
 thread_t::~thread_t() {
-    Json::Value message;
-    
     syslog(LOG_DEBUG, "thread %s: terminating", m_id.get().c_str());
    
     if(m_thread.get()) { 
-        message["command"] = "terminate";
-        send(message);
+        Json::Value message;
+        
+        message["command"] = net::TERMINATE;
+        m_pipe.send_json(message);
 
-        m_thread->join();
+        if(m_thread->timed_join(boost::posix_time::seconds(m_timeout))) {
+            syslog(LOG_ERR, "thread %s: thread seems to be unresponsive", m_id.get().c_str());
+            m_thread->interrupt();
+        }
     }
 }
 
@@ -373,9 +378,29 @@ void thread_t::run(boost::shared_ptr<source_t> source) {
         source->uri().c_str());
 
     try {
-        m_thread.reset(new boost::thread(boost::bind(&overseer_t::run, m_overseer.get(), source)));
+        m_thread.reset(new boost::thread(
+            boost::bind(&overseer_t::run, m_overseer.get(), source)));
     } catch(const boost::thread_resource_error& e) {
-        throw std::runtime_error("thread limit reached");
+        throw std::runtime_error("system thread limit reached");
     }
 }
 
+void thread_t::push(core::future_t* future, const Json::Value& args) {
+    Json::Value message;
+    
+    message["command"] = net::PUSH;
+    message["future"] = future->serialize();
+    message["args"] = args;
+
+    m_pipe.send_json(message);
+}
+
+void thread_t::drop(core::future_t* future, const Json::Value& args) {
+    Json::Value message;
+    
+    message["command"] = net::DROP;
+    message["future"] = future->serialize();
+    message["args"] = args;
+
+    m_pipe.send_json(message);
+}

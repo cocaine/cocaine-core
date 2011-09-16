@@ -33,6 +33,7 @@ class config_t {
         struct {
             float suicide_timeout;
             float collect_timeout;
+            float cancel_timeout;
         } engine;
 
         struct {

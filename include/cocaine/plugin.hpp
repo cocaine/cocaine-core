@@ -27,7 +27,7 @@ class source_t:
 
         inline std::string uri() const { return m_uri; }
 
-        enum capabilities_t {
+        enum capabilities {
             NONE        = 0,
             ITERATOR    = 1 << 0,
             SCHEDULER   = 1 << 1,

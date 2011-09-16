@@ -32,29 +32,31 @@ class core_t:
         void reload(ev::sig& sig, int revents);
         void purge(ev::sig& sig, int revents);
 
-        // Request dispatching
+        // Request processing
         void request(ev::io& io, int revents);
 
-        // Commands
+        // Request dispatching
         void dispatch(future_t* future, const Json::Value& root);
         
+        // Request handling
         void push(future_t* future, const std::string& target, const Json::Value& args);
         void drop(future_t* future, const std::string& target, const Json::Value& args);
         void stat(future_t* future);
         void history(future_t* future, const std::string& key, const Json::Value& args);
 
-        // Response processing
+        // Future sealing
         void seal(const std::string& future_id);
 
-        // Internal event processing
+        // Publishing
         void event(ev::io& io, int revents);
 
-        // Future processing
-        void future(ev::io& io, int revents);
+        // Engine request processing and dispatching
+        void internal(ev::io& io, int revents);
 
-        // Engine reaper
-        void reap(ev::io& io, int revents);
-
+        // Engine request handling
+        void future(const Json::Value& args);
+        void reap(const Json::Value& args);
+        
         // Task recovery
         void recover();
 
@@ -78,11 +80,11 @@ class core_t:
         zmq::context_t m_context;
         net::msgpack_socket_t s_events;
         net::blob_socket_t s_publisher;
-        net::json_socket_t s_requests, s_futures, s_reaper;
+        net::json_socket_t s_requests, s_internal;
         
         // Event loop
         ev::default_loop m_loop;
-        ev::io e_events, e_requests, e_futures, e_reaper;
+        ev::io e_events, e_requests, e_internal;
         ev::sig e_sigint, e_sigterm, e_sigquit, e_sighup, e_sigusr1;
 
         // Hostname

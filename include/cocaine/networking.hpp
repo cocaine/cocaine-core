@@ -13,6 +13,18 @@
 
 namespace cocaine { namespace net {
 
+enum message_types {
+    FUTURE,
+    SUICIDE,
+    TRACK
+};
+
+enum command_codes {
+    PUSH,
+    DROP,
+    TERMINATE
+};
+
 class blob_socket_t: 
     public boost::noncopyable,
     public helpers::birth_control_t<blob_socket_t>
