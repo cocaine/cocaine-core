@@ -99,7 +99,7 @@ int main(int argc, char* argv[]) {
     // Setting up the syslog
     openlog(identity, LOG_PID | LOG_NDELAY, LOG_USER);
     setlogmask(LOG_UPTO(vm.count("verbose") ? LOG_DEBUG : LOG_INFO));
-    syslog(LOG_NOTICE, "main: inhale");
+    syslog(LOG_NOTICE, "main: Blow");
 
     // Pid file holder
     std::auto_ptr<pid_file_t> pidfile;
