@@ -18,7 +18,7 @@ core_t::core_t():
     s_events(m_context, ZMQ_PULL),
     s_publisher(m_context, ZMQ_PUB),
     s_requests(m_context, ZMQ_ROUTER),
-    s_internal(m_context, ZMQ_PULL)
+    s_interthread(m_context, ZMQ_PULL)
 {
     // Version dump
     int minor, major, patch;
@@ -29,9 +29,9 @@ core_t::core_t():
     syslog(LOG_INFO, "core: using libmsgpack version %s", msgpack_version());
 
     // Fetching the hostname
-    char hostname[HOST_NAME_MAX];
+    char hostname[256];
 
-    if(gethostname(hostname, HOST_NAME_MAX) == 0) {
+    if(gethostname(hostname, 256) == 0) {
         syslog(LOG_INFO, "core: hostname is '%s'", hostname);
         m_hostname = hostname;
     } else {
@@ -44,9 +44,9 @@ core_t::core_t():
     e_events.start(s_events.fd(), EV_READ);
 
     // Internal future sink socket
-    s_internal.bind("inproc://internal");
-    e_internal.set<core_t, &core_t::internal>(this);
-    e_internal.start(s_internal.fd(), EV_READ);
+    s_interthread.bind("inproc://interthread");
+    e_interthread.set<core_t, &core_t::interthread>(this);
+    e_interthread.start(s_interthread.fd(), EV_READ);
 
     // Listening socket
     for(std::vector<std::string>::const_iterator it = config_t::get().net.listen.begin(); it != config_t::get().net.listen.end(); ++it) {
@@ -105,8 +105,8 @@ void core_t::terminate(ev::sig& sig, int revents) {
 void core_t::reload(ev::sig& sig, int revents) {
     syslog(LOG_NOTICE, "core: reloading tasks");
 
-    m_futures.clear();
     m_engines.clear();
+    m_futures.clear();
     m_histories.clear();
 
     recover();
@@ -115,8 +115,8 @@ void core_t::reload(ev::sig& sig, int revents) {
 void core_t::purge(ev::sig& sig, int revents) {
     syslog(LOG_NOTICE, "core: puring the task storage");
     
-    m_futures.clear();
     m_engines.clear();
+    m_futures.clear();
     m_histories.clear();
 
     try {
@@ -177,24 +177,20 @@ void core_t::request(ev::io& io, int revents) {
                 }
 
                 unsigned int version = root.get("version", 1).asUInt();
-                std::string token = root.get("token", "").asString();
+                std::string username = root.get("username", "").asString();
                 
-                if(version >= 2) {
-                    future->set("protocol", boost::lexical_cast<std::string>(version));
-                } else {
+                if(version < 2) {
                     throw std::runtime_error("outdated protocol version");
                 }
       
-                if(!token.empty()) {
-                    future->set("token", token);
-
+                if(!username.empty()) {
                     if(version > 2) {
                         m_signatures.verify(request,
                             static_cast<const unsigned char*>(signature.data()),
-                            signature.size(), token);
+                            signature.size(), username);
                     }
                 } else {
-                    throw std::runtime_error("security token expected");
+                    throw std::runtime_error("username expected");
                 }
 
                 // Request dispatching is performed in this function
@@ -214,47 +210,49 @@ void core_t::request(ev::io& io, int revents) {
 void core_t::dispatch(future_t* future, const Json::Value& root) {
     std::string action = root.get("action", "push").asString();
 
-    if(action == "push" || action == "drop" || action == "history") {
+    if(action == "push" || action == "drop" || action == "past") {
         Json::Value targets = root["targets"];
-        Json::Value response;
 
         if(!targets.isObject() || !targets.size()) {
             throw std::runtime_error("no targets specified");
         }
 
         // Iterate over all the targets
+        Json::Value response;
         Json::Value::Members names = targets.getMemberNames();
         future->reserve(names);
 
         for(Json::Value::Members::const_iterator it = names.begin(); it != names.end(); ++it) {
+            // Get the target and args
             std::string target = *it;
-
-            // Get the target args
             Json::Value args = targets[target];
 
-            // And check if it's an object
-            if(!args.isObject()) {
+            // Invoke the handler
+            if(args.isObject()) {
+                if(!args["token"].isString() || args["token"].empty()) {
+                    args["token"] = root["username"];
+                }
+
+                try {
+                    if(action == "push") {
+                        push(future, target, args);
+                    } else if(action == "drop") {
+                        drop(future, target, args);
+                    } else if(action == "past") {
+                        past(future, target, args);
+                    }
+                } catch(const std::runtime_error& e) {
+                    syslog(LOG_ERR, "core: error in dispatch() - %s", e.what());
+                    response["error"] = e.what();
+                    future->fulfill(target, response);
+                } catch(...) {
+                    syslog(LOG_CRIT, "core: unexpected error in dispatch()");
+                    abort();
+                }
+            } else {
                 syslog(LOG_ERR, "core: invalid request - target arguments expected");
                 response["error"] = "target arguments expected";
                 future->fulfill(target, response);
-                continue;
-            }
-
-            try {
-                if(action == "push") {
-                    push(future, target, args);
-                } else if(action == "drop") {
-                    drop(future, target, args);
-                } else if(action == "history") {
-                    history(future, target, args);
-                }
-            } catch(const std::runtime_error& e) {
-                syslog(LOG_ERR, "core: error in dispatch() - %s", e.what());
-                response["error"] = e.what();
-                future->fulfill(target, response);
-            } catch(...) {
-                syslog(LOG_CRIT, "core: unexpected error in dispatch()");
-                abort();
             }
         }
     } else if(action == "stats") {
@@ -275,7 +273,7 @@ void core_t::dispatch(future_t* future, const Json::Value& root) {
 //
 // * Stats - fetches the current running stats
 //
-// * History - fetches the event history for the specified subscription key
+// * Past - fetches the event history for the specified subscription key
 
 void core_t::push(future_t* future, const std::string& target, const Json::Value& args) {
     // Check if we have an engine running for the given uri
@@ -302,11 +300,11 @@ void core_t::drop(future_t* future, const std::string& target, const Json::Value
     it->second->drop(future, args);
 }
 
-void core_t::history(future_t* future, const std::string& key, const Json::Value& args) {
-    history_map_t::iterator it = m_histories.find(key);
+void core_t::past(future_t* future, const std::string& target, const Json::Value& args) {
+    history_map_t::iterator it = m_histories.find(target);
 
     if(it == m_histories.end()) {
-        throw std::runtime_error("history is empty");
+        throw std::runtime_error("the past is empty");
     }
 
     Json::Value result(Json::arrayValue);
@@ -328,7 +326,7 @@ void core_t::history(future_t* future, const std::string& key, const Json::Value
         }
     }
 
-    future->fulfill(key, result);
+    future->fulfill(target, result);
 }
 
 void core_t::stat(future_t* future) {
@@ -371,8 +369,7 @@ void core_t::seal(const std::string& future_id) {
     if(!route.empty()) {
         zmq::message_t message;
         
-        syslog(LOG_DEBUG, "core: sending response to '%s' - future %s", 
-            it->second->get("token").c_str(), it->second->id().c_str());
+        syslog(LOG_DEBUG, "core: sending response - future %s", it->second->id().c_str());
 
         // Send the identity
         for(std::vector<std::string>::const_iterator id = route.begin(); id != route.end(); ++id) {
@@ -407,15 +404,9 @@ void core_t::event(ev::io& io, int revents) {
     dict_t dict;
     
     while(s_events.pending()) {
-        // Receive the driver id
-        s_events.recv(&message);
-
-        driver_id.assign(
-            static_cast<const char*>(message.data()),
-            message.size());
-    
         // Receive the data
-        s_events.recv_packed(dict);
+        s_events.recv_object(driver_id);
+        s_events.recv_object(dict);
 
         // Maintain the history for the given driver
         history_map_t::iterator history = m_histories.find(driver_id);
@@ -447,10 +438,10 @@ void core_t::event(ev::io& io, int revents) {
     }
 }
 
-void core_t::internal(ev::io& io, int revents) {
-    while(s_internal.pending()) {
+void core_t::interthread(ev::io& io, int revents) {
+    while(s_interthread.pending()) {
         Json::Value message;
-        s_internal.recv_json(message);
+        s_interthread.recv_json(message);
 
         switch(message["command"].asUInt()) {
             case net::FULFILL:
@@ -459,11 +450,14 @@ void core_t::internal(ev::io& io, int revents) {
             case net::SUICIDE:
                 reap(message);
                 break;
-            case net::TRACK:
-                // track(message);
-                // break;
+            case net::WATCH:
+                // watch(message);
+                break;
+            case net::UNWATCH:
+                // unwatch(message);
+                break;
             default:
-                syslog(LOG_ERR, "core: received an unknown internal message");
+                syslog(LOG_ERR, "core: received an unknown interthread message");
         }
     }
 }
@@ -491,6 +485,12 @@ void core_t::reap(const Json::Value& message) {
     }
 }
 
+struct uri_getter_t {
+    std::string operator()(const Json::Value& element) {
+        return element["uri"].asString();
+    }
+};
+
 void core_t::recover() {
     Json::Value root;
     
@@ -504,20 +504,29 @@ void core_t::recover() {
     if(root.size()) {
         syslog(LOG_NOTICE, "core: loaded %d task(s)", root.size());
         
+        // In case of emergency
+        Json::Value response;
+
+        // Create a new anonymous future
         future_t* future = new future_t(this, std::vector<std::string>());
         m_futures.insert(future->id(), future);
-        
-        Json::Value::Members ids = root.getMemberNames();
-        future->reserve(ids);
+       
+        // Extract URLs from the loaded object 
+        std::vector<std::string> uris;
+        std::transform(root.begin(), root.end(), std::back_inserter(uris),
+            uri_getter_t());
+        future->reserve(uris);
 
-        for(Json::Value::Members::const_iterator it = ids.begin(); it != ids.end(); ++it) {
-            Json::Value object = root[*it];
-            future->set("token", object["token"].asString());
-
+        // Push them as if they were normal requests
+        for(Json::ValueIterator it = root.begin(); it != root.end(); ++it) {
+            std::string uri = (*it)["uri"].asString();
+            
             try {
-                push(future, object["url"].asString(), object["args"]);
+                push(future, uri, (*it)["args"]);
             } catch(const std::runtime_error& e) {
                 syslog(LOG_ERR, "core: error in recover() - %s", e.what());
+                response["error"] = e.what();
+                future->fulfill(uri, response);
             } catch(...) {
                 syslog(LOG_ERR, "core: unexpected error in recover()");
                 abort();

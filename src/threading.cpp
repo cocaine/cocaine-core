@@ -16,7 +16,7 @@ overseer_t::overseer_t(auto_uuid_t id, zmq::context_t& context):
     m_id(id),
     m_context(context),
     m_pipe(m_context, ZMQ_PULL),
-    m_internal(m_context, ZMQ_PUSH),
+    m_interthread(m_context, ZMQ_PUSH),
     m_loop(),
     m_io(m_loop),
     m_suicide(m_loop),
@@ -38,7 +38,7 @@ overseer_t::overseer_t(auto_uuid_t id, zmq::context_t& context):
     m_cleanup.start();
 
     // Connecting to the core's reaper sink
-    m_internal.connect("inproc://internal");
+    m_interthread.connect("inproc://interthread");
 
     // Set timer compression threshold
     m_loop.set_timeout_collect_interval(config_t::get().engine.collect_timeout);
@@ -97,9 +97,6 @@ void overseer_t::request(ev::io& w, int revents) {
             case net::TERMINATE:
                 terminate();
                 return;
-            default:
-                result["error"] = "invalid command";
-                respond(message["future"], result);
         }
     }
 }
@@ -113,6 +110,7 @@ void overseer_t::cleanup(ev::prepare& w, int revents) {
     m_cached = false;
 }
 
+// XXX: I wonder if this caching is needed at all
 const dict_t& overseer_t::invoke() {
     if(!m_cached) {
         try {
@@ -130,18 +128,18 @@ const dict_t& overseer_t::invoke() {
 template<class DriverType>
 void overseer_t::push(const Json::Value& message) {
     Json::Value result;
-    std::string token = message["future"]["token"].asString();
+    std::string token = message["args"]["token"].asString();
     std::string compartment;
 
     if(message["args"].get("isolated", false).asBool()) {
         compartment = m_id.get();
-    };
+    }
 
     std::auto_ptr<DriverType> driver;
     std::string driver_id;
 
     try {
-        driver.reset(new DriverType(m_source, message["args"]));
+        driver.reset(new DriverType(this, m_source, message["args"]));
         driver_id = driver->id();
     } catch(const std::runtime_error& e) {
         syslog(LOG_ERR, "engine %s: error - %s", m_source->uri().c_str(), e.what());
@@ -153,7 +151,7 @@ void overseer_t::push(const Json::Value& message) {
     // Scheduling
     if(m_slaves.find(driver_id) == m_slaves.end()) {
         try {
-            driver->start(m_context, this);
+            driver->start();
         } catch(const std::exception& e) {
             syslog(LOG_ERR, "engine %s: error - %s", m_source->uri().c_str(), e.what());
             result["error"] = e.what();
@@ -191,7 +189,6 @@ void overseer_t::push(const Json::Value& message) {
                 
                 object["url"] = m_source->uri();
                 object["args"] = message["args"];
-                object["token"] = message["future"]["token"];
                 
                 if(!compartment.empty()) {
                     object["args"]["compartment"] = compartment;
@@ -200,7 +197,7 @@ void overseer_t::push(const Json::Value& message) {
                 storage_t::instance()->put("tasks", object_id, object);
             }
         } catch(const std::runtime_error& e) {
-            syslog(LOG_ERR, "engine %s: storage failure while saving a task - %s",
+            syslog(LOG_ERR, "engine %s: storage failure while pushing a task - %s",
                 m_source->uri().c_str(), e.what());
         }
     }
@@ -218,18 +215,18 @@ void overseer_t::push(const Json::Value& message) {
 template<class DriverType>
 void overseer_t::drop(const Json::Value& message) {
     Json::Value result;
-    std::string token = message["future"]["token"].asString();
+    std::string token = message["args"]["token"].asString();
     std::string compartment;
 
     if(message["args"].get("isolated", false).asBool()) {
         compartment = m_id.get();
-    };
+    }
 
     std::auto_ptr<DriverType> driver;
     std::string driver_id;
 
     try {
-        driver.reset(new DriverType(m_source, message["args"]));
+        driver.reset(new DriverType(this, m_source, message["args"]));
         driver_id = driver->id();
     } catch(const std::runtime_error& e) {
         syslog(LOG_ERR, "engine %s: error - %s", m_source->uri().c_str(), e.what());
@@ -266,7 +263,7 @@ void overseer_t::drop(const Json::Value& message) {
             try {
                 storage_t::instance()->remove("tasks", object_id);
             } catch(const std::runtime_error& e) {
-                syslog(LOG_ERR, "engine %s: storage failure while removing a task - %s",
+                syslog(LOG_ERR, "engine %s: storage failure while dropping a task - %s",
                     m_source->uri().c_str(), e.what());
             }
 
@@ -324,13 +321,8 @@ void overseer_t::reap(const std::string& driver_id) {
 }
 
 void overseer_t::terminate() {
-    /* XXX: Is it required to stop the watchers for the loop to stop?
-    m_io.stop();
-    m_suicide.stop();
-    m_cleanup.stop();
-    */
-
     m_slaves.clear();
+    m_source.reset();
     m_loop.unloop();
 } 
 
@@ -341,14 +333,12 @@ void overseer_t::suicide() {
     message["engine"] = m_source->uri();
     message["thread"] = m_id.get();
 
-    // This is a suicide ;(
-    m_internal.send_json(message);    
+    m_interthread.send_json(message);   
 }
 
 thread_t::thread_t(auto_uuid_t id, zmq::context_t& context):
     m_id(id),
-    m_pipe(context, ZMQ_PUSH),
-    m_timeout(config_t::get().engine.cancel_timeout)
+    m_pipe(context, ZMQ_PUSH)
 {
     // Bind the messaging pipe
     m_pipe.bind("inproc://" + m_id.get());
@@ -360,14 +350,16 @@ thread_t::thread_t(auto_uuid_t id, zmq::context_t& context):
 thread_t::~thread_t() {
     syslog(LOG_DEBUG, "thread %s: terminating", m_id.get().c_str());
    
-    if(m_thread.get()) { 
+    if(m_thread.get()) {
         Json::Value message;
-        
-        message["command"] = net::TERMINATE;
+
+        message["command"] = net::TERMINATE; 
         m_pipe.send_json(message);
 
-        if(!m_thread->timed_join(boost::posix_time::seconds(m_timeout))) {
-            syslog(LOG_ERR, "thread %s: thread seems to be unresponsive", m_id.get().c_str());
+        using namespace boost::posix_time;
+        
+        if(!m_thread->timed_join(seconds(config_t::get().engine.linger_timeout))) {
+            syslog(LOG_WARNING, "thread %s: thread is unresponsive", m_id.get().c_str());
             m_thread->interrupt();
         }
     }
@@ -387,20 +379,21 @@ void thread_t::run(boost::shared_ptr<source_t> source) {
 
 void thread_t::push(core::future_t* future, const Json::Value& args) {
     Json::Value message;
-    
-    message["command"] = net::PUSH;
-    message["future"] = future->serialize();
-    message["args"] = args;
 
+    message["command"] = net::PUSH;
+    message["future"] = future->id();
+    message["args"] = args;
+    
     m_pipe.send_json(message);
 }
 
 void thread_t::drop(core::future_t* future, const Json::Value& args) {
     Json::Value message;
-    
-    message["command"] = net::DROP;
-    message["future"] = future->serialize();
-    message["args"] = args;
 
+    message["command"] = net::DROP;
+    message["future"] = future->id();
+    message["args"] = args;
+    
     m_pipe.send_json(message);
 }
+

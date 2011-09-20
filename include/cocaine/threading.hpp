@@ -7,23 +7,12 @@
 #include <boost/thread.hpp>
 
 #include "cocaine/common.hpp"
+#include "cocaine/forwards.hpp"
 #include "cocaine/plugin.hpp"
 #include "cocaine/networking.hpp"
 #include "cocaine/security/digest.hpp"
 
-namespace cocaine {
-
-namespace core {
-    class future_t;
-}    
-    
-namespace engine {
-
-namespace drivers {
-    class abstract_t;
-}
-
-namespace threading {
+namespace cocaine { namespace engine { namespace threading {
 
 // Thread manager
 class overseer_t:
@@ -36,15 +25,14 @@ class overseer_t:
         void run(boost::shared_ptr<plugin::source_t> source);
         
     public:
-        // Fetches the new data from the source
-        const plugin::dict_t& invoke();
-        
-        // Bindings for drivers
-        inline ev::dynamic_loop& loop() { return m_loop; }
-        inline zmq::context_t& context() { return m_context; }
-
         // Driver termination request
         void reap(const std::string& driver_id);
+
+    public:
+        // Bindings for drivers
+        const plugin::dict_t& invoke();
+        inline ev::dynamic_loop& loop() { return m_loop; }
+        inline zmq::context_t& context() { return m_context; }
 
     private:
         // Event loop callbacks
@@ -71,11 +59,11 @@ class overseer_t:
             Json::Value response;
 
             response["command"] = net::FULFILL;            
-            response["future"] = future["id"];
             response["engine"] = m_source->uri();
+            response["future"] = future;
             response["result"] = value;
 
-            m_internal.send_json(response);
+            m_interthread.send_json(response);
         }
 
     private:
@@ -84,7 +72,7 @@ class overseer_t:
 
         // Messaging
         zmq::context_t& m_context;
-        net::json_socket_t m_pipe, m_internal;
+        net::json_socket_t m_pipe, m_interthread;
         
         // Data source
         boost::shared_ptr<plugin::source_t> m_source;
@@ -96,7 +84,7 @@ class overseer_t:
         ev::prepare m_cleanup;
         
         // Slaves (Driver ID -> Driver)
-        typedef boost::ptr_map<const std::string, drivers::abstract_t> slave_map_t;
+        typedef boost::ptr_map<const std::string, drivers::abstract_driver_t> slave_map_t;
         slave_map_t m_slaves;
 
         // Subscriptions (Driver ID -> Tokens)
@@ -130,8 +118,6 @@ class thread_t:
         
         std::auto_ptr<overseer_t> m_overseer;
         std::auto_ptr<boost::thread> m_thread;
-
-        float m_timeout;
 };
 
 }}}

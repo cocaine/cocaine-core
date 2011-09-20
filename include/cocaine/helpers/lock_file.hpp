@@ -29,7 +29,10 @@ class lock_file_t:
         }
 
         ~lock_file_t() {
-            lockf(m_fd, F_ULOCK, 0);
+            if(lockf(m_fd, F_ULOCK, 0) < 0) {
+                throw std::runtime_error("failed to unlock " + m_filepath.string());
+            }
+
             close(m_fd);
             boost::filesystem::remove(m_filepath);
         }

@@ -67,6 +67,7 @@ TARGET_LINK_LIBRARIES(cocaine-core-storage
     json
     ${BOOST_SYSTEM_LIBS}
     boost_filesystem-mt
+    boost_thread-mt
     mongoclient)
 
 SET_TARGET_PROPERTIES(cocaine-core-storage PROPERTIES

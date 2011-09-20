@@ -4,16 +4,11 @@
 #include <queue>
 
 #include "cocaine/common.hpp"
+#include "cocaine/forwards.hpp"
 #include "cocaine/registry.hpp"
 #include "cocaine/threading.hpp"
 
-namespace cocaine { 
-    
-namespace core {
-    class future_t;
-}
-
-namespace engine {
+namespace cocaine { namespace engine {
 
 // Thread pool manager
 class engine_t:
@@ -27,6 +22,8 @@ class engine_t:
         // Commands
         void push(core::future_t* future, const Json::Value& args);
         void drop(core::future_t* future, const Json::Value& args);
+
+        // Thread termination
         void reap(const std::string& thread_id);
         
     private:

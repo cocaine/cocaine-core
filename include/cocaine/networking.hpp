@@ -13,13 +13,14 @@
 
 namespace cocaine { namespace net {
 
-enum command_codes {
-    PUSH = 1,
-    DROP,
-    TERMINATE,
-    FULFILL,
-    SUICIDE,
-    TRACK
+enum CommandCode {
+    PUSH = 1,   /* engine pushes a task to an overseer */
+    DROP,       /* engine drops a task from an overseer */
+    TERMINATE,  /* engine terminates an overseer */
+    FULFILL,    /* overseer fulfills an engine's request */
+    SUICIDE,    /* overseer performs a suicide */
+    WATCH,      /* overseer is entering the plugin code, asking for a watchdog */
+    UNWATCH     /* overseer is finished with the plugin code, stops the watchdog */
 };
 
 class blob_socket_t: 
@@ -94,7 +95,7 @@ class msgpack_socket_t:
         {}
 
         template<class T>
-        bool send_packed(const T& value, int flags = 0) {
+        bool send_object(const T& value, int flags = 0) {
             zmq::message_t message;
             
             msgpack::sbuffer buffer;
@@ -107,7 +108,7 @@ class msgpack_socket_t:
         }
 
         template<class T>
-        bool recv_packed(T& result, int flags = 0) {
+        bool recv_object(T& result, int flags = 0) {
             zmq::message_t message;
             msgpack::unpacked unpacked;
 

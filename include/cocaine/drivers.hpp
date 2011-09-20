@@ -4,6 +4,7 @@
 #include <boost/format.hpp>
 
 #include "cocaine/common.hpp"
+#include "cocaine/forwards.hpp"
 #include "cocaine/networking.hpp"
 #include "cocaine/plugin.hpp"
 #include "cocaine/security/digest.hpp"
@@ -11,18 +12,12 @@
 #define MAX(a, b) ((a) >= (b) ? (a) : (b))
 #define MIN(a, b) ((a) <= (b) ? (a) : (b))
 
-namespace cocaine { namespace engine { 
-    
-namespace threading {
-    class overseer_t;
-}
+namespace cocaine { namespace engine { namespace drivers {
 
-namespace drivers {
-
-class abstract_t {
+class abstract_driver_t {
     public:
-        virtual ~abstract_t() {};
-        
+        virtual ~abstract_driver_t() {};
+
         inline std::string id() const { return m_id; }
 
     protected:
@@ -33,11 +28,13 @@ class abstract_t {
 template<class WatcherType, class DriverType>
 class driver_base_t:
     public boost::noncopyable,
-    public abstract_t
+    public abstract_driver_t
 {
     public:
-        driver_base_t(boost::shared_ptr<plugin::source_t> source):
-            m_source(source) {}
+        driver_base_t(threading::overseer_t* parent, boost::shared_ptr<plugin::source_t> source):
+            m_parent(parent),
+            m_source(source) 
+        {}
         
         virtual ~driver_base_t() {
             if(m_watcher.get() && m_watcher->is_active()) {
@@ -45,10 +42,8 @@ class driver_base_t:
             }
         }
 
-        void start(zmq::context_t& context, threading::overseer_t* parent) {
-            m_parent = parent;
-
-            m_pipe.reset(new net::msgpack_socket_t(context, ZMQ_PUSH));
+        void start() {
+            m_pipe.reset(new net::msgpack_socket_t(m_parent->context(), ZMQ_PUSH));
             m_pipe->connect("inproc://events");
             
             m_watcher.reset(new WatcherType(m_parent->loop()));
@@ -59,7 +54,9 @@ class driver_base_t:
             m_watcher->start();
         }
 
-        inline void stop() { m_parent->reap(m_id); }
+        inline void stop() {
+            m_parent->reap(m_id);
+        }
 
         virtual void operator()(WatcherType&, int) {
             const plugin::dict_t& dict = m_parent->invoke();
@@ -74,18 +71,16 @@ class driver_base_t:
     
     protected:
         void publish(const plugin::dict_t& dict) {
-            zmq::message_t message(m_id.length());
-            memcpy(message.data(), m_id.data(), m_id.length());
-            m_pipe->send(message, ZMQ_SNDMORE);
-            m_pipe->send_packed(dict);
+            m_pipe->send_object(m_id, ZMQ_SNDMORE);
+            m_pipe->send_object(dict);
         }
 
     protected:
-        // Data source
-        boost::shared_ptr<plugin::source_t> m_source;
-        
         // Parent
         threading::overseer_t* m_parent;
+        
+        // Data source
+        boost::shared_ptr<plugin::source_t> m_source;
         
         // Messaging
         std::auto_ptr<net::msgpack_socket_t> m_pipe;
@@ -101,8 +96,8 @@ class fs_t:
     public driver_base_t<ev::stat, fs_t>
 {
     public:
-        fs_t(boost::shared_ptr<plugin::source_t> source, const Json::Value& args):
-            driver_base_t<ev::stat, fs_t>(source),
+        fs_t(threading::overseer_t* parent, boost::shared_ptr<plugin::source_t> source, const Json::Value& args):
+            driver_base_t<ev::stat, fs_t>(parent, source),
             m_path(args.get("path", "").asString())
         {
             if(~m_source->capabilities() & plugin::source_t::ITERATOR) {
@@ -131,8 +126,8 @@ class timed_driver_t:
     public:
         typedef TimedDriverType Type;
 
-        timed_driver_t(boost::shared_ptr<plugin::source_t> source):
-            driver_base_t<ev::periodic, timed_driver_t>(source)
+        timed_driver_t(threading::overseer_t* parent, boost::shared_ptr<plugin::source_t> source):
+            driver_base_t<ev::periodic, timed_driver_t>(parent, source)
         {}
 
         inline void initialize() {
@@ -162,8 +157,8 @@ class auto_t:
     public timed_driver_t<auto_t>
 {
     public:
-        auto_t(boost::shared_ptr<plugin::source_t> source, const Json::Value& args):
-            timed_driver_t<auto_t>(source),
+        auto_t(threading::overseer_t* parent, boost::shared_ptr<plugin::source_t> source, const Json::Value& args):
+            timed_driver_t<auto_t>(parent, source),
             m_interval(args.get("interval", 0).asInt() / 1000.0)
         {
             if(~m_source->capabilities() & plugin::source_t::ITERATOR) {
@@ -190,8 +185,8 @@ class manual_t:
     public timed_driver_t<manual_t>
 {
     public:
-        manual_t(boost::shared_ptr<plugin::source_t> source, const Json::Value& args):
-            timed_driver_t<manual_t>(source)
+        manual_t(threading::overseer_t* parent, boost::shared_ptr<plugin::source_t> source, const Json::Value& args):
+            timed_driver_t<manual_t>(parent, source)
         {
             if(~m_source->capabilities() & plugin::source_t::SCHEDULER) {
                 throw std::runtime_error("source doesn't support manual scheduling");
@@ -209,8 +204,8 @@ class event_t:
     public driver_base_t<ev::io, event_t>
 {
     public:
-        event_t(boost::shared_ptr<plugin::source_t> source, const Json::Value& args):
-            driver_base_t<ev::io, event_t>(source),
+        event_t(threading::overseer_t* parent, boost::shared_ptr<plugin::source_t> source, const Json::Value& args):
+            driver_base_t<ev::io, event_t>(parent, source),
             m_endpoint(args.get("endpoint", "").asString())
         {
             if(~m_source->capabilities() & plugin::source_t::PROCESSOR) {

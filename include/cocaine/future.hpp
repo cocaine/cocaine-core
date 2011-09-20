@@ -31,20 +31,6 @@ class future_t:
             return m_route;
         }
 
-        inline void set(const std::string& key, const std::string& value) {
-            m_options[key] = value;
-        }
-
-        inline std::string get(const std::string& key) const {
-            option_map_t::const_iterator it = m_options.find(key);
-
-            if(it != m_options.end()) {
-                return it->second;
-            } else {
-                return "";
-            }
-        }
-
         template<class T>
         inline void fulfill(const std::string& key, const T& value) {
             std::set<std::string>::iterator it = m_reserve.find(key);
@@ -66,18 +52,6 @@ class future_t:
             m_root.clear();
             m_root["error"] = message;
             m_core->seal(m_id.get());
-        }
-
-        inline Json::Value serialize() {
-            Json::Value result;
-
-            result["id"] = m_id.get();
-            
-            for(option_map_t::const_iterator it = m_options.begin(); it != m_options.end(); ++it) {
-                result[it->first] = it->second;
-            }
-
-            return result;
         }
 
         inline const Json::Value& root() {
@@ -103,15 +77,11 @@ class future_t:
         // Client identity
         std::vector<std::string> m_route;
 
-        // Resulting document
-        Json::Value m_root;
-
         // Reserved keys
         std::set<std::string> m_reserve;
-
-        // Optional arguments
-        typedef std::map<std::string, std::string> option_map_t;
-        option_map_t m_options;
+        
+        // Resulting document
+        Json::Value m_root;
 };
 
 }}
