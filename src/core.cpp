@@ -9,6 +9,8 @@
 #include "cocaine/plugin.hpp"
 #include "cocaine/storage.hpp"
 
+#include "libjson.h"
+
 using namespace cocaine::core;
 using namespace cocaine::engine;
 using namespace cocaine::plugin;
@@ -177,7 +179,7 @@ void core_t::request(ev::io& io, int revents) {
                 }
 
                 unsigned int version = root.get("version", 1).asUInt();
-                std::string username = root.get("username", "").asString();
+                std::string username = root.get("token", "").asString();
                 
                 if(version < 2) {
                     throw std::runtime_error("outdated protocol version");
@@ -230,7 +232,7 @@ void core_t::dispatch(future_t* future, const Json::Value& root) {
             // Invoke the handler
             if(args.isObject()) {
                 if(!args["token"].isString() || args["token"].empty()) {
-                    args["token"] = root["username"];
+                    args["token"] = root["token"];
                 }
 
                 try {

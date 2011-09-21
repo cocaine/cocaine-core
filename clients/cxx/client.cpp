@@ -118,6 +118,9 @@ bool client_t::subscribe(const std::vector<std::string>& urls, const std::string
         
     // Configure the dispatchers
     for(Json::Value::Members::const_iterator source = sources.begin(); source != sources.end(); ++source) {
+        if(*source == "hostname")
+            continue;
+        
         std::string key = subscriptions[*source]["key"].asString();
        
         // Store the target-key relationship
