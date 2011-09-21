@@ -65,25 +65,14 @@ class blob_socket_t:
         inline void connect(const std::string& endpoint) {
             m_socket.connect(endpoint.c_str());
         }
-        
+       
+    public: 
+        int fd();
         bool pending(int event = ZMQ_POLLIN);
         bool has_more();
-        int fd();
 
     private:
         zmq::socket_t m_socket;
-};
-
-class json_socket_t:
-    public blob_socket_t
-{
-    public:
-        json_socket_t(zmq::context_t& context, int type):
-            blob_socket_t(context, type)
-        {}
-
-        bool send_json(const Json::Value& root, int flags = 0);
-        bool recv_json(Json::Value& root, int flags = 0);
 };
 
 class msgpack_socket_t:
@@ -104,7 +93,7 @@ class msgpack_socket_t:
             message.rebuild(buffer.size());
             memcpy(message.data(), buffer.data(), buffer.size());
             
-            return blob_socket_t::send(message, flags);
+            return send(message, flags);
         }
 
         template<class T>
@@ -112,7 +101,7 @@ class msgpack_socket_t:
             zmq::message_t message;
             msgpack::unpacked unpacked;
 
-            if(!blob_socket_t::recv(&message, flags)) {
+            if(!recv(&message, flags)) {
                 return false;
             }
            
@@ -123,12 +112,24 @@ class msgpack_socket_t:
                 msgpack::object object = unpacked.get();
                 object.convert(&result);
             } catch(const std::exception& e) {
-                syslog(LOG_ERR, "net: invalid msgpack type - %s", e.what());
+                syslog(LOG_ERR, "net: invalid data format - %s", e.what());
                 return false;
             }
 
             return true;
         }
+};
+
+class json_socket_t:
+    public msgpack_socket_t
+{
+    public:
+        json_socket_t(zmq::context_t& context, int type):
+            msgpack_socket_t(context, type)
+        {}
+
+        bool send_json(const Json::Value& root, int flags = 0);
+        bool recv_json(Json::Value& root, int flags = 0);
 };
 
 }}
