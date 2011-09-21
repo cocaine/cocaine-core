@@ -9,8 +9,6 @@
 #include "cocaine/plugin.hpp"
 #include "cocaine/storage.hpp"
 
-#include "libjson.h"
-
 using namespace cocaine::core;
 using namespace cocaine::engine;
 using namespace cocaine::plugin;
