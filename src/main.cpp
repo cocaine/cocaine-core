@@ -60,9 +60,11 @@ int main(int argc, char* argv[]) {
         ("thread-collect-timeout", po::value<float>
             (&config_t::set().engine.collect_timeout)->default_value(0.5),
             "driver events collection timeout, in seconds")
+#if BOOST_VERSION > 103500
         ("thread-linger-timeout", po::value<float>
             (&config_t::set().engine.linger_timeout)->default_value(5.0),
             "unresponsive thread cancellation timeout")
+#endif
         ("history-depth", po::value<uint32_t>
             (&config_t::set().core.history_depth)->default_value(10),
             "history depth for each driver")

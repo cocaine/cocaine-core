@@ -33,7 +33,9 @@ class config_t {
         struct {
             float suicide_timeout;
             float collect_timeout;
+#if BOOST_VERSION > 103500
             float linger_timeout;
+#endif
         } engine;
 
         struct {

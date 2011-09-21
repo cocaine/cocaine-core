@@ -356,12 +356,16 @@ thread_t::~thread_t() {
         message["command"] = net::TERMINATE; 
         m_pipe.send_json(message);
 
+#if BOOST_VERSION >= 103500
         using namespace boost::posix_time;
         
         if(!m_thread->timed_join(seconds(config_t::get().engine.linger_timeout))) {
             syslog(LOG_WARNING, "thread %s: thread is unresponsive", m_id.get().c_str());
             m_thread->interrupt();
         }
+#else
+        m_thread->join();
+#endif
     }
 }
 
