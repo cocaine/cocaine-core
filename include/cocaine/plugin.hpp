@@ -13,7 +13,7 @@ class exhausted:
             std::runtime_error(message)
         {}
 };
-
+        
 typedef std::map<std::string, std::string> dict_t;        
 
 // Base class for a plugin source

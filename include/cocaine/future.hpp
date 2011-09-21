@@ -8,8 +8,6 @@
 
 namespace cocaine { namespace core {
 
-class core_t;
-
 class future_t:
     public boost::noncopyable,
     public helpers::birth_control_t<future_t>
