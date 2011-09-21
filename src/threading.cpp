@@ -187,7 +187,7 @@ void overseer_t::push(const Json::Value& message) {
             if(!storage_t::instance()->exists("tasks", object_id)) {
                 Json::Value object;
                 
-                object["url"] = m_source->uri();
+                object["uri"] = m_source->uri();
                 object["args"] = message["args"];
                 
                 if(!compartment.empty()) {
