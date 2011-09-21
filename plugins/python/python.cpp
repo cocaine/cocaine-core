@@ -35,7 +35,7 @@ python_t::python_t(const std::string& uri_):
     target.pop_back();
 
     // Join the path components
-    fs::path path = fs::path(config_t::get().registry.path) / "python.d";
+    fs::path path = fs::path(config_t::get().registry.location) / "python.d";
 
     for(std::vector<std::string>::const_iterator it = target.begin(); it != target.end(); ++it) {
         path /= *it;

@@ -18,6 +18,7 @@
 #include "cocaine/config.hpp"
 #include "cocaine/helpers/auto_uuid.hpp"
 #include "cocaine/helpers/birth_control.hpp"
+
 #include "json/json.h"
 
 #endif

@@ -50,7 +50,7 @@ int main(int argc, char* argv[]) {
             (&config_t::set().storage.location)->default_value("/var/lib/cocaine"),
             "storage location, format depends on the storage type")
         ("plugins", po::value<std::string>
-            (&config_t::set().registry.path)->default_value("/usr/lib/cocaine"),
+            (&config_t::set().registry.location)->default_value("/usr/lib/cocaine"),
             "plugin path")
         ("pidfile", po::value<fs::path>()->default_value("/var/run/cocaine.pid"),
             "location of a pid file")

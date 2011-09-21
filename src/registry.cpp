@@ -19,7 +19,7 @@ struct is_regular_file {
 };
 
 registry_t::registry_t() {
-    fs::path path = config_t::get().registry.path;
+    fs::path path = config_t::get().registry.location;
 
     if(!fs::exists(path)) {
         throw std::runtime_error(path.string() + " does not exist");

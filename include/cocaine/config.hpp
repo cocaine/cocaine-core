@@ -27,7 +27,7 @@ class config_t {
         } net;
         
         struct {
-            std::string path;
+            std::string location;
         } registry;
 
         struct {

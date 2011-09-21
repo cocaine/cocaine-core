@@ -26,7 +26,7 @@ class javascript_t: public source_t {
             
             // Join the path components
             std::vector<std::string> target = uri.path();
-            fs::path path = fs::path(config_t::get().registry.path) / "javascript.d";
+            fs::path path = fs::path(config_t::get().registry.location) / "javascript.d";
 
             for(std::vector<std::string>::const_iterator it = target.begin(); it != target.end(); ++it) {
                 path /= *it;
