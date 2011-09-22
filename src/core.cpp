@@ -110,11 +110,15 @@ void core_t::reload(ev::sig& sig, int revents) {
     m_futures.clear();
     m_histories.clear();
 
-    recover();
+    try {
+        recover();
+    } catch(const std::runtime_error& e) {
+        syslog(LOG_ERR, "core: reload failed - %s", e.what());
+    }
 }
 
 void core_t::purge(ev::sig& sig, int revents) {
-    syslog(LOG_NOTICE, "core: puring the task storage");
+    syslog(LOG_NOTICE, "core: purging the tasks");
     
     m_engines.clear();
     m_futures.clear();
@@ -123,7 +127,7 @@ void core_t::purge(ev::sig& sig, int revents) {
     try {
         storage::storage_t::instance()->purge("tasks");
     } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "core: storage failure while purging - %s", e.what());
+        syslog(LOG_ERR, "core: purge failed - %s", e.what());
     }    
 }
 
@@ -493,14 +497,8 @@ struct uri_getter_t {
 };
 
 void core_t::recover() {
-    Json::Value root;
-    
-    try {
-        root = storage::storage_t::instance()->all("tasks");
-    } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "core: storage failure while recovering - %s", e.what());
-        return;
-    }
+    // NOTE: Allowing the exception to propagate here, as this is a fatal error
+    Json::Value root = storage::storage_t::instance()->all("tasks");
 
     if(root.size()) {
         syslog(LOG_NOTICE, "core: loaded %d task(s)", root.size());
@@ -514,8 +512,7 @@ void core_t::recover() {
        
         // Extract URLs from the loaded object 
         std::vector<std::string> uris;
-        std::transform(root.begin(), root.end(), std::back_inserter(uris),
-            uri_getter_t());
+        std::transform(root.begin(), root.end(), std::back_inserter(uris), uri_getter_t());
         future->reserve(uris);
 
         // Push them as if they were normal requests
