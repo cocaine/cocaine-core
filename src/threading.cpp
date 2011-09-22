@@ -64,7 +64,7 @@ void overseer_t::request(ev::io& w, int revents) {
         driver = message["args"].get("driver", "auto").asString(); 
        
         switch(message["command"].asUInt()) {
-            case net::PUSH:
+            case PUSH:
                 if(driver == "auto") {
                     push<drivers::auto_t>(message);
                 } else if(driver == "manual") {
@@ -80,7 +80,7 @@ void overseer_t::request(ev::io& w, int revents) {
                     respond(message["future"], result);
                 }
                 break;
-            case net::DROP:
+            case DROP:
                 if(driver == "auto") {
                     drop<drivers::auto_t>(message);
                 } else if(driver == "manual") {
@@ -94,7 +94,7 @@ void overseer_t::request(ev::io& w, int revents) {
                     respond(message["future"], result);
                 }
                 break;
-            case net::TERMINATE:
+            case TERMINATE:
                 terminate();
                 return;
         }
@@ -327,14 +327,14 @@ void overseer_t::terminate() {
 } 
 
 void overseer_t::suicide() {
-    Json::Value message;
-
-    message["command"] = net::SUICIDE;
-    message["engine"] = m_source->uri();
-    message["thread"] = m_id.get();
-
-    m_interthread.send_json(message);
+    m_interthread.send_tuple(boost::make_tuple(
+        SUICIDE,
+        m_source->uri(), /* engine id */
+        m_id.get()));    /* thread id */
 }
+
+// Thread facade
+// -------------
 
 thread_t::thread_t(auto_uuid_t id, zmq::context_t& context):
     m_id(id),
@@ -351,10 +351,7 @@ thread_t::~thread_t() {
     syslog(LOG_DEBUG, "thread %s: terminating", m_id.get().c_str());
    
     if(m_thread.get()) {
-        Json::Value message;
-
-        message["command"] = net::TERMINATE; 
-        m_pipe.send_json(message);
+        m_pipe.send_object(TERMINATE);
 
 #if BOOST_VERSION >= 103500
         using namespace boost::posix_time;
@@ -384,7 +381,7 @@ void thread_t::run(boost::shared_ptr<source_t> source) {
 void thread_t::push(core::future_t* future, const Json::Value& args) {
     Json::Value message;
 
-    message["command"] = net::PUSH;
+    message["command"] = PUSH;
     message["future"] = future->id();
     message["args"] = args;
     
@@ -394,7 +391,7 @@ void thread_t::push(core::future_t* future, const Json::Value& args) {
 void thread_t::drop(core::future_t* future, const Json::Value& args) {
     Json::Value message;
 
-    message["command"] = net::DROP;
+    message["command"] = DROP;
     message["future"] = future->id();
     message["args"] = args;
     

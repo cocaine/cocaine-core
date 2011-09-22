@@ -405,13 +405,15 @@ void core_t::seal(const std::string& future_id) {
 void core_t::event(ev::io& io, int revents) {
     ev::tstamp now = m_loop.now();
     zmq::message_t message;
+
+    boost::tuple<std::string, dict_t> tuple;
     std::string driver_id;
     dict_t dict;
     
     while(s_events.pending()) {
         // Receive the data
-        s_events.recv_object(driver_id);
-        s_events.recv_object(dict);
+        s_events.recv_tuple(tuple);
+        boost::tie(driver_id, dict) = tuple;
 
         // Maintain the history for the given driver
         history_map_t::iterator history = m_histories.find(driver_id);
@@ -449,17 +451,11 @@ void core_t::interthread(ev::io& io, int revents) {
         s_interthread.recv_json(message);
 
         switch(message["command"].asUInt()) {
-            case net::FULFILL:
+            case FULFILL:
                 fulfill(message);
                 break;
-            case net::SUICIDE:
+            case SUICIDE:
                 reap(message);
-                break;
-            case net::WATCH:
-                // watch(message);
-                break;
-            case net::UNWATCH:
-                // unwatch(message);
                 break;
             default:
                 syslog(LOG_ERR, "core: received an unknown interthread message");

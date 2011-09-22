@@ -26,8 +26,7 @@ class abstract_driver_t:
         
         void publish(const dict_t& dict) {
             if(m_pipe.get() && !m_id.empty()) {
-                m_pipe->send_object(m_id, ZMQ_SNDMORE);
-                m_pipe->send_object(dict);
+                m_pipe->send_tuple(boost::make_tuple(m_id, dict));
             }
         }
 

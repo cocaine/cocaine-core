@@ -13,15 +13,13 @@
 
 namespace cocaine { namespace net {
 
-enum CommandCode {
-    PUSH = 1,   /* engine pushes a task to an overseer */
-    DROP,       /* engine drops a task from an overseer */
-    TERMINATE,  /* engine terminates an overseer */
-    FULFILL,    /* overseer fulfills an engine's request */
-    SUICIDE,    /* overseer performs a suicide */
-    WATCH,      /* overseer is entering the plugin code, asking for a watchdog */
-    UNWATCH     /* overseer is finished with the plugin code, stops the watchdog */
-};
+using namespace boost::tuples;
+
+#define PUSH      1 /* engine pushes a task to an overseer */
+#define DROP      2 /* engine drops a task from an overseer */
+#define TERMINATE 3 /* engine terminates an overseer */
+#define FULFILL   4 /* overseer fulfills an engine's request */
+#define SUICIDE   5 /* overseer performs a suicide */
 
 class blob_socket_t: 
     public boost::noncopyable,
@@ -74,7 +72,7 @@ class blob_socket_t:
     private:
         zmq::socket_t m_socket;
 };
-
+        
 class msgpack_socket_t:
     public blob_socket_t
 {
@@ -82,11 +80,6 @@ class msgpack_socket_t:
         msgpack_socket_t(zmq::context_t& context, int type):
             blob_socket_t(context, type)
         {}
-
-        template<class TupleType>
-        bool send_objects(const TupleType& objects) {
-            return true;
-        }
 
         template<class T>
         bool send_object(const T& value, int flags = 0) {
@@ -99,6 +92,21 @@ class msgpack_socket_t:
             memcpy(message.data(), buffer.data(), buffer.size());
             
             return send(message, flags);
+        }
+
+        bool send_tuple(const null_type&, int flags = 0) {
+            return true;
+        }
+
+        template<class Head>
+        bool send_tuple(const cons<Head, null_type>& o, int flags = 0) {
+            return send_object(o.get_head(), flags);
+        }
+
+        template<class Head, class Tail>
+        bool send_tuple(const cons<Head, Tail>& o, int flags = 0) {
+            return (send_object(o.get_head(), ZMQ_SNDMORE | flags) 
+                    && send_tuple(o.get_tail(), flags));
         }
 
         template<class T>
@@ -123,6 +131,18 @@ class msgpack_socket_t:
 
             return true;
         }
+       
+        bool recv_tuple(const null_type&, int flags = 0) {
+            return true;
+        }
+
+        template<class Head, class Tail>
+        bool recv_tuple(cons<Head, Tail>& o, int flags = 0) {
+            return (has_more() 
+                    && recv_object(o.get_head(), flags)
+                    && recv_tuple(o.get_tail(), flags));
+        }
+
 };
 
 class json_socket_t:
