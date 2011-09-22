@@ -18,6 +18,10 @@ namespace cocaine {
             class abstract_driver_t;
         }
     }
+
+    namespace plugin {
+        class source_t;
+    }
 }
 
 #endif

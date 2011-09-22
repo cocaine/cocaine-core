@@ -3,7 +3,6 @@
 
 #include <mongo/client/dbclient.h>
 
-#include "cocaine/common.hpp"
 #include "cocaine/storage/abstract.hpp"
 
 namespace cocaine { namespace storage { namespace backends {

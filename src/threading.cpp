@@ -71,8 +71,8 @@ void overseer_t::request(ev::io& w, int revents) {
                     push<drivers::manual_t>(message);
                 } else if(driver == "fs") {
                     push<drivers::fs_t>(message);
-                } else if(driver == "event") {
-                    push<drivers::event_t>(message);
+                } else if(driver == "zeromq") {
+                    push<drivers::zeromq_t>(message);
                 } else if(driver == "once") {
                     once(message);
                 } else {
@@ -87,8 +87,8 @@ void overseer_t::request(ev::io& w, int revents) {
                     drop<drivers::manual_t>(message);
                 } else if(driver == "fs") {
                     drop<drivers::fs_t>(message);
-                } else if(driver == "event") {
-                    drop<drivers::event_t>(message);
+                } else if(driver == "zeromq") {
+                    drop<drivers::zeromq_t>(message);
                 } else {
                     result["error"] = "invalid driver";
                     respond(message["future"], result);

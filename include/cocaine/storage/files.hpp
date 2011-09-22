@@ -3,7 +3,6 @@
 
 #include <boost/filesystem.hpp>
 
-#include "cocaine/common.hpp"
 #include "cocaine/storage/abstract.hpp"
 #include "cocaine/helpers/lock_file.hpp"
 
