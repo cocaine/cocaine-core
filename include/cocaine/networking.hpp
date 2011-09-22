@@ -83,6 +83,11 @@ class msgpack_socket_t:
             blob_socket_t(context, type)
         {}
 
+        template<class TupleType>
+        bool send_objects(const TupleType& objects) {
+            return true;
+        }
+
         template<class T>
         bool send_object(const T& value, int flags = 0) {
             zmq::message_t message;

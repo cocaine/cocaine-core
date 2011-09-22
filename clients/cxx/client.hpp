@@ -1,12 +1,12 @@
 #ifndef COCAINE_CLIENT_HPP
 #define COCAINE_CLIENT_HPP
 
+#include <map>
+
 #include <boost/thread.hpp>
 #include <boost/function.hpp>
 
 #include <zmq.hpp>
-
-#include "cocaine/common.hpp"
 
 namespace cocaine { namespace client {
 

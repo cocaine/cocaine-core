@@ -5,6 +5,7 @@
 
 #include <uuid/uuid.h>
 
+#include "json/json.h"
 #include "client.hpp"
 
 #define UUID_STRING_SIZE 37

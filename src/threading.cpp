@@ -333,7 +333,7 @@ void overseer_t::suicide() {
     message["engine"] = m_source->uri();
     message["thread"] = m_id.get();
 
-    m_interthread.send_json(message);   
+    m_interthread.send_json(message);
 }
 
 thread_t::thread_t(auto_uuid_t id, zmq::context_t& context):
