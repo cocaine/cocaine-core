@@ -7,8 +7,6 @@
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/networking.hpp"
-#include "cocaine/engine.hpp"
-#include "cocaine/plugin.hpp"
 #include "cocaine/security/signatures.hpp"
 
 namespace cocaine { namespace core {
@@ -69,14 +67,14 @@ class core_t:
         future_map_t m_futures;
 
         // History
-        typedef std::deque< std::pair<ev::tstamp, plugin::dict_t> > history_t;
+        typedef std::deque< std::pair<ev::tstamp, dict_t> > history_t;
         typedef boost::ptr_map<std::string, history_t> history_map_t;
         history_map_t m_histories;
 
         // Networking
         zmq::context_t m_context;
-        net::msgpack_socket_t s_events;
         net::blob_socket_t s_publisher;
+        net::msgpack_socket_t s_events;
         net::json_socket_t s_requests, s_interthread;
         
         // Event loop

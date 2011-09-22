@@ -5,9 +5,10 @@
 #include <boost/assign.hpp>
 
 #include "cocaine/core.hpp"
+#include "cocaine/engine.hpp"
 #include "cocaine/future.hpp"
-#include "cocaine/plugin.hpp"
 #include "cocaine/storage.hpp"
+#include "cocaine/threading.hpp"
 
 using namespace cocaine::core;
 using namespace cocaine::engine;

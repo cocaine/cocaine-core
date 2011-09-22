@@ -21,4 +21,6 @@
 
 #include "json/json.h"
 
+typedef std::map<std::string, std::string> dict_t;
+
 #endif

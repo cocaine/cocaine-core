@@ -2,8 +2,8 @@
 
 #include "cocaine/threading.hpp"
 #include "cocaine/drivers.hpp"
-#include "cocaine/storage.hpp"
 #include "cocaine/future.hpp" 
+#include "cocaine/storage.hpp"
 
 using namespace cocaine::engine::threading;
 using namespace cocaine::engine::drivers;

@@ -18,23 +18,6 @@ namespace cocaine {
             class abstract_driver_t;
         }
     }
-
-    namespace plugin {
-        class plugin_t;
-    }
-
-    namespace security {
-        class digest_t;
-        class signatures_t;
-    }
-
-    namespace storage {
-        class storage_t;
-
-        namespace backends {
-            class abstract_storage_t;
-        }
-    }
 }
 
 #endif

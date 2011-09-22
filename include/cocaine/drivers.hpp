@@ -59,7 +59,7 @@ class driver_base_t:
         }
 
         virtual void operator()(WatcherType&, int) {
-            const plugin::dict_t& dict = m_parent->invoke();
+            const dict_t& dict = m_parent->invoke();
 
             // Do nothing if plugin has returned an empty dict
             if(dict.size() == 0) {
@@ -70,7 +70,7 @@ class driver_base_t:
         }
     
     protected:
-        void publish(const plugin::dict_t& dict) {
+        void publish(const dict_t& dict) {
             m_pipe->send_object(m_id, ZMQ_SNDMORE);
             m_pipe->send_object(dict);
         }
@@ -221,7 +221,7 @@ class event_t:
 
         virtual void operator()(ev::io&, int) {
             zmq::message_t message;
-            plugin::dict_t dict; 
+            dict_t dict; 
 
             while(m_sink->pending()) {
                 m_sink->recv(&message);

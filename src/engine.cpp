@@ -1,5 +1,7 @@
 #include "cocaine/engine.hpp"
 #include "cocaine/future.hpp"
+#include "cocaine/registry.hpp"
+#include "cocaine/threading.hpp"
 
 using namespace cocaine::engine;
 using namespace cocaine::engine::threading;

@@ -8,8 +8,8 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
-#include "cocaine/plugin.hpp"
 #include "cocaine/networking.hpp"
+#include "cocaine/plugin.hpp"
 #include "cocaine/security/digest.hpp"
 
 namespace cocaine { namespace engine { namespace threading {
@@ -30,7 +30,7 @@ class overseer_t:
 
     public:
         // Bindings for drivers
-        const plugin::dict_t& invoke();
+        const dict_t& invoke();
         inline ev::dynamic_loop& loop() { return m_loop; }
         inline zmq::context_t& context() { return m_context; }
 
@@ -96,7 +96,7 @@ class overseer_t:
 
         // Iteration cache
         bool m_cached;
-        plugin::dict_t m_cache;
+        dict_t m_cache;
 };
 
 // Thread facade

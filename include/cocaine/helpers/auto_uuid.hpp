@@ -3,8 +3,6 @@
 
 #include <uuid/uuid.h>
 
-#include "cocaine/common.hpp"
-
 namespace cocaine { namespace helpers {
 
 class auto_uuid_t {

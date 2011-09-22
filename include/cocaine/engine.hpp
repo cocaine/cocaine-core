@@ -5,8 +5,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
-#include "cocaine/registry.hpp"
-#include "cocaine/threading.hpp"
+#include "cocaine/networking.hpp"
 
 namespace cocaine { namespace engine {
 
