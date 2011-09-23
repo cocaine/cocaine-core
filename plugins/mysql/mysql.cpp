@@ -30,24 +30,23 @@ class mysql_t:
             return ITERATOR;
         }
 
-        dict_t invoke() {
-            dict_t dict;
+        Json::Value invoke() {
+            Json::Value result;
             MYSQL* connection = mysql_init(NULL);
 
-            if(!connection) {
-                dict["availability"] = "down";
-                return dict;
+            if(connection) {
+                mysql_options(connection, MYSQL_OPT_CONNECT_TIMEOUT, reinterpret_cast<const char*>(&m_connect_timeout));
+                mysql_options(connection, MYSQL_OPT_READ_TIMEOUT, reinterpret_cast<const char*>(&m_read_timeout));
+                mysql_options(connection, MYSQL_OPT_WRITE_TIMEOUT, reinterpret_cast<const char*>(&m_write_timeout));
+                MYSQL* status = mysql_real_connect(connection, m_host.c_str(), m_username.c_str(), m_password.c_str(), m_db.c_str(), m_port, NULL, 0);
+                result["availability"] = status ? "available" : "down";
+            } else {
+                result["availability"] = "down";
             }
 
-            mysql_options(connection, MYSQL_OPT_CONNECT_TIMEOUT, reinterpret_cast<const char*>(&m_connect_timeout));
-            mysql_options(connection, MYSQL_OPT_READ_TIMEOUT, reinterpret_cast<const char*>(&m_read_timeout));
-            mysql_options(connection, MYSQL_OPT_WRITE_TIMEOUT, reinterpret_cast<const char*>(&m_write_timeout));
-            MYSQL* result = mysql_real_connect(connection, m_host.c_str(), m_username.c_str(), m_password.c_str(), m_db.c_str(), m_port, NULL, 0);
-            
-            dict["availability"] = result ? "available" : "down";
-
             mysql_close(connection);
-            return dict;
+
+            return result;
         }
 
     private:

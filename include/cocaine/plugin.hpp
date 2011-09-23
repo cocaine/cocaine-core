@@ -35,17 +35,17 @@ class source_t:
         virtual uint32_t capabilities() const = 0;
 
         // Will be called by the auto timed driver and by the fs driver
-        virtual dict_t invoke() {
-            throw std::runtime_error("not implemented");
-        }
-
-        // Will be called by the manual timed driver
-        virtual float reschedule() {
+        virtual Json::Value invoke() {
             throw std::runtime_error("not implemented");
         }
 
         // Will be called by the event driver
-        virtual dict_t process(const void* data, size_t data_size) {
+        virtual Json::Value process(const void* data, size_t data_size) {
+            throw std::runtime_error("not implemented");
+        }
+        
+        // Will be called by the manual timed driver
+        virtual float reschedule() {
             throw std::runtime_error("not implemented");
         }
 

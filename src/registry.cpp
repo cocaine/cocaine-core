@@ -18,7 +18,7 @@ struct is_regular_file {
 };
 
 registry_t::registry_t() {
-    fs::path path = config_t::get().registry.location;
+    fs::path path(config_t::get().registry.location);
 
     if(!fs::exists(path)) {
         throw std::runtime_error(path.string() + " does not exist");
@@ -73,7 +73,7 @@ registry_t::registry_t() {
         throw std::runtime_error("no plugins found");
     }
 
-    std::string plugins = boost::algorithm::join(schemes, ", ");
+    std::string plugins(boost::algorithm::join(schemes, ", "));
     syslog(LOG_NOTICE, "registry: available sources - %s", plugins.c_str());
 }
 
@@ -84,8 +84,8 @@ registry_t::~registry_t() {
 }
 
 std::auto_ptr<source_t> registry_t::create(const std::string& uri) {
-    std::string scheme = uri.substr(0, uri.find_first_of(":"));
-    factory_map_t::iterator it = m_factories.find(scheme);
+    std::string scheme(uri.substr(0, uri.find_first_of(":")));
+    factory_map_t::iterator it(m_factories.find(scheme));
 
     if(it == m_factories.end()) {
         throw std::runtime_error(scheme + " plugin not found");

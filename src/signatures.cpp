@@ -17,20 +17,19 @@ signatures_t::signatures_t():
 
     // Load the credentials
     // NOTE: Allowing the exception to propagate here, as this is a fatal error
-    Json::Value keys = storage::storage_t::instance()->all("keys");
-    
-    Json::Value::Members names = keys.getMemberNames();
+    Json::Value keys(storage::storage_t::instance()->all("keys"));
+    Json::Value::Members names(keys.getMemberNames());
 
     for(Json::Value::Members::const_iterator it = names.begin(); it != names.end(); ++it) {
-        std::string identity = *it;
-        Json::Value object = keys[identity];
+        std::string identity(*it);
+        Json::Value object(keys[identity]);
 
         if(!object["key"].isString() || object["key"].empty()) {
             syslog(LOG_ERR, "security: key for user '%s' is malformed", identity.c_str());
             continue;
         }
 
-        std::string key = object["key"].asString();
+        std::string key(object["key"].asString());
 
         // Read the key into the BIO object
         BIO* bio = BIO_new_mem_buf(const_cast<char*>(key.data()), key.length());
@@ -84,7 +83,7 @@ std::string signatures_t::sign(const std::string& message, const std::string& to
 void signatures_t::verify(const std::string& message, const unsigned char* signature,
                          unsigned int size, const std::string& token)
 {
-    key_map_t::const_iterator it = m_keys.find(token);
+    key_map_t::const_iterator it(m_keys.find(token));
 
     if(it == m_keys.end()) {
         throw std::runtime_error("unauthorized user");

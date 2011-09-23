@@ -50,11 +50,11 @@ int store_object_t::initialize(store_object_t* self, PyObject* args, PyObject* k
     }
 
 #if PY_VERSION_HEX > 0x02070000
-    std::string uri = static_cast<source_t*>(
-        PyCapsule_GetPointer(source, NULL))->uri();
+    std::string uri(static_cast<source_t*>(
+        PyCapsule_GetPointer(source, NULL))->uri());
 #else
-    std::string uri = static_cast<source_t*>(
-        PyCObject_AsVoidPtr(source))->uri();
+    std::string uri(static_cast<source_t*>(
+        PyCObject_AsVoidPtr(source))->uri());
 #endif
 
     Py_DECREF(self->store_id);
@@ -88,18 +88,24 @@ PyObject* store_object_t::get(store_object_t* self, PyObject* args, PyObject* kw
     Json::Value value = store[PyString_AsString(key)];
 
     if(!value.empty()) {
-        if(value.isBool()) {
-            return PyBool_FromLong(value.asBool());
-        } else if(value.isIntegral()) {
-            return PyLong_FromLong(value.asInt());
-        } else if(value.isDouble()) {
-            return PyFloat_FromDouble(value.asDouble());
-        } else if(value.isString()) {
-            return PyString_FromString(value.asCString());
-        } else {
-            PyErr_SetString(PyExc_TypeError,
-                "Invalid storage data format");
-            return NULL;
+        switch(value.type()) {
+            case Json::booleanValue:
+                return PyBool_FromLong(value.asBool());
+                break;
+            case Json::intValue:
+            case Json::uintValue:
+                return PyLong_FromLong(value.asInt());
+                break;
+            case Json::realValue:
+                return PyFloat_FromDouble(value.asDouble());
+                break;
+            case Json::stringValue:
+                return PyString_FromString(value.asCString());
+                break;
+            default:
+                PyErr_SetString(PyExc_TypeError,
+                    "Invalid storage data format");
+                return NULL;
         }
     } else {
         Py_RETURN_NONE;

@@ -54,46 +54,51 @@ void overseer_t::run(boost::shared_ptr<source_t> source) {
 }
 
 void overseer_t::request(ev::io& w, int revents) {
-    Json::Value result;
-    std::string driver;
-    
-    while(m_pipe.pending()) {
-        Json::Value message;
+    unsigned int code;
+    std::string future_id, driver_type;
+    Json::Value args;
 
-        m_pipe.recv_json(message);
-        driver = message["args"].get("driver", "auto").asString(); 
-       
-        switch(message["command"].asUInt()) {
+    // XXX: Remove this on C++11
+    boost::tuple<std::string&, std::string&, Json::Value&> tuple(future_id, driver_type, args);
+
+    while(m_pipe.pending()) {
+        Json::Value result;
+
+        // Get the message code
+        m_pipe.recv_object(code);
+
+        switch(code) {
             case PUSH:
-                if(driver == "auto") {
-                    push<drivers::auto_t>(message);
-                } else if(driver == "manual") {
-                    push<drivers::manual_t>(message);
-                } else if(driver == "fs") {
-                    push<drivers::fs_t>(message);
-                } else if(driver == "zeromq") {
-                    push<drivers::zeromq_t>(message);
-                } else if(driver == "once") {
-                    once(message);
-                } else {
-                    result["error"] = "invalid driver";
-                    respond(message["future"], result);
+            case DROP: {
+                // Get the remaining payload
+                m_pipe.recv_tuple(tuple);
+
+                try {
+                    if(driver_type == "auto") {
+                        result = dispatch<drivers::auto_t>(code, args);
+                    } else if(driver_type == "manual") {
+                        result = dispatch<drivers::manual_t>(code, args);
+                    } else if(driver_type == "fs") {
+                        result = dispatch<drivers::fs_t>(code, args);
+                    } else if(driver_type == "zeromq") {
+                        result = dispatch<drivers::zeromq_t>(code, args);
+                    } else if(driver_type == "once") {
+                        result = once(args);
+                    } else {
+                        throw std::runtime_error("invalid driver type");
+                    }
+                } catch(const std::runtime_error& e) {
+                    result["error"] = e.what();
                 }
+
+                m_interthread.send_tuple(boost::make_tuple(
+                    FUTURE,
+                    future_id,
+                    m_source->uri(),
+                    result));
+
                 break;
-            case DROP:
-                if(driver == "auto") {
-                    drop<drivers::auto_t>(message);
-                } else if(driver == "manual") {
-                    drop<drivers::manual_t>(message);
-                } else if(driver == "fs") {
-                    drop<drivers::fs_t>(message);
-                } else if(driver == "zeromq") {
-                    drop<drivers::zeromq_t>(message);
-                } else {
-                    result["error"] = "invalid driver";
-                    respond(message["future"], result);
-                }
-                break;
+            }
             case TERMINATE:
                 terminate();
                 return;
@@ -111,7 +116,7 @@ void overseer_t::cleanup(ev::prepare& w, int revents) {
 }
 
 // XXX: I wonder if this caching is needed at all
-const dict_t& overseer_t::invoke() {
+const Json::Value& overseer_t::invoke() {
     if(!m_cached) {
         try {
             m_cache = m_source->invoke();
@@ -126,39 +131,24 @@ const dict_t& overseer_t::invoke() {
 }
 
 template<class DriverType>
-void overseer_t::push(const Json::Value& message) {
+Json::Value overseer_t::dispatch(unsigned int code, const Json::Value& args) {
+    switch(code) {
+        case PUSH:
+            return push<DriverType>(args);
+        case DROP:
+            return drop<DriverType>(args);
+    }
+}
+
+template<class DriverType>
+Json::Value overseer_t::push(const Json::Value& args) {
     Json::Value result;
-    std::string token = message["args"]["token"].asString();
-    std::string compartment;
-
-    if(message["args"].get("isolated", false).asBool()) {
-        compartment = m_id.get();
-    }
-
-    std::auto_ptr<DriverType> driver;
-    std::string driver_id;
-
-    try {
-        driver.reset(new DriverType(this, m_source, message["args"]));
-        driver_id = driver->id();
-    } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "engine %s: error - %s", m_source->uri().c_str(), e.what());
-        result["error"] = e.what();
-        respond(message["future"], result);
-        return;
-    }
+    std::auto_ptr<DriverType> driver(new DriverType(this, m_source, args));
+    std::string driver_id(driver->id());
     
     // Scheduling
     if(m_slaves.find(driver_id) == m_slaves.end()) {
-        try {
-            driver->start();
-        } catch(const std::exception& e) {
-            syslog(LOG_ERR, "engine %s: error - %s", m_source->uri().c_str(), e.what());
-            result["error"] = e.what();
-            respond(message["future"], result);
-            return;
-        }
-            
+        driver->start();
         m_slaves.insert(driver_id, driver);
 
         if(m_suicide.is_active()) {
@@ -166,11 +156,16 @@ void overseer_t::push(const Json::Value& message) {
             m_suicide.stop();
         }
     }
+   
+    result["key"] = driver_id;
 
     // ACL
     subscription_map_t::const_iterator begin, end;
-    boost::tie(begin, end) = m_subscriptions.equal_range(token);
-    subscription_map_t::value_type subscription = std::make_pair(token, driver_id);
+    boost::tie(begin, end) = m_subscriptions.equal_range(driver_id);
+    
+    std::string token(args["token"].asString());
+    subscription_map_t::value_type subscription(std::make_pair(driver_id, token));
+    
     std::equal_to<subscription_map_t::value_type> equality;
 
     if(std::find_if(begin, end, boost::bind(equality, subscription, _1)) == end) {
@@ -180,18 +175,20 @@ void overseer_t::push(const Json::Value& message) {
     }
     
     // Persistance
-    if(!message["args"].get("transient", false).asBool()) {
-        std::string object_id = m_digest.get(driver_id + token + compartment);
+    if(!args.get("transient", false).asBool()) {
+        std::string compartment(args.get("isolated", false).asBool() ? m_id.get() : "");
+        std::string object_id(m_digest.get(driver_id + token + compartment));
        
         try { 
             if(!storage_t::instance()->exists("tasks", object_id)) {
-                Json::Value object;
+                Json::Value object(Json::objectValue);
                 
                 object["uri"] = m_source->uri();
-                object["args"] = message["args"];
+                object["args"] = args;
                 
                 if(!compartment.empty()) {
                     object["args"]["compartment"] = compartment;
+                    result["compartment"] = compartment;
                 }
 
                 storage_t::instance()->put("tasks", object_id, object);
@@ -202,63 +199,50 @@ void overseer_t::push(const Json::Value& message) {
         }
     }
 
-    // Report to the core
-    result["key"] = driver_id;
-
-    if(!compartment.empty()) {
-        result["compartment"] = compartment;
-    }
-
-    respond(message["future"], result);
+    return result;
 }
 
 template<class DriverType>
-void overseer_t::drop(const Json::Value& message) {
-    Json::Value result;
-    std::string token = message["args"]["token"].asString();
-    std::string compartment;
+Json::Value overseer_t::drop(const Json::Value& args) {
+    std::auto_ptr<DriverType> driver(new DriverType(this, m_source, args));
 
-    if(message["args"].get("isolated", false).asBool()) {
-        compartment = m_id.get();
-    }
-
-    std::auto_ptr<DriverType> driver;
-    std::string driver_id;
-
-    try {
-        driver.reset(new DriverType(this, m_source, message["args"]));
-        driver_id = driver->id();
-    } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "engine %s: error - %s", m_source->uri().c_str(), e.what());
-        result["error"] = e.what();
-        respond(message["future"], result);
-        return;
-    }
-   
     slave_map_t::iterator slave;
     subscription_map_t::iterator client;
-
-    if((slave = m_slaves.find(driver_id)) != m_slaves.end()) {
+   
+    // Check if the driver is active 
+    if((slave = m_slaves.find(driver->id())) != m_slaves.end()) {
         subscription_map_t::iterator begin, end;
-        boost::tie(begin, end) = m_subscriptions.equal_range(token);
-        subscription_map_t::value_type subscription = std::make_pair(token, driver_id);
+        boost::tie(begin, end) = m_subscriptions.equal_range(driver->id());
+        
+        std::string token(args["token"].asString());
+        subscription_map_t::value_type subscription(std::make_pair(driver->id(), token));
+        
         std::equal_to<subscription_map_t::value_type> equality;
 
+        // Check if the client is a subscriber
         if((client = std::find_if(begin, end, boost::bind(equality, subscription, _1))) != end) {
-            m_slaves.erase(slave);
-            m_subscriptions.erase(client);
+            // If it is the last subscription, stop the driver
+            if(std::distance(begin, end) == 1) {
+                m_slaves.erase(slave);
+            }
            
+            // Unsubscribe
+            m_subscriptions.erase(client);
+
+            // If it was the last slave, start the suicide timer
             if(m_slaves.empty()) {
-                if(!message["args"].get("isolated", false).asBool()) {
+                if(!args.get("isolated", false).asBool()) {
                     syslog(LOG_DEBUG, "engine %s: suicide timer started", m_source->uri().c_str());
                     m_suicide.start(config_t::get().engine.suicide_timeout);
                 } else {
+                    // Or, if it was an isolated thread, suicide.
                     suicide();
                 }
             }
 
             // Un-persist
-            std::string object_id = m_digest.get(driver_id + token + compartment);
+            std::string compartment(args.get("isolated", false).asBool() ? m_id.get() : "");
+            std::string object_id(m_digest.get(driver->id() + token + compartment));
             
             try {
                 storage_t::instance()->remove("tasks", object_id);
@@ -266,30 +250,23 @@ void overseer_t::drop(const Json::Value& message) {
                 syslog(LOG_ERR, "engine %s: storage failure while dropping a task - %s",
                     m_source->uri().c_str(), e.what());
             }
-
-            result = "success";
         } else {
-            result["error"] = "not authorized";
+            throw std::runtime_error("access denied");
         }
     } else {
-        result["error"] = "driver not found";
+        throw std::runtime_error("driver is not active");
     }
 
-    respond(message["future"], result);
+    Json::Value result;
+    result["status"] = "success";
+
+    return result;
 }
 
-void overseer_t::once(const Json::Value& message) {
-    Json::Value result;
-    const dict_t& dict = invoke();
+Json::Value overseer_t::once(const Json::Value& args) {
+    Json::Value result(invoke());
 
-    for(dict_t::const_iterator it = dict.begin(); it != dict.end(); ++it) {
-        result[it->first] = it->second;
-    }
-
-    // Report to the core
-    respond(message["future"], result);
-
-    if(!message["args"].get("isolated", false).asBool()) {
+    if(!args.get("isolated", false).asBool()) {
         // Rearm the stall timer if it's active
         if(m_suicide.is_active()) {
             syslog(LOG_DEBUG, "engine %s: suicide timer rearmed", m_source->uri().c_str());
@@ -301,10 +278,12 @@ void overseer_t::once(const Json::Value& message) {
         // and we can safely kill ourselves
         suicide();
     }
+
+    return result;
 }
 
 void overseer_t::reap(const std::string& driver_id) {
-    slave_map_t::iterator it = m_slaves.find(driver_id);
+    slave_map_t::iterator it(m_slaves.find(driver_id));
 
     if(it == m_slaves.end()) {
         syslog(LOG_ERR, "engine %s: found an orphan - driver %s", 
@@ -314,6 +293,7 @@ void overseer_t::reap(const std::string& driver_id) {
 
     m_slaves.erase(it);
 
+    // XXX: Have to suicide here, if it was an isolated thread
     if(m_slaves.empty()) {
         syslog(LOG_DEBUG, "engine %s: suicide timer started", m_source->uri().c_str());
         m_suicide.start(config_t::get().engine.suicide_timeout);
@@ -379,22 +359,18 @@ void thread_t::run(boost::shared_ptr<source_t> source) {
 }
 
 void thread_t::push(core::future_t* future, const Json::Value& args) {
-    Json::Value message;
-
-    message["command"] = PUSH;
-    message["future"] = future->id();
-    message["args"] = args;
-    
-    m_pipe.send_json(message);
+    m_pipe.send_tuple(boost::make_tuple(
+        PUSH,
+        future->id(),
+        args.get("driver", "auto").asString(),
+        args));
 }
 
 void thread_t::drop(core::future_t* future, const Json::Value& args) {
-    Json::Value message;
-
-    message["command"] = DROP;
-    message["future"] = future->id();
-    message["args"] = args;
-    
-    m_pipe.send_json(message);
+    m_pipe.send_tuple(boost::make_tuple(
+        DROP, 
+        future->id(),
+        args.get("driver", "auto").asString(),
+        args));
 }
 

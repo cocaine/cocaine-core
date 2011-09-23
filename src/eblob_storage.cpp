@@ -59,7 +59,7 @@ eblob_storage_t::~eblob_storage_t() {
 }
 
 void eblob_storage_t::put(const std::string& store, const std::string& key, const Json::Value& value) {
-    eblob_map_t::iterator it = m_eblobs.find(store);
+    eblob_map_t::iterator it(m_eblobs.find(store));
     
     if(it == m_eblobs.end()) {
         zbr::eblob_config cfg;
@@ -79,7 +79,7 @@ void eblob_storage_t::put(const std::string& store, const std::string& key, cons
     }
         
     Json::FastWriter writer;
-    std::string object = writer.write(value);    
+    std::string object(writer.write(value));
 
     try {
         it->second->write_hashed(key, object, 0);
@@ -90,7 +90,7 @@ void eblob_storage_t::put(const std::string& store, const std::string& key, cons
 }
 
 bool eblob_storage_t::exists(const std::string& store, const std::string& key) {
-    eblob_map_t::iterator it = m_eblobs.find(store);
+    eblob_map_t::iterator it(m_eblobs.find(store));
     
     if(it != m_eblobs.end()) {
         std::string object;
@@ -110,7 +110,7 @@ bool eblob_storage_t::exists(const std::string& store, const std::string& key) {
 
 Json::Value eblob_storage_t::get(const std::string& store, const std::string& key) {
     Json::Value root(Json::objectValue);
-    eblob_map_t::iterator it = m_eblobs.find(store);
+    eblob_map_t::iterator it(m_eblobs.find(store));
     
     if(it != m_eblobs.end()) {
         Json::Reader reader(Json::Features::strictMode());
@@ -146,7 +146,7 @@ Json::Value eblob_storage_t::all(const std::string& store) const {
 }
 
 void eblob_storage_t::remove(const std::string& store, const std::string& key) {
-    eblob_map_t::iterator it = m_eblobs.find(store);
+    eblob_map_t::iterator it(m_eblobs.find(store));
     
     if(it != m_eblobs.end()) {
         try {
@@ -158,7 +158,7 @@ void eblob_storage_t::remove(const std::string& store, const std::string& key) {
 }
 
 void eblob_storage_t::purge(const std::string& store) {
-    eblob_map_t::iterator it = m_eblobs.find(store);
+    eblob_map_t::iterator it(m_eblobs.find(store));
 
     if(it != m_eblobs.end()) {
         eblob_purger_t purger(it->second);

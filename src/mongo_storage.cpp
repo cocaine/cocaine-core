@@ -23,11 +23,11 @@ void mongo_storage_t::put(const std::string& store, const std::string& key, cons
     nested["key"] = key;
     nested["value"] = value;
 
-    std::string json = writer.write(nested);
+    std::string json(writer.write(nested));
 
     // NOTE: For some reason, fromjson fails to parse strings with double null-terminator
     // which is exactly the kind of strings JSONCPP generates, hence the chopping.
-    BSONObj object = fromjson(json.substr(0, json.length() - 1));
+    BSONObj object(fromjson(json.substr(0, json.length() - 1)));
     
     try {
         ScopedDbConnection connection(m_url);
@@ -83,8 +83,7 @@ Json::Value mongo_storage_t::all(const std::string& store) {
 
     try {
         ScopedDbConnection connection(m_url);
-        std::auto_ptr<DBClientCursor> cursor;
-        cursor = connection->query(ns(store), BSONObj());
+        std::auto_ptr<DBClientCursor> cursor(connection->query(ns(store), BSONObj()));
         
         while(cursor->more()) {
             if(reader.parse(cursor->nextSafe().jsonString(), result)) {

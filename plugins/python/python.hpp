@@ -21,19 +21,19 @@ class python_t:
         // Instantiates the iterable object from the supplied code
         void compile(const std::string& code,
                      const std::string& name, 
-                     const dict_t& parameters);
+                     const std::map<std::string, std::string>& parameters);
 
         // Source protocol
         virtual uint32_t capabilities() const;
-        virtual dict_t invoke();
+        virtual Json::Value invoke();
         virtual float reschedule();
-        virtual dict_t process(const void* data, size_t data_size);
+        virtual Json::Value process(const void* data, size_t data_size);
 
         // Fetches and formats current Python exception as a string
         std::string exception();
 
         // Unwraps the Python result object
-        dict_t unwrap(object_t& object);
+        Json::Value unwrap(object_t& object);
 
     public:
         static char identity[];

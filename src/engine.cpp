@@ -32,18 +32,13 @@ void engine_t::push(future_t* future, const Json::Value& args) {
         thread_id = args.get("compartment", auto_uuid_t().get()).asString();
     }
     
-    thread_map_t::iterator it = m_threads.find(thread_id);
+    thread_map_t::iterator it(m_threads.find(thread_id));
 
     if(it == m_threads.end()) {
-        std::auto_ptr<thread_t> thread;
-        boost::shared_ptr<source_t> source;
-
         try {
-            thread.reset(new thread_t(auto_uuid_t(thread_id), m_context));
-            
-            source = registry_t::instance()->create(m_target);
+            std::auto_ptr<thread_t> thread(new thread_t(auto_uuid_t(thread_id), m_context));
+            boost::shared_ptr<source_t> source(registry_t::instance()->create(m_target));
             thread->run(source);
-            
             boost::tie(it, boost::tuples::ignore) = m_threads.insert(thread_id, thread);
         } catch(const zmq::error_t& e) {
             if(e.num() == EMFILE) {
@@ -55,11 +50,7 @@ void engine_t::push(future_t* future, const Json::Value& args) {
             }
         } catch(const std::exception& e) {
             syslog(LOG_ERR, "engine %s: error - %s", m_target.c_str(), e.what());
-            
-            Json::Value response;
-            response["error"] = e.what();
-            future->fulfill(m_target, response);
-            
+            future->abort(m_target, e.what());
             return;
         }
     }
@@ -76,19 +67,17 @@ void engine_t::drop(future_t* future, const Json::Value& args) {
         thread_id = args.get("compartment", "").asString();
     }
 
-    thread_map_t::iterator it = m_threads.find(thread_id);
+    thread_map_t::iterator it(m_threads.find(thread_id));
 
     if(it != m_threads.end()) {
         it->second->drop(future, args);
     } else {
-        Json::Value response;
-        response["error"] = "thread not found";
-        future->fulfill(m_target, response);
+        future->abort(m_target, "thread is not active");
     }
 }
 
 void engine_t::reap(const std::string& thread_id) {
-    thread_map_t::iterator it = m_threads.find(thread_id);
+    thread_map_t::iterator it(m_threads.find(thread_id));
 
     if(it == m_threads.end()) {
         syslog(LOG_WARNING, "engine %s: found an orphan - thread %s", 

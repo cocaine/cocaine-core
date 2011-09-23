@@ -7,7 +7,7 @@ using namespace cocaine::storage;
 
 boost::shared_ptr<abstract_storage_t> storage_t::instance() {
     if(!g_object.get()) {
-        std::string driver = config_t::get().storage.driver;
+        std::string driver(config_t::get().storage.driver);
 
         if(driver == "files") {
             g_object.reset(new backends::file_storage_t());

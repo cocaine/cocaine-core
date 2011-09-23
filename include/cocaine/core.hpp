@@ -49,8 +49,9 @@ class core_t:
 
         // Engine request processing and dispatching
         void interthread(ev::io& io, int revents);
-        void fulfill(const Json::Value& args);
-        void reap(const Json::Value& args);
+
+        void future(const std::string& future_id, const std::string& key, const Json::Value& value);
+        void reap(const std::string& engine_id, const std::string& thread_id);
         
         // Task recovery
         void recover();
@@ -67,15 +68,14 @@ class core_t:
         future_map_t m_futures;
 
         // History
-        typedef std::deque< std::pair<ev::tstamp, dict_t> > history_t;
+        typedef std::deque< std::pair<ev::tstamp, Json::Value> > history_t;
         typedef boost::ptr_map<std::string, history_t> history_map_t;
         history_map_t m_histories;
 
         // Networking
         zmq::context_t m_context;
-        net::blob_socket_t s_publisher;
-        net::msgpack_socket_t s_events;
-        net::json_socket_t s_requests, s_interthread;
+        lines::socket_t s_requests, s_publisher;
+        lines::channel_t s_events, s_interthread;
         
         // Event loop
         ev::default_loop m_loop;

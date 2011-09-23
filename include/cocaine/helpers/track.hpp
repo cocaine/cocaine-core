@@ -40,11 +40,15 @@ namespace cocaine { namespace helpers {
                 return m_object;
             }
 
+            inline const T operator->() const {
+                return m_object;
+            }
+
             inline operator T() {
                 return m_object;
             }
 
-            inline operator T() const {
+            inline operator const T() const {
                 return m_object;
             }
 

@@ -9,7 +9,6 @@
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/networking.hpp"
-#include "cocaine/plugin.hpp"
 #include "cocaine/security/digest.hpp"
 
 namespace cocaine { namespace engine { namespace threading {
@@ -30,7 +29,7 @@ class overseer_t:
 
     public:
         // Bindings for drivers
-        const dict_t& invoke();
+        const Json::Value& invoke();
         inline ev::dynamic_loop& loop() { return m_loop; }
         inline zmq::context_t& context() { return m_context; }
 
@@ -41,30 +40,21 @@ class overseer_t:
         void cleanup(ev::prepare& w, int revents);
 
         // Command disptach 
-        template<class DriverType>
-        void push(const Json::Value& message);
-       
-        template<class DriverType>
-        void drop(const Json::Value& message);
-        
-        void once(const Json::Value& message);
+        template<class DriverType> 
+        Json::Value dispatch(unsigned int code, const Json::Value& args);
 
+        template<class DriverType> 
+        Json::Value push(const Json::Value& args);
+        
+        template<class DriverType>
+        Json::Value drop(const Json::Value& args);
+        
+        Json::Value once(const Json::Value& args);
+        
         void terminate();
 
         // Suicide request
         void suicide();
-
-        template<class T>
-        inline void respond(const Json::Value& future, const T& value) {
-            Json::Value response;
-
-            response["command"] = FULFILL;            
-            response["engine"] = m_source->uri();
-            response["future"] = future;
-            response["result"] = value;
-
-            m_interthread.send_json(response);
-        }
 
     private:
         // Thread ID
@@ -72,7 +62,7 @@ class overseer_t:
 
         // Messaging
         zmq::context_t& m_context;
-        net::json_socket_t m_pipe, m_interthread;
+        lines::channel_t m_pipe, m_interthread;
         
         // Data source
         boost::shared_ptr<plugin::source_t> m_source;
@@ -84,7 +74,8 @@ class overseer_t:
         ev::prepare m_cleanup;
         
         // Slaves (Driver ID -> Driver)
-        typedef boost::ptr_map<const std::string, drivers::abstract_driver_t> slave_map_t;
+        typedef boost::ptr_map<const std::string,
+            drivers::abstract_driver_t> slave_map_t;
         slave_map_t m_slaves;
 
         // Subscriptions (Driver ID -> Tokens)
@@ -95,8 +86,8 @@ class overseer_t:
         security::digest_t m_digest;
 
         // Iteration cache
+        Json::Value m_cache;
         bool m_cached;
-        dict_t m_cache;
 };
 
 // Thread facade
@@ -109,12 +100,13 @@ class thread_t:
         ~thread_t();
 
         void run(boost::shared_ptr<plugin::source_t> source);
+        
         void push(core::future_t* future, const Json::Value& args);
         void drop(core::future_t* future, const Json::Value& args);
 
     private:
         helpers::auto_uuid_t m_id;
-        net::json_socket_t m_pipe;
+        lines::channel_t m_pipe;
         
         std::auto_ptr<overseer_t> m_overseer;
         std::auto_ptr<boost::thread> m_thread;

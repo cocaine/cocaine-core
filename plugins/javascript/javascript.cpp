@@ -25,8 +25,8 @@ class javascript_t: public source_t {
             helpers::uri_t uri(uri_);
             
             // Join the path components
-            std::vector<std::string> target = uri.path();
-            fs::path path = fs::path(config_t::get().registry.location) / "javascript.d";
+            std::vector<std::string> target(uri.path());
+            fs::path path(fs::path(config_t::get().registry.location) / "javascript.d");
 
             for(std::vector<std::string>::const_iterator it = target.begin(); it != target.end(); ++it) {
                 path /= *it;
@@ -58,29 +58,29 @@ class javascript_t: public source_t {
             
             TryCatch try_catch;
 
-            Handle<String> source = String::New(code.c_str());
-            Handle<Script> script = Script::Compile(source);
+            Handle<String> source(String::New(code.c_str()));
+            Handle<Script> script(Script::Compile(source));
 
             if(script.IsEmpty()) {
                 String::AsciiValue exception(try_catch.Exception());
                 throw std::runtime_error(*exception);
             }
 
-            Handle<Value> result = script->Run();
+            Handle<Value> result(script->Run());
 
             if(result.IsEmpty()) {
                 String::AsciiValue exception(try_catch.Exception());
                 throw std::runtime_error(*exception);
             }
 
-            Handle<String> target = String::New(name.c_str());
-            Handle<Value> object = m_context->Global()->Get(target);
+            Handle<String> target(String::New(name.c_str()));
+            Handle<Value> object(m_context->Global()->Get(target));
 
             if(!object->IsFunction()) {
                 throw std::runtime_error("target object is not a function");
             }
 
-            Handle<Function> function = Handle<Function>::Cast(object);
+            Handle<Function> function(Handle<Function>::Cast(object));
             m_function = Persistent<Function>::New(function);
         }
 
@@ -93,23 +93,23 @@ class javascript_t: public source_t {
             return ITERATOR;
         }
 
-        virtual dict_t invoke() {
-            dict_t dict;
+        virtual Json::Value invoke() {
+            Json::Value result;
 
             HandleScope handle_scope;
             Context::Scope context_scope(m_context);
             
             TryCatch try_catch;
-            Handle<Value> result = m_function->Call(m_context->Global(), 0, NULL);
+            Handle<Value> rv(m_function->Call(m_context->Global(), 0, NULL));
 
-            if(!result.IsEmpty()) {
-                dict["result"] = "success";
+            if(!rv.IsEmpty()) {
+                result["result"] = "success";
             } else if(try_catch.HasCaught()) {
                 String::AsciiValue exception(try_catch.Exception());
-                dict["exception"] = std::string(*exception, exception.length());
+                result["error"] = std::string(*exception, exception.length());
             }
 
-            return dict;
+            return result;
         }
 
     private:

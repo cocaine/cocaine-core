@@ -26,13 +26,13 @@ class zeromq_t:
 
         virtual void operator()(ev::io&, int) {
             zmq::message_t message;
-            dict_t dict; 
+            Json::Value result; 
 
             while(m_sink->pending()) {
                 m_sink->recv(&message);
 
                 try {
-                    dict = m_source.get()->process(message.data(), message.size());
+                    result = m_source.get()->process(message.data(), message.size());
                 } catch(const std::exception& e) {
                     syslog(LOG_ERR, "engine: %s driver is broken - %s",
                         m_id.c_str(), e.what());
@@ -40,19 +40,19 @@ class zeromq_t:
                     return;
                 }
 
-                publish(dict);
+                publish(result);
             }
         }
 
         void initialize() {
-            m_sink.reset(new net::json_socket_t(m_parent->context(), ZMQ_PULL));
+            m_sink.reset(new lines::socket_t(m_parent->context(), ZMQ_PULL));
             m_sink->bind(m_endpoint);
             m_watcher->set(m_sink->fd(), EV_READ);
         }
 
     private:
         std::string m_endpoint;
-        std::auto_ptr<net::blob_socket_t> m_sink;
+        std::auto_ptr<lines::socket_t> m_sink;
 };
 
 }}}

@@ -16,9 +16,9 @@ using namespace cocaine::plugin;
 
 core_t::core_t():
     m_context(1),
-    s_events(m_context, ZMQ_PULL),
-    s_publisher(m_context, ZMQ_PUB),
     s_requests(m_context, ZMQ_ROUTER),
+    s_publisher(m_context, ZMQ_PUB),
+    s_events(m_context, ZMQ_PULL),
     s_interthread(m_context, ZMQ_PULL)
 {
     // Version dump
@@ -178,11 +178,11 @@ void core_t::request(ev::io& io, int revents) {
         if(reader.parse(request, root)) {
             try {
                 if(!root.isObject()) {
-                    throw std::runtime_error("object expected");
+                    throw std::runtime_error("root object expected");
                 }
 
                 unsigned int version = root.get("version", 1).asUInt();
-                std::string username = root.get("token", "").asString();
+                std::string username(root.get("token", "").asString());
                 
                 if(version < 2) {
                     throw std::runtime_error("outdated protocol version");
@@ -213,32 +213,31 @@ void core_t::request(ev::io& io, int revents) {
 }
 
 void core_t::dispatch(future_t* future, const Json::Value& root) {
-    std::string action = root.get("action", "push").asString();
+    std::string action(root.get("action", "push").asString());
 
     if(action == "push" || action == "drop" || action == "past") {
-        Json::Value targets = root["targets"];
+        Json::Value targets(root["targets"]);
 
         if(!targets.isObject() || !targets.size()) {
             throw std::runtime_error("no targets specified");
         }
 
         // Iterate over all the targets
-        Json::Value response;
-        Json::Value::Members names = targets.getMemberNames();
+        Json::Value::Members names(targets.getMemberNames());
         future->reserve(names);
 
-        for(Json::Value::Members::const_iterator it = names.begin(); it != names.end(); ++it) {
+        for(Json::Value::Members::iterator it = names.begin(); it != names.end(); ++it) {
             // Get the target and args
-            std::string target = *it;
-            Json::Value args = targets[target];
+            std::string target(*it);
+            Json::Value args(targets[target]);
 
             // Invoke the handler
-            if(args.isObject()) {
-                if(!args["token"].isString() || args["token"].empty()) {
-                    args["token"] = root["token"];
-                }
+            try {
+                if(args.isObject()) {
+                    if(!args["token"].isString() || args["token"].empty()) {
+                        args["token"] = root["token"];
+                    }
 
-                try {
                     if(action == "push") {
                         push(future, target, args);
                     } else if(action == "drop") {
@@ -246,18 +245,12 @@ void core_t::dispatch(future_t* future, const Json::Value& root) {
                     } else if(action == "past") {
                         past(future, target, args);
                     }
-                } catch(const std::runtime_error& e) {
-                    syslog(LOG_ERR, "core: error in dispatch() - %s", e.what());
-                    response["error"] = e.what();
-                    future->fulfill(target, response);
-                } catch(...) {
-                    syslog(LOG_CRIT, "core: unexpected error in dispatch()");
-                    abort();
+                } else {
+                    throw std::runtime_error("arguments expected");
                 }
-            } else {
-                syslog(LOG_ERR, "core: invalid request - target arguments expected");
-                response["error"] = "target arguments expected";
-                future->fulfill(target, response);
+            } catch(const std::runtime_error& e) {
+                syslog(LOG_ERR, "core: error in dispatch() - %s", e.what());
+                future->abort(target, e.what());
             }
         }
     } else if(action == "stats") {
@@ -268,7 +261,7 @@ void core_t::dispatch(future_t* future, const Json::Value& root) {
 }
 
 // Built-in commands:
-// --------------
+// ------------------
 // * Push - launches a thread which fetches data from the
 //   specified source and publishes it via the PUB socket.
 //
@@ -276,13 +269,13 @@ void core_t::dispatch(future_t* future, const Json::Value& root) {
 //   Remaining messages will stay orphaned in the queue,
 //   so it's a good idea to drain it after the unsubscription:
 //
-// * Stats - fetches the current running stats
-//
 // * Past - fetches the event history for the specified subscription key
+//
+// * Stat - fetches the current running stats
 
 void core_t::push(future_t* future, const std::string& target, const Json::Value& args) {
     // Check if we have an engine running for the given uri
-    engine_map_t::iterator it = m_engines.find(target); 
+    engine_map_t::iterator it(m_engines.find(target)); 
 
     if(it == m_engines.end()) {
         // If the engine wasn't found, try to start a new one
@@ -295,10 +288,10 @@ void core_t::push(future_t* future, const std::string& target, const Json::Value
 }
 
 void core_t::drop(future_t* future, const std::string& target, const Json::Value& args) {
-    engine_map_t::iterator it = m_engines.find(target);
+    engine_map_t::iterator it(m_engines.find(target));
     
     if(it == m_engines.end()) {
-        throw std::runtime_error("engine not found");
+        throw std::runtime_error("engine is not active");
     }
 
     // Dispatch!
@@ -306,7 +299,7 @@ void core_t::drop(future_t* future, const std::string& target, const Json::Value
 }
 
 void core_t::past(future_t* future, const std::string& target, const Json::Value& args) {
-    history_map_t::iterator it = m_histories.find(target);
+    history_map_t::iterator it(m_histories.find(target));
 
     if(it == m_histories.end()) {
         throw std::runtime_error("the past is empty");
@@ -319,10 +312,8 @@ void core_t::past(future_t* future, const std::string& target, const Json::Value
     for(history_t::const_iterator event = it->second->begin(); event != it->second->end(); ++event) {
         Json::Value object(Json::objectValue);
 
-        for(dict_t::const_iterator pair = event->second.begin(); pair != event->second.end(); ++pair) {
-            object["event"][pair->first] = pair->second;
-            object["timestamp"] = event->first;
-        }
+        object["timestamp"] = event->first;
+        object["event"] = event->second;
 
         result.append(object);
 
@@ -331,7 +322,7 @@ void core_t::past(future_t* future, const std::string& target, const Json::Value
         }
     }
 
-    future->fulfill(target, result);
+    future->push(target, result);
 }
 
 void core_t::stat(future_t* future) {
@@ -349,26 +340,26 @@ void core_t::stat(future_t* future) {
     
     engines["total"] = engine::engine_t::objects_created;
     engines["alive"] = engine::engine_t::objects_alive;
-    future->fulfill("engines", engines);
+    future->push("engines", engines);
     
     threads["total"] = engine::threading::thread_t::objects_created;
     threads["alive"] = engine::threading::thread_t::objects_alive;
-    future->fulfill("threads", threads);
+    future->push("threads", threads);
 
     requests["total"] = future_t::objects_created;
     requests["pending"] = future_t::objects_alive;
-    future->fulfill("requests", requests);
+    future->push("requests", requests);
 }
 
 void core_t::seal(const std::string& future_id) {
-    future_map_t::iterator it = m_futures.find(future_id);
+    future_map_t::iterator it(m_futures.find(future_id));
 
     if(it == m_futures.end()) {
         syslog(LOG_ERR, "core: found an orphan - future %s", future_id.c_str());
         return;
     }
         
-    std::vector<std::string> route = it->second->route();
+    std::vector<std::string> route(it->second->route());
 
     // Send it if it's not an internal future
     if(!route.empty()) {
@@ -388,10 +379,15 @@ void core_t::seal(const std::string& future_id) {
         s_requests.send(message, ZMQ_SNDMORE);
 
         // Append the hostname and send the JSON
-        Json::Value root = it->second->root();
+        Json::Value root(it->second->root());
         root["hostname"] = m_hostname;
 
-        s_requests.send_json(root);
+        Json::FastWriter writer;
+        std::string json(writer.write(root));
+        message.rebuild(json.length());
+        memcpy(message.data(), json.data(), json.length());
+
+        s_requests.send(message);
     }
 
     // Release the future
@@ -406,14 +402,15 @@ void core_t::event(ev::io& io, int revents) {
     ev::tstamp now = m_loop.now();
     zmq::message_t message;
 
-    boost::tuple<std::string, dict_t> tuple;
     std::string driver_id;
-    dict_t dict;
+    Json::Value event;
+
+    // XXX: Remove this on C++11
+    boost::tuple<std::string&, Json::Value&> tuple(driver_id, event);
     
     while(s_events.pending()) {
         // Receive the data
         s_events.recv_tuple(tuple);
-        boost::tie(driver_id, dict) = tuple;
 
         // Maintain the history for the given driver
         history_map_t::iterator history = m_histories.find(driver_id);
@@ -424,65 +421,104 @@ void core_t::event(ev::io& io, int revents) {
             history->second->pop_back();
         }
         
-        history->second->push_front(std::make_pair(now, dict));
+        history->second->push_front(std::make_pair(now, event));
 
         // Disassemble and send in the envelopes
-        for(dict_t::const_iterator it = dict.begin(); it != dict.end(); ++it) {
+        Json::Value::Members members = event.getMemberNames();
+
+        for(Json::Value::Members::iterator it = members.begin(); it != members.end(); ++it) {
+            std::string key(*it);
+            
             std::ostringstream envelope;
-            envelope << driver_id << " " << it->first << " " << m_hostname << " "
+            envelope << driver_id << " " << key << " " << m_hostname << " "
                      << std::fixed << std::setprecision(3) << now;
 
             message.rebuild(envelope.str().length());
             memcpy(message.data(), envelope.str().data(), envelope.str().length());
             s_publisher.send(message, ZMQ_SNDMORE);
 
-            message.rebuild(it->second.length());
-            memcpy(message.data(), it->second.data(), it->second.length());
+            Json::Value object(event[key]);
+            std::string value;
+
+            switch(object.type()) {
+                case Json::booleanValue:
+                    value = object.asBool() ? "true" : "false";
+                    break;
+                case Json::intValue:
+                case Json::uintValue:
+                    value = boost::lexical_cast<std::string>(object.asInt());
+                    break;
+                case Json::realValue:
+                    value = boost::lexical_cast<std::string>(object.asDouble());
+                    break;
+                case Json::stringValue:
+                    value = object.asString();
+                    break;
+                default:
+                    value = "<error: non-primitive type>";
+            }
+
+            message.rebuild(value.length());
+            memcpy(message.data(), value.data(), value.length());
             s_publisher.send(message);
         }
-
-        dict.clear();
     }
 }
 
 void core_t::interthread(ev::io& io, int revents) {
     while(s_interthread.pending()) {
-        Json::Value message;
-        s_interthread.recv_json(message);
+        unsigned int code;
+        s_interthread.recv_object(code);
 
-        switch(message["command"].asUInt()) {
-            case FULFILL:
-                fulfill(message);
+        switch(code) {
+            case FUTURE: {
+                std::string future_id, key;
+                Json::Value value;
+
+                // XXX: Remove this on C++11
+                boost::tuple<std::string&, std::string&, Json::Value&> tuple(future_id, key, value);
+
+                s_interthread.recv_tuple(tuple);
+                future(future_id, key, value);
+                
                 break;
-            case SUICIDE:
-                reap(message);
+            }
+            case SUICIDE: {
+                std::string engine_id, thread_id;
+                
+                // XXX: Remove this on C++11
+                boost::tuple<std::string&, std::string&> tuple(engine_id, thread_id);
+                
+                s_interthread.recv_tuple(tuple);
+                reap(engine_id, thread_id);
+                
                 break;
+            }
             default:
-                syslog(LOG_ERR, "core: received an unknown interthread message");
+                syslog(LOG_ERR, "core: received an unknown internal message");
         }
     }
 }
 
-void core_t::fulfill(const Json::Value& message) {
-    future_map_t::iterator it = m_futures.find(message["future"].asString());
+void core_t::future(const std::string& future_id, const std::string& key, const Json::Value& value) {
+    future_map_t::iterator it(m_futures.find(future_id));
     
     if(it != m_futures.end()) {
-        it->second->fulfill(message["engine"].asString(), message["result"]);
+        it->second->push(key, value);
     } else {
-        syslog(LOG_ERR, "core: found an orphan - slice for future %s", 
-            message["future"].asCString());
+        syslog(LOG_ERR, "core: found an orphan - part of future %s", future_id.c_str());
     }
 }
 
-void core_t::reap(const Json::Value& message) {
-    engine_map_t::iterator it = m_engines.find(message["engine"].asString());
+void core_t::reap(const std::string& engine_id, const std::string& thread_id) {
+    engine_map_t::iterator it(m_engines.find(engine_id));
 
     if(it != m_engines.end()) {
         syslog(LOG_DEBUG, "core: termination requested for thread %s in engine %s",
-            message["thread"].asCString(), message["engine"].asCString());
-        it->second->reap(message["thread"].asString());
+            engine_id.c_str(), thread_id.c_str());
+        it->second->reap(thread_id);
     } else {
-        syslog(LOG_ERR, "core: found an orphan - engine %s", message["engine"].asCString());
+        syslog(LOG_ERR, "core: found an orphan - engine %s", engine_id.c_str());
     }
 }
 
@@ -494,14 +530,11 @@ struct uri_getter_t {
 
 void core_t::recover() {
     // NOTE: Allowing the exception to propagate here, as this is a fatal error
-    Json::Value root = storage::storage_t::instance()->all("tasks");
+    Json::Value root(storage::storage_t::instance()->all("tasks"));
 
     if(root.size()) {
         syslog(LOG_NOTICE, "core: loaded %d task(s)", root.size());
         
-        // In case of emergency
-        Json::Value response;
-
         // Create a new anonymous future
         future_t* future = new future_t(this, std::vector<std::string>());
         m_futures.insert(future->id(), future);
@@ -513,17 +546,13 @@ void core_t::recover() {
 
         // Push them as if they were normal requests
         for(Json::ValueIterator it = root.begin(); it != root.end(); ++it) {
-            std::string uri = (*it)["uri"].asString();
+            std::string uri((*it)["uri"].asString());
             
             try {
                 push(future, uri, (*it)["args"]);
             } catch(const std::runtime_error& e) {
                 syslog(LOG_ERR, "core: error in recover() - %s", e.what());
-                response["error"] = e.what();
-                future->fulfill(uri, response);
-            } catch(...) {
-                syslog(LOG_ERR, "core: unexpected error in recover()");
-                abort();
+                future->abort(uri, e.what());
             }
         }
     }

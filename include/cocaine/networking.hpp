@@ -11,22 +11,16 @@
 
 #include "cocaine/common.hpp"
 
-namespace cocaine { namespace net {
+namespace cocaine { namespace lines {
 
 using namespace boost::tuples;
 
-#define PUSH      1 /* engine pushes a task to an overseer */
-#define DROP      2 /* engine drops a task from an overseer */
-#define TERMINATE 3 /* engine terminates an overseer */
-#define FULFILL   4 /* overseer fulfills an engine's request */
-#define SUICIDE   5 /* overseer performs a suicide */
-
-class blob_socket_t: 
+class socket_t: 
     public boost::noncopyable,
-    public helpers::birth_control_t<blob_socket_t>
+    public helpers::birth_control_t<socket_t>
 {
     public:
-        blob_socket_t(zmq::context_t& context, int type):
+        socket_t(zmq::context_t& context, int type):
             m_socket(context, type)
         {}
 
@@ -72,13 +66,19 @@ class blob_socket_t:
     private:
         zmq::socket_t m_socket;
 };
-        
-class msgpack_socket_t:
-    public blob_socket_t
+
+#define PUSH      1 /* engine pushes a task to an overseer */
+#define DROP      2 /* engine drops a task from an overseer */
+#define TERMINATE 3 /* engine terminates an overseer */
+#define FUTURE    4 /* overseer fulfills an engine's request */
+#define SUICIDE   5 /* overseer performs a suicide */
+
+class channel_t:
+    public socket_t
 {
     public:
-        msgpack_socket_t(zmq::context_t& context, int type):
-            blob_socket_t(context, type)
+        channel_t(zmq::context_t& context, int type):
+            socket_t(context, type)
         {}
 
         template<class T>
@@ -125,7 +125,7 @@ class msgpack_socket_t:
                 msgpack::object object = unpacked.get();
                 object.convert(&result);
             } catch(const std::exception& e) {
-                syslog(LOG_ERR, "net: invalid data format - %s", e.what());
+                syslog(LOG_ERR, "net: corrupted object - %s", e.what());
                 return false;
             }
 
@@ -138,25 +138,27 @@ class msgpack_socket_t:
 
         template<class Head, class Tail>
         bool recv_tuple(cons<Head, Tail>& o, int flags = 0) {
-            return (has_more() 
-                    && recv_object(o.get_head(), flags)
+            return (recv_object(o.get_head(), flags)
                     && recv_tuple(o.get_tail(), flags));
         }
-
-};
-
-class json_socket_t:
-    public msgpack_socket_t
-{
-    public:
-        json_socket_t(zmq::context_t& context, int type):
-            msgpack_socket_t(context, type)
-        {}
-
-        bool send_json(const Json::Value& root, int flags = 0);
-        bool recv_json(Json::Value& root, int flags = 0);
 };
 
 }}
+
+namespace msgpack {
+    template<class Stream>
+    packer<Stream>& operator<<(packer<Stream>& o, const Json::Value& v) {
+        Json::FastWriter writer;
+        std::string json(writer.write(v));
+
+        o.pack_raw(json.size());
+        o.pack_raw_body(json.data(), json.size());
+
+        return o;
+    }
+
+    template<>
+    Json::Value& operator>>(msgpack::object o, Json::Value& v);
+}
 
 #endif

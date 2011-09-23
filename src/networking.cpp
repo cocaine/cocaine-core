@@ -1,8 +1,8 @@
 #include "cocaine/networking.hpp"
 
-using namespace cocaine::net;
+using namespace cocaine::lines;
 
-bool blob_socket_t::pending(int event) {
+bool socket_t::pending(int event) {
     unsigned long events;
     size_t size = sizeof(events);
 
@@ -11,7 +11,7 @@ bool blob_socket_t::pending(int event) {
     return events & event;
 }
 
-bool blob_socket_t::has_more() {
+bool socket_t::has_more() {
     int64_t rcvmore;
     size_t size = sizeof(rcvmore);
 
@@ -20,7 +20,7 @@ bool blob_socket_t::has_more() {
     return rcvmore != 0;
 }
 
-int blob_socket_t::fd() {
+int socket_t::fd() {
     int fd;
     size_t size = sizeof(fd);
 
@@ -29,24 +29,21 @@ int blob_socket_t::fd() {
     return fd;
 }
 
-bool json_socket_t::send_json(const Json::Value& root, int flags) {
-    return send_object(Json::FastWriter().write(root), flags);
-}
+namespace msgpack {
+    template<> Json::Value& operator>>(msgpack::object o, Json::Value& v) {
+	    if(o.type != type::RAW) { 
+            throw type_error();
+        }
+	
+        std::string json(o.via.raw.ptr, o.via.raw.size);
+        Json::Reader reader(Json::Features::strictMode());
+        v.clear();
 
-bool json_socket_t::recv_json(Json::Value& root, int flags) {
-    std::string request;
-    Json::Reader reader(Json::Features::strictMode());
+        if(!reader.parse(json, v)) {
+            throw std::runtime_error("corrupted json in the channel");
+        }
 
-    if(!recv_object(request, flags)) {
-        return false;
+        return v;
     }
-
-    if(!reader.parse(request, root)) {
-        syslog(LOG_ERR, "net: invalid json - %s",
-            reader.getFormatedErrorMessages().c_str());
-        return false;
-    }
-
-    return true;
 }
 

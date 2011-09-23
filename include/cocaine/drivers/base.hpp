@@ -21,7 +21,7 @@ class driver_base_t:
         }
 
         void start() {
-            m_pipe.reset(new net::msgpack_socket_t(m_parent->context(), ZMQ_PUSH));
+            m_pipe.reset(new lines::channel_t(m_parent->context(), ZMQ_PUSH));
             m_pipe->connect("inproc://events");
             
             m_watcher.reset(new WatcherType(m_parent->loop()));
@@ -37,14 +37,14 @@ class driver_base_t:
         }
 
         virtual void operator()(WatcherType&, int) {
-            const dict_t& dict = m_parent->invoke();
+            const Json::Value& result = m_parent->invoke();
 
-            // Do nothing if plugin has returned an empty dict
-            if(dict.size() == 0) {
+            // Do nothing if plugin has returned an empty result
+            if(result.isNull()) {
                 return;
             }
 
-            publish(dict);
+            publish(result);
         }
     
     protected:

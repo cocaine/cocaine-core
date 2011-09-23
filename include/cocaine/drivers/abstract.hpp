@@ -4,6 +4,7 @@
 #include <boost/format.hpp>
 
 #include "cocaine/common.hpp"
+#include "cocaine/plugin.hpp"
 #include "cocaine/threading.hpp"
 
 namespace cocaine { namespace engine { namespace drivers {
@@ -24,9 +25,11 @@ class abstract_driver_t:
             m_source(source) 
         {}
         
-        void publish(const dict_t& dict) {
+        void publish(const Json::Value& result) {
             if(m_pipe.get() && !m_id.empty()) {
-                m_pipe->send_tuple(boost::make_tuple(m_id, dict));
+                m_pipe->send_tuple(boost::make_tuple(m_id, result));
+            } else {
+                syslog(LOG_ERR, "engine: %s driver is started before initialization", m_id.c_str());
             }
         }
 
@@ -41,7 +44,7 @@ class abstract_driver_t:
         boost::shared_ptr<plugin::source_t> m_source;
         
         // Messaging
-        std::auto_ptr<net::msgpack_socket_t> m_pipe;
+        std::auto_ptr<lines::channel_t> m_pipe;
 
         // Hasher
         security::digest_t m_digest;

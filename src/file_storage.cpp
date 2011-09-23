@@ -21,7 +21,7 @@ file_storage_t::file_storage_t():
 {}
 
 void file_storage_t::put(const std::string& store, const std::string& key, const Json::Value& value) {
-    fs::path store_path = m_storage_path / m_instance / store;
+    fs::path store_path(m_storage_path / m_instance / store);
 
     if(!fs::exists(store_path)) {
         try {
@@ -34,28 +34,28 @@ void file_storage_t::put(const std::string& store, const std::string& key, const
     }
 
     Json::StyledWriter writer;
-    fs::path filepath = store_path / key;
+    fs::path filepath(store_path / key);
     fs::ofstream stream(filepath, fs::ofstream::out | fs::ofstream::trunc);
    
     if(!stream) {
         throw std::runtime_error("failed to open " + filepath.string()); 
     }     
 
-    std::string json = writer.write(value);
+    std::string json(writer.write(value));
     
     stream << json;
     stream.close();
 }
 
 bool file_storage_t::exists(const std::string& store, const std::string& key) {
-    fs::path filepath = m_storage_path / m_instance / store / key;
+    fs::path filepath(m_storage_path / m_instance / store / key);
     return fs::exists(filepath) && fs::is_regular(filepath);
 }
 
 Json::Value file_storage_t::get(const std::string& store, const std::string& key) {
     Json::Value root(Json::objectValue);
     Json::Reader reader(Json::Features::strictMode());
-    fs::path filepath = m_storage_path / m_instance / store / key;
+    fs::path filepath(m_storage_path / m_instance / store / key);
     fs::ifstream stream(filepath, fs::ifstream::in);
      
     if(stream) { 
@@ -69,7 +69,7 @@ Json::Value file_storage_t::get(const std::string& store, const std::string& key
 
 Json::Value file_storage_t::all(const std::string& store) {
     Json::Value root(Json::objectValue);
-    fs::path store_path = m_storage_path / m_instance / store;
+    fs::path store_path(m_storage_path / m_instance / store);
 
     if(!fs::exists(store_path))
         return root;
@@ -81,9 +81,9 @@ Json::Value file_storage_t::all(const std::string& store) {
 
     while(it != end) {
 #if BOOST_FILESYSTEM_VERSION == 3
-        Json::Value value = get(store, it->path().filename().string());
+        Json::Value value(get(store, it->path().filename().string()));
 #else
-        Json::Value value = get(store, it->leaf());
+        Json::Value value(get(store, it->leaf()));
 #endif
 
         if(!value.empty()) {
@@ -101,7 +101,7 @@ Json::Value file_storage_t::all(const std::string& store) {
 }
 
 void file_storage_t::remove(const std::string& store, const std::string& key) {
-    fs::path file_path = m_storage_path / m_instance / store / key;
+    fs::path file_path(m_storage_path / m_instance / store / key);
 
     if(fs::exists(file_path)) {
         try {

@@ -25,13 +25,8 @@ class future_t:
             return m_id.get();
         }
         
-        inline std::vector<std::string> route() const { 
-            return m_route;
-        }
-
-        template<class T>
-        inline void fulfill(const std::string& key, const T& value) {
-            std::set<std::string>::iterator it = m_reserve.find(key);
+        inline void push(const std::string& key, const Json::Value& value) {
+            std::set<std::string>::iterator it(m_reserve.find(key));
             
             if(it != m_reserve.end()) {
                 m_root[key] = value;
@@ -52,21 +47,30 @@ class future_t:
             m_core->seal(m_id.get());
         }
 
-        inline const Json::Value& root() {
-            return m_root;
+        inline void abort(const std::string& key, const std::string& message) {
+            Json::Value object;
+            object["error"] = message;
+            push(key, object); 
         }
 
     private:
         friend class core_t;
         
+        inline std::vector<std::string> route() const { 
+            return m_route;
+        }
+
         template<class T>
         inline void reserve(const T& reserve) {
             m_reserve.insert(reserve.begin(), reserve.end());
         }
 
+        inline const Json::Value& root() const {
+            return m_root;
+        }
 
     private:
-        // Future ID
+        // Request ID
         helpers::auto_uuid_t m_id;
 
         // Parent
@@ -80,6 +84,11 @@ class future_t:
         
         // Resulting document
         Json::Value m_root;
+};
+
+class response_t:
+    public boost::noncopyable
+{
 };
 
 }}

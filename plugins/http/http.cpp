@@ -44,27 +44,25 @@ class http_t:
             return ITERATOR;
         }
 
-        virtual dict_t invoke() {
-            dict_t dict;
+        virtual Json::Value invoke() {
+            Json::Value result;
         
-            CURLcode result = curl_easy_perform(m_curl);
+            CURLcode code = curl_easy_perform(m_curl);
             
-            if (result == 0) {
+            if(code == 0) {
                 long retcode = 0;
+                
                 curl_easy_getinfo(m_curl, CURLINFO_RESPONSE_CODE, &retcode);
-            
-                std::ostringstream fmt;
-                fmt << retcode;
-
-                dict["code"] = fmt.str();
-                dict["availability"] = (retcode >= 200 && retcode < 300) ? "available" : "down";
+                
+                result["code"] = static_cast<Json::UInt>(retcode);
+                result["availability"] = (retcode >= 200 && retcode < 300) ? "available" : "down";
             } else {
-                dict["code"] = "0";
-                dict["availability"] = "down";
-                dict["exception"] = std::string(m_error_message);
+                result["code"] = 0;
+                result["availability"] = "down";
+                result["error"] = std::string(m_error_message);
             }
         
-            return dict;
+            return result;
         }
 
     private:
