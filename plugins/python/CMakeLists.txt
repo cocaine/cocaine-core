@@ -21,6 +21,7 @@ TARGET_LINK_LIBRARIES(cocaine-plugin-python
     cocaine-core-config
     cocaine-core-storage
     cocaine-core-security
+    json
     ${BOOST_SYSTEM_LIBS}
     boost_filesystem-mt
     curl
