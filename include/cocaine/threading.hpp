@@ -41,7 +41,7 @@ class overseer_t:
 
         // Command disptach 
         template<class DriverType> 
-        Json::Value dispatch(unsigned int code, const Json::Value& args);
+        inline Json::Value dispatch(unsigned int code, const Json::Value& args);
 
         template<class DriverType> 
         Json::Value push(const Json::Value& args);
