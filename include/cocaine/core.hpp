@@ -14,8 +14,6 @@ namespace cocaine { namespace core {
 class core_t:
     public boost::noncopyable
 {
-    friend class future_t;
-    
     public:
         core_t();
         ~core_t();
@@ -29,31 +27,33 @@ class core_t:
         void reload(ev::sig& sig, int revents);
         void purge(ev::sig& sig, int revents);
 
-        // Request processing
+        // User request processing
         void request(ev::io& io, int revents);
 
-        // Request dispatching
+        // User request dispatching
         void dispatch(future_t* future, const Json::Value& root);
         
-        // Request handling
+        // User request handling
         void push(future_t* future, const std::string& target, const Json::Value& args);
         void drop(future_t* future, const std::string& target, const Json::Value& args);
         void past(future_t* future, const std::string& target, const Json::Value& args);
         void stat(future_t* future);
 
-        // Called by a deferred future when all the keys are fulfilled
+        // Thread request dispatching
+        void interthread(ev::io& io, int revents);
+
+        // Thread request handling and forwarding
+        void future(const std::string& future_id, const std::string& key, const Json::Value& value);
+        void reap(const std::string& engine_id, const std::string& thread_id);
+        
+        // Responding
+        friend class future_t;
         void seal(const std::string& future_id);
 
         // Publishing
         void event(ev::io& io, int revents);
 
-        // Engine request processing and dispatching
-        void interthread(ev::io& io, int revents);
-
-        void future(const std::string& future_id, const std::string& key, const Json::Value& value);
-        void reap(const std::string& engine_id, const std::string& thread_id);
-        
-        // Task recovery
+        // Task recovering
         void recover();
 
     private:
@@ -63,11 +63,11 @@ class core_t:
         typedef boost::ptr_map<const std::string, engine::engine_t> engine_map_t;
         engine_map_t m_engines;
 
-        // Future management
+        // Future management (Future ID -> Future)
         typedef boost::ptr_map<const std::string, future_t> future_map_t;
         future_map_t m_futures;
 
-        // History
+        // History (Driver ID -> History List)
         typedef std::deque< std::pair<ev::tstamp, Json::Value> > history_t;
         typedef boost::ptr_map<std::string, history_t> history_map_t;
         history_map_t m_histories;

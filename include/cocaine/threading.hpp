@@ -24,25 +24,26 @@ class overseer_t:
         void run(boost::shared_ptr<plugin::source_t> source);
         
     public:
-        // Driver termination request
+        // Driver termination request handling
         void reap(const std::string& driver_id);
 
     public:
-        // Bindings for drivers
+        // Driver bindings
         const Json::Value& invoke();
         inline ev::dynamic_loop& loop() { return m_loop; }
         inline zmq::context_t& context() { return m_context; }
 
     private:
-        // Event loop callbacks
-        void request(ev::io& w, int revents);
+        // Event loop callback handling
+        void command(ev::io& w, int revents);
         void timeout(ev::timer& w, int revents);
         void cleanup(ev::prepare& w, int revents);
 
-        // Command disptach 
+        // Thread command disptaching
         template<class DriverType> 
         inline Json::Value dispatch(unsigned int code, const Json::Value& args);
 
+        // Thread command handling
         template<class DriverType> 
         Json::Value push(const Json::Value& args);
         
@@ -53,7 +54,7 @@ class overseer_t:
         
         void terminate();
 
-        // Suicide request
+        // Suicide request forwarding
         void suicide();
 
     private:
@@ -73,24 +74,24 @@ class overseer_t:
         ev::timer m_suicide;
         ev::prepare m_cleanup;
         
-        // Slaves (Driver ID -> Driver)
+        // Driver management (Driver ID -> Driver)
         typedef boost::ptr_map<const std::string,
             drivers::abstract_driver_t> slave_map_t;
         slave_map_t m_slaves;
 
-        // Subscriptions (Driver ID -> Tokens)
+        // Subscription management (Driver ID -> Tokens)
         typedef std::multimap<const std::string, std::string> subscription_map_t;
         subscription_map_t m_subscriptions;
 
-        // Hasher (for storage)
+        // Storage key generation
         security::digest_t m_digest;
 
-        // Iteration cache
+        // Event caching
         Json::Value m_cache;
         bool m_cached;
 };
 
-// Thread facade
+// Thread interface
 class thread_t:
     public boost::noncopyable,
     public helpers::birth_control_t<thread_t>
@@ -99,10 +100,11 @@ class thread_t:
         thread_t(helpers::auto_uuid_t id, zmq::context_t& context);
         ~thread_t();
 
+        // Thread binding and invoking
         void run(boost::shared_ptr<plugin::source_t> source);
-        
-        void push(core::future_t* future, const Json::Value& args);
-        void drop(core::future_t* future, const Json::Value& args);
+
+        // Thread command forwarding
+        void command(unsigned int code, core::future_t* future, const Json::Value& args);
 
     private:
         helpers::auto_uuid_t m_id;

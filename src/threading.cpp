@@ -26,7 +26,7 @@ overseer_t::overseer_t(auto_uuid_t id, zmq::context_t& context):
     // Connect to the engine's controlling socket
     // and set the socket watcher
     m_pipe.connect("inproc://" + m_id.get());
-    m_io.set<overseer_t, &overseer_t::request>(this);
+    m_io.set<overseer_t, &overseer_t::command>(this);
     m_io.start(m_pipe.fd(), EV_READ);
 
     // Initializing suicide timer
@@ -53,7 +53,7 @@ void overseer_t::run(boost::shared_ptr<source_t> source) {
     m_loop.loop();
 }
 
-void overseer_t::request(ev::io& w, int revents) {
+void overseer_t::command(ev::io& w, int revents) {
     unsigned int code;
     std::string future_id, driver_type;
     Json::Value args;
@@ -313,8 +313,8 @@ void overseer_t::suicide() {
         m_id.get()));    /* thread id */
 }
 
-// Thread facade
-// -------------
+// Thread interface
+// ----------------
 
 thread_t::thread_t(auto_uuid_t id, zmq::context_t& context):
     m_id(id),
@@ -358,17 +358,9 @@ void thread_t::run(boost::shared_ptr<source_t> source) {
     }
 }
 
-void thread_t::push(core::future_t* future, const Json::Value& args) {
+void thread_t::command(unsigned int code, core::future_t* future, const Json::Value& args) {
     m_pipe.send_tuple(boost::make_tuple(
-        PUSH,
-        future->id(),
-        args.get("driver", "auto").asString(),
-        args));
-}
-
-void thread_t::drop(core::future_t* future, const Json::Value& args) {
-    m_pipe.send_tuple(boost::make_tuple(
-        DROP, 
+        code,
         future->id(),
         args.get("driver", "auto").asString(),
         args));

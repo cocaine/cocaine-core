@@ -18,11 +18,11 @@ class engine_t:
         engine_t(zmq::context_t& context, const std::string& target);
         ~engine_t();
 
-        // Commands
+        // Thread command forwarding
         void push(core::future_t* future, const Json::Value& args);
         void drop(core::future_t* future, const Json::Value& args);
 
-        // Thread termination
+        // Thread termination request handling
         void reap(const std::string& thread_id);
         
     private:
@@ -34,11 +34,11 @@ class engine_t:
         // Default thread to route all requests to
         const std::string m_default_thread_id;
 
-        // Thread ID -> Thread
+        // Thread management (Thread ID -> Thread)
         typedef boost::ptr_map<const std::string, threading::thread_t> thread_map_t;
         thread_map_t m_threads;
 
-        // Overflowed tasks queue
+        // Overflow task queue
         std::queue< std::pair<core::future_t*, Json::Value> > m_pending;
 };
 
