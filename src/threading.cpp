@@ -54,7 +54,7 @@ void overseer_t::run(boost::shared_ptr<source_t> source) {
 }
 
 void overseer_t::command(ev::io& w, int revents) {
-    unsigned int code;
+    unsigned int code = 0;
 
     while(m_pipe.pending()) {
         // Get the message code

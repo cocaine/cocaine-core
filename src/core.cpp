@@ -468,7 +468,7 @@ void core_t::event(ev::io& io, int revents) {
 
 void core_t::interthread(ev::io& io, int revents) {
     while(s_interthread.pending()) {
-        unsigned int code;
+        unsigned int code = 0;
         s_interthread.recv_object(code);
 
         switch(code) {

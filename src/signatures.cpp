@@ -47,7 +47,7 @@ signatures_t::signatures_t():
         BIO_free(bio);
     }
     
-    syslog(LOG_NOTICE, "security: loaded %ld public key(s)", m_keys.size());
+    syslog(LOG_NOTICE, "security: loaded %u public key(s)", m_keys.size());
 }
 
 signatures_t::~signatures_t() {

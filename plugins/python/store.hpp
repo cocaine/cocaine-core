@@ -26,9 +26,11 @@ class store_object_t {
 };
 
 static PyMethodDef store_object_methods[] = {
-    { "get", (PyCFunction)store_object_t::get, METH_VARARGS | METH_KEYWORDS,
+    { "get", (PyCFunction)store_object_t::get,
+        METH_VARARGS | METH_KEYWORDS,
         "Fetches the value for the specified key" },
-    { "set", (PyCFunction)store_object_t::set, METH_VARARGS | METH_KEYWORDS,
+    { "set", (PyCFunction)store_object_t::set,
+        METH_VARARGS | METH_KEYWORDS,
         "Stores the value for the specified key" },
     { NULL }
 };
