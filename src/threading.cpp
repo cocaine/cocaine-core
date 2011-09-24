@@ -37,7 +37,7 @@ overseer_t::overseer_t(auto_uuid_t id, zmq::context_t& context):
     m_cleanup.set<overseer_t, &overseer_t::cleanup>(this);
     m_cleanup.start();
 
-    // Connecting to the core's reaper sink
+    // Connecting to the core's interthread sink
     m_interthread.connect("inproc://interthread");
 
     // Set timer compression threshold
@@ -176,8 +176,8 @@ Json::Value overseer_t::push(const Json::Value& args) {
     
     // Persistance
     if(!args.get("transient", false).asBool()) {
-        std::string compartment(args.get("isolated", false).asBool() ? m_id.get() : "");
-        std::string object_id(m_digest.get(driver_id + token + compartment));
+        std::string thread_id(args.get("isolated", false).asBool() ? m_id.get() : "");
+        std::string object_id(m_digest.get(driver_id + token + thread_id));
        
         try { 
             if(!storage_t::instance()->exists("tasks", object_id)) {
@@ -186,9 +186,9 @@ Json::Value overseer_t::push(const Json::Value& args) {
                 object["uri"] = m_source->uri();
                 object["args"] = args;
                 
-                if(!compartment.empty()) {
-                    object["args"]["compartment"] = compartment;
-                    result["compartment"] = compartment;
+                if(!thread_id.empty()) {
+                    object["args"]["thread"] = thread_id;
+                    result["thread"] = thread_id;
                 }
 
                 storage_t::instance()->put("tasks", object_id, object);
@@ -232,7 +232,8 @@ Json::Value overseer_t::drop(const Json::Value& args) {
             // If it was the last slave, start the suicide timer
             if(m_slaves.empty()) {
                 if(!args.get("isolated", false).asBool()) {
-                    syslog(LOG_DEBUG, "engine %s: suicide timer started", m_source->uri().c_str());
+                    syslog(LOG_DEBUG, "engine %s: suicide timer started",
+                        m_source->uri().c_str());
                     m_suicide.start(config_t::get().engine.suicide_timeout);
                 } else {
                     // Or, if it was an isolated thread, suicide.
@@ -241,8 +242,8 @@ Json::Value overseer_t::drop(const Json::Value& args) {
             }
 
             // Un-persist
-            std::string compartment(args.get("isolated", false).asBool() ? m_id.get() : "");
-            std::string object_id(m_digest.get(driver->id() + token + compartment));
+            std::string thread_id(args.get("isolated", false).asBool() ? m_id.get() : "");
+            std::string object_id(m_digest.get(driver->id() + token + thread_id));
             
             try {
                 storage_t::instance()->remove("tasks", object_id);

@@ -37,14 +37,7 @@ class driver_base_t:
         }
 
         virtual void operator()(WatcherType&, int) {
-            const Json::Value& result = m_parent->invoke();
-
-            // Do nothing if plugin has returned an empty result
-            if(result.isNull()) {
-                return;
-            }
-
-            publish(result);
+            publish(m_parent->invoke());
         }
     
     protected:

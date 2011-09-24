@@ -3,8 +3,6 @@
 
 #include "cocaine/drivers/timed.hpp"
 
-#define MAX(a, b) ((a) >= (b) ? (a) : (b))
-
 namespace cocaine { namespace engine { namespace drivers {
 
 class manual_t:
@@ -18,11 +16,12 @@ class manual_t:
                 throw std::runtime_error("source doesn't support manual scheduling");
             }
             
-            m_id = "manual:" + m_digest.get(m_source->uri());
+            m_id = "manual:" + digest_t().get(m_source->uri());
         }
 
         inline ev::tstamp reschedule(ev::tstamp now) {
-            return MAX(now, m_source->reschedule());
+            float next = m_source->reschedule();
+            return now >= next ? now : next;
         }
 };
 

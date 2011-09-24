@@ -21,7 +21,7 @@ class fs_t:
                 throw std::runtime_error("no path specified");
             }
 
-            m_id = "fs:" + m_digest.get(source->uri() + m_path);
+            m_id = "fs:" + digest_t().get(source->uri() + m_path);
         }
 
         inline void initialize() {

@@ -21,7 +21,7 @@ class zeromq_t:
                 throw std::runtime_error("no endpoint specified");
             }
 
-            m_id = "event:" + m_digest.get(m_source->uri() + m_endpoint);
+            m_id = "event:" + digest_t().get(m_source->uri() + m_endpoint);
         }
 
         virtual void operator()(ev::io&, int) {

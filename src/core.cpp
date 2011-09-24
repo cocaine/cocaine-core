@@ -60,9 +60,11 @@ core_t::core_t():
 
     // Publishing socket
 #if ZMQ_VERSION > 30000
-    s_publisher.setsockopt(ZMQ_SNDHWM, &config_t::get().net.watermark, sizeof(config_t::get().net.watermark));
+    s_publisher.setsockopt(ZMQ_SNDHWM, &config_t::get().net.watermark,
+        sizeof(config_t::get().net.watermark));
 #else
-    s_publisher.setsockopt(ZMQ_HWM, &config_t::get().net.watermark, sizeof(config_t::get().net.watermark));
+    s_publisher.setsockopt(ZMQ_HWM, &config_t::get().net.watermark,
+        sizeof(config_t::get().net.watermark));
 #endif
 
     for(std::vector<std::string>::const_iterator it = config_t::get().net.publish.begin(); it != config_t::get().net.publish.end(); ++it) {
@@ -234,7 +236,7 @@ void core_t::dispatch(future_t* future, const Json::Value& root) {
             // Invoke the handler
             try {
                 if(args.isObject()) {
-                    if(!args["token"].isString() || args["token"].empty()) {
+                    if(!args["token"].isString() || args["token"].asString().empty()) {
                         args["token"] = root["token"];
                     }
 

@@ -29,7 +29,7 @@ void engine_t::push(future_t* future, const Json::Value& args) {
     if(!args.get("isolated", false).asBool()) {
         thread_id = m_default_thread_id;
     } else {
-        thread_id = args.get("compartment", auto_uuid_t().get()).asString();
+        thread_id = args.get("thread", auto_uuid_t().get()).asString();
     }
     
     thread_map_t::iterator it(m_threads.find(thread_id));
@@ -64,7 +64,7 @@ void engine_t::drop(future_t* future, const Json::Value& args) {
     if(!args.get("isolated", false).asBool()) {
         thread_id = m_default_thread_id;
     } else {
-        thread_id = args.get("compartment", "").asString();
+        thread_id = args.get("thread", "").asString();
     }
 
     thread_map_t::iterator it(m_threads.find(thread_id));

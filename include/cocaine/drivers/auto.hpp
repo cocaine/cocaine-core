@@ -1,6 +1,8 @@
 #ifndef COCAINE_DRIVERS_AUTO_HPP
 #define COCAINE_DRIVERS_AUTO_HPP
 
+#include <boost/lexical_cast.hpp>
+
 #include "cocaine/drivers/timed.hpp"
 
 namespace cocaine { namespace engine { namespace drivers {
@@ -21,8 +23,8 @@ class auto_t:
                 throw std::runtime_error("no interval specified");
             }
 
-            m_id = "auto:" + m_digest.get((boost::format("%1%%2%") 
-                % source->uri() % m_interval).str());
+            m_id = "auto:" + digest_t().get(m_source->uri() + 
+                boost::lexical_cast<std::string>(m_interval));
         }
        
         inline ev::tstamp reschedule(ev::tstamp now) {
