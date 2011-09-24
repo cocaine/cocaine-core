@@ -58,7 +58,7 @@ void overseer_t::command(ev::io& w, int revents) {
 
     while(m_pipe.pending()) {
         // Get the message code
-        m_pipe.recv_object(code);
+        m_pipe.recv(code);
 
         switch(code) {
             case PUSH:
@@ -68,8 +68,8 @@ void overseer_t::command(ev::io& w, int revents) {
 
                 // Get the remaining payload
                 boost::tuple<std::string&, std::string&, Json::Value&>
-                    tuple(future_id, driver_type, args);
-                m_pipe.recv_tuple(tuple);
+                    tier(future_id, driver_type, args);
+                m_pipe.recv_multi(tier);
 
                 try {
                     if(driver_type == "auto") {
@@ -89,7 +89,7 @@ void overseer_t::command(ev::io& w, int revents) {
                     result["error"] = e.what();
                 }
 
-                m_interthread.send_tuple(boost::make_tuple(
+                m_interthread.send_multi(boost::make_tuple(
                     FUTURE,
                     future_id,
                     m_source->uri(),
@@ -306,7 +306,7 @@ void overseer_t::terminate() {
 } 
 
 void overseer_t::suicide() {
-    m_interthread.send_tuple(boost::make_tuple(
+    m_interthread.send_multi(boost::make_tuple(
         SUICIDE,
         m_source->uri(), /* engine id */
         m_id.get()));    /* thread id */
@@ -330,7 +330,7 @@ thread_t::~thread_t() {
     if(m_thread.get()) {
         syslog(LOG_DEBUG, "thread %s: terminating", m_id.get().c_str());
    
-        m_pipe.send_object(TERMINATE);
+        m_pipe.send(TERMINATE);
 
 #if BOOST_VERSION >= 103500
         using namespace boost::posix_time;
@@ -358,7 +358,7 @@ void thread_t::run(boost::shared_ptr<source_t> source) {
 }
 
 void thread_t::command(unsigned int code, core::future_t* future, const Json::Value& args) {
-    m_pipe.send_tuple(boost::make_tuple(
+    m_pipe.send_multi(boost::make_tuple(
         code,
         future->id(),
         args.get("driver", "auto").asString(),

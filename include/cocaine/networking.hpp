@@ -81,8 +81,13 @@ class channel_t:
             socket_t(context, type)
         {}
 
+        // Bring original methods into the scope
+        using socket_t::send;
+        using socket_t::recv;
+
+        // Packs and sends a single object
         template<class T>
-        bool send_object(const T& value, int flags = 0) {
+        bool send(const T& value, int flags = 0) {
             zmq::message_t message;
             
             msgpack::sbuffer buffer;
@@ -94,23 +99,25 @@ class channel_t:
             return send(message, flags);
         }
 
-        bool send_tuple(const null_type&, int flags = 0) {
+        // Packs and sends a tuple
+        bool send_multi(const null_type&, int flags = 0) {
             return true;
         }
 
         template<class Head>
-        bool send_tuple(const cons<Head, null_type>& o, int flags = 0) {
-            return send_object(o.get_head(), flags);
+        bool send_multi(const cons<Head, null_type>& o, int flags = 0) {
+            return send(o.get_head(), flags);
         }
 
         template<class Head, class Tail>
-        bool send_tuple(const cons<Head, Tail>& o, int flags = 0) {
-            return (send_object(o.get_head(), ZMQ_SNDMORE | flags) 
-                    && send_tuple(o.get_tail(), flags));
+        bool send_multi(const cons<Head, Tail>& o, int flags = 0) {
+            return (send(o.get_head(), ZMQ_SNDMORE | flags) 
+                    && send_multi(o.get_tail(), flags));
         }
 
+        // Receives and unpacks a single object
         template<class T>
-        bool recv_object(T& result, int flags = 0) {
+        bool recv(T& result, int flags = 0) {
             zmq::message_t message;
             msgpack::unpacked unpacked;
 
@@ -131,15 +138,16 @@ class channel_t:
 
             return true;
         }
-       
-        bool recv_tuple(const null_type&, int flags = 0) {
+      
+        // Receives and unpacks a tuple
+        bool recv_multi(const null_type&, int flags = 0) {
             return true;
         }
 
         template<class Head, class Tail>
-        bool recv_tuple(cons<Head, Tail>& o, int flags = 0) {
-            return (recv_object(o.get_head(), flags)
-                    && recv_tuple(o.get_tail(), flags));
+        bool recv_multi(cons<Head, Tail>& o, int flags = 0) {
+            return (recv(o.get_head(), flags)
+                    && recv_multi(o.get_tail(), flags));
         }
 };
 

@@ -27,7 +27,7 @@ class abstract_driver_t:
         
         void publish(const Json::Value& result) {
             if(m_pipe.get() && !m_id.empty() && !result.isNull()) {
-                m_pipe->send_tuple(boost::make_tuple(m_id, result));
+                m_pipe->send_multi(boost::make_tuple(m_id, result));
             }
         }
 

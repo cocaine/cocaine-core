@@ -407,11 +407,11 @@ void core_t::event(ev::io& io, int revents) {
     std::string driver_id;
     Json::Value event;
     
-    boost::tuple<std::string&, Json::Value&> tuple(driver_id, event);
+    boost::tuple<std::string&, Json::Value&> tier(driver_id, event);
     
     while(s_events.pending()) {
         // Receive the data
-        s_events.recv_tuple(tuple);
+        s_events.recv_multi(tier);
 
         // Maintain the history for the given driver
         history_map_t::iterator history = m_histories.find(driver_id);
@@ -469,17 +469,17 @@ void core_t::event(ev::io& io, int revents) {
 void core_t::interthread(ev::io& io, int revents) {
     while(s_interthread.pending()) {
         unsigned int code = 0;
-        s_interthread.recv_object(code);
+        s_interthread.recv(code);
 
         switch(code) {
             case FUTURE: {
                 std::string future_id, key;
                 Json::Value value;
-
+                
                 boost::tuple<std::string&, std::string&, Json::Value&>
-                    tuple(future_id, key, value);
+                    tier(future_id, key, value);
 
-                s_interthread.recv_tuple(tuple);
+                s_interthread.recv_multi(tier);
                 future(future_id, key, value);
                 
                 break;
@@ -487,9 +487,9 @@ void core_t::interthread(ev::io& io, int revents) {
             case SUICIDE: {
                 std::string engine_id, thread_id;
                 
-                boost::tuple<std::string&, std::string&> tuple(engine_id, thread_id);
+                boost::tuple<std::string&, std::string&> tier(engine_id, thread_id);
                 
-                s_interthread.recv_tuple(tuple);
+                s_interthread.recv_multi(tier);
                 reap(engine_id, thread_id);
                 
                 break;
