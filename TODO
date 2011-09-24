@@ -39,6 +39,7 @@ v Cocained!
 * Core: http frontend for once-s
 * Engine: per-driver export sockets
 > Engine: an ability to kill timed out threads
+* Engine: static and dynamic thread pools
 * JS: adapt portions of node.js
 * Python: PersistentTail, Sinks
 * Networking: authentication replay protection (timestamps?)
