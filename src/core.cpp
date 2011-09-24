@@ -336,12 +336,12 @@ void core_t::stat(future_t* future) {
         ("requests")
     );
 
+    engines["total"] = engine::engine_t::objects_created;
+    
     for(engine_map_t::const_iterator it = m_engines.begin(); it != m_engines.end(); ++it) {
-        engines["list"].append(it->first);
+        engines["alive"].append(it->first);
     }
     
-    engines["total"] = engine::engine_t::objects_created;
-    engines["alive"] = engine::engine_t::objects_alive;
     future->push("engines", engines);
     
     threads["total"] = engine::threading::thread_t::objects_created;
@@ -406,8 +406,7 @@ void core_t::event(ev::io& io, int revents) {
 
     std::string driver_id;
     Json::Value event;
-
-    // XXX: Remove this on C++11
+    
     boost::tuple<std::string&, Json::Value&> tuple(driver_id, event);
     
     while(s_events.pending()) {
@@ -477,8 +476,8 @@ void core_t::interthread(ev::io& io, int revents) {
                 std::string future_id, key;
                 Json::Value value;
 
-                // XXX: Remove this on C++11
-                boost::tuple<std::string&, std::string&, Json::Value&> tuple(future_id, key, value);
+                boost::tuple<std::string&, std::string&, Json::Value&>
+                    tuple(future_id, key, value);
 
                 s_interthread.recv_tuple(tuple);
                 future(future_id, key, value);
@@ -488,7 +487,6 @@ void core_t::interthread(ev::io& io, int revents) {
             case SUICIDE: {
                 std::string engine_id, thread_id;
                 
-                // XXX: Remove this on C++11
                 boost::tuple<std::string&, std::string&> tuple(engine_id, thread_id);
                 
                 s_interthread.recv_tuple(tuple);

@@ -55,22 +55,20 @@ void overseer_t::run(boost::shared_ptr<source_t> source) {
 
 void overseer_t::command(ev::io& w, int revents) {
     unsigned int code;
-    std::string future_id, driver_type;
-    Json::Value args;
-
-    // XXX: Remove this on C++11
-    boost::tuple<std::string&, std::string&, Json::Value&> tuple(future_id, driver_type, args);
 
     while(m_pipe.pending()) {
-        Json::Value result;
-
         // Get the message code
         m_pipe.recv_object(code);
 
         switch(code) {
             case PUSH:
             case DROP: {
+                std::string future_id, driver_type;
+                Json::Value args, result;
+
                 // Get the remaining payload
+                boost::tuple<std::string&, std::string&, Json::Value&>
+                    tuple(future_id, driver_type, args);
                 m_pipe.recv_tuple(tuple);
 
                 try {
