@@ -88,7 +88,7 @@ std::auto_ptr<source_t> registry_t::create(const std::string& uri) {
     factory_map_t::iterator it(m_factories.find(scheme));
 
     if(it == m_factories.end()) {
-        throw std::runtime_error(scheme + " plugin not found");
+        throw std::runtime_error("'" + scheme + "' plugin is not available");
     }
 
     factory_fn_t factory = it->second;

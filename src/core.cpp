@@ -515,7 +515,7 @@ void core_t::reap(const std::string& engine_id, const std::string& thread_id) {
 
     if(it != m_engines.end()) {
         syslog(LOG_DEBUG, "core: termination requested for thread %s in engine %s",
-            engine_id.c_str(), thread_id.c_str());
+            thread_id.c_str(), engine_id.c_str());
         it->second->reap(thread_id);
     } else {
         syslog(LOG_ERR, "core: found an orphan - engine %s", engine_id.c_str());

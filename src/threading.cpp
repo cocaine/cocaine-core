@@ -327,9 +327,9 @@ thread_t::thread_t(auto_uuid_t id, zmq::context_t& context):
 }
 
 thread_t::~thread_t() {
-    syslog(LOG_DEBUG, "thread %s: terminating", m_id.get().c_str());
-   
     if(m_thread.get()) {
+        syslog(LOG_DEBUG, "thread %s: terminating", m_id.get().c_str());
+   
         m_pipe.send_object(TERMINATE);
 
 #if BOOST_VERSION >= 103500
