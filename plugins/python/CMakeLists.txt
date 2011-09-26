@@ -13,9 +13,12 @@ IF(NOT PYTHON_CFLAGS OR NOT PYTHON_LDFLAGS)
     RETURN()
 ENDIF()
 
+INCLUDE_DIRECTORIES(
+    include)
+
 ADD_LIBRARY(cocaine-plugin-python MODULE
-    python
-    store)
+    src/python
+    src/store)
 
 TARGET_LINK_LIBRARIES(cocaine-plugin-python
     cocaine-core-config
