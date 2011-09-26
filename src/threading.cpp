@@ -67,11 +67,12 @@ void overseer_t::command(ev::io& w, int revents) {
                 Json::Value args, result;
 
                 // Get the remaining payload
-                boost::tuple<std::string&, std::string&, Json::Value&>
-                    tier(future_id, driver_type, args);
+                boost::tuple<std::string&, Json::Value&> tier(future_id, args);
                 m_pipe.recv_multi(tier);
 
                 try {
+                    std::string driver_type(args.get("driver", "auto").asString());
+
                     if(driver_type == "auto") {
                         result = dispatch<drivers::auto_t>(code, args);
                     } else if(driver_type == "manual") {
@@ -361,7 +362,6 @@ void thread_t::command(unsigned int code, core::future_t* future, const Json::Va
     m_pipe.send_multi(boost::make_tuple(
         code,
         future->id(),
-        args.get("driver", "auto").asString(),
         args));
 }
 
