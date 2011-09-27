@@ -34,8 +34,7 @@ class pid_file_t:
                 }
             }
 
-            boost::filesystem::ofstream stream(m_filepath, 
-                boost::filesystem::ofstream::out | boost::filesystem::ofstream::trunc);
+            boost::filesystem::ofstream stream(m_filepath);
 
             if(!stream) {
                 throw std::runtime_error("failed to write " + m_filepath.string());
