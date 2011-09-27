@@ -4,7 +4,6 @@
 #include <boost/filesystem.hpp>
 
 #include "cocaine/storage/abstract.hpp"
-#include "cocaine/helpers/lock_file.hpp"
 
 namespace cocaine { namespace storage { namespace backends {
 
@@ -27,7 +26,6 @@ class file_storage_t:
     private:
         boost::filesystem::path m_storage_path;
         std::string m_instance;
-        helpers::lock_file_t m_lock;
 };
 
 }}}

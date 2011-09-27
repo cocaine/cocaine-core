@@ -15,11 +15,30 @@ class pid_file_t:
         pid_file_t(const boost::filesystem::path& filepath):
             m_filepath(filepath)
         {
-            boost::filesystem::ofstream stream(m_filepath,
+            // If the pidfile exists, check if the process is still active
+            if(boost::filesystem::exists(m_filepath)) {
+                pid_t pid;
+                boost::filesystem::ifstream stream(m_filepath);
+
+                if(stream) {
+                    stream >> pid;
+
+                    if(kill(pid, 0) < 0 && errno == ESRCH) {
+                        // Stale pid file
+                        remove();
+                    } else {
+                        throw std::runtime_error("another instance is active");
+                    }
+                } else {
+                    throw std::runtime_error("failed to read " + m_filepath.string());
+                }
+            }
+
+            boost::filesystem::ofstream stream(m_filepath, 
                 boost::filesystem::ofstream::out | boost::filesystem::ofstream::trunc);
 
             if(!stream) {
-                throw std::runtime_error("failed to access " + m_filepath.string());
+                throw std::runtime_error("failed to write " + m_filepath.string());
             }
 
             stream << getpid();
@@ -27,6 +46,11 @@ class pid_file_t:
         }
 
         ~pid_file_t() {
+            remove();
+        }
+
+    private:
+        void remove() {
             try {
                 boost::filesystem::remove(m_filepath);
             } catch(const std::runtime_error& e) {

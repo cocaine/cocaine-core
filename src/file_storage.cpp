@@ -16,8 +16,7 @@ struct is_regular_file {
 
 file_storage_t::file_storage_t():
     m_storage_path(config_t::get().storage.location),
-    m_instance(config_t::get().core.instance),
-    m_lock((m_storage_path / m_instance).string() + ".lock")
+    m_instance(config_t::get().core.instance)
 {}
 
 void file_storage_t::put(const std::string& store, const std::string& key, const Json::Value& value) {
