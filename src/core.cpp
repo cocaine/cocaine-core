@@ -10,8 +10,6 @@
 #include "cocaine/storage.hpp"
 #include "cocaine/threading.hpp"
 
-#include "cocaine/helpers/tuples.hpp"
-
 using namespace cocaine::core;
 using namespace cocaine::engine;
 using namespace cocaine::plugin;
@@ -23,11 +21,6 @@ core_t::core_t():
     s_events(m_context, ZMQ_PULL),
     s_interthread(m_context, ZMQ_PULL)
 {
-    boost::tuple<int, float> t1(5, 10.2);
-    boost::tuple<std::string, std::string> t2("abc", "def");
-
-    syslog(LOG_ERR, "def == %s", helpers::join_tuples(t1, t2).get<3>().c_str());
-
     // Version dump
     int minor, major, patch;
     zmq_version(&major, &minor, &patch);
