@@ -4,10 +4,7 @@
 #include <boost/mpl/list.hpp>
 #include <boost/mpl/push_front.hpp>
 #include <boost/mpl/joint_view.hpp>
-#include <boost/mpl/lambda.hpp>
 #include <boost/mpl/fold.hpp>
-
-#include <boost/type_traits/add_reference.hpp>
 
 #include "cocaine/common.hpp"
 
@@ -40,17 +37,10 @@ struct joint_tuple {
         typename detail::tuple_type_list<typename T1::inherited>::type
     >::type type_list;
 
-    typedef typename mpl::lambda<
-        add_reference<mpl::_1>
-    >::type reference;
-
     typedef typename mpl::fold<
         type_list,
         tuples::null_type,
-        tuples::cons<
-            mpl::bind<reference, mpl::_2>,
-            mpl::_1
-        >
+        tuples::cons<mpl::_2, mpl::_1>
     >::type type;
 };
 
