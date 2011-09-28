@@ -1,5 +1,5 @@
-#ifndef COCAINE_UUID_HPP
-#define COCAINE_UUID_HPP
+#ifndef COCAINE_AUTO_UUID_HPP
+#define COCAINE_AUTO_UUID_HPP
 
 #include <uuid/uuid.h>
 
