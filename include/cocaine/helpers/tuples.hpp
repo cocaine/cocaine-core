@@ -9,25 +9,25 @@ using namespace boost;
 using namespace boost::tuples;
 
 namespace detail {
-    template<class LT, class RT>
+    template<class Current, class Next>
     struct chain {
-        typedef typename add_reference<typename LT::head_type>::type head_type;
-        typedef chain<typename LT::tail_type, RT> chain_type;
+        typedef typename add_reference<typename Current::head_type>::type head_type;
+        typedef chain<typename Current::tail_type, Next> chain_type;
         typedef cons<head_type, typename chain_type::type> type;
 
-        static type apply(LT& left, RT& right) {
-            return type(left.get_head(), chain_type::apply(left.get_tail(), right));
+        static type apply(Current& current, Next& next) {
+            return type(current.get_head(), chain_type::apply(current.get_tail(), next));
         }
     };
     
-    template<class RT>
-    struct chain<null_type, RT> {
-        typedef typename add_reference<typename RT::head_type>::type head_type;
-        typedef chain<typename RT::tail_type, null_type> chain_type;
+    template<class Next>
+    struct chain<null_type, Next> {
+        typedef typename add_reference<typename Next::head_type>::type head_type;
+        typedef chain<typename Next::tail_type, null_type> chain_type;
         typedef cons<head_type, typename chain_type::type> type;
     
-        static type apply(null_type left, RT& right) {
-            return type(right.get_head(), chain_type::apply(right.get_tail(), left));
+        static type apply(null_type null, Next& next) {
+            return type(next.get_head(), chain_type::apply(next.get_tail(), null));
         }
     };
     
