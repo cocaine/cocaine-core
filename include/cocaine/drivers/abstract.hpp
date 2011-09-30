@@ -26,8 +26,11 @@ class abstract_driver_t:
         {}
         
         void publish(const Json::Value& result) {
-            if(m_pipe.get() && !m_id.empty() && !result.isNull()) {
-                m_pipe->send_multi(boost::make_tuple(m_id, result));
+            if(!m_id.empty() && !result.isNull()) {
+                m_parent->downstream().send_multi(boost::make_tuple(
+                    EVENT,     
+                    m_id,
+                    result));
             }
         }
 
@@ -40,9 +43,6 @@ class abstract_driver_t:
         
         // Data source
         boost::shared_ptr<plugin::source_t> m_source;
-        
-        // Messaging
-        std::auto_ptr<lines::channel_t> m_pipe;
 };
 
 }}}

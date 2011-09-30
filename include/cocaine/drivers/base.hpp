@@ -21,9 +21,6 @@ class driver_base_t:
         }
 
         void start() {
-            m_pipe.reset(new lines::channel_t(m_parent->context(), ZMQ_PUSH));
-            m_pipe->connect("inproc://events");
-            
             m_watcher.reset(new WatcherType(m_parent->loop()));
             m_watcher->set(this);
 

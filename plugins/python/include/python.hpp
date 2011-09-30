@@ -26,14 +26,14 @@ class python_t:
         // Source protocol
         virtual uint32_t capabilities() const;
         virtual Json::Value invoke();
-        virtual float reschedule();
         virtual Json::Value process(const void* data, size_t data_size);
+        virtual float reschedule();
 
         // Fetches and formats current Python exception as a string
-        std::string exception();
+        std::string exception() const;
 
         // Unwraps the Python result object
-        Json::Value unwrap(object_t& object);
+        Json::Value unwrap(object_t& object) const;
 
     public:
         static char identity[];

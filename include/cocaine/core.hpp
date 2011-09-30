@@ -15,6 +15,8 @@ class core_t:
     public boost::noncopyable
 {
     public:
+        friend class future_t;
+
         core_t();
         ~core_t();
 
@@ -40,18 +42,15 @@ class core_t:
         void stat(future_t* future);
 
         // Thread request dispatching
-        void interthread(ev::io& io, int revents);
+        void upstream(ev::io& io, int revents);
 
         // Thread request handling and forwarding
         void future(const std::string& future_id, const std::string& key, const Json::Value& value);
         void reap(const std::string& engine_id, const std::string& thread_id);
+        void event(const std::string& driver_id, const Json::Value& result);
         
         // Responding
-        friend class future_t;
         void seal(const std::string& future_id);
-
-        // Publishing
-        void event(ev::io& io, int revents);
 
         // Task recovering
         void recover();
@@ -69,17 +68,17 @@ class core_t:
 
         // History (Driver ID -> History List)
         typedef std::deque< std::pair<ev::tstamp, Json::Value> > history_t;
-        typedef boost::ptr_map<std::string, history_t> history_map_t;
+        typedef boost::ptr_map<const std::string, history_t> history_map_t;
         history_map_t m_histories;
 
         // Networking
         zmq::context_t m_context;
         lines::socket_t s_requests, s_publisher;
-        lines::channel_t s_events, s_interthread;
+        lines::channel_t s_upstream;
         
         // Event loop
         ev::default_loop m_loop;
-        ev::io e_events, e_requests, e_interthread;
+        ev::io e_requests, e_upstream;
         ev::sig e_sigint, e_sigterm, e_sigquit, e_sighup, e_sigusr1;
 
         // Hostname

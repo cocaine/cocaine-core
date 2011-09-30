@@ -202,25 +202,6 @@ Json::Value python_t::invoke() {
     }
 }
 
-float python_t::reschedule() {
-    thread_state_t state(PyGILState_Ensure());
-    
-    object_t reschedule(PyObject_GetAttrString(m_object, "reschedule"));
-    
-    object_t args(PyTuple_New(0));
-    object_t result(PyObject_Call(reschedule, args, NULL));
-    
-    if(PyErr_Occurred()) {
-        throw std::runtime_error(exception());
-    }
-
-    if(!PyFloat_Check(result)) {
-        throw std::runtime_error("reschedule() has returned a non-float object");
-    }
-
-    return PyFloat_AsDouble(result);
-}
-
 Json::Value python_t::process(const void* data, size_t data_size) {
     thread_state_t state(PyGILState_Ensure());
     
@@ -240,7 +221,26 @@ Json::Value python_t::process(const void* data, size_t data_size) {
     return unwrap(result);
 }
 
-std::string python_t::exception() {
+float python_t::reschedule() {
+    thread_state_t state(PyGILState_Ensure());
+    
+    object_t reschedule(PyObject_GetAttrString(m_object, "reschedule"));
+    
+    object_t args(PyTuple_New(0));
+    object_t result(PyObject_Call(reschedule, args, NULL));
+    
+    if(PyErr_Occurred()) {
+        throw std::runtime_error(exception());
+    }
+
+    if(!PyFloat_Check(result)) {
+        throw std::runtime_error("reschedule() has returned a non-float object");
+    }
+
+    return PyFloat_AsDouble(result);
+}
+
+std::string python_t::exception() const {
     object_t type(NULL), object(NULL), traceback(NULL);
     
     PyErr_Fetch(&type, &object, &traceback);
@@ -249,7 +249,7 @@ std::string python_t::exception() {
     return PyString_AsString(message);
 }
 
-Json::Value python_t::unwrap(object_t& object) {
+Json::Value python_t::unwrap(object_t& object) const {
     Json::Value result;
     
     if(PyDict_Check(object)) {

@@ -72,6 +72,8 @@ class socket_t:
 #define TERMINATE 3 /* engine terminates an overseer */
 #define FUTURE    4 /* overseer fulfills an engine's request */
 #define SUICIDE   5 /* overseer performs a suicide */
+#define TRACK     6 /* overseer is ready to invoke the plugin and asks for a watchdog */
+#define EVENT     7 /* driver sends the invocation results to the core */
 
 class channel_t:
     public socket_t

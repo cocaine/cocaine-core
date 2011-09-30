@@ -15,19 +15,19 @@ using namespace cocaine::helpers;
 overseer_t::overseer_t(auto_uuid_t id, zmq::context_t& context):
     m_id(id),
     m_context(context),
-    m_pipe(m_context, ZMQ_PULL),
-    m_interthread(m_context, ZMQ_PUSH),
+    m_upstream(m_context, ZMQ_PULL),
+    m_downstream(m_context, ZMQ_PUSH),
     m_loop(),
-    m_io(m_loop),
+    m_request(m_loop),
     m_suicide(m_loop),
     m_cleanup(m_loop),
     m_cached(false)
 {
     // Connect to the engine's controlling socket
     // and set the socket watcher
-    m_pipe.connect("inproc://" + m_id.get());
-    m_io.set<overseer_t, &overseer_t::command>(this);
-    m_io.start(m_pipe.fd(), EV_READ);
+    m_upstream.connect("inproc://" + m_id.get());
+    m_request.set<overseer_t, &overseer_t::request>(this);
+    m_request.start(m_upstream.fd(), EV_READ);
 
     // Initializing suicide timer
     m_suicide.set<overseer_t, &overseer_t::timeout>(this);
@@ -37,15 +37,15 @@ overseer_t::overseer_t(auto_uuid_t id, zmq::context_t& context):
     m_cleanup.set<overseer_t, &overseer_t::cleanup>(this);
     m_cleanup.start();
 
-    // Connecting to the core's interthread sink
-    m_interthread.connect("inproc://interthread");
+    // Connecting to the core's downstream channel
+    m_downstream.connect("inproc://interthread");
 
     // Set timer compression threshold
     m_loop.set_timeout_collect_interval(config_t::get().engine.collect_timeout);
 
     // Signal a false event, in case the core 
     // has managed to send something already
-    m_loop.feed_fd_event(m_pipe.fd(), EV_READ);
+    m_loop.feed_fd_event(m_upstream.fd(), EV_READ);
 }
 
 void overseer_t::run(boost::shared_ptr<source_t> source) {
@@ -53,12 +53,12 @@ void overseer_t::run(boost::shared_ptr<source_t> source) {
     m_loop.loop();
 }
 
-void overseer_t::command(ev::io& w, int revents) {
+void overseer_t::request(ev::io& w, int revents) {
     unsigned int code = 0;
 
-    while(m_pipe.pending()) {
+    while(m_upstream.pending()) {
         // Get the message code
-        m_pipe.recv(code);
+        m_upstream.recv(code);
 
         switch(code) {
             case PUSH:
@@ -68,7 +68,7 @@ void overseer_t::command(ev::io& w, int revents) {
 
                 // Get the remaining payload
                 boost::tuple<std::string&, Json::Value&> tier(future_id, args);
-                m_pipe.recv_multi(tier);
+                m_upstream.recv_multi(tier);
 
                 try {
                     std::string driver_type(args.get("driver", "auto").asString());
@@ -90,7 +90,7 @@ void overseer_t::command(ev::io& w, int revents) {
                     result["error"] = e.what();
                 }
 
-                m_interthread.send_multi(boost::make_tuple(
+                m_downstream.send_multi(boost::make_tuple(
                     FUTURE,
                     future_id,
                     m_source->uri(),
@@ -307,7 +307,7 @@ void overseer_t::terminate() {
 } 
 
 void overseer_t::suicide() {
-    m_interthread.send_multi(boost::make_tuple(
+    m_downstream.send_multi(boost::make_tuple(
         SUICIDE,
         m_source->uri(), /* engine id */
         m_id.get()));    /* thread id */
@@ -318,10 +318,10 @@ void overseer_t::suicide() {
 
 thread_t::thread_t(auto_uuid_t id, zmq::context_t& context):
     m_id(id),
-    m_pipe(context, ZMQ_PUSH)
+    m_downstream(context, ZMQ_PUSH)
 {
-    // Bind the messaging pipe
-    m_pipe.bind("inproc://" + m_id.get());
+    // Bind the messaging channel
+    m_downstream.bind("inproc://" + m_id.get());
  
     // Initialize the overseer
     m_overseer.reset(new overseer_t(id, context));
@@ -331,7 +331,7 @@ thread_t::~thread_t() {
     if(m_thread.get()) {
         syslog(LOG_DEBUG, "thread %s: terminating", m_id.get().c_str());
    
-        m_pipe.send(TERMINATE);
+        m_downstream.send(TERMINATE);
 
 #if BOOST_VERSION >= 103500
         using namespace boost::posix_time;
@@ -358,10 +358,13 @@ void thread_t::run(boost::shared_ptr<source_t> source) {
     }
 }
 
-void thread_t::command(unsigned int code, core::future_t* future, const Json::Value& args) {
-    m_pipe.send_multi(boost::make_tuple(
+void thread_t::request(unsigned int code, core::future_t* future, const Json::Value& args) {
+    m_downstream.send_multi(boost::make_tuple(
         code,
         future->id(),
         args));
 }
 
+void thread_t::track() {
+
+}

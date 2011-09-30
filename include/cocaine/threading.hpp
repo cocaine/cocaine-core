@@ -32,18 +32,19 @@ class overseer_t:
         const Json::Value& invoke();
         inline ev::dynamic_loop& loop() { return m_loop; }
         inline zmq::context_t& context() { return m_context; }
+        inline lines::channel_t& downstream() { return m_downstream; }
 
     private:
         // Event loop callback handling
-        void command(ev::io& w, int revents);
+        void request(ev::io& w, int revents);
         void timeout(ev::timer& w, int revents);
         void cleanup(ev::prepare& w, int revents);
 
-        // Thread command disptaching
+        // Thread request disptaching
         template<class DriverType> 
         inline Json::Value dispatch(unsigned int code, const Json::Value& args);
 
-        // Thread command handling
+        // Thread request handling
         template<class DriverType> 
         Json::Value push(const Json::Value& args);
         
@@ -63,20 +64,19 @@ class overseer_t:
 
         // Messaging
         zmq::context_t& m_context;
-        lines::channel_t m_pipe, m_interthread;
+        lines::channel_t m_upstream, m_downstream;
         
         // Data source
         boost::shared_ptr<plugin::source_t> m_source;
       
         // Event loop
         ev::dynamic_loop m_loop;
-        ev::io m_io;
+        ev::io m_request;
         ev::timer m_suicide;
         ev::prepare m_cleanup;
         
         // Driver management (Driver ID -> Driver)
-        typedef boost::ptr_map<const std::string,
-            drivers::abstract_driver_t> slave_map_t;
+        typedef boost::ptr_map<const std::string, drivers::abstract_driver_t> slave_map_t;
         slave_map_t m_slaves;
 
         // Subscription management (Driver ID -> Tokens)
@@ -103,12 +103,15 @@ class thread_t:
         // Thread binding and invoking
         void run(boost::shared_ptr<plugin::source_t> source);
 
-        // Thread command forwarding
-        void command(unsigned int code, core::future_t* future, const Json::Value& args);
+        // Thread request forwarding
+        void request(unsigned int code, core::future_t* future, const Json::Value& args);
+
+        // Thread tracking request handling
+        void track();
 
     private:
         helpers::auto_uuid_t m_id;
-        lines::channel_t m_pipe;
+        lines::channel_t m_downstream;
         
         std::auto_ptr<overseer_t> m_overseer;
         std::auto_ptr<boost::thread> m_thread;

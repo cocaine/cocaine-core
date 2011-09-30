@@ -18,8 +18,7 @@ core_t::core_t():
     m_context(1),
     s_requests(m_context, ZMQ_ROUTER),
     s_publisher(m_context, ZMQ_PUB),
-    s_events(m_context, ZMQ_PULL),
-    s_interthread(m_context, ZMQ_PULL)
+    s_upstream(m_context, ZMQ_PULL)
 {
     // Version dump
     int minor, major, patch;
@@ -39,15 +38,10 @@ core_t::core_t():
         throw std::runtime_error("failed to determine the hostname");
     }
 
-    // Internal event sink socket
-    s_events.bind("inproc://events");
-    e_events.set<core_t, &core_t::event>(this);
-    e_events.start(s_events.fd(), EV_READ);
-
-    // Internal future sink socket
-    s_interthread.bind("inproc://interthread");
-    e_interthread.set<core_t, &core_t::interthread>(this);
-    e_interthread.start(s_interthread.fd(), EV_READ);
+    // Interthread channel
+    s_upstream.bind("inproc://interthread");
+    e_upstream.set<core_t, &core_t::upstream>(this);
+    e_upstream.start(s_upstream.fd(), EV_READ);
 
     // Listening socket
     for(std::vector<std::string>::const_iterator it = config_t::get().net.listen.begin(); it != config_t::get().net.listen.end(); ++it) {
@@ -353,6 +347,135 @@ void core_t::stat(future_t* future) {
     future->push("requests", requests);
 }
 
+void core_t::upstream(ev::io& io, int revents) {
+    unsigned int code = 0;
+    
+    while(s_upstream.pending()) {
+        s_upstream.recv(code);
+
+        switch(code) {
+            case EVENT: {
+                std::string driver_id;
+                Json::Value value;
+
+                boost::tuple<std::string&, Json::Value&> tier(driver_id, value);
+
+                s_upstream.recv_multi(tier);
+                event(driver_id, value);
+
+                break;
+            }
+            case FUTURE: {
+                std::string future_id, key;
+                Json::Value value;
+                
+                boost::tuple<std::string&, std::string&, Json::Value&>
+                    tier(future_id, key, value);
+
+                s_upstream.recv_multi(tier);
+                future(future_id, key, value);
+                
+                break;
+            }
+            case SUICIDE: {
+                std::string engine_id, thread_id;
+                
+                boost::tuple<std::string&, std::string&> tier(engine_id, thread_id);
+                
+                s_upstream.recv_multi(tier);
+                reap(engine_id, thread_id);
+                
+                break;
+            }
+            case TRACK:
+            default:
+                syslog(LOG_ERR, "core: received an unknown internal message");
+        }
+    }
+}
+
+// Publishing format (not JSON, as it will render subscription mechanics pointless):
+// ------------------
+//   multipart: [key field hostname timestamp] [blob]
+
+void core_t::event(const std::string& driver_id, const Json::Value& event) {
+    zmq::message_t message;
+    ev::tstamp now = m_loop.now();
+
+    // Maintain the history for the given driver
+    history_map_t::iterator history = m_histories.find(driver_id);
+
+    if(history == m_histories.end()) {
+        boost::tie(history, boost::tuples::ignore) = m_histories.insert(driver_id, new history_t());
+    } else if(history->second->size() == config_t::get().core.history_depth) {
+        history->second->pop_back();
+    }
+    
+    history->second->push_front(std::make_pair(now, event));
+
+    // Disassemble and send in the envelopes
+    Json::Value::Members members = event.getMemberNames();
+
+    for(Json::Value::Members::iterator it = members.begin(); it != members.end(); ++it) {
+        std::string key(*it);
+        
+        std::ostringstream envelope;
+        envelope << driver_id << " " << key << " " << m_hostname << " "
+                 << std::fixed << std::setprecision(3) << now;
+
+        message.rebuild(envelope.str().length());
+        memcpy(message.data(), envelope.str().data(), envelope.str().length());
+        s_publisher.send(message, ZMQ_SNDMORE);
+
+        Json::Value object(event[key]);
+        std::string value;
+
+        switch(object.type()) {
+            case Json::booleanValue:
+                value = object.asBool() ? "true" : "false";
+                break;
+            case Json::intValue:
+            case Json::uintValue:
+                value = boost::lexical_cast<std::string>(object.asInt());
+                break;
+            case Json::realValue:
+                value = boost::lexical_cast<std::string>(object.asDouble());
+                break;
+            case Json::stringValue:
+                value = object.asString();
+                break;
+            default:
+                value = "<error: non-primitive type>";
+        }
+
+        message.rebuild(value.length());
+        memcpy(message.data(), value.data(), value.length());
+        s_publisher.send(message);
+    }
+}
+
+void core_t::future(const std::string& future_id, const std::string& key, const Json::Value& value) {
+    future_map_t::iterator it(m_futures.find(future_id));
+    
+    if(it != m_futures.end()) {
+        it->second->push(key, value);
+    } else {
+        syslog(LOG_ERR, "core: found an orphan - part of future %s", future_id.c_str());
+    }
+}
+
+void core_t::reap(const std::string& engine_id, const std::string& thread_id) {
+    engine_map_t::iterator it(m_engines.find(engine_id));
+
+    if(it != m_engines.end()) {
+        syslog(LOG_DEBUG, "core: termination requested for thread %s in engine %s",
+            thread_id.c_str(), engine_id.c_str());
+        it->second->reap(thread_id);
+    } else {
+        syslog(LOG_ERR, "core: found an orphan - engine %s", engine_id.c_str());
+    }
+}
+
 void core_t::seal(const std::string& future_id) {
     future_map_t::iterator it(m_futures.find(future_id));
 
@@ -394,133 +517,6 @@ void core_t::seal(const std::string& future_id) {
 
     // Release the future
     m_futures.erase(it);
-}
-
-// Publishing format (not JSON, as it will render subscription mechanics pointless):
-// ------------------
-//   multipart: [key field hostname timestamp] [blob]
-
-void core_t::event(ev::io& io, int revents) {
-    ev::tstamp now = m_loop.now();
-    zmq::message_t message;
-
-    std::string driver_id;
-    Json::Value event;
-    
-    boost::tuple<std::string&, Json::Value&> tier(driver_id, event);
-    
-    while(s_events.pending()) {
-        // Receive the data
-        s_events.recv_multi(tier);
-
-        // Maintain the history for the given driver
-        history_map_t::iterator history = m_histories.find(driver_id);
-
-        if(history == m_histories.end()) {
-            boost::tie(history, boost::tuples::ignore) = m_histories.insert(driver_id, new history_t());
-        } else if(history->second->size() == config_t::get().core.history_depth) {
-            history->second->pop_back();
-        }
-        
-        history->second->push_front(std::make_pair(now, event));
-
-        // Disassemble and send in the envelopes
-        Json::Value::Members members = event.getMemberNames();
-
-        for(Json::Value::Members::iterator it = members.begin(); it != members.end(); ++it) {
-            std::string key(*it);
-            
-            std::ostringstream envelope;
-            envelope << driver_id << " " << key << " " << m_hostname << " "
-                     << std::fixed << std::setprecision(3) << now;
-
-            message.rebuild(envelope.str().length());
-            memcpy(message.data(), envelope.str().data(), envelope.str().length());
-            s_publisher.send(message, ZMQ_SNDMORE);
-
-            Json::Value object(event[key]);
-            std::string value;
-
-            switch(object.type()) {
-                case Json::booleanValue:
-                    value = object.asBool() ? "true" : "false";
-                    break;
-                case Json::intValue:
-                case Json::uintValue:
-                    value = boost::lexical_cast<std::string>(object.asInt());
-                    break;
-                case Json::realValue:
-                    value = boost::lexical_cast<std::string>(object.asDouble());
-                    break;
-                case Json::stringValue:
-                    value = object.asString();
-                    break;
-                default:
-                    value = "<error: non-primitive type>";
-            }
-
-            message.rebuild(value.length());
-            memcpy(message.data(), value.data(), value.length());
-            s_publisher.send(message);
-        }
-    }
-}
-
-void core_t::interthread(ev::io& io, int revents) {
-    unsigned int code = 0;
-    
-    while(s_interthread.pending()) {
-        s_interthread.recv(code);
-
-        switch(code) {
-            case FUTURE: {
-                std::string future_id, key;
-                Json::Value value;
-                
-                boost::tuple<std::string&, std::string&, Json::Value&>
-                    tier(future_id, key, value);
-
-                s_interthread.recv_multi(tier);
-                future(future_id, key, value);
-                
-                break;
-            }
-            case SUICIDE: {
-                std::string engine_id, thread_id;
-                
-                boost::tuple<std::string&, std::string&> tier(engine_id, thread_id);
-                
-                s_interthread.recv_multi(tier);
-                reap(engine_id, thread_id);
-                
-                break;
-            }
-            default:
-                syslog(LOG_ERR, "core: received an unknown internal message");
-        }
-    }
-}
-
-void core_t::future(const std::string& future_id, const std::string& key, const Json::Value& value) {
-    future_map_t::iterator it(m_futures.find(future_id));
-    
-    if(it != m_futures.end()) {
-        it->second->push(key, value);
-    } else {
-        syslog(LOG_ERR, "core: found an orphan - part of future %s", future_id.c_str());
-    }
-}
-
-void core_t::reap(const std::string& engine_id, const std::string& thread_id) {
-    engine_map_t::iterator it(m_engines.find(engine_id));
-
-    if(it != m_engines.end()) {
-        syslog(LOG_DEBUG, "core: termination requested for thread %s in engine %s",
-            thread_id.c_str(), engine_id.c_str());
-        it->second->reap(thread_id);
-    } else {
-        syslog(LOG_ERR, "core: found an orphan - engine %s", engine_id.c_str());
-    }
 }
 
 struct uri_getter_t {

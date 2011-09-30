@@ -18,10 +18,13 @@ class engine_t:
         engine_t(zmq::context_t& context, const std::string& target);
         ~engine_t();
 
-        // Thread command forwarding
+        // Thread request forwarding
         void push(core::future_t* future, const Json::Value& args);
         void drop(core::future_t* future, const Json::Value& args);
 
+        // Thread tracking request forwarding
+        void track(const std::string& thread_id);
+        
         // Thread termination request handling
         void reap(const std::string& thread_id);
         

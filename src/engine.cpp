@@ -55,7 +55,7 @@ void engine_t::push(future_t* future, const Json::Value& args) {
         }
     }
         
-    it->second->command(PUSH, future, args);
+    it->second->request(PUSH, future, args);
 }
 
 void engine_t::drop(future_t* future, const Json::Value& args) {
@@ -70,10 +70,14 @@ void engine_t::drop(future_t* future, const Json::Value& args) {
     thread_map_t::iterator it(m_threads.find(thread_id));
 
     if(it != m_threads.end()) {
-        it->second->command(DROP, future, args);
+        it->second->request(DROP, future, args);
     } else {
         future->abort(m_target, "thread is not active");
     }
+}
+
+void engine_t::track(const std::string& thread_id) {
+    
 }
 
 void engine_t::reap(const std::string& thread_id) {
@@ -98,4 +102,3 @@ void engine_t::reap(const std::string& thread_id) {
         push(future, args);
     }
 }
-
