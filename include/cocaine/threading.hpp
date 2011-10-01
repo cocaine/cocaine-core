@@ -23,7 +23,6 @@ class overseer_t:
         // Thread entry point 
         void run(boost::shared_ptr<plugin::source_t> source);
         
-    public:
         // Driver termination request handling
         void reap(const std::string& driver_id);
 

@@ -32,14 +32,13 @@ core_t::core_t():
     char hostname[256];
 
     if(gethostname(hostname, 256) == 0) {
-        syslog(LOG_INFO, "core: hostname is '%s'", hostname);
         m_hostname = hostname;
     } else {
         throw std::runtime_error("failed to determine the hostname");
     }
 
     // Interthread channel
-    s_upstream.bind("inproc://interthread");
+    s_upstream.bind("inproc://core");
     e_upstream.set<core_t, &core_t::upstream>(this);
     e_upstream.start(s_upstream.fd(), EV_READ);
 
@@ -298,7 +297,8 @@ void core_t::past(future_t* future, const std::string& target, const Json::Value
     history_map_t::iterator it(m_histories.find(target));
 
     if(it == m_histories.end()) {
-        throw std::runtime_error("the past is empty");
+        future->abort(target, "the past is empty");
+        return;
     }
 
     Json::Value result(Json::arrayValue);
@@ -356,24 +356,24 @@ void core_t::upstream(ev::io& io, int revents) {
         switch(code) {
             case EVENT: {
                 std::string driver_id;
-                Json::Value value;
+                Json::Value object;
 
-                boost::tuple<std::string&, Json::Value&> tier(driver_id, value);
+                boost::tuple<std::string&, Json::Value&> tier(driver_id, object);
 
                 s_upstream.recv_multi(tier);
-                event(driver_id, value);
+                event(driver_id, object);
 
                 break;
             }
             case FUTURE: {
                 std::string future_id, key;
-                Json::Value value;
+                Json::Value object;
                 
                 boost::tuple<std::string&, std::string&, Json::Value&>
-                    tier(future_id, key, value);
+                    tier(future_id, key, object);
 
                 s_upstream.recv_multi(tier);
-                future(future_id, key, value);
+                future(future_id, key, object);
                 
                 break;
             }

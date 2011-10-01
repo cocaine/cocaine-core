@@ -38,7 +38,7 @@ overseer_t::overseer_t(auto_uuid_t id, zmq::context_t& context):
     m_cleanup.start();
 
     // Connecting to the core's downstream channel
-    m_downstream.connect("inproc://interthread");
+    m_downstream.connect("inproc://core");
 
     // Set timer compression threshold
     m_loop.set_timeout_collect_interval(config_t::get().engine.collect_timeout);
