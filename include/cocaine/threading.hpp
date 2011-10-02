@@ -29,6 +29,8 @@ class overseer_t:
     public:
         // Driver bindings
         const Json::Value& invoke();
+
+        inline std::string id() const { return m_id.get(); }
         inline ev::dynamic_loop& loop() { return m_loop; }
         inline zmq::context_t& context() { return m_context; }
         inline lines::channel_t& downstream() { return m_downstream; }
@@ -72,7 +74,7 @@ class overseer_t:
         ev::dynamic_loop m_loop;
         ev::io m_request;
         ev::timer m_suicide;
-        ev::prepare m_cleanup;
+        // ev::prepare m_cleanup;
         
         // Driver management (Driver ID -> Driver)
         typedef boost::ptr_map<const std::string, drivers::abstract_driver_t> slave_map_t;
@@ -86,8 +88,8 @@ class overseer_t:
         security::digest_t m_digest;
 
         // Event caching
-        Json::Value m_cache;
-        bool m_cached;
+        // Json::Value m_cache;
+        // bool m_cached;
 };
 
 // Thread interface

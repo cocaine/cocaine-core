@@ -355,10 +355,11 @@ void core_t::upstream(ev::io& io, int revents) {
 
         switch(code) {
             case EVENT: {
-                std::string driver_id;
+                std::string thread_id, driver_id;
                 Json::Value object;
 
-                boost::tuple<std::string&, Json::Value&> tier(driver_id, object);
+                boost::tuple<std::string&, std::string&, Json::Value&>
+                    tier(thread_id, driver_id, object);
 
                 s_upstream.recv_multi(tier);
                 event(driver_id, object);
@@ -403,10 +404,11 @@ void core_t::event(const std::string& driver_id, const Json::Value& event) {
     ev::tstamp now = m_loop.now();
 
     // Maintain the history for the given driver
-    history_map_t::iterator history = m_histories.find(driver_id);
+    history_map_t::iterator history(m_histories.find(driver_id));
 
     if(history == m_histories.end()) {
-        boost::tie(history, boost::tuples::ignore) = m_histories.insert(driver_id, new history_t());
+        boost::tie(history, boost::tuples::ignore) = m_histories.insert(driver_id,
+            new history_t());
     } else if(history->second->size() == config_t::get().core.history_depth) {
         history->second->pop_back();
     }
@@ -414,7 +416,7 @@ void core_t::event(const std::string& driver_id, const Json::Value& event) {
     history->second->push_front(std::make_pair(now, event));
 
     // Disassemble and send in the envelopes
-    Json::Value::Members members = event.getMemberNames();
+    Json::Value::Members members(event.getMemberNames());
 
     for(Json::Value::Members::iterator it = members.begin(); it != members.end(); ++it) {
         std::string key(*it);

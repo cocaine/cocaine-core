@@ -28,7 +28,8 @@ class abstract_driver_t:
         void publish(const Json::Value& result) {
             if(!m_id.empty() && !result.isNull()) {
                 m_parent->downstream().send_multi(boost::make_tuple(
-                    EVENT,     
+                    EVENT,
+                    m_parent->id(),
                     m_id,
                     result));
             }

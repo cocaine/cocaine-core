@@ -34,7 +34,17 @@ class driver_base_t:
         }
 
         virtual void operator()(WatcherType&, int) {
-            publish(m_parent->invoke());
+            Json::Value result;    
+            
+            try {
+                result = m_source->invoke();
+            } catch(const std::exception& e) {
+                syslog(LOG_ERR, "engine: error in %s driver - %s",
+                    m_id.c_str(), e.what());
+                result["error"] = e.what();
+            }
+            
+            publish(result);
         }
     
     protected:

@@ -19,9 +19,9 @@ overseer_t::overseer_t(auto_uuid_t id, zmq::context_t& context):
     m_downstream(m_context, ZMQ_PUSH),
     m_loop(),
     m_request(m_loop),
-    m_suicide(m_loop),
-    m_cleanup(m_loop),
-    m_cached(false)
+    m_suicide(m_loop)
+//  m_cleanup(m_loop),
+//  m_cached(false)
 {
     // Connect to the engine's controlling socket
     // and set the socket watcher
@@ -34,8 +34,8 @@ overseer_t::overseer_t(auto_uuid_t id, zmq::context_t& context):
     m_suicide.start(config_t::get().engine.suicide_timeout);
     
     // Cache cleanup watcher
-    m_cleanup.set<overseer_t, &overseer_t::cleanup>(this);
-    m_cleanup.start();
+    // m_cleanup.set<overseer_t, &overseer_t::cleanup>(this);
+    // m_cleanup.start();
 
     // Connecting to the core's downstream channel
     m_downstream.connect("inproc://core");
@@ -109,12 +109,12 @@ void overseer_t::timeout(ev::timer& w, int revents) {
     suicide();
 }
 
+/* XXX: I wonder if this caching is needed at all
 void overseer_t::cleanup(ev::prepare& w, int revents) {
     m_cache.clear();
     m_cached = false;
 }
 
-// XXX: I wonder if this caching is needed at all
 const Json::Value& overseer_t::invoke() {
     if(!m_cached) {
         try {
@@ -128,6 +128,7 @@ const Json::Value& overseer_t::invoke() {
 
     return m_cache;
 }
+*/
 
 template<class DriverType>
 Json::Value overseer_t::dispatch(unsigned int code, const Json::Value& args) {
@@ -204,7 +205,6 @@ Json::Value overseer_t::push(const Json::Value& args) {
 template<class DriverType>
 Json::Value overseer_t::drop(const Json::Value& args) {
     std::auto_ptr<DriverType> driver(new DriverType(this, m_source, args));
-
     slave_map_t::iterator slave;
     subscription_map_t::iterator client;
    
@@ -264,7 +264,13 @@ Json::Value overseer_t::drop(const Json::Value& args) {
 }
 
 Json::Value overseer_t::once(const Json::Value& args) {
-    Json::Value result(invoke());
+    Json::Value result;
+    
+    try {
+        result = m_source->invoke();
+    } catch(const std::exception& e) {
+        result["error"] = e.what();
+    }
 
     if(!args.get("isolated", false).asBool()) {
         // Rearm the stall timer if it's active

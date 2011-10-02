@@ -32,12 +32,11 @@ class zeromq_t:
                 m_sink->recv(&message);
 
                 try {
-                    result = m_source.get()->process(message.data(), message.size());
+                    result = m_source->process(message.data(), message.size());
                 } catch(const std::exception& e) {
-                    syslog(LOG_ERR, "engine: %s driver is broken - %s",
+                    syslog(LOG_ERR, "engine: error in %s driver - %s",
                         m_id.c_str(), e.what());
-                    stop();
-                    return;
+                    result["error"] = e.what();
                 }
 
                 publish(result);

@@ -5,9 +5,9 @@
 
 namespace cocaine { namespace engine { namespace drivers {
 
-template<class TimedDriverType>
+template<class T>
 class timed_driver_base_t:
-    public driver_base_t<ev::periodic, timed_driver_base_t<TimedDriverType> >
+    public driver_base_t<ev::periodic, timed_driver_base_t<T> >
 {
     public:
         timed_driver_base_t(threading::overseer_t* parent, boost::shared_ptr<plugin::source_t> source):
@@ -19,14 +19,8 @@ class timed_driver_base_t:
         }
 
     private:
-        inline ev::tstamp reschedule(ev::tstamp now) {
-            return static_cast<Type*>(this)->reschedule(now);
-        }
-
-        typedef TimedDriverType Type;
-
         static ev::tstamp thunk(ev_periodic* w, ev::tstamp now) {
-            timed_driver_base_t<Type>* driver = static_cast<timed_driver_base_t<Type>*>(w->data);
+            T* driver = static_cast<T*>(w->data);
 
             try {
                 return driver->reschedule(now);
