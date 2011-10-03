@@ -40,7 +40,7 @@ namespace msgpack {
         v.clear();
 
         if(!reader.parse(json, v)) {
-            throw std::runtime_error("corrupted json in the channel");
+            throw std::runtime_error("invalid json");
         }
 
         return v;

@@ -349,7 +349,7 @@ void core_t::stat(future_t* future) {
 
 void core_t::upstream(ev::io& io, int revents) {
     unsigned int code = 0;
-    
+   
     while(s_upstream.pending()) {
         s_upstream.recv(code);
 
