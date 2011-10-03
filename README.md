@@ -98,17 +98,15 @@ class MyClass(object):
 
 ```python
 >>> import zmq
->>> ctx = zmq.Context()
->>> req = ctx.socket(zmq.REQ)
->>> # Клиенту можно дать имя, чтобы демон кешировал данные в случае смерти клиента
->>> req.setsockopt(zmq.IDENTITY, "SuperDuperClient")
->>> req.connect('tcp://localhost:5000')
+>>> context = zmq.Context()
+>>> socket = ctx.socket(zmq.REQ)
+>>> socket.connect('tcp://localhost:5000')
 ```
 
 Обычный запрос:
 
 ```python
->>> req.send_json({
+>>> socket.send_json({
 ...     'version': 2,
 ...     'token': 'username',
 ...     'action': 'push',
@@ -121,52 +119,53 @@ class MyClass(object):
 ...          }
 ...     }
 ... })
->>> rep = req.recv_json() # rep = {'uri': {'key': 'auto:abc...'}}
->>>
->>> # А можно было брать код не локально, а откуда-нибудь
->>> # req.send_json({..., 'targets': {'python://server.yandex.net/code/file.py/MyClass?some_arg=5&another_arg=abc': {...}}})
->>> # rep = req.recv_json()
+>>> response = socket.recv_json()
+>>> print response
+{'python:///file.py/MyClass?some_arg=5&another_arg=abc': {'key': 'auto:de3ca129f34d...'}}
+>>> # Also, the code could be fetched from some remote host
+>>> # socket.send_json({..., 'targets': {'python://code.server.com/code/file.py...': {...}}})
 ```
 
 Просим делать что-нибудь с авторизацией:
 
 ```python
->>> from M2Crypto import EVP
 >>> import json
+>>> from M2Crypto import EVP
 >>> pk = EVP.load_key('/path/to/private-key.pem')
 >>> pk.sign_init()
->>> req = {'version': 3, ...}
->>> reqjs = json.write(req)
->>> pk.sign_update(reqjs)
+>>> request = {'version': 3, ...}
+>>> request_json = json.write(request)
+>>> pk.sign_update(request_json)
 >>> signature = pk.sign_final()
->>> req.send_multipart([reqjs, signature])
->>> rep = req.recv_json()
+>>> socket.send_multipart([request_json, signature])
+>>> response = socket.recv_json()
 ```
 
 Подписываемся на результаты:
 
 ```python
->>> # Получили ключик для подписки
->>> key = rep["python:///file.py/MyClass?some_arg=5&another_arg=abc"]["key"]
->>> # Подписываемся
->>> sub = ctx.socket(zmq.SUB)
->>> # Если хочется персистентности, можно тоже дать имя
->>> sub.setsockopt(zmq.IDENTITY, "SuperDuperClient")
->>> sub.setsockopt(zmq.SUBSCRIBE, key)
->>> # или можно подписаться только на одно поле
->>> sub.setsockopt(zmq.SUBSCRIBE, "%s another-field" % key)
->>> sub.connect('tcp://localhost:5001')
->>> # И начинаем получать данные
+>>> # Get the subscription key
+>>> key = response["python:///file.py/MyClass?some_arg=5&another_arg=abc"]["key"]
+>>> # Create a subscriber socket
+>>> subscriber = context.socket(zmq.SUB)
+>>> # To enable ZeroMQ guaranteed delivery feature, set the socket identity
+>>> subscriber.setsockopt(zmq.IDENTITY, "ClientName")
+>>> # Subscribe to the source
+>>> subscriber.setsockopt(zmq.SUBSCRIBE, key)
+>>> # Alternatively, subscribe to a set of fields, ignoring all the others
+>>> # subscriber.setsockopt(zmq.SUBSCRIBE, "%s another-field" % key)
+>>> subscriber.connect('tcp://localhost:5001')
+>>> # Receive the results
 >>> while True:
->>>     print sub.recv_multipart()
+>>>     print subscriber.recv_multipart()
 ```
 
 Делаем once-запрос:
 
 ```python
->>> req.send_json({
+>>> socket.send_json({
 ...     'version': 2,
-...     'token': 'some-secret',
+...     'token': 'username',
 ...     'action': 'push',
 ...     'targets': {
 ...         'python:///file.py/MyClass?some_arg=5&another_arg=abc': {
@@ -175,5 +174,7 @@ class MyClass(object):
 ...          }
 ...     }
 ... })
->>> rep = req.recv_json() # rep = {'uri': {'some-field': '10', 'another-field': 'abc'}}
+>>> response = socket.recv_json()
+>>> print response
+{'python:///file.py/MyClass?some_arg=5&another_arg=abc': {'some-field': 10, 'another-field': 'abc'}}
 ```
