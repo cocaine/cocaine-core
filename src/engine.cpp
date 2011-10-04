@@ -12,8 +12,7 @@ using namespace cocaine::helpers;
 
 engine_t::engine_t(zmq::context_t& context, const std::string& target):
     m_context(context),
-    m_target(target),
-    m_default_thread_id(auto_uuid_t().get())
+    m_target(target)
 {
     syslog(LOG_INFO, "engine %s: starting", m_target.c_str());
 }
@@ -24,14 +23,7 @@ engine_t::~engine_t() {
 }
 
 void engine_t::push(future_t* future, const Json::Value& args) {
-    std::string thread_id;
-
-    if(!args.get("isolated", false).asBool()) {
-        thread_id = m_default_thread_id;
-    } else {
-        thread_id = args.get("thread", auto_uuid_t().get()).asString();
-    }
-    
+    std::string thread_id(args.get("thread", auto_uuid_t().get()).asString());
     thread_map_t::iterator it(m_threads.find(thread_id));
 
     if(it == m_threads.end()) {
@@ -59,14 +51,7 @@ void engine_t::push(future_t* future, const Json::Value& args) {
 }
 
 void engine_t::drop(future_t* future, const Json::Value& args) {
-    std::string thread_id;
-
-    if(!args.get("isolated", false).asBool()) {
-        thread_id = m_default_thread_id;
-    } else {
-        thread_id = args.get("thread", "").asString();
-    }
-
+    std::string thread_id(args.get("thread", "").asString());
     thread_map_t::iterator it(m_threads.find(thread_id));
 
     if(it != m_threads.end()) {

@@ -322,7 +322,9 @@ void core_t::past(future_t* future, const std::string& target, const Json::Value
 }
 
 void core_t::stat(future_t* future) {
-    Json::Value engines, threads, requests;
+    Json::Value engines(Json::objectValue),
+                threads(Json::objectValue),
+                requests(Json::objectValue);
 
     future->reserve(boost::assign::list_of
         ("engines")

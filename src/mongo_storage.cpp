@@ -18,7 +18,7 @@ mongo_storage_t::mongo_storage_t() try:
 
 void mongo_storage_t::put(const std::string& store, const std::string& key, const Json::Value& value) {
     Json::FastWriter writer;
-    Json::Value nested;
+    Json::Value nested(Json::objectValue);
 
     nested["key"] = key;
     nested["value"] = value;
@@ -55,7 +55,7 @@ bool mongo_storage_t::exists(const std::string& store, const std::string& key) {
 
 Json::Value mongo_storage_t::get(const std::string& store, const std::string& key) {
     Json::Reader reader;
-    Json::Value result;
+    Json::Value result(Json::objectValue);
     BSONObj object;
 
     try {
@@ -79,7 +79,7 @@ Json::Value mongo_storage_t::get(const std::string& store, const std::string& ke
 
 Json::Value mongo_storage_t::all(const std::string& store) {
     Json::Reader reader;
-    Json::Value root, result;
+    Json::Value root(Json::objectValue), result;
 
     try {
         ScopedDbConnection connection(m_url);

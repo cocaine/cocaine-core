@@ -27,9 +27,9 @@ class overseer_t:
         void reap(const std::string& driver_id);
 
     public:
-        // Driver bindings
-        const Json::Value& invoke();
+        // const Json::Value& invoke();
 
+        // Driver bindings
         inline std::string id() const { return m_id.get(); }
         inline ev::dynamic_loop& loop() { return m_loop; }
         inline zmq::context_t& context() { return m_context; }
@@ -39,7 +39,7 @@ class overseer_t:
         // Event loop callback handling
         void request(ev::io& w, int revents);
         void timeout(ev::timer& w, int revents);
-        void cleanup(ev::prepare& w, int revents);
+        // void cleanup(ev::prepare& w, int revents);
 
         // Thread request disptaching
         template<class DriverType> 
@@ -55,9 +55,6 @@ class overseer_t:
         Json::Value once(const Json::Value& args);
         
         void terminate();
-
-        // Suicide request forwarding
-        void suicide();
 
     private:
         // Thread ID

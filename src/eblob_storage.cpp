@@ -109,7 +109,7 @@ bool eblob_storage_t::exists(const std::string& store, const std::string& key) {
 }
 
 Json::Value eblob_storage_t::get(const std::string& store, const std::string& key) {
-    Json::Value root(Json::objectValue);
+    Json::Value result(Json::objectValue);
     eblob_map_t::iterator it(m_eblobs.find(store));
     
     if(it != m_eblobs.end()) {
@@ -123,12 +123,12 @@ Json::Value eblob_storage_t::get(const std::string& store, const std::string& ke
             throw;
         }
 
-        if(!object.empty() && !reader.parse(object, root)) {
+        if(!object.empty() && !reader.parse(object, result)) {
             throw std::runtime_error("corrupted data in '" + store + "'");
         }
     }
 
-    return root;
+    return result;
 }
 
 Json::Value eblob_storage_t::all(const std::string& store) const {

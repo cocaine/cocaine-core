@@ -64,7 +64,7 @@ void overseer_t::request(ev::io& w, int revents) {
             case PUSH:
             case DROP: {
                 std::string future_id, driver_type;
-                Json::Value args, result;
+                Json::Value args, result(Json::objectValue);
 
                 // Get the remaining payload
                 boost::tuple<std::string&, Json::Value&> tier(future_id, args);
@@ -90,6 +90,8 @@ void overseer_t::request(ev::io& w, int revents) {
                     result["error"] = e.what();
                 }
 
+                result["thread"] = m_id.get();
+
                 m_downstream.send_multi(boost::make_tuple(
                     FUTURE,
                     future_id,
@@ -106,7 +108,10 @@ void overseer_t::request(ev::io& w, int revents) {
 }
  
 void overseer_t::timeout(ev::timer& w, int revents) {
-    suicide();
+    m_downstream.send_multi(boost::make_tuple(
+        SUICIDE,
+        m_source->uri(), /* engine id */
+        m_id.get()));    /* thread id */
 }
 
 /* XXX: I wonder if this caching is needed at all
@@ -142,7 +147,8 @@ Json::Value overseer_t::dispatch(unsigned int code, const Json::Value& args) {
 
 template<class DriverType>
 Json::Value overseer_t::push(const Json::Value& args) {
-    Json::Value result;
+    Json::Value result(Json::objectValue);
+
     std::auto_ptr<DriverType> driver(new DriverType(this, m_source, args));
     std::string driver_id(driver->id());
     
@@ -152,7 +158,8 @@ Json::Value overseer_t::push(const Json::Value& args) {
         m_slaves.insert(driver_id, driver);
 
         if(m_suicide.is_active()) {
-            syslog(LOG_DEBUG, "engine %s: suicide timer stopped", m_source->uri().c_str());
+            syslog(LOG_DEBUG, "engine %s: thread %s suicide timer stopped",
+                m_id.get().c_str(), m_source->uri().c_str());
             m_suicide.stop();
         }
     }
@@ -169,15 +176,14 @@ Json::Value overseer_t::push(const Json::Value& args) {
     std::equal_to<subscription_map_t::value_type> equality;
 
     if(std::find_if(begin, end, boost::bind(equality, subscription, _1)) == end) {
-        syslog(LOG_DEBUG, "engine %s: subscribing '%s'", m_source->uri().c_str(),
-            token.c_str());
+        syslog(LOG_DEBUG, "engine %s: thread %s subscribing '%s'", m_source->uri().c_str(),
+            m_id.get().c_str(), token.c_str());
         m_subscriptions.insert(subscription);
     }
     
     // Persistance
     if(!args.get("transient", false).asBool()) {
-        std::string thread_id(args.get("isolated", false).asBool() ? m_id.get() : "");
-        std::string object_id(m_digest.get(driver_id + token + thread_id));
+        std::string object_id(m_digest.get(m_id.get() + driver_id + token));
        
         try { 
             if(!storage_t::instance()->exists("tasks", object_id)) {
@@ -185,17 +191,13 @@ Json::Value overseer_t::push(const Json::Value& args) {
                 
                 object["uri"] = m_source->uri();
                 object["args"] = args;
-                
-                if(!thread_id.empty()) {
-                    object["args"]["thread"] = thread_id;
-                    result["thread"] = thread_id;
-                }
+                object["args"]["thread"] = m_id.get();
 
                 storage_t::instance()->put("tasks", object_id, object);
             }
         } catch(const std::runtime_error& e) {
-            syslog(LOG_ERR, "engine %s: storage failure while pushing a task - %s",
-                m_source->uri().c_str(), e.what());
+            syslog(LOG_ERR, "engine %s: storage failure in thread %s while pushing a task - %s",
+                m_source->uri().c_str(), m_id.get().c_str(), e.what());
         }
     }
 
@@ -205,6 +207,7 @@ Json::Value overseer_t::push(const Json::Value& args) {
 template<class DriverType>
 Json::Value overseer_t::drop(const Json::Value& args) {
     std::auto_ptr<DriverType> driver(new DriverType(this, m_source, args));
+    
     slave_map_t::iterator slave;
     subscription_map_t::iterator client;
    
@@ -230,25 +233,19 @@ Json::Value overseer_t::drop(const Json::Value& args) {
 
             // If it was the last slave, start the suicide timer
             if(m_slaves.empty()) {
-                if(!args.get("isolated", false).asBool()) {
-                    syslog(LOG_DEBUG, "engine %s: suicide timer started",
-                        m_source->uri().c_str());
-                    m_suicide.start(config_t::get().engine.suicide_timeout);
-                } else {
-                    // Or, if it was an isolated thread, suicide.
-                    suicide();
-                }
+                syslog(LOG_DEBUG, "engine %s: thread %s suicide timer started",
+                    m_id.get().c_str(), m_source->uri().c_str());
+                m_suicide.start(config_t::get().engine.suicide_timeout);
             }
 
             // Un-persist
-            std::string thread_id(args.get("isolated", false).asBool() ? m_id.get() : "");
-            std::string object_id(m_digest.get(driver->id() + token + thread_id));
+            std::string object_id(m_digest.get(m_id.get() + driver->id() + token));
             
             try {
                 storage_t::instance()->remove("tasks", object_id);
             } catch(const std::runtime_error& e) {
-                syslog(LOG_ERR, "engine %s: storage failure while dropping a task - %s",
-                    m_source->uri().c_str(), e.what());
+                syslog(LOG_ERR, "engine %s: storage failure in thread %s while dropping a task - %s",
+                    m_source->uri().c_str(), m_id.get().c_str(), e.what());
             }
         } else {
             throw std::runtime_error("access denied");
@@ -257,32 +254,27 @@ Json::Value overseer_t::drop(const Json::Value& args) {
         throw std::runtime_error("driver is not active");
     }
 
-    Json::Value result;
+    Json::Value result(Json::objectValue);
     result["status"] = "success";
 
     return result;
 }
 
 Json::Value overseer_t::once(const Json::Value& args) {
-    Json::Value result;
+    Json::Value result(Json::objectValue);
     
     try {
-        result = m_source->invoke();
+        result["result"] = m_source->invoke();
     } catch(const std::exception& e) {
         result["error"] = e.what();
     }
 
-    if(!args.get("isolated", false).asBool()) {
-        // Rearm the stall timer if it's active
-        if(m_suicide.is_active()) {
-            syslog(LOG_DEBUG, "engine %s: suicide timer rearmed", m_source->uri().c_str());
-            m_suicide.stop();
-            m_suicide.start(config_t::get().engine.suicide_timeout);
-        }
-    } else {
-        // If it's a one-time isolated task, then it was a kamikaze mission,
-        // and we can safely kill ourselves
-        suicide();
+    // Rearm the stall timer if it's active
+    if(m_suicide.is_active()) {
+        syslog(LOG_DEBUG, "engine %s: thread %s suicide timer rearmed", 
+            m_id.get().c_str(), m_source->uri().c_str());
+        m_suicide.stop();
+        m_suicide.start(config_t::get().engine.suicide_timeout);
     }
 
     return result;
@@ -292,16 +284,16 @@ void overseer_t::reap(const std::string& driver_id) {
     slave_map_t::iterator it(m_slaves.find(driver_id));
 
     if(it == m_slaves.end()) {
-        syslog(LOG_ERR, "engine %s: found an orphan - driver %s", 
-            m_source->uri().c_str(), driver_id.c_str());
+        syslog(LOG_ERR, "engine %s: found an orphan in thread %s - driver %s", 
+            m_source->uri().c_str(), m_id.get().c_str(), driver_id.c_str());
         return;
     }
 
     m_slaves.erase(it);
 
-    // XXX: Have to suicide here, if it was an isolated thread
     if(m_slaves.empty()) {
-        syslog(LOG_DEBUG, "engine %s: suicide timer started", m_source->uri().c_str());
+        syslog(LOG_DEBUG, "engine %s: thread %s suicide timer started", 
+            m_id.get().c_str(), m_source->uri().c_str());
         m_suicide.start(config_t::get().engine.suicide_timeout);
     }
 }
@@ -311,13 +303,6 @@ void overseer_t::terminate() {
     m_source.reset();
     m_loop.unloop();
 } 
-
-void overseer_t::suicide() {
-    m_downstream.send_multi(boost::make_tuple(
-        SUICIDE,
-        m_source->uri(), /* engine id */
-        m_id.get()));    /* thread id */
-}
 
 // Thread interface
 // ----------------
@@ -353,8 +338,8 @@ thread_t::~thread_t() {
 }
 
 void thread_t::run(boost::shared_ptr<source_t> source) {
-    syslog(LOG_DEBUG, "thread %s: starting for %s", m_id.get().c_str(),
-        source->uri().c_str());
+    syslog(LOG_DEBUG, "engine %s: thread %s is starting", source->uri().c_str(),
+        m_id.get().c_str());
 
     try {
         m_thread.reset(new boost::thread(
