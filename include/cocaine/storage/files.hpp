@@ -2,6 +2,7 @@
 #define COCAINE_FILE_STORAGE_HPP
 
 #include <boost/filesystem.hpp>
+#include <boost/thread/mutex.hpp>
 
 #include "cocaine/storage/abstract.hpp"
 
@@ -24,6 +25,7 @@ class file_storage_t:
         virtual void purge(const std::string& store);
 
     private:
+        boost::mutex m_mutex;
         boost::filesystem::path m_storage_path;
         std::string m_instance;
 };

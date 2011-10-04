@@ -12,7 +12,7 @@ class auto_uuid_t {
             char unparsed_uuid[37];
 
             uuid_generate(uuid);
-            uuid_unparse(uuid, unparsed_uuid);
+            uuid_unparse_lower(uuid, unparsed_uuid);
 
             m_uuid = unparsed_uuid;
         }

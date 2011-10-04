@@ -20,6 +20,7 @@ file_storage_t::file_storage_t():
 {}
 
 void file_storage_t::put(const std::string& store, const std::string& key, const Json::Value& value) {
+    boost::mutex::scoped_lock lock(m_mutex);
     fs::path store_path(m_storage_path / m_instance / store);
 
     if(!fs::exists(store_path)) {
@@ -47,11 +48,14 @@ void file_storage_t::put(const std::string& store, const std::string& key, const
 }
 
 bool file_storage_t::exists(const std::string& store, const std::string& key) {
+    boost::mutex::scoped_lock lock(m_mutex);
     fs::path filepath(m_storage_path / m_instance / store / key);
+    
     return fs::exists(filepath) && fs::is_regular(filepath);
 }
 
 Json::Value file_storage_t::get(const std::string& store, const std::string& key) {
+    boost::mutex::scoped_lock lock(m_mutex);
     Json::Value root(Json::objectValue);
     Json::Reader reader(Json::Features::strictMode());
     fs::path filepath(m_storage_path / m_instance / store / key);
@@ -67,6 +71,7 @@ Json::Value file_storage_t::get(const std::string& store, const std::string& key
 }
 
 Json::Value file_storage_t::all(const std::string& store) {
+    boost::mutex::scoped_lock lock(m_mutex);
     Json::Value root(Json::objectValue);
     fs::path store_path(m_storage_path / m_instance / store);
 
@@ -100,6 +105,7 @@ Json::Value file_storage_t::all(const std::string& store) {
 }
 
 void file_storage_t::remove(const std::string& store, const std::string& key) {
+    boost::mutex::scoped_lock lock(m_mutex);
     fs::path file_path(m_storage_path / m_instance / store / key);
 
     if(fs::exists(file_path)) {
@@ -112,6 +118,7 @@ void file_storage_t::remove(const std::string& store, const std::string& key) {
 }
 
 void file_storage_t::purge(const std::string& store) {
+    boost::mutex::scoped_lock lock(m_mutex);
     fs::remove_all(m_storage_path / m_instance / store);
 }
 
