@@ -311,8 +311,7 @@ void core_t::past(future_t* future, const std::string& target, const Json::Value
     history_map_t::iterator it(m_histories.find(key));
 
     if(it == m_histories.end()) {
-        future->abort(target, "the past for a given key is empty");
-        return;
+        throw std::runtime_error("the past for a given key is empty");
     }
 
     Json::Value result(Json::arrayValue);
