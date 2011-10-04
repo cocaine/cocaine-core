@@ -63,11 +63,12 @@ void overseer_t::request(ev::io& w, int revents) {
         switch(code) {
             case PUSH:
             case DROP: {
-                std::string future_id, driver_type;
+                std::string future_id, target, driver_type;
                 Json::Value args, result(Json::objectValue);
 
                 // Get the remaining payload
-                boost::tuple<std::string&, Json::Value&> tier(future_id, args);
+                boost::tuple<std::string&, std::string&, Json::Value&>
+                    tier(future_id, target, args);
                 m_upstream.recv_multi(tier);
 
                 try {
@@ -95,7 +96,7 @@ void overseer_t::request(ev::io& w, int revents) {
                 m_downstream.send_multi(boost::make_tuple(
                     FUTURE,
                     future_id,
-                    m_source->uri(),
+                    target,
                     result));
 
                 break;
@@ -159,7 +160,7 @@ Json::Value overseer_t::push(const Json::Value& args) {
 
         if(m_suicide.is_active()) {
             syslog(LOG_DEBUG, "engine %s: thread %s suicide timer stopped",
-                m_id.get().c_str(), m_source->uri().c_str());
+                m_source->uri().c_str(), m_id.get().c_str());
             m_suicide.stop();
         }
     }
@@ -187,11 +188,9 @@ Json::Value overseer_t::push(const Json::Value& args) {
        
         try { 
             if(!storage_t::instance()->exists("tasks", object_id)) {
-                Json::Value object(Json::objectValue);
+                Json::Value object(args);
                 
-                object["uri"] = m_source->uri();
-                object["args"] = args;
-                object["args"]["thread"] = m_id.get();
+                object["thread"] = m_id.get();
 
                 storage_t::instance()->put("tasks", object_id, object);
             }
@@ -234,7 +233,7 @@ Json::Value overseer_t::drop(const Json::Value& args) {
             // If it was the last slave, start the suicide timer
             if(m_slaves.empty()) {
                 syslog(LOG_DEBUG, "engine %s: thread %s suicide timer started",
-                    m_id.get().c_str(), m_source->uri().c_str());
+                    m_source->uri().c_str(), m_id.get().c_str());
                 m_suicide.start(config_t::get().engine.suicide_timeout);
             }
 
@@ -272,7 +271,7 @@ Json::Value overseer_t::once(const Json::Value& args) {
     // Rearm the stall timer if it's active
     if(m_suicide.is_active()) {
         syslog(LOG_DEBUG, "engine %s: thread %s suicide timer rearmed", 
-            m_id.get().c_str(), m_source->uri().c_str());
+            m_source->uri().c_str(), m_id.get().c_str());
         m_suicide.stop();
         m_suicide.start(config_t::get().engine.suicide_timeout);
     }
@@ -293,7 +292,7 @@ void overseer_t::reap(const std::string& driver_id) {
 
     if(m_slaves.empty()) {
         syslog(LOG_DEBUG, "engine %s: thread %s suicide timer started", 
-            m_id.get().c_str(), m_source->uri().c_str());
+            m_source->uri().c_str(), m_id.get().c_str());
         m_suicide.start(config_t::get().engine.suicide_timeout);
     }
 }
@@ -349,10 +348,11 @@ void thread_t::run(boost::shared_ptr<source_t> source) {
     }
 }
 
-void thread_t::request(unsigned int code, core::future_t* future, const Json::Value& args) {
+void thread_t::request(unsigned int code, core::future_t* future, const std::string& target, const Json::Value& args) {
     m_downstream.send_multi(boost::make_tuple(
         code,
         future->id(),
+        target,
         args));
 }
 

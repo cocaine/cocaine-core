@@ -102,7 +102,8 @@ class thread_t:
         void run(boost::shared_ptr<plugin::source_t> source);
 
         // Thread request forwarding
-        void request(unsigned int code, core::future_t* future, const Json::Value& args);
+        void request(unsigned int code, core::future_t* future,
+            const std::string& target, const Json::Value& args);
 
         // Thread tracking request handling
         void track();

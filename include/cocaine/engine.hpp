@@ -15,12 +15,12 @@ class engine_t:
     public helpers::birth_control_t<engine_t>
 {
     public:
-        engine_t(zmq::context_t& context, const std::string& target);
+        engine_t(zmq::context_t& context, const std::string& uri);
         ~engine_t();
 
         // Thread request forwarding
-        void push(core::future_t* future, const Json::Value& args);
-        void drop(core::future_t* future, const Json::Value& args);
+        void push(core::future_t* future, const std::string& target, const Json::Value& args);
+        void drop(core::future_t* future, const std::string& target, const Json::Value& args);
 
         // Thread tracking request forwarding
         void track(const std::string& thread_id);
@@ -32,17 +32,14 @@ class engine_t:
         zmq::context_t& m_context;
 
         // Engine URI
-        const std::string m_target;
+        const std::string m_uri;
         
-        // Default thread to route all requests to
-        const std::string m_default_thread_id;
-
         // Thread management (Thread ID -> Thread)
         typedef boost::ptr_map<const std::string, threading::thread_t> thread_map_t;
         thread_map_t m_threads;
 
         // Overflow task queue
-        std::queue< std::pair<core::future_t*, Json::Value> > m_pending;
+        std::queue< boost::tuple<core::future_t*, std::string, Json::Value> > m_pending;
 };
 
 }}

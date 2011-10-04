@@ -71,7 +71,6 @@ Json::Value file_storage_t::get(const std::string& store, const std::string& key
 }
 
 Json::Value file_storage_t::all(const std::string& store) {
-    boost::mutex::scoped_lock lock(m_mutex);
     Json::Value root(Json::objectValue);
     fs::path store_path(m_storage_path / m_instance / store);
 

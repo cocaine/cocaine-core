@@ -270,34 +270,48 @@ void core_t::dispatch(future_t* future, const Json::Value& root) {
 
 void core_t::push(future_t* future, const std::string& target, const Json::Value& args) {
     // Check if we have an engine running for the given uri
-    engine_map_t::iterator it(m_engines.find(target)); 
+    std::string uri(args["uri"].asString());
+    
+    if(uri.empty()) {
+        throw std::runtime_error("no source uri has been specified");
+    }
+    
+    engine_map_t::iterator it(m_engines.find(uri)); 
 
     if(it == m_engines.end()) {
         // If the engine wasn't found, try to start a new one
-        boost::tie(it, boost::tuples::ignore) = m_engines.insert(target,
-            new engine_t(m_context, target));
+        boost::tie(it, boost::tuples::ignore) = m_engines.insert(
+            uri,
+            new engine_t(m_context, uri));
     }
 
     // Dispatch!
-    it->second->push(future, args);
+    it->second->push(future, target, args);
 }
 
 void core_t::drop(future_t* future, const std::string& target, const Json::Value& args) {
-    engine_map_t::iterator it(m_engines.find(target));
+    std::string uri(args["uri"].asString());
+    engine_map_t::iterator it(m_engines.find(uri));
     
     if(it == m_engines.end()) {
         throw std::runtime_error("engine is not active");
     }
 
     // Dispatch!
-    it->second->drop(future, args);
+    it->second->drop(future, target, args);
 }
 
 void core_t::past(future_t* future, const std::string& target, const Json::Value& args) {
-    history_map_t::iterator it(m_histories.find(target));
+    std::string key(args["key"].asString());
+
+    if(key.empty()) {
+        throw std::runtime_error("no driver id has been specified");
+    }
+
+    history_map_t::iterator it(m_histories.find(key));
 
     if(it == m_histories.end()) {
-        future->abort(target, "the past is empty");
+        future->abort(target, "the past for a given key is empty");
         return;
     }
 
@@ -523,12 +537,6 @@ void core_t::seal(const std::string& future_id) {
     m_futures.erase(it);
 }
 
-struct uri_getter_t {
-    std::string operator()(const Json::Value& element) {
-        return element["uri"].asString();
-    }
-};
-
 void core_t::recover() {
     // NOTE: Allowing the exception to propagate here, as this is a fatal error
     Json::Value root(storage::storage_t::instance()->all("tasks"));
@@ -540,20 +548,18 @@ void core_t::recover() {
         future_t* future = new future_t(this, std::vector<std::string>());
         m_futures.insert(future->id(), future);
        
-        // Extract URLs from the loaded object 
-        std::vector<std::string> uris;
-        std::transform(root.begin(), root.end(), std::back_inserter(uris), uri_getter_t());
-        future->reserve(uris);
-
         // Push them as if they were normal requests
-        for(Json::ValueIterator it = root.begin(); it != root.end(); ++it) {
-            std::string uri((*it)["uri"].asString());
+        Json::Value::Members hashes(root.getMemberNames());
+        future->reserve(hashes);
+
+        for(Json::Value::Members::const_iterator it = hashes.begin(); it != hashes.end(); ++it) {
+            std::string hash(*it);
             
             try {
-                push(future, uri, (*it)["args"]);
+                push(future, hash, root[hash]);
             } catch(const std::runtime_error& e) {
                 syslog(LOG_ERR, "core: error in recover() - %s", e.what());
-                future->abort(uri, e.what());
+                future->abort(hash, e.what());
             }
         }
     }
