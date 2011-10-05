@@ -22,6 +22,9 @@ class fs_t:
             }
 
             m_id = "fs:" + digest_t().get(source->uri() + m_path);
+            
+            syslog(LOG_DEBUG, "thread %s in %s: driver %s is starting for '%s'",
+                m_parent->id().c_str(), m_source->uri().c_str(), m_id.c_str(), m_path.c_str());
         }
 
         inline void initialize() {

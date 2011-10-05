@@ -25,8 +25,9 @@ class timed_driver_base_t:
             try {
                 return driver->reschedule(now);
             } catch(const std::exception& e) {
-                syslog(LOG_ERR, "engine: %s driver is broken - %s",
-                    driver->id().c_str(), e.what());
+                syslog(LOG_ERR, "driver %s in thread %s in %s: [%s()] %s",
+                    driver->id().c_str(), driver->m_parent->id().c_str(), 
+                    driver->m_source->uri().c_str(), __func__, e.what());
                 driver->stop();
                 return now;
             }

@@ -25,6 +25,9 @@ class auto_t:
 
             m_id = "auto:" + digest_t().get(m_source->uri() + 
                 boost::lexical_cast<std::string>(m_interval));
+        
+            syslog(LOG_DEBUG, "thread %s in %s: driver %s is starting with %.02fs intervals",
+                m_parent->id().c_str(), m_source->uri().c_str(), m_id.c_str(), m_interval);
         }
        
         inline ev::tstamp reschedule(ev::tstamp now) {

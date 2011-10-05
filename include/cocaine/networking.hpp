@@ -28,7 +28,7 @@ class socket_t:
             try {
                 return m_socket.send(message, flags);
             } catch(const zmq::error_t& e) {
-                syslog(LOG_ERR, "net: send() failed - %s", e.what());
+                syslog(LOG_ERR, "net: [%s()] %s", __func__, e.what());
                 return false;
             }
         }
@@ -37,7 +37,7 @@ class socket_t:
             try {
                 return m_socket.recv(message, flags);
             } catch(const zmq::error_t& e) {
-                syslog(LOG_ERR, "net: recv() failed - %s", e.what());
+                syslog(LOG_ERR, "net: [%s()] %s", __func__, e.what());
                 return false;
             }
         }
@@ -134,7 +134,7 @@ class channel_t:
                 msgpack::object object = unpacked.get();
                 object.convert(&result);
             } catch(const std::exception& e) {
-                syslog(LOG_ERR, "net: corrupted object - %s", e.what());
+                syslog(LOG_ERR, "net: [%s()] corrupted object - %s", __func__, e.what());
                 return false;
             }
 

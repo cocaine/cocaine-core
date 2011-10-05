@@ -27,8 +27,6 @@ class overseer_t:
         void reap(const std::string& driver_id);
 
     public:
-        // const Json::Value& invoke();
-
         // Driver bindings
         inline std::string id() const { return m_id.get(); }
         inline ev::dynamic_loop& loop() { return m_loop; }
@@ -36,23 +34,16 @@ class overseer_t:
         inline lines::channel_t& downstream() { return m_downstream; }
 
     private:
-        // Event loop callback handling
+        // Event loop callback handling and dispatching
         void request(ev::io& w, int revents);
         void timeout(ev::timer& w, int revents);
-        // void cleanup(ev::prepare& w, int revents);
-
-        // Thread request disptaching
-        template<class DriverType> 
-        inline Json::Value dispatch(unsigned int code, const Json::Value& args);
 
         // Thread request handling
-        template<class DriverType> 
+        template<class DriverType>
         Json::Value push(const Json::Value& args);
         
-        template<class DriverType>
-        Json::Value drop(const Json::Value& args);
-        
-        Json::Value once(const Json::Value& args);
+        Json::Value drop(const std::string& driver_id);
+        Json::Value once();
         
         void terminate();
 
@@ -71,22 +62,13 @@ class overseer_t:
         ev::dynamic_loop m_loop;
         ev::io m_request;
         ev::timer m_suicide;
-        // ev::prepare m_cleanup;
         
         // Driver management (Driver ID -> Driver)
         typedef boost::ptr_map<const std::string, drivers::abstract_driver_t> slave_map_t;
         slave_map_t m_slaves;
 
-        // Subscription management (Driver ID -> Tokens)
-        typedef std::multimap<const std::string, std::string> subscription_map_t;
-        subscription_map_t m_subscriptions;
-
         // Storage key generation
         security::digest_t m_digest;
-
-        // Event caching
-        // Json::Value m_cache;
-        // bool m_cached;
 };
 
 // Thread interface
@@ -102,8 +84,8 @@ class thread_t:
         void run(boost::shared_ptr<plugin::source_t> source);
 
         // Thread request forwarding
-        void request(unsigned int code, core::future_t* future,
-            const std::string& target, const Json::Value& args);
+        void push(core::future_t* future, const std::string& target, const Json::Value& args);
+        void drop(core::future_t* future, const std::string& target, const Json::Value& args);
 
         // Thread tracking request handling
         void track();

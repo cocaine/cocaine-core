@@ -108,7 +108,7 @@ void core_t::reload(ev::sig& sig, int revents) {
     try {
         recover();
     } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "core: reload failed - %s", e.what());
+        syslog(LOG_ERR, "core: [%s()] storage failure - %s", __func__, e.what());
     }
 }
 
@@ -122,7 +122,7 @@ void core_t::purge(ev::sig& sig, int revents) {
     try {
         storage::storage_t::instance()->purge("tasks");
     } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "core: purge failed - %s", e.what());
+        syslog(LOG_ERR, "core: [%s()] storage failure - %s", __func__, e.what());
     }    
 }
 
@@ -177,7 +177,7 @@ void core_t::request(ev::io& io, int revents) {
                 }
 
                 unsigned int version = root.get("version", 1).asUInt();
-                std::string username(root.get("token", "").asString());
+                std::string username(root.get("username", "").asString());
                 
                 if(version < 2) {
                     throw std::runtime_error("outdated protocol version");
@@ -196,11 +196,11 @@ void core_t::request(ev::io& io, int revents) {
                 // Request dispatching is performed in this function
                 dispatch(future, root); 
             } catch(const std::exception& e) {
-                syslog(LOG_ERR, "core: invalid request - %s", e.what());
+                syslog(LOG_ERR, "core: [%s()] %s", __func__, e.what());
                 future->abort(e.what());
             }
         } else {
-            syslog(LOG_ERR, "core: invalid json - %s",
+            syslog(LOG_ERR, "core: [%s()] %s", __func__,
                 reader.getFormatedErrorMessages().c_str());
             future->abort(reader.getFormatedErrorMessages());
         }
@@ -229,10 +229,6 @@ void core_t::dispatch(future_t* future, const Json::Value& root) {
             // Invoke the handler
             try {
                 if(args.isObject()) {
-                    if(!args["token"].isString() || args["token"].asString().empty()) {
-                        args["token"] = root["token"];
-                    }
-
                     if(action == "push") {
                         push(future, target, args);
                     } else if(action == "drop") {
@@ -244,7 +240,7 @@ void core_t::dispatch(future_t* future, const Json::Value& root) {
                     throw std::runtime_error("arguments expected");
                 }
             } catch(const std::runtime_error& e) {
-                syslog(LOG_ERR, "core: error in dispatch() - %s", e.what());
+                syslog(LOG_ERR, "core: [%s()] %s", __func__, e.what());
                 future->abort(target, e.what());
             }
         }
@@ -415,7 +411,7 @@ void core_t::upstream(ev::io& io, int revents) {
             }
             case TRACK:
             default:
-                syslog(LOG_ERR, "core: received an unknown internal message");
+                syslog(LOG_ERR, "core: [%s()] unknown message", __func__);
         }
     }
 }
@@ -487,7 +483,7 @@ void core_t::future(const std::string& future_id, const std::string& key, const 
     if(it != m_futures.end()) {
         it->second->push(key, value);
     } else {
-        syslog(LOG_ERR, "core: found an orphan - part of future %s", future_id.c_str());
+        syslog(LOG_ERR, "core: [%s()] orphan - part of future %s", __func__, future_id.c_str());
     }
 }
 
@@ -495,11 +491,9 @@ void core_t::reap(const std::string& engine_id, const std::string& thread_id) {
     engine_map_t::iterator it(m_engines.find(engine_id));
 
     if(it != m_engines.end()) {
-        syslog(LOG_DEBUG, "core: termination requested for thread %s in engine %s",
-            thread_id.c_str(), engine_id.c_str());
         it->second->reap(thread_id);
     } else {
-        syslog(LOG_ERR, "core: found an orphan - engine %s", engine_id.c_str());
+        syslog(LOG_ERR, "core: [%s()] orphan - engine %s", __func__, engine_id.c_str());
     }
 }
 
@@ -507,7 +501,7 @@ void core_t::seal(const std::string& future_id) {
     future_map_t::iterator it(m_futures.find(future_id));
 
     if(it == m_futures.end()) {
-        syslog(LOG_ERR, "core: found an orphan - future %s", future_id.c_str());
+        syslog(LOG_ERR, "core: [%s()] orphan - future %s", __func__, future_id.c_str());
         return;
     }
         
@@ -567,7 +561,7 @@ void core_t::recover() {
             try {
                 push(future, hash, root[hash]);
             } catch(const std::runtime_error& e) {
-                syslog(LOG_ERR, "core: error in recover() - %s", e.what());
+                syslog(LOG_ERR, "core: [%s()] %s", __func__, e.what());
                 future->abort(hash, e.what());
             }
         }

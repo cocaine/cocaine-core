@@ -39,8 +39,9 @@ class driver_base_t:
             try {
                 result = m_source->invoke();
             } catch(const std::exception& e) {
-                syslog(LOG_ERR, "engine: error in %s driver - %s",
-                    m_id.c_str(), e.what());
+                syslog(LOG_ERR, "driver %s in thread %s in %s: [%s()] %s",
+                    m_id.c_str(), m_parent->id().c_str(),
+                    m_source->uri().c_str(), __func__, e.what());
                 result["error"] = e.what();
             }
             

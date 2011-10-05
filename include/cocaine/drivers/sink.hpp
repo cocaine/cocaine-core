@@ -22,6 +22,9 @@ class sink_t:
             }
 
             m_id = "sink:" + digest_t().get(m_source->uri() + m_endpoint);
+            
+            syslog(LOG_DEBUG, "thread %s in %s: driver %s is starting on '%s'",
+                m_parent->id().c_str(), m_source->uri().c_str(), m_id.c_str(), m_endpoint.c_str());
         }
 
         virtual void operator()(ev::io&, int) {
@@ -34,8 +37,9 @@ class sink_t:
                 try {
                     result = m_source->process(message.data(), message.size());
                 } catch(const std::exception& e) {
-                    syslog(LOG_ERR, "engine: error in %s driver - %s",
-                        m_id.c_str(), e.what());
+                    syslog(LOG_ERR, "driver %s in thread %s in %s: [%s()] %s",
+                        m_id.c_str(), m_parent->id().c_str(),
+                        m_source->uri().c_str(), __func__, e.what());
                     result["error"] = e.what();
                 }
 

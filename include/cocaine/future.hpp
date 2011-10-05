@@ -36,8 +36,8 @@ class future_t:
                     m_core->seal(m_id.get());
                 }
             } else {
-                syslog(LOG_ERR, "future %s: invalid key - %s",
-                    m_id.get().c_str(), key.c_str());
+                syslog(LOG_ERR, "future %s: [%s()] invalid key - %s",
+                    __func__, m_id.get().c_str(), key.c_str());
             }
         }
 

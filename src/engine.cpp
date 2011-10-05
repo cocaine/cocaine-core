@@ -43,7 +43,7 @@ void engine_t::push(future_t* future, const std::string& target, const Json::Val
         }
     }
         
-    it->second->request(PUSH, future, target, args);
+    it->second->push(future, target, args);
 }
 
 void engine_t::drop(future_t* future, const std::string& target, const Json::Value& args) {
@@ -56,7 +56,7 @@ void engine_t::drop(future_t* future, const std::string& target, const Json::Val
     thread_map_t::iterator it(m_threads.find(thread_id));
 
     if(it != m_threads.end()) {
-        it->second->request(DROP, future, target, args);
+        it->second->drop(future, target, args);
     } else {
         throw std::runtime_error("thread is not active");
     }
@@ -70,8 +70,8 @@ void engine_t::reap(const std::string& thread_id) {
     thread_map_t::iterator it(m_threads.find(thread_id));
 
     if(it == m_threads.end()) {
-        syslog(LOG_WARNING, "engine %s: found an orphan - thread %s", 
-            m_uri.c_str(), thread_id.c_str());
+        syslog(LOG_ERR, "engine %s: [%s()] orphan - thread %s", 
+            __func__, m_uri.c_str(), thread_id.c_str());
         return;
     }
 

@@ -59,11 +59,23 @@ registry_t::registry_t() {
                     info++;
                 }
             } else {
-                syslog(LOG_ERR, "registry: invalid plugin interface - %s", dlerror());
+#if BOOST_FILESYSTEM_VERSION == 3
+                syslog(LOG_ERR, "registry: [%s()] invalid interface in '%s' - %s",
+                    __func__, it->path().string().c_str(), dlerror());
+#else
+                syslog(LOG_ERR, "registry: [%s()] invalid interface in '%s' - %s",
+                    __func__, it->string().c_str(), dlerror());
+#endif
                 dlclose(plugin);
             }
         } else {
-            syslog(LOG_ERR, "registry: failed to load %s", dlerror());
+#if BOOST_FILESYSTEM_VERSION == 3
+            syslog(LOG_ERR, "registry: [%s()] failed to load '%s' - %s", 
+                __func__, it->path().string().c_str(), dlerror());
+#else
+            syslog(LOG_ERR, "registry: [%s()] failed to load '%s' - %s",
+                __func__, it->string().c_str(), dlerror());
+#endif
         }
 
         ++it;
