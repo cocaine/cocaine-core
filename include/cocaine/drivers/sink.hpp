@@ -5,12 +5,12 @@
 
 namespace cocaine { namespace engine { namespace drivers {
 
-class zeromq_t:
-    public driver_base_t<ev::io, zeromq_t>
+class sink_t:
+    public driver_base_t<ev::io, sink_t>
 {
     public:
-        zeromq_t(threading::overseer_t* parent, boost::shared_ptr<plugin::source_t> source, const Json::Value& args):
-            driver_base_t<ev::io, zeromq_t>(parent, source),
+        sink_t(threading::overseer_t* parent, boost::shared_ptr<plugin::source_t> source, const Json::Value& args):
+            driver_base_t<ev::io, sink_t>(parent, source),
             m_endpoint(args.get("endpoint", "").asString())
         {
             if(~m_source->capabilities() & plugin::source_t::PROCESSOR) {
@@ -21,7 +21,7 @@ class zeromq_t:
                 throw std::runtime_error("no endpoint specified");
             }
 
-            m_id = "event:" + digest_t().get(m_source->uri() + m_endpoint);
+            m_id = "sink:" + digest_t().get(m_source->uri() + m_endpoint);
         }
 
         virtual void operator()(ev::io&, int) {

@@ -273,7 +273,9 @@ void core_t::push(future_t* future, const std::string& target, const Json::Value
     std::string uri(args["uri"].asString());
     
     if(uri.empty()) {
-        throw std::runtime_error("no source uri has been specified");
+        // Backward compatibility
+        // throw std::runtime_error("no source uri has been specified");
+        uri = target;
     }
     
     engine_map_t::iterator it(m_engines.find(uri)); 
@@ -291,6 +293,12 @@ void core_t::push(future_t* future, const std::string& target, const Json::Value
 
 void core_t::drop(future_t* future, const std::string& target, const Json::Value& args) {
     std::string uri(args["uri"].asString());
+        
+    if(uri.empty()) {
+        // Backward compatibility
+        uri = target;
+    }
+
     engine_map_t::iterator it(m_engines.find(uri));
     
     if(it == m_engines.end()) {
@@ -305,7 +313,9 @@ void core_t::past(future_t* future, const std::string& target, const Json::Value
     std::string key(args["key"].asString());
 
     if(key.empty()) {
-        throw std::runtime_error("no driver id has been specified");
+        // Backward compatibility
+        // throw std::runtime_error("no driver id has been specified");
+        key = target;
     }
 
     history_map_t::iterator it(m_histories.find(key));

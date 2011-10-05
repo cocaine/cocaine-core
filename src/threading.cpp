@@ -80,8 +80,8 @@ void overseer_t::request(ev::io& w, int revents) {
                         result = dispatch<drivers::manual_t>(code, args);
                     } else if(driver_type == "fs") {
                         result = dispatch<drivers::fs_t>(code, args);
-                    } else if(driver_type == "zeromq") {
-                        result = dispatch<drivers::zeromq_t>(code, args);
+                    } else if(driver_type == "sink") {
+                        result = dispatch<drivers::sink_t>(code, args);
                     } else if(driver_type == "once") {
                         result = once(args);
                     } else {
