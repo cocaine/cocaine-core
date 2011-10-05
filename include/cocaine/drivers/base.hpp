@@ -21,6 +21,9 @@ class driver_base_t:
         }
 
         void start() {
+            syslog(LOG_DEBUG, "thread %s in %s: driver %s is starting",
+                m_parent->id().c_str(), m_source->uri().c_str(), m_id.c_str());
+            
             m_watcher.reset(new WatcherType(m_parent->loop()));
             m_watcher->set(this);
 

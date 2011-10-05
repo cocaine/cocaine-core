@@ -22,9 +22,6 @@ class sink_t:
             }
 
             m_id = "sink:" + digest_t().get(m_source->uri() + m_endpoint);
-            
-            syslog(LOG_DEBUG, "thread %s in %s: driver %s is starting on '%s'",
-                m_parent->id().c_str(), m_source->uri().c_str(), m_id.c_str(), m_endpoint.c_str());
         }
 
         virtual void operator()(ev::io&, int) {

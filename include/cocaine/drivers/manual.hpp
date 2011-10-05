@@ -17,9 +17,6 @@ class manual_t:
             }
             
             m_id = "manual:" + digest_t().get(m_source->uri());
-            
-            syslog(LOG_DEBUG, "thread %s in %s: driver %s is starting",
-                m_parent->id().c_str(), m_source->uri().c_str(), m_id.c_str());
         }
 
         inline ev::tstamp reschedule(ev::tstamp now) {
