@@ -5,5 +5,6 @@
 #include "cocaine/drivers/manual.hpp"
 #include "cocaine/drivers/fs.hpp"
 #include "cocaine/drivers/sink.hpp"
+#include "cocaine/drivers/server.hpp"
 
 #endif

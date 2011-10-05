@@ -28,8 +28,8 @@ class sink_t:
             zmq::message_t message;
             Json::Value result; 
 
-            while(m_sink->pending()) {
-                m_sink->recv(&message);
+            while(m_socket->pending()) {
+                m_socket->recv(&message);
 
                 try {
                     result = m_source->process(message.data(), message.size());
@@ -45,14 +45,14 @@ class sink_t:
         }
 
         void initialize() {
-            m_sink.reset(new lines::socket_t(m_parent->context(), ZMQ_PULL));
-            m_sink->bind(m_endpoint);
-            m_watcher->set(m_sink->fd(), EV_READ);
+            m_socket.reset(new lines::socket_t(m_parent->context(), ZMQ_PULL));
+            m_socket->bind(m_endpoint);
+            m_watcher->set(m_socket->fd(), EV_READ);
         }
 
     private:
         std::string m_endpoint;
-        std::auto_ptr<lines::socket_t> m_sink;
+        std::auto_ptr<lines::socket_t> m_socket;
 };
 
 }}}

@@ -76,6 +76,8 @@ void overseer_t::request(ev::io& w, int revents) {
                         result = push<drivers::fs_t>(args);
                     } else if(driver_type == "sink") {
                         result = push<drivers::sink_t>(args);
+                    } else if(driver_type == "server") {
+                        result = push<drivers::server_t>(args);
                     } else if(driver_type == "once") {
                         result = once();
                     } else {
