@@ -21,15 +21,13 @@ class engine_t:
             const std::string& uri);
         ~engine_t();
 
-        void push(core::future_t* future, const std::string& target, const Json::Value& args);
-        void drop(core::future_t* future, const std::string& target, const Json::Value& args);
+        boost::shared_ptr<core::future_t> push(const Json::Value& args);
+        boost::shared_ptr<core::future_t> cast(const Json::Value& args);
+        boost::shared_ptr<core::future_t> drop(const Json::Value& args);
 
     private:
         void request(ev::io& w, int revents);
         
-        // Event handlers
-        void reap(const std::string& thread_id);
-
     private:
         // Engine ID and a messaging hub endpoint
         helpers::auto_uuid_t m_id;
@@ -50,7 +48,7 @@ class engine_t:
         thread_map_t m_threads;
 
         // Overflow task queue
-        std::queue< boost::tuple<core::future_t*, std::string, Json::Value> > m_pending;
+        std::queue< std::pair<boost::shared_ptr<core::future_t>, Json::Value> > m_pending;
 };
 
 // Thread interface
@@ -66,9 +64,29 @@ class thread_t:
     public:
         inline std::string id() const;
 
+        inline void enqueue(boost::shared_ptr<core::future_t> future);
+        inline boost::shared_ptr<core::future_t> dequeue();
+        
+        void rearm();
+
     private:
-        std::auto_ptr<overseer_t> m_overseer;
+        void create();
+        void timeout(ev::timer& w, int revents);
+
+    private:
+        helpers::auto_uuid_t m_id;
+
+        // Thread creation stuff
+        zmq::context_t& m_context;
+        const helpers::auto_uuid_t& m_engine_id;
+        const std::string& m_uri;
+
+        boost::shared_ptr<overseer_t> m_overseer;
         std::auto_ptr<boost::thread> m_thread;
+
+        std::queue< boost::shared_ptr<core::future_t> > m_queue;
+
+        ev::timer m_heartbeat;
 };
 
 }}

@@ -128,12 +128,12 @@ int main(int argc, char* argv[]) {
         }
     }
     
-    // Yappi Core
-    core_t* core;
+    // Cocaine core
+    boost::shared_ptr<core_t> core;
 
     // Initializing the core
     try {
-        core = new core_t();
+        core.reset(new core_t());
     } catch(const zmq::error_t& e) {
         syslog(LOG_ERR, "main: network error - %s", e.what());
         return EXIT_FAILURE;
@@ -146,7 +146,7 @@ int main(int argc, char* argv[]) {
     core->run();
 
     // Cleanup
-    delete core;
+    core.reset();
 
     syslog(LOG_NOTICE, "main: exhale");
     

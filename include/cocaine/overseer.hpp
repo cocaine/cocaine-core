@@ -21,7 +21,8 @@ class overseer_t:
     public boost::enable_shared_from_this<overseer_t>
 {
     public:
-        overseer_t(zmq::context_t& context, const helpers::auto_uuid_t& engine_id);
+        overseer_t(zmq::context_t& context, const helpers::auto_uuid_t& engine_id,
+            const helpers::auto_uuid_t& thread_id);
        
         // Thread entry point 
         void run(boost::shared_ptr<plugin::source_t> source);
@@ -38,6 +39,9 @@ class overseer_t:
         // Event loop callback handling and dispatching
         void request(ev::io& w, int revents);
         void timeout(ev::timer& w, int revents);
+#if BOOST_VERSION >= 103500
+        void heartbeat(ev::timer& w, int revents);
+#endif
 
         // Thread request handling
         template<class DriverType>
@@ -59,7 +63,10 @@ class overseer_t:
         ev::dynamic_loop m_loop;
         ev::io m_request;
         ev::timer m_timeout;
-        
+#if BOOST_VERSION >= 103500
+        ev::timer m_heartbeat;
+#endif
+
         // Data source
         boost::shared_ptr<plugin::source_t> m_source;
         

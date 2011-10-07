@@ -72,8 +72,11 @@ class socket_t:
 #define TERMINATE 3 /* engine terminates an overseer */
 #define FUTURE    4 /* overseer fulfills an engine's request */
 #define SUICIDE   5 /* overseer performs a suicide */
-#define TRACK     6 /* overseer is ready to invoke the plugin and asks for a watchdog */
-#define EVENT     7 /* driver sends the invocation results to the core */
+#define EVENT     6 /* driver sends the invocation results to the core */
+
+#if BOOST_VERSION >= 103500
+  #define HEARTBEAT 7 /* overseer is reporting that it's still alive */
+#endif
 
 template<class T> class raw;
 
@@ -87,7 +90,7 @@ template<> class raw<const std::string> {
             message.rebuild(m_object.length());
             memcpy(message.data(), m_object.data(), m_object.length());
         }
-    
+
     private:
         const std::string& m_object;
 };

@@ -4,6 +4,7 @@
 namespace cocaine {
     namespace core {
         class core_t;
+        class response_t;
         class future_t;
     }
 

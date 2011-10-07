@@ -1,6 +1,6 @@
 #include <boost/assign.hpp>
 
-#include "cocaine/threading.hpp"
+#include "cocaine/overseer.hpp"
 #include "cocaine/drivers.hpp"
 #include "cocaine/storage.hpp"
 
@@ -10,30 +10,40 @@ using namespace cocaine::plugin;
 using namespace cocaine::storage;
 using namespace cocaine::helpers;
 
-overseer_t::overseer_t(zmq::context_t& context, const auto_uuid_t& engine_id):
+overseer_t::overseer_t(zmq::context_t& context, const auto_uuid_t& engine_id, const auto_uuid_t& thread_id):
     m_context(context),
     m_link(m_context, ZMQ_DEALER),
     m_loop(),
     m_request(m_loop),
-    m_timeout(m_loop)
+    m_timeout(m_loop),
+#if BOOST_VERSION >= 103500
+    m_heartbeat(m_loop),
+#endif
+    m_id(thread_id)
 {
-    // Connect to the engine's controlling socket and set the socket watcher
-    m_link.connect("inproc://engine/" + engine_id.get());
-
     // The routing will be done internally by ZeroMQ, thus the socket identity setup
-    m_link.setsockopt(ZMQ_IDENTITY, m_id.get().c_str(), m_id.get().length());
-    
+    m_link.setsockopt(ZMQ_IDENTITY, m_id.get().data(), m_id.get().length());
+
     // This is set up to avoid very long queues in server mode
     m_link.setsockopt(ZMQ_HWM, &config_t::get().engine.queue_depth,
         sizeof(config_t::get().engine.queue_depth));
         
+    // Connect to the engine's controlling socket and set the socket watcher
+    m_link.connect("inproc://engine/" + engine_id.get());
+
     m_request.set<overseer_t, &overseer_t::request>(this);
     m_request.start(m_link.fd(), EV_READ);
 
     // Initializing suicide timer
     m_timeout.set<overseer_t, &overseer_t::timeout>(this);
     m_timeout.start(config_t::get().engine.suicide_timeout);
-    
+
+#if BOOST_VERSION >= 103500
+    // Initialize heartbeat timer
+    m_heartbeat.set<overseer_t, &overseer_t::heartbeat>(this);
+    m_heartbeat.start(5.0, 5.0);
+#endif
+
     // Set timer compression threshold
     m_loop.set_timeout_collect_interval(config_t::get().engine.collect_timeout);
 
@@ -65,9 +75,10 @@ void overseer_t::request(ev::io& w, int revents) {
         switch(code) {
             case PUSH: {
                 Json::Value args;
-                const std::string type(args["driver"].asString());
 
                 m_link.recv(args);
+
+                const std::string type(args["driver"].asString());
 
                 try {
                     if(types.find(type) == types.end()) {
@@ -127,6 +138,12 @@ void overseer_t::request(ev::io& w, int revents) {
 void overseer_t::timeout(ev::timer& w, int revents) {
     m_link.send(SUICIDE);
 }
+
+#if BOOST_VERSION >= 103500
+void overseer_t::heartbeat(ev::timer& w, int revents) {
+    m_link.send(HEARTBEAT);
+}
+#endif
 
 template<class DriverType>
 Json::Value overseer_t::push(const Json::Value& args) {

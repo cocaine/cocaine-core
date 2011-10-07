@@ -7,6 +7,7 @@
 #include "cocaine/core.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/future.hpp"
+#include "cocaine/response.hpp"
 #include "cocaine/storage.hpp"
 
 using namespace cocaine::core;
@@ -73,21 +74,17 @@ core_t::core_t():
 
     e_sigusr1.set<core_t, &core_t::purge>(this);
     e_sigusr1.start(SIGUSR1);
-
-    // Task recovery
-    recover();
 }
 
-core_t::~core_t() {
-    syslog(LOG_INFO, "core: shutting down the engines");
-    m_engines.clear();
-}
+core_t::~core_t() { }
 
 void core_t::run() {
+    recover();
     m_loop.loop();
 }
 
 void core_t::terminate(ev::sig& sig, int revents) {
+    m_engines.clear();
     m_loop.unloop();
 }
 
@@ -95,8 +92,6 @@ void core_t::reload(ev::sig& sig, int revents) {
     syslog(LOG_NOTICE, "core: reloading tasks");
 
     m_engines.clear();
-    m_futures.clear();
-    m_histories.clear();
 
     try {
         recover();
@@ -109,8 +104,6 @@ void core_t::purge(ev::sig& sig, int revents) {
     syslog(LOG_NOTICE, "core: purging the tasks");
     
     m_engines.clear();
-    m_futures.clear();
-    m_histories.clear();
 
     try {
         storage::storage_t::instance()->purge("tasks");
@@ -143,6 +136,10 @@ void core_t::request(ev::io& io, int revents) {
                 message.size()));
         }
 
+        // Create a response
+        boost::shared_ptr<response_t> response(
+            new response_t(route, shared_from_this()));
+        
         // Receive the request
         s_requests.recv(&message);
 
@@ -156,10 +153,6 @@ void core_t::request(ev::io& io, int revents) {
             s_requests.recv(&signature);
         }
 
-        // Construct the future
-        future_t* future = new future_t(this, route);
-        m_futures.insert(future->id(), future);
-       
         // Parse the request
         root.clear();
 
@@ -187,32 +180,32 @@ void core_t::request(ev::io& io, int revents) {
                 }
 
                 // Request dispatching is performed in this function
-                dispatch(future, root); 
+                dispatch(response, root);
             } catch(const std::exception& e) {
                 syslog(LOG_ERR, "core: [%s()] %s", __func__, e.what());
-                future->abort(e.what());
+                response->abort(e.what());
             }
         } else {
             syslog(LOG_ERR, "core: [%s()] %s", __func__,
                 reader.getFormatedErrorMessages().c_str());
-            future->abort(reader.getFormatedErrorMessages());
+            response->abort(reader.getFormatedErrorMessages());
         }
     }
 }
 
-void core_t::dispatch(future_t* future, const Json::Value& root) {
-    std::string action(root.get("action", "push").asString());
+void core_t::dispatch(boost::shared_ptr<response_t> response, const Json::Value& root) {
+    std::string action(root["action"].asString());
 
     if(action == "push" || action == "drop" || action == "past") {
         Json::Value targets(root["targets"]);
 
         if(!targets.isObject() || !targets.size()) {
-            throw std::runtime_error("no targets specified");
+            throw std::runtime_error("no targets has been specified");
         }
 
         // Iterate over all the targets
         Json::Value::Members names(targets.getMemberNames());
-        future->reserve(names);
+        response->reserve(names);
 
         for(Json::Value::Members::iterator it = names.begin(); it != names.end(); ++it) {
             // Get the target and args
@@ -223,22 +216,24 @@ void core_t::dispatch(future_t* future, const Json::Value& root) {
             try {
                 if(args.isObject()) {
                     if(action == "push") {
-                        push(future, target, args);
+                        response->wait(target, push(args));
                     } else if(action == "drop") {
-                        drop(future, target, args);
+                        response->wait(target, drop(args));
                     } else if(action == "past") {
-                        past(future, target, args);
+                        response->push(target, past(args));
                     }
                 } else {
                     throw std::runtime_error("arguments expected");
                 }
             } catch(const std::runtime_error& e) {
                 syslog(LOG_ERR, "core: [%s()] %s", __func__, e.what());
-                future->abort(target, e.what());
+                response->abort(target, e.what());
             }
         }
     } else if(action == "stats") {
-        stat(future);
+        response->reserve(boost::assign::list_of
+            ("statistics"));
+        response->push("statistics", stat());
     } else {
         throw std::runtime_error("unsupported action");
     }
@@ -257,7 +252,7 @@ void core_t::dispatch(future_t* future, const Json::Value& root) {
 //
 // * Stat - fetches the current running stats
 
-void core_t::push(future_t* future, const std::string& target, const Json::Value& args) {
+boost::shared_ptr<future_t> core_t::push(const Json::Value& args) {
     std::string uri(args["uri"].asString());
     
     if(uri.empty()) {
@@ -271,10 +266,10 @@ void core_t::push(future_t* future, const std::string& target, const Json::Value
             new engine_t(m_context, shared_from_this(), uri));
     }
 
-    it->second->push(future, target, args);
+    return it->second->push(args);
 }
 
-void core_t::drop(future_t* future, const std::string& target, const Json::Value& args) {
+boost::shared_ptr<future_t> core_t::drop(const Json::Value& args) {
     std::string uri(args["uri"].asString());
         
     if(uri.empty()) {
@@ -287,10 +282,10 @@ void core_t::drop(future_t* future, const std::string& target, const Json::Value
         throw std::runtime_error("the specified engine is not active");
     }
 
-    it->second->drop(future, target, args);
+    return it->second->drop(args);
 }
 
-void core_t::past(future_t* future, const std::string& target, const Json::Value& args) {
+Json::Value core_t::past(const Json::Value& args) {
     std::string key(args["key"].asString());
 
     if(key.empty()) {
@@ -303,9 +298,9 @@ void core_t::past(future_t* future, const std::string& target, const Json::Value
         throw std::runtime_error("the past for a given key is empty");
     }
 
-    Json::Value result(Json::arrayValue);
     uint32_t depth = args.get("depth", config_t::get().core.history_depth).asUInt(),
              counter = 0;
+    Json::Value result(Json::arrayValue);
 
     for(history_t::const_iterator event = it->second->begin(); event != it->second->end(); ++event) {
         Json::Value object(Json::objectValue);
@@ -320,35 +315,25 @@ void core_t::past(future_t* future, const std::string& target, const Json::Value
         }
     }
 
-    future->push(target, result);
+    return result;
 }
 
-void core_t::stat(future_t* future) {
-    Json::Value engines(Json::objectValue),
-                threads(Json::objectValue),
-                requests(Json::objectValue);
+Json::Value core_t::stat() {
+    Json::Value result(Json::objectValue);
 
-    future->reserve(boost::assign::list_of
-        ("engines")
-        ("threads")
-        ("requests")
-    );
-
-    engines["total"] = engine::engine_t::objects_created;
+    result["engines"]["total"] = engine::engine_t::objects_created;
     
     for(engine_map_t::const_iterator it = m_engines.begin(); it != m_engines.end(); ++it) {
-        engines["alive"].append(it->first);
+        result["engines"]["alive"].append(it->first);
     }
     
-    future->push("engines", engines);
-    
-    threads["total"] = engine::thread_t::objects_created;
-    threads["alive"] = engine::thread_t::objects_alive;
-    future->push("threads", threads);
+    result["threads"]["total"] = engine::thread_t::objects_created;
+    result["threads"]["alive"] = engine::thread_t::objects_alive;
 
-    requests["total"] = future_t::objects_created;
-    requests["pending"] = future_t::objects_alive;
-    future->push("requests", requests);
+    result["requests"]["total"] = response_t::objects_created;
+    result["requests"]["pending"] = response_t::objects_alive;
+
+    return result;
 }
 
 // Publishing format (not JSON, as it will render subscription mechanics pointless):
@@ -412,47 +397,31 @@ void core_t::event(const std::string& driver_id, const Json::Value& event) {
     }
 }
 
-void core_t::seal(const std::string& future_id) {
-    future_map_t::iterator it(m_futures.find(future_id));
-
-    if(it == m_futures.end()) {
-        syslog(LOG_ERR, "core: [%s()] orphan - future %s", __func__, future_id.c_str());
-        return;
-    }
-        
-    std::vector<std::string> route(it->second->route());
-
-    // Send it if it's not an internal future
-    if(!route.empty()) {
-        zmq::message_t message;
-        
-        syslog(LOG_DEBUG, "core: sending response - future %s", it->second->id().c_str());
-
-        // Send the identity
-        for(std::vector<std::string>::const_iterator id = route.begin(); id != route.end(); ++id) {
-            message.rebuild(id->length());
-            memcpy(message.data(), id->data(), id->length());
-            s_requests.send(message, ZMQ_SNDMORE);
-        }
-        
-        // Send the delimiter
-        message.rebuild(0);
+void core_t::seal(boost::shared_ptr<response_t> response) {
+    std::vector<std::string> route(response->route());
+    zmq::message_t message;
+    
+    // Send the identity
+    for(std::vector<std::string>::const_iterator id = route.begin(); id != route.end(); ++id) {
+        message.rebuild(id->length());
+        memcpy(message.data(), id->data(), id->length());
         s_requests.send(message, ZMQ_SNDMORE);
-
-        // Append the hostname and send the JSON
-        Json::Value root(it->second->root());
-        root["hostname"] = m_hostname;
-
-        Json::FastWriter writer;
-        std::string json(writer.write(root));
-        message.rebuild(json.length());
-        memcpy(message.data(), json.data(), json.length());
-
-        s_requests.send(message);
     }
+    
+    // Send the delimiter
+    message.rebuild(0);
+    s_requests.send(message, ZMQ_SNDMORE);
 
-    // Release the future
-    m_futures.erase(it);
+    // Append the hostname and send the JSON
+    Json::Value root(response->root());
+    root["hostname"] = m_hostname;
+
+    Json::FastWriter writer;
+    std::string json(writer.write(root));
+    message.rebuild(json.length());
+    memcpy(message.data(), json.data(), json.length());
+
+    s_requests.send(message);
 }
 
 void core_t::recover() {
@@ -461,23 +430,16 @@ void core_t::recover() {
 
     if(root.size()) {
         syslog(LOG_NOTICE, "core: loaded %d task(s)", root.size());
-        
-        // Create a new anonymous future
-        future_t* future = new future_t(this, std::vector<std::string>());
-        m_futures.insert(future->id(), future);
        
-        // Push them as if they were normal requests
         Json::Value::Members hashes(root.getMemberNames());
-        future->reserve(hashes);
 
         for(Json::Value::Members::const_iterator it = hashes.begin(); it != hashes.end(); ++it) {
             std::string hash(*it);
             
             try {
-                push(future, hash, root[hash]);
+                push(root[hash]);
             } catch(const std::runtime_error& e) {
                 syslog(LOG_ERR, "core: [%s()] %s", __func__, e.what());
-                future->abort(hash, e.what());
             }
         }
     }

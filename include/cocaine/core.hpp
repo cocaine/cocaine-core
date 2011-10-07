@@ -13,8 +13,6 @@ class core_t:
     public boost::enable_shared_from_this<core_t>
 {
     public:
-        friend class future_t;
-
         core_t();
         ~core_t();
 
@@ -23,6 +21,9 @@ class core_t:
         
         // Publishing
         void event(const std::string& driver_id, const Json::Value& result);
+        
+        // Responding
+        void seal(boost::shared_ptr<response_t> response);
         
     private:
         // Signal processing
@@ -34,16 +35,13 @@ class core_t:
         void request(ev::io& io, int revents);
 
         // User request dispatching
-        void dispatch(future_t* future, const Json::Value& root);
+        void dispatch(boost::shared_ptr<response_t> response, const Json::Value& root);
         
         // User request handling
-        void push(future_t* future, const std::string& target, const Json::Value& args);
-        void drop(future_t* future, const std::string& target, const Json::Value& args);
-        void past(future_t* future, const std::string& target, const Json::Value& args);
-        void stat(future_t* future);
-
-        // Responding
-        void seal(const std::string& future_id);
+        boost::shared_ptr<future_t> push(const Json::Value& args);
+        boost::shared_ptr<future_t> drop(const Json::Value& args);
+        Json::Value past(const Json::Value& args);
+        Json::Value stat();
 
         // Task recovering
         void recover();
@@ -54,10 +52,6 @@ class core_t:
         // Engine management (URI -> Engine)
         typedef boost::ptr_map<const std::string, engine::engine_t> engine_map_t;
         engine_map_t m_engines;
-
-        // Future management (Future ID -> Future)
-        typedef boost::ptr_map<const std::string, future_t> future_map_t;
-        future_map_t m_futures;
 
         // History (Driver ID -> History List)
         typedef std::deque< std::pair<ev::tstamp, Json::Value> > history_t;
