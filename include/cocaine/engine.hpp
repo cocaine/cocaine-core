@@ -67,11 +67,15 @@ class thread_t:
         inline void enqueue(boost::shared_ptr<core::future_t> future);
         inline boost::shared_ptr<core::future_t> dequeue();
         
+#if BOOST_VERSION >= 103500
         void rearm();
+#endif
 
     private:
         void create();
+#if BOOST_VERSION >= 103500
         void timeout(ev::timer& w, int revents);
+#endif
 
     private:
         helpers::auto_uuid_t m_id;
@@ -86,7 +90,9 @@ class thread_t:
 
         std::queue< boost::shared_ptr<core::future_t> > m_queue;
 
+#if BOOST_VERSION >= 103500
         ev::timer m_heartbeat;
+#endif
 };
 
 }}
