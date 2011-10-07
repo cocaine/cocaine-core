@@ -10,8 +10,8 @@ class timed_driver_base_t:
     public driver_base_t<ev::periodic, timed_driver_base_t<T> >
 {
     public:
-        timed_driver_base_t(threading::overseer_t* parent, boost::shared_ptr<plugin::source_t> source):
-            driver_base_t<ev::periodic, timed_driver_base_t>(parent, source)
+        timed_driver_base_t(boost::shared_ptr<overseer_t> parent):
+            driver_base_t<ev::periodic, timed_driver_base_t>(parent)
         {}
 
         inline void initialize() {
@@ -25,10 +25,8 @@ class timed_driver_base_t:
             try {
                 return driver->reschedule(now);
             } catch(const std::exception& e) {
-                syslog(LOG_ERR, "driver %s in thread %s in %s: [%s()] %s",
-                    driver->id().c_str(), driver->m_parent->id().c_str(), 
-                    driver->m_source->uri().c_str(), __func__, e.what());
-                driver->stop();
+                syslog(LOG_ERR, "driver %s [%s]: [%s()] %s",
+                    driver->id().c_str(), driver->m_parent->id().c_str(), __func__, e.what());
                 return now;
             }
         }

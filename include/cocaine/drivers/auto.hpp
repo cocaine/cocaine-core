@@ -11,11 +11,11 @@ class auto_t:
     public timed_driver_base_t<auto_t>
 {
     public:
-        auto_t(threading::overseer_t* parent, boost::shared_ptr<plugin::source_t> source, const Json::Value& args):
-            timed_driver_base_t<auto_t>(parent, source),
+        auto_t(boost::shared_ptr<overseer_t> parent, const Json::Value& args):
+            timed_driver_base_t<auto_t>(parent),
             m_interval(args.get("interval", 0).asInt() / 1000.0)
         {
-            if(~m_source->capabilities() & plugin::source_t::ITERATOR) {
+            if(~m_parent->source()->capabilities() & plugin::source_t::ITERATOR) {
                 throw std::runtime_error("source doesn't support iteration");
             }
             
@@ -23,7 +23,7 @@ class auto_t:
                 throw std::runtime_error("no interval specified");
             }
 
-            m_id = "auto:" + digest_t().get(m_source->uri() + 
+            m_id = "auto:" + digest_t().get(m_parent->source()->uri() + 
                 boost::lexical_cast<std::string>(m_interval));
         }
        

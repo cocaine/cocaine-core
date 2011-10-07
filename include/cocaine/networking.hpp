@@ -75,6 +75,50 @@ class socket_t:
 #define TRACK     6 /* overseer is ready to invoke the plugin and asks for a watchdog */
 #define EVENT     7 /* driver sends the invocation results to the core */
 
+template<class T> class raw;
+
+template<> class raw<const std::string> {
+    public:
+        raw(const std::string& object):
+            m_object(object)
+        { }
+
+        void pack(zmq::message_t& message) const {
+            message.rebuild(m_object.length());
+            memcpy(message.data(), m_object.data(), m_object.length());
+        }
+    
+    private:
+        const std::string& m_object;
+};
+
+template<> class raw<std::string> {
+    public:
+        raw(std::string& object):
+            m_object(object)
+        { }
+
+        void pack(zmq::message_t& message) const {
+            message.rebuild(m_object.length());
+            memcpy(message.data(), m_object.data(), m_object.length());
+        }
+
+        bool unpack(/* const */ zmq::message_t& message) {
+            m_object.assign(
+                static_cast<const char*>(message.data()),
+                message.size());
+            return true;
+        }
+
+    private:
+        std::string& m_object;
+};
+
+template<class T>
+static raw<T> protect(T& object) {
+    return raw<T>(object);
+}
+
 class channel_t:
     public socket_t
 {
@@ -98,6 +142,13 @@ class channel_t:
             message.rebuild(buffer.size());
             memcpy(message.data(), buffer.data(), buffer.size());
             
+            return send(message, flags);
+        }
+
+        template<class T>
+        bool send(const raw<T>& object, int flags) {
+            zmq::message_t message;
+            object.pack(message);
             return send(message, flags);
         }
 
@@ -141,6 +192,17 @@ class channel_t:
             return true;
         }
       
+        template<class T>
+        bool recv(raw<T>& result, int flags) {
+            zmq::message_t message;
+
+            if(!recv(&message, flags)) {
+                return false;
+            }
+
+            return result.unpack(message);
+        }
+
         // Receives and unpacks a tuple
         bool recv_multi(const null_type&, int flags = 0) {
             return true;

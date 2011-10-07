@@ -9,11 +9,11 @@ class fs_t:
     public driver_base_t<ev::stat, fs_t>
 {
     public:
-        fs_t(threading::overseer_t* parent, boost::shared_ptr<plugin::source_t> source, const Json::Value& args):
-            driver_base_t<ev::stat, fs_t>(parent, source),
+        fs_t(boost::shared_ptr<overseer_t> parent, const Json::Value& args):
+            driver_base_t<ev::stat, fs_t>(parent),
             m_path(args.get("path", "").asString())
         {
-            if(~m_source->capabilities() & plugin::source_t::ITERATOR) {
+            if(~m_parent->source()->capabilities() & plugin::source_t::ITERATOR) {
                 throw std::runtime_error("source doesn't support iteration");
             }
             
@@ -21,7 +21,7 @@ class fs_t:
                 throw std::runtime_error("no path specified");
             }
 
-            m_id = "fs:" + digest_t().get(source->uri() + m_path);
+            m_id = "fs:" + digest_t().get(m_parent->source()->uri() + m_path);
         }
 
         inline void initialize() {

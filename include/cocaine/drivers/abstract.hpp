@@ -20,16 +20,14 @@ class abstract_driver_t:
         }
 
     protected:
-        abstract_driver_t(threading::overseer_t* parent, boost::shared_ptr<plugin::source_t> source):
-            m_parent(parent),
-            m_source(source) 
+        abstract_driver_t(boost::shared_ptr<overseer_t> parent):
+            m_parent(parent)
         {}
         
         void publish(const Json::Value& result) {
             if(!m_id.empty() && !result.isNull()) {
-                m_parent->downstream().send_multi(boost::make_tuple(
+                m_parent->link().send_multi(boost::make_tuple(
                     EVENT,
-                    m_parent->id(),
                     m_id,
                     result));
             }
@@ -40,10 +38,7 @@ class abstract_driver_t:
         std::string m_id;
         
         // Parent
-        threading::overseer_t* m_parent;
-        
-        // Data source
-        boost::shared_ptr<plugin::source_t> m_source;
+        boost::shared_ptr<overseer_t> m_parent;
 };
 
 }}}

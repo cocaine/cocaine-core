@@ -1,9 +1,6 @@
 #ifndef COCAINE_CORE_HPP
 #define COCAINE_CORE_HPP
 
-#define EV_MINIMAL 0
-#include <ev++.h>
-
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/networking.hpp"
@@ -12,7 +9,8 @@
 namespace cocaine { namespace core {
 
 class core_t:
-    public boost::noncopyable
+    public boost::noncopyable,
+    public boost::enable_shared_from_this<core_t>
 {
     public:
         friend class future_t;
@@ -22,6 +20,9 @@ class core_t:
 
         // Event loop
         void run();
+        
+        // Publishing
+        void event(const std::string& driver_id, const Json::Value& result);
         
     private:
         // Signal processing
@@ -41,14 +42,6 @@ class core_t:
         void past(future_t* future, const std::string& target, const Json::Value& args);
         void stat(future_t* future);
 
-        // Thread request dispatching
-        void upstream(ev::io& io, int revents);
-
-        // Thread request handling and forwarding
-        void future(const std::string& future_id, const std::string& key, const Json::Value& value);
-        void reap(const std::string& engine_id, const std::string& thread_id);
-        void event(const std::string& driver_id, const Json::Value& result);
-        
         // Responding
         void seal(const std::string& future_id);
 
@@ -74,11 +67,10 @@ class core_t:
         // Networking
         zmq::context_t m_context;
         lines::socket_t s_requests, s_publisher;
-        lines::channel_t s_upstream;
         
         // Event loop
         ev::default_loop m_loop;
-        ev::io e_requests, e_upstream;
+        ev::io e_requests;
         ev::sig e_sigint, e_sigterm, e_sigquit, e_sighup, e_sigusr1;
 
         // Hostname

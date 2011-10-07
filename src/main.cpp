@@ -65,6 +65,13 @@ int main(int argc, char* argv[]) {
             (&config_t::set().engine.linger_timeout)->default_value(5.0),
             "unresponsive thread cancellation timeout")
 #endif
+#if ZMQ_VERSION > 30000
+        ("thread-queue-depth", po::value<int>
+#else
+        ("thread-queue-depth", po::value<uint64_t>
+#endif
+            (&config_t::set().engine.queue_depth)->default_value(10),
+            "engine's thread queue depth")
         ("history-depth", po::value<uint32_t>
             (&config_t::set().core.history_depth)->default_value(10),
             "history depth for each driver")

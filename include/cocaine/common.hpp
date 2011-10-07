@@ -12,6 +12,7 @@
 #include <boost/version.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/enable_shared_from_this.hpp>
 #include <boost/ptr_container/ptr_map.hpp>
 #include <boost/tuple/tuple.hpp>
 
@@ -20,5 +21,8 @@
 #include "cocaine/helpers/birth_control.hpp"
 
 #include "json/json.h"
+
+#define EV_MINIMAL 0
+#include <ev++.h>
 
 #endif

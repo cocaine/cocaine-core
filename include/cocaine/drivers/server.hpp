@@ -9,11 +9,12 @@ class server_t:
     public driver_base_t<ev::io, server_t>
 {
     public:
-        server_t(threading::overseer_t* parent, boost::shared_ptr<plugin::source_t> source, const Json::Value& args):
-            driver_base_t<ev::io, server_t>(parent, source),
-            m_endpoint(args.get("endpoint", "").asString())
+        server_t(boost::shared_ptr<overseer_t> parent, const Json::Value& args):
+            driver_base_t<ev::io, server_t>(parent),
+            m_endpoint(args.get("endpoint", "").asString()),
+            m_watermark(args.get("watermark", 10).asUInt())
         {
-            if(~m_source->capabilities() & plugin::source_t::PROCESSOR) {
+            if(~m_parent->source()->capabilities() & plugin::source_t::PROCESSOR) {
                 throw std::runtime_error("source doesn't support message processing");
             }
 
@@ -21,7 +22,7 @@ class server_t:
                 throw std::runtime_error("no endpoint specified");
             }
 
-            m_id = "server:" + digest_t().get(m_source->uri() + m_endpoint);
+            m_id = "server:" + digest_t().get(m_parent->source()->uri() + m_endpoint);
         }
 
         virtual void operator()(ev::io&, int) {
@@ -34,11 +35,10 @@ class server_t:
 
                 // Process it
                 try {
-                    result = m_source->process(message.data(), message.size());
+                    result = m_parent->source()->process(message.data(), message.size());
                 } catch(const std::exception& e) {
-                    syslog(LOG_ERR, "driver %s in thread %s in %s: [%s()] %s",
-                        m_id.c_str(), m_parent->id().c_str(),
-                        m_source->uri().c_str(), __func__, e.what());
+                    syslog(LOG_ERR, "driver %s [%s]: [%s()] %s",
+                        m_id.c_str(), m_parent->id().c_str(), __func__, e.what());
                     result["error"] = e.what();
                 }
 
@@ -53,13 +53,23 @@ class server_t:
 
         void initialize() {
             m_socket.reset(new lines::socket_t(m_parent->context(), ZMQ_REP));
+            
+            m_socket->setsockopt(ZMQ_HWM, &m_watermark, sizeof(m_watermark));
             m_socket->bind(m_endpoint);
+            
             m_watcher->set(m_socket->fd(), EV_READ);
         }
 
     private:
         std::string m_endpoint;
+#if ZMQ_VERSION > 30000
+        int m_watermark;
+#else
+        uint64_t m_watermark;
+#endif
+
         std::auto_ptr<lines::socket_t> m_socket;
+        
         Json::FastWriter m_writer;
 };
 

@@ -8,7 +8,6 @@
 #include "cocaine/engine.hpp"
 #include "cocaine/future.hpp"
 #include "cocaine/storage.hpp"
-#include "cocaine/threading.hpp"
 
 using namespace cocaine::core;
 using namespace cocaine::engine;
@@ -17,8 +16,7 @@ using namespace cocaine::plugin;
 core_t::core_t():
     m_context(1),
     s_requests(m_context, ZMQ_ROUTER),
-    s_publisher(m_context, ZMQ_PUB),
-    s_upstream(m_context, ZMQ_PULL)
+    s_publisher(m_context, ZMQ_PUB)
 {
     // Version dump
     int minor, major, patch;
@@ -36,11 +34,6 @@ core_t::core_t():
     } else {
         throw std::runtime_error("failed to determine the hostname");
     }
-
-    // Interthread channel
-    s_upstream.bind("inproc://core");
-    e_upstream.set<core_t, &core_t::upstream>(this);
-    e_upstream.start(s_upstream.fd(), EV_READ);
 
     // Listening socket
     for(std::vector<std::string>::const_iterator it = config_t::get().net.listen.begin(); it != config_t::get().net.listen.end(); ++it) {
@@ -265,25 +258,19 @@ void core_t::dispatch(future_t* future, const Json::Value& root) {
 // * Stat - fetches the current running stats
 
 void core_t::push(future_t* future, const std::string& target, const Json::Value& args) {
-    // Check if we have an engine running for the given uri
     std::string uri(args["uri"].asString());
     
     if(uri.empty()) {
-        // Backward compatibility
-        // throw std::runtime_error("no source uri has been specified");
-        uri = target;
+        throw std::runtime_error("no source uri has been specified");
     }
     
     engine_map_t::iterator it(m_engines.find(uri)); 
 
     if(it == m_engines.end()) {
-        // If the engine wasn't found, try to start a new one
-        boost::tie(it, boost::tuples::ignore) = m_engines.insert(
-            uri,
-            new engine_t(m_context, uri));
+        boost::tie(it, boost::tuples::ignore) = m_engines.insert(uri,
+            new engine_t(m_context, shared_from_this(), uri));
     }
 
-    // Dispatch!
     it->second->push(future, target, args);
 }
 
@@ -291,17 +278,15 @@ void core_t::drop(future_t* future, const std::string& target, const Json::Value
     std::string uri(args["uri"].asString());
         
     if(uri.empty()) {
-        // Backward compatibility
-        uri = target;
+        throw std::runtime_error("no source uri has been specified");
     }
 
     engine_map_t::iterator it(m_engines.find(uri));
     
     if(it == m_engines.end()) {
-        throw std::runtime_error("engine is not active");
+        throw std::runtime_error("the specified engine is not active");
     }
 
-    // Dispatch!
     it->second->drop(future, target, args);
 }
 
@@ -309,9 +294,7 @@ void core_t::past(future_t* future, const std::string& target, const Json::Value
     std::string key(args["key"].asString());
 
     if(key.empty()) {
-        // Backward compatibility
-        // throw std::runtime_error("no driver id has been specified");
-        key = target;
+        throw std::runtime_error("no driver id has been specified");
     }
 
     history_map_t::iterator it(m_histories.find(key));
@@ -359,61 +342,13 @@ void core_t::stat(future_t* future) {
     
     future->push("engines", engines);
     
-    threads["total"] = engine::threading::thread_t::objects_created;
-    threads["alive"] = engine::threading::thread_t::objects_alive;
+    threads["total"] = engine::thread_t::objects_created;
+    threads["alive"] = engine::thread_t::objects_alive;
     future->push("threads", threads);
 
     requests["total"] = future_t::objects_created;
     requests["pending"] = future_t::objects_alive;
     future->push("requests", requests);
-}
-
-void core_t::upstream(ev::io& io, int revents) {
-    unsigned int code = 0;
-   
-    while(s_upstream.pending()) {
-        s_upstream.recv(code);
-
-        switch(code) {
-            case EVENT: {
-                std::string thread_id, driver_id;
-                Json::Value object;
-
-                boost::tuple<std::string&, std::string&, Json::Value&>
-                    tier(thread_id, driver_id, object);
-
-                s_upstream.recv_multi(tier);
-                event(driver_id, object);
-
-                break;
-            }
-            case FUTURE: {
-                std::string future_id, key;
-                Json::Value object;
-                
-                boost::tuple<std::string&, std::string&, Json::Value&>
-                    tier(future_id, key, object);
-
-                s_upstream.recv_multi(tier);
-                future(future_id, key, object);
-                
-                break;
-            }
-            case SUICIDE: {
-                std::string engine_id, thread_id;
-                
-                boost::tuple<std::string&, std::string&> tier(engine_id, thread_id);
-                
-                s_upstream.recv_multi(tier);
-                reap(engine_id, thread_id);
-                
-                break;
-            }
-            case TRACK:
-            default:
-                syslog(LOG_ERR, "core: [%s()] unknown message", __func__);
-        }
-    }
 }
 
 // Publishing format (not JSON, as it will render subscription mechanics pointless):
@@ -474,26 +409,6 @@ void core_t::event(const std::string& driver_id, const Json::Value& event) {
         message.rebuild(value.length());
         memcpy(message.data(), value.data(), value.length());
         s_publisher.send(message);
-    }
-}
-
-void core_t::future(const std::string& future_id, const std::string& key, const Json::Value& value) {
-    future_map_t::iterator it(m_futures.find(future_id));
-    
-    if(it != m_futures.end()) {
-        it->second->push(key, value);
-    } else {
-        syslog(LOG_ERR, "core: [%s()] orphan - part of future %s", __func__, future_id.c_str());
-    }
-}
-
-void core_t::reap(const std::string& engine_id, const std::string& thread_id) {
-    engine_map_t::iterator it(m_engines.find(engine_id));
-
-    if(it != m_engines.end()) {
-        it->second->reap(thread_id);
-    } else {
-        syslog(LOG_ERR, "core: [%s()] orphan - engine %s", __func__, engine_id.c_str());
     }
 }
 

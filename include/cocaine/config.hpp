@@ -36,6 +36,11 @@ class config_t {
 #if BOOST_VERSION > 103500
             float linger_timeout;
 #endif
+#if ZMQ_VERSION > 30000
+            int queue_depth;
+#else
+            uint64_t queue_depth;
+#endif
         } engine;
 
         struct {
