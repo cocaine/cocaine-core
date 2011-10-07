@@ -117,7 +117,7 @@ void overseer_t::request(ev::io& w, int revents) {
                 try {
                     result = drop(driver_id);
                 } catch(const std::runtime_error& e) {
-                    syslog(LOG_ERR, "thread %s in %s: [%s()] %s", m_id.get().c_str(), __func__, e.what());
+                    syslog(LOG_ERR, "thread %s: [%s()] %s", m_id.get().c_str(), __func__, e.what());
                     result["error"] = e.what();
                 }
 
@@ -195,7 +195,7 @@ Json::Value overseer_t::drop(const std::string& driver_id) {
        
         // If it was the last slave, start the suicide timer
         if(m_slaves.empty()) {
-            syslog(LOG_DEBUG, "thread %s in %s: suicide timer started", m_id.get().c_str());
+            syslog(LOG_DEBUG, "thread %s: suicide timer started", m_id.get().c_str());
             m_timeout.start(config_t::get().engine.suicide_timeout);
         }
 
@@ -205,7 +205,7 @@ Json::Value overseer_t::drop(const std::string& driver_id) {
         try {
             storage_t::instance()->remove("tasks", object_id);
         } catch(const std::runtime_error& e) {
-            syslog(LOG_ERR, "thread %s in %s: [%s()] storage failure - %s",
+            syslog(LOG_ERR, "thread %s: [%s()] storage failure - %s",
                 m_id.get().c_str(), __func__, e.what());
         }
     } else {

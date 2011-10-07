@@ -183,7 +183,7 @@ thread_t::thread_t(zmq::context_t& context, const auto_uuid_t& engine_id, const 
     create();
 
 #if BOOST_VERSION >= 103500
-    m_heartbeat.set<thread_t, &thread_t::heartbeat>(this);
+    m_heartbeat.set<thread_t, &thread_t::timeout>(this);
     rearm();
 #endif    
 }
@@ -196,7 +196,7 @@ thread_t::~thread_t() {
         using namespace boost::posix_time;
         
         if(!m_thread->timed_join(seconds(config_t::get().engine.linger_timeout))) {
-            syslog(LOG_WARNING, "thread %s: thread is unresponsive", m_oversser->id().c_str());
+            syslog(LOG_WARNING, "thread %s: thread is unresponsive", m_overseer->id().c_str());
             m_thread->interrupt();
         }
 #else
@@ -223,7 +223,8 @@ void thread_t::create() {
 
 #if BOOST_VERSION >= 103500
 void thread_t::timeout(ev::timer& w, int revents) {
-    syslog(LOG_ERR, "thread %s: thread is unresponsive, restarting");
+    syslog(LOG_ERR, "thread %s: thread is unresponsive, restarting",
+        m_id.get().c_str());
     
     m_thread->interrupt();
     m_thread.reset();
