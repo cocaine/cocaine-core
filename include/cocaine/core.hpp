@@ -36,12 +36,13 @@ class core_t:
 
         // User request dispatching
         void dispatch(boost::shared_ptr<response_t> response, const Json::Value& root);
+        void stats(boost::shared_ptr<response_t> response);
         
         // User request handling
         boost::shared_ptr<future_t> push(const Json::Value& args);
         boost::shared_ptr<future_t> drop(const Json::Value& args);
+        
         Json::Value past(const Json::Value& args);
-        Json::Value stat();
 
         // Task recovering
         void recover();

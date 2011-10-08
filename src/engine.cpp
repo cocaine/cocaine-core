@@ -45,7 +45,9 @@ engine_t::~engine_t() {
 
 boost::shared_ptr<future_t> engine_t::push(const Json::Value& args) {
     boost::shared_ptr<future_t> future(new future_t());
-    unique_id_t::type thread_id(args.get("thread", unique_id_t().id()).asString());
+
+    // If the thread id isn't specified use the engine's id as the default's thread id
+    unique_id_t::type thread_id(args.get("thread", id()).asString());
     thread_map_t::iterator thread(m_threads.find(thread_id));
 
     if(thread == m_threads.end()) {
@@ -76,12 +78,9 @@ boost::shared_ptr<future_t> engine_t::push(const Json::Value& args) {
 
 boost::shared_ptr<future_t> engine_t::drop(const Json::Value& args) {
     boost::shared_ptr<future_t> future(new future_t());
-    std::string thread_id(args["thread"].asString());
-
-    if(thread_id.empty()) {
-        throw std::runtime_error("no thread id has been specified");
-    }
-
+    
+    // If the thread id isn't specified use the engine's id as the default's thread id
+    std::string thread_id(args.get("thread", id()).asString());
     thread_map_t::iterator thread(m_threads.find(thread_id));
 
     if(thread != m_threads.end()) {

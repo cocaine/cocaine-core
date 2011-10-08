@@ -17,7 +17,8 @@ overseer_t::overseer_t(unique_id_t::type id_, zmq::context_t& context, unique_id
     m_loop(),
     m_request(m_loop),
     m_timeout(m_loop),
-    m_heartbeat(m_loop)
+    m_heartbeat(m_loop),
+    m_isolated(id_ != engine_id)
 {
     // The routing will be done internally by ZeroMQ, thus the socket identity setup
     m_channel.setsockopt(ZMQ_IDENTITY, id().data(), id().length());
@@ -163,15 +164,14 @@ Json::Value overseer_t::push(const Json::Value& args) {
 
     // Persistance
     if(!args.get("transient", false).asBool()) {
-        std::string object_id(m_digest.get(id() + driver_id));
-       
         try { 
-            if(!storage_t::instance()->exists("tasks", object_id)) {
+            if(!storage_t::instance()->exists("tasks", driver_id)) {
                 Json::Value object(args);
 
-                object["thread"] = id();
+                if(m_isolated)
+                    object["thread"] = id();
 
-                storage_t::instance()->put("tasks", object_id, object);
+                storage_t::instance()->put("tasks", driver_id, object);
             }
         } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "overseer %s: [%s()] storage failure - %s",
@@ -196,10 +196,8 @@ Json::Value overseer_t::drop(const std::string& driver_id) {
         }
 
         // Un-persist
-        std::string object_id(m_digest.get(id() + driver_id));
-        
         try {
-            storage_t::instance()->remove("tasks", object_id);
+            storage_t::instance()->remove("tasks", driver_id);
         } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "overseer %s: [%s()] storage failure - %s",
                 id().c_str(), __func__, e.what());

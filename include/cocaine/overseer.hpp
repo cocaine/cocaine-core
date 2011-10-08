@@ -35,6 +35,7 @@ class overseer_t:
         inline zmq::context_t& context() { return m_context; }
         inline boost::shared_ptr<plugin::source_t> source() { return m_source; }
         inline lines::channel_t& channel() { return m_channel; }
+        inline bool isolated() const { return m_isolated; }
 
     private:
         // Event loop callback handling and dispatching
@@ -69,6 +70,9 @@ class overseer_t:
 
         // Storage key generation
         security::digest_t m_digest;
+
+        // Whether this thread is not the default one
+        bool m_isolated;
 };
 
 }}

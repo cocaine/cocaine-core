@@ -7,7 +7,7 @@ namespace cocaine { namespace engine { namespace drivers {
 
 template<class T>
 class timed_driver_base_t:
-    public driver_base_t<ev::periodic, timed_driver_base_t<T> >
+    public driver_base_t< ev::periodic, timed_driver_base_t<T> >
 {
     public:
         timed_driver_base_t(boost::shared_ptr<overseer_t> parent):

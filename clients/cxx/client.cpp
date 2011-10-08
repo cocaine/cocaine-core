@@ -82,12 +82,14 @@ bool client_t::subscribe(const std::vector<std::string>& urls, const std::string
 
     // Request JSON header
     root["version"] = 2;
-    root["token"] = "yandex-blogs";
+    root["username"] = "yandex-blogs";
     root["action"] = "push";
 
     // Preparing the request JSON
     for(std::vector<std::string>::const_iterator it = urls.begin(); it != urls.end(); ++it) {
         root["targets"][*it] = Json::Value();
+        root["targets"][*it]["uri"] = *it;
+        root["targets"][*it]["driver"] = "auto";
         root["targets"][*it]["interval"] = 5000;
     }
 
@@ -115,13 +117,10 @@ bool client_t::subscribe(const std::vector<std::string>& urls, const std::string
         return false;
     }
 
-    Json::Value::Members sources = subscriptions.getMemberNames();
+    Json::Value::Members sources = subscriptions["results"].getMemberNames();
         
     // Configure the dispatchers
     for(Json::Value::Members::const_iterator source = sources.begin(); source != sources.end(); ++source) {
-        if(*source == "hostname")
-            continue;
-        
         std::string key = subscriptions[*source]["key"].asString();
        
         // Store the target-key relationship

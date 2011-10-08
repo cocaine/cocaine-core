@@ -231,9 +231,7 @@ void core_t::dispatch(boost::shared_ptr<response_t> response, const Json::Value&
             }
         }
     } else if(action == "stats") {
-        response->reserve(boost::assign::list_of
-            ("statistics"));
-        response->push("statistics", stat());
+        stats(response);
     } else {
         throw std::runtime_error("unsupported action");
     }
@@ -318,22 +316,31 @@ Json::Value core_t::past(const Json::Value& args) {
     return result;
 }
 
-Json::Value core_t::stat() {
-    Json::Value result(Json::objectValue);
+void core_t::stats(boost::shared_ptr<response_t> response) {
+    response->reserve(boost::assign::list_of
+        ("engines")
+        ("threads")
+        ("requests"));
+    
+    Json::Value engines(Json::objectValue),
+                threads(Json::objectValue),
+                requests(Json::objectValue);
 
-    result["engines"]["total"] = engine::engine_t::objects_created;
+    engines["total"] = engine::engine_t::objects_created;
     
     for(engine_map_t::const_iterator it = m_engines.begin(); it != m_engines.end(); ++it) {
-        result["engines"]["alive"].append(it->first);
+        engines["alive"].append(it->first);
     }
     
-    result["threads"]["total"] = engine::thread_t::objects_created;
-    result["threads"]["alive"] = engine::thread_t::objects_alive;
+    threads["total"] = engine::thread_t::objects_created;
+    threads["alive"] = engine::thread_t::objects_alive;
 
-    result["requests"]["total"] = response_t::objects_created;
-    result["requests"]["pending"] = response_t::objects_alive;
+    requests["total"] = response_t::objects_created;
+    requests["pending"] = response_t::objects_alive;
 
-    return result;
+    response->push("engines", engines);
+    response->push("threads", threads);
+    response->push("requests", requests);
 }
 
 // Publishing format (not JSON, as it will render subscription mechanics pointless):

@@ -16,7 +16,9 @@ class manual_t:
                 throw std::runtime_error("source doesn't support manual scheduling");
             }
             
-            m_id = "manual:" + digest_t().get(m_parent->source()->uri());
+            m_id = "manual:" + digest_t().get(
+                (m_parent->isolated() ? m_parent->id() : "") +
+                m_parent->source()->uri());
         }
 
         inline ev::tstamp reschedule(ev::tstamp now) {

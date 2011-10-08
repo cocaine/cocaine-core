@@ -31,7 +31,7 @@ class response_t:
         
         void push(const std::string& key, const Json::Value& result) {
             if(m_reserve.find(key) != m_reserve.end()) {
-                m_root[key] = result;
+                m_root["results"][key] = result;
                 m_reserve.erase(key);
             }
 
@@ -42,7 +42,10 @@ class response_t:
 
         void abort(const std::string& error) {
             m_reserve.clear();
+            m_root.clear();
+
             m_root["error"] = error;
+            
             m_parent->seal(shared_from_this());
         }
 

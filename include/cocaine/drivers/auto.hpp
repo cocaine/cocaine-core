@@ -23,7 +23,9 @@ class auto_t:
                 throw std::runtime_error("no interval specified");
             }
 
-            m_id = "auto:" + digest_t().get(m_parent->source()->uri() + 
+            m_id = "auto:" + digest_t().get(
+                (m_parent->isolated() ? m_parent->id() : "") +
+                m_parent->source()->uri() + 
                 boost::lexical_cast<std::string>(m_interval));
         }
        
