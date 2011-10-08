@@ -18,30 +18,29 @@ namespace cocaine { namespace engine {
 // Thread manager
 class overseer_t:
     public boost::noncopyable,
-    public boost::enable_shared_from_this<overseer_t>
+    public boost::enable_shared_from_this<overseer_t>,
+    public helpers::unique_id_t
 {
     public:
-        overseer_t(zmq::context_t& context, const helpers::auto_uuid_t& engine_id,
-            const helpers::auto_uuid_t& thread_id);
+        overseer_t(helpers::unique_id_t::type id,
+                   zmq::context_t& context,
+                   helpers::unique_id_t::type engine_id);
        
         // Thread entry point 
         void run(boost::shared_ptr<plugin::source_t> source);
         
     public:
         // Driver bindings
-        inline std::string id() const { return m_id.get(); }
         inline ev::dynamic_loop& loop() { return m_loop; }
         inline zmq::context_t& context() { return m_context; }
         inline boost::shared_ptr<plugin::source_t> source() { return m_source; }
-        inline lines::channel_t& link() { return m_link; }
+        inline lines::channel_t& channel() { return m_channel; }
 
     private:
         // Event loop callback handling and dispatching
         void request(ev::io& w, int revents);
         void timeout(ev::timer& w, int revents);
-#if BOOST_VERSION >= 103500
         void heartbeat(ev::timer& w, int revents);
-#endif
 
         // Thread request handling
         template<class DriverType>
@@ -52,20 +51,14 @@ class overseer_t:
         void terminate();
 
     private:
-        // Thread ID
-        helpers::auto_uuid_t m_id;
-
         // Messaging
         zmq::context_t& m_context;
-        lines::channel_t m_link;
+        lines::channel_t m_channel;
         
         // Event loop
         ev::dynamic_loop m_loop;
         ev::io m_request;
-        ev::timer m_timeout;
-#if BOOST_VERSION >= 103500
-        ev::timer m_heartbeat;
-#endif
+        ev::timer m_timeout, m_heartbeat;
 
         // Data source
         boost::shared_ptr<plugin::source_t> m_source;

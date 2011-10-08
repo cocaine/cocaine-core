@@ -91,6 +91,9 @@ int main(int argc, char* argv[]) {
     } catch(const po::unknown_option& e) {
         std::cerr << "Error: " << e.what() << std::endl;
         return EXIT_FAILURE;
+    } catch(const po::ambiguous_option& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return EXIT_FAILURE;
     }
 
     if(vm.count("help")) {

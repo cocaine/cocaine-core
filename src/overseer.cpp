@@ -10,48 +10,46 @@ using namespace cocaine::plugin;
 using namespace cocaine::storage;
 using namespace cocaine::helpers;
 
-overseer_t::overseer_t(zmq::context_t& context, const auto_uuid_t& engine_id, const auto_uuid_t& thread_id):
+overseer_t::overseer_t(unique_id_t::type id_, zmq::context_t& context, unique_id_t::type engine_id):
+    unique_id_t(id_),
     m_context(context),
-    m_link(m_context, ZMQ_DEALER),
+    m_channel(m_context, ZMQ_DEALER),
     m_loop(),
     m_request(m_loop),
     m_timeout(m_loop),
-#if BOOST_VERSION >= 103500
-    m_heartbeat(m_loop),
-#endif
-    m_id(thread_id)
+    m_heartbeat(m_loop)
 {
     // The routing will be done internally by ZeroMQ, thus the socket identity setup
-    m_link.setsockopt(ZMQ_IDENTITY, m_id.get().data(), m_id.get().length());
+    m_channel.setsockopt(ZMQ_IDENTITY, id().data(), id().length());
 
     // This is set up to avoid very long queues in server mode
-    m_link.setsockopt(ZMQ_HWM, &config_t::get().engine.queue_depth,
+    m_channel.setsockopt(ZMQ_HWM, &config_t::get().engine.queue_depth,
         sizeof(config_t::get().engine.queue_depth));
         
     // Connect to the engine's controlling socket and set the socket watcher
-    m_link.connect("inproc://engine/" + engine_id.get());
+    m_channel.connect("inproc://engine/" + engine_id);
 
     m_request.set<overseer_t, &overseer_t::request>(this);
-    m_request.start(m_link.fd(), EV_READ);
+    m_request.start(m_channel.fd(), EV_READ);
 
     // Initializing suicide timer
     m_timeout.set<overseer_t, &overseer_t::timeout>(this);
     m_timeout.start(config_t::get().engine.suicide_timeout);
 
-#if BOOST_VERSION >= 103500
     // Initialize heartbeat timer
     m_heartbeat.set<overseer_t, &overseer_t::heartbeat>(this);
     m_heartbeat.start(5.0, 5.0);
-#endif
 
     // Set timer compression threshold
     m_loop.set_timeout_collect_interval(config_t::get().engine.collect_timeout);
 
     // Signal a false event, in case the core has managed to send something already
-    m_loop.feed_fd_event(m_link.fd(), EV_READ);
+    m_loop.feed_fd_event(m_channel.fd(), EV_READ);
 }
 
 void overseer_t::run(boost::shared_ptr<source_t> source) {
+    syslog(LOG_DEBUG, "overseer %s: thread id is 0x%x", id().c_str(), pthread_self());
+
     m_source = source;
     m_loop.loop();
 }
@@ -66,17 +64,17 @@ void overseer_t::request(ev::io& w, int revents) {
 
     unsigned int code = 0;
 
-    while(m_link.pending()) {
+    while(m_channel.pending()) {
         Json::Value result(Json::objectValue);
         
         // Get the message code
-        m_link.recv(code);
+        m_channel.recv(code);
 
         switch(code) {
             case PUSH: {
                 Json::Value args;
 
-                m_link.recv(args);
+                m_channel.recv(args);
 
                 const std::string type(args["driver"].asString());
 
@@ -103,7 +101,7 @@ void overseer_t::request(ev::io& w, int revents) {
                             break;
                     }
                 } catch(const std::runtime_error& e) {
-                    syslog(LOG_ERR, "thread %s: [%s()] %s", m_id.get().c_str(), __func__, e.what());
+                    syslog(LOG_ERR, "overseer %s: [%s()] %s", id().c_str(), __func__, e.what());
                     result["error"] = e.what();
                 }
 
@@ -112,12 +110,12 @@ void overseer_t::request(ev::io& w, int revents) {
             case DROP: {
                 std::string driver_id;
                 
-                m_link.recv(driver_id);
+                m_channel.recv(driver_id);
 
                 try {
                     result = drop(driver_id);
                 } catch(const std::runtime_error& e) {
-                    syslog(LOG_ERR, "thread %s: [%s()] %s", m_id.get().c_str(), __func__, e.what());
+                    syslog(LOG_ERR, "overseer %s: [%s()] %s", id().c_str(), __func__, e.what());
                     result["error"] = e.what();
                 }
 
@@ -129,21 +127,19 @@ void overseer_t::request(ev::io& w, int revents) {
         }
        
         // Report to the core
-        m_link.send_multi(boost::make_tuple(
+        m_channel.send_multi(boost::make_tuple(
             FUTURE,
-            result));
+            result)); 
     }
 }
  
 void overseer_t::timeout(ev::timer& w, int revents) {
-    m_link.send(SUICIDE);
+    m_channel.send(SUICIDE);
 }
 
-#if BOOST_VERSION >= 103500
 void overseer_t::heartbeat(ev::timer& w, int revents) {
-    m_link.send(HEARTBEAT);
+    m_channel.send(HEARTBEAT);
 }
-#endif
 
 template<class DriverType>
 Json::Value overseer_t::push(const Json::Value& args) {
@@ -158,7 +154,7 @@ Json::Value overseer_t::push(const Json::Value& args) {
         m_slaves.insert(driver_id, driver);
 
         if(m_timeout.is_active()) {
-            syslog(LOG_DEBUG, "thread %s: suicide timer stopped", m_id.get().c_str());
+            syslog(LOG_DEBUG, "overseer %s: suicide timer stopped", id().c_str());
             m_timeout.stop();
         }
     }
@@ -167,19 +163,19 @@ Json::Value overseer_t::push(const Json::Value& args) {
 
     // Persistance
     if(!args.get("transient", false).asBool()) {
-        std::string object_id(m_digest.get(m_id.get() + driver_id));
+        std::string object_id(m_digest.get(id() + driver_id));
        
         try { 
             if(!storage_t::instance()->exists("tasks", object_id)) {
                 Json::Value object(args);
-                
-                object["thread"] = m_id.get();
+
+                object["thread"] = id();
 
                 storage_t::instance()->put("tasks", object_id, object);
             }
         } catch(const std::runtime_error& e) {
-            syslog(LOG_ERR, "thread %s: [%s()] storage failure - %s",
-                m_id.get().c_str(), __func__, e.what());
+            syslog(LOG_ERR, "overseer %s: [%s()] storage failure - %s",
+                id().c_str(), __func__, e.what());
         }
     }
 
@@ -195,18 +191,18 @@ Json::Value overseer_t::drop(const std::string& driver_id) {
        
         // If it was the last slave, start the suicide timer
         if(m_slaves.empty()) {
-            syslog(LOG_DEBUG, "thread %s: suicide timer started", m_id.get().c_str());
+            syslog(LOG_DEBUG, "overseer %s: suicide timer started", id().c_str());
             m_timeout.start(config_t::get().engine.suicide_timeout);
         }
 
         // Un-persist
-        std::string object_id(m_digest.get(m_id.get() + driver_id));
+        std::string object_id(m_digest.get(id() + driver_id));
         
         try {
             storage_t::instance()->remove("tasks", object_id);
         } catch(const std::runtime_error& e) {
-            syslog(LOG_ERR, "thread %s: [%s()] storage failure - %s",
-                m_id.get().c_str(), __func__, e.what());
+            syslog(LOG_ERR, "overseer %s: [%s()] storage failure - %s",
+                id().c_str(), __func__, e.what());
         }
     } else {
         throw std::runtime_error("driver is not active");
@@ -220,6 +216,9 @@ Json::Value overseer_t::drop(const std::string& driver_id) {
 
 void overseer_t::terminate() {
     m_slaves.clear();
+    m_request.stop();
+    m_timeout.stop();
+    m_heartbeat.stop();
     m_source.reset();
     m_loop.unloop();
 } 

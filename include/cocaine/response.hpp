@@ -43,6 +43,7 @@ class response_t:
         void abort(const std::string& error) {
             m_reserve.clear();
             m_root["error"] = error;
+            m_parent->seal(shared_from_this());
         }
 
         void abort(const std::string& key, const std::string& error) {
@@ -54,10 +55,6 @@ class response_t:
         }
 
     public:
-        std::string id() const {
-            return m_id.get();
-        }
-        
         const Json::Value& root() const {
             return m_root;
         }
@@ -67,7 +64,6 @@ class response_t:
         }
 
     private:
-        helpers::auto_uuid_t m_id;
         std::vector<std::string> m_route;
         boost::shared_ptr<core_t> m_parent;
 

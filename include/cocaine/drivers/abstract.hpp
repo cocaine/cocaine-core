@@ -26,7 +26,7 @@ class abstract_driver_t:
         
         void publish(const Json::Value& result) {
             if(!m_id.empty() && !result.isNull()) {
-                m_parent->link().send_multi(boost::make_tuple(
+                m_parent->channel().send_multi(boost::make_tuple(
                     EVENT,
                     m_id,
                     result));

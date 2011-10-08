@@ -43,7 +43,11 @@ class socket_t:
         }
 
         inline void getsockopt(int name, void* value, size_t* length) {
-            m_socket.getsockopt(name, value, length);
+            try {
+                m_socket.getsockopt(name, value, length);
+            } catch(const zmq::error_t& e) {
+                syslog(LOG_ERR, "net: [%s()] %s", __func__, e.what());
+            }
         }
 
         inline void setsockopt(int name, const void* value, size_t length) {
@@ -73,10 +77,7 @@ class socket_t:
 #define FUTURE    4 /* overseer fulfills an engine's request */
 #define SUICIDE   5 /* overseer performs a suicide */
 #define EVENT     6 /* driver sends the invocation results to the core */
-
-#if BOOST_VERSION >= 103500
-  #define HEARTBEAT 7 /* overseer is reporting that it's still alive */
-#endif
+#define HEARTBEAT 7 /* overseer is reporting that it's still alive */
 
 template<class T> class raw;
 

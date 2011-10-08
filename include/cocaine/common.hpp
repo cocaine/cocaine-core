@@ -17,7 +17,7 @@
 #include <boost/tuple/tuple.hpp>
 
 #include "cocaine/config.hpp"
-#include "cocaine/helpers/auto_uuid.hpp"
+#include "cocaine/helpers/unique_id.hpp"
 #include "cocaine/helpers/birth_control.hpp"
 
 #include "json/json.h"
