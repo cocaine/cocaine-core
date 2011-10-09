@@ -60,9 +60,9 @@ class thread_t:
                  zmq::context_t& context, 
                  helpers::unique_id_t::type engine_id,
                  std::string uri);
+        ~thread_t();
 
         void rearm();
-        void join();
 
     public:
         inline void enqueue(boost::shared_ptr<core::future_t> future);

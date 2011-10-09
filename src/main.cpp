@@ -54,17 +54,15 @@ int main(int argc, char* argv[]) {
             "plugin path")
         ("pidfile", po::value<fs::path>()->default_value("/var/run/cocaine.pid"),
             "location of a pid file")
-        ("thread-suicide-timeout", po::value<float>
-            (&config_t::set().engine.suicide_timeout)->default_value(600.0),
-            "stale thread suicide timeout, in seconds")
         ("thread-collect-timeout", po::value<float>
             (&config_t::set().engine.collect_timeout)->default_value(0.5),
-            "driver events collection timeout, in seconds")
-#if BOOST_VERSION > 103500
-        ("thread-linger-timeout", po::value<float>
-            (&config_t::set().engine.linger_timeout)->default_value(5.0),
-            "unresponsive thread cancellation timeout")
-#endif
+            "driver events collection timeout, seconds")
+        ("thread-suicide-timeout", po::value<float>
+            (&config_t::set().engine.suicide_timeout)->default_value(600.0),
+            "stale thread suicide timeout, seconds")
+        ("thread-heartbeat-timeout", po::value<float>
+            (&config_t::set().engine.heartbeat_timeout)->default_value(60.0),
+            "unresponsive thread cancellation timeout, seconds")
 #if ZMQ_VERSION > 30000
         ("thread-queue-depth", po::value<int>
 #else

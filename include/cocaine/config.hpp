@@ -31,11 +31,9 @@ class config_t {
         } registry;
 
         struct {
-            float suicide_timeout;
             float collect_timeout;
-#if BOOST_VERSION > 103500
-            float linger_timeout;
-#endif
+            float heartbeat_timeout;
+            float suicide_timeout;
 #if ZMQ_VERSION > 30000
             int queue_depth;
 #else

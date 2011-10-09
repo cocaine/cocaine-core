@@ -39,7 +39,7 @@ engine_t::~engine_t() {
         m_channel.send_multi(boost::make_tuple(
             protect(it->first),
             TERMINATE));
-        it->second->join();
+        m_threads.erase(it);
     }
 }
 
@@ -184,6 +184,24 @@ thread_t::thread_t(unique_id_t::type id_, zmq::context_t& context, unique_id_t::
     rearm();
 }
 
+thread_t::~thread_t() {
+    if(m_thread) {
+        syslog(LOG_DEBUG, "thread %s [%s]: terminating", id().c_str(), m_engine_id.c_str());
+
+        m_heartbeat.stop();
+
+#if BOOST_VERSION >= 103500
+        if(!m_thread->timed_join(boost::posix_time::seconds(5))) {
+            syslog(LOG_WARNING, "thread %s [%s]: thread is unresponsive",
+                id().c_str(), m_engine_id.c_str());
+            m_thread->interrupt();
+        }
+#else
+        m_thread->join();
+#endif
+    }
+}
+
 void thread_t::create() {
     try {
         // Init the overseer and all the sockets
@@ -200,26 +218,6 @@ void thread_t::create() {
     }
 }
 
-void thread_t::join() {
-    if(m_thread) {
-        syslog(LOG_DEBUG, "thread %s [%s]: terminating", id().c_str(), m_engine_id.c_str());
-
-        m_heartbeat.stop();
-
-#if BOOST_VERSION >= 103500
-        using namespace boost::posix_time;
-        
-        if(!m_thread->timed_join(seconds(config_t::get().engine.linger_timeout))) {
-            syslog(LOG_WARNING, "thread %s [%s]: thread is unresponsive",
-                id().c_str(), m_engine_id.c_str());
-            m_thread->interrupt();
-        }
-#else
-        m_thread->join();
-#endif
-    }
-}
-
 void thread_t::timeout(ev::timer& w, int revents) {
     syslog(LOG_ERR, "thread %s [%s]: thread missed a heartbeat", id().c_str(), m_engine_id.c_str());
 
@@ -232,8 +230,11 @@ void thread_t::timeout(ev::timer& w, int revents) {
 }
 
 void thread_t::rearm() {
-    m_heartbeat.stop();
-    m_heartbeat.start(60.0);
+    if(m_heartbeat.is_active()) {
+        m_heartbeat.stop();
+    }
+
+    m_heartbeat.start(config_t::get().engine.heartbeat_timeout);
 }
 
 void thread_t::enqueue(boost::shared_ptr<future_t> future) {
