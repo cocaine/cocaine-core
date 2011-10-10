@@ -90,6 +90,22 @@ boost::shared_ptr<future_t> engine_t::push(const Json::Value& args) {
     return future;
 }
 
+boost::shared_ptr<future_t> engine_t::cast(const Json::Value& args) {
+    boost::shared_ptr<future_t> future(new future_t());
+
+    for(thread_map_t::iterator it = m_threads.begin(); it != m_threads.end(); ++it) {
+        it->second->enqueue(future);
+        
+        m_channel.send_multi(boost::make_tuple(
+            protect(it->first),
+            PUSH,
+            SERVER,
+            args));
+    }
+        
+    return future;
+}
+
 boost::shared_ptr<future_t> engine_t::drop(const Json::Value& args) {
     boost::shared_ptr<future_t> future(new future_t());
     

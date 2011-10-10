@@ -11,6 +11,13 @@ class future_t:
     public helpers::birth_control_t<future_t>
 {
     public:
+        ~future_t() {
+            if(m_response) {
+                m_response->seal(m_key);
+            }
+        }
+
+    public:
         inline void bind(const std::string& key, boost::shared_ptr<response_t> response) {
             m_key = key;
             m_response = response;
