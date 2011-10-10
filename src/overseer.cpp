@@ -1,5 +1,3 @@
-#include <boost/assign.hpp>
-
 #include "cocaine/overseer.hpp"
 #include "cocaine/drivers.hpp"
 #include "cocaine/storage.hpp"
@@ -49,20 +47,13 @@ overseer_t::overseer_t(unique_id_t::type id_, zmq::context_t& context, unique_id
 }
 
 void overseer_t::run(boost::shared_ptr<source_t> source) {
-    syslog(LOG_DEBUG, "overseer %s: thread id is 0x%x", id().c_str(), pthread_self());
+    syslog(LOG_DEBUG, "overseer %s: thread id is 0x%lx", id().c_str(), pthread_self());
 
     m_source = source;
     m_loop.loop();
 }
 
 void overseer_t::request(ev::io& w, int revents) {
-    static std::map<const std::string, unsigned int> types = boost::assign::map_list_of
-        ("auto", AUTO)
-        ("manual", MANUAL)
-        ("fs", FILESYSTEM)
-        ("sink", SINK)
-        ("server", SERVER);
-
     unsigned int code = 0;
 
     while(m_channel.pending()) {
@@ -73,18 +64,14 @@ void overseer_t::request(ev::io& w, int revents) {
 
         switch(code) {
             case PUSH: {
+                unsigned int type = 0;
                 Json::Value args;
 
-                m_channel.recv(args);
-
-                const std::string type(args["driver"].asString());
+                boost::tuple<unsigned int&, Json::Value&> tier(type, args);
+                m_channel.recv_multi(tier);
 
                 try {
-                    if(types.find(type) == types.end()) {
-                        throw std::runtime_error("invalid driver type");
-                    }
-
-                    switch(types[type]) {
+                    switch(type) {
                         case AUTO:
                             result = push<drivers::auto_t>(args);
                             break;
@@ -108,6 +95,7 @@ void overseer_t::request(ev::io& w, int revents) {
 
                 break;
             }
+
             case DROP: {
                 std::string driver_id;
                 
@@ -122,6 +110,7 @@ void overseer_t::request(ev::io& w, int revents) {
 
                 break;
             }
+
             case TERMINATE:
                 terminate();
                 return;

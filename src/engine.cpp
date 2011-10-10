@@ -1,4 +1,5 @@
 #include <boost/bind.hpp>
+#include <boost/assign.hpp>
 
 #include "cocaine/core.hpp"
 #include "cocaine/engine.hpp"
@@ -44,6 +45,18 @@ engine_t::~engine_t() {
 }
 
 boost::shared_ptr<future_t> engine_t::push(const Json::Value& args) {
+    static std::map<const std::string, unsigned int> types = boost::assign::map_list_of
+        ("auto", AUTO)
+        ("manual", MANUAL)
+        ("fs", FILESYSTEM)
+        ("sink", SINK)
+        ("server", SERVER);
+    std::string type(args["driver"].asString());
+
+    if(types.find(type) == types.end()) {
+        throw std::runtime_error("invalid driver type");
+    }
+
     boost::shared_ptr<future_t> future(new future_t());
 
     // If the thread id isn't specified use the engine's id as the default's thread id
@@ -71,6 +84,7 @@ boost::shared_ptr<future_t> engine_t::push(const Json::Value& args) {
     m_channel.send_multi(boost::make_tuple(
         protect(thread_id),
         PUSH,
+        types[type],
         args));
 
     return future;
@@ -125,6 +139,7 @@ void engine_t::request(ev::io& w, int revents) {
 
                 break;
             }
+
             case EVENT: {
                 std::string driver_id;
                 Json::Value object;
@@ -137,10 +152,12 @@ void engine_t::request(ev::io& w, int revents) {
                 
                 break;
             }
+
             case HEARTBEAT: {
                 thread->second->rearm();
                 break;
             }
+
             case SUICIDE: {
                 m_threads.erase(thread);
 
@@ -157,6 +174,7 @@ void engine_t::request(ev::io& w, int revents) {
                 
                 break;
             }
+
             default:
                 syslog(LOG_ERR, "engine %s [%s]: [%s()] unknown message",
                     id().c_str(), m_uri.c_str(), __func__);
