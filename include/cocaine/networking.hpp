@@ -93,6 +93,14 @@ class channel_t:
         using socket_t::send;
         using socket_t::recv;
 
+        void ignore() {
+            zmq::message_t null;
+
+            while(has_more()) {
+                recv(&null);
+            }
+        }
+
         // Packs and sends a single object
         template<class T>
         bool send(const T& value, int flags = 0) {
