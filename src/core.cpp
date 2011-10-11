@@ -295,7 +295,7 @@ boost::shared_ptr<future_t> core_t::once(const Json::Value& args) {
 
     return it->second->cast(
         routing::shortest_queue(
-            args.get("queue", 10).asUInt()),
+            args.get("queue", config_t::get().engine.queue_depth).asUInt()),
         boost::make_tuple(
             ONCE,
             args));

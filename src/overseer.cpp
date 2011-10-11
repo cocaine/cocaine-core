@@ -21,10 +21,6 @@ overseer_t::overseer_t(unique_id_t::type id_, unique_id_t::type engine_id, zmq::
     // The routing will be done internally by ZeroMQ, thus the socket identity setup
     m_channel.setsockopt(ZMQ_IDENTITY, id().data(), id().length());
 
-    // This is set up to avoid very long queues in server mode
-    m_channel.setsockopt(ZMQ_HWM, &config_t::get().engine.queue_depth,
-        sizeof(config_t::get().engine.queue_depth));
-        
     // Connect to the engine's controlling socket and set the socket watcher
     m_channel.connect("inproc://engine/" + engine_id);
 
