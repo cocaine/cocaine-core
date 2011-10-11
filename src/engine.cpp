@@ -1,9 +1,7 @@
 #include <boost/bind.hpp>
-#include <boost/assign.hpp>
 
 #include "cocaine/core.hpp"
 #include "cocaine/engine.hpp"
-#include "cocaine/future.hpp"
 #include "cocaine/registry.hpp"
 #include "cocaine/overseer.hpp"
 
@@ -44,88 +42,8 @@ engine_t::~engine_t() {
     }
 }
 
-boost::shared_ptr<future_t> engine_t::push(const Json::Value& args) {
-    static std::map<const std::string, unsigned int> types = boost::assign::map_list_of
-        ("auto", AUTO)
-        ("manual", MANUAL)
-        ("fs", FILESYSTEM)
-        ("sink", SINK)
-        ("server", SERVER);
-    std::string type(args["driver"].asString());
-
-    if(types.find(type) == types.end()) {
-        throw std::runtime_error("invalid driver type");
-    }
-
-    boost::shared_ptr<future_t> future(new future_t());
-
-    // If the thread id isn't specified use the engine's id as the default's thread id
-    unique_id_t::type thread_id(args.get("thread", id()).asString());
-    thread_map_t::iterator thread(m_threads.find(thread_id));
-
-    if(thread == m_threads.end()) {
-        try {
-            boost::tie(thread, boost::tuples::ignore) = m_threads.insert(thread_id,
-                new thread_t(thread_id, m_context, id(), m_uri));
-        } catch(const zmq::error_t& e) {
-            if(e.num() == EMFILE) {
-                syslog(LOG_DEBUG, "engine %s [%s]: too many threads, task queued",
-                    id().c_str(), m_uri.c_str());
-                m_pending.push(std::make_pair(future, args));
-                return future;
-            } else {
-                throw;
-            }
-        }
-    }
-    
-    thread->second->enqueue(future);
-
-    m_channel.send_multi(boost::make_tuple(
-        protect(thread_id),
-        PUSH,
-        types[type],
-        args));
-
-    return future;
-}
-
-boost::shared_ptr<future_t> engine_t::cast(const Json::Value& args) {
-    boost::shared_ptr<future_t> future(new future_t());
-
-    for(thread_map_t::iterator it = m_threads.begin(); it != m_threads.end(); ++it) {
-        it->second->enqueue(future);
-        
-        m_channel.send_multi(boost::make_tuple(
-            protect(it->first),
-            PUSH,
-            SERVER,
-            args));
-    }
-        
-    return future;
-}
-
-boost::shared_ptr<future_t> engine_t::drop(const Json::Value& args) {
-    boost::shared_ptr<future_t> future(new future_t());
-    
-    // If the thread id isn't specified use the engine's id as the default's thread id
-    std::string thread_id(args.get("thread", id()).asString());
-    thread_map_t::iterator thread(m_threads.find(thread_id));
-
-    if(thread != m_threads.end()) {
-        thread->second->enqueue(future);
-
-        m_channel.send_multi(boost::make_tuple(
-            protect(thread_id),
-            DROP,
-            args["key"].asString()));
-
-        return future;
-    } else {
-        throw std::runtime_error("thread is not active");
-    }
-}
+// Operations
+// ----------
 
 void engine_t::request(ev::io& w, int revents) {
     std::string thread_id;
@@ -136,8 +54,8 @@ void engine_t::request(ev::io& w, int revents) {
         m_channel.recv_multi(tier);
 
         thread_map_t::iterator thread(m_threads.find(thread_id));
-       
-#ifndef NDEBUG 
+
+#ifndef NDEBUG       
         if(thread == m_threads.end()) {
             syslog(LOG_ERR, "engine %s [%s]: [%s()] orphan - thread %s", 
                 __func__, id().c_str(), m_uri.c_str(), thread_id.c_str());
@@ -147,7 +65,7 @@ void engine_t::request(ev::io& w, int revents) {
         
         switch(code) {
             case FUTURE: {
-                boost::shared_ptr<future_t> future(thread->second->dequeue());
+                boost::shared_ptr<future_t> future(thread->second->queue_pop());
                 Json::Value object;
                         
                 m_channel.recv(object);
@@ -178,37 +96,26 @@ void engine_t::request(ev::io& w, int revents) {
 
             case SUICIDE: {
                 m_threads.erase(thread);
-
-                // If we got something in the queue, try to invoke it
-                if(!m_pending.empty()) {
-                    boost::shared_ptr<future_t> future;
-                    Json::Value args;
-
-                    boost::tie(future, args) = m_pending.front();
-                    m_pending.pop();
-
-                    push(args)->move(future);
-                }
-                
                 break;
             }
-#ifndef NDEBUG
+
+#ifndef NDEBUG      
             default:
                 syslog(LOG_ERR, "engine %s [%s]: [%s()] unknown message",
                     id().c_str(), m_uri.c_str(), __func__);
                 abort();
-#endif
         }
+#endif
     }
 }
 
 // Thread interface
 // ----------------
 
-thread_t::thread_t(unique_id_t::type id_, zmq::context_t& context, unique_id_t::type engine_id, std::string uri):
+thread_t::thread_t(unique_id_t::type id_, unique_id_t::type engine_id, zmq::context_t& context, std::string uri):
     unique_id_t(id_),
-    m_context(context),
     m_engine_id(engine_id),
+    m_context(context),
     m_uri(uri)
 {
     syslog(LOG_DEBUG, "thread %s [%s]: starting", id().c_str(), m_engine_id.c_str());
@@ -242,7 +149,7 @@ thread_t::~thread_t() {
 void thread_t::create() {
     try {
         // Init the overseer and all the sockets
-        m_overseer.reset(new overseer_t(id(), m_context, m_engine_id));
+        m_overseer.reset(new overseer_t(id(), m_engine_id, m_context));
 
         // Create a new source
         boost::shared_ptr<source_t> source(core::registry_t::instance()->create(m_uri));
@@ -272,15 +179,4 @@ void thread_t::rearm() {
     }
 
     m_heartbeat.start(config_t::get().engine.heartbeat_timeout);
-}
-
-void thread_t::enqueue(boost::shared_ptr<future_t> future) {
-    m_queue.push(future);
-}
-
-boost::shared_ptr<future_t> thread_t::dequeue() {
-    boost::shared_ptr<future_t> future(m_queue.front());
-    m_queue.pop();
-
-    return future;
 }

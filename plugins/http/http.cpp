@@ -24,7 +24,7 @@ class http_t:
             curl_easy_setopt(m_curl, CURLOPT_ERRORBUFFER, &m_error_message);
             curl_easy_setopt(m_curl, CURLOPT_WRITEFUNCTION, &nullwriter);
             curl_easy_setopt(m_curl, CURLOPT_URL, uri.c_str());
-            curl_easy_setopt(m_curl, CURLOPT_USERAGENT, "Yappi HTTP Plugin");
+            curl_easy_setopt(m_curl, CURLOPT_USERAGENT, "Cocaine HTTP Plugin");
             curl_easy_setopt(m_curl, CURLOPT_HTTPGET, 1);
             curl_easy_setopt(m_curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
             curl_easy_setopt(m_curl, CURLOPT_TIMEOUT_MS, 500);

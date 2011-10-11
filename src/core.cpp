@@ -8,6 +8,7 @@
 #include "cocaine/engine.hpp"
 #include "cocaine/future.hpp"
 #include "cocaine/response.hpp"
+#include "cocaine/routing.hpp"
 #include "cocaine/storage.hpp"
 
 using namespace cocaine::core;
@@ -122,12 +123,11 @@ void core_t::request(ev::io& io, int revents) {
 
     while(s_requests.pending()) {
         route.clear();
-        
+
         while(true) {
             s_requests.recv(&message);
 
-            if(message.size() == 0) {
-                // Break if we got a delimiter
+            if(!message.size()) {
                 break;
             }
 
@@ -196,7 +196,7 @@ void core_t::request(ev::io& io, int revents) {
 void core_t::dispatch(boost::shared_ptr<response_t> response, const Json::Value& root) {
     std::string action(root["action"].asString());
 
-    if(action == "push" || action == "drop" || action == "past") {
+    if(action == "push" || action == "once" || action == "drop" || action == "past") {
         Json::Value targets(root["targets"]);
 
         if(!targets.isObject() || !targets.size()) {
@@ -217,6 +217,8 @@ void core_t::dispatch(boost::shared_ptr<response_t> response, const Json::Value&
                 if(args.isObject()) {
                     if(action == "push") {
                         response->wait(target, push(args));
+                    } else if(action == "once") {
+                        response->wait(target, once(args));
                     } else if(action == "drop") {
                         response->wait(target, drop(args));
                     } else if(action == "past") {
@@ -251,36 +253,73 @@ void core_t::dispatch(boost::shared_ptr<response_t> response, const Json::Value&
 // * Stat - fetches the current running stats
 
 boost::shared_ptr<future_t> core_t::push(const Json::Value& args) {
-    std::string uri(args["uri"].asString());
+    static std::map<const std::string, unsigned int> types = boost::assign::map_list_of
+        ("auto", AUTO)
+        ("manual", MANUAL)
+        ("fs", FILESYSTEM)
+        ("sink", SINK)
+        ("server", SERVER);
+
+    std::string uri(args["uri"].asString()),
+                type(args["driver"].asString());
+    engine_map_t::iterator it(m_engines.find(uri)); 
     
     if(uri.empty()) {
         throw std::runtime_error("no source uri has been specified");
-    }
-    
-    engine_map_t::iterator it(m_engines.find(uri)); 
-
-    if(it == m_engines.end()) {
+    } else if(types.find(type) == types.end()) {
+        throw std::runtime_error("invalid driver type");
+    } else if(it == m_engines.end()) {
         boost::tie(it, boost::tuples::ignore) = m_engines.insert(uri,
             new engine_t(m_context, shared_from_this(), uri));
     }
 
-    return it->second->push(args);
+    return it->second->cast(
+        routing::specific_thread(
+            args["threads"].isNull() ? it->second->id() : args["thread"].asString()),
+        boost::make_tuple(
+            PUSH,
+            types[type],
+            args));
+}
+
+boost::shared_ptr<future_t> core_t::once(const Json::Value& args) {
+    std::string uri(args["uri"].asString());
+    engine_map_t::iterator it(m_engines.find(uri)); 
+    
+    if(uri.empty()) {
+        throw std::runtime_error("no source uri has been specified");
+    } else if(it == m_engines.end()) {
+        boost::tie(it, boost::tuples::ignore) = m_engines.insert(uri,
+            new engine_t(m_context, shared_from_this(), uri));
+    }
+
+    return it->second->cast(
+        routing::shortest_queue(
+            args.get("queue", 10).asUInt()),
+        boost::make_tuple(
+            ONCE,
+            args));
 }
 
 boost::shared_ptr<future_t> core_t::drop(const Json::Value& args) {
-    std::string uri(args["uri"].asString());
+    std::string uri(args["uri"].asString()),
+                key(args["key"].asString());
+    engine_map_t::iterator it(m_engines.find(uri));
         
     if(uri.empty()) {
         throw std::runtime_error("no source uri has been specified");
-    }
-
-    engine_map_t::iterator it(m_engines.find(uri));
-    
-    if(it == m_engines.end()) {
+    } else if(key.empty()) {
+        throw std::runtime_error("no driver id has been specified");
+    } else if(it == m_engines.end()) {
         throw std::runtime_error("the specified engine is not active");
     }
 
-    return it->second->drop(args);
+    return it->second->cast(
+        routing::specific_thread(
+            args["threads"].isNull() ? it->second->id() : args["thread"].asString()),
+        boost::make_tuple(
+            DROP,
+            key));
 }
 
 Json::Value core_t::past(const Json::Value& args) {
@@ -339,8 +378,13 @@ void core_t::stats(boost::shared_ptr<response_t> response) {
     requests["pending"] = response_t::objects_alive;
 
     response->push("engines", engines);
+    response->seal("engines");
+
     response->push("threads", threads);
+    response->seal("threads");
+
     response->push("requests", requests);
+    response->seal("requests");
 }
 
 // Publishing format (not JSON, as it will render subscription mechanics pointless):

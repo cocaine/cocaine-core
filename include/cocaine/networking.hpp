@@ -10,6 +10,7 @@
 #include <msgpack.hpp>
 
 #include "cocaine/common.hpp"
+#include "cocaine/raw_objects.hpp"
 
 namespace cocaine { namespace lines {
 
@@ -78,50 +79,7 @@ class socket_t:
 #define SUICIDE   5 /* overseer performs a suicide */
 #define EVENT     6 /* driver sends the invocation results to the core */
 #define HEARTBEAT 7 /* overseer is reporting that it's still alive */
-
-template<class T> class raw;
-
-template<> class raw<const std::string> {
-    public:
-        raw(const std::string& object):
-            m_object(object)
-        { }
-
-        void pack(zmq::message_t& message) const {
-            message.rebuild(m_object.length());
-            memcpy(message.data(), m_object.data(), m_object.length());
-        }
-
-    private:
-        const std::string& m_object;
-};
-
-template<> class raw<std::string> {
-    public:
-        raw(std::string& object):
-            m_object(object)
-        { }
-
-        void pack(zmq::message_t& message) const {
-            message.rebuild(m_object.length());
-            memcpy(message.data(), m_object.data(), m_object.length());
-        }
-
-        bool unpack(/* const */ zmq::message_t& message) {
-            m_object.assign(
-                static_cast<const char*>(message.data()),
-                message.size());
-            return true;
-        }
-
-    private:
-        std::string& m_object;
-};
-
-template<class T>
-static raw<T> protect(T& object) {
-    return raw<T>(object);
-}
+#define ONCE      8
 
 class channel_t:
     public socket_t

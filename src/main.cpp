@@ -70,6 +70,9 @@ int main(int argc, char* argv[]) {
 #endif
             (&config_t::set().engine.queue_depth)->default_value(10),
             "engine's thread queue depth")
+        ("maximum-pool-size", po::value<unsigned int>
+            (&config_t::set().engine.maximum_pool_size)->default_value(10),
+            "maximum engine threadpool size")
         ("history-depth", po::value<uint32_t>
             (&config_t::set().core.history_depth)->default_value(10),
             "history depth for each driver")

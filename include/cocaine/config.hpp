@@ -39,6 +39,7 @@ class config_t {
 #else
             uint64_t queue_depth;
 #endif
+            unsigned int maximum_pool_size;
         } engine;
 
         struct {

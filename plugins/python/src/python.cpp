@@ -33,7 +33,7 @@ python_t::python_t(const std::string& uri_):
     std::vector<std::string> target(uri.path());
     std::string name(target.back());
     target.pop_back();
-
+    
     // Join the path components
     fs::path path(fs::path(config_t::get().registry.location) / "python.d");
 

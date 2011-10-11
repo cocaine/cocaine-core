@@ -40,6 +40,7 @@ class core_t:
         
         // User request handling
         boost::shared_ptr<future_t> push(const Json::Value& args);
+        boost::shared_ptr<future_t> once(const Json::Value& args);
         boost::shared_ptr<future_t> drop(const Json::Value& args);
         
         Json::Value past(const Json::Value& args);

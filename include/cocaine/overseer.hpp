@@ -8,13 +8,6 @@
 
 namespace cocaine { namespace engine {
 
-// Driver types
-#define AUTO        1
-#define MANUAL      2
-#define FILESYSTEM  3
-#define SINK        4
-#define SERVER      5
-
 // Thread manager
 class overseer_t:
     public boost::noncopyable,
@@ -23,8 +16,8 @@ class overseer_t:
 {
     public:
         overseer_t(helpers::unique_id_t::type id,
-                   zmq::context_t& context,
-                   helpers::unique_id_t::type engine_id);
+                   helpers::unique_id_t::type engine_id,
+                   zmq::context_t& context);
        
         // Thread entry point 
         void run(boost::shared_ptr<plugin::source_t> source);

@@ -8,7 +8,7 @@ using namespace cocaine::plugin;
 using namespace cocaine::storage;
 using namespace cocaine::helpers;
 
-overseer_t::overseer_t(unique_id_t::type id_, zmq::context_t& context, unique_id_t::type engine_id):
+overseer_t::overseer_t(unique_id_t::type id_, unique_id_t::type engine_id, zmq::context_t& context):
     unique_id_t(id_),
     m_context(context),
     m_channel(m_context, ZMQ_DEALER),
@@ -108,6 +108,14 @@ void overseer_t::request(ev::io& w, int revents) {
                     result["error"] = e.what();
                 }
 
+                break;
+            }
+
+            case ONCE: {
+                Json::Value o;
+                m_channel.recv(o);
+                sleep(5);
+                result["yes"] = "no";
                 break;
             }
 

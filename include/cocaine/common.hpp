@@ -25,4 +25,11 @@
 #define EV_MINIMAL 0
 #include <ev++.h>
 
+// Driver types
+#define AUTO        1
+#define MANUAL      2
+#define FILESYSTEM  3
+#define SINK        4
+#define SERVER      5
+
 #endif

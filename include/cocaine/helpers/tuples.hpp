@@ -11,22 +11,20 @@ using namespace boost::tuples;
 namespace detail {
     template<class Current, class Next>
     struct chain {
-        typedef typename add_reference<typename Current::head_type>::type head_type;
         typedef chain<typename Current::tail_type, Next> chain_type;
-        typedef cons<head_type, typename chain_type::type> type;
+        typedef cons<typename Current::head_type, typename chain_type::type> type;
 
-        static type apply(Current& current, Next& next) {
+        static type apply(const Current& current, const Next& next) {
             return type(current.get_head(), chain_type::apply(current.get_tail(), next));
         }
     };
     
     template<class Next>
     struct chain<null_type, Next> {
-        typedef typename add_reference<typename Next::head_type>::type head_type;
         typedef chain<typename Next::tail_type, null_type> chain_type;
-        typedef cons<head_type, typename chain_type::type> type;
+        typedef cons<typename Next::head_type, typename chain_type::type> type;
     
-        static type apply(null_type null, Next& next) {
+        static type apply(null_type null, const Next& next) {
             return type(next.get_head(), chain_type::apply(next.get_tail(), null));
         }
     };
@@ -44,7 +42,7 @@ namespace detail {
 
 template<class LT, class RT>
 static typename detail::chain<LT, RT>::type
-joint_view(LT& lt, RT& rt) {
+joint_view(const LT& lt, const RT& rt) {
     return detail::chain<LT, RT>::apply(lt, rt);
 }
 
