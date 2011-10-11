@@ -15,21 +15,6 @@ static raw<const T> protect(const T& object) {
     return raw<const T>(object);
 }
 
-template<> class raw<const std::string> {
-    public:
-        raw(const std::string& object):
-            m_object(object)
-        { }
-
-        void pack(zmq::message_t& message) const {
-            message.rebuild(m_object.length());
-            memcpy(message.data(), m_object.data(), m_object.length());
-        }
-
-    private:
-        const std::string& m_object;
-};
-
 template<> class raw<std::string> {
     public:
         raw(std::string& object):
@@ -50,6 +35,21 @@ template<> class raw<std::string> {
 
     private:
         std::string& m_object;
+};
+
+template<> class raw<const std::string> {
+    public:
+        raw(const std::string& object):
+            m_object(object)
+        { }
+
+        void pack(zmq::message_t& message) const {
+            message.rebuild(m_object.length());
+            memcpy(message.data(), m_object.data(), m_object.length());
+        }
+
+    private:
+        const std::string& m_object;
 };
 
 }}
