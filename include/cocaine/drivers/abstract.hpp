@@ -3,7 +3,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/plugin.hpp"
-#include "cocaine/threading.hpp"
+#include "cocaine/overseer.hpp"
 
 namespace cocaine { namespace engine { namespace drivers {
 
