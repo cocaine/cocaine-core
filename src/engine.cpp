@@ -136,12 +136,14 @@ void engine_t::request(ev::io& w, int revents) {
         m_channel.recv_multi(tier);
 
         thread_map_t::iterator thread(m_threads.find(thread_id));
-        
+       
+#ifndef NDEBUG 
         if(thread == m_threads.end()) {
             syslog(LOG_ERR, "engine %s [%s]: [%s()] orphan - thread %s", 
                 __func__, id().c_str(), m_uri.c_str(), thread_id.c_str());
             abort();
         }
+#endif
         
         switch(code) {
             case FUTURE: {
@@ -163,7 +165,7 @@ void engine_t::request(ev::io& w, int revents) {
                 boost::tuple<std::string&, Json::Value&> tier(driver_id, object);
                 m_channel.recv_multi(tier);
 
-                // TODO: Per-engine sockets, drop parent dependency?
+                // XXX: Per-engine sockets, drop parent dependency?
                 m_parent->event(driver_id, object);
                 
                 break;
@@ -190,11 +192,12 @@ void engine_t::request(ev::io& w, int revents) {
                 
                 break;
             }
-
+#ifndef NDEBUG
             default:
                 syslog(LOG_ERR, "engine %s [%s]: [%s()] unknown message",
                     id().c_str(), m_uri.c_str(), __func__);
                 abort();
+#endif
         }
     }
 }
