@@ -47,8 +47,6 @@ overseer_t::overseer_t(unique_id_t::type id_, unique_id_t::type engine_id, zmq::
 }
 
 void overseer_t::run(boost::shared_ptr<source_t> source) {
-    syslog(LOG_DEBUG, "overseer %s: thread id is 0x%lx", id().c_str(), pthread_self());
-
     m_source = source;
     m_loop.loop();
 }
