@@ -54,6 +54,9 @@ int main(int argc, char* argv[]) {
             "plugin path")
         ("pidfile", po::value<fs::path>()->default_value("/var/run/cocaine.pid"),
             "location of a pid file")
+        ("engine-pool-size", po::value<unsigned int>
+            (&config_t::set().engine.pool_size)->default_value(10),
+            "maximum engine thread pool size")
         ("thread-collect-timeout", po::value<float>
             (&config_t::set().engine.collect_timeout)->default_value(0.5),
             "driver events collection timeout, seconds")
@@ -63,16 +66,9 @@ int main(int argc, char* argv[]) {
         ("thread-heartbeat-timeout", po::value<float>
             (&config_t::set().engine.heartbeat_timeout)->default_value(60.0),
             "unresponsive thread cancellation timeout, seconds")
-#if ZMQ_VERSION > 30000
-        ("thread-queue-depth", po::value<int>
-#else
-        ("thread-queue-depth", po::value<uint64_t>
-#endif
+        ("thread-queue-depth", po::value<unsigned int>
             (&config_t::set().engine.queue_depth)->default_value(10),
             "engine's thread queue depth")
-        ("maximum-pool-size", po::value<unsigned int>
-            (&config_t::set().engine.maximum_pool_size)->default_value(10),
-            "maximum engine threadpool size")
         ("history-depth", po::value<uint32_t>
             (&config_t::set().core.history_depth)->default_value(10),
             "history depth for each driver")

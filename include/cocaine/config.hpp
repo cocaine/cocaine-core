@@ -34,12 +34,8 @@ class config_t {
             float collect_timeout;
             float heartbeat_timeout;
             float suicide_timeout;
-#if ZMQ_VERSION > 30000
-            int queue_depth;
-#else
-            uint64_t queue_depth;
-#endif
-            unsigned int maximum_pool_size;
+            unsigned int queue_depth;
+            unsigned int pool_size;
         } engine;
 
         struct {

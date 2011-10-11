@@ -86,7 +86,7 @@ class engine_t:
             // If the selector has failed to do that...
             if(thread == m_threads.end()) {
                 // ...spawn a new one unless we hit the thread limit
-                if(m_threads.size() >= config_t::get().engine.maximum_pool_size) {
+                if(m_threads.size() >= config_t::get().engine.pool_size) {
                     throw std::runtime_error("engine thread limit exceeded");
                 }
 
