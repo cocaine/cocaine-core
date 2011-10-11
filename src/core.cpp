@@ -6,9 +6,9 @@
 
 #include "cocaine/core.hpp"
 #include "cocaine/engine.hpp"
+#include "cocaine/engine/routing.hpp"
 #include "cocaine/future.hpp"
 #include "cocaine/response.hpp"
-#include "cocaine/routing.hpp"
 #include "cocaine/storage.hpp"
 
 using namespace cocaine::core;

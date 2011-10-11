@@ -89,10 +89,25 @@ void overseer_t::request(ev::io& w, int revents) {
                             break;
                     }
                 } catch(const std::runtime_error& e) {
-                    syslog(LOG_ERR, "overseer %s: [%s()] %s", id().c_str(), __func__, e.what());
+                    syslog(LOG_ERR, "overseer %s: [%s()] in push - %s", id().c_str(), __func__, e.what());
                     result["error"] = e.what();
                 }
 
+                break;
+            }
+            
+            case ONCE: {
+                std::string blob;
+
+                m_channel.recv(blob);
+
+                try {
+                    result = once(blob);
+                } catch(const std::runtime_error& e) {
+                    syslog(LOG_ERR, "overseer %s: [%s()] in once - %s", id().c_str(), __func__, e.what());
+                    result["error"] = e.what();
+                }
+                
                 break;
             }
 
@@ -104,18 +119,10 @@ void overseer_t::request(ev::io& w, int revents) {
                 try {
                     result = drop(driver_id);
                 } catch(const std::runtime_error& e) {
-                    syslog(LOG_ERR, "overseer %s: [%s()] %s", id().c_str(), __func__, e.what());
+                    syslog(LOG_ERR, "overseer %s: [%s()] in drop - %s", id().c_str(), __func__, e.what());
                     result["error"] = e.what();
                 }
 
-                break;
-            }
-
-            case ONCE: {
-                Json::Value o;
-                m_channel.recv(o);
-                sleep(5);
-                result["yes"] = "no";
                 break;
             }
 
@@ -175,6 +182,12 @@ Json::Value overseer_t::push(const Json::Value& args) {
                 id().c_str(), __func__, e.what());
         }
     }
+
+    return result;
+}
+
+Json::Value overseer_t::once(const std::string& blob) {
+    Json::Value result;
 
     return result;
 }

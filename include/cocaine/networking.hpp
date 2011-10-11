@@ -10,7 +10,7 @@
 #include <msgpack.hpp>
 
 #include "cocaine/common.hpp"
-#include "cocaine/raw_objects.hpp"
+#include "cocaine/networking/objects.hpp"
 
 namespace cocaine { namespace lines {
 

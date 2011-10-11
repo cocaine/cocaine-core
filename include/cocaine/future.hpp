@@ -23,11 +23,6 @@ class future_t:
             m_response = response;
         }
 
-        inline void move(boost::shared_ptr<future_t> future) {
-            std::swap(m_key, future->m_key);
-            std::swap(m_response, future->m_response);
-        }
-
         inline void push(const Json::Value& value) {
             if(m_response) {
                 m_response->push(m_key, value);

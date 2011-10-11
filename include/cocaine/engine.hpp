@@ -8,9 +8,8 @@
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/future.hpp"
-#include "cocaine/networking.hpp"
-
 #include "cocaine/helpers/tuples.hpp"
+#include "cocaine/networking.hpp"
 
 namespace cocaine { namespace engine {
 
@@ -81,16 +80,17 @@ class engine_t:
         boost::shared_ptr<core::future_t> cast(RoutingPolicy route, const T& args) {
             boost::shared_ptr<core::future_t> future(new core::future_t());
 
-            // Select a thread
+            // Try to pick a thread
             thread_map_t::iterator thread(route(m_threads));
 
-            // If the selector has failed to pick a thread...
+            // If the selector has failed to do that...
             if(thread == m_threads.end()) {
                 // ...spawn a new one unless we hit the thread limit
                 if(m_threads.size() >= config_t::get().engine.maximum_pool_size) {
                     throw std::runtime_error("engine thread limit exceeded");
                 }
 
+                // TODO: Preserve the requested thread ID
                 helpers::unique_id_t thread_id;
 
                 try {

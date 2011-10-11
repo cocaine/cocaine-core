@@ -39,7 +39,7 @@ class overseer_t:
         // Thread request handling
         template<class DriverType>
         Json::Value push(const Json::Value& args);
-        
+        Json::Value once(const std::string& blob); 
         Json::Value drop(const std::string& driver_id);
         
         void terminate();

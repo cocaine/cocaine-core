@@ -1,11 +1,10 @@
 #include <boost/bind.hpp>
 
 #include "cocaine/core.hpp"
+#include "cocaine/drivers/abstract.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/registry.hpp"
 #include "cocaine/overseer.hpp"
-
-#include "cocaine/drivers/abstract.hpp"
 
 using namespace cocaine::core;
 using namespace cocaine::engine;
