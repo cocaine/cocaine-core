@@ -50,7 +50,7 @@ void overseer_t::run(boost::shared_ptr<source_t> source) {
 void overseer_t::request(ev::io& w, int revents) {
     unsigned int code = 0;
 
-    while(m_channel.pending()) {
+    while((revents & ev::READ) && m_channel.pending()) {
         Json::Value result(Json::objectValue);
         
         // Get the message code

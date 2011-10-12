@@ -48,7 +48,7 @@ void engine_t::request(ev::io& w, int revents) {
     std::string thread_id;
     unsigned int code = 0;
 
-    while((revents & EV_READ) && m_channel.pending()) {
+    while((revents & ev::READ) && m_channel.pending()) {
         boost::tuple<raw<std::string>, unsigned int&> tier(protect(thread_id), code);
         m_channel.recv_multi(tier);
 

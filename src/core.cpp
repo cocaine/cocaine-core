@@ -122,7 +122,7 @@ void core_t::request(ev::io& io, int revents) {
     Json::Reader reader(Json::Features::strictMode());
     Json::Value root;
 
-    while(s_requests.pending()) {
+    while((revents & ev::READ) && s_requests.pending()) {
         route.clear();
 
         while(true) {
