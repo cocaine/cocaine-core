@@ -23,7 +23,7 @@ class core_t:
         void event(const std::string& driver_id, const Json::Value& result);
         
         // Responding
-        void seal(boost::shared_ptr<response_t> response);
+        void seal(response_t* response);
         
     private:
         // Signal processing

@@ -18,7 +18,7 @@ class overseer_t:
         overseer_t(helpers::unique_id_t::type id,
                    helpers::unique_id_t::type engine_id,
                    zmq::context_t& context);
-       
+
         // Thread entry point 
         void run(boost::shared_ptr<plugin::source_t> source);
         

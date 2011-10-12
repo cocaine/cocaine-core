@@ -90,12 +90,9 @@ class engine_t:
                     throw std::runtime_error("engine thread limit exceeded");
                 }
 
-                // TODO: Preserve the requested thread ID
-                helpers::unique_id_t thread_id;
-
                 try {
-                    boost::tie(thread, boost::tuples::ignore) = m_threads.insert(thread_id.id(),
-                        new thread_t(thread_id.id(), id(), m_context, m_uri));
+                    boost::tie(thread, boost::tuples::ignore) = m_threads.insert(route.id(),
+                        new thread_t(route.id(), id(), m_context, m_uri));
                 } catch(const zmq::error_t& e) {
                     if(e.num() == EMFILE) {
                         throw std::runtime_error("core thread limit exceeded");
@@ -112,6 +109,9 @@ class engine_t:
                     lines::protect(thread->second->id())),
                 args));
 
+            // Oh, come on...
+            ev::get_default_loop().feed_fd_event(m_channel.fd(), EV_READ);
+            
             return future;
         }
         

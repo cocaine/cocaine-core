@@ -205,7 +205,6 @@ void core_t::dispatch(boost::shared_ptr<response_t> response, const Json::Value&
 
         // Iterate over all the targets
         Json::Value::Members names(targets.getMemberNames());
-        response->reserve(names);
 
         for(Json::Value::Members::iterator it = names.begin(); it != names.end(); ++it) {
             // Get the target and args
@@ -356,11 +355,6 @@ Json::Value core_t::past(const Json::Value& args) {
 }
 
 void core_t::stats(boost::shared_ptr<response_t> response) {
-    response->reserve(boost::assign::list_of
-        ("engines")
-        ("threads")
-        ("requests"));
-    
     Json::Value engines(Json::objectValue),
                 threads(Json::objectValue),
                 requests(Json::objectValue);
@@ -378,13 +372,8 @@ void core_t::stats(boost::shared_ptr<response_t> response) {
     requests["pending"] = response_t::objects_alive;
 
     response->push("engines", engines);
-    response->seal("engines");
-
     response->push("threads", threads);
-    response->seal("threads");
-
     response->push("requests", requests);
-    response->seal("requests");
 }
 
 // Publishing format (not JSON, as it will render subscription mechanics pointless):
@@ -448,7 +437,7 @@ void core_t::event(const std::string& driver_id, const Json::Value& event) {
     }
 }
 
-void core_t::seal(boost::shared_ptr<response_t> response) {
+void core_t::seal(response_t* response) {
     std::vector<std::string> route(response->route());
     zmq::message_t message;
     

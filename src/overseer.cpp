@@ -134,6 +134,7 @@ void overseer_t::request(ev::io& w, int revents) {
  
 void overseer_t::timeout(ev::timer& w, int revents) {
     m_channel.send(SUICIDE);
+    terminate();
 }
 
 void overseer_t::heartbeat(ev::timer& w, int revents) {
@@ -183,6 +184,14 @@ Json::Value overseer_t::push(const Json::Value& args) {
 Json::Value overseer_t::once(const std::string& blob) {
     Json::Value result;
 
+    result["status"] = "everything's allright!";
+
+    if(m_timeout.is_active()) {
+        syslog(LOG_DEBUG, "overseer %s: suicide timer rearmed", id().c_str());
+        m_timeout.stop();
+        m_timeout.start(config_t::get().engine.suicide_timeout);
+    }
+
     return result;
 }
 
@@ -218,9 +227,6 @@ Json::Value overseer_t::drop(const std::string& driver_id) {
 
 void overseer_t::terminate() {
     m_slaves.clear();
-    m_request.stop();
-    m_timeout.stop();
-    m_heartbeat.stop();
     m_source.reset();
     m_loop.unloop();
 } 

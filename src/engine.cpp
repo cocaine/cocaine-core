@@ -47,65 +47,58 @@ engine_t::~engine_t() {
 void engine_t::request(ev::io& w, int revents) {
     std::string thread_id;
     unsigned int code = 0;
-   
-    while(m_channel.pending()) {
+
+    while((revents & EV_READ) && m_channel.pending()) {
         boost::tuple<raw<std::string>, unsigned int&> tier(protect(thread_id), code);
         m_channel.recv_multi(tier);
 
         thread_map_t::iterator thread(m_threads.find(thread_id));
 
-        if(thread == m_threads.end()) {
-            syslog(LOG_ERR, "engine %s [%s]: [%s()] outstanding messages - thread %s", 
+        if(thread != m_threads.end()) {
+            switch(code) {
+                case FUTURE: {
+                    boost::shared_ptr<future_t> future(thread->second->queue_pop());
+                    Json::Value object;
+                            
+                    m_channel.recv(object);
+                    object["thread"] = thread_id;
+
+                    future->push(object);
+                    break;
+                }
+
+                case EVENT: {
+                    std::string driver_id;
+                    Json::Value object;
+
+                    boost::tuple<std::string&, Json::Value&> tier(driver_id, object);
+                    m_channel.recv_multi(tier);
+
+                    // XXX: Per-engine sockets, drop parent dependency?
+                    m_parent->event(driver_id, object);
+                    break;
+                }
+
+                case HEARTBEAT: {
+                    thread->second->rearm();
+                    break;
+                }
+
+                case SUICIDE: {
+                    m_threads.erase(thread);
+                    break;
+                }
+
+                default:
+                    syslog(LOG_ERR, "engine %s [%s]: [%s()] unknown message",
+                        id().c_str(), m_uri.c_str(), __func__);
+                    abort();
+            }
+        } else {
+            syslog(LOG_DEBUG, "engine %s [%s]: [%s()] outstanding messages - thread %s", 
                 id().c_str(), m_uri.c_str(), __func__, thread_id.c_str());
             m_channel.ignore();
         }
-        
-        switch(code) {
-            case FUTURE: {
-                boost::shared_ptr<future_t> future(thread->second->queue_pop());
-                Json::Value object;
-                        
-                m_channel.recv(object);
-                object["thread"] = thread_id;
-
-                future->push(object);
-
-                break;
-            }
-
-            case EVENT: {
-                std::string driver_id;
-                Json::Value object;
-
-                boost::tuple<std::string&, Json::Value&> tier(driver_id, object);
-                m_channel.recv_multi(tier);
-
-                // XXX: Per-engine sockets, drop parent dependency?
-                m_parent->event(driver_id, object);
-                
-                break;
-            }
-
-            case HEARTBEAT: {
-                thread->second->rearm();
-                break;
-            }
-
-            case SUICIDE: {
-                m_channel.send_multi(boost::make_tuple(
-                    lines::protect(thread->second->id()),
-                    TERMINATE));
-                m_threads.erase(thread);
-                break;
-            }
-
-#ifndef NDEBUG      
-            default:
-                syslog(LOG_ERR, "engine %s [%s]: [%s()] unknown message",
-                    id().c_str(), m_uri.c_str(), __func__);
-                abort();
-        }
-#endif
     }
 }
 
@@ -126,6 +119,8 @@ thread_t::thread_t(unique_id_t::type id_, unique_id_t::type engine_id, zmq::cont
     // Starts the heartbeat timeout
     m_heartbeat.set<thread_t, &thread_t::timeout>(this);
     rearm();
+    
+    syslog(LOG_DEBUG, "thread %s [%s]: started", id().c_str(), m_engine_id.c_str());
 }
 
 thread_t::~thread_t() {
@@ -143,6 +138,8 @@ thread_t::~thread_t() {
 #else
         m_thread->join();
 #endif
+        
+        syslog(LOG_DEBUG, "thread %s [%s]: terminated", id().c_str(), m_engine_id.c_str());
     }
 }
 

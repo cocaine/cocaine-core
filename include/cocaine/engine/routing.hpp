@@ -5,19 +5,21 @@
 #include "cocaine/engine.hpp"
 
 namespace cocaine { namespace engine { namespace routing {
-    struct specific_thread {
-        specific_thread(helpers::unique_id_t::type thread_id_):
-            thread_id(thread_id_)
+    struct specific_thread:
+        public helpers::unique_id_t
+    {
+        specific_thread(helpers::unique_id_t::type thread_id):
+            unique_id_t(thread_id)
         { }
 
         engine_t::thread_map_t::iterator operator()(engine_t::thread_map_t& threads) {
-            return threads.find(thread_id);
+            return threads.find(id());
         }
-
-        helpers::unique_id_t::type thread_id;
     };
     
-    struct shortest_queue {
+    struct shortest_queue:
+        public helpers::unique_id_t
+    {
         struct predicate {
             bool operator()(engine_t::thread_map_t::value_type left, engine_t::thread_map_t::value_type right) {
                 return left->second->queue_size() < right->second->queue_size();
@@ -31,6 +33,7 @@ namespace cocaine { namespace engine { namespace routing {
         engine_t::thread_map_t::iterator operator()(engine_t::thread_map_t& threads) {
             engine_t::thread_map_t::iterator thread(std::min_element(
                 threads.begin(), threads.end(), predicate()));
+            
             if(thread != threads.end() && thread->second->queue_size() < limit) {
                 return thread;
             } else {
