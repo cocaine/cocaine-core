@@ -77,6 +77,7 @@ core_t::core_t():
     e_sigusr1.start(SIGUSR1);
 }
 
+// XXX: Why the hell is this needed anyway?
 core_t::~core_t() { }
 
 void core_t::run() {
@@ -163,7 +164,7 @@ void core_t::request(ev::io& io, int revents) {
                 }
 
                 unsigned int version = root.get("version", 1).asUInt();
-                std::string username(root.get("username", "").asString());
+                std::string username(root["username"].asString());
                 
                 if(version < 2) {
                     throw std::runtime_error("outdated protocol version");
@@ -273,7 +274,7 @@ boost::shared_ptr<future_t> core_t::push(const Json::Value& args) {
     }
 
     return it->second->cast(
-        routing::specific_thread(
+        routing::specific_queue(
             args["threads"].isNull() ? it->second->id() : args["thread"].asString()),
         boost::make_tuple(
             PUSH,
@@ -314,7 +315,7 @@ boost::shared_ptr<future_t> core_t::drop(const Json::Value& args) {
     }
 
     return it->second->cast(
-        routing::specific_thread(
+        routing::specific_queue(
             args["threads"].isNull() ? it->second->id() : args["thread"].asString()),
         boost::make_tuple(
             DROP,

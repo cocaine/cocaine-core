@@ -5,10 +5,10 @@
 #include "cocaine/engine.hpp"
 
 namespace cocaine { namespace engine { namespace routing {
-    struct specific_thread:
+    struct specific_queue:
         public helpers::unique_id_t
     {
-        specific_thread(helpers::unique_id_t::type thread_id):
+        specific_queue(helpers::unique_id_t::type thread_id):
             unique_id_t(thread_id)
         { }
 
