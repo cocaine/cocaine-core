@@ -74,7 +74,7 @@ void engine_t::request(ev::io& w, int revents) {
                     boost::tuple<std::string&, Json::Value&> tier(driver_id, object);
                     m_channel.recv_multi(tier);
 
-                    // XXX: Per-engine sockets, drop parent dependency?
+                    // TODO: Per-engine sockets, drop parent dependency?
                     m_parent->event(driver_id, object);
                     break;
                 }
@@ -119,8 +119,6 @@ thread_t::thread_t(unique_id_t::type id_, unique_id_t::type engine_id, zmq::cont
     // Starts the heartbeat timeout
     m_heartbeat.set<thread_t, &thread_t::timeout>(this);
     rearm();
-    
-    syslog(LOG_DEBUG, "thread %s [%s]: started", id().c_str(), m_engine_id.c_str());
 }
 
 thread_t::~thread_t() {
@@ -138,8 +136,6 @@ thread_t::~thread_t() {
 #else
         m_thread->join();
 #endif
-        
-        syslog(LOG_DEBUG, "thread %s [%s]: terminated", id().c_str(), m_engine_id.c_str());
     }
 }
 

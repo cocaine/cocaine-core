@@ -25,6 +25,15 @@
 #define EV_MINIMAL 0
 #include <ev++.h>
 
+// Message types
+#define PUSH      1 /* engine pushes a task to an overseer */
+#define DROP      2 /* engine drops a task from an overseer */
+#define TERMINATE 3 /* engine terminates an overseer */
+#define FUTURE    4 /* overseer fulfills an engine's request */
+#define SUICIDE   5 /* overseer performs a suicide */
+#define EVENT     6 /* driver sends the invocation results to the core */
+#define HEARTBEAT 7 /* overseer is reporting that it's still alive */
+
 // Driver types
 #define AUTO        1
 #define MANUAL      2

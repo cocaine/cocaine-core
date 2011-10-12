@@ -44,7 +44,7 @@ class javascript_t: public source_t {
             code << input.rdbuf();
 
             // Compile
-            compile(code.str(), "invoke");
+            compile(code.str(), "iterate");
         }
 
         void compile(const std::string& code,
@@ -93,7 +93,7 @@ class javascript_t: public source_t {
             return ITERATOR;
         }
 
-        virtual Json::Value invoke() {
+        virtual Json::Value iterate() {
             Json::Value result;
 
             HandleScope handle_scope;

@@ -90,21 +90,6 @@ void overseer_t::request(ev::io& w, int revents) {
                 break;
             }
             
-            case ONCE: {
-                std::string blob;
-
-                m_channel.recv(blob);
-
-                try {
-                    result = once(blob);
-                } catch(const std::runtime_error& e) {
-                    syslog(LOG_ERR, "overseer %s: [%s()] in once - %s", id().c_str(), __func__, e.what());
-                    result["error"] = e.what();
-                }
-                
-                break;
-            }
-
             case DROP: {
                 std::string driver_id;
                 
@@ -176,20 +161,6 @@ Json::Value overseer_t::push(const Json::Value& args) {
             syslog(LOG_ERR, "overseer %s: [%s()] storage failure - %s",
                 id().c_str(), __func__, e.what());
         }
-    }
-
-    return result;
-}
-
-Json::Value overseer_t::once(const std::string& blob) {
-    Json::Value result;
-
-    result["status"] = "everything's allright!";
-
-    if(m_timeout.is_active()) {
-        syslog(LOG_DEBUG, "overseer %s: suicide timer rearmed", id().c_str());
-        m_timeout.stop();
-        m_timeout.start(config_t::get().engine.suicide_timeout);
     }
 
     return result;

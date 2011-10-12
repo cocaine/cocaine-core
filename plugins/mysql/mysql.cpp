@@ -30,7 +30,7 @@ class mysql_t:
             return ITERATOR;
         }
 
-        Json::Value invoke() {
+        Json::Value iterate() {
             Json::Value result;
             MYSQL* connection = mysql_init(NULL);
 

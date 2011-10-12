@@ -184,7 +184,7 @@ uint32_t python_t::capabilities() const {
         (PyCallable_Check(process) ? PROCESSOR : NONE);
 }
 
-Json::Value python_t::invoke() {
+Json::Value python_t::iterate() {
     // Get the thread state
     thread_state_t state(PyGILState_Ensure());
 

@@ -35,7 +35,7 @@ class source_t:
         virtual uint32_t capabilities() const = 0;
 
         // Will be called by the auto timed driver and by the fs driver
-        virtual Json::Value invoke() {
+        virtual Json::Value iterate() {
             throw std::runtime_error("not implemented");
         }
 

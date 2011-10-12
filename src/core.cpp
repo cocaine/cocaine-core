@@ -77,7 +77,7 @@ core_t::core_t():
     e_sigusr1.start(SIGUSR1);
 }
 
-// XXX: Why the hell is this needed anyway?
+// FIXME: Why the hell is this needed anyway?
 core_t::~core_t() { }
 
 void core_t::run() {
@@ -163,7 +163,7 @@ void core_t::request(ev::io& io, int revents) {
                     throw std::runtime_error("root object expected");
                 }
 
-                unsigned int version = root.get("version", 1).asUInt();
+                unsigned int version = root["version"].asUInt();
                 std::string username(root["username"].asString());
                 
                 if(version < 2) {
@@ -171,7 +171,7 @@ void core_t::request(ev::io& io, int revents) {
                 }
       
                 if(!username.empty()) {
-                    if(version > 2) {
+                    if(version >= 3) {
                         m_signatures.verify(request,
                             static_cast<const unsigned char*>(signature.data()),
                             signature.size(), username);
@@ -197,7 +197,7 @@ void core_t::request(ev::io& io, int revents) {
 void core_t::dispatch(boost::shared_ptr<response_t> response, const Json::Value& root) {
     std::string action(root["action"].asString());
 
-    if(action == "push" || action == "once" || action == "drop" || action == "past") {
+    if(action == "push" || action == "drop" || action == "past") {
         Json::Value targets(root["targets"]);
 
         if(!targets.isObject() || !targets.size()) {
@@ -217,8 +217,6 @@ void core_t::dispatch(boost::shared_ptr<response_t> response, const Json::Value&
                 if(args.isObject()) {
                     if(action == "push") {
                         response->wait(target, push(args));
-                    } else if(action == "once") {
-                        response->wait(target, once(args));
                     } else if(action == "drop") {
                         response->wait(target, drop(args));
                     } else if(action == "past") {
@@ -250,7 +248,7 @@ void core_t::dispatch(boost::shared_ptr<response_t> response, const Json::Value&
 //
 // * Past - fetches the event history for the specified subscription key
 //
-// * Stat - fetches the current running stats
+// * Stats - fetches the current running stats
 
 boost::shared_ptr<future_t> core_t::push(const Json::Value& args) {
     static std::map<const std::string, unsigned int> types = boost::assign::map_list_of
@@ -282,25 +280,6 @@ boost::shared_ptr<future_t> core_t::push(const Json::Value& args) {
             args));
 }
 
-boost::shared_ptr<future_t> core_t::once(const Json::Value& args) {
-    std::string uri(args["uri"].asString());
-    engine_map_t::iterator it(m_engines.find(uri)); 
-    
-    if(uri.empty()) {
-        throw std::runtime_error("no source uri has been specified");
-    } else if(it == m_engines.end()) {
-        boost::tie(it, boost::tuples::ignore) = m_engines.insert(uri,
-            new engine_t(m_context, shared_from_this(), uri));
-    }
-
-    return it->second->cast(
-        routing::shortest_queue(
-            args.get("queue", config_t::get().engine.queue_depth).asUInt()),
-        boost::make_tuple(
-            ONCE,
-            args));
-}
-
 boost::shared_ptr<future_t> core_t::drop(const Json::Value& args) {
     std::string uri(args["uri"].asString()),
                 key(args["key"].asString());
@@ -324,14 +303,11 @@ boost::shared_ptr<future_t> core_t::drop(const Json::Value& args) {
 
 Json::Value core_t::past(const Json::Value& args) {
     std::string key(args["key"].asString());
+    history_map_t::iterator it(m_histories.find(key));
 
     if(key.empty()) {
         throw std::runtime_error("no driver id has been specified");
-    }
-
-    history_map_t::iterator it(m_histories.find(key));
-
-    if(it == m_histories.end()) {
+    } else if(it == m_histories.end()) {
         throw std::runtime_error("the past for a given key is empty");
     }
 
@@ -472,13 +448,13 @@ void core_t::recover() {
     if(root.size()) {
         syslog(LOG_NOTICE, "core: loaded %d task(s)", root.size());
        
-        Json::Value::Members hashes(root.getMemberNames());
+        Json::Value::Members drivers(root.getMemberNames());
 
-        for(Json::Value::Members::const_iterator it = hashes.begin(); it != hashes.end(); ++it) {
-            std::string hash(*it);
+        for(Json::Value::Members::const_iterator it = drivers.begin(); it != drivers.end(); ++it) {
+            std::string driver(*it);
             
             try {
-                push(root[hash]);
+                push(root[driver]);
             } catch(const std::runtime_error& e) {
                 syslog(LOG_ERR, "core: [%s()] %s", __func__, e.what());
             }

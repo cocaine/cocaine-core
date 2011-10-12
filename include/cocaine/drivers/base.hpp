@@ -36,7 +36,7 @@ class driver_base_t:
             Json::Value result;
             
             try {
-                result = m_parent->source()->invoke();
+                result = m_parent->source()->iterate();
             } catch(const std::exception& e) {
                 syslog(LOG_ERR, "driver %s [%s]: [%s()] %s",
                     m_id.c_str(), m_parent->id().c_str(), __func__, e.what());

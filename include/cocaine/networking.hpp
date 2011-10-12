@@ -44,11 +44,7 @@ class socket_t:
         }
 
         inline void getsockopt(int name, void* value, size_t* length) {
-            try {
-                m_socket.getsockopt(name, value, length);
-            } catch(const zmq::error_t& e) {
-                syslog(LOG_ERR, "net: [%s()] %s", __func__, e.what());
-            }
+            m_socket.getsockopt(name, value, length);
         }
 
         inline void setsockopt(int name, const void* value, size_t length) {
@@ -72,15 +68,6 @@ class socket_t:
         zmq::socket_t m_socket;
 };
 
-#define PUSH      1 /* engine pushes a task to an overseer */
-#define DROP      2 /* engine drops a task from an overseer */
-#define TERMINATE 3 /* engine terminates an overseer */
-#define FUTURE    4 /* overseer fulfills an engine's request */
-#define SUICIDE   5 /* overseer performs a suicide */
-#define EVENT     6 /* driver sends the invocation results to the core */
-#define HEARTBEAT 7 /* overseer is reporting that it's still alive */
-#define ONCE      8
-
 class channel_t:
     public socket_t
 {
@@ -93,6 +80,7 @@ class channel_t:
         using socket_t::send;
         using socket_t::recv;
 
+        // Drops the current message
         void ignore() {
             zmq::message_t null;
 

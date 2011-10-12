@@ -44,7 +44,7 @@ class http_t:
             return ITERATOR;
         }
 
-        virtual Json::Value invoke() {
+        virtual Json::Value iterate() {
             Json::Value result;
         
             CURLcode code = curl_easy_perform(m_curl);
