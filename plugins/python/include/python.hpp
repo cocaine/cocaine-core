@@ -24,10 +24,8 @@ class python_t:
                      const std::map<std::string, std::string>& parameters);
 
         // Source protocol
-        virtual uint32_t capabilities() const;
-        virtual Json::Value invoke();
+        virtual Json::Value invoke(const std::string& task);
         virtual Json::Value process(const void* data, size_t data_size);
-        virtual float reschedule();
 
         // Fetches and formats current Python exception as a string
         std::string exception() const;

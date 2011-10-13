@@ -40,11 +40,7 @@ class http_t:
             return size * nmemb;
         }
         
-        virtual uint32_t capabilities() const {
-            return ITERATOR;
-        }
-
-        virtual Json::Value invoke() {
+        virtual Json::Value invoke(const std::string& task) {
             Json::Value result;
         
             CURLcode code = curl_easy_perform(m_curl);

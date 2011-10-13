@@ -30,16 +30,6 @@ int main(int argc, char* argv[]) {
 
     options.add_options()
         ("help", "show this message")
-        ("export", po::value< std::vector<std::string> >
-            (&config_t::set().net.publish),
-            "endpoints to publish events from the drivers")
-#if ZMQ_VERSION > 30000
-        ("watermark", po::value<int>
-#else
-        ("watermark", po::value<uint64_t>
-#endif
-            (&config_t::set().net.watermark)->default_value(1000),
-            "maximum number of messages to keep on client disconnects")
         ("instance", po::value<std::string>
             (&config_t::set().core.instance)->default_value("default"),
             "instance name")
@@ -54,9 +44,12 @@ int main(int argc, char* argv[]) {
             "plugin path")
         ("pidfile", po::value<fs::path>()->default_value("/var/run/cocaine.pid"),
             "location of a pid file")
-        ("engine-pool-size", po::value<unsigned int>
-            (&config_t::set().engine.pool_size)->default_value(10),
+        ("engine-pool-limit", po::value<unsigned int>
+            (&config_t::set().engine.pool_limit)->default_value(10),
             "maximum engine thread pool size")
+        ("engine-history-depth", po::value<unsigned int>
+            (&config_t::set().engine.history_depth)->default_value(10),
+            "maximum history depth for tasks")
         ("thread-collect-timeout", po::value<float>
             (&config_t::set().engine.collect_timeout)->default_value(0.5),
             "driver events collection timeout, seconds")
@@ -69,9 +62,6 @@ int main(int argc, char* argv[]) {
         ("thread-queue-depth", po::value<unsigned int>
             (&config_t::set().engine.queue_depth)->default_value(10),
             "engine's thread queue depth")
-        ("history-depth", po::value<uint32_t>
-            (&config_t::set().core.history_depth)->default_value(10),
-            "history depth for each driver")
         ("daemonize", "daemonize on start")
         ("verbose", "produce a lot of output");
 
@@ -99,8 +89,8 @@ int main(int argc, char* argv[]) {
         return EXIT_SUCCESS;
     }
 
-    if(!vm.count("listen") || !vm.count("export")) {
-        std::cout << "Error: no listen/export endpoints specified" << std::endl;
+    if(!vm.count("listen")) {
+        std::cout << "Error: no listen endpoints specified" << std::endl;
         std::cout << "Try '" << argv[0] << " --help' for more information" << std::endl;
         return EXIT_FAILURE;
     }

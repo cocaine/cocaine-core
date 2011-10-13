@@ -26,10 +26,19 @@
 #include <ev++.h>
 
 // Driver types
-#define AUTO        1
-#define MANUAL      2
-#define FILESYSTEM  3
-#define SINK        4
-#define SERVER      5
+#define AUTO        1   /* do something every n milliseconds */
+#define CRON        2   /* do something based on a cron-like schedule */
+#define MANUAL      3   /* do something when application says */
+#define FILESYSTEM  4   /* do something when there's a change on the filesystem */
+#define SINK        5   /* do something when there's a message on the socket */
+
+// Message types
+#define PROCESS     1   /* engine -> worker: process a request */
+#define INVOKE      2   /* engine -> worker: schedule a task */
+#define TERMINATE   3   /* engine -> worker: stop all tasks and die */
+#define FUTURE      4   /* worker -> engine: processing results are ready */
+#define EVENT       5   /* worker -> engine: scheduled task invocation results are ready */
+#define SUICIDE     6   /* worker -> engine: i am useless, kill me */
+#define HEARTBEAT   7   /* worker -> engine: i am alive, don't kill me */
 
 #endif

@@ -4,7 +4,6 @@
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/networking.hpp"
-#include "cocaine/security/digest.hpp"
 
 namespace cocaine { namespace engine {
 
@@ -22,14 +21,6 @@ class overseer_t:
         // Thread entry point 
         void run(boost::shared_ptr<plugin::source_t> source);
         
-    public:
-        // Driver bindings
-        inline ev::dynamic_loop& loop() { return m_loop; }
-        inline zmq::context_t& context() { return m_context; }
-        inline boost::shared_ptr<plugin::source_t> source() { return m_source; }
-        inline lines::channel_t& channel() { return m_channel; }
-        inline bool isolated() const { return m_isolated; }
-
     private:
         // Event loop callback handling and dispatching
         void request(ev::io& w, int revents);
@@ -37,10 +28,8 @@ class overseer_t:
         void heartbeat(ev::timer& w, int revents);
 
         // Thread request handling
-        template<class DriverType>
-        Json::Value push(const Json::Value& args);
-        Json::Value once(const std::string& blob); 
-        Json::Value drop(const std::string& driver_id);
+        Json::Value process(const std::string& blob); 
+        Json::Value invoke(const std::string& task);
         
         void terminate();
 
@@ -56,16 +45,6 @@ class overseer_t:
 
         // Data source
         boost::shared_ptr<plugin::source_t> m_source;
-        
-        // Driver management (Driver ID -> Driver)
-        typedef boost::ptr_map<const std::string, drivers::abstract_driver_t> slave_map_t;
-        slave_map_t m_slaves;
-
-        // Storage key generation
-        security::digest_t m_digest;
-
-        // Whether this thread is not the default one
-        bool m_isolated;
 };
 
 }}

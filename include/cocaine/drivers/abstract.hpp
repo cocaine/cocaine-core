@@ -2,43 +2,31 @@
 #define COCAINE_DRIVERS_ABSTRACT_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/plugin.hpp"
-#include "cocaine/overseer.hpp"
+#include "cocaine/engine.hpp"
 
 namespace cocaine { namespace engine { namespace drivers {
-
-using namespace cocaine::security;
 
 class abstract_driver_t:
     public boost::noncopyable
 {
     public:
-        virtual ~abstract_driver_t() {};
+        virtual ~abstract_driver_t() { };
 
         inline std::string id() const {
             return m_id;
         }
 
     protected:
-        abstract_driver_t(boost::shared_ptr<overseer_t> parent):
+        abstract_driver_t(const std::string& name, boost::shared_ptr<engine_t> parent):
+            m_name(name),
             m_parent(parent)
         {}
         
-        void publish(const Json::Value& result) {
-            if(!m_id.empty() && !result.isNull()) {
-                m_parent->channel().send_multi(boost::make_tuple(
-                    EVENT,
-                    m_id,
-                    result));
-            }
-        }
-
     protected:
-        // Driver ID
         std::string m_id;
-        
-        // Parent
-        boost::shared_ptr<overseer_t> m_parent;
+        std::string m_name;
+
+        boost::shared_ptr<engine_t> m_parent;
 };
 
 }}}

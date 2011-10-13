@@ -1,9 +1,8 @@
 #ifndef COCAINE_RESPONSE_HPP
 #define COCAINE_RESPONSE_HPP
 
-#include <set>
-
 #include "cocaine/common.hpp"
+#include "cocaine/networking.hpp"
 
 namespace cocaine { namespace core {
 
@@ -13,40 +12,53 @@ class response_t:
     public helpers::birth_control_t<response_t>
 {
     public:
-        response_t(const std::vector<std::string>& route, boost::shared_ptr<core_t> parent):
+        response_t(const lines::route_t& route, boost::shared_ptr<lines::socket_t> socket):
             m_route(route),
-            m_parent(parent)
-        { }
+            m_socket(socket)
+        {
+            m_root["hostname"] = config_t::get().core.hostname;
+        }
 
         ~response_t() {
-            m_parent->seal(this);
+            if(m_socket) {
+                zmq::message_t message;
+                
+                // Send the identity
+                for(lines::route_t::const_iterator id = m_route.begin(); id != m_route.end(); ++id) {
+                    message.rebuild(id->length());
+                    memcpy(message.data(), id->data(), id->length());
+                    m_socket->send(message, ZMQ_SNDMORE);
+                }
+                
+                // Send the delimiter
+                message.rebuild(0);
+                m_socket->send(message, ZMQ_SNDMORE);
+
+                Json::FastWriter writer;
+                std::string json(writer.write(m_root));
+                message.rebuild(json.length());
+                memcpy(message.data(), json.data(), json.length());
+
+                m_socket->send(message);
+            }
         }
 
     public:
         template<class T>
-        void wait(const std::string& key, boost::shared_ptr<T> future) {
-            future->bind(key, shared_from_this());
+        void wait(boost::shared_ptr<T> object) {
+            object->bind("", shared_from_this());
         }
 
-        void push(const std::string& key, const Json::Value& result) {
-            switch(m_root["results"][key].type()) {
-                case Json::nullValue:
-                    // This is the first or the only result of the set
-                    m_root["results"][key] = result;
-                    break;
-                case Json::arrayValue:
-                    // This is an another item in a list
-                    m_root["results"][key].append(result);
-                    break;
-                default: {
-                    // This key appeared to be a list, so convert it
-                    Json::Value list(Json::arrayValue);
+        template<class T>
+        void wait(const std::string& key, boost::shared_ptr<T> object) {
+            object->bind(key, shared_from_this());
+        }
 
-                    list.append(m_root["results"][key]);
-                    list.append(result);
-
-                    m_root["results"][key] = list;
-                }
+        void push(const std::string& key, const Json::Value& object) {
+            if(key.empty()) {
+                m_root = object;
+            } else {
+                m_root[key] = object;
             }
         }
 
@@ -62,19 +74,10 @@ class response_t:
             push(key, object);
         }
         
-    public:
-        const Json::Value& root() const {
-            return m_root;
-        }
-
-        const std::vector<std::string>& route() const {
-            return m_route;
-        }
-
     private:
-        std::vector<std::string> m_route;
-        boost::shared_ptr<core_t> m_parent;
-
+        lines::route_t m_route;
+        boost::shared_ptr<lines::socket_t> m_socket;
+        
         Json::Value m_root;
 };
 

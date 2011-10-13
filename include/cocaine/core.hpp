@@ -19,12 +19,6 @@ class core_t:
         // Event loop
         void run();
         
-        // Publishing
-        void event(const std::string& driver_id, const Json::Value& result);
-        
-        // Responding
-        void seal(response_t* response);
-        
     private:
         // Signal processing
         void terminate(ev::sig& sig, int revents);
@@ -36,14 +30,11 @@ class core_t:
 
         // User request dispatching
         void dispatch(boost::shared_ptr<response_t> response, const Json::Value& root);
-        void stats(boost::shared_ptr<response_t> response);
         
         // User request handling
-        boost::shared_ptr<future_t> push(const Json::Value& args);
-        boost::shared_ptr<future_t> once(const Json::Value& args);
-        boost::shared_ptr<future_t> drop(const Json::Value& args);
-        
-        Json::Value past(const Json::Value& args);
+        Json::Value create_engine(const Json::Value& args);
+        Json::Value delete_engine(const Json::Value& args);
+        Json::Value stats();
 
         // Task recovering
         void recover();
@@ -52,25 +43,16 @@ class core_t:
         security::signatures_t m_signatures;
 
         // Engine management (URI -> Engine)
-        typedef boost::ptr_map<const std::string, engine::engine_t> engine_map_t;
+        typedef std::map<const std::string, boost::shared_ptr<engine::engine_t> > engine_map_t;
         engine_map_t m_engines;
-
-        // History (Driver ID -> History List)
-        typedef std::deque< std::pair<ev::tstamp, Json::Value> > history_t;
-        typedef boost::ptr_map<const std::string, history_t> history_map_t;
-        history_map_t m_histories;
 
         // Networking
         zmq::context_t m_context;
-        lines::socket_t s_requests, s_publisher;
+        boost::shared_ptr<lines::socket_t> s_requests;
         
         // Event loop
-        ev::default_loop m_loop;
         ev::io e_requests;
         ev::sig e_sigint, e_sigterm, e_sigquit, e_sighup, e_sigusr1;
-
-        // Hostname
-        std::string m_hostname;
 };
 
 }}

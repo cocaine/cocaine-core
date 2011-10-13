@@ -121,16 +121,13 @@ void python_t::compile(const std::string& code,
         throw std::runtime_error(exception());
     }
 
-    // And check if it's, well, callable
-    if(!PyCallable_Check(callable)) {
-        throw std::runtime_error(name + " is not callable");
-    }
-
     // If it's a type object, finalize it
     if(PyType_Check(callable)) {
         if(PyType_Ready(reinterpret_cast<PyTypeObject*>(*callable)) != 0) {
             throw std::runtime_error(exception());
         }
+    } else {
+        throw std::runtime_error("'" + name + "' is not a class");
     }
 
     // Instantiate the Store object
@@ -172,33 +169,24 @@ void python_t::compile(const std::string& code,
     }
 }
 
-uint32_t python_t::capabilities() const {
+Json::Value python_t::invoke(const std::string& task) {
     thread_state_t state(PyGILState_Ensure());
 
-    object_t reschedule(PyObject_GetAttrString(m_object, "reschedule"));
-    object_t process(PyObject_GetAttrString(m_object, "process"));
+    object_t method(PyObject_GetAttrString(m_object, task.c_str()));
+    
+    if(PyErr_Occurred()) {
+        throw std::runtime_error(exception());
+    }
 
-    return NONE |
-        (PyIter_Check(m_object) ? ITERATOR : NONE) |
-        (PyCallable_Check(reschedule) ? SCHEDULER : NONE) |
-        (PyCallable_Check(process) ? PROCESSOR : NONE);
-}
-
-Json::Value python_t::invoke() {
-    // Get the thread state
-    thread_state_t state(PyGILState_Ensure());
-
-    // Invoke the function
-    object_t result(PyIter_Next(m_object));
+    object_t args(PyTuple_New(0));
+    object_t result(PyObject_Call(method, args, NULL));
 
     if(PyErr_Occurred()) {
-        Json::Value object;
-        object["error"] = exception();
-        return object;
+        throw std::runtime_error(exception());
     } else if(result.valid()) {
         return unwrap(result);
     } else {
-        throw exhausted("iteration stopped");
+        return Json::nullValue;
     }
 }
 
@@ -209,35 +197,20 @@ Json::Value python_t::process(const void* data, size_t data_size) {
     object_t buffer(PyBuffer_FromMemory(const_cast<void*>(data), data_size));
     object_t process(PyObject_GetAttrString(m_object, "process"));
 
+    if(PyErr_Occurred()) {
+        throw std::runtime_error(exception());
+    }
+    
     object_t args(PyTuple_Pack(1, *buffer));
     object_t result(PyObject_Call(process, args, NULL));
 
     if(PyErr_Occurred()) {
-        Json::Value object;
-        object["error"] = exception();
-        return object;
-    }
-
-    return unwrap(result);
-}
-
-float python_t::reschedule() {
-    thread_state_t state(PyGILState_Ensure());
-    
-    object_t reschedule(PyObject_GetAttrString(m_object, "reschedule"));
-    
-    object_t args(PyTuple_New(0));
-    object_t result(PyObject_Call(reschedule, args, NULL));
-    
-    if(PyErr_Occurred()) {
         throw std::runtime_error(exception());
+    } else if(result.valid()) {
+        return unwrap(result);
+    } else {
+        return Json::nullValue;
     }
-
-    if(!PyFloat_Check(result)) {
-        throw std::runtime_error("reschedule() has returned a non-float object");
-    }
-
-    return PyFloat_AsDouble(result);
 }
 
 std::string python_t::exception() const {

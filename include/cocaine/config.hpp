@@ -12,18 +12,12 @@ class config_t {
 
     public:
         struct {
+            std::string hostname;
             std::string instance;
-            uint32_t history_depth;
         } core;
 
         struct {
             std::vector<std::string> listen;
-            std::vector<std::string> publish;
-#if ZMQ_VERSION > 30000
-            int watermark;
-#else
-            uint64_t watermark;
-#endif
         } net;
         
         struct {
@@ -35,7 +29,8 @@ class config_t {
             float heartbeat_timeout;
             float suicide_timeout;
             unsigned int queue_depth;
-            unsigned int pool_size;
+            unsigned int pool_limit;
+            unsigned int history_depth;
         } engine;
 
         struct {

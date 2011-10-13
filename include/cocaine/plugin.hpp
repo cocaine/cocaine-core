@@ -25,29 +25,20 @@ class source_t:
 
         inline std::string uri() const { return m_uri; }
 
-        enum capabilities {
-            NONE        = 0,
-            ITERATOR    = 1 << 0,
-            SCHEDULER   = 1 << 1,
-            PROCESSOR   = 1 << 2
-        };
-
-        virtual uint32_t capabilities() const = 0;
-
-        // Will be called by the auto timed driver and by the fs driver
-        virtual Json::Value invoke() {
+        // Called by task scheduler
+        virtual Json::Value invoke(const std::string& task) {
             throw std::runtime_error("not implemented");
         }
 
-        // Will be called by the event driver
+        // Called by request scheduler
         virtual Json::Value process(const void* data, size_t data_size) {
             throw std::runtime_error("not implemented");
         }
         
         // Will be called by the manual timed driver
-        virtual float reschedule() {
-            throw std::runtime_error("not implemented");
-        }
+        // virtual float reschedule() {
+        //    throw std::runtime_error("not implemented");
+        // }
 
     protected:
         std::string m_uri;

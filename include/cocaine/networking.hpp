@@ -16,14 +16,20 @@ namespace cocaine { namespace lines {
 
 using namespace boost::tuples;
 
+typedef std::vector<std::string> route_t;
+
 class socket_t: 
     public boost::noncopyable,
     public helpers::birth_control_t<socket_t>
 {
     public:
-        socket_t(zmq::context_t& context, int type):
+        socket_t(zmq::context_t& context, int type, std::string identity = ""):
             m_socket(context, type)
-        {}
+        {
+            if(!identity.empty()) {
+                setsockopt(ZMQ_IDENTITY, identity.data(), identity.length());
+            } 
+        }
 
         inline bool send(zmq::message_t& message, int flags = 0) {
             try {
@@ -72,21 +78,12 @@ class socket_t:
         zmq::socket_t m_socket;
 };
 
-#define PUSH      1 /* engine pushes a task to an overseer */
-#define DROP      2 /* engine drops a task from an overseer */
-#define TERMINATE 3 /* engine terminates an overseer */
-#define FUTURE    4 /* overseer fulfills an engine's request */
-#define SUICIDE   5 /* overseer performs a suicide */
-#define EVENT     6 /* driver sends the invocation results to the core */
-#define HEARTBEAT 7 /* overseer is reporting that it's still alive */
-#define ONCE      8
-
 class channel_t:
     public socket_t
 {
     public:
-        channel_t(zmq::context_t& context, int type):
-            socket_t(context, type)
+        channel_t(zmq::context_t& context, int type, std::string identity = ""):
+            socket_t(context, type, identity)
         {}
 
         // Bring original methods into the scope

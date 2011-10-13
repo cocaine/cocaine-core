@@ -1,18 +1,24 @@
 #ifndef COCAINE_DRIVERS_BASE_HPP
 #define COCAINE_DRIVERS_BASE_HPP
 
+#include "cocaine/engine/routing.hpp"
 #include "cocaine/drivers/abstract.hpp"
+#include "cocaine/plugin.hpp"
+#include "cocaine/security/digest.hpp"
 
 namespace cocaine { namespace engine { namespace drivers {
+
+using namespace cocaine::security;
 
 template<class WatcherType, class DriverType>
 class driver_base_t:
     public abstract_driver_t
 {
     public:
-        driver_base_t(boost::shared_ptr<overseer_t> parent):
-            abstract_driver_t(parent)
-        {}
+        driver_base_t(const std::string& name, boost::shared_ptr<engine_t> parent, const Json::Value& args):
+            abstract_driver_t(name, parent),
+            m_timeout(args.get("timeout", config_t::get().engine.heartbeat_timeout).asDouble())
+        { }
         
         virtual ~driver_base_t() {
             if(m_watcher.get() && m_watcher->is_active()) {
@@ -24,7 +30,7 @@ class driver_base_t:
             syslog(LOG_DEBUG, "driver %s [%s]: starting",
                 m_id.c_str(), m_parent->id().c_str());
             
-            m_watcher.reset(new WatcherType(m_parent->loop()));
+            m_watcher.reset(new WatcherType());
             m_watcher->set(this);
 
             static_cast<DriverType*>(this)->initialize();
@@ -33,20 +39,21 @@ class driver_base_t:
         }
 
         virtual void operator()(WatcherType&, int) {
-            Json::Value result;
-            
             try {
-                result = m_parent->source()->invoke();
-            } catch(const std::exception& e) {
-                syslog(LOG_ERR, "driver %s [%s]: [%s()] %s",
-                    m_id.c_str(), m_parent->id().c_str(), __func__, e.what());
-                result["error"] = e.what();
+                m_parent->queue(
+                    boost::make_tuple(
+                        INVOKE,
+                        m_name)
+                );
+            } catch(const std::runtime_error& e) {
+                syslog(LOG_ERR, "driver %s [%s]: %s",
+                    m_id.c_str(), m_parent->id().c_str(), e.what());
             }
-            
-            publish(result);
         }
     
     protected:
+        float m_timeout;
+
         // Watcher
         std::auto_ptr<WatcherType> m_watcher;
 };

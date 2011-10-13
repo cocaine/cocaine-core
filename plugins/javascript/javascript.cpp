@@ -89,11 +89,7 @@ class javascript_t: public source_t {
             m_context.Dispose();
         }
 
-        virtual uint32_t capabilities() const {
-            return ITERATOR;
-        }
-
-        virtual Json::Value invoke() {
+        virtual Json::Value invoke(const std::string& task) {
             Json::Value result;
 
             HandleScope handle_scope;

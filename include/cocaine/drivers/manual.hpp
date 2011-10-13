@@ -9,21 +9,18 @@ class manual_t:
     public timed_driver_base_t<manual_t>
 {
     public:
-        manual_t(boost::shared_ptr<overseer_t> parent, const Json::Value& args):
-            timed_driver_base_t<manual_t>(parent)
+        manual_t(const std::string& name, boost::shared_ptr<overseer_t> parent, const Json::Value& args):
+            timed_driver_base_t<manual_t>(name, parent, args)
         {
-            if(~m_parent->source()->capabilities() & plugin::source_t::SCHEDULER) {
+            if(~m_parent->capabilities() & plugin::source_t::SCHEDULER) {
                 throw std::runtime_error("source doesn't support manual scheduling");
             }
             
-            m_id = "manual:" + digest_t().get(
-                (m_parent->isolated() ? m_parent->id() : "") +
-                m_parent->source()->uri());
+            m_id = "manual:" + digest_t().get(m_name);
         }
 
         inline ev::tstamp reschedule(ev::tstamp now) {
-            float next = m_parent->source()->reschedule();
-            return now >= next ? now : next;
+        
         }
 };
 
