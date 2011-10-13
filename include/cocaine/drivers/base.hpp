@@ -1,7 +1,6 @@
 #ifndef COCAINE_DRIVERS_BASE_HPP
 #define COCAINE_DRIVERS_BASE_HPP
 
-#include "cocaine/engine/routing.hpp"
 #include "cocaine/drivers/abstract.hpp"
 #include "cocaine/plugin.hpp"
 #include "cocaine/security/digest.hpp"

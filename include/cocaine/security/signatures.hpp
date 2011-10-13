@@ -14,10 +14,9 @@ class signatures_t:
         signatures_t();
         ~signatures_t();
 
-        // std::string sign(const std::string& message, const std::string& token);
-        
         void verify(const std::string& message, const unsigned char* signature,
                     unsigned int size, const std::string& token);
+        // std::string sign(const std::string& message, const std::string& token);
 
     private:
         EVP_MD_CTX* m_context;

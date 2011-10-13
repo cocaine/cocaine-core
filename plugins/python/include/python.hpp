@@ -18,14 +18,15 @@ class python_t:
         // The source protocol implementation
         python_t(const std::string& uri);
 
+        // Source protocol
+        virtual Json::Value invoke(const std::string& task);
+        virtual Json::Value process(const void* data, size_t data_size);
+
+    private:
         // Instantiates the iterable object from the supplied code
         void compile(const std::string& code,
                      const std::string& name, 
                      const std::map<std::string, std::string>& parameters);
-
-        // Source protocol
-        virtual Json::Value invoke(const std::string& task);
-        virtual Json::Value process(const void* data, size_t data_size);
 
         // Fetches and formats current Python exception as a string
         std::string exception() const;

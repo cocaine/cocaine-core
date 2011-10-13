@@ -44,7 +44,7 @@ class javascript_t: public source_t {
             code << input.rdbuf();
 
             // Compile
-            compile(code.str(), "invoke");
+            compile(code.str(), "iterate");
         }
 
         void compile(const std::string& code,

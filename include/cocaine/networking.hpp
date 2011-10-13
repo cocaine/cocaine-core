@@ -50,11 +50,7 @@ class socket_t:
         }
 
         inline void getsockopt(int name, void* value, size_t* length) {
-            try {
-                m_socket.getsockopt(name, value, length);
-            } catch(const zmq::error_t& e) {
-                syslog(LOG_ERR, "net: [%s()] %s", __func__, e.what());
-            }
+            m_socket.getsockopt(name, value, length);
         }
 
         inline void setsockopt(int name, const void* value, size_t length) {
@@ -90,6 +86,7 @@ class channel_t:
         using socket_t::send;
         using socket_t::recv;
 
+        // Drops the current message
         void ignore() {
             zmq::message_t null;
 

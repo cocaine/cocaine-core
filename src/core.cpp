@@ -58,7 +58,7 @@ core_t::core_t():
     e_sigusr1.start(SIGUSR1);
 }
 
-// XXX: Why the hell is this needed anyway?
+// FIXME: Why the hell is this needed anyway?
 core_t::~core_t() { }
 
 void core_t::run() {
@@ -165,7 +165,7 @@ void core_t::request(ev::io& io, int revents) {
                 }
       
                 if(!username.empty()) {
-                    if(version > 2) {
+                    if(version >= 3) {
                         m_signatures.verify(request,
                             static_cast<const unsigned char*>(signature.data()),
                             signature.size(), username);
@@ -298,7 +298,7 @@ void core_t::recover() {
             std::string app(*it);
             
             try {
-                // push(root[app]);
+                create_engine(root[app]);
             } catch(const std::runtime_error& e) {
                 syslog(LOG_ERR, "core: [%s()] %s", __func__, e.what());
             }
