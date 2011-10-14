@@ -256,9 +256,8 @@ void engine_t::event(ev::io& w, int revents) {
                     Json::Value object;
                             
                     m_channel.recv(object);
-                    object["thread"] = thread_id;
-
                     future->push(object);
+                    
                     break;
                 }
 
