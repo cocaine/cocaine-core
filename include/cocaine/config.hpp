@@ -14,20 +14,16 @@ class config_t {
         struct {
             std::string hostname;
             std::string instance;
+            std::vector<std::string> endpoints;
         } core;
 
-        struct {
-            std::vector<std::string> listen;
-        } net;
-        
         struct {
             std::string location;
         } registry;
 
         struct {
-            float collect_timeout;
-            float heartbeat_timeout;
             float suicide_timeout;
+            float heartbeat_timeout;
             unsigned int queue_depth;
             unsigned int pool_limit;
             unsigned int history_depth;

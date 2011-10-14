@@ -130,7 +130,7 @@ class engine_t:
         
     private:
         template<class DriverType>
-        Json::Value schedule(const std::string& task, const Json::Value& args);
+        void schedule(const std::string& task, const Json::Value& args);
 
         void event(ev::io& w, int revents);
         void request(ev::io& w, int revents);

@@ -31,9 +31,6 @@ overseer_t::overseer_t(unique_id_t::type id_, unique_id_t::type engine_id, zmq::
     m_heartbeat.set<overseer_t, &overseer_t::heartbeat>(this);
     m_heartbeat.start(5.0, 5.0);
 
-    // Set timer compression threshold
-    m_loop.set_timeout_collect_interval(config_t::get().engine.collect_timeout);
-
     // Signal a false event, in case the core has managed to send something already
     m_loop.feed_fd_event(m_channel.fd(), EV_READ);
 }

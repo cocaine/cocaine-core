@@ -32,8 +32,8 @@ class core_t:
         void dispatch(boost::shared_ptr<response_t> response, const Json::Value& root);
         
         // User request handling
-        Json::Value create_engine(const Json::Value& args);
-        Json::Value delete_engine(const Json::Value& args);
+        Json::Value create_engine(const Json::Value& manifest);
+        Json::Value delete_engine(const Json::Value& manifest);
         Json::Value stats();
 
         // Task recovering
@@ -48,11 +48,11 @@ class core_t:
 
         // Networking
         zmq::context_t m_context;
-        boost::shared_ptr<lines::socket_t> s_requests;
+        boost::shared_ptr<lines::socket_t> m_request;
         
         // Event loop
-        ev::io e_requests;
-        ev::sig e_sigint, e_sigterm, e_sigquit, e_sighup, e_sigusr1;
+        ev::io m_request_watcher;
+        ev::sig m_sigint, m_sigterm, m_sigquit, m_sighup, m_sigusr1;
 };
 
 }}

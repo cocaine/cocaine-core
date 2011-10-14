@@ -23,8 +23,8 @@ int main(int argc, char* argv[]) {
     po::variables_map vm;
 
     mandatory.add_options()
-        ("listen", po::value< std::vector<std::string> >
-            (&config_t::set().net.listen));
+        ("endpoints", po::value< std::vector<std::string> >
+            (&config_t::set().core.endpoints));
     
     positional.add("listen", -1);
 
@@ -50,9 +50,6 @@ int main(int argc, char* argv[]) {
         ("engine-history-depth", po::value<unsigned int>
             (&config_t::set().engine.history_depth)->default_value(10),
             "maximum history depth for tasks")
-        ("thread-collect-timeout", po::value<float>
-            (&config_t::set().engine.collect_timeout)->default_value(0.5),
-            "driver events collection timeout, seconds")
         ("thread-suicide-timeout", po::value<float>
             (&config_t::set().engine.suicide_timeout)->default_value(600.0),
             "stale thread suicide timeout, seconds")
@@ -89,8 +86,8 @@ int main(int argc, char* argv[]) {
         return EXIT_SUCCESS;
     }
 
-    if(!vm.count("listen")) {
-        std::cout << "Error: no listen endpoints specified" << std::endl;
+    if(!vm.count("endpoints")) {
+        std::cout << "Error: no endpoints specified" << std::endl;
         std::cout << "Try '" << argv[0] << " --help' for more information" << std::endl;
         return EXIT_FAILURE;
     }

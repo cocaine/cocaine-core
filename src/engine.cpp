@@ -5,7 +5,6 @@
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
 
-#include "cocaine/core.hpp"
 #include "cocaine/drivers.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/overseer.hpp"
@@ -76,25 +75,26 @@ engine_t::~engine_t() {
 // Operations
 // ----------
 
-Json::Value engine_t::run(const Json::Value& args) {
+Json::Value engine_t::run(const Json::Value& manifest) {
     static std::map<const std::string, unsigned int> types = boost::assign::map_list_of
         ("auto", AUTO)
+    //  ("manual", MANUAL)
         ("fs", FILESYSTEM)
         ("sink", SINK);
 
-    std::string request(args["request:endpoint"].asString()),
-                publish(args["publish:endpoint"].asString());
-    Json::Value tasks(args["tasks"]),
+    std::string request(manifest["request:endpoint"].asString()),
+                publish(manifest["publish:endpoint"].asString());
+    Json::Value tasks(manifest["tasks"]),
                 result(Json::objectValue);
 
     // Engine-wide variables
-    m_queue_depth = args.get("pool:queue-depth",
+    m_queue_depth = manifest.get("pool:queue-depth",
         config_t::get().engine.queue_depth).asUInt();
-    m_pool_limit = args.get("pool:limit",
+    m_pool_limit = manifest.get("pool:limit",
         config_t::get().engine.pool_limit).asUInt();
-    m_heartbeat_timeout = args.get("pool:heartbeat-timeout",
+    m_heartbeat_timeout = manifest.get("pool:heartbeat-timeout",
         config_t::get().engine.heartbeat_timeout).asUInt();
-    m_history_depth = args.get("publish:history-depth",
+    m_history_depth = manifest.get("publish:history-depth",
         config_t::get().engine.history_depth).asUInt();
 
     if(!request.empty()) {
@@ -129,6 +129,9 @@ Json::Value engine_t::run(const Json::Value& args) {
                 case AUTO:
                     schedule<drivers::auto_t>(*it, tasks[*it]);
                     break;
+            //  case MANUAL:
+            //      schedule<drivers::maual_t>(*it, tasks[*it]);
+            //      break;
                 case FILESYSTEM:
                     schedule<drivers::fs_t>(*it, tasks[*it]);
                     break;
@@ -144,7 +147,11 @@ Json::Value engine_t::run(const Json::Value& args) {
 }
 
 void engine_t::stop() {
-    m_channel_watcher.stop();
+    if(m_request) {
+        m_request_watcher->stop();
+    }
+    
+    m_tasks.clear();
     
     for(thread_map_t::iterator it = m_threads.begin(); it != m_threads.end(); ++it) {
         m_channel.send_multi(boost::make_tuple(
@@ -153,22 +160,17 @@ void engine_t::stop() {
         m_threads.erase(it);
     }
     
-    m_tasks.clear();
-    
-    if(m_request) {
-        m_request_watcher->stop();
-    }
+    m_channel_watcher.stop();
 }
 
 template<class DriverType>
-Json::Value engine_t::schedule(const std::string& task, const Json::Value& args) {
+void engine_t::schedule(const std::string& task, const Json::Value& args) {
     std::auto_ptr<DriverType> driver(new DriverType(task, shared_from_this(), args));
     std::string driver_id(driver->id());
 
     if(m_tasks.find(driver_id) == m_tasks.end()) {
         driver->start();
         m_tasks.insert(driver_id, driver);
-        return driver_id;
     } else {
         throw std::runtime_error("duplicate task");
     }

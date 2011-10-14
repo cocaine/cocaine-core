@@ -30,32 +30,34 @@ core_t::core_t():
     }
 
     // Listening socket
-    s_requests.reset(new lines::socket_t(m_context, ZMQ_ROUTER,
-        config_t::get().core.hostname + "/" + config_t::get().core.instance));
+    std::string route(
+        config_t::get().core.hostname + "/" +
+        config_t::get().core.instance);
     
-    for(std::vector<std::string>::const_iterator it = config_t::get().net.listen.begin(); it != config_t::get().net.listen.end(); ++it) {
-        s_requests->bind(*it);
+    syslog(LOG_INFO, "core: this node identity is '%s'", route.c_str());
+
+    m_request.reset(new lines::socket_t(m_context, ZMQ_ROUTER, route));
+    
+    for(std::vector<std::string>::const_iterator it = config_t::get().core.endpoints.begin(); it != config_t::get().core.endpoints.end(); ++it) {
+        m_request->bind(*it);
         syslog(LOG_INFO, "core: listening for requests on %s", it->c_str());
     }
 
-    e_requests.set<core_t, &core_t::request>(this);
-    e_requests.start(s_requests->fd(), EV_READ);
+    m_request_watcher.set<core_t, &core_t::request>(this);
+    m_request_watcher.start(m_request->fd(), EV_READ);
 
     // Initialize signal watchers
-    e_sigint.set<core_t, &core_t::terminate>(this);
-    e_sigint.start(SIGINT);
+    m_sigint.set<core_t, &core_t::terminate>(this);
+    m_sigint.start(SIGINT);
 
-    e_sigterm.set<core_t, &core_t::terminate>(this);
-    e_sigterm.start(SIGTERM);
+    m_sigterm.set<core_t, &core_t::terminate>(this);
+    m_sigterm.start(SIGTERM);
 
-    e_sigquit.set<core_t, &core_t::terminate>(this);
-    e_sigquit.start(SIGQUIT);
+    m_sigquit.set<core_t, &core_t::terminate>(this);
+    m_sigquit.start(SIGQUIT);
 
-    e_sighup.set<core_t, &core_t::reload>(this);
-    e_sighup.start(SIGHUP);
-
-    e_sigusr1.set<core_t, &core_t::purge>(this);
-    e_sigusr1.start(SIGUSR1);
+    m_sighup.set<core_t, &core_t::reload>(this);
+    m_sighup.start(SIGHUP);
 }
 
 // FIXME: Why the hell is this needed anyway?
@@ -77,7 +79,7 @@ void core_t::terminate(ev::sig& sig, int revents) {
 }
 
 void core_t::reload(ev::sig& sig, int revents) {
-    syslog(LOG_NOTICE, "core: reloading tasks");
+    syslog(LOG_NOTICE, "core: reloading apps");
 
     for(engine_map_t::iterator it = m_engines.begin(); it != m_engines.end(); ++it) {
         it->second->stop();
@@ -92,22 +94,6 @@ void core_t::reload(ev::sig& sig, int revents) {
     }
 }
 
-void core_t::purge(ev::sig& sig, int revents) {
-    syslog(LOG_NOTICE, "core: purging the tasks");
-    
-    for(engine_map_t::iterator it = m_engines.begin(); it != m_engines.end(); ++it) {
-        it->second->stop();
-    }
-
-    m_engines.clear();
-    
-    try {
-        storage_t::instance()->purge("tasks");
-    } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "core: [%s()] storage failure - %s", __func__, e.what());
-    }    
-}
-
 void core_t::request(ev::io& io, int revents) {
     zmq::message_t message, signature;
     std::vector<std::string> route;
@@ -116,11 +102,11 @@ void core_t::request(ev::io& io, int revents) {
     Json::Reader reader(Json::Features::strictMode());
     Json::Value root;
 
-    while((revents & ev::READ) && s_requests->pending()) {
+    while((revents & ev::READ) && m_request->pending()) {
         route.clear();
 
         while(true) {
-            s_requests->recv(&message);
+            m_request->recv(&message);
 
             if(!message.size()) {
                 break;
@@ -133,10 +119,10 @@ void core_t::request(ev::io& io, int revents) {
 
         // Create a response
         boost::shared_ptr<response_t> response(
-            new response_t(route, s_requests));
+            new response_t(route, m_request));
         
         // Receive the request
-        s_requests->recv(&message);
+        m_request->recv(&message);
 
         request.assign(static_cast<const char*>(message.data()),
             message.size());
@@ -144,8 +130,8 @@ void core_t::request(ev::io& io, int revents) {
         // Receive the signature, if it's there
         signature.rebuild();
 
-        if(s_requests->has_more()) {
-            s_requests->recv(&signature);
+        if(m_request->has_more()) {
+            m_request->recv(&signature);
         }
 
         // Parse the request
@@ -201,20 +187,20 @@ void core_t::dispatch(boost::shared_ptr<response_t> response, const Json::Value&
         Json::Value::Members names(apps.getMemberNames());
 
         for(Json::Value::Members::iterator it = names.begin(); it != names.end(); ++it) {
-            // Get the app name and args
+            // Get the app name and app manifest
             std::string app(*it);
-            Json::Value args(apps[app]);
+            Json::Value manifest(apps[app]);
 
             // Invoke the handler
             try {
-                if(args.isObject()) {
+                if(manifest.isObject()) {
                     if(action == "create") {
-                        response->push(app, create_engine(args));
+                        response->push(app, create_engine(manifest));
                     } else if(action == "delete") {
-                        response->push(app, delete_engine(args));
+                        response->push(app, delete_engine(manifest));
                     }
                 } else {
-                    throw std::runtime_error("arguments expected");
+                    throw std::runtime_error("app manifest expected");
                 }
             } catch(const std::runtime_error& e) {
                 syslog(LOG_ERR, "core: [%s()] %s", __func__, e.what());
@@ -231,8 +217,8 @@ void core_t::dispatch(boost::shared_ptr<response_t> response, const Json::Value&
 // Commands
 // --------
 
-Json::Value core_t::create_engine(const Json::Value& args) {
-    std::string uri(args["uri"].asString());
+Json::Value core_t::create_engine(const Json::Value& manifest) {
+    std::string uri(manifest["uri"].asString());
     Json::Value result;
 
     if(uri.empty()) {
@@ -242,15 +228,14 @@ Json::Value core_t::create_engine(const Json::Value& args) {
     }
 
     boost::shared_ptr<engine_t> engine(new engine_t(m_context, uri));
-
-    result = engine->run(args);
+    result = engine->run(manifest);
     m_engines.insert(std::make_pair(uri, engine));
 
     return result;
 }
 
-Json::Value core_t::delete_engine(const Json::Value& args) {
-    std::string uri(args["uri"].asString());
+Json::Value core_t::delete_engine(const Json::Value& manifest) {
+    std::string uri(manifest["uri"].asString());
     engine_map_t::iterator engine(m_engines.find(uri));
     Json::Value result;
 
@@ -270,10 +255,8 @@ Json::Value core_t::delete_engine(const Json::Value& args) {
 Json::Value core_t::stats() {
     Json::Value result;
 
-    result["engines"]["total"] = engine::engine_t::objects_created;
-    
     for(engine_map_t::const_iterator it = m_engines.begin(); it != m_engines.end(); ++it) {
-        result["engines"]["alive"].append(it->first);
+        result["apps"].append(it->first);
     }
     
     result["threads"]["total"] = engine::thread_t::objects_created;
