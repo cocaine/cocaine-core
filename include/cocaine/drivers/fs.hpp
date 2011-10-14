@@ -10,7 +10,7 @@ class fs_t:
 {
     public:
         fs_t(const std::string& name, boost::shared_ptr<engine_t> parent, const Json::Value& args):
-            driver_base_t<ev::stat, fs_t>(name, parent, args),
+            driver_base_t<ev::stat, fs_t>(name, parent),
             m_path(args.get("path", "").asString())
         {
             if(m_path.empty()) {

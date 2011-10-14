@@ -42,17 +42,17 @@ class core_t:
     private:
         security::signatures_t m_signatures;
 
+        // Networking
+        zmq::context_t m_context;
+        boost::shared_ptr<lines::socket_t> m_server;
+        
+        // Event loop
+        ev::io m_server_watcher;
+        ev::sig m_sigint, m_sigterm, m_sigquit, m_sighup, m_sigusr1;
+        
         // Engine management (URI -> Engine)
         typedef std::map<const std::string, boost::shared_ptr<engine::engine_t> > engine_map_t;
         engine_map_t m_engines;
-
-        // Networking
-        zmq::context_t m_context;
-        boost::shared_ptr<lines::socket_t> m_request;
-        
-        // Event loop
-        ev::io m_request_watcher;
-        ev::sig m_sigint, m_sigterm, m_sigquit, m_sighup, m_sigusr1;
 };
 
 }}

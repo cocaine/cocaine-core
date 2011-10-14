@@ -94,9 +94,9 @@ class engine_t:
                 m_threads.end(), shortest_queue()));
 
             // If the selector has failed to do that...
-            if(thread == m_threads.end() || thread->second->queue_size() >= m_queue_depth) {
+            if(thread == m_threads.end() || thread->second->queue_size() >= m_config.queue_depth) {
                 // ...spawn a new one unless we hit the thread limit
-                if(m_threads.size() >= m_pool_limit) {
+                if(m_threads.size() >= m_config.worker_limit) {
                     throw std::runtime_error("engine thread pool limit exceeded");
                 }
 
@@ -137,23 +137,21 @@ class engine_t:
         void publish(const std::string& key, const Json::Value& value);
 
     private:
-        // Messaging
         zmq::context_t& m_context;
 
         // Source URI
         const std::string m_uri;
-        
+       
+        // Engine configuration 
+        config_t::engine_config_t m_config;
+
         // Thread I/O
         lines::channel_t m_channel;
         ev::io m_channel_watcher;
 
-        // Variables
-        unsigned int m_queue_depth, m_pool_limit, m_history_depth;
-        float m_heartbeat_timeout;
-
         // Application I/O
-        boost::shared_ptr<lines::socket_t> m_request, m_publish;
-        boost::shared_ptr<ev::io> m_request_watcher;
+        boost::shared_ptr<lines::socket_t> m_server, m_pubsub;
+        boost::shared_ptr<ev::io> m_server_watcher;
 
         // Tasks
         typedef boost::ptr_map<const std::string, drivers::abstract_driver_t> task_map_t;

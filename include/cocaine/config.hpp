@@ -21,11 +21,11 @@ class config_t {
             std::string location;
         } registry;
 
-        struct {
+        struct engine_config_t {
             float suicide_timeout;
             float heartbeat_timeout;
             unsigned int queue_depth;
-            unsigned int pool_limit;
+            unsigned int worker_limit;
             unsigned int history_depth;
         } engine;
 

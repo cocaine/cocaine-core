@@ -56,6 +56,7 @@ Json::Value core_t::past(const Json::Value& args) {
 engine_t::engine_t(zmq::context_t& context, std::string uri):
     m_context(context),
     m_uri(uri),
+    m_config(config_t::get().engine),
     m_channel(m_context, ZMQ_ROUTER)
 {
     syslog(LOG_INFO, "engine %s [%s]: starting", id().c_str(), m_uri.c_str());
@@ -82,39 +83,39 @@ Json::Value engine_t::run(const Json::Value& manifest) {
         ("fs", FILESYSTEM)
         ("sink", SINK);
 
-    std::string request(manifest["request:endpoint"].asString()),
-                publish(manifest["publish:endpoint"].asString());
-    Json::Value tasks(manifest["tasks"]),
-                result(Json::objectValue);
+    std::string server(manifest["server:endpoint"].asString()),
+                pubsub(manifest["pubsub:endpoint"].asString());
+    Json::Value tasks(manifest["tasks"]), result(Json::objectValue);
 
-    // Engine-wide variables
-    m_queue_depth = manifest.get("pool:queue-depth",
-        config_t::get().engine.queue_depth).asUInt();
-    m_pool_limit = manifest.get("pool:limit",
-        config_t::get().engine.pool_limit).asUInt();
-    m_heartbeat_timeout = manifest.get("pool:heartbeat-timeout",
+    m_config.heartbeat_timeout = manifest.get("server:heartbeat-timeout",
         config_t::get().engine.heartbeat_timeout).asUInt();
-    m_history_depth = manifest.get("publish:history-depth",
+    m_config.queue_depth = manifest.get("server:queue-depth",
+        config_t::get().engine.queue_depth).asUInt();
+    m_config.worker_limit = manifest.get("server:worker-limit",
+        config_t::get().engine.worker_limit).asUInt();
+    m_config.history_depth = manifest.get("pubsub:history-depth",
         config_t::get().engine.history_depth).asUInt();
 
-    if(!request.empty()) {
+    if(!server.empty()) {
         std::string route = config_t::get().core.hostname + "/" + 
                             config_t::get().core.instance + "/" +
                             digest_t().get(m_uri);
         
-        m_request.reset(new socket_t(m_context, ZMQ_ROUTER, route));
-        m_request->bind(request);
+        m_server.reset(new socket_t(m_context, ZMQ_ROUTER, route));
+        m_server->bind(server);
 
-        m_request_watcher.reset(new ev::io());
-        m_request_watcher->set<engine_t, &engine_t::request>(this);
-        m_request_watcher->start(m_request->fd(), ev::READ);
+        m_server_watcher.reset(new ev::io());
+        m_server_watcher->set<engine_t, &engine_t::request>(this);
+        m_server_watcher->start(m_server->fd(), ev::READ);
     
-        result["route"] = route;
+        result["server:route"] = route;
     }
 
-    if(!publish.empty() && !tasks.isNull() && tasks.size()) {
-        m_publish.reset(new socket_t(m_context, ZMQ_PUB));
-        m_publish->bind(publish);
+    if(!tasks.isNull() && tasks.size()) {
+        if(!pubsub.empty()) {
+            m_pubsub.reset(new socket_t(m_context, ZMQ_PUB));
+            m_pubsub->bind(pubsub);
+        }
 
         Json::Value::Members names = tasks.getMemberNames();
 
@@ -142,13 +143,14 @@ Json::Value engine_t::run(const Json::Value& manifest) {
         }
     }
 
-    result["status"] = "running";
+    result["engine:status"] = "running";
+
     return result;
 }
 
 void engine_t::stop() {
-    if(m_request) {
-        m_request_watcher->stop();
+    if(m_server) {
+        m_server_watcher->stop();
     }
     
     m_tasks.clear();
@@ -190,7 +192,7 @@ void engine_t::publish(const std::string& task, const Json::Value& event) {
     if(history == m_histories.end()) {
         boost::tie(history, boost::tuples::ignore) = m_histories.insert(task,
             new history_t());
-    } else if(history->second->size() == m_history_depth) {
+    } else if(history->second->size() == m_config.history_depth) {
         history->second->pop_back();
     }
     
@@ -208,7 +210,7 @@ void engine_t::publish(const std::string& task, const Json::Value& event) {
 
         message.rebuild(envelope.str().length());
         memcpy(message.data(), envelope.str().data(), envelope.str().length());
-        m_publish->send(message, ZMQ_SNDMORE);
+        m_pubsub->send(message, ZMQ_SNDMORE);
 
         Json::Value object(event[key]);
         std::string value;
@@ -233,7 +235,7 @@ void engine_t::publish(const std::string& task, const Json::Value& event) {
 
         message.rebuild(value.length());
         memcpy(message.data(), value.data(), value.length());
-        m_publish->send(message);
+        m_pubsub->send(message);
     }
 }
 
@@ -266,13 +268,16 @@ void engine_t::event(ev::io& w, int revents) {
 
                     boost::tuple<std::string&, Json::Value&> tier(task, object);
                     m_channel.recv_multi(tier);
+        
+                    if(m_pubsub) {
+                        publish(task, object);
+                    }
 
-                    publish(task, object);
                     break;
                 }
 
                 case HEARTBEAT: {
-                    thread->second->rearm(m_heartbeat_timeout);
+                    thread->second->rearm(m_config.heartbeat_timeout);
                     break;
                 }
 
@@ -298,11 +303,11 @@ void engine_t::request(ev::io& w, int revents) {
     zmq::message_t message;
     std::vector<std::string> route;
 
-    while((revents & ev::READ) && m_request->pending()) {
+    while((revents & ev::READ) && m_server->pending()) {
         route.clear();
         
         while(true) {
-            m_request->recv(&message);
+            m_server->recv(&message);
 
             if(!message.size()) {
                 break;
@@ -314,9 +319,9 @@ void engine_t::request(ev::io& w, int revents) {
         }
        
         boost::shared_ptr<response_t> response(
-            new response_t(route, m_request));
+            new response_t(route, m_server));
         
-        m_request->recv(&message);
+        m_server->recv(&message);
 
         try {
             response->wait(queue(

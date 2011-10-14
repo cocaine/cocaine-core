@@ -10,7 +10,7 @@ class sink_t:
 {
     public:
         sink_t(const std::string& name, boost::shared_ptr<engine_t> parent, const Json::Value& args):
-            driver_base_t<ev::io, sink_t>(name, parent, args),
+            driver_base_t<ev::io, sink_t>(name, parent),
             m_endpoint(args.get("endpoint", "").asString())
         {
             if(m_endpoint.empty()) {
@@ -37,8 +37,8 @@ class sink_t:
                             )
                         );
                 } catch(const std::runtime_error& e) {
-                    syslog(LOG_ERR, "driver %s [%s]: %s",
-                        m_id.c_str(), m_parent->id().c_str(), e.what());
+                    syslog(LOG_ERR, "driver %s [%s]: [%s()] %s",
+                        m_id.c_str(), m_parent->id().c_str(), __func__, e.what());
                 }
             }
         }

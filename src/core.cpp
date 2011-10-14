@@ -2,11 +2,13 @@
 #include "cocaine/engine.hpp"
 #include "cocaine/future.hpp"
 #include "cocaine/response.hpp"
+#include "cocaine/security/digest.hpp"
 #include "cocaine/storage.hpp"
 
 using namespace cocaine::core;
 using namespace cocaine::engine;
 using namespace cocaine::plugin;
+using namespace cocaine::security;
 using namespace cocaine::storage;
 
 core_t::core_t():
@@ -36,15 +38,15 @@ core_t::core_t():
     
     syslog(LOG_INFO, "core: this node identity is '%s'", route.c_str());
 
-    m_request.reset(new lines::socket_t(m_context, ZMQ_ROUTER, route));
+    m_server.reset(new lines::socket_t(m_context, ZMQ_ROUTER, route));
     
     for(std::vector<std::string>::const_iterator it = config_t::get().core.endpoints.begin(); it != config_t::get().core.endpoints.end(); ++it) {
-        m_request->bind(*it);
+        m_server->bind(*it);
         syslog(LOG_INFO, "core: listening for requests on %s", it->c_str());
     }
 
-    m_request_watcher.set<core_t, &core_t::request>(this);
-    m_request_watcher.start(m_request->fd(), EV_READ);
+    m_server_watcher.set<core_t, &core_t::request>(this);
+    m_server_watcher.start(m_server->fd(), EV_READ);
 
     // Initialize signal watchers
     m_sigint.set<core_t, &core_t::terminate>(this);
@@ -102,11 +104,11 @@ void core_t::request(ev::io& io, int revents) {
     Json::Reader reader(Json::Features::strictMode());
     Json::Value root;
 
-    while((revents & ev::READ) && m_request->pending()) {
+    while((revents & ev::READ) && m_server->pending()) {
         route.clear();
 
         while(true) {
-            m_request->recv(&message);
+            m_server->recv(&message);
 
             if(!message.size()) {
                 break;
@@ -119,10 +121,10 @@ void core_t::request(ev::io& io, int revents) {
 
         // Create a response
         boost::shared_ptr<response_t> response(
-            new response_t(route, m_request));
+            new response_t(route, m_server));
         
         // Receive the request
-        m_request->recv(&message);
+        m_server->recv(&message);
 
         request.assign(static_cast<const char*>(message.data()),
             message.size());
@@ -130,8 +132,8 @@ void core_t::request(ev::io& io, int revents) {
         // Receive the signature, if it's there
         signature.rebuild();
 
-        if(m_request->has_more()) {
-            m_request->recv(&signature);
+        if(m_server->has_more()) {
+            m_server->recv(&signature);
         }
 
         // Parse the request
@@ -227,10 +229,16 @@ Json::Value core_t::create_engine(const Json::Value& manifest) {
         throw std::runtime_error("the specified app is already active");
     }
 
+    // Launch the engine
     boost::shared_ptr<engine_t> engine(new engine_t(m_context, uri));
     result = engine->run(manifest);
-    m_engines.insert(std::make_pair(uri, engine));
 
+    // Persist
+    storage_t::instance()->put("apps", digest_t().get(uri), manifest);
+
+    // Only leave the engine running if all of the above succeded
+    m_engines.insert(std::make_pair(uri, engine));
+    
     return result;
 }
 
@@ -248,6 +256,9 @@ Json::Value core_t::delete_engine(const Json::Value& manifest) {
     engine->second->stop();
     m_engines.erase(engine);
     result["status"] = "stopped";
+
+    // Unpersist
+    storage_t::instance()->remove("apps", digest_t().get(uri));
 
     return result;
 }

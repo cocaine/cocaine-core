@@ -14,9 +14,8 @@ class driver_base_t:
     public abstract_driver_t
 {
     public:
-        driver_base_t(const std::string& name, boost::shared_ptr<engine_t> parent, const Json::Value& args):
-            abstract_driver_t(name, parent),
-            m_timeout(args.get("timeout", config_t::get().engine.heartbeat_timeout).asDouble())
+        driver_base_t(const std::string& name, boost::shared_ptr<engine_t> parent):
+            abstract_driver_t(name, parent)
         { }
         
         virtual ~driver_base_t() {
@@ -45,14 +44,12 @@ class driver_base_t:
                         m_name)
                 );
             } catch(const std::runtime_error& e) {
-                syslog(LOG_ERR, "driver %s [%s]: %s",
-                    m_id.c_str(), m_parent->id().c_str(), e.what());
+                syslog(LOG_ERR, "driver %s [%s]: [%s()] %s",
+                    m_id.c_str(), m_parent->id().c_str(), __func__, e.what());
             }
         }
     
     protected:
-        float m_timeout;
-
         // Watcher
         std::auto_ptr<WatcherType> m_watcher;
 };

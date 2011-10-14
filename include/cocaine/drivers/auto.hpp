@@ -12,7 +12,7 @@ class auto_t:
 {
     public:
         auto_t(const std::string& name, boost::shared_ptr<engine_t> parent, const Json::Value& args):
-            timed_driver_base_t<auto_t>(name, parent, args),
+            timed_driver_base_t<auto_t>(name, parent),
             m_interval(args.get("interval", 0).asInt() / 1000.0)
         {
             if(m_interval <= 0) {

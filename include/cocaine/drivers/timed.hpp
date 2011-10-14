@@ -10,8 +10,8 @@ class timed_driver_base_t:
     public driver_base_t< ev::periodic, timed_driver_base_t<T> >
 {
     public:
-        timed_driver_base_t(const std::string& name, boost::shared_ptr<engine_t> parent, const Json::Value& args):
-            driver_base_t<ev::periodic, timed_driver_base_t>(name, parent, args)
+        timed_driver_base_t(const std::string& name, boost::shared_ptr<engine_t> parent):
+            driver_base_t<ev::periodic, timed_driver_base_t>(name, parent)
         {}
 
         inline void initialize() {
