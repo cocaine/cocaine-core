@@ -53,7 +53,7 @@ Json::Value core_t::past(const Json::Value& args) {
 }
 */
 
-engine_t::engine_t(zmq::context_t& context, std::string uri):
+engine_t::engine_t(zmq::context_t& context, const std::string& uri):
     m_context(context),
     m_uri(uri),
     m_config(config_t::get().engine),
@@ -341,7 +341,7 @@ void engine_t::request(ev::io& w, int revents) {
 // Thread interface
 // ----------------
 
-thread_t::thread_t(unique_id_t::type engine_id, zmq::context_t& context, std::string uri):
+thread_t::thread_t(unique_id_t::type engine_id, zmq::context_t& context, const std::string& uri):
     m_engine_id(engine_id),
     m_context(context),
     m_uri(uri)

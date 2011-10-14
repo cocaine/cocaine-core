@@ -22,7 +22,7 @@ class thread_t:
     public:        
         thread_t(helpers::unique_id_t::type engine_id,
                  zmq::context_t& context, 
-                 std::string uri);
+                 const std::string& uri);
         ~thread_t();
 
         void rearm(float timeout);
@@ -79,7 +79,7 @@ class engine_t:
         };
        
     public:
-        engine_t(zmq::context_t& context, std::string uri);
+        engine_t(zmq::context_t& context, const std::string& uri);
         ~engine_t();
 
         Json::Value run(const Json::Value& args);
