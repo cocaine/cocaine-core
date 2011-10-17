@@ -414,6 +414,8 @@ void thread_t::timeout(ev::timer& w, int revents) {
         m_queue.pop();
     }
 
+    // XXX: This doesn't work yet, as ZeroMQ doesn't support two sockets with the same identity
+    // XXX: i.e., when the old thread has been interrupted, and a new one spawns with the same id
     create();
 }
 

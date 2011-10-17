@@ -10,7 +10,6 @@ namespace cocaine { namespace engine {
 // Thread manager
 class overseer_t:
     public boost::noncopyable,
-    public boost::enable_shared_from_this<overseer_t>,
     public helpers::unique_id_t
 {
     public:
