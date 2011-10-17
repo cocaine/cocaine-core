@@ -144,6 +144,7 @@ class engine_t:
        
         // Engine configuration 
         config_t::engine_config_t m_config;
+        std::string m_application;
 
         // Thread I/O
         lines::channel_t m_channel;

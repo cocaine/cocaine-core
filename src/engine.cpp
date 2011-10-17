@@ -97,6 +97,12 @@ Json::Value engine_t::run(const Json::Value& manifest) {
         config_t::get().engine.history_depth).asUInt();
 
     if(!server.empty()) {
+        m_application = manifest["server:application"].asString();
+
+        if(m_application.empty()) {
+            throw std::runtime_error("no application has been specified for serving");
+        }
+
         std::string route = config_t::get().core.hostname + "/" + 
                             config_t::get().core.instance + "/" +
                             digest_t().get(m_uri);
@@ -230,7 +236,7 @@ void engine_t::publish(const std::string& task, const Json::Value& event) {
                 value = object.asString();
                 break;
             default:
-                value = "<error: unable to publish non-primitive types>";
+                value = boost::lexical_cast<std::string>(object);
         }
 
         message.rebuild(value.length());
@@ -326,7 +332,7 @@ void engine_t::request(ev::io& w, int revents) {
             response->wait(queue(
                 boost::make_tuple(
                     PROCESS,
-                    std::string("Serve"),
+                    m_application,
                     std::string(
                         static_cast<const char*>(message.data()),
                         message.size())
