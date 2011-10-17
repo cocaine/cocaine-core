@@ -115,14 +115,11 @@ class engine_t:
             
             thread->second->queue_push(future);
 
-            m_channel.send_multi(helpers::joint_view(
+            m_messages.send_multi(helpers::joint_view(
                 boost::make_tuple(
                     lines::protect(thread->second->id())),
                 args));
 
-            // Oh, come on...
-            ev::get_default_loop().feed_fd_event(m_channel.fd(), EV_READ);
-            
             return future;
         }
 
@@ -132,8 +129,12 @@ class engine_t:
         template<class DriverType>
         void schedule(const std::string& task, const Json::Value& args);
 
-        void event(ev::io& w, int revents);
+        void message(ev::io& w, int revents);
+        void process_message(ev::idle& w, int revents);
+
         void request(ev::io& w, int revents);
+        void process_request(ev::idle& w, int revents);
+
         void publish(const std::string& key, const Json::Value& value);
 
     private:
@@ -147,12 +148,14 @@ class engine_t:
         std::string m_application;
 
         // Thread I/O
-        lines::channel_t m_channel;
-        ev::io m_channel_watcher;
+        lines::channel_t m_messages;
+        ev::io m_message_watcher;
+        ev::idle m_message_processor;
 
         // Application I/O
         boost::shared_ptr<lines::socket_t> m_server, m_pubsub;
-        boost::shared_ptr<ev::io> m_server_watcher;
+        boost::shared_ptr<ev::io> m_request_watcher;
+        boost::shared_ptr<ev::idle> m_request_processor;
 
         // Tasks
         typedef boost::ptr_map<const std::string, drivers::abstract_driver_t> task_map_t;

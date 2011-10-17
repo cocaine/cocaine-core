@@ -22,25 +22,27 @@ class overseer_t:
         
     private:
         // Event loop callback handling and dispatching
-        void request(ev::io& w, int revents);
+        void message(ev::io& w, int revents);
+        void process_message(ev::idle& w, int revents);
         void timeout(ev::timer& w, int revents);
         void heartbeat(ev::timer& w, int revents);
 
         // Thread request handling
-        Json::Value process(const std::string& task, const std::string& blob); 
         Json::Value invoke(const std::string& task);
+        Json::Value invoke(const std::string& task, const std::string& blob); 
         
         void terminate();
 
     private:
         // Messaging
         zmq::context_t& m_context;
-        lines::channel_t m_channel;
+        lines::channel_t m_messages;
         
         // Event loop
         ev::dynamic_loop m_loop;
-        ev::io m_request;
-        ev::timer m_timeout, m_heartbeat;
+        ev::io m_message_watcher;
+        ev::idle m_message_processor;
+        ev::timer m_suicide_timer, m_heartbeat_timer;
 
         // Data source
         boost::shared_ptr<plugin::source_t> m_source;

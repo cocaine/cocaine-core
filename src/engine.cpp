@@ -57,16 +57,16 @@ engine_t::engine_t(zmq::context_t& context, const std::string& uri):
     m_context(context),
     m_uri(uri),
     m_config(config_t::get().engine),
-    m_channel(m_context, ZMQ_ROUTER)
+    m_messages(m_context, ZMQ_ROUTER)
 {
     syslog(LOG_INFO, "engine %s [%s]: starting", id().c_str(), m_uri.c_str());
     
-    m_channel.bind("inproc://engine/" + id());
-    m_channel_watcher.set<engine_t, &engine_t::event>(this);
-    m_channel_watcher.start(m_channel.fd(), EV_READ);
+    m_messages.bind("ipc:///var/run/cocaine/engines/" + id());
+    m_message_watcher.set<engine_t, &engine_t::message>(this);
+    m_message_watcher.start(m_messages.fd(), EV_READ);
 
-    // Have to bootstrap it
-    ev::get_default_loop().feed_fd_event(m_channel.fd(), ev::READ);
+    // This is the actual event processor
+    m_message_processor.set<engine_t, &engine_t::process_message>(this);
 }
 
 engine_t::~engine_t() {
@@ -110,10 +110,14 @@ Json::Value engine_t::run(const Json::Value& manifest) {
         m_server.reset(new socket_t(m_context, ZMQ_ROUTER, route));
         m_server->bind(server);
 
-        m_server_watcher.reset(new ev::io());
-        m_server_watcher->set<engine_t, &engine_t::request>(this);
-        m_server_watcher->start(m_server->fd(), ev::READ);
-    
+        m_request_watcher.reset(new ev::io());
+        m_request_watcher->set<engine_t, &engine_t::request>(this);
+        m_request_watcher->start(m_server->fd(), ev::READ);
+   
+        // This is the actual request processor
+        m_request_processor.reset(new ev::idle());
+        m_request_processor->set<engine_t, &engine_t::process_request>(this);
+
         result["server:route"] = route;
     }
 
@@ -156,19 +160,21 @@ Json::Value engine_t::run(const Json::Value& manifest) {
 
 void engine_t::stop() {
     if(m_server) {
-        m_server_watcher->stop();
+        m_request_watcher->stop();
+        m_request_processor->stop();
     }
     
     m_tasks.clear();
     
     for(thread_map_t::iterator it = m_threads.begin(); it != m_threads.end(); ++it) {
-        m_channel.send_multi(boost::make_tuple(
+        m_messages.send_multi(boost::make_tuple(
             protect(it->first),
             TERMINATE));
         m_threads.erase(it);
     }
     
-    m_channel_watcher.stop();
+    m_message_watcher.stop();
+    m_message_processor.stop();
 }
 
 template<class DriverType>
@@ -184,9 +190,130 @@ void engine_t::schedule(const std::string& task, const Json::Value& args) {
     }
 }
 
-// Publishing format (not JSON, as it will render subscription mechanics pointless):
-// ------------------
-//   multipart: [key field hostname timestamp] [blob]
+// Thread I/O
+// ----------
+
+void engine_t::message(ev::io& w, int revents) {
+    if(m_messages.pending() && !m_message_processor.is_active()) {
+        m_message_processor.start();
+    }
+}
+
+void engine_t::process_message(ev::idle& w, int revents) {
+    if(m_messages.pending()) {
+        std::string thread_id;
+        unsigned int code = 0;
+
+        boost::tuple<raw<std::string>, unsigned int&> tier(protect(thread_id), code);
+        m_messages.recv_multi(tier);
+
+        thread_map_t::iterator thread(m_threads.find(thread_id));
+
+        if(thread != m_threads.end()) {
+            switch(code) {
+                case FUTURE: {
+                    boost::shared_ptr<future_t> future(thread->second->queue_pop());
+                    Json::Value object;
+                            
+                    m_messages.recv(object);
+                    future->push(object);
+                    
+                    break;
+                }
+
+                case EVENT: {
+                    std::string task;
+                    Json::Value object;
+
+                    boost::tuple<std::string&, Json::Value&> tier(task, object);
+                    m_messages.recv_multi(tier);
+        
+                    if(m_pubsub) {
+                        publish(task, object);
+                    }
+
+                    break;
+                }
+
+                case HEARTBEAT: {
+                    thread->second->rearm(m_config.heartbeat_timeout);
+                    break;
+                }
+
+                case SUICIDE: {
+                    m_threads.erase(thread);
+                    break;
+                }
+
+                default:
+                    syslog(LOG_ERR, "engine %s [%s]: [%s()] unknown message",
+                        id().c_str(), m_uri.c_str(), __func__);
+                    abort();
+            }
+        } else {
+            syslog(LOG_DEBUG, "engine %s [%s]: [%s()] outstanding messages - thread %s", 
+                id().c_str(), m_uri.c_str(), __func__, thread_id.c_str());
+            m_messages.ignore();
+        }
+    } else {
+        m_message_processor.stop();
+    }
+}
+
+// Application I/O
+// ---------------
+
+void engine_t::request(ev::io& w, int revents) {
+    if(m_server->pending() && !m_request_processor->is_active()) {
+        m_request_processor->start();
+    }
+}
+
+void engine_t::process_request(ev::idle& w, int revents) {
+    if(m_server->pending()) {
+        zmq::message_t message;
+        std::vector<std::string> route;
+        
+        while(true) {
+            m_server->recv(&message);
+
+            if(!message.size()) {
+                break;
+            }
+
+            route.push_back(std::string(
+                static_cast<const char*>(message.data()),
+                message.size()));
+        }
+       
+        boost::shared_ptr<response_t> response(
+            new response_t(route, m_server));
+        
+        m_server->recv(&message);
+
+        try {
+            response->wait(queue(
+                boost::make_tuple(
+                    PROCESS,
+                    m_application,
+                    std::string(
+                        static_cast<const char*>(message.data()),
+                        message.size())
+                    )
+                )
+            );
+        } catch(const std::runtime_error& e) {
+            response->abort(e.what());
+        }
+    } else {
+        m_request_processor->stop();
+    }
+}
+
+// Publishing
+// ----------
+// Format is:
+// ['key field hostname timestamp', 'blob']
 
 void engine_t::publish(const std::string& task, const Json::Value& event) {
     zmq::message_t message;
@@ -242,106 +369,6 @@ void engine_t::publish(const std::string& task, const Json::Value& event) {
         message.rebuild(value.length());
         memcpy(message.data(), value.data(), value.length());
         m_pubsub->send(message);
-    }
-}
-
-void engine_t::event(ev::io& w, int revents) {
-    std::string thread_id;
-    unsigned int code = 0;
-
-    while((revents & ev::READ) && m_channel.pending()) {
-        boost::tuple<raw<std::string>, unsigned int&> tier(protect(thread_id), code);
-        m_channel.recv_multi(tier);
-
-        thread_map_t::iterator thread(m_threads.find(thread_id));
-
-        if(thread != m_threads.end()) {
-            switch(code) {
-                case FUTURE: {
-                    boost::shared_ptr<future_t> future(thread->second->queue_pop());
-                    Json::Value object;
-                            
-                    m_channel.recv(object);
-                    future->push(object);
-                    
-                    break;
-                }
-
-                case EVENT: {
-                    std::string task;
-                    Json::Value object;
-
-                    boost::tuple<std::string&, Json::Value&> tier(task, object);
-                    m_channel.recv_multi(tier);
-        
-                    if(m_pubsub) {
-                        publish(task, object);
-                    }
-
-                    break;
-                }
-
-                case HEARTBEAT: {
-                    thread->second->rearm(m_config.heartbeat_timeout);
-                    break;
-                }
-
-                case SUICIDE: {
-                    m_threads.erase(thread);
-                    break;
-                }
-
-                default:
-                    syslog(LOG_ERR, "engine %s [%s]: [%s()] unknown message",
-                        id().c_str(), m_uri.c_str(), __func__);
-                    abort();
-            }
-        } else {
-            syslog(LOG_DEBUG, "engine %s [%s]: [%s()] outstanding messages - thread %s", 
-                id().c_str(), m_uri.c_str(), __func__, thread_id.c_str());
-            m_channel.ignore();
-        }
-    }
-}
-
-void engine_t::request(ev::io& w, int revents) {
-    zmq::message_t message;
-    std::vector<std::string> route;
-
-    while((revents & ev::READ) && m_server->pending()) {
-        route.clear();
-        
-        while(true) {
-            m_server->recv(&message);
-
-            if(!message.size()) {
-                break;
-            }
-
-            route.push_back(std::string(
-                static_cast<const char*>(message.data()),
-                message.size()));
-        }
-       
-        boost::shared_ptr<response_t> response(
-            new response_t(route, m_server));
-        
-        m_server->recv(&message);
-
-        try {
-            response->wait(queue(
-                boost::make_tuple(
-                    PROCESS,
-                    m_application,
-                    std::string(
-                        static_cast<const char*>(message.data()),
-                        message.size())
-                    )
-                )
-            );
-        } catch(const std::runtime_error& e) {
-            response->abort(e.what());
-        }
     }
 }
 
