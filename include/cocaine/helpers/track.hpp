@@ -14,14 +14,16 @@ namespace cocaine { namespace helpers {
                 destroy();
             }
 
-            inline void operator=(T object) {
+            inline track<T, D>& operator=(T object) {
                 destroy();
                 m_object = object;
+                return *this;
             }
 
-            inline void operator=(track<T, D>& other) {
+            inline track<T, D>& operator=(track<T, D>& other) {
                 destroy();
                 m_object = other.release();
+                return *this;
             } 
 
             inline T operator*() {
@@ -33,6 +35,10 @@ namespace cocaine { namespace helpers {
             }
 
             inline T* operator&() {
+                return &m_object;
+            }
+
+            inline const T* operator&() const {
                 return &m_object;
             }
 

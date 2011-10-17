@@ -233,8 +233,13 @@ Json::Value core_t::create_engine(const Json::Value& manifest) {
     boost::shared_ptr<engine_t> engine(new engine_t(m_context, uri));
     result = engine->run(manifest);
 
-    // Persist
-    storage_t::instance()->put("apps", digest_t().get(uri), manifest);
+    try {
+        // Persist
+        storage_t::instance()->put("apps", digest_t().get(uri), manifest);
+    } catch(const std::runtime_error& e) {
+        engine->stop();
+        throw;
+    }
 
     // Only leave the engine running if all of the above succeded
     m_engines.insert(std::make_pair(uri, engine));
@@ -253,12 +258,12 @@ Json::Value core_t::delete_engine(const Json::Value& manifest) {
         throw std::runtime_error("the specified app is not active");
     }
 
+    // Unpersist
+    storage_t::instance()->remove("apps", digest_t().get(uri));
+
     engine->second->stop();
     m_engines.erase(engine);
     result["status"] = "stopped";
-
-    // Unpersist
-    storage_t::instance()->remove("apps", digest_t().get(uri));
 
     return result;
 }

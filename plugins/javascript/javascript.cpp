@@ -89,7 +89,7 @@ class javascript_t: public source_t {
             m_context.Dispose();
         }
 
-        virtual Json::Value invoke(const std::string& task) {
+        virtual Json::Value invoke(const std::string& callable, const void* request, size_t request_length) {
             Json::Value result;
 
             HandleScope handle_scope;

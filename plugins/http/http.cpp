@@ -40,7 +40,7 @@ class http_t:
             return size * nmemb;
         }
         
-        virtual Json::Value invoke(const std::string& task) {
+        virtual Json::Value invoke(const std::string& callable, const void* request, size_t request_length) {
             Json::Value result;
         
             CURLcode code = curl_easy_perform(m_curl);

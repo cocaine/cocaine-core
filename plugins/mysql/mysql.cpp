@@ -26,7 +26,7 @@ class mysql_t:
             m_password = uri.userinfo().substr(uri.userinfo().find_first_of(":") + 1);
         }
 
-        Json::Value invoke(const std::string& task) {
+        virtual Json::Value invoke(const std::string& callable, const void* request = NULL, size_t request_length = 0) {
             Json::Value result;
             MYSQL* connection = mysql_init(NULL);
 

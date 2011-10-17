@@ -230,7 +230,7 @@ void engine_t::publish(const std::string& task, const Json::Value& event) {
                 value = object.asString();
                 break;
             default:
-                value = "<error: non-primitive type>";
+                value = "<error: unable to publish non-primitive types>";
         }
 
         message.rebuild(value.length());
@@ -326,6 +326,7 @@ void engine_t::request(ev::io& w, int revents) {
             response->wait(queue(
                 boost::make_tuple(
                     PROCESS,
+                    std::string("Serve"),
                     std::string(
                         static_cast<const char*>(message.data()),
                         message.size())

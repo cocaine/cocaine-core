@@ -19,26 +19,24 @@ class python_t:
         python_t(const std::string& uri);
 
         // Source protocol
-        virtual Json::Value invoke(const std::string& task);
-        virtual Json::Value process(const void* data, size_t data_size);
+        virtual Json::Value invoke(const std::string& callable, 
+            const void* request = NULL, size_t request_length = 0);
 
     private:
         // Instantiates the iterable object from the supplied code
-        void compile(const std::string& code,
-                     const std::string& name, 
-                     const std::map<std::string, std::string>& parameters);
+        void compile(const std::string& code);
 
         // Fetches and formats current Python exception as a string
         std::string exception() const;
 
         // Unwraps the Python result object
-        Json::Value unwrap(object_t& object) const;
+        Json::Value unwrap(PyObject* object) const;
 
     public:
         static char identity[];
 
     private:
-        object_t m_module, m_object;
+        object_t m_module;
 };
 
 }}

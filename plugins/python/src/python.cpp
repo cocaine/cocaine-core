@@ -23,18 +23,13 @@ size_t stream_writer(void* data, size_t size, size_t nmemb, void* stream) {
 
 python_t::python_t(const std::string& uri_):
     source_t(uri_),
-    m_module(NULL),
-    m_object(NULL)
+    m_module(NULL)
 {
     // Parse the URI
     helpers::uri_t uri(uri_);
     
-    // Get the callable name
-    std::vector<std::string> target(uri.path());
-    std::string name(target.back());
-    target.pop_back();
-    
     // Join the path components
+    std::vector<std::string> target(uri.path());
     fs::path path(fs::path(config_t::get().registry.location) / "python.d");
 
     for(std::vector<std::string>::const_iterator it = target.begin(); it != target.end(); ++it) {
@@ -86,13 +81,10 @@ python_t::python_t(const std::string& uri_):
         code << input.rdbuf();
     }
 
-    compile(code.str(), name, uri.query());
+    compile(code.str());
 }
 
-void python_t::compile(const std::string& code,
-                       const std::string& name,
-                       const std::map<std::string, std::string>& parameters)
-{
+void python_t::compile(const std::string& code) {
     thread_state_t state(PyGILState_Ensure());
     
     // Compile the code
@@ -113,23 +105,6 @@ void python_t::compile(const std::string& code,
         throw std::runtime_error(exception());
     }
 
-    // Check if the callable is there
-    object_t callable(PyObject_GetAttrString(m_module,
-        name.c_str()));
-
-    if(PyErr_Occurred()) {
-        throw std::runtime_error(exception());
-    }
-
-    // If it's a type object, finalize it
-    if(PyType_Check(callable)) {
-        if(PyType_Ready(reinterpret_cast<PyTypeObject*>(*callable)) != 0) {
-            throw std::runtime_error(exception());
-        }
-    } else {
-        throw std::runtime_error("'" + name + "' is not a class");
-    }
-
     // Instantiate the Store object
 #if PY_VERSION_HEX > 0x02070000
     object_t capsule(PyCapsule_New(static_cast<void*>(this), NULL, NULL));
@@ -147,62 +122,37 @@ void python_t::compile(const std::string& code,
     }
 
     // Note: steals the reference    
-    PyModule_AddObject(m_module, "store", store);    
-
-    // Create the user code object instance
-    object_t empty_args(PyTuple_New(0));
-    object_t kwargs(PyDict_New());
-    
-    for(std::map<std::string, std::string>::const_iterator it = parameters.begin(); it != parameters.end(); ++it) {
-        object_t temp(PyString_FromString(it->second.c_str()));
-        
-        PyDict_SetItemString(
-            kwargs,
-            it->first.c_str(),
-            temp);
-    }
-    
-    m_object = PyObject_Call(callable, empty_args, kwargs);
-
-    if(PyErr_Occurred()) {
-        throw std::runtime_error(exception());
-    }
+    PyModule_AddObject(m_module, "cocaine.store", store);    
 }
 
-Json::Value python_t::invoke(const std::string& task) {
+Json::Value python_t::invoke(const std::string& callable, const void* request, size_t request_length) {
     thread_state_t state(PyGILState_Ensure());
+    object_t args(NULL);
 
-    object_t method(PyObject_GetAttrString(m_object, task.c_str()));
-    
-    if(PyErr_Occurred()) {
-        throw std::runtime_error(exception());
-    }
-
-    object_t args(PyTuple_New(0));
-    object_t result(PyObject_Call(method, args, NULL));
-
-    if(PyErr_Occurred()) {
-        throw std::runtime_error(exception());
-    } else if(result.valid()) {
-        return unwrap(result);
+    if(request) {
+        object_t buffer(PyBuffer_FromMemory(const_cast<void*>(request), request_length));
+        args = PyTuple_Pack(1, *buffer);
     } else {
-        return Json::nullValue;
+        args = PyTuple_New(0);
     }
-}
 
-Json::Value python_t::process(const void* data, size_t data_size) {
-    thread_state_t state(PyGILState_Ensure());
+    object_t object(PyObject_GetAttrString(m_module, callable.c_str()));
     
-    // This creates a read-only buffer, so it's safe to const_cast
-    object_t buffer(PyBuffer_FromMemory(const_cast<void*>(data), data_size));
-    object_t process(PyObject_GetAttrString(m_object, "process"));
-
     if(PyErr_Occurred()) {
         throw std::runtime_error(exception());
     }
-    
-    object_t args(PyTuple_Pack(1, *buffer));
-    object_t result(PyObject_Call(process, args, NULL));
+
+    if(!PyCallable_Check(object)) {
+        throw std::runtime_error("'" + callable + "' is not a callable");
+    }
+
+    if(PyType_Check(object)) {
+        if(PyType_Ready(reinterpret_cast<PyTypeObject*>(*object)) != 0) {
+            throw std::runtime_error(exception());
+        }
+    }
+
+    object_t result(PyObject_Call(object, args, NULL));
 
     if(PyErr_Occurred()) {
         throw std::runtime_error(exception());
@@ -222,42 +172,36 @@ std::string python_t::exception() const {
     return PyString_AsString(message);
 }
 
-Json::Value python_t::unwrap(object_t& object) const {
+Json::Value python_t::unwrap(PyObject* object) const {
     Json::Value result;
     
-    if(PyDict_Check(object)) {
+    if(PyBool_Check(object)) {
+        result = (object == Py_True ? true : false);
+    } else if(PyInt_Check(object) || PyLong_Check(object)) {
+        result = static_cast<Json::Int>(PyInt_AsLong(object));
+    } else if(PyFloat_Check(object)) {
+        result = PyFloat_AsDouble(object);
+    } else if(PyString_Check(object)) {
+        result = PyString_AsString(object);
+    } else if(PyDict_Check(object)) {
         // Borrowed references, so no need to track them
         PyObject *key, *value;
         Py_ssize_t position = 0;
         
-        object_t k(NULL);
-        Json::Value v;
-
         // Iterate and convert everything to strings
         while(PyDict_Next(object, &position, &key, &value)) {
-            k = PyObject_Str(key);
-            
-            if(PyBool_Check(value)) {
-                v = (value == Py_True ? true : false);
-            } else if(PyInt_Check(value)) {
-                v = static_cast<Json::Int>(PyInt_AsLong(value));
-            } else if(PyLong_Check(value)) {
-                v = static_cast<Json::Int>(PyLong_AsLong(value));
-            } else if(PyFloat_Check(value)) {
-                v = PyFloat_AsDouble(value);
-            } else if(PyString_Check(value)) {
-                v = PyString_AsString(value);
-            } else {
-                v = "<error: non-primitive type>";
-            }
-        
-            result[PyString_AsString(k)] = v;    
+            result[PyString_AsString(PyObject_Str(key))] = unwrap(value); 
+        }
+    } else if(PySequence_Check(object) || PyIter_Check(object)) {
+        object_t iterator(PyObject_GetIter(object));
+        object_t item(NULL);
+
+        while(item = PyIter_Next(iterator)) {
+            result.append(unwrap(item));
         }
     } else if(object != Py_None) {
-        // Convert it to string and return as-is
-        object_t string(PyObject_Str(object));
-        result["result"] = PyString_AsString(string);
-    }
+        result = "<error: unrecognized type>";
+    }    
 
     return result;
 }

@@ -25,21 +25,10 @@ class source_t:
 
         inline std::string uri() const { return m_uri; }
 
-        // Called by task scheduler
-        virtual Json::Value invoke(const std::string& task) {
-            throw std::runtime_error("not implemented");
-        }
-
         // Called by request scheduler
-        virtual Json::Value process(const void* data, size_t data_size) {
-            throw std::runtime_error("not implemented");
-        }
+        virtual Json::Value invoke(const std::string& callable,
+            const void* request = NULL, size_t request_length = 0) = 0;
         
-        // Will be called by the manual timed driver
-        // virtual float reschedule() {
-        //    throw std::runtime_error("not implemented");
-        // }
-
     protected:
         std::string m_uri;
 };

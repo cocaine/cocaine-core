@@ -28,7 +28,7 @@ class overseer_t:
         void heartbeat(ev::timer& w, int revents);
 
         // Thread request handling
-        Json::Value process(const std::string& blob); 
+        Json::Value process(const std::string& task, const std::string& blob); 
         Json::Value invoke(const std::string& task);
         
         void terminate();

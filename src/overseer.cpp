@@ -49,12 +49,13 @@ void overseer_t::request(ev::io& w, int revents) {
 
         switch(code) {
             case PROCESS: {
-                std::string blob;
+                std::string task, blob;
 
-                m_channel.recv(blob);
+                boost::tuple<std::string&, std::string&> tier(task, blob);
+                m_channel.recv_multi(tier);
 
                 try {
-                    result = process(blob);
+                    result = process(task, blob);
                 } catch(const std::exception& e) {
                     syslog(LOG_ERR, "overseer %s: [%s()] in process - %s", id().c_str(), __func__, e.what());
                     result["error"] = e.what();
@@ -105,8 +106,8 @@ void overseer_t::heartbeat(ev::timer& w, int revents) {
     m_channel.send(HEARTBEAT);
 }
 
-Json::Value overseer_t::process(const std::string& blob) {
-    Json::Value result(m_source->process(blob.data(), blob.size()));
+Json::Value overseer_t::process(const std::string& task, const std::string& blob) {
+    Json::Value result(m_source->invoke(task, blob.data(), blob.size()));
 
     m_timeout.stop();
     m_timeout.start(config_t::get().engine.suicide_timeout);
