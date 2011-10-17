@@ -27,10 +27,10 @@ class python_t:
         void compile(const std::string& code);
 
         // Fetches and formats current Python exception as a string
-        std::string exception() const;
+        static std::string exception();
 
         // Unwraps the Python result object
-        Json::Value unwrap(PyObject* object) const;
+        static Json::Value unwrap(PyObject* object);
 
     public:
         static char identity[];

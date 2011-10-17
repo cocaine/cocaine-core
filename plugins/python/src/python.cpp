@@ -163,7 +163,7 @@ Json::Value python_t::invoke(const std::string& callable, const void* request, s
     }
 }
 
-std::string python_t::exception() const {
+std::string python_t::exception() {
     object_t type(NULL), object(NULL), traceback(NULL);
     
     PyErr_Fetch(&type, &object, &traceback);
@@ -172,7 +172,7 @@ std::string python_t::exception() const {
     return PyString_AsString(message);
 }
 
-Json::Value python_t::unwrap(PyObject* object) const {
+Json::Value python_t::unwrap(PyObject* object) {
     Json::Value result;
     
     if(PyBool_Check(object)) {
