@@ -26,6 +26,7 @@ overseer_t::overseer_t(unique_id_t::type id_, unique_id_t::type engine_id, zmq::
 
     // This is the watcher which will process events
     m_message_processor.set<overseer_t, &overseer_t::process_message>(this);
+    m_message_processor.start();
 
     // Initializing suicide timer
     m_suicide_timer.set<overseer_t, &overseer_t::timeout>(this);

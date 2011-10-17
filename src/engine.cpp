@@ -67,6 +67,7 @@ engine_t::engine_t(zmq::context_t& context, const std::string& uri):
 
     // This is the actual event processor
     m_message_processor.set<engine_t, &engine_t::process_message>(this);
+    m_message_processor.start();
 }
 
 engine_t::~engine_t() {
