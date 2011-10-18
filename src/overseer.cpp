@@ -75,10 +75,6 @@ void overseer_t::process_message(ev::idle& w, int revents) {
                 m_suicide_timer.stop();
                 m_suicide_timer.start(config_t::get().engine.suicide_timeout);
 
-                Json::FastWriter w;
-                std::string s(w.write(result));
-                syslog(LOG_DEBUG, "pmos: json: %s", s.c_str());
-
                 m_messages.send_multi(boost::make_tuple(
                     FUTURE,
                     result)); 
