@@ -191,6 +191,39 @@ void engine_t::stop() {
     m_message_processor.stop();
 }
 
+namespace {
+    struct nonempty_queue {
+        bool operator()(engine_t::thread_map_t::reference thread) {
+            return thread->second->queue_size() != 0;
+        }
+    };
+}
+
+Json::Value engine_t::stats() {
+    Json::Value results;
+
+    results["route"] = config_t::get().core.route + "/" + digest_t().get(m_uri);
+    
+    results["threads:total"] = static_cast<Json::UInt>(m_threads.size());
+    results["threads:active"] = static_cast<Json::UInt>(std::count_if(
+            m_threads.begin(),
+            m_threads.end(),
+            nonempty_queue()));
+    results["threads:limit"] = m_config.worker_limit;
+    
+    thread_map_t::const_iterator it(std::max_element(
+            m_threads.begin(), 
+            m_threads.end(), 
+            shortest_queue()));
+
+    results["queues:deepest"] = it != m_threads.end() ?
+        static_cast<Json::UInt>(it->second->queue_size()) : 
+        0;
+    results["queues:limit"] = m_config.queue_depth;
+
+    return results;
+}
+
 // Future support
 // --------------
 

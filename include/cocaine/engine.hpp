@@ -39,7 +39,7 @@ class thread_t:
             return future;
         }
 
-        inline size_t queue_size() {
+        inline size_t queue_size() const {
             return m_queue.size();
         }
         
@@ -71,19 +71,34 @@ class engine_t:
     public lines::publisher_t
 {
     public:
+        typedef boost::ptr_map<const std::string, thread_t> thread_map_t;
+    
+    public:
         engine_t(zmq::context_t& context, const std::string& uri);
         ~engine_t();
 
         Json::Value run(const Json::Value& manifest);
         void stop();
+        
+        Json::Value stats();
 
+    private:
+        struct shortest_queue {
+            bool operator()(engine_t::thread_map_t::reference left, engine_t::thread_map_t::reference right) {
+                return left->second->queue_size() < right->second->queue_size();
+            }
+        };
+
+    public:
         template<class T>
         boost::shared_ptr<lines::future_t> queue(const T& args) {
             boost::shared_ptr<lines::future_t> future(new lines::future_t());
 
             // Try to pick a thread
-            thread_map_t::iterator thread(std::min_element(m_threads.begin(),
-                m_threads.end(), shortest_queue()));
+            thread_map_t::iterator thread(std::min_element(
+                m_threads.begin(),
+                m_threads.end(), 
+                shortest_queue()));
 
             // If the selector has failed to do that...
             if(thread == m_threads.end() || thread->second->queue_size() >= m_config.queue_depth) {
@@ -163,15 +178,8 @@ class engine_t:
         history_map_t m_histories;
         
         // Threads
-        typedef boost::ptr_map<const std::string, thread_t> thread_map_t;
         thread_map_t m_threads;
 
-    private:
-        struct shortest_queue {
-            bool operator()(engine_t::thread_map_t::value_type left, engine_t::thread_map_t::value_type right) {
-                return left->second->queue_size() < right->second->queue_size();
-            }
-        };
 };
 
 }}
