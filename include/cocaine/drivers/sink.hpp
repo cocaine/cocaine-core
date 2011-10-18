@@ -17,7 +17,7 @@ class sink_t:
                 throw std::runtime_error("no endpoint specified");
             }
 
-            m_id = "sink:" + digest_t().get(m_name + m_endpoint);
+            m_id = "sink:" + security::digest_t().get(m_name + m_endpoint);
         }
 
         virtual void operator()(ev::io&, int revents) {

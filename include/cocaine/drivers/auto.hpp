@@ -19,8 +19,7 @@ class auto_t:
                 throw std::runtime_error("no interval specified");
             }
 
-            m_id = "auto:" + digest_t().get(
-                m_name +
+            m_id = "auto:" + security::digest_t().get(m_name +
                 boost::lexical_cast<std::string>(m_interval));
         }
        

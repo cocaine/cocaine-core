@@ -2,7 +2,6 @@
 #define COCAINE_DRIVERS_ABSTRACT_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/engine.hpp"
 
 namespace cocaine { namespace engine { namespace drivers {
 
@@ -17,16 +16,13 @@ class abstract_driver_t:
         }
 
     protected:
-        abstract_driver_t(const std::string& name, boost::shared_ptr<engine_t> parent):
-            m_name(name),
-            m_parent(parent)
+        abstract_driver_t(const std::string& name):
+            m_name(name)
         {}
         
     protected:
         std::string m_id;
         std::string m_name;
-
-        boost::shared_ptr<engine_t> m_parent;
 };
 
 }}}

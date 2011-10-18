@@ -1,12 +1,11 @@
 #ifndef COCAINE_DRIVERS_BASE_HPP
 #define COCAINE_DRIVERS_BASE_HPP
 
+#include "cocaine/engine.hpp"
 #include "cocaine/drivers/abstract.hpp"
 #include "cocaine/security/digest.hpp"
 
 namespace cocaine { namespace engine { namespace drivers {
-
-using namespace cocaine::security;
 
 template<class WatcherType, class DriverType>
 class driver_base_t:
@@ -14,7 +13,8 @@ class driver_base_t:
 {
     public:
         driver_base_t(const std::string& name, boost::shared_ptr<engine_t> parent):
-            abstract_driver_t(name, parent)
+            abstract_driver_t(name),
+            m_parent(parent)
         { }
         
         virtual ~driver_base_t() {
@@ -54,6 +54,9 @@ class driver_base_t:
     protected:
         // Watcher
         std::auto_ptr<WatcherType> m_watcher;
+
+        // Parent engine
+        boost::shared_ptr<engine_t> m_parent;
 };
 
 }}}
