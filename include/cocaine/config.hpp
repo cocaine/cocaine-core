@@ -25,6 +25,8 @@ class config_t {
         struct engine_config_t {
             float suicide_timeout;
             float heartbeat_timeout;
+            std::string application;
+            std::string route;
             unsigned int queue_depth;
             unsigned int worker_limit;
             unsigned int history_depth;

@@ -11,47 +11,10 @@
 #include "cocaine/registry.hpp"
 #include "cocaine/security/digest.hpp"
 
-using namespace cocaine::core;
 using namespace cocaine::engine;
 using namespace cocaine::helpers;
 using namespace cocaine::lines;
 using namespace cocaine::plugin;
-using namespace cocaine::security;
-
-/*
-Json::Value core_t::past(const Json::Value& args) {
-    std::string key(args["key"].asString());
-
-    if(key.empty()) {
-        throw std::runtime_error("no driver id has been specified");
-    }
-
-    history_map_t::iterator it(m_histories.find(key));
-
-    if(it == m_histories.end()) {
-        throw std::runtime_error("the past for a given key is empty");
-    }
-
-    uint32_t depth = args.get("depth", config_t::get().core.history_depth).asUInt(),
-             counter = 0;
-    Json::Value result(Json::arrayValue);
-
-    for(history_t::const_iterator event = it->second->begin(); event != it->second->end(); ++event) {
-        Json::Value object(Json::objectValue);
-
-        object["timestamp"] = event->first;
-        object["event"] = event->second;
-
-        result.append(object);
-
-        if(++counter == depth) {
-            break;
-        }
-    }
-
-    return result;
-}
-*/
 
 engine_t::engine_t(zmq::context_t& context, const std::string& uri):
     m_context(context),
@@ -98,17 +61,17 @@ Json::Value engine_t::run(const Json::Value& manifest) {
         config_t::get().engine.history_depth).asUInt();
 
     if(!server.empty()) {
-        m_application = manifest["server:application"].asString();
+        m_config.application = manifest["server:application"].asString();
 
-        if(m_application.empty()) {
+        if(m_config.application.empty()) {
             throw std::runtime_error("no application has been specified for serving");
         }
 
-        std::string route = config_t::get().core.route + "/" +
-                            digest_t().get(m_uri);
-        result["server:route"] = route;
+        m_config.route = config_t::get().core.route + "/" +
+                         security::digest_t().get(m_uri);
+        result["server:route"] = m_config.route;
         
-        m_server.reset(new socket_t(m_context, ZMQ_ROUTER, route));
+        m_server.reset(new socket_t(m_context, ZMQ_ROUTER, m_config.route));
         m_server->bind(server);
 
         m_request_watcher.reset(new ev::io());
@@ -202,7 +165,7 @@ namespace {
 Json::Value engine_t::stats() {
     Json::Value results;
 
-    results["route"] = config_t::get().core.route + "/" + digest_t().get(m_uri);
+    results["route"] = m_config.route;
     
     results["threads:total"] = static_cast<Json::UInt>(m_threads.size());
     results["threads:active"] = static_cast<Json::UInt>(std::count_if(
@@ -223,6 +186,33 @@ Json::Value engine_t::stats() {
 
     return results;
 }
+
+/*
+Json::Value engine_t::past(const std::string& task) {
+    history_map_t::iterator it(m_histories.find(task));
+
+    if(it == m_histories.end()) {
+        throw std::runtime_error("the history for a given task is empty");
+    }
+
+    Json::Value result(Json::arrayValue);
+
+    for(history_t::const_iterator event = it->second->begin(); event != it->second->end(); ++event) {
+        Json::Value object(Json::objectValue);
+
+        object["timestamp"] = event->first;
+        object["event"] = event->second;
+
+        result.append(object);
+
+        if(++counter == depth) {
+            break;
+        }
+    }
+
+    return result;
+}
+*/
 
 // Future support
 // --------------
@@ -413,7 +403,7 @@ void engine_t::process_request(ev::idle& w, int revents) {
             response->wait(queue(
                 boost::make_tuple(
                     INVOKE,
-                    m_application,
+                    m_config.application,
                     std::string(
                         static_cast<const char*>(message.data()),
                         message.size())
