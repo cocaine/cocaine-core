@@ -4,8 +4,6 @@
 namespace cocaine {
     namespace core {
         class core_t;
-        class response_t;
-        class future_t;
     }
 
     namespace engine {
@@ -16,6 +14,12 @@ namespace cocaine {
         namespace drivers {
             class abstract_driver_t;
         }
+    }
+
+    namespace lines {
+        class response_t;
+        class publication_t;
+        class future_t;
     }
 
     namespace plugin {

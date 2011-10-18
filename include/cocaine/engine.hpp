@@ -28,12 +28,12 @@ class thread_t:
         void rearm(float timeout);
 
     public:
-        inline void queue_push(boost::shared_ptr<core::future_t> future) {
+        inline void queue_push(boost::shared_ptr<lines::future_t> future) {
             m_queue.push(future);
         }
 
-        inline boost::shared_ptr<core::future_t> queue_pop() {
-            boost::shared_ptr<core::future_t> future(m_queue.front());
+        inline boost::shared_ptr<lines::future_t> queue_pop() {
+            boost::shared_ptr<lines::future_t> future(m_queue.front());
             m_queue.pop();
 
             return future;
@@ -55,7 +55,7 @@ class thread_t:
         boost::shared_ptr<overseer_t> m_overseer;
         boost::shared_ptr<boost::thread> m_thread;
 
-        typedef std::queue< boost::shared_ptr<core::future_t> > response_queue_t;
+        typedef std::queue< boost::shared_ptr<lines::future_t> > response_queue_t;
         response_queue_t m_queue;
 
         ev::timer m_heartbeat;
@@ -66,7 +66,9 @@ class engine_t:
     public boost::noncopyable,
     public boost::enable_shared_from_this<engine_t>,
     public helpers::birth_control_t<engine_t>,
-    public helpers::unique_id_t
+    public helpers::unique_id_t,
+    public lines::responder_t,
+    public lines::publisher_t
 {
     public:
         typedef boost::ptr_map<const std::string, thread_t> thread_map_t;
@@ -82,12 +84,12 @@ class engine_t:
         engine_t(zmq::context_t& context, const std::string& uri);
         ~engine_t();
 
-        Json::Value run(const Json::Value& args);
+        Json::Value run(const Json::Value& manifest);
         void stop();
 
         template<class T>
-        boost::shared_ptr<core::future_t> queue(const T& args) {
-            boost::shared_ptr<core::future_t> future(new core::future_t());
+        boost::shared_ptr<lines::future_t> queue(const T& args) {
+            boost::shared_ptr<lines::future_t> future(new lines::future_t());
 
             // Try to pick a thread
             thread_map_t::iterator thread(std::min_element(m_threads.begin(),
@@ -120,10 +122,16 @@ class engine_t:
                     lines::protect(thread->second->id())),
                 args));
 
+            ev::get_default_loop().feed_fd_event(m_messages.fd(), ev::READ);
+
             return future;
         }
 
-        inline zmq::context_t& context() { return m_context; }
+        virtual void respond(const lines::route_t& route, const Json::Value& object);
+        virtual void publish(const std::string& key, const Json::Value& object);
+
+    public:
+        zmq::context_t& context() { return m_context; }
 
     private:
         template<class DriverType>
@@ -134,8 +142,6 @@ class engine_t:
 
         void request(ev::io& w, int revents);
         void process_request(ev::idle& w, int revents);
-
-        void publish(const std::string& key, const Json::Value& value);
 
     private:
         zmq::context_t& m_context;
@@ -161,11 +167,11 @@ class engine_t:
         typedef boost::ptr_map<const std::string, drivers::abstract_driver_t> task_map_t;
         task_map_t m_tasks;
         
-        // History (Driver ID -> History List)
+        // History
         typedef std::deque< std::pair<ev::tstamp, Json::Value> > history_t;
         typedef boost::ptr_map<const std::string, history_t> history_map_t;
         history_map_t m_histories;
-                
+        
         // Thread management (Thread ID -> Thread)
         thread_map_t m_threads;
 };

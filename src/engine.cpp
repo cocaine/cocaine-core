@@ -61,11 +61,10 @@ engine_t::engine_t(zmq::context_t& context, const std::string& uri):
 {
     syslog(LOG_INFO, "engine %s [%s]: starting", id().c_str(), m_uri.c_str());
     
-    m_messages.bind("ipc:///var/run/cocaine/engines/" + id());
+    m_messages.bind("inproc://engines/" + id());
+    
     m_message_watcher.set<engine_t, &engine_t::message>(this);
     m_message_watcher.start(m_messages.fd(), EV_READ);
-
-    // This is the actual event processor
     m_message_processor.set<engine_t, &engine_t::process_message>(this);
     m_message_processor.start();
 }
@@ -81,6 +80,7 @@ Json::Value engine_t::run(const Json::Value& manifest) {
     static std::map<const std::string, unsigned int> types = boost::assign::map_list_of
         ("auto", AUTO)
     //  ("manual", MANUAL)
+    //  ("cron", CRON)
         ("fs", FILESYSTEM)
         ("sink", SINK);
 
@@ -104,9 +104,9 @@ Json::Value engine_t::run(const Json::Value& manifest) {
             throw std::runtime_error("no application has been specified for serving");
         }
 
-        std::string route = config_t::get().core.hostname + "/" + 
-                            config_t::get().core.instance + "/" +
+        std::string route = config_t::get().core.route + "/" +
                             digest_t().get(m_uri);
+        result["server:route"] = route;
         
         m_server.reset(new socket_t(m_context, ZMQ_ROUTER, route));
         m_server->bind(server);
@@ -114,12 +114,9 @@ Json::Value engine_t::run(const Json::Value& manifest) {
         m_request_watcher.reset(new ev::io());
         m_request_watcher->set<engine_t, &engine_t::request>(this);
         m_request_watcher->start(m_server->fd(), ev::READ);
-   
-        // This is the actual request processor
         m_request_processor.reset(new ev::idle());
         m_request_processor->set<engine_t, &engine_t::process_request>(this);
-
-        result["server:route"] = route;
+        m_request_processor->start();
     }
 
     if(!tasks.isNull() && tasks.size()) {
@@ -144,6 +141,9 @@ Json::Value engine_t::run(const Json::Value& manifest) {
             //  case MANUAL:
             //      schedule<drivers::maual_t>(*it, tasks[*it]);
             //      break;
+            //  case CRON:
+            //      schedule<drivers::cron_t>(*it, tasks[*it]);
+            //      break;
                 case FILESYSTEM:
                     schedule<drivers::fs_t>(*it, tasks[*it]);
                     break;
@@ -157,6 +157,19 @@ Json::Value engine_t::run(const Json::Value& manifest) {
     result["engine:status"] = "running";
 
     return result;
+}
+
+template<class DriverType>
+void engine_t::schedule(const std::string& task, const Json::Value& args) {
+    std::auto_ptr<DriverType> driver(new DriverType(task, shared_from_this(), args));
+    std::string driver_id(driver->id());
+
+    if(m_tasks.find(driver_id) == m_tasks.end()) {
+        driver->start();
+        m_tasks.insert(driver_id, driver);
+    } else {
+        throw std::runtime_error("duplicate task");
+    }
 }
 
 void engine_t::stop() {
@@ -178,16 +191,95 @@ void engine_t::stop() {
     m_message_processor.stop();
 }
 
-template<class DriverType>
-void engine_t::schedule(const std::string& task, const Json::Value& args) {
-    std::auto_ptr<DriverType> driver(new DriverType(task, shared_from_this(), args));
-    std::string driver_id(driver->id());
+// Future support
+// --------------
 
-    if(m_tasks.find(driver_id) == m_tasks.end()) {
-        driver->start();
-        m_tasks.insert(driver_id, driver);
-    } else {
-        throw std::runtime_error("duplicate task");
+void engine_t::respond(const route_t& route, const Json::Value& object) {
+    if(m_server) {
+        zmq::message_t message;
+        
+        // Send the identity
+        for(lines::route_t::const_iterator id = route.begin(); id != route.end(); ++id) {
+            message.rebuild(id->length());
+            memcpy(message.data(), id->data(), id->length());
+#if ZMQ_VERSION < 30000
+            m_server->send(message, ZMQ_SNDMORE);
+#else
+            m_server->send(message, ZMQ_SNDMORE | ZMQ_SNDLABEL);
+#endif
+        }
+
+#if ZMQ_VERSION < 30000                
+        // Send the delimiter
+        message.rebuild(0);
+        m_server->send(message, ZMQ_SNDMORE);
+#endif
+
+        Json::FastWriter writer;
+        std::string json(writer.write(object));
+        message.rebuild(json.length());
+        memcpy(message.data(), json.data(), json.length());
+
+        m_server->send(message);
+    }
+}
+
+void engine_t::publish(const std::string& key, const Json::Value& object) {
+    if(m_pubsub) {
+        zmq::message_t message;
+        ev::tstamp now = ev::get_default_loop().now();
+
+        // Maintain the history for the given driver
+        history_map_t::iterator history(m_histories.find(key));
+
+        if(history == m_histories.end()) {
+            boost::tie(history, boost::tuples::ignore) = m_histories.insert(key,
+                new history_t());
+        } else if(history->second->size() == m_config.history_depth) {
+            history->second->pop_back();
+        }
+        
+        history->second->push_front(std::make_pair(now, object));
+
+        // Disassemble and send in the envelopes
+        Json::Value::Members members(object.getMemberNames());
+
+        for(Json::Value::Members::iterator it = members.begin(); it != members.end(); ++it) {
+            std::string field(*it);
+            
+            std::ostringstream envelope;
+            envelope << key << " " << field << " " << config_t::get().core.hostname << " "
+                     << std::fixed << std::setprecision(3) << now;
+
+            message.rebuild(envelope.str().length());
+            memcpy(message.data(), envelope.str().data(), envelope.str().length());
+            m_pubsub->send(message, ZMQ_SNDMORE);
+
+            Json::Value value(object[field]);
+            std::string result;
+
+            switch(value.type()) {
+                case Json::booleanValue:
+                    result = value.asBool() ? "true" : "false";
+                    break;
+                case Json::intValue:
+                case Json::uintValue:
+                    result = boost::lexical_cast<std::string>(value.asInt());
+                    break;
+                case Json::realValue:
+                    result = boost::lexical_cast<std::string>(value.asDouble());
+                    break;
+                case Json::stringValue:
+                    result = value.asString();
+                    break;
+                default:
+                    result = boost::lexical_cast<std::string>(value);
+            }
+
+            message.rebuild(result.length());
+            memcpy(message.data(), result.data(), result.length());
+            m_pubsub->send(message);
+        }
     }
 }
 
@@ -218,20 +310,6 @@ void engine_t::process_message(ev::idle& w, int revents) {
                             
                     m_messages.recv(object);
                     future->push(object);
-                    
-                    break;
-                }
-
-                case EVENT: {
-                    std::string task;
-                    Json::Value object;
-
-                    boost::tuple<std::string&, Json::Value&> tier(task, object);
-                    m_messages.recv_multi(tier);
-        
-                    if(m_pubsub) {
-                        publish(task, object);
-                    }
 
                     break;
                 }
@@ -252,7 +330,7 @@ void engine_t::process_message(ev::idle& w, int revents) {
                     abort();
             }
         } else {
-            syslog(LOG_DEBUG, "engine %s [%s]: [%s()] outstanding messages - thread %s", 
+            syslog(LOG_WARNING, "engine %s [%s]: [%s()] outstanding messages - thread %s", 
                 id().c_str(), m_uri.c_str(), __func__, thread_id.c_str());
             m_messages.ignore();
         }
@@ -274,11 +352,15 @@ void engine_t::process_request(ev::idle& w, int revents) {
     if(m_server->pending()) {
         zmq::message_t message;
         std::vector<std::string> route;
-        
+
         while(true) {
             m_server->recv(&message);
 
+#if ZMQ_VERSION > 30000
+            if(!m_server->is_label()) {
+#else
             if(!message.size()) {
+#endif
                 break;
             }
 
@@ -286,16 +368,18 @@ void engine_t::process_request(ev::idle& w, int revents) {
                 static_cast<const char*>(message.data()),
                 message.size()));
         }
-       
-        boost::shared_ptr<response_t> response(
-            new response_t(route, m_server));
-        
+      
+#if ZMQ_VERSION < 30000
         m_server->recv(&message);
+#endif
 
+        boost::shared_ptr<response_t> response(
+            new response_t(route, shared_from_this()));
+        
         try {
             response->wait(queue(
                 boost::make_tuple(
-                    PROCESS,
+                    INVOKE,
                     m_application,
                     std::string(
                         static_cast<const char*>(message.data()),
@@ -308,68 +392,6 @@ void engine_t::process_request(ev::idle& w, int revents) {
         }
     } else {
         m_request_processor->stop();
-    }
-}
-
-// Publishing
-// ----------
-// Format is:
-// ['key field hostname timestamp', 'blob']
-
-void engine_t::publish(const std::string& task, const Json::Value& event) {
-    zmq::message_t message;
-    ev::tstamp now = ev::get_default_loop().now();
-
-    // Maintain the history for the given driver
-    history_map_t::iterator history(m_histories.find(task));
-
-    if(history == m_histories.end()) {
-        boost::tie(history, boost::tuples::ignore) = m_histories.insert(task,
-            new history_t());
-    } else if(history->second->size() == m_config.history_depth) {
-        history->second->pop_back();
-    }
-    
-    history->second->push_front(std::make_pair(now, event));
-
-    // Disassemble and send in the envelopes
-    Json::Value::Members members(event.getMemberNames());
-
-    for(Json::Value::Members::iterator it = members.begin(); it != members.end(); ++it) {
-        std::string key(*it);
-        
-        std::ostringstream envelope;
-        envelope << task << " " << key << " " << config_t::get().core.hostname << " "
-                 << std::fixed << std::setprecision(3) << now;
-
-        message.rebuild(envelope.str().length());
-        memcpy(message.data(), envelope.str().data(), envelope.str().length());
-        m_pubsub->send(message, ZMQ_SNDMORE);
-
-        Json::Value object(event[key]);
-        std::string value;
-
-        switch(object.type()) {
-            case Json::booleanValue:
-                value = object.asBool() ? "true" : "false";
-                break;
-            case Json::intValue:
-            case Json::uintValue:
-                value = boost::lexical_cast<std::string>(object.asInt());
-                break;
-            case Json::realValue:
-                value = boost::lexical_cast<std::string>(object.asDouble());
-                break;
-            case Json::stringValue:
-                value = object.asString();
-                break;
-            default:
-                value = boost::lexical_cast<std::string>(object);
-        }
-
-        message.rebuild(value.length());
-        memcpy(message.data(), value.data(), value.length());
-        m_pubsub->send(message);
     }
 }
 
@@ -444,6 +466,7 @@ void thread_t::timeout(ev::timer& w, int revents) {
 
     // XXX: This doesn't work yet, as ZeroMQ doesn't support two sockets with the same identity
     // XXX: i.e., when the old thread has been interrupted, and a new one spawns with the same id
+    // XXX: the new socket should overtake the older identity, but it crashes instead
     create();
 }
 

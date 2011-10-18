@@ -33,12 +33,10 @@
 #define SINK        5   /* do something when there's a message on the socket */
 
 // Message types
-#define PROCESS     1   /* engine -> worker: process a request */
-#define INVOKE      2   /* engine -> worker: schedule a task */
-#define TERMINATE   3   /* engine -> worker: stop all tasks and die */
-#define FUTURE      4   /* worker -> engine: processing results are ready */
-#define EVENT       5   /* worker -> engine: scheduled task invocation results are ready */
-#define SUICIDE     6   /* worker -> engine: i am useless, kill me */
-#define HEARTBEAT   7   /* worker -> engine: i am alive, don't kill me */
+#define INVOKE      1   /* engine -> worker: do something*/
+#define TERMINATE   2   /* engine -> worker: die */
+#define FUTURE      3   /* worker -> engine: something is done, here are the results */
+#define SUICIDE     4   /* worker -> engine: i am useless, kill me */
+#define HEARTBEAT   5   /* worker -> engine: i am alive, don't kill me */
 
 #endif

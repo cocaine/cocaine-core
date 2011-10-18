@@ -69,6 +69,10 @@ class socket_t:
         int fd();
         bool pending(int event = ZMQ_POLLIN);
         bool has_more();
+        
+#if ZMQ_VERSION > 30000
+        bool is_label();
+#endif
 
     private:
         zmq::socket_t m_socket;

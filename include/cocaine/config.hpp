@@ -14,6 +14,7 @@ class config_t {
         struct {
             std::string hostname;
             std::string instance;
+            std::string route;
             std::vector<std::string> endpoints;
         } core;
 

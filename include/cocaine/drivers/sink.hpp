@@ -25,9 +25,12 @@ class sink_t:
 
             while((revents & ev::READ) && m_socket->pending()) {
                 m_socket->recv(&message);
+            
+                boost::shared_ptr<lines::publication_t> publication(
+                    new lines::publication_t(m_name, m_parent));
 
                 try {
-                    m_parent->queue(
+                    publication->wait(m_parent->queue(
                         boost::make_tuple(
                             INVOKE,
                             m_name,
@@ -35,7 +38,7 @@ class sink_t:
                                 static_cast<const char*>(message.data()),
                                 message.size())
                             )
-                        );
+                        ));
                 } catch(const std::runtime_error& e) {
                     syslog(LOG_ERR, "driver %s [%s]: [%s()] %s",
                         m_id.c_str(), m_parent->id().c_str(), __func__, e.what());

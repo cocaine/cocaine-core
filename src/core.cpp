@@ -1,7 +1,6 @@
 #include "cocaine/core.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/future.hpp"
-#include "cocaine/response.hpp"
 #include "cocaine/security/digest.hpp"
 #include "cocaine/storage.hpp"
 
@@ -12,7 +11,8 @@ using namespace cocaine::security;
 using namespace cocaine::storage;
 
 core_t::core_t():
-    m_context(1)
+    m_context(1),
+    m_server(m_context, ZMQ_ROUTER)
 {
     // Version dump
     int minor, major, patch;
@@ -32,21 +32,21 @@ core_t::core_t():
     }
 
     // Listening socket
-    std::string route(
+    config_t::set().core.route =
         config_t::get().core.hostname + "/" +
-        config_t::get().core.instance);
+        config_t::get().core.instance;
     
-    syslog(LOG_INFO, "core: this node identity is '%s'", route.c_str());
+    syslog(LOG_INFO, "core: this node identity is '%s'", config_t::get().core.route.c_str());
 
-    m_server.reset(new lines::socket_t(m_context, ZMQ_ROUTER, route));
-    
     for(std::vector<std::string>::const_iterator it = config_t::get().core.endpoints.begin(); it != config_t::get().core.endpoints.end(); ++it) {
-        m_server->bind(*it);
+        m_server.bind(*it);
         syslog(LOG_INFO, "core: listening for requests on %s", it->c_str());
     }
 
-    m_server_watcher.set<core_t, &core_t::request>(this);
-    m_server_watcher.start(m_server->fd(), EV_READ);
+    m_request_watcher.set<core_t, &core_t::request>(this);
+    m_request_watcher.start(m_server.fd(), EV_READ);
+    m_request_processor.set<core_t, &core_t::process_request>(this);
+    m_request_processor.start();
 
     // Initialize signal watchers
     m_sigint.set<core_t, &core_t::terminate>(this);
@@ -96,21 +96,29 @@ void core_t::reload(ev::sig& sig, int revents) {
     }
 }
 
-void core_t::request(ev::io& io, int revents) {
-    zmq::message_t message, signature;
-    std::vector<std::string> route;
-    std::string request;
-    
-    Json::Reader reader(Json::Features::strictMode());
-    Json::Value root;
+void core_t::request(ev::io& w, int revents) {
+    if(m_server.pending() && !m_request_processor.is_active()) {
+        m_request_processor.start();
+    }
+}
 
-    while((revents & ev::READ) && m_server->pending()) {
-        route.clear();
+void core_t::process_request(ev::idle& w, int revents) {
+    if(m_server.pending()) {
+        zmq::message_t message, signature(0);
+        lines::route_t route;
+        std::string request;
+
+        Json::Reader reader(Json::Features::strictMode());
+        Json::Value root;
 
         while(true) {
-            m_server->recv(&message);
+            m_server.recv(&message);
 
+#if ZMQ_VERSION > 30000
+            if(!m_server.is_label()) {
+#else
             if(!message.size()) {
+#endif
                 break;
             }
 
@@ -119,21 +127,19 @@ void core_t::request(ev::io& io, int revents) {
                 message.size()));
         }
 
-        // Create a response
-        boost::shared_ptr<response_t> response(
-            new response_t(route, m_server));
-        
-        // Receive the request
-        m_server->recv(&message);
+#if ZMQ_VERSION < 30000
+        m_server.recv(&message);
+#endif
 
+        // Create a response
+        boost::shared_ptr<lines::response_t> response(
+            new lines::response_t(route, shared_from_this()));
+        
         request.assign(static_cast<const char*>(message.data()),
             message.size());
 
-        // Receive the signature, if it's there
-        signature.rebuild();
-
-        if(m_server->has_more()) {
-            m_server->recv(&signature);
+        if(m_server.has_more()) {
+            m_server.recv(&signature);
         }
 
         // Parse the request
@@ -172,10 +178,12 @@ void core_t::request(ev::io& io, int revents) {
                 reader.getFormatedErrorMessages().c_str());
             response->abort(reader.getFormatedErrorMessages());
         }
+    } else {
+        m_request_processor.stop();
     }
 }
 
-void core_t::dispatch(boost::shared_ptr<response_t> response, const Json::Value& root) {
+void core_t::dispatch(boost::shared_ptr<lines::response_t> response, const Json::Value& root) {
     std::string action(root["action"].asString());
 
     if(action == "create" || action == "delete") {
@@ -263,6 +271,7 @@ Json::Value core_t::delete_engine(const Json::Value& manifest) {
 
     engine->second->stop();
     m_engines.erase(engine);
+
     result["status"] = "stopped";
 
     return result;
@@ -278,11 +287,43 @@ Json::Value core_t::stats() {
     result["threads"]["total"] = engine::thread_t::objects_created;
     result["threads"]["alive"] = engine::thread_t::objects_alive;
 
-    result["requests"]["total"] = response_t::objects_created;
-    result["requests"]["pending"] = response_t::objects_alive;
+    result["requests"]["total"] = lines::response_t::objects_created;
+    result["requests"]["pending"] = lines::response_t::objects_alive;
 
+    result["publications"]["total"] = lines::publication_t::objects_created;
+    result["publications"]["pending"] = lines::publication_t::objects_alive;
+    
     return result;
 }
+
+void core_t::respond(const lines::route_t& route, const Json::Value& object) {
+    zmq::message_t message;
+    
+    // Send the identity
+    for(lines::route_t::const_iterator id = route.begin(); id != route.end(); ++id) {
+        message.rebuild(id->length());
+        memcpy(message.data(), id->data(), id->length());
+#if ZMQ_VERSION < 30000
+        m_server.send(message, ZMQ_SNDMORE);
+#else
+        m_server.send(message, ZMQ_SNDMORE | ZMQ_SNDLABEL);
+#endif
+    }
+
+#if ZMQ_VERSION < 30000                
+    // Send the delimiter
+    message.rebuild(0);
+    m_server.send(message, ZMQ_SNDMORE);
+#endif
+
+    Json::FastWriter writer;
+    std::string json(writer.write(object));
+    message.rebuild(json.length());
+    memcpy(message.data(), json.data(), json.length());
+
+    m_server.send(message);
+}
+
 
 void core_t::recover() {
     // NOTE: Allowing the exception to propagate here, as this is a fatal error

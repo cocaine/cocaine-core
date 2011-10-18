@@ -19,12 +19,10 @@ overseer_t::overseer_t(unique_id_t::type id_, unique_id_t::type engine_id, zmq::
     m_heartbeat_timer(m_loop)
 {
     // Connect to the engine's controlling socket and set the socket watcher
-    m_messages.connect("ipc:///var/run/cocaine/engines/" + engine_id);
+    m_messages.connect("inproc://engines/" + engine_id);
 
     m_message_watcher.set<overseer_t, &overseer_t::message>(this);
     m_message_watcher.start(m_messages.fd(), EV_READ);
-
-    // This is the watcher which will process events
     m_message_processor.set<overseer_t, &overseer_t::process_message>(this);
     m_message_processor.start();
 
@@ -56,44 +54,34 @@ void overseer_t::process_message(ev::idle& w, int revents) {
         m_messages.recv(code);
 
         switch(code) {
-            case PROCESS: {
-                std::string task, blob;
-
-                boost::tuple<std::string&, std::string&> tier(task, blob);
-                m_messages.recv_multi(tier);
-
-                try {
-                    result = invoke(task, blob);
-                } catch(const std::exception& e) {
-                    syslog(LOG_ERR, "overseer %s: [%s()] in process - %s", id().c_str(), __func__, e.what());
-                    result["error"] = e.what();
-                }
-                
-                m_messages.send_multi(boost::make_tuple(
-                    FUTURE,
-                    result)); 
-                
-                break;
-            }
-
             case INVOKE: {
                 std::string task;
 
                 m_messages.recv(task);
 
                 try {
-                    result = invoke(task);
+                    if(!m_messages.has_more()) {
+                        result = m_source->invoke(task);
+                    } else {
+                        std::string blob;
+                        m_messages.recv(blob);
+                        result = m_source->invoke(task, blob.data(), blob.size());
+                    }
                 } catch(const std::exception& e) {
                     syslog(LOG_ERR, "overseer %s: [%s()] %s", id().c_str(), __func__, e.what());
                     result["error"] = e.what();
                 }
 
-                if(!result.isNull()) {
-                    m_messages.send_multi(boost::make_tuple(
-                        EVENT,
-                        task,
-                        result)); 
-                }
+                m_suicide_timer.stop();
+                m_suicide_timer.start(config_t::get().engine.suicide_timeout);
+
+                Json::FastWriter w;
+                std::string s(w.write(result));
+                syslog(LOG_DEBUG, "pmos: json: %s", s.c_str());
+
+                m_messages.send_multi(boost::make_tuple(
+                    FUTURE,
+                    result)); 
                 
                 break;
             }
@@ -114,24 +102,6 @@ void overseer_t::timeout(ev::timer& w, int revents) {
 
 void overseer_t::heartbeat(ev::timer& w, int revents) {
     m_messages.send(HEARTBEAT);
-}
-
-Json::Value overseer_t::invoke(const std::string& task, const std::string& blob) {
-    Json::Value result(m_source->invoke(task, blob.data(), blob.size()));
-
-    m_suicide_timer.stop();
-    m_suicide_timer.start(config_t::get().engine.suicide_timeout);
-
-    return result;
-}
-
-Json::Value overseer_t::invoke(const std::string& task) {
-    Json::Value result(m_source->invoke(task));
-
-    m_suicide_timer.stop();
-    m_suicide_timer.start(config_t::get().engine.suicide_timeout);
-
-    return result;
 }
 
 void overseer_t::terminate() {

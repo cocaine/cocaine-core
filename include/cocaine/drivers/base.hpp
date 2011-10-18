@@ -2,8 +2,6 @@
 #define COCAINE_DRIVERS_BASE_HPP
 
 #include "cocaine/drivers/abstract.hpp"
-#include "cocaine/plugin.hpp"
-#include "cocaine/security/digest.hpp"
 
 namespace cocaine { namespace engine { namespace drivers {
 
@@ -37,11 +35,14 @@ class driver_base_t:
         }
 
         virtual void operator()(WatcherType&, int) {
+            boost::shared_ptr<lines::publication_t> publication(
+                new lines::publication_t(m_name, m_parent));
+
             try {
-                m_parent->queue(
+                publication->wait(m_parent->queue(
                     boost::make_tuple(
                         INVOKE,
-                        m_name)
+                        m_name))
                 );
             } catch(const std::runtime_error& e) {
                 syslog(LOG_ERR, "driver %s [%s]: [%s()] %s",

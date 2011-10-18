@@ -2,9 +2,9 @@
 #define COCAINE_FUTURE_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/response.hpp"
+#include "cocaine/responses.hpp"
 
-namespace cocaine { namespace core {
+namespace cocaine { namespace lines {
 
 class future_t:
     public boost::noncopyable,
@@ -12,9 +12,9 @@ class future_t:
     public helpers::birth_control_t<future_t>
 {
     public:
-        void bind(const std::string& key, boost::shared_ptr<response_t> parent) {
-            m_parent = parent;
+        void bind(const std::string& key, boost::shared_ptr<deferred_t> parent) {
             m_key = key;
+            m_parent = parent;
         }
 
         void push(const Json::Value& value) {
@@ -24,7 +24,7 @@ class future_t:
         }
 
     private:
-        boost::shared_ptr<response_t> m_parent;
+        boost::shared_ptr<deferred_t> m_parent;
         std::string m_key;
 };
 
