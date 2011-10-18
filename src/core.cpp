@@ -215,6 +215,9 @@ void core_t::dispatch(boost::shared_ptr<lines::response_t> response, const Json:
             } catch(const std::runtime_error& e) {
                 syslog(LOG_ERR, "core: [%s()] %s", __func__, e.what());
                 response->abort(app, e.what());
+            } catch(const zmq::error_t& e) {
+                syslog(LOG_ERR, "core: [%s()] network error - %s", __func__, e.what());
+                response->abort(app, e.what());
             }
         }
     } else if(action == "statistics") {
@@ -340,6 +343,8 @@ void core_t::recover() {
                 create_engine(root[app]);
             } catch(const std::runtime_error& e) {
                 syslog(LOG_ERR, "core: [%s()] %s", __func__, e.what());
+            } catch(const zmq::error_t& e) {
+                syslog(LOG_ERR, "core: [%s()] network error - %s", __func__, e.what());
             }
         }
     }
