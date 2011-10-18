@@ -1,5 +1,5 @@
-#ifndef COCAINE_THREADING_HPP
-#define COCAINE_THREADING_HPP
+#ifndef COCAINE_OVERSEER_HPP
+#define COCAINE_OVERSEER_HPP
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"

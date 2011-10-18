@@ -1,5 +1,5 @@
-#ifndef COCAINE_DIGEST_HPP
-#define COCAINE_DIGEST_HPP
+#ifndef COCAINE_SECURITY_DIGEST_HPP
+#define COCAINE_SECURITY_DIGEST_HPP
 
 #include <openssl/evp.h>
 

@@ -1,5 +1,5 @@
-#ifndef COCAINE_DRIVERS_ZEROMQ_HPP
-#define COCAINE_DRIVERS_ZEROMQ_HPP
+#ifndef COCAINE_DRIVERS_SINK_HPP
+#define COCAINE_DRIVERS_SINK_HPP
 
 #include "cocaine/drivers/base.hpp"
 

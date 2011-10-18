@@ -1,5 +1,5 @@
-#ifndef COCAINE_RAW_OBJECTS_HPP
-#define COCAINE_RAW_OBJECTS_HPP
+#ifndef COCAINE_NETWORKING_RAW_HPP
+#define COCAINE_NETWORKING_RAW_HPP
 
 namespace cocaine { namespace lines {
 

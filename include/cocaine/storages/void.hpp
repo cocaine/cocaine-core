@@ -1,5 +1,5 @@
-#ifndef COCAINE_VOID_STORAGE_HPP
-#define COCAINE_VOID_STORAGE_HPP
+#ifndef COCAINE_STORAGES_VOID_HPP
+#define COCAINE_STORAGES_VOID_HPP
 
 #include "cocaine/storages/abstract.hpp"
 

@@ -1,5 +1,5 @@
-#ifndef COCAINE_TUPLES_HPP
-#define COCAINE_TUPLES_HPP
+#ifndef COCAINE_NETWORKING_TUPLES_HPP
+#define COCAINE_NETWORKING_TUPLES_HPP
 
 #include "cocaine/common.hpp"
 

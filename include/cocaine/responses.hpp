@@ -1,5 +1,5 @@
-#ifndef COCAINE_RESPONSE_HPP
-#define COCAINE_RESPONSE_HPP
+#ifndef COCAINE_RESPONSES_HPP
+#define COCAINE_RESPONSES_HPP
 
 #include "cocaine/common.hpp"
 #include "cocaine/networking.hpp"

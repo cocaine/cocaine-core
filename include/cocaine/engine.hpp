@@ -4,7 +4,6 @@
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/future.hpp"
-#include "cocaine/helpers/tuples.hpp"
 #include "cocaine/networking.hpp"
 #include "cocaine/workers/thread.hpp"
 

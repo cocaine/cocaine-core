@@ -1,5 +1,5 @@
-#ifndef COCAINE_EBLOB_STORAGE_HPP
-#define COCAINE_EBLOB_STORAGE_HPP
+#ifndef COCAINE_STORAGES_EBLOBS_HPP
+#define COCAINE_STORAGES_EBLOBS_HPP
 
 #include <boost/filesystem.hpp>
 

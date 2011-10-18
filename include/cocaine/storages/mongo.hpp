@@ -1,5 +1,5 @@
-#ifndef COCAINE_MONGO_STORAGE_HPP
-#define COCAINE_MONGO_STORAGE_HPP
+#ifndef COCAINE_STORAGES_MONGO_HPP
+#define COCAINE_STORAGES_MONGO_HPP
 
 #include <mongo/client/dbclient.h>
 

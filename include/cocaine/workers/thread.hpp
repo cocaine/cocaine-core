@@ -1,5 +1,5 @@
-#ifndef COCAINE_THREAD_HPP
-#define COCAINE_THREAD_HPP
+#ifndef COCAINE_WORKERS_THREAD_HPP
+#define COCAINE_WORKERS_THREAD_HPP
 
 #include <queue>
 

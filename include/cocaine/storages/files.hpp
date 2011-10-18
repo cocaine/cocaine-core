@@ -1,5 +1,5 @@
-#ifndef COCAINE_FILE_STORAGE_HPP
-#define COCAINE_FILE_STORAGE_HPP
+#ifndef COCAINE_STORAGES_FILES_HPP
+#define COCAINE_STORAGES_FILES_HPP
 
 #include <boost/filesystem.hpp>
 #include <boost/thread/mutex.hpp>
