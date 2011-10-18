@@ -11,6 +11,10 @@ namespace cocaine {
         }
     }
 
+    namespace lines {
+        class future_t;
+    }
+
     namespace plugin {
         class source_t;
     }

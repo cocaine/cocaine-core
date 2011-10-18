@@ -88,10 +88,11 @@ SET_TARGET_PROPERTIES(cocaine-core-security PROPERTIES
 
 ADD_LIBRARY(cocaine-core SHARED 
     src/core
-    src/registry
+    src/engine
     src/networking
     src/overseer
-    src/engine)
+    src/registry
+    src/thread)
 
 TARGET_LINK_LIBRARIES(cocaine-core
     cocaine-core-config
