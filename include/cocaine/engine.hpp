@@ -27,8 +27,7 @@ class engine_t:
         ~engine_t();
 
         Json::Value run(const Json::Value& manifest);
-        void stop();
-        
+        Json::Value stop();
         Json::Value stats();
 
     private:

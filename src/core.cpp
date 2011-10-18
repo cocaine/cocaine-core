@@ -232,7 +232,6 @@ void core_t::dispatch(boost::shared_ptr<lines::response_t> response, const Json:
 
 Json::Value core_t::create_engine(const Json::Value& manifest) {
     std::string uri(manifest["uri"].asString());
-    Json::Value result;
 
     if(uri.empty()) {
         throw std::runtime_error("no app uri has been specified");
@@ -242,7 +241,7 @@ Json::Value core_t::create_engine(const Json::Value& manifest) {
 
     // Launch the engine
     boost::shared_ptr<engine_t> engine(new engine_t(m_context, uri));
-    result = engine->run(manifest);
+    Json::Value result(engine->run(manifest));
 
     try {
         // Persist
@@ -261,7 +260,6 @@ Json::Value core_t::create_engine(const Json::Value& manifest) {
 Json::Value core_t::delete_engine(const Json::Value& manifest) {
     std::string uri(manifest["uri"].asString());
     engine_map_t::iterator engine(m_engines.find(uri));
-    Json::Value result;
 
     if(uri.empty()) {
         throw std::runtime_error("no app uri has been specified");
@@ -272,10 +270,8 @@ Json::Value core_t::delete_engine(const Json::Value& manifest) {
     // Unpersist
     storage_t::instance()->remove("apps", digest_t().get(uri));
 
-    engine->second->stop();
+    Json::Value result(engine->second->stop());
     m_engines.erase(engine);
-
-    result["status"] = "stopped";
 
     return result;
 }

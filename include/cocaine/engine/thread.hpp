@@ -34,9 +34,9 @@ class thread_t:
         void timeout(ev::timer& w, int revents);
 
     private:
-        helpers::unique_id_t::type m_engine_id;
+        const helpers::unique_id_t::type m_engine_id;
         zmq::context_t& m_context;
-        std::string m_uri;
+        const std::string m_uri;
 
         boost::shared_ptr<overseer_t> m_overseer;
         boost::shared_ptr<boost::thread> m_thread;

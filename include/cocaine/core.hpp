@@ -25,7 +25,6 @@ class core_t:
         // Signal processing
         void terminate(ev::sig& sig, int revents);
         void reload(ev::sig& sig, int revents);
-        void purge(ev::sig& sig, int revents);
 
         // User request processing
         void request(ev::io& io, int revents);
@@ -53,7 +52,7 @@ class core_t:
         lines::socket_t m_server;
 
         // Event watchers
-        ev::sig m_sigint, m_sigterm, m_sigquit, m_sighup, m_sigusr1;
+        ev::sig m_sigint, m_sigterm, m_sigquit, m_sighup;
         ev::io m_request_watcher;
         ev::idle m_request_processor;
 

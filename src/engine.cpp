@@ -130,7 +130,9 @@ void engine_t::schedule(const std::string& task, const Json::Value& args) {
     }
 }
 
-void engine_t::stop() {
+Json::Value engine_t::stop() {
+    Json::Value result;
+
     if(m_server) {
         m_request_watcher->stop();
         m_request_processor->stop();
@@ -147,6 +149,10 @@ void engine_t::stop() {
     
     m_message_watcher.stop();
     m_message_processor.stop();
+
+    result["engine:status"] = "stopped";
+    
+    return result;
 }
 
 namespace {
