@@ -34,14 +34,14 @@ v Storage: global persistence
 
 Version: 0.5
 v Cocained!
-* Core: more statistics (from drivers)
+v Core: more statistics (from drivers)
 v Core: JSON -> Msgpack for internal communications
 * Core: HTTP frontend
-? Engine: per-driver export sockets
+v Engine: per-driver export sockets
 v Engine: an ability to kill timed out threads
 v Engine: static and dynamic thread pools
 * JS: adapt portions of node.js
 * Python: PersistentTail, Sinks
-* Networking: authentication replay protection (timestamps?)
+> Networking: authentication replay protection (timestamps)
 * Networking: encrypted responses
 * Networking: encrypted publishing
