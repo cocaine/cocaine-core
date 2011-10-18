@@ -25,7 +25,6 @@ class source_t:
 
         inline std::string uri() const { return m_uri; }
 
-        // Called by request scheduler
         virtual Json::Value invoke(const std::string& callable,
             const void* request = NULL, size_t request_length = 0) = 0;
         

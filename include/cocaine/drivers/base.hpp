@@ -2,6 +2,7 @@
 #define COCAINE_DRIVERS_BASE_HPP
 
 #include "cocaine/drivers/abstract.hpp"
+#include "cocaine/security/digest.hpp"
 
 namespace cocaine { namespace engine { namespace drivers {
 

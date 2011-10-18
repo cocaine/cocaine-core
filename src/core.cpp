@@ -36,7 +36,7 @@ core_t::core_t():
         config_t::get().core.hostname + "/" +
         config_t::get().core.instance;
     
-    syslog(LOG_INFO, "core: this node identity is '%s'", config_t::get().core.route.c_str());
+    syslog(LOG_INFO, "core: route to this node is '%s'", config_t::get().core.route.c_str());
 
     for(std::vector<std::string>::const_iterator it = config_t::get().core.endpoints.begin(); it != config_t::get().core.endpoints.end(); ++it) {
         m_server.bind(*it);
@@ -148,7 +148,7 @@ void core_t::process_request(ev::idle& w, int revents) {
         if(reader.parse(request, root)) {
             try {
                 if(!root.isObject()) {
-                    throw std::runtime_error("root object expected");
+                    throw std::runtime_error("json root must be an object");
                 }
 
                 unsigned int version = root["version"].asUInt();
@@ -174,7 +174,7 @@ void core_t::process_request(ev::idle& w, int revents) {
                 response->abort(e.what());
             }
         } else {
-            syslog(LOG_ERR, "core: [%s()] %s", __func__,
+            syslog(LOG_ERR, "core: [%s()] malformed json - %s", __func__,
                 reader.getFormatedErrorMessages().c_str());
             response->abort(reader.getFormatedErrorMessages());
         }

@@ -11,7 +11,7 @@ class deferred_t:
     public boost::enable_shared_from_this<deferred_t>
 {
     public:
-        void push(const std::string& key, const Json::Value& object) {
+        inline void push(const std::string& key, const Json::Value& object) {
             if(key.empty()) {
                 m_root = object;
             } else {
@@ -20,26 +20,29 @@ class deferred_t:
         }
 
         template<class T>
-        void wait(boost::shared_ptr<T> object) {
+        inline void wait(boost::shared_ptr<T> object) {
             object->bind("", shared_from_this());
         }
 
         template<class T>
-        void wait(const std::string& key, boost::shared_ptr<T> object) {
+        inline void wait(const std::string& key, boost::shared_ptr<T> object) {
             object->bind(key, shared_from_this());
         }
 
-        void abort(const std::string& error) {
+        inline void abort(const std::string& error) {
             m_root.clear();
             m_root["error"] = error;
         }
 
-        void abort(const std::string& key, const std::string& error) {
+        inline void abort(const std::string& key, const std::string& error) {
             Json::Value object;
             object["error"] = error;
             push(key, object);
         }
-        
+       
+    protected:
+        deferred_t() { /* allow only inherited objects to be instantiated */ }
+
     protected:
         Json::Value m_root;
 };

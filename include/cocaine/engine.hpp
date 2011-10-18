@@ -71,16 +71,6 @@ class engine_t:
     public lines::publisher_t
 {
     public:
-        typedef boost::ptr_map<const std::string, thread_t> thread_map_t;
-
-    private:
-        struct shortest_queue {
-            bool operator()(engine_t::thread_map_t::value_type left, engine_t::thread_map_t::value_type right) {
-                return left->second->queue_size() < right->second->queue_size();
-            }
-        };
-       
-    public:
         engine_t(zmq::context_t& context, const std::string& uri);
         ~engine_t();
 
@@ -172,8 +162,16 @@ class engine_t:
         typedef boost::ptr_map<const std::string, history_t> history_map_t;
         history_map_t m_histories;
         
-        // Thread management (Thread ID -> Thread)
+        // Threads
+        typedef boost::ptr_map<const std::string, thread_t> thread_map_t;
         thread_map_t m_threads;
+
+    private:
+        struct shortest_queue {
+            bool operator()(engine_t::thread_map_t::value_type left, engine_t::thread_map_t::value_type right) {
+                return left->second->queue_size() < right->second->queue_size();
+            }
+        };
 };
 
 }}

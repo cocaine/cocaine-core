@@ -3,9 +3,6 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/engine.hpp"
-#include "cocaine/plugin.hpp"
-#include "cocaine/responses.hpp"
-#include "cocaine/security/digest.hpp"
 
 namespace cocaine { namespace engine { namespace drivers {
 

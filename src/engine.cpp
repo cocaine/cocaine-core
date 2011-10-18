@@ -325,12 +325,12 @@ void engine_t::process_message(ev::idle& w, int revents) {
                 }
 
                 default:
-                    syslog(LOG_ERR, "engine %s [%s]: [%s()] unknown message",
+                    syslog(LOG_CRIT, "engine %s [%s]: [%s()] unknown message",
                         id().c_str(), m_uri.c_str(), __func__);
                     abort();
             }
         } else {
-            syslog(LOG_WARNING, "engine %s [%s]: [%s()] outstanding messages - thread %s", 
+            syslog(LOG_WARNING, "engine %s [%s]: [%s()] dropping messages for thread %s", 
                 id().c_str(), m_uri.c_str(), __func__, thread_id.c_str());
             m_messages.ignore();
         }
@@ -444,7 +444,7 @@ void thread_t::create() {
         // First heartbeat is only to ensure that the thread has started
         rearm(10.);
     } catch(const boost::thread_resource_error& e) {
-        throw std::runtime_error("system thread limit reached");
+        throw std::runtime_error("system thread limit exceeded");
     }
 }
 

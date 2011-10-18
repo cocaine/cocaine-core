@@ -2,24 +2,13 @@
 #define COCAINE_FORWARDS_HPP
 
 namespace cocaine {
-    namespace core {
-        class core_t;
-    }
-
     namespace engine {
         class engine_t;
-        class thread_t;
         class overseer_t;
 
         namespace drivers {
             class abstract_driver_t;
         }
-    }
-
-    namespace lines {
-        class response_t;
-        class publication_t;
-        class future_t;
     }
 
     namespace plugin {
