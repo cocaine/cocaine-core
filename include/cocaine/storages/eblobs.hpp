@@ -49,14 +49,14 @@ class eblob_storage_t:
         ~eblob_storage_t();
 
     public:
-        virtual void put(const std::string& store, const std::string& key, const Json::Value& value);
-        virtual bool exists(const std::string& store, const std::string& key);
+        virtual void put(const std::string& ns, const std::string& key, const Json::Value& value);
+        virtual bool exists(const std::string& ns, const std::string& key);
 
-        virtual Json::Value get(const std::string& store, const std::string& key);
-        virtual Json::Value all(const std::string& store) const;
+        virtual Json::Value get(const std::string& ns, const std::string& key);
+        virtual Json::Value all(const std::string& ns) const;
 
-        virtual void remove(const std::string& store, const std::string& key);
-        virtual void purge(const std::string& store);
+        virtual void remove(const std::string& ns, const std::string& key);
+        virtual void purge(const std::string& ns);
 
     private:
         const boost::filesystem::path m_storage_path;

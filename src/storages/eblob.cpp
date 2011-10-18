@@ -58,20 +58,20 @@ eblob_storage_t::~eblob_storage_t() {
     m_eblobs.clear();
 }
 
-void eblob_storage_t::put(const std::string& store, const std::string& key, const Json::Value& value) {
-    eblob_map_t::iterator it(m_eblobs.find(store));
+void eblob_storage_t::put(const std::string& ns, const std::string& key, const Json::Value& value) {
+    eblob_map_t::iterator it(m_eblobs.find(ns));
     
     if(it == m_eblobs.end()) {
         zbr::eblob_config cfg;
 
         memset(&cfg, 0, sizeof(cfg));
-        cfg.file = const_cast<char*>((m_storage_path / store).string().c_str());
+        cfg.file = const_cast<char*>((m_storage_path / ns).string().c_str());
         cfg.iterate_threads = 1;
         cfg.sync = 5;
         cfg.log = m_logger.log();
 
         try {
-            boost::tie(it, boost::tuples::ignore) = m_eblobs.insert(store, new zbr::eblob(&cfg));
+            boost::tie(it, boost::tuples::ignore) = m_eblobs.insert(ns, new zbr::eblob(&cfg));
         } catch(const std::runtime_error& e) {
             // TODO: Have to do something more sophisticated here
             throw;
@@ -89,8 +89,8 @@ void eblob_storage_t::put(const std::string& store, const std::string& key, cons
     }
 }
 
-bool eblob_storage_t::exists(const std::string& store, const std::string& key) {
-    eblob_map_t::iterator it(m_eblobs.find(store));
+bool eblob_storage_t::exists(const std::string& ns, const std::string& key) {
+    eblob_map_t::iterator it(m_eblobs.find(ns));
     
     if(it != m_eblobs.end()) {
         std::string object;
@@ -108,9 +108,9 @@ bool eblob_storage_t::exists(const std::string& store, const std::string& key) {
     return false;
 }
 
-Json::Value eblob_storage_t::get(const std::string& store, const std::string& key) {
+Json::Value eblob_storage_t::get(const std::string& ns, const std::string& key) {
     Json::Value result(Json::objectValue);
-    eblob_map_t::iterator it(m_eblobs.find(store));
+    eblob_map_t::iterator it(m_eblobs.find(ns));
     
     if(it != m_eblobs.end()) {
         Json::Reader reader(Json::Features::strictMode());
@@ -124,18 +124,18 @@ Json::Value eblob_storage_t::get(const std::string& store, const std::string& ke
         }
 
         if(!object.empty() && !reader.parse(object, result)) {
-            throw std::runtime_error("corrupted data in '" + store + "'");
+            throw std::runtime_error("corrupted data in '" + ns + "'");
         }
     }
 
     return result;
 }
 
-Json::Value eblob_storage_t::all(const std::string& store) const {
+Json::Value eblob_storage_t::all(const std::string& ns) const {
     eblob_collector_t collector;
     
     try {
-        zbr::eblob_iterator iterator((m_storage_path / store).string(), true);
+        zbr::eblob_iterator iterator((m_storage_path / ns).string(), true);
         iterator.iterate(collector, 1);
     } catch(...) {
         // XXX: Does it only mean that the blob is empty?
@@ -145,26 +145,26 @@ Json::Value eblob_storage_t::all(const std::string& store) const {
     return collector.seal();
 }
 
-void eblob_storage_t::remove(const std::string& store, const std::string& key) {
-    eblob_map_t::iterator it(m_eblobs.find(store));
+void eblob_storage_t::remove(const std::string& ns, const std::string& key) {
+    eblob_map_t::iterator it(m_eblobs.find(ns));
     
     if(it != m_eblobs.end()) {
         try {
             it->second->remove_hashed(key);
         } catch(const std::runtime_error& e) {
-            throw std::runtime_error("failed to remove from '" + store + "'");
+            throw std::runtime_error("failed to remove from '" + ns + "'");
         }
     }
 }
 
-void eblob_storage_t::purge(const std::string& store) {
-    eblob_map_t::iterator it(m_eblobs.find(store));
+void eblob_storage_t::purge(const std::string& ns) {
+    eblob_map_t::iterator it(m_eblobs.find(ns));
 
     if(it != m_eblobs.end()) {
         eblob_purger_t purger(it->second);
         
         try {
-            zbr::eblob_iterator iterator((m_storage_path / store).string(), true);
+            zbr::eblob_iterator iterator((m_storage_path / ns).string(), true);
             iterator.iterate(purger, 1);
         } catch(...) {
             // FIXME: I have no idea what thit means

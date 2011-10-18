@@ -9,14 +9,14 @@ class void_storage_t:
     public abstract_storage_t
 {
     public:
-        void put(const std::string& store, const std::string& key, const Json::Value& value) { }
-        bool exists(const std::string& store, const std::string& key) { return false; }
+        void put(const std::string& ns, const std::string& key, const Json::Value& value) { }
+        bool exists(const std::string& ns, const std::string& key) { return false; }
 
-        Json::Value get(const std::string& store, const std::string& key) { return Json::Value(); }
-        Json::Value all(const std::string& store) { return Json::Value(); }
+        Json::Value get(const std::string& ns, const std::string& key) { return Json::Value(); }
+        Json::Value all(const std::string& ns) { return Json::Value(); }
 
-        void remove(const std::string& store, const std::string& key) { }
-        void purge(const std::string& store) { }
+        void remove(const std::string& ns, const std::string& key) { }
+        void purge(const std::string& ns) { }
 };
 
 }}}

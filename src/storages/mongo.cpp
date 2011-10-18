@@ -16,14 +16,14 @@ mongo_storage_t::mongo_storage_t() try:
     throw std::runtime_error(e.what());
 }
 
-void mongo_storage_t::put(const std::string& store, const std::string& key, const Json::Value& value) {
+void mongo_storage_t::put(const std::string& ns, const std::string& key, const Json::Value& value) {
     Json::FastWriter writer;
-    Json::Value nested(Json::objectValue);
+    Json::Value container(Json::objectValue);
 
-    nested["key"] = key;
-    nested["value"] = value;
+    container["key"] = key;
+    container["object"] = value;
 
-    std::string json(writer.write(nested));
+    std::string json(writer.write(container));
 
     // NOTE: For some reason, fromjson fails to parse strings with double null-terminator
     // which is exactly the kind of strings JSONCPP generates, hence the chopping.
@@ -31,20 +31,20 @@ void mongo_storage_t::put(const std::string& store, const std::string& key, cons
     
     try {
         ScopedDbConnection connection(m_url);
-        connection->ensureIndex(ns(store), BSON("key" << 1), true); // Unique index
-        connection->update(ns(store), BSON("key" << key), object, true); // Upsert
+        connection->ensureIndex(resolve(ns), BSON("key" << 1), true); // Unique index
+        connection->update(resolve(ns), BSON("key" << key), object, true); // Upsert
         connection.done();
     } catch(const DBException& e) {
         throw std::runtime_error(e.what());
     }
 }
 
-bool mongo_storage_t::exists(const std::string& store, const std::string& key) {
+bool mongo_storage_t::exists(const std::string& ns, const std::string& key) {
     bool result;
     
     try {
         ScopedDbConnection connection(m_url);
-        result = connection->count(ns(store), BSON("key" << key));
+        result = connection->count(resolve(ns), BSON("key" << key));
         connection.done();
     } catch(const DBException& e) {
         throw std::runtime_error(e.what());
@@ -53,14 +53,14 @@ bool mongo_storage_t::exists(const std::string& store, const std::string& key) {
     return result;
 }
 
-Json::Value mongo_storage_t::get(const std::string& store, const std::string& key) {
+Json::Value mongo_storage_t::get(const std::string& ns, const std::string& key) {
     Json::Reader reader;
     Json::Value result(Json::objectValue);
     BSONObj object;
 
     try {
         ScopedDbConnection connection(m_url);
-        object = connection->findOne(ns(store), BSON("key" << key));
+        object = connection->findOne(resolve(ns), BSON("key" << key));
         connection.done();
     } catch(const DBException& e) {
         throw std::runtime_error(e.what());
@@ -68,28 +68,28 @@ Json::Value mongo_storage_t::get(const std::string& store, const std::string& ke
 
     if(!object.isEmpty()) {
         if(reader.parse(object.jsonString(), result)) {
-            return result["value"];
+            return result["object"];
         } else {
-            throw std::runtime_error("corrupted data in '" + store + "'");
+            throw std::runtime_error("corrupted data in '" + ns + "'");
         }
     }
 
     return result;
 }
 
-Json::Value mongo_storage_t::all(const std::string& store) {
+Json::Value mongo_storage_t::all(const std::string& ns) {
     Json::Reader reader;
     Json::Value root(Json::objectValue), result;
 
     try {
         ScopedDbConnection connection(m_url);
-        std::auto_ptr<DBClientCursor> cursor(connection->query(ns(store), BSONObj()));
+        std::auto_ptr<DBClientCursor> cursor(connection->query(resolve(ns), BSONObj()));
         
         while(cursor->more()) {
             if(reader.parse(cursor->nextSafe().jsonString(), result)) {
-                root[result["key"].asString()] = result["value"];
+                root[result["key"].asString()] = result["object"];
             } else {
-                throw std::runtime_error("corrupted data in '" + store + "'");
+                throw std::runtime_error("corrupted data in '" + ns + "'");
             }
         }
         
@@ -101,20 +101,20 @@ Json::Value mongo_storage_t::all(const std::string& store) {
     return root;
 }
 
-void mongo_storage_t::remove(const std::string& store, const std::string& key) {
+void mongo_storage_t::remove(const std::string& ns, const std::string& key) {
     try {
         ScopedDbConnection connection(m_url);
-        connection->remove(ns(store), BSON("key" << key));
+        connection->remove(resolve(ns), BSON("key" << key));
         connection.done();
     } catch(const DBException& e) {
         throw std::runtime_error(e.what());
     }
 }
 
-void mongo_storage_t::purge(const std::string& store) {
+void mongo_storage_t::purge(const std::string& ns) {
     try {
         ScopedDbConnection connection(m_url);
-        connection->remove(ns(store), BSONObj());
+        connection->remove(resolve(ns), BSONObj());
         connection.done();
     } catch(const DBException& e) {
         throw std::runtime_error(e.what());

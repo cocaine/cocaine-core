@@ -15,14 +15,14 @@ class file_storage_t:
         file_storage_t();
 
     public:
-        virtual void put(const std::string& store, const std::string& key, const Json::Value& value);
-        virtual bool exists(const std::string& store, const std::string& key);
+        virtual void put(const std::string& ns, const std::string& key, const Json::Value& value);
+        virtual bool exists(const std::string& ns, const std::string& key);
 
-        virtual Json::Value get(const std::string& store, const std::string& key);
-        virtual Json::Value all(const std::string& store);
+        virtual Json::Value get(const std::string& ns, const std::string& key);
+        virtual Json::Value all(const std::string& ns);
 
-        virtual void remove(const std::string& store, const std::string& key);
-        virtual void purge(const std::string& store);
+        virtual void remove(const std::string& ns, const std::string& key);
+        virtual void purge(const std::string& ns);
 
     private:
         boost::mutex m_mutex;

@@ -1,15 +1,11 @@
 #ifndef COCAINE_PYTHON_HPP
 #define COCAINE_PYTHON_HPP
 
-#include <Python.h>
-
 #include "cocaine/plugin.hpp"
-#include "cocaine/helpers/track.hpp"
+
+#include "common.hpp"
 
 namespace cocaine { namespace plugin {
-
-typedef helpers::track<PyGILState_STATE, PyGILState_Release> thread_state_t;
-typedef helpers::track<PyObject*, Py_DecRef> object_t;
 
 class python_t:
     public source_t
@@ -25,12 +21,6 @@ class python_t:
     private:
         // Instantiates the iterable object from the supplied code
         void compile(const std::string& code);
-
-        // Fetches and formats current Python exception as a string
-        static std::string exception();
-
-        // Unwraps the Python result object
-        static Json::Value unwrap(PyObject* object);
 
     public:
         static char identity[];

@@ -61,7 +61,7 @@ namespace msgpack {
         v.clear();
 
         if(!reader.parse(json, v)) {
-            throw std::runtime_error("invalid json: '" + json + "'");
+            throw std::runtime_error("invalid json: " + json);
         }
 
         return v;

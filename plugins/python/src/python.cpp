@@ -7,7 +7,7 @@
 #include "cocaine/helpers/uri.hpp"
 
 #include "python.hpp"
-#include "store.hpp"
+#include "storage.hpp"
 
 using namespace cocaine::plugin;
 
@@ -94,7 +94,7 @@ void python_t::compile(const std::string& code) {
         Py_file_input));
 
     if(PyErr_Occurred()) {
-        throw std::runtime_error(exception());
+        throw std::runtime_error(python_support_t::exception());
     }
 
     // Execute the code
@@ -102,7 +102,7 @@ void python_t::compile(const std::string& code) {
         identity, bytecode);
     
     if(PyErr_Occurred()) {
-        throw std::runtime_error(exception());
+        throw std::runtime_error(python_support_t::exception());
     }
 
     // Instantiate the Store object
@@ -114,15 +114,15 @@ void python_t::compile(const std::string& code) {
 
     object_t args(PyTuple_Pack(1, *capsule));
     
-    PyObject* store = PyObject_Call(reinterpret_cast<PyObject*>(&store_object_type),
+    PyObject* storage = PyObject_Call(reinterpret_cast<PyObject*>(&storage_object_type),
         args, NULL);
     
     if(PyErr_Occurred()) {
-        throw std::runtime_error(exception());
+        throw std::runtime_error(python_support_t::exception());
     }
 
-    // Note: steals the reference    
-    PyModule_AddObject(m_module, "cocaine.store", store);    
+    // Note: steals the reference
+    PyModule_AddObject(m_module, "storage", storage);    
 }
 
 Json::Value python_t::invoke(const std::string& callable, const void* request, size_t request_length) {
@@ -139,7 +139,7 @@ Json::Value python_t::invoke(const std::string& callable, const void* request, s
     object_t object(PyObject_GetAttrString(m_module, callable.c_str()));
     
     if(PyErr_Occurred()) {
-        throw std::runtime_error(exception());
+        throw std::runtime_error(python_support_t::exception());
     }
 
     if(!PyCallable_Check(object)) {
@@ -148,62 +148,19 @@ Json::Value python_t::invoke(const std::string& callable, const void* request, s
 
     if(PyType_Check(object)) {
         if(PyType_Ready(reinterpret_cast<PyTypeObject*>(*object)) != 0) {
-            throw std::runtime_error(exception());
+            throw std::runtime_error(python_support_t::exception());
         }
     }
 
     object_t result(PyObject_Call(object, args, NULL));
 
     if(PyErr_Occurred()) {
-        throw std::runtime_error(exception());
+        throw std::runtime_error(python_support_t::exception());
     } else if(result.valid()) {
-        return unwrap(result);
+        return python_support_t::unwrap(result);
     } else {
         return Json::nullValue;
     }
-}
-
-std::string python_t::exception() {
-    object_t type(NULL), object(NULL), traceback(NULL);
-    
-    PyErr_Fetch(&type, &object, &traceback);
-    object_t message(PyObject_Str(object));
-    
-    return PyString_AsString(message);
-}
-
-Json::Value python_t::unwrap(PyObject* object) {
-    Json::Value result;
-    
-    if(PyBool_Check(object)) {
-        result = (object == Py_True ? true : false);
-    } else if(PyInt_Check(object) || PyLong_Check(object)) {
-        result = static_cast<Json::Int>(PyInt_AsLong(object));
-    } else if(PyFloat_Check(object)) {
-        result = PyFloat_AsDouble(object);
-    } else if(PyString_Check(object)) {
-        result = PyString_AsString(object);
-    } else if(PyDict_Check(object)) {
-        // Borrowed references, so no need to track them
-        PyObject *key, *value;
-        Py_ssize_t position = 0;
-        
-        // Iterate and convert everything to strings
-        while(PyDict_Next(object, &position, &key, &value)) {
-            result[PyString_AsString(PyObject_Str(key))] = unwrap(value); 
-        }
-    } else if(PySequence_Check(object) || PyIter_Check(object)) {
-        object_t iterator(PyObject_GetIter(object));
-        object_t item(NULL);
-
-        while(item = PyIter_Next(iterator)) {
-            result.append(unwrap(item));
-        }
-    } else if(object != Py_None) {
-        result = "<error: unrecognized type>";
-    }    
-
-    return result;
 }
 
 source_t* create_python_instance(const char* uri) {
@@ -229,7 +186,7 @@ extern "C" {
         PyEval_InitThreads();
 
         // Initialize the storage type object
-        if(PyType_Ready(&store_object_type) < 0) {
+        if(PyType_Ready(&storage_object_type) < 0) {
             return NULL;
         }
         

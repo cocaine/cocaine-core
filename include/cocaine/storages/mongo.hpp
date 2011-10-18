@@ -14,18 +14,18 @@ class mongo_storage_t:
         mongo_storage_t();
 
     public:
-        virtual void put(const std::string& store, const std::string& key, const Json::Value& value);
-        virtual bool exists(const std::string& store, const std::string& key);
+        virtual void put(const std::string& ns, const std::string& key, const Json::Value& value);
+        virtual bool exists(const std::string& ns, const std::string& key);
 
-        virtual Json::Value get(const std::string& store, const std::string& key);
-        virtual Json::Value all(const std::string& store);
+        virtual Json::Value get(const std::string& ns, const std::string& key);
+        virtual Json::Value all(const std::string& ns);
 
-        virtual void remove(const std::string& store, const std::string& key);
-        virtual void purge(const std::string& store);
+        virtual void remove(const std::string& ns, const std::string& key);
+        virtual void purge(const std::string& ns);
 
     private:
-        inline std::string ns(const std::string& store) {
-            return "cocaine." + m_instance + "." + store;
+        inline std::string resolve(const std::string& ns) {
+            return "cocaine." + m_instance + "." + ns;
         }
 
     private:
