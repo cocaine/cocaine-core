@@ -61,8 +61,8 @@ SET_TARGET_PROPERTIES(cocaine-core-config PROPERTIES
 
 ADD_LIBRARY(cocaine-core-storage SHARED
     src/storage
-    src/file_storage
-    src/mongo_storage)
+    src/storages/files
+    src/storages/mongo)
 
 TARGET_LINK_LIBRARIES(cocaine-core-storage
     cocaine-core-config
@@ -76,8 +76,8 @@ SET_TARGET_PROPERTIES(cocaine-core-storage PROPERTIES
     VERSION 1)
 
 ADD_LIBRARY(cocaine-core-security SHARED
-    src/signatures
-    src/digest)
+    src/security/digest
+    src/security/signatures)
 
 TARGET_LINK_LIBRARIES(cocaine-core-security
     cocaine-core-storage
@@ -92,7 +92,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/networking
     src/overseer
     src/registry
-    src/thread)
+    src/workers/thread)
 
 TARGET_LINK_LIBRARIES(cocaine-core
     cocaine-core-config

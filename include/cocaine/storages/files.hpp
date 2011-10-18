@@ -1,17 +1,18 @@
-#ifndef COCAINE_MONGO_STORAGE_HPP
-#define COCAINE_MONGO_STORAGE_HPP
+#ifndef COCAINE_FILE_STORAGE_HPP
+#define COCAINE_FILE_STORAGE_HPP
 
-#include <mongo/client/dbclient.h>
+#include <boost/filesystem.hpp>
+#include <boost/thread/mutex.hpp>
 
-#include "cocaine/storage/abstract.hpp"
+#include "cocaine/storages/abstract.hpp"
 
 namespace cocaine { namespace storage { namespace backends {
 
-class mongo_storage_t:
+class file_storage_t:
     public abstract_storage_t
 {
     public:
-        mongo_storage_t();
+        file_storage_t();
 
     public:
         virtual void put(const std::string& store, const std::string& key, const Json::Value& value);
@@ -24,13 +25,9 @@ class mongo_storage_t:
         virtual void purge(const std::string& store);
 
     private:
-        inline std::string ns(const std::string& store) {
-            return "cocaine." + m_instance + "." + store;
-        }
-
-    private:
+        boost::mutex m_mutex;
+        const boost::filesystem::path m_storage_path;
         const std::string m_instance;
-        const mongo::ConnectionString m_url;
 };
 
 }}}

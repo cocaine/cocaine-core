@@ -1,4 +1,4 @@
-#include "cocaine/storage/eblobs.hpp"
+#include "cocaine/storages/eblobs.hpp"
 
 using namespace cocaine::helpers;
 using namespace cocaine::storage::backends;

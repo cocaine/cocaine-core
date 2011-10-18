@@ -5,7 +5,7 @@
 
 #include <eblob/eblob.hpp>
 
-#include "cocaine/storage/abstract.hpp"
+#include "cocaine/storages/abstract.hpp"
 
 namespace cocaine { namespace storage { namespace backends {
 

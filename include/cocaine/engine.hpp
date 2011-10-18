@@ -6,7 +6,7 @@
 #include "cocaine/future.hpp"
 #include "cocaine/helpers/tuples.hpp"
 #include "cocaine/networking.hpp"
-#include "cocaine/engine/thread.hpp"
+#include "cocaine/workers/thread.hpp"
 
 namespace cocaine { namespace engine {
 

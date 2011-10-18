@@ -1,7 +1,7 @@
 #ifndef COCAINE_VOID_STORAGE_HPP
 #define COCAINE_VOID_STORAGE_HPP
 
-#include "cocaine/storage/abstract.hpp"
+#include "cocaine/storages/abstract.hpp"
 
 namespace cocaine { namespace storage { namespace backends {
 
