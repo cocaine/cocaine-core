@@ -26,8 +26,8 @@ class file_storage_t:
 
     private:
         boost::mutex m_mutex;
-        boost::filesystem::path m_storage_path;
-        std::string m_instance;
+        const boost::filesystem::path m_storage_path;
+        const std::string m_instance;
 };
 
 }}}

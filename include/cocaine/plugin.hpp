@@ -29,7 +29,7 @@ class source_t:
             const void* request = NULL, size_t request_length = 0) = 0;
         
     protected:
-        std::string m_uri;
+        const std::string m_uri;
 };
 
 // Plugins are expected to supply at least one factory function

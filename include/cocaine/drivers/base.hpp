@@ -57,7 +57,7 @@ class driver_base_t:
         std::auto_ptr<WatcherType> m_watcher;
 
         // Parent engine
-        boost::shared_ptr<engine_t> m_parent;
+        const boost::shared_ptr<engine_t> m_parent;
 };
 
 }}}

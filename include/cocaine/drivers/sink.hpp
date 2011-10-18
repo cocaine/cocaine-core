@@ -53,7 +53,7 @@ class sink_t:
         }
 
     private:
-        std::string m_endpoint;
+        const std::string m_endpoint;
         std::auto_ptr<lines::socket_t> m_socket;
 };
 

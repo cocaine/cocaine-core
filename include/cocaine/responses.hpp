@@ -75,8 +75,8 @@ class response_t:
         }
 
     private:
-        lines::route_t m_route;
-        boost::shared_ptr<responder_t> m_parent;
+        const lines::route_t m_route;
+        const boost::shared_ptr<responder_t> m_parent;
 };
 
 class publication_t:
@@ -94,8 +94,8 @@ class publication_t:
         }
 
     private:
-        std::string m_key;
-        boost::shared_ptr<publisher_t> m_parent;
+        const std::string m_key;
+        const boost::shared_ptr<publisher_t> m_parent;
 };
 
 }}

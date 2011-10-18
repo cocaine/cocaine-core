@@ -105,7 +105,7 @@ struct uri_t:
         }
 
     private:
-        std::string m_source;
+        const std::string m_source;
         UriUriA m_uri;
 };
 

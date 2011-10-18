@@ -59,7 +59,7 @@ class eblob_storage_t:
         virtual void purge(const std::string& store);
 
     private:
-        boost::filesystem::path m_storage_path;
+        const boost::filesystem::path m_storage_path;
 
         typedef boost::ptr_map<const std::string, zbr::eblob> eblob_map_t;
         eblob_map_t m_eblobs;

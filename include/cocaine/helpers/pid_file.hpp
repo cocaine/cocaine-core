@@ -58,7 +58,7 @@ class pid_file_t:
         }
 
     private:
-        boost::filesystem::path m_filepath;
+        const boost::filesystem::path m_filepath;
 };
 
 }}

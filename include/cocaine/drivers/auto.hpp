@@ -28,7 +28,7 @@ class auto_t:
         }
 
     private:
-        ev::tstamp m_interval;
+        const ev::tstamp m_interval;
 };
 
 }}}
