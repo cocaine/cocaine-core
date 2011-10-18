@@ -79,8 +79,8 @@ engine_t::~engine_t() {
 Json::Value engine_t::run(const Json::Value& manifest) {
     static std::map<const std::string, unsigned int> types = boost::assign::map_list_of
         ("auto", AUTO)
-    //  ("manual", MANUAL)
     //  ("cron", CRON)
+    //  ("manual", MANUAL)
         ("fs", FILESYSTEM)
         ("sink", SINK);
 
@@ -138,11 +138,11 @@ Json::Value engine_t::run(const Json::Value& manifest) {
                 case AUTO:
                     schedule<drivers::auto_t>(*it, tasks[*it]);
                     break;
-            //  case MANUAL:
-            //      schedule<drivers::maual_t>(*it, tasks[*it]);
-            //      break;
             //  case CRON:
             //      schedule<drivers::cron_t>(*it, tasks[*it]);
+            //      break;
+            //  case MANUAL:
+            //      schedule<drivers::maual_t>(*it, tasks[*it]);
             //      break;
                 case FILESYSTEM:
                     schedule<drivers::fs_t>(*it, tasks[*it]);
