@@ -83,7 +83,7 @@ Json::Value engine_t::run(const Json::Value& manifest) {
             m_pubsub->bind(pubsub);
         }
 
-        Json::Value::Members names = tasks.getMemberNames();
+        Json::Value::Members names(tasks.getMemberNames());
 
         for(Json::Value::Members::iterator it = names.begin(); it != names.end(); ++it) {
             std::string type(tasks[*it]["type"].asString());
