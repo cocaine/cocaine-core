@@ -12,11 +12,6 @@ class driver_base_t:
     public abstract_driver_t
 {
     public:
-        driver_base_t(const std::string& name, boost::shared_ptr<engine_t> parent):
-            abstract_driver_t(name),
-            m_parent(parent)
-        { }
-        
         virtual ~driver_base_t() {
             if(m_watcher.get() && m_watcher->is_active()) {
                 m_watcher->stop();
@@ -50,7 +45,13 @@ class driver_base_t:
                     m_id.c_str(), m_parent->id().c_str(), __func__, e.what());
             }
         }
-    
+   
+    protected:
+        driver_base_t(const std::string& name, boost::shared_ptr<engine_t> parent):
+            abstract_driver_t(name),
+            m_parent(parent)
+        { }
+
     protected:
         // Watcher
         std::auto_ptr<WatcherType> m_watcher;
