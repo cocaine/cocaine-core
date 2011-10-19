@@ -17,7 +17,7 @@ engine_t::engine_t(zmq::context_t& context, const std::string& uri):
     m_config(config_t::get().engine),
     m_messages(m_context, ZMQ_ROUTER)
 {
-    syslog(LOG_INFO, "engine %s [%s]: starting", id().c_str(), m_uri.c_str());
+    syslog(LOG_DEBUG, "engine %s [%s]: constructing", id().c_str(), m_uri.c_str());
     
     m_messages.bind("inproc://engines/" + id());
     
@@ -28,7 +28,7 @@ engine_t::engine_t(zmq::context_t& context, const std::string& uri):
 }
 
 engine_t::~engine_t() {
-    syslog(LOG_INFO, "engine %s [%s]: terminating", id().c_str(), m_uri.c_str()); 
+    syslog(LOG_DEBUG, "engine %s [%s]: destructing", id().c_str(), m_uri.c_str()); 
 }
 
 // Operations
@@ -42,6 +42,8 @@ Json::Value engine_t::run(const Json::Value& manifest) {
         ("fs", FILESYSTEM)
         ("sink", SINK);
 
+    syslog(LOG_INFO, "engine %s [%s]: starting", id().c_str(), m_uri.c_str()); 
+    
     std::string server(manifest["server:endpoint"].asString()),
                 pubsub(manifest["pubsub:endpoint"].asString());
     Json::Value tasks(manifest["tasks"]), result(Json::objectValue);
@@ -133,6 +135,8 @@ void engine_t::schedule(const std::string& task, const Json::Value& args) {
 Json::Value engine_t::stop() {
     Json::Value result;
 
+    syslog(LOG_INFO, "engine %s [%s]: stopping", id().c_str(), m_uri.c_str()); 
+    
     if(m_server) {
         m_request_watcher->stop();
         m_request_processor->stop();
@@ -214,6 +218,23 @@ Json::Value engine_t::past(const std::string& task) {
     return result;
 }
 */
+
+void engine_t::reap(unique_id_t::type worker_id) {
+    thread_map_t::iterator worker(m_threads.find(worker_id));
+
+    // TODO: Re-queue these requests instead of dropping them
+    if(worker != m_threads.end()) {
+        Json::Value object;
+
+        object["error"] = "timed out";
+        
+        while(worker->second->queue_size()) {
+            worker->second->queue_pop()->push(object);
+        }
+
+        m_threads.erase(worker);
+    }
+}
 
 // Future support
 // --------------

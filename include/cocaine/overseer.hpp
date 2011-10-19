@@ -13,12 +13,13 @@ class overseer_t:
     public helpers::unique_id_t
 {
     public:
-        overseer_t(helpers::unique_id_t::type id,
+        overseer_t(zmq::context_t& context,
                    helpers::unique_id_t::type engine_id,
-                   zmq::context_t& context);
+                   boost::shared_ptr<plugin::source_t> source);
+        ~overseer_t();
 
         // Thread entry point 
-        void run(boost::shared_ptr<plugin::source_t> source);
+        void run();
         
     private:
         // Event loop callback handling and dispatching

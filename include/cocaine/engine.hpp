@@ -5,6 +5,8 @@
 #include "cocaine/forwards.hpp"
 #include "cocaine/future.hpp"
 #include "cocaine/networking.hpp"
+#include "cocaine/overseer.hpp"
+#include "cocaine/registry.hpp"
 #include "cocaine/workers/thread.hpp"
 
 namespace cocaine { namespace engine {
@@ -21,6 +23,12 @@ class engine_t:
     public:
         typedef boost::ptr_map<const std::string, thread_t> thread_map_t;
     
+        struct shortest_queue {
+            bool operator()(thread_map_t::reference left, thread_map_t::reference right) {
+                return left->second->queue_size() < right->second->queue_size();
+            }
+        };
+
     public:
         engine_t(zmq::context_t& context, const std::string& uri);
         ~engine_t();
@@ -29,12 +37,7 @@ class engine_t:
         Json::Value stop();
         Json::Value stats();
 
-    private:
-        struct shortest_queue {
-            bool operator()(engine_t::thread_map_t::reference left, engine_t::thread_map_t::reference right) {
-                return left->second->queue_size() < right->second->queue_size();
-            }
-        };
+        void reap(helpers::unique_id_t::type worker_id);
 
     public:
         template<class T>
@@ -55,9 +58,15 @@ class engine_t:
                 }
 
                 try {
-                    std::auto_ptr<thread_t> object(new thread_t(id(), m_context, m_uri));
-                    std::string thread_id(object->id());
-                    boost::tie(thread, boost::tuples::ignore) = m_threads.insert(thread_id, object);
+                    boost::shared_ptr<plugin::source_t> source(
+                        core::registry_t::instance()->create(m_uri));
+                    boost::shared_ptr<overseer_t> overseer(
+                        new overseer_t(m_context, id(), source));
+                    std::auto_ptr<thread_t> worker(
+                        new thread_t(shared_from_this(), overseer));
+
+                    std::string worker_id(worker->id());
+                    boost::tie(thread, boost::tuples::ignore) = m_threads.insert(worker_id, worker);
                 } catch(const zmq::error_t& e) {
                     if(e.num() == EMFILE) {
                         throw std::runtime_error("core thread limit exceeded");

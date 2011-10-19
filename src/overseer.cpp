@@ -1,23 +1,23 @@
 #include "cocaine/overseer.hpp"
 #include "cocaine/plugin.hpp"
-#include "cocaine/storage.hpp"
 
 using namespace cocaine::engine;
 using namespace cocaine::engine::drivers;
 using namespace cocaine::plugin;
-using namespace cocaine::storage;
 using namespace cocaine::helpers;
 
-overseer_t::overseer_t(unique_id_t::type id_, unique_id_t::type engine_id, zmq::context_t& context):
-    unique_id_t(id_),
+overseer_t::overseer_t(zmq::context_t& context, unique_id_t::type engine_id, boost::shared_ptr<source_t> source):
     m_context(context),
     m_messages(m_context, ZMQ_DEALER, id()),
     m_loop(),
     m_message_watcher(m_loop),
     m_message_processor(m_loop),
     m_suicide_timer(m_loop),
-    m_heartbeat_timer(m_loop)
+    m_heartbeat_timer(m_loop),
+    m_source(source)
 {
+    syslog(LOG_DEBUG, "overseer %s: constructing", id().c_str());
+
     // Connect to the engine's controlling socket and set the socket watcher
     m_messages.connect("inproc://engines/" + engine_id);
 
@@ -35,8 +35,11 @@ overseer_t::overseer_t(unique_id_t::type id_, unique_id_t::type engine_id, zmq::
     m_heartbeat_timer.start(5.0, 5.0);
 }
 
-void overseer_t::run(boost::shared_ptr<source_t> source) {
-    m_source = source;
+overseer_t::~overseer_t() {
+    syslog(LOG_DEBUG, "overseer %s: destructing", id().c_str());
+}
+
+void overseer_t::run() {
     m_loop.loop();
 }
 
@@ -101,7 +104,6 @@ void overseer_t::heartbeat(ev::timer& w, int revents) {
 }
 
 void overseer_t::terminate() {
-    m_source.reset();
     m_loop.unloop();
 } 
 

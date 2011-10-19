@@ -1,8 +1,8 @@
 #include <boost/bind.hpp>
 
+#include "cocaine/engine.hpp"
 #include "cocaine/future.hpp"
 #include "cocaine/overseer.hpp"
-#include "cocaine/registry.hpp"
 #include "cocaine/workers/thread.hpp"
 
 using namespace cocaine::engine;
@@ -10,29 +10,38 @@ using namespace cocaine::helpers;
 using namespace cocaine::lines;
 using namespace cocaine::plugin;
 
-thread_t::thread_t(unique_id_t::type engine_id, zmq::context_t& context, const std::string& uri):
-    m_engine_id(engine_id),
-    m_context(context),
-    m_uri(uri)
+thread_t::thread_t(boost::shared_ptr<engine_t> parent, boost::shared_ptr<overseer_t> overseer):
+    unique_id_t(overseer->id()),
+    m_parent(parent),
+    m_overseer(overseer)
 {
-    syslog(LOG_DEBUG, "thread %s [%s]: starting", id().c_str(), m_engine_id.c_str());
+    syslog(LOG_DEBUG, "thread %s [%s]: constructing", id().c_str(), m_parent->id().c_str());
    
+    try {
+        m_thread.reset(new boost::thread(boost::bind(&overseer_t::run, m_overseer.get())));
+    } catch(const boost::thread_resource_error& e) {
+        throw std::runtime_error("system thread limit exceeded");
+    }
+
+    // First heartbeat is only to ensure that the thread has started
     m_heartbeat.set<thread_t, &thread_t::timeout>(this);
-    
-    // Creates an overseer and attaches it to a thread 
-    create();
+    rearm(10.);
 }
 
 thread_t::~thread_t() {
-    if(m_thread) {
-        syslog(LOG_DEBUG, "thread %s [%s]: terminating", id().c_str(), m_engine_id.c_str());
-
+    syslog(LOG_DEBUG, "thread %s [%s]: destructing", id().c_str(), m_parent->id().c_str());
+    
+    if(m_heartbeat.is_active()) {
         m_heartbeat.stop();
+    }
+
+    if(m_thread) {
+        syslog(LOG_DEBUG, "thread %s [%s]: trying to join", id().c_str(), m_parent->id().c_str());
 
 #if BOOST_VERSION >= 103500
         if(!m_thread->timed_join(boost::posix_time::seconds(5))) {
             syslog(LOG_WARNING, "thread %s [%s]: thread is unresponsive",
-                id().c_str(), m_engine_id.c_str());
+                id().c_str(), m_parent->id().c_str());
             m_thread->interrupt();
         }
 #else
@@ -41,45 +50,25 @@ thread_t::~thread_t() {
     }
 }
 
-void thread_t::create() {
-    try {
-        // Init the overseer and all the sockets
-        m_overseer.reset(new overseer_t(id(), m_engine_id, m_context));
-
-        // Create a new source
-        boost::shared_ptr<source_t> source(core::registry_t::instance()->create(m_uri));
-        
-        // Launch the thread
-        m_thread.reset(new boost::thread(boost::bind(
-            &overseer_t::run, m_overseer.get(), source)));
-
-        // First heartbeat is only to ensure that the thread has started
-        rearm(10.);
-    } catch(const boost::thread_resource_error& e) {
-        throw std::runtime_error("system thread limit exceeded");
-    }
-}
-
 void thread_t::timeout(ev::timer& w, int revents) {
-    syslog(LOG_ERR, "thread %s [%s]: thread missed a heartbeat", id().c_str(), m_engine_id.c_str());
+    syslog(LOG_ERR, "thread %s [%s]: thread missed a heartbeat", id().c_str(), m_parent->id().c_str());
 
 #if BOOST_VERSION >= 103500
     m_thread->interrupt();
 #endif
 
-    // Send timeouts to all the pending requests
+    m_thread->detach();
+    m_thread.reset();
+    
+    // Send error to the client of the timed out thread
     Json::Value object(Json::objectValue);
+
     object["error"] = "timed out";
+    m_queue.front()->push(object);
+    m_queue.pop();
 
-    while(!m_queue.empty()) {
-        m_queue.front()->push(object);
-        m_queue.pop();
-    }
-
-    // XXX: This doesn't work yet, as ZeroMQ doesn't support two sockets with the same identity
-    // XXX: i.e., when the old thread has been interrupted, and a new one spawns with the same id
-    // XXX: the new socket should overtake the older identity, but it crashes instead
-    create();
+    // The parent will requeue leftover the tasks to the other threads
+    m_parent->reap(id());
 }
 
 void thread_t::rearm(float timeout) {

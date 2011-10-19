@@ -9,9 +9,7 @@ class abstract_driver_t:
     public boost::noncopyable
 {
     public:
-        virtual ~abstract_driver_t() {
-            syslog(LOG_DEBUG, "driver %s: terminating", m_id.c_str());
-        }
+        virtual ~abstract_driver_t() { }
 
         inline std::string id() const {
             return m_id;

@@ -41,7 +41,7 @@ class sink_t:
                         ));
                 } catch(const std::runtime_error& e) {
                     syslog(LOG_ERR, "driver %s [%s]: [%s()] %s",
-                        m_id.c_str(), m_parent->id().c_str(), __func__, e.what());
+                        m_name.c_str(), m_parent->id().c_str(), __func__, e.what());
                 }
             }
         }

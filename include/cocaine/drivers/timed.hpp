@@ -27,7 +27,7 @@ class timed_driver_base_t:
                 return driver->reschedule(now);
             } catch(const std::exception& e) {
                 syslog(LOG_ERR, "driver %s [%s]: [%s()] %s",
-                    driver->id().c_str(), driver->m_parent->id().c_str(), __func__, e.what());
+                    driver->m_name.c_str(), driver->m_parent->id().c_str(), __func__, e.what());
                 return now;
             }
         }

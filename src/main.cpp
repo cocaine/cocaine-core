@@ -95,7 +95,7 @@ int main(int argc, char* argv[]) {
     // Setting up the syslog
     openlog(identity, LOG_PID | LOG_NDELAY, LOG_USER);
     setlogmask(LOG_UPTO(vm.count("verbose") ? LOG_DEBUG : LOG_INFO));
-    syslog(LOG_NOTICE, "main: blow");
+    syslog(LOG_NOTICE, "main: blow!");
 
     // Pid file holder
     std::auto_ptr<pid_file_t> pidfile;
@@ -135,7 +135,7 @@ int main(int argc, char* argv[]) {
     // Cleanup
     core.reset();
 
-    syslog(LOG_NOTICE, "main: exhale");
+    syslog(LOG_NOTICE, "main: terminated");
     
     return EXIT_SUCCESS;
 }
