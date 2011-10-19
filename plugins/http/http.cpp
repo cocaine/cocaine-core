@@ -10,8 +10,8 @@ class http_t:
     public source_t
 {
     public:
-        http_t(const std::string& uri):
-            source_t(uri)
+        http_t(const std::string& name, const std::string& args):
+            source_t(name)
         {
             m_curl = curl_easy_init();
             
@@ -23,7 +23,7 @@ class http_t:
             curl_easy_setopt(m_curl, CURLOPT_VERBOSE, 0);
             curl_easy_setopt(m_curl, CURLOPT_ERRORBUFFER, &m_error_message);
             curl_easy_setopt(m_curl, CURLOPT_WRITEFUNCTION, &nullwriter);
-            curl_easy_setopt(m_curl, CURLOPT_URL, uri.c_str());
+            curl_easy_setopt(m_curl, CURLOPT_URL, args.c_str());
             curl_easy_setopt(m_curl, CURLOPT_USERAGENT, "Cocaine HTTP Plugin");
             curl_easy_setopt(m_curl, CURLOPT_HTTPGET, 1);
             curl_easy_setopt(m_curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
@@ -66,8 +66,8 @@ class http_t:
         char m_error_message[CURL_ERROR_SIZE];
 };
 
-source_t* create_http_instance(const char* uri) {
-    return new http_t(uri);
+source_t* create_http_instance(const char* name, const char* args) {
+    return new http_t(name, args);
 }
 
 static const source_info_t plugin_info[] = {

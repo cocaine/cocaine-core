@@ -9,14 +9,14 @@ class mysql_t:
     public source_t
 {
     public:
-        mysql_t(const std::string& uri_):
-            source_t(uri_),
+        mysql_t(const std::string& name, const std::string& args):
+            source_t(name),
             m_connect_timeout(1),
             m_read_timeout(1),
             m_write_timeout(1)
         {
             // uri: mysql://user:pass@host.yandex.net:3306/db
-            cocaine::helpers::uri_t uri(uri_);
+            cocaine::helpers::uri_t uri(args);
     
             m_host = uri.host();
             m_port = uri.port();
@@ -50,8 +50,8 @@ class mysql_t:
         unsigned int m_port, m_connect_timeout, m_read_timeout, m_write_timeout;
 };
 
-source_t* create_mysql_instance(const char* uri) {
-    return new mysql_t(uri);
+source_t* create_mysql_instance(const char* name, const char* args) {
+    return new mysql_t(name, args);
 }
 
 static const source_info_t plugin_info[] = {

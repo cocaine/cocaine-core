@@ -19,23 +19,23 @@ class source_t:
     public boost::noncopyable
 {
     public:
-        source_t(const std::string& uri):
-            m_uri(uri)
+        source_t(const std::string& name):
+            m_name(name)
         {}
 
-        inline std::string uri() const { return m_uri; }
+        inline std::string name() const { return m_name; }
 
         virtual Json::Value invoke(const std::string& callable,
             const void* request = NULL, size_t request_length = 0) = 0;
         
     protected:
-        const std::string m_uri;
+        const std::string m_name;
 };
 
 // Plugins are expected to supply at least one factory function
 // to initialize sources, given an uri string. Each factory function
 // is responsible to initialize sources of one registered scheme
-typedef source_t* (*factory_fn_t)(const char*);
+typedef source_t* (*factory_fn_t)(const char*, const char*);
 
 // Plugins are expected to have an 'initialize' function, which should
 // return an array of structures of the following format

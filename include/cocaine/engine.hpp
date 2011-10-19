@@ -30,7 +30,7 @@ class engine_t:
         };
 
     public:
-        engine_t(zmq::context_t& context, const std::string& uri);
+        engine_t(zmq::context_t& context, const std::string& name); 
         ~engine_t();
 
         Json::Value run(const Json::Value& manifest);
@@ -59,7 +59,7 @@ class engine_t:
 
                 try {
                     boost::shared_ptr<plugin::source_t> source(
-                        core::registry_t::instance()->create(m_uri));
+                        core::registry_t::instance()->create(m_name, m_type, m_args));
                     boost::shared_ptr<overseer_t> overseer(
                         new overseer_t(m_context, id(), source));
                     std::auto_ptr<thread_t> worker(
@@ -107,10 +107,12 @@ class engine_t:
     private:
         zmq::context_t& m_context;
 
-        // Source URI
-        const std::string m_uri;
+        // Application configuration
+        const std::string m_name;
+        std::string m_type, m_args;
+        std::string m_route;
+        std::string m_callable;
        
-        // Engine configuration 
         config_t::engine_config_t m_config;
 
         // Thread I/O

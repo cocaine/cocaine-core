@@ -34,8 +34,8 @@ class core_t:
         void dispatch(boost::shared_ptr<lines::response_t> response, const Json::Value& root);
         
         // User request handling
-        Json::Value create_engine(const Json::Value& manifest);
-        Json::Value delete_engine(const Json::Value& manifest);
+        Json::Value create_engine(const std::string& name, const Json::Value& manifest);
+        Json::Value delete_engine(const std::string& name);
         Json::Value stats();
 
         // Future support

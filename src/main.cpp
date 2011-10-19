@@ -29,10 +29,31 @@ int main(int argc, char* argv[]) {
     positional.add("endpoints", -1);
 
     options.add_options()
+        ("daemonize", "daemonize on start")
+        ("downloads:cache", po::value<std::string>
+            (&config_t::set().downloads.location)->default_value("/var/cache/cocaine"),
+            "where to cache downloaded files")
+        ("engine:heartbeat-timeout", po::value<float>
+            (&config_t::set().engine.heartbeat_timeout)->default_value(60.0),
+            "unresponsive thread cancellation timeout, seconds")
+        ("engine:history-depth", po::value<unsigned int>
+            (&config_t::set().engine.history_depth)->default_value(10),
+            "maximum number of events to store per engine task")
+        ("engine:queue-depth", po::value<unsigned int>
+            (&config_t::set().engine.queue_depth)->default_value(10),
+            "maximum engine worker queue depth")
+        ("engine:suicide-timeout", po::value<float>
+            (&config_t::set().engine.suicide_timeout)->default_value(600.0),
+            "stale thread suicide timeout, seconds")
+        ("engine:worker-limit", po::value<unsigned int>
+            (&config_t::set().engine.worker_limit)->default_value(10),
+            "maximum engine worker pool size")
         ("help", "show this message")
         ("instance", po::value<std::string>
             (&config_t::set().core.instance)->default_value("default"),
             "instance name")
+        ("pidfile", po::value<fs::path>()->default_value("/var/run/cocaine.pid"),
+            "location of a pid file")
         ("plugins", po::value<std::string>
             (&config_t::set().registry.location)->default_value("/usr/lib/cocaine"),
             "where to load plugins from")
@@ -42,24 +63,6 @@ int main(int argc, char* argv[]) {
         ("storage:location", po::value<std::string>
             (&config_t::set().storage.location)->default_value("/var/lib/cocaine"),
             "storage location, format depends on the storage type")
-        ("engine:suicide-timeout", po::value<float>
-            (&config_t::set().engine.suicide_timeout)->default_value(600.0),
-            "stale thread suicide timeout, seconds")
-        ("engine:heartbeat-timeout", po::value<float>
-            (&config_t::set().engine.heartbeat_timeout)->default_value(60.0),
-            "unresponsive thread cancellation timeout, seconds")
-        ("engine:worker-limit", po::value<unsigned int>
-            (&config_t::set().engine.worker_limit)->default_value(10),
-            "maximum engine worker pool size")
-        ("engine:queue-depth", po::value<unsigned int>
-            (&config_t::set().engine.queue_depth)->default_value(10),
-            "maximum engine worker queue depth")
-        ("engine:history-depth", po::value<unsigned int>
-            (&config_t::set().engine.history_depth)->default_value(10),
-            "maximum number of events to store per engine task")
-        ("daemonize", "daemonize on start")
-        ("pidfile", po::value<fs::path>()->default_value("/var/run/cocaine.pid"),
-            "location of a pid file")
         ("verbose", "produce a lot of output");
 
     combined.add(mandatory).add(options);

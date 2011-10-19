@@ -1,9 +1,4 @@
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/fstream.hpp>
-
-#include <curl/curl.h>
-
-#include "cocaine/config.hpp"
+#include "cocaine/helpers/downloads.hpp"
 #include "cocaine/helpers/uri.hpp"
 
 #include "python.hpp"
@@ -11,77 +6,18 @@
 
 using namespace cocaine::plugin;
 
-namespace fs = boost::filesystem;
-
 char python_t::identity[] = "<dynamic>";
 
-size_t stream_writer(void* data, size_t size, size_t nmemb, void* stream) {
-    std::stringstream* out(reinterpret_cast<std::stringstream*>(stream));
-    out->write(reinterpret_cast<char*>(data), size * nmemb);
-    return size * nmemb;
-}
-
-python_t::python_t(const std::string& uri_):
-    source_t(uri_),
+python_t::python_t(const std::string& name, const std::string& args):
+    source_t(name),
     m_module(NULL)
 {
-    // Parse the URI
-    helpers::uri_t uri(uri_);
-    
-    // Join the path components
-    std::vector<std::string> target(uri.path());
-    fs::path path(fs::path(config_t::get().registry.location) / "python.d");
-
-    for(std::vector<std::string>::const_iterator it = target.begin(); it != target.end(); ++it) {
-        path /= *it;
-    }
-       
-    // Get the code
-    std::stringstream code;
-    
-    if(uri.host().length()) {
-        throw std::runtime_error("remote code download feature is disabled");
-        
-        /*
-        char error_message[CURL_ERROR_SIZE];
-        CURL* curl = curl_easy_init();
-
-        if(!curl) {
-            throw std::runtime_error("failed to initialize libcurl");
-        }
-
-        curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1);
-        curl_easy_setopt(curl, CURLOPT_VERBOSE, 0);
-        curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, &error_message);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &stream_writer);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &code);
-        curl_easy_setopt(curl, CURLOPT_URL, ("http://" + uri.host() + path).c_str());
-        curl_easy_setopt(curl, CURLOPT_USERAGENT, "Cocaine/0.5");
-        curl_easy_setopt(curl, CURLOPT_HTTPGET, 1);
-        curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
-        curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 1000);
-        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, 1000);
-        curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
-
-        if(curl_easy_perform(curl) != 0) {
-            throw std::runtime_error(error_message);
-        }
-
-        curl_easy_cleanup(curl);
-        */
-    } else {
-        // The code is stored locally
-        fs::ifstream input(path);
-        
-        if(!input) {
-            throw std::runtime_error("failed to open " + path.string());
-        }
-
-        // Read the code
-        code << input.rdbuf();
+    if(args.empty()) {
+        throw std::runtime_error("no code location has been specified");
     }
 
-    compile(code.str());
+    helpers::uri_t uri(args);
+    compile(helpers::download(uri));
 }
 
 void python_t::compile(const std::string& code) {
@@ -163,8 +99,8 @@ Json::Value python_t::invoke(const std::string& callable, const void* request, s
     }
 }
 
-source_t* create_python_instance(const char* uri) {
-    return new python_t(uri);
+source_t* create_python_instance(const char* name, const char* args) {
+    return new python_t(name, args);
 }
 
 static const source_info_t plugin_info[] = {

@@ -95,16 +95,15 @@ registry_t::~registry_t() {
     }
 }
 
-boost::shared_ptr<source_t> registry_t::create(const std::string& uri) {
-    std::string scheme(uri.substr(0, uri.find_first_of(":")));
-    factory_map_t::iterator it(m_factories.find(scheme));
+boost::shared_ptr<source_t> registry_t::create(const std::string& name, const std::string& type, const std::string& args) {
+    factory_map_t::iterator it(m_factories.find(type));
 
     if(it == m_factories.end()) {
-        throw std::runtime_error("'" + scheme + "' plugin is not available");
+        throw std::runtime_error("'" + type + "' plugin is not available");
     }
 
     factory_fn_t factory = it->second;
-    return boost::shared_ptr<source_t>(factory(uri.c_str()));
+    return boost::shared_ptr<source_t>(factory(name.c_str(), args.c_str()));
 }
 
 boost::shared_ptr<registry_t> registry_t::instance() {

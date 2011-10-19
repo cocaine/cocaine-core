@@ -205,9 +205,9 @@ void core_t::dispatch(boost::shared_ptr<lines::response_t> response, const Json:
             try {
                 if(manifest.isObject()) {
                     if(action == "create") {
-                        response->push(app, create_engine(manifest));
+                        response->push(app, create_engine(app, manifest));
                     } else if(action == "delete") {
-                        response->push(app, delete_engine(manifest));
+                        response->push(app, delete_engine(app));
                     }
                 } else {
                     throw std::runtime_error("app manifest expected");
@@ -230,45 +230,36 @@ void core_t::dispatch(boost::shared_ptr<lines::response_t> response, const Json:
 // Commands
 // --------
 
-Json::Value core_t::create_engine(const Json::Value& manifest) {
-    std::string uri(manifest["uri"].asString());
-
-    if(uri.empty()) {
-        throw std::runtime_error("no app uri has been specified");
-    } else if(m_engines.find(uri) != m_engines.end()) {
+Json::Value core_t::create_engine(const std::string& name, const Json::Value& manifest) {
+    if(m_engines.find(name) != m_engines.end()) {
         throw std::runtime_error("the specified app is already active");
     }
 
     // Launch the engine
-    boost::shared_ptr<engine_t> engine(new engine_t(m_context, uri));
+    boost::shared_ptr<engine_t> engine(new engine_t(m_context, name));
     Json::Value result(engine->run(manifest));
 
     try {
-        // Persist
-        storage_t::instance()->put("apps", digest_t().get(uri), manifest);
+        storage_t::instance()->put("apps", name, manifest);
     } catch(const std::runtime_error& e) {
         engine->stop();
         throw;
     }
 
     // Only leave the engine running if all of the above succeded
-    m_engines.insert(std::make_pair(uri, engine));
+    m_engines.insert(std::make_pair(name, engine));
     
     return result;
 }
 
-Json::Value core_t::delete_engine(const Json::Value& manifest) {
-    std::string uri(manifest["uri"].asString());
-    engine_map_t::iterator engine(m_engines.find(uri));
+Json::Value core_t::delete_engine(const std::string& name) {
+    engine_map_t::iterator engine(m_engines.find(name));
 
-    if(uri.empty()) {
-        throw std::runtime_error("no app uri has been specified");
-    } else if(engine == m_engines.end()) {
+    if(engine == m_engines.end()) {
         throw std::runtime_error("the specified app is not active");
     }
 
-    // Unpersist
-    storage_t::instance()->remove("apps", digest_t().get(uri));
+    storage_t::instance()->remove("apps", name);
 
     Json::Value result(engine->second->stop());
     m_engines.erase(engine);
@@ -336,7 +327,7 @@ void core_t::recover() {
             std::string app(*it);
             
             try {
-                create_engine(root[app]);
+                create_engine(app, root[app]);
             } catch(const std::runtime_error& e) {
                 syslog(LOG_ERR, "core: [%s()] %s", __func__, e.what());
             } catch(const zmq::error_t& e) {

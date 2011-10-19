@@ -12,7 +12,7 @@ class python_t:
 {
     public:
         // The source protocol implementation
-        python_t(const std::string& uri);
+        python_t(const std::string& name, const std::string& args);
 
         // Source protocol
         virtual Json::Value invoke(const std::string& callable, 

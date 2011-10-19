@@ -40,7 +40,7 @@ INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/foreign/jsoncpp-0.5.0/include)
 INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/include)
 
 IF(NOT APPLE)
-    SET(UUID_LIBS uuid)
+    SET(CMAKE_UUID_LIBS uuid)
 ENDIF()
 
 ADD_LIBRARY(json
@@ -89,6 +89,7 @@ SET_TARGET_PROPERTIES(cocaine-core-security PROPERTIES
 ADD_LIBRARY(cocaine-core SHARED 
     src/core
     src/engine
+    src/downloads
     src/networking
     src/overseer
     src/registry
@@ -100,11 +101,12 @@ TARGET_LINK_LIBRARIES(cocaine-core
     cocaine-core-storage
     json
     ${CMAKE_DL_LIBS}
-    ${UUID_LIBS}
+    ${CMAKE_UUID_LIBS}
     boost_thread-mt
-    zmq
+    curl
     ev
-    msgpack)
+    msgpack
+    zmq)
 
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     VERSION 1)

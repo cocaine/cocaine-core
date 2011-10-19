@@ -1,9 +1,7 @@
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/fstream.hpp>
-
 #include <v8.h>
 
 #include "cocaine/plugin.hpp"
+#include "cocaine/helpers/downloads.hpp"
 #include "cocaine/helpers/uri.hpp"
 
 // Allowed exceptions:
@@ -14,37 +12,17 @@ namespace cocaine { namespace plugin {
 
 using namespace v8;
 
-namespace fs = boost::filesystem;
-
 class javascript_t: public source_t {
     public:
-        javascript_t(const std::string& uri_):
-            source_t(uri_)
+        javascript_t(const std::string& name, const std::string& args):
+            source_t(name)
         {
-            // Parse the URI
-            helpers::uri_t uri(uri_);
-            
-            // Join the path components
-            std::vector<std::string> target(uri.path());
-            fs::path path(fs::path(config_t::get().registry.location) / "javascript.d");
-
-            for(std::vector<std::string>::const_iterator it = target.begin(); it != target.end(); ++it) {
-                path /= *it;
-            }
-       
-            // Get the code
-            fs::ifstream input(path);
-            std::stringstream code;
-            
-            if(!input) {
-                throw std::runtime_error("failed to open " + path.string());
+            if(args.empty()) {
+                throw std::runtime_error("no code location has been specified");
             }
             
-            // Read the code
-            code << input.rdbuf();
-
-            // Compile
-            compile(code.str(), "iterate");
+            helpers::uri_t uri(args);
+            compile(helpers::download(uri), "iterate");
         }
 
         void compile(const std::string& code,
@@ -113,8 +91,8 @@ class javascript_t: public source_t {
         Persistent<Function> m_function;
 };
 
-source_t* create_javascript_instance(const char* uri) {
-    return new javascript_t(uri);
+source_t* create_javascript_instance(const char* name, const char* args) {
+    return new javascript_t(name, args);
 }
 
 static const source_info_t plugin_info[] = {

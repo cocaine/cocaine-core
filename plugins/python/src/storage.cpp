@@ -3,7 +3,6 @@
 #endif
 
 #include "cocaine/plugin.hpp"
-#include "cocaine/security/digest.hpp"
 
 #include "storage.hpp"
 
@@ -48,15 +47,15 @@ int storage_object_t::initialize(storage_object_t* self, PyObject* args, PyObjec
     }
 
 #if PY_VERSION_HEX > 0x02070000
-    std::string uri(static_cast<source_t*>(
-        PyCapsule_GetPointer(source, NULL))->uri());
+    std::string name(static_cast<source_t*>(
+        PyCapsule_GetPointer(source, NULL))->name());
 #else
-    std::string uri(static_cast<source_t*>(
-        PyCObject_AsVoidPtr(source))->uri());
+    std::string name(static_cast<source_t*>(
+        PyCObject_AsVoidPtr(source))->name());
 #endif
 
     Py_DECREF(self->storage_id);
-    self->storage_id = PyString_FromString(security::digest_t().get(uri).c_str());
+    self->storage_id = PyString_FromString(name.c_str());
 
     return 0;
 }

@@ -24,11 +24,10 @@ ADD_LIBRARY(cocaine-plugin-python MODULE
 TARGET_LINK_LIBRARIES(cocaine-plugin-python
     cocaine-core-config
     cocaine-core-storage
-    cocaine-core-security
+    cocaine-core
     json
     ${BOOST_SYSTEM_LIBS}
     boost_filesystem-mt
-    curl
     uriparser)
 
 SET_TARGET_PROPERTIES(cocaine-plugin-python PROPERTIES
