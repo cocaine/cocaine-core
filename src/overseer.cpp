@@ -42,7 +42,11 @@ overseer_t::~overseer_t() {
     terminate();
 }
 
+#if BOOST_VERSION >= 103500
+void overseer_t::operator()() {
+#else
 void overseer_t::run() {
+#endif
     m_loop.loop();
 }
 

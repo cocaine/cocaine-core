@@ -19,8 +19,12 @@ class overseer_t:
         ~overseer_t();
 
         // Thread entry point 
+#if BOOST_VERSION >= 103500
+        void operator()();
+#else
         void run();
-        
+#endif
+
     private:
         // Event loop callback handling and dispatching
         void message(ev::io& w, int revents);

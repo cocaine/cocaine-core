@@ -19,9 +19,9 @@ thread_t::thread_t(boost::shared_ptr<engine_t> parent, boost::shared_ptr<oversee
    
     try {
 #if BOOST_VERSION >= 103500
-        m_thread.reset(new boost::thread(boost::bind(&overseer_t::run, m_overseer.get())));
+        m_thread.reset(new boost::thread(boost::ref(*m_overseer)));
 #else
-        m_thread.reset(new boost::thread());
+        m_thread.reset(new boost::thread(boost::bind(&overseer_t::run, m_overseer.get())));
 #endif
     } catch(const boost::thread_resource_error& e) {
         throw std::runtime_error("system thread limit exceeded");
