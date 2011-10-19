@@ -3,10 +3,12 @@
 #endif
 
 #include "cocaine/plugin.hpp"
+#include "cocaine/security/digest.hpp"
 
 #include "storage.hpp"
 
 using namespace cocaine::plugin;
+using namespace cocaine::security;
 using namespace cocaine::storage;
 
 PyObject* storage_object_t::allocate(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
@@ -55,7 +57,7 @@ int storage_object_t::initialize(storage_object_t* self, PyObject* args, PyObjec
 #endif
 
     Py_DECREF(self->storage_id);
-    self->storage_id = PyString_FromString(name.c_str());
+    self->storage_id = PyString_FromString(digest_t().get(name).c_str());
 
     return 0;
 }
