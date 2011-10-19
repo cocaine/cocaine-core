@@ -19,11 +19,11 @@ class download_t {
         std::string m_blob;
 };
 
-class local_t:
+class cache_t:
     public download_t
 {
     public:
-        local_t(const uri_t& uri);
+        cache_t(const uri_t& uri);
 };
 
 class http_t:
@@ -34,8 +34,8 @@ class http_t:
 };
 
 download_t download(const uri_t& uri) {
-    if(uri.scheme() == "local") {
-        return local_t(uri);
+    if(uri.scheme() == "cache") {
+        return cache_t(uri);
     } else if(uri.scheme() == "http") {
         return http_t(uri);
     } else {

@@ -10,7 +10,7 @@
 using namespace cocaine::helpers;
 using namespace cocaine::security;
 
-local_t::local_t(const uri_t& uri) {
+cache_t::cache_t(const uri_t& uri) {
     using namespace boost::filesystem;
 
     std::stringstream stream;
@@ -45,6 +45,13 @@ size_t stream_writer(void* data, size_t size, size_t nmemb, void* stream) {
 }
 
 http_t::http_t(const helpers::uri_t& uri) {
+    try {
+        // Try to fetch it from the cache first
+        m_blob = cache_t(uri);
+    } catch(...) {
+        syslog(LOG_DEBUG, "downloads: cache is empty, fetching from a remote location");
+    }
+
     std::stringstream stream;
 
     char error_message[CURL_ERROR_SIZE];
