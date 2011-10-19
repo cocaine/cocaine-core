@@ -38,7 +38,7 @@ Json::Value python_support_t::unwrap(PyObject* object) {
             result.append(unwrap(item));
         }
     } else if(PyErr_Clear(), object != Py_None) {
-        result["error"] = "<error: unrecognized type>";
+        result["error"] = "<error: unconvertible type>";
     }    
 
     return result;
