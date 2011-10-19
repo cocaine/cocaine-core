@@ -95,7 +95,7 @@ registry_t::~registry_t() {
     }
 }
 
-std::auto_ptr<source_t> registry_t::create(const std::string& uri) {
+boost::shared_ptr<source_t> registry_t::create(const std::string& uri) {
     std::string scheme(uri.substr(0, uri.find_first_of(":")));
     factory_map_t::iterator it(m_factories.find(scheme));
 
@@ -104,7 +104,7 @@ std::auto_ptr<source_t> registry_t::create(const std::string& uri) {
     }
 
     factory_fn_t factory = it->second;
-    return std::auto_ptr<source_t>(factory(uri.c_str()));
+    return boost::shared_ptr<source_t>(factory(uri.c_str()));
 }
 
 boost::shared_ptr<registry_t> registry_t::instance() {
