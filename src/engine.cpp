@@ -12,9 +12,9 @@ using namespace cocaine::lines;
 
 engine_t::engine_t(zmq::context_t& context, const std::string& name):
     m_context(context),
-    m_name(name),
+    m_messages(m_context, ZMQ_ROUTER),
     m_config(config_t::get().engine),
-    m_messages(m_context, ZMQ_ROUTER)
+    m_name(name)
 {
     syslog(LOG_DEBUG, "engine %s [%s]: constructing", id().c_str(), m_name.c_str());
     
@@ -44,7 +44,9 @@ Json::Value engine_t::run(const Json::Value& manifest) {
     m_type = manifest["type"].asString();
     m_args = manifest["args"].asString();
 
-    if(m_type.empty()) {
+    if(!core::registry_t::instance()->exists(m_type)) {
+        throw std::runtime_error("plugin '" + m_type + "' is not available");
+    } else if(m_type.empty()) {
         throw std::runtime_error("no app type has been specified");
     }
     

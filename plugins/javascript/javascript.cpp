@@ -1,7 +1,7 @@
 #include <v8.h>
 
+#include "cocaine/downloads.hpp"
 #include "cocaine/plugin.hpp"
-#include "cocaine/helpers/downloads.hpp"
 #include "cocaine/helpers/uri.hpp"
 
 // Allowed exceptions:

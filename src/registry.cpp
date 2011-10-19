@@ -95,14 +95,14 @@ registry_t::~registry_t() {
     }
 }
 
+bool registry_t::exists(const std::string& type) {
+    return (m_factories.find(type) != m_factories.end());
+}
+
 boost::shared_ptr<source_t> registry_t::create(const std::string& name, const std::string& type, const std::string& args) {
     factory_map_t::iterator it(m_factories.find(type));
-
-    if(it == m_factories.end()) {
-        throw std::runtime_error("'" + type + "' plugin is not available");
-    }
-
     factory_fn_t factory = it->second;
+    
     return boost::shared_ptr<source_t>(factory(name.c_str(), args.c_str()));
 }
 

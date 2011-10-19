@@ -9,6 +9,13 @@
 #include "cocaine/registry.hpp"
 #include "cocaine/workers/thread.hpp"
 
+// Driver types
+#define AUTO        1   /* do something every n milliseconds */
+#define CRON        2   /* do something based on a cron-like schedule */
+#define MANUAL      3   /* do something when application says */
+#define FILESYSTEM  4   /* do something when there's a change on the filesystem */
+#define SINK        5   /* do something when there's a message on the socket */
+
 namespace cocaine { namespace engine {
 
 // Application Engine
@@ -106,20 +113,20 @@ class engine_t:
 
     private:
         zmq::context_t& m_context;
-
-        // Application configuration
-        const std::string m_name;
-        std::string m_type, m_args;
-        std::string m_route;
-        std::string m_callable;
-       
-        config_t::engine_config_t m_config;
-
+        
         // Thread I/O
         lines::channel_t m_messages;
         ev::io m_message_watcher;
         ev::idle m_message_processor;
 
+        // Application configuration
+        config_t::engine_config_t m_config;
+
+        const std::string m_name;
+        std::string m_type, m_args;
+        std::string m_route;
+        std::string m_callable;
+       
         // Application I/O
         boost::shared_ptr<lines::socket_t> m_server, m_pubsub;
         boost::shared_ptr<ev::io> m_request_watcher;

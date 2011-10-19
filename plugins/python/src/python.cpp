@@ -1,4 +1,4 @@
-#include "cocaine/helpers/downloads.hpp"
+#include "cocaine/downloads.hpp"
 #include "cocaine/helpers/uri.hpp"
 
 #include "python.hpp"

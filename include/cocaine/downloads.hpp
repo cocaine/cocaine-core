@@ -36,10 +36,10 @@ class http_t:
 download_t download(const uri_t& uri) {
     if(uri.scheme() == "cache") {
         return cache_t(uri);
-    } else if(uri.scheme() == "http") {
+    } else if(uri.scheme() == "http" || uri.scheme() == "https") {
         return http_t(uri);
     } else {
-        throw std::runtime_error("unsupported retrieval method - '" + uri.scheme() + "'");
+        throw std::runtime_error("unsupported protocol - '" + uri.scheme() + "'");
     }
 }
 

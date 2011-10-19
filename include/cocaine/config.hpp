@@ -40,6 +40,8 @@ class config_t {
         } storage;
 
     private:
+        config_t();
+
         static config_t g_config;
 };
 

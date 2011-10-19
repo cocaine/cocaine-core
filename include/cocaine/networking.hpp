@@ -13,6 +13,13 @@
 #include "cocaine/networking/raw.hpp"
 #include "cocaine/networking/tuples.hpp"
 
+// Message types
+#define INVOKE      1   /* engine -> worker: do something*/
+#define TERMINATE   2   /* engine -> worker: die */
+#define FUTURE      3   /* worker -> engine: something is done, here are the results */
+#define SUICIDE     4   /* worker -> engine: i am useless, kill me */
+#define HEARTBEAT   5   /* worker -> engine: i am alive, don't kill me */
+
 namespace cocaine { namespace lines {
 
 using namespace boost::tuples;

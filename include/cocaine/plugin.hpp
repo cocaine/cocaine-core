@@ -5,16 +5,6 @@
 
 namespace cocaine { namespace plugin {
 
-class exhausted:
-    public std::runtime_error
-{
-    public:
-        exhausted(const std::string& message):
-            std::runtime_error(message)
-        {}
-};
-        
-// Base class for a plugin source
 class source_t:
     public boost::noncopyable
 {
@@ -23,7 +13,9 @@ class source_t:
             m_name(name)
         {}
 
-        inline std::string name() const { return m_name; }
+        inline std::string name() const {
+            return m_name; 
+        }
 
         virtual Json::Value invoke(const std::string& callable,
             const void* request = NULL, size_t request_length = 0) = 0;
@@ -33,7 +25,7 @@ class source_t:
 };
 
 // Plugins are expected to supply at least one factory function
-// to initialize sources, given an uri string. Each factory function
+// to initialize sources, given a name and an argument. Each factory function
 // is responsible to initialize sources of one registered scheme
 typedef source_t* (*factory_fn_t)(const char*, const char*);
 

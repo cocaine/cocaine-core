@@ -25,18 +25,4 @@
 #define EV_MINIMAL 0
 #include <ev++.h>
 
-// Driver types
-#define AUTO        1   /* do something every n milliseconds */
-#define CRON        2   /* do something based on a cron-like schedule */
-#define MANUAL      3   /* do something when application says */
-#define FILESYSTEM  4   /* do something when there's a change on the filesystem */
-#define SINK        5   /* do something when there's a message on the socket */
-
-// Message types
-#define INVOKE      1   /* engine -> worker: do something*/
-#define TERMINATE   2   /* engine -> worker: die */
-#define FUTURE      3   /* worker -> engine: something is done, here are the results */
-#define SUICIDE     4   /* worker -> engine: i am useless, kill me */
-#define HEARTBEAT   5   /* worker -> engine: i am alive, don't kill me */
-
 #endif

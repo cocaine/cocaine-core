@@ -21,4 +21,6 @@ boost::shared_ptr<abstract_storage_t> storage_t::instance() {
     return g_object;
 }
 
+storage_t::storage_t() { }
+
 boost::shared_ptr<abstract_storage_t> storage_t::g_object;

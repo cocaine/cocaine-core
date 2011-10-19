@@ -10,6 +10,8 @@ class storage_t {
         static boost::shared_ptr<abstract_storage_t> instance();
 
     private:
+        storage_t();
+
         static boost::shared_ptr<abstract_storage_t> g_object;
 };
 

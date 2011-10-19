@@ -38,6 +38,10 @@ core_t::core_t():
     
     syslog(LOG_INFO, "core: route to this node is '%s'", config_t::get().core.route.c_str());
 
+    m_server.setsockopt(ZMQ_IDENTITY,
+        config_t::get().core.route.data(),
+        config_t::get().core.route.length());
+
     for(std::vector<std::string>::const_iterator it = config_t::get().core.endpoints.begin(); it != config_t::get().core.endpoints.end(); ++it) {
         m_server.bind(*it);
         syslog(LOG_INFO, "core: listening for requests on %s", it->c_str());
@@ -62,8 +66,9 @@ core_t::core_t():
     m_sighup.start(SIGHUP);
 }
 
-// FIXME: Why the hell is this needed anyway?
-core_t::~core_t() { }
+core_t::~core_t() {
+    syslog(LOG_DEBUG, "core: destructing");
+}
 
 void core_t::run() {
     recover();
@@ -186,7 +191,7 @@ void core_t::process_request(ev::idle& w, int revents) {
 void core_t::dispatch(boost::shared_ptr<lines::response_t> response, const Json::Value& root) {
     std::string action(root["action"].asString());
 
-    if(action == "create" || action == "delete") {
+    if(action == "create") {
         Json::Value apps(root["apps"]);
 
         if(!apps.isObject() || !apps.size()) {
@@ -204,11 +209,7 @@ void core_t::dispatch(boost::shared_ptr<lines::response_t> response, const Json:
             // Invoke the handler
             try {
                 if(manifest.isObject()) {
-                    if(action == "create") {
-                        response->push(app, create_engine(app, manifest));
-                    } else if(action == "delete") {
-                        response->push(app, delete_engine(app));
-                    }
+                    response->push(app, create_engine(app, manifest));
                 } else {
                     throw std::runtime_error("app manifest expected");
                 }
@@ -217,6 +218,23 @@ void core_t::dispatch(boost::shared_ptr<lines::response_t> response, const Json:
                 response->abort(app, e.what());
             } catch(const zmq::error_t& e) {
                 syslog(LOG_ERR, "core: [%s()] network error - %s", __func__, e.what());
+                response->abort(app, e.what());
+            }
+        }
+    } else if(action == "delete") {
+        Json::Value apps(root["apps"]);
+
+        if(!apps.isArray() || !apps.size()) {
+            throw std::runtime_error("no apps has been specified");
+        }
+
+        for(Json::Value::iterator it = apps.begin(); it != apps.end(); ++it) {
+            std::string app((*it).asString());
+            
+            try {
+                response->push(app, delete_engine(app));
+            } catch(const std::runtime_error& e) {
+                syslog(LOG_ERR, "core: [%s()] %s", __func__, e.what());
                 response->abort(app, e.what());
             }
         }

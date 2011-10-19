@@ -4,7 +4,7 @@
 #include <curl/curl.h>
 
 #include "cocaine/config.hpp"
-#include "cocaine/helpers/downloads.hpp"
+#include "cocaine/downloads.hpp"
 #include "cocaine/security/digest.hpp"
 
 using namespace cocaine::helpers;
@@ -49,7 +49,7 @@ http_t::http_t(const helpers::uri_t& uri) {
         // Try to fetch it from the cache first
         m_blob = cache_t(uri);
     } catch(...) {
-        syslog(LOG_DEBUG, "downloads: cache is empty, fetching from a remote location");
+        syslog(LOG_DEBUG, "downloads: cache is empty, fetching from '%s'", uri.host().c_str());
     }
 
     std::stringstream stream;

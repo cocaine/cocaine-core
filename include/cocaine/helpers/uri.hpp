@@ -9,9 +9,7 @@
 
 namespace cocaine { namespace helpers {
 
-struct uri_t:
-    public boost::noncopyable 
-{
+struct uri_t {
     public:
         uri_t(const std::string& source):
             m_source(source)
