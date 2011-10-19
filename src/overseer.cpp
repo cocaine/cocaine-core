@@ -1,3 +1,5 @@
+#include <boost/thread.hpp>
+
 #include "cocaine/overseer.hpp"
 #include "cocaine/plugin.hpp"
 
@@ -37,6 +39,7 @@ overseer_t::overseer_t(zmq::context_t& context, unique_id_t::type engine_id, boo
 
 overseer_t::~overseer_t() {
     syslog(LOG_DEBUG, "overseer %s: destructing", id().c_str());
+    terminate();
 }
 
 void overseer_t::run() {
@@ -74,6 +77,8 @@ void overseer_t::process_message(ev::idle& w, int revents) {
                     syslog(LOG_ERR, "overseer %s: [%s()] %s", id().c_str(), __func__, e.what());
                     result["error"] = e.what();
                 }
+
+                boost::this_thread::interruption_point();
 
                 m_suicide_timer.stop();
                 m_suicide_timer.start(config_t::get().engine.suicide_timeout);

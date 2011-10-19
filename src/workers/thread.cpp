@@ -18,7 +18,11 @@ thread_t::thread_t(boost::shared_ptr<engine_t> parent, boost::shared_ptr<oversee
     syslog(LOG_DEBUG, "thread %s [%s]: constructing", id().c_str(), m_parent->id().c_str());
    
     try {
+#if BOOST_VERSION >= 103500
         m_thread.reset(new boost::thread(boost::bind(&overseer_t::run, m_overseer.get())));
+#else
+        m_thread.reset(new boost::thread());
+#endif
     } catch(const boost::thread_resource_error& e) {
         throw std::runtime_error("system thread limit exceeded");
     }
@@ -56,10 +60,9 @@ void thread_t::timeout(ev::timer& w, int revents) {
 #if BOOST_VERSION >= 103500
     m_thread->interrupt();
 #endif
-
-    m_thread->detach();
-    m_thread.reset();
     
+    m_thread.reset();
+
     // Send error to the client of the timed out thread
     Json::Value object(Json::objectValue);
 
