@@ -10,7 +10,7 @@ mongo_storage_t::mongo_storage_t() try:
     m_url(config_t::get().storage.location, ConnectionString::SET)
 {
     if(!m_url.isValid()) {
-        throw std::runtime_error("invalid mongodb url");
+        throw std::runtime_error("invalid mongodb uri");
     }
 } catch(const DBException& e) {
     throw std::runtime_error(e.what());

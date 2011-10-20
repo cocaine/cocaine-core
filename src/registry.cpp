@@ -60,21 +60,21 @@ registry_t::registry_t() {
                 }
             } else {
 #if BOOST_FILESYSTEM_VERSION == 3
-                syslog(LOG_ERR, "registry: [%s()] invalid interface in '%s' - %s",
-                    __func__, it->path().string().c_str(), dlerror());
+                syslog(LOG_ERR, "registry: invalid interface in '%s' - %s",
+                    it->path().string().c_str(), dlerror());
 #else
-                syslog(LOG_ERR, "registry: [%s()] invalid interface in '%s' - %s",
-                    __func__, it->string().c_str(), dlerror());
+                syslog(LOG_ERR, "registry: invalid interface in '%s' - %s",
+                    it->string().c_str(), dlerror());
 #endif
                 dlclose(plugin);
             }
         } else {
 #if BOOST_FILESYSTEM_VERSION == 3
-            syslog(LOG_ERR, "registry: [%s()] failed to load '%s' - %s", 
-                __func__, it->path().string().c_str(), dlerror());
+            syslog(LOG_ERR, "registry: failed to load '%s' - %s", 
+                it->path().string().c_str(), dlerror());
 #else
-            syslog(LOG_ERR, "registry: [%s()] failed to load '%s' - %s",
-                __func__, it->string().c_str(), dlerror());
+            syslog(LOG_ERR, "registry: failed to load '%s' - %s",
+                it->string().c_str(), dlerror());
 #endif
         }
 

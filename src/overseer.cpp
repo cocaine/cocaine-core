@@ -8,7 +8,7 @@ using namespace cocaine::engine::drivers;
 using namespace cocaine::plugin;
 using namespace cocaine::helpers;
 
-overseer_t::overseer_t(zmq::context_t& context, unique_id_t::type engine_id, boost::shared_ptr<source_t> source):
+overseer_t::overseer_t(zmq::context_t& context, const std::string& name, boost::shared_ptr<source_t> source):
     m_context(context),
     m_messages(m_context, ZMQ_DEALER, id()),
     m_loop(),
@@ -18,10 +18,8 @@ overseer_t::overseer_t(zmq::context_t& context, unique_id_t::type engine_id, boo
     m_heartbeat_timer(m_loop),
     m_source(source)
 {
-    syslog(LOG_DEBUG, "overseer %s: constructing", id().c_str());
-
     // Connect to the engine's controlling socket and set the socket watcher
-    m_messages.connect("inproc://engines/" + engine_id);
+    m_messages.connect("inproc://engines/" + name);
 
     m_message_watcher.set<overseer_t, &overseer_t::message>(this);
     m_message_watcher.start(m_messages.fd(), EV_READ);
@@ -38,7 +36,6 @@ overseer_t::overseer_t(zmq::context_t& context, unique_id_t::type engine_id, boo
 }
 
 overseer_t::~overseer_t() {
-    syslog(LOG_DEBUG, "overseer %s: destructing", id().c_str());
     terminate();
 }
 
@@ -78,7 +75,8 @@ void overseer_t::process_message(ev::idle& w, int revents) {
                         result = m_source->invoke(task, blob.data(), blob.size());
                     }
                 } catch(const std::exception& e) {
-                    syslog(LOG_ERR, "overseer %s: [%s()] %s", id().c_str(), __func__, e.what());
+                    syslog(LOG_ERR, "thread [%s]: source invocation failed - %s", 
+                        id().c_str(), e.what());
                     result["error"] = e.what();
                 }
 

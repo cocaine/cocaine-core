@@ -14,7 +14,7 @@ class fs_t:
             m_path(args.get("path", "").asString())
         {
             if(m_path.empty()) {
-                throw std::runtime_error("no path specified");
+                throw std::runtime_error("no path has been specified for the fs driver");
             }
 
             m_id = "fs:" + security::digest_t().get(m_name + m_path);

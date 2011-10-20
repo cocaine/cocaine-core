@@ -14,7 +14,7 @@ class overseer_t:
 {
     public:
         overseer_t(zmq::context_t& context,
-                   helpers::unique_id_t::type engine_id,
+                   const std::string& name,
                    boost::shared_ptr<plugin::source_t> source);
         ~overseer_t();
 

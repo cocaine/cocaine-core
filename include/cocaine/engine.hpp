@@ -23,7 +23,6 @@ class engine_t:
     public boost::noncopyable,
     public boost::enable_shared_from_this<engine_t>,
     public helpers::birth_control_t<engine_t>,
-    public helpers::unique_id_t,
     public lines::responder_t,
     public lines::publisher_t
 {
@@ -68,7 +67,7 @@ class engine_t:
                     boost::shared_ptr<plugin::source_t> source(
                         core::registry_t::instance()->create(m_name, m_type, m_args));
                     boost::shared_ptr<overseer_t> overseer(
-                        new overseer_t(m_context, id(), source));
+                        new overseer_t(m_context, m_name, source));
                     std::auto_ptr<thread_t> worker(
                         new thread_t(shared_from_this(), overseer));
 
@@ -99,6 +98,7 @@ class engine_t:
         virtual void publish(const std::string& key, const Json::Value& object);
 
     public:
+        std::string name() const { return m_name; }
         zmq::context_t& context() { return m_context; }
 
     private:

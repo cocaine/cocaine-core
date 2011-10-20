@@ -2,12 +2,14 @@
 #include <sstream>
 
 #include <boost/assign.hpp>
+#include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include "cocaine/drivers.hpp"
 #include "cocaine/engine.hpp"
 
 using namespace cocaine::engine;
+using namespace cocaine::helpers;
 using namespace cocaine::lines;
 
 engine_t::engine_t(zmq::context_t& context, const std::string& name):
@@ -16,9 +18,9 @@ engine_t::engine_t(zmq::context_t& context, const std::string& name):
     m_config(config_t::get().engine),
     m_name(name)
 {
-    syslog(LOG_DEBUG, "engine %s [%s]: constructing", id().c_str(), m_name.c_str());
+    syslog(LOG_DEBUG, "engine [%s]: constructing", m_name.c_str());
     
-    m_messages.bind("inproc://engines/" + id());
+    m_messages.bind("inproc://engines/" + m_name);
     
     m_message_watcher.set<engine_t, &engine_t::message>(this);
     m_message_watcher.start(m_messages.fd(), EV_READ);
@@ -27,7 +29,7 @@ engine_t::engine_t(zmq::context_t& context, const std::string& name):
 }
 
 engine_t::~engine_t() {
-    syslog(LOG_DEBUG, "engine %s [%s]: destructing", id().c_str(), m_name.c_str()); 
+    syslog(LOG_DEBUG, "engine [%s]: destructing", m_name.c_str()); 
 }
 
 // Operations
@@ -45,28 +47,28 @@ Json::Value engine_t::run(const Json::Value& manifest) {
     m_args = manifest["args"].asString();
 
     if(!core::registry_t::instance()->exists(m_type)) {
-        throw std::runtime_error("plugin '" + m_type + "' is not available");
+        throw std::runtime_error("no plugin for '" + m_type + "' is available");
     } else if(m_type.empty()) {
         throw std::runtime_error("no app type has been specified");
     }
     
-    syslog(LOG_INFO, "engine %s [%s]: starting", id().c_str(), m_name.c_str()); 
+    syslog(LOG_INFO, "engine [%s]: starting", m_name.c_str()); 
     
-    std::string server(manifest["server:endpoint"].asString()),
-                pubsub(manifest["pubsub:endpoint"].asString());
+    std::string server(manifest["server"]["endpoint"].asString()),
+                pubsub(manifest["pubsub"]["endpoint"].asString());
     Json::Value tasks(manifest["tasks"]), result(Json::objectValue);
 
-    m_config.heartbeat_timeout = manifest.get("server:heartbeat-timeout",
+    m_config.heartbeat_timeout = manifest["engine"].get("heartbeat-timeout",
         config_t::get().engine.heartbeat_timeout).asUInt();
-    m_config.queue_depth = manifest.get("server:queue-depth",
+    m_config.queue_depth = manifest["engine"].get("queue-depth",
         config_t::get().engine.queue_depth).asUInt();
-    m_config.worker_limit = manifest.get("server:worker-limit",
+    m_config.worker_limit = manifest["engine"].get("worker-limit",
         config_t::get().engine.worker_limit).asUInt();
-    m_config.history_depth = manifest.get("pubsub:history-depth",
+    m_config.history_depth = manifest["engine"].get("history-depth",
         config_t::get().engine.history_depth).asUInt();
 
     if(!server.empty()) {
-        m_callable = manifest["server:callable"].asString();
+        m_callable = manifest["server"]["callable"].asString();
 
         if(m_callable.empty()) {
             throw std::runtime_error("no callable has been specified for serving");
@@ -74,7 +76,7 @@ Json::Value engine_t::run(const Json::Value& manifest) {
 
         m_route = config_t::get().core.route + "/" + m_name;
 
-        result["server:route"] = m_route;
+        result["server"]["route"] = m_route;
         
         m_server.reset(new socket_t(m_context, ZMQ_ROUTER, m_route));
         m_server->bind(server);
@@ -99,7 +101,7 @@ Json::Value engine_t::run(const Json::Value& manifest) {
             std::string type(tasks[*it]["type"].asString());
             
             if(types.find(type) == types.end()) {
-               throw std::runtime_error("invalid task type - '" + type + "'");
+               throw std::runtime_error("no scheduler for '" + type + "' is available");
             }
 
             switch(types[type]) {
@@ -122,7 +124,7 @@ Json::Value engine_t::run(const Json::Value& manifest) {
         }
     }
 
-    result["engine:status"] = "running";
+    result["engine"]["status"] = "running";
 
     return result;
 }
@@ -131,19 +133,21 @@ template<class DriverType>
 void engine_t::schedule(const std::string& task, const Json::Value& args) {
     std::auto_ptr<DriverType> driver(new DriverType(task, shared_from_this(), args));
     std::string driver_id(driver->id());
+    task_map_t::iterator it(m_tasks.find(driver_id));
 
-    if(m_tasks.find(driver_id) == m_tasks.end()) {
+    if(it == m_tasks.end()) {
         driver->start();
         m_tasks.insert(driver_id, driver);
     } else {
-        throw std::runtime_error("duplicate task");
+        boost::format message("task '%1%' is a duplicate of '%2%'");
+        throw std::runtime_error((message % task % it->second->name()).str());
     }
 }
 
 Json::Value engine_t::stop() {
     Json::Value result;
 
-    syslog(LOG_INFO, "engine %s [%s]: stopping", id().c_str(), m_name.c_str()); 
+    syslog(LOG_INFO, "engine [%s]: stopping", m_name.c_str()); 
     
     if(m_server) {
         m_request_watcher->stop();
@@ -162,7 +166,7 @@ Json::Value engine_t::stop() {
     m_message_watcher.stop();
     m_message_processor.stop();
 
-    result["engine:status"] = "stopped";
+    result["engine"]["status"] = "stopped";
     
     return result;
 }
@@ -179,23 +183,23 @@ Json::Value engine_t::stats() {
     Json::Value results;
 
     results["route"] = m_route;
-    
-    results["threads:total"] = static_cast<Json::UInt>(m_threads.size());
-    results["threads:active"] = static_cast<Json::UInt>(std::count_if(
-            m_threads.begin(),
-            m_threads.end(),
-            nonempty_queue()));
-    results["threads:limit"] = m_config.worker_limit;
-    
+
+    results["threads"]["total"] = static_cast<Json::UInt>(m_threads.size());
+    results["threads"]["active"] = static_cast<Json::UInt>(std::count_if(
+        m_threads.begin(),
+        m_threads.end(),
+        nonempty_queue()));
+    results["threads"]["limit"] = m_config.worker_limit;
+
     thread_map_t::const_iterator it(std::max_element(
             m_threads.begin(), 
             m_threads.end(), 
             shortest_queue()));
 
-    results["queues:deepest"] = it != m_threads.end() ?
+    results["queues"]["deepest"] = it != m_threads.end() ?
         static_cast<Json::UInt>(it->second->queue_size()) : 
         0;
-    results["queues:limit"] = m_config.queue_depth;
+    results["queues"]["limit"] = m_config.queue_depth;
 
     return results;
 }
@@ -230,16 +234,16 @@ Json::Value engine_t::past(const std::string& task) {
 void engine_t::reap(unique_id_t::type worker_id) {
     thread_map_t::iterator worker(m_threads.find(worker_id));
 
-    // TODO: Re-queue these requests instead of dropping them
+    // TODO: Re-assign tasks
     if(worker != m_threads.end()) {
-        Json::Value object;
+        Json::Value object(Json::objectValue);
 
         object["error"] = "timed out";
         
         while(worker->second->queue_size()) {
             worker->second->queue_pop()->push(object);
         }
-
+        
         m_threads.erase(worker);
     }
 }
@@ -278,7 +282,7 @@ void engine_t::respond(const route_t& route, const Json::Value& object) {
 }
 
 void engine_t::publish(const std::string& key, const Json::Value& object) {
-    if(m_pubsub) {
+    if(m_pubsub && object.isObject()) {
         zmq::message_t message;
         ev::tstamp now = ev::get_default_loop().now();
 
@@ -376,15 +380,10 @@ void engine_t::process_message(ev::idle& w, int revents) {
                     m_threads.erase(thread);
                     break;
                 }
-
-                default:
-                    syslog(LOG_CRIT, "engine %s [%s]: [%s()] unknown message",
-                        id().c_str(), m_name.c_str(), __func__);
-                    abort();
             }
         } else {
-            syslog(LOG_WARNING, "engine %s [%s]: [%s()] dropping messages for thread %s", 
-                id().c_str(), m_name.c_str(), __func__, thread_id.c_str());
+            syslog(LOG_WARNING, "engine [%s]: dropping messages for orphaned worker %s", 
+                m_name.c_str(), thread_id.c_str());
             m_messages.ignore();
         }
     } else {

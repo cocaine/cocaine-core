@@ -1,7 +1,8 @@
+#include <boost/algorithm/string/join.hpp>
+
 #include "cocaine/core.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/future.hpp"
-#include "cocaine/security/digest.hpp"
 #include "cocaine/storage.hpp"
 
 using namespace cocaine::core;
@@ -18,9 +19,9 @@ core_t::core_t():
     int minor, major, patch;
     zmq_version(&major, &minor, &patch);
 
-    syslog(LOG_INFO, "core: using libzmq version %d.%d.%d", major, minor, patch);
     syslog(LOG_INFO, "core: using libev version %d.%d", ev_version_major(), ev_version_minor());
     syslog(LOG_INFO, "core: using libmsgpack version %s", msgpack_version());
+    syslog(LOG_INFO, "core: using libzmq version %d.%d.%d", major, minor, patch);
 
     // Fetching the hostname
     char hostname[256];
@@ -97,7 +98,7 @@ void core_t::reload(ev::sig& sig, int revents) {
     try {
         recover();
     } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "core: [%s()] storage failure - %s", __func__, e.what());
+        syslog(LOG_ERR, "core: failed to reload apps due to the storage failure - %s", e.what());
     }
 }
 
@@ -109,7 +110,7 @@ void core_t::request(ev::io& w, int revents) {
 
 void core_t::process_request(ev::idle& w, int revents) {
     if(m_server.pending()) {
-        zmq::message_t message, signature(0);
+        zmq::message_t message, signature;
         lines::route_t route;
         std::string request;
 
@@ -175,12 +176,9 @@ void core_t::process_request(ev::idle& w, int revents) {
 
                 dispatch(response, root);
             } catch(const std::exception& e) {
-                syslog(LOG_ERR, "core: [%s()] %s", __func__, e.what());
                 response->abort(e.what());
             }
         } else {
-            syslog(LOG_ERR, "core: [%s()] malformed json - %s", __func__,
-                reader.getFormatedErrorMessages().c_str());
             response->abort(reader.getFormatedErrorMessages());
         }
     } else {
@@ -195,7 +193,7 @@ void core_t::dispatch(boost::shared_ptr<lines::response_t> response, const Json:
         Json::Value apps(root["apps"]);
 
         if(!apps.isObject() || !apps.size()) {
-            throw std::runtime_error("no apps has been defined");
+            throw std::runtime_error("no apps has been specified");
         }
 
         // Iterate over all the apps
@@ -214,10 +212,8 @@ void core_t::dispatch(boost::shared_ptr<lines::response_t> response, const Json:
                     throw std::runtime_error("app manifest expected");
                 }
             } catch(const std::runtime_error& e) {
-                syslog(LOG_ERR, "core: [%s()] %s", __func__, e.what());
                 response->abort(app, e.what());
             } catch(const zmq::error_t& e) {
-                syslog(LOG_ERR, "core: [%s()] network error - %s", __func__, e.what());
                 response->abort(app, e.what());
             }
         }
@@ -234,12 +230,11 @@ void core_t::dispatch(boost::shared_ptr<lines::response_t> response, const Json:
             try {
                 response->push(app, delete_engine(app));
             } catch(const std::runtime_error& e) {
-                syslog(LOG_ERR, "core: [%s()] %s", __func__, e.what());
                 response->abort(app, e.what());
             }
         }
     } else if(action == "statistics") {
-        response->push("", stats());
+        response->push(stats());
     } else {
         throw std::runtime_error("unsupported action");
     }
@@ -260,6 +255,8 @@ Json::Value core_t::create_engine(const std::string& name, const Json::Value& ma
     try {
         storage_t::instance()->put("apps", name, manifest);
     } catch(const std::runtime_error& e) {
+        syslog(LOG_ERR, "core: failed to create '%s' engine due to the storage failure - %s",
+            name.c_str(), e.what());
         engine->stop();
         throw;
     }
@@ -277,7 +274,13 @@ Json::Value core_t::delete_engine(const std::string& name) {
         throw std::runtime_error("the specified app is not active");
     }
 
-    storage_t::instance()->remove("apps", name);
+    try {
+        storage_t::instance()->remove("apps", name);
+    } catch(const std::runtime_error& e) {
+        syslog(LOG_ERR, "core: failed to destroy '%s' engine due to the storage failure - %s",
+            name.c_str(), e.what());
+        throw;
+    }
 
     Json::Value result(engine->second->stop());
     m_engines.erase(engine);
@@ -337,20 +340,16 @@ void core_t::recover() {
     Json::Value root(storage_t::instance()->all("apps"));
 
     if(root.size()) {
-        syslog(LOG_NOTICE, "core: loaded %d apps(s)", root.size());
-       
         Json::Value::Members apps(root.getMemberNames());
-
+        
+        syslog(LOG_NOTICE, "core: recovering %d apps(s): %s", root.size(),
+            boost::algorithm::join(apps, ", ").c_str());
+        
         for(Json::Value::Members::iterator it = apps.begin(); it != apps.end(); ++it) {
             std::string app(*it);
             
-            try {
-                create_engine(app, root[app]);
-            } catch(const std::runtime_error& e) {
-                syslog(LOG_ERR, "core: [%s()] %s", __func__, e.what());
-            } catch(const zmq::error_t& e) {
-                syslog(LOG_ERR, "core: [%s()] network error - %s", __func__, e.what());
-            }
+            // NOTE: Intentionally not catching anything here too
+            create_engine(app, root[app]);
         }
     }
 }

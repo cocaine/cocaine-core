@@ -13,8 +13,8 @@ class driver_base_t:
 {
     public:
         virtual ~driver_base_t() {
-            syslog(LOG_DEBUG, "driver %s [%s]: destructing",
-                m_name.c_str(), m_parent->id().c_str());
+            syslog(LOG_DEBUG, "driver [%s:%s]: destructing",
+                m_parent->name().c_str(), m_name.c_str());
             
             if(m_watcher.get() && m_watcher->is_active()) {
                 m_watcher->stop();
@@ -22,7 +22,8 @@ class driver_base_t:
         }
 
         void start() {
-            syslog(LOG_DEBUG, "driver %s [%s]: starting", m_name.c_str(), m_parent->id().c_str());
+            syslog(LOG_DEBUG, "driver [%s:%s]: starting",
+                m_parent->name().c_str(), m_name.c_str());
             
             m_watcher.reset(new WatcherType());
             m_watcher->set(this);
@@ -43,8 +44,8 @@ class driver_base_t:
                         m_name))
                 );
             } catch(const std::runtime_error& e) {
-                syslog(LOG_ERR, "driver %s [%s]: [%s()] %s",
-                    m_name.c_str(), m_parent->id().c_str(), __func__, e.what());
+                syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
+                    m_parent->name().c_str(), m_name.c_str(), e.what());
             }
         }
    
@@ -53,8 +54,8 @@ class driver_base_t:
             abstract_driver_t(name),
             m_parent(parent)
         {
-            syslog(LOG_DEBUG, "driver %s [%s]: constructing",
-                m_name.c_str(), m_parent->id().c_str());
+            syslog(LOG_DEBUG, "driver [%s:%s]: constructing",
+                m_parent->name().c_str(), m_name.c_str());
         }
 
     protected:

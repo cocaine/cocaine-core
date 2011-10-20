@@ -25,8 +25,7 @@ signatures_t::signatures_t():
         Json::Value object(keys[identity]);
 
         if(!object["key"].isString() || object["key"].empty()) {
-            syslog(LOG_ERR, "security: [%s()] key for user '%s' is malformed",
-                __func__, identity.c_str());
+            syslog(LOG_ERR, "security: key for user '%s' is malformed", identity.c_str());
             continue;
         }
 
@@ -41,8 +40,8 @@ signatures_t::signatures_t():
         if(pkey != NULL) {
             m_keys.insert(std::make_pair(identity, pkey));
         } else { 
-            syslog(LOG_ERR, "security: [%s()] key for user '%s' is invalid - %s",
-                __func__, identity.c_str(), ERR_reason_error_string(ERR_get_error()));
+            syslog(LOG_ERR, "security: key for user '%s' is invalid - %s",
+                identity.c_str(), ERR_reason_error_string(ERR_get_error()));
         }
 
         BIO_free(bio);

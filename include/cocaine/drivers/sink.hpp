@@ -14,7 +14,7 @@ class sink_t:
             m_endpoint(args.get("endpoint", "").asString())
         {
             if(m_endpoint.empty()) {
-                throw std::runtime_error("no endpoint specified");
+                throw std::runtime_error("no endpoint has been specified for the sink driver");
             }
 
             m_id = "sink:" + security::digest_t().get(m_name + m_endpoint);
@@ -40,8 +40,8 @@ class sink_t:
                             )
                         ));
                 } catch(const std::runtime_error& e) {
-                    syslog(LOG_ERR, "driver %s [%s]: [%s()] %s",
-                        m_name.c_str(), m_parent->id().c_str(), __func__, e.what());
+                    syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
+                        m_parent->name().c_str(), m_name.c_str(), e.what());
                 }
             }
         }

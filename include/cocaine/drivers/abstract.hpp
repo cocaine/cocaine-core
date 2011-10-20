@@ -15,6 +15,10 @@ class abstract_driver_t:
             return m_id;
         }
 
+        inline std::string name() const {
+            return m_name;
+        }
+
     protected:
         abstract_driver_t(const std::string& name):
             m_name(name)

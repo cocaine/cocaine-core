@@ -17,7 +17,7 @@ thread_t::thread_t(boost::shared_ptr<engine_t> parent, boost::shared_ptr<oversee
     m_parent(parent),
     m_overseer(overseer)
 {
-    syslog(LOG_DEBUG, "thread %s [%s]: constructing", id().c_str(), m_parent->id().c_str());
+    syslog(LOG_DEBUG, "thread [%s:%s]: constructing", m_parent->name().c_str(), id().c_str());
    
     try {
 #if BOOST_VERSION >= 103500
@@ -35,19 +35,17 @@ thread_t::thread_t(boost::shared_ptr<engine_t> parent, boost::shared_ptr<oversee
 }
 
 thread_t::~thread_t() {
-    syslog(LOG_DEBUG, "thread %s [%s]: destructing", id().c_str(), m_parent->id().c_str());
+    syslog(LOG_DEBUG, "thread [%s:%s]: destructing", m_parent->name().c_str(), id().c_str());
     
     if(m_heartbeat.is_active()) {
         m_heartbeat.stop();
     }
 
     if(m_thread) {
-        syslog(LOG_DEBUG, "thread %s [%s]: trying to join", id().c_str(), m_parent->id().c_str());
-
 #if BOOST_VERSION >= 103500
         if(!m_thread->timed_join(boost::posix_time::seconds(5))) {
-            syslog(LOG_WARNING, "thread %s [%s]: thread is unresponsive",
-                id().c_str(), m_parent->id().c_str());
+            syslog(LOG_WARNING, "thread [%s:%s]: thread is unresponsive",
+                m_parent->name().c_str(), id().c_str());
             m_thread->interrupt();
         }
 #else
@@ -57,7 +55,8 @@ thread_t::~thread_t() {
 }
 
 void thread_t::timeout(ev::timer& w, int revents) {
-    syslog(LOG_ERR, "thread %s [%s]: thread missed a heartbeat", id().c_str(), m_parent->id().c_str());
+    syslog(LOG_ERR, "thread [%s:%s]: thread missed a heartbeat",
+        m_parent->name().c_str(), id().c_str());
 
 #if BOOST_VERSION >= 103500
     m_thread->interrupt();
@@ -65,14 +64,6 @@ void thread_t::timeout(ev::timer& w, int revents) {
     
     m_thread.reset();
 
-    // Send error to the client of the timed out thread
-    Json::Value object(Json::objectValue);
-
-    object["error"] = "timed out";
-    m_queue.front()->push(object);
-    m_queue.pop();
-
-    // The parent will requeue leftover the tasks to the other threads
     m_parent->reap(id());
 }
 
@@ -89,7 +80,7 @@ void thread_t::queue_push(boost::shared_ptr<future_t> future) {
 }
 
 boost::shared_ptr<future_t> thread_t::queue_pop() {
-    boost::shared_ptr<future_t> future = m_queue.front();
+    boost::shared_ptr<future_t> future(m_queue.front());
     m_queue.pop();
 
     return future;

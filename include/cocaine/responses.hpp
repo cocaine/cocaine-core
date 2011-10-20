@@ -11,17 +11,17 @@ class deferred_t:
     public boost::enable_shared_from_this<deferred_t>
 {
     public:
+        inline void push(const Json::Value& object) {
+            m_root = object;
+        }
+
         inline void push(const std::string& key, const Json::Value& object) {
-            if(key.empty()) {
-                m_root = object;
-            } else {
-                m_root[key] = object;
-            }
+            m_root[key] = object;
         }
 
         template<class T>
         inline void wait(boost::shared_ptr<T> object) {
-            object->bind("", shared_from_this());
+            object->bind(shared_from_this());
         }
 
         template<class T>

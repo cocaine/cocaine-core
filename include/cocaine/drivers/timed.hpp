@@ -21,15 +21,7 @@ class timed_driver_base_t:
     
     private:
         static ev::tstamp thunk(ev_periodic* w, ev::tstamp now) {
-            T* driver = static_cast<T*>(w->data);
-
-            try {
-                return driver->reschedule(now);
-            } catch(const std::exception& e) {
-                syslog(LOG_ERR, "driver %s [%s]: [%s()] %s",
-                    driver->m_name.c_str(), driver->m_parent->id().c_str(), __func__, e.what());
-                return now;
-            }
+            return static_cast<T*>(w->data)->reschedule(now);
         }
 };
 
