@@ -71,8 +71,8 @@ class engine_t:
                     std::auto_ptr<thread_t> worker(
                         new thread_t(shared_from_this(), overseer));
 
-                    std::string worker_id(worker->id());
-                    boost::tie(thread, boost::tuples::ignore) = m_threads.insert(worker_id, worker);
+                    std::string id(worker->id());
+                    boost::tie(thread, boost::tuples::ignore) = m_threads.insert(id, worker);
                 } catch(const zmq::error_t& e) {
                     if(e.num() == EMFILE) {
                         throw std::runtime_error("core thread limit exceeded");
