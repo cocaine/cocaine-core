@@ -27,17 +27,14 @@ class engine_t:
     public lines::publisher_t
 {
     public:
-        typedef boost::ptr_map<const std::string, thread_t> thread_map_t;
+        typedef boost::ptr_map<
+            const std::string,
+            thread_t
+        > thread_map_t;
     
-        struct empty_queue {
-            bool operator()(thread_map_t::reference element) {
-                return element->second->queue_size() == 0;
-            }
-        };
-        
         struct shortest_queue {
             bool operator()(thread_map_t::reference left, thread_map_t::reference right) {
-                return left->second->queue_size() <= right->second->queue_size();
+                return left->second->queue().size() < right->second->queue().size();
             }
         };
 
@@ -56,12 +53,12 @@ class engine_t:
         boost::shared_ptr<lines::future_t> queue(const T& args) {
             boost::shared_ptr<lines::future_t> future(new lines::future_t());
             
-            thread_map_t::iterator thread(std::find_if(
+            thread_map_t::iterator thread(std::min_element(
                 m_threads.begin(),
                 m_threads.end(), 
-                empty_queue()));
+                shortest_queue()));
 
-            if(thread == m_threads.end() && m_threads.size() < m_config.worker_limit) {
+            if(thread == m_threads.end() || (thread->second->queue().size() > 0 && m_threads.size() < m_config.worker_limit)) {
                 try {
                     boost::shared_ptr<plugin::source_t> source(
                         core::registry_t::instance()->create(m_name, m_type, m_args));
@@ -70,33 +67,32 @@ class engine_t:
                     std::auto_ptr<thread_t> worker(
                         new thread_t(shared_from_this(), overseer));
 
-                    std::string id(worker->id());
-                    boost::tie(thread, boost::tuples::ignore) = m_threads.insert(id, worker);
+                    overseer->ensure();
+
+                    std::string worker_id(worker->id());
+                    boost::tie(thread, boost::tuples::ignore) = m_threads.insert(worker_id, worker);
                 } catch(const zmq::error_t& e) {
                     if(e.num() == EMFILE) {
-                        throw std::runtime_error("core thread limit exceeded");
+                        throw std::runtime_error("zeromq is overloaded");
                     } else {
                         throw;
                     }
                 }
-            } else if(thread == m_threads.end()) {
-                thread = std::min_element(
-                    m_threads.begin(),
-                    m_threads.end(), 
-                    shortest_queue());
-
-                if(thread->second->queue_size() >= m_config.queue_depth) {
-                    throw std::runtime_error("engine is overloaded");
-                }
+            } else if(thread->second->queue().size() >= m_config.queue_depth) {
+                throw std::runtime_error("engine is overloaded");
             }
             
-            thread->second->queue_push(future);
-
-            m_messages.send_multi(helpers::joint_view(
-                boost::make_tuple(
-                    lines::protect(thread->second->id())),
-                args));
-
+            m_messages.send_multi(
+                helpers::joint_view(
+                    boost::make_tuple(
+                        lines::protect(thread->second->id()),
+                        future->id()),
+                    args));
+            
+            thread->second->queue().insert(std::make_pair(
+                future->id(),
+                future));
+        
             ev::get_default_loop().feed_fd_event(m_messages.fd(), ev::READ);
 
             return future;

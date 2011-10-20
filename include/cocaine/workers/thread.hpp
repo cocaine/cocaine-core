@@ -1,8 +1,6 @@
 #ifndef COCAINE_WORKERS_THREAD_HPP
 #define COCAINE_WORKERS_THREAD_HPP
 
-#include <queue>
-
 #include <boost/thread.hpp>
 
 #include "cocaine/common.hpp"
@@ -16,6 +14,12 @@ class thread_t:
     public helpers::birth_control_t<thread_t>,
     public helpers::unique_id_t
 {
+    public:
+        typedef std::map<
+            const std::string,
+            boost::shared_ptr<lines::future_t>
+        > request_queue_t;
+
     public:        
         thread_t(boost::shared_ptr<engine_t> parent,
                  boost::shared_ptr<overseer_t> overseer);
@@ -24,9 +28,8 @@ class thread_t:
     public:
         void rearm(float timeout);
 
-        void queue_push(boost::shared_ptr<lines::future_t> future);
-        boost::shared_ptr<lines::future_t> queue_pop();
-        size_t queue_size() const;
+        request_queue_t& queue();
+        const request_queue_t& queue() const;
         
     private:
         void timeout(ev::timer& w, int revents);
@@ -36,8 +39,7 @@ class thread_t:
         boost::shared_ptr<overseer_t> m_overseer;
         boost::shared_ptr<boost::thread> m_thread;
 
-        typedef std::queue< boost::shared_ptr<lines::future_t> > response_queue_t;
-        response_queue_t m_queue;
+        request_queue_t m_queue;
 
         ev::timer m_heartbeat;
 };

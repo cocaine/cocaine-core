@@ -1,6 +1,8 @@
 #ifndef COCAINE_OVERSEER_HPP
 #define COCAINE_OVERSEER_HPP
 
+#include <boost/thread.hpp>
+
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/networking.hpp"
@@ -25,6 +27,8 @@ class overseer_t:
         void run();
 #endif
 
+        void ensure();
+
     private:
         // Event loop callback handling and dispatching
         void message(ev::io& w, int revents);
@@ -47,6 +51,11 @@ class overseer_t:
 
         // Data source
         boost::shared_ptr<plugin::source_t> m_source;
+
+        // Readiness signalling
+        boost::mutex m_mutex;
+        boost::unique_lock<boost::mutex> m_lock;
+        boost::condition_variable m_ready;
 };
 
 }}

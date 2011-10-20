@@ -51,7 +51,6 @@ core_t::core_t():
     m_request_watcher.set<core_t, &core_t::request>(this);
     m_request_watcher.start(m_server.fd(), EV_READ);
     m_request_processor.set<core_t, &core_t::process_request>(this);
-    m_request_processor.start();
 
     // Initialize signal watchers
     m_sigint.set<core_t, &core_t::terminate>(this);
@@ -295,10 +294,10 @@ Json::Value core_t::stats() {
         result["apps"][it->first] = it->second->stats();
     }
     
-    result["threads:total"] = engine::thread_t::objects_created;
+    result["threads:total"] = engine::thread_t::objects_alive;
 
     result["requests:total"] = lines::response_t::objects_created;
-    result["requests:pending"] = lines::response_t::objects_alive;
+    result["requests:pending"] = lines::response_t::objects_alive - 1;
 
     result["publications:total"] = lines::publication_t::objects_created;
     result["publications:pending"] = lines::publication_t::objects_alive;

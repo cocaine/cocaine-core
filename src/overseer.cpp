@@ -16,7 +16,8 @@ overseer_t::overseer_t(zmq::context_t& context, const std::string& name, boost::
     m_message_processor(m_loop),
     m_suicide_timer(m_loop),
     m_heartbeat_timer(m_loop),
-    m_source(source)
+    m_source(source),
+    m_lock(m_mutex)
 {
     // Connect to the engine's controlling socket and set the socket watcher
     m_messages.connect("inproc://engines/" + name);
@@ -44,7 +45,16 @@ void overseer_t::operator()() {
 #else
 void overseer_t::run() {
 #endif
+    {
+        boost::lock_guard<boost::mutex> lock(m_mutex);
+        m_ready.notify_one();
+    }
+
     m_loop.loop();
+}
+
+void overseer_t::ensure() {
+    m_ready.wait(m_lock);
 }
 
 void overseer_t::message(ev::io& w, int revents) {
@@ -56,9 +66,12 @@ void overseer_t::message(ev::io& w, int revents) {
 void overseer_t::process_message(ev::idle& w, int revents) {
     if(m_messages.pending()) {
         Json::Value result;
-        
+        std::string request_id;
         unsigned int code = 0;
-        m_messages.recv(code);
+
+        boost::tuple<std::string&, unsigned int&> tier(request_id, code);
+        
+        m_messages.recv_multi(tier);
 
         switch(code) {
             case INVOKE: {
@@ -84,13 +97,17 @@ void overseer_t::process_message(ev::idle& w, int revents) {
                 
                 m_messages.send_multi(boost::make_tuple(
                     FUTURE,
+                    request_id,
                     result)); 
-
+                m_messages.send(HEARTBEAT);
+                
+                m_loop.feed_fd_event(m_messages.fd(), ev::READ);
+                
                 m_suicide_timer.stop();
                 m_suicide_timer.start(config_t::get().engine.suicide_timeout);
-
-                break;
             }
+
+            break;
             
             case TERMINATE:
                 terminate();

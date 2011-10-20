@@ -23,7 +23,7 @@ engine_t::engine_t(zmq::context_t& context, const std::string& name):
     m_messages.bind("inproc://engines/" + m_name);
     
     m_message_watcher.set<engine_t, &engine_t::message>(this);
-    m_message_watcher.start(m_messages.fd(), EV_READ);
+    m_message_watcher.start(m_messages.fd(), ev::READ);
     m_message_processor.set<engine_t, &engine_t::process_message>(this);
     m_message_processor.start();
 }
@@ -86,7 +86,6 @@ Json::Value engine_t::run(const Json::Value& manifest) {
         m_request_watcher->start(m_server->fd(), ev::READ);
         m_request_processor.reset(new ev::idle());
         m_request_processor->set<engine_t, &engine_t::process_request>(this);
-        m_request_processor->start();
     }
 
     if(!tasks.isNull() && tasks.size()) {
@@ -159,6 +158,7 @@ Json::Value engine_t::stop() {
     for(thread_map_t::iterator it = m_threads.begin(); it != m_threads.end(); ++it) {
         m_messages.send_multi(boost::make_tuple(
             protect(it->first),
+            unique_id_t().id(),
             TERMINATE));
         m_threads.erase(it);
     }
@@ -174,7 +174,7 @@ Json::Value engine_t::stop() {
 namespace {
     struct nonempty_queue {
         bool operator()(engine_t::thread_map_t::reference thread) {
-            return thread->second->queue_size() != 0;
+            return thread->second->queue().size() != 0;
         }
     };
 }
@@ -184,12 +184,16 @@ Json::Value engine_t::stats() {
 
     results["route"] = m_route;
 
-    results["threads"]["total"] = static_cast<Json::UInt>(m_threads.size());
-    results["threads"]["active"] = static_cast<Json::UInt>(std::count_if(
+    results["threads:total"] = static_cast<Json::UInt>(m_threads.size());
+    results["threads:active"] = static_cast<Json::UInt>(std::count_if(
         m_threads.begin(),
         m_threads.end(),
         nonempty_queue()));
-    results["threads"]["limit"] = m_config.worker_limit;
+    results["threads:limit"] = m_config.worker_limit;
+
+    for(thread_map_t::const_iterator it = m_threads.begin(); it != m_threads.end(); ++it) {
+        results["threads:queues"][it->first] = static_cast<Json::UInt>(it->second->queue().size());
+    }
 
     thread_map_t::const_iterator it(std::max_element(
             m_threads.begin(), 
@@ -197,7 +201,7 @@ Json::Value engine_t::stats() {
             shortest_queue()));
 
     results["queues"]["deepest"] = it != m_threads.end() ?
-        static_cast<Json::UInt>(it->second->queue_size()) : 
+        static_cast<Json::UInt>(it->second->queue().size()) : 
         0;
     results["queues"]["limit"] = m_config.queue_depth;
 
@@ -236,14 +240,6 @@ void engine_t::reap(unique_id_t::type worker_id) {
 
     // TODO: Re-assign tasks
     if(worker != m_threads.end()) {
-        Json::Value object(Json::objectValue);
-
-        object["error"] = "timed out";
-        
-        while(worker->second->queue_size()) {
-            worker->second->queue_pop()->push(object);
-        }
-        
         m_threads.erase(worker);
     }
 }
@@ -362,27 +358,35 @@ void engine_t::process_message(ev::idle& w, int revents) {
         if(thread != m_threads.end()) {
             switch(code) {
                 case FUTURE: {
-                    boost::shared_ptr<future_t> future(thread->second->queue_pop());
+                    unique_id_t::type request_id;
                     Json::Value object;
-                            
-                    m_messages.recv(object);
-                    future->push(object);
 
-                    break;
+                    boost::tuple<std::string&, Json::Value&> tier(request_id, object);
+                    m_messages.recv_multi(tier);
+
+                    thread_t::request_queue_t::iterator request(
+                        thread->second->queue().find(request_id));
+                           
+                    if(request != thread->second->queue().end()) {
+                        request->second->push(object);
+                        thread->second->queue().erase(request);
+                    } else {
+                        syslog(LOG_ERR, "engine [%s]: received a response from a wrong worker", m_name.c_str());
+                    }
                 }
+                
+                break;
 
-                case HEARTBEAT: {
+                case HEARTBEAT:
                     thread->second->rearm(m_config.heartbeat_timeout);
                     break;
-                }
 
-                case SUICIDE: {
+                case SUICIDE:
                     m_threads.erase(thread);
                     break;
-                }
             }
         } else {
-            syslog(LOG_WARNING, "engine [%s]: dropping messages for orphaned worker %s", 
+            syslog(LOG_ERR, "engine [%s]: dropping messages for orphaned worker %s", 
                 m_name.c_str(), thread_id.c_str());
             m_messages.ignore();
         }

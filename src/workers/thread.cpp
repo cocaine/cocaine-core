@@ -74,17 +74,10 @@ void thread_t::rearm(float timeout) {
     m_heartbeat.start(timeout);
 }
 
-void thread_t::queue_push(boost::shared_ptr<future_t> future) {
-    m_queue.push(future);
+thread_t::request_queue_t& thread_t::queue() {
+    return m_queue;
 }
 
-boost::shared_ptr<future_t> thread_t::queue_pop() {
-    boost::shared_ptr<future_t> future(m_queue.front());
-    m_queue.pop();
-
-    return future;
-}
-
-size_t thread_t::queue_size() const {
-    return m_queue.size();
+const thread_t::request_queue_t& thread_t::queue() const {
+    return m_queue;
 }
