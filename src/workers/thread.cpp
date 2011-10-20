@@ -63,7 +63,6 @@ void thread_t::timeout(ev::timer& w, int revents) {
 #endif
     
     m_thread.reset();
-
     m_parent->reap(id());
 }
 

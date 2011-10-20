@@ -29,9 +29,15 @@ class engine_t:
     public:
         typedef boost::ptr_map<const std::string, thread_t> thread_map_t;
     
+        struct empty_queue {
+            bool operator()(thread_map_t::reference element) {
+                return element->second->queue_size() == 0;
+            }
+        };
+        
         struct shortest_queue {
             bool operator()(thread_map_t::reference left, thread_map_t::reference right) {
-                return left->second->queue_size() < right->second->queue_size();
+                return left->second->queue_size() <= right->second->queue_size();
             }
         };
 
@@ -49,20 +55,13 @@ class engine_t:
         template<class T>
         boost::shared_ptr<lines::future_t> queue(const T& args) {
             boost::shared_ptr<lines::future_t> future(new lines::future_t());
-
-            // Try to pick a thread
-            thread_map_t::iterator thread(std::min_element(
+            
+            thread_map_t::iterator thread(std::find_if(
                 m_threads.begin(),
                 m_threads.end(), 
-                shortest_queue()));
+                empty_queue()));
 
-            // If the selector has failed to do that...
-            if(thread == m_threads.end() || thread->second->queue_size() >= m_config.queue_depth) {
-                // ...spawn a new one unless we hit the thread limit
-                if(m_threads.size() >= m_config.worker_limit) {
-                    throw std::runtime_error("engine thread pool limit exceeded");
-                }
-
+            if(thread == m_threads.end() && m_threads.size() < m_config.worker_limit) {
                 try {
                     boost::shared_ptr<plugin::source_t> source(
                         core::registry_t::instance()->create(m_name, m_type, m_args));
@@ -79,6 +78,15 @@ class engine_t:
                     } else {
                         throw;
                     }
+                }
+            } else if(thread == m_threads.end()) {
+                thread = std::min_element(
+                    m_threads.begin(),
+                    m_threads.end(), 
+                    shortest_queue());
+
+                if(thread->second->queue_size() >= m_config.queue_depth) {
+                    throw std::runtime_error("engine is overloaded");
                 }
             }
             

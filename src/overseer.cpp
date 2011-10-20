@@ -81,14 +81,14 @@ void overseer_t::process_message(ev::idle& w, int revents) {
                 }
 
                 boost::this_thread::interruption_point();
+                
+                m_messages.send_multi(boost::make_tuple(
+                    FUTURE,
+                    result)); 
 
                 m_suicide_timer.stop();
                 m_suicide_timer.start(config_t::get().engine.suicide_timeout);
 
-                m_messages.send_multi(boost::make_tuple(
-                    FUTURE,
-                    result)); 
-                
                 break;
             }
             
