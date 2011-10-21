@@ -22,7 +22,7 @@ overseer_t::overseer_t(zmq::context_t& context, const std::string& name, boost::
 {
     m_messages.connect("inproc://engines/" + m_name);
     m_message_watcher.set<overseer_t, &overseer_t::message>(this);
-    m_message_watcher.start(m_messages.fd(), EV_READ);
+    m_message_watcher.start(m_messages.fd(), ev::READ);
         
     m_message_processor.set<overseer_t, &overseer_t::process_message>(this);
     m_message_processor.start();
@@ -45,7 +45,9 @@ void overseer_t::run() {
 #endif
     {
         boost::lock_guard<boost::mutex> lock(m_mutex);
-        
+
+        m_messages.send(HEARTBEAT);
+
         timespec tv = { 0, 150000000 };
         nanosleep(&tv, NULL);
 

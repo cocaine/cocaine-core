@@ -30,7 +30,7 @@ class thread_t:
 
         request_queue_t& queue();
         const request_queue_t& queue() const;
-        
+
     private:
         void timeout(ev::timer& w, int revents);
 
