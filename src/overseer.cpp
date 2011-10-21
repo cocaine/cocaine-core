@@ -92,7 +92,7 @@ void overseer_t::process_message(ev::idle& w, int revents) {
                         result = m_source->invoke(task, blob.data(), blob.size());
                     }
                 } catch(const std::exception& e) {
-                    syslog(LOG_ERR, "thread [%s:%s]: source invocation failed - %s", 
+                    syslog(LOG_ERR, "worker [%s:%s]: source invocation failed - %s", 
                         m_name.c_str(), id().c_str(), e.what());
                     result["error"] = e.what();
                 }
@@ -114,13 +114,16 @@ void overseer_t::process_message(ev::idle& w, int revents) {
                 
                 m_suicide_timer.stop();
                 m_suicide_timer.start(config_t::get().engine.suicide_timeout);
+                break;
             }
             
-            break;
-
             case TERMINATE:
                 terminate();
                 return;
+
+            default:
+                syslog(LOG_DEBUG, "worker [%s:%s]: trash on channel", 
+                    m_name.c_str(), id().c_str());
         }
     } else {
         m_message_processor.stop();

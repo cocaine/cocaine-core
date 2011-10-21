@@ -17,7 +17,7 @@ thread_t::thread_t(boost::shared_ptr<engine_t> parent, boost::shared_ptr<oversee
     m_parent(parent),
     m_overseer(overseer)
 {
-    syslog(LOG_DEBUG, "thread [%s:%s]: constructing", m_parent->name().c_str(), id().c_str());
+    syslog(LOG_DEBUG, "worker [%s:%s]: constructing", m_parent->name().c_str(), id().c_str());
    
     try {
 #if BOOST_VERSION >= 103500
@@ -35,7 +35,7 @@ thread_t::thread_t(boost::shared_ptr<engine_t> parent, boost::shared_ptr<oversee
 }
 
 thread_t::~thread_t() {
-    syslog(LOG_DEBUG, "thread [%s:%s]: destructing", m_parent->name().c_str(), id().c_str());
+    syslog(LOG_DEBUG, "worker [%s:%s]: destructing", m_parent->name().c_str(), id().c_str());
     
     if(m_heartbeat.is_active()) {
         m_heartbeat.stop();
@@ -44,7 +44,7 @@ thread_t::~thread_t() {
     if(m_thread) {
 #if BOOST_VERSION >= 103500
         if(!m_thread->timed_join(boost::posix_time::seconds(5))) {
-            syslog(LOG_WARNING, "thread [%s:%s]: thread is unresponsive",
+            syslog(LOG_WARNING, "worker [%s:%s]: worker is unresponsive",
                 m_parent->name().c_str(), id().c_str());
             m_thread->interrupt();
         }
@@ -55,7 +55,7 @@ thread_t::~thread_t() {
 }
 
 void thread_t::timeout(ev::timer& w, int revents) {
-    syslog(LOG_ERR, "thread [%s:%s]: thread missed a heartbeat",
+    syslog(LOG_ERR, "worker [%s:%s]: worker missed a heartbeat",
         m_parent->name().c_str(), id().c_str());
 
 #if BOOST_VERSION >= 103500

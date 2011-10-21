@@ -95,6 +95,7 @@ class engine_t:
                 future->id(),
                 future));
         
+            // XXX: Damn, ZeroMQ, why are you so strange? 
             ev::get_default_loop().feed_fd_event(m_messages.fd(), ev::READ);
 
             return future;

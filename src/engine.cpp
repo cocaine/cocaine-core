@@ -377,10 +377,10 @@ void engine_t::process_message(ev::idle& w, int revents) {
                     } else {
                         syslog(LOG_ERR, "engine [%s]: received a response from a wrong worker", m_app_cfg.name.c_str());
                     }
+                    
+                    break;
                 }
                 
-                break;
-
                 case HEARTBEAT:
                     worker->second->rearm(m_pool_cfg.heartbeat_timeout);
                     break;
@@ -388,6 +388,9 @@ void engine_t::process_message(ev::idle& w, int revents) {
                 case SUICIDE:
                     m_pool.erase(worker);
                     break;
+
+                default:
+                    syslog(LOG_DEBUG, "engine [%s]: trash on channel", m_app_cfg.name.c_str());
             }
         } else {
             syslog(LOG_ERR, "engine [%s]: dropping messages for orphaned worker %s", 
