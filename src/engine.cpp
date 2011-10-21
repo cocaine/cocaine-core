@@ -58,14 +58,14 @@ Json::Value engine_t::run(const Json::Value& manifest) {
     m_app_cfg.pubsub_endpoint = manifest["pubsub"]["endpoint"].asString();
 
     m_pool_cfg.heartbeat_timeout = manifest["engine"].get("heartbeat-timeout",
-        config_t::get().engine.heartbeat_timeout).asUInt();
-    m_pool_cfg.heartbeat_timeout = manifest["engine"].get("suicide-timeout",
-        config_t::get().engine.suicide_timeout).asUInt();
-    m_pool_cfg.history_limit = manifest["engine"].get("history-depth",
+        config_t::get().engine.heartbeat_timeout).asDouble();
+    m_pool_cfg.suicide_timeout = manifest["engine"].get("suicide-timeout",
+        config_t::get().engine.suicide_timeout).asDouble();
+    m_pool_cfg.history_limit = manifest["engine"].get("history-limit",
         config_t::get().engine.history_limit).asUInt();
-    m_pool_cfg.pool_limit = manifest["engine"].get("worker-limit",
+    m_pool_cfg.pool_limit = manifest["engine"].get("pool-limit",
         config_t::get().engine.pool_limit).asUInt();
-    m_pool_cfg.queue_limit = manifest["engine"].get("queue-depth",
+    m_pool_cfg.queue_limit = manifest["engine"].get("queue-limit",
         config_t::get().engine.queue_limit).asUInt();
 
     if(!m_app_cfg.server_endpoint.empty()) {
@@ -244,6 +244,14 @@ void engine_t::reap(unique_id_t::type worker_id) {
 
     // TODO: Re-assign tasks
     if(worker != m_pool.end()) {
+        Json::Value object(Json::objectValue);
+
+        object["error"] = "timeout";
+
+        for(worker_type::request_queue_t::iterator it = worker->second->queue().begin(); it != worker->second->queue().end(); ++it) {
+            it->second->push(object);
+        }
+        
         m_pool.erase(worker);
     }
 }

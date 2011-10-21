@@ -31,7 +31,7 @@ overseer_t::overseer_t(zmq::context_t& context, const std::string& name, boost::
     m_suicide_timer.start(config_t::get().engine.suicide_timeout);
 
     m_heartbeat_timer.set<overseer_t, &overseer_t::heartbeat>(this);
-    m_heartbeat_timer.start(5.0, 5.0);
+    m_heartbeat_timer.start(0.0, 5.0);
 }
 
 overseer_t::~overseer_t() {
@@ -46,11 +46,9 @@ void overseer_t::run() {
     {
         boost::lock_guard<boost::mutex> lock(m_mutex);
         
-        // NOTE: This is a very special heartbeat, as it turns out that
-        // without it, ZeroMQ will ocasionally loose first messages sent 
-        // out from the thread
-        m_messages.send(HEARTBEAT);
-        
+        timespec tv = { 0, 150000000 };
+        nanosleep(&tv, NULL);
+
         m_ready.notify_one();
     }
 
@@ -104,16 +102,12 @@ void overseer_t::process_message(ev::idle& w, int revents) {
                     request_id,
                     result));
 
-                // NOTE: A heartbeat after every successful invocation is here 
-                // to ensure that engine wouldn't kill the thread as a unresponive
-                // one in case we have a high amount of task traffic 
-                m_messages.send(HEARTBEAT);
-               
                 // XXX: Damn, ZeroMQ, why are you so strange? 
                 m_loop.feed_fd_event(m_messages.fd(), ev::READ);
                 
                 m_suicide_timer.stop();
                 m_suicide_timer.start(config_t::get().engine.suicide_timeout);
+                
                 break;
             }
             

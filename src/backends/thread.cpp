@@ -29,8 +29,9 @@ thread_t::thread_t(boost::shared_ptr<engine_t> parent, boost::shared_ptr<oversee
         throw std::runtime_error("system thread limit exceeded");
     }
 
-    // First heartbeat is only to ensure that the thread has started
     m_heartbeat.set<thread_t, &thread_t::timeout>(this);
+    
+    // First heartbeat is only to ensure that the thread has started
     rearm(10.);
 }
 
@@ -63,6 +64,8 @@ void thread_t::timeout(ev::timer& w, int revents) {
 #endif
     
     m_thread.reset();
+
+    // This will signal timeouts to all the clients and destroy the object
     m_parent->reap(id());
 }
 
