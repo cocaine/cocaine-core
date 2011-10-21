@@ -93,7 +93,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/networking
     src/overseer
     src/registry
-    src/workers/thread)
+    src/backends/thread)
 
 TARGET_LINK_LIBRARIES(cocaine-core
     cocaine-core-config

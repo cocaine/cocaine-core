@@ -2,10 +2,10 @@
     #include <boost/bind.hpp>
 #endif
 
+#include "cocaine/backends/thread.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/future.hpp"
 #include "cocaine/overseer.hpp"
-#include "cocaine/workers/thread.hpp"
 
 using namespace cocaine::engine;
 using namespace cocaine::helpers;

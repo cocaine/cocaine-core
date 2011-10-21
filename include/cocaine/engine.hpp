@@ -1,13 +1,13 @@
 #ifndef COCAINE_ENGINE_HPP
 #define COCAINE_ENGINE_HPP
 
+#include "cocaine/backends/thread.hpp"
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/future.hpp"
 #include "cocaine/networking.hpp"
 #include "cocaine/overseer.hpp"
 #include "cocaine/registry.hpp"
-#include "cocaine/workers/thread.hpp"
 
 // Driver types
 #define AUTO        1   /* do something every n milliseconds */
@@ -27,13 +27,15 @@ class engine_t:
     public lines::publisher_t
 {
     public:
+        typedef thread_t worker_type;
+
         typedef boost::ptr_map<
             const std::string,
-            thread_t
-        > thread_map_t;
+            worker_type
+        > pool_t;
     
         struct shortest_queue {
-            bool operator()(thread_map_t::reference left, thread_map_t::reference right) {
+            bool operator()(pool_t::reference left, pool_t::reference right) {
                 return left->second->queue().size() < right->second->queue().size();
             }
         };
@@ -53,24 +55,24 @@ class engine_t:
         boost::shared_ptr<lines::future_t> queue(const T& args) {
             boost::shared_ptr<lines::future_t> future(new lines::future_t());
             
-            thread_map_t::iterator thread(std::min_element(
-                m_threads.begin(),
-                m_threads.end(), 
+            pool_t::iterator worker(std::min_element(
+                m_pool.begin(),
+                m_pool.end(), 
                 shortest_queue()));
 
-            if(thread == m_threads.end() || (thread->second->queue().size() > 0 && m_threads.size() < m_config.worker_limit)) {
+            if(worker == m_pool.end() || (worker->second->queue().size() > 0 && m_pool.size() < m_pool_cfg.pool_limit)) {
                 try {
                     boost::shared_ptr<plugin::source_t> source(
-                        core::registry_t::instance()->create(m_name, m_type, m_args));
+                        core::registry_t::instance()->create(m_app_cfg.name, m_app_cfg.type, m_app_cfg.args));
                     boost::shared_ptr<overseer_t> overseer(
-                        new overseer_t(m_context, m_name, source));
-                    std::auto_ptr<thread_t> worker(
-                        new thread_t(shared_from_this(), overseer));
+                        new overseer_t(m_context, m_app_cfg.name, source));
+                    std::auto_ptr<worker_type> object(
+                        new worker_type(shared_from_this(), overseer));
 
                     overseer->ensure();
 
-                    std::string worker_id(worker->id());
-                    boost::tie(thread, boost::tuples::ignore) = m_threads.insert(worker_id, worker);
+                    std::string worker_id(object->id());
+                    boost::tie(worker, boost::tuples::ignore) = m_pool.insert(worker_id, object);
                 } catch(const zmq::error_t& e) {
                     if(e.num() == EMFILE) {
                         throw std::runtime_error("zeromq is overloaded");
@@ -78,18 +80,18 @@ class engine_t:
                         throw;
                     }
                 }
-            } else if(thread->second->queue().size() >= m_config.queue_depth) {
+            } else if(worker->second->queue().size() >= m_pool_cfg.queue_limit) {
                 throw std::runtime_error("engine is overloaded");
             }
             
             m_messages.send_multi(
                 helpers::joint_view(
                     boost::make_tuple(
-                        lines::protect(thread->second->id()),
+                        lines::protect(worker->second->id()),
                         future->id()),
                     args));
             
-            thread->second->queue().insert(std::make_pair(
+            worker->second->queue().insert(std::make_pair(
                 future->id(),
                 future));
         
@@ -102,7 +104,7 @@ class engine_t:
         virtual void publish(const std::string& key, const Json::Value& object);
 
     public:
-        std::string name() const { return m_name; }
+        std::string name() const { return m_app_cfg.name; }
         zmq::context_t& context() { return m_context; }
 
     private:
@@ -124,12 +126,13 @@ class engine_t:
         ev::idle m_message_processor;
 
         // Application configuration
-        config_t::engine_config_t m_config;
+        config_t::engine_cfg_t m_pool_cfg;
 
-        const std::string m_name;
-        std::string m_type, m_args;
-        std::string m_route;
-        std::string m_callable;
+        struct {
+            std::string name, type, args;
+            std::string server_endpoint, callable, route;
+            std::string pubsub_endpoint;
+        } m_app_cfg;
        
         // Application I/O
         boost::shared_ptr<lines::socket_t> m_server, m_pubsub;
@@ -146,7 +149,7 @@ class engine_t:
         history_map_t m_histories;
         
         // Threads
-        thread_map_t m_threads;
+        pool_t m_pool;
 };
 
 }}

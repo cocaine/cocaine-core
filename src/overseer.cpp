@@ -11,6 +11,7 @@ using namespace cocaine::helpers;
 overseer_t::overseer_t(zmq::context_t& context, const std::string& name, boost::shared_ptr<source_t> source):
     m_context(context),
     m_messages(m_context, ZMQ_DEALER, id()),
+    m_name(name),
     m_loop(),
     m_message_watcher(m_loop),
     m_message_processor(m_loop),
@@ -19,19 +20,16 @@ overseer_t::overseer_t(zmq::context_t& context, const std::string& name, boost::
     m_source(source),
     m_lock(m_mutex)
 {
-    // Connect to the engine's controlling socket and set the socket watcher
-    m_messages.connect("inproc://engines/" + name);
-
+    m_messages.connect("inproc://engines/" + m_name);
     m_message_watcher.set<overseer_t, &overseer_t::message>(this);
     m_message_watcher.start(m_messages.fd(), EV_READ);
+        
     m_message_processor.set<overseer_t, &overseer_t::process_message>(this);
     m_message_processor.start();
 
-    // Initializing suicide timer
     m_suicide_timer.set<overseer_t, &overseer_t::timeout>(this);
     m_suicide_timer.start(config_t::get().engine.suicide_timeout);
 
-    // Initialize heartbeat timer
     m_heartbeat_timer.set<overseer_t, &overseer_t::heartbeat>(this);
     m_heartbeat_timer.start(5.0, 5.0);
 }
@@ -47,6 +45,12 @@ void overseer_t::run() {
 #endif
     {
         boost::lock_guard<boost::mutex> lock(m_mutex);
+        
+        // NOTE: This is a very special heartbeat, as it turns out that
+        // without it, ZeroMQ will ocasionally loose first messages sent 
+        // out from the thread
+        m_messages.send(HEARTBEAT);
+        
         m_ready.notify_one();
     }
 
@@ -88,8 +92,8 @@ void overseer_t::process_message(ev::idle& w, int revents) {
                         result = m_source->invoke(task, blob.data(), blob.size());
                     }
                 } catch(const std::exception& e) {
-                    syslog(LOG_ERR, "thread [%s]: source invocation failed - %s", 
-                        id().c_str(), e.what());
+                    syslog(LOG_ERR, "thread [%s:%s]: source invocation failed - %s", 
+                        m_name.c_str(), id().c_str(), e.what());
                     result["error"] = e.what();
                 }
 
@@ -98,17 +102,22 @@ void overseer_t::process_message(ev::idle& w, int revents) {
                 m_messages.send_multi(boost::make_tuple(
                     FUTURE,
                     request_id,
-                    result)); 
+                    result));
+
+                // NOTE: A heartbeat after every successful invocation is here 
+                // to ensure that engine wouldn't kill the thread as a unresponive
+                // one in case we have a high amount of task traffic 
                 m_messages.send(HEARTBEAT);
-                
+               
+                // XXX: Damn, ZeroMQ, why are you so strange? 
                 m_loop.feed_fd_event(m_messages.fd(), ev::READ);
                 
                 m_suicide_timer.stop();
                 m_suicide_timer.start(config_t::get().engine.suicide_timeout);
             }
-
-            break;
             
+            break;
+
             case TERMINATE:
                 terminate();
                 return;

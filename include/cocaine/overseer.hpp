@@ -43,6 +43,9 @@ class overseer_t:
         zmq::context_t& m_context;
         lines::channel_t m_messages;
         
+        // App name, for logging
+        std::string m_name;
+        
         // Event loop
         ev::dynamic_loop m_loop;
         ev::io m_message_watcher;
@@ -52,7 +55,7 @@ class overseer_t:
         // Data source
         boost::shared_ptr<plugin::source_t> m_source;
 
-        // Readiness signalling
+        // Initialization interlocking
         boost::mutex m_mutex;
         boost::unique_lock<boost::mutex> m_lock;
         boost::condition_variable m_ready;

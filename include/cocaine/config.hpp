@@ -12,22 +12,22 @@ class config_t {
 
     public:
         struct {
+            std::vector<std::string> endpoints;
             std::string hostname;
             std::string instance;
             std::string route;
-            std::vector<std::string> endpoints;
         } core;
 
         struct {
             std::string location;
         } downloads;
 
-        struct engine_config_t {
-            float suicide_timeout;
+        struct engine_cfg_t {
             float heartbeat_timeout;
-            unsigned int queue_depth;
-            unsigned int worker_limit;
-            unsigned int history_depth;
+            float suicide_timeout;
+            unsigned int history_limit;
+            unsigned int pool_limit;
+            unsigned int queue_limit;
         } engine;
 
         struct {

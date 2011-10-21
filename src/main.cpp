@@ -36,17 +36,17 @@ int main(int argc, char* argv[]) {
         ("engine:heartbeat-timeout", po::value<float>
             (&config_t::set().engine.heartbeat_timeout)->default_value(60.0),
             "unresponsive thread cancellation timeout, seconds")
-        ("engine:history-depth", po::value<unsigned int>
-            (&config_t::set().engine.history_depth)->default_value(10),
+        ("engine:history-limit", po::value<unsigned int>
+            (&config_t::set().engine.history_limit)->default_value(10),
             "maximum number of events to store per engine task")
-        ("engine:queue-depth", po::value<unsigned int>
-            (&config_t::set().engine.queue_depth)->default_value(10),
+        ("engine:queue-limit", po::value<unsigned int>
+            (&config_t::set().engine.queue_limit)->default_value(10),
             "maximum engine worker queue depth")
         ("engine:suicide-timeout", po::value<float>
             (&config_t::set().engine.suicide_timeout)->default_value(600.0),
             "stale thread suicide timeout, seconds")
-        ("engine:worker-limit", po::value<unsigned int>
-            (&config_t::set().engine.worker_limit)->default_value(10),
+        ("engine:pool-limit", po::value<unsigned int>
+            (&config_t::set().engine.pool_limit)->default_value(10),
             "maximum engine worker pool size")
         ("help", "show this message")
         ("instance", po::value<std::string>
