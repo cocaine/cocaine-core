@@ -6,6 +6,11 @@ class plugin_t:
     public source_t
 {
     public:
+        static source_t* create(const std::string& name, const std::string& args) {
+            return new plugin_t;
+        }
+
+    public:
         plugin_t(const std::string& name, const std::string& args):
             source_t(name)
         {
