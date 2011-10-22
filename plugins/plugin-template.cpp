@@ -1,10 +1,4 @@
-#include <stdexcept>
-
 #include "plugin.hpp"
-
-// Allowed exceptions:
-// -------------------
-// * std::runtime_error
 
 namespace cocaine { namespace plugin {
 
@@ -12,23 +6,23 @@ class plugin_t:
     public source_t
 {
     public:
-        plugin_t(const std::string& uri):
-            source_t(uri)
+        plugin_t(const std::string& name, const std::string& args):
+            source_t(name)
         {
             // Your code to initialize the plugin instance
         }
     
-        virtual uint32_t capabilities() {
-            return NONE;
+        virtual Json::Value invoke(
+            const std::string& method,
+            const void* request = NULL,
+            size_t request_size = 0)
+        {
+            // Your code to invoke the specified method
         }
 };
 
-source_t* create_plugin_instance(const char* uri) {
-    return new plugin_t(uri);
-}
-
 static const source_info_t plugin_info[] = {
-    { "plugin", &create_plugin_instance },
+    { "plugin", &plugin_t::create },
     { NULL, NULL }
 };
 

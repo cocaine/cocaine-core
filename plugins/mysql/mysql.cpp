@@ -9,6 +9,11 @@ class mysql_t:
     public source_t
 {
     public:
+        static source_t* create(const std::string& name, const std::string& args) {
+            return new mysql_t(name, args);
+        }
+
+    public:
         mysql_t(const std::string& name, const std::string& args):
             source_t(name),
             m_connect_timeout(1),
@@ -26,7 +31,7 @@ class mysql_t:
             m_password = uri.userinfo().substr(uri.userinfo().find_first_of(":") + 1);
         }
 
-        virtual Json::Value invoke(const std::string& callable, const void* request = NULL, size_t request_length = 0) {
+        virtual Json::Value invoke(const std::string& method, const void* request = NULL, size_t request_size = 0) {
             Json::Value result;
             MYSQL* connection = mysql_init(NULL);
 
@@ -50,12 +55,8 @@ class mysql_t:
         unsigned int m_port, m_connect_timeout, m_read_timeout, m_write_timeout;
 };
 
-source_t* create_mysql_instance(const char* name, const char* args) {
-    return new mysql_t(name, args);
-}
-
 static const source_info_t plugin_info[] = {
-    { "mysql", &create_mysql_instance },
+    { "mysql", &mysql_t::create },
     { NULL, NULL }
 };
 

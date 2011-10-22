@@ -14,6 +14,11 @@ using namespace v8;
 
 class javascript_t: public source_t {
     public:
+        static source_t* create(const std::string& name, const std::string& args) {
+            return new javascript_t(name, args);
+        }
+
+    public:
         javascript_t(const std::string& name, const std::string& args):
             source_t(name)
         {
@@ -67,7 +72,7 @@ class javascript_t: public source_t {
             m_context.Dispose();
         }
 
-        virtual Json::Value invoke(const std::string& callable, const void* request, size_t request_length) {
+        virtual Json::Value invoke(const std::string& method, const void* request = NULL, size_t request_size = 0) {
             Json::Value result;
 
             HandleScope handle_scope;
@@ -91,12 +96,8 @@ class javascript_t: public source_t {
         Persistent<Function> m_function;
 };
 
-source_t* create_javascript_instance(const char* name, const char* args) {
-    return new javascript_t(name, args);
-}
-
 static const source_info_t plugin_info[] = {
-    { "javascript", &create_javascript_instance },
+    { "javascript", &javascript_t::create },
     { NULL, NULL }
 };
 

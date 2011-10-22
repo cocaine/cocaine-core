@@ -28,7 +28,7 @@ registry_t::registry_t() {
 
     void* plugin;
     initialize_fn_t initializer;
-    std::vector<std::string> schemes;
+    std::vector<std::string> types;
 
     // Directory iterator
     typedef boost::filter_iterator<is_regular_file, fs::directory_iterator> file_iterator;
@@ -51,11 +51,11 @@ registry_t::registry_t() {
                 m_plugins.push_back(plugin);
 
                 // Fetch all the available sources from it
-                while(info->scheme && info->factory) {
+                while(info->type && info->factory) {
                     m_factories.insert(std::make_pair(
-                        info->scheme,
+                        info->type,
                         info->factory));
-                    schemes.push_back(info->scheme);
+                    types.push_back(info->type);
                     info++;
                 }
             } else {
@@ -85,7 +85,7 @@ registry_t::registry_t() {
         throw std::runtime_error("no plugins found");
     }
 
-    std::string plugins(boost::algorithm::join(schemes, ", "));
+    std::string plugins(boost::algorithm::join(types, ", "));
     syslog(LOG_NOTICE, "registry: available sources - %s", plugins.c_str());
 }
 
@@ -103,7 +103,7 @@ boost::shared_ptr<source_t> registry_t::create(const std::string& name, const st
     factory_map_t::iterator it(m_factories.find(type));
     factory_fn_t factory = it->second;
     
-    return boost::shared_ptr<source_t>(factory(name.c_str(), args.c_str()));
+    return boost::shared_ptr<source_t>(factory(name, args));
 }
 
 boost::shared_ptr<registry_t> registry_t::instance() {

@@ -17,8 +17,10 @@ class source_t:
             return m_name; 
         }
 
-        virtual Json::Value invoke(const std::string& callable,
-            const void* request = NULL, size_t request_length = 0) = 0;
+        virtual Json::Value invoke(
+            const std::string& method,
+            const void* request = NULL,
+            size_t request_size = 0) = 0;
         
     protected:
         const std::string m_name;
@@ -27,12 +29,12 @@ class source_t:
 // Plugins are expected to supply at least one factory function
 // to initialize sources, given a name and an argument. Each factory function
 // is responsible to initialize sources of one registered scheme
-typedef source_t* (*factory_fn_t)(const char*, const char*);
+typedef source_t* (*factory_fn_t)(const std::string&, const std::string&);
 
 // Plugins are expected to have an 'initialize' function, which should
 // return an array of structures of the following format
 typedef struct {
-    const char* scheme;
+    const char* type;
     factory_fn_t factory;
 } source_info_t;
 

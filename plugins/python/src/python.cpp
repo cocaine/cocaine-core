@@ -8,6 +8,10 @@ using namespace cocaine::plugin;
 
 char python_t::identity[] = "<dynamic>";
 
+source_t* python_t::create(const std::string& name, const std::string& args) {
+    return new python_t(name, args);
+}
+
 python_t::python_t(const std::string& name, const std::string& args):
     source_t(name),
     m_module(NULL)
@@ -61,25 +65,25 @@ void python_t::compile(const std::string& code) {
     PyModule_AddObject(m_module, "storage", storage);    
 }
 
-Json::Value python_t::invoke(const std::string& callable, const void* request, size_t request_length) {
+Json::Value python_t::invoke(const std::string& method, const void* request, size_t request_size) {
     thread_state_t state(PyGILState_Ensure());
     object_t args(NULL);
 
     if(request) {
-        object_t buffer(PyBuffer_FromMemory(const_cast<void*>(request), request_length));
+        object_t buffer(PyBuffer_FromMemory(const_cast<void*>(request), request_size));
         args = PyTuple_Pack(1, *buffer);
     } else {
         args = PyTuple_New(0);
     }
 
-    object_t object(PyObject_GetAttrString(m_module, callable.c_str()));
+    object_t object(PyObject_GetAttrString(m_module, method.c_str()));
     
     if(PyErr_Occurred()) {
         throw std::runtime_error(python_support_t::exception());
     }
 
     if(!PyCallable_Check(object)) {
-        throw std::runtime_error("'" + callable + "' is not a callable");
+        throw std::runtime_error("'" + method + "' is not callable");
     }
 
     if(PyType_Check(object)) {
@@ -99,12 +103,8 @@ Json::Value python_t::invoke(const std::string& callable, const void* request, s
     }
 }
 
-source_t* create_python_instance(const char* name, const char* args) {
-    return new python_t(name, args);
-}
-
 static const source_info_t plugin_info[] = {
-    { "python", &create_python_instance },
+    { "python", &python_t::create },
     { NULL, NULL }
 };
 

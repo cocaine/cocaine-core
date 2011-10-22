@@ -10,6 +10,11 @@ class http_t:
     public source_t
 {
     public:
+        static source_t* create(const std::string& name, const std::string& args) {
+            return new http_t(name, args);
+        }
+
+    public:
         http_t(const std::string& name, const std::string& args):
             source_t(name)
         {
@@ -40,7 +45,7 @@ class http_t:
             return size * nmemb;
         }
         
-        virtual Json::Value invoke(const std::string& callable, const void* request, size_t request_length) {
+        virtual Json::Value invoke(const std::string& method, const void* request = NULL, size_t request_size = 0) {
             Json::Value result;
         
             CURLcode code = curl_easy_perform(m_curl);
@@ -66,12 +71,9 @@ class http_t:
         char m_error_message[CURL_ERROR_SIZE];
 };
 
-source_t* create_http_instance(const char* name, const char* args) {
-    return new http_t(name, args);
-}
-
 static const source_info_t plugin_info[] = {
-    { "http", &create_http_instance },
+    { "http",  &http_t::create },
+    { "https", &http_t::create },
     { NULL, NULL }
 };
 
