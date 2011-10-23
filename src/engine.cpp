@@ -195,7 +195,8 @@ Json::Value engine_t::stats() {
     results["pool"]["limit"] = m_pool_cfg.pool_limit;
 
     for(pool_t::const_iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
-        results["pool"]["queues"][it->first] = static_cast<Json::UInt>(it->second->queue().size());
+        results["pool"]["queues"][it->first] = 
+            static_cast<Json::UInt>(it->second->queue().size());
     }
 
     if(!m_tasks.empty()) {
@@ -247,7 +248,10 @@ void engine_t::reap(unique_id_t::reference worker_id) {
 
         object["error"] = "timeout";
 
-        for(worker_type::request_queue_t::iterator it = worker->second->queue().begin(); it != worker->second->queue().end(); ++it) {
+        for(worker_type::request_queue_t::iterator it = worker->second->queue().begin(); 
+            it != worker->second->queue().end();
+            ++it) 
+        {
             it->second->push(object);
         }
         
@@ -368,21 +372,22 @@ void engine_t::process_message(ev::idle& w, int revents) {
 
         if(worker != m_pool.end()) {
             switch(code) {
-                case FUTURE: {
-                    unique_id_t::type request_id;
+                case FULFILL: {
+                    unique_id_t::type promise_id;
                     Json::Value object;
 
-                    boost::tuple<std::string&, Json::Value&> tier(request_id, object);
+                    boost::tuple<std::string&, Json::Value&> tier(promise_id, object);
                     m_messages.recv_multi(tier);
 
                     worker_type::request_queue_t::iterator request(
-                        worker->second->queue().find(request_id));
+                        worker->second->queue().find(promise_id));
                            
                     if(request != worker->second->queue().end()) {
                         request->second->push(object);
                         worker->second->queue().erase(request);
                     } else {
-                        syslog(LOG_ERR, "engine [%s]: received a response from a wrong worker", m_app_cfg.name.c_str());
+                        syslog(LOG_ERR, "engine [%s]: received a response from a wrong worker",
+                            m_app_cfg.name.c_str());
                     }
                     
                     break;
