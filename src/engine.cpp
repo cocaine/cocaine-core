@@ -19,7 +19,7 @@ engine_t::engine_t(zmq::context_t& context, const std::string& name):
 
     syslog(LOG_DEBUG, "engine [%s]: constructing", m_app_cfg.name.c_str());
     
-    m_messages.bind("inproc://engines/" + m_app_cfg.name);
+    m_messages.bind("ipc:///var/run/cocaine/engines/" + m_app_cfg.name);
     
     m_message_watcher.set<engine_t, &engine_t::message>(this);
     m_message_watcher.start(m_messages.fd(), ev::READ);
@@ -56,6 +56,13 @@ Json::Value engine_t::run(const Json::Value& manifest) {
     m_app_cfg.server_endpoint = manifest["server"]["endpoint"].asString(),
     m_app_cfg.pubsub_endpoint = manifest["pubsub"]["endpoint"].asString();
 
+    m_pool_cfg.backend = manifest["engine"].get("backend",
+        config_t::get().engine.backend).asString();
+    
+    if(m_pool_cfg.backend != "thread" && m_pool_cfg.backend != "process") {
+        throw std::runtime_error("invalid backend type");
+    }
+    
     m_pool_cfg.heartbeat_timeout = manifest["engine"].get("heartbeat-timeout",
         config_t::get().engine.heartbeat_timeout).asDouble();
     m_pool_cfg.suicide_timeout = manifest["engine"].get("suicide-timeout",
@@ -248,7 +255,7 @@ void engine_t::reap(unique_id_t::reference worker_id) {
 
         object["error"] = "timeout";
 
-        for(worker_type::request_queue_t::iterator it = worker->second->queue().begin(); 
+        for(backend_t::request_queue_t::iterator it = worker->second->queue().begin(); 
             it != worker->second->queue().end();
             ++it) 
         {
@@ -379,7 +386,7 @@ void engine_t::process_message(ev::idle& w, int revents) {
                     boost::tuple<std::string&, Json::Value&> tier(promise_id, object);
                     m_messages.recv_multi(tier);
 
-                    worker_type::request_queue_t::iterator request(
+                    backend_t::request_queue_t::iterator request(
                         worker->second->queue().find(promise_id));
                            
                     if(request != worker->second->queue().end()) {
@@ -402,7 +409,7 @@ void engine_t::process_message(ev::idle& w, int revents) {
                     break;
 
                 default:
-                    syslog(LOG_DEBUG, "engine [%s]: trash on channel", m_app_cfg.name.c_str());
+                    syslog(LOG_DEBUG, "engine [%s]: trash on the channel", m_app_cfg.name.c_str());
             }
         } else {
             syslog(LOG_ERR, "engine [%s]: dropping messages for orphaned worker %s", 

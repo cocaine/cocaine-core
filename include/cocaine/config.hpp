@@ -23,6 +23,7 @@ class config_t {
         } downloads;
 
         struct engine_cfg_t {
+            std::string backend;
             float heartbeat_timeout;
             float suicide_timeout;
             unsigned int history_limit;

@@ -1,5 +1,3 @@
-#include <boost/thread.hpp>
-
 #include "cocaine/overseer.hpp"
 #include "cocaine/plugin.hpp"
 
@@ -19,7 +17,7 @@ overseer_t::overseer_t(unique_id_t::reference id_, zmq::context_t& context, cons
     m_heartbeat_timer(m_loop),
     m_lock(m_mutex)
 {
-    m_messages.connect("inproc://engines/" + m_name);
+    m_messages.connect("ipc:///var/run/cocaine/engines/" + m_name);
     m_message_watcher.set<overseer_t, &overseer_t::message>(this);
     m_message_watcher.start(m_messages.fd(), ev::READ);
         

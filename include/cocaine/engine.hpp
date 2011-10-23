@@ -1,7 +1,7 @@
 #ifndef COCAINE_ENGINE_HPP
 #define COCAINE_ENGINE_HPP
 
-#include "cocaine/backends/thread.hpp"
+#include "cocaine/backends.hpp"
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/networking.hpp"
@@ -27,11 +27,9 @@ class engine_t:
     public lines::publisher_t
 {
     public:
-        typedef thread_t worker_type;
-
         typedef boost::ptr_map<
             const std::string,
-            worker_type
+            backend_t
         > pool_t;
     
         struct shortest_queue {
@@ -69,8 +67,14 @@ class engine_t:
                             m_app_cfg.name,
                             m_app_cfg.type,
                             m_app_cfg.args));
-                    std::auto_ptr<worker_type> object(
-                        new worker_type(shared_from_this(), source));
+
+                    std::auto_ptr<backend_t> object;
+
+                    if(m_pool_cfg.backend == "thread") {
+                        object.reset(new thread_t(shared_from_this(), source));
+                    } else if(m_pool_cfg.backend == "process") {
+                        object.reset(new process_t(shared_from_this(), source));
+                    }
 
                     std::string worker_id(object->id());
                     boost::tie(worker, boost::tuples::ignore) = m_pool.insert(worker_id, object);
