@@ -27,9 +27,9 @@ v Storage: filesystem event based driver
 v Storage: per-plugin per-thread storage support
 
 Version: 0.4
+v Core: export the hostname
 v Packaging: drop priveleges
 v Packaging: proper development files placement
-v Core: export the hostname
 v Storage: global persistence
 
 Version: 0.5
@@ -37,11 +37,14 @@ v Cocained!
 v Core: more statistics (from drivers)
 v Core: JSON -> Msgpack for internal communications
 * Core: HTTP frontend
-v Engine: per-driver export sockets
-v Engine: an ability to kill timed out threads
-v Engine: static and dynamic thread pools
+> Core: stable plugin interface
+v Engine: forks!
+v Engine: per-engine export sockets
+v Engine: an ability to kill timed out workers
+v Engine: dynamic worker pools
 * JS: adapt portions of node.js
-* Python: PersistentTail, Sinks
-> Networking: authentication replay protection (timestamps)
+* Networking: authentication replay protection (timestamps)
 * Networking: encrypted responses
 * Networking: encrypted publishing
+* Python: PersistentTail, Sinks
+> Storage: proper inter-process locking in file storage
