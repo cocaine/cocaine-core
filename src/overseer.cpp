@@ -71,38 +71,38 @@ void overseer_t::message(ev::io& w, int revents) {
 void overseer_t::process_message(ev::idle& w, int revents) {
     if(m_messages.pending()) {
         Json::Value result;
-        std::string request_id;
+        std::string promise_id;
         unsigned int code = 0;
 
-        boost::tuple<std::string&, unsigned int&> tier(request_id, code);
+        boost::tuple<std::string&, unsigned int&> tier(promise_id, code);
         
         m_messages.recv_multi(tier);
 
         switch(code) {
             case INVOKE: {
-                std::string task;
+                std::string method;
 
-                m_messages.recv(task);
+                m_messages.recv(method);
 
                 try {
                     if(!m_messages.has_more()) {
-                        result = m_source->invoke(task);
+                        result = m_source->invoke(method);
                     } else {
-                        std::string blob;
-                        m_messages.recv(blob);
-                        result = m_source->invoke(task, blob.data(), blob.size());
+                        zmq::message_t blob;
+                        m_messages.recv(&blob);
+                        result = m_source->invoke(method, blob.data(), blob.size());
                     }
                 } catch(const std::exception& e) {
-                    syslog(LOG_ERR, "worker [%s:%s]: source invocation failed - %s", 
-                        m_name.c_str(), id().c_str(), e.what());
+                    syslog(LOG_ERR, "worker [%s:%s]: '%s' invocation failed - %s", 
+                        method.c_str(), m_name.c_str(), id().c_str(), e.what());
                     result["error"] = e.what();
                 }
 
                 boost::this_thread::interruption_point();
                 
                 m_messages.send_multi(boost::make_tuple(
-                    FUTURE,
-                    request_id,
+                    FULFILL,
+                    promise_id,
                     result));
 
                 // XXX: Damn, ZeroMQ, why are you so strange? 
