@@ -456,12 +456,9 @@ void engine_t::process_request(ev::idle& w, int revents) {
                 boost::make_tuple(
                     INVOKE,
                     m_app_cfg.callable,
-                    std::string(
-                        static_cast<const char*>(message.data()),
-                        message.size())
-                    )
+                    boost::ref(message)
                 )
-            );
+            ));
         } catch(const std::runtime_error& e) {
             response->abort(e.what());
         }

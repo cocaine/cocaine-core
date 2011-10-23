@@ -34,11 +34,9 @@ class sink_t:
                         boost::make_tuple(
                             INVOKE,
                             m_name,
-                            std::string(
-                                static_cast<const char*>(message.data()),
-                                message.size())
-                            )
-                        ));
+                            boost::ref(message)
+                        )
+                    ));
                 } catch(const std::runtime_error& e) {
                     syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
                         m_parent->name().c_str(), m_name.c_str(), e.what());
@@ -49,7 +47,7 @@ class sink_t:
         void initialize() {
             m_socket.reset(new lines::socket_t(m_parent->context(), ZMQ_PULL));
             m_socket->bind(m_endpoint);
-            m_watcher->set(m_socket->fd(), EV_READ);
+            m_watcher->set(m_socket->fd(), ev::READ);
         }
 
     private:
