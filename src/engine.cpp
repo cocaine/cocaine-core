@@ -9,7 +9,6 @@
 #include "cocaine/engine.hpp"
 
 using namespace cocaine::engine;
-using namespace cocaine::helpers;
 using namespace cocaine::lines;
 
 engine_t::engine_t(zmq::context_t& context, const std::string& name):
@@ -239,7 +238,7 @@ Json::Value engine_t::past(const std::string& task) {
 }
 */
 
-void engine_t::reap(unique_id_t::type worker_id) {
+void engine_t::reap(unique_id_t::reference worker_id) {
     pool_t::iterator worker(m_pool.find(worker_id));
 
     // TODO: Re-assign tasks

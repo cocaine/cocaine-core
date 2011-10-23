@@ -8,6 +8,7 @@ namespace cocaine { namespace helpers {
 class unique_id_t {
     public:
         typedef std::string type;
+        typedef const type& reference;
 
         unique_id_t() {
             uuid_t uuid;
@@ -19,7 +20,7 @@ class unique_id_t {
             m_id = unparsed_uuid;
         }
 
-        explicit unique_id_t(const type& other) {
+        explicit unique_id_t(reference other) {
             uuid_t uuid;
 
             if(uuid_parse(other.c_str(), uuid) == 0) {
@@ -29,7 +30,7 @@ class unique_id_t {
             }
         }
 
-        inline std::string id() const {
+        inline reference id() const {
             return m_id;
         }
 

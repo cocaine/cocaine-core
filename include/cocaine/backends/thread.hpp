@@ -11,8 +11,8 @@ namespace cocaine { namespace engine {
 // Applcation Engine Worker
 class thread_t:
     public boost::noncopyable,
-    public helpers::birth_control_t<thread_t>,
-    public helpers::unique_id_t
+    public unique_id_t,
+    public birth_control_t<thread_t>
 {
     public:
         typedef std::map<
@@ -22,7 +22,7 @@ class thread_t:
 
     public:        
         thread_t(boost::shared_ptr<engine_t> parent,
-                 boost::shared_ptr<overseer_t> overseer);
+                 boost::shared_ptr<plugin::source_t> source);
         ~thread_t();
 
     public:

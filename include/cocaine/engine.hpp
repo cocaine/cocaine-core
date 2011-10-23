@@ -22,7 +22,7 @@ namespace cocaine { namespace engine {
 class engine_t:
     public boost::noncopyable,
     public boost::enable_shared_from_this<engine_t>,
-    public helpers::birth_control_t<engine_t>,
+    public birth_control_t<engine_t>,
     public lines::responder_t,
     public lines::publisher_t
 {
@@ -48,7 +48,7 @@ class engine_t:
         Json::Value stop();
         Json::Value stats();
 
-        void reap(helpers::unique_id_t::type worker_id);
+        void reap(unique_id_t::reference worker_id);
 
     public:
         template<class T>
@@ -60,16 +60,17 @@ class engine_t:
                 m_pool.end(), 
                 shortest_queue()));
 
-            if(worker == m_pool.end() || (worker->second->queue().size() > 0 && m_pool.size() < m_pool_cfg.pool_limit)) {
+            if(worker == m_pool.end() || (worker->second->queue().size() > 0 && 
+               m_pool.size() < m_pool_cfg.pool_limit)) 
+            {
                 try {
                     boost::shared_ptr<plugin::source_t> source(
-                        core::registry_t::instance()->create(m_app_cfg.name, m_app_cfg.type, m_app_cfg.args));
-                    boost::shared_ptr<overseer_t> overseer(
-                        new overseer_t(m_context, m_app_cfg.name, source));
+                        core::registry_t::instance()->create(
+                            m_app_cfg.name,
+                            m_app_cfg.type,
+                            m_app_cfg.args));
                     std::auto_ptr<worker_type> object(
-                        new worker_type(shared_from_this(), overseer));
-
-                    overseer->ensure();
+                        new worker_type(shared_from_this(), source));
 
                     std::string worker_id(object->id());
                     boost::tie(worker, boost::tuples::ignore) = m_pool.insert(worker_id, object);

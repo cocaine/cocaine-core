@@ -43,7 +43,10 @@ core_t::core_t():
         config_t::get().core.route.data(),
         config_t::get().core.route.length());
 
-    for(std::vector<std::string>::const_iterator it = config_t::get().core.endpoints.begin(); it != config_t::get().core.endpoints.end(); ++it) {
+    for(std::vector<std::string>::const_iterator it = config_t::get().core.endpoints.begin();
+        it != config_t::get().core.endpoints.end();
+        ++it) 
+    {
         m_server.bind(*it);
         syslog(LOG_INFO, "core: listening for requests on %s", it->c_str());
     }

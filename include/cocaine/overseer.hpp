@@ -12,19 +12,19 @@ namespace cocaine { namespace engine {
 // Thread manager
 class overseer_t:
     public boost::noncopyable,
-    public helpers::unique_id_t
+    public unique_id_t
 {
     public:
-        overseer_t(zmq::context_t& context,
-                   const std::string& name,
-                   boost::shared_ptr<plugin::source_t> source);
+        overseer_t(unique_id_t::reference id,
+                   zmq::context_t& context,
+                   const std::string& name);
         ~overseer_t();
 
         // Thread entry point 
 #if BOOST_VERSION >= 103500
-        void operator()();
+        void operator()(boost::shared_ptr<plugin::source_t> source);
 #else
-        void run();
+        void run(boost::shared_ptr<plugin::source_t> source);
 #endif
 
         void ensure();
@@ -43,7 +43,7 @@ class overseer_t:
         zmq::context_t& m_context;
         lines::channel_t m_messages;
         
-        // App name, for logging
+        // App name & engine endpoint
         std::string m_name;
         
         // Event loop
@@ -52,13 +52,13 @@ class overseer_t:
         ev::idle m_message_processor;
         ev::timer m_suicide_timer, m_heartbeat_timer;
 
-        // Data source
-        boost::shared_ptr<plugin::source_t> m_source;
-
         // Initialization interlocking
         boost::mutex m_mutex;
         boost::unique_lock<boost::mutex> m_lock;
         boost::condition_variable m_ready;
+        
+        // Data source
+        boost::shared_ptr<plugin::source_t> m_source;
 };
 
 }}

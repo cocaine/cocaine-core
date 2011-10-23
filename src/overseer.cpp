@@ -6,9 +6,9 @@
 using namespace cocaine::engine;
 using namespace cocaine::engine::drivers;
 using namespace cocaine::plugin;
-using namespace cocaine::helpers;
 
-overseer_t::overseer_t(zmq::context_t& context, const std::string& name, boost::shared_ptr<source_t> source):
+overseer_t::overseer_t(unique_id_t::reference id_, zmq::context_t& context, const std::string& name):
+    unique_id_t(id_),
     m_context(context),
     m_messages(m_context, ZMQ_DEALER, id()),
     m_name(name),
@@ -17,7 +17,6 @@ overseer_t::overseer_t(zmq::context_t& context, const std::string& name, boost::
     m_message_processor(m_loop),
     m_suicide_timer(m_loop),
     m_heartbeat_timer(m_loop),
-    m_source(source),
     m_lock(m_mutex)
 {
     m_messages.connect("inproc://engines/" + m_name);
@@ -39,10 +38,12 @@ overseer_t::~overseer_t() {
 }
 
 #if BOOST_VERSION >= 103500
-void overseer_t::operator()() {
+void overseer_t::operator()(boost::shared_ptr<source_t> source) {
 #else
-void overseer_t::run() {
+void overseer_t::run(boost::shared_ptr<source_t> source) {
 #endif
+    m_source = source;
+
     {
         boost::lock_guard<boost::mutex> lock(m_mutex);
 
