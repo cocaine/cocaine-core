@@ -24,6 +24,7 @@ class backend_t:
         virtual ~backend_t();
 
     public:
+        bool active();
         void rearm(float timeout);
         request_queue_t& queue();
         const request_queue_t& queue() const;
@@ -32,6 +33,7 @@ class backend_t:
         virtual void timeout(ev::timer& w, int revents) = 0;
 
     private:
+        bool m_active;
         request_queue_t m_queue;
         ev::timer m_heartbeat;
 };

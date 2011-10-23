@@ -1,3 +1,5 @@
+#include <boost/thread.hpp>
+
 #include "cocaine/overseer.hpp"
 #include "cocaine/plugin.hpp"
 
@@ -14,8 +16,7 @@ overseer_t::overseer_t(unique_id_t::reference id_, zmq::context_t& context, cons
     m_message_watcher(m_loop),
     m_message_processor(m_loop),
     m_suicide_timer(m_loop),
-    m_heartbeat_timer(m_loop),
-    m_lock(m_mutex)
+    m_heartbeat_timer(m_loop)
 {
     m_messages.connect("ipc:///var/run/cocaine/engines/" + m_name);
     m_message_watcher.set<overseer_t, &overseer_t::message>(this);
@@ -41,23 +42,7 @@ void overseer_t::operator()(boost::shared_ptr<source_t> source) {
 void overseer_t::run(boost::shared_ptr<source_t> source) {
 #endif
     m_source = source;
-
-    {
-        boost::lock_guard<boost::mutex> lock(m_mutex);
-
-        m_messages.send(HEARTBEAT);
-
-        timespec tv = { 0, 150000000 };
-        nanosleep(&tv, NULL);
-
-        m_ready.notify_one();
-    }
-
     m_loop.loop();
-}
-
-void overseer_t::ensure() {
-    m_ready.wait(m_lock);
 }
 
 void overseer_t::message(ev::io& w, int revents) {

@@ -23,8 +23,6 @@ thread_t::thread_t(boost::shared_ptr<engine_t> parent, boost::shared_ptr<source_
         m_thread.reset(new boost::thread(boost::bind(
             &overseer_t::run, m_overseer.get(), source)));
 #endif
-
-        m_overseer->ensure();
     } catch(const boost::thread_resource_error& e) {
         throw std::runtime_error("system thread limit exceeded");
     }
