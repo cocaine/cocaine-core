@@ -1,11 +1,8 @@
 #include "cocaine/backends/abstract.hpp"
-#include "cocaine/engine.hpp"
 
 using namespace cocaine::engine;
 
-backend_t::backend_t(boost::shared_ptr<engine_t> parent):
-    m_parent(parent)
-{
+backend_t::backend_t() {
     m_heartbeat.set<backend_t, &backend_t::timeout>(this);
     
     // First heartbeat is only to ensure that the worker has started

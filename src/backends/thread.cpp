@@ -10,7 +10,7 @@ using namespace cocaine::engine;
 using namespace cocaine::plugin;
 
 thread_t::thread_t(boost::shared_ptr<engine_t> parent, boost::shared_ptr<source_t> source):
-    backend_t(parent)
+    m_parent(parent)
 {
     syslog(LOG_DEBUG, "worker [%s:%s]: constructing", m_parent->name().c_str(), id().c_str());
    

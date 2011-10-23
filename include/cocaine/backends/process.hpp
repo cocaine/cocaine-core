@@ -18,6 +18,7 @@ class process_t:
         virtual void timeout(ev::timer& w, int revents);
 
     private:
+        boost::shared_ptr<engine_t> m_parent;
         pid_t m_pid;
 };
 

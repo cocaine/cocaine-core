@@ -17,26 +17,22 @@ class backend_t:
             boost::shared_ptr<lines::promise_t>
         > request_queue_t;
 
+    protected:
+        backend_t();
+
     public:       
         virtual ~backend_t();
 
     public:
         void rearm(float timeout);
-
         request_queue_t& queue();
         const request_queue_t& queue() const;
 
     protected:
-        backend_t(boost::shared_ptr<engine_t> parent);
-
         virtual void timeout(ev::timer& w, int revents) = 0;
-
-    protected:
-        boost::shared_ptr<engine_t> m_parent;
 
     private:
         request_queue_t m_queue;
-
         ev::timer m_heartbeat;
 };
 
