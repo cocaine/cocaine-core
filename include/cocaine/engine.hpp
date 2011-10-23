@@ -4,9 +4,9 @@
 #include "cocaine/backends/thread.hpp"
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
-#include "cocaine/future.hpp"
 #include "cocaine/networking.hpp"
 #include "cocaine/overseer.hpp"
+#include "cocaine/promise.hpp"
 #include "cocaine/registry.hpp"
 
 // Driver types
@@ -52,8 +52,8 @@ class engine_t:
 
     public:
         template<class T>
-        boost::shared_ptr<lines::future_t> queue(const T& args) {
-            boost::shared_ptr<lines::future_t> future(new lines::future_t());
+        boost::shared_ptr<lines::promise_t> queue(const T& args) {
+            boost::shared_ptr<lines::promise_t> promise(new lines::promise_t());
             
             pool_t::iterator worker(std::min_element(
                 m_pool.begin(),
@@ -89,17 +89,17 @@ class engine_t:
                 helpers::joint_view(
                     boost::make_tuple(
                         lines::protect(worker->second->id()),
-                        future->id()),
+                        promise->id()),
                     args));
             
             worker->second->queue().insert(std::make_pair(
-                future->id(),
-                future));
+                promise->id(),
+                promise));
         
             // XXX: Damn, ZeroMQ, why are you so strange? 
             ev::get_default_loop().feed_fd_event(m_messages.fd(), ev::READ);
 
-            return future;
+            return promise;
         }
 
         virtual void respond(const lines::route_t& route, const Json::Value& object);

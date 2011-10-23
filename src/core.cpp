@@ -2,7 +2,6 @@
 
 #include "cocaine/core.hpp"
 #include "cocaine/engine.hpp"
-#include "cocaine/future.hpp"
 #include "cocaine/storage.hpp"
 
 using namespace cocaine::core;

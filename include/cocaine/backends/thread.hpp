@@ -17,7 +17,7 @@ class thread_t:
     public:
         typedef std::map<
             const std::string,
-            boost::shared_ptr<lines::future_t>
+            boost::shared_ptr<lines::promise_t>
         > request_queue_t;
 
     public:        

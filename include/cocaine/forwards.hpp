@@ -12,7 +12,7 @@ namespace cocaine {
     }
 
     namespace lines {
-        class future_t;
+        class promise_t;
     }
 
     namespace plugin {
