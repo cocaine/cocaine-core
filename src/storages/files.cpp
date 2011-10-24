@@ -1,6 +1,7 @@
 #include <boost/filesystem/fstream.hpp>
 #include <boost/iterator/filter_iterator.hpp>
 
+#include "cocaine/helpers/lock_file.hpp"
 #include "cocaine/storages/files.hpp"
 
 using namespace cocaine::helpers;
@@ -17,14 +18,13 @@ struct is_regular_file {
 file_storage_t::file_storage_t():
     m_storage_path(config_t::get().storage.location),
     m_instance(config_t::get().core.instance)
-{}
+{ }
 
 void file_storage_t::put(
     const std::string& ns,
     const std::string& key,
     const Json::Value& value) 
 {
-    boost::mutex::scoped_lock lock(m_mutex);
     fs::path store_path(m_storage_path / m_instance / ns);
 
     if(!fs::exists(store_path)) {
@@ -36,18 +36,22 @@ void file_storage_t::put(
     } else if(fs::exists(store_path) && !fs::is_directory(store_path)) {
         throw std::runtime_error(store_path.string() + " is not a directory");
     }
+    
+    fs::path file_path(store_path / key);
 
-    Json::StyledWriter writer;
-    fs::path filepath(store_path / key);
-    fs::ofstream stream(filepath, fs::ofstream::out | fs::ofstream::trunc);
+    boost::lock_guard<boost::mutex> thread_lock(m_mutex);
+    lock_file_t process_lock(file_path);
+
+    fs::ofstream stream(file_path, fs::ofstream::out | fs::ofstream::trunc);
    
     if(!stream) {
-        throw std::runtime_error("failed to open " + filepath.string()); 
+        throw std::runtime_error("failed to open " + file_path.string()); 
     }     
 
+    Json::StyledWriter writer;
     Json::Value container;
+    
     container["object"] = value;
-
     std::string json(writer.write(container));
     
     stream << json;
@@ -55,22 +59,28 @@ void file_storage_t::put(
 }
 
 bool file_storage_t::exists(const std::string& ns, const std::string& key) {
-    boost::mutex::scoped_lock lock(m_mutex);
-    fs::path filepath(m_storage_path / m_instance / ns / key);
+    fs::path file_path(m_storage_path / m_instance / ns / key);
     
-    return fs::exists(filepath) && fs::is_regular(filepath);
+    boost::lock_guard<boost::mutex> thread_lock(m_mutex);
+    lock_file_t process_lock(file_path);
+    
+    return fs::exists(file_path) && fs::is_regular(file_path);
 }
 
 Json::Value file_storage_t::get(const std::string& ns, const std::string& key) {
-    boost::mutex::scoped_lock lock(m_mutex);
+    fs::path file_path(m_storage_path / m_instance / ns / key);
+    
+    boost::lock_guard<boost::mutex> thread_lock(m_mutex);
+    lock_file_t process_lock(file_path);
+    
     Json::Value root(Json::objectValue);
-    Json::Reader reader(Json::Features::strictMode());
-    fs::path filepath(m_storage_path / m_instance / ns / key);
-    fs::ifstream stream(filepath, fs::ifstream::in);
-     
+    fs::ifstream stream(file_path, fs::ifstream::in);
+    
     if(stream) { 
+        Json::Reader reader(Json::Features::strictMode());
+        
         if(!reader.parse(stream, root)) {
-            throw std::runtime_error("corrupted data in " + filepath.string());
+            throw std::runtime_error("corrupted data in " + file_path.string());
         }
     }
 
@@ -83,8 +93,6 @@ Json::Value file_storage_t::all(const std::string& ns) {
 
     if(!fs::exists(store_path))
         return root;
-
-    Json::Reader reader(Json::Features::strictMode());
 
     typedef boost::filter_iterator<is_regular_file, fs::directory_iterator> file_iterator;
     file_iterator it = file_iterator(is_regular_file(), fs::directory_iterator(store_path)), end;
@@ -111,8 +119,10 @@ Json::Value file_storage_t::all(const std::string& ns) {
 }
 
 void file_storage_t::remove(const std::string& ns, const std::string& key) {
-    boost::mutex::scoped_lock lock(m_mutex);
     fs::path file_path(m_storage_path / m_instance / ns / key);
+    
+    boost::lock_guard<boost::mutex> thread_lock(m_mutex);
+    lock_file_t process_lock(file_path);
 
     if(fs::exists(file_path)) {
         try {
@@ -124,7 +134,11 @@ void file_storage_t::remove(const std::string& ns, const std::string& key) {
 }
 
 void file_storage_t::purge(const std::string& ns) {
-    boost::mutex::scoped_lock lock(m_mutex);
-    fs::remove_all(m_storage_path / m_instance / ns);
+    fs::path store_path(m_storage_path / m_instance / ns);
+    
+    boost::lock_guard<boost::mutex> thread_lock(m_mutex);
+    lock_file_t process_lock(store_path);
+    
+    fs::remove_all(store_path);
 }
 

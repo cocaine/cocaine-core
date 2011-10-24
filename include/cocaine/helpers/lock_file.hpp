@@ -17,24 +17,23 @@ class lock_file_t:
         lock_file_t(const boost::filesystem::path& filepath):
             m_filepath(filepath)
         {
-            m_fd = open(m_filepath.string().c_str(), O_CREAT | O_EXCL | O_RDWR, 00600);
+            m_fd = open(m_filepath.string().c_str(), O_RDWR | O_NOATIME);
 
             if(m_fd < 0) {
-                throw std::runtime_error("failed to create " + m_filepath.string());
+                return;
             }
 
-            if(lockf(m_fd, F_TLOCK, 0) < 0) {
+            if(lockf(m_fd, F_LOCK, 0) < 0) {
                 throw std::runtime_error("failed to lock " + m_filepath.string());
             }
         }
 
         ~lock_file_t() {
-            if(lockf(m_fd, F_ULOCK, 0) < 0) {
+            if(m_fd >= 0 && lockf(m_fd, F_ULOCK, 0) < 0) {
                 throw std::runtime_error("failed to unlock " + m_filepath.string());
+            } else {
+                close(m_fd);
             }
-
-            close(m_fd);
-            boost::filesystem::remove(m_filepath);
         }
     
     private:
