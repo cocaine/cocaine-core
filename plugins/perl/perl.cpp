@@ -26,6 +26,7 @@ class perl_t:
             helpers::uri_t uri(args);
 
             my_perl = perl_alloc();
+            PERL_SET_CONTEXT(my_perl);
             perl_construct(my_perl);
 
             compile(helpers::download(uri));
