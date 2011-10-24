@@ -33,6 +33,7 @@ class perl_t:
         }
 
         ~perl_t() {
+            PERL_SET_CONTEXT(my_perl);
             perl_destruct(my_perl);
             perl_free(my_perl);
         }
@@ -64,12 +65,11 @@ class perl_t:
 
             std::string result;
             const char* input_value_buff = NULL;
-            
-            PERL_SET_CONTEXT(my_perl);
-            
+
             if (!input.empty()) {
                 input_value_buff = input.c_str();
 
+                PERL_SET_CONTEXT(my_perl);
                 dSP;
                 ENTER;
                 SAVETMPS;
@@ -92,6 +92,7 @@ class perl_t:
                 LEAVE;
             }
             else {
+                PERL_SET_CONTEXT(my_perl);
                 dSP;
                 ENTER;
                 SAVETMPS;
@@ -121,6 +122,7 @@ class perl_t:
 
         void compile(const std::string& code)
         {
+            PERL_SET_CONTEXT(my_perl);
             const char* embedding[] = {"", "-e", "0"};
             perl_parse(my_perl, NULL, 3, (char**)embedding, NULL);
             PL_exit_flags |= PERL_EXIT_DESTRUCT_END;
