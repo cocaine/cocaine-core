@@ -2,7 +2,8 @@ SET(PLUGINS
     mysql
     http
     python
-    javascript)
+    javascript
+    perl)
 
 FOREACH(PLUGIN ${PLUGINS})
     ADD_SUBDIRECTORY(${PLUGIN})
