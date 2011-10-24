@@ -77,8 +77,8 @@ int main(int argc, char** argv) {
 	{
 		interp a, b;
 		
-		boost::thread th1 = boost::thread(boost::bind(&a::process, this, "thread 1"));
-		boost::thread th2 = boost::thread(boost::bind(&b::process, this, "thread 2"));
+		boost::thread th1 = boost::thread(boost::bind(&interp::process, &a, "thread 1"));
+		boost::thread th2 = boost::thread(boost::bind(&interp::process, &b, "thread 2"));
 		
 		sleep(1);
 		
