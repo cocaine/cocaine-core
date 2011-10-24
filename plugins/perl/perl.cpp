@@ -25,7 +25,6 @@ class perl_t:
             
             helpers::uri_t uri(args);
 
-            PERL_SYS_INIT3(NULL, NULL, NULL);
             my_perl = perl_alloc();
             perl_construct(my_perl);
 
@@ -35,7 +34,6 @@ class perl_t:
         ~perl_t() {
             perl_destruct(my_perl);
             perl_free(my_perl);
-            PERL_SYS_TERM();   
         }
             
         virtual Json::Value invoke(const std::string& method, const void* request = NULL, size_t request_size = 0)
@@ -139,10 +137,12 @@ static const source_info_t plugin_info[] = {
 
 extern "C" {
     const source_info_t* initialize() {
+        PERL_SYS_INIT3(NULL, NULL, NULL);
         return plugin_info;
     }
 
     __attribute__((destructor)) void finalize() {
+        PERL_SYS_TERM();
     }
 }
 
