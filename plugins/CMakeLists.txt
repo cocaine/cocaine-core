@@ -2,6 +2,7 @@ SET(PLUGINS
     mysql
     http
     python
+    javascript
     perl)
 
 FOREACH(PLUGIN ${PLUGINS})
