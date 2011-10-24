@@ -105,7 +105,11 @@ class perl_t:
                 return Json::nullValue;
             }
             else {
-                // do something with result
+                Json::Value object(Json::objectValue);
+
+                object["result"] = result;
+
+                return object;
             }
         }
 
