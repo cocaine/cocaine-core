@@ -31,6 +31,23 @@ class perl_t:
             
         virtual Json::Value invoke(const std::string& method, const void* request = NULL, size_t request_size = 0)
         {
+            std::cout << "method: " << method << std::endl;
+
+            if (request) {
+                try {
+                    std::string tmp_str = std::string(request, request_size);
+                    std::cout << "request: " << tmp_str << std::endl;
+                }
+                catch (...) {
+                    std::cout << "not string request" << std::endl;
+                }
+            }
+            else {
+                std::cout << "request: NULL" << std::endl;
+            }
+            
+            std::cout << "request_size: " << request_size << std::endl;
+
             std::string input;
             
             if (request && request_size > 0) {
