@@ -35,7 +35,7 @@ class perl_t:
 
             if (request) {
                 try {
-                    std::string tmp_str = std::string(request, request_size);
+                    std::string tmp_str = std::string((char*)request, request_size);
                     std::cout << "request: " << tmp_str << std::endl;
                 }
                 catch (...) {
