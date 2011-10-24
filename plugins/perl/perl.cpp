@@ -1,7 +1,9 @@
 #include <EXTERN.h>               /* from the Perl distribution     */
 #include <perl.h>                 /* from the Perl distribution     */
 
-#include "plugin.hpp"
+#include "cocaine/plugin.hpp"
+#include "cocaine/downloads.hpp"
+#include "cocaine/helpers/uri.hpp"
 
 static PerlInterpreter* perl_interpreter;  /***    The Perl interpreter    ***/
 
@@ -31,14 +33,14 @@ class perl_t:
         {
             std::string input;
             
-            if (request && request_size > 0) {}
+            if (request && request_size > 0) {
                input = std::string((char*)request, request_size);
             }
 
             std::string result;
             const char* input_value_buff = NULL;
 
-            if (!input.empty()) {}
+            if (!input.empty()) {
                 input_value_buff = input.c_str();
 
                 dSP;
@@ -67,7 +69,7 @@ class perl_t:
                 ENTER;
                 SAVETMPS;
 
-                int count = call_pv(method.c_str(), G_SCALAR | G_NOARGS);
+                int ret_vals_count = call_pv(method.c_str(), G_SCALAR | G_NOARGS);
                 SPAGAIN;
 
                 if (ret_vals_count > 0) {
@@ -116,8 +118,8 @@ extern "C" {
     }
 
     __attribute__((destructor)) void finalize() {
-        perl_destruct(my_perl);
-        perl_free(my_perl);
+        perl_destruct(perl_interpreter);
+        perl_free(perl_interpreter);
         PERL_SYS_TERM();
     }
 }
