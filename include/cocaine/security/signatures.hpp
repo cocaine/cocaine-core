@@ -14,8 +14,12 @@ class signatures_t:
         signatures_t();
         ~signatures_t();
 
-        void verify(const std::string& message, const unsigned char* signature,
-                    unsigned int size, const std::string& token);
+        void verify(const char* message,
+                    size_t message_size,
+                    const unsigned char* signature,
+                    size_t signature_size,
+                    const std::string& token);
+
         // std::string sign(const std::string& message, const std::string& token);
 
     private:

@@ -19,7 +19,11 @@ file_storage_t::file_storage_t():
     m_instance(config_t::get().core.instance)
 {}
 
-void file_storage_t::put(const std::string& ns, const std::string& key, const Json::Value& value) {
+void file_storage_t::put(
+    const std::string& ns,
+    const std::string& key,
+    const Json::Value& value) 
+{
     boost::mutex::scoped_lock lock(m_mutex);
     fs::path store_path(m_storage_path / m_instance / ns);
 

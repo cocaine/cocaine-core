@@ -16,7 +16,7 @@
 // Message types
 #define INVOKE      1   /* engine -> worker: do something*/
 #define TERMINATE   2   /* engine -> worker: die */
-#define FUTURE      3   /* worker -> engine: something is done, here are the results */
+#define FULFILL     3   /* worker -> engine: something is done, here are the results */
 #define SUICIDE     4   /* worker -> engine: i am useless, kill me */
 #define HEARTBEAT   5   /* worker -> engine: i am alive, don't kill me */
 
@@ -28,7 +28,7 @@ typedef std::vector<std::string> route_t;
 
 class socket_t: 
     public boost::noncopyable,
-    public helpers::birth_control_t<socket_t>
+    public birth_control_t<socket_t>
 {
     public:
         socket_t(zmq::context_t& context, int type, std::string identity = ""):

@@ -28,7 +28,7 @@ class source_t:
 
 // Plugins are expected to supply at least one factory function
 // to initialize sources, given a name and an argument. Each factory function
-// is responsible to initialize sources of one registered scheme
+// is responsible to initialize sources of one registered type
 typedef source_t* (*factory_fn_t)(const std::string&, const std::string&);
 
 // Plugins are expected to have an 'initialize' function, which should

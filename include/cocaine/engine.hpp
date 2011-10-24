@@ -1,12 +1,12 @@
 #ifndef COCAINE_ENGINE_HPP
 #define COCAINE_ENGINE_HPP
 
-#include "cocaine/backends/thread.hpp"
+#include "cocaine/backends.hpp"
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
-#include "cocaine/future.hpp"
 #include "cocaine/networking.hpp"
 #include "cocaine/overseer.hpp"
+#include "cocaine/promise.hpp"
 #include "cocaine/registry.hpp"
 
 // Driver types
@@ -22,21 +22,20 @@ namespace cocaine { namespace engine {
 class engine_t:
     public boost::noncopyable,
     public boost::enable_shared_from_this<engine_t>,
-    public helpers::birth_control_t<engine_t>,
+    public birth_control_t<engine_t>,
     public lines::responder_t,
     public lines::publisher_t
 {
     public:
-        typedef thread_t worker_type;
-
         typedef boost::ptr_map<
             const std::string,
-            worker_type
+            backend_t
         > pool_t;
     
         struct shortest_queue {
             bool operator()(pool_t::reference left, pool_t::reference right) {
-                return left->second->queue().size() < right->second->queue().size();
+                return ((left->second->queue().size() < right->second->queue().size())
+                      && left->second->active());
             }
         };
 
@@ -48,57 +47,80 @@ class engine_t:
         Json::Value stop();
         Json::Value stats();
 
-        void reap(helpers::unique_id_t::type worker_id);
+        void reap(unique_id_t::reference worker_id);
 
     public:
         template<class T>
-        boost::shared_ptr<lines::future_t> queue(const T& args) {
-            boost::shared_ptr<lines::future_t> future(new lines::future_t());
-            
-            pool_t::iterator worker(std::min_element(
-                m_pool.begin(),
-                m_pool.end(), 
-                shortest_queue()));
+        boost::shared_ptr<lines::promise_t> queue(const T& args) {
+            boost::shared_ptr<lines::promise_t> promise(new lines::promise_t());
+            pool_t::iterator worker;
 
-            if(worker == m_pool.end() || (worker->second->queue().size() > 0 && m_pool.size() < m_pool_cfg.pool_limit)) {
-                try {
-                    boost::shared_ptr<plugin::source_t> source(
-                        core::registry_t::instance()->create(m_app_cfg.name, m_app_cfg.type, m_app_cfg.args));
-                    boost::shared_ptr<overseer_t> overseer(
-                        new overseer_t(m_context, m_app_cfg.name, source));
-                    std::auto_ptr<worker_type> object(
-                        new worker_type(shared_from_this(), overseer));
+            // Block external communications to avoid races
+            m_request_watcher->stop();
+            m_request_processor->stop();
 
-                    overseer->ensure();
+            while(true) {
+                worker = std::min_element(
+                    m_pool.begin(),
+                    m_pool.end(), 
+                    shortest_queue());
 
-                    std::string worker_id(object->id());
-                    boost::tie(worker, boost::tuples::ignore) = m_pool.insert(worker_id, object);
-                } catch(const zmq::error_t& e) {
-                    if(e.num() == EMFILE) {
-                        throw std::runtime_error("zeromq is overloaded");
-                    } else {
-                        throw;
+                if(worker == m_pool.end() || 
+                    (worker->second->active() &&
+                     worker->second->queue().size() > 0 && 
+                     m_pool.size() < m_pool_cfg.pool_limit))
+                {
+                    try {
+                        boost::shared_ptr<plugin::source_t> source(
+                            core::registry_t::instance()->create(
+                                m_app_cfg.name,
+                                m_app_cfg.type,
+                                m_app_cfg.args));
+
+                        std::auto_ptr<backend_t> object;
+
+                        if(m_pool_cfg.backend == "thread") {
+                            object.reset(new thread_t(shared_from_this(), source));
+                        } else if(m_pool_cfg.backend == "process") {
+                            object.reset(new process_t(shared_from_this(), source));
+                        }
+
+                        std::string worker_id(object->id());
+                        boost::tie(worker, boost::tuples::ignore) = m_pool.insert(worker_id, object);
+                    } catch(const zmq::error_t& e) {
+                        if(e.num() == EMFILE) {
+                            throw std::runtime_error("zeromq is overloaded");
+                        } else {
+                            throw;
+                        }
                     }
+                } else if(!worker->second->active()) {
+                    ev::get_default_loop().loop(ev::ONESHOT);
+                } else if(worker->second->queue().size() >= m_pool_cfg.queue_limit) {
+                    throw std::runtime_error("engine is overloaded");
+                } else {
+                    break;
                 }
-            } else if(worker->second->queue().size() >= m_pool_cfg.queue_limit) {
-                throw std::runtime_error("engine is overloaded");
             }
             
             m_messages.send_multi(
                 helpers::joint_view(
                     boost::make_tuple(
                         lines::protect(worker->second->id()),
-                        future->id()),
+                        promise->id()),
                     args));
             
             worker->second->queue().insert(std::make_pair(
-                future->id(),
-                future));
+                promise->id(),
+                promise));
         
+            m_request_watcher->start(m_messages.fd(), ev::READ);
+            m_request_processor->start();
+            
             // XXX: Damn, ZeroMQ, why are you so strange? 
             ev::get_default_loop().feed_fd_event(m_messages.fd(), ev::READ);
 
-            return future;
+            return promise;
         }
 
         virtual void respond(const lines::route_t& route, const Json::Value& object);

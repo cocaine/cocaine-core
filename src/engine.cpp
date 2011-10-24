@@ -9,7 +9,6 @@
 #include "cocaine/engine.hpp"
 
 using namespace cocaine::engine;
-using namespace cocaine::helpers;
 using namespace cocaine::lines;
 
 engine_t::engine_t(zmq::context_t& context, const std::string& name):
@@ -20,7 +19,7 @@ engine_t::engine_t(zmq::context_t& context, const std::string& name):
 
     syslog(LOG_DEBUG, "engine [%s]: constructing", m_app_cfg.name.c_str());
     
-    m_messages.bind("inproc://engines/" + m_app_cfg.name);
+    m_messages.bind("ipc:///var/run/cocaine/engines/" + m_app_cfg.name);
     
     m_message_watcher.set<engine_t, &engine_t::message>(this);
     m_message_watcher.start(m_messages.fd(), ev::READ);
@@ -57,6 +56,13 @@ Json::Value engine_t::run(const Json::Value& manifest) {
     m_app_cfg.server_endpoint = manifest["server"]["endpoint"].asString(),
     m_app_cfg.pubsub_endpoint = manifest["pubsub"]["endpoint"].asString();
 
+    m_pool_cfg.backend = manifest["engine"].get("backend",
+        config_t::get().engine.backend).asString();
+    
+    if(m_pool_cfg.backend != "thread" && m_pool_cfg.backend != "process") {
+        throw std::runtime_error("invalid backend type");
+    }
+    
     m_pool_cfg.heartbeat_timeout = manifest["engine"].get("heartbeat-timeout",
         config_t::get().engine.heartbeat_timeout).asDouble();
     m_pool_cfg.suicide_timeout = manifest["engine"].get("suicide-timeout",
@@ -196,7 +202,8 @@ Json::Value engine_t::stats() {
     results["pool"]["limit"] = m_pool_cfg.pool_limit;
 
     for(pool_t::const_iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
-        results["pool"]["queues"][it->first] = static_cast<Json::UInt>(it->second->queue().size());
+        results["pool"]["queues"][it->first] = 
+            static_cast<Json::UInt>(it->second->queue().size());
     }
 
     if(!m_tasks.empty()) {
@@ -239,7 +246,7 @@ Json::Value engine_t::past(const std::string& task) {
 }
 */
 
-void engine_t::reap(unique_id_t::type worker_id) {
+void engine_t::reap(unique_id_t::reference worker_id) {
     pool_t::iterator worker(m_pool.find(worker_id));
 
     // TODO: Re-assign tasks
@@ -248,7 +255,10 @@ void engine_t::reap(unique_id_t::type worker_id) {
 
         object["error"] = "timeout";
 
-        for(worker_type::request_queue_t::iterator it = worker->second->queue().begin(); it != worker->second->queue().end(); ++it) {
+        for(backend_t::request_queue_t::iterator it = worker->second->queue().begin(); 
+            it != worker->second->queue().end();
+            ++it) 
+        {
             it->second->push(object);
         }
         
@@ -369,21 +379,22 @@ void engine_t::process_message(ev::idle& w, int revents) {
 
         if(worker != m_pool.end()) {
             switch(code) {
-                case FUTURE: {
-                    unique_id_t::type request_id;
+                case FULFILL: {
+                    unique_id_t::type promise_id;
                     Json::Value object;
 
-                    boost::tuple<std::string&, Json::Value&> tier(request_id, object);
+                    boost::tuple<std::string&, Json::Value&> tier(promise_id, object);
                     m_messages.recv_multi(tier);
 
-                    worker_type::request_queue_t::iterator request(
-                        worker->second->queue().find(request_id));
+                    backend_t::request_queue_t::iterator request(
+                        worker->second->queue().find(promise_id));
                            
                     if(request != worker->second->queue().end()) {
                         request->second->push(object);
                         worker->second->queue().erase(request);
                     } else {
-                        syslog(LOG_ERR, "engine [%s]: received a response from a wrong worker", m_app_cfg.name.c_str());
+                        syslog(LOG_ERR, "engine [%s]: received a response from a wrong worker",
+                            m_app_cfg.name.c_str());
                     }
                     
                     break;
@@ -398,7 +409,7 @@ void engine_t::process_message(ev::idle& w, int revents) {
                     break;
 
                 default:
-                    syslog(LOG_DEBUG, "engine [%s]: trash on channel", m_app_cfg.name.c_str());
+                    syslog(LOG_DEBUG, "engine [%s]: trash on the channel", m_app_cfg.name.c_str());
             }
         } else {
             syslog(LOG_ERR, "engine [%s]: dropping messages for orphaned worker %s", 
@@ -452,12 +463,9 @@ void engine_t::process_request(ev::idle& w, int revents) {
                 boost::make_tuple(
                     INVOKE,
                     m_app_cfg.callable,
-                    std::string(
-                        static_cast<const char*>(message.data()),
-                        message.size())
-                    )
+                    boost::ref(message)
                 )
-            );
+            ));
         } catch(const std::runtime_error& e) {
             response->abort(e.what());
         }

@@ -128,6 +128,8 @@ extern "C" {
         
         PyEval_ReleaseLock();
 
+        pthread_atfork(NULL, NULL, PyOS_AfterFork);
+
         return plugin_info;
     }
 

@@ -20,6 +20,9 @@
 #include "cocaine/helpers/unique_id.hpp"
 #include "cocaine/helpers/birth_control.hpp"
 
+using cocaine::helpers::unique_id_t;
+using cocaine::helpers::birth_control_t;
+
 #include "json/json.h"
 
 #define EV_MINIMAL 0

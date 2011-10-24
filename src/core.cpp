@@ -2,7 +2,6 @@
 
 #include "cocaine/core.hpp"
 #include "cocaine/engine.hpp"
-#include "cocaine/future.hpp"
 #include "cocaine/storage.hpp"
 
 using namespace cocaine::core;
@@ -43,7 +42,10 @@ core_t::core_t():
         config_t::get().core.route.data(),
         config_t::get().core.route.length());
 
-    for(std::vector<std::string>::const_iterator it = config_t::get().core.endpoints.begin(); it != config_t::get().core.endpoints.end(); ++it) {
+    for(std::vector<std::string>::const_iterator it = config_t::get().core.endpoints.begin();
+        it != config_t::get().core.endpoints.end();
+        ++it) 
+    {
         m_server.bind(*it);
         syslog(LOG_INFO, "core: listening for requests on %s", it->c_str());
     }
@@ -111,7 +113,6 @@ void core_t::process_request(ev::idle& w, int revents) {
     if(m_server.pending()) {
         zmq::message_t message, signature;
         lines::route_t route;
-        std::string request;
 
         Json::Reader reader(Json::Features::strictMode());
         Json::Value root;
@@ -140,9 +141,6 @@ void core_t::process_request(ev::idle& w, int revents) {
         boost::shared_ptr<lines::response_t> response(
             new lines::response_t(route, shared_from_this()));
         
-        request.assign(static_cast<const char*>(message.data()),
-            message.size());
-
         if(m_server.has_more()) {
             m_server.recv(&signature);
         }
@@ -150,7 +148,11 @@ void core_t::process_request(ev::idle& w, int revents) {
         // Parse the request
         root.clear();
 
-        if(reader.parse(request, root)) {
+        if(reader.parse(
+            static_cast<const char*>(message.data()),
+            static_cast<const char*>(message.data()) + message.size(),
+            root)) 
+        {
             try {
                 if(!root.isObject()) {
                     throw std::runtime_error("json root must be an object");
@@ -165,9 +167,12 @@ void core_t::process_request(ev::idle& w, int revents) {
       
                 if(!username.empty()) {
                     if(version >= 3) {
-                        m_signatures.verify(request,
+                        m_signatures.verify(
+                            static_cast<const char*>(message.data()),
+                            message.size(),
                             static_cast<const unsigned char*>(signature.data()),
-                            signature.size(), username);
+                            signature.size(),
+                            username);
                     }
                 } else {
                     throw std::runtime_error("username expected");

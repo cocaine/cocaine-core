@@ -6,10 +6,10 @@
 
 namespace cocaine { namespace lines {
 
-class future_t:
+class promise_t:
     public boost::noncopyable,
-    public helpers::birth_control_t<future_t>,
-    public helpers::unique_id_t
+    public unique_id_t,
+    public birth_control_t<promise_t>
 {
     public:
         void bind(boost::shared_ptr<deferred_t> parent) {

@@ -60,7 +60,7 @@ class publisher_t {
 
 class response_t:
     public deferred_t,
-    public helpers::birth_control_t<response_t>
+    public birth_control_t<response_t>
 {
     public:
         response_t(const lines::route_t& route, boost::shared_ptr<responder_t> parent):
@@ -81,7 +81,7 @@ class response_t:
 
 class publication_t:
     public deferred_t,
-    public helpers::birth_control_t<publication_t>
+    public birth_control_t<publication_t>
 {
     public:
         publication_t(const std::string& key, boost::shared_ptr<publisher_t> parent):

@@ -80,8 +80,11 @@ std::string signatures_t::sign(const std::string& message, const std::string& to
 }
 */
 
-void signatures_t::verify(const std::string& message, const unsigned char* signature,
-                         unsigned int size, const std::string& token)
+void signatures_t::verify(const char* message,
+                          size_t message_size, 
+                          const unsigned char* signature,
+                          size_t signature_size, 
+                          const std::string& token)
 {
     key_map_t::const_iterator it(m_keys.find(token));
 
@@ -93,10 +96,10 @@ void signatures_t::verify(const std::string& message, const unsigned char* signa
     EVP_VerifyInit(m_context, EVP_sha1());
 
     // Fill it with data
-    EVP_VerifyUpdate(m_context, message.data(), message.length());
+    EVP_VerifyUpdate(m_context, message, message_size);
     
     // Verify the signature
-    if(!EVP_VerifyFinal(m_context, signature, size, it->second)) {
+    if(!EVP_VerifyFinal(m_context, signature, signature_size, it->second)) {
         EVP_MD_CTX_cleanup(m_context);
         throw std::runtime_error("invalid signature");
     }
