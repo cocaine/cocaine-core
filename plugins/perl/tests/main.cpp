@@ -11,7 +11,7 @@
 
 class interp {
 public:
-	interp() : my_perl(NULL){
+	interp() : my_perl(NULL), stopping(false) {
 		my_perl = perl_alloc();
 		perl_construct(my_perl);
 		
@@ -58,64 +58,47 @@ public:
 		std::cout << "out: " << output << std::endl;
 	}
 	
+	void process(const std::string& str) {
+		while (!stopping) {
+			run(str);
+		}
+	}
+	
 	PerlInterpreter* my_perl;
+	bool stopping;
+	
+	boost::mutex mutex;
+	boost::condition condition;
 };
-
-bool stopping = false;
-
-boost::mutex mutex;
-boost::condition condition;
-
-static void thread_proc_1() {
-	interp it;
-	
-	while (!stopping) {
-		/*
-		boost::mutex::scoped_lock lock(mutex);
-		boost::xtime t;
-		boost::xtime_get(&t, boost::TIME_UTC);
-		
-		t.nsec += 10000000;
-		condition.timed_wait(lock, t);
-		*/
-		it.run("thread 1");
-	}
-}
-
-boost::mutex mutex2;
-boost::condition condition2;
-
-static void thread_proc_2() {
-	interp it;
-	
-	while (!stopping) {
-		/*
-		boost::mutex::scoped_lock lock(mutex2);
-		boost::xtime t;
-		boost::xtime_get(&t, boost::TIME_UTC);
-		
-		t.nsec += 10000000;
-		condition2.timed_wait(lock, t);
-		*/
-		it.run("thread 2");
-	}
-}
 
 int main(int argc, char** argv) {
 	PERL_SYS_INIT3(NULL, NULL, NULL);
 	
 	{
-		boost::thread th1 = boost::thread(boost::bind(&thread_proc_1));
-		boost::thread th2 = boost::thread(boost::bind(&thread_proc_2));
+		interp a, b;
+		
+		boost::thread th1 = boost::thread(boost::bind(&a::process, this, "thread 1"));
+		boost::thread th2 = boost::thread(boost::bind(&b::process, this, "thread 2"));
 		
 		sleep(1);
-
-		stopping = true;
+		
+		a.stopping = true;
+		b.stopping = true;
+		
 		th1.join();
 		th2.join();
 	}
 	
 	PERL_SYS_TERM();
-
+	
 	return 0;
 }
+
+/*
+ boost::mutex::scoped_lock lock(mutex);
+ boost::xtime t;
+ boost::xtime_get(&t, boost::TIME_UTC);
+ 
+ t.nsec += 10000000;
+ condition.timed_wait(lock, t);
+ */
