@@ -20,7 +20,8 @@ public:
 		PL_exit_flags |= PERL_EXIT_DESTRUCT_END;
 		perl_run(my_perl);
 		
-		eval_pv("sub test_method { my $a = @_[0]; $a = $a . \" and something else!\"; return $a; }", TRUE);
+		//eval_pv("sub test_method { my $a = @_[0]; $a = $a . \" and something else!\"; return $a; }", TRUE);
+		eval_pv("sub test_method { my $a = \"test string\"; return $a; }", TRUE);
 	};
 	
 	~interp() {
@@ -37,10 +38,11 @@ public:
 			SAVETMPS;
 			
 			PUSHMARK(SP);
-			XPUSHs(sv_2mortal(newSVpv(a, 0)));
+			//XPUSHs(sv_2mortal(newSVpv(a, 0)));
 			
 			PUTBACK;
-			int count = call_pv("test_method", G_SCALAR);
+			//int count = call_pv("test_method", G_SCALAR);
+			int count = call_pv("test_method", G_SCALAR | G_NOARGS);
 			SPAGAIN;
 			
 			if (count > 0) {
@@ -80,7 +82,7 @@ int main(int argc, char** argv) {
 		boost::thread th1 = boost::thread(boost::bind(&interp::process, &a, "thread 1"));
 		boost::thread th2 = boost::thread(boost::bind(&interp::process, &b, "thread 2"));
 		
-		sleep(1);
+		sleep(3);
 		
 		a.stopping = true;
 		b.stopping = true;

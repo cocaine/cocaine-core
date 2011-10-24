@@ -26,14 +26,12 @@ class perl_t:
             helpers::uri_t uri(args);
 
             my_perl = perl_alloc();
-            PERL_SET_CONTEXT(my_perl);
             perl_construct(my_perl);
 
             compile(helpers::download(uri));
         }
 
         ~perl_t() {
-            PERL_SET_CONTEXT(my_perl);
             perl_destruct(my_perl);
             perl_free(my_perl);
         }
@@ -69,15 +67,15 @@ class perl_t:
             if (!input.empty()) {
                 input_value_buff = input.c_str();
 
-                PERL_SET_CONTEXT(my_perl);
                 dSP;
                 ENTER;
                 SAVETMPS;
+				
                 PUSHMARK(SP);
                 XPUSHs(sv_2mortal(newSVpv(input_value_buff, 0)));
-
                 PUTBACK;
-                int ret_vals_count = call_pv(method.c_str(), G_SCALAR);
+                
+				int ret_vals_count = call_pv(method.c_str(), G_SCALAR);
                 SPAGAIN;
 
                 if (ret_vals_count > 0) {
@@ -96,6 +94,9 @@ class perl_t:
                 dSP;
                 ENTER;
                 SAVETMPS;
+
+                PUSHMARK(SP);				
+                PUTBACK;
 
                 int ret_vals_count = call_pv(method.c_str(), G_SCALAR | G_NOARGS);
                 SPAGAIN;
@@ -125,7 +126,6 @@ class perl_t:
 
         void compile(const std::string& code)
         {
-            PERL_SET_CONTEXT(my_perl);
             const char* embedding[] = {"", "-e", "0"};
             perl_parse(my_perl, NULL, 3, (char**)embedding, NULL);
             PL_exit_flags |= PERL_EXIT_DESTRUCT_END;
