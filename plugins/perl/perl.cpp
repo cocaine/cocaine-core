@@ -5,7 +5,7 @@
 #include "cocaine/downloads.hpp"
 #include "cocaine/helpers/uri.hpp"
 
-static PerlInterpreter* perl_interpreter;  /***    The Perl interpreter    ***/
+static PerlInterpreter* my_perl;  /***    The Perl interpreter    ***/
 
 namespace cocaine { namespace plugin {
 
@@ -95,9 +95,9 @@ class perl_t:
         void compile(const std::string& code)
         {
             const char* embedding[] = {"", "-e", "0"};
-            perl_parse(perl_interpreter, NULL, 3, (char**)embedding, NULL);
+            perl_parse(my_perl, NULL, 3, (char**)embedding, NULL);
             PL_exit_flags |= PERL_EXIT_DESTRUCT_END;
-            perl_run(perl_interpreter);
+            perl_run(my_perl);
 
             eval_pv(code.c_str(), TRUE);
         }
@@ -111,15 +111,15 @@ static const source_info_t plugin_info[] = {
 extern "C" {
     const source_info_t* initialize() {
         PERL_SYS_INIT3(NULL, NULL, NULL);
-        perl_interpreter = perl_alloc();
-        perl_construct(perl_interpreter);
+        my_perl = perl_alloc();
+        perl_construct(my_perl);
 
         return plugin_info;
     }
 
     __attribute__((destructor)) void finalize() {
-        perl_destruct(perl_interpreter);
-        perl_free(perl_interpreter);
+        perl_destruct(my_perl);
+        perl_free(my_perl);
         PERL_SYS_TERM();
     }
 }
