@@ -5,8 +5,6 @@
 #include "cocaine/downloads.hpp"
 #include "cocaine/helpers/uri.hpp"
 
-static PerlInterpreter* my_perl;  /***    The Perl interpreter    ***/
-
 namespace cocaine { namespace plugin {
 
 class perl_t:
@@ -26,7 +24,18 @@ class perl_t:
             }
             
             helpers::uri_t uri(args);
+
+            PERL_SYS_INIT3(NULL, NULL, NULL);
+            my_perl = perl_alloc();
+            perl_construct(my_perl);
+
             compile(helpers::download(uri));
+        }
+
+        ~perl_t() {
+            perl_destruct(my_perl);
+            perl_free(my_perl);
+            PERL_SYS_TERM();   
         }
             
         virtual Json::Value invoke(const std::string& method, const void* request = NULL, size_t request_size = 0)
@@ -105,11 +114,7 @@ class perl_t:
                 return Json::nullValue;
             }
             else {
-                Json::Value object(Json::objectValue);
-
-                object["result"] = result;
-
-                return object;
+                // do something with result
             }
         }
 
@@ -122,6 +127,9 @@ class perl_t:
 
             eval_pv(code.c_str(), TRUE);
         }
+    
+    private:
+        PerlInterpreter* my_perl;  /***    The Perl interpreter    ***/
 };
 
 static const source_info_t plugin_info[] = {
@@ -131,17 +139,10 @@ static const source_info_t plugin_info[] = {
 
 extern "C" {
     const source_info_t* initialize() {
-        PERL_SYS_INIT3(NULL, NULL, NULL);
-        my_perl = perl_alloc();
-        perl_construct(my_perl);
-
         return plugin_info;
     }
 
     __attribute__((destructor)) void finalize() {
-        perl_destruct(my_perl);
-        perl_free(my_perl);
-        PERL_SYS_TERM();
     }
 }
 
