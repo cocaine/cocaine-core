@@ -64,7 +64,9 @@ class perl_t:
 
             std::string result;
             const char* input_value_buff = NULL;
-
+            
+            PERL_SET_CONTEXT(my_perl);
+            
             if (!input.empty()) {
                 input_value_buff = input.c_str();
 
