@@ -1,3 +1,5 @@
+#include <sys/wait.h>
+
 #include "cocaine/backends/process.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/overseer.hpp"
@@ -30,6 +32,10 @@ process_t::process_t(boost::shared_ptr<engine_t> parent, boost::shared_ptr<sourc
 
 process_t::~process_t() {
     syslog(LOG_DEBUG, "worker [%s:%s]: destructing", m_parent->name().c_str(), id().c_str());
+
+    int status;
+
+    waitpid(m_pid, &status, 0);
 }
 
 void process_t::timeout(ev::timer& w, int revents) {
