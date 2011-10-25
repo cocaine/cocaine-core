@@ -4,6 +4,7 @@
 
 #include "cocaine/plugin.hpp"
 #include "cocaine/security/digest.hpp"
+#include "cocaine/storages/abstract.hpp"
 
 #include "storage.hpp"
 
@@ -73,7 +74,7 @@ PyObject* storage_object_t::get(storage_object_t* self, PyObject* args, PyObject
 
     Py_BEGIN_ALLOW_THREADS
         try {
-            value = storage_t::instance()->get(storage_id, PyString_AsString(key));
+            value = storage_t::create()->get(storage_id, PyString_AsString(key));
         } catch(const std::runtime_error& e) {
             error = e.what();
         }
@@ -99,7 +100,7 @@ PyObject* storage_object_t::set(storage_object_t* self, PyObject* args, PyObject
     
     Py_BEGIN_ALLOW_THREADS
         try {
-            storage_t::instance()->put(storage_id, PyString_AsString(key), object);
+            storage_t::create()->put(storage_id, PyString_AsString(key), object);
         } catch(const std::runtime_error& e) {
             error = e.what();
         }

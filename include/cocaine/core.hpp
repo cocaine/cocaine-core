@@ -4,7 +4,7 @@
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/networking.hpp"
-#include "cocaine/responses.hpp"
+#include "cocaine/response.hpp"
 #include "cocaine/security/signatures.hpp"
 
 namespace cocaine { namespace core {
@@ -37,6 +37,7 @@ class core_t:
         Json::Value create_engine(const std::string& name, const Json::Value& manifest);
         Json::Value delete_engine(const std::string& name);
         Json::Value stats();
+        Json::Value info();
 
         // Future support
         virtual void respond(const lines::route_t& route, const Json::Value& object);

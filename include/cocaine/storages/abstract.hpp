@@ -5,9 +5,12 @@
 
 namespace cocaine { namespace storage {
 
-class abstract_storage_t:
+class storage_t:
     public boost::noncopyable
 {
+    public:
+        static boost::shared_ptr<storage_t> create();
+    
     public:
         virtual void put(const std::string& ns, const std::string& key, const Json::Value& value) = 0;
         virtual bool exists(const std::string& ns, const std::string& key) = 0;

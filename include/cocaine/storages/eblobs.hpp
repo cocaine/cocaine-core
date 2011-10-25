@@ -42,7 +42,7 @@ class eblob_purger_t:
 };
 
 class eblob_storage_t:
-    public abstract_storage_t
+    public storage_t
 {
     public:
         eblob_storage_t();

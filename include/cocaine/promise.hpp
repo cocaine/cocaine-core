@@ -2,7 +2,7 @@
 #define COCAINE_FUTURE_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/responses.hpp"
+#include "cocaine/response.hpp"
 
 namespace cocaine { namespace lines {
 

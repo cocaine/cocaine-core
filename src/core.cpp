@@ -2,7 +2,7 @@
 
 #include "cocaine/core.hpp"
 #include "cocaine/engine.hpp"
-#include "cocaine/storage.hpp"
+#include "cocaine/storages/abstract.hpp"
 
 using namespace cocaine::core;
 using namespace cocaine::engine;
@@ -32,15 +32,12 @@ core_t::core_t():
     }
 
     // Listening socket
-    config_t::set().core.route =
-        config_t::get().core.hostname + "/" +
-        config_t::get().core.instance;
+    std::string route(
+            config_t::get().core.hostname + "/" + 
+            config_t::get().core.instance);
+    m_server.setsockopt(ZMQ_IDENTITY, route.data(), route.length());
     
-    syslog(LOG_INFO, "core: route to this node is '%s'", config_t::get().core.route.c_str());
-
-    m_server.setsockopt(ZMQ_IDENTITY,
-        config_t::get().core.route.data(),
-        config_t::get().core.route.length());
+    syslog(LOG_INFO, "core: route to this node is '%s'", route.c_str());
 
     for(std::vector<std::string>::const_iterator it = config_t::get().core.endpoints.begin();
         it != config_t::get().core.endpoints.end();
@@ -121,7 +118,7 @@ void core_t::process_request(ev::idle& w, int revents) {
             m_server.recv(&message);
 
 #if ZMQ_VERSION > 30000
-            if(!m_server.is_label()) {
+            if(!m_server.label()) {
 #else
             if(!message.size()) {
 #endif
@@ -141,7 +138,7 @@ void core_t::process_request(ev::idle& w, int revents) {
         boost::shared_ptr<lines::response_t> response(
             new lines::response_t(route, shared_from_this()));
         
-        if(m_server.has_more()) {
+        if(m_server.more()) {
             m_server.recv(&signature);
         }
 
@@ -239,6 +236,8 @@ void core_t::dispatch(boost::shared_ptr<lines::response_t> response, const Json:
         }
     } else if(action == "statistics") {
         response->push(stats());
+    } else if(action == "info") {
+        response->push(info());
     } else {
         throw std::runtime_error("unsupported action");
     }
@@ -257,7 +256,7 @@ Json::Value core_t::create_engine(const std::string& name, const Json::Value& ma
     Json::Value result(engine->run(manifest));
 
     try {
-        storage_t::instance()->put("apps", name, manifest);
+        storage_t::create()->put("apps", name, manifest);
     } catch(const std::runtime_error& e) {
         syslog(LOG_ERR, "core: failed to create '%s' engine due to the storage failure - %s",
             name.c_str(), e.what());
@@ -279,7 +278,7 @@ Json::Value core_t::delete_engine(const std::string& name) {
     }
 
     try {
-        storage_t::instance()->remove("apps", name);
+        storage_t::create()->remove("apps", name);
     } catch(const std::runtime_error& e) {
         syslog(LOG_ERR, "core: failed to destroy '%s' engine due to the storage failure - %s",
             name.c_str(), e.what());
@@ -293,20 +292,30 @@ Json::Value core_t::delete_engine(const std::string& name) {
 }
 
 Json::Value core_t::stats() {
-    Json::Value result;
+    Json::Value result(Json::objectValue);
 
     for(engine_map_t::const_iterator it = m_engines.begin(); it != m_engines.end(); ++it) {
         result["apps"][it->first] = it->second->stats();
     }
     
-    result["threads:total"] = engine::thread_t::objects_alive;
+    result["workers"]["total"] = engine::thread_t::objects_alive;
 
-    result["requests:total"] = lines::response_t::objects_created;
-    result["requests:pending"] = lines::response_t::objects_alive - 1;
+    result["requests"]["total"] = lines::response_t::objects_created;
+    result["requests"]["pending"] = lines::response_t::objects_alive - 1;
 
-    result["publications:total"] = lines::publication_t::objects_created;
-    result["publications:pending"] = lines::publication_t::objects_alive;
+    result["publications"]["total"] = lines::publication_t::objects_created;
+    result["publications"]["pending"] = lines::publication_t::objects_alive;
     
+    return result;
+}
+
+Json::Value core_t::info() {
+    Json::Value result(Json::arrayValue);
+
+    for(engine_map_t::const_iterator it = m_engines.begin(); it != m_engines.end(); ++it) {
+        result.append(it->first);
+    }
+
     return result;
 }
 
@@ -341,7 +350,7 @@ void core_t::respond(const lines::route_t& route, const Json::Value& object) {
 
 void core_t::recover() {
     // NOTE: Allowing the exception to propagate here, as this is a fatal error
-    Json::Value root(storage_t::instance()->all("apps"));
+    Json::Value root(storage_t::create()->all("apps"));
 
     if(root.size()) {
         Json::Value::Members apps(root.getMemberNames());

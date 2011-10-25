@@ -1,14 +1,10 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
-PROJECT(Yappi)
+PROJECT(Cocaine)
 
-FIND_PACKAGE(Boost 1.34.1 REQUIRED COMPONENTS
-    thread 
-    filesystem 
-    program_options)
-
-IF(Boost_MINOR_VERSION GREATER 34)
-    SET(BOOST_SYSTEM_LIBS "boost_system-mt")
-ENDIF()
+FIND_PACKAGE(Boost 1.35.0 REQUIRED COMPONENTS
+    filesystem
+    program_options
+    thread)
 
 FIND_PACKAGE(OpenSSL REQUIRED)
 FIND_PACKAGE(CURL REQUIRED)
@@ -16,32 +12,33 @@ FIND_PACKAGE(CURL REQUIRED)
 INCLUDE(cmake/LocateLibrary.cmake)
 INCLUDE(cmake/PrecompiledHeader.cmake)
 
-LOCATE_LIBRARY(LIBZMQ "zmq.hpp" "zmq")
 LOCATE_LIBRARY(LIBEV "ev++.h" "ev" "libev")
 LOCATE_LIBRARY(LIBMSGPACK "msgpack.hpp" "msgpack")
 LOCATE_LIBRARY(LIBURIPARSER "uriparser/Uri.h" "uriparser")
-LOCATE_LIBRARY(LIBUUID "uuid/uuid.h" "uuid")
+LOCATE_LIBRARY(LIBZMQ "zmq.hpp" "zmq")
+
+IF(NOT APPLE)
+    LOCATE_LIBRARY(LIBUUID "uuid/uuid.h" "uuid")
+ENDIF()
 
 INCLUDE_DIRECTORIES(
     ${Boost_INCLUDE_DIRS}
     ${OPENSSL_INCLUDE_DIR}
-    ${LIBZMQ_INCLUDE_DIRS}
     ${LIBEV_INCLUDE_DIRS}
-    ${LIBMSGPACK_INCLUDE_DIRS})
+    ${LIBMSGPACK_INCLUDE_DIRS}
+    ${LIBZMQ_INCLUDE_DIRS})
 
 LINK_DIRECTORIES(
     ${Boost_LIBRARY_DIRS}
-    ${LIBZMQ_LIBRARY_DIRS}
     ${LIBEV_LIBRARY_DIRS}
-    ${LIBMSGPACK_LIBRARY_DIRS})
+    ${LIBMSGPACK_LIBRARY_DIRS}
+    ${LIBZMQ_LIBRARY_DIRS})
 
 INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/foreign/libjson)
 INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/foreign/jsoncpp-0.5.0/include)
 INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/include)
 
-IF(NOT APPLE)
-    SET(CMAKE_UUID_LIBS uuid)
-ENDIF()
+ADD_DEFINITIONS("-DBOOST_FILESYSTEM_VERSION=2")
 
 ADD_LIBRARY(json
     foreign/jsoncpp-0.5.0/src/lib_json/json_value
@@ -51,8 +48,6 @@ ADD_LIBRARY(json
 SET_TARGET_PROPERTIES(json PROPERTIES
     COMPILE_FLAGS -fPIC)
 
-ADD_DEFINITIONS("-DBOOST_FILESYSTEM_VERSION=2")
-
 ADD_LIBRARY(cocaine-core-config SHARED
     src/config)
 
@@ -60,15 +55,16 @@ SET_TARGET_PROPERTIES(cocaine-core-config PROPERTIES
     VERSION 1)
 
 ADD_LIBRARY(cocaine-core-storage SHARED
-    src/storage
+    src/storages/abstract
     src/storages/files
     src/storages/mongo)
 
 TARGET_LINK_LIBRARIES(cocaine-core-storage
     cocaine-core-config
     json
-    ${BOOST_SYSTEM_LIBS}
+    ${LIBUUID_LIBRARIES}
     boost_filesystem-mt
+    boost_system-mt
     boost_thread-mt
     mongoclient)
 
@@ -103,7 +99,9 @@ TARGET_LINK_LIBRARIES(cocaine-core
     cocaine-core-storage
     json
     ${CMAKE_DL_LIBS}
-    ${CMAKE_UUID_LIBS}
+    ${LIBUUID_LIBRARIES}
+    boost_filesystem-mt
+    boost_system-mt
     boost_thread-mt
     curl
     ev
@@ -122,8 +120,8 @@ TARGET_LINK_LIBRARIES(cocained
     boost_program_options-mt)
 
 ADD_SUBDIRECTORY(plugins)
-ADD_SUBDIRECTORY(clients)
-ADD_SUBDIRECTORY(toolset)
+# ADD_SUBDIRECTORY(clients)
+# ADD_SUBDIRECTORY(toolset)
 
 INSTALL(
     TARGETS

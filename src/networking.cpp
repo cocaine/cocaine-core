@@ -11,6 +11,15 @@ int socket_t::fd() {
     return fd;
 }
 
+std::string socket_t::identity() {
+    char identity[255];
+    size_t size = 255;
+
+    getsockopt(ZMQ_IDENTITY, identity, &size);
+
+    return std::string(identity, size);
+}
+
 bool socket_t::pending(int event) {
 #if ZMQ_VERSION > 30000
     int events;
@@ -25,7 +34,7 @@ bool socket_t::pending(int event) {
     return events & event;
 }
 
-bool socket_t::has_more() {
+bool socket_t::more() {
 #if ZMQ_VERSION > 30000
     int rcvmore;
 #else
@@ -40,7 +49,7 @@ bool socket_t::has_more() {
 }
 
 #if ZMQ_VERSION > 30000
-bool socket_t::is_label() {
+bool socket_t::label() {
     int rcvlabel;
     size_t size = sizeof(rcvlabel);
 

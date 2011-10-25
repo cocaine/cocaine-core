@@ -5,11 +5,11 @@
 
 namespace cocaine { namespace engine { namespace drivers {
 
-class abstract_driver_t:
+class driver_t:
     public boost::noncopyable
 {
     public:
-        virtual ~abstract_driver_t() { }
+        virtual ~driver_t() { }
 
         inline std::string id() const {
             return m_id;
@@ -20,7 +20,7 @@ class abstract_driver_t:
         }
 
     protected:
-        abstract_driver_t(const std::string& name):
+        driver_t(const std::string& name):
             m_name(name)
         {}
         

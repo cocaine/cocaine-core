@@ -81,11 +81,14 @@ Json::Value engine_t::run(const Json::Value& manifest) {
             throw std::runtime_error("no callable has been specified for serving");
         }
 
-        m_app_cfg.route = config_t::get().core.route + "/" + m_app_cfg.name;
+        std::string route(
+                config_t::get().core.hostname + "/" + 
+                config_t::get().core.instance + "/" + 
+                m_app_cfg.name);
 
-        result["server"]["route"] = m_app_cfg.route;
+        result["server"]["route"] = route;
         
-        m_server.reset(new socket_t(m_context, ZMQ_ROUTER, m_app_cfg.route));
+        m_server.reset(new socket_t(m_context, ZMQ_ROUTER, route));
         m_server->bind(m_app_cfg.server_endpoint);
 
         m_request_watcher.reset(new ev::io());
@@ -190,7 +193,7 @@ Json::Value engine_t::stats() {
     Json::Value results;
 
     if(m_server) {
-        results["server"]["route"] = m_app_cfg.route;
+        results["server"]["route"] = m_server->identity();
         results["server"]["endpoint"] = m_app_cfg.server_endpoint;
     }
 
@@ -439,7 +442,7 @@ void engine_t::process_request(ev::idle& w, int revents) {
             m_server->recv(&message);
 
 #if ZMQ_VERSION > 30000
-            if(!m_server->is_label()) {
+            if(!m_server->label()) {
 #else
             if(!message.size()) {
 #endif

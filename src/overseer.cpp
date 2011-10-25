@@ -68,7 +68,7 @@ void overseer_t::process_message(ev::idle& w, int revents) {
                 m_messages.recv(method);
 
                 try {
-                    if(!m_messages.has_more()) {
+                    if(!m_messages.more()) {
                         result = m_source->invoke(method);
                     } else {
                         zmq::message_t blob;
@@ -102,7 +102,7 @@ void overseer_t::process_message(ev::idle& w, int revents) {
                 return;
 
             default:
-                syslog(LOG_DEBUG, "worker [%s:%s]: trash on channel", 
+                syslog(LOG_DEBUG, "worker [%s:%s]: trash on the channel", 
                     m_name.c_str(), id().c_str());
         }
     } else {

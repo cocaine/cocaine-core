@@ -2,7 +2,7 @@
 #include "cocaine/helpers/uri.hpp"
 
 #include "python.hpp"
-#include "storage.hpp"
+// #include "storage.hpp"
 
 using namespace cocaine::plugin;
 
@@ -45,6 +45,7 @@ void python_t::compile(const std::string& code) {
         throw std::runtime_error(python_support_t::exception());
     }
 
+    /*
     // Instantiate the Store object
 #if PY_VERSION_HEX > 0x02070000
     object_t capsule(PyCapsule_New(static_cast<void*>(this), NULL, NULL));
@@ -62,7 +63,8 @@ void python_t::compile(const std::string& code) {
     }
 
     // Note: steals the reference
-    PyModule_AddObject(m_module, "storage", storage);    
+    PyModule_AddObject(m_module, "storage", storage); 
+    */
 }
 
 Json::Value python_t::invoke(const std::string& method, const void* request, size_t request_size) {
@@ -121,10 +123,12 @@ extern "C" {
         // Initialize the GIL
         PyEval_InitThreads();
 
+        /*
         // Initialize the storage type object
         if(PyType_Ready(&storage_object_type) < 0) {
             return NULL;
         }
+        */
         
         PyEval_ReleaseLock();
 

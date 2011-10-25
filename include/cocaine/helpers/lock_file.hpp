@@ -17,8 +17,11 @@ class lock_file_t:
         lock_file_t(const boost::filesystem::path& filepath):
             m_filepath(filepath)
         {
-            m_fd = open(m_filepath.string().c_str(), O_RDWR | O_NOATIME);
-
+#ifdef O_NOATIME
+            m_fd = open(m_filepath.string().c_str(), O_RDWR | O_CLOEXEC | O_NOATIME);
+#else
+            m_fd = open(m_filepath.string().c_str(), O_RDWR | O_CLOEXEC);
+#endif
             if(m_fd < 0) {
                 return;
             }

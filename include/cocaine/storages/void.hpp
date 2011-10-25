@@ -6,7 +6,7 @@
 namespace cocaine { namespace storage { namespace backends {
 
 class void_storage_t:
-    public abstract_storage_t
+    public storage_t
 {
     public:
         void put(const std::string& ns, const std::string& key, const Json::Value& value) { }
