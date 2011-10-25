@@ -102,7 +102,7 @@ void overseer_t::process_message(ev::idle& w, int revents) {
                 return;
 
             default:
-                syslog(LOG_DEBUG, "worker [%s:%s]: trash on channel", 
+                syslog(LOG_DEBUG, "worker [%s:%s]: trash on the channel", 
                     m_name.c_str(), id().c_str());
         }
     } else {
