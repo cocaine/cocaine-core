@@ -10,14 +10,12 @@ class http_t:
     public source_t
 {
     public:
-        static source_t* create(const std::string& name, const std::string& args) {
-            return new http_t(name, args);
+        static source_t* create(const std::string& args) {
+            return new http_t(args);
         }
 
     public:
-        http_t(const std::string& name, const std::string& args):
-            source_t(name)
-        {
+        http_t(const std::string& args) {
             m_curl = curl_easy_init();
             
             if(!m_curl) {

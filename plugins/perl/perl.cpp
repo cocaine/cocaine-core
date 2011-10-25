@@ -11,14 +11,12 @@ class perl_t:
     public source_t
 {
     public:
-        static source_t* create(const std::string& name, const std::string& args) {
-            return new perl_t(name, args);
+        static source_t* create(const std::string& args) {
+            return new perl_t(args);
         }
 
     public:
-        perl_t(const std::string& name, const std::string& args):
-            source_t(name)
-        {
+        perl_t(const std::string& args) {
             if(args.empty()) {
                 throw std::runtime_error("no code location has been specified");
             }

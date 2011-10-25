@@ -11,11 +11,11 @@ class python_t:
     public source_t
 {
     public:
-        static source_t* create(const std::string& name, const std::string& args);
+        static source_t* create(const std::string& args);
 
     public:
         // The source protocol implementation
-        python_t(const std::string& name, const std::string& args);
+        python_t(const std::string& args);
 
         // Source protocol
         virtual Json::Value invoke(

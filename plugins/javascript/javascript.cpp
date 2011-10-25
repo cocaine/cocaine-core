@@ -14,14 +14,12 @@ using namespace v8;
 
 class javascript_t: public source_t {
     public:
-        static source_t* create(const std::string& name, const std::string& args) {
-            return new javascript_t(name, args);
+        static source_t* create(const std::string& args) {
+            return new javascript_t(args);
         }
 
     public:
-        javascript_t(const std::string& name, const std::string& args):
-            source_t(name)
-        {
+        javascript_t(const std::string& args) {
             if(args.empty()) {
                 throw std::runtime_error("no code location has been specified");
             }

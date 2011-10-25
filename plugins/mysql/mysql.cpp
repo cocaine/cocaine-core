@@ -9,13 +9,12 @@ class mysql_t:
     public source_t
 {
     public:
-        static source_t* create(const std::string& name, const std::string& args) {
-            return new mysql_t(name, args);
+        static source_t* create(const std::string& args) {
+            return new mysql_t(args);
         }
 
     public:
-        mysql_t(const std::string& name, const std::string& args):
-            source_t(name),
+        mysql_t(const std::string& args):
             m_connect_timeout(1),
             m_read_timeout(1),
             m_write_timeout(1)

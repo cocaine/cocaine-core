@@ -19,7 +19,6 @@ class registry_t:
         bool exists(const std::string& type);
 
         boost::shared_ptr<plugin::source_t> create(
-            const std::string& name, 
             const std::string& type,
             const std::string& args);
 

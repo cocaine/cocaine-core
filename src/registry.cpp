@@ -100,14 +100,13 @@ bool registry_t::exists(const std::string& type) {
 }
 
 boost::shared_ptr<source_t> registry_t::create(
-    const std::string& name,
     const std::string& type,
     const std::string& args) 
 {
     factory_map_t::iterator it(m_factories.find(type));
     factory_fn_t factory = it->second;
     
-    return boost::shared_ptr<source_t>(factory(name, args));
+    return boost::shared_ptr<source_t>(factory(args));
 }
 
 boost::shared_ptr<registry_t> registry_t::instance() {

@@ -73,7 +73,6 @@ class engine_t:
                     try {
                         boost::shared_ptr<plugin::source_t> source(
                             core::registry_t::instance()->create(
-                                m_app_cfg.name,
                                 m_app_cfg.type,
                                 m_app_cfg.args));
 

@@ -8,12 +8,11 @@ using namespace cocaine::plugin;
 
 char python_t::identity[] = "<dynamic>";
 
-source_t* python_t::create(const std::string& name, const std::string& args) {
-    return new python_t(name, args);
+source_t* python_t::create(const std::string& args) {
+    return new python_t(args);
 }
 
-python_t::python_t(const std::string& name, const std::string& args):
-    source_t(name),
+python_t::python_t(const std::string& args):
     m_module(NULL)
 {
     if(args.empty()) {
