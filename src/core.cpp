@@ -2,7 +2,7 @@
 
 #include "cocaine/core.hpp"
 #include "cocaine/engine.hpp"
-#include "cocaine/storage.hpp"
+#include "cocaine/storages/abstract.hpp"
 
 using namespace cocaine::core;
 using namespace cocaine::engine;
@@ -257,7 +257,7 @@ Json::Value core_t::create_engine(const std::string& name, const Json::Value& ma
     Json::Value result(engine->run(manifest));
 
     try {
-        storage_t::instance()->put("apps", name, manifest);
+        storage_t::create()->put("apps", name, manifest);
     } catch(const std::runtime_error& e) {
         syslog(LOG_ERR, "core: failed to create '%s' engine due to the storage failure - %s",
             name.c_str(), e.what());
@@ -279,7 +279,7 @@ Json::Value core_t::delete_engine(const std::string& name) {
     }
 
     try {
-        storage_t::instance()->remove("apps", name);
+        storage_t::create()->remove("apps", name);
     } catch(const std::runtime_error& e) {
         syslog(LOG_ERR, "core: failed to destroy '%s' engine due to the storage failure - %s",
             name.c_str(), e.what());
@@ -341,7 +341,7 @@ void core_t::respond(const lines::route_t& route, const Json::Value& object) {
 
 void core_t::recover() {
     // NOTE: Allowing the exception to propagate here, as this is a fatal error
-    Json::Value root(storage_t::instance()->all("apps"));
+    Json::Value root(storage_t::create()->all("apps"));
 
     if(root.size()) {
         Json::Value::Members apps(root.getMemberNames());

@@ -8,7 +8,7 @@
 namespace cocaine { namespace storage { namespace backends {
 
 class mongo_storage_t:
-    public abstract_storage_t
+    public storage_t
 {
     public:
         mongo_storage_t();

@@ -9,7 +9,7 @@
 namespace cocaine { namespace storage { namespace backends {
 
 class file_storage_t:
-    public abstract_storage_t
+    public storage_t
 {
     public:
         file_storage_t();
