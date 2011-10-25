@@ -1,5 +1,3 @@
-#include "cocaine/storage.hpp"
-
 #include "common.hpp"
 
 namespace cocaine { namespace plugin {

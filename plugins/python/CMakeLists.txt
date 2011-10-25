@@ -18,8 +18,8 @@ INCLUDE_DIRECTORIES(
 
 ADD_LIBRARY(cocaine-plugin-python MODULE
     src/common
-    src/python
-    src/storage)
+    src/python)
+#   src/storage)
 
 TARGET_LINK_LIBRARIES(cocaine-plugin-python
     cocaine-core-config
