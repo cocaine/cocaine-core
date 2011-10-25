@@ -24,8 +24,10 @@ class backend_t:
         virtual ~backend_t();
 
     public:
-        bool active();
         void rearm(float timeout);
+        
+        bool active() const;
+
         request_queue_t& queue();
         const request_queue_t& queue() const;
 

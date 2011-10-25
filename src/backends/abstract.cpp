@@ -15,7 +15,7 @@ backend_t::~backend_t() {
     }
 }
 
-bool backend_t::active() {
+bool backend_t::active() const {
     return m_active;
 }
 
