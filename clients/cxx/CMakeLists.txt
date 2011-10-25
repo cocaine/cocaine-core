@@ -3,7 +3,7 @@ ADD_LIBRARY(cocaine-client SHARED
 
 TARGET_LINK_LIBRARIES(cocaine-client
     json
-    ${CMAKE_UUID_LIBS}
+    ${LIBUUID_LIBRARIES}
     boost_thread-mt
     zmq)
 
