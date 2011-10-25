@@ -9,7 +9,7 @@ namespace cocaine { namespace engine { namespace drivers {
 
 template<class WatcherType, class DriverType>
 class driver_base_t:
-    public abstract_driver_t
+    public driver_t
 {
     public:
         virtual ~driver_base_t() {
@@ -51,7 +51,7 @@ class driver_base_t:
    
     protected:
         driver_base_t(const std::string& name, boost::shared_ptr<engine_t> parent):
-            abstract_driver_t(name),
+            driver_t(name),
             m_parent(parent)
         {
             syslog(LOG_DEBUG, "driver [%s:%s]: constructing",

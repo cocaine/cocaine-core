@@ -163,7 +163,7 @@ class engine_t:
         boost::shared_ptr<ev::idle> m_request_processor;
 
         // Tasks
-        typedef boost::ptr_map<const std::string, drivers::abstract_driver_t> task_map_t;
+        typedef boost::ptr_map<const std::string, drivers::driver_t> task_map_t;
         task_map_t m_tasks;
         
         // History

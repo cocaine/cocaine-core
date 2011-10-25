@@ -7,7 +7,7 @@ namespace cocaine {
         class overseer_t;
 
         namespace drivers {
-            class abstract_driver_t;
+            class driver_t;
         }
     }
 
