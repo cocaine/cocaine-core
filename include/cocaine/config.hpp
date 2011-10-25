@@ -15,7 +15,6 @@ class config_t {
             std::vector<std::string> endpoints;
             std::string hostname;
             std::string instance;
-            std::string route;
         } core;
 
         struct {

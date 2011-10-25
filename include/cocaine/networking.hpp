@@ -73,13 +73,15 @@ class socket_t:
             m_socket.connect(endpoint.c_str());
         }
        
-    public: 
+    public:
         int fd();
+        std::string identity();
+
         bool pending(int event = ZMQ_POLLIN);
-        bool has_more();
+        bool more();
         
 #if ZMQ_VERSION > 30000
-        bool is_label();
+        bool label();
 #endif
 
     private:
@@ -102,7 +104,7 @@ class channel_t:
         void ignore() {
             zmq::message_t null;
 
-            while(has_more()) {
+            while(more()) {
                 recv(&null);
             }
         }

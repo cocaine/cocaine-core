@@ -34,8 +34,8 @@ class engine_t:
     
         struct shortest_queue {
             bool operator()(pool_t::reference left, pool_t::reference right) {
-                return ((left->second->queue().size() < right->second->queue().size())
-                      && left->second->active());
+                return ((left->second->queue().size() < right->second->queue().size()) &&
+                         left->second->active());
             }
         };
 
@@ -143,7 +143,7 @@ class engine_t:
     private:
         zmq::context_t& m_context;
         
-        // Thread I/O
+        // Pool I/O
         lines::channel_t m_messages;
         ev::io m_message_watcher;
         ev::idle m_message_processor;
@@ -153,7 +153,7 @@ class engine_t:
 
         struct {
             std::string name, type, args;
-            std::string server_endpoint, callable, route;
+            std::string server_endpoint, callable;
             std::string pubsub_endpoint;
         } m_app_cfg;
        
@@ -171,7 +171,7 @@ class engine_t:
         typedef boost::ptr_map<const std::string, history_t> history_map_t;
         history_map_t m_histories;
         
-        // Threads
+        // Workers
         pool_t m_pool;
 };
 

@@ -32,15 +32,12 @@ core_t::core_t():
     }
 
     // Listening socket
-    config_t::set().core.route =
-        config_t::get().core.hostname + "/" +
-        config_t::get().core.instance;
+    std::string route(
+            config_t::get().core.hostname + "/" + 
+            config_t::get().core.instance);
+    m_server.setsockopt(ZMQ_IDENTITY, route.data(), route.length());
     
-    syslog(LOG_INFO, "core: route to this node is '%s'", config_t::get().core.route.c_str());
-
-    m_server.setsockopt(ZMQ_IDENTITY,
-        config_t::get().core.route.data(),
-        config_t::get().core.route.length());
+    syslog(LOG_INFO, "core: route to this node is '%s'", route.c_str());
 
     for(std::vector<std::string>::const_iterator it = config_t::get().core.endpoints.begin();
         it != config_t::get().core.endpoints.end();
@@ -121,7 +118,7 @@ void core_t::process_request(ev::idle& w, int revents) {
             m_server.recv(&message);
 
 #if ZMQ_VERSION > 30000
-            if(!m_server.is_label()) {
+            if(!m_server.label()) {
 #else
             if(!message.size()) {
 #endif
@@ -141,7 +138,7 @@ void core_t::process_request(ev::idle& w, int revents) {
         boost::shared_ptr<lines::response_t> response(
             new lines::response_t(route, shared_from_this()));
         
-        if(m_server.has_more()) {
+        if(m_server.more()) {
             m_server.recv(&signature);
         }
 
