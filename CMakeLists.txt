@@ -55,7 +55,7 @@ SET_TARGET_PROPERTIES(cocaine-core-config PROPERTIES
     VERSION 1)
 
 ADD_LIBRARY(cocaine-core-storage SHARED
-    src/storage
+    src/storages/abstract
     src/storages/files
     src/storages/mongo)
 
