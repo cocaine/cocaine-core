@@ -4,7 +4,7 @@
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/networking.hpp"
-#include "cocaine/responses.hpp"
+#include "cocaine/response.hpp"
 #include "cocaine/security/signatures.hpp"
 
 namespace cocaine { namespace core {
