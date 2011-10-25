@@ -37,6 +37,7 @@ class core_t:
         Json::Value create_engine(const std::string& name, const Json::Value& manifest);
         Json::Value delete_engine(const std::string& name);
         Json::Value stats();
+        Json::Value info();
 
         // Future support
         virtual void respond(const lines::route_t& route, const Json::Value& object);

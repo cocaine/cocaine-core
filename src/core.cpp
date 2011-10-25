@@ -236,6 +236,8 @@ void core_t::dispatch(boost::shared_ptr<lines::response_t> response, const Json:
         }
     } else if(action == "statistics") {
         response->push(stats());
+    } else if(action == "info") {
+        response->push(info());
     } else {
         throw std::runtime_error("unsupported action");
     }
@@ -290,20 +292,30 @@ Json::Value core_t::delete_engine(const std::string& name) {
 }
 
 Json::Value core_t::stats() {
-    Json::Value result;
+    Json::Value result(Json::objectValue);
 
     for(engine_map_t::const_iterator it = m_engines.begin(); it != m_engines.end(); ++it) {
         result["apps"][it->first] = it->second->stats();
     }
     
-    result["threads:total"] = engine::thread_t::objects_alive;
+    result["workers"]["total"] = engine::thread_t::objects_alive;
 
-    result["requests:total"] = lines::response_t::objects_created;
-    result["requests:pending"] = lines::response_t::objects_alive - 1;
+    result["requests"]["total"] = lines::response_t::objects_created;
+    result["requests"]["pending"] = lines::response_t::objects_alive - 1;
 
-    result["publications:total"] = lines::publication_t::objects_created;
-    result["publications:pending"] = lines::publication_t::objects_alive;
+    result["publications"]["total"] = lines::publication_t::objects_created;
+    result["publications"]["pending"] = lines::publication_t::objects_alive;
     
+    return result;
+}
+
+Json::Value core_t::info() {
+    Json::Value result(Json::arrayValue);
+
+    for(engine_map_t::const_iterator it = m_engines.begin(); it != m_engines.end(); ++it) {
+        result.append(it->first);
+    }
+
     return result;
 }
 
