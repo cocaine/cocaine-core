@@ -25,7 +25,6 @@ class file_storage_t:
         virtual void purge(const std::string& ns);
 
     private:
-        boost::mutex m_mutex;
         const boost::filesystem::path m_storage_path;
         const std::string m_instance;
 };

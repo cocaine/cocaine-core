@@ -1,7 +1,6 @@
 #include <boost/filesystem/fstream.hpp>
 #include <boost/iterator/filter_iterator.hpp>
 
-#include "cocaine/helpers/lock_file.hpp"
 #include "cocaine/storages/files.hpp"
 
 using namespace cocaine::helpers;
@@ -38,10 +37,6 @@ void file_storage_t::put(
     }
     
     fs::path file_path(store_path / key);
-
-    boost::lock_guard<boost::mutex> thread_lock(m_mutex);
-    lock_file_t process_lock(file_path);
-
     fs::ofstream stream(file_path, fs::ofstream::out | fs::ofstream::trunc);
    
     if(!stream) {
@@ -61,19 +56,13 @@ void file_storage_t::put(
 bool file_storage_t::exists(const std::string& ns, const std::string& key) {
     fs::path file_path(m_storage_path / m_instance / ns / key);
     
-    boost::lock_guard<boost::mutex> thread_lock(m_mutex);
-    lock_file_t process_lock(file_path);
-    
-    return fs::exists(file_path) && fs::is_regular(file_path);
+    return (fs::exists(file_path) && 
+            fs::is_regular(file_path));
 }
 
 Json::Value file_storage_t::get(const std::string& ns, const std::string& key) {
-    fs::path file_path(m_storage_path / m_instance / ns / key);
-    
-    boost::lock_guard<boost::mutex> thread_lock(m_mutex);
-    lock_file_t process_lock(file_path);
-    
     Json::Value root(Json::objectValue);
+    fs::path file_path(m_storage_path / m_instance / ns / key);
     fs::ifstream stream(file_path, fs::ifstream::in);
     
     if(stream) { 
@@ -121,9 +110,6 @@ Json::Value file_storage_t::all(const std::string& ns) {
 void file_storage_t::remove(const std::string& ns, const std::string& key) {
     fs::path file_path(m_storage_path / m_instance / ns / key);
     
-    boost::lock_guard<boost::mutex> thread_lock(m_mutex);
-    lock_file_t process_lock(file_path);
-
     if(fs::exists(file_path)) {
         try {
             fs::remove(file_path);
@@ -135,10 +121,6 @@ void file_storage_t::remove(const std::string& ns, const std::string& key) {
 
 void file_storage_t::purge(const std::string& ns) {
     fs::path store_path(m_storage_path / m_instance / ns);
-    
-    boost::lock_guard<boost::mutex> thread_lock(m_mutex);
-    lock_file_t process_lock(store_path);
-    
     fs::remove_all(store_path);
 }
 
