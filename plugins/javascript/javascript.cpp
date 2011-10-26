@@ -73,8 +73,8 @@ class javascript_t: public source_t {
         virtual void invoke(
             callback_fn_t callback,
             const std::string& method,
-            const void* request = NULL,
-            size_t request_size = 0)
+            const void* request,
+            size_t size)
         {
             Json::Value result;
 

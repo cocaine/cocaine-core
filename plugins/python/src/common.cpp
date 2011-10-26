@@ -1,81 +1,132 @@
+#include "cocaine/downloads.hpp"
+#include "cocaine/helpers/uri.hpp"
+
 #include "common.hpp"
+#include "python+wsgi.hpp"
+#include "python+json.hpp"
 
 using namespace cocaine::plugin;
 
-std::string python_support_t::exception() {
+char python_t::identity[] = "<dynamic>";
+
+void python_t::exception() {
     object_t type(NULL), object(NULL), traceback(NULL);
     
     PyErr_Fetch(&type, &object, &traceback);
     object_t message(PyObject_Str(object));
     
-    return PyString_AsString(message);
+    throw std::runtime_error(PyString_AsString(message));
 }
 
-Json::Value python_support_t::unwrap(PyObject* object) {
-    Json::Value result;
+python_t::python_t(const std::string& args):
+    m_module(NULL)
+{
+    if(args.empty()) {
+        throw std::runtime_error("no code location has been specified");
+    }
+
+    helpers::uri_t uri(args);
+    compile(helpers::download(uri));
+}
+
+void python_t::compile(const std::string& code) {
+    thread_state_t state(PyGILState_Ensure());
     
-    if(PyBool_Check(object)) {
-        result = (object == Py_True ? true : false);
-    } else if(PyInt_Check(object) || PyLong_Check(object)) {
-        result = static_cast<Json::Int>(PyInt_AsLong(object));
-    } else if(PyFloat_Check(object)) {
-        result = PyFloat_AsDouble(object);
-    } else if(PyString_Check(object)) {
-        result = PyString_AsString(object);
-    } else if(PyDict_Check(object)) {
-        // Borrowed references, so no need to track them
-        PyObject *key, *value;
-        Py_ssize_t position = 0;
-        
-        // Iterate and convert everything to strings
-        while(PyDict_Next(object, &position, &key, &value)) {
-            result[PyString_AsString(PyObject_Str(key))] = unwrap(value); 
-        }
-    } else if(object_t iterator = PyObject_GetIter(object)) {
-        object_t item(NULL);
+    object_t bytecode(Py_CompileString(
+        code.c_str(),
+        identity,
+        Py_file_input));
 
-        while(item = PyIter_Next(iterator)) {
-            result.append(unwrap(item));
-        }
-    } else if(PyErr_Clear(), object != Py_None) {
-        result["error"] = "<error: unconvertible type>";
-    }    
+    if(PyErr_Occurred()) {
+        exception();
+    }
 
-    return result;
+    m_module = PyImport_ExecCodeModule(
+        identity, bytecode);
+    
+    if(PyErr_Occurred()) {
+        exception();
+    }
 }
 
-PyObject* python_support_t::wrap(const Json::Value& value) {
-    PyObject* object = NULL;
+void python_t::invoke(
+    callback_fn_t callback,
+    const std::string& method,
+    const void* request,
+    size_t size) 
+{
+    thread_state_t state(PyGILState_Ensure());
+    object_t args(NULL);
 
-    switch(value.type()) {
-        case Json::booleanValue:
-            return PyBool_FromLong(value.asBool());
-        case Json::intValue:
-        case Json::uintValue:
-            return PyLong_FromLong(value.asInt());
-        case Json::realValue:
-            return PyFloat_FromDouble(value.asDouble());
-        case Json::stringValue:
-            return PyString_FromString(value.asCString());
-        case Json::objectValue: {
-            object = PyDict_New();
-            Json::Value::Members names(value.getMemberNames());
+    if(request) {
+#if PY_VERSION_HEX > 0x02070000
+        Py_buffer* buffer = static_cast<Py_buffer*>(malloc(sizeof(Py_buffer)));
 
-            for(Json::Value::Members::iterator it = names.begin(); it != names.end(); ++it) {
-                PyDict_SetItemString(object, it->c_str(), wrap(value[*it]));
-            }
+        buffer->buf = const_cast<void*>(request);
+        buffer->len = size;
+        buffer->readonly = true;
+        buffer->format = NULL;
+        buffer->ndim = 0;
+        buffer->shape = NULL;
+        buffer->strides = NULL;
+        buffer->suboffsets = NULL;
 
-            return object;
-        } case Json::arrayValue: {
-            object = PyTuple_New(value.size());
-            Py_ssize_t position = 0;
+        object_t view(PyMemoryView_FromBuffer(buffer));
+#else
+        object_t view(PyBuffer_FromMemory(const_cast<void*>(request), size));
+#endif
 
-            for(Json::Value::const_iterator it = value.begin(); it != value.end(); ++it) {
-                PyTuple_SET_ITEM(object, position++, wrap(*it));
-            }
+        args = PyTuple_Pack(1, *view);
+    } else {
+        args = PyTuple_New(0);
+    }
 
-            return object;
-        } case Json::nullValue:
-            Py_RETURN_NONE;
+    object_t object(PyObject_GetAttrString(m_module, method.c_str()));
+    
+    if(PyErr_Occurred()) {
+        exception();
+    }
+
+    if(!PyCallable_Check(object)) {
+        throw std::runtime_error("'" + method + "' is not callable");
+    }
+
+    if(PyType_Check(object)) {
+        if(PyType_Ready(reinterpret_cast<PyTypeObject*>(*object)) != 0) {
+            exception();
+        }
+    }
+
+    object_t result(PyObject_Call(object, args, NULL));
+
+    if(result.valid()) {
+        respond(callback, result);
+    } else if(PyErr_Occurred()) {
+        exception();
+    }
+}
+
+static const source_info_t plugin_info[] = {
+    { "python+wsgi", &python_wsgi_t::create },
+    { "python+json", &python_json_t::create },
+    { NULL, NULL }
+};
+
+extern "C" {
+    const source_info_t* initialize() {
+        // Initialize the Python subsystem
+        Py_InitializeEx(0);
+
+        // Initialize the GIL
+        PyEval_InitThreads();
+        PyEval_ReleaseLock();
+
+        pthread_atfork(NULL, NULL, PyOS_AfterFork);
+
+        return plugin_info;
+    }
+
+    __attribute__((destructor)) void finalize() {
+        Py_Finalize();
     }
 }

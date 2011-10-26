@@ -18,16 +18,12 @@ INCLUDE_DIRECTORIES(
 
 ADD_LIBRARY(cocaine-plugin-python MODULE
     src/common
-    src/python)
-#   src/storage)
+    src/python+wsgi
+    src/python+json)
 
 TARGET_LINK_LIBRARIES(cocaine-plugin-python
-    cocaine-core-config
-    cocaine-core-storage
     cocaine-core
     json
-    ${BOOST_SYSTEM_LIBS}
-    boost_filesystem-mt
     uriparser)
 
 SET_TARGET_PROPERTIES(cocaine-plugin-python PROPERTIES

@@ -3,25 +3,42 @@
 
 #include <Python.h>
 
-#include "cocaine/common.hpp"
+#include "cocaine/plugin.hpp"
 #include "cocaine/helpers/track.hpp"
+
+#include "common.hpp"
 
 namespace cocaine { namespace plugin {
 
 typedef helpers::track<PyGILState_STATE, PyGILState_Release> thread_state_t;
 typedef helpers::track<PyObject*, Py_DecRef> object_t;
 
-class python_support_t {
+class python_t:
+    public source_t
+{
     public:
-        // Fetches and formats current Python exception as a string
-        static std::string exception();
+        python_t(const std::string& args);
 
-        // Unwraps the Python result object
-        static Json::Value unwrap(PyObject* object);
-        static PyObject* wrap(const Json::Value& value);
+        virtual void invoke(
+            callback_fn_t callback,
+            const std::string& method, 
+            const void* request,
+            size_t size);
+
+    protected:
+        static void exception();
+        
+        virtual void respond(
+            callback_fn_t callback,
+            object_t& result) = 0;
 
     private:
-        python_support_t();
+        void compile(const std::string& code);
+
+    private:
+        static char identity[];
+        
+        object_t m_module;
 };
 
 }}

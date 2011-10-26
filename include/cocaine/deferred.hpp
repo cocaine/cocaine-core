@@ -47,7 +47,7 @@ class response_t:
             
             Json::FastWriter writer;
             std::string response(writer.write(object));
-            zmq::message_t message;
+            zmq::message_t message(response.size());
             
             memcpy(message.data(), response.data(), response.size());
             
@@ -80,7 +80,7 @@ class publication_t:
             {
                 m_parent->publish(m_key, root);
             } else {
-                abort("invalid publication format");
+                abort("the result must be a json object");
             }
         }
 

@@ -14,11 +14,8 @@ ADD_LIBRARY(cocaine-plugin-perl MODULE
     perl)
 
 TARGET_LINK_LIBRARIES(cocaine-plugin-perl
-    cocaine-core-config
     cocaine-core
     json
-    ${BOOST_SYSTEM_LIBS}
-    boost_filesystem-mt
     uriparser)
 
 SET_TARGET_PROPERTIES(cocaine-plugin-perl PROPERTIES

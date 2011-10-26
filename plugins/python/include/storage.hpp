@@ -1,3 +1,6 @@
+#ifndef COCAINE_PYTHON_STORAGE_HPP
+#define COCAINE_PYTHON_STORAGE_HPP
+
 #include "common.hpp"
 
 namespace cocaine { namespace plugin {
@@ -81,3 +84,5 @@ static PyTypeObject storage_object_type = {
 };    
 
 }}
+
+#endif

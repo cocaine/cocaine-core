@@ -65,7 +65,7 @@ void overseer_t::process_message(ev::idle& w, int revents) {
                         zmq::message_t request;
                         
                         m_messages.recv(&request);
-                        
+                       
                         m_source->invoke(
                             boost::bind(&overseer_t::respond, this, deferred_id, _1, _2),
                             method, 

@@ -18,7 +18,7 @@ class source_t:
             callback_fn_t callback,
             const std::string& method,
             const void* request = NULL,
-            size_t request_size = 0) = 0;
+            size_t size = 0) = 0;
 };
 
 // Plugins are expected to supply at least one factory function

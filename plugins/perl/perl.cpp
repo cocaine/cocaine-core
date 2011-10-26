@@ -37,14 +37,14 @@ class perl_t:
         virtual void invoke(
             callback_fn_t callback,
             const std::string& method,
-            const void* request = NULL,
-            size_t request_size = 0)
+            const void* request,
+            size_t size)
         {
             std::cout << "method: " << method << std::endl;
 
             if (request) {
                 try {
-                    std::string tmp_str = std::string((char*)request, request_size);
+                    std::string tmp_str = std::string((char*)request, size);
                     std::cout << "request: " << tmp_str << std::endl;
                 }
                 catch (...) {
@@ -55,12 +55,12 @@ class perl_t:
                 std::cout << "request: NULL" << std::endl;
             }
             
-            std::cout << "request_size: " << request_size << std::endl;
+            std::cout << "request_size: " << size << std::endl;
 
             std::string input;
             
-            if (request && request_size > 0) {
-               input = std::string((char*)request, request_size);
+            if (request && size > 0) {
+               input = std::string((char*)request, size);
             }
 
             std::string result;
