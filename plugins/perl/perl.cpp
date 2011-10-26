@@ -34,7 +34,11 @@ class perl_t:
             perl_free(my_perl);
         }
             
-        virtual Json::Value invoke(const std::string& method, const void* request = NULL, size_t request_size = 0)
+        virtual void invoke(
+            callback_fn_t callback,
+            const std::string& method,
+            const void* request = NULL,
+            size_t request_size = 0)
         {
             std::cout << "method: " << method << std::endl;
 
@@ -111,14 +115,8 @@ class perl_t:
                 LEAVE;
             }
 
-            if (result.empty()) {
-                return Json::nullValue;
-            }
-            else {
-                Json::Value object(Json::objectValue);
-                object["result"] = result;
-
-                return object;
+            if (!result.empty()) {
+                callback(result.data(), result.size());
             }
         }
 

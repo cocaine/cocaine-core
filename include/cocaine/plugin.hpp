@@ -1,15 +1,21 @@
 #ifndef COCAINE_PLUGIN_HPP
 #define COCAINE_PLUGIN_HPP
 
+#include <boost/function.hpp>
+
 #include "cocaine/common.hpp"
 
 namespace cocaine { namespace plugin {
+
+// A callback function type used to push response chunks
+typedef boost::function<void(const void*, size_t)> callback_fn_t;
 
 class source_t:
     public boost::noncopyable
 {
     public:
-        virtual Json::Value invoke(
+        virtual void invoke(
+            callback_fn_t callback,
             const std::string& method,
             const void* request = NULL,
             size_t request_size = 0) = 0;

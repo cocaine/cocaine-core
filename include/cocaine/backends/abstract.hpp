@@ -14,8 +14,8 @@ class backend_t:
     public:
         typedef std::map<
             const std::string,
-            boost::shared_ptr<lines::promise_t>
-        > request_queue_t;
+            boost::shared_ptr<lines::deferred_t>
+        > deferred_queue_t;
 
     protected:
         backend_t();
@@ -28,15 +28,15 @@ class backend_t:
         
         bool active() const;
 
-        request_queue_t& queue();
-        const request_queue_t& queue() const;
+        deferred_queue_t& queue();
+        const deferred_queue_t& queue() const;
 
     protected:
         virtual void timeout(ev::timer& w, int revents) = 0;
 
     private:
         bool m_active;
-        request_queue_t m_queue;
+        deferred_queue_t m_queue;
         ev::timer m_heartbeat;
 };
 

@@ -19,11 +19,12 @@ class overseer_t:
         ~overseer_t();
 
         // Thread entry point 
-#if BOOST_VERSION >= 103500
         void operator()(boost::shared_ptr<plugin::source_t> source);
-#else
-        void run(boost::shared_ptr<plugin::source_t> source);
-#endif
+
+        // Callback used to send response chunks
+        void respond(const std::string& deferred_id, 
+                     const void* response, 
+                     size_t size);
 
     private:
         // Event loop callback handling and dispatching
@@ -38,9 +39,6 @@ class overseer_t:
         // Messaging
         zmq::context_t& m_context;
         lines::channel_t m_messages;
-        
-        // App name & engine endpoint
-        std::string m_name;
         
         // Event loop
         ev::dynamic_loop m_loop;

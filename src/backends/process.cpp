@@ -18,16 +18,14 @@ process_t::process_t(boost::shared_ptr<engine_t> parent, boost::shared_ptr<sourc
         zmq::context_t context(1);
         overseer_t overseer(id(), context, m_parent->name());
 
-#if BOOST_VERSION >= 103500
         overseer(source);
-#else
-        overseer.run(source);
-#endif
 
         exit(EXIT_SUCCESS);
     } else if(m_pid < 0) {
-        throw std::runtime_error("unable to fork");
+        throw std::runtime_error("unable to spawn more workers");
     }
+
+    // TODO: Watch for dying children
 }
 
 process_t::~process_t() {

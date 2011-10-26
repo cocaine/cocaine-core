@@ -30,7 +30,12 @@ class mysql_t:
             m_password = uri.userinfo().substr(uri.userinfo().find_first_of(":") + 1);
         }
 
-        virtual Json::Value invoke(const std::string& method, const void* request = NULL, size_t request_size = 0) {
+        virtual void invoke(
+            callback_fn_t callback,
+            const std::string& method,
+            const void* request = NULL,
+            size_t request_size = 0) 
+        {
             Json::Value result;
             MYSQL* connection = mysql_init(NULL);
 
@@ -46,7 +51,10 @@ class mysql_t:
 
             mysql_close(connection);
 
-            return result;
+            Json::FastWriter writer;
+            std::string response(writer.write(result));
+            
+            callback(response.data(), response.size());
         }
 
     private:

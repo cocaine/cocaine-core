@@ -43,7 +43,12 @@ class http_t:
             return size * nmemb;
         }
         
-        virtual Json::Value invoke(const std::string& method, const void* request = NULL, size_t request_size = 0) {
+        virtual void invoke(
+            callback_fn_t callback,
+            const std::string& method,
+            const void* request = NULL,
+            size_t request_size = 0) 
+        {
             Json::Value result;
         
             CURLcode code = curl_easy_perform(m_curl);
@@ -61,7 +66,10 @@ class http_t:
                 result["error"] = std::string(m_error_message);
             }
         
-            return result;
+            Json::FastWriter writer;
+            std::string response(writer.write(result));
+
+            callback(response.data(), response.size());
         }
 
     private:

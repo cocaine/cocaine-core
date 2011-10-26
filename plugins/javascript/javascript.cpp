@@ -70,7 +70,12 @@ class javascript_t: public source_t {
             m_context.Dispose();
         }
 
-        virtual Json::Value invoke(const std::string& method, const void* request = NULL, size_t request_size = 0) {
+        virtual void invoke(
+            callback_fn_t callback,
+            const std::string& method,
+            const void* request = NULL,
+            size_t request_size = 0)
+        {
             Json::Value result;
 
             HandleScope handle_scope;
@@ -86,7 +91,10 @@ class javascript_t: public source_t {
                 result["error"] = std::string(*exception, exception.length());
             }
 
-            return result;
+            Json::FastWriter writer;
+            std::string response(writer.write(result));
+
+            callback(response.data(), response.size());
         }
 
     private:

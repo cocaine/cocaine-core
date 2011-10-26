@@ -29,10 +29,10 @@ void backend_t::rearm(float timeout) {
     m_active = true;
 }
 
-backend_t::request_queue_t& backend_t::queue() {
+backend_t::deferred_queue_t& backend_t::queue() {
     return m_queue;
 }
 
-const backend_t::request_queue_t& backend_t::queue() const {
+const backend_t::deferred_queue_t& backend_t::queue() const {
     return m_queue;
 }

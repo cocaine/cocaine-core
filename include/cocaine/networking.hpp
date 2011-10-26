@@ -14,11 +14,13 @@
 #include "cocaine/networking/tuples.hpp"
 
 // Message types
-#define INVOKE      1   /* engine -> worker: do something*/
-#define TERMINATE   2   /* engine -> worker: die */
-#define FULFILL     3   /* worker -> engine: something is done, here are the results */
-#define SUICIDE     4   /* worker -> engine: i am useless, kill me */
-#define HEARTBEAT   5   /* worker -> engine: i am alive, don't kill me */
+#define INVOKE      1    /* engine -> worker: do something*/
+#define TERMINATE   2    /* engine -> worker: die */
+
+#define CHUNK       10   /* worker -> engine: something is in progress, here's the part of the result */
+#define CHOKE       11   /* worker -> engine: something is done, choke the channel */
+#define SUICIDE     12   /* worker -> engine: i am useless, kill me */
+#define HEARTBEAT   13   /* worker -> engine: i am alive, don't kill me */
 
 namespace cocaine { namespace lines {
 

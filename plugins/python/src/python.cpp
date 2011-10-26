@@ -66,7 +66,12 @@ void python_t::compile(const std::string& code) {
     */
 }
 
-Json::Value python_t::invoke(const std::string& method, const void* request, size_t request_size) {
+void python_t::invoke(
+    callback_fn_t callback,
+    const std::string& method,
+    const void* request,
+    size_t request_size) 
+{
     thread_state_t state(PyGILState_Ensure());
     object_t args(NULL);
 
@@ -98,10 +103,51 @@ Json::Value python_t::invoke(const std::string& method, const void* request, siz
     if(PyErr_Occurred()) {
         throw std::runtime_error(python_support_t::exception());
     } else if(result.valid()) {
-        return python_support_t::unwrap(result);
-    } else {
-        return Json::nullValue;
+        if(!push(callback, result)) {
+            object_t iterator(PyObject_GetIter(result));
+
+            if(iterator.valid()) {
+                object_t item(NULL);
+
+                while(item = PyIter_Next(result)) {
+                    if(PyErr_Occurred()) {
+                        throw std::runtime_error(python_support_t::exception());
+                    }
+
+                    push(callback, item);
+                }
+            } else {
+                PyErr_Clear();
+                throw std::runtime_error("result is neither a buffer nor an iterator");
+            }
+        }
     }
+}
+
+bool python_t::push(callback_fn_t callback, object_t& result) {
+#if PY_VERSION_HEX > 0x02060000
+    if(PyObject_CheckBuffer(result)) {
+        Py_buffer* buffer = static_cast<Py_buffer*>(
+            malloc(sizeof(Py_buffer)));
+
+        if(PyObject_GetBuffer(result, buffer, PyBUF_SIMPLE) == 0) {
+            callback(buffer->buf, buffer->len);
+            PyBuffer_Release(buffer);
+            free(buffer);
+            return true;
+        }
+
+        free(buffer);        
+        return false;
+    }
+#else
+    if(PyString_Check(result)) {
+        callback(PyString_AsString(result), PyString_Size(result));
+        return true;
+    }
+#endif
+
+    return false;
 }
 
 static const source_info_t plugin_info[] = {

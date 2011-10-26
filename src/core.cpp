@@ -134,10 +134,6 @@ void core_t::process_request(ev::idle& w, int revents) {
         m_server.recv(&message);
 #endif
 
-        // Create a response
-        boost::shared_ptr<lines::response_t> response(
-            new lines::response_t(route, shared_from_this()));
-        
         if(m_server.more()) {
             m_server.recv(&signature);
         }
@@ -175,23 +171,27 @@ void core_t::process_request(ev::idle& w, int revents) {
                     throw std::runtime_error("username expected");
                 }
 
-                dispatch(response, root);
+                respond(route, dispatch(root));
             } catch(const std::exception& e) {
-                response->abort(e.what());
+                Json::Value object(Json::objectValue);
+                object["error"] = e.what();
+                respond(route, object);
             }
         } else {
-            response->abort(reader.getFormatedErrorMessages());
+            Json::Value object(Json::objectValue);
+            object["error"] = reader.getFormatedErrorMessages();
+            respond(route, object);
         }
     } else {
         m_request_processor.stop();
     }
 }
 
-void core_t::dispatch(boost::shared_ptr<lines::response_t> response, const Json::Value& root) {
+Json::Value core_t::dispatch(const Json::Value& root) {
     std::string action(root["action"].asString());
 
     if(action == "create") {
-        Json::Value apps(root["apps"]);
+        Json::Value apps(root["apps"]), result;
 
         if(!apps.isObject() || !apps.size()) {
             throw std::runtime_error("no apps has been specified");
@@ -208,18 +208,20 @@ void core_t::dispatch(boost::shared_ptr<lines::response_t> response, const Json:
             // Invoke the handler
             try {
                 if(manifest.isObject()) {
-                    response->push(app, create_engine(app, manifest));
+                    result[app] = create_engine(app, manifest);
                 } else {
                     throw std::runtime_error("app manifest expected");
                 }
             } catch(const std::runtime_error& e) {
-                response->abort(app, e.what());
+                result[app]["error"] = e.what();
             } catch(const zmq::error_t& e) {
-                response->abort(app, e.what());
+                result[app]["error"] = e.what();
             }
         }
+
+        return result;
     } else if(action == "delete") {
-        Json::Value apps(root["apps"]);
+        Json::Value apps(root["apps"]), result;
 
         if(!apps.isArray() || !apps.size()) {
             throw std::runtime_error("no apps has been specified");
@@ -229,15 +231,17 @@ void core_t::dispatch(boost::shared_ptr<lines::response_t> response, const Json:
             std::string app((*it).asString());
             
             try {
-                response->push(app, delete_engine(app));
+                result[app] = delete_engine(app);
             } catch(const std::runtime_error& e) {
-                response->abort(app, e.what());
+                result[app]["error"] = e.what();
             }
         }
+
+        return result;
     } else if(action == "statistics") {
-        response->push(stats());
+        return stats();
     } else if(action == "info") {
-        response->push(info());
+        return info();
     } else {
         throw std::runtime_error("unsupported action");
     }
@@ -301,7 +305,7 @@ Json::Value core_t::stats() {
     result["workers"]["total"] = engine::thread_t::objects_alive;
 
     result["requests"]["total"] = lines::response_t::objects_created;
-    result["requests"]["pending"] = lines::response_t::objects_alive - 1;
+    result["requests"]["pending"] = lines::response_t::objects_alive;
 
     result["publications"]["total"] = lines::publication_t::objects_created;
     result["publications"]["pending"] = lines::publication_t::objects_alive;

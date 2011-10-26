@@ -122,7 +122,7 @@ int main(int argc, char* argv[]) {
     }
     
     // Cocaine core
-    boost::shared_ptr<core_t> core;
+    std::auto_ptr<core_t> core;
 
     // Initializing the core
     try {

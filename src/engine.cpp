@@ -254,25 +254,21 @@ void engine_t::reap(unique_id_t::reference worker_id) {
 
     // TODO: Re-assign tasks
     if(worker != m_pool.end()) {
-        Json::Value object(Json::objectValue);
-
-        object["error"] = "timeout";
-
-        for(backend_t::request_queue_t::iterator it = worker->second->queue().begin(); 
+        for(backend_t::deferred_queue_t::iterator it = worker->second->queue().begin(); 
             it != worker->second->queue().end();
             ++it) 
         {
-            it->second->push(object);
+            it->second->abort("timeout");
         }
         
         m_pool.erase(worker);
     }
 }
 
-// Future support
-// --------------
+// Deferred support
+// ----------------
 
-void engine_t::respond(const route_t& route, const Json::Value& object) {
+void engine_t::respond(const route_t& route, zmq::message_t& chunk) {
     if(m_server) {
         zmq::message_t message;
         
@@ -293,12 +289,7 @@ void engine_t::respond(const route_t& route, const Json::Value& object) {
         m_server->send(message, ZMQ_SNDMORE);
 #endif
 
-        Json::FastWriter writer;
-        std::string json(writer.write(object));
-        message.rebuild(json.length());
-        memcpy(message.data(), json.data(), json.length());
-
-        m_server->send(message);
+        m_server->send(chunk);
     }
 }
 
@@ -381,41 +372,48 @@ void engine_t::process_message(ev::idle& w, int revents) {
         pool_t::iterator worker(m_pool.find(worker_id));
 
         if(worker != m_pool.end()) {
+            // NOTE: Any type of message is suitable to rearm the timeout
+            // and we don't have to do anything special about HEARBEAT messages at all
+            worker->second->rearm(m_pool_cfg.heartbeat_timeout);
+            
             switch(code) {
-                case FULFILL: {
-                    unique_id_t::type promise_id;
-                    Json::Value object;
+                case CHUNK: {
+                    unique_id_t::type deferred_id;
+                    zmq::message_t chunk;
 
-                    boost::tuple<std::string&, Json::Value&> tier(promise_id, object);
+                    boost::tuple<std::string&, zmq::message_t*> tier(deferred_id, &chunk);
                     m_messages.recv_multi(tier);
 
-                    backend_t::request_queue_t::iterator request(
-                        worker->second->queue().find(promise_id));
-                           
-                    if(request != worker->second->queue().end()) {
-                        request->second->push(object);
-                        worker->second->queue().erase(request);
+                    backend_t::deferred_queue_t::iterator deferred(
+                        worker->second->queue().find(deferred_id));
+
+                    if(deferred != worker->second->queue().end()) {
+                        deferred->second->send(chunk);
                     } else {
-                        syslog(LOG_ERR, "engine [%s]: received a response from a wrong worker",
-                            m_app_cfg.name.c_str());
+                        syslog(LOG_ERR, "engine [%s]: got an outstanding chunk from worker %s",
+                            m_app_cfg.name.c_str(), worker_id.c_str());
                     }
                     
                     break;
                 }
-                
-                case HEARTBEAT:
-                    worker->second->rearm(m_pool_cfg.heartbeat_timeout);
+              
+                case CHOKE: {
+                    unique_id_t::type deferred_id;
+                    
+                    m_messages.recv(deferred_id);
+
+                    worker->second->queue().erase(deferred_id);
+                    
                     break;
+                }
 
                 case SUICIDE:
                     m_pool.erase(worker);
+                    
                     break;
-
-                default:
-                    syslog(LOG_DEBUG, "engine [%s]: trash on the channel", m_app_cfg.name.c_str());
             }
         } else {
-            syslog(LOG_ERR, "engine [%s]: dropping messages for orphaned worker %s", 
+            syslog(LOG_WARNING, "engine [%s]: dropping messages for worker %s", 
                 m_app_cfg.name.c_str(), worker_id.c_str());
             m_messages.ignore();
         }
@@ -458,19 +456,18 @@ void engine_t::process_request(ev::idle& w, int revents) {
         m_server->recv(&message);
 #endif
 
-        boost::shared_ptr<response_t> response(
+        boost::shared_ptr<response_t> deferred(
             new response_t(route, shared_from_this()));
         
         try {
-            response->wait(queue(
+            queue(
+                deferred,
                 boost::make_tuple(
                     INVOKE,
                     m_app_cfg.callable,
-                    boost::ref(message)
-                )
-            ));
+                    boost::ref(message)));
         } catch(const std::runtime_error& e) {
-            response->abort(e.what());
+            deferred->abort(e.what());
         }
     } else {
         m_request_processor->stop();

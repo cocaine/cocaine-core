@@ -4,15 +4,12 @@
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/networking.hpp"
-#include "cocaine/response.hpp"
 #include "cocaine/security/signatures.hpp"
 
 namespace cocaine { namespace core {
 
 class core_t:
-    public boost::noncopyable,
-    public boost::enable_shared_from_this<core_t>,
-    public lines::responder_t
+    public boost::noncopyable
 {
     public:
         core_t();
@@ -31,7 +28,7 @@ class core_t:
         void process_request(ev::idle& w, int revents);
 
         // User request dispatching
-        void dispatch(boost::shared_ptr<lines::response_t> response, const Json::Value& root);
+        Json::Value dispatch(const Json::Value& root);
         
         // User request handling
         Json::Value create_engine(const std::string& name, const Json::Value& manifest);
@@ -39,8 +36,8 @@ class core_t:
         Json::Value stats();
         Json::Value info();
 
-        // Future support
-        virtual void respond(const lines::route_t& route, const Json::Value& object);
+        // Responding
+        void respond(const lines::route_t& route, const Json::Value& object);
 
         // Task recovering
         void recover();

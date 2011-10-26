@@ -11,12 +11,12 @@ namespace cocaine {
         }
     }
 
-    namespace lines {
-        class promise_t;
-    }
-
     namespace plugin {
         class source_t;
+    }
+
+    namespace lines {
+        class deferred_t;
     }
 }
 

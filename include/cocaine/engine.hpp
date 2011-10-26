@@ -3,10 +3,10 @@
 
 #include "cocaine/backends.hpp"
 #include "cocaine/common.hpp"
+#include "cocaine/deferred.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/networking.hpp"
 #include "cocaine/overseer.hpp"
-#include "cocaine/promise.hpp"
 #include "cocaine/registry.hpp"
 
 // Driver types
@@ -51,8 +51,7 @@ class engine_t:
 
     public:
         template<class T>
-        boost::shared_ptr<lines::promise_t> queue(const T& args) {
-            boost::shared_ptr<lines::promise_t> promise(new lines::promise_t());
+        void queue(boost::shared_ptr<lines::deferred_t> deferred, const T& args) {
             pool_t::iterator worker;
 
             // Block external communications to avoid races
@@ -106,23 +105,22 @@ class engine_t:
                 helpers::joint_view(
                     boost::make_tuple(
                         lines::protect(worker->second->id()),
-                        promise->id()),
+                        deferred->id()),
                     args));
             
-            worker->second->queue().insert(std::make_pair(
-                promise->id(),
-                promise));
+            worker->second->queue().insert(
+                std::make_pair(
+                    deferred->id(),
+                    deferred));
         
             m_request_watcher->start(m_messages.fd(), ev::READ);
             m_request_processor->start();
             
             // XXX: Damn, ZeroMQ, why are you so strange? 
             ev::get_default_loop().feed_fd_event(m_messages.fd(), ev::READ);
-
-            return promise;
         }
 
-        virtual void respond(const lines::route_t& route, const Json::Value& object);
+        virtual void respond(const lines::route_t& route, zmq::message_t& chunk);
         virtual void publish(const std::string& key, const Json::Value& object);
 
     public:

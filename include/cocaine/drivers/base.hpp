@@ -34,18 +34,19 @@ class driver_base_t:
         }
 
         virtual void operator()(WatcherType&, int) {
-            boost::shared_ptr<lines::publication_t> publication(
+            boost::shared_ptr<lines::publication_t> deferred(
                 new lines::publication_t(m_name, m_parent));
 
             try {
-                publication->wait(m_parent->queue(
+                m_parent->queue(
+                    deferred,
                     boost::make_tuple(
                         INVOKE,
-                        m_name))
-                );
+                        m_name));
             } catch(const std::runtime_error& e) {
                 syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
                     m_parent->name().c_str(), m_name.c_str(), e.what());
+                deferred->abort(e.what());
             }
         }
    
