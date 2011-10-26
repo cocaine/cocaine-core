@@ -353,7 +353,7 @@ void core_t::respond(const lines::route_t& route, const Json::Value& object) {
 
 
 void core_t::recover() {
-    // NOTE: Allowing the exception to propagate here, as this is a fatal error
+    // NOTE: Allowing the exception to propagate here, as this is a fatal error.
     Json::Value root(storage_t::create()->all("apps"));
 
     if(root.size()) {
@@ -365,7 +365,7 @@ void core_t::recover() {
         for(Json::Value::Members::iterator it = apps.begin(); it != apps.end(); ++it) {
             std::string app(*it);
             
-            // NOTE: Intentionally not catching anything here too
+            // NOTE: Intentionally not catching anything here too.
             create_engine(app, root[app]);
         }
     }

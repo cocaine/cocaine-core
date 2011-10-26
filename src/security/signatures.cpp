@@ -17,7 +17,7 @@ signatures_t::signatures_t():
     ERR_load_crypto_strings();
 
     // Load the credentials
-    // NOTE: Allowing the exception to propagate here, as this is a fatal error
+    // NOTE: Allowing the exception to propagate here, as this is a fatal error.
     Json::Value keys(storage_t::create()->all("keys"));
     Json::Value::Members names(keys.getMemberNames());
 

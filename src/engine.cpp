@@ -373,9 +373,9 @@ void engine_t::process_message(ev::idle& w, int revents) {
 
         if(worker != m_pool.end()) {
             // NOTE: Any type of message is suitable to rearm the timeout
-            // and we don't have to do anything special about HEARBEAT messages at all
+            // and we don't have to do anything special about HEARBEAT messages at all.
             worker->second->rearm(m_pool_cfg.heartbeat_timeout);
-            
+           
             switch(code) {
                 case CHUNK: {
                     unique_id_t::type deferred_id;
@@ -458,7 +458,7 @@ void engine_t::process_request(ev::idle& w, int revents) {
 
         boost::shared_ptr<response_t> deferred(
             new response_t(route, shared_from_this()));
-        
+
         try {
             queue(
                 deferred,
