@@ -54,10 +54,6 @@ class engine_t:
         void queue(boost::shared_ptr<lines::deferred_t> deferred, const T& args) {
             pool_t::iterator worker;
 
-            // Block external communications to avoid races
-            m_request_watcher->stop();
-            m_request_processor->stop();
-
             while(true) {
                 worker = std::min_element(
                     m_pool.begin(),
@@ -93,7 +89,16 @@ class engine_t:
                         }
                     }
                 } else if(!worker->second->active()) {
+                    // NOTE: We block external communications here to avoid races, i.e.
+                    // we go into the inner loop, got another request, found no free workers
+                    // and go into a loop one level deeper, and so on.
+                    m_request_watcher->stop();
+                    m_request_processor->stop();
+
                     ev::get_default_loop().loop(ev::ONESHOT);
+                    
+                    m_request_watcher->start(m_messages.fd(), ev::READ);
+                    m_request_processor->start();
                 } else if(worker->second->queue().size() >= m_pool_cfg.queue_limit) {
                     throw std::runtime_error("engine is overloaded");
                 } else {
@@ -113,9 +118,6 @@ class engine_t:
                     deferred->id(),
                     deferred));
         
-            m_request_watcher->start(m_messages.fd(), ev::READ);
-            m_request_processor->start();
-            
             // XXX: Damn, ZeroMQ, why are you so strange? 
             ev::get_default_loop().feed_fd_event(m_messages.fd(), ev::READ);
         }
