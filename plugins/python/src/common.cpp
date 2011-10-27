@@ -7,8 +7,6 @@
 
 using namespace cocaine::plugin;
 
-char python_t::identity[] = "<dynamic>";
-
 void python_t::exception() {
     object_t type(NULL), object(NULL), traceback(NULL);
     
@@ -29,8 +27,8 @@ python_t::python_t(const std::string& args):
     helpers::uri_t uri(args);
     helpers::download_t app(helpers::download(uri));   
 
-    // Create a new interpreter for this worker
-    interpreter_t interpreter(&m_interpreter);
+    // Acquire the interpreter state
+    thread_state_t state;
 
     // NOTE: Prepend the current application cache location to the sys.path,
     // so that it could import different stuff from there
@@ -40,22 +38,16 @@ python_t::python_t(const std::string& args):
         // XXX: Does it steal the reference or not?
         PyList_Insert(paths, 0, 
             PyString_FromString(app.path().string().c_str()));
-        compile(app);
+        compile(app.path().string(), app);
     } else {
         throw std::runtime_error("'sys.path' is not a list object");
     }
 }
 
-python_t::~python_t() {
-    interpreter_t interpreter(&m_interpreter);
-    Py_EndInterpreter(m_interpreter);
-    m_interpreter = NULL;
-}
-
-void python_t::compile(const std::string& code) {
+void python_t::compile(const std::string& path, const std::string& code) {
     object_t bytecode(Py_CompileString(
         code.c_str(),
-        identity,
+        path.c_str(),
         Py_file_input));
 
     if(PyErr_Occurred()) {
@@ -63,7 +55,8 @@ void python_t::compile(const std::string& code) {
     }
 
     m_module = PyImport_ExecCodeModule(
-        identity, bytecode);
+        const_cast<char*>(unique_id_t().id().c_str()),
+        bytecode);
     
     if(PyErr_Occurred()) {
         exception();
@@ -76,7 +69,7 @@ void python_t::invoke(
     const void* request,
     size_t size) 
 {
-    interpreter_t interpreter(&m_interpreter);
+    thread_state_t state;
     object_t args(NULL);
 
     if(request) {
@@ -143,6 +136,7 @@ extern "C" {
         PyEval_ReleaseLock();
 
         pthread_atfork(NULL, NULL, PyOS_AfterFork);
+        pthread_atfork(NULL, NULL, PyEval_ReleaseLock);
 
         return plugin_info;
     }

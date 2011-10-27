@@ -68,6 +68,10 @@ namespace cocaine { namespace helpers {
                 return tmp;
             }
 
+            inline void reset() {
+                destroy();
+            }
+
         private:
             void destroy() {
                 if(m_object) {

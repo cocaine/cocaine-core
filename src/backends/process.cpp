@@ -7,7 +7,7 @@
 using namespace cocaine::engine;
 using namespace cocaine::plugin;
 
-process_t::process_t(boost::shared_ptr<engine_t> parent, boost::shared_ptr<source_t> source):
+process_t::process_t(boost::shared_ptr<engine_t> parent, const std::string& type, const std::string& args):
     m_parent(parent)
 {
     syslog(LOG_DEBUG, "worker [%s:%s]: constructing", m_parent->name().c_str(), id().c_str());
@@ -18,14 +18,15 @@ process_t::process_t(boost::shared_ptr<engine_t> parent, boost::shared_ptr<sourc
         zmq::context_t context(1);
         overseer_t overseer(id(), context, m_parent->name());
 
-        overseer(source);
+        overseer(type, args);
 
         exit(EXIT_SUCCESS);
     } else if(m_pid < 0) {
         throw std::runtime_error("unable to spawn more workers");
     }
 
-    // TODO: Watch for dying children
+    m_child_watcher.set<process_t, &process_t::signal>(this);
+    m_child_watcher.start(m_pid);
 }
 
 process_t::~process_t() {
@@ -36,4 +37,8 @@ void process_t::timeout(ev::timer& w, int revents) {
     syslog(LOG_ERR, "worker [%s:%s]: worker missed a heartbeat",
         m_parent->name().c_str(), id().c_str());
     kill(m_pid, SIGKILL);
+}
+
+void process_t::signal(ev::child& w, int revents) {
+    m_parent->reap(id());
 }

@@ -11,15 +11,19 @@ class process_t:
 {
     public:        
         process_t(boost::shared_ptr<engine_t> parent,
-                  boost::shared_ptr<plugin::source_t> source);
+                  const std::string& type,
+                  const std::string& args);
         virtual ~process_t();
 
     private:
         virtual void timeout(ev::timer& w, int revents);
+        void signal(ev::child& w, int revents);
 
     private:
         boost::shared_ptr<engine_t> m_parent;
         pid_t m_pid;
+
+        ev::child m_child_watcher;
 };
 
 }}

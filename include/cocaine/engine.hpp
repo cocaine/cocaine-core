@@ -7,7 +7,6 @@
 #include "cocaine/forwards.hpp"
 #include "cocaine/networking.hpp"
 #include "cocaine/overseer.hpp"
-#include "cocaine/registry.hpp"
 
 // Driver types
 #define AUTO        1   /* do something every n milliseconds */
@@ -66,17 +65,18 @@ class engine_t:
                      m_pool.size() < m_pool_cfg.pool_limit))
                 {
                     try {
-                        boost::shared_ptr<plugin::source_t> source(
-                            core::registry_t::instance()->create(
-                                m_app_cfg.type,
-                                m_app_cfg.args));
-
                         std::auto_ptr<backend_t> object;
 
                         if(m_pool_cfg.backend == "thread") {
-                            object.reset(new thread_t(shared_from_this(), source));
+                            object.reset(new thread_t(
+                                shared_from_this(),
+                                m_app_cfg.type,
+                                m_app_cfg.args));
                         } else if(m_pool_cfg.backend == "process") {
-                            object.reset(new process_t(shared_from_this(), source));
+                            object.reset(new process_t(
+                                shared_from_this(),
+                                m_app_cfg.type,
+                                m_app_cfg.args));
                         }
 
                         std::string worker_id(object->id());

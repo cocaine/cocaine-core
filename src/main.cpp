@@ -34,7 +34,7 @@ int main(int argc, char* argv[]) {
             (&config_t::set().downloads.location)->default_value("/var/cache/cocaine"),
             "where to cache downloaded files")
         ("engine:backend", po::value<std::string>
-            (&config_t::set().engine.backend)->default_value("thread"),
+            (&config_t::set().engine.backend)->default_value("process"),
             "default engine backend, one of: thread, process")
         ("engine:heartbeat-timeout", po::value<float>
             (&config_t::set().engine.heartbeat_timeout)->default_value(60.0),

@@ -12,7 +12,8 @@ class thread_t:
 {
     public:        
         thread_t(boost::shared_ptr<engine_t> parent,
-                 boost::shared_ptr<plugin::source_t> source);
+                 const std::string& type,
+                 const std::string& args);
         virtual ~thread_t();
 
     private:

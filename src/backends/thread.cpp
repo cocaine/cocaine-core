@@ -9,15 +9,14 @@
 using namespace cocaine::engine;
 using namespace cocaine::plugin;
 
-thread_t::thread_t(boost::shared_ptr<engine_t> parent, boost::shared_ptr<source_t> source):
+thread_t::thread_t(boost::shared_ptr<engine_t> parent, const std::string& type, const std::string& args):
     m_parent(parent)
 {
     syslog(LOG_DEBUG, "worker [%s:%s]: constructing", m_parent->name().c_str(), id().c_str());
    
     try {
         m_overseer.reset(new overseer_t(id(), m_parent->context(), m_parent->name()));
-
-        m_thread.reset(new boost::thread(boost::ref(*m_overseer), source));
+        m_thread.reset(new boost::thread(boost::ref(*m_overseer), type, args));
     } catch(const boost::thread_resource_error& e) {
         throw std::runtime_error("unable to spawn more workers");
     }

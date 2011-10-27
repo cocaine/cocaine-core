@@ -10,28 +10,49 @@
 
 namespace cocaine { namespace plugin {
 
-typedef helpers::track<PyGILState_STATE, PyGILState_Release> thread_state_t;
 typedef helpers::track<PyObject*, Py_DecRef> object_t;
 
+/* NOTE: This is unused for now, until subinterpreter destruction is fixed in Python
 class interpreter_t {
     public:
-        interpreter_t(PyThreadState** enable) {
+        interpreter_t(PyThreadState** state):
+            m_saved(NULL)
+        {
             PyEval_AcquireLock();
 
-            if(*enable == NULL) {
-                *enable = Py_NewInterpreter();
+            if(*state == NULL) {
+                *state = Py_NewInterpreter();
+
+                if(*state == NULL) {
+                    throw std::runtime_error("failed to create a python interpreter");
+                }
             }
 
-            m_disabled = PyThreadState_Swap(*enable);
+            m_saved = PyThreadState_Swap(*state);
         }
 
         ~interpreter_t() {
-            PyThreadState_Swap(m_disabled);
+            PyThreadState_Swap(m_saved);
             PyEval_ReleaseLock();
         }
 
     private:
-        PyThreadState *m_disabled;
+        PyThreadState* m_saved;
+};
+*/
+
+class thread_state_t {
+    public:
+        thread_state_t() {
+            m_saved = PyGILState_Ensure();
+        }
+
+        ~thread_state_t() {
+            PyGILState_Release(m_saved);
+        }
+
+    private:
+        PyGILState_STATE m_saved;
 };
 
 class python_t:
@@ -39,8 +60,6 @@ class python_t:
 {
     public:
         python_t(const std::string& args);
-
-        virtual ~python_t();
 
         virtual void invoke(
             callback_fn_t callback,
@@ -56,11 +75,11 @@ class python_t:
             object_t& result) = 0;
 
     private:
-        void compile(const std::string& code);
+        void compile(
+            const std::string& path,
+            const std::string& code);
 
     private:
-        static char identity[];
-        
         object_t m_module;
         PyThreadState* m_interpreter;
 };

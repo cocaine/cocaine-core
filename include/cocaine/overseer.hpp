@@ -19,7 +19,9 @@ class overseer_t:
         ~overseer_t();
 
         // Thread entry point 
-        void operator()(boost::shared_ptr<plugin::source_t> source);
+        void operator()(
+            const std::string& type,
+            const std::string& args);
 
         // Callback used to send response chunks
         void respond(const std::string& deferred_id, 

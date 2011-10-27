@@ -7,6 +7,7 @@
 
 #include "cocaine/drivers.hpp"
 #include "cocaine/engine.hpp"
+#include "cocaine/registry.hpp"
 
 using namespace cocaine::engine;
 using namespace cocaine::lines;

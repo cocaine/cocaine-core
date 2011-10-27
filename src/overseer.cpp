@@ -2,6 +2,7 @@
 
 #include "cocaine/overseer.hpp"
 #include "cocaine/plugin.hpp"
+#include "cocaine/registry.hpp"
 
 using namespace cocaine::engine;
 using namespace cocaine::engine::drivers;
@@ -35,8 +36,19 @@ overseer_t::~overseer_t() {
     terminate();
 }
 
-void overseer_t::operator()(boost::shared_ptr<source_t> source) {
-    m_source = source;
+void overseer_t::operator()(
+    const std::string& type,
+    const std::string& args) 
+{
+    try {
+        m_source = core::registry_t::instance()->create(type, args);
+    } catch(const std::runtime_error& e) {
+        syslog(LOG_DEBUG, "worker [%s]: unable to instantiate the source - %s", 
+            id().c_str(), e.what());
+        m_messages.send(SUICIDE);
+        return;
+    }
+        
     m_loop.loop();
 }
 
