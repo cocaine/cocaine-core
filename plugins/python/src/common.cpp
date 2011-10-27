@@ -112,10 +112,10 @@ void python_t::invoke(
 
     object_t result(PyObject_Call(object, args, NULL));
 
-    if(result.valid()) {
-        respond(callback, result);
-    } else if(PyErr_Occurred()) {
+    if(PyErr_Occurred()) {
         exception();
+    } else if(result.valid()) {
+        respond(callback, result);
     }
 }
 
