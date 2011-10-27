@@ -13,11 +13,33 @@ namespace cocaine { namespace plugin {
 typedef helpers::track<PyGILState_STATE, PyGILState_Release> thread_state_t;
 typedef helpers::track<PyObject*, Py_DecRef> object_t;
 
+class interpreter_t {
+    public:
+        interpreter_t(PyThreadState** enable) {
+            PyEval_AcquireLock();
+
+            if(*enable == NULL) {
+                *enable = Py_NewInterpreter();
+            }
+
+            m_disabled = PyThreadState_Swap(*enable);
+        }
+
+        ~interpreter_t() {
+            PyThreadState_Swap(m_disabled);
+            PyEval_ReleaseLock();
+        }
+
+    private:
+        PyThreadState *m_disabled;
+};
+
 class python_t:
     public source_t
 {
     public:
         python_t(const std::string& args);
+        ~python_t();
 
         virtual void invoke(
             callback_fn_t callback,
@@ -39,6 +61,7 @@ class python_t:
         static char identity[];
         
         object_t m_module;
+        PyThreadState* m_interpreter;
 };
 
 }}

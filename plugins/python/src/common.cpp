@@ -19,7 +19,8 @@ void python_t::exception() {
 }
 
 python_t::python_t(const std::string& args):
-    m_module(NULL)
+    m_module(NULL),
+    m_interpreter(NULL)
 {
     if(args.empty()) {
         throw std::runtime_error("no code location has been specified");
@@ -28,8 +29,9 @@ python_t::python_t(const std::string& args):
     helpers::uri_t uri(args);
     helpers::download_t app(helpers::download(uri));   
 
-    thread_state_t state(PyGILState_Ensure());
-    
+    // Create a new interpreter for this worker
+    interpreter_t interpreter(&m_interpreter);
+
     // NOTE: Prepend the current application cache location to the sys.path,
     // so that it could import different stuff from there
     PyObject* paths = PySys_GetObject("path");
@@ -42,6 +44,11 @@ python_t::python_t(const std::string& args):
     } else {
         throw std::runtime_error("sys.path is not a list");
     }
+}
+
+python_t::~python_t() {
+    interpreter_t interpreter(&m_interpreter);
+    Py_EndInterpreter(m_interpreter);
 }
 
 void python_t::compile(const std::string& code) {
@@ -68,7 +75,7 @@ void python_t::invoke(
     const void* request,
     size_t size) 
 {
-    thread_state_t state(PyGILState_Ensure());
+    interpreter_t interpreter(&m_interpreter);
     object_t args(NULL);
 
     if(request) {
