@@ -39,7 +39,8 @@ class python_t:
 {
     public:
         python_t(const std::string& args);
-        ~python_t();
+
+        virtual ~python_t();
 
         virtual void invoke(
             callback_fn_t callback,

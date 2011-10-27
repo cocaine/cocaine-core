@@ -49,6 +49,7 @@ python_t::python_t(const std::string& args):
 python_t::~python_t() {
     interpreter_t interpreter(&m_interpreter);
     Py_EndInterpreter(m_interpreter);
+    m_interpreter = NULL;
 }
 
 void python_t::compile(const std::string& code) {

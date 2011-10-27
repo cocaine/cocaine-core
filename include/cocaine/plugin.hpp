@@ -14,6 +14,8 @@ class source_t:
     public boost::noncopyable
 {
     public:
+        virtual ~source_t() { };
+
         virtual void invoke(
             callback_fn_t callback,
             const std::string& method,
