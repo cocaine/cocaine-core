@@ -42,7 +42,7 @@ python_t::python_t(const std::string& args):
             PyString_FromString(app.path().string().c_str()));
         compile(app);
     } else {
-        throw std::runtime_error("sys.path is not a list");
+        throw std::runtime_error("'sys.path' is not a list object");
     }
 }
 
