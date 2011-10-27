@@ -26,12 +26,25 @@ python_t::python_t(const std::string& args):
     }
 
     helpers::uri_t uri(args);
-    compile(helpers::download(uri));
+    helpers::download_t app(helpers::download(uri));   
+
+    thread_state_t state(PyGILState_Ensure());
+    
+    // NOTE: Prepend the current application cache location to the sys.path,
+    // so that it could import different stuff from there
+    PyObject* paths = PySys_GetObject("path");
+
+    if(PyList_Check(paths)) {
+        // XXX: Does it steal the reference or not?
+        PyList_Insert(paths, 0, 
+            PyString_FromString(app.path().string().c_str()));
+        compile(app);
+    } else {
+        throw std::runtime_error("sys.path is not a list");
+    }
 }
 
 void python_t::compile(const std::string& code) {
-    thread_state_t state(PyGILState_Ensure());
-    
     object_t bytecode(Py_CompileString(
         code.c_str(),
         identity,

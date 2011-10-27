@@ -12,9 +12,11 @@ void python_json_t::respond(
 {
     Json::FastWriter writer;
     Json::Value object(convert(result));
-    std::string response(writer.write(object));
 
-    callback(response.data(), response.size());
+    Py_BEGIN_ALLOW_THREADS
+        std::string response(writer.write(object));
+        callback(response.data(), response.size());
+    Py_END_ALLOW_THREADS
 }
 
 Json::Value python_json_t::convert(PyObject* result) {

@@ -1,4 +1,3 @@
-#include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 
 #include <curl/curl.h>
@@ -10,9 +9,9 @@
 using namespace cocaine::helpers;
 using namespace cocaine::security;
 
-cache_t::cache_t(const uri_t& uri) {
-    using namespace boost::filesystem;
+namespace fs = boost::filesystem;
 
+cache_t::cache_t(const uri_t& uri) {
     std::stringstream stream;
     std::vector<std::string> target(uri.path());
 
@@ -22,13 +21,14 @@ cache_t::cache_t(const uri_t& uri) {
             uri.source().find_first_of(":") + 3)
         ));
 
-    path location(path(config_t::get().downloads.location) / identity);
+    m_path = fs::path(config_t::get().downloads.location) / identity;
+    fs::path location(m_path);
 
     for(std::vector<std::string>::const_iterator it = target.begin(); it != target.end(); ++it) {
         location /= *it;
     }
    
-    ifstream input(location);
+    fs::ifstream input(location);
     
     if(!input) {
         throw std::runtime_error("failed to open " + location.string());

@@ -1,6 +1,8 @@
 #ifndef COCAINE_DOWNLOADS
 #define COCAINE_DOWNLOADS
 
+#include <boost/filesystem.hpp>
+
 #include "cocaine/common.hpp"
 #include "cocaine/helpers/uri.hpp"
 
@@ -12,11 +14,16 @@ class download_t {
             return m_blob;
         }
 
+        boost::filesystem::path path() const {
+            return m_path;
+        }
+    
     protected:
         download_t() { }
 
     protected:
         std::string m_blob;
+        boost::filesystem::path m_path;
 };
 
 class cache_t:
