@@ -21,9 +21,13 @@ void python_wsgi_t::respond(
     if(iterator.valid()) {
         object_t item(NULL);
 
-        while(item = PyIter_Next(iterator)) {
+        while(true) {
+            item = PyIter_Next(iterator);
+
             if(PyErr_Occurred()) {
                 exception();
+            } else if(!item.valid()) {
+                break;
             }
         
 #if PY_VERSION_HEX > 0x02060000
