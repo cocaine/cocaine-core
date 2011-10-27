@@ -1,9 +1,9 @@
-#include <EXTERN.h>               /* from the Perl distribution     */
-#include <perl.h>                 /* from the Perl distribution     */
-
 #include "cocaine/plugin.hpp"
 #include "cocaine/downloads.hpp"
 #include "cocaine/helpers/uri.hpp"
+
+#include <EXTERN.h>               /* from the Perl distribution     */
+#include <perl.h>                 /* from the Perl distribution     */
 
 namespace cocaine { namespace plugin {
 
