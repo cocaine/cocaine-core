@@ -41,8 +41,9 @@ void overseer_t::operator()(boost::shared_ptr<source_t> source) {
 }
 
 void overseer_t::message(ev::io& w, int revents) {
-    if(m_messages.pending() && !m_message_processor.is_active()) {
+    if(m_messages.pending()) {
         m_message_processor.start();
+        m_message_watcher.stop();
     }
 }
 
@@ -113,6 +114,7 @@ void overseer_t::process_message(ev::idle& w, int revents) {
         }
     } else {
         m_message_processor.stop();
+        m_message_watcher.start(m_messages.fd(), ev::READ);
     }
 }
 

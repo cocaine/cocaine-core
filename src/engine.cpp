@@ -356,8 +356,9 @@ void engine_t::publish(const std::string& key, const Json::Value& object) {
 // ----------
 
 void engine_t::message(ev::io& w, int revents) {
-    if(m_messages.pending() && !m_message_processor.is_active()) {
+    if(m_messages.pending()) {
         m_message_processor.start();
+        m_message_watcher.stop();
     }
 }
 
@@ -424,6 +425,7 @@ void engine_t::process_message(ev::idle& w, int revents) {
         }
     } else {
         m_message_processor.stop();
+        m_message_watcher.start(m_messages.fd(), ev::READ);
     }
 }
 
@@ -431,8 +433,9 @@ void engine_t::process_message(ev::idle& w, int revents) {
 // ---------------
 
 void engine_t::request(ev::io& w, int revents) {
-    if(m_server->pending() && !m_request_processor->is_active()) {
+    if(m_server->pending()) {
         m_request_processor->start();
+        m_request_watcher->stop();
     }
 }
 
@@ -476,6 +479,7 @@ void engine_t::process_request(ev::idle& w, int revents) {
         }
     } else {
         m_request_processor->stop();
+        m_request_watcher->start(m_server->fd(), ev::READ);
     }
 }
 
