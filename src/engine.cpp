@@ -390,7 +390,7 @@ void engine_t::process_message(ev::idle& w, int revents) {
                     if(deferred != worker->second->queue().end()) {
                         deferred->second->send(chunk);
                     } else {
-                        syslog(LOG_ERR, "engine [%s]: got an outstanding chunk from worker %s",
+                        syslog(LOG_ERR, "engine [%s]: receiving chunks from an unexpected worker",
                             m_app_cfg.name.c_str(), worker_id.c_str());
                     }
                     
@@ -408,8 +408,13 @@ void engine_t::process_message(ev::idle& w, int revents) {
                 }
 
                 case SUICIDE:
-                    m_pool.erase(worker);
-                    
+                    if(worker->second->queue().size()) {
+                        syslog(LOG_WARNING, "engine [%s]: a suicide with requests in the queue detected",
+                            m_app_cfg.name.c_str());
+                    }
+
+                    reap(worker->first);
+
                     break;
             }
         } else {
