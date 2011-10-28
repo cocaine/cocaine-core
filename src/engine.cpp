@@ -415,7 +415,7 @@ void engine_t::process_message(ev::idle& w, int revents) {
                         deferred->second->send(chunk);
                     } else {
                         syslog(LOG_ERR, "engine [%s]: receiving chunks from an unexpected worker",
-                            m_app_cfg.name.c_str(), worker_id.c_str());
+                            m_app_cfg.name.c_str());
                     }
                     
                     break;
