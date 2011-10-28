@@ -12,7 +12,6 @@ namespace cocaine { namespace plugin {
 
 typedef helpers::track<PyObject*, Py_DecRef> object_t;
 
-/* NOTE: This is unused for now, until subinterpreter destruction is fixed in Python
 class interpreter_t {
     public:
         interpreter_t(PyThreadState** state):
@@ -39,7 +38,6 @@ class interpreter_t {
     private:
         PyThreadState* m_saved;
 };
-*/
 
 class thread_state_t {
     public:

@@ -127,21 +127,35 @@ static const source_info_t plugin_info[] = {
 };
 
 extern "C" {
+    PyThreadState* g_state = NULL;
+
+    void save() {
+        g_state = PyEval_SaveThread();
+    }
+
+    void restore() {
+        PyEval_RestoreThread(g_state);
+    }
+
     const source_info_t* initialize() {
         // Initialize the Python subsystem
         Py_InitializeEx(0);
 
         // Initialize the GIL
         PyEval_InitThreads();
-        PyEval_ReleaseLock();
+        save();
 
+        // NOTE: In case of a fork, restore the main thread state and acquire the GIL,
+        // call the python post-fork handler and save the main thread again, releasing the GIL.
+        pthread_atfork(NULL, NULL, restore);
         pthread_atfork(NULL, NULL, PyOS_AfterFork);
-        pthread_atfork(NULL, NULL, PyEval_ReleaseLock);
+        pthread_atfork(NULL, NULL, save);
 
         return plugin_info;
     }
 
     __attribute__((destructor)) void finalize() {
+        PyEval_RestoreThread(g_state);
         Py_Finalize();
     }
 }
