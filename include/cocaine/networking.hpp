@@ -69,6 +69,17 @@ class socket_t:
 
         inline void bind(const std::string& endpoint) {
             m_socket.bind(endpoint.c_str());
+
+            // Try to determine the connection string for clients
+            // TODO: Do it the right way
+            size_t position = endpoint.find_last_of(":");
+
+            if(position != std::string::npos) {
+                m_endpoint = config_t::get().core.hostname +
+                    endpoint.substr(position, std::string::npos);
+            } else {
+                m_endpoint = "<local>";
+            }
         }
 
         inline void connect(const std::string& endpoint) {
@@ -77,7 +88,9 @@ class socket_t:
        
     public:
         int fd();
-        std::string identity();
+
+        std::string route();
+        std::string endpoint() const { return m_endpoint; }
 
         bool pending(int event = ZMQ_POLLIN);
         bool more();
@@ -88,6 +101,7 @@ class socket_t:
 
     private:
         zmq::socket_t m_socket;
+        std::string m_endpoint;
 };
 
 class channel_t:
@@ -96,7 +110,7 @@ class channel_t:
     public:
         channel_t(zmq::context_t& context, int type, std::string identity = ""):
             socket_t(context, type, identity)
-        {}
+        { }
 
         // Bring original methods into the scope
         using socket_t::send;

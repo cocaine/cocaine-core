@@ -11,7 +11,7 @@ int socket_t::fd() {
     return fd;
 }
 
-std::string socket_t::identity() {
+std::string socket_t::route() {
     char identity[255];
     size_t size = 255;
 

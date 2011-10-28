@@ -152,8 +152,7 @@ class engine_t:
 
         struct {
             std::string name, type, args;
-            std::string server_endpoint, callable;
-            std::string pubsub_endpoint;
+            std::string callable;
         } m_app_cfg;
        
         // Application I/O

@@ -43,6 +43,11 @@ Json::Value engine_t::run(const Json::Value& manifest) {
         ("fs", FILESYSTEM)
         ("sink", SINK);
 
+    Json::Value result(Json::objectValue);
+
+    // Application configuration
+    // -------------------------
+
     m_app_cfg.type = manifest["type"].asString();
     m_app_cfg.args = manifest["args"].asString();
 
@@ -52,10 +57,8 @@ Json::Value engine_t::run(const Json::Value& manifest) {
     
     syslog(LOG_INFO, "engine [%s]: starting", m_app_cfg.name.c_str()); 
     
-    Json::Value tasks(manifest["tasks"]), result(Json::objectValue);
-    
-    m_app_cfg.server_endpoint = manifest["server"]["endpoint"].asString(),
-    m_app_cfg.pubsub_endpoint = manifest["pubsub"]["endpoint"].asString();
+    // Pool configuration
+    // ------------------
 
     m_pool_cfg.backend = manifest["engine"].get("backend",
         config_t::get().engine.backend).asString();
@@ -75,61 +78,80 @@ Json::Value engine_t::run(const Json::Value& manifest) {
     m_pool_cfg.queue_limit = manifest["engine"].get("queue-limit",
         config_t::get().engine.queue_limit).asUInt();
 
-    if(!m_app_cfg.server_endpoint.empty()) {
-        m_app_cfg.callable = manifest["server"]["callable"].asString();
+    // Server configuration
+    // --------------------
 
-        if(m_app_cfg.callable.empty()) {
-            throw std::runtime_error("no callable has been specified for serving");
-        }
-
-        std::string route(
-                config_t::get().core.hostname + "/" + 
-                config_t::get().core.instance + "/" + 
-                m_app_cfg.name);
-
-        result["server"]["route"] = route;
+    {
+        std::string endpoint = manifest["server"]["endpoint"].asString();
         
-        m_server.reset(new socket_t(m_context, ZMQ_ROUTER, route));
-        m_server->bind(m_app_cfg.server_endpoint);
+        if(!endpoint.empty()) {
+            m_app_cfg.callable = manifest["server"]["callable"].asString();
 
-        m_request_watcher.reset(new ev::io());
-        m_request_watcher->set<engine_t, &engine_t::request>(this);
-        m_request_watcher->start(m_server->fd(), ev::READ);
-        m_request_processor.reset(new ev::idle());
-        m_request_processor->set<engine_t, &engine_t::process_request>(this);
-    }
-
-    if(!tasks.isNull() && tasks.size()) {
-        if(!m_app_cfg.pubsub_endpoint.empty()) {
-            m_pubsub.reset(new socket_t(m_context, ZMQ_PUB));
-            m_pubsub->bind(m_app_cfg.pubsub_endpoint);
-        }
-
-        Json::Value::Members names(tasks.getMemberNames());
-
-        for(Json::Value::Members::iterator it = names.begin(); it != names.end(); ++it) {
-            std::string type(tasks[*it]["type"].asString());
-            
-            if(types.find(type) == types.end()) {
-               throw std::runtime_error("no scheduler for '" + type + "' is available");
+            if(m_app_cfg.callable.empty()) {
+                throw std::runtime_error("no callable has been specified for serving");
             }
 
-            switch(types[type]) {
-                case AUTO:
-                    schedule<drivers::auto_t>(*it, tasks[*it]);
-                    break;
-            //  case CRON:
-            //      schedule<drivers::cron_t>(*it, tasks[*it]);
-            //      break;
-            //  case MANUAL:
-            //      schedule<drivers::maual_t>(*it, tasks[*it]);
-            //      break;
-                case FILESYSTEM:
-                    schedule<drivers::fs_t>(*it, tasks[*it]);
-                    break;
-                case SINK:
-                    schedule<drivers::sink_t>(*it, tasks[*it]);
-                    break;
+            std::string route(
+                    config_t::get().core.hostname + "/" + 
+                    config_t::get().core.instance + "/" + 
+                    m_app_cfg.name);
+
+            m_server.reset(new socket_t(m_context, ZMQ_ROUTER, route));
+            m_server->bind(endpoint);
+
+            m_request_watcher.reset(new ev::io());
+            m_request_watcher->set<engine_t, &engine_t::request>(this);
+            m_request_watcher->start(m_server->fd(), ev::READ);
+            m_request_processor.reset(new ev::idle());
+            m_request_processor->set<engine_t, &engine_t::process_request>(this);
+            
+            result["server"]["route"] = m_server->route();
+            result["server"]["endpoint"] = m_server->endpoint();
+        }
+    }
+
+    // Tasks configuration
+    // -------------------
+
+    {
+        Json::Value tasks(manifest["tasks"]);
+
+        if(!tasks.isNull() && tasks.size()) {
+            std::string endpoint = manifest["pubsub"]["endpoint"].asString();
+            
+            if(!endpoint.empty()) {
+                m_pubsub.reset(new socket_t(m_context, ZMQ_PUB));
+                m_pubsub->bind(endpoint);
+
+                result["pubsub"]["endpoint"] = m_pubsub->endpoint();
+            }
+
+            Json::Value::Members names(tasks.getMemberNames());
+
+            for(Json::Value::Members::iterator it = names.begin(); it != names.end(); ++it) {
+                std::string type(tasks[*it]["type"].asString());
+                
+                if(types.find(type) == types.end()) {
+                   throw std::runtime_error("no scheduler for '" + type + "' is available");
+                }
+
+                switch(types[type]) {
+                    case AUTO:
+                        schedule<drivers::auto_t>(*it, tasks[*it]);
+                        break;
+                //  case CRON:
+                //      schedule<drivers::cron_t>(*it, tasks[*it]);
+                //      break;
+                //  case MANUAL:
+                //      schedule<drivers::maual_t>(*it, tasks[*it]);
+                //      break;
+                    case FILESYSTEM:
+                        schedule<drivers::fs_t>(*it, tasks[*it]);
+                        break;
+                    case SINK:
+                        schedule<drivers::sink_t>(*it, tasks[*it]);
+                        break;
+                }
             }
         }
     }
@@ -194,8 +216,8 @@ Json::Value engine_t::stats() {
     Json::Value results;
 
     if(m_server) {
-        results["server"]["route"] = m_server->identity();
-        results["server"]["endpoint"] = m_app_cfg.server_endpoint;
+        results["server"]["route"] = m_server->route();
+        results["server"]["endpoint"] = m_server->endpoint();
     }
 
     results["pool"]["total"] = static_cast<Json::UInt>(m_pool.size());
@@ -216,7 +238,7 @@ Json::Value engine_t::stats() {
         }
         
         if(m_pubsub) {
-            results["tasks"]["pubsub"] = m_app_cfg.pubsub_endpoint;
+            results["tasks"]["endpoint"] = m_pubsub->endpoint();
         }
     }
 

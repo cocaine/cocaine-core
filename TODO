@@ -36,15 +36,17 @@ Version: 0.5
 v Cocained!
 v Core: more statistics (from drivers)
 v Core: JSON -> Msgpack for internal communications
-* Core: HTTP frontend
-> Core: stable plugin interface
+v Core: stable plugin interface
 v Engine: forks!
 v Engine: per-engine export sockets
 v Engine: an ability to kill timed out workers
 v Engine: dynamic worker pools
-* JS: adapt portions of node.js
+x Storage: proper inter-process locking in file storage [dropped storage support in apps]
+
+Version: 0.6
+* Core: HTTP frontend
+* JS: adapt portions of node.js or some other CommonJS implementation
 * Networking: authentication replay protection (timestamps)
 * Networking: encrypted responses
 * Networking: encrypted publishing
 * Python: PersistentTail, Sinks
-> Storage: proper inter-process locking in file storage
