@@ -86,6 +86,9 @@ ADD_LIBRARY(cocaine-core SHARED
     src/core
     src/engine
     src/downloads
+    src/drivers/auto
+    src/drivers/fs
+    src/drivers/server
     src/networking
     src/overseer
     src/registry

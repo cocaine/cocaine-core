@@ -6,14 +6,11 @@
 #include "cocaine/deferred.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/networking.hpp"
-#include "cocaine/overseer.hpp"
 
 // Driver types
 #define AUTO        1   /* do something every n milliseconds */
-#define CRON        2   /* do something based on a cron-like schedule */
-#define MANUAL      3   /* do something when application says */
-#define FILESYSTEM  4   /* do something when there's a change on the filesystem */
-#define SINK        5   /* do something when there's a message on the socket */
+#define FILESYSTEM  2   /* do something when there's a change on the filesystem */
+#define SERVER      3   /* do something when there's a message on the socket */
 
 namespace cocaine { namespace engine {
 
@@ -22,7 +19,6 @@ class engine_t:
     public boost::noncopyable,
     public boost::enable_shared_from_this<engine_t>,
     public birth_control_t<engine_t>,
-    public lines::responder_t,
     public lines::publisher_t
 {
     public:
@@ -42,9 +38,9 @@ class engine_t:
         engine_t(zmq::context_t& context, const std::string& name); 
         ~engine_t();
 
-        Json::Value run(const Json::Value& manifest);
+        Json::Value start(const Json::Value& manifest);
         Json::Value stop();
-        Json::Value stats();
+        Json::Value info();
 
         void reap(unique_id_t::reference worker_id);
 
@@ -68,15 +64,9 @@ class engine_t:
                         std::auto_ptr<backend_t> object;
 
                         if(m_pool_cfg.backend == "thread") {
-                            object.reset(new thread_t(
-                                shared_from_this(),
-                                m_app_cfg.type,
-                                m_app_cfg.args));
+                            object.reset(new thread_t(shared_from_this(), m_app_cfg.type, m_app_cfg.args));
                         } else if(m_pool_cfg.backend == "process") {
-                            object.reset(new process_t(
-                                shared_from_this(),
-                                m_app_cfg.type,
-                                m_app_cfg.args));
+                            object.reset(new process_t(shared_from_this(), m_app_cfg.type, m_app_cfg.args));
                         }
 
                         std::string worker_id(object->id());
@@ -92,13 +82,13 @@ class engine_t:
                     // NOTE: We block external communications here to avoid races, i.e.
                     // we go into the inner loop, got another request, found no free workers
                     // and go into a loop one level deeper, and so on.
-                    m_request_watcher->stop();
-                    m_request_processor->stop();
+                    // m_watcher.stop();
+                    // m_processor.stop();
 
                     ev::get_default_loop().loop(ev::ONESHOT);
                     
-                    m_request_watcher->start(m_messages.fd(), ev::READ);
-                    m_request_processor->start();
+                    // m_watcher.start(m_messages.fd(), ev::READ);
+                    // m_processor.start();
                 } else if(worker->second->queue().size() >= m_pool_cfg.queue_limit) {
                     throw std::runtime_error("engine is overloaded");
                 } else {
@@ -122,7 +112,9 @@ class engine_t:
             ev::get_default_loop().feed_fd_event(m_messages.fd(), ev::READ);
         }
 
-        virtual void respond(const lines::route_t& route, zmq::message_t& chunk);
+        // NOTE: It is intentional that all the publishing drivers do that via
+        // one socket, so that one can bind to it and receive all the application
+        // publications without chaos and bloodshed.
         virtual void publish(const std::string& key, const Json::Value& object);
 
     public:
@@ -131,46 +123,40 @@ class engine_t:
 
     private:
         template<class DriverType>
-        void schedule(const std::string& task, const Json::Value& args);
+        void schedule(const std::string& method, const Json::Value& args);
 
         void message(ev::io& w, int revents);
-        void process_message(ev::idle& w, int revents);
-
-        void request(ev::io& w, int revents);
-        void process_request(ev::idle& w, int revents);
+        void process(ev::idle& w, int revents);
 
     private:
         zmq::context_t& m_context;
         
-        // Pool I/O
-        lines::channel_t m_messages;
-        ev::io m_message_watcher;
-        ev::idle m_message_processor;
-
-        // Application configuration
+        // Pool configuration
         config_t::engine_cfg_t m_pool_cfg;
 
+        // Pool I/O
+        lines::channel_t m_messages;
+        ev::io m_watcher;
+        ev::idle m_processor;
+
+        // Application configuration
         struct {
             std::string name, type, args;
-            std::string callable;
         } m_app_cfg;
        
-        // Application I/O
-        boost::shared_ptr<lines::socket_t> m_server, m_pubsub;
-        boost::shared_ptr<ev::io> m_request_watcher;
-        boost::shared_ptr<ev::idle> m_request_processor;
-
         // Tasks
-        typedef boost::ptr_map<const std::string, drivers::driver_t> task_map_t;
-        task_map_t m_tasks;
+        typedef std::map<
+            const std::string,
+            boost::shared_ptr<drivers::driver_t>
+        > task_map_t;
         
-        // History
-        typedef std::deque< std::pair<ev::tstamp, Json::Value> > history_t;
-        typedef boost::ptr_map<const std::string, history_t> history_map_t;
-        history_map_t m_histories;
+        task_map_t m_tasks;
         
         // Workers
         pool_t m_pool;
+        
+        // Publishing
+        boost::shared_ptr<lines::socket_t> m_pubsub;
 };
 
 }}

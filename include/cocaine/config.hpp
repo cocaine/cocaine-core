@@ -25,7 +25,6 @@ class config_t {
             std::string backend;
             float heartbeat_timeout;
             float suicide_timeout;
-            unsigned int history_limit;
             unsigned int pool_limit;
             unsigned int queue_limit;
         } engine;

@@ -33,11 +33,12 @@ class socket_t:
     public birth_control_t<socket_t>
 {
     public:
-        socket_t(zmq::context_t& context, int type, std::string identity = ""):
-            m_socket(context, type)
+        socket_t(zmq::context_t& context, int type, std::string route = ""):
+            m_socket(context, type),
+            m_route(route)
         {
-            if(!identity.empty()) {
-                setsockopt(ZMQ_IDENTITY, identity.data(), identity.length());
+            if(!route.empty()) {
+                setsockopt(ZMQ_IDENTITY, route.data(), route.length());
             } 
         }
 
@@ -89,8 +90,8 @@ class socket_t:
     public:
         int fd();
 
-        std::string route();
         std::string endpoint() const { return m_endpoint; }
+        std::string route() const { return m_route; }
 
         bool pending(int event = ZMQ_POLLIN);
         bool more();
@@ -101,7 +102,7 @@ class socket_t:
 
     private:
         zmq::socket_t m_socket;
-        std::string m_endpoint;
+        std::string m_endpoint, m_route;
 };
 
 class channel_t:

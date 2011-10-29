@@ -17,10 +17,8 @@ class backend_t:
             boost::shared_ptr<lines::deferred_t>
         > deferred_queue_t;
 
-    protected:
-        backend_t();
-
     public:       
+        backend_t();
         virtual ~backend_t();
 
     public:

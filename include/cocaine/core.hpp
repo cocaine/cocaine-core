@@ -15,8 +15,7 @@ class core_t:
         core_t();
         ~core_t();
 
-        // Event loop
-        void run();
+        void start();
         
     private:
         // Signal processing
@@ -25,7 +24,7 @@ class core_t:
 
         // User request processing
         void request(ev::io& io, int revents);
-        void process_request(ev::idle& w, int revents);
+        void process(ev::idle& w, int revents);
 
         // User request dispatching
         Json::Value dispatch(const Json::Value& root);
@@ -33,7 +32,6 @@ class core_t:
         // User request handling
         Json::Value create_engine(const std::string& name, const Json::Value& manifest);
         Json::Value delete_engine(const std::string& name);
-        Json::Value stats();
         Json::Value info();
 
         // Responding
@@ -45,17 +43,18 @@ class core_t:
     private:
         security::signatures_t m_signatures;
 
-        // Networking
         zmq::context_t m_context;
         lines::socket_t m_server;
 
-        // Event watchers
         ev::sig m_sigint, m_sigterm, m_sigquit, m_sighup;
-        ev::io m_request_watcher;
-        ev::idle m_request_processor;
+        ev::io m_watcher;
+        ev::idle m_processor;
 
-        // Engine management (URI -> Engine)
-        typedef std::map<const std::string, boost::shared_ptr<engine::engine_t> > engine_map_t;
+        typedef std::map<
+            const std::string,
+            boost::shared_ptr<engine::engine_t>
+        > engine_map_t;
+
         engine_map_t m_engines;
 };
 

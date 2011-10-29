@@ -47,9 +47,9 @@ core_t::core_t():
         syslog(LOG_INFO, "core: listening for requests on %s", it->c_str());
     }
 
-    m_request_watcher.set<core_t, &core_t::request>(this);
-    m_request_watcher.start(m_server.fd(), EV_READ);
-    m_request_processor.set<core_t, &core_t::process_request>(this);
+    m_watcher.set<core_t, &core_t::request>(this);
+    m_watcher.start(m_server.fd(), EV_READ);
+    m_processor.set<core_t, &core_t::process>(this);
 
     // Initialize signal watchers
     m_sigint.set<core_t, &core_t::terminate>(this);
@@ -69,7 +69,7 @@ core_t::~core_t() {
     syslog(LOG_DEBUG, "core: destructing");
 }
 
-void core_t::run() {
+void core_t::start() {
     recover();
     ev::get_default_loop().loop();
 }
@@ -102,12 +102,12 @@ void core_t::reload(ev::sig& sig, int revents) {
 
 void core_t::request(ev::io& w, int revents) {
     if(m_server.pending()) {
-        m_request_processor.start();
-        m_request_watcher.stop();
+        m_processor.start();
+        m_watcher.stop();
     }
 }
 
-void core_t::process_request(ev::idle& w, int revents) {
+void core_t::process(ev::idle& w, int revents) {
     if(m_server.pending()) {
         zmq::message_t message, signature;
         lines::route_t route;
@@ -184,8 +184,8 @@ void core_t::process_request(ev::idle& w, int revents) {
             respond(route, object);
         }
     } else {
-        m_request_processor.stop();
-        m_request_watcher.start(m_server.fd(), ev::READ);
+        m_processor.stop();
+        m_watcher.start(m_server.fd(), ev::READ);
     }
 }
 
@@ -240,8 +240,6 @@ Json::Value core_t::dispatch(const Json::Value& root) {
         }
 
         return result;
-    } else if(action == "statistics") {
-        return stats();
     } else if(action == "info") {
         return info();
     } else {
@@ -259,7 +257,7 @@ Json::Value core_t::create_engine(const std::string& name, const Json::Value& ma
 
     // Launch the engine
     boost::shared_ptr<engine_t> engine(new engine_t(m_context, name));
-    Json::Value result(engine->run(manifest));
+    Json::Value result(engine->start(manifest));
 
     try {
         storage_t::create()->put("apps", name, manifest);
@@ -297,30 +295,17 @@ Json::Value core_t::delete_engine(const std::string& name) {
     return result;
 }
 
-Json::Value core_t::stats() {
+Json::Value core_t::info() {
     Json::Value result(Json::objectValue);
 
     for(engine_map_t::const_iterator it = m_engines.begin(); it != m_engines.end(); ++it) {
-        result["apps"][it->first] = it->second->stats();
+        result["apps"][it->first] = it->second->info();
     }
     
     result["workers"]["total"] = engine::thread_t::objects_alive;
 
-    result["requests"]["total"] = lines::response_t::objects_created;
-    result["requests"]["pending"] = lines::response_t::objects_alive;
-
-    result["publications"]["total"] = lines::publication_t::objects_created;
-    result["publications"]["pending"] = lines::publication_t::objects_alive;
-    
-    return result;
-}
-
-Json::Value core_t::info() {
-    Json::Value result(Json::arrayValue);
-
-    for(engine_map_t::const_iterator it = m_engines.begin(); it != m_engines.end(); ++it) {
-        result.append(it->first);
-    }
+    result["events"]["processed"] = lines::deferred_t::objects_created;
+    result["events"]["pending"] = lines::deferred_t::objects_alive;
 
     return result;
 }

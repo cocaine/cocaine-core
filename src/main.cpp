@@ -39,9 +39,6 @@ int main(int argc, char* argv[]) {
         ("engine:heartbeat-timeout", po::value<float>
             (&config_t::set().engine.heartbeat_timeout)->default_value(60.0),
             "unresponsive thread cancellation timeout, seconds")
-        ("engine:history-limit", po::value<unsigned int>
-            (&config_t::set().engine.history_limit)->default_value(10),
-            "maximum number of events to store per engine task")
         ("engine:queue-limit", po::value<unsigned int>
             (&config_t::set().engine.queue_limit)->default_value(10),
             "maximum engine worker queue depth")
@@ -136,7 +133,7 @@ int main(int argc, char* argv[]) {
     }
 
     // This call blocks
-    core->run();
+    core->start();
 
     // Cleanup
     core.reset();

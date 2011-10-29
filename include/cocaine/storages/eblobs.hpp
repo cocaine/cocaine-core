@@ -14,7 +14,7 @@ class eblob_collector_t:
 {
     public:
         bool callback(const zbr::eblob_disk_control* dco, const void* data, int);
-        void complete(uint64_t, uint64_t) {}
+        void complete(uint64_t, uint64_t) { }
 
         inline Json::Value seal() { return m_root; }
 
@@ -29,7 +29,7 @@ class eblob_purger_t:
     public:
         eblob_purger_t(zbr::eblob* eblob):
             m_eblob(eblob)
-        {}
+        { }
 
         bool callback(const zbr::eblob_disk_control* dco, const void* data, int);
         void complete(uint64_t, uint64_t);

@@ -13,17 +13,17 @@ overseer_t::overseer_t(unique_id_t::reference id_, zmq::context_t& context, cons
     m_context(context),
     m_messages(m_context, ZMQ_DEALER, id()),
     m_loop(),
-    m_message_watcher(m_loop),
-    m_message_processor(m_loop),
+    m_watcher(m_loop),
+    m_processor(m_loop),
     m_suicide_timer(m_loop),
     m_heartbeat_timer(m_loop)
 {
     m_messages.connect("ipc:///var/run/cocaine/engines/" + name);
-    m_message_watcher.set<overseer_t, &overseer_t::message>(this);
-    m_message_watcher.start(m_messages.fd(), ev::READ);
+    m_watcher.set<overseer_t, &overseer_t::message>(this);
+    m_watcher.start(m_messages.fd(), ev::READ);
         
-    m_message_processor.set<overseer_t, &overseer_t::process_message>(this);
-    m_message_processor.start();
+    m_processor.set<overseer_t, &overseer_t::process>(this);
+    m_processor.start();
 
     m_suicide_timer.set<overseer_t, &overseer_t::timeout>(this);
     m_suicide_timer.start(config_t::get().engine.suicide_timeout);
@@ -54,12 +54,12 @@ void overseer_t::operator()(
 
 void overseer_t::message(ev::io& w, int revents) {
     if(m_messages.pending()) {
-        m_message_processor.start();
-        m_message_watcher.stop();
+        m_processor.start();
+        m_watcher.stop();
     }
 }
 
-void overseer_t::process_message(ev::idle& w, int revents) {
+void overseer_t::process(ev::idle& w, int revents) {
     if(m_messages.pending()) {
         std::string deferred_id;
         unsigned int code = 0;
@@ -125,8 +125,8 @@ void overseer_t::process_message(ev::idle& w, int revents) {
                 return;
         }
     } else {
-        m_message_processor.stop();
-        m_message_watcher.start(m_messages.fd(), ev::READ);
+        m_processor.stop();
+        m_watcher.start(m_messages.fd(), ev::READ);
     }
 }
 

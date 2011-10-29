@@ -2,6 +2,7 @@
 #define COCAINE_DRIVERS_ABSTRACT_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/engine.hpp"
 
 namespace cocaine { namespace engine { namespace drivers {
 
@@ -9,24 +10,28 @@ class driver_t:
     public boost::noncopyable
 {
     public:
-        virtual ~driver_t() { }
-
-        inline std::string id() const {
-            return m_id;
+        driver_t(const std::string& method, boost::shared_ptr<engine_t> parent):
+            m_method(method),
+            m_parent(parent)
+        {
+            syslog(LOG_DEBUG, "driver [%s:%s]: constructing", 
+                m_parent->name().c_str(), m_method.c_str());
         }
-
-        inline std::string name() const {
-            return m_name;
-        }
-
-    protected:
-        driver_t(const std::string& name):
-            m_name(name)
-        {}
         
+        virtual ~driver_t() {
+            syslog(LOG_DEBUG, "driver [%s:%s]: destructing",
+                m_parent->name().c_str(), m_method.c_str());
+        }
+
+        std::string method() const {
+            return m_method;
+        }
+
+        virtual Json::Value info() const = 0;
+
     protected:
-        std::string m_id;
-        const std::string m_name;
+        const std::string m_method;
+        const boost::shared_ptr<engine_t> m_parent;
 };
 
 }}}

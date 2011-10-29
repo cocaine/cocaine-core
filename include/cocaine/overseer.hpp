@@ -19,9 +19,8 @@ class overseer_t:
         ~overseer_t();
 
         // Thread entry point 
-        void operator()(
-            const std::string& type,
-            const std::string& args);
+        void operator()(const std::string& type,
+                        const std::string& args);
 
         // Callback used to send response chunks
         void respond(const std::string& deferred_id, 
@@ -31,7 +30,7 @@ class overseer_t:
     private:
         // Event loop callback handling and dispatching
         void message(ev::io& w, int revents);
-        void process_message(ev::idle& w, int revents);
+        void process(ev::idle& w, int revents);
         void timeout(ev::timer& w, int revents);
         void heartbeat(ev::timer& w, int revents);
 
@@ -44,8 +43,8 @@ class overseer_t:
         
         // Event loop
         ev::dynamic_loop m_loop;
-        ev::io m_message_watcher;
-        ev::idle m_message_processor;
+        ev::io m_watcher;
+        ev::idle m_processor;
         ev::timer m_suicide_timer, m_heartbeat_timer;
 
         // Data source

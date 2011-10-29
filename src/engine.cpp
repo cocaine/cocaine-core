@@ -22,10 +22,10 @@ engine_t::engine_t(zmq::context_t& context, const std::string& name):
     
     m_messages.bind("ipc:///var/run/cocaine/engines/" + m_app_cfg.name);
     
-    m_message_watcher.set<engine_t, &engine_t::message>(this);
-    m_message_watcher.start(m_messages.fd(), ev::READ);
-    m_message_processor.set<engine_t, &engine_t::process_message>(this);
-    m_message_processor.start();
+    m_watcher.set<engine_t, &engine_t::message>(this);
+    m_watcher.start(m_messages.fd(), ev::READ);
+    m_processor.set<engine_t, &engine_t::process>(this);
+    m_processor.start();
 }
 
 engine_t::~engine_t() {
@@ -35,15 +35,11 @@ engine_t::~engine_t() {
 // Operations
 // ----------
 
-Json::Value engine_t::run(const Json::Value& manifest) {
+Json::Value engine_t::start(const Json::Value& manifest) {
     static std::map<const std::string, unsigned int> types = boost::assign::map_list_of
         ("auto", AUTO)
-    //  ("cron", CRON)
-    //  ("manual", MANUAL)
         ("fs", FILESYSTEM)
-        ("sink", SINK);
-
-    Json::Value result(Json::objectValue);
+        ("server", SERVER);
 
     // Application configuration
     // -------------------------
@@ -71,120 +67,63 @@ Json::Value engine_t::run(const Json::Value& manifest) {
         config_t::get().engine.heartbeat_timeout).asDouble();
     m_pool_cfg.suicide_timeout = manifest["engine"].get("suicide-timeout",
         config_t::get().engine.suicide_timeout).asDouble();
-    m_pool_cfg.history_limit = manifest["engine"].get("history-limit",
-        config_t::get().engine.history_limit).asUInt();
     m_pool_cfg.pool_limit = manifest["engine"].get("pool-limit",
         config_t::get().engine.pool_limit).asUInt();
     m_pool_cfg.queue_limit = manifest["engine"].get("queue-limit",
         config_t::get().engine.queue_limit).asUInt();
 
-    // Server configuration
-    // --------------------
-
-    {
-        std::string endpoint = manifest["server"]["endpoint"].asString();
-        
-        if(!endpoint.empty()) {
-            m_app_cfg.callable = manifest["server"]["callable"].asString();
-
-            if(m_app_cfg.callable.empty()) {
-                throw std::runtime_error("no callable has been specified for serving");
-            }
-
-            std::string route(
-                    config_t::get().core.hostname + "/" + 
-                    config_t::get().core.instance + "/" + 
-                    m_app_cfg.name);
-
-            m_server.reset(new socket_t(m_context, ZMQ_ROUTER, route));
-            m_server->bind(endpoint);
-
-            m_request_watcher.reset(new ev::io());
-            m_request_watcher->set<engine_t, &engine_t::request>(this);
-            m_request_watcher->start(m_server->fd(), ev::READ);
-            m_request_processor.reset(new ev::idle());
-            m_request_processor->set<engine_t, &engine_t::process_request>(this);
-            
-            result["server"]["route"] = m_server->route();
-            result["server"]["endpoint"] = m_server->endpoint();
-        }
-    }
-
     // Tasks configuration
     // -------------------
 
-    {
-        Json::Value tasks(manifest["tasks"]);
+    Json::Value tasks(manifest["tasks"]);
 
-        if(!tasks.isNull() && tasks.size()) {
-            std::string endpoint = manifest["pubsub"]["endpoint"].asString();
+    if(!tasks.isNull() && tasks.size()) {
+        std::string endpoint = manifest["pubsub"]["endpoint"].asString();
+        
+        if(!endpoint.empty()) {
+            m_pubsub.reset(new socket_t(m_context, ZMQ_PUB));
+            m_pubsub->bind(endpoint);
+        }
+
+        Json::Value::Members names(tasks.getMemberNames());
+
+        for(Json::Value::Members::iterator it = names.begin(); it != names.end(); ++it) {
+            std::string type(tasks[*it]["type"].asString());
             
-            if(!endpoint.empty()) {
-                m_pubsub.reset(new socket_t(m_context, ZMQ_PUB));
-                m_pubsub->bind(endpoint);
-
-                result["pubsub"]["endpoint"] = m_pubsub->endpoint();
+            if(types.find(type) == types.end()) {
+               throw std::runtime_error("no driver for '" + type + "' is available");
             }
 
-            Json::Value::Members names(tasks.getMemberNames());
-
-            for(Json::Value::Members::iterator it = names.begin(); it != names.end(); ++it) {
-                std::string type(tasks[*it]["type"].asString());
-                
-                if(types.find(type) == types.end()) {
-                   throw std::runtime_error("no scheduler for '" + type + "' is available");
-                }
-
-                switch(types[type]) {
-                    case AUTO:
-                        schedule<drivers::auto_t>(*it, tasks[*it]);
-                        break;
-                //  case CRON:
-                //      schedule<drivers::cron_t>(*it, tasks[*it]);
-                //      break;
-                //  case MANUAL:
-                //      schedule<drivers::maual_t>(*it, tasks[*it]);
-                //      break;
-                    case FILESYSTEM:
-                        schedule<drivers::fs_t>(*it, tasks[*it]);
-                        break;
-                    case SINK:
-                        schedule<drivers::sink_t>(*it, tasks[*it]);
-                        break;
-                }
+            switch(types[type]) {
+                case AUTO:
+                    schedule<drivers::auto_t>(*it, tasks[*it]);
+                    break;
+                case FILESYSTEM:
+                    schedule<drivers::fs_t>(*it, tasks[*it]);
+                    break;
+                case SERVER:
+                    schedule<drivers::server_t>(*it, tasks[*it]);
+                    break;
             }
         }
+    } else {
+        throw std::runtime_error("no tasks has been specified");
     }
 
-    result["engine"]["status"] = "running";
-
-    return result;
+    return info();
 }
 
 template<class DriverType>
-void engine_t::schedule(const std::string& task, const Json::Value& args) {
-    std::auto_ptr<DriverType> driver(new DriverType(task, shared_from_this(), args));
-    std::string driver_id(driver->id());
-    task_map_t::iterator it(m_tasks.find(driver_id));
-
-    if(it == m_tasks.end()) {
-        driver->start();
-        m_tasks.insert(driver_id, driver);
-    } else {
-        boost::format message("task '%1%' is a duplicate of '%2%'");
-        throw std::runtime_error((message % task % it->second->name()).str());
-    }
+void engine_t::schedule(const std::string& method, const Json::Value& args) {
+    m_tasks.insert(std::make_pair(
+        method,
+        new DriverType(method, shared_from_this(), args)));
 }
 
 Json::Value engine_t::stop() {
     Json::Value result;
 
     syslog(LOG_INFO, "engine [%s]: stopping", m_app_cfg.name.c_str()); 
-    
-    if(m_server) {
-        m_request_watcher->stop();
-        m_request_processor->stop();
-    }
     
     m_tasks.clear();
     
@@ -196,8 +135,8 @@ Json::Value engine_t::stop() {
         m_pool.erase(it);
     }
     
-    m_message_watcher.stop();
-    m_message_processor.stop();
+    m_watcher.stop();
+    m_processor.stop();
 
     result["engine"]["status"] = "stopped";
     
@@ -212,13 +151,10 @@ namespace {
     };
 }
 
-Json::Value engine_t::stats() {
-    Json::Value results;
+Json::Value engine_t::info() {
+    Json::Value results(Json::objectValue);
 
-    if(m_server) {
-        results["server"]["route"] = m_server->route();
-        results["server"]["endpoint"] = m_server->endpoint();
-    }
+    results["engine"]["status"] = "running";
 
     results["pool"]["total"] = static_cast<Json::UInt>(m_pool.size());
     results["pool"]["active"] = static_cast<Json::UInt>(std::count_if(
@@ -232,45 +168,12 @@ Json::Value engine_t::stats() {
             static_cast<Json::UInt>(it->second->queue().size());
     }
 
-    if(!m_tasks.empty()) {
-        for(task_map_t::const_iterator it = m_tasks.begin(); it != m_tasks.end(); ++it) {
-            results["tasks"]["active"].append(it->second->name());
-        }
-        
-        if(m_pubsub) {
-            results["tasks"]["endpoint"] = m_pubsub->endpoint();
-        }
+    for(task_map_t::const_iterator it = m_tasks.begin(); it != m_tasks.end(); ++it) {
+        results["tasks"][it->second->method()] = it->second->info();
     }
-
+    
     return results;
 }
-
-/*
-Json::Value engine_t::past(const std::string& task) {
-    history_map_t::iterator it(m_histories.find(task));
-
-    if(it == m_histories.end()) {
-        throw std::runtime_error("the history for a given task is empty");
-    }
-
-    Json::Value result(Json::arrayValue);
-
-    for(history_t::const_iterator event = it->second->begin(); event != it->second->end(); ++event) {
-        Json::Value object(Json::objectValue);
-
-        object["timestamp"] = event->first;
-        object["event"] = event->second;
-
-        result.append(object);
-
-        if(++counter == depth) {
-            break;
-        }
-    }
-
-    return result;
-}
-*/
 
 void engine_t::reap(unique_id_t::reference worker_id) {
     pool_t::iterator worker(m_pool.find(worker_id));
@@ -291,47 +194,10 @@ void engine_t::reap(unique_id_t::reference worker_id) {
 // Deferred support
 // ----------------
 
-void engine_t::respond(const route_t& route, zmq::message_t& chunk) {
-    if(m_server) {
-        zmq::message_t message;
-        
-        // Send the identity
-        for(lines::route_t::const_iterator id = route.begin(); id != route.end(); ++id) {
-            message.rebuild(id->length());
-            memcpy(message.data(), id->data(), id->length());
-#if ZMQ_VERSION < 30000
-            m_server->send(message, ZMQ_SNDMORE);
-#else
-            m_server->send(message, ZMQ_SNDMORE | ZMQ_SNDLABEL);
-#endif
-        }
-
-#if ZMQ_VERSION < 30000                
-        // Send the delimiter
-        message.rebuild(0);
-        m_server->send(message, ZMQ_SNDMORE);
-#endif
-
-        m_server->send(chunk);
-    }
-}
-
 void engine_t::publish(const std::string& key, const Json::Value& object) {
     if(m_pubsub && object.isObject()) {
         zmq::message_t message;
         ev::tstamp now = ev::get_default_loop().now();
-
-        // Maintain the history for the given driver
-        history_map_t::iterator history(m_histories.find(key));
-
-        if(history == m_histories.end()) {
-            boost::tie(history, boost::tuples::ignore) = m_histories.insert(key,
-                new history_t());
-        } else if(history->second->size() == m_pool_cfg.history_limit) {
-            history->second->pop_back();
-        }
-        
-        history->second->push_front(std::make_pair(now, object));
 
         // Disassemble and send in the envelopes
         Json::Value::Members members(object.getMemberNames());
@@ -380,12 +246,12 @@ void engine_t::publish(const std::string& key, const Json::Value& object) {
 
 void engine_t::message(ev::io& w, int revents) {
     if(m_messages.pending()) {
-        m_message_processor.start();
-        m_message_watcher.stop();
+        m_processor.start();
+        m_watcher.stop();
     }
 }
 
-void engine_t::process_message(ev::idle& w, int revents) {
+void engine_t::process(ev::idle& w, int revents) {
     if(m_messages.pending()) {
         std::string worker_id;
         unsigned int code = 0;
@@ -447,62 +313,8 @@ void engine_t::process_message(ev::idle& w, int revents) {
             m_messages.ignore();
         }
     } else {
-        m_message_processor.stop();
-        m_message_watcher.start(m_messages.fd(), ev::READ);
-    }
-}
-
-// Application I/O
-// ---------------
-
-void engine_t::request(ev::io& w, int revents) {
-    if(m_server->pending()) {
-        m_request_processor->start();
-        m_request_watcher->stop();
-    }
-}
-
-void engine_t::process_request(ev::idle& w, int revents) {
-    if(m_server->pending()) {
-        zmq::message_t message;
-        std::vector<std::string> route;
-
-        while(true) {
-            m_server->recv(&message);
-
-#if ZMQ_VERSION > 30000
-            if(!m_server->label()) {
-#else
-            if(!message.size()) {
-#endif
-                break;
-            }
-
-            route.push_back(std::string(
-                static_cast<const char*>(message.data()),
-                message.size()));
-        }
-      
-#if ZMQ_VERSION < 30000
-        m_server->recv(&message);
-#endif
-
-        boost::shared_ptr<response_t> deferred(
-            new response_t(route, shared_from_this()));
-
-        try {
-            queue(
-                deferred,
-                boost::make_tuple(
-                    INVOKE,
-                    m_app_cfg.callable,
-                    boost::ref(message)));
-        } catch(const std::runtime_error& e) {
-            deferred->abort(e.what());
-        }
-    } else {
-        m_request_processor->stop();
-        m_request_watcher->start(m_server->fd(), ev::READ);
+        m_processor.stop();
+        m_watcher.start(m_messages.fd(), ev::READ);
     }
 }
 

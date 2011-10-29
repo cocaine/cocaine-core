@@ -11,15 +11,6 @@ int socket_t::fd() {
     return fd;
 }
 
-std::string socket_t::route() {
-    char identity[255];
-    size_t size = 255;
-
-    getsockopt(ZMQ_IDENTITY, identity, &size);
-
-    return std::string(identity, size);
-}
-
 bool socket_t::pending(int event) {
 #if ZMQ_VERSION > 30000
     int events;
