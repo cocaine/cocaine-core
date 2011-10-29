@@ -44,7 +44,6 @@ server_t::server_t(const std::string& method, boost::shared_ptr<engine_t> engine
 
     m_watcher.set(this);
     m_watcher.start(m_socket.fd(), ev::READ);
-
     m_processor.set<server_t, &server_t::process>(this);
     m_processor.start();
 }

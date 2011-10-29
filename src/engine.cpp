@@ -103,7 +103,8 @@ Json::Value engine_t::start(const Json::Value& manifest) {
         Json::Value::Members names(tasks.getMemberNames());
 
         for(Json::Value::Members::iterator it = names.begin(); it != names.end(); ++it) {
-            std::string type(tasks[*it]["type"].asString());
+            std::string task(*it);
+            std::string type(tasks[task]["type"].asString());
             
             if(types.find(type) == types.end()) {
                throw std::runtime_error("no driver for '" + type + "' is available");
@@ -111,13 +112,13 @@ Json::Value engine_t::start(const Json::Value& manifest) {
 
             switch(types[type]) {
                 case AUTO:
-                    schedule<drivers::auto_t>(*it, tasks[*it]);
+                    schedule<drivers::auto_t>(task, tasks[task]);
                     break;
                 case FILESYSTEM:
-                    schedule<drivers::fs_t>(*it, tasks[*it]);
+                    schedule<drivers::fs_t>(task, tasks[task]);
                     break;
                 case SERVER:
-                    schedule<drivers::server_t>(*it, tasks[*it]);
+                    schedule<drivers::server_t>(task, tasks[task]);
                     break;
             }
         }
@@ -161,15 +162,13 @@ Json::Value engine_t::stop() {
 namespace {
     struct nonempty_queue {
         bool operator()(engine_t::pool_map_t::reference worker) {
-            return worker->second->queue().size() != 0;
+            return worker.second->queue().size() != 0;
         }
     };
 }
 
 Json::Value engine_t::info() {
     Json::Value results(Json::objectValue);
-
-    results["engine"]["status"] = "running";
 
     results["pool"]["total"] = static_cast<Json::UInt>(m_pool.size());
     results["pool"]["active"] = static_cast<Json::UInt>(std::count_if(
@@ -179,13 +178,15 @@ Json::Value engine_t::info() {
     results["pool"]["limit"] = m_pool_cfg.pool_limit;
 
     for(pool_map_t::const_iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
-        results["pool"]["queues"][it->first] = 
-            static_cast<Json::UInt>(it->second->queue().size());
+        results["pool"]["queues"][it->first] = static_cast<Json::UInt>(
+            it->second->queue().size());
     }
 
     for(task_map_t::const_iterator it = m_tasks.begin(); it != m_tasks.end(); ++it) {
-        results["tasks"][it->second->method()] = it->second->info();
+        results["tasks"][it->first] = it->second->info();
     }
+    
+    results["engine"]["status"] = "running";
     
     return results;
 }
@@ -256,13 +257,13 @@ void engine_t::publish(const std::string& key, const Json::Value& object) {
     }
 }
 
-// Thread I/O
+// Worker I/O
 // ----------
 
 void engine_t::message(ev::io& w, int revents) {
     if(m_messages.pending()) {
-        m_processor.start();
         m_watcher.stop();
+        m_processor.start();
     }
 }
 
@@ -277,8 +278,9 @@ void engine_t::process(ev::idle& w, int revents) {
         pool_map_t::iterator worker(m_pool.find(worker_id));
 
         if(worker != m_pool.end()) {
-            // NOTE: Any type of message is suitable to rearm the timeout
-            // and we don't have to do anything special about HEARBEAT messages at all.
+            // NOTE: Any type of message is suitable to rearm the heartbeat timer
+            // so we don't have to do anything special about HEARBEAT messages at all,
+            // it's a dummy message to send in the periods of inactivity.
             worker->second->rearm(m_pool_cfg.heartbeat_timeout);
            
             switch(code) {
@@ -314,7 +316,7 @@ void engine_t::process(ev::idle& w, int revents) {
 
                 case SUICIDE:
                     if(worker->second->queue().size()) {
-                        syslog(LOG_WARNING, "engine [%s]: a suicide with requests in the queue detected",
+                        syslog(LOG_WARNING, "engine [%s]: a suicide with deferreds in the queue",
                             m_app_cfg.name.c_str());
                     }
 
@@ -323,13 +325,13 @@ void engine_t::process(ev::idle& w, int revents) {
                     break;
             }
         } else {
-            syslog(LOG_WARNING, "engine [%s]: dropping messages for worker %s", 
+            syslog(LOG_WARNING, "engine [%s]: dropping messages for a dead worker %s", 
                 m_app_cfg.name.c_str(), worker_id.c_str());
             m_messages.ignore();
         }
     } else {
-        m_processor.stop();
         m_watcher.start(m_messages.fd(), ev::READ);
+        m_processor.stop();
     }
 }
 
