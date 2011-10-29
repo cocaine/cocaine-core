@@ -83,18 +83,18 @@ SET_TARGET_PROPERTIES(cocaine-core-security PROPERTIES
     VERSION 1)
 
 ADD_LIBRARY(cocaine-core SHARED 
+    src/backends/abstract
+    src/backends/process
+    src/backends/thread
     src/core
-    src/engine
     src/downloads
     src/drivers/auto
     src/drivers/fs
     src/drivers/server
+    src/engine
     src/networking
     src/overseer
-    src/registry
-    src/backends/abstract
-    src/backends/process
-    src/backends/thread)
+    src/registry)
 
 TARGET_LINK_LIBRARIES(cocaine-core
     cocaine-core-config
@@ -118,7 +118,6 @@ ADD_EXECUTABLE(cocained
     src/main)
 
 TARGET_LINK_LIBRARIES(cocained
-    cocaine-core-config
     cocaine-core
     boost_program_options-mt)
 
