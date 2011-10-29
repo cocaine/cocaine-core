@@ -5,4 +5,8 @@
 #include "cocaine/drivers/fs.hpp"
 #include "cocaine/drivers/server.hpp"
 
+#define AUTO        1
+#define FILESYSTEM  2
+#define SERVER      3
+
 #endif

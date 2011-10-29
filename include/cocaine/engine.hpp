@@ -7,11 +7,6 @@
 #include "cocaine/forwards.hpp"
 #include "cocaine/networking.hpp"
 
-// Driver types
-#define AUTO        1   /* do something every n milliseconds */
-#define FILESYSTEM  2   /* do something when there's a change on the filesystem */
-#define SERVER      3   /* do something when there's a message on the socket */
-
 namespace cocaine { namespace engine {
 
 // Application Engine
