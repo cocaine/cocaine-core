@@ -2,7 +2,6 @@
 #include <sstream>
 
 #include <boost/assign.hpp>
-#include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include "cocaine/drivers.hpp"
@@ -10,18 +9,19 @@
 #include "cocaine/registry.hpp"
 
 using namespace cocaine::engine;
+using namespace cocaine::engine::backends;
 using namespace cocaine::lines;
 
-bool engine_t::shortest_queue_t::operator()(pool_t::reference left, pool_t::reference right) {
+bool engine_t::shortest_queue::operator()(pool_map_t::reference left, pool_map_t::reference right) {
     return ((left.second->queue().size() < right.second->queue().size()) &&
              left.second->active());
 }
 
-void engine_t::pause_t::operator()(task_map_t::reference task) {
+void engine_t::pause_task::operator()(task_map_t::reference task) {
     task.second->pause();
 }
 
-void engine_t::resume_t::operator()(task_map_t::reference task) {
+void engine_t::resume_task::operator()(task_map_t::reference task) {
     task.second->resume();
 }
 
@@ -140,7 +140,7 @@ Json::Value engine_t::stop() {
 
     syslog(LOG_INFO, "engine [%s]: stopping", m_app_cfg.name.c_str()); 
     
-    for(pool_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
+    for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
         m_messages.send_multi(boost::make_tuple(
             protect(it->first),
             unique_id_t().id(),
@@ -160,7 +160,7 @@ Json::Value engine_t::stop() {
 
 namespace {
     struct nonempty_queue {
-        bool operator()(engine_t::pool_t::reference worker) {
+        bool operator()(engine_t::pool_map_t::reference worker) {
             return worker->second->queue().size() != 0;
         }
     };
@@ -178,7 +178,7 @@ Json::Value engine_t::info() {
         nonempty_queue()));
     results["pool"]["limit"] = m_pool_cfg.pool_limit;
 
-    for(pool_t::const_iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
+    for(pool_map_t::const_iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
         results["pool"]["queues"][it->first] = 
             static_cast<Json::UInt>(it->second->queue().size());
     }
@@ -191,7 +191,7 @@ Json::Value engine_t::info() {
 }
 
 void engine_t::reap(unique_id_t::reference worker_id) {
-    pool_t::iterator worker(m_pool.find(worker_id));
+    pool_map_t::iterator worker(m_pool.find(worker_id));
 
     // TODO: Re-assign tasks
     if(worker != m_pool.end()) {
@@ -274,7 +274,7 @@ void engine_t::process(ev::idle& w, int revents) {
         boost::tuple<raw<std::string>, unsigned int&> tier(protect(worker_id), code);
         m_messages.recv_multi(tier);
 
-        pool_t::iterator worker(m_pool.find(worker_id));
+        pool_map_t::iterator worker(m_pool.find(worker_id));
 
         if(worker != m_pool.end()) {
             // NOTE: Any type of message is suitable to rearm the timeout

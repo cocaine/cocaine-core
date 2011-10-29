@@ -4,7 +4,7 @@
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 
-namespace cocaine { namespace engine {
+namespace cocaine { namespace engine { namespace backends {
 
 class backend_t:
     public boost::noncopyable,
@@ -38,6 +38,6 @@ class backend_t:
         ev::timer m_heartbeat;
 };
 
-}}
+}}}
 
 #endif

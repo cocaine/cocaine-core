@@ -35,9 +35,7 @@ typedef struct {
     factory_fn_t factory;
 } source_info_t;
 
-extern "C" {
-    typedef const source_info_t* (*initialize_fn_t)(void);
-}
+typedef const source_info_t* (*initialize_fn_t)(void);
 
 }}
 

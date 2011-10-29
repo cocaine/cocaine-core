@@ -10,17 +10,17 @@ class driver_t:
     public boost::noncopyable
 {
     public:
-        driver_t(const std::string& method, boost::shared_ptr<engine_t> parent):
+        driver_t(const std::string& method, boost::shared_ptr<engine_t> engine):
             m_method(method),
-            m_parent(parent)
+            m_engine(engine)
         {
             syslog(LOG_DEBUG, "driver [%s:%s]: constructing", 
-                m_parent->name().c_str(), m_method.c_str());
+                m_engine->name().c_str(), m_method.c_str());
         }
         
         virtual ~driver_t() {
             syslog(LOG_DEBUG, "driver [%s:%s]: destructing",
-                m_parent->name().c_str(), m_method.c_str());
+                m_engine->name().c_str(), m_method.c_str());
         }
 
         std::string method() const {
@@ -34,7 +34,7 @@ class driver_t:
 
     protected:
         const std::string m_method;
-        const boost::shared_ptr<engine_t> m_parent;
+        const boost::shared_ptr<engine_t> m_engine;
 };
 
 }}}

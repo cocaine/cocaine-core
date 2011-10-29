@@ -24,8 +24,8 @@ class engine_t:
     public:
         typedef boost::ptr_map<
             const std::string,
-            backend_t
-        > pool_t;
+            backends::backend_t
+        > pool_map_t;
     
         typedef std::map<
             const std::string,
@@ -33,15 +33,15 @@ class engine_t:
         > task_map_t;
        
     public: 
-        struct shortest_queue_t {
-            bool operator()(pool_t::reference left, pool_t::reference right);
+        struct shortest_queue {
+            bool operator()(pool_map_t::reference left, pool_map_t::reference right);
         };
 
-        struct pause_t {
+        struct pause_task {
             void operator()(task_map_t::reference task);
         };
         
-        struct resume_t {
+        struct resume_task {
             void operator()(task_map_t::reference task);
         };
 
@@ -57,14 +57,14 @@ class engine_t:
 
     public:
         template<class T>
-        void queue(boost::shared_ptr<lines::deferred_t> deferred, const T& args) {
-            pool_t::iterator worker;
+        void enqueue(boost::shared_ptr<lines::deferred_t> deferred, const T& args) {
+            pool_map_t::iterator worker;
 
             while(true) {
                 worker = std::min_element(
                     m_pool.begin(),
                     m_pool.end(), 
-                    shortest_queue_t());
+                    shortest_queue());
 
                 if(worker == m_pool.end() || 
                     (worker->second->active() &&
@@ -72,12 +72,14 @@ class engine_t:
                      m_pool.size() < m_pool_cfg.pool_limit))
                 {
                     try {
-                        std::auto_ptr<backend_t> object;
+                        std::auto_ptr<backends::backend_t> object;
 
                         if(m_pool_cfg.backend == "thread") {
-                            object.reset(new thread_t(shared_from_this(), m_app_cfg.type, m_app_cfg.args));
+                            object.reset(new backends::thread_t(
+                                shared_from_this(), m_app_cfg.type, m_app_cfg.args));
                         } else if(m_pool_cfg.backend == "process") {
-                            object.reset(new process_t(shared_from_this(), m_app_cfg.type, m_app_cfg.args));
+                            object.reset(new backends::process_t(
+                                shared_from_this(), m_app_cfg.type, m_app_cfg.args));
                         }
 
                         std::string worker_id(object->id());
@@ -90,12 +92,12 @@ class engine_t:
                         }
                     }
                 } else if(!worker->second->active()) {
-                    // NOTE: We pause all the tasks here to avoid races for workers,
-                    // and wait only for pool messages, in case of the new worker to 
-                    // come alive or some old worker fall below the threshold.
-                    std::for_each(m_tasks.begin(), m_tasks.end(), pause_t());
+                    // NOTE: We pause all the tasks here to avoid races for free workers,
+                    // and poll only for pool messages, in case the new worker comes up
+                    // or some old worker falls below the threshold.
+                    std::for_each(m_tasks.begin(), m_tasks.end(), pause_task());
                     ev::get_default_loop().loop(ev::ONESHOT);
-                    std::for_each(m_tasks.begin(), m_tasks.end(), resume_t());                    
+                    std::for_each(m_tasks.begin(), m_tasks.end(), resume_task());                    
                 } else if(worker->second->queue().size() >= m_pool_cfg.queue_limit) {
                     throw std::runtime_error("engine is overloaded");
                 } else {
@@ -137,28 +139,23 @@ class engine_t:
 
     private:
         zmq::context_t& m_context;
+        boost::shared_ptr<lines::socket_t> m_pubsub;
         
-        // Pool configuration
+        // The pool
         config_t::engine_cfg_t m_pool_cfg;
 
-        // Pool I/O
         lines::channel_t m_messages;
         ev::io m_watcher;
         ev::idle m_processor;
 
-        // Application configuration
+        pool_map_t m_pool;
+        
+        // The application
         struct {
             std::string name, type, args;
         } m_app_cfg;
        
-        // Tasks
         task_map_t m_tasks;
-        
-        // Workers
-        pool_t m_pool;
-        
-        // Publishing
-        boost::shared_ptr<lines::socket_t> m_pubsub;
 };
 
 }}

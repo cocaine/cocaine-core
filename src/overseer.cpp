@@ -5,7 +5,6 @@
 #include "cocaine/registry.hpp"
 
 using namespace cocaine::engine;
-using namespace cocaine::engine::drivers;
 using namespace cocaine::plugin;
 
 overseer_t::overseer_t(unique_id_t::reference id_, zmq::context_t& context, const std::string& name):

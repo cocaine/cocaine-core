@@ -1,14 +1,15 @@
 #include "cocaine/drivers/server.hpp"
 
 using namespace cocaine::engine::drivers;
+using namespace cocaine::lines;
 
-response_t::response_t(const lines::route_t& route, boost::shared_ptr<responder_t> parent):
+response_t::response_t(const route_t& route, boost::shared_ptr<responder_t> responder):
     m_route(route),
-    m_parent(parent)
+    m_responder(responder)
 { }
 
 void response_t::send(zmq::message_t& chunk) {
-    m_parent->respond(m_route, chunk);
+    m_responder->respond(m_route, chunk);
 }
 
 void response_t::abort(const std::string& error) {
@@ -22,15 +23,15 @@ void response_t::abort(const std::string& error) {
     
     memcpy(message.data(), response.data(), response.size());
     
-    m_parent->respond(m_route, message);
+    m_responder->respond(m_route, message);
 }
 
-server_t::server_t(const std::string& method, boost::shared_ptr<engine_t> parent, const Json::Value& args):
-    driver_t(method, parent),
-    m_socket(parent->context(), ZMQ_ROUTER, 
+server_t::server_t(const std::string& method, boost::shared_ptr<engine_t> engine, const Json::Value& args):
+    driver_t(method, engine),
+    m_socket(m_engine->context(), ZMQ_ROUTER, 
         config_t::get().core.hostname + "/" + 
         config_t::get().core.instance + "/" + 
-        m_parent->name() + "/" + 
+        m_engine->name() + "/" + 
         method)
 {
     std::string endpoint(args.get("endpoint", "").asString());
@@ -75,11 +76,11 @@ void server_t::operator()(ev::io&, int) {
     }
 }
 
-void server_t::respond(const lines::route_t& route, zmq::message_t& chunk) {
+void server_t::respond(const route_t& route, zmq::message_t& chunk) {
     zmq::message_t message;
     
     // Send the identity
-    for(lines::route_t::const_iterator id = route.begin(); id != route.end(); ++id) {
+    for(route_t::const_iterator id = route.begin(); id != route.end(); ++id) {
         message.rebuild(id->length());
         memcpy(message.data(), id->data(), id->length());
 #if ZMQ_VERSION < 30000
@@ -127,7 +128,7 @@ void server_t::process(ev::idle&, int) {
             new response_t(route, shared_from_this()));
 
         try {
-            m_parent->queue(
+            m_engine->enqueue(
                 deferred,
                 boost::make_tuple(
                     INVOKE,
@@ -135,7 +136,7 @@ void server_t::process(ev::idle&, int) {
                     boost::ref(message)));
         } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
-                m_parent->name().c_str(), m_method.c_str(), e.what());
+                m_engine->name().c_str(), m_method.c_str(), e.what());
             deferred->abort(e.what());
         }
     } else {

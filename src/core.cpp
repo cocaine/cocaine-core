@@ -6,8 +6,7 @@
 
 using namespace cocaine::core;
 using namespace cocaine::engine;
-using namespace cocaine::plugin;
-using namespace cocaine::security;
+using namespace cocaine::lines;
 using namespace cocaine::storage;
 
 core_t::core_t():
@@ -110,7 +109,7 @@ void core_t::request(ev::io& w, int revents) {
 void core_t::process(ev::idle& w, int revents) {
     if(m_server.pending()) {
         zmq::message_t message, signature;
-        lines::route_t route;
+        route_t route;
 
         Json::Reader reader(Json::Features::strictMode());
         Json::Value root;
@@ -302,19 +301,19 @@ Json::Value core_t::info() {
         result["apps"][it->first] = it->second->info();
     }
     
-    result["workers"]["total"] = engine::thread_t::objects_alive;
+    result["workers"]["total"] = engine::backends::backend_t::objects_alive;
 
-    result["events"]["processed"] = lines::deferred_t::objects_created;
-    result["events"]["pending"] = lines::deferred_t::objects_alive;
+    result["events"]["processed"] = deferred_t::objects_created;
+    result["events"]["pending"] = deferred_t::objects_alive;
 
     return result;
 }
 
-void core_t::respond(const lines::route_t& route, const Json::Value& object) {
+void core_t::respond(const route_t& route, const Json::Value& object) {
     zmq::message_t message;
     
     // Send the identity
-    for(lines::route_t::const_iterator id = route.begin(); id != route.end(); ++id) {
+    for(route_t::const_iterator id = route.begin(); id != route.end(); ++id) {
         message.rebuild(id->length());
         memcpy(message.data(), id->data(), id->length());
 #if ZMQ_VERSION < 30000

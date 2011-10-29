@@ -10,8 +10,8 @@ class timed_driver_t:
     public driver_t
 {
     public:
-        timed_driver_t(const std::string& method, boost::shared_ptr<engine_t> parent):
-            driver_t(method, parent)
+        timed_driver_t(const std::string& method, boost::shared_ptr<engine_t> engine):
+            driver_t(method, engine)
         {
             m_watcher.set(this);
             ev_periodic_set(static_cast<ev_periodic*>(&m_watcher), 0, 0, thunk);
@@ -29,17 +29,17 @@ class timed_driver_t:
 
         void operator()(ev::periodic&, int) {
             boost::shared_ptr<lines::publication_t> deferred(
-                new lines::publication_t(m_method, m_parent));
+                new lines::publication_t(m_method, m_engine));
 
             try {
-                m_parent->queue(
+                m_engine->enqueue(
                     deferred,
                     boost::make_tuple(
                         INVOKE,
                         m_method));
             } catch(const std::runtime_error& e) {
                 syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
-                    m_parent->name().c_str(), m_method.c_str(), e.what());
+                    m_engine->name().c_str(), m_method.c_str(), e.what());
                 deferred->abort(e.what());
             }
         }

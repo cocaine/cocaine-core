@@ -2,7 +2,6 @@
 
 #include <curl/curl.h>
 
-#include "cocaine/config.hpp"
 #include "cocaine/downloads.hpp"
 #include "cocaine/security/digest.hpp"
 

@@ -3,14 +3,14 @@
 
 #include "cocaine/backends/abstract.hpp"
 
-namespace cocaine { namespace engine {
+namespace cocaine { namespace engine { namespace backends {
 
 // Applcation Engine Worker
 class process_t:
     public backend_t
 {
     public:        
-        process_t(boost::shared_ptr<engine_t> parent,
+        process_t(boost::shared_ptr<engine_t> engine,
                   const std::string& type,
                   const std::string& args);
         virtual ~process_t();
@@ -20,12 +20,12 @@ class process_t:
         void signal(ev::child& w, int revents);
 
     private:
-        boost::shared_ptr<engine_t> m_parent;
+        boost::shared_ptr<engine_t> m_engine;
         pid_t m_pid;
 
         ev::child m_child_watcher;
 };
 
-}}
+}}}
 
 #endif

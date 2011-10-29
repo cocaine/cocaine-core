@@ -10,7 +10,7 @@ class fs_t:
 {
     public:
         fs_t(const std::string& method, 
-             boost::shared_ptr<engine_t> parent,
+             boost::shared_ptr<engine_t> engine,
              const Json::Value& args);
 
     public:

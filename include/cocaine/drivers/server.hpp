@@ -15,7 +15,7 @@ class response_t:
     public lines::deferred_t
 {
     public:
-        response_t(const lines::route_t& route, boost::shared_ptr<responder_t> parent);
+        response_t(const lines::route_t& route, boost::shared_ptr<responder_t> responder);
 
     public:
         virtual void send(zmq::message_t& chunk);
@@ -23,7 +23,7 @@ class response_t:
 
     private:
         const lines::route_t m_route;
-        const boost::shared_ptr<responder_t> m_parent;
+        const boost::shared_ptr<responder_t> m_responder;
 };
 
 class server_t:
@@ -33,7 +33,7 @@ class server_t:
 {
     public:
         server_t(const std::string& method, 
-                 boost::shared_ptr<engine_t> parent,
+                 boost::shared_ptr<engine_t> engine,
                  const Json::Value& args);
 
     public:
