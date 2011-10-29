@@ -158,17 +158,17 @@ void core_t::process(ev::idle& w, int revents) {
                     throw std::runtime_error("outdated protocol version");
                 }
       
-                if(!username.empty()) {
-                    if(version >= 3) {
+                if(version >= 3) {
+                    if(!username.empty()) {
                         m_signatures.verify(
                             static_cast<const char*>(message.data()),
                             message.size(),
                             static_cast<const unsigned char*>(signature.data()),
                             signature.size(),
                             username);
+                    } else {
+                        throw std::runtime_error("username expected");
                     }
-                } else {
-                    throw std::runtime_error("username expected");
                 }
 
                 respond(route, dispatch(root));
@@ -302,7 +302,6 @@ Json::Value core_t::info() {
     }
     
     result["workers"]["total"] = engine::backends::backend_t::objects_alive;
-
     result["events"]["processed"] = deferred_t::objects_created;
     result["events"]["pending"] = deferred_t::objects_alive;
 
