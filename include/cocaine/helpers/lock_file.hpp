@@ -22,6 +22,7 @@ class lock_file_t:
 #else
             m_fd = open(m_filepath.string().c_str(), O_RDWR | O_CLOEXEC);
 #endif
+
             if(m_fd < 0) {
                 return;
             }

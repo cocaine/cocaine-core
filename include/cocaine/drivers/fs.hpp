@@ -12,6 +12,7 @@ class fs_t:
         fs_t(const std::string& method, 
              boost::shared_ptr<engine_t> parent,
              const Json::Value& args);
+        virtual ~fs_t();
 
     public:
         virtual void pause();

@@ -14,6 +14,10 @@ fs_t::fs_t(const std::string& method, boost::shared_ptr<engine_t> parent, const 
     m_watcher.start(m_path.c_str());
 }
 
+fs_t::~fs_t() {
+    pause();
+}
+
 void fs_t::pause() {
     m_watcher.stop();
 }
