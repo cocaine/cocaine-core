@@ -18,6 +18,10 @@ class timed_driver_t:
             m_watcher.start();
         }
 
+        virtual ~timed_driver_t() {
+            pause();
+        }
+
     public: 
         virtual void pause() {
             m_watcher.stop();

@@ -35,6 +35,7 @@ class server_t:
         server_t(const std::string& method, 
                  boost::shared_ptr<engine_t> engine,
                  const Json::Value& args);
+        virtual ~server_t();
 
     public:
         virtual void pause();

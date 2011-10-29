@@ -49,6 +49,10 @@ server_t::server_t(const std::string& method, boost::shared_ptr<engine_t> engine
     m_processor.start();
 }
 
+server_t::~server_t() {
+    pause();
+}
+
 void server_t::pause() {
     m_watcher.stop();
     m_processor.stop();
