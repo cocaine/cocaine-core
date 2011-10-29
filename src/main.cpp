@@ -48,6 +48,9 @@ int main(int argc, char* argv[]) {
         ("engine:pool-limit", po::value<unsigned int>
             (&config_t::set().engine.pool_limit)->default_value(10),
             "maximum engine worker pool size")
+        ("engine:spawn-threshold", po::value<unsigned int>
+            (&config_t::set().engine.spawn_threshold)->default_value(0),
+            "minimal queue length on the most underloaded worker to trigger growth")
         ("help", "show this message")
         ("instance", po::value<std::string>
             (&config_t::set().core.instance)->default_value("default"),

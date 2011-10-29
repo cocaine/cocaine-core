@@ -37,11 +37,15 @@ class server_t:
                  const Json::Value& args);
 
     public:
-        void operator()(ev::io&, int);
-        void process(ev::idle&, int);
+        virtual void pause();
+        virtual void resume();
 
         virtual Json::Value info() const;
+        
         virtual void respond(const lines::route_t& route, zmq::message_t& chunk);
+
+        void operator()(ev::io&, int);
+        void process(ev::idle&, int);
 
     private:
         lines::socket_t m_socket;

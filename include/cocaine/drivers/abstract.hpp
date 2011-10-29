@@ -27,6 +27,9 @@ class driver_t:
             return m_method;
         }
 
+        virtual void pause() = 0;
+        virtual void resume() = 0;
+
         virtual Json::Value info() const = 0;
 
     protected:

@@ -19,6 +19,14 @@ class timed_driver_t:
         }
 
     public: 
+        virtual void pause() {
+            m_watcher.stop();
+        }
+
+        virtual void resume() {
+            m_watcher.start();
+        }
+
         void operator()(ev::periodic&, int) {
             boost::shared_ptr<lines::publication_t> deferred(
                 new lines::publication_t(m_method, m_parent));
@@ -35,7 +43,6 @@ class timed_driver_t:
                 deferred->abort(e.what());
             }
         }
-
     private:
         static ev::tstamp thunk(ev_periodic* w, ev::tstamp now) {
             return static_cast<T*>(w->data)->reschedule(now);

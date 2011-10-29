@@ -15,6 +15,7 @@ class auto_t:
 
     public:       
         virtual Json::Value info() const;
+
         ev::tstamp reschedule(ev::tstamp now);
 
     private:

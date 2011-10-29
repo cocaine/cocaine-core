@@ -12,6 +12,19 @@
 using namespace cocaine::engine;
 using namespace cocaine::lines;
 
+bool engine_t::shortest_queue_t::operator()(pool_t::reference left, pool_t::reference right) {
+    return ((left.second->queue().size() < right.second->queue().size()) &&
+             left.second->active());
+}
+
+void engine_t::pause_t::operator()(task_map_t::reference task) {
+    task.second->pause();
+}
+
+void engine_t::resume_t::operator()(task_map_t::reference task) {
+    task.second->resume();
+}
+
 engine_t::engine_t(zmq::context_t& context, const std::string& name):
     m_context(context),
     m_messages(m_context, ZMQ_ROUTER)
@@ -71,7 +84,9 @@ Json::Value engine_t::start(const Json::Value& manifest) {
         config_t::get().engine.pool_limit).asUInt();
     m_pool_cfg.queue_limit = manifest["engine"].get("queue-limit",
         config_t::get().engine.queue_limit).asUInt();
-
+    m_pool_cfg.spawn_threshold = manifest["engine"].get("spawn-threshold",
+        config_t::get().engine.spawn_threshold).asUInt();
+    
     // Tasks configuration
     // -------------------
 

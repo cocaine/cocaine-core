@@ -102,8 +102,8 @@ void core_t::reload(ev::sig& sig, int revents) {
 
 void core_t::request(ev::io& w, int revents) {
     if(m_server.pending()) {
-        m_processor.start();
         m_watcher.stop();
+        m_processor.start();
     }
 }
 
@@ -184,8 +184,8 @@ void core_t::process(ev::idle& w, int revents) {
             respond(route, object);
         }
     } else {
-        m_processor.stop();
         m_watcher.start(m_server.fd(), ev::READ);
+        m_processor.stop();
     }
 }
 

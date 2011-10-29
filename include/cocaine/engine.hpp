@@ -27,11 +27,22 @@ class engine_t:
             backend_t
         > pool_t;
     
-        struct shortest_queue {
-            bool operator()(pool_t::reference left, pool_t::reference right) {
-                return ((left->second->queue().size() < right->second->queue().size()) &&
-                         left->second->active());
-            }
+        typedef std::map<
+            const std::string,
+            boost::shared_ptr<drivers::driver_t>
+        > task_map_t;
+       
+    public: 
+        struct shortest_queue_t {
+            bool operator()(pool_t::reference left, pool_t::reference right);
+        };
+
+        struct pause_t {
+            void operator()(task_map_t::reference task);
+        };
+        
+        struct resume_t {
+            void operator()(task_map_t::reference task);
         };
 
     public:
@@ -53,11 +64,11 @@ class engine_t:
                 worker = std::min_element(
                     m_pool.begin(),
                     m_pool.end(), 
-                    shortest_queue());
+                    shortest_queue_t());
 
                 if(worker == m_pool.end() || 
                     (worker->second->active() &&
-                     worker->second->queue().size() > 0 && 
+                     worker->second->queue().size() > m_pool_cfg.spawn_threshold && 
                      m_pool.size() < m_pool_cfg.pool_limit))
                 {
                     try {
@@ -79,16 +90,12 @@ class engine_t:
                         }
                     }
                 } else if(!worker->second->active()) {
-                    // NOTE: We block external communications here to avoid races, i.e.
-                    // we go into the inner loop, got another request, found no free workers
-                    // and go into a loop one level deeper, and so on.
-                    // m_watcher.stop();
-                    // m_processor.stop();
-
+                    // NOTE: We pause all the tasks here to avoid races for workers,
+                    // and wait only for pool messages, in case of the new worker to 
+                    // come alive or some old worker fall below the threshold.
+                    std::for_each(m_tasks.begin(), m_tasks.end(), pause_t());
                     ev::get_default_loop().loop(ev::ONESHOT);
-                    
-                    // m_watcher.start(m_messages.fd(), ev::READ);
-                    // m_processor.start();
+                    std::for_each(m_tasks.begin(), m_tasks.end(), resume_t());                    
                 } else if(worker->second->queue().size() >= m_pool_cfg.queue_limit) {
                     throw std::runtime_error("engine is overloaded");
                 } else {
@@ -145,11 +152,6 @@ class engine_t:
         } m_app_cfg;
        
         // Tasks
-        typedef std::map<
-            const std::string,
-            boost::shared_ptr<drivers::driver_t>
-        > task_map_t;
-        
         task_map_t m_tasks;
         
         // Workers

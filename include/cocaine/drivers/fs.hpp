@@ -14,8 +14,12 @@ class fs_t:
              const Json::Value& args);
 
     public:
-        void operator()(ev::stat&, int);
+        virtual void pause();
+        virtual void resume();
+        
         virtual Json::Value info() const;
+        
+        void operator()(ev::stat&, int);
 
     private:
         const std::string m_path;

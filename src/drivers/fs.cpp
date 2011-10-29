@@ -14,6 +14,23 @@ fs_t::fs_t(const std::string& method, boost::shared_ptr<engine_t> parent, const 
     m_watcher.start(m_path.c_str());
 }
 
+void fs_t::pause() {
+    m_watcher.stop();
+}
+
+void fs_t::resume() {
+    m_watcher.start();
+}
+
+Json::Value fs_t::info() const {
+    Json::Value result(Json::objectValue);
+
+    result["type"] = "fs";
+    result["path"] = m_path;
+
+    return result;
+}
+
 void fs_t::operator()(ev::stat&, int) {
     boost::shared_ptr<lines::publication_t> deferred(
         new lines::publication_t(m_method, m_parent));
@@ -31,11 +48,3 @@ void fs_t::operator()(ev::stat&, int) {
     }
 }
 
-Json::Value fs_t::info() const {
-    Json::Value result(Json::objectValue);
-
-    result["type"] = "fs";
-    result["path"] = m_path;
-
-    return result;
-}

@@ -48,11 +48,54 @@ server_t::server_t(const std::string& method, boost::shared_ptr<engine_t> parent
     m_processor.start();
 }
 
+void server_t::pause() {
+    m_watcher.stop();
+    m_processor.stop();
+}
+
+void server_t::resume() {
+    m_watcher.start();
+    m_processor.start();
+}
+
+Json::Value server_t::info() const {
+    Json::Value result(Json::objectValue);
+
+    result["type"] = "server";
+    result["endpoint"] = m_socket.endpoint();
+    result["route"] = m_socket.route();
+
+    return result;
+}
+
 void server_t::operator()(ev::io&, int) {
     if(m_socket.pending()) {
-        m_processor.start();
         m_watcher.stop();
+        m_processor.start();
     }
+}
+
+void server_t::respond(const lines::route_t& route, zmq::message_t& chunk) {
+    zmq::message_t message;
+    
+    // Send the identity
+    for(lines::route_t::const_iterator id = route.begin(); id != route.end(); ++id) {
+        message.rebuild(id->length());
+        memcpy(message.data(), id->data(), id->length());
+#if ZMQ_VERSION < 30000
+        m_socket.send(message, ZMQ_SNDMORE);
+#else
+        m_socket.send(message, ZMQ_SNDMORE | ZMQ_SNDLABEL);
+#endif
+    }
+
+#if ZMQ_VERSION < 30000                
+    // Send the delimiter
+    message.rebuild(0);
+    m_socket.send(message, ZMQ_SNDMORE);
+#endif
+
+    m_socket.send(chunk);
 }
 
 void server_t::process(ev::idle&, int) {
@@ -96,40 +139,8 @@ void server_t::process(ev::idle&, int) {
             deferred->abort(e.what());
         }
     } else {
-        m_processor.stop();
         m_watcher.start(m_socket.fd(), ev::READ);
+        m_processor.stop();
     }
 }
 
-Json::Value server_t::info() const {
-    Json::Value result(Json::objectValue);
-
-    result["type"] = "server";
-    result["endpoint"] = m_socket.endpoint();
-    result["route"] = m_socket.route();
-
-    return result;
-}
-
-void server_t::respond(const lines::route_t& route, zmq::message_t& chunk) {
-    zmq::message_t message;
-    
-    // Send the identity
-    for(lines::route_t::const_iterator id = route.begin(); id != route.end(); ++id) {
-        message.rebuild(id->length());
-        memcpy(message.data(), id->data(), id->length());
-#if ZMQ_VERSION < 30000
-        m_socket.send(message, ZMQ_SNDMORE);
-#else
-        m_socket.send(message, ZMQ_SNDMORE | ZMQ_SNDLABEL);
-#endif
-    }
-
-#if ZMQ_VERSION < 30000                
-    // Send the delimiter
-    message.rebuild(0);
-    m_socket.send(message, ZMQ_SNDMORE);
-#endif
-
-    m_socket.send(chunk);
-}
