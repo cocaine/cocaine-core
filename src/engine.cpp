@@ -140,8 +140,6 @@ Json::Value engine_t::stop() {
 
     syslog(LOG_INFO, "engine [%s]: stopping", m_app_cfg.name.c_str()); 
     
-    m_tasks.clear();
-    
     for(pool_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
         m_messages.send_multi(boost::make_tuple(
             protect(it->first),
@@ -149,6 +147,8 @@ Json::Value engine_t::stop() {
             TERMINATE));
         m_pool.erase(it);
     }
+    
+    m_tasks.clear();
     
     m_watcher.stop();
     m_processor.stop();
