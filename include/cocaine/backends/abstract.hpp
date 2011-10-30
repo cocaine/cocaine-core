@@ -4,7 +4,7 @@
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 
-namespace cocaine { namespace engine { namespace backends {
+namespace cocaine { namespace engine {
 
 class backend_t:
     public boost::noncopyable,
@@ -38,6 +38,6 @@ class backend_t:
         deferred_queue_t m_queue;
 };
 
-}}}
+}}
 
 #endif

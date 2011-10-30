@@ -5,7 +5,6 @@
 
 namespace cocaine { namespace engine { namespace backends {
 
-// Applcation Engine Worker
 class process_t:
     public backend_t
 {

@@ -13,13 +13,12 @@ namespace cocaine { namespace engine {
 class engine_t:
     public boost::noncopyable,
     public boost::enable_shared_from_this<engine_t>,
-    public birth_control_t<engine_t>,
     public lines::publisher_t
 {
     public:
         typedef boost::ptr_map<
             const std::string,
-            backends::backend_t
+            backend_t
         > pool_map_t;
     
         typedef std::map<
@@ -67,7 +66,7 @@ class engine_t:
                      m_pool.size() < m_pool_cfg.pool_limit))
                 {
                     try {
-                        std::auto_ptr<backends::backend_t> object;
+                        std::auto_ptr<backend_t> object;
 
                         if(m_pool_cfg.backend == "thread") {
                             object.reset(new backends::thread_t(

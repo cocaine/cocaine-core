@@ -300,12 +300,13 @@ Json::Value core_t::info() {
     for(engine_map_t::const_iterator it = m_engines.begin(); it != m_engines.end(); ++it) {
         result["apps"][it->first] = it->second->info();
     }
-    
-    result["workers"]["total"] = engine::backends::backend_t::objects_alive;
 
-    result["events"]["processed"] = deferred_t::objects_created;
     result["events"]["pending"] = deferred_t::objects_alive;
-
+    result["events"]["processed"] = deferred_t::objects_created;
+    
+    result["sockets"] = socket_t::objects_alive;
+    result["workers"] = backend_t::objects_alive;
+   
     return result;
 }
 

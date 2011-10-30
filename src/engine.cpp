@@ -9,7 +9,6 @@
 #include "cocaine/registry.hpp"
 
 using namespace cocaine::engine;
-using namespace cocaine::engine::backends;
 using namespace cocaine::lines;
 
 bool engine_t::shortest_queue::operator()(pool_map_t::reference left, pool_map_t::reference right) {
@@ -182,7 +181,7 @@ Json::Value engine_t::info() {
         results["tasks"][it->first] = it->second->info();
     }
     
-    results["engine"]["status"] = !m_tasks.empty() ? "running" : "stopped";
+    results["status"] = !m_tasks.empty() ? "running" : "stopped";
     
     return results;
 }

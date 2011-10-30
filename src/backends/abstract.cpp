@@ -1,6 +1,6 @@
 #include "cocaine/backends/abstract.hpp"
 
-using namespace cocaine::engine::backends;
+using namespace cocaine::engine;
 
 backend_t::backend_t():
     m_active(false)
