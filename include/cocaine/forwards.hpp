@@ -3,12 +3,10 @@
 
 namespace cocaine {
     namespace engine {
+        class backend_t;
+        class driver_t;
         class engine_t;
         class overseer_t;
-
-        namespace drivers {
-            class driver_t;
-        }
     }
 
     namespace plugin {

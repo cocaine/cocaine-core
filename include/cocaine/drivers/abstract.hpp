@@ -4,7 +4,7 @@
 #include "cocaine/common.hpp"
 #include "cocaine/engine.hpp"
 
-namespace cocaine { namespace engine { namespace drivers {
+namespace cocaine { namespace engine {
 
 class driver_t:
     public boost::noncopyable
@@ -23,10 +23,6 @@ class driver_t:
                 m_engine->name().c_str(), m_method.c_str());
         }
 
-        std::string method() const {
-            return m_method;
-        }
-
         virtual void pause() = 0;
         virtual void resume() = 0;
 
@@ -37,6 +33,6 @@ class driver_t:
         const boost::shared_ptr<engine_t> m_engine;
 };
 
-}}}
+}}
 
 #endif

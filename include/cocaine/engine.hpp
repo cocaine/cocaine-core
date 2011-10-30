@@ -23,7 +23,7 @@ class engine_t:
     
         typedef std::map<
             const std::string,
-            boost::shared_ptr<drivers::driver_t>
+            boost::shared_ptr<driver_t>
         > task_map_t;
        
     public: 
