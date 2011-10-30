@@ -126,11 +126,11 @@ int main(int argc, char* argv[]) {
     // Initializing the core
     try {
         core.reset(new core_t());
-    } catch(const zmq::error_t& e) {
-        syslog(LOG_ERR, "main: network error - %s", e.what());
-        return EXIT_FAILURE;
     } catch(const std::runtime_error& e) {
         syslog(LOG_ERR, "main: runtime error - %s", e.what());
+        return EXIT_FAILURE;
+    } catch(const zmq::error_t& e) {
+        syslog(LOG_ERR, "main: network error - %s", e.what());
         return EXIT_FAILURE;
     }
 

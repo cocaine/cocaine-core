@@ -34,8 +34,8 @@ class backend_t:
 
     private:
         bool m_active;
-        deferred_queue_t m_queue;
         ev::timer m_heartbeat;
+        deferred_queue_t m_queue;
 };
 
 }}}

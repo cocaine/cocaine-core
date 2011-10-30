@@ -93,7 +93,7 @@ Json::Value engine_t::start(const Json::Value& manifest) {
     Json::Value tasks(manifest["tasks"]);
 
     if(!tasks.isNull() && tasks.size()) {
-        std::string endpoint = manifest["pubsub"]["endpoint"].asString();
+        std::string endpoint(manifest["pubsub"]["endpoint"].asString());
         
         if(!endpoint.empty()) {
             m_pubsub.reset(new socket_t(m_context, ZMQ_PUB));
@@ -137,8 +137,6 @@ void engine_t::schedule(const std::string& method, const Json::Value& args) {
 }
 
 Json::Value engine_t::stop() {
-    Json::Value result;
-
     syslog(LOG_INFO, "engine [%s]: stopping", m_app_cfg.name.c_str()); 
     
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
@@ -154,9 +152,7 @@ Json::Value engine_t::stop() {
     m_watcher.stop();
     m_processor.stop();
 
-    result["engine"]["status"] = "stopped";
-    
-    return result;
+    return info();
 }
 
 namespace {
@@ -186,7 +182,7 @@ Json::Value engine_t::info() {
         results["tasks"][it->first] = it->second->info();
     }
     
-    results["engine"]["status"] = "running";
+    results["engine"]["status"] = !m_tasks.empty() ? "running" : "stopped";
     
     return results;
 }
@@ -194,12 +190,20 @@ Json::Value engine_t::info() {
 void engine_t::reap(unique_id_t::reference worker_id) {
     pool_map_t::iterator worker(m_pool.find(worker_id));
 
-    // TODO: Re-assign tasks
     if(worker != m_pool.end()) {
+        // NOTE: If the worker has died before becoming active, then most probably
+        // it has been killed or died unexpectedly which means the app is certainly broken.
+        if(!worker->second->active()) {
+            syslog(LOG_ERR, "engine [%s]: the application seems to be broken",
+                m_app_cfg.name.c_str());
+            stop();
+        }
+
         for(backend_t::deferred_queue_t::iterator it = worker->second->queue().begin(); 
             it != worker->second->queue().end();
             ++it) 
         {
+            // TODO: Re-assign tasks
             it->second->abort("timeout");
         }
         
@@ -297,7 +301,7 @@ void engine_t::process(ev::idle& w, int revents) {
                     if(deferred != worker->second->queue().end()) {
                         deferred->second->send(chunk);
                     } else {
-                        syslog(LOG_ERR, "engine [%s]: receiving chunks from an unexpected worker",
+                        syslog(LOG_ERR, "engine [%s]: got a chunk from an unexpected worker",
                             m_app_cfg.name.c_str());
                     }
                     

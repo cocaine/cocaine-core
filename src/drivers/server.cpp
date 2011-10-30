@@ -37,7 +37,7 @@ server_t::server_t(const std::string& method, boost::shared_ptr<engine_t> engine
     std::string endpoint(args.get("endpoint", "").asString());
 
     if(endpoint.empty()) {
-        throw std::runtime_error("no endpoint has been specified");
+        throw std::runtime_error("no endpoint has been specified for the '" + m_method + "' task");
     }
     
     m_socket.bind(endpoint);

@@ -20,10 +20,7 @@ bool backend_t::active() const {
 }
 
 void backend_t::rearm(float timeout) {
-    if(m_heartbeat.is_active()) {
-        m_heartbeat.stop();
-    }
-
+    m_heartbeat.stop();
     m_heartbeat.start(timeout);
 
     m_active = true;

@@ -35,9 +35,8 @@ overseer_t::~overseer_t() {
     terminate();
 }
 
-void overseer_t::operator()(
-    const std::string& type,
-    const std::string& args) 
+void overseer_t::operator()(const std::string& type,
+                            const std::string& args) 
 {
     try {
         m_source = core::registry_t::instance()->create(type, args);

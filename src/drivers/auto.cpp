@@ -7,7 +7,7 @@ auto_t::auto_t(const std::string& method, boost::shared_ptr<engine_t> parent, co
     m_interval(args.get("interval", 0).asInt() / 1000.0)
 {
     if(m_interval <= 0) {
-        throw std::runtime_error("no interval has been specified");
+        throw std::runtime_error("no interval has been specified for '" + m_method + "' task");
     }
 }
 

@@ -32,7 +32,7 @@ process_t::~process_t() {
 }
 
 void process_t::timeout(ev::timer& w, int revents) {
-    syslog(LOG_ERR, "worker [%s:%s]: worker missed a heartbeat",
+    syslog(LOG_ERR, "worker [%s:%s]: worker has missed too many heartbeats",
         m_engine->name().c_str(), id().c_str());
     kill(m_pid, SIGKILL);
 }

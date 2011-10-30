@@ -32,8 +32,8 @@ core_t::core_t():
 
     // Listening socket
     std::string route(
-            config_t::get().core.hostname + "/" + 
-            config_t::get().core.instance);
+        config_t::get().core.hostname + "/" + 
+        config_t::get().core.instance);
     m_server.setsockopt(ZMQ_IDENTITY, route.data(), route.length());
     
     syslog(LOG_INFO, "core: route to this node is '%s'", route.c_str());
@@ -192,7 +192,7 @@ Json::Value core_t::dispatch(const Json::Value& root) {
     std::string action(root["action"].asString());
 
     if(action == "create") {
-        Json::Value apps(root["apps"]), result;
+        Json::Value apps(root["apps"]), result(Json::objectValue);
 
         if(!apps.isObject() || !apps.size()) {
             throw std::runtime_error("no apps has been specified");
@@ -222,7 +222,7 @@ Json::Value core_t::dispatch(const Json::Value& root) {
 
         return result;
     } else if(action == "delete") {
-        Json::Value apps(root["apps"]), result;
+        Json::Value apps(root["apps"]), result(Json::objectValue);
 
         if(!apps.isArray() || !apps.size()) {
             throw std::runtime_error("no apps has been specified");
@@ -302,6 +302,7 @@ Json::Value core_t::info() {
     }
     
     result["workers"]["total"] = engine::backends::backend_t::objects_alive;
+
     result["events"]["processed"] = deferred_t::objects_created;
     result["events"]["pending"] = deferred_t::objects_alive;
 

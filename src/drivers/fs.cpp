@@ -7,7 +7,7 @@ fs_t::fs_t(const std::string& method, boost::shared_ptr<engine_t> parent, const 
     m_path(args.get("path", "").asString())
 {
     if(m_path.empty()) {
-        throw std::runtime_error(method + ": no path has been specified");
+        throw std::runtime_error("no path has been specified for '" + m_method + "' task");
     }
     
     m_watcher.set(this);
