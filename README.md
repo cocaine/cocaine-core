@@ -26,7 +26,7 @@ Application configuration
 ```python
 manifest = {
     "type": "python+wsgi",
-    "args": "local://path/to/application/__init__.py",
+    "args": "local:///path/to/application/__init__.py",
     "engine": {
         "backend": "process",
         "heartbeat-timeout": 60,
