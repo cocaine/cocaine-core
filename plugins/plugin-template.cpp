@@ -6,18 +6,17 @@ class plugin_t:
     public source_t
 {
     public:
-        static source_t* create(const std::string& name, const std::string& args) {
+        static source_t* create(const std::string& args) {
             return new plugin_t;
         }
 
     public:
-        plugin_t(const std::string& name, const std::string& args):
-            source_t(name)
-        {
+        plugin_t(const std::string& args) {
             // Your code to initialize the plugin instance
         }
     
-        virtual Json::Value invoke(
+        virtual void invoke(
+            callback_fn_t callback,
             const std::string& method,
             const void* request = NULL,
             size_t request_size = 0)
