@@ -348,8 +348,8 @@ void core_t::recover() {
     if(root.size()) {
         Json::Value::Members apps(root.getMemberNames());
         
-        syslog(LOG_NOTICE, "core: recovering %d apps(s): %s", root.size(),
-            boost::algorithm::join(apps, ", ").c_str());
+        syslog(LOG_NOTICE, "core: recovering %d %s: %s", root.size(),
+            root.size() == 1 ? "app" : "apps", boost::algorithm::join(apps, ", ").c_str());
         
         for(Json::Value::Members::iterator it = apps.begin(); it != apps.end(); ++it) {
             std::string app(*it);
