@@ -29,9 +29,6 @@ int main(int argc, char* argv[]) {
 
     options.add_options()
         ("daemonize", "daemonize on start")
-        ("downloads:cache", po::value<std::string>
-            (&config_t::set().downloads.location)->default_value("/var/cache/cocaine"),
-            "where to cache downloaded files")
         ("engine:backend", po::value<std::string>
             (&config_t::set().engine.backend)->default_value("process"),
             "default engine backend, one of: thread, process")

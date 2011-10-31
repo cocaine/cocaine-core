@@ -19,18 +19,20 @@ class download_t {
         }
     
     protected:
-        download_t() { }
+        download_t():
+            m_path("/")
+        { }
 
     protected:
         std::string m_blob;
         boost::filesystem::path m_path;
 };
 
-class cache_t:
+class local_t:
     public download_t
 {
     public:
-        cache_t(const uri_t& uri);
+        local_t(const uri_t& uri);
 };
 
 class http_t:
@@ -41,8 +43,8 @@ class http_t:
 };
 
 download_t download(const uri_t& uri) {
-    if(uri.scheme() == "cache") {
-        return cache_t(uri);
+    if(uri.scheme() == "local") {
+        return local_t(uri);
     } else if(uri.scheme() == "http" || uri.scheme() == "https") {
         return http_t(uri);
     } else {

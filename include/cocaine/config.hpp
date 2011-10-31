@@ -17,10 +17,6 @@ class config_t {
             std::string instance;
         } core;
 
-        struct {
-            std::string location;
-        } downloads;
-
         struct engine_cfg_t {
             std::string backend;
             float heartbeat_timeout;
