@@ -12,7 +12,6 @@ namespace cocaine { namespace engine {
 // Application Engine
 class engine_t:
     public boost::noncopyable,
-    public boost::enable_shared_from_this<engine_t>,
     public lines::publisher_t
 {
     public:
@@ -21,9 +20,9 @@ class engine_t:
             backend_t
         > pool_map_t;
     
-        typedef std::map<
+        typedef boost::ptr_map<
             const std::string,
-            boost::shared_ptr<driver_t>
+            driver_t
         > task_map_t;
        
     public: 
@@ -45,7 +44,7 @@ class engine_t:
 
         Json::Value start(const Json::Value& manifest);
         Json::Value stop();
-        Json::Value info();
+        Json::Value info() const;
 
         void reap(unique_id_t::reference worker_id);
 
@@ -69,11 +68,9 @@ class engine_t:
                         std::auto_ptr<backend_t> object;
 
                         if(m_pool_cfg.backend == "thread") {
-                            object.reset(new backends::thread_t(
-                                shared_from_this(), m_app_cfg.type, m_app_cfg.args));
+                            object.reset(new backends::thread_t(this, m_app_cfg.type, m_app_cfg.args));
                         } else if(m_pool_cfg.backend == "process") {
-                            object.reset(new backends::process_t(
-                                shared_from_this(), m_app_cfg.type, m_app_cfg.args));
+                            object.reset(new backends::process_t(this, m_app_cfg.type, m_app_cfg.args));
                         }
 
                         std::string worker_id(object->id());

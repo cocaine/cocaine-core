@@ -10,7 +10,7 @@ class driver_t:
     public boost::noncopyable
 {
     public:
-        driver_t(const std::string& method, boost::shared_ptr<engine_t> engine):
+        driver_t(const std::string& method, engine_t* engine):
             m_method(method),
             m_engine(engine)
         {
@@ -30,7 +30,7 @@ class driver_t:
 
     protected:
         const std::string m_method;
-        const boost::shared_ptr<engine_t> m_engine;
+        engine_t* m_engine;
 };
 
 }}

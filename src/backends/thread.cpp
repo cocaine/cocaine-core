@@ -5,7 +5,7 @@
 using namespace cocaine::engine;
 using namespace cocaine::engine::backends;
 
-thread_t::thread_t(boost::shared_ptr<engine_t> engine, const std::string& type, const std::string& args):
+thread_t::thread_t(engine_t* engine, const std::string& type, const std::string& args):
     m_engine(engine)
 {
     syslog(LOG_DEBUG, "worker [%s:%s]: constructing", m_engine->name().c_str(), id().c_str());
@@ -21,7 +21,7 @@ thread_t::thread_t(boost::shared_ptr<engine_t> engine, const std::string& type, 
 thread_t::~thread_t() {
     syslog(LOG_DEBUG, "worker [%s:%s]: destructing", m_engine->name().c_str(), id().c_str());
     
-    if(m_thread) {
+    if(m_thread.get()) {
         if(!m_thread->timed_join(boost::posix_time::seconds(5))) {
             syslog(LOG_WARNING, "worker [%s:%s]: worker is unresponsive",
                 m_engine->name().c_str(), id().c_str());

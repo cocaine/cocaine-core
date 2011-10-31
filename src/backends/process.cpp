@@ -5,7 +5,7 @@
 using namespace cocaine::engine;
 using namespace cocaine::engine::backends;
 
-process_t::process_t(boost::shared_ptr<engine_t> engine, const std::string& type, const std::string& args):
+process_t::process_t(engine_t* engine, const std::string& type, const std::string& args):
     m_engine(engine)
 {
     syslog(LOG_DEBUG, "worker [%s:%s]: constructing", m_engine->name().c_str(), id().c_str());

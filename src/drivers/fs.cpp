@@ -2,8 +2,8 @@
 
 using namespace cocaine::engine::drivers;
 
-fs_t::fs_t(const std::string& method, boost::shared_ptr<engine_t> parent, const Json::Value& args):
-    driver_t(method, parent),
+fs_t::fs_t(const std::string& method, engine_t* engine, const Json::Value& args):
+    driver_t(method, engine),
     m_path(args.get("path", "").asString())
 {
     if(m_path.empty()) {

@@ -3,7 +3,7 @@
 using namespace cocaine::engine::drivers;
 using namespace cocaine::lines;
 
-response_t::response_t(const route_t& route, boost::shared_ptr<responder_t> responder):
+response_t::response_t(const route_t& route, responder_t* responder):
     m_route(route),
     m_responder(responder)
 { }
@@ -26,7 +26,7 @@ void response_t::abort(const std::string& error) {
     m_responder->respond(m_route, message);
 }
 
-server_t::server_t(const std::string& method, boost::shared_ptr<engine_t> engine, const Json::Value& args):
+server_t::server_t(const std::string& method, engine_t* engine, const Json::Value& args):
     driver_t(method, engine),
     m_socket(m_engine->context(), ZMQ_ROUTER, 
         config_t::get().core.hostname + "/" + 
@@ -128,7 +128,7 @@ void server_t::process(ev::idle&, int) {
 #endif
 
         boost::shared_ptr<response_t> deferred(
-            new response_t(route, shared_from_this()));
+            new response_t(route, this));
 
         try {
             m_engine->enqueue(

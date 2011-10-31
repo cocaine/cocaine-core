@@ -32,7 +32,7 @@ class core_t:
         // User request handling
         Json::Value create_engine(const std::string& name, const Json::Value& manifest);
         Json::Value delete_engine(const std::string& name);
-        Json::Value info();
+        Json::Value info() const;
 
         // Responding
         void respond(const lines::route_t& route, const Json::Value& object);
@@ -50,9 +50,9 @@ class core_t:
         ev::io m_watcher;
         ev::idle m_processor;
 
-        typedef std::map<
+        typedef boost::ptr_map<
             const std::string,
-            boost::shared_ptr<engine::engine_t>
+            engine::engine_t
         > engine_map_t;
 
         engine_map_t m_engines;

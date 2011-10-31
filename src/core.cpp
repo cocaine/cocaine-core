@@ -255,7 +255,7 @@ Json::Value core_t::create_engine(const std::string& name, const Json::Value& ma
     }
 
     // Launch the engine
-    boost::shared_ptr<engine_t> engine(new engine_t(m_context, name));
+    std::auto_ptr<engine_t> engine(new engine_t(m_context, name));
     Json::Value result(engine->start(manifest));
 
     try {
@@ -268,7 +268,7 @@ Json::Value core_t::create_engine(const std::string& name, const Json::Value& ma
     }
 
     // Only leave the engine running if all of the above succeded
-    m_engines.insert(std::make_pair(name, engine));
+    m_engines.insert(name, engine);
     
     return result;
 }
@@ -294,7 +294,7 @@ Json::Value core_t::delete_engine(const std::string& name) {
     return result;
 }
 
-Json::Value core_t::info() {
+Json::Value core_t::info() const {
     Json::Value result(Json::objectValue);
 
     for(engine_map_t::const_iterator it = m_engines.begin(); it != m_engines.end(); ++it) {

@@ -25,9 +25,9 @@ class publication_t:
     public deferred_t
 {
     public:
-        publication_t(const std::string& key, boost::shared_ptr<publisher_t> parent):
+        publication_t(const std::string& key, publisher_t* publisher):
             m_key(key),
-            m_parent(parent)
+            m_publisher(publisher)
         { }
 
         virtual void send(zmq::message_t& chunk) {
@@ -39,7 +39,7 @@ class publication_t:
                 static_cast<const char*>(chunk.data()) + chunk.size(),
                 root))
             {
-                m_parent->publish(m_key, root);
+                m_publisher->publish(m_key, root);
             } else {
                 abort("the result must be a json object");
             }
@@ -50,12 +50,12 @@ class publication_t:
 
             object["error"] = error;
             
-            m_parent->publish(m_key, object);
+            m_publisher->publish(m_key, object);
         }
 
     private:
         const std::string m_key;
-        const boost::shared_ptr<publisher_t> m_parent;
+        publisher_t* m_publisher;
 };
 
 }}

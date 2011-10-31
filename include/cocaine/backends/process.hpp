@@ -9,7 +9,7 @@ class process_t:
     public backend_t
 {
     public:        
-        process_t(boost::shared_ptr<engine_t> engine,
+        process_t(engine_t* engine,
                   const std::string& type,
                   const std::string& args);
         virtual ~process_t();
@@ -19,7 +19,7 @@ class process_t:
         void signal(ev::child& w, int revents);
 
     private:
-        boost::shared_ptr<engine_t> m_engine;
+        engine_t* m_engine;
         pid_t m_pid;
 
         ev::child m_child_watcher;

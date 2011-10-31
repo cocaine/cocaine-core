@@ -130,9 +130,7 @@ Json::Value engine_t::start(const Json::Value& manifest) {
 
 template<class DriverType>
 void engine_t::schedule(const std::string& method, const Json::Value& args) {
-    m_tasks.insert(std::make_pair(
-        method,
-        new DriverType(method, shared_from_this(), args)));
+    m_tasks.insert(method, new DriverType(method, this, args));
 }
 
 Json::Value engine_t::stop() {
@@ -156,13 +154,13 @@ Json::Value engine_t::stop() {
 
 namespace {
     struct nonempty_queue {
-        bool operator()(engine_t::pool_map_t::reference worker) {
+        bool operator()(engine_t::pool_map_t::const_reference worker) {
             return worker.second->queue().size() != 0;
         }
     };
 }
 
-Json::Value engine_t::info() {
+Json::Value engine_t::info() const {
     Json::Value results(Json::objectValue);
 
     results["pool"]["total"] = static_cast<Json::UInt>(m_pool.size());

@@ -10,7 +10,7 @@ class timed_driver_t:
     public driver_t
 {
     public:
-        timed_driver_t(const std::string& method, boost::shared_ptr<engine_t> engine):
+        timed_driver_t(const std::string& method, engine_t* engine):
             driver_t(method, engine)
         {
             m_watcher.set(this);
