@@ -184,7 +184,7 @@ Json::Value engine_t::info() const {
         results["tasks"][it->first] = it->second->info();
     }
     
-    results["status"] = m_running ? "running" : "stopped";
+    results["running"] = m_running;
     
     return results;
 }
