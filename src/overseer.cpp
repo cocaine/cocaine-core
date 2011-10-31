@@ -92,12 +92,8 @@ void overseer_t::process(ev::idle& w, int revents) {
                         id().c_str(), method.c_str(), e.what());
                     
                     // Report an error 
-                    Json::Value object(Json::objectValue);
-
-                    object["error"] = e.what();
-
                     Json::FastWriter writer;
-                    std::string response(writer.write(object));
+                    std::string response(writer.write(helpers::make_json("error", e.what())));
 
                     respond(deferred_id, response.data(), response.size());
                 }

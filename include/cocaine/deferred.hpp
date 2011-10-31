@@ -46,11 +46,7 @@ class publication_t:
         }
 
         virtual void abort(const std::string& error) {
-            Json::Value object(Json::objectValue);
-
-            object["error"] = error;
-            
-            m_publisher->publish(m_key, object);
+            m_publisher->publish(m_key, helpers::make_json("error", error));
         }
 
     private:

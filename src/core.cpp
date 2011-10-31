@@ -175,14 +175,10 @@ void core_t::process(ev::idle& w, int revents) {
 
                 respond(route, dispatch(root));
             } catch(const std::exception& e) {
-                Json::Value object(Json::objectValue);
-                object["error"] = e.what();
-                respond(route, object);
+                respond(route, helpers::make_json("error", e.what()));
             }
         } else {
-            Json::Value object(Json::objectValue);
-            object["error"] = reader.getFormatedErrorMessages();
-            respond(route, object);
+            respond(route, helpers::make_json("error", reader.getFormatedErrorMessages()));
         }
     } else {
         m_watcher.start(m_server.fd(), ev::READ);

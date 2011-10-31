@@ -13,12 +13,8 @@ void response_t::send(zmq::message_t& chunk) {
 }
 
 void response_t::abort(const std::string& error) {
-    Json::Value object(Json::objectValue);
-
-    object["error"] = error;
-    
     Json::FastWriter writer;
-    std::string response(writer.write(object));
+    std::string response(writer.write(helpers::make_json("error", error)));
     zmq::message_t message(response.size());
     
     memcpy(message.data(), response.data(), response.size());

@@ -18,11 +18,10 @@
 #include "cocaine/config.hpp"
 #include "cocaine/helpers/unique_id.hpp"
 #include "cocaine/helpers/birth_control.hpp"
+#include "cocaine/helpers/json.hpp"
 
 using cocaine::helpers::unique_id_t;
 using cocaine::helpers::birth_control_t;
-
-#include "json/json.h"
 
 #define EV_MINIMAL 0
 #include <ev++.h>
