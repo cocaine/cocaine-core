@@ -19,7 +19,6 @@ class response_t:
 
     public:
         virtual void send(zmq::message_t& chunk);
-        virtual void abort(const std::string& error);
 
     private:
         const lines::route_t m_route;

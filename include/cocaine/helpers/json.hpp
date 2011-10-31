@@ -5,16 +5,18 @@
 
 namespace cocaine { namespace helpers {
 
+typedef Json::Value json;
+
 template<class T>
-Json::Value make_json(const std::string& key, const T& value) {
-    Json::Value object(Json::objectValue);
+json make_json(const std::string& key, const T& value) {
+    json object(Json::objectValue);
 
     object[key] = value;
 
     return object;
 }
 
-//std::string serialize_json(const Json::Value& object) {
+//std::string serialize_json(const json& object) {
 //    Json::FastWriter writer;
 //    return writer.write(object);
 //}

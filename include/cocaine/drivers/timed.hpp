@@ -44,7 +44,7 @@ class timed_driver_t:
             } catch(const std::runtime_error& e) {
                 syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
                     m_engine->name().c_str(), m_method.c_str(), e.what());
-                deferred->abort(e.what());
+                deferred->send_json(helpers::make_json("error", e.what()));
             }
         }
     private:

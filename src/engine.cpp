@@ -198,7 +198,7 @@ void engine_t::reap(unique_id_t::reference worker_id) {
             ++it) 
         {
             // TODO: Re-assign tasks
-            it->second->abort("timeout");
+            it->second->send_json(helpers::make_json("error", "timeout"));
         }
         
         m_pool.erase(worker);

@@ -12,16 +12,6 @@ void response_t::send(zmq::message_t& chunk) {
     m_responder->respond(m_route, chunk);
 }
 
-void response_t::abort(const std::string& error) {
-    Json::FastWriter writer;
-    std::string response(writer.write(helpers::make_json("error", error)));
-    zmq::message_t message(response.size());
-    
-    memcpy(message.data(), response.data(), response.size());
-    
-    m_responder->respond(m_route, message);
-}
-
 server_t::server_t(const std::string& method, engine_t* engine, const Json::Value& args):
     driver_t(method, engine),
     m_socket(m_engine->context(), ZMQ_ROUTER, 
@@ -136,7 +126,7 @@ void server_t::process(ev::idle&, int) {
         } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
                 m_engine->name().c_str(), m_method.c_str(), e.what());
-            deferred->abort(e.what());
+            deferred->send_json(helpers::make_json("error", e.what()));
         }
     } else {
         m_watcher.start(m_socket.fd(), ev::READ);

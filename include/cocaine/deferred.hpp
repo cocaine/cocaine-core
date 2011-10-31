@@ -13,7 +13,16 @@ class deferred_t:
 {
     public:
         virtual void send(zmq::message_t& chunk) = 0;
-        virtual void abort(const std::string& error) = 0;
+
+        void send_json(const Json::Value& object) {
+            Json::FastWriter writer;
+            std::string response(writer.write(object));
+
+            zmq::message_t message(response.size());
+            memcpy(message.data(), response.data(), response.size());
+
+            send(message);
+        }
 };
 
 class publisher_t {
@@ -41,12 +50,9 @@ class publication_t:
             {
                 m_publisher->publish(m_key, root);
             } else {
-                abort("the result must be a json object");
+                m_publisher->publish(m_key, helpers::make_json(
+                    "error", "the result must be a json object"));
             }
-        }
-
-        virtual void abort(const std::string& error) {
-            m_publisher->publish(m_key, helpers::make_json("error", error));
         }
 
     private:
