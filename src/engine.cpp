@@ -25,6 +25,7 @@ void engine_t::resume_task::operator()(task_map_t::reference task) {
 }
 
 engine_t::engine_t(zmq::context_t& context, const std::string& name):
+    m_running(false),
     m_context(context),
     m_messages(m_context, ZMQ_ROUTER)
 {
@@ -125,6 +126,8 @@ Json::Value engine_t::start(const Json::Value& manifest) {
         throw std::runtime_error("no tasks has been specified");
     }
 
+    m_running = true;
+
     return info();
 }
 
@@ -148,6 +151,8 @@ Json::Value engine_t::stop() {
     
     m_watcher.stop();
     m_processor.stop();
+
+    m_running = false;
 
     return info();
 }
@@ -179,7 +184,7 @@ Json::Value engine_t::info() const {
         results["tasks"][it->first] = it->second->info();
     }
     
-    results["status"] = !m_tasks.empty() ? "running" : "stopped";
+    results["status"] = m_running ? "running" : "stopped";
     
     return results;
 }
@@ -188,14 +193,6 @@ void engine_t::reap(unique_id_t::reference worker_id) {
     pool_map_t::iterator worker(m_pool.find(worker_id));
 
     if(worker != m_pool.end()) {
-        // NOTE: If the worker has died before becoming active, then most probably
-        // it has been killed or died unexpectedly which means the app is certainly broken.
-        if(!worker->second->active()) {
-            syslog(LOG_ERR, "engine [%s]: the application seems to be broken",
-                m_app_cfg.name.c_str());
-            stop();
-        }
-
         for(backend_t::deferred_queue_t::iterator it = worker->second->queue().begin(); 
             it != worker->second->queue().end();
             ++it) 
@@ -205,6 +202,14 @@ void engine_t::reap(unique_id_t::reference worker_id) {
         }
         
         m_pool.erase(worker);
+        
+        // NOTE: If the worker has died before becoming active, then most probably
+        // it has been killed or died unexpectedly which means the app is certainly broken.
+        if(!worker->second->active()) {
+            syslog(LOG_ERR, "engine [%s]: the application seems to be broken",
+                m_app_cfg.name.c_str());
+            stop();
+        }
     }
 }
 
@@ -311,7 +316,9 @@ void engine_t::process(ev::idle& w, int revents) {
                     m_messages.recv(deferred_id);
 
                     worker->second->queue().erase(deferred_id);
-                    
+                   
+                    // TODO: Steal a task from the busiest worker
+
                     break;
                 }
 

@@ -87,7 +87,15 @@ class engine_t:
                     // and poll only for pool messages, in case the new worker comes up
                     // or some old worker falls below the threshold.
                     std::for_each(m_tasks.begin(), m_tasks.end(), pause_task());
+                    
                     ev::get_default_loop().loop(ev::ONESHOT);
+            
+                    // NOTE: During the oneshot loop invocation, a termination event might happen,
+                    // destroying all the engine structures, so abort the operation in that case.        
+                    if(!m_running) {
+                        return;
+                    }
+
                     std::for_each(m_tasks.begin(), m_tasks.end(), resume_task());                    
                 } else if(worker->second->queue().size() >= m_pool_cfg.queue_limit) {
                     throw std::runtime_error("engine is overloaded");
@@ -129,6 +137,8 @@ class engine_t:
         void process(ev::idle& w, int revents);
 
     private:
+        bool m_running;
+
         zmq::context_t& m_context;
         boost::shared_ptr<lines::socket_t> m_pubsub;
         

@@ -74,13 +74,15 @@ void core_t::start() {
 }
 
 void core_t::terminate(ev::sig& sig, int revents) {
+    syslog(LOG_NOTICE, "core: stopping the engines");
+
     for(engine_map_t::iterator it = m_engines.begin(); it != m_engines.end(); ++it) {
         it->second->stop();
     }
 
     m_engines.clear();
-    
-    ev::get_default_loop().unloop();
+
+    ev::get_default_loop().unloop(ev::ALL);
 }
 
 void core_t::reload(ev::sig& sig, int revents) {
