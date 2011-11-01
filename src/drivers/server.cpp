@@ -3,13 +3,13 @@
 using namespace cocaine::engine::drivers;
 using namespace cocaine::lines;
 
-response_t::response_t(const route_t& route, responder_t* responder):
+response_t::response_t(const route_t& route, server_t* server):
     m_route(route),
-    m_responder(responder)
+    m_server(server)
 { }
 
 void response_t::send(zmq::message_t& chunk) {
-    m_responder->respond(m_route, chunk);
+    m_server->respond(m_route, chunk);
 }
 
 server_t::server_t(const std::string& method, engine_t* engine, const Json::Value& args):

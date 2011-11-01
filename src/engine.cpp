@@ -49,11 +49,6 @@ engine_t::~engine_t() {
 // ----------
 
 Json::Value engine_t::start(const Json::Value& manifest) {
-    static std::map<const std::string, unsigned int> types = boost::assign::map_list_of
-        ("auto", AUTO)
-        ("fs", FILESYSTEM)
-        ("server", SERVER);
-
     // Application configuration
     // -------------------------
 
@@ -106,21 +101,16 @@ Json::Value engine_t::start(const Json::Value& manifest) {
             std::string task(*it);
             std::string type(tasks[task]["type"].asString());
             
-            if(types.find(type) == types.end()) {
+            if(type == "auto")
+                schedule<drivers::auto_t>(task, tasks[task]);
+            else if(type == "fs")
+                schedule<drivers::fs_t>(task, tasks[task]);
+            else if(type == "server")
+                schedule<drivers::server_t>(task, tasks[task]);
+            else if(type == "server+lsd")
+                schedule<drivers::lsd_server_t>(task, tasks[task]);
+            else
                throw std::runtime_error("no driver for '" + type + "' is available");
-            }
-
-            switch(types[type]) {
-                case AUTO:
-                    schedule<drivers::auto_t>(task, tasks[task]);
-                    break;
-                case FILESYSTEM:
-                    schedule<drivers::fs_t>(task, tasks[task]);
-                    break;
-                case SERVER:
-                    schedule<drivers::server_t>(task, tasks[task]);
-                    break;
-            }
         }
     } else {
         throw std::runtime_error("no tasks has been specified");

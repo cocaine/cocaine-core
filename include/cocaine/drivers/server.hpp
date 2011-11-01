@@ -6,28 +6,24 @@
 
 namespace cocaine { namespace engine { namespace drivers {
 
-class responder_t {
-    public:
-        virtual void respond(const lines::route_t& route, zmq::message_t& chunk) = 0;
-};
+class server_t;
 
 class response_t:
     public lines::deferred_t
 {
     public:
-        response_t(const lines::route_t& route, responder_t* responder);
+        response_t(const lines::route_t& route, server_t* server);
 
     public:
         virtual void send(zmq::message_t& chunk);
 
     private:
         const lines::route_t m_route;
-        responder_t* m_responder;
+        server_t* m_server;
 };
 
 class server_t:
-    public driver_t,
-    public responder_t
+    public driver_t
 {
     public:
         server_t(const std::string& method, 
@@ -36,17 +32,18 @@ class server_t:
         virtual ~server_t();
 
     public:
+        // Driver interface
         virtual void pause();
         virtual void resume();
-
         virtual Json::Value info() const;
         
-        virtual void respond(const lines::route_t& route, zmq::message_t& chunk);
-
+        // Server interface
         void operator()(ev::io&, int);
-        void process(ev::idle&, int);
+        virtual void process(ev::idle&, int);
 
-    private:
+        void respond(const lines::route_t& route, zmq::message_t& chunk);
+
+    protected:
         lines::socket_t m_socket;
         ev::io m_watcher; 
         ev::idle m_processor;
