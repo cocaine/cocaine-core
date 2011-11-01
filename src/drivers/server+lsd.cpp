@@ -23,7 +23,7 @@ lsd_server_t::lsd_server_t(const std::string& method, engine_t* engine, const Js
 Json::Value lsd_server_t::info() const {
     Json::Value result(Json::objectValue);
 
-    result["type"] = "server:lsd";
+    result["type"] = "server+lsd";
     result["endpoint"] = m_socket.endpoint();
     result["route"] = m_socket.route();
 
