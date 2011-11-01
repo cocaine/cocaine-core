@@ -142,6 +142,10 @@ void overseer_t::respond(const std::string& deferred_id,
 }
 
 void overseer_t::timeout(ev::timer& w, int revents) {
+    if(m_messages.pending()) {
+        return;
+    }
+    
     m_messages.send(SUICIDE);
     terminate();
 }
