@@ -192,14 +192,6 @@ void engine_t::reap(unique_id_t::reference worker_id) {
         }
         
         m_pool.erase(worker);
-        
-        // NOTE: If the worker has died before becoming active, then most probably
-        // it has been killed or died unexpectedly which means the app is certainly broken.
-        if(!worker->second->active()) {
-            syslog(LOG_ERR, "engine [%s]: the application seems to be broken",
-                m_app_cfg.name.c_str());
-            stop();
-        }
     }
 }
 
