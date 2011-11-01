@@ -51,7 +51,7 @@ int main(int argc, char* argv[]) {
         ("instance", po::value<std::string>
             (&config_t::set().core.instance)->default_value("default"),
             "instance name")
-        ("pidfile", po::value<fs::path>()->default_value("/var/run/cocaine.pid"),
+        ("pidfile", po::value<fs::path>()->default_value("/var/run/cocaine/default.pid"),
             "location of a pid file")
         ("plugins", po::value<std::string>
             (&config_t::set().registry.location)->default_value("/usr/lib/cocaine"),
@@ -91,6 +91,16 @@ int main(int argc, char* argv[]) {
     if(!vm.count("endpoints")) {
         std::cout << "Error: no endpoints specified" << std::endl;
         std::cout << "Try '" << argv[0] << " --help' for more information" << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    // Fetching the hostname
+    char hostname[256];
+
+    if(gethostname(hostname, 256) == 0) {
+        config_t::set().core.hostname = hostname;
+    } else {
+        std::cout << "Error: failed to determine the hostname" << std::endl;
         return EXIT_FAILURE;
     }
 

@@ -1,3 +1,5 @@
+#include <boost/algorithm/string/join.hpp>
+#include <boost/assign.hpp>
 #include <boost/thread.hpp>
 
 #include "cocaine/overseer.hpp"
@@ -17,7 +19,12 @@ overseer_t::overseer_t(unique_id_t::reference id_, zmq::context_t& context, cons
     m_suicide_timer(m_loop),
     m_heartbeat_timer(m_loop)
 {
-    m_messages.connect("ipc:///var/run/cocaine/engines/" + name);
+    m_messages.connect(boost::algorithm::join(
+        boost::assign::list_of
+            (std::string("ipc:///var/run/cocaine"))
+            (config_t::get().core.instance)
+            (name),
+        "/"));
     
     m_watcher.set<overseer_t, &overseer_t::message>(this);
     m_watcher.start(m_messages.fd(), ev::READ);

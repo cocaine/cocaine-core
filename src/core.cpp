@@ -1,4 +1,5 @@
 #include <boost/algorithm/string/join.hpp>
+#include <boost/assign.hpp>
 
 #include "cocaine/core.hpp"
 #include "cocaine/engine.hpp"
@@ -11,33 +12,22 @@ using namespace cocaine::storage;
 
 core_t::core_t():
     m_context(1),
-    m_server(m_context, ZMQ_ROUTER)
+    m_server(m_context, ZMQ_ROUTER, boost::algorithm::join(
+        boost::assign::list_of
+            (config_t::get().core.instance)
+            (config_t::get().core.hostname),
+        "/"))
 {
-    // Version dump
+    // Information
     int minor, major, patch;
     zmq_version(&major, &minor, &patch);
 
     syslog(LOG_INFO, "core: using libev version %d.%d", ev_version_major(), ev_version_minor());
     syslog(LOG_INFO, "core: using libmsgpack version %s", msgpack_version());
     syslog(LOG_INFO, "core: using libzmq version %d.%d.%d", major, minor, patch);
-
-    // Fetching the hostname
-    char hostname[256];
-
-    if(gethostname(hostname, 256) == 0) {
-        config_t::set().core.hostname = hostname;
-    } else {
-        throw std::runtime_error("failed to determine the hostname");
-    }
+    syslog(LOG_INFO, "core: route to this node is '%s'", m_server.route().c_str());
 
     // Listening socket
-    std::string route(
-        config_t::get().core.hostname + "/" + 
-        config_t::get().core.instance);
-    m_server.setsockopt(ZMQ_IDENTITY, route.data(), route.length());
-    
-    syslog(LOG_INFO, "core: route to this node is '%s'", route.c_str());
-
     for(std::vector<std::string>::const_iterator it = config_t::get().core.endpoints.begin();
         it != config_t::get().core.endpoints.end();
         ++it) 
@@ -50,7 +40,7 @@ core_t::core_t():
     m_watcher.start(m_server.fd(), EV_READ);
     m_processor.set<core_t, &core_t::process>(this);
 
-    // Initialize signal watchers
+    // Signal watchers
     m_sigint.set<core_t, &core_t::terminate>(this);
     m_sigint.start(SIGINT);
 

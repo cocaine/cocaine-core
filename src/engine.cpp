@@ -1,6 +1,7 @@
 #include <iomanip>
 #include <sstream>
 
+#include <boost/algorithm/string/join.hpp>
 #include <boost/assign.hpp>
 #include <boost/lexical_cast.hpp>
 
@@ -32,8 +33,13 @@ engine_t::engine_t(zmq::context_t& context, const std::string& name):
     m_app_cfg.name = name;
 
     syslog(LOG_DEBUG, "engine [%s]: constructing", m_app_cfg.name.c_str());
-    
-    m_messages.bind("ipc:///var/run/cocaine/engines/" + m_app_cfg.name);
+   
+    m_messages.bind(boost::algorithm::join(
+        boost::assign::list_of
+            (std::string("ipc:///var/run/cocaine"))
+            (config_t::get().core.instance)
+            (m_app_cfg.name),
+        "/"));
     
     m_watcher.set<engine_t, &engine_t::message>(this);
     m_watcher.start(m_messages.fd(), ev::READ);

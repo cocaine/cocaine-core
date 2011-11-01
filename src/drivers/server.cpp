@@ -1,3 +1,6 @@
+#include <boost/algorithm/string/join.hpp>
+#include <boost/assign.hpp>
+
 #include "cocaine/drivers/server.hpp"
 
 using namespace cocaine::engine::drivers;
@@ -14,11 +17,13 @@ void response_t::send(zmq::message_t& chunk) {
 
 server_t::server_t(const std::string& method, engine_t* engine, const Json::Value& args):
     driver_t(method, engine),
-    m_socket(m_engine->context(), ZMQ_ROUTER, 
-        config_t::get().core.hostname + "/" + 
-        config_t::get().core.instance + "/" + 
-        m_engine->name() + "/" + 
-        method)
+    m_socket(m_engine->context(), ZMQ_ROUTER, boost::algorithm::join(
+        boost::assign::list_of
+            (config_t::get().core.instance)
+            (config_t::get().core.hostname)
+            (m_engine->name())
+            (method),
+        "/"))
 {
     std::string endpoint(args.get("endpoint", "").asString());
 
