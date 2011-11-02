@@ -10,8 +10,8 @@ class timed_driver_t:
     public driver_t
 {
     public:
-        timed_driver_t(const std::string& method, engine_t* engine):
-            driver_t(method, engine)
+        timed_driver_t(engine_t* engine, const std::string& method):
+            driver_t(engine, method)
         {
             m_watcher.set(this);
             ev_periodic_set(static_cast<ev_periodic*>(&m_watcher), 0, 0, thunk);

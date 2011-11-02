@@ -17,8 +17,8 @@ zmq::message_t& lsd_response_t::envelope() {
     return m_envelope;
 }
 
-lsd_server_t::lsd_server_t(const std::string& method, engine_t* engine, const Json::Value& args):
-    server_t(method, engine, args)
+lsd_server_t::lsd_server_t(engine_t* engine, const std::string& method, const Json::Value& args):
+    zmq_server_t(engine, method, args)
 { }
 
 Json::Value lsd_server_t::info() const {

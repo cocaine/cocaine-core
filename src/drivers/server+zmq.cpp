@@ -1,23 +1,23 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/assign.hpp>
 
-#include "cocaine/drivers/server.hpp"
+#include "cocaine/drivers/server+zmq.hpp"
 
 using namespace cocaine::engine::drivers;
 using namespace cocaine::lines;
 
-response_t::response_t(const std::string& method, const route_t& route, server_t* server):
+zmq_response_t::zmq_response_t(const std::string& method, const route_t& route, zmq_server_t* server):
     deferred_t(method),
     m_route(route),
     m_server(server)
 { }
 
-void response_t::send(zmq::message_t& chunk) {
+void zmq_response_t::send(zmq::message_t& chunk) {
     m_server->respond(m_route, chunk);
 }
 
-server_t::server_t(const std::string& method, engine_t* engine, const Json::Value& args):
-    driver_t(method, engine),
+zmq_server_t::zmq_server_t(engine_t* engine, const std::string& method, const Json::Value& args):
+    driver_t(engine, method),
     m_socket(m_engine->context(), ZMQ_ROUTER, boost::algorithm::join(
         boost::assign::list_of
             (config_t::get().core.instance)
@@ -36,42 +36,42 @@ server_t::server_t(const std::string& method, engine_t* engine, const Json::Valu
 
     m_watcher.set(this);
     m_watcher.start(m_socket.fd(), ev::READ);
-    m_processor.set<server_t, &server_t::process>(this);
+    m_processor.set<zmq_server_t, &zmq_server_t::process>(this);
     m_processor.start();
 }
 
-server_t::~server_t() {
+zmq_server_t::~zmq_server_t() {
     pause();
 }
 
-void server_t::pause() {
+void zmq_server_t::pause() {
     m_watcher.stop();
     m_processor.stop();
 }
 
-void server_t::resume() {
+void zmq_server_t::resume() {
     m_watcher.start();
     m_processor.start();
 }
 
-Json::Value server_t::info() const {
+Json::Value zmq_server_t::info() const {
     Json::Value result(Json::objectValue);
 
-    result["type"] = "server";
+    result["type"] = "server+zmq";
     result["endpoint"] = m_socket.endpoint();
     result["route"] = m_socket.route();
 
     return result;
 }
 
-void server_t::operator()(ev::io&, int) {
+void zmq_server_t::operator()(ev::io&, int) {
     if(m_socket.pending()) {
         m_watcher.stop();
         m_processor.start();
     }
 }
 
-void server_t::process(ev::idle&, int) {
+void zmq_server_t::process(ev::idle&, int) {
     if(m_socket.pending()) {
         zmq::message_t message;
         std::vector<std::string> route;
@@ -92,8 +92,8 @@ void server_t::process(ev::idle&, int) {
                 message.size()));
         }
 
-        boost::shared_ptr<response_t> deferred(
-            new response_t(m_method, route, this));
+        boost::shared_ptr<zmq_response_t> deferred(
+            new zmq_response_t(m_method, route, this));
 
 #if ZMQ_VERSION < 30000
         m_socket.recv(&deferred->request());
@@ -114,7 +114,7 @@ void server_t::process(ev::idle&, int) {
     }
 }
 
-void server_t::respond(const route_t& route, zmq::message_t& chunk) {
+void zmq_server_t::respond(const route_t& route, zmq::message_t& chunk) {
     zmq::message_t message;
     
     // Send the identity

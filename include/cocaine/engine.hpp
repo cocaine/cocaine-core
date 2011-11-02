@@ -109,6 +109,7 @@ class engine_t:
                     boost::make_tuple(
                         lines::protect(worker->second->id())),
                     args));
+
             worker->second->queue().push(deferred);
         
             // XXX: Damn, ZeroMQ, why are you so strange? 

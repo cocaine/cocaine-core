@@ -2,8 +2,8 @@
 
 using namespace cocaine::engine::drivers;
 
-auto_t::auto_t(const std::string& method, engine_t* engine, const Json::Value& args):
-    timed_driver_t<auto_t>(method, engine),
+auto_t::auto_t(engine_t* engine, const std::string& method, const Json::Value& args):
+    timed_driver_t<auto_t>(engine, method),
     m_interval(args.get("interval", 0).asInt() / 1000.0)
 {
     if(m_interval <= 0) {

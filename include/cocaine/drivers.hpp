@@ -3,7 +3,7 @@
 
 #include "cocaine/drivers/auto.hpp"
 #include "cocaine/drivers/fs.hpp"
-#include "cocaine/drivers/server.hpp"
+#include "cocaine/drivers/server+zmq.hpp"
 #include "cocaine/drivers/server+lsd.hpp"
 
 #endif

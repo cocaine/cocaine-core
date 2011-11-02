@@ -111,8 +111,8 @@ Json::Value engine_t::start(const Json::Value& manifest) {
                 schedule<drivers::auto_t>(task, tasks[task]);
             } else if(type == "fs") {
                 schedule<drivers::fs_t>(task, tasks[task]);
-            } else if(type == "server") {
-                schedule<drivers::server_t>(task, tasks[task]);
+            } else if(type == "server+zmq") {
+                schedule<drivers::zmq_server_t>(task, tasks[task]);
             } else if(type == "server+lsd") {
                 schedule<drivers::lsd_server_t>(task, tasks[task]);
             } else {
@@ -130,7 +130,7 @@ Json::Value engine_t::start(const Json::Value& manifest) {
 
 template<class DriverType>
 void engine_t::schedule(const std::string& method, const Json::Value& args) {
-    m_tasks.insert(method, new DriverType(method, this, args));
+    m_tasks.insert(method, new DriverType(this, method, args));
 }
 
 Json::Value engine_t::stop() {

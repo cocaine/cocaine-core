@@ -10,9 +10,9 @@ class driver_t:
     public boost::noncopyable
 {
     public:
-        driver_t(const std::string& method, engine_t* engine):
-            m_method(method),
-            m_engine(engine)
+        driver_t(engine_t* engine, const std::string& method):
+            m_engine(engine),
+            m_method(method)
         {
             syslog(LOG_DEBUG, "driver [%s:%s]: constructing", 
                 m_engine->name().c_str(), m_method.c_str());
@@ -29,8 +29,8 @@ class driver_t:
         virtual Json::Value info() const = 0;
 
     protected:
-        const std::string m_method;
         engine_t* m_engine;
+        const std::string m_method;
 };
 
 }}

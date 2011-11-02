@@ -2,7 +2,7 @@
 #define COCAINE_DRIVERS_SERVER_LSD_HPP
 
 #include "cocaine/deferred.hpp"
-#include "cocaine/drivers/server.hpp"
+#include "cocaine/drivers/server+zmq.hpp"
 
 namespace cocaine { namespace engine { namespace drivers {
 
@@ -30,11 +30,11 @@ class lsd_response_t:
 };
 
 class lsd_server_t:
-    public server_t
+    public zmq_server_t
 {
     public:
-        lsd_server_t(const std::string& method, 
-                     engine_t* engine,
+        lsd_server_t(engine_t* engine,
+                     const std::string& method, 
                      const Json::Value& args);
 
     public:

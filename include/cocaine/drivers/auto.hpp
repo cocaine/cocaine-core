@@ -9,8 +9,8 @@ class auto_t:
     public timed_driver_t<auto_t>
 {
     public:
-        auto_t(const std::string& method,
-               engine_t* engine, 
+        auto_t(engine_t* engine,
+               const std::string& method, 
                const Json::Value& args);
 
     public:       
