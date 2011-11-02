@@ -26,10 +26,12 @@ local_t::local_t(const uri_t& uri) {
     m_path = m_path.parent_path();
 }
 
-size_t stream_writer(void* data, size_t size, size_t nmemb, void* stream) {
-    std::stringstream* out(reinterpret_cast<std::stringstream*>(stream));
-    out->write(reinterpret_cast<char*>(data), size * nmemb);
-    return size * nmemb;
+namespace {
+    size_t stream_writer(void* data, size_t size, size_t nmemb, void* stream) {
+        std::stringstream* out(reinterpret_cast<std::stringstream*>(stream));
+        out->write(reinterpret_cast<char*>(data), size * nmemb);
+        return size * nmemb;
+    }
 }
 
 http_t::http_t(const helpers::uri_t& uri) {
