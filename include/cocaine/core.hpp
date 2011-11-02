@@ -3,7 +3,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
-#include "cocaine/networking.hpp"
+#include "cocaine/lines.hpp"
 #include "cocaine/security.hpp"
 
 namespace cocaine { namespace core {

@@ -6,7 +6,7 @@
 #include "cocaine/deferred.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/helpers/tuples.hpp"
-#include "cocaine/networking.hpp"
+#include "cocaine/lines.hpp"
 
 namespace cocaine { namespace engine {
 
