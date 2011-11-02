@@ -8,7 +8,8 @@ backend_t::backend_t(engine_t* engine):
     m_active(false)
 {
     syslog(LOG_DEBUG, "worker [%s:%s]: constructing", m_engine->name().c_str(), id().c_str());
-   
+
+    // NOTE: These are 10 seconds for the worker to come alive   
     m_heartbeat.set<backend_t, &backend_t::timeout>(this);
     m_heartbeat.start(10.);
 }

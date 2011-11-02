@@ -12,7 +12,9 @@ class response_t:
     public lines::deferred_t
 {
     public:
-        response_t(const lines::route_t& route, server_t* server);
+        response_t(const std::string& method,
+                   const lines::route_t& route,
+                   server_t* server);
 
     public:
         virtual void send(zmq::message_t& chunk);

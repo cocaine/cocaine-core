@@ -23,10 +23,10 @@ class backend_t:
         virtual ~backend_t();
 
     public:
-        void rearm(float timeout);
-        
         bool active() const;
 
+        void rearm(float timeout);
+        
         deferred_queue_t& queue();
         const deferred_queue_t& queue() const;
 

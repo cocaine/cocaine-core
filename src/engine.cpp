@@ -107,16 +107,17 @@ Json::Value engine_t::start(const Json::Value& manifest) {
             std::string task(*it);
             std::string type(tasks[task]["type"].asString());
             
-            if(type == "auto")
+            if(type == "auto") {
                 schedule<drivers::auto_t>(task, tasks[task]);
-            else if(type == "fs")
+            } else if(type == "fs") {
                 schedule<drivers::fs_t>(task, tasks[task]);
-            else if(type == "server")
+            } else if(type == "server") {
                 schedule<drivers::server_t>(task, tasks[task]);
-            else if(type == "server+lsd")
+            } else if(type == "server+lsd") {
                 schedule<drivers::lsd_server_t>(task, tasks[task]);
-            else
+            } else {
                throw std::runtime_error("no driver for '" + type + "' is available");
+            }
         }
     } else {
         throw std::runtime_error("no tasks has been specified");
@@ -136,9 +137,10 @@ Json::Value engine_t::stop() {
     syslog(LOG_INFO, "engine [%s]: stopping", m_app_cfg.name.c_str()); 
     
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
-        m_messages.send_multi(boost::make_tuple(
-            protect(it->first),
-            TERMINATE));
+        m_messages.send_multi(
+            boost::make_tuple(
+                protect(it->first),
+                TERMINATE));
         m_pool.erase(it);
     }
     
@@ -188,14 +190,19 @@ void engine_t::reap(unique_id_t::reference worker_id) {
     pool_map_t::iterator worker(m_pool.find(worker_id));
 
     if(worker != m_pool.end()) {
-        while(worker->second->queue().size()) {
-            // TODO: Re-assign tasks
-            worker->second->queue().front()->send_json(
-                helpers::make_json("error", "timeout"));
-            worker->second->queue().pop();
+        if(!worker->second->queue().empty()) {
+            syslog(LOG_DEBUG, "engine [%s]: requeueing deferreds from a dead worker",
+                m_app_cfg.name.c_str());
+
+            pool_map_t::auto_type corpse(m_pool.release(worker));
+            
+            while(!corpse->queue().empty()) {
+                corpse->queue().front()->enqueue(this);
+                corpse->queue().pop();
+            }
+        } else {
+            m_pool.erase(worker);
         }
-        
-        m_pool.erase(worker);
     }
 }
 
@@ -280,28 +287,18 @@ void engine_t::process(ev::idle& w, int revents) {
                     zmq::message_t chunk;
 
                     m_messages.recv(&chunk);
-
                     worker->second->queue().front()->send(chunk);
-                    
                     break;
                 }
               
                 case CHOKE: {
-                    worker->second->queue().pop();
-                   
                     // TODO: Steal a task from the busiest worker
-
+                    worker->second->queue().pop();
                     break;
                 }
 
                 case SUICIDE:
-                    if(worker->second->queue().size()) {
-                        syslog(LOG_WARNING, "engine [%s]: a suicide with deferreds in the queue",
-                            m_app_cfg.name.c_str());
-                    }
-
                     reap(worker->first);
-
                     break;
             }
         } else {

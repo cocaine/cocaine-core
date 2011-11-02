@@ -40,11 +40,7 @@ void fs_t::operator()(ev::stat&, int) {
         new lines::publication_t(m_method, m_engine));
 
     try {
-        m_engine->enqueue(
-            deferred,
-            boost::make_tuple(
-                INVOKE,
-                m_method));
+        deferred->enqueue(m_engine);
     } catch(const std::runtime_error& e) {
         syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
             m_engine->name().c_str(), m_method.c_str(), e.what());

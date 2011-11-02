@@ -73,15 +73,13 @@ void overseer_t::process(ev::idle& w, int revents) {
         switch(code) {
             case INVOKE: {
                 std::string method;
+                zmq::message_t request;
 
-                m_messages.recv(method);
+                boost::tuple<std::string&, zmq::message_t*> tier(method, &request);
+                m_messages.recv_multi(tier);
 
                 try {
-                    if(m_messages.more()) {
-                        zmq::message_t request;
-                        
-                        m_messages.recv(&request);
-                       
+                    if(request.size()) {
                         m_source->invoke(
                             boost::bind(&overseer_t::respond, this, _1, _2),
                             method, 

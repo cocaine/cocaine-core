@@ -1,27 +1,35 @@
 #ifndef COCAINE_DEFERRED_HPP
 #define COCAINE_DEFERRED_HPP
 
+#include <boost/enable_shared_from_this.hpp>
+
 #include "cocaine/common.hpp"
+#include "cocaine/forwards.hpp"
 #include "cocaine/networking.hpp"
 
 namespace cocaine { namespace lines {
 
 class deferred_t:
     public boost::noncopyable,
+    public boost::enable_shared_from_this<deferred_t>,
     public birth_control_t<deferred_t>
 {
     public:
+        deferred_t(const std::string& method);
+
+    public:
+        void enqueue(engine::engine_t* engine);
+
+    public:
         virtual void send(zmq::message_t& chunk) = 0;
+        void send_json(const Json::Value& object);
+        
+    public:
+        zmq::message_t& request();
 
-        void send_json(const Json::Value& object) {
-            Json::FastWriter writer;
-            std::string response(writer.write(object));
-
-            zmq::message_t message(response.size());
-            memcpy(message.data(), response.data(), response.size());
-
-            send(message);
-        }
+    private:
+        std::string m_method;
+        zmq::message_t m_request;
 };
 
 class publisher_t {
@@ -34,6 +42,7 @@ class publication_t:
 {
     public:
         publication_t(const std::string& key, publisher_t* publisher):
+            deferred_t(key),
             m_key(key),
             m_publisher(publisher)
         { }

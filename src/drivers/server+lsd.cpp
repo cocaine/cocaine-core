@@ -3,7 +3,8 @@
 using namespace cocaine::engine::drivers;
 using namespace cocaine::lines;
 
-lsd_response_t::lsd_response_t(const route_t& route, lsd_server_t* server):
+lsd_response_t::lsd_response_t(const std::string& method, const route_t& route, lsd_server_t* server):
+    deferred_t(method),
     m_route(route),
     m_server(server)
 { }
@@ -52,7 +53,7 @@ void lsd_server_t::process(ev::idle&, int) {
         }
 
         boost::shared_ptr<lsd_response_t> deferred(
-            new lsd_response_t(route, this));
+            new lsd_response_t(m_method, route, this));
 
         // LSD envelope
 #if ZMQ_VERSION < 30000
@@ -62,15 +63,10 @@ void lsd_server_t::process(ev::idle&, int) {
 #endif
 
         // Request
-        m_socket.recv(&message);
+        m_socket.recv(&deferred->request());
 
         try {
-            m_engine->enqueue(
-                deferred,
-                boost::make_tuple(
-                    INVOKE,
-                    m_method,
-                    boost::ref(message)));
+            deferred->enqueue(m_engine);
         } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
                 m_engine->name().c_str(), m_method.c_str(), e.what());
