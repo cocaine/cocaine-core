@@ -72,8 +72,7 @@ SET_TARGET_PROPERTIES(cocaine-core-storage PROPERTIES
     VERSION 1)
 
 ADD_LIBRARY(cocaine-core-security SHARED
-    src/security/digest
-    src/security/signatures)
+    src/security)
 
 TARGET_LINK_LIBRARIES(cocaine-core-security
     cocaine-core-storage
