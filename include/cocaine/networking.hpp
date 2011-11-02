@@ -212,20 +212,4 @@ class channel_t:
 
 }}
 
-namespace msgpack {
-    template<class Stream>
-    packer<Stream>& operator<<(packer<Stream>& o, const Json::Value& v) {
-        Json::FastWriter writer;
-        std::string json(writer.write(v));
-
-        o.pack_raw(json.size());
-        o.pack_raw_body(json.data(), json.size());
-
-        return o;
-    }
-
-    template<>
-    Json::Value& operator>>(msgpack::object o, Json::Value& v);
-}
-
 #endif

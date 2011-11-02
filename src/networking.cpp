@@ -50,21 +50,3 @@ bool socket_t::label() {
 }
 #endif
 
-namespace msgpack {
-    template<> Json::Value& operator>>(msgpack::object o, Json::Value& v) {
-	    if(o.type != type::RAW) { 
-            throw type_error();
-        }
-	
-        std::string json(o.via.raw.ptr, o.via.raw.size);
-        Json::Reader reader(Json::Features::strictMode());
-        v.clear();
-
-        if(!reader.parse(json, v)) {
-            throw std::runtime_error("invalid json: " + json);
-        }
-
-        return v;
-    }
-}
-
