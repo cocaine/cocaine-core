@@ -20,6 +20,14 @@ At the moment, Cocaine supports the following languages and specifications:
 * Perl (in active development)
 * JavaScript (very limited)
 
+And the following drivers:
+
+* Automatic timer
+* Filesystem monitor
+* Raw sockets server (under development)
+* ZeroMQ server
+* LSD server (not fully supported yet - no timestamping)
+
 Application configuration
 =========================
 
@@ -43,7 +51,7 @@ manifest = {
         },
         "event": {
             "endpoint" : "tcp://lo:9100",
-            "type" : "server"
+            "type" : "server+zmq"
         },
         "spool": {
             "path": "/var/spool/my-app-data",
