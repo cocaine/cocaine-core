@@ -146,11 +146,11 @@ void core_t::process(ev::idle& w, int revents) {
                 unsigned int version = root["version"].asUInt();
                 std::string username(root["username"].asString());
                 
-                if(version < 2) {
-                    throw std::runtime_error("outdated protocol version");
+                if(version < 2 || version > 3) {
+                    throw std::runtime_error("unsupported protocol version");
                 }
       
-                if(version >= 3) {
+                if(version == 3) {
                     if(!username.empty()) {
                         m_signatures.verify(
                             static_cast<const char*>(message.data()),
