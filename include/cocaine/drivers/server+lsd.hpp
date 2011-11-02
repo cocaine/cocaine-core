@@ -1,5 +1,5 @@
-#ifndef COCAINE_DRIVERS_SERVER_LSD_HPP
-#define COCAINE_DRIVERS_SERVER_LSD_HPP
+#ifndef COCAINE_DRIVERS_LSD_SERVER_HPP
+#define COCAINE_DRIVERS_LSD_SERVER_HPP
 
 #include "cocaine/deferred.hpp"
 #include "cocaine/drivers/server+zmq.hpp"

@@ -16,6 +16,7 @@ class deferred_t:
 {
     public:
         deferred_t(const std::string& method);
+        virtual ~deferred_t() { }
 
     public:
         void enqueue(engine::engine_t* engine);

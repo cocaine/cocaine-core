@@ -1,5 +1,5 @@
-#ifndef COCAINE_DRIVERS_SERVER_HPP
-#define COCAINE_DRIVERS_SERVER_HPP
+#ifndef COCAINE_DRIVERS_ZMQ_SERVER_HPP
+#define COCAINE_DRIVERS_ZMQ_SERVER_HPP
 
 #include "cocaine/deferred.hpp"
 #include "cocaine/drivers/abstract.hpp"
@@ -13,8 +13,8 @@ class zmq_response_t:
 {
     public:
         zmq_response_t(const std::string& method,
-                   const lines::route_t& route,
-                   zmq_server_t* server);
+                       const lines::route_t& route,
+                       zmq_server_t* server);
 
     public:
         virtual void send(zmq::message_t& chunk);
@@ -29,8 +29,8 @@ class zmq_server_t:
 {
     public:
         zmq_server_t(engine_t* engine,
-                 const std::string& method, 
-                 const Json::Value& args);
+                     const std::string& method, 
+                     const Json::Value& args);
         virtual ~zmq_server_t();
 
     public:
