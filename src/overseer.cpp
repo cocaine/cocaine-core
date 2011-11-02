@@ -66,11 +66,9 @@ void overseer_t::message(ev::io& w, int revents) {
 
 void overseer_t::process(ev::idle& w, int revents) {
     if(m_messages.pending()) {
-        std::string deferred_id;
         unsigned int code = 0;
 
-        boost::tuple<std::string&, unsigned int&> tier(deferred_id, code);
-        m_messages.recv_multi(tier);
+        m_messages.recv(code);
 
         switch(code) {
             case INVOKE: {
@@ -85,13 +83,13 @@ void overseer_t::process(ev::idle& w, int revents) {
                         m_messages.recv(&request);
                        
                         m_source->invoke(
-                            boost::bind(&overseer_t::respond, this, deferred_id, _1, _2),
+                            boost::bind(&overseer_t::respond, this, _1, _2),
                             method, 
                             request.data(), 
                             request.size());
                     } else {
                         m_source->invoke(
-                            boost::bind(&overseer_t::respond, this, deferred_id, _1, _2),
+                            boost::bind(&overseer_t::respond, this, _1, _2),
                             method);
                     }
                 } catch(const std::exception& e) {
@@ -102,15 +100,12 @@ void overseer_t::process(ev::idle& w, int revents) {
                     Json::FastWriter writer;
                     std::string response(writer.write(helpers::make_json("error", e.what())));
 
-                    respond(deferred_id, response.data(), response.size());
+                    respond(response.data(), response.size());
                 }
                     
                 boost::this_thread::interruption_point();
 
-                m_messages.send_multi(
-                    boost::make_tuple(
-                        CHOKE,
-                        deferred_id));
+                m_messages.send(CHOKE);
                 
                 // XXX: Damn, ZeroMQ, why are you so strange? 
                 m_loop.feed_fd_event(m_messages.fd(), ev::READ);
@@ -131,20 +126,17 @@ void overseer_t::process(ev::idle& w, int revents) {
     }
 }
 
-void overseer_t::respond(const std::string& deferred_id, 
-                         const void* response, 
+void overseer_t::respond(const void* response, 
                          size_t size) 
 {
     boost::this_thread::interruption_point();
     
     zmq::message_t message(size);
-    
     memcpy(message.data(), response, size);
    
     m_messages.send_multi(
         boost::make_tuple(
             CHUNK,
-            deferred_id,
             boost::ref(message)));
 }
 

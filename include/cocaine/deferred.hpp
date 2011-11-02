@@ -8,7 +8,6 @@ namespace cocaine { namespace lines {
 
 class deferred_t:
     public boost::noncopyable,
-    public unique_id_t,
     public birth_control_t<deferred_t>
 {
     public:

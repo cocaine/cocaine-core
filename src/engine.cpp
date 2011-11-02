@@ -138,7 +138,6 @@ Json::Value engine_t::stop() {
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
         m_messages.send_multi(boost::make_tuple(
             protect(it->first),
-            unique_id_t().id(),
             TERMINATE));
         m_pool.erase(it);
     }
@@ -189,12 +188,11 @@ void engine_t::reap(unique_id_t::reference worker_id) {
     pool_map_t::iterator worker(m_pool.find(worker_id));
 
     if(worker != m_pool.end()) {
-        for(backend_t::deferred_queue_t::iterator it = worker->second->queue().begin(); 
-            it != worker->second->queue().end();
-            ++it) 
-        {
+        while(worker->second->queue().size()) {
             // TODO: Re-assign tasks
-            it->second->send_json(helpers::make_json("error", "timeout"));
+            worker->second->queue().front()->send_json(
+                helpers::make_json("error", "timeout"));
+            worker->second->queue().pop();
         }
         
         m_pool.erase(worker);
@@ -279,31 +277,16 @@ void engine_t::process(ev::idle& w, int revents) {
            
             switch(code) {
                 case CHUNK: {
-                    unique_id_t::type deferred_id;
                     zmq::message_t chunk;
 
-                    boost::tuple<std::string&, zmq::message_t*> tier(deferred_id, &chunk);
-                    m_messages.recv_multi(tier);
-
-                    backend_t::deferred_queue_t::iterator deferred(
-                        worker->second->queue().find(deferred_id));
-
-                    if(deferred != worker->second->queue().end()) {
-                        deferred->second->send(chunk);
-                    } else {
-                        syslog(LOG_ERR, "engine [%s]: got a chunk from an unexpected worker",
-                            m_app_cfg.name.c_str());
-                    }
+                    m_messages.recv(&chunk);
+                    worker->second->queue().front()->send(chunk);
                     
                     break;
                 }
               
                 case CHOKE: {
-                    unique_id_t::type deferred_id;
-                    
-                    m_messages.recv(deferred_id);
-
-                    worker->second->queue().erase(deferred_id);
+                    worker->second->queue().pop();
                    
                     // TODO: Steal a task from the busiest worker
 
@@ -321,7 +304,7 @@ void engine_t::process(ev::idle& w, int revents) {
                     break;
             }
         } else {
-            syslog(LOG_WARNING, "engine [%s]: dropping messages for a dead worker %s", 
+            syslog(LOG_WARNING, "engine [%s]: dropping messages from a dead worker %s", 
                 m_app_cfg.name.c_str(), worker_id.c_str());
             m_messages.ignore();
         }

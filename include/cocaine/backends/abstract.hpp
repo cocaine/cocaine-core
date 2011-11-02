@@ -1,6 +1,8 @@
 #ifndef COCAINE_BACKENDS_ABSTRACT_HPP
 #define COCAINE_BACKENDS_ABSTRACT_HPP
 
+#include <queue>
+
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 
@@ -12,8 +14,7 @@ class backend_t:
     public birth_control_t<backend_t>
 {
     public:
-        typedef std::map<
-            const std::string,
+        typedef std::queue<
             boost::shared_ptr<lines::deferred_t>
         > deferred_queue_t;
 

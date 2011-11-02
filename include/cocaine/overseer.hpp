@@ -23,8 +23,7 @@ class overseer_t:
                         const std::string& args);
 
         // Callback used to send response chunks
-        void respond(const std::string& deferred_id, 
-                     const void* response, 
+        void respond(const void* response, 
                      size_t size);
 
     private:

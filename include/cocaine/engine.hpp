@@ -107,14 +107,9 @@ class engine_t:
             m_messages.send_multi(
                 helpers::joint_view(
                     boost::make_tuple(
-                        lines::protect(worker->second->id()),
-                        deferred->id()),
+                        lines::protect(worker->second->id())),
                     args));
-            
-            worker->second->queue().insert(
-                std::make_pair(
-                    deferred->id(),
-                    deferred));
+            worker->second->queue().push(deferred);
         
             // XXX: Damn, ZeroMQ, why are you so strange? 
             ev::get_default_loop().feed_fd_event(m_messages.fd(), ev::READ);
