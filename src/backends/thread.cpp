@@ -6,10 +6,8 @@ using namespace cocaine::engine;
 using namespace cocaine::engine::backends;
 
 thread_t::thread_t(engine_t* engine, const std::string& type, const std::string& args):
-    m_engine(engine)
+    backend_t(engine)
 {
-    syslog(LOG_DEBUG, "worker [%s:%s]: constructing", m_engine->name().c_str(), id().c_str());
-   
     try {
         m_overseer.reset(new overseer_t(id(), m_engine->context(), m_engine->name()));
         m_thread.reset(new boost::thread(boost::ref(*m_overseer), type, args));
@@ -19,8 +17,6 @@ thread_t::thread_t(engine_t* engine, const std::string& type, const std::string&
 }
 
 thread_t::~thread_t() {
-    syslog(LOG_DEBUG, "worker [%s:%s]: destructing", m_engine->name().c_str(), id().c_str());
-    
     if(m_thread.get()) {
         if(!m_thread->timed_join(boost::posix_time::seconds(5))) {
             syslog(LOG_WARNING, "worker [%s:%s]: worker is unresponsive",
@@ -30,16 +26,8 @@ thread_t::~thread_t() {
     }
 }
 
-void thread_t::timeout(ev::timer& w, int revents) {
-    syslog(LOG_ERR, "worker [%s:%s]: worker missed a heartbeat",
-        m_engine->name().c_str(), id().c_str());
-
+void thread_t::kill() {
     m_thread->interrupt();
-    
-    // This will detach the thread so it'll die silently when finished
     m_thread.reset();
-
-    // This will signal timeouts to all the clients and destroy the object
-    m_engine->reap(id());
 }
 

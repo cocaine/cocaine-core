@@ -6,10 +6,8 @@ using namespace cocaine::engine;
 using namespace cocaine::engine::backends;
 
 process_t::process_t(engine_t* engine, const std::string& type, const std::string& args):
-    m_engine(engine)
+    backend_t(engine)
 {
-    syslog(LOG_DEBUG, "worker [%s:%s]: constructing", m_engine->name().c_str(), id().c_str());
-
     m_pid = fork();
 
     if(m_pid == 0) {
@@ -27,14 +25,8 @@ process_t::process_t(engine_t* engine, const std::string& type, const std::strin
     m_child_watcher.start(m_pid);
 }
 
-process_t::~process_t() {
-    syslog(LOG_DEBUG, "worker [%s:%s]: destructing", m_engine->name().c_str(), id().c_str());
-}
-
-void process_t::timeout(ev::timer& w, int revents) {
-    syslog(LOG_ERR, "worker [%s:%s]: worker has missed too many heartbeats",
-        m_engine->name().c_str(), id().c_str());
-    kill(m_pid, SIGKILL);
+void process_t::kill() {
+    ::kill(m_pid, SIGKILL);
 }
 
 void process_t::signal(ev::child& w, int revents) {

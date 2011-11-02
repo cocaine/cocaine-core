@@ -17,10 +17,9 @@ class thread_t:
         virtual ~thread_t();
 
     private:
-        virtual void timeout(ev::timer& w, int revents);
+        virtual void kill();
 
     private:
-        engine_t* m_engine;
         boost::shared_ptr<overseer_t> m_overseer;
         boost::shared_ptr<boost::thread> m_thread;
 };

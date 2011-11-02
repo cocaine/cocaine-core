@@ -163,12 +163,12 @@ namespace {
 Json::Value engine_t::info() const {
     Json::Value results(Json::objectValue);
 
+    results["pool"]["limit"] = m_pool_cfg.pool_limit;
     results["pool"]["total"] = static_cast<Json::UInt>(m_pool.size());
     results["pool"]["active"] = static_cast<Json::UInt>(std::count_if(
         m_pool.begin(),
         m_pool.end(),
         nonempty_queue()));
-    results["pool"]["limit"] = m_pool_cfg.pool_limit;
 
     for(pool_map_t::const_iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
         results["pool"]["queues"][it->first] = static_cast<Json::UInt>(
@@ -280,6 +280,7 @@ void engine_t::process(ev::idle& w, int revents) {
                     zmq::message_t chunk;
 
                     m_messages.recv(&chunk);
+
                     worker->second->queue().front()->send(chunk);
                     
                     break;

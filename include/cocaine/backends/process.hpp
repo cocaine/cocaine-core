@@ -12,16 +12,13 @@ class process_t:
         process_t(engine_t* engine,
                   const std::string& type,
                   const std::string& args);
-        virtual ~process_t();
 
     private:
-        virtual void timeout(ev::timer& w, int revents);
+        virtual void kill();
         void signal(ev::child& w, int revents);
 
     private:
-        engine_t* m_engine;
         pid_t m_pid;
-
         ev::child m_child_watcher;
 };
 

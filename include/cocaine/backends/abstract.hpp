@@ -19,7 +19,7 @@ class backend_t:
         > deferred_queue_t;
 
     public:       
-        backend_t();
+        backend_t(engine_t* engine);
         virtual ~backend_t();
 
     public:
@@ -31,11 +31,18 @@ class backend_t:
         const deferred_queue_t& queue() const;
 
     protected:
-        virtual void timeout(ev::timer& w, int revents) = 0;
+        virtual void kill() = 0;
+
+    private:
+        void timeout(ev::timer&, int);
+
+    protected:
+        engine_t* m_engine;
 
     private:
         bool m_active;
         ev::timer m_heartbeat;
+
         deferred_queue_t m_queue;
 };
 
