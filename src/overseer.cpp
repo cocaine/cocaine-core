@@ -82,17 +82,11 @@ void overseer_t::process(ev::idle& w, int revents) {
                 }
 
                 try {
-                    if(request.size()) {
-                        m_source->invoke(
-                            boost::bind(&overseer_t::respond, this, _1, _2),
-                            method, 
-                            request.data(), 
-                            request.size());
-                    } else {
-                        m_source->invoke(
-                            boost::bind(&overseer_t::respond, this, _1, _2),
-                            method);
-                    }
+                    m_source->invoke(
+                        boost::bind(&overseer_t::respond, this, _1, _2),
+                        method, 
+                        request.data(), 
+                        request.size());
                 } catch(const std::exception& e) {
                     syslog(LOG_ERR, "worker [%s]: '%s' invocation failed - %s", 
                         id().c_str(), method.c_str(), e.what());

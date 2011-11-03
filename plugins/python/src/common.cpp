@@ -72,7 +72,7 @@ void python_t::invoke(
     thread_state_t state;
     object_t args(NULL);
 
-    if(request) {
+    if(request && size) {
 #if PY_VERSION_HEX > 0x02070000
         Py_buffer* buffer = static_cast<Py_buffer*>(malloc(sizeof(Py_buffer)));
 

@@ -19,8 +19,8 @@ class source_t:
         virtual void invoke(
             callback_fn_t callback,
             const std::string& method,
-            const void* request = NULL,
-            size_t size = 0) = 0;
+            const void* request,
+            size_t size) = 0;
 };
 
 // Plugins are expected to supply at least one factory function

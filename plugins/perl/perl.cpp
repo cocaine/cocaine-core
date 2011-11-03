@@ -42,7 +42,7 @@ class perl_t:
         {
             std::cout << "method: " << method << std::endl;
 
-            if (request) {
+            if (request && size) {
                 try {
                     std::string tmp_str = std::string((char*)request, size);
                     std::cout << "request: " << tmp_str << std::endl;
