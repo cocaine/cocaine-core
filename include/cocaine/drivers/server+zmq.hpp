@@ -13,15 +13,16 @@ class zmq_response_t:
 {
     public:
         zmq_response_t(const std::string& method,
-                       const lines::route_t& route,
-                       zmq_server_t* server);
+                       zmq_server_t* server,
+                       const lines::route_t& route);
 
     public:
         virtual void send(zmq::message_t& chunk);
+        virtual void abort(const std::string& error);
 
     private:
-        const lines::route_t m_route;
         zmq_server_t* m_server;
+        const lines::route_t m_route;
 };
 
 class zmq_server_t:

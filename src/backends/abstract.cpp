@@ -48,8 +48,7 @@ void backend_t::timeout(ev::timer&, int) {
     kill();
 
     if(m_queue.size()) {
-        m_queue.front()->send_json(
-            helpers::make_json("error", "timeout"));
+        m_queue.front()->abort("timed out");
         m_queue.pop();
     }
 

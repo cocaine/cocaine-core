@@ -3,14 +3,37 @@
 using namespace cocaine::engine::drivers;
 using namespace cocaine::lines;
 
-lsd_response_t::lsd_response_t(const std::string& method, const route_t& route, lsd_server_t* server):
+lsd_response_t::lsd_response_t(const std::string& method, lsd_server_t* server, const route_t& route):
     deferred_t(method),
-    m_route(route),
-    m_server(server)
+    m_server(server),
+    m_route(route)
 { }
 
 void lsd_response_t::send(zmq::message_t& chunk) {
     m_server->respond(m_route, m_envelope, chunk);
+}
+
+void lsd_response_t::abort(const std::string& error) {
+    zmq::message_t null;
+
+    Json::Reader reader(Json::Features::strictMode());
+    Json::Value root;
+
+    if(reader.parse(
+        static_cast<const char*>(m_envelope.data()),
+        static_cast<const char*>(m_envelope.data()) + m_envelope.size(),
+        root))
+    {
+        root["error"] = error;
+    }
+
+    Json::FastWriter writer;
+    std::string response(writer.write(root));
+
+    m_envelope.rebuild(response.size());
+    memcpy(m_envelope.data(), response.data(), response.size());
+
+    m_server->respond(m_route, m_envelope, null);
 }
 
 zmq::message_t& lsd_response_t::envelope() {
@@ -53,7 +76,7 @@ void lsd_server_t::process(ev::idle&, int) {
         }
 
         boost::shared_ptr<lsd_response_t> deferred(
-            new lsd_response_t(m_method, route, this));
+            new lsd_response_t(m_method, this, route));
 
         // LSD envelope
 #if ZMQ_VERSION < 30000
@@ -70,7 +93,7 @@ void lsd_server_t::process(ev::idle&, int) {
         } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
                 m_engine->name().c_str(), m_method.c_str(), e.what());
-            deferred->send_json(helpers::make_json("error", e.what()));
+            deferred->abort(e.what());
         }
     } else {
         m_watcher.start(m_socket.fd(), ev::READ);
@@ -101,11 +124,15 @@ void lsd_server_t::respond(const route_t& route,
     m_socket.send(message, ZMQ_SNDMORE);
 #endif
 
-    // Copy and send the envelope
+    // Copy the envelope
     message.copy(&envelope);
-    m_socket.send(message, ZMQ_SNDMORE);
 
-    // Send the response
-    m_socket.send(chunk);
+    if(chunk.size()) {
+        // Send the response, if any
+        m_socket.send(message, ZMQ_SNDMORE);
+        m_socket.send(chunk);
+    } else {
+        m_socket.send(message);
+    }
 }
 

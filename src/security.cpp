@@ -5,7 +5,7 @@
 #include <openssl/err.h>
 
 #include "cocaine/storages/abstract.hpp"
-#include "cocaine/security/signatures.hpp"
+#include "cocaine/security.hpp"
 
 using namespace cocaine::security;
 using namespace cocaine::storage;

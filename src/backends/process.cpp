@@ -30,5 +30,6 @@ void process_t::kill() {
 }
 
 void process_t::signal(ev::child& w, int revents) {
+    m_child_watcher.stop();
     m_engine->reap(id());
 }

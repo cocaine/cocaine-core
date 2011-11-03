@@ -52,6 +52,9 @@ core_t::core_t():
 
     m_sighup.set<core_t, &core_t::reload>(this);
     m_sighup.start(SIGHUP);
+    
+    // Recovering the saved state
+    recover();
 }
 
 core_t::~core_t() {
@@ -59,7 +62,6 @@ core_t::~core_t() {
 }
 
 void core_t::start() {
-    recover();
     ev::get_default_loop().loop();
 }
 

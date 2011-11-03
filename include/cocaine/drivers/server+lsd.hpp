@@ -13,18 +13,19 @@ class lsd_response_t:
 {
     public:
         lsd_response_t(const std::string& method,
-                       const lines::route_t& route,
-                       lsd_server_t* server);
+                       lsd_server_t* server,
+                       const lines::route_t& route);
 
     public:
         virtual void send(zmq::message_t& chunk);
+        virtual void abort(const std::string& error);
 
     public:
         zmq::message_t& envelope();
 
     private:
-        const lines::route_t m_route;
         lsd_server_t* m_server;
+        const lines::route_t m_route;
         
         zmq::message_t m_envelope;
 };

@@ -6,14 +6,28 @@
 using namespace cocaine::engine::drivers;
 using namespace cocaine::lines;
 
-zmq_response_t::zmq_response_t(const std::string& method, const route_t& route, zmq_server_t* server):
+zmq_response_t::zmq_response_t(const std::string& method, zmq_server_t* server, const route_t& route):
     deferred_t(method),
-    m_route(route),
-    m_server(server)
+    m_server(server),
+    m_route(route)
 { }
 
 void zmq_response_t::send(zmq::message_t& chunk) {
     m_server->respond(m_route, chunk);
+}
+
+void zmq_response_t::abort(const std::string& error) {
+    Json::Value object(Json::objectValue);
+    
+    object["error"] = error;
+
+    Json::FastWriter writer;
+    std::string response(writer.write(object));
+
+    zmq::message_t message(response.size());
+    memcpy(message.data(), response.data(), response.size());
+
+    m_server->respond(m_route, message);
 }
 
 zmq_server_t::zmq_server_t(engine_t* engine, const std::string& method, const Json::Value& args):
@@ -93,7 +107,7 @@ void zmq_server_t::process(ev::idle&, int) {
         }
 
         boost::shared_ptr<zmq_response_t> deferred(
-            new zmq_response_t(m_method, route, this));
+            new zmq_response_t(m_method, this, route));
 
 #if ZMQ_VERSION < 30000
         m_socket.recv(&deferred->request());
@@ -106,7 +120,7 @@ void zmq_server_t::process(ev::idle&, int) {
         } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
                 m_engine->name().c_str(), m_method.c_str(), e.what());
-            deferred->send_json(helpers::make_json("error", e.what()));
+            deferred->abort(e.what());
         }
     } else {
         m_watcher.start(m_socket.fd(), ev::READ);

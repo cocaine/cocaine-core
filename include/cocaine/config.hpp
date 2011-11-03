@@ -38,6 +38,7 @@ class config_t {
     private:
         config_t();
 
+    private:
         static config_t g_config;
 };
 
