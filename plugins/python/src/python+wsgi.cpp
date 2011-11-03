@@ -63,8 +63,9 @@ parser_t::parser_t(const void* request, size_t size):
 
     PyDict_SetItemString(m_environment, "wsgi.version",
         Py_BuildValue("(ii)", 1, 0));
+    
     PyDict_SetItemString(m_environment, "wsgi.url_scheme",
-        Py_BuildValue("s", "http"));
+        PyString_FromString("http"));
 
     Py_INCREF(Py_True);
     PyDict_SetItemString(m_environment, "wsgi.multithread", Py_True);
@@ -97,11 +98,13 @@ int parser_t::on_url(http_parser* parser, const char* at, size_t length) {
             (boost::format("HTTP/%1%.%2%") 
                 % parser->http_major 
                 % parser->http_minor
-            ).str().c_str()));
+            ).str().c_str()
+        ));
 
     // FIXME: Have to specify something special here to work in a cloud
     PyDict_SetItemString(p->m_environment, "SERVER_NAME",
         PyString_FromString("cocaine"));
+    
     PyDict_SetItemString(p->m_environment, "SERVER_PORT", 
         PyString_FromString("80"));
 
