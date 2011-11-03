@@ -9,7 +9,7 @@ namespace cocaine { namespace engine { namespace drivers {
 class lsd_server_t;
 
 class lsd_response_t:
-    public lines::deferred_t
+    public zmq_response_t
 {
     public:
         lsd_response_t(const std::string& method,
@@ -17,19 +17,13 @@ class lsd_response_t:
                        const lines::route_t& route);
 
     public:
-        virtual void enqueue(engine_t* engine);
-        virtual void send(zmq::message_t& chunk);
         virtual void abort(const std::string& error);
 
     public:
-        zmq::message_t& request();
         zmq::message_t& envelope();
 
     private:
-        lsd_server_t* m_server;
-        const lines::route_t m_route;
-        
-        zmq::message_t m_request, m_envelope;
+        zmq::message_t m_envelope;
 };
 
 class lsd_server_t:
@@ -41,12 +35,12 @@ class lsd_server_t:
                      const Json::Value& args);
 
     public:
+        // Driver interface
         virtual Json::Value info() const;
-        virtual void process(ev::idle&, int);
 
-        void respond(const lines::route_t& route, 
-                     zmq::message_t& envelope, 
-                     zmq::message_t& chunk);
+        // Server interface
+        virtual void process(ev::idle&, int);
+        virtual void respond(lsd_response_t* response, zmq::message_t& chunk);
 };
 
 }}}

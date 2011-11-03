@@ -22,12 +22,12 @@ class zmq_response_t:
         virtual void abort(const std::string& error);
 
     public:
+        const lines::route_t& route();
         zmq::message_t& request();
 
-    private:
+    protected:
         zmq_server_t* m_server;
         const lines::route_t m_route;
-
         zmq::message_t m_request;
 };
 
@@ -48,9 +48,9 @@ class zmq_server_t:
         
         // Server interface
         void operator()(ev::io&, int);
+        
         virtual void process(ev::idle&, int);
-
-        void respond(const lines::route_t& route, zmq::message_t& chunk);
+        virtual void respond(zmq_response_t* response, zmq::message_t& chunk);
 
     protected:
         lines::socket_t m_socket;

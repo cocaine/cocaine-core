@@ -4,31 +4,8 @@ using namespace cocaine::engine::drivers;
 using namespace cocaine::lines;
 
 lsd_response_t::lsd_response_t(const std::string& method, lsd_server_t* server, const route_t& route):
-    deferred_t(method),
-    m_server(server),
-    m_route(route)
+    zmq_response_t(method, server, route)
 { }
-
-void lsd_response_t::enqueue(engine_t* engine) {
-    zmq::message_t request;
-
-    request.copy(&m_request);
-
-    engine->enqueue(
-        shared_from_this(),
-        boost::make_tuple(
-            INVOKE,
-            m_method,
-            boost::ref(request)));
-}
-
-void lsd_response_t::send(zmq::message_t& chunk) {
-    zmq::message_t envelope;
-
-    envelope.copy(&m_envelope);
-
-    m_server->respond(m_route, envelope, chunk);
-}
 
 void lsd_response_t::abort(const std::string& error) {
     zmq::message_t null;
@@ -50,11 +27,7 @@ void lsd_response_t::abort(const std::string& error) {
     m_envelope.rebuild(response.size());
     memcpy(m_envelope.data(), response.data(), response.size());
 
-    m_server->respond(m_route, m_envelope, null);
-}
-
-zmq::message_t& lsd_response_t::request() {
-    return m_request;
+    m_server->respond(this, null);
 }
 
 zmq::message_t& lsd_response_t::envelope() {
@@ -122,10 +95,10 @@ void lsd_server_t::process(ev::idle&, int) {
     }
 }
 
-void lsd_server_t::respond(const route_t& route, 
-                           zmq::message_t& envelope, 
+void lsd_server_t::respond(lsd_response_t* response, 
                            zmq::message_t& chunk)
 {
+    const route_t& route(response->route());
     zmq::message_t message;
     
     // Send the identity
@@ -145,12 +118,14 @@ void lsd_server_t::respond(const route_t& route,
     m_socket.send(message, ZMQ_SNDMORE);
 #endif
 
+    message.copy(&response->envelope());
+    
     // Send the response
     if(chunk.size()) {
-        m_socket.send(envelope, ZMQ_SNDMORE);
+        m_socket.send(message, ZMQ_SNDMORE);
         m_socket.send(chunk);
     } else {
-        m_socket.send(envelope);
+        m_socket.send(message);
     }
 }
 

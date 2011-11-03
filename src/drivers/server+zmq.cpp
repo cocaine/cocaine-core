@@ -26,7 +26,7 @@ void zmq_response_t::enqueue(engine_t* engine) {
 }
 
 void zmq_response_t::send(zmq::message_t& chunk) {
-    m_server->respond(m_route, chunk);
+    m_server->respond(this, chunk);
 }
 
 void zmq_response_t::abort(const std::string& error) {
@@ -40,7 +40,11 @@ void zmq_response_t::abort(const std::string& error) {
     zmq::message_t message(response.size());
     memcpy(message.data(), response.data(), response.size());
 
-    m_server->respond(m_route, message);
+    m_server->respond(this, message);
+}
+
+const route_t& zmq_response_t::route() {
+    return m_route;
 }
 
 zmq::message_t& zmq_response_t::request() {
@@ -145,7 +149,8 @@ void zmq_server_t::process(ev::idle&, int) {
     }
 }
 
-void zmq_server_t::respond(const route_t& route, zmq::message_t& chunk) {
+void zmq_server_t::respond(zmq_response_t* response, zmq::message_t& chunk) {
+    const route_t& route(response->route());
     zmq::message_t message;
     
     // Send the identity
