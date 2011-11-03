@@ -40,7 +40,7 @@ class lsd_server_t:
 
         // Server interface
         virtual void process(ev::idle&, int);
-        virtual void respond(lsd_response_t* response, zmq::message_t& chunk);
+        virtual void respond(zmq_response_t* response, zmq::message_t& chunk);
 };
 
 }}}

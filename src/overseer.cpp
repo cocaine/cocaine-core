@@ -75,8 +75,11 @@ void overseer_t::process(ev::idle& w, int revents) {
                 std::string method;
                 zmq::message_t request;
 
-                boost::tuple<std::string&, zmq::message_t*> tier(method, &request);
-                m_messages.recv_multi(tier);
+                m_messages.recv(method);
+
+                if(m_messages.more()) {
+                    m_messages.recv(&request);
+                }
 
                 try {
                     if(request.size()) {

@@ -95,7 +95,7 @@ void lsd_server_t::process(ev::idle&, int) {
     }
 }
 
-void lsd_server_t::respond(lsd_response_t* response, 
+void lsd_server_t::respond(zmq_response_t* response, 
                            zmq::message_t& chunk)
 {
     const route_t& route(response->route());
@@ -118,7 +118,7 @@ void lsd_server_t::respond(lsd_response_t* response,
     m_socket.send(message, ZMQ_SNDMORE);
 #endif
 
-    message.copy(&response->envelope());
+    message.copy(&static_cast<lsd_response_t*>(response)->envelope());
     
     // Send the response
     if(chunk.size()) {
