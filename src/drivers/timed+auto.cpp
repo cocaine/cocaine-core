@@ -1,9 +1,9 @@
-#include "cocaine/drivers/auto.hpp"
+#include "cocaine/drivers/timed+auto.hpp"
 
 using namespace cocaine::engine::drivers;
 
-auto_t::auto_t(engine_t* engine, const std::string& method, const Json::Value& args):
-    timed_driver_t<auto_t>(engine, method),
+auto_timed_t::auto_timed_t(engine_t* engine, const std::string& method, const Json::Value& args):
+    timed_t<auto_timed_t>(engine, method),
     m_interval(args.get("interval", 0).asInt() / 1000.0)
 {
     if(m_interval <= 0) {
@@ -11,15 +11,15 @@ auto_t::auto_t(engine_t* engine, const std::string& method, const Json::Value& a
     }
 }
 
-Json::Value auto_t::info() const {
+Json::Value auto_timed_t::info() const {
     Json::Value result(Json::objectValue);
 
-    result["type"] = "auto";
+    result["type"] = "timed+auto";
     result["interval"] = m_interval;
 
     return result;
 }
 
-ev::tstamp auto_t::reschedule(ev::tstamp now) {
+ev::tstamp auto_timed_t::reschedule(ev::tstamp now) {
     return now + m_interval;
 }

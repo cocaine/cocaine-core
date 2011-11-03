@@ -107,8 +107,8 @@ Json::Value engine_t::start(const Json::Value& manifest) {
             std::string task(*it);
             std::string type(tasks[task]["type"].asString());
             
-            if(type == "auto") {
-                schedule<drivers::auto_t>(task, tasks[task]);
+            if(type == "timed+auto") {
+                schedule<drivers::auto_timed_t>(task, tasks[task]);
             } else if(type == "fs") {
                 schedule<drivers::fs_t>(task, tasks[task]);
             } else if(type == "server+zmq") {

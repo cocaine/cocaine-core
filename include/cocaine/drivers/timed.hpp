@@ -6,11 +6,11 @@
 namespace cocaine { namespace engine { namespace drivers {
 
 template<class T>
-class timed_driver_t:
+class timed_t:
     public driver_t
 {
     public:
-        timed_driver_t(engine_t* engine, const std::string& method):
+        timed_t(engine_t* engine, const std::string& method):
             driver_t(engine, method)
         {
             m_watcher.set(this);
@@ -18,7 +18,7 @@ class timed_driver_t:
             m_watcher.start();
         }
 
-        virtual ~timed_driver_t() {
+        virtual ~timed_t() {
             pause();
         }
 

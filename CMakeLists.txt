@@ -88,11 +88,11 @@ ADD_LIBRARY(cocaine-core SHARED
     src/core
     src/deferred
     src/downloads
-    src/drivers/auto
     src/drivers/fs
     src/drivers/server+zmq
     src/drivers/server+lsd
     src/drivers/server+raw
+    src/drivers/timed+auto
     src/engine
     src/lines
     src/overseer
