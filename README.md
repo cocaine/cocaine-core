@@ -1,8 +1,7 @@
 What the hell is it?
 ====================
 
-Cocained is a fast and lightweight multi-language event-driven task-based distributed
-hybrid application server built on top of ZeroMQ transport. Yeah, it _is_ cool.
+Cocained is a fast and lightweight multi-language event-driven task-based distributed hybrid application server built on top of ZeroMQ transport. Yeah, it _is_ cool.
 
 Notable features:
 
@@ -17,7 +16,7 @@ Notable features:
 At the moment, Cocaine supports the following languages and specifications:
 
 * C++
-* Python
+* Python + Raw
 * Python + JSON
 * Python + WSGI (almost ready)
 * Perl (under active development)
@@ -27,16 +26,10 @@ The applications can be driven by the following drivers:
 
 * Timer
 * Cron (under development)
-* Filesystem monitor
-* ZeroMQ server
-* LSD server
-* HTTP server (under development)
-
-Also, there are a couple of abstract drivers to build upon:
-
-* Timed job
-* Raw socket server
-* Raw ZeroMQ server
+* Filesystem Monitor
+* Server + Raw
+* Server + ZeroMQ
+* Server + LSD
 
 Application configuration example
 =================================
