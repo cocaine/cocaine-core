@@ -9,8 +9,25 @@ lsd_response_t::lsd_response_t(const std::string& method, lsd_server_t* server, 
     m_route(route)
 { }
 
+void lsd_response_t::enqueue(engine_t* engine) {
+    zmq::message_t request;
+
+    request.copy(&m_request);
+
+    engine->enqueue(
+        shared_from_this(),
+        boost::make_tuple(
+            INVOKE,
+            m_method,
+            boost::ref(request)));
+}
+
 void lsd_response_t::send(zmq::message_t& chunk) {
-    m_server->respond(m_route, m_envelope, chunk);
+    zmq::message_t envelope;
+
+    envelope.copy(&m_envelope);
+
+    m_server->respond(m_route, envelope, chunk);
 }
 
 void lsd_response_t::abort(const std::string& error) {
@@ -34,6 +51,10 @@ void lsd_response_t::abort(const std::string& error) {
     memcpy(m_envelope.data(), response.data(), response.size());
 
     m_server->respond(m_route, m_envelope, null);
+}
+
+zmq::message_t& lsd_response_t::request() {
+    return m_request;
 }
 
 zmq::message_t& lsd_response_t::envelope() {
@@ -124,15 +145,12 @@ void lsd_server_t::respond(const route_t& route,
     m_socket.send(message, ZMQ_SNDMORE);
 #endif
 
-    // Copy the envelope
-    message.copy(&envelope);
-
+    // Send the response
     if(chunk.size()) {
-        // Send the response, if any
-        m_socket.send(message, ZMQ_SNDMORE);
+        m_socket.send(envelope, ZMQ_SNDMORE);
         m_socket.send(chunk);
     } else {
-        m_socket.send(message);
+        m_socket.send(envelope);
     }
 }
 

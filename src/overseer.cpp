@@ -94,7 +94,6 @@ void overseer_t::process(ev::idle& w, int revents) {
                     syslog(LOG_ERR, "worker [%s]: '%s' invocation failed - %s", 
                         id().c_str(), method.c_str(), e.what());
                     
-                    // Report an error 
                     Json::FastWriter writer;
                     std::string response(writer.write(helpers::make_json("error", e.what())));
 
@@ -102,6 +101,12 @@ void overseer_t::process(ev::idle& w, int revents) {
                 }
                     
                 boost::this_thread::interruption_point();
+
+                // NOTE: If there were more request chunks on the pipe, and they weren't fetched
+                // by the app, silently drop them.
+                if(m_messages.more()) {
+                    m_messages.ignore();
+                }
 
                 m_messages.send(CHOKE);
                 

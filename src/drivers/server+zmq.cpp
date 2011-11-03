@@ -12,6 +12,19 @@ zmq_response_t::zmq_response_t(const std::string& method, zmq_server_t* server, 
     m_route(route)
 { }
 
+void zmq_response_t::enqueue(engine_t* engine) {
+    zmq::message_t request;
+
+    request.copy(&m_request);
+
+    engine->enqueue(
+        shared_from_this(),
+        boost::make_tuple(
+            INVOKE,
+            m_method,
+            boost::ref(request)));
+}
+
 void zmq_response_t::send(zmq::message_t& chunk) {
     m_server->respond(m_route, chunk);
 }
@@ -28,6 +41,10 @@ void zmq_response_t::abort(const std::string& error) {
     memcpy(message.data(), response.data(), response.size());
 
     m_server->respond(m_route, message);
+}
+
+zmq::message_t& zmq_response_t::request() {
+    return m_request;
 }
 
 zmq_server_t::zmq_server_t(engine_t* engine, const std::string& method, const Json::Value& args):

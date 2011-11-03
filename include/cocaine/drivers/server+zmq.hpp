@@ -17,12 +17,18 @@ class zmq_response_t:
                        const lines::route_t& route);
 
     public:
+        virtual void enqueue(engine_t* engine);
         virtual void send(zmq::message_t& chunk);
         virtual void abort(const std::string& error);
+
+    public:
+        zmq::message_t& request();
 
     private:
         zmq_server_t* m_server;
         const lines::route_t m_route;
+
+        zmq::message_t m_request;
 };
 
 class zmq_server_t:

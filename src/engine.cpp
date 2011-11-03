@@ -288,6 +288,7 @@ void engine_t::process(ev::idle& w, int revents) {
 
                     m_messages.recv(&chunk);
                     worker->second->queue().front()->send(chunk);
+
                     break;
                 }
               

@@ -19,18 +19,12 @@ class deferred_t:
         virtual ~deferred_t() { }
 
     public:
-        void enqueue(engine::engine_t* engine);
-
-    public:
+        virtual void enqueue(engine::engine_t* engine);
         virtual void send(zmq::message_t& chunk) = 0;
         virtual void abort(const std::string& error) = 0;
         
-    public:
-        zmq::message_t& request();
-
-    private:
+    protected:
         std::string m_method;
-        zmq::message_t m_request;
 };
 
 class publisher_t {
