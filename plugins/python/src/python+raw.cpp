@@ -1,24 +1,18 @@
 #include "cocaine/downloads.hpp"
 #include "cocaine/helpers/uri.hpp"
 
-#include "common.hpp"
+#include "python+raw.hpp"
 #include "python+wsgi.hpp"
 #include "python+json.hpp"
 
 using namespace cocaine::plugin;
 
-void python_t::exception() {
-    object_t type(NULL), object(NULL), traceback(NULL);
-    
-    PyErr_Fetch(&type, &object, &traceback);
-    object_t message(PyObject_Str(object));
-    
-    throw std::runtime_error(PyString_AsString(message));
+source_t* raw_python_t::create(const std::string& args) {
+    return new raw_python_t(args);
 }
 
-python_t::python_t(const std::string& args):
-    m_module(NULL),
-    m_interpreter(NULL)
+raw_python_t::raw_python_t(const std::string& args):
+    m_module(NULL)
 {
     if(args.empty()) {
         throw std::runtime_error("no code location has been specified");
@@ -44,26 +38,7 @@ python_t::python_t(const std::string& args):
     }
 }
 
-void python_t::compile(const std::string& path, const std::string& code) {
-    object_t bytecode(Py_CompileString(
-        code.c_str(),
-        path.c_str(),
-        Py_file_input));
-
-    if(PyErr_Occurred()) {
-        exception();
-    }
-
-    m_module = PyImport_ExecCodeModule(
-        const_cast<char*>(unique_id_t().id().c_str()),
-        bytecode);
-    
-    if(PyErr_Occurred()) {
-        exception();
-    }
-}
-
-void python_t::invoke(
+void raw_python_t::invoke(
     callback_fn_t callback,
     const std::string& method,
     const void* request,
@@ -120,9 +95,86 @@ void python_t::invoke(
     }
 }
 
+void raw_python_t::respond(callback_fn_t callback, object_t& result) {
+    if(PyString_Check(result)) {
+        throw std::runtime_error("the result must be an iterable");
+    }
+
+    object_t iterator(PyObject_GetIter(result));
+
+    if(iterator.valid()) {
+        object_t item(NULL);
+
+        while(true) {
+            item = PyIter_Next(iterator);
+
+            if(PyErr_Occurred()) {
+                exception();
+            } else if(!item.valid()) {
+                break;
+            }
+        
+#if PY_VERSION_HEX > 0x02060000
+            if(PyObject_CheckBuffer(item)) {
+                boost::shared_ptr<Py_buffer> buffer(
+                    static_cast<Py_buffer*>(malloc(sizeof(Py_buffer))),
+                    free);
+
+                if(PyObject_GetBuffer(item, buffer.get(), PyBUF_SIMPLE) == 0) {
+                    Py_BEGIN_ALLOW_THREADS
+                        callback(buffer->buf, buffer->len);
+                    Py_END_ALLOW_THREADS
+                    
+                    PyBuffer_Release(buffer.get());
+                } else {
+                    throw std::runtime_error("unable to serialize the result");
+                }
+            }
+#else
+            if(PyString_Check(item)) {
+                callback(PyString_AsString(item), PyString_Size(item));
+            } else {
+                throw std::runtime_error("unable to serialize the result");
+            }
+#endif
+        }
+    } else {
+        exception();
+    }
+}
+
+void raw_python_t::exception() {
+    object_t type(NULL), object(NULL), traceback(NULL);
+    
+    PyErr_Fetch(&type, &object, &traceback);
+    object_t message(PyObject_Str(object));
+    
+    throw std::runtime_error(PyString_AsString(message));
+}
+
+void raw_python_t::compile(const std::string& path, const std::string& code) {
+    object_t bytecode(Py_CompileString(
+        code.c_str(),
+        path.c_str(),
+        Py_file_input));
+
+    if(PyErr_Occurred()) {
+        exception();
+    }
+
+    m_module = PyImport_ExecCodeModule(
+        const_cast<char*>(unique_id_t().id().c_str()),
+        bytecode);
+    
+    if(PyErr_Occurred()) {
+        exception();
+    }
+}
+
 static const source_info_t plugin_info[] = {
-    { "python+wsgi", &python_wsgi_t::create },
-    { "python+json", &python_json_t::create },
+    { "python+raw", &raw_python_t::create },
+    { "python+wsgi", &wsgi_python_t::create },
+    { "python+json", &json_python_t::create },
     { NULL, NULL }
 };
 

@@ -17,9 +17,10 @@ INCLUDE_DIRECTORIES(
     include)
 
 ADD_LIBRARY(cocaine-plugin-python MODULE
-    src/common
-    src/python+wsgi
-    src/python+json)
+    ${PROJECT_SOURCE_DIR}/foreign/http-parser/http_parser
+    src/python+raw
+    src/python+json
+    src/python+wsgi)
 
 TARGET_LINK_LIBRARIES(cocaine-plugin-python
     cocaine-core

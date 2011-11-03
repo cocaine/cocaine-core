@@ -1,17 +1,16 @@
-#ifndef COCAINE_PYTHON_COMMON_HPP
-#define COCAINE_PYTHON_COMMON_HPP
+#ifndef COCAINE_PYTHON_RAW_HPP
+#define COCAINE_PYTHON_RAW_HPP
 
 #include <Python.h>
 
 #include "cocaine/plugin.hpp"
 #include "cocaine/helpers/track.hpp"
 
-#include "common.hpp"
-
 namespace cocaine { namespace plugin {
 
 typedef helpers::track<PyObject*, Py_DecRef> object_t;
 
+/*
 class interpreter_t {
     public:
         interpreter_t(PyThreadState** state):
@@ -38,6 +37,7 @@ class interpreter_t {
     private:
         PyThreadState* m_saved;
 };
+*/
 
 class thread_state_t {
     public:
@@ -53,33 +53,29 @@ class thread_state_t {
         PyGILState_STATE m_saved;
 };
 
-class python_t:
+class raw_python_t:
     public source_t
 {
     public:
-        python_t(const std::string& args);
+        static source_t* create(const std::string& args);
+    
+    public:    
+        raw_python_t(const std::string& args);
 
-        virtual void invoke(
-            callback_fn_t callback,
-            const std::string& method, 
-            const void* request,
-            size_t size);
+        virtual void invoke(callback_fn_t callback,
+                            const std::string& method, 
+                            const void* request,
+                            size_t size);
 
     protected:
+        virtual void respond(callback_fn_t callback, object_t& result);
         static void exception();
-        
-        virtual void respond(
-            callback_fn_t callback,
-            object_t& result) = 0;
 
     private:
-        void compile(
-            const std::string& path,
-            const std::string& code);
+        void compile(const std::string& path, const std::string& code);
 
-    private:
+    protected:
         object_t m_module;
-        PyThreadState* m_interpreter;
 };
 
 }}

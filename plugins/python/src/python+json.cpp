@@ -2,11 +2,11 @@
 
 using namespace cocaine::plugin;
 
-source_t* python_json_t::create(const std::string& args) {
-    return new python_json_t(args);
+source_t* json_python_t::create(const std::string& args) {
+    return new json_python_t(args);
 }
 
-void python_json_t::respond(
+void json_python_t::respond(
     callback_fn_t callback,
     object_t& result)
 {
@@ -19,7 +19,7 @@ void python_json_t::respond(
     Py_END_ALLOW_THREADS
 }
 
-Json::Value python_json_t::convert(PyObject* result) {
+Json::Value json_python_t::convert(PyObject* result) {
     Json::Value object;
     
     if(PyBool_Check(result)) {
