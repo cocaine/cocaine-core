@@ -130,11 +130,16 @@ void zmq_server_t::process(ev::idle&, int) {
         boost::shared_ptr<zmq_response_t> deferred(
             new zmq_response_t(m_method, this, route));
 
+        if(m_socket.more()) {
 #if ZMQ_VERSION < 30000
-        m_socket.recv(&deferred->request());
+            m_socket.recv(&deferred->request());
 #else
-        deferred->request().copy(&message);
+            deferred->request().copy(&message);
 #endif
+        } else {
+            deferred->abort("invalid request");
+            return;
+        }
 
         try {
             deferred->enqueue(m_engine);

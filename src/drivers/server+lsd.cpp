@@ -72,15 +72,25 @@ void lsd_server_t::process(ev::idle&, int) {
         boost::shared_ptr<lsd_response_t> deferred(
             new lsd_response_t(m_method, this, route));
 
-        // LSD envelope
+        if(m_socket.more()) {
+            // LSD envelope
 #if ZMQ_VERSION < 30000
-        m_socket.recv(&deferred->envelope());
+            m_socket.recv(&deferred->envelope());
 #else
-        deferred->envelope().copy(&message);
+            deferred->envelope().copy(&message);
 #endif
+        } else {
+            deferred->abort("missing envelope");
+            return;
+        }
 
-        // Request
-        m_socket.recv(&deferred->request());
+        if(m_socket.more()) {
+            // Request
+            m_socket.recv(&deferred->request());
+        } else {
+            deferred->abort("invalid request");
+            return;
+        }
 
         try {
             deferred->enqueue(m_engine);
