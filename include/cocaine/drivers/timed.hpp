@@ -18,12 +18,8 @@ class timed_t:
             m_watcher.start();
         }
 
-        virtual ~timed_t() {
-            pause();
-        }
-
     public: 
-        virtual void pause() {
+        virtual void suspend() {
             m_watcher.stop();
         }
 

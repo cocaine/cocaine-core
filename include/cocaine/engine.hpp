@@ -31,7 +31,7 @@ class engine_t:
             bool operator()(pool_map_t::reference left, pool_map_t::reference right);
         };
 
-        struct pause_task {
+        struct suspend_task {
             void operator()(task_map_t::reference task);
         };
         
@@ -84,10 +84,10 @@ class engine_t:
                         }
                     }
                 } else if(!worker->second->active()) {
-                    // NOTE: We pause all the tasks here to avoid races for free workers,
+                    // NOTE: We suspend all the tasks here to avoid races for free workers,
                     // and poll only for pool messages, in case the new worker comes up
                     // or some old worker falls below the threshold.
-                    std::for_each(m_tasks.begin(), m_tasks.end(), pause_task());
+                    std::for_each(m_tasks.begin(), m_tasks.end(), suspend_task());
                     
                     ev::get_default_loop().loop(ev::ONESHOT);
             

@@ -17,7 +17,7 @@ class raw_server_t:
 
     public:
         // Driver interface
-        virtual void pause();
+        virtual void suspend();
         virtual void resume();
         
         // Server interface

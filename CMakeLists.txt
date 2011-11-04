@@ -91,7 +91,6 @@ ADD_LIBRARY(cocaine-core SHARED
     src/drivers/fs
     src/drivers/server+zmq
     src/drivers/server+lsd
-    src/drivers/server+raw
     src/drivers/timed+auto
     src/engine
     src/lines

@@ -75,11 +75,7 @@ zmq_server_t::zmq_server_t(engine_t* engine, const std::string& method, const Js
     m_processor.start();
 }
 
-zmq_server_t::~zmq_server_t() {
-    pause();
-}
-
-void zmq_server_t::pause() {
+void zmq_server_t::suspend() {
     m_watcher.stop();
     m_processor.stop();
 }

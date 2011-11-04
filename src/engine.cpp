@@ -17,8 +17,8 @@ bool engine_t::shortest_queue::operator()(pool_map_t::reference left, pool_map_t
              left.second->active());
 }
 
-void engine_t::pause_task::operator()(task_map_t::reference task) {
-    task.second->pause();
+void engine_t::suspend_task::operator()(task_map_t::reference task) {
+    task.second->suspend();
 }
 
 void engine_t::resume_task::operator()(task_map_t::reference task) {
@@ -136,6 +136,12 @@ void engine_t::schedule(const std::string& method, const Json::Value& args) {
 Json::Value engine_t::stop() {
     syslog(LOG_INFO, "engine [%s]: stopping", m_app_cfg.name.c_str()); 
     
+    m_running = false;
+    
+    // NOTE: Suspend all the tasks, but do not delete them yet, as they
+    // might be needed to send out all the outstanding responses
+    std::for_each(m_tasks.begin(), m_tasks.end(), suspend_task());
+
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
         m_messages.send_multi(
             boost::make_tuple(
@@ -143,13 +149,12 @@ Json::Value engine_t::stop() {
                 TERMINATE));
         m_pool.erase(it);
     }
-    
+   
+    // NOTE: When all the workers are dead, tasks can be safely destroyed 
     m_tasks.clear();
-    
+
     m_watcher.stop();
     m_processor.stop();
-
-    m_running = false;
 
     return info();
 }
@@ -167,10 +172,12 @@ Json::Value engine_t::info() const {
 
     results["pool"]["limit"] = m_pool_cfg.pool_limit;
     results["pool"]["total"] = static_cast<Json::UInt>(m_pool.size());
-    results["pool"]["active"] = static_cast<Json::UInt>(std::count_if(
-        m_pool.begin(),
-        m_pool.end(),
-        nonempty_queue()));
+    results["pool"]["active"] = static_cast<Json::UInt>(
+        std::count_if(
+            m_pool.begin(),
+            m_pool.end(),
+            nonempty_queue()
+        ));
 
     for(pool_map_t::const_iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
         results["pool"]["queues"][it->first] = static_cast<Json::UInt>(

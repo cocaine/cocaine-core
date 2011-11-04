@@ -12,10 +12,9 @@ class fs_t:
         fs_t(engine_t* engine,
              const std::string& method, 
              const Json::Value& args);
-        virtual ~fs_t();
 
     public:
-        virtual void pause();
+        virtual void suspend();
         virtual void resume();
         
         virtual Json::Value info() const;

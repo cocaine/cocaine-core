@@ -14,11 +14,7 @@ fs_t::fs_t(engine_t* engine, const std::string& method, const Json::Value& args)
     m_watcher.start(m_path.c_str());
 }
 
-fs_t::~fs_t() {
-    pause();
-}
-
-void fs_t::pause() {
+void fs_t::suspend() {
     m_watcher.stop();
 }
 
