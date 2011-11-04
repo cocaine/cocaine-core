@@ -6,32 +6,32 @@
 using namespace cocaine::engine::drivers;
 using namespace cocaine::lines;
 
-zmq_response_t::zmq_response_t(const std::string& method, zmq_server_t* server, const route_t& route):
-    deferred_t(method),
-    m_server(server),
+zmq_response_t::zmq_response_t(zmq_server_t* server, const route_t& route):
+    deferred_t(server),
     m_route(route)
 { }
 
-void zmq_response_t::enqueue(engine_t* engine) {
+void zmq_response_t::enqueue() {
     zmq::message_t request;
 
     request.copy(&m_request);
 
-    engine->enqueue(
+    m_parent->engine()->enqueue(
         shared_from_this(),
         boost::make_tuple(
             INVOKE,
-            m_method,
+            m_parent->method(),
             boost::ref(request)));
 }
 
-void zmq_response_t::send(zmq::message_t& chunk) {
-    m_server->respond(this, chunk);
+void zmq_response_t::respond(zmq::message_t& chunk) {
+    static_cast<zmq_server_t*>(m_parent)->respond(this, chunk);
 }
 
-void zmq_response_t::abort(const std::string& error) {
+void zmq_response_t::abort(error_code code, const std::string& error) {
     Json::Value object(Json::objectValue);
     
+    object["code"] = code;
     object["error"] = error;
 
     Json::FastWriter writer;
@@ -40,7 +40,7 @@ void zmq_response_t::abort(const std::string& error) {
     zmq::message_t message(response.size());
     memcpy(message.data(), response.data(), response.size());
 
-    m_server->respond(this, message);
+    static_cast<zmq_server_t*>(m_parent)->respond(this, message);
 }
 
 const route_t& zmq_response_t::route() {
@@ -123,8 +123,7 @@ void zmq_server_t::process(ev::idle&, int) {
                 message.size()));
         }
 
-        boost::shared_ptr<zmq_response_t> deferred(
-            new zmq_response_t(m_method, this, route));
+        boost::shared_ptr<zmq_response_t> deferred(new zmq_response_t(this, route));
 
         if(m_socket.more()) {
 #if ZMQ_VERSION < 30000
@@ -133,16 +132,16 @@ void zmq_server_t::process(ev::idle&, int) {
             deferred->request().copy(&message);
 #endif
         } else {
-            deferred->abort("invalid request");
+            deferred->abort(deferred_t::bad_request);
             return;
         }
 
         try {
-            deferred->enqueue(m_engine);
+            deferred->enqueue();
         } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
                 m_engine->name().c_str(), m_method.c_str(), e.what());
-            deferred->abort(e.what());
+            deferred->abort(deferred_t::server_error, e.what());
         }
     } else {
         m_watcher.start(m_socket.fd(), ev::READ);

@@ -12,13 +12,11 @@ class lsd_response_t:
     public zmq_response_t
 {
     public:
-        lsd_response_t(const std::string& method,
-                       lsd_server_t* server,
-                       const lines::route_t& route);
+        lsd_response_t(lsd_server_t* server, const lines::route_t& route);
 
-    public:
-        virtual void abort(const std::string& error);
-
+    public:        
+        virtual void abort(error_code code, const std::string& error = "");
+        
     public:
         zmq::message_t& envelope();
 

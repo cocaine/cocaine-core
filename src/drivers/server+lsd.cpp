@@ -3,11 +3,11 @@
 using namespace cocaine::engine::drivers;
 using namespace cocaine::lines;
 
-lsd_response_t::lsd_response_t(const std::string& method, lsd_server_t* server, const route_t& route):
-    zmq_response_t(method, server, route)
+lsd_response_t::lsd_response_t(lsd_server_t* server, const route_t& route):
+    zmq_response_t(server, route)
 { }
 
-void lsd_response_t::abort(const std::string& error) {
+void lsd_response_t::abort(error_code code, const std::string& error) {
     zmq::message_t null;
 
     Json::Reader reader(Json::Features::strictMode());
@@ -18,6 +18,7 @@ void lsd_response_t::abort(const std::string& error) {
         static_cast<const char*>(m_envelope.data()) + m_envelope.size(),
         root))
     {
+        root["code"] = code;
         root["error"] = error;
     }
 
@@ -27,7 +28,7 @@ void lsd_response_t::abort(const std::string& error) {
     m_envelope.rebuild(response.size());
     memcpy(m_envelope.data(), response.data(), response.size());
 
-    m_server->respond(this, null);
+    static_cast<lsd_server_t*>(m_parent)->respond(this, null);
 }
 
 zmq::message_t& lsd_response_t::envelope() {
@@ -69,8 +70,7 @@ void lsd_server_t::process(ev::idle&, int) {
                 message.size()));
         }
 
-        boost::shared_ptr<lsd_response_t> deferred(
-            new lsd_response_t(m_method, this, route));
+        boost::shared_ptr<lsd_response_t> deferred(new lsd_response_t(this, route));
 
         if(m_socket.more()) {
             // LSD envelope
@@ -80,7 +80,7 @@ void lsd_server_t::process(ev::idle&, int) {
             deferred->envelope().copy(&message);
 #endif
         } else {
-            deferred->abort("missing envelope");
+            deferred->abort(deferred_t::bad_request, "missing envelope");
             return;
         }
 
@@ -88,16 +88,16 @@ void lsd_server_t::process(ev::idle&, int) {
             // Request
             m_socket.recv(&deferred->request());
         } else {
-            deferred->abort("invalid request");
+            deferred->abort(deferred_t::bad_request, "missing request");
             return;
         }
 
         try {
-            deferred->enqueue(m_engine);
+            deferred->enqueue();
         } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
                 m_engine->name().c_str(), m_method.c_str(), e.what());
-            deferred->abort(e.what());
+            deferred->abort(deferred_t::server_error, e.what());
         }
     } else {
         m_watcher.start(m_socket.fd(), ev::READ);

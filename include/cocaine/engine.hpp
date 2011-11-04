@@ -12,8 +12,7 @@ namespace cocaine { namespace engine {
 
 // Application Engine
 class engine_t:
-    public boost::noncopyable,
-    public lines::publisher_t
+    public boost::noncopyable
 {
     public:
         typedef boost::ptr_unordered_map<

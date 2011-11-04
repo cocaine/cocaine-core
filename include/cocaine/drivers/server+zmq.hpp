@@ -12,21 +12,18 @@ class zmq_response_t:
     public lines::deferred_t
 {
     public:
-        zmq_response_t(const std::string& method,
-                       zmq_server_t* server,
-                       const lines::route_t& route);
+        zmq_response_t(zmq_server_t* server, const lines::route_t& route);
 
     public:
-        virtual void enqueue(engine_t* engine);
-        virtual void send(zmq::message_t& chunk);
-        virtual void abort(const std::string& error);
+        virtual void enqueue();
+        virtual void respond(zmq::message_t& chunk);
+        virtual void abort(error_code code, const std::string& error = "");
 
     public:
         const lines::route_t& route();
         zmq::message_t& request();
 
     protected:
-        zmq_server_t* m_server;
         const lines::route_t m_route;
         zmq::message_t m_request;
 };

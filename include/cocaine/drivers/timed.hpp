@@ -28,15 +28,14 @@ class timed_t:
         }
 
         void operator()(ev::periodic&, int) {
-            boost::shared_ptr<lines::publication_t> deferred(
-                new lines::publication_t(m_method, m_engine));
+            boost::shared_ptr<lines::publication_t> deferred(new lines::publication_t(this));
 
             try {
-                deferred->enqueue(m_engine);
+                deferred->enqueue();
             } catch(const std::runtime_error& e) {
                 syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
                     m_engine->name().c_str(), m_method.c_str(), e.what());
-                deferred->abort(e.what());
+                deferred->abort(lines::deferred_t::server_error, e.what());
             }
         }
     private:

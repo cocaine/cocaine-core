@@ -202,7 +202,7 @@ void engine_t::reap(unique_id_t::reference worker_id) {
             pool_map_t::auto_type corpse(m_pool.release(worker));
             
             while(!corpse->queue().empty()) {
-                corpse->queue().front()->enqueue(this);
+                corpse->queue().front()->enqueue();
                 corpse->queue().pop();
             }
         } else {
@@ -292,7 +292,7 @@ void engine_t::process(ev::idle& w, int revents) {
                     zmq::message_t chunk;
 
                     m_messages.recv(&chunk);
-                    worker->second->queue().front()->send(chunk);
+                    worker->second->queue().front()->respond(chunk);
 
                     break;
                 }

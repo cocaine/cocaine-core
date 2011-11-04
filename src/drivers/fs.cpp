@@ -1,6 +1,7 @@
 #include "cocaine/drivers/fs.hpp"
 
 using namespace cocaine::engine::drivers;
+using namespace cocaine::lines;
 
 fs_t::fs_t(engine_t* engine, const std::string& method, const Json::Value& args):
     driver_t(engine, method),
@@ -32,15 +33,14 @@ Json::Value fs_t::info() const {
 }
 
 void fs_t::operator()(ev::stat&, int) {
-    boost::shared_ptr<lines::publication_t> deferred(
-        new lines::publication_t(m_method, m_engine));
+    boost::shared_ptr<publication_t> deferred(new publication_t(this));
 
     try {
-        deferred->enqueue(m_engine);
+        deferred->enqueue();
     } catch(const std::runtime_error& e) {
         syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
             m_engine->name().c_str(), m_method.c_str(), e.what());
-        deferred->abort(e.what());
+        deferred->abort(deferred_t::server_error, e.what());
     }
 }
 

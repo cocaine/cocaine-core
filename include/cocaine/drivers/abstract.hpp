@@ -28,6 +28,10 @@ class driver_t:
 
         virtual Json::Value info() const = 0;
 
+    public:
+        engine_t* engine() { return m_engine; }
+        const std::string& method() const { return m_method; }
+
     protected:
         engine_t* m_engine;
         const std::string m_method;
