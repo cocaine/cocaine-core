@@ -50,7 +50,7 @@ class core_t:
         ev::io m_watcher;
         ev::idle m_processor;
 
-        typedef boost::ptr_map<
+        typedef boost::ptr_unordered_map<
             const std::string,
             engine::engine_t
         > engine_map_t;

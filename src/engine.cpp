@@ -149,10 +149,8 @@ Json::Value engine_t::stop() {
                 TERMINATE));
         m_pool.erase(it);
     }
-   
-    // NOTE: When all the workers are dead, tasks can be safely destroyed 
+  
     m_tasks.clear();
-
     m_watcher.stop();
     m_processor.stop();
 

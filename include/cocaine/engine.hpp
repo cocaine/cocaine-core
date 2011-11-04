@@ -16,12 +16,12 @@ class engine_t:
     public lines::publisher_t
 {
     public:
-        typedef boost::ptr_map<
+        typedef boost::ptr_unordered_map<
             const std::string,
             backend_t
         > pool_map_t;
     
-        typedef boost::ptr_map<
+        typedef boost::ptr_unordered_map<
             const std::string,
             driver_t
         > task_map_t;
