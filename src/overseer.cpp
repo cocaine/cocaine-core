@@ -91,10 +91,12 @@ void overseer_t::process(ev::idle& w, int revents) {
                     syslog(LOG_ERR, "worker [%s]: '%s' invocation failed - %s", 
                         id().c_str(), method.c_str(), e.what());
                     
-                    Json::FastWriter writer;
-                    std::string response(writer.write(helpers::make_json("error", e.what())));
-
-                    respond(response.data(), response.size());
+                    boost::this_thread::interruption_point();
+                    
+                    m_messages.send_multi(
+                        boost::make_tuple(
+                            ERROR,
+                            std::string(e.what())));
                 }
                     
                 boost::this_thread::interruption_point();

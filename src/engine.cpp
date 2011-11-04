@@ -296,7 +296,16 @@ void engine_t::process(ev::idle& w, int revents) {
 
                     break;
                 }
-              
+             
+                case ERROR: {
+                    std::string message;
+
+                    m_messages.recv(message);
+                    worker->second->queue().front()->abort(deferred_t::app_error, message);
+
+                    break;
+                }
+
                 case CHOKE: {
                     // TODO: Steal a task from the busiest worker
                     worker->second->queue().pop();
