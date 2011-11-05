@@ -301,7 +301,7 @@ void engine_t::process(ev::idle& w, int revents) {
                     std::string message;
 
                     m_messages.recv(message);
-                    worker->second->queue().front()->abort(deferred_t::app_error, message);
+                    worker->second->queue().front()->abort(application_error, message);
 
                     break;
                 }

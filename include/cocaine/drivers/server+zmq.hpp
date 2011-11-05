@@ -9,7 +9,7 @@ namespace cocaine { namespace engine { namespace drivers {
 class zmq_server_t;
 
 class zmq_response_t:
-    public lines::deferred_t
+    public deferred_t
 {
     public:
         zmq_response_t(zmq_server_t* server, const lines::route_t& route);
@@ -17,7 +17,7 @@ class zmq_response_t:
     public:
         virtual void enqueue();
         virtual void respond(zmq::message_t& chunk);
-        virtual void abort(error_code code, const std::string& error = "");
+        virtual void abort(error_code code, const std::string& error);
 
     public:
         const lines::route_t& route();

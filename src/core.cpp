@@ -166,7 +166,7 @@ void core_t::process(ev::idle& w, int revents) {
                 }
 
                 respond(route, dispatch(root));
-            } catch(const std::exception& e) {
+            } catch(const std::runtime_error& e) {
                 respond(route, helpers::make_json("error", e.what()));
             }
         } else {

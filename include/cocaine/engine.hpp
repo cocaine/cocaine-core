@@ -10,6 +10,14 @@
 
 namespace cocaine { namespace engine {
 
+struct resource_error_t:
+    public std::runtime_error
+{
+    resource_error_t(const char* what):
+        std::runtime_error(what)
+    { }
+};
+
 // Application Engine
 class engine_t:
     public boost::noncopyable
@@ -50,7 +58,7 @@ class engine_t:
 
     public:
         template<class T>
-        void enqueue(boost::shared_ptr<lines::deferred_t> deferred, const T& args) {
+        void enqueue(boost::shared_ptr<deferred_t> deferred, const T& args) {
             pool_map_t::iterator worker;
 
             while(true) {
@@ -77,7 +85,7 @@ class engine_t:
                         boost::tie(worker, boost::tuples::ignore) = m_pool.insert(worker_id, object);
                     } catch(const zmq::error_t& e) {
                         if(e.num() == EMFILE) {
-                            throw std::runtime_error("zeromq is overloaded");
+                            throw resource_error_t("unable to spawn more workers");
                         } else {
                             throw;
                         }
@@ -98,7 +106,7 @@ class engine_t:
 
                     std::for_each(m_tasks.begin(), m_tasks.end(), resume_task());                    
                 } else if(worker->second->queue().size() >= m_pool_cfg.queue_limit) {
-                    throw std::runtime_error("engine is overloaded");
+                    throw resource_error_t("worker queues are full");
                 } else {
                     break;
                 }

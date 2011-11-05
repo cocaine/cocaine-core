@@ -7,7 +7,7 @@
 #include "cocaine/forwards.hpp"
 #include "cocaine/lines.hpp"
 
-namespace cocaine { namespace lines {
+namespace cocaine { namespace engine {
 
 class deferred_t:
     public boost::noncopyable,
@@ -15,36 +15,26 @@ class deferred_t:
     public birth_control_t<deferred_t>
 {
     public:
-        deferred_t(engine::driver_t* parent);
+        deferred_t(driver_t* parent);
 
     public:
         virtual void enqueue();
-
-        virtual void respond(zmq::message_t& chunk) = 0;
-        
-        enum error_code {
-            bad_request      = 400,
-            server_error     = 500,
-            app_error        = 502,
-            capacity_error   = 503,
-            timeout_error    = 504
-        };
-        
-        virtual void abort(error_code code, const std::string& error = "") = 0;
+        virtual void respond(zmq::message_t& chunk) = 0; 
+        virtual void abort(error_code code, const std::string& error) = 0;
         
     protected:
-        engine::driver_t* m_parent;
+        driver_t* m_parent;
 };
 
 class publication_t:
     public deferred_t
 {
     public:
-        publication_t(engine::driver_t* parent);
+        publication_t(driver_t* parent);
 
     public:
         virtual void respond(zmq::message_t& chunk);
-        virtual void abort(error_code, const std::string& error = "");
+        virtual void abort(error_code code, const std::string& error);
 };
 
 }}

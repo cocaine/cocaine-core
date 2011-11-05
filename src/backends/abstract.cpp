@@ -48,7 +48,7 @@ void backend_t::timeout(ev::timer&, int) {
     kill();
 
     if(m_queue.size()) {
-        m_queue.front()->abort(lines::deferred_t::timeout_error);
+        m_queue.front()->abort(timeout_error, "the request has timed out");
         m_queue.pop();
     }
 

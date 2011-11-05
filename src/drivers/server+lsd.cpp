@@ -80,7 +80,7 @@ void lsd_server_t::process(ev::idle&, int) {
             deferred->envelope().copy(&message);
 #endif
         } else {
-            deferred->abort(deferred_t::bad_request, "missing envelope");
+            deferred->abort(request_error, "missing envelope");
             return;
         }
 
@@ -88,16 +88,20 @@ void lsd_server_t::process(ev::idle&, int) {
             // Request
             m_socket.recv(&deferred->request());
         } else {
-            deferred->abort(deferred_t::bad_request, "missing request");
+            deferred->abort(request_error, "missing request");
             return;
         }
 
         try {
             deferred->enqueue();
+        } catch(const resource_error_t& e) {
+            syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
+                m_engine->name().c_str(), m_method.c_str(), e.what());
+            deferred->abort(resource_error, e.what());
         } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
                 m_engine->name().c_str(), m_method.c_str(), e.what());
-            deferred->abort(deferred_t::server_error, e.what());
+            deferred->abort(server_error, e.what());
         }
     } else {
         m_watcher.start(m_socket.fd(), ev::READ);

@@ -15,7 +15,7 @@ class backend_t:
 {
     public:
         typedef std::queue<
-            boost::shared_ptr<lines::deferred_t>
+            boost::shared_ptr<deferred_t>
         > deferred_queue_t;
 
     public:       

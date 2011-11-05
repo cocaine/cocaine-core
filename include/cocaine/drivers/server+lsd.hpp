@@ -15,7 +15,7 @@ class lsd_response_t:
         lsd_response_t(lsd_server_t* server, const lines::route_t& route);
 
     public:        
-        virtual void abort(error_code code, const std::string& error = "");
+        virtual void abort(error_code code, const std::string& error);
         
     public:
         zmq::message_t& envelope();

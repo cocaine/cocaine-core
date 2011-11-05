@@ -227,6 +227,7 @@ class channel_t:
                     message.size());
                 msgpack::object object = unpacked.get();
                 object.convert(&result);
+            // TODO: Figure out the msgpack exception type
             } catch(const std::exception& e) {
                 syslog(LOG_ERR, "net: [%s()] corrupted object - %s", __func__, e.what());
                 return false;

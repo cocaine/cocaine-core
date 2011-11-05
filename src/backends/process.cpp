@@ -2,7 +2,6 @@
 #include "cocaine/engine.hpp"
 #include "cocaine/overseer.hpp"
 
-using namespace cocaine::engine;
 using namespace cocaine::engine::backends;
 
 process_t::process_t(engine_t* engine, const std::string& type, const std::string& args):
@@ -18,7 +17,7 @@ process_t::process_t(engine_t* engine, const std::string& type, const std::strin
 
         exit(EXIT_SUCCESS);
     } else if(m_pid < 0) {
-        throw std::runtime_error("unable to spawn more workers");
+        throw resource_error_t("unable to spawn more workers");
     }
 
     m_child_watcher.set<process_t, &process_t::signal>(this);
