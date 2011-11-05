@@ -147,6 +147,7 @@ Json::Value engine_t::stop() {
             boost::make_tuple(
                 protect(it->first),
                 TERMINATE));
+        // TODO: Figure out a proper shutdown mechanism for child processes
         m_pool.erase(it);
     }
   
