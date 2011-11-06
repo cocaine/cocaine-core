@@ -15,6 +15,7 @@ Json::Value auto_timed_t::info() const {
     Json::Value result(Json::objectValue);
 
     result["type"] = "timed+auto";
+    result["spent"] = m_spent;
     result["interval"] = m_interval;
 
     return result;

@@ -81,6 +81,9 @@ void overseer_t::process(ev::idle& w, int revents) {
                     m_messages.recv(&request);
                 }
 
+                // Audit
+                ev::tstamp start = m_loop.now();
+
                 try {
                     m_source->invoke(
                         boost::bind(&overseer_t::respond, this, _1, _2),
@@ -92,7 +95,7 @@ void overseer_t::process(ev::idle& w, int revents) {
                         id().c_str(), method.c_str(), e.what());
                     
                     boost::this_thread::interruption_point();
-                    
+                   
                     m_messages.send_multi(
                         boost::make_tuple(
                             ERROR,
@@ -101,13 +104,12 @@ void overseer_t::process(ev::idle& w, int revents) {
                     
                 boost::this_thread::interruption_point();
 
-                // NOTE: If there were more request chunks on the pipe, and they weren't fetched
-                // by the app, silently drop them.
-                if(m_messages.more()) {
-                    m_messages.ignore();
-                }
-
-                m_messages.send(CHOKE);
+                ev_now_update(m_loop);
+                
+                m_messages.send_multi(
+                    boost::make_tuple(
+                        CHOKE,
+                        m_loop.now() - start));
                 
                 // XXX: Damn, ZeroMQ, why are you so strange? 
                 m_loop.feed_fd_event(m_messages.fd(), ev::READ);

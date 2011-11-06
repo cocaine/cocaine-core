@@ -17,6 +17,10 @@ void deferred_t::enqueue() {
     );
 }
 
+void deferred_t::audit(ev::tstamp spent) {
+    m_parent->audit(spent);
+}
+
 publication_t::publication_t(driver_t* parent):
     deferred_t(parent)
 { }

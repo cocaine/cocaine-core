@@ -309,7 +309,12 @@ void engine_t::process(ev::idle& w, int revents) {
 
                 case CHOKE: {
                     // TODO: Steal a task from the busiest worker
+                    ev::tstamp spent;
+
+                    m_messages.recv(spent);
+                    worker->second->queue().front()->audit(spent);
                     worker->second->queue().pop();
+                    
                     break;
                 }
 

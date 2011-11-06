@@ -89,6 +89,7 @@ Json::Value zmq_server_t::info() const {
     Json::Value result(Json::objectValue);
 
     result["type"] = "server+zmq";
+    result["spent"] = m_spent;
     result["endpoint"] = m_socket.endpoint();
     result["route"] = m_socket.route();
 

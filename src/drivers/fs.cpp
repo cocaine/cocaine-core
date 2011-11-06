@@ -26,6 +26,7 @@ Json::Value fs_t::info() const {
     Json::Value result(Json::objectValue);
 
     result["type"] = "fs";
+    result["spent"] = m_spent;
     result["path"] = m_path;
 
     return result;

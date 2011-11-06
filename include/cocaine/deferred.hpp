@@ -21,6 +21,8 @@ class deferred_t:
         virtual void respond(zmq::message_t& chunk) = 0; 
         virtual void abort(error_code code, const std::string& error) = 0;
         
+        void audit(ev::tstamp spent);
+
     protected:
         driver_t* m_parent;
 };
