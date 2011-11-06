@@ -1,13 +1,13 @@
-#include "cocaine/deferred.hpp"
 #include "cocaine/drivers/abstract.hpp"
+#include "cocaine/job.hpp"
 
 using namespace cocaine::engine;
 
-deferred_t::deferred_t(driver_t* parent):
+job_t::job_t(driver_t* parent):
     m_parent(parent)
 { }
 
-void deferred_t::enqueue() {
+void job_t::enqueue() {
     m_parent->engine()->enqueue(
         shared_from_this(),
         boost::make_tuple(
@@ -17,12 +17,12 @@ void deferred_t::enqueue() {
     );
 }
 
-void deferred_t::audit(ev::tstamp spent) {
+void job_t::audit(ev::tstamp spent) {
     m_parent->audit(spent);
 }
 
 publication_t::publication_t(driver_t* parent):
-    deferred_t(parent)
+    job_t(parent)
 { }
 
 void publication_t::respond(zmq::message_t& chunk) {

@@ -86,13 +86,13 @@ ADD_LIBRARY(cocaine-core SHARED
     src/backends/process
     src/backends/thread
     src/core
-    src/deferred
     src/downloads
     src/drivers/fs
     src/drivers/server+zmq
     src/drivers/server+lsd
     src/drivers/timed+auto
     src/engine
+    src/job
     src/lines
     src/overseer
     src/registry)

@@ -3,11 +3,11 @@
 using namespace cocaine::engine::drivers;
 using namespace cocaine::lines;
 
-lsd_response_t::lsd_response_t(lsd_server_t* server, const route_t& route):
-    zmq_response_t(server, route)
+lsd_job_t::lsd_job_t(lsd_server_t* server, const route_t& route):
+    zmq_job_t(server, route)
 { }
 
-void lsd_response_t::abort(error_code code, const std::string& error) {
+void lsd_job_t::abort(error_code code, const std::string& error) {
     zmq::message_t null;
 
     Json::Reader reader(Json::Features::strictMode());
@@ -31,7 +31,7 @@ void lsd_response_t::abort(error_code code, const std::string& error) {
     static_cast<lsd_server_t*>(m_parent)->respond(this, null);
 }
 
-zmq::message_t& lsd_response_t::envelope() {
+zmq::message_t& lsd_job_t::envelope() {
     return m_envelope;
 }
 
@@ -71,38 +71,38 @@ void lsd_server_t::process(ev::idle&, int) {
                 message.size()));
         }
 
-        boost::shared_ptr<lsd_response_t> deferred(new lsd_response_t(this, route));
+        boost::shared_ptr<lsd_job_t> job(new lsd_job_t(this, route));
 
         if(m_socket.more()) {
             // LSD envelope
 #if ZMQ_VERSION < 30000
-            m_socket.recv(&deferred->envelope());
+            m_socket.recv(&job->envelope());
 #else
-            deferred->envelope().copy(&message);
+            job->envelope().copy(&message);
 #endif
         } else {
-            deferred->abort(request_error, "missing envelope");
+            job->abort(request_error, "missing envelope");
             return;
         }
 
         if(m_socket.more()) {
             // Request
-            m_socket.recv(&deferred->request());
+            m_socket.recv(&job->request());
         } else {
-            deferred->abort(request_error, "missing request");
+            job->abort(request_error, "missing request");
             return;
         }
 
         try {
-            deferred->enqueue();
+            job->enqueue();
         } catch(const resource_error_t& e) {
             syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
                 m_engine->name().c_str(), m_method.c_str(), e.what());
-            deferred->abort(resource_error, e.what());
+            job->abort(resource_error, e.what());
         } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
                 m_engine->name().c_str(), m_method.c_str(), e.what());
-            deferred->abort(server_error, e.what());
+            job->abort(server_error, e.what());
         }
     } else {
         m_watcher.start(m_socket.fd(), ev::READ);
@@ -110,10 +110,10 @@ void lsd_server_t::process(ev::idle&, int) {
     }
 }
 
-void lsd_server_t::respond(zmq_response_t* response, 
+void lsd_server_t::respond(zmq_job_t* job, 
                            zmq::message_t& chunk)
 {
-    const route_t& route(response->route());
+    const route_t& route(job->route());
     zmq::message_t message;
     
     // Send the identity
@@ -133,7 +133,7 @@ void lsd_server_t::respond(zmq_response_t* response,
     m_socket.send(message, ZMQ_SNDMORE);
 #endif
 
-    message.copy(&static_cast<lsd_response_t*>(response)->envelope());
+    message.copy(&static_cast<lsd_job_t*>(job)->envelope());
     
     // Send the response
     if(chunk.size()) {

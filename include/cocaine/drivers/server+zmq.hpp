@@ -1,18 +1,18 @@
 #ifndef COCAINE_DRIVERS_ZMQ_SERVER_HPP
 #define COCAINE_DRIVERS_ZMQ_SERVER_HPP
 
-#include "cocaine/deferred.hpp"
 #include "cocaine/drivers/abstract.hpp"
+#include "cocaine/job.hpp"
 
 namespace cocaine { namespace engine { namespace drivers {
 
 class zmq_server_t;
 
-class zmq_response_t:
-    public deferred_t
+class zmq_job_t:
+    public job_t
 {
     public:
-        zmq_response_t(zmq_server_t* server, const lines::route_t& route);
+        zmq_job_t(zmq_server_t* server, const lines::route_t& route);
 
         virtual void enqueue();
         virtual void respond(zmq::message_t& chunk);
@@ -44,10 +44,11 @@ class zmq_server_t:
         void operator()(ev::io&, int);
         
         virtual void process(ev::idle&, int);
-        virtual void respond(zmq_response_t* response, zmq::message_t& chunk);
+        virtual void respond(zmq_job_t* job, zmq::message_t& chunk);
 
     protected:
         lines::socket_t m_socket;
+
         ev::io m_watcher; 
         ev::idle m_processor;
 };

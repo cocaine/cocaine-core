@@ -291,8 +291,8 @@ Json::Value core_t::info() const {
         result["apps"][it->first] = it->second->info();
     }
 
-    result["events"]["pending"] = deferred_t::objects_alive;
-    result["events"]["processed"] = deferred_t::objects_created;
+    result["jobs"]["pending"] = job_t::objects_alive;
+    result["jobs"]["done"] = job_t::objects_created;
     
     result["sockets"] = socket_t::objects_alive;
     result["workers"] = backend_t::objects_alive;

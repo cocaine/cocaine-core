@@ -197,7 +197,7 @@ void engine_t::reap(unique_id_t::reference worker_id) {
 
     if(worker != m_pool.end()) {
         if(!worker->second->queue().empty()) {
-            syslog(LOG_DEBUG, "engine [%s]: requeueing deferreds from a dead worker",
+            syslog(LOG_DEBUG, "engine [%s]: requeueing jobs from a dead worker",
                 m_app_cfg.name.c_str());
 
             pool_map_t::auto_type corpse(m_pool.release(worker));
@@ -212,7 +212,7 @@ void engine_t::reap(unique_id_t::reference worker_id) {
     }
 }
 
-// Deferred support
+// Pubsub Interface
 // ----------------
 
 void engine_t::publish(const std::string& key, const Json::Value& object) {

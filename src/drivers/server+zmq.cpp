@@ -6,12 +6,12 @@
 using namespace cocaine::engine::drivers;
 using namespace cocaine::lines;
 
-zmq_response_t::zmq_response_t(zmq_server_t* server, const route_t& route):
-    deferred_t(server),
+zmq_job_t::zmq_job_t(zmq_server_t* server, const route_t& route):
+    job_t(server),
     m_route(route)
 { }
 
-void zmq_response_t::enqueue() {
+void zmq_job_t::enqueue() {
     zmq::message_t request;
 
     request.copy(&m_request);
@@ -24,11 +24,11 @@ void zmq_response_t::enqueue() {
             boost::ref(request)));
 }
 
-void zmq_response_t::respond(zmq::message_t& chunk) {
+void zmq_job_t::respond(zmq::message_t& chunk) {
     static_cast<zmq_server_t*>(m_parent)->respond(this, chunk);
 }
 
-void zmq_response_t::abort(error_code code, const std::string& error) {
+void zmq_job_t::abort(error_code code, const std::string& error) {
     Json::Value object(Json::objectValue);
     
     object["code"] = code;
@@ -43,11 +43,11 @@ void zmq_response_t::abort(error_code code, const std::string& error) {
     static_cast<zmq_server_t*>(m_parent)->respond(this, message);
 }
 
-const route_t& zmq_response_t::route() {
+const route_t& zmq_job_t::route() {
     return m_route;
 }
 
-zmq::message_t& zmq_response_t::request() {
+zmq::message_t& zmq_job_t::request() {
     return m_request;
 }
 
@@ -124,29 +124,29 @@ void zmq_server_t::process(ev::idle&, int) {
                 message.size()));
         }
 
-        boost::shared_ptr<zmq_response_t> deferred(new zmq_response_t(this, route));
+        boost::shared_ptr<zmq_job_t> job(new zmq_job_t(this, route));
 
         if(m_socket.more()) {
 #if ZMQ_VERSION < 30000
-            m_socket.recv(&deferred->request());
+            m_socket.recv(&job->request());
 #else
-            deferred->request().copy(&message);
+            job->request().copy(&message);
 #endif
         } else {
-            deferred->abort(request_error, "missing request");
+            job->abort(request_error, "missing request");
             return;
         }
 
         try {
-            deferred->enqueue();
+            job->enqueue();
         } catch(const resource_error_t& e) {
             syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
                 m_engine->name().c_str(), m_method.c_str(), e.what());
-            deferred->abort(resource_error, e.what());
+            job->abort(resource_error, e.what());
         } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
                 m_engine->name().c_str(), m_method.c_str(), e.what());
-            deferred->abort(server_error, e.what());
+            job->abort(server_error, e.what());
         }
     } else {
         m_watcher.start(m_socket.fd(), ev::READ);
@@ -154,8 +154,8 @@ void zmq_server_t::process(ev::idle&, int) {
     }
 }
 
-void zmq_server_t::respond(zmq_response_t* response, zmq::message_t& chunk) {
-    const route_t& route(response->route());
+void zmq_server_t::respond(zmq_job_t* job, zmq::message_t& chunk) {
+    const route_t& route(job->route());
     zmq::message_t message;
     
     // Send the identity

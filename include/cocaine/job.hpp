@@ -1,5 +1,5 @@
-#ifndef COCAINE_DEFERRED_HPP
-#define COCAINE_DEFERRED_HPP
+#ifndef COCAINE_JOB_HPP
+#define COCAINE_JOB_HPP
 
 #include <boost/enable_shared_from_this.hpp>
 
@@ -9,13 +9,13 @@
 
 namespace cocaine { namespace engine {
 
-class deferred_t:
+class job_t:
     public boost::noncopyable,
-    public boost::enable_shared_from_this<deferred_t>,
-    public birth_control_t<deferred_t>
+    public boost::enable_shared_from_this<job_t>,
+    public birth_control_t<job_t>
 {
     public:
-        deferred_t(driver_t* parent);
+        job_t(driver_t* parent);
 
         virtual void enqueue();
         virtual void respond(zmq::message_t& chunk) = 0; 
@@ -28,7 +28,7 @@ class deferred_t:
 };
 
 class publication_t:
-    public deferred_t
+    public job_t
 {
     public:
         publication_t(driver_t* parent);

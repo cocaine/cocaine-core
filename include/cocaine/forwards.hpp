@@ -3,12 +3,6 @@
 
 namespace cocaine {
     namespace engine {
-        class backend_t;
-        class deferred_t;
-        class driver_t;
-        
-        class engine_t;
-        
         enum error_code {
             request_error     = 400,
             server_error      = 500,
@@ -17,6 +11,10 @@ namespace cocaine {
             timeout_error     = 504
         };
         
+        class backend_t;
+        class driver_t;
+        class engine_t;
+        class job_t;
         class overseer_t;
     }
 

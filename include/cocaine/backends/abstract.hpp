@@ -15,8 +15,8 @@ class backend_t:
 {
     public:
         typedef std::queue<
-            boost::shared_ptr<deferred_t>
-        > deferred_queue_t;
+            boost::shared_ptr<job_t>
+        > job_queue_t;
 
     public:       
         backend_t(engine_t* engine);
@@ -27,8 +27,8 @@ class backend_t:
     public:
         bool active() const;
 
-        deferred_queue_t& queue();
-        const deferred_queue_t& queue() const;
+        job_queue_t& queue();
+        const job_queue_t& queue() const;
 
     protected:
         virtual void kill() = 0;
@@ -43,7 +43,7 @@ class backend_t:
         bool m_active;
         ev::timer m_heartbeat;
 
-        deferred_queue_t m_queue;
+        job_queue_t m_queue;
 };
 
 }}

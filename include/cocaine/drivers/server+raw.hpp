@@ -1,7 +1,6 @@
 #ifndef COCAINE_DRIVERS_RAW_SERVER_HPP
 #define COCAINE_DRIVERS_RAW_SERVER_HPP
 
-#include "cocaine/deferred.hpp"
 #include "cocaine/drivers/abstract.hpp"
 
 namespace cocaine { namespace engine { namespace drivers {

@@ -3,9 +3,9 @@
 
 #include "cocaine/backends.hpp"
 #include "cocaine/common.hpp"
-#include "cocaine/deferred.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/helpers/tuples.hpp"
+#include "cocaine/job.hpp"
 #include "cocaine/lines.hpp"
 
 namespace cocaine { namespace engine {
@@ -57,7 +57,7 @@ class engine_t:
         void reap(unique_id_t::reference worker_id);
 
         template<class T>
-        void enqueue(boost::shared_ptr<deferred_t> deferred, const T& args) {
+        void enqueue(boost::shared_ptr<job_t> job, const T& args) {
             pool_map_t::iterator worker;
 
             while(true) {
@@ -117,7 +117,7 @@ class engine_t:
                         lines::protect(worker->second->id())),
                     args));
 
-            worker->second->queue().push(deferred);
+            worker->second->queue().push(job);
         
             // XXX: Damn, ZeroMQ, why are you so strange? 
             ev::get_default_loop().feed_fd_event(m_messages.fd(), ev::READ);
