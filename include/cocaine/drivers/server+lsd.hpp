@@ -14,7 +14,6 @@ class lsd_response_t:
     public:
         lsd_response_t(lsd_server_t* server, const lines::route_t& route);
 
-    public:        
         virtual void abort(error_code code, const std::string& error);
         
     public:
@@ -32,7 +31,6 @@ class lsd_server_t:
                      const std::string& method, 
                      const Json::Value& args);
 
-    public:
         // Driver interface
         virtual Json::Value info() const;
 

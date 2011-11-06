@@ -18,9 +18,9 @@ class signatures_t:
                     size_t message_size,
                     const unsigned char* signature,
                     size_t signature_size,
-                    const std::string& token);
+                    const std::string& username);
 
-        // std::string sign(const std::string& message, const std::string& token);
+        // std::string sign(const std::string& message, const std::string& username);
 
     private:
         EVP_MD_CTX* m_context;

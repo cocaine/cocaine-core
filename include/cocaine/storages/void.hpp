@@ -9,14 +9,14 @@ class void_storage_t:
     public storage_t
 {
     public:
-        void put(const std::string& ns, const std::string& key, const Json::Value& value) { }
-        bool exists(const std::string& ns, const std::string& key) { return false; }
+        virtual void put(const std::string& ns, const std::string& key, const Json::Value& value) { }
+        virtual bool exists(const std::string& ns, const std::string& key) { return false; }
 
-        Json::Value get(const std::string& ns, const std::string& key) { return Json::Value(); }
-        Json::Value all(const std::string& ns) { return Json::Value(); }
+        virtual Json::Value get(const std::string& ns, const std::string& key) { return Json::Value(); }
+        virtual Json::Value all(const std::string& ns) { return Json::Value(); }
 
-        void remove(const std::string& ns, const std::string& key) { }
-        void purge(const std::string& ns) { }
+        virtual void remove(const std::string& ns, const std::string& key) { }
+        virtual void purge(const std::string& ns) { }
 };
 
 }}}

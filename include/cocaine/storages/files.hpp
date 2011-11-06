@@ -14,7 +14,6 @@ class file_storage_t:
     public:
         file_storage_t();
 
-    public:
         virtual void put(const std::string& ns, const std::string& key, const Json::Value& value);
         virtual bool exists(const std::string& ns, const std::string& key);
 

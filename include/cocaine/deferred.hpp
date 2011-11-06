@@ -17,7 +17,6 @@ class deferred_t:
     public:
         deferred_t(driver_t* parent);
 
-    public:
         virtual void enqueue();
         virtual void respond(zmq::message_t& chunk) = 0; 
         virtual void abort(error_code code, const std::string& error) = 0;
@@ -32,7 +31,6 @@ class publication_t:
     public:
         publication_t(driver_t* parent);
 
-    public:
         virtual void respond(zmq::message_t& chunk);
         virtual void abort(error_code code, const std::string& error);
 };

@@ -8,8 +8,6 @@
 #include "cocaine/helpers/pid_file.hpp"
 
 using namespace cocaine;
-using namespace cocaine::core;
-using namespace cocaine::helpers;
 
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
@@ -110,7 +108,7 @@ int main(int argc, char* argv[]) {
     syslog(LOG_NOTICE, "main: blow!");
 
     // Pid file holder
-    std::auto_ptr<pid_file_t> pidfile;
+    std::auto_ptr<helpers::pid_file_t> pidfile;
 
     // Daemonizing, if needed
     if(vm.count("daemonize")) {
@@ -120,7 +118,7 @@ int main(int argc, char* argv[]) {
         }
 
         try {
-            pidfile.reset(new pid_file_t(vm["pidfile"].as<fs::path>()));
+            pidfile.reset(new helpers::pid_file_t(vm["pidfile"].as<fs::path>()));
         } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "main: %s", e.what());
             return EXIT_FAILURE;
@@ -128,11 +126,11 @@ int main(int argc, char* argv[]) {
     }
     
     // Cocaine core
-    std::auto_ptr<core_t> core;
+    std::auto_ptr<core::core_t> core;
 
     // Initializing the core
     try {
-        core.reset(new core_t());
+        core.reset(new core::core_t());
     } catch(const std::runtime_error& e) {
         syslog(LOG_ERR, "main: runtime error - %s", e.what());
         return EXIT_FAILURE;

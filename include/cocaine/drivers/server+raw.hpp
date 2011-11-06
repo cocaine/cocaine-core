@@ -15,7 +15,6 @@ class raw_server_t:
                      const Json::Value& args);
         virtual ~raw_server_t();
 
-    public:
         // Driver interface
         virtual void suspend();
         virtual void resume();

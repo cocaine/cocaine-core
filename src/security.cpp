@@ -61,9 +61,9 @@ signatures_t::~signatures_t() {
 }
 
 /* XXX: Gotta invent something sophisticated here
-std::string signatures_t::sign(const std::string& message, const std::string& token)
+std::string signatures_t::sign(const std::string& message, const std::string& username)
 {
-    key_map_t::const_iterator it = m_private_keys.find(token);
+    key_map_t::const_iterator it = m_private_keys.find(username);
 
     if(it == m_private_keys.end()) {
         throw std::runtime_error("unauthorized user");
@@ -85,9 +85,9 @@ void signatures_t::verify(const char* message,
                           size_t message_size, 
                           const unsigned char* signature,
                           size_t signature_size, 
-                          const std::string& token)
+                          const std::string& username)
 {
-    key_map_t::const_iterator it(m_keys.find(token));
+    key_map_t::const_iterator it(m_keys.find(username));
 
     if(it == m_keys.end()) {
         throw std::runtime_error("unauthorized user");

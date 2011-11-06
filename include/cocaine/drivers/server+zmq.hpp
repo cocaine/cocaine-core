@@ -14,7 +14,6 @@ class zmq_response_t:
     public:
         zmq_response_t(zmq_server_t* server, const lines::route_t& route);
 
-    public:
         virtual void enqueue();
         virtual void respond(zmq::message_t& chunk);
         virtual void abort(error_code code, const std::string& error);
@@ -36,7 +35,6 @@ class zmq_server_t:
                      const std::string& method, 
                      const Json::Value& args);
 
-    public:
         // Driver interface
         virtual void suspend();
         virtual void resume();

@@ -13,9 +13,10 @@ class process_t:
                   const std::string& type,
                   const std::string& args);
 
+        void signal(ev::child& w, int revents);
+
     private:
         virtual void kill();
-        void signal(ev::child& w, int revents);
 
     private:
         pid_t m_pid;

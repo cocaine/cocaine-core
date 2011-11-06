@@ -13,7 +13,6 @@ class auto_timed_t:
                      const std::string& method, 
                      const Json::Value& args);
 
-    public:       
         virtual Json::Value info() const;
 
         ev::tstamp reschedule(ev::tstamp now);

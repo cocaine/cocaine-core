@@ -173,7 +173,7 @@ void raw_python_t::compile(const std::string& path, const std::string& code) {
 
 static const source_info_t plugin_info[] = {
     { "python+raw", &raw_python_t::create },
-    { "python+wsgi", &wsgi_python_t::create },
+//  { "python+wsgi", &wsgi_python_t::create },
     { "python+json", &json_python_t::create },
     { NULL, NULL }
 };

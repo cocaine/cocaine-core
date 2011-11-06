@@ -16,10 +16,9 @@ mongo_storage_t::mongo_storage_t() try:
     throw std::runtime_error(e.what());
 }
 
-void mongo_storage_t::put(
-    const std::string& ns,
-    const std::string& key,
-    const Json::Value& value)
+void mongo_storage_t::put(const std::string& ns,
+                          const std::string& key,
+                          const Json::Value& value)
 {
     Json::FastWriter writer;
     Json::Value container(Json::objectValue);

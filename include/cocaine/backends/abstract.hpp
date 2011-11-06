@@ -22,11 +22,11 @@ class backend_t:
         backend_t(engine_t* engine);
         virtual ~backend_t();
 
+        void rearm(float timeout);
+        
     public:
         bool active() const;
 
-        void rearm(float timeout);
-        
         deferred_queue_t& queue();
         const deferred_queue_t& queue() const;
 

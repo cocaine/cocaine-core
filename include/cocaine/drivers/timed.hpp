@@ -18,7 +18,6 @@ class timed_t:
             m_watcher.start();
         }
 
-    public: 
         virtual void suspend() {
             m_watcher.stop();
         }
@@ -42,6 +41,7 @@ class timed_t:
                 deferred->abort(server_error, e.what());
             }
         }
+    
     private:
         static ev::tstamp thunk(ev_periodic* w, ev::tstamp now) {
             return static_cast<T*>(w->data)->reschedule(now);

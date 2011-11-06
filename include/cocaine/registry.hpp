@@ -23,15 +23,15 @@ class registry_t:
             const std::string& args);
 
     private:
+        static boost::shared_ptr<registry_t> g_object;
+    
+    private:
         // Used to instantiate plugin instances
         typedef std::map<const std::string, plugin::factory_fn_t> factory_map_t;
         factory_map_t m_factories;
 
         // Used to dlclose() all the plugins on shutdown
         std::vector<void*> m_plugins;
-
-    private:
-        static boost::shared_ptr<registry_t> g_object;
 };
 
 }}

@@ -13,7 +13,6 @@ class fs_t:
              const std::string& method, 
              const Json::Value& args);
 
-    public:
         virtual void suspend();
         virtual void resume();
         

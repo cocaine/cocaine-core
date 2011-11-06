@@ -56,7 +56,6 @@ class engine_t:
 
         void reap(unique_id_t::reference worker_id);
 
-    public:
         template<class T>
         void enqueue(boost::shared_ptr<deferred_t> deferred, const T& args) {
             pool_map_t::iterator worker;

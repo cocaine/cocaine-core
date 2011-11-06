@@ -19,10 +19,9 @@ file_storage_t::file_storage_t():
     m_instance(config_t::get().core.instance)
 { }
 
-void file_storage_t::put(
-    const std::string& ns,
-    const std::string& key,
-    const Json::Value& value) 
+void file_storage_t::put(const std::string& ns,
+                         const std::string& key,
+                         const Json::Value& value) 
 {
     fs::path store_path(m_storage_path / m_instance / ns);
 
@@ -43,11 +42,7 @@ void file_storage_t::put(
         throw std::runtime_error("failed to open " + file_path.string()); 
     }     
 
-    Json::StyledWriter writer;
-    Json::Value container;
-    
-    container["object"] = value;
-    std::string json(writer.write(container));
+    std::string json(Json::StyledWriter().write(make_json("object", value)));
     
     stream << json;
     stream.close();

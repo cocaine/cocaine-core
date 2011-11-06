@@ -8,7 +8,7 @@ namespace cocaine { namespace helpers {
 using namespace boost;
 using namespace boost::tuples;
 
-namespace detail {
+namespace {
     template<class Current, class Next>
     struct chain {
         typedef chain<typename Current::tail_type, Next> chain_type;
@@ -41,9 +41,9 @@ namespace detail {
 }
 
 template<class LT, class RT>
-static typename detail::chain<LT, RT>::type
+static typename chain<LT, RT>::type
 joint_view(const LT& lt, const RT& rt) {
-    return detail::chain<LT, RT>::apply(lt, rt);
+    return chain<LT, RT>::apply(lt, rt);
 }
 
 }}
