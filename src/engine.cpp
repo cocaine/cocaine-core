@@ -162,8 +162,10 @@ namespace {
 Json::Value engine_t::info() const {
     Json::Value results(Json::objectValue);
 
-    results["pool"]["queue"] = static_cast<Json::UInt>(m_queue.size());
+    results["queue"] = static_cast<Json::UInt>(m_queue.size());
+    
     results["pool"]["total"] = static_cast<Json::UInt>(m_pool.size());
+    
     results["pool"]["active"] = static_cast<Json::UInt>(
         std::count_if(
             m_pool.begin(),
