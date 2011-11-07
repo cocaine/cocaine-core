@@ -5,7 +5,7 @@ using namespace cocaine::engine;
 
 backend_t::backend_t(engine_t* engine):
     m_engine(engine),
-    m_state(inactive)
+    m_settled(false)
 {
     syslog(LOG_DEBUG, "worker [%s:%s]: constructing", m_engine->name().c_str(), id().c_str());
 
@@ -25,12 +25,12 @@ backend_t::~backend_t() {
 void backend_t::rearm(float timeout) {
     m_heartbeat.stop();
     m_heartbeat.start(timeout);
-
-    m_state = active;
+    
+    m_settled = true;
 }
 
 state_t backend_t::state() const {
-    return m_state;
+    return m_job ? active : (m_settled ? idle : inactive);
 }
 
 boost::shared_ptr<job_t>& backend_t::job() {

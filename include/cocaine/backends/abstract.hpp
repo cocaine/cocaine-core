@@ -8,6 +8,7 @@ namespace cocaine { namespace engine {
 
 enum state_t {
     inactive,
+    idle,
     active
 };
 
@@ -38,10 +39,10 @@ class backend_t:
         engine_t* m_engine;
 
     private:
-        state_t m_state;
-        boost::shared_ptr<job_t> m_job;
-
+        bool m_settled;
         ev::timer m_heartbeat;
+        
+        boost::shared_ptr<job_t> m_job;
 };
 
 }}

@@ -13,19 +13,7 @@ using namespace cocaine::engine;
 using namespace cocaine::lines;
 
 bool engine_t::idle_worker::operator()(pool_map_t::reference worker) {
-    return (!worker.second->job() && worker.second->state() == active);
-}
-
-bool engine_t::active_worker::operator()(pool_map_t::const_reference worker) {
-    return !!worker.second->job();
-}
-
-void engine_t::suspend_task::operator()(task_map_t::reference task) {
-    task.second->suspend();
-}
-
-void engine_t::resume_task::operator()(task_map_t::reference task) {
-    task.second->resume();
+    return worker.second->state() == idle;
 }
 
 engine_t::engine_t(zmq::context_t& context, const std::string& name):
@@ -141,10 +129,6 @@ Json::Value engine_t::stop() {
     
     m_running = false;
     
-    // NOTE: Suspend all the tasks, but do not delete them yet, as they
-    // might be needed to send out all the outstanding responses
-    std::for_each(m_tasks.begin(), m_tasks.end(), suspend_task());
-
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
         m_messages.send_multi(
             boost::make_tuple(
@@ -153,19 +137,32 @@ Json::Value engine_t::stop() {
         // TODO: Figure out a proper shutdown mechanism for child processes
         m_pool.erase(it);
     }
+
+    while(!m_queue.empty()) {
+        m_queue.front()->abort(server_error, "engine is shutting down");
+        m_queue.pop();
+    }
   
     m_tasks.clear();
+
     m_watcher.stop();
     m_processor.stop();
 
     return info();
 }
 
+namespace {
+    struct active_worker {
+        bool operator()(engine_t::pool_map_t::const_reference worker) {
+            return worker.second->state() == active;
+        }
+    };
+}
+
 Json::Value engine_t::info() const {
     Json::Value results(Json::objectValue);
 
-    results["queue"] = static_cast<Json::UInt>(m_queue.size());
-    
+    results["pool"]["queue"] = static_cast<Json::UInt>(m_queue.size());
     results["pool"]["total"] = static_cast<Json::UInt>(m_pool.size());
     results["pool"]["active"] = static_cast<Json::UInt>(
         std::count_if(
@@ -186,19 +183,19 @@ Json::Value engine_t::info() const {
 void engine_t::reap(unique_id_t::reference worker_id) {
     pool_map_t::iterator worker(m_pool.find(worker_id));
 
-    if(worker->second->job()) {
+    if(worker->second->state() == active) {
+        pool_map_t::auto_type corpse(m_pool.release(worker));
+        
         syslog(LOG_DEBUG, "engine [%s]: requeueing a job from a dead worker",
             m_app_cfg.name.c_str());
         
-        pool_map_t::auto_type corpse(m_pool.release(worker));
-
         corpse->job()->enqueue();
     } else {
         m_pool.erase(worker);
     }
 }
 
-// Pubsub Interface
+// PubSub Interface
 // ----------------
 
 void engine_t::publish(const std::string& key, const Json::Value& object) {
@@ -308,7 +305,7 @@ void engine_t::process(ev::idle& w, int revents) {
                     return;
             }
 
-            if(!worker->second->job() && !m_queue.empty()) {
+            if(worker->second->state() == idle && !m_queue.empty()) {
                 boost::shared_ptr<job_t> job(m_queue.front());
                 m_queue.pop();
 

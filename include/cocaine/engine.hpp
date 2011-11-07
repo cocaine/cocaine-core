@@ -24,7 +24,7 @@ struct resource_error_t:
 class engine_t:
     public boost::noncopyable
 {
-    private:
+    public:
         typedef boost::ptr_unordered_map<
             const std::string,
             backend_t
@@ -42,18 +42,6 @@ class engine_t:
     private: 
         struct idle_worker {
             bool operator()(pool_map_t::reference worker);
-        };
-
-        struct active_worker {
-            bool operator()(pool_map_t::const_reference worker);
-        };
-        
-        struct suspend_task {
-            void operator()(task_map_t::reference task);
-        };
-        
-        struct resume_task {
-            void operator()(task_map_t::reference task);
         };
 
     public:
@@ -77,34 +65,32 @@ class engine_t:
                             lines::protect(worker->second->id())),
                         args));
                 worker->second->job() = job;
-                return;
-            } else if(m_pool.empty() || 
-                (worker == m_pool.end() &&
-                 m_pool.size() < m_pool_cfg.pool_limit))
-            {
-                try {
-                    std::auto_ptr<backend_t> object;
+            } else {
+                if(m_pool.empty() || m_pool.size() < m_pool_cfg.pool_limit) {
+                    try {
+                        std::auto_ptr<backend_t> object;
 
-                    if(m_pool_cfg.backend == "thread") {
-                        object.reset(new backends::thread_t(this, m_app_cfg.type, m_app_cfg.args));
-                    } else if(m_pool_cfg.backend == "process") {
-                        object.reset(new backends::process_t(this, m_app_cfg.type, m_app_cfg.args));
-                    }
+                        if(m_pool_cfg.backend == "thread") {
+                            object.reset(new backends::thread_t(this, m_app_cfg.type, m_app_cfg.args));
+                        } else if(m_pool_cfg.backend == "process") {
+                            object.reset(new backends::process_t(this, m_app_cfg.type, m_app_cfg.args));
+                        }
 
-                    std::string worker_id(object->id());
-                    boost::tie(worker, boost::tuples::ignore) = m_pool.insert(worker_id, object);
-                } catch(const zmq::error_t& e) {
-                    if(e.num() == EMFILE) {
-                        throw resource_error_t("unable to spawn more workers");
-                    } else {
-                        throw;
+                        std::string worker_id(object->id());
+                        boost::tie(worker, boost::tuples::ignore) = m_pool.insert(worker_id, object);
+                    } catch(const zmq::error_t& e) {
+                        if(e.num() == EMFILE) {
+                            throw resource_error_t("unable to spawn more workers");
+                        } else {
+                            throw;
+                        }
                     }
+                } else if(m_queue.size() > m_pool_cfg.queue_limit) {
+                    throw resource_error_t("queue is full");
                 }
-            } else if(m_queue.size() > m_pool_cfg.queue_limit) {
-                throw resource_error_t("queue is full");
-            }
             
-            m_queue.push(job);
+                m_queue.push(job);
+            }
             
             // XXX: Damn, ZeroMQ, why are you so strange? 
             ev::get_default_loop().feed_fd_event(m_messages.fd(), ev::READ);
