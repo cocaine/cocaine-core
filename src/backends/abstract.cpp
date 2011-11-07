@@ -5,7 +5,7 @@ using namespace cocaine::engine;
 
 backend_t::backend_t(engine_t* engine):
     m_engine(engine),
-    m_active(false)
+    m_state(inactive)
 {
     syslog(LOG_DEBUG, "worker [%s:%s]: constructing", m_engine->name().c_str(), id().c_str());
 
@@ -22,23 +22,23 @@ backend_t::~backend_t() {
     }
 }
 
-bool backend_t::active() const {
-    return m_active;
-}
-
 void backend_t::rearm(float timeout) {
     m_heartbeat.stop();
     m_heartbeat.start(timeout);
 
-    m_active = true;
+    m_state = active;
 }
 
-backend_t::job_queue_t& backend_t::queue() {
-    return m_queue;
+state_t backend_t::state() const {
+    return m_state;
 }
 
-const backend_t::job_queue_t& backend_t::queue() const {
-    return m_queue;
+boost::shared_ptr<job_t>& backend_t::job() {
+    return m_job;
+}
+
+const boost::shared_ptr<job_t>& backend_t::job() const {
+    return m_job;
 }
 
 void backend_t::timeout(ev::timer&, int) {
@@ -47,9 +47,9 @@ void backend_t::timeout(ev::timer&, int) {
     
     kill();
 
-    if(m_queue.size()) {
-        m_queue.front()->abort(timeout_error, "the request has timed out");
-        m_queue.pop();
+    if(m_job) {
+        m_job->abort(timeout_error, "the request has timed out");
+        m_job.reset();
     }
 
     m_engine->reap(id());

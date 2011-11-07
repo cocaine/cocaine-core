@@ -12,9 +12,12 @@
 using namespace cocaine::engine;
 using namespace cocaine::lines;
 
-bool engine_t::shortest_queue::operator()(pool_map_t::reference left, pool_map_t::reference right) {
-    return ((left.second->queue().size() < right.second->queue().size()) &&
-             left.second->active());
+bool engine_t::idle_worker::operator()(pool_map_t::reference worker) {
+    return (!worker.second->job() && worker.second->state() == active);
+}
+
+bool engine_t::active_worker::operator()(pool_map_t::const_reference worker) {
+    return !!worker.second->job();
 }
 
 void engine_t::suspend_task::operator()(task_map_t::reference task) {
@@ -158,30 +161,18 @@ Json::Value engine_t::stop() {
     return info();
 }
 
-namespace {
-    struct nonempty_queue {
-        bool operator()(engine_t::pool_map_t::const_reference worker) {
-            return worker.second->queue().size() != 0;
-        }
-    };
-}
-
 Json::Value engine_t::info() const {
     Json::Value results(Json::objectValue);
 
-    results["pool"]["limit"] = m_pool_cfg.pool_limit;
+    results["queue"] = static_cast<Json::UInt>(m_queue.size());
+    
     results["pool"]["total"] = static_cast<Json::UInt>(m_pool.size());
     results["pool"]["active"] = static_cast<Json::UInt>(
         std::count_if(
             m_pool.begin(),
             m_pool.end(),
-            nonempty_queue()
+            active_worker()
         ));
-
-    for(pool_map_t::const_iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
-        results["pool"]["queues"][it->first] = static_cast<Json::UInt>(
-            it->second->queue().size());
-    }
 
     for(task_map_t::const_iterator it = m_tasks.begin(); it != m_tasks.end(); ++it) {
         results["tasks"][it->first] = it->second->info();
@@ -195,20 +186,15 @@ Json::Value engine_t::info() const {
 void engine_t::reap(unique_id_t::reference worker_id) {
     pool_map_t::iterator worker(m_pool.find(worker_id));
 
-    if(worker != m_pool.end()) {
-        if(!worker->second->queue().empty()) {
-            syslog(LOG_DEBUG, "engine [%s]: requeueing jobs from a dead worker",
-                m_app_cfg.name.c_str());
+    if(worker->second->job()) {
+        syslog(LOG_DEBUG, "engine [%s]: requeueing a job from a dead worker",
+            m_app_cfg.name.c_str());
+        
+        pool_map_t::auto_type corpse(m_pool.release(worker));
 
-            pool_map_t::auto_type corpse(m_pool.release(worker));
-            
-            while(!corpse->queue().empty()) {
-                corpse->queue().front()->enqueue();
-                corpse->queue().pop();
-            }
-        } else {
-            m_pool.erase(worker);
-        }
+        corpse->job()->enqueue();
+    } else {
+        m_pool.erase(worker);
     }
 }
 
@@ -293,34 +279,41 @@ void engine_t::process(ev::idle& w, int revents) {
                     zmq::message_t chunk;
 
                     m_messages.recv(&chunk);
-                    worker->second->queue().front()->respond(chunk);
+                    worker->second->job()->respond(chunk);
 
-                    break;
+                    return;
                 }
              
                 case ERROR: {
                     std::string message;
 
                     m_messages.recv(message);
-                    worker->second->queue().front()->abort(application_error, message);
+                    worker->second->job()->abort(application_error, message);
 
-                    break;
+                    return;
                 }
 
                 case CHOKE: {
-                    // TODO: Steal a task from the busiest worker
                     ev::tstamp spent;
 
                     m_messages.recv(spent);
-                    worker->second->queue().front()->audit(spent);
-                    worker->second->queue().pop();
-                    
+                    worker->second->job()->audit(spent);
+                    worker->second->job().reset();
+                   
                     break;
                 }
 
                 case SUICIDE:
                     reap(worker->first);
-                    break;
+                    return;
+            }
+
+            if(!worker->second->job() && !m_queue.empty()) {
+                boost::shared_ptr<job_t> job(m_queue.front());
+                m_queue.pop();
+
+                // NOTE: This will always succeed due to the test above
+                job->enqueue();
             }
         } else {
             syslog(LOG_WARNING, "engine [%s]: dropping messages from a dead worker %s", 
