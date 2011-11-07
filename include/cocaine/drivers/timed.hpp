@@ -18,12 +18,8 @@ class timed_t:
             m_watcher.start();
         }
 
-        virtual void suspend() {
+        ~timed_t() {
             m_watcher.stop();
-        }
-
-        virtual void resume() {
-            m_watcher.start();
         }
 
         void operator()(ev::periodic&, int) {

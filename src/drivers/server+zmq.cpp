@@ -75,14 +75,9 @@ zmq_server_t::zmq_server_t(engine_t* engine, const std::string& method, const Js
     m_processor.start();
 }
 
-void zmq_server_t::suspend() {
+zmq_server_t::~zmq_server_t() {
     m_watcher.stop();
     m_processor.stop();
-}
-
-void zmq_server_t::resume() {
-    m_watcher.start();
-    m_processor.start();
 }
 
 Json::Value zmq_server_t::info() const {

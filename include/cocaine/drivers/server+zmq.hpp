@@ -34,10 +34,9 @@ class zmq_server_t:
         zmq_server_t(engine_t* engine,
                      const std::string& method, 
                      const Json::Value& args);
+        virtual ~zmq_server_t();
 
         // Driver interface
-        virtual void suspend();
-        virtual void resume();
         virtual Json::Value info() const;
         
         // Server interface

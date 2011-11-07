@@ -14,10 +14,6 @@ class raw_server_t:
                      const Json::Value& args);
         virtual ~raw_server_t();
 
-        // Driver interface
-        virtual void suspend();
-        virtual void resume();
-        
         // Server interface
         void operator()(ev::io&, int);
 

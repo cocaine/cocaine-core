@@ -24,8 +24,6 @@ class driver_t:
                 m_engine->name().c_str(), m_method.c_str());
         }
 
-        virtual void suspend() = 0;
-        virtual void resume() = 0;
         virtual Json::Value info() const = 0;
 
         inline void audit(ev::tstamp spent) {
