@@ -291,7 +291,7 @@ void engine_t::process(ev::idle& w, int revents) {
                 }
 
                 case CHOKE: {
-                    ev::tstamp spent;
+                    ev::tstamp spent = 0;
 
                     m_messages.recv(spent);
                     worker->second->job()->audit(spent);
