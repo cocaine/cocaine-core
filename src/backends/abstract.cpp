@@ -22,22 +22,33 @@ backend_t::~backend_t() {
     }
 }
 
-void backend_t::rearm(float timeout) {
-    m_heartbeat.stop();
-    m_heartbeat.start(timeout);
-    
-    m_settled = true;
-}
-
 state_t backend_t::state() const {
     return m_job ? active : (m_settled ? idle : inactive);
 }
 
-boost::shared_ptr<job_t>& backend_t::job() {
-    return m_job;
+void backend_t::rearm() {
+    m_heartbeat.stop();
+
+    if(m_job) {
+        m_heartbeat.start(m_job->timeout());
+    } else {
+        m_heartbeat.start(config_t::get().engine.heartbeat_timeout);
+    }
+    
+    m_settled = true;
 }
 
-const boost::shared_ptr<job_t>& backend_t::job() const {
+void backend_t::assign(boost::shared_ptr<job_t> job) {
+    m_job = job;
+    rearm();
+}
+
+void backend_t::resign() {
+    m_job.reset();
+    rearm();
+}
+
+boost::shared_ptr<job_t> backend_t::job() {
     return m_job;
 }
 

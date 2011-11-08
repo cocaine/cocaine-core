@@ -3,8 +3,10 @@
 
 using namespace cocaine::engine;
 
-job_t::job_t(driver_t* parent):
-    m_parent(parent)
+job_t::job_t(driver_t* parent, float timeout, bool urgent):
+    m_parent(parent),
+    m_timeout(timeout),
+    m_urgent(urgent)
 { }
 
 void job_t::enqueue() {
@@ -19,6 +21,14 @@ void job_t::enqueue() {
 
 void job_t::audit(ev::tstamp spent) {
     m_parent->audit(spent);
+}
+
+float job_t::timeout() const {
+    return m_timeout;
+}
+
+bool job_t::urgent() const {
+    return m_urgent;
 }
 
 publication_t::publication_t(driver_t* parent):

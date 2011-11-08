@@ -1,7 +1,7 @@
 #ifndef COCAINE_ENGINE_HPP
 #define COCAINE_ENGINE_HPP
 
-#include <queue>
+#include <deque>
 
 #include "cocaine/backends.hpp"
 #include "cocaine/common.hpp"
@@ -35,7 +35,7 @@ class engine_t:
             driver_t
         > task_map_t;
 
-        typedef std::queue<
+        typedef std::deque<
             boost::shared_ptr<job_t>
         > job_queue_t;
        
@@ -56,28 +56,28 @@ class engine_t:
 
         template<class T>
         void enqueue(boost::shared_ptr<job_t> job, const T& args) {
-            pool_map_t::iterator worker(std::find_if(m_pool.begin(), m_pool.end(), idle_worker()));
+            pool_map_t::iterator it(std::find_if(m_pool.begin(), m_pool.end(), idle_worker()));
 
-            if(worker != m_pool.end()) {
+            if(it != m_pool.end()) {
                 m_messages.send_multi(
                     helpers::joint_view(
                         boost::make_tuple(
-                            lines::protect(worker->second->id())),
+                            lines::protect(it->second->id())),
                         args));
-                worker->second->job() = job;
+                it->second->assign(job);
             } else {
                 if(m_pool.empty() || m_pool.size() < m_pool_cfg.pool_limit) {
                     try {
-                        std::auto_ptr<backend_t> object;
+                        std::auto_ptr<backend_t> worker;
 
                         if(m_pool_cfg.backend == "thread") {
-                            object.reset(new backends::thread_t(this, m_app_cfg.type, m_app_cfg.args));
+                            worker.reset(new backends::thread_t(this, m_app_cfg.type, m_app_cfg.args));
                         } else if(m_pool_cfg.backend == "process") {
-                            object.reset(new backends::process_t(this, m_app_cfg.type, m_app_cfg.args));
+                            worker.reset(new backends::process_t(this, m_app_cfg.type, m_app_cfg.args));
                         }
 
-                        std::string worker_id(object->id());
-                        boost::tie(worker, boost::tuples::ignore) = m_pool.insert(worker_id, object);
+                        std::string worker_id(worker->id());
+                        m_pool.insert(worker_id, worker);
                     } catch(const zmq::error_t& e) {
                         if(e.num() == EMFILE) {
                             throw resource_error_t("unable to spawn more workers");
@@ -88,8 +88,12 @@ class engine_t:
                 } else if(m_queue.size() > m_pool_cfg.queue_limit) {
                     throw resource_error_t("queue is full");
                 }
-            
-                m_queue.push(job);
+           
+                if(job->urgent()) {
+                   m_queue.push_front(job);
+                } else { 
+                   m_queue.push_back(job);
+                }
             }
             
             // XXX: Damn, ZeroMQ, why are you so strange? 

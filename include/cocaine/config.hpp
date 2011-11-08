@@ -23,7 +23,6 @@ class config_t {
             float suicide_timeout;
             unsigned int pool_limit;
             unsigned int queue_limit;
-            unsigned int spawn_threshold;
         } engine;
 
         struct {

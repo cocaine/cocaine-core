@@ -15,7 +15,9 @@ class job_t:
     public birth_control_t<job_t>
 {
     public:
-        job_t(driver_t* parent);
+        job_t(driver_t* parent, 
+              float timeout = config_t::get().engine.heartbeat_timeout,
+              bool urgent = false);
 
         virtual void enqueue();
         virtual void respond(zmq::message_t& chunk) = 0; 
@@ -23,8 +25,16 @@ class job_t:
         
         void audit(ev::tstamp spent);
 
+    public:
+        float timeout() const;
+        bool urgent() const;
+
     protected:
         driver_t* m_parent;
+
+    private:
+        float m_timeout;
+        bool m_urgent;
 };
 
 class publication_t:

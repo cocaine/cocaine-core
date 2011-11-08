@@ -76,8 +76,6 @@ Json::Value engine_t::start(const Json::Value& manifest) {
         config_t::get().engine.pool_limit).asUInt();
     m_pool_cfg.queue_limit = manifest["engine"].get("queue-limit",
         config_t::get().engine.queue_limit).asUInt();
-    m_pool_cfg.spawn_threshold = manifest["engine"].get("spawn-threshold",
-        config_t::get().engine.spawn_threshold).asUInt();
     
     // Tasks configuration
     // -------------------
@@ -140,7 +138,7 @@ Json::Value engine_t::stop() {
 
     while(!m_queue.empty()) {
         m_queue.front()->abort(server_error, "engine is shutting down");
-        m_queue.pop();
+        m_queue.pop_front();
     }
   
     m_tasks.clear();
@@ -271,7 +269,7 @@ void engine_t::process(ev::idle& w, int revents) {
             // NOTE: Any type of message is suitable to rearm the heartbeat timer
             // so we don't have to do anything special about HEARBEAT messages at all,
             // it's a dummy message to send in the periods of inactivity.
-            worker->second->rearm(m_pool_cfg.heartbeat_timeout);
+            worker->second->rearm();
            
             switch(code) {
                 case CHUNK: {
@@ -297,7 +295,7 @@ void engine_t::process(ev::idle& w, int revents) {
 
                     m_messages.recv(spent);
                     worker->second->job()->audit(spent);
-                    worker->second->job().reset();
+                    worker->second->resign();
                    
                     break;
                 }
@@ -309,7 +307,7 @@ void engine_t::process(ev::idle& w, int revents) {
 
             if(worker->second->state() == idle && !m_queue.empty()) {
                 boost::shared_ptr<job_t> job(m_queue.front());
-                m_queue.pop();
+                m_queue.pop_front();
 
                 // NOTE: This will always succeed due to the test above
                 job->enqueue();

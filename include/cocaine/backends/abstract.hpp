@@ -21,13 +21,14 @@ class backend_t:
         backend_t(engine_t* engine);
         virtual ~backend_t();
 
-        void rearm(float timeout);
-        
-    public:
         state_t state() const;
 
-        boost::shared_ptr<job_t>& job();
-        const boost::shared_ptr<job_t>& job() const;
+        void rearm();
+        
+        void assign(boost::shared_ptr<job_t> job);
+        void resign();
+
+        boost::shared_ptr<job_t> job();
 
     protected:
         virtual void kill() = 0;
@@ -41,7 +42,6 @@ class backend_t:
     private:
         bool m_settled;
         ev::timer m_heartbeat;
-        
         boost::shared_ptr<job_t> m_job;
 };
 
