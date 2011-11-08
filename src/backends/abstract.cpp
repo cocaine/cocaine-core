@@ -22,10 +22,6 @@ backend_t::~backend_t() {
     }
 }
 
-state_t backend_t::state() const {
-    return m_job ? active : (m_settled ? idle : inactive);
-}
-
 void backend_t::rearm() {
     m_heartbeat.stop();
 
@@ -46,6 +42,10 @@ void backend_t::assign(boost::shared_ptr<job_t> job) {
 void backend_t::resign() {
     m_job.reset();
     rearm();
+}
+
+state_t backend_t::state() const {
+    return m_job ? active : (m_settled ? idle : inactive);
 }
 
 boost::shared_ptr<job_t> backend_t::job() {

@@ -21,13 +21,12 @@ class backend_t:
         backend_t(engine_t* engine);
         virtual ~backend_t();
 
-        state_t state() const;
-
         void rearm();
-        
         void assign(boost::shared_ptr<job_t> job);
         void resign();
 
+    public:
+        state_t state() const;
         boost::shared_ptr<job_t> job();
 
     protected:
