@@ -44,8 +44,8 @@ v Engine: dynamic worker pools
 x Storage: proper inter-process locking in file storage [dropped storage support in apps]
 
 Version: 0.6
-* Engine: HTTP driver
-* Engine: LSD driver
+> Engine: HTTP driver
+> Engine: LSD driver
 * JS: adapt portions of node.js or some other CommonJS implementation
 * Networking: authentication replay protection (timestamps)
 * Networking: encrypted responses
