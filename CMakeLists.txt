@@ -123,8 +123,6 @@ TARGET_LINK_LIBRARIES(cocained
     boost_program_options-mt)
 
 ADD_SUBDIRECTORY(plugins)
-# ADD_SUBDIRECTORY(clients)
-# ADD_SUBDIRECTORY(toolset)
 
 INSTALL(
     TARGETS

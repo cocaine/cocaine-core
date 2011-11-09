@@ -8,12 +8,6 @@ class Tail(object):
         self.inode = 0
 
     def __iter__(self):
-        return self
-
-    def parse(self, lines):
-        raise NotImplementedError("You have to provide the parser implementation")
-
-    def next(self):
         file = open(self.filename, 'r')
         inode = os.fstat(file.fileno()).st_ino
         
@@ -25,4 +19,7 @@ class Tail(object):
         result = self.parse(line for line in file)
         self.position = file.tell()
 
-        return result
+        yield result
+
+    def parse(self, lines):
+        raise NotImplementedError("You have to provide the parser implementation")
