@@ -269,7 +269,7 @@ void engine_t::process(ev::idle& w, int revents) {
             // NOTE: Any type of message is suitable to rearm the heartbeat timer
             // so we don't have to do anything special about HEARBEAT messages at all,
             // it's a dummy message to send in the periods of inactivity.
-            worker->second->rearm();
+            worker->second->rearm(m_pool_cfg.heartbeat_timeout);
            
             switch(code) {
                 case CHUNK: {
@@ -294,8 +294,8 @@ void engine_t::process(ev::idle& w, int revents) {
                     ev::tstamp spent = 0;
 
                     m_messages.recv(spent);
-                    worker->second->job()->audit(spent);
-                    worker->second->resign();
+                    worker->second->job()->parent()->audit(spent);
+                    worker->second->job().reset();
                    
                     break;
                 }

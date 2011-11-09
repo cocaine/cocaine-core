@@ -40,23 +40,6 @@ class perl_t:
             const void* request,
             size_t size)
         {
-            std::cout << "method: " << method << std::endl;
-
-            if (request && size) {
-                try {
-                    std::string tmp_str = std::string((char*)request, size);
-                    std::cout << "request: " << tmp_str << std::endl;
-                }
-                catch (...) {
-                    std::cout << "not string request" << std::endl;
-                }
-            }
-            else {
-                std::cout << "request: NULL" << std::endl;
-            }
-            
-            std::cout << "request_size: " << size << std::endl;
-
             std::string input;
             
             if (request && size > 0) {
@@ -135,7 +118,7 @@ class perl_t:
 };
 
 static const source_info_t plugin_info[] = {
-    { "perl", &perl_t::create },
+    { "perl+raw", &perl_t::create },
     { NULL, NULL }
 };
 

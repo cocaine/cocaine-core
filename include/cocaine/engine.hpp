@@ -64,7 +64,8 @@ class engine_t:
                         boost::make_tuple(
                             lines::protect(it->second->id())),
                         args));
-                it->second->assign(job);
+                it->second->job() = job;
+                it->second->rearm(m_pool_cfg.heartbeat_timeout);
             } else {
                 if(m_pool.empty() || m_pool.size() < m_pool_cfg.pool_limit) {
                     try {
@@ -130,6 +131,7 @@ class engine_t:
         ev::idle m_processor;
 
         pool_map_t m_pool;
+        job_queue_t m_queue;
         
         // The application
         struct {
@@ -137,8 +139,6 @@ class engine_t:
         } m_app_cfg;
        
         task_map_t m_tasks;
-
-        job_queue_t m_queue;
 };
 
 }}
