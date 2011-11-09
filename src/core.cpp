@@ -39,7 +39,8 @@ core_t::core_t():
     m_watcher.set<core_t, &core_t::request>(this);
     m_watcher.start(m_server.fd(), EV_READ);
     m_processor.set<core_t, &core_t::process>(this);
-
+    m_processor.start();
+        
     // Signal watchers
     m_sigint.set<core_t, &core_t::terminate>(this);
     m_sigint.start(SIGINT);

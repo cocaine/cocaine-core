@@ -19,7 +19,7 @@ class zmq_job_t:
         virtual void abort(error_code code, const std::string& error);
 
     public:
-        const lines::route_t& route();
+        const lines::route_t& route() const;
         zmq::message_t& request();
 
     protected:

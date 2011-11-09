@@ -43,7 +43,7 @@ void zmq_job_t::abort(error_code code, const std::string& error) {
     static_cast<zmq_server_t*>(m_parent)->respond(this, message);
 }
 
-const route_t& zmq_job_t::route() {
+const route_t& zmq_job_t::route() const {
     return m_route;
 }
 

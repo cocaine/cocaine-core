@@ -303,6 +303,13 @@ void engine_t::process(ev::idle& w, int revents) {
                 case SUICIDE:
                     reap(worker->first);
                     return;
+
+                case TERMINATE:
+                    syslog(LOG_ERR, "engine [%s]: the application seems to be broken",
+                        m_app_cfg.name.c_str());
+                    
+                    stop();
+                    return;
             }
 
             if(worker->second->state() == idle && !m_queue.empty()) {

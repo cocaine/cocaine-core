@@ -96,9 +96,6 @@ class engine_t:
                    m_queue.push_back(job);
                 }
             }
-            
-            // XXX: Damn, ZeroMQ, why are you so strange? 
-            ev::get_default_loop().feed_fd_event(m_messages.fd(), ev::READ);
         }
 
         // NOTE: It is intentional that all the publishing drivers do that via

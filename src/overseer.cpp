@@ -46,11 +46,11 @@ void overseer_t::operator()(const std::string& type,
                             const std::string& args) 
 {
     try {
-        m_source = core::registry_t::instance()->create(type, args);
+        m_app = core::registry_t::instance()->create(type, args);
     } catch(const std::runtime_error& e) {
-        syslog(LOG_DEBUG, "worker [%s]: unable to instantiate the source - %s", 
+        syslog(LOG_ERR, "worker [%s]: unable to instantiate the app - %s", 
             id().c_str(), e.what());
-        m_messages.send(SUICIDE);
+        m_messages.send(TERMINATE);
         return;
     }
         
@@ -85,7 +85,7 @@ void overseer_t::process(ev::idle& w, int revents) {
                 ev::tstamp start = m_loop.now();
 
                 try {
-                    m_source->invoke(
+                    m_app->invoke(
                         boost::bind(&overseer_t::respond, this, _1, _2),
                         method, 
                         request.data(), 
@@ -110,9 +110,6 @@ void overseer_t::process(ev::idle& w, int revents) {
                     boost::make_tuple(
                         CHOKE,
                         m_loop.now() - start));
-                
-                // XXX: Damn, ZeroMQ, why are you so strange? 
-                m_loop.feed_fd_event(m_messages.fd(), ev::READ);
                 
                 m_suicide_timer.stop();
                 m_suicide_timer.start(config_t::get().engine.suicide_timeout);

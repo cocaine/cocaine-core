@@ -46,8 +46,8 @@ class overseer_t:
         ev::idle m_processor;
         ev::timer m_suicide_timer, m_heartbeat_timer;
 
-        // Data source
-        boost::shared_ptr<plugin::source_t> m_source;
+        // Application instance
+        boost::shared_ptr<plugin::source_t> m_app;
 };
 
 }}
