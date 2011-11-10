@@ -6,7 +6,7 @@
 namespace cocaine { namespace helpers {
 
 template<class T>
-Json::Value make_json(const std::string& key, const T& value) {
+inline Json::Value make_json(const std::string& key, const T& value) {
     Json::Value object(Json::objectValue);
     
     object[key] = value;

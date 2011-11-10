@@ -42,7 +42,7 @@ namespace {
 
 template<class LT, class RT>
 static typename chain<LT, RT>::type
-joint_view(const LT& lt, const RT& rt) {
+inline joint_view(const LT& lt, const RT& rt) {
     return chain<LT, RT>::apply(lt, rt);
 }
 

@@ -18,9 +18,8 @@ class registry_t:
 
         bool exists(const std::string& type);
 
-        boost::shared_ptr<plugin::source_t> create(
-            const std::string& type,
-            const std::string& args);
+        boost::shared_ptr<plugin::source_t> create(const std::string& type,
+                                                   const std::string& args);
 
     private:
         static boost::shared_ptr<registry_t> g_object;

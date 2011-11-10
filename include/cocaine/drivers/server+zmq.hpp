@@ -19,7 +19,6 @@ class zmq_job_t:
         virtual void send(zmq::message_t& chunk);
         virtual void send(error_code code, const std::string& error);
 
-    public:
         const lines::route_t& route() const;
         zmq::message_t& request();
 

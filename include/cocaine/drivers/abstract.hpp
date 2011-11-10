@@ -24,15 +24,19 @@ class driver_t:
                 m_engine->name().c_str(), m_method.c_str());
         }
 
-        virtual Json::Value info() const = 0;
-
         inline void audit(ev::tstamp spent) {
             m_spent += spent;
         }
 
-    public:
-        engine_t* engine() { return m_engine; }
-        const std::string& method() const { return m_method; }
+        inline engine_t* engine() { 
+            return m_engine; 
+        }
+
+        inline const std::string& method() const { 
+            return m_method; 
+        }
+        
+        virtual Json::Value info() const = 0;
 
     protected:
         engine_t* m_engine;

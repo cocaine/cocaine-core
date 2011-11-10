@@ -73,7 +73,7 @@ namespace cocaine { namespace helpers {
             }
 
         private:
-            void destroy() {
+            inline void destroy() {
                 if(m_object) {
                     D(m_object);
                 }

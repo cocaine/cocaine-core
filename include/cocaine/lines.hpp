@@ -89,8 +89,13 @@ class socket_t:
     public:
         int fd();
 
-        std::string endpoint() const { return m_endpoint; }
-        std::string route() const { return m_route; }
+        inline std::string endpoint() const { 
+            return m_endpoint; 
+        }
+
+        inline std::string route() const { 
+            return m_route; 
+        }
 
         bool pending(int event = ZMQ_POLLIN);
         bool more();
@@ -107,12 +112,12 @@ class socket_t:
 template<class T> class raw;
 
 template<class T>
-static raw<T> protect(T& object) {
+inline static raw<T> protect(T& object) {
     return raw<T>(object);
 }
 
 template<class T>
-static raw<const T> protect(const T& object) {
+inline static raw<const T> protect(const T& object) {
     return raw<const T>(object);
 }
 
@@ -122,12 +127,12 @@ template<> class raw<std::string> {
             m_object(object)
         { }
 
-        void pack(zmq::message_t& message) const {
+        inline void pack(zmq::message_t& message) const {
             message.rebuild(m_object.length());
             memcpy(message.data(), m_object.data(), m_object.length());
         }
 
-        bool unpack(/* const */ zmq::message_t& message) {
+        inline bool unpack(/* const */ zmq::message_t& message) {
             m_object.assign(
                 static_cast<const char*>(message.data()),
                 message.size());
@@ -144,7 +149,7 @@ template<> class raw<const std::string> {
             m_object(object)
         { }
 
-        void pack(zmq::message_t& message) const {
+        inline void pack(zmq::message_t& message) const {
             message.rebuild(m_object.length());
             memcpy(message.data(), m_object.data(), m_object.length());
         }
@@ -165,15 +170,6 @@ class channel_t:
         using socket_t::send;
         using socket_t::recv;
 
-        // Drops the current message
-        void ignore() {
-            zmq::message_t null;
-
-            while(more()) {
-                recv(&null);
-            }
-        }
-
         // Packs and sends a single object
         template<class T>
         bool send(const T& value, int flags = 0) {
@@ -189,24 +185,24 @@ class channel_t:
         }
 
         template<class T>
-        bool send(const raw<T>& object, int flags) {
+        inline bool send(const raw<T>& object, int flags) {
             zmq::message_t message;
             object.pack(message);
             return send(message, flags);
         }
 
         // Packs and sends a tuple
-        bool send_multi(const null_type&, int flags = 0) {
+        inline bool send_multi(const null_type&, int flags = 0) {
             return true;
         }
 
         template<class Head>
-        bool send_multi(const cons<Head, null_type>& o, int flags = 0) {
+        inline bool send_multi(const cons<Head, null_type>& o, int flags = 0) {
             return send(o.get_head(), flags);
         }
 
         template<class Head, class Tail>
-        bool send_multi(const cons<Head, Tail>& o, int flags = 0) {
+        inline bool send_multi(const cons<Head, Tail>& o, int flags = 0) {
             return (send(o.get_head(), ZMQ_SNDMORE | flags) 
                     && send_multi(o.get_tail(), flags));
         }
@@ -237,7 +233,7 @@ class channel_t:
         }
       
         template<class T>
-        bool recv(raw<T>& result, int flags) {
+        inline bool recv(raw<T>& result, int flags) {
             zmq::message_t message;
 
             if(!recv(&message, flags)) {
@@ -248,14 +244,23 @@ class channel_t:
         }
 
         // Receives and unpacks a tuple
-        bool recv_multi(const null_type&, int flags = 0) {
+        inline bool recv_multi(const null_type&, int flags = 0) {
             return true;
         }
 
         template<class Head, class Tail>
-        bool recv_multi(cons<Head, Tail>& o, int flags = 0) {
+        inline bool recv_multi(cons<Head, Tail>& o, int flags = 0) {
             return (recv(o.get_head(), flags)
                     && recv_multi(o.get_tail(), flags));
+        }
+        
+        // Drops the current message
+        inline void ignore() {
+            zmq::message_t null;
+
+            while(more()) {
+                recv(&null);
+            }
         }
 };
 

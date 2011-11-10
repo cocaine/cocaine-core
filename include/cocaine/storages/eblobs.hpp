@@ -16,7 +16,9 @@ class eblob_collector_t:
         bool callback(const zbr::eblob_disk_control* dco, const void* data, int);
         void complete(uint64_t, uint64_t) { }
 
-        inline Json::Value seal() { return m_root; }
+        inline Json::Value seal() { 
+            return m_root; 
+        }
 
     private:
         Json::Reader m_reader;

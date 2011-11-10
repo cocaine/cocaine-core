@@ -19,12 +19,10 @@ class overseer_t:
         ~overseer_t();
 
         // Thread entry point 
-        void operator()(const std::string& type,
-                        const std::string& args);
+        void operator()(const std::string& type, const std::string& args);
 
         // Callback used to send response chunks
-        void respond(const void* response, 
-                     size_t size);
+        void respond(const void* response, size_t size);
 
     private:
         // Event loop callback handling and dispatching

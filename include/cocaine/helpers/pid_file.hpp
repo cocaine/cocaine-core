@@ -49,7 +49,7 @@ class pid_file_t:
         }
 
     private:
-        void remove() {
+        inline void remove() {
             try {
                 boost::filesystem::remove(m_filepath);
             } catch(const std::runtime_error& e) {

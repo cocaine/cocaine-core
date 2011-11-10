@@ -103,9 +103,13 @@ class engine_t:
         // publications without chaos and bloodshed.
         virtual void publish(const std::string& key, const Json::Value& object);
 
-    public:
-        std::string name() const { return m_app_cfg.name; }
-        zmq::context_t& context() { return m_context; }
+        inline std::string name() const { 
+            return m_app_cfg.name; 
+        }
+
+        inline zmq::context_t& context() { 
+            return m_context; 
+        }
 
     private:
         template<class DriverType>

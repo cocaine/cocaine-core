@@ -33,23 +33,23 @@ struct uri_t {
             uriFreeUriMembersA(&m_uri);
         }
 
-        std::string source() const {
+        inline std::string source() const {
             return m_source;
         }
 
-        std::string scheme() const {
+        inline std::string scheme() const {
             return std::string(m_uri.scheme.first, m_uri.scheme.afterLast);
         }
 
-        std::string userinfo() const {
+        inline std::string userinfo() const {
             return std::string(m_uri.userInfo.first, m_uri.userInfo.afterLast);
         }
 
-        std::string host() const {
+        inline std::string host() const {
             return std::string(m_uri.hostText.first, m_uri.hostText.afterLast);
         }            
 
-        unsigned int port() const {
+        inline unsigned int port() const {
             unsigned int port = 0;
         
             if(m_uri.portText.first && m_uri.portText.afterLast) {
@@ -61,7 +61,7 @@ struct uri_t {
             return port;
         }
 
-        std::vector<std::string> path() const {
+        inline std::vector<std::string> path() const {
             std::vector<std::string> path;
             UriPathSegmentA *segment = m_uri.pathHead;
 
@@ -73,7 +73,7 @@ struct uri_t {
             return path;
         }
 
-        std::map<std::string, std::string> query() const {
+        inline std::map<std::string, std::string> query() const {
             std::map<std::string, std::string> query;
 
             if(m_uri.query.first && m_uri.query.afterLast) {
@@ -98,7 +98,7 @@ struct uri_t {
             return query;
         }
 
-        std::string fragment() const {
+        inline std::string fragment() const {
             return std::string(m_uri.fragment.first, m_uri.fragment.afterLast);
         }
 
