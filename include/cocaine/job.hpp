@@ -18,11 +18,13 @@ class job_t:
         job_t(driver_t* parent, bool urgent = false);
 
         virtual void enqueue();
-        virtual void respond(zmq::message_t& chunk) = 0; 
-        virtual void abort(error_code code, const std::string& error) = 0;
+
+        virtual void send(zmq::message_t& chunk) = 0; 
+        virtual void send(error_code code, const std::string& error) = 0;
+        
+        void audit(ev::tstamp spent);
         
         bool urgent() const;
-        driver_t* parent();
 
     protected:
         driver_t* m_parent;
@@ -37,8 +39,8 @@ class publication_t:
     public:
         publication_t(driver_t* parent);
 
-        virtual void respond(zmq::message_t& chunk);
-        virtual void abort(error_code code, const std::string& error);
+        virtual void send(zmq::message_t& chunk);
+        virtual void send(error_code code, const std::string& error);
 };
 
 }}

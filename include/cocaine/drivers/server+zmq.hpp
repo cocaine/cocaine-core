@@ -15,8 +15,9 @@ class zmq_job_t:
         zmq_job_t(zmq_server_t* server, const lines::route_t& route);
 
         virtual void enqueue();
-        virtual void respond(zmq::message_t& chunk);
-        virtual void abort(error_code code, const std::string& error);
+
+        virtual void send(zmq::message_t& chunk);
+        virtual void send(error_code code, const std::string& error);
 
     public:
         const lines::route_t& route() const;
@@ -43,7 +44,7 @@ class zmq_server_t:
         void operator()(ev::io&, int);
         
         virtual void process(ev::idle&, int);
-        virtual void respond(zmq_job_t* job, zmq::message_t& chunk);
+        virtual void send(zmq_job_t* job, zmq::message_t& chunk);
 
     protected:
         lines::socket_t m_socket;

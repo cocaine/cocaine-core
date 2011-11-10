@@ -44,7 +44,7 @@ void backend_t::timeout(ev::timer&, int) {
     kill();
 
     if(m_job) {
-        m_job->abort(timeout_error, "the request has timed out");
+        m_job->send(timeout_error, "the request has timed out");
         m_job.reset();
     }
 

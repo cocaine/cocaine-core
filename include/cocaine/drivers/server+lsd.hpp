@@ -14,7 +14,7 @@ class lsd_job_t:
     public:
         lsd_job_t(lsd_server_t* server, const lines::route_t& route);
 
-        virtual void abort(error_code code, const std::string& error);
+        virtual void send(error_code code, const std::string& error);
         
     public:
         zmq::message_t& envelope();
@@ -36,7 +36,7 @@ class lsd_server_t:
 
         // Server interface
         virtual void process(ev::idle&, int);
-        virtual void respond(zmq_job_t* job, zmq::message_t& chunk);
+        virtual void send(zmq_job_t* job, zmq::message_t& chunk);
 };
 
 }}}

@@ -137,7 +137,7 @@ Json::Value engine_t::stop() {
     }
 
     while(!m_queue.empty()) {
-        m_queue.front()->abort(server_error, "engine is shutting down");
+        m_queue.front()->send(server_error, "engine is shutting down");
         m_queue.pop_front();
     }
   
@@ -276,7 +276,7 @@ void engine_t::process(ev::idle& w, int revents) {
                     zmq::message_t chunk;
 
                     m_messages.recv(&chunk);
-                    worker->second->job()->respond(chunk);
+                    worker->second->job()->send(chunk);
 
                     return;
                 }
@@ -285,7 +285,7 @@ void engine_t::process(ev::idle& w, int revents) {
                     std::string message;
 
                     m_messages.recv(message);
-                    worker->second->job()->abort(application_error, message);
+                    worker->second->job()->send(application_error, message);
 
                     return;
                 }
@@ -294,7 +294,7 @@ void engine_t::process(ev::idle& w, int revents) {
                     ev::tstamp spent = 0;
 
                     m_messages.recv(spent);
-                    worker->second->job()->parent()->audit(spent);
+                    worker->second->job()->audit(spent);
                     worker->second->job().reset();
                    
                     break;

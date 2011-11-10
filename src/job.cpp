@@ -18,19 +18,19 @@ void job_t::enqueue() {
     );
 }
 
-bool job_t::urgent() const {
-    return m_urgent;
+void job_t::audit(ev::tstamp spent) {
+    m_parent->audit(spent);
 }
 
-driver_t* job_t::parent() {
-    return m_parent;
+bool job_t::urgent() const {
+    return m_urgent;
 }
 
 publication_t::publication_t(driver_t* parent):
     job_t(parent)
 { }
 
-void publication_t::respond(zmq::message_t& chunk) {
+void publication_t::send(zmq::message_t& chunk) {
     Json::Reader reader(Json::Features::strictMode());
     Json::Value root;
 
@@ -46,7 +46,7 @@ void publication_t::respond(zmq::message_t& chunk) {
     }
 }
 
-void publication_t::abort(error_code code, const std::string& error) {
+void publication_t::send(error_code code, const std::string& error) {
     m_parent->engine()->publish(m_parent->method(),
         helpers::make_json("error", error));
 }

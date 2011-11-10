@@ -7,7 +7,7 @@ lsd_job_t::lsd_job_t(lsd_server_t* server, const route_t& route):
     zmq_job_t(server, route)
 { }
 
-void lsd_job_t::abort(error_code code, const std::string& error) {
+void lsd_job_t::send(error_code code, const std::string& error) {
     zmq::message_t null;
 
     Json::Reader reader(Json::Features::strictMode());
@@ -28,7 +28,7 @@ void lsd_job_t::abort(error_code code, const std::string& error) {
     m_envelope.rebuild(response.size());
     memcpy(m_envelope.data(), response.data(), response.size());
 
-    static_cast<lsd_server_t*>(m_parent)->respond(this, null);
+    static_cast<lsd_server_t*>(m_parent)->send(this, null);
 }
 
 zmq::message_t& lsd_job_t::envelope() {
@@ -81,7 +81,7 @@ void lsd_server_t::process(ev::idle&, int) {
             job->envelope().copy(&message);
 #endif
         } else {
-            job->abort(request_error, "missing envelope");
+            job->send(request_error, "missing envelope");
             return;
         }
 
@@ -89,7 +89,7 @@ void lsd_server_t::process(ev::idle&, int) {
             // Request
             m_socket.recv(&job->request());
         } else {
-            job->abort(request_error, "missing request");
+            job->send(request_error, "missing request");
             return;
         }
 
@@ -98,11 +98,11 @@ void lsd_server_t::process(ev::idle&, int) {
         } catch(const resource_error_t& e) {
             syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
                 m_engine->name().c_str(), m_method.c_str(), e.what());
-            job->abort(resource_error, e.what());
+            job->send(resource_error, e.what());
         } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
                 m_engine->name().c_str(), m_method.c_str(), e.what());
-            job->abort(server_error, e.what());
+            job->send(server_error, e.what());
         }
     } else {
         m_watcher.start(m_socket.fd(), ev::READ);
@@ -110,9 +110,7 @@ void lsd_server_t::process(ev::idle&, int) {
     }
 }
 
-void lsd_server_t::respond(zmq_job_t* job, 
-                           zmq::message_t& chunk)
-{
+void lsd_server_t::send(zmq_job_t* job, zmq::message_t& chunk) {
     const route_t& route(job->route());
     zmq::message_t message;
     

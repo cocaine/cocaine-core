@@ -24,11 +24,11 @@ void zmq_job_t::enqueue() {
             boost::ref(request)));
 }
 
-void zmq_job_t::respond(zmq::message_t& chunk) {
-    static_cast<zmq_server_t*>(m_parent)->respond(this, chunk);
+void zmq_job_t::send(zmq::message_t& chunk) {
+    static_cast<zmq_server_t*>(m_parent)->send(this, chunk);
 }
 
-void zmq_job_t::abort(error_code code, const std::string& error) {
+void zmq_job_t::send(error_code code, const std::string& error) {
     Json::Value object(Json::objectValue);
     
     object["code"] = code;
@@ -40,7 +40,7 @@ void zmq_job_t::abort(error_code code, const std::string& error) {
     zmq::message_t message(response.size());
     memcpy(message.data(), response.data(), response.size());
 
-    static_cast<zmq_server_t*>(m_parent)->respond(this, message);
+    static_cast<zmq_server_t*>(m_parent)->send(this, message);
 }
 
 const route_t& zmq_job_t::route() const {
@@ -128,7 +128,7 @@ void zmq_server_t::process(ev::idle&, int) {
             job->request().copy(&message);
 #endif
         } else {
-            job->abort(request_error, "missing request");
+            job->send(request_error, "missing request");
             return;
         }
 
@@ -137,11 +137,11 @@ void zmq_server_t::process(ev::idle&, int) {
         } catch(const resource_error_t& e) {
             syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
                 m_engine->name().c_str(), m_method.c_str(), e.what());
-            job->abort(resource_error, e.what());
+            job->send(resource_error, e.what());
         } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
                 m_engine->name().c_str(), m_method.c_str(), e.what());
-            job->abort(server_error, e.what());
+            job->send(server_error, e.what());
         }
     } else {
         m_watcher.start(m_socket.fd(), ev::READ);
@@ -149,7 +149,7 @@ void zmq_server_t::process(ev::idle&, int) {
     }
 }
 
-void zmq_server_t::respond(zmq_job_t* job, zmq::message_t& chunk) {
+void zmq_server_t::send(zmq_job_t* job, zmq::message_t& chunk) {
     const route_t& route(job->route());
     zmq::message_t message;
     
