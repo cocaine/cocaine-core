@@ -19,8 +19,13 @@ class zmq_job_t:
         virtual void send(zmq::message_t& chunk);
         virtual void send(error_code code, const std::string& error);
 
-        const lines::route_t& route() const;
-        zmq::message_t& request();
+        inline const lines::route_t& route() const {
+            return m_route;
+        }
+
+        inline zmq::message_t& request() {
+            return m_request;
+        }
 
     protected:
         const lines::route_t m_route;

@@ -26,10 +26,10 @@ class overseer_t:
 
     private:
         // Event loop callback handling and dispatching
-        void message(ev::io& w, int revents);
-        void process(ev::idle& w, int revents);
-        void timeout(ev::timer& w, int revents);
-        void heartbeat(ev::timer& w, int revents);
+        void message(ev::io&, int);
+        void process(ev::idle&, int);
+        void timeout(ev::timer&, int);
+        void heartbeat(ev::timer&, int);
 
         void terminate();
 

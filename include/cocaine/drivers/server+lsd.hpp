@@ -16,7 +16,9 @@ class lsd_job_t:
 
         virtual void send(error_code code, const std::string& error);
         
-        zmq::message_t& envelope();
+        inline zmq::message_t& envelope() {
+            return m_envelope;
+        }
 
     private:
         zmq::message_t m_envelope;

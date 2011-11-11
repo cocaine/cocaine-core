@@ -36,11 +36,16 @@ class driver_t:
             return m_method; 
         }
         
+        virtual void expire(boost::shared_ptr<job_t> job) {
+            m_engine->expire(job);
+        }
+        
         virtual Json::Value info() const = 0;
 
     protected:
         engine_t* m_engine;
         const std::string m_method;
+
         ev::tstamp m_spent;
 };
 

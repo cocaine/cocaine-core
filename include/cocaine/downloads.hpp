@@ -14,7 +14,7 @@ class download_t {
             return m_blob;
         }
 
-        boost::filesystem::path path() const {
+        inline boost::filesystem::path path() const {
             return m_path;
         }
     

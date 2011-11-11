@@ -66,7 +66,7 @@ void core_t::start() {
     ev::get_default_loop().loop();
 }
 
-void core_t::terminate(ev::sig& sig, int revents) {
+void core_t::terminate(ev::sig&, int) {
     syslog(LOG_NOTICE, "core: stopping the engines");
 
     for(engine_map_t::iterator it = m_engines.begin(); it != m_engines.end(); ++it) {
@@ -78,7 +78,7 @@ void core_t::terminate(ev::sig& sig, int revents) {
     ev::get_default_loop().unloop(ev::ALL);
 }
 
-void core_t::reload(ev::sig& sig, int revents) {
+void core_t::reload(ev::sig&, int) {
     syslog(LOG_NOTICE, "core: reloading apps");
 
     for(engine_map_t::iterator it = m_engines.begin(); it != m_engines.end(); ++it) {
@@ -94,14 +94,14 @@ void core_t::reload(ev::sig& sig, int revents) {
     }
 }
 
-void core_t::request(ev::io& w, int revents) {
+void core_t::request(ev::io&, int) {
     if(m_server.pending()) {
         m_watcher.stop();
         m_processor.start();
     }
 }
 
-void core_t::process(ev::idle& w, int revents) {
+void core_t::process(ev::idle&, int) {
     if(m_server.pending()) {
         zmq::message_t message, signature;
         route_t route;
@@ -240,7 +240,7 @@ Json::Value core_t::dispatch(const Json::Value& root) {
 // Commands
 // --------
 
-Json::Value core_t::create_engine(const std::string& name, const Json::Value& manifest) {
+Json::Value core_t::create_engine(const std::string& name, const Json::Value& manifest, bool recovering) {
     if(m_engines.find(name) != m_engines.end()) {
         throw std::runtime_error("the specified app is already active");
     }
@@ -249,13 +249,15 @@ Json::Value core_t::create_engine(const std::string& name, const Json::Value& ma
     std::auto_ptr<engine_t> engine(new engine_t(m_context, name));
     Json::Value result(engine->start(manifest));
 
-    try {
-        storage_t::create()->put("apps", name, manifest);
-    } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "core: failed to create '%s' engine due to the storage failure - %s",
-            name.c_str(), e.what());
-        engine->stop();
-        throw;
+    if(!recovering) {
+        try {
+            storage_t::create()->put("apps", name, manifest);
+        } catch(const std::runtime_error& e) {
+            syslog(LOG_ERR, "core: failed to create '%s' engine due to the storage failure - %s",
+                name.c_str(), e.what());
+            engine->stop();
+            throw;
+        }
     }
 
     // Only leave the engine running if all of the above succeded
@@ -344,7 +346,7 @@ void core_t::recover() {
             std::string app(*it);
             
             // NOTE: Intentionally not catching anything here too.
-            create_engine(app, root[app]);
+            create_engine(app, root[app], true);
         }
     }
 }

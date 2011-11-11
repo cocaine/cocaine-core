@@ -24,7 +24,10 @@ class backend_t:
         void rearm(float timeout);
 
         backend_state_t state() const;
-        boost::shared_ptr<job_t>& job();
+        
+        inline boost::shared_ptr<job_t>& job() {
+            return m_job;
+        }
 
     protected:
         virtual void kill() = 0;

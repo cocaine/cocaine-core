@@ -31,10 +31,6 @@ void lsd_job_t::send(error_code code, const std::string& error) {
     static_cast<lsd_server_t*>(m_parent)->send(this, null);
 }
 
-zmq::message_t& lsd_job_t::envelope() {
-    return m_envelope;
-}
-
 lsd_server_t::lsd_server_t(engine_t* engine, const std::string& method, const Json::Value& args):
     zmq_server_t(engine, method, args)
 { }

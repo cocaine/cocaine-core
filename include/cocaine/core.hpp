@@ -19,18 +19,21 @@ class core_t:
         
     private:
         // Signal processing
-        void terminate(ev::sig& sig, int revents);
-        void reload(ev::sig& sig, int revents);
+        void terminate(ev::sig&, int);
+        void reload(ev::sig&, int);
 
         // User request processing
-        void request(ev::io& io, int revents);
-        void process(ev::idle& w, int revents);
+        void request(ev::io&, int);
+        void process(ev::idle&, int);
 
         // User request dispatching
         Json::Value dispatch(const Json::Value& root);
         
         // User request handling
-        Json::Value create_engine(const std::string& name, const Json::Value& manifest);
+        Json::Value create_engine(const std::string& name, 
+                                  const Json::Value& manifest, 
+                                  bool recovering = false);
+
         Json::Value delete_engine(const std::string& name);
         Json::Value info() const;
 

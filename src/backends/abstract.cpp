@@ -33,10 +33,6 @@ backend_state_t backend_t::state() const {
     return m_job ? active : (m_settled ? idle : inactive);
 }
 
-boost::shared_ptr<job_t>& backend_t::job() {
-    return m_job;
-}
-
 void backend_t::timeout(ev::timer&, int) {
     syslog(LOG_ERR, "worker [%s:%s]: worker has missed too many heartbeats",
         m_engine->name().c_str(), id().c_str());
@@ -44,7 +40,7 @@ void backend_t::timeout(ev::timer&, int) {
     kill();
 
     if(m_job) {
-        m_job->send(timeout_error, "the request has timed out");
+        m_job->send(timeout_error, "the job has timed out");
         m_job.reset();
     }
 

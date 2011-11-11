@@ -53,9 +53,10 @@ class engine_t:
         Json::Value info() const;
 
         void reap(unique_id_t::reference worker_id);
+        void expire(boost::shared_ptr<job_t> job);
 
         template<class T>
-        void enqueue(boost::shared_ptr<job_t> job, const T& args) {
+        job_state enqueue(boost::shared_ptr<job_t> job, const T& args) {
             pool_map_t::iterator it(std::find_if(m_pool.begin(), m_pool.end(), idle_worker()));
 
             if(it != m_pool.end()) {
@@ -64,38 +65,43 @@ class engine_t:
                         boost::make_tuple(
                             lines::protect(it->second->id())),
                         args));
+                
                 it->second->job() = job;
                 it->second->rearm(m_pool_cfg.heartbeat_timeout);
-            } else {
-                if(m_pool.empty() || m_pool.size() < m_pool_cfg.pool_limit) {
-                    try {
-                        std::auto_ptr<backend_t> worker;
-
-                        if(m_pool_cfg.backend == "thread") {
-                            worker.reset(new backends::thread_t(this, m_app_cfg.type, m_app_cfg.args));
-                        } else if(m_pool_cfg.backend == "process") {
-                            worker.reset(new backends::process_t(this, m_app_cfg.type, m_app_cfg.args));
-                        }
-
-                        std::string worker_id(worker->id());
-                        m_pool.insert(worker_id, worker);
-                    } catch(const zmq::error_t& e) {
-                        if(e.num() == EMFILE) {
-                            throw resource_error_t("unable to spawn more workers");
-                        } else {
-                            throw;
-                        }
-                    }
-                } else if(m_queue.size() > m_pool_cfg.queue_limit) {
-                    throw resource_error_t("queue is full");
-                }
-           
-                if(job->urgent()) {
-                   m_queue.push_front(job);
-                } else { 
-                   m_queue.push_back(job);
-                }
+                
+                return running;
             }
+            
+            if(m_pool.empty() || m_pool.size() < m_pool_cfg.pool_limit) {
+                try {
+                    std::auto_ptr<backend_t> worker;
+
+                    if(m_pool_cfg.backend == "thread") {
+                        worker.reset(new backends::thread_t(this, m_app_cfg.type, m_app_cfg.args));
+                    } else if(m_pool_cfg.backend == "process") {
+                        worker.reset(new backends::process_t(this, m_app_cfg.type, m_app_cfg.args));
+                    }
+
+                    std::string worker_id(worker->id());
+                    m_pool.insert(worker_id, worker);
+                } catch(const zmq::error_t& e) {
+                    if(e.num() == EMFILE) {
+                        throw resource_error_t("unable to spawn more workers");
+                    } else {
+                        throw;
+                    }
+                }
+            } else if(m_queue.size() > m_pool_cfg.queue_limit) {
+                throw resource_error_t("queue is full");
+            }
+       
+            if(job->urgent()) {
+               m_queue.push_front(job);
+            } else { 
+               m_queue.push_back(job);
+            }
+
+            return queued;
         }
 
         // NOTE: It is intentional that all the publishing drivers do that via
@@ -115,8 +121,8 @@ class engine_t:
         template<class DriverType>
         void schedule(const std::string& method, const Json::Value& args);
 
-        void message(ev::io& w, int revents);
-        void process(ev::idle& w, int revents);
+        void message(ev::io&, int);
+        void process(ev::idle&, int);
 
     private:
         bool m_running;

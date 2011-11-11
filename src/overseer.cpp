@@ -42,9 +42,7 @@ overseer_t::~overseer_t() {
     terminate();
 }
 
-void overseer_t::operator()(const std::string& type,
-                            const std::string& args) 
-{
+void overseer_t::operator()(const std::string& type, const std::string& args) {
     try {
         m_app = core::registry_t::instance()->create(type, args);
     } catch(const std::runtime_error& e) {
@@ -57,14 +55,14 @@ void overseer_t::operator()(const std::string& type,
     m_loop.loop();
 }
 
-void overseer_t::message(ev::io& w, int revents) {
+void overseer_t::message(ev::io&, int) {
     if(m_messages.pending()) {
         m_watcher.stop();
         m_processor.start();
     }
 }
 
-void overseer_t::process(ev::idle& w, int revents) {
+void overseer_t::process(ev::idle&, int) {
     if(m_messages.pending()) {
         unsigned int code = 0;
 
@@ -127,9 +125,7 @@ void overseer_t::process(ev::idle& w, int revents) {
     }
 }
 
-void overseer_t::respond(const void* response, 
-                         size_t size) 
-{
+void overseer_t::respond(const void* response, size_t size) {
     boost::this_thread::interruption_point();
     
     zmq::message_t message(size);
@@ -141,7 +137,7 @@ void overseer_t::respond(const void* response,
             boost::ref(message)));
 }
 
-void overseer_t::timeout(ev::timer& w, int revents) {
+void overseer_t::timeout(ev::timer&, int) {
     if(m_messages.pending()) {
         return;
     }
@@ -150,7 +146,7 @@ void overseer_t::timeout(ev::timer& w, int revents) {
     terminate();
 }
 
-void overseer_t::heartbeat(ev::timer& w, int revents) {
+void overseer_t::heartbeat(ev::timer&, int) {
     m_messages.send(HEARTBEAT);
 }
 

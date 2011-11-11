@@ -23,6 +23,7 @@ class timed_t:
         }
 
         void operator()(ev::periodic&, int) {
+            // XXX: Set the expiration corresponding to the next invocation time?
             boost::shared_ptr<publication_t> job(new publication_t(this));
 
             try {
@@ -37,7 +38,7 @@ class timed_t:
                 job->send(server_error, e.what());
             }
         }
-    
+        
     private:
         static ev::tstamp thunk(ev_periodic* w, ev::tstamp now) {
             return static_cast<T*>(w->data)->reschedule(now);

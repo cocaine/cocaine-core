@@ -43,14 +43,6 @@ void zmq_job_t::send(error_code code, const std::string& error) {
     static_cast<zmq_server_t*>(m_parent)->send(this, message);
 }
 
-const route_t& zmq_job_t::route() const {
-    return m_route;
-}
-
-zmq::message_t& zmq_job_t::request() {
-    return m_request;
-}
-
 zmq_server_t::zmq_server_t(engine_t* engine, const std::string& method, const Json::Value& args):
     driver_t(engine, method),
     m_socket(m_engine->context(), ZMQ_ROUTER, boost::algorithm::join(

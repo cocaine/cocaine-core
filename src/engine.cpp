@@ -188,11 +188,18 @@ void engine_t::reap(unique_id_t::reference worker_id) {
         
         syslog(LOG_DEBUG, "engine [%s]: requeueing a job from a dead worker",
             m_app_cfg.name.c_str());
-        
+       
         corpse->job()->enqueue();
     } else {
         m_pool.erase(worker);
     }
+}
+
+void engine_t::expire(boost::shared_ptr<job_t> job) {
+    syslog(LOG_DEBUG, "engine [%s]: dropping an expired job", m_app_cfg.name.c_str());
+   
+    job->send(timeout_error, "the job has expired");
+    m_queue.erase(std::find(m_queue.begin(), m_queue.end(), job));
 }
 
 // PubSub Interface
@@ -248,14 +255,14 @@ void engine_t::publish(const std::string& key, const Json::Value& object) {
 // Worker I/O
 // ----------
 
-void engine_t::message(ev::io& w, int revents) {
+void engine_t::message(ev::io&, int) {
     if(m_messages.pending()) {
         m_watcher.stop();
         m_processor.start();
     }
 }
 
-void engine_t::process(ev::idle& w, int revents) {
+void engine_t::process(ev::idle&, int) {
     if(m_messages.pending()) {
         std::string worker_id;
         unsigned int code = 0;

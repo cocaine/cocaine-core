@@ -15,7 +15,7 @@ class fs_t:
         virtual ~fs_t();
 
         virtual Json::Value info() const;
-        
+
         void operator()(ev::stat&, int);
 
     private:

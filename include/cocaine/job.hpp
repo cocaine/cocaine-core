@@ -9,13 +9,20 @@
 
 namespace cocaine { namespace engine {
 
+enum job_state {
+    queued,
+    running
+};
+
 class job_t:
     public boost::noncopyable,
     public boost::enable_shared_from_this<job_t>,
     public birth_control_t<job_t>
 {
     public:
-        job_t(driver_t* parent, bool urgent = false);
+        job_t(driver_t* parent,
+              ev::tstamp deadline = 0.,
+              bool urgent = false);
 
         virtual void enqueue();
 
@@ -24,13 +31,19 @@ class job_t:
         
         void audit(ev::tstamp spent);
         
-        bool urgent() const;
+        inline bool urgent() const {
+            return m_urgent;
+        }
+
+    private:
+        void timeout(ev::periodic&, int);
 
     protected:
         driver_t* m_parent;
 
     private:
         bool m_urgent;
+        ev::periodic m_expiration_timer;
 };
 
 class publication_t:
