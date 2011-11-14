@@ -29,7 +29,7 @@ Json::Value fs_t::info() const {
 }
 
 void fs_t::operator()(ev::stat&, int) {
-    boost::shared_ptr<publication_t> job(new publication_t(this));
+    boost::shared_ptr<publication_t> job(new publication_t(this, job_policy::defaults()));
 
     try {
         job->enqueue();

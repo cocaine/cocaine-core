@@ -24,10 +24,6 @@ class driver_t:
                 m_engine->name().c_str(), m_method.c_str());
         }
 
-        inline void audit(ev::tstamp spent) {
-            m_spent += spent;
-        }
-
         inline engine_t* engine() { 
             return m_engine; 
         }
@@ -36,6 +32,10 @@ class driver_t:
             return m_method; 
         }
         
+        inline void audit(ev::tstamp spent) {
+            m_spent += spent;
+        }
+
         virtual void expire(boost::shared_ptr<job_t> job) {
             m_engine->expire(job);
         }
@@ -43,9 +43,11 @@ class driver_t:
         virtual Json::Value info() const = 0;
 
     protected:
+        // Bindings
         engine_t* m_engine;
         const std::string m_method;
 
+        // Audit
         ev::tstamp m_spent;
 };
 

@@ -66,19 +66,18 @@ class engine_t:
                             lines::protect(it->second->id())),
                         args));
                 
-                it->second->job() = job;
-                it->second->rearm(m_pool_cfg.heartbeat_timeout);
+                it->second->arm(job);
                 
                 return running;
             }
             
-            if(m_pool.empty() || m_pool.size() < m_pool_cfg.pool_limit) {
+            if(m_pool.empty() || m_pool.size() < m_policy.pool_limit) {
                 try {
                     std::auto_ptr<backend_t> worker;
 
-                    if(m_pool_cfg.backend == "thread") {
+                    if(m_policy.backend == "thread") {
                         worker.reset(new backends::thread_t(this, m_app_cfg.type, m_app_cfg.args));
-                    } else if(m_pool_cfg.backend == "process") {
+                    } else if(m_policy.backend == "process") {
                         worker.reset(new backends::process_t(this, m_app_cfg.type, m_app_cfg.args));
                     }
 
@@ -91,11 +90,11 @@ class engine_t:
                         throw;
                     }
                 }
-            } else if(m_queue.size() > m_pool_cfg.queue_limit) {
+            } else if(m_queue.size() > m_policy.queue_limit) {
                 throw resource_error_t("queue is full");
             }
        
-            if(job->urgent()) {
+            if(job->policy().urgent) {
                m_queue.push_front(job);
             } else { 
                m_queue.push_back(job);
@@ -131,7 +130,12 @@ class engine_t:
         boost::shared_ptr<lines::socket_t> m_pubsub;
         
         // The pool
-        config_t::engine_cfg_t m_pool_cfg;
+        struct engine_policy {
+            std::string backend;
+            unsigned int pool_limit;
+            unsigned int queue_limit;
+            ev::tstamp suicide_timeout;
+        } m_policy;
 
         lines::channel_t m_messages;
         ev::io m_watcher;

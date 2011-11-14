@@ -3,8 +3,8 @@
 using namespace cocaine::engine::drivers;
 using namespace cocaine::lines;
 
-lsd_job_t::lsd_job_t(lsd_server_t* server, const route_t& route):
-    zmq_job_t(server, route)
+lsd_job_t::lsd_job_t(lsd_server_t* server, job_policy policy, const route_t& route):
+    zmq_job_t(server, policy, route)
 { }
 
 void lsd_job_t::send(error_code code, const std::string& error) {
@@ -67,7 +67,8 @@ void lsd_server_t::process(ev::idle&, int) {
                 message.size()));
         }
 
-        boost::shared_ptr<lsd_job_t> job(new lsd_job_t(this, route));
+        // TODO: Parse the envelope for policies
+        boost::shared_ptr<lsd_job_t> job(new lsd_job_t(this, job_policy::defaults(), route));
 
         if(m_socket.more()) {
             // LSD envelope

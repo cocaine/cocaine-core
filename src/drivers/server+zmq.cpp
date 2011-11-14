@@ -6,8 +6,8 @@
 using namespace cocaine::engine::drivers;
 using namespace cocaine::lines;
 
-zmq_job_t::zmq_job_t(zmq_server_t* server, const route_t& route):
-    job_t(server),
+zmq_job_t::zmq_job_t(zmq_server_t* server, job_policy policy, const route_t& route):
+    job_t(server, policy),
     m_route(route)
 { }
 
@@ -111,7 +111,7 @@ void zmq_server_t::process(ev::idle&, int) {
                 message.size()));
         }
 
-        boost::shared_ptr<zmq_job_t> job(new zmq_job_t(this, route));
+        boost::shared_ptr<zmq_job_t> job(new zmq_job_t(this, job_policy::defaults(), route));
 
         if(m_socket.more()) {
 #if ZMQ_VERSION < 30000

@@ -3,13 +3,13 @@
 
 using namespace cocaine::engine;
 
-job_t::job_t(driver_t* parent, ev::tstamp deadline, bool urgent):
+job_t::job_t(driver_t* parent, job_policy policy):
     m_parent(parent),
-    m_urgent(urgent)
+    m_policy(policy)
 {
-    if(deadline) {
-        m_expiration_timer.set<job_t, &job_t::timeout>(this);
-        m_expiration_timer.start(deadline);
+    if(m_policy.deadline) {
+        m_expiration_timer.set<job_t, &job_t::expire>(this);
+        m_expiration_timer.start(m_policy.deadline);
     }
 }
 
@@ -31,12 +31,12 @@ void job_t::audit(ev::tstamp spent) {
     m_parent->audit(spent);
 }
 
-void job_t::timeout(ev::periodic&, int) {
+void job_t::expire(ev::periodic&, int) {
     m_parent->expire(shared_from_this());
 }
 
-publication_t::publication_t(driver_t* parent):
-    job_t(parent)
+publication_t::publication_t(driver_t* parent, job_policy policy):
+    job_t(parent, policy)
 { }
 
 void publication_t::send(zmq::message_t& chunk) {

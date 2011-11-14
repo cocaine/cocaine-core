@@ -6,7 +6,7 @@
 
 namespace cocaine { namespace engine {
 
-enum backend_state_t {
+enum backend_state {
     inactive,
     idle,
     active
@@ -21,9 +21,11 @@ class backend_t:
         backend_t(engine_t* engine);
         virtual ~backend_t();
 
-        void rearm(float timeout);
+        void arm(boost::shared_ptr<job_t> job);
+        void rearm();
+        void disarm();
 
-        backend_state_t state() const;
+        backend_state state() const;
         
         inline boost::shared_ptr<job_t>& job() {
             return m_job;

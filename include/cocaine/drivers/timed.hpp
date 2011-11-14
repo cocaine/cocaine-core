@@ -23,8 +23,7 @@ class timed_t:
         }
 
         void operator()(ev::periodic&, int) {
-            // XXX: Set the expiration corresponding to the next invocation time?
-            boost::shared_ptr<publication_t> job(new publication_t(this));
+            boost::shared_ptr<publication_t> job(new publication_t(this, job_policy::defaults()));
 
             try {
                 job->enqueue();

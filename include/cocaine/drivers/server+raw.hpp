@@ -24,7 +24,6 @@ class raw_server_t:
         unsigned int m_backlog;
 
         int m_socket;
-        
         ev::io m_watcher; 
 };
 

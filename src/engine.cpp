@@ -61,20 +61,18 @@ Json::Value engine_t::start(const Json::Value& manifest) {
     // Pool configuration
     // ------------------
 
-    m_pool_cfg.backend = manifest["engine"].get("backend",
+    m_policy.backend = manifest["engine"].get("backend",
         config_t::get().engine.backend).asString();
     
-    if(m_pool_cfg.backend != "thread" && m_pool_cfg.backend != "process") {
+    if(m_policy.backend != "thread" && m_policy.backend != "process") {
         throw std::runtime_error("invalid backend type");
     }
     
-    m_pool_cfg.heartbeat_timeout = manifest["engine"].get("heartbeat-timeout",
-        config_t::get().engine.heartbeat_timeout).asDouble();
-    m_pool_cfg.suicide_timeout = manifest["engine"].get("suicide-timeout",
+    m_policy.suicide_timeout = manifest["engine"].get("suicide-timeout",
         config_t::get().engine.suicide_timeout).asDouble();
-    m_pool_cfg.pool_limit = manifest["engine"].get("pool-limit",
+    m_policy.pool_limit = manifest["engine"].get("pool-limit",
         config_t::get().engine.pool_limit).asUInt();
-    m_pool_cfg.queue_limit = manifest["engine"].get("queue-limit",
+    m_policy.queue_limit = manifest["engine"].get("queue-limit",
         config_t::get().engine.queue_limit).asUInt();
     
     // Tasks configuration
@@ -276,7 +274,7 @@ void engine_t::process(ev::idle&, int) {
             // NOTE: Any type of message is suitable to rearm the heartbeat timer
             // so we don't have to do anything special about HEARBEAT messages at all,
             // it's a dummy message to send in the periods of inactivity.
-            worker->second->rearm(m_pool_cfg.heartbeat_timeout);
+            worker->second->rearm();
            
             switch(code) {
                 case CHUNK: {
@@ -302,7 +300,7 @@ void engine_t::process(ev::idle&, int) {
 
                     m_messages.recv(spent);
                     worker->second->job()->audit(spent);
-                    worker->second->job().reset();
+                    worker->second->disarm();
                    
                     break;
                 }
