@@ -27,7 +27,7 @@ void backend_t::arm(boost::shared_ptr<job_t> job) {
 void backend_t::rearm() {
     m_heartbeat_timer.stop();
 
-    if(m_job) {
+    if(m_job && m_job->policy().timeout) {
         m_heartbeat_timer.start(m_job->policy().timeout);
     } else {
         m_heartbeat_timer.start(config_t::get().engine.heartbeat_timeout);
