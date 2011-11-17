@@ -25,9 +25,6 @@ struct job_policy {
         bool urgent;
         ev::tstamp timeout;
         ev::tstamp deadline;
-
-    private:
-        job_policy() { }
 };
 
 enum job_state {
@@ -41,7 +38,7 @@ class job_t:
     public birth_control_t<job_t>
 {
     public:
-        job_t(driver_t* parent, job_policy policy);
+        job_t(driver_t* parent, job_policy policy = job_policy::defaults());
 
         virtual void enqueue();
         virtual void send(zmq::message_t& chunk) = 0; 
@@ -49,7 +46,7 @@ class job_t:
         
         void audit(ev::tstamp spent);
         
-        inline job_policy policy() const {
+        inline job_policy& policy() {
             return m_policy;
         }
 
@@ -68,7 +65,7 @@ class publication_t:
     public job_t
 {
     public:
-        publication_t(driver_t* parent, job_policy policy);
+        publication_t(driver_t* parent, job_policy policy = job_policy::defaults());
 
         virtual void send(zmq::message_t& chunk);
         virtual void send(error_code code, const std::string& error);

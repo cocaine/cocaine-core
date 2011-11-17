@@ -12,7 +12,7 @@ class zmq_job_t:
     public job_t
 {
     public:
-        zmq_job_t(zmq_server_t* server, job_policy policy, const lines::route_t& route);
+        zmq_job_t(zmq_server_t* server, const lines::route_t& route);
 
         virtual void enqueue();
         virtual void send(zmq::message_t& chunk);

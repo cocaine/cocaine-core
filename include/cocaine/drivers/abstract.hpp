@@ -3,7 +3,6 @@
 
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics/count.hpp>
-#include <boost/accumulators/statistics/rolling_mean.hpp>
 #include <boost/accumulators/statistics/sum.hpp>
 
 #include "cocaine/common.hpp"
@@ -45,7 +44,6 @@ class driver_t:
         accumulator_set<
             float, 
             features<
-                tag::rolling_mean,
                 tag::count,
                 tag::sum
             >

@@ -3,8 +3,8 @@
 using namespace cocaine::engine::drivers;
 using namespace cocaine::lines;
 
-lsd_job_t::lsd_job_t(lsd_server_t* server, job_policy policy, const route_t& route):
-    zmq_job_t(server, policy, route)
+lsd_job_t::lsd_job_t(lsd_server_t* server, const route_t& route):
+    zmq_job_t(server, route)
 { }
 
 void lsd_job_t::send(error_code code, const std::string& error) {
@@ -67,8 +67,7 @@ void lsd_server_t::process(ev::idle&, int) {
                 message.size()));
         }
 
-        // TODO: Parse the envelope for policies
-        boost::shared_ptr<lsd_job_t> job(new lsd_job_t(this, job_policy::defaults(), route));
+        boost::shared_ptr<lsd_job_t> job(new lsd_job_t(this, route));
 
         if(m_socket.more()) {
             // LSD envelope
@@ -89,6 +88,26 @@ void lsd_server_t::process(ev::idle&, int) {
             job->send(request_error, "missing request");
             return;
         }
+
+        Json::Reader reader(Json::Features::strictMode());
+        Json::Value root;
+
+        if(!reader.parse(
+            static_cast<const char*>(job->envelope().data()),
+            static_cast<const char*>(job->envelope().data()) + job->envelope().size(),
+            root))
+        {
+            job->send(request_error, "invalid envelope");
+            return;
+        }
+
+        job_policy policy;
+
+        policy.urgent = root.get("urgent", false).asBool();
+        policy.deadline = root.get("deadline", 0.0).asDouble();
+        policy.timeout = root.get("timeout", config_t::get().engine.heartbeat_timeout).asDouble();
+
+        job->policy() = policy;
 
         try {
             job->enqueue();

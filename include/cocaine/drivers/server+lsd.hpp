@@ -12,7 +12,7 @@ class lsd_job_t:
     public zmq_job_t
 {
     public:
-        lsd_job_t(lsd_server_t* server, job_policy policy, const lines::route_t& route);
+        lsd_job_t(lsd_server_t* server, const lines::route_t& route);
 
         virtual void send(error_code code, const std::string& error);
         

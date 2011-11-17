@@ -29,7 +29,7 @@ void fs_t::stop() {
 }
 
 void fs_t::operator()(ev::stat&, int) {
-    boost::shared_ptr<publication_t> job(new publication_t(this, job_policy::defaults()));
+    boost::shared_ptr<publication_t> job(new publication_t(this));
 
     try {
         job->enqueue();
