@@ -21,17 +21,15 @@ class backend_t:
         backend_t(engine_t* engine);
         virtual ~backend_t();
 
-        void arm(boost::shared_ptr<job_t> job);
-        void rearm();
-        void disarm();
-
         virtual void stop() = 0;
 
-        backend_state state() const;
+        void rearm();
         
         inline boost::shared_ptr<job_t>& job() {
             return m_job;
         }
+        
+        backend_state state() const;
         
     protected:
         virtual void kill() = 0;

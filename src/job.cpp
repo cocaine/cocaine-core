@@ -19,6 +19,15 @@ job_t::job_t(driver_t* parent):
     m_parent(parent)
 { }
 
+job_state job_t::enqueue() {
+    return m_parent->engine()->enqueue(
+        shared_from_this(),
+        boost::make_tuple(
+            INVOKE,
+            m_parent->method()
+        ));
+}
+
 job_state job_t::enqueue(job_policy policy) {
     m_policy = policy;
     
@@ -30,15 +39,6 @@ job_state job_t::enqueue(job_policy policy) {
     }
 
     return state;
-}
-
-job_state job_t::enqueue() {
-    return m_parent->engine()->enqueue(
-        shared_from_this(),
-        boost::make_tuple(
-            INVOKE,
-            m_parent->method()
-        ));
 }
 
 void job_t::audit(ev::tstamp spent) {

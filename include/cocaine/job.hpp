@@ -33,8 +33,8 @@ class job_t:
     public:
         job_t(driver_t* parent);
 
-        job_state enqueue(job_policy policy);
         virtual job_state enqueue();
+        job_state enqueue(job_policy policy);
 
         virtual void send(zmq::message_t& chunk) = 0; 
         virtual void send(error_code code, const std::string& error) = 0;

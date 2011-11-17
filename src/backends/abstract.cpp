@@ -19,11 +19,6 @@ backend_t::~backend_t() {
     m_heartbeat_timer.stop();
 }
 
-void backend_t::arm(boost::shared_ptr<job_t> job) {
-    m_job = job;
-    rearm();
-}
-
 void backend_t::rearm() {
     m_heartbeat_timer.stop();
 
@@ -34,11 +29,6 @@ void backend_t::rearm() {
     }
     
     m_settled = true;
-}
-
-void backend_t::disarm() {
-    m_job.reset();
-    rearm();
 }
 
 backend_state backend_t::state() const {

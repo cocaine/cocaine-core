@@ -295,6 +295,7 @@ void engine_t::process(ev::idle&, int) {
                     zmq::message_t chunk;
 
                     m_messages.recv(&chunk);
+
                     worker->second->job()->send(chunk);
 
                     return;
@@ -304,6 +305,7 @@ void engine_t::process(ev::idle&, int) {
                     std::string message;
 
                     m_messages.recv(message);
+                    
                     worker->second->job()->send(application_error, message);
 
                     return;
@@ -313,14 +315,17 @@ void engine_t::process(ev::idle&, int) {
                     ev::tstamp spent = 0;
 
                     m_messages.recv(spent);
+
                     worker->second->job()->audit(spent);
-                    worker->second->disarm();
+                    worker->second->job().reset();
+                    worker->second->rearm();
                    
                     break;
                 }
 
                 case SUICIDE:
                     worker->second->stop();
+                    
                     return;
 
                 case TERMINATE:
@@ -328,6 +333,7 @@ void engine_t::process(ev::idle&, int) {
                         m_app_cfg.name.c_str());
                     
                     stop();
+                    
                     return;
             }
 

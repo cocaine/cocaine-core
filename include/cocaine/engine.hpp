@@ -67,7 +67,8 @@ class engine_t:
                             lines::protect(it->second->id())),
                         args));
                 
-                it->second->arm(job);
+                it->second->job() = job;
+                it->second->rearm();
                 
                 return running;
             }
@@ -92,7 +93,7 @@ class engine_t:
                     }
                 }
             } else if(m_queue.size() > m_policy.queue_limit) {
-                throw resource_error_t("queue is full");
+                throw resource_error_t("the queue is full");
             }
        
             if(job->policy().urgent) {
