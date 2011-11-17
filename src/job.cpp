@@ -19,13 +19,17 @@ job_t::job_t(driver_t* parent):
     m_parent(parent)
 { }
 
-void job_t::enqueue(job_policy policy) {
+job_state job_t::enqueue(job_policy policy) {
     m_policy = policy;
     
-    if(enqueue() == queued && m_policy.deadline) {
+    job_state state = enqueue();
+
+    if(state == queued && m_policy.deadline) {
         m_expiration_timer.set<job_t, &job_t::expire>(this);
         m_expiration_timer.start(m_policy.deadline);
     }
+
+    return state;
 }
 
 job_state job_t::enqueue() {
