@@ -12,9 +12,9 @@ class fs_t:
         fs_t(engine_t* engine,
              const std::string& method, 
              const Json::Value& args);
-        virtual ~fs_t();
 
         virtual Json::Value info() const;
+        virtual void stop();
 
         void operator()(ev::stat&, int);
 

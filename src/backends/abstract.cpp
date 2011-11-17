@@ -16,10 +16,7 @@ backend_t::backend_t(engine_t* engine):
 
 backend_t::~backend_t() {
     syslog(LOG_DEBUG, "worker [%s:%s]: destructing", m_engine->name().c_str(), id().c_str());
-    
-    if(m_heartbeat_timer.is_active()) {
-        m_heartbeat_timer.stop();
-    }
+    m_heartbeat_timer.stop();
 }
 
 void backend_t::arm(boost::shared_ptr<job_t> job) {
@@ -45,7 +42,7 @@ void backend_t::disarm() {
 }
 
 backend_state backend_t::state() const {
-    return m_job ? active : (m_settled ? idle : inactive);
+    return m_settled ? (m_job ? active : idle) : inactive;
 }
 
 void backend_t::timeout(ev::timer&, int) {

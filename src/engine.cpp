@@ -124,23 +124,33 @@ Json::Value engine_t::stop() {
     syslog(LOG_INFO, "engine [%s]: stopping", m_app_cfg.name.c_str()); 
     
     m_running = false;
-    
+
+    // Abort all the outstanding jobs 
+    while(!m_queue.empty()) {
+        m_queue.front()->send(server_error, "engine is shutting down");
+        m_queue.pop_front();
+    }
+
+    // Stop all the tasks to cut the event flow
+    for(task_map_t::iterator it = m_tasks.begin(); it != m_tasks.end(); ++it) {
+        it->second->stop();
+    }
+
+    // Signal the workers to terminate
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
         m_messages.send_multi(
             boost::make_tuple(
                 protect(it->first),
                 TERMINATE));
-        // TODO: Figure out a proper shutdown mechanism for child processes
-        m_pool.erase(it);
+        it->second->stop();
     }
 
-    while(!m_queue.empty()) {
-        m_queue.front()->send(server_error, "engine is shutting down");
-        m_queue.pop_front();
+    // Wait for the pool to terminate
+    while(!m_pool.empty()) {
+        ev::get_default_loop().loop(ev::ONESHOT);
     }
-  
+
     m_tasks.clear();
-
     m_watcher.stop();
     m_processor.stop();
 
@@ -184,10 +194,14 @@ void engine_t::reap(unique_id_t::reference worker_id) {
     if(worker->second->state() == active) {
         pool_map_t::auto_type corpse(m_pool.release(worker));
         
-        syslog(LOG_DEBUG, "engine [%s]: requeueing a job from a dead worker",
-            m_app_cfg.name.c_str());
-       
-        corpse->job()->enqueue();
+        if(m_running) { 
+            syslog(LOG_DEBUG, "engine [%s]: requeueing a job from a dead worker",
+                m_app_cfg.name.c_str());
+            corpse->job()->enqueue();
+        } else {
+            corpse->job()->send(server_error, "engine is shutting down");
+            corpse->job().reset();
+        }
     } else {
         m_pool.erase(worker);
     }
@@ -306,7 +320,7 @@ void engine_t::process(ev::idle&, int) {
                 }
 
                 case SUICIDE:
-                    reap(worker->first);
+                    worker->second->stop();
                     return;
 
                 case TERMINATE:
@@ -325,8 +339,8 @@ void engine_t::process(ev::idle&, int) {
                 job->enqueue();
             }
         } else {
-            syslog(LOG_WARNING, "engine [%s]: dropping messages from a dead worker %s", 
-                m_app_cfg.name.c_str(), worker_id.c_str());
+            syslog(LOG_WARNING, "engine [%s]: dropping type %d messages from a dead worker %s", 
+                m_app_cfg.name.c_str(), code, worker_id.c_str());
             m_messages.ignore();
         }
     } else {

@@ -15,14 +15,16 @@ thread_t::thread_t(engine_t* engine, const std::string& type, const std::string&
     }
 }
 
-thread_t::~thread_t() {
+void thread_t::stop() {
     if(m_thread.get()) {
         if(!m_thread->timed_join(boost::posix_time::seconds(5))) {
             syslog(LOG_WARNING, "worker [%s:%s]: worker is unresponsive",
                 m_engine->name().c_str(), id().c_str());
-            m_thread->interrupt();
+            kill();
         }
     }
+
+    m_engine->reap(id());
 }
 
 void thread_t::kill() {

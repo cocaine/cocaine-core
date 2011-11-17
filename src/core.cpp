@@ -212,7 +212,7 @@ Json::Value core_t::dispatch(const Json::Value& root) {
         }
 
         return result;
-    } else if(action == "delete") {
+    } else if(action == "reload" || action == "delete") {
         Json::Value apps(root["apps"]), result(Json::objectValue);
 
         if(!apps.isArray() || !apps.size()) {
@@ -223,8 +223,14 @@ Json::Value core_t::dispatch(const Json::Value& root) {
             std::string app((*it).asString());
             
             try {
-                result[app] = delete_engine(app);
+                if(action == "reload") {
+                    result[app] = reload_engine(app);
+                } else {
+                    result[app] = delete_engine(app);
+                }
             } catch(const std::runtime_error& e) {
+                result[app]["error"] = e.what();
+            } catch(const zmq::error_t& e) {
                 result[app]["error"] = e.what();
             }
         }
@@ -264,6 +270,28 @@ Json::Value core_t::create_engine(const std::string& name, const Json::Value& ma
     m_engines.insert(name, engine);
     
     return result;
+}
+
+Json::Value core_t::reload_engine(const std::string& name) {
+    Json::Value manifest;
+    engine_map_t::iterator engine(m_engines.find(name));
+
+    if(engine == m_engines.end()) {
+        throw std::runtime_error("the specified app is not active");
+    }
+
+    try {
+        manifest = storage_t::create()->get("apps", name);
+    } catch(const std::runtime_error& e) {
+        syslog(LOG_ERR, "core: failed to reload '%s' engine due to the storage failure - %s",
+            name.c_str(), e.what());
+        throw;
+    }
+
+    engine->second->stop();
+    m_engines.erase(engine);
+
+    return create_engine(name, manifest, true);
 }
 
 Json::Value core_t::delete_engine(const std::string& name) {

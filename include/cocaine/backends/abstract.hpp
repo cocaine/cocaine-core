@@ -25,12 +25,14 @@ class backend_t:
         void rearm();
         void disarm();
 
+        virtual void stop() = 0;
+
         backend_state state() const;
         
         inline boost::shared_ptr<job_t>& job() {
             return m_job;
         }
-
+        
     protected:
         virtual void kill() = 0;
 

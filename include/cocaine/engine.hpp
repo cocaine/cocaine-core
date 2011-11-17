@@ -50,6 +50,7 @@ class engine_t:
 
         Json::Value start(const Json::Value& manifest);
         Json::Value stop();
+        
         Json::Value info() const;
 
         void reap(unique_id_t::reference worker_id);

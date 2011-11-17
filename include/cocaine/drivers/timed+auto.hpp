@@ -13,8 +13,10 @@ class auto_timed_t:
                      const std::string& method, 
                      const Json::Value& args);
 
+        // Driver interface
         virtual Json::Value info() const;
 
+        // Timed driver interface
         ev::tstamp reschedule(ev::tstamp now);
 
     private:

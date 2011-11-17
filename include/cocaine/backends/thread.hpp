@@ -14,7 +14,8 @@ class thread_t:
         thread_t(engine_t* engine,
                  const std::string& type,
                  const std::string& args);
-        virtual ~thread_t();
+
+        virtual void stop();
 
     private:
         virtual void kill();

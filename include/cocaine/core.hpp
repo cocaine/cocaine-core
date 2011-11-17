@@ -34,7 +34,9 @@ class core_t:
                                   const Json::Value& manifest, 
                                   bool recovering = false);
 
+        Json::Value reload_engine(const std::string& name);
         Json::Value delete_engine(const std::string& name);
+
         Json::Value info() const;
 
         // Responding

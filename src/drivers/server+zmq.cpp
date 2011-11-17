@@ -67,20 +67,20 @@ zmq_server_t::zmq_server_t(engine_t* engine, const std::string& method, const Js
     m_processor.start();
 }
 
-zmq_server_t::~zmq_server_t() {
-    m_watcher.stop();
-    m_processor.stop();
-}
-
 Json::Value zmq_server_t::info() const {
     Json::Value result(Json::objectValue);
 
+    result["stats"] = stats();
     result["type"] = "server+zmq";
-    result["spent"] = m_spent;
     result["endpoint"] = m_socket.endpoint();
     result["route"] = m_socket.route();
 
     return result;
+}
+
+void zmq_server_t::stop() {
+    m_watcher.stop();
+    m_processor.stop();
 }
 
 void zmq_server_t::operator()(ev::io&, int) {

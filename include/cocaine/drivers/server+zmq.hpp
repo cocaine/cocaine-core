@@ -38,14 +38,13 @@ class zmq_server_t:
         zmq_server_t(engine_t* engine,
                      const std::string& method, 
                      const Json::Value& args);
-        virtual ~zmq_server_t();
 
         // Driver interface
         virtual Json::Value info() const;
-        
+        virtual void stop();
+
         // Server interface
         void operator()(ev::io&, int);
-        
         virtual void process(ev::idle&, int);
         virtual void send(zmq_job_t* job, zmq::message_t& chunk);
 

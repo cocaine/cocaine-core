@@ -18,7 +18,7 @@ class timed_t:
             m_watcher.start();
         }
 
-        ~timed_t() {
+        virtual void stop() {
             m_watcher.stop();
         }
 

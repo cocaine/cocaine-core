@@ -64,16 +64,12 @@ raw_server_t::raw_server_t(engine_t* engine, const std::string& method, const Js
 }
 
 raw_server_t::~raw_server_t() {
-    shutdown(m_socket, SHUT_RDWR);
     close(m_socket);
 }
 
-void raw_server_t::suspend() {
+void raw_server_t::stop() {
+    shutdown(m_socket, SHUT_RD);
     m_watcher.stop();
-}
-
-void raw_server_t::resume() {
-    m_watcher.start();
 }
 
 void raw_server_t::operator()(ev::io&, int) {

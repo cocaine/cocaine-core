@@ -14,9 +14,11 @@ class raw_server_t:
                      const Json::Value& args);
         virtual ~raw_server_t();
 
+        // Driver interface
+        virtual void stop();
+
         // Server interface
         void operator()(ev::io&, int);
-
         virtual void process(int fd) = 0;
 
     protected:
