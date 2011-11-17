@@ -11,7 +11,8 @@ namespace cocaine { namespace engine {
 
 struct job_policy {
     public:
-        static job_policy defaults();
+        job_policy();
+        job_policy(bool urgent, ev::tstamp timeout, ev::tstamp deadline);
 
     public:
         bool urgent;
@@ -30,12 +31,14 @@ class job_t:
     public birth_control_t<job_t>
 {
     public:
-        job_t(driver_t* parent, job_policy policy = job_policy::defaults());
+        job_t(driver_t* parent);
 
-        virtual void enqueue();
+        void enqueue(job_policy policy);
+        virtual job_state enqueue();
+
         virtual void send(zmq::message_t& chunk) = 0; 
         virtual void send(error_code code, const std::string& error) = 0;
-        
+
         void audit(ev::tstamp spent);
         
         inline job_policy& policy() {
@@ -57,7 +60,7 @@ class publication_t:
     public job_t
 {
     public:
-        publication_t(driver_t* parent, job_policy policy = job_policy::defaults());
+        publication_t(driver_t* parent);
 
         virtual void send(zmq::message_t& chunk);
         virtual void send(error_code code, const std::string& error);

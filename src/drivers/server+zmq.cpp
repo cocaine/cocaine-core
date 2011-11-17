@@ -3,6 +3,7 @@
 
 #include "cocaine/drivers/server+zmq.hpp"
 
+using namespace cocaine::engine;
 using namespace cocaine::engine::drivers;
 using namespace cocaine::lines;
 
@@ -11,12 +12,12 @@ zmq_job_t::zmq_job_t(zmq_server_t* server, const route_t& route):
     m_route(route)
 { }
 
-void zmq_job_t::enqueue() {
+job_state zmq_job_t::enqueue() {
     zmq::message_t request;
 
     request.copy(&m_request);
 
-    m_parent->engine()->enqueue(
+    return m_parent->engine()->enqueue(
         shared_from_this(),
         boost::make_tuple(
             INVOKE,

@@ -14,7 +14,9 @@ class zmq_job_t:
     public:
         zmq_job_t(zmq_server_t* server, const lines::route_t& route);
 
-        virtual void enqueue();
+        using job_t::enqueue;
+        virtual job_state enqueue();
+
         virtual void send(zmq::message_t& chunk);
         virtual void send(error_code code, const std::string& error);
 

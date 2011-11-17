@@ -3,38 +3,38 @@
 
 using namespace cocaine::engine;
 
-job_policy job_policy::defaults() {
-    job_policy policy;
+job_policy::job_policy():
+    urgent(false),
+    timeout(config_t::get().engine.heartbeat_timeout),
+    deadline(0.0)
+{ }
 
-    policy.urgent = false;
-    policy.timeout = config_t::get().engine.heartbeat_timeout;
-    policy.deadline = 0.0;
+job_policy::job_policy(bool urgent_, ev::tstamp timeout_, ev::tstamp deadline_):
+    urgent(urgent_),
+    timeout(timeout_),
+    deadline(deadline_)
+{ }
 
-    return policy;
-}
+job_t::job_t(driver_t* parent):
+    m_parent(parent)
+{ }
 
-job_t::job_t(driver_t* parent, job_policy policy):
-    m_parent(parent),
-    m_policy(policy)
-{
-    if(m_policy.deadline) {
+void job_t::enqueue(job_policy policy) {
+    m_policy = policy;
+    
+    if(enqueue() == queued && m_policy.deadline) {
         m_expiration_timer.set<job_t, &job_t::expire>(this);
         m_expiration_timer.start(m_policy.deadline);
     }
 }
 
-void job_t::enqueue() {
-    job_state state = m_parent->engine()->enqueue(
+job_state job_t::enqueue() {
+    return m_parent->engine()->enqueue(
         shared_from_this(),
         boost::make_tuple(
             INVOKE,
             m_parent->method()
-        )
-    );
-    
-    if(m_expiration_timer.is_active() && state == running) {
-        m_expiration_timer.stop();
-    }
+        ));
 }
 
 void job_t::audit(ev::tstamp spent) {
@@ -45,8 +45,8 @@ void job_t::expire(ev::periodic&, int) {
     m_parent->expire(shared_from_this());
 }
 
-publication_t::publication_t(driver_t* parent, job_policy policy):
-    job_t(parent, policy)
+publication_t::publication_t(driver_t* parent):
+    job_t(parent)
 { }
 
 void publication_t::send(zmq::message_t& chunk) {

@@ -102,17 +102,20 @@ void lsd_server_t::process(ev::idle&, int) {
             return;
         }
 
-        job_policy policy;
+        job_policy policy(
+            root.get("urgent", false).asBool(),
+            root.get("timeout", config_t::get().engine.heartbeat_timeout).asDouble(),
+            root.get("deadline", 0.0).asDouble());
 
-        policy.urgent = root.get("urgent", false).asBool();
-        policy.deadline = root.get("deadline", 0.0).asDouble();
-        policy.timeout = root.get("timeout", config_t::get().engine.heartbeat_timeout).asDouble();
-
-        job->policy() = policy;
+        // Instantly drop the job if the deadline has already passed
+        if(policy.deadline >= ev::get_default_loop().now()) {
+            job->send(timeout_error, "the job has expired");
+            return;
+        }
 
         // Enqueue
         try {
-            job->enqueue();
+            job->enqueue(policy);
         } catch(const resource_error_t& e) {
             syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
                 m_engine->name().c_str(), m_method.c_str(), e.what());
