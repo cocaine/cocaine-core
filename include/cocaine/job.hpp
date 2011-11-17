@@ -11,15 +11,7 @@ namespace cocaine { namespace engine {
 
 struct job_policy {
     public:
-        static job_policy defaults() {
-            job_policy policy;
-
-            policy.urgent = false;
-            policy.timeout = config_t::get().engine.heartbeat_timeout;
-            policy.deadline = 0.0;
-
-            return policy;
-        }
+        static job_policy defaults();
 
     public:
         bool urgent;

@@ -89,6 +89,7 @@ void lsd_server_t::process(ev::idle&, int) {
             return;
         }
 
+        // Parse the envelope and setup the job policy
         Json::Reader reader(Json::Features::strictMode());
         Json::Value root;
 
@@ -109,6 +110,7 @@ void lsd_server_t::process(ev::idle&, int) {
 
         job->policy() = policy;
 
+        // Enqueue
         try {
             job->enqueue();
         } catch(const resource_error_t& e) {

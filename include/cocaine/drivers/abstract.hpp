@@ -39,6 +39,7 @@ class driver_t:
     protected:
         engine_t* m_engine;
         const std::string m_method;
+        job_policy m_policy;
 
     private:
         accumulator_set<

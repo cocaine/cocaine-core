@@ -3,6 +3,16 @@
 
 using namespace cocaine::engine;
 
+job_policy job_policy::defaults() {
+    job_policy policy;
+
+    policy.urgent = false;
+    policy.timeout = config_t::get().engine.heartbeat_timeout;
+    policy.deadline = 0.0;
+
+    return policy;
+}
+
 job_t::job_t(driver_t* parent, job_policy policy):
     m_parent(parent),
     m_policy(policy)
