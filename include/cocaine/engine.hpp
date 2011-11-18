@@ -20,7 +20,6 @@ struct resource_error_t:
     { }
 };
 
-// Application Engine
 class engine_t:
     public boost::noncopyable
 {
@@ -153,6 +152,16 @@ class engine_t:
         } m_app_cfg;
        
         task_map_t m_tasks;
+};
+
+class publication_t:
+    public job_t
+{
+    public:
+        publication_t(driver_t* parent);
+
+        virtual void send(zmq::message_t& chunk);
+        virtual void send(error_code code, const std::string& error);
 };
 
 }}

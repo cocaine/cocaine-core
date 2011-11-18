@@ -355,3 +355,27 @@ void engine_t::process(ev::idle&, int) {
     }
 }
 
+publication_t::publication_t(driver_t* parent):
+    job_t(parent)
+{ }
+
+void publication_t::send(zmq::message_t& chunk) {
+    Json::Reader reader(Json::Features::strictMode());
+    Json::Value root;
+
+    if(reader.parse(
+        static_cast<const char*>(chunk.data()),
+        static_cast<const char*>(chunk.data()) + chunk.size(),
+        root))
+    {
+        m_parent->engine()->publish(m_parent->method(), root);
+    } else {
+        m_parent->engine()->publish(m_parent->method(),
+            helpers::make_json("error", "unable to parse the json"));
+    }
+}
+
+void publication_t::send(error_code code, const std::string& error) {
+    m_parent->engine()->publish(m_parent->method(),
+        helpers::make_json("error", error));
+}

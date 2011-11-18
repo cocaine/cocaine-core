@@ -56,16 +56,6 @@ class job_t:
         ev::periodic m_expiration_timer;
 };
 
-class publication_t:
-    public job_t
-{
-    public:
-        publication_t(driver_t* parent);
-
-        virtual void send(zmq::message_t& chunk);
-        virtual void send(error_code code, const std::string& error);
-};
-
 }}
 
 #endif
