@@ -10,8 +10,8 @@ class void_storage_t:
 {
     public:
         virtual void put(const std::string& ns, const std::string& key, const Json::Value& value) { }
-        virtual bool exists(const std::string& ns, const std::string& key) { return false; }
 
+        virtual bool exists(const std::string& ns, const std::string& key) { return false; }
         virtual Json::Value get(const std::string& ns, const std::string& key) { return Json::Value(); }
         virtual Json::Value all(const std::string& ns) { return Json::Value(); }
 

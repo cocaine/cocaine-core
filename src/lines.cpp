@@ -2,6 +2,60 @@
 
 using namespace cocaine::lines;
 
+socket_t::socket_t(zmq::context_t& context, int type, std::string route):
+    m_socket(context, type),
+    m_route(route)
+{
+    if(!route.empty()) {
+        setsockopt(ZMQ_IDENTITY, route.data(), route.length());
+    } 
+}
+
+void socket_t::bind(const std::string& endpoint) {
+    m_socket.bind(endpoint.c_str());
+
+    // Try to determine the connection string for clients
+    // TODO: Do it the right way
+    size_t position = endpoint.find_last_of(":");
+
+    if(position != std::string::npos) {
+        m_endpoint = config_t::get().core.hostname +
+            endpoint.substr(position, std::string::npos);
+    } else {
+        m_endpoint = "<local>";
+    }
+}
+
+void socket_t::connect(const std::string& endpoint) {
+    m_socket.connect(endpoint.c_str());
+}
+       
+bool socket_t::send(zmq::message_t& message, int flags) {
+    try {
+        return m_socket.send(message, flags);
+    } catch(const zmq::error_t& e) {
+        syslog(LOG_ERR, "net: [%s()] %s", __func__, e.what());
+        return false;
+    }
+}
+
+bool socket_t::recv(zmq::message_t* message, int flags) {
+    try {
+        return m_socket.recv(message, flags);
+    } catch(const zmq::error_t& e) {
+        syslog(LOG_ERR, "net: [%s()] %s", __func__, e.what());
+        return false;
+    }
+}
+
+void socket_t::getsockopt(int name, void* value, size_t* length) {
+    m_socket.getsockopt(name, value, length);
+}
+
+void socket_t::setsockopt(int name, const void* value, size_t length) {
+    m_socket.setsockopt(name, value, length);
+}
+
 int socket_t::fd() {
     int fd;
     size_t size = sizeof(fd);

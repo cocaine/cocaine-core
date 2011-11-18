@@ -32,61 +32,17 @@ class socket_t:
     public birth_control_t<socket_t>
 {
     public:
-        socket_t(zmq::context_t& context, int type, std::string route = ""):
-            m_socket(context, type),
-            m_route(route)
-        {
-            if(!route.empty()) {
-                setsockopt(ZMQ_IDENTITY, route.data(), route.length());
-            } 
-        }
+        socket_t(zmq::context_t& context, int type, std::string route = "");
 
-        inline bool send(zmq::message_t& message, int flags = 0) {
-            try {
-                return m_socket.send(message, flags);
-            } catch(const zmq::error_t& e) {
-                syslog(LOG_ERR, "net: [%s()] %s", __func__, e.what());
-                return false;
-            }
-        }
-
-        inline bool recv(zmq::message_t* message, int flags = 0) {
-            try {
-                return m_socket.recv(message, flags);
-            } catch(const zmq::error_t& e) {
-                syslog(LOG_ERR, "net: [%s()] %s", __func__, e.what());
-                return false;
-            }
-        }
-
-        inline void getsockopt(int name, void* value, size_t* length) {
-            m_socket.getsockopt(name, value, length);
-        }
-
-        inline void setsockopt(int name, const void* value, size_t length) {
-            m_socket.setsockopt(name, value, length);
-        }
-
-        inline void bind(const std::string& endpoint) {
-            m_socket.bind(endpoint.c_str());
-
-            // Try to determine the connection string for clients
-            // TODO: Do it the right way
-            size_t position = endpoint.find_last_of(":");
-
-            if(position != std::string::npos) {
-                m_endpoint = config_t::get().core.hostname +
-                    endpoint.substr(position, std::string::npos);
-            } else {
-                m_endpoint = "<local>";
-            }
-        }
-
-        inline void connect(const std::string& endpoint) {
-            m_socket.connect(endpoint.c_str());
-        }
+        void bind(const std::string& endpoint);
+        void connect(const std::string& endpoint);
        
-    public:
+        bool send(zmq::message_t& message, int flags = 0);
+        bool recv(zmq::message_t* message, int flags = 0);
+
+        void getsockopt(int name, void* value, size_t* length);
+        void setsockopt(int name, const void* value, size_t length);
+
         int fd();
 
         inline std::string endpoint() const { 
@@ -99,7 +55,6 @@ class socket_t:
 
         bool pending(int event = ZMQ_POLLIN);
         bool more();
-        
 #if ZMQ_VERSION > 30000
         bool label();
 #endif

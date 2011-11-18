@@ -18,7 +18,7 @@ class overseer_t:
                    const std::string& name);
         ~overseer_t();
 
-        // Thread entry point 
+        // Entry point 
         void operator()(const std::string& type, const std::string& args);
 
         // Callback used to send response chunks

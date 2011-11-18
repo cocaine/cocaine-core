@@ -8,9 +8,9 @@
 #include "cocaine/common.hpp"
 #include "cocaine/engine.hpp"
 
-using namespace boost::accumulators;
-
 namespace cocaine { namespace engine {
+
+using namespace boost::accumulators;
 
 class driver_t:
     public boost::noncopyable

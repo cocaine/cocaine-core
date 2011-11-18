@@ -15,8 +15,8 @@ class file_storage_t:
         file_storage_t();
 
         virtual void put(const std::string& ns, const std::string& key, const Json::Value& value);
-        virtual bool exists(const std::string& ns, const std::string& key);
 
+        virtual bool exists(const std::string& ns, const std::string& key);
         virtual Json::Value get(const std::string& ns, const std::string& key);
         virtual Json::Value all(const std::string& ns);
 

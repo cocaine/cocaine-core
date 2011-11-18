@@ -50,7 +50,6 @@ class engine_t:
 
         Json::Value start(const Json::Value& manifest);
         Json::Value stop();
-        
         Json::Value info() const;
 
         void reap(unique_id_t::reference worker_id);
@@ -131,7 +130,7 @@ class engine_t:
         zmq::context_t& m_context;
         boost::shared_ptr<lines::socket_t> m_pubsub;
         
-        // The pool
+        // Pool
         struct engine_policy {
             std::string backend;
             unsigned int pool_limit;
@@ -140,13 +139,15 @@ class engine_t:
         } m_policy;
 
         lines::channel_t m_messages;
+        
         ev::io m_watcher;
         ev::idle m_processor;
 
+        // Jobs
         pool_map_t m_pool;
         job_queue_t m_queue;
         
-        // The application
+        // Application
         struct {
             std::string name, type, args;
         } m_app_cfg;

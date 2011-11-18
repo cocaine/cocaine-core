@@ -13,8 +13,8 @@ class storage_t:
     
     public:
         virtual void put(const std::string& ns, const std::string& key, const Json::Value& value) = 0;
+        
         virtual bool exists(const std::string& ns, const std::string& key) = 0;
-
         virtual Json::Value get(const std::string& ns, const std::string& key) = 0;
         virtual Json::Value all(const std::string& ns) = 0;
 
