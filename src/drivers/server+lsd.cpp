@@ -1,4 +1,5 @@
 #include "cocaine/drivers/server+lsd.hpp"
+#include "cocaine/engine.hpp"
 
 using namespace cocaine::engine::drivers;
 using namespace cocaine::lines;
@@ -115,7 +116,7 @@ void lsd_server_t::process(ev::idle&, int) {
 
         // Enqueue
         try {
-            job->enqueue(policy);
+            job->enqueue_with_policy(policy);
         } catch(const resource_error_t& e) {
             syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
                 m_engine->name().c_str(), m_method.c_str(), e.what());

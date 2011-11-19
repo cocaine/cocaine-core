@@ -3,6 +3,7 @@
 
 #include "cocaine/drivers/abstract.hpp"
 #include "cocaine/job.hpp"
+#include "cocaine/lines.hpp"
 
 namespace cocaine { namespace engine { namespace drivers {
 

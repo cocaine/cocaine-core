@@ -5,7 +5,6 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
-#include "cocaine/lines.hpp"
 
 namespace cocaine { namespace engine {
 
@@ -34,7 +33,8 @@ class job_t:
         job_t(driver_t* parent);
 
         virtual job_state enqueue();
-        job_state enqueue(job_policy policy);
+
+        job_state enqueue_with_policy(job_policy policy);
 
         virtual void send(zmq::message_t& chunk) = 0; 
         virtual void send(error_code code, const std::string& error) = 0;

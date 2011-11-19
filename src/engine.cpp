@@ -379,3 +379,4 @@ void publication_t::send(error_code code, const std::string& error) {
     m_parent->engine()->publish(m_parent->method(),
         helpers::make_json("error", error));
 }
+

@@ -1,4 +1,5 @@
 #include "cocaine/drivers/fs.hpp"
+#include "cocaine/engine.hpp"
 
 using namespace cocaine::engine::drivers;
 

@@ -6,7 +6,7 @@
 #include <boost/accumulators/statistics/sum.hpp>
 
 #include "cocaine/common.hpp"
-#include "cocaine/engine.hpp"
+#include "cocaine/forwards.hpp"
 
 namespace cocaine { namespace engine {
 

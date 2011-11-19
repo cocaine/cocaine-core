@@ -1,4 +1,5 @@
 #include "cocaine/drivers/abstract.hpp"
+#include "cocaine/engine.hpp"
 
 using namespace boost::accumulators;
 using namespace cocaine::engine;

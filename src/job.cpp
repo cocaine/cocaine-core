@@ -1,4 +1,5 @@
 #include "cocaine/drivers/abstract.hpp"
+#include "cocaine/engine.hpp"
 #include "cocaine/job.hpp"
 
 using namespace cocaine::engine;
@@ -27,7 +28,7 @@ job_state job_t::enqueue() {
             m_parent->method()));
 }
 
-job_state job_t::enqueue(job_policy policy) {
+job_state job_t::enqueue_with_policy(job_policy policy) {
     m_policy = policy;
     
     job_state state = enqueue();

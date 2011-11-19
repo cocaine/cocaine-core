@@ -2,6 +2,7 @@
 #include <boost/assign.hpp>
 
 #include "cocaine/drivers/server+zmq.hpp"
+#include "cocaine/engine.hpp"
 
 using namespace cocaine::engine;
 using namespace cocaine::engine::drivers;

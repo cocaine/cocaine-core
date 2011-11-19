@@ -1,7 +1,7 @@
 #ifndef COCAINE_BACKENDS_THREAD_HPP
 #define COCAINE_BACKENDS_THREAD_HPP
 
-#include <boost/thread.hpp>
+#include <boost/thread/thread.hpp>
 
 #include <cocaine/backends/abstract.hpp>
 

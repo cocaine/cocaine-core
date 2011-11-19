@@ -2,6 +2,7 @@
 #define COCAINE_DRIVERS_TIMED_HPP
 
 #include "cocaine/drivers/abstract.hpp"
+#include "cocaine/engine.hpp"
 
 namespace cocaine { namespace engine { namespace drivers {
 

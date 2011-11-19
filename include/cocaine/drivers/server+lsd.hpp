@@ -2,7 +2,6 @@
 #define COCAINE_DRIVERS_LSD_SERVER_HPP
 
 #include "cocaine/drivers/server+zmq.hpp"
-#include "cocaine/job.hpp"
 
 namespace cocaine { namespace engine { namespace drivers {
 
