@@ -56,7 +56,14 @@ Json::Value engine_t::start(const Json::Value& manifest) {
         throw std::runtime_error("no plugin for '" + m_app_cfg.type + "' is available");
     }
     
-    syslog(LOG_INFO, "engine [%s]: starting", m_app_cfg.name.c_str()); 
+    m_app_cfg.version = manifest.get("version", 0).asUInt();
+
+    if(m_app_cfg.version == 0) {
+        throw std::runtime_error("no app version has been specified");
+    }
+    
+    syslog(LOG_INFO, "engine [%s]: starting, version %d", m_app_cfg.name.c_str(), 
+        m_app_cfg.version); 
     
     // Pool configuration
     // ------------------
@@ -169,9 +176,7 @@ Json::Value engine_t::info() const {
     Json::Value results(Json::objectValue);
 
     results["queue"] = static_cast<Json::UInt>(m_queue.size());
-    
     results["pool"]["total"] = static_cast<Json::UInt>(m_pool.size());
-    
     results["pool"]["active"] = static_cast<Json::UInt>(
         std::count_if(
             m_pool.begin(),
@@ -184,7 +189,8 @@ Json::Value engine_t::info() const {
     }
     
     results["running"] = m_running;
-    
+    results["version"] = m_app_cfg.version;
+
     return results;
 }
 

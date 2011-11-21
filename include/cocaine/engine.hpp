@@ -149,6 +149,7 @@ class engine_t:
         // Application
         struct {
             std::string name, type, args;
+            unsigned int version;
         } m_app_cfg;
        
         task_map_t m_tasks;
