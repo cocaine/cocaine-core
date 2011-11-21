@@ -60,8 +60,8 @@ ADD_LIBRARY(cocaine-core-storage SHARED
     src/storages/mongo)
 
 TARGET_LINK_LIBRARIES(cocaine-core-storage
-    cocaine-core-config
     json
+    cocaine-core-config
     ${LIBUUID_LIBRARIES}
     boost_filesystem-mt
     boost_system-mt
@@ -99,11 +99,11 @@ ADD_LIBRARY(cocaine-core SHARED
     src/registry)
 
 TARGET_LINK_LIBRARIES(cocaine-core
+    json
     cocaine-core-config
     cocaine-core-security
     cocaine-core-storage
-    json
-    ${CMAKE_DL_LIBS}
+    ltdl
     ${LIBUUID_LIBRARIES}
     boost_filesystem-mt
     boost_system-mt

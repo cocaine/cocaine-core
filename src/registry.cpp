@@ -1,5 +1,3 @@
-#include <dlfcn.h>
-
 #include <boost/filesystem.hpp>
 #include <boost/iterator/filter_iterator.hpp>
 #include <boost/algorithm/string/join.hpp>
@@ -18,6 +16,10 @@ struct is_regular_file {
 };
 
 registry_t::registry_t() {
+    if(lt_dlinit() != 0) {
+        throw std::runtime_error("unable to initialize the module loader");
+    }
+
     fs::path path(config_t::get().registry.location);
 
     if(!fs::exists(path)) {
@@ -26,7 +28,12 @@ registry_t::registry_t() {
         throw std::runtime_error(path.string() + " is not a directory");
     }
 
-    void* plugin;
+    lt_dladvise advise;
+    lt_dlhandle plugin;
+
+    lt_dladvise_init(&advise);
+    lt_dladvise_global(&advise);
+
     initialize_fn_t initializer;
     std::vector<std::string> types;
 
@@ -37,14 +44,14 @@ registry_t::registry_t() {
     while(it != end) {
         // Load the plugin
 #if BOOST_FILESYSTEM_VERSION == 3
-        plugin = dlopen(it->path().string().c_str(), RTLD_NOW | RTLD_GLOBAL);
+        plugin = lt_dlopenadvise(it->path().string().c_str(), advise);
 #else
-        plugin = dlopen(it->string().c_str(), RTLD_NOW | RTLD_GLOBAL);
+        plugin = lt_dlopenadvise(it->string().c_str(), advise);
 #endif
 
         if(plugin) {
             // Get the plugin info
-            initializer = reinterpret_cast<initialize_fn_t>(dlsym(plugin, "initialize"));
+            initializer = reinterpret_cast<initialize_fn_t>(lt_dlsym(plugin, "initialize"));
 
             if(initializer) {
                 const source_info_t* info = initializer();
@@ -61,20 +68,20 @@ registry_t::registry_t() {
             } else {
 #if BOOST_FILESYSTEM_VERSION == 3
                 syslog(LOG_ERR, "registry: invalid interface in '%s' - %s",
-                    it->path().string().c_str(), dlerror());
+                    it->path().string().c_str(), lt_dlerror());
 #else
                 syslog(LOG_ERR, "registry: invalid interface in '%s' - %s",
-                    it->string().c_str(), dlerror());
+                    it->string().c_str(), lt_dlerror());
 #endif
-                dlclose(plugin);
+                lt_dlclose(plugin);
             }
         } else {
 #if BOOST_FILESYSTEM_VERSION == 3
             syslog(LOG_ERR, "registry: failed to load '%s' - %s", 
-                it->path().string().c_str(), dlerror());
+                it->path().string().c_str(), lt_dlerror());
 #else
             syslog(LOG_ERR, "registry: failed to load '%s' - %s",
-                it->string().c_str(), dlerror());
+                it->string().c_str(), lt_dlerror());
 #endif
         }
 
@@ -90,9 +97,11 @@ registry_t::registry_t() {
 }
 
 registry_t::~registry_t() {
-    for(std::vector<void*>::iterator it = m_plugins.begin(); it != m_plugins.end(); ++it) {
-        dlclose(*it);
+    for(std::vector<lt_dlhandle>::iterator it = m_plugins.begin(); it != m_plugins.end(); ++it) {
+        lt_dlclose(*it);
     }
+
+    lt_dlexit();
 }
 
 bool registry_t::exists(const std::string& type) {

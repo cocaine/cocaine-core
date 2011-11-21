@@ -1,6 +1,8 @@
 #ifndef COCAINE_REGISTRY_HPP
 #define COCAINE_REGISTRY_HPP
 
+#include <ltdl.h>
+
 #include "cocaine/common.hpp"
 #include "cocaine/plugin.hpp"
 
@@ -29,8 +31,8 @@ class registry_t:
         typedef std::map<const std::string, plugin::factory_fn_t> factory_map_t;
         factory_map_t m_factories;
 
-        // Used to dlclose() all the plugins on shutdown
-        std::vector<void*> m_plugins;
+        // Used to unload all the plugins on shutdown
+        std::vector<lt_dlhandle> m_plugins;
 };
 
 }}
