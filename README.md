@@ -16,20 +16,16 @@ Notable features:
 At the moment, Cocaine supports the following languages and specifications:
 
 * C++
-* Python + Raw
-* Python + JSON
-* Python + WSGI (almost ready)
+* Python (Raw, JSON, WSGI)
 * Perl (under active development)
 * JavaScript (very limited, as the language itself lacks a standard library)
 
-The applications can be driven by the following drivers:
+The application tasks can be driven by any of the following drivers:
 
 * Timer
 * Cron (under development)
 * Filesystem Monitor
-* Server + Raw
-* Server + ZeroMQ
-* Server + LSD
+* Server (Raw, ZeroMQ, LSD)
 
 Application configuration example
 =================================
@@ -38,6 +34,7 @@ Application configuration example
 manifest = {
     "type": "python+wsgi",
     "args": "local:///path/to/application/__init__.py",
+    "version": 1,
     "engine": {
         "backend": "process",
         "heartbeat-timeout": 60,
