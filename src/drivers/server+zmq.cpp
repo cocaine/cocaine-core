@@ -45,7 +45,7 @@ void zmq_job_t::send(error_code code, const std::string& error) {
     static_cast<zmq_server_t*>(m_parent)->send(this, message);
 }
 
-zmq_server_t::zmq_server_t(engine_t* engine, const std::string& method, const Json::Value& args):
+zmq_server_t::zmq_server_t(engine_t* engine, const std::string& method, const Json::Value& args) try:
     driver_t(engine, method),
     m_socket(m_engine->context(), ZMQ_ROUTER, boost::algorithm::join(
         boost::assign::list_of
@@ -67,6 +67,8 @@ zmq_server_t::zmq_server_t(engine_t* engine, const std::string& method, const Js
     m_watcher.start(m_socket.fd(), ev::READ);
     m_processor.set<zmq_server_t, &zmq_server_t::process>(this);
     m_processor.start();
+} catch(const zmq::error_t& e) {
+    throw std::runtime_error("network failure in '" + m_method + "' task - " + e.what());
 }
 
 Json::Value zmq_server_t::info() const {
@@ -129,11 +131,11 @@ void zmq_server_t::process(ev::idle&, int) {
         try {
             job->enqueue();
         } catch(const resource_error_t& e) {
-            syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
+            syslog(LOG_ERR, "driver [%s:%s]: unable to enqueue the invocation - %s",
                 m_engine->name().c_str(), m_method.c_str(), e.what());
             job->send(resource_error, e.what());
         } catch(const std::runtime_error& e) {
-            syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
+            syslog(LOG_ERR, "driver [%s:%s]: unable to enqueue the invocation - %s",
                 m_engine->name().c_str(), m_method.c_str(), e.what());
             job->send(server_error, e.what());
         }

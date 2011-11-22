@@ -7,6 +7,24 @@
 
 namespace cocaine { namespace plugin {
 
+class unrecoverable_error_t:
+    public std::runtime_error
+{
+    public:
+        unrecoverable_error_t(const std::string& what):
+            std::runtime_error(what)
+        { }
+};
+
+class recoverable_error_t:
+    public std::runtime_error
+{
+    public:
+        recoverable_error_t(const std::string& what):
+            std::runtime_error(what)
+        { }
+};
+
 // A callback function type used to push response chunks
 typedef boost::function<void(const void*, size_t)> callback_fn_t;
 

@@ -77,10 +77,10 @@ registry_t::registry_t() {
             }
         } else {
 #if BOOST_FILESYSTEM_VERSION == 3
-            syslog(LOG_ERR, "registry: failed to load '%s' - %s", 
+            syslog(LOG_ERR, "registry: unable to load '%s' - %s", 
                 it->path().string().c_str(), lt_dlerror());
 #else
-            syslog(LOG_ERR, "registry: failed to load '%s' - %s",
+            syslog(LOG_ERR, "registry: unable to load '%s' - %s",
                 it->string().c_str(), lt_dlerror());
 #endif
         }

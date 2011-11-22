@@ -13,6 +13,7 @@ overseer_t::overseer_t(unique_id_t::reference id_, zmq::context_t& context, cons
     unique_id_t(id_),
     m_context(context),
     m_messages(m_context, ZMQ_DEALER, id()),
+    m_app_name(name),
     m_loop(),
     m_watcher(m_loop),
     m_processor(m_loop),
@@ -23,7 +24,7 @@ overseer_t::overseer_t(unique_id_t::reference id_, zmq::context_t& context, cons
         boost::assign::list_of
             (std::string("ipc:///var/run/cocaine"))
             (config_t::get().core.instance)
-            (name),
+            (m_app_name),
         "/"));
     
     m_watcher.set<overseer_t, &overseer_t::message>(this);
@@ -45,9 +46,14 @@ overseer_t::~overseer_t() {
 void overseer_t::operator()(const std::string& type, const std::string& args) {
     try {
         m_app = core::registry_t::instance()->create(type, args);
-    } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "worker [%s]: unable to instantiate the app - %s", 
-            id().c_str(), e.what());
+    } catch(const unrecoverable_error_t& e) {
+        syslog(LOG_ERR, "worker [%s:%s]: unable to instantiate the app - %s", 
+            m_app_name.c_str(), id().c_str(), e.what());
+        m_messages.send(TERMINATE);
+        return;
+    } catch(...) {
+        syslog(LOG_ERR, "worker [%s:%s]: caught an unexpected exception",
+            m_app_name.c_str(), id().c_str());
         m_messages.send(TERMINATE);
         return;
     }
@@ -88,16 +94,36 @@ void overseer_t::process(ev::idle&, int) {
                         method, 
                         request.data(), 
                         request.size());
-                } catch(const std::exception& e) {
-                    syslog(LOG_ERR, "worker [%s]: '%s' invocation failed - %s", 
-                        id().c_str(), method.c_str(), e.what());
+                } catch(const recoverable_error_t& e) {
+                    syslog(LOG_ERR, "worker [%s:%s]: '%s' invocation failed temporarily - %s", 
+                        m_app_name.c_str(), id().c_str(), method.c_str(), e.what());
                     
                     boost::this_thread::interruption_point();
-                   
+                    
                     m_messages.send_multi(
                         boost::make_tuple(
                             ERROR,
                             std::string(e.what())));
+                } catch(const unrecoverable_error_t& e) {
+                    syslog(LOG_ERR, "worker [%s:%s]: '%s' invocation failed permanently - %s", 
+                        m_app_name.c_str(), id().c_str(), method.c_str(), e.what());
+                    
+                    boost::this_thread::interruption_point();
+                    
+                    terminate();
+                    m_messages.send(TERMINATE);
+                    
+                    return;
+                } catch(...) {
+                    syslog(LOG_ERR, "worker [%s:%s]: caught an unexpected exception",
+                        m_app_name.c_str(), id().c_str());
+                    
+                    boost::this_thread::interruption_point();
+                    
+                    terminate();
+                    m_messages.send(TERMINATE);
+                    
+                    return;
                 }
                     
                 boost::this_thread::interruption_point();

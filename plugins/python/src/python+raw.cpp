@@ -15,7 +15,7 @@ raw_python_t::raw_python_t(const std::string& args):
     m_module(NULL)
 {
     if(args.empty()) {
-        throw std::runtime_error("no code location has been specified");
+        throw unrecoverable_error_t("no code location has been specified");
     }
 
     helpers::uri_t uri(args);
@@ -34,7 +34,7 @@ raw_python_t::raw_python_t(const std::string& args):
             PyString_FromString(app.path().string().c_str()));
         compile(app.path().string(), app);
     } else {
-        throw std::runtime_error("'sys.path' is not a list object");
+        throw unrecoverable_error_t("'sys.path' is not a list object");
     }
 }
 
@@ -73,23 +73,23 @@ void raw_python_t::invoke(
     object_t object(PyObject_GetAttrString(m_module, method.c_str()));
     
     if(PyErr_Occurred()) {
-        exception();
+        throw unrecoverable_error_t(exception());
     }
 
     if(!PyCallable_Check(object)) {
-        throw std::runtime_error("'" + method + "' is not callable");
+        throw unrecoverable_error_t("'" + method + "' is not callable");
     }
 
     if(PyType_Check(object)) {
         if(PyType_Ready(reinterpret_cast<PyTypeObject*>(*object)) != 0) {
-            exception();
+            throw unrecoverable_error_t(exception());
         }
     }
 
     object_t result(PyObject_Call(object, args, NULL));
 
     if(PyErr_Occurred()) {
-        exception();
+        throw recoverable_error_t(exception());
     } else if(result.valid()) {
         respond(callback, result);
     }
@@ -97,7 +97,7 @@ void raw_python_t::invoke(
 
 void raw_python_t::respond(callback_fn_t callback, object_t& result) {
     if(PyString_Check(result)) {
-        throw std::runtime_error("the result must be an iterable");
+        throw recoverable_error_t("the result must be an iterable");
     }
 
     object_t iterator(PyObject_GetIter(result));
@@ -109,7 +109,7 @@ void raw_python_t::respond(callback_fn_t callback, object_t& result) {
             item = PyIter_Next(iterator);
 
             if(PyErr_Occurred()) {
-                exception();
+                throw recoverable_error_t(exception());
             } else if(!item.valid()) {
                 break;
             }
@@ -127,29 +127,29 @@ void raw_python_t::respond(callback_fn_t callback, object_t& result) {
                     
                     PyBuffer_Release(buffer.get());
                 } else {
-                    throw std::runtime_error("unable to serialize the result");
+                    throw recoverable_error_t("unable to serialize the result");
                 }
             }
 #else
             if(PyString_Check(item)) {
                 callback(PyString_AsString(item), PyString_Size(item));
             } else {
-                throw std::runtime_error("unable to serialize the result");
+                throw recoverable_error_t("unable to serialize the result");
             }
 #endif
         }
     } else {
-        exception();
+        throw recoverable_error_t(exception());
     }
 }
 
-void raw_python_t::exception() {
+std::string raw_python_t::exception() {
     object_t type(NULL), object(NULL), traceback(NULL);
     
     PyErr_Fetch(&type, &object, &traceback);
     object_t message(PyObject_Str(object));
     
-    throw std::runtime_error(PyString_AsString(message));
+    return PyString_AsString(message);
 }
 
 void raw_python_t::compile(const std::string& path, const std::string& code) {
@@ -159,7 +159,7 @@ void raw_python_t::compile(const std::string& path, const std::string& code) {
         Py_file_input));
 
     if(PyErr_Occurred()) {
-        exception();
+        throw unrecoverable_error_t(exception());
     }
 
     m_module = PyImport_ExecCodeModule(
@@ -167,7 +167,7 @@ void raw_python_t::compile(const std::string& path, const std::string& code) {
         bytecode);
     
     if(PyErr_Occurred()) {
-        exception();
+        throw unrecoverable_error_t(exception());
     }
 }
 

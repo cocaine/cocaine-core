@@ -22,7 +22,7 @@ class interpreter_t {
                 *state = Py_NewInterpreter();
 
                 if(*state == NULL) {
-                    throw std::runtime_error("failed to create a python interpreter");
+                    throw unrecoverable_error("unable to create a python interpreter");
                 }
             }
 
@@ -69,7 +69,7 @@ class raw_python_t:
 
     protected:
         virtual void respond(callback_fn_t callback, object_t& result);
-        static void exception();
+        static std::string exception();
 
     private:
         void compile(const std::string& path, const std::string& code);

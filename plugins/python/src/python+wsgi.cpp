@@ -18,14 +18,14 @@ void wsgi_python_t::invoke(
     object_t object(PyObject_GetAttrString(m_module, method.c_str()));
     
     if(PyErr_Occurred()) {
-        exception();
+        throw unrecoverable_error_t(exception());
     } else if(!PyCallable_Check(object)) {
-        throw std::runtime_error("'" + method + "' is not callable");
+        throw unrecoverable_error_t("'" + method + "' is not callable");
     } 
     
     if(PyType_Check(object)) {
         if(PyType_Ready(reinterpret_cast<PyTypeObject*>(*object)) != 0) {
-            exception();
+            throw unrecoverable_error_t(exception());
         }
     }
     
@@ -34,7 +34,7 @@ void wsgi_python_t::invoke(
     object_t result(PyObject_Call(object, args, NULL));
 
     if(PyErr_Occurred()) {
-        exception();
+        throw recoverable_error_t(exception());
     } else if(result.valid()) {
         respond(callback, result);
     }
@@ -57,7 +57,7 @@ parser_t::parser_t(const void* request, size_t size):
     if(http_parser_execute(&m_parser, &m_settings, 
         static_cast<const char*>(request), size) != size)
     {
-        throw std::runtime_error(http_errno_description(
+        throw recoverable_error_t(http_errno_description(
             HTTP_PARSER_ERRNO(&m_parser)));
     }
 

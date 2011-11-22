@@ -4,10 +4,6 @@
 #include "cocaine/plugin.hpp"
 #include "cocaine/helpers/uri.hpp"
 
-// Allowed exceptions:
-// -------------------
-// * std::runtime_error
-
 namespace cocaine { namespace plugin {
 
 using namespace v8;
@@ -21,7 +17,7 @@ class javascript_t: public source_t {
     public:
         javascript_t(const std::string& args) {
             if(args.empty()) {
-                throw std::runtime_error("no code location has been specified");
+                throw unrecoverable_error_t("no code location has been specified");
             }
             
             helpers::uri_t uri(args);
@@ -44,21 +40,21 @@ class javascript_t: public source_t {
 
             if(script.IsEmpty()) {
                 String::AsciiValue exception(try_catch.Exception());
-                throw std::runtime_error(*exception);
+                throw unrecoverable_error_t(*exception);
             }
 
             Handle<Value> result(script->Run());
 
             if(result.IsEmpty()) {
                 String::AsciiValue exception(try_catch.Exception());
-                throw std::runtime_error(*exception);
+                throw unrecoverable_error_t(*exception);
             }
 
             Handle<String> target(String::New(name.c_str()));
             Handle<Value> object(m_context->Global()->Get(target));
 
             if(!object->IsFunction()) {
-                throw std::runtime_error("target object is not a function");
+                throw unrecoverable_error_t("target object is not a function");
             }
 
             Handle<Function> function(Handle<Function>::Cast(object));

@@ -19,7 +19,7 @@ class http_t:
             m_curl = curl_easy_init();
             
             if(!m_curl) {
-                throw std::runtime_error("failed to initialize libcurl");
+                throw unrecoverable_error_t("unable to initialize libcurl");
             }
             
             curl_easy_setopt(m_curl, CURLOPT_NOPROGRESS, 1);

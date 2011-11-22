@@ -17,7 +17,7 @@ local_t::local_t(const uri_t& uri) {
     boost::filesystem::ifstream input(m_path);
     
     if(!input) {
-        throw std::runtime_error("failed to open " + m_path.string());
+        throw std::runtime_error("unable to open " + m_path.string());
     }
 
     stream << input.rdbuf();
@@ -41,7 +41,7 @@ http_t::http_t(const helpers::uri_t& uri) {
     CURL* curl = curl_easy_init();
 
     if(!curl) {
-        throw std::runtime_error("failed to initialize libcurl");
+        throw std::runtime_error("unable to initialize libcurl");
     }
 
     curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1);

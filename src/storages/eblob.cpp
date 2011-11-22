@@ -47,7 +47,7 @@ eblob_storage_t::eblob_storage_t():
         try {
             fs::create_directories(m_storage_path);
         } catch(const std::runtime_error& e) {
-            throw std::runtime_error("cannot create " + m_storage_path.string());
+            throw std::runtime_error("unable to create " + m_storage_path.string());
         }
     } else if(fs::exists(m_storage_path) && !fs::is_directory(m_storage_path)) {
         throw std::runtime_error(m_storage_path.string() + " is not a directory");
@@ -152,7 +152,7 @@ void eblob_storage_t::remove(const std::string& ns, const std::string& key) {
         try {
             it->second->remove_hashed(key);
         } catch(const std::runtime_error& e) {
-            throw std::runtime_error("failed to remove from '" + ns + "'");
+            throw std::runtime_error("unable to remove from '" + ns + "'");
         }
     }
 }

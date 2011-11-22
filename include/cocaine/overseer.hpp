@@ -37,15 +37,16 @@ class overseer_t:
         // Messaging
         zmq::context_t& m_context;
         lines::channel_t m_messages;
-        
+
+        // Application instance
+        std::string m_app_name;
+        boost::shared_ptr<plugin::source_t> m_app;
+
         // Event loop
         ev::dynamic_loop m_loop;
         ev::io m_watcher;
         ev::idle m_processor;
         ev::timer m_suicide_timer, m_heartbeat_timer;
-
-        // Application instance
-        boost::shared_ptr<plugin::source_t> m_app;
 };
 
 }}

@@ -18,7 +18,7 @@ class perl_t:
     public:
         perl_t(const std::string& args) {
             if(args.empty()) {
-                throw std::runtime_error("no code location has been specified");
+                throw unrecoverable_error_t("no code location has been specified");
             }
             
             helpers::uri_t uri(args);

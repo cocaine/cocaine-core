@@ -90,7 +90,7 @@ void core_t::reload(ev::sig&, int) {
     try {
         recover();
     } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "core: failed to reload apps due to the storage failure - %s", e.what());
+        syslog(LOG_ERR, "core: unable to reload apps due to the storage failure - %s", e.what());
     }
 }
 
@@ -204,9 +204,7 @@ Json::Value core_t::dispatch(const Json::Value& root) {
                 } else {
                     throw std::runtime_error("app manifest expected");
                 }
-            } catch(const std::runtime_error& e) {
-                result[app]["error"] = e.what();
-            } catch(const zmq::error_t& e) {
+            } catch(const std::exception& e) {
                 result[app]["error"] = e.what();
             }
         }
@@ -228,9 +226,7 @@ Json::Value core_t::dispatch(const Json::Value& root) {
                 } else {
                     result[app] = delete_engine(app);
                 }
-            } catch(const std::runtime_error& e) {
-                result[app]["error"] = e.what();
-            } catch(const zmq::error_t& e) {
+            } catch(const std::exception& e) {
                 result[app]["error"] = e.what();
             }
         }
@@ -259,7 +255,7 @@ Json::Value core_t::create_engine(const std::string& name, const Json::Value& ma
         try {
             storage_t::create()->put("apps", name, manifest);
         } catch(const std::runtime_error& e) {
-            syslog(LOG_ERR, "core: failed to create '%s' engine due to the storage failure - %s",
+            syslog(LOG_ERR, "core: unable to create '%s' engine due to the storage failure - %s",
                 name.c_str(), e.what());
             engine->stop();
             throw;
@@ -283,7 +279,7 @@ Json::Value core_t::reload_engine(const std::string& name) {
     try {
         manifest = storage_t::create()->get("apps", name);
     } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "core: failed to reload '%s' engine due to the storage failure - %s",
+        syslog(LOG_ERR, "core: unable to reload '%s' engine due to the storage failure - %s",
             name.c_str(), e.what());
         throw;
     }
@@ -304,7 +300,7 @@ Json::Value core_t::delete_engine(const std::string& name) {
     try {
         storage_t::create()->remove("apps", name);
     } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "core: failed to destroy '%s' engine due to the storage failure - %s",
+        syslog(LOG_ERR, "core: unable to destroy '%s' engine due to the storage failure - %s",
             name.c_str(), e.what());
         throw;
     }
@@ -373,8 +369,11 @@ void core_t::recover() {
         for(Json::Value::Members::iterator it = apps.begin(); it != apps.end(); ++it) {
             std::string app(*it);
             
-            // NOTE: Intentionally not catching anything here too.
-            create_engine(app, root[app], true);
+            try {
+                create_engine(app, root[app], true);
+            } catch(const std::exception& e) {
+                throw std::runtime_error("unable to recover '" + app + "' app - " + e.what());
+            }
         }
     }
 }

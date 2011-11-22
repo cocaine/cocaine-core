@@ -46,78 +46,79 @@ engine_t::~engine_t() {
 // ----------
 
 Json::Value engine_t::start(const Json::Value& manifest) {
-    // Application configuration
-    // -------------------------
+    if(!m_running) {
+        // Application configuration
+        // -------------------------
 
-    m_app_cfg.type = manifest["type"].asString();
-    m_app_cfg.args = manifest["args"].asString();
+        m_app_cfg.type = manifest["type"].asString();
+        m_app_cfg.args = manifest["args"].asString();
 
-    if(!core::registry_t::instance()->exists(m_app_cfg.type)) {
-        throw std::runtime_error("no plugin for '" + m_app_cfg.type + "' is available");
-    }
-    
-    m_app_cfg.version = manifest.get("version", 0).asUInt();
-
-    if(m_app_cfg.version == 0) {
-        throw std::runtime_error("no app version has been specified");
-    }
-    
-    syslog(LOG_INFO, "engine [%s]: starting, version %d", m_app_cfg.name.c_str(), 
-        m_app_cfg.version); 
-    
-    // Pool configuration
-    // ------------------
-
-    m_policy.backend = manifest["engine"].get("backend",
-        config_t::get().engine.backend).asString();
-    
-    if(m_policy.backend != "thread" && m_policy.backend != "process") {
-        throw std::runtime_error("invalid backend type");
-    }
-    
-    m_policy.suicide_timeout = manifest["engine"].get("suicide-timeout",
-        config_t::get().engine.suicide_timeout).asDouble();
-    m_policy.pool_limit = manifest["engine"].get("pool-limit",
-        config_t::get().engine.pool_limit).asUInt();
-    m_policy.queue_limit = manifest["engine"].get("queue-limit",
-        config_t::get().engine.queue_limit).asUInt();
-    
-    // Tasks configuration
-    // -------------------
-
-    Json::Value tasks(manifest["tasks"]);
-
-    if(!tasks.isNull() && tasks.size()) {
-        std::string endpoint(manifest["pubsub"]["endpoint"].asString());
+        if(!core::registry_t::instance()->exists(m_app_cfg.type)) {
+            throw std::runtime_error("no plugin for '" + m_app_cfg.type + "' is available");
+        }
         
-        if(!endpoint.empty()) {
-            m_pubsub.reset(new socket_t(m_context, ZMQ_PUB));
-            m_pubsub->bind(endpoint);
+        m_app_cfg.version = manifest.get("version", 0).asUInt();
+
+        if(m_app_cfg.version == 0) {
+            throw std::runtime_error("no app version has been specified");
         }
+        
+        syslog(LOG_INFO, "engine [%s]: starting", m_app_cfg.name.c_str()); 
+        
+        // Pool configuration
+        // ------------------
 
-        Json::Value::Members names(tasks.getMemberNames());
+        m_policy.backend = manifest["engine"].get("backend",
+            config_t::get().engine.backend).asString();
+        
+        if(m_policy.backend != "thread" && m_policy.backend != "process") {
+            throw std::runtime_error("invalid backend type");
+        }
+        
+        m_policy.suicide_timeout = manifest["engine"].get("suicide-timeout",
+            config_t::get().engine.suicide_timeout).asDouble();
+        m_policy.pool_limit = manifest["engine"].get("pool-limit",
+            config_t::get().engine.pool_limit).asUInt();
+        m_policy.queue_limit = manifest["engine"].get("queue-limit",
+            config_t::get().engine.queue_limit).asUInt();
+        
+        // Tasks configuration
+        // -------------------
 
-        for(Json::Value::Members::iterator it = names.begin(); it != names.end(); ++it) {
-            std::string task(*it);
-            std::string type(tasks[task]["type"].asString());
+        Json::Value tasks(manifest["tasks"]);
+
+        if(!tasks.isNull() && tasks.size()) {
+            std::string endpoint(manifest["pubsub"]["endpoint"].asString());
             
-            if(type == "timed+auto") {
-                schedule<drivers::auto_timed_t>(task, tasks[task]);
-            } else if(type == "fs") {
-                schedule<drivers::fs_t>(task, tasks[task]);
-            } else if(type == "server+zmq") {
-                schedule<drivers::zmq_server_t>(task, tasks[task]);
-            } else if(type == "server+lsd") {
-                schedule<drivers::lsd_server_t>(task, tasks[task]);
-            } else {
-               throw std::runtime_error("no driver for '" + type + "' is available");
+            if(!endpoint.empty()) {
+                m_pubsub.reset(new socket_t(m_context, ZMQ_PUB));
+                m_pubsub->bind(endpoint);
             }
-        }
-    } else {
-        throw std::runtime_error("no tasks has been specified");
-    }
 
-    m_running = true;
+            Json::Value::Members names(tasks.getMemberNames());
+
+            for(Json::Value::Members::iterator it = names.begin(); it != names.end(); ++it) {
+                std::string task(*it);
+                std::string type(tasks[task]["type"].asString());
+                
+                if(type == "timed+auto") {
+                    schedule<drivers::auto_timed_t>(task, tasks[task]);
+                } else if(type == "fs") {
+                    schedule<drivers::fs_t>(task, tasks[task]);
+                } else if(type == "server+zmq") {
+                    schedule<drivers::zmq_server_t>(task, tasks[task]);
+                } else if(type == "server+lsd") {
+                    schedule<drivers::lsd_server_t>(task, tasks[task]);
+                } else {
+                   throw std::runtime_error("no driver for '" + type + "' is available");
+                }
+            }
+        } else {
+            throw std::runtime_error("no tasks has been specified");
+        }
+
+        m_running = true;
+    }
 
     return info();
 }
@@ -128,38 +129,40 @@ void engine_t::schedule(const std::string& method, const Json::Value& args) {
 }
 
 Json::Value engine_t::stop() {
-    syslog(LOG_INFO, "engine [%s]: stopping", m_app_cfg.name.c_str()); 
+    if(m_running) { 
+        syslog(LOG_INFO, "engine [%s]: stopping", m_app_cfg.name.c_str()); 
+
+        m_running = false;
     
-    m_running = false;
+        // Abort all the outstanding jobs 
+        while(!m_queue.empty()) {
+            m_queue.front()->send(server_error, "engine is shutting down");
+            m_queue.pop_front();
+        }
 
-    // Abort all the outstanding jobs 
-    while(!m_queue.empty()) {
-        m_queue.front()->send(server_error, "engine is shutting down");
-        m_queue.pop_front();
+        // Stop all the tasks to cut the event flow
+        for(task_map_t::iterator it = m_tasks.begin(); it != m_tasks.end(); ++it) {
+            it->second->stop();
+        }
+
+        // Signal the workers to terminate
+        for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
+            m_messages.send_multi(
+                boost::make_tuple(
+                    protect(it->first),
+                    TERMINATE));
+            it->second->stop();
+        }
+
+        // Wait for the pool to terminate
+        while(!m_pool.empty()) {
+            ev::get_default_loop().loop(ev::ONESHOT);
+        }
+
+        m_tasks.clear();
+        m_watcher.stop();
+        m_processor.stop();
     }
-
-    // Stop all the tasks to cut the event flow
-    for(task_map_t::iterator it = m_tasks.begin(); it != m_tasks.end(); ++it) {
-        it->second->stop();
-    }
-
-    // Signal the workers to terminate
-    for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
-        m_messages.send_multi(
-            boost::make_tuple(
-                protect(it->first),
-                TERMINATE));
-        it->second->stop();
-    }
-
-    // Wait for the pool to terminate
-    while(!m_pool.empty()) {
-        ev::get_default_loop().loop(ev::ONESHOT);
-    }
-
-    m_tasks.clear();
-    m_watcher.stop();
-    m_processor.stop();
 
     return info();
 }
@@ -175,17 +178,19 @@ namespace {
 Json::Value engine_t::info() const {
     Json::Value results(Json::objectValue);
 
-    results["queue"] = static_cast<Json::UInt>(m_queue.size());
-    results["pool"]["total"] = static_cast<Json::UInt>(m_pool.size());
-    results["pool"]["active"] = static_cast<Json::UInt>(
-        std::count_if(
-            m_pool.begin(),
-            m_pool.end(),
-            active_worker()
-        ));
+    if(m_running) {
+        results["queue"] = static_cast<Json::UInt>(m_queue.size());
+        results["pool"]["total"] = static_cast<Json::UInt>(m_pool.size());
+        results["pool"]["active"] = static_cast<Json::UInt>(
+            std::count_if(
+                m_pool.begin(),
+                m_pool.end(),
+                active_worker()
+            ));
 
-    for(task_map_t::const_iterator it = m_tasks.begin(); it != m_tasks.end(); ++it) {
-        results["tasks"][it->first] = it->second->info();
+        for(task_map_t::const_iterator it = m_tasks.begin(); it != m_tasks.end(); ++it) {
+            results["tasks"][it->first] = it->second->info();
+        }
     }
     
     results["running"] = m_running;

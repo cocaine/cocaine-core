@@ -35,11 +35,11 @@ void fs_t::operator()(ev::stat&, int) {
     try {
         job->enqueue();
     } catch(const resource_error_t& e) {
-        syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
+        syslog(LOG_ERR, "driver [%s:%s]: unable to enqueue the invocation - %s",
             m_engine->name().c_str(), m_method.c_str(), e.what());
         job->send(resource_error, e.what());
     } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "driver [%s:%s]: failed to enqueue the invocation - %s",
+        syslog(LOG_ERR, "driver [%s:%s]: unable to enqueue the invocation - %s",
             m_engine->name().c_str(), m_method.c_str(), e.what());
         job->send(server_error, e.what());
     }

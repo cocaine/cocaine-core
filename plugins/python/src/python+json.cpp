@@ -49,7 +49,7 @@ Json::Value json_python_t::convert(PyObject* result) {
                 item = PyIter_Next(iterator);
 
                 if(PyErr_Occurred()) {
-                    exception();
+                    throw recoverable_error_t(exception());
                 } else if(!item.valid()) {
                     break;
                 }
@@ -60,7 +60,7 @@ Json::Value json_python_t::convert(PyObject* result) {
             PyErr_Clear();
 
             if(object != Py_None) {
-                throw std::runtime_error("unable to serialize the result");
+                throw recoverable_error_t("unable to serialize the result");
             }
         }
     }    

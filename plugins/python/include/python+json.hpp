@@ -18,6 +18,7 @@ class json_python_t:
 
     private:
         virtual void respond(callback_fn_t callback, object_t& result);
+
         Json::Value convert(PyObject* result);
 };
 

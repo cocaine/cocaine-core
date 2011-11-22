@@ -39,7 +39,7 @@ void file_storage_t::put(const std::string& ns,
     fs::ofstream stream(file_path, fs::ofstream::out | fs::ofstream::trunc);
    
     if(!stream) {
-        throw std::runtime_error("failed to open " + file_path.string()); 
+        throw std::runtime_error("unable to open " + file_path.string()); 
     }     
 
     std::string json(Json::StyledWriter().write(make_json("object", value)));
@@ -109,7 +109,7 @@ void file_storage_t::remove(const std::string& ns, const std::string& key) {
         try {
             fs::remove(file_path);
         } catch(...) {
-            throw std::runtime_error("failed to remove " + file_path.string());
+            throw std::runtime_error("unable to remove " + file_path.string());
         }
     }
 }
