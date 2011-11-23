@@ -330,6 +330,8 @@ Json::Value core_t::delete_engine(const std::string& name) {
 Json::Value core_t::info() const {
     Json::Value result(Json::objectValue);
 
+    result["route"] = m_server.route();
+
     for(engine_map_t::const_iterator it = m_engines.begin(); it != m_engines.end(); ++it) {
         result["apps"][it->first] = it->second->info();
     }
@@ -397,8 +399,18 @@ void core_t::recover() {
 void core_t::announce(ev::timer&, int) {
     syslog(LOG_DEBUG, "core: announcing");
 
+    std::ostringstream envelope;
+
+    envelope << config_t::get().core.instance << " "
+             << m_server.endpoint();
+
+    zmq::message_t message(envelope.str().size());
+
+    memcpy(message.data(), envelope.str().data(), envelope.str().size());
+    m_announces->send(message, ZMQ_SNDMORE);
+
     std::string announce(Json::FastWriter().write(info()));
-    zmq::message_t message(announce.size());
+    message.rebuild(announce.size());
 
     memcpy(message.data(), announce.data(), announce.size());
     m_announces->send(message);
