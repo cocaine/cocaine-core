@@ -97,7 +97,7 @@ void zmq_server_t::operator()(ev::io&, int) {
 void zmq_server_t::process(ev::idle&, int) {
     if(m_socket.pending()) {
         zmq::message_t message;
-        std::vector<std::string> route;
+        route_t route;
 
         while(true) {
             m_socket.recv(&message);
