@@ -29,11 +29,11 @@ registry_t::registry_t() {
     }
 
     lt_dladvise advise;
-    lt_dlhandle plugin;
-
+    
     lt_dladvise_init(&advise);
     lt_dladvise_global(&advise);
 
+    lt_dlhandle plugin;
     initialize_fn_t initializer;
     std::vector<std::string> types;
 
