@@ -36,6 +36,22 @@ core_t::core_t():
         syslog(LOG_INFO, "core: listening for requests on %s", it->c_str());
     }
 
+    // Automatic discovery support
+    if(!config_t::get().core.announce_endpoint.empty()) {
+        try {
+            m_announces.reset(new socket_t(m_context, ZMQ_PUB));
+            m_announces->connect("epgm://" + config_t::get().core.announce_endpoint);
+        } catch(const zmq::error_t& e) {
+            throw std::runtime_error(std::string("invalid announce endpoint - ") + e.what());
+        }
+
+        syslog(LOG_INFO, "core: announcing on %s", config_t::get().core.announce_endpoint.c_str());
+
+        m_announce_timer.reset(new ev::timer());
+        m_announce_timer->set<core_t, &core_t::announce>(this);
+        m_announce_timer->start(0.0f, config_t::get().core.announce_interval);
+    }
+
     m_watcher.set<core_t, &core_t::request>(this);
     m_watcher.start(m_server.fd(), EV_READ);
     m_processor.set<core_t, &core_t::process>(this);
@@ -378,3 +394,12 @@ void core_t::recover() {
     }
 }
 
+void core_t::announce(ev::timer&, int) {
+    syslog(LOG_DEBUG, "core: announcing");
+
+    std::string announce(Json::FastWriter().write(info()));
+    zmq::message_t message(announce.size());
+
+    memcpy(message.data(), announce.data(), announce.size());
+    m_announces->send(message);
+}

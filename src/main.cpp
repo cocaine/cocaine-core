@@ -26,6 +26,15 @@ int main(int argc, char* argv[]) {
     positional.add("endpoints", -1);
 
     options.add_options()
+        ("core:announce-endpoint", po::value<std::string>
+            (&config_t::set().core.announce_endpoint),
+            "multicast endpoint for automatic discovery")
+        ("core:announce-interval", po::value<float>
+            (&config_t::set().core.announce_interval)->default_value(5.0),
+            "multicast announce interval for automatic discovery, seconds")
+        ("core:instance", po::value<std::string>
+            (&config_t::set().core.instance)->default_value("default"),
+            "instance name")
         ("daemonize", "daemonize on start")
         ("engine:backend", po::value<std::string>
             (&config_t::set().engine.backend)->default_value("process"),
@@ -43,9 +52,6 @@ int main(int argc, char* argv[]) {
             (&config_t::set().engine.queue_limit)->default_value(10),
             "default maximum engine worker queue depth")
         ("help", "show this message")
-        ("instance", po::value<std::string>
-            (&config_t::set().core.instance)->default_value("default"),
-            "instance name")
         ("pidfile", po::value<fs::path>()->default_value("/var/run/cocaine/default.pid"),
             "location of a pid file")
         ("plugins", po::value<std::string>

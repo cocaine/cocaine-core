@@ -1,16 +1,17 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 PROJECT(Cocaine)
 
-FIND_PACKAGE(Boost 1.35.0 REQUIRED COMPONENTS
-    filesystem
-    program_options
-    thread)
+FIND_PACKAGE(Boost 1.35.0 REQUIRED 
+    COMPONENTS
+        filesystem
+        program_options
+        system
+        thread)
 
 FIND_PACKAGE(OpenSSL REQUIRED)
 FIND_PACKAGE(CURL REQUIRED)
 
 INCLUDE(cmake/LocateLibrary.cmake)
-INCLUDE(cmake/PrecompiledHeader.cmake)
 
 LOCATE_LIBRARY(LIBEV "ev++.h" "ev" "libev")
 LOCATE_LIBRARY(LIBMSGPACK "msgpack.hpp" "msgpack")
@@ -48,37 +49,23 @@ ADD_LIBRARY(json
 SET_TARGET_PROPERTIES(json PROPERTIES
     COMPILE_FLAGS -fPIC)
 
-ADD_LIBRARY(cocaine-core-config SHARED
-    src/config)
-
-SET_TARGET_PROPERTIES(cocaine-core-config PROPERTIES
-    VERSION 1)
-
-ADD_LIBRARY(cocaine-core-storage SHARED
+ADD_LIBRARY(cocaine-common SHARED
+    src/config
+    src/security
     src/storages/abstract
     src/storages/files
     src/storages/mongo)
 
-TARGET_LINK_LIBRARIES(cocaine-core-storage
-    json
-    cocaine-core-config
-    ${LIBUUID_LIBRARIES}
+TARGET_LINK_LIBRARIES(cocaine-common
     boost_filesystem-mt
     boost_system-mt
     boost_thread-mt
-    mongoclient)
+    crypto
+    json
+    mongoclient
+    ${LIBUUID_LIBRARIES})
 
-SET_TARGET_PROPERTIES(cocaine-core-storage PROPERTIES
-    VERSION 1)
-
-ADD_LIBRARY(cocaine-core-security SHARED
-    src/security)
-
-TARGET_LINK_LIBRARIES(cocaine-core-security
-    cocaine-core-storage
-    crypto)
-
-SET_TARGET_PROPERTIES(cocaine-core-security PROPERTIES
+SET_TARGET_PROPERTIES(cocaine-common PROPERTIES
     VERSION 1)
 
 ADD_LIBRARY(cocaine-core SHARED 
@@ -99,17 +86,10 @@ ADD_LIBRARY(cocaine-core SHARED
     src/registry)
 
 TARGET_LINK_LIBRARIES(cocaine-core
-    json
-    cocaine-core-config
-    cocaine-core-security
-    cocaine-core-storage
-    ltdl
-    ${LIBUUID_LIBRARIES}
-    boost_filesystem-mt
-    boost_system-mt
-    boost_thread-mt
+    cocaine-common
     curl
     ev
+    ltdl
     msgpack
     zmq)
 
@@ -120,19 +100,17 @@ ADD_EXECUTABLE(cocained
     src/main)
 
 TARGET_LINK_LIBRARIES(cocained
-    cocaine-core
-    boost_program_options-mt)
+    boost_program_options-mt
+    cocaine-core)
 
 ADD_SUBDIRECTORY(plugins)
 
 INSTALL(
     TARGETS
-        json 
-        cocaine-core-config
-        cocaine-core-storage
-        cocaine-core-security
-        cocaine-core 
+        cocaine-common
+        cocaine-core
         cocained
+        json 
     RUNTIME DESTINATION bin COMPONENT runtime
     LIBRARY DESTINATION lib COMPONENT runtime
     ARCHIVE DESTINATION lib COMPONENT developement)

@@ -33,7 +33,6 @@ class job_t:
         job_t(driver_t* parent);
 
         virtual job_state enqueue();
-
         job_state enqueue_with_policy(job_policy policy);
 
         virtual void send(zmq::message_t& chunk) = 0; 

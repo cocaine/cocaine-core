@@ -4,8 +4,7 @@ ADD_LIBRARY(cocaine-plugin-javascript MODULE
     javascript)
 
 TARGET_LINK_LIBRARIES(cocaine-plugin-javascript
-    cocaine-core
-    json
+    cocaine-common
     uriparser
     v8)
 

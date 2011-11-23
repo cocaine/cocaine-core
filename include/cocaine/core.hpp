@@ -45,6 +45,9 @@ class core_t:
         // Task recovering
         void recover();
 
+        // Automatic discovery support
+        void announce(ev::timer&, int);
+
     private:
         security::signatures_t m_signatures;
 
@@ -61,6 +64,10 @@ class core_t:
         > engine_map_t;
 
         engine_map_t m_engines;
+
+        // Automatic discovery support
+        boost::shared_ptr<lines::socket_t> m_announces;
+        boost::shared_ptr<ev::timer> m_announce_timer;
 };
 
 }}

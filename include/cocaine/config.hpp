@@ -12,12 +12,18 @@ class config_t {
 
     public:
         struct {
+            // Administration and routing
             std::vector<std::string> endpoints;
             std::string hostname;
             std::string instance;
+            
+            // Automatic discovery
+            std::string announce_endpoint;
+            float announce_interval;
         } core;
 
         struct engine_cfg_t {
+            // Default engine policy
             std::string backend;
             float heartbeat_timeout;
             float suicide_timeout;
@@ -26,10 +32,12 @@ class config_t {
         } engine;
 
         struct {
+            // Plugin path
             std::string location;
         } registry;
 
         struct {
+            // Storage type and path
             std::string driver;
             std::string location;
         } storage;

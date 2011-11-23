@@ -23,8 +23,7 @@ ADD_LIBRARY(cocaine-plugin-python MODULE
     src/python+wsgi)
 
 TARGET_LINK_LIBRARIES(cocaine-plugin-python
-    cocaine-core
-    json
+    cocaine-common
     uriparser)
 
 SET_TARGET_PROPERTIES(cocaine-plugin-python PROPERTIES

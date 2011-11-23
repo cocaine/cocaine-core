@@ -7,7 +7,7 @@ ADD_LIBRARY(cocaine-plugin-mysql MODULE
     mysql.cpp)
 
 TARGET_LINK_LIBRARIES(cocaine-plugin-mysql
-    json
+    cocaine-common
     mysqlclient
     uriparser)
 
