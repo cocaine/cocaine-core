@@ -7,7 +7,7 @@ using namespace cocaine::engine;
 job_policy::job_policy():
     urgent(false),
     timeout(config_t::get().engine.heartbeat_timeout),
-    deadline(0.0)
+    deadline(0.0f)
 { }
 
 job_policy::job_policy(bool urgent_, ev::tstamp timeout_, ev::tstamp deadline_):

@@ -11,7 +11,7 @@ backend_t::backend_t(engine_t* engine):
 
     // NOTE: These are 10 seconds for the worker to come alive   
     m_heartbeat_timer.set<backend_t, &backend_t::timeout>(this);
-    m_heartbeat_timer.start(10.);
+    m_heartbeat_timer.start(10.0f);
 }
 
 backend_t::~backend_t() {

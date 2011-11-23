@@ -36,7 +36,7 @@ overseer_t::overseer_t(unique_id_t::reference id_, zmq::context_t& context, cons
     m_suicide_timer.start(config_t::get().engine.suicide_timeout);
 
     m_heartbeat_timer.set<overseer_t, &overseer_t::heartbeat>(this);
-    m_heartbeat_timer.start(0.0, 5.0);
+    m_heartbeat_timer.start(0.0f, 5.0f);
 }
 
 overseer_t::~overseer_t() {

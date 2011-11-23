@@ -29,7 +29,7 @@ process_t::~process_t() {
 
 void process_t::stop() {
     m_termination_timeout.set<process_t, &process_t::terminate>(this);
-    m_termination_timeout.start(5.);
+    m_termination_timeout.start(5.0f);
 }
 
 void process_t::signal(ev::child&, int) {

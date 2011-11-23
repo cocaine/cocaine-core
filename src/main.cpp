@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) {
             (&config_t::set().core.announce_endpoint),
             "multicast endpoint for automatic discovery")
         ("core:announce-interval", po::value<float>
-            (&config_t::set().core.announce_interval)->default_value(5.0),
+            (&config_t::set().core.announce_interval)->default_value(5.0f),
             "multicast announce interval for automatic discovery, seconds")
         ("core:instance", po::value<std::string>
             (&config_t::set().core.instance)->default_value("default"),
@@ -40,10 +40,10 @@ int main(int argc, char* argv[]) {
             (&config_t::set().engine.backend)->default_value("process"),
             "default engine backend, one of: thread, process")
         ("engine:heartbeat-timeout", po::value<float>
-            (&config_t::set().engine.heartbeat_timeout)->default_value(60.0),
+            (&config_t::set().engine.heartbeat_timeout)->default_value(60.0f),
             "default unresponsive thread cancellation timeout, seconds")
         ("engine:suicide-timeout", po::value<float>
-            (&config_t::set().engine.suicide_timeout)->default_value(600.0),
+            (&config_t::set().engine.suicide_timeout)->default_value(600.0f),
             "default stale thread suicide timeout, seconds")
         ("engine:pool-limit", po::value<unsigned int>
             (&config_t::set().engine.pool_limit)->default_value(10),

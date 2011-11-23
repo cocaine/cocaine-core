@@ -106,7 +106,7 @@ void lsd_server_t::process(ev::idle&, int) {
         job_policy policy(
             root.get("urgent", false).asBool(),
             root.get("timeout", config_t::get().engine.heartbeat_timeout).asDouble(),
-            root.get("deadline", 0.0).asDouble());
+            root.get("deadline", 0.0f).asDouble());
 
         // Instantly drop the job if the deadline has already passed
         if(policy.deadline >= ev::get_default_loop().now()) {
