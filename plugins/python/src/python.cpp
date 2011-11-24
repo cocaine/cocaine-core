@@ -1,17 +1,14 @@
 #include "cocaine/downloads.hpp"
-#include "cocaine/helpers/uri.hpp"
 
-#include "python+raw.hpp"
-#include "python+wsgi.hpp"
-#include "python+json.hpp"
+#include "python.hpp"
 
 using namespace cocaine::plugin;
 
-source_t* raw_python_t::create(const std::string& args) {
-    return new raw_python_t(args);
+source_t* python_t::create(const std::string& args) {
+    return new python_t(args);
 }
 
-raw_python_t::raw_python_t(const std::string& args):
+python_t::python_t(const std::string& args):
     m_module(NULL)
 {
     if(args.empty()) {
@@ -38,18 +35,37 @@ raw_python_t::raw_python_t(const std::string& args):
     }
 }
 
-void raw_python_t::invoke(
+void python_t::invoke(
     callback_fn_t callback,
     const std::string& method,
     const void* request,
     size_t size) 
 {
     thread_state_t state;
+    object_t object(PyObject_GetAttrString(m_module, method.c_str()));
+    
+    if(PyErr_Occurred()) {
+        throw unrecoverable_error_t(exception());
+    }
+
+    if(PyType_Check(object)) {
+        if(PyType_Ready(reinterpret_cast<PyTypeObject*>(*object)) != 0) {
+            throw unrecoverable_error_t(exception());
+        }
+    }
+
+    if(!PyCallable_Check(object)) {
+        throw unrecoverable_error_t("'" + method + "' is not callable");
+    }
+
     object_t args(NULL);
+#if PY_VERSION_HEX > 0x02070000
+    boost::shared_ptr<Py_buffer> buffer;
+#endif
 
     if(request && size) {
 #if PY_VERSION_HEX > 0x02070000
-        Py_buffer* buffer = static_cast<Py_buffer*>(malloc(sizeof(Py_buffer)));
+        buffer.reset(static_cast<Py_buffer*>(malloc(sizeof(Py_buffer))), free);
 
         buffer->buf = const_cast<void*>(request);
         buffer->len = size;
@@ -70,22 +86,6 @@ void raw_python_t::invoke(
         args = PyTuple_New(0);
     }
 
-    object_t object(PyObject_GetAttrString(m_module, method.c_str()));
-    
-    if(PyErr_Occurred()) {
-        throw unrecoverable_error_t(exception());
-    }
-
-    if(!PyCallable_Check(object)) {
-        throw unrecoverable_error_t("'" + method + "' is not callable");
-    }
-
-    if(PyType_Check(object)) {
-        if(PyType_Ready(reinterpret_cast<PyTypeObject*>(*object)) != 0) {
-            throw unrecoverable_error_t(exception());
-        }
-    }
-
     object_t result(PyObject_Call(object, args, NULL));
 
     if(PyErr_Occurred()) {
@@ -95,7 +95,7 @@ void raw_python_t::invoke(
     }
 }
 
-void raw_python_t::respond(callback_fn_t callback, object_t& result) {
+void python_t::respond(callback_fn_t callback, object_t& result) {
     if(PyString_Check(result)) {
         throw recoverable_error_t("the result must be an iterable");
     }
@@ -143,7 +143,7 @@ void raw_python_t::respond(callback_fn_t callback, object_t& result) {
     }
 }
 
-std::string raw_python_t::exception() {
+std::string python_t::exception() {
     object_t type(NULL), object(NULL), traceback(NULL);
     
     PyErr_Fetch(&type, &object, &traceback);
@@ -152,7 +152,7 @@ std::string raw_python_t::exception() {
     return PyString_AsString(message);
 }
 
-void raw_python_t::compile(const std::string& path, const std::string& code) {
+void python_t::compile(const std::string& path, const std::string& code) {
     object_t bytecode(Py_CompileString(
         code.c_str(),
         path.c_str(),
@@ -172,9 +172,7 @@ void raw_python_t::compile(const std::string& path, const std::string& code) {
 }
 
 static const source_info_t plugin_info[] = {
-    { "python+raw", &raw_python_t::create },
-//  { "python+wsgi", &wsgi_python_t::create },
-    { "python+json", &json_python_t::create },
+    { "python", &python_t::create },
     { NULL, NULL }
 };
 
@@ -207,7 +205,7 @@ extern "C" {
     }
 
     __attribute__((destructor)) void finalize() {
-        PyEval_RestoreThread(g_state);
+        restore();
         Py_Finalize();
     }
 }

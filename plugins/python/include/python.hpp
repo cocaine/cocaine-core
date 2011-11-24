@@ -1,5 +1,5 @@
-#ifndef COCAINE_PYTHON_RAW_HPP
-#define COCAINE_PYTHON_RAW_HPP
+#ifndef COCAINE_PLUGIN_PYTHON_HPP
+#define COCAINE_PLUGIN_PYTHON_HPP
 
 #include <Python.h>
 
@@ -53,28 +53,26 @@ class thread_state_t {
         PyGILState_STATE m_saved;
 };
 
-class raw_python_t:
+class python_t:
     public source_t
 {
     public:
         static source_t* create(const std::string& args);
     
     public:    
-        raw_python_t(const std::string& args);
+        python_t(const std::string& args);
 
-        virtual void invoke(callback_fn_t callback,
+        void invoke(callback_fn_t callback,
                             const std::string& method, 
                             const void* request,
                             size_t size);
 
-    protected:
-        virtual void respond(callback_fn_t callback, object_t& result);
-        static std::string exception();
-
     private:
         void compile(const std::string& path, const std::string& code);
+        void respond(callback_fn_t callback, object_t& result);
+        std::string exception();
 
-    protected:
+    private:
         object_t m_module;
 };
 

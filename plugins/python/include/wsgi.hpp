@@ -1,9 +1,9 @@
-#ifndef COCAINE_PYTHON_WSGI_HPP
-#define COCAINE_PYTHON_WSGI_HPP
+#ifndef COCAINE_PLUGIN_PYTHON_WSGI_HPP
+#define COCAINE_PLUGIN_PYTHON_WSGI_HPP
 
 #include "http_parser.h"
 
-#include "python+raw.hpp"
+#include "python.hpp"
 
 namespace cocaine { namespace plugin {
 
