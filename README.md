@@ -27,7 +27,7 @@ The application tasks can be driven by any of the following drivers:
 * Filesystem Monitor
 * Raw Socket Server
 * ZeroMQ Server
-* [LSD](https://github.com/tinybit/lsd)) Server
+* [LSD](https://github.com/tinybit/lsd) Server
 
 Application configuration example
 =================================
