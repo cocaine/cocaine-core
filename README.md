@@ -7,32 +7,34 @@ Notable features:
 
 * Apps are defined as a set of tasks, which trigger events in the app engine, which are then processed on a worker pool. Tasks can be servers, time-based jobs, filesystem monitors, etc.
 * Dynamic self-managing worker pools (threads or processes) for each app with a rich configuration to suit the application needs in the best way.
-* Distributed operations coordination via a MongoDB storage.
 * A single maintainance pubsub-based interface for each application for easy access to monitoring and runtime data.
-* Secure remote administration using RSA encryption.
+* Secure communications using RSA encryption.
 * Simple modular design to add new languages, task types and backends easily.
 * Support for chunked responses and, soon, requests.
+* Automatic node discovery and smart peer-to-peer balancing using the [LSD](https://github.com/tinybit/lsd) library.
 
 At the moment, Cocaine supports the following languages and specifications:
 
 * C++
-* Python (Raw, JSON, WSGI)
-* Perl (under active development)
-* JavaScript (very limited, as the language itself lacks a standard library)
+* Python
+* Perl
+* JavaScript (limited, as the language itself lacks a standard library)
 
 The application tasks can be driven by any of the following drivers:
 
 * Timer
 * Cron (under development)
 * Filesystem Monitor
-* Server (Raw, ZeroMQ, LSD)
+* Raw Socket Server
+* ZeroMQ Server
+* [LSD](https://github.com/tinybit/lsd)) Server
 
 Application configuration example
 =================================
 
 ```python
 manifest = {
-    "type": "python+wsgi",
+    "type": "python",
     "args": "local:///path/to/application/__init__.py",
     "version": 1,
     "engine": {
