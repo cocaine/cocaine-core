@@ -118,7 +118,7 @@ class perl_t:
 };
 
 static const source_info_t plugin_info[] = {
-    { "perl+raw", &perl_t::create },
+    { "perl", &perl_t::create },
     { NULL, NULL }
 };
 

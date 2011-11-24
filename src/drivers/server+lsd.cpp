@@ -23,10 +23,9 @@ void lsd_job_t::send(error_code code, const std::string& error) {
         root["error"] = error;
     }
 
-    Json::FastWriter writer;
-    std::string response(writer.write(root));
-
+    std::string response(Json::FastWriter().write(root));
     m_envelope.rebuild(response.size());
+    
     memcpy(m_envelope.data(), response.data(), response.size());
 
     static_cast<lsd_server_t*>(m_parent)->send(this, null);

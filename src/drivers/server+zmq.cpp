@@ -36,10 +36,9 @@ void zmq_job_t::send(error_code code, const std::string& error) {
     object["code"] = code;
     object["error"] = error;
 
-    Json::FastWriter writer;
-    std::string response(writer.write(object));
-
+    std::string response(Json::FastWriter().write(object));
     zmq::message_t message(response.size());
+    
     memcpy(message.data(), response.data(), response.size());
 
     static_cast<zmq_server_t*>(m_parent)->send(this, message);
