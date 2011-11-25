@@ -33,19 +33,19 @@ class job_t:
         job_t(driver_t* parent);
 
         virtual job_state enqueue();
-        job_state enqueue_with_policy(job_policy policy);
+        virtual job_state enqueue_with_policy(job_policy policy);
 
         virtual void send(zmq::message_t& chunk) = 0; 
-        virtual void send(error_code code, const std::string& error) = 0;
+        virtual void send(error_code code, const std::string& message) = 0;
+        virtual void seal(ev::tstamp resource_usage);
 
-        void audit(ev::tstamp spent);
-        
+    public:
         inline job_policy& policy() {
             return m_policy;
         }
 
     private:
-        void expire(ev::periodic&, int);
+        void discard(ev::periodic&, int);
 
     protected:
         driver_t* m_parent;

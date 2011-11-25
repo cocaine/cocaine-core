@@ -34,18 +34,18 @@ job_state job_t::enqueue_with_policy(job_policy policy) {
     job_state state = enqueue();
 
     if(state == queued && m_policy.deadline) {
-        m_expiration_timer.set<job_t, &job_t::expire>(this);
+        m_expiration_timer.set<job_t, &job_t::discard>(this);
         m_expiration_timer.start(m_policy.deadline);
     }
 
     return state;
 }
 
-void job_t::audit(ev::tstamp spent) {
-    m_parent->audit(spent);
+void job_t::seal(ev::tstamp resource_usage) {
+    m_parent->seal(resource_usage);
 }
 
-void job_t::expire(ev::periodic&, int) {
-    m_parent->expire(shared_from_this());
+void job_t::discard(ev::periodic&, int) {
+    // TODO: ...
 }
 

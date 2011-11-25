@@ -43,6 +43,7 @@ void backend_t::timeout(ev::timer&, int) {
 
     if(m_job) {
         m_job->send(timeout_error, "the job has timed out");
+        m_job->seal(0.0f);
         m_job.reset();
     }
 

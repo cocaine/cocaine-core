@@ -137,6 +137,7 @@ Json::Value engine_t::stop() {
         // Abort all the outstanding jobs 
         while(!m_queue.empty()) {
             m_queue.front()->send(server_error, "engine is shutting down");
+            m_queue.front()->seal(0.0f);
             m_queue.pop_front();
         }
 
@@ -211,18 +212,12 @@ void engine_t::reap(unique_id_t::reference worker_id) {
             corpse->job()->enqueue();
         } else {
             corpse->job()->send(server_error, "engine is shutting down");
+            corpse->job()->seal(0.0f);
             corpse->job().reset();
         }
     } else {
         m_pool.erase(worker);
     }
-}
-
-void engine_t::expire(boost::shared_ptr<job_t> job) {
-    syslog(LOG_DEBUG, "engine [%s]: dropping an expired job", m_app_cfg.name.c_str());
-   
-    job->send(timeout_error, "the job has expired");
-    m_queue.erase(std::find(m_queue.begin(), m_queue.end(), job));
 }
 
 // PubSub Interface
@@ -306,7 +301,6 @@ void engine_t::process(ev::idle&, int) {
                     zmq::message_t chunk;
 
                     m_messages.recv(&chunk);
-
                     worker->second->job()->send(chunk);
 
                     return;
@@ -316,20 +310,17 @@ void engine_t::process(ev::idle&, int) {
                     std::string message;
 
                     m_messages.recv(message);
-                    
                     worker->second->job()->send(application_error, message);
 
                     return;
                 }
 
                 case CHOKE: {
-                    ev::tstamp spent = 0;
+                    ev::tstamp resource_usage = 0;
 
-                    m_messages.recv(spent);
-
-                    worker->second->job()->audit(spent);
+                    m_messages.recv(resource_usage);
+                    worker->second->job()->seal(resource_usage);
                     worker->second->job().reset();
-                    worker->second->rearm();
                    
                     break;
                 }

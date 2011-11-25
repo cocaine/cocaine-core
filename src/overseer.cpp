@@ -134,7 +134,7 @@ void overseer_t::process(ev::idle&, int) {
                     boost::make_tuple(
                         CHOKE,
                         m_loop.now() - start));
-                
+            
                 m_suicide_timer.stop();
                 m_suicide_timer.start(config_t::get().engine.suicide_timeout);
                 

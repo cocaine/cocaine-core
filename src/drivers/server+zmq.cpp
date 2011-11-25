@@ -62,12 +62,17 @@ zmq_server_t::zmq_server_t(engine_t* engine, const std::string& method, const Js
     
     m_socket.bind(endpoint);
 
-    m_watcher.set(this);
+    m_watcher.set<zmq_server_t, &zmq_server_t::event>(this);
     m_watcher.start(m_socket.fd(), ev::READ);
     m_processor.set<zmq_server_t, &zmq_server_t::process>(this);
     m_processor.start();
 } catch(const zmq::error_t& e) {
     throw std::runtime_error("network failure in '" + m_method + "' task - " + e.what());
+}
+
+void zmq_server_t::stop() {
+    m_watcher.stop();
+    m_processor.stop();
 }
 
 Json::Value zmq_server_t::info() const {
@@ -81,12 +86,31 @@ Json::Value zmq_server_t::info() const {
     return result;
 }
 
-void zmq_server_t::stop() {
-    m_watcher.stop();
-    m_processor.stop();
+void zmq_server_t::send(zmq_job_t* job, zmq::message_t& chunk) {
+    const route_t& route(job->route());
+    zmq::message_t message;
+    
+    // Send the identity
+    for(route_t::const_iterator id = route.begin(); id != route.end(); ++id) {
+        message.rebuild(id->length());
+        memcpy(message.data(), id->data(), id->length());
+#if ZMQ_VERSION < 30000
+        m_socket.send(message, ZMQ_SNDMORE);
+#else
+        m_socket.send(message, ZMQ_SNDMORE | ZMQ_SNDLABEL);
+#endif
+    }
+
+#if ZMQ_VERSION < 30000                
+    // Send the delimiter
+    message.rebuild(0);
+    m_socket.send(message, ZMQ_SNDMORE);
+#endif
+
+    m_socket.send(chunk);
 }
 
-void zmq_server_t::operator()(ev::io&, int) {
+void zmq_server_t::event(ev::io&, int) {
     if(m_socket.pending()) {
         m_watcher.stop();
         m_processor.start();
@@ -124,6 +148,7 @@ void zmq_server_t::process(ev::idle&, int) {
 #endif
         } else {
             job->send(request_error, "missing request");
+            job->seal(0.0f);
             return;
         }
 
@@ -133,38 +158,16 @@ void zmq_server_t::process(ev::idle&, int) {
             syslog(LOG_ERR, "driver [%s:%s]: unable to enqueue the invocation - %s",
                 m_engine->name().c_str(), m_method.c_str(), e.what());
             job->send(resource_error, e.what());
+            job->seal(0.0f);
         } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "driver [%s:%s]: unable to enqueue the invocation - %s",
                 m_engine->name().c_str(), m_method.c_str(), e.what());
             job->send(server_error, e.what());
+            job->seal(0.0f);
         }
     } else {
         m_watcher.start(m_socket.fd(), ev::READ);
         m_processor.stop();
     }
-}
-
-void zmq_server_t::send(zmq_job_t* job, zmq::message_t& chunk) {
-    const route_t& route(job->route());
-    zmq::message_t message;
-    
-    // Send the identity
-    for(route_t::const_iterator id = route.begin(); id != route.end(); ++id) {
-        message.rebuild(id->length());
-        memcpy(message.data(), id->data(), id->length());
-#if ZMQ_VERSION < 30000
-        m_socket.send(message, ZMQ_SNDMORE);
-#else
-        m_socket.send(message, ZMQ_SNDMORE | ZMQ_SNDLABEL);
-#endif
-    }
-
-#if ZMQ_VERSION < 30000                
-    // Send the delimiter
-    message.rebuild(0);
-    m_socket.send(message, ZMQ_SNDMORE);
-#endif
-
-    m_socket.send(chunk);
 }
 

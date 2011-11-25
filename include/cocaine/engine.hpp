@@ -52,7 +52,6 @@ class engine_t:
         Json::Value info() const;
 
         void reap(unique_id_t::reference worker_id);
-        void expire(boost::shared_ptr<job_t> job);
 
         template<class T>
         job_state enqueue(boost::shared_ptr<job_t> job, const T& args) {

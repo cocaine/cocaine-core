@@ -13,10 +13,11 @@ class fs_t:
              const std::string& method, 
              const Json::Value& args);
 
-        virtual Json::Value info() const;
         virtual void stop();
+        virtual Json::Value info() const;
 
-        void operator()(ev::stat&, int);
+    private:
+        void event(ev::stat&, int);
 
     private:
         const std::string m_path;

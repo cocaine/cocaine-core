@@ -24,7 +24,8 @@ class backend_t:
         virtual void stop() = 0;
 
         void rearm();
-        
+
+    public:        
         inline boost::shared_ptr<job_t>& job() {
             return m_job;
         }

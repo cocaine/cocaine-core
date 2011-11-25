@@ -17,12 +17,8 @@ driver_t::~driver_t() {
         m_engine->name().c_str(), m_method.c_str());
 }
 
-void driver_t::audit(ev::tstamp spent) {
-    m_stats(spent);
-}
-
-void driver_t::expire(boost::shared_ptr<job_t> job) {
-    m_engine->expire(job);
+void driver_t::seal(ev::tstamp resource_usage) {
+    m_stats(resource_usage);
 }
 
 Json::Value driver_t::stats() const {

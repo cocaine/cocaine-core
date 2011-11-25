@@ -15,12 +15,12 @@ class zmq_job_t:
     public:
         zmq_job_t(zmq_server_t* server, const lines::route_t& route);
 
-        using job_t::enqueue;
         virtual job_state enqueue();
 
         virtual void send(zmq::message_t& chunk);
         virtual void send(error_code code, const std::string& error);
 
+    public:
         inline const lines::route_t& route() const {
             return m_route;
         }
@@ -43,13 +43,16 @@ class zmq_server_t:
                      const Json::Value& args);
 
         // Driver interface
-        virtual Json::Value info() const;
         virtual void stop();
+        virtual Json::Value info() const;
 
-        // Server interface
-        void operator()(ev::io&, int);
-        virtual void process(ev::idle&, int);
         virtual void send(zmq_job_t* job, zmq::message_t& chunk);
+    
+    private:
+        void event(ev::io&, int);
+        
+        // Server interface
+        virtual void process(ev::idle&, int);
 
     protected:
         lines::socket_t m_socket;

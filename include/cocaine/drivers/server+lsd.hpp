@@ -14,7 +14,8 @@ class lsd_job_t:
         lsd_job_t(lsd_server_t* server, const lines::route_t& route);
 
         virtual void send(error_code code, const std::string& error);
-        
+
+    public:        
         inline zmq::message_t& envelope() {
             return m_envelope;
         }
@@ -33,10 +34,12 @@ class lsd_server_t:
 
         // Driver interface
         virtual Json::Value info() const;
+        
+        virtual void send(zmq_job_t* job, zmq::message_t& chunk);
 
+    private:
         // Server interface
         virtual void process(ev::idle&, int);
-        virtual void send(zmq_job_t* job, zmq::message_t& chunk);
 };
 
 }}}

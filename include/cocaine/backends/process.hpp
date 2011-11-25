@@ -16,11 +16,11 @@ class process_t:
 
         virtual void stop();
 
-        void signal(ev::child&, int);
-        void terminate(ev::timer&, int);
-
     private:
         virtual void kill();
+        
+        void signal(ev::child&, int);
+        void terminate(ev::timer&, int);
 
     private:
         pid_t m_pid;

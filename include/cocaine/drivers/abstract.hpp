@@ -19,12 +19,12 @@ class driver_t:
         driver_t(engine_t* engine, const std::string& method);
         virtual ~driver_t();
 
-        void audit(ev::tstamp spent);
-        void expire(boost::shared_ptr<job_t> job);
-        
-        virtual Json::Value info() const = 0;
         virtual void stop() = 0;
+        virtual Json::Value info() const = 0;
         
+        void seal(ev::tstamp resource_usage);
+       
+    public: 
         inline engine_t* engine() { 
             return m_engine; 
         }
