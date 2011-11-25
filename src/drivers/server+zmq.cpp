@@ -41,7 +41,7 @@ void zmq_job_t::send(error_code code, const std::string& error) {
     
     memcpy(message.data(), response.data(), response.size());
 
-    static_cast<zmq_server_t*>(m_parent)->send(this, message);
+    send(message);
 }
 
 zmq_server_t::zmq_server_t(engine_t* engine, const std::string& method, const Json::Value& args) try:

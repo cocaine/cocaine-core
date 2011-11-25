@@ -25,7 +25,6 @@ The application tasks can be driven by any of the following drivers:
 * Timer
 * Cron (under development)
 * Filesystem Monitor
-* Raw Socket Server
 * ZeroMQ Server
 * [LSD](https://github.com/tinybit/lsd) Server
 
