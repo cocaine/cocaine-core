@@ -32,7 +32,9 @@ Json::Value driver_t::stats() const {
 
     results["successful-jobs"] = static_cast<Json::UInt>(count(m_spent_on_slaves));
     results["spent-on-slaves"] = sum(m_spent_on_slaves);
+    results["median-wait-time"] = median(m_spent_on_slaves);
     results["spent-in-queues"] = sum(m_spent_in_queues);
+    results["median-processing-time"] = median(m_spent_in_queues);
 
     return results;
 }

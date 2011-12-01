@@ -3,6 +3,7 @@
 
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics/count.hpp>
+#include <boost/accumulators/statistics/median.hpp>
 #include <boost/accumulators/statistics/sum.hpp>
 
 #include "cocaine/common.hpp"
@@ -46,8 +47,22 @@ class driver_t:
         const std::string m_method;
 
     private:
-        accumulator_set< float, features<tag::sum> > m_spent_in_queues;
-        accumulator_set< float, features<tag::count, tag::sum> > m_spent_on_slaves;
+        accumulator_set<
+            float, 
+            features<
+                tag::sum, 
+                tag::median
+            >
+        > m_spent_in_queues;
+
+        accumulator_set<
+            float,
+            features<
+                tag::count,
+                tag::sum,
+                tag::median
+            > 
+        > m_spent_on_slaves;
 };
 
 }}}
