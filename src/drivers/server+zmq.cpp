@@ -85,7 +85,7 @@ void zmq_server_t::stop() {
 Json::Value zmq_server_t::info() const {
     Json::Value result(Json::objectValue);
 
-    result["stats"] = stats();
+    result["statistics"] = stats();
     result["type"] = "server+zmq";
     result["endpoint"] = m_socket.endpoint();
     result["route"] = m_socket.route();

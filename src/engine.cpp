@@ -196,7 +196,7 @@ Json::Value engine_t::info() const {
     Json::Value results(Json::objectValue);
 
     if(m_running) {
-        results["queue"] = static_cast<Json::UInt>(m_queue.size());
+        results["queue-depth"] = static_cast<Json::UInt>(m_queue.size());
         results["slaves"]["total"] = static_cast<Json::UInt>(m_pool.size());
         
         results["slaves"]["busy"] = static_cast<Json::UInt>(

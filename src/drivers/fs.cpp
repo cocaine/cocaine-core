@@ -22,7 +22,7 @@ void fs_t::stop() {
 Json::Value fs_t::info() const {
     Json::Value result(Json::objectValue);
 
-    result["stats"] = stats();
+    result["statistics"] = stats();
     result["type"] = "fs";
     result["path"] = m_path;
 

@@ -30,7 +30,7 @@ void driver_t::audit(timing_type type, ev::tstamp timing) {
 Json::Value driver_t::stats() const {
     Json::Value results(Json::objectValue);
 
-    results["completed-jobs"] = static_cast<Json::UInt>(count(m_spent_on_slaves));
+    results["successful-jobs"] = static_cast<Json::UInt>(count(m_spent_on_slaves));
     results["spent-on-slaves"] = sum(m_spent_on_slaves);
     results["spent-in-queues"] = sum(m_spent_in_queues);
 

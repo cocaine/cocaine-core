@@ -338,10 +338,8 @@ Json::Value core_t::info() const {
     }
 
     result["jobs"]["pending"] = job::job_t::objects_alive;
-    result["jobs"]["done"] = job::job_t::objects_created;
+    result["jobs"]["processed"] = job::job_t::objects_created;
     
-    result["slaves"] = slave::slave_t::objects_alive;
-   
     return result;
 }
 
