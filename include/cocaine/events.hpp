@@ -48,9 +48,8 @@ struct response:
     zmq::message_t& message;
 };
 
-struct error:
-    public sc::event<error>
-{
+// Errors
+struct error {
     public:
         const unsigned int code;
         const std::string& message;
@@ -63,6 +62,7 @@ struct error:
 };
 
 struct request_error:
+    public sc::event<request_error>,
     public error
 {
     request_error(const std::string& message):
@@ -71,6 +71,7 @@ struct request_error:
 };
 
 struct server_error:
+    public sc::event<server_error>,
     public error
 {
     server_error(const std::string& message):
@@ -79,6 +80,7 @@ struct server_error:
 };
 
 struct application_error:
+    public sc::event<application_error>,
     public error
 {
     application_error(const std::string& message):
@@ -87,6 +89,7 @@ struct application_error:
 };
 
 struct resource_error:
+    public sc::event<resource_error>,
     public error
 {
     resource_error(const std::string& message):
@@ -95,6 +98,7 @@ struct resource_error:
 };
 
 struct timeout_error:
+    public sc::event<timeout_error>,
     public error
 {
     timeout_error(const std::string& message):
