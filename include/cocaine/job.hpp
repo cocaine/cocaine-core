@@ -40,10 +40,12 @@ class job_t:
     public:
         job_t(driver::driver_t* driver, policy_t policy);
         virtual ~job_t();
-      
+
+    public:      
         virtual void react(const events::response& event) = 0;
         virtual void react(const events::error& event) = 0;
 
+    public:
         virtual void react(const events::request_error& event) {
             react(static_cast<const events::error&>(event));
         }

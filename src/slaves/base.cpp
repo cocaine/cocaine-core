@@ -26,7 +26,7 @@ slave_t::~slave_t() {
     terminate();
 }
 
-void slave_t::rearm(const events::heartbeat& event) {
+void slave_t::react(const events::heartbeat& event) {
     m_heartbeat_timer.stop();
     
     const busy* state = state_downcast<const busy*>();
@@ -51,12 +51,12 @@ void slave_t::timeout(ev::timer&, int) {
     process_event(events::death());
 }
 
-void alive::assign(const events::assignment& event) {
+void alive::react(const events::assignment& event) {
     m_job = event.job;
     m_job->process_event(event);
 }
 
-void alive::exempt(const events::exemption& event) {
+void alive::react(const events::exemption& event) {
     m_job->process_event(event);
     m_job.reset();
 }
