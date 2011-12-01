@@ -5,36 +5,23 @@
 #include "cocaine/engine.hpp"
 
 using namespace cocaine::engine;
-using namespace cocaine::engine::drivers;
+using namespace cocaine::engine::driver;
 using namespace cocaine::lines;
 
-zmq_job_t::zmq_job_t(zmq_server_t* server, const route_t& route):
-    job_t(server),
+zmq_job_t::zmq_job_t(zmq_server_t* driver, job::policy_t policy, const route_t& route):
+    job_t(driver, policy),
     m_route(route)
 { }
 
-job_state zmq_job_t::enqueue() {
-    zmq::message_t request;
-
-    request.copy(&m_request);
-
-    return m_parent->engine()->enqueue(
-        shared_from_this(),
-        boost::make_tuple(
-            INVOKE,
-            m_parent->method(),
-            boost::ref(request)));
+void zmq_job_t::react(const events::response& event) {
+    send(event.message);
 }
 
-void zmq_job_t::send(zmq::message_t& chunk) {
-    static_cast<zmq_server_t*>(m_parent)->send(this, chunk);
-}
-
-void zmq_job_t::send(error_code code, const std::string& error) {
+void zmq_job_t::react(const events::error& event) {
     Json::Value object(Json::objectValue);
     
-    object["code"] = code;
-    object["error"] = error;
+    object["code"] = event.code;
+    object["message"] = event.message;
 
     std::string response(Json::FastWriter().write(object));
     zmq::message_t message(response.size());
@@ -42,6 +29,25 @@ void zmq_job_t::send(error_code code, const std::string& error) {
     memcpy(message.data(), response.data(), response.size());
 
     send(message);
+}
+
+void zmq_job_t::send(zmq::message_t& chunk) {
+    zmq::message_t message;
+    zmq_server_t* server = static_cast<zmq_server_t*>(m_driver);
+    
+    // Send the identity
+    for(route_t::const_iterator id = m_route.begin(); id != m_route.end(); ++id) {
+        message.rebuild(id->size());
+        memcpy(message.data(), id->data(), id->size());
+        server->socket().send(message, ZMQ_SNDMORE);
+    }
+
+    // Send the delimiter
+    message.rebuild(0);
+    server->socket().send(message, ZMQ_SNDMORE);
+
+    // Send the chunk
+    server->socket().send(chunk);
 }
 
 zmq_server_t::zmq_server_t(engine_t* engine, const std::string& method, const Json::Value& args) try:
@@ -52,7 +58,8 @@ zmq_server_t::zmq_server_t(engine_t* engine, const std::string& method, const Js
             (config_t::get().core.hostname)
             (m_engine->name())
             (method),
-        "/"))
+        "/")
+    )
 {
     std::string endpoint(args.get("endpoint", "").asString());
 
@@ -86,30 +93,6 @@ Json::Value zmq_server_t::info() const {
     return result;
 }
 
-void zmq_server_t::send(zmq_job_t* job, zmq::message_t& chunk) {
-    const route_t& route(job->route());
-    zmq::message_t message;
-    
-    // Send the identity
-    for(route_t::const_iterator id = route.begin(); id != route.end(); ++id) {
-        message.rebuild(id->length());
-        memcpy(message.data(), id->data(), id->length());
-#if ZMQ_VERSION < 30000
-        m_socket.send(message, ZMQ_SNDMORE);
-#else
-        m_socket.send(message, ZMQ_SNDMORE | ZMQ_SNDLABEL);
-#endif
-    }
-
-#if ZMQ_VERSION < 30000                
-    // Send the delimiter
-    message.rebuild(0);
-    m_socket.send(message, ZMQ_SNDMORE);
-#endif
-
-    m_socket.send(chunk);
-}
-
 void zmq_server_t::event(ev::io&, int) {
     if(m_socket.pending()) {
         m_watcher.stop();
@@ -125,11 +108,7 @@ void zmq_server_t::process(ev::idle&, int) {
         while(true) {
             m_socket.recv(&message);
 
-#if ZMQ_VERSION > 30000
-            if(!m_socket.label()) {
-#else
             if(!message.size()) {
-#endif
                 break;
             }
 
@@ -138,33 +117,17 @@ void zmq_server_t::process(ev::idle&, int) {
                 message.size()));
         }
 
-        boost::shared_ptr<zmq_job_t> job(new zmq_job_t(this, route));
+        boost::shared_ptr<zmq_job_t> job(new zmq_job_t(this, job::policy_t(), route));
 
         if(m_socket.more()) {
-#if ZMQ_VERSION < 30000
-            m_socket.recv(&job->request());
-#else
-            job->request().copy(&message);
-#endif
+            m_socket.recv(&message);
+            job->request()->move(&message);
         } else {
-            job->send(request_error, "missing request");
-            job->seal(0.0f);
+            job->process_event(events::request_error("missing request body"));
             return;
         }
 
-        try {
-            job->enqueue();
-        } catch(const resource_error_t& e) {
-            syslog(LOG_ERR, "driver [%s:%s]: unable to enqueue the invocation - %s",
-                m_engine->name().c_str(), m_method.c_str(), e.what());
-            job->send(resource_error, e.what());
-            job->seal(0.0f);
-        } catch(const std::runtime_error& e) {
-            syslog(LOG_ERR, "driver [%s:%s]: unable to enqueue the invocation - %s",
-                m_engine->name().c_str(), m_method.c_str(), e.what());
-            job->send(server_error, e.what());
-            job->seal(0.0f);
-        }
+        m_engine->enqueue(job);
     } else {
         m_watcher.start(m_socket.fd(), ev::READ);
         m_processor.stop();

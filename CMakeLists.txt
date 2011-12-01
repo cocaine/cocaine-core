@@ -52,7 +52,7 @@ SET_TARGET_PROPERTIES(json PROPERTIES
 ADD_LIBRARY(cocaine-common SHARED
     src/config
     src/security
-    src/storages/abstract
+    src/storages/base
     src/storages/files
     src/storages/mongo)
 
@@ -69,12 +69,9 @@ SET_TARGET_PROPERTIES(cocaine-common PROPERTIES
     VERSION 1)
 
 ADD_LIBRARY(cocaine-core SHARED 
-    src/backends/abstract
-    src/backends/process
-    src/backends/thread
     src/core
     src/downloads
-    src/drivers/abstract
+    src/drivers/base
     src/drivers/fs
     src/drivers/server+zmq
     src/drivers/server+lsd
@@ -83,7 +80,10 @@ ADD_LIBRARY(cocaine-core SHARED
     src/job
     src/lines
     src/overseer
-    src/registry)
+    src/registry
+    src/slaves/base
+    src/slaves/process
+    src/slaves/thread)
 
 TARGET_LINK_LIBRARIES(cocaine-core
     cocaine-common

@@ -5,11 +5,11 @@ Cocained is a fast and lightweight multi-language event-driven task-based distri
 
 Notable features:
 
-* Apps are defined as a set of tasks, which trigger events in the app engine, which are then processed on a worker pool. Tasks can be servers, time-based jobs, filesystem monitors, etc.
-* Dynamic self-managing worker pools (threads or processes) for each app with a rich configuration to suit the application needs in the best way.
+* Apps are defined as a set of tasks, which trigger events in the app engine, which are then processed on a slave pool. Tasks can be servers, time-based jobs, filesystem monitors, etc.
+* Dynamic self-managing slave pools (threads or processes) for each app with a rich configuration to suit the application needs in the best way.
 * A single maintainance pubsub-based interface for each application for easy access to monitoring and runtime data.
 * Secure communications using RSA encryption.
-* Simple modular design to add new languages, task types and backends easily.
+* Simple modular design to add new languages, task types and slave backends easily.
 * Support for chunked responses and, soon, requests.
 * Automatic node discovery and smart peer-to-peer balancing using the [LSD](https://github.com/tinybit/lsd) library.
 

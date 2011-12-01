@@ -4,7 +4,7 @@
 #include <openssl/pem.h>
 #include <openssl/err.h>
 
-#include "cocaine/storages/abstract.hpp"
+#include "cocaine/storages/base.hpp"
 #include "cocaine/security.hpp"
 
 using namespace cocaine::security;
@@ -33,7 +33,7 @@ signatures_t::signatures_t():
         std::string key(object["key"].asString());
 
         // Read the key into the BIO object
-        BIO* bio = BIO_new_mem_buf(const_cast<char*>(key.data()), key.length());
+        BIO* bio = BIO_new_mem_buf(const_cast<char*>(key.data()), key.size());
         EVP_PKEY* pkey = NULL;
         
         pkey = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);

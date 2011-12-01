@@ -1,24 +1,21 @@
-#ifndef COCAINE_BACKENDS_THREAD_HPP
-#define COCAINE_BACKENDS_THREAD_HPP
+#ifndef COCAINE_SLAVE_THREAD_HPP
+#define COCAINE_SLAVE_THREAD_HPP
 
 #include <boost/thread/thread.hpp>
 
-#include <cocaine/backends/abstract.hpp>
+#include <cocaine/slaves/base.hpp>
 
-namespace cocaine { namespace engine { namespace backends {
+namespace cocaine { namespace engine { namespace slave {
 
 class thread_t:
-    public backend_t
+    public slave_t
 {
     public:        
         thread_t(engine_t* engine,
                  const std::string& type,
                  const std::string& args);
 
-        virtual void stop();
-
-    private:
-        virtual void kill();
+        virtual void reap();
 
     private:
         boost::shared_ptr<overseer_t> m_overseer;

@@ -85,7 +85,7 @@ int parser_t::on_message_begin(http_parser* parser) {
     return 0;
 }
 
-int parser_t::on_url(http_parser* parser, const char* at, size_t length) {
+int parser_t::on_url(http_parser* parser, const char* at, size_t size) {
     parser_t* p = static_cast<parser_t*>(parser->data);
 
     PyDict_SetItemString(p->m_environment, "REQUEST_METHOD", 
@@ -111,11 +111,11 @@ int parser_t::on_url(http_parser* parser, const char* at, size_t length) {
     return 0;
 }
 
-int parser_t::on_header_field(http_parser* parser, const char* at, size_t length) {
+int parser_t::on_header_field(http_parser* parser, const char* at, size_t size) {
     return 0;
 }
 
-int parser_t::on_header_value(http_parser* parser, const char* at, size_t length) {
+int parser_t::on_header_value(http_parser* parser, const char* at, size_t size) {
     return 0;
 }
 
@@ -123,7 +123,7 @@ int parser_t::on_headers_complete(http_parser* parser) {
     return 0;
 }
 
-int parser_t::on_body(http_parser* parser, const char* at, size_t length) {
+int parser_t::on_body(http_parser* parser, const char* at, size_t size) {
     return 0;
 }
 

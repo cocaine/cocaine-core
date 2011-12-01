@@ -12,7 +12,7 @@ class registry_t:
     public boost::noncopyable
 {
     public:
-        static boost::shared_ptr<registry_t> instance();
+        static const boost::shared_ptr<registry_t>& instance();
 
     public:
         registry_t();

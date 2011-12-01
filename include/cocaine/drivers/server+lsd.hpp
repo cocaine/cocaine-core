@@ -1,27 +1,28 @@
-#ifndef COCAINE_DRIVERS_LSD_SERVER_HPP
-#define COCAINE_DRIVERS_LSD_SERVER_HPP
+#ifndef COCAINE_DRIVER_LSD_SERVER_HPP
+#define COCAINE_DRIVER_LSD_SERVER_HPP
 
 #include "cocaine/drivers/server+zmq.hpp"
 
-namespace cocaine { namespace engine { namespace drivers {
+namespace cocaine { namespace engine { namespace driver {
 
 class lsd_server_t;
 
 class lsd_job_t:
-    public zmq_job_t
+    public zmq_job_t,
+    public unique_id_t
 {
     public:
-        lsd_job_t(lsd_server_t* server, const lines::route_t& route);
+        lsd_job_t(lsd_server_t* driver,
+                  job::policy_t policy,
+                  const lines::route_t& route,
+                  const unique_id_t::type& id);
 
-        virtual void send(error_code code, const std::string& error);
-
-    public:        
-        inline zmq::message_t& envelope() {
-            return m_envelope;
-        }
+        virtual void react(const events::response& event);
+        virtual void react(const events::error& event);
+        virtual void react(const events::exemption& event);
 
     private:
-        zmq::message_t m_envelope;
+        void send(const Json::Value& envelope, zmq::message_t& chunk);
 };
 
 class lsd_server_t:
@@ -35,8 +36,6 @@ class lsd_server_t:
         // Driver interface
         virtual Json::Value info() const;
         
-        virtual void send(zmq_job_t* job, zmq::message_t& chunk);
-
     private:
         // Server interface
         virtual void process(ev::idle&, int);

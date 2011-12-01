@@ -6,14 +6,15 @@
 #include "cocaine/common.hpp"
 
 // Message types
-#define INVOKE      1    /* engine -> worker: do something*/
-#define TERMINATE   2    /* engine -> worker: die */
-
-#define CHUNK       10   /* worker -> engine: something is in progress, here's the part of the result */
-#define CHOKE       11   /* worker -> engine: something is done, choke the channel */
-#define ERROR       12   /* worker -> engine: something is broken, choke the channel */
-#define SUICIDE     13   /* worker -> engine: i am useless, kill me */
-#define HEARTBEAT   14   /* worker -> engine: i am alive, don't kill me */
+#define INVOKE      1   /* engine -> slave: do something*/
+#define TERMINATE   2   /* engine -> slave: engine is shutting down, die
+                           slave -> engine: app is broken, die */
+#define CHUNK       3   /* slave -> engine: invocation is in progress, here's the part of the result
+                           engine -> slave: request is in progress, here's more data */
+#define CHOKE       4   /* slave -> engine: invocation is done, choke the channel */
+#define ERROR       5   /* slave -> engine: invocation has failed */
+#define SUICIDE     6   /* slave -> engine: i am useless, kill me */
+#define HEARTBEAT   7   /* slave -> engine: i am alive, don't kill me */
 
 namespace cocaine { namespace lines {
 
@@ -34,8 +35,11 @@ class socket_t:
         bool send(zmq::message_t& message, int flags = 0);
         bool recv(zmq::message_t* message, int flags = 0);
 
-        void getsockopt(int name, void* value, size_t* length);
-        void setsockopt(int name, const void* value, size_t length);
+        // Drops the current (multipart) message
+        void ignore();
+        
+        void getsockopt(int name, void* value, size_t* size);
+        void setsockopt(int name, const void* value, size_t size);
 
         int fd();
 
@@ -77,8 +81,8 @@ template<> class raw<std::string> {
         { }
 
         inline void pack(zmq::message_t& message) const {
-            message.rebuild(m_object.length());
-            memcpy(message.data(), m_object.data(), m_object.length());
+            message.rebuild(m_object.size());
+            memcpy(message.data(), m_object.data(), m_object.size());
         }
 
         inline bool unpack(/* const */ zmq::message_t& message) {
@@ -99,8 +103,8 @@ template<> class raw<const std::string> {
         { }
 
         inline void pack(zmq::message_t& message) const {
-            message.rebuild(m_object.length());
-            memcpy(message.data(), m_object.data(), m_object.length());
+            message.rebuild(m_object.size());
+            memcpy(message.data(), m_object.data(), m_object.size());
         }
 
     private:
@@ -201,15 +205,6 @@ class channel_t:
         inline bool recv_multi(cons<Head, Tail>& o, int flags = 0) {
             return (recv(o.get_head(), flags)
                     && recv_multi(o.get_tail(), flags));
-        }
-        
-        // Drops the current message
-        inline void ignore() {
-            zmq::message_t null;
-
-            while(more()) {
-                recv(&null);
-            }
         }
 };
 

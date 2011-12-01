@@ -1,6 +1,6 @@
 #include "cocaine/drivers/timed+auto.hpp"
 
-using namespace cocaine::engine::drivers;
+using namespace cocaine::engine::driver;
 
 auto_timed_t::auto_timed_t(engine_t* engine, const std::string& method, const Json::Value& args):
     timed_t<auto_timed_t>(engine, method),

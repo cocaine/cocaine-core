@@ -2,7 +2,7 @@
 
 #include "cocaine/storages/mongo.hpp"
 
-using namespace cocaine::storage::backends;
+using namespace cocaine::storage;
 using namespace mongo;
 
 mongo_storage_t::mongo_storage_t() try:
@@ -30,7 +30,7 @@ void mongo_storage_t::put(const std::string& ns,
 
     // NOTE: For some reason, fromjson fails to parse strings with double null-terminator
     // which is exactly the kind of strings JSONCPP generates, hence the chopping.
-    BSONObj object(fromjson(json.substr(0, json.length() - 1)));
+    BSONObj object(fromjson(json.substr(0, json.size() - 1)));
     
     try {
         ScopedDbConnection connection(m_url);

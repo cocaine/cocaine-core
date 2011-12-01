@@ -7,7 +7,7 @@ socket_t::socket_t(zmq::context_t& context, int type, std::string route):
     m_route(route)
 {
     if(!route.empty()) {
-        setsockopt(ZMQ_IDENTITY, route.data(), route.length());
+        setsockopt(ZMQ_IDENTITY, route.data(), route.size());
     } 
 }
 
@@ -48,12 +48,20 @@ bool socket_t::recv(zmq::message_t* message, int flags) {
     }
 }
 
-void socket_t::getsockopt(int name, void* value, size_t* length) {
-    m_socket.getsockopt(name, value, length);
+void socket_t::ignore() {
+    zmq::message_t null;
+
+    while(more()) {
+        recv(&null);
+    }
 }
 
-void socket_t::setsockopt(int name, const void* value, size_t length) {
-    m_socket.setsockopt(name, value, length);
+void socket_t::getsockopt(int name, void* value, size_t* size) {
+    m_socket.getsockopt(name, value, size);
+}
+
+void socket_t::setsockopt(int name, const void* value, size_t size) {
+    m_socket.setsockopt(name, value, size);
 }
 
 int socket_t::fd() {

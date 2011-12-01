@@ -12,9 +12,25 @@
 using namespace cocaine::engine;
 using namespace cocaine::lines;
 
-bool engine_t::idle_worker::operator()(pool_map_t::reference worker) {
-    return worker.second->state() == idle;
+// Selectors
+// ---------
+
+void engine_t::job_queue_t::push(const boost::shared_ptr<job::job_t>& job) {
+    if(job->policy().urgent) {
+        push_front(job);
+    } else {
+        push_back(job);
+    }
+    
+    job->process_event(events::queuing());
 }
+
+bool engine_t::idle_slave::operator()(pool_map_t::pointer slave) const {
+    return slave->second->state_downcast<const slave::idle*>();
+}
+
+// Basic stuff
+// -----------
 
 engine_t::engine_t(zmq::context_t& context, const std::string& name):
     m_running(false),
@@ -30,7 +46,8 @@ engine_t::engine_t(zmq::context_t& context, const std::string& name):
             (std::string("ipc:///var/run/cocaine"))
             (config_t::get().core.instance)
             (m_app_cfg.name),
-        "/"));
+        "/")
+    );
     
     m_watcher.set<engine_t, &engine_t::message>(this);
     m_watcher.start(m_messages.fd(), ev::READ);
@@ -102,13 +119,13 @@ Json::Value engine_t::start(const Json::Value& manifest) {
                 std::string type(tasks[task]["type"].asString());
                 
                 if(type == "timed+auto") {
-                    schedule<drivers::auto_timed_t>(task, tasks[task]);
+                    schedule<driver::auto_timed_t>(task, tasks[task]);
                 } else if(type == "fs") {
-                    schedule<drivers::fs_t>(task, tasks[task]);
+                    schedule<driver::fs_t>(task, tasks[task]);
                 } else if(type == "server+zmq") {
-                    schedule<drivers::zmq_server_t>(task, tasks[task]);
+                    schedule<driver::zmq_server_t>(task, tasks[task]);
                 } else if(type == "server+lsd") {
-                    schedule<drivers::lsd_server_t>(task, tasks[task]);
+                    schedule<driver::lsd_server_t>(task, tasks[task]);
                 } else {
                    throw std::runtime_error("no driver for '" + type + "' is available");
                 }
@@ -136,8 +153,8 @@ Json::Value engine_t::stop() {
     
         // Abort all the outstanding jobs 
         while(!m_queue.empty()) {
-            m_queue.front()->send(server_error, "engine is shutting down");
-            m_queue.front()->seal(0.0f);
+            m_queue.front()->process_event(
+                events::server_error("engine is shutting down"));
             m_queue.pop_front();
         }
 
@@ -146,20 +163,19 @@ Json::Value engine_t::stop() {
             it->second->stop();
         }
 
-        // Signal the workers to terminate
+        // Signal the slaves to terminate
         for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
             m_messages.send_multi(
                 boost::make_tuple(
                     protect(it->first),
-                    TERMINATE));
-            it->second->stop();
+                    TERMINATE
+                )
+            );
+            
+            it->second->process_event(events::death());
         }
 
-        // Wait for the pool to terminate
-        while(!m_pool.empty()) {
-            ev::get_default_loop().loop(ev::ONESHOT);
-        }
-
+        m_pool.clear();
         m_tasks.clear();
         m_watcher.stop();
         m_processor.stop();
@@ -169,9 +185,9 @@ Json::Value engine_t::stop() {
 }
 
 namespace {
-    struct active_worker {
-        bool operator()(engine_t::pool_map_t::const_reference worker) {
-            return worker.second->state() == active;
+    struct busy_slave {
+        bool operator()(engine_t::pool_map_t::const_pointer slave) {
+            return slave->second->state_downcast<const slave::busy*>();
         }
     };
 }
@@ -181,13 +197,15 @@ Json::Value engine_t::info() const {
 
     if(m_running) {
         results["queue"] = static_cast<Json::UInt>(m_queue.size());
-        results["pool"]["total"] = static_cast<Json::UInt>(m_pool.size());
-        results["pool"]["active"] = static_cast<Json::UInt>(
+        results["slaves"]["total"] = static_cast<Json::UInt>(m_pool.size());
+        
+        results["slaves"]["busy"] = static_cast<Json::UInt>(
             std::count_if(
                 m_pool.begin(),
                 m_pool.end(),
-                active_worker()
-            ));
+                busy_slave()
+            )
+        );
 
         for(task_map_t::const_iterator it = m_tasks.begin(); it != m_tasks.end(); ++it) {
             results["tasks"][it->first] = it->second->info();
@@ -200,23 +218,56 @@ Json::Value engine_t::info() const {
     return results;
 }
 
-void engine_t::reap(unique_id_t::reference worker_id) {
-    pool_map_t::iterator worker(m_pool.find(worker_id));
+void engine_t::enqueue(const boost::shared_ptr<job::job_t>& job) {
+    zmq::message_t request;
+    
+    if(!m_running) {
+        job->process_event(events::server_error("engine is shutting down"));
+        return;
+    }
 
-    if(worker->second->state() == active) {
-        pool_map_t::auto_type corpse(m_pool.release(worker));
-        
-        if(m_running) { 
-            syslog(LOG_DEBUG, "engine [%s]: requeueing a job from a dead worker",
-                m_app_cfg.name.c_str());
-            corpse->job()->enqueue();
-        } else {
-            corpse->job()->send(server_error, "engine is shutting down");
-            corpse->job()->seal(0.0f);
-            corpse->job().reset();
-        }
+    request.copy(job->request());
+
+    pool_map_t::iterator it(
+        send(
+            idle_slave(), 
+            boost::make_tuple(
+                INVOKE,
+                job->driver()->method(),
+                boost::ref(request)
+            )
+        )
+    );
+
+    if(it != m_pool.end()) {
+        // If we got an idle slave, then we're lucky and got an instant scheduling
+        it->second->process_event(events::assignment(job));
     } else {
-        m_pool.erase(worker);
+        // If not, try to spawn more slaves, and enqueue the job
+        if(m_pool.empty() || m_pool.size() < m_policy.pool_limit) {
+            std::auto_ptr<slave::slave_t> slave;
+            
+            try {
+                if(m_policy.backend == "thread") {
+                    slave.reset(new slave::thread_t(this, m_app_cfg.type, m_app_cfg.args));
+                } else if(m_policy.backend == "process") {
+                    slave.reset(new slave::process_t(this, m_app_cfg.type, m_app_cfg.args));
+                }
+            } catch(const std::exception& e) {
+                syslog(LOG_ERR, "engine [%s]: unable to spawn more workers - %s",
+                    m_app_cfg.name.c_str(), e.what());
+            }
+
+            std::string slave_id(slave->id());
+            m_pool.insert(slave_id, slave);
+        } else if(m_queue.size() > m_policy.queue_limit) {
+            syslog(LOG_ERR, "engine [%s]: dropping '%s' job - the queue is full",
+                m_app_cfg.name.c_str(), job->driver()->method().c_str());
+            job->process_event(events::resource_error("the queue is full"));
+            return;
+        }
+            
+        m_queue.push(job);
     }
 }
 
@@ -238,8 +289,8 @@ void engine_t::publish(const std::string& key, const Json::Value& object) {
             envelope << key << " " << field << " " << config_t::get().core.hostname << " "
                      << std::fixed << std::setprecision(3) << now;
 
-            message.rebuild(envelope.str().length());
-            memcpy(message.data(), envelope.str().data(), envelope.str().length());
+            message.rebuild(envelope.str().size());
+            memcpy(message.data(), envelope.str().data(), envelope.str().size());
             m_pubsub->send(message, ZMQ_SNDMORE);
 
             Json::Value value(object[field]);
@@ -263,15 +314,15 @@ void engine_t::publish(const std::string& key, const Json::Value& object) {
                     result = boost::lexical_cast<std::string>(value);
             }
 
-            message.rebuild(result.length());
-            memcpy(message.data(), result.data(), result.length());
+            message.rebuild(result.size());
+            memcpy(message.data(), result.data(), result.size());
             m_pubsub->send(message);
         }
     }
 }
 
-// Worker I/O
-// ----------
+// Slave I/O
+// ---------
 
 void engine_t::message(ev::io&, int) {
     if(m_messages.pending()) {
@@ -282,52 +333,52 @@ void engine_t::message(ev::io&, int) {
 
 void engine_t::process(ev::idle&, int) {
     if(m_messages.pending()) {
-        std::string worker_id;
+        std::string slave_id;
         unsigned int code = 0;
 
-        boost::tuple<raw<std::string>, unsigned int&> tier(protect(worker_id), code);
+        boost::tuple<raw<std::string>, unsigned int&> tier(protect(slave_id), code);
         m_messages.recv_multi(tier);
 
-        pool_map_t::iterator worker(m_pool.find(worker_id));
+        pool_map_t::iterator slave(m_pool.find(slave_id));
 
-        if(worker != m_pool.end()) {
-            // NOTE: Any type of message is suitable to rearm the heartbeat timer
-            // so we don't have to do anything special about HEARBEAT messages at all,
-            // it's a dummy message to send in the periods of inactivity.
-            worker->second->rearm();
-           
+        if(slave != m_pool.end()) {
+            const slave::busy* state = slave->second->state_downcast<const slave::busy*>();
+            
             switch(code) {
                 case CHUNK: {
-                    zmq::message_t chunk;
+                    zmq::message_t message;
 
-                    m_messages.recv(&chunk);
-                    worker->second->job()->send(chunk);
+                    BOOST_ASSERT(state != 0);
 
-                    return;
+                    m_messages.recv(&message);
+                    state->job()->process_event(events::response(message));
+
+                    break;
                 }
              
                 case ERROR: {
                     std::string message;
 
-                    m_messages.recv(message);
-                    worker->second->job()->send(application_error, message);
+                    BOOST_ASSERT(state != 0);
 
-                    return;
+                    m_messages.recv(message);
+                    state->job()->process_event(events::application_error(message));                    
+
+                    break;
                 }
 
                 case CHOKE: {
-                    ev::tstamp resource_usage = 0;
-
-                    m_messages.recv(resource_usage);
-                    worker->second->job()->seal(resource_usage);
-                    worker->second->job().reset();
+                    BOOST_ASSERT(state != 0);
                    
+                    slave->second->process_event(events::exemption());
+                    
                     break;
                 }
 
                 case SUICIDE:
-                    worker->second->stop();
-                    
+                    slave->second->process_event(events::death());
+                    m_pool.erase(slave);
+
                     return;
 
                 case TERMINATE:
@@ -339,16 +390,16 @@ void engine_t::process(ev::idle&, int) {
                     return;
             }
 
-            if(worker->second->state() == idle && !m_queue.empty()) {
-                boost::shared_ptr<job_t> job(m_queue.front());
-                m_queue.pop_front();
+            slave->second->process_event(events::heartbeat());
 
+            if(slave->second->state_downcast<const slave::idle*>() && !m_queue.empty()) {
                 // NOTE: This will always succeed due to the test above
-                job->enqueue();
+                enqueue(m_queue.front());
+                m_queue.pop_front();
             }
         } else {
-            syslog(LOG_WARNING, "engine [%s]: dropping type %d messages from a dead worker %s", 
-                m_app_cfg.name.c_str(), code, worker_id.c_str());
+            syslog(LOG_WARNING, "engine [%s]: dropping type %d messages from a dead slave %s", 
+                m_app_cfg.name.c_str(), code, slave_id.c_str());
             m_messages.ignore();
         }
     } else {
@@ -357,28 +408,28 @@ void engine_t::process(ev::idle&, int) {
     }
 }
 
-publication_t::publication_t(driver_t* parent):
-    job_t(parent)
+publication_t::publication_t(driver::driver_t* parent):
+    job::job_t(parent, job::policy_t())
 { }
 
-void publication_t::send(zmq::message_t& chunk) {
+void publication_t::react(const events::response& event) {
     Json::Reader reader(Json::Features::strictMode());
     Json::Value root;
 
     if(reader.parse(
-        static_cast<const char*>(chunk.data()),
-        static_cast<const char*>(chunk.data()) + chunk.size(),
+        static_cast<const char*>(event.message.data()),
+        static_cast<const char*>(event.message.data()) + event.message.size(),
         root))
     {
-        m_parent->engine()->publish(m_parent->method(), root);
+        m_driver->engine()->publish(m_driver->method(), root);
     } else {
-        m_parent->engine()->publish(m_parent->method(),
+        m_driver->engine()->publish(m_driver->method(),
             helpers::make_json("error", "unable to parse the json"));
     }
 }
 
-void publication_t::send(error_code code, const std::string& error) {
-    m_parent->engine()->publish(m_parent->method(),
-        helpers::make_json("error", error));
+void publication_t::react(const events::error& event) {
+    m_driver->engine()->publish(m_driver->method(),
+        helpers::make_json("error", event.message));
 }
 

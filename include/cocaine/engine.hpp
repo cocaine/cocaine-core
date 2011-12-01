@@ -3,44 +3,39 @@
 
 #include <deque>
 
-#include "cocaine/backends.hpp"
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/helpers/tuples.hpp"
 #include "cocaine/job.hpp"
 #include "cocaine/lines.hpp"
+#include "cocaine/slaves.hpp"
 
 namespace cocaine { namespace engine {
-
-struct resource_error_t:
-    public std::runtime_error
-{
-    resource_error_t(const char* what):
-        std::runtime_error(what)
-    { }
-};
 
 class engine_t:
     public boost::noncopyable
 {
     public:
         typedef boost::ptr_unordered_map<
-            const std::string,
-            backend_t
+            unique_id_t::type,
+            slave::slave_t
         > pool_map_t;
     
         typedef boost::ptr_unordered_map<
             const std::string,
-            driver_t
+            driver::driver_t
         > task_map_t;
 
-        typedef std::deque<
-            boost::shared_ptr<job_t>
-        > job_queue_t;
-       
-    private: 
-        struct idle_worker {
-            bool operator()(pool_map_t::reference worker);
+        class job_queue_t:
+            public std::deque< boost::shared_ptr<job::job_t> >
+        {
+            public:
+                void push(const boost::shared_ptr<job::job_t>& job);
+        };
+
+    public: 
+        struct idle_slave {
+            bool operator()(pool_map_t::pointer slave) const;
         };
 
     public:
@@ -51,62 +46,31 @@ class engine_t:
         Json::Value stop();
         Json::Value info() const;
 
-        void reap(unique_id_t::reference worker_id);
-
-        template<class T>
-        job_state enqueue(boost::shared_ptr<job_t> job, const T& args) {
-            pool_map_t::iterator it(std::find_if(m_pool.begin(), m_pool.end(), idle_worker()));
+        template<class Selector, class T>
+        pool_map_t::iterator send(const Selector& selector, const T& args) {
+            pool_map_t::iterator it(std::find_if(m_pool.begin(), m_pool.end(), selector));
 
             if(it != m_pool.end()) {
                 m_messages.send_multi(
                     helpers::joint_view(
                         boost::make_tuple(
                             lines::protect(it->second->id())),
-                        args));
-                
-                it->second->job() = job;
-                it->second->rearm();
-                
-                return running;
-            }
-            
-            if(m_pool.empty() || m_pool.size() < m_policy.pool_limit) {
-                try {
-                    std::auto_ptr<backend_t> worker;
-
-                    if(m_policy.backend == "thread") {
-                        worker.reset(new backends::thread_t(this, m_app_cfg.type, m_app_cfg.args));
-                    } else if(m_policy.backend == "process") {
-                        worker.reset(new backends::process_t(this, m_app_cfg.type, m_app_cfg.args));
-                    }
-
-                    std::string worker_id(worker->id());
-                    m_pool.insert(worker_id, worker);
-                } catch(const zmq::error_t& e) {
-                    if(e.num() == EMFILE) {
-                        throw resource_error_t("unable to spawn more workers");
-                    } else {
-                        throw;
-                    }
-                }
-            } else if(m_queue.size() > m_policy.queue_limit) {
-                throw resource_error_t("the queue is full");
-            }
-       
-            if(job->policy().urgent) {
-               m_queue.push_front(job);
-            } else { 
-               m_queue.push_back(job);
+                        args
+                    )
+                );
             }
 
-            return queued;
+            return it;
         }
+
+        void enqueue(const boost::shared_ptr<job::job_t>& job);
 
         // NOTE: It is intentional that all the publishing drivers do that via
         // one socket, so that one can bind to it and receive all the application
         // publications without chaos and bloodshed.
-        virtual void publish(const std::string& key, const Json::Value& object);
+        void publish(const std::string& key, const Json::Value& object);
 
+    public:
         inline std::string name() const { 
             return m_app_cfg.name; 
         }
@@ -155,13 +119,14 @@ class engine_t:
 };
 
 class publication_t:
-    public job_t
+    public job::job_t
 {
     public:
-        publication_t(driver_t* parent);
+        publication_t(driver::driver_t* parent);
 
-        virtual void send(zmq::message_t& chunk);
-        virtual void send(error_code code, const std::string& error);
+    public:
+        virtual void react(const events::response&);
+        virtual void react(const events::error&);
 };
 
 }}

@@ -1,12 +1,12 @@
-#ifndef COCAINE_STORAGES_FILES_HPP
-#define COCAINE_STORAGES_FILES_HPP
+#ifndef COCAINE_STORAGE_FILES_HPP
+#define COCAINE_STORAGE_FILES_HPP
 
 #include <boost/filesystem.hpp>
 #include <boost/thread/mutex.hpp>
 
-#include "cocaine/storages/abstract.hpp"
+#include "cocaine/storages/base.hpp"
 
-namespace cocaine { namespace storage { namespace backends {
+namespace cocaine { namespace storage {
 
 class file_storage_t:
     public storage_t
@@ -28,6 +28,6 @@ class file_storage_t:
         const std::string m_instance;
 };
 
-}}}
+}}
 
 #endif

@@ -118,7 +118,7 @@ boost::shared_ptr<source_t> registry_t::create(
     return boost::shared_ptr<source_t>(factory(args));
 }
 
-boost::shared_ptr<registry_t> registry_t::instance() {
+const boost::shared_ptr<registry_t>& registry_t::instance() {
     if(!g_object.get()) {
         g_object.reset(new registry_t());
     }

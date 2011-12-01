@@ -47,10 +47,10 @@ int main(int argc, char* argv[]) {
             "default stale thread suicide timeout, seconds")
         ("engine:pool-limit", po::value<unsigned int>
             (&config_t::set().engine.pool_limit)->default_value(10),
-            "maximum engine worker pool size")
+            "maximum engine slave pool size")
         ("engine:queue-limit", po::value<unsigned int>
             (&config_t::set().engine.queue_limit)->default_value(10),
-            "default maximum engine worker queue depth")
+            "default maximum engine queue depth")
         ("help", "show this message")
         ("pidfile", po::value<fs::path>()->default_value("/var/run/cocaine/default.pid"),
             "location of a pid file")

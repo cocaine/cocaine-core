@@ -3,7 +3,7 @@
 
 #include "cocaine/core.hpp"
 #include "cocaine/engine.hpp"
-#include "cocaine/storages/abstract.hpp"
+#include "cocaine/storages/base.hpp"
 
 using namespace cocaine::core;
 using namespace cocaine::engine;
@@ -16,7 +16,8 @@ core_t::core_t():
         boost::assign::list_of
             (config_t::get().core.instance)
             (config_t::get().core.hostname),
-        "/"))
+        "/")
+    )
 {
     // Information
     int minor, major, patch;
@@ -336,11 +337,10 @@ Json::Value core_t::info() const {
         result["apps"][it->first] = it->second->info();
     }
 
-    result["jobs"]["pending"] = job_t::objects_alive;
-    result["jobs"]["done"] = job_t::objects_created;
+    result["jobs"]["pending"] = job::job_t::objects_alive;
+    result["jobs"]["done"] = job::job_t::objects_created;
     
-    result["sockets"] = socket_t::objects_alive;
-    result["workers"] = backend_t::objects_alive;
+    result["slaves"] = slave::slave_t::objects_alive;
    
     return result;
 }
@@ -350,8 +350,8 @@ void core_t::respond(const route_t& route, const Json::Value& object) {
     
     // Send the identity
     for(route_t::const_iterator id = route.begin(); id != route.end(); ++id) {
-        message.rebuild(id->length());
-        memcpy(message.data(), id->data(), id->length());
+        message.rebuild(id->size());
+        memcpy(message.data(), id->data(), id->size());
 #if ZMQ_VERSION < 30000
         m_server.send(message, ZMQ_SNDMORE);
 #else
@@ -367,8 +367,8 @@ void core_t::respond(const route_t& route, const Json::Value& object) {
 
     Json::FastWriter writer;
     std::string json(writer.write(object));
-    message.rebuild(json.length());
-    memcpy(message.data(), json.data(), json.length());
+    message.rebuild(json.size());
+    memcpy(message.data(), json.data(), json.size());
 
     m_server.send(message);
 }

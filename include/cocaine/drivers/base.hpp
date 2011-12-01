@@ -1,5 +1,5 @@
-#ifndef COCAINE_DRIVERS_ABSTRACT_HPP
-#define COCAINE_DRIVERS_ABSTRACT_HPP
+#ifndef COCAINE_DRIVER_BASE_HPP
+#define COCAINE_DRIVER_BASE_HPP
 
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics/count.hpp>
@@ -8,9 +8,14 @@
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 
-namespace cocaine { namespace engine {
+namespace cocaine { namespace engine { namespace driver {
 
 using namespace boost::accumulators;
+
+enum timing_type {
+    in_queue,
+    on_slave
+};
 
 class driver_t:
     public boost::noncopyable
@@ -22,7 +27,7 @@ class driver_t:
         virtual void stop() = 0;
         virtual Json::Value info() const = 0;
         
-        void seal(ev::tstamp resource_usage);
+        void audit(timing_type type, ev::tstamp timing);
        
     public: 
         inline engine_t* engine() { 
@@ -41,15 +46,10 @@ class driver_t:
         const std::string m_method;
 
     private:
-        accumulator_set<
-            float, 
-            features<
-                tag::count,
-                tag::sum
-            >
-        > m_stats;
+        accumulator_set< float, features<tag::sum> > m_spent_in_queues;
+        accumulator_set< float, features<tag::count, tag::sum> > m_spent_on_slaves;
 };
 
-}}
+}}}
 
 #endif

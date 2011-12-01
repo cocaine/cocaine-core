@@ -1,34 +1,70 @@
 #include "cocaine/drivers/server+lsd.hpp"
 #include "cocaine/engine.hpp"
 
-using namespace cocaine::engine::drivers;
+using namespace cocaine::engine::driver;
 using namespace cocaine::lines;
 
-lsd_job_t::lsd_job_t(lsd_server_t* server, const route_t& route):
-    zmq_job_t(server, route)
+lsd_job_t::lsd_job_t(lsd_server_t* driver, job::policy_t policy, const route_t& route, const unique_id_t::type& id):
+    zmq_job_t(driver, policy, route),
+    unique_id_t(id)
 { }
 
-void lsd_job_t::send(error_code code, const std::string& error) {
+void lsd_job_t::react(const events::response& event) {
+    Json::Value root(Json::objectValue);
+    
+    root["uuid"] = id();
+    
+    send(root, event.message);
+}
+
+void lsd_job_t::react(const events::error& event) {
     zmq::message_t null;
+    Json::Value root(Json::objectValue);
 
-    Json::Reader reader(Json::Features::strictMode());
-    Json::Value root;
+    root["uuid"] = id();
+    root["code"] = event.code;
+    root["message"] = event.message;
 
-    if(reader.parse(
-        static_cast<const char*>(m_envelope.data()),
-        static_cast<const char*>(m_envelope.data()) + m_envelope.size(),
-        root))
-    {
-        root["code"] = code;
-        root["error"] = error;
+    send(root, null);
+}
+
+void lsd_job_t::react(const events::exemption& event) {
+    zmq::message_t null;
+    Json::Value root(Json::objectValue);
+
+    root["uuid"] = id();
+    root["done"] = true;
+
+    send(root, null);
+}
+
+void lsd_job_t::send(const Json::Value& root, zmq::message_t& chunk) {
+    zmq::message_t message;
+    zmq_server_t* server = static_cast<zmq_server_t*>(m_driver);
+
+    // Send the identity
+    for(route_t::const_iterator id = m_route.begin(); id != m_route.end(); ++id) {
+        message.rebuild(id->size());
+        memcpy(message.data(), id->data(), id->size());
+        server->socket().send(message, ZMQ_SNDMORE);
     }
 
-    std::string response(Json::FastWriter().write(root));
-    m_envelope.rebuild(response.size());
-    
-    memcpy(m_envelope.data(), response.data(), response.size());
+    // Send the delimiter
+    message.rebuild(0);
+    server->socket().send(message, ZMQ_SNDMORE);
 
-    static_cast<lsd_server_t*>(m_parent)->send(this, null);
+    // Send the envelope
+    std::string envelope(Json::FastWriter().write(root));
+    message.rebuild(envelope.size());
+
+    memcpy(message.data(), envelope.data(), envelope.size());
+
+    if(chunk.size()) {
+        server->socket().send(message, ZMQ_SNDMORE);
+        server->socket().send(chunk);
+    } else {
+        server->socket().send(message);
+    }
 }
 
 lsd_server_t::lsd_server_t(engine_t* engine, const std::string& method, const Json::Value& args):
@@ -46,38 +82,6 @@ Json::Value lsd_server_t::info() const {
     return result;
 }
 
-void lsd_server_t::send(zmq_job_t* job, zmq::message_t& chunk) {
-    const route_t& route(job->route());
-    zmq::message_t message;
-    
-    // Send the identity
-    for(route_t::const_iterator id = route.begin(); id != route.end(); ++id) {
-        message.rebuild(id->length());
-        memcpy(message.data(), id->data(), id->length());
-#if ZMQ_VERSION < 30000
-        m_socket.send(message, ZMQ_SNDMORE);
-#else
-        m_socket.send(message, ZMQ_SNDMORE | ZMQ_SNDLABEL);
-#endif
-    }
-
-#if ZMQ_VERSION < 30000                
-    // Send the delimiter
-    message.rebuild(0);
-    m_socket.send(message, ZMQ_SNDMORE);
-#endif
-
-    message.copy(&static_cast<lsd_job_t*>(job)->envelope());
-    
-    // Send the response
-    if(chunk.size()) {
-        m_socket.send(message, ZMQ_SNDMORE);
-        m_socket.send(chunk);
-    } else {
-        m_socket.send(message);
-    }
-}
-
 void lsd_server_t::process(ev::idle&, int) {
     if(m_socket.pending()) {
         zmq::message_t message;
@@ -86,11 +90,7 @@ void lsd_server_t::process(ev::idle&, int) {
         while(true) {
             m_socket.recv(&message);
 
-#if ZMQ_VERSION > 30000
-            if(!m_socket.label()) {
-#else
             if(!message.size()) {
-#endif
                 break;
             }
 
@@ -99,70 +99,49 @@ void lsd_server_t::process(ev::idle&, int) {
                 message.size()));
         }
 
-        boost::shared_ptr<lsd_job_t> job(new lsd_job_t(this, route));
-
-        if(m_socket.more()) {
-            // LSD envelope
-#if ZMQ_VERSION < 30000
-            m_socket.recv(&job->envelope());
-#else
-            job->envelope().copy(&message);
-#endif
-        } else {
-            job->send(request_error, "missing envelope");
-            job->seal(0.0f);
-            return;
-        }
-
-        if(m_socket.more()) {
-            // Request
-            m_socket.recv(&job->request());
-        } else {
-            job->send(request_error, "missing request");
-            job->seal(0.0f);
-            return;
-        }
+        // Receive the nvelope
+        m_socket.recv(&message);
 
         // Parse the envelope and setup the job policy
         Json::Reader reader(Json::Features::strictMode());
         Json::Value root;
 
         if(!reader.parse(
-            static_cast<const char*>(job->envelope().data()),
-            static_cast<const char*>(job->envelope().data()) + job->envelope().size(),
+            static_cast<const char*>(message.data()),
+            static_cast<const char*>(message.data()) + message.size(),
             root))
         {
-            job->send(request_error, "invalid envelope");
-            job->seal(0.0f);
+            syslog(LOG_ERR, "driver [%s:%s]: invalid envelope - %s",
+                m_engine->name().c_str(), m_method.c_str(), reader.getFormatedErrorMessages().c_str());
+            m_socket.ignore();
             return;
         }
 
-        job_policy policy(
+        job::policy_t policy(
             root.get("urgent", false).asBool(),
             root.get("timeout", config_t::get().engine.heartbeat_timeout).asDouble(),
             root.get("deadline", 0.0f).asDouble());
 
-        // Instantly drop the job if the deadline has already passed
-        if(policy.deadline >= ev::get_default_loop().now()) {
-            job->send(timeout_error, "the job has expired");
-            job->seal(0.0f);
+        boost::shared_ptr<lsd_job_t> job;
+        
+        try {
+            job.reset(new lsd_job_t(this, policy, route, root.get("uuid", "").asString()));
+        } catch(const std::runtime_error& e) {
+            syslog(LOG_ERR, "driver [%s:%s]: invalid envelope - %s",
+                m_engine->name().c_str(), m_method.c_str(), e.what());
+            m_socket.ignore();
             return;
         }
 
-        // Enqueue
-        try {
-            job->enqueue_with_policy(policy);
-        } catch(const resource_error_t& e) {
-            syslog(LOG_ERR, "driver [%s:%s]: unable to enqueue the invocation - %s",
-                m_engine->name().c_str(), m_method.c_str(), e.what());
-            job->send(resource_error, e.what());
-            job->seal(0.0f);
-        } catch(const std::runtime_error& e) {
-            syslog(LOG_ERR, "driver [%s:%s]: unable to enqueue the invocation - %s",
-                m_engine->name().c_str(), m_method.c_str(), e.what());
-            job->send(server_error, e.what());
-            job->seal(0.0f);
+        if(m_socket.more()) {
+            m_socket.recv(&message);
+            job->request()->move(&message);
+        } else {
+            job->process_event(events::request_error("missing request body"));
+            return;
         }
+        
+        m_engine->enqueue(job);
     } else {
         m_watcher.start(m_socket.fd(), ev::READ);
         m_processor.stop();

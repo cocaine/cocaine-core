@@ -1,9 +1,9 @@
-#ifndef COCAINE_STORAGES_VOID_HPP
-#define COCAINE_STORAGES_VOID_HPP
+#ifndef COCAINE_STORAGE_VOID_HPP
+#define COCAINE_STORAGE_VOID_HPP
 
-#include "cocaine/storages/abstract.hpp"
+#include "cocaine/storages/base.hpp"
 
-namespace cocaine { namespace storage { namespace backends {
+namespace cocaine { namespace storage {
 
 class void_storage_t:
     public storage_t
@@ -19,6 +19,6 @@ class void_storage_t:
         virtual void purge(const std::string& ns) { }
 };
 
-}}}
+}}
 
 #endif

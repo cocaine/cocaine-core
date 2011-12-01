@@ -1,13 +1,13 @@
-#ifndef COCAINE_STORAGES_EBLOBS_HPP
-#define COCAINE_STORAGES_EBLOBS_HPP
+#ifndef COCAINE_STORAGE_EBLOBS_HPP
+#define COCAINE_STORAGE_EBLOBS_HPP
 
 #include <boost/filesystem.hpp>
 
 #include <eblob/eblob.hpp>
 
-#include "cocaine/storages/abstract.hpp"
+#include "cocaine/storages/base.hpp"
 
-namespace cocaine { namespace storage { namespace backends {
+namespace cocaine { namespace storage {
 
 class eblob_collector_t:
     public zbr::eblob_iterator_callback
@@ -72,6 +72,6 @@ class eblob_storage_t:
         zbr::eblob_logger m_logger;
 };
 
-}}}
+}}
 
 #endif

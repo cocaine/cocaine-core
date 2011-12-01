@@ -1,9 +1,9 @@
-#ifndef COCAINE_DRIVERS_AUTO_TIMED_HPP
-#define COCAINE_DRIVERS_AUTO_TIMED_HPP
+#ifndef COCAINE_DRIVER_AUTO_TIMED_HPP
+#define COCAINE_DRIVER_AUTO_TIMED_HPP
 
 #include "cocaine/drivers/timed.hpp"
 
-namespace cocaine { namespace engine { namespace drivers {
+namespace cocaine { namespace engine { namespace driver {
 
 class auto_timed_t:
     public timed_t<auto_timed_t>

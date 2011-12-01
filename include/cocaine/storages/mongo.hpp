@@ -1,11 +1,11 @@
-#ifndef COCAINE_STORAGES_MONGO_HPP
-#define COCAINE_STORAGES_MONGO_HPP
+#ifndef COCAINE_STORAGE_MONGO_HPP
+#define COCAINE_STORAGE_MONGO_HPP
 
 #include <mongo/client/dbclient.h>
 
-#include "cocaine/storages/abstract.hpp"
+#include "cocaine/storages/base.hpp"
 
-namespace cocaine { namespace storage { namespace backends {
+namespace cocaine { namespace storage {
 
 class mongo_storage_t:
     public storage_t
@@ -32,6 +32,6 @@ class mongo_storage_t:
         const mongo::ConnectionString m_url;
 };
 
-}}}
+}}
 
 #endif

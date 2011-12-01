@@ -39,8 +39,8 @@ v Core: JSON -> Msgpack for internal communications
 v Core: stable plugin interface
 v Engine: forks!
 v Engine: per-engine export sockets
-v Engine: an ability to kill timed out workers
-v Engine: dynamic worker pools
+v Engine: an ability to kill timed out slaves
+v Engine: dynamic slave pools
 x Storage: proper inter-process locking in file storage [dropped storage support in apps]
 
 Version: 0.6

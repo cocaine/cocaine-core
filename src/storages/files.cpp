@@ -4,7 +4,7 @@
 #include "cocaine/storages/files.hpp"
 
 using namespace cocaine::helpers;
-using namespace cocaine::storage::backends;
+using namespace cocaine::storage;
 
 namespace fs = boost::filesystem;
 

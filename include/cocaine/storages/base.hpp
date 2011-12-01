@@ -1,5 +1,5 @@
-#ifndef COCAINE_STORAGES_ABSTRACT_HPP
-#define COCAINE_STORAGES_ABSTRACT_HPP
+#ifndef COCAINE_STORAGE_BASE_HPP
+#define COCAINE_STORAGE_BASE_HPP
 
 #include "cocaine/common.hpp"
 

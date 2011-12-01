@@ -1,7 +1,7 @@
 #include "cocaine/drivers/fs.hpp"
 #include "cocaine/engine.hpp"
 
-using namespace cocaine::engine::drivers;
+using namespace cocaine::engine::driver;
 
 fs_t::fs_t(engine_t* engine, const std::string& method, const Json::Value& args):
     driver_t(engine, method),
@@ -31,19 +31,6 @@ Json::Value fs_t::info() const {
 
 void fs_t::event(ev::stat&, int) {
     boost::shared_ptr<publication_t> job(new publication_t(this));
-
-    try {
-        job->enqueue();
-    } catch(const resource_error_t& e) {
-        syslog(LOG_ERR, "driver [%s:%s]: unable to enqueue the invocation - %s",
-            m_engine->name().c_str(), m_method.c_str(), e.what());
-        job->send(resource_error, e.what());
-        job->seal(0.0f);
-    } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "driver [%s:%s]: unable to enqueue the invocation - %s",
-            m_engine->name().c_str(), m_method.c_str(), e.what());
-        job->send(server_error, e.what());
-        job->seal(0.0f);
-    }
+    m_engine->enqueue(job);
 }
 
