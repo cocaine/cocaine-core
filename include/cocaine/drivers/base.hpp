@@ -25,11 +25,11 @@ class driver_t:
         driver_t(engine_t* engine, const std::string& method);
         virtual ~driver_t();
 
-        virtual void stop() = 0;
-        virtual Json::Value info() const = 0;
-        
         void audit(timing_type type, ev::tstamp timing);
        
+    public:
+        virtual Json::Value info() const = 0;
+
     public: 
         inline engine_t* engine() { 
             return m_engine; 

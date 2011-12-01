@@ -56,7 +56,6 @@ void lsd_job_t::send(const Json::Value& root, zmq::message_t& chunk) {
     // Send the envelope
     std::string envelope(Json::FastWriter().write(root));
     message.rebuild(envelope.size());
-
     memcpy(message.data(), envelope.data(), envelope.size());
 
     if(chunk.size()) {
@@ -113,7 +112,7 @@ void lsd_server_t::process(ev::idle&, int) {
         {
             syslog(LOG_ERR, "driver [%s:%s]: invalid envelope - %s",
                 m_engine->name().c_str(), m_method.c_str(), reader.getFormatedErrorMessages().c_str());
-            m_socket.ignore();
+            m_socket.drop_remaining_parts();
             return;
         }
 
@@ -129,13 +128,12 @@ void lsd_server_t::process(ev::idle&, int) {
         } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "driver [%s:%s]: invalid envelope - %s",
                 m_engine->name().c_str(), m_method.c_str(), e.what());
-            m_socket.ignore();
+            m_socket.drop_remaining_parts();
             return;
         }
 
         if(m_socket.more()) {
-            m_socket.recv(&message);
-            job->request()->move(&message);
+            m_socket.recv(job->request());
         } else {
             job->process_event(events::request_error("missing request body"));
             return;

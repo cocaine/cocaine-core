@@ -36,8 +36,6 @@ class zmq_server_t:
                      const Json::Value& args);
 
         // Driver interface
-        virtual void stop();
-
         virtual Json::Value info() const;
 
         // Job interface

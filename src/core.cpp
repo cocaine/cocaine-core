@@ -129,11 +129,7 @@ void core_t::process(ev::idle&, int) {
         while(true) {
             m_server.recv(&message);
 
-#if ZMQ_VERSION > 30000
-            if(!m_server.label()) {
-#else
             if(!message.size()) {
-#endif
                 break;
             }
 
@@ -142,16 +138,11 @@ void core_t::process(ev::idle&, int) {
                 message.size()));
         }
 
-#if ZMQ_VERSION < 30000
         m_server.recv(&message);
-#endif
 
         if(m_server.more()) {
             m_server.recv(&signature);
         }
-
-        // Parse the request
-        root.clear();
 
         if(reader.parse(
             static_cast<const char*>(message.data()),
@@ -203,7 +194,7 @@ Json::Value core_t::dispatch(const Json::Value& root) {
         Json::Value apps(root["apps"]), result(Json::objectValue);
 
         if(!apps.isObject() || !apps.size()) {
-            throw std::runtime_error("no apps has been specified");
+            throw std::runtime_error("no apps have been specified");
         }
 
         // Iterate over all the apps
@@ -231,7 +222,7 @@ Json::Value core_t::dispatch(const Json::Value& root) {
         Json::Value apps(root["apps"]), result(Json::objectValue);
 
         if(!apps.isArray() || !apps.size()) {
-            throw std::runtime_error("no apps has been specified");
+            throw std::runtime_error("no apps have been specified");
         }
 
         for(Json::Value::iterator it = apps.begin(); it != apps.end(); ++it) {
@@ -350,21 +341,15 @@ void core_t::respond(const route_t& route, const Json::Value& object) {
     for(route_t::const_iterator id = route.begin(); id != route.end(); ++id) {
         message.rebuild(id->size());
         memcpy(message.data(), id->data(), id->size());
-#if ZMQ_VERSION < 30000
         m_server.send(message, ZMQ_SNDMORE);
-#else
-        m_server.send(message, ZMQ_SNDMORE | ZMQ_SNDLABEL);
-#endif
     }
 
-#if ZMQ_VERSION < 30000                
     // Send the delimiter
     message.rebuild(0);
     m_server.send(message, ZMQ_SNDMORE);
-#endif
 
-    Json::FastWriter writer;
-    std::string json(writer.write(object));
+    // Serialize and send the response
+    std::string json(Json::FastWriter().write(object));
     message.rebuild(json.size());
     memcpy(message.data(), json.data(), json.size());
 

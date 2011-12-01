@@ -34,9 +34,7 @@ class socket_t:
        
         bool send(zmq::message_t& message, int flags = 0);
         bool recv(zmq::message_t* message, int flags = 0);
-
-        // Drops the current (multipart) message
-        void ignore();
+        void drop_remaining_parts();
         
         void getsockopt(int name, void* value, size_t* size);
         void setsockopt(int name, const void* value, size_t size);

@@ -19,8 +19,9 @@ class timed_t:
             m_watcher.start();
         }
 
-        virtual void stop() {
-            m_watcher.stop();
+    private:
+        static ev::tstamp thunk(ev_periodic* w, ev::tstamp now) {
+            return static_cast<T*>(w->data)->reschedule(now);
         }
 
     private:
@@ -29,11 +30,6 @@ class timed_t:
             m_engine->enqueue(job);
         }
         
-    private:
-        static ev::tstamp thunk(ev_periodic* w, ev::tstamp now) {
-            return static_cast<T*>(w->data)->reschedule(now);
-        }
-
     private:
         ev::periodic m_watcher;
 };

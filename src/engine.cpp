@@ -56,6 +56,10 @@ engine_t::engine_t(zmq::context_t& context, const std::string& name):
 }
 
 engine_t::~engine_t() {
+    if(m_running) {
+        stop();
+    }
+
     syslog(LOG_DEBUG, "engine [%s]: destructing", m_app_cfg.name.c_str()); 
 }
 
@@ -63,123 +67,113 @@ engine_t::~engine_t() {
 // ----------
 
 Json::Value engine_t::start(const Json::Value& manifest) {
-    if(!m_running) {
-        // Application configuration
-        // -------------------------
+    BOOST_ASSERT(!m_running);
 
-        m_app_cfg.type = manifest["type"].asString();
-        m_app_cfg.args = manifest["args"].asString();
+    // Application configuration
+    // -------------------------
 
-        if(!core::registry_t::instance()->exists(m_app_cfg.type)) {
-            throw std::runtime_error("no plugin for '" + m_app_cfg.type + "' is available");
-        }
-        
-        m_app_cfg.version = manifest.get("version", 0).asUInt();
+    m_app_cfg.type = manifest["type"].asString();
+    m_app_cfg.args = manifest["args"].asString();
 
-        if(m_app_cfg.version == 0) {
-            throw std::runtime_error("no app version has been specified");
-        }
-        
-        syslog(LOG_INFO, "engine [%s]: starting", m_app_cfg.name.c_str()); 
-        
-        // Pool configuration
-        // ------------------
-
-        m_policy.backend = manifest["engine"].get("backend",
-            config_t::get().engine.backend).asString();
-        
-        if(m_policy.backend != "thread" && m_policy.backend != "process") {
-            throw std::runtime_error("invalid backend type");
-        }
-        
-        m_policy.suicide_timeout = manifest["engine"].get("suicide-timeout",
-            config_t::get().engine.suicide_timeout).asDouble();
-        m_policy.pool_limit = manifest["engine"].get("pool-limit",
-            config_t::get().engine.pool_limit).asUInt();
-        m_policy.queue_limit = manifest["engine"].get("queue-limit",
-            config_t::get().engine.queue_limit).asUInt();
-        
-        // Tasks configuration
-        // -------------------
-
-        Json::Value tasks(manifest["tasks"]);
-
-        if(!tasks.isNull() && tasks.size()) {
-            std::string endpoint(manifest["pubsub"]["endpoint"].asString());
-            
-            if(!endpoint.empty()) {
-                m_pubsub.reset(new socket_t(m_context, ZMQ_PUB));
-                m_pubsub->bind(endpoint);
-            }
-
-            Json::Value::Members names(tasks.getMemberNames());
-
-            for(Json::Value::Members::iterator it = names.begin(); it != names.end(); ++it) {
-                std::string task(*it);
-                std::string type(tasks[task]["type"].asString());
-                
-                if(type == "timed+auto") {
-                    schedule<driver::auto_timed_t>(task, tasks[task]);
-                } else if(type == "fs") {
-                    schedule<driver::fs_t>(task, tasks[task]);
-                } else if(type == "server+zmq") {
-                    schedule<driver::zmq_server_t>(task, tasks[task]);
-                } else if(type == "server+lsd") {
-                    schedule<driver::lsd_server_t>(task, tasks[task]);
-                } else {
-                   throw std::runtime_error("no driver for '" + type + "' is available");
-                }
-            }
-        } else {
-            throw std::runtime_error("no tasks has been specified");
-        }
-
-        m_running = true;
+    if(!core::registry_t::instance()->exists(m_app_cfg.type)) {
+        throw std::runtime_error("no plugin for '" + m_app_cfg.type + "' is available");
     }
+    
+    m_app_cfg.version = manifest.get("version", 0).asUInt();
+
+    if(m_app_cfg.version == 0) {
+        throw std::runtime_error("no app version has been specified");
+    }
+    
+    // Pool configuration
+    // ------------------
+
+    m_policy.backend = manifest["engine"].get("backend",
+        config_t::get().engine.backend).asString();
+    
+    if(m_policy.backend != "thread" && m_policy.backend != "process") {
+        throw std::runtime_error("invalid backend type");
+    }
+    
+    m_policy.suicide_timeout = manifest["engine"].get("suicide-timeout",
+        config_t::get().engine.suicide_timeout).asDouble();
+    m_policy.pool_limit = manifest["engine"].get("pool-limit",
+        config_t::get().engine.pool_limit).asUInt();
+    m_policy.queue_limit = manifest["engine"].get("queue-limit",
+        config_t::get().engine.queue_limit).asUInt();
+    
+    // Tasks configuration
+    // -------------------
+
+    Json::Value tasks(manifest["tasks"]);
+
+    if(!tasks.isNull() && tasks.size()) {
+        syslog(LOG_INFO, "engine [%s]: starting", m_app_cfg.name.c_str()); 
+    
+        std::string endpoint(manifest["pubsub"]["endpoint"].asString());
+        
+        if(!endpoint.empty()) {
+            m_pubsub.reset(new socket_t(m_context, ZMQ_PUB));
+            m_pubsub->bind(endpoint);
+        }
+
+        Json::Value::Members names(tasks.getMemberNames());
+
+        for(Json::Value::Members::iterator it = names.begin(); it != names.end(); ++it) {
+            std::string task(*it);
+            std::string type(tasks[task]["type"].asString());
+            
+            if(type == "timed+auto") {
+                m_tasks.insert(task, new driver::auto_timed_t(this, task, tasks[task]));
+            } else if(type == "fs") {
+                m_tasks.insert(task, new driver::fs_t(this, task, tasks[task]));
+            } else if(type == "server+zmq") {
+                m_tasks.insert(task, new driver::zmq_server_t(this, task, tasks[task]));
+            } else if(type == "server+lsd") {
+                m_tasks.insert(task, new driver::lsd_server_t(this, task, tasks[task]));
+            } else {
+               throw std::runtime_error("no driver for '" + type + "' is available");
+            }
+        }
+    } else {
+        throw std::runtime_error("no tasks has been specified");
+    }
+
+    m_running = true;
 
     return info();
 }
 
-template<class DriverType>
-void engine_t::schedule(const std::string& method, const Json::Value& args) {
-    m_tasks.insert(method, new DriverType(this, method, args));
-}
-
 Json::Value engine_t::stop() {
-    if(m_running) { 
-        syslog(LOG_INFO, "engine [%s]: stopping", m_app_cfg.name.c_str()); 
-
-        m_running = false;
+    BOOST_ASSERT(m_running);
     
-        // Abort all the outstanding jobs 
-        while(!m_queue.empty()) {
-            m_queue.front()->process_event(
-                events::server_error("engine is shutting down"));
-            m_queue.pop_front();
-        }
+    syslog(LOG_INFO, "engine [%s]: stopping", m_app_cfg.name.c_str()); 
 
-        // Stop all the tasks to cut the event flow
-        for(task_map_t::iterator it = m_tasks.begin(); it != m_tasks.end(); ++it) {
-            it->second->stop();
-        }
+    m_running = false;
 
-        // Signal the slaves to terminate
-        for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
-            m_messages.send_multi(
-                boost::make_tuple(
-                    protect(it->first),
-                    TERMINATE
-                )
-            );
-            
-            it->second->process_event(events::death());
-        }
-
-        m_pool.clear();
-        m_tasks.clear();
-        m_watcher.stop();
-        m_processor.stop();
+    // Abort all the outstanding jobs 
+    while(!m_queue.empty()) {
+        m_queue.front()->process_event(
+            events::server_error("engine is shutting down"));
+        m_queue.pop_front();
     }
+
+    // Signal the slaves to terminate
+    for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
+        m_messages.send_multi(
+            boost::make_tuple(
+                protect(it->first),
+                TERMINATE
+            )
+        );
+        
+        it->second->process_event(events::death());
+    }
+
+    m_pool.clear();
+    m_tasks.clear();
+    m_watcher.stop();
+    m_processor.stop();
 
     return info();
 }
@@ -239,11 +233,11 @@ void engine_t::enqueue(const boost::shared_ptr<job::job_t>& job) {
         )
     );
 
+    // NOTE: If we got an idle slave, then we're lucky and got an instant scheduling;
+    // if not, try to spawn more slaves, and enqueue the job.
     if(it != m_pool.end()) {
-        // If we got an idle slave, then we're lucky and got an instant scheduling
         it->second->process_event(events::invoked(job));
     } else {
-        // If not, try to spawn more slaves, and enqueue the job
         if(m_pool.empty() || m_pool.size() < m_policy.pool_limit) {
             std::auto_ptr<slave::slave_t> slave;
             
@@ -405,7 +399,7 @@ void engine_t::process(ev::idle&, int) {
         } else {
             syslog(LOG_WARNING, "engine [%s]: dropping type %d messages from a dead slave %s", 
                 m_app_cfg.name.c_str(), code, slave_id.c_str());
-            m_messages.ignore();
+            m_messages.drop_remaining_parts();
         }
     } else {
         m_watcher.start(m_messages.fd(), ev::READ);

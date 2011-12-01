@@ -40,10 +40,6 @@ overseer_t::overseer_t(unique_id_t::reference id_, zmq::context_t& context, cons
     m_heartbeat_timer.start(0.0f, 5.0f);
 }
 
-overseer_t::~overseer_t() {
-    terminate();
-}
-
 void overseer_t::operator()(const std::string& type, const std::string& args) {
     try {
         m_app = core::registry_t::instance()->create(type, args);
@@ -117,8 +113,6 @@ void overseer_t::process(ev::idle&, int) {
                     );
                     
                     m_messages.send(TERMINATE);
-                    
-                    return;
                 } catch(...) {
                     syslog(LOG_ERR, "slave [%s:%s]: caught an unexpected exception",
                         m_app_name.c_str(), id().c_str());

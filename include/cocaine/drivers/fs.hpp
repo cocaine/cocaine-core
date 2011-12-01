@@ -13,7 +13,6 @@ class fs_t:
              const std::string& method, 
              const Json::Value& args);
 
-        virtual void stop();
         virtual Json::Value info() const;
 
     private:

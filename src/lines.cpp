@@ -48,7 +48,7 @@ bool socket_t::recv(zmq::message_t* message, int flags) {
     }
 }
 
-void socket_t::ignore() {
+void socket_t::drop_remaining_parts() {
     zmq::message_t null;
 
     while(more()) {

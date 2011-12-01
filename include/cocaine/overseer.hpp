@@ -16,7 +16,6 @@ class overseer_t:
         overseer_t(unique_id_t::reference id,
                    zmq::context_t& context,
                    const std::string& name);
-        ~overseer_t();
 
         // Entry point 
         void operator()(const std::string& type, const std::string& args);

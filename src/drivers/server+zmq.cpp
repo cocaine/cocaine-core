@@ -25,7 +25,6 @@ void zmq_job_t::react(const events::error& event) {
 
     std::string response(Json::FastWriter().write(object));
     zmq::message_t message(response.size());
-    
     memcpy(message.data(), response.data(), response.size());
 
     send(message);
@@ -77,11 +76,6 @@ zmq_server_t::zmq_server_t(engine_t* engine, const std::string& method, const Js
     throw std::runtime_error("network failure in '" + m_method + "' task - " + e.what());
 }
 
-void zmq_server_t::stop() {
-    m_watcher.stop();
-    m_processor.stop();
-}
-
 Json::Value zmq_server_t::info() const {
     Json::Value result(Json::objectValue);
 
@@ -120,8 +114,7 @@ void zmq_server_t::process(ev::idle&, int) {
         boost::shared_ptr<zmq_job_t> job(new zmq_job_t(this, job::policy_t(), route));
 
         if(m_socket.more()) {
-            m_socket.recv(&message);
-            job->request()->move(&message);
+            m_socket.recv(job->request());
         } else {
             job->process_event(events::request_error("missing request body"));
             return;
