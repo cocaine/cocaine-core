@@ -22,7 +22,7 @@ void engine_t::job_queue_t::push(const boost::shared_ptr<job::job_t>& job) {
         push_back(job);
     }
     
-    job->process_event(events::queuing());
+    job->process_event(events::enqueued());
 }
 
 bool engine_t::idle_slave::operator()(pool_map_t::pointer slave) const {
@@ -229,7 +229,7 @@ void engine_t::enqueue(const boost::shared_ptr<job::job_t>& job) {
     request.copy(job->request());
 
     pool_map_t::iterator it(
-        send(
+        unicast(
             idle_slave(), 
             boost::make_tuple(
                 INVOKE,
@@ -241,7 +241,7 @@ void engine_t::enqueue(const boost::shared_ptr<job::job_t>& job) {
 
     if(it != m_pool.end()) {
         // If we got an idle slave, then we're lucky and got an instant scheduling
-        it->second->process_event(events::assignment(job));
+        it->second->process_event(events::invoked(job));
     } else {
         // If not, try to spawn more slaves, and enqueue the job
         if(m_pool.empty() || m_pool.size() < m_policy.pool_limit) {
@@ -370,7 +370,7 @@ void engine_t::process(ev::idle&, int) {
                 case CHOKE: {
                     BOOST_ASSERT(state != 0);
                    
-                    slave->second->process_event(events::exemption());
+                    slave->second->process_event(events::completed());
                     
                     break;
                 }
@@ -393,10 +393,15 @@ void engine_t::process(ev::idle&, int) {
             slave->second->process_event(events::heartbeat());
 
             if(slave->second->state_downcast<const slave::idle*>() && !m_queue.empty()) {
-                // NOTE: This will always succeed due to the test above
-                enqueue(m_queue.front());
+                boost::shared_ptr<job::job_t> job(m_queue.front());
                 m_queue.pop_front();
+                
+                // NOTE: This will always succeed due to the test above
+                enqueue(job);
             }
+
+            // TEST: Ensure that there're no more message parts pending on the channel
+            BOOST_ASSERT(!m_messages.more());
         } else {
             syslog(LOG_WARNING, "engine [%s]: dropping type %d messages from a dead slave %s", 
                 m_app_cfg.name.c_str(), code, slave_id.c_str());

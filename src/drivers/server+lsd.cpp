@@ -28,12 +28,12 @@ void lsd_job_t::react(const events::error& event) {
     send(root, null);
 }
 
-void lsd_job_t::react(const events::exemption& event) {
+void lsd_job_t::react(const events::completed& event) {
     zmq::message_t null;
     Json::Value root(Json::objectValue);
 
     root["uuid"] = id();
-    root["done"] = true;
+    root["completed"] = true;
 
     send(root, null);
 }

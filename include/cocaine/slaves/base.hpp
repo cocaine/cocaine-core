@@ -66,8 +66,8 @@ struct alive:
 
         ~alive();
 
-        void react(const events::assignment& event);
-        void react(const events::exemption& event);
+        void react(const events::invoked& event);
+        void react(const events::completed& event);
 
         const boost::shared_ptr<job::job_t>& job() const {
             return m_job;
@@ -82,7 +82,7 @@ struct idle:
 {
     public:
         typedef sc::transition<
-            events::assignment, busy, alive, &alive::react
+            events::invoked, busy, alive, &alive::react
         > reactions;
 };
 
@@ -91,7 +91,7 @@ struct busy:
 {
     public:
         typedef sc::transition<
-            events::exemption, idle, alive, &alive::react
+            events::completed, idle, alive, &alive::react
         > reactions;
 
         const boost::shared_ptr<job::job_t>& job() const {

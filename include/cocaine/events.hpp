@@ -10,22 +10,22 @@ namespace cocaine { namespace engine { namespace events {
 namespace sc = boost::statechart;
 
 // Common events
-struct queuing:
-    public sc::event<queuing>
+struct enqueued:
+    public sc::event<enqueued>
 { };
 
-struct assignment:
-    public sc::event<assignment>
+struct invoked:
+    public sc::event<invoked>
 {
-    assignment(const boost::shared_ptr<job::job_t> job_):
+    invoked(const boost::shared_ptr<job::job_t> job_):
         job(job_)
     { }
 
     const boost::shared_ptr<job::job_t> job;
 };
 
-struct exemption:
-    public sc::event<exemption>
+struct completed:
+    public sc::event<completed>
 { };
 
 // Slave events

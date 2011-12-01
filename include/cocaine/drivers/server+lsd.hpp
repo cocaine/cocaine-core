@@ -19,7 +19,7 @@ class lsd_job_t:
 
         virtual void react(const events::response& event);
         virtual void react(const events::error& event);
-        virtual void react(const events::exemption& event);
+        virtual void react(const events::completed& event);
 
     private:
         void send(const Json::Value& envelope, zmq::message_t& chunk);

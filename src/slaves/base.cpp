@@ -51,12 +51,12 @@ void slave_t::timeout(ev::timer&, int) {
     process_event(events::death());
 }
 
-void alive::react(const events::assignment& event) {
+void alive::react(const events::invoked& event) {
     m_job = event.job;
     m_job->process_event(event);
 }
 
-void alive::react(const events::exemption& event) {
+void alive::react(const events::completed& event) {
     m_job->process_event(event);
     m_job.reset();
 }

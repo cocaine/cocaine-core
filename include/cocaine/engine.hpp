@@ -47,7 +47,7 @@ class engine_t:
         Json::Value info() const;
 
         template<class Selector, class T>
-        pool_map_t::iterator send(const Selector& selector, const T& args) {
+        pool_map_t::iterator unicast(const Selector& selector, const T& args) {
             pool_map_t::iterator it(std::find_if(m_pool.begin(), m_pool.end(), selector));
 
             if(it != m_pool.end()) {
