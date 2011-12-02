@@ -63,7 +63,7 @@ void alive::react(const events::completed& event) {
 }
 
 alive::~alive() {
-    if(m_job) {
+    if(m_job && !m_job->state_downcast<const job::complete*>()) {
         // NOTE: If there's a job assigned to this slave upon transition
         // it means that the slave died unexpectedly, so the job has to be
         // rescheduled.
