@@ -19,6 +19,9 @@ process_t::process_t(engine_t* engine, const std::string& type, const std::strin
     } else if(m_pid < 0) {
         throw std::runtime_error("fork() failed");
     }
+
+    m_child_watcher.set<process_t, &process_t::signal>(this);
+    m_child_watcher.start(m_pid);
 }
 
 void process_t::reap() {
@@ -29,5 +32,11 @@ void process_t::reap() {
         // as libev will automatically reap them.
         ::kill(m_pid, SIGKILL);
     }
+
+    m_child_watcher.stop();
+}
+
+void process_t::signal(ev::child&, int) {
+    process_event(events::death());
 }
 

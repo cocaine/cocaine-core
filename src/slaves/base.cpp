@@ -1,3 +1,4 @@
+#include "cocaine/drivers/base.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/slaves/base.hpp"
 
@@ -62,7 +63,12 @@ void alive::react(const events::completed& event) {
 }
 
 alive::~alive() {
-    BOOST_ASSERT(!m_job);
+    if(m_job) {
+        // NOTE: If there's a job assigned to this slave upon transition
+        // it means that the slave died unexpectedly, so the job has to be
+        // rescheduled.
+        m_job->driver()->engine()->enqueue(m_job);
+    }
 }
 
 dead::dead(my_context ctx):

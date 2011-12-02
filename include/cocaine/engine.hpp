@@ -85,6 +85,7 @@ class engine_t:
 
         void message(ev::io&, int);
         void process(ev::idle&, int);
+        void cleanup(ev::timer&, int);
 
     private:
         bool m_running;
@@ -93,6 +94,13 @@ class engine_t:
         boost::shared_ptr<lines::socket_t> m_pubsub;
         
         // Pool
+        pool_map_t m_pool;
+        lines::channel_t m_messages;
+        
+        ev::io m_watcher;
+        ev::idle m_processor;
+        ev::timer m_gc_timer;
+
         struct engine_policy {
             std::string backend;
             unsigned int pool_limit;
@@ -100,22 +108,16 @@ class engine_t:
             ev::tstamp suicide_timeout;
         } m_policy;
 
-        lines::channel_t m_messages;
-        
-        ev::io m_watcher;
-        ev::idle m_processor;
-
         // Jobs
-        pool_map_t m_pool;
         job_queue_t m_queue;
         
         // Application
+        task_map_t m_tasks;
+        
         struct {
             std::string name, type, args;
             unsigned int version;
         } m_app_cfg;
-       
-        task_map_t m_tasks;
 };
 
 class publication_t:

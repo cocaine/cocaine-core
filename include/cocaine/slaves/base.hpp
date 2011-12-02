@@ -1,7 +1,6 @@
 #ifndef COCAINE_SLAVE_BASE_HPP
 #define COCAINE_SLAVE_BASE_HPP
 
-#include <boost/statechart/event.hpp>
 #include <boost/statechart/state_machine.hpp>
 #include <boost/statechart/state.hpp>
 #include <boost/statechart/in_state_reaction.hpp>

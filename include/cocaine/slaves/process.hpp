@@ -16,7 +16,11 @@ class process_t:
         virtual void reap();
 
     private:
+        void signal(ev::child&, int);
+
+    private:
         pid_t m_pid;
+        ev::child m_child_watcher;
 };
 
 }}}

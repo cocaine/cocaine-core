@@ -41,11 +41,6 @@ class job_t:
         job_t(driver::driver_t* driver, policy_t policy);
         virtual ~job_t();
 
-    public:      
-        virtual void react(const events::response& event) = 0;
-        virtual void react(const events::error& event) = 0;
-
-    public:
         virtual void react(const events::request_error& event) {
             react(static_cast<const events::error&>(event));
         }
@@ -68,6 +63,10 @@ class job_t:
 
         virtual void react(const events::completed& event) { }
     
+    public:      
+        virtual void react(const events::response& event) = 0;
+        virtual void react(const events::error& event) = 0;
+
     public:
         inline driver::driver_t* driver() {
             return m_driver;
@@ -137,7 +136,9 @@ struct processing:
         typedef boost::mpl::list<
             sc::in_state_reaction<events::response,          job_t, &job_t::react>,
             sc::in_state_reaction<events::application_error, job_t, &job_t::react>,
-            sc::transition<events::completed, complete,      job_t, &job_t::react>
+            sc::transition<events::completed, complete,      job_t, &job_t::react>,
+            sc::transition<events::enqueued,  waiting>,
+            sc::transition<events::invoked,   processing>
         > reactions;
 
         processing();

@@ -53,6 +53,9 @@ engine_t::engine_t(zmq::context_t& context, const std::string& name):
     m_watcher.start(m_messages.fd(), ev::READ);
     m_processor.set<engine_t, &engine_t::process>(this);
     m_processor.start();
+
+    m_gc_timer.set<engine_t, &engine_t::cleanup>(this);
+    m_gc_timer.start(5.0f, 5.0f);
 }
 
 engine_t::~engine_t() {
@@ -371,7 +374,6 @@ void engine_t::process(ev::idle&, int) {
 
                 case SUICIDE:
                     slave->second->process_event(events::death());
-                    m_pool.erase(slave);
 
                     return;
 
@@ -404,6 +406,26 @@ void engine_t::process(ev::idle&, int) {
     } else {
         m_watcher.start(m_messages.fd(), ev::READ);
         m_processor.stop();
+    }
+}
+
+void engine_t::cleanup(ev::timer&, int) {
+    typedef std::vector<pool_map_t::key_type> corpses_t;
+    corpses_t corpses;
+
+    for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
+        if(it->second->state_downcast<const slave::dead*>()) {
+            corpses.push_back(it->first);
+        }
+    }
+
+    if(!corpses.empty()) {
+        for(corpses_t::iterator it = corpses.begin(); it != corpses.end(); ++it) {
+            m_pool.erase(*it);
+        }
+        
+        syslog(LOG_INFO, "engine [%s]: recycled %zu dead slaves", 
+            m_app_cfg.name.c_str(), corpses.size());
     }
 }
 
