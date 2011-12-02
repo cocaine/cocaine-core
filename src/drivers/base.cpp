@@ -16,13 +16,13 @@ driver_t::~driver_t() {
         m_engine->name().c_str(), m_method.c_str());
 }
 
-void driver_t::audit(timing_type type, ev::tstamp timing) {
+void driver_t::audit(audit_type type, ev::tstamp value) {
     switch(type) {
         case in_queue:
-            m_spent_in_queues(timing);
+            m_spent_in_queues(value);
             break;
         case on_slave:
-            m_spent_on_slaves(timing);
+            m_spent_on_slaves(value);
             break;
     }
 }
@@ -30,7 +30,6 @@ void driver_t::audit(timing_type type, ev::tstamp timing) {
 Json::Value driver_t::stats() const {
     Json::Value results(Json::objectValue);
 
-    results["successful-jobs"] = static_cast<Json::UInt>(count(m_spent_on_slaves));
     results["time-spent-on-slaves"] = sum(m_spent_on_slaves);
     results["median-processing-time"] = median(m_spent_on_slaves);
     results["time-spent-in-queues"] = sum(m_spent_in_queues);

@@ -398,7 +398,7 @@ void engine_t::process(ev::idle&, int) {
             // TEST: Ensure that there're no more message parts pending on the channel
             BOOST_ASSERT(!m_messages.more());
         } else {
-            syslog(LOG_WARNING, "engine [%s]: dropping type %d messages from a dead slave %s", 
+            syslog(LOG_DEBUG, "engine [%s]: dropping type %d message from a dead slave %s", 
                 m_app_cfg.name.c_str(), code, slave_id.c_str());
             m_messages.drop_remaining_parts();
         }

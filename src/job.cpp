@@ -57,3 +57,4 @@ processing::~processing() {
     context<job_t>().driver()->audit(driver::on_slave,
         ev::get_default_loop().now() - m_timestamp);
 }
+

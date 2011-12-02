@@ -2,7 +2,6 @@
 #define COCAINE_DRIVER_BASE_HPP
 
 #include <boost/accumulators/accumulators.hpp>
-#include <boost/accumulators/statistics/count.hpp>
 #include <boost/accumulators/statistics/median.hpp>
 #include <boost/accumulators/statistics/sum.hpp>
 
@@ -13,7 +12,7 @@ namespace cocaine { namespace engine { namespace driver {
 
 using namespace boost::accumulators;
 
-enum timing_type {
+enum audit_type {
     in_queue,
     on_slave
 };
@@ -25,7 +24,7 @@ class driver_t:
         driver_t(engine_t* engine, const std::string& method);
         virtual ~driver_t();
 
-        void audit(timing_type type, ev::tstamp timing);
+        void audit(audit_type type, ev::tstamp value);
        
     public:
         virtual Json::Value info() const = 0;
@@ -47,22 +46,8 @@ class driver_t:
         const std::string m_method;
 
     private:
-        accumulator_set<
-            float, 
-            features<
-                tag::sum, 
-                tag::median
-            >
-        > m_spent_in_queues;
-
-        accumulator_set<
-            float,
-            features<
-                tag::count,
-                tag::sum,
-                tag::median
-            > 
-        > m_spent_on_slaves;
+        accumulator_set< float, features<tag::sum, tag::median> > m_spent_in_queues;
+        accumulator_set< float, features<tag::sum, tag::median> > m_spent_on_slaves;
 };
 
 }}}
