@@ -19,11 +19,11 @@ slave_t::slave_t(engine_t* engine):
 slave_t::~slave_t() {
     syslog(LOG_DEBUG, "slave [%s:%s]: destructing", m_engine->name().c_str(), id().c_str());
     
+    m_heartbeat_timer.stop();
+    
     // TEST: Make sure that the slave is really dead
     BOOST_ASSERT(state_downcast<const dead*>() != 0);
 
-    m_heartbeat_timer.stop();
-    
     terminate();
 }
 
