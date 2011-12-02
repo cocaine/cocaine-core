@@ -15,6 +15,10 @@ fs_t::fs_t(engine_t* engine, const std::string& method, const Json::Value& args)
     m_watcher.start(m_path.c_str());
 }
 
+fs_t::~fs_t() {
+    m_watcher.stop();
+}
+
 Json::Value fs_t::info() const {
     Json::Value result(Json::objectValue);
 

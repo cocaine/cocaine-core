@@ -28,11 +28,11 @@ void process_t::reap() {
     int status = 0;
 
     if(waitpid(m_pid, &status, WNOHANG) == 0) {
-        // NOTE: There's no need to wait for the children,
-        // as libev will automatically reap them.
         ::kill(m_pid, SIGKILL);
     }
 
+    // NOTE: There's no need to wait for the killed children,
+    // as libev will automatically reap them.
     m_child_watcher.stop();
 }
 

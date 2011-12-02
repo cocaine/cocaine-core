@@ -76,6 +76,11 @@ zmq_server_t::zmq_server_t(engine_t* engine, const std::string& method, const Js
     throw std::runtime_error("network failure in '" + m_method + "' task - " + e.what());
 }
 
+zmq_server_t::~zmq_server_t() {
+    m_watcher.stop();
+    m_processor.stop();
+}
+
 Json::Value zmq_server_t::info() const {
     Json::Value result(Json::objectValue);
 
