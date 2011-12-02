@@ -34,7 +34,7 @@ core_t::core_t():
         ++it) 
     {
         m_server.bind(*it);
-        syslog(LOG_INFO, "core: listening for requests on %s", it->c_str());
+        syslog(LOG_INFO, "core: accepting configuration on %s", it->c_str());
     }
 
     // Automatic discovery support
