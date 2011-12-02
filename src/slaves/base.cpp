@@ -67,7 +67,7 @@ alive::~alive() {
         // NOTE: If there's a job assigned to this slave upon transition
         // it means that the slave died unexpectedly, so the job has to be
         // rescheduled.
-        m_job->driver()->engine()->enqueue(m_job);
+        m_job->driver()->engine()->enqueue(m_job, true);
     }
 }
 

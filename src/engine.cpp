@@ -216,7 +216,7 @@ Json::Value engine_t::info() const {
     return results;
 }
 
-void engine_t::enqueue(const boost::shared_ptr<job::job_t>& job) {
+void engine_t::enqueue(const boost::shared_ptr<job::job_t>& job, bool overflow) {
     zmq::message_t request;
     
     if(!m_running) {
@@ -258,7 +258,7 @@ void engine_t::enqueue(const boost::shared_ptr<job::job_t>& job) {
 
             std::string slave_id(slave->id());
             m_pool.insert(slave_id, slave);
-        } else if(m_queue.size() > m_policy.queue_limit) {
+        } else if(!overflow && (m_queue.size() > m_policy.queue_limit)) {
             syslog(LOG_ERR, "engine [%s]: dropping '%s' job - the queue is full",
                 m_app_cfg.name.c_str(), job->driver()->method().c_str());
             job->process_event(events::resource_error("the queue is full"));

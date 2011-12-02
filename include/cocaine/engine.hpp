@@ -63,7 +63,7 @@ class engine_t:
             return it;
         }
 
-        void enqueue(const boost::shared_ptr<job::job_t>& job);
+        void enqueue(const boost::shared_ptr<job::job_t>& job, bool overflow = false);
 
         // NOTE: It is intentional that all the publishing drivers do that via
         // one socket, so that one can bind to it and receive all the application
@@ -80,9 +80,6 @@ class engine_t:
         }
 
     private:
-        template<class DriverType>
-        void schedule(const std::string& method, const Json::Value& args);
-
         void message(ev::io&, int);
         void process(ev::idle&, int);
         void cleanup(ev::timer&, int);
