@@ -177,6 +177,7 @@ Json::Value engine_t::stop() {
     m_tasks.clear();
     m_watcher.stop();
     m_processor.stop();
+    m_gc_timer.stop();
 
     return info();
 }
