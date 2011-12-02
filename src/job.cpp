@@ -28,6 +28,8 @@ job_t::job_t(driver::driver_t* driver, policy_t policy):
 }
 
 job_t::~job_t() {
+    m_expiration_timer.stop();
+
     // TEST: Ensure that the job has been completed
     BOOST_ASSERT(state_downcast<const complete*>() != 0);
 
