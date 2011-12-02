@@ -98,48 +98,50 @@ void lsd_server_t::process(ev::idle&, int) {
                 message.size()));
         }
 
-        // Receive the nvelope
-        m_socket.recv(&message);
+        while(m_socket.more()) {
+            // Receive the nvelope
+            m_socket.recv(&message);
 
-        // Parse the envelope and setup the job policy
-        Json::Reader reader(Json::Features::strictMode());
-        Json::Value root;
+            // Parse the envelope and setup the job policy
+            Json::Reader reader(Json::Features::strictMode());
+            Json::Value root;
 
-        if(!reader.parse(
-            static_cast<const char*>(message.data()),
-            static_cast<const char*>(message.data()) + message.size(),
-            root))
-        {
-            syslog(LOG_ERR, "driver [%s:%s]: invalid envelope - %s",
-                m_engine->name().c_str(), m_method.c_str(), reader.getFormatedErrorMessages().c_str());
-            m_socket.drop_remaining_parts();
-            return;
+            if(!reader.parse(
+                static_cast<const char*>(message.data()),
+                static_cast<const char*>(message.data()) + message.size(),
+                root))
+            {
+                syslog(LOG_ERR, "driver [%s:%s]: invalid envelope - %s",
+                    m_engine->name().c_str(), m_method.c_str(), reader.getFormatedErrorMessages().c_str());
+                m_socket.drop_remaining_parts();
+                break;
+            }
+
+            job::policy_t policy(
+                root.get("urgent", false).asBool(),
+                root.get("timeout", config_t::get().engine.heartbeat_timeout).asDouble(),
+                root.get("deadline", 0.0f).asDouble());
+
+            boost::shared_ptr<lsd_job_t> job;
+            
+            try {
+                job.reset(new lsd_job_t(this, policy, route, root.get("uuid", "").asString()));
+            } catch(const std::runtime_error& e) {
+                syslog(LOG_ERR, "driver [%s:%s]: invalid envelope - %s",
+                    m_engine->name().c_str(), m_method.c_str(), e.what());
+                m_socket.drop_remaining_parts();
+                break;
+            }
+
+            if(m_socket.more()) {
+                m_socket.recv(job->request());
+            } else {
+                job->process_event(events::request_error("missing request body"));
+                break;
+            }
+            
+            m_engine->enqueue(job);
         }
-
-        job::policy_t policy(
-            root.get("urgent", false).asBool(),
-            root.get("timeout", config_t::get().engine.heartbeat_timeout).asDouble(),
-            root.get("deadline", 0.0f).asDouble());
-
-        boost::shared_ptr<lsd_job_t> job;
-        
-        try {
-            job.reset(new lsd_job_t(this, policy, route, root.get("uuid", "").asString()));
-        } catch(const std::runtime_error& e) {
-            syslog(LOG_ERR, "driver [%s:%s]: invalid envelope - %s",
-                m_engine->name().c_str(), m_method.c_str(), e.what());
-            m_socket.drop_remaining_parts();
-            return;
-        }
-
-        if(m_socket.more()) {
-            m_socket.recv(job->request());
-        } else {
-            job->process_event(events::request_error("missing request body"));
-            return;
-        }
-        
-        m_engine->enqueue(job);
     } else {
         m_watcher.start(m_socket.fd(), ev::READ);
         m_processor.stop();

@@ -116,16 +116,12 @@ void zmq_server_t::process(ev::idle&, int) {
                 message.size()));
         }
 
-        boost::shared_ptr<zmq_job_t> job(new zmq_job_t(this, job::policy_t(), route));
+        while(m_socket.more()) {
+            boost::shared_ptr<zmq_job_t> job(new zmq_job_t(this, job::policy_t(), route));
 
-        if(m_socket.more()) {
             m_socket.recv(job->request());
-        } else {
-            job->process_event(events::request_error("missing request body"));
-            return;
+            m_engine->enqueue(job);
         }
-
-        m_engine->enqueue(job);
     } else {
         m_watcher.start(m_socket.fd(), ev::READ);
         m_processor.stop();
