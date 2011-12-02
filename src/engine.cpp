@@ -390,11 +390,9 @@ void engine_t::process(ev::idle&, int) {
             slave->second->process_event(events::heartbeat());
 
             if(slave->second->state_downcast<const slave::idle*>() && !m_queue.empty()) {
-                boost::shared_ptr<job::job_t> job(m_queue.front());
-                m_queue.pop_front();
-                
                 // NOTE: This will always succeed due to the test above
-                enqueue(job);
+                enqueue(m_queue.front());
+                m_queue.pop_front();
             }
 
             // TEST: Ensure that there're no more message parts pending on the channel
@@ -425,8 +423,11 @@ void engine_t::cleanup(ev::timer&, int) {
             m_pool.erase(*it);
         }
         
-        syslog(LOG_INFO, "engine [%s]: recycled %zu dead slaves", 
-            m_app_cfg.name.c_str(), corpses.size());
+        syslog(LOG_INFO, "engine [%s]: recycled %zu dead %s", 
+            m_app_cfg.name.c_str(),
+            corpses.size(),
+            corpses.size() == 1 ? "slave" : "slaves"
+        );
     }
 }
 

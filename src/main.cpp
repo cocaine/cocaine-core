@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
             (&config_t::set().engine.backend)->default_value("process"),
             "default engine backend, one of: thread, process")
         ("engine:heartbeat-timeout", po::value<float>
-            (&config_t::set().engine.heartbeat_timeout)->default_value(60.0f),
+            (&config_t::set().engine.heartbeat_timeout)->default_value(30.0f),
             "default unresponsive thread cancellation timeout, seconds")
         ("engine:suicide-timeout", po::value<float>
             (&config_t::set().engine.suicide_timeout)->default_value(600.0f),
