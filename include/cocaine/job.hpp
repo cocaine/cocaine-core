@@ -6,6 +6,8 @@
 #include <boost/statechart/in_state_reaction.hpp>
 #include <boost/statechart/transition.hpp>
 
+#include <msgpack.hpp>
+
 #include "cocaine/common.hpp"
 #include "cocaine/events.hpp"
 #include "cocaine/forwards.hpp"
@@ -15,14 +17,14 @@ namespace cocaine { namespace engine { namespace job {
 namespace sc = boost::statechart;
 
 struct policy_t {
-    public:
-        policy_t();
-        policy_t(bool urgent, ev::tstamp timeout, ev::tstamp deadline);
+    policy_t();
+    policy_t(bool urgent, ev::tstamp timeout, ev::tstamp deadline);
 
-    public:
-        bool urgent;
-        ev::tstamp timeout;
-        ev::tstamp deadline;
+    bool urgent;
+    ev::tstamp timeout;
+    ev::tstamp deadline;
+
+    MSGPACK_DEFINE(urgent, timeout, deadline);
 };
 
 // Job states

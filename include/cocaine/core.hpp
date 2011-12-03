@@ -3,7 +3,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
-#include "cocaine/lines.hpp"
+#include "cocaine/networking.hpp"
 #include "cocaine/security.hpp"
 
 namespace cocaine { namespace core {
@@ -40,7 +40,7 @@ class core_t:
         Json::Value info() const;
 
         // Responding
-        void respond(const lines::route_t& route, const Json::Value& object);
+        void respond(const networking::route_t& route, const Json::Value& object);
 
         // Task recovering
         void recover();
@@ -52,7 +52,7 @@ class core_t:
         security::signatures_t m_signatures;
 
         zmq::context_t m_context;
-        lines::socket_t m_server;
+        networking::socket_t m_server;
 
         ev::sig m_sigint, m_sigterm, m_sigquit, m_sighup;
         ev::io m_watcher;
@@ -66,7 +66,7 @@ class core_t:
         engine_map_t m_engines;
 
         // Automatic discovery support
-        boost::shared_ptr<lines::socket_t> m_announces;
+        boost::shared_ptr<networking::socket_t> m_announces;
         boost::shared_ptr<ev::timer> m_announce_timer;
 };
 

@@ -12,7 +12,13 @@ namespace sc = boost::statechart;
 // Common events
 struct enqueued:
     public sc::event<enqueued>
-{ };
+{
+    enqueued(size_t position_):
+        position(position_)
+    { }
+
+    const size_t position;
+};
 
 struct invoked:
     public sc::event<invoked>

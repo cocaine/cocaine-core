@@ -1,21 +1,20 @@
-#ifndef COCAINE_DRIVER_ZMQ_SERVER_HPP
-#define COCAINE_DRIVER_ZMQ_SERVER_HPP
+#ifndef COCAINE_DRIVER_ZEROMQ_SERVER_HPP
+#define COCAINE_DRIVER_ZEROMQ_SERVER_HPP
 
 #include "cocaine/drivers/base.hpp"
 #include "cocaine/job.hpp"
-#include "cocaine/lines.hpp"
+#include "cocaine/networking.hpp"
 
 namespace cocaine { namespace engine { namespace driver {
 
-class zmq_server_t;
+class zeromq_server_t;
 
-class zmq_job_t:
+class zeromq_server_job_t:
     public job::job_t
 {
     public:
-        zmq_job_t(zmq_server_t* driver, 
-                  job::policy_t policy,
-                  const lines::route_t& route);
+        zeromq_server_job_t(zeromq_server_t* driver, 
+                            const networking::route_t& route);
 
         virtual void react(const events::response& event);
         virtual void react(const events::error& event);
@@ -24,23 +23,23 @@ class zmq_job_t:
         void send(zmq::message_t& chunk);
 
     protected:
-        const lines::route_t m_route;
+        const networking::route_t m_route;
 };
 
-class zmq_server_t:
+class zeromq_server_t:
     public driver_t
 {
     public:
-        zmq_server_t(engine_t* engine,
-                     const std::string& method, 
-                     const Json::Value& args);
-        virtual ~zmq_server_t();
+        zeromq_server_t(engine_t* engine,
+                        const std::string& method, 
+                        const Json::Value& args);
+        virtual ~zeromq_server_t();
 
         // Driver interface
         virtual Json::Value info() const;
 
         // Job interface
-        inline lines::socket_t& socket() {
+        inline networking::channel_t& socket() {
             return m_socket;
         }
 
@@ -51,7 +50,7 @@ class zmq_server_t:
         virtual void process(ev::idle&, int);
 
     protected:
-        lines::socket_t m_socket;
+        networking::channel_t m_socket;
         
         ev::io m_watcher; 
         ev::idle m_processor;

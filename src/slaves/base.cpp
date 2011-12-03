@@ -32,7 +32,7 @@ void slave_t::react(const events::heartbeat& event) {
     
     const busy* state = state_downcast<const busy*>();
 
-    if(state) {
+    if(state && state->job()->policy().timeout) {
         m_heartbeat_timer.start(state->job()->policy().timeout);
     } else {
         m_heartbeat_timer.start(config_t::get().engine.heartbeat_timeout);

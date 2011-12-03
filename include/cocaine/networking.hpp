@@ -5,18 +5,7 @@
 
 #include "cocaine/common.hpp"
 
-// Message types
-#define INVOKE      1   /* engine -> slave: do something*/
-#define TERMINATE   2   /* engine -> slave: engine is shutting down, die
-                           slave -> engine: app is broken, die */
-#define CHUNK       3   /* slave -> engine: invocation is in progress, here's the part of the result
-                           engine -> slave: request is in progress, here's more data */
-#define CHOKE       4   /* slave -> engine: invocation is done, choke the channel */
-#define ERROR       5   /* slave -> engine: invocation has failed */
-#define SUICIDE     6   /* slave -> engine: i am useless, kill me */
-#define HEARTBEAT   7   /* slave -> engine: i am alive, don't kill me */
-
-namespace cocaine { namespace lines {
+namespace cocaine { namespace networking {
 
 using namespace boost::tuples;
 
@@ -27,33 +16,103 @@ class socket_t:
     public birth_control_t<socket_t>
 {
     public:
-        socket_t(zmq::context_t& context, int type, std::string route = "");
+        socket_t(zmq::context_t& context, int type, std::string route = ""):
+            m_socket(context, type),
+            m_route(route)
+        {
+            if(!route.empty()) {
+                setsockopt(ZMQ_IDENTITY, route.data(), route.size());
+            } 
+        }
 
-        void bind(const std::string& endpoint);
-        void connect(const std::string& endpoint);
+        void bind(const std::string& endpoint) {
+            m_socket.bind(endpoint.c_str());
+
+            // Try to determine the connection string for clients
+            // TODO: Do it the right way
+            size_t position = endpoint.find_last_of(":");
+
+            if(position != std::string::npos) {
+                m_endpoint = config_t::get().core.hostname +
+                    endpoint.substr(position, std::string::npos);
+            } else {
+                m_endpoint = "<local>";
+            }
+        }
+
+        void connect(const std::string& endpoint) {
+            m_socket.connect(endpoint.c_str());
+        }
        
-        bool send(zmq::message_t& message, int flags = 0);
-        bool recv(zmq::message_t* message, int flags = 0);
-        void drop_remaining_parts();
+        bool send(zmq::message_t& message, int flags = 0) {
+            try {
+                return m_socket.send(message, flags);
+            } catch(const zmq::error_t& e) {
+                syslog(LOG_ERR, "net: [%s()] %s", __func__, e.what());
+                return false;
+            }
+        }
+
+        bool recv(zmq::message_t* message, int flags = 0) {
+            try {
+                return m_socket.recv(message, flags);
+            } catch(const zmq::error_t& e) {
+                syslog(LOG_ERR, "net: [%s()] %s", __func__, e.what());
+                return false;
+            }
+        }
         
-        void getsockopt(int name, void* value, size_t* size);
-        void setsockopt(int name, const void* value, size_t size);
+        void drop_remaining_parts() {
+            zmq::message_t null;
 
-        int fd();
+            while(more()) {
+                recv(&null);
+            }
+        }
+        
+        void getsockopt(int name, void* value, size_t* size) {
+            m_socket.getsockopt(name, value, size);
+        }
 
-        inline std::string endpoint() const { 
+        void setsockopt(int name, const void* value, size_t size) {
+            m_socket.setsockopt(name, value, size);
+        }
+
+    public:
+        int fd() {
+            int fd;
+            size_t size = sizeof(fd);
+
+            getsockopt(ZMQ_FD, &fd, &size);
+
+            return fd;
+        }
+
+        std::string endpoint() const { 
             return m_endpoint; 
         }
 
-        inline std::string route() const { 
+        std::string route() const { 
             return m_route; 
         }
 
-        bool pending(int event = ZMQ_POLLIN);
-        bool more();
-#if ZMQ_VERSION > 30000
-        bool label();
-#endif
+        bool pending(int event = ZMQ_POLLIN) {
+            unsigned long events;
+            size_t size = sizeof(events);
+
+            getsockopt(ZMQ_EVENTS, &events, &size);
+
+            return events & event;
+        }
+
+        bool more() {
+            int64_t rcvmore;
+            size_t size = sizeof(rcvmore);
+
+            getsockopt(ZMQ_RCVMORE, &rcvmore, &size);
+
+            return rcvmore != 0;
+        }
 
     private:
         zmq::socket_t m_socket;
@@ -74,47 +133,47 @@ inline static raw<const T> protect(const T& object) {
 
 template<> class raw<std::string> {
     public:
-        raw(std::string& object):
-            m_object(object)
+        raw(std::string& string):
+            m_string(string)
         { }
 
         inline void pack(zmq::message_t& message) const {
-            message.rebuild(m_object.size());
-            memcpy(message.data(), m_object.data(), m_object.size());
+            message.rebuild(m_string.size());
+            memcpy(message.data(), m_string.data(), m_string.size());
         }
 
         inline bool unpack(/* const */ zmq::message_t& message) {
-            m_object.assign(
+            m_string.assign(
                 static_cast<const char*>(message.data()),
                 message.size());
             return true;
         }
 
     private:
-        std::string& m_object;
+        std::string& m_string;
 };
 
 template<> class raw<const std::string> {
     public:
-        raw(const std::string& object):
-            m_object(object)
+        raw(const std::string& string):
+            m_string(string)
         { }
 
         inline void pack(zmq::message_t& message) const {
-            message.rebuild(m_object.size());
-            memcpy(message.data(), m_object.data(), m_object.size());
+            message.rebuild(m_string.size());
+            memcpy(message.data(), m_string.data(), m_string.size());
         }
 
     private:
-        const std::string& m_object;
+        const std::string& m_string;
 };
 
 class channel_t:
     public socket_t
 {
     public:
-        channel_t(zmq::context_t& context, int type, std::string identity = ""):
-            socket_t(context, type, identity)
+        channel_t(zmq::context_t& context, int type, std::string route = ""):
+            socket_t(context, type, route)
         { }
 
         // Bring original methods into the scope
@@ -169,9 +228,9 @@ class channel_t:
             }
            
             try { 
-                msgpack::unpack(&unpacked,
-                    static_cast<const char*>(message.data()),
-                    message.size());
+                msgpack::unpack(
+                    &unpacked,
+                    static_cast<const char*>(message.data()), message.size());
                 msgpack::object object = unpacked.get();
                 object.convert(&result);
             // TODO: Figure out the msgpack exception type

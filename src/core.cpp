@@ -7,7 +7,7 @@
 
 using namespace cocaine::core;
 using namespace cocaine::engine;
-using namespace cocaine::lines;
+using namespace cocaine::networking;
 using namespace cocaine::storage;
 
 core_t::core_t():

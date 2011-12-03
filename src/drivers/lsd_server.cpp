@@ -1,12 +1,13 @@
-#include "cocaine/drivers/server+lsd.hpp"
+#include "cocaine/drivers/lsd_server.hpp"
 #include "cocaine/engine.hpp"
 
 using namespace cocaine::engine::driver;
-using namespace cocaine::lines;
+using namespace cocaine::networking;
 
-lsd_job_t::lsd_job_t(lsd_server_t* driver, job::policy_t policy, const route_t& route, const unique_id_t::type& id):
-    zmq_job_t(driver, policy, route),
-    unique_id_t(id)
+lsd_job_t::lsd_job_t(lsd_server_t* driver, job::policy_t policy, const unique_id_t::type& id, const route_t& route):
+    job::job_t(driver, policy),
+    unique_id_t(id),
+    m_route(route)
 { }
 
 void lsd_job_t::react(const events::response& event) {
@@ -40,7 +41,7 @@ void lsd_job_t::react(const events::completed& event) {
 
 void lsd_job_t::send(const Json::Value& root, zmq::message_t& chunk) {
     zmq::message_t message;
-    zmq_server_t* server = static_cast<zmq_server_t*>(m_driver);
+    zeromq_server_t* server = static_cast<zeromq_server_t*>(m_driver);
 
     // Send the identity
     for(route_t::const_iterator id = m_route.begin(); id != m_route.end(); ++id) {
@@ -67,7 +68,7 @@ void lsd_job_t::send(const Json::Value& root, zmq::message_t& chunk) {
 }
 
 lsd_server_t::lsd_server_t(engine_t* engine, const std::string& method, const Json::Value& args):
-    zmq_server_t(engine, method, args)
+    zeromq_server_t(engine, method, args)
 { }
 
 Json::Value lsd_server_t::info() const {
@@ -125,7 +126,7 @@ void lsd_server_t::process(ev::idle&, int) {
             boost::shared_ptr<lsd_job_t> job;
             
             try {
-                job.reset(new lsd_job_t(this, policy, route, root.get("uuid", "").asString()));
+                job.reset(new lsd_job_t(this, policy, root.get("uuid", "").asString(), route));
             } catch(const std::runtime_error& e) {
                 syslog(LOG_ERR, "driver [%s:%s]: invalid envelope - %s",
                     m_engine->name().c_str(), m_method.c_str(), e.what());

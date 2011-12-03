@@ -3,7 +3,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
-#include "cocaine/lines.hpp"
+#include "cocaine/networking.hpp"
 
 namespace cocaine { namespace engine {
 
@@ -35,7 +35,7 @@ class overseer_t:
     private:
         // Messaging
         zmq::context_t& m_context;
-        lines::channel_t m_messages;
+        networking::channel_t m_messages;
 
         // Application instance
         std::string m_app_name;

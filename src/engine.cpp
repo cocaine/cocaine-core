@@ -10,7 +10,7 @@
 #include "cocaine/registry.hpp"
 
 using namespace cocaine::engine;
-using namespace cocaine::lines;
+using namespace cocaine::networking;
 
 // Selectors
 // ---------
@@ -18,11 +18,12 @@ using namespace cocaine::lines;
 void engine_t::job_queue_t::push(const boost::shared_ptr<job::job_t>& job) {
     if(job->policy().urgent) {
         push_front(job);
+        job->process_event(events::enqueued(1));
     } else {
         push_back(job);
+        job->process_event(events::enqueued(size()));
     }
     
-    job->process_event(events::enqueued());
 }
 
 bool engine_t::idle_slave::operator()(pool_map_t::pointer slave) const {
@@ -126,14 +127,16 @@ Json::Value engine_t::start(const Json::Value& manifest) {
             std::string task(*it);
             std::string type(tasks[task]["type"].asString());
             
-            if(type == "timed+auto") {
-                m_tasks.insert(task, new driver::auto_timed_t(this, task, tasks[task]));
-            } else if(type == "fs") {
-                m_tasks.insert(task, new driver::fs_t(this, task, tasks[task]));
-            } else if(type == "server+zmq") {
-                m_tasks.insert(task, new driver::zmq_server_t(this, task, tasks[task]));
+            if(type == "recurring-timer") {
+                m_tasks.insert(task, new driver::recurring_timer_t(this, task, tasks[task]));
+            } else if(type == "filesystem-monitor") {
+                m_tasks.insert(task, new driver::filesystem_monitor_t(this, task, tasks[task]));
+            } else if(type == "zeromq-server") {
+                m_tasks.insert(task, new driver::zeromq_server_t(this, task, tasks[task]));
             } else if(type == "server+lsd") {
                 m_tasks.insert(task, new driver::lsd_server_t(this, task, tasks[task]));
+            } else if(type == "native-server") {
+                m_tasks.insert(task, new driver::native_server_t(this, task, tasks[task]));
             } else {
                throw std::runtime_error("no driver for '" + type + "' is available");
             }

@@ -2,6 +2,7 @@
 #include <boost/assign.hpp>
 #include <boost/thread.hpp>
 
+#include "cocaine/engine.hpp"
 #include "cocaine/overseer.hpp"
 #include "cocaine/plugin.hpp"
 #include "cocaine/registry.hpp"
@@ -113,6 +114,8 @@ void overseer_t::process(ev::idle&, int) {
                     );
                     
                     m_messages.send(TERMINATE);
+
+                    return;
                 } catch(...) {
                     syslog(LOG_ERR, "slave [%s:%s]: caught an unexpected exception",
                         m_app_name.c_str(), id().c_str());

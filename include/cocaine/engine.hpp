@@ -7,8 +7,19 @@
 #include "cocaine/forwards.hpp"
 #include "cocaine/helpers/tuples.hpp"
 #include "cocaine/job.hpp"
-#include "cocaine/lines.hpp"
+#include "cocaine/networking.hpp"
 #include "cocaine/slaves.hpp"
+
+// Message types
+#define INVOKE      1   /* engine -> slave: do something*/
+#define TERMINATE   2   /* engine -> slave: engine is shutting down, die
+                           slave -> engine: app is broken, die */
+#define CHUNK       3   /* slave -> engine: invocation is in progress, here's the part of the result
+                           engine -> slave: request is in progress, here's more data */
+#define CHOKE       4   /* slave -> engine: invocation is done, choke the channel */
+#define ERROR       5   /* slave -> engine: invocation has failed */
+#define SUICIDE     6   /* slave -> engine: i am useless, kill me */
+#define HEARTBEAT   7   /* slave -> engine: i am alive, don't kill me */
 
 namespace cocaine { namespace engine {
 
@@ -54,7 +65,7 @@ class engine_t:
                 m_messages.send_multi(
                     helpers::joint_view(
                         boost::make_tuple(
-                            lines::protect(it->second->id())),
+                            networking::protect(it->second->id())),
                         args
                     )
                 );
@@ -88,11 +99,11 @@ class engine_t:
         bool m_running;
 
         zmq::context_t& m_context;
-        boost::shared_ptr<lines::socket_t> m_pubsub;
+        boost::shared_ptr<networking::socket_t> m_pubsub;
         
         // Pool
         pool_map_t m_pool;
-        lines::channel_t m_messages;
+        networking::channel_t m_messages;
         
         ev::io m_watcher;
         ev::idle m_processor;

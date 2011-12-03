@@ -72,13 +72,13 @@ ADD_LIBRARY(cocaine-core SHARED
     src/core
     src/downloads
     src/drivers/base
-    src/drivers/fs
-    src/drivers/server+zmq
-    src/drivers/server+lsd
-    src/drivers/timed+auto
+    src/drivers/recurring_timer
+    src/drivers/filesystem_monitor
+    src/drivers/zeromq_server
+    src/drivers/lsd_server
+    src/drivers/native_server
     src/engine
     src/job
-    src/lines
     src/overseer
     src/registry
     src/slaves/base
