@@ -22,11 +22,11 @@ At the moment, Cocaine supports the following languages and specifications:
 
 The application tasks can be driven by any of the following drivers:
 
-* Timer
+* Recurring Timer
 * Cron (under development)
 * Filesystem Monitor
 * ZeroMQ Server
-* [LSD](https://github.com/tinybit/lsd) Server
+* [LSD](https://github.com/tinybit/lsd) (Native) Server
 
 Application configuration example
 =================================
@@ -48,15 +48,15 @@ manifest = {
     "tasks": {
         "aggregate": {
             "interval": 60000,
-            "type": "auto"
+            "type": "recurring-timer"
         },
         "event": {
             "endpoint" : "tcp://lo:9100",
-            "type" : "server+zmq"
+            "type" : "native-server"
         },
         "spool": {
             "path": "/var/spool/my-app-data",
-            "type": "fs"
+            "type": "filesystem-monitor"
         }
     }
 }
