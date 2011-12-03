@@ -10,7 +10,7 @@
 using namespace cocaine::engine;
 using namespace cocaine::plugin;
 
-overseer_t::overseer_t(unique_id_t::reference id_, zmq::context_t& context, const std::string& name):
+overseer_t::overseer_t(const unique_id_t::type& id_, zmq::context_t& context, const std::string& name):
     unique_id_t(id_),
     m_context(context),
     m_messages(m_context, ZMQ_DEALER, id()),
@@ -114,8 +114,6 @@ void overseer_t::process(ev::idle&, int) {
                     );
                     
                     m_messages.send(TERMINATE);
-
-                    return;
                 } catch(...) {
                     syslog(LOG_ERR, "slave [%s:%s]: caught an unexpected exception",
                         m_app_name.c_str(), id().c_str());

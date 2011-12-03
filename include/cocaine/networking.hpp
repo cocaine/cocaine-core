@@ -1,9 +1,18 @@
 #ifndef COCAINE_NETWORKING_HPP
 #define COCAINE_NETWORKING_HPP
 
+#include <boost/tuple/tuple.hpp>
+
+#include <zmq.hpp>
+
+#if ZMQ_VERSION < 20107
+    #error ZeroMQ version 2.1.7+ required!
+#endif
+
 #include <msgpack.hpp>
 
 #include "cocaine/common.hpp"
+#include "cocaine/helpers/tuples.hpp"
 
 namespace cocaine { namespace networking {
 

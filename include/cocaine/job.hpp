@@ -11,6 +11,7 @@
 #include "cocaine/common.hpp"
 #include "cocaine/events.hpp"
 #include "cocaine/forwards.hpp"
+#include "cocaine/networking.hpp"
 
 namespace cocaine { namespace engine { namespace job {
 

@@ -4,9 +4,9 @@
 using namespace cocaine::engine::driver;
 using namespace cocaine::networking;
 
-lsd_job_t::lsd_job_t(lsd_server_t* driver, job::policy_t policy, const unique_id_t::type& id, const route_t& route):
-    job::job_t(driver, policy),
+lsd_job_t::lsd_job_t(const unique_id_t::type& id, lsd_server_t* driver, job::policy_t policy, const route_t& route):
     unique_id_t(id),
+    job::job_t(driver, policy),
     m_route(route)
 { }
 
@@ -100,7 +100,7 @@ void lsd_server_t::process(ev::idle&, int) {
         }
 
         while(m_socket.more()) {
-            // Receive the nvelope
+            // Receive the envelope
             m_socket.recv(&message);
 
             // Parse the envelope and setup the job policy
@@ -126,7 +126,7 @@ void lsd_server_t::process(ev::idle&, int) {
             boost::shared_ptr<lsd_job_t> job;
             
             try {
-                job.reset(new lsd_job_t(this, policy, root.get("uuid", "").asString(), route));
+                job.reset(new lsd_job_t(root.get("uuid", "").asString(), this, policy, route));
             } catch(const std::runtime_error& e) {
                 syslog(LOG_ERR, "driver [%s:%s]: invalid envelope - %s",
                     m_engine->name().c_str(), m_method.c_str(), e.what());

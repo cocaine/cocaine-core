@@ -6,8 +6,8 @@ namespace cocaine { namespace helpers {
 template<class T>
 class birth_control_t  {
     public:
-        static unsigned int objects_alive;
-        static unsigned int objects_created;
+        static uint64_t objects_alive;
+        static uint64_t objects_created;
 
         birth_control_t() {
             ++objects_alive;
@@ -21,10 +21,10 @@ class birth_control_t  {
 };
 
 template<class T>
-unsigned int birth_control_t<T>::objects_alive(0);
+uint64_t birth_control_t<T>::objects_alive(0);
 
 template<class T>
-unsigned int birth_control_t<T>::objects_created(0);
+uint64_t birth_control_t<T>::objects_created(0);
 
 }}
 

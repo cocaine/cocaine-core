@@ -5,7 +5,6 @@
 
 namespace cocaine { namespace helpers {
 
-using namespace boost;
 using namespace boost::tuples;
 
 namespace {

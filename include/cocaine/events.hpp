@@ -4,6 +4,7 @@
 #include <boost/statechart/event.hpp>
 
 #include "cocaine/forwards.hpp"
+#include <cocaine/networking.hpp>
 
 namespace cocaine { namespace engine { namespace events {
 

@@ -13,7 +13,7 @@ class overseer_t:
     public unique_id_t
 {
     public:
-        overseer_t(unique_id_t::reference id,
+        overseer_t(const unique_id_t::type& id,
                    zmq::context_t& context,
                    const std::string& name);
 

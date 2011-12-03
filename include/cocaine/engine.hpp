@@ -5,7 +5,6 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
-#include "cocaine/helpers/tuples.hpp"
 #include "cocaine/job.hpp"
 #include "cocaine/networking.hpp"
 #include "cocaine/slaves.hpp"
@@ -14,8 +13,7 @@
 #define INVOKE      1   /* engine -> slave: do something*/
 #define TERMINATE   2   /* engine -> slave: engine is shutting down, die
                            slave -> engine: app is broken, die */
-#define CHUNK       3   /* slave -> engine: invocation is in progress, here's the part of the result
-                           engine -> slave: request is in progress, here's more data */
+#define CHUNK       3   /* slave -> engine: invocation is in progress, here's the part of the result */
 #define CHOKE       4   /* slave -> engine: invocation is done, choke the channel */
 #define ERROR       5   /* slave -> engine: invocation has failed */
 #define SUICIDE     6   /* slave -> engine: i am useless, kill me */
@@ -28,15 +26,15 @@ class engine_t:
 {
     public:
         typedef boost::ptr_unordered_map<
-            unique_id_t::type,
-            slave::slave_t
-        > pool_map_t;
-    
-        typedef boost::ptr_unordered_map<
             const std::string,
             driver::driver_t
         > task_map_t;
 
+        typedef boost::ptr_unordered_map<
+            unique_id_t::type,
+            slave::slave_t
+        > pool_map_t;
+        
         class job_queue_t:
             public std::deque< boost::shared_ptr<job::job_t> >
         {
@@ -101,6 +99,14 @@ class engine_t:
         zmq::context_t& m_context;
         boost::shared_ptr<networking::socket_t> m_pubsub;
         
+        // Application
+        task_map_t m_tasks;
+        
+        struct {
+            std::string name, type, args;
+            unsigned int version;
+        } m_app_cfg;
+        
         // Pool
         pool_map_t m_pool;
         networking::channel_t m_messages;
@@ -118,14 +124,6 @@ class engine_t:
 
         // Jobs
         job_queue_t m_queue;
-        
-        // Application
-        task_map_t m_tasks;
-        
-        struct {
-            std::string name, type, args;
-            unsigned int version;
-        } m_app_cfg;
 };
 
 class publication_t:

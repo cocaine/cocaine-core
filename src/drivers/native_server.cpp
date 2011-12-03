@@ -4,11 +4,11 @@
 using namespace cocaine::engine::driver;
 using namespace cocaine::networking;
 
-const unsigned int messages::chunk_t::type = 0;
-const unsigned int messages::error_t::type = 1;
-const unsigned int messages::tag_t::type = 2;
+const unsigned int messages::chunk_t::message_code = 0;
+const unsigned int messages::error_t::message_code = 1;
+const unsigned int messages::tag_t::message_code = 2;
 
-native_server_job_t::native_server_job_t(native_server_t* driver, const messages::request_t& request, const route_t& route):
+native_server_job_t::native_server_job_t(const messages::request_t& request, native_server_t* driver, const route_t& route):
     unique_id_t(request.id),
     job::job_t(driver, request.policy),
     m_route(route)
@@ -73,10 +73,10 @@ void native_server_t::process(ev::idle&, int) {
             boost::shared_ptr<native_server_job_t> job;
             
             try {
-                job.reset(new native_server_job_t(this, request, route)); 
+                job.reset(new native_server_job_t(request, this, route)); 
             } catch(const std::runtime_error& e) {
-                syslog(LOG_ERR, "driver [%s:%s]: got a malformed request - %s - %s",
-                    m_engine->name().c_str(), m_method.c_str(), e.what(), request.id.c_str());
+                syslog(LOG_ERR, "driver [%s:%s]: got a corrupted request - %s",
+                    m_engine->name().c_str(), m_method.c_str(), e.what());
                 continue;
             }
 

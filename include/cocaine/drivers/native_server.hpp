@@ -15,9 +15,9 @@ namespace messages {
     };
 
     struct chunk_t {
-        static const unsigned int type;
+        static const unsigned int message_code;
         
-        chunk_t(const unique_id_t::type& id_, zmq::message_t& message):
+        chunk_t(const unique_id_t::type& id_, /* const */ zmq::message_t& message):
             id(id_),
             body(static_cast<const char*>(message.data()), message.size())
         { }
@@ -29,23 +29,23 @@ namespace messages {
     };
 
     struct error_t {
-        static const unsigned int type;
+        static const unsigned int message_code;
         
         error_t(const unique_id_t::type& id_, unsigned int code_, const std::string& message_):
             id(id_),
-            code(code_),
-            message(message_)
+            error_code(code_),
+            error_message(message_)
         { }
 
         unique_id_t::type id;
-        unsigned int code;
-        std::string message;
+        unsigned int error_code;
+        std::string error_message;
 
-        MSGPACK_DEFINE(id, code, message);
+        MSGPACK_DEFINE(id, error_code, error_message);
     };
     
     struct tag_t {
-        static const unsigned int type;
+        static const unsigned int message_code;
 
         tag_t(const unique_id_t::type& id_):
             id(id_)
@@ -64,8 +64,8 @@ class native_server_job_t:
     public job::job_t
 {
     public:
-        native_server_job_t(native_server_t* driver,
-                            const messages::request_t& request,
+        native_server_job_t(const messages::request_t& request,
+                            native_server_t* driver,
                             const networking::route_t& route);
 
         virtual void react(const events::response& event);
@@ -92,7 +92,7 @@ class native_server_job_t:
             // Send the response
             server->socket().send_multi(
                 boost::make_tuple(
-                    T::type,
+                    T::message_code,
                     boost::ref(response)
                 )
             );

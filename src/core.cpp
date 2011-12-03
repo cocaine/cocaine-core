@@ -34,7 +34,7 @@ core_t::core_t():
         ++it) 
     {
         m_server.bind(*it);
-        syslog(LOG_INFO, "core: accepting configuration on %s", it->c_str());
+        syslog(LOG_INFO, "core: listening on %s", it->c_str());
     }
 
     // Automatic discovery support
@@ -86,10 +86,6 @@ void core_t::start() {
 void core_t::terminate(ev::sig&, int) {
     syslog(LOG_NOTICE, "core: stopping the engines");
 
-    for(engine_map_t::iterator it = m_engines.begin(); it != m_engines.end(); ++it) {
-        it->second->stop();
-    }
-
     m_engines.clear();
 
     ev::get_default_loop().unloop(ev::ALL);
@@ -97,10 +93,6 @@ void core_t::terminate(ev::sig&, int) {
 
 void core_t::reload(ev::sig&, int) {
     syslog(LOG_NOTICE, "core: reloading apps");
-
-    for(engine_map_t::iterator it = m_engines.begin(); it != m_engines.end(); ++it) {
-        it->second->stop();
-    }
 
     m_engines.clear();
 
@@ -328,8 +320,8 @@ Json::Value core_t::info() const {
         result["apps"][it->first] = it->second->info();
     }
 
-    result["jobs"]["pending"] = job::job_t::objects_alive;
-    result["jobs"]["processed"] = job::job_t::objects_created;
+    result["jobs"]["pending"] = static_cast<Json::UInt>(job::job_t::objects_alive);
+    result["jobs"]["processed"] = static_cast<Json::UInt>(job::job_t::objects_created);
     
     return result;
 }

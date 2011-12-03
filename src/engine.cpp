@@ -12,9 +12,6 @@
 using namespace cocaine::engine;
 using namespace cocaine::networking;
 
-// Selectors
-// ---------
-
 void engine_t::job_queue_t::push(const boost::shared_ptr<job::job_t>& job) {
     if(job->policy().urgent) {
         push_front(job);
@@ -23,8 +20,10 @@ void engine_t::job_queue_t::push(const boost::shared_ptr<job::job_t>& job) {
         push_back(job);
         job->process_event(events::enqueued(size()));
     }
-    
 }
+
+// Selectors
+// ---------
 
 bool engine_t::idle_slave::operator()(pool_map_t::pointer slave) const {
     return slave->second->state_downcast<const slave::idle*>();
