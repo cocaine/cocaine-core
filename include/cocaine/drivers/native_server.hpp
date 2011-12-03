@@ -91,9 +91,9 @@ class native_server_job_t:
 
             // Send the response
             server->socket().send_multi(
-                boost::make_tuple(
+                boost::tie(
                     T::message_code,
-                    boost::ref(response)
+                    response
                 )
             );
         }

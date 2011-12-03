@@ -242,8 +242,7 @@ class channel_t:
                     static_cast<const char*>(message.data()), message.size());
                 msgpack::object object = unpacked.get();
                 object.convert(&result);
-            // TODO: Figure out the msgpack exception type
-            } catch(const std::exception& e) {
+            } catch(const std::bad_cast& e) {
                 syslog(LOG_ERR, "net: [%s()] corrupted object - %s", __func__, e.what());
                 return false;
             }
