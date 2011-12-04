@@ -29,7 +29,7 @@ class engine_t:
             public std::deque< boost::shared_ptr<job::job_t> >
         {
             public:
-                void push(const boost::shared_ptr<job::job_t>& job);
+                void push(const_reference job);
         };
 
     public: 
@@ -65,7 +65,7 @@ class engine_t:
             return it;
         }
 
-        void enqueue(const boost::shared_ptr<job::job_t>& job, bool overflow = false);
+        void enqueue(job_queue_t::const_reference job, bool overflow = false);
 
         // NOTE: It is intentional that all the publishing drivers do that via
         // one socket, so that one can bind to it and receive all the application
@@ -101,8 +101,8 @@ class engine_t:
         } m_app_cfg;
         
         // Pool
-        pool_map_t m_pool;
         networking::channel_t m_messages;
+        pool_map_t m_pool;
         
         ev::io m_watcher;
         ev::idle m_processor;

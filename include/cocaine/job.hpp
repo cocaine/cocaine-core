@@ -6,8 +6,6 @@
 #include <boost/statechart/in_state_reaction.hpp>
 #include <boost/statechart/transition.hpp>
 
-#include <msgpack.hpp>
-
 #include "cocaine/common.hpp"
 #include "cocaine/events.hpp"
 #include "cocaine/forwards.hpp"

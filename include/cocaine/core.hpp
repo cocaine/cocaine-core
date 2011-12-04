@@ -15,7 +15,7 @@ class core_t:
         core_t();
         ~core_t();
 
-        void start();
+        void loop();
         
     private:
         // Signal processing
@@ -40,7 +40,7 @@ class core_t:
         Json::Value info() const;
 
         // Responding
-        void respond(const networking::route_t& route, const Json::Value& object);
+        bool respond(const networking::route_t& route, const Json::Value& object);
 
         // Task recovering
         void recover();

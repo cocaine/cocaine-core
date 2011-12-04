@@ -13,7 +13,7 @@
 using namespace cocaine::engine;
 using namespace cocaine::networking;
 
-void engine_t::job_queue_t::push(const boost::shared_ptr<job::job_t>& job) {
+void engine_t::job_queue_t::push(const_reference job) {
     if(job->policy().urgent) {
         push_front(job);
         job->process_event(events::enqueued(1));
@@ -168,7 +168,7 @@ Json::Value engine_t::stop() {
     terminate_t terminator;
     
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
-        // NOTE: Don't care if it's not delivered
+        // NOTE: Doesn't matter if it's not delivered, slaves will be killed anyway.
         m_messages.send_multi(
             boost::tie(
                 protect(it->first),
@@ -223,7 +223,7 @@ Json::Value engine_t::info() const {
     return results;
 }
 
-void engine_t::enqueue(const boost::shared_ptr<job::job_t>& job, bool overflow) {
+void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
     zmq::message_t request;
     
     if(!m_running) {
@@ -448,8 +448,8 @@ void engine_t::process(ev::idle&, int) {
 }
 
 void engine_t::cleanup(ev::timer&, int) {
-    typedef std::vector<pool_map_t::key_type> corpses_t;
-    corpses_t corpses;
+    typedef std::vector<pool_map_t::key_type> corpse_list_t;
+    corpse_list_t corpses;
 
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
         if(it->second->state_downcast<const slave::dead*>()) {
@@ -458,7 +458,7 @@ void engine_t::cleanup(ev::timer&, int) {
     }
 
     if(!corpses.empty()) {
-        for(corpses_t::iterator it = corpses.begin(); it != corpses.end(); ++it) {
+        for(corpse_list_t::iterator it = corpses.begin(); it != corpses.end(); ++it) {
             m_pool.erase(*it);
         }
         

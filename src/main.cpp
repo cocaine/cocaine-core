@@ -63,7 +63,8 @@ int main(int argc, char* argv[]) {
         ("storage:location", po::value<std::string>
             (&config_t::set().storage.location)->default_value("/var/lib/cocaine"),
             "storage location, format depends on the storage type")
-        ("verbose", "produce a lot of output");
+        ("verbose", "produce a lot of output")
+        ("version", "show version and build information");
 
     combined.add(mandatory).add(options);
 
@@ -89,8 +90,13 @@ int main(int argc, char* argv[]) {
         return EXIT_SUCCESS;
     }
 
+    if(vm.count("version")) {
+        std::cout << "Cocaine 0.6.6-dev" << std::endl;
+        return EXIT_SUCCESS;
+    }
+
     if(!vm.count("endpoints")) {
-        std::cout << "Error: no endpoints specified" << std::endl;
+        std::cout << "Error: no endpoints have been specified" << std::endl;
         std::cout << "Try '" << argv[0] << " --help' for more information" << std::endl;
         return EXIT_FAILURE;
     }
@@ -139,8 +145,7 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    // This call blocks
-    core->start();
+    core->loop();
 
     // Cleanup
     core.reset();

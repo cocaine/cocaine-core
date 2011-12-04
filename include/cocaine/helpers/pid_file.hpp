@@ -45,7 +45,11 @@ class pid_file_t:
         }
 
         ~pid_file_t() {
-            remove();
+            try {
+                remove();
+            } catch(...) {
+                // NOTE: Do nothing.
+            }
         }
 
     private:

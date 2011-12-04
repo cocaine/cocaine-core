@@ -79,7 +79,7 @@ core_t::~core_t() {
     syslog(LOG_DEBUG, "core: destructing");
 }
 
-void core_t::start() {
+void core_t::loop() {
     ev::get_default_loop().loop();
 }
 
@@ -326,26 +326,32 @@ Json::Value core_t::info() const {
     return result;
 }
 
-void core_t::respond(const route_t& route, const Json::Value& object) {
+bool core_t::respond(const route_t& route, const Json::Value& object) {
     zmq::message_t message;
     
     // Send the identity
     for(route_t::const_iterator id = route.begin(); id != route.end(); ++id) {
         message.rebuild(id->size());
         memcpy(message.data(), id->data(), id->size());
-        m_server.send(message, ZMQ_SNDMORE);
+        
+        if(!m_server.send(message, ZMQ_SNDMORE)) {
+            return false;
+        }
     }
 
     // Send the delimiter
     message.rebuild(0);
-    m_server.send(message, ZMQ_SNDMORE);
+
+    if(!m_server.send(message, ZMQ_SNDMORE)) {
+        return false;
+    }
 
     // Serialize and send the response
     std::string json(Json::FastWriter().write(object));
     message.rebuild(json.size());
     memcpy(message.data(), json.data(), json.size());
 
-    m_server.send(message);
+    return m_server.send(message);
 }
 
 

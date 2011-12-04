@@ -65,7 +65,7 @@ void native_server_t::process(ev::idle&, int) {
 
             if(!m_socket.recv_multi(tier)) {
                 syslog(LOG_ERR, "driver [%s:%s]: got a corrupted request from '%s'",
-                    m_engine->name().c_str(), m_method.c_str(), route.front().c_str());
+                    m_engine->name().c_str(), m_method.c_str(), route.back().c_str());
                 continue;
             }
 
@@ -75,10 +75,10 @@ void native_server_t::process(ev::idle&, int) {
             boost::shared_ptr<native_server_job_t> job;
             
             try {
-                job.reset(new native_server_job_t(this, request, route)); 
+                job.reset(new native_server_job_t(this, request, route));
             } catch(const std::runtime_error& e) {
                 syslog(LOG_ERR, "driver [%s:%s]: got a corrupted request from '%s' - %s",
-                    m_engine->name().c_str(), m_method.c_str(), route.front().c_str(), e.what());
+                    m_engine->name().c_str(), m_method.c_str(), route.back().c_str(), e.what());
                 continue;
             }
 

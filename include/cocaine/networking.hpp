@@ -12,7 +12,6 @@
 #include <msgpack.hpp>
 
 #include "cocaine/common.hpp"
-#include "cocaine/helpers/tuples.hpp"
 
 namespace cocaine { namespace networking {
 
@@ -29,8 +28,8 @@ class socket_t:
             m_socket(context, type),
             m_route(route)
         {
-            if(!route.empty()) {
-                setsockopt(ZMQ_IDENTITY, route.data(), route.size());
+            if(!m_route.empty()) {
+                setsockopt(ZMQ_IDENTITY, m_route.data(), m_route.size());
             } 
         }
 
@@ -57,7 +56,7 @@ class socket_t:
             try {
                 return m_socket.send(message, flags);
             } catch(const zmq::error_t& e) {
-                syslog(LOG_ERR, "net: [%s()] %s", __func__, e.what());
+                syslog(LOG_ERR, "networking: send() failed - %s", e.what());
                 return false;
             }
         }
@@ -66,7 +65,7 @@ class socket_t:
             try {
                 return m_socket.recv(message, flags);
             } catch(const zmq::error_t& e) {
-                syslog(LOG_ERR, "net: [%s()] %s", __func__, e.what());
+                syslog(LOG_ERR, "networking: recv() failed - %s", e.what());
                 return false;
             }
         }
@@ -88,6 +87,14 @@ class socket_t:
         }
 
     public:
+        std::string endpoint() const { 
+            return m_endpoint; 
+        }
+
+        std::string route() const { 
+            return m_route; 
+        }
+
         int fd() {
             int fd;
             size_t size = sizeof(fd);
@@ -95,14 +102,6 @@ class socket_t:
             getsockopt(ZMQ_FD, &fd, &size);
 
             return fd;
-        }
-
-        std::string endpoint() const { 
-            return m_endpoint; 
-        }
-
-        std::string route() const { 
-            return m_route; 
         }
 
         bool pending(int event = ZMQ_POLLIN) {
@@ -240,13 +239,12 @@ class channel_t:
                 msgpack::unpack(
                     &unpacked,
                     static_cast<const char*>(message.data()), message.size());
-                msgpack::object object = unpacked.get();
-                object.convert(&result);
+                unpacked.get().convert(&result);
             } catch(const std::bad_cast& e) {
-                syslog(LOG_ERR, "net: [%s()] corrupted object - %s", __func__, e.what());
+                syslog(LOG_ERR, "networking: corrupted object - %s", e.what());
                 return false;
             } catch(const msgpack::unpack_error& e) {
-                syslog(LOG_ERR, "net: [%s()] corrupted object - %s", __func__, e.what());
+                syslog(LOG_ERR, "networking: corrupted object - %s", e.what());
                 return false;
             }
 

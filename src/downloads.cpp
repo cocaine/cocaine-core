@@ -50,7 +50,7 @@ http_t::http_t(const helpers::uri_t& uri) {
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &stream_writer);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &stream);
     curl_easy_setopt(curl, CURLOPT_URL, uri.source().c_str());
-    curl_easy_setopt(curl, CURLOPT_USERAGENT, "Cocaine/0.5");
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "Cocaine/0.6");
     curl_easy_setopt(curl, CURLOPT_HTTPGET, 1);
     curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 1000);
