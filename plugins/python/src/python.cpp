@@ -76,7 +76,7 @@ void python_t::invoke(
         buffer->strides = NULL;
         buffer->suboffsets = NULL;
 
-        object_t view(PyMemoryView_FromBuffer(buffer));
+        object_t view(PyMemoryView_FromBuffer(buffer.get()));
 #else
         object_t view(PyBuffer_FromMemory(const_cast<void*>(request), size));
 #endif

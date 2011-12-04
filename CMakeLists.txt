@@ -51,6 +51,7 @@ SET_TARGET_PROPERTIES(json PROPERTIES
 
 ADD_LIBRARY(cocaine-common SHARED
     src/config
+    src/downloads
     src/security
     src/storages/base
     src/storages/files
@@ -61,6 +62,7 @@ TARGET_LINK_LIBRARIES(cocaine-common
     boost_system-mt
     boost_thread-mt
     crypto
+    curl
     json
     mongoclient
     ${LIBUUID_LIBRARIES})
@@ -70,7 +72,6 @@ SET_TARGET_PROPERTIES(cocaine-common PROPERTIES
 
 ADD_LIBRARY(cocaine-core SHARED 
     src/core
-    src/downloads
     src/drivers/base
     src/drivers/recurring_timer
     src/drivers/filesystem_monitor
@@ -87,7 +88,6 @@ ADD_LIBRARY(cocaine-core SHARED
 
 TARGET_LINK_LIBRARIES(cocaine-core
     cocaine-common
-    curl
     ev
     ltdl
     msgpack
