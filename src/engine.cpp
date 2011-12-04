@@ -165,7 +165,7 @@ Json::Value engine_t::stop() {
     }
 
     // Signal the slaves to terminate
-    terminate_t terminator;
+    messages::terminate_t terminator;
     
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
         // NOTE: Doesn't matter if it's not delivered, slaves will be killed anyway.
@@ -236,7 +236,7 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
     pool_map_t::iterator it(
         unicast(
             idle_slave(),
-            invoke_t(job->driver()->method()),
+            messages::invoke_t(job->driver()->method()),
             request
         )
     );
@@ -348,24 +348,24 @@ void engine_t::process(ev::idle&, int) {
                 slave->second->state_downcast<const slave::busy*>();
             
             switch(code) {
-                case heartbeat: {
-                    heartbeat_t object;
+                case messages::heartbeat: {
+                    messages::heartbeat_t object;
 
                     m_messages.recv(object);
 
-                    BOOST_ASSERT(object.type == heartbeat);
+                    BOOST_ASSERT(object.type == messages::heartbeat);
 
                     break;
                 }
 
-                case chunk: {
-                    chunk_t object;
+                case messages::chunk: {
+                    messages::chunk_t object;
                     zmq::message_t message;
 
-                    boost::tuple<chunk_t&, zmq::message_t*> tier(object, &message);
+                    boost::tuple<messages::chunk_t&, zmq::message_t*> tier(object, &message);
                     m_messages.recv_multi(tier);
 
-                    BOOST_ASSERT(object.type == chunk);
+                    BOOST_ASSERT(object.type == messages::chunk);
                     BOOST_ASSERT(state != 0);
 
                     state->job()->process_event(events::response(message));
@@ -373,12 +373,12 @@ void engine_t::process(ev::idle&, int) {
                     break;
                 }
              
-                case error: {
-                    error_t object;
+                case messages::error: {
+                    messages::error_t object;
 
                     m_messages.recv(object);
 
-                    BOOST_ASSERT(object.type == error);
+                    BOOST_ASSERT(object.type == messages::error);
                     BOOST_ASSERT(state || object.code == 500);
 
                     if(state) {
@@ -394,12 +394,12 @@ void engine_t::process(ev::idle&, int) {
                     break;
                 }
 
-                case choke: {
-                    choke_t object;
+                case messages::choke: {
+                    messages::choke_t object;
 
                     m_messages.recv(object);
 
-                    BOOST_ASSERT(object.type == choke);
+                    BOOST_ASSERT(object.type == messages::choke);
                     BOOST_ASSERT(state != 0);
                    
                     slave->second->process_event(events::completed());
@@ -407,12 +407,12 @@ void engine_t::process(ev::idle&, int) {
                     break;
                 }
 
-                case suicide: {
-                    suicide_t object;
+                case messages::suicide: {
+                    messages::suicide_t object;
 
                     m_messages.recv(object);
 
-                    BOOST_ASSERT(object.type == suicide);
+                    BOOST_ASSERT(object.type == messages::suicide);
 
                     if(state && !state->job()->state_downcast<const job::complete*>()) {
                         syslog(LOG_INFO, "engine [%s]: rescheduling an incomplete '%s' job",

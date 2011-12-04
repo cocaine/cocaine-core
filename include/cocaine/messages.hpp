@@ -5,7 +5,7 @@
 
 #include "cocaine/common.hpp"
 
-namespace cocaine { namespace engine {
+namespace cocaine { namespace engine { namespace messages {
 
 enum types {
     invoke = 1,
@@ -101,6 +101,6 @@ struct heartbeat_t {
     MSGPACK_DEFINE(type);
 };
 
-}}
+}}}
 
 #endif

@@ -47,12 +47,12 @@ void overseer_t::operator()(const std::string& type, const std::string& args) {
     } catch(const unrecoverable_error_t& e) {
         syslog(LOG_ERR, "slave [%s:%s]: unable to instantiate the app - %s", 
             m_app_name.c_str(), id().c_str(), e.what());
-        send(error_t(500, e.what()));
+        send(messages::error_t(500, e.what()));
         return;
     } catch(...) {
         syslog(LOG_ERR, "slave [%s:%s]: caught an unexpected exception",
             m_app_name.c_str(), id().c_str());
-        send(error_t(500, "unexpected exception"));
+        send(messages::error_t(500, "unexpected exception"));
         return;
     }
         
@@ -73,17 +73,17 @@ void overseer_t::process(ev::idle&, int) {
         m_messages.recv(code);
 
         switch(code) {
-            case engine::invoke: {
-                invoke_t object;
+            case messages::invoke: {
+                messages::invoke_t object;
                 zmq::message_t request;
 
                 m_suicide_timer.stop();
                 m_suicide_timer.start(config_t::get().engine.suicide_timeout);
              
-                boost::tuple<invoke_t&, zmq::message_t*> tier(object, &request);
+                boost::tuple<messages::invoke_t&, zmq::message_t*> tier(object, &request);
                 m_messages.recv_multi(tier);
 
-                BOOST_ASSERT(object.type == engine::invoke);
+                BOOST_ASSERT(object.type == messages::invoke);
 
                 try {
                     m_app->invoke(
@@ -95,28 +95,28 @@ void overseer_t::process(ev::idle&, int) {
                 } catch(const recoverable_error_t& e) {
                     syslog(LOG_ERR, "slave [%s:%s]: '%s' invocation failed - %s", 
                         m_app_name.c_str(), id().c_str(), object.method.c_str(), e.what());
-                    send(error_t(502, e.what())); 
+                    send(messages::error_t(502, e.what()));
                 } catch(const unrecoverable_error_t& e) {
                     syslog(LOG_ERR, "slave [%s:%s]: '%s' invocation failed - %s", 
                         m_app_name.c_str(), id().c_str(), object.method.c_str(), e.what());
-                    send(error_t(500, e.what())); 
+                    send(messages::error_t(500, e.what())); 
                 } catch(...) {
                     syslog(LOG_ERR, "slave [%s:%s]: caught an unexpected exception",
                         m_app_name.c_str(), id().c_str());
-                    send(error_t(500, "unexpected exception")); 
+                    send(messages::error_t(500, "unexpected exception")); 
                 }
                     
-                send(choke_t());
+                send(messages::choke_t());
 
                 break;
             }
             
-            case engine::terminate: {
-                terminate_t object;
+            case messages::terminate: {
+                messages::terminate_t object;
 
                 m_messages.recv(object);
 
-                BOOST_ASSERT(object.type == engine::terminate);
+                BOOST_ASSERT(object.type == messages::terminate);
 
                 terminate();
 
@@ -135,7 +135,7 @@ void overseer_t::respond(const void* response, size_t size) {
     zmq::message_t message(size);
     memcpy(message.data(), response, size);
   
-    send(chunk_t(), ZMQ_SNDMORE);
+    send(messages::chunk_t(), ZMQ_SNDMORE);
     m_messages.send(message); 
 }
 
@@ -144,12 +144,12 @@ void overseer_t::timeout(ev::timer&, int) {
         return;
     }
     
-    send(suicide_t());
+    send(messages::suicide_t());
     terminate();
 }
 
 void overseer_t::heartbeat(ev::timer&, int) {
-    send(heartbeat_t());
+    send(messages::heartbeat_t());
 }
 
 void overseer_t::terminate() {
