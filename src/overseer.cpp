@@ -2,7 +2,7 @@
 #include <boost/assign.hpp>
 #include <boost/thread.hpp>
 
-#include "cocaine/engine.hpp"
+#include "cocaine/messages.hpp"
 #include "cocaine/overseer.hpp"
 #include "cocaine/plugin.hpp"
 #include "cocaine/registry.hpp"
@@ -47,12 +47,12 @@ void overseer_t::operator()(const std::string& type, const std::string& args) {
     } catch(const unrecoverable_error_t& e) {
         syslog(LOG_ERR, "slave [%s:%s]: unable to instantiate the app - %s", 
             m_app_name.c_str(), id().c_str(), e.what());
-        m_messages.send(TERMINATE);
+        send(error_t(500, e.what()));
         return;
     } catch(...) {
         syslog(LOG_ERR, "slave [%s:%s]: caught an unexpected exception",
             m_app_name.c_str(), id().c_str());
-        m_messages.send(TERMINATE);
+        send(error_t(500, "unexpected exception"));
         return;
     }
         
@@ -73,64 +73,55 @@ void overseer_t::process(ev::idle&, int) {
         m_messages.recv(code);
 
         switch(code) {
-            case INVOKE: {
-                std::string method;
+            case engine::invoke: {
+                invoke_t object;
                 zmq::message_t request;
 
                 m_suicide_timer.stop();
                 m_suicide_timer.start(config_t::get().engine.suicide_timeout);
              
-                boost::tuple<std::string&, zmq::message_t*> tier(method, &request);
+                boost::tuple<invoke_t&, zmq::message_t*> tier(object, &request);
                 m_messages.recv_multi(tier);
+
+                BOOST_ASSERT(object.type == engine::invoke);
 
                 try {
                     m_app->invoke(
                         boost::bind(&overseer_t::respond, this, _1, _2),
-                        method, 
+                        object.method, 
                         request.data(), 
-                        request.size()
-                    );
-                    
+                        request.size());
                     boost::this_thread::interruption_point();
                 } catch(const recoverable_error_t& e) {
                     syslog(LOG_ERR, "slave [%s:%s]: '%s' invocation failed - %s", 
-                        m_app_name.c_str(), id().c_str(), method.c_str(), e.what());
-                    
-                    m_messages.send_multi(
-                        boost::make_tuple(
-                            ERROR,
-                            std::string(e.what())
-                        )
-                    );
+                        m_app_name.c_str(), id().c_str(), object.method.c_str(), e.what());
+                    send(error_t(502, e.what())); 
                 } catch(const unrecoverable_error_t& e) {
                     syslog(LOG_ERR, "slave [%s:%s]: '%s' invocation failed - %s", 
-                        m_app_name.c_str(), id().c_str(), method.c_str(), e.what());
-                    
-                    m_messages.send_multi(
-                        boost::make_tuple(
-                            ERROR,
-                            std::string(e.what())
-                        )
-                    );
-                    
-                    m_messages.send(TERMINATE);
+                        m_app_name.c_str(), id().c_str(), object.method.c_str(), e.what());
+                    send(error_t(500, e.what())); 
                 } catch(...) {
                     syslog(LOG_ERR, "slave [%s:%s]: caught an unexpected exception",
                         m_app_name.c_str(), id().c_str());
-                    
-                    m_messages.send(TERMINATE);
-                    
-                    return;
+                    send(error_t(500, "unexpected exception")); 
                 }
                     
-                m_messages.send(CHOKE);
-                
+                send(choke_t());
+
                 break;
             }
             
-            case TERMINATE:
+            case engine::terminate: {
+                terminate_t object;
+
+                m_messages.recv(object);
+
+                BOOST_ASSERT(object.type == engine::terminate);
+
                 terminate();
+
                 return;
+            }
         }
     } else {
         m_watcher.start(m_messages.fd(), ev::READ);
@@ -143,13 +134,9 @@ void overseer_t::respond(const void* response, size_t size) {
     
     zmq::message_t message(size);
     memcpy(message.data(), response, size);
-   
-    m_messages.send_multi(
-        boost::make_tuple(
-            CHUNK,
-            boost::ref(message)
-        )
-    );
+  
+    send(chunk_t(), ZMQ_SNDMORE);
+    m_messages.send(message); 
 }
 
 void overseer_t::timeout(ev::timer&, int) {
@@ -157,12 +144,12 @@ void overseer_t::timeout(ev::timer&, int) {
         return;
     }
     
-    m_messages.send(SUICIDE);
+    send(suicide_t());
     terminate();
 }
 
 void overseer_t::heartbeat(ev::timer&, int) {
-    m_messages.send(HEARTBEAT);
+    send(heartbeat_t());
 }
 
 void overseer_t::terminate() {

@@ -63,8 +63,6 @@ struct alive:
             sc::transition<events::death, dead>
         > reactions;
 
-        ~alive();
-
         void react(const events::invoked& event);
         void react(const events::completed& event);
 

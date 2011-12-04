@@ -29,7 +29,7 @@ void zeromq_server_job_t::react(const events::error& event) {
     send(message);
 }
 
-void zeromq_server_job_t::send(zmq::message_t& chunk) {
+bool zeromq_server_job_t::send(zmq::message_t& chunk) {
     zmq::message_t message;
     zeromq_server_t* server = static_cast<zeromq_server_t*>(m_driver);
     
@@ -37,15 +37,21 @@ void zeromq_server_job_t::send(zmq::message_t& chunk) {
     for(route_t::const_iterator id = m_route.begin(); id != m_route.end(); ++id) {
         message.rebuild(id->size());
         memcpy(message.data(), id->data(), id->size());
-        server->socket().send(message, ZMQ_SNDMORE);
+        
+        if(!server->socket().send(message, ZMQ_SNDMORE)) {
+            return false;
+        }
     }
 
     // Send the delimiter
     message.rebuild(0);
-    server->socket().send(message, ZMQ_SNDMORE);
+
+    if(!server->socket().send(message, ZMQ_SNDMORE)) {
+        return false;
+    }
 
     // Send the chunk
-    server->socket().send(chunk);
+    return server->socket().send(chunk);
 }
 
 zeromq_server_t::zeromq_server_t(engine_t* engine, const std::string& method, const Json::Value& args) try:

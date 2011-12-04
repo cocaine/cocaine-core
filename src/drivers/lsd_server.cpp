@@ -4,42 +4,42 @@
 using namespace cocaine::engine::driver;
 using namespace cocaine::networking;
 
-lsd_job_t::lsd_job_t(const unique_id_t::type& id, lsd_server_t* driver, job::policy_t policy, const route_t& route):
+lsd_job_t::lsd_job_t(lsd_server_t* driver, job::policy_t policy, const unique_id_t::type& id, const route_t& route):
     unique_id_t(id),
     job::job_t(driver, policy),
     m_route(route)
 { }
 
 void lsd_job_t::react(const events::response& event) {
+    zeromq_server_t* server = static_cast<zeromq_server_t*>(m_driver);
     Json::Value root(Json::objectValue);
     
     root["uuid"] = id();
     
-    send(root, event.message);
+    send(root, ZMQ_SNDMORE);
+    server->socket().send(event.message);
 }
 
 void lsd_job_t::react(const events::error& event) {
-    zmq::message_t null;
     Json::Value root(Json::objectValue);
 
     root["uuid"] = id();
     root["code"] = event.code;
     root["message"] = event.message;
 
-    send(root, null);
+    send(root);
 }
 
 void lsd_job_t::react(const events::completed& event) {
-    zmq::message_t null;
     Json::Value root(Json::objectValue);
 
     root["uuid"] = id();
     root["completed"] = true;
 
-    send(root, null);
+    send(root);
 }
 
-void lsd_job_t::send(const Json::Value& root, zmq::message_t& chunk) {
+bool lsd_job_t::send(const Json::Value& root, int flags) {
     zmq::message_t message;
     zeromq_server_t* server = static_cast<zeromq_server_t*>(m_driver);
 
@@ -47,24 +47,25 @@ void lsd_job_t::send(const Json::Value& root, zmq::message_t& chunk) {
     for(route_t::const_iterator id = m_route.begin(); id != m_route.end(); ++id) {
         message.rebuild(id->size());
         memcpy(message.data(), id->data(), id->size());
-        server->socket().send(message, ZMQ_SNDMORE);
+        
+        if(!server->socket().send(message, ZMQ_SNDMORE)) {
+            return false;
+        }
     }
 
     // Send the delimiter
     message.rebuild(0);
-    server->socket().send(message, ZMQ_SNDMORE);
+
+    if(!server->socket().send(message, ZMQ_SNDMORE)) {
+        return false;
+    }
 
     // Send the envelope
     std::string envelope(Json::FastWriter().write(root));
     message.rebuild(envelope.size());
     memcpy(message.data(), envelope.data(), envelope.size());
 
-    if(chunk.size()) {
-        server->socket().send(message, ZMQ_SNDMORE);
-        server->socket().send(chunk);
-    } else {
-        server->socket().send(message);
-    }
+    return server->socket().send(message, flags);
 }
 
 lsd_server_t::lsd_server_t(engine_t* engine, const std::string& method, const Json::Value& args):
@@ -114,8 +115,7 @@ void lsd_server_t::process(ev::idle&, int) {
             {
                 syslog(LOG_ERR, "driver [%s:%s]: invalid envelope - %s",
                     m_engine->name().c_str(), m_method.c_str(), reader.getFormatedErrorMessages().c_str());
-                m_socket.drop_remaining_parts();
-                break;
+                continue;
             }
 
             job::policy_t policy(
@@ -126,17 +126,14 @@ void lsd_server_t::process(ev::idle&, int) {
             boost::shared_ptr<lsd_job_t> job;
             
             try {
-                job.reset(new lsd_job_t(root.get("uuid", "").asString(), this, policy, route));
+                job.reset(new lsd_job_t(this, policy, root.get("uuid", "").asString(), route));
             } catch(const std::runtime_error& e) {
                 syslog(LOG_ERR, "driver [%s:%s]: invalid envelope - %s",
                     m_engine->name().c_str(), m_method.c_str(), e.what());
-                m_socket.drop_remaining_parts();
-                break;
+                continue;
             }
 
-            if(m_socket.more()) {
-                m_socket.recv(job->request());
-            } else {
+            if(!m_socket.recv(job->request())) {
                 job->process_event(events::request_error("missing request body"));
                 break;
             }

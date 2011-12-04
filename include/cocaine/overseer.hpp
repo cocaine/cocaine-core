@@ -24,6 +24,17 @@ class overseer_t:
         void respond(const void* response, size_t size);
 
     private:
+        template<class T>
+        bool send(const T& message, int flags = 0) {
+            return m_messages.send_multi(
+                boost::tie(
+                    message.type,
+                    message
+                ),
+                flags
+            );
+        }
+
         // Event loop callback handling and dispatching
         void message(ev::io&, int);
         void process(ev::idle&, int);

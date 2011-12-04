@@ -136,7 +136,7 @@ inline static raw<T> protect(T& object) {
 }
 
 template<class T>
-inline static raw<const T> protect(const T& object) {
+inline static const raw<const T> protect(const T& object) {
     return raw<const T>(object);
 }
 
@@ -243,6 +243,9 @@ class channel_t:
                 msgpack::object object = unpacked.get();
                 object.convert(&result);
             } catch(const std::bad_cast& e) {
+                syslog(LOG_ERR, "net: [%s()] corrupted object - %s", __func__, e.what());
+                return false;
+            } catch(const msgpack::unpack_error& e) {
                 syslog(LOG_ERR, "net: [%s()] corrupted object - %s", __func__, e.what());
                 return false;
             }

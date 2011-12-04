@@ -7,6 +7,7 @@
 
 #include "cocaine/drivers.hpp"
 #include "cocaine/engine.hpp"
+#include "cocaine/messages.hpp"
 #include "cocaine/registry.hpp"
 
 using namespace cocaine::engine;
@@ -164,11 +165,15 @@ Json::Value engine_t::stop() {
     }
 
     // Signal the slaves to terminate
+    terminate_t terminator;
+    
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
+        // NOTE: Don't care if it's not delivered
         m_messages.send_multi(
-            boost::make_tuple(
+            boost::tie(
                 protect(it->first),
-                TERMINATE
+                terminator.type,
+                terminator
             )
         );
         
@@ -230,12 +235,9 @@ void engine_t::enqueue(const boost::shared_ptr<job::job_t>& job, bool overflow) 
 
     pool_map_t::iterator it(
         unicast(
-            idle_slave(), 
-            boost::make_tuple(
-                INVOKE,
-                job->driver()->method(),
-                boost::ref(request)
-            )
+            idle_slave(),
+            invoke_t(job->driver()->method()),
+            request
         )
     );
 
@@ -342,32 +344,62 @@ void engine_t::process(ev::idle&, int) {
         pool_map_t::iterator slave(m_pool.find(slave_id));
 
         if(slave != m_pool.end()) {
-            const slave::busy* state = slave->second->state_downcast<const slave::busy*>();
+            const slave::busy* state =
+                slave->second->state_downcast<const slave::busy*>();
             
             switch(code) {
-                case CHUNK: {
+                case heartbeat: {
+                    heartbeat_t object;
+
+                    m_messages.recv(object);
+
+                    BOOST_ASSERT(object.type == heartbeat);
+
+                    break;
+                }
+
+                case chunk: {
+                    chunk_t object;
                     zmq::message_t message;
 
+                    boost::tuple<chunk_t&, zmq::message_t*> tier(object, &message);
+                    m_messages.recv_multi(tier);
+
+                    BOOST_ASSERT(object.type == chunk);
                     BOOST_ASSERT(state != 0);
 
-                    m_messages.recv(&message);
                     state->job()->process_event(events::response(message));
 
                     break;
                 }
              
-                case ERROR: {
-                    std::string message;
+                case error: {
+                    error_t object;
 
-                    BOOST_ASSERT(state != 0);
+                    m_messages.recv(object);
 
-                    m_messages.recv(message);
-                    state->job()->process_event(events::application_error(message));                    
+                    BOOST_ASSERT(object.type == error);
+                    BOOST_ASSERT(state || object.code == 500);
+
+                    if(state) {
+                        state->job()->process_event(events::application_error(object.message));
+                    }
+                    
+                    if(object.code == 500) {
+                        syslog(LOG_ERR, "engine [%s]: the application seems to be broken",
+                            m_app_cfg.name.c_str());
+                        stop();
+                    }
 
                     break;
                 }
 
-                case CHOKE: {
+                case choke: {
+                    choke_t object;
+
+                    m_messages.recv(object);
+
+                    BOOST_ASSERT(object.type == choke);
                     BOOST_ASSERT(state != 0);
                    
                     slave->second->process_event(events::completed());
@@ -375,18 +407,23 @@ void engine_t::process(ev::idle&, int) {
                     break;
                 }
 
-                case SUICIDE:
+                case suicide: {
+                    suicide_t object;
+
+                    m_messages.recv(object);
+
+                    BOOST_ASSERT(object.type == suicide);
+
+                    if(state && !state->job()->state_downcast<const job::complete*>()) {
+                        syslog(LOG_INFO, "engine [%s]: rescheduling an incomplete '%s' job",
+                            m_app_cfg.name.c_str(), state->job()->driver()->method().c_str());
+                        enqueue(state->job(), true);
+                    }
+
                     slave->second->process_event(events::death());
 
                     return;
-
-                case TERMINATE:
-                    syslog(LOG_ERR, "engine [%s]: the application seems to be broken",
-                        m_app_cfg.name.c_str());
-                    
-                    stop();
-                    
-                    return;
+                }
             }
 
             slave->second->process_event(events::heartbeat());

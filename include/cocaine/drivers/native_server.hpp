@@ -6,55 +6,50 @@
 namespace cocaine { namespace engine { namespace driver {
 
 namespace messages {
+    enum types {
+        request = 1,
+        tag,
+        error
+    };
+
     struct request_t {
+        unsigned int type;
         unique_id_t::type id;
         job::policy_t policy;
-        msgpack::type::raw_ref body;
 
-        MSGPACK_DEFINE(id, policy, body);
+        MSGPACK_DEFINE(type, id, policy);
     };
 
-    struct chunk_t {
-        static const unsigned int message_code;
-        
-        chunk_t(const unique_id_t::type& id_, /* const */ zmq::message_t& message):
+    struct tag_t {
+        tag_t(const unique_id_t::type& id_, bool completed_ = false):
+            type(tag),
             id(id_),
-            body(static_cast<const char*>(message.data()), message.size())
+            completed(completed_)
         { }
 
+        unsigned int type;
         unique_id_t::type id;
-        msgpack::type::raw_ref body;
-        
-        MSGPACK_DEFINE(id, body);
-    };
+        bool completed;
 
-    struct error_t {
-        static const unsigned int message_code;
-        
-        error_t(const unique_id_t::type& id_, unsigned int code_, const std::string& message_):
-            id(id_),
-            error_code(code_),
-            error_message(message_)
-        { }
-
-        unique_id_t::type id;
-        unsigned int error_code;
-        std::string error_message;
-
-        MSGPACK_DEFINE(id, error_code, error_message);
+        MSGPACK_DEFINE(type, id, completed);
     };
     
-    struct tag_t {
-        static const unsigned int message_code;
-
-        tag_t(const unique_id_t::type& id_):
-            id(id_)
+    struct error_t {
+        error_t(const unique_id_t::type& id_, unsigned int code_, const std::string& message_):
+            type(error),
+            id(id_),
+            code(code_),
+            message(message_)
         { }
 
+        unsigned int type;
         unique_id_t::type id;
+        unsigned int code;
+        std::string message;
 
-        MSGPACK_DEFINE(id);
+        MSGPACK_DEFINE(type, id, code, message);
     };
+    
 }
 
 class native_server_t;
@@ -64,8 +59,8 @@ class native_server_job_t:
     public job::job_t
 {
     public:
-        native_server_job_t(const messages::request_t& request,
-                            native_server_t* driver,
+        native_server_job_t(native_server_t* driver,
+                            const messages::request_t& request,
                             const networking::route_t& route);
 
         virtual void react(const events::response& event);
@@ -74,7 +69,7 @@ class native_server_job_t:
 
     private:
         template<class T>
-        void send(const T& response) {
+        bool send(const T& response, int flags = 0) {
             zmq::message_t message;
             zeromq_server_t* server = static_cast<zeromq_server_t*>(m_driver);
 
@@ -82,19 +77,26 @@ class native_server_job_t:
             for(networking::route_t::const_iterator id = m_route.begin(); id != m_route.end(); ++id) {
                 message.rebuild(id->size());
                 memcpy(message.data(), id->data(), id->size());
-                server->socket().send(message, ZMQ_SNDMORE);
+
+                if(!server->socket().send(message, ZMQ_SNDMORE)) {
+                    return false;
+                }
             }
 
             // Send the delimiter
             message.rebuild(0);
-            server->socket().send(message, ZMQ_SNDMORE);
+
+            if(!server->socket().send(message, ZMQ_SNDMORE)) {
+                return false;
+            }
 
             // Send the response
-            server->socket().send_multi(
+            return server->socket().send_multi(
                 boost::tie(
-                    T::message_code,
+                    response.type,
                     response
-                )
+                ),
+                flags
             );
         }
 

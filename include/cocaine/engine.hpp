@@ -9,16 +9,6 @@
 #include "cocaine/networking.hpp"
 #include "cocaine/slaves.hpp"
 
-// Message types
-#define INVOKE      1   /* engine -> slave: do something*/
-#define TERMINATE   2   /* engine -> slave: engine is shutting down, die
-                           slave -> engine: app is broken, die */
-#define CHUNK       3   /* slave -> engine: invocation is in progress, here's the part of the result */
-#define CHOKE       4   /* slave -> engine: invocation is done, choke the channel */
-#define ERROR       5   /* slave -> engine: invocation has failed */
-#define SUICIDE     6   /* slave -> engine: i am useless, kill me */
-#define HEARTBEAT   7   /* slave -> engine: i am alive, don't kill me */
-
 namespace cocaine { namespace engine {
 
 class engine_t:
@@ -56,17 +46,20 @@ class engine_t:
         Json::Value info() const;
 
         template<class Selector, class T>
-        pool_map_t::iterator unicast(const Selector& selector, const T& args) {
+        pool_map_t::iterator unicast(const Selector& selector, const T& message, zmq::message_t& payload) {
             pool_map_t::iterator it(std::find_if(m_pool.begin(), m_pool.end(), selector));
 
-            if(it != m_pool.end()) {
-                m_messages.send_multi(
-                    helpers::joint_view(
-                        boost::make_tuple(
-                            networking::protect(it->second->id())),
-                        args
+            if(it != m_pool.end() &&
+               !m_messages.send_multi(
+                    boost::tie(
+                        networking::protect(it->second->id()),
+                        message.type,
+                        message,
+                        payload
                     )
-                );
+                )) 
+            {
+                return m_pool.end();
             }
 
             return it;

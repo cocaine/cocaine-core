@@ -4,21 +4,17 @@
 using namespace cocaine::engine::driver;
 using namespace cocaine::networking;
 
-const unsigned int messages::chunk_t::message_code = 0;
-const unsigned int messages::error_t::message_code = 1;
-const unsigned int messages::tag_t::message_code = 2;
-
-native_server_job_t::native_server_job_t(const messages::request_t& request, native_server_t* driver, const route_t& route):
+native_server_job_t::native_server_job_t(native_server_t* driver, const messages::request_t& request, const route_t& route):
     unique_id_t(request.id),
     job::job_t(driver, request.policy),
     m_route(route)
-{
-    job_t::request()->rebuild(request.body.size);
-    memcpy(job_t::request()->data(), request.body.ptr, request.body.size);
-}
+{ }
 
 void native_server_job_t::react(const events::response& event) {
-    send(messages::chunk_t(id(), event.message));
+    send(messages::tag_t(id()), ZMQ_SNDMORE);
+    
+    zeromq_server_t* server = static_cast<zeromq_server_t*>(m_driver);
+    server->socket().send(event.message);
 }
 
 void native_server_job_t::react(const events::error& event) {
@@ -26,7 +22,7 @@ void native_server_job_t::react(const events::error& event) {
 }
 
 void native_server_job_t::react(const events::completed& event) {
-    send(messages::tag_t(id()));
+    send(messages::tag_t(id(), true));
 }
 
 native_server_t::native_server_t(engine_t* engine, const std::string& method, const Json::Value& args):
@@ -62,22 +58,33 @@ void native_server_t::process(ev::idle&, int) {
         }
 
         while(m_socket.more()) {
+            unsigned int type = 0;
             messages::request_t request;
 
-            if(!m_socket.recv(request)) {
-                syslog(LOG_ERR, "driver [%s:%s]: got a corrupted request",
-                    m_engine->name().c_str(), m_method.c_str());
+            boost::tuple<unsigned int&, messages::request_t&> tier(type, request);
+
+            if(!m_socket.recv_multi(tier)) {
+                syslog(LOG_ERR, "driver [%s:%s]: got a corrupted request from '%s'",
+                    m_engine->name().c_str(), m_method.c_str(), route.front().c_str());
                 continue;
             }
+
+            // TEST: This is temporary for testing purposes
+            BOOST_ASSERT(type == request.type);
 
             boost::shared_ptr<native_server_job_t> job;
             
             try {
-                job.reset(new native_server_job_t(request, this, route)); 
+                job.reset(new native_server_job_t(this, request, route)); 
             } catch(const std::runtime_error& e) {
-                syslog(LOG_ERR, "driver [%s:%s]: got a corrupted request - %s",
-                    m_engine->name().c_str(), m_method.c_str(), e.what());
+                syslog(LOG_ERR, "driver [%s:%s]: got a corrupted request from '%s' - %s",
+                    m_engine->name().c_str(), m_method.c_str(), route.front().c_str(), e.what());
                 continue;
+            }
+
+            if(!m_socket.recv(job->request(), ZMQ_NOBLOCK)) {
+                job->process_event(events::request_error("missing request body"));
+                break;
             }
 
             m_engine->enqueue(job);

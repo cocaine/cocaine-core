@@ -24,11 +24,11 @@ struct enqueued:
 struct invoked:
     public sc::event<invoked>
 {
-    invoked(const boost::shared_ptr<job::job_t> job_):
+    invoked(const boost::shared_ptr<job::job_t>& job_):
         job(job_)
     { }
 
-    const boost::shared_ptr<job::job_t> job;
+    const boost::shared_ptr<job::job_t>& job;
 };
 
 struct completed:
