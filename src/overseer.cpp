@@ -77,9 +77,6 @@ void overseer_t::process(ev::idle&, int) {
                 messages::invoke_t object;
                 zmq::message_t request;
 
-                m_suicide_timer.stop();
-                m_suicide_timer.start(config_t::get().engine.suicide_timeout);
-             
                 boost::tuple<messages::invoke_t&, zmq::message_t*> tier(object, &request);
                 m_messages.recv_multi(tier);
 
@@ -108,6 +105,9 @@ void overseer_t::process(ev::idle&, int) {
                     
                 send(messages::choke_t());
 
+                m_suicide_timer.stop();
+                m_suicide_timer.start(config_t::get().engine.suicide_timeout);
+             
                 break;
             }
             
