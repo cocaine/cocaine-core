@@ -419,12 +419,6 @@ void engine_t::process(ev::idle&, int) {
 
                     BOOST_ASSERT(object.type == rpc::terminate);
 
-                    if(state && !state->job()->state_downcast<const job::complete*>()) {
-                        syslog(LOG_INFO, "engine [%s]: rescheduling an incomplete '%s' job",
-                            m_app_cfg.name.c_str(), state->job()->driver()->method().c_str());
-                        enqueue(state->job(), true);
-                    }
-
                     slave->second->process_event(events::terminated_t());
 
                     return;

@@ -66,6 +66,8 @@ struct alive:
         void react(const events::invoked_t& event);
         void react(const events::choked_t& event);
 
+        ~alive();
+
         const boost::shared_ptr<job::job_t>& job() const {
             return m_job;
         }
