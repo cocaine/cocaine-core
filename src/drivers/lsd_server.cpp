@@ -86,9 +86,10 @@ Json::Value lsd_server_t::info() const {
 void lsd_server_t::process(ev::idle&, int) {
     if(m_socket.pending()) {
         zmq::message_t message;
+        unsigned int route_part_counter = MAX_ROUTE_PARTS;
         route_t route;
 
-        while(true) {
+        while(route_part_counter--) {
             m_socket.recv(&message);
 
             if(!message.size()) {
@@ -98,6 +99,12 @@ void lsd_server_t::process(ev::idle&, int) {
             route.push_back(std::string(
                 static_cast<const char*>(message.data()),
                 message.size()));
+        }
+
+        if(route.empty() || !route_part_counter) {
+            syslog(LOG_ERR, "driver [%s:%s]: got a corrupted request - no route", 
+                m_engine->name().c_str(), m_method.c_str());
+            return;
         }
 
         while(m_socket.more()) {
@@ -113,8 +120,11 @@ void lsd_server_t::process(ev::idle&, int) {
                 static_cast<const char*>(message.data()) + message.size(),
                 root))
             {
-                syslog(LOG_ERR, "driver [%s:%s]: invalid envelope - %s",
-                    m_engine->name().c_str(), m_method.c_str(), reader.getFormatedErrorMessages().c_str());
+                syslog(LOG_ERR, "driver [%s:%s]: got a corrupted request from '%s' - invalid envelope - %s",
+                    m_engine->name().c_str(), m_method.c_str(), route.back().c_str(), 
+                    reader.getFormatedErrorMessages().c_str()
+                );
+
                 continue;
             }
 
@@ -128,14 +138,16 @@ void lsd_server_t::process(ev::idle&, int) {
             try {
                 job.reset(new lsd_job_t(this, policy, root.get("uuid", "").asString(), route));
             } catch(const std::runtime_error& e) {
-                syslog(LOG_ERR, "driver [%s:%s]: invalid envelope - %s",
-                    m_engine->name().c_str(), m_method.c_str(), e.what());
+                syslog(LOG_ERR, "driver [%s:%s]: got a corrupted request from '%s' - invalid envelope - %s",
+                    m_engine->name().c_str(), m_method.c_str(), route.back().c_str(), e.what());
                 continue;
             }
 
-            if(!m_socket.recv(job->request())) {
+            if(!m_socket.more() || !m_socket.recv(job->request())) {
+                syslog(LOG_ERR, "driver [%s:%s]: got a corrupted request from '%s' - missing request body",
+                    m_engine->name().c_str(), m_method.c_str(), route.back().c_str());
                 job->process_event(events::error_t(events::request_error, "missing request body"));
-                break;
+                continue;
             }
             
             m_engine->enqueue(job);

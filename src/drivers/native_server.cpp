@@ -43,9 +43,10 @@ Json::Value native_server_t::info() const {
 void native_server_t::process(ev::idle&, int) {
     if(m_socket.pending()) {
         zmq::message_t message;
+        unsigned int route_part_counter = MAX_ROUTE_PARTS;
         route_t route;
 
-        while(true) {
+        while(route_part_counter--) {
             m_socket.recv(&message);
 
             if(!message.size()) {
@@ -55,6 +56,12 @@ void native_server_t::process(ev::idle&, int) {
             route.push_back(std::string(
                 static_cast<const char*>(message.data()),
                 message.size()));
+        }
+
+        if(route.empty() || !route_part_counter) {
+            syslog(LOG_ERR, "driver [%s:%s]: got a corrupted request - no route", 
+                m_engine->name().c_str(), m_method.c_str());
+            return;
         }
 
         while(m_socket.more()) {
@@ -82,9 +89,11 @@ void native_server_t::process(ev::idle&, int) {
                 continue;
             }
 
-            if(!m_socket.recv(job->request(), ZMQ_NOBLOCK)) {
+            if(!m_socket.more() || !m_socket.recv(job->request())) {
+                syslog(LOG_ERR, "driver [%s:%s]: got a corrupted request from '%s' - missing request body",
+                    m_engine->name().c_str(), m_method.c_str(), route.back().c_str());
                 job->process_event(events::error_t(events::request_error, "missing request body"));
-                break;
+                continue;
             }
 
             m_engine->enqueue(job);
