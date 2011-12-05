@@ -63,7 +63,7 @@ class native_server_job_t:
                             const messages::request_t& request,
                             const networking::route_t& route);
 
-        virtual void react(const events::response_t& event);
+        virtual void react(const events::chunk_t& event);
         virtual void react(const events::error_t& event);
         virtual void react(const events::choked_t& event);
 

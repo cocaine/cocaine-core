@@ -10,7 +10,7 @@ native_server_job_t::native_server_job_t(native_server_t* driver, const messages
     m_route(route)
 { }
 
-void native_server_job_t::react(const events::response_t& event) {
+void native_server_job_t::react(const events::chunk_t& event) {
     send(messages::tag_t(id()), ZMQ_SNDMORE);
     
     zeromq_server_t* server = static_cast<zeromq_server_t*>(m_driver);

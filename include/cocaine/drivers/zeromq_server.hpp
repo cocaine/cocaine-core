@@ -16,7 +16,7 @@ class zeromq_server_job_t:
         zeromq_server_job_t(zeromq_server_t* driver, 
                             const networking::route_t& route);
 
-        virtual void react(const events::response_t& event);
+        virtual void react(const events::chunk_t& event);
         virtual void react(const events::error_t& event);
 
     private:

@@ -46,7 +46,7 @@ class job_t:
         virtual void react(const events::choked_t& event) { }
     
     public:      
-        virtual void react(const events::response_t& event) = 0;
+        virtual void react(const events::chunk_t& event) = 0;
         virtual void react(const events::error_t& event) = 0;
 
     public:
@@ -114,7 +114,7 @@ struct processing:
 {
     public:
         typedef boost::mpl::list<
-            sc::in_state_reaction<events::response_t,  job_t, &job_t::react>,
+            sc::in_state_reaction<events::chunk_t,     job_t, &job_t::react>,
             sc::in_state_reaction<events::error_t,     job_t, &job_t::react>,
             sc::transition<events::choked_t, complete, job_t, &job_t::react>,
             sc::transition<events::enqueued_t,  waiting>,

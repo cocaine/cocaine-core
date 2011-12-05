@@ -3,10 +3,10 @@
 #include <boost/thread.hpp>
 
 #include "cocaine/events.hpp"
-#include "cocaine/messages.hpp"
 #include "cocaine/overseer.hpp"
 #include "cocaine/plugin.hpp"
 #include "cocaine/registry.hpp"
+#include "cocaine/rpc.hpp"
 
 using namespace cocaine::engine;
 using namespace cocaine::plugin;

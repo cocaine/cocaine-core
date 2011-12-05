@@ -7,8 +7,8 @@
 
 #include "cocaine/drivers.hpp"
 #include "cocaine/engine.hpp"
-#include "cocaine/messages.hpp"
 #include "cocaine/registry.hpp"
+#include "cocaine/rpc.hpp"
 
 using namespace cocaine::engine;
 using namespace cocaine::networking;
@@ -368,7 +368,7 @@ void engine_t::process(ev::idle&, int) {
                     BOOST_ASSERT(object.type == rpc::chunk);
                     BOOST_ASSERT(state != 0);
 
-                    state->job()->process_event(events::response_t(message));
+                    state->job()->process_event(events::chunk_t(message));
 
                     break;
                 }
@@ -479,7 +479,7 @@ publication_t::publication_t(driver::driver_t* parent):
     job::job_t(parent, job::policy_t())
 { }
 
-void publication_t::react(const events::response_t& event) {
+void publication_t::react(const events::chunk_t& event) {
     Json::Reader reader(Json::Features::strictMode());
     Json::Value root;
 

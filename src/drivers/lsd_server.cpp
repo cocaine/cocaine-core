@@ -10,7 +10,7 @@ lsd_job_t::lsd_job_t(lsd_server_t* driver, job::policy_t policy, const unique_id
     m_route(route)
 { }
 
-void lsd_job_t::react(const events::response_t& event) {
+void lsd_job_t::react(const events::chunk_t& event) {
     zeromq_server_t* server = static_cast<zeromq_server_t*>(m_driver);
     Json::Value root(Json::objectValue);
     

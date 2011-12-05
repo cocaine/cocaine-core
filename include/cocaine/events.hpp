@@ -10,7 +10,16 @@ namespace cocaine { namespace engine { namespace events {
 
 namespace sc = boost::statechart;
 
-// Engine events
+// Slave events
+struct heartbeat_t:
+    public sc::event<heartbeat_t>
+{ };
+
+struct terminated_t:
+    public sc::event<terminated_t>
+{ };
+
+// Job events
 struct enqueued_t:
     public sc::event<enqueued_t>
 {
@@ -31,20 +40,10 @@ struct invoked_t:
     const boost::shared_ptr<job::job_t>& job;
 };
 
-// Slave events
-struct heartbeat_t:
-    public sc::event<heartbeat_t>
-{ };
-
-struct terminated_t:
-    public sc::event<terminated_t>
-{ };
-
-// Job events
-struct response_t:
-    public sc::event<response_t>
+struct chunk_t:
+    public sc::event<chunk_t>
 {
-    response_t(zmq::message_t& message_):
+    chunk_t(zmq::message_t& message_):
         message(message_)
     { }
 

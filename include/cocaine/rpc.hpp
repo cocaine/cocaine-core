@@ -8,22 +8,12 @@
 namespace cocaine { namespace engine { namespace rpc {
 
 enum types {
-    heartbeat = 1,
-    invoke,
+    invoke = 1,
     terminate,
+    heartbeat,
     chunk,
     choke,
     error
-};
-
-struct heartbeat_t {
-    heartbeat_t():
-        type(heartbeat)
-    { }
-
-    unsigned int type;
-
-    MSGPACK_DEFINE(type);
 };
 
 struct invoke_t {
@@ -52,9 +42,9 @@ struct terminate_t {
     MSGPACK_DEFINE(type);
 };
 
-struct chunk_t {
-    chunk_t():
-        type(chunk)
+struct heartbeat_t {
+    heartbeat_t():
+        type(heartbeat)
     { }
 
     unsigned int type;
@@ -62,9 +52,9 @@ struct chunk_t {
     MSGPACK_DEFINE(type);
 };
 
-struct choke_t {
-    choke_t():
-        type(choke)
+struct chunk_t {
+    chunk_t():
+        type(chunk)
     { }
 
     unsigned int type;
@@ -88,6 +78,16 @@ struct error_t {
     std::string message;
 
     MSGPACK_DEFINE(type, code, message);
+};
+
+struct choke_t {
+    choke_t():
+        type(choke)
+    { }
+
+    unsigned int type;
+
+    MSGPACK_DEFINE(type);
 };
 
 }}}

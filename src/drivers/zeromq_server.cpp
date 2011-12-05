@@ -12,7 +12,7 @@ zeromq_server_job_t::zeromq_server_job_t(zeromq_server_t* driver, const route_t&
     m_route(route)
 { }
 
-void zeromq_server_job_t::react(const events::response_t& event) {
+void zeromq_server_job_t::react(const events::chunk_t& event) {
     send(event.message);
 }
 
