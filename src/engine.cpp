@@ -224,20 +224,16 @@ Json::Value engine_t::info() const {
 }
 
 void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
-    zmq::message_t request;
-    
     if(!m_running) {
         job->process_event(events::error_t(events::server_error, "engine is shutting down"));
         return;
     }
 
-    request.copy(job->request());
-
     pool_map_t::iterator it(
         unicast(
             idle_slave(),
             rpc::invoke_t(job->driver()->method()),
-            request
+            job->request()
         )
     );
 
