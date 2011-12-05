@@ -65,7 +65,11 @@ void alive::react(const events::choked_t& event) {
 alive::~alive() {
     if(m_job && !m_job->state_downcast<const job::complete*>()) {
         syslog(LOG_INFO, "engine [%s]: rescheduling an incomplete '%s' job",
-            m_job->driver()->engine()->name().c_str(), m_job->driver()->method().c_str());
+            m_job->driver()->engine()->name().c_str(),
+            m_job->driver()->method().c_str()
+        );
+       
+        // NOTE: Allow the queue to grow beyond its capacity. 
         m_job->driver()->engine()->enqueue(m_job, true);
     }
 }
