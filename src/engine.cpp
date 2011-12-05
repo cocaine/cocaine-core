@@ -16,10 +16,10 @@ using namespace cocaine::networking;
 void engine_t::job_queue_t::push(const_reference job) {
     if(job->policy().urgent) {
         push_front(job);
-        job->process_event(events::enqueued(1));
+        job->process_event(events::enqueued_t(1));
     } else {
         push_back(job);
-        job->process_event(events::enqueued(size()));
+        job->process_event(events::enqueued_t(size()));
     }
 }
 
@@ -160,12 +160,12 @@ Json::Value engine_t::stop() {
     // Abort all the outstanding jobs 
     while(!m_queue.empty()) {
         m_queue.front()->process_event(
-            events::server_error("engine is shutting down"));
+            events::error_t(events::server_error, "engine is shutting down"));
         m_queue.pop_front();
     }
 
     // Signal the slaves to terminate
-    messages::terminate_t terminator;
+    rpc::terminate_t terminator;
     
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
         // NOTE: Doesn't matter if it's not delivered, slaves will be killed anyway.
@@ -177,7 +177,7 @@ Json::Value engine_t::stop() {
             )
         );
         
-        it->second->process_event(events::death());
+        it->second->process_event(events::terminated_t());
     }
 
     m_pool.clear();
@@ -227,7 +227,7 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
     zmq::message_t request;
     
     if(!m_running) {
-        job->process_event(events::server_error("engine is shutting down"));
+        job->process_event(events::error_t(events::server_error, "engine is shutting down"));
         return;
     }
 
@@ -236,7 +236,7 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
     pool_map_t::iterator it(
         unicast(
             idle_slave(),
-            messages::invoke_t(job->driver()->method()),
+            rpc::invoke_t(job->driver()->method()),
             request
         )
     );
@@ -244,7 +244,7 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
     // NOTE: If we got an idle slave, then we're lucky and got an instant scheduling;
     // if not, try to spawn more slaves, and enqueue the job.
     if(it != m_pool.end()) {
-        it->second->process_event(events::invoked(job));
+        it->second->process_event(events::invoked_t(job));
     } else {
         if(m_pool.empty() || m_pool.size() < m_policy.pool_limit) {
             std::auto_ptr<slave::slave_t> slave;
@@ -265,7 +265,7 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
         } else if(!overflow && (m_queue.size() > m_policy.queue_limit)) {
             syslog(LOG_ERR, "engine [%s]: dropping '%s' job - the queue is full",
                 m_app_cfg.name.c_str(), job->driver()->method().c_str());
-            job->process_event(events::resource_error("the queue is full"));
+            job->process_event(events::error_t(events::resource_error, "the queue is full"));
             return;
         }
             
@@ -348,44 +348,49 @@ void engine_t::process(ev::idle&, int) {
                 slave->second->state_downcast<const slave::busy*>();
             
             switch(code) {
-                case messages::heartbeat: {
-                    messages::heartbeat_t object;
+                case rpc::heartbeat: {
+                    rpc::heartbeat_t object;
 
                     m_messages.recv(object);
 
-                    BOOST_ASSERT(object.type == messages::heartbeat);
+                    BOOST_ASSERT(object.type == rpc::heartbeat);
 
                     break;
                 }
 
-                case messages::chunk: {
-                    messages::chunk_t object;
+                case rpc::chunk: {
+                    rpc::chunk_t object;
                     zmq::message_t message;
 
-                    boost::tuple<messages::chunk_t&, zmq::message_t*> tier(object, &message);
+                    boost::tuple<rpc::chunk_t&, zmq::message_t*> tier(object, &message);
                     m_messages.recv_multi(tier);
 
-                    BOOST_ASSERT(object.type == messages::chunk);
+                    BOOST_ASSERT(object.type == rpc::chunk);
                     BOOST_ASSERT(state != 0);
 
-                    state->job()->process_event(events::response(message));
+                    state->job()->process_event(events::response_t(message));
 
                     break;
                 }
              
-                case messages::error: {
-                    messages::error_t object;
+                case rpc::error: {
+                    rpc::error_t object;
 
                     m_messages.recv(object);
 
-                    BOOST_ASSERT(object.type == messages::error);
-                    BOOST_ASSERT(state || object.code == 500);
+                    BOOST_ASSERT(object.type == rpc::error);
+                    BOOST_ASSERT(state || object.code == events::server_error);
 
                     if(state) {
-                        state->job()->process_event(events::application_error(object.message));
+                        state->job()->process_event(
+                            events::error_t(
+                                static_cast<events::error_code>(object.code),
+                                object.message
+                            )
+                        );
                     }
                     
-                    if(object.code == 500) {
+                    if(object.code == events::server_error) {
                         syslog(LOG_ERR, "engine [%s]: the application seems to be broken",
                             m_app_cfg.name.c_str());
                         stop();
@@ -394,25 +399,25 @@ void engine_t::process(ev::idle&, int) {
                     break;
                 }
 
-                case messages::choke: {
-                    messages::choke_t object;
+                case rpc::choke: {
+                    rpc::choke_t object;
 
                     m_messages.recv(object);
 
-                    BOOST_ASSERT(object.type == messages::choke);
+                    BOOST_ASSERT(object.type == rpc::choke);
                     BOOST_ASSERT(state != 0);
                    
-                    slave->second->process_event(events::completed());
+                    slave->second->process_event(events::choked_t());
                     
                     break;
                 }
 
-                case messages::suicide: {
-                    messages::suicide_t object;
+                case rpc::terminate: {
+                    rpc::terminate_t object;
 
                     m_messages.recv(object);
 
-                    BOOST_ASSERT(object.type == messages::suicide);
+                    BOOST_ASSERT(object.type == rpc::terminate);
 
                     if(state && !state->job()->state_downcast<const job::complete*>()) {
                         syslog(LOG_INFO, "engine [%s]: rescheduling an incomplete '%s' job",
@@ -420,13 +425,13 @@ void engine_t::process(ev::idle&, int) {
                         enqueue(state->job(), true);
                     }
 
-                    slave->second->process_event(events::death());
+                    slave->second->process_event(events::terminated_t());
 
                     return;
                 }
             }
 
-            slave->second->process_event(events::heartbeat());
+            slave->second->process_event(events::heartbeat_t());
 
             if(slave->second->state_downcast<const slave::idle*>() && !m_queue.empty()) {
                 // NOTE: This will always succeed due to the test above
@@ -474,7 +479,7 @@ publication_t::publication_t(driver::driver_t* parent):
     job::job_t(parent, job::policy_t())
 { }
 
-void publication_t::react(const events::response& event) {
+void publication_t::react(const events::response_t& event) {
     Json::Reader reader(Json::Features::strictMode());
     Json::Value root;
 
@@ -490,7 +495,7 @@ void publication_t::react(const events::response& event) {
     }
 }
 
-void publication_t::react(const events::error& event) {
+void publication_t::react(const events::error_t& event) {
     m_driver->engine()->publish(m_driver->method(),
         helpers::make_json("error", event.message));
 }

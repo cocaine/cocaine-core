@@ -29,7 +29,7 @@ struct slave_t:
         slave_t(engine_t* engine);
         virtual ~slave_t();
 
-        void react(const events::heartbeat& event);
+        void react(const events::heartbeat_t& event);
         
     public:
         virtual void reap() = 0;
@@ -49,8 +49,8 @@ struct unknown:
 {
     public:
         typedef boost::mpl::list<
-            sc::transition<events::heartbeat, alive, slave_t, &slave_t::react>,
-            sc::transition<events::death, dead>
+            sc::transition<events::heartbeat_t, alive, slave_t, &slave_t::react>,
+            sc::transition<events::terminated_t, dead>
         > reactions;
 };
 
@@ -59,12 +59,12 @@ struct alive:
 {
     public:
         typedef boost::mpl::list<
-            sc::in_state_reaction<events::heartbeat, slave_t, &slave_t::react>,
-            sc::transition<events::death, dead>
+            sc::in_state_reaction<events::heartbeat_t, slave_t, &slave_t::react>,
+            sc::transition<events::terminated_t, dead>
         > reactions;
 
-        void react(const events::invoked& event);
-        void react(const events::completed& event);
+        void react(const events::invoked_t& event);
+        void react(const events::choked_t& event);
 
         const boost::shared_ptr<job::job_t>& job() const {
             return m_job;
@@ -79,7 +79,7 @@ struct idle:
 {
     public:
         typedef sc::transition<
-            events::invoked, busy, alive, &alive::react
+            events::invoked_t, busy, alive, &alive::react
         > reactions;
 };
 
@@ -88,7 +88,7 @@ struct busy:
 {
     public:
         typedef sc::transition<
-            events::completed, idle, alive, &alive::react
+            events::choked_t, idle, alive, &alive::react
         > reactions;
 
         const boost::shared_ptr<job::job_t>& job() const {

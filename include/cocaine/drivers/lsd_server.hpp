@@ -17,9 +17,9 @@ class lsd_job_t:
                   const unique_id_t::type& id,
                   const networking::route_t& route);
 
-        virtual void react(const events::response& event);
-        virtual void react(const events::error& event);
-        virtual void react(const events::completed& event);
+        virtual void react(const events::response_t& event);
+        virtual void react(const events::error_t& event);
+        virtual void react(const events::choked_t& event);
 
     private:
         bool send(const Json::Value& envelope, int flags = 0);

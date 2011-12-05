@@ -2,6 +2,7 @@
 #include <boost/assign.hpp>
 #include <boost/thread.hpp>
 
+#include "cocaine/events.hpp"
 #include "cocaine/messages.hpp"
 #include "cocaine/overseer.hpp"
 #include "cocaine/plugin.hpp"
@@ -47,12 +48,12 @@ void overseer_t::operator()(const std::string& type, const std::string& args) {
     } catch(const unrecoverable_error_t& e) {
         syslog(LOG_ERR, "slave [%s:%s]: unable to instantiate the app - %s", 
             m_app_name.c_str(), id().c_str(), e.what());
-        send(messages::error_t(500, e.what()));
+        send(rpc::error_t(events::server_error, e.what()));
         return;
     } catch(...) {
         syslog(LOG_ERR, "slave [%s:%s]: caught an unexpected exception",
             m_app_name.c_str(), id().c_str());
-        send(messages::error_t(500, "unexpected exception"));
+        send(rpc::error_t(events::server_error, "unexpected exception"));
         return;
     }
         
@@ -73,14 +74,14 @@ void overseer_t::process(ev::idle&, int) {
         m_messages.recv(code);
 
         switch(code) {
-            case messages::invoke: {
-                messages::invoke_t object;
+            case rpc::invoke: {
+                rpc::invoke_t object;
                 zmq::message_t request;
 
-                boost::tuple<messages::invoke_t&, zmq::message_t*> tier(object, &request);
+                boost::tuple<rpc::invoke_t&, zmq::message_t*> tier(object, &request);
                 m_messages.recv_multi(tier);
 
-                BOOST_ASSERT(object.type == messages::invoke);
+                BOOST_ASSERT(object.type == rpc::invoke);
 
                 try {
                     m_app->invoke(
@@ -92,18 +93,18 @@ void overseer_t::process(ev::idle&, int) {
                 } catch(const recoverable_error_t& e) {
                     syslog(LOG_ERR, "slave [%s:%s]: '%s' invocation failed - %s", 
                         m_app_name.c_str(), id().c_str(), object.method.c_str(), e.what());
-                    send(messages::error_t(502, e.what()));
+                    send(rpc::error_t(events::app_error, e.what()));
                 } catch(const unrecoverable_error_t& e) {
                     syslog(LOG_ERR, "slave [%s:%s]: '%s' invocation failed - %s", 
                         m_app_name.c_str(), id().c_str(), object.method.c_str(), e.what());
-                    send(messages::error_t(500, e.what())); 
+                    send(rpc::error_t(events::server_error, e.what())); 
                 } catch(...) {
                     syslog(LOG_ERR, "slave [%s:%s]: caught an unexpected exception",
                         m_app_name.c_str(), id().c_str());
-                    send(messages::error_t(500, "unexpected exception")); 
+                    send(rpc::error_t(events::server_error, "unexpected exception")); 
                 }
                     
-                send(messages::choke_t());
+                send(rpc::choke_t());
 
                 m_suicide_timer.stop();
                 m_suicide_timer.start(config_t::get().engine.suicide_timeout);
@@ -111,12 +112,12 @@ void overseer_t::process(ev::idle&, int) {
                 break;
             }
             
-            case messages::terminate: {
-                messages::terminate_t object;
+            case rpc::terminate: {
+                rpc::terminate_t object;
 
                 m_messages.recv(object);
 
-                BOOST_ASSERT(object.type == messages::terminate);
+                BOOST_ASSERT(object.type == rpc::terminate);
 
                 terminate();
 
@@ -135,7 +136,7 @@ void overseer_t::respond(const void* response, size_t size) {
     zmq::message_t message(size);
     memcpy(message.data(), response, size);
   
-    send(messages::chunk_t(), ZMQ_SNDMORE);
+    send(rpc::chunk_t(), ZMQ_SNDMORE);
     m_messages.send(message); 
 }
 
@@ -144,12 +145,12 @@ void overseer_t::timeout(ev::timer&, int) {
         return;
     }
     
-    send(messages::suicide_t());
+    send(rpc::terminate_t());
     terminate();
 }
 
 void overseer_t::heartbeat(ev::timer&, int) {
-    send(messages::heartbeat_t());
+    send(rpc::heartbeat_t());
 }
 
 void overseer_t::terminate() {

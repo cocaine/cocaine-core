@@ -37,7 +37,7 @@ job_t::~job_t() {
 }
 
 void job_t::discard(ev::periodic&, int) {
-    process_event(events::timeout_error("the job has expired"));
+    process_event(events::timeout_t("the job has expired"));
 }
 
 waiting::waiting():

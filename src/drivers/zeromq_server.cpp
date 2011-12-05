@@ -12,11 +12,11 @@ zeromq_server_job_t::zeromq_server_job_t(zeromq_server_t* driver, const route_t&
     m_route(route)
 { }
 
-void zeromq_server_job_t::react(const events::response& event) {
+void zeromq_server_job_t::react(const events::response_t& event) {
     send(event.message);
 }
 
-void zeromq_server_job_t::react(const events::error& event) {
+void zeromq_server_job_t::react(const events::error_t& event) {
     Json::Value object(Json::objectValue);
     
     object["code"] = event.code;

@@ -5,16 +5,25 @@
 
 #include "cocaine/common.hpp"
 
-namespace cocaine { namespace engine { namespace messages {
+namespace cocaine { namespace engine { namespace rpc {
 
 enum types {
-    invoke = 1,
+    heartbeat = 1,
+    invoke,
     terminate,
     chunk,
     choke,
-    error,
-    suicide,
-    heartbeat
+    error
+};
+
+struct heartbeat_t {
+    heartbeat_t():
+        type(heartbeat)
+    { }
+
+    unsigned int type;
+
+    MSGPACK_DEFINE(type);
 };
 
 struct invoke_t {
@@ -79,26 +88,6 @@ struct error_t {
     std::string message;
 
     MSGPACK_DEFINE(type, code, message);
-};
-
-struct suicide_t {
-    suicide_t():
-        type(suicide)
-    { }
-
-    unsigned int type;
-
-    MSGPACK_DEFINE(type);
-};
-
-struct heartbeat_t {
-    heartbeat_t():
-        type(heartbeat)
-    { }
-
-    unsigned int type;
-
-    MSGPACK_DEFINE(type);
 };
 
 }}}

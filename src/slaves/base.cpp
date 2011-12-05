@@ -27,7 +27,7 @@ slave_t::~slave_t() {
     terminate();
 }
 
-void slave_t::react(const events::heartbeat& event) {
+void slave_t::react(const events::heartbeat_t& event) {
     m_heartbeat_timer.stop();
     
     const busy* state = state_downcast<const busy*>();
@@ -46,18 +46,18 @@ void slave_t::timeout(ev::timer&, int) {
     const busy* state = state_downcast<const busy*>();
     
     if(state) {
-        state->job()->process_event(events::timeout_error("the job has timed out"));
+        state->job()->process_event(events::timeout_t("the job has timed out"));
     }
     
-    process_event(events::death());
+    process_event(events::terminated_t());
 }
 
-void alive::react(const events::invoked& event) {
+void alive::react(const events::invoked_t& event) {
     m_job = event.job;
     m_job->process_event(event);
 }
 
-void alive::react(const events::completed& event) {
+void alive::react(const events::choked_t& event) {
     m_job->process_event(event);
     m_job.reset();
 }

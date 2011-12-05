@@ -42,31 +42,12 @@ class job_t:
         job_t(driver::driver_t* driver, policy_t policy);
         virtual ~job_t();
 
-        virtual void react(const events::request_error& event) {
-            react(static_cast<const events::error&>(event));
-        }
-        
-        virtual void react(const events::resource_error& event) {
-            react(static_cast<const events::error&>(event));
-        }
-
-        virtual void react(const events::server_error& event) {
-            react(static_cast<const events::error&>(event));
-        }
-
-        virtual void react(const events::timeout_error& event) {
-            react(static_cast<const events::error&>(event));
-        }
-
-        virtual void react(const events::application_error& event) {
-            react(static_cast<const events::error&>(event));
-        }
-
-        virtual void react(const events::completed& event) { }
+        virtual void react(const events::timeout_t& event) { }
+        virtual void react(const events::choked_t& event) { }
     
     public:      
-        virtual void react(const events::response& event) = 0;
-        virtual void react(const events::error& event) = 0;
+        virtual void react(const events::response_t& event) = 0;
+        virtual void react(const events::error_t& event) = 0;
 
     public:
         inline driver::driver_t* driver() {
@@ -98,8 +79,8 @@ struct incomplete:
 {
     public:
         typedef boost::mpl::list<
-            sc::transition<events::timeout_error, complete, job_t, &job_t::react>, 
-            sc::transition<events::server_error,  complete, job_t, &job_t::react>
+            sc::transition<events::timeout_t, complete, job_t, &job_t::react>, 
+            sc::transition<events::error_t,   complete, job_t, &job_t::react>
         > reactions;
 };
 
@@ -108,10 +89,8 @@ struct unknown:
 {
     public:
         typedef boost::mpl::list<
-            sc::transition<events::request_error,  complete, job_t, &job_t::react>,
-            sc::transition<events::resource_error, complete, job_t, &job_t::react>,
-            sc::transition<events::enqueued,       waiting>,
-            sc::transition<events::invoked,        processing>
+            sc::transition<events::enqueued_t, waiting>,
+            sc::transition<events::invoked_t,  processing>
         > reactions;
 };
 
@@ -120,7 +99,7 @@ struct waiting:
 {
     public:
         typedef sc::transition<
-            events::invoked, processing
+            events::invoked_t, processing
         > reactions;
 
         waiting();
@@ -135,11 +114,11 @@ struct processing:
 {
     public:
         typedef boost::mpl::list<
-            sc::in_state_reaction<events::response,          job_t, &job_t::react>,
-            sc::in_state_reaction<events::application_error, job_t, &job_t::react>,
-            sc::transition<events::completed, complete,      job_t, &job_t::react>,
-            sc::transition<events::enqueued,  waiting>,
-            sc::transition<events::invoked,   processing>
+            sc::in_state_reaction<events::response_t,  job_t, &job_t::react>,
+            sc::in_state_reaction<events::error_t,     job_t, &job_t::react>,
+            sc::transition<events::choked_t, complete, job_t, &job_t::react>,
+            sc::transition<events::enqueued_t,  waiting>,
+            sc::transition<events::invoked_t,   processing>
         > reactions;
 
         processing();

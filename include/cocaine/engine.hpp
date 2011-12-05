@@ -126,8 +126,8 @@ class publication_t:
         publication_t(driver::driver_t* parent);
 
     public:
-        virtual void react(const events::response&);
-        virtual void react(const events::error&);
+        virtual void react(const events::response_t&);
+        virtual void react(const events::error_t&);
 };
 
 }}

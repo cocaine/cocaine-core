@@ -10,18 +10,18 @@ native_server_job_t::native_server_job_t(native_server_t* driver, const messages
     m_route(route)
 { }
 
-void native_server_job_t::react(const events::response& event) {
+void native_server_job_t::react(const events::response_t& event) {
     send(messages::tag_t(id()), ZMQ_SNDMORE);
     
     zeromq_server_t* server = static_cast<zeromq_server_t*>(m_driver);
     server->socket().send(event.message);
 }
 
-void native_server_job_t::react(const events::error& event) {
+void native_server_job_t::react(const events::error_t& event) {
     send(messages::error_t(id(), event.code, event.message));
 }
 
-void native_server_job_t::react(const events::completed& event) {
+void native_server_job_t::react(const events::choked_t& event) {
     send(messages::tag_t(id(), true));
 }
 
@@ -83,7 +83,7 @@ void native_server_t::process(ev::idle&, int) {
             }
 
             if(!m_socket.recv(job->request(), ZMQ_NOBLOCK)) {
-                job->process_event(events::request_error("missing request body"));
+                job->process_event(events::error_t(events::request_error, "missing request body"));
                 break;
             }
 

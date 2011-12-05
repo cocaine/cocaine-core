@@ -37,6 +37,6 @@ void process_t::reap() {
 }
 
 void process_t::signal(ev::child&, int) {
-    process_event(events::death());
+    process_event(events::terminated_t());
 }
 

@@ -10,7 +10,7 @@ lsd_job_t::lsd_job_t(lsd_server_t* driver, job::policy_t policy, const unique_id
     m_route(route)
 { }
 
-void lsd_job_t::react(const events::response& event) {
+void lsd_job_t::react(const events::response_t& event) {
     zeromq_server_t* server = static_cast<zeromq_server_t*>(m_driver);
     Json::Value root(Json::objectValue);
     
@@ -20,7 +20,7 @@ void lsd_job_t::react(const events::response& event) {
     server->socket().send(event.message);
 }
 
-void lsd_job_t::react(const events::error& event) {
+void lsd_job_t::react(const events::error_t& event) {
     Json::Value root(Json::objectValue);
 
     root["uuid"] = id();
@@ -30,7 +30,7 @@ void lsd_job_t::react(const events::error& event) {
     send(root);
 }
 
-void lsd_job_t::react(const events::completed& event) {
+void lsd_job_t::react(const events::choked_t& event) {
     Json::Value root(Json::objectValue);
 
     root["uuid"] = id();
@@ -134,7 +134,7 @@ void lsd_server_t::process(ev::idle&, int) {
             }
 
             if(!m_socket.recv(job->request())) {
-                job->process_event(events::request_error("missing request body"));
+                job->process_event(events::error_t(events::request_error, "missing request body"));
                 break;
             }
             
