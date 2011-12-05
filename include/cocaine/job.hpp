@@ -115,7 +115,6 @@ struct processing:
     public:
         typedef boost::mpl::list<
             sc::in_state_reaction<events::chunk_t,     job_t, &job_t::react>,
-            sc::in_state_reaction<events::error_t,     job_t, &job_t::react>,
             sc::transition<events::choked_t, complete, job_t, &job_t::react>,
             sc::transition<events::enqueued_t,  waiting>,
             sc::transition<events::invoked_t,   processing>
