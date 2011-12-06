@@ -68,9 +68,12 @@ manifest = {
 
 The JSON above is an application manifest, a description of the application you feed into Cocaine for it to be able to host it. In a distributed setup, this manifest will be sent to all the other nodes of the cluster automatically. Apart from this manifest, there is no other configuration needed to start serving the application.
 
+Trying it out
+=============
+
 In order for this application to come alive, you can either put the JSON manifest to the storage location specified in the command line (by default, it is /var/lib/cocaine/<instance>/apps), or dynamically push it into the server with the following easy steps:
 
-1. Connect to the server managment socket (tcp://*:5000 by default)
+* Connect to the server managment socket (tcp://*:5000 by default)
 
 ```python
 import zmq
@@ -79,7 +82,7 @@ context = zmq.Context()
 socket = context.socket(zmq.REQ)
 ```
 
-2. Build the JSON-RPC query
+* Build the JSON-RPC query
 
 ```python
 query = {
@@ -91,19 +94,20 @@ query = {
 }
 ```
 
-3. Send it out and receive the response
+* Send it out and receive the response
 
 ```python
 socket.send_json(query)
 print socket.recv_json()
 ```
 
-If the query is well-formed, all the specified apps will be saved to the storage (which can be shared among multiple servers) to recover them on the next start.
+* As a result, if the query is well-formed, all the specified apps will be saved to the storage (which can be shared among multiple servers) to recover them on the next start. The engines for your apps will be started and you'll get the initial runtime information and statistics in the response.
 
 JSON-RPC Reference
 ==================
 
 * Dynamically create engines
+
 ```python
 query = {
     "version": 2,
@@ -113,6 +117,7 @@ query = {
 ```
 
 * Dynamically destroy engines
+
 ```python
 query = {
     "version": 2,
@@ -122,6 +127,7 @@ query = {
 ```
 
 * Dynamically reload engines
+
 ```python
 query = {
     "version": 2,
@@ -131,6 +137,7 @@ query = {
 ```
 
 * Fetch the runtime information and statistics
+
 ```python
 query = {
     "version": 2,
