@@ -1,7 +1,7 @@
 What the hell is it?
 ====================
 
-Cocained is a fast and lightweight multi-language event-driven task-based distributed hybrid application server built on top of ZeroMQ transport. Yeah, it _is_ cool.
+Cocained is a fast and lightweight multi-language event-driven task-based distributed hybrid application server built on top of ZeroMQ transport. Yeah, it __is__ cool.
 
 Notable features:
 
@@ -66,14 +66,24 @@ manifest = {
 }
 ```
 
-The JSON above is an application manifest, a description of the application you feed into Cocaine for it to be able to host it. In a distributed setup, this manifest will be sent to all the other nodes of the cluster automatically. Apart from this manifest, there is no other configuration needed to start serving the application.
+The JSON above is an application manifest, a description of the application you feed into Cocaine for it to be able to host it. In a distributed setup, this manifest will be sent to all the other nodes of the cluster automatically. Apart from this manifest, there is _no other configuration needed to start serving the application_.
+
+This JSON is kinda self-descriptive, I think. There are four parts:
+
+* General stuff. Application __type__, which controls the plugin used to interpret the __args__ (in this example, the Python plugin will load the code from the location specified in the arguments) and the application __version__, used to distinguish different application releases in the cloud.
+
+* Engine policy. __Backend__ type, which can be either _thread_ or _process_, different timeouts, namely __heartbeat__ timeout, which controls the default interval the engine will wait for response chunks from its slaves and __suicide__ timeout, which controls the amount of time a slave will stay idle before termination and limits, namely __pool__ limit, which controls the maximum number of slaves and __queue__ limit, which controls the maximum number of jobs waiting in the queue for processing.
+
+* Publish-Subscribe. This part consists solely of one option, which is the __endpoint__ for engine publications.
+ 
+* Tasks. Tasks are, basically, event sources for the engine. They are described by task __method__, which is some kind of callable name specific to the application plugin; task __type__ which determines the _driver_ used to schedule that callable and driver-specific __arguments__.
 
 Trying it out
 =============
 
-In order for this application to come alive, you can either put the JSON manifest to the storage location specified in the command line (by default, it is /var/lib/cocaine/<instance>/apps), or dynamically push it into the server with the following easy steps:
+In order for this application to come alive, you can either put the JSON manifest to the storage location specified in the command line (by default, it is __/var/lib/cocaine/instance/apps__), or dynamically push it into the server with the following easy steps:
 
-* Connect to the server managment socket (tcp://*:5000 by default)
+* Connect to the server managment socket (__tcp://*:5000__ by default)
 
 ```python
 import zmq
@@ -101,7 +111,7 @@ socket.send_json(query)
 print socket.recv_json()
 ```
 
-* As a result, if the query is well-formed, all the specified apps will be saved to the storage (which can be shared among multiple servers) to recover them on the next start. The engines for your apps will be started and you'll get the initial runtime information and statistics in the response.
+* As a result, if the query is well-formed, all the specified apps _will be saved to the storage_ (which can be shared among multiple servers) to recover them on the next start. The engines for your apps will be started and you'll get the initial runtime information and statistics in the response.
 
 JSON-RPC Reference
 ==================
@@ -145,4 +155,4 @@ query = {
 }
 ```
 
-All these requests can be secured by RSA encryption, just bump the protocol version to 3 (this can be forced in the command line parameters), specify the "username" field, and send the RSA digital signature after the request.
+All these requests can be secured by RSA encryption, just bump the __protocol__ version to 3 (this can be forced in the command line parameters), specify the __username__ field, and send the RSA digital signature after the request. The signatures will be verified against the corresponding user public keys in the server storage.
