@@ -43,10 +43,9 @@ Json::Value native_server_t::info() const {
 void native_server_t::process(ev::idle&, int) {
     if(m_socket.pending()) {
         zmq::message_t message;
-        unsigned int route_part_counter = MAX_ROUTE_PARTS;
         route_t route;
 
-        while(route_part_counter--) {
+        do {
             m_socket.recv(&message);
 
             if(!message.size()) {
@@ -56,9 +55,9 @@ void native_server_t::process(ev::idle&, int) {
             route.push_back(std::string(
                 static_cast<const char*>(message.data()),
                 message.size()));
-        }
+        } while(m_socket.more());
 
-        if(route.empty() || !route_part_counter) {
+        if(route.empty() || !m_socket.more()) {
             syslog(LOG_ERR, "driver [%s:%s]: got a corrupted request - no route", 
                 m_engine->name().c_str(), m_method.c_str());
             return;

@@ -113,13 +113,12 @@ void core_t::request(ev::io&, int) {
 void core_t::process(ev::idle&, int) {
     if(m_server.pending()) {
         zmq::message_t message, signature;
-        unsigned int route_part_counter = MAX_ROUTE_PARTS;
         route_t route;
 
         Json::Reader reader(Json::Features::strictMode());
         Json::Value root;
 
-        while(route_part_counter--) {
+        do {
             m_server.recv(&message);
 
             if(!message.size()) {
@@ -129,9 +128,9 @@ void core_t::process(ev::idle&, int) {
             route.push_back(std::string(
                 static_cast<const char*>(message.data()),
                 message.size()));
-        }
+        } while(m_server.more());
 
-        if(route.empty() || !route_part_counter) {
+        if(route.empty() || !m_server.more()) {
             syslog(LOG_ERR, "core: got a corrupted request - no route");
             return;
         }

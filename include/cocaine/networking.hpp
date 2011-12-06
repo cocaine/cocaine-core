@@ -17,7 +17,6 @@ namespace cocaine { namespace networking {
 
 using namespace boost::tuples;
 
-#define MAX_ROUTE_PARTS 10
 typedef std::vector<std::string> route_t;
 
 class socket_t: 
