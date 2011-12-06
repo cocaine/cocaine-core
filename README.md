@@ -66,13 +66,13 @@ manifest = {
 }
 ```
 
-The JSON above is an application manifest, a description of the application you feed into Cocaine for it to be able to host it. In a distributed setup, this manifest will be sent to all the other nodes of the cluster automatically. Apart from this manifest, there is _no other configuration needed to start serving the application_.
+The JSON above is an application manifest, a description of the application you feed into Cocaine for it to be able to host it. In a distributed setup, this manifest will be sent to all the other nodes of the cluster automatically. Apart from this manifest, there is __no other configuration needed to start serving the application__.
 
 This JSON is kinda self-descriptive, I think. There are four parts:
 
 * General stuff. Application __type__, which controls the plugin used to interpret the __args__ (in this example, the Python plugin will load the code from the location specified in the arguments) and the application __version__, used to distinguish different application releases in the cloud.
 
-* Engine policy. __Backend__ type, which can be either _thread_ or _process_, different timeouts, namely __heartbeat__ timeout, which controls the default interval the engine will wait for response chunks from its slaves and __suicide__ timeout, which controls the amount of time a slave will stay idle before termination and limits, namely __pool__ limit, which controls the maximum number of slaves and __queue__ limit, which controls the maximum number of jobs waiting in the queue for processing.
+* Engine policy. __Backend__ type, which can be either _thread_ or _process_, different timeouts, namely __heartbeat__ timeout, which controls the default interval the engine will wait for response chunks from its slaves and __suicide__ timeout, which controls the amount of time a slave will stay idle before termination (when using __native-server__ driver, these timeouts and a couple of other options can be configured __per-request__) and limits, namely __pool__ limit, which controls the maximum number of slaves and __queue__ limit, which controls the maximum number of jobs waiting in the queue for processing.
 
 * Publish-Subscribe. This part consists solely of one option, which is the __endpoint__ for engine publications.
  
@@ -111,7 +111,7 @@ socket.send_json(query)
 print socket.recv_json()
 ```
 
-* As a result, if the query is well-formed, all the specified apps _will be saved to the storage_ (which can be shared among multiple servers) to recover them on the next start. The engines for your apps will be started and you'll get the initial runtime information and statistics in the response.
+* As a result, if the query is well-formed, all the specified apps __will be saved into the storage__ (which can be shared among multiple servers) to recover them on the next start. The engines for your apps will be started and you'll get the initial runtime information and statistics in the response.
 
 JSON-RPC Reference
 ==================
