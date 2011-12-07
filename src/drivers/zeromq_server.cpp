@@ -69,6 +69,8 @@ bool zeromq_server_job_t::send(zmq::message_t& chunk) {
 
 zeromq_server_t::zeromq_server_t(engine_t* engine, const std::string& method, const Json::Value& args) try:
     driver_t(engine, method),
+    m_backlog(args.get("backlog", 1000).asUInt()),
+    m_linger(args.get("linger", 0).asInt()),
     m_socket(m_engine->context(), ZMQ_ROUTER, boost::algorithm::join(
         boost::assign::list_of
             (config_t::get().core.instance)
@@ -83,7 +85,9 @@ zeromq_server_t::zeromq_server_t(engine_t* engine, const std::string& method, co
     if(endpoint.empty()) {
         throw std::runtime_error("no endpoint has been specified for the '" + m_method + "' task");
     }
-    
+
+    m_socket.setsockopt(ZMQ_HWM, &m_backlog, sizeof(m_backlog));
+    m_socket.setsockopt(ZMQ_LINGER, &m_linger, sizeof(m_linger));
     m_socket.bind(endpoint);
 
     m_watcher.set<zeromq_server_t, &zeromq_server_t::event>(this);
@@ -104,6 +108,7 @@ Json::Value zeromq_server_t::info() const {
 
     result["statistics"] = stats();
     result["type"] = "zeromq-server";
+    result["backlog"] = static_cast<Json::UInt>(m_backlog);
     result["endpoint"] = m_socket.endpoint();
     result["route"] = m_socket.route();
 

@@ -42,6 +42,10 @@ core_t::core_t():
     syslog(LOG_INFO, "core: route to this node is '%s'", m_server.route().c_str());
 
     // Listening socket
+    int linger = 0;
+
+    m_server.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
+
     for(std::vector<std::string>::const_iterator it = config_t::get().core.endpoints.begin();
         it != config_t::get().core.endpoints.end();
         ++it) 
@@ -54,6 +58,7 @@ core_t::core_t():
     if(!config_t::get().core.announce_endpoint.empty()) {
         try {
             m_announces.reset(new socket_t(m_context, ZMQ_PUB));
+            m_announces->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
             m_announces->connect("epgm://" + config_t::get().core.announce_endpoint);
         } catch(const zmq::error_t& e) {
             throw std::runtime_error(std::string("invalid announce endpoint - ") + e.what());

@@ -53,10 +53,12 @@ engine_t::engine_t(zmq::context_t& context, const std::string& name):
     m_context(context),
     m_messages(m_context, ZMQ_ROUTER)
 {
+    int linger = 0;
     m_app_cfg.name = name;
 
     syslog(LOG_DEBUG, "%s: constructing", identity());
-   
+
+    m_messages.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
     m_messages.bind(boost::algorithm::join(
         boost::assign::list_of
             (std::string("ipc:///var/run/cocaine"))

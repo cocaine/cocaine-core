@@ -63,6 +63,9 @@ class zeromq_server_t:
         virtual void process(ev::idle&, int);
 
     protected:
+        uint64_t m_backlog;
+        int m_linger;
+
         networking::channel_t m_socket;
         
         ev::io m_watcher; 

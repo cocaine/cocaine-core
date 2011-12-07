@@ -86,12 +86,9 @@ lsd_server_t::lsd_server_t(engine_t* engine, const std::string& method, const Js
 { }
 
 Json::Value lsd_server_t::info() const {
-    Json::Value result(Json::objectValue);
+    Json::Value result(zeromq_server_t::info());
 
-    result["statistics"] = stats();
     result["type"] = "server+lsd";
-    result["endpoint"] = m_socket.endpoint();
-    result["route"] = m_socket.route();
 
     return result;
 }

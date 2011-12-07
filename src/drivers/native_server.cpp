@@ -43,12 +43,9 @@ native_server_t::native_server_t(engine_t* engine, const std::string& method, co
 { }
 
 Json::Value native_server_t::info() const {
-    Json::Value result(Json::objectValue);
+    Json::Value result(zeromq_server_t::info());
 
-    result["statistics"] = stats();
     result["type"] = "native-server";
-    result["endpoint"] = m_socket.endpoint();
-    result["route"] = m_socket.route();
 
     return result;
 }
