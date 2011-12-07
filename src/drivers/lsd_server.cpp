@@ -129,7 +129,7 @@ void lsd_server_t::process(ev::idle&, int) {
 
             job::policy_t policy(
                 root.get("urgent", false).asBool(),
-                root.get("timeout", config_t::get().engine.heartbeat_timeout).asDouble(),
+                root.get("timeout", 0.0f).asDouble(),
                 root.get("deadline", 0.0f).asDouble());
 
             boost::shared_ptr<lsd_job_t> job;

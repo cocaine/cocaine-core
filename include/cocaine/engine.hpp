@@ -77,7 +77,7 @@ class engine_t:
         void publish(const std::string& key, const Json::Value& object);
 
     public:
-        inline std::string name() const { 
+        inline const std::string& name() const { 
             return m_app_cfg.name; 
         }
 

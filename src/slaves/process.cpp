@@ -37,6 +37,8 @@ void process_t::reap() {
 }
 
 void process_t::signal(ev::child&, int) {
+    syslog(LOG_DEBUG, "slave [%s:%s]: got a child termination signal", 
+        m_engine->name().c_str(), id().c_str());
     process_event(events::terminated_t());
 }
 

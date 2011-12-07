@@ -30,10 +30,15 @@ struct slave_t:
         virtual ~slave_t();
 
         void react(const events::heartbeat_t& event);
-        
+       
     public:
         virtual void reap() = 0;
 
+    public: 
+        const char* identity() const {
+            return m_identity.c_str();
+        }
+        
     private:
         void timeout(ev::timer&, int);
 
@@ -42,6 +47,7 @@ struct slave_t:
 
     private:
         ev::timer m_heartbeat_timer;
+        std::string m_identity;
 };
 
 struct unknown:

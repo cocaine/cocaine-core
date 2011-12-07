@@ -158,6 +158,9 @@ Json::Value engine_t::stop() {
     m_running = false;
 
     // Abort all the outstanding jobs 
+    syslog(LOG_DEBUG, "engine [%s]: dropping %zu queued %s",
+        m_app_cfg.name.c_str(), m_queue.size(), m_queue.size() == 1 ? "job" : "jobs");
+
     while(!m_queue.empty()) {
         m_queue.front()->process_event(
             events::error_t(events::server_error, "engine is shutting down"));
@@ -390,6 +393,7 @@ void engine_t::process(ev::idle&, int) {
                         syslog(LOG_ERR, "engine [%s]: the application seems to be broken",
                             m_app_cfg.name.c_str());
                         stop();
+                        return;
                     }
 
                     break;

@@ -1,5 +1,6 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/assign.hpp>
+#include <boost/format.hpp>
 #include <boost/thread.hpp>
 
 #include "cocaine/events.hpp"
@@ -15,18 +16,18 @@ overseer_t::overseer_t(const unique_id_t::type& id_, zmq::context_t& context, co
     unique_id_t(id_),
     m_context(context),
     m_messages(m_context, ZMQ_DEALER, id()),
-    m_app_name(name),
     m_loop(),
     m_watcher(m_loop),
     m_processor(m_loop),
     m_suicide_timer(m_loop),
-    m_heartbeat_timer(m_loop)
+    m_heartbeat_timer(m_loop),
+    m_identity((boost::format("slave [%1%:%2%]") % name % id_).str())
 {
     m_messages.connect(boost::algorithm::join(
         boost::assign::list_of
             (std::string("ipc:///var/run/cocaine"))
             (config_t::get().core.instance)
-            (m_app_name),
+            (name),
         "/")
     );
     
@@ -46,13 +47,11 @@ void overseer_t::operator()(const std::string& type, const std::string& args) {
     try {
         m_app = core::registry_t::instance()->create(type, args);
     } catch(const unrecoverable_error_t& e) {
-        syslog(LOG_ERR, "slave [%s:%s]: unable to instantiate the app - %s", 
-            m_app_name.c_str(), id().c_str(), e.what());
+        syslog(LOG_ERR, "%s: unable to instantiate the app - %s", identity(), e.what());
         send(rpc::error_t(events::server_error, e.what()));
         return;
     } catch(...) {
-        syslog(LOG_ERR, "slave [%s:%s]: caught an unexpected exception",
-            m_app_name.c_str(), id().c_str());
+        syslog(LOG_ERR, "%s: caught an unexpected exception", identity());
         send(rpc::error_t(events::server_error, "unexpected exception"));
         return;
     }
@@ -91,16 +90,15 @@ void overseer_t::process(ev::idle&, int) {
                         request.size());
                     boost::this_thread::interruption_point();
                 } catch(const recoverable_error_t& e) {
-                    syslog(LOG_ERR, "slave [%s:%s]: '%s' invocation failed - %s", 
-                        m_app_name.c_str(), id().c_str(), object.method.c_str(), e.what());
+                    syslog(LOG_ERR, "%s: '%s' invocation failed - %s", 
+                        identity(), object.method.c_str(), e.what());
                     send(rpc::error_t(events::app_error, e.what()));
                 } catch(const unrecoverable_error_t& e) {
-                    syslog(LOG_ERR, "slave [%s:%s]: '%s' invocation failed - %s", 
-                        m_app_name.c_str(), id().c_str(), object.method.c_str(), e.what());
+                    syslog(LOG_ERR, "%s: '%s' invocation failed - %s", 
+                        identity(), object.method.c_str(), e.what());
                     send(rpc::error_t(events::server_error, e.what())); 
                 } catch(...) {
-                    syslog(LOG_ERR, "slave [%s:%s]: caught an unexpected exception",
-                        m_app_name.c_str(), id().c_str());
+                    syslog(LOG_ERR, "%s: caught an unexpected exception", identity());
                     send(rpc::error_t(events::server_error, "unexpected exception")); 
                 }
                     
@@ -142,6 +140,7 @@ void overseer_t::respond(const void* response, size_t size) {
 
 void overseer_t::timeout(ev::timer&, int) {
     if(m_messages.pending()) {
+        syslog(LOG_ERR, "%s: postponing suicide", identity());
         return;
     }
     

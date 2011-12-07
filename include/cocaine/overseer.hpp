@@ -44,12 +44,16 @@ class overseer_t:
         void terminate();
 
     private:
+        const char* identity() const {
+            return m_identity.c_str();
+        }
+
+    private:
         // Messaging
         zmq::context_t& m_context;
         networking::channel_t m_messages;
 
         // Application instance
-        std::string m_app_name;
         boost::shared_ptr<plugin::source_t> m_app;
 
         // Event loop
@@ -57,6 +61,9 @@ class overseer_t:
         ev::io m_watcher;
         ev::idle m_processor;
         ev::timer m_suicide_timer, m_heartbeat_timer;
+
+        // Logging
+        std::string m_identity;
 };
 
 }}

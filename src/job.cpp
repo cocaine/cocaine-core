@@ -5,7 +5,7 @@ using namespace cocaine::engine::job;
 
 policy_t::policy_t():
     urgent(false),
-    timeout(config_t::get().engine.heartbeat_timeout),
+    timeout(0.0f),
     deadline(0.0f)
 { }
 
