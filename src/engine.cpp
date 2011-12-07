@@ -142,7 +142,7 @@ Json::Value engine_t::start(const Json::Value& manifest) {
             std::string task(*it);
             std::string type(tasks[task]["type"].asString());
             
-            if(type == "recurring-timer") {
+            if(type == "recurring-timer" || type == "timed+auto") {
                 m_tasks.insert(task, new driver::recurring_timer_t(this, task, tasks[task]));
             } else if(type == "filesystem-monitor") {
                 m_tasks.insert(task, new driver::filesystem_monitor_t(this, task, tasks[task]));
@@ -432,7 +432,10 @@ void engine_t::process(ev::idle&, int) {
 
                     BOOST_ASSERT(object.type == rpc::terminate);
 
-                    slave->second->process_event(events::terminated_t());
+                    // NOTE: A slave might be already terminated by its inner mechanics
+                    if(!slave->state_downcast<const slave::dead*>()) {
+                        slave->second->process_event(events::terminated_t());
+                    }
 
                     return;
                 }

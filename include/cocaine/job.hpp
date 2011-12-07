@@ -142,8 +142,7 @@ struct processing:
 
 struct complete:
     public sc::simple_state<complete, job_t>
-{
-};
+{ };
 
 }}}
 
