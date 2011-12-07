@@ -433,7 +433,7 @@ void engine_t::process(ev::idle&, int) {
                     BOOST_ASSERT(object.type == rpc::terminate);
 
                     // NOTE: A slave might be already terminated by its inner mechanics
-                    if(!slave->state_downcast<const slave::dead*>()) {
+                    if(!slave->second->state_downcast<const slave::dead*>()) {
                         slave->second->process_event(events::terminated_t());
                     }
 
