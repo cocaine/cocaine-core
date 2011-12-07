@@ -140,7 +140,7 @@ void overseer_t::respond(const void* response, size_t size) {
 
 void overseer_t::timeout(ev::timer&, int) {
     if(m_messages.pending()) {
-        syslog(LOG_ERR, "%s: postponing suicide", identity());
+        syslog(LOG_ERR, "%s: postponing the suicide", identity());
         return;
     }
     
