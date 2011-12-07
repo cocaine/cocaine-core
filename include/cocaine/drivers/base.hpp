@@ -31,7 +31,8 @@ enum audit_type {
 };
 
 class driver_t:
-    public boost::noncopyable
+    public boost::noncopyable,
+    public identifiable_t
 {
     public:
         driver_t(engine_t* engine, const std::string& method);

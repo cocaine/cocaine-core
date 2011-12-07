@@ -11,22 +11,23 @@
 // limitations under the License.
 //
 
+#include <boost/format.hpp>
+
 #include "cocaine/drivers/base.hpp"
 #include "cocaine/engine.hpp"
 
 using namespace cocaine::engine::driver;
         
 driver_t::driver_t(engine_t* engine, const std::string& method):
+    identifiable_t((boost::format("driver [%s:%s]") % engine->name() % method).str()),
     m_engine(engine),
     m_method(method)
 {
-    syslog(LOG_DEBUG, "driver [%s:%s]: constructing", 
-        m_engine->name().c_str(), m_method.c_str());
+    syslog(LOG_DEBUG, "%s: constructing", identity());
 }
 
 driver_t::~driver_t() {
-    syslog(LOG_DEBUG, "driver [%s:%s]: destructing",
-        m_engine->name().c_str(), m_method.c_str());
+    syslog(LOG_DEBUG, "%s: destructing", identity());
 }
 
 void driver_t::audit(audit_type type, ev::tstamp value) {

@@ -23,7 +23,8 @@ namespace cocaine { namespace engine {
 // Thread manager
 class overseer_t:
     public boost::noncopyable,
-    public unique_id_t
+    public unique_id_t,
+    public identifiable_t
 {
     public:
         overseer_t(const unique_id_t::type& id,

@@ -16,6 +16,7 @@
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/assign.hpp>
+#include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include "cocaine/drivers.hpp"
@@ -47,13 +48,14 @@ bool engine_t::idle_slave::operator()(pool_map_t::pointer slave) const {
 // -----------
 
 engine_t::engine_t(zmq::context_t& context, const std::string& name):
+    identifiable_t((boost::format("engine [%s]") % name).str()),
     m_running(false),
     m_context(context),
     m_messages(m_context, ZMQ_ROUTER)
 {
     m_app_cfg.name = name;
 
-    syslog(LOG_DEBUG, "engine [%s]: constructing", m_app_cfg.name.c_str());
+    syslog(LOG_DEBUG, "%s: constructing", identity());
    
     m_messages.bind(boost::algorithm::join(
         boost::assign::list_of
@@ -77,7 +79,7 @@ engine_t::~engine_t() {
         stop();
     }
 
-    syslog(LOG_DEBUG, "engine [%s]: destructing", m_app_cfg.name.c_str()); 
+    syslog(LOG_DEBUG, "%s: destructing", identity()); 
 }
 
 // Operations
@@ -125,7 +127,7 @@ Json::Value engine_t::start(const Json::Value& manifest) {
     Json::Value tasks(manifest["tasks"]);
 
     if(!tasks.isNull() && tasks.size()) {
-        syslog(LOG_INFO, "engine [%s]: starting", m_app_cfg.name.c_str()); 
+        syslog(LOG_INFO, "%s: starting", identity()); 
     
         std::string endpoint(manifest["pubsub"]["endpoint"].asString());
         
@@ -166,13 +168,13 @@ Json::Value engine_t::start(const Json::Value& manifest) {
 Json::Value engine_t::stop() {
     BOOST_ASSERT(m_running);
     
-    syslog(LOG_INFO, "engine [%s]: stopping", m_app_cfg.name.c_str()); 
+    syslog(LOG_INFO, "%s: stopping", identity()); 
 
     m_running = false;
 
     // Abort all the outstanding jobs 
-    syslog(LOG_DEBUG, "engine [%s]: dropping %zu queued %s",
-        m_app_cfg.name.c_str(), m_queue.size(), m_queue.size() == 1 ? "job" : "jobs");
+    syslog(LOG_DEBUG, "%s: dropping %zu queued %s",
+        identity(), m_queue.size(), m_queue.size() == 1 ? "job" : "jobs");
 
     while(!m_queue.empty()) {
         m_queue.front()->process_event(
@@ -268,15 +270,14 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
                     slave.reset(new slave::process_t(this, m_app_cfg.type, m_app_cfg.args));
                 }
             } catch(const std::exception& e) {
-                syslog(LOG_ERR, "engine [%s]: unable to spawn more workers - %s",
-                    m_app_cfg.name.c_str(), e.what());
+                syslog(LOG_ERR, "%s: unable to spawn more workers - %s", identity(), e.what());
             }
 
             std::string slave_id(slave->id());
             m_pool.insert(slave_id, slave);
         } else if(!overflow && (m_queue.size() > m_policy.queue_limit)) {
-            syslog(LOG_ERR, "engine [%s]: dropping '%s' job - the queue is full",
-                m_app_cfg.name.c_str(), job->driver()->method().c_str());
+            syslog(LOG_ERR, "%s: dropping '%s' job - the queue is full",
+                identity(), job->driver()->method().c_str());
             job->process_event(events::error_t(events::resource_error, "the queue is full"));
             return;
         }
@@ -403,8 +404,7 @@ void engine_t::process(ev::idle&, int) {
                     }
                     
                     if(object.code == events::server_error) {
-                        syslog(LOG_ERR, "engine [%s]: the application seems to be broken",
-                            m_app_cfg.name.c_str());
+                        syslog(LOG_ERR, "%s: the application seems to be broken", identity());
                         stop();
                         return;
                     }
@@ -449,8 +449,8 @@ void engine_t::process(ev::idle&, int) {
             // TEST: Ensure that there're no more message parts pending on the channel
             BOOST_ASSERT(!m_messages.more());
         } else {
-            syslog(LOG_DEBUG, "engine [%s]: dropping type %d message from a dead slave %s", 
-                m_app_cfg.name.c_str(), code, slave_id.c_str());
+            syslog(LOG_DEBUG, "%s: dropping type %d message from a dead slave %s", 
+                identity(), code, slave_id.c_str());
             m_messages.drop_remaining_parts();
         }
     } else {
@@ -474,11 +474,8 @@ void engine_t::cleanup(ev::timer&, int) {
             m_pool.erase(*it);
         }
         
-        syslog(LOG_INFO, "engine [%s]: recycled %zu dead %s", 
-            m_app_cfg.name.c_str(),
-            corpses.size(),
-            corpses.size() == 1 ? "slave" : "slaves"
-        );
+        syslog(LOG_INFO, "%s: recycled %zu dead %s", 
+            identity(), corpses.size(), corpses.size() == 1 ? "slave" : "slaves");
     }
 }
 

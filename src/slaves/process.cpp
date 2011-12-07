@@ -51,8 +51,7 @@ void process_t::reap() {
 
 void process_t::signal(ev::child&, int) {
     if(!state_downcast<const dead*>()) {
-        syslog(LOG_DEBUG, "slave [%s:%s]: got a child termination signal", 
-            m_engine->name().c_str(), id().c_str());
+        syslog(LOG_DEBUG, "%s: got a child termination signal", identity());
         process_event(events::terminated_t());
     }
 }

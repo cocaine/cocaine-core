@@ -71,8 +71,7 @@ void native_server_t::process(ev::idle&, int) {
         } while(m_socket.more());
 
         if(route.empty() || !m_socket.more()) {
-            syslog(LOG_ERR, "driver [%s:%s]: got a corrupted request - no route", 
-                m_engine->name().c_str(), m_method.c_str());
+            syslog(LOG_ERR, "%s: got a corrupted request - no route", identity());
             return;
         }
 
@@ -83,8 +82,8 @@ void native_server_t::process(ev::idle&, int) {
             boost::tuple<unsigned int&, messages::request_t&> tier(type, request);
 
             if(!m_socket.recv_multi(tier)) {
-                syslog(LOG_ERR, "driver [%s:%s]: got a corrupted request from '%s'",
-                    m_engine->name().c_str(), m_method.c_str(), route.back().c_str());
+                syslog(LOG_ERR, "%s: got a corrupted request from '%s'",
+                    identity(), route.back().c_str());
                 continue;
             }
 
@@ -96,14 +95,14 @@ void native_server_t::process(ev::idle&, int) {
             try {
                 job.reset(new native_server_job_t(this, request, route));
             } catch(const std::runtime_error& e) {
-                syslog(LOG_ERR, "driver [%s:%s]: got a corrupted request from '%s' - %s",
-                    m_engine->name().c_str(), m_method.c_str(), route.back().c_str(), e.what());
+                syslog(LOG_ERR, "%s: got a corrupted request from '%s' - %s",
+                    identity(), route.back().c_str(), e.what());
                 continue;
             }
 
             if(!m_socket.more() || !m_socket.recv(job->request())) {
-                syslog(LOG_ERR, "driver [%s:%s]: got a corrupted request from '%s' - missing request body",
-                    m_engine->name().c_str(), m_method.c_str(), route.back().c_str());
+                syslog(LOG_ERR, "%s: got a corrupted request from '%s' - missing request body",
+                    identity(), route.back().c_str());
                 job->process_event(events::error_t(events::request_error, "missing request body"));
                 continue;
             }

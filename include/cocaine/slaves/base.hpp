@@ -36,7 +36,8 @@ struct dead;
 struct slave_t:
     public sc::state_machine<slave_t, unknown>,
     public birth_control_t<slave_t>,
-    public unique_id_t
+    public unique_id_t,
+    public identifiable_t
 {
     public:
         slave_t(engine_t* engine);
@@ -47,11 +48,6 @@ struct slave_t:
     public:
         virtual void reap() = 0;
 
-    public: 
-        const char* identity() const {
-            return m_identity.c_str();
-        }
-        
     private:
         void timeout(ev::timer&, int);
 
@@ -60,7 +56,6 @@ struct slave_t:
 
     private:
         ev::timer m_heartbeat_timer;
-        std::string m_identity;
 };
 
 struct unknown:

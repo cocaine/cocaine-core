@@ -27,14 +27,14 @@ using namespace cocaine::plugin;
 
 overseer_t::overseer_t(const unique_id_t::type& id_, zmq::context_t& context, const std::string& name):
     unique_id_t(id_),
+    identifiable_t((boost::format("slave [%1%:%2%]") % name % id_).str()),
     m_context(context),
     m_messages(m_context, ZMQ_DEALER, id()),
     m_loop(),
     m_watcher(m_loop),
     m_processor(m_loop),
     m_suicide_timer(m_loop),
-    m_heartbeat_timer(m_loop),
-    m_identity((boost::format("slave [%1%:%2%]") % name % id_).str())
+    m_heartbeat_timer(m_loop)
 {
     m_messages.connect(boost::algorithm::join(
         boost::assign::list_of

@@ -135,8 +135,7 @@ void zeromq_server_t::process(ev::idle&, int) {
         } while(m_socket.more());
 
         if(route.empty() || !m_socket.more()) {
-            syslog(LOG_ERR, "driver [%s:%s]: got a corrupted request - no route", 
-                m_engine->name().c_str(), m_method.c_str());
+            syslog(LOG_ERR, "%s: got a corrupted request - no route", identity());
             return;
         }
 

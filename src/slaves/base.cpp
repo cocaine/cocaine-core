@@ -20,8 +20,8 @@
 using namespace cocaine::engine::slave;
 
 slave_t::slave_t(engine_t* engine):
-    m_engine(engine),
-    m_identity((boost::format("slave [%1%:%2%]") % engine->name() % id()).str())
+    identifiable_t((boost::format("slave [%1%:%2%]") % engine->name() % id()).str()),
+    m_engine(engine)
 {
     syslog(LOG_DEBUG, "%s: constructing", identity());
 
