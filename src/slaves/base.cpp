@@ -44,16 +44,26 @@ slave_t::~slave_t() {
 }
 
 void slave_t::react(const events::heartbeat_t& event) {
+    if(!state_downcast<const alive*>()) {
+        syslog(LOG_DEBUG, "%s: came alive in %.02f seconds",
+            identity(), 
+            10.0f - ev_timer_remaining(
+                ev_default_loop(ev::AUTO),
+                static_cast<ev_timer*>(&m_heartbeat_timer)
+            )
+        );
+    }
+
     m_heartbeat_timer.stop();
     
     const busy* state = state_downcast<const busy*>();
 
     if(state && state->job()->policy().timeout > 0) {
-        syslog(LOG_DEBUG, "%s: setting timeout to %.02f seconds (job-specific)",
+        syslog(LOG_DEBUG, "%s: resetting timeout to %.02f seconds (job-specific)",
             identity(), state->job()->policy().timeout);
         m_heartbeat_timer.start(state->job()->policy().timeout);
     } else {
-        syslog(LOG_DEBUG, "%s: setting timeout to %.02f seconds", 
+        syslog(LOG_DEBUG, "%s: resetting timeout to %.02f seconds", 
             identity(), config_t::get().engine.heartbeat_timeout);
         m_heartbeat_timer.start(config_t::get().engine.heartbeat_timeout);
     }
