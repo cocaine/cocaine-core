@@ -175,8 +175,8 @@ Json::Value engine_t::stop() {
     m_running = false;
 
     // Abort all the outstanding jobs 
-    syslog(LOG_DEBUG, "%s: dropping %zu queued %s",
-        identity(), m_queue.size(), m_queue.size() == 1 ? "job" : "jobs");
+    syslog(LOG_DEBUG, "%s: dropping %zu queued %s", identity(), m_queue.size(), 
+        m_queue.size() == 1 ? "job" : "jobs");
 
     while(!m_queue.empty()) {
         m_queue.front()->process_event(
@@ -478,9 +478,9 @@ void engine_t::cleanup(ev::timer&, int) {
         for(corpse_list_t::iterator it = corpses.begin(); it != corpses.end(); ++it) {
             m_pool.erase(*it);
         }
-        
-        syslog(LOG_INFO, "%s: recycled %zu dead %s", 
-            identity(), corpses.size(), corpses.size() == 1 ? "slave" : "slaves");
+
+        syslog(LOG_INFO, "%s: recycled %zu dead %s", identity(), corpses.size(),
+            corpses.size() == 1 ? "slave" : "slaves");
     }
 }
 

@@ -104,7 +104,7 @@ int main(int argc, char* argv[]) {
     }
 
     if(vm.count("version")) {
-        std::cout << "Cocaine 0.6.6-dev" << std::endl;
+        std::cout << "Cocaine 0.6.8-dev" << std::endl;
         return EXIT_SUCCESS;
     }
 
