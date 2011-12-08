@@ -45,7 +45,7 @@ slave_t::~slave_t() {
 
 void slave_t::react(const events::heartbeat_t& event) {
     if(!state_downcast<const alive*>()) {
-        syslog(LOG_DEBUG, "%s: came alive in %.02f seconds",
+        syslog(LOG_DEBUG, "%s: came alive in %.03f seconds",
             identity(), 
             10.0f - ev_timer_remaining(
                 ev_default_loop(ev::AUTO),
