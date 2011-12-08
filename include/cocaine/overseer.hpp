@@ -58,11 +58,6 @@ class overseer_t:
         void terminate();
 
     private:
-        const char* identity() const {
-            return m_identity.c_str();
-        }
-
-    private:
         // Messaging
         zmq::context_t& m_context;
         networking::channel_t m_messages;
@@ -75,9 +70,6 @@ class overseer_t:
         ev::io m_watcher;
         ev::idle m_processor;
         ev::timer m_suicide_timer, m_heartbeat_timer;
-
-        // Logging
-        std::string m_identity;
 };
 
 }}
