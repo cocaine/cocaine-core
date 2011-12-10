@@ -308,32 +308,38 @@ void engine_t::publish(const std::string& key, const Json::Value& object) {
 
             message.rebuild(envelope.str().size());
             memcpy(message.data(), envelope.str().data(), envelope.str().size());
-            m_pubsub->send(message, ZMQ_SNDMORE);
+            
+            if(m_pubsub->send(message, ZMQ_SNDMORE)) {
+                Json::Value value(object[field]);
+                std::string result;
 
-            Json::Value value(object[field]);
-            std::string result;
+                switch(value.type()) {
+                    case Json::booleanValue:
+                        result = value.asBool() ? "true" : "false";
+                        break;
+                    case Json::intValue:
+                    case Json::uintValue:
+                        result = boost::lexical_cast<std::string>(value.asInt());
+                        break;
+                    case Json::realValue:
+                        result = boost::lexical_cast<std::string>(value.asDouble());
+                        break;
+                    case Json::stringValue:
+                        result = value.asString();
+                        break;
+                    default:
+                        result = boost::lexical_cast<std::string>(value);
+                }
 
-            switch(value.type()) {
-                case Json::booleanValue:
-                    result = value.asBool() ? "true" : "false";
-                    break;
-                case Json::intValue:
-                case Json::uintValue:
-                    result = boost::lexical_cast<std::string>(value.asInt());
-                    break;
-                case Json::realValue:
-                    result = boost::lexical_cast<std::string>(value.asDouble());
-                    break;
-                case Json::stringValue:
-                    result = value.asString();
-                    break;
-                default:
-                    result = boost::lexical_cast<std::string>(value);
+                message.rebuild(result.size());
+                memcpy(message.data(), result.data(), result.size());
+                
+                if(!m_pubsub->send(message)) {
+                    syslog(LOG_ERR, "%s: unable to publish the object", identity());
+                }
+            } else {
+                syslog(LOG_ERR, "%s: unable to publish the object", identity());
             }
-
-            message.rebuild(result.size());
-            memcpy(message.data(), result.data(), result.size());
-            m_pubsub->send(message);
         }
     }
 }
@@ -354,7 +360,11 @@ void engine_t::process(ev::idle&, int) {
         unsigned int code = 0;
 
         boost::tuple<raw<std::string>, unsigned int&> tier(protect(slave_id), code);
-        m_messages.recv_multi(tier);
+        
+        if(!m_messages.recv_multi(tier)) {
+            syslog(LOG_ERR, "%s: unable to receive the rpc object header", identity());
+            return;
+        }
 
         pool_map_t::iterator slave(m_pool.find(slave_id));
 
@@ -366,7 +376,10 @@ void engine_t::process(ev::idle&, int) {
                 case rpc::heartbeat: {
                     rpc::heartbeat_t object;
 
-                    m_messages.recv(object);
+                    if(!m_messages.recv(object)) {
+                        syslog(LOG_ERR, "%s: unable to receive the rpc heartbeat object", identity());
+                        return;
+                    }
 
                     BOOST_ASSERT(object.type == rpc::heartbeat);
 
@@ -378,7 +391,11 @@ void engine_t::process(ev::idle&, int) {
                     zmq::message_t message;
 
                     boost::tuple<rpc::chunk_t&, zmq::message_t*> tier(object, &message);
-                    m_messages.recv_multi(tier);
+                    
+                    if(!m_messages.recv_multi(tier)) {
+                        syslog(LOG_ERR, "%s: unable to receive the rpc chunk object", identity());
+                        return;
+                    }
 
                     BOOST_ASSERT(object.type == rpc::chunk);
                     BOOST_ASSERT(state != 0);
@@ -391,7 +408,10 @@ void engine_t::process(ev::idle&, int) {
                 case rpc::error: {
                     rpc::error_t object;
 
-                    m_messages.recv(object);
+                    if(!m_messages.recv(object)) {
+                        syslog(LOG_ERR, "%s: unable to receive the rpc error object", identity());
+                        return;
+                    }
 
                     BOOST_ASSERT(object.type == rpc::error);
                     BOOST_ASSERT(state || object.code == events::server_error);
@@ -417,7 +437,10 @@ void engine_t::process(ev::idle&, int) {
                 case rpc::choke: {
                     rpc::choke_t object;
 
-                    m_messages.recv(object);
+                    if(!m_messages.recv(object)) {
+                        syslog(LOG_ERR, "%s: unable to receive the rpc choke object", identity());
+                        return;
+                    }
 
                     BOOST_ASSERT(object.type == rpc::choke);
                     BOOST_ASSERT(state != 0);
@@ -430,7 +453,10 @@ void engine_t::process(ev::idle&, int) {
                 case rpc::terminate: {
                     rpc::terminate_t object;
 
-                    m_messages.recv(object);
+                    if(!m_messages.recv(object)) {
+                        syslog(LOG_ERR, "%s: unable to receive the rpc terminate object", identity());
+                        return;
+                    }
 
                     BOOST_ASSERT(object.type == rpc::terminate);
 

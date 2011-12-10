@@ -137,7 +137,7 @@ void core_t::process(ev::idle&, int) {
         Json::Value root;
 
         do {
-            m_server.recv(&message);
+            BOOST_VERIFY(m_server.recv(&message));
 
             if(!message.size()) {
                 break;
@@ -149,14 +149,14 @@ void core_t::process(ev::idle&, int) {
         } while(m_server.more());
 
         if(route.empty() || !m_server.more()) {
-            syslog(LOG_ERR, "core: got a corrupted request - no route");
+            syslog(LOG_ERR, "core: got a corrupted request - invalid route");
             return;
         }
 
-        m_server.recv(&message);
+        BOOST_VERIFY(m_server.recv(&message));
 
         if(m_server.more()) {
-            m_server.recv(&signature);
+            BOOST_VERIFY(m_server.recv(&signature));
         }
 
         if(reader.parse(
@@ -189,12 +189,18 @@ void core_t::process(ev::idle&, int) {
                     }
                 }
 
-                respond(route, dispatch(root));
+                if(!respond(route, dispatch(root))) {
+                    syslog(LOG_ERR, "core: unable to send the response");
+                }
             } catch(const std::runtime_error& e) {
-                respond(route, helpers::make_json("error", e.what()));
+                if(!respond(route, helpers::make_json("error", e.what()))) {
+                    syslog(LOG_ERR, "core: unable to send the response");
+                }
             }
         } else {
-            respond(route, helpers::make_json("error", reader.getFormatedErrorMessages()));
+            if(!respond(route, helpers::make_json("error", reader.getFormatedErrorMessages()))) {
+                syslog(LOG_ERR, "core: unable to send the response");
+            }
         }
     } else {
         m_watcher.start(m_server.fd(), ev::READ);
@@ -401,7 +407,7 @@ void core_t::recover() {
 }
 
 void core_t::announce(ev::timer&, int) {
-    syslog(LOG_DEBUG, "core: announcing");
+    syslog(LOG_DEBUG, "core: announcing the node");
 
     std::ostringstream envelope;
 
@@ -411,11 +417,16 @@ void core_t::announce(ev::timer&, int) {
     zmq::message_t message(envelope.str().size());
 
     memcpy(message.data(), envelope.str().data(), envelope.str().size());
-    m_announces->send(message, ZMQ_SNDMORE);
-
-    std::string announce(Json::FastWriter().write(info()));
-    message.rebuild(announce.size());
-
-    memcpy(message.data(), announce.data(), announce.size());
-    m_announces->send(message);
+    
+    if(m_announces->send(message, ZMQ_SNDMORE)) {
+        std::string announce(Json::FastWriter().write(info()));
+        message.rebuild(announce.size());
+        memcpy(message.data(), announce.data(), announce.size());
+        
+        if(!m_announces->send(message)) {
+            syslog(LOG_WARNING, "core: unable to announce the node");
+        }
+    } else {
+        syslog(LOG_WARNING, "core: unable to announce the node");
+    }
 }

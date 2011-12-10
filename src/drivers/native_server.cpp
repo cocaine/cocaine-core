@@ -24,18 +24,23 @@ native_server_job_t::native_server_job_t(native_server_t* driver, const messages
 { }
 
 void native_server_job_t::react(const events::chunk_t& event) {
-    send(messages::tag_t(id()), ZMQ_SNDMORE);
-    
     zeromq_server_t* server = static_cast<zeromq_server_t*>(m_driver);
-    server->socket().send(event.message);
+    
+    if(!send(messages::tag_t(id()), ZMQ_SNDMORE) || !server->socket().send(event.message)) {
+        syslog(LOG_ERR, "%s: unable to send the response", m_driver->identity());
+    }
 }
 
 void native_server_job_t::react(const events::error_t& event) {
-    send(messages::error_t(id(), event.code, event.message));
+    if(!send(messages::error_t(id(), event.code, event.message))) {
+        syslog(LOG_ERR, "%s: unable to send the response", m_driver->identity());
+    }
 }
 
 void native_server_job_t::react(const events::choked_t& event) {
-    send(messages::tag_t(id(), true));
+    if(!send(messages::tag_t(id(), true))) {
+        syslog(LOG_ERR, "%s: unable to send the response", m_driver->identity());
+    }
 }
 
 native_server_t::native_server_t(engine_t* engine, const std::string& method, const Json::Value& args):
@@ -56,7 +61,7 @@ void native_server_t::process(ev::idle&, int) {
         route_t route;
 
         do {
-            m_socket.recv(&message);
+            BOOST_VERIFY(m_socket.recv(&message));
 
             if(!message.size()) {
                 break;
@@ -68,7 +73,7 @@ void native_server_t::process(ev::idle&, int) {
         } while(m_socket.more());
 
         if(route.empty() || !m_socket.more()) {
-            syslog(LOG_ERR, "%s: got a corrupted request - no route", identity());
+            syslog(LOG_ERR, "%s: got a corrupted request - invalid route", identity());
             return;
         }
 

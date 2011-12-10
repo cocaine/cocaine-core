@@ -29,8 +29,9 @@ void lsd_job_t::react(const events::chunk_t& event) {
     
     root["uuid"] = id();
     
-    send(root, ZMQ_SNDMORE);
-    server->socket().send(event.message);
+    if(!send(root, ZMQ_SNDMORE) || !server->socket().send(event.message)) {
+        syslog(LOG_ERR, "%s: unable to send the response", m_driver->identity());
+    }
 }
 
 void lsd_job_t::react(const events::error_t& event) {
@@ -40,7 +41,9 @@ void lsd_job_t::react(const events::error_t& event) {
     root["code"] = event.code;
     root["message"] = event.message;
 
-    send(root);
+    if(!send(root)) {
+        syslog(LOG_ERR, "%s: unable to send the response", m_driver->identity());
+    }
 }
 
 void lsd_job_t::react(const events::choked_t& event) {
@@ -49,7 +52,9 @@ void lsd_job_t::react(const events::choked_t& event) {
     root["uuid"] = id();
     root["completed"] = true;
 
-    send(root);
+    if(!send(root)) {
+        syslog(LOG_ERR, "%s: unable to send the response", m_driver->identity());
+    }
 }
 
 bool lsd_job_t::send(const Json::Value& root, int flags) {
@@ -99,7 +104,7 @@ void lsd_server_t::process(ev::idle&, int) {
         route_t route;
 
         do {
-            m_socket.recv(&message);
+            BOOST_VERIFY(m_socket.recv(&message));
 
             if(!message.size()) {
                 break;
@@ -117,7 +122,7 @@ void lsd_server_t::process(ev::idle&, int) {
 
         while(m_socket.more()) {
             // Receive the envelope
-            m_socket.recv(&message);
+            BOOST_VERIFY(m_socket.recv(&message));
 
             // Parse the envelope and setup the job policy
             Json::Reader reader(Json::Features::strictMode());

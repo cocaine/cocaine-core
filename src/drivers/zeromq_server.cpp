@@ -26,7 +26,9 @@ zeromq_server_job_t::zeromq_server_job_t(zeromq_server_t* driver, const route_t&
 { }
 
 void zeromq_server_job_t::react(const events::chunk_t& event) {
-    send(event.message);
+    if(!send(event.message)) {
+        syslog(LOG_ERR, "%s: unable to send the response", m_driver->identity());
+    }
 }
 
 void zeromq_server_job_t::react(const events::error_t& event) {
@@ -39,7 +41,9 @@ void zeromq_server_job_t::react(const events::error_t& event) {
     zmq::message_t message(response.size());
     memcpy(message.data(), response.data(), response.size());
 
-    send(message);
+    if(!send(message)) {
+        syslog(LOG_ERR, "%s: unable to send the response", m_driver->identity());
+    }
 }
 
 bool zeromq_server_job_t::send(zmq::message_t& chunk) {
@@ -128,7 +132,7 @@ void zeromq_server_t::process(ev::idle&, int) {
         route_t route;
 
         do {
-            m_socket.recv(&message);
+            BOOST_VERIFY(m_socket.recv(&message));
 
             if(!message.size()) {
                 break;
@@ -140,14 +144,14 @@ void zeromq_server_t::process(ev::idle&, int) {
         } while(m_socket.more());
 
         if(route.empty() || !m_socket.more()) {
-            syslog(LOG_ERR, "%s: got a corrupted request - no route", identity());
+            syslog(LOG_ERR, "%s: got a corrupted request - invalid route", identity());
             return;
         }
 
         while(m_socket.more()) {
             boost::shared_ptr<zeromq_server_job_t> job(new zeromq_server_job_t(this, route));
 
-            m_socket.recv(job->request());
+            BOOST_VERIFY(m_socket.recv(job->request()));
             m_engine->enqueue(job);
         }
     } else {
