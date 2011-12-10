@@ -55,7 +55,10 @@ class job_t:
         job_t(driver::driver_t* driver, policy_t policy);
         virtual ~job_t();
 
-        virtual void react(const events::timeout_t& event) { }
+        virtual void react(const events::timeout_t& event) {
+            react(events::error_t(event.code, event.message));
+        }
+
         virtual void react(const events::choked_t& event) { }
     
     public:      
