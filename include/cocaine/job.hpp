@@ -55,10 +55,6 @@ class job_t:
         job_t(driver::driver_t* driver, policy_t policy);
         virtual ~job_t();
 
-        virtual void react(const events::timeout_t& event) {
-            react(events::error_t(event.code, event.message));
-        }
-
         virtual void react(const events::choked_t& event) { }
     
     public:      
@@ -95,7 +91,6 @@ struct incomplete:
 {
     public:
         typedef boost::mpl::list<
-            sc::transition<events::timeout_t, complete, job_t, &job_t::react>, 
             sc::transition<events::error_t,   complete, job_t, &job_t::react>
         > reactions;
 };

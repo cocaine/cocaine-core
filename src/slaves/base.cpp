@@ -75,7 +75,8 @@ void slave_t::timeout(ev::timer&, int) {
     const busy* state = state_downcast<const busy*>();
     
     if(state) {
-        state->job()->process_event(events::timeout_t("the job has timed out"));
+        state->job()->process_event(events::error_t(
+            events::timeout_error, "the job has timed out"));
     }
     
     process_event(events::terminated_t());

@@ -83,18 +83,6 @@ struct error_t:
     const std::string& message;
 };
 
-struct timeout_t:
-    public sc::event<timeout_t>
-{
-    timeout_t(const std::string& message_):
-        code(timeout_error),
-        message(message_)
-    { }
-
-    const error_code code;
-    const std::string& message;
-};
-
 struct choked_t:
     public sc::event<choked_t>
 { };
