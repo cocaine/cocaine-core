@@ -55,11 +55,10 @@ class job_t:
         job_t(driver::driver_t* driver, policy_t policy);
         virtual ~job_t();
 
-        virtual void react(const events::choked_t& event) { }
-    
     public:      
         virtual void react(const events::chunk_t& event) = 0;
         virtual void react(const events::error_t& event) = 0;
+        virtual void react(const events::choked_t& event) { }
 
     public:
         inline driver::driver_t* driver() {
@@ -91,7 +90,7 @@ struct incomplete:
 {
     public:
         typedef boost::mpl::list<
-            sc::transition<events::error_t,   complete, job_t, &job_t::react>
+            sc::transition<events::error_t, complete, job_t, &job_t::react>
         > reactions;
 };
 
@@ -101,7 +100,7 @@ struct unknown:
     public:
         typedef boost::mpl::list<
             sc::transition<events::enqueued_t, waiting>,
-            sc::transition<events::invoked_t,  processing>
+            sc::transition<events::invoked_t, processing>
         > reactions;
 };
 
@@ -125,10 +124,10 @@ struct processing:
 {
     public:
         typedef boost::mpl::list<
-            sc::in_state_reaction<events::chunk_t,     job_t, &job_t::react>,
+            sc::in_state_reaction<events::chunk_t, job_t, &job_t::react>,
             sc::transition<events::choked_t, complete, job_t, &job_t::react>,
-            sc::transition<events::enqueued_t,  waiting>,
-            sc::transition<events::invoked_t,   processing>
+            sc::transition<events::enqueued_t, waiting>,
+            sc::transition<events::invoked_t, processing>
         > reactions;
 
         processing();
