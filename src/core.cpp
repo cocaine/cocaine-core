@@ -155,10 +155,6 @@ void core_t::process(ev::idle&, int) {
 
         BOOST_VERIFY(m_server.recv(&message));
 
-        if(m_server.more()) {
-            BOOST_VERIFY(m_server.recv(&signature));
-        }
-
         if(reader.parse(
             static_cast<const char*>(message.data()),
             static_cast<const char*>(message.data()) + message.size(),
@@ -177,6 +173,10 @@ void core_t::process(ev::idle&, int) {
                 }
       
                 if(version == 3) {
+                    if(m_server.more()) {
+                        BOOST_VERIFY(m_server.recv(&signature));
+                    }
+
                     if(!username.empty()) {
                         m_signatures.verify(
                             static_cast<const char*>(message.data()),

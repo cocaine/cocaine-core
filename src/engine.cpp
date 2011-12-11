@@ -358,14 +358,10 @@ void engine_t::process(ev::idle&, int) {
     if(m_messages.pending()) {
         std::string slave_id;
         unsigned int code = 0;
-
         boost::tuple<raw<std::string>, unsigned int&> tier(protect(slave_id), code);
         
-        if(!m_messages.recv_multi(tier)) {
-            syslog(LOG_ERR, "%s: unable to receive the rpc object header", identity());
-            return;
-        }
-
+        BOOST_VERIFY(m_messages.recv_multi(tier));
+        
         pool_map_t::iterator slave(m_pool.find(slave_id));
 
         if(slave != m_pool.end()) {
@@ -376,11 +372,7 @@ void engine_t::process(ev::idle&, int) {
                 case rpc::heartbeat: {
                     rpc::heartbeat_t object;
 
-                    if(!m_messages.recv(object)) {
-                        syslog(LOG_ERR, "%s: unable to receive the rpc heartbeat object", identity());
-                        return;
-                    }
-
+                    BOOST_VERIFY(m_messages.recv(object));
                     BOOST_ASSERT(object.type == rpc::heartbeat);
 
                     break;
@@ -392,11 +384,7 @@ void engine_t::process(ev::idle&, int) {
 
                     boost::tuple<rpc::chunk_t&, zmq::message_t*> tier(object, &message);
                     
-                    if(!m_messages.recv_multi(tier)) {
-                        syslog(LOG_ERR, "%s: unable to receive the rpc chunk object", identity());
-                        return;
-                    }
-
+                    BOOST_VERIFY(m_messages.recv_multi(tier));
                     BOOST_ASSERT(object.type == rpc::chunk);
                     BOOST_ASSERT(state != 0);
 
@@ -408,11 +396,7 @@ void engine_t::process(ev::idle&, int) {
                 case rpc::error: {
                     rpc::error_t object;
 
-                    if(!m_messages.recv(object)) {
-                        syslog(LOG_ERR, "%s: unable to receive the rpc error object", identity());
-                        return;
-                    }
-
+                    BOOST_VERIFY(m_messages.recv(object));
                     BOOST_ASSERT(object.type == rpc::error);
                     BOOST_ASSERT(state || object.code == events::server_error);
 
@@ -437,11 +421,7 @@ void engine_t::process(ev::idle&, int) {
                 case rpc::choke: {
                     rpc::choke_t object;
 
-                    if(!m_messages.recv(object)) {
-                        syslog(LOG_ERR, "%s: unable to receive the rpc choke object", identity());
-                        return;
-                    }
-
+                    BOOST_VERIFY(m_messages.recv(object));
                     BOOST_ASSERT(object.type == rpc::choke);
                     BOOST_ASSERT(state != 0);
                    
@@ -453,11 +433,7 @@ void engine_t::process(ev::idle&, int) {
                 case rpc::terminate: {
                     rpc::terminate_t object;
 
-                    if(!m_messages.recv(object)) {
-                        syslog(LOG_ERR, "%s: unable to receive the rpc terminate object", identity());
-                        return;
-                    }
-
+                    BOOST_VERIFY(m_messages.recv(object));
                     BOOST_ASSERT(object.type == rpc::terminate);
 
                     // NOTE: A slave might be already terminated by its inner mechanics

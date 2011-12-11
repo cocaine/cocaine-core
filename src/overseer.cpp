@@ -61,11 +61,11 @@ void overseer_t::operator()(const std::string& type, const std::string& args) {
         m_app = core::registry_t::instance()->create(type, args);
     } catch(const unrecoverable_error_t& e) {
         syslog(LOG_ERR, "%s: unable to instantiate the app - %s", identity(), e.what());
-        send(rpc::error_t(events::server_error, e.what()));
+        BOOST_VERIFY(send(rpc::error_t(events::server_error, e.what())));
         return;
     } catch(...) {
         syslog(LOG_ERR, "%s: caught an unexpected exception", identity());
-        send(rpc::error_t(events::server_error, "unexpected exception"));
+        BOOST_VERIFY(send(rpc::error_t(events::server_error, "unexpected exception")));
         return;
     }
         
@@ -83,16 +83,15 @@ void overseer_t::process(ev::idle&, int) {
     if(m_messages.pending()) {
         unsigned int code = 0;
 
-        m_messages.recv(code);
+        BOOST_VERIFY(m_messages.recv(code));
 
         switch(code) {
             case rpc::invoke: {
                 rpc::invoke_t object;
                 zmq::message_t request;
-
                 boost::tuple<rpc::invoke_t&, zmq::message_t*> tier(object, &request);
-                m_messages.recv_multi(tier);
-
+                
+                BOOST_VERIFY(m_messages.recv_multi(tier));
                 BOOST_ASSERT(object.type == rpc::invoke);
 
                 try {
@@ -105,17 +104,17 @@ void overseer_t::process(ev::idle&, int) {
                 } catch(const recoverable_error_t& e) {
                     syslog(LOG_ERR, "%s: '%s' invocation failed - %s", 
                         identity(), object.method.c_str(), e.what());
-                    send(rpc::error_t(events::app_error, e.what()));
+                    BOOST_VERIFY(send(rpc::error_t(events::app_error, e.what())));
                 } catch(const unrecoverable_error_t& e) {
                     syslog(LOG_ERR, "%s: '%s' invocation failed - %s", 
                         identity(), object.method.c_str(), e.what());
-                    send(rpc::error_t(events::server_error, e.what())); 
+                    BOOST_VERIFY(send(rpc::error_t(events::server_error, e.what()))); 
                 } catch(...) {
                     syslog(LOG_ERR, "%s: caught an unexpected exception", identity());
-                    send(rpc::error_t(events::server_error, "unexpected exception")); 
+                    BOOST_VERIFY(send(rpc::error_t(events::server_error, "unexpected exception"))); 
                 }
                     
-                send(rpc::choke_t());
+                BOOST_VERIFY(send(rpc::choke_t()));
 
                 m_suicide_timer.stop();
                 m_suicide_timer.start(config_t::get().engine.suicide_timeout);
@@ -126,8 +125,7 @@ void overseer_t::process(ev::idle&, int) {
             case rpc::terminate: {
                 rpc::terminate_t object;
 
-                m_messages.recv(object);
-
+                BOOST_VERIFY(m_messages.recv(object));
                 BOOST_ASSERT(object.type == rpc::terminate);
 
                 terminate();
@@ -147,8 +145,7 @@ void overseer_t::respond(const void* response, size_t size) {
     zmq::message_t message(size);
     memcpy(message.data(), response, size);
   
-    send(rpc::chunk_t(), ZMQ_SNDMORE);
-    m_messages.send(message); 
+    BOOST_VERIFY(send(rpc::chunk_t(), ZMQ_SNDMORE) && m_messages.send(message));
 }
 
 void overseer_t::timeout(ev::timer&, int) {
@@ -158,12 +155,12 @@ void overseer_t::timeout(ev::timer&, int) {
         return;
     }
     
-    send(rpc::terminate_t());
+    BOOST_VERIFY(send(rpc::terminate_t()));
     terminate();
 }
 
 void overseer_t::heartbeat(ev::timer&, int) {
-    send(rpc::heartbeat_t());
+    BOOST_VERIFY(send(rpc::heartbeat_t()));
 }
 
 void overseer_t::terminate() {

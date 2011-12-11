@@ -154,9 +154,9 @@ void lsd_server_t::process(ev::idle&, int) {
             }
 
             if(!m_socket.more() || !m_socket.recv(job->request())) {
-                syslog(LOG_ERR, "%s: got a corrupted request from '%s' - missing request body",
+                syslog(LOG_ERR, "%s: got a corrupted request from '%s' - missing body",
                     identity(), route.back().c_str());
-                job->process_event(events::error_t(events::request_error, "missing request body"));
+                job->process_event(events::error_t(events::request_error, "missing body"));
                 continue;
             }
             
