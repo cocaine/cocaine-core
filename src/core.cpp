@@ -30,7 +30,8 @@ core_t::core_t():
             (config_t::get().core.instance)
             (config_t::get().core.hostname),
         "/")
-    )
+    ),
+    m_birthstamp(ev::get_default_loop().now())
 {
     // Information
     int minor, major, patch;
@@ -351,7 +352,9 @@ Json::Value core_t::info() const {
 
     result["jobs"]["pending"] = static_cast<Json::UInt>(job::job_t::objects_alive);
     result["jobs"]["processed"] = static_cast<Json::UInt>(job::job_t::objects_created);
-    
+
+    result["uptime"] = ev::get_default_loop().now() - m_birthstamp;
+
     return result;
 }
 

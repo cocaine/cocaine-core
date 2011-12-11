@@ -81,6 +81,9 @@ class core_t:
         // Automatic discovery support
         boost::shared_ptr<networking::socket_t> m_announces;
         boost::shared_ptr<ev::timer> m_announce_timer;
+
+        // Uptime
+        ev::tstamp m_birthstamp;
 };
 
 }}
