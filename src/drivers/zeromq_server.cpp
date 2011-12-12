@@ -156,7 +156,7 @@ void zeromq_server_t::process(ev::idle&, int) {
         }
     } else {
         m_watcher.start(m_socket.fd(), ev::READ);
-        m_processor.stop();
+        // m_processor.stop();
     }
 }
 
