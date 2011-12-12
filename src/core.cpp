@@ -123,12 +123,8 @@ void core_t::reload(ev::sig&, int) {
 }
 
 void core_t::request(ev::io&, int) {
-    if(m_server.pending()) {
-        if(!m_processor.is_active()) {
-            m_processor.start();
-        }
-
-        m_watcher.stop();
+    if(m_server.pending() && !m_processor.is_active()) {
+        m_processor.start();
     }
 }
 
@@ -207,7 +203,6 @@ void core_t::process(ev::idle&, int) {
             }
         }
     } else {
-        m_watcher.start();
         m_processor.stop();
     }
 }

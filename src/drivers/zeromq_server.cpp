@@ -120,12 +120,8 @@ Json::Value zeromq_server_t::info() const {
 }
 
 void zeromq_server_t::event(ev::io&, int) {
-    if(m_socket.pending()) {
-        if(!m_processor.is_active()) {
-            m_processor.start();
-        }
-
-        m_watcher.stop();
+    if(m_socket.pending() && !m_processor.is_active()) {
+        m_processor.start();
     }
 }
 
@@ -158,7 +154,6 @@ void zeromq_server_t::process(ev::idle&, int) {
             m_engine->enqueue(job);
         }
     } else {
-        m_watcher.start();
         m_processor.stop();
     }
 }
