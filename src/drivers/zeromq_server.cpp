@@ -82,8 +82,7 @@ zeromq_server_t::zeromq_server_t(engine_t* engine, const std::string& method, co
             (m_engine->name())
             (method),
         "/")
-    ),
-    m_incoming(false)
+    )
 {
     std::string endpoint(args.get("endpoint", "").asString());
 
@@ -116,15 +115,13 @@ Json::Value zeromq_server_t::info() const {
     result["backlog"] = static_cast<Json::UInt>(m_backlog);
     result["endpoint"] = m_socket.endpoint();
     result["route"] = m_socket.route();
-    result["incoming"] = m_incoming;
 
     return result;
 }
 
 void zeromq_server_t::event(ev::io&, int) {
-    if(m_socket.pending()) {
+    if(m_socket.pending() && !m_processor.is_active()) {
         m_processor.start();
-        m_incoming = true;
     }
 }
 
@@ -158,7 +155,6 @@ void zeromq_server_t::process(ev::idle&, int) {
         }
     } else {
         m_processor.stop();
-        m_incoming = false;
     }
 }
 

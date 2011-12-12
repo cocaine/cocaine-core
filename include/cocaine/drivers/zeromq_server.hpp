@@ -70,8 +70,6 @@ class zeromq_server_t:
         
         ev::io m_watcher; 
         ev::idle m_processor;
-
-        bool m_incoming;
 };
 
 }}}

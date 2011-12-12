@@ -73,8 +73,7 @@ void overseer_t::operator()(const std::string& type, const std::string& args) {
 }
 
 void overseer_t::message(ev::io&, int) {
-    if(m_messages.pending()) {
-        m_watcher.stop();
+    if(m_messages.pending() && !m_processor.is_active()) {
         m_processor.start();
     }
 }
@@ -134,7 +133,6 @@ void overseer_t::process(ev::idle&, int) {
             }
         }
     } else {
-        m_watcher.start(m_messages.fd(), ev::READ);
         m_processor.stop();
     }
 }
