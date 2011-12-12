@@ -350,6 +350,7 @@ void engine_t::publish(const std::string& key, const Json::Value& object) {
 void engine_t::message(ev::io&, int) {
     if(m_messages.pending() && !m_processor.is_active()) {
         m_processor.start();
+        m_watcher.stop();
     }
 }
 
@@ -460,6 +461,7 @@ void engine_t::process(ev::idle&, int) {
             m_messages.drop_remaining_parts();
         }
     } else {
+        m_watcher.start();
         m_processor.stop();
     }
 }

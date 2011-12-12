@@ -163,6 +163,7 @@ void lsd_server_t::process(ev::idle&, int) {
             m_engine->enqueue(job);
         }
     } else {
+        m_watcher.start();
         m_processor.stop();
     }
 }
