@@ -68,7 +68,6 @@ engine_t::engine_t(zmq::context_t& context, const std::string& name):
     );
     
     m_watcher.set<engine_t, &engine_t::message>(this);
-    m_watcher.start(m_messages.fd(), ev::READ);
     m_processor.set<engine_t, &engine_t::process>(this);
     m_processor.start();
 
@@ -461,7 +460,7 @@ void engine_t::process(ev::idle&, int) {
             m_messages.drop_remaining_parts();
         }
     } else if(!m_watcher.is_active()) {
-        m_watcher.start();
+        m_watcher.start(m_messages.fd(), ev::READ);
         m_processor.stop();
     }
 }

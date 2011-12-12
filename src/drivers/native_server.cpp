@@ -112,7 +112,7 @@ void native_server_t::process(ev::idle&, int) {
             m_engine->enqueue(job);
         }
     } else if(!m_watcher.is_active()) {
-        m_watcher.start();
+        m_watcher.start(m_socket.fd(), ev::READ);
         m_processor.stop();
     }
 }

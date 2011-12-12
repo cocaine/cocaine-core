@@ -73,7 +73,6 @@ core_t::core_t():
     }
 
     m_watcher.set<core_t, &core_t::request>(this);
-    m_watcher.start(m_server.fd(), EV_READ);
     m_processor.set<core_t, &core_t::process>(this);
     m_processor.start();
         
@@ -204,7 +203,7 @@ void core_t::process(ev::idle&, int) {
             }
         }
     } else if(!m_watcher.is_active()) {
-        m_watcher.start();
+        m_watcher.start(m_server.fd(), EV_READ);
         m_processor.stop();
     }
 }

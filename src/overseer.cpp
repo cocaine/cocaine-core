@@ -45,7 +45,6 @@ overseer_t::overseer_t(const unique_id_t::type& id_, zmq::context_t& context, co
     );
     
     m_watcher.set<overseer_t, &overseer_t::message>(this);
-    m_watcher.start(m_messages.fd(), ev::READ);
     m_processor.set<overseer_t, &overseer_t::process>(this);
     m_processor.start();
 
@@ -134,7 +133,7 @@ void overseer_t::process(ev::idle&, int) {
             }
         }
     } else if(!m_watcher.is_active()) {
-        m_watcher.start();
+        m_watcher.start(m_messages.fd(), ev::READ);
         m_processor.stop();
     }
 }
