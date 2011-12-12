@@ -460,7 +460,7 @@ void engine_t::process(ev::idle&, int) {
                 identity(), code, slave_id.c_str());
             m_messages.drop_remaining_parts();
         }
-    } else {
+    } else if(!m_watcher.is_active()) {
         m_watcher.start();
         m_processor.stop();
     }

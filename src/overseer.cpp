@@ -133,7 +133,7 @@ void overseer_t::process(ev::idle&, int) {
                 return;
             }
         }
-    } else {
+    } else if(!m_watcher.is_active()) {
         m_watcher.start();
         m_processor.stop();
     }

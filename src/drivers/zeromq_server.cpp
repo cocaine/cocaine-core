@@ -154,7 +154,7 @@ void zeromq_server_t::process(ev::idle&, int) {
             BOOST_VERIFY(m_socket.recv(job->request()));
             m_engine->enqueue(job);
         }
-    } else {
+    } else if(!m_watcher.is_active()) {
         m_watcher.start();
         m_processor.stop();
     }

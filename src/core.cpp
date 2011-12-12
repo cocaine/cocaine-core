@@ -203,7 +203,7 @@ void core_t::process(ev::idle&, int) {
                 syslog(LOG_ERR, "core: unable to send the response");
             }
         }
-    } else {
+    } else if(!m_watcher.is_active()) {
         m_watcher.start();
         m_processor.stop();
     }
