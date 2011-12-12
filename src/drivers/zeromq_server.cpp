@@ -120,7 +120,7 @@ Json::Value zeromq_server_t::info() const {
 }
 
 void zeromq_server_t::event(ev::io&, int) {
-    if(m_socket.pending() && !m_processor.is_active()) {
+    if(!m_processor.is_active()) {
         m_processor.start();
     }
 }
