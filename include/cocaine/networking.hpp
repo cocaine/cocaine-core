@@ -109,7 +109,7 @@ class socket_t:
         }
 
         int fd() {
-            int fd;
+            int fd = 0;
             size_t size = sizeof(fd);
 
             getsockopt(ZMQ_FD, &fd, &size);
@@ -117,17 +117,17 @@ class socket_t:
             return fd;
         }
 
-        bool pending(int event = ZMQ_POLLIN) {
-            unsigned long events;
+        bool pending(unsigned long event = ZMQ_POLLIN) {
+            unsigned long events = 0;
             size_t size = sizeof(events);
 
             getsockopt(ZMQ_EVENTS, &events, &size);
 
-            return events & event;
+            return (events & event) == event;
         }
 
         bool more() {
-            int64_t rcvmore;
+            int64_t rcvmore = 0;
             size_t size = sizeof(rcvmore);
 
             getsockopt(ZMQ_RCVMORE, &rcvmore, &size);

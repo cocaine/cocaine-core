@@ -385,7 +385,6 @@ bool core_t::respond(const route_t& route, const Json::Value& object) {
     return m_server.send(message);
 }
 
-
 void core_t::recover() {
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
     Json::Value root(storage_t::create()->all("apps"));
