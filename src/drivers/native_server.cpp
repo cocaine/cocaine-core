@@ -113,6 +113,7 @@ void native_server_t::process(ev::idle&, int) {
         }
     } else {
         m_processor.stop();
+        m_incoming = false;
     }
 }
 
