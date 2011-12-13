@@ -147,7 +147,7 @@ class publication_t:
     public job::job_t
 {
     public:
-        publication_t(driver::driver_t* parent, job::policy_t policy = job::policy_t());
+        publication_t(driver::driver_t* parent, const client::policy_t& policy);
 
     public:
         virtual void react(const events::chunk_t&);

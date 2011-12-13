@@ -19,6 +19,7 @@
 #include <boost/statechart/in_state_reaction.hpp>
 #include <boost/statechart/transition.hpp>
 
+#include "cocaine/client/types.hpp"
 #include "cocaine/common.hpp"
 #include "cocaine/events.hpp"
 #include "cocaine/forwards.hpp"
@@ -27,17 +28,6 @@
 namespace cocaine { namespace engine { namespace job {
 
 namespace sc = boost::statechart;
-
-struct policy_t {
-    policy_t();
-    policy_t(bool urgent, ev::tstamp timeout, ev::tstamp deadline);
-
-    bool urgent;
-    ev::tstamp timeout;
-    ev::tstamp deadline;
-
-    MSGPACK_DEFINE(urgent, timeout, deadline);
-};
 
 // Job states
 struct incomplete;
@@ -52,7 +42,7 @@ class job_t:
     public birth_control_t<job_t>
 {
     public:
-        job_t(driver::driver_t* driver, policy_t policy);
+        job_t(driver::driver_t* driver, const client::policy_t& policy);
         virtual ~job_t();
 
     public:      
@@ -65,7 +55,7 @@ class job_t:
             return m_driver;
         }
 
-        inline policy_t policy() const {
+        inline const client::policy_t& policy() const {
             return m_policy;
         }
 
@@ -80,7 +70,7 @@ class job_t:
         driver::driver_t* m_driver;
 
     private:
-        policy_t m_policy;
+        client::policy_t m_policy;
         ev::periodic m_expiration_timer;
         zmq::message_t m_request;
 };

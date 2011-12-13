@@ -14,6 +14,7 @@
 #ifndef COCAINE_DRIVER_TIMER_BASE_HPP
 #define COCAINE_DRIVER_TIMER_BASE_HPP
 
+#include "cocaine/client/types.hpp"
 #include "cocaine/drivers/base.hpp"
 #include "cocaine/engine.hpp"
 
@@ -43,7 +44,7 @@ class timer_base_t:
 
     private:
         void event(ev::periodic&, int) {
-            boost::shared_ptr<publication_t> job(new publication_t(this));
+            boost::shared_ptr<publication_t> job(new publication_t(this, client::policy_t()));
             m_engine->enqueue(job);
         }
         

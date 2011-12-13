@@ -21,7 +21,7 @@ using namespace cocaine::engine::driver;
 using namespace cocaine::networking;
 
 zeromq_server_job_t::zeromq_server_job_t(zeromq_server_t* driver, const route_t& route):
-    job_t(driver, job::policy_t()),
+    job_t(driver, client::policy_t()),
     m_route(route)
 { }
 

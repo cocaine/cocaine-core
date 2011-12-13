@@ -11,7 +11,7 @@
 // limitations under the License.
 //
 
-#include "cocaine/client.hpp"
+#include "cocaine/client/types.hpp"
 #include "cocaine/drivers/native_sink.hpp"
 #include "cocaine/engine.hpp"
 
@@ -34,9 +34,10 @@ void native_sink_t::process(ev::idle&, int) {
     if(m_socket.pending()) {
         do {
             unsigned int type = 0;
-            client::request_t request;
+            client::tag_t tag;
+            client::policy_t policy;
 
-            boost::tuple<unsigned int&, client::request_t&> tier(type, request);
+            boost::tuple<unsigned int&, client::tag_t&, client::policy_t&> tier(type, tag, policy);
 
             if(!m_socket.recv_multi(tier)) {
                 syslog(LOG_ERR, "%s: got a corrupted request", identity());
@@ -44,13 +45,12 @@ void native_sink_t::process(ev::idle&, int) {
             }
 
             // TEST: This is temporary for testing purposes
-            BOOST_ASSERT(type == request.type);
-
-            boost::shared_ptr<publication_t> job(new publication_t(this, request.policy));
+            BOOST_ASSERT(type == tag.type);
+            boost::shared_ptr<publication_t> job(new publication_t(this, policy));
             
             if(!m_socket.more() || !m_socket.recv(job->request())) {
                 syslog(LOG_ERR, "%s: got a corrupted request - missing body", identity());
-                job->process_event(events::error_t(events::request_error, "missing body"));
+                job->process_event(events::error_t(client::request_error, "missing body"));
                 continue;
             }
 

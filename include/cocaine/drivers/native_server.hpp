@@ -14,7 +14,6 @@
 #ifndef COCAINE_DRIVER_NATIVE_SERVER_HPP
 #define COCAINE_DRIVER_NATIVE_SERVER_HPP
 
-#include "cocaine/client.hpp"
 #include "cocaine/drivers/zeromq_server.hpp"
 
 namespace cocaine { namespace engine { namespace driver {
@@ -26,8 +25,9 @@ class native_server_job_t:
     public job::job_t
 {
     public:
-        native_server_job_t(native_server_t* driver,
-                            const client::request_t& request,
+        native_server_job_t(const unique_id_t::type& id,
+                            native_server_t* driver,
+                            const client::policy_t& policy,
                             const networking::route_t& route);
 
         virtual void react(const events::chunk_t& event);

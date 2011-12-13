@@ -11,6 +11,7 @@
 // limitations under the License.
 //
 
+#include "cocaine/client/types.hpp"
 #include "cocaine/drivers/filesystem_monitor.hpp"
 #include "cocaine/engine.hpp"
 
@@ -43,7 +44,7 @@ Json::Value filesystem_monitor_t::info() const {
 }
 
 void filesystem_monitor_t::event(ev::stat&, int) {
-    boost::shared_ptr<publication_t> job(new publication_t(this));
+    boost::shared_ptr<publication_t> job(new publication_t(this, client::policy_t()));
     m_engine->enqueue(job);
 }
 

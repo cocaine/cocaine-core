@@ -13,6 +13,7 @@
 
 #include <boost/format.hpp>
 
+#include "cocaine/client/types.hpp"
 #include "cocaine/drivers/base.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/slaves/base.hpp"
@@ -76,7 +77,7 @@ void slave_t::timeout(ev::timer&, int) {
     
     if(state) {
         state->job()->process_event(events::error_t(
-            events::timeout_error, "the job has timed out"));
+            client::timeout_error, "the job has timed out"));
     }
     
     process_event(events::terminated_t());

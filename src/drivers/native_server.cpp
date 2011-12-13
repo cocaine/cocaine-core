@@ -11,15 +11,16 @@
 // limitations under the License.
 //
 
+#include "cocaine/client/types.hpp"
 #include "cocaine/drivers/native_server.hpp"
 #include "cocaine/engine.hpp"
 
 using namespace cocaine::engine::driver;
 using namespace cocaine::networking;
 
-native_server_job_t::native_server_job_t(native_server_t* driver, const client::request_t& request, const route_t& route):
-    unique_id_t(request.id),
-    job::job_t(driver, request.policy),
+native_server_job_t::native_server_job_t(const unique_id_t::type& id, native_server_t* driver, const client::policy_t& policy, const route_t& route):
+    unique_id_t(id),
+    job::job_t(driver, policy),
     m_route(route)
 { }
 
@@ -79,9 +80,10 @@ void native_server_t::process(ev::idle&, int) {
 
         while(m_socket.more()) {
             unsigned int type = 0;
-            client::request_t request;
+            client::tag_t tag;
+            client::policy_t policy;
 
-            boost::tuple<unsigned int&, client::request_t&> tier(type, request);
+            boost::tuple<unsigned int&, client::tag_t&, client::policy_t&> tier(type, tag, policy);
 
             if(!m_socket.recv_multi(tier)) {
                 syslog(LOG_ERR, "%s: got a corrupted request", identity());
@@ -89,12 +91,11 @@ void native_server_t::process(ev::idle&, int) {
             }
 
             // TEST: This is temporary for testing purposes
-            BOOST_ASSERT(type == request.type);
-
+            BOOST_ASSERT(type == tag.type);
             boost::shared_ptr<native_server_job_t> job;
             
             try {
-                job.reset(new native_server_job_t(this, request, route));
+                job.reset(new native_server_job_t(tag.id, this, policy, route));
             } catch(const std::runtime_error& e) {
                 syslog(LOG_ERR, "%s: got a corrupted request - %s", identity(), e.what());
                 continue;
@@ -102,7 +103,7 @@ void native_server_t::process(ev::idle&, int) {
 
             if(!m_socket.more() || !m_socket.recv(job->request())) {
                 syslog(LOG_ERR, "%s: got a corrupted request - missing body", identity());
-                job->process_event(events::error_t(events::request_error, "missing body"));
+                job->process_event(events::error_t(client::request_error, "missing body"));
                 continue;
             }
 

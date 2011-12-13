@@ -16,6 +16,7 @@
 #include <boost/format.hpp>
 #include <boost/thread.hpp>
 
+#include "cocaine/client/types.hpp"
 #include "cocaine/events.hpp"
 #include "cocaine/overseer.hpp"
 #include "cocaine/plugin.hpp"
@@ -62,11 +63,11 @@ void overseer_t::operator()(const std::string& type, const std::string& args) {
         m_app = core::registry_t::instance()->create(type, args);
     } catch(const unrecoverable_error_t& e) {
         syslog(LOG_ERR, "%s: unable to instantiate the app - %s", identity(), e.what());
-        BOOST_VERIFY(send(rpc::error_t(events::server_error, e.what())));
+        BOOST_VERIFY(send(rpc::error_t(client::server_error, e.what())));
         return;
     } catch(...) {
         syslog(LOG_ERR, "%s: caught an unexpected exception", identity());
-        BOOST_VERIFY(send(rpc::error_t(events::server_error, "unexpected exception")));
+        BOOST_VERIFY(send(rpc::error_t(client::server_error, "unexpected exception")));
         return;
     }
         
@@ -104,14 +105,14 @@ void overseer_t::process(ev::idle&, int) {
                 } catch(const recoverable_error_t& e) {
                     syslog(LOG_ERR, "%s: '%s' invocation failed - %s", 
                         identity(), object.method.c_str(), e.what());
-                    BOOST_VERIFY(send(rpc::error_t(events::app_error, e.what())));
+                    BOOST_VERIFY(send(rpc::error_t(client::app_error, e.what())));
                 } catch(const unrecoverable_error_t& e) {
                     syslog(LOG_ERR, "%s: '%s' invocation failed - %s", 
                         identity(), object.method.c_str(), e.what());
-                    BOOST_VERIFY(send(rpc::error_t(events::server_error, e.what()))); 
+                    BOOST_VERIFY(send(rpc::error_t(client::server_error, e.what()))); 
                 } catch(...) {
                     syslog(LOG_ERR, "%s: caught an unexpected exception", identity());
-                    BOOST_VERIFY(send(rpc::error_t(events::server_error, "unexpected exception"))); 
+                    BOOST_VERIFY(send(rpc::error_t(client::server_error, "unexpected exception"))); 
                 }
                     
                 BOOST_VERIFY(send(rpc::choke_t()));

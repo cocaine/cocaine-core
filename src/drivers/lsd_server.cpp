@@ -11,13 +11,14 @@
 // limitations under the License.
 //
 
+#include "cocaine/client/types.hpp"
 #include "cocaine/drivers/lsd_server.hpp"
 #include "cocaine/engine.hpp"
 
 using namespace cocaine::engine::driver;
 using namespace cocaine::networking;
 
-lsd_job_t::lsd_job_t(lsd_server_t* driver, job::policy_t policy, const unique_id_t::type& id, const route_t& route):
+lsd_job_t::lsd_job_t(const unique_id_t::type& id, lsd_server_t* driver, const client::policy_t& policy, const route_t& route):
     unique_id_t(id),
     job::job_t(driver, policy),
     m_route(route)
@@ -138,7 +139,7 @@ void lsd_server_t::process(ev::idle&, int) {
                 continue;
             }
 
-            job::policy_t policy(
+            client::policy_t policy(
                 root.get("urgent", false).asBool(),
                 root.get("timeout", 0.0f).asDouble(),
                 root.get("deadline", 0.0f).asDouble());
@@ -146,7 +147,7 @@ void lsd_server_t::process(ev::idle&, int) {
             boost::shared_ptr<lsd_job_t> job;
             
             try {
-                job.reset(new lsd_job_t(this, policy, root.get("uuid", "").asString(), route));
+                job.reset(new lsd_job_t(root.get("uuid", "").asString(), this, policy, route));
             } catch(const std::runtime_error& e) {
                 syslog(LOG_ERR, "%s: got a corrupted request - invalid envelope - %s",
                     identity(), e.what());
@@ -155,7 +156,7 @@ void lsd_server_t::process(ev::idle&, int) {
 
             if(!m_socket.more() || !m_socket.recv(job->request())) {
                 syslog(LOG_ERR, "%s: got a corrupted request - missing body", identity());
-                job->process_event(events::error_t(events::request_error, "missing body"));
+                job->process_event(events::error_t(client::request_error, "missing body"));
                 continue;
             }
             

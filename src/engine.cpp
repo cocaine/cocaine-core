@@ -180,7 +180,7 @@ Json::Value engine_t::stop() {
 
     while(!m_queue.empty()) {
         m_queue.front()->process_event(
-            events::error_t(events::server_error, "engine is shutting down"));
+            events::error_t(client::server_error, "engine is shutting down"));
         m_queue.pop_front();
     }
 
@@ -246,7 +246,7 @@ Json::Value engine_t::info() const {
 
 void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
     if(!m_running) {
-        job->process_event(events::error_t(events::server_error, "engine is shutting down"));
+        job->process_event(events::error_t(client::server_error, "engine is shutting down"));
         return;
     }
 
@@ -281,7 +281,7 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
         } else if(!overflow && (m_queue.size() > m_policy.queue_limit)) {
             syslog(LOG_ERR, "%s: dropping '%s' job - the queue is full",
                 identity(), job->driver()->method().c_str());
-            job->process_event(events::error_t(events::resource_error, "the queue is full"));
+            job->process_event(events::error_t(client::resource_error, "the queue is full"));
             return;
         }
             
@@ -398,18 +398,18 @@ void engine_t::process(ev::idle&, int) {
 
                     BOOST_VERIFY(m_messages.recv(object));
                     BOOST_ASSERT(object.type == rpc::error);
-                    BOOST_ASSERT(state || object.code == events::server_error);
+                    BOOST_ASSERT(state || object.code == client::server_error);
 
                     if(state) {
                         state->job()->process_event(
                             events::error_t(
-                                static_cast<events::error_code>(object.code),
+                                static_cast<client::error_code>(object.code),
                                 object.message
                             )
                         );
                     }
                     
-                    if(object.code == events::server_error) {
+                    if(object.code == client::server_error) {
                         syslog(LOG_ERR, "%s: the application seems to be broken", identity());
                         stop();
                         return;
@@ -489,7 +489,7 @@ void engine_t::cleanup(ev::timer&, int) {
     }
 }
 
-publication_t::publication_t(driver::driver_t* parent, job::policy_t policy):
+publication_t::publication_t(driver::driver_t* parent, const client::policy_t& policy):
     job::job_t(parent, policy)
 { }
 

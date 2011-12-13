@@ -16,6 +16,7 @@
 
 #include <boost/statechart/event.hpp>
 
+#include "cocaine/client/types.hpp"
 #include "cocaine/forwards.hpp"
 #include <cocaine/networking.hpp>
 
@@ -63,23 +64,15 @@ struct chunk_t:
     zmq::message_t& message;
 };
 
-enum error_code {
-    request_error  = 400,
-    server_error   = 500,
-    app_error      = 502,
-    resource_error = 503,
-    timeout_error  = 504
-};
-
 struct error_t:
     public sc::event<error_t>
 {
-    error_t(error_code code_, const std::string& message_):
+    error_t(client::error_code code_, const std::string& message_):
         code(code_),
         message(message_)
     { }
     
-    const error_code code;
+    const client::error_code code;
     const std::string& message;
 };
 

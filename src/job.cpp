@@ -16,19 +16,7 @@
 
 using namespace cocaine::engine::job;
 
-policy_t::policy_t():
-    urgent(false),
-    timeout(0.0f),
-    deadline(0.0f)
-{ }
-
-policy_t::policy_t(bool urgent_, ev::tstamp timeout_, ev::tstamp deadline_):
-    urgent(urgent_),
-    timeout(timeout_),
-    deadline(deadline_)
-{ }
-
-job_t::job_t(driver::driver_t* driver, policy_t policy):
+job_t::job_t(driver::driver_t* driver, const client::policy_t& policy):
     m_driver(driver),
     m_policy(policy)
 {
@@ -50,7 +38,7 @@ job_t::~job_t() {
 }
 
 void job_t::discard(ev::periodic&, int) {
-    process_event(events::error_t(events::timeout_error, "the job has expired"));
+    process_event(events::error_t(client::timeout_error, "the job has expired"));
 }
 
 waiting::waiting():

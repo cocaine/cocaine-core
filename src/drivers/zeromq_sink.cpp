@@ -77,7 +77,7 @@ void zeromq_sink_t::event(ev::io&, int) {
 void zeromq_sink_t::process(ev::idle&, int) {
     if(m_socket.pending()) {
         do {
-            boost::shared_ptr<publication_t> job(new publication_t(this));
+            boost::shared_ptr<publication_t> job(new publication_t(this, client::policy_t()));
             BOOST_VERIFY(m_socket.recv(job->request()));
             m_engine->enqueue(job);
         } while(m_socket.more()); 
