@@ -75,8 +75,9 @@ core_t::core_t():
     m_watcher.set<core_t, &core_t::request>(this);
     m_watcher.start(m_server.fd(), ev::READ);
     m_processor.set<core_t, &core_t::process>(this);
-    m_processor.start();
-        
+    m_pumper.set<core_t, &core_t::pump>(this);
+    m_pumper.start(0.2f, 0.2f);    
+
     // Signal watchers
     m_sigint.set<core_t, &core_t::terminate>(this);
     m_sigint.start(SIGINT);
@@ -205,6 +206,10 @@ void core_t::process(ev::idle&, int) {
     } else {
         m_processor.stop();
     }
+}
+
+void core_t::pump(ev::timer&, int) {
+    request(m_watcher, ev::READ);
 }
 
 Json::Value core_t::dispatch(const Json::Value& root) {

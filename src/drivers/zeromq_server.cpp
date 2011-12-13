@@ -97,7 +97,8 @@ zeromq_server_t::zeromq_server_t(engine_t* engine, const std::string& method, co
     m_watcher.set<zeromq_server_t, &zeromq_server_t::event>(this);
     m_watcher.start(m_socket.fd(), ev::READ);
     m_processor.set<zeromq_server_t, &zeromq_server_t::process>(this);
-    m_processor.start();
+    m_pumper.set<zeromq_server_t, &zeromq_server_t::pump>(this);
+    m_pumper.start(0.2f, 0.2f);
 } catch(const zmq::error_t& e) {
     throw std::runtime_error("network failure in '" + m_method + "' task - " + e.what());
 }
@@ -105,6 +106,7 @@ zeromq_server_t::zeromq_server_t(engine_t* engine, const std::string& method, co
 zeromq_server_t::~zeromq_server_t() {
     m_watcher.stop();
     m_processor.stop();
+    m_pumper.stop();
 }
 
 Json::Value zeromq_server_t::info() const {
@@ -156,5 +158,9 @@ void zeromq_server_t::process(ev::idle&, int) {
     } else {
         m_processor.stop();
     }
+}
+
+void zeromq_server_t::pump(ev::timer&, int) {
+    event(m_watcher, ev::READ);
 }
 

@@ -38,6 +38,7 @@ class core_t:
         // User request processing
         void request(ev::io&, int);
         void process(ev::idle&, int);
+        void pump(ev::timer&, int);
 
         // User request dispatching
         Json::Value dispatch(const Json::Value& root);
@@ -70,6 +71,10 @@ class core_t:
         ev::sig m_sigint, m_sigterm, m_sigquit, m_sighup;
         ev::io m_watcher;
         ev::idle m_processor;
+
+        // XXX: This is a temporary workaround for the edge cases when ZeroMQ for some 
+        // reason doesn't trigger the socket's fd on message arrival (or I poll it in a wrong way).
+        ev::timer m_pumper;
 
         typedef boost::ptr_unordered_map<
             const std::string,

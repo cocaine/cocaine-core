@@ -70,7 +70,8 @@ engine_t::engine_t(zmq::context_t& context, const std::string& name):
     m_watcher.set<engine_t, &engine_t::message>(this);
     m_watcher.start(m_messages.fd(), ev::READ);
     m_processor.set<engine_t, &engine_t::process>(this);
-    m_processor.start();
+    m_pumper.set<engine_t, &engine_t::pump>(this);
+    m_pumper.start(0.2f, 0.2f);
 
     m_gc_timer.set<engine_t, &engine_t::cleanup>(this);
     m_gc_timer.start(5.0f, 5.0f);
@@ -199,6 +200,7 @@ Json::Value engine_t::stop() {
     m_tasks.clear();
     m_watcher.stop();
     m_processor.stop();
+    m_pumper.stop();
     m_gc_timer.stop();
 
     return info();
@@ -457,6 +459,10 @@ void engine_t::process(ev::idle&, int) {
     } else {
         m_processor.stop();
     }
+}
+
+void engine_t::pump(ev::timer&, int) {
+    message(m_watcher, ev::READ);
 }
 
 void engine_t::cleanup(ev::timer&, int) {

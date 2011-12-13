@@ -61,6 +61,8 @@ class zeromq_server_t:
         
         // Server interface
         virtual void process(ev::idle&, int);
+        
+        void pump(ev::timer&, int);
 
     protected:
         uint64_t m_backlog;
@@ -70,6 +72,10 @@ class zeromq_server_t:
         
         ev::io m_watcher; 
         ev::idle m_processor;
+
+        // XXX: This is a temporary workaround for the edge cases when ZeroMQ for some 
+        // reason doesn't trigger the socket's fd on message arrival (or I poll it in a wrong way).
+        ev::timer m_pumper;
 };
 
 }}}

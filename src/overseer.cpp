@@ -47,7 +47,8 @@ overseer_t::overseer_t(const unique_id_t::type& id_, zmq::context_t& context, co
     m_watcher.set<overseer_t, &overseer_t::message>(this);
     m_watcher.start(m_messages.fd(), ev::READ);
     m_processor.set<overseer_t, &overseer_t::process>(this);
-    m_processor.start();
+    m_pumper.set<overseer_t, &overseer_t::pump>(this);
+    m_pumper.start(0.2f, 0.2f);
 
     m_suicide_timer.set<overseer_t, &overseer_t::timeout>(this);
     m_suicide_timer.start(config_t::get().engine.suicide_timeout);
@@ -135,6 +136,10 @@ void overseer_t::process(ev::idle&, int) {
     } else {
         m_processor.stop();
     }
+}
+
+void overseer_t::pump(ev::timer&, int) {
+    message(m_watcher, ev::READ);
 }
 
 void overseer_t::respond(const void* response, size_t size) {
