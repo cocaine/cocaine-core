@@ -116,7 +116,7 @@ void lsd_server_t::process(ev::idle&, int) {
         } while(m_socket.more());
 
         if(route.empty() || !m_socket.more()) {
-            syslog(LOG_ERR, "%s: got a corrupted request - no route", identity());
+            syslog(LOG_ERR, "%s: got a corrupted request - invalid route", identity());
             return;
         }
 
@@ -133,8 +133,8 @@ void lsd_server_t::process(ev::idle&, int) {
                 static_cast<const char*>(message.data()) + message.size(),
                 root))
             {
-                syslog(LOG_ERR, "%s: got a corrupted request from '%s' - invalid envelope - %s",
-                    identity(), route.back().c_str(), reader.getFormatedErrorMessages().c_str());
+                syslog(LOG_ERR, "%s: got a corrupted request - invalid envelope - %s",
+                    identity(), reader.getFormatedErrorMessages().c_str());
                 continue;
             }
 
@@ -148,14 +148,13 @@ void lsd_server_t::process(ev::idle&, int) {
             try {
                 job.reset(new lsd_job_t(this, policy, root.get("uuid", "").asString(), route));
             } catch(const std::runtime_error& e) {
-                syslog(LOG_ERR, "%s: got a corrupted request from '%s' - invalid envelope - %s",
-                    identity(), route.back().c_str(), e.what());
+                syslog(LOG_ERR, "%s: got a corrupted request - invalid envelope - %s",
+                    identity(), e.what());
                 continue;
             }
 
             if(!m_socket.more() || !m_socket.recv(job->request())) {
-                syslog(LOG_ERR, "%s: got a corrupted request from '%s' - missing body",
-                    identity(), route.back().c_str());
+                syslog(LOG_ERR, "%s: got a corrupted request - missing body", identity());
                 job->process_event(events::error_t(events::request_error, "missing body"));
                 continue;
             }

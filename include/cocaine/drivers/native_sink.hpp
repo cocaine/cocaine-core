@@ -11,15 +11,29 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_DRIVERS_HPP
-#define COCAINE_DRIVERS_HPP
+#ifndef COCAINE_DRIVER_NATIVE_SINK_HPP
+#define COCAINE_DRIVER_NATIVE_SINK_HPP
 
-#include "cocaine/drivers/recurring_timer.hpp"
-#include "cocaine/drivers/filesystem_monitor.hpp"
-#include "cocaine/drivers/zeromq_server.hpp"
-#include "cocaine/drivers/lsd_server.hpp"
-#include "cocaine/drivers/native_server.hpp"
 #include "cocaine/drivers/zeromq_sink.hpp"
-#include "cocaine/drivers/native_sink.hpp"
+
+namespace cocaine { namespace engine { namespace driver {
+
+class native_sink_t:
+    public zeromq_sink_t
+{
+    public:
+        native_sink_t(engine_t* engine,
+                      const std::string& method, 
+                      const Json::Value& args);
+
+        // Driver interface
+        virtual Json::Value info() const;
+        
+    private:
+        // Server interface
+        virtual void process(ev::idle&, int);
+};
+
+}}}
 
 #endif

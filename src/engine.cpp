@@ -150,6 +150,10 @@ Json::Value engine_t::start(const Json::Value& manifest) {
                 m_tasks.insert(task, new driver::lsd_server_t(this, task, tasks[task]));
             } else if(type == "native-server") {
                 m_tasks.insert(task, new driver::native_server_t(this, task, tasks[task]));
+            } else if(type == "zeromq-sink") {
+                m_tasks.insert(task, new driver::zeromq_sink_t(this, task, tasks[task]));
+            } else if(type == "native-sink") {
+                m_tasks.insert(task, new driver::native_sink_t(this, task, tasks[task]));
             } else {
                throw std::runtime_error("no driver for '" + type + "' is available");
             }
@@ -485,8 +489,8 @@ void engine_t::cleanup(ev::timer&, int) {
     }
 }
 
-publication_t::publication_t(driver::driver_t* parent):
-    job::job_t(parent, job::policy_t())
+publication_t::publication_t(driver::driver_t* parent, job::policy_t policy):
+    job::job_t(parent, policy)
 { }
 
 void publication_t::react(const events::chunk_t& event) {

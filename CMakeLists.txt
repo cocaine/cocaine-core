@@ -78,6 +78,8 @@ ADD_LIBRARY(cocaine-core SHARED
     src/drivers/zeromq_server
     src/drivers/lsd_server
     src/drivers/native_server
+    src/drivers/zeromq_sink
+    src/drivers/native_sink
     src/engine
     src/job
     src/overseer

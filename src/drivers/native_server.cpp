@@ -17,7 +17,7 @@
 using namespace cocaine::engine::driver;
 using namespace cocaine::networking;
 
-native_server_job_t::native_server_job_t(native_server_t* driver, const messages::request_t& request, const route_t& route):
+native_server_job_t::native_server_job_t(native_server_t* driver, const client::request_t& request, const route_t& route):
     unique_id_t(request.id),
     job::job_t(driver, request.policy),
     m_route(route)
@@ -26,19 +26,19 @@ native_server_job_t::native_server_job_t(native_server_t* driver, const messages
 void native_server_job_t::react(const events::chunk_t& event) {
     zeromq_server_t* server = static_cast<zeromq_server_t*>(m_driver);
     
-    if(!send(messages::tag_t(id()), ZMQ_SNDMORE) || !server->socket().send(event.message)) {
+    if(!send(client::tag_t(id()), ZMQ_SNDMORE) || !server->socket().send(event.message)) {
         syslog(LOG_ERR, "%s: unable to send the response", m_driver->identity());
     }
 }
 
 void native_server_job_t::react(const events::error_t& event) {
-    if(!send(messages::error_t(id(), event.code, event.message))) {
+    if(!send(client::error_t(id(), event.code, event.message))) {
         syslog(LOG_ERR, "%s: unable to send the response", m_driver->identity());
     }
 }
 
 void native_server_job_t::react(const events::choked_t& event) {
-    if(!send(messages::tag_t(id(), true))) {
+    if(!send(client::tag_t(id(), true))) {
         syslog(LOG_ERR, "%s: unable to send the response", m_driver->identity());
     }
 }
@@ -79,13 +79,12 @@ void native_server_t::process(ev::idle&, int) {
 
         while(m_socket.more()) {
             unsigned int type = 0;
-            messages::request_t request;
+            client::request_t request;
 
-            boost::tuple<unsigned int&, messages::request_t&> tier(type, request);
+            boost::tuple<unsigned int&, client::request_t&> tier(type, request);
 
             if(!m_socket.recv_multi(tier)) {
-                syslog(LOG_ERR, "%s: got a corrupted request from '%s'",
-                    identity(), route.back().c_str());
+                syslog(LOG_ERR, "%s: got a corrupted request", identity());
                 continue;
             }
 
@@ -97,14 +96,12 @@ void native_server_t::process(ev::idle&, int) {
             try {
                 job.reset(new native_server_job_t(this, request, route));
             } catch(const std::runtime_error& e) {
-                syslog(LOG_ERR, "%s: got a corrupted request from '%s' - %s",
-                    identity(), route.back().c_str(), e.what());
+                syslog(LOG_ERR, "%s: got a corrupted request - %s", identity(), e.what());
                 continue;
             }
 
             if(!m_socket.more() || !m_socket.recv(job->request())) {
-                syslog(LOG_ERR, "%s: got a corrupted request from '%s' - missing body",
-                    identity(), route.back().c_str());
+                syslog(LOG_ERR, "%s: got a corrupted request - missing body", identity());
                 job->process_event(events::error_t(events::request_error, "missing body"));
                 continue;
             }

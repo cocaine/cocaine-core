@@ -27,9 +27,10 @@ The application tasks can be driven by any of the following drivers:
 * [In Development] Manual Scheduler
 * Filesystem Monitor
 * ZeroMQ Server (Request-Response)
-* [In Development] ZeroMQ Sink (Request-Publish)
 * [In Development] ZeroMQ Subscriber (Publishing Chain)
 * Native [LSD](https://github.com/tinybit/lsd) Server
+* ZeroMQ Sink (Request-Publish)
+* Native [LSD](https://github.com/tinybiy/lsd) Sink (Request-Publish)
 * [Planned] Raw Socket Server
 
 Application configuration example
