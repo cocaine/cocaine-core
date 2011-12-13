@@ -73,6 +73,7 @@ core_t::core_t():
     }
 
     m_watcher.set<core_t, &core_t::request>(this);
+    m_watcher.start(m_server.fd(), ev::READ);
     m_processor.set<core_t, &core_t::process>(this);
     m_processor.start();
         
@@ -124,7 +125,6 @@ void core_t::reload(ev::sig&, int) {
 void core_t::request(ev::io&, int) {
     if(m_server.pending() && !m_processor.is_active()) {
         m_processor.start();
-        m_watcher.stop();
     }
 }
 
@@ -202,8 +202,7 @@ void core_t::process(ev::idle&, int) {
                 syslog(LOG_ERR, "core: unable to send the response");
             }
         }
-    } else if(!m_watcher.is_active()) {
-        m_watcher.start(m_server.fd(), EV_READ);
+    } else {
         m_processor.stop();
     }
 }

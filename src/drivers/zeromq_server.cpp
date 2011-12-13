@@ -95,6 +95,7 @@ zeromq_server_t::zeromq_server_t(engine_t* engine, const std::string& method, co
     m_socket.bind(endpoint);
 
     m_watcher.set<zeromq_server_t, &zeromq_server_t::event>(this);
+    m_watcher.start(m_socket.fd(), ev::READ);
     m_processor.set<zeromq_server_t, &zeromq_server_t::process>(this);
     m_processor.start();
 } catch(const zmq::error_t& e) {
@@ -121,7 +122,6 @@ Json::Value zeromq_server_t::info() const {
 void zeromq_server_t::event(ev::io&, int) {
     if(m_socket.pending() && !m_processor.is_active()) {
         m_processor.start();
-        m_watcher.stop();
     }
 }
 
@@ -153,8 +153,7 @@ void zeromq_server_t::process(ev::idle&, int) {
             BOOST_VERIFY(m_socket.recv(job->request()));
             m_engine->enqueue(job);
         }
-    } else if(!m_watcher.is_active()) {
-        m_watcher.start(m_socket.fd(), ev::READ);
+    } else {
         m_processor.stop();
     }
 }

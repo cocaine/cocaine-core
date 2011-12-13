@@ -45,6 +45,7 @@ overseer_t::overseer_t(const unique_id_t::type& id_, zmq::context_t& context, co
     );
     
     m_watcher.set<overseer_t, &overseer_t::message>(this);
+    m_watcher.start(m_messages.fd(), ev::READ);
     m_processor.set<overseer_t, &overseer_t::process>(this);
     m_processor.start();
 
@@ -74,7 +75,6 @@ void overseer_t::operator()(const std::string& type, const std::string& args) {
 void overseer_t::message(ev::io&, int) {
     if(m_messages.pending() && !m_processor.is_active()) {
         m_processor.start();
-        m_watcher.stop();
     }
 }
 
@@ -132,8 +132,7 @@ void overseer_t::process(ev::idle&, int) {
                 return;
             }
         }
-    } else if(!m_watcher.is_active()) {
-        m_watcher.start(m_messages.fd(), ev::READ);
+    } else {
         m_processor.stop();
     }
 }

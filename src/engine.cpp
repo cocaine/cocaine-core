@@ -68,6 +68,7 @@ engine_t::engine_t(zmq::context_t& context, const std::string& name):
     );
     
     m_watcher.set<engine_t, &engine_t::message>(this);
+    m_watcher.start(m_messages.fd(), ev::READ);
     m_processor.set<engine_t, &engine_t::process>(this);
     m_processor.start();
 
@@ -94,15 +95,10 @@ Json::Value engine_t::start(const Json::Value& manifest) {
 
     m_app_cfg.type = manifest["type"].asString();
     m_app_cfg.args = manifest["args"].asString();
+    m_app_cfg.version = manifest.get("version", 1).asUInt();
 
     if(!core::registry_t::instance()->exists(m_app_cfg.type)) {
         throw std::runtime_error("no plugin for '" + m_app_cfg.type + "' is available");
-    }
-    
-    m_app_cfg.version = manifest.get("version", 0).asUInt();
-
-    if(m_app_cfg.version == 0) {
-        throw std::runtime_error("no app version has been specified");
     }
     
     // Pool configuration
@@ -349,7 +345,6 @@ void engine_t::publish(const std::string& key, const Json::Value& object) {
 void engine_t::message(ev::io&, int) {
     if(m_messages.pending() && !m_processor.is_active()) {
         m_processor.start();
-        m_watcher.stop();
     }
 }
 
@@ -459,8 +454,7 @@ void engine_t::process(ev::idle&, int) {
                 identity(), code, slave_id.c_str());
             m_messages.drop_remaining_parts();
         }
-    } else if(!m_watcher.is_active()) {
-        m_watcher.start(m_messages.fd(), ev::READ);
+    } else {
         m_processor.stop();
     }
 }
