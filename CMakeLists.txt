@@ -10,7 +10,7 @@ FIND_PACKAGE(Boost 1.34.1 REQUIRED
 FIND_PACKAGE(OpenSSL REQUIRED)
 FIND_PACKAGE(CURL REQUIRED)
 
-INCLUDE(cmake/LocateLibrary.cmake)
+INCLUDE(cmake/locate_library.cmake)
 
 LOCATE_LIBRARY(LIBEV "ev++.h" "ev" "libev")
 LOCATE_LIBRARY(LIBMSGPACK "msgpack.hpp" "msgpack")
