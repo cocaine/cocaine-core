@@ -41,11 +41,9 @@ registry_t::registry_t() {
         throw std::runtime_error(path.string() + " is not a directory");
     }
 
-#if BOOST_VERSION >= 103500
     lt_dladvise advise;
     lt_dladvise_init(&advise);
     lt_dladvise_global(&advise);
-#endif
 
     lt_dlhandle plugin;
     initialize_fn_t initializer;
@@ -63,11 +61,7 @@ registry_t::registry_t() {
         std::string plugin_path = it->string();
 #endif
 
-#if BOOST_VERSION >= 103500
         plugin = lt_dlopenadvise(plugin_path.c_str(), advise);
-#else
-        plugin = lt_dlopen(plugin_path.c_str());
-#endif
 
         if(plugin) {
             // Get the plugin info
