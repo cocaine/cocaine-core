@@ -112,6 +112,12 @@ Json::Value engine_t::start(const Json::Value& manifest) {
         throw std::runtime_error("invalid backend type");
     }
     
+#if BOOST_VERSION < 103500
+    if(m_policy.backend == "thread") {
+        syslog(LOG_WARNING, "%s: system doesn't support unresponsive thread termination");
+    }
+#endif
+
     m_policy.suicide_timeout = manifest["engine"].get("suicide-timeout",
         config_t::get().engine.suicide_timeout).asDouble();
     m_policy.pool_limit = manifest["engine"].get("pool-limit",

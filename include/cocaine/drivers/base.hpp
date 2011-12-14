@@ -63,10 +63,13 @@ class driver_t:
         engine_t* m_engine;
         const std::string m_method;
 
-#if BOOST_VERSION >= 103600
     private:
+#if BOOST_VERSION >= 103600
         accumulator_set< float, features<tag::sum, tag::median> > m_spent_in_queues;
         accumulator_set< float, features<tag::sum, tag::median> > m_spent_on_slaves;
+#else
+        float m_spent_in_queues;
+        float m_spent_on_slaves;
 #endif
 };
 
