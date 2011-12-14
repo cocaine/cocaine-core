@@ -29,12 +29,20 @@ class engine_t:
     public identifiable_t
 {
     public:
+#if BOOST_VERSION >= 104000
         typedef boost::ptr_unordered_map<
+#else
+        typedef boost::ptr_map<
+#endif
             const std::string,
             driver::driver_t
         > task_map_t;
 
+#if BOOST_VERSION >= 104000
         typedef boost::ptr_unordered_map<
+#else
+        typedef boost::ptr_map<
+#endif
             unique_id_t::type,
             slave::slave_t
         > pool_map_t;

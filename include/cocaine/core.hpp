@@ -76,7 +76,11 @@ class core_t:
         // reason doesn't trigger the socket's fd on message arrival (or I poll it in a wrong way).
         ev::timer m_pumper;
 
-        typedef boost::ptr_unordered_map<
+#if BOOST_VERSION >= 104000
+          typedef boost::ptr_unordered_map<
+#else
+          typedef boost::ptr_map<
+#endif
             const std::string,
             engine::engine_t
         > engine_map_t;

@@ -1,11 +1,10 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 PROJECT(Cocaine)
 
-FIND_PACKAGE(Boost 1.35.0 REQUIRED 
+FIND_PACKAGE(Boost 1.34.1 REQUIRED 
     COMPONENTS
         filesystem
         program_options
-        system
         thread)
 
 FIND_PACKAGE(OpenSSL REQUIRED)
@@ -20,6 +19,10 @@ LOCATE_LIBRARY(LIBZMQ "zmq.hpp" "zmq")
 
 IF(NOT APPLE)
     LOCATE_LIBRARY(LIBUUID "uuid/uuid.h" "uuid")
+ENDIF()
+
+IF(Boost_MINOR_VERSION GREATER 34)
+    SET(Boost_SYSTEM_LIBRARY "boost_system-mt")
 ENDIF()
 
 INCLUDE_DIRECTORIES(
@@ -59,7 +62,7 @@ ADD_LIBRARY(cocaine-common SHARED
 
 TARGET_LINK_LIBRARIES(cocaine-common
     boost_filesystem-mt
-    boost_system-mt
+    ${Boost_SYSTEM_LIBRARY}
     boost_thread-mt
     crypto
     curl

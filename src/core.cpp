@@ -11,6 +11,8 @@
 // limitations under the License.
 //
 
+#include <sstream>
+
 #include <boost/algorithm/string/join.hpp>
 #include <boost/assign.hpp>
 

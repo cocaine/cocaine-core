@@ -22,10 +22,26 @@
 
 #include <syslog.h>
 
-#include <boost/noncopyable.hpp>
-#include <boost/ptr_container/ptr_unordered_map.hpp>
-#include <boost/shared_ptr.hpp>
 #include <boost/version.hpp>
+#include <boost/noncopyable.hpp>
+
+#if BOOST_VERSION >= 104000
+# include <boost/ptr_container/ptr_unordered_map.hpp>
+#else
+# include <boost/ptr_container/ptr_map.hpp>
+#endif
+
+#include <boost/shared_ptr.hpp>
+#include <boost/assert.hpp>
+
+#if BOOST_VERSION < 103500
+# undef BOOST_VERIFY
+# if defined(BOOST_DISABLE_ASSERTS) || ( !defined(BOOST_ENABLE_ASSERT_HANDLER) && defined(NDEBUG) )
+#  define BOOST_VERIFY(expr) ((void)(expr))
+# else
+#  define BOOST_VERIFY(expr) BOOST_ASSERT(expr)
+# endif
+#endif
 
 #define EV_MINIMAL 0
 #include <ev++.h>

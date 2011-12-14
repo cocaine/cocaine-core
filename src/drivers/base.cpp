@@ -31,6 +31,7 @@ driver_t::~driver_t() {
 }
 
 void driver_t::audit(audit_type type, ev::tstamp value) {
+#if BOOST_VERSION >= 103600
     switch(type) {
         case in_queue:
             m_spent_in_queues(value);
@@ -39,15 +40,18 @@ void driver_t::audit(audit_type type, ev::tstamp value) {
             m_spent_on_slaves(value);
             break;
     }
+#endif
 }
 
 Json::Value driver_t::stats() const {
     Json::Value results(Json::objectValue);
 
+#if BOOST_VERSION >= 103600
     results["time-spent-on-slaves"] = sum(m_spent_on_slaves);
     results["median-processing-time"] = median(m_spent_on_slaves);
     results["time-spent-in-queues"] = sum(m_spent_in_queues);
     results["median-wait-time"] = median(m_spent_in_queues);
+#endif
 
     return results;
 }

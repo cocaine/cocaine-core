@@ -14,16 +14,20 @@
 #ifndef COCAINE_DRIVER_BASE_HPP
 #define COCAINE_DRIVER_BASE_HPP
 
-#include <boost/accumulators/accumulators.hpp>
-#include <boost/accumulators/statistics/median.hpp>
-#include <boost/accumulators/statistics/sum.hpp>
+#if BOOST_VERSION >= 103600
+# include <boost/accumulators/accumulators.hpp>
+# include <boost/accumulators/statistics/median.hpp>
+# include <boost/accumulators/statistics/sum.hpp>
+#endif
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 
 namespace cocaine { namespace engine { namespace driver {
 
+#if BOOST_VERSION >= 103600
 using namespace boost::accumulators;
+#endif
 
 enum audit_type {
     in_queue,
@@ -59,9 +63,11 @@ class driver_t:
         engine_t* m_engine;
         const std::string m_method;
 
+#if BOOST_VERSION >= 103600
     private:
         accumulator_set< float, features<tag::sum, tag::median> > m_spent_in_queues;
         accumulator_set< float, features<tag::sum, tag::median> > m_spent_on_slaves;
+#endif
 };
 
 }}}

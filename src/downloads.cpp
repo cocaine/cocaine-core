@@ -36,7 +36,12 @@ local_t::local_t(const uri_t& uri) {
     stream << input.rdbuf();
     
     m_blob = stream.str();
+
+#if BOOST_FILESYSTEM_VERSION == 3
     m_path = m_path.parent_path();
+#else
+    m_path = m_path.branch_path();
+#endif
 }
 
 namespace {

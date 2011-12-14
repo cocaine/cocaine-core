@@ -45,6 +45,7 @@ slave_t::~slave_t() {
 }
 
 void slave_t::react(const events::heartbeat_t& event) {
+#if EV_VERSION_MAJOR == 3 && EV_VERSION_MINOR == 8
     if(!state_downcast<const alive*>()) {
         syslog(LOG_DEBUG, "%s: came alive in %.03f seconds",
             identity(), 
@@ -54,6 +55,7 @@ void slave_t::react(const events::heartbeat_t& event) {
             )
         );
     }
+#endif
 
     m_heartbeat_timer.stop();
     

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.6)
 
 EXECUTE_PROCESS(
     COMMAND perl -MExtUtils::Embed -e ccopts

@@ -13,6 +13,7 @@
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/assign.hpp>
+#include <boost/bind.hpp>
 #include <boost/format.hpp>
 #include <boost/thread.hpp>
 
@@ -101,7 +102,9 @@ void overseer_t::process(ev::idle&, int) {
                         object.method, 
                         request.data(), 
                         request.size());
+#if BOOST_VERSION >= 103500
                     boost::this_thread::interruption_point();
+#endif
                 } catch(const recoverable_error_t& e) {
                     syslog(LOG_ERR, "%s: '%s' invocation failed - %s", 
                         identity(), object.method.c_str(), e.what());
@@ -144,8 +147,10 @@ void overseer_t::pump(ev::timer&, int) {
 }
 
 void overseer_t::respond(const void* response, size_t size) {
+#if BOOST_VERSION >= 103500
     boost::this_thread::interruption_point();
-    
+#endif
+
     zmq::message_t message(size);
     memcpy(message.data(), response, size);
   
