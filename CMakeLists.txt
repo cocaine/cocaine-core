@@ -117,7 +117,8 @@ INSTALL(
     LIBRARY DESTINATION lib COMPONENT runtime
     ARCHIVE DESTINATION lib COMPONENT developement)
 
-INSTALL(DIRECTORY
+INSTALL(
+    DIRECTORY
         include/
         foreign/jsoncpp-0.5.0/include/
     DESTINATION include

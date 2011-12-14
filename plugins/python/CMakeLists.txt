@@ -30,3 +30,7 @@ SET_TARGET_PROPERTIES(cocaine-plugin-python PROPERTIES
 INSTALL(TARGETS cocaine-plugin-python
     LIBRARY DESTINATION lib/cocaine
     COMPONENT runtime)
+
+INSTALL(DIRECTORY library/
+    DESTINATION lib/python2.6/dist-packages/cocaine
+    COMPONENT runtime)
