@@ -14,14 +14,14 @@
 #ifndef COCAINE_DRIVER_BASE_HPP
 #define COCAINE_DRIVER_BASE_HPP
 
+#include "cocaine/common.hpp"
+#include "cocaine/forwards.hpp"
+
 #if BOOST_VERSION >= 103600
 # include <boost/accumulators/accumulators.hpp>
 # include <boost/accumulators/statistics/median.hpp>
 # include <boost/accumulators/statistics/sum.hpp>
 #endif
-
-#include "cocaine/common.hpp"
-#include "cocaine/forwards.hpp"
 
 namespace cocaine { namespace engine { namespace driver {
 

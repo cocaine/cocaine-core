@@ -11,13 +11,13 @@
 // limitations under the License.
 //
 
-#if BOOST_VERSION < 103500
-# include <boost/bind.hpp>
-#endif
-
 #include "cocaine/engine.hpp"
 #include "cocaine/overseer.hpp"
 #include "cocaine/slaves/thread.hpp"
+
+#if BOOST_VERSION < 103500
+# include <boost/bind.hpp>
+#endif
 
 using namespace cocaine::engine::slave;
 
