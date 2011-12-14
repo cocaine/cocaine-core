@@ -114,7 +114,7 @@ Json::Value engine_t::start(const Json::Value& manifest) {
     
 #if BOOST_VERSION < 103500
     if(m_policy.backend == "thread") {
-        syslog(LOG_WARNING, "%s: system doesn't support unresponsive thread termination");
+        syslog(LOG_WARNING, "%s: system doesn't support unresponsive thread termination", identity());
     }
 #endif
 
