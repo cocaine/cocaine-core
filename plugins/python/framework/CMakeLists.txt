@@ -1,1 +1,1 @@
-INSTALL(SCRIPT invoke_distutils.cmake)
+INSTALL(SCRIPT cmake/invoke_distutils.cmake)
