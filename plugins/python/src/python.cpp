@@ -30,13 +30,14 @@ python_t::python_t(const std::string& args):
 
     helpers::uri_t uri(args);
     helpers::download_t app(helpers::download(uri));   
+    char path_object_name[] = "path";
 
     // Acquire the interpreter state
     thread_state_t state;
-
+    
     // NOTE: Prepend the current application cache location to the sys.path,
     // so that it could import different stuff from there
-    PyObject* paths = PySys_GetObject("path");
+    PyObject* paths = PySys_GetObject(path_object_name);
 
     if(PyList_Check(paths)) {
         // XXX: Does it steal the reference or not?
