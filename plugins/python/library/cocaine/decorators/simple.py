@@ -1,5 +1,6 @@
 # encoding: utf-8
 
+import types
 import io
 import msgpack
 import json
