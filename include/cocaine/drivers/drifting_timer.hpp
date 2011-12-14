@@ -11,34 +11,42 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_DRIVER_RECURRING_TIMER_HPP
-#define COCAINE_DRIVER_RECURRING_TIMER_HPP
+#ifndef COCAINE_DRIVER_DRIFTING_TIMER_HPP
+#define COCAINE_DRIVER_DRIFTING_TIMER_HPP
 
-#include "cocaine/drivers/base.hpp"
+#include "cocaine/drivers/recurring_timer.hpp"
+#include "cocaine/engine.hpp"
 
 namespace cocaine { namespace engine { namespace driver {
 
-class recurring_timer_t:
-    public driver_t
+class drifting_timer_t;
+
+class drifting_timer_job_t:
+    public publication_t
 {
     public:
-        recurring_timer_t(engine_t* engine,
-                          const std::string& method, 
-                          const Json::Value& args);
-        virtual ~recurring_timer_t();
+        drifting_timer_job_t(drifting_timer_t* driver, const client::policy_t& policy);
+
+        virtual void react(const events::error_t& event);
+        virtual void react(const events::choked_t& event);
+};
+
+class drifting_timer_t:
+    public recurring_timer_t
+{
+    public:
+        drifting_timer_t(engine_t* engine,
+                         const std::string& method, 
+                         const Json::Value& args);
 
         // Driver interface
         virtual Json::Value info() const;
 
-    private:
-        void event(ev::timer&, int);
+        void rearm();
 
+    private:
         // Timer interface
         virtual void reschedule();
-
-    protected:
-        const ev::tstamp m_interval;
-        ev::timer m_watcher;
 };
 
 }}}

@@ -11,17 +11,26 @@
 // limitations under the License.
 //
 
+#include "cocaine/client/types.hpp"
 #include "cocaine/drivers/recurring_timer.hpp"
+#include "cocaine/engine.hpp"
 
 using namespace cocaine::engine::driver;
 
 recurring_timer_t::recurring_timer_t(engine_t* engine, const std::string& method, const Json::Value& args):
-    timer_base_t<recurring_timer_t>(engine, method),
+    driver_t(engine, method),
     m_interval(args.get("interval", 0.0f).asInt() / 1000.0f)
 {
     if(m_interval <= 0.0f) {
         throw std::runtime_error("no interval has been specified for '" + m_method + "' task");
     }
+
+    m_watcher.set<recurring_timer_t, &recurring_timer_t::event>(this);
+    m_watcher.start(m_interval, m_interval);
+}
+
+recurring_timer_t::~recurring_timer_t() {
+    m_watcher.stop();
 }
 
 Json::Value recurring_timer_t::info() const {
@@ -34,6 +43,11 @@ Json::Value recurring_timer_t::info() const {
     return result;
 }
 
-ev::tstamp recurring_timer_t::reschedule(ev::tstamp now) {
-    return now + m_interval;
+void recurring_timer_t::event(ev::timer&, int) {
+    reschedule();
+}
+
+void recurring_timer_t::reschedule() {
+    boost::shared_ptr<publication_t> job(new publication_t(this, client::policy_t()));
+    m_engine->enqueue(job);
 }

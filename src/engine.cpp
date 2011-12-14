@@ -142,6 +142,8 @@ Json::Value engine_t::start(const Json::Value& manifest) {
             
             if(type == "recurring-timer" || type == "timed+auto") {
                 m_tasks.insert(task, new driver::recurring_timer_t(this, task, tasks[task]));
+            } else if(type == "drifting-timer") {
+                m_tasks.insert(task, new driver::drifting_timer_t(this, task, tasks[task]));
             } else if(type == "filesystem-monitor") {
                 m_tasks.insert(task, new driver::filesystem_monitor_t(this, task, tasks[task]));
             } else if(type == "zeromq-server") {

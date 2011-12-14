@@ -74,6 +74,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/core
     src/drivers/base
     src/drivers/recurring_timer
+    src/drivers/drifting_timer
     src/drivers/filesystem_monitor
     src/drivers/zeromq_server
     src/drivers/lsd_server

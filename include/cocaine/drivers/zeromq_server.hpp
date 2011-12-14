@@ -45,7 +45,8 @@ class zeromq_server_t:
     public:
         zeromq_server_t(engine_t* engine,
                         const std::string& method, 
-                        const Json::Value& args);
+                        const Json::Value& args,
+                        int type = ZMQ_ROUTER);
         virtual ~zeromq_server_t();
 
         // Driver interface

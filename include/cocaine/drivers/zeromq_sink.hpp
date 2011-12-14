@@ -14,43 +14,24 @@
 #ifndef COCAINE_DRIVER_ZEROMQ_SINK_HPP
 #define COCAINE_DRIVER_ZEROMQ_SINK_HPP
 
-#include "cocaine/drivers/base.hpp"
-#include "cocaine/job.hpp"
-#include "cocaine/networking.hpp"
+#include "cocaine/drivers/zeromq_server.hpp"
 
 namespace cocaine { namespace engine { namespace driver {
 
 class zeromq_sink_t:
-    public driver_t
+    public zeromq_server_t
 {
     public:
         zeromq_sink_t(engine_t* engine,
                       const std::string& method, 
                       const Json::Value& args);
-        virtual ~zeromq_sink_t();
 
         // Driver interface
         virtual Json::Value info() const;
 
     private:
-        void event(ev::io&, int);
-        
         // Server interface
         virtual void process(ev::idle&, int);
-        
-        void pump(ev::timer&, int);
-
-    protected:
-        uint64_t m_backlog;
-
-        networking::channel_t m_socket;
-        
-        ev::io m_watcher; 
-        ev::idle m_processor;
-
-        // XXX: This is a temporary workaround for the edge cases when ZeroMQ for some 
-        // reason doesn't trigger the socket's fd on message arrival (or I poll it in a wrong way).
-        ev::timer m_pumper;
 };
 
 }}}

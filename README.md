@@ -22,7 +22,8 @@ At the moment, Cocaine supports the following languages and specifications:
 
 The application tasks can be driven by any of the following drivers:
 
-* Recurring Timer
+* Recurring Timer (multiple jobs can be run if they are not finished in the timer intervals)
+* Drifting Timer (only one job can be run, hence the drift)
 * [In Development] Cron
 * [In Development] Manual Scheduler
 * Filesystem Monitor

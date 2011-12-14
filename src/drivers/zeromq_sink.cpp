@@ -18,60 +18,17 @@
 #include "cocaine/engine.hpp"
 
 using namespace cocaine::engine::driver;
-using namespace cocaine::networking;
 
-zeromq_sink_t::zeromq_sink_t(engine_t* engine, const std::string& method, const Json::Value& args) try:
-    driver_t(engine, method),
-    m_backlog(args.get("backlog", 1000).asUInt()),
-    m_socket(m_engine->context(), ZMQ_PULL, boost::algorithm::join(
-        boost::assign::list_of
-            (config_t::get().core.instance)
-            (config_t::get().core.hostname)
-            (m_engine->name())
-            (method),
-        "/")
-    )
-{
-    std::string endpoint(args.get("endpoint", "").asString());
-
-    if(endpoint.empty()) {
-        throw std::runtime_error("no endpoint has been specified for the '" + m_method + "' task");
-    }
-
-    m_socket.setsockopt(ZMQ_HWM, &m_backlog, sizeof(m_backlog));
-    m_socket.bind(endpoint);
-
-    m_watcher.set<zeromq_sink_t, &zeromq_sink_t::event>(this);
-    m_watcher.start(m_socket.fd(), ev::READ);
-    m_processor.set<zeromq_sink_t, &zeromq_sink_t::process>(this);
-    m_pumper.set<zeromq_sink_t, &zeromq_sink_t::pump>(this);
-    m_pumper.start(0.2f, 0.2f);
-} catch(const zmq::error_t& e) {
-    throw std::runtime_error("network failure in '" + m_method + "' task - " + e.what());
-}
-
-zeromq_sink_t::~zeromq_sink_t() {
-    m_watcher.stop();
-    m_processor.stop();
-    m_pumper.stop();
-}
+zeromq_sink_t::zeromq_sink_t(engine_t* engine, const std::string& method, const Json::Value& args):
+    zeromq_server_t(engine, method, args, ZMQ_PULL)
+{ }
 
 Json::Value zeromq_sink_t::info() const {
-    Json::Value result(Json::objectValue);
+    Json::Value result(zeromq_server_t::info());
 
-    result["statistics"] = stats();
     result["type"] = "zeromq-sink";
-    result["backlog"] = static_cast<Json::UInt>(m_backlog);
-    result["endpoint"] = m_socket.endpoint();
-    result["route"] = m_socket.route();
 
     return result;
-}
-
-void zeromq_sink_t::event(ev::io&, int) {
-    if(m_socket.pending() && !m_processor.is_active()) {
-        m_processor.start();
-    }
 }
 
 void zeromq_sink_t::process(ev::idle&, int) {
@@ -84,9 +41,5 @@ void zeromq_sink_t::process(ev::idle&, int) {
     } else {
         m_processor.stop();
     }
-}
-
-void zeromq_sink_t::pump(ev::timer&, int) {
-    event(m_watcher, ev::READ);
 }
 

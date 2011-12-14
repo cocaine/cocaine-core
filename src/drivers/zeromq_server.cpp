@@ -71,11 +71,11 @@ bool zeromq_server_job_t::send(zmq::message_t& chunk) {
     return server->socket().send(chunk);
 }
 
-zeromq_server_t::zeromq_server_t(engine_t* engine, const std::string& method, const Json::Value& args) try:
+zeromq_server_t::zeromq_server_t(engine_t* engine, const std::string& method, const Json::Value& args, int type) try:
     driver_t(engine, method),
     m_backlog(args.get("backlog", 1000).asUInt()),
     m_linger(args.get("linger", 0).asInt()),
-    m_socket(m_engine->context(), ZMQ_ROUTER, boost::algorithm::join(
+    m_socket(m_engine->context(), type, boost::algorithm::join(
         boost::assign::list_of
             (config_t::get().core.instance)
             (config_t::get().core.hostname)
