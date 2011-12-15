@@ -14,6 +14,10 @@
 #ifndef COCAINE_PLUGIN_PYTHON_HPP
 #define COCAINE_PLUGIN_PYTHON_HPP
 
+// These are being redefined in Python.h
+#undef _POSIX_C_SOURCE
+#undef _XOPEN_SOURCE
+
 #include <Python.h>
 
 #include "cocaine/plugin.hpp"
