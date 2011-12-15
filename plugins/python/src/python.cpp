@@ -187,6 +187,7 @@ void python_t::compile(const std::string& path, const std::string& code) {
 
 static const source_info_t plugin_info[] = {
     { "python", &python_t::create },
+    { "python+raw", &python_t::create },
     { NULL, NULL }
 };
 
