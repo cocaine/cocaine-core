@@ -22,6 +22,10 @@ driver_t::driver_t(engine_t* engine, const std::string& method):
     identifiable_t((boost::format("driver [%s:%s]") % engine->name() % method).str()),
     m_engine(engine),
     m_method(method)
+#if BOOST_VERSION < 103600
+    , m_spent_in_queues(0.0f)
+    , m_spent_on_slaves(0.0f)
+#endif
 {
     syslog(LOG_DEBUG, "%s: constructing", identity());
 }
