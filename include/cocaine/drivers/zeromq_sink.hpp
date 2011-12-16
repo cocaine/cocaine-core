@@ -22,7 +22,7 @@ class zeromq_sink_t:
     public zeromq_server_t
 {
     public:
-        zeromq_sink_t(engine_t* engine,
+        zeromq_sink_t(engine_t& engine,
                       const std::string& method, 
                       const Json::Value& args);
 

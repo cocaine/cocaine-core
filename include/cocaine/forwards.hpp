@@ -15,6 +15,8 @@
 #define COCAINE_FORWARDS_HPP
 
 namespace cocaine {
+    class context_t;
+
     namespace engine {
         class engine_t;
         class overseer_t;

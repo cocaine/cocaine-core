@@ -17,20 +17,20 @@
 
 using namespace cocaine::engine::driver;
 
-drifting_timer_job_t::drifting_timer_job_t(drifting_timer_t* driver, const client::policy_t& policy):
+drifting_timer_job_t::drifting_timer_job_t(drifting_timer_t& driver, const client::policy_t& policy):
     publication_t(driver, policy)
 { }
 
 void drifting_timer_job_t::react(const events::error_t& event) {
     publication_t::react(event);
-    static_cast<drifting_timer_t*>(m_driver)->rearm();
+    static_cast<drifting_timer_t&>(m_driver).rearm();
 }
 
 void drifting_timer_job_t::react(const events::choked_t& event) {
-    static_cast<drifting_timer_t*>(m_driver)->rearm();
+    static_cast<drifting_timer_t&>(m_driver).rearm();
 }
 
-drifting_timer_t::drifting_timer_t(engine_t* engine, const std::string& method, const Json::Value& args):
+drifting_timer_t::drifting_timer_t(engine_t& engine, const std::string& method, const Json::Value& args):
     recurring_timer_t(engine, method, args)
 { }
 
@@ -48,9 +48,9 @@ void drifting_timer_t::rearm() {
 
 void drifting_timer_t::reschedule() {
     client::policy_t policy(false, m_interval, 0.0f);
-    boost::shared_ptr<drifting_timer_job_t> job(new drifting_timer_job_t(this, policy));
+    boost::shared_ptr<drifting_timer_job_t> job(new drifting_timer_job_t(*this, policy));
     
     m_watcher.stop();
     
-    m_engine->enqueue(job);
+    m_engine.enqueue(job);
 }

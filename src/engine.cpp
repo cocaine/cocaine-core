@@ -19,6 +19,7 @@
 #include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
 
+#include "cocaine/context.hpp"
 #include "cocaine/drivers.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/registry.hpp"
@@ -47,11 +48,11 @@ bool engine_t::idle_slave::operator()(pool_map_t::pointer slave) const {
 // Basic stuff
 // -----------
 
-engine_t::engine_t(zmq::context_t& context, const std::string& name):
+engine_t::engine_t(context_t& context, const std::string& name):
     identifiable_t((boost::format("engine [%s]") % name).str()),
-    m_running(false),
     m_context(context),
-    m_messages(m_context, ZMQ_ROUTER)
+    m_running(false),
+    m_messages(*m_context.io, ZMQ_ROUTER)
 {
     int linger = 0;
     m_app_cfg.name = name;
@@ -62,7 +63,7 @@ engine_t::engine_t(zmq::context_t& context, const std::string& name):
     m_messages.bind(boost::algorithm::join(
         boost::assign::list_of
             (std::string("ipc:///var/run/cocaine"))
-            (config_t::get().core.instance)
+            (m_context.config.core.instance)
             (m_app_cfg.name),
         "/")
     );
@@ -98,7 +99,7 @@ Json::Value engine_t::start(const Json::Value& manifest) {
     m_app_cfg.args = manifest["args"].asString();
     m_app_cfg.version = manifest.get("version", 1).asUInt();
 
-    if(!core::registry_t::instance()->exists(m_app_cfg.type)) {
+    if(!core::registry_t::instance(m_context)->exists(m_app_cfg.type)) {
         throw std::runtime_error("no plugin for '" + m_app_cfg.type + "' is available");
     }
     
@@ -106,7 +107,7 @@ Json::Value engine_t::start(const Json::Value& manifest) {
     // ------------------
 
     m_policy.backend = manifest["engine"].get("backend",
-        config_t::get().engine.backend).asString();
+        m_context.config.engine.backend).asString();
     
     if(m_policy.backend != "thread" && m_policy.backend != "process") {
         throw std::runtime_error("invalid backend type");
@@ -119,11 +120,11 @@ Json::Value engine_t::start(const Json::Value& manifest) {
 #endif
 
     m_policy.suicide_timeout = manifest["engine"].get("suicide-timeout",
-        config_t::get().engine.suicide_timeout).asDouble();
+        m_context.config.engine.suicide_timeout).asDouble();
     m_policy.pool_limit = manifest["engine"].get("pool-limit",
-        config_t::get().engine.pool_limit).asUInt();
+        m_context.config.engine.pool_limit).asUInt();
     m_policy.queue_limit = manifest["engine"].get("queue-limit",
-        config_t::get().engine.queue_limit).asUInt();
+        m_context.config.engine.queue_limit).asUInt();
     
     // Tasks configuration
     // -------------------
@@ -136,7 +137,7 @@ Json::Value engine_t::start(const Json::Value& manifest) {
         std::string endpoint(manifest["pubsub"]["endpoint"].asString());
         
         if(!endpoint.empty()) {
-            m_pubsub.reset(new socket_t(m_context, ZMQ_PUB));
+            m_pubsub.reset(new socket_t(*m_context.io, ZMQ_PUB));
             m_pubsub->bind(endpoint);
         }
 
@@ -147,21 +148,21 @@ Json::Value engine_t::start(const Json::Value& manifest) {
             std::string type(tasks[task]["type"].asString());
             
             if(type == "recurring-timer" || type == "timed+auto") {
-                m_tasks.insert(task, new driver::recurring_timer_t(this, task, tasks[task]));
+                m_tasks.insert(task, new driver::recurring_timer_t(*this, task, tasks[task]));
             } else if(type == "drifting-timer") {
-                m_tasks.insert(task, new driver::drifting_timer_t(this, task, tasks[task]));
+                m_tasks.insert(task, new driver::drifting_timer_t(*this, task, tasks[task]));
             } else if(type == "filesystem-monitor") {
-                m_tasks.insert(task, new driver::filesystem_monitor_t(this, task, tasks[task]));
+                m_tasks.insert(task, new driver::filesystem_monitor_t(*this, task, tasks[task]));
             } else if(type == "zeromq-server") {
-                m_tasks.insert(task, new driver::zeromq_server_t(this, task, tasks[task]));
+                m_tasks.insert(task, new driver::zeromq_server_t(*this, task, tasks[task]));
             } else if(type == "server+lsd") {
-                m_tasks.insert(task, new driver::lsd_server_t(this, task, tasks[task]));
+                m_tasks.insert(task, new driver::lsd_server_t(*this, task, tasks[task]));
             } else if(type == "native-server") {
-                m_tasks.insert(task, new driver::native_server_t(this, task, tasks[task]));
+                m_tasks.insert(task, new driver::native_server_t(*this, task, tasks[task]));
             } else if(type == "zeromq-sink") {
-                m_tasks.insert(task, new driver::zeromq_sink_t(this, task, tasks[task]));
+                m_tasks.insert(task, new driver::zeromq_sink_t(*this, task, tasks[task]));
             } else if(type == "native-sink") {
-                m_tasks.insert(task, new driver::native_sink_t(this, task, tasks[task]));
+                m_tasks.insert(task, new driver::native_sink_t(*this, task, tasks[task]));
             } else {
                throw std::runtime_error("no driver for '" + type + "' is available");
             }
@@ -261,7 +262,7 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
     pool_map_t::iterator it(
         unicast(
             idle_slave(),
-            rpc::invoke_t(job->driver()->method()),
+            rpc::invoke_t(job->driver().method()),
             job->request()
         )
     );
@@ -276,9 +277,9 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
             
             try {
                 if(m_policy.backend == "thread") {
-                    slave.reset(new slave::thread_t(this, m_app_cfg.type, m_app_cfg.args));
+                    slave.reset(new slave::thread_t(*this, m_app_cfg.type, m_app_cfg.args));
                 } else if(m_policy.backend == "process") {
-                    slave.reset(new slave::process_t(this, m_app_cfg.type, m_app_cfg.args));
+                    slave.reset(new slave::process_t(*this, m_app_cfg.type, m_app_cfg.args));
                 }
             } catch(const std::exception& e) {
                 syslog(LOG_ERR, "%s: unable to spawn more workers - %s", identity(), e.what());
@@ -288,7 +289,7 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
             m_pool.insert(slave_id, slave);
         } else if(!overflow && (m_queue.size() > m_policy.queue_limit)) {
             syslog(LOG_ERR, "%s: dropping '%s' job - the queue is full",
-                identity(), job->driver()->method().c_str());
+                identity(), job->driver().method().c_str());
             job->process_event(events::error_t(client::resource_error, "the queue is full"));
             return;
         }
@@ -312,7 +313,7 @@ void engine_t::publish(const std::string& key, const Json::Value& object) {
             std::string field(*it);
             
             std::ostringstream envelope;
-            envelope << key << " " << field << " " << config_t::get().core.hostname << " "
+            envelope << key << " " << field << " " << m_context.config.core.hostname << " "
                      << std::fixed << std::setprecision(3) << now;
 
             message.rebuild(envelope.str().size());
@@ -497,7 +498,7 @@ void engine_t::cleanup(ev::timer&, int) {
     }
 }
 
-publication_t::publication_t(driver::driver_t* parent, const client::policy_t& policy):
+publication_t::publication_t(driver::driver_t& parent, const client::policy_t& policy):
     job::job_t(parent, policy)
 { }
 
@@ -510,15 +511,15 @@ void publication_t::react(const events::chunk_t& event) {
         static_cast<const char*>(event.message.data()) + event.message.size(),
         root))
     {
-        m_driver->engine()->publish(m_driver->method(), root);
+        m_driver.engine().publish(m_driver.method(), root);
     } else {
-        m_driver->engine()->publish(m_driver->method(),
+        m_driver.engine().publish(m_driver.method(),
             helpers::make_json("error", "unable to parse the json"));
     }
 }
 
 void publication_t::react(const events::error_t& event) {
-    m_driver->engine()->publish(m_driver->method(),
+    m_driver.engine().publish(m_driver.method(),
         helpers::make_json("error", event.message));
 }
 

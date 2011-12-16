@@ -22,7 +22,7 @@ class filesystem_monitor_t:
     public driver_t
 {
     public:
-        filesystem_monitor_t(engine_t* engine,
+        filesystem_monitor_t(engine_t& engine,
                              const std::string& method, 
                              const Json::Value& args);
         virtual ~filesystem_monitor_t();

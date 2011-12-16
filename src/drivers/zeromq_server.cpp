@@ -14,20 +14,21 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/assign.hpp>
 
+#include "cocaine/context.hpp"
 #include "cocaine/drivers/zeromq_server.hpp"
 #include "cocaine/engine.hpp"
 
 using namespace cocaine::engine::driver;
 using namespace cocaine::networking;
 
-zeromq_server_job_t::zeromq_server_job_t(zeromq_server_t* driver, const route_t& route):
+zeromq_server_job_t::zeromq_server_job_t(zeromq_server_t& driver, const route_t& route):
     job_t(driver, client::policy_t()),
     m_route(route)
 { }
 
 void zeromq_server_job_t::react(const events::chunk_t& event) {
     if(!send(event.message)) {
-        syslog(LOG_ERR, "%s: unable to send the response", m_driver->identity());
+        syslog(LOG_ERR, "%s: unable to send the response", m_driver.identity());
     }
 }
 
@@ -42,20 +43,20 @@ void zeromq_server_job_t::react(const events::error_t& event) {
     memcpy(message.data(), response.data(), response.size());
 
     if(!send(message)) {
-        syslog(LOG_ERR, "%s: unable to send the response", m_driver->identity());
+        syslog(LOG_ERR, "%s: unable to send the response", m_driver.identity());
     }
 }
 
 bool zeromq_server_job_t::send(zmq::message_t& chunk) {
     zmq::message_t message;
-    zeromq_server_t* server = static_cast<zeromq_server_t*>(m_driver);
+    zeromq_server_t& server = static_cast<zeromq_server_t&>(m_driver);
     
     // Send the identity
     for(route_t::const_iterator id = m_route.begin(); id != m_route.end(); ++id) {
         message.rebuild(id->size());
         memcpy(message.data(), id->data(), id->size());
         
-        if(!server->socket().send(message, ZMQ_SNDMORE)) {
+        if(!server.socket().send(message, ZMQ_SNDMORE)) {
             return false;
         }
     }
@@ -63,23 +64,23 @@ bool zeromq_server_job_t::send(zmq::message_t& chunk) {
     // Send the delimiter
     message.rebuild(0);
 
-    if(!server->socket().send(message, ZMQ_SNDMORE)) {
+    if(!server.socket().send(message, ZMQ_SNDMORE)) {
         return false;
     }
 
     // Send the chunk
-    return server->socket().send(chunk);
+    return server.socket().send(chunk);
 }
 
-zeromq_server_t::zeromq_server_t(engine_t* engine, const std::string& method, const Json::Value& args, int type) try:
+zeromq_server_t::zeromq_server_t(engine_t& engine, const std::string& method, const Json::Value& args, int type) try:
     driver_t(engine, method),
     m_backlog(args.get("backlog", 1000).asUInt()),
     m_linger(args.get("linger", 0).asInt()),
-    m_socket(m_engine->context(), type, boost::algorithm::join(
+    m_socket(*m_engine.context().io, type, boost::algorithm::join(
         boost::assign::list_of
-            (config_t::get().core.instance)
-            (config_t::get().core.hostname)
-            (m_engine->name())
+            (m_engine.context().config.core.instance)
+            (m_engine.context().config.core.hostname)
+            (m_engine.name())
             (method),
         "/")
     )
@@ -150,10 +151,10 @@ void zeromq_server_t::process(ev::idle&, int) {
         }
 
         while(m_socket.more()) {
-            boost::shared_ptr<zeromq_server_job_t> job(new zeromq_server_job_t(this, route));
+            boost::shared_ptr<zeromq_server_job_t> job(new zeromq_server_job_t(*this, route));
 
             BOOST_VERIFY(m_socket.recv(job->request()));
-            m_engine->enqueue(job);
+            m_engine.enqueue(job);
         }
     } else {
         m_processor.stop();

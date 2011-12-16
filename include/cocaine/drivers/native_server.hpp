@@ -26,7 +26,7 @@ class native_server_job_t:
 {
     public:
         native_server_job_t(const unique_id_t::type& id,
-                            native_server_t* driver,
+                            native_server_t& driver,
                             const client::policy_t& policy,
                             const networking::route_t& route);
 
@@ -38,14 +38,14 @@ class native_server_job_t:
         template<class T>
         bool send(const T& response, int flags = 0) {
             zmq::message_t message;
-            zeromq_server_t* server = static_cast<zeromq_server_t*>(m_driver);
+            zeromq_server_t& server = static_cast<zeromq_server_t&>(m_driver);
 
             // Send the identity
             for(networking::route_t::const_iterator id = m_route.begin(); id != m_route.end(); ++id) {
                 message.rebuild(id->size());
                 memcpy(message.data(), id->data(), id->size());
 
-                if(!server->socket().send(message, ZMQ_SNDMORE)) {
+                if(!server.socket().send(message, ZMQ_SNDMORE)) {
                     return false;
                 }
             }
@@ -53,12 +53,12 @@ class native_server_job_t:
             // Send the delimiter
             message.rebuild(0);
 
-            if(!server->socket().send(message, ZMQ_SNDMORE)) {
+            if(!server.socket().send(message, ZMQ_SNDMORE)) {
                 return false;
             }
 
             // Send the response
-            return server->socket().send_multi(
+            return server.socket().send_multi(
                 boost::tie(
                     response.type,
                     response
@@ -75,7 +75,7 @@ class native_server_t:
     public zeromq_server_t
 {
     public:
-        native_server_t(engine_t* engine,
+        native_server_t(engine_t& engine,
                         const std::string& method, 
                         const Json::Value& args);
 

@@ -26,7 +26,7 @@ class zeromq_server_job_t:
     public job::job_t
 {
     public:
-        zeromq_server_job_t(zeromq_server_t* driver, 
+        zeromq_server_job_t(zeromq_server_t& driver, 
                             const networking::route_t& route);
 
         virtual void react(const events::chunk_t& event);
@@ -43,7 +43,7 @@ class zeromq_server_t:
     public driver_t
 {
     public:
-        zeromq_server_t(engine_t* engine,
+        zeromq_server_t(engine_t& engine,
                         const std::string& method, 
                         const Json::Value& args,
                         int type = ZMQ_ROUTER);

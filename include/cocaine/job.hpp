@@ -42,7 +42,7 @@ class job_t:
     public birth_control_t<job_t>
 {
     public:
-        job_t(driver::driver_t* driver, const client::policy_t& policy);
+        job_t(driver::driver_t& driver, const client::policy_t& policy);
         virtual ~job_t();
 
     public:      
@@ -51,7 +51,7 @@ class job_t:
         virtual void react(const events::choked_t& event) { }
 
     public:
-        inline driver::driver_t* driver() {
+        inline driver::driver_t& driver() {
             return m_driver;
         }
 
@@ -67,7 +67,7 @@ class job_t:
         void discard(ev::periodic&, int);
 
     protected:
-        driver::driver_t* m_driver;
+        driver::driver_t& m_driver;
 
     private:
         client::policy_t m_policy;

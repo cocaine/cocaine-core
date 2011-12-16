@@ -16,7 +16,7 @@
 
 using namespace cocaine::engine::job;
 
-job_t::job_t(driver::driver_t* driver, const client::policy_t& policy):
+job_t::job_t(driver::driver_t& driver, const client::policy_t& policy):
     m_driver(driver),
     m_policy(policy)
 {
@@ -46,7 +46,7 @@ waiting::waiting():
 { }
 
 waiting::~waiting() {
-    context<job_t>().driver()->audit(driver::in_queue,
+    context<job_t>().driver().audit(driver::in_queue,
         ev::get_default_loop().now() - m_timestamp);
 }
 
@@ -55,7 +55,7 @@ processing::processing():
 { }
 
 processing::~processing() {
-    context<job_t>().driver()->audit(driver::on_slave,
+    context<job_t>().driver().audit(driver::on_slave,
         ev::get_default_loop().now() - m_timestamp);
 }
 

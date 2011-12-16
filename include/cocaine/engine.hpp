@@ -60,7 +60,7 @@ class engine_t:
         };
 
     public:
-        engine_t(zmq::context_t& context, const std::string& name); 
+        engine_t(context_t& context, const std::string& name); 
         ~engine_t();
 
         Json::Value start(const Json::Value& manifest);
@@ -99,12 +99,12 @@ class engine_t:
         void publish(const std::string& key, const Json::Value& object);
 
     public:
-        inline const std::string& name() const { 
-            return m_app_cfg.name; 
+        inline context_t& context() {
+            return m_context;
         }
 
-        inline zmq::context_t& context() { 
-            return m_context; 
+        inline const std::string& name() const { 
+            return m_app_cfg.name; 
         }
 
     private:
@@ -114,9 +114,9 @@ class engine_t:
         void cleanup(ev::timer&, int);
 
     private:
+        context_t& m_context;
         bool m_running;
-
-        zmq::context_t& m_context;
+        
         boost::shared_ptr<networking::socket_t> m_pubsub;
         
         // Application
@@ -155,7 +155,7 @@ class publication_t:
     public job::job_t
 {
     public:
-        publication_t(driver::driver_t* parent, const client::policy_t& policy);
+        publication_t(driver::driver_t& parent, const client::policy_t& policy);
 
     public:
         virtual void react(const events::chunk_t&);

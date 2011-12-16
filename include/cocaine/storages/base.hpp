@@ -15,6 +15,7 @@
 #define COCAINE_STORAGE_BASE_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/forwards.hpp"
 
 namespace cocaine { namespace storage {
 
@@ -22,7 +23,7 @@ class storage_t:
     public boost::noncopyable
 {
     public:
-        static boost::shared_ptr<storage_t> create();
+        static boost::shared_ptr<storage_t> create(context_t& context);
     
     public:
         virtual void put(const std::string& ns, const std::string& key, const Json::Value& value) = 0;

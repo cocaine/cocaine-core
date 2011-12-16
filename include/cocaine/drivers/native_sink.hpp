@@ -22,7 +22,7 @@ class native_sink_t:
     public zeromq_sink_t
 {
     public:
-        native_sink_t(engine_t* engine,
+        native_sink_t(engine_t& engine,
                       const std::string& method, 
                       const Json::Value& args);
 

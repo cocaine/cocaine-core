@@ -15,8 +15,10 @@
 #include <boost/iterator/filter_iterator.hpp>
 #include <boost/algorithm/string/join.hpp>
 
+#include "cocaine/context.hpp"
 #include "cocaine/registry.hpp"
 
+using namespace cocaine;
 using namespace cocaine::core;
 using namespace cocaine::plugin;
 
@@ -28,12 +30,12 @@ struct is_regular_file {
     }
 };
 
-registry_t::registry_t() {
+registry_t::registry_t(context_t& context) {
     if(lt_dlinit() != 0) {
         throw std::runtime_error("unable to initialize the module loader");
     }
 
-    fs::path path(config_t::get().registry.location);
+    fs::path path(context.config.registry.location);
 
     if(!fs::exists(path)) {
         throw std::runtime_error(path.string() + " does not exist");
@@ -131,9 +133,9 @@ boost::shared_ptr<source_t> registry_t::create(const std::string& type,
     return boost::shared_ptr<source_t>(factory(args));
 }
 
-const boost::shared_ptr<registry_t>& registry_t::instance() {
+const boost::shared_ptr<registry_t>& registry_t::instance(context_t& context) {
     if(!g_object.get()) {
-        g_object.reset(new registry_t());
+        g_object.reset(new registry_t(context));
     }
 
     return g_object;

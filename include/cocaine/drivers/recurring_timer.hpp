@@ -22,7 +22,7 @@ class recurring_timer_t:
     public driver_t
 {
     public:
-        recurring_timer_t(engine_t* engine,
+        recurring_timer_t(engine_t& engine,
                           const std::string& method, 
                           const Json::Value& args);
         virtual ~recurring_timer_t();

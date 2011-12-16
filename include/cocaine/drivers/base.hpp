@@ -39,7 +39,7 @@ class driver_t:
     public identifiable_t
 {
     public:
-        driver_t(engine_t* engine, const std::string& method);
+        driver_t(engine_t& engine, const std::string& method);
         virtual ~driver_t();
 
         void audit(audit_type type, ev::tstamp value);
@@ -48,7 +48,7 @@ class driver_t:
         virtual Json::Value info() const = 0;
 
     public: 
-        inline engine_t* engine() { 
+        inline engine_t& engine() { 
             return m_engine; 
         }
 
@@ -60,7 +60,7 @@ class driver_t:
         Json::Value stats() const;
 
     protected:
-        engine_t* m_engine;
+        engine_t& m_engine;
         const std::string m_method;
 
     private:

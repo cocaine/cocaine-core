@@ -17,6 +17,7 @@
 #include <boost/format.hpp>
 #include <boost/thread.hpp>
 
+#include "cocaine/context.hpp"
 #include "cocaine/client/types.hpp"
 #include "cocaine/events.hpp"
 #include "cocaine/overseer.hpp"
@@ -24,14 +25,15 @@
 #include "cocaine/registry.hpp"
 #include "cocaine/rpc.hpp"
 
+using namespace cocaine;
 using namespace cocaine::engine;
 using namespace cocaine::plugin;
 
-overseer_t::overseer_t(const unique_id_t::type& id_, zmq::context_t& context, const std::string& name):
+overseer_t::overseer_t(const unique_id_t::type& id_, context_t& context, const std::string& name):
     unique_id_t(id_),
     identifiable_t((boost::format("slave [%1%:%2%]") % name % id_).str()),
     m_context(context),
-    m_messages(m_context, ZMQ_DEALER, id()),
+    m_messages(*m_context.io, ZMQ_DEALER, id()),
     m_loop(),
     m_watcher(m_loop),
     m_processor(m_loop),
@@ -41,7 +43,7 @@ overseer_t::overseer_t(const unique_id_t::type& id_, zmq::context_t& context, co
     m_messages.connect(boost::algorithm::join(
         boost::assign::list_of
             (std::string("ipc:///var/run/cocaine"))
-            (config_t::get().core.instance)
+            (m_context.config.core.instance)
             (name),
         "/")
     );
@@ -53,7 +55,7 @@ overseer_t::overseer_t(const unique_id_t::type& id_, zmq::context_t& context, co
     m_pumper.start(0.2f, 0.2f);
 
     m_suicide_timer.set<overseer_t, &overseer_t::timeout>(this);
-    m_suicide_timer.start(config_t::get().engine.suicide_timeout);
+    m_suicide_timer.start(m_context.config.engine.suicide_timeout);
 
     m_heartbeat_timer.set<overseer_t, &overseer_t::heartbeat>(this);
     m_heartbeat_timer.start(0.0f, 5.0f);
@@ -61,7 +63,7 @@ overseer_t::overseer_t(const unique_id_t::type& id_, zmq::context_t& context, co
 
 void overseer_t::operator()(const std::string& type, const std::string& args) {
     try {
-        m_app = core::registry_t::instance()->create(type, args);
+        m_app = core::registry_t::instance(m_context)->create(type, args);
     } catch(const unrecoverable_error_t& e) {
         syslog(LOG_ERR, "%s: unable to instantiate the app - %s", identity(), e.what());
         BOOST_VERIFY(send(rpc::error_t(client::server_error, e.what())));
@@ -121,7 +123,7 @@ void overseer_t::process(ev::idle&, int) {
                 BOOST_VERIFY(send(rpc::choke_t()));
 
                 m_suicide_timer.stop();
-                m_suicide_timer.start(config_t::get().engine.suicide_timeout);
+                m_suicide_timer.start(m_context.config.engine.suicide_timeout);
              
                 break;
             }
@@ -160,7 +162,7 @@ void overseer_t::respond(const void* response, size_t size) {
 void overseer_t::timeout(ev::timer&, int) {
     if(m_messages.pending()) {
         syslog(LOG_ERR, "%s: postponing the suicide", identity());
-        m_suicide_timer.start(config_t::get().engine.suicide_timeout);
+        m_suicide_timer.start(m_context.config.engine.suicide_timeout);
         return;
     }
     

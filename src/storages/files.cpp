@@ -14,6 +14,7 @@
 #include <boost/filesystem/fstream.hpp>
 #include <boost/iterator/filter_iterator.hpp>
 
+#include "cocaine/context.hpp"
 #include "cocaine/storages/files.hpp"
 
 using namespace cocaine::helpers;
@@ -27,9 +28,9 @@ struct is_regular_file {
     }
 };
 
-file_storage_t::file_storage_t():
-    m_storage_path(config_t::get().storage.location),
-    m_instance(config_t::get().core.instance)
+file_storage_t::file_storage_t(context_t& context):
+    m_storage_path(context.config.storage.location),
+    m_instance(context.config.core.instance)
 { }
 
 void file_storage_t::put(const std::string& ns,

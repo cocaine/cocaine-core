@@ -17,6 +17,7 @@
 #include <ltdl.h>
 
 #include "cocaine/common.hpp"
+#include "cocaine/forwards.hpp"
 #include "cocaine/plugin.hpp"
 
 namespace cocaine { namespace core {
@@ -25,10 +26,10 @@ class registry_t:
     public boost::noncopyable
 {
     public:
-        static const boost::shared_ptr<registry_t>& instance();
+        static const boost::shared_ptr<registry_t>& instance(context_t& context);
 
     public:
-        registry_t();
+        registry_t(context_t& context);
         ~registry_t();
 
         bool exists(const std::string& type);

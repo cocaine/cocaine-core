@@ -26,7 +26,7 @@ class lsd_job_t:
 {
     public:
         lsd_job_t(const unique_id_t::type& id,
-                  lsd_server_t* driver,
+                  lsd_server_t& driver,
                   const client::policy_t& policy,
                   const networking::route_t& route);
 
@@ -45,7 +45,7 @@ class lsd_server_t:
     public zeromq_server_t
 {
     public:
-        lsd_server_t(engine_t* engine,
+        lsd_server_t(engine_t& engine,
                      const std::string& method, 
                      const Json::Value& args);
 

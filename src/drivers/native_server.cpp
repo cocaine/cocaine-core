@@ -18,33 +18,33 @@
 using namespace cocaine::engine::driver;
 using namespace cocaine::networking;
 
-native_server_job_t::native_server_job_t(const unique_id_t::type& id, native_server_t* driver, const client::policy_t& policy, const route_t& route):
+native_server_job_t::native_server_job_t(const unique_id_t::type& id, native_server_t& driver, const client::policy_t& policy, const route_t& route):
     unique_id_t(id),
     job::job_t(driver, policy),
     m_route(route)
 { }
 
 void native_server_job_t::react(const events::chunk_t& event) {
-    zeromq_server_t* server = static_cast<zeromq_server_t*>(m_driver);
+    zeromq_server_t& server = static_cast<zeromq_server_t&>(m_driver);
     
-    if(!send(client::tag_t(id()), ZMQ_SNDMORE) || !server->socket().send(event.message)) {
-        syslog(LOG_ERR, "%s: unable to send the response", m_driver->identity());
+    if(!send(client::tag_t(id()), ZMQ_SNDMORE) || !server.socket().send(event.message)) {
+        syslog(LOG_ERR, "%s: unable to send the response", m_driver.identity());
     }
 }
 
 void native_server_job_t::react(const events::error_t& event) {
     if(!send(client::error_t(id(), event.code, event.message))) {
-        syslog(LOG_ERR, "%s: unable to send the response", m_driver->identity());
+        syslog(LOG_ERR, "%s: unable to send the response", m_driver.identity());
     }
 }
 
 void native_server_job_t::react(const events::choked_t& event) {
     if(!send(client::tag_t(id(), true))) {
-        syslog(LOG_ERR, "%s: unable to send the response", m_driver->identity());
+        syslog(LOG_ERR, "%s: unable to send the response", m_driver.identity());
     }
 }
 
-native_server_t::native_server_t(engine_t* engine, const std::string& method, const Json::Value& args):
+native_server_t::native_server_t(engine_t& engine, const std::string& method, const Json::Value& args):
     zeromq_server_t(engine, method, args)
 { }
 
@@ -95,7 +95,7 @@ void native_server_t::process(ev::idle&, int) {
             boost::shared_ptr<native_server_job_t> job;
             
             try {
-                job.reset(new native_server_job_t(tag.id, this, policy, route));
+                job.reset(new native_server_job_t(tag.id, *this, policy, route));
             } catch(const std::runtime_error& e) {
                 syslog(LOG_ERR, "%s: got a corrupted request - %s", identity(), e.what());
                 continue;
@@ -107,7 +107,7 @@ void native_server_t::process(ev::idle&, int) {
                 continue;
             }
 
-            m_engine->enqueue(job);
+            m_engine.enqueue(job);
         }
     } else {
         m_processor.stop();

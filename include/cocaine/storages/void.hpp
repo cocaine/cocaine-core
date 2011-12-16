@@ -22,6 +22,8 @@ class void_storage_t:
     public storage_t
 {
     public:
+        void_storage_t(context_t& context) { }
+
         virtual void put(const std::string& ns, const std::string& key, const Json::Value& value) { }
 
         virtual bool exists(const std::string& ns, const std::string& key) { return false; }

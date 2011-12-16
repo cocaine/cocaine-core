@@ -25,7 +25,7 @@ class core_t:
     public boost::noncopyable
 {
     public:
-        core_t();
+        core_t(context_t& context);
         ~core_t();
 
         void loop();
@@ -63,9 +63,9 @@ class core_t:
         void announce(ev::timer&, int);
 
     private:
+        context_t& m_context;
         security::signatures_t m_signatures;
-
-        zmq::context_t m_context;
+        
         networking::socket_t m_server;
 
         ev::sig m_sigint, m_sigterm, m_sigquit, m_sighup;

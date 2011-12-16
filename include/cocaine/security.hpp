@@ -17,6 +17,7 @@
 #include <openssl/evp.h>
 
 #include "cocaine/common.hpp"
+#include "cocaine/forwards.hpp"
 
 namespace cocaine { namespace security {
 
@@ -24,7 +25,7 @@ class signatures_t:
     public boost::noncopyable
 {
     public:
-        signatures_t();
+        signatures_t(context_t& context);
         ~signatures_t();
 
         void verify(const char* message,

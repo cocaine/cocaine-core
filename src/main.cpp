@@ -16,6 +16,7 @@
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 
+#include "cocaine/context.hpp"
 #include "cocaine/common.hpp"
 #include "cocaine/core.hpp"
 #include "cocaine/helpers/pid_file.hpp"
@@ -28,53 +29,55 @@ namespace fs = boost::filesystem;
 static const char identity[] = "cocaine";
 
 int main(int argc, char* argv[]) {
+    context_t context;
+
     po::options_description mandatory, options("Allowed options"), combined;
     po::positional_options_description positional;
     po::variables_map vm;
 
     mandatory.add_options()
         ("endpoints", po::value< std::vector<std::string> >
-            (&config_t::set().core.endpoints));
+            (&context.config.core.endpoints));
     
     positional.add("endpoints", -1);
 
     options.add_options()
         ("core:announce-endpoint", po::value<std::string>
-            (&config_t::set().core.announce_endpoint),
+            (&context.config.core.announce_endpoint),
             "multicast endpoint for automatic discovery")
         ("core:announce-interval", po::value<float>
-            (&config_t::set().core.announce_interval)->default_value(5.0f),
+            (&context.config.core.announce_interval)->default_value(5.0f),
             "multicast announce interval for automatic discovery, seconds")
         ("core:instance", po::value<std::string>
-            (&config_t::set().core.instance)->default_value("default"),
+            (&context.config.core.instance)->default_value("default"),
             "instance name")
         ("daemonize", "daemonize on start")
         ("engine:backend", po::value<std::string>
-            (&config_t::set().engine.backend)->default_value("process"),
+            (&context.config.engine.backend)->default_value("process"),
             "default engine backend, one of: thread, process")
         ("engine:heartbeat-timeout", po::value<float>
-            (&config_t::set().engine.heartbeat_timeout)->default_value(30.0f),
+            (&context.config.engine.heartbeat_timeout)->default_value(30.0f),
             "default unresponsive thread cancellation timeout, seconds")
         ("engine:suicide-timeout", po::value<float>
-            (&config_t::set().engine.suicide_timeout)->default_value(600.0f),
+            (&context.config.engine.suicide_timeout)->default_value(600.0f),
             "default stale thread suicide timeout, seconds")
         ("engine:pool-limit", po::value<unsigned int>
-            (&config_t::set().engine.pool_limit)->default_value(10),
+            (&context.config.engine.pool_limit)->default_value(10),
             "maximum engine slave pool size")
         ("engine:queue-limit", po::value<unsigned int>
-            (&config_t::set().engine.queue_limit)->default_value(10),
+            (&context.config.engine.queue_limit)->default_value(10),
             "default maximum engine queue depth")
         ("help", "show this message")
         ("pidfile", po::value<fs::path>()->default_value("/var/run/cocaine/default.pid"),
             "location of a pid file")
         ("plugins", po::value<std::string>
-            (&config_t::set().registry.location)->default_value("/usr/lib/cocaine"),
+            (&context.config.registry.location)->default_value("/usr/lib/cocaine"),
             "where to load plugins from")
         ("storage:driver", po::value<std::string>
-            (&config_t::set().storage.driver)->default_value("files"),
+            (&context.config.storage.driver)->default_value("files"),
             "storage driver type, one of: void, files, mongo")
         ("storage:location", po::value<std::string>
-            (&config_t::set().storage.location)->default_value("/var/lib/cocaine"),
+            (&context.config.storage.location)->default_value("/var/lib/cocaine"),
             "storage location, format depends on the storage type")
         ("verbose", "produce a lot of output")
         ("version", "show version and build information");
@@ -118,7 +121,7 @@ int main(int argc, char* argv[]) {
     char hostname[256];
 
     if(gethostname(hostname, 256) == 0) {
-        config_t::set().core.hostname = hostname;
+        context.config.core.hostname = hostname;
     } else {
         std::cout << "Error: failed to determine the hostname" << std::endl;
         return EXIT_FAILURE;
@@ -152,7 +155,7 @@ int main(int argc, char* argv[]) {
 
     // Initializing the core
     try {
-        core.reset(new core::core_t());
+        core.reset(new core::core_t(context));
     } catch(const std::exception& e) {
         syslog(LOG_ERR, "main: unable to start the core - %s", e.what());
         return EXIT_FAILURE;

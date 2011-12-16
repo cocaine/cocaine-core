@@ -11,6 +11,7 @@
 // limitations under the License.
 //
 
+#include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/overseer.hpp"
 #include "cocaine/slaves/thread.hpp"
@@ -21,11 +22,11 @@
 
 using namespace cocaine::engine::slave;
 
-thread_t::thread_t(engine_t* engine, const std::string& type, const std::string& args):
+thread_t::thread_t(engine_t& engine, const std::string& type, const std::string& args):
     slave_t(engine)
 {
     try {
-        m_overseer.reset(new overseer_t(id(), m_engine->context(), m_engine->name()));
+        m_overseer.reset(new overseer_t(id(), m_engine.context(), m_engine.name()));
 #if BOOST_VERSION >= 103500
         m_thread.reset(new boost::thread(boost::ref(*m_overseer), type, args));
 #else

@@ -18,7 +18,7 @@
 using namespace cocaine::engine::driver;
 using namespace cocaine::networking;
 
-native_sink_t::native_sink_t(engine_t* engine, const std::string& method, const Json::Value& args):
+native_sink_t::native_sink_t(engine_t& engine, const std::string& method, const Json::Value& args):
     zeromq_sink_t(engine, method, args)
 { }
 
@@ -46,7 +46,7 @@ void native_sink_t::process(ev::idle&, int) {
 
             // TEST: This is temporary for testing purposes
             BOOST_ASSERT(type == tag.type);
-            boost::shared_ptr<publication_t> job(new publication_t(this, policy));
+            boost::shared_ptr<publication_t> job(new publication_t(*this, policy));
             
             if(!m_socket.more() || !m_socket.recv(job->request())) {
                 syslog(LOG_ERR, "%s: got a corrupted request - missing body", identity());
@@ -54,7 +54,7 @@ void native_sink_t::process(ev::idle&, int) {
                 continue;
             }
 
-            m_engine->enqueue(job);
+            m_engine.enqueue(job);
         } while(m_socket.more());
     } else {
         m_processor.stop();

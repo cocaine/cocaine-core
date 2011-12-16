@@ -46,7 +46,6 @@
 #define EV_MINIMAL 0
 #include <ev++.h>
 
-#include "cocaine/config.hpp"
 #include "cocaine/helpers/birth_control.hpp"
 #include "cocaine/helpers/unique_id.hpp"
 #include "cocaine/helpers/json.hpp"

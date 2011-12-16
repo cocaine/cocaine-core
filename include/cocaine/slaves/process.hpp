@@ -22,7 +22,7 @@ class process_t:
     public slave_t
 {
     public:
-        process_t(engine_t* engine,
+        process_t(engine_t& engine,
                   const std::string& type,
                   const std::string& args);
 

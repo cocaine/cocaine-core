@@ -18,20 +18,20 @@
 using namespace cocaine::engine::driver;
 using namespace cocaine::networking;
 
-lsd_job_t::lsd_job_t(const unique_id_t::type& id, lsd_server_t* driver, const client::policy_t& policy, const route_t& route):
+lsd_job_t::lsd_job_t(const unique_id_t::type& id, lsd_server_t& driver, const client::policy_t& policy, const route_t& route):
     unique_id_t(id),
     job::job_t(driver, policy),
     m_route(route)
 { }
 
 void lsd_job_t::react(const events::chunk_t& event) {
-    zeromq_server_t* server = static_cast<zeromq_server_t*>(m_driver);
+    zeromq_server_t& server = static_cast<zeromq_server_t&>(m_driver);
     Json::Value root(Json::objectValue);
     
     root["uuid"] = id();
     
-    if(!send(root, ZMQ_SNDMORE) || !server->socket().send(event.message)) {
-        syslog(LOG_ERR, "%s: unable to send the response", m_driver->identity());
+    if(!send(root, ZMQ_SNDMORE) || !server.socket().send(event.message)) {
+        syslog(LOG_ERR, "%s: unable to send the response", m_driver.identity());
     }
 }
 
@@ -43,7 +43,7 @@ void lsd_job_t::react(const events::error_t& event) {
     root["message"] = event.message;
 
     if(!send(root)) {
-        syslog(LOG_ERR, "%s: unable to send the response", m_driver->identity());
+        syslog(LOG_ERR, "%s: unable to send the response", m_driver.identity());
     }
 }
 
@@ -54,20 +54,20 @@ void lsd_job_t::react(const events::choked_t& event) {
     root["completed"] = true;
 
     if(!send(root)) {
-        syslog(LOG_ERR, "%s: unable to send the response", m_driver->identity());
+        syslog(LOG_ERR, "%s: unable to send the response", m_driver.identity());
     }
 }
 
 bool lsd_job_t::send(const Json::Value& root, int flags) {
     zmq::message_t message;
-    zeromq_server_t* server = static_cast<zeromq_server_t*>(m_driver);
+    zeromq_server_t& server = static_cast<zeromq_server_t&>(m_driver);
 
     // Send the identity
     for(route_t::const_iterator id = m_route.begin(); id != m_route.end(); ++id) {
         message.rebuild(id->size());
         memcpy(message.data(), id->data(), id->size());
         
-        if(!server->socket().send(message, ZMQ_SNDMORE)) {
+        if(!server.socket().send(message, ZMQ_SNDMORE)) {
             return false;
         }
     }
@@ -75,7 +75,7 @@ bool lsd_job_t::send(const Json::Value& root, int flags) {
     // Send the delimiter
     message.rebuild(0);
 
-    if(!server->socket().send(message, ZMQ_SNDMORE)) {
+    if(!server.socket().send(message, ZMQ_SNDMORE)) {
         return false;
     }
 
@@ -84,10 +84,10 @@ bool lsd_job_t::send(const Json::Value& root, int flags) {
     message.rebuild(envelope.size());
     memcpy(message.data(), envelope.data(), envelope.size());
 
-    return server->socket().send(message, flags);
+    return server.socket().send(message, flags);
 }
 
-lsd_server_t::lsd_server_t(engine_t* engine, const std::string& method, const Json::Value& args):
+lsd_server_t::lsd_server_t(engine_t& engine, const std::string& method, const Json::Value& args):
     zeromq_server_t(engine, method, args)
 { }
 
@@ -147,7 +147,7 @@ void lsd_server_t::process(ev::idle&, int) {
             boost::shared_ptr<lsd_job_t> job;
             
             try {
-                job.reset(new lsd_job_t(root.get("uuid", "").asString(), this, policy, route));
+                job.reset(new lsd_job_t(root.get("uuid", "").asString(), *this, policy, route));
             } catch(const std::runtime_error& e) {
                 syslog(LOG_ERR, "%s: got a corrupted request - invalid envelope - %s",
                     identity(), e.what());
@@ -160,7 +160,7 @@ void lsd_server_t::process(ev::idle&, int) {
                 continue;
             }
             
-            m_engine->enqueue(job);
+            m_engine.enqueue(job);
         }
     } else {
         m_processor.stop();

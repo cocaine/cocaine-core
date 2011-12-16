@@ -17,7 +17,7 @@
 
 using namespace cocaine::engine::driver;
 
-filesystem_monitor_t::filesystem_monitor_t(engine_t* engine, const std::string& method, const Json::Value& args):
+filesystem_monitor_t::filesystem_monitor_t(engine_t& engine, const std::string& method, const Json::Value& args):
     driver_t(engine, method),
     m_path(args.get("path", "").asString())
 {
@@ -44,7 +44,7 @@ Json::Value filesystem_monitor_t::info() const {
 }
 
 void filesystem_monitor_t::event(ev::stat&, int) {
-    boost::shared_ptr<publication_t> job(new publication_t(this, client::policy_t()));
-    m_engine->enqueue(job);
+    boost::shared_ptr<publication_t> job(new publication_t(*this, client::policy_t()));
+    m_engine.enqueue(job);
 }
 

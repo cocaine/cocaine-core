@@ -11,6 +11,7 @@
 // limitations under the License.
 //
 
+#include "cocaine/context.hpp"
 #include "cocaine/storages/eblobs.hpp"
 
 using namespace cocaine::helpers;
@@ -52,8 +53,8 @@ void eblob_purger_t::complete(uint64_t, uint64_t) {
     }
 }
 
-eblob_storage_t::eblob_storage_t():
-    m_storage_path(config_t::get().storage.location),
+eblob_storage_t::eblob_storage_t(context_t& context):
+    m_storage_path(context.config.storage.location),
     m_logger(NULL, EBLOB_LOG_NOTICE)
 {
     if(!fs::exists(m_storage_path)) {

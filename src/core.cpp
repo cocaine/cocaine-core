@@ -16,21 +16,24 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/assign.hpp>
 
+#include "cocaine/context.hpp"
 #include "cocaine/core.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/storages/base.hpp"
 
+using namespace cocaine;
 using namespace cocaine::core;
 using namespace cocaine::engine;
 using namespace cocaine::networking;
 using namespace cocaine::storage;
 
-core_t::core_t():
-    m_context(1),
-    m_server(m_context, ZMQ_ROUTER, boost::algorithm::join(
+core_t::core_t(context_t& context):
+    m_context(context),
+    m_signatures(m_context),
+    m_server(*m_context.io, ZMQ_ROUTER, boost::algorithm::join(
         boost::assign::list_of
-            (config_t::get().core.instance)
-            (config_t::get().core.hostname),
+            (m_context.config.core.instance)
+            (m_context.config.core.hostname),
         "/")
     ),
     m_birthstamp(ev::get_default_loop().now())
@@ -49,8 +52,8 @@ core_t::core_t():
 
     m_server.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
 
-    for(std::vector<std::string>::const_iterator it = config_t::get().core.endpoints.begin();
-        it != config_t::get().core.endpoints.end();
+    for(std::vector<std::string>::const_iterator it = m_context.config.core.endpoints.begin();
+        it != m_context.config.core.endpoints.end();
         ++it) 
     {
         m_server.bind(*it);
@@ -58,20 +61,20 @@ core_t::core_t():
     }
 
     // Automatic discovery support
-    if(!config_t::get().core.announce_endpoint.empty()) {
+    if(!m_context.config.core.announce_endpoint.empty()) {
         try {
-            m_announces.reset(new socket_t(m_context, ZMQ_PUB));
+            m_announces.reset(new socket_t(*m_context.io, ZMQ_PUB));
             m_announces->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
-            m_announces->connect("epgm://" + config_t::get().core.announce_endpoint);
+            m_announces->connect("epgm://" + m_context.config.core.announce_endpoint);
         } catch(const zmq::error_t& e) {
             throw std::runtime_error(std::string("invalid announce endpoint - ") + e.what());
         }
 
-        syslog(LOG_INFO, "core: announcing on %s", config_t::get().core.announce_endpoint.c_str());
+        syslog(LOG_INFO, "core: announcing on %s", m_context.config.core.announce_endpoint.c_str());
 
         m_announce_timer.reset(new ev::timer());
         m_announce_timer->set<core_t, &core_t::announce>(this);
-        m_announce_timer->start(0.0f, config_t::get().core.announce_interval);
+        m_announce_timer->start(0.0f, m_context.config.core.announce_interval);
     }
 
     m_watcher.set<core_t, &core_t::request>(this);
@@ -288,7 +291,7 @@ Json::Value core_t::create_engine(const std::string& name, const Json::Value& ma
 
     if(!recovering) {
         try {
-            storage_t::create()->put("apps", name, manifest);
+            storage_t::create(m_context)->put("apps", name, manifest);
         } catch(const std::runtime_error& e) {
             syslog(LOG_ERR, "core: unable to create '%s' engine due to the storage failure - %s",
                 name.c_str(), e.what());
@@ -312,7 +315,7 @@ Json::Value core_t::reload_engine(const std::string& name) {
     }
 
     try {
-        manifest = storage_t::create()->get("apps", name);
+        manifest = storage_t::create(m_context)->get("apps", name);
     } catch(const std::runtime_error& e) {
         syslog(LOG_ERR, "core: unable to reload '%s' engine due to the storage failure - %s",
             name.c_str(), e.what());
@@ -333,7 +336,7 @@ Json::Value core_t::delete_engine(const std::string& name) {
     }
 
     try {
-        storage_t::create()->remove("apps", name);
+        storage_t::create(m_context)->remove("apps", name);
     } catch(const std::runtime_error& e) {
         syslog(LOG_ERR, "core: unable to destroy '%s' engine due to the storage failure - %s",
             name.c_str(), e.what());
@@ -393,7 +396,7 @@ bool core_t::respond(const route_t& route, const Json::Value& object) {
 
 void core_t::recover() {
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
-    Json::Value root(storage_t::create()->all("apps"));
+    Json::Value root(storage_t::create(m_context)->all("apps"));
 
     if(root.size()) {
         Json::Value::Members apps(root.getMemberNames());
@@ -418,7 +421,7 @@ void core_t::announce(ev::timer&, int) {
 
     std::ostringstream envelope;
 
-    envelope << config_t::get().core.instance << " "
+    envelope << m_context.config.core.instance << " "
              << m_server.endpoint();
 
     zmq::message_t message(envelope.str().size());

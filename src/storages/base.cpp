@@ -11,23 +11,25 @@
 // limitations under the License.
 //
 
+#include "cocaine/context.hpp"
 #include "cocaine/storages/base.hpp"
 #include "cocaine/storages/files.hpp"
 #include "cocaine/storages/mongo.hpp"
 #include "cocaine/storages/void.hpp"
 
+using namespace cocaine;
 using namespace cocaine::storage;
 
-boost::shared_ptr<storage_t> storage_t::create() {
+boost::shared_ptr<storage_t> storage_t::create(context_t& context) {
     boost::shared_ptr<storage_t> object;
-    std::string driver(config_t::get().storage.driver);
+    std::string driver(context.config.storage.driver);
 
     if(driver == "files") {
-        object.reset(new file_storage_t());
+        object.reset(new file_storage_t(context));
     } else if(driver == "mongo") {
-        object.reset(new mongo_storage_t());
+        object.reset(new mongo_storage_t(context));
     } else {
-        object.reset(new void_storage_t());
+        object.reset(new void_storage_t(context));
     }
 
     return object;

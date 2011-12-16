@@ -15,13 +15,15 @@
 #include <openssl/pem.h>
 #include <openssl/err.h>
 
+#include "cocaine/context.hpp"
 #include "cocaine/storages/base.hpp"
 #include "cocaine/security.hpp"
 
+using namespace cocaine;
 using namespace cocaine::security;
 using namespace cocaine::storage;
 
-signatures_t::signatures_t():
+signatures_t::signatures_t(context_t& context):
     m_context(EVP_MD_CTX_create())
 {
     // Initialize error strings
@@ -29,7 +31,7 @@ signatures_t::signatures_t():
 
     // Load the credentials
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
-    Json::Value keys(storage_t::create()->all("keys"));
+    Json::Value keys(storage_t::create(context)->all("keys"));
     Json::Value::Members names(keys.getMemberNames());
 
     for(Json::Value::Members::const_iterator it = names.begin(); it != names.end(); ++it) {

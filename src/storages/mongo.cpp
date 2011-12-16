@@ -13,14 +13,15 @@
 
 #include <mongo/client/connpool.h>
 
+#include "cocaine/context.hpp"
 #include "cocaine/storages/mongo.hpp"
 
 using namespace cocaine::storage;
 using namespace mongo;
 
-mongo_storage_t::mongo_storage_t() try:
-    m_instance(config_t::get().core.instance),
-    m_url(config_t::get().storage.location, ConnectionString::SET)
+mongo_storage_t::mongo_storage_t(context_t& context) try:
+    m_instance(context.config.core.instance),
+    m_url(context.config.storage.location, ConnectionString::SET)
 {
     if(!m_url.isValid()) {
         throw std::runtime_error("invalid mongodb uri");

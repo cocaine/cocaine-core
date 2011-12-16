@@ -25,7 +25,7 @@ class drifting_timer_job_t:
     public publication_t
 {
     public:
-        drifting_timer_job_t(drifting_timer_t* driver, const client::policy_t& policy);
+        drifting_timer_job_t(drifting_timer_t& driver, const client::policy_t& policy);
 
         virtual void react(const events::error_t& event);
         virtual void react(const events::choked_t& event);
@@ -35,7 +35,7 @@ class drifting_timer_t:
     public recurring_timer_t
 {
     public:
-        drifting_timer_t(engine_t* engine,
+        drifting_timer_t(engine_t& engine,
                          const std::string& method, 
                          const Json::Value& args);
 

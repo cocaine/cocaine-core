@@ -17,7 +17,7 @@
 
 using namespace cocaine::engine::driver;
 
-recurring_timer_t::recurring_timer_t(engine_t* engine, const std::string& method, const Json::Value& args):
+recurring_timer_t::recurring_timer_t(engine_t& engine, const std::string& method, const Json::Value& args):
     driver_t(engine, method),
     m_interval(args.get("interval", 0.0f).asInt() / 1000.0f)
 {
@@ -48,6 +48,6 @@ void recurring_timer_t::event(ev::timer&, int) {
 }
 
 void recurring_timer_t::reschedule() {
-    boost::shared_ptr<publication_t> job(new publication_t(this, client::policy_t()));
-    m_engine->enqueue(job);
+    boost::shared_ptr<publication_t> job(new publication_t(*this, client::policy_t()));
+    m_engine.enqueue(job);
 }

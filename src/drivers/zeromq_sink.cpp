@@ -19,7 +19,7 @@
 
 using namespace cocaine::engine::driver;
 
-zeromq_sink_t::zeromq_sink_t(engine_t* engine, const std::string& method, const Json::Value& args):
+zeromq_sink_t::zeromq_sink_t(engine_t& engine, const std::string& method, const Json::Value& args):
     zeromq_server_t(engine, method, args, ZMQ_PULL)
 { }
 
@@ -34,9 +34,9 @@ Json::Value zeromq_sink_t::info() const {
 void zeromq_sink_t::process(ev::idle&, int) {
     if(m_socket.pending()) {
         do {
-            boost::shared_ptr<publication_t> job(new publication_t(this, client::policy_t()));
+            boost::shared_ptr<publication_t> job(new publication_t(*this, client::policy_t()));
             BOOST_VERIFY(m_socket.recv(job->request()));
-            m_engine->enqueue(job);
+            m_engine.enqueue(job);
         } while(m_socket.more()); 
     } else {
         m_processor.stop();

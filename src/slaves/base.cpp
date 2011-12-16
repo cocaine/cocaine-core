@@ -13,6 +13,7 @@
 
 #include <boost/format.hpp>
 
+#include "cocaine/context.hpp"
 #include "cocaine/client/types.hpp"
 #include "cocaine/drivers/base.hpp"
 #include "cocaine/engine.hpp"
@@ -20,8 +21,8 @@
 
 using namespace cocaine::engine::slave;
 
-slave_t::slave_t(engine_t* engine):
-    identifiable_t((boost::format("slave [%1%:%2%]") % engine->name() % id()).str()),
+slave_t::slave_t(engine_t& engine):
+    identifiable_t((boost::format("slave [%1%:%2%]") % engine.name() % id()).str()),
     m_engine(engine)
 {
     syslog(LOG_DEBUG, "%s: constructing", identity());
@@ -67,8 +68,8 @@ void slave_t::react(const events::heartbeat_t& event) {
         m_heartbeat_timer.start(state->job()->policy().timeout);
     } else {
         syslog(LOG_DEBUG, "%s: resetting timeout to %.02f seconds", 
-            identity(), config_t::get().engine.heartbeat_timeout);
-        m_heartbeat_timer.start(config_t::get().engine.heartbeat_timeout);
+            identity(), m_engine.context().config.engine.heartbeat_timeout);
+        m_heartbeat_timer.start(m_engine.context().config.engine.heartbeat_timeout);
     }
 }
 
@@ -101,11 +102,11 @@ alive::~alive() {
     if(m_job && !m_job->state_downcast<const job::complete*>()) {
         syslog(LOG_INFO, "%s: rescheduling an incomplete '%s' job",
             context<slave_t>().identity(),
-            m_job->driver()->method().c_str()
+            m_job->driver().method().c_str()
         );
        
         // NOTE: Allow the queue to grow beyond its capacity. 
-        m_job->driver()->engine()->enqueue(m_job, true);
+        m_job->driver().engine().enqueue(m_job, true);
     }
 }
 

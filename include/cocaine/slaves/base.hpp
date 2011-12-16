@@ -40,7 +40,7 @@ struct slave_t:
     public identifiable_t
 {
     public:
-        slave_t(engine_t* engine);
+        slave_t(engine_t& engine);
         virtual ~slave_t();
 
         void react(const events::heartbeat_t& event);
@@ -52,7 +52,7 @@ struct slave_t:
         void timeout(ev::timer&, int);
 
     protected:
-        engine_t* m_engine;
+        engine_t& m_engine;
 
     private:
         ev::timer m_heartbeat_timer;

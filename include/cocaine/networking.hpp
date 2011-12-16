@@ -54,8 +54,13 @@ class socket_t:
             size_t position = endpoint.find_last_of(":");
 
             if(position != std::string::npos) {
-                m_endpoint = config_t::get().core.hostname +
-                    endpoint.substr(position, std::string::npos);
+                char hostname[256];
+
+                if(gethostname(hostname, 256) == 0) {
+                    m_endpoint = hostname + endpoint.substr(position, std::string::npos);
+                } else {
+                    throw std::runtime_error("failed to determine the hostname");
+                }
             } else {
                 m_endpoint = "<local>";
             }

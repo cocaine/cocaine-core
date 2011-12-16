@@ -28,7 +28,7 @@ class overseer_t:
 {
     public:
         overseer_t(const unique_id_t::type& id,
-                   zmq::context_t& context,
+                   context_t& context,
                    const std::string& name);
 
         // Entry point 
@@ -59,8 +59,9 @@ class overseer_t:
         void terminate();
 
     private:
+        context_t& m_context;
+
         // Messaging
-        zmq::context_t& m_context;
         networking::channel_t m_messages;
 
         // Application instance

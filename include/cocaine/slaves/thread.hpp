@@ -24,7 +24,7 @@ class thread_t:
     public slave_t
 {
     public:        
-        thread_t(engine_t* engine,
+        thread_t(engine_t& engine,
                  const std::string& type,
                  const std::string& args);
 
