@@ -62,6 +62,10 @@ class http_t:
             const void* request,
             size_t size) 
         {
+            if(method != "check") {
+                throw unrecoverable_error_t("unsupported method");
+            }
+
             Json::Value result;
         
             CURLcode code = curl_easy_perform(m_curl);

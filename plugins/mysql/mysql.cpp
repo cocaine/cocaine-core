@@ -49,6 +49,10 @@ class mysql_t:
             const void* request,
             size_t size) 
         {
+            if(method != "check") {
+                throw unrecoverable_error_t("unsupported method");
+            }
+            
             Json::Value result;
             MYSQL* connection = mysql_init(NULL);
 
