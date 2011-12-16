@@ -195,18 +195,12 @@ void core_t::process(ev::idle&, int) {
                     }
                 }
 
-                if(!respond(route, dispatch(root))) {
-                    syslog(LOG_ERR, "core: unable to send the response");
-                }
+                (void)respond(route, dispatch(root));
             } catch(const std::runtime_error& e) {
-                if(!respond(route, helpers::make_json("error", e.what()))) {
-                    syslog(LOG_ERR, "core: unable to send the response");
-                }
+                (void)respond(route, helpers::make_json("error", e.what()));
             }
         } else {
-            if(!respond(route, helpers::make_json("error", reader.getFormatedErrorMessages()))) {
-                syslog(LOG_ERR, "core: unable to send the response");
-            }
+            (void)respond(route, helpers::make_json("error", reader.getFormatedErrorMessages()));
         }
     } else {
         m_processor.stop();
@@ -433,10 +427,6 @@ void core_t::announce(ev::timer&, int) {
         message.rebuild(announce.size());
         memcpy(message.data(), announce.data(), announce.size());
         
-        if(!m_announces->send(message)) {
-            syslog(LOG_WARNING, "core: unable to announce the node");
-        }
-    } else {
-        syslog(LOG_WARNING, "core: unable to announce the node");
+        (void)m_announces->send(message);
     }
 }

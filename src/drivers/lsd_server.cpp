@@ -30,8 +30,8 @@ void lsd_job_t::react(const events::chunk_t& event) {
     
     root["uuid"] = id();
     
-    if(!send(root, ZMQ_SNDMORE) || !server.socket().send(event.message)) {
-        syslog(LOG_ERR, "%s: unable to send the response", m_driver.identity());
+    if(send(root, ZMQ_SNDMORE)) {
+        (void)server.socket().send(event.message);
     }
 }
 
@@ -44,9 +44,7 @@ void lsd_job_t::react(const events::error_t& event) {
     root["code"] = event.code;
     root["message"] = event.message;
 
-    if(!send(root)) {
-        syslog(LOG_ERR, "%s: unable to send the response", m_driver.identity());
-    }
+    (void)send(root);
 }
 
 void lsd_job_t::react(const events::choked_t& event) {
@@ -57,9 +55,7 @@ void lsd_job_t::react(const events::choked_t& event) {
     root["uuid"] = id();
     root["completed"] = true;
 
-    if(!send(root)) {
-        syslog(LOG_ERR, "%s: unable to send the response", m_driver.identity());
-    }
+    (void)send(root);
 }
 
 bool lsd_job_t::send(const Json::Value& root, int flags) {

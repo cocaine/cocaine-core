@@ -27,25 +27,21 @@ native_server_job_t::native_server_job_t(native_server_t& driver, const client::
 void native_server_job_t::react(const events::chunk_t& event) {
     zeromq_server_t& server = static_cast<zeromq_server_t&>(m_driver);
     
-    if(!send(client::tag_t(id()), ZMQ_SNDMORE) || !server.socket().send(event.message)) {
-        syslog(LOG_ERR, "%s: unable to send the response", m_driver.identity());
+    if(send(client::tag_t(id()), ZMQ_SNDMORE)) {
+        (void)server.socket().send(event.message);
     }
 }
 
 void native_server_job_t::react(const events::error_t& event) {
     job_t::react(event);
 
-    if(!send(client::error_t(id(), event.code, event.message))) {
-        syslog(LOG_ERR, "%s: unable to send the response", m_driver.identity());
-    }
+    (void)send(client::error_t(id(), event.code, event.message));
 }
 
 void native_server_job_t::react(const events::choked_t& event) {
     job_t::react(event);
 
-    if(!send(client::tag_t(id(), true))) {
-        syslog(LOG_ERR, "%s: unable to send the response", m_driver.identity());
-    }
+    (void)send(client::tag_t(id(), true));
 }
 
 native_server_t::native_server_t(engine_t& engine, const std::string& method, const Json::Value& args):

@@ -27,9 +27,7 @@ zeromq_server_job_t::zeromq_server_job_t(zeromq_server_t& driver, const route_t&
 { }
 
 void zeromq_server_job_t::react(const events::chunk_t& event) {
-    if(!send(event.message)) {
-        syslog(LOG_ERR, "%s: unable to send the response", m_driver.identity());
-    }
+    (void)send(event.message);
 }
 
 void zeromq_server_job_t::react(const events::error_t& event) {
@@ -44,9 +42,7 @@ void zeromq_server_job_t::react(const events::error_t& event) {
     zmq::message_t message(response.size());
     memcpy(message.data(), response.data(), response.size());
 
-    if(!send(message)) {
-        syslog(LOG_ERR, "%s: unable to send the response", m_driver.identity());
-    }
+    (void)send(message);
 }
 
 bool zeromq_server_job_t::send(zmq::message_t& chunk) {

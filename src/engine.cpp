@@ -202,7 +202,7 @@ Json::Value engine_t::stop() {
     
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
         // NOTE: Doesn't matter if it's not delivered, slaves will be killed anyway.
-        m_messages.send_multi(
+        (void)m_messages.send_multi(
             boost::tie(
                 protect(it->first),
                 terminator.type,
@@ -358,11 +358,7 @@ void engine_t::publish(const identifiable_t& source, const Json::Value& object) 
                 message.rebuild(result.size());
                 memcpy(message.data(), result.data(), result.size());
                 
-                if(!m_pubsub->send(message)) {
-                    syslog(LOG_ERR, "%s: unable to publish the object", identity());
-                }
-            } else {
-                syslog(LOG_ERR, "%s: unable to publish the object", identity());
+                (void)m_pubsub->send(message);
             }
         }
     }
