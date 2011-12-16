@@ -96,7 +96,7 @@ class engine_t:
         // NOTE: This one is a very special method to log and export application
         // publications. Everything intended for various aggregators, log collectors
         // and so on is going through this method.
-        void publish(const std::string& key, const Json::Value& object);
+        void publish(const identifiable_t& source, const Json::Value& object);
 
     public:
         inline context_t& context() {

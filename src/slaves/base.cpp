@@ -22,7 +22,7 @@
 using namespace cocaine::engine::slave;
 
 slave_t::slave_t(engine_t& engine):
-    identifiable_t((boost::format("slave [%1%:%2%]") % engine.name() % id()).str()),
+    identifiable_t((boost::format("%s:%s") % engine.name() % id()).str()),
     m_engine(engine)
 {
     syslog(LOG_DEBUG, "%s: constructing", identity());
@@ -74,7 +74,7 @@ void slave_t::react(const events::heartbeat_t& event) {
 }
 
 void slave_t::timeout(ev::timer&, int) {
-    syslog(LOG_ERR, "%s: missed too many heartbeats", identity());
+    m_engine.publish(*this, "missed too many heartbeats");
     
     const busy* state = state_downcast<const busy*>();
     
@@ -100,7 +100,7 @@ void alive::react(const events::choked_t& event) {
 
 alive::~alive() {
     if(m_job && !m_job->state_downcast<const job::complete*>()) {
-        syslog(LOG_INFO, "%s: rescheduling an incomplete '%s' job",
+        syslog(LOG_DEBUG, "%s: rescheduling an incomplete '%s' job",
             context<slave_t>().identity(),
             m_job->driver().method().c_str()
         );

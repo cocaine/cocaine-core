@@ -30,7 +30,7 @@ using namespace cocaine::plugin;
 
 overseer_t::overseer_t(context_t& context, const unique_id_t::type& id_, const std::string& name):
     unique_id_t(id_),
-    identifiable_t((boost::format("slave [%1%:%2%]") % name % id_).str()),
+    identifiable_t((boost::format("%s:%s") % name % id_).str()),
     m_context(context),
     m_messages(*m_context.bus, ZMQ_DEALER, id()),
     m_loop(),
@@ -153,7 +153,7 @@ void overseer_t::respond(const void* response, size_t size) {
 
 void overseer_t::timeout(ev::timer&, int) {
     if(m_messages.pending()) {
-        syslog(LOG_ERR, "%s: postponing the suicide", identity());
+        syslog(LOG_DEBUG, "%s: postponing the suicide", identity());
         m_suicide_timer.start(m_context.config.engine.suicide_timeout);
         return;
     }

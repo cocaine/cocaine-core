@@ -55,7 +55,8 @@ enum error_code {
     server_error   = 500,
     app_error      = 502,
     resource_error = 503,
-    timeout_error  = 504
+    timeout_error  = 504,
+    deadline_error = 520
 };
 
 struct error_t {

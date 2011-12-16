@@ -39,10 +39,10 @@ job_t::~job_t() {
 }
 
 void job_t::react(const events::error_t& event) {
-    syslog(LOG_ERR, "%s: [%d] job failure - %s", m_driver.identity(), event.code, 
-        event.message.c_str());
+    syslog(LOG_ERR, "%s: job failure - %s", m_driver.identity(), event.message.c_str());
+    
     m_driver.engine().publish(
-        m_driver.method(),
+        m_driver, 
         helpers::make_json("error", event.message)
     );
 }
@@ -50,7 +50,7 @@ void job_t::react(const events::error_t& event) {
 void job_t::react(const events::choked_t& event) { }
 
 void job_t::discard(ev::periodic&, int) {
-    process_event(events::error_t(client::timeout_error, "the job has expired"));
+    process_event(events::error_t(client::deadline_error, "the job has expired"));
 }
 
 waiting::waiting():

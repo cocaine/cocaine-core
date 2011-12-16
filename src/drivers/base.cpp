@@ -21,7 +21,7 @@ using namespace cocaine;
 using namespace cocaine::engine::driver;
         
 driver_t::driver_t(engine_t& engine, const std::string& method):
-    identifiable_t((boost::format("driver [%s:%s]") % engine.name() % method).str()),
+    identifiable_t((boost::format("%s:%s") % engine.name() % method).str()),
     m_engine(engine),
     m_method(method)
 #if BOOST_VERSION < 103600

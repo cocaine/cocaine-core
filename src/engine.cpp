@@ -16,7 +16,6 @@
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/assign.hpp>
-#include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include "cocaine/context.hpp"
@@ -49,7 +48,7 @@ bool engine_t::idle_slave::operator()(pool_map_t::pointer slave) const {
 // -----------
 
 engine_t::engine_t(context_t& context, const std::string& name):
-    identifiable_t((boost::format("engine [%s]") % name).str()),
+    identifiable_t(name),
     m_context(context),
     m_running(false),
     m_messages(*m_context.bus, ZMQ_ROUTER)
@@ -316,7 +315,7 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
 // PubSub Interface
 // ----------------
 
-void engine_t::publish(const std::string& key, const Json::Value& object) {
+void engine_t::publish(const identifiable_t& source, const Json::Value& object) {
     if(m_pubsub && object.isObject()) {
         zmq::message_t message;
         ev::tstamp now = ev::get_default_loop().now();
@@ -328,7 +327,7 @@ void engine_t::publish(const std::string& key, const Json::Value& object) {
             std::string field(*it);
             
             std::ostringstream envelope;
-            envelope << key << " " << field << " " << m_context.config.core.hostname << " "
+            envelope << source.identity() << " " << field << " " << m_context.config.core.hostname << " "
                      << std::fixed << std::setprecision(3) << now;
 
             message.rebuild(envelope.str().size());
@@ -432,13 +431,13 @@ void engine_t::process(ev::idle&, int) {
                             )
                         );
                     } else {
-                        syslog(LOG_ERR, "%s: [%d] %s", identity(), object.code, 
+                        syslog(LOG_ERR, "%s: [%d] app failure - %s", identity(), object.code, 
                             object.message.c_str());
-                        publish("engine", helpers::make_json("error", object.message));
+                        publish(*this, helpers::make_json("error", object.message));
                     }
                     
                     if(object.code == client::server_error) {
-                        syslog(LOG_ERR, "%s: the application seems to be broken", identity());
+                        syslog(LOG_ERR, "%s: the app seems to be broken", identity());
                         stop();
                         return;
                     }
@@ -512,7 +511,7 @@ void engine_t::cleanup(ev::timer&, int) {
             m_pool.erase(*it);
         }
 
-        syslog(LOG_INFO, "%s: recycled %zu dead %s", identity(), corpses.size(),
+        syslog(LOG_DEBUG, "%s: recycled %zu dead %s", identity(), corpses.size(),
             corpses.size() == 1 ? "slave" : "slaves");
     }
 }
@@ -530,9 +529,9 @@ void publication_t::react(const events::chunk_t& event) {
         static_cast<const char*>(event.message.data()) + event.message.size(),
         root))
     {
-        m_driver.engine().publish(m_driver.method(), root);
+        m_driver.engine().publish(m_driver, root);
     } else {
-        m_driver.engine().publish(m_driver.method(), 
+        m_driver.engine().publish(m_driver, 
             helpers::make_json(
                 "error", 
                 "unable to parse the response json"
