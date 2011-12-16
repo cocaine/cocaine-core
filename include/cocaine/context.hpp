@@ -19,54 +19,52 @@
 
 namespace cocaine {
 
-class context_t {
+struct config_t {
+    struct {
+        // Administration and routing
+        std::vector<std::string> endpoints;
+        std::string hostname;
+        std::string instance;
+        
+        // Automatic discovery
+        std::string announce_endpoint;
+        float announce_interval;
+    } core;
+
+    struct engine_cfg_t {
+        // Default engine policy
+        std::string backend;
+        float heartbeat_timeout;
+        float suicide_timeout;
+        unsigned int pool_limit;
+        unsigned int queue_limit;
+    } engine;
+
+    struct {
+        // Plugin path
+        std::string location;
+    } registry;
+
+    struct {
+        // Storage type and path
+        std::string driver;
+        std::string location;
+    } storage;
+};
+
+class context_t:
+    boost::noncopyable
+{
     public:
-        context_t():
+        context_t(config_t config_):
+            config(config_),
             bus(new zmq::context_t(1))
         { }
 
-        context_t(const context_t& other):
-            bus(new zmq::context_t(1)),
-            config(other.config)
-        { }
-
+    public:
+        config_t config;
         boost::shared_ptr<zmq::context_t> bus;
 
-        struct {
-            struct {
-                // Administration and routing
-                std::vector<std::string> endpoints;
-                std::string hostname;
-                std::string instance;
-                
-                // Automatic discovery
-                std::string announce_endpoint;
-                float announce_interval;
-            } core;
-
-            struct engine_cfg_t {
-                // Default engine policy
-                std::string backend;
-                float heartbeat_timeout;
-                float suicide_timeout;
-                unsigned int pool_limit;
-                unsigned int queue_limit;
-            } engine;
-
-            struct {
-                // Plugin path
-                std::string location;
-            } registry;
-
-            struct {
-                // Storage type and path
-                std::string driver;
-                std::string location;
-            } storage;
-        } config;
-
-    private:
-        context_t& operator=(const context_t& other);
 };
 
 }

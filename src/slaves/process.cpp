@@ -26,8 +26,8 @@ process_t::process_t(engine_t& engine, const std::string& type, const std::strin
     m_pid = fork();
 
     if(m_pid == 0) {
-        // NOTE: Making a copy here to reinitialize the context after the fork
-        context_t context(engine.context());
+        // NOTE: Making a new context here to reinitialize the message bus
+        context_t context(engine.context().config);
 
         overseer_t overseer(context, id(), m_engine.name());
         overseer(type, args);

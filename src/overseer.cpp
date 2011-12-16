@@ -64,11 +64,9 @@ void overseer_t::operator()(const std::string& type, const std::string& args) {
     try {
         m_app = core::registry_t::instance(m_context)->create(type, args);
     } catch(const unrecoverable_error_t& e) {
-        syslog(LOG_ERR, "%s: unable to instantiate the app - %s", identity(), e.what());
         BOOST_VERIFY(send(rpc::error_t(client::server_error, e.what())));
         return;
     } catch(...) {
-        syslog(LOG_ERR, "%s: caught an unexpected exception", identity());
         BOOST_VERIFY(send(rpc::error_t(client::server_error, "unexpected exception")));
         return;
     }
@@ -107,15 +105,10 @@ void overseer_t::process(ev::idle&, int) {
                     boost::this_thread::interruption_point();
 #endif
                 } catch(const recoverable_error_t& e) {
-                    syslog(LOG_ERR, "%s: '%s' invocation failed - %s", 
-                        identity(), object.method.c_str(), e.what());
                     BOOST_VERIFY(send(rpc::error_t(client::app_error, e.what())));
                 } catch(const unrecoverable_error_t& e) {
-                    syslog(LOG_ERR, "%s: '%s' invocation failed - %s", 
-                        identity(), object.method.c_str(), e.what());
                     BOOST_VERIFY(send(rpc::error_t(client::server_error, e.what()))); 
                 } catch(...) {
-                    syslog(LOG_ERR, "%s: caught an unexpected exception", identity());
                     BOOST_VERIFY(send(rpc::error_t(client::server_error, "unexpected exception"))); 
                 }
                     

@@ -288,8 +288,6 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
             std::string slave_id(slave->id());
             m_pool.insert(slave_id, slave);
         } else if(!overflow && (m_queue.size() > m_policy.queue_limit)) {
-            syslog(LOG_ERR, "%s: dropping '%s' job - the queue is full",
-                identity(), job->driver().method().c_str());
             job->process_event(events::error_t(client::resource_error, "the queue is full"));
             return;
         }
@@ -416,6 +414,10 @@ void engine_t::process(ev::idle&, int) {
                                 object.message
                             )
                         );
+                    } else {
+                        syslog(LOG_ERR, "%s: [%d] %s", identity(), object.code, 
+                            object.message.c_str());
+                        publish("engine", helpers::make_json("error", object.message));
                     }
                     
                     if(object.code == client::server_error) {
@@ -513,8 +515,12 @@ void publication_t::react(const events::chunk_t& event) {
     {
         m_driver.engine().publish(m_driver.method(), root);
     } else {
-        m_driver.engine().publish(m_driver.method(),
-            helpers::make_json("error", "unable to parse the json"));
+        m_driver.engine().publish(m_driver.method(), 
+            helpers::make_json(
+                "error", 
+                "unable to parse the response json"
+            )
+        );
     }
 }
 

@@ -27,8 +27,8 @@ using namespace cocaine::engine;
 using namespace cocaine::networking;
 using namespace cocaine::storage;
 
-core_t::core_t(context_t& context):
-    m_context(context),
+core_t::core_t(const config_t& config):
+    m_context(config),
     m_signatures(m_context),
     m_server(*m_context.bus, ZMQ_ROUTER, boost::algorithm::join(
         boost::assign::list_of

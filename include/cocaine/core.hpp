@@ -25,7 +25,7 @@ class core_t:
     public boost::noncopyable
 {
     public:
-        core_t(context_t& context);
+        core_t(const config_t& config);
         ~core_t();
 
         void loop();
@@ -63,7 +63,8 @@ class core_t:
         void announce(ev::timer&, int);
 
     private:
-        context_t& m_context;
+        context_t m_context;
+
         security::signatures_t m_signatures;
         
         networking::socket_t m_server;
@@ -77,9 +78,9 @@ class core_t:
         ev::timer m_pumper;
 
 #if BOOST_VERSION >= 104000
-          typedef boost::ptr_unordered_map<
+        typedef boost::ptr_unordered_map<
 #else
-          typedef boost::ptr_map<
+        typedef boost::ptr_map<
 #endif
             const std::string,
             engine::engine_t
