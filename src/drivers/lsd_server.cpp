@@ -36,6 +36,8 @@ void lsd_job_t::react(const events::chunk_t& event) {
 }
 
 void lsd_job_t::react(const events::error_t& event) {
+    job_t::react(event);
+
     Json::Value root(Json::objectValue);
 
     root["uuid"] = id();
@@ -48,6 +50,8 @@ void lsd_job_t::react(const events::error_t& event) {
 }
 
 void lsd_job_t::react(const events::choked_t& event) {
+    job_t::react(event);
+
     Json::Value root(Json::objectValue);
 
     root["uuid"] = id();

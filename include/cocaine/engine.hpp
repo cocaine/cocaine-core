@@ -93,9 +93,9 @@ class engine_t:
 
         void enqueue(job_queue_t::const_reference job, bool overflow = false);
 
-        // NOTE: It is intentional that all the publishing drivers do that via
-        // one socket, so that one can bind to it and receive all the application
-        // publications without chaos and bloodshed.
+        // NOTE: This one is a very special method to log and export application
+        // publications. Everything intended for various aggregators, log collectors
+        // and so on is going through this method.
         void publish(const std::string& key, const Json::Value& object);
 
     public:
@@ -159,7 +159,6 @@ class publication_t:
 
     public:
         virtual void react(const events::chunk_t&);
-        virtual void react(const events::error_t&);
 };
 
 }}

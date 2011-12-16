@@ -33,6 +33,8 @@ void zeromq_server_job_t::react(const events::chunk_t& event) {
 }
 
 void zeromq_server_job_t::react(const events::error_t& event) {
+    job_t::react(event);
+
     Json::Value object(Json::objectValue);
     
     object["code"] = event.code;

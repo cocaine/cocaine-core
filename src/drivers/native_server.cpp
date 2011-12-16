@@ -33,12 +33,16 @@ void native_server_job_t::react(const events::chunk_t& event) {
 }
 
 void native_server_job_t::react(const events::error_t& event) {
+    job_t::react(event);
+
     if(!send(client::error_t(id(), event.code, event.message))) {
         syslog(LOG_ERR, "%s: unable to send the response", m_driver.identity());
     }
 }
 
 void native_server_job_t::react(const events::choked_t& event) {
+    job_t::react(event);
+
     if(!send(client::tag_t(id(), true))) {
         syslog(LOG_ERR, "%s: unable to send the response", m_driver.identity());
     }

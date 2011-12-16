@@ -47,8 +47,8 @@ class job_t:
 
     public:      
         virtual void react(const events::chunk_t& event) = 0;
-        virtual void react(const events::error_t& event) = 0;
-        virtual void react(const events::choked_t& event) { }
+        virtual void react(const events::error_t& event);
+        virtual void react(const events::choked_t& event);
 
     public:
         inline driver::driver_t& driver() {

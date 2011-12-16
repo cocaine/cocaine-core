@@ -22,7 +22,7 @@ drifting_timer_job_t::drifting_timer_job_t(drifting_timer_t& driver, const clien
 { }
 
 void drifting_timer_job_t::react(const events::error_t& event) {
-    publication_t::react(event);
+    job_t::react(event);
     static_cast<drifting_timer_t&>(m_driver).rearm();
 }
 

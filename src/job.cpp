@@ -12,6 +12,7 @@
 //
 
 #include "cocaine/drivers/base.hpp"
+#include "cocaine/engine.hpp"
 #include "cocaine/job.hpp"
 
 using namespace cocaine::engine::job;
@@ -36,6 +37,15 @@ job_t::~job_t() {
 
     terminate();
 }
+
+void job_t::react(const events::error_t& event) {
+    m_driver.engine().publish(
+        m_driver.method(),
+        helpers::make_json("error", event.message)
+    );
+}
+
+void job_t::react(const events::choked_t& event) { }
 
 void job_t::discard(ev::periodic&, int) {
     process_event(events::error_t(client::timeout_error, "the job has expired"));

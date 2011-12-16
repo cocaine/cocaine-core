@@ -518,8 +518,3 @@ void publication_t::react(const events::chunk_t& event) {
     }
 }
 
-void publication_t::react(const events::error_t& event) {
-    m_driver.engine().publish(m_driver.method(),
-        helpers::make_json("error", event.message));
-}
-
