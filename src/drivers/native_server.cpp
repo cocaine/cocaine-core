@@ -18,7 +18,7 @@
 using namespace cocaine::engine::driver;
 using namespace cocaine::networking;
 
-native_server_job_t::native_server_job_t(const unique_id_t::type& id, native_server_t& driver, const client::policy_t& policy, const route_t& route):
+native_server_job_t::native_server_job_t(native_server_t& driver, const client::policy_t& policy, const unique_id_t::type& id, const route_t& route):
     unique_id_t(id),
     job::job_t(driver, policy),
     m_route(route)
@@ -95,7 +95,7 @@ void native_server_t::process(ev::idle&, int) {
             boost::shared_ptr<native_server_job_t> job;
             
             try {
-                job.reset(new native_server_job_t(tag.id, *this, policy, route));
+                job.reset(new native_server_job_t(*this, policy, tag.id, route));
             } catch(const std::runtime_error& e) {
                 syslog(LOG_ERR, "%s: got a corrupted request - %s", identity(), e.what());
                 continue;

@@ -30,7 +30,7 @@ using namespace cocaine::storage;
 core_t::core_t(context_t& context):
     m_context(context),
     m_signatures(m_context),
-    m_server(*m_context.io, ZMQ_ROUTER, boost::algorithm::join(
+    m_server(*m_context.bus, ZMQ_ROUTER, boost::algorithm::join(
         boost::assign::list_of
             (m_context.config.core.instance)
             (m_context.config.core.hostname),
@@ -63,7 +63,7 @@ core_t::core_t(context_t& context):
     // Automatic discovery support
     if(!m_context.config.core.announce_endpoint.empty()) {
         try {
-            m_announces.reset(new socket_t(*m_context.io, ZMQ_PUB));
+            m_announces.reset(new socket_t(*m_context.bus, ZMQ_PUB));
             m_announces->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
             m_announces->connect("epgm://" + m_context.config.core.announce_endpoint);
         } catch(const zmq::error_t& e) {

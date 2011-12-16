@@ -19,7 +19,6 @@
 
 #include "cocaine/context.hpp"
 #include "cocaine/client/types.hpp"
-#include "cocaine/events.hpp"
 #include "cocaine/overseer.hpp"
 #include "cocaine/plugin.hpp"
 #include "cocaine/registry.hpp"
@@ -29,11 +28,11 @@ using namespace cocaine;
 using namespace cocaine::engine;
 using namespace cocaine::plugin;
 
-overseer_t::overseer_t(const unique_id_t::type& id_, context_t& context, const std::string& name):
+overseer_t::overseer_t(context_t& context, const unique_id_t::type& id_, const std::string& name):
     unique_id_t(id_),
     identifiable_t((boost::format("slave [%1%:%2%]") % name % id_).str()),
     m_context(context),
-    m_messages(*m_context.io, ZMQ_DEALER, id()),
+    m_messages(*m_context.bus, ZMQ_DEALER, id()),
     m_loop(),
     m_watcher(m_loop),
     m_processor(m_loop),

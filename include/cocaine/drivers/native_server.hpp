@@ -25,9 +25,9 @@ class native_server_job_t:
     public job::job_t
 {
     public:
-        native_server_job_t(const unique_id_t::type& id,
-                            native_server_t& driver,
+        native_server_job_t(native_server_t& driver,
                             const client::policy_t& policy,
+                            const unique_id_t::type& id,
                             const networking::route_t& route);
 
         virtual void react(const events::chunk_t& event);

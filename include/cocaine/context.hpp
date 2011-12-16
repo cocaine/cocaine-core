@@ -22,15 +22,15 @@ namespace cocaine {
 class context_t {
     public:
         context_t():
-            io(new zmq::context_t(1))
+            bus(new zmq::context_t(1))
         { }
 
         context_t(const context_t& other):
-            io(new zmq::context_t(1)),
+            bus(new zmq::context_t(1)),
             config(other.config)
         { }
 
-        boost::shared_ptr<zmq::context_t> io;
+        boost::shared_ptr<zmq::context_t> bus;
 
         struct {
             struct {

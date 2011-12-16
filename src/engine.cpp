@@ -52,7 +52,7 @@ engine_t::engine_t(context_t& context, const std::string& name):
     identifiable_t((boost::format("engine [%s]") % name).str()),
     m_context(context),
     m_running(false),
-    m_messages(*m_context.io, ZMQ_ROUTER)
+    m_messages(*m_context.bus, ZMQ_ROUTER)
 {
     int linger = 0;
     m_app_cfg.name = name;
@@ -137,7 +137,7 @@ Json::Value engine_t::start(const Json::Value& manifest) {
         std::string endpoint(manifest["pubsub"]["endpoint"].asString());
         
         if(!endpoint.empty()) {
-            m_pubsub.reset(new socket_t(*m_context.io, ZMQ_PUB));
+            m_pubsub.reset(new socket_t(*m_context.bus, ZMQ_PUB));
             m_pubsub->bind(endpoint);
         }
 

@@ -27,8 +27,8 @@ class overseer_t:
     public identifiable_t
 {
     public:
-        overseer_t(const unique_id_t::type& id,
-                   context_t& context,
+        overseer_t(context_t& context,
+                   const unique_id_t::type& id,
                    const std::string& name);
 
         // Entry point 
