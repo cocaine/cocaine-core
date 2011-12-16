@@ -39,7 +39,7 @@ job_t::~job_t() {
 }
 
 void job_t::react(const events::error_t& event) {
-    syslog(LOG_ERR, "%s: [%d] %s", m_driver.identity(), event.code, 
+    syslog(LOG_ERR, "%s: [%d] job failure - %s", m_driver.identity(), event.code, 
         event.message.c_str());
     m_driver.engine().publish(
         m_driver.method(),

@@ -189,7 +189,12 @@ Json::Value engine_t::stop() {
 
     while(!m_queue.empty()) {
         m_queue.front()->process_event(
-            events::error_t(client::server_error, "engine is shutting down"));
+            events::error_t(
+                client::server_error, 
+                "engine is shutting down"
+            )
+        );
+
         m_queue.pop_front();
     }
 
@@ -255,7 +260,13 @@ Json::Value engine_t::info() const {
 
 void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
     if(!m_running) {
-        job->process_event(events::error_t(client::server_error, "engine is shutting down"));
+        job->process_event(
+            events::error_t(
+                client::server_error,
+                "engine is not active"
+            )
+        );
+
         return;
     }
 
@@ -288,7 +299,13 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
             std::string slave_id(slave->id());
             m_pool.insert(slave_id, slave);
         } else if(!overflow && (m_queue.size() > m_policy.queue_limit)) {
-            job->process_event(events::error_t(client::resource_error, "the queue is full"));
+            job->process_event(
+                events::error_t(
+                    client::resource_error, 
+                    "the queue is full"
+                )
+            );
+
             return;
         }
             
