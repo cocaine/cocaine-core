@@ -50,8 +50,8 @@ SET_TARGET_PROPERTIES(json PROPERTIES
     COMPILE_FLAGS -fPIC)
 
 ADD_LIBRARY(cocaine-common SHARED
+    src/auth
     src/downloads
-    src/security
     src/storages/base
     src/storages/files
     src/storages/mongo)

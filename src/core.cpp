@@ -29,7 +29,7 @@ using namespace cocaine::storage;
 
 core_t::core_t(const config_t& config):
     m_context(config),
-    m_signatures(m_context),
+    m_auth(m_context),
     m_server(*m_context.bus, ZMQ_ROUTER, boost::algorithm::join(
         boost::assign::list_of
             (m_context.config.core.instance)
@@ -184,7 +184,7 @@ void core_t::process(ev::idle&, int) {
                     }
 
                     if(!username.empty()) {
-                        m_signatures.verify(
+                        m_auth.verify(
                             static_cast<const char*>(message.data()),
                             message.size(),
                             static_cast<const unsigned char*>(signature.data()),

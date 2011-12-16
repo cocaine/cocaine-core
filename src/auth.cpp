@@ -15,15 +15,15 @@
 #include <openssl/pem.h>
 #include <openssl/err.h>
 
+#include "cocaine/auth.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/storages/base.hpp"
-#include "cocaine/security.hpp"
 
 using namespace cocaine;
-using namespace cocaine::security;
+using namespace cocaine::crypto;
 using namespace cocaine::storage;
 
-signatures_t::signatures_t(context_t& context):
+auth_t::auth_t(context_t& context):
     m_context(EVP_MD_CTX_create())
 {
     // Initialize error strings
@@ -39,7 +39,7 @@ signatures_t::signatures_t(context_t& context):
         Json::Value object(keys[identity]);
 
         if(!object["key"].isString() || object["key"].empty()) {
-            syslog(LOG_ERR, "security: key for user '%s' is malformed", identity.c_str());
+            syslog(LOG_ERR, "auth: key for user '%s' is malformed", identity.c_str());
             continue;
         }
 
@@ -54,17 +54,17 @@ signatures_t::signatures_t(context_t& context):
         if(pkey != NULL) {
             m_keys.insert(std::make_pair(identity, pkey));
         } else { 
-            syslog(LOG_ERR, "security: key for user '%s' is invalid - %s",
+            syslog(LOG_ERR, "auth: key for user '%s' is invalid - %s",
                 identity.c_str(), ERR_reason_error_string(ERR_get_error()));
         }
 
         BIO_free(bio);
     }
     
-    syslog(LOG_NOTICE, "security: loaded %zu public key(s)", m_keys.size());
+    syslog(LOG_NOTICE, "auth: loaded %zu public key(s)", m_keys.size());
 }
 
-signatures_t::~signatures_t() {
+auth_t::~auth_t() {
     for(key_map_t::iterator it = m_keys.begin(); it != m_keys.end(); ++it) {
         EVP_PKEY_free(it->second);
     }
@@ -74,7 +74,7 @@ signatures_t::~signatures_t() {
 }
 
 /* XXX: Gotta invent something sophisticated here
-std::string signatures_t::sign(const std::string& message, const std::string& username)
+std::string auth_t::sign(const std::string& message, const std::string& username)
 {
     key_map_t::const_iterator it = m_private_keys.find(username);
 
@@ -94,7 +94,7 @@ std::string signatures_t::sign(const std::string& message, const std::string& us
 }
 */
 
-void signatures_t::verify(const char* message,
+void auth_t::verify(const char* message,
                           size_t message_size, 
                           const unsigned char* signature,
                           size_t signature_size, 

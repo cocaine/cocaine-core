@@ -14,10 +14,10 @@
 #ifndef COCAINE_CORE_HPP
 #define COCAINE_CORE_HPP
 
+#include "cocaine/auth.hpp"
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/networking.hpp"
-#include "cocaine/security.hpp"
 
 namespace cocaine { namespace core {
 
@@ -64,8 +64,7 @@ class core_t:
 
     private:
         context_t m_context;
-
-        security::signatures_t m_signatures;
+        crypto::auth_t m_auth;
         
         networking::socket_t m_server;
 

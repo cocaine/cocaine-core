@@ -64,7 +64,6 @@ class context_t:
     public:
         config_t config;
         boost::shared_ptr<zmq::context_t> bus;
-
 };
 
 }

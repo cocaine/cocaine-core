@@ -19,14 +19,14 @@
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 
-namespace cocaine { namespace security {
+namespace cocaine { namespace crypto {
 
-class signatures_t:
+class auth_t:
     public boost::noncopyable
 {
     public:
-        signatures_t(context_t& context);
-        ~signatures_t();
+        auth_t(context_t& context);
+        ~auth_t();
 
         void verify(const char* message,
                     size_t message_size,
