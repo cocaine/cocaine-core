@@ -35,7 +35,7 @@ registry_t::registry_t(context_t& context) {
         throw std::runtime_error("unable to initialize the module loader");
     }
 
-    fs::path path(context.config.registry.location);
+    fs::path path(context.config.core.plugins);
 
     if(!fs::exists(path)) {
         throw std::runtime_error(path.string() + " does not exist");

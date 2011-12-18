@@ -21,6 +21,9 @@ namespace cocaine {
 
 struct config_t {
     struct {
+        // Plugin path
+        std::string plugins;
+
         // Administration and routing
         std::vector<std::string> endpoints;
         std::string hostname;
@@ -39,11 +42,6 @@ struct config_t {
         unsigned int pool_limit;
         unsigned int queue_limit;
     } engine;
-
-    struct {
-        // Plugin path
-        std::string location;
-    } registry;
 
     struct {
         // Storage type and path

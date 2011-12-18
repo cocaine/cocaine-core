@@ -31,27 +31,48 @@ static const char identity[] = "cocaine";
 int main(int argc, char* argv[]) {
     config_t config;
 
-    po::options_description mandatory, options("Allowed options"), combined;
-    po::positional_options_description positional;
+    po::options_description
+        hidden_options,
+        general_options("General options"),
+        core_options("Core options"),
+        engine_options("Engine options"),
+        storage_options("Storage options"),
+        combined_options;
+    
+    po::positional_options_description positional_options;
     po::variables_map vm;
 
-    mandatory.add_options()
+    hidden_options.add_options()
         ("endpoints", po::value< std::vector<std::string> >
-            (&config.core.endpoints));
+            (&config.core.endpoints)->composing(),
+            "core endpoints for server management");
     
-    positional.add("endpoints", -1);
+    positional_options.add("endpoints", -1);
 
-    options.add_options()
+    general_options.add_options()
+        ("help", "show this message")
+        ("version", "show version and build information")
+        ("daemonize", "daemonize on start")
+        ("pidfile", po::value<fs::path>
+            ()->default_value("/var/run/cocaine/default.pid"),
+            "location of a pid file")
+        ("verbose", "produce a lot of output");
+
+    core_options.add_options()
+        ("core:instance", po::value<std::string>
+            (&config.core.instance)->default_value("default"),
+            "instance name")
+        ("core:plugins", po::value<std::string>
+            (&config.core.plugins)->default_value("/usr/lib/cocaine"),
+            "where to load plugins from")
         ("core:announce-endpoint", po::value<std::string>
             (&config.core.announce_endpoint),
             "multicast endpoint for automatic discovery")
         ("core:announce-interval", po::value<float>
             (&config.core.announce_interval)->default_value(5.0f),
-            "multicast announce interval for automatic discovery, seconds")
-        ("core:instance", po::value<std::string>
-            (&config.core.instance)->default_value("default"),
-            "instance name")
-        ("daemonize", "daemonize on start")
+            "multicast announce interval for automatic discovery, seconds");
+
+    engine_options.add_options()
         ("engine:backend", po::value<std::string>
             (&config.engine.backend)->default_value("process"),
             "default engine backend, one of: thread, process")
@@ -66,29 +87,27 @@ int main(int argc, char* argv[]) {
             "maximum engine slave pool size")
         ("engine:queue-limit", po::value<unsigned int>
             (&config.engine.queue_limit)->default_value(10),
-            "default maximum engine queue depth")
-        ("help", "show this message")
-        ("pidfile", po::value<fs::path>()->default_value("/var/run/cocaine/default.pid"),
-            "location of a pid file")
-        ("plugins", po::value<std::string>
-            (&config.registry.location)->default_value("/usr/lib/cocaine"),
-            "where to load plugins from")
+            "default maximum engine queue depth");
+
+    storage_options.add_options()
         ("storage:driver", po::value<std::string>
             (&config.storage.driver)->default_value("files"),
             "storage driver type, one of: void, files, mongo")
         ("storage:location", po::value<std::string>
             (&config.storage.location)->default_value("/var/lib/cocaine"),
-            "storage location, format depends on the storage type")
-        ("verbose", "produce a lot of output")
-        ("version", "show version and build information");
+            "storage location, format depends on the storage type");
 
-    combined.add(mandatory).add(options);
+    combined_options.add(hidden_options)
+                    .add(general_options)
+                    .add(core_options)
+                    .add(engine_options)
+                    .add(storage_options);
 
     try {
         po::store(
             po::command_line_parser(argc, argv).
-                options(combined).
-                positional(positional).
+                options(combined_options).
+                positional(positional_options).
                 run(),
             vm);
         po::notify(vm);
@@ -102,12 +121,12 @@ int main(int argc, char* argv[]) {
 
     if(vm.count("help")) {
         std::cout << "Usage: " << argv[0] << " endpoint-list [options]" << std::endl;
-        std::cout << options;
+        std::cout << general_options << core_options << engine_options << storage_options;
         return EXIT_SUCCESS;
     }
 
     if(vm.count("version")) {
-        std::cout << "Cocaine 0.6.8-dev" << std::endl;
+        std::cout << "Cocaine 0.6" << std::endl;
         return EXIT_SUCCESS;
     }
 
