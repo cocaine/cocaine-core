@@ -149,9 +149,12 @@ void core_t::process(ev::idle&, int) {
                 break;
             }
 
-            route.push_back(std::string(
-                static_cast<const char*>(message.data()),
-                message.size()));
+            route.push_back(
+                std::string(
+                    static_cast<const char*>(message.data()),
+                    message.size()
+                )
+            );
         } while(m_server.more());
 
         if(route.empty() || !m_server.more()) {
@@ -189,7 +192,8 @@ void core_t::process(ev::idle&, int) {
                             message.size(),
                             static_cast<const unsigned char*>(signature.data()),
                             signature.size(),
-                            username);
+                            username
+                        );
                     } else {
                         throw std::runtime_error("username expected");
                     }

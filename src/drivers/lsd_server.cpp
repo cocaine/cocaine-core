@@ -111,9 +111,12 @@ void lsd_server_t::process(ev::idle&, int) {
                 break;
             }
 
-            route.push_back(std::string(
-                static_cast<const char*>(message.data()),
-                message.size()));
+            route.push_back(
+                std::string(
+                    static_cast<const char*>(message.data()),
+                    message.size()
+                )
+            );
         } while(m_socket.more());
 
         if(route.empty() || !m_socket.more()) {
