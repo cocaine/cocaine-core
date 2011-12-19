@@ -16,7 +16,7 @@
 
 #include <boost/statechart/event.hpp>
 
-#include "cocaine/client/types.hpp"
+#include "cocaine/dealer/types.hpp"
 #include "cocaine/forwards.hpp"
 #include <cocaine/networking.hpp>
 

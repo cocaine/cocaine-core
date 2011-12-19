@@ -18,7 +18,7 @@
 #include <boost/thread.hpp>
 
 #include "cocaine/context.hpp"
-#include "cocaine/client/types.hpp"
+#include "cocaine/dealer/types.hpp"
 #include "cocaine/overseer.hpp"
 #include "cocaine/plugin.hpp"
 #include "cocaine/registry.hpp"

@@ -19,7 +19,7 @@
 #include <boost/statechart/in_state_reaction.hpp>
 #include <boost/statechart/transition.hpp>
 
-#include "cocaine/client/types.hpp"
+#include "cocaine/dealer/types.hpp"
 #include "cocaine/common.hpp"
 #include "cocaine/events.hpp"
 #include "cocaine/forwards.hpp"

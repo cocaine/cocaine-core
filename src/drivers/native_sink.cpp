@@ -11,7 +11,7 @@
 // limitations under the License.
 //
 
-#include "cocaine/client/types.hpp"
+#include "cocaine/dealer/types.hpp"
 #include "cocaine/drivers/native_sink.hpp"
 #include "cocaine/engine.hpp"
 
