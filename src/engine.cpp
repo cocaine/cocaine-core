@@ -96,7 +96,6 @@ Json::Value engine_t::start(const Json::Value& manifest) {
 
     m_app_cfg.type = manifest["type"].asString();
     m_app_cfg.args = manifest["args"].asString();
-    m_app_cfg.version = manifest.get("version", 1).asUInt();
 
     if(!core::registry_t::instance(m_context)->exists(m_app_cfg.type)) {
         throw std::runtime_error("no plugin for '" + m_app_cfg.type + "' is available");
@@ -252,7 +251,6 @@ Json::Value engine_t::info() const {
     }
     
     results["running"] = m_running;
-    results["version"] = m_app_cfg.version;
 
     return results;
 }

@@ -124,7 +124,6 @@ class engine_t:
         
         struct {
             std::string name, type, args;
-            unsigned int version;
         } m_app_cfg;
         
         // Pool
