@@ -191,17 +191,17 @@ static const source_info_t plugin_info[] = {
     { NULL, NULL }
 };
 
+PyThreadState* g_state = NULL;
+
+void save() {
+    g_state = PyEval_SaveThread();
+}
+
+void restore() {
+    PyEval_RestoreThread(g_state);
+}
+
 extern "C" {
-    PyThreadState* g_state = NULL;
-
-    void save() {
-        g_state = PyEval_SaveThread();
-    }
-
-    void restore() {
-        PyEval_RestoreThread(g_state);
-    }
-
     const source_info_t* initialize() {
         // Initialize the Python subsystem
         Py_InitializeEx(0);

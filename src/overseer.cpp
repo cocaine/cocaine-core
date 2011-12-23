@@ -152,12 +152,6 @@ void overseer_t::respond(const void* response, size_t size) {
 }
 
 void overseer_t::timeout(ev::timer&, int) {
-    if(m_messages.pending()) {
-        syslog(LOG_DEBUG, "%s: postponing the suicide", identity());
-        m_suicide_timer.start(m_context.config.engine.suicide_timeout);
-        return;
-    }
-    
     BOOST_VERIFY(send(rpc::terminate_t()));
     terminate();
 }

@@ -10,7 +10,7 @@ Notable features:
 * A single maintainance pubsub-based interface for each application for easy access to monitoring and runtime data.
 * Optional secure communications using RSA encryption.
 * Support for chunked responses and, soon, requests.
-* Automatic node discovery and smart peer-to-peer balancing using the [LSD](https://github.com/tinybit/lsd) library. Note that ZeroMQ already offers built-in fair balancing features which you can use, although they do not consider real node load.
+* Automatic node discovery and smart peer-to-peer balancing. Note that ZeroMQ already offers built-in fair balancing features which you can use, although they do not consider real node load.
 * Simple modular design to add new languages, task types and slave backends easily.
 
 At the moment, Cocaine supports the following languages and specifications:
@@ -29,9 +29,9 @@ The application tasks can be driven by any of the following drivers:
 * Filesystem Monitor
 * ZeroMQ Server (Request-Response)
 * [In Development] ZeroMQ Subscriber (Publishing Chain)
-* Native [LSD](https://github.com/tinybit/lsd) Server
+* Native Server
 * ZeroMQ Sink (Request-Publish)
-* Native [LSD](https://github.com/tinybiy/lsd) Sink (Request-Publish)
+* Native Sink (Request-Publish)
 * [Planned] Raw Socket Server
 
 Application configuration example
@@ -79,6 +79,29 @@ This JSON is kinda self-descriptive, I think. There are four parts:
 * Publish-Subscribe. This part consists solely of one option, which is the __endpoint__ for engine publications.
  
 * Tasks. Tasks are, basically, event sources for the engine. They are described by task __method__, which is some kind of callable name specific to the application plugin; task __type__ which determines the _driver_ used to schedule that callable and driver-specific __arguments__.
+
+Drivers
+=======
+
+Timers
+------
+
+TBD.
+
+Filesystem Monitor
+------------------
+
+TBD.
+
+Native Server and Sink
+----------------------
+
+TBD.
+
+Pure ZeroMQ Server and Sink
+---------------------------
+
+TBD.
 
 Trying it out
 =============
