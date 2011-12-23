@@ -28,7 +28,8 @@
 #include "cocaine/dealer/details/error.hpp"
 #include "cocaine/dealer/details/data_container.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 data_container::data_container() :
 	data_(NULL),
@@ -256,4 +257,5 @@ data_container::sign_data(unsigned char* data, size_t& size, unsigned char signa
 	SHA1_Final(signature, &sha_context);
 }
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine

@@ -11,12 +11,13 @@
 // limitations under the License.
 //
 
-#ifndef _LSD_PROGRESS_TIMER_HPP_INCLUDED_
-#define _LSD_PROGRESS_TIMER_HPP_INCLUDED_
+#ifndef _COCAINE_DEALER_PROGRESS_TIMER_HPP_INCLUDED_
+#define _COCAINE_DEALER_PROGRESS_TIMER_HPP_INCLUDED_
 
 #include "cocaine/dealer/details/time_value.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 class progress_timer {
 
@@ -31,6 +32,7 @@ private:
 	time_value begin_;
 };
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine
 
-#endif // _LSD_PROGRESS_TIMER_HPP_INCLUDED_
+#endif // _COCAINE_DEALER_PROGRESS_TIMER_HPP_INCLUDED_

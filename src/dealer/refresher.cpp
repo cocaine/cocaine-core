@@ -16,7 +16,8 @@
 
 #include "cocaine/dealer/details/refresher.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 refresher::refresher(boost::function<void()> f, boost::uint32_t timeout_seconds) :
 	f_(f),
@@ -51,4 +52,5 @@ refresher::refreshing_thread() {
 	}
 }
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine

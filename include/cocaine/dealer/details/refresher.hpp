@@ -11,15 +11,16 @@
 // limitations under the License.
 //
 
-#ifndef _LSD_REFRESHER_HPP_INCLUDED_
-#define _LSD_REFRESHER_HPP_INCLUDED_
+#ifndef _COCAINE_DEALER_REFRESHER_HPP_INCLUDED_
+#define _COCAINE_DEALER_REFRESHER_HPP_INCLUDED_
 
 #include <boost/function.hpp>
 #include <boost/thread.hpp>
 #include <boost/thread/condition.hpp>
 #include <boost/thread/mutex.hpp>
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 class refresher : private boost::noncopyable {
 
@@ -40,6 +41,7 @@ private:
 
 };
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine
 
-#endif // _LSD_REFRESHER_HPP_INCLUDED_
+#endif // _COCAINE_DEALER_REFRESHER_HPP_INCLUDED_

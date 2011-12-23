@@ -20,10 +20,12 @@
 
 #include "json/json.h"
 
+#include "cocaine/dealer/structs.hpp"
 #include "cocaine/dealer/details/progress_timer.hpp"
 #include "cocaine/dealer/details/http_heartbeats_collector.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 http_heartbeats_collector::http_heartbeats_collector(boost::shared_ptr<configuration> config,
 													 boost::shared_ptr<zmq::context_t> zmq_context) :
@@ -79,7 +81,7 @@ http_heartbeats_collector::set_callback(heartbeats_collector::callback_t callbac
 }
 
 void
-http_heartbeats_collector::hosts_callback(std::vector<host_info_t>& hosts, service_info_t s_info) {
+http_heartbeats_collector::hosts_callback(std::vector<cocaine::dealer::host_info_t>& hosts, service_info_t s_info) {
 	logger_->log("received hosts from fetcher for service: " + s_info.name_);
 
 	boost::mutex::scoped_lock lock(mutex_);
@@ -116,7 +118,7 @@ http_heartbeats_collector::services_ping_callback() {
 
 bool
 http_heartbeats_collector::get_metainfo_from_host(const service_info_t& s_info,
-												  LT::ip_addr ip,
+												  DT::ip_addr ip,
 												  std::string& response)
 {
 	// create req socket
@@ -222,7 +224,7 @@ http_heartbeats_collector::ping_service_hosts(const service_info_t& s_info, std:
 
 	std::vector<host_info_t> responded_hosts;
 	std::vector<handle_info_t> collected_handles;
-	std::multimap<LT::ip_addr, handle_info_t> hosts_and_handles;
+	std::multimap<DT::ip_addr, handle_info_t> hosts_and_handles;
 
 	for (size_t i = 0; i < hosts.size(); ++i) {
 
@@ -258,7 +260,7 @@ http_heartbeats_collector::ping_service_hosts(const service_info_t& s_info, std:
 			for (size_t j = 0; j < host_handles.size(); ++j) {
 
 				// cache host handle for checking later
-				std::pair<LT::ip_addr, handle_info_t> p = std::make_pair(hosts[i].ip_, host_handles[j]);
+				std::pair<DT::ip_addr, handle_info_t> p = std::make_pair(hosts[i].ip_, host_handles[j]);
 				hosts_and_handles.insert(p);
 
 				// check if such handle already exists on the list
@@ -289,7 +291,7 @@ http_heartbeats_collector::ping_service_hosts(const service_info_t& s_info, std:
 void
 http_heartbeats_collector::validate_host_handles(const service_info_t& s_info,
 												 const std::vector<host_info_t>& hosts,
-												 const std::multimap<LT::ip_addr, handle_info_t>& hosts_and_handles) const
+												 const std::multimap<DT::ip_addr, handle_info_t>& hosts_and_handles) const
 {
 	// check that all hosts have the same callback
 	if (hosts.empty()) {
@@ -301,10 +303,10 @@ http_heartbeats_collector::validate_host_handles(const service_info_t& s_info,
 	// iterate thought responded hosts
 	for (size_t i = 0; i < hosts.size() - 1; ++i) {
 		// get host handles from map
-		LT::ip_addr ip1 = hosts[i].ip_;
-		LT::ip_addr ip2 = hosts[i + 1].ip_;
+		DT::ip_addr ip1 = hosts[i].ip_;
+		DT::ip_addr ip2 = hosts[i + 1].ip_;
 
-		std::multimap<LT::ip_addr, handle_info_t>::const_iterator it1, end1, it2, end2;
+		std::multimap<DT::ip_addr, handle_info_t>::const_iterator it1, end1, it2, end2;
 		boost::tie(it1, end1) = hosts_and_handles.equal_range(ip1);
 		boost::tie(it2, end2) = hosts_and_handles.equal_range(ip2);
 
@@ -381,7 +383,7 @@ http_heartbeats_collector::validate_host_handles(const service_info_t& s_info,
 
 void
 http_heartbeats_collector::parse_host_response(const service_info_t& s_info,
-											   LT::ip_addr ip,
+											   DT::ip_addr ip,
 											   const std::string& response,
 											   std::vector<handle_info_t>& handles)
 {
@@ -469,7 +471,7 @@ http_heartbeats_collector::parse_host_response(const service_info_t& s_info,
 			std::string endpoint = handle.get("endpoint", "").asString();
 			std::string route = handle.get("route", "").asString();
 			std::string instance = "";
-			lsd_types::port port = 0;
+			DT::port port = 0;
 
 			size_t found = route.find_first_of("/");
 
@@ -482,7 +484,7 @@ http_heartbeats_collector::parse_host_response(const service_info_t& s_info,
 				std::string port_str = endpoint.substr(found + 1, endpoint.length() - found);
 
 				try {
-					port = boost::lexical_cast<lsd_types::port>(port_str);
+					port = boost::lexical_cast<DT::port>(port_str);
 				}
 				catch(...) {
 				}
@@ -529,4 +531,5 @@ http_heartbeats_collector::set_logger(boost::shared_ptr<base_logger> logger) {
 	logger_ = logger;
 }
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine

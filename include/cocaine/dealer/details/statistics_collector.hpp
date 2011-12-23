@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef _LSD_STATISTICS_COLLECTOR_HPP_INCLUDED_
-#define _LSD_STATISTICS_COLLECTOR_HPP_INCLUDED_
+#ifndef _COCAINE_DEALER_STATISTICS_COLLECTOR_HPP_INCLUDED_
+#define _COCAINE_DEALER_STATISTICS_COLLECTOR_HPP_INCLUDED_
 
 #include <string>
 #include <map>
@@ -24,7 +24,8 @@
 #include "cocaine/dealer/structs.hpp"
 #include "cocaine/dealer/details/configuration.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 enum statictics_req_error {
 	SRE_BAD_JSON_ERROR = 1,
@@ -113,6 +114,7 @@ private:
 	bool is_running_;
 };
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine
 
-#endif // _LSD_CACHED_MESSAGE_HPP_INCLUDED_
+#endif // _COCAINE_DEALER_STATISTICS_COLLECTOR_HPP_INCLUDED_

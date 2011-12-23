@@ -11,19 +11,20 @@
 // limitations under the License.
 //
 
-#ifndef _LSD_HANDLE_INFO_HPP_INCLUDED_
-#define _LSD_HANDLE_INFO_HPP_INCLUDED_
+#ifndef _COCAINE_DEALER_HANDLE_INFO_HPP_INCLUDED_
+#define _COCAINE_DEALER_HANDLE_INFO_HPP_INCLUDED_
 
 #include <string>
 #include <map>
 
 #include "cocaine/dealer/structs.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 // predeclaration
 template <typename LSD_T> class handle_info;
-typedef handle_info<LT> handle_info_t;
+typedef handle_info<DT> handle_info_t;
 
 template <typename LSD_T>
 class handle_info {
@@ -60,6 +61,7 @@ std::ostream& operator << (std::ostream& out, const handle_info<LSD_T>& handle) 
 	return out;
 };
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine
 
-#endif // _LSD_HANDLE_INFO_HPP_INCLUDED_
+#endif // _COCAINE_DEALER_HANDLE_INFO_HPP_INCLUDED_

@@ -15,7 +15,8 @@
 
 #include "cocaine/dealer/details/progress_timer.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 progress_timer::progress_timer() {
 	begin_.init_from_current_time();
@@ -42,4 +43,5 @@ progress_timer::elapsed() {
 	return retval;
 }
 	
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine

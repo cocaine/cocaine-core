@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef _LSD_CONTEXT_HPP_INCLUDED_
-#define _LSD_CONTEXT_HPP_INCLUDED_
+#ifndef _COCAINE_DEALER_CONTEXT_HPP_INCLUDED_
+#define _COCAINE_DEALER_CONTEXT_HPP_INCLUDED_
 
 #include <string>
 #include <map>
@@ -28,7 +28,8 @@
 #include "cocaine/dealer/details/configuration.hpp"
 #include "cocaine/dealer/details/statistics_collector.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 class context : private boost::noncopyable {
 public:
@@ -50,6 +51,7 @@ private:
 	boost::mutex mutex_;
 };
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine
 
-#endif // _LSD_CONTEXT_HPP_INCLUDED_
+#endif // _COCAINE_DEALER_CONTEXT_HPP_INCLUDED_

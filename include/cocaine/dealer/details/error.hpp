@@ -11,20 +11,21 @@
 // limitations under the License.
 //
 
-#ifndef _LSD_ERROR_HPP_INCLUDED_
-#define _LSD_ERROR_HPP_INCLUDED_
+#ifndef _COCAINE_DEALER_ERROR_HPP_INCLUDED_
+#define _COCAINE_DEALER_ERROR_HPP_INCLUDED_
 
 #include <exception>
 #include <string>
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 enum error_type {
-	LSD_UNKNOWN_ERROR = 1,
-	LSD_MESSAGE_DATA_TOO_BIG_ERROR,
-	LSD_MESSAGE_CACHE_OVER_CAPACITY_ERROR,
-	LSD_OVER_HDD_CAPACITY_ERROR,
-	LSD_UNKNOWN_SERVICE_ERROR
+	DEALER_UNKNOWN_ERROR = 1,
+	DEALER_MESSAGE_DATA_TOO_BIG_ERROR,
+	DEALER_MESSAGE_CACHE_OVER_CAPACITY_ERROR,
+	DEALER_OVER_HDD_CAPACITY_ERROR,
+	DEALER_UNKNOWN_SERVICE_ERROR
 };
 
 class error : public std::exception {
@@ -46,6 +47,7 @@ private:
 	enum error_type type_;
 };
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine
 
-#endif // _LSD_ERROR_HPP_INCLUDED_
+#endif // _COCAINE_DEALER_ERROR_HPP_INCLUDED_

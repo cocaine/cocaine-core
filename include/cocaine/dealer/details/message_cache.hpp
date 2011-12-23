@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef _LSD_PERSISTENT_STORAGE_HPP_INCLUDED_
-#define _LSD_PERSISTENT_STORAGE_HPP_INCLUDED_
+#ifndef _COCAINE_DEALER_PERSISTENT_STORAGE_HPP_INCLUDED_
+#define _COCAINE_DEALER_PERSISTENT_STORAGE_HPP_INCLUDED_
 
 #include <string>
 #include <memory>
@@ -28,7 +28,8 @@
 #include "cocaine/dealer/details/context.hpp"
 #include "cocaine/dealer/details/cached_message.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 class message_cache : private boost::noncopyable {
 public:
@@ -40,7 +41,7 @@ public:
 	typedef std::map<std::string, cached_message_ptr_t> messages_index_t;
 
 public:
-	explicit message_cache(boost::shared_ptr<lsd::context> context,
+	explicit message_cache(boost::shared_ptr<cocaine::dealer::context> context,
 						   enum message_cache_type type);
 
 	virtual ~message_cache();
@@ -63,12 +64,12 @@ public:
 private:
 	static bool is_message_expired(cached_message_ptr_t msg);
 
-	boost::shared_ptr<lsd::context> context();
+	boost::shared_ptr<cocaine::dealer::context> context();
 	boost::shared_ptr<base_logger> logger();
 	boost::shared_ptr<configuration> config();
 
 private:
-	boost::shared_ptr<lsd::context> context_;
+	boost::shared_ptr<cocaine::dealer::context> context_;
 	enum message_cache_type type_;
 
 	messages_index_t sent_messages_;
@@ -77,6 +78,7 @@ private:
 	boost::mutex mutex_;
 };
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine
 
-#endif // _LSD_PERSISTENT_STORAGE_HPP_INCLUDED_
+#endif // _COCAINE_DEALER_PERSISTENT_STORAGE_HPP_INCLUDED_

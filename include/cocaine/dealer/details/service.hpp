@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef _LSD_SERVICE_HPP_INCLUDED_
-#define _LSD_SERVICE_HPP_INCLUDED_
+#ifndef _COCAINE_DEALER_SERVICE_HPP_INCLUDED_
+#define _COCAINE_DEALER_SERVICE_HPP_INCLUDED_
 
 #include <string>
 #include <sstream>
@@ -39,12 +39,12 @@
 #include "cocaine/dealer/details/cached_message.hpp"
 #include "cocaine/dealer/details/cached_response.hpp"
 
-
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 // predeclaration
 template <typename LSD_T> class service;
-typedef service<LT> service_t;
+typedef service<DT> service_t;
 template<typename T> std::ostream& operator << (std::ostream& out, const service<T>& s);
 
 template <typename LSD_T>
@@ -77,7 +77,7 @@ public:
 	typedef std::map<std::string, registered_callback_t> registered_callbacks_map_t;
 
 public:
-	service(const service_info<LSD_T>& info, boost::shared_ptr<lsd::context> context);
+	service(const service_info<LSD_T>& info, boost::shared_ptr<cocaine::dealer::context> context);
 	virtual ~service();
 
 	void refresh_hosts_and_handles(const hosts_info_list_t& hosts,
@@ -115,7 +115,7 @@ private:
 
 	boost::shared_ptr<base_logger> logger();
 	boost::shared_ptr<configuration> config();
-	boost::shared_ptr<lsd::context> context();
+	boost::shared_ptr<cocaine::dealer::context> context();
 
 private:
 	// service information
@@ -133,8 +133,8 @@ private:
 	// responces map <handle name, responces queue ptr>
 	responces_map_t received_responces_;
 
-	// lsd context
-	boost::shared_ptr<lsd::context> context_;
+	// dealer context
+	boost::shared_ptr<cocaine::dealer::context> context_;
 
 	// total cache size
 	size_t cache_size_;
@@ -151,7 +151,7 @@ private:
 };
 
 template <typename LSD_T>
-service<LSD_T>::service(const service_info<LSD_T>& info, boost::shared_ptr<lsd::context> context) :
+service<LSD_T>::service(const service_info<LSD_T>& info, boost::shared_ptr<cocaine::dealer::context> context) :
 	info_(info),
 	context_(context),
 	cache_size_(0),
@@ -214,10 +214,10 @@ service<LSD_T>::dispatch_responces() {
 	}
 }
 
-template <typename LSD_T> boost::shared_ptr<lsd::context>
+template <typename LSD_T> boost::shared_ptr<cocaine::dealer::context>
 service<LSD_T>::context() {
 	if (!context_.get()) {
-		throw error("lsd context object is empty at " + std::string(BOOST_CURRENT_FUNCTION));
+		throw error("dealer context object is empty at " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	return context_;
@@ -695,6 +695,7 @@ std::ostream& operator << (std::ostream& out, const service<T>& s) {
 	return out;
 }
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine
 
-#endif // _LSD_SERVICE_HPP_INCLUDED_
+#endif // _COCAINE_DEALER_SERVICE_HPP_INCLUDED_

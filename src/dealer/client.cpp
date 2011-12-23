@@ -18,7 +18,8 @@
 #include "cocaine/dealer/client.hpp"
 #include "cocaine/dealer/details/client_impl.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 client::client(const std::string& config_path) {
 	impl_.reset(new client_impl(config_path));
@@ -114,4 +115,5 @@ client::get_impl() {
 	}
 }
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine

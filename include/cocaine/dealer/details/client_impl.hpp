@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef _LSD_CLIENT_IMPL_HPP_INCLUDED_
-#define _LSD_CLIENT_IMPL_HPP_INCLUDED_
+#ifndef _COCAINE_DEALER_CLIENT_IMPL_HPP_INCLUDED_
+#define _COCAINE_DEALER_CLIENT_IMPL_HPP_INCLUDED_
 
 #include <string>
 #include <vector>
@@ -29,7 +29,8 @@
 #include "cocaine/dealer/details/service.hpp"
 #include "cocaine/dealer/details/heartbeats_collector.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 class client_impl : private boost::noncopyable {
 public:
@@ -74,7 +75,7 @@ public:
 
 	boost::shared_ptr<base_logger> logger();
 	boost::shared_ptr<configuration> config();
-	boost::shared_ptr<lsd::context> context();
+	boost::shared_ptr<cocaine::dealer::context> context();
 
 private:
 	void update_messages_cache_size();
@@ -86,10 +87,10 @@ private:
 private:
 	size_t messages_cache_size_;
 
-	// main lsd context
-	boost::shared_ptr<lsd::context> context_;
+	// main dealer context
+	boost::shared_ptr<cocaine::dealer::context> context_;
 
-	// lsd service name mapped to service
+	// dealer service name mapped to service
 	services_map_t services_;
 
 	// heartsbeat collector
@@ -102,6 +103,7 @@ private:
 	boost::mutex mutex_;
 };
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine
 
-#endif // _LSD_CLIENT_IMPL_HPP_INCLUDED_
+#endif // _COCAINE_DEALER_CLIENT_IMPL_HPP_INCLUDED_

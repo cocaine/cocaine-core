@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef _LSD_CURL_HOSTS_FETCHER_HPP_INCLUDED_
-#define _LSD_CURL_HOSTS_FETCHER_HPP_INCLUDED_
+#ifndef _COCAINE_DEALER_CURL_HOSTS_FETCHER_HPP_INCLUDED_
+#define _COCAINE_DEALER_CURL_HOSTS_FETCHER_HPP_INCLUDED_
 
 #include <memory>
 #include <string>
@@ -26,7 +26,8 @@
 #include "cocaine/dealer/details/host_info.hpp"
 #include "cocaine/dealer/details/service_info.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 class curl_hosts_fetcher : private boost::noncopyable  {
 public:
@@ -52,6 +53,7 @@ private:
 	service_info_t service_info_;
 };
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine
 
-#endif // _LSD_CURL_HOSTS_FETCHER_HPP_INCLUDED_
+#endif // _COCAINE_DEALER_CURL_HOSTS_FETCHER_HPP_INCLUDED_

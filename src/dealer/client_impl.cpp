@@ -20,16 +20,17 @@
 #include "cocaine/dealer/details/error.hpp"
 #include "cocaine/dealer/details/cached_message.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 client_impl::client_impl(const std::string& config_path) :
 	messages_cache_size_(0)
 {
-	// create lsd context
-	std::string ctx_error_msg = "could not create lsd context at: " + std::string(BOOST_CURRENT_FUNCTION) + " ";
+	// create dealer context
+	std::string ctx_error_msg = "could not create dealer context at: " + std::string(BOOST_CURRENT_FUNCTION) + " ";
 
 	try {
-		context_.reset(new lsd::context(config_path));
+		context_.reset(new cocaine::dealer::context(config_path));
 	}
 	catch (const std::exception& ex) {
 		throw error(ctx_error_msg + ex.what());
@@ -57,7 +58,7 @@ client_impl::connect() {
 	boost::shared_ptr<configuration> conf;
 
 	if (!context_) {
-		std::string error_msg = "lsd context is NULL at: " + std::string(BOOST_CURRENT_FUNCTION);
+		std::string error_msg = "dealer context is NULL at: " + std::string(BOOST_CURRENT_FUNCTION);
 		throw error(error_msg);
 	}
 	else {
@@ -115,13 +116,13 @@ client_impl::service_hosts_pinged_callback(const service_info_t& s_info,
 			it->second->refresh_hosts_and_handles(hosts, handles);
 		}
 		else {
-			std::string error_msg = "empty service object with lsd name " + s_info.name_;
+			std::string error_msg = "empty service object with dealer name " + s_info.name_;
 			error_msg += " was found in services. at: " + std::string(BOOST_CURRENT_FUNCTION);
 			throw error(error_msg);
 		}
 	}
 	else {
-		std::string error_msg = "lsd service with name " + s_info.name_;
+		std::string error_msg = "dealer service with name " + s_info.name_;
 		error_msg += " was not found in services. at: " + std::string(BOOST_CURRENT_FUNCTION);
 		throw error(error_msg);
 	}
@@ -160,14 +161,14 @@ client_impl::send_message(const void* data,
 	size_t new_resulting_size = messages_cache_size() + message_size;
 
 	if (new_resulting_size > config()->max_message_cache_size()) {
-		throw error(LSD_MESSAGE_CACHE_OVER_CAPACITY_ERROR, "can not send message, balancer over capacity.");
+		throw error(DEALER_MESSAGE_CACHE_OVER_CAPACITY_ERROR, "can not send message, balancer over capacity.");
 	}
 
 	// validate message path
 	if (!config()->service_info_by_name(path.service_name)) {
 		std::string error_str = "message sent to unknown service, check your config file.";
 		error_str += " at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw error(LSD_UNKNOWN_SERVICE_ERROR, error_str);
+		throw error(DEALER_UNKNOWN_SERVICE_ERROR, error_str);
 	}
 
 	// find service to send message to
@@ -257,7 +258,7 @@ client_impl::set_response_callback(boost::function<void(const response&, const r
 boost::shared_ptr<context>
 client_impl::context() {
 	if (!context_) {
-		throw error("lsd context object is empty at " + std::string(BOOST_CURRENT_FUNCTION));
+		throw error("dealer context object is empty at " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	return context_;
@@ -306,4 +307,5 @@ client_impl::config() {
 	return conf;
 }
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine

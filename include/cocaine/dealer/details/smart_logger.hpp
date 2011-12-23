@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef _LSD_SMART_LOGGER_HPP_INCLUDED_
-#define _LSD_SMART_LOGGER_HPP_INCLUDED_
+#ifndef _COCAINE_DEALER_SMART_LOGGER_HPP_INCLUDED_
+#define _COCAINE_DEALER_SMART_LOGGER_HPP_INCLUDED_
 
 #include <fstream>
 #include <iostream>
@@ -27,7 +27,8 @@
 
 #include "cocaine/dealer/details/error.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 #define PLOG_NONE		(0x0)
 #define PLOG_INFO		(0x1 << 0)
@@ -310,6 +311,7 @@ public:
 	}
 };
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine
 
-#endif // _LSD_SMART_LOGGER_HPP_INCLUDED_
+#endif // _COCAINE_DEALER_SMART_LOGGER_HPP_INCLUDED_

@@ -17,13 +17,14 @@
 
 #include "cocaine/dealer/details/error.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 int const error::MESSAGE_SIZE;
 
 error::error(const std::string& format, ...) :
 	std::exception(),
-	type_(LSD_UNKNOWN_ERROR)
+	type_(DEALER_UNKNOWN_ERROR)
 {
 	va_list args;
 	va_start(args, format);
@@ -59,4 +60,5 @@ error::what() const throw () {
 	return message_;
 }
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine

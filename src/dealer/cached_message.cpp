@@ -25,7 +25,9 @@
 #include "cocaine/dealer/details/error.hpp"
 #include "cocaine/dealer/details/progress_timer.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
+
 cached_message::cached_message() :
 	is_sent_(false)
 {
@@ -46,7 +48,7 @@ cached_message::cached_message(const message_path& path,
 	container_size_(0)
 {
 	if (data_size > MAX_MESSAGE_DATA_SIZE) {
-		throw error(LSD_MESSAGE_DATA_TOO_BIG_ERROR, "can't create message, message data too big.");
+		throw error(DEALER_MESSAGE_DATA_TOO_BIG_ERROR, "can't create message, message data too big.");
 	}
 
 	data_ = data_container(data, data_size);
@@ -181,4 +183,5 @@ cached_message::json() {
 	return writer.write(envelope);
 }
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine

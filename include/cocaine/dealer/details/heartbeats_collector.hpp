@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef _LSD_HEARTBEATS_COLLECTOR_HPP_INCLUDED_
-#define _LSD_HEARTBEATS_COLLECTOR_HPP_INCLUDED_
+#ifndef _COCAINE_DEALER_HEARTBEATS_COLLECTOR_HPP_INCLUDED_
+#define _COCAINE_DEALER_HEARTBEATS_COLLECTOR_HPP_INCLUDED_
 
 #include <string>
 #include <map>
@@ -28,7 +28,8 @@
 #include "cocaine/dealer/details/smart_logger.hpp"
 #include "cocaine/dealer/details/configuration.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 class heartbeats_collector {
 public:
@@ -40,6 +41,7 @@ public:
 	virtual void set_logger(boost::shared_ptr<base_logger> logger) = 0;
 };
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine
 
-#endif // _LSD_HEARTBEATS_COLLECTOR_HPP_INCLUDED_
+#endif // _COCAINE_DEALER_HEARTBEATS_COLLECTOR_HPP_INCLUDED_

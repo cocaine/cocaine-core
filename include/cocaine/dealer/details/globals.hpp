@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef _LSD_GLOBALS_HPP_INCLUDED_
-#define _LSD_GLOBALS_HPP_INCLUDED_
+#ifndef _COCAINE_DEALER_GLOBALS_HPP_INCLUDED_
+#define _COCAINE_DEALER_GLOBALS_HPP_INCLUDED_
 
 #include "cocaine/dealer/structs.hpp"
 #include "cocaine/dealer/details/host_info.hpp"
@@ -21,7 +21,8 @@
 #include "cocaine/dealer/details/handle.hpp"
 #include "cocaine/dealer/details/handle_info.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 // host info
 typedef host_info<LT> host_info_t;
@@ -34,6 +35,7 @@ typedef service<LT> service_t;
 typedef handle_info<LT> handle_info_t;
 typedef handle<LT> handle_t;
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine
 
-#endif // _LSD_GLOBALS_HPP_INCLUDED_
+#endif // _COCAINE_DEALER_GLOBALS_HPP_INCLUDED_

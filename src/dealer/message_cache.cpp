@@ -26,9 +26,10 @@
 #include "cocaine/dealer/details/message_cache.hpp"
 #include "cocaine/dealer/details/progress_timer.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
-message_cache::message_cache(boost::shared_ptr<lsd::context> context,
+message_cache::message_cache(boost::shared_ptr<cocaine::dealer::context> context,
 							 enum message_cache_type type) :
 	context_(context),
 	type_(type)
@@ -39,7 +40,7 @@ message_cache::message_cache(boost::shared_ptr<lsd::context> context,
 message_cache::~message_cache() {
 }
 
-boost::shared_ptr<lsd::context>
+boost::shared_ptr<cocaine::dealer::context>
 message_cache::context() {
 	return context_;
 }
@@ -273,4 +274,5 @@ message_cache::process_expired_messages(std::vector<std::pair<std::string, messa
 						 new_messages_->end());
 }
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine

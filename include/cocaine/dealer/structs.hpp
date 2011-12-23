@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef _LSD_STRUCTS_HPP_INCLUDED_
-#define _LSD_STRUCTS_HPP_INCLUDED_
+#ifndef _COCAINE_DEALER_STRUCTS_HPP_INCLUDED_
+#define _COCAINE_DEALER_STRUCTS_HPP_INCLUDED_
 
 #include <vector>
 #include <map>
@@ -20,7 +20,8 @@
 #include <time.h>
 #include <boost/cstdint.hpp>
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 static const int PROTOCOL_VERSION = 1;
 static const int STATISTICS_PROTOCOL_VERSION = 1;
@@ -41,13 +42,13 @@ static const unsigned short DEFAULT_MULTICAST_PORT = 5556;
 static const unsigned short DEFAULT_STATISTICS_PORT = 3333;
 static const size_t DEFAULT_MAX_MESSAGE_CACHE_SIZE = 512; // megabytes
 
-struct lsd_types {
+struct dealer_types {
 	typedef boost::uint32_t ip_addr;
 	typedef boost::uint16_t port;
 };
 
 // main types definition
-typedef lsd_types LT;
+typedef dealer_types DT;
 
 enum callback_error {
 	UNKNOWN_SERVICE_ERROR = 1,
@@ -230,7 +231,7 @@ struct handle_stats {
 
 struct service_stats {
 	// <ip address, hostname>
-	std::map<LT::ip_addr, std::string> hosts;
+	std::map<DT::ip_addr, std::string> hosts;
 
 	// <handle name>
 	std::vector<std::string> handles;
@@ -254,6 +255,7 @@ struct response_info {
 	std::string error_msg;
 };
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine
 
-#endif // _LSD_STRUCTS_HPP_INCLUDED_
+#endif // _COCAINE_DEALER_STRUCTS_HPP_INCLUDED_

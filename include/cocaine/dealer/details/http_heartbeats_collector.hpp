@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef _LSD_HTTP_HEARTBEATS_COLLECTOR_HPP_INCLUDED_
-#define _LSD_HTTP_HEARTBEATS_COLLECTOR_HPP_INCLUDED_
+#ifndef _COCAINE_DEALER_HTTP_HEARTBEATS_COLLECTOR_HPP_INCLUDED_
+#define _COCAINE_DEALER_HTTP_HEARTBEATS_COLLECTOR_HPP_INCLUDED_
 
 #include <memory>
 #include <string>
@@ -25,13 +25,15 @@
 
 #include <zmq.hpp>
 
+#include "cocaine/dealer/structs.hpp"
 #include "cocaine/dealer/details/smart_logger.hpp"
 #include "cocaine/dealer/details/refresher.hpp"
 #include "cocaine/dealer/details/heartbeats_collector.hpp"
 #include "cocaine/dealer/details/curl_hosts_fetcher.hpp"
 #include "cocaine/dealer/details/configuration.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 	
 class http_heartbeats_collector : public heartbeats_collector, private boost::noncopyable {
 public:
@@ -47,21 +49,21 @@ public:
 	void set_callback(heartbeats_collector::callback_t callback);
 	
 private:
-	void hosts_callback(std::vector<lsd::host_info_t>& hosts, service_info_t tag);
+	void hosts_callback(std::vector<cocaine::dealer::host_info_t>& hosts, service_info_t tag);
 	void services_ping_callback();
 	void ping_service_hosts(const service_info_t& s_info, std::vector<host_info_t>& hosts);
 
 	void parse_host_response(const service_info_t& s_info,
-							 LT::ip_addr ip,
+							 DT::ip_addr ip,
 							 const std::string& response,
 							 std::vector<handle_info_t>& handles);
 
 	void validate_host_handles(const service_info_t& s_info,
 							   const std::vector<host_info_t>& hosts,
-							   const std::multimap<LT::ip_addr, handle_info_t>& hosts_and_handles) const;
+							   const std::multimap<DT::ip_addr, handle_info_t>& hosts_and_handles) const;
 
 	bool get_metainfo_from_host(const service_info_t& s_info,
-								LT::ip_addr ip,
+								DT::ip_addr ip,
 								std::string& response);
 
 	static const int curl_fetcher_timeout = 1;
@@ -82,6 +84,7 @@ private:
 	boost::mutex mutex_;
 };
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine
 
-#endif // _LSD_HTTP_HEARTBEATS_COLLECTOR_HPP_INCLUDED_
+#endif // _COCAINE_DEALER_HTTP_HEARTBEATS_COLLECTOR_HPP_INCLUDED_

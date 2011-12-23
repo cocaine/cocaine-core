@@ -22,7 +22,8 @@
 
 #include "cocaine/dealer/details/configuration.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 configuration::configuration() :
 	version_ (0),
@@ -187,7 +188,7 @@ configuration::parse_statistics_settings(const Json::Value& config_value) {
 
 	is_statistics_enabled_ = statistics_value.get("enabled", false).asBool();
 	is_remote_statistics_enabled_ = statistics_value.get("remote_access", false).asBool();
-	remote_statistics_port_ = (LT::port)statistics_value.get("remote_port", DEFAULT_STATISTICS_PORT).asUInt();
+	remote_statistics_port_ = (DT::port)statistics_value.get("remote_port", DEFAULT_STATISTICS_PORT).asUInt();
 }
 
 void
@@ -390,7 +391,7 @@ configuration::is_remote_statistics_enabled() const {
 	return is_remote_statistics_enabled_;
 }
 
-LT::port
+DT::port
 configuration::remote_statistics_port() const {
 	return remote_statistics_port_;
 }
@@ -668,4 +669,5 @@ std::ostream& operator<<(std::ostream& out, configuration& config) {
 	return out;
 }
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine

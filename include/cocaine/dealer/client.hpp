@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef _LSD_CLIENT_HPP_INCLUDED_
-#define _LSD_CLIENT_HPP_INCLUDED_
+#ifndef _COCAINE_DEALER_CLIENT_HPP_INCLUDED_
+#define _COCAINE_DEALER_CLIENT_HPP_INCLUDED_
 
 #include <string>
 
@@ -24,7 +24,8 @@
 #include <cocaine/dealer/forwards.hpp>
 #include <cocaine/dealer/structs.hpp>
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 class client : private boost::noncopyable {
 public:
@@ -73,6 +74,7 @@ private:
 	mutable boost::mutex mutex_;
 };
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine
 
-#endif // _LSD_CLIENT_HPP_INCLUDED_
+#endif // _COCAINE_DEALER_CLIENT_HPP_INCLUDED_

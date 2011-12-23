@@ -16,7 +16,8 @@
 
 #include "cocaine/dealer/details/time_value.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 time_value::time_value() {
 	value_.tv_sec = 0;
@@ -203,4 +204,5 @@ time_value::operator -= (double interval) {
 	return *this;
 }
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine

@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef _LSD_CONFIGURATION_HPP_INCLUDED_
-#define _LSD_CONFIGURATION_HPP_INCLUDED_
+#ifndef _COCAINE_DEALER_CONFIGURATION_HPP_INCLUDED_
+#define _COCAINE_DEALER_CONFIGURATION_HPP_INCLUDED_
 
 #include <string>
 #include <map>
@@ -27,7 +27,8 @@
 #include "cocaine/dealer/details/service_info.hpp"
 #include "cocaine/dealer/details/smart_logger.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 class configuration;
 	
@@ -35,7 +36,7 @@ std::ostream& operator << (std::ostream& out, configuration& config);
 	
 class configuration : private boost::noncopyable {
 public:
-	// map lsd service name to service info
+	// map dealer service name to service info
 	typedef std::map<std::string, service_info_t> services_list_t;
 
 public:
@@ -68,7 +69,7 @@ public:
 	
 	bool is_statistics_enabled() const;
 	bool is_remote_statistics_enabled() const;
-	LT::port remote_statistics_port() const;
+	DT::port remote_statistics_port() const;
 
 	const services_list_t& services_list() const;
 	bool service_info_by_name(const std::string& name, service_info_t& info) const;
@@ -118,7 +119,7 @@ private:
 	// statistics
 	bool is_statistics_enabled_;
 	bool is_remote_statistics_enabled_;
-	LT::port remote_statistics_port_;
+	DT::port remote_statistics_port_;
 
 	// services
 	services_list_t services_list_;
@@ -127,6 +128,7 @@ private:
 	boost::mutex mutex_;
 };
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine
 
-#endif // _LSD_CONFIGURATION_HPP_INCLUDED_
+#endif // _COCAINE_DEALER_CONFIGURATION_HPP_INCLUDED_

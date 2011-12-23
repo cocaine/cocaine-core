@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef _LSD_HOST_INFO_HPP_INCLUDED_
-#define _LSD_HOST_INFO_HPP_INCLUDED_
+#ifndef _COCAINE_DEALER_HOST_INFO_HPP_INCLUDED_
+#define _COCAINE_DEALER_HOST_INFO_HPP_INCLUDED_
 
 #include <iostream>
 #include <string>
@@ -31,11 +31,12 @@
 
 #include "cocaine/dealer/structs.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 // predeclaration
 template <typename LSD_T> class host_info;
-typedef host_info<LT> host_info_t;
+typedef host_info<DT> host_info_t;
 
 template<typename LSD_T>
 class host_info {
@@ -114,6 +115,7 @@ std::ostream& operator << (std::ostream& out, const host_info<LSD_T>& host) {
 	return out;
 };
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine
 
-#endif // _LSD_HOST_INFO_HPP_INCLUDED_
+#endif // _COCAINE_DEALER_HOST_INFO_HPP_INCLUDED_

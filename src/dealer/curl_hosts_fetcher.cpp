@@ -19,7 +19,8 @@
 
 #include "cocaine/dealer/details/curl_hosts_fetcher.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 curl_hosts_fetcher::curl_hosts_fetcher(const std::string& url,
 									   boost::uint32_t interval,
@@ -111,4 +112,5 @@ curl_hosts_fetcher::interval_func() {
 	callback_(hosts, service_info_);
 }
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine

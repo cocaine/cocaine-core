@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef _LSD_DATA_CONTAINER_HPP_INCLUDED_
-#define _LSD_DATA_CONTAINER_HPP_INCLUDED_
+#ifndef _COCAINE_DEALER_DATA_CONTAINER_HPP_INCLUDED_
+#define _COCAINE_DEALER_DATA_CONTAINER_HPP_INCLUDED_
 
 #include <string>
 #include <stdexcept>
@@ -24,7 +24,8 @@
 
 #include "cocaine/dealer/structs.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 class data_container {
 
@@ -76,6 +77,7 @@ private:
 	boost::mutex mutex_;
 };
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine
 
-#endif // _LSD_DATA_CONTAINER_HPP_INCLUDED_
+#endif // _COCAINE_DEALER_DATA_CONTAINER_HPP_INCLUDED_

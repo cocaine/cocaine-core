@@ -25,7 +25,9 @@
 #include "cocaine/dealer/details/cached_response.hpp"
 #include "cocaine/dealer/details/error.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
+
 cached_response::cached_response() :
 	error_code_(0)
 {
@@ -47,7 +49,7 @@ cached_response::cached_response(const std::string& uuid,
 	error_code_(0)
 {
 	if (data_size > MAX_RESPONSE_DATA_SIZE) {
-		throw error(LSD_MESSAGE_DATA_TOO_BIG_ERROR, "can't create response, response data too big.");
+		throw error(DEALER_MESSAGE_DATA_TOO_BIG_ERROR, "can't create response, response data too big.");
 	}
 
 	data_ = data_container(data, data_size);
@@ -148,4 +150,5 @@ cached_response::container_size() const {
 	return container_size_;
 }
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine

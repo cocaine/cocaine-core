@@ -11,14 +11,16 @@
 // limitations under the License.
 //
 
-#ifndef _LSD_CLIENT_FORWARD_HPP_INCLUDED_
-#define _LSD_CLIENT_FORWARD_HPP_INCLUDED_
+#ifndef _COCAINE_DEALER_CLIENT_FORWARD_HPP_INCLUDED_
+#define _COCAINE_DEALER_CLIENT_FORWARD_HPP_INCLUDED_
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 class client_impl;
 template<typename LSD_T> class service;
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine
 
-#endif // _LSD_CLIENT_FORWARD_HPP_INCLUDED_
+#endif // _COCAINE_DEALER_CLIENT_FORWARD_HPP_INCLUDED_

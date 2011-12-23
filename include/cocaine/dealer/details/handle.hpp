@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef _LSD_HANDLE_HPP_INCLUDED_
-#define _LSD_HANDLE_HPP_INCLUDED_
+#ifndef _COCAINE_DEALER_HANDLE_HPP_INCLUDED_
+#define _COCAINE_DEALER_HANDLE_HPP_INCLUDED_
 
 #include <string>
 #include <map>
@@ -42,7 +42,8 @@
 #include "cocaine/dealer/details/message_cache.hpp"
 #include "cocaine/dealer/details/progress_timer.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 #define CONTROL_MESSAGE_NOTHING 0
 #define CONTROL_MESSAGE_CONNECT 1
@@ -53,7 +54,7 @@ namespace lsd {
 
 // predeclaration
 template <typename LSD_T> class handle;
-typedef handle<LT> handle_t;
+typedef handle<DT> handle_t;
 
 template <typename LSD_T>
 class handle : public boost::noncopyable {
@@ -66,7 +67,7 @@ public:
 
 public:
 	handle(const handle_info<LSD_T>& info,
-		   boost::shared_ptr<lsd::context> context,
+		   boost::shared_ptr<cocaine::dealer::context> context,
 		   const hosts_info_list_t& hosts);
 
 	virtual ~handle();
@@ -109,11 +110,11 @@ private:
 
 	boost::shared_ptr<base_logger> logger();
 	boost::shared_ptr<configuration> config();
-	boost::shared_ptr<lsd::context> context();
+	boost::shared_ptr<cocaine::dealer::context> context();
 
 private:
 	handle_info<LSD_T> info_;
-	boost::shared_ptr<lsd::context> context_;
+	boost::shared_ptr<cocaine::dealer::context> context_;
 	hosts_info_list_t hosts_;
 	hosts_info_list_t new_hosts_;
 	boost::shared_ptr<message_cache> message_cache_;
@@ -133,7 +134,7 @@ private:
 
 template <typename LSD_T>
 handle<LSD_T>::handle(const handle_info<LSD_T>& info,
-					  boost::shared_ptr<lsd::context> lsd_context,
+					  boost::shared_ptr<cocaine::dealer::context> lsd_context,
 					  const hosts_info_list_t& hosts) :
 	info_(info),
 	context_(lsd_context),
@@ -554,7 +555,7 @@ handle<LSD_T>::dispatch_responces(socket_ptr_t& main_socket) {
 			if (error_code != 0) {
 				logger()->log(PLOG_DEBUG, "error code: %d, message: %s", error_code, error_message.c_str());
 
-				// if we could not get message from cache, we assume, lsd has already processed it
+				// if we could not get message from cache, we assume, dealer has already processed it
 				// otherwise — make response!
 				if (fetched_message) {
 					// create response object
@@ -857,10 +858,10 @@ handle<LSD_T>::enqueue_message(boost::shared_ptr<cached_message> message) {
 	update_statistics();
 }
 
-template <typename LSD_T> boost::shared_ptr<lsd::context>
+template <typename LSD_T> boost::shared_ptr<cocaine::dealer::context>
 handle<LSD_T>::context() {
 	if (!context_) {
-		throw error("lsd context object is empty at " + std::string(BOOST_CURRENT_FUNCTION));
+		throw error("dealer context object is empty at " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	return context_;
@@ -881,6 +882,7 @@ handle<LSD_T>::config() {
 	return conf;
 }
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine
 
-#endif // _LSD_HANDLE_HPP_INCLUDED_
+#endif // _COCAINE_DEALER_HANDLE_HPP_INCLUDED_

@@ -14,7 +14,8 @@
 #include "cocaine/dealer/details/context.hpp"
 #include "cocaine/dealer/details/error.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 context::context(const std::string& config_path) {
 	// load configuration from file
@@ -82,4 +83,5 @@ context::stats() {
 	return stats_;
 }
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine

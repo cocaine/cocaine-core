@@ -25,7 +25,8 @@
 #include "cocaine/dealer/details/smart_logger.hpp"
 #include "cocaine/dealer/details/statistics_collector.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 statistics_collector::statistics_collector(boost::shared_ptr<configuration> config,
 										   boost::shared_ptr<zmq::context_t> zmq_context) :
@@ -118,7 +119,7 @@ void
 statistics_collector::process_remote_connection() {
 	// create zmq resp socket
 	zmq::socket_t socket(*zmq_context_, ZMQ_REP);
-	LT::port port = config()->remote_statistics_port();
+	DT::port port = config()->remote_statistics_port();
 	std::string port_str = boost::lexical_cast<std::string>(port);
 	socket.bind(("tcp://*:" + port_str).c_str());
 
@@ -294,7 +295,7 @@ statistics_collector::all_services_json() {
 		services_stats_t::iterator service_stat_it = services_stats_.find(services_it->second.name_);
 		if (service_stat_it != services_stats_.end()) {
 			// get references
-			std::map<LT::ip_addr, std::string>& hosts = service_stat_it->second.hosts;
+			std::map<DT::ip_addr, std::string>& hosts = service_stat_it->second.hosts;
 			std::map<std::string, size_t>& umsgs = service_stat_it->second.unhandled_messages;
 			std::vector<std::string>& handles = service_stat_it->second.handles;
 
@@ -349,11 +350,11 @@ statistics_collector::all_services_json() {
 			}
 			else {
 				Json::Value service_hosts;
-				std::map<LT::ip_addr, std::string>::iterator hosts_it = hosts.begin();
+				std::map<DT::ip_addr, std::string>::iterator hosts_it = hosts.begin();
 				size_t counter = 1;
 				for (; hosts_it != hosts.end(); ++hosts_it) {
 					std::string key = "host " + boost::lexical_cast<std::string>(counter);
-					std::string value = host_info<LT>::string_from_ip(hosts_it->first);
+					std::string value = host_info<DT>::string_from_ip(hosts_it->first);
 					value += "(" + hosts_it->second + ")";
 					service_hosts[key] = value;
 					++counter;
@@ -508,4 +509,5 @@ statistics_collector::get_handle_stats(const std::string& service,
 	return true;
 }
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine

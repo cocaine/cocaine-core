@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef _LSD_CACHED_RESPONSE_HPP_INCLUDED_
-#define _LSD_CACHED_RESPONSE_HPP_INCLUDED_
+#ifndef _COCAINE_DEALER_CACHED_RESPONSE_HPP_INCLUDED_
+#define _COCAINE_DEALER_CACHED_RESPONSE_HPP_INCLUDED_
 
 #include <string>
 #include <sys/time.h>
@@ -23,7 +23,8 @@
 #include "cocaine/dealer/structs.hpp"
 #include "cocaine/dealer/details/data_container.hpp"
 
-namespace lsd {
+namespace cocaine {
+namespace dealer {
 
 class cached_response {
 public:
@@ -78,6 +79,7 @@ private:
 	boost::mutex mutex_;
 };
 
-} // namespace lsd
+} // namespace dealer
+} // namespace cocaine
 
-#endif // _LSD_CACHED_RESPONSE_HPP_INCLUDED_
+#endif // _COCAINE_DEALER_CACHED_RESPONSE_HPP_INCLUDED_
