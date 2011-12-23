@@ -56,6 +56,24 @@ ADD_LIBRARY(cocaine-common SHARED
     src/storages/files
     src/storages/mongo)
 
+FILE(GLOB dealer_SRC
+    "src/dealer/*.cpp"
+)
+
+ADD_LIBRARY(cocaine-dealer SHARED
+    ${dealer_SRC})
+
+TARGET_LINK_LIBRARIES(cocaine-dealer
+    boost_thread-mt
+    crypto
+    curl
+    json
+    msgpack
+    ${LIBUUID_LIBRARIES})
+
+SET_TARGET_PROPERTIES(cocaine-dealer PROPERTIES
+    VERSION 1)
+    
 TARGET_LINK_LIBRARIES(cocaine-common
     boost_filesystem-mt
     ${Boost_SYSTEM_LIBRARY}
@@ -110,6 +128,7 @@ ADD_SUBDIRECTORY(plugins)
 INSTALL(
     TARGETS
         cocaine-common
+        cocaine-dealer
         cocaine-core
         cocained
         json 
