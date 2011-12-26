@@ -89,18 +89,16 @@ void overseer_t::process(ev::idle&, int) {
         switch(code) {
             case rpc::invoke: {
                 rpc::invoke_t object;
-                zmq::message_t request;
-                boost::tuple<rpc::invoke_t&, zmq::message_t*> tier(object, &request);
                 
-                BOOST_VERIFY(m_messages.recv_multi(tier));
+                BOOST_VERIFY(m_messages.recv(object));
                 BOOST_ASSERT(object.type == rpc::invoke);
 
                 try {
                     m_app->invoke(
                         boost::bind(&overseer_t::respond, this, _1, _2),
                         object.method, 
-                        request.data(), 
-                        request.size());
+                        object.request.ptr, 
+                        object.request.size);
 #if BOOST_VERSION >= 103500
                     boost::this_thread::interruption_point();
 #endif
@@ -145,10 +143,7 @@ void overseer_t::respond(const void* response, size_t size) {
     boost::this_thread::interruption_point();
 #endif
 
-    zmq::message_t message(size);
-    memcpy(message.data(), response, size);
-  
-    BOOST_VERIFY(send(rpc::chunk_t(), ZMQ_SNDMORE) && m_messages.send(message));
+    BOOST_VERIFY(send(rpc::chunk_t(response, size)));
 }
 
 void overseer_t::timeout(ev::timer&, int) {

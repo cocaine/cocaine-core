@@ -68,21 +68,16 @@ class engine_t:
         Json::Value info() const;
 
         template<class Selector, class T>
-        pool_map_t::iterator unicast(const Selector& selector, const T& message, zmq::message_t* request) {
+        pool_map_t::iterator unicast(const Selector& selector, const T& message) {
             pool_map_t::iterator it(std::find_if(m_pool.begin(), m_pool.end(), selector));
 
             if(it != m_pool.end()) {
-                zmq::message_t payload;
-
-                payload.copy(request);
-
                 if(!m_messages.send_multi(
                     boost::tie(
                         networking::protect(it->second->id()),
                         message.type,
-                        message,
-                        payload
-                    ))) 
+                        message
+                  ))) 
                 {
                     return m_pool.end();
                 }

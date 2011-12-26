@@ -39,13 +39,12 @@ class overseer_t:
 
     private:
         template<class T>
-        bool send(const T& message, int flags = 0) {
+        bool send(const T& message) {
             return m_messages.send_multi(
                 boost::tie(
                     message.type,
                     message
-                ),
-                flags
+                )
             );
         }
 

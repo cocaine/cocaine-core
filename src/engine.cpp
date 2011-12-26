@@ -270,9 +270,11 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
     pool_map_t::iterator it(
         unicast(
             idle_slave(),
-            rpc::invoke_t(job->driver().method()),
-            job->request()
-        )
+            rpc::invoke_t(
+                job->driver().method(),
+                job->request()
+            )
+        )    
     );
 
     // NOTE: If we got an idle slave, then we're lucky and got an instant scheduling;
@@ -375,6 +377,7 @@ void engine_t::process(ev::idle&, int) {
     if(m_messages.pending()) {
         std::string slave_id;
         unsigned int code = 0;
+
         boost::tuple<raw<std::string>, unsigned int&> tier(protect(slave_id), code);
         
         BOOST_VERIFY(m_messages.recv_multi(tier));
@@ -397,13 +400,13 @@ void engine_t::process(ev::idle&, int) {
 
                 case rpc::chunk: {
                     rpc::chunk_t object;
-                    zmq::message_t message;
 
-                    boost::tuple<rpc::chunk_t&, zmq::message_t*> tier(object, &message);
-                    
-                    BOOST_VERIFY(m_messages.recv_multi(tier));
+                    BOOST_VERIFY(m_messages.recv(object));
                     BOOST_ASSERT(object.type == rpc::chunk);
                     BOOST_ASSERT(state != 0);
+
+                    zmq::message_t message(object.response.size);
+                    memcpy(message.data(), object.response.ptr, object.response.size);
 
                     state->job()->process_event(events::chunk_t(message));
 

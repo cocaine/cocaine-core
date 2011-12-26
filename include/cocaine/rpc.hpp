@@ -34,15 +34,17 @@ struct invoke_t {
         type(invoke)
     { }
 
-    invoke_t(const std::string& method_):
+    invoke_t(const std::string& method_, zmq::message_t* request_):
         type(invoke),
-        method(method_)
+        method(method_),
+        request(static_cast<const char*>(request_->data()), request_->size())
     { }
 
     unsigned int type;
     std::string method;
+    msgpack::type::raw_ref request;
 
-    MSGPACK_DEFINE(type, method);
+    MSGPACK_DEFINE(type, method, request);
 };
 
 struct terminate_t {
@@ -70,9 +72,15 @@ struct chunk_t {
         type(chunk)
     { }
 
-    unsigned int type;
+    chunk_t(const void* data, size_t size):
+        type(chunk),
+        response(static_cast<const char*>(data), size)
+    { }
 
-    MSGPACK_DEFINE(type);
+    unsigned int type;
+    msgpack::type::raw_ref response;
+
+    MSGPACK_DEFINE(type, response);
 };
 
 struct error_t {
