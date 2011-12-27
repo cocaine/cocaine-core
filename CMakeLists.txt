@@ -107,12 +107,11 @@ TARGET_LINK_LIBRARIES(cocained
     boost_program_options-mt
     cocaine-core)
 
-FILE(GLOB dealer_SRC
-    "src/dealer/*.cpp"
-)
+FILE(GLOB DEALER_SOURCES
+    "src/dealer/*.cpp")
 
 ADD_LIBRARY(cocaine-dealer SHARED
-    ${dealer_SRC})
+    ${DEALER_SOURCES})
 
 TARGET_LINK_LIBRARIES(cocaine-dealer
     boost_thread-mt
