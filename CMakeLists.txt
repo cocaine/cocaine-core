@@ -41,6 +41,8 @@ LINK_DIRECTORIES(
 INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/foreign/jsoncpp-0.5.0/include)
 INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/include)
 
+ADD_DEFINITIONS("-DBOOST_FILESYSTEM_VERSION=2")
+
 ADD_LIBRARY(json
     foreign/jsoncpp-0.5.0/src/lib_json/json_value
     foreign/jsoncpp-0.5.0/src/lib_json/json_reader
