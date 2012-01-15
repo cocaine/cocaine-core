@@ -50,8 +50,8 @@ int main(int argc, char* argv[]) {
     positional_options.add("endpoints", -1);
 
     general_options.add_options()
-        ("help", "show this message")
-        ("version", "show version and build information")
+        ("help,h", "show this message")
+        ("version,v", "show version and build information")
         ("daemonize", "daemonize on start")
         ("pidfile", po::value<fs::path>
             ()->default_value("/var/run/cocaine/default.pid"),
@@ -126,7 +126,7 @@ int main(int argc, char* argv[]) {
     }
 
     if(vm.count("version")) {
-        std::cout << "Cocaine 0.6" << std::endl;
+        std::cout << "Cocaine " <<  COCAINE_VERSION << std::endl;
         return EXIT_SUCCESS;
     }
 
@@ -137,9 +137,10 @@ int main(int argc, char* argv[]) {
     }
 
     // Fetching the hostname
-    char hostname[256];
+    const int HOSTNAME_MAX_LENGTH = 256;
+    char hostname[HOSTNAME_MAX_LENGTH];
 
-    if(gethostname(hostname, 256) == 0) {
+    if(gethostname(hostname, HOSTNAME_MAX_LENGTH) == 0) {
         config.core.hostname = hostname;
     } else {
         std::cout << "Error: failed to determine the hostname" << std::endl;
