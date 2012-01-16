@@ -16,6 +16,7 @@
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 
+#include "cocaine/config.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/common.hpp"
 #include "cocaine/core.hpp"

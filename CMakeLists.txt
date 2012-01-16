@@ -1,6 +1,12 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 PROJECT(Cocaine)
 
+SET(COCAINE_VERSION 0.6)
+
+CONFIGURE_FILE (
+    "${PROJECT_SOURCE_DIR}/config.hpp.in"
+    "${PROJECT_BINARY_DIR}/include/cocaine/config.hpp")
+
 FIND_PACKAGE(Boost 1.34.1 REQUIRED 
     COMPONENTS
         filesystem
@@ -107,29 +113,41 @@ TARGET_LINK_LIBRARIES(cocained
     boost_program_options-mt
     cocaine-core)
 
-FILE(GLOB DEALER_SOURCES
-    "src/dealer/*.cpp")
+IF(NOT APPLE)
+    FILE(GLOB DEALER_SOURCES
+        "src/dealer/*.cpp")
 
-ADD_LIBRARY(cocaine-dealer SHARED
-    ${DEALER_SOURCES})
+    ADD_LIBRARY(cocaine-dealer SHARED
+            ${DEALER_SOURCES})
 
-TARGET_LINK_LIBRARIES(cocaine-dealer
-    boost_thread-mt
-    crypto
-    curl
-    json
-    msgpack
-    ${LIBUUID_LIBRARIES})
 
-SET_TARGET_PROPERTIES(cocaine-dealer PROPERTIES
-    VERSION 1)
+    TARGET_LINK_LIBRARIES(cocaine-dealer
+        boost_thread-mt
+        crypto
+        curl
+        json
+        msgpack
+        ${LIBUUID_LIBRARIES})
+
+    SET_TARGET_PROPERTIES(cocaine-dealer PROPERTIES
+            VERSION 1)
+
+
+    INSTALL(
+        TARGETS
+            cocaine-dealer
+        RUNTIME DESTINATION bin COMPONENT runtime
+        LIBRARY DESTINATION lib COMPONENT runtime
+        ARCHIVE DESTINATION lib COMPONENT developement)
+
+    
+ENDIF()
     
 ADD_SUBDIRECTORY(plugins)
 
 INSTALL(
     TARGETS
         cocaine-common
-        cocaine-dealer
         cocaine-core
         cocained
         json 

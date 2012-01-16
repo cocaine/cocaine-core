@@ -25,8 +25,6 @@
 #include <boost/version.hpp>
 #include <boost/noncopyable.hpp>
 
-const float COCAINE_VERSION = 0.6;
-
 #if BOOST_VERSION >= 104000
 # include <boost/ptr_container/ptr_unordered_map.hpp>
 #else
