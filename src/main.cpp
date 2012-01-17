@@ -127,7 +127,7 @@ int main(int argc, char* argv[]) {
     }
 
     if(vm.count("version")) {
-        std::cout << "Cocaine " <<  COCAINE_VERSION << std::endl;
+        std::cout << "Cocaine " << COCAINE_VERSION << std::endl;
         return EXIT_SUCCESS;
     }
 

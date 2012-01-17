@@ -120,7 +120,6 @@ IF(NOT APPLE)
     ADD_LIBRARY(cocaine-dealer SHARED
             ${DEALER_SOURCES})
 
-
     TARGET_LINK_LIBRARIES(cocaine-dealer
         boost_thread-mt
         crypto
@@ -132,15 +131,12 @@ IF(NOT APPLE)
     SET_TARGET_PROPERTIES(cocaine-dealer PROPERTIES
             VERSION 1)
 
-
     INSTALL(
         TARGETS
             cocaine-dealer
         RUNTIME DESTINATION bin COMPONENT runtime
         LIBRARY DESTINATION lib COMPONENT runtime
         ARCHIVE DESTINATION lib COMPONENT developement)
-
-    
 ENDIF()
     
 ADD_SUBDIRECTORY(plugins)
