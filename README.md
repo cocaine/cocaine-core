@@ -69,3 +69,8 @@ manifest = {
 ```
 
 The JSON above is an application manifest, a description of the application you feed into Cocaine for it to be able to host it. In a distributed setup, this manifest will be sent to all the other nodes of the cluster automatically. Apart from this manifest, there is __no other configuration needed to start serving the application__.
+
+Okay, I want to try it!
+=======================
+
+Then it's time to read our [Wiki](wiki/Home) for installation instructions, reference manuals and cookies!
