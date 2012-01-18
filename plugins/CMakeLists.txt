@@ -1,6 +1,4 @@
 SET(PLUGINS
-        mysql
-        http
         python
         javascript)
 
