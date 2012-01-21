@@ -34,11 +34,11 @@ The application tasks can be driven by any of the following drivers:
 * Native Sink (Request-Publish)
 * [Planned] Raw Socket Server
 
-Application configuration example
-=================================
+An example
+==========
 
 ```python
-manifest = {
+{
     "type": "python",
     "args": "local:///path/to/application/__init__.py",
     "version": 1,
