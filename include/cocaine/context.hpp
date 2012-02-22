@@ -14,8 +14,9 @@
 #ifndef COCAINE_CONTEXT_HPP
 #define COCAINE_CONTEXT_HPP
 
+#include <syslog.h>
+
 #include "cocaine/common.hpp"
-#include "cocaine/networking.hpp"
 
 namespace cocaine {
 
@@ -34,7 +35,7 @@ struct config_t {
         float announce_interval;
     } core;
 
-    struct engine_cfg_t {
+    struct {
         // Default engine policy
         std::string backend;
         float heartbeat_timeout;
@@ -50,18 +51,42 @@ struct config_t {
     } storage;
 };
 
+class logger_t {
+    public:
+        logger_t() { }
+        logger_t(logger_t& other, const std::string& prefix) { }
+
+        virtual void emit(int priority, const char* format, ...) { };
+};
+
 class context_t:
-    boost::noncopyable
+    public boost::noncopyable
 {
     public:
-        context_t(config_t config_):
-            config(config_),
-            bus(new zmq::context_t(1))
-        { }
+        context_t(config_t config);
+
+        inline zmq::context_t& io() {
+            if(!m_io) {
+                throw std::runtime_error("networking is not initialized");
+            }
+
+            return *m_io;
+        }
+
+        inline logger_t& log() {
+            if(!m_log) {
+                throw std::runtime_error("logging is not initialized");
+            }
+
+            return *m_log;
+        }
 
     public:
         config_t config;
-        boost::shared_ptr<zmq::context_t> bus;
+
+    private:
+        boost::shared_ptr<zmq::context_t> m_io;
+        boost::shared_ptr<logger_t> m_log;
 };
 
 }

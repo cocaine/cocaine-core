@@ -71,22 +71,20 @@ class thread_state_t {
 };
 
 class python_t:
-    public source_t
+    public module_t
 {
     public:
-        static source_t* create(const std::string& args);
+        static module_t* create(context_t& context, const Json::Value& args);
     
     public:    
-        python_t(const std::string& args);
+        python_t(const Json::Value& args);
 
-        void invoke(callback_fn_t callback,
-                    const std::string& method, 
-                    const void* request,
-                    size_t size);
+        void invoke(invocation_context_t& context,
+                    const std::string& method);
 
     private:
         void compile(const std::string& path, const std::string& code);
-        void respond(callback_fn_t callback, object_t& result);
+        void respond(invocation_context_t& context, object_t& result);
         std::string exception();
 
     private:

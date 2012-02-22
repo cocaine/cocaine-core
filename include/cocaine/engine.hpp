@@ -18,15 +18,16 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
-#include "cocaine/job.hpp"
 #include "cocaine/networking.hpp"
-#include "cocaine/slaves.hpp"
 
 namespace cocaine { namespace engine {
 
+class app_t {
+    // TODO
+};
+
 class engine_t:
-    public boost::noncopyable,
-    public identifiable_t
+    public boost::noncopyable
 {
     public:
 #if BOOST_VERSION >= 104000
@@ -54,53 +55,42 @@ class engine_t:
                 void push(const_reference job);
         };
 
-    public: 
         struct idle_slave {
             bool operator()(pool_map_t::pointer slave) const;
         };
 
+        struct specific_slave {
+            bool operator()(pool_map_t::pointer slave) const;
+        };
+
     public:
-        engine_t(context_t& context, const std::string& name); 
+        engine_t(context_t& context, app_t app); 
         ~engine_t();
 
-        Json::Value start(const Json::Value& manifest);
+        Json::Value start();
         Json::Value stop();
         Json::Value info() const;
 
         template<class Selector, class T>
-        pool_map_t::iterator unicast(const Selector& selector, const T& message) {
+        pool_map_t::iterator unicast(const Selector& selector, const T& command) {
             pool_map_t::iterator it(std::find_if(m_pool.begin(), m_pool.end(), selector));
 
             if(it != m_pool.end()) {
-                if(!m_messages.send_multi(
+                m_messages.send_multi(
                     boost::tie(
                         networking::protect(it->second->id()),
-                        message.type,
-                        message
-                  ))) 
-                {
-                    return m_pool.end();
-                }
+                        command.type,
+                        command
+                    )
+                );
+
+                it->process_event(command);
             }
 
             return it;
         }
 
         void enqueue(job_queue_t::const_reference job, bool overflow = false);
-
-        // NOTE: This one is a very special method to log and export application
-        // publications. Everything intended for various aggregators, log collectors
-        // and so on is going through this method.
-        void publish(const identifiable_t& source, const Json::Value& object);
-
-    public:
-        inline context_t& context() {
-            return m_context;
-        }
-
-        inline const std::string& name() const { 
-            return m_app_cfg.name; 
-        }
 
     private:
         void message(ev::io&, int);
@@ -109,19 +99,16 @@ class engine_t:
         void cleanup(ev::timer&, int);
 
     private:
-        context_t& m_context;
         bool m_running;
         
-        boost::shared_ptr<networking::socket_t> m_pubsub;
-        
-        // Application
+        // Runtime context
+        context_t m_context;
+        app_t m_app;
+
+        // Application tasks
         task_map_t m_tasks;
         
-        struct {
-            std::string name, type, args;
-        } m_app_cfg;
-        
-        // Pool
+        // Slave pool
         networking::channel_t m_messages;
         pool_map_t m_pool;
         
@@ -134,25 +121,8 @@ class engine_t:
 
         ev::timer m_gc_timer;
 
-        struct engine_policy {
-            std::string backend;
-            unsigned int pool_limit;
-            unsigned int queue_limit;
-            ev::tstamp suicide_timeout;
-        } m_policy;
-
         // Jobs
         job_queue_t m_queue;
-};
-
-class publication_t:
-    public job::job_t
-{
-    public:
-        publication_t(driver::driver_t& parent, const client::policy_t& policy);
-
-    public:
-        virtual void react(const events::chunk_t&);
 };
 
 }}

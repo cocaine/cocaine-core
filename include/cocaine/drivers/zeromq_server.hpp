@@ -33,7 +33,7 @@ class zeromq_server_job_t:
         virtual void react(const events::error_t& event);
 
     private:
-        bool send(zmq::message_t& chunk);
+        void send(zmq::message_t& chunk);
 
     protected:
         const networking::route_t m_route;

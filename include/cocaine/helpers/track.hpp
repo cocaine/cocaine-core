@@ -17,7 +17,9 @@
 #include <algorithm>
 
 namespace cocaine { namespace helpers {
-    template<typename T, void (*D)(T)> struct track {
+    template<typename T, void (*D)(T)> struct track:
+        public boost::noncopyable
+    {
         public:
             track(T object):
                 m_object(object)

@@ -15,6 +15,7 @@
 #define COCAINE_DRIVER_NATIVE_SINK_HPP
 
 #include "cocaine/drivers/zeromq_sink.hpp"
+#include "cocaine/drivers/base.hpp"
 
 namespace cocaine { namespace engine { namespace driver {
 

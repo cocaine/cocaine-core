@@ -11,20 +11,18 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_SLAVE_PROCESS_HPP
-#define COCAINE_SLAVE_PROCESS_HPP
+#ifndef COCAINE_SLAVE_GENERIC_HPP
+#define COCAINE_SLAVE_GENERIC_HPP
 
 #include "cocaine/slaves/base.hpp"
 
 namespace cocaine { namespace engine { namespace slave {
 
-class process_t:
+class generic_t:
     public slave_t
 {
     public:
-        process_t(engine_t& engine,
-                  const std::string& type,
-                  const std::string& args);
+        generic_t(context_t& context, app_t& app);
 
         virtual void reap();
 

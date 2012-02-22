@@ -27,27 +27,27 @@ using namespace cocaine::engine;
 using namespace cocaine::networking;
 using namespace cocaine::storage;
 
-core_t::core_t(const config_t& config):
-    m_context(config),
-    m_auth(m_context),
-    m_server(*m_context.bus, ZMQ_ROUTER, boost::algorithm::join(
+core_t::core_t(config_t config, boost::shared_ptr<logging::sink_t> sink):
+    m_context(config, sink),
+    m_log(m_context, "core"),
+    m_birthstamp(ev::get_default_loop().now()),
+    m_server(m_context, ZMQ_REP, boost::algorithm::join(
         boost::assign::list_of
             (m_context.config.core.instance)
             (m_context.config.core.hostname),
         "/")
-    ),
-    m_birthstamp(ev::get_default_loop().now())
+    )
 {
     // Information
     int minor, major, patch;
     zmq_version(&major, &minor, &patch);
 
-    syslog(LOG_INFO, "core: using libev version %d.%d", ev_version_major(), ev_version_minor());
-    syslog(LOG_INFO, "core: using libmsgpack version %s", msgpack_version());
-    syslog(LOG_INFO, "core: using libzmq version %d.%d.%d", major, minor, patch);
-    syslog(LOG_INFO, "core: route to this node is '%s'", m_server.route().c_str());
+    m_log.info("using libev version %d.%d", ev_version_major(), ev_version_minor());
+    m_log.info("using libmsgpack version %s", msgpack_version());
+    m_log.info("using libzmq version %d.%d.%d", major, minor, patch);
+    m_log.info("route to this node is '%s'", m_server.route().c_str());
 
-    // Listening socket
+    // System socket initialization
     int linger = 0;
 
     m_server.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
@@ -56,21 +56,26 @@ core_t::core_t(const config_t& config):
         it != m_context.config.core.endpoints.end();
         ++it) 
     {
-        m_server.bind(*it);
-        syslog(LOG_INFO, "core: listening on %s", it->c_str());
+        try {
+            m_server.bind(*it);
+        } catch(const zmq::error_t& e) {
+            throw std::runtime_error(std::string("invalid server endpoint - ") + e.what());
+        }
+            
+        m_log.info("listening on %s", it->c_str());
     }
 
     // Automatic discovery support
     if(!m_context.config.core.announce_endpoint.empty()) {
         try {
-            m_announces.reset(new socket_t(*m_context.bus, ZMQ_PUB));
+            m_announces.reset(new socket_t(m_context, ZMQ_PUB));
             m_announces->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
             m_announces->connect("epgm://" + m_context.config.core.announce_endpoint);
         } catch(const zmq::error_t& e) {
             throw std::runtime_error(std::string("invalid announce endpoint - ") + e.what());
         }
 
-        syslog(LOG_INFO, "core: announcing on %s", m_context.config.core.announce_endpoint.c_str());
+        m_log.info("announcing on %s", m_context.config.core.announce_endpoint.c_str());
 
         m_announce_timer.reset(new ev::timer());
         m_announce_timer->set<core_t, &core_t::announce>(this);
@@ -101,7 +106,7 @@ core_t::core_t(const config_t& config):
 }
 
 core_t::~core_t() {
-    syslog(LOG_DEBUG, "core: destructing");
+    m_log.debug("destructing");
 }
 
 void core_t::loop() {
@@ -109,7 +114,7 @@ void core_t::loop() {
 }
 
 void core_t::terminate(ev::sig&, int) {
-    syslog(LOG_NOTICE, "core: stopping the engines");
+    m_log.info("stopping the engines");
 
     m_engines.clear();
 
@@ -117,14 +122,14 @@ void core_t::terminate(ev::sig&, int) {
 }
 
 void core_t::reload(ev::sig&, int) {
-    syslog(LOG_NOTICE, "core: reloading apps");
+    m_log.info("reloading the apps");
 
     m_engines.clear();
 
     try {
         recover();
     } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "core: unable to reload apps due to the storage failure - %s", e.what());
+        m_log.error("unable to reload the apps - %s", e.what());
     }
 }
 
@@ -137,32 +142,10 @@ void core_t::request(ev::io&, int) {
 void core_t::process(ev::idle&, int) {
     if(m_server.pending()) {
         zmq::message_t message, signature;
-        route_t route;
-
         Json::Reader reader(Json::Features::strictMode());
-        Json::Value root;
+        Json::Value root, response;
 
-        do {
-            BOOST_VERIFY(m_server.recv(&message));
-
-            if(!message.size()) {
-                break;
-            }
-
-            route.push_back(
-                std::string(
-                    static_cast<const char*>(message.data()),
-                    message.size()
-                )
-            );
-        } while(m_server.more());
-
-        if(route.empty() || !m_server.more()) {
-            syslog(LOG_ERR, "core: got a corrupted request - invalid route");
-            return;
-        }
-
-        BOOST_VERIFY(m_server.recv(&message));
+        m_server.recv(&message);
 
         if(reader.parse(
             static_cast<const char*>(message.data()),
@@ -183,11 +166,11 @@ void core_t::process(ev::idle&, int) {
       
                 if(version == 3) {
                     if(m_server.more()) {
-                        BOOST_VERIFY(m_server.recv(&signature));
+                        m_server.recv(&signature);
                     }
 
                     if(!username.empty()) {
-                        m_auth.verify(
+                        m_context.auth().verify(
                             static_cast<const char*>(message.data()),
                             message.size(),
                             static_cast<const unsigned char*>(signature.data()),
@@ -199,13 +182,20 @@ void core_t::process(ev::idle&, int) {
                     }
                 }
 
-                (void)respond(route, dispatch(root));
+                response = dispatch(root);
             } catch(const std::runtime_error& e) {
-                (void)respond(route, helpers::make_json("error", e.what()));
+                response = helpers::make_json("error", e.what());
             }
         } else {
-            (void)respond(route, helpers::make_json("error", reader.getFormatedErrorMessages()));
+            response = helpers::make_json("error", reader.getFormatedErrorMessages());
         }
+
+        // Serialize and send the response
+        std::string json(Json::FastWriter().write(response));
+        message.rebuild(json.size());
+        memcpy(message.data(), json.data(), json.size());
+
+        m_server.send(message);
     } else {
         m_processor.stop();
     }
@@ -238,7 +228,7 @@ Json::Value core_t::dispatch(const Json::Value& root) {
                 if(manifest.isObject()) {
                     result[app] = create_engine(app, manifest);
                 } else {
-                    throw std::runtime_error("app manifest expected");
+                    throw std::runtime_error("app manifest is expected");
                 }
             } catch(const std::exception& e) {
                 result[app]["error"] = e.what();
@@ -246,7 +236,7 @@ Json::Value core_t::dispatch(const Json::Value& root) {
         }
 
         return result;
-    } else if(action == "reload" || action == "delete") {
+    } else if(action == "delete") {
         Json::Value apps(root["apps"]), result(Json::objectValue);
 
         if(!apps.isArray() || !apps.size()) {
@@ -257,11 +247,7 @@ Json::Value core_t::dispatch(const Json::Value& root) {
             std::string app((*it).asString());
             
             try {
-                if(action == "reload") {
-                    result[app] = reload_engine(app);
-                } else {
-                    result[app] = delete_engine(app);
-                }
+                result[app] = delete_engine(app);
             } catch(const std::exception& e) {
                 result[app]["error"] = e.what();
             }
@@ -284,16 +270,18 @@ Json::Value core_t::create_engine(const std::string& name, const Json::Value& ma
     }
 
     // Launch the engine
-    std::auto_ptr<engine_t> engine(new engine_t(m_context, name));
-    Json::Value result(engine->start(manifest));
+    std::auto_ptr<engine_t> engine(new engine_t(m_context, app_t(name, manifest)));
+    Json::Value result(engine->start());
 
     if(!recovering) {
         try {
-            storage_t::create(m_context)->put("apps", name, manifest);
+            m_context.storage().put("apps", name, manifest);
         } catch(const std::runtime_error& e) {
-            syslog(LOG_ERR, "core: unable to create '%s' engine due to the storage failure - %s",
-                name.c_str(), e.what());
-            engine->stop();
+            m_log.error(
+                "unable to create the '%s' engine - %s",
+                name.c_str(), e.what()
+            );
+            
             throw;
         }
     }
@@ -304,28 +292,6 @@ Json::Value core_t::create_engine(const std::string& name, const Json::Value& ma
     return result;
 }
 
-Json::Value core_t::reload_engine(const std::string& name) {
-    Json::Value manifest;
-    engine_map_t::iterator engine(m_engines.find(name));
-
-    if(engine == m_engines.end()) {
-        throw std::runtime_error("the specified app is not active");
-    }
-
-    try {
-        manifest = storage_t::create(m_context)->get("apps", name);
-    } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "core: unable to reload '%s' engine due to the storage failure - %s",
-            name.c_str(), e.what());
-        throw;
-    }
-
-    engine->second->stop();
-    m_engines.erase(engine);
-
-    return create_engine(name, manifest, true);
-}
-
 Json::Value core_t::delete_engine(const std::string& name) {
     engine_map_t::iterator engine(m_engines.find(name));
 
@@ -334,14 +300,18 @@ Json::Value core_t::delete_engine(const std::string& name) {
     }
 
     try {
-        storage_t::create(m_context)->remove("apps", name);
+        m_context.storage().remove("apps", name);
     } catch(const std::runtime_error& e) {
-        syslog(LOG_ERR, "core: unable to destroy '%s' engine due to the storage failure - %s",
-            name.c_str(), e.what());
+        m_log.error(
+            "unable to destroy the '%s' engine - %s",
+            name.c_str(), e.what()
+        );
+
         throw;
     }
 
-    Json::Value result(engine->second->stop());
+    Json::Value result(engine->stop());
+
     m_engines.erase(engine);
 
     return result;
@@ -364,43 +334,19 @@ Json::Value core_t::info() const {
     return result;
 }
 
-bool core_t::respond(const route_t& route, const Json::Value& object) {
-    zmq::message_t message;
-    
-    // Send the identity
-    for(route_t::const_iterator id = route.begin(); id != route.end(); ++id) {
-        message.rebuild(id->size());
-        memcpy(message.data(), id->data(), id->size());
-        
-        if(!m_server.send(message, ZMQ_SNDMORE)) {
-            return false;
-        }
-    }
-
-    // Send the delimiter
-    message.rebuild(0);
-
-    if(!m_server.send(message, ZMQ_SNDMORE)) {
-        return false;
-    }
-
-    // Serialize and send the response
-    std::string json(Json::FastWriter().write(object));
-    message.rebuild(json.size());
-    memcpy(message.data(), json.data(), json.size());
-
-    return m_server.send(message);
-}
-
 void core_t::recover() {
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
-    Json::Value root(storage_t::create(m_context)->all("apps"));
+    Json::Value root(m_context.storage().all("apps"));
 
     if(root.size()) {
         Json::Value::Members apps(root.getMemberNames());
         
-        syslog(LOG_NOTICE, "core: recovering %d %s: %s", root.size(),
-            root.size() == 1 ? "app" : "apps", boost::algorithm::join(apps, ", ").c_str());
+        m_log.info(
+            "recovering %d %s: %s", 
+            root.size(),
+            root.size() == 1 ? "app" : "apps", 
+            boost::algorithm::join(apps, ", ").c_str()
+        );
         
         for(Json::Value::Members::iterator it = apps.begin(); it != apps.end(); ++it) {
             std::string app(*it);
@@ -415,22 +361,21 @@ void core_t::recover() {
 }
 
 void core_t::announce(ev::timer&, int) {
-    syslog(LOG_DEBUG, "core: announcing the node");
+    m_log.debug("announcing the node");
 
     std::ostringstream envelope;
 
     envelope << m_context.config.core.instance << " "
              << m_server.endpoint();
-
-    zmq::message_t message(envelope.str().size());
-
-    memcpy(message.data(), envelope.str().data(), envelope.str().size());
     
-    if(m_announces->send(message, ZMQ_SNDMORE)) {
-        std::string announce(Json::FastWriter().write(info()));
-        message.rebuild(announce.size());
-        memcpy(message.data(), announce.data(), announce.size());
-        
-        (void)m_announces->send(message);
-    }
+    zmq::message_t message(envelope.str().size());
+    memcpy(message.data(), envelope.str().data(), envelope.str().size());
+    m_announces->send(message, ZMQ_SNDMORE);
+
+    std::string announce(Json::FastWriter().write(info()));
+    
+    message.rebuild(announce.size());
+    memcpy(message.data(), announce.data(), announce.size());
+    m_announces->send(message);
 }
+

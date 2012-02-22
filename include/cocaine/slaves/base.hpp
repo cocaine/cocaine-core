@@ -36,23 +36,23 @@ struct dead;
 struct slave_t:
     public sc::state_machine<slave_t, unknown>,
     public birth_control_t<slave_t>,
-    public unique_id_t,
-    public identifiable_t
+    public unique_id_t
 {
     public:
-        slave_t(engine_t& engine);
         virtual ~slave_t();
-
+        
         void react(const events::heartbeat_t& event);
-       
-    public:
+        
         virtual void reap() = 0;
+
+    protected:
+        slave_t(context_t& context);
 
     private:
         void timeout(ev::timer&, int);
 
     protected:
-        engine_t& m_engine;
+        context_t& m_context;
 
     private:
         ev::timer m_heartbeat_timer;
@@ -64,7 +64,7 @@ struct unknown:
     public:
         typedef boost::mpl::list<
             sc::transition<events::heartbeat_t, alive, slave_t, &slave_t::react>,
-            sc::transition<events::terminated_t, dead>
+            sc::transition<events::terminate_t, dead>
         > reactions;
 };
 
@@ -74,11 +74,11 @@ struct alive:
     public:
         typedef boost::mpl::list<
             sc::in_state_reaction<events::heartbeat_t, slave_t, &slave_t::react>,
-            sc::transition<events::terminated_t, dead>
+            sc::transition<events::terminate_t, dead>
         > reactions;
 
-        void react(const events::invoked_t& event);
-        void react(const events::choked_t& event);
+        void react(const events::invoke_t& event);
+        void react(const events::release_t& event);
 
         ~alive();
 
@@ -95,7 +95,7 @@ struct idle:
 {
     public:
         typedef sc::transition<
-            events::invoked_t, busy, alive, &alive::react
+            events::invoke_t, busy, alive, &alive::react
         > reactions;
 };
 
@@ -104,7 +104,7 @@ struct busy:
 {
     public:
         typedef sc::transition<
-            events::choked_t, idle, alive, &alive::react
+            events::release_t, idle, alive, &alive::react
         > reactions;
 
         const boost::shared_ptr<job::job_t>& job() const {

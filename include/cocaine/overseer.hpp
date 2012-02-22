@@ -20,24 +20,18 @@
 
 namespace cocaine { namespace engine {
 
-// Thread manager
 class overseer_t:
     public boost::noncopyable,
-    public unique_id_t,
-    public identifiable_t
+    public unique_id_t
 {
     public:
-        overseer_t(context_t& context,
-                   const unique_id_t::type& id,
-                   const std::string& name);
+        overseer_t(const unique_id_t::type& id,
+                   context_t& context,
+                   app_t& app);
 
         // Entry point 
-        void operator()(const std::string& type, const std::string& args);
+        void loop();
 
-        // Callback used to send response chunks
-        void respond(const void* response, size_t size);
-
-    private:
         template<class T>
         bool send(const T& message) {
             return m_messages.send_multi(
@@ -48,6 +42,7 @@ class overseer_t:
             );
         }
 
+    private:
         // Event loop callback handling and dispatching
         void message(ev::io&, int);
         void process(ev::idle&, int);
@@ -64,7 +59,8 @@ class overseer_t:
         networking::channel_t m_messages;
 
         // Application instance
-        boost::shared_ptr<plugin::source_t> m_app;
+        app_t& m_app;
+        boost::shared_ptr<plugin::module_t> m_module;
 
         // Event loop
         ev::dynamic_loop m_loop;

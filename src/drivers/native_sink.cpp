@@ -36,24 +36,23 @@ void native_sink_t::process(ev::idle&, int) {
             unsigned int type = 0;
             client::tag_t tag;
             client::policy_t policy;
-
             boost::tuple<unsigned int&, client::tag_t&, client::policy_t&> tier(type, tag, policy);
 
-            if(!m_socket.recv_multi(tier)) {
-                syslog(LOG_ERR, "%s: got a corrupted request", identity());
-                continue;
-            }
+            m_socket.recv_multi(tier);
 
             // TEST: This is temporary for testing purposes
             BOOST_ASSERT(type == tag.type);
-            boost::shared_ptr<publication_t> job(new publication_t(*this, policy));
+            boost::shared_ptr<job::job_t> job(new job::job_t(*this, policy));
             
-            if(!m_socket.more() || !m_socket.recv(job->request())) {
-                syslog(LOG_ERR, "%s: got a corrupted request - missing body", identity());
+            if(!m_socket.more()) {
+                m_engine.context().log().emit(LOG_ERR,
+                    "%s: got a corrupted request - missing body", 
+                    identity());
                 job->process_event(events::error_t(client::request_error, "missing body"));
                 continue;
             }
 
+            m_socket.recv(job->request());
             m_engine.enqueue(job);
         } while(m_socket.more());
     } else {

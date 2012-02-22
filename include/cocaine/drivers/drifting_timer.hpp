@@ -22,13 +22,11 @@ namespace cocaine { namespace engine { namespace driver {
 class drifting_timer_t;
 
 class drifting_timer_job_t:
-    public publication_t
+    public job::job_t
 {
     public:
-        drifting_timer_job_t(drifting_timer_t& driver, const client::policy_t& policy);
-
-        virtual void react(const events::error_t& event);
-        virtual void react(const events::choked_t& event);
+        drifting_timer_job_t(drifting_timer_t& driver);
+        virtual ~drifting_timer_job_t();
 };
 
 class drifting_timer_t:

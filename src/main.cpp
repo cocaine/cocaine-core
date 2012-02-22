@@ -11,6 +11,7 @@
 // limitations under the License.
 //
 
+#include <stdarg.h>
 #include <iostream>
 
 #include <boost/program_options.hpp>
@@ -27,7 +28,29 @@ using namespace cocaine;
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
 
-static const char identity[] = "cocaine";
+class syslog_t:
+    public logger_t
+{
+    public:
+        syslog_t(const std::string& identity, int verbosity):
+            m_identity(identity)
+        {
+            // Setting up the syslog
+            openlog(m_identity.c_str(), LOG_PID | LOG_NDELAY, LOG_USER);
+            setlogmask(LOG_UPTO(verbosity));
+        }
+
+    public:
+        virtual void emit(int priority, const char* format, ...) {
+            va_list args;
+            va_start(args, format);
+            syslog(priority, format, args);
+            va_end(args);
+        }
+
+    private:
+        const std::string m_identity;
+};
 
 int main(int argc, char* argv[]) {
     config_t config;
@@ -130,43 +153,29 @@ int main(int argc, char* argv[]) {
         std::cout << "Cocaine " << COCAINE_VERSION << std::endl;
         return EXIT_SUCCESS;
     }
-
-    if(!vm.count("endpoints")) {
-        std::cout << "Error: no endpoints have been specified" << std::endl;
-        std::cout << "Try '" << argv[0] << " --help' for more information" << std::endl;
-        return EXIT_FAILURE;
-    }
-
-    // Fetching the hostname
-    const int HOSTNAME_MAX_LENGTH = 256;
-    char hostname[HOSTNAME_MAX_LENGTH];
-
-    if(gethostname(hostname, HOSTNAME_MAX_LENGTH) == 0) {
-        config.core.hostname = hostname;
-    } else {
-        std::cout << "Error: failed to determine the hostname" << std::endl;
-        return EXIT_FAILURE;
-    }
-
-    // Setting up the syslog
-    openlog(identity, LOG_PID | LOG_NDELAY, LOG_USER);
-    setlogmask(LOG_UPTO(vm.count("verbose") ? LOG_DEBUG : LOG_INFO));
-    syslog(LOG_NOTICE, "main: blow!");
-
+    
     // Pid file holder
     std::auto_ptr<helpers::pid_file_t> pidfile;
+
+    // Setting up the logging facility
+    boost::shared_ptr<syslog_t> log(
+        new syslog_t(
+            "cocaine",
+            vm.count("verbose") ? LOG_DEBUG : LOG_INFO
+        )
+    );
 
     // Daemonizing, if needed
     if(vm.count("daemonize")) {
         if(daemon(0, 0) < 0) {
-            syslog(LOG_ERR, "main: daemonization failed");
+            log->emit(LOG_ERR, "main: daemonization failed");
             return EXIT_FAILURE;
         }
 
         try {
             pidfile.reset(new helpers::pid_file_t(vm["pidfile"].as<fs::path>()));
         } catch(const std::runtime_error& e) {
-            syslog(LOG_ERR, "main: %s", e.what());
+            log->emit(LOG_ERR, "main: %s", e.what());
             return EXIT_FAILURE;
         }
     }
@@ -176,9 +185,9 @@ int main(int argc, char* argv[]) {
 
     // Initializing the core
     try {
-        core.reset(new core::core_t(config));
+        core.reset(new core::core_t(config, log));
     } catch(const std::exception& e) {
-        syslog(LOG_ERR, "main: unable to start the core - %s", e.what());
+        log->emit(LOG_ERR, "main: unable to start the core - %s", e.what());
         return EXIT_FAILURE;
     }
 
@@ -187,7 +196,7 @@ int main(int argc, char* argv[]) {
     // Cleanup
     core.reset();
 
-    syslog(LOG_NOTICE, "main: terminated");
+    log->emit(LOG_NOTICE, "main: terminated");
     
     return EXIT_SUCCESS;
 }

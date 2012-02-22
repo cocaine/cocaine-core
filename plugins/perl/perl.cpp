@@ -11,35 +11,45 @@
 // limitations under the License.
 //
 
-#include "cocaine/plugin.hpp"
-#include "cocaine/downloads.hpp"
-#include "cocaine/helpers/uri.hpp"
+#include <sstream>
+#include <boost/filesystem/fstream.hpp>
 
-#include <EXTERN.h>               /* from the Perl distribution     */
-#include <perl.h>                 /* from the Perl distribution     */
+#include "cocaine/plugin.hpp"
+
+#include <EXTERN.h>               /* from the Perl distribution */
+#include <perl.h>                 /* from the Perl distribution */
 
 namespace cocaine { namespace plugin {
 
 class perl_t:
-    public source_t
+    public module_t
 {
     public:
-        static source_t* create(const std::string& args) {
+        static module_t* create(context_t& context, const Json::Value& args) {
             return new perl_t(args);
         }
 
     public:
-        perl_t(const std::string& args) {
-            if(args.empty()) {
+        perl_t(const Json::Value& args) {
+            boost::filesystem::path source(args["source"].asString());
+
+            if(source.empty()) {
                 throw unrecoverable_error_t("no code location has been specified");
             }
-            
-            helpers::uri_t uri(args);
 
+            boost::filesystem::ifstream input(source);
+    
+            if(!input) {
+                throw unrecoverable_error_t("unable to open " + source.string());
+            }
+
+            std::stringstream stream;
+            stream << input.rdbuf();
+            
             my_perl = perl_alloc();
             perl_construct(my_perl);
 
-            compile(helpers::download(uri));
+            compile(stream.str());
         }
 
         ~perl_t() {
@@ -47,16 +57,12 @@ class perl_t:
             perl_free(my_perl);
         }
             
-        virtual void invoke(
-            callback_fn_t callback,
-            const std::string& method,
-            const void* request,
-            size_t size)
+        virtual void invoke(invocation_context_t& context, const std::string& method)
         {
             std::string input;
             
-            if (request && size > 0) {
-               input = std::string((char*)request, size);
+            if (context.request && context.request_size > 0) {
+               input = std::string((const char*)context.request, context.request_size);
             }
 
             std::string result;
@@ -112,7 +118,7 @@ class perl_t:
             }
 
             if (!result.empty()) {
-                callback(result.data(), result.size());
+                context.push(result.data(), result.size());
             }
         }
 
@@ -130,13 +136,13 @@ class perl_t:
         PerlInterpreter* my_perl;  /***    The Perl interpreter    ***/
 };
 
-static const source_info_t plugin_info[] = {
+static const module_info_t plugin_info[] = {
     { "perl", &perl_t::create },
     { NULL, NULL }
 };
 
 extern "C" {
-    const source_info_t* initialize() {
+    const module_info_t* initialize() {
         PERL_SYS_INIT3(NULL, NULL, NULL);
         return plugin_info;
     }

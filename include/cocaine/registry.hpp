@@ -34,19 +34,28 @@ class registry_t:
 
         bool exists(const std::string& type);
 
-        boost::shared_ptr<plugin::source_t> create(const std::string& type,
-                                                   const std::string& args);
+        template<class T>
+        boost::shared_ptr<T> create(const std::string& type,
+                                    const Json::Value& args)
+        {
+            factory_map_t::iterator it(m_factories.find(type));
+            plugin::factory_fn_t factory(it->second);
+            
+            return boost::shared_ptr<T>(factory(m_context, args));
+        }
 
     private:
         static boost::shared_ptr<registry_t> g_object;
-    
+
     private:
-        // Used to instantiate plugin instances
-        typedef std::map<const std::string, plugin::factory_fn_t> factory_map_t;
-        factory_map_t m_factories;
+        context_t& m_context;
 
         // Used to unload all the plugins on shutdown
         std::vector<lt_dlhandle> m_plugins;
+    
+        // Used to instantiate plugin instances
+        typedef std::map<const std::string, plugin::factory_fn_t> factory_map_t;
+        factory_map_t m_factories;
 };
 
 }}

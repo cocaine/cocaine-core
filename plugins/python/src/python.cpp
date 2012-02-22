@@ -11,25 +11,32 @@
 // limitations under the License.
 //
 
-#include "cocaine/downloads.hpp"
+#include <sstream>
+#include <boost/filesystem/fstream.hpp>
 
 #include "python.hpp"
 
 using namespace cocaine::plugin;
 
-source_t* python_t::create(const std::string& args) {
+module_t* python_t::create(context_t& context, const Json::Value& args) {
     return new python_t(args);
 }
 
-python_t::python_t(const std::string& args):
+python_t::python_t(const Json::Value& args):
     m_module(NULL)
 {
-    if(args.empty()) {
+    boost::filesystem::path source(args["source"].asString());
+    
+    if(source.empty()) {
         throw unrecoverable_error_t("no code location has been specified");
     }
 
-    helpers::uri_t uri(args);
-    helpers::download_t app(helpers::download(uri));   
+    boost::filesystem::ifstream input(source);
+    
+    if(!input) {
+        throw unrecoverable_error_t("unable to open " + source.string());
+    }
+
     char path_object_name[] = "path";
 
     // Acquire the interpreter state
@@ -37,24 +44,28 @@ python_t::python_t(const std::string& args):
     
     // NOTE: Prepend the current application cache location to the sys.path,
     // so that it could import different stuff from there
-    PyObject* paths = PySys_GetObject(path_object_name);
+    PyObject* syspath = PySys_GetObject(path_object_name);
 
-    if(PyList_Check(paths)) {
+    if(PyList_Check(syspath)) {
+        std::stringstream stream;
+        stream << input.rdbuf();
+
         // XXX: Does it steal the reference or not?
-        PyList_Insert(paths, 0, 
-            PyString_FromString(app.path().string().c_str()));
-        compile(app.path().string(), app);
+#if BOOST_FILESYSTEM_VERSION == 3
+        PyList_Insert(syspath, 0, 
+            PyString_FromString(source.parent_path().string().c_str()));
+#else
+        PyList_Insert(syspath, 0, 
+            PyString_FromString(source.branch_path().string().c_str()));
+#endif
+
+        compile(source.string(), stream.str());
     } else {
         throw unrecoverable_error_t("'sys.path' is not a list object");
     }
 }
 
-void python_t::invoke(
-    callback_fn_t callback,
-    const std::string& method,
-    const void* request,
-    size_t size) 
-{
+void python_t::invoke(invocation_context_t& context, const std::string& method) {
     thread_state_t state;
     object_t object(PyObject_GetAttrString(m_module, method.c_str()));
     
@@ -73,16 +84,16 @@ void python_t::invoke(
     }
 
     object_t args(NULL);
-#if PY_VERSION_HEX > 0x02070000
+#if PY_VERSION_HEX >= 0x02070000
     boost::shared_ptr<Py_buffer> buffer;
 #endif
 
-    if(request && size) {
-#if PY_VERSION_HEX > 0x02070000
+    if(context.request && context.request_size) {
+#if PY_VERSION_HEX >= 0x02070000
         buffer.reset(static_cast<Py_buffer*>(malloc(sizeof(Py_buffer))), free);
 
-        buffer->buf = const_cast<void*>(request);
-        buffer->len = size;
+        buffer->buf = const_cast<void*>(context.request);
+        buffer->len = context.request_size;
         buffer->readonly = true;
         buffer->format = NULL;
         buffer->ndim = 0;
@@ -92,7 +103,9 @@ void python_t::invoke(
 
         object_t view(PyMemoryView_FromBuffer(buffer.get()));
 #else
-        object_t view(PyBuffer_FromMemory(const_cast<void*>(request), size));
+        object_t view(PyBuffer_FromMemory(
+            const_cast<void*>(context.request), 
+            context.request_size));
 #endif
 
         args = PyTuple_Pack(1, *view);
@@ -105,11 +118,11 @@ void python_t::invoke(
     if(PyErr_Occurred()) {
         throw recoverable_error_t(exception());
     } else if(result.valid()) {
-        respond(callback, result);
+        respond(context, result);
     }
 }
 
-void python_t::respond(callback_fn_t callback, object_t& result) {
+void python_t::respond(invocation_context_t& context, object_t& result) {
     if(PyString_Check(result)) {
         throw recoverable_error_t("the result must be an iterable");
     }
@@ -136,7 +149,7 @@ void python_t::respond(callback_fn_t callback, object_t& result) {
 
                 if(PyObject_GetBuffer(item, buffer.get(), PyBUF_SIMPLE) == 0) {
                     Py_BEGIN_ALLOW_THREADS
-                        callback(buffer->buf, buffer->len);
+                        context.push(buffer->buf, buffer->len);
                     Py_END_ALLOW_THREADS
                     
                     PyBuffer_Release(buffer.get());
@@ -185,7 +198,7 @@ void python_t::compile(const std::string& path, const std::string& code) {
     }
 }
 
-static const source_info_t plugin_info[] = {
+static const module_info_t plugin_info[] = {
     { "python", &python_t::create },
     { "python+raw", &python_t::create },
     { NULL, NULL }
@@ -202,7 +215,7 @@ void restore() {
 }
 
 extern "C" {
-    const source_info_t* initialize() {
+    const module_info_t* initialize() {
         // Initialize the Python subsystem
         Py_InitializeEx(0);
 

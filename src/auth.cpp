@@ -24,7 +24,7 @@ using namespace cocaine::crypto;
 using namespace cocaine::storage;
 
 auth_t::auth_t(context_t& context):
-    m_context(EVP_MD_CTX_create())
+    m_md_context(EVP_MD_CTX_create())
 {
     // Initialize error strings
     ERR_load_crypto_strings();
@@ -39,7 +39,7 @@ auth_t::auth_t(context_t& context):
         Json::Value object(keys[identity]);
 
         if(!object["key"].isString() || object["key"].empty()) {
-            syslog(LOG_ERR, "auth: key for user '%s' is malformed", identity.c_str());
+            context.log().emit(LOG_ERR, "auth: key for user '%s' is malformed", identity.c_str());
             continue;
         }
 
@@ -54,14 +54,14 @@ auth_t::auth_t(context_t& context):
         if(pkey != NULL) {
             m_keys.insert(std::make_pair(identity, pkey));
         } else { 
-            syslog(LOG_ERR, "auth: key for user '%s' is invalid - %s",
+            context.log().emit(LOG_ERR, "auth: key for user '%s' is invalid - %s",
                 identity.c_str(), ERR_reason_error_string(ERR_get_error()));
         }
 
         BIO_free(bio);
     }
     
-    syslog(LOG_NOTICE, "auth: loaded %zu public key(s)", m_keys.size());
+    context.log().emit(LOG_NOTICE, "auth: loaded %zu public key(s)", m_keys.size());
 }
 
 auth_t::~auth_t() {
@@ -70,7 +70,7 @@ auth_t::~auth_t() {
     }
 
     ERR_free_strings();
-    EVP_MD_CTX_destroy(m_context);
+    EVP_MD_CTX_destroy(m_md_context);
 }
 
 /* XXX: Gotta invent something sophisticated here
@@ -85,10 +85,10 @@ std::string auth_t::sign(const std::string& message, const std::string& username
     unsigned char buffer[EVP_PKEY_size(it->second)];
     unsigned int size = 0;
     
-    EVP_SignInit(m_context, EVP_sha1());
-    EVP_SignUpdate(m_context, message.data(), message.size());
-    EVP_SignFinal(m_context, buffer, &size, it->second);
-    EVP_MD_CTX_cleanup(m_context);
+    EVP_SignInit(m_md_context, EVP_sha1());
+    EVP_SignUpdate(m_md_context, message.data(), message.size());
+    EVP_SignFinal(m_md_context, buffer, &size, it->second);
+    EVP_MD_CTX_cleanup(m_md_context);
 
     return std::string(reinterpret_cast<char*>(buffer), size);
 }
@@ -107,16 +107,17 @@ void auth_t::verify(const char* message,
     }
     
     // Initialize the verification context
-    EVP_VerifyInit(m_context, EVP_sha1());
+    EVP_VerifyInit(m_md_context, EVP_sha1());
 
     // Fill it with data
-    EVP_VerifyUpdate(m_context, message, message_size);
+    EVP_VerifyUpdate(m_md_context, message, message_size);
     
     // Verify the signature
-    if(!EVP_VerifyFinal(m_context, signature, signature_size, it->second)) {
-        EVP_MD_CTX_cleanup(m_context);
+    if(!EVP_VerifyFinal(m_md_context, signature, signature_size, it->second)) {
+        EVP_MD_CTX_cleanup(m_md_context);
         throw std::runtime_error("invalid signature");
     }
 
-    EVP_MD_CTX_cleanup(m_context);
+    EVP_MD_CTX_cleanup(m_md_context);
 }
+

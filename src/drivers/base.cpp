@@ -20,8 +20,7 @@
 using namespace cocaine;
 using namespace cocaine::engine::driver;
         
-driver_t::driver_t(engine_t& engine, const std::string& method):
-    identifiable_t((boost::format("%s:%s") % engine.name() % method).str()),
+driver_t::driver_t(engine_t& engine, const std::string& method, const Json::Value& args):
     m_engine(engine),
     m_method(method)
 #if BOOST_VERSION < 103600
@@ -29,14 +28,21 @@ driver_t::driver_t(engine_t& engine, const std::string& method):
     , m_spent_on_slaves(0.0f)
 #endif
 {
-    syslog(LOG_DEBUG, "%s: constructing", identity());
+    m_engine.context().log().emit(LOG_DEBUG, "%s: constructing", identity());
+
+    std::string endpoint(args.get("emitter", "").asString());
+
+    if(!endpoint.empty()) {
+        m_emitter.reset(new networking::socket_t(engine.context().global, ZMQ_PUB));
+        m_emitter->bind(endpoint);
+    }
 }
 
 driver_t::~driver_t() {
-    syslog(LOG_DEBUG, "%s: destructing", identity());
+    m_engine.context().log().emit(LOG_DEBUG, "%s: destructing", identity());
 }
 
-void driver_t::audit(audit_type type, ev::tstamp value) {
+void driver_t::audit(timing_type type, ev::tstamp value) {
     switch(type) {
         case in_queue:
 #if BOOST_VERSION >= 103600
@@ -55,19 +61,69 @@ void driver_t::audit(audit_type type, ev::tstamp value) {
     }
 }
 
-Json::Value driver_t::stats() const {
+Json::Value driver_t::info() const {
     Json::Value results(Json::objectValue);
 
 #if BOOST_VERSION >= 103600
-    results["time-spent-on-slaves"] = sum(m_spent_on_slaves);
-    results["median-processing-time"] = median(m_spent_on_slaves);
-    results["time-spent-in-queues"] = sum(m_spent_in_queues);
-    results["median-wait-time"] = median(m_spent_in_queues);
+    results["stats"]["time-spent-on-slaves"] = sum(m_spent_on_slaves);
+    results["stats"]["median-processing-time"] = median(m_spent_on_slaves);
+    results["stats"]["time-spent-in-queues"] = sum(m_spent_in_queues);
+    results["stats"]["median-wait-time"] = median(m_spent_in_queues);
 #else
-    results["time-spent-on-slaves"] = m_spent_on_slaves;
-    results["time-spent-in-queues"] = m_spent_in_queues;
+    results["stats"]["time-spent-on-slaves"] = m_spent_on_slaves;
+    results["stats"]["time-spent-in-queues"] = m_spent_in_queues;
 #endif
 
     return results;
 }
 
+void driver_t::emit() {
+    /*publisher_t& publisher = static_cast<publisher_t&>(m_driver);
+    
+    if(publisher.socket() && object.isObject()) {
+        zmq::message_t message;
+        ev::tstamp now = ev::get_default_loop().now();
+
+        // Disassemble and send in the envelopes
+        Json::Value::Members members(object.getMemberNames());
+
+        for(Json::Value::Members::iterator it = members.begin(); it != members.end(); ++it) {
+            std::string field(*it);
+            std::ostringstream envelope;
+            
+            envelope << m_driver.identity() << " " << field << " " // << m_context.config.core.hostname << " "
+                     << std::fixed << std::setprecision(3) << now;
+
+            message.rebuild(envelope.str().size());
+            memcpy(message.data(), envelope.str().data(), envelope.str().size());
+            
+            if(publisher.socket()->send(message, ZMQ_SNDMORE)) {
+                Json::Value value(object[field]);
+                std::string result;
+
+                switch(value.type()) {
+                    case Json::booleanValue:
+                        result = value.asBool() ? "true" : "false";
+                        break;
+                    case Json::intValue:
+                    case Json::uintValue:
+                        result = boost::lexical_cast<std::string>(value.asInt());
+                        break;
+                    case Json::realValue:
+                        result = boost::lexical_cast<std::string>(value.asDouble());
+                        break;
+                    case Json::stringValue:
+                        result = value.asString();
+                        break;
+                    default:
+                        result = boost::lexical_cast<std::string>(value);
+                }
+
+                message.rebuild(result.size());
+                memcpy(message.data(), result.data(), result.size());
+                
+                (void)publisher.socket()->send(message);
+            }
+        }
+    }*/
+}

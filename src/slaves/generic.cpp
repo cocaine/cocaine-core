@@ -20,30 +20,31 @@
 
 using namespace cocaine::engine::slave;
 
-process_t::process_t(engine_t& engine, const std::string& type, const std::string& args):
-    slave_t(engine)
+generic_t::generic_t(context_t& context, app_t& app):
+    slave_t(context)
 {
     m_pid = fork();
 
     if(m_pid == 0) {
-        // NOTE: Making a new context here to reinitialize the message bus
-        context_t context(engine.context().config);
+        // NOTE: In order to reinitialize the subsystems in a new process
+        context.reset();
 
-        overseer_t overseer(context, id(), m_engine.name());
-        overseer(type, args);
+        overseer_t overseer(id(), context, app);
+        overseer.loop();
         
         exit(EXIT_SUCCESS);
     } else if(m_pid < 0) {
         throw std::runtime_error("fork() failed");
     }
 
-    m_child_watcher.set<process_t, &process_t::signal>(this);
+    m_child_watcher.set<generic_t, &generic_t::signal>(this);
     m_child_watcher.start(m_pid);
 }
 
-void process_t::reap() {
+void generic_t::reap() {
     int status = 0;
 
+    // TODO: Wait with a timeout?
     if(waitpid(m_pid, &status, WNOHANG) == 0) {
         ::kill(m_pid, SIGKILL);
     }
@@ -53,10 +54,10 @@ void process_t::reap() {
     m_child_watcher.stop();
 }
 
-void process_t::signal(ev::child&, int) {
+void generic_t::signal(ev::child&, int) {
     if(!state_downcast<const dead*>()) {
-        syslog(LOG_DEBUG, "%s: got a child termination signal", identity());
-        process_event(events::terminated_t());
+        m_logger.debug("got a child termination signal");
+        process_event(events::terminate_t());
     }
 }
 

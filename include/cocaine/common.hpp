@@ -20,8 +20,6 @@
 #include <tr1/cstdint>
 #include <vector>
 
-#include <syslog.h>
-
 #include <boost/version.hpp>
 #include <boost/noncopyable.hpp>
 
@@ -44,15 +42,20 @@
 #endif
 
 #define EV_MINIMAL 0
+
 #include <ev++.h>
 
+#include <zmq.hpp>
+
+#if ZMQ_VERSION < 20107
+    #error ZeroMQ version 2.1.7+ required!
+#endif
+
 #include "cocaine/helpers/birth_control.hpp"
-#include "cocaine/helpers/unique_id.hpp"
 #include "cocaine/helpers/json.hpp"
-#include "cocaine/helpers/identifiable.hpp"
+#include "cocaine/helpers/unique_id.hpp"
 
 using cocaine::helpers::birth_control_t;
 using cocaine::helpers::unique_id_t;
-using cocaine::helpers::identifiable_t;
 
 #endif

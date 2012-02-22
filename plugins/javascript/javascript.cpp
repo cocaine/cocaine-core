@@ -11,30 +11,41 @@
 // limitations under the License.
 //
 
+#include <sstream>
+#include <boost/filesystem/fstream.hpp>
+
 #include <v8.h>
 
-#include "cocaine/downloads.hpp"
 #include "cocaine/plugin.hpp"
-#include "cocaine/helpers/uri.hpp"
 
 namespace cocaine { namespace plugin {
 
 using namespace v8;
 
-class javascript_t: public source_t {
+class javascript_t: public module_t {
     public:
-        static source_t* create(const std::string& args) {
+        static module_t* create(context_t& context, const Json::Value& args) {
             return new javascript_t(args);
         }
 
     public:
-        javascript_t(const std::string& args) {
-            if(args.empty()) {
+        javascript_t(const Json::Value& args) {
+            boost::filesystem::path source(args["source"].asString());
+
+            if(source.empty()) {
                 throw unrecoverable_error_t("no code location has been specified");
             }
+
+            boost::filesystem::ifstream input(source);
+    
+            if(!input) {
+                throw unrecoverable_error_t("unable to open " + source.string());
+            }
+
+            std::stringstream stream;
+            stream << input.rdbuf();
             
-            helpers::uri_t uri(args);
-            compile(helpers::download(uri), "iterate");
+            compile(stream.str(), "iterate");
         }
 
         void compile(const std::string& code,
@@ -80,10 +91,8 @@ class javascript_t: public source_t {
         }
 
         virtual void invoke(
-            callback_fn_t callback,
-            const std::string& method,
-            const void* request,
-            size_t size)
+            invocation_context_t& context,
+            const std::string& method)
         {
             Json::Value result;
 
@@ -103,7 +112,7 @@ class javascript_t: public source_t {
             Json::FastWriter writer;
             std::string response(writer.write(result));
 
-            callback(response.data(), response.size());
+            context.push(response.data(), response.size());
         }
 
     private:
@@ -111,13 +120,13 @@ class javascript_t: public source_t {
         Persistent<Function> m_function;
 };
 
-static const source_info_t plugin_info[] = {
+static const module_info_t plugin_info[] = {
     { "javascript", &javascript_t::create },
     { NULL, NULL }
 };
 
 extern "C" {
-    const source_info_t* initialize() {
+    const module_info_t* initialize() {
         // Global initialization logic
         // This function will be called once, from the main thread
 

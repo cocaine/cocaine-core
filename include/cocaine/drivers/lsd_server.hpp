@@ -35,7 +35,7 @@ class lsd_job_t:
         virtual void react(const events::choked_t& event);
 
     private:
-        bool send(const Json::Value& envelope, int flags = 0);
+        void send(const Json::Value& envelope, int flags = 0);
 
     private:
         const networking::route_t m_route;

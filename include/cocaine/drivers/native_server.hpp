@@ -36,7 +36,7 @@ class native_server_job_t:
 
     private:
         template<class T>
-        bool send(const T& response, int flags = 0) {
+        void send(const T& response, int flags = 0) {
             zmq::message_t message;
             zeromq_server_t& server = static_cast<zeromq_server_t&>(m_driver);
 
@@ -44,21 +44,15 @@ class native_server_job_t:
             for(networking::route_t::const_iterator id = m_route.begin(); id != m_route.end(); ++id) {
                 message.rebuild(id->size());
                 memcpy(message.data(), id->data(), id->size());
-
-                if(!server.socket().send(message, ZMQ_SNDMORE)) {
-                    return false;
-                }
+                server.socket().send(message, ZMQ_SNDMORE);
             }
 
             // Send the delimiter
             message.rebuild(0);
-
-            if(!server.socket().send(message, ZMQ_SNDMORE)) {
-                return false;
-            }
+            server.socket().send(message, ZMQ_SNDMORE);
 
             // Send the response
-            return server.socket().send_multi(
+            server.socket().send_multi(
                 boost::tie(
                     response.type,
                     response

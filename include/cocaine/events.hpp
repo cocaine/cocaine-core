@@ -18,7 +18,6 @@
 
 #include "cocaine/dealer/types.hpp"
 #include "cocaine/forwards.hpp"
-#include <cocaine/networking.hpp>
 
 namespace cocaine { namespace engine { namespace events {
 

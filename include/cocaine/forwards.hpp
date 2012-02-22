@@ -18,8 +18,8 @@ namespace cocaine {
     class context_t;
 
     namespace engine {
+        class engine_context_t;
         class engine_t;
-        class overseer_t;
 
         namespace driver {        
             class driver_t;
@@ -32,10 +32,12 @@ namespace cocaine {
         namespace slave {
             class slave_t;
         }
+        
+        class overseer_t;
     }
 
     namespace plugin {
-        class source_t;
+        class module_t;
     }
 }
 

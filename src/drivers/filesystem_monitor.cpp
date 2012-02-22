@@ -10,18 +10,18 @@
 // limitations under the License.
 //
 
-#include "cocaine/dealer/types.hpp"
 #include "cocaine/drivers/filesystem_monitor.hpp"
 #include "cocaine/engine.hpp"
+#include "cocaine/job.hpp"
 
 using namespace cocaine::engine::driver;
 
 filesystem_monitor_t::filesystem_monitor_t(engine_t& engine, const std::string& method, const Json::Value& args):
-    driver_t(engine, method),
+    driver_t(engine, method, args),
     m_path(args.get("path", "").asString())
 {
     if(m_path.empty()) {
-        throw std::runtime_error("no path has been specified for '" + m_method + "' task");
+        throw std::runtime_error("no path has been specified");
     }
     
     m_watcher.set<filesystem_monitor_t, &filesystem_monitor_t::event>(this);
@@ -33,9 +33,8 @@ filesystem_monitor_t::~filesystem_monitor_t() {
 }
 
 Json::Value filesystem_monitor_t::info() const {
-    Json::Value result(Json::objectValue);
+    Json::Value result(driver_t::info());
 
-    result["statistics"] = stats();
     result["type"] = "filesystem-monitor";
     result["path"] = m_path;
 
@@ -43,7 +42,7 @@ Json::Value filesystem_monitor_t::info() const {
 }
 
 void filesystem_monitor_t::event(ev::stat&, int) {
-    boost::shared_ptr<publication_t> job(new publication_t(*this, client::policy_t()));
+    boost::shared_ptr<job::job_t> job(new job::job_t(*this));
     m_engine.enqueue(job);
 }
 

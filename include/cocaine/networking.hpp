@@ -16,15 +16,10 @@
 
 #include <boost/tuple/tuple.hpp>
 
-#include <zmq.hpp>
-
-#if ZMQ_VERSION < 20107
-    #error ZeroMQ version 2.1.7+ required!
-#endif
-
 #include <msgpack.hpp>
 
 #include "cocaine/common.hpp"
+#include "cocaine/context.hpp"
 
 namespace cocaine { namespace networking {
 
@@ -37,8 +32,9 @@ class socket_t:
     public birth_control_t<socket_t>
 {
     public:
-        socket_t(zmq::context_t& context, int type, std::string route = ""):
-            m_socket(context, type),
+        socket_t(context_t& context, int type, std::string route = ""):
+            m_context(context),
+            m_socket(context.io(), type),
             m_route(route)
         {
             if(!m_route.empty()) {
@@ -54,13 +50,8 @@ class socket_t:
             size_t position = endpoint.find_last_of(":");
 
             if(position != std::string::npos) {
-                char hostname[256];
-
-                if(gethostname(hostname, 256) == 0) {
-                    m_endpoint = hostname + endpoint.substr(position, std::string::npos);
-                } else {
-                    throw std::runtime_error("failed to determine the hostname");
-                }
+                m_endpoint = m_context.config.core.hostname + 
+                    endpoint.substr(position, std::string::npos);
             } else {
                 m_endpoint = "<local>";
             }
@@ -71,21 +62,11 @@ class socket_t:
         }
        
         bool send(zmq::message_t& message, int flags = 0) {
-            try {
-                return m_socket.send(message, flags);
-            } catch(const zmq::error_t& e) {
-                syslog(LOG_ERR, "networking: send() failed - %s", e.what());
-                return false;
-            }
+            return m_socket.send(message, flags);
         }
 
         bool recv(zmq::message_t* message, int flags = 0) {
-            try {
-                return m_socket.recv(message, flags);
-            } catch(const zmq::error_t& e) {
-                syslog(LOG_ERR, "networking: recv() failed - %s", e.what());
-                return false;
-            }
+            return m_socket.recv(message, flags);
         }
         
         void drop_remaining_parts() {
@@ -139,6 +120,9 @@ class socket_t:
 
             return rcvmore != 0;
         }
+
+    protected:
+        context_t& m_context;
 
     private:
         zmq::socket_t m_socket;
@@ -198,7 +182,7 @@ class channel_t:
     public socket_t
 {
     public:
-        channel_t(zmq::context_t& context, int type, std::string route = ""):
+        channel_t(context_t& context, int type, std::string route = ""):
             socket_t(context, type, route)
         { }
 
@@ -259,11 +243,9 @@ class channel_t:
                     static_cast<const char*>(message.data()), message.size());
                 unpacked.get().convert(&result);
             } catch(const std::bad_cast& e) {
-                syslog(LOG_ERR, "networking: corrupted object - %s", e.what());
-                return false;
+                throw std::runtime_error(std::string("networking: corrupted object - ") + e.what());
             } catch(const msgpack::unpack_error& e) {
-                syslog(LOG_ERR, "networking: corrupted object - %s", e.what());
-                return false;
+                throw std::runtime_error(std::string("networking: corrupted object - ") + e.what());
             }
 
             return true;

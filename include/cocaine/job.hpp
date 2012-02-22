@@ -36,19 +36,31 @@ struct incomplete;
     struct processing;
 struct complete;
 
+struct unsupported_t:
+    public std::exception
+{ };
+
 // Job FSM
 class job_t:
     public sc::state_machine<job_t, incomplete>,
     public birth_control_t<job_t>
 {
     public:
-        job_t(driver::driver_t& driver, const client::policy_t& policy);
+        job_t(driver::driver_t& driver,
+              client::policy_t policy = client::policy_t());
         virtual ~job_t();
 
-    public:      
-        virtual void react(const events::chunk_t& event) = 0;
-        virtual void react(const events::error_t& event);
-        virtual void react(const events::choked_t& event);
+        virtual void react(const events::push_t& event) {
+            throw unsupported_t();
+        }
+
+        virtual void react(const events::error_t& event) {
+            throw unsupported_t();
+        }
+
+        virtual void react(const events::release_t& event) {
+            throw unsupported_t();
+        }
 
     public:
         inline driver::driver_t& driver() {
@@ -89,8 +101,8 @@ struct unknown:
 {
     public:
         typedef boost::mpl::list<
-            sc::transition<events::enqueued_t, waiting>,
-            sc::transition<events::invoked_t, processing>
+            sc::transition<events::enqueue_t, waiting>,
+            sc::transition<events::invoke_t, processing>
         > reactions;
 };
 
@@ -99,7 +111,7 @@ struct waiting:
 {
     public:
         typedef sc::transition<
-            events::invoked_t, processing
+            events::invoke_t, processing
         > reactions;
 
         waiting();
@@ -114,10 +126,10 @@ struct processing:
 {
     public:
         typedef boost::mpl::list<
-            sc::in_state_reaction<events::chunk_t, job_t, &job_t::react>,
-            sc::transition<events::choked_t, complete, job_t, &job_t::react>,
-            sc::transition<events::enqueued_t, waiting>,
-            sc::transition<events::invoked_t, processing>
+            sc::in_state_reaction<events::push_t, job_t, &job_t::react>,
+            sc::transition<events::release_t, complete, job_t, &job_t::react>,
+            sc::transition<events::enqueue_t, waiting>,
+            sc::transition<events::invoke_t, processing>
         > reactions;
 
         processing();

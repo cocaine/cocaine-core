@@ -14,11 +14,13 @@
 #ifndef COCAINE_PLUGIN_HPP
 #define COCAINE_PLUGIN_HPP
 
-#include <boost/function.hpp>
-
 #include "cocaine/common.hpp"
+#include "cocaine/context.hpp"
 
 namespace cocaine { namespace plugin {
+
+// Exceptions
+// ----------
 
 class unrecoverable_error_t:
     public std::runtime_error
@@ -38,35 +40,53 @@ class recoverable_error_t:
         { }
 };
 
-// A callback function type used to push response chunks
-typedef boost::function<void(const void*, size_t)> callback_fn_t;
+// Invocation context
+// ------------------
 
-class source_t:
+class invocation_context_t {
+    public:
+        void push(const void* data, size_t size);
+        void emit(const std::string& key, const void* data, size_t size);
+
+    public:
+        void* request;
+        size_t request_size;
+};
+
+class module_t:
     public boost::noncopyable
 {
     public:
-        virtual ~source_t() { };
+        module_t(context_t& context, app_t& app):
+            m_context(context),
+            m_app(app),
+            m_logger(context, "engine " + app.name)
+        {
+            m_logger.debug(m_app.type + " module constructing");
+        }
 
-        virtual void invoke(
-            callback_fn_t callback,
-            const std::string& method,
-            const void* request,
-            size_t size) = 0;
+        virtual ~module_t() {
+            m_logger.debug(m_app.type + " module destructing");
+        }
+
+        virtual void invoke(invocation_context_t& context) = 0;
+
+    private:
+        context_t& m_context;
+        app_t& m_app;
 };
 
-// Plugins are expected to supply at least one factory function
-// to initialize sources, given an argument. Each factory function
-// is responsible to initialize sources of one registered type
-typedef source_t* (*factory_fn_t)(const std::string&);
+// Plugin initialization
+// ---------------------
 
-// Plugins are expected to have an 'initialize' function, which should
-// return an array of structures of the following format
+typedef module_t* (*factory_fn_t)(context_t& context, app_t& app);
+
 typedef struct {
     const char* type;
     factory_fn_t factory;
-} source_info_t;
+} module_info_t;
 
-typedef const source_info_t* (*initialize_fn_t)(void);
+typedef const module_info_t* (*initialize_fn_t)(void);
 
 }}
 

@@ -27,21 +27,18 @@ native_server_job_t::native_server_job_t(native_server_t& driver, const client::
 void native_server_job_t::react(const events::chunk_t& event) {
     zeromq_server_t& server = static_cast<zeromq_server_t&>(m_driver);
     
-    if(send(client::tag_t(id()), ZMQ_SNDMORE)) {
-        (void)server.socket().send(event.message);
-    }
+    send(client::tag_t(id()), ZMQ_SNDMORE);
+    server.socket().send(event.message);
 }
 
 void native_server_job_t::react(const events::error_t& event) {
     job_t::react(event);
-
-    (void)send(client::error_t(id(), event.code, event.message));
+    send(client::error_t(id(), event.code, event.message));
 }
 
 void native_server_job_t::react(const events::choked_t& event) {
     job_t::react(event);
-
-    (void)send(client::tag_t(id(), true));
+    send(client::tag_t(id(), true));
 }
 
 native_server_t::native_server_t(engine_t& engine, const std::string& method, const Json::Value& args):
@@ -62,7 +59,7 @@ void native_server_t::process(ev::idle&, int) {
         route_t route;
 
         do {
-            BOOST_VERIFY(m_socket.recv(&message));
+            m_socket.recv(&message);
 
             if(!message.size()) {
                 break;
@@ -77,7 +74,9 @@ void native_server_t::process(ev::idle&, int) {
         } while(m_socket.more());
 
         if(route.empty() || !m_socket.more()) {
-            syslog(LOG_ERR, "%s: got a corrupted request - invalid route", identity());
+            m_engine.context().log().emit(LOG_ERR, 
+                "%s: got a corrupted request - invalid route",
+                identity());
             return;
         }
 
@@ -85,13 +84,9 @@ void native_server_t::process(ev::idle&, int) {
             unsigned int type = 0;
             client::tag_t tag;
             client::policy_t policy;
-
             boost::tuple<unsigned int&, client::tag_t&, client::policy_t&> tier(type, tag, policy);
 
-            if(!m_socket.recv_multi(tier)) {
-                syslog(LOG_ERR, "%s: got a corrupted request", identity());
-                continue;
-            }
+            m_socket.recv_multi(tier);
 
             // TEST: This is temporary for testing purposes
             BOOST_ASSERT(type == tag.type);
@@ -100,16 +95,21 @@ void native_server_t::process(ev::idle&, int) {
             try {
                 job.reset(new native_server_job_t(*this, policy, tag.id, route));
             } catch(const std::runtime_error& e) {
-                syslog(LOG_ERR, "%s: got a corrupted request - %s", identity(), e.what());
+                m_engine.context().log().emit(LOG_ERR,
+                    "%s: got a corrupted request - %s", 
+                    identity(), e.what());
                 continue;
             }
 
-            if(!m_socket.more() || !m_socket.recv(job->request())) {
-                syslog(LOG_ERR, "%s: got a corrupted request - missing body", identity());
+            if(!m_socket.more()) {
+                m_engine.context().log().emit(LOG_ERR,
+                    "%s: got a corrupted request - missing body", 
+                    identity());
                 job->process_event(events::error_t(client::request_error, "missing body"));
                 continue;
             }
 
+            m_socket.recv(job->request());
             m_engine.enqueue(job);
         }
     } else {
