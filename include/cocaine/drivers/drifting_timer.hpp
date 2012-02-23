@@ -15,7 +15,6 @@
 #define COCAINE_DRIVER_DRIFTING_TIMER_HPP
 
 #include "cocaine/drivers/recurring_timer.hpp"
-#include "cocaine/engine.hpp"
 
 namespace cocaine { namespace engine { namespace driver {
 
@@ -26,6 +25,7 @@ class drifting_timer_job_t:
 {
     public:
         drifting_timer_job_t(drifting_timer_t& driver);
+        
         virtual ~drifting_timer_job_t();
 };
 

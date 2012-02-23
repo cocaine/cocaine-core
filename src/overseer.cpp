@@ -22,10 +22,10 @@ using namespace cocaine;
 using namespace cocaine::engine;
 using namespace cocaine::plugin;
 
-overseer_t::overseer_t(const unique_id_t::type& id_, context_t& context, app_t& app):
+overseer_t::overseer_t(const unique_id_t::type& id_, context_t& context, manifest_t& manifest):
     unique_id_t(id_),
     m_context(context),
-    m_app(app),
+    m_manifest(manifest),
     m_messages(m_context, ZMQ_DEALER, id()),
     m_loop(),
     m_watcher(m_loop),
@@ -34,7 +34,7 @@ overseer_t::overseer_t(const unique_id_t::type& id_, context_t& context, app_t& 
     m_suicide_timer(m_loop),
     m_heartbeat_timer(m_loop)
 {
-    m_messages.connect(m_app.endpoint);
+    m_messages.connect(m_manifest.endpoint);
     
     m_watcher.set<overseer_t, &overseer_t::message>(this);
     m_watcher.start(m_messages.fd(), ev::READ);
@@ -43,7 +43,7 @@ overseer_t::overseer_t(const unique_id_t::type& id_, context_t& context, app_t& 
     m_pumper.start(0.2f, 0.2f);
 
     m_suicide_timer.set<overseer_t, &overseer_t::timeout>(this);
-    m_suicide_timer.start(m_app.policy.suicide_timeout);
+    m_suicide_timer.start(m_manifest.policy.suicide_timeout);
 
     m_heartbeat_timer.set<overseer_t, &overseer_t::heartbeat>(this);
     m_heartbeat_timer.start(0.0f, 5.0f);
@@ -51,12 +51,26 @@ overseer_t::overseer_t(const unique_id_t::type& id_, context_t& context, app_t& 
 
 void overseer_t::loop() {
     try {
-        m_module = m_context.registry().create<module_t>(m_app.type, m_app.args);
+        m_module = m_context.registry().create<module_t>(m_manifest);
     } catch(const unrecoverable_error_t& e) {
-        send(events::error_t(client::engine_error, e.what()));
+        m_messages.send_multi(
+            boost::make_tuple(
+                4,
+                static_cast<int>(client::server_error),
+                std::string(e.what())
+            )
+        );
+
         return;
     } catch(...) {
-        send(events::error_t(client::engine_error, "unexpected exception"));
+        m_messages.send_multi(
+            boost::make_tuple(
+                4,
+                static_cast<int>(client::server_error),
+                std::string("unexpected exception")
+            )
+        );
+
         return;
     }
         
@@ -71,35 +85,51 @@ void overseer_t::message(ev::io&, int) {
 
 void overseer_t::process(ev::idle&, int) {
     if(m_messages.pending()) {
-        unsigned int code = 0;
+        unsigned int type = 0;
 
-        m_messages.recv(code);
+        m_messages.recv(type);
 
-        switch(code) {
-            case events::invoke_t::code: {
-                events::invoke_t command;
-                
-                m_messages.recv(command);
+        switch(type) {
+            case 1: {
+                std::string method;
+                zmq::message_t request;
+                boost::tuple<std::string&, zmq::message_t*> tier(method, &request);
+
+                m_messages.recv_multi(tier);
 
                 try {
-                    m_module->invoke(
-                        invocation_context_t(
-                            *this,
-                            command.method
+                    invocation_context_t context;
+                    m_module->invoke(context);
+                } catch(const recoverable_error_t& e) {
+                    m_messages.send_multi(
+                        boost::make_tuple(
+                            4,
+                            static_cast<int>(client::app_error),
+                            std::string(e.what())
                         )
                     );
-                } catch(const recoverable_error_t& e) {
-                    send(events::error_t(client::app_error, e.what()));
                 } catch(const unrecoverable_error_t& e) {
-                    send(events::error_t(client::engine_error, e.what())); 
+                    m_messages.send_multi(
+                        boost::make_tuple(
+                            4,
+                            static_cast<int>(client::server_error),
+                            std::string(e.what())
+                        )
+                    );
                 } catch(...) {
-                    send(events::error_t(client::engine_error, "unexpected exception")); 
+                    m_messages.send_multi(
+                        boost::make_tuple(
+                            4,
+                            static_cast<int>(client::server_error),
+                            std::string("unexpected exception")
+                        )
+                    );
                 }
                     
-                send(events::release_t());
+                m_messages.send(5);
 
                 m_suicide_timer.stop();
-                m_suicide_timer.start(m_app.policy.suicide_timeout);
+                m_suicide_timer.start(m_manifest.policy.suicide_timeout);
              
                 break;
             }
@@ -118,12 +148,12 @@ void overseer_t::pump(ev::timer&, int) {
 }
 
 void overseer_t::timeout(ev::timer&, int) {
-    send(events::terminate_t());
+    m_messages.send(6);
     terminate();
 }
 
 void overseer_t::heartbeat(ev::timer&, int) {
-    send(events::heartbeat_t());
+    m_messages.send(0);
 }
 
 void overseer_t::terminate() {

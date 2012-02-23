@@ -26,7 +26,7 @@ zeromq_server_job_t::zeromq_server_job_t(zeromq_server_t& driver, const route_t&
     m_route(route)
 { }
 
-void zeromq_server_job_t::react(const events::chunk_t& event) {
+void zeromq_server_job_t::react(const events::push_t& event) {
     send(event.message);
 }
 
@@ -68,11 +68,11 @@ zeromq_server_t::zeromq_server_t(engine_t& engine, const std::string& method, co
     driver_t(engine, method, args),
     m_backlog(args.get("backlog", 1000).asUInt()),
     m_linger(args.get("linger", 0).asInt()),
-    m_socket(m_engine.context().global, type, boost::algorithm::join(
+    m_socket(m_engine.context(), type, boost::algorithm::join(
         boost::assign::list_of
-            (m_engine.context().global.config.core.instance)
-            (m_engine.context().global.config.core.hostname)
-            (m_engine.context().name)
+            (m_engine.context().config.core.instance)
+            (m_engine.context().config.core.hostname)
+            (m_engine.manifest().name)
             (method),
         "/")
     )
@@ -140,15 +140,16 @@ void zeromq_server_t::process(ev::idle&, int) {
         } while(m_socket.more());
 
         if(route.empty() || !m_socket.more()) {
-            m_engine.context().log().emit(LOG_ERR, 
-                "%s: got a corrupted request - invalid route",
-                identity());
+            m_engine.log().error(
+                "got a corrupted request in '%s' - invalid route",
+                m_method.c_str()
+            );
+
             return;
         }
 
         while(m_socket.more()) {
             boost::shared_ptr<zeromq_server_job_t> job(new zeromq_server_job_t(*this, route));
-
             m_socket.recv(job->request());
             m_engine.enqueue(job);
         }

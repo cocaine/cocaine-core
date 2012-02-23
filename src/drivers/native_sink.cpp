@@ -45,10 +45,13 @@ void native_sink_t::process(ev::idle&, int) {
             boost::shared_ptr<job::job_t> job(new job::job_t(*this, policy));
             
             if(!m_socket.more()) {
-                m_engine.context().log().emit(LOG_ERR,
-                    "%s: got a corrupted request - missing body", 
-                    identity());
+                m_engine.log().error(
+                    "got a corrupted request in '%s' - missing body", 
+                    m_method.c_str()
+                );
+
                 job->process_event(events::error_t(client::request_error, "missing body"));
+                
                 continue;
             }
 

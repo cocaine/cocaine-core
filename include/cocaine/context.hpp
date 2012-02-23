@@ -17,6 +17,7 @@
 #include <syslog.h>
 
 #include "cocaine/common.hpp"
+#include "cocaine/forwards.hpp"
 
 namespace cocaine {
 
@@ -51,19 +52,11 @@ struct config_t {
     } storage;
 };
 
-class logger_t {
-    public:
-        logger_t() { }
-        logger_t(logger_t& other, const std::string& prefix) { }
-
-        virtual void emit(int priority, const char* format, ...) { };
-};
-
 class context_t:
     public boost::noncopyable
 {
     public:
-        context_t(config_t config);
+        context_t(config_t config, boost::shared_ptr<logging::sink_t> sink);
 
         inline zmq::context_t& io() {
             if(!m_io) {
@@ -73,20 +66,17 @@ class context_t:
             return *m_io;
         }
 
-        inline logger_t& log() {
-            if(!m_log) {
-                throw std::runtime_error("logging is not initialized");
-            }
-
-            return *m_log;
-        }
+        logging::sink_t& sink();
+        storage::storage_t& storage();
+        crypto::auth_t& auth();
+        core::registry_t& registry();
 
     public:
         config_t config;
 
     private:
         boost::shared_ptr<zmq::context_t> m_io;
-        boost::shared_ptr<logger_t> m_log;
+        boost::shared_ptr<logging::sink_t> m_log;
 };
 
 }

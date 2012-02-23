@@ -24,7 +24,7 @@ lsd_job_t::lsd_job_t(lsd_server_t& driver, const client::policy_t& policy, const
     m_route(route)
 { }
 
-void lsd_job_t::react(const events::chunk_t& event) {
+void lsd_job_t::react(const events::push_t& event) {
     Json::Value root(Json::objectValue);
     zeromq_server_t& server = static_cast<zeromq_server_t&>(m_driver);
     
@@ -44,7 +44,7 @@ void lsd_job_t::react(const events::error_t& event) {
     send(root);
 }
 
-void lsd_job_t::react(const events::choked_t& event) {
+void lsd_job_t::react(const events::release_t& event) {
     Json::Value root(Json::objectValue);
 
     root["uuid"] = id();
@@ -109,9 +109,11 @@ void lsd_server_t::process(ev::idle&, int) {
         } while(m_socket.more());
 
         if(route.empty() || !m_socket.more()) {
-            m_engine.context().log().emit(LOG_ERR,
-                "%s: got a corrupted request - invalid route", 
-                identity());
+            m_engine.log().error(
+                "got a corrupted request in '%s' - invalid route", 
+                m_method.c_str()
+            );
+
             return;
         }
 
@@ -128,9 +130,12 @@ void lsd_server_t::process(ev::idle&, int) {
                 static_cast<const char*>(message.data()) + message.size(),
                 root))
             {
-                m_engine.context().log().emit(LOG_ERR,
-                    "%s: got a corrupted request - invalid envelope - %s",
-                    identity(), reader.getFormatedErrorMessages().c_str());
+                m_engine.log().error(
+                    "got a corrupted request in '%s' - invalid envelope - %s",
+                    m_method.c_str(),
+                    reader.getFormatedErrorMessages().c_str()
+                );
+
                 continue;
             }
 
@@ -144,17 +149,23 @@ void lsd_server_t::process(ev::idle&, int) {
             try {
                 job.reset(new lsd_job_t(*this, policy, root.get("uuid", "").asString(), route));
             } catch(const std::runtime_error& e) {
-                m_engine.context().log().emit(LOG_ERR, 
-                    "%s: got a corrupted request - invalid envelope - %s",
-                    identity(), e.what());
+                m_engine.log().error(
+                    "got a corrupted request in '%s' - invalid envelope - %s",
+                    m_method.c_str(), 
+                    e.what()
+                );
+
                 continue;
             }
 
             if(!m_socket.more()) {
-                m_engine.context().log().emit(LOG_ERR, 
-                    "%s: got a corrupted request - missing body", 
-                    identity());
+                m_engine.log().error(
+                    "got a corrupted request in %s' - missing body", 
+                    m_method.c_str()
+                );
+
                 job->process_event(events::error_t(client::request_error, "missing body"));
+                
                 continue;
             }
             

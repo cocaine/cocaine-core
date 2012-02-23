@@ -25,6 +25,7 @@ class recurring_timer_t:
         recurring_timer_t(engine_t& engine,
                           const std::string& method, 
                           const Json::Value& args);
+
         virtual ~recurring_timer_t();
 
         // Driver interface

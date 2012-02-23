@@ -16,9 +16,11 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/assign.hpp>
 
+#include "cocaine/auth.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/core.hpp"
 #include "cocaine/engine.hpp"
+#include "cocaine/job.hpp"
 #include "cocaine/storages/base.hpp"
 
 using namespace cocaine;
@@ -270,7 +272,7 @@ Json::Value core_t::create_engine(const std::string& name, const Json::Value& ma
     }
 
     // Launch the engine
-    std::auto_ptr<engine_t> engine(new engine_t(m_context, app_t(name, manifest)));
+    std::auto_ptr<engine_t> engine(new engine_t(m_context, name, manifest));
     Json::Value result(engine->start());
 
     if(!recovering) {
@@ -310,7 +312,7 @@ Json::Value core_t::delete_engine(const std::string& name) {
         throw;
     }
 
-    Json::Value result(engine->stop());
+    Json::Value result(engine->second->stop());
 
     m_engines.erase(engine);
 

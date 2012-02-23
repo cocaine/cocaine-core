@@ -25,6 +25,7 @@ class filesystem_monitor_t:
         filesystem_monitor_t(engine_t& engine,
                              const std::string& method, 
                              const Json::Value& args);
+
         virtual ~filesystem_monitor_t();
 
         virtual Json::Value info() const;

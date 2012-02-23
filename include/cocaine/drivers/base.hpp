@@ -16,6 +16,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
+#include "cocaine/job.hpp"
 #include "cocaine/networking.hpp"
 
 #if BOOST_VERSION >= 103600
@@ -40,7 +41,8 @@ class driver_t:
 {
     public:
         driver_t(engine_t& engine, const std::string& method, const Json::Value& args);
-        virtual ~driver_t();
+
+        virtual ~driver_t() { }
 
         // Used to collect various statistical information about the driver
         void audit(timing_type type, ev::tstamp value);

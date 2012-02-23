@@ -20,10 +20,10 @@
 using namespace cocaine::engine::slave;
 
 slave_t::slave_t(context_t& context):
-    m_context(context)
-    m_logger(context, "slave " + id())
+    m_context(context),
+    m_log(context, "slave " + id())
 {
-    m_logger.debug("constructing");
+    m_log.debug("constructing");
 
     // NOTE: These are the 10 seconds for the slave to come alive   
     m_heartbeat_timer.set<slave_t, &slave_t::timeout>(this);
@@ -33,7 +33,7 @@ slave_t::slave_t(context_t& context):
 }
 
 slave_t::~slave_t() {
-    m_logger.debug("destructing");
+    m_log.debug("destructing");
     
     m_heartbeat_timer.stop();
     
@@ -46,7 +46,7 @@ slave_t::~slave_t() {
 void slave_t::react(const events::heartbeat_t& event) {
 #if EV_VERSION_MAJOR == 3 && EV_VERSION_MINOR == 8
     if(!state_downcast<const alive*>()) {
-        m_logger.debug("came alive in %.03f seconds",
+        m_log.debug("came alive in %.03f seconds",
             10.0f - ev_timer_remaining(
                 ev_default_loop(ev::AUTO),
                 static_cast<ev_timer*>(&m_heartbeat_timer)
@@ -64,7 +64,7 @@ void slave_t::react(const events::heartbeat_t& event) {
         timeout = state->job()->policy().timeout;
     }
     
-    m_logger.debug(
+    m_log.debug(
         "resetting timeout to %.02f seconds", 
         m_context.config.engine.heartbeat_timeout
     );
@@ -73,8 +73,12 @@ void slave_t::react(const events::heartbeat_t& event) {
 
 }
 
+bool slave_t::operator==(const slave_t& other) {
+    return id() == other.id();
+}
+
 void slave_t::timeout(ev::timer&, int) {
-    m_logger.warning("missed too many heartbeats");
+    m_log.warning("missed too many heartbeats");
     
     const busy* state = state_downcast<const busy*>();
     

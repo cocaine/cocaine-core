@@ -29,7 +29,7 @@ namespace po = boost::program_options;
 namespace fs = boost::filesystem;
 
 class syslog_t:
-    public logger_t
+    public logging::sink_t
 {
     public:
         syslog_t(const std::string& identity, int verbosity):

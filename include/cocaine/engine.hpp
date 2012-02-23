@@ -18,13 +18,13 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
+#include "cocaine/logging.hpp"
+#include "cocaine/manifest.hpp"
 #include "cocaine/networking.hpp"
+#include "cocaine/slaves.hpp"
+#include "cocaine/helpers/tuples.hpp"
 
 namespace cocaine { namespace engine {
-
-class app_t {
-    // TODO
-};
 
 class engine_t:
     public boost::noncopyable
@@ -60,11 +60,13 @@ class engine_t:
         };
 
         struct specific_slave {
+            specific_slave(pool_map_t::pointer target);
             bool operator()(pool_map_t::pointer slave) const;
+            pool_map_t::pointer target;
         };
 
     public:
-        engine_t(context_t& context, app_t app); 
+        engine_t(context_t& context, const std::string& name, const Json::Value& manifest); 
         ~engine_t();
 
         Json::Value start();
@@ -77,20 +79,32 @@ class engine_t:
 
             if(it != m_pool.end()) {
                 m_messages.send_multi(
-                    boost::tie(
-                        networking::protect(it->second->id()),
-                        command.type,
+                    helpers::joint_view(
+                        boost::tie(
+                            networking::protect(it->second->id())
+                        ),
                         command
                     )
                 );
-
-                it->process_event(command);
             }
 
             return it;
         }
 
         void enqueue(job_queue_t::const_reference job, bool overflow = false);
+
+    public:
+        context_t& context() {
+            return m_context;
+        }
+
+        manifest_t& manifest() {
+            return m_manifest;
+        }
+
+        logging::emitter_t& log() {
+            return m_log;
+        }
 
     private:
         void message(ev::io&, int);
@@ -102,8 +116,9 @@ class engine_t:
         bool m_running;
         
         // Runtime context
-        context_t m_context;
-        app_t m_app;
+        context_t& m_context;
+        logging::emitter_t m_log;
+        manifest_t m_manifest;
 
         // Application tasks
         task_map_t m_tasks;

@@ -22,6 +22,7 @@
 #include "cocaine/common.hpp"
 #include "cocaine/events.hpp"
 #include "cocaine/forwards.hpp"
+#include "cocaine/logging.hpp"
 
 namespace cocaine { namespace engine { namespace slave {
 
@@ -42,8 +43,13 @@ struct slave_t:
         virtual ~slave_t();
         
         void react(const events::heartbeat_t& event);
-        
+        bool operator==(const slave_t& other);
+
         virtual void reap() = 0;
+
+        inline logging::emitter_t& log() {
+            return m_log;
+        }
 
     protected:
         slave_t(context_t& context);
@@ -53,6 +59,7 @@ struct slave_t:
 
     protected:
         context_t& m_context;
+        logging::emitter_t m_log;
 
     private:
         ev::timer m_heartbeat_timer;

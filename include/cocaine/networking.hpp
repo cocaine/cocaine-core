@@ -203,9 +203,9 @@ class channel_t:
             
             return send(message, flags);
         }
-
+        
         template<class T>
-        inline bool send(const raw<T>& object, int flags) {
+        inline bool send(const raw<T>& object, int flags = 0) {
             zmq::message_t message;
             object.pack(message);
             return send(message, flags);

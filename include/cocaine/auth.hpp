@@ -18,6 +18,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
+#include "cocaine/logging.hpp"
 
 namespace cocaine { namespace crypto {
 
@@ -38,6 +39,7 @@ class auth_t:
 
     private:
         EVP_MD_CTX* m_md_context;
+        logging::emitter_t m_log;
 
         typedef std::map<const std::string, EVP_PKEY*> key_map_t;
         key_map_t m_keys;

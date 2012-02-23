@@ -15,8 +15,6 @@
 #define COCAINE_DRIVER_ZEROMQ_SERVER_HPP
 
 #include "cocaine/drivers/base.hpp"
-#include "cocaine/job.hpp"
-#include "cocaine/networking.hpp"
 
 namespace cocaine { namespace engine { namespace driver {
 
@@ -29,7 +27,7 @@ class zeromq_server_job_t:
         zeromq_server_job_t(zeromq_server_t& driver, 
                             const networking::route_t& route);
 
-        virtual void react(const events::chunk_t& event);
+        virtual void react(const events::push_t& event);
         virtual void react(const events::error_t& event);
 
     private:

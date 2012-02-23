@@ -18,6 +18,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
+#include "cocaine/logging.hpp"
 #include "cocaine/plugin.hpp"
 
 namespace cocaine { namespace core {
@@ -26,29 +27,22 @@ class registry_t:
     public boost::noncopyable
 {
     public:
-        static const boost::shared_ptr<registry_t>& instance(context_t& context);
-
-    public:
         registry_t(context_t& context);
         ~registry_t();
 
         bool exists(const std::string& type);
 
         template<class T>
-        boost::shared_ptr<T> create(const std::string& type,
-                                    const Json::Value& args)
-        {
-            factory_map_t::iterator it(m_factories.find(type));
+        boost::shared_ptr<T> create(engine::manifest_t& manifest) {
+            factory_map_t::iterator it(m_factories.find(manifest.type));
             plugin::factory_fn_t factory(it->second);
             
-            return boost::shared_ptr<T>(factory(m_context, args));
+            return boost::shared_ptr<T>(factory(m_context, manifest));
         }
 
     private:
-        static boost::shared_ptr<registry_t> g_object;
-
-    private:
         context_t& m_context;
+        logging::emitter_t m_log;
 
         // Used to unload all the plugins on shutdown
         std::vector<lt_dlhandle> m_plugins;

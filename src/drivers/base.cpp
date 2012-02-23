@@ -28,18 +28,12 @@ driver_t::driver_t(engine_t& engine, const std::string& method, const Json::Valu
     , m_spent_on_slaves(0.0f)
 #endif
 {
-    m_engine.context().log().emit(LOG_DEBUG, "%s: constructing", identity());
-
     std::string endpoint(args.get("emitter", "").asString());
 
     if(!endpoint.empty()) {
-        m_emitter.reset(new networking::socket_t(engine.context().global, ZMQ_PUB));
+        m_emitter.reset(new networking::socket_t(engine.context(), ZMQ_PUB));
         m_emitter->bind(endpoint);
     }
-}
-
-driver_t::~driver_t() {
-    m_engine.context().log().emit(LOG_DEBUG, "%s: destructing", identity());
 }
 
 void driver_t::audit(timing_type type, ev::tstamp value) {

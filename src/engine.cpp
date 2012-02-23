@@ -42,6 +42,14 @@ bool engine_t::idle_slave::operator()(pool_map_t::pointer slave) const {
     return slave->second->state_downcast<const slave::idle*>();
 }
 
+engine_t::specific_slave::specific_slave(pool_map_t::pointer target_):
+    target(target_)
+{ }
+
+bool engine_t::specific_slave::operator()(pool_map_t::pointer slave) const {
+    return slave == target;
+}
+
 namespace {
     struct busy_slave {
         bool operator()(engine_t::pool_map_t::const_pointer slave) const {
@@ -53,7 +61,7 @@ namespace {
 // Engine context
 // --------------
 
-app_t::app_t(context_t& context, const std::string& name, const Json::Value& manifest) {
+manifest_t::manifest_t(context_t& context, const std::string& name, const Json::Value& manifest) {
     policy.suicide_timeout = manifest["engine"].get("suicide-timeout",
         context.config.engine.suicide_timeout).asDouble();
     policy.pool_limit = manifest["engine"].get("pool-limit",
@@ -64,30 +72,30 @@ app_t::app_t(context_t& context, const std::string& name, const Json::Value& man
     endpoint = boost::algorithm::join(
         boost::assign::list_of
             (std::string("ipc:///var/run/cocaine"))
-            (m_context.config.core.instance)
-            (m_app.name),
+            (context.config.core.instance)
+            (name),
         "/");
 }
 
 // Basic stuff
 // -----------
 
-engine_t::engine_t(context_t& context, app_t app):
+engine_t::engine_t(context_t& context, const std::string& name, const Json::Value& manifest):
     m_running(true),
     m_context(context),
-    m_app(app),
-    m_logger(m_context, name),
-    m_messages(m_context, ZMQ_ROUTER)
+    m_log(context, name),
+    m_manifest(context, name, manifest),
+    m_messages(context, ZMQ_ROUTER)
 {
-    m_logger.debug("constructing");
+    m_log.debug("constructing");
     
-    if(!m_context.registry().exists(m_app.type)) {
-        throw std::runtime_error("no plugin for '" + m_app.type + "' is available");
+    if(!m_context.registry().exists(m_manifest.type)) {
+        throw std::runtime_error("no plugin for '" + m_manifest.type + "' is available");
     }
 }
 
 engine_t::~engine_t() {
-    m_logger.debug("destructing"); 
+    m_log.debug("destructing"); 
     
     if(m_running) {
         stop();
@@ -101,7 +109,7 @@ Json::Value engine_t::start() {
     int linger = 0;
 
     m_messages.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
-    m_messages.bind(m_app.endpoint);
+    m_messages.bind(m_manifest.endpoint);
     
     m_watcher.set<engine_t, &engine_t::message>(this);
     m_watcher.start(m_messages.fd(), ev::READ);
@@ -118,7 +126,7 @@ Json::Value engine_t::start() {
     Json::Value tasks(manifest["tasks"]);
 
     if(!tasks.isNull() && tasks.size()) {
-        m_logger.info("starting"); 
+        m_log.info("starting"); 
     
         Json::Value::Members names(tasks.getMemberNames());
 
@@ -157,13 +165,13 @@ Json::Value engine_t::start() {
 Json::Value engine_t::stop() {
     BOOST_ASSERT(m_running);
     
-    m_logger.info("stopping"); 
+    m_log.info("stopping"); 
 
     m_running = false;
 
     // Abort all the outstanding jobs.
     if(!m_queue.empty()) {
-        m_logger.debug(
+        m_log.debug(
             "dropping %zu queued %s",
             m_queue.size(),
             m_queue.size() == 1 ? "job" : "jobs"
@@ -173,7 +181,7 @@ Json::Value engine_t::stop() {
             try {
                 m_queue.front()->process_event(
                     events::error_t(
-                        client::engine_error, 
+                        client::server_error,
                         "engine is shutting down"
                     )
                 );
@@ -186,11 +194,15 @@ Json::Value engine_t::stop() {
     }
 
     // Signal the slaves to terminate
+    const int command = 2;
+
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
         unicast(
-            specific_slave(it),
-            events::terminate_t()
+            specific_slave(*it),
+            boost::tie(command)
         );
+
+        it->second->process_event(events::terminate_t());
     }
 
     m_pool.clear();
@@ -232,7 +244,7 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
     if(!m_running) {
         job->process_event(
             events::error_t(
-                client::engine_error,
+                client::server_error,
                 "engine is not active"
             )
         );
@@ -242,31 +254,35 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
 
     // NOTE: If we got an idle slave, then we're lucky and got an instant scheduling;
     // if not, try to spawn more slaves, and enqueue the job.
+    const int command = 1;
+    
     pool_map_t::iterator it(
         unicast(
             idle_slave(),
-            events::invoke_t(
-                job->driver().method(),
-                job->request()
+            boost::tie(
+                command,
+                job->driver().method()
             )
         )
     );
 
-    if(it == m_pool.end()) {
-        if(m_pool.empty() || m_pool.size() < m_app.policy.pool_limit) {
+    if(it != m_pool.end()) {
+        it->second->process_event(events::invoke_t(job));
+    } else {
+        if(m_pool.empty() || m_pool.size() < m_manifest.policy.pool_limit) {
             std::auto_ptr<slave::slave_t> slave;
             
             try {
-                slave.reset(new slave::generic_t(m_context, m_app));
+                slave.reset(new slave::generic_t(m_context, m_manifest));
                 std::string slave_id(slave->id());
                 m_pool.insert(slave_id, slave);
             } catch(const std::exception& e) {
-                m_logger.error(,
+                m_log.error(
                     "unable to spawn more slaves - %s",
                     e.what()
                 );
             }
-        } else if(!overflow && (m_queue.size() > m_app.policy.queue_limit)) {
+        } else if(!overflow && (m_queue.size() > m_manifest.policy.queue_limit)) {
             job->process_event(
                 events::error_t(
                     client::resource_error,
@@ -293,8 +309,8 @@ void engine_t::message(ev::io&, int) {
 void engine_t::process(ev::idle&, int) {
     if(m_messages.pending()) {
         std::string slave_id;
-        unsigned int code = 0;
-        boost::tuple<raw<std::string>, unsigned int&> tier(protect(slave_id), code);
+        unsigned int type = 0;
+        boost::tuple<raw<std::string>, unsigned int&> tier(protect(slave_id), type);
         
         m_messages.recv_multi(tier);
         pool_map_t::iterator slave(m_pool.find(slave_id));
@@ -303,37 +319,43 @@ void engine_t::process(ev::idle&, int) {
             const slave::busy* state =
                 slave->second->state_downcast<const slave::busy*>();
             
-            switch(code) {
-                case events::push_t::code: {
-                    events::push_t command;
-
-                    m_messages.recv(command);
-                    
+            switch(type) {
+                case 3: {
                     // TEST: Only active slaves can push the data chunks
-                    BOOST_ASSERT(state != 0);
+                    BOOST_ASSERT(state != 0 && m_messages.more());
 
+                    zmq::message_t message;
+                    m_messages.recv(&message);
+                    
                     try {
-                        state->job()->process_event(command);
+                        state->job()->process_event(events::push_t(message));
                     } catch(const job::unsupported_t&) {
-                        m_logger.debug("ignoring a push command");
+                        m_log.debug("driver ignored a push");
                     }
 
                     break;
                 }
              
-                case events::error_t::code: {
-                    events::error_t command;
+                case 4: {
+                    unsigned int code = 0;
+                    std::string message;
+                    boost::tuple<unsigned int&, std::string&> tier(code, message);
 
-                    m_messages.recv(command);
+                    m_messages.recv_multi(tier);
 
                     if(state) {
                         try {
-                            state->job()->process_event(command);
+                            state->job()->process_event(
+                                events::error_t(
+                                    static_cast<client::error_code>(code), 
+                                    message
+                                )
+                            );
                         } catch(const job::unsupported_t&) {
-                            m_logger.debug("ignoring an error command");
+                            m_log.debug("driver ignored an error");
                         }
                     } else {
-                        m_logger.error("the app seems to be broken");
+                        m_log.error("the app seems to be broken");
                         stop();
                         return;
                     }
@@ -341,30 +363,22 @@ void engine_t::process(ev::idle&, int) {
                     break;
                 }
 
-                case events::release_t::code: {
-                    events::release_t command;
-
-                    m_messages.recv(command);
-                    
+                case 5: {
                     BOOST_ASSERT(state != 0);
                    
                     try {
-                        state->job()->process_event(command);
+                        state->job()->process_event(events::release_t());
                     } catch(const job::unsupported_t&) {
-                        m_logger.debug("ignoring a release command");
+                        m_log.debug("driver ignored a release");
                     }
                     
                     break;
                 }
 
-                case events::terminate_t::code: {
-                    events::terminate_t command;
-
-                    m_messages.recv(command);
-
+                case 6: {
                     // NOTE: A slave might be already terminated by its inner mechanics
                     if(!slave->second->state_downcast<const slave::dead*>()) {
-                        slave->second->process_event(command);
+                        slave->second->process_event(events::terminate_t());
                     }
 
                     return;
@@ -382,9 +396,9 @@ void engine_t::process(ev::idle&, int) {
             // TEST: Ensure that there're no more message parts pending on the channel
             BOOST_ASSERT(!m_messages.more());
         } else {
-            m_logger.debug(
+            m_log.debug(
                 "dropping type %d message from a dead slave %s", 
-                code, slave_id.c_str()
+                type, slave_id.c_str()
             );
             
             m_messages.drop_remaining_parts();
@@ -413,7 +427,7 @@ void engine_t::cleanup(ev::timer&, int) {
             m_pool.erase(*it);
         }
 
-        m_logger.info(
+        m_log.info(
             "recycled %zu dead %s", 
             corpses.size(),
             corpses.size() == 1 ? "slave" : "slaves"

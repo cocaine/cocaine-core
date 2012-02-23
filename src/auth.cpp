@@ -24,6 +24,7 @@ using namespace cocaine::crypto;
 using namespace cocaine::storage;
 
 auth_t::auth_t(context_t& context):
+    m_log(context, "auth"),
     m_md_context(EVP_MD_CTX_create())
 {
     // Initialize error strings
@@ -39,7 +40,7 @@ auth_t::auth_t(context_t& context):
         Json::Value object(keys[identity]);
 
         if(!object["key"].isString() || object["key"].empty()) {
-            context.log().emit(LOG_ERR, "auth: key for user '%s' is malformed", identity.c_str());
+            m_log.error("key for user '%s' is malformed", identity.c_str());
             continue;
         }
 
@@ -54,14 +55,16 @@ auth_t::auth_t(context_t& context):
         if(pkey != NULL) {
             m_keys.insert(std::make_pair(identity, pkey));
         } else { 
-            context.log().emit(LOG_ERR, "auth: key for user '%s' is invalid - %s",
-                identity.c_str(), ERR_reason_error_string(ERR_get_error()));
+            m_log.error("key for user '%s' is invalid - %s",
+                identity.c_str(), 
+                ERR_reason_error_string(ERR_get_error())
+            );
         }
 
         BIO_free(bio);
     }
     
-    context.log().emit(LOG_NOTICE, "auth: loaded %zu public key(s)", m_keys.size());
+    m_log.info("loaded %zu public key(s)", m_keys.size());
 }
 
 auth_t::~auth_t() {

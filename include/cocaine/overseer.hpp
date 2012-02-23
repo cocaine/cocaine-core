@@ -27,20 +27,10 @@ class overseer_t:
     public:
         overseer_t(const unique_id_t::type& id,
                    context_t& context,
-                   app_t& app);
+                   manifest_t& manifest);
 
         // Entry point 
         void loop();
-
-        template<class T>
-        bool send(const T& message) {
-            return m_messages.send_multi(
-                boost::tie(
-                    message.type,
-                    message
-                )
-            );
-        }
 
     private:
         // Event loop callback handling and dispatching
@@ -54,12 +44,12 @@ class overseer_t:
 
     private:
         context_t& m_context;
+        manifest_t& m_manifest;
 
         // Messaging
         networking::channel_t m_messages;
 
         // Application instance
-        app_t& m_app;
         boost::shared_ptr<plugin::module_t> m_module;
 
         // Event loop

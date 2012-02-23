@@ -31,7 +31,8 @@ struct is_regular_file {
 };
 
 registry_t::registry_t(context_t& context):
-    m_context(context)
+    m_context(context),
+    m_log(context, "registry")
 {
     if(lt_dlinit() != 0) {
         throw std::runtime_error("unable to initialize the module loader");
@@ -84,23 +85,28 @@ registry_t::registry_t(context_t& context):
                     info++;
                 }
             } else {
+                m_log.error(
+                    "invalid interface in '%s' - %s",
 #if BOOST_FILESYSTEM_VERSION == 3
-                m_context.log().emit(LOG_ERR, "registry: invalid interface in '%s' - %s",
-                    it->path().string().c_str(), lt_dlerror());
+                    it->path().string().c_str(), 
 #else
-                m_context.log().emit(LOG_ERR, "registry: invalid interface in '%s' - %s",
-                    it->string().c_str(), lt_dlerror());
+                    it->string().c_str(),
 #endif
+                    lt_dlerror()
+                );
+
                 lt_dlclose(plugin);
             }
         } else {
+            m_log.error(
+                "unable to load '%s' - %s",
 #if BOOST_FILESYSTEM_VERSION == 3
-            m_context.log().emit(LOG_ERR, "registry: unable to load '%s' - %s", 
-                it->path().string().c_str(), lt_dlerror());
+                it->path().string().c_str(), 
 #else
-            m_context.log().emit(LOG_ERR, "registry: unable to load '%s' - %s",
-                it->string().c_str(), lt_dlerror());
+                it->string().c_str(),
 #endif
+                lt_dlerror()
+            );
         }
 
         ++it;
@@ -111,7 +117,7 @@ registry_t::registry_t(context_t& context):
     }
 
     std::string plugins(boost::algorithm::join(types, ", "));
-    m_context.log().emit(LOG_NOTICE, "registry: available modules - %s", plugins.c_str());
+    m_log.info("available modules - %s", plugins.c_str());
 }
 
 registry_t::~registry_t() {
@@ -125,13 +131,3 @@ registry_t::~registry_t() {
 bool registry_t::exists(const std::string& type) {
     return (m_factories.find(type) != m_factories.end());
 }
-
-const boost::shared_ptr<registry_t>& registry_t::instance(context_t& context) {
-    if(!g_object.get()) {
-        g_object.reset(new registry_t(context));
-    }
-
-    return g_object;
-}
-
-boost::shared_ptr<registry_t> registry_t::g_object;

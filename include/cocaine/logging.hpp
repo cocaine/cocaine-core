@@ -11,29 +11,27 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_SLAVE_GENERIC_HPP
-#define COCAINE_SLAVE_GENERIC_HPP
+#ifndef COCAINE_LOGGING_HPP
+#define COCAINE_LOGGING_HPP
 
-#include "cocaine/slaves/base.hpp"
+#include "cocaine/common.hpp"
+#include "cocaine/context.hpp"
 
-namespace cocaine { namespace engine { namespace slave {
+namespace cocaine { namespace logging {
 
-class generic_t:
-    public slave_t
-{
-    public:
-        generic_t(context_t& context, manifest_t& manifest);
-
-        virtual void reap();
-
-    private:
-        void signal(ev::child&, int);
-
-    private:
-        pid_t m_pid;
-        ev::child m_child_watcher;
+class sink_t {
 };
 
-}}}
+class emitter_t {
+    public:
+        emitter_t(context_t& context, const std::string& source);
+
+        void debug(const char* format, ...);
+        void info(const char* format, ...);
+        void warning(const char* format, ...);
+        void error(const char* format, ...);
+};
+
+}}
 
 #endif

@@ -16,6 +16,8 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/context.hpp"
+#include "cocaine/logging.hpp"
+#include "cocaine/manifest.hpp"
 
 namespace cocaine { namespace plugin {
 
@@ -57,29 +59,30 @@ class module_t:
     public boost::noncopyable
 {
     public:
-        module_t(context_t& context, app_t& app):
+        module_t(context_t& context, engine::manifest_t& manifest):
             m_context(context),
-            m_app(app),
-            m_logger(context, "engine " + app.name)
+            m_manifest(manifest),
+            m_log(context, "engine " + manifest.name)
         {
-            m_logger.debug(m_app.type + " module constructing");
+            m_log.debug("%s module constructing", m_manifest.type.c_str());
         }
 
         virtual ~module_t() {
-            m_logger.debug(m_app.type + " module destructing");
+            m_log.debug("%s module destructing", m_manifest.type.c_str());
         }
 
         virtual void invoke(invocation_context_t& context) = 0;
 
     private:
         context_t& m_context;
-        app_t& m_app;
+        engine::manifest_t& m_manifest;
+        logging::emitter_t m_log;
 };
 
 // Plugin initialization
 // ---------------------
 
-typedef module_t* (*factory_fn_t)(context_t& context, app_t& app);
+typedef module_t* (*factory_fn_t)(context_t& context, engine::manifest_t& manifest);
 
 typedef struct {
     const char* type;

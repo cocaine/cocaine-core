@@ -16,6 +16,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
+#include "cocaine/logging.hpp"
 #include "cocaine/networking.hpp"
 
 namespace cocaine { namespace core {
