@@ -134,7 +134,7 @@ void overseer_t::process(ev::idle&, int) {
                 break;
             }
             
-            case events::terminate_t::code: {
+            case 2: {
                 terminate();
             }
         }
