@@ -11,11 +11,12 @@
 // limitations under the License.
 //
 
+#include "cocaine/slaves/base.hpp"
+
 #include "cocaine/context.hpp"
 #include "cocaine/dealer/types.hpp"
 #include "cocaine/drivers/base.hpp"
 #include "cocaine/engine.hpp"
-#include "cocaine/slaves/base.hpp"
 
 using namespace cocaine::engine::slave;
 
@@ -65,7 +66,7 @@ void slave_t::react(const events::heartbeat_t& event) {
     }
     
     m_log.debug(
-        "resetting timeout to %.02f seconds", 
+        "resetting the heartbeat timeout to %.02f seconds", 
         m_context.config.engine.heartbeat_timeout
     );
         
@@ -73,7 +74,12 @@ void slave_t::react(const events::heartbeat_t& event) {
 
 }
 
-bool slave_t::operator==(const slave_t& other) {
+void slave_t::react(const events::terminate_t& event) {
+    m_log.debug("reaping");
+    reap();
+}
+
+bool slave_t::operator==(const slave_t& other) const {
     return id() == other.id();
 }
 
@@ -94,20 +100,6 @@ void slave_t::timeout(ev::timer&, int) {
     process_event(events::terminate_t());
 }
 
-void alive::react(const events::invoke_t& event) {
-    context<slave_t>().log().debug("assigned a job");
-    
-    m_job = event.job;
-    m_job->process_event(event);
-}
-
-void alive::react(const events::release_t& event) {
-    context<slave_t>().log().debug("job completed");
-    
-    m_job->process_event(event);
-    m_job.reset();
-}
-
 alive::~alive() {
     if(m_job && !m_job->state_downcast<const job::complete*>()) {
         context<slave_t>().log().debug(
@@ -117,13 +109,32 @@ alive::~alive() {
        
         // NOTE: Allow the queue to grow beyond its capacity. 
         m_job->driver().engine().enqueue(m_job, true);
+        m_job.reset();
     }
 }
 
-dead::dead(my_context ctx):
-    my_base(ctx)
-{
-    context<slave_t>().log().debug("reaping");
-    context<slave_t>().reap();
+void alive::react(const events::invoke_t& event) {
+    // TEST: Ensure that no job is being lost here
+    BOOST_ASSERT(!m_job);
+
+    context<slave_t>().log().debug(
+        "assigned a '%s' job",
+        event.job->driver().method().c_str()
+    );
+    
+    m_job = event.job;
+    m_job->process_event(event);
 }
 
+void alive::react(const events::release_t& event) {
+    // TEST: Ensure that the job is in fact here
+    BOOST_ASSERT(m_job);
+
+    context<slave_t>().log().debug(
+        "completed a '%s' job",
+        m_job->driver().method().c_str()
+    );
+    
+    m_job->process_event(event);
+    m_job.reset();
+}

@@ -13,10 +13,11 @@
 
 #include <sys/wait.h>
 
+#include "cocaine/slaves/generic.hpp"
+
 #include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/overseer.hpp"
-#include "cocaine/slaves/process.hpp"
 
 using namespace cocaine::engine::slave;
 

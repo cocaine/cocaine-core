@@ -83,8 +83,8 @@ manifest_t::manifest_t(context_t& context, const std::string& name, const Json::
 engine_t::engine_t(context_t& context, const std::string& name, const Json::Value& manifest):
     m_running(true),
     m_context(context),
-    m_log(context, name),
     m_manifest(context, name, manifest),
+    m_log(context, name),
     m_messages(context, ZMQ_ROUTER)
 {
     m_log.debug("constructing");

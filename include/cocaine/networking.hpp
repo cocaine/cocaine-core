@@ -15,7 +15,6 @@
 #define COCAINE_NETWORKING_HPP
 
 #include <boost/tuple/tuple.hpp>
-
 #include <msgpack.hpp>
 
 #include "cocaine/common.hpp"
@@ -240,7 +239,9 @@ class channel_t:
             try { 
                 msgpack::unpack(
                     &unpacked,
-                    static_cast<const char*>(message.data()), message.size());
+                    static_cast<const char*>(message.data()), message.size()
+                );
+                
                 unpacked.get().convert(&result);
             } catch(const std::bad_cast& e) {
                 throw std::runtime_error(std::string("networking: corrupted object - ") + e.what());

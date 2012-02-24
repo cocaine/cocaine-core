@@ -15,7 +15,6 @@
 #define COCAINE_STORAGE_FILES_HPP
 
 #include <boost/filesystem.hpp>
-#include <boost/thread/mutex.hpp>
 
 #include "cocaine/storages/base.hpp"
 

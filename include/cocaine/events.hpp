@@ -16,8 +16,8 @@
 
 #include <boost/statechart/event.hpp>
 
-#include "cocaine/dealer/types.hpp"
 #include "cocaine/forwards.hpp"
+#include "cocaine/dealer/types.hpp"
 
 namespace cocaine { namespace engine { namespace events {
 
@@ -25,15 +25,11 @@ namespace sc = boost::statechart;
 
 struct heartbeat_t:
     public sc::event<heartbeat_t>
-{
-    static const int code = 1;
-};
+{ };
 
 struct terminate_t:
     public sc::event<terminate_t>
-{
-    static const int code = 2;
-};
+{ };
 
 struct enqueue_t:
     public sc::event<enqueue_t>

@@ -19,9 +19,11 @@
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/logging.hpp"
+
 #include "cocaine/manifest.hpp"
 #include "cocaine/networking.hpp"
 #include "cocaine/slaves.hpp"
+
 #include "cocaine/helpers/tuples.hpp"
 
 namespace cocaine { namespace engine {
@@ -66,16 +68,25 @@ class engine_t:
         };
 
     public:
-        engine_t(context_t& context, const std::string& name, const Json::Value& manifest); 
+        engine_t(context_t& context, 
+                 const std::string& name, 
+                 const Json::Value& manifest); 
+
         ~engine_t();
 
         Json::Value start();
         Json::Value stop();
         Json::Value info() const;
 
-        template<class Selector, class T>
-        pool_map_t::iterator unicast(const Selector& selector, const T& command) {
-            pool_map_t::iterator it(std::find_if(m_pool.begin(), m_pool.end(), selector));
+        template<class S, class T>
+        pool_map_t::iterator unicast(const S& selector, const T& message) {
+            pool_map_t::iterator it(
+                std::find_if(
+                    m_pool.begin(), 
+                    m_pool.end(), 
+                    selector
+                )
+            );
 
             if(it != m_pool.end()) {
                 m_messages.send_multi(
@@ -83,7 +94,7 @@ class engine_t:
                         boost::tie(
                             networking::protect(it->second->id())
                         ),
-                        command
+                        message
                     )
                 );
             }
@@ -115,10 +126,10 @@ class engine_t:
     private:
         bool m_running;
         
-        // Runtime context
         context_t& m_context;
-        logging::emitter_t m_log;
         manifest_t m_manifest;
+        
+        logging::emitter_t m_log;
 
         // Application tasks
         task_map_t m_tasks;

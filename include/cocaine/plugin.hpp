@@ -17,6 +17,7 @@
 #include "cocaine/common.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
+
 #include "cocaine/manifest.hpp"
 
 namespace cocaine { namespace plugin {

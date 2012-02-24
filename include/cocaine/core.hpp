@@ -17,6 +17,7 @@
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/logging.hpp"
+
 #include "cocaine/networking.hpp"
 
 namespace cocaine { namespace core {
@@ -47,6 +48,7 @@ class core_t:
         Json::Value create_engine(const std::string& name, 
                                   const Json::Value& manifest, 
                                   bool recovering = false);
+        
         Json::Value delete_engine(const std::string& name);
 
         Json::Value info() const;

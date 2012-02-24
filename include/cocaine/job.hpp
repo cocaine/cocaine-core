@@ -19,11 +19,13 @@
 #include <boost/statechart/in_state_reaction.hpp>
 #include <boost/statechart/transition.hpp>
 
-#include "cocaine/dealer/types.hpp"
 #include "cocaine/common.hpp"
-#include "cocaine/events.hpp"
 #include "cocaine/forwards.hpp"
+
+#include "cocaine/events.hpp"
 #include "cocaine/networking.hpp"
+
+#include "cocaine/dealer/types.hpp"
 
 namespace cocaine { namespace engine { namespace job {
 
@@ -48,17 +50,18 @@ class job_t:
     public:
         job_t(driver::driver_t& driver,
               client::policy_t policy = client::policy_t());
+
         virtual ~job_t();
 
-        virtual void react(const events::push_t& event) {
+        virtual inline void react(const events::push_t& event) {
             throw unsupported_t();
         }
 
-        virtual void react(const events::error_t& event) {
+        virtual inline void react(const events::error_t& event) {
             throw unsupported_t();
         }
 
-        virtual void react(const events::release_t& event) {
+        virtual inline void react(const events::release_t& event) {
             throw unsupported_t();
         }
 

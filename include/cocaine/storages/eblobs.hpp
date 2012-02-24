@@ -15,7 +15,6 @@
 #define COCAINE_STORAGE_EBLOBS_HPP
 
 #include <boost/filesystem.hpp>
-
 #include <eblob/eblob.hpp>
 
 #include "cocaine/storages/base.hpp"

@@ -15,14 +15,15 @@
 #define COCAINE_SLAVE_BASE_HPP
 
 #include <boost/statechart/state_machine.hpp>
-#include <boost/statechart/state.hpp>
+#include <boost/statechart/simple_state.hpp>
 #include <boost/statechart/in_state_reaction.hpp>
 #include <boost/statechart/transition.hpp>
 
 #include "cocaine/common.hpp"
-#include "cocaine/events.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/logging.hpp"
+
+#include "cocaine/events.hpp"
 
 namespace cocaine { namespace engine { namespace slave {
 
@@ -43,7 +44,9 @@ struct slave_t:
         virtual ~slave_t();
         
         void react(const events::heartbeat_t& event);
-        bool operator==(const slave_t& other);
+        void react(const events::terminate_t& event);
+
+        bool operator==(const slave_t& other) const;
 
         virtual void reap() = 0;
 
@@ -71,7 +74,7 @@ struct unknown:
     public:
         typedef boost::mpl::list<
             sc::transition<events::heartbeat_t, alive, slave_t, &slave_t::react>,
-            sc::transition<events::terminate_t, dead>
+            sc::transition<events::terminate_t, dead,  slave_t, &slave_t::react>
         > reactions;
 };
 
@@ -81,14 +84,15 @@ struct alive:
     public:
         typedef boost::mpl::list<
             sc::in_state_reaction<events::heartbeat_t, slave_t, &slave_t::react>,
-            sc::transition<events::terminate_t, dead>
+            sc::transition<events::terminate_t, dead,  slave_t, &slave_t::react>
         > reactions;
+
+        ~alive();
 
         void react(const events::invoke_t& event);
         void react(const events::release_t& event);
 
-        ~alive();
-
+    public:
         const boost::shared_ptr<job::job_t>& job() const {
             return m_job;
         }
@@ -114,17 +118,15 @@ struct busy:
             events::release_t, idle, alive, &alive::react
         > reactions;
 
+    public:
         const boost::shared_ptr<job::job_t>& job() const {
             return context<alive>().job();
         }
 };
 
 struct dead:
-    public sc::state<dead, slave_t>
-{
-    public:
-        dead(my_context ctx); 
-};
+    public sc::simple_state<dead, slave_t>
+{ };
 
 }}}
 

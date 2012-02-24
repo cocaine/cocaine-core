@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_UNIQUE_ID_HPP
-#define COCAINE_UNIQUE_ID_HPP
+#ifndef COCAINE_HELPERS_UNIQUE_ID_HPP
+#define COCAINE_HELPERS_UNIQUE_ID_HPP
 
 #include <uuid/uuid.h>
 
