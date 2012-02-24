@@ -21,7 +21,6 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
-
 #include "cocaine/events.hpp"
 #include "cocaine/networking.hpp"
 

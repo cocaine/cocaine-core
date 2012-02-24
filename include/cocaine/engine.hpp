@@ -19,7 +19,6 @@
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/logging.hpp"
-
 #include "cocaine/manifest.hpp"
 #include "cocaine/networking.hpp"
 #include "cocaine/slaves.hpp"

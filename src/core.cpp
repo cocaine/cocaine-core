@@ -12,13 +12,13 @@
 //
 
 #include <sstream>
-
 #include <boost/algorithm/string/join.hpp>
 #include <boost/assign.hpp>
 
+#include "cocaine/core.hpp"
+
 #include "cocaine/auth.hpp"
 #include "cocaine/context.hpp"
-#include "cocaine/core.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/job.hpp"
 #include "cocaine/storages/base.hpp"
@@ -26,8 +26,6 @@
 using namespace cocaine;
 using namespace cocaine::core;
 using namespace cocaine::engine;
-using namespace cocaine::networking;
-using namespace cocaine::storage;
 
 core_t::core_t(config_t config, boost::shared_ptr<logging::sink_t> sink):
     m_context(config, sink),

@@ -11,12 +11,14 @@
 // limitations under the License.
 //
 
-#include "cocaine/context.hpp"
-#include "cocaine/dealer/types.hpp"
-#include "cocaine/engine.hpp"
 #include "cocaine/overseer.hpp"
+
+#include "cocaine/context.hpp"
+#include "cocaine/engine.hpp"
 #include "cocaine/plugin.hpp"
 #include "cocaine/registry.hpp"
+
+#include "cocaine/dealer/types.hpp"
 
 using namespace cocaine;
 using namespace cocaine::engine;

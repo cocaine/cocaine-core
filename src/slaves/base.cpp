@@ -14,9 +14,10 @@
 #include "cocaine/slaves/base.hpp"
 
 #include "cocaine/context.hpp"
-#include "cocaine/dealer/types.hpp"
 #include "cocaine/drivers/base.hpp"
 #include "cocaine/engine.hpp"
+
+#include "cocaine/dealer/types.hpp"
 
 using namespace cocaine::engine::slave;
 

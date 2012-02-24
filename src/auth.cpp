@@ -16,26 +16,29 @@
 #include <openssl/err.h>
 
 #include "cocaine/auth.hpp"
+
 #include "cocaine/context.hpp"
 #include "cocaine/storages/base.hpp"
 
 using namespace cocaine;
 using namespace cocaine::crypto;
-using namespace cocaine::storage;
 
 auth_t::auth_t(context_t& context):
-    m_log(context, "auth"),
-    m_md_context(EVP_MD_CTX_create())
+    m_md_context(EVP_MD_CTX_create()),
+    m_log(context, "auth")
 {
     // Initialize error strings
     ERR_load_crypto_strings();
 
     // Load the credentials
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
-    Json::Value keys(storage_t::create(context)->all("keys"));
+    Json::Value keys(context.storage().all("keys"));
     Json::Value::Members names(keys.getMemberNames());
 
-    for(Json::Value::Members::const_iterator it = names.begin(); it != names.end(); ++it) {
+    for(Json::Value::Members::const_iterator it = names.begin();
+        it != names.end();
+        ++it) 
+    {
         std::string identity(*it);
         Json::Value object(keys[identity]);
 

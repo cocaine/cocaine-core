@@ -11,16 +11,16 @@
 // limitations under the License.
 //
 
-#include <stdarg.h>
+#include <cstdarg>
 #include <iostream>
 
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 
-#include "cocaine/config.hpp"
-#include "cocaine/context.hpp"
 #include "cocaine/common.hpp"
+#include "cocaine/config.hpp"
 #include "cocaine/core.hpp"
+
 #include "cocaine/helpers/pid_file.hpp"
 
 using namespace cocaine;

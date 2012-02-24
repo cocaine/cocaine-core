@@ -15,8 +15,9 @@
 #include <boost/iterator/filter_iterator.hpp>
 #include <boost/algorithm/string/join.hpp>
 
-#include "cocaine/context.hpp"
 #include "cocaine/registry.hpp"
+
+#include "cocaine/context.hpp"
 
 using namespace cocaine;
 using namespace cocaine::core;

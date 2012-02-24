@@ -22,15 +22,14 @@
 
 #include <boost/version.hpp>
 #include <boost/noncopyable.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/assert.hpp>
 
 #if BOOST_VERSION >= 104000
 # include <boost/ptr_container/ptr_unordered_map.hpp>
 #else
 # include <boost/ptr_container/ptr_map.hpp>
 #endif
-
-#include <boost/shared_ptr.hpp>
-#include <boost/assert.hpp>
 
 #if BOOST_VERSION < 103500
 # undef BOOST_VERIFY

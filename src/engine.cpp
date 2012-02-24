@@ -14,9 +14,10 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/assign.hpp>
 
+#include "cocaine/engine.hpp"
+
 #include "cocaine/context.hpp"
 #include "cocaine/drivers.hpp"
-#include "cocaine/engine.hpp"
 #include "cocaine/registry.hpp"
 
 using namespace cocaine::engine;

@@ -22,7 +22,6 @@
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/logging.hpp"
-
 #include "cocaine/events.hpp"
 
 namespace cocaine { namespace engine { namespace slave {

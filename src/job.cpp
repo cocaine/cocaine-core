@@ -11,9 +11,10 @@
 // limitations under the License.
 //
 
+#include "cocaine/job.hpp"
+
 #include "cocaine/drivers/base.hpp"
 #include "cocaine/engine.hpp"
-#include "cocaine/job.hpp"
 
 using namespace cocaine::engine::job;
 
