@@ -21,16 +21,16 @@
 
 using namespace cocaine::engine::slave;
 
-generic_t::generic_t(context_t& context, manifest_t& manifest):
-    slave_t(context)
+generic_t::generic_t(context_t& ctx, app_t& app):
+    slave_t(ctx, app)
 {
     m_pid = fork();
 
     if(m_pid == 0) {
         // NOTE: In order to reinitialize the subsystems in a new process
-        // context.reset();
+        ctx.reset();
 
-        overseer_t overseer(id(), context, manifest);
+        overseer_t overseer(id(), ctx, app);
         overseer.loop();
         
         exit(EXIT_SUCCESS);
@@ -57,7 +57,7 @@ void generic_t::reap() {
 
 void generic_t::signal(ev::child&, int) {
     if(!state_downcast<const dead*>()) {
-        m_log.debug("got a child termination signal");
+        log().debug("got a child termination signal");
         process_event(events::terminate_t());
     }
 }

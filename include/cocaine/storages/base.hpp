@@ -23,7 +23,7 @@ class storage_t:
     public boost::noncopyable
 {
     public:
-        static boost::shared_ptr<storage_t> create(context_t& context);
+        static boost::shared_ptr<storage_t> create(context_t& ctx);
     
     public:
         virtual void put(const std::string& ns, const std::string& key, const Json::Value& value) = 0;

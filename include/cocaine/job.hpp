@@ -21,6 +21,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
+
 #include "cocaine/events.hpp"
 #include "cocaine/networking.hpp"
 
@@ -30,16 +31,16 @@ namespace cocaine { namespace engine { namespace job {
 
 namespace sc = boost::statechart;
 
+struct unsupported_t:
+    public std::exception
+{ };
+
 // Job states
 struct incomplete;
     struct unknown;
     struct waiting;
     struct processing;
 struct complete;
-
-struct unsupported_t:
-    public std::exception
-{ };
 
 // Job FSM
 class job_t:

@@ -23,16 +23,16 @@
 using namespace cocaine;
 using namespace cocaine::crypto;
 
-auth_t::auth_t(context_t& context):
-    m_md_context(EVP_MD_CTX_create()),
-    m_log(context, "auth")
+auth_t::auth_t(context_t& ctx):
+    object_t(ctx, "auth"),
+    m_md_context(EVP_MD_CTX_create())
 {
     // Initialize error strings
     ERR_load_crypto_strings();
 
     // Load the credentials
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
-    Json::Value keys(context.storage().all("keys"));
+    Json::Value keys(context().storage().all("keys"));
     Json::Value::Members names(keys.getMemberNames());
 
     for(Json::Value::Members::const_iterator it = names.begin();
@@ -43,7 +43,7 @@ auth_t::auth_t(context_t& context):
         Json::Value object(keys[identity]);
 
         if(!object["key"].isString() || object["key"].empty()) {
-            m_log.error("key for user '%s' is malformed", identity.c_str());
+            log().error("key for user '%s' is malformed", identity.c_str());
             continue;
         }
 
@@ -58,7 +58,7 @@ auth_t::auth_t(context_t& context):
         if(pkey != NULL) {
             m_keys.insert(std::make_pair(identity, pkey));
         } else { 
-            m_log.error("key for user '%s' is invalid - %s",
+            log().error("key for user '%s' is invalid - %s",
                 identity.c_str(), 
                 ERR_reason_error_string(ERR_get_error())
             );
@@ -67,7 +67,7 @@ auth_t::auth_t(context_t& context):
         BIO_free(bio);
     }
     
-    m_log.info("loaded %zu public key(s)", m_keys.size());
+    log().info("loaded %zu public key(s)", m_keys.size());
 }
 
 auth_t::~auth_t() {

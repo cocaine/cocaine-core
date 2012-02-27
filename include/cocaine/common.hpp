@@ -31,15 +31,6 @@
 # include <boost/ptr_container/ptr_map.hpp>
 #endif
 
-#if BOOST_VERSION < 103500
-# undef BOOST_VERIFY
-# if defined(BOOST_DISABLE_ASSERTS) || ( !defined(BOOST_ENABLE_ASSERT_HANDLER) && defined(NDEBUG) )
-#  define BOOST_VERIFY(expr) ((void)(expr))
-# else
-#  define BOOST_VERIFY(expr) BOOST_ASSERT(expr)
-# endif
-#endif
-
 #define EV_MINIMAL 0
 
 #include <ev++.h>

@@ -24,7 +24,7 @@ class mongo_storage_t:
     public storage_t
 {
     public:
-        mongo_storage_t(context_t& context);
+        mongo_storage_t(context_t& ctx);
 
         virtual void put(const std::string& ns, const std::string& key, const Json::Value& value);
 

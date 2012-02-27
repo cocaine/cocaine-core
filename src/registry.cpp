@@ -21,7 +21,6 @@
 
 using namespace cocaine;
 using namespace cocaine::core;
-using namespace cocaine::plugin;
 
 namespace fs = boost::filesystem;
 
@@ -31,15 +30,14 @@ struct is_regular_file {
     }
 };
 
-registry_t::registry_t(context_t& context):
-    m_context(context),
-    m_log(context, "registry")
+registry_t::registry_t(context_t& ctx):
+    object_t(ctx, "registry")
 {
     if(lt_dlinit() != 0) {
         throw std::runtime_error("unable to initialize the module loader");
     }
 
-    fs::path path(m_context.config.core.plugins);
+    fs::path path(context().config.core.modules);
 
     if(!fs::exists(path)) {
         throw std::runtime_error(path.string() + " does not exist");
@@ -51,7 +49,7 @@ registry_t::registry_t(context_t& context):
     lt_dladvise_init(&advice);
     lt_dladvise_global(&advice);
 
-    lt_dlhandle plugin;
+    lt_dlhandle module;
     initialize_fn_t initialize;
     std::vector<std::string> types;
 
@@ -60,33 +58,37 @@ registry_t::registry_t(context_t& context):
     file_iterator it = file_iterator(is_regular_file(), fs::directory_iterator(path)), end;
 
     while(it != end) {
-        // Load the plugin
+        // Load the module
 #if BOOST_FILESYSTEM_VERSION == 3
-        std::string plugin_path = it->path().string();
+        std::string module_path = it->path().string();
 #else
-        std::string plugin_path = it->string();
+        std::string module_path = it->string();
 #endif
 
-        plugin = lt_dlopenadvise(plugin_path.c_str(), advice);
+        module = lt_dlopenadvise(module_path.c_str(), advice);
 
-        if(plugin) {
-            // Get the plugin info
-            initialize = reinterpret_cast<initialize_fn_t>(lt_dlsym(plugin, "initialize"));
+        if(module) {
+            // Get the module info
+            initialize = reinterpret_cast<initialize_fn_t>(lt_dlsym(module, "initialize"));
 
             if(initialize) {
                 const module_info_t* info = initialize();
-                m_plugins.push_back(plugin);
+                m_modules.push_back(module);
 
                 // Fetch all the available modules from it
                 while(info->type && info->factory) {
-                    m_factories.insert(std::make_pair(
-                        info->type,
-                        info->factory));
+                    m_factories.insert(
+                        std::make_pair(
+                            info->type,
+                            info->factory
+                        )
+                    );
+                    
                     types.push_back(info->type);
                     info++;
                 }
             } else {
-                m_log.error(
+                log().error(
                     "invalid interface in '%s' - %s",
 #if BOOST_FILESYSTEM_VERSION == 3
                     it->path().string().c_str(), 
@@ -96,10 +98,10 @@ registry_t::registry_t(context_t& context):
                     lt_dlerror()
                 );
 
-                lt_dlclose(plugin);
+                lt_dlclose(module);
             }
         } else {
-            m_log.error(
+            log().error(
                 "unable to load '%s' - %s",
 #if BOOST_FILESYSTEM_VERSION == 3
                 it->path().string().c_str(), 
@@ -114,15 +116,18 @@ registry_t::registry_t(context_t& context):
     }
 
     if(!m_factories.size()) {
-        throw std::runtime_error("no plugins found");
+        throw std::runtime_error("no modules have been found");
     }
 
-    std::string plugins(boost::algorithm::join(types, ", "));
-    m_log.info("available modules - %s", plugins.c_str());
+    std::string modules(boost::algorithm::join(types, ", "));
+    log().info("available modules - %s", modules.c_str());
 }
 
 registry_t::~registry_t() {
-    for(std::vector<lt_dlhandle>::iterator it = m_plugins.begin(); it != m_plugins.end(); ++it) {
+    for(std::vector<lt_dlhandle>::iterator it = m_modules.begin();
+        it != m_modules.end(); 
+        ++it) 
+    {
         lt_dlclose(*it);
     }
 

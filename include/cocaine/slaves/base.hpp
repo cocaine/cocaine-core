@@ -21,7 +21,9 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
+#include "cocaine/object.hpp"
 #include "cocaine/logging.hpp"
+
 #include "cocaine/events.hpp"
 
 namespace cocaine { namespace engine { namespace slave {
@@ -37,7 +39,8 @@ struct dead;
 struct slave_t:
     public sc::state_machine<slave_t, unknown>,
     public birth_control_t<slave_t>,
-    public unique_id_t
+    public unique_id_t,
+    public object_t
 {
     public:
         virtual ~slave_t();
@@ -49,19 +52,11 @@ struct slave_t:
 
         virtual void reap() = 0;
 
-        inline logging::emitter_t& log() {
-            return m_log;
-        }
-
     protected:
-        slave_t(context_t& context);
+        slave_t(context_t& ctx, app_t& app);
 
     private:
         void timeout(ev::timer&, int);
-
-    protected:
-        context_t& m_context;
-        logging::emitter_t m_log;
 
     private:
         ev::timer m_heartbeat_timer;

@@ -14,8 +14,6 @@
 #ifndef COCAINE_CONTEXT_HPP
 #define COCAINE_CONTEXT_HPP
 
-#include <syslog.h>
-
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 
@@ -24,7 +22,7 @@ namespace cocaine {
 struct config_t {
     struct {
         // Plugin path
-        std::string plugins;
+        std::string modules;
 
         // Administration and routing
         std::vector<std::string> endpoints;
@@ -56,27 +54,26 @@ class context_t:
     public boost::noncopyable
 {
     public:
-        context_t(config_t config, boost::shared_ptr<logging::sink_t> sink);
+        context_t(config_t config, std::auto_ptr<logging::sink_t> sink);
 
-        inline zmq::context_t& io() {
-            if(!m_io) {
-                throw std::runtime_error("networking is not initialized");
-            }
+        void reset();
 
-            return *m_io;
-        }
-
+    public:
+        crypto::auth_t& auth();
+        zmq::context_t& io();
+        core::registry_t& registry();
         logging::sink_t& sink();
         storage::storage_t& storage();
-        crypto::auth_t& auth();
-        core::registry_t& registry();
 
     public:
         config_t config;
 
     private:
+        boost::shared_ptr<crypto::auth_t> m_auth;
         boost::shared_ptr<zmq::context_t> m_io;
-        boost::shared_ptr<logging::sink_t> m_log;
+        boost::shared_ptr<core::registry_t> m_registry;
+        boost::shared_ptr<logging::sink_t> m_sink;
+        boost::shared_ptr<storage::storage_t> m_storage;
 };
 
 }

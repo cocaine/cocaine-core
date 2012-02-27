@@ -22,7 +22,7 @@ class generic_t:
     public slave_t
 {
     public:
-        generic_t(context_t& context, manifest_t& manifest);
+        generic_t(context_t& ctx, app_t& app);
 
         virtual void reap();
 

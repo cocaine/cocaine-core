@@ -11,19 +11,19 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_MANIFEST_HPP
-#define COCAINE_MANIFEST_HPP
+#ifndef COCAINE_APP_HPP
+#define COCAINE_APP_HPP
 
 #include "cocaine/common.hpp"
 #include "cocaine/context.hpp"
 
 namespace cocaine { namespace engine {
 
-class manifest_t {
+class app_t {
     public:
-        manifest_t(context_t& context, 
-                   const std::string& name, 
-                   const Json::Value& manifest);
+        app_t(context_t& ctx, 
+              const std::string& name, 
+              const Json::Value& manifest);
 
         std::string name;
         std::string type;

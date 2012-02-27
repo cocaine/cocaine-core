@@ -24,7 +24,7 @@ class file_storage_t:
     public storage_t
 {
     public:
-        file_storage_t(context_t& context);
+        file_storage_t(context_t& ctx);
 
         virtual void put(const std::string& ns, const std::string& key, const Json::Value& value);
 

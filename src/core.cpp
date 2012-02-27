@@ -27,33 +27,34 @@ using namespace cocaine;
 using namespace cocaine::core;
 using namespace cocaine::engine;
 
-core_t::core_t(config_t config, boost::shared_ptr<logging::sink_t> sink):
-    m_context(config, sink),
-    m_log(m_context, "core"),
+core_t::core_t(context_t& ctx):
+    object_t(ctx, "core"),
     m_birthstamp(ev::get_default_loop().now()),
-    m_server(m_context, ZMQ_REP, boost::algorithm::join(
+    m_server(ctx, ZMQ_REP, boost::algorithm::join(
         boost::assign::list_of
-            (m_context.config.core.instance)
-            (m_context.config.core.hostname),
+            (ctx.config.core.instance)
+            (ctx.config.core.hostname),
         "/")
     )
 {
+    log().debug("constructing");
+    
     // Information
     int minor, major, patch;
     zmq_version(&major, &minor, &patch);
 
-    m_log.info("using libev version %d.%d", ev_version_major(), ev_version_minor());
-    m_log.info("using libmsgpack version %s", msgpack_version());
-    m_log.info("using libzmq version %d.%d.%d", major, minor, patch);
-    m_log.info("route to this node is '%s'", m_server.route().c_str());
+    log().info("using libev version %d.%d", ev_version_major(), ev_version_minor());
+    log().info("using libmsgpack version %s", msgpack_version());
+    log().info("using libzmq version %d.%d.%d", major, minor, patch);
+    log().info("route to this node is '%s'", m_server.route().c_str());
 
     // System socket initialization
     int linger = 0;
 
     m_server.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
 
-    for(std::vector<std::string>::const_iterator it = m_context.config.core.endpoints.begin();
-        it != m_context.config.core.endpoints.end();
+    for(std::vector<std::string>::const_iterator it = context().config.core.endpoints.begin();
+        it != context().config.core.endpoints.end();
         ++it) 
     {
         try {
@@ -62,24 +63,24 @@ core_t::core_t(config_t config, boost::shared_ptr<logging::sink_t> sink):
             throw std::runtime_error(std::string("invalid server endpoint - ") + e.what());
         }
             
-        m_log.info("listening on %s", it->c_str());
+        log().info("listening on %s", it->c_str());
     }
 
     // Automatic discovery support
-    if(!m_context.config.core.announce_endpoint.empty()) {
+    if(!context().config.core.announce_endpoint.empty()) {
         try {
-            m_announces.reset(new socket_t(m_context, ZMQ_PUB));
+            m_announces.reset(new networking::socket_t(context(), ZMQ_PUB));
             m_announces->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
-            m_announces->connect("epgm://" + m_context.config.core.announce_endpoint);
+            m_announces->connect("epgm://" + context().config.core.announce_endpoint);
         } catch(const zmq::error_t& e) {
             throw std::runtime_error(std::string("invalid announce endpoint - ") + e.what());
         }
 
-        m_log.info("announcing on %s", m_context.config.core.announce_endpoint.c_str());
+        log().info("announcing on %s", context().config.core.announce_endpoint.c_str());
 
         m_announce_timer.reset(new ev::timer());
         m_announce_timer->set<core_t, &core_t::announce>(this);
-        m_announce_timer->start(0.0f, m_context.config.core.announce_interval);
+        m_announce_timer->start(0.0f, context().config.core.announce_interval);
     }
 
     m_watcher.set<core_t, &core_t::request>(this);
@@ -106,7 +107,7 @@ core_t::core_t(config_t config, boost::shared_ptr<logging::sink_t> sink):
 }
 
 core_t::~core_t() {
-    m_log.debug("destructing");
+    log().debug("destructing");
 }
 
 void core_t::loop() {
@@ -114,22 +115,23 @@ void core_t::loop() {
 }
 
 void core_t::terminate(ev::sig&, int) {
-    m_log.info("stopping the engines");
-
-    m_engines.clear();
+    if(!m_engines.empty()) {
+        log().info("stopping the engines");
+        m_engines.clear();
+    }
 
     ev::get_default_loop().unloop(ev::ALL);
 }
 
 void core_t::reload(ev::sig&, int) {
-    m_log.info("reloading the apps");
+    log().info("reloading the apps");
 
     m_engines.clear();
 
     try {
         recover();
     } catch(const std::runtime_error& e) {
-        m_log.error("unable to reload the apps - %s", e.what());
+        log().error("unable to reload the apps - %s", e.what());
     }
 }
 
@@ -170,7 +172,7 @@ void core_t::process(ev::idle&, int) {
                     }
 
                     if(!username.empty()) {
-                        m_context.auth().verify(
+                        context().auth().verify(
                             static_cast<const char*>(message.data()),
                             message.size(),
                             static_cast<const unsigned char*>(signature.data()),
@@ -270,14 +272,14 @@ Json::Value core_t::create_engine(const std::string& name, const Json::Value& ma
     }
 
     // Launch the engine
-    std::auto_ptr<engine_t> engine(new engine_t(m_context, name, manifest));
+    std::auto_ptr<engine_t> engine(new engine_t(context(), name, manifest));
     Json::Value result(engine->start());
 
     if(!recovering) {
         try {
-            m_context.storage().put("apps", name, manifest);
+            context().storage().put("apps", name, manifest);
         } catch(const std::runtime_error& e) {
-            m_log.error(
+            log().error(
                 "unable to create the '%s' engine - %s",
                 name.c_str(), e.what()
             );
@@ -300,9 +302,9 @@ Json::Value core_t::delete_engine(const std::string& name) {
     }
 
     try {
-        m_context.storage().remove("apps", name);
+        context().storage().remove("apps", name);
     } catch(const std::runtime_error& e) {
-        m_log.error(
+        log().error(
             "unable to destroy the '%s' engine - %s",
             name.c_str(), e.what()
         );
@@ -336,12 +338,12 @@ Json::Value core_t::info() const {
 
 void core_t::recover() {
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
-    Json::Value root(m_context.storage().all("apps"));
+    Json::Value root(context().storage().all("apps"));
 
     if(root.size()) {
         Json::Value::Members apps(root.getMemberNames());
         
-        m_log.info(
+        log().info(
             "recovering %d %s: %s", 
             root.size(),
             root.size() == 1 ? "app" : "apps", 
@@ -361,11 +363,11 @@ void core_t::recover() {
 }
 
 void core_t::announce(ev::timer&, int) {
-    m_log.debug("announcing the node");
+    log().debug("announcing the node");
 
     std::ostringstream envelope;
 
-    envelope << m_context.config.core.instance << " "
+    envelope << context().config.core.instance << " "
              << m_server.endpoint();
     
     zmq::message_t message(envelope.str().size());

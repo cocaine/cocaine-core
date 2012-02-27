@@ -18,8 +18,10 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
+#include "cocaine/object.hpp"
 #include "cocaine/logging.hpp"
-#include "cocaine/manifest.hpp"
+
+#include "cocaine/app.hpp"
 #include "cocaine/networking.hpp"
 #include "cocaine/slaves.hpp"
 
@@ -27,8 +29,19 @@
 
 namespace cocaine { namespace engine {
 
+namespace rpc {
+    enum codes {
+        heartbeat,
+        terminate,
+        invoke,
+        push,
+        error,
+        release
+    };
+}
+
 class engine_t:
-    public boost::noncopyable
+    public object_t
 {
     public:
 #if BOOST_VERSION >= 104000
@@ -67,7 +80,7 @@ class engine_t:
         };
 
     public:
-        engine_t(context_t& context, 
+        engine_t(context_t& ctx, 
                  const std::string& name, 
                  const Json::Value& manifest); 
 
@@ -103,19 +116,6 @@ class engine_t:
 
         void enqueue(job_queue_t::const_reference job, bool overflow = false);
 
-    public:
-        context_t& context() {
-            return m_context;
-        }
-
-        manifest_t& manifest() {
-            return m_manifest;
-        }
-
-        logging::emitter_t& log() {
-            return m_log;
-        }
-
     private:
         void message(ev::io&, int);
         void process(ev::idle&, int);
@@ -123,12 +123,8 @@ class engine_t:
         void cleanup(ev::timer&, int);
 
     private:
-        bool m_running;
-        
-        context_t& m_context;
-        manifest_t m_manifest;
-        
-        logging::emitter_t m_log;
+        bool m_running;        
+        app_t m_app;
 
         // Application tasks
         task_map_t m_tasks;

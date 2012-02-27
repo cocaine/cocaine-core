@@ -19,17 +19,36 @@
 
 namespace cocaine { namespace logging {
 
+enum logging_level {
+	debug,
+	info,
+	warning,
+	error
+};
+
 class sink_t {
+	public:
+		virtual void emit(logging_level level, const char* format, ...) = 0;
 };
 
 class emitter_t {
     public:
-        emitter_t(context_t& context, const std::string& source);
+        emitter_t(context_t& context, const std::string& source):
+        	m_sink(context.sink()),
+        	m_source(source + ": ")
+        { }
 
-        void debug(const char* format, ...);
-        void info(const char* format, ...);
-        void warning(const char* format, ...);
-        void error(const char* format, ...);
+        void debug(const char* format, ...) { }
+        void info(const char* format, ...) { }
+        void warning(const char* format, ...) { }
+        void error(const char* format, ...) { }
+
+    private:
+    	void emit(logging_level level, const char* format, ...) { }
+
+    private:
+    	sink_t& m_sink;
+    	const std::string m_source;
 };
 
 }}

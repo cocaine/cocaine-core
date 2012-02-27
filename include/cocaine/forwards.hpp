@@ -16,6 +16,7 @@
 
 namespace cocaine {
     class context_t;
+    class object_t;
 
     namespace core {
         class core_t;
@@ -27,8 +28,8 @@ namespace cocaine {
     }
 
     namespace engine {
+        class app_t;
         class engine_t;
-        class manifest_t;
 
         namespace driver {        
             class driver_t;
@@ -48,10 +49,6 @@ namespace cocaine {
     namespace logging {
         class sink_t;
         class emitter_t;
-    }
-
-    namespace plugin {
-        class module_t;
     }
 
     namespace storage {

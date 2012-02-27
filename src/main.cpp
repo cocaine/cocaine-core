@@ -13,12 +13,13 @@
 
 #include <cstdarg>
 #include <iostream>
-
+#include <syslog.h>
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 
 #include "cocaine/common.hpp"
 #include "cocaine/config.hpp"
+#include "cocaine/context.hpp"
 #include "cocaine/core.hpp"
 
 #include "cocaine/helpers/pid_file.hpp"
@@ -41,10 +42,10 @@ class syslog_t:
         }
 
     public:
-        virtual void emit(int priority, const char* format, ...) {
+        virtual void emit(logging::logging_level level, const char* format, ...) {
             va_list args;
             va_start(args, format);
-            syslog(priority, format, args);
+            syslog(level, format, args);
             va_end(args);
         }
 
@@ -154,40 +155,45 @@ int main(int argc, char* argv[]) {
         return EXIT_SUCCESS;
     }
     
-    // Pid file holder
-    std::auto_ptr<helpers::pid_file_t> pidfile;
-
-    // Setting up the logging facility
-    boost::shared_ptr<syslog_t> log(
+    // Setup the logging sink
+    std::auto_ptr<logging::sink_t> sink(
         new syslog_t(
             "cocaine",
             vm.count("verbose") ? LOG_DEBUG : LOG_INFO
         )
     );
 
-    // Daemonizing, if needed
+    // Initialize the runtime context
+    context_t context(config, sink);
+
+    // Setup the contextual logger
+    logging::emitter_t log(context, "main");
+
+    // Will be used to hold the pid file, if needed
+    std::auto_ptr<helpers::pid_file_t> pidfile;
+
+    // Daemonizing, if requested
     if(vm.count("daemonize")) {
         if(daemon(0, 0) < 0) {
-            log->emit(LOG_ERR, "main: daemonization failed");
+            log.error("daemonization failed");
             return EXIT_FAILURE;
         }
 
         try {
             pidfile.reset(new helpers::pid_file_t(vm["pidfile"].as<fs::path>()));
         } catch(const std::runtime_error& e) {
-            log->emit(LOG_ERR, "main: %s", e.what());
+            log.error("%s", e.what());
             return EXIT_FAILURE;
         }
     }
-    
-    // Cocaine core
+
+    // Starting the core
     std::auto_ptr<core::core_t> core;
 
-    // Initializing the core
     try {
-        core.reset(new core::core_t(config, log));
+        core.reset(new core::core_t(context));
     } catch(const std::exception& e) {
-        log->emit(LOG_ERR, "main: unable to start the core - %s", e.what());
+        log.error("unable to start the core - %s", e.what());
         return EXIT_FAILURE;
     }
 
@@ -196,7 +202,7 @@ int main(int argc, char* argv[]) {
     // Cleanup
     core.reset();
 
-    log->emit(LOG_NOTICE, "main: terminated");
-    
+    log.info("terminated");
+
     return EXIT_SUCCESS;
 }

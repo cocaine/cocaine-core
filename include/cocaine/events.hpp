@@ -16,7 +16,9 @@
 
 #include <boost/statechart/event.hpp>
 
+#include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
+
 #include "cocaine/dealer/types.hpp"
 
 namespace cocaine { namespace engine { namespace events {

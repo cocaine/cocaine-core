@@ -16,20 +16,59 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
+#include "cocaine/object.hpp"
+
 #include "cocaine/networking.hpp"
 
 namespace cocaine { namespace engine {
 
+class invocation_site_t {
+    public:
+        void push(const void* data, size_t size);
+
+    public:
+        const void* request;
+        size_t request_size;
+};
+
+class plugin_t:
+    public object_t
+{
+    public:
+        virtual void initialize(app_t& app) = 0;
+        virtual void invoke(invocation_site_t& site) = 0;
+};
+
+class unrecoverable_error_t:
+    public std::runtime_error
+{
+    public:
+        unrecoverable_error_t(const std::string& what):
+            std::runtime_error(what)
+        { }
+};
+
+class recoverable_error_t:
+    public std::runtime_error
+{
+    public:
+        recoverable_error_t(const std::string& what):
+            std::runtime_error(what)
+        { }
+};
+
 class overseer_t:
-    public boost::noncopyable,
-    public unique_id_t
+    public unique_id_t,
+    public object_t
 {
     public:
         overseer_t(const unique_id_t::type& id,
-                   context_t& context,
-                   manifest_t& manifest);
+                   context_t& ctx,
+                   app_t& app);
 
-        // Entry point 
+        ~overseer_t();
+
+        // Entry point
         void loop();
 
     private:
@@ -39,18 +78,16 @@ class overseer_t:
         void pump(ev::timer&, int);
         void timeout(ev::timer&, int);
         void heartbeat(ev::timer&, int);
-
         void terminate();
 
     private:
-        context_t& m_context;
-        manifest_t& m_manifest;
+        app_t& m_app;
 
         // Messaging
         networking::channel_t m_messages;
 
         // Application instance
-        boost::shared_ptr<plugin::module_t> m_module;
+        std::auto_ptr<plugin_t> m_module;
 
         // Event loop
         ev::dynamic_loop m_loop;

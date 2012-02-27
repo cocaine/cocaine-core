@@ -21,11 +21,10 @@
 
 using namespace cocaine::engine::slave;
 
-slave_t::slave_t(context_t& context):
-    m_context(context),
-    m_log(context, "slave " + id())
+slave_t::slave_t(context_t& ctx, app_t& app):
+    object_t(ctx, app.name + " slave " + id())
 {
-    m_log.debug("constructing");
+    log().debug("constructing");
 
     // NOTE: These are the 10 seconds for the slave to come alive   
     m_heartbeat_timer.set<slave_t, &slave_t::timeout>(this);
@@ -35,7 +34,7 @@ slave_t::slave_t(context_t& context):
 }
 
 slave_t::~slave_t() {
-    m_log.debug("destructing");
+    log().debug("destructing");
     
     m_heartbeat_timer.stop();
     
@@ -48,7 +47,7 @@ slave_t::~slave_t() {
 void slave_t::react(const events::heartbeat_t& event) {
 #if EV_VERSION_MAJOR == 3 && EV_VERSION_MINOR == 8
     if(!state_downcast<const alive*>()) {
-        m_log.debug("came alive in %.03f seconds",
+        log().debug("came alive in %.03f seconds",
             10.0f - ev_timer_remaining(
                 ev_default_loop(ev::AUTO),
                 static_cast<ev_timer*>(&m_heartbeat_timer)
@@ -60,15 +59,15 @@ void slave_t::react(const events::heartbeat_t& event) {
     m_heartbeat_timer.stop();
     
     const busy* state = state_downcast<const busy*>();
-    float timeout = m_context.config.engine.heartbeat_timeout;
+    float timeout = object_t::context().config.engine.heartbeat_timeout;
 
     if(state && state->job()->policy().timeout > 0.0f) {
         timeout = state->job()->policy().timeout;
     }
     
-    m_log.debug(
+    log().debug(
         "resetting the heartbeat timeout to %.02f seconds", 
-        m_context.config.engine.heartbeat_timeout
+        timeout
     );
         
     m_heartbeat_timer.start(timeout);
@@ -76,7 +75,7 @@ void slave_t::react(const events::heartbeat_t& event) {
 }
 
 void slave_t::react(const events::terminate_t& event) {
-    m_log.debug("reaping");
+    log().debug("reaping");
     reap();
 }
 
@@ -85,7 +84,7 @@ bool slave_t::operator==(const slave_t& other) const {
 }
 
 void slave_t::timeout(ev::timer&, int) {
-    m_log.warning("missed too many heartbeats");
+    log().warning("missed too many heartbeats");
     
     const busy* state = state_downcast<const busy*>();
     

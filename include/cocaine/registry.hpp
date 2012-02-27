@@ -18,37 +18,60 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
+#include "cocaine/object.hpp"
 #include "cocaine/logging.hpp"
-#include "cocaine/plugin.hpp"
 
 namespace cocaine { namespace core {
 
+// Module initialization
+// ---------------------
+
+typedef object_t* (*factory_fn_t)(context_t& context);
+
+typedef struct {
+    const char* type;
+    factory_fn_t factory;
+} module_info_t;
+
+typedef const module_info_t* (*initialize_fn_t)(void);
+
+// Module registry
+// ---------------
+
 class registry_t:
-    public boost::noncopyable
+    public object_t
 {
     public:
-        registry_t(context_t& context);
+        registry_t(context_t& ctx);
         ~registry_t();
 
         bool exists(const std::string& type);
 
         template<class T>
-        boost::shared_ptr<T> create(engine::manifest_t& manifest) {
-            factory_map_t::iterator it(m_factories.find(manifest.type));
-            plugin::factory_fn_t factory(it->second);
-            
-            return boost::shared_ptr<T>(factory(m_context, manifest));
+        std::auto_ptr<T> create(const std::string& type) {
+            factory_map_t::iterator it(m_factories.find(type));
+
+            if(it == m_factories.end()) {
+                throw std::runtime_error("module '" + type + "' is not available");
+            }
+
+            object_t* object = it->second(context());
+            T* module = dynamic_cast<T*>(object);
+
+            if(module) {
+                return std::auto_ptr<T>(module);
+            } else {
+                delete object;
+                throw std::runtime_error("module '" + type + "' has a wrong type");
+            }
         }
 
     private:
-        context_t& m_context;
-        logging::emitter_t m_log;
-
         // Used to unload all the plugins on shutdown
-        std::vector<lt_dlhandle> m_plugins;
+        std::vector<lt_dlhandle> m_modules;
     
         // Used to instantiate plugin instances
-        typedef std::map<const std::string, plugin::factory_fn_t> factory_map_t;
+        typedef std::map<const std::string, factory_fn_t> factory_map_t;
         factory_map_t m_factories;
 };
 

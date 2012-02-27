@@ -16,16 +16,18 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
+#include "cocaine/object.hpp"
 #include "cocaine/logging.hpp"
+
 #include "cocaine/networking.hpp"
 
 namespace cocaine { namespace core {
 
 class core_t:
-    public boost::noncopyable
+    public object_t
 {
     public:
-        core_t(config_t config, boost::shared_ptr<logging::sink_t> sink);
+        core_t(context_t& ctx);
         ~core_t();
 
         void loop();
@@ -59,10 +61,6 @@ class core_t:
         void announce(ev::timer&, int);
 
     private:
-        // Execution context
-        context_t m_context;
-        logging::emitter_t m_log;
-
         // Uptime
         const ev::tstamp m_birthstamp;
         

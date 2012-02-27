@@ -19,6 +19,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/context.hpp"
+#include "cocaine/object.hpp"
 
 namespace cocaine { namespace networking {
 
@@ -27,13 +28,13 @@ using namespace boost::tuples;
 typedef std::vector<std::string> route_t;
 
 class socket_t: 
-    public boost::noncopyable,
+    public object_t,
     public birth_control_t<socket_t>
 {
     public:
-        socket_t(context_t& context, int type, std::string route = ""):
-            m_context(context),
-            m_socket(context.io(), type),
+        socket_t(context_t& ctx, int type, std::string route = ""):
+            object_t(ctx, "networking"),
+            m_socket(ctx.io(), type),
             m_route(route)
         {
             if(!m_route.empty()) {
@@ -49,7 +50,7 @@ class socket_t:
             size_t position = endpoint.find_last_of(":");
 
             if(position != std::string::npos) {
-                m_endpoint = m_context.config.core.hostname + 
+                m_endpoint = context().config.core.hostname + 
                     endpoint.substr(position, std::string::npos);
             } else {
                 m_endpoint = "<local>";
@@ -120,9 +121,6 @@ class socket_t:
             return rcvmore != 0;
         }
 
-    protected:
-        context_t& m_context;
-
     private:
         zmq::socket_t m_socket;
         std::string m_endpoint, m_route;
@@ -181,8 +179,8 @@ class channel_t:
     public socket_t
 {
     public:
-        channel_t(context_t& context, int type, std::string route = ""):
-            socket_t(context, type, route)
+        channel_t(context_t& ctx, int type, std::string route = ""):
+            socket_t(ctx, type, route)
         { }
 
         // Bring original methods into the scope
