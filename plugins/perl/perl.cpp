@@ -31,7 +31,7 @@ class perl_t:
 
     public:
         perl_t(context_t& ctx):
-            plugin_t(ctx)
+            plugin_t(ctx, "perl")
         { }
 
         ~perl_t() 
@@ -157,7 +157,7 @@ static const cocaine::core::module_info_t module_info[] = {
 extern "C" {
     const cocaine::core::module_info_t* initialize() {
         PERL_SYS_INIT3(NULL, NULL, NULL);
-        return plugin_info;
+        return module_info;
     }
 
     __attribute__((destructor)) void finalize() {
