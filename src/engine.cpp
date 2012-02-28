@@ -61,7 +61,7 @@ engine_t::engine_t(context_t& ctx, const std::string& name, const Json::Value& m
     object_t(ctx, name + " engine"),
     m_app(ctx, name, manifest),
     m_messages(ctx, ZMQ_ROUTER),
-    m_running(true)
+    m_running(false)
 { }
 
 engine_t::~engine_t() {
@@ -74,6 +74,10 @@ engine_t::~engine_t() {
 // ----------
 
 Json::Value engine_t::start() {
+    BOOST_ASSERT(!m_running);
+
+    log().info("starting"); 
+
     int linger = 0;
 
     m_messages.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
@@ -121,6 +125,8 @@ Json::Value engine_t::start() {
     } else {
         throw std::runtime_error("no tasks has been specified");
     }
+
+    m_running = true;
 
     return info();
 }
