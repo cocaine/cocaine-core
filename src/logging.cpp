@@ -53,13 +53,12 @@ void emitter_t::error(const char* format, ...) {
 }
 
 void emitter_t::emit(priorities priority, const char* format, ...) {
-    std::string message(m_source + format);
     char buffer[256];
 
     va_list args;
     va_start(args, format);
 
-    vsprintf(buffer, message.c_str(), args);            
+    vsprintf(buffer, format, args);            
     m_sink.emit(priority, buffer);
     
     va_end(args);
