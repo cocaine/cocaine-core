@@ -80,7 +80,7 @@ class python_t:
         python_t(context_t& ctx);
 
         virtual void initialize(const engine::app_t& app);
-        virtual void invoke(invocation_site_t& site);
+        virtual void invoke(invocation_site_t& site, const std::string& method);
 
     private:
         void compile(const std::string& path, const std::string& code);

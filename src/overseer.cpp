@@ -13,7 +13,6 @@
 
 #include "cocaine/overseer.hpp"
 
-#include "cocaine/engine.hpp"
 #include "cocaine/registry.hpp"
 
 #include "cocaine/dealer/types.hpp"
@@ -60,7 +59,7 @@ void overseer_t::loop() {
         m_messages.send_multi(
             boost::make_tuple(
                 (const int)rpc::error,
-                static_cast<int>(client::server_error),
+                static_cast<const int>(client::server_error),
                 std::string(e.what())
             )
         );
@@ -70,7 +69,7 @@ void overseer_t::loop() {
         m_messages.send_multi(
             boost::make_tuple(
                 (const int)rpc::error,
-                static_cast<int>(client::server_error),
+                static_cast<const int>(client::server_error),
                 std::string("unexpected exception")
             )
         );
@@ -79,6 +78,20 @@ void overseer_t::loop() {
     }
         
     m_loop.loop();
+}
+
+void overseer_t::send(rpc::codes code, const void* data, size_t size) {
+    const int command = code;
+    zmq::message_t message(size);
+
+    memcpy(message.data(), data, size);
+    
+    m_messages.send_multi(
+        boost::tie(
+            command,
+            message
+        )
+    );
 }
 
 void overseer_t::message(ev::io&, int) {
@@ -102,13 +115,18 @@ void overseer_t::process(ev::idle&, int) {
                 m_messages.recv_multi(tier);
 
                 try {
-                    invocation_site_t site;
-                    m_module->invoke(site);
+                    invocation_site_t site(
+                        *this,
+                        request.data(),
+                        request.size()
+                    );
+
+                    m_module->invoke(site, method);
                 } catch(const recoverable_error_t& e) {
                     m_messages.send_multi(
                         boost::make_tuple(
                             (const int)rpc::error,
-                            static_cast<int>(client::app_error),
+                            static_cast<const int>(client::app_error),
                             std::string(e.what())
                         )
                     );
@@ -116,7 +134,7 @@ void overseer_t::process(ev::idle&, int) {
                     m_messages.send_multi(
                         boost::make_tuple(
                             (const int)rpc::error,
-                            static_cast<int>(client::server_error),
+                            static_cast<const int>(client::server_error),
                             std::string(e.what())
                         )
                     );
@@ -124,7 +142,7 @@ void overseer_t::process(ev::idle&, int) {
                     m_messages.send_multi(
                         boost::make_tuple(
                             (const int)rpc::error,
-                            static_cast<int>(client::server_error),
+                            static_cast<const int>(client::server_error),
                             std::string("unexpected exception")
                         )
                     );

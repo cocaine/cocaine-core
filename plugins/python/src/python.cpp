@@ -69,7 +69,7 @@ void python_t::initialize(const app_t& app) {
     }
 }
 
-void python_t::invoke(invocation_site_t& site) {
+void python_t::invoke(invocation_site_t& site, const std::string& method) {
     thread_state_t state;
     
     if(!m_python_module) {
@@ -78,8 +78,8 @@ void python_t::invoke(invocation_site_t& site) {
 
     python_object_t object(
         PyObject_GetAttrString(
-            m_python_module, 
-            site.method.c_str()
+            m_python_module,
+            method.c_str()
         )
     );
     
@@ -94,7 +94,7 @@ void python_t::invoke(invocation_site_t& site) {
     }
 
     if(!PyCallable_Check(object)) {
-        throw unrecoverable_error_t("'" + site.method + "' is not callable");
+        throw unrecoverable_error_t("'" + method + "' is not callable");
     }
 
     python_object_t args(NULL);

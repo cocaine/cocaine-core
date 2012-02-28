@@ -22,22 +22,12 @@
 
 #include "cocaine/app.hpp"
 #include "cocaine/networking.hpp"
+#include "cocaine/rpc.hpp"
 #include "cocaine/slaves.hpp"
 
 #include "cocaine/helpers/tuples.hpp"
 
 namespace cocaine { namespace engine {
-
-namespace rpc {
-    enum codes {
-        heartbeat,
-        terminate,
-        invoke,
-        push,
-        error,
-        release
-    };
-}
 
 class engine_t:
     public object_t

@@ -53,15 +53,15 @@ class job_t:
         virtual ~job_t();
 
         virtual inline void react(const events::push_t& event) {
-            // m_driver->emit(event);
+            // TODO: Emitters.
         }
 
         virtual inline void react(const events::error_t& event) {
-            // m_driver->emit(event);
+            // TODO: Emitters.
         }
 
         virtual inline void react(const events::release_t& event) {
-            // m_driver->emit(event);
+            // TODO: Emitters.
         }
 
     public:

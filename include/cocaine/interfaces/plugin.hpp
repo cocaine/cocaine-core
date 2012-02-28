@@ -28,12 +28,20 @@ namespace cocaine { namespace engine {
 
 class invocation_site_t {
     public:
-        void push(const void* data, size_t size) { }
+        invocation_site_t(overseer_t& overseer,
+                          const void* request,
+                          size_t request_size);
+
+        void pull();
+        void push(const void* data, size_t size);
+        void emit(const std::string& key, const void* data, size_t size);
 
     public:
-        const std::string method;
         const void* request;
         size_t request_size;
+
+    private:
+        overseer_t& m_overseer;
 };
 
 // Generic slave backend plugin interface
@@ -47,8 +55,8 @@ class plugin_t:
             object_t(ctx, identity)
         { }
 
-        virtual void initialize(const engine::app_t& app) = 0;
-        virtual void invoke(invocation_site_t& site) = 0;
+        virtual void initialize(const app_t& app) = 0;
+        virtual void invoke(invocation_site_t& site, const std::string& method) = 0;
 };
 
 // Allowed exceptions

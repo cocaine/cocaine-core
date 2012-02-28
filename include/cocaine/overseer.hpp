@@ -19,6 +19,7 @@
 #include "cocaine/object.hpp"
 
 #include "cocaine/networking.hpp"
+#include "cocaine/rpc.hpp"
 
 #include "cocaine/interfaces/plugin.hpp"
 
@@ -37,6 +38,9 @@ class overseer_t:
 
         // Entry point
         void loop();
+
+        // Context interoperability
+        void send(rpc::codes code, const void* data, size_t size);
 
     private:
         // Event loop callback handling and dispatching
