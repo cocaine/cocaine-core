@@ -43,7 +43,7 @@ class emitter_t {
         void error(const char* format, ...);
 
     private:
-        void emit(priorities priority, const char* format, ...);
+        void emit(priorities priority, const char* format, va_list args);
 
     private:
     	sink_t& m_sink;

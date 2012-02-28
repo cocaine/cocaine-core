@@ -52,14 +52,9 @@ void emitter_t::error(const char* format, ...) {
     va_end(args);
 }
 
-void emitter_t::emit(priorities priority, const char* format, ...) {
+void emitter_t::emit(priorities priority, const char* format, va_list args) {
     char buffer[256];
-
-    va_list args;
-    va_start(args, format);
-
+    
     vsprintf(buffer, format, args);            
     m_sink.emit(priority, m_source + buffer);
-    
-    va_end(args);
 }
