@@ -30,6 +30,15 @@ class core_t:
         ~core_t();
 
         void loop();
+
+        // User request handling
+        Json::Value create_engine(const std::string& name, 
+                                  const Json::Value& manifest, 
+                                  bool recovering = false);
+        
+        Json::Value delete_engine(const std::string& name);
+
+        Json::Value info() const;
         
     private:
         // Signal processing
@@ -44,15 +53,6 @@ class core_t:
         // User request dispatching
         Json::Value dispatch(const Json::Value& root);
         
-        // User request handling
-        Json::Value create_engine(const std::string& name, 
-                                  const Json::Value& manifest, 
-                                  bool recovering = false);
-        
-        Json::Value delete_engine(const std::string& name);
-
-        Json::Value info() const;
-
         // Task recovering
         void recover();
 

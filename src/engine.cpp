@@ -197,6 +197,9 @@ Json::Value engine_t::info() const {
     return results;
 }
 
+// Queue operations
+// ----------------
+
 void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
     if(!m_running) {
         job->process_event(
@@ -359,6 +362,9 @@ void engine_t::process(ev::idle&, int) {
 void engine_t::pump(ev::timer&, int) {
     message(m_watcher, ev::READ);
 }
+
+// Garbage collection
+// ------------------
 
 void engine_t::cleanup(ev::timer&, int) {
     typedef std::vector<pool_map_t::key_type> corpse_list_t;

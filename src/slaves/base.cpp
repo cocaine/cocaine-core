@@ -98,7 +98,10 @@ void slave_t::timeout(ev::timer&, int) {
 
 alive::~alive() {
     if(m_job && !m_job->state_downcast<const complete*>()) {
-        context<slave_t>().log().debug("rescheduling an incomplete job");
+        context<slave_t>().log().debug(
+            "rescheduling an incomplete '%s' job", 
+            m_job->method().c_str()
+        );
         
         context<slave_t>().m_engine.enqueue(m_job, true);
         m_job.reset();

@@ -44,6 +44,7 @@ void driver_t::audit(timing_type type, ev::tstamp value) {
             m_spent_in_queues += value;
 #endif
             break;
+            
         case on_slave:
 #if BOOST_VERSION >= 103600
             m_spent_on_slaves(value);
