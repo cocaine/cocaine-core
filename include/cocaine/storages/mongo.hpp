@@ -11,14 +11,14 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_STORAGE_MONGO_HPP
-#define COCAINE_STORAGE_MONGO_HPP
+#ifndef COCAINE_MONGO_STORAGE_HPP
+#define COCAINE_MONGO_STORAGE_HPP
 
 #include <mongo/client/dbclient.h>
 
 #include "cocaine/storages/base.hpp"
 
-namespace cocaine { namespace storage {
+namespace cocaine { namespace storages {
 
 class mongo_storage_t:
     public storage_t
@@ -36,7 +36,7 @@ class mongo_storage_t:
         virtual void purge(const std::string& ns);
 
     private:
-        inline std::string resolve(const std::string& ns) {
+        inline std::string resolve(const std::string& ns) const {
             return "cocaine." + m_instance + "." + ns;
         }
 

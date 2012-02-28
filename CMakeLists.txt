@@ -60,7 +60,6 @@ ADD_LIBRARY(cocaine-common SHARED
     src/auth
     src/context
     src/registry
-    src/storages/base
     src/storages/files
     src/storages/mongo)
 
@@ -78,17 +77,16 @@ TARGET_LINK_LIBRARIES(cocaine-common
 SET_TARGET_PROPERTIES(cocaine-common PROPERTIES
     VERSION 1)
 
-ADD_LIBRARY(cocaine-core SHARED 
+ADD_LIBRARY(cocaine-core SHARED
+    src/app
     src/core
     src/drivers/base
     src/drivers/recurring_timer
     src/drivers/drifting_timer
     src/drivers/filesystem_monitor
     src/drivers/zeromq_server
-    src/drivers/lsd_server
-    src/drivers/native_server
     src/drivers/zeromq_sink
-    src/drivers/native_sink
+    src/drivers/lsd_server
     src/engine
     src/job
     src/overseer

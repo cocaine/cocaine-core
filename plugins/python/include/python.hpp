@@ -11,21 +11,22 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_PLUGIN_PYTHON_HPP
-#define COCAINE_PLUGIN_PYTHON_HPP
+#ifndef COCAINE_PYTHON_PLUGIN_HPP
+#define COCAINE_PYTHON_PLUGIN_HPP
 
-// These are being redefined in Python.h
+// NOTE: These are being redefined in Python.h
 #undef _POSIX_C_SOURCE
 #undef _XOPEN_SOURCE
 
 #include <Python.h>
 
-#include "cocaine/plugin.hpp"
+#include "cocaine/modules/plugin.hpp"
+
 #include "cocaine/helpers/track.hpp"
 
-namespace cocaine { namespace plugin {
+namespace cocaine { namespace modules {
 
-typedef helpers::track<PyObject*, Py_DecRef> object_t;
+typedef helpers::track<PyObject*, Py_DecRef> python_object_t;
 
 /*
 class interpreter_t {
@@ -71,24 +72,25 @@ class thread_state_t {
 };
 
 class python_t:
-    public module_t
+    public modules::plugin_t
 {
     public:
-        static module_t* create(context_t& context, const Json::Value& args);
+        static object_t* create(context_t& ctx);
     
-    public:    
-        python_t(const Json::Value& args);
+    public:
+        python_t(context_t& ctx);
 
-        void invoke(invocation_context_t& context,
-                    const std::string& method);
+        virtual void initialize(const engine::app_t& app);
+        virtual void invoke(modules::invocation_site_t& site);
 
     private:
         void compile(const std::string& path, const std::string& code);
-        void respond(invocation_context_t& context, object_t& result);
+        void respond(modules::invocation_site_t& site, python_object_t& result);
+
         std::string exception();
 
     private:
-        object_t m_module;
+        python_object_t m_python_module;
 };
 
 }}

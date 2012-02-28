@@ -11,10 +11,11 @@
 //
 
 #include "cocaine/drivers/filesystem_monitor.hpp"
+
 #include "cocaine/engine.hpp"
 #include "cocaine/job.hpp"
 
-using namespace cocaine::engine::driver;
+using namespace cocaine::engine::drivers;
 
 filesystem_monitor_t::filesystem_monitor_t(engine_t& engine, const std::string& method, const Json::Value& args):
     driver_t(engine, method, args),
@@ -42,7 +43,7 @@ Json::Value filesystem_monitor_t::info() const {
 }
 
 void filesystem_monitor_t::event(ev::stat&, int) {
-    boost::shared_ptr<job::job_t> job(new job::job_t(*this));
+    boost::shared_ptr<job_t> job(new job_t(*this));
     m_engine.enqueue(job);
 }
 

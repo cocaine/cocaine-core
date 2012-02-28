@@ -17,9 +17,7 @@
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 
-#include "cocaine/common.hpp"
 #include "cocaine/config.hpp"
-#include "cocaine/context.hpp"
 #include "cocaine/core.hpp"
 
 #include "cocaine/helpers/pid_file.hpp"
@@ -87,9 +85,9 @@ int main(int argc, char* argv[]) {
         ("core:instance", po::value<std::string>
             (&config.core.instance)->default_value("default"),
             "instance name")
-        ("core:plugins", po::value<std::string>
-            (&config.core.plugins)->default_value("/usr/lib/cocaine"),
-            "where to load plugins from")
+        ("core:modules", po::value<std::string>
+            (&config.core.modules)->default_value("/usr/lib/cocaine"),
+            "where to load modules from")
         ("core:announce-endpoint", po::value<std::string>
             (&config.core.announce_endpoint),
             "multicast endpoint for automatic discovery")

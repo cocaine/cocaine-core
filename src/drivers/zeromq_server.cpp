@@ -14,11 +14,12 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/assign.hpp>
 
-#include "cocaine/context.hpp"
 #include "cocaine/drivers/zeromq_server.hpp"
+
+#include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
 
-using namespace cocaine::engine::driver;
+using namespace cocaine::engine::drivers;
 using namespace cocaine::networking;
 
 zeromq_server_job_t::zeromq_server_job_t(zeromq_server_t& driver, const route_t& route):
@@ -72,7 +73,7 @@ zeromq_server_t::zeromq_server_t(engine_t& engine, const std::string& method, co
         boost::assign::list_of
             (m_engine.context().config.core.instance)
             (m_engine.context().config.core.hostname)
-            (m_engine.manifest().name)
+            (m_engine.app().name)
             (method),
         "/")
     )
@@ -113,12 +114,6 @@ Json::Value zeromq_server_t::info() const {
     return result;
 }
 
-void zeromq_server_t::event(ev::io&, int) {
-    if(m_socket.pending() && !m_processor.is_active()) {
-        m_processor.start();
-    }
-}
-
 void zeromq_server_t::process(ev::idle&, int) {
     if(m_socket.pending()) {
         zmq::message_t message;
@@ -140,17 +135,13 @@ void zeromq_server_t::process(ev::idle&, int) {
         } while(m_socket.more());
 
         if(route.empty() || !m_socket.more()) {
-            m_engine.log().error(
-                "got a corrupted request in '%s' - invalid route",
-                m_method.c_str()
-            );
-
+            log().error("got a corrupted request - invalid route");
             return;
         }
 
         while(m_socket.more()) {
             boost::shared_ptr<zeromq_server_job_t> job(new zeromq_server_job_t(*this, route));
-            m_socket.recv(job->request());
+            m_socket.recv(&job->request());
             m_engine.enqueue(job);
         }
     } else {
@@ -158,7 +149,12 @@ void zeromq_server_t::process(ev::idle&, int) {
     }
 }
 
+void zeromq_server_t::event(ev::io&, int) {
+    if(m_socket.pending() && !m_processor.is_active()) {
+        m_processor.start();
+    }
+}
+
 void zeromq_server_t::pump(ev::timer&, int) {
     event(m_watcher, ev::READ);
 }
-

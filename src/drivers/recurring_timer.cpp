@@ -12,10 +12,11 @@
 //
 
 #include "cocaine/drivers/recurring_timer.hpp"
+
 #include "cocaine/engine.hpp"
 #include "cocaine/job.hpp"
 
-using namespace cocaine::engine::driver;
+using namespace cocaine::engine::drivers;
 
 recurring_timer_t::recurring_timer_t(engine_t& engine, const std::string& method, const Json::Value& args):
     driver_t(engine, method, args),
@@ -47,6 +48,6 @@ void recurring_timer_t::event(ev::timer&, int) {
 }
 
 void recurring_timer_t::reschedule() {
-    boost::shared_ptr<job::job_t> job(new job::job_t(*this));
+    boost::shared_ptr<job_t> job(new job_t(*this));
     m_engine.enqueue(job);
 }

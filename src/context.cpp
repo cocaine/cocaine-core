@@ -16,7 +16,7 @@
 #include "cocaine/logging.hpp"
 #include "cocaine/auth.hpp"
 #include "cocaine/registry.hpp"
-#include "cocaine/storages/base.hpp"
+#include "cocaine/storages.hpp"
 
 using namespace cocaine;
 
@@ -71,9 +71,15 @@ logging::sink_t& context_t::sink() {
     return *m_sink;
 }
 
-storage::storage_t& context_t::storage() {
-    if(!m_storage) {
-        m_storage = storage::storage_t::create(*this);
+storages::storage_t& context_t::storage() {
+    std::string driver(config.storage.driver);
+
+    if(driver == "files") {
+        m_storage.reset(new storages::file_storage_t(*this));
+    } else if(driver == "mongo") {
+        m_storage.reset(new storages::mongo_storage_t(*this));
+    } else {
+        m_storage.reset(new storages::void_storage_t(*this));
     }
 
     return *m_storage;

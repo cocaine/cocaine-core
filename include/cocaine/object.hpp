@@ -20,7 +20,7 @@
 
 namespace cocaine {
 
-// Basic module
+// Basic object
 // ------------
 
 class object_t:

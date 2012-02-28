@@ -18,7 +18,6 @@
 #include "cocaine/core.hpp"
 
 #include "cocaine/auth.hpp"
-#include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/job.hpp"
 #include "cocaine/storages/base.hpp"
@@ -37,8 +36,6 @@ core_t::core_t(context_t& ctx):
         "/")
     )
 {
-    log().debug("constructing");
-    
     // Information
     int minor, major, patch;
     zmq_version(&major, &minor, &patch);
@@ -106,9 +103,7 @@ core_t::core_t(context_t& ctx):
     recover();
 }
 
-core_t::~core_t() {
-    log().debug("destructing");
-}
+core_t::~core_t() { }
 
 void core_t::loop() {
     ev::get_default_loop().loop();
@@ -328,8 +323,8 @@ Json::Value core_t::info() const {
         result["apps"][it->first] = it->second->info();
     }
 
-    result["jobs"]["pending"] = static_cast<Json::UInt>(job::job_t::objects_alive);
-    result["jobs"]["processed"] = static_cast<Json::UInt>(job::job_t::objects_created);
+    result["jobs"]["pending"] = static_cast<Json::UInt>(job_t::objects_alive);
+    result["jobs"]["processed"] = static_cast<Json::UInt>(job_t::objects_created);
 
     result["uptime"] = ev::get_default_loop().now() - m_birthstamp;
 

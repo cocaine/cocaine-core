@@ -11,18 +11,18 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_SLAVE_GENERIC_HPP
-#define COCAINE_SLAVE_GENERIC_HPP
+#ifndef COCAINE_GENERIC_SLAVE_FRONTEND_HPP
+#define COCAINE_GENERIC_SLAVE_FRONTEND_HPP
 
 #include "cocaine/slaves/base.hpp"
 
-namespace cocaine { namespace engine { namespace slave {
+namespace cocaine { namespace engine { namespace slaves {
 
 class generic_t:
     public slave_t
 {
     public:
-        generic_t(context_t& ctx, app_t& app);
+        generic_t(engine_t& engine);
 
         virtual void reap();
 

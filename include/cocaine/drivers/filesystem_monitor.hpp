@@ -11,12 +11,12 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_DRIVER_FILESYSTEM_MONITOR_HPP
-#define COCAINE_DRIVER_FILESYSTEM_MONITOR_HPP
+#ifndef COCAINE_FILESYSTEM_MONITOR_DRIVER_HPP
+#define COCAINE_FILESYSTEM_MONITOR_DRIVER_HPP
 
 #include "cocaine/drivers/base.hpp"
 
-namespace cocaine { namespace engine { namespace driver {
+namespace cocaine { namespace engine { namespace drivers {
 
 class filesystem_monitor_t:
     public driver_t

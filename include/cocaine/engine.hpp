@@ -19,7 +19,6 @@
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/object.hpp"
-#include "cocaine/logging.hpp"
 
 #include "cocaine/app.hpp"
 #include "cocaine/networking.hpp"
@@ -50,7 +49,7 @@ class engine_t:
         typedef boost::ptr_map<
 #endif
             const std::string,
-            driver::driver_t
+            drivers::driver_t
         > task_map_t;
 
 #if BOOST_VERSION >= 104000
@@ -59,11 +58,11 @@ class engine_t:
         typedef boost::ptr_map<
 #endif
             unique_id_t::type,
-            slave::slave_t
+            slaves::slave_t
         > pool_map_t;
         
         class job_queue_t:
-            public std::deque< boost::shared_ptr<job::job_t> >
+            public std::deque< boost::shared_ptr<job_t> >
         {
             public:
                 void push(const_reference job);
@@ -116,6 +115,11 @@ class engine_t:
 
         void enqueue(job_queue_t::const_reference job, bool overflow = false);
 
+    public:
+        inline const app_t& app() const {
+            return m_app;
+        }
+
     private:
         void message(ev::io&, int);
         void process(ev::idle&, int);
@@ -123,7 +127,7 @@ class engine_t:
         void cleanup(ev::timer&, int);
 
     private:
-        bool m_running;        
+        bool m_running;      
         app_t m_app;
 
         // Application tasks

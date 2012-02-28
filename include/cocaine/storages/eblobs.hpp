@@ -11,25 +11,26 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_STORAGE_EBLOBS_HPP
-#define COCAINE_STORAGE_EBLOBS_HPP
+#ifndef COCAINE_EBLOB_STORAGE_HPP
+#define COCAINE_EBLOB_STORAGE_HPP
 
 #include <boost/filesystem.hpp>
 #include <eblob/eblob.hpp>
 
 #include "cocaine/storages/base.hpp"
 
-namespace cocaine { namespace storage {
+namespace cocaine { namespace storages {
 
 class eblob_collector_t:
     public zbr::eblob_iterator_callback
 {
     public:
         bool callback(const zbr::eblob_disk_control* dco, const void* data, int);
-        void complete(uint64_t, uint64_t) { }
+        void complete(uint64_t, uint64_t);
 
+    public:
         inline Json::Value seal() { 
-            return m_root; 
+            return m_root;
         }
 
     private:
@@ -41,9 +42,7 @@ class eblob_purger_t:
     public zbr::eblob_iterator_callback
 {
     public:
-        eblob_purger_t(zbr::eblob* eblob):
-            m_eblob(eblob)
-        { }
+        eblob_purger_t(zbr::eblob* eblob);
 
         bool callback(const zbr::eblob_disk_control* dco, const void* data, int);
         void complete(uint64_t, uint64_t);

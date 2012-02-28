@@ -16,7 +16,8 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
-#include "cocaine/job.hpp"
+#include "cocaine/object.hpp"
+
 #include "cocaine/networking.hpp"
 
 #if BOOST_VERSION >= 103600
@@ -25,7 +26,7 @@
 # include <boost/accumulators/statistics/sum.hpp>
 #endif
 
-namespace cocaine { namespace engine { namespace driver {
+namespace cocaine { namespace engine { namespace drivers {
 
 #if BOOST_VERSION >= 103600
 using namespace boost::accumulators;
@@ -37,30 +38,23 @@ enum timing_type {
 };
 
 class driver_t:
-    public boost::noncopyable
+    public object_t
 {
     public:
-        driver_t(engine_t& engine, const std::string& method, const Json::Value& args);
-
+        driver_t(engine_t& engine,
+                 const std::string& method,
+                 const Json::Value& args);
+        
         virtual ~driver_t() { }
 
         // Used to collect various statistical information about the driver
         void audit(timing_type type, ev::tstamp value);
 
-        // Used to inject user events into the cloud
-        void emit();
-       
         // Used to get the runtime statistics from the driver
         virtual Json::Value info() const;
 
-    public: 
-        inline engine_t& engine() { 
-            return m_engine; 
-        }
-
-        inline const std::string& method() const { 
-            return m_method;
-        }
+    public:
+        const std::string& method() const;
         
     protected:
         engine_t& m_engine;

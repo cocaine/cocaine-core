@@ -11,12 +11,12 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_DRIVER_ZEROMQ_SINK_HPP
-#define COCAINE_DRIVER_ZEROMQ_SINK_HPP
+#ifndef COCAINE_ZEROMQ_SINK_DRIVER_HPP
+#define COCAINE_ZEROMQ_SINK_DRIVER_HPP
 
 #include "cocaine/drivers/zeromq_server.hpp"
 
-namespace cocaine { namespace engine { namespace driver {
+namespace cocaine { namespace engine { namespace drivers {
 
 class zeromq_sink_t:
     public zeromq_server_t
@@ -29,7 +29,7 @@ class zeromq_sink_t:
         // Driver interface
         virtual Json::Value info() const;
 
-    private:
+    protected:
         // Server interface
         virtual void process(ev::idle&, int);
 };

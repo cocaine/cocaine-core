@@ -30,16 +30,13 @@ namespace cocaine {
     namespace engine {
         class app_t;
         class engine_t;
+        class job_t;
 
-        namespace driver {        
+        namespace drivers {        
             class driver_t;
         }
 
-        namespace job {
-            class job_t;
-        }
-        
-        namespace slave {
+        namespace slaves {
             class slave_t;
         }
         
@@ -51,7 +48,7 @@ namespace cocaine {
         class emitter_t;
     }
 
-    namespace storage {
+    namespace storages {
         class storage_t;
     }
 }

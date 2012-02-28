@@ -15,7 +15,7 @@
 #include "cocaine/storages/eblobs.hpp"
 
 using namespace cocaine::helpers;
-using namespace cocaine::storage;
+using namespace cocaine::storages;
 
 namespace fs = boost::filesystem;
 

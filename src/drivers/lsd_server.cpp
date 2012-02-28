@@ -11,16 +11,18 @@
 // limitations under the License.
 //
 
-#include "cocaine/dealer/types.hpp"
 #include "cocaine/drivers/lsd_server.hpp"
+
 #include "cocaine/engine.hpp"
 
-using namespace cocaine::engine::driver;
+#include "cocaine/dealer/types.hpp"
+
+using namespace cocaine::engine::drivers;
 using namespace cocaine::networking;
 
 lsd_job_t::lsd_job_t(lsd_server_t& driver, const client::policy_t& policy, const unique_id_t::type& id, const route_t& route):
     unique_id_t(id),
-    job::job_t(driver, policy),
+    job_t(driver, policy),
     m_route(route)
 { }
 
@@ -77,7 +79,7 @@ void lsd_job_t::send(const Json::Value& root, int flags) {
 }
 
 lsd_server_t::lsd_server_t(engine_t& engine, const std::string& method, const Json::Value& args):
-    zeromq_server_t(engine, method, args)
+    zeromq_server_t(engine, method, args, ZMQ_ROUTER)
 { }
 
 Json::Value lsd_server_t::info() const {
@@ -109,11 +111,7 @@ void lsd_server_t::process(ev::idle&, int) {
         } while(m_socket.more());
 
         if(route.empty() || !m_socket.more()) {
-            m_engine.log().error(
-                "got a corrupted request in '%s' - invalid route", 
-                m_method.c_str()
-            );
-
+            log().error("got a corrupted request - invalid route"); 
             return;
         }
 
@@ -130,9 +128,8 @@ void lsd_server_t::process(ev::idle&, int) {
                 static_cast<const char*>(message.data()) + message.size(),
                 root))
             {
-                m_engine.log().error(
-                    "got a corrupted request in '%s' - invalid envelope - %s",
-                    m_method.c_str(),
+                log().error(
+                    "got a corrupted request - invalid envelope - %s",
                     reader.getFormatedErrorMessages().c_str()
                 );
 
@@ -142,16 +139,16 @@ void lsd_server_t::process(ev::idle&, int) {
             client::policy_t policy(
                 root.get("urgent", false).asBool(),
                 root.get("timeout", 0.0f).asDouble(),
-                root.get("deadline", 0.0f).asDouble());
+                root.get("deadline", 0.0f).asDouble()
+            );
 
             boost::shared_ptr<lsd_job_t> job;
             
             try {
                 job.reset(new lsd_job_t(*this, policy, root.get("uuid", "").asString(), route));
             } catch(const std::runtime_error& e) {
-                m_engine.log().error(
-                    "got a corrupted request in '%s' - invalid envelope - %s",
-                    m_method.c_str(), 
+                log().error(
+                    "got a corrupted request - invalid envelope - %s",
                     e.what()
                 );
 
@@ -159,21 +156,15 @@ void lsd_server_t::process(ev::idle&, int) {
             }
 
             if(!m_socket.more()) {
-                m_engine.log().error(
-                    "got a corrupted request in %s' - missing body", 
-                    m_method.c_str()
-                );
-
+                log().error("got a corrupted request - missing body");
                 job->process_event(events::error_t(client::request_error, "missing body"));
-                
                 continue;
             }
             
-            m_socket.recv(job->request());
+            m_socket.recv(&job->request());
             m_engine.enqueue(job);
         }
     } else {
         m_processor.stop();
     }
 }
-

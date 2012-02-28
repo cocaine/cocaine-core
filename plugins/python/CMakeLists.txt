@@ -20,7 +20,7 @@ ADD_LIBRARY(cocaine-plugin-python MODULE
     src/python)
 
 TARGET_LINK_LIBRARIES(cocaine-plugin-python
-    cocaine-common
+    cocaine-core
     uriparser)
 
 SET_TARGET_PROPERTIES(cocaine-plugin-python PROPERTIES

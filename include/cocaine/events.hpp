@@ -46,11 +46,11 @@ struct enqueue_t:
 struct invoke_t:
     public sc::event<invoke_t>
 {
-    invoke_t(const boost::shared_ptr<job::job_t>& job_):
+    invoke_t(const boost::shared_ptr<job_t>& job_):
         job(job_)
     { }
 
-    const boost::shared_ptr<job::job_t>& job;
+    const boost::shared_ptr<job_t>& job;
 };
 
 struct push_t:

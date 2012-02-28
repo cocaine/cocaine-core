@@ -11,14 +11,14 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_STORAGE_FILES_HPP
-#define COCAINE_STORAGE_FILES_HPP
+#ifndef COCAINE_FILE_STORAGE_HPP
+#define COCAINE_FILE_STORAGE_HPP
 
 #include <boost/filesystem.hpp>
 
 #include "cocaine/storages/base.hpp"
 
-namespace cocaine { namespace storage {
+namespace cocaine { namespace storages {
 
 class file_storage_t:
     public storage_t

@@ -27,13 +27,9 @@
 
 #include "cocaine/dealer/types.hpp"
 
-namespace cocaine { namespace engine { namespace job {
+namespace cocaine { namespace engine {
 
 namespace sc = boost::statechart;
-
-struct unsupported_t:
-    public std::exception
-{ };
 
 // Job states
 struct incomplete;
@@ -47,42 +43,37 @@ class job_t:
     public sc::state_machine<job_t, incomplete>,
     public birth_control_t<job_t>
 {
+    friend class waiting;
+    friend class processing;
+
     public:
-        job_t(driver::driver_t& driver,
+        job_t(drivers::driver_t& driver,
               client::policy_t policy = client::policy_t());
 
         virtual ~job_t();
 
         virtual inline void react(const events::push_t& event) {
-            throw unsupported_t();
+            // m_driver->emit(event);
         }
 
         virtual inline void react(const events::error_t& event) {
-            throw unsupported_t();
+            // m_driver->emit(event);
         }
 
         virtual inline void react(const events::release_t& event) {
-            throw unsupported_t();
+            // m_driver->emit(event);
         }
 
     public:
-        inline driver::driver_t& driver() {
-            return m_driver;
-        }
-
-        inline const client::policy_t& policy() const {
-            return m_policy;
-        }
-
-        inline zmq::message_t* request() {
-            return &m_request; 
-        }
+        const std::string& method() const;
+        const client::policy_t& policy() const;
+        zmq::message_t& request();
 
     private:
         void discard(ev::periodic&, int);
 
     protected:
-        driver::driver_t& m_driver;
+        drivers::driver_t& m_driver;
 
     private:
         client::policy_t m_policy;
@@ -146,6 +137,6 @@ struct complete:
     public sc::simple_state<complete, job_t>
 { };
 
-}}}
+}}
 
 #endif

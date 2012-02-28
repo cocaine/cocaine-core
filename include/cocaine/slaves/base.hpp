@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_SLAVE_BASE_HPP
-#define COCAINE_SLAVE_BASE_HPP
+#ifndef COCAINE_SLAVE_FRONTEND_BASE_HPP
+#define COCAINE_SLAVE_FRONTEND_BASE_HPP
 
 #include <boost/statechart/state_machine.hpp>
 #include <boost/statechart/simple_state.hpp>
@@ -22,11 +22,10 @@
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/object.hpp"
-#include "cocaine/logging.hpp"
 
 #include "cocaine/events.hpp"
 
-namespace cocaine { namespace engine { namespace slave {
+namespace cocaine { namespace engine { namespace slaves {
 
 namespace sc = boost::statechart;
 
@@ -42,6 +41,8 @@ struct slave_t:
     public unique_id_t,
     public object_t
 {
+    friend class alive;
+
     public:
         virtual ~slave_t();
         
@@ -53,12 +54,13 @@ struct slave_t:
         virtual void reap() = 0;
 
     protected:
-        slave_t(context_t& ctx, app_t& app);
+        slave_t(engine_t& engine);
 
     private:
         void timeout(ev::timer&, int);
 
     private:
+        engine_t& m_engine;
         ev::timer m_heartbeat_timer;
 };
 
@@ -87,12 +89,12 @@ struct alive:
         void react(const events::release_t& event);
 
     public:
-        const boost::shared_ptr<job::job_t>& job() const {
+        const boost::shared_ptr<job_t>& job() const {
             return m_job;
         }
 
     private:
-        boost::shared_ptr<job::job_t> m_job;
+        boost::shared_ptr<job_t> m_job;
 };
 
 struct idle: 
@@ -113,7 +115,7 @@ struct busy:
         > reactions;
 
     public:
-        const boost::shared_ptr<job::job_t>& job() const {
+        const boost::shared_ptr<job_t>& job() const {
             return context<alive>().job();
         }
 };

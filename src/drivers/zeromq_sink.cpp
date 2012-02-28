@@ -12,9 +12,10 @@
 //
 
 #include "cocaine/drivers/zeromq_sink.hpp"
+
 #include "cocaine/engine.hpp"
 
-using namespace cocaine::engine::driver;
+using namespace cocaine::engine::drivers;
 
 zeromq_sink_t::zeromq_sink_t(engine_t& engine, const std::string& method, const Json::Value& args):
     zeromq_server_t(engine, method, args, ZMQ_PULL)
@@ -31,8 +32,8 @@ Json::Value zeromq_sink_t::info() const {
 void zeromq_sink_t::process(ev::idle&, int) {
     if(m_socket.pending()) {
         do {
-            boost::shared_ptr<job::job_t> job(new job::job_t(*this));
-            m_socket.recv(job->request());
+            boost::shared_ptr<job_t> job(new job_t(*this));
+            m_socket.recv(&job->request());
             m_engine.enqueue(job);
         } while(m_socket.more()); 
     } else {

@@ -63,7 +63,7 @@ class context_t:
         zmq::context_t& io();
         core::registry_t& registry();
         logging::sink_t& sink();
-        storage::storage_t& storage();
+        storages::storage_t& storage();
 
     public:
         config_t config;
@@ -73,7 +73,7 @@ class context_t:
         boost::shared_ptr<zmq::context_t> m_io;
         boost::shared_ptr<core::registry_t> m_registry;
         boost::shared_ptr<logging::sink_t> m_sink;
-        boost::shared_ptr<storage::storage_t> m_storage;
+        boost::shared_ptr<storages::storage_t> m_storage;
 };
 
 }

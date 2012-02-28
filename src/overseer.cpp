@@ -13,7 +13,6 @@
 
 #include "cocaine/overseer.hpp"
 
-#include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/registry.hpp"
 
@@ -22,7 +21,7 @@
 using namespace cocaine;
 using namespace cocaine::engine;
 
-overseer_t::overseer_t(const unique_id_t::type& id_, context_t& ctx, app_t& app):
+overseer_t::overseer_t(const unique_id_t::type& id_, context_t& ctx, const app_t& app):
     unique_id_t(id_),
     object_t(ctx, app.name + " slave " + id()),
     m_app(app),
@@ -55,9 +54,9 @@ overseer_t::~overseer_t() {
 
 void overseer_t::loop() {
     try {
-        m_module = context().registry().create<plugin_t>(m_app.type);
+        m_module = context().registry().create<modules::plugin_t>(m_app.type);
         m_module->initialize(m_app);
-    } catch(const unrecoverable_error_t& e) {
+    } catch(const modules::unrecoverable_error_t& e) {
         m_messages.send_multi(
             boost::make_tuple(
                 (const int)rpc::error,
@@ -103,9 +102,9 @@ void overseer_t::process(ev::idle&, int) {
                 m_messages.recv_multi(tier);
 
                 try {
-                    invocation_site_t site;
+                    modules::invocation_site_t site;
                     m_module->invoke(site);
-                } catch(const recoverable_error_t& e) {
+                } catch(const modules::recoverable_error_t& e) {
                     m_messages.send_multi(
                         boost::make_tuple(
                             (const int)rpc::error,
@@ -113,7 +112,7 @@ void overseer_t::process(ev::idle&, int) {
                             std::string(e.what())
                         )
                     );
-                } catch(const unrecoverable_error_t& e) {
+                } catch(const modules::unrecoverable_error_t& e) {
                     m_messages.send_multi(
                         boost::make_tuple(
                             (const int)rpc::error,

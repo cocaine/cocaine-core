@@ -11,18 +11,18 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_DRIVER_LSD_SERVER_HPP
-#define COCAINE_DRIVER_LSD_SERVER_HPP
+#ifndef COCAINE_NATIVE_SERVER_DRIVER_HPP
+#define COCAINE_NATIVE_SERVER_DRIVER_HPP
 
 #include "cocaine/drivers/zeromq_server.hpp"
 
-namespace cocaine { namespace engine { namespace driver {
+namespace cocaine { namespace engine { namespace drivers {
 
 class lsd_server_t;
 
 class lsd_job_t:
     public unique_id_t,
-    public job::job_t
+    public job_t
 {
     public:
         lsd_job_t(lsd_server_t& driver,
@@ -52,7 +52,7 @@ class lsd_server_t:
         // Driver interface
         virtual Json::Value info() const;
         
-    private:
+    protected:
         // Server interface
         virtual void process(ev::idle&, int);
 };

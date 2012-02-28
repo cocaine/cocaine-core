@@ -15,22 +15,21 @@
 
 #include "cocaine/slaves/generic.hpp"
 
-#include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/overseer.hpp"
 
-using namespace cocaine::engine::slave;
+using namespace cocaine::engine::slaves;
 
-generic_t::generic_t(context_t& ctx, app_t& app):
-    slave_t(ctx, app)
+generic_t::generic_t(engine_t& engine):
+    slave_t(engine)
 {
     m_pid = fork();
 
     if(m_pid == 0) {
         // NOTE: In order to reinitialize the subsystems in a new process
-        ctx.reset();
+        engine.context().reset();
 
-        overseer_t overseer(id(), ctx, app);
+        overseer_t overseer(id(), engine.context(), engine.app());
         overseer.loop();
         
         exit(EXIT_SUCCESS);

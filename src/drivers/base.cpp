@@ -11,16 +11,15 @@
 // limitations under the License.
 //
 
-#include <boost/format.hpp>
-
-#include "cocaine/context.hpp"
 #include "cocaine/drivers/base.hpp"
+
 #include "cocaine/engine.hpp"
 
 using namespace cocaine;
-using namespace cocaine::engine::driver;
+using namespace cocaine::engine::drivers;
         
 driver_t::driver_t(engine_t& engine, const std::string& method, const Json::Value& args):
+    object_t(engine.context(), engine.app().name + " " + method + " driver"),
     m_engine(engine),
     m_method(method)
 #if BOOST_VERSION < 103600
@@ -31,7 +30,7 @@ driver_t::driver_t(engine_t& engine, const std::string& method, const Json::Valu
     std::string endpoint(args.get("emitter", "").asString());
 
     if(!endpoint.empty()) {
-        m_emitter.reset(new networking::socket_t(engine.context(), ZMQ_PUB));
+        m_emitter.reset(new networking::socket_t(context(), ZMQ_PUB));
         m_emitter->bind(endpoint);
     }
 }
@@ -71,8 +70,13 @@ Json::Value driver_t::info() const {
     return results;
 }
 
+const std::string& driver_t::method() const {
+    return m_method;
+}
+
+/*
 void driver_t::emit() {
-    /*publisher_t& publisher = static_cast<publisher_t&>(m_driver);
+    publisher_t& publisher = static_cast<publisher_t&>(m_driver);
     
     if(publisher.socket() && object.isObject()) {
         zmq::message_t message;
@@ -119,5 +123,6 @@ void driver_t::emit() {
                 (void)publisher.socket()->send(message);
             }
         }
-    }*/
+    }
 }
+*/

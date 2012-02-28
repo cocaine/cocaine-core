@@ -17,7 +17,6 @@
 
 #include "cocaine/auth.hpp"
 
-#include "cocaine/context.hpp"
 #include "cocaine/storages/base.hpp"
 
 using namespace cocaine;

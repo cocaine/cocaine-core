@@ -16,9 +16,10 @@
 #include "cocaine/drivers/base.hpp"
 #include "cocaine/engine.hpp"
 
-using namespace cocaine::engine::job;
+using namespace cocaine;
+using namespace cocaine::engine;
 
-job_t::job_t(driver::driver_t& driver, client::policy_t policy):
+job_t::job_t(drivers::driver_t& driver, client::policy_t policy):
     m_driver(driver),
     m_policy(policy)
 {
@@ -39,6 +40,18 @@ job_t::~job_t() {
     terminate();
 }
 
+const std::string& job_t::method() const {
+    return m_driver.method();
+}
+
+const client::policy_t& job_t::policy() const {
+    return m_policy;
+}
+
+zmq::message_t& job_t::request() {
+    return m_request;
+}
+
 void job_t::discard(ev::periodic&, int) {
     process_event(
         events::error_t(
@@ -53,8 +66,8 @@ waiting::waiting():
 { }
 
 waiting::~waiting() {
-    context<job_t>().driver().audit(
-        driver::in_queue,
+    context<job_t>().m_driver.audit(
+        drivers::in_queue,
         ev::get_default_loop().now() - m_timestamp
     );
 }
@@ -64,8 +77,8 @@ processing::processing():
 { }
 
 processing::~processing() {
-    context<job_t>().driver().audit(
-        driver::on_slave,
+    context<job_t>().m_driver.audit(
+        drivers::on_slave,
         ev::get_default_loop().now() - m_timestamp
     );
 }

@@ -11,12 +11,12 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_STORAGE_VOID_HPP
-#define COCAINE_STORAGE_VOID_HPP
+#ifndef COCAINE_VOID_STORAGE_HPP
+#define COCAINE_VOID_STORAGE_HPP
 
 #include "cocaine/storages/base.hpp"
 
-namespace cocaine { namespace storage {
+namespace cocaine { namespace storages {
 
 class void_storage_t:
     public storage_t

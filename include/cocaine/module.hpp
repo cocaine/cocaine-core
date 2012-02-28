@@ -11,31 +11,25 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_APP_HPP
-#define COCAINE_APP_HPP
+#ifndef COCAINE_MODULE_HPP
+#define COCAINE_MODULE_HPP
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 
-namespace cocaine { namespace engine {
+namespace cocaine { namespace core {
 
-struct app_t {
-    app_t(context_t& ctx, 
-          const std::string& name, 
-          const Json::Value& args);
+// Module initialization
+// ---------------------
 
-    std::string name;
-    std::string type;
-    std::string endpoint;
+typedef object_t* (*factory_fn_t)(context_t& context);
 
-    Json::Value args;
+typedef struct {
+    const char* type;
+    factory_fn_t factory;
+} module_info_t;
 
-    struct {
-        float suicide_timeout;
-        unsigned int pool_limit;
-        unsigned int queue_limit;
-    } policy;
-};
+typedef const module_info_t* (*initialize_fn_t)(void);
 
 }}
 

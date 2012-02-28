@@ -19,7 +19,6 @@
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/object.hpp"
-#include "cocaine/logging.hpp"
 
 namespace cocaine { namespace crypto {
 

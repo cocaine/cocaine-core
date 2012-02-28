@@ -12,9 +12,10 @@
 //
 
 #include "cocaine/drivers/drifting_timer.hpp"
+
 #include "cocaine/engine.hpp"
 
-using namespace cocaine::engine::driver;
+using namespace cocaine::engine::drivers;
 
 drifting_timer_job_t::drifting_timer_job_t(drifting_timer_t& driver):
     job_t(driver)
@@ -42,7 +43,6 @@ void drifting_timer_t::rearm() {
 
 void drifting_timer_t::reschedule() {
     boost::shared_ptr<drifting_timer_job_t> job(new drifting_timer_job_t(*this));
-    
     m_watcher.stop();
     m_engine.enqueue(job);
 }

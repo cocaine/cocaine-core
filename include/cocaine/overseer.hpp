@@ -11,51 +11,17 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_OVERSEER_HPP
-#define COCAINE_OVERSEER_HPP
+#ifndef COCAINE_GENERIC_SLAVE_BACKEND_HPP
+#define COCAINE_GENERIC_SLAVE_BACKEND_HPP
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/object.hpp"
 
 #include "cocaine/networking.hpp"
+#include "cocaine/modules/plugin.hpp"
 
 namespace cocaine { namespace engine {
-
-class invocation_site_t {
-    public:
-        void push(const void* data, size_t size);
-
-    public:
-        const void* request;
-        size_t request_size;
-};
-
-class plugin_t:
-    public object_t
-{
-    public:
-        virtual void initialize(app_t& app) = 0;
-        virtual void invoke(invocation_site_t& site) = 0;
-};
-
-class unrecoverable_error_t:
-    public std::runtime_error
-{
-    public:
-        unrecoverable_error_t(const std::string& what):
-            std::runtime_error(what)
-        { }
-};
-
-class recoverable_error_t:
-    public std::runtime_error
-{
-    public:
-        recoverable_error_t(const std::string& what):
-            std::runtime_error(what)
-        { }
-};
 
 class overseer_t:
     public unique_id_t,
@@ -64,7 +30,7 @@ class overseer_t:
     public:
         overseer_t(const unique_id_t::type& id,
                    context_t& ctx,
-                   app_t& app);
+                   const app_t& app);
 
         ~overseer_t();
 
@@ -81,13 +47,13 @@ class overseer_t:
         void terminate();
 
     private:
-        app_t& m_app;
+        const app_t& m_app;
 
         // Messaging
         networking::channel_t m_messages;
 
         // Application instance
-        std::auto_ptr<plugin_t> m_module;
+        std::auto_ptr<modules::plugin_t> m_module;
 
         // Event loop
         ev::dynamic_loop m_loop;

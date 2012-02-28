@@ -16,16 +16,21 @@
 
 #include "python.hpp"
 
-using namespace cocaine::plugin;
+using namespace cocaine::core;
+using namespace cocaine::engine;
+using namespace cocaine::modules;
 
-module_t* python_t::create(context_t& context, const Json::Value& args) {
-    return new python_t(args);
+cocaine::object_t* python_t::create(context_t& ctx) {
+    return new python_t(ctx);
 }
 
-python_t::python_t(const Json::Value& args):
-    m_module(NULL)
-{
-    boost::filesystem::path source(args["source"].asString());
+python_t::python_t(context_t& ctx):
+    plugin_t(ctx, "python"),
+    m_python_module(NULL)
+{ }
+
+void python_t::initialize(const app_t& app) {
+    boost::filesystem::path source(app.args["source"].asString());
     
     if(source.empty()) {
         throw unrecoverable_error_t("no code location has been specified");
@@ -65,9 +70,19 @@ python_t::python_t(const Json::Value& args):
     }
 }
 
-void python_t::invoke(invocation_context_t& context, const std::string& method) {
+void python_t::invoke(invocation_site_t& site) {
     thread_state_t state;
-    object_t object(PyObject_GetAttrString(m_module, method.c_str()));
+    
+    if(!m_python_module) {
+        throw unrecoverable_error_t("python module is not initialized");
+    }
+
+    python_object_t object(
+        PyObject_GetAttrString(
+            m_python_module, 
+            site.method.c_str()
+        )
+    );
     
     if(PyErr_Occurred()) {
         throw unrecoverable_error_t(exception());
@@ -80,20 +95,20 @@ void python_t::invoke(invocation_context_t& context, const std::string& method) 
     }
 
     if(!PyCallable_Check(object)) {
-        throw unrecoverable_error_t("'" + method + "' is not callable");
+        throw unrecoverable_error_t("'" + site.method + "' is not callable");
     }
 
-    object_t args(NULL);
+    python_object_t args(NULL);
 #if PY_VERSION_HEX >= 0x02070000
     boost::shared_ptr<Py_buffer> buffer;
 #endif
 
-    if(context.request && context.request_size) {
+    if(site.request && site.request_size) {
 #if PY_VERSION_HEX >= 0x02070000
         buffer.reset(static_cast<Py_buffer*>(malloc(sizeof(Py_buffer))), free);
 
-        buffer->buf = const_cast<void*>(context.request);
-        buffer->len = context.request_size;
+        buffer->buf = const_cast<void*>(site.request);
+        buffer->len = site.request_size;
         buffer->readonly = true;
         buffer->format = NULL;
         buffer->ndim = 0;
@@ -101,11 +116,11 @@ void python_t::invoke(invocation_context_t& context, const std::string& method) 
         buffer->strides = NULL;
         buffer->suboffsets = NULL;
 
-        object_t view(PyMemoryView_FromBuffer(buffer.get()));
+        python_object_t view(PyMemoryView_FromBuffer(buffer.get()));
 #else
-        object_t view(PyBuffer_FromMemory(
-            const_cast<void*>(context.request), 
-            context.request_size));
+        python_object_t view(PyBuffer_FromMemory(
+            const_cast<void*>(site.request), 
+            site.request_size));
 #endif
 
         args = PyTuple_Pack(1, *view);
@@ -113,24 +128,24 @@ void python_t::invoke(invocation_context_t& context, const std::string& method) 
         args = PyTuple_New(0);
     }
 
-    object_t result(PyObject_Call(object, args, NULL));
+    python_object_t result(PyObject_Call(object, args, NULL));
 
     if(PyErr_Occurred()) {
         throw recoverable_error_t(exception());
     } else if(result.valid()) {
-        respond(context, result);
+        respond(site, result);
     }
 }
 
-void python_t::respond(invocation_context_t& context, object_t& result) {
+void python_t::respond(invocation_site_t& site, python_object_t& result) {
     if(PyString_Check(result)) {
         throw recoverable_error_t("the result must be an iterable");
     }
 
-    object_t iterator(PyObject_GetIter(result));
+    python_object_t iterator(PyObject_GetIter(result));
 
     if(iterator.valid()) {
-        object_t item(NULL);
+        python_object_t item(NULL);
 
         while(true) {
             item = PyIter_Next(iterator);
@@ -149,7 +164,7 @@ void python_t::respond(invocation_context_t& context, object_t& result) {
 
                 if(PyObject_GetBuffer(item, buffer.get(), PyBUF_SIMPLE) == 0) {
                     Py_BEGIN_ALLOW_THREADS
-                        context.push(buffer->buf, buffer->len);
+                        site.push(buffer->buf, buffer->len);
                     Py_END_ALLOW_THREADS
                     
                     PyBuffer_Release(buffer.get());
@@ -171,16 +186,16 @@ void python_t::respond(invocation_context_t& context, object_t& result) {
 }
 
 std::string python_t::exception() {
-    object_t type(NULL), object(NULL), traceback(NULL);
+    python_object_t type(NULL), object(NULL), traceback(NULL);
     
     PyErr_Fetch(&type, &object, &traceback);
-    object_t message(PyObject_Str(object));
+    python_object_t message(PyObject_Str(object));
     
     return PyString_AsString(message);
 }
 
 void python_t::compile(const std::string& path, const std::string& code) {
-    object_t bytecode(Py_CompileString(
+    python_object_t bytecode(Py_CompileString(
         code.c_str(),
         path.c_str(),
         Py_file_input));
@@ -189,7 +204,7 @@ void python_t::compile(const std::string& path, const std::string& code) {
         throw unrecoverable_error_t(exception());
     }
 
-    m_module = PyImport_ExecCodeModule(
+    m_python_module = PyImport_ExecCodeModule(
         const_cast<char*>(unique_id_t().id().c_str()),
         bytecode);
     
@@ -198,7 +213,7 @@ void python_t::compile(const std::string& path, const std::string& code) {
     }
 }
 
-static const module_info_t plugin_info[] = {
+static const module_info_t module_info[] = {
     { "python", &python_t::create },
     { "python+raw", &python_t::create },
     { NULL, NULL }
@@ -229,7 +244,7 @@ extern "C" {
         pthread_atfork(NULL, NULL, PyOS_AfterFork);
         pthread_atfork(NULL, NULL, save);
 
-        return plugin_info;
+        return module_info;
     }
 
     __attribute__((destructor)) void finalize() {

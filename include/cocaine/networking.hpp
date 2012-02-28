@@ -18,7 +18,6 @@
 #include <msgpack.hpp>
 
 #include "cocaine/common.hpp"
-#include "cocaine/context.hpp"
 #include "cocaine/object.hpp"
 
 namespace cocaine { namespace networking {

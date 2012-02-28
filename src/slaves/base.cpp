@@ -13,19 +13,17 @@
 
 #include "cocaine/slaves/base.hpp"
 
-#include "cocaine/context.hpp"
-#include "cocaine/drivers/base.hpp"
 #include "cocaine/engine.hpp"
+#include "cocaine/job.hpp"
 
 #include "cocaine/dealer/types.hpp"
 
-using namespace cocaine::engine::slave;
+using namespace cocaine::engine::slaves;
 
-slave_t::slave_t(context_t& ctx, app_t& app):
-    object_t(ctx, app.name + " slave " + id())
+slave_t::slave_t(engine_t& engine):
+    object_t(engine.context(), engine.app().name + " slave " + id()),
+    m_engine(engine)
 {
-    log().debug("constructing");
-
     // NOTE: These are the 10 seconds for the slave to come alive   
     m_heartbeat_timer.set<slave_t, &slave_t::timeout>(this);
     m_heartbeat_timer.start(10.0f);
@@ -34,8 +32,6 @@ slave_t::slave_t(context_t& ctx, app_t& app):
 }
 
 slave_t::~slave_t() {
-    log().debug("destructing");
-    
     m_heartbeat_timer.stop();
     
     // TEST: Make sure that the slave is really dead
@@ -101,14 +97,10 @@ void slave_t::timeout(ev::timer&, int) {
 }
 
 alive::~alive() {
-    if(m_job && !m_job->state_downcast<const job::complete*>()) {
-        context<slave_t>().log().debug(
-            "rescheduling an incomplete '%s' job",
-            m_job->driver().method().c_str()
-        );
-       
-        // NOTE: Allow the queue to grow beyond its capacity. 
-        m_job->driver().engine().enqueue(m_job, true);
+    if(m_job && !m_job->state_downcast<const complete*>()) {
+        context<slave_t>().log().debug("rescheduling an incomplete job");
+        
+        context<slave_t>().m_engine.enqueue(m_job, true);
         m_job.reset();
     }
 }
@@ -117,24 +109,14 @@ void alive::react(const events::invoke_t& event) {
     // TEST: Ensure that no job is being lost here
     BOOST_ASSERT(!m_job);
 
-    context<slave_t>().log().debug(
-        "assigned a '%s' job",
-        event.job->driver().method().c_str()
-    );
-    
-    m_job = event.job;
     m_job->process_event(event);
+    m_job = event.job;
 }
 
 void alive::react(const events::release_t& event) {
     // TEST: Ensure that the job is in fact here
     BOOST_ASSERT(m_job);
 
-    context<slave_t>().log().debug(
-        "completed a '%s' job",
-        m_job->driver().method().c_str()
-    );
-    
     m_job->process_event(event);
     m_job.reset();
 }

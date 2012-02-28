@@ -19,21 +19,10 @@
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/object.hpp"
-#include "cocaine/logging.hpp"
+
+#include "cocaine/module.hpp"
 
 namespace cocaine { namespace core {
-
-// Module initialization
-// ---------------------
-
-typedef object_t* (*factory_fn_t)(context_t& context);
-
-typedef struct {
-    const char* type;
-    factory_fn_t factory;
-} module_info_t;
-
-typedef const module_info_t* (*initialize_fn_t)(void);
 
 // Module registry
 // ---------------
@@ -67,10 +56,10 @@ class registry_t:
         }
 
     private:
-        // Used to unload all the plugins on shutdown
+        // Used to unload all the modules on shutdown
         std::vector<lt_dlhandle> m_modules;
     
-        // Used to instantiate plugin instances
+        // Used to instantiate the modules
         typedef std::map<const std::string, factory_fn_t> factory_map_t;
         factory_map_t m_factories;
 };

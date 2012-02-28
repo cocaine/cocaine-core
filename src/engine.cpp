@@ -11,14 +11,9 @@
 // limitations under the License.
 //
 
-#include <boost/algorithm/string/join.hpp>
-#include <boost/assign.hpp>
-
 #include "cocaine/engine.hpp"
 
-#include "cocaine/context.hpp"
 #include "cocaine/drivers.hpp"
-#include "cocaine/registry.hpp"
 
 using namespace cocaine::engine;
 using namespace cocaine::networking;
@@ -40,7 +35,7 @@ void engine_t::job_queue_t::push(const_reference job) {
 // ---------
 
 bool engine_t::idle_slave::operator()(pool_map_t::pointer slave) const {
-    return slave->second->state_downcast<const slave::idle*>();
+    return slave->second->state_downcast<const slaves::idle*>();
 }
 
 engine_t::specific_slave::specific_slave(pool_map_t::pointer target_):
@@ -54,28 +49,9 @@ bool engine_t::specific_slave::operator()(pool_map_t::pointer slave) const {
 namespace {
     struct busy_slave {
         bool operator()(engine_t::pool_map_t::const_pointer slave) const {
-            return slave->second->state_downcast<const slave::busy*>();
+            return slave->second->state_downcast<const slaves::busy*>();
         }
     };
-}
-
-// Application
-// -----------
-
-app_t::app_t(context_t& ctx, const std::string& name, const Json::Value& app) {
-    policy.suicide_timeout = app["engine"].get("suicide-timeout",
-        ctx.config.engine.suicide_timeout).asDouble();
-    policy.pool_limit = app["engine"].get("pool-limit",
-        ctx.config.engine.pool_limit).asUInt();
-    policy.queue_limit = app["engine"].get("queue-limit",
-        ctx.config.engine.queue_limit).asUInt();
-    
-    endpoint = boost::algorithm::join(
-        boost::assign::list_of
-            (std::string("ipc:///var/run/cocaine"))
-            (ctx.config.core.instance)
-            (name),
-        "/");
 }
 
 // Basic stuff
@@ -83,20 +59,12 @@ app_t::app_t(context_t& ctx, const std::string& name, const Json::Value& app) {
 
 engine_t::engine_t(context_t& ctx, const std::string& name, const Json::Value& manifest):
     object_t(ctx, name + " engine"),
-    m_running(true),
     m_app(ctx, name, manifest),
-    m_messages(ctx, ZMQ_ROUTER)
-{
-    log().debug("constructing");
-    
-    if(!context().registry().exists(m_app.type)) {
-        throw std::runtime_error("no plugin for '" + m_app.type + "' is available");
-    }
-}
+    m_messages(ctx, ZMQ_ROUTER),
+    m_running(true)
+{ }
 
 engine_t::~engine_t() {
-    log().debug("destructing"); 
-    
     if(m_running) {
         stop();
     }
@@ -121,12 +89,12 @@ Json::Value engine_t::start() {
     m_gc_timer.start(5.0f, 5.0f);
     
     // Tasks configuration
-    /* -------------------
+    // -------------------
 
-    Json::Value tasks(manifest["tasks"]);
+    Json::Value tasks(m_app.args["tasks"]);
 
     if(!tasks.isNull() && tasks.size()) {
-        log().info("starting"); 
+        log().info("initializing drivers"); 
     
         Json::Value::Members names(tasks.getMemberNames());
 
@@ -134,22 +102,18 @@ Json::Value engine_t::start() {
             std::string task(*it);
             std::string type(tasks[task]["type"].asString());
             
-            if(type == "recurring-timer" || type == "timed+auto") {
-                m_tasks.insert(task, new driver::recurring_timer_t(*this, task, tasks[task]));
+            if(type == "recurring-timer") {
+                m_tasks.insert(task, new drivers::recurring_timer_t(*this, task, tasks[task]));
             } else if(type == "drifting-timer") {
-                m_tasks.insert(task, new driver::drifting_timer_t(*this, task, tasks[task]));
+                m_tasks.insert(task, new drivers::drifting_timer_t(*this, task, tasks[task]));
             } else if(type == "filesystem-monitor") {
-                m_tasks.insert(task, new driver::filesystem_monitor_t(*this, task, tasks[task]));
+                m_tasks.insert(task, new drivers::filesystem_monitor_t(*this, task, tasks[task]));
             } else if(type == "zeromq-server") {
-                m_tasks.insert(task, new driver::zeromq_server_t(*this, task, tasks[task]));
-            } else if(type == "server+lsd") {
-                m_tasks.insert(task, new driver::lsd_server_t(*this, task, tasks[task]));
-            } else if(type == "native-server") {
-                m_tasks.insert(task, new driver::native_server_t(*this, task, tasks[task]));
+                m_tasks.insert(task, new drivers::zeromq_server_t(*this, task, tasks[task]));
             } else if(type == "zeromq-sink") {
-                m_tasks.insert(task, new driver::zeromq_sink_t(*this, task, tasks[task]));
-            } else if(type == "native-sink") {
-                m_tasks.insert(task, new driver::native_sink_t(*this, task, tasks[task]));
+                m_tasks.insert(task, new drivers::zeromq_sink_t(*this, task, tasks[task]));
+            } else if(type == "server+lsd") {
+                m_tasks.insert(task, new drivers::lsd_server_t(*this, task, tasks[task]));
             } else {
                throw std::runtime_error("no driver for '" + type + "' is available");
             }
@@ -157,7 +121,6 @@ Json::Value engine_t::start() {
     } else {
         throw std::runtime_error("no tasks has been specified");
     }
-    */
 
     return info();
 }
@@ -178,16 +141,12 @@ Json::Value engine_t::stop() {
         );
 
         while(!m_queue.empty()) {
-            try {
-                m_queue.front()->process_event(
-                    events::error_t(
-                        client::server_error,
-                        "engine is shutting down"
-                    )
-                );
-            } catch(const job::unsupported_t&) {
-                // Ignore it.
-            }
+            m_queue.front()->process_event(
+                events::error_t(
+                    client::server_error,
+                    "engine is shutting down"
+                )
+            );
 
             m_queue.pop_front();
         }
@@ -259,8 +218,8 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
             idle_slave(),
             boost::tie(
                 command,
-                job->driver().method(),
-                *job->request()
+                job->method(),
+                job->request()
             )
         )
     );
@@ -269,10 +228,10 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
         it->second->process_event(events::invoke_t(job));
     } else {
         if(m_pool.empty() || m_pool.size() < m_app.policy.pool_limit) {
-            std::auto_ptr<slave::slave_t> slave;
+            std::auto_ptr<slaves::slave_t> slave;
             
             try {
-                slave.reset(new slave::generic_t(context(), m_app));
+                slave.reset(new slaves::generic_t(*this));
                 std::string slave_id(slave->id());
                 m_pool.insert(slave_id, slave);
             } catch(const std::exception& e) {
@@ -315,8 +274,8 @@ void engine_t::process(ev::idle&, int) {
         pool_map_t::iterator slave(m_pool.find(slave_id));
 
         if(slave != m_pool.end()) {
-            const slave::busy* state =
-                slave->second->state_downcast<const slave::busy*>();
+            const slaves::busy* state =
+                slave->second->state_downcast<const slaves::busy*>();
             
             switch(command) {
                 case rpc::push: {
@@ -326,11 +285,7 @@ void engine_t::process(ev::idle&, int) {
                     zmq::message_t message;
                     m_messages.recv(&message);
                     
-                    try {
-                        state->job()->process_event(events::push_t(message));
-                    } catch(const job::unsupported_t&) {
-                        log().debug("driver ignored a push");
-                    }
+                    state->job()->process_event(events::push_t(message));
 
                     break;
                 }
@@ -343,16 +298,12 @@ void engine_t::process(ev::idle&, int) {
                     m_messages.recv_multi(tier);
 
                     if(state) {
-                        try {
-                            state->job()->process_event(
-                                events::error_t(
-                                    static_cast<client::error_code>(code), 
-                                    message
-                                )
-                            );
-                        } catch(const job::unsupported_t&) {
-                            log().debug("driver ignored an error");
-                        }
+                        state->job()->process_event(
+                            events::error_t(
+                                static_cast<client::error_code>(code), 
+                                message
+                            )
+                        );
                     } else {
                         log().error("the app seems to be broken");
                         stop();
@@ -363,20 +314,17 @@ void engine_t::process(ev::idle&, int) {
                 }
 
                 case rpc::release: {
+                    // TEST: Only active slaves can release the job
                     BOOST_ASSERT(state != 0);
                    
-                    try {
-                        state->job()->process_event(events::release_t());
-                    } catch(const job::unsupported_t&) {
-                        log().debug("driver ignored a release");
-                    }
+                    state->job()->process_event(events::release_t());
                     
                     break;
                 }
 
                 case rpc::terminate: {
                     // NOTE: A slave might be already terminated by its inner mechanics
-                    if(!slave->second->state_downcast<const slave::dead*>()) {
+                    if(!slave->second->state_downcast<const slaves::dead*>()) {
                         slave->second->process_event(events::terminate_t());
                     }
 
@@ -386,7 +334,7 @@ void engine_t::process(ev::idle&, int) {
 
             slave->second->process_event(events::heartbeat_t());
 
-            if(slave->second->state_downcast<const slave::idle*>() && !m_queue.empty()) {
+            if(slave->second->state_downcast<const slaves::idle*>() && !m_queue.empty()) {
                 // NOTE: This will always succeed due to the test above
                 enqueue(m_queue.front());
                 m_queue.pop_front();
@@ -417,7 +365,7 @@ void engine_t::cleanup(ev::timer&, int) {
     corpse_list_t corpses;
 
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
-        if(it->second->state_downcast<const slave::dead*>()) {
+        if(it->second->state_downcast<const slaves::dead*>()) {
             corpses.push_back(it->first);
         }
     }
