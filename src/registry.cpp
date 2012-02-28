@@ -131,7 +131,3 @@ registry_t::~registry_t() {
 
     lt_dlexit();
 }
-
-bool registry_t::exists(const std::string& type) {
-    return (m_factories.find(type) != m_factories.end());
-}

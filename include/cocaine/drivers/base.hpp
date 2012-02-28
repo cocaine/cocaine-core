@@ -54,7 +54,9 @@ class driver_t:
         virtual Json::Value info() const;
 
     public:
-        const std::string& method() const;
+        inline const std::string& method() const {
+            return m_method;
+        }
         
     protected:
         engine_t& m_engine;

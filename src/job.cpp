@@ -44,14 +44,6 @@ const std::string& job_t::method() const {
     return m_driver.method();
 }
 
-const client::policy_t& job_t::policy() const {
-    return m_policy;
-}
-
-zmq::message_t& job_t::request() {
-    return m_request;
-}
-
 void job_t::discard(ev::periodic&, int) {
     process_event(
         events::error_t(

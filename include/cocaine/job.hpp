@@ -66,8 +66,14 @@ class job_t:
 
     public:
         const std::string& method() const;
-        const client::policy_t& policy() const;
-        zmq::message_t& request();
+        
+        inline const client::policy_t& policy() const {
+            return m_policy;
+        }
+
+        inline zmq::message_t& request() {
+            return m_request;
+        }
 
     private:
         void discard(ev::periodic&, int);

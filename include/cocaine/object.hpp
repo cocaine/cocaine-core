@@ -15,7 +15,7 @@
 #define COCAINE_OBJECT_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/context.hpp"
+#include "cocaine/forwards.hpp"
 #include "cocaine/logging.hpp"
 
 namespace cocaine {
@@ -27,16 +27,8 @@ class object_t:
     public boost::noncopyable
 {
     public:
-        object_t(context_t& context, const std::string& identity):
-            m_context(context),
-            m_log(context, identity)
-        {
-            log().debug("constructing");
-        }
-
-        virtual ~object_t() {
-            log().debug("destructing");
-        }
+        object_t(context_t& context, const std::string& identity);
+        virtual ~object_t();
 
     public:
         inline context_t& context() {

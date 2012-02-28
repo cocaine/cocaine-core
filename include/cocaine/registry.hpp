@@ -34,8 +34,6 @@ class registry_t:
         registry_t(context_t& ctx);
         ~registry_t();
 
-        bool exists(const std::string& type);
-
         template<class T>
         std::auto_ptr<T> create(const std::string& type) {
             factory_map_t::iterator it(m_factories.find(type));

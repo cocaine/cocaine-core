@@ -71,10 +71,6 @@ Json::Value driver_t::info() const {
     return results;
 }
 
-const std::string& driver_t::method() const {
-    return m_method;
-}
-
 /*
 void driver_t::emit() {
     publisher_t& publisher = static_cast<publisher_t&>(m_driver);
