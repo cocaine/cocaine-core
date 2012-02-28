@@ -14,23 +14,40 @@
 #include <sstream>
 #include <boost/filesystem/fstream.hpp>
 
-#include "cocaine/plugin.hpp"
+#include <EXTERN.h>
+#include <perl.h>
 
-#include <EXTERN.h>               /* from the Perl distribution */
-#include <perl.h>                 /* from the Perl distribution */
+#include "cocaine/interfaces/plugin.hpp"
 
-namespace cocaine { namespace plugin {
+namespace cocaine { namespace engine {
 
 class perl_t:
-    public module_t
+    public plugin_t
 {
     public:
-        static module_t* create(context_t& context, const Json::Value& args) {
-            return new perl_t(args);
+        static object_t* create(context_t& ctx) {
+            return new perl_t(ctx);
         }
 
     public:
-        perl_t(const Json::Value& args) {
+        perl_t(context_t& ctx):
+            plugin_t(ctx)
+        { }
+
+        ~perl_t() 
+        {
+            perl_destruct(my_perl);
+            perl_free(my_perl);
+        }
+
+        virtual void initialize(const app_t& app)
+        {
+            Json::Value args(app.manifest["args"]);
+
+            if(!args.isObject()) {
+                throw unrecoverable_error_t("malformed manifest");
+            }
+
             boost::filesystem::path source(args["source"].asString());
 
             if(source.empty()) {
@@ -51,18 +68,13 @@ class perl_t:
 
             compile(stream.str());
         }
-
-        ~perl_t() {
-            perl_destruct(my_perl);
-            perl_free(my_perl);
-        }
             
-        virtual void invoke(invocation_context_t& context, const std::string& method)
+        virtual void invoke(invocation_site_t& site, const std::string& method)
         {
             std::string input;
             
-            if (context.request && context.request_size > 0) {
-               input = std::string((const char*)context.request, context.request_size);
+            if (site.request && site.request_size > 0) {
+               input = std::string((const char*)site.request, site.request_size);
             }
 
             std::string result;
@@ -118,10 +130,11 @@ class perl_t:
             }
 
             if (!result.empty()) {
-                context.push(result.data(), result.size());
+                site.push(result.data(), result.size());
             }
         }
 
+    private:
         void compile(const std::string& code)
         {
             const char* embedding[] = {"", "-e", "0"};
@@ -133,16 +146,16 @@ class perl_t:
         }
     
     private:
-        PerlInterpreter* my_perl;  /***    The Perl interpreter    ***/
+        PerlInterpreter* my_perl;
 };
 
-static const module_info_t plugin_info[] = {
+static const cocaine::core::module_info_t module_info[] = {
     { "perl", &perl_t::create },
     { NULL, NULL }
 };
 
 extern "C" {
-    const module_info_t* initialize() {
+    const cocaine::core::module_info_t* initialize() {
         PERL_SYS_INIT3(NULL, NULL, NULL);
         return plugin_info;
     }

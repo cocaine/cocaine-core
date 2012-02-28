@@ -16,20 +16,37 @@
 
 #include <v8.h>
 
-#include "cocaine/plugin.hpp"
+#include "cocaine/interfaces/plugin.hpp"
 
-namespace cocaine { namespace plugin {
+namespace cocaine { namespace engine {
 
 using namespace v8;
 
-class javascript_t: public module_t {
+class javascript_t: 
+    public plugin_t
+{
     public:
-        static module_t* create(context_t& context, const Json::Value& args) {
-            return new javascript_t(args);
+        static object_t* create(context_t& ctx) {
+            return new javascript_t(ctx);
         }
 
     public:
-        javascript_t(const Json::Value& args) {
+        javascript_t(context_t& ctx):
+            plugin_t(ctx, "javascript")
+        { }
+
+        ~javascript_t() {
+            m_function.Dispose();
+            m_v8_context.Dispose();
+        }
+
+        virtual void initialize(const app_t& app) {
+            Json::Value args(app.manifest["args"]);
+
+            if(!args.isObject()) {
+                throw unrecoverable_error_t("malformed manifest");
+            }
+            
             boost::filesystem::path source(args["source"].asString());
 
             if(source.empty()) {
@@ -48,14 +65,40 @@ class javascript_t: public module_t {
             compile(stream.str(), "iterate");
         }
 
+        virtual void invoke(
+            invocation_site_t& site,
+            const std::string& method)
+        {
+            Json::Value result;
+
+            HandleScope handle_scope;
+            Context::Scope context_scope(m_v8_context);
+            
+            TryCatch try_catch;
+            Handle<Value> rv(m_function->Call(m_v8_context->Global(), 0, NULL));
+
+            if(!rv.IsEmpty()) {
+                result["result"] = "success";
+            } else if(try_catch.HasCaught()) {
+                String::AsciiValue exception(try_catch.Exception());
+                result["error"] = std::string(*exception, exception.length());
+            }
+
+            Json::FastWriter writer;
+            std::string response(writer.write(result));
+
+            site.push(response.data(), response.size());
+        }
+
+    private:
         void compile(const std::string& code,
                      const std::string& name)
         {
             HandleScope handle_scope;
 
-            m_context = Context::New();
+            m_v8_context = Context::New();
 
-            Context::Scope context_scope(m_context);
+            Context::Scope context_scope(m_v8_context);
             
             TryCatch try_catch;
 
@@ -75,7 +118,7 @@ class javascript_t: public module_t {
             }
 
             Handle<String> target(String::New(name.c_str()));
-            Handle<Value> object(m_context->Global()->Get(target));
+            Handle<Value> object(m_v8_context->Global()->Get(target));
 
             if(!object->IsFunction()) {
                 throw unrecoverable_error_t("target object is not a function");
@@ -85,52 +128,22 @@ class javascript_t: public module_t {
             m_function = Persistent<Function>::New(function);
         }
 
-        ~javascript_t() {
-            m_function.Dispose();
-            m_context.Dispose();
-        }
-
-        virtual void invoke(
-            invocation_context_t& context,
-            const std::string& method)
-        {
-            Json::Value result;
-
-            HandleScope handle_scope;
-            Context::Scope context_scope(m_context);
-            
-            TryCatch try_catch;
-            Handle<Value> rv(m_function->Call(m_context->Global(), 0, NULL));
-
-            if(!rv.IsEmpty()) {
-                result["result"] = "success";
-            } else if(try_catch.HasCaught()) {
-                String::AsciiValue exception(try_catch.Exception());
-                result["error"] = std::string(*exception, exception.length());
-            }
-
-            Json::FastWriter writer;
-            std::string response(writer.write(result));
-
-            context.push(response.data(), response.size());
-        }
-
     private:
-        Persistent<Context> m_context;
+        Persistent<Context> m_v8_context;
         Persistent<Function> m_function;
 };
 
-static const module_info_t plugin_info[] = {
+static const cocaine::core::module_info_t module_info[] = {
     { "javascript", &javascript_t::create },
     { NULL, NULL }
 };
 
 extern "C" {
-    const module_info_t* initialize() {
+    const cocaine::core::module_info_t* initialize() {
         // Global initialization logic
         // This function will be called once, from the main thread
 
-        return plugin_info;
+        return module_info;
     }
 
     // __attribute__((destructor)) void finalize() {
