@@ -18,6 +18,7 @@
 #include "cocaine/core.hpp"
 
 #include "cocaine/auth.hpp"
+#include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/job.hpp"
 

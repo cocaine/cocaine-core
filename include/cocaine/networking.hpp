@@ -20,6 +20,8 @@
 #include "cocaine/common.hpp"
 #include "cocaine/object.hpp"
 
+#include "cocaine/context.hpp"
+
 namespace cocaine { namespace networking {
 
 using namespace boost::tuples;

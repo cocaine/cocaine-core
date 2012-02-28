@@ -14,12 +14,14 @@
 #ifndef COCAINE_LOGGING_HPP
 #define COCAINE_LOGGING_HPP
 
+#include <cstdarg>
+
 #include "cocaine/common.hpp"
-#include "cocaine/context.hpp"
+#include "cocaine/forwards.hpp"
 
 namespace cocaine { namespace logging {
 
-enum logging_level {
+enum priorities {
 	debug,
 	info,
 	warning,
@@ -28,23 +30,20 @@ enum logging_level {
 
 class sink_t {
 	public:
-		virtual void emit(logging_level level, const char* format, ...) = 0;
+		virtual void emit(priorities priority, const std::string& message) = 0;
 };
 
 class emitter_t {
     public:
-        emitter_t(context_t& context, const std::string& source):
-        	m_sink(context.sink()),
-        	m_source(source + ": ")
-        { }
+        emitter_t(context_t& context, const std::string& source);
 
-        void debug(const char* format, ...) { }
-        void info(const char* format, ...) { }
-        void warning(const char* format, ...) { }
-        void error(const char* format, ...) { }
+        void debug(const char* format, ...);
+        void info(const char* format, ...);
+        void warning(const char* format, ...);
+        void error(const char* format, ...);
 
     private:
-    	void emit(logging_level level, const char* format, ...) { }
+        void emit(priorities priority, const char* format, ...);
 
     private:
     	sink_t& m_sink;

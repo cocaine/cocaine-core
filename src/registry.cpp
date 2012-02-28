@@ -17,6 +17,8 @@
 
 #include "cocaine/registry.hpp"
 
+#include "cocaine/context.hpp"
+
 using namespace cocaine;
 using namespace cocaine::core;
 

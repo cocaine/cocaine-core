@@ -13,6 +13,7 @@
 
 #include "cocaine/slaves/base.hpp"
 
+#include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/job.hpp"
 

@@ -1,6 +1,5 @@
 SET(PLUGINS
-        python
-        javascript)
+        python)
 
 IF(NOT APPLE)
     SET(PLUGINS ${PLUGINS} perl)

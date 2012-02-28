@@ -11,9 +11,8 @@
 // limitations under the License.
 //
 
-#include <cstdarg>
-#include <iostream>
 #include <syslog.h>
+#include <iostream>
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 
@@ -40,11 +39,23 @@ class syslog_t:
         }
 
     public:
-        virtual void emit(logging::logging_level level, const char* format, ...) {
-            va_list args;
-            va_start(args, format);
-            syslog(level, format, args);
-            va_end(args);
+        virtual void emit(logging::priorities priority, const std::string& message) {
+            switch(priority) {
+                case logging::debug:
+                    syslog(LOG_DEBUG, "%s", message.c_str());
+                    break;
+                case logging::info:
+                    syslog(LOG_INFO, "%s", message.c_str());
+                    break;
+                case logging::warning:
+                    syslog(LOG_WARNING, "%s", message.c_str());
+                    break;
+                case logging::error:
+                    syslog(LOG_ERR, "%s", message.c_str());
+                    break;
+                default:
+                    syslog(LOG_ERR, "invalid priority level for logging");
+            }
         }
 
     private:
