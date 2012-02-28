@@ -11,7 +11,7 @@
 // limitations under the License.
 //
 
-#include "syslog.h"
+#include <cstdio>
 
 #include "cocaine/logging.hpp"
 
@@ -59,7 +59,7 @@ void emitter_t::emit(priorities priority, const char* format, ...) {
     va_start(args, format);
 
     vsprintf(buffer, format, args);            
-    m_sink.emit(priority, buffer);
+    m_sink.emit(priority, m_source + buffer);
     
     va_end(args);
 }
