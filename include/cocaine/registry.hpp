@@ -20,7 +20,7 @@
 #include "cocaine/forwards.hpp"
 #include "cocaine/object.hpp"
 
-#include "cocaine/module.hpp"
+#include "cocaine/interfaces/module.hpp"
 
 namespace cocaine { namespace core {
 

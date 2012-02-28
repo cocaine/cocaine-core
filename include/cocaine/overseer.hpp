@@ -19,7 +19,8 @@
 #include "cocaine/object.hpp"
 
 #include "cocaine/networking.hpp"
-#include "cocaine/modules/plugin.hpp"
+
+#include "cocaine/interfaces/plugin.hpp"
 
 namespace cocaine { namespace engine {
 
@@ -53,7 +54,7 @@ class overseer_t:
         networking::channel_t m_messages;
 
         // Application instance
-        std::auto_ptr<modules::plugin_t> m_module;
+        std::auto_ptr<plugin_t> m_module;
 
         // Event loop
         ev::dynamic_loop m_loop;

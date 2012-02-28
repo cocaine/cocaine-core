@@ -16,7 +16,7 @@
 
 #include <boost/filesystem.hpp>
 
-#include "cocaine/storages/base.hpp"
+#include "cocaine/interfaces/storage.hpp"
 
 namespace cocaine { namespace storages {
 

@@ -20,11 +20,10 @@
 
 #include <Python.h>
 
-#include "cocaine/modules/plugin.hpp"
-
 #include "cocaine/helpers/track.hpp"
+#include "cocaine/interfaces/plugin.hpp"
 
-namespace cocaine { namespace modules {
+namespace cocaine { namespace engine {
 
 typedef helpers::track<PyObject*, Py_DecRef> python_object_t;
 
@@ -72,7 +71,7 @@ class thread_state_t {
 };
 
 class python_t:
-    public modules::plugin_t
+    public plugin_t
 {
     public:
         static object_t* create(context_t& ctx);
@@ -81,11 +80,11 @@ class python_t:
         python_t(context_t& ctx);
 
         virtual void initialize(const engine::app_t& app);
-        virtual void invoke(modules::invocation_site_t& site);
+        virtual void invoke(invocation_site_t& site);
 
     private:
         void compile(const std::string& path, const std::string& code);
-        void respond(modules::invocation_site_t& site, python_object_t& result);
+        void respond(invocation_site_t& site, python_object_t& result);
 
         std::string exception();
 

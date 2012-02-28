@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_BASE_STORAGE_HPP
-#define COCAINE_BASE_STORAGE_HPP
+#ifndef COCAINE_STORAGE_INTERFACE_HPP
+#define COCAINE_STORAGE_INTERFACE_HPP
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"

@@ -16,7 +16,7 @@
 
 #include <mongo/client/dbclient.h>
 
-#include "cocaine/storages/base.hpp"
+#include "cocaine/interfaces/storage.hpp"
 
 namespace cocaine { namespace storages {
 

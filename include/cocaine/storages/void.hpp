@@ -14,7 +14,7 @@
 #ifndef COCAINE_VOID_STORAGE_HPP
 #define COCAINE_VOID_STORAGE_HPP
 
-#include "cocaine/storages/base.hpp"
+#include "cocaine/interfaces/storage.hpp"
 
 namespace cocaine { namespace storages {
 

@@ -17,7 +17,7 @@
 #include <boost/filesystem.hpp>
 #include <eblob/eblob.hpp>
 
-#include "cocaine/storages/base.hpp"
+#include "cocaine/interfaces/storage.hpp"
 
 namespace cocaine { namespace storages {
 

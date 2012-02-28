@@ -11,17 +11,17 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_GENERIC_SLAVE_BACKEND_PLUGIN_HPP
-#define COCAINE_GENERIC_SLAVE_BACKEND_PLUGIN_HPP
+#ifndef COCAINE_GENERIC_SLAVE_BACKEND_PLUGIN_INTERFACE_HPP
+#define COCAINE_GENERIC_SLAVE_BACKEND_PLUGIN_INTERFACE_HPP
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/object.hpp"
 
 #include "cocaine/app.hpp"
-#include "cocaine/module.hpp"
+#include "cocaine/interfaces/module.hpp"
 
-namespace cocaine { namespace modules {
+namespace cocaine { namespace engine {
 
 // Plugin invocation site
 // ----------------------

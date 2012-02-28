@@ -18,7 +18,6 @@
 
 using namespace cocaine::core;
 using namespace cocaine::engine;
-using namespace cocaine::modules;
 
 cocaine::object_t* python_t::create(context_t& ctx) {
     return new python_t(ctx);

@@ -54,9 +54,9 @@ overseer_t::~overseer_t() {
 
 void overseer_t::loop() {
     try {
-        m_module = context().registry().create<modules::plugin_t>(m_app.type);
+        m_module = context().registry().create<plugin_t>(m_app.type);
         m_module->initialize(m_app);
-    } catch(const modules::unrecoverable_error_t& e) {
+    } catch(const unrecoverable_error_t& e) {
         m_messages.send_multi(
             boost::make_tuple(
                 (const int)rpc::error,
@@ -102,9 +102,9 @@ void overseer_t::process(ev::idle&, int) {
                 m_messages.recv_multi(tier);
 
                 try {
-                    modules::invocation_site_t site;
+                    invocation_site_t site;
                     m_module->invoke(site);
-                } catch(const modules::recoverable_error_t& e) {
+                } catch(const recoverable_error_t& e) {
                     m_messages.send_multi(
                         boost::make_tuple(
                             (const int)rpc::error,
@@ -112,7 +112,7 @@ void overseer_t::process(ev::idle&, int) {
                             std::string(e.what())
                         )
                     );
-                } catch(const modules::unrecoverable_error_t& e) {
+                } catch(const unrecoverable_error_t& e) {
                     m_messages.send_multi(
                         boost::make_tuple(
                             (const int)rpc::error,
