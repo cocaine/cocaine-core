@@ -35,8 +35,14 @@ context_t::context_t(config_t config_, std::auto_ptr<logging::sink_t> sink):
     }
 }
 
-void context_t::reset() {
-    m_io.reset();
+context_t::context_t(const context_t& other):
+    config(other.config),
+    m_sink(other.m_sink)
+{ }
+
+context_t& context_t::operator=(const context_t& other) {
+    config = other.config;
+    m_sink = other.m_sink;
 }
 
 crypto::auth_t& context_t::auth() {

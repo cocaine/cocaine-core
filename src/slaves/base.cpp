@@ -22,7 +22,7 @@
 using namespace cocaine::engine::slaves;
 
 slave_t::slave_t(engine_t& engine):
-    object_t(engine.context(), engine.app().name + " slave " + id()),
+    object_t(engine.context(), engine.app().name + " frontend " + id()),
     m_engine(engine)
 {
     // NOTE: These are the 10 seconds for the slave to come alive   
@@ -113,14 +113,24 @@ void alive::react(const events::invoke_t& event) {
     // TEST: Ensure that no job is being lost here
     BOOST_ASSERT(!m_job);
 
-    m_job->process_event(event);
     m_job = event.job;
+    m_job->process_event(event);
+    
+    context<slave_t>().log().debug(
+        "assigned a '%s' job",
+        m_job->method().c_str()
+    );
 }
 
 void alive::react(const events::release_t& event) {
     // TEST: Ensure that the job is in fact here
     BOOST_ASSERT(m_job);
 
+    context<slave_t>().log().debug(
+        "completed a '%s' job",
+        m_job->method().c_str()
+    );
+    
     m_job->process_event(event);
     m_job.reset();
 }

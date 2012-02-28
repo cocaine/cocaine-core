@@ -34,7 +34,7 @@ class socket_t:
 {
     public:
         socket_t(context_t& ctx, int type, std::string route = ""):
-            object_t(ctx, "networking"),
+            object_t(ctx, "socket " + route),
             m_socket(ctx.io(), type),
             m_route(route)
         {

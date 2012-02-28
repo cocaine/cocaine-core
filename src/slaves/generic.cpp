@@ -27,10 +27,10 @@ generic_t::generic_t(engine_t& engine):
     m_pid = fork();
 
     if(m_pid == 0) {
-        // NOTE: In order to reinitialize the subsystems in a new process
-        engine.context().reset();
+        // NOTE: Reinitialize the context
+        context_t context(engine.context());
 
-        overseer_t overseer(id(), engine.context(), engine.app());
+        overseer_t overseer(id(), context, engine.app());
         overseer.loop();
         
         exit(EXIT_SUCCESS);

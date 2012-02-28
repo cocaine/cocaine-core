@@ -50,13 +50,12 @@ struct config_t {
     } storage;
 };
 
-class context_t:
-    public boost::noncopyable
-{
+class context_t {
     public:
         context_t(config_t config, std::auto_ptr<logging::sink_t> sink);
+        context_t(const context_t& other);
 
-        void reset();
+        context_t& operator=(const context_t& other);
 
     public:
         crypto::auth_t& auth();

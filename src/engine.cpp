@@ -60,7 +60,7 @@ namespace {
 engine_t::engine_t(context_t& ctx, const std::string& name, const Json::Value& manifest):
     object_t(ctx, name + " engine"),
     m_app(ctx, name, manifest),
-    m_messages(ctx, ZMQ_ROUTER),
+    m_messages(ctx, ZMQ_ROUTER, "rpc/" + name),
     m_running(false)
 { }
 
@@ -95,7 +95,7 @@ Json::Value engine_t::start() {
     // Tasks configuration
     // -------------------
 
-    Json::Value tasks(m_app.args["tasks"]);
+    Json::Value tasks(m_app.manifest["tasks"]);
 
     if(!tasks.isNull() && tasks.size()) {
         log().info("initializing drivers"); 
@@ -278,7 +278,7 @@ void engine_t::process(ev::idle&, int) {
         std::string slave_id;
         unsigned int command = 0;
         boost::tuple<raw<std::string>, unsigned int&> tier(protect(slave_id), command);
-        
+                
         m_messages.recv_multi(tier);
         pool_map_t::iterator slave(m_pool.find(slave_id));
 
@@ -314,7 +314,7 @@ void engine_t::process(ev::idle&, int) {
                             )
                         );
                     } else {
-                        log().error("the app seems to be broken");
+                        log().error("the app seems to be broken - %s", message.c_str());
                         stop();
                         return;
                     }
@@ -326,7 +326,7 @@ void engine_t::process(ev::idle&, int) {
                     // TEST: Only active slaves can release the job
                     BOOST_ASSERT(state != 0);
                    
-                    state->job()->process_event(events::release_t());
+                    slave->second->process_event(events::release_t());
                     
                     break;
                 }

@@ -23,7 +23,7 @@ using namespace cocaine::engine;
 
 overseer_t::overseer_t(const unique_id_t::type& id_, context_t& ctx, const app_t& app):
     unique_id_t(id_),
-    object_t(ctx, app.name + " slave " + id()),
+    object_t(ctx, app.name + " backend " + id()),
     m_app(app),
     m_messages(ctx, ZMQ_DEALER, id()),
     m_loop(),
@@ -57,6 +57,16 @@ void overseer_t::loop() {
         m_module = context().registry().create<plugin_t>(m_app.type);
         m_module->initialize(m_app);
     } catch(const unrecoverable_error_t& e) {
+        m_messages.send_multi(
+            boost::make_tuple(
+                (const int)rpc::error,
+                static_cast<const int>(client::server_error),
+                std::string(e.what())
+            )
+        );
+
+        return;
+    } catch(const std::runtime_error& e) {
         m_messages.send_multi(
             boost::make_tuple(
                 (const int)rpc::error,

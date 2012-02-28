@@ -23,11 +23,11 @@ using namespace cocaine::engine;
 // Application
 // -----------
 
-app_t::app_t(context_t& ctx, const std::string& name_, const Json::Value& args_):
+app_t::app_t(context_t& ctx, const std::string& name_, const Json::Value& manifest_):
 	name(name_),
-	args(args_)
+	manifest(manifest_)
 {
-    type = args["type"].asString();
+    type = manifest["type"].asString();
 
     endpoint = boost::algorithm::join(
         boost::assign::list_of
@@ -36,17 +36,17 @@ app_t::app_t(context_t& ctx, const std::string& name_, const Json::Value& args_)
             (name),
         "/");
 
-    policy.suicide_timeout = args["engine"].get(
+    policy.suicide_timeout = manifest["engine"].get(
         "suicide-timeout",
         ctx.config.engine.suicide_timeout
     ).asDouble();
     
-    policy.pool_limit = args["engine"].get(
+    policy.pool_limit = manifest["engine"].get(
         "pool-limit",
         ctx.config.engine.pool_limit
     ).asUInt();
     
-    policy.queue_limit = args["engine"].get(
+    policy.queue_limit = manifest["engine"].get(
         "queue-limit",
         ctx.config.engine.queue_limit
     ).asUInt();    

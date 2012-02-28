@@ -29,8 +29,14 @@ python_t::python_t(context_t& ctx):
 { }
 
 void python_t::initialize(const app_t& app) {
-    boost::filesystem::path source(app.args["source"].asString());
+    Json::Value args(app.manifest["args"]);
+
+    if(!args.isObject()) {
+        throw unrecoverable_error_t("malformed manifest");
+    }
     
+    boost::filesystem::path source(args["source"].asString());
+   
     if(source.empty()) {
         throw unrecoverable_error_t("no code location has been specified");
     }

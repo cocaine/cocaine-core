@@ -22,13 +22,13 @@ namespace cocaine { namespace engine {
 struct app_t {
     app_t(context_t& ctx, 
           const std::string& name, 
-          const Json::Value& args);
+          const Json::Value& manifest);
 
     std::string name;
     std::string type;
     std::string endpoint;
 
-    Json::Value args;
+    Json::Value manifest;
 
     struct {
         float suicide_timeout;
