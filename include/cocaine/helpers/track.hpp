@@ -22,7 +22,7 @@ namespace cocaine { namespace helpers {
         public:
             track(T object):
                 m_object(object)
-            {}
+            { }
 
             ~track() {
                 destroy();

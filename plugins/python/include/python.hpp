@@ -84,6 +84,8 @@ class python_t:
         void compile(const std::string& path, const std::string& code);
         void respond(invocation_site_t& site, python_object_t& result);
 
+        python_object_t wrap(const Json::Value& value);
+        
         std::string exception();
 
     private:
