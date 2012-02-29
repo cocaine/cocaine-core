@@ -27,7 +27,7 @@ generic_t::generic_t(engine_t& engine):
     m_pid = fork();
 
     if(m_pid == 0) {
-        // NOTE: Reinitialize the context
+        // NOTE: Copy the context.
         context_t context(engine.context());
 
         overseer_t overseer(id(), context, engine.app());
@@ -50,8 +50,7 @@ void generic_t::reap() {
         ::kill(m_pid, SIGKILL);
     }
 
-    // NOTE: There's no need to wait for the killed children,
-    // as libev will automatically reap them.
+    // NOTE: Children are automatically reaped by libev.
     m_child_watcher.stop();
 }
 

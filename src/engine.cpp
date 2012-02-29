@@ -11,6 +11,8 @@
 // limitations under the License.
 //
 
+#include <boost/algorithm/string/join.hpp>
+
 #include "cocaine/engine.hpp"
 
 #include "cocaine/drivers.hpp"
@@ -98,10 +100,15 @@ Json::Value engine_t::start() {
     Json::Value tasks(m_app.manifest["tasks"]);
 
     if(!tasks.isNull() && tasks.size()) {
-        log().info("initializing %zu drivers", tasks.size()); 
-    
         Json::Value::Members names(tasks.getMemberNames());
 
+        log().info(
+            "initializing drivers for %zu %s: %s",
+            tasks.size(),
+            tasks.size() == 1 ? "task" : "tasks",
+            boost::algorithm::join(names, ", ").c_str()
+        );
+    
         for(Json::Value::Members::iterator it = names.begin(); it != names.end(); ++it) {
             std::string task(*it);
             std::string type(tasks[task]["type"].asString());
