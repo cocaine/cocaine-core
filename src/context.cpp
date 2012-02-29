@@ -47,6 +47,8 @@ context_t& context_t::operator=(const context_t& other) {
     m_auth = other.m_auth;
     m_registry = other.m_registry;
     m_sink = other.m_sink;
+
+    return *this;
 }
 
 crypto::auth_t& context_t::auth() {

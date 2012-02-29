@@ -19,9 +19,9 @@
 using namespace cocaine::engine;
 
 invocation_site_t::invocation_site_t(overseer_t& overseer, const void* request_, size_t request_size_):
-	m_overseer(overseer),
 	request(request_),
-	request_size(request_size_)
+	request_size(request_size_),
+	m_overseer(overseer)
 { }
 
 void invocation_site_t::pull() {

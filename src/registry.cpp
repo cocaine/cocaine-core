@@ -86,6 +86,8 @@ registry_t::registry_t(context_t& ctx):
 
                 lt_dlclose(module);
             }
+
+            initialize = NULL;
         } else {
             log().error(
                 "unable to load '%s' - %s",
@@ -98,6 +100,7 @@ registry_t::registry_t(context_t& ctx):
             );
         }
 
+        module = NULL;
         ++it;
     }
 }

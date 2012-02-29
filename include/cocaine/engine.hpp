@@ -117,7 +117,6 @@ class engine_t:
         void cleanup(ev::timer&, int);
 
     private:
-        bool m_running;      
         app_t m_app;
 
         // Application tasks
@@ -138,6 +137,9 @@ class engine_t:
 
         // Jobs
         job_queue_t m_queue;
+        
+        // Active state
+        bool m_running;      
 };
 
 }}
