@@ -49,5 +49,5 @@ app_t::app_t(context_t& ctx, const std::string& name_, const Json::Value& manife
     policy.queue_limit = manifest["engine"].get(
         "queue-limit",
         ctx.config.engine.queue_limit
-    ).asUInt();    
+    ).asUInt();
 }

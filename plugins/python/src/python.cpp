@@ -39,24 +39,22 @@ void python_t::initialize(const app_t& app) {
         throw unrecoverable_error_t("no code location has been specified");
     }
 
+    if(boost::filesystem::is_directory(source)) {
+        source /= "__init__.py";
+    }
+
     boost::filesystem::ifstream input(source);
     
     if(!input) {
         throw unrecoverable_error_t("unable to open " + source.string());
     }
 
-    char path_object_name[] = "path";
-
     // Acquire the interpreter state
     thread_state_t state;
     
     // NOTE: Prepend the current application cache location to the sys.path,
     // so that it could import different stuff from there
-    PyObject* syspath = PySys_GetObject(path_object_name);
-
-    if(!PyList_Check(syspath)) {
-        throw unrecoverable_error_t("'sys.path' is not a list object");
-    }
+    PyObject* syspath = PySys_GetObject("path");
 
     // XXX: Does it steal the reference or not?
     PyList_Insert(syspath, 0,
@@ -68,30 +66,32 @@ void python_t::initialize(const app_t& app) {
 #endif
         )
     );
+   
+    // Initialize the context module
+    PyObject* module = Py_InitModule("context", NULL);
     
+    PyModule_AddObject(
+        module,
+        "manifest",
+        PyDictProxy_New(
+            wrap(app.manifest["args"])
+        )
+    );
+
+    // Load the code
     std::stringstream stream;
     stream << input.rdbuf();
 
     compile(source.string(), stream.str());
-
-    // Add the context
-    // ---------------
-
-    python_object_t cocaine(PyModule_New("cocaine"));
-    python_object_t manifest(wrap(app.manifest));
-    python_object_t proxy(PyDictProxy_New(manifest));
-
-    PyModule_AddObject(cocaine, "manifest", proxy.release());
-    PyModule_AddObject(m_python_module, "cocaine", cocaine.release());
 }
 
 void python_t::invoke(invocation_site_t& site, const std::string& method) {
-    thread_state_t state;
-    
     if(!m_python_module) {
         throw unrecoverable_error_t("python module is not initialized");
     }
 
+    thread_state_t state;
+    
     python_object_t object(
         PyObject_GetAttrString(
             m_python_module,
@@ -162,17 +162,20 @@ std::string python_t::exception() {
 }
 
 void python_t::compile(const std::string& path, const std::string& code) {
-    python_object_t bytecode(Py_CompileString(
-        code.c_str(),
-        path.c_str(),
-        Py_file_input));
+    python_object_t bytecode(
+        Py_CompileString(
+            code.c_str(),
+            path.c_str(),
+            Py_file_input
+        )
+    );
 
     if(PyErr_Occurred()) {
         throw unrecoverable_error_t(exception());
     }
 
     m_python_module = PyImport_ExecCodeModule(
-        const_cast<char*>(unique_id_t().id().c_str()),
+        "<application>",
         bytecode);
     
     if(PyErr_Occurred()) {
@@ -228,8 +231,8 @@ void python_t::respond(invocation_site_t& site, python_object_t& result) {
     }
 }
 
-python_object_t python_t::wrap(const Json::Value& value) {
-    python_object_t object = NULL;
+PyObject* python_t::wrap(const Json::Value& value) {
+    PyObject* object = NULL;
 
     switch(value.type()) {
         case Json::booleanValue:
@@ -249,8 +252,10 @@ python_object_t python_t::wrap(const Json::Value& value) {
                 it != names.end();
                 ++it) 
             {
-                PyDict_SetItemString(object, it->c_str(), wrap(value[*it]).release());
+                PyDict_SetItemString(object, it->c_str(), wrap(value[*it]));
             }
+
+            break;
         } case Json::arrayValue: {
             object = PyTuple_New(value.size());
             Py_ssize_t position = 0;
@@ -259,8 +264,10 @@ python_object_t python_t::wrap(const Json::Value& value) {
                 it != value.end();
                 ++it) 
             {
-                PyTuple_SetItem(object, position++, wrap(*it).release());
+                PyTuple_SetItem(object, position++, wrap(*it));
             }
+
+            break;
         } case Json::nullValue:
             Py_RETURN_NONE;
     }
@@ -285,6 +292,8 @@ extern "C" {
 
         // Initialize the GIL
         PyEval_InitThreads();
+
+        // Save the main thread
         save();
 
         // NOTE: In case of a fork, restore the main thread state and acquire the GIL,
