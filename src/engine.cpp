@@ -98,7 +98,7 @@ Json::Value engine_t::start() {
     Json::Value tasks(m_app.manifest["tasks"]);
 
     if(!tasks.isNull() && tasks.size()) {
-        log().info("initializing drivers"); 
+        log().info("initializing %zu drivers", tasks.size()); 
     
         Json::Value::Members names(tasks.getMemberNames());
 
@@ -208,6 +208,11 @@ Json::Value engine_t::info() const {
 
 void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
     if(!m_running) {
+        log().debug(
+            "dropping an incomplete '%s' job",
+            job->method().c_str()
+        );
+
         job->process_event(
             events::error_t(
                 client::server_error,
