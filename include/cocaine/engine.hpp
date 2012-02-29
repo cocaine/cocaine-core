@@ -79,6 +79,14 @@ class engine_t:
         Json::Value stop();
         Json::Value info() const;
 
+        void enqueue(job_queue_t::const_reference job, bool overflow = false);
+
+    public:
+        inline const app_t& app() const {
+            return m_app;
+        }
+
+    private:
         template<class S, class T>
         pool_map_t::iterator unicast(const S& selector, const T& message) {
             pool_map_t::iterator it(
@@ -103,14 +111,6 @@ class engine_t:
             return it;
         }
 
-        void enqueue(job_queue_t::const_reference job, bool overflow = false);
-
-    public:
-        inline const app_t& app() const {
-            return m_app;
-        }
-
-    private:
         void message(ev::io&, int);
         void process(ev::idle&, int);
         void pump(ev::timer&, int);
