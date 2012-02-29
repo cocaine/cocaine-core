@@ -5,7 +5,7 @@ SET(COCAINE_VERSION 0.7)
 
 CONFIGURE_FILE (
     "${PROJECT_SOURCE_DIR}/config.hpp.in"
-    "${PROJECT_BINARY_DIR}/include/cocaine/config.hpp")
+    "${PROJECT_SOURCE_DIR}/include/cocaine/config.hpp")
 
 FIND_PACKAGE(Boost 1.34.1 REQUIRED 
     COMPONENTS
