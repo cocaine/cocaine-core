@@ -37,11 +37,15 @@ context_t::context_t(config_t config_, std::auto_ptr<logging::sink_t> sink):
 
 context_t::context_t(const context_t& other):
     config(other.config),
+    m_auth(other.m_auth),
+    m_registry(other.m_registry),
     m_sink(other.m_sink)
 { }
 
 context_t& context_t::operator=(const context_t& other) {
     config = other.config;
+    m_auth = other.m_auth;
+    m_registry = other.m_registry;
     m_sink = other.m_sink;
 }
 
