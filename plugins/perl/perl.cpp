@@ -28,7 +28,7 @@ class perl_t:
 {
     public:
         perl_t(context_t& ctx):
-            plugin_t(ctx)
+            plugin_t(ctx, "perl")
         { }
 
         ~perl_t() 
@@ -149,7 +149,11 @@ class perl_t:
 extern "C" {
     void initialize(core::registry_t& registry) {
         PERL_SYS_INIT3(NULL, NULL, NULL);
+<<<<<<< HEAD
         registry.install("perl", &perl_t::create);
+=======
+        return module_info;
+>>>>>>> 22fc1fa6691600ecf2c90003fa256cfbd568f8bb
     }
 
     __attribute__((destructor)) void finalize() {
