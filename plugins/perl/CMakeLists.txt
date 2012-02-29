@@ -14,8 +14,7 @@ ADD_LIBRARY(cocaine-plugin-perl MODULE
     perl)
 
 TARGET_LINK_LIBRARIES(cocaine-plugin-perl
-    cocaine-common
-    uriparser)
+    cocaine-common)
 
 SET_TARGET_PROPERTIES(cocaine-plugin-perl PROPERTIES
     COMPILE_FLAGS "${PERL_CFLAGS}"

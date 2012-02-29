@@ -5,7 +5,6 @@ ADD_LIBRARY(cocaine-plugin-javascript MODULE
 
 TARGET_LINK_LIBRARIES(cocaine-plugin-javascript
     cocaine-core
-    uriparser
     v8)
 
 INSTALL(TARGETS cocaine-plugin-javascript
