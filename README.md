@@ -40,29 +40,26 @@ An example
 ```python
 {
     "type": "python",
-    "args": "local:///path/to/application/__init__.py",
-    "version": 1,
+    "args": {
+        "source": "/path/to/application",
+    },
     "engine": {
-        "backend": "process",
         "heartbeat-timeout": 60,
         "pool-limit": 20,
         "queue-limit": 5
     },
-    "pubsub": {
-        "endpoint": "tcp://lo:9200"
-    },
     "tasks": {
         "aggregate": {
-            "interval": 60000,
-            "type": "recurring-timer"
+            "type": "recurring-timer",
+            "interval": 60000
         },
         "event": {
-            "endpoint" : "tcp://lo:9100",
-            "type" : "native-server"
+            "type" : "zeromq-server",
+            "endpoint" : "tcp://lo:9100"
         },
         "spool": {
-            "path": "/var/spool/my-app-data",
-            "type": "filesystem-monitor"
+            "type": "filesystem-monitor",
+            "path": "/var/spool/my-app-data"
         }
     }
 }
