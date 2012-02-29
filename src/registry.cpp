@@ -118,7 +118,7 @@ void registry_t::install(const std::string& type, factory_fn_t factory) {
         throw std::runtime_error("duplicate module");
     }
 
-    log().info("registering '%s' module", type.c_str());
+    log().info("installing the '%s' module", type.c_str());
 
     m_factories.insert(
         std::make_pair(
