@@ -51,7 +51,6 @@ registry_t::registry_t(context_t& ctx):
 
     lt_dlhandle module;
     initialize_fn_t initialize;
-    std::vector<std::string> types;
 
     // Directory iterator
     typedef boost::filter_iterator<is_regular_file, fs::directory_iterator> file_iterator;
@@ -72,21 +71,8 @@ registry_t::registry_t(context_t& ctx):
             initialize = reinterpret_cast<initialize_fn_t>(lt_dlsym(module, "initialize"));
 
             if(initialize) {
-                const module_info_t* info = initialize();
+                initialize(*this);
                 m_modules.push_back(module);
-
-                // Fetch all the available modules from it
-                while(info->type && info->factory) {
-                    m_factories.insert(
-                        std::make_pair(
-                            info->type,
-                            info->factory
-                        )
-                    );
-                    
-                    types.push_back(info->type);
-                    info++;
-                }
             } else {
                 log().error(
                     "invalid interface in '%s' - %s",
@@ -114,13 +100,6 @@ registry_t::registry_t(context_t& ctx):
 
         ++it;
     }
-
-    if(!m_factories.size()) {
-        throw std::runtime_error("no modules have been found");
-    }
-
-    std::string modules(boost::algorithm::join(types, ", "));
-    log().info("available modules - %s", modules.c_str());
 }
 
 registry_t::~registry_t() {
@@ -132,4 +111,19 @@ registry_t::~registry_t() {
     }
 
     lt_dlexit();
+}
+
+void registry_t::install(const std::string& type, factory_fn_t factory) {
+    if(m_factories.find(type) != m_factories.end()) {
+        throw std::runtime_error("duplicate module");
+    }
+
+    log().info("registering '%s' module", type.c_str());
+
+    m_factories.insert(
+        std::make_pair(
+            type,
+            factory
+        )
+    );
 }

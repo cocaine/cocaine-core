@@ -71,11 +71,9 @@ class thread_state_t {
 };
 
 class python_t:
-    public plugin_t
+    public plugin_t,
+    public core::module_t<python_t>
 {
-    public:
-        static object_t* create(context_t& ctx);
-    
     public:
         python_t(context_t& ctx);
 

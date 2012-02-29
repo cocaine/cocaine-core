@@ -19,17 +19,22 @@
 
 namespace cocaine { namespace core {
 
+// Module helper
+// -------------
+
+template<class T>
+class module_t {
+	public:
+		static object_t* create(context_t& ctx) {
+			return new T(ctx);
+		}
+};
+
 // Module initialization
 // ---------------------
 
 typedef object_t* (*factory_fn_t)(context_t& context);
-
-typedef struct {
-    const char* type;
-    factory_fn_t factory;
-} module_info_t;
-
-typedef const module_info_t* (*initialize_fn_t)(void);
+typedef void (*initialize_fn_t)(registry_t& registry);
 
 }}
 

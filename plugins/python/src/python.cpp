@@ -16,12 +16,10 @@
 
 #include "python.hpp"
 
+#include "cocaine/registry.hpp"
+
 using namespace cocaine::core;
 using namespace cocaine::engine;
-
-cocaine::object_t* python_t::create(context_t& ctx) {
-    return new python_t(ctx);
-}
 
 python_t::python_t(context_t& ctx):
     plugin_t(ctx, "python"),
@@ -218,12 +216,6 @@ void python_t::compile(const std::string& path, const std::string& code) {
     }
 }
 
-static const module_info_t module_info[] = {
-    { "python", &python_t::create },
-    { "python+raw", &python_t::create },
-    { NULL, NULL }
-};
-
 PyThreadState* g_state = NULL;
 
 void save() {
@@ -235,7 +227,7 @@ void restore() {
 }
 
 extern "C" {
-    const module_info_t* initialize() {
+    void initialize(registry_t& registry) {
         // Initialize the Python subsystem
         Py_InitializeEx(0);
 
@@ -249,7 +241,7 @@ extern "C" {
         pthread_atfork(NULL, NULL, PyOS_AfterFork);
         pthread_atfork(NULL, NULL, save);
 
-        return module_info;
+        registry.install("python", &python_t::create);
     }
 
     __attribute__((destructor)) void finalize() {

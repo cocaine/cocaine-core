@@ -17,13 +17,15 @@
 #include <v8.h>
 
 #include "cocaine/interfaces/plugin.hpp"
+#include "cocaine/registry.hpp"
 
 namespace cocaine { namespace engine {
 
 using namespace v8;
 
-class javascript_t: 
-    public plugin_t
+class javascript_t:
+    public plugin_t,
+    public core::module_t<javascript_t>
 {
     public:
         static object_t* create(context_t& ctx) {
@@ -133,23 +135,10 @@ class javascript_t:
         Persistent<Function> m_function;
 };
 
-static const cocaine::core::module_info_t module_info[] = {
-    { "javascript", &javascript_t::create },
-    { NULL, NULL }
-};
-
 extern "C" {
-    const cocaine::core::module_info_t* initialize() {
-        // Global initialization logic
-        // This function will be called once, from the main thread
-
-        return module_info;
+    void initialize(core::registry_t& registry) {
+        registry.install("javascript", &javascript_t::create);
     }
-
-    // __attribute__((destructor)) void finalize() {
-        // This is guaranteed to be called from the main thread,
-        // when there're no more plugin instances left running
-    // }
 }
 
 }}

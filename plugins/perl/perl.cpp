@@ -18,17 +18,14 @@
 #include <perl.h>
 
 #include "cocaine/interfaces/plugin.hpp"
+#include "cocaine/registry.hpp"
 
 namespace cocaine { namespace engine {
 
 class perl_t:
-    public plugin_t
+    public plugin_t,
+    public core::module_t<perl_t>
 {
-    public:
-        static object_t* create(context_t& ctx) {
-            return new perl_t(ctx);
-        }
-
     public:
         perl_t(context_t& ctx):
             plugin_t(ctx)
@@ -149,15 +146,10 @@ class perl_t:
         PerlInterpreter* my_perl;
 };
 
-static const cocaine::core::module_info_t module_info[] = {
-    { "perl", &perl_t::create },
-    { NULL, NULL }
-};
-
 extern "C" {
-    const cocaine::core::module_info_t* initialize() {
+    void initialize(core::registry_t& registry) {
         PERL_SYS_INIT3(NULL, NULL, NULL);
-        return plugin_info;
+        registry.install("perl", &perl_t::create);
     }
 
     __attribute__((destructor)) void finalize() {

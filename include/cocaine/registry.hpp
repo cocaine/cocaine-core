@@ -53,6 +53,8 @@ class registry_t:
             }
         }
 
+        void install(const std::string& type, factory_fn_t factory);
+
     private:
         // Used to unload all the modules on shutdown
         std::vector<lt_dlhandle> m_modules;
