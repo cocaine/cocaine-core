@@ -94,7 +94,7 @@ zeromq_server_t::zeromq_server_t(engine_t& engine, const std::string& method, co
     m_pumper.set<zeromq_server_t, &zeromq_server_t::pump>(this);
     m_pumper.start(0.2f, 0.2f);
 } catch(const zmq::error_t& e) {
-    throw std::runtime_error(std::string("network failure: ") + e.what());
+    throw std::runtime_error(std::string("network failure - ") + e.what());
 }
 
 zeromq_server_t::~zeromq_server_t() {

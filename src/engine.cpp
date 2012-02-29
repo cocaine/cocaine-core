@@ -83,7 +83,12 @@ Json::Value engine_t::start() {
     int linger = 0;
 
     m_messages.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
-    m_messages.bind(m_app.endpoint);
+
+    try {
+        m_messages.bind(m_app.endpoint);
+    } catch(const zmq::error_t& e) {
+        throw std::runtime_error(std::string("rpc failure - ") + e.what());
+    }
     
     m_watcher.set<engine_t, &engine_t::message>(this);
     m_watcher.start(m_messages.fd(), ev::READ);
@@ -337,18 +342,12 @@ void engine_t::process(ev::idle&, int) {
                 case rpc::release: {
                     // TEST: Only active slaves can release the job
                     BOOST_ASSERT(state != 0);
-                   
                     slave->second->process_event(events::release_t());
-                    
                     break;
                 }
 
                 case rpc::terminate: {
-                    // NOTE: A slave might be already terminated by its inner mechanics
-                    if(!slave->second->state_downcast<const slaves::dead*>()) {
-                        slave->second->process_event(events::terminate_t());
-                    }
-
+                    slave->second->process_event(events::terminate_t());
                     return;
                 }
             }

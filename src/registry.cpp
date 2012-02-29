@@ -40,9 +40,9 @@ registry_t::registry_t(context_t& ctx):
     fs::path path(context().config.core.modules);
 
     if(!fs::exists(path)) {
-        throw std::runtime_error(path.string() + " does not exist");
+        throw std::runtime_error("path '" + path.string() + "' does not exist");
     } else if(fs::exists(path) && !fs::is_directory(path)) {
-        throw std::runtime_error(path.string() + " is not a directory");
+        throw std::runtime_error("path '" + path.string() + "' is not a directory");
     }
 
     lt_dladvise advice;

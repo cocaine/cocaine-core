@@ -98,14 +98,30 @@ class engine_t:
             );
 
             if(it != m_pool.end()) {
-                m_messages.send_multi(
-                    helpers::joint_view(
-                        boost::tie(
-                            networking::protect(it->second->id())
-                        ),
-                        message
-                    )
-                );
+                try {
+                    m_messages.send_multi(
+                        helpers::joint_view(
+                            boost::tie(
+                                networking::protect(it->second->id())
+                            ),
+                            message
+                        )
+                    );
+                } catch(const zmq::error_t& e) {
+                    // XXX: Fix the error number in 0MQ 3.1
+                    if(e.num() == EHOSTDOWN) {
+                        log().error(
+                            "slave %s has died unexpectedly", 
+                            it->second->id().c_str()
+                        );
+
+                        it->second->process_event(events::terminate_t());
+                        
+                        return m_pool.end();
+                    } else {
+                        throw;
+                    }
+                }
             }
 
             return it;
