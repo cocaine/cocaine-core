@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_NETWORKING_TUPLES_HPP
-#define COCAINE_NETWORKING_TUPLES_HPP
+#ifndef COCAINE_HELPERS_TUPLES_HPP
+#define COCAINE_HELPERS_TUPLES_HPP
 
 #include "cocaine/common.hpp"
 

@@ -11,14 +11,31 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_DRIVERS_HPP
-#define COCAINE_DRIVERS_HPP
+#ifndef COCAINE_MODULE_HPP
+#define COCAINE_MODULE_HPP
 
-#include "cocaine/drivers/recurring_timer.hpp"
-#include "cocaine/drivers/drifting_timer.hpp"
-#include "cocaine/drivers/filesystem_monitor.hpp"
-#include "cocaine/drivers/zeromq_server.hpp"
-#include "cocaine/drivers/zeromq_sink.hpp"
-#include "cocaine/drivers/lsd_server.hpp"
+#include "cocaine/common.hpp"
+#include "cocaine/forwards.hpp"
+
+namespace cocaine { namespace core {
+
+// Module helper
+// -------------
+
+template<class T>
+class module_t {
+	public:
+		static object_t* create(context_t& ctx) {
+			return new T(ctx);
+		}
+};
+
+// Module initialization
+// ---------------------
+
+typedef object_t* (*factory_fn_t)(context_t& context);
+typedef void (*initialize_fn_t)(registry_t& registry);
+
+}}
 
 #endif

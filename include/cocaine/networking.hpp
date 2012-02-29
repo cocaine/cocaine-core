@@ -15,16 +15,12 @@
 #define COCAINE_NETWORKING_HPP
 
 #include <boost/tuple/tuple.hpp>
-
-#include <zmq.hpp>
-
-#if ZMQ_VERSION < 20107
-    #error ZeroMQ version 2.1.7+ required!
-#endif
-
 #include <msgpack.hpp>
 
 #include "cocaine/common.hpp"
+#include "cocaine/object.hpp"
+
+#include "cocaine/context.hpp"
 
 namespace cocaine { namespace networking {
 
@@ -33,12 +29,13 @@ using namespace boost::tuples;
 typedef std::vector<std::string> route_t;
 
 class socket_t: 
-    public boost::noncopyable,
+    public object_t,
     public birth_control_t<socket_t>
 {
     public:
-        socket_t(zmq::context_t& context, int type, std::string route = ""):
-            m_socket(context, type),
+        socket_t(context_t& ctx, int type, std::string route = ""):
+            object_t(ctx, "socket " + route),
+            m_socket(ctx.io(), type),
             m_route(route)
         {
             if(!m_route.empty()) {
@@ -54,13 +51,8 @@ class socket_t:
             size_t position = endpoint.find_last_of(":");
 
             if(position != std::string::npos) {
-                char hostname[256];
-
-                if(gethostname(hostname, 256) == 0) {
-                    m_endpoint = hostname + endpoint.substr(position, std::string::npos);
-                } else {
-                    throw std::runtime_error("failed to determine the hostname");
-                }
+                m_endpoint = context().config.core.hostname + 
+                    endpoint.substr(position, std::string::npos);
             } else {
                 m_endpoint = "<local>";
             }
@@ -71,21 +63,11 @@ class socket_t:
         }
        
         bool send(zmq::message_t& message, int flags = 0) {
-            try {
-                return m_socket.send(message, flags);
-            } catch(const zmq::error_t& e) {
-                syslog(LOG_ERR, "networking: send() failed - %s", e.what());
-                return false;
-            }
+            return m_socket.send(message, flags);
         }
 
         bool recv(zmq::message_t* message, int flags = 0) {
-            try {
-                return m_socket.recv(message, flags);
-            } catch(const zmq::error_t& e) {
-                syslog(LOG_ERR, "networking: recv() failed - %s", e.what());
-                return false;
-            }
+            return m_socket.recv(message, flags);
         }
         
         void drop_remaining_parts() {
@@ -198,8 +180,8 @@ class channel_t:
     public socket_t
 {
     public:
-        channel_t(zmq::context_t& context, int type, std::string route = ""):
-            socket_t(context, type, route)
+        channel_t(context_t& ctx, int type, std::string route = ""):
+            socket_t(ctx, type, route)
         { }
 
         // Bring original methods into the scope
@@ -219,9 +201,9 @@ class channel_t:
             
             return send(message, flags);
         }
-
+        
         template<class T>
-        inline bool send(const raw<T>& object, int flags) {
+        inline bool send(const raw<T>& object, int flags = 0) {
             zmq::message_t message;
             object.pack(message);
             return send(message, flags);
@@ -256,14 +238,14 @@ class channel_t:
             try { 
                 msgpack::unpack(
                     &unpacked,
-                    static_cast<const char*>(message.data()), message.size());
+                    static_cast<const char*>(message.data()), message.size()
+                );
+                
                 unpacked.get().convert(&result);
             } catch(const std::bad_cast& e) {
-                syslog(LOG_ERR, "networking: corrupted object - %s", e.what());
-                return false;
+                throw std::runtime_error(std::string("networking: corrupted object - ") + e.what());
             } catch(const msgpack::unpack_error& e) {
-                syslog(LOG_ERR, "networking: corrupted object - %s", e.what());
-                return false;
+                throw std::runtime_error(std::string("networking: corrupted object - ") + e.what());
             }
 
             return true;

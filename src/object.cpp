@@ -11,31 +11,17 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_SLAVE_PROCESS_HPP
-#define COCAINE_SLAVE_PROCESS_HPP
+#include "cocaine/object.hpp"
 
-#include "cocaine/slaves/base.hpp"
+using namespace cocaine;
 
-namespace cocaine { namespace engine { namespace slave {
-
-class process_t:
-    public slave_t
+object_t::object_t(context_t& context, const std::string& identity):
+    m_context(context),
+    m_log(context, identity)
 {
-    public:
-        process_t(engine_t& engine,
-                  const std::string& type,
-                  const std::string& args);
+    log().debug("constructing");
+}
 
-        virtual void reap();
-
-    private:
-        void signal(ev::child&, int);
-
-    private:
-        pid_t m_pid;
-        ev::child m_child_watcher;
-};
-
-}}}
-
-#endif
+object_t::~object_t() {
+    log().debug("destructing");
+}

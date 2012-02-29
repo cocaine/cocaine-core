@@ -11,21 +11,22 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_SECURITY_HPP
-#define COCAINE_SECURITY_HPP
+#ifndef COCAINE_AUTH_HPP
+#define COCAINE_AUTH_HPP
 
 #include <openssl/evp.h>
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
+#include "cocaine/object.hpp"
 
 namespace cocaine { namespace crypto {
 
 class auth_t:
-    public boost::noncopyable
+    public object_t
 {
     public:
-        auth_t(context_t& context);
+        auth_t(context_t& ctx);
         ~auth_t();
 
         void verify(const char* message,
@@ -37,7 +38,7 @@ class auth_t:
         // std::string sign(const std::string& message, const std::string& username);
 
     private:
-        EVP_MD_CTX* m_context;
+        EVP_MD_CTX* m_md_context;
 
         typedef std::map<const std::string, EVP_PKEY*> key_map_t;
         key_map_t m_keys;

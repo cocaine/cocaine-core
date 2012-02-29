@@ -11,19 +11,21 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_SLAVE_BASE_HPP
-#define COCAINE_SLAVE_BASE_HPP
+#ifndef COCAINE_SLAVE_FRONTEND_BASE_HPP
+#define COCAINE_SLAVE_FRONTEND_BASE_HPP
 
 #include <boost/statechart/state_machine.hpp>
-#include <boost/statechart/state.hpp>
+#include <boost/statechart/simple_state.hpp>
 #include <boost/statechart/in_state_reaction.hpp>
 #include <boost/statechart/transition.hpp>
 
 #include "cocaine/common.hpp"
-#include "cocaine/events.hpp"
 #include "cocaine/forwards.hpp"
+#include "cocaine/object.hpp"
 
-namespace cocaine { namespace engine { namespace slave {
+#include "cocaine/events.hpp"
+
+namespace cocaine { namespace engine { namespace slaves {
 
 namespace sc = boost::statechart;
 
@@ -37,24 +39,28 @@ struct slave_t:
     public sc::state_machine<slave_t, unknown>,
     public birth_control_t<slave_t>,
     public unique_id_t,
-    public identifiable_t
+    public object_t
 {
-    public:
-        slave_t(engine_t& engine);
-        virtual ~slave_t();
+    friend class alive;
 
-        void react(const events::heartbeat_t& event);
-       
     public:
+        virtual ~slave_t();
+        
+        void react(const events::heartbeat_t& event);
+        void react(const events::terminate_t& event);
+
+        bool operator==(const slave_t& other) const;
+
         virtual void reap() = 0;
+
+    protected:
+        slave_t(engine_t& engine);
 
     private:
         void timeout(ev::timer&, int);
 
-    protected:
-        engine_t& m_engine;
-
     private:
+        engine_t& m_engine;
         ev::timer m_heartbeat_timer;
 };
 
@@ -64,7 +70,7 @@ struct unknown:
     public:
         typedef boost::mpl::list<
             sc::transition<events::heartbeat_t, alive, slave_t, &slave_t::react>,
-            sc::transition<events::terminated_t, dead>
+            sc::transition<events::terminate_t, dead,  slave_t, &slave_t::react>
         > reactions;
 };
 
@@ -74,20 +80,21 @@ struct alive:
     public:
         typedef boost::mpl::list<
             sc::in_state_reaction<events::heartbeat_t, slave_t, &slave_t::react>,
-            sc::transition<events::terminated_t, dead>
+            sc::transition<events::terminate_t, dead,  slave_t, &slave_t::react>
         > reactions;
-
-        void react(const events::invoked_t& event);
-        void react(const events::choked_t& event);
 
         ~alive();
 
-        const boost::shared_ptr<job::job_t>& job() const {
+        void react(const events::invoke_t& event);
+        void react(const events::release_t& event);
+
+    public:
+        const boost::shared_ptr<job_t>& job() const {
             return m_job;
         }
 
     private:
-        boost::shared_ptr<job::job_t> m_job;
+        boost::shared_ptr<job_t> m_job;
 };
 
 struct idle: 
@@ -95,7 +102,7 @@ struct idle:
 {
     public:
         typedef sc::transition<
-            events::invoked_t, busy, alive, &alive::react
+            events::invoke_t, busy, alive, &alive::react
         > reactions;
 };
 
@@ -104,20 +111,18 @@ struct busy:
 {
     public:
         typedef sc::transition<
-            events::choked_t, idle, alive, &alive::react
+            events::release_t, idle, alive, &alive::react
         > reactions;
 
-        const boost::shared_ptr<job::job_t>& job() const {
+    public:
+        const boost::shared_ptr<job_t>& job() const {
             return context<alive>().job();
         }
 };
 
 struct dead:
-    public sc::state<dead, slave_t>
-{
-    public:
-        dead(my_context ctx); 
-};
+    public sc::simple_state<dead, slave_t>
+{ };
 
 }}}
 

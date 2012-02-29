@@ -15,7 +15,7 @@
 #include "cocaine/storages/eblobs.hpp"
 
 using namespace cocaine::helpers;
-using namespace cocaine::storage;
+using namespace cocaine::storages;
 
 namespace fs = boost::filesystem;
 
@@ -181,7 +181,7 @@ void eblob_storage_t::purge(const std::string& ns) {
             zbr::eblob_iterator iterator((m_storage_path / ns).string(), true);
             iterator.iterate(purger, 1);
         } catch(...) {
-            // FIXME: I have no idea what thit means
+            // FIXME: I have no idea what this means
         }
     }
 }

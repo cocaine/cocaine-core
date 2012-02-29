@@ -11,18 +11,18 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_STORAGE_VOID_HPP
-#define COCAINE_STORAGE_VOID_HPP
+#ifndef COCAINE_VOID_STORAGE_HPP
+#define COCAINE_VOID_STORAGE_HPP
 
-#include "cocaine/storages/base.hpp"
+#include "cocaine/interfaces/storage.hpp"
 
-namespace cocaine { namespace storage {
+namespace cocaine { namespace storages {
 
 class void_storage_t:
     public storage_t
 {
     public:
-        void_storage_t(context_t& context) { }
+        void_storage_t(context_t& ctx) { }
 
         virtual void put(const std::string& ns, const std::string& key, const Json::Value& value) { }
 

@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_BIRTH_CONTROL_HPP
-#define COCAINE_BIRTH_CONTROL_HPP
+#ifndef COCAINE_HELPERS_BIRTH_CONTROL_HPP
+#define COCAINE_HELPERS_BIRTH_CONTROL_HPP
 
 namespace cocaine { namespace helpers {
 

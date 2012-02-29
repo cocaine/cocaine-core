@@ -11,12 +11,12 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_DRIVER_RECURRING_TIMER_HPP
-#define COCAINE_DRIVER_RECURRING_TIMER_HPP
+#ifndef COCAINE_RECURRING_TIMER_DRIVER_HPP
+#define COCAINE_RECURRING_TIMER_DRIVER_HPP
 
 #include "cocaine/drivers/base.hpp"
 
-namespace cocaine { namespace engine { namespace driver {
+namespace cocaine { namespace engine { namespace drivers {
 
 class recurring_timer_t:
     public driver_t
@@ -25,6 +25,7 @@ class recurring_timer_t:
         recurring_timer_t(engine_t& engine,
                           const std::string& method, 
                           const Json::Value& args);
+
         virtual ~recurring_timer_t();
 
         // Driver interface

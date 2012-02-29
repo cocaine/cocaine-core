@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_PLUGIN_PYTHON_WSGI_HPP
-#define COCAINE_PLUGIN_PYTHON_WSGI_HPP
+#ifndef COCAINE_PYTHON_PLUGIN_WSGI_HPP
+#define COCAINE_PYTHON_PLUGIN_WSGI_HPP
 
 #include "http_parser.h"
 

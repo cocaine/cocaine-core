@@ -11,30 +11,32 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_SLAVE_THREAD_HPP
-#define COCAINE_SLAVE_THREAD_HPP
+#ifndef COCAINE_APP_HPP
+#define COCAINE_APP_HPP
 
-#include <boost/thread/thread.hpp>
+#include "cocaine/common.hpp"
+#include "cocaine/forwards.hpp"
 
-#include <cocaine/slaves/base.hpp>
+namespace cocaine { namespace engine {
 
-namespace cocaine { namespace engine { namespace slave {
+struct app_t {
+    app_t(context_t& ctx, 
+          const std::string& name, 
+          const Json::Value& manifest);
 
-class thread_t:
-    public slave_t
-{
-    public:        
-        thread_t(engine_t& engine,
-                 const std::string& type,
-                 const std::string& args);
+    std::string name;
+    std::string type;
+    std::string endpoint;
 
-        virtual void reap();
+    Json::Value manifest;
 
-    private:
-        boost::shared_ptr<overseer_t> m_overseer;
-        boost::shared_ptr<boost::thread> m_thread;
+    struct {
+        float suicide_timeout;
+        unsigned int pool_limit;
+        unsigned int queue_limit;
+    } policy;
 };
 
-}}}
+}}
 
 #endif

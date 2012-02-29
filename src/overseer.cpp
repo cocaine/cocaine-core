@@ -11,41 +11,29 @@
 // limitations under the License.
 //
 
-#include <boost/algorithm/string/join.hpp>
-#include <boost/assign.hpp>
-#include <boost/bind.hpp>
-#include <boost/format.hpp>
-#include <boost/thread.hpp>
+#include "cocaine/overseer.hpp"
 
 #include "cocaine/context.hpp"
-#include "cocaine/dealer/types.hpp"
-#include "cocaine/overseer.hpp"
-#include "cocaine/plugin.hpp"
 #include "cocaine/registry.hpp"
-#include "cocaine/rpc.hpp"
+
+#include "cocaine/dealer/types.hpp"
 
 using namespace cocaine;
 using namespace cocaine::engine;
-using namespace cocaine::plugin;
 
-overseer_t::overseer_t(context_t& context, const unique_id_t::type& id_, const std::string& name):
+overseer_t::overseer_t(const unique_id_t::type& id_, context_t& ctx, const app_t& app):
     unique_id_t(id_),
-    identifiable_t((boost::format("%s:%s") % name % id_).str()),
-    m_context(context),
-    m_messages(*m_context.bus, ZMQ_DEALER, id()),
+    object_t(ctx, app.name + " backend " + id()),
+    m_app(app),
+    m_messages(ctx, ZMQ_DEALER, id()),
     m_loop(),
     m_watcher(m_loop),
     m_processor(m_loop),
+    m_pumper(m_loop),
     m_suicide_timer(m_loop),
     m_heartbeat_timer(m_loop)
 {
-    m_messages.connect(boost::algorithm::join(
-        boost::assign::list_of
-            (std::string("ipc:///var/run/cocaine"))
-            (m_context.config.core.instance)
-            (name),
-        "/")
-    );
+    m_messages.connect(m_app.endpoint);
     
     m_watcher.set<overseer_t, &overseer_t::message>(this);
     m_watcher.start(m_messages.fd(), ev::READ);
@@ -54,24 +42,67 @@ overseer_t::overseer_t(context_t& context, const unique_id_t::type& id_, const s
     m_pumper.start(0.2f, 0.2f);
 
     m_suicide_timer.set<overseer_t, &overseer_t::timeout>(this);
-    m_suicide_timer.start(m_context.config.engine.suicide_timeout);
+    m_suicide_timer.start(m_app.policy.suicide_timeout);
 
     m_heartbeat_timer.set<overseer_t, &overseer_t::heartbeat>(this);
     m_heartbeat_timer.start(0.0f, 5.0f);
 }
 
-void overseer_t::operator()(const std::string& type, const std::string& args) {
+overseer_t::~overseer_t() {
+    m_module.reset();
+}
+
+void overseer_t::loop() {
     try {
-        m_app = core::registry_t::instance(m_context)->create(type, args);
+        m_module = context().registry().create<plugin_t>(m_app.type);
+        m_module->initialize(m_app);
     } catch(const unrecoverable_error_t& e) {
-        BOOST_VERIFY(send(rpc::error_t(client::server_error, e.what())));
+        m_messages.send_multi(
+            boost::make_tuple(
+                (const int)rpc::error,
+                static_cast<const int>(client::server_error),
+                std::string(e.what())
+            )
+        );
+
+        return;
+    } catch(const std::runtime_error& e) {
+        m_messages.send_multi(
+            boost::make_tuple(
+                (const int)rpc::error,
+                static_cast<const int>(client::server_error),
+                std::string(e.what())
+            )
+        );
+
         return;
     } catch(...) {
-        BOOST_VERIFY(send(rpc::error_t(client::server_error, "unexpected exception")));
+        m_messages.send_multi(
+            boost::make_tuple(
+                (const int)rpc::error,
+                static_cast<const int>(client::server_error),
+                std::string("unexpected exception")
+            )
+        );
+
         return;
     }
         
     m_loop.loop();
+}
+
+void overseer_t::send(rpc::codes code, const void* data, size_t size) {
+    const int command = code;
+    zmq::message_t message(size);
+
+    memcpy(message.data(), data, size);
+    
+    m_messages.send_multi(
+        boost::tie(
+            command,
+            message
+        )
+    );
 }
 
 void overseer_t::message(ev::io&, int) {
@@ -82,51 +113,62 @@ void overseer_t::message(ev::io&, int) {
 
 void overseer_t::process(ev::idle&, int) {
     if(m_messages.pending()) {
-        unsigned int code = 0;
+        unsigned int command = 0;
 
-        BOOST_VERIFY(m_messages.recv(code));
+        m_messages.recv(command);
 
-        switch(code) {
+        switch(command) {
             case rpc::invoke: {
-                rpc::invoke_t object;
-                
-                BOOST_VERIFY(m_messages.recv(object));
-                BOOST_ASSERT(object.type == rpc::invoke);
+                std::string method;
+                zmq::message_t request;
+                boost::tuple<std::string&, zmq::message_t*> tier(method, &request);
+
+                m_messages.recv_multi(tier);
 
                 try {
-                    m_app->invoke(
-                        boost::bind(&overseer_t::respond, this, _1, _2),
-                        object.method, 
-                        object.request.ptr, 
-                        object.request.size);
-#if BOOST_VERSION >= 103500
-                    boost::this_thread::interruption_point();
-#endif
+                    invocation_site_t site(
+                        *this,
+                        request.data(),
+                        request.size()
+                    );
+
+                    m_module->invoke(site, method);
                 } catch(const recoverable_error_t& e) {
-                    BOOST_VERIFY(send(rpc::error_t(client::app_error, e.what())));
+                    m_messages.send_multi(
+                        boost::make_tuple(
+                            (const int)rpc::error,
+                            static_cast<const int>(client::app_error),
+                            std::string(e.what())
+                        )
+                    );
                 } catch(const unrecoverable_error_t& e) {
-                    BOOST_VERIFY(send(rpc::error_t(client::server_error, e.what()))); 
+                    m_messages.send_multi(
+                        boost::make_tuple(
+                            (const int)rpc::error,
+                            static_cast<const int>(client::server_error),
+                            std::string(e.what())
+                        )
+                    );
                 } catch(...) {
-                    BOOST_VERIFY(send(rpc::error_t(client::server_error, "unexpected exception"))); 
+                    m_messages.send_multi(
+                        boost::make_tuple(
+                            (const int)rpc::error,
+                            static_cast<const int>(client::server_error),
+                            std::string("unexpected exception")
+                        )
+                    );
                 }
-                    
-                BOOST_VERIFY(send(rpc::choke_t()));
+                 
+                m_messages.send((const int)rpc::release);
 
                 m_suicide_timer.stop();
-                m_suicide_timer.start(m_context.config.engine.suicide_timeout);
+                m_suicide_timer.start(m_app.policy.suicide_timeout);
              
                 break;
             }
             
             case rpc::terminate: {
-                rpc::terminate_t object;
-
-                BOOST_VERIFY(m_messages.recv(object));
-                BOOST_ASSERT(object.type == rpc::terminate);
-
                 terminate();
-
-                return;
             }
         }
     } else {
@@ -138,21 +180,13 @@ void overseer_t::pump(ev::timer&, int) {
     message(m_watcher, ev::READ);
 }
 
-void overseer_t::respond(const void* response, size_t size) {
-#if BOOST_VERSION >= 103500
-    boost::this_thread::interruption_point();
-#endif
-
-    BOOST_VERIFY(send(rpc::chunk_t(response, size)));
-}
-
 void overseer_t::timeout(ev::timer&, int) {
-    BOOST_VERIFY(send(rpc::terminate_t()));
+    m_messages.send((const int)rpc::terminate);
     terminate();
 }
 
 void overseer_t::heartbeat(ev::timer&, int) {
-    BOOST_VERIFY(send(rpc::heartbeat_t()));
+    m_messages.send((const int)rpc::heartbeat);
 }
 
 void overseer_t::terminate() {

@@ -16,26 +16,40 @@
 
 namespace cocaine {
     class context_t;
+    class object_t;
+
+    namespace core {
+        class core_t;
+        class registry_t;
+    }
+
+    namespace crypto {
+        class auth_t;
+    }
 
     namespace engine {
+        class app_t;
         class engine_t;
-        class overseer_t;
+        class job_t;
 
-        namespace driver {        
+        namespace drivers {        
             class driver_t;
         }
 
-        namespace job {
-            class job_t;
-        }
-        
-        namespace slave {
+        namespace slaves {
             class slave_t;
         }
+        
+        class overseer_t;
     }
 
-    namespace plugin {
-        class source_t;
+    namespace logging {
+        class sink_t;
+        class emitter_t;
+    }
+
+    namespace storages {
+        class storage_t;
     }
 }
 

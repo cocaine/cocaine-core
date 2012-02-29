@@ -11,15 +11,14 @@
 // limitations under the License.
 //
 
+#include <syslog.h>
 #include <iostream>
-
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 
 #include "cocaine/config.hpp"
-#include "cocaine/context.hpp"
-#include "cocaine/common.hpp"
 #include "cocaine/core.hpp"
+
 #include "cocaine/helpers/pid_file.hpp"
 
 using namespace cocaine;
@@ -27,7 +26,41 @@ using namespace cocaine;
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
 
-static const char identity[] = "cocaine";
+class syslog_t:
+    public logging::sink_t
+{
+    public:
+        syslog_t(const std::string& identity, int verbosity):
+            m_identity(identity)
+        {
+            // Setting up the syslog
+            openlog(m_identity.c_str(), LOG_PID | LOG_NDELAY, LOG_USER);
+            setlogmask(LOG_UPTO(verbosity));
+        }
+
+    public:
+        virtual void emit(logging::priorities priority, const std::string& message) {
+            switch(priority) {
+                case logging::debug:
+                    syslog(LOG_DEBUG, "%s", message.c_str());
+                    break;
+                case logging::info:
+                    syslog(LOG_INFO, "%s", message.c_str());
+                    break;
+                case logging::warning:
+                    syslog(LOG_WARNING, "%s", message.c_str());
+                    break;
+                case logging::error:
+                    syslog(LOG_ERR, "%s", message.c_str());
+                    break;
+                default:
+                    syslog(LOG_ERR, "invalid priority level for logging");
+            }
+        }
+
+    private:
+        const std::string m_identity;
+};
 
 int main(int argc, char* argv[]) {
     config_t config;
@@ -63,9 +96,9 @@ int main(int argc, char* argv[]) {
         ("core:instance", po::value<std::string>
             (&config.core.instance)->default_value("default"),
             "instance name")
-        ("core:plugins", po::value<std::string>
-            (&config.core.plugins)->default_value("/usr/lib/cocaine"),
-            "where to load plugins from")
+        ("core:modules", po::value<std::string>
+            (&config.core.modules)->default_value("/usr/lib/cocaine"),
+            "where to load modules from")
         ("core:announce-endpoint", po::value<std::string>
             (&config.core.announce_endpoint),
             "multicast endpoint for automatic discovery")
@@ -130,55 +163,46 @@ int main(int argc, char* argv[]) {
         std::cout << "Cocaine " << COCAINE_VERSION << std::endl;
         return EXIT_SUCCESS;
     }
+    
+    // Setup the logging sink
+    std::auto_ptr<logging::sink_t> sink(
+        new syslog_t(
+            "cocaine",
+            vm.count("verbose") ? LOG_DEBUG : LOG_INFO
+        )
+    );
 
-    if(!vm.count("endpoints")) {
-        std::cout << "Error: no endpoints have been specified" << std::endl;
-        std::cout << "Try '" << argv[0] << " --help' for more information" << std::endl;
-        return EXIT_FAILURE;
-    }
+    // Initialize the runtime context
+    context_t context(config, sink);
 
-    // Fetching the hostname
-    const int HOSTNAME_MAX_LENGTH = 256;
-    char hostname[HOSTNAME_MAX_LENGTH];
+    // Setup the contextual logger
+    logging::emitter_t log(context, "main");
 
-    if(gethostname(hostname, HOSTNAME_MAX_LENGTH) == 0) {
-        config.core.hostname = hostname;
-    } else {
-        std::cout << "Error: failed to determine the hostname" << std::endl;
-        return EXIT_FAILURE;
-    }
-
-    // Setting up the syslog
-    openlog(identity, LOG_PID | LOG_NDELAY, LOG_USER);
-    setlogmask(LOG_UPTO(vm.count("verbose") ? LOG_DEBUG : LOG_INFO));
-    syslog(LOG_NOTICE, "main: blow!");
-
-    // Pid file holder
+    // Will be used to hold the pid file, if needed
     std::auto_ptr<helpers::pid_file_t> pidfile;
 
-    // Daemonizing, if needed
+    // Daemonizing, if requested
     if(vm.count("daemonize")) {
         if(daemon(0, 0) < 0) {
-            syslog(LOG_ERR, "main: daemonization failed");
+            log.error("daemonization failed");
             return EXIT_FAILURE;
         }
 
         try {
             pidfile.reset(new helpers::pid_file_t(vm["pidfile"].as<fs::path>()));
         } catch(const std::runtime_error& e) {
-            syslog(LOG_ERR, "main: %s", e.what());
+            log.error("%s", e.what());
             return EXIT_FAILURE;
         }
     }
-    
-    // Cocaine core
+
+    // Starting the core
     std::auto_ptr<core::core_t> core;
 
-    // Initializing the core
     try {
-        core.reset(new core::core_t(config));
+        core.reset(new core::core_t(context));
     } catch(const std::exception& e) {
-        syslog(LOG_ERR, "main: unable to start the core - %s", e.what());
+        log.error("unable to start the core - %s", e.what());
         return EXIT_FAILURE;
     }
 
@@ -187,7 +211,7 @@ int main(int argc, char* argv[]) {
     // Cleanup
     core.reset();
 
-    syslog(LOG_NOTICE, "main: terminated");
-    
+    log.info("terminated");
+
     return EXIT_SUCCESS;
 }

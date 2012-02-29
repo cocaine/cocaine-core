@@ -11,13 +11,14 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_TRACK_HPP
-#define COCAINE_TRACK_HPP
+#ifndef COCAINE_HELPERS_TRACK_HPP
+#define COCAINE_HELPERS_TRACK_HPP
 
 #include <algorithm>
 
 namespace cocaine { namespace helpers {
-    template<typename T, void (*D)(T)> struct track {
+    template<typename T, void (*D)(T)> 
+    struct track {
         public:
             track(T object):
                 m_object(object)

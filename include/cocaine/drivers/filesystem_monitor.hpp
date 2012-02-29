@@ -11,12 +11,12 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_DRIVER_FILESYSTEM_MONITOR_HPP
-#define COCAINE_DRIVER_FILESYSTEM_MONITOR_HPP
+#ifndef COCAINE_FILESYSTEM_MONITOR_DRIVER_HPP
+#define COCAINE_FILESYSTEM_MONITOR_DRIVER_HPP
 
 #include "cocaine/drivers/base.hpp"
 
-namespace cocaine { namespace engine { namespace driver {
+namespace cocaine { namespace engine { namespace drivers {
 
 class filesystem_monitor_t:
     public driver_t
@@ -25,6 +25,7 @@ class filesystem_monitor_t:
         filesystem_monitor_t(engine_t& engine,
                              const std::string& method, 
                              const Json::Value& args);
+
         virtual ~filesystem_monitor_t();
 
         virtual Json::Value info() const;

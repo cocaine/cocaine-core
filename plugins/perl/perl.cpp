@@ -11,12 +11,14 @@
 // limitations under the License.
 //
 
-#include "cocaine/plugin.hpp"
-#include "cocaine/downloads.hpp"
-#include "cocaine/helpers/uri.hpp"
+#include <sstream>
+#include <boost/filesystem/fstream.hpp>
 
-#include <EXTERN.h>               /* from the Perl distribution     */
-#include <perl.h>                 /* from the Perl distribution     */
+#include <EXTERN.h>
+#include <perl.h>
+
+#include "cocaine/interfaces/plugin.hpp"
+#include "cocaine/registry.hpp"
 
 EXTERN_C void boot_DynaLoader (pTHX_ CV* cv);
 
@@ -28,44 +30,58 @@ EXTERN_C void xs_init(pTHX) {
 	newXS("DynaLoader::boot_DynaLoader", boot_DynaLoader, file);
 }
 
-namespace cocaine { namespace plugin {
+namespace cocaine { namespace engine {
 
 class perl_t:
-    public source_t
+    public plugin_t,
+    public core::module_t<perl_t>
 {
     public:
-        static source_t* create(const std::string& args) {
-            return new perl_t(args);
-        }
+        perl_t(context_t& ctx):
+            plugin_t(ctx, "perl")
+        { }
 
-    public:
-        perl_t(const std::string& args) {
-            if(args.empty()) {
-                throw unrecoverable_error_t("no code location has been specified");
-            }
-            
-            helpers::uri_t uri(args);
-
-            my_perl = perl_alloc();
-            perl_construct(my_perl);
-
-            compile(helpers::download(uri));
-        }
-
-        ~perl_t() {
+        ~perl_t() 
+        {
             perl_destruct(my_perl);
             perl_free(my_perl);
         }
+
+        virtual void initialize(const app_t& app)
+        {
+            Json::Value args(app.manifest["args"]);
+
+            if(!args.isObject()) {
+                throw unrecoverable_error_t("malformed manifest");
+            }
+
+            boost::filesystem::path source(args["source"].asString());
+
+            if(source.empty()) {
+                throw unrecoverable_error_t("no code location has been specified");
+            }
+
+            boost::filesystem::ifstream input(source);
+    
+            if(!input) {
+                throw unrecoverable_error_t("unable to open " + source.string());
+            }
+
+            std::stringstream stream;
+            stream << input.rdbuf();
             
-        virtual void invoke(callback_fn_t callback,
-        					const std::string& method,
-        					const void* request,
-        					size_t size)
+            my_perl = perl_alloc();
+            perl_construct(my_perl);
+
+            compile(stream.str());
+        }
+            
+        virtual void invoke(invocation_site_t& site, const std::string& method)
         {
             std::string input;
             
-            if (request && size > 0) {
-               input = std::string((char*)request, size);
+            if (site.request && site.request_size > 0) {
+               input = std::string((const char*)site.request, site.request_size);
             }
 
             std::string result;
@@ -121,10 +137,11 @@ class perl_t:
 
 			// invoke callback with resulting data
             if (!result.empty()) {
-                callback(result.data(), result.size());
+                site.push(result.data(), result.size());
             }
         }
 
+    private:
         void compile(const std::string& code)
         {
             const char* embedding[] = {"", "-e", "0"};
@@ -135,18 +152,13 @@ class perl_t:
         }
     
     private:
-        PerlInterpreter* my_perl;  /***    The Perl interpreter    ***/
-};
-
-static const source_info_t plugin_info[] = {
-    { "perl", &perl_t::create },
-    { NULL, NULL }
+        PerlInterpreter* my_perl;
 };
 
 extern "C" {
-    const source_info_t* initialize() {
+    void initialize(core::registry_t& registry) {
         PERL_SYS_INIT3(NULL, NULL, NULL);
-        return plugin_info;
+        registry.install("perl", &perl_t::create);
     }
 
     __attribute__((destructor)) void finalize() {

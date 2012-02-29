@@ -11,60 +11,54 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_OVERSEER_HPP
-#define COCAINE_OVERSEER_HPP
+#ifndef COCAINE_GENERIC_SLAVE_BACKEND_HPP
+#define COCAINE_GENERIC_SLAVE_BACKEND_HPP
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
+#include "cocaine/object.hpp"
+
 #include "cocaine/networking.hpp"
+#include "cocaine/rpc.hpp"
+
+#include "cocaine/interfaces/plugin.hpp"
 
 namespace cocaine { namespace engine {
 
-// Thread manager
 class overseer_t:
-    public boost::noncopyable,
     public unique_id_t,
-    public identifiable_t
+    public object_t
 {
     public:
-        overseer_t(context_t& context,
-                   const unique_id_t::type& id,
-                   const std::string& name);
+        overseer_t(const unique_id_t::type& id,
+                   context_t& ctx,
+                   const app_t& app);
 
-        // Entry point 
-        void operator()(const std::string& type, const std::string& args);
+        ~overseer_t();
 
-        // Callback used to send response chunks
-        void respond(const void* response, size_t size);
+        // Entry point
+        void loop();
+
+        // Context interoperability
+        void send(rpc::codes code, const void* data, size_t size);
 
     private:
-        template<class T>
-        bool send(const T& message) {
-            return m_messages.send_multi(
-                boost::tie(
-                    message.type,
-                    message
-                )
-            );
-        }
-
         // Event loop callback handling and dispatching
         void message(ev::io&, int);
         void process(ev::idle&, int);
         void pump(ev::timer&, int);
         void timeout(ev::timer&, int);
         void heartbeat(ev::timer&, int);
-
         void terminate();
 
     private:
-        context_t& m_context;
+        const app_t& m_app;
 
         // Messaging
         networking::channel_t m_messages;
 
         // Application instance
-        boost::shared_ptr<plugin::source_t> m_app;
+        std::auto_ptr<plugin_t> m_module;
 
         // Event loop
         ev::dynamic_loop m_loop;

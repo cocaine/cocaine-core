@@ -11,24 +11,23 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_DRIVER_DRIFTING_TIMER_HPP
-#define COCAINE_DRIVER_DRIFTING_TIMER_HPP
+#ifndef COCAINE_DRIFTING_TIMER_DRIVER_HPP
+#define COCAINE_DRIFTING_TIMER_DRIVER_HPP
 
 #include "cocaine/drivers/recurring_timer.hpp"
-#include "cocaine/engine.hpp"
 
-namespace cocaine { namespace engine { namespace driver {
+#include "cocaine/job.hpp"
+
+namespace cocaine { namespace engine { namespace drivers {
 
 class drifting_timer_t;
 
 class drifting_timer_job_t:
-    public publication_t
+    public job_t
 {
     public:
-        drifting_timer_job_t(drifting_timer_t& driver, const client::policy_t& policy);
-
-        virtual void react(const events::error_t& event);
-        virtual void react(const events::choked_t& event);
+        drifting_timer_job_t(drifting_timer_t& driver);
+        virtual ~drifting_timer_job_t();
 };
 
 class drifting_timer_t:

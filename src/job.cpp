@@ -11,13 +11,15 @@
 // limitations under the License.
 //
 
-#include "cocaine/drivers/base.hpp"
-#include "cocaine/engine.hpp"
 #include "cocaine/job.hpp"
 
-using namespace cocaine::engine::job;
+#include "cocaine/drivers/base.hpp"
+#include "cocaine/engine.hpp"
 
-job_t::job_t(driver::driver_t& driver, const client::policy_t& policy):
+using namespace cocaine;
+using namespace cocaine::engine;
+
+job_t::job_t(drivers::driver_t& driver, client::policy_t policy):
     m_driver(driver),
     m_policy(policy)
 {
@@ -38,19 +40,17 @@ job_t::~job_t() {
     terminate();
 }
 
-void job_t::react(const events::error_t& event) {
-    syslog(LOG_ERR, "%s: job failure - %s", m_driver.identity(), event.message.c_str());
-    
-    m_driver.engine().publish(
-        m_driver, 
-        helpers::make_json("error", event.message)
-    );
+const std::string& job_t::method() const {
+    return m_driver.method();
 }
 
-void job_t::react(const events::choked_t& event) { }
-
 void job_t::discard(ev::periodic&, int) {
-    process_event(events::error_t(client::deadline_error, "the job has expired"));
+    process_event(
+        events::error_t(
+            client::deadline_error,
+            "the job has expired"
+        )
+    );
 }
 
 waiting::waiting():
@@ -58,8 +58,10 @@ waiting::waiting():
 { }
 
 waiting::~waiting() {
-    context<job_t>().driver().audit(driver::in_queue,
-        ev::get_default_loop().now() - m_timestamp);
+    context<job_t>().m_driver.audit(
+        drivers::in_queue,
+        ev::get_default_loop().now() - m_timestamp
+    );
 }
 
 processing::processing():
@@ -67,7 +69,9 @@ processing::processing():
 { }
 
 processing::~processing() {
-    context<job_t>().driver().audit(driver::on_slave,
-        ev::get_default_loop().now() - m_timestamp);
+    context<job_t>().m_driver.audit(
+        drivers::on_slave,
+        ev::get_default_loop().now() - m_timestamp
+    );
 }
 

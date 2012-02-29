@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_PLUGIN_PYTHON_STORAGE_HPP
-#define COCAINE_PLUGIN_PYTHON_STORAGE_HPP
+#ifndef COCAINE_PYTHON_PLUGIN_STORAGE_HPP
+#define COCAINE_PYTHON_PLUGIN_STORAGE_HPP
 
 #include "common.hpp"
 

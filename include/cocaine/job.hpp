@@ -19,13 +19,15 @@
 #include <boost/statechart/in_state_reaction.hpp>
 #include <boost/statechart/transition.hpp>
 
-#include "cocaine/dealer/types.hpp"
 #include "cocaine/common.hpp"
-#include "cocaine/events.hpp"
 #include "cocaine/forwards.hpp"
+
+#include "cocaine/events.hpp"
 #include "cocaine/networking.hpp"
 
-namespace cocaine { namespace engine { namespace job {
+#include "cocaine/dealer/types.hpp"
+
+namespace cocaine { namespace engine {
 
 namespace sc = boost::statechart;
 
@@ -41,33 +43,43 @@ class job_t:
     public sc::state_machine<job_t, incomplete>,
     public birth_control_t<job_t>
 {
+    friend class waiting;
+    friend class processing;
+
     public:
-        job_t(driver::driver_t& driver, const client::policy_t& policy);
+        job_t(drivers::driver_t& driver,
+              client::policy_t policy = client::policy_t());
+
         virtual ~job_t();
 
-    public:      
-        virtual void react(const events::chunk_t& event) = 0;
-        virtual void react(const events::error_t& event);
-        virtual void react(const events::choked_t& event);
-
-    public:
-        inline driver::driver_t& driver() {
-            return m_driver;
+        virtual inline void react(const events::push_t& event) {
+            // TODO: Emitters.
         }
 
+        virtual inline void react(const events::error_t& event) {
+            // TODO: Emitters.
+        }
+
+        virtual inline void react(const events::release_t& event) {
+            // TODO: Emitters.
+        }
+
+    public:
+        const std::string& method() const;
+        
         inline const client::policy_t& policy() const {
             return m_policy;
         }
 
-        inline zmq::message_t* request() {
-            return &m_request; 
+        inline zmq::message_t& request() {
+            return m_request;
         }
 
     private:
         void discard(ev::periodic&, int);
 
     protected:
-        driver::driver_t& m_driver;
+        drivers::driver_t& m_driver;
 
     private:
         client::policy_t m_policy;
@@ -89,8 +101,8 @@ struct unknown:
 {
     public:
         typedef boost::mpl::list<
-            sc::transition<events::enqueued_t, waiting>,
-            sc::transition<events::invoked_t, processing>
+            sc::transition<events::enqueue_t, waiting>,
+            sc::transition<events::invoke_t, processing>
         > reactions;
 };
 
@@ -99,7 +111,7 @@ struct waiting:
 {
     public:
         typedef sc::transition<
-            events::invoked_t, processing
+            events::invoke_t, processing
         > reactions;
 
         waiting();
@@ -114,10 +126,10 @@ struct processing:
 {
     public:
         typedef boost::mpl::list<
-            sc::in_state_reaction<events::chunk_t, job_t, &job_t::react>,
-            sc::transition<events::choked_t, complete, job_t, &job_t::react>,
-            sc::transition<events::enqueued_t, waiting>,
-            sc::transition<events::invoked_t, processing>
+            sc::in_state_reaction<events::push_t, job_t, &job_t::react>,
+            sc::transition<events::release_t, complete, job_t, &job_t::react>,
+            sc::transition<events::enqueue_t, waiting>,
+            sc::transition<events::invoke_t, processing>
         > reactions;
 
         processing();
@@ -131,6 +143,6 @@ struct complete:
     public sc::simple_state<complete, job_t>
 { };
 
-}}}
+}}
 
 #endif

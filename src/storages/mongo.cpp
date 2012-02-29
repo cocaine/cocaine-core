@@ -16,7 +16,7 @@
 #include "cocaine/context.hpp"
 #include "cocaine/storages/mongo.hpp"
 
-using namespace cocaine::storage;
+using namespace cocaine::storages;
 using namespace mongo;
 
 mongo_storage_t::mongo_storage_t(context_t& context) try:

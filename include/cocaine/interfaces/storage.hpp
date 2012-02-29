@@ -11,20 +11,17 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_STORAGE_BASE_HPP
-#define COCAINE_STORAGE_BASE_HPP
+#ifndef COCAINE_STORAGE_INTERFACE_HPP
+#define COCAINE_STORAGE_INTERFACE_HPP
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 
-namespace cocaine { namespace storage {
+namespace cocaine { namespace storages {
 
 class storage_t:
     public boost::noncopyable
 {
-    public:
-        static boost::shared_ptr<storage_t> create(context_t& context);
-    
     public:
         virtual void put(const std::string& ns, const std::string& key, const Json::Value& value) = 0;
         

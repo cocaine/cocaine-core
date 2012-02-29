@@ -16,48 +16,47 @@
 
 #include <boost/statechart/event.hpp>
 
-#include "cocaine/dealer/types.hpp"
+#include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
-#include <cocaine/networking.hpp>
+
+#include "cocaine/dealer/types.hpp"
 
 namespace cocaine { namespace engine { namespace events {
 
 namespace sc = boost::statechart;
 
-// Slave events
 struct heartbeat_t:
     public sc::event<heartbeat_t>
 { };
 
-struct terminated_t:
-    public sc::event<terminated_t>
+struct terminate_t:
+    public sc::event<terminate_t>
 { };
 
-// Job events
-struct enqueued_t:
-    public sc::event<enqueued_t>
+struct enqueue_t:
+    public sc::event<enqueue_t>
 {
-    enqueued_t(size_t position_):
+    enqueue_t(size_t position_):
         position(position_)
     { }
 
     const size_t position;
 };
 
-struct invoked_t:
-    public sc::event<invoked_t>
+struct invoke_t:
+    public sc::event<invoke_t>
 {
-    invoked_t(const boost::shared_ptr<job::job_t>& job_):
+    invoke_t(const boost::shared_ptr<job_t>& job_):
         job(job_)
     { }
 
-    const boost::shared_ptr<job::job_t>& job;
+    const boost::shared_ptr<job_t>& job;
 };
 
-struct chunk_t:
-    public sc::event<chunk_t>
+struct push_t:
+    public sc::event<push_t>
 {
-    chunk_t(zmq::message_t& message_):
+    push_t(zmq::message_t& message_):
         message(message_)
     { }
 
@@ -76,8 +75,8 @@ struct error_t:
     const std::string& message;
 };
 
-struct choked_t:
-    public sc::event<choked_t>
+struct release_t:
+    public sc::event<release_t>
 { };
 
 }}}

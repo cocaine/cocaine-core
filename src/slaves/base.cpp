@@ -11,22 +11,20 @@
 // limitations under the License.
 //
 
-#include <boost/format.hpp>
-
-#include "cocaine/context.hpp"
-#include "cocaine/dealer/types.hpp"
-#include "cocaine/drivers/base.hpp"
-#include "cocaine/engine.hpp"
 #include "cocaine/slaves/base.hpp"
 
-using namespace cocaine::engine::slave;
+#include "cocaine/context.hpp"
+#include "cocaine/engine.hpp"
+#include "cocaine/job.hpp"
+
+#include "cocaine/dealer/types.hpp"
+
+using namespace cocaine::engine::slaves;
 
 slave_t::slave_t(engine_t& engine):
-    identifiable_t((boost::format("%s:%s") % engine.name() % id()).str()),
+    object_t(engine.context(), engine.app().name + " frontend " + id()),
     m_engine(engine)
 {
-    syslog(LOG_DEBUG, "%s: constructing", identity());
-
     // NOTE: These are the 10 seconds for the slave to come alive   
     m_heartbeat_timer.set<slave_t, &slave_t::timeout>(this);
     m_heartbeat_timer.start(10.0f);
@@ -35,8 +33,6 @@ slave_t::slave_t(engine_t& engine):
 }
 
 slave_t::~slave_t() {
-    syslog(LOG_DEBUG, "%s: destructing", identity());
-    
     m_heartbeat_timer.stop();
     
     // TEST: Make sure that the slave is really dead
@@ -48,8 +44,7 @@ slave_t::~slave_t() {
 void slave_t::react(const events::heartbeat_t& event) {
 #if EV_VERSION_MAJOR == 3 && EV_VERSION_MINOR == 8
     if(!state_downcast<const alive*>()) {
-        syslog(LOG_DEBUG, "%s: came alive in %.03f seconds",
-            identity(), 
+        log().debug("came alive in %.03f seconds",
             10.0f - ev_timer_remaining(
                 ev_default_loop(ev::AUTO),
                 static_cast<ev_timer*>(&m_heartbeat_timer)
@@ -61,59 +56,81 @@ void slave_t::react(const events::heartbeat_t& event) {
     m_heartbeat_timer.stop();
     
     const busy* state = state_downcast<const busy*>();
+    float timeout = object_t::context().config.engine.heartbeat_timeout;
 
-    if(state && state->job()->policy().timeout > 0) {
-        syslog(LOG_DEBUG, "%s: resetting timeout to %.02f seconds (job-specific)",
-            identity(), state->job()->policy().timeout);
-        m_heartbeat_timer.start(state->job()->policy().timeout);
-    } else {
-        syslog(LOG_DEBUG, "%s: resetting timeout to %.02f seconds", 
-            identity(), m_engine.context().config.engine.heartbeat_timeout);
-        m_heartbeat_timer.start(m_engine.context().config.engine.heartbeat_timeout);
+    if(state && state->job()->policy().timeout > 0.0f) {
+        timeout = state->job()->policy().timeout;
     }
+    
+    log().debug(
+        "resetting the heartbeat timeout to %.02f seconds", 
+        timeout
+    );
+        
+    m_heartbeat_timer.start(timeout);
+
+}
+
+void slave_t::react(const events::terminate_t& event) {
+    log().debug("reaping");
+    reap();
+}
+
+bool slave_t::operator==(const slave_t& other) const {
+    return id() == other.id();
 }
 
 void slave_t::timeout(ev::timer&, int) {
-    m_engine.publish(*this, "missed too many heartbeats");
+    log().warning("missed too many heartbeats");
     
     const busy* state = state_downcast<const busy*>();
     
     if(state) {
-        state->job()->process_event(events::error_t(
-            client::timeout_error, "the job has timed out"));
+        state->job()->process_event(
+            events::error_t(
+                client::timeout_error, 
+                "the job has timed out"
+            )
+        );
     }
     
-    process_event(events::terminated_t());
-}
-
-void alive::react(const events::invoked_t& event) {
-    syslog(LOG_DEBUG, "%s: assigned a job", context<slave_t>().identity());
-    m_job = event.job;
-    m_job->process_event(event);
-}
-
-void alive::react(const events::choked_t& event) {
-    syslog(LOG_DEBUG, "%s: job completed", context<slave_t>().identity());
-    m_job->process_event(event);
-    m_job.reset();
+    process_event(events::terminate_t());
 }
 
 alive::~alive() {
-    if(m_job && !m_job->state_downcast<const job::complete*>()) {
-        syslog(LOG_DEBUG, "%s: rescheduling an incomplete '%s' job",
-            context<slave_t>().identity(),
-            m_job->driver().method().c_str()
+    if(m_job && !m_job->state_downcast<const complete*>()) {
+        context<slave_t>().log().debug(
+            "rescheduling an incomplete '%s' job", 
+            m_job->method().c_str()
         );
-       
-        // NOTE: Allow the queue to grow beyond its capacity. 
-        m_job->driver().engine().enqueue(m_job, true);
+        
+        context<slave_t>().m_engine.enqueue(m_job, true);
+        m_job.reset();
     }
 }
 
-dead::dead(my_context ctx):
-    my_base(ctx)
-{
-    syslog(LOG_DEBUG, "%s: reaping", context<slave_t>().identity());
-    context<slave_t>().reap();
+void alive::react(const events::invoke_t& event) {
+    // TEST: Ensure that no job is being lost here
+    BOOST_ASSERT(!m_job);
+
+    m_job = event.job;
+    m_job->process_event(event);
+    
+    context<slave_t>().log().debug(
+        "assigned a '%s' job",
+        m_job->method().c_str()
+    );
 }
 
+void alive::react(const events::release_t& event) {
+    // TEST: Ensure that the job is in fact here
+    BOOST_ASSERT(m_job);
+
+    context<slave_t>().log().debug(
+        "completed a '%s' job",
+        m_job->method().c_str()
+    );
+    
+    m_job->process_event(event);
+    m_job.reset();
+}

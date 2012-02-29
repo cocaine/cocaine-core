@@ -1,7 +1,7 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 PROJECT(Cocaine)
 
-SET(COCAINE_VERSION 0.6)
+SET(COCAINE_VERSION 0.7)
 
 CONFIGURE_FILE (
     "${PROJECT_SOURCE_DIR}/config.hpp.in"
@@ -20,7 +20,6 @@ INCLUDE(cmake/locate_library.cmake)
 
 LOCATE_LIBRARY(LIBEV "ev++.h" "ev" "libev")
 LOCATE_LIBRARY(LIBMSGPACK "msgpack.hpp" "msgpack")
-LOCATE_LIBRARY(LIBURIPARSER "uriparser/Uri.h" "uriparser")
 LOCATE_LIBRARY(LIBZMQ "zmq.hpp" "zmq")
 
 IF(NOT APPLE)
@@ -59,8 +58,10 @@ SET_TARGET_PROPERTIES(json PROPERTIES
 
 ADD_LIBRARY(cocaine-common SHARED
     src/auth
-    src/downloads
-    src/storages/base
+    src/context
+    src/logging
+    src/object
+    src/registry
     src/storages/files
     src/storages/mongo)
 
@@ -69,39 +70,36 @@ TARGET_LINK_LIBRARIES(cocaine-common
     ${Boost_SYSTEM_LIBRARY}
     boost_thread-mt
     crypto
-    curl
     json
+    ltdl
     mongoclient
-    ${LIBUUID_LIBRARIES})
+    ${LIBUUID_LIBRARIES}
+    zmq)
 
 SET_TARGET_PROPERTIES(cocaine-common PROPERTIES
     VERSION 1)
 
-ADD_LIBRARY(cocaine-core SHARED 
+ADD_LIBRARY(cocaine-core SHARED
+    src/app
     src/core
     src/drivers/base
     src/drivers/recurring_timer
     src/drivers/drifting_timer
     src/drivers/filesystem_monitor
     src/drivers/zeromq_server
-    src/drivers/lsd_server
-    src/drivers/native_server
     src/drivers/zeromq_sink
-    src/drivers/native_sink
+    src/drivers/lsd_server
     src/engine
+    src/interfaces/plugin
     src/job
     src/overseer
-    src/registry
     src/slaves/base
-    src/slaves/process
-    src/slaves/thread)
+    src/slaves/generic)
 
 TARGET_LINK_LIBRARIES(cocaine-core
     cocaine-common
     ev
-    ltdl
-    msgpack
-    zmq)
+    msgpack)
 
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     VERSION 1)

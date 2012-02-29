@@ -18,35 +18,50 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
-#include "cocaine/plugin.hpp"
+#include "cocaine/object.hpp"
+
+#include "cocaine/interfaces/module.hpp"
 
 namespace cocaine { namespace core {
 
+// Module registry
+// ---------------
+
 class registry_t:
-    public boost::noncopyable
+    public object_t
 {
     public:
-        static const boost::shared_ptr<registry_t>& instance(context_t& context);
-
-    public:
-        registry_t(context_t& context);
+        registry_t(context_t& ctx);
         ~registry_t();
 
-        bool exists(const std::string& type);
+        template<class T>
+        std::auto_ptr<T> create(const std::string& type) {
+            factory_map_t::iterator it(m_factories.find(type));
 
-        boost::shared_ptr<plugin::source_t> create(const std::string& type,
-                                                   const std::string& args);
+            if(it == m_factories.end()) {
+                throw std::runtime_error("module '" + type + "' is not available");
+            }
+
+            object_t* object = it->second(context());
+            T* module = dynamic_cast<T*>(object);
+
+            if(module) {
+                return std::auto_ptr<T>(module);
+            } else {
+                delete object;
+                throw std::runtime_error("module '" + type + "' has a wrong type");
+            }
+        }
+
+        void install(const std::string& type, factory_fn_t factory);
 
     private:
-        static boost::shared_ptr<registry_t> g_object;
+        // Used to unload all the modules on shutdown
+        std::vector<lt_dlhandle> m_modules;
     
-    private:
-        // Used to instantiate plugin instances
-        typedef std::map<const std::string, plugin::factory_fn_t> factory_map_t;
+        // Used to instantiate the modules
+        typedef std::map<const std::string, factory_fn_t> factory_map_t;
         factory_map_t m_factories;
-
-        // Used to unload all the plugins on shutdown
-        std::vector<lt_dlhandle> m_plugins;
 };
 
 }}

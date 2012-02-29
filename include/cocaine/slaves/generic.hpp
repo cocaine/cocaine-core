@@ -11,27 +11,27 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_DRIVER_NATIVE_SINK_HPP
-#define COCAINE_DRIVER_NATIVE_SINK_HPP
+#ifndef COCAINE_GENERIC_SLAVE_FRONTEND_HPP
+#define COCAINE_GENERIC_SLAVE_FRONTEND_HPP
 
-#include "cocaine/drivers/zeromq_sink.hpp"
+#include "cocaine/slaves/base.hpp"
 
-namespace cocaine { namespace engine { namespace driver {
+namespace cocaine { namespace engine { namespace slaves {
 
-class native_sink_t:
-    public zeromq_sink_t
+class generic_t:
+    public slave_t
 {
     public:
-        native_sink_t(engine_t& engine,
-                      const std::string& method, 
-                      const Json::Value& args);
+        generic_t(engine_t& engine);
 
-        // Driver interface
-        virtual Json::Value info() const;
-        
+        virtual void reap();
+
     private:
-        // Server interface
-        virtual void process(ev::idle&, int);
+        void signal(ev::child&, int);
+
+    private:
+        pid_t m_pid;
+        ev::child m_child_watcher;
 };
 
 }}}

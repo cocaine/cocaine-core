@@ -14,11 +14,12 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/assign.hpp>
 
-#include "cocaine/context.hpp"
 #include "cocaine/drivers/zeromq_server.hpp"
+
+#include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
 
-using namespace cocaine::engine::driver;
+using namespace cocaine::engine::drivers;
 using namespace cocaine::networking;
 
 zeromq_server_job_t::zeromq_server_job_t(zeromq_server_t& driver, const route_t& route):
@@ -26,8 +27,8 @@ zeromq_server_job_t::zeromq_server_job_t(zeromq_server_t& driver, const route_t&
     m_route(route)
 { }
 
-void zeromq_server_job_t::react(const events::chunk_t& event) {
-    (void)send(event.message);
+void zeromq_server_job_t::react(const events::push_t& event) {
+    send(event.message);
 }
 
 void zeromq_server_job_t::react(const events::error_t& event) {
@@ -42,10 +43,10 @@ void zeromq_server_job_t::react(const events::error_t& event) {
     zmq::message_t message(response.size());
     memcpy(message.data(), response.data(), response.size());
 
-    (void)send(message);
+    send(message);
 }
 
-bool zeromq_server_job_t::send(zmq::message_t& chunk) {
+void zeromq_server_job_t::send(zmq::message_t& chunk) {
     zmq::message_t message;
     zeromq_server_t& server = static_cast<zeromq_server_t&>(m_driver);
     
@@ -53,32 +54,26 @@ bool zeromq_server_job_t::send(zmq::message_t& chunk) {
     for(route_t::const_iterator id = m_route.begin(); id != m_route.end(); ++id) {
         message.rebuild(id->size());
         memcpy(message.data(), id->data(), id->size());
-        
-        if(!server.socket().send(message, ZMQ_SNDMORE)) {
-            return false;
-        }
+        server.socket().send(message, ZMQ_SNDMORE);
     }
 
     // Send the delimiter
     message.rebuild(0);
-
-    if(!server.socket().send(message, ZMQ_SNDMORE)) {
-        return false;
-    }
+    server.socket().send(message, ZMQ_SNDMORE);
 
     // Send the chunk
-    return server.socket().send(chunk);
+    server.socket().send(chunk);
 }
 
 zeromq_server_t::zeromq_server_t(engine_t& engine, const std::string& method, const Json::Value& args, int type) try:
-    driver_t(engine, method),
+    driver_t(engine, method, args),
     m_backlog(args.get("backlog", 1000).asUInt()),
     m_linger(args.get("linger", 0).asInt()),
-    m_socket(*m_engine.context().bus, type, boost::algorithm::join(
+    m_socket(m_engine.context(), type, boost::algorithm::join(
         boost::assign::list_of
             (m_engine.context().config.core.instance)
             (m_engine.context().config.core.hostname)
-            (m_engine.name())
+            (m_engine.app().name)
             (method),
         "/")
     )
@@ -86,7 +81,7 @@ zeromq_server_t::zeromq_server_t(engine_t& engine, const std::string& method, co
     std::string endpoint(args.get("endpoint", "").asString());
 
     if(endpoint.empty()) {
-        throw std::runtime_error("no endpoint has been specified for the '" + m_method + "' task");
+        throw std::runtime_error("no endpoint has been specified");
     }
 
     m_socket.setsockopt(ZMQ_HWM, &m_backlog, sizeof(m_backlog));
@@ -99,7 +94,7 @@ zeromq_server_t::zeromq_server_t(engine_t& engine, const std::string& method, co
     m_pumper.set<zeromq_server_t, &zeromq_server_t::pump>(this);
     m_pumper.start(0.2f, 0.2f);
 } catch(const zmq::error_t& e) {
-    throw std::runtime_error("network failure in '" + m_method + "' task - " + e.what());
+    throw std::runtime_error(std::string("network failure: ") + e.what());
 }
 
 zeromq_server_t::~zeromq_server_t() {
@@ -109,9 +104,8 @@ zeromq_server_t::~zeromq_server_t() {
 }
 
 Json::Value zeromq_server_t::info() const {
-    Json::Value result(Json::objectValue);
+    Json::Value result(driver_t::info());
 
-    result["statistics"] = stats();
     result["type"] = "zeromq-server";
     result["backlog"] = static_cast<Json::UInt>(m_backlog);
     result["endpoint"] = m_socket.endpoint();
@@ -120,19 +114,13 @@ Json::Value zeromq_server_t::info() const {
     return result;
 }
 
-void zeromq_server_t::event(ev::io&, int) {
-    if(m_socket.pending() && !m_processor.is_active()) {
-        m_processor.start();
-    }
-}
-
 void zeromq_server_t::process(ev::idle&, int) {
     if(m_socket.pending()) {
         zmq::message_t message;
         route_t route;
 
         do {
-            BOOST_VERIFY(m_socket.recv(&message));
+            m_socket.recv(&message);
 
             if(!message.size()) {
                 break;
@@ -147,14 +135,13 @@ void zeromq_server_t::process(ev::idle&, int) {
         } while(m_socket.more());
 
         if(route.empty() || !m_socket.more()) {
-            syslog(LOG_ERR, "%s: got a corrupted request - invalid route", identity());
+            log().error("got a corrupted request - invalid route");
             return;
         }
 
         while(m_socket.more()) {
             boost::shared_ptr<zeromq_server_job_t> job(new zeromq_server_job_t(*this, route));
-
-            BOOST_VERIFY(m_socket.recv(job->request()));
+            m_socket.recv(&job->request());
             m_engine.enqueue(job);
         }
     } else {
@@ -162,7 +149,12 @@ void zeromq_server_t::process(ev::idle&, int) {
     }
 }
 
+void zeromq_server_t::event(ev::io&, int) {
+    if(m_socket.pending() && !m_processor.is_active()) {
+        m_processor.start();
+    }
+}
+
 void zeromq_server_t::pump(ev::timer&, int) {
     event(m_watcher, ev::READ);
 }
-

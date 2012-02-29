@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_PID_FILE_HPP
-#define COCAINE_PID_FILE_HPP
+#ifndef COCAINE_HELPERS_PID_FILE_HPP
+#define COCAINE_HELPERS_PID_FILE_HPP
 
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
