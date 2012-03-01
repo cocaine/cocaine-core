@@ -22,6 +22,8 @@
 using namespace cocaine::core;
 using namespace cocaine::engine;
 
+static char sys_path_name[] = "path";
+
 python_t::python_t(context_t& ctx):
     plugin_t(ctx, "python"),
     m_python_module(NULL)
@@ -61,7 +63,7 @@ void python_t::initialize(const app_t& app) {
 
     // NOTE: Prepend the current application location to the sys.path,
     // so that it could import various local stuff from there.
-    python_object_t syspaths = PySys_GetObject("path");
+    python_object_t syspaths = PySys_GetObject(sys_path_name);
     
     python_object_t path(
         PyString_FromString(
@@ -80,8 +82,8 @@ void python_t::initialize(const app_t& app) {
    
     // Initialize the application container.
     m_python_module = Py_InitModule3(
-        "<application>",
-        NULL, 
+        app.name.c_str(),
+        NULL,
         "Application"
     );
 
@@ -91,7 +93,7 @@ void python_t::initialize(const app_t& app) {
 
     PyModule_AddObject(
         m_python_module, 
-        "__builtins__", 
+        "__builtins__",
         builtins
     );
     
@@ -142,7 +144,7 @@ void python_t::initialize(const app_t& app) {
         PyEval_EvalCode(
             reinterpret_cast<PyCodeObject*>(*bytecode), 
             context, 
-            context
+            NULL
         )
     );
     
