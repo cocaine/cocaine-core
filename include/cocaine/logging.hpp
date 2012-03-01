@@ -19,6 +19,8 @@
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 
+#define LOG_BUFFER_SIZE 50 * 1024
+
 namespace cocaine { namespace logging {
 
 enum priorities {
@@ -48,6 +50,7 @@ class emitter_t {
     private:
     	sink_t& m_sink;
     	const std::string m_source;
+        char m_buffer[LOG_BUFFER_SIZE];
 };
 
 }}

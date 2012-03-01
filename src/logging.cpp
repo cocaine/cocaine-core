@@ -53,8 +53,6 @@ void emitter_t::error(const char* format, ...) {
 }
 
 void emitter_t::emit(priorities priority, const char* format, va_list args) {
-    char buffer[256];
-    
-    vsprintf(buffer, format, args);            
-    m_sink.emit(priority, m_source + buffer);
+    vsnprintf(m_buffer, LOG_BUFFER_SIZE, format, args);
+    m_sink.emit(priority, m_source + m_buffer);
 }
