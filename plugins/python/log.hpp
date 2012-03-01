@@ -18,19 +18,21 @@
 
 namespace cocaine { namespace engine {
 
+class python_t;
+
 class log_object_t {
     public:
         PyObject_HEAD
 
-        static PyObject* __new__ (PyTypeObject* type, PyObject* args, PyObject* kwargs);
-        static int       __init__(log_object_t* self, PyObject* args, PyObject* kwargs);
-        static void      __del__ (log_object_t* self);
+        static int __init__(log_object_t* self, PyObject* args, PyObject* kwargs);
+
+        static PyObject* debug(log_object_t* self, PyObject* args);
+        static PyObject* info(log_object_t* self, PyObject* args);
+        static PyObject* warning(log_object_t* self, PyObject* args);
+        static PyObject* error(log_object_t* self, PyObject* args);
 
     public:
-        static PyObject* debug(log_object_t* self, PyObject* args, PyObject* kwargs);
-        static PyObject* info(log_object_t* self, PyObject* args, PyObject* kwargs);
-        static PyObject* warning(log_object_t* self, PyObject* args, PyObject* kwargs);
-        static PyObject* error(log_object_t* self, PyObject* args, PyObject* kwargs);
+        python_t* plugin;
 };
 
 static PyMethodDef log_object_methods[] = {
@@ -51,7 +53,7 @@ static PyTypeObject log_object_type = {
     "Log",                                      /* tp_name */
     sizeof(log_object_t),                       /* tp_basicsize */
     0,                                          /* tp_itemsize */
-    (destructor)log_object_t::__del__,          /* tp_dealloc */
+    0,                                          /* tp_dealloc */
     0,                                          /* tp_print */
     0,                                          /* tp_getattr */
     0,                                          /* tp_setattr */
@@ -84,7 +86,7 @@ static PyTypeObject log_object_type = {
     0,                                          /* tp_dictoffset */
     (initproc)log_object_t::__init__,           /* tp_init */
     0,                                          /* tp_alloc */
-    log_object_t::__new__                       /* tp_new */
+    PyType_GenericNew                           /* tp_new */
 };    
 
 }}

@@ -17,6 +17,10 @@
 #include "python.hpp"
 #include "log.hpp"
 
+#if PY_VERSION_HEX >= 0x02070000
+    #include <pycapsule.h>
+#endif
+
 #include "cocaine/registry.hpp"
 
 using namespace cocaine::core;
@@ -87,7 +91,6 @@ void python_t::initialize(const app_t& app) {
         "Application"
     );
 
-    // Initialize the builtins.
     python_object_t builtins = PyEval_GetBuiltins();
     Py_INCREF(builtins);
 
@@ -100,16 +103,31 @@ void python_t::initialize(const app_t& app) {
     // NOTE: Borrowed.
     builtins.release();
 
-    // Forward the application manifest.
+    PyModule_AddStringConstant(
+        m_python_module,
+        "__file__",
+        source.string().c_str()
+    );
+
+    PyModule_AddObject(
+        m_python_module,
+        "__plugin__",
+#if PY_VERSION_HEX >= 0x02070000
+        // XXX: Test it.
+        PyCapsule_New(this, (app.name + ".__cocaine__").c_str(), NULL)
+#else
+        PyCObject_FromVoidPtr(this, NULL)
+#endif
+    );
+
     python_object_t manifest(wrap(app.manifest["args"]));
 
     PyModule_AddObject(
         m_python_module,
         "manifest",
-        PyDictProxy_New(manifest)
+       PyDictProxy_New(manifest)
     );
 
-    // Forward the logger.
     PyType_Ready(&log_object_type);
     Py_INCREF(&log_object_type);
     
@@ -119,11 +137,9 @@ void python_t::initialize(const app_t& app) {
         reinterpret_cast<PyObject*>(&log_object_type)
     );
 
-    // Load the code.
     std::stringstream stream;
     stream << input.rdbuf();
 
-    // Compile it into the bytecode.
     python_object_t bytecode(
         Py_CompileString(
             stream.str().c_str(),
@@ -136,11 +152,11 @@ void python_t::initialize(const app_t& app) {
         throw unrecoverable_error_t(exception());
     }
 
-    // Get the application container's dict.
-    python_object_t context = PyModule_GetDict(m_python_module);
+    python_object_t context(PyModule_GetDict(m_python_module));
     
-    // NOTE: This will return None, so we can safely drop it.
-    Py_DECREF(
+    // NOTE: This will return None due to the Py_file_input flag above,
+    // so we can safely drop it without even checking.
+    python_object_t result(
         PyEval_EvalCode(
             reinterpret_cast<PyCodeObject*>(*bytecode), 
             context, 

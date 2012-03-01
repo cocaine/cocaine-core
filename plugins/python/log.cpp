@@ -12,43 +12,114 @@
 //
 
 #include "log.hpp"
+#include "python.hpp"
 
-#if PY_VERSION_HEX > 0x02070000
+#if PY_VERSION_HEX >= 0x02070000
     #include <pycapsule.h>
 #endif
 
 using namespace cocaine::engine;
 
-PyObject* log_object_t::__new__(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
-    log_object_t* self = reinterpret_cast<log_object_t*>(type->tp_alloc(type, 0));
-
-    if(self != NULL) {
-
-    }
-
-    return reinterpret_cast<PyObject*>(self);
-}
-
 int log_object_t::__init__(log_object_t* self, PyObject* args, PyObject* kwargs) {
+    PyObject* globals = PyEval_GetGlobals();
+
+    if(globals) {
+#if PY_VERSION_HEX >= 0x02070000
+        // XXX: Test it.
+        std::string name(PyString_AsString(PyDict_GetItemString(globals, "__name__")));
+        self->plugin = PyCapsule_Import((name + ".__plugin__").c_str());
+#else
+        PyObject* plugin = PyDict_GetItemString(globals, "__plugin__");
+        
+        if(plugin) {
+            self->plugin = static_cast<python_t*>(PyCObject_AsVoidPtr(plugin));
+        } else {
+            return -1;
+        }
+#endif
+    } else {
+        return -1;
+    }
+    
     return 0;
 }
 
-void log_object_t::__del__(log_object_t* self) {
-    self->ob_type->tp_free(reinterpret_cast<PyObject*>(self));
-}
+PyObject* log_object_t::debug(log_object_t* self, PyObject* args) {
+    PyObject* object;
+    const char* message;
 
-PyObject* log_object_t::debug(log_object_t* self, PyObject* args, PyObject* kwargs) {
+    if(!PyArg_ParseTuple(args, "O:debug", &object)) {
+        return NULL;
+    }
+
+    if(!PyString_Check(object)) {
+        python_object_t string(PyObject_Str(object));
+        message = PyString_AsString(string);
+    } else {
+        message = PyString_AsString(object);
+    }
+
+    self->plugin->log().debug("%s", message);
+
     Py_RETURN_NONE;
 }
 
-PyObject* log_object_t::info(log_object_t* self, PyObject* args, PyObject* kwargs) {
+PyObject* log_object_t::info(log_object_t* self, PyObject* args) {
+    PyObject* object;
+    const char* message;
+
+    if(!PyArg_ParseTuple(args, "O:info", &object)) {
+        return NULL;
+    }
+
+    if(!PyString_Check(object)) {
+        python_object_t string(PyObject_Str(object));
+        message = PyString_AsString(string);
+    } else {
+        message = PyString_AsString(object);
+    }
+
+    self->plugin->log().info("%s", message);
+
     Py_RETURN_NONE;
 }
 
-PyObject* log_object_t::warning(log_object_t* self, PyObject* args, PyObject* kwargs) {
+PyObject* log_object_t::warning(log_object_t* self, PyObject* args) {
+    PyObject* object;
+    const char* message;
+
+    if(!PyArg_ParseTuple(args, "O:warning", &object)) {
+        return NULL;
+    }
+
+    if(!PyString_Check(object)) {
+        python_object_t string(PyObject_Str(object));
+        message = PyString_AsString(string);
+    } else {
+        message = PyString_AsString(object);
+    }
+
+    self->plugin->log().warning("%s", message);
+
     Py_RETURN_NONE;
 }
 
-PyObject* log_object_t::error(log_object_t* self, PyObject* args, PyObject* kwargs) {
+PyObject* log_object_t::error(log_object_t* self, PyObject* args) {
+    PyObject* object;
+    const char* message;
+
+    if(!PyArg_ParseTuple(args, "O:error", &object)) {
+        return NULL;
+    }
+
+    if(!PyString_Check(object)) {
+        python_object_t string(PyObject_Str(object));
+        message = PyString_AsString(string);
+    } else {
+        message = PyString_AsString(object);
+    }
+
+    self->plugin->log().error("%s", message);
+
     Py_RETURN_NONE;
 }
