@@ -16,7 +16,7 @@
 
 using namespace cocaine::engine;
 
-int log_object_t::__init__(log_object_t* self, PyObject* args, PyObject* kwargs) {
+int log_object_t::constructor(log_object_t* self, PyObject* args, PyObject* kwargs) {
     PyObject* globals = PyEval_GetGlobals();
     PyObject* plugin = PyDict_GetItemString(globals, "__plugin__");
     
@@ -34,9 +34,22 @@ int log_object_t::__init__(log_object_t* self, PyObject* args, PyObject* kwargs)
     return 0;
 }
 
+void log_object_t::destructor(log_object_t* self) {
+    self->ob_type->tp_free(self);
+}
+
 PyObject* log_object_t::debug(log_object_t* self, PyObject* args) {
     PyObject* object;
     const char* message;
+
+    if(!self->plugin) {
+        PyErr_SetString(
+            PyExc_RuntimeError,
+            "Not initialized"
+        );
+
+        return NULL;
+    }
 
     if(!PyArg_ParseTuple(args, "O:debug", &object)) {
         return NULL;
@@ -58,6 +71,15 @@ PyObject* log_object_t::info(log_object_t* self, PyObject* args) {
     PyObject* object;
     const char* message;
 
+    if(!self->plugin) {
+        PyErr_SetString(
+            PyExc_RuntimeError,
+            "Not initialized"
+        );
+
+        return NULL;
+    }
+    
     if(!PyArg_ParseTuple(args, "O:info", &object)) {
         return NULL;
     }
@@ -78,6 +100,15 @@ PyObject* log_object_t::warning(log_object_t* self, PyObject* args) {
     PyObject* object;
     const char* message;
 
+    if(!self->plugin) {
+        PyErr_SetString(
+            PyExc_RuntimeError,
+            "Not initialized"
+        );
+
+        return NULL;
+    }
+    
     if(!PyArg_ParseTuple(args, "O:warning", &object)) {
         return NULL;
     }
@@ -98,6 +129,15 @@ PyObject* log_object_t::error(log_object_t* self, PyObject* args) {
     PyObject* object;
     const char* message;
 
+    if(!self->plugin) {
+        PyErr_SetString(
+            PyExc_RuntimeError,
+            "Not initialized"
+        );
+
+        return NULL;
+    }
+    
     if(!PyArg_ParseTuple(args, "O:error", &object)) {
         return NULL;
     }

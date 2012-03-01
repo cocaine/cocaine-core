@@ -24,7 +24,8 @@ class log_object_t {
     public:
         PyObject_HEAD
 
-        static int __init__(log_object_t* self, PyObject* args, PyObject* kwargs);
+        static int constructor(log_object_t* self, PyObject* args, PyObject* kwargs);
+        static void destructor(log_object_t* self);
 
         static PyObject* debug(log_object_t* self, PyObject* args);
         static PyObject* info(log_object_t* self, PyObject* args);
@@ -50,10 +51,10 @@ static PyMethodDef log_object_methods[] = {
 static PyTypeObject log_object_type = {
     PyObject_HEAD_INIT(NULL)
     0,                                          /* ob_size */
-    "Log",                                      /* tp_name */
+    "cocaine.context.Log",                      /* tp_name */
     sizeof(log_object_t),                       /* tp_basicsize */
     0,                                          /* tp_itemsize */
-    0,                                          /* tp_dealloc */
+    (destructor)log_object_t::destructor,       /* tp_dealloc */
     0,                                          /* tp_print */
     0,                                          /* tp_getattr */
     0,                                          /* tp_setattr */
@@ -84,7 +85,7 @@ static PyTypeObject log_object_type = {
     0,                                          /* tp_descr_get */
     0,                                          /* tp_descr_set */
     0,                                          /* tp_dictoffset */
-    (initproc)log_object_t::__init__,           /* tp_init */
+    (initproc)log_object_t::constructor,        /* tp_init */
     0,                                          /* tp_alloc */
     PyType_GenericNew                           /* tp_new */
 };    

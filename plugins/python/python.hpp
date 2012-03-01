@@ -77,8 +77,6 @@ class python_t:
     public:
         python_t(context_t& ctx);
         
-        virtual ~python_t();
-
         virtual void initialize(const engine::app_t& app);
         virtual void invoke(io_t& io, const std::string& method);
 
@@ -92,7 +90,7 @@ class python_t:
         void respond(io_t& io, python_object_t& result);
 
     private:
-        python_object_t m_python_module;
+        PyObject* m_python_module;
         python_object_t m_manifest;
 };
 

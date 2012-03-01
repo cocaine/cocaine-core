@@ -35,11 +35,6 @@ python_t::python_t(context_t& ctx):
     m_manifest(NULL)
 { }
 
-python_t::~python_t() {
-    // NOTE: This was borrowed with Py_InitModule().
-    m_python_module.release();
-}
-
 void python_t::initialize(const app_t& app) {
     Json::Value args(app.manifest["args"]);
 
@@ -72,7 +67,7 @@ void python_t::initialize(const app_t& app) {
 
     // NOTE: Prepend the current application location to the sys.path,
     // so that it could import various local stuff from there.
-    python_object_t syspaths = PySys_GetObject(sys_path_name);
+    PyObject* syspaths = PySys_GetObject(sys_path_name);
     
     python_object_t path(
         PyString_FromString(
@@ -86,19 +81,14 @@ void python_t::initialize(const app_t& app) {
 
     PyList_Insert(syspaths, 0, path);
 
-    // NOTE: Borrowed.
-    syspaths.release();
-   
     // Application context
     // -------------------
 
     m_manifest = wrap(args);
 
-    python_object_t context_module(
-        Py_InitModule(
-            "__context__",
-            context_module_methods
-        )
+    PyObject* context_module = Py_InitModule(
+        "__context__",
+        context_module_methods
     );
 
     PyType_Ready(&log_object_type);
@@ -110,9 +100,6 @@ void python_t::initialize(const app_t& app) {
         reinterpret_cast<PyObject*>(&log_object_type)
     );
 
-    // NOTE: Borrowed.
-    context_module.release();
-
     // Application module
     // ------------------
 
@@ -121,7 +108,7 @@ void python_t::initialize(const app_t& app) {
         NULL
     );
 
-    python_object_t builtins = PyEval_GetBuiltins();
+    PyObject* builtins = PyEval_GetBuiltins();
     Py_INCREF(builtins);
 
     PyModule_AddObject(
@@ -130,9 +117,6 @@ void python_t::initialize(const app_t& app) {
         builtins
     );
     
-    // NOTE: Borrowed.
-    builtins.release();
-
     PyModule_AddStringConstant(
         m_python_module,
         "__file__",
