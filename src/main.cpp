@@ -12,9 +12,12 @@
 //
 
 #include <syslog.h>
+
 #include <iostream>
-#include <boost/program_options.hpp>
+
+#include <boost/algorithm/string/replace.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/program_options.hpp>
 
 #include "cocaine/config.hpp"
 #include "cocaine/core.hpp"
@@ -40,18 +43,20 @@ class syslog_t:
 
     public:
         virtual void emit(logging::priorities priority, const std::string& message) {
+            std::string m = boost::algorithm::replace_all_copy(message, "\n", " ");
+
             switch(priority) {
                 case logging::debug:
-                    syslog(LOG_DEBUG, "%s", message.c_str());
+                    syslog(LOG_DEBUG, "%s", m.c_str());
                     break;
                 case logging::info:
-                    syslog(LOG_INFO, "%s", message.c_str());
+                    syslog(LOG_INFO, "%s", m.c_str());
                     break;
                 case logging::warning:
-                    syslog(LOG_WARNING, "%s", message.c_str());
+                    syslog(LOG_WARNING, "%s", m.c_str());
                     break;
                 case logging::error:
-                    syslog(LOG_ERR, "%s", message.c_str());
+                    syslog(LOG_ERR, "%s", m.c_str());
                     break;
                 default:
                     syslog(LOG_ERR, "invalid priority level for logging");
