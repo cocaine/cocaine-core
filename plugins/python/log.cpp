@@ -14,33 +14,23 @@
 #include "log.hpp"
 #include "python.hpp"
 
-#if PY_VERSION_HEX >= 0x02070000
-    #include <pycapsule.h>
-#endif
-
 using namespace cocaine::engine;
 
 int log_object_t::__init__(log_object_t* self, PyObject* args, PyObject* kwargs) {
     PyObject* globals = PyEval_GetGlobals();
-
-    if(globals) {
-#if PY_VERSION_HEX >= 0x02070000
-        // XXX: Test it.
-        std::string name(PyString_AsString(PyDict_GetItemString(globals, "__name__")));
-        self->plugin = PyCapsule_Import((name + ".__plugin__").c_str());
-#else
-        PyObject* plugin = PyDict_GetItemString(globals, "__plugin__");
-        
-        if(plugin) {
-            self->plugin = static_cast<python_t*>(PyCObject_AsVoidPtr(plugin));
-        } else {
-            return -1;
-        }
-#endif
+    PyObject* plugin = PyDict_GetItemString(globals, "__plugin__");
+    
+    if(plugin) {
+        self->plugin = static_cast<python_t*>(PyCObject_AsVoidPtr(plugin));
     } else {
+        PyErr_SetString(
+            PyExc_RuntimeError,
+            "Corrupted context"
+        );
+
         return -1;
     }
-    
+
     return 0;
 }
 

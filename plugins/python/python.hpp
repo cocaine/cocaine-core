@@ -82,13 +82,18 @@ class python_t:
         virtual void initialize(const engine::app_t& app);
         virtual void invoke(invocation_site_t& site, const std::string& method);
 
+    public:
+        static PyObject* manifest(PyObject* self, PyObject*);
+        static PyObject* wrap(const Json::Value& value);
+        
+        static std::string exception();
+
     private:
         void respond(invocation_site_t& site, python_object_t& result);
-        PyObject* wrap(const Json::Value& value);
-        std::string exception();
 
     private:
         python_object_t m_python_module;
+        python_object_t m_manifest;
 };
 
 }}

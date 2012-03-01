@@ -17,10 +17,6 @@
 #include "python.hpp"
 #include "log.hpp"
 
-#if PY_VERSION_HEX >= 0x02070000
-    #include <pycapsule.h>
-#endif
-
 #include "cocaine/registry.hpp"
 
 using namespace cocaine::core;
@@ -28,9 +24,15 @@ using namespace cocaine::engine;
 
 static char sys_path_name[] = "path";
 
+static PyMethodDef context_module_methods[] = {
+    { "manifest", &python_t::manifest, METH_NOARGS, "Get the application's manifest" },
+    { NULL, NULL, 0, NULL }
+};
+
 python_t::python_t(context_t& ctx):
     plugin_t(ctx, "python"),
-    m_python_module(NULL)
+    m_python_module(NULL),
+    m_manifest(NULL)
 { }
 
 python_t::~python_t() {
@@ -65,6 +67,9 @@ void python_t::initialize(const app_t& app) {
     // Acquire the interpreter state.
     thread_state_t state;
 
+    // System paths
+    // ------------
+
     // NOTE: Prepend the current application location to the sys.path,
     // so that it could import various local stuff from there.
     python_object_t syspaths = PySys_GetObject(sys_path_name);
@@ -84,11 +89,36 @@ void python_t::initialize(const app_t& app) {
     // NOTE: Borrowed.
     syspaths.release();
    
-    // Initialize the application container.
-    m_python_module = Py_InitModule3(
+    // Application context
+    // -------------------
+
+    m_manifest = wrap(args);
+
+    python_object_t context_module(
+        Py_InitModule(
+            "__context__",
+            context_module_methods
+        )
+    );
+
+    PyType_Ready(&log_object_type);
+    Py_INCREF(&log_object_type);
+    
+    PyModule_AddObject(
+        context_module,
+        "Log",
+        reinterpret_cast<PyObject*>(&log_object_type)
+    );
+
+    // NOTE: Borrowed.
+    context_module.release();
+
+    // Application module
+    // ------------------
+
+    m_python_module = Py_InitModule(
         app.name.c_str(),
-        NULL,
-        "Application"
+        NULL
     );
 
     python_object_t builtins = PyEval_GetBuiltins();
@@ -112,30 +142,11 @@ void python_t::initialize(const app_t& app) {
     PyModule_AddObject(
         m_python_module,
         "__plugin__",
-#if PY_VERSION_HEX >= 0x02070000
-        // XXX: Test it.
-        PyCapsule_New(this, (app.name + ".__cocaine__").c_str(), NULL)
-#else
         PyCObject_FromVoidPtr(this, NULL)
-#endif
     );
 
-    python_object_t manifest(wrap(app.manifest["args"]));
-
-    PyModule_AddObject(
-        m_python_module,
-        "manifest",
-       PyDictProxy_New(manifest)
-    );
-
-    PyType_Ready(&log_object_type);
-    Py_INCREF(&log_object_type);
-    
-    PyModule_AddObject(
-        m_python_module,
-        "Log",
-        reinterpret_cast<PyObject*>(&log_object_type)
-    );
+    // Code evaluation
+    // ---------------
 
     std::stringstream stream;
     stream << input.rdbuf();
@@ -152,14 +163,14 @@ void python_t::initialize(const app_t& app) {
         throw unrecoverable_error_t(exception());
     }
 
-    python_object_t context(PyModule_GetDict(m_python_module));
+    python_object_t globals(PyModule_GetDict(m_python_module));
     
-    // NOTE: This will return None due to the Py_file_input flag above,
+    // NOTE: This will return None or NULL due to the Py_file_input flag above,
     // so we can safely drop it without even checking.
     python_object_t result(
         PyEval_EvalCode(
             reinterpret_cast<PyCodeObject*>(*bytecode), 
-            context, 
+            globals,
             NULL
         )
     );
@@ -234,6 +245,24 @@ void python_t::invoke(invocation_site_t& site, const std::string& method) {
     } else if(result.valid()) {
         respond(site, result);
     }
+}
+
+PyObject* python_t::manifest(PyObject* self, PyObject*) {
+    PyObject* globals(PyEval_GetGlobals());
+    PyObject* plugin(PyDict_GetItemString(globals, "__plugin__"));
+
+    if(!plugin) {
+        PyErr_SetString(
+            PyExc_RuntimeError,
+            "Corrupted context"
+        );
+
+        return NULL;
+    }
+
+    return PyDictProxy_New(
+        static_cast<python_t*>(PyCObject_AsVoidPtr(plugin))->m_manifest
+    );
 }
 
 std::string python_t::exception() {
