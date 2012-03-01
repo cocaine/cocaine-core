@@ -197,6 +197,9 @@ void python_t::invoke(io_t& io, const std::string& method) {
     boost::shared_ptr<Py_buffer> buffer;
 #endif
 
+    // NOTE: It's safe to const_cast() the request buffer, as both of the used
+    // representation methods expose the buffer as a read-only object to the user code.
+
     if(io.request && io.request_size) {
 #if PY_VERSION_HEX >= 0x02070000
         buffer.reset(static_cast<Py_buffer*>(malloc(sizeof(Py_buffer))), free);
@@ -259,7 +262,7 @@ std::string python_t::exception() {
 }
 
 void python_t::respond(io_t& io, python_object_t& result) {
-    if(PyString_Check(result)) {
+    if(PyString_Check(result) || !PyIter_Check(result)) {
         throw recoverable_error_t("the result must be an iterable");
     }
 
@@ -277,7 +280,7 @@ void python_t::respond(io_t& io, python_object_t& result) {
                 break;
             }
         
-#if PY_VERSION_HEX > 0x02060000
+#if PY_VERSION_HEX >= 0x02060000
             if(PyObject_CheckBuffer(item)) {
                 boost::shared_ptr<Py_buffer> buffer(
                     static_cast<Py_buffer*>(malloc(sizeof(Py_buffer))),
