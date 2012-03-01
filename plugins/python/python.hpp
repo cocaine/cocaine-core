@@ -76,16 +76,15 @@ class python_t:
 {
     public:
         python_t(context_t& ctx);
+        
+        virtual ~python_t();
 
         virtual void initialize(const engine::app_t& app);
         virtual void invoke(invocation_site_t& site, const std::string& method);
 
     private:
-        void compile(const std::string& path, const std::string& code);
         void respond(invocation_site_t& site, python_object_t& result);
-
         PyObject* wrap(const Json::Value& value);
-        
         std::string exception();
 
     private:

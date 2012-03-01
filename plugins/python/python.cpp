@@ -27,6 +27,11 @@ python_t::python_t(context_t& ctx):
     m_python_module(NULL)
 { }
 
+python_t::~python_t() {
+    // NOTE: This was borrowed with Py_InitModule().
+    m_python_module.release();
+}
+
 void python_t::initialize(const app_t& app) {
     Json::Value args(app.manifest["args"]);
 
@@ -53,7 +58,7 @@ void python_t::initialize(const app_t& app) {
 
     // Acquire the interpreter state.
     thread_state_t state;
-    
+
     // NOTE: Prepend the current application location to the sys.path,
     // so that it could import various local stuff from there.
     python_object_t syspaths = PySys_GetObject("path");
@@ -73,18 +78,31 @@ void python_t::initialize(const app_t& app) {
     // NOTE: Borrowed.
     syspaths.release();
    
-    // Initialize the context module.
-    python_object_t module = Py_InitModule3(
-        "context", 
+    // Initialize the application container.
+    m_python_module = Py_InitModule3(
+        "<application>",
         NULL, 
-        "Application runtime context"
+        "Application"
     );
+
+    // Initialize the builtins.
+    python_object_t builtins = PyEval_GetBuiltins();
+    Py_INCREF(builtins);
+
+    PyModule_AddObject(
+        m_python_module, 
+        "__builtins__", 
+        builtins
+    );
+    
+    // NOTE: Borrowed.
+    builtins.release();
 
     // Forward the application manifest.
     python_object_t manifest(wrap(app.manifest["args"]));
 
     PyModule_AddObject(
-        module,
+        m_python_module,
         "manifest",
         PyDictProxy_New(manifest)
     );
@@ -94,28 +112,52 @@ void python_t::initialize(const app_t& app) {
     Py_INCREF(&log_object_type);
     
     PyModule_AddObject(
-        module,
+        m_python_module,
         "Log",
         reinterpret_cast<PyObject*>(&log_object_type)
     );
-
-    // NOTE: Borrowed.
-    module.release();
 
     // Load the code.
     std::stringstream stream;
     stream << input.rdbuf();
 
-    compile(source.string(), stream.str());
+    // Compile it into the bytecode.
+    python_object_t bytecode(
+        Py_CompileString(
+            stream.str().c_str(),
+            source.string().c_str(),
+            Py_file_input
+        )
+    );
+
+    if(PyErr_Occurred()) {
+        throw unrecoverable_error_t(exception());
+    }
+
+    // Get the application container's dict.
+    python_object_t context = PyModule_GetDict(m_python_module);
+    
+    // NOTE: This will return None, so we can safely drop it.
+    Py_DECREF(
+        PyEval_EvalCode(
+            reinterpret_cast<PyCodeObject*>(*bytecode), 
+            context, 
+            context
+        )
+    );
+    
+    if(PyErr_Occurred()) {
+        throw unrecoverable_error_t(exception());
+    }
 }
 
 void python_t::invoke(invocation_site_t& site, const std::string& method) {
+    thread_state_t state;
+    
     if(!m_python_module) {
         throw unrecoverable_error_t("python module is not initialized");
     }
 
-    thread_state_t state;
-    
     python_object_t object(
         PyObject_GetAttrString(
             m_python_module,
@@ -185,28 +227,6 @@ std::string python_t::exception() {
     return PyString_AsString(message);
 }
 
-void python_t::compile(const std::string& path, const std::string& code) {
-    python_object_t bytecode(
-        Py_CompileString(
-            code.c_str(),
-            path.c_str(),
-            Py_file_input
-        )
-    );
-
-    if(PyErr_Occurred()) {
-        throw unrecoverable_error_t(exception());
-    }
-
-    m_python_module = PyImport_ExecCodeModule(
-        "<application>",
-        bytecode);
-    
-    if(PyErr_Occurred()) {
-        throw unrecoverable_error_t(exception());
-    }
-}
-
 void python_t::respond(invocation_site_t& site, python_object_t& result) {
     if(PyString_Check(result)) {
         throw recoverable_error_t("the result must be an iterable");
@@ -256,6 +276,7 @@ void python_t::respond(invocation_site_t& site, python_object_t& result) {
     }
 }
 
+// XXX: Check reference counting.
 PyObject* python_t::wrap(const Json::Value& value) {
     PyObject* object = NULL;
 
@@ -312,13 +333,13 @@ void restore() {
 
 extern "C" {
     void initialize(registry_t& registry) {
-        // Initialize the Python subsystem
+        // Initialize the Python subsystem.
         Py_InitializeEx(0);
 
-        // Initialize the GIL
+        // Initialize the GIL.
         PyEval_InitThreads();
 
-        // Save the main thread
+        // Save the main thread.
         save();
 
         // NOTE: In case of a fork, restore the main thread state and acquire the GIL,
