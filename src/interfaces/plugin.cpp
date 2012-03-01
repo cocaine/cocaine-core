@@ -18,17 +18,17 @@
 
 using namespace cocaine::engine;
 
-invocation_site_t::invocation_site_t(overseer_t& overseer, const void* request_, size_t request_size_):
+io_t::io_t(overseer_t& overseer, const void* request_, size_t request_size_):
 	request(request_),
 	request_size(request_size_),
 	m_overseer(overseer)
 { }
 
-void invocation_site_t::pull() {
+void io_t::pull() {
 	// TODO: Streaming.
 }
 
-void invocation_site_t::push(const void* data, size_t size) {
+void io_t::push(const void* data, size_t size) {
 	m_overseer.send(
 		rpc::push,
 		data,
@@ -36,6 +36,6 @@ void invocation_site_t::push(const void* data, size_t size) {
 	);
 }
 
-void invocation_site_t::emit(const std::string& key, const void* data, size_t size) {
+void io_t::emit(const std::string& key, const void* data, size_t size) {
 	// TODO: Emitters.
 }

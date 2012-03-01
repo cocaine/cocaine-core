@@ -126,13 +126,13 @@ void overseer_t::process(ev::idle&, int) {
                 m_messages.recv_multi(tier);
 
                 try {
-                    invocation_site_t site(
+                    io_t io(
                         *this,
                         request.data(),
                         request.size()
                     );
 
-                    m_module->invoke(site, method);
+                    m_module->invoke(io, method);
                 } catch(const recoverable_error_t& e) {
                     m_messages.send_multi(
                         boost::make_tuple(

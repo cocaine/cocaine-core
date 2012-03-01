@@ -76,12 +76,12 @@ class perl_t:
             compile(stream.str());
         }
             
-        virtual void invoke(invocation_site_t& site, const std::string& method)
+        virtual void invoke(io_t& io, const std::string& method)
         {
             std::string input;
             
-            if (site.request && site.request_size > 0) {
-               input = std::string((const char*)site.request, site.request_size);
+            if (io.request && io.request_size > 0) {
+               input = std::string((const char*)io.request, io.request_size);
             }
 
             std::string result;
@@ -137,7 +137,7 @@ class perl_t:
 
 			// invoke callback with resulting data
             if (!result.empty()) {
-                site.push(result.data(), result.size());
+                io.push(result.data(), result.size());
             }
         }
 

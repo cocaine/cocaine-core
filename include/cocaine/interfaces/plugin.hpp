@@ -23,14 +23,14 @@
 
 namespace cocaine { namespace engine {
 
-// Plugin invocation site
-// ----------------------
+// Plugin I/O
+// ----------
 
-class invocation_site_t {
+class io_t {
     public:
-        invocation_site_t(overseer_t& overseer,
-                          const void* request,
-                          size_t request_size);
+        io_t(overseer_t& overseer,
+             const void* request,
+             size_t request_size);
 
         void pull();
         void push(const void* data, size_t size);
@@ -56,7 +56,7 @@ class plugin_t:
         { }
 
         virtual void initialize(const app_t& app) = 0;
-        virtual void invoke(invocation_site_t& site, const std::string& method) = 0;
+        virtual void invoke(io_t& io, const std::string& method) = 0;
 };
 
 // Allowed exceptions

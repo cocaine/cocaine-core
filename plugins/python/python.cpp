@@ -180,7 +180,7 @@ void python_t::initialize(const app_t& app) {
     }
 }
 
-void python_t::invoke(invocation_site_t& site, const std::string& method) {
+void python_t::invoke(io_t& io, const std::string& method) {
     thread_state_t state;
     
     if(!m_python_module) {
@@ -213,12 +213,12 @@ void python_t::invoke(invocation_site_t& site, const std::string& method) {
     boost::shared_ptr<Py_buffer> buffer;
 #endif
 
-    if(site.request && site.request_size) {
+    if(io.request && io.request_size) {
 #if PY_VERSION_HEX >= 0x02070000
         buffer.reset(static_cast<Py_buffer*>(malloc(sizeof(Py_buffer))), free);
 
-        buffer->buf = const_cast<void*>(site.request);
-        buffer->len = site.request_size;
+        buffer->buf = const_cast<void*>(io.request);
+        buffer->len = io.request_size;
         buffer->readonly = true;
         buffer->format = NULL;
         buffer->ndim = 0;
@@ -229,8 +229,8 @@ void python_t::invoke(invocation_site_t& site, const std::string& method) {
         python_object_t view(PyMemoryView_FromBuffer(buffer.get()));
 #else
         python_object_t view(PyBuffer_FromMemory(
-            const_cast<void*>(site.request), 
-            site.request_size));
+            const_cast<void*>(io.request), 
+            io.request_size));
 #endif
 
         args = PyTuple_Pack(1, *view);
@@ -243,7 +243,7 @@ void python_t::invoke(invocation_site_t& site, const std::string& method) {
     if(PyErr_Occurred()) {
         throw recoverable_error_t(exception());
     } else if(result.valid()) {
-        respond(site, result);
+        respond(io, result);
     }
 }
 
@@ -274,7 +274,7 @@ std::string python_t::exception() {
     return PyString_AsString(message);
 }
 
-void python_t::respond(invocation_site_t& site, python_object_t& result) {
+void python_t::respond(io_t& io, python_object_t& result) {
     if(PyString_Check(result)) {
         throw recoverable_error_t("the result must be an iterable");
     }
@@ -302,7 +302,7 @@ void python_t::respond(invocation_site_t& site, python_object_t& result) {
 
                 if(PyObject_GetBuffer(item, buffer.get(), PyBUF_SIMPLE) == 0) {
                     Py_BEGIN_ALLOW_THREADS
-                        site.push(buffer->buf, buffer->len);
+                        io.push(buffer->buf, buffer->len);
                     Py_END_ALLOW_THREADS
                     
                     PyBuffer_Release(buffer.get());
@@ -312,7 +312,7 @@ void python_t::respond(invocation_site_t& site, python_object_t& result) {
             }
 #else
             if(PyString_Check(item)) {
-                site.push(PyString_AsString(item), PyString_Size(item));
+                io.push(PyString_AsString(item), PyString_Size(item));
             } else {
                 throw recoverable_error_t("unable to serialize the result");
             }

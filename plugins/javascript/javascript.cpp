@@ -67,10 +67,7 @@ class javascript_t:
             compile(stream.str(), "iterate");
         }
 
-        virtual void invoke(
-            invocation_site_t& site,
-            const std::string& method)
-        {
+        virtual void invoke(io_t& io, const std::string& method) {
             Json::Value result;
 
             HandleScope handle_scope;
@@ -89,7 +86,7 @@ class javascript_t:
             Json::FastWriter writer;
             std::string response(writer.write(result));
 
-            site.push(response.data(), response.size());
+            io.push(response.data(), response.size());
         }
 
     private:

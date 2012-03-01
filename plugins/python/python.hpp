@@ -80,7 +80,7 @@ class python_t:
         virtual ~python_t();
 
         virtual void initialize(const engine::app_t& app);
-        virtual void invoke(invocation_site_t& site, const std::string& method);
+        virtual void invoke(io_t& io, const std::string& method);
 
     public:
         static PyObject* manifest(PyObject* self, PyObject*);
@@ -89,7 +89,7 @@ class python_t:
         static std::string exception();
 
     private:
-        void respond(invocation_site_t& site, python_object_t& result);
+        void respond(io_t& io, python_object_t& result);
 
     private:
         python_object_t m_python_module;
