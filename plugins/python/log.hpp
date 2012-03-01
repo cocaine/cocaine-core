@@ -11,56 +11,47 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_PYTHON_PLUGIN_STORAGE_HPP
-#define COCAINE_PYTHON_PLUGIN_STORAGE_HPP
+#ifndef COCAINE_PYTHON_PLUGIN_LOG_HPP
+#define COCAINE_PYTHON_PLUGIN_LOG_HPP
 
-#include "common.hpp"
+#include "Python.h"
 
-namespace cocaine { namespace plugin {
+namespace cocaine { namespace engine {
 
-class storage_object_t {
+class log_object_t {
     public:
         PyObject_HEAD
 
-        static PyObject* allocate(PyTypeObject* type, PyObject* args, PyObject* kwargs);
-        static void deallocate(storage_object_t* self);
-        static int initialize(storage_object_t* self, PyObject* args, PyObject* kwargs);
+        static PyObject* __new__ (PyTypeObject* type, PyObject* args, PyObject* kwargs);
+        static int       __init__(log_object_t* self, PyObject* args, PyObject* kwargs);
+        static void      __del__ (log_object_t* self);
 
     public:
-        static PyObject* get(storage_object_t* self, PyObject* args, PyObject* kwargs);
-        static PyObject* set(storage_object_t* self, PyObject* args, PyObject* kwargs);
-        static PyObject* get_id(storage_object_t* self, void* closure);
-
-    private:
-        static const char *get_kwlist[];
-        static const char *set_kwlist[];
-
-    private:
-        PyObject* storage_id;
+        static PyObject* debug(log_object_t* self, PyObject* args, PyObject* kwargs);
+        static PyObject* info(log_object_t* self, PyObject* args, PyObject* kwargs);
+        static PyObject* warning(log_object_t* self, PyObject* args, PyObject* kwargs);
+        static PyObject* error(log_object_t* self, PyObject* args, PyObject* kwargs);
 };
 
-static PyMethodDef storage_object_methods[] = {
-    { "get", (PyCFunction)storage_object_t::get,
-        METH_VARARGS | METH_KEYWORDS,
-        "Fetches the value for the specified key" },
-    { "set", (PyCFunction)storage_object_t::set,
-        METH_VARARGS | METH_KEYWORDS,
-        "Stores the value for the specified key" },
+static PyMethodDef log_object_methods[] = {
+    { "debug", (PyCFunction)log_object_t::debug,
+        METH_VARARGS, "Logs a message with a Debug priority" },
+    { "info", (PyCFunction)log_object_t::info,
+        METH_VARARGS, "Logs a message with an Information priority" },
+    { "warning", (PyCFunction)log_object_t::warning,
+        METH_VARARGS, "Logs a message with a Warning priority" },
+    { "error", (PyCFunction)log_object_t::error,
+        METH_VARARGS, "Logs a message with an Error priority" },
     { NULL }
 };
 
-static PyGetSetDef storage_object_accessors[] = {
-    { "id", (getter)storage_object_t::get_id, NULL, "storage id", NULL },
-    { NULL }
-};
-
-static PyTypeObject storage_object_type = {
+static PyTypeObject log_object_type = {
     PyObject_HEAD_INIT(NULL)
     0,                                          /* ob_size */
-    "Store",                                    /* tp_name */
-    sizeof(storage_object_t),                   /* tp_basicsize */
+    "Log",                                      /* tp_name */
+    sizeof(log_object_t),                       /* tp_basicsize */
     0,                                          /* tp_itemsize */
-    (destructor)storage_object_t::deallocate,   /* tp_dealloc */
+    (destructor)log_object_t::__del__,          /* tp_dealloc */
     0,                                          /* tp_print */
     0,                                          /* tp_getattr */
     0,                                          /* tp_setattr */
@@ -76,24 +67,24 @@ static PyTypeObject storage_object_type = {
     0,                                          /* tp_setattro */
     0,                                          /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT,                         /* tp_flags */
-    "Persistent data storage",                  /* tp_doc */
+    "Log",                                      /* tp_doc */
     0,                                          /* tp_traverse */
     0,                                          /* tp_clear */
     0,                                          /* tp_richcompare */
     0,                                          /* tp_weaklistoffset */
     0,                                          /* tp_iter */
     0,                                          /* tp_iternext */
-    storage_object_methods,                     /* tp_methods */
+    log_object_methods,                         /* tp_methods */
     0,                                          /* tp_members */
-    storage_object_accessors,                   /* tp_getset */
+    0,                                          /* tp_getset */
     0,                                          /* tp_base */
     0,                                          /* tp_dict */
     0,                                          /* tp_descr_get */
     0,                                          /* tp_descr_set */
     0,                                          /* tp_dictoffset */
-    (initproc)storage_object_t::initialize,     /* tp_init */
+    (initproc)log_object_t::__init__,           /* tp_init */
     0,                                          /* tp_alloc */
-    storage_object_t::allocate                  /* tp_new */
+    log_object_t::__new__                       /* tp_new */
 };    
 
 }}

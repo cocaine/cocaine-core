@@ -15,6 +15,7 @@
 #include <boost/filesystem/fstream.hpp>
 
 #include "python.hpp"
+#include "log.hpp"
 
 #include "cocaine/registry.hpp"
 
@@ -39,6 +40,7 @@ void python_t::initialize(const app_t& app) {
         throw unrecoverable_error_t("no code location has been specified");
     }
 
+    // NOTE: Means it's a module.
     if(boost::filesystem::is_directory(source)) {
         source /= "__init__.py";
     }
@@ -49,16 +51,15 @@ void python_t::initialize(const app_t& app) {
         throw unrecoverable_error_t("unable to open " + source.string());
     }
 
-    // Acquire the interpreter state
+    // Acquire the interpreter state.
     thread_state_t state;
     
-    // NOTE: Prepend the current application cache location to the sys.path,
-    // so that it could import different stuff from there
-    PyObject* syspath = PySys_GetObject("path");
-
-    // XXX: Does it steal the reference or not?
-    PyList_Insert(syspath, 0,
-        PyString_FromString( 
+    // NOTE: Prepend the current application location to the sys.path,
+    // so that it could import various local stuff from there.
+    python_object_t syspaths = PySys_GetObject("path");
+    
+    python_object_t path(
+        PyString_FromString(
 #if BOOST_FILESYSTEM_VERSION == 3
             source.parent_path().string().c_str()
 #else
@@ -66,19 +67,42 @@ void python_t::initialize(const app_t& app) {
 #endif
         )
     );
+
+    PyList_Insert(syspaths, 0, path);
+
+    // NOTE: Borrowed.
+    syspaths.release();
    
-    // Initialize the context module
-    PyObject* module = Py_InitModule("context", NULL);
-    
+    // Initialize the context module.
+    python_object_t module = Py_InitModule3(
+        "context", 
+        NULL, 
+        "Application runtime context"
+    );
+
+    // Forward the application manifest.
+    python_object_t manifest(wrap(app.manifest["args"]));
+
     PyModule_AddObject(
         module,
         "manifest",
-        PyDictProxy_New(
-            wrap(app.manifest["args"])
-        )
+        PyDictProxy_New(manifest)
     );
 
-    // Load the code
+    // Forward the logger.
+    PyType_Ready(&log_object_type);
+    Py_INCREF(&log_object_type);
+    
+    PyModule_AddObject(
+        module,
+        "Log",
+        reinterpret_cast<PyObject*>(&log_object_type)
+    );
+
+    // NOTE: Borrowed.
+    module.release();
+
+    // Load the code.
     std::stringstream stream;
     stream << input.rdbuf();
 
@@ -206,7 +230,8 @@ void python_t::respond(invocation_site_t& site, python_object_t& result) {
             if(PyObject_CheckBuffer(item)) {
                 boost::shared_ptr<Py_buffer> buffer(
                     static_cast<Py_buffer*>(malloc(sizeof(Py_buffer))),
-                    free);
+                    free
+                );
 
                 if(PyObject_GetBuffer(item, buffer.get(), PyBUF_SIMPLE) == 0) {
                     Py_BEGIN_ALLOW_THREADS
@@ -220,7 +245,7 @@ void python_t::respond(invocation_site_t& site, python_object_t& result) {
             }
 #else
             if(PyString_Check(item)) {
-                callback(PyString_AsString(item), PyString_Size(item));
+                site.push(PyString_AsString(item), PyString_Size(item));
             } else {
                 throw recoverable_error_t("unable to serialize the result");
             }
