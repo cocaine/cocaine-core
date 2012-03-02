@@ -80,6 +80,7 @@ engine_t::engine_t(context_t& ctx, const std::string& name, const Json::Value& m
 
         if(limits.isObject() && !limits.empty()) {
             m_cgroup = cgroup_new_cgroup(name.c_str());
+            cgroup_set_uid_gid(m_cgroup, getuid(), getgid(), getuid(), getgid());
 
             Json::Value::Members ctl_names(limits.getMemberNames());
 
