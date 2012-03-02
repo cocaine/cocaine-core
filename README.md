@@ -6,12 +6,12 @@ Cocaine is a fast and lightweight multi-language (you can easily write your own 
 Notable features:
 
 * Apps are defined as a set of tasks, which trigger events in the app engine, which are then processed on a slave pool. Tasks can be servers, time-based jobs, filesystem monitors, etc.
-* Dynamic self-managing slave pools (threads or processes) for each app with a rich configuration to suit the application needs in the best way.
-* A single maintainance pubsub-based interface for each application for easy access to monitoring and runtime data.
+* Dynamic self-managing slave pools for each app with a rich configuration to suit the application needs in the best way.
+* Optional resource control via Linux cgroups.
 * Optional secure communications using RSA encryption.
 * Support for chunked responses and, soon, requests.
 * Automatic node discovery and smart peer-to-peer balancing. Note that ZeroMQ already offers built-in fair balancing features which you can use, although they do not consider real node load.
-* Simple modular design to add new languages, task types and slave backends easily.
+* Simple modular design to add new languages, task types, storages and slave backends easily.
 
 At the moment, Cocaine supports the following languages and specifications:
 
@@ -46,7 +46,13 @@ An example
     "engine": {
         "heartbeat-timeout": 60,
         "pool-limit": 20,
-        "queue-limit": 5
+        "queue-limit": 5,
+        "control-group": {
+            "cpuset": {
+                "cpuset.cpus": "0-3",
+                "cpuset.mems": "0",
+            }
+        }
     },
     "tasks": {
         "aggregate": {
