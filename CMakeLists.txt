@@ -25,6 +25,8 @@ LOCATE_LIBRARY(LIBZMQ "zmq.hpp" "zmq")
 IF(NOT APPLE)
     LOCATE_LIBRARY(LIBCGROUP, "libcgroup.h" "cgroup")
     LOCATE_LIBRARY(LIBUUID "uuid/uuid.h" "uuid")
+
+    SET(LIBCGROUP_LIBRARIES "cgroup")
     ADD_DEFINITIONS("-DHAVE_CGROUPS")
 ENDIF()
 
@@ -76,7 +78,8 @@ TARGET_LINK_LIBRARIES(cocaine-common
     ltdl
     mongoclient
     ${LIBUUID_LIBRARIES}
-    zmq)
+    zmq
+    ${LIBCGROUP_LIBRARIES})
 
 SET_TARGET_PROPERTIES(cocaine-common PROPERTIES
     VERSION 1)
@@ -101,8 +104,7 @@ ADD_LIBRARY(cocaine-core SHARED
 TARGET_LINK_LIBRARIES(cocaine-core
     cocaine-common
     ev
-    msgpack
-    cgroup)
+    msgpack)
 
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     VERSION 1)
