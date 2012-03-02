@@ -14,7 +14,6 @@
 #include <sstream>
 #include <boost/algorithm/string/join.hpp>
 #include <boost/assign.hpp>
-#include <libcgroup.h>
 
 #include "cocaine/core.hpp"
 
@@ -47,16 +46,10 @@ core_t::core_t(context_t& ctx):
     log().info("using libzmq version %d.%d.%d", major, minor, patch);
     log().info("route to this node is '%s'", m_server.route().c_str());
 
-    int rv = 0;
-
-    if((rv = cgroup_init()) != 0) {
-        log().warning(
-            "control groups are not available - %s", 
-            cgroup_strerror(rv)
-        );
-    }
-
-    context().config.core.cgroups = (rv == 0);
+    log().info(
+        "control groups are %s", 
+        context().config.core.cgroups ? "available" : "not available"
+    );
 
     // Server socket.
     int linger = 0;

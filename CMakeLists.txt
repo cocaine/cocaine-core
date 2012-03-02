@@ -23,7 +23,9 @@ LOCATE_LIBRARY(LIBMSGPACK "msgpack.hpp" "msgpack")
 LOCATE_LIBRARY(LIBZMQ "zmq.hpp" "zmq")
 
 IF(NOT APPLE)
+    LOCATE_LIBRARY(LIBCGROUP, "libcgroup.h" "cgroup")
     LOCATE_LIBRARY(LIBUUID "uuid/uuid.h" "uuid")
+    ADD_DEFINITIONS("-DHAVE_CGROUPS")
 ENDIF()
 
 IF(Boost_MINOR_VERSION GREATER 34)

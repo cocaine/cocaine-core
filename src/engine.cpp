@@ -12,6 +12,7 @@
 //
 
 #include <boost/algorithm/string/join.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include "cocaine/engine.hpp"
 
@@ -40,12 +41,17 @@ bool engine_t::idle_slave::operator()(pool_map_t::pointer slave) const {
     return slave->second->state_downcast<const slaves::idle*>();
 }
 
-engine_t::specific_slave::specific_slave(pool_map_t::pointer target_):
-    target(target_)
-{ }
+engine_t::specific_slave::specific_slave(pool_map_t::pointer target):
+    m_target(target),
+    m_dead(false)
+{
+    if(m_target->second->state_downcast<const slaves::dead*>()) {
+        m_dead = true;
+    }
+}
 
 bool engine_t::specific_slave::operator()(pool_map_t::pointer slave) const {
-    return slave == target;
+    return !m_dead && slave == m_target;
 }
 
 namespace {
@@ -63,27 +69,81 @@ engine_t::engine_t(context_t& ctx, const std::string& name, const Json::Value& m
     object_t(ctx, name + " engine"),
     m_running(false),
     m_app(ctx, name, manifest),
-    m_messages(ctx, ZMQ_ROUTER, "rpc/" + name),
-    m_cgroup(NULL)
+    m_messages(ctx, ZMQ_ROUTER, "rpc/" + name)
+#ifdef HAVE_CGROUPS
+    , m_cgroup(NULL)
+#endif
 {
+#ifdef HAVE_CGROUPS
     if(ctx.config.core.cgroups) {
-        m_cgroup = cgroup_new_cgroup(name.c_str());
-        
-        cgroup_add_controller(m_cgroup, "cpuset");
-        cgroup_add_controller(m_cgroup, "memory");
-        
-        int rv = 0;
-        
-        if((rv = cgroup_create_cgroup(m_cgroup, false)) != 0) {
-            log().error(
-                "unable to create the control group - %s", 
-                cgroup_strerror(rv)
-            );
+        Json::Value cgroup_cfg(manifest["engine"]["control-group"]);
 
-            cgroup_free(&m_cgroup);
-            m_cgroup = NULL;
+        if(cgroup_cfg.isObject() && !cgroup_cfg.empty()) {
+            m_cgroup = cgroup_new_cgroup(name.c_str());
+            Json::Value::Members ctl_names(cgroup_cfg.getMemberNames());
+
+            for(Json::Value::Members::iterator c = ctl_names.begin();
+                c != ctl_names.end();
+                ++c)
+            {
+                Json::Value ctl_cfg(cgroup_cfg[*c]);
+
+                if(ctl_cfg.isObject() && !ctl_cfg.empty()) {
+                    cgroup_controller* ctl = cgroup_add_controller(m_cgroup, c->c_str());
+                    Json::Value::Members parameter_names(ctl_cfg.getMemberNames());
+
+                    for(Json::Value::Members::iterator p = parameter_names.begin();
+                        p != parameter_names.end();
+                        ++p)
+                    {
+                        switch(ctl_cfg[*p].type()) {
+                            case Json::stringValue: {
+                                cgroup_add_value_string(ctl, p->c_str(), ctl_cfg[*p].asCString());
+                                break;
+                            } case Json::intValue: {
+                                cgroup_add_value_int64(ctl, p->c_str(), ctl_cfg[*p].asInt());
+                                break;
+                            } case Json::uintValue: {
+                                cgroup_add_value_uint64(ctl, p->c_str(), ctl_cfg[*p].asUInt());
+                                break;
+                            } case Json::booleanValue: {
+                                cgroup_add_value_bool(ctl, p->c_str(), ctl_cfg[*p].asBool());
+                                break;
+                            } default: {
+                                log().error(
+                                    "cgroup controller '%s' parameter '%s' type is not supported",
+                                    c->c_str(),
+                                    p->c_str()
+                                );
+
+                                continue;
+                            }
+                        }
+                        
+                        log().debug(
+                            "setting cgroup controller '%s' parameter '%s' to %s", 
+                            c->c_str(),
+                            p->c_str(),
+                            boost::lexical_cast<std::string>(ctl_cfg[*p]).c_str()
+                        );
+                    }
+                }
+            }
+
+            int rv = 0;
+
+            if((rv = cgroup_create_cgroup(m_cgroup, false)) != 0) {
+                log().error(
+                    "unable to create cgroup - %s", 
+                    cgroup_strerror(rv)
+                );
+
+                cgroup_free(&m_cgroup);
+                m_cgroup = NULL;
+            }
         }
     }
+#endif
 }
 
 engine_t::~engine_t() {
@@ -91,6 +151,7 @@ engine_t::~engine_t() {
         stop();
     }
 
+#ifdef HAVE_CGROUPS
     if(m_cgroup) {
         int rv = 0;
 
@@ -100,9 +161,10 @@ engine_t::~engine_t() {
                 cgroup_strerror(rv)
             );
         }
-        
+
         cgroup_free(&m_cgroup);
     }
+#endif
 }
 
 // Operations

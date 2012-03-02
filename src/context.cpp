@@ -11,6 +11,10 @@
 // limitations under the License.
 //
 
+#ifdef HAVE_CGROUPS 
+    #include <libcgroup.h>
+#endif
+
 #include "cocaine/context.hpp"
 
 #include "cocaine/logging.hpp"
@@ -32,6 +36,12 @@ context_t::context_t(config_t config_, std::auto_ptr<logging::sink_t> sink):
     } else {
         throw std::runtime_error("failed to determine the hostname");
     }
+   
+#ifdef HAVE_CGROUPS 
+    config.core.cgroups = (cgroup_init() == 0);
+#else
+    config.core.cgroups = false;
+#endif
 }
 
 context_t::context_t(const context_t& other):

@@ -15,7 +15,10 @@
 #define COCAINE_ENGINE_HPP
 
 #include <deque>
-#include <libcgroup.h>
+
+#ifdef HAVE_CGROUPS
+    #include <libcgroup.h>
+#endif
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
@@ -59,14 +62,20 @@ class engine_t:
                 void push(const_reference job);
         };
 
-        struct idle_slave {
-            bool operator()(pool_map_t::pointer slave) const;
+        class idle_slave {
+            public:
+                bool operator()(pool_map_t::pointer slave) const;
         };
 
-        struct specific_slave {
-            specific_slave(pool_map_t::pointer target);
-            bool operator()(pool_map_t::pointer slave) const;
-            pool_map_t::pointer target;
+        class specific_slave {
+            public:
+                specific_slave(pool_map_t::pointer target);
+                
+                bool operator()(pool_map_t::pointer slave) const;
+            
+            private:
+                pool_map_t::pointer m_target;
+                bool m_dead;
         };
 
     public:
@@ -87,9 +96,11 @@ class engine_t:
             return m_app;
         }
 
+#ifdef HAVE_CGROUPS
         inline cgroup * const group() {
             return m_cgroup;
         }
+#endif
 
     private:
         template<class S, class T>
@@ -134,8 +145,10 @@ class engine_t:
         networking::channel_t m_messages;
         pool_map_t m_pool;
 
+#ifdef HAVE_CGROUPS
         // Control group to put the slaves into.
         cgroup* m_cgroup;
+#endif
 
         // RPC watchers.        
         ev::io m_watcher;

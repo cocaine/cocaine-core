@@ -29,7 +29,8 @@ generic_t::generic_t(engine_t& engine):
     if(m_pid == 0) {
         context_t context(engine.context());
 
-        if(context.config.core.cgroups) {
+#ifdef HAVE_CGROUPS
+        if(context.config.core.cgroups && engine.group()) {
             int rv = 0;
             
             if((rv = cgroup_attach_task(engine.group())) != 0) {
@@ -41,6 +42,7 @@ generic_t::generic_t(engine_t& engine):
                 exit(EXIT_FAILURE);
             }
         }
+#endif
 
         overseer_t overseer(id(), context, engine.app());
         overseer.loop();
