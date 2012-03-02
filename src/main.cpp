@@ -126,12 +126,12 @@ int main(int argc, char* argv[]) {
             "default maximum engine queue depth");
 
     storage_options.add_options()
-        ("storage:uri", po::value<std::string>
-            (&config.storage.uri)->default_value("/var/lib/cocaine"),
-            "storage location, format depends on the storage type")
         ("storage:driver", po::value<std::string>
             (&config.storage.driver)->default_value("files"),
-            "storage driver type, one of: void, files, mongo");
+            "storage driver type, one of: void, files, mongo")
+        ("storage:uri", po::value<std::string>
+            (&config.storage.uri)->default_value("/var/lib/cocaine"),
+            "storage location, format depends on the storage type");
 
     combined_options.add(hidden_options)
                     .add(general_options)
