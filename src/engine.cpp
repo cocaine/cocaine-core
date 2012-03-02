@@ -76,17 +76,17 @@ engine_t::engine_t(context_t& ctx, const std::string& name, const Json::Value& m
 {
 #ifdef HAVE_CGROUPS
     if(ctx.config.core.cgroups) {
-        Json::Value cgroup_cfg(manifest["engine"]["control-group"]);
+        Json::Value limits(manifest["engine"]["resource-limits"]);
 
-        if(cgroup_cfg.isObject() && !cgroup_cfg.empty()) {
+        if(limits.isObject() && !limits.empty()) {
             m_cgroup = cgroup_new_cgroup(name.c_str());
-            Json::Value::Members ctl_names(cgroup_cfg.getMemberNames());
+            Json::Value::Members ctl_names(limits.getMemberNames());
 
             for(Json::Value::Members::iterator c = ctl_names.begin();
                 c != ctl_names.end();
                 ++c)
             {
-                Json::Value ctl_cfg(cgroup_cfg[*c]);
+                Json::Value ctl_cfg(limits[*c]);
 
                 if(ctl_cfg.isObject() && !ctl_cfg.empty()) {
                     cgroup_controller* ctl = cgroup_add_controller(m_cgroup, c->c_str());

@@ -47,10 +47,10 @@ An example
         "heartbeat-timeout": 60,
         "pool-limit": 20,
         "queue-limit": 5,
-        "control-group": {
+        "resource-limits": {
             "cpuset": {
                 "cpuset.cpus": "0-3",
-                "cpuset.mems": "0",
+                "cpuset.mems": "1",
             }
         }
     },
