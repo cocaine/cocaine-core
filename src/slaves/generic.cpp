@@ -27,8 +27,20 @@ generic_t::generic_t(engine_t& engine):
     m_pid = fork();
 
     if(m_pid == 0) {
-        // NOTE: Copy the context.
         context_t context(engine.context());
+
+        if(context.config.core.cgroups) {
+            int rv = 0;
+            
+            if((rv = cgroup_attach_task(engine.group())) != 0) {
+                log().error(
+                    "unable to attach to a control group - %s",
+                    cgroup_strerror(rv)
+                );
+
+                exit(EXIT_FAILURE);
+            }
+        }
 
         overseer_t overseer(id(), context, engine.app());
         overseer.loop();
@@ -45,7 +57,7 @@ generic_t::generic_t(engine_t& engine):
 void generic_t::reap() {
     int status = 0;
 
-    // TODO: Wait with a timeout?
+    // XXX: Is it needed at all? Might as well check the state.
     if(waitpid(m_pid, &status, WNOHANG) == 0) {
         ::kill(m_pid, SIGKILL);
     }
@@ -54,10 +66,21 @@ void generic_t::reap() {
     m_child_watcher.stop();
 }
 
-void generic_t::signal(ev::child&, int) {
+void generic_t::signal(ev::child& event, int) {
     if(!state_downcast<const dead*>()) {
         log().debug("got a child termination signal");
+        
         process_event(events::terminate_t());
+        
+        if(WIFEXITED(event.rstatus) && WEXITSTATUS(event.rstatus) == EXIT_FAILURE) {
+            log().warning("unable to start");
+            m_engine.stop();
+        } else if(WIFSIGNALED(event.rstatus)) {
+            log().warning("killed by a %d signal", WTERMSIG(event.rstatus));
+            m_engine.stop();
+        } else {
+            log().warning("terminated in a strange way");
+        }
     }
 }
 

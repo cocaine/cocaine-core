@@ -25,7 +25,7 @@ slave_t::slave_t(engine_t& engine):
     object_t(engine.context(), engine.app().name + " frontend " + id()),
     m_engine(engine)
 {
-    // NOTE: These are the 10 seconds for the slave to come alive   
+    // NOTE: These are the 10 seconds for the slave to come alive.
     m_heartbeat_timer.set<slave_t, &slave_t::timeout>(this);
     m_heartbeat_timer.start(10.0f);
 
@@ -35,7 +35,7 @@ slave_t::slave_t(engine_t& engine):
 slave_t::~slave_t() {
     m_heartbeat_timer.stop();
     
-    // TEST: Make sure that the slave is really dead
+    // TEST: Make sure that the slave is really dead.
     BOOST_ASSERT(state_downcast<const dead*>() != 0);
 
     terminate();
@@ -110,7 +110,7 @@ alive::~alive() {
 }
 
 void alive::react(const events::invoke_t& event) {
-    // TEST: Ensure that no job is being lost here
+    // TEST: Ensure that no job is being lost here.
     BOOST_ASSERT(!m_job);
 
     m_job = event.job;
@@ -123,7 +123,7 @@ void alive::react(const events::invoke_t& event) {
 }
 
 void alive::react(const events::release_t& event) {
-    // TEST: Ensure that the job is in fact here
+    // TEST: Ensure that the job is in fact here.
     BOOST_ASSERT(m_job);
 
     context<slave_t>().log().debug(

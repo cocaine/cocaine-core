@@ -59,18 +59,18 @@ void lsd_job_t::send(const Json::Value& root, int flags) {
     zmq::message_t message;
     zeromq_server_t& server = static_cast<zeromq_server_t&>(m_driver);
 
-    // Send the identity
+    // Send the identity.
     for(route_t::const_iterator id = m_route.begin(); id != m_route.end(); ++id) {
         message.rebuild(id->size());
         memcpy(message.data(), id->data(), id->size());
         server.socket().send(message, ZMQ_SNDMORE);
     }
 
-    // Send the delimiter
+    // Send the delimiter.
     message.rebuild(0);
     server.socket().send(message, ZMQ_SNDMORE);
 
-    // Send the envelope
+    // Send the envelope.
     std::string envelope(Json::FastWriter().write(root));
     
     message.rebuild(envelope.size());
@@ -116,10 +116,10 @@ void lsd_server_t::process(ev::idle&, int) {
         }
 
         while(m_socket.more()) {
-            // Receive the envelope
+            // Receive the envelope.
             m_socket.recv(&message);
 
-            // Parse the envelope and setup the job policy
+            // Parse the envelope and setup the job policy.
             Json::Reader reader(Json::Features::strictMode());
             Json::Value root;
 

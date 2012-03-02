@@ -61,14 +61,47 @@ namespace {
 
 engine_t::engine_t(context_t& ctx, const std::string& name, const Json::Value& manifest):
     object_t(ctx, name + " engine"),
+    m_running(false),
     m_app(ctx, name, manifest),
     m_messages(ctx, ZMQ_ROUTER, "rpc/" + name),
-    m_running(false)
-{ }
+    m_cgroup(NULL)
+{
+    if(ctx.config.core.cgroups) {
+        m_cgroup = cgroup_new_cgroup(name.c_str());
+        
+        cgroup_add_controller(m_cgroup, "cpuset");
+        cgroup_add_controller(m_cgroup, "memory");
+        
+        int rv = 0;
+        
+        if((rv = cgroup_create_cgroup(m_cgroup, false)) != 0) {
+            log().error(
+                "unable to create the control group - %s", 
+                cgroup_strerror(rv)
+            );
+
+            cgroup_free(&m_cgroup);
+            m_cgroup = NULL;
+        }
+    }
+}
 
 engine_t::~engine_t() {
     if(m_running) {
         stop();
+    }
+
+    if(m_cgroup) {
+        int rv = 0;
+
+        if((rv = cgroup_delete_cgroup(m_cgroup, false)) != 0) {
+            log().error(
+                "unable to delete the control group - %s", 
+                cgroup_strerror(rv)
+            );
+        }
+        
+        cgroup_free(&m_cgroup);
     }
 }
 
@@ -170,7 +203,7 @@ Json::Value engine_t::stop() {
         }
     }
 
-    // Signal the slaves to terminate
+    // Signal the slaves to terminate.
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
         unicast(
             specific_slave(*it),
@@ -305,7 +338,7 @@ void engine_t::process(ev::idle&, int) {
             
             switch(command) {
                 case rpc::push: {
-                    // TEST: Only active slaves can push the data chunks
+                    // TEST: Only active slaves can push the data chunks.
                     BOOST_ASSERT(state != 0 && m_messages.more());
 
                     zmq::message_t message;
@@ -340,7 +373,7 @@ void engine_t::process(ev::idle&, int) {
                 }
 
                 case rpc::release: {
-                    // TEST: Only active slaves can release the job
+                    // TEST: Only active slaves can release the job.
                     BOOST_ASSERT(state != 0);
                     slave->second->process_event(events::release_t());
                     break;
@@ -355,12 +388,12 @@ void engine_t::process(ev::idle&, int) {
             slave->second->process_event(events::heartbeat_t());
 
             if(slave->second->state_downcast<const slaves::idle*>() && !m_queue.empty()) {
-                // NOTE: This will always succeed due to the test above
+                // NOTE: This will always succeed due to the test above.
                 enqueue(m_queue.front());
                 m_queue.pop_front();
             }
 
-            // TEST: Ensure that there're no more message parts pending on the channel
+            // TEST: Ensure that there're no more message parts pending on the channel.
             BOOST_ASSERT(!m_messages.more());
         } else {
             log().debug(

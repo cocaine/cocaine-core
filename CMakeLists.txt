@@ -99,7 +99,8 @@ ADD_LIBRARY(cocaine-core SHARED
 TARGET_LINK_LIBRARIES(cocaine-core
     cocaine-common
     ev
-    msgpack)
+    msgpack
+    cgroup)
 
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     VERSION 1)

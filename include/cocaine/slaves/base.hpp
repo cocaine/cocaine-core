@@ -59,8 +59,10 @@ struct slave_t:
     private:
         void timeout(ev::timer&, int);
 
-    private:
+    protected:
         engine_t& m_engine;
+
+    private:
         ev::timer m_heartbeat_timer;
 };
 

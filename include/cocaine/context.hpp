@@ -32,6 +32,9 @@ struct config_t {
         // Automatic discovery
         std::string announce_endpoint;
         float announce_interval;
+
+        // Control groups availability
+        bool cgroups;
     } core;
 
     struct {

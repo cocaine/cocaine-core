@@ -18,10 +18,6 @@ using namespace cocaine;
 object_t::object_t(context_t& context, const std::string& identity):
     m_context(context),
     m_log(context, identity)
-{
-    log().debug("constructing");
-}
+{ }
 
-object_t::~object_t() {
-    log().debug("destructing");
-}
+object_t::~object_t() { }

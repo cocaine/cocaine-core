@@ -24,7 +24,6 @@ context_t::context_t(config_t config_, std::auto_ptr<logging::sink_t> sink):
     config(config_),
     m_sink(sink)
 {
-    // Fetching the hostname
     const int HOSTNAME_MAX_LENGTH = 256;
     char hostname[HOSTNAME_MAX_LENGTH];
 

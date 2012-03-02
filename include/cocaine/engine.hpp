@@ -15,6 +15,7 @@
 #define COCAINE_ENGINE_HPP
 
 #include <deque>
+#include <libcgroup.h>
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
@@ -86,6 +87,10 @@ class engine_t:
             return m_app;
         }
 
+        inline cgroup * const group() {
+            return m_cgroup;
+        }
+
     private:
         template<class S, class T>
         pool_map_t::iterator unicast(const S& selector, const T& message) {
@@ -98,30 +103,14 @@ class engine_t:
             );
 
             if(it != m_pool.end()) {
-                try {
-                    m_messages.send_multi(
-                        helpers::joint_view(
-                            boost::tie(
-                                networking::protect(it->second->id())
-                            ),
-                            message
-                        )
-                    );
-                } catch(const zmq::error_t& e) {
-                    // XXX: Fix the error number in 0MQ 3.1
-                    if(e.num() == EHOSTDOWN) {
-                        log().error(
-                            "slave %s has died unexpectedly", 
-                            it->second->id().c_str()
-                        );
-
-                        it->second->process_event(events::terminate_t());
-                        
-                        return m_pool.end();
-                    } else {
-                        throw;
-                    }
-                }
+                m_messages.send_multi(
+                    helpers::joint_view(
+                        boost::tie(
+                            networking::protect(it->second->id())
+                        ),
+                        message
+                    )
+                );
             }
 
             return it;
@@ -133,15 +122,22 @@ class engine_t:
         void cleanup(ev::timer&, int);
 
     private:
+        // The application.
+        bool m_running;
         app_t m_app;
-
-        // Application tasks
         task_map_t m_tasks;
+
+        // Currently queued jobs.
+        job_queue_t m_queue;
         
-        // Slave pool
+        // Slave pool.
         networking::channel_t m_messages;
         pool_map_t m_pool;
-        
+
+        // Control group to put the slaves into.
+        cgroup* m_cgroup;
+
+        // RPC watchers.        
         ev::io m_watcher;
         ev::idle m_processor;
 
@@ -149,13 +145,8 @@ class engine_t:
         // reason doesn't trigger the socket's fd on message arrival (or I poll it in a wrong way).
         ev::timer m_pumper;
 
+        // Garbage collector activation timer.
         ev::timer m_gc_timer;
-
-        // Jobs
-        job_queue_t m_queue;
-        
-        // Active state
-        bool m_running;      
 };
 
 }}

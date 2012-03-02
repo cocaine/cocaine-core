@@ -14,6 +14,7 @@
 #include <sstream>
 #include <boost/algorithm/string/join.hpp>
 #include <boost/assign.hpp>
+#include <libcgroup.h>
 
 #include "cocaine/core.hpp"
 
@@ -38,7 +39,6 @@ core_t::core_t(context_t& ctx):
         "/")
     )
 {
-    // Information
     int minor, major, patch;
     zmq_version(&major, &minor, &patch);
 
@@ -47,7 +47,18 @@ core_t::core_t(context_t& ctx):
     log().info("using libzmq version %d.%d.%d", major, minor, patch);
     log().info("route to this node is '%s'", m_server.route().c_str());
 
-    // System socket initialization
+    int rv = 0;
+
+    if((rv = cgroup_init()) != 0) {
+        log().warning(
+            "control groups are not available - %s", 
+            cgroup_strerror(rv)
+        );
+    }
+
+    context().config.core.cgroups = (rv == 0);
+
+    // Server socket.
     int linger = 0;
 
     m_server.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
@@ -64,8 +75,14 @@ core_t::core_t(context_t& ctx):
             
         log().info("listening on %s", it->c_str());
     }
+    
+    m_watcher.set<core_t, &core_t::request>(this);
+    m_watcher.start(m_server.fd(), ev::READ);
+    m_processor.set<core_t, &core_t::process>(this);
+    m_pumper.set<core_t, &core_t::pump>(this);
+    m_pumper.start(0.2f, 0.2f);    
 
-    // Automatic discovery support
+    // Autodiscovery.
     if(!context().config.core.announce_endpoint.empty()) {
         try {
             m_announces.reset(new networking::socket_t(context(), ZMQ_PUB));
@@ -82,13 +99,6 @@ core_t::core_t(context_t& ctx):
         m_announce_timer->start(0.0f, context().config.core.announce_interval);
     }
 
-    m_watcher.set<core_t, &core_t::request>(this);
-    m_watcher.start(m_server.fd(), ev::READ);
-    m_processor.set<core_t, &core_t::process>(this);
-    m_pumper.set<core_t, &core_t::pump>(this);
-    m_pumper.start(0.2f, 0.2f);    
-
-    // Signal watchers
     m_sigint.set<core_t, &core_t::terminate>(this);
     m_sigint.start(SIGINT);
 
@@ -101,7 +111,6 @@ core_t::core_t(context_t& ctx):
     m_sighup.set<core_t, &core_t::reload>(this);
     m_sighup.start(SIGHUP);
     
-    // Recovering the saved state
     recover();
 }
 
@@ -189,7 +198,7 @@ void core_t::process(ev::idle&, int) {
             response = helpers::make_json("error", reader.getFormatedErrorMessages());
         }
 
-        // Serialize and send the response
+        // Serialize and send the response.
         std::string json(Json::FastWriter().write(response));
         message.rebuild(json.size());
         memcpy(message.data(), json.data(), json.size());
@@ -214,15 +223,13 @@ Json::Value core_t::dispatch(const Json::Value& root) {
             throw std::runtime_error("no apps have been specified");
         }
 
-        // Iterate over all the apps
+        // Iterate over all the apps.
         Json::Value::Members names(apps.getMemberNames());
 
         for(Json::Value::Members::iterator it = names.begin(); it != names.end(); ++it) {
-            // Get the app name and app manifest
             std::string app(*it);
             Json::Value manifest(apps[app]);
 
-            // Invoke the handler
             try {
                 if(manifest.isObject()) {
                     result[app] = create_engine(app, manifest);
@@ -268,7 +275,6 @@ Json::Value core_t::create_engine(const std::string& name, const Json::Value& ma
         throw std::runtime_error("the specified app is already active");
     }
 
-    // Launch the engine
     std::auto_ptr<engine_t> engine(new engine_t(context(), name, manifest));
     Json::Value result(engine->start());
 
@@ -285,7 +291,6 @@ Json::Value core_t::create_engine(const std::string& name, const Json::Value& ma
         }
     }
 
-    // Only leave the engine running if all of the above succeded
     m_engines.insert(name, engine);
     
     return result;

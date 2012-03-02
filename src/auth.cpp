@@ -27,10 +27,8 @@ auth_t::auth_t(context_t& ctx):
     object_t(ctx, "auth"),
     m_md_context(EVP_MD_CTX_create())
 {
-    // Initialize error strings
     ERR_load_crypto_strings();
 
-    // Load the credentials
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
     Json::Value keys(context().storage().all("keys"));
     Json::Value::Members names(keys.getMemberNames());
@@ -49,7 +47,7 @@ auth_t::auth_t(context_t& ctx):
 
         std::string key(object["key"].asString());
 
-        // Read the key into the BIO object
+        // Read the key into the BIO object.
         BIO* bio = BIO_new_mem_buf(const_cast<char*>(key.data()), key.size());
         EVP_PKEY* pkey = NULL;
         
@@ -79,7 +77,7 @@ auth_t::~auth_t() {
     EVP_MD_CTX_destroy(m_md_context);
 }
 
-/* XXX: Gotta invent something sophisticated here
+/* XXX: Gotta invent something sophisticated here.
 std::string auth_t::sign(const std::string& message, const std::string& username)
 {
     key_map_t::const_iterator it = m_private_keys.find(username);
@@ -112,13 +110,9 @@ void auth_t::verify(const char* message,
         throw std::runtime_error("unauthorized user");
     }
     
-    // Initialize the verification context
     EVP_VerifyInit(m_md_context, EVP_sha1());
-
-    // Fill it with data
     EVP_VerifyUpdate(m_md_context, message, message_size);
     
-    // Verify the signature
     if(!EVP_VerifyFinal(m_md_context, signature, signature_size, it->second)) {
         EVP_MD_CTX_cleanup(m_md_context);
         throw std::runtime_error("invalid signature");
