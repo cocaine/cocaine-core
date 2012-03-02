@@ -39,7 +39,6 @@ struct config_t {
 
     struct {
         // Default engine policy
-        std::string backend;
         float heartbeat_timeout;
         float suicide_timeout;
         unsigned int pool_limit;
@@ -49,7 +48,7 @@ struct config_t {
     struct {
         // Storage type and path
         std::string driver;
-        std::string location;
+        std::string uri;
     } storage;
 };
 

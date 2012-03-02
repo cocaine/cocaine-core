@@ -98,12 +98,12 @@ int main(int argc, char* argv[]) {
         ("verbose", "produce a lot of output");
 
     core_options.add_options()
-        ("core:instance", po::value<std::string>
-            (&config.core.instance)->default_value("default"),
-            "instance name")
         ("core:modules", po::value<std::string>
             (&config.core.modules)->default_value("/usr/lib/cocaine"),
             "where to load modules from")
+        ("core:instance", po::value<std::string>
+            (&config.core.instance)->default_value("default"),
+            "instance name")
         ("core:announce-endpoint", po::value<std::string>
             (&config.core.announce_endpoint),
             "multicast endpoint for automatic discovery")
@@ -112,15 +112,12 @@ int main(int argc, char* argv[]) {
             "multicast announce interval for automatic discovery, seconds");
 
     engine_options.add_options()
-        ("engine:backend", po::value<std::string>
-            (&config.engine.backend)->default_value("process"),
-            "default engine backend, one of: thread, process")
-        ("engine:heartbeat-timeout", po::value<float>
-            (&config.engine.heartbeat_timeout)->default_value(30.0f),
-            "default unresponsive thread cancellation timeout, seconds")
         ("engine:suicide-timeout", po::value<float>
             (&config.engine.suicide_timeout)->default_value(600.0f),
             "default stale thread suicide timeout, seconds")
+        ("engine:heartbeat-timeout", po::value<float>
+            (&config.engine.heartbeat_timeout)->default_value(30.0f),
+            "default unresponsive thread cancellation timeout, seconds")
         ("engine:pool-limit", po::value<unsigned int>
             (&config.engine.pool_limit)->default_value(10),
             "maximum engine slave pool size")
@@ -129,12 +126,12 @@ int main(int argc, char* argv[]) {
             "default maximum engine queue depth");
 
     storage_options.add_options()
+        ("storage:uri", po::value<std::string>
+            (&config.storage.uri)->default_value("/var/lib/cocaine"),
+            "storage location, format depends on the storage type")
         ("storage:driver", po::value<std::string>
             (&config.storage.driver)->default_value("files"),
-            "storage driver type, one of: void, files, mongo")
-        ("storage:location", po::value<std::string>
-            (&config.storage.location)->default_value("/var/lib/cocaine"),
-            "storage location, format depends on the storage type");
+            "storage driver type, one of: void, files, mongo");
 
     combined_options.add(hidden_options)
                     .add(general_options)

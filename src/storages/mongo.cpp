@@ -21,9 +21,9 @@ using namespace mongo;
 
 mongo_storage_t::mongo_storage_t(context_t& context) try:
     m_instance(context.config.core.instance),
-    m_url(context.config.storage.location, ConnectionString::SET)
+    m_uri(context.config.storage.uri, ConnectionString::SET)
 {
-    if(!m_url.isValid()) {
+    if(!m_uri.isValid()) {
         throw std::runtime_error("invalid mongodb uri");
     }
 } catch(const DBException& e) {
@@ -47,7 +47,7 @@ void mongo_storage_t::put(const std::string& ns,
     BSONObj object(fromjson(json.substr(0, json.size() - 1)));
     
     try {
-        ScopedDbConnection connection(m_url);
+        ScopedDbConnection connection(m_uri);
         connection->ensureIndex(resolve(ns), BSON("key" << 1), true); // Unique index
         connection->update(resolve(ns), BSON("key" << key), object, true); // Upsert
         connection.done();
@@ -60,7 +60,7 @@ bool mongo_storage_t::exists(const std::string& ns, const std::string& key) {
     bool result;
     
     try {
-        ScopedDbConnection connection(m_url);
+        ScopedDbConnection connection(m_uri);
         result = connection->count(resolve(ns), BSON("key" << key));
         connection.done();
     } catch(const DBException& e) {
@@ -76,7 +76,7 @@ Json::Value mongo_storage_t::get(const std::string& ns, const std::string& key) 
     BSONObj object;
 
     try {
-        ScopedDbConnection connection(m_url);
+        ScopedDbConnection connection(m_uri);
         object = connection->findOne(resolve(ns), BSON("key" << key));
         connection.done();
     } catch(const DBException& e) {
@@ -99,7 +99,7 @@ Json::Value mongo_storage_t::all(const std::string& ns) {
     Json::Value root(Json::objectValue), result;
 
     try {
-        ScopedDbConnection connection(m_url);
+        ScopedDbConnection connection(m_uri);
         std::auto_ptr<DBClientCursor> cursor(connection->query(resolve(ns), BSONObj()));
         
         while(cursor->more()) {
@@ -120,7 +120,7 @@ Json::Value mongo_storage_t::all(const std::string& ns) {
 
 void mongo_storage_t::remove(const std::string& ns, const std::string& key) {
     try {
-        ScopedDbConnection connection(m_url);
+        ScopedDbConnection connection(m_uri);
         connection->remove(resolve(ns), BSON("key" << key));
         connection.done();
     } catch(const DBException& e) {
@@ -130,7 +130,7 @@ void mongo_storage_t::remove(const std::string& ns, const std::string& key) {
 
 void mongo_storage_t::purge(const std::string& ns) {
     try {
-        ScopedDbConnection connection(m_url);
+        ScopedDbConnection connection(m_uri);
         connection->remove(resolve(ns), BSONObj());
         connection.done();
     } catch(const DBException& e) {

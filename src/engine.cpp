@@ -80,6 +80,7 @@ engine_t::engine_t(context_t& ctx, const std::string& name, const Json::Value& m
 
         if(limits.isObject() && !limits.empty()) {
             m_cgroup = cgroup_new_cgroup(name.c_str());
+
             Json::Value::Members ctl_names(limits.getMemberNames());
 
             for(Json::Value::Members::iterator c = ctl_names.begin();
@@ -90,6 +91,7 @@ engine_t::engine_t(context_t& ctx, const std::string& name, const Json::Value& m
 
                 if(ctl_cfg.isObject() && !ctl_cfg.empty()) {
                     cgroup_controller* ctl = cgroup_add_controller(m_cgroup, c->c_str());
+
                     Json::Value::Members parameter_names(ctl_cfg.getMemberNames());
 
                     for(Json::Value::Members::iterator p = parameter_names.begin();

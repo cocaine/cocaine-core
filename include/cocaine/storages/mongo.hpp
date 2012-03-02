@@ -42,7 +42,7 @@ class mongo_storage_t:
 
     private:
         const std::string m_instance;
-        const mongo::ConnectionString m_url;
+        const mongo::ConnectionString m_uri;
 };
 
 }}
