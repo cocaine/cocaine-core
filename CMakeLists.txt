@@ -112,15 +112,6 @@ TARGET_LINK_LIBRARIES(cocained
     boost_program_options-mt
     cocaine-core)
 
-ADD_EXECUTABLE(dealer_test_app
-    tests/dealer_test_app.cpp)
-
-TARGET_LINK_LIBRARIES(dealer_test_app
-    boost_program_options-mt
-    cocaine-dealer
-    boost_filesystem-mt
-    zmq)
-
 IF(NOT APPLE)
     FILE(GLOB DEALER_SOURCES
         "src/dealer/*.cpp")
@@ -145,6 +136,15 @@ IF(NOT APPLE)
         RUNTIME DESTINATION bin COMPONENT runtime
         LIBRARY DESTINATION lib COMPONENT runtime
         ARCHIVE DESTINATION lib COMPONENT developement)
+
+    ADD_EXECUTABLE(dealer_test_app
+        tests/dealer_test_app.cpp)
+
+    TARGET_LINK_LIBRARIES(dealer_test_app
+        boost_program_options-mt
+        cocaine-dealer
+        boost_filesystem-mt
+        zmq)
 ENDIF()
     
 ADD_SUBDIRECTORY(plugins)
