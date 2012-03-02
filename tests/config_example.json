@@ -1,0 +1,56 @@
+{
+	"lsd_config" :
+	{
+		"config_version" : 1,
+		"message_timeout" : 10,
+		"socket_poll_timeout" : 2000,
+		
+		"logger" :
+		{
+			"type" : "STDOUT_LOGGER",
+			"flags" : "PLOG_MSG_TIME | PLOG_INFO | PLOG_DEBUG | PLOG_ERROR | PLOG_MSG_TYPES",
+			"file" : "/tmp/lsd.log",
+			"syslog_name" : "lsd_log"
+		},
+		
+		"message_cache" :
+		{
+			"max_ram_limit" : 1024,
+			"type" : "RAM_ONLY"
+		},
+
+		"persistent_storage" :
+		{
+			"eblob_path" : "/home/rimz/eblob/messages",
+			"eblob_log_path" : "/tmp/lsd_eblob.log",
+			"eblob_log_flags" : 0,
+			"eblob_max_gb" : 20,
+			"eblob_sync_interval" : 1
+		},
+		
+		"autodiscovery" :
+		{
+			"type" : "HTTP",
+			"multicast_ip" : "226.1.1.1",
+			"multicast_port" : 5555
+		},
+		
+		"statistics" :
+		{
+			"enabled" : true,
+			"remote_access" : true,
+			"remote_port" : 3333
+		},
+
+		"services" : [
+            {
+            	"name" : "perl-testing",
+				"description" : "perl plugin test service",
+				"app_name" : "perl_test@1",
+				"instance" : "default",
+				"hosts_url" : "http://deltax.dev.yandex.net",
+				"control_port" : 5000
+			}
+		]
+	}
+}
