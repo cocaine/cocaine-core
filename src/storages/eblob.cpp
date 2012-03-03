@@ -79,6 +79,7 @@ void eblob_storage_t::put(const std::string& ns, const std::string& key, const J
         zbr::eblob_config cfg;
 
         memset(&cfg, 0, sizeof(cfg));
+        
         cfg.file = const_cast<char*>((m_storage_path / ns).string().c_str());
         cfg.iterate_threads = 1;
         cfg.sync = 5;

@@ -40,10 +40,10 @@ void mongo_storage_t::put(const std::string& ns,
     container["key"] = key;
     container["object"] = value;
 
-    std::string json(writer.write(container));
-
-    // NOTE: For some reason, fromjson fails to parse strings with double null-terminator
+    // NOTE: Stupid double-conversion magic. 
+    // For some reason, fromjson fails to parse strings with double null-terminator
     // which is exactly the kind of strings JSONCPP generates, hence the chopping.
+    std::string json(writer.write(container));
     BSONObj object(fromjson(json.substr(0, json.size() - 1)));
     
     try {
@@ -137,4 +137,3 @@ void mongo_storage_t::purge(const std::string& ns) {
         throw std::runtime_error(e.what());
     }
 }
-

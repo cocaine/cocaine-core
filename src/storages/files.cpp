@@ -56,7 +56,7 @@ void file_storage_t::put(const std::string& ns,
         throw std::runtime_error("unable to open " + file_path.string()); 
     }     
 
-    std::string json(Json::StyledWriter().write(make_json("object", value)));
+    std::string json(Json::StyledWriter().write(value));
     
     stream << json;
     stream.close();
@@ -82,15 +82,16 @@ Json::Value file_storage_t::get(const std::string& ns, const std::string& key) {
         }
     }
 
-    return root["object"];
+    return root;
 }
 
 Json::Value file_storage_t::all(const std::string& ns) {
     Json::Value root(Json::objectValue);
     fs::path store_path(m_storage_path / m_instance / ns);
 
-    if(!fs::exists(store_path))
+    if(!fs::exists(store_path)) {
         return root;
+    }
 
     typedef boost::filter_iterator<is_regular_file, fs::directory_iterator> file_iterator;
     file_iterator it = file_iterator(is_regular_file(), fs::directory_iterator(store_path)), end;
