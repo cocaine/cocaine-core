@@ -55,6 +55,7 @@ void eblob_purger_t::complete(uint64_t, uint64_t) {
 }
 
 eblob_storage_t::eblob_storage_t(context_t& context):
+    storage_t(context, "eblob storage"),
     m_storage_path(context.config.storage.uri),
     m_logger(NULL, EBLOB_LOG_NOTICE)
 {

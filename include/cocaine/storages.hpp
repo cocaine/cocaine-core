@@ -16,6 +16,5 @@
 
 #include "cocaine/storages/void.hpp"
 #include "cocaine/storages/files.hpp"
-#include "cocaine/storages/mongo.hpp"
 
 #endif

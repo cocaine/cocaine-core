@@ -16,12 +16,14 @@
 
 #include <mongo/client/dbclient.h>
 
+#include "cocaine/interfaces/module.hpp"
 #include "cocaine/interfaces/storage.hpp"
 
 namespace cocaine { namespace storages {
 
 class mongo_storage_t:
-    public storage_t
+    public storage_t,
+    public core::module_t<mongo_storage_t>
 {
     public:
         mongo_storage_t(context_t& ctx);

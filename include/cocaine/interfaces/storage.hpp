@@ -16,13 +16,18 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
+#include "cocaine/object.hpp"
 
 namespace cocaine { namespace storages {
 
 class storage_t:
-    public boost::noncopyable
+    public object_t
 {
     public:
+        storage_t(context_t& ctx, const std::string& identity):
+            object_t(ctx, identity)
+        { }
+
         virtual void put(const std::string& ns, const std::string& key, const Json::Value& value) = 0;
         
         virtual bool exists(const std::string& ns, const std::string& key) = 0;

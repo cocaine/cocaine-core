@@ -66,17 +66,14 @@ ADD_LIBRARY(cocaine-common SHARED
     src/logging
     src/object
     src/registry
-    src/storages/files
-    src/storages/mongo)
+    src/storages/files)
 
 TARGET_LINK_LIBRARIES(cocaine-common
     boost_filesystem-mt
     ${Boost_SYSTEM_LIBRARY}
-    boost_thread-mt
     crypto
     json
     ltdl
-    mongoclient
     ${LIBUUID_LIBRARIES}
     zmq
     ${LIBCGROUP_LIBRARIES})

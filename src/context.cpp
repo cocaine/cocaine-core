@@ -97,10 +97,10 @@ storages::storage_t& context_t::storage() {
 
     if(driver == "files") {
         m_storage.reset(new storages::file_storage_t(*this));
-    } else if(driver == "mongo") {
-        m_storage.reset(new storages::mongo_storage_t(*this));
-    } else {
+    } else if(driver == "void") {
         m_storage.reset(new storages::void_storage_t(*this));
+    } else {
+        m_storage = registry().create<storages::storage_t>(driver);
     }
 
     return *m_storage;

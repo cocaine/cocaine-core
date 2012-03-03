@@ -13,14 +13,17 @@
 
 #include <mongo/client/connpool.h>
 
-#include "cocaine/storages/mongo.hpp"
+#include "mongo.hpp"
 
 #include "cocaine/context.hpp"
+#include "cocaine/registry.hpp"
 
+using namespace cocaine::core;
 using namespace cocaine::storages;
 using namespace mongo;
 
 mongo_storage_t::mongo_storage_t(context_t& context) try:
+    storage_t(context, "mongodb storage"),
     m_instance(context.config.core.instance),
     m_uri(context.config.storage.uri, ConnectionString::SET)
 {
@@ -136,5 +139,11 @@ void mongo_storage_t::purge(const std::string& ns) {
         connection.done();
     } catch(const DBException& e) {
         throw std::runtime_error(e.what());
+    }
+}
+
+extern "C" {
+    void initialize(registry_t& registry) {
+        registry.install<mongo_storage_t>("mongo");
     }
 }
