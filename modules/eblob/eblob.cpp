@@ -11,11 +11,14 @@
 // limitations under the License.
 //
 
-#include "cocaine/storages/eblobs.hpp"
+#include "eblob.hpp"
+
+#include <boost/tuple/tuple.hpp>
 
 #include "cocaine/context.hpp"
+#include "cocaine/registry.hpp"
 
-using namespace cocaine::helpers;
+using namespace cocaine::core;
 using namespace cocaine::storages;
 
 namespace fs = boost::filesystem;
@@ -37,7 +40,7 @@ bool eblob_collector_t::callback(const zbr::eblob_disk_control* dco, const void*
     } 
    
     // TODO: Have to find out the key somehow 
-    m_root[auto_uuid_t().get()] = object;
+    m_root[unique_id_t().id()] = object;
     
     return true;
 }
@@ -50,7 +53,7 @@ bool eblob_purger_t::callback(const zbr::eblob_disk_control* dco, const void* da
 void eblob_purger_t::complete(uint64_t, uint64_t) {
     for(key_list_t::const_iterator it = m_keys.begin(); it != m_keys.end(); ++it) {
         // XXX: Is there a possibility for an exception here?
-        m_eblob.remove_all(*it);
+        m_eblob->remove_all(*it);
     }
 }
 
@@ -148,7 +151,7 @@ Json::Value eblob_storage_t::get(const std::string& ns, const std::string& key) 
     return result;
 }
 
-Json::Value eblob_storage_t::all(const std::string& ns) const {
+Json::Value eblob_storage_t::all(const std::string& ns) {
     eblob_collector_t collector;
     
     try {
@@ -186,5 +189,11 @@ void eblob_storage_t::purge(const std::string& ns) {
         } catch(...) {
             // FIXME: I have no idea what this means
         }
+    }
+}
+
+extern "C" {
+    void initialize(registry_t& registry) {
+        registry.install<eblob_storage_t>("eblob");
     }
 }

@@ -17,6 +17,7 @@
 #include <boost/filesystem.hpp>
 #include <eblob/eblob.hpp>
 
+#include "cocaine/interfaces/module.hpp"
 #include "cocaine/interfaces/storage.hpp"
 
 namespace cocaine { namespace storages {
@@ -55,7 +56,8 @@ class eblob_purger_t:
 };
 
 class eblob_storage_t:
-    public storage_t
+    public storage_t,
+    public core::module_t<eblob_storage_t>
 {
     public:
         eblob_storage_t(context_t& ctx);
@@ -65,7 +67,7 @@ class eblob_storage_t:
 
         virtual bool exists(const std::string& ns, const std::string& key);
         virtual Json::Value get(const std::string& ns, const std::string& key);
-        virtual Json::Value all(const std::string& ns) const;
+        virtual Json::Value all(const std::string& ns);
 
         virtual void remove(const std::string& ns, const std::string& key);
         virtual void purge(const std::string& ns);
