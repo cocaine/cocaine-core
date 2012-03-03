@@ -1,3 +1,5 @@
+LOCATE_LIBRARY(LIBMONGOCLIENT "dbclient.h" "mongoclient" "mongo" "mongo/client")
+
 ADD_LIBRARY(mongodb MODULE
     mongo)
 
