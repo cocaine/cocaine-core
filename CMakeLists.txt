@@ -148,7 +148,7 @@ IF(NOT APPLE)
         zmq)
 ENDIF()
     
-ADD_SUBDIRECTORY(plugins)
+ADD_SUBDIRECTORY(modules)
 
 INSTALL(
     TARGETS
