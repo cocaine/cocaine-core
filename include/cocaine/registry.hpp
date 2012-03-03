@@ -49,7 +49,7 @@ class registry_t:
                 return std::auto_ptr<T>(module);
             } else {
                 delete object;
-                throw std::runtime_error("module '" + type + "' has a wrong type");
+                throw std::runtime_error("module '" + type + "' has an incompatible type");
             }
         }
 
