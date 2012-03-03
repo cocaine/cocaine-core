@@ -23,9 +23,9 @@ using namespace cocaine::core;
 
 namespace fs = boost::filesystem;
 
-struct is_regular_file {
-    template<typename T> bool operator()(T entry) {
-        return fs::is_regular(entry);
+struct is_module {
+    template<typename T> bool operator()(const T& entry) {
+        return fs::is_regular(entry) && entry.path().extension() == ".cocaine-module";
     }
 };
 
@@ -52,8 +52,8 @@ registry_t::registry_t(context_t& ctx):
     initialize_fn_t initialize;
 
     // Directory iterator
-    typedef boost::filter_iterator<is_regular_file, fs::directory_iterator> file_iterator;
-    file_iterator it = file_iterator(is_regular_file(), fs::directory_iterator(path)), end;
+    typedef boost::filter_iterator<is_module, fs::directory_iterator> file_iterator;
+    file_iterator it = file_iterator(is_module(), fs::directory_iterator(path)), end;
 
     while(it != end) {
         // Load the module

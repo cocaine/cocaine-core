@@ -13,17 +13,19 @@ IF(NOT PYTHON_CFLAGS OR NOT PYTHON_LDFLAGS)
     RETURN()
 ENDIF()
 
-ADD_LIBRARY(cocaine-plugin-python MODULE
+ADD_LIBRARY(python MODULE
     python
     log)
 
-TARGET_LINK_LIBRARIES(cocaine-plugin-python
+TARGET_LINK_LIBRARIES(python
     cocaine-core)
 
-SET_TARGET_PROPERTIES(cocaine-plugin-python PROPERTIES
+SET_TARGET_PROPERTIES(python PROPERTIES
     COMPILE_FLAGS "${PYTHON_CFLAGS} -fno-strict-aliasing"
-    LINK_FLAGS "${PYTHON_LDFLAGS}")
+    LINK_FLAGS "${PYTHON_LDFLAGS}"
+    PREFIX ""
+    SUFFIX ".cocaine-module")
 
-INSTALL(TARGETS cocaine-plugin-python
+INSTALL(TARGETS python
     LIBRARY DESTINATION lib/cocaine
     COMPONENT runtime)
