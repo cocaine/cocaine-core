@@ -78,7 +78,7 @@ void generic_t::signal(ev::child& event, int) {
             log().warning("unable to start");
             m_engine.stop();
         } else if(WIFSIGNALED(event.rstatus)) {
-            log().warning("killed by a %d signal", WTERMSIG(event.rstatus));
+            log().warning("killed by signal %d", WTERMSIG(event.rstatus));
             m_engine.stop();
         } else {
             log().warning("terminated in a strange way");
