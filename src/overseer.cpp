@@ -13,6 +13,7 @@
 
 #include "cocaine/overseer.hpp"
 
+#include "cocaine/app.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/registry.hpp"
 

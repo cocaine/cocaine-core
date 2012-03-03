@@ -17,6 +17,7 @@
 #include "python.hpp"
 #include "log.hpp"
 
+#include "cocaine/app.hpp"
 #include "cocaine/registry.hpp"
 
 using namespace cocaine::core;

@@ -14,8 +14,9 @@
 #include <boost/filesystem/fstream.hpp>
 #include <boost/iterator/filter_iterator.hpp>
 
-#include "cocaine/context.hpp"
 #include "cocaine/storages/files.hpp"
+
+#include "cocaine/context.hpp"
 
 using namespace cocaine::helpers;
 using namespace cocaine::storages;

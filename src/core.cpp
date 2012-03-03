@@ -20,9 +20,9 @@
 #include "cocaine/auth.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
+#include "cocaine/interfaces/storage.hpp"
 #include "cocaine/job.hpp"
 
-#include "cocaine/interfaces/storage.hpp"
 
 using namespace cocaine;
 using namespace cocaine::core;

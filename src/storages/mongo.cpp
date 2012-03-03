@@ -13,8 +13,9 @@
 
 #include <mongo/client/connpool.h>
 
-#include "cocaine/context.hpp"
 #include "cocaine/storages/mongo.hpp"
+
+#include "cocaine/context.hpp"
 
 using namespace cocaine::storages;
 using namespace mongo;

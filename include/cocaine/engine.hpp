@@ -26,58 +26,40 @@
 
 #include "cocaine/app.hpp"
 #include "cocaine/networking.hpp"
-#include "cocaine/rpc.hpp"
 #include "cocaine/slaves.hpp"
 
 #include "cocaine/helpers/tuples.hpp"
 
 namespace cocaine { namespace engine {
 
+#if BOOST_VERSION >= 104000
+typedef boost::ptr_unordered_map<
+#else
+typedef boost::ptr_map<
+#endif
+    const std::string,
+    drivers::driver_t
+> task_map_t;
+
+#if BOOST_VERSION >= 104000
+typedef boost::ptr_unordered_map<
+#else
+typedef boost::ptr_map<
+#endif
+    unique_id_t::type,
+    slaves::slave_t
+> pool_map_t;
+
+class job_queue_t:
+    public std::deque< boost::shared_ptr<job_t> >
+{
+    public:
+        void push(const_reference job);
+};
+
 class engine_t:
     public object_t
 {
-    public:
-#if BOOST_VERSION >= 104000
-        typedef boost::ptr_unordered_map<
-#else
-        typedef boost::ptr_map<
-#endif
-            const std::string,
-            drivers::driver_t
-        > task_map_t;
-
-#if BOOST_VERSION >= 104000
-        typedef boost::ptr_unordered_map<
-#else
-        typedef boost::ptr_map<
-#endif
-            unique_id_t::type,
-            slaves::slave_t
-        > pool_map_t;
-        
-        class job_queue_t:
-            public std::deque< boost::shared_ptr<job_t> >
-        {
-            public:
-                void push(const_reference job);
-        };
-
-        class idle_slave {
-            public:
-                bool operator()(pool_map_t::pointer slave) const;
-        };
-
-        class specific_slave {
-            public:
-                specific_slave(pool_map_t::pointer target);
-                
-                bool operator()(pool_map_t::pointer slave) const;
-            
-            private:
-                pool_map_t::pointer m_target;
-                bool m_dead;
-        };
-
     public:
         engine_t(context_t& ctx, 
                  const std::string& name, 
@@ -97,7 +79,7 @@ class engine_t:
         }
 
 #ifdef HAVE_CGROUPS
-        inline cgroup * const group() {
+        inline cgroup *const group() {
             return m_cgroup;
         }
 #endif

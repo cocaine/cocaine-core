@@ -17,6 +17,8 @@
 #include <EXTERN.h>
 #include <perl.h>
 
+#include "cocaine/app.hpp"
+#include "cocaine/interfaces/module.hpp"
 #include "cocaine/interfaces/plugin.hpp"
 #include "cocaine/registry.hpp"
 

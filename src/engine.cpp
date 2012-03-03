@@ -17,6 +17,7 @@
 #include "cocaine/engine.hpp"
 
 #include "cocaine/drivers.hpp"
+#include "cocaine/rpc.hpp"
 
 using namespace cocaine::engine;
 using namespace cocaine::networking;
@@ -24,7 +25,7 @@ using namespace cocaine::networking;
 // Job queue
 // ---------
 
-void engine_t::job_queue_t::push(const_reference job) {
+void job_queue_t::push(const_reference job) {
     if(job->policy().urgent) {
         push_front(job);
         job->process_event(events::enqueue_t(1));
@@ -36,29 +37,39 @@ void engine_t::job_queue_t::push(const_reference job) {
 
 // Selectors
 // ---------
-
-bool engine_t::idle_slave::operator()(pool_map_t::pointer slave) const {
-    return slave->second->state_downcast<const slaves::idle*>();
-}
-
-engine_t::specific_slave::specific_slave(pool_map_t::pointer target):
-    m_target(target),
-    m_dead(false)
-{
-    if(m_target->second->state_downcast<const slaves::dead*>()) {
-        m_dead = true;
-    }
-}
-
-bool engine_t::specific_slave::operator()(pool_map_t::pointer slave) const {
-    return !m_dead && slave == m_target;
-}
-
 namespace {
-    struct busy_slave {
-        bool operator()(engine_t::pool_map_t::const_pointer slave) const {
-            return slave->second->state_downcast<const slaves::busy*>();
-        }
+    class idle_slave {
+        public:
+            bool operator()(pool_map_t::pointer slave) const {
+                return slave->second->state_downcast<const slaves::idle*>();
+            }
+    };
+
+    class busy_slave {
+        public:
+            bool operator()(pool_map_t::const_pointer slave) const {
+                return slave->second->state_downcast<const slaves::busy*>();
+            }
+    };
+
+    class specific_slave {
+        public:
+            specific_slave(pool_map_t::pointer target):
+                m_target(target),
+                m_dead(false)
+            {
+                if(m_target->second->state_downcast<const slaves::dead*>()) {
+                    m_dead = true;
+                }
+            }
+
+            bool operator()(pool_map_t::pointer slave) const {
+                return !m_dead && slave == m_target;
+            }
+        
+        private:
+            pool_map_t::pointer m_target;
+            bool m_dead;
     };
 }
 

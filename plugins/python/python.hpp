@@ -20,8 +20,10 @@
 
 #include <Python.h>
 
-#include "cocaine/helpers/track.hpp"
+#include "cocaine/interfaces/module.hpp"
 #include "cocaine/interfaces/plugin.hpp"
+
+#include "cocaine/helpers/track.hpp"
 
 namespace cocaine { namespace engine {
 

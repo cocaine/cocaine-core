@@ -13,7 +13,6 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/iterator/filter_iterator.hpp>
-#include <boost/algorithm/string/join.hpp>
 
 #include "cocaine/registry.hpp"
 

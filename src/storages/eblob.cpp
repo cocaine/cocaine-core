@@ -11,8 +11,9 @@
 // limitations under the License.
 //
 
-#include "cocaine/context.hpp"
 #include "cocaine/storages/eblobs.hpp"
+
+#include "cocaine/context.hpp"
 
 using namespace cocaine::helpers;
 using namespace cocaine::storages;

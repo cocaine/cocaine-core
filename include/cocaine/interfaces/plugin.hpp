@@ -18,9 +18,6 @@
 #include "cocaine/forwards.hpp"
 #include "cocaine/object.hpp"
 
-#include "cocaine/app.hpp"
-#include "cocaine/interfaces/module.hpp"
-
 namespace cocaine { namespace engine {
 
 // Plugin I/O
