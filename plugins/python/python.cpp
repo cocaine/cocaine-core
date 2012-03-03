@@ -172,9 +172,11 @@ void python_t::invoke(io_t& io, const std::string& method) {
         throw unrecoverable_error_t("python module is not initialized");
     }
 
+    PyObject* module = PyModule_GetDict(m_python_module);
+
     python_object_t object(
         PyObject_GetAttrString(
-            m_python_module,
+            module,
             method.c_str()
         )
     );
@@ -383,7 +385,7 @@ extern "C" {
         pthread_atfork(NULL, NULL, PyOS_AfterFork);
         pthread_atfork(NULL, NULL, save);
 
-        registry.install("python", &python_t::create);
+        registry.install<python_t>("python");
     }
 
     __attribute__((destructor)) void finalize() {
