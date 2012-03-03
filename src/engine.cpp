@@ -55,21 +55,15 @@ namespace {
     class specific_slave {
         public:
             specific_slave(pool_map_t::pointer target):
-                m_target(target),
-                m_dead(false)
-            {
-                if(m_target->second->state_downcast<const slaves::dead*>()) {
-                    m_dead = true;
-                }
-            }
+                m_target(target)
+            { }
 
             bool operator()(pool_map_t::pointer slave) const {
-                return !m_dead && slave == m_target;
+                return slave == m_target;
             }
         
         private:
             pool_map_t::pointer m_target;
-            bool m_dead;
     };
 }
 
@@ -280,18 +274,22 @@ Json::Value engine_t::stop() {
         }
     }
 
-    // Signal the slaves to terminate.
+    // Terminate the slaves.
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
-        unicast(
-            specific_slave(*it),
-            boost::make_tuple((const int)rpc::terminate)
-        );
+        // NOTE: Avoid signaling dead or just born slaves.
+        if(it->second->state_downcast<const slaves::alive*>()) {
+            unicast(
+                specific_slave(*it),
+                boost::make_tuple((const int)rpc::terminate)
+            );
+        }
 
         it->second->process_event(events::terminate_t());
     }
 
     m_pool.clear();
     m_tasks.clear();
+
     m_watcher.stop();
     m_processor.stop();
     m_pumper.stop();
