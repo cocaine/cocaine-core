@@ -131,7 +131,7 @@ class javascript_t:
 
 extern "C" {
     void initialize(core::registry_t& registry) {
-        registry.install("javascript", &javascript_t::create);
+        registry.install<javascript_t>("javascript");
     }
 }
 

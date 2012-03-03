@@ -53,7 +53,21 @@ class registry_t:
             }
         }
 
-        void install(const std::string& type, factory_fn_t factory);
+        template<class T>
+        void install(const std::string& type) {
+            if(m_factories.find(type) != m_factories.end()) {
+                throw std::runtime_error("duplicate module");
+            }
+
+            log().info("installing the '%s' module", type.c_str());
+
+            m_factories.insert(
+                std::make_pair(
+                    type,
+                    &T::create
+                )
+            );
+        }
 
     private:
         // Used to unload all the modules on shutdown

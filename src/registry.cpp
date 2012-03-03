@@ -115,17 +115,3 @@ registry_t::~registry_t() {
     lt_dlexit();
 }
 
-void registry_t::install(const std::string& type, factory_fn_t factory) {
-    if(m_factories.find(type) != m_factories.end()) {
-        throw std::runtime_error("duplicate module");
-    }
-
-    log().info("installing the '%s' module", type.c_str());
-
-    m_factories.insert(
-        std::make_pair(
-            type,
-            factory
-        )
-    );
-}
