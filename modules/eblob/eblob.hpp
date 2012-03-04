@@ -17,7 +17,6 @@
 #include <boost/filesystem.hpp>
 #include <eblob/eblob.hpp>
 
-#include "cocaine/interfaces/module.hpp"
 #include "cocaine/interfaces/storage.hpp"
 
 namespace cocaine { namespace storages {
@@ -56,8 +55,7 @@ class eblob_purger_t:
 };
 
 class eblob_storage_t:
-    public storage_t,
-    public core::module_t<eblob_storage_t>
+    public storage_t
 {
     public:
         eblob_storage_t(context_t& ctx);

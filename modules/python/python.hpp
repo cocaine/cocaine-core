@@ -20,10 +20,8 @@
 
 #include <Python.h>
 
-#include "cocaine/interfaces/module.hpp"
-#include "cocaine/interfaces/plugin.hpp"
-
 #include "cocaine/helpers/track.hpp"
+#include "cocaine/interfaces/plugin.hpp"
 
 namespace cocaine { namespace engine {
 
@@ -73,8 +71,7 @@ class thread_state_t {
 };
 
 class python_t:
-    public plugin_t,
-    public core::module_t<python_t>
+    public plugin_t
 {
     public:
         python_t(context_t& ctx);

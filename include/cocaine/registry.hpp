@@ -20,9 +20,25 @@
 #include "cocaine/forwards.hpp"
 #include "cocaine/object.hpp"
 
-#include "cocaine/interfaces/module.hpp"
-
 namespace cocaine { namespace core {
+
+// Type-erased factory
+// -------------------
+
+class factory_concept_t {
+public:
+    virtual object_t* create(context_t& ctx) = 0;
+};
+
+template<class T>
+class factory_model_t:
+    public factory_concept_t
+{
+public:
+    virtual object_t* create(context_t& ctx) {
+        return new T(ctx);
+    }
+};
 
 // Module registry
 // ---------------
@@ -42,7 +58,7 @@ class registry_t:
                 throw std::runtime_error("module '" + type + "' is not available");
             }
 
-            object_t* object = it->second(context());
+            object_t* object = it->second->create(context());
             T* module = dynamic_cast<T*>(object);
 
             if(module) {
@@ -62,10 +78,8 @@ class registry_t:
             log().info("installing the '%s' module", type.c_str());
 
             m_factories.insert(
-                std::make_pair(
-                    type,
-                    &T::create
-                )
+                type,
+                new factory_model_t<T>()
             );
         }
 
@@ -74,7 +88,15 @@ class registry_t:
         std::vector<lt_dlhandle> m_modules;
     
         // Used to instantiate the modules
-        typedef std::map<const std::string, factory_fn_t> factory_map_t;
+#if BOOST_VERSION >= 104000
+        typedef boost::ptr_unordered_map<
+#else
+        typedef boost::ptr_map<
+#endif
+            const std::string, 
+            factory_concept_t
+        > factory_map_t;
+        
         factory_map_t m_factories;
 };
 

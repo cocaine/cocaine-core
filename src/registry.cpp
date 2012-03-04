@@ -29,6 +29,8 @@ struct is_module {
     }
 };
 
+typedef void (*initialize_fn_t)(registry_t& registry);
+
 registry_t::registry_t(context_t& ctx):
     object_t(ctx, "registry")
 {

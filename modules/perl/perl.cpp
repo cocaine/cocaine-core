@@ -18,7 +18,6 @@
 #include <perl.h>
 
 #include "cocaine/app.hpp"
-#include "cocaine/interfaces/module.hpp"
 #include "cocaine/interfaces/plugin.hpp"
 #include "cocaine/registry.hpp"
 
@@ -35,7 +34,7 @@ EXTERN_C void xs_init(pTHX) {
 namespace cocaine {
 namespace engine {
 
-class perl_t: public plugin_t, public core::module_t<perl_t> {
+class perl_t: public plugin_t {
 public:
     perl_t(context_t& ctx) : plugin_t(ctx, "perl") {
         PERL_SYS_INIT3(NULL, NULL, NULL);

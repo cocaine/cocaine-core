@@ -17,7 +17,6 @@
 #include <v8.h>
 
 #include "cocaine/app.hpp"
-#include "cocaine/interfaces/module.hpp"
 #include "cocaine/interfaces/plugin.hpp"
 #include "cocaine/registry.hpp"
 
@@ -26,8 +25,7 @@ namespace cocaine { namespace engine {
 using namespace v8;
 
 class javascript_t:
-    public plugin_t,
-    public core::module_t<javascript_t>
+    public plugin_t
 {
     public:
         javascript_t(context_t& ctx):
