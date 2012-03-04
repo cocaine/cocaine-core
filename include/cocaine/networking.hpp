@@ -134,11 +134,6 @@ inline static raw<T> protect(T& object) {
     return raw<T>(object);
 }
 
-template<class T>
-inline static const raw<const T> protect(const T& object) {
-    return raw<const T>(object);
-}
-
 template<> class raw<std::string> {
     public:
         raw(std::string& string):
