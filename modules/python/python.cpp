@@ -232,7 +232,7 @@ void python_t::invoke(io_t& io, const std::string& method) {
 
     if(PyErr_Occurred()) {
         throw recoverable_error_t(exception());
-    } else if(result.valid()) {
+    } else if(result.valid() && result != Py_None) {
         respond(io, result);
     }
 }
