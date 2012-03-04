@@ -48,6 +48,9 @@ void recurring_timer_t::event(ev::timer&, int) {
 }
 
 void recurring_timer_t::reschedule() {
-    boost::shared_ptr<job_t> job(new job_t(*this));
-    m_engine.enqueue(job);
+    m_engine.enqueue(
+        boost::make_shared<job_t>(
+            boost::ref(*this)
+        )
+    );
 }

@@ -26,18 +26,18 @@ namespace cocaine { namespace core {
 // -------------------
 
 class factory_concept_t {
-public:
-    virtual object_t* create(context_t& ctx) = 0;
+    public:
+        virtual object_t* create(context_t& ctx) = 0;
 };
 
 template<class T>
 class factory_model_t:
     public factory_concept_t
 {
-public:
-    virtual object_t* create(context_t& ctx) {
-        return new T(ctx);
-    }
+    public:
+        virtual object_t* create(context_t& ctx) {
+            return new T(ctx);
+        }
 };
 
 // Module registry

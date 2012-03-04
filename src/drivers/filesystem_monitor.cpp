@@ -43,7 +43,10 @@ Json::Value filesystem_monitor_t::info() const {
 }
 
 void filesystem_monitor_t::event(ev::stat&, int) {
-    boost::shared_ptr<job_t> job(new job_t(*this));
-    m_engine.enqueue(job);
+    m_engine.enqueue(
+        boost::make_shared<job_t>(
+            boost::ref(*this)
+        )
+    );
 }
 
