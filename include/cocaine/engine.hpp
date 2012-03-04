@@ -98,7 +98,7 @@ class engine_t:
             if(it != m_pool.end()) {
                 m_messages.send_multi(
                     helpers::joint_view(
-                        boost::tie(
+                        boost::make_tuple(
                             networking::protect(it->second->id())
                         ),
                         message
