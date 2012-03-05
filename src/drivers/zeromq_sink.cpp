@@ -31,10 +31,18 @@ Json::Value zeromq_sink_t::info() const {
 
 void zeromq_sink_t::process(ev::idle&, int) {
     if(m_socket.pending()) {
+        zmq::message_t message;
+
         do {
-            boost::shared_ptr<job_t> job(new job_t(*this));
-            m_socket.recv(&job->request());
-            m_engine.enqueue(job);
+            m_engine.enqueue(
+                boost::make_shared<job_t>(
+                    boost::ref(*this),
+                    data_container_t(
+                        message.data(), 
+                        message.size()
+                    )
+                )
+            );
         } while(m_socket.more()); 
     } else {
         m_processor.stop();

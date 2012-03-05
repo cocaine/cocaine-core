@@ -20,9 +20,15 @@
 using namespace cocaine::engine::drivers;
 using namespace cocaine::networking;
 
-lsd_job_t::lsd_job_t(lsd_server_t& driver, const client::policy_t& policy, const unique_id_t::type& id, const route_t& route):
+lsd_job_t::lsd_job_t(
+    const unique_id_t::type& id, 
+    lsd_server_t& driver, 
+    const client::policy_t& policy, 
+    const data_container_t& data, 
+    const route_t& route
+):
     unique_id_t(id),
-    job_t(driver, policy),
+    job_t(driver, policy, data),
     m_route(route)
 { }
 
@@ -115,14 +121,15 @@ void lsd_server_t::process(ev::idle&, int) {
             return;
         }
 
+        Json::Reader reader(Json::Features::strictMode());
+        
         while(m_socket.more()) {
+            Json::Value root;
+
             // Receive the envelope.
             m_socket.recv(&message);
 
             // Parse the envelope and setup the job policy.
-            Json::Reader reader(Json::Features::strictMode());
-            Json::Value root;
-
             if(!reader.parse(
                 static_cast<const char*>(message.data()),
                 static_cast<const char*>(message.data()) + message.size(),
@@ -136,33 +143,34 @@ void lsd_server_t::process(ev::idle&, int) {
                 continue;
             }
 
-            client::policy_t policy(
-                root.get("urgent", false).asBool(),
-                root.get("timeout", 0.0f).asDouble(),
-                root.get("deadline", 0.0f).asDouble()
-            );
+            if(!m_socket.recv(&message, ZMQ_NOBLOCK)) {
+                log().error("got a corrupted request - missing body");
+                continue;
+            }
 
-            boost::shared_ptr<lsd_job_t> job;
-            
             try {
-                job.reset(new lsd_job_t(*this, policy, root.get("uuid", "").asString(), route));
+                m_engine.enqueue(
+                    boost::make_shared<lsd_job_t>(
+                        root.get("uuid", "").asString(),
+                        boost::ref(*this),
+                        client::policy_t(
+                            root.get("urgent", false).asBool(),
+                            root.get("timeout", 0.0f).asDouble(),
+                            root.get("deadline", 0.0f).asDouble()
+                        ),
+                        data_container_t(
+                            message.data(), 
+                            message.size()
+                        ),
+                        route
+                    )
+                );
             } catch(const std::runtime_error& e) {
                 log().error(
-                    "got a corrupted request - invalid envelope - %s",
+                    "got a corrupted request - %s",
                     e.what()
                 );
-
-                continue;
             }
-
-            if(!m_socket.more()) {
-                log().error("got a corrupted request - missing body");
-                job->process_event(events::error_t(client::request_error, "missing body"));
-                continue;
-            }
-            
-            m_socket.recv(&job->request());
-            m_engine.enqueue(job);
         }
     } else {
         m_processor.stop();

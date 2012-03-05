@@ -23,7 +23,7 @@
 #include "cocaine/forwards.hpp"
 
 #include "cocaine/events.hpp"
-#include "cocaine/networking.hpp"
+#include "cocaine/helpers/data_container.hpp"
 
 #include "cocaine/dealer/types.hpp"
 
@@ -38,6 +38,8 @@ struct incomplete;
     struct processing;
 struct complete;
 
+using helpers::data_container_t;
+
 // Job FSM
 class job_t:
     public sc::state_machine<job_t, incomplete>,
@@ -47,22 +49,19 @@ class job_t:
     friend class processing;
 
     public:
+        job_t(drivers::driver_t& driver);
+        job_t(drivers::driver_t& driver, client::policy_t policy);
+        job_t(drivers::driver_t& driver, const data_container_t& request);
+        
         job_t(drivers::driver_t& driver,
-              client::policy_t policy = client::policy_t());
+              client::policy_t policy, 
+              const data_container_t& request);
 
         virtual ~job_t();
 
-        virtual inline void react(const events::push_t& event) {
-            // TODO: Emitters.
-        }
-
-        virtual inline void react(const events::error_t& event) {
-            // TODO: Emitters.
-        }
-
-        virtual inline void react(const events::release_t& event) {
-            // TODO: Emitters.
-        }
+        virtual void react(const events::push_t& event);
+        virtual void react(const events::error_t& event);
+        virtual void react(const events::release_t& event);
 
     public:
         const std::string& method() const;
@@ -71,7 +70,7 @@ class job_t:
             return m_policy;
         }
 
-        inline zmq::message_t& request() {
+        inline const data_container_t& request() const {
             return m_request;
         }
 
@@ -83,8 +82,9 @@ class job_t:
 
     private:
         client::policy_t m_policy;
+        data_container_t m_request;
+
         ev::periodic m_expiration_timer;
-        zmq::message_t m_request;
 };
 
 struct incomplete:

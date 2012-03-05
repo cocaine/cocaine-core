@@ -22,8 +22,8 @@
 using namespace cocaine::engine::drivers;
 using namespace cocaine::networking;
 
-zeromq_server_job_t::zeromq_server_job_t(zeromq_server_t& driver, const route_t& route):
-    job_t(driver, client::policy_t()),
+zeromq_server_job_t::zeromq_server_job_t(zeromq_server_t& driver, const data_container_t& data, const route_t& route):
+    job_t(driver, data),
     m_route(route)
 { }
 
@@ -86,6 +86,7 @@ zeromq_server_t::zeromq_server_t(engine_t& engine, const std::string& method, co
 
     m_socket.setsockopt(ZMQ_HWM, &m_backlog, sizeof(m_backlog));
     m_socket.setsockopt(ZMQ_LINGER, &m_linger, sizeof(m_linger));
+
     m_socket.bind(endpoint);
 
     m_watcher.set<zeromq_server_t, &zeromq_server_t::event>(this);
@@ -140,9 +141,18 @@ void zeromq_server_t::process(ev::idle&, int) {
         }
 
         while(m_socket.more()) {
-            boost::shared_ptr<zeromq_server_job_t> job(new zeromq_server_job_t(*this, route));
-            m_socket.recv(&job->request());
-            m_engine.enqueue(job);
+            m_socket.recv(&message);
+
+            m_engine.enqueue(
+                boost::make_shared<zeromq_server_job_t>(
+                    boost::ref(*this),
+                    data_container_t(
+                        message.data(), 
+                        message.size()
+                    ),
+                    route
+                )
+            );
         }
     } else {
         m_processor.stop();

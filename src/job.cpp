@@ -14,14 +14,40 @@
 #include "cocaine/job.hpp"
 
 #include "cocaine/drivers/base.hpp"
-#include "cocaine/engine.hpp"
 
 using namespace cocaine;
 using namespace cocaine::engine;
+using namespace cocaine::client;
 
-job_t::job_t(drivers::driver_t& driver, client::policy_t policy):
+job_t::job_t(drivers::driver_t& driver):
+    m_driver(driver)
+{
+    initiate();
+}
+
+job_t::job_t(drivers::driver_t& driver, policy_t policy):
     m_driver(driver),
     m_policy(policy)
+{
+    if(m_policy.deadline) {
+        m_expiration_timer.set<job_t, &job_t::discard>(this);
+        m_expiration_timer.start(m_policy.deadline);
+    }
+
+    initiate();
+}
+
+job_t::job_t(drivers::driver_t& driver, const data_container_t& request):
+    m_driver(driver),
+    m_request(request)
+{
+    initiate();
+}
+
+job_t::job_t(drivers::driver_t& driver, policy_t policy, const data_container_t& request):
+    m_driver(driver),
+    m_policy(policy),
+    m_request(request)
 {
     if(m_policy.deadline) {
         m_expiration_timer.set<job_t, &job_t::discard>(this);
@@ -38,6 +64,18 @@ job_t::~job_t() {
     BOOST_ASSERT(state_downcast<const complete*>() != 0);
 
     terminate();
+}
+
+void job_t::react(const events::push_t& event) {
+    // TODO: Emitters.
+}
+
+void job_t::react(const events::error_t& event) {
+    // TODO: Emitters.
+}
+
+void job_t::react(const events::release_t& event) {
+    // TODO: Emitters.
 }
 
 const std::string& job_t::method() const {

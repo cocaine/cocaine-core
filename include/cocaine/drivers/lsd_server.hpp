@@ -25,9 +25,10 @@ class lsd_job_t:
     public job_t
 {
     public:
-        lsd_job_t(lsd_server_t& driver,
+        lsd_job_t(const unique_id_t::type& id,
+                  lsd_server_t& driver,
                   const client::policy_t& policy,
-                  const unique_id_t::type& id,
+                  const data_container_t& data,
                   const networking::route_t& route);
 
         virtual void react(const events::push_t& event);

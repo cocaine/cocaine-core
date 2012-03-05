@@ -343,14 +343,17 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
     // NOTE: If we got an idle slave, then we're lucky and got an instant scheduling;
     // if not, try to spawn more slaves, and enqueue the job.
     const int command = rpc::invoke;
-    
+
+    // XXX: Test whether this zero-copy stuff never backfires.
+    zmq::message_t request(job->request().data(), job->request().size(), NULL);
+
     pool_map_t::iterator it(
         unicast(
             idle_slave(),
             boost::tie(
                 command,
                 job->method(),
-                job->request()
+                request
             )
         )
     );

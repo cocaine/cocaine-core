@@ -63,6 +63,7 @@ SET_TARGET_PROPERTIES(json PROPERTIES
 ADD_LIBRARY(cocaine-common SHARED
     src/auth
     src/context
+    src/helpers/data_container
     src/logging
     src/object
     src/registry
