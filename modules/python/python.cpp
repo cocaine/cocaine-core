@@ -174,8 +174,8 @@ void python_t::invoke(io_t& io, const std::string& method) {
 
     PyObject* module = PyModule_GetDict(m_python_module);
 
-    python_object_t object(
-        PyObject_GetAttrString(
+    PyObject* object(
+        PyDict_GetItemString(
             module,
             method.c_str()
         )
@@ -186,7 +186,7 @@ void python_t::invoke(io_t& io, const std::string& method) {
     }
 
     if(PyType_Check(object)) {
-        if(PyType_Ready(reinterpret_cast<PyTypeObject*>(*object)) != 0) {
+        if(PyType_Ready(reinterpret_cast<PyTypeObject*>(object)) != 0) {
             throw unrecoverable_error_t(exception());
         }
     }
@@ -265,7 +265,7 @@ std::string python_t::exception() {
 }
 
 void python_t::respond(io_t& io, python_object_t& result) {
-    if(PyString_Check(result) || !PyIter_Check(result)) {
+    if(PyString_Check(result)) {
         throw recoverable_error_t("the result must be an iterable");
     }
 
