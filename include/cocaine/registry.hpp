@@ -88,12 +88,7 @@ class registry_t:
                 throw std::runtime_error("duplicate module");
             }
 
-            log().debug(
-                "registering '%s' as a '%s' module with typename '%s'",
-                typeid(T).name(),
-                typeid(Category).name(),
-                type.c_str()
-            );
+            log().info("registering '%s' module", type.c_str());
 
             m_factories.insert(
                 type,
