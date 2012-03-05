@@ -23,6 +23,7 @@
 #include "cocaine/storages.hpp"
 
 using namespace cocaine;
+using namespace cocaine::storages;
 
 context_t::context_t(config_t config_, std::auto_ptr<logging::sink_t> sink):
     config(config_),
@@ -42,46 +43,25 @@ context_t::context_t(config_t config_, std::auto_ptr<logging::sink_t> sink):
 #else
     config.core.cgroups = false;
 #endif
+
+    // Builtins.
+    registry().install<void_storage_t, storage_t>("void");
+    registry().install<file_storage_t, storage_t>("files");
 }
 
 context_t::context_t(const context_t& other):
     config(other.config),
-    m_auth(other.m_auth),
-    m_registry(other.m_registry),
-    m_sink(other.m_sink)
+    m_sink(other.m_sink),
+    m_registry(other.m_registry)
 { }
 
 context_t& context_t::operator=(const context_t& other) {
     config = other.config;
-    m_auth = other.m_auth;
-    m_registry = other.m_registry;
     m_sink = other.m_sink;
+    
+    m_registry = other.m_registry;
 
     return *this;
-}
-
-crypto::auth_t& context_t::auth() {
-    if(!m_auth) {
-        m_auth.reset(new crypto::auth_t(*this));
-    }
-
-    return *m_auth;
-}
-
-zmq::context_t& context_t::io() {
-    if(!m_io) {
-        m_io.reset(new zmq::context_t(1));
-    }
-
-    return *m_io;
-}
-
-core::registry_t& context_t::registry() {
-    if(!m_registry) {
-        m_registry.reset(new core::registry_t(*this));
-    }
-
-    return *m_registry;
 }
 
 logging::sink_t& context_t::sink() {
@@ -92,16 +72,42 @@ logging::sink_t& context_t::sink() {
     return *m_sink;
 }
 
-storages::storage_t& context_t::storage() {
-    std::string driver(config.storage.driver);
+core::registry_t& context_t::registry() {
+    boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
+    
+    if(!m_registry) {
+        m_registry.reset(new core::registry_t(*this));
+    }
 
-    if(driver == "files") {
-        m_storage.reset(new storages::file_storage_t(*this));
-    } else if(driver == "void") {
-        m_storage.reset(new storages::void_storage_t(*this));
-    } else {
-        m_storage = registry().create<storages::storage_t>(driver);
+    return *m_registry;
+}
+
+storage_t& context_t::storage() {
+    boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
+
+    if(!m_storage) {
+        m_storage = registry().create<storage_t>(config.storage.driver);
     }
 
     return *m_storage;
+}
+
+zmq::context_t& context_t::io() {
+    boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
+    
+    if(!m_io) {
+        m_io.reset(new zmq::context_t(1));
+    }
+
+    return *m_io;
+}
+
+crypto::auth_t& context_t::auth() {
+    boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
+    
+    if(!m_auth) {
+        m_auth.reset(new crypto::auth_t(*this));
+    }
+
+    return *m_auth;
 }

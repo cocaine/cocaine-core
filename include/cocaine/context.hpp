@@ -14,6 +14,8 @@
 #ifndef COCAINE_CONTEXT_HPP
 #define COCAINE_CONTEXT_HPP
 
+#include <boost/thread.hpp>
+
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 
@@ -70,11 +72,14 @@ class context_t {
         config_t config;
 
     private:
-        boost::shared_ptr<crypto::auth_t> m_auth;
-        boost::shared_ptr<zmq::context_t> m_io;
-        boost::shared_ptr<core::registry_t> m_registry;
+        boost::recursive_mutex m_mutex;
+
+    private:
         boost::shared_ptr<logging::sink_t> m_sink;
+        boost::shared_ptr<core::registry_t> m_registry;
         boost::shared_ptr<storages::storage_t> m_storage;
+        boost::shared_ptr<zmq::context_t> m_io;
+        boost::shared_ptr<crypto::auth_t> m_auth;
 };
 
 }

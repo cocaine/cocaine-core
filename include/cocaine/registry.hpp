@@ -85,7 +85,7 @@ class registry_t:
         >::type 
         install(const std::string& type) {
             if(m_factories.find(type) != m_factories.end()) {
-                throw std::runtime_error("duplicate module");
+                throw std::runtime_error("module '" + type + "' has been already installed");
             }
 
             log().info("registering '%s' module", type.c_str());

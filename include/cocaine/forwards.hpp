@@ -39,8 +39,6 @@ namespace cocaine {
         namespace slaves {
             class slave_t;
         }
-        
-        class overseer_t;
     }
 
     namespace logging {

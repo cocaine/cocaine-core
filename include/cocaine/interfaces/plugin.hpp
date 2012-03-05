@@ -20,6 +20,8 @@
 
 namespace cocaine { namespace engine {
 
+class overseer_t;
+
 // Plugin I/O
 // ----------
 
