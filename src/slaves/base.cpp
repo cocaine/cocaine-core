@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2011 Andrey Sibiryov <me@kobology.ru>
+// Copyright (C) 2011-2012 Andrey Sibiryov <me@kobology.ru>
 //
 // Licensed under the BSD 2-Clause License (the "License");
 // you may not use this file except in compliance with the License.

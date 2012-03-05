@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2011 Rim Zaidullin <creator@bash.org.ru>
+// Copyright (C) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
 //
 // Licensed under the BSD 2-Clause License (the "License");
 // you may not use this file except in compliance with the License.
