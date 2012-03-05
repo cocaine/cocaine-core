@@ -67,11 +67,18 @@ job_t::~job_t() {
 }
 
 void job_t::react(const events::push_t& event) {
-    // TODO: Emitters.
+    m_driver.log().error(
+        "job ignored a chunk, size: %zu bytes", 
+        event.message.size()
+    );
 }
 
 void job_t::react(const events::error_t& event) {
-    // TODO: Emitters.
+    m_driver.log().error(
+        "job ignored an error, code: %d, message: '%s'", 
+        event.code, 
+        event.message.c_str()
+    );
 }
 
 void job_t::react(const events::release_t& event) {

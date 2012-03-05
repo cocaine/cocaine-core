@@ -24,6 +24,7 @@
 #include "cocaine/object.hpp"
 
 #include "cocaine/events.hpp"
+#include "cocaine/helpers/unique_id.hpp"
 
 namespace cocaine { namespace engine { namespace slaves {
 
@@ -35,11 +36,13 @@ struct alive;
     struct busy;
 struct dead;
 
+using helpers::unique_id_t;
+
 struct slave_t:
     public sc::state_machine<slave_t, unknown>,
-    public birth_control_t<slave_t>,
+    public object_t,
     public unique_id_t,
-    public object_t
+    public helpers::birth_control_t<slave_t>
 {
     friend class alive;
 

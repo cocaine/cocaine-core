@@ -44,9 +44,5 @@
 
 #include "cocaine/helpers/birth_control.hpp"
 #include "cocaine/helpers/json.hpp"
-#include "cocaine/helpers/unique_id.hpp"
-
-using cocaine::helpers::birth_control_t;
-using cocaine::helpers::unique_id_t;
 
 #endif

@@ -16,9 +16,13 @@
 
 #include "cocaine/drivers/zeromq_server.hpp"
 
+#include "cocaine/helpers/unique_id.hpp"
+
 namespace cocaine { namespace engine { namespace drivers {
 
 class lsd_server_t;
+
+using helpers::unique_id_t;
 
 class lsd_job_t:
     public unique_id_t,

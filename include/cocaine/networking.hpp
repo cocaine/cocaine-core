@@ -30,7 +30,7 @@ typedef std::vector<std::string> route_t;
 
 class socket_t: 
     public object_t,
-    public birth_control_t<socket_t>
+    public helpers::birth_control_t<socket_t>
 {
     public:
         socket_t(context_t& ctx, int type):

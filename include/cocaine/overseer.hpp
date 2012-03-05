@@ -18,12 +18,14 @@
 #include "cocaine/forwards.hpp"
 #include "cocaine/object.hpp"
 
+#include "cocaine/helpers/unique_id.hpp"
+#include "cocaine/interfaces/plugin.hpp"
 #include "cocaine/networking.hpp"
 #include "cocaine/rpc.hpp"
 
-#include "cocaine/interfaces/plugin.hpp"
-
 namespace cocaine { namespace engine {
+
+using helpers::unique_id_t;
 
 class overseer_t:
     public unique_id_t,

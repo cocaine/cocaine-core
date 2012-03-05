@@ -29,6 +29,7 @@
 #include "cocaine/slaves.hpp"
 
 #include "cocaine/helpers/tuples.hpp"
+#include "cocaine/helpers/unique_id.hpp"
 
 namespace cocaine { namespace engine {
 
@@ -40,6 +41,8 @@ typedef boost::ptr_map<
     const std::string,
     drivers::driver_t
 > task_map_t;
+
+using helpers::unique_id_t;
 
 #if BOOST_VERSION >= 104000
 typedef boost::ptr_unordered_map<

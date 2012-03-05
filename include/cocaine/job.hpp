@@ -43,7 +43,7 @@ using helpers::data_container_t;
 // Job FSM
 class job_t:
     public sc::state_machine<job_t, incomplete>,
-    public birth_control_t<job_t>
+    public helpers::birth_control_t<job_t>
 {
     friend class waiting;
     friend class processing;
