@@ -114,13 +114,13 @@ int main(int argc, char* argv[]) {
     engine_options.add_options()
         ("engine:suicide-timeout", po::value<float>
             (&config.engine.suicide_timeout)->default_value(600.0f),
-            "default stale thread suicide timeout, seconds")
+            "default stale slave suicide timeout, seconds")
         ("engine:heartbeat-timeout", po::value<float>
             (&config.engine.heartbeat_timeout)->default_value(30.0f),
-            "default unresponsive thread cancellation timeout, seconds")
+            "default unresponsive slave termination timeout, seconds")
         ("engine:pool-limit", po::value<unsigned int>
             (&config.engine.pool_limit)->default_value(10),
-            "maximum engine slave pool size")
+            "default maximum engine slave pool size")
         ("engine:queue-limit", po::value<unsigned int>
             (&config.engine.queue_limit)->default_value(10),
             "default maximum engine queue depth");
@@ -128,7 +128,7 @@ int main(int argc, char* argv[]) {
     storage_options.add_options()
         ("storage:driver", po::value<std::string>
             (&config.storage.driver)->default_value("files"),
-            "storage driver type, one of: void, files, mongo")
+            "storage driver type, built-in storages are: void, files")
         ("storage:uri", po::value<std::string>
             (&config.storage.uri)->default_value("/var/lib/cocaine"),
             "storage location, format depends on the storage type");
@@ -197,6 +197,8 @@ int main(int argc, char* argv[]) {
             return EXIT_FAILURE;
         }
     }
+
+    log.info("starting the core");
 
     // Starting the core
     std::auto_ptr<core::core_t> core;
