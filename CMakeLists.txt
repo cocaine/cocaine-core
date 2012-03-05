@@ -69,6 +69,7 @@ ADD_LIBRARY(cocaine-common SHARED
     src/storages/files)
 
 TARGET_LINK_LIBRARIES(cocaine-common
+    boost_thread-mt
     boost_filesystem-mt
     ${Boost_SYSTEM_LIBRARY}
     crypto
