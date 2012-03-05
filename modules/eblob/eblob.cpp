@@ -194,6 +194,6 @@ void eblob_storage_t::purge(const std::string& ns) {
 
 extern "C" {
     void initialize(registry_t& registry) {
-        registry.install<eblob_storage_t>("eblob");
+        registry.install<eblob_storage_t, storage_t>("eblob");
     }
 }

@@ -56,7 +56,7 @@ core_t::core_t(context_t& ctx):
 
     m_server.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
 
-    for(std::vector<std::string>::const_iterator it = context().config.core.endpoints.begin();
+    for(std::vector<std::string>::iterator it = context().config.core.endpoints.begin();
         it != context().config.core.endpoints.end();
         ++it) 
     {

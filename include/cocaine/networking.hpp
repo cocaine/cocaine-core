@@ -33,14 +33,17 @@ class socket_t:
     public birth_control_t<socket_t>
 {
     public:
-        socket_t(context_t& ctx, int type, std::string route = ""):
-            object_t(ctx, "socket " + route),
+        socket_t(context_t& ctx, int type):
+            object_t(ctx, "socket"),
+            m_socket(ctx.io(), type)
+        { }
+
+        socket_t(context_t& ctx, int type, const std::string& route):
+            object_t(ctx, "socket"),
             m_socket(ctx.io(), type),
             m_route(route)
         {
-            if(!m_route.empty()) {
-                setsockopt(ZMQ_IDENTITY, m_route.data(), m_route.size());
-            } 
+            setsockopt(ZMQ_IDENTITY, m_route.data(), m_route.size());
         }
 
         void bind(const std::string& endpoint) {
@@ -175,7 +178,11 @@ class channel_t:
     public socket_t
 {
     public:
-        channel_t(context_t& ctx, int type, std::string route = ""):
+        channel_t(context_t& ctx, int type):
+            socket_t(ctx, type)
+        { }
+
+        channel_t(context_t& ctx, int type, const std::string& route):
             socket_t(ctx, type, route)
         { }
 

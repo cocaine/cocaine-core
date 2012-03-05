@@ -385,7 +385,7 @@ extern "C" {
         pthread_atfork(NULL, NULL, PyOS_AfterFork);
         pthread_atfork(NULL, NULL, save);
 
-        registry.install<python_t>("python");
+        registry.install<python_t, plugin_t>("python");
     }
 
     __attribute__((destructor)) void finalize() {

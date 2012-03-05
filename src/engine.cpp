@@ -37,33 +37,30 @@ void job_queue_t::push(const_reference job) {
 
 // Selectors
 // ---------
+
 namespace {
-    class idle_slave {
-        public:
-            bool operator()(pool_map_t::pointer slave) const {
-                return slave->second->state_downcast<const slaves::idle*>();
-            }
+    struct idle_slave {
+        bool operator()(pool_map_t::pointer slave) const {
+            return slave->second->state_downcast<const slaves::idle*>();
+        }
     };
 
-    class busy_slave {
-        public:
-            bool operator()(pool_map_t::const_pointer slave) const {
-                return slave->second->state_downcast<const slaves::busy*>();
-            }
+    struct busy_slave {
+        bool operator()(pool_map_t::const_pointer slave) const {
+            return slave->second->state_downcast<const slaves::busy*>();
+        }
     };
 
-    class specific_slave {
-        public:
-            specific_slave(pool_map_t::pointer target):
-                m_target(target)
-            { }
+    struct specific_slave {
+        specific_slave(pool_map_t::pointer target_):
+            target(target_)
+        { }
 
-            bool operator()(pool_map_t::pointer slave) const {
-                return slave == m_target;
-            }
-        
-        private:
-            pool_map_t::pointer m_target;
+        bool operator()(pool_map_t::pointer slave) const {
+            return slave == target;
+        }
+    
+        pool_map_t::pointer target;
     };
 }
 
@@ -191,7 +188,7 @@ Json::Value engine_t::start() {
     try {
         m_messages.bind(m_app.endpoint);
     } catch(const zmq::error_t& e) {
-        throw std::runtime_error(std::string("rpc failure - ") + e.what());
+        throw std::runtime_error(std::string("invalid rpc endpoint - ") + e.what());
     }
     
     m_watcher.set<engine_t, &engine_t::message>(this);
@@ -405,6 +402,7 @@ void engine_t::process(ev::idle&, int) {
         boost::tuple<raw<std::string>, unsigned int&> tier(protect(slave_id), command);
                 
         m_messages.recv_multi(tier);
+
         pool_map_t::iterator slave(m_pool.find(slave_id));
 
         if(slave != m_pool.end()) {
@@ -460,6 +458,7 @@ void engine_t::process(ev::idle&, int) {
                 }
             }
 
+            // NOTE: Count all the RPC events as heartbeats.
             slave->second->process_event(events::heartbeat_t());
 
             if(slave->second->state_downcast<const slaves::idle*>() && !m_queue.empty()) {

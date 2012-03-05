@@ -144,6 +144,6 @@ void mongo_storage_t::purge(const std::string& ns) {
 
 extern "C" {
     void initialize(registry_t& registry) {
-        registry.install<mongo_storage_t>("mongodb");
+        registry.install<mongo_storage_t, storage_t>("mongodb");
     }
 }

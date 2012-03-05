@@ -24,12 +24,12 @@ using namespace cocaine::core;
 namespace fs = boost::filesystem;
 
 struct is_module {
-    template<typename T> bool operator()(const T& entry) {
-        return fs::is_regular(entry) && entry.path().extension() == ".cocaine-module";
+    template<typename T> 
+    bool operator()(const T& entry) {
+        return fs::is_regular(entry) 
+               && entry.path().extension() == ".cocaine-module";
     }
 };
-
-typedef void (*initialize_fn_t)(registry_t& registry);
 
 registry_t::registry_t(context_t& ctx):
     object_t(ctx, "registry")
@@ -51,11 +51,14 @@ registry_t::registry_t(context_t& ctx):
     lt_dladvise_global(&advice);
 
     lt_dlhandle module;
+
+    typedef void (*initialize_fn_t)(registry_t& registry);
     initialize_fn_t initialize;
 
     // Directory iterator
-    typedef boost::filter_iterator<is_module, fs::directory_iterator> file_iterator;
-    file_iterator it = file_iterator(is_module(), fs::directory_iterator(path)), end;
+    typedef boost::filter_iterator<is_module, fs::directory_iterator> module_iterator_t;
+    module_iterator_t it = module_iterator_t(is_module(), fs::directory_iterator(path)), 
+                      end;
 
     while(it != end) {
         // Load the module
@@ -106,14 +109,16 @@ registry_t::registry_t(context_t& ctx):
     }
 }
 
-registry_t::~registry_t() {
-    for(std::vector<lt_dlhandle>::iterator it = m_modules.begin();
-        it != m_modules.end(); 
-        ++it) 
-    {
-        lt_dlclose(*it);
-    }
-
-    lt_dlexit();
+namespace {
+    struct dispose {
+        template<class T>
+        void operator()(T& module) {
+            lt_dlclose(module);
+        }
+    };
 }
 
+registry_t::~registry_t() {
+    std::for_each(m_modules.begin(), m_modules.end(), dispose());
+    lt_dlexit();
+}

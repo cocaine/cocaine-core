@@ -14,6 +14,9 @@
 #ifndef COCAINE_REGISTRY_HPP
 #define COCAINE_REGISTRY_HPP
 
+#include <typeinfo>
+#include <boost/type_traits/is_base_of.hpp>
+
 #include <ltdl.h>
 
 #include "cocaine/common.hpp"
@@ -27,14 +30,19 @@ namespace cocaine { namespace core {
 
 class factory_concept_t {
     public:
+        virtual const std::type_info& category() const = 0;
         virtual object_t* create(context_t& ctx) = 0;
 };
 
-template<class T>
+template<class T, class Category>
 class factory_model_t:
     public factory_concept_t
 {
     public:
+        virtual const std::type_info& category() const {
+            return typeid(Category);
+        }
+
         virtual object_t* create(context_t& ctx) {
             return new T(ctx);
         }
@@ -50,36 +58,46 @@ class registry_t:
         registry_t(context_t& ctx);
         ~registry_t();
 
-        template<class T>
-        std::auto_ptr<T> create(const std::string& type) {
+        template<class Category>
+        std::auto_ptr<Category> create(const std::string& type) {
             factory_map_t::iterator it(m_factories.find(type));
 
             if(it == m_factories.end()) {
                 throw std::runtime_error("module '" + type + "' is not available");
             }
 
-            object_t* object = it->second->create(context());
-            T* module = dynamic_cast<T*>(object);
-
-            if(module) {
-                return std::auto_ptr<T>(module);
-            } else {
-                delete object;
+            if(it->second->category() != typeid(Category)) {
                 throw std::runtime_error("module '" + type + "' has an incompatible type");
             }
+
+            std::auto_ptr<Category> module(
+                dynamic_cast<Category*>(
+                    it->second->create(context())
+                )
+            );
+
+            return module;
         }
 
-        template<class T>
-        void install(const std::string& type) {
+        template<class T, class Category>
+        typename boost::enable_if<
+            boost::is_base_of<Category, T>
+        >::type 
+        install(const std::string& type) {
             if(m_factories.find(type) != m_factories.end()) {
                 throw std::runtime_error("duplicate module");
             }
 
-            log().info("installing the '%s' module", type.c_str());
+            log().debug(
+                "registering '%s' as a '%s' module with typename '%s'",
+                typeid(T).name(),
+                typeid(Category).name(),
+                type.c_str()
+            );
 
             m_factories.insert(
                 type,
-                new factory_model_t<T>()
+                new factory_model_t<T, Category>()
             );
         }
 
