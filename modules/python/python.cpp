@@ -148,7 +148,7 @@ void python_t::initialize(const app_t& app) {
         throw unrecoverable_error_t(exception());
     }
 
-    python_object_t globals(PyModule_GetDict(m_python_module));
+    PyObject* globals = PyModule_GetDict(m_python_module);
     
     // NOTE: This will return None or NULL due to the Py_file_input flag above,
     // so we can safely drop it without even checking.
@@ -172,14 +172,8 @@ void python_t::invoke(io_t& io, const std::string& method) {
         throw unrecoverable_error_t("python module is not initialized");
     }
 
-    PyObject* module = PyModule_GetDict(m_python_module);
-
-    PyObject* object(
-        PyDict_GetItemString(
-            module,
-            method.c_str()
-        )
-    );
+    PyObject* globals = PyModule_GetDict(m_python_module);
+    PyObject* object = PyDict_GetItemString(globals, method.c_str());
     
     if(PyErr_Occurred()) {
         throw unrecoverable_error_t(exception());
