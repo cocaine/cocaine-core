@@ -62,11 +62,11 @@ class context_t {
         context_t& operator=(const context_t& other);
 
     public:
-        crypto::auth_t& auth();
         zmq::context_t& io();
-        core::registry_t& registry();
         logging::sink_t& sink();
+        core::registry_t& registry();
         storages::storage_t& storage();
+        crypto::auth_t& auth();
 
     public:
         config_t config;
@@ -75,10 +75,10 @@ class context_t {
         boost::recursive_mutex m_mutex;
 
     private:
+        boost::shared_ptr<zmq::context_t> m_io;
         boost::shared_ptr<logging::sink_t> m_sink;
         boost::shared_ptr<core::registry_t> m_registry;
         boost::shared_ptr<storages::storage_t> m_storage;
-        boost::shared_ptr<zmq::context_t> m_io;
         boost::shared_ptr<crypto::auth_t> m_auth;
 };
 

@@ -71,14 +71,14 @@ class zeromq_server_t:
         uint64_t m_backlog;
         int m_linger;
 
-        networking::channel_t m_socket;
-        
         ev::io m_watcher; 
         ev::idle m_processor;
 
         // XXX: This is a temporary workaround for the edge cases when ZeroMQ for some 
         // reason doesn't trigger the socket's fd on message arrival (or I poll it in a wrong way).
         ev::timer m_pumper;
+        
+        networking::channel_t m_socket;
 };
 
 }}}

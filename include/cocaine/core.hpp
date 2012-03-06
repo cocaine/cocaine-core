@@ -63,18 +63,6 @@ class core_t:
         // Uptime
         const ev::tstamp m_birthstamp;
         
-        // System I/O 
-        networking::socket_t m_server;
-
-        // Event watchers
-        ev::sig m_sigint, m_sigterm, m_sigquit, m_sighup;
-        ev::io m_watcher;
-        ev::idle m_processor;
-
-        // XXX: This is a temporary workaround for the edge cases when ZeroMQ for some 
-        // reason doesn't trigger the socket's fd on message arrival (or I poll it in a wrong way).
-        ev::timer m_pumper;
-
         // Engines
 #if BOOST_VERSION >= 104000
         typedef boost::ptr_unordered_map<
@@ -87,9 +75,21 @@ class core_t:
 
         engine_map_t m_engines;
 
+        // Event watchers
+        ev::sig m_sigint, m_sigterm, m_sigquit, m_sighup;
+        ev::io m_watcher;
+        ev::idle m_processor;
+
+        // XXX: This is a temporary workaround for the edge cases when ZeroMQ for some 
+        // reason doesn't trigger the socket's fd on message arrival (or I poll it in a wrong way).
+        ev::timer m_pumper;
+
+        // System I/O 
+        networking::socket_t m_server;
+
         // Automatic discovery support
-        boost::shared_ptr<networking::socket_t> m_announces;
         boost::shared_ptr<ev::timer> m_announce_timer;
+        boost::shared_ptr<networking::socket_t> m_announces;
 };
 
 }}

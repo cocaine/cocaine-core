@@ -66,6 +66,16 @@ context_t& context_t::operator=(const context_t& other) {
     return *this;
 }
 
+zmq::context_t& context_t::io() {
+    boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
+    
+    if(!m_io) {
+        m_io.reset(new zmq::context_t(1));
+    }
+
+    return *m_io;
+}
+
 logging::sink_t& context_t::sink() {
     if(!m_sink) {
         throw std::runtime_error("logging is not initialized");
@@ -94,16 +104,6 @@ storage_t& context_t::storage() {
     return *m_storage;
 }
 
-zmq::context_t& context_t::io() {
-    boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
-    
-    if(!m_io) {
-        m_io.reset(new zmq::context_t(1));
-    }
-
-    return *m_io;
-}
-
 crypto::auth_t& context_t::auth() {
     boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
     
@@ -113,3 +113,4 @@ crypto::auth_t& context_t::auth() {
 
     return *m_auth;
 }
+

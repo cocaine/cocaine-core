@@ -199,7 +199,7 @@ Json::Value engine_t::start() {
 
     m_gc_timer.set<engine_t, &engine_t::cleanup>(this);
     m_gc_timer.start(5.0f, 5.0f);
-    
+   
     // Tasks configuration
     // -------------------
 
@@ -240,7 +240,7 @@ Json::Value engine_t::start() {
     }
 
     m_running = true;
-
+    
     return info();
 }
 
@@ -294,7 +294,7 @@ Json::Value engine_t::stop() {
 
     return info();
 }
-
+    
 Json::Value engine_t::info() const {
     Json::Value results(Json::objectValue);
 
@@ -399,91 +399,93 @@ void engine_t::message(ev::io&, int) {
 }
 
 void engine_t::process(ev::idle&, int) {
-    if(m_messages.pending()) {
-        std::string slave_id;
-        unsigned int command = 0;
-        boost::tuple<raw<std::string>, unsigned int&> tier(protect(slave_id), command);
-                
-        m_messages.recv_multi(tier);
-
-        pool_map_t::iterator slave(m_pool.find(slave_id));
-
-        if(slave != m_pool.end()) {
-            const slaves::busy* state =
-                slave->second->state_downcast<const slaves::busy*>();
-            
-            switch(command) {
-                case rpc::push: {
-                    // TEST: Only active slaves can push the data chunks.
-                    BOOST_ASSERT(state != 0 && m_messages.more());
-
-                    zmq::message_t message;
-                    m_messages.recv(&message);
-                    
-                    state->job()->process_event(events::push_t(message));
-
-                    break;
-                }
-             
-                case rpc::error: {
-                    unsigned int code = 0;
-                    std::string message;
-                    boost::tuple<unsigned int&, std::string&> tier(code, message);
-
-                    m_messages.recv_multi(tier);
-
-                    if(state) {
-                        state->job()->process_event(
-                            events::error_t(
-                                static_cast<client::error_code>(code), 
-                                message
-                            )
-                        );
-                    } else {
-                        log().error("the app seems to be broken - %s", message.c_str());
-                        stop();
-                        return;
-                    }
-
-                    break;
-                }
-
-                case rpc::release: {
-                    // TEST: Only active slaves can release the job.
-                    BOOST_ASSERT(state != 0);
-                    slave->second->process_event(events::release_t());
-                    break;
-                }
-
-                case rpc::terminate: {
-                    slave->second->process_event(events::terminate_t());
-                    return;
-                }
-            }
-
-            // NOTE: Count all the RPC events as heartbeats.
-            slave->second->process_event(events::heartbeat_t());
-
-            if(slave->second->state_downcast<const slaves::idle*>() && !m_queue.empty()) {
-                // NOTE: This will always succeed due to the test above.
-                enqueue(m_queue.front());
-                m_queue.pop_front();
-            }
-
-            // TEST: Ensure that there're no more message parts pending on the channel.
-            BOOST_ASSERT(!m_messages.more());
-        } else {
-            log().debug(
-                "ignoring type %d command from a dead slave %s", 
-                command, 
-                slave_id.c_str()
-            );
-            
-            m_messages.drop_remaining_parts();
-        }
-    } else {
+    if(!m_messages.pending()) {
         m_processor.stop();
+        return;
     }
+
+    std::string slave_id;
+    unsigned int command = 0;
+    boost::tuple<raw<std::string>, unsigned int&> tier(protect(slave_id), command);
+            
+    m_messages.recv_multi(tier);
+
+    pool_map_t::iterator slave(m_pool.find(slave_id));
+
+    if(slave == m_pool.end()) {
+        log().debug(
+            "ignoring type %d command from a dead slave %s", 
+            command, 
+            slave_id.c_str()
+        );
+        
+        m_messages.drop_remaining_parts();
+        return;
+    }
+
+    const slaves::busy* state =
+        slave->second->state_downcast<const slaves::busy*>();
+    
+    switch(command) {
+        case rpc::push: {
+            // TEST: Only active slaves can push the data chunks.
+            BOOST_ASSERT(state != 0 && m_messages.more());
+
+            zmq::message_t message;
+            m_messages.recv(&message);
+            
+            state->job()->process_event(events::push_t(message));
+
+            break;
+        }
+     
+        case rpc::error: {
+            unsigned int code = 0;
+            std::string message;
+            boost::tuple<unsigned int&, std::string&> tier(code, message);
+
+            m_messages.recv_multi(tier);
+
+            if(state) {
+                state->job()->process_event(
+                    events::error_t(
+                        static_cast<client::error_code>(code), 
+                        message
+                    )
+                );
+            } else {
+                log().error("the app seems to be broken - %s", message.c_str());
+                stop();
+                return;
+            }
+
+            break;
+        }
+
+        case rpc::release: {
+            // TEST: Only active slaves can release the job.
+            BOOST_ASSERT(state != 0);
+            slave->second->process_event(events::release_t());
+            break;
+        }
+
+        case rpc::terminate: {
+            slave->second->process_event(events::terminate_t());
+            return;
+        }
+    }
+
+    // NOTE: Count all the RPC events as heartbeats.
+    slave->second->process_event(events::heartbeat_t());
+
+    if(slave->second->state_downcast<const slaves::idle*>() && !m_queue.empty()) {
+        // NOTE: This will always succeed due to the test above.
+        enqueue(m_queue.front());
+        m_queue.pop_front();
+    }
+
+    // TEST: Ensure that there're no more message parts pending on the channel.
+    BOOST_ASSERT(!m_messages.more());
 }
 
 void engine_t::pump(ev::timer&, int) {

@@ -118,24 +118,19 @@ class engine_t:
         void cleanup(ev::timer&, int);
 
     private:
-        // The application.
         bool m_running;
+
+        // The application.
         app_t m_app;
         task_map_t m_tasks;
 
-        // Currently queued jobs.
+        // Job queue.
         job_queue_t m_queue;
         
         // Slave pool.
-        networking::channel_t m_messages;
         pool_map_t m_pool;
-
-#ifdef HAVE_CGROUPS
-        // Control group to put the slaves into.
-        cgroup* m_cgroup;
-#endif
-
-        // RPC watchers.        
+        
+        // RPC watchers.   
         ev::io m_watcher;
         ev::idle m_processor;
 
@@ -145,6 +140,14 @@ class engine_t:
 
         // Garbage collector activation timer.
         ev::timer m_gc_timer;
+
+        // Slave RPC socket.
+        networking::channel_t m_messages;
+
+#ifdef HAVE_CGROUPS
+        // Control group to put the slaves into.
+        cgroup* m_cgroup;
+#endif
 };
 
 }}
