@@ -327,6 +327,8 @@ Json::Value core_t::info() const {
     result["jobs"]["pending"] = static_cast<Json::UInt>(job_t::objects_alive);
     result["jobs"]["processed"] = static_cast<Json::UInt>(job_t::objects_created);
 
+    result["loggers"] = static_cast<Json::UInt>(logging::logger_t::objects_alive);
+
     result["uptime"] = ev::get_default_loop().now() - m_birthstamp;
 
     return result;
