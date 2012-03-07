@@ -15,9 +15,8 @@
 
 using namespace cocaine;
 
-object_t::object_t(context_t& context, const std::string& identity):
-    m_context(context),
-    m_log(context, identity)
+object_t::object_t(context_t& context):
+    m_context(context)
 { }
 
 object_t::~object_t() { }

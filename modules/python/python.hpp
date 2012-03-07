@@ -79,6 +79,8 @@ class python_t:
         virtual void initialize(const engine::app_t& app);
         virtual void invoke(io_t& io, const std::string& method);
 
+        const logging::logger_t& log() const;
+
     public:
         static PyObject* manifest(PyObject* self, PyObject*);
         static PyObject* wrap(const Json::Value& value);
@@ -91,6 +93,7 @@ class python_t:
     private:
         PyObject* m_python_module;
         python_object_t m_manifest;
+        boost::shared_ptr<logging::logger_t> m_log;
 };
 
 }}

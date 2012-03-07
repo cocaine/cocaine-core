@@ -14,6 +14,7 @@
 #include "cocaine/drivers/lsd_server.hpp"
 
 #include "cocaine/engine.hpp"
+#include "cocaine/logging.hpp"
 
 #include "cocaine/dealer/types.hpp"
 
@@ -117,7 +118,11 @@ void lsd_server_t::process(ev::idle&, int) {
         } while(m_socket.more());
 
         if(route.empty() || !m_socket.more()) {
-            log().error("got a corrupted request - invalid route"); 
+            m_engine.app().log->error(
+                "driver '%s' got a corrupted request - invalid route",
+                m_method.c_str()
+            );
+
             return;
         }
 
@@ -135,16 +140,20 @@ void lsd_server_t::process(ev::idle&, int) {
                 static_cast<const char*>(message.data()) + message.size(),
                 root))
             {
-                log().error(
-                    "got a corrupted request - invalid envelope - %s",
-                    reader.getFormatedErrorMessages().c_str()
+                m_engine.app().log->error(
+                    "driver '%s' got a corrupted request - invalid envelope",
+                    m_method.c_str()
                 );
 
                 continue;
             }
 
             if(!m_socket.recv(&message, ZMQ_NOBLOCK)) {
-                log().error("got a corrupted request - missing body");
+                m_engine.app().log->error(
+                    "driver '%s' got a corrupted request - missing body",
+                    m_method.c_str()
+                );
+
                 continue;
             }
 
@@ -166,8 +175,9 @@ void lsd_server_t::process(ev::idle&, int) {
                     )
                 );
             } catch(const std::runtime_error& e) {
-                log().error(
-                    "got a corrupted request - %s",
+                m_engine.app().log->error(
+                    "driver '%s' got a corrupted request - %s",
+                    m_method.c_str(),
                     e.what()
                 );
             }

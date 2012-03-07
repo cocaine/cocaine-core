@@ -65,7 +65,7 @@ struct slave_t:
     protected:
         engine_t& m_engine;
 
-    private:
+    private:        
         ev::timer m_heartbeat_timer;
 };
 

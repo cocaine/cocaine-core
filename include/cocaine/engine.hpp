@@ -118,6 +118,7 @@ class engine_t:
         void cleanup(ev::timer&, int);
 
     private:
+        // Current engine state.
         bool m_running;
 
         // The application.

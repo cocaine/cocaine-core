@@ -39,7 +39,7 @@ class overseer_t:
         ~overseer_t();
 
         // Entry point
-        void loop();
+        void run();
 
         // Context interoperability
         void send(rpc::codes code, const void* data, size_t size);
@@ -51,6 +51,7 @@ class overseer_t:
         void pump(ev::timer&, int);
         void timeout(ev::timer&, int);
         void heartbeat(ev::timer&, int);
+
         void terminate();
 
     private:

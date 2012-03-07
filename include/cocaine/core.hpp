@@ -29,7 +29,7 @@ class core_t:
         core_t(context_t& ctx);
         ~core_t();
 
-        void loop();
+        void run();
 
         // User request handling
         Json::Value create_engine(const std::string& name, 
@@ -60,6 +60,8 @@ class core_t:
         void announce(ev::timer&, int);
 
     private:
+        boost::shared_ptr<logging::logger_t> m_log;
+
         // Uptime
         const ev::tstamp m_birthstamp;
         

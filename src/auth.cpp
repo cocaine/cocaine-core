@@ -19,12 +19,14 @@
 
 #include "cocaine/context.hpp"
 #include "cocaine/interfaces/storage.hpp"
+#include "cocaine/logging.hpp"
 
 using namespace cocaine;
 using namespace cocaine::crypto;
 
 auth_t::auth_t(context_t& ctx):
-    object_t(ctx, "auth"),
+    object_t(ctx),
+    m_log(ctx.log("crypto")),
     m_md_context(EVP_MD_CTX_create())
 {
     ERR_load_crypto_strings();
@@ -41,7 +43,7 @@ auth_t::auth_t(context_t& ctx):
         Json::Value object(keys[identity]);
 
         if(!object["key"].isString() || object["key"].empty()) {
-            log().error("key for user '%s' is malformed", identity.c_str());
+            m_log->error("key for user '%s' is malformed", identity.c_str());
             continue;
         }
 
@@ -56,7 +58,7 @@ auth_t::auth_t(context_t& ctx):
         if(pkey != NULL) {
             m_keys.insert(std::make_pair(identity, pkey));
         } else { 
-            log().error("key for user '%s' is invalid - %s",
+            m_log->error("key for user '%s' is invalid - %s",
                 identity.c_str(), 
                 ERR_reason_error_string(ERR_get_error())
             );
@@ -65,7 +67,7 @@ auth_t::auth_t(context_t& ctx):
         BIO_free(bio);
     }
     
-    log().info("loaded %zu public key(s)", m_keys.size());
+    m_log->info("loaded %zu public key(s)", m_keys.size());
 }
 
 auth_t::~auth_t() {

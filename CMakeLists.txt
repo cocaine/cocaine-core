@@ -64,10 +64,12 @@ ADD_LIBRARY(cocaine-common SHARED
     src/auth
     src/context
     src/helpers/data_container
+    src/interfaces/storage
     src/logging
     src/object
     src/registry
-    src/storages/files)
+    src/storages/files
+    src/storages/void)
 
 TARGET_LINK_LIBRARIES(cocaine-common
     boost_thread-mt

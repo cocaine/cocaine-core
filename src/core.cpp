@@ -22,14 +22,15 @@
 #include "cocaine/engine.hpp"
 #include "cocaine/interfaces/storage.hpp"
 #include "cocaine/job.hpp"
-
+#include "cocaine/logging.hpp"
 
 using namespace cocaine;
 using namespace cocaine::core;
 using namespace cocaine::engine;
 
 core_t::core_t(context_t& ctx):
-    object_t(ctx, "core"),
+    object_t(ctx),
+    m_log(ctx.log("core")),
     m_birthstamp(ev::get_default_loop().now()),
     m_server(ctx, ZMQ_REP, boost::algorithm::join(
         boost::assign::list_of
@@ -41,12 +42,12 @@ core_t::core_t(context_t& ctx):
     int minor, major, patch;
     zmq_version(&major, &minor, &patch);
 
-    log().info("using libev version %d.%d", ev_version_major(), ev_version_minor());
-    log().info("using libmsgpack version %s", msgpack_version());
-    log().info("using libzmq version %d.%d.%d", major, minor, patch);
-    log().info("route to this node is '%s'", m_server.route().c_str());
+    m_log->info("using libev version %d.%d", ev_version_major(), ev_version_minor());
+    m_log->info("using libmsgpack version %s", msgpack_version());
+    m_log->info("using libzmq version %d.%d.%d", major, minor, patch);
+    m_log->info("route to this node is '%s'", m_server.route().c_str());
 
-    log().info(
+    m_log->info(
         "control groups are %s", 
         context().config.core.cgroups ? "available" : "not available"
     );
@@ -66,7 +67,7 @@ core_t::core_t(context_t& ctx):
             throw std::runtime_error(std::string("invalid server endpoint - ") + e.what());
         }
             
-        log().info("listening on %s", it->c_str());
+        m_log->info("listening on %s", it->c_str());
     }
     
     m_watcher.set<core_t, &core_t::request>(this);
@@ -85,7 +86,7 @@ core_t::core_t(context_t& ctx):
             throw std::runtime_error(std::string("invalid announce endpoint - ") + e.what());
         }
 
-        log().info("announcing on %s", context().config.core.announce_endpoint.c_str());
+        m_log->info("announcing on %s", context().config.core.announce_endpoint.c_str());
 
         m_announce_timer.reset(new ev::timer());
         m_announce_timer->set<core_t, &core_t::announce>(this);
@@ -109,13 +110,13 @@ core_t::core_t(context_t& ctx):
 
 core_t::~core_t() { }
 
-void core_t::loop() {
+void core_t::run() {
     ev::get_default_loop().loop();
 }
 
 void core_t::terminate(ev::sig&, int) {
     if(!m_engines.empty()) {
-        log().info("stopping the engines");
+        m_log->info("stopping the engines");
         m_engines.clear();
     }
 
@@ -123,14 +124,14 @@ void core_t::terminate(ev::sig&, int) {
 }
 
 void core_t::reload(ev::sig&, int) {
-    log().info("reloading the apps");
+    m_log->info("reloading the apps");
 
     m_engines.clear();
 
     try {
         recover();
     } catch(const std::runtime_error& e) {
-        log().error("unable to reload the apps - %s", e.what());
+        m_log->error("unable to reload the apps - %s", e.what());
     }
 }
 
@@ -275,7 +276,7 @@ Json::Value core_t::create_engine(const std::string& name, const Json::Value& ma
         try {
             context().storage().put("apps", name, manifest);
         } catch(const std::runtime_error& e) {
-            log().error(
+            m_log->error(
                 "unable to create the '%s' engine - %s",
                 name.c_str(), e.what()
             );
@@ -299,7 +300,7 @@ Json::Value core_t::delete_engine(const std::string& name) {
     try {
         context().storage().remove("apps", name);
     } catch(const std::runtime_error& e) {
-        log().error(
+        m_log->error(
             "unable to destroy the '%s' engine - %s",
             name.c_str(), e.what()
         );
@@ -338,7 +339,7 @@ void core_t::recover() {
     if(root.size()) {
         Json::Value::Members apps(root.getMemberNames());
         
-        log().info(
+        m_log->info(
             "recovering %d %s: %s", 
             root.size(),
             root.size() == 1 ? "app" : "apps", 
@@ -358,7 +359,7 @@ void core_t::recover() {
 }
 
 void core_t::announce(ev::timer&, int) {
-    log().debug("announcing the node");
+    m_log->debug("announcing the node");
 
     std::ostringstream envelope;
 

@@ -11,6 +11,8 @@
 // limitations under the License.
 //
 
+#include <cocaine/logging.hpp>
+
 #include "log.hpp"
 #include "python.hpp"
 

@@ -42,8 +42,8 @@ namespace cocaine {
     }
 
     namespace logging {
+        class logger_t;
         class sink_t;
-        class emitter_t;
     }
 
     namespace storages {

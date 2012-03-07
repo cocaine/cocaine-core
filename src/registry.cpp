@@ -32,7 +32,8 @@ struct is_module {
 };
 
 registry_t::registry_t(context_t& ctx):
-    object_t(ctx, "registry")
+    object_t(ctx),
+    m_log(ctx.log("registry"))
 {
     if(lt_dlinit() != 0) {
         throw std::runtime_error("unable to initialize the module loader");
@@ -78,7 +79,7 @@ registry_t::registry_t(context_t& ctx):
                 initialize(*this);
                 m_modules.push_back(module);
             } else {
-                log().error(
+                m_log->error(
                     "invalid interface in '%s' - %s",
 #if BOOST_FILESYSTEM_VERSION == 3
                     it->path().string().c_str(), 
@@ -93,7 +94,7 @@ registry_t::registry_t(context_t& ctx):
 
             initialize = NULL;
         } else {
-            log().error(
+            m_log->error(
                 "unable to load '%s' - %s",
 #if BOOST_FILESYSTEM_VERSION == 3
                 it->path().string().c_str(), 

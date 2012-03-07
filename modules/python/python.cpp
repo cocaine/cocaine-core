@@ -20,6 +20,7 @@
 #include "cocaine/app.hpp"
 #include "cocaine/registry.hpp"
 
+using namespace cocaine;
 using namespace cocaine::core;
 using namespace cocaine::engine;
 
@@ -31,12 +32,14 @@ static PyMethodDef context_module_methods[] = {
 };
 
 python_t::python_t(context_t& ctx):
-    plugin_t(ctx, "python"),
+    plugin_t(ctx),
     m_python_module(NULL),
     m_manifest(NULL)
 { }
 
 void python_t::initialize(const app_t& app) {
+    m_log = app.log;
+
     Json::Value args(app.manifest["args"]);
 
     if(!args.isObject()) {
@@ -229,6 +232,10 @@ void python_t::invoke(io_t& io, const std::string& method) {
     } else if(result.valid() && result != Py_None) {
         respond(io, result);
     }
+}
+
+const logging::logger_t& python_t::log() const {
+    return *m_log;
 }
 
 PyObject* python_t::manifest(PyObject* self, PyObject*) {

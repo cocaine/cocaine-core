@@ -36,7 +36,7 @@ namespace engine {
 
 class perl_t: public plugin_t {
 public:
-    perl_t(context_t& ctx) : plugin_t(ctx, "perl") {
+    perl_t(context_t& ctx) : plugin_t(ctx) {
         PERL_SYS_INIT3(NULL, NULL, NULL);
 
         my_perl = perl_alloc();
@@ -50,6 +50,8 @@ public:
     }
 
     virtual void initialize(const app_t& app) {
+        m_log = app.log;
+
         Json::Value args(app.manifest["args"]);
 
         if(!args.isObject()) {
@@ -82,12 +84,12 @@ public:
         const char* embedding[] = {"", (char*)source.string().c_str(), "-I", (char*)source_dir.c_str()};
         perl_parse(my_perl, xs_init, 4, (char**)embedding, NULL);
         PL_exit_flags |= PERL_EXIT_DESTRUCT_END;
-        log().info("%s", "running interpreter...");
+        m_log->info("%s", "running interpreter...");
         perl_run(my_perl);
     }
         
     virtual void invoke(io_t& io, const std::string& method) {
-        log().info("%s", (std::string("invoking method ") + method + "...").c_str());
+        m_log->info("%s", (std::string("invoking method ") + method + "...").c_str());
         std::string input;
         
         if (io.request && io.request_size > 0) {
@@ -155,6 +157,7 @@ public:
 
 private:
     PerlInterpreter* my_perl;
+    boost::shared_ptr<logging::logger_t> m_log;
 };
 
 extern "C" {

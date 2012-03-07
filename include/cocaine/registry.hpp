@@ -21,6 +21,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
+#include "cocaine/logging.hpp"
 #include "cocaine/object.hpp"
 
 namespace cocaine { namespace core {
@@ -88,7 +89,7 @@ class registry_t:
                 throw std::runtime_error("module '" + type + "' has been already installed");
             }
 
-            log().info("registering '%s' module", type.c_str());
+            m_log->info("registering '%s' module", type.c_str());
 
             m_factories.insert(
                 type,
@@ -97,6 +98,8 @@ class registry_t:
         }
 
     private:
+        boost::shared_ptr<logging::logger_t> m_log;
+
         // Used to unload all the modules on shutdown
         std::vector<lt_dlhandle> m_modules;
     

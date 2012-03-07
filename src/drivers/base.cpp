@@ -19,7 +19,7 @@ using namespace cocaine;
 using namespace cocaine::engine::drivers;
         
 driver_t::driver_t(engine_t& engine, const std::string& method, const Json::Value& args):
-    object_t(engine.context(), engine.app().name + " " + method + " driver"),
+    object_t(engine.context()),
     m_engine(engine),
     m_method(method)
 #if BOOST_VERSION < 103600
@@ -34,6 +34,8 @@ driver_t::driver_t(engine_t& engine, const std::string& method, const Json::Valu
         m_emitter->bind(endpoint);
     }
 }
+
+driver_t::~driver_t() { }
 
 void driver_t::audit(timing_type type, ev::tstamp value) {
     switch(type) {

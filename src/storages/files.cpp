@@ -30,7 +30,7 @@ struct is_regular_file {
 };
 
 file_storage_t::file_storage_t(context_t& context):
-    storage_t(context, "file storage"),
+    storage_t(context),
     m_storage_path(context.config.storage.uri),
     m_instance(context.config.core.instance)
 { }

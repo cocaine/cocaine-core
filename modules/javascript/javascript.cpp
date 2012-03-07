@@ -29,7 +29,7 @@ class javascript_t:
 {
     public:
         javascript_t(context_t& ctx):
-            plugin_t(ctx, "javascript")
+            plugin_t(ctx)
         { }
 
         ~javascript_t() {

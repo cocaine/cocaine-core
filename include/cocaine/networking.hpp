@@ -34,12 +34,12 @@ class socket_t:
 {
     public:
         socket_t(context_t& ctx, int type):
-            object_t(ctx, "socket"),
+            object_t(ctx),
             m_socket(ctx.io(), type)
         { }
 
         socket_t(context_t& ctx, int type, const std::string& route):
-            object_t(ctx, "socket"),
+            object_t(ctx),
             m_socket(ctx.io(), type),
             m_route(route)
         {

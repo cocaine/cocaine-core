@@ -24,9 +24,7 @@ class storage_t:
     public object_t
 {
     public:
-        storage_t(context_t& ctx, const std::string& identity):
-            object_t(ctx, identity)
-        { }
+        storage_t(context_t& ctx);
 
         virtual void put(const std::string& ns, const std::string& key, const Json::Value& value) = 0;
         

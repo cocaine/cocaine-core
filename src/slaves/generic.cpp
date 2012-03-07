@@ -17,6 +17,7 @@
 
 #include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
+#include "cocaine/logging.hpp"
 #include "cocaine/overseer.hpp"
 
 using namespace cocaine::engine::slaves;
@@ -34,8 +35,9 @@ generic_t::generic_t(engine_t& engine):
             int rv = 0;
             
             if((rv = cgroup_attach_task(engine.group())) != 0) {
-                log().error(
-                    "unable to attach to a control group - %s",
+                m_engine.app().log->error(
+                    "unable to attach slave %s to a control group - %s",
+                    id().c_str(),
                     cgroup_strerror(rv)
                 );
 
@@ -45,7 +47,7 @@ generic_t::generic_t(engine_t& engine):
 #endif
 
         overseer_t overseer(id(), context, engine.app());
-        overseer.loop();
+        overseer.run();
         
         exit(EXIT_SUCCESS);
     } else if(m_pid < 0) {
@@ -70,18 +72,28 @@ void generic_t::reap() {
 
 void generic_t::signal(ev::child& event, int) {
     if(!state_downcast<const dead*>()) {
-        log().debug("got a child termination signal");
-        
         process_event(events::terminate_t());
         
         if(WIFEXITED(event.rstatus) && WEXITSTATUS(event.rstatus) == EXIT_FAILURE) {
-            log().warning("unable to start");
+            m_engine.app().log->warning(
+                "slave %s failed to start", 
+                id().c_str()
+            );
+
             m_engine.stop();
         } else if(WIFSIGNALED(event.rstatus)) {
-            log().warning("killed by signal %d", WTERMSIG(event.rstatus));
+            m_engine.app().log->warning(
+                "slave %s killed by signal %d", 
+                id().c_str(), 
+                WTERMSIG(event.rstatus)
+            );
+            
             m_engine.stop();
         } else {
-            log().warning("terminated in a strange way");
+            m_engine.app().log->warning(
+                "slave %s terminated in a strange way",
+                id().c_str()
+            );
         }
     }
 }

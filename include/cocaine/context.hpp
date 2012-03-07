@@ -57,16 +57,20 @@ struct config_t {
 class context_t {
     public:
         context_t(config_t config, std::auto_ptr<logging::sink_t> sink);
-        context_t(const context_t& other);
+        context_t(config_t config);
 
+        context_t(const context_t& other);
         context_t& operator=(const context_t& other);
 
-    public:
+        boost::shared_ptr<logging::logger_t> log(const std::string& name);
+
         zmq::context_t& io();
-        logging::sink_t& sink();
         core::registry_t& registry();
         storages::storage_t& storage();
         crypto::auth_t& auth();
+
+    private:
+        void initialize();
 
     public:
         config_t config;
@@ -74,9 +78,9 @@ class context_t {
     private:
         boost::recursive_mutex m_mutex;
 
-    private:
-        boost::shared_ptr<zmq::context_t> m_io;
         boost::shared_ptr<logging::sink_t> m_sink;
+
+        boost::shared_ptr<zmq::context_t> m_io;
         boost::shared_ptr<core::registry_t> m_registry;
         boost::shared_ptr<storages::storage_t> m_storage;
         boost::shared_ptr<crypto::auth_t> m_auth;

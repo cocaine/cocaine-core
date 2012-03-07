@@ -29,24 +29,14 @@ context_t::context_t(config_t config_, std::auto_ptr<logging::sink_t> sink):
     config(config_),
     m_sink(sink)
 {
-    const int HOSTNAME_MAX_LENGTH = 256;
-    char hostname[HOSTNAME_MAX_LENGTH];
+    initialize();
+}
 
-    if(gethostname(hostname, HOSTNAME_MAX_LENGTH) == 0) {
-        config.core.hostname = hostname;
-    } else {
-        throw std::runtime_error("failed to determine the hostname");
-    }
-   
-#ifdef HAVE_CGROUPS 
-    config.core.cgroups = (cgroup_init() == 0);
-#else
-    config.core.cgroups = false;
-#endif
-
-    // Builtins.
-    registry().install<void_storage_t, storage_t>("void");
-    registry().install<file_storage_t, storage_t>("files");
+context_t::context_t(config_t config_):
+    config(config_),
+    m_sink(new logging::void_sink_t())
+{
+    initialize();
 }
 
 // XXX: Appears to be thread-unsafe in some hypothetical situations.
@@ -59,11 +49,15 @@ context_t::context_t(const context_t& other):
 // XXX: Appears to be thread-unsafe in some hypothetical situations.
 context_t& context_t::operator=(const context_t& other) {
     config = other.config;
+
     m_sink = other.m_sink;
-    
     m_registry = other.m_registry;
 
     return *this;
+}
+
+boost::shared_ptr<logging::logger_t> context_t::log(const std::string& name) {
+    return m_sink->get(name);
 }
 
 zmq::context_t& context_t::io() {
@@ -74,14 +68,6 @@ zmq::context_t& context_t::io() {
     }
 
     return *m_io;
-}
-
-logging::sink_t& context_t::sink() {
-    if(!m_sink) {
-        throw std::runtime_error("logging is not initialized");
-    }
-
-    return *m_sink;
 }
 
 core::registry_t& context_t::registry() {
@@ -114,3 +100,23 @@ crypto::auth_t& context_t::auth() {
     return *m_auth;
 }
 
+void context_t::initialize() {
+    const int HOSTNAME_MAX_LENGTH = 256;
+    char hostname[HOSTNAME_MAX_LENGTH];
+
+    if(gethostname(hostname, HOSTNAME_MAX_LENGTH) == 0) {
+        config.core.hostname = hostname;
+    } else {
+        throw std::runtime_error("failed to determine the hostname");
+    }
+   
+#ifdef HAVE_CGROUPS 
+    config.core.cgroups = (cgroup_init() == 0);
+#else
+    config.core.cgroups = false;
+#endif
+
+    // Builtins.
+    registry().install<void_storage_t, storage_t>("void");
+    registry().install<file_storage_t, storage_t>("files");
+}

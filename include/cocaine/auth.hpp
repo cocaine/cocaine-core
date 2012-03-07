@@ -38,6 +38,8 @@ class auth_t:
         // std::string sign(const std::string& message, const std::string& username);
 
     private:
+        boost::shared_ptr<logging::logger_t> m_log;
+
         EVP_MD_CTX* m_md_context;
 
         typedef std::map<const std::string, EVP_PKEY*> key_map_t;

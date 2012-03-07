@@ -22,10 +22,10 @@ using namespace cocaine::core;
 using namespace cocaine::storages;
 using namespace mongo;
 
-mongo_storage_t::mongo_storage_t(context_t& context) try:
-    storage_t(context, "mongodb storage"),
-    m_instance(context.config.core.instance),
-    m_uri(context.config.storage.uri, ConnectionString::SET)
+mongo_storage_t::mongo_storage_t(context_t& ctx) try:
+    storage_t(ctx),
+    m_instance(ctx.config.core.instance),
+    m_uri(ctx.config.storage.uri, ConnectionString::SET)
 {
     if(!m_uri.isValid()) {
         throw std::runtime_error("invalid mongodb uri");

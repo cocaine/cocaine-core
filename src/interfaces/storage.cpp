@@ -11,35 +11,10 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_OBJECT_HPP
-#define COCAINE_OBJECT_HPP
+#include "cocaine/interfaces/storage.hpp"
 
-#include "cocaine/common.hpp"
-#include "cocaine/forwards.hpp"
+using namespace cocaine::storages;
 
-namespace cocaine {
-
-// Basic object
-// ------------
-
-class object_t:
-    public boost::noncopyable
-{
-    public:        
-        virtual ~object_t();
-
-    protected:
-        object_t(context_t& context);
-
-    public:
-        inline context_t& context() {
-            return m_context;
-        }
-
-    private:
-        context_t& m_context;
-};
-
-}
-
-#endif
+storage_t::storage_t(context_t& ctx):
+	object_t(ctx)
+{ }

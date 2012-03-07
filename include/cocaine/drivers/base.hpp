@@ -41,11 +41,7 @@ class driver_t:
     public object_t
 {
     public:
-        driver_t(engine_t& engine,
-                 const std::string& method,
-                 const Json::Value& args);
-        
-        virtual ~driver_t() { }
+        virtual ~driver_t();
 
         // Used to collect various statistical information about the driver
         void audit(timing_type type, ev::tstamp value);
@@ -57,6 +53,11 @@ class driver_t:
         inline const std::string& method() const {
             return m_method;
         }
+    
+    protected:
+       driver_t(engine_t& engine,
+                 const std::string& method,
+                 const Json::Value& args);
         
     protected:
         engine_t& m_engine;

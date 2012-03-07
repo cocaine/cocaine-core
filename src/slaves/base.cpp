@@ -16,13 +16,14 @@
 #include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/job.hpp"
+#include "cocaine/logging.hpp"
 
 #include "cocaine/dealer/types.hpp"
 
 using namespace cocaine::engine::slaves;
 
 slave_t::slave_t(engine_t& engine):
-    object_t(engine.context(), engine.app().name + " frontend " + id()),
+    object_t(engine.context()),
     m_engine(engine)
 {
     // NOTE: These are the 10 seconds for the slave to come alive.
@@ -44,7 +45,9 @@ slave_t::~slave_t() {
 void slave_t::react(const events::heartbeat_t& event) {
 #if EV_VERSION_MAJOR == 3 && EV_VERSION_MINOR == 8
     if(!state_downcast<const alive*>()) {
-        log().debug("came alive in %.03f seconds",
+        m_engine.app().log->debug(
+            "slave %s came alive in %.03f seconds",
+            id().c_str(),
             10.0f - ev_timer_remaining(
                 ev_default_loop(ev::AUTO),
                 static_cast<ev_timer*>(&m_heartbeat_timer)
@@ -62,8 +65,9 @@ void slave_t::react(const events::heartbeat_t& event) {
         timeout = state->job()->policy().timeout;
     }
     
-    log().debug(
-        "resetting the heartbeat timeout to %.02f seconds", 
+    m_engine.app().log->debug(
+        "resetting the heartbeat timeout for slave %s to %.02f seconds", 
+        id().c_str(),
         timeout
     );
         
@@ -72,7 +76,11 @@ void slave_t::react(const events::heartbeat_t& event) {
 }
 
 void slave_t::react(const events::terminate_t& event) {
-    log().debug("reaping");
+    m_engine.app().log->debug(
+        "reaping slave %s", 
+        id().c_str()
+    );
+
     reap();
 }
 
@@ -81,7 +89,10 @@ bool slave_t::operator==(const slave_t& other) const {
 }
 
 void slave_t::timeout(ev::timer&, int) {
-    log().warning("missed too many heartbeats");
+    m_engine.app().log->warning(
+        "slave %s missed too many heartbeats",
+        id().c_str()
+    );
     
     const busy* state = state_downcast<const busy*>();
     
@@ -99,7 +110,7 @@ void slave_t::timeout(ev::timer&, int) {
 
 alive::~alive() {
     if(m_job && !m_job->state_downcast<const complete*>()) {
-        context<slave_t>().log().debug(
+        context<slave_t>().m_engine.app().log->debug(
             "rescheduling an incomplete '%s' job", 
             m_job->method().c_str()
         );
@@ -116,8 +127,9 @@ void alive::react(const events::invoke_t& event) {
     m_job = event.job;
     m_job->process_event(event);
     
-    context<slave_t>().log().debug(
-        "assigned a '%s' job",
+    context<slave_t>().m_engine.app().log->debug(
+        "slave %s got a '%s' job",
+        context<slave_t>().id().c_str(),
         m_job->method().c_str()
     );
 }
@@ -126,8 +138,9 @@ void alive::react(const events::release_t& event) {
     // TEST: Ensure that the job is in fact here.
     BOOST_ASSERT(m_job);
 
-    context<slave_t>().log().debug(
-        "completed a '%s' job",
+    context<slave_t>().m_engine.app().log->debug(
+        "slave %s completed a '%s' job",
+        context<slave_t>().id().c_str(),
         m_job->method().c_str()
     );
     

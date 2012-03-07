@@ -17,6 +17,7 @@
 #include "cocaine/engine.hpp"
 
 #include "cocaine/drivers.hpp"
+#include "cocaine/logging.hpp"
 #include "cocaine/rpc.hpp"
 
 using namespace cocaine::engine;
@@ -68,7 +69,7 @@ namespace {
 // -----------
 
 engine_t::engine_t(context_t& ctx, const std::string& name, const Json::Value& manifest):
-    object_t(ctx, name + " engine"),
+    object_t(ctx),
     m_running(false),
     m_app(ctx, name, manifest),
     m_messages(ctx, ZMQ_ROUTER, "rpc/" + name)
@@ -119,7 +120,7 @@ engine_t::engine_t(context_t& ctx, const std::string& name, const Json::Value& m
                     cgroup_add_value_bool(ctl, p->c_str(), cfg[*p].asBool());
                     break;
                 } default: {
-                    log().error(
+                    m_app.log->error(
                         "controller '%s' parameter '%s' type is not supported",
                         c->c_str(),
                         p->c_str()
@@ -129,7 +130,7 @@ engine_t::engine_t(context_t& ctx, const std::string& name, const Json::Value& m
                 }
             }
             
-            log().debug(
+            m_app.log->debug(
                 "setting controller '%s' parameter '%s' to %s", 
                 c->c_str(),
                 p->c_str(),
@@ -141,7 +142,7 @@ engine_t::engine_t(context_t& ctx, const std::string& name, const Json::Value& m
     int rv = 0;
 
     if((rv = cgroup_create_cgroup(m_cgroup, false)) != 0) {
-        log().error(
+        m_app.log->error(
             "unable to create cgroup - %s", 
             cgroup_strerror(rv)
         );
@@ -162,8 +163,8 @@ engine_t::~engine_t() {
         int rv = 0;
 
         if((rv = cgroup_delete_cgroup(m_cgroup, false)) != 0) {
-            log().error(
-                "unable to delete the control group - %s", 
+            m_app.log->error(
+                "unable to delete cgroup - %s", 
                 cgroup_strerror(rv)
             );
         }
@@ -179,7 +180,7 @@ engine_t::~engine_t() {
 Json::Value engine_t::start() {
     BOOST_ASSERT(!m_running);
 
-    log().info("starting"); 
+    m_app.log->info("starting the engine"); 
 
     int linger = 0;
 
@@ -208,7 +209,7 @@ Json::Value engine_t::start() {
     if(!tasks.isNull() && tasks.size()) {
         Json::Value::Members names(tasks.getMemberNames());
 
-        log().info(
+        m_app.log->info(
             "initializing drivers for %zu %s: %s",
             tasks.size(),
             tasks.size() == 1 ? "task" : "tasks",
@@ -247,13 +248,13 @@ Json::Value engine_t::start() {
 Json::Value engine_t::stop() {
     BOOST_ASSERT(m_running);
     
-    log().info("stopping"); 
+    m_app.log->info("stopping the engine"); 
 
     m_running = false;
 
     // Abort all the outstanding jobs.
     if(!m_queue.empty()) {
-        log().debug(
+        m_app.log->debug(
             "dropping %zu queued %s",
             m_queue.size(),
             m_queue.size() == 1 ? "job" : "jobs"
@@ -325,7 +326,7 @@ Json::Value engine_t::info() const {
 
 void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
     if(!m_running) {
-        log().debug(
+        m_app.log->debug(
             "dropping an incomplete '%s' job",
             job->method().c_str()
         );
@@ -369,7 +370,7 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
                 std::string slave_id(slave->id());
                 m_pool.insert(slave_id, slave);
             } catch(const std::exception& e) {
-                log().error(
+                m_app.log->error(
                     "unable to spawn more slaves - %s",
                     e.what()
                 );
@@ -413,7 +414,7 @@ void engine_t::process(ev::idle&, int) {
     pool_map_t::iterator slave(m_pool.find(slave_id));
 
     if(slave == m_pool.end()) {
-        log().debug(
+        m_app.log->debug(
             "ignoring type %d command from a dead slave %s", 
             command, 
             slave_id.c_str()
@@ -454,7 +455,7 @@ void engine_t::process(ev::idle&, int) {
                     )
                 );
             } else {
-                log().error("the app seems to be broken - %s", message.c_str());
+                m_app.log->error("the app seems to be broken - %s", message.c_str());
                 stop();
                 return;
             }
@@ -510,7 +511,7 @@ void engine_t::cleanup(ev::timer&, int) {
             m_pool.erase(*it);
         }
 
-        log().info(
+        m_app.log->info(
             "recycled %zu dead %s", 
             corpses.size(),
             corpses.size() == 1 ? "slave" : "slaves"

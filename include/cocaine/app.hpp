@@ -35,6 +35,8 @@ struct app_t {
         unsigned int pool_limit;
         unsigned int queue_limit;
     } policy;
+
+    boost::shared_ptr<logging::logger_t> log;
 };
 
 }}

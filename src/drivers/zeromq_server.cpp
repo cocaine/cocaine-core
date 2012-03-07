@@ -18,6 +18,7 @@
 
 #include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
+#include "cocaine/logging.hpp"
 
 using namespace cocaine::engine::drivers;
 using namespace cocaine::networking;
@@ -136,7 +137,11 @@ void zeromq_server_t::process(ev::idle&, int) {
         } while(m_socket.more());
 
         if(route.empty() || !m_socket.more()) {
-            log().error("got a corrupted request - invalid route");
+            m_engine.app().log->error(
+                "driver '%s' got a corrupted request - invalid route",
+                m_method.c_str()
+            );
+            
             return;
         }
 

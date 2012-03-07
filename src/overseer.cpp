@@ -24,7 +24,7 @@ using namespace cocaine::engine;
 
 overseer_t::overseer_t(const unique_id_t::type& id_, context_t& ctx, const app_t& app):
     unique_id_t(id_),
-    object_t(ctx, app.name + " backend " + id()),
+    object_t(ctx),
     m_app(app),
     m_messages(ctx, ZMQ_DEALER, id()),
     m_loop(),
@@ -53,7 +53,7 @@ overseer_t::~overseer_t() {
     m_module.reset();
 }
 
-void overseer_t::loop() {
+void overseer_t::run() {
     try {
         m_module = context().registry().create<plugin_t>(m_app.type);
         m_module->initialize(m_app);

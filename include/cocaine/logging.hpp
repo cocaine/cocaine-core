@@ -30,27 +30,56 @@ enum priorities {
 	error
 };
 
-class sink_t {
-	public:
-		virtual void emit(priorities priority, const std::string& message) = 0;
+class sink_t;
+
+class logger_t:
+    public boost::noncopyable,
+    public helpers::birth_control_t<logger_t>
+{
+    public:
+        logger_t(sink_t& sink, const std::string& name);
+        
+        void debug(const char* format, ...) const;
+        void info(const char* format, ...) const;
+        void warning(const char* format, ...) const;
+        void error(const char* format, ...) const;
+
+    private:
+        void emit(priorities priority, const char* format, va_list args) const;
+
+    private:
+        sink_t& m_sink;
+        const std::string m_name;
+
+        mutable char m_buffer[LOG_BUFFER_SIZE];
 };
 
-class emitter_t {
+class sink_t:
+    public boost::noncopyable
+{
     public:
-        emitter_t(context_t& context, const std::string& source);
+        virtual ~sink_t();
 
-        void debug(const char* format, ...);
-        void info(const char* format, ...);
-        void warning(const char* format, ...);
-        void error(const char* format, ...);
-
-    private:
-        void emit(priorities priority, const char* format, va_list args);
+        // Retrieves a logger with the given name, cached, if possible.
+        boost::shared_ptr<logger_t> get(const std::string& name);
+	
+    public:
+		virtual void emit(priorities priority, const std::string& message) const = 0;
 
     private:
-    	sink_t& m_sink;
-    	const std::string m_source;
-        char m_buffer[LOG_BUFFER_SIZE];
+        typedef std::map<
+            const std::string,
+            boost::shared_ptr<logger_t>
+        > logger_map_t;
+
+        logger_map_t m_loggers;
+};
+
+class void_sink_t:
+    public sink_t
+{
+    public:
+        virtual void emit(priorities, const std::string&) const;
 };
 
 }}

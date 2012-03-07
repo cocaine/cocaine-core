@@ -25,7 +25,9 @@ class overseer_t;
 // Plugin I/O
 // ----------
 
-class io_t {
+class io_t:
+    public boost::noncopyable
+{
     public:
         io_t(overseer_t& overseer,
              const void* request,
@@ -50,9 +52,7 @@ class plugin_t:
     public object_t
 {
     public:
-        plugin_t(context_t& ctx, const std::string& identity):
-            object_t(ctx, identity)
-        { }
+        plugin_t(context_t& ctx);
 
         virtual void initialize(const app_t& app) = 0;
         virtual void invoke(io_t& io, const std::string& method) = 0;

@@ -21,6 +21,7 @@
 
 #include "cocaine/config.hpp"
 #include "cocaine/core.hpp"
+#include "cocaine/logging.hpp"
 
 #include "cocaine/helpers/pid_file.hpp"
 
@@ -42,7 +43,7 @@ class syslog_t:
         }
 
     public:
-        virtual void emit(logging::priorities priority, const std::string& message) {
+        virtual void emit(logging::priorities priority, const std::string& message) const {
             std::string m = boost::algorithm::replace_all_copy(message, "\n", " ");
 
             switch(priority) {
@@ -175,10 +176,14 @@ int main(int argc, char* argv[]) {
     );
 
     // Initialize the runtime context
-    context_t context(config, sink);
+    std::auto_ptr<context_t> context(
+        new context_t(config, sink)
+    );
 
-    // Setup the contextual logger
-    logging::emitter_t log(context, "main");
+    // Get the logger
+    boost::shared_ptr<logging::logger_t> log(
+        context->log("main")
+    );
 
     // Will be used to hold the pid file, if needed
     std::auto_ptr<helpers::pid_file_t> pidfile;
@@ -186,36 +191,39 @@ int main(int argc, char* argv[]) {
     // Daemonizing, if requested
     if(vm.count("daemonize")) {
         if(daemon(0, 0) < 0) {
-            log.error("daemonization failed");
+            log->error("daemonization failed");
             return EXIT_FAILURE;
         }
 
         try {
             pidfile.reset(new helpers::pid_file_t(vm["pidfile"].as<fs::path>()));
         } catch(const std::runtime_error& e) {
-            log.error("%s", e.what());
+            log->error("%s", e.what());
             return EXIT_FAILURE;
         }
     }
 
-    log.info("starting the core");
 
-    // Starting the core
+    // Server core
+    // -----------
+
     std::auto_ptr<core::core_t> core;
+    
+    log->info("starting the core");
 
     try {
-        core.reset(new core::core_t(context));
+        core.reset(new core::core_t(*context));
     } catch(const std::exception& e) {
-        log.error("unable to start the core - %s", e.what());
+        log->error("unable to start the core - %s", e.what());
         return EXIT_FAILURE;
     }
 
-    core->loop();
+    core->run();
 
     // Cleanup
-    core.reset();
+    // -------
 
-    log.info("terminated");
+    log->info("terminated");
 
     return EXIT_SUCCESS;
 }
