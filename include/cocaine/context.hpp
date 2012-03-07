@@ -19,28 +19,30 @@
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 
+#include "cocaine/registry.hpp"
+
 namespace cocaine {
 
 struct config_t {
     struct {
-        // Plugin path
+        // Plugin path.
         std::string modules;
 
-        // Administration and routing
+        // Administration and routing.
         std::vector<std::string> endpoints;
         std::string hostname;
         std::string instance;
         
-        // Automatic discovery
+        // Automatic discovery.
         std::string announce_endpoint;
         float announce_interval;
 
-        // Control groups availability
+        // Control groups availability.
         bool cgroups;
     } core;
 
     struct {
-        // Default engine policy
+        // Default engine policy.
         float heartbeat_timeout;
         float suicide_timeout;
         unsigned int pool_limit;
@@ -48,7 +50,7 @@ struct config_t {
     } engine;
 
     struct {
-        // Storage type and path
+        // Storage type and path.
         std::string driver;
         std::string uri;
     } storage;
@@ -62,12 +64,16 @@ class context_t {
         context_t(const context_t& other);
         context_t& operator=(const context_t& other);
 
-        boost::shared_ptr<logging::logger_t> log(const std::string& name);
+        // Returns a possibly cached logger with the specified name.
+        boost::shared_ptr<logging::logger_t> log(const std::string& type);
+
+        template<class Category>
+        std::auto_ptr<Category> create(const std::string& type) {
+            return m_registry->create<Category>(type);
+        }
 
         zmq::context_t& io();
-        core::registry_t& registry();
         storages::storage_t& storage();
-        crypto::auth_t& auth();
 
     private:
         void initialize();
@@ -76,14 +82,14 @@ class context_t {
         config_t config;
 
     private:
+        // Initialization interlocking.
         boost::recursive_mutex m_mutex;
 
+        // Core subsystems.
         boost::shared_ptr<logging::sink_t> m_sink;
-
-        boost::shared_ptr<zmq::context_t> m_io;
         boost::shared_ptr<core::registry_t> m_registry;
+        boost::shared_ptr<zmq::context_t> m_io;
         boost::shared_ptr<storages::storage_t> m_storage;
-        boost::shared_ptr<crypto::auth_t> m_auth;
 };
 
 }

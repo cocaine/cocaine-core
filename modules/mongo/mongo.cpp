@@ -142,6 +142,10 @@ void mongo_storage_t::purge(const std::string& ns) {
     }
 }
 
+std::string mongo_storage_t::resolve(const std::string& ns) const {
+    return "cocaine." + m_instance + "." + ns;
+}
+
 extern "C" {
     void initialize(registry_t& registry) {
         registry.install<mongo_storage_t, storage_t>("mongodb");

@@ -35,11 +35,11 @@ bool eblob_collector_t::callback(const zbr::eblob_disk_control* dco, const void*
     Json::Value object;
 
     if(!m_reader.parse(value, object)) {
-        // TODO: Have to find out the storage name somehow
+        // TODO: Have to find out the storage name somehow.
         throw std::runtime_error("corrupted data");
     } 
    
-    // TODO: Have to find out the key somehow 
+    // TODO: Have to find out the key somehow.
     m_root[unique_id_t().id()] = object;
     
     return true;
@@ -93,7 +93,7 @@ void eblob_storage_t::put(const std::string& ns, const std::string& key, const J
         try {
             boost::tie(it, boost::tuples::ignore) = m_eblobs.insert(ns, new zbr::eblob(&cfg));
         } catch(const std::runtime_error& e) {
-            // TODO: Have to do something more sophisticated here
+            // TODO: Have to do something more sophisticated here.
             throw;
         }
     }
@@ -104,7 +104,7 @@ void eblob_storage_t::put(const std::string& ns, const std::string& key, const J
     try {
         it->second->write_hashed(key, object, 0);
     } catch(const std::runtime_error& e) {
-        // TODO: Have to do something more sophisticated here
+        // TODO: Have to do something more sophisticated here.
         throw;
     }
 }
@@ -118,7 +118,7 @@ bool eblob_storage_t::exists(const std::string& ns, const std::string& key) {
         try {
             object = it->second->read_hashed(key, 0, 0);
         } catch(const std::runtime_error& e) {
-            // TODO: Have to do something more sophisticated here
+            // TODO: Have to do something more sophisticated here.
             throw;
         }
 
@@ -139,7 +139,7 @@ Json::Value eblob_storage_t::get(const std::string& ns, const std::string& key) 
         try {
             object = it->second->read_hashed(key, 0, 0);
         } catch(const std::runtime_error& e) {
-            // TODO: Have to do something more sophisticated here
+            // TODO: Have to do something more sophisticated here.
             throw;
         }
 
@@ -187,7 +187,7 @@ void eblob_storage_t::purge(const std::string& ns) {
             zbr::eblob_iterator iterator((m_storage_path / ns).string(), true);
             iterator.iterate(purger, 1);
         } catch(...) {
-            // FIXME: I have no idea what this means
+            // FIXME: I have no idea what this means.
         }
     }
 }

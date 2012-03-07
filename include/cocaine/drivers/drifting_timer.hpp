@@ -38,13 +38,13 @@ class drifting_timer_t:
                          const std::string& method, 
                          const Json::Value& args);
 
-        // Driver interface
+        // Driver interface.
         virtual Json::Value info() const;
 
         void rearm();
 
     private:
-        // Timer interface
+        // Timer interface.
         virtual void reschedule();
 };
 

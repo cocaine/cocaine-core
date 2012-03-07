@@ -63,7 +63,6 @@ void python_t::initialize(const app_t& app) {
         throw unrecoverable_error_t("unable to open " + source.string());
     }
 
-    // Acquire the interpreter state.
     thread_state_t state;
 
     // System paths

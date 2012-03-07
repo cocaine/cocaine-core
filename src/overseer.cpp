@@ -55,7 +55,7 @@ overseer_t::~overseer_t() {
 
 void overseer_t::run() {
     try {
-        m_module = context().registry().create<plugin_t>(m_app.type);
+        m_module = context().create<plugin_t>(m_app.type);
         m_module->initialize(m_app);
     } catch(const unrecoverable_error_t& e) {
         m_messages.send_multi(

@@ -32,15 +32,19 @@ namespace cocaine { namespace engine {
 namespace sc = boost::statechart;
 
 // Job states
+// ----------
+
 struct incomplete;
     struct unknown;
     struct waiting;
     struct processing;
 struct complete;
 
+// Job FSM
+// -------
+
 using helpers::data_container_t;
 
-// Job FSM
 class job_t:
     public sc::state_machine<job_t, incomplete>,
     public helpers::birth_control_t<job_t>

@@ -122,7 +122,7 @@ class engine_t:
         bool m_running;
 
         // The application.
-        app_t m_app;
+        const app_t m_app;
         task_map_t m_tasks;
 
         // Job queue.
@@ -131,7 +131,7 @@ class engine_t:
         // Slave pool.
         pool_map_t m_pool;
         
-        // RPC watchers.   
+        // RPC watchers.
         ev::io m_watcher;
         ev::idle m_processor;
 
@@ -142,7 +142,7 @@ class engine_t:
         // Garbage collector activation timer.
         ev::timer m_gc_timer;
 
-        // Slave RPC socket.
+        // Slave RPC.
         networking::channel_t m_messages;
 
 #ifdef HAVE_CGROUPS

@@ -18,8 +18,6 @@
 #include "cocaine/context.hpp"
 
 #include "cocaine/logging.hpp"
-#include "cocaine/auth.hpp"
-#include "cocaine/registry.hpp"
 #include "cocaine/storages.hpp"
 
 using namespace cocaine;
@@ -37,6 +35,30 @@ context_t::context_t(config_t config_):
     m_sink(new logging::void_sink_t())
 {
     initialize();
+}
+
+void context_t::initialize() {
+    const int HOSTNAME_MAX_LENGTH = 256;
+    char hostname[HOSTNAME_MAX_LENGTH];
+
+    if(gethostname(hostname, HOSTNAME_MAX_LENGTH) == 0) {
+        config.core.hostname = hostname;
+    } else {
+        throw std::runtime_error("failed to determine the hostname");
+    }
+   
+#ifdef HAVE_CGROUPS 
+    config.core.cgroups = (cgroup_init() == 0);
+#else
+    config.core.cgroups = false;
+#endif
+
+    // Initialize the module registry.
+    m_registry.reset(new core::registry_t(*this));
+
+    // Register the builtins.
+    m_registry->install<void_storage_t, storage_t>("void");
+    m_registry->install<file_storage_t, storage_t>("files");
 }
 
 // XXX: Appears to be thread-unsafe in some hypothetical situations.
@@ -61,62 +83,25 @@ boost::shared_ptr<logging::logger_t> context_t::log(const std::string& name) {
 }
 
 zmq::context_t& context_t::io() {
-    boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
-    
-    if(!m_io) {
-        m_io.reset(new zmq::context_t(1));
+    {
+        boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
+        
+        if(!m_io) {
+            m_io.reset(new zmq::context_t(1));
+        }
     }
 
     return *m_io;
 }
 
-core::registry_t& context_t::registry() {
-    boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
-    
-    if(!m_registry) {
-        m_registry.reset(new core::registry_t(*this));
-    }
-
-    return *m_registry;
-}
-
 storage_t& context_t::storage() {
-    boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
+    {
+        boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
 
-    if(!m_storage) {
-        m_storage = registry().create<storage_t>(config.storage.driver);
+        if(!m_storage) {
+            m_storage = create<storage_t>(config.storage.driver);
+        }
     }
 
     return *m_storage;
-}
-
-crypto::auth_t& context_t::auth() {
-    boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
-    
-    if(!m_auth) {
-        m_auth.reset(new crypto::auth_t(*this));
-    }
-
-    return *m_auth;
-}
-
-void context_t::initialize() {
-    const int HOSTNAME_MAX_LENGTH = 256;
-    char hostname[HOSTNAME_MAX_LENGTH];
-
-    if(gethostname(hostname, HOSTNAME_MAX_LENGTH) == 0) {
-        config.core.hostname = hostname;
-    } else {
-        throw std::runtime_error("failed to determine the hostname");
-    }
-   
-#ifdef HAVE_CGROUPS 
-    config.core.cgroups = (cgroup_init() == 0);
-#else
-    config.core.cgroups = false;
-#endif
-
-    // Builtins.
-    registry().install<void_storage_t, storage_t>("void");
-    registry().install<file_storage_t, storage_t>("files");
 }

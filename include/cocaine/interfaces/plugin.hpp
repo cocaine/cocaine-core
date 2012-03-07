@@ -53,13 +53,14 @@ class plugin_t:
 {
     public:
         plugin_t(context_t& ctx);
+        virtual ~plugin_t();
 
         virtual void initialize(const app_t& app) = 0;
         virtual void invoke(io_t& io, const std::string& method) = 0;
 };
 
-// Allowed exceptions
-// ------------------
+// Propagated exceptions
+// ---------------------
 
 class unrecoverable_error_t:
     public std::runtime_error

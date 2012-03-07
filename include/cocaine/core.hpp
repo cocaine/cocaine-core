@@ -18,6 +18,7 @@
 #include "cocaine/forwards.hpp"
 #include "cocaine/object.hpp"
 
+#include "cocaine/auth.hpp"
 #include "cocaine/networking.hpp"
 
 namespace cocaine { namespace core {
@@ -31,7 +32,6 @@ class core_t:
 
         void run();
 
-        // User request handling
         Json::Value create_engine(const std::string& name, 
                                   const Json::Value& manifest, 
                                   bool recovering = false);
@@ -40,32 +40,30 @@ class core_t:
 
         Json::Value info() const;
         
-    private:
-        // Signal processing
+    private:        
         void terminate(ev::sig&, int);
         void reload(ev::sig&, int);
 
-        // User request processing
         void request(ev::io&, int);
         void process(ev::idle&, int);
         void pump(ev::timer&, int);
 
-        // User request dispatching
         Json::Value dispatch(const Json::Value& root);
-        
-        // Task recovering
-        void recover();
 
-        // Automatic discovery support
         void announce(ev::timer&, int);
+
+        void recover();
 
     private:
         boost::shared_ptr<logging::logger_t> m_log;
+        
+        // Authorization subsystem.
+        crypto::auth_t m_auth;
 
-        // Uptime
+        // Server uptime.
         const ev::tstamp m_birthstamp;
         
-        // Engines
+        // Engines.
 #if BOOST_VERSION >= 104000
         typedef boost::ptr_unordered_map<
 #else
@@ -77,7 +75,7 @@ class core_t:
 
         engine_map_t m_engines;
 
-        // Event watchers
+        // Event watchers.
         ev::sig m_sigint, m_sigterm, m_sigquit, m_sighup;
         ev::io m_watcher;
         ev::idle m_processor;
@@ -86,10 +84,10 @@ class core_t:
         // reason doesn't trigger the socket's fd on message arrival (or I poll it in a wrong way).
         ev::timer m_pumper;
 
-        // System I/O 
+        // System I/O.
         networking::socket_t m_server;
 
-        // Automatic discovery support
+        // Automatic discovery support.
         boost::shared_ptr<ev::timer> m_announce_timer;
         boost::shared_ptr<networking::socket_t> m_announces;
 };

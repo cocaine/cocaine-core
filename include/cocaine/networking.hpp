@@ -49,8 +49,8 @@ class socket_t:
         void bind(const std::string& endpoint) {
             m_socket.bind(endpoint.c_str());
 
-            // Try to determine the connection string for clients
-            // TODO: Do it the right way
+            // Try to determine the connection string for clients.
+            // TODO: Do it the right way.
             size_t position = endpoint.find_last_of(":");
 
             if(position != std::string::npos) {
@@ -186,11 +186,11 @@ class channel_t:
             socket_t(ctx, type, route)
         { }
 
-        // Bring original methods into the scope
+        // Brings the original methods into the scope.
         using socket_t::send;
         using socket_t::recv;
 
-        // Packs and sends a single object
+        // Packs and sends a single object.
         template<class T>
         bool send(const T& value, int flags = 0) {
             zmq::message_t message;
@@ -211,7 +211,7 @@ class channel_t:
             return send(message, flags);
         }
 
-        // Packs and sends a tuple
+        // Packs and sends a tuple.
         inline bool send_multi(const null_type&, int flags = 0) {
             return true;
         }
@@ -227,7 +227,7 @@ class channel_t:
                     && send_multi(o.get_tail(), flags));
         }
 
-        // Receives and unpacks a single object
+        // Receives and unpacks a single object.
         template<class T>
         bool recv(T& result, int flags = 0) {
             zmq::message_t message;
@@ -264,7 +264,7 @@ class channel_t:
             return result.unpack(message);
         }
 
-        // Receives and unpacks a tuple
+        // Receives and unpacks a tuple.
         inline bool recv_multi(const null_type&, int flags = 0) {
             return true;
         }

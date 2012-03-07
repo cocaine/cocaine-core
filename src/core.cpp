@@ -30,6 +30,7 @@ using namespace cocaine::engine;
 
 core_t::core_t(context_t& ctx):
     object_t(ctx),
+    m_auth(ctx),
     m_log(ctx.log("core")),
     m_birthstamp(ev::get_default_loop().now()),
     m_server(ctx, ZMQ_REP, boost::algorithm::join(
@@ -52,7 +53,9 @@ core_t::core_t(context_t& ctx):
         context().config.core.cgroups ? "available" : "not available"
     );
 
-    // Server socket.
+    // Server socket
+    // -------------
+
     int linger = 0;
 
     m_server.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
@@ -76,7 +79,9 @@ core_t::core_t(context_t& ctx):
     m_pumper.set<core_t, &core_t::pump>(this);
     m_pumper.start(0.2f, 0.2f);    
 
-    // Autodiscovery.
+    // Autodiscovery
+    // -------------
+
     if(!context().config.core.announce_endpoint.empty()) {
         try {
             m_announces.reset(new networking::socket_t(context(), ZMQ_PUB));
@@ -93,6 +98,9 @@ core_t::core_t(context_t& ctx):
         m_announce_timer->start(0.0f, context().config.core.announce_interval);
     }
 
+    // Signals
+    // -------
+
     m_sigint.set<core_t, &core_t::terminate>(this);
     m_sigint.start(SIGINT);
 
@@ -108,7 +116,8 @@ core_t::core_t(context_t& ctx):
     recover();
 }
 
-core_t::~core_t() { }
+core_t::~core_t()
+{ }
 
 void core_t::run() {
     ev::get_default_loop().loop();
@@ -172,7 +181,7 @@ void core_t::process(ev::idle&, int) {
                     }
 
                     if(!username.empty()) {
-                        context().auth().verify(
+                        m_auth.verify(
                             static_cast<const char*>(message.data()),
                             message.size(),
                             static_cast<const unsigned char*>(signature.data()),
@@ -334,6 +343,25 @@ Json::Value core_t::info() const {
     return result;
 }
 
+void core_t::announce(ev::timer&, int) {
+    m_log->debug("announcing the node");
+
+    std::ostringstream envelope;
+
+    envelope << context().config.core.instance << " "
+             << m_server.endpoint();
+    
+    zmq::message_t message(envelope.str().size());
+    memcpy(message.data(), envelope.str().data(), envelope.str().size());
+    m_announces->send(message, ZMQ_SNDMORE);
+
+    std::string announce(Json::FastWriter().write(info()));
+    
+    message.rebuild(announce.size());
+    memcpy(message.data(), announce.data(), announce.size());
+    m_announces->send(message);
+}
+
 void core_t::recover() {
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
     Json::Value root(context().storage().all("apps"));
@@ -359,23 +387,3 @@ void core_t::recover() {
         }
     }
 }
-
-void core_t::announce(ev::timer&, int) {
-    m_log->debug("announcing the node");
-
-    std::ostringstream envelope;
-
-    envelope << context().config.core.instance << " "
-             << m_server.endpoint();
-    
-    zmq::message_t message(envelope.str().size());
-    memcpy(message.data(), envelope.str().data(), envelope.str().size());
-    m_announces->send(message, ZMQ_SNDMORE);
-
-    std::string announce(Json::FastWriter().write(info()));
-    
-    message.rebuild(announce.size());
-    memcpy(message.data(), announce.data(), announce.size());
-    m_announces->send(message);
-}
-

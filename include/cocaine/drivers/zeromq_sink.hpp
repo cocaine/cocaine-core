@@ -26,11 +26,11 @@ class zeromq_sink_t:
                       const std::string& method, 
                       const Json::Value& args);
 
-        // Driver interface
+        // Driver interface.
         virtual Json::Value info() const;
 
     protected:
-        // Server interface
+        // Server interface.
         virtual void process(ev::idle&, int);
 };
 

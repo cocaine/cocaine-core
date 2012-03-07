@@ -36,9 +36,7 @@ class mongo_storage_t:
         virtual void purge(const std::string& ns);
 
     private:
-        inline std::string resolve(const std::string& ns) const {
-            return "cocaine." + m_instance + "." + ns;
-        }
+        std::string resolve(const std::string& ns) const;
 
     private:
         const std::string m_instance;

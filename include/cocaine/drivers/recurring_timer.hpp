@@ -28,13 +28,13 @@ class recurring_timer_t:
 
         virtual ~recurring_timer_t();
 
-        // Driver interface
+        // Driver interface.
         virtual Json::Value info() const;
 
     private:
         void event(ev::timer&, int);
 
-        // Timer interface
+        // Timer interface.
         virtual void reschedule();
 
     protected:

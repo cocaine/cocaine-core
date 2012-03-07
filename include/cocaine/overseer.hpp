@@ -38,14 +38,12 @@ class overseer_t:
 
         ~overseer_t();
 
-        // Entry point
         void run();
 
-        // Context interoperability
+        // Declared public for I/O objects to communicate with the engine.
         void send(rpc::codes code, const void* data, size_t size);
 
     private:
-        // Event loop callback handling and dispatching
         void message(ev::io&, int);
         void process(ev::idle&, int);
         void pump(ev::timer&, int);
@@ -57,13 +55,13 @@ class overseer_t:
     private:
         const app_t& m_app;
 
-        // Messaging
+        // Engine RPC.
         networking::channel_t m_messages;
 
-        // Application instance
+        // Application instance.
         std::auto_ptr<plugin_t> m_module;
 
-        // Event loop
+        // Event loop.
         ev::dynamic_loop m_loop;
         
         ev::io m_watcher;

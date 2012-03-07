@@ -30,11 +30,17 @@ namespace cocaine { namespace engine { namespace slaves {
 
 namespace sc = boost::statechart;
 
+// Slave states
+// ------------
+
 struct unknown;
 struct alive;
     struct idle;
     struct busy;
 struct dead;
+
+// Slave FSM
+// ---------
 
 using helpers::unique_id_t;
 

@@ -60,7 +60,7 @@ class sink_t:
     public:
         virtual ~sink_t();
 
-        // Retrieves a logger with the given name, cached, if possible.
+        // XXX: Might be a better idea to return the logger by reference.
         boost::shared_ptr<logger_t> get(const std::string& name);
 	
     public:

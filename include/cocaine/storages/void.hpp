@@ -24,14 +24,14 @@ class void_storage_t:
     public:
         void_storage_t(context_t& ctx);
 
-        virtual void put(const std::string& ns, const std::string& key, const Json::Value& value) { }
+        virtual void put(const std::string& ns, const std::string& key, const Json::Value& value);
 
-        virtual bool exists(const std::string& ns, const std::string& key) { return false; }
-        virtual Json::Value get(const std::string& ns, const std::string& key) { return Json::Value(); }
-        virtual Json::Value all(const std::string& ns) { return Json::Value(); }
+        virtual bool exists(const std::string& ns, const std::string& key);
+        virtual Json::Value get(const std::string& ns, const std::string& key);
+        virtual Json::Value all(const std::string& ns);
 
-        virtual void remove(const std::string& ns, const std::string& key) { }
-        virtual void purge(const std::string& ns) { }
+        virtual void remove(const std::string& ns, const std::string& key);
+        virtual void purge(const std::string& ns);
 };
 
 }}

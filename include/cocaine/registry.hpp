@@ -100,10 +100,9 @@ class registry_t:
     private:
         boost::shared_ptr<logging::logger_t> m_log;
 
-        // Used to unload all the modules on shutdown
+        // Used to unload all the modules on shutdown.
         std::vector<lt_dlhandle> m_modules;
     
-        // Used to instantiate the modules
 #if BOOST_VERSION >= 104000
         typedef boost::ptr_unordered_map<
 #else

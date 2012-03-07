@@ -84,4 +84,8 @@ boost::shared_ptr<logger_t> sink_t::get(const std::string& name) {
     return it->second;
 }
 
-void void_sink_t::emit(priorities, const std::string&) const { }
+// Void logger
+// -----------
+
+void void_sink_t::emit(priorities, const std::string&) const
+{ }

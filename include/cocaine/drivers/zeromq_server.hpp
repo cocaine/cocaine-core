@@ -51,7 +51,7 @@ class zeromq_server_t:
 
         virtual ~zeromq_server_t();
 
-        // Driver interface
+        // Driver interface.
         virtual Json::Value info() const;
 
     public:
@@ -60,7 +60,7 @@ class zeromq_server_t:
         }
 
     protected:
-        // Server interface
+        // Server interface.
         virtual void process(ev::idle&, int);
 
     private:

@@ -31,6 +31,8 @@ class generic_t:
 
     private:
         pid_t m_pid;
+
+        // Child process watcher.
         ev::child m_child_watcher;
 };
 

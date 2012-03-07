@@ -37,7 +37,7 @@ class syslog_t:
         syslog_t(const std::string& identity, int verbosity):
             m_identity(identity)
         {
-            // Setting up the syslog
+            // Setting up the syslog.
             openlog(m_identity.c_str(), LOG_PID | LOG_NDELAY, LOG_USER);
             setlogmask(LOG_UPTO(verbosity));
         }
@@ -68,6 +68,9 @@ class syslog_t:
 
 int main(int argc, char* argv[]) {
     config_t config;
+
+    // Configuration
+    // -------------
 
     po::options_description
         hidden_options,
@@ -165,7 +168,10 @@ int main(int argc, char* argv[]) {
         return EXIT_SUCCESS;
     }
     
-    // Setup the logging sink
+    // Runtime context setup
+    // ---------------------
+
+    // Initialize the logging sink.
     std::auto_ptr<logging::sink_t> sink(
         new syslog_t(
             "cocaine",
@@ -173,20 +179,20 @@ int main(int argc, char* argv[]) {
         )
     );
 
-    // Initialize the runtime context
+    // Initialize the Cocaine context.
     std::auto_ptr<context_t> context(
         new context_t(config, sink)
     );
 
-    // Get the logger
+    // Get the logger.
     boost::shared_ptr<logging::logger_t> log(
         context->log("main")
     );
 
-    // Will be used to hold the pid file, if needed
+    // NOTE: Will be used to hold the pid file, if needed.
     std::auto_ptr<helpers::pid_file_t> pidfile;
 
-    // Daemonizing, if requested
+    // Daemonize, if requested.
     if(vm.count("daemonize")) {
         if(daemon(0, 0) < 0) {
             log->error("daemonization failed");
@@ -200,7 +206,6 @@ int main(int argc, char* argv[]) {
             return EXIT_FAILURE;
         }
     }
-
 
     // Server core
     // -----------

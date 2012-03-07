@@ -43,10 +43,10 @@ class driver_t:
     public:
         virtual ~driver_t();
 
-        // Used to collect various statistical information about the driver
+        // Collects various statistical information about the driver.
         void audit(timing_type type, ev::tstamp value);
 
-        // Used to get the runtime statistics from the driver
+        // Retrieves the runtime statistics from the driver.
         virtual Json::Value info() const;
 
     public:

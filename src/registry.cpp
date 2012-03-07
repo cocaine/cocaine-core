@@ -56,13 +56,12 @@ registry_t::registry_t(context_t& ctx):
     typedef void (*initialize_fn_t)(registry_t& registry);
     initialize_fn_t initialize;
 
-    // Directory iterator
     typedef boost::filter_iterator<is_module, fs::directory_iterator> module_iterator_t;
     module_iterator_t it = module_iterator_t(is_module(), fs::directory_iterator(path)), 
                       end;
 
     while(it != end) {
-        // Load the module
+        // Try to load the module.
 #if BOOST_FILESYSTEM_VERSION == 3
         std::string module_path = it->path().string();
 #else
@@ -72,7 +71,7 @@ registry_t::registry_t(context_t& ctx):
         module = lt_dlopenadvise(module_path.c_str(), advice);
 
         if(module) {
-            // Get the module info
+            // Try to get the initialization routine.
             initialize = reinterpret_cast<initialize_fn_t>(lt_dlsym(module, "initialize"));
 
             if(initialize) {

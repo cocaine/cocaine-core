@@ -43,3 +43,6 @@ void io_t::emit(const std::string& key, const void* data, size_t size) {
 plugin_t::plugin_t(context_t& ctx):
 	object_t(ctx)
 { }
+
+plugin_t::~plugin_t()
+{ }
