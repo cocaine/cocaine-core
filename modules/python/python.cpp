@@ -57,6 +57,8 @@ void python_t::initialize(const app_t& app) {
         source /= "__init__.py";
     }
 
+    m_app_log->debug("loading app code from %s", source.string().c_str());
+    
     boost::filesystem::ifstream input(source);
     
     if(!input) {
@@ -174,6 +176,8 @@ void python_t::invoke(io_t& io, const std::string& method) {
         throw unrecoverable_error_t("python module is not initialized");
     }
 
+    m_app_log->debug("invoking '%s'", method.c_str());
+    
     PyObject* globals = PyModule_GetDict(m_python_module);
     PyObject* object = PyDict_GetItemString(globals, method.c_str());
     
