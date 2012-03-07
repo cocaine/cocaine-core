@@ -64,13 +64,7 @@ void slave_t::react(const events::heartbeat_t& event) {
     if(state && state->job()->policy().timeout > 0.0f) {
         timeout = state->job()->policy().timeout;
     }
-    
-    m_engine.app().log->debug(
-        "resetting the heartbeat timeout for slave %s to %.02f seconds", 
-        id().c_str(),
-        timeout
-    );
-        
+            
     m_heartbeat_timer.start(timeout);
 
 }
@@ -128,9 +122,9 @@ void alive::react(const events::invoke_t& event) {
     m_job->process_event(event);
     
     context<slave_t>().m_engine.app().log->debug(
-        "slave %s got a '%s' job",
-        context<slave_t>().id().c_str(),
-        m_job->method().c_str()
+        "job '%s' assigned to slave %s",
+        m_job->method().c_str(),
+        context<slave_t>().id().c_str()
     );
 }
 
@@ -139,9 +133,9 @@ void alive::react(const events::release_t& event) {
     BOOST_ASSERT(m_job);
 
     context<slave_t>().m_engine.app().log->debug(
-        "slave %s completed a '%s' job",
-        context<slave_t>().id().c_str(),
-        m_job->method().c_str()
+        "job '%s' completed by slave %s",
+        m_job->method().c_str(),
+        context<slave_t>().id().c_str()
     );
     
     m_job->process_event(event);

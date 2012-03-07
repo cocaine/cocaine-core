@@ -50,7 +50,7 @@ public:
     }
 
     virtual void initialize(const app_t& app) {
-        m_log = app.log;
+        m_app_log = app.log;
 
         Json::Value args(app.manifest["args"]);
 
@@ -84,12 +84,12 @@ public:
         const char* embedding[] = {"", (char*)source.string().c_str(), "-I", (char*)source_dir.c_str()};
         perl_parse(my_perl, xs_init, 4, (char**)embedding, NULL);
         PL_exit_flags |= PERL_EXIT_DESTRUCT_END;
-        m_log->info("%s", "running interpreter...");
+        m_app_log->info("%s", "running interpreter...");
         perl_run(my_perl);
     }
         
     virtual void invoke(io_t& io, const std::string& method) {
-        m_log->info("%s", (std::string("invoking method ") + method + "...").c_str());
+        m_app_log->info("%s", (std::string("invoking method ") + method + "...").c_str());
         std::string input;
         
         if (io.request && io.request_size > 0) {
@@ -157,7 +157,8 @@ public:
 
 private:
     PerlInterpreter* my_perl;
-    boost::shared_ptr<logging::logger_t> m_log;
+
+    boost::shared_ptr<logging::logger_t> m_app_log;
 };
 
 extern "C" {

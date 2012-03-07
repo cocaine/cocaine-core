@@ -38,7 +38,7 @@ python_t::python_t(context_t& ctx):
 { }
 
 void python_t::initialize(const app_t& app) {
-    m_log = app.log;
+    m_app_log = app.log;
 
     Json::Value args(app.manifest["args"]);
 
@@ -235,7 +235,7 @@ void python_t::invoke(io_t& io, const std::string& method) {
 }
 
 const logging::logger_t& python_t::log() const {
-    return *m_log;
+    return *m_app_log;
 }
 
 PyObject* python_t::manifest(PyObject* self, PyObject*) {

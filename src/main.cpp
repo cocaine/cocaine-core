@@ -59,8 +59,6 @@ class syslog_t:
                 case logging::error:
                     syslog(LOG_ERR, "%s", m.c_str());
                     break;
-                default:
-                    syslog(LOG_ERR, "invalid priority level for logging");
             }
         }
 

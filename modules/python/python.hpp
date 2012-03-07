@@ -93,7 +93,8 @@ class python_t:
     private:
         PyObject* m_python_module;
         python_object_t m_manifest;
-        boost::shared_ptr<logging::logger_t> m_log;
+
+        boost::shared_ptr<logging::logger_t> m_app_log;
 };
 
 }}

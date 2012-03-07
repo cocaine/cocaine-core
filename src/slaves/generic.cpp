@@ -83,7 +83,7 @@ void generic_t::signal(ev::child& event, int) {
             m_engine.stop();
         } else if(WIFSIGNALED(event.rstatus)) {
             m_engine.app().log->warning(
-                "slave %s killed by signal %d", 
+                "slave %s killed by a signal %d", 
                 id().c_str(), 
                 WTERMSIG(event.rstatus)
             );

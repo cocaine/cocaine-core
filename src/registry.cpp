@@ -80,13 +80,12 @@ registry_t::registry_t(context_t& ctx):
                 m_modules.push_back(module);
             } else {
                 m_log->error(
-                    "invalid interface in '%s' - %s",
+                    "'%s' is not a cocaine module",
 #if BOOST_FILESYSTEM_VERSION == 3
                     it->path().string().c_str(), 
 #else
                     it->string().c_str(),
 #endif
-                    lt_dlerror()
                 );
 
                 lt_dlclose(module);
