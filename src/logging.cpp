@@ -12,6 +12,7 @@
 //
 
 #include <cstdio>
+#include <boost/tuple/tuple.hpp>
 
 #include "cocaine/logging.hpp"
 
