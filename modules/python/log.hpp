@@ -14,6 +14,10 @@
 #ifndef COCAINE_PYTHON_PLUGIN_LOG_HPP
 #define COCAINE_PYTHON_PLUGIN_LOG_HPP
 
+// NOTE: These are being redefined in Python.h
+#undef _POSIX_C_SOURCE
+#undef _XOPEN_SOURCE
+
 #include "Python.h"
 
 namespace cocaine { namespace engine {

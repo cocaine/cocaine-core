@@ -82,9 +82,9 @@ registry_t::registry_t(context_t& ctx):
                 m_log->error(
                     "'%s' is not a cocaine module",
 #if BOOST_FILESYSTEM_VERSION == 3
-                    it->path().string().c_str(), 
+                    it->path().string().c_str()
 #else
-                    it->string().c_str(),
+                    it->string().c_str()
 #endif
                 );
 
