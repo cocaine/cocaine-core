@@ -1,10 +1,15 @@
+*.a
 *.o
 *.os
-*.a
-*.pyc
+*.so
+*.dylib
+*.cocaine-module
+cocained
+
 CMakeCache.txt
 CMakeFiles
 Makefile
 install_manifest.txt
 cmake_install.cmake
+
 include/cocaine/config.hpp
