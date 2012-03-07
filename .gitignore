@@ -1,7 +1,7 @@
 *.a
 *.o
 *.os
-*.so
+*.so*
 *.dylib
 *.cocaine-module
 cocained
