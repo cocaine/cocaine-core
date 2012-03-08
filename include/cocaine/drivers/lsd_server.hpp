@@ -29,7 +29,7 @@ class lsd_job_t:
     public job_t
 {
     public:
-        lsd_job_t(const unique_id_t::type& id,
+        lsd_job_t(const unique_id_t::identifier_type& id,
                   lsd_server_t& driver,
                   const client::policy_t& policy,
                   const data_container_t& data,
