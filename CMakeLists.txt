@@ -3,7 +3,7 @@ PROJECT(Cocaine)
 
 SET(COCAINE_VERSION 0.7)
 
-CONFIGURE_FILE (
+CONFIGURE_FILE(
     "${PROJECT_SOURCE_DIR}/config.hpp.in"
     "${PROJECT_SOURCE_DIR}/include/cocaine/config.hpp")
 
@@ -74,15 +74,15 @@ ADD_LIBRARY(cocaine-common SHARED
     src/storages/void)
 
 TARGET_LINK_LIBRARIES(cocaine-common
-    boost_thread-mt
     boost_filesystem-mt
-    ${Boost_SYSTEM_LIBRARY}
+    boost_thread-mt
     crypto
     json
     ltdl
-    ${LIBUUID_LIBRARY}
     zmq
-    ${LIBCGROUP_LIBRARY})
+    ${Boost_SYSTEM_LIBRARY}
+    ${LIBCGROUP_LIBRARY}
+    ${LIBUUID_LIBRARY})
 
 SET_TARGET_PROPERTIES(cocaine-common PROPERTIES
     VERSION 1)
@@ -119,40 +119,33 @@ TARGET_LINK_LIBRARIES(cocained
     boost_program_options-mt
     cocaine-core)
 
-IF(NOT APPLE)
-    FILE(GLOB DEALER_SOURCES
-        "src/dealer/*.cpp")
+FILE(GLOB DEALER_SOURCES
+    "src/dealer/*.cpp")
 
-    ADD_LIBRARY(cocaine-dealer SHARED
-            ${DEALER_SOURCES})
+ADD_LIBRARY(cocaine-dealer SHARED
+    ${DEALER_SOURCES})
 
-    TARGET_LINK_LIBRARIES(cocaine-dealer
-        boost_thread-mt
-        crypto
-        curl
-        json
-        msgpack
-        ${LIBUUID_LIBRARY})
+TARGET_LINK_LIBRARIES(cocaine-dealer
+    boost_thread-mt
+    crypto
+    curl
+    json
+    msgpack
+    zmq
+    ${Boost_SYSTEM_LIBRARY}
+    ${LIBUUID_LIBRARY})
 
-    SET_TARGET_PROPERTIES(cocaine-dealer PROPERTIES
-            VERSION 1)
+SET_TARGET_PROPERTIES(cocaine-dealer PROPERTIES
+    VERSION 1)
 
-    INSTALL(
-        TARGETS
-            cocaine-dealer
-        RUNTIME DESTINATION bin COMPONENT runtime
-        LIBRARY DESTINATION lib COMPONENT runtime
-        ARCHIVE DESTINATION lib COMPONENT developement)
+ADD_EXECUTABLE(dealer_test_app
+    tests/dealer_test_app.cpp)
 
-    ADD_EXECUTABLE(dealer_test_app
-        tests/dealer_test_app.cpp)
-
-    TARGET_LINK_LIBRARIES(dealer_test_app
-        boost_program_options-mt
-        cocaine-dealer
-        boost_filesystem-mt
-        zmq)
-ENDIF()
+TARGET_LINK_LIBRARIES(dealer_test_app
+    boost_program_options-mt
+    cocaine-dealer
+    boost_filesystem-mt
+    zmq)
     
 ADD_SUBDIRECTORY(modules)
 
@@ -161,6 +154,7 @@ INSTALL(
         cocaine-common
         cocaine-core
         cocained
+        cocaine-dealer
         json 
     RUNTIME DESTINATION bin COMPONENT runtime
     LIBRARY DESTINATION lib COMPONENT runtime
