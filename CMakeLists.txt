@@ -23,10 +23,12 @@ LOCATE_LIBRARY(LIBMSGPACK "msgpack.hpp" "msgpack")
 LOCATE_LIBRARY(LIBZMQ "zmq.hpp" "zmq")
 
 IF(NOT APPLE)
-    LOCATE_LIBRARY(LIBCGROUP, "libcgroup.h" "cgroup")
+    LOCATE_LIBRARY(LIBCGROUP "libcgroup.h" "cgroup")
     LOCATE_LIBRARY(LIBUUID "uuid/uuid.h" "uuid")
 
-    SET(LIBCGROUP_LIBRARIES "cgroup")
+    SET(LIBCGROUP_LIBRARY "cgroup")
+    SET(LIBUUID_LIBRARY "uuid")
+
     ADD_DEFINITIONS("-DHAVE_CGROUPS")
 ENDIF()
 
@@ -78,9 +80,9 @@ TARGET_LINK_LIBRARIES(cocaine-common
     crypto
     json
     ltdl
-    ${LIBUUID_LIBRARIES}
+    ${LIBUUID_LIBRARY}
     zmq
-    ${LIBCGROUP_LIBRARIES})
+    ${LIBCGROUP_LIBRARY})
 
 SET_TARGET_PROPERTIES(cocaine-common PROPERTIES
     VERSION 1)
@@ -130,7 +132,7 @@ IF(NOT APPLE)
         curl
         json
         msgpack
-        ${LIBUUID_LIBRARIES})
+        ${LIBUUID_LIBRARY})
 
     SET_TARGET_PROPERTIES(cocaine-dealer PROPERTIES
             VERSION 1)
