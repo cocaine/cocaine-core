@@ -20,13 +20,13 @@ namespace cocaine { namespace helpers {
 
 class unique_id_t {
     public:
-        typedef std::string type;
+        typedef std::string identifier_type;
 
         unique_id_t() {
             uuid_generate(m_uuid);
         }
 
-        explicit unique_id_t(const type& other) {
+        explicit unique_id_t(const identifier_type& other) {
             uuid_t uuid;
 
             if(uuid_parse(other.c_str(), uuid) == 0) {
@@ -36,7 +36,7 @@ class unique_id_t {
             }
         }
 
-        inline const type& id() const {
+        inline const identifier_type& id() const {
             if(m_id.empty()) {
                 char unparsed_uuid[37];
                 uuid_unparse_lower(m_uuid, unparsed_uuid);
@@ -48,7 +48,7 @@ class unique_id_t {
 
     private:
         uuid_t m_uuid;
-        mutable type m_id;
+        mutable identifier_type m_id;
 };
 
 }}

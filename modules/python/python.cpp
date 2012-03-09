@@ -86,8 +86,8 @@ void python_t::initialize(const app_t& app) {
 
     PyList_Insert(syspaths, 0, path);
 
-    // Application context
-    // -------------------
+    // Context access module
+    // ---------------------
 
     m_manifest = wrap(args);
 
@@ -114,8 +114,19 @@ void python_t::initialize(const app_t& app) {
     );
 
     PyObject* builtins = PyEval_GetBuiltins();
-    Py_INCREF(builtins);
 
+    python_object_t plugin(
+        PyCObject_FromVoidPtr(this, NULL)
+    );
+
+    PyDict_SetItemString(
+        builtins,
+        "__plugin__",
+        plugin
+    );
+
+    Py_INCREF(builtins);
+    
     PyModule_AddObject(
         m_python_module, 
         "__builtins__",
@@ -126,12 +137,6 @@ void python_t::initialize(const app_t& app) {
         m_python_module,
         "__file__",
         source.string().c_str()
-    );
-
-    PyModule_AddObject(
-        m_python_module,
-        "__plugin__",
-        PyCObject_FromVoidPtr(this, NULL)
     );
 
     // Code evaluation
@@ -242,8 +247,8 @@ const logging::logger_t& python_t::log() const {
 }
 
 PyObject* python_t::manifest(PyObject* self, PyObject*) {
-    PyObject* globals(PyEval_GetGlobals());
-    PyObject* plugin(PyDict_GetItemString(globals, "__plugin__"));
+    PyObject* builtins(PyEval_GetBuiltins());
+    PyObject* plugin(PyDict_GetItemString(builtins, "__plugin__"));
 
     if(!plugin) {
         PyErr_SetString(

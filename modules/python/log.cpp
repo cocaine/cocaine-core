@@ -19,8 +19,8 @@
 using namespace cocaine::engine;
 
 int log_object_t::constructor(log_object_t* self, PyObject* args, PyObject* kwargs) {
-    PyObject* globals = PyEval_GetGlobals();
-    PyObject* plugin = PyDict_GetItemString(globals, "__plugin__");
+    PyObject* builtins = PyEval_GetBuiltins();
+    PyObject* plugin = PyDict_GetItemString(builtins, "__plugin__");
     
     if(plugin) {
         self->plugin = static_cast<python_t*>(PyCObject_AsVoidPtr(plugin));

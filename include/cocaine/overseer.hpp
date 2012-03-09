@@ -32,7 +32,7 @@ class overseer_t:
     public object_t
 {
     public:
-        overseer_t(const unique_id_t::type& id,
+        overseer_t(const unique_id_t::identifier_type& id,
                    context_t& ctx,
                    const app_t& app);
 

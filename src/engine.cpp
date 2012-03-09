@@ -143,7 +143,7 @@ engine_t::engine_t(context_t& ctx, const std::string& name, const Json::Value& m
 
     if((rv = cgroup_create_cgroup(m_cgroup, false)) != 0) {
         m_app.log->error(
-            "unable to create cgroup - %s", 
+            "unable to create the control group - %s", 
             cgroup_strerror(rv)
         );
 
@@ -164,7 +164,7 @@ engine_t::~engine_t() {
 
         if((rv = cgroup_delete_cgroup(m_cgroup, false)) != 0) {
             m_app.log->error(
-                "unable to delete cgroup - %s", 
+                "unable to delete the control group - %s", 
                 cgroup_strerror(rv)
             );
         }

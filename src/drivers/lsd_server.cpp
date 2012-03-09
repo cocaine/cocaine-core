@@ -22,13 +22,13 @@ using namespace cocaine::engine::drivers;
 using namespace cocaine::networking;
 
 lsd_job_t::lsd_job_t(
-    const unique_id_t::type& id, 
+    const unique_id_t::identifier_type& id_, 
     lsd_server_t& driver, 
     const client::policy_t& policy, 
     const data_container_t& data, 
     const route_t& route
 ):
-    unique_id_t(id),
+    unique_id_t(id_),
     job_t(driver, policy, data),
     m_route(route)
 { }

@@ -22,7 +22,11 @@
 using namespace cocaine;
 using namespace cocaine::engine;
 
-overseer_t::overseer_t(const unique_id_t::type& id_, context_t& ctx, const app_t& app):
+overseer_t::overseer_t(
+    const unique_id_t::identifier_type& id_,
+    context_t& ctx,
+    const app_t& app
+):
     unique_id_t(id_),
     object_t(ctx),
     m_app(app),
