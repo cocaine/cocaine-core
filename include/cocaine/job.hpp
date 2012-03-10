@@ -85,7 +85,7 @@ class job_t:
         drivers::driver_t& m_driver;
 
     private:
-        client::policy_t m_policy;
+        const client::policy_t m_policy;
         data_container_t m_request;
 
         ev::periodic m_expiration_timer;
@@ -122,7 +122,7 @@ struct waiting:
         ~waiting();
 
     private:
-        ev::tstamp m_timestamp;
+        const ev::tstamp m_timestamp;
 };
 
 struct processing:
@@ -140,7 +140,7 @@ struct processing:
         ~processing();
 
     private:
-        ev::tstamp m_timestamp;
+        const ev::tstamp m_timestamp;
 };
 
 struct complete:

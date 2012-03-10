@@ -51,4 +51,9 @@ namespace cocaine {
     }
 }
 
+namespace zmq {
+    class context_t;
+    class message_t;
+}
+
 #endif

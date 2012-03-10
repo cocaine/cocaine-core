@@ -60,6 +60,8 @@ struct push_t:
         message(message_)
     { }
 
+    // NOTE: There's no way to pass it via a const-reference due to ZeroMQ
+    // limitations - the message gets destroyed when sent.
     zmq::message_t& message;
 };
 

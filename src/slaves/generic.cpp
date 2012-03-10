@@ -89,12 +89,7 @@ void generic_t::signal(ev::child& event, int) {
             );
             
             m_engine.stop();
-        } else {
-            m_engine.app().log->warning(
-                "slave %s terminated in a strange way",
-                id().c_str()
-            );
-        }
+        };
     }
 }
 

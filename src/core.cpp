@@ -30,8 +30,8 @@ using namespace cocaine::engine;
 
 core_t::core_t(context_t& ctx):
     object_t(ctx),
-    m_auth(ctx),
     m_log(ctx.log("core")),
+    m_auth(ctx),
     m_birthstamp(ev::get_default_loop().now()),
     m_server(ctx, ZMQ_REP, boost::algorithm::join(
         boost::assign::list_of
