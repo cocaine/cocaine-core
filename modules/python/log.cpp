@@ -16,6 +16,7 @@
 #include "log.hpp"
 #include "python.hpp"
 
+
 using namespace cocaine::engine;
 
 int log_object_t::constructor(log_object_t* self, PyObject* args, PyObject* kwargs) {
