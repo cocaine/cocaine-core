@@ -211,7 +211,11 @@ void python_t::invoke(io_t& io, const std::string& method) {
     args = PyTuple_Pack(1, *py_io);
 
     python_object_t python_io_t_object(
-        PyObject_Call((PyObject*) &python_io_object_type, args, NULL)
+        PyObject_Call(
+            reinterpret_cast<PyObject*>(&python_io_object_type), 
+            args, 
+            NULL
+        )
     );
  
     args = PyTuple_Pack(1, *python_io_t_object);
