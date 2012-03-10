@@ -43,7 +43,7 @@ class overseer_t:
         void run();
 
         // Declared public for I/O objects to communicate with the engine.
-        data_container_t pull(bool block = true);
+        data_container_t pull(bool block);
         void push(rpc::codes code, const void* data, size_t size);
 
     private:

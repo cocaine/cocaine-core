@@ -25,8 +25,6 @@ using namespace cocaine;
 using namespace cocaine::core;
 using namespace cocaine::engine;
 
-static char sys_path_name[] = "path";
-
 static PyMethodDef context_module_methods[] = {
     { "manifest", &python_t::manifest, METH_NOARGS, "Get the application's manifest" },
     { NULL, NULL, 0, NULL }
@@ -73,7 +71,7 @@ void python_t::initialize(const app_t& app) {
 
     // NOTE: Prepend the current application location to the sys.path,
     // so that it could import various local stuff from there.
-    PyObject* syspaths = PySys_GetObject(sys_path_name);
+    PyObject* syspaths = PySys_GetObject("path");
     
     python_object_t path(
         PyString_FromString(

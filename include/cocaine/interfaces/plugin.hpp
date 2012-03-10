@@ -36,7 +36,7 @@ class io_t:
         io_t(overseer_t& overseer);
 
         // Pulls in the next request chunk from the engine.
-        data_container_t pull(bool block = true);
+        data_container_t pull(bool block);
 
         // Pushes a response chunk to the engine.
         void push(const void* data, size_t size);

@@ -16,6 +16,8 @@
 
 using namespace cocaine::engine;
 
+static char* read_kwds[] = { "block" };
+
 int python_io_t::constructor(python_io_t* self, PyObject* args, PyObject* kwargs) {    
     PyObject * py_io;
 
@@ -31,8 +33,15 @@ void python_io_t::destructor(python_io_t* self) {
     self->ob_type->tp_free(self);    
 }
 
-PyObject* python_io_t::read(python_io_t* self, PyObject* args) {
-    data_container_t chunk = self->io->pull(false);
+PyObject* python_io_t::read(python_io_t* self, PyObject* args, PyObject* kwargs) {
+    PyObject* block = NULL;
+
+    if(!PyArg_ParseTupleAndKeywords(args, kwargs, "|O:read", read_kwds, &block))
+        return NULL;
+
+    data_container_t chunk = self->io->pull(
+        block ? PyObject_IsTrue(block) : false
+    );
 
     if(!chunk.data() || !chunk.size())
         Py_RETURN_NONE;
@@ -56,7 +65,7 @@ PyObject* python_io_t::write(python_io_t* self, PyObject* args) {
     int size = 0;
 #endif
 
-    if(!PyArg_ParseTuple(args, "s#", &message, &size))
+    if(!PyArg_ParseTuple(args, "s#:write", &message, &size))
         return NULL;
 
     if(message && size) 
