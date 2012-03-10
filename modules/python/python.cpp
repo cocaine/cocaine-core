@@ -16,6 +16,7 @@
 
 #include "python.hpp"
 #include "log.hpp"
+#include "io.hpp"
 
 #include "cocaine/app.hpp"
 #include "cocaine/registry.hpp"
@@ -104,6 +105,7 @@ void python_t::initialize(const app_t& app) {
         "Log",
         reinterpret_cast<PyObject*>(&log_object_type)
     );
+
 
     // Application module
     // ------------------
@@ -200,38 +202,21 @@ void python_t::invoke(io_t& io, const std::string& method) {
         throw unrecoverable_error_t("'" + method + "' is not callable");
     }
 
+    PyType_Ready(&python_io_object_type);
+    Py_INCREF(&python_io_object_type);
+
     python_object_t args(NULL);
-#if PY_VERSION_HEX >= 0x02070000
-    boost::shared_ptr<Py_buffer> buffer;
-#endif
 
-    // NOTE: It's safe to const_cast() the request buffer, as both of the used
-    // representation methods expose the buffer as a read-only object to the user code.
-
-    if(io.request && io.request_size) {
-#if PY_VERSION_HEX >= 0x02070000
-        buffer.reset(static_cast<Py_buffer*>(malloc(sizeof(Py_buffer))), free);
-
-        buffer->buf = const_cast<void*>(io.request);
-        buffer->len = io.request_size;
-        buffer->readonly = true;
-        buffer->format = NULL;
-        buffer->ndim = 0;
-        buffer->shape = NULL;
-        buffer->strides = NULL;
-        buffer->suboffsets = NULL;
-
-        python_object_t view(PyMemoryView_FromBuffer(buffer.get()));
-#else
-        python_object_t view(PyBuffer_FromMemory(
-            const_cast<void*>(io.request), 
-            io.request_size));
-#endif
-
-        args = PyTuple_Pack(1, *view);
-    } else {
-        args = PyTuple_New(0);
-    }
+    // passing io_t object to python io_t wrapper
+    python_object_t py_io(
+        PyCObject_FromVoidPtr(&io, NULL)
+    );        
+    args = PyTuple_Pack(1, *py_io);
+    python_object_t python_io_t_object(
+        PyObject_Call((PyObject*) &python_io_object_type, args, NULL)
+    );
+ 
+    args = PyTuple_Pack(1, *python_io_t_object);
 
     python_object_t result(PyObject_Call(object, args, NULL));
 

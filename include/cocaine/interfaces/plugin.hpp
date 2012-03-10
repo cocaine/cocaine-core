@@ -33,7 +33,7 @@ class io_t:
              const void* request,
              size_t request_size);
 
-        void pull();
+        char * pull();
         void push(const void* data, size_t size);
         void emit(const std::string& key, const void* data, size_t size);
 

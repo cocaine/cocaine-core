@@ -2,7 +2,8 @@ FIND_PACKAGE(PythonLibs REQUIRED)
 
 ADD_LIBRARY(python MODULE
     python
-    log)
+    log
+    io)
 
 TARGET_LINK_LIBRARIES(python
     cocaine-core

@@ -24,8 +24,9 @@ io_t::io_t(overseer_t& overseer, const void* request_, size_t request_size_):
 	m_overseer(overseer)
 { }
 
-void io_t::pull() {
+char * io_t::pull() {
 	// TODO: Streaming.
+	return (char *) request;
 }
 
 void io_t::push(const void* data, size_t size) {
