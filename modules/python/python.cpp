@@ -97,9 +97,7 @@ void python_t::initialize(const app_t& app) {
         context_module_methods
     );
 
-    PyType_Ready(&log_object_type);
-    Py_INCREF(&log_object_type);
-    
+   
     PyModule_AddObject(
         context_module,
         "Log",
@@ -202,9 +200,6 @@ void python_t::invoke(io_t& io, const std::string& method) {
         throw unrecoverable_error_t("'" + method + "' is not callable");
     }
 
-    PyType_Ready(&python_io_object_type);
-    Py_INCREF(&python_io_object_type);
-
     python_object_t args(NULL);
 
     // passing io_t object to python io_t wrapper
@@ -222,9 +217,11 @@ void python_t::invoke(io_t& io, const std::string& method) {
 
     if(PyErr_Occurred()) {
         throw recoverable_error_t(exception());
-    } else if(result.valid() && result != Py_None) {
-        respond(io, result);
-    }
+    } 
+    // comment due python io_t wrapper
+    // else if(result.valid() && result != Py_None) {
+    //     respond(io, result);
+    // }
 }
 
 const logging::logger_t& python_t::log() const {
@@ -369,6 +366,12 @@ extern "C" {
 
         // Initialize the GIL.
         PyEval_InitThreads();
+
+        // Initializing types.
+        PyType_Ready(&log_object_type);
+        // Py_INCREF(&log_object_type);
+        PyType_Ready(&python_io_object_type);
+        // Py_INCREF(&python_io_object_type);
 
         // Save the main thread.
         save();
