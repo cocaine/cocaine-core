@@ -87,8 +87,8 @@ class python_t:
         
         static std::string exception();
 
-    private:
-        void respond(io_t& io, python_object_t& result);
+    // private:
+        // void respond(io_t& io, python_object_t& result);
 
     private:
         PyObject* m_python_module;

@@ -16,6 +16,7 @@
 
 #include "python.hpp"
 #include "log.hpp"
+#include "io.hpp"
 
 #include "cocaine/app.hpp"
 #include "cocaine/registry.hpp"
@@ -97,12 +98,13 @@ void python_t::initialize(const app_t& app) {
     );
 
     Py_INCREF(&log_object_type);
-    
+
     PyModule_AddObject(
         context_module,
         "Log",
         reinterpret_cast<PyObject*>(&log_object_type)
     );
+
 
     // Application module
     // ------------------
@@ -200,45 +202,28 @@ void python_t::invoke(io_t& io, const std::string& method) {
     }
 
     python_object_t args(NULL);
-#if PY_VERSION_HEX >= 0x02070000
-    boost::shared_ptr<Py_buffer> buffer;
-#endif
 
-    // NOTE: It's safe to const_cast() the request buffer, as both of the used
-    // representation methods expose the buffer as a read-only object to the user code.
-
-    if(io.request && io.request_size) {
-#if PY_VERSION_HEX >= 0x02070000
-        buffer.reset(static_cast<Py_buffer*>(malloc(sizeof(Py_buffer))), free);
-
-        buffer->buf = const_cast<void*>(io.request);
-        buffer->len = io.request_size;
-        buffer->readonly = true;
-        buffer->format = NULL;
-        buffer->ndim = 0;
-        buffer->shape = NULL;
-        buffer->strides = NULL;
-        buffer->suboffsets = NULL;
-
-        python_object_t view(PyMemoryView_FromBuffer(buffer.get()));
-#else
-        python_object_t view(PyBuffer_FromMemory(
-            const_cast<void*>(io.request), 
-            io.request_size));
-#endif
-
-        args = PyTuple_Pack(1, *view);
-    } else {
-        args = PyTuple_New(0);
-    }
+    // passing io_t object to python io_t wrapper
+    python_object_t py_io(
+        PyCObject_FromVoidPtr(&io, NULL)
+    );        
+    args = PyTuple_Pack(1, *py_io);
+    python_object_t python_io_t_object(
+        PyObject_Call((PyObject*) &python_io_object_type, args, NULL)
+    );
+ 
+    args = PyTuple_Pack(1, *python_io_t_object);
 
     python_object_t result(PyObject_Call(object, args, NULL));
 
     if(PyErr_Occurred()) {
         throw recoverable_error_t(exception());
-    } else if(result.valid() && result != Py_None) {
-        respond(io, result);
-    }
+    } 
+    
+    // comment due python io_t wrapper
+    // else if(result.valid() && result != Py_None) {
+    //     respond(io, result);
+    // }
 }
 
 const logging::logger_t& python_t::log() const {
@@ -261,64 +246,6 @@ PyObject* python_t::manifest(PyObject* self, PyObject*) {
     return PyDictProxy_New(
         static_cast<python_t*>(PyCObject_AsVoidPtr(plugin))->m_manifest
     );
-}
-
-std::string python_t::exception() {
-    python_object_t type(NULL), object(NULL), traceback(NULL);
-    
-    PyErr_Fetch(&type, &object, &traceback);
-    python_object_t message(PyObject_Str(object));
-    
-    return PyString_AsString(message);
-}
-
-void python_t::respond(io_t& io, python_object_t& result) {
-    if(PyString_Check(result)) {
-        throw recoverable_error_t("the result must be an iterable");
-    }
-
-    python_object_t iterator(PyObject_GetIter(result));
-
-    if(iterator.valid()) {
-        python_object_t item(NULL);
-
-        while(true) {
-            item = PyIter_Next(iterator);
-
-            if(PyErr_Occurred()) {
-                throw recoverable_error_t(exception());
-            } else if(!item.valid()) {
-                break;
-            }
-        
-#if PY_VERSION_HEX >= 0x02060000
-            if(PyObject_CheckBuffer(item)) {
-                boost::shared_ptr<Py_buffer> buffer(
-                    static_cast<Py_buffer*>(malloc(sizeof(Py_buffer))),
-                    free
-                );
-
-                if(PyObject_GetBuffer(item, buffer.get(), PyBUF_SIMPLE) == 0) {
-                    Py_BEGIN_ALLOW_THREADS
-                        io.push(buffer->buf, buffer->len);
-                    Py_END_ALLOW_THREADS
-                    
-                    PyBuffer_Release(buffer.get());
-                } else {
-                    throw recoverable_error_t("unable to serialize the result");
-                }
-            }
-#else
-            if(PyString_Check(item)) {
-                io.push(PyString_AsString(item), PyString_Size(item));
-            } else {
-                throw recoverable_error_t("unable to serialize the result");
-            }
-#endif
-        }
-    } else {
-        throw recoverable_error_t(exception());
-    }
 }
 
 // XXX: Check reference counting.
@@ -366,6 +293,64 @@ PyObject* python_t::wrap(const Json::Value& value) {
     return object;
 }
 
+std::string python_t::exception() {
+    python_object_t type(NULL), object(NULL), traceback(NULL);
+    
+    PyErr_Fetch(&type, &object, &traceback);
+    python_object_t message(PyObject_Str(object));
+    
+    return PyString_AsString(message);
+}
+
+// void python_t::respond(io_t& io, python_object_t& result) {
+//     if(PyString_Check(result)) {
+//         throw recoverable_error_t("the result must be an iterable");
+//     }
+
+//     python_object_t iterator(PyObject_GetIter(result));
+
+//     if(iterator.valid()) {
+//         python_object_t item(NULL);
+
+//         while(true) {
+//             item = PyIter_Next(iterator);
+
+//             if(PyErr_Occurred()) {
+//                 throw recoverable_error_t(exception());
+//             } else if(!item.valid()) {
+//                 break;
+//             }
+        
+// #if PY_VERSION_HEX >= 0x02060000
+//             if(PyObject_CheckBuffer(item)) {
+//                 boost::shared_ptr<Py_buffer> buffer(
+//                     static_cast<Py_buffer*>(malloc(sizeof(Py_buffer))),
+//                     free
+//                 );
+
+//                 if(PyObject_GetBuffer(item, buffer.get(), PyBUF_SIMPLE) == 0) {
+//                     Py_BEGIN_ALLOW_THREADS
+//                         io.push(buffer->buf, buffer->len);
+//                     Py_END_ALLOW_THREADS
+                    
+//                     PyBuffer_Release(buffer.get());
+//                 } else {
+//                     throw recoverable_error_t("unable to serialize the result");
+//                 }
+//             }
+// #else
+//             if(PyString_Check(item)) {
+//                 io.push(PyString_AsString(item), PyString_Size(item));
+//             } else {
+//                 throw recoverable_error_t("unable to serialize the result");
+//             }
+// #endif
+//         }
+//     } else {
+//         throw recoverable_error_t(exception());
+//     }
+// }
+
 PyThreadState* g_state = NULL;
 
 void save() {
@@ -386,6 +371,8 @@ extern "C" {
 
         // Initializing types.
         PyType_Ready(&log_object_type);
+        PyType_Ready(&python_io_object_type);
+
 
         // Save the main thread.
         save();
