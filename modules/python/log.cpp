@@ -42,8 +42,8 @@ void log_object_t::destructor(log_object_t* self) {
 }
 
 PyObject* log_object_t::debug(log_object_t* self, PyObject* args) {
-    PyObject* object;
-    const char* message;
+    PyObject* object = NULL;
+    const char* message = NULL;
 
     if(!self->plugin) {
         PyErr_SetString(
@@ -71,8 +71,8 @@ PyObject* log_object_t::debug(log_object_t* self, PyObject* args) {
 }
 
 PyObject* log_object_t::info(log_object_t* self, PyObject* args) {
-    PyObject* object;
-    const char* message;
+    PyObject* object = NULL;
+    const char* message = NULL;
 
     if(!self->plugin) {
         PyErr_SetString(
@@ -100,8 +100,8 @@ PyObject* log_object_t::info(log_object_t* self, PyObject* args) {
 }
 
 PyObject* log_object_t::warning(log_object_t* self, PyObject* args) {
-    PyObject* object;
-    const char* message;
+    PyObject* object = NULL;
+    const char* message = NULL;
 
     if(!self->plugin) {
         PyErr_SetString(
@@ -129,8 +129,8 @@ PyObject* log_object_t::warning(log_object_t* self, PyObject* args) {
 }
 
 PyObject* log_object_t::error(log_object_t* self, PyObject* args) {
-    PyObject* object;
-    const char* message;
+    PyObject* object = NULL;
+    const char* message = NULL;
 
     if(!self->plugin) {
         PyErr_SetString(
