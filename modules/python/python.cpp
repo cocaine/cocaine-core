@@ -96,7 +96,6 @@ void python_t::initialize(const app_t& app) {
         context_module_methods
     );
 
-    PyType_Ready(&log_object_type);
     Py_INCREF(&log_object_type);
     
     PyModule_AddObject(
@@ -384,6 +383,9 @@ extern "C" {
 
         // Initialize the GIL.
         PyEval_InitThreads();
+
+        // Initializing types.
+        PyType_Ready(&log_object_type);
 
         // Save the main thread.
         save();
