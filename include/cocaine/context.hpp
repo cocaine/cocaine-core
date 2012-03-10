@@ -61,6 +61,7 @@ class context_t {
         context_t(config_t config, std::auto_ptr<logging::sink_t> sink);
         context_t(config_t config);
 
+        // Copying is allowed, will reinitialize some subsystems.
         context_t(const context_t& other);
         context_t& operator=(const context_t& other);
 

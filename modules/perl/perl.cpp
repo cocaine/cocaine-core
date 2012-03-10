@@ -92,8 +92,11 @@ public:
         m_app_log->info("%s", (std::string("invoking method ") + method + "...").c_str());
         std::string input;
         
-        if (io.request && io.request_size > 0) {
-           input = std::string((const char*)io.request, io.request_size);
+        // Try to pull in the request w/o blocking.
+        data_container_t request = io.pull(false);
+
+        if (request.data() && request.size() > 0) {
+           input = std::string((const char*)request.data(), request.size());
         }
 
         PERL_SET_CONTEXT(my_perl);

@@ -18,6 +18,8 @@
 #include "cocaine/forwards.hpp"
 #include "cocaine/object.hpp"
 
+#include "cocaine/helpers/data_container.hpp"
+
 namespace cocaine { namespace engine {
 
 class overseer_t;
@@ -25,21 +27,22 @@ class overseer_t;
 // Plugin I/O
 // ----------
 
+using helpers::data_container_t;
+
 class io_t:
     public boost::noncopyable
 {
     public:
-        io_t(overseer_t& overseer,
-             const void* request,
-             size_t request_size);
+        io_t(overseer_t& overseer);
 
-        void pull();
+        // Pulls in the next request chunk from the engine.
+        data_container_t pull(bool block = true);
+
+        // Pushes a response chunk to the engine.
         void push(const void* data, size_t size);
-        void emit(const std::string& key, const void* data, size_t size);
 
-    public:
-        const void* request;
-        size_t request_size;
+        // Pushes a response chunk to be published via the driver's emitter.
+        void emit(const std::string& key, const void* data, size_t size);
 
     private:
         overseer_t& m_overseer;

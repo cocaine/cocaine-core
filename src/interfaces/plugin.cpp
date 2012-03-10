@@ -18,18 +18,16 @@
 
 using namespace cocaine::engine;
 
-io_t::io_t(overseer_t& overseer, const void* request_, size_t request_size_):
-	request(request_),
-	request_size(request_size_),
+io_t::io_t(overseer_t& overseer):
 	m_overseer(overseer)
 { }
 
-void io_t::pull() {
-	// TODO: Streaming.
+data_container_t io_t::pull(bool block) {
+	return m_overseer.pull(block);
 }
 
 void io_t::push(const void* data, size_t size) {
-	m_overseer.send(
+	m_overseer.push(
 		rpc::push,
 		data,
 		size

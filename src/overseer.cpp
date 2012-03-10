@@ -96,7 +96,13 @@ void overseer_t::run() {
     m_loop.loop();
 }
 
-void overseer_t::send(rpc::codes code, const void* data, size_t size) {
+data_container_t overseer_t::pull(bool block) {
+    zmq::message_t message;
+    m_messages.recv(&message, block ? 0 : ZMQ_NOBLOCK);
+    return data_container_t(message.data(), message.size());
+}
+
+void overseer_t::push(rpc::codes code, const void* data, size_t size) {
     const int command = code;
     zmq::message_t message(size);
 
@@ -125,18 +131,11 @@ void overseer_t::process(ev::idle&, int) {
         switch(command) {
             case rpc::invoke: {
                 std::string method;
-                zmq::message_t request;
-                boost::tuple<std::string&, zmq::message_t*> tier(method, &request);
 
-                m_messages.recv_multi(tier);
+                m_messages.recv(method);
 
                 try {
-                    io_t io(
-                        *this,
-                        request.data(),
-                        request.size()
-                    );
-
+                    io_t io(*this);
                     m_module->invoke(io, method);
                 } catch(const recoverable_error_t& e) {
                     m_messages.send_multi(
@@ -163,7 +162,11 @@ void overseer_t::process(ev::idle&, int) {
                         )
                     );
                 }
-                 
+                
+                // NOTE: Drop all the outstanding request chunks not pulled
+                // in by the user code. Might have a warning here?
+                m_messages.drop_remaining_parts();
+
                 m_messages.send((const int)rpc::release);
 
                 m_suicide_timer.stop();
@@ -174,6 +177,7 @@ void overseer_t::process(ev::idle&, int) {
             
             case rpc::terminate: {
                 terminate();
+                break;
             }
         }
     } else {
