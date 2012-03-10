@@ -24,8 +24,6 @@ int python_io_t::constructor(python_io_t* self, PyObject* args, PyObject* kwargs
 
     self->io = static_cast<io_t*>(PyCObject_AsVoidPtr(py_io));
 
-    Py_DECREF(py_io);
-          
     return 0;
 }
 

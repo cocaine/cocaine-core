@@ -203,11 +203,13 @@ void python_t::invoke(io_t& io, const std::string& method) {
 
     python_object_t args(NULL);
 
-    // passing io_t object to python io_t wrapper
+    // Passing io_t object to the python io_t wrapper.
     python_object_t py_io(
         PyCObject_FromVoidPtr(&io, NULL)
-    );        
+    );
+
     args = PyTuple_Pack(1, *py_io);
+
     python_object_t python_io_t_object(
         PyObject_Call((PyObject*) &python_io_object_type, args, NULL)
     );
@@ -220,7 +222,7 @@ void python_t::invoke(io_t& io, const std::string& method) {
         throw recoverable_error_t(exception());
     } 
     
-    // comment due python io_t wrapper
+    // Commented out due to the python io_t wrapper.
     // else if(result.valid() && result != Py_None) {
     //     respond(io, result);
     // }
