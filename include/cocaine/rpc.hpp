@@ -28,8 +28,8 @@ namespace cocaine { namespace engine { namespace rpc {
         release
     };
 
-    template<codes>
-    struct command;
+    // Specialize this class for any new RPC codes.
+    template<codes> struct command;
 
     template<>
     struct command<heartbeat> {
