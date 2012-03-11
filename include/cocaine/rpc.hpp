@@ -33,14 +33,14 @@ namespace cocaine { namespace engine { namespace rpc {
 
     template<>
     struct command<heartbeat> {
-        boost::tuple<int> get() {
+        boost::tuple<int> get() const {
             return boost::make_tuple(heartbeat);
         }
     };
 
     template<>
     struct command<terminate> {
-        boost::tuple<int> get() {
+        boost::tuple<int> get() const {
             return boost::make_tuple(terminate);
         }
     };
@@ -97,7 +97,7 @@ namespace cocaine { namespace engine { namespace rpc {
             message(e.what())
         { }
 
-        boost::tuple<int, unsigned int, const std::string&> get() {
+        boost::tuple<int, unsigned int, const std::string&> get() const {
             return boost::tuple<int, unsigned int, const std::string&>(error, code, message);
         }
 
@@ -107,7 +107,7 @@ namespace cocaine { namespace engine { namespace rpc {
 
     template<>
     struct command<release> {
-        boost::tuple<int> get() {
+        boost::tuple<int> get() const {
             return boost::make_tuple(release);
         }
     };
