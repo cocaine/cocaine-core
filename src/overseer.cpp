@@ -62,17 +62,17 @@ void overseer_t::run() {
         m_module = context().create<plugin_t>(m_app.type);
         m_module->initialize(m_app);
     } catch(const unrecoverable_error_t& e) {
-        rpc::command<rpc::error> command(e);
-        send(command);
+        rpc::pack<events::error_t> pack(e);
+        send(pack);
         return;
     } catch(const std::runtime_error& e) {
-        rpc::command<rpc::error> command(e);
-        send(command);
+        rpc::pack<events::error_t> pack(e);
+        send(pack);
         return;
     } catch(...) {
-        rpc::command<rpc::error> command(
+        rpc::pack<events::error_t> pack(
             "unexpected exception while creating the plugin instance");
-        send(command);
+        send(pack);
         return;
     }
         
@@ -107,21 +107,21 @@ void overseer_t::process(ev::idle&, int) {
                     io_t io(*this);
                     m_module->invoke(io, method);
                 } catch(const recoverable_error_t& e) {
-                    rpc::command<rpc::error> command(e);
-                    send(command);
+                    rpc::pack<events::error_t> pack(e);
+                    send(pack);
                     return;
                 } catch(const unrecoverable_error_t& e) {
-                    rpc::command<rpc::error> command(e);
-                    send(command);
+                    rpc::pack<events::error_t> pack(e);
+                    send(pack);
                     return;
                 } catch(...) {
-                    rpc::command<rpc::error> command(
+                    rpc::pack<events::error_t> pack(
                         "unexpected exception while creating the plugin instance");
-                    send(command);
+                    send(pack);
                 }
                 
-                rpc::command<rpc::release> command;
-                send(command);
+                rpc::pack<events::release_t> pack;
+                send(pack);
                 
                 // NOTE: Drop all the outstanding request chunks not pulled
                 // in by the user code. Might have a warning here?
@@ -148,14 +148,14 @@ void overseer_t::pump(ev::timer&, int) {
 }
 
 void overseer_t::timeout(ev::timer&, int) {
-    rpc::command<rpc::terminate> command;
-    send(command);
+    rpc::pack<events::terminate_t> pack;
+    send(pack);
     terminate();
 }
 
 void overseer_t::heartbeat(ev::timer&, int) {
-    rpc::command<rpc::heartbeat> command;
-    send(command);
+    rpc::pack<events::heartbeat_t> pack;
+    send(pack);
 }
 
 void overseer_t::terminate() {

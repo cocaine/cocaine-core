@@ -27,8 +27,8 @@ data_container_t io_t::pull(bool block) {
 }
 
 void io_t::push(const void * data, size_t size) {
-	rpc::command<rpc::push> command(data, size);
-	m_overseer.send(command);
+	rpc::pack<events::push_t> pack(data, size);
+	m_overseer.send(pack);
 }
 
 void io_t::emit(const std::string& key, const void * data, size_t size) {

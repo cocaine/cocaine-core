@@ -14,9 +14,8 @@
 #ifndef COCAINE_RPC_HPP
 #define COCAINE_RPC_HPP
 
+#include "cocaine/events.hpp"
 #include "cocaine/job.hpp"
-
-#include "cocaine/dealer/types.hpp"
 
 namespace cocaine { namespace engine { namespace rpc {
     enum codes {
@@ -28,28 +27,30 @@ namespace cocaine { namespace engine { namespace rpc {
         release
     };
 
-    // Specialize this class for any new RPC codes.
-    template<codes> struct command;
+    // Specialize this class for any new event types.
+    template<typename T> struct pack;
 
     template<>
-    struct command<heartbeat> {
+    struct pack<events::heartbeat_t> {
         boost::tuple<int> get() const {
             return boost::make_tuple(heartbeat);
         }
     };
 
     template<>
-    struct command<terminate> {
+    struct pack<events::terminate_t> {
         boost::tuple<int> get() const {
             return boost::make_tuple(terminate);
         }
     };
 
     template<>
-    struct command<invoke> {
-        command(const boost::shared_ptr<job_t>& job):
+    struct pack<events::invoke_t> {
+        pack(const boost::shared_ptr<job_t>& job):
             method(job->method()),
-            message(job->request().data(), job->request().size(), NULL)
+            message(job->request().data(), 
+                    job->request().size(), 
+                    NULL)
         { }
 
         boost::tuple<int, const std::string&, zmq::message_t&> get() {
@@ -61,8 +62,8 @@ namespace cocaine { namespace engine { namespace rpc {
     };
 
     template<>
-    struct command<push> {
-        command(const void * data, size_t size):
+    struct pack<events::push_t> {
+        pack(const void * data, size_t size):
             message(size)
         {
             memcpy(message.data(), data, size);
@@ -76,23 +77,23 @@ namespace cocaine { namespace engine { namespace rpc {
     };
 
     template<>
-    struct command<error> {
-        command(const std::string& message):
+    struct pack<events::error_t> {
+        pack(const std::string& message):
             code(client::server_error),
             message(message)
         { }
 
-        command(const std::runtime_error& e):
+        pack(const std::runtime_error& e):
             code(client::server_error),
             message(e.what())
         { }
 
-        command(const recoverable_error_t& e):
+        pack(const recoverable_error_t& e):
             code(client::app_error),
             message(e.what())
         { }
 
-        command(const unrecoverable_error_t& e):
+        pack(const unrecoverable_error_t& e):
             code(client::server_error),
             message(e.what())
         { }
@@ -106,10 +107,10 @@ namespace cocaine { namespace engine { namespace rpc {
     };
 
     template<>
-    struct command<release> {
+    struct pack<events::release_t> {
         boost::tuple<int> get() const {
             return boost::make_tuple(release);
-        }
+        }        
     };
 }}}
 

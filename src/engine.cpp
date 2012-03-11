@@ -275,7 +275,8 @@ Json::Value engine_t::stop() {
         }
     }
 
-    rpc::command<rpc::terminate> command;
+    events::terminate_t event;
+    rpc::pack<events::terminate_t> pack;
 
     // Terminate the slaves.
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
@@ -283,11 +284,11 @@ Json::Value engine_t::stop() {
         if(it->second->state_downcast<const slaves::alive*>()) {
             unicast(
                 specific_slave(*it),
-                command
+                pack
             );
         }
 
-        it->second->process_event(events::terminate_t());
+        it->second->process_event(event);
     }
 
     m_pool.clear();
@@ -349,19 +350,20 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
         return;
     }
 
-    rpc::command<rpc::invoke> command(job);
+    events::invoke_t event(job);
+    rpc::pack<events::invoke_t> pack(job);
 
     pool_map_t::iterator it(
         unicast(
             idle_slave(),
-            command
+            pack
         )
     );
 
     // NOTE: If we got an idle slave, then we're lucky and got an instant scheduling;
     // if not, try to spawn more slaves, and enqueue the job.
     if(it != m_pool.end()) {
-        it->second->process_event(events::invoke_t(job));
+        it->second->process_event(event);
     } else {
         if(m_pool.empty() || m_pool.size() < m_app.policy.pool_limit) {
             std::auto_ptr<slaves::slave_t> slave;
@@ -416,8 +418,8 @@ void engine_t::process(ev::idle&, int) {
 
     if(slave == m_pool.end()) {
         m_app.log->debug(
-            "ignoring type %d command from a dead slave %s", 
-            command, 
+            "ignoring type %d event from a dead slave %s", 
+            command,
             slave_id.c_str()
         );
         
