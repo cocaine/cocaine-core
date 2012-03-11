@@ -22,7 +22,6 @@
 
 using namespace cocaine::engine;
 using namespace cocaine::networking;
-using namespace cocaine::engine::rpc;
 
 // Job queue
 // ---------
@@ -276,7 +275,7 @@ Json::Value engine_t::stop() {
         }
     }
 
-    command<terminate> command;
+    rpc::command<rpc::terminate> command;
 
     // Terminate the slaves.
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
@@ -350,7 +349,7 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
         return;
     }
 
-    command<invoke> command(job);
+    rpc::command<rpc::invoke> command(job);
 
     pool_map_t::iterator it(
         unicast(
