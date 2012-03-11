@@ -306,11 +306,11 @@ std::string python_t::exception() {
     python_object_t name(PyObject_Str(type));
     python_object_t message(PyObject_Str(value));
     
-    boost::format formatter("%s: %s");
+    boost::format formatter("uncaught exception %s: %s");
     
     std::string result(
         (formatter
-            % PyString_AsString(name) 
+            % PyString_AsString(name)
             % PyString_AsString(message)
         ).str()
     );
