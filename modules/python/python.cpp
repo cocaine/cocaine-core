@@ -73,7 +73,7 @@ void python_t::initialize(const app_t& app) {
 
     // NOTE: Prepend the current application location to the sys.path,
     // so that it could import various local stuff from there.
-    PyObject* syspaths = PySys_GetObject("path");
+    PyObject * syspaths = PySys_GetObject("path");
     
     python_object_t path(
         PyString_FromString(
@@ -92,7 +92,7 @@ void python_t::initialize(const app_t& app) {
 
     m_manifest = wrap(args);
 
-    PyObject* context_module = Py_InitModule(
+    PyObject * context_module = Py_InitModule(
         "__context__",
         context_module_methods
     );
@@ -113,7 +113,7 @@ void python_t::initialize(const app_t& app) {
         NULL
     );
 
-    PyObject* builtins = PyEval_GetBuiltins();
+    PyObject * builtins = PyEval_GetBuiltins();
 
     python_object_t plugin(
         PyCObject_FromVoidPtr(this, NULL)
@@ -157,7 +157,7 @@ void python_t::initialize(const app_t& app) {
         throw unrecoverable_error_t(exception());
     }
 
-    PyObject* globals = PyModule_GetDict(m_python_module);
+    PyObject * globals = PyModule_GetDict(m_python_module);
     
     // NOTE: This will return None or NULL due to the Py_file_input flag above,
     // so we can safely drop it without even checking.
@@ -183,8 +183,8 @@ void python_t::invoke(io_t& io, const std::string& method) {
 
     m_app_log->debug("invoking '%s'", method.c_str());
     
-    PyObject* globals = PyModule_GetDict(m_python_module);
-    PyObject* object = PyDict_GetItemString(globals, method.c_str());
+    PyObject * globals = PyModule_GetDict(m_python_module);
+    PyObject * object = PyDict_GetItemString(globals, method.c_str());
     
     if(PyErr_Occurred()) {
         throw unrecoverable_error_t(exception());
@@ -235,9 +235,9 @@ const logging::logger_t& python_t::log() const {
     return *m_app_log;
 }
 
-PyObject* python_t::manifest(PyObject* self, PyObject*) {
-    PyObject* builtins(PyEval_GetBuiltins());
-    PyObject* plugin(PyDict_GetItemString(builtins, "__plugin__"));
+PyObject* python_t::manifest(PyObject * self, PyObject * args) {
+    PyObject * builtins = PyEval_GetBuiltins();
+    PyObject * plugin = PyDict_GetItemString(builtins, "__plugin__");
 
     if(!plugin) {
         PyErr_SetString(
@@ -255,7 +255,7 @@ PyObject* python_t::manifest(PyObject* self, PyObject*) {
 
 // XXX: Check reference counting.
 PyObject* python_t::wrap(const Json::Value& value) {
-    PyObject* object = NULL;
+    PyObject * object = NULL;
 
     switch(value.type()) {
         case Json::booleanValue:
@@ -367,7 +367,7 @@ std::string python_t::exception() {
 //     }
 // }
 
-PyThreadState* g_state = NULL;
+PyThreadState * g_state = NULL;
 
 void save() {
     g_state = PyEval_SaveThread();

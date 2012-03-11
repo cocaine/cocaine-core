@@ -26,35 +26,35 @@ logger_t::logger_t(sink_t& sink, const std::string& name):
 	m_name(name)
 { }
 
-void logger_t::debug(const char* format, ...) const {
+void logger_t::debug(const char * format, ...) const {
     va_list args;
     va_start(args, format);
     emit(logging::debug, format, args);
     va_end(args);
 }
 
-void logger_t::info(const char* format, ...) const {
+void logger_t::info(const char * format, ...) const {
     va_list args;
     va_start(args, format);
     emit(logging::info, format, args);
     va_end(args);
 }
 
-void logger_t::warning(const char* format, ...) const {
+void logger_t::warning(const char * format, ...) const {
     va_list args;
     va_start(args, format);
     emit(logging::warning, format, args);
     va_end(args);
 }
 
-void logger_t::error(const char* format, ...) const {
+void logger_t::error(const char * format, ...) const {
     va_list args;
     va_start(args, format);
     emit(logging::error, format, args);
     va_end(args);
 }
 
-void logger_t::emit(priorities priority, const char* format, va_list args) const {
+void logger_t::emit(priorities priority, const char * format, va_list args) const {
     vsnprintf(m_buffer, LOG_BUFFER_SIZE, format, args);
     m_sink.emit(priority, m_name + ": " + m_buffer);
 }

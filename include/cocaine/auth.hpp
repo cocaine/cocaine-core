@@ -29,9 +29,9 @@ class auth_t:
         auth_t(context_t& ctx);
         ~auth_t();
 
-        void verify(const char* message,
+        void verify(const char * message,
                     size_t message_size,
-                    const unsigned char* signature,
+                    const unsigned char * signature,
                     size_t signature_size,
                     const std::string& username);
 
@@ -40,7 +40,7 @@ class auth_t:
     private:
         boost::shared_ptr<logging::logger_t> m_log;
 
-        EVP_MD_CTX* m_md_context;
+        EVP_MD_CTX * m_md_context;
 
         typedef std::map<const std::string, EVP_PKEY*> key_map_t;
         key_map_t m_keys;

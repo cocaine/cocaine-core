@@ -66,7 +66,7 @@ class syslog_t:
         const std::string m_identity;
 };
 
-int main(int argc, char* argv[]) {
+int main(int argc, char * argv[]) {
     config_t config;
 
     // Configuration

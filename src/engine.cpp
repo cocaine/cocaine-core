@@ -101,7 +101,7 @@ engine_t::engine_t(context_t& ctx, const std::string& name, const Json::Value& m
             continue;
         }
         
-        cgroup_controller* ctl = cgroup_add_controller(m_cgroup, c->c_str());
+        cgroup_controller * ctl = cgroup_add_controller(m_cgroup, c->c_str());
         
         Json::Value::Members parameters(cfg.getMemberNames());
 
@@ -427,7 +427,7 @@ void engine_t::process(ev::idle&, int) {
         return;
     }
 
-    const slaves::busy* state =
+    const slaves::busy * state =
         slave->second->state_downcast<const slaves::busy*>();
     
     switch(command) {

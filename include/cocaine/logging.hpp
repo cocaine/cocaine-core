@@ -40,13 +40,13 @@ class logger_t:
     public:
         logger_t(sink_t& sink, const std::string& name);
         
-        void debug(const char* format, ...) const;
-        void info(const char* format, ...) const;
-        void warning(const char* format, ...) const;
-        void error(const char* format, ...) const;
+        void debug(const char * format, ...) const;
+        void info(const char * format, ...) const;
+        void warning(const char * format, ...) const;
+        void error(const char * format, ...) const;
 
     private:
-        void emit(priorities priority, const char* format, va_list args) const;
+        void emit(priorities priority, const char * format, va_list args) const;
 
     private:
         sink_t& m_sink;

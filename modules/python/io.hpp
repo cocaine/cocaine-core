@@ -28,14 +28,14 @@ class python_io_t {
     public:
         PyObject_HEAD
 
-        static int constructor(python_io_t* self, PyObject* args, PyObject* kwargs);
-        static void destructor(python_io_t* self);
+        static int constructor(python_io_t * self, PyObject * args, PyObject * kwargs);
+        static void destructor(python_io_t * self);
 
-        static PyObject* read(python_io_t* self, PyObject* args, PyObject* kwargs);
-        static PyObject* write(python_io_t* self, PyObject* args);
+        static PyObject* read(python_io_t * self, PyObject * args, PyObject * kwargs);
+        static PyObject* write(python_io_t * self, PyObject * args);
 
     public:
-        io_t* io;
+        io_t * io;
 };
 
 static PyMethodDef python_io_object_methods[] = {

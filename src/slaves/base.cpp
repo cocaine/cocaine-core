@@ -58,7 +58,7 @@ void slave_t::react(const events::heartbeat_t& event) {
 
     m_heartbeat_timer.stop();
     
-    const busy* state = state_downcast<const busy*>();
+    const busy * state = state_downcast<const busy*>();
     float timeout = object_t::context().config.engine.heartbeat_timeout;
 
     if(state && state->job()->policy().timeout > 0.0f) {
@@ -88,7 +88,7 @@ void slave_t::timeout(ev::timer&, int) {
         id().c_str()
     );
     
-    const busy* state = state_downcast<const busy*>();
+    const busy * state = state_downcast<const busy*>();
     
     if(state) {
         state->job()->process_event(

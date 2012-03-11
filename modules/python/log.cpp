@@ -18,9 +18,9 @@
 
 using namespace cocaine::engine;
 
-int log_object_t::constructor(log_object_t* self, PyObject* args, PyObject* kwargs) {
-    PyObject* builtins = PyEval_GetBuiltins();
-    PyObject* plugin = PyDict_GetItemString(builtins, "__plugin__");
+int log_object_t::constructor(log_object_t * self, PyObject * args, PyObject * kwargs) {
+    PyObject * builtins = PyEval_GetBuiltins();
+    PyObject * plugin = PyDict_GetItemString(builtins, "__plugin__");
     
     if(plugin) {
         self->plugin = static_cast<python_t*>(PyCObject_AsVoidPtr(plugin));
@@ -36,13 +36,13 @@ int log_object_t::constructor(log_object_t* self, PyObject* args, PyObject* kwar
     return 0;
 }
 
-void log_object_t::destructor(log_object_t* self) {
+void log_object_t::destructor(log_object_t * self) {
     self->ob_type->tp_free(self);
 }
 
-PyObject* log_object_t::debug(log_object_t* self, PyObject* args) {
-    PyObject* object = NULL;
-    const char* message = NULL;
+PyObject* log_object_t::debug(log_object_t * self, PyObject * args) {
+    PyObject * object = NULL;
+    const char * message = NULL;
 
     if(!self->plugin) {
         PyErr_SetString(
@@ -69,9 +69,9 @@ PyObject* log_object_t::debug(log_object_t* self, PyObject* args) {
     Py_RETURN_NONE;
 }
 
-PyObject* log_object_t::info(log_object_t* self, PyObject* args) {
-    PyObject* object = NULL;
-    const char* message = NULL;
+PyObject* log_object_t::info(log_object_t * self, PyObject * args) {
+    PyObject * object = NULL;
+    const char * message = NULL;
 
     if(!self->plugin) {
         PyErr_SetString(
@@ -98,9 +98,9 @@ PyObject* log_object_t::info(log_object_t* self, PyObject* args) {
     Py_RETURN_NONE;
 }
 
-PyObject* log_object_t::warning(log_object_t* self, PyObject* args) {
-    PyObject* object = NULL;
-    const char* message = NULL;
+PyObject* log_object_t::warning(log_object_t * self, PyObject * args) {
+    PyObject * object = NULL;
+    const char * message = NULL;
 
     if(!self->plugin) {
         PyErr_SetString(
@@ -127,9 +127,9 @@ PyObject* log_object_t::warning(log_object_t* self, PyObject* args) {
     Py_RETURN_NONE;
 }
 
-PyObject* log_object_t::error(log_object_t* self, PyObject* args) {
-    PyObject* object = NULL;
-    const char* message = NULL;
+PyObject* log_object_t::error(log_object_t * self, PyObject * args) {
+    PyObject * object = NULL;
+    const char * message = NULL;
 
     if(!self->plugin) {
         PyErr_SetString(

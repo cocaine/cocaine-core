@@ -23,7 +23,7 @@ using namespace cocaine::storages;
 
 namespace fs = boost::filesystem;
 
-bool eblob_collector_t::callback(const zbr::eblob_disk_control* dco, const void* data, int) {
+bool eblob_collector_t::callback(const zbr::eblob_disk_control * dco, const void * data, int) {
     if(dco->flags & BLOB_DISK_CTL_REMOVE) {
         return true;
     }
@@ -45,7 +45,7 @@ bool eblob_collector_t::callback(const zbr::eblob_disk_control* dco, const void*
     return true;
 }
 
-bool eblob_purger_t::callback(const zbr::eblob_disk_control* dco, const void* data, int) {
+bool eblob_purger_t::callback(const zbr::eblob_disk_control * dco, const void * data, int) {
     m_keys.push_back(dco->key);
     return true;
 }
