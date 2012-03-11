@@ -41,15 +41,15 @@ class log_object_t {
 };
 
 static PyMethodDef log_object_methods[] = {
-    { "debug", (PyCFunction)log_object_t::debug,
-        METH_VARARGS, "Logs a message with a Debug priority" },
-    { "info", (PyCFunction)log_object_t::info,
-        METH_VARARGS, "Logs a message with an Information priority" },
-    { "warning", (PyCFunction)log_object_t::warning,
-        METH_VARARGS, "Logs a message with a Warning priority" },
-    { "error", (PyCFunction)log_object_t::error,
-        METH_VARARGS, "Logs a message with an Error priority" },
-    { NULL }
+    { "debug", (PyCFunction)log_object_t::debug, METH_VARARGS, 
+        "Logs a message with a Debug priority" },
+    { "info", (PyCFunction)log_object_t::info, METH_VARARGS, 
+        "Logs a message with an Information priority" },
+    { "warning", (PyCFunction)log_object_t::warning, METH_VARARGS, 
+        "Logs a message with a Warning priority" },
+    { "error", (PyCFunction)log_object_t::error, METH_VARARGS, 
+        "Logs a message with an Error priority" },
+    { NULL, NULL, 0, NULL }
 };
 
 static PyTypeObject log_object_type = {

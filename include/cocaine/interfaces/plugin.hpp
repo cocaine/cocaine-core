@@ -39,10 +39,10 @@ class io_t:
         data_container_t pull(bool block);
 
         // Pushes a response chunk to the engine.
-        void push(const void* data, size_t size);
+        void push(const void * data, size_t size);
 
         // Pushes a response chunk to be published via the driver's emitter.
-        void emit(const std::string& key, const void* data, size_t size);
+        void emit(const std::string& key, const void * data, size_t size);
 
     private:
         overseer_t& m_overseer;
@@ -60,27 +60,6 @@ class plugin_t:
 
         virtual void initialize(const app_t& app) = 0;
         virtual void invoke(io_t& io, const std::string& method) = 0;
-};
-
-// Propagated exceptions
-// ---------------------
-
-class unrecoverable_error_t:
-    public std::runtime_error
-{
-    public:
-        unrecoverable_error_t(const std::string& what):
-            std::runtime_error(what)
-        { }
-};
-
-class recoverable_error_t:
-    public std::runtime_error
-{
-    public:
-        recoverable_error_t(const std::string& what):
-            std::runtime_error(what)
-        { }
 };
 
 }}

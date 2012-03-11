@@ -151,65 +151,66 @@ void core_t::request(ev::io&, int) {
 }
 
 void core_t::process(ev::idle&, int) {
-    if(m_server.pending()) {
-        zmq::message_t message, signature;
-        Json::Reader reader(Json::Features::strictMode());
-        Json::Value root, response;
-
-        m_server.recv(&message);
-
-        if(reader.parse(
-            static_cast<const char*>(message.data()),
-            static_cast<const char*>(message.data()) + message.size(),
-            root)) 
-        {
-            try {
-                if(!root.isObject()) {
-                    throw std::runtime_error("json root must be an object");
-                }
-
-                unsigned int version = root["version"].asUInt();
-                std::string username(root["username"].asString());
-                
-                if(version < 2 || version > 3) {
-                    throw std::runtime_error("unsupported protocol version");
-                }
-      
-                if(version == 3) {
-                    if(m_server.more()) {
-                        m_server.recv(&signature);
-                    }
-
-                    if(!username.empty()) {
-                        m_auth.verify(
-                            static_cast<const char*>(message.data()),
-                            message.size(),
-                            static_cast<const unsigned char*>(signature.data()),
-                            signature.size(),
-                            username
-                        );
-                    } else {
-                        throw std::runtime_error("username expected");
-                    }
-                }
-
-                response = dispatch(root);
-            } catch(const std::runtime_error& e) {
-                response = helpers::make_json("error", e.what());
-            }
-        } else {
-            response = helpers::make_json("error", reader.getFormatedErrorMessages());
-        }
-
-        // Serialize and send the response.
-        std::string json(Json::FastWriter().write(response));
-        message.rebuild(json.size());
-        memcpy(message.data(), json.data(), json.size());
-
-        m_server.send(message);
-    } else {
+    if(!m_server.pending()) {
         m_processor.stop();
+        return;
     }
+
+    zmq::message_t message, signature;
+    Json::Reader reader(Json::Features::strictMode());
+    Json::Value root, response;
+
+    m_server.recv(&message);
+
+    if(reader.parse(
+        static_cast<const char*>(message.data()),
+        static_cast<const char*>(message.data()) + message.size(),
+        root)) 
+    {
+        try {
+            if(!root.isObject()) {
+                throw std::runtime_error("json root must be an object");
+            }
+
+            unsigned int version = root["version"].asUInt();
+            std::string username(root["username"].asString());
+            
+            if(version < 2 || version > 3) {
+                throw std::runtime_error("unsupported protocol version");
+            }
+  
+            if(version == 3) {
+                if(m_server.more()) {
+                    m_server.recv(&signature);
+                }
+
+                if(!username.empty()) {
+                    m_auth.verify(
+                        static_cast<const char*>(message.data()),
+                        message.size(),
+                        static_cast<const unsigned char*>(signature.data()),
+                        signature.size(),
+                        username
+                    );
+                } else {
+                    throw std::runtime_error("username expected");
+                }
+            }
+
+            response = dispatch(root);
+        } catch(const std::runtime_error& e) {
+            response = helpers::make_json("error", e.what());
+        }
+    } else {
+        response = helpers::make_json("error", reader.getFormatedErrorMessages());
+    }
+
+    // Serialize and send the response.
+    std::string json(Json::FastWriter().write(response));
+    message.rebuild(json.size());
+    memcpy(message.data(), json.data(), json.size());
+
+    m_server.send(message);
 }
 
 void core_t::pump(ev::timer&, int) {
@@ -229,7 +230,10 @@ Json::Value core_t::dispatch(const Json::Value& root) {
         // Iterate over all the apps.
         Json::Value::Members names(apps.getMemberNames());
 
-        for(Json::Value::Members::iterator it = names.begin(); it != names.end(); ++it) {
+        for(Json::Value::Members::iterator it = names.begin();
+            it != names.end(); 
+            ++it) 
+        {
             std::string app(*it);
             Json::Value manifest(apps[app]);
 
@@ -287,7 +291,8 @@ Json::Value core_t::create_engine(const std::string& name, const Json::Value& ma
         } catch(const std::runtime_error& e) {
             m_log->error(
                 "unable to create the '%s' engine - %s",
-                name.c_str(), e.what()
+                name.c_str(),
+                e.what()
             );
             
             throw;
@@ -311,7 +316,8 @@ Json::Value core_t::delete_engine(const std::string& name) {
     } catch(const std::runtime_error& e) {
         m_log->error(
             "unable to destroy the '%s' engine - %s",
-            name.c_str(), e.what()
+            name.c_str(),
+            e.what()
         );
 
         throw;
@@ -329,7 +335,10 @@ Json::Value core_t::info() const {
 
     result["route"] = m_server.route();
 
-    for(engine_map_t::const_iterator it = m_engines.begin(); it != m_engines.end(); ++it) {
+    for(engine_map_t::const_iterator it = m_engines.begin();
+        it != m_engines.end(); 
+        ++it) 
+    {
         result["apps"][it->first] = it->second->info();
     }
 
@@ -376,7 +385,10 @@ void core_t::recover() {
             boost::algorithm::join(apps, ", ").c_str()
         );
         
-        for(Json::Value::Members::iterator it = apps.begin(); it != apps.end(); ++it) {
+        for(Json::Value::Members::iterator it = apps.begin();
+            it != apps.end(); 
+            ++it) 
+        {
             std::string app(*it);
             
             try {

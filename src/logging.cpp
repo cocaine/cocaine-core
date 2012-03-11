@@ -65,6 +65,8 @@ void logger_t::emit(priorities priority, const char* format, va_list args) const
 sink_t::~sink_t() { }
 
 boost::shared_ptr<logger_t> sink_t::get(const std::string& name) {
+    boost::lock_guard<boost::mutex> lock(m_mutex);
+
     logger_map_t::iterator it(m_loggers.find(name));
 
     if(it != m_loggers.end()) {

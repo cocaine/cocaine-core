@@ -14,6 +14,7 @@
 #ifndef COCAINE_LOGGING_HPP
 #define COCAINE_LOGGING_HPP
 
+#include <boost/thread/mutex.hpp>
 #include <cstdarg>
 
 #include "cocaine/common.hpp"
@@ -73,6 +74,7 @@ class sink_t:
         > logger_map_t;
 
         logger_map_t m_loggers;
+        boost::mutex m_mutex;
 };
 
 class void_sink_t:

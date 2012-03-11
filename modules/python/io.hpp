@@ -39,11 +39,11 @@ class python_io_t {
 };
 
 static PyMethodDef python_io_object_methods[] = {
-    { "read", (PyCFunction)python_io_t::read,
-        METH_KEYWORDS, "Pulls in a request chunk from the engine" },
-    { "write", (PyCFunction)python_io_t::write,
-        METH_VARARGS, "Pushes a response chunk to the engine" },
-    { NULL }
+    { "read", (PyCFunction)python_io_t::read, METH_KEYWORDS,
+        "Pulls in a request chunk from the engine" },
+    { "write", (PyCFunction)python_io_t::write, METH_VARARGS, 
+        "Pushes a response chunk to the engine" },
+    { NULL, NULL, 0, NULL }
 };
 
 static PyTypeObject python_io_object_type = {

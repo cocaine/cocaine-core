@@ -28,8 +28,6 @@
 #include "cocaine/networking.hpp"
 #include "cocaine/slaves.hpp"
 
-#include "cocaine/helpers/tuples.hpp"
-
 namespace cocaine { namespace engine {
 
 #if BOOST_VERSION >= 104000
@@ -79,31 +77,29 @@ class engine_t:
         }
 
 #ifdef HAVE_CGROUPS
-        inline cgroup *const group() {
+        inline cgroup * const group() {
             return m_cgroup;
         }
 #endif
 
     private:
-        template<class S, class T>
-        pool_map_t::iterator unicast(const S& selector, const T& message) {
+        template<class S, class Command>
+        pool_map_t::iterator unicast(const S& selector, Command& command) {
             pool_map_t::iterator it(
                 std::find_if(
-                    m_pool.begin(), 
-                    m_pool.end(), 
+                    m_pool.begin(),
+                    m_pool.end(),
                     selector
                 )
             );
 
             if(it != m_pool.end()) {
-                m_messages.send_multi(
-                    helpers::joint_view(
-                        boost::make_tuple(
-                            networking::protect(it->second->id())
-                        ),
-                        message
-                    )
+                m_messages.send(
+                    networking::protect(it->second->id()),
+                    ZMQ_SNDMORE
                 );
+
+                m_messages.send_multi(command.get());
             }
 
             return it;
@@ -144,7 +140,7 @@ class engine_t:
 
 #ifdef HAVE_CGROUPS
         // Control group to put the slaves into.
-        cgroup* m_cgroup;
+        cgroup * m_cgroup;
 #endif
 };
 

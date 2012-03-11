@@ -27,7 +27,8 @@ using namespace cocaine::core;
 using namespace cocaine::engine;
 
 static PyMethodDef context_module_methods[] = {
-    { "manifest", &python_t::manifest, METH_NOARGS, "Get the application's manifest" },
+    { "manifest", &python_t::manifest, METH_NOARGS, 
+        "Get the application's manifest" },
     { NULL, NULL, 0, NULL }
 };
 
@@ -57,7 +58,7 @@ void python_t::initialize(const app_t& app) {
         source /= "__init__.py";
     }
 
-    m_app_log->debug("loading app code from %s", source.string().c_str());
+    m_app_log->debug("loading the app code from %s", source.string().c_str());
     
     boost::filesystem::ifstream input(source);
     
@@ -103,7 +104,6 @@ void python_t::initialize(const app_t& app) {
         "Log",
         reinterpret_cast<PyObject*>(&log_object_type)
     );
-
 
     // Application module
     // ------------------
@@ -175,11 +175,11 @@ void python_t::initialize(const app_t& app) {
 }
 
 void python_t::invoke(io_t& io, const std::string& method) {
-    thread_state_t state;
-    
     if(!m_python_module) {
         throw unrecoverable_error_t("python module is not initialized");
     }
+
+    thread_state_t state;
 
     m_app_log->debug("invoking '%s'", method.c_str());
     

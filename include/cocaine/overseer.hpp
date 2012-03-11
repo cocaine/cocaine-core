@@ -42,9 +42,12 @@ class overseer_t:
 
         void run();
 
-        // Declared public for I/O objects to communicate with the engine.
-        data_container_t pull(bool block);
-        void push(rpc::codes code, const void* data, size_t size);
+        data_container_t recv(bool block);
+
+        template<class Command>
+        void send(Command& command) {
+            m_messages.send_multi(command.get());
+        }
 
     private:
         void message(ev::io&, int);

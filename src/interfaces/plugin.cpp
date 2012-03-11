@@ -23,18 +23,15 @@ io_t::io_t(overseer_t& overseer):
 { }
 
 data_container_t io_t::pull(bool block) {
-	return m_overseer.pull(block);
+	return m_overseer.recv(block);
 }
 
-void io_t::push(const void* data, size_t size) {
-    m_overseer.push(
-		rpc::push,
-		data,
-		size
-	);
+void io_t::push(const void * data, size_t size) {
+	rpc::command<rpc::push> command(data, size);
+	m_overseer.send(command);
 }
 
-void io_t::emit(const std::string& key, const void* data, size_t size) {
+void io_t::emit(const std::string& key, const void * data, size_t size) {
 	// TODO: Emitters.
 }
 
