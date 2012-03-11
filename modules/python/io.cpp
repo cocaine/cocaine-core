@@ -35,13 +35,18 @@ void python_io_t::destructor(python_io_t* self) {
 
 PyObject* python_io_t::read(python_io_t* self, PyObject* args, PyObject* kwargs) {
     PyObject* block = NULL;
+    data_container_t chunk;
 
     if(!PyArg_ParseTupleAndKeywords(args, kwargs, "|O:read", read_kwds, &block))
         return NULL;
 
-    data_container_t chunk = self->io->pull(
+    Py_BEGIN_ALLOW_THREADS
+
+    chunk = self->io->pull(
         block ? PyObject_IsTrue(block) : false
     );
+
+    Py_END_ALLOW_THREADS
 
     if(!chunk.data() || !chunk.size())
         Py_RETURN_NONE;
@@ -68,8 +73,12 @@ PyObject* python_io_t::write(python_io_t* self, PyObject* args) {
     if(!PyArg_ParseTuple(args, "s#:write", &message, &size))
         return NULL;
 
+    Py_BEGIN_ALLOW_THREADS
+
     if(message && size) 
         self->io->push(message, size);
+
+    Py_END_ALLOW_THREADS
 
     Py_RETURN_NONE;
 }
