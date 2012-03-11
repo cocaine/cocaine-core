@@ -83,8 +83,8 @@ class engine_t:
 #endif
 
     private:
-        template<class S, class Command>
-        pool_map_t::iterator unicast(const S& selector, Command& command) {
+        template<class S, class Pack>
+        pool_map_t::iterator unicast(const S& selector, Pack& pack) {
             pool_map_t::iterator it(
                 std::find_if(
                     m_pool.begin(),
@@ -99,7 +99,7 @@ class engine_t:
                     ZMQ_SNDMORE
                 );
 
-                m_messages.send_multi(command.get());
+                m_messages.send_multi(pack.get());
             }
 
             return it;

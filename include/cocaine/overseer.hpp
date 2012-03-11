@@ -44,9 +44,9 @@ class overseer_t:
 
         data_container_t recv(bool block);
 
-        template<class Command>
-        void send(Command& command) {
-            m_messages.send_multi(command.get());
+        template<class Pack>
+        void send(Pack& pack) {
+            m_messages.send_multi(pack.get());
         }
 
     private:
