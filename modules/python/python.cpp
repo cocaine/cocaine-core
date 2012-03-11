@@ -13,6 +13,7 @@
 
 #include <sstream>
 #include <boost/filesystem/fstream.hpp>
+#include <boost/format.hpp>
 
 #include "python.hpp"
 #include "log.hpp"
@@ -298,12 +299,23 @@ PyObject* python_t::wrap(const Json::Value& value) {
 }
 
 std::string python_t::exception() {
-    python_object_t type(NULL), object(NULL), traceback(NULL);
+    python_object_t type(NULL), value(NULL), traceback(NULL);
     
-    PyErr_Fetch(&type, &object, &traceback);
-    python_object_t message(PyObject_Str(object));
+    PyErr_Fetch(&type, &value, &traceback);
+
+    python_object_t name(PyObject_Str(type));
+    python_object_t message(PyObject_Str(value));
     
-    return PyString_AsString(message);
+    boost::format formatter("%s: %s");
+    
+    std::string result(
+        (formatter
+            % PyString_AsString(name) 
+            % PyString_AsString(message)
+        ).str()
+    );
+
+    return result;
 }
 
 // void python_t::respond(io_t& io, python_object_t& result) {
@@ -376,7 +388,6 @@ extern "C" {
         // Initializing types.
         PyType_Ready(&log_object_type);
         PyType_Ready(&python_io_object_type);
-
 
         // Save the main thread.
         save();
