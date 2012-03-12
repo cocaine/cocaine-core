@@ -18,7 +18,8 @@ using namespace cocaine::engine;
 
 static char * read_kwds[] = { "block" };
 
-int python_io_t::constructor(python_io_t * self, PyObject * args, PyObject * kwargs) {    
+
+int python_io_t::constructor(python_io_t* self, PyObject* args, PyObject* kwargs) {
     PyObject * py_io;
 
     if(!PyArg_ParseTuple(args, "O", &py_io))
@@ -29,11 +30,12 @@ int python_io_t::constructor(python_io_t * self, PyObject * args, PyObject * kwa
     return 0;
 }
 
-void python_io_t::destructor(python_io_t * self) {
-    self->ob_type->tp_free(self);    
+
+void python_io_t::destructor(python_io_t* self) {
+    self->ob_type->tp_free(self);
 }
 
-PyObject* python_io_t::read(python_io_t * self, PyObject * args, PyObject * kwargs) {
+PyObject* python_io_t::read(python_io_t* self, PyObject* args, PyObject* kwargs) {
     PyObject * block = NULL;
     data_container_t chunk;
 
@@ -53,17 +55,32 @@ PyObject* python_io_t::read(python_io_t * self, PyObject * args, PyObject * kwar
 
     python_object_t string(
         PyString_FromStringAndSize(
-            static_cast<const char*>(chunk.data()), 
+            static_cast<const char*>(chunk.data()),
             chunk.size()
         )
     );
-    
+
     return string;
 }
 
-PyObject* python_io_t::write(python_io_t * self, PyObject * args) {    
+PyObject* python_io_t::readline(python_io_t* self, PyObject* args, PyObject* kwargs) {
+    Py_RETURN_NONE;
+}
+
+PyObject* python_io_t::readlines(python_io_t* self, PyObject* args, PyObject* kwargs) {
+    Py_RETURN_NONE;
+}
+
+
+PyObject* python_io_t::io_iter_next(python_io_t *it) {
+    PyObject *item;
+    return NULL;
+}
+
+PyObject* python_io_t::write(python_io_t* self, PyObject* args) {
+
     const char * message = NULL;
-    
+
 #ifdef  PY_SSIZE_T_CLEAN
     Py_ssize_t size = 0;
 #else
@@ -75,7 +92,7 @@ PyObject* python_io_t::write(python_io_t * self, PyObject * args) {
 
     Py_BEGIN_ALLOW_THREADS
 
-    if(message && size) 
+    if(message && size)
         self->io->push(message, size);
 
     Py_END_ALLOW_THREADS
