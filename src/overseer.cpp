@@ -62,16 +62,23 @@ void overseer_t::run() {
         m_module = context().create<plugin_t>(m_app.type);
         m_module->initialize(m_app);
     } catch(const unrecoverable_error_t& e) {
-        rpc::packed<events::error_t> packed(events::error_t(client::server_error, e.what()));
+        events::error_t event(e);
+        rpc::packed<events::error_t> packed(event);
         send(packed);
         return;
     } catch(const std::runtime_error& e) {
-        rpc::packed<events::error_t> packed(events::error_t(client::server_error, e.what()));
+        events::error_t event(e);
+        rpc::packed<events::error_t> packed(event);
         send(packed);
         return;
     } catch(...) {
-        rpc::packed<events::error_t> packed(events::error_t(client::server_error,
-            "unexpected exception while creating the plugin instance"));
+        rpc::packed<events::error_t> packed(
+            events::error_t(
+                client::server_error,
+                "unexpected exception while creating the plugin instance"
+            )
+        );
+        
         send(packed);
         return;
     }
@@ -107,18 +114,27 @@ void overseer_t::process(ev::idle&, int) {
                     io_t io(*this);
                     m_module->invoke(io, method);
                 } catch(const recoverable_error_t& e) {
-                    rpc::packed<events::error_t> packed(events::error_t(client::app_error, e.what()));
+                    events::error_t event(e);
+                    rpc::packed<events::error_t> packed(event);
                     send(packed);
                 } catch(const unrecoverable_error_t& e) {
-                    rpc::packed<events::error_t> packed(events::error_t(client::server_error, e.what()));
+                    events::error_t event(e);
+                    rpc::packed<events::error_t> packed(event);
                     send(packed);
                 } catch(...) {
-                    rpc::packed<events::error_t> packed(events::error_t(client::server_error,
-                        "unexpected exception while creating the plugin instance"));
+                    rpc::packed<events::error_t> packed(
+                        events::error_t(
+                            client::server_error,
+                            "unexpected exception while invoking a method"
+                        )
+                    );
+                    
                     send(packed);
                 }
                 
                 rpc::packed<events::release_t> packed;
+
+                // XXX: Not sure if it doesn't introduce a race here.
                 send(packed);
                 
                 // NOTE: Drop all the outstanding request chunks not pulled
