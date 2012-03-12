@@ -18,24 +18,23 @@ using namespace cocaine::engine;
 
 static char * read_kwds[] = { "block" };
 
+int python_io_t::constructor(python_io_t * self, PyObject * args, PyObject * kwargs) {
+    PyObject * io_object;
 
-int python_io_t::constructor(python_io_t* self, PyObject* args, PyObject* kwargs) {
-    PyObject * py_io;
-
-    if(!PyArg_ParseTuple(args, "O", &py_io))
+    if(!PyArg_ParseTuple(args, "O", &io_object))
         return NULL;
 
-    self->io = static_cast<io_t*>(PyCObject_AsVoidPtr(py_io));
+    self->io = static_cast<io_t*>(PyCObject_AsVoidPtr(io_object));
 
     return 0;
 }
 
 
-void python_io_t::destructor(python_io_t* self) {
+void python_io_t::destructor(python_io_t * self) {
     self->ob_type->tp_free(self);
 }
 
-PyObject* python_io_t::read(python_io_t* self, PyObject* args, PyObject* kwargs) {
+PyObject* python_io_t::read(python_io_t * self, PyObject * args, PyObject * kwargs) {
     PyObject * block = NULL;
     data_container_t chunk;
 
@@ -63,22 +62,20 @@ PyObject* python_io_t::read(python_io_t* self, PyObject* args, PyObject* kwargs)
     return string;
 }
 
-PyObject* python_io_t::readline(python_io_t* self, PyObject* args, PyObject* kwargs) {
+PyObject* python_io_t::readline(python_io_t * self, PyObject * args, PyObject * kwargs) {
     Py_RETURN_NONE;
 }
 
-PyObject* python_io_t::readlines(python_io_t* self, PyObject* args, PyObject* kwargs) {
+PyObject* python_io_t::readlines(python_io_t * self, PyObject * args, PyObject * kwargs) {
     Py_RETURN_NONE;
 }
 
-
-PyObject* python_io_t::io_iter_next(python_io_t *it) {
+PyObject* python_io_t::iter_next(python_io_t * it) {
     PyObject *item;
     return NULL;
 }
 
-PyObject* python_io_t::write(python_io_t* self, PyObject* args) {
-
+PyObject* python_io_t::write(python_io_t * self, PyObject * args) {
     const char * message = NULL;
 
 #ifdef  PY_SSIZE_T_CLEAN
@@ -99,3 +96,4 @@ PyObject* python_io_t::write(python_io_t* self, PyObject* args) {
 
     Py_RETURN_NONE;
 }
+

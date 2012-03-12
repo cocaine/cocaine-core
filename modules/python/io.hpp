@@ -31,11 +31,11 @@ class python_io_t {
         static int constructor(python_io_t * self, PyObject * args, PyObject * kwargs);
         static void destructor(python_io_t * self);
 
-        static PyObject* read(python_io_t* self, PyObject* args, PyObject* kwargs);
-        static PyObject* readline(python_io_t* self, PyObject* args, PyObject* kwargs);
-        static PyObject* readlines(python_io_t* self, PyObject* args, PyObject* kwargs);
-        static PyObject* write(python_io_t* self, PyObject* args);
-        static PyObject* io_iter_next(python_io_t* it);
+        static PyObject* read(python_io_t * self, PyObject * args, PyObject * kwargs);
+        static PyObject* readline(python_io_t * self, PyObject * args, PyObject * kwargs);
+        static PyObject* readlines(python_io_t * self, PyObject * args, PyObject * kwargs);
+        static PyObject* write(python_io_t * self, PyObject * args);
+        static PyObject* iter_next(python_io_t * it);
 
     public:
         io_t * io;
@@ -47,7 +47,7 @@ static PyMethodDef python_io_object_methods[] = {
     { "readline", (PyCFunction)python_io_t::readline,
         METH_KEYWORDS, "Pulls in a request line from the engine" },
     { "readlines", (PyCFunction)python_io_t::readlines,
-        METH_KEYWORDS, "Pulls in a request lines from the engine" },
+        METH_KEYWORDS, "Pulls in all available request lines from the engine" },
     { "write", (PyCFunction)python_io_t::write,
         METH_VARARGS, "Pushes a response chunk to the engine" },
     { NULL }
@@ -81,7 +81,7 @@ static PyTypeObject python_io_object_type = {
     0,                                          /* tp_richcompare */
     0,                                          /* tp_weaklistoffset */
     PyObject_SelfIter,                          /* tp_iter */
-    (iternextfunc)python_io_t::io_iter_next,    /* tp_iternext */
+    (iternextfunc)python_io_t::iter_next,       /* tp_iternext */
     python_io_object_methods,                   /* tp_methods */
     0,                                          /* tp_members */
     0,                                          /* tp_getset */
