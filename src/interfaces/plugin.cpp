@@ -28,8 +28,13 @@ data_container_t io_t::pull(bool block) {
 
 void io_t::push(const void * data, size_t size) {
 	zmq::message_t message(size);
+
 	memcpy(message.data(), data, size);
-	m_overseer.send(rpc::pack(events::push_t(message)));
+
+    events::push_t event(message);
+    rpc::packed<events::push_t> packed(event);
+
+	m_overseer.send(packed);
 }
 
 void io_t::emit(const std::string& key, const void * data, size_t size) {

@@ -48,7 +48,7 @@ namespace cocaine { namespace engine { namespace rpc {
             pack(typename at<codemap, T>::type())
         { }
 
-        const type& get() const {
+        type& get() {
             return pack;
         }
 
@@ -60,7 +60,7 @@ namespace cocaine { namespace engine { namespace rpc {
 
     template<>
     struct packed<events::invoke_t> {
-        typedef boost::tuple<int, const std::string&, zmq::message_t&> type;
+        typedef boost::tuple<int, std::string, zmq::message_t&> type;
 
         // XXX: Test whether this zero-copy magic never backfires.
         packed(const events::invoke_t& event):
@@ -70,7 +70,7 @@ namespace cocaine { namespace engine { namespace rpc {
             pack(invoke, event.job->method(), message)
         { }
 
-        const type& get() const {
+        type& get() {
             return pack;
         }
 
@@ -83,35 +83,33 @@ namespace cocaine { namespace engine { namespace rpc {
         typedef boost::tuple<int, zmq::message_t&> type;
 
         packed(const events::push_t& event):
-            pack(push, event.message)
-        { }
+            pack(push, message)
+        {
+            message.copy(&event.message);
+        }
 
-        const type& get() const {
+        type& get() {
             return pack;
         }
 
+        zmq::message_t message;
         type pack;
     };
 
     template<>
     struct packed<events::error_t> {
-        typedef boost::tuple<int, int, const std::string&> type;
+        typedef boost::tuple<int, int, std::string> type;
 
         packed(const events::error_t& event):
             pack(error, event.code, event.message)
         { }
 
-        const type& get() const {
+        type& get() {
             return pack;
         }
 
         type pack;
     };
-
-    template<typename T>
-    const typename packed<T>::type& pack(const T& event) {
-        return packed<T>(event).get();
-    }
 }}}
 
 #endif
