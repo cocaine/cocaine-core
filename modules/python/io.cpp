@@ -37,9 +37,10 @@ void python_io_t::destructor(python_io_t * self) {
 
 PyObject* python_io_t::read(python_io_t * self, PyObject * args, PyObject * kwargs) {
     PyObject * block = NULL;
+    PyObject * result = NULL;
     
     if(!PyArg_ParseTupleAndKeywords(args, kwargs, "|O:read", read_kwds, &block)) {
-        return NULL;
+        return result;
     }
 
     data_container_t chunk;
@@ -50,17 +51,15 @@ PyObject* python_io_t::read(python_io_t * self, PyObject * args, PyObject * kwar
         );
     Py_END_ALLOW_THREADS
 
-    python_object_t string(NULL);
-
     if(chunk.data() && chunk.size()) {
-        string = PyString_FromStringAndSize(
+        result = PyString_FromStringAndSize(
             static_cast<const char*>(chunk.data()),
             chunk.size());
     } else { 
-        string = PyString_FromString("");
+        result = PyString_FromString("");
     }
 
-    return string;
+    return result;
 }
 
 PyObject* python_io_t::readline(python_io_t * self, PyObject * args, PyObject * kwargs) {
