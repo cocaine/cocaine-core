@@ -36,7 +36,18 @@ python_t::python_t(context_t& ctx):
     plugin_t(ctx),
     m_python_module(NULL),
     m_manifest(NULL)
-{ }
+{
+    Py_InitializeEx(0);
+    PyEval_InitThreads();
+
+    // Initializing types.
+    PyType_Ready(&log_object_type);
+    PyType_Ready(&python_io_object_type);
+}
+
+python_t::~python_t() {
+    Py_Finalize();
+}
 
 void python_t::initialize(const app_t& app) {
     m_app_log = app.log;
@@ -65,8 +76,6 @@ void python_t::initialize(const app_t& app) {
     if(!input) {
         throw unrecoverable_error_t("unable to open " + source.string());
     }
-
-    // thread_state_t state;
 
     // System paths
     // ------------
@@ -179,10 +188,6 @@ void python_t::invoke(io_t& io, const std::string& method) {
         throw unrecoverable_error_t("python module is not initialized");
     }
 
-    // thread_state_t state;
-
-    m_app_log->debug("invoking '%s'", method.c_str());
-    
     PyObject * globals = PyModule_GetDict(m_python_module);
     PyObject * object = PyDict_GetItemString(globals, method.c_str());
     
@@ -203,21 +208,21 @@ void python_t::invoke(io_t& io, const std::string& method) {
     python_object_t args(NULL);
 
     // Passing io_t object to the python io_t wrapper.
-    python_object_t py_io(
+    python_object_t io_object(
         PyCObject_FromVoidPtr(&io, NULL)
     );
 
-    args = PyTuple_Pack(1, *py_io);
+    args = PyTuple_Pack(1, *io_object);
 
-    python_object_t python_io_t_object(
+    python_object_t io_proxy(
         PyObject_Call(
             reinterpret_cast<PyObject*>(&python_io_object_type), 
-            args, 
+            args,
             NULL
         )
     );
- 
-    args = PyTuple_Pack(1, *python_io_t_object);
+
+    args = PyTuple_Pack(1, *io_proxy);
 
     python_object_t result(PyObject_Call(object, args, NULL));
 
@@ -318,91 +323,8 @@ std::string python_t::exception() {
     return result;
 }
 
-// void python_t::respond(io_t& io, python_object_t& result) {
-//     if(PyString_Check(result)) {
-//         throw recoverable_error_t("the result must be an iterable");
-//     }
-
-//     python_object_t iterator(PyObject_GetIter(result));
-
-//     if(iterator.valid()) {
-//         python_object_t item(NULL);
-
-//         while(true) {
-//             item = PyIter_Next(iterator);
-
-//             if(PyErr_Occurred()) {
-//                 throw recoverable_error_t(exception());
-//             } else if(!item.valid()) {
-//                 break;
-//             }
-        
-// #if PY_VERSION_HEX >= 0x02060000
-//             if(PyObject_CheckBuffer(item)) {
-//                 boost::shared_ptr<Py_buffer> buffer(
-//                     static_cast<Py_buffer*>(malloc(sizeof(Py_buffer))),
-//                     free
-//                 );
-
-//                 if(PyObject_GetBuffer(item, buffer.get(), PyBUF_SIMPLE) == 0) {
-//                     Py_BEGIN_ALLOW_THREADS
-//                         io.push(buffer->buf, buffer->len);
-//                     Py_END_ALLOW_THREADS
-                    
-//                     PyBuffer_Release(buffer.get());
-//                 } else {
-//                     throw recoverable_error_t("unable to serialize the result");
-//                 }
-//             }
-// #else
-//             if(PyString_Check(item)) {
-//                 io.push(PyString_AsString(item), PyString_Size(item));
-//             } else {
-//                 throw recoverable_error_t("unable to serialize the result");
-//             }
-// #endif
-//         }
-//     } else {
-//         throw recoverable_error_t(exception());
-//     }
-// }
-
-PyThreadState * g_state = NULL;
-
-void save() {
-    g_state = PyEval_SaveThread();
-}
-
-void restore() {
-    PyEval_RestoreThread(g_state);
-}
-
 extern "C" {
     void initialize(registry_t& registry) {
-        // Initialize the Python subsystem.
-        Py_InitializeEx(0);
-
-        // Initialize the GIL.
-        PyEval_InitThreads();
-
-        // Initializing types.
-        PyType_Ready(&log_object_type);
-        PyType_Ready(&python_io_object_type);
-
-        // Save the main thread.
-        // save();
-
-        // NOTE: In case of a fork, restore the main thread state and acquire the GIL,
-        // call the python post-fork handler and save the main thread again, releasing the GIL.
-        // pthread_atfork(NULL, NULL, restore);
-        pthread_atfork(NULL, NULL, PyOS_AfterFork);
-        // pthread_atfork(NULL, NULL, save);
-
         registry.install<python_t, plugin_t>("python");
-    }
-
-    __attribute__((destructor)) void finalize() {
-        // restore();
-        Py_Finalize();
     }
 }

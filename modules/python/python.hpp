@@ -54,7 +54,6 @@ class interpreter_t {
     private:
         PyThreadState * m_saved;
 };
-*/
 
 class thread_state_t {
     public:
@@ -69,12 +68,14 @@ class thread_state_t {
     private:
         PyGILState_STATE m_saved;
 };
+*/
 
 class python_t:
     public plugin_t
 {
     public:
         python_t(context_t& ctx);
+        virtual ~python_t();
         
         virtual void initialize(const engine::app_t& app);
         virtual void invoke(io_t& io, const std::string& method);
@@ -86,9 +87,6 @@ class python_t:
         static PyObject* wrap(const Json::Value& value);
         
         static std::string exception();
-
-    // private:
-        // void respond(io_t& io, python_object_t& result);
 
     private:
         PyObject * m_python_module;
