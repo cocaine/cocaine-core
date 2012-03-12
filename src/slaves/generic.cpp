@@ -76,14 +76,14 @@ void generic_t::signal(ev::child& event, int) {
         
         if(WIFEXITED(event.rstatus) && WEXITSTATUS(event.rstatus) == EXIT_FAILURE) {
             m_engine.app().log->warning(
-                "slave %s failed to start", 
+                "slave %s failed to start",
                 id().c_str()
             );
 
             m_engine.stop();
         } else if(WIFSIGNALED(event.rstatus)) {
             m_engine.app().log->warning(
-                "slave %s killed by a signal %d", 
+                "slave %s has been killed by a signal %d", 
                 id().c_str(), 
                 WTERMSIG(event.rstatus)
             );

@@ -94,10 +94,21 @@ class engine_t:
             );
 
             if(it != m_pool.end()) {
-                m_messages.send(
-                    networking::protect(it->second->id()),
-                    ZMQ_SNDMORE
-                );
+                try {
+                    m_messages.send(
+                        networking::protect(it->second->id()),
+                        ZMQ_SNDMORE
+                    );
+                } catch(const zmq::error_t& e) {
+                    m_app.log->error(
+                        "slave %d has died unexpectedly", 
+                        it->second->id().c_str()
+                    );
+                    
+                    it->second->process_event(events::terminate_t());
+
+                    return m_pool.end();
+                }
 
                 m_messages.send_multi(packed.get());
             }

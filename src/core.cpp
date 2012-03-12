@@ -210,7 +210,11 @@ void core_t::process(ev::idle&, int) {
     message.rebuild(json.size());
     memcpy(message.data(), json.data(), json.size());
 
-    m_server.send(message);
+    try {
+        m_server.send(message);
+    } catch(const zmq::error_t& e) {
+        m_log->debug("a client has disconnected unexpectedly");
+    }
 }
 
 void core_t::pump(ev::timer&, int) {
