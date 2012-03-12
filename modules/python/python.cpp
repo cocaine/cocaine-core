@@ -229,6 +229,13 @@ void python_t::invoke(io_t& io, const std::string& method) {
     if(PyErr_Occurred()) {
         throw recoverable_error_t(exception());
     } 
+   
+    if(result != Py_None) {
+        m_app_log->warning(
+            "ignoring an unused returned value of method '%s'",
+            method.c_str()
+        );
+    }
     
     // Commented out due to the python io_t wrapper.
     // else if(result.valid() && result != Py_None) {
