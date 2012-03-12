@@ -49,15 +49,15 @@ PyObject* python_io_t::read(python_io_t * self, PyObject * args, PyObject * kwar
 
     Py_END_ALLOW_THREADS
 
-    if(!chunk.data() || !chunk.size())
-        Py_RETURN_NONE;
+    python_object_t string(NULL);
 
-    python_object_t string(
-        PyString_FromStringAndSize(
+    if(chunk.data() && chunk.size()) {
+        string = PyString_FromStringAndSize(
             static_cast<const char*>(chunk.data()),
-            chunk.size()
-        )
-    );
+            chunk.size());
+    } else { 
+        string = PyString_FromString("");
+    }
 
     return string;
 }
