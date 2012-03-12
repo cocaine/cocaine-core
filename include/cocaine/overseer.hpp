@@ -22,7 +22,6 @@
 #include "cocaine/helpers/unique_id.hpp"
 #include "cocaine/interfaces/plugin.hpp"
 #include "cocaine/networking.hpp"
-#include "cocaine/rpc.hpp"
 
 namespace cocaine { namespace engine {
 

@@ -16,6 +16,7 @@
 #include "cocaine/app.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/registry.hpp"
+#include "cocaine/rpc.hpp"
 
 #include "cocaine/dealer/types.hpp"
 
