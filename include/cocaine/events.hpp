@@ -87,7 +87,7 @@ struct error_t:
     { }
     
     const client::error_code code;
-    const std::string& message;
+    const std::string message;
 };
 
 struct release_t:
