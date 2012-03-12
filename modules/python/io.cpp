@@ -21,8 +21,9 @@ static char * read_kwds[] = { "block" };
 int python_io_t::constructor(python_io_t * self, PyObject * args, PyObject * kwargs) {
     PyObject * io_object;
 
-    if(!PyArg_ParseTuple(args, "O", &io_object))
+    if(!PyArg_ParseTuple(args, "O", &io_object)) {
         return NULL;
+    }
 
     self->io = static_cast<io_t*>(PyCObject_AsVoidPtr(io_object));
 
@@ -36,17 +37,17 @@ void python_io_t::destructor(python_io_t * self) {
 
 PyObject* python_io_t::read(python_io_t * self, PyObject * args, PyObject * kwargs) {
     PyObject * block = NULL;
+    
+    if(!PyArg_ParseTupleAndKeywords(args, kwargs, "|O:read", read_kwds, &block)) {
+        return NULL;
+    }
+
     data_container_t chunk;
 
-    if(!PyArg_ParseTupleAndKeywords(args, kwargs, "|O:read", read_kwds, &block))
-        return NULL;
-
     Py_BEGIN_ALLOW_THREADS
-
-    chunk = self->io->pull(
-        block ? PyObject_IsTrue(block) : false
-    );
-
+        chunk = self->io->pull(
+            block ? PyObject_IsTrue(block) : false
+        );
     Py_END_ALLOW_THREADS
 
     python_object_t string(NULL);
@@ -84,14 +85,14 @@ PyObject* python_io_t::write(python_io_t * self, PyObject * args) {
     int size = 0;
 #endif
 
-    if(!PyArg_ParseTuple(args, "s#:write", &message, &size))
+    if(!PyArg_ParseTuple(args, "s#:write", &message, &size)) {
         return NULL;
+    }
 
     Py_BEGIN_ALLOW_THREADS
-
-    if(message && size)
-        self->io->push(message, size);
-
+        if(message && size) {
+            self->io->push(message, size);
+        }
     Py_END_ALLOW_THREADS
 
     Py_RETURN_NONE;
