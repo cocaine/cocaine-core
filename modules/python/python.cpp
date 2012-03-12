@@ -66,7 +66,7 @@ void python_t::initialize(const app_t& app) {
         throw unrecoverable_error_t("unable to open " + source.string());
     }
 
-    thread_state_t state;
+    // thread_state_t state;
 
     // System paths
     // ------------
@@ -179,7 +179,7 @@ void python_t::invoke(io_t& io, const std::string& method) {
         throw unrecoverable_error_t("python module is not initialized");
     }
 
-    thread_state_t state;
+    // thread_state_t state;
 
     m_app_log->debug("invoking '%s'", method.c_str());
     
@@ -390,19 +390,19 @@ extern "C" {
         PyType_Ready(&python_io_object_type);
 
         // Save the main thread.
-        save();
+        // save();
 
         // NOTE: In case of a fork, restore the main thread state and acquire the GIL,
         // call the python post-fork handler and save the main thread again, releasing the GIL.
-        pthread_atfork(NULL, NULL, restore);
+        // pthread_atfork(NULL, NULL, restore);
         pthread_atfork(NULL, NULL, PyOS_AfterFork);
-        pthread_atfork(NULL, NULL, save);
+        // pthread_atfork(NULL, NULL, save);
 
         registry.install<python_t, plugin_t>("python");
     }
 
     __attribute__((destructor)) void finalize() {
-        restore();
+        // restore();
         Py_Finalize();
     }
 }
