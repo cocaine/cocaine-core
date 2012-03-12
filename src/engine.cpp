@@ -275,20 +275,17 @@ Json::Value engine_t::stop() {
         }
     }
 
-    events::terminate_t event;
-    rpc::pack<events::terminate_t> pack;
-
     // Terminate the slaves.
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
         // NOTE: Avoid signaling dead or just born slaves.
         if(it->second->state_downcast<const slaves::alive*>()) {
             unicast(
                 specific_slave(*it),
-                pack
+                rpc::packed<events::terminate_t>().get()
             );
         }
 
-        it->second->process_event(event);
+        it->second->process_event(events::terminate_t());
     }
 
     m_pool.clear();
@@ -351,12 +348,11 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
     }
 
     events::invoke_t event(job);
-    rpc::pack<events::invoke_t> pack(job);
 
     pool_map_t::iterator it(
         unicast(
             idle_slave(),
-            pack
+            rpc::pack(event)
         )
     );
 

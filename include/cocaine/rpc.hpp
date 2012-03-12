@@ -14,10 +14,12 @@
 #ifndef COCAINE_RPC_HPP
 #define COCAINE_RPC_HPP
 
+#include <boost/mpl/map.hpp>
+
 #include "cocaine/events.hpp"
 #include "cocaine/job.hpp"
 
-namespace cocaine { namespace engine { namespace rpc {
+namespace cocaine { namespace engine { namespace rpc {    
     enum codes {
         heartbeat,
         terminate,
@@ -27,92 +29,89 @@ namespace cocaine { namespace engine { namespace rpc {
         release
     };
 
-    // Specialize this class for any new event types.
-    template<typename T> struct pack;
+    // Generic packer
+    // --------------
 
-    template<>
-    struct pack<events::heartbeat_t> {
-        boost::tuple<int> get() const {
-            return boost::make_tuple(heartbeat);
-        }
-    };
+    using namespace boost::mpl;
 
-    template<>
-    struct pack<events::terminate_t> {
-        boost::tuple<int> get() const {
-            return boost::make_tuple(terminate);
-        }
-    };
+    typedef map<
+        pair< events::heartbeat_t, int_<heartbeat> >,
+        pair< events::terminate_t, int_<terminate> >,
+        pair< events::release_t,   int_<release  > >
+    > codemap;
 
-    template<>
-    struct pack<events::invoke_t> {
-        pack(const boost::shared_ptr<job_t>& job):
-            method(job->method()),
-            message(job->request().data(), 
-                    job->request().size(), 
-                    NULL)
+    template<typename T> 
+    struct packed {
+        typedef boost::tuple<int> type;
+
+        packed():
+            pack(typename at<codemap, T>::type())
         { }
 
-        boost::tuple<int, const std::string&, zmq::message_t&> get() {
-            return boost::tuple<int, const std::string&, zmq::message_t&>(invoke, method, message);
+        const type& get() const {
+            return pack;
         }
 
-        const std::string method;
+        type pack;
+    };
+
+    // Specific packers
+    // ----------------
+
+    template<>
+    struct packed<events::invoke_t> {
+        typedef boost::tuple<int, const std::string&, zmq::message_t&> type;
+
+        // XXX: Test whether this zero-copy magic never backfires.
+        packed(const events::invoke_t& event):
+            message(event.job->request().data(), 
+                    event.job->request().size(), 
+                    NULL),
+            pack(invoke, event.job->method(), message)
+        { }
+
+        const type& get() const {
+            return pack;
+        }
+
         zmq::message_t message;
+        type pack;
     };
 
     template<>
-    struct pack<events::push_t> {
-        pack(const void * data, size_t size):
-            message(size)
-        {
-            memcpy(message.data(), data, size);
+    struct packed<events::push_t> {
+        typedef boost::tuple<int, zmq::message_t&> type;
+
+        packed(const events::push_t& event):
+            pack(push, event.message)
+        { }
+
+        const type& get() const {
+            return pack;
         }
 
-        boost::tuple<int, zmq::message_t&> get() {
-            return boost::tuple<int, zmq::message_t&>(push, message);
-        }
-
-        zmq::message_t message;
+        type pack;
     };
 
     template<>
-    struct pack<events::error_t> {
-        pack(const std::string& message):
-            code(client::server_error),
-            message(message)
+    struct packed<events::error_t> {
+        typedef boost::tuple<int, int, const std::string&> type;
+
+        packed(const events::error_t& event):
+            pack(error, event.code, event.message)
         { }
 
-        pack(const std::runtime_error& e):
-            code(client::server_error),
-            message(e.what())
-        { }
-
-        pack(const recoverable_error_t& e):
-            code(client::app_error),
-            message(e.what())
-        { }
-
-        pack(const unrecoverable_error_t& e):
-            code(client::server_error),
-            message(e.what())
-        { }
-
-        boost::tuple<int, unsigned int, const std::string&> get() const {
-            return boost::tuple<int, unsigned int, const std::string&>(error, code, message);
+        const type& get() const {
+            return pack;
         }
 
-        const unsigned int code;
-        const std::string message;
+        type pack;
     };
 
-    template<>
-    struct pack<events::release_t> {
-        boost::tuple<int> get() const {
-            return boost::make_tuple(release);
-        }        
-    };
+    template<typename T>
+    const typename packed<T>::type& pack(const T& event) {
+        return packed<T>(event).get();
+    }
 }}}
 
 #endif
-

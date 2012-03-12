@@ -62,20 +62,17 @@ void overseer_t::run() {
         m_module = context().create<plugin_t>(m_app.type);
         m_module->initialize(m_app);
     } catch(const unrecoverable_error_t& e) {
-        rpc::pack<events::error_t> pack(e);
-        send(pack);
+        send(rpc::pack(events::error_t(client::server_error, e.what())));
         return;
     } catch(const std::runtime_error& e) {
-        rpc::pack<events::error_t> pack(e);
-        send(pack);
+        send(rpc::pack(events::error_t(client::server_error, e.what())));
         return;
     } catch(...) {
-        rpc::pack<events::error_t> pack(
-            "unexpected exception while creating the plugin instance");
-        send(pack);
+        send(rpc::pack(events::error_t(client::server_error,
+            "unexpected exception while creating the plugin instance")));
         return;
     }
-        
+
     m_loop.loop();
 }
 
@@ -107,21 +104,16 @@ void overseer_t::process(ev::idle&, int) {
                     io_t io(*this);
                     m_module->invoke(io, method);
                 } catch(const recoverable_error_t& e) {
-                    rpc::pack<events::error_t> pack(e);
-                    send(pack);
-                    return;
+                    send(rpc::pack(events::error_t(client::app_error, e.what())));
                 } catch(const unrecoverable_error_t& e) {
-                    rpc::pack<events::error_t> pack(e);
-                    send(pack);
-                    return;
+                    send(rpc::pack(events::error_t(client::server_error, e.what())));
                 } catch(...) {
-                    rpc::pack<events::error_t> pack(
-                        "unexpected exception while creating the plugin instance");
-                    send(pack);
+                    send(rpc::pack(events::error_t(client::app_error,
+                        "unexpected exception while creating the plugin instance"
+                    )));
                 }
                 
-                rpc::pack<events::release_t> pack;
-                send(pack);
+                send(rpc::packed<events::release_t>().get());
                 
                 // NOTE: Drop all the outstanding request chunks not pulled
                 // in by the user code. Might have a warning here?
@@ -148,14 +140,12 @@ void overseer_t::pump(ev::timer&, int) {
 }
 
 void overseer_t::timeout(ev::timer&, int) {
-    rpc::pack<events::terminate_t> pack;
-    send(pack);
+    send(rpc::packed<events::terminate_t>().get());
     terminate();
 }
 
 void overseer_t::heartbeat(ev::timer&, int) {
-    rpc::pack<events::heartbeat_t> pack;
-    send(pack);
+    send(rpc::packed<events::heartbeat_t>().get());
 }
 
 void overseer_t::terminate() {
