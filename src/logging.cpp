@@ -23,7 +23,7 @@ using namespace cocaine::logging;
 
 logger_t::logger_t(sink_t& sink, const std::string& name):
     m_sink(sink),
-	m_name(name)
+    m_name(name)
 { }
 
 void logger_t::debug(const char * format, ...) const {

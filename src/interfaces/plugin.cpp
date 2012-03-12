@@ -19,30 +19,30 @@
 using namespace cocaine::engine;
 
 io_t::io_t(overseer_t& overseer):
-	m_overseer(overseer)
+    m_overseer(overseer)
 { }
 
 data_container_t io_t::pull(bool block) {
-	return m_overseer.recv(block);
+    return m_overseer.recv(block);
 }
 
 void io_t::push(const void * data, size_t size) {
-	zmq::message_t message(size);
+    zmq::message_t message(size);
 
-	memcpy(message.data(), data, size);
+    memcpy(message.data(), data, size);
 
     events::push_t event(message);
     rpc::packed<events::push_t> packed(event);
 
-	m_overseer.send(packed);
+    m_overseer.send(packed);
 }
 
 void io_t::emit(const std::string& key, const void * data, size_t size) {
-	// TODO: Emitters.
+    // TODO: Emitters.
 }
 
 plugin_t::plugin_t(context_t& ctx):
-	object_t(ctx)
+    object_t(ctx)
 { }
 
 plugin_t::~plugin_t()

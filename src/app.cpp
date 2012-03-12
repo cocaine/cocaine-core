@@ -24,8 +24,8 @@ using namespace cocaine::engine;
 // -----------
 
 app_t::app_t(context_t& ctx, const std::string& name_, const Json::Value& manifest_):
-	name(name_),
-	manifest(manifest_),
+    name(name_),
+    manifest(manifest_),
     log(ctx.log(name_))
 {
     type = manifest["type"].asString();

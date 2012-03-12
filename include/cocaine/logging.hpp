@@ -25,10 +25,10 @@
 namespace cocaine { namespace logging {
 
 enum priorities {
-	debug,
-	info,
-	warning,
-	error
+    debug,
+    info,
+    warning,
+    error
 };
 
 class sink_t;
@@ -63,9 +63,9 @@ class sink_t:
 
         // XXX: Might be a better idea to return the logger by reference.
         boost::shared_ptr<logger_t> get(const std::string& name);
-	
+    
     public:
-		virtual void emit(priorities priority, const std::string& message) const = 0;
+        virtual void emit(priorities priority, const std::string& message) const = 0;
 
     private:
         typedef std::map<

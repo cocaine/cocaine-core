@@ -23,15 +23,15 @@ void void_storage_t::put(const std::string& ns, const std::string& key, const Js
 { }
 
 bool void_storage_t::exists(const std::string& ns, const std::string& key) {
-	return false;
+    return false;
 }
 
 Json::Value void_storage_t::get(const std::string& ns, const std::string& key) {
-	return Json::Value(Json::objectValue);
+    return Json::Value(Json::objectValue);
 }
 
 Json::Value void_storage_t::all(const std::string& ns) {
-	return Json::Value(Json::objectValue);	
+    return Json::Value(Json::objectValue);  
 }
 
 void void_storage_t::remove(const std::string& ns, const std::string& key)

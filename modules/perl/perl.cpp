@@ -116,7 +116,7 @@ public:
 
         // if there's an argument - push it on the stack
         if (!input.empty()) {
-        	call_flags = G_EVAL | G_SCALAR;
+            call_flags = G_EVAL | G_SCALAR;
             input_value_buff = input.c_str();
 
             XPUSHs(sv_2mortal(newSVpv(input_value_buff, 0)));
@@ -127,32 +127,32 @@ public:
         int ret_vals_count = call_pv(method.c_str(), call_flags);
 
         // refresh stack pointer
-		SPAGAIN;
+        SPAGAIN;
 
-		// get error (if any)
-		if (SvTRUE(ERRSV)) {
-			STRLEN n_a;
+        // get error (if any)
+        if (SvTRUE(ERRSV)) {
+            STRLEN n_a;
 
-			std::string error_msg = "perl eval error: ";
-			error_msg += SvPV(ERRSV, n_a);
-			throw unrecoverable_error_t(error_msg);
-		}
+            std::string error_msg = "perl eval error: ";
+            error_msg += SvPV(ERRSV, n_a);
+            throw unrecoverable_error_t(error_msg);
+        }
 
-		// pop returned value of the stack
-		if (ret_vals_count > 0) {
-			char* str_ptr = savepv(POPp);
+        // pop returned value of the stack
+        if (ret_vals_count > 0) {
+            char* str_ptr = savepv(POPp);
 
-			if (str_ptr) {
-				result = std::string(str_ptr);
-			}
-		}
+            if (str_ptr) {
+                result = std::string(str_ptr);
+            }
+        }
 
-		// clean-up
-		PUTBACK;
-		FREETMPS;
-		LEAVE;
+        // clean-up
+        PUTBACK;
+        FREETMPS;
+        LEAVE;
 
-		// invoke callback with resulting data
+        // invoke callback with resulting data
         if (!result.empty()) {
             io.push(result.data(), result.size());
         }
