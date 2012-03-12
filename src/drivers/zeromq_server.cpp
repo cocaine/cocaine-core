@@ -55,7 +55,13 @@ void zeromq_server_job_t::send(zmq::message_t& chunk) {
     for(route_t::const_iterator id = m_route.begin(); id != m_route.end(); ++id) {
         message.rebuild(id->size());
         memcpy(message.data(), id->data(), id->size());
-        server.socket().send(message, ZMQ_SNDMORE);
+
+        try {
+            server.socket().send(message, ZMQ_SNDMORE);
+        } catch(const zmq::error_t& e) {
+            // Host is down.
+            return;
+        }
     }
 
     // Send the delimiter.
