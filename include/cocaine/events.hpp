@@ -60,8 +60,6 @@ struct push_t:
         message(message_)
     { }
 
-    // NOTE: There's no way to pass it via a const-reference due to ZeroMQ
-    // limitations - the message gets destroyed when sent.
     zmq::message_t& message;
 };
 
@@ -72,9 +70,24 @@ struct error_t:
         code(code_),
         message(message_)
     { }
+
+    error_t(const std::runtime_error& e):
+        code(client::server_error),
+        message(e.what())
+    { }
+
+    error_t(const recoverable_error_t& e):
+        code(client::app_error),
+        message(e.what())
+    { }
+
+    error_t(const unrecoverable_error_t& e):
+        code(client::server_error),
+        message(e.what())
+    { }
     
     const client::error_code code;
-    const std::string& message;
+    const std::string message;
 };
 
 struct release_t:

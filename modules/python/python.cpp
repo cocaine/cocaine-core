@@ -27,7 +27,8 @@ using namespace cocaine::core;
 using namespace cocaine::engine;
 
 static PyMethodDef context_module_methods[] = {
-    { "manifest", &python_t::manifest, METH_NOARGS, "Get the application's manifest" },
+    { "manifest", &python_t::manifest, METH_NOARGS, 
+        "Get the application's manifest" },
     { NULL, NULL, 0, NULL }
 };
 
@@ -57,7 +58,7 @@ void python_t::initialize(const app_t& app) {
         source /= "__init__.py";
     }
 
-    m_app_log->debug("loading app code from %s", source.string().c_str());
+    m_app_log->debug("loading the app code from %s", source.string().c_str());
     
     boost::filesystem::ifstream input(source);
     
@@ -65,14 +66,14 @@ void python_t::initialize(const app_t& app) {
         throw unrecoverable_error_t("unable to open " + source.string());
     }
 
-    thread_state_t state;
+    // thread_state_t state;
 
     // System paths
     // ------------
 
     // NOTE: Prepend the current application location to the sys.path,
     // so that it could import various local stuff from there.
-    PyObject* syspaths = PySys_GetObject("path");
+    PyObject * syspaths = PySys_GetObject("path");
     
     python_object_t path(
         PyString_FromString(
@@ -91,7 +92,7 @@ void python_t::initialize(const app_t& app) {
 
     m_manifest = wrap(args);
 
-    PyObject* context_module = Py_InitModule(
+    PyObject * context_module = Py_InitModule(
         "__context__",
         context_module_methods
     );
@@ -104,7 +105,6 @@ void python_t::initialize(const app_t& app) {
         reinterpret_cast<PyObject*>(&log_object_type)
     );
 
-
     // Application module
     // ------------------
 
@@ -113,7 +113,7 @@ void python_t::initialize(const app_t& app) {
         NULL
     );
 
-    PyObject* builtins = PyEval_GetBuiltins();
+    PyObject * builtins = PyEval_GetBuiltins();
 
     python_object_t plugin(
         PyCObject_FromVoidPtr(this, NULL)
@@ -157,7 +157,7 @@ void python_t::initialize(const app_t& app) {
         throw unrecoverable_error_t(exception());
     }
 
-    PyObject* globals = PyModule_GetDict(m_python_module);
+    PyObject * globals = PyModule_GetDict(m_python_module);
     
     // NOTE: This will return None or NULL due to the Py_file_input flag above,
     // so we can safely drop it without even checking.
@@ -175,16 +175,16 @@ void python_t::initialize(const app_t& app) {
 }
 
 void python_t::invoke(io_t& io, const std::string& method) {
-    thread_state_t state;
-    
     if(!m_python_module) {
         throw unrecoverable_error_t("python module is not initialized");
     }
 
+    // thread_state_t state;
+
     m_app_log->debug("invoking '%s'", method.c_str());
     
-    PyObject* globals = PyModule_GetDict(m_python_module);
-    PyObject* object = PyDict_GetItemString(globals, method.c_str());
+    PyObject * globals = PyModule_GetDict(m_python_module);
+    PyObject * object = PyDict_GetItemString(globals, method.c_str());
     
     if(PyErr_Occurred()) {
         throw unrecoverable_error_t(exception());
@@ -235,9 +235,9 @@ const logging::logger_t& python_t::log() const {
     return *m_app_log;
 }
 
-PyObject* python_t::manifest(PyObject* self, PyObject*) {
-    PyObject* builtins(PyEval_GetBuiltins());
-    PyObject* plugin(PyDict_GetItemString(builtins, "__plugin__"));
+PyObject* python_t::manifest(PyObject * self, PyObject * args) {
+    PyObject * builtins = PyEval_GetBuiltins();
+    PyObject * plugin = PyDict_GetItemString(builtins, "__plugin__");
 
     if(!plugin) {
         PyErr_SetString(
@@ -255,7 +255,7 @@ PyObject* python_t::manifest(PyObject* self, PyObject*) {
 
 // XXX: Check reference counting.
 PyObject* python_t::wrap(const Json::Value& value) {
-    PyObject* object = NULL;
+    PyObject * object = NULL;
 
     switch(value.type()) {
         case Json::booleanValue:
@@ -367,7 +367,7 @@ std::string python_t::exception() {
 //     }
 // }
 
-PyThreadState* g_state = NULL;
+PyThreadState * g_state = NULL;
 
 void save() {
     g_state = PyEval_SaveThread();
@@ -390,19 +390,19 @@ extern "C" {
         PyType_Ready(&python_io_object_type);
 
         // Save the main thread.
-        save();
+        // save();
 
         // NOTE: In case of a fork, restore the main thread state and acquire the GIL,
         // call the python post-fork handler and save the main thread again, releasing the GIL.
-        pthread_atfork(NULL, NULL, restore);
+        // pthread_atfork(NULL, NULL, restore);
         pthread_atfork(NULL, NULL, PyOS_AfterFork);
-        pthread_atfork(NULL, NULL, save);
+        // pthread_atfork(NULL, NULL, save);
 
         registry.install<python_t, plugin_t>("python");
     }
 
     __attribute__((destructor)) void finalize() {
-        restore();
+        // restore();
         Py_Finalize();
     }
 }

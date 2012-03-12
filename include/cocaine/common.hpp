@@ -15,7 +15,6 @@
 #define COCAINE_COMMON_HPP
 
 #include <map>
-#include <stdexcept>
 #include <string>
 #include <tr1/cstdint>
 #include <vector>
@@ -36,6 +35,7 @@
 
 #include <ev++.h>
 
+#include "cocaine/exceptions.hpp"
 #include "cocaine/helpers/birth_control.hpp"
 #include "cocaine/helpers/json.hpp"
 

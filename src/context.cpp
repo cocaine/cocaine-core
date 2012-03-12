@@ -85,7 +85,7 @@ boost::shared_ptr<logging::logger_t> context_t::log(const std::string& name) {
 
 zmq::context_t& context_t::io() {
     {
-        boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
+        boost::lock_guard<boost::mutex> lock(m_mutex);
         
         if(!m_io) {
             m_io.reset(new zmq::context_t(1));
@@ -97,7 +97,7 @@ zmq::context_t& context_t::io() {
 
 storage_t& context_t::storage() {
     {
-        boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
+        boost::lock_guard<boost::mutex> lock(m_mutex);
 
         if(!m_storage) {
             m_storage = create<storage_t>(config.storage.driver);

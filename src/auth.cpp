@@ -50,8 +50,8 @@ auth_t::auth_t(context_t& ctx):
         std::string key(object["key"].asString());
 
         // Read the key into the BIO object.
-        BIO* bio = BIO_new_mem_buf(const_cast<char*>(key.data()), key.size());
-        EVP_PKEY* pkey = NULL;
+        BIO * bio = BIO_new_mem_buf(const_cast<char*>(key.data()), key.size());
+        EVP_PKEY * pkey = NULL;
         
         pkey = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
             
@@ -100,9 +100,9 @@ std::string auth_t::sign(const std::string& message, const std::string& username
 }
 */
 
-void auth_t::verify(const char* message,
+void auth_t::verify(const char * message,
                           size_t message_size, 
-                          const unsigned char* signature,
+                          const unsigned char * signature,
                           size_t signature_size, 
                           const std::string& username)
 {

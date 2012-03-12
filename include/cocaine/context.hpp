@@ -14,7 +14,7 @@
 #ifndef COCAINE_CONTEXT_HPP
 #define COCAINE_CONTEXT_HPP
 
-#include <boost/thread.hpp>
+#include <boost/thread/mutex.hpp>
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
@@ -84,7 +84,7 @@ class context_t {
 
     private:
         // Initialization interlocking.
-        boost::recursive_mutex m_mutex;
+        boost::mutex m_mutex;
 
         // Core subsystems.
         boost::shared_ptr<logging::sink_t> m_sink;

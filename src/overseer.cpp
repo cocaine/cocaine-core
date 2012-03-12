@@ -16,6 +16,7 @@
 #include "cocaine/app.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/registry.hpp"
+#include "cocaine/rpc.hpp"
 
 #include "cocaine/dealer/types.hpp"
 
@@ -62,58 +63,34 @@ void overseer_t::run() {
         m_module = context().create<plugin_t>(m_app.type);
         m_module->initialize(m_app);
     } catch(const unrecoverable_error_t& e) {
-        m_messages.send_multi(
-            boost::make_tuple(
-                (const int)rpc::error,
-                static_cast<const int>(client::server_error),
-                std::string(e.what())
-            )
-        );
-
+        events::error_t event(e);
+        rpc::packed<events::error_t> packed(event);
+        send(packed);
         return;
     } catch(const std::runtime_error& e) {
-        m_messages.send_multi(
-            boost::make_tuple(
-                (const int)rpc::error,
-                static_cast<const int>(client::server_error),
-                std::string(e.what())
-            )
-        );
-
+        events::error_t event(e);
+        rpc::packed<events::error_t> packed(event);
+        send(packed);
         return;
     } catch(...) {
-        m_messages.send_multi(
-            boost::make_tuple(
-                (const int)rpc::error,
-                static_cast<const int>(client::server_error),
-                std::string("unexpected exception")
+        rpc::packed<events::error_t> packed(
+            events::error_t(
+                client::server_error,
+                "unexpected exception while creating the plugin instance"
             )
         );
-
+        
+        send(packed);
         return;
     }
-        
+
     m_loop.loop();
 }
 
-data_container_t overseer_t::pull(bool block) {
+data_container_t overseer_t::recv(bool block) {
     zmq::message_t message;
     m_messages.recv(&message, block ? 0 : ZMQ_NOBLOCK);
     return data_container_t(message.data(), message.size());
-}
-
-void overseer_t::push(rpc::codes code, const void* data, size_t size) {
-    const int command = code;
-    zmq::message_t message(size);
-
-    memcpy(message.data(), data, size);
-    
-    m_messages.send_multi(
-        boost::tie(
-            command,
-            message
-        )
-    );
 }
 
 void overseer_t::message(ev::io&, int) {
@@ -138,36 +115,32 @@ void overseer_t::process(ev::idle&, int) {
                     io_t io(*this);
                     m_module->invoke(io, method);
                 } catch(const recoverable_error_t& e) {
-                    m_messages.send_multi(
-                        boost::make_tuple(
-                            (const int)rpc::error,
-                            static_cast<const int>(client::app_error),
-                            std::string(e.what())
-                        )
-                    );
+                    events::error_t event(e);
+                    rpc::packed<events::error_t> packed(event);
+                    send(packed);
                 } catch(const unrecoverable_error_t& e) {
-                    m_messages.send_multi(
-                        boost::make_tuple(
-                            (const int)rpc::error,
-                            static_cast<const int>(client::server_error),
-                            std::string(e.what())
-                        )
-                    );
+                    events::error_t event(e);
+                    rpc::packed<events::error_t> packed(event);
+                    send(packed);
                 } catch(...) {
-                    m_messages.send_multi(
-                        boost::make_tuple(
-                            (const int)rpc::error,
-                            static_cast<const int>(client::server_error),
-                            std::string("unexpected exception")
+                    rpc::packed<events::error_t> packed(
+                        events::error_t(
+                            client::server_error,
+                            "unexpected exception while invoking a method"
                         )
                     );
+                    
+                    send(packed);
                 }
+                
+                rpc::packed<events::release_t> packed;
+
+                // XXX: Not sure if it doesn't introduce a race here.
+                send(packed);
                 
                 // NOTE: Drop all the outstanding request chunks not pulled
                 // in by the user code. Might have a warning here?
                 m_messages.drop_remaining_parts();
-
-                m_messages.send((const int)rpc::release);
 
                 m_suicide_timer.stop();
                 m_suicide_timer.start(m_app.policy.suicide_timeout);
@@ -190,12 +163,14 @@ void overseer_t::pump(ev::timer&, int) {
 }
 
 void overseer_t::timeout(ev::timer&, int) {
-    m_messages.send((const int)rpc::terminate);
+    rpc::packed<events::terminate_t> packed;
+    send(packed);
     terminate();
 }
 
 void overseer_t::heartbeat(ev::timer&, int) {
-    m_messages.send((const int)rpc::heartbeat);
+    rpc::packed<events::heartbeat_t> packed;
+    send(packed);
 }
 
 void overseer_t::terminate() {

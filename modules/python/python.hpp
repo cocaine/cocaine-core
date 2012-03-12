@@ -30,7 +30,7 @@ typedef helpers::track<PyObject*, Py_DecRef> python_object_t;
 /*
 class interpreter_t {
     public:
-        interpreter_t(PyThreadState** state):
+        interpreter_t(PyThreadState ** state):
             m_saved(NULL)
         {
             PyEval_AcquireLock();
@@ -52,7 +52,7 @@ class interpreter_t {
         }
 
     private:
-        PyThreadState* m_saved;
+        PyThreadState * m_saved;
 };
 */
 
@@ -82,7 +82,7 @@ class python_t:
         const logging::logger_t& log() const;
 
     public:
-        static PyObject* manifest(PyObject* self, PyObject*);
+        static PyObject* manifest(PyObject * self, PyObject * args);
         static PyObject* wrap(const Json::Value& value);
         
         static std::string exception();
@@ -91,7 +91,7 @@ class python_t:
         // void respond(io_t& io, python_object_t& result);
 
     private:
-        PyObject* m_python_module;
+        PyObject * m_python_module;
         python_object_t m_manifest;
 
         boost::shared_ptr<logging::logger_t> m_app_log;

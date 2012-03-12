@@ -75,7 +75,7 @@ class socket_t:
             return m_socket.send(message, flags);
         }
 
-        bool recv(zmq::message_t* message, int flags = 0) {
+        bool recv(zmq::message_t * message, int flags = 0) {
             return m_socket.recv(message, flags);
         }
         
@@ -87,11 +87,11 @@ class socket_t:
             }
         }
         
-        void getsockopt(int name, void* value, size_t* size) {
+        void getsockopt(int name, void * value, size_t * size) {
             m_socket.getsockopt(name, value, size);
         }
 
-        void setsockopt(int name, const void* value, size_t size) {
+        void setsockopt(int name, const void * value, size_t size) {
             m_socket.setsockopt(name, value, size);
         }
 

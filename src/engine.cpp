@@ -72,7 +72,7 @@ engine_t::engine_t(context_t& ctx, const std::string& name, const Json::Value& m
     object_t(ctx),
     m_running(false),
     m_app(ctx, name, manifest),
-    m_messages(ctx, ZMQ_ROUTER, "rpc/" + name)
+    m_messages(ctx, ZMQ_ROUTER)
 #ifdef HAVE_CGROUPS
     , m_cgroup(NULL)
 #endif
@@ -85,9 +85,11 @@ engine_t::engine_t(context_t& ctx, const std::string& name, const Json::Value& m
     }
     
     m_cgroup = cgroup_new_cgroup(name.c_str());
-    Json::Value::Members controllers(limits.getMemberNames());
 
+    // XXX: Not sure if it changes anything.
     cgroup_set_uid_gid(m_cgroup, getuid(), getgid(), getuid(), getgid());
+    
+    Json::Value::Members controllers(limits.getMemberNames());
 
     for(Json::Value::Members::iterator c = controllers.begin();
         c != controllers.end();
@@ -99,7 +101,8 @@ engine_t::engine_t(context_t& ctx, const std::string& name, const Json::Value& m
             continue;
         }
         
-        cgroup_controller* ctl = cgroup_add_controller(m_cgroup, c->c_str());
+        cgroup_controller * ctl = cgroup_add_controller(m_cgroup, c->c_str());
+        
         Json::Value::Members parameters(cfg.getMemberNames());
 
         for(Json::Value::Members::iterator p = parameters.begin();
@@ -272,13 +275,15 @@ Json::Value engine_t::stop() {
         }
     }
 
+    rpc::packed<events::terminate_t> packed;
+
     // Terminate the slaves.
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
         // NOTE: Avoid signaling dead or just born slaves.
         if(it->second->state_downcast<const slaves::alive*>()) {
             unicast(
                 specific_slave(*it),
-                boost::make_tuple((const int)rpc::terminate)
+                packed
             );
         }
 
@@ -311,7 +316,10 @@ Json::Value engine_t::info() const {
             )
         );
 
-        for(task_map_t::const_iterator it = m_tasks.begin(); it != m_tasks.end(); ++it) {
+        for(task_map_t::const_iterator it = m_tasks.begin();
+            it != m_tasks.end();
+            ++it) 
+        {
             results["tasks"][it->first] = it->second->info();
         }
     }
@@ -341,26 +349,20 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
         return;
     }
 
-    // NOTE: If we got an idle slave, then we're lucky and got an instant scheduling;
-    // if not, try to spawn more slaves, and enqueue the job.
-    const int command = rpc::invoke;
-
-    // XXX: Test whether this zero-copy stuff never backfires.
-    zmq::message_t request(job->request().data(), job->request().size(), NULL);
+    events::invoke_t event(job);
+    rpc::packed<events::invoke_t> packed(event);
 
     pool_map_t::iterator it(
         unicast(
             idle_slave(),
-            boost::tie(
-                command,
-                job->method(),
-                request
-            )
+            packed
         )
     );
 
+    // NOTE: If we got an idle slave, then we're lucky and got an instant scheduling;
+    // if not, try to spawn more slaves, and enqueue the job.
     if(it != m_pool.end()) {
-        it->second->process_event(events::invoke_t(job));
+        it->second->process_event(event);
     } else {
         if(m_pool.empty() || m_pool.size() < m_app.policy.pool_limit) {
             std::auto_ptr<slaves::slave_t> slave;
@@ -415,8 +417,8 @@ void engine_t::process(ev::idle&, int) {
 
     if(slave == m_pool.end()) {
         m_app.log->debug(
-            "ignoring type %d command from a dead slave %s", 
-            command, 
+            "ignoring type %d event from a dead slave %s", 
+            command,
             slave_id.c_str()
         );
         
@@ -424,7 +426,7 @@ void engine_t::process(ev::idle&, int) {
         return;
     }
 
-    const slaves::busy* state =
+    const slaves::busy * state =
         slave->second->state_downcast<const slaves::busy*>();
     
     switch(command) {
@@ -507,7 +509,10 @@ void engine_t::cleanup(ev::timer&, int) {
     }
 
     if(!corpses.empty()) {
-        for(corpse_list_t::iterator it = corpses.begin(); it != corpses.end(); ++it) {
+        for(corpse_list_t::iterator it = corpses.begin();
+            it != corpses.end();
+            ++it)
+        {
             m_pool.erase(*it);
         }
 

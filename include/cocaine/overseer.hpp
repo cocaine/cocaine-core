@@ -22,7 +22,6 @@
 #include "cocaine/helpers/unique_id.hpp"
 #include "cocaine/interfaces/plugin.hpp"
 #include "cocaine/networking.hpp"
-#include "cocaine/rpc.hpp"
 
 namespace cocaine { namespace engine {
 
@@ -42,9 +41,12 @@ class overseer_t:
 
         void run();
 
-        // Declared public for I/O objects to communicate with the engine.
-        data_container_t pull(bool block);
-        void push(rpc::codes code, const void* data, size_t size);
+        data_container_t recv(bool block);
+
+        template<class Packed>
+        void send(Packed& packed) {
+            m_messages.send_multi(packed.get());
+        }
 
     private:
         void message(ev::io&, int);
