@@ -4,7 +4,8 @@ Priority: extra
 Maintainer: Andrey Sibiryov <kobolog@yandex-team.ru>
 Build-Depends: cdbs, debhelper (>= 7.0.13), libzmq-dev (>= 2.1.9), libev-dev, libmsgpack-dev,
  libboost-dev, libboost-filesystem-dev, libboost-thread-dev, libboost-program-options-dev,
- libssl-dev, libltdl-dev, uuid-dev, libv8-dev, python-dev, libperl-dev, libmongoclient-dev
+ libssl-dev, libltdl-dev, libcgroup-dev, uuid-dev, libv8-dev, python-dev, libperl-dev, 
+ libmongoclient-dev
 Standards-Version: 3.9.1
 Vcs-Git: git://github.com/Kobolog/cocaine.git
 Vcs-Browser: https://github.com/Kobolog/cocaine
@@ -49,7 +50,8 @@ Package: cocaine-dev
 Architecture: any
 Section: libdevel
 Depends: ${shlibs:Depends}, ${misc:Depends}, libzmq-dev (>= 2.1.9), libev-dev, libmsgpack-dev,
- libboost-dev, libboost-filesystem-dev, libboost-thread-dev, libssl-dev, libltdl-dev, uuid-dev
+ libboost-dev, libboost-filesystem-dev, libboost-thread-dev, libssl-dev, libltdl-dev, uuid-dev,
+ libcgroup-dev
 Description: Cocaine - Development Files
  Files needed to develop plugins, modules or to embed Cocaine.
 
