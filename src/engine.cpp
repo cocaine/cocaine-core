@@ -43,13 +43,13 @@ void job_queue_t::push(const_reference job) {
 namespace {
     struct idle_slave {
         bool operator()(pool_map_t::pointer slave) const {
-            return slave->second->state_downcast<const slaves::idle*>();
+            return slave->second->state_downcast<const slave::idle*>();
         }
     };
 
     struct busy_slave {
         bool operator()(pool_map_t::const_pointer slave) const {
-            return slave->second->state_downcast<const slaves::busy*>();
+            return slave->second->state_downcast<const slave::busy*>();
         }
     };
 
@@ -281,7 +281,7 @@ Json::Value engine_t::stop() {
     // Terminate the slaves.
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
         // NOTE: Avoid signaling dead or just born slaves.
-        if(it->second->state_downcast<const slaves::alive*>()) {
+        if(it->second->state_downcast<const slave::alive*>()) {
             unicast(
                 specific_slave(*it),
                 packed
@@ -366,10 +366,10 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
         it->second->process_event(event);
     } else {
         if(m_pool.empty() || m_pool.size() < m_app.policy.pool_limit) {
-            std::auto_ptr<slaves::slave_t> slave;
+            std::auto_ptr<slave_t> slave;
             
             try {
-                slave.reset(new slaves::generic_t(*this));
+                slave.reset(new slave_t(*this));
                 std::string slave_id(slave->id());
                 m_pool.insert(slave_id, slave);
             } catch(const std::exception& e) {
@@ -427,8 +427,8 @@ void engine_t::process(ev::idle&, int) {
         return;
     }
 
-    const slaves::busy * state =
-        slave->second->state_downcast<const slaves::busy*>();
+    const slave::busy * state =
+        slave->second->state_downcast<const slave::busy*>();
     
     switch(command) {
         case rpc::push: {
@@ -482,7 +482,7 @@ void engine_t::process(ev::idle&, int) {
     // NOTE: Count all the RPC events as heartbeats.
     slave->second->process_event(events::heartbeat_t());
 
-    if(slave->second->state_downcast<const slaves::idle*>() && !m_queue.empty()) {
+    if(slave->second->state_downcast<const slave::idle*>() && !m_queue.empty()) {
         // NOTE: This will always succeed due to the test above.
         enqueue(m_queue.front());
         m_queue.pop_front();
@@ -504,7 +504,7 @@ void engine_t::cleanup(ev::timer&, int) {
     corpse_list_t corpses;
 
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
-        if(it->second->state_downcast<const slaves::dead*>()) {
+        if(it->second->state_downcast<const slave::dead*>()) {
             corpses.push_back(it->first);
         }
     }

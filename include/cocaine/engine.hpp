@@ -26,7 +26,7 @@
 
 #include "cocaine/app.hpp"
 #include "cocaine/networking.hpp"
-#include "cocaine/slaves.hpp"
+#include "cocaine/slave.hpp"
 
 namespace cocaine { namespace engine {
 
@@ -44,8 +44,8 @@ typedef boost::ptr_unordered_map<
 #else
 typedef boost::ptr_map<
 #endif
-    slaves::slave_t::identifier_type,
-    slaves::slave_t
+    slave_t::identifier_type,
+    slave_t
 > pool_map_t;
 
 class job_queue_t:

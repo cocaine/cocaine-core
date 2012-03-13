@@ -100,8 +100,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/interfaces/plugin
     src/job
     src/overseer
-    src/slaves/base
-    src/slaves/generic)
+    src/slave)
 
 TARGET_LINK_LIBRARIES(cocaine-core
     cocaine-common

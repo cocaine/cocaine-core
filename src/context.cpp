@@ -20,7 +20,8 @@
 #include "cocaine/logging.hpp"
 
 #include "cocaine/networking.hpp"
-#include "cocaine/storages.hpp"
+#include "cocaine/storages/void.hpp"
+#include "cocaine/storages/files.hpp"
 
 using namespace cocaine;
 using namespace cocaine::storages;

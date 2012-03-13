@@ -11,7 +11,7 @@
 // limitations under the License.
 //
 
-#include "cocaine/slaves/base.hpp"
+#include "cocaine/slave.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
@@ -21,10 +21,10 @@
 
 #include "cocaine/dealer/types.hpp"
 
-using namespace cocaine::engine::slaves;
+using namespace cocaine::engine;
+using namespace cocaine::engine::slave;
 
 slave_t::slave_t(engine_t& engine):
-    object_t(engine.context()),
     m_engine(engine)
 {
     // NOTE: These are the 10 seconds for the slave to come alive.
@@ -32,6 +32,56 @@ slave_t::slave_t(engine_t& engine):
     m_heartbeat_timer.start(10.0f);
 
     initiate();
+
+    m_pid = ::fork();
+
+    if(m_pid == 0) {
+#ifdef HAVE_CGROUPS
+        if(m_engine.group()) {
+            int rv = 0;
+            
+            if((rv = cgroup_attach_task(engine.group())) != 0) {
+                m_engine.app().log->error(
+                    "unable to attach slave %s to a control group - %s",
+                    id().c_str(),
+                    cgroup_strerror(rv)
+                );
+
+                exit(EXIT_FAILURE);
+            }
+        }
+#endif
+
+        int rv = 0;
+
+        rv = ::execlp(
+            m_engine.context().config.runtime.self.c_str(),
+            m_engine.context().config.runtime.self.c_str(),
+            "--slave",
+            "--slave:id",  id().c_str(),
+            "--slave:app", m_engine.app().name.c_str(),
+            (char*)0
+        );
+
+        if(rv != 0) {
+            char message[1024];
+
+            ::strerror_r(errno, message, 1024);
+
+            m_engine.app().log->error(
+                "unable to start slave %s: %s",
+                id().c_str(),
+                message
+            );
+
+            exit(EXIT_FAILURE);
+        }
+    } else if(m_pid < 0) {
+        throw std::runtime_error("fork() failed");
+    }
+
+    m_child_watcher.set<slave_t, &slave_t::signal>(this);
+    m_child_watcher.start(m_pid);
 }
 
 slave_t::~slave_t() {
@@ -89,6 +139,18 @@ bool slave_t::operator==(const slave_t& other) const {
     return id() == other.id();
 }
 
+void slave_t::reap() {
+    int status = 0;
+
+    // XXX: Is it needed at all? Might as well check the state.
+    if(waitpid(m_pid, &status, WNOHANG) == 0) {
+        ::kill(m_pid, SIGKILL);
+    }
+
+    // NOTE: Children are automatically reaped by libev.
+    m_child_watcher.stop();
+}
+
 void slave_t::timeout(ev::timer&, int) {
     m_engine.app().log->warning(
         "slave %s missed too many heartbeats",
@@ -109,8 +171,31 @@ void slave_t::timeout(ev::timer&, int) {
     process_event(events::terminate_t());
 }
 
+void slave_t::signal(ev::child& event, int) {
+    if(!state_downcast<const dead*>()) {
+        process_event(events::terminate_t());
+        
+        if(WIFEXITED(event.rstatus) && WEXITSTATUS(event.rstatus) == EXIT_FAILURE) {
+            m_engine.app().log->warning(
+                "slave %s failed to start",
+                id().c_str()
+            );
+
+            m_engine.stop();
+        } else if(WIFSIGNALED(event.rstatus)) {
+            m_engine.app().log->warning(
+                "slave %s has been killed by a signal %d", 
+                id().c_str(), 
+                WTERMSIG(event.rstatus)
+            );
+            
+            m_engine.stop();
+        };
+    }
+}
+
 alive::~alive() {
-    if(m_job && !m_job->state_downcast<const complete*>()) {
+    if(m_job && !m_job->state_downcast<const job::complete*>()) {
         context<slave_t>().m_engine.app().log->debug(
             "rescheduling an incomplete '%s' job", 
             m_job->method().c_str()

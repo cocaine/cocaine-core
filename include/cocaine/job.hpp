@@ -35,21 +35,25 @@ namespace sc = boost::statechart;
 // Job states
 // ----------
 
+namespace job {
+
 struct incomplete;
     struct unknown;
     struct waiting;
     struct processing;
 struct complete;
 
+}
+
 // Job FSM
 // -------
 
 class job_t:
-    public sc::state_machine<job_t, incomplete>,
+    public sc::state_machine<job_t, job::incomplete>,
     public birth_control_t<job_t>
 {
-    friend class waiting;
-    friend class processing;
+    friend class job::waiting;
+    friend class job::processing;
 
     public:
         job_t(drivers::driver_t& driver);
@@ -89,6 +93,8 @@ class job_t:
 
         ev::periodic m_expiration_timer;
 };
+
+namespace job {
 
 struct incomplete:
     public sc::simple_state<incomplete, job_t, unknown>
@@ -145,6 +151,8 @@ struct processing:
 struct complete:
     public sc::simple_state<complete, job_t>
 { };
+
+}
 
 }}
 

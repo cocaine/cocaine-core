@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_SLAVE_FRONTEND_BASE_HPP
-#define COCAINE_SLAVE_FRONTEND_BASE_HPP
+#ifndef COCAINE_SLAVE_HPP
+#define COCAINE_SLAVE_HPP
 
 #include <boost/statechart/state_machine.hpp>
 #include <boost/statechart/simple_state.hpp>
@@ -27,12 +27,14 @@
 
 #include "cocaine/helpers/unique_id.hpp"
 
-namespace cocaine { namespace engine { namespace slaves {
+namespace cocaine { namespace engine {
 
 namespace sc = boost::statechart;
 
 // Slave states
 // ------------
+
+namespace slave {
 
 struct unknown;
 struct alive;
@@ -40,39 +42,43 @@ struct alive;
     struct busy;
 struct dead;
 
+}
+
 // Slave FSM
 // ---------
 
 struct slave_t:
-    public sc::state_machine<slave_t, unknown>,
+    public sc::state_machine<slave_t, slave::unknown>,
     public unique_id_t,
-    public object_t,
     public birth_control_t<slave_t>
 {
-    friend class alive;
+    friend class slave::alive;
 
     public:
-        virtual ~slave_t();
+        slave_t(engine_t& engine);
+        ~slave_t();
         
         void react(const events::heartbeat_t& event);
         void react(const events::terminate_t& event);
 
         bool operator==(const slave_t& other) const;
 
-        virtual void reap() = 0;
-
-    protected:
-        slave_t(engine_t& engine);
+        void reap();
 
     private:
         void timeout(ev::timer&, int);
+        void signal(ev::child&, int);
 
-    protected:
+    private:    
         engine_t& m_engine;
+        
+        pid_t m_pid;
 
-    private:        
         ev::timer m_heartbeat_timer;
+        ev::child m_child_watcher;
 };
+
+namespace slave {
 
 struct unknown:
     public sc::simple_state<unknown, slave_t> 
@@ -134,6 +140,8 @@ struct dead:
     public sc::simple_state<dead, slave_t>
 { };
 
-}}}
+}
+
+}}
 
 #endif

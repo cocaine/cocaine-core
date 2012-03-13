@@ -18,7 +18,7 @@
 
 using namespace cocaine;
 using namespace cocaine::engine;
-using namespace cocaine::client;
+using namespace cocaine::engine::job;
 
 job_t::job_t(drivers::driver_t& driver):
     m_driver(driver)
@@ -26,7 +26,7 @@ job_t::job_t(drivers::driver_t& driver):
     initiate();
 }
 
-job_t::job_t(drivers::driver_t& driver, policy_t policy):
+job_t::job_t(drivers::driver_t& driver, client::policy_t policy):
     m_driver(driver),
     m_policy(policy)
 {
@@ -45,7 +45,7 @@ job_t::job_t(drivers::driver_t& driver, const blob_t& request):
     initiate();
 }
 
-job_t::job_t(drivers::driver_t& driver, policy_t policy, const blob_t& request):
+job_t::job_t(drivers::driver_t& driver, client::policy_t policy, const blob_t& request):
     m_driver(driver),
     m_policy(policy),
     m_request(request)
