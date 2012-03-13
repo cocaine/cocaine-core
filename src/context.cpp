@@ -24,6 +24,13 @@
 using namespace cocaine;
 using namespace cocaine::storages;
 
+config_t::config_t() {
+    defaults.heartbeat_timeout = 30.0f;
+    defaults.suicide_timeout = 600.0f;
+    defaults.pool_limit = 10;
+    defaults.queue_limit = 10;
+}
+
 context_t::context_t(config_t config_, std::auto_ptr<logging::sink_t> sink):
     config(config_),
     m_sink(sink)

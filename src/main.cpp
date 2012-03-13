@@ -16,7 +16,6 @@
 #include <iostream>
 
 #include <boost/algorithm/string/replace.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 
 #include "cocaine/config.hpp"
@@ -30,7 +29,6 @@
 using namespace cocaine;
 
 namespace po = boost::program_options;
-namespace fs = boost::filesystem;
 
 class syslog_t:
     public logging::sink_t
@@ -69,21 +67,23 @@ class syslog_t:
 };
 
 int main(int argc, char * argv[]) {
-    config_t config;
+    config_t cfg;
 
-    std::string slave_id, slave_app;
+    struct {
+        std::string id;
+        std::string app;
+    } slave_cfg;
 
     // Configuration
     // -------------
 
-    config.runtime.self = argv[0];
+    cfg.runtime.self = argv[0];
 
     po::options_description
         hidden_options,
         slave_options,
         general_options("General options"),
         core_options("Core options"),
-        engine_options("Engine options"),
         storage_options("Storage options"),
         combined_options;
     
@@ -92,66 +92,51 @@ int main(int argc, char * argv[]) {
 
     hidden_options.add_options()
         ("core:endpoints", po::value< std::vector<std::string> >
-            (&config.core.endpoints)->composing(),
+            (&cfg.core.endpoints)->composing(),
             "core endpoints for server management");
     
     positional_options.add("core:endpoints", -1);
 
     slave_options.add_options()
         ("slave", "spawn a slave")
-        ("slave:id", po::value<std::string>(&slave_id))
-        ("slave:app", po::value<std::string>(&slave_app));
+        ("slave:id", po::value<std::string>(&slave_cfg.id))
+        ("slave:app", po::value<std::string>(&slave_cfg.app));
 
     general_options.add_options()
         ("help,h", "show this message")
         ("version,v", "show version and build information")
         ("daemonize", "daemonize on start")
-        ("pidfile", po::value<fs::path>
+        ("pidfile", po::value<std::string>
             ()->default_value("/var/run/cocaine/default.pid"),
             "location of a pid file")
         ("verbose", "produce a lot of output");
 
     core_options.add_options()
         ("core:modules", po::value<std::string>
-            (&config.core.modules)->default_value("/usr/lib/cocaine"),
+            (&cfg.core.modules)->default_value("/usr/lib/cocaine"),
             "where to load modules from")
         ("core:instance", po::value<std::string>
-            (&config.core.instance)->default_value("default"),
+            (&cfg.core.instance)->default_value("default"),
             "instance name")
         ("core:announce-endpoint", po::value<std::string>
-            (&config.core.announce_endpoint),
+            (&cfg.core.announce_endpoint),
             "multicast endpoint for automatic discovery")
         ("core:announce-interval", po::value<float>
-            (&config.core.announce_interval)->default_value(5.0f),
+            (&cfg.core.announce_interval)->default_value(5.0f),
             "multicast announce interval for automatic discovery, seconds");
-
-    engine_options.add_options()
-        ("engine:suicide-timeout", po::value<float>
-            (&config.defaults.suicide_timeout)->default_value(600.0f),
-            "default idle slave suicide timeout, seconds")
-        ("engine:heartbeat-timeout", po::value<float>
-            (&config.defaults.heartbeat_timeout)->default_value(30.0f),
-            "default unresponsive slave termination timeout, seconds")
-        ("engine:pool-limit", po::value<unsigned int>
-            (&config.defaults.pool_limit)->default_value(10),
-            "default engine slave pool maximum size")
-        ("engine:queue-limit", po::value<unsigned int>
-            (&config.defaults.queue_limit)->default_value(10),
-            "default engine queue depth");
 
     storage_options.add_options()
         ("storage:driver", po::value<std::string>
-            (&config.storage.driver)->default_value("files"),
+            (&cfg.storage.driver)->default_value("files"),
             "storage driver type, built-in storages are: void, files")
         ("storage:uri", po::value<std::string>
-            (&config.storage.uri)->default_value("/var/lib/cocaine"),
+            (&cfg.storage.uri)->default_value("/var/lib/cocaine"),
             "storage location, format depends on the storage type");
 
     combined_options.add(hidden_options)
                     .add(slave_options)
                     .add(general_options)
                     .add(core_options)
-                    .add(engine_options)
                     .add(storage_options);
 
     try {
@@ -172,7 +157,7 @@ int main(int argc, char * argv[]) {
 
     if(vm.count("help")) {
         std::cout << "Usage: " << argv[0] << " endpoint-list [options]" << std::endl;
-        std::cout << general_options << core_options << engine_options << storage_options;
+        std::cout << general_options << core_options << storage_options;
         return EXIT_SUCCESS;
     }
 
@@ -192,47 +177,45 @@ int main(int argc, char * argv[]) {
         )
     );
 
-    // Initialize the Cocaine context.
-    std::auto_ptr<context_t> context(
-        new context_t(config, sink)
+    // Initialize the runtime context.
+    std::auto_ptr<context_t> ctx(
+        new context_t(cfg, sink)
     );
 
     // Get the logger.
     boost::shared_ptr<logging::logger_t> log(
-        context->log("main")
+        ctx->log("main")
     );
 
     if(vm.count("slave")) {
-        // Engine slave
-        // ------------
+        std::auto_ptr<engine::overseer_t> slave;
 
-        std::auto_ptr<engine::overseer_t> overseer;
-
-        log->info("starting slave %s for app %s", slave_id.c_str(), slave_app.c_str());
+        log->debug(
+            "starting slave %s for app %s",
+            slave_cfg.id.c_str(),
+            slave_cfg.app.c_str()
+        );
 
         try {
-            overseer.reset(
+            slave.reset(
                 new engine::overseer_t(
-                    slave_id,
-                    slave_app,
-                    *context
+                    slave_cfg.id,
+                    slave_cfg.app,
+                    *ctx
                 )
             );
         } catch(const std::exception& e) {
-            log->error("%s", e.what());
+            log->error("unable to start slave - %s", e.what());
+            return EXIT_FAILURE;
         }
 
-        overseer->run();
-
-        log->info("slave %s terminated", slave_id.c_str());
+        slave->run();
     } else {
-        // Server core
-        // -----------
-        
-        // NOTE: Will be used to hold the pid file, if needed.
         std::auto_ptr<helpers::pid_file_t> pidfile;
+        std::auto_ptr<core::core_t> core;
 
-        // Daemonize, if requested.
+        log->info("starting core");
+
         if(vm.count("daemonize")) {
             if(daemon(0, 0) < 0) {
                 log->error("daemonization failed");
@@ -240,37 +223,29 @@ int main(int argc, char * argv[]) {
             }
 
             try {
-                pidfile.reset(new helpers::pid_file_t(vm["pidfile"].as<fs::path>()));
+                pidfile.reset(
+                    new helpers::pid_file_t(
+                        vm["pidfile"].as<std::string>()
+                    )
+                );
             } catch(const std::runtime_error& e) {
                 log->error("%s", e.what());
                 return EXIT_FAILURE;
             }
         }
  
-        std::auto_ptr<core::core_t> core;
-        
-        log->info("starting the core");
-
         try {
-            core.reset(new core::core_t(*context));
+            core.reset(new core::core_t(*ctx));
         } catch(const std::exception& e) {
-            log->error("unable to start the core - %s", e.what());
+            log->error("unable to start core - %s", e.what());
             return EXIT_FAILURE;
         }
 
         core->run();
-
-        // Cleanup
-        // -------
-
-        log->info("terminated");
     }
+
+    log->debug("terminated");
 
     return EXIT_SUCCESS;
 }
 
-void start_core(po::variables_map& vm) {
-}
-
-void start_slave(po::variables_map& vm) {
-}

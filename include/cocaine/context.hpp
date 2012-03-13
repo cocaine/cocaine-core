@@ -24,6 +24,8 @@
 namespace cocaine {
 
 struct config_t {
+    config_t();
+
     struct {
         // Plugin path.
         std::string modules;
