@@ -14,6 +14,7 @@
 #include "cocaine/job.hpp"
 
 #include "cocaine/drivers/base.hpp"
+#include "cocaine/engine.hpp"
 
 using namespace cocaine;
 using namespace cocaine::engine;
@@ -67,10 +68,23 @@ job_t::~job_t() {
 }
 
 void job_t::react(const events::push_t& event) {
+    m_driver.engine().app().log->error(
+        "job '%s' ignored a %zu byte response chunk",
+        m_driver.method().c_str(),
+        event.message.size()
+    );    
+ 
     // TODO: Emitters.
 }
 
 void job_t::react(const events::error_t& event) {
+    m_driver.engine().app().log->error(
+        "job '%s' failed - [%d] %s",
+        m_driver.method().c_str(),
+        event.code,
+        event.message.c_str()
+    );
+ 
     // TODO: Emitters.
 }
 

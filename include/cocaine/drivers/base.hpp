@@ -50,6 +50,10 @@ class driver_t:
         virtual Json::Value info() const;
 
     public:
+        inline const engine_t& engine() {
+            return m_engine;
+        }
+
         inline const std::string& method() const {
             return m_method;
         }
