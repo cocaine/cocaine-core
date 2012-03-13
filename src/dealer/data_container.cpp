@@ -142,11 +142,36 @@ data_container::~data_container() {
 	}
 }
 
+void
+data_container::swap(data_container& other) {
+	std::swap(data_, other.data_);
+	std::swap(size_, other.size_);
+	std::swap(signed_, other.signed_);
+
+	unsigned char signature_tmp[SHA1_SIZE];
+	memcpy(signature_tmp, signature_, SHA1_SIZE);
+	memcpy(signature_, other.signature_, SHA1_SIZE);
+	memcpy(other.signature_, signature_tmp, SHA1_SIZE);
+
+	std::swap(ref_counter_, other.ref_counter_);
+}
+
+void
+data_container::copy(const data_container& other) {
+	data_ = other.data_;
+	size_ = other.size_;
+	signed_ = other.signed_;
+
+	memcpy(signature_, other.signature_, SHA1_SIZE);
+	ref_counter_ = other.ref_counter_;
+	++*ref_counter_;
+}
+
 data_container&
 data_container::operator = (const data_container& rhs) {
 	boost::mutex::scoped_lock lock(mutex_);
 
-	data_container(rhs).copy(*this);
+	this->copy(rhs);
 	return *this;
 }
 
@@ -206,30 +231,6 @@ data_container::data() const {
 size_t
 data_container::size() const {
 	return size_;
-}
-
-void
-data_container::swap(data_container& other) {
-	std::swap(data_, other.data_);
-	std::swap(size_, other.size_);
-	std::swap(signed_, other.signed_);
-
-	unsigned char signature_tmp[SHA1_SIZE];
-	memcpy(signature_tmp, signature_, SHA1_SIZE);
-	memcpy(signature_, other.signature_, SHA1_SIZE);
-	memcpy(other.signature_, signature_tmp, SHA1_SIZE);
-
-	std::swap(ref_counter_, other.ref_counter_);
-}
-
-void
-data_container::copy(data_container& other) {
-	data_ = other.data_;
-	size_ = other.size_;
-	signed_ = other.signed_;
-
-	memcpy(signature_, other.signature_, SHA1_SIZE);
-	ref_counter_ = other.ref_counter_;
 }
 
 void
