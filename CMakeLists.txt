@@ -131,6 +131,7 @@ TARGET_LINK_LIBRARIES(cocaine-dealer
     json
     msgpack
     zmq
+    eblob_cpp
     ${Boost_SYSTEM_LIBRARY}
     ${LIBUUID_LIBRARY})
 

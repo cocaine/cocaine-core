@@ -37,7 +37,11 @@ namespace engine {
 class perl_t: public plugin_t {
 public:
     perl_t(context_t& ctx) : plugin_t(ctx) {
-        PERL_SYS_INIT3(NULL, NULL, NULL);
+
+        int argc = 0;
+        char** argv = NULL;
+        char** env = NULL;
+        PERL_SYS_INIT3(&argc, &argv, &env);
 
         my_perl = perl_alloc();
         perl_construct(my_perl);

@@ -37,7 +37,7 @@
 #include "cocaine/dealer/details/context.hpp"
 #include "cocaine/dealer/details/handle_info.hpp"
 #include "cocaine/dealer/details/host_info.hpp"
-#include "cocaine/dealer/details/cached_message.hpp"
+#include "cocaine/dealer/details/message_iface.hpp"
 #include "cocaine/dealer/details/cached_response.hpp"
 #include "cocaine/dealer/details/message_cache.hpp"
 #include "cocaine/dealer/details/progress_timer.hpp"
@@ -82,7 +82,7 @@ public:
 	void disconnect();
 
 	void set_responce_callback(responce_callback_t callback);
-	void enqueue_message(boost::shared_ptr<cached_message> message);
+	void enqueue_message(boost::shared_ptr<message_iface> message);
 
 private:
 	void kill();
@@ -428,7 +428,7 @@ handle<LSD_T>::dispatch_next_available_message(socket_ptr_t main_socket) {
 	}
 
 	try {
-		boost::shared_ptr<cached_message> new_msg = messages_cache()->get_new_message();
+		boost::shared_ptr<message_iface> new_msg = messages_cache()->get_new_message();
 
 		// send header
 		zmq::message_t empty_message(0);
@@ -449,11 +449,11 @@ handle<LSD_T>::dispatch_next_available_message(socket_ptr_t main_socket) {
 		}
 
 		// send data
-		size_t data_size = new_msg->data().size();
+		size_t data_size = new_msg->size();
 		zmq::message_t message(data_size);
 
 		if (data_size > 0) {
-			memcpy((void *)message.data(), new_msg->data().data(), data_size);
+			memcpy((void *)message.data(), new_msg->data(), data_size);
 		}
 
 		if (true != main_socket->send(message)) {
@@ -533,7 +533,7 @@ handle<LSD_T>::dispatch_responces(socket_ptr_t& main_socket) {
 			bool fetched_message = false;
 
 			// get message from sent cache
-			boost::shared_ptr<cached_message> sent_msg;
+			boost::shared_ptr<message_iface> sent_msg;
 			try {
 				sent_msg = messages_cache()->get_sent_message(uuid);
 				fetched_message = true;
@@ -851,7 +851,7 @@ handle<LSD_T>::set_responce_callback(responce_callback_t callback) {
 }
 
 template <typename LSD_T> void
-handle<LSD_T>::enqueue_message(boost::shared_ptr<cached_message> message) {
+handle<LSD_T>::enqueue_message(boost::shared_ptr<message_iface> message) {
 	boost::mutex::scoped_lock lock(mutex_);
 	messages_cache()->enqueue(message);
 

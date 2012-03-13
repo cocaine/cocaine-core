@@ -56,7 +56,7 @@ cached_response::cached_response(const std::string& uuid,
 
 	// calc data size
 	container_size_ = sizeof(cached_response) + data_.size() + UUID_SIZE;
-	container_size_ += path_.container_size() + error_message_.length();
+	container_size_ += path_.data_size() + error_message_.length();
 }
 
 cached_response::cached_response(const std::string& uuid,
@@ -70,7 +70,7 @@ cached_response::cached_response(const std::string& uuid,
 
 {
 	container_size_ = sizeof(cached_response) + data_.size() + UUID_SIZE;
-	container_size_ += path_.container_size() + error_message_.length();
+	container_size_ += path_.data_size() + error_message_.length();
 }
 
 cached_response::~cached_response() {

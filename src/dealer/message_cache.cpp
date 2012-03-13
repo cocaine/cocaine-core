@@ -60,7 +60,7 @@ message_cache::config() {
 	return conf;
 }
 
-boost::shared_ptr<std::deque<boost::shared_ptr<cached_message> > >
+boost::shared_ptr<std::deque<boost::shared_ptr<message_iface> > >
 message_cache::new_messages() {
 	logger()->log("message_cache::new_messages");
 
@@ -74,7 +74,7 @@ message_cache::new_messages() {
 }
 
 void
-message_cache::enqueue(boost::shared_ptr<cached_message> message) {
+message_cache::enqueue(boost::shared_ptr<message_iface> message) {
 	boost::mutex::scoped_lock lock(mutex_);
 	new_messages_->push_back(message);
 }
@@ -92,7 +92,7 @@ message_cache::append_message_queue(message_queue_ptr_t queue) {
 	new_messages_->insert(new_messages_->end(), queue->begin(), queue->end());
 }
 
-boost::shared_ptr<cached_message>
+boost::shared_ptr<message_iface>
 message_cache::get_new_message() {
 	boost::mutex::scoped_lock lock(mutex_);
 
@@ -118,7 +118,7 @@ message_cache::sent_messages_count() {
 	return sent_messages_.size();
 }
 
-boost::shared_ptr<cached_message>
+boost::shared_ptr<message_iface>
 message_cache::get_sent_message(const std::string& uuid) {
 	boost::mutex::scoped_lock lock(mutex_);
 	messages_index_t::const_iterator it = sent_messages_.find(uuid);
@@ -139,7 +139,7 @@ message_cache::get_sent_message(const std::string& uuid) {
 void
 message_cache::move_new_message_to_sent() {
 	boost::mutex::scoped_lock lock(mutex_);
-	boost::shared_ptr<cached_message> msg = new_messages_->front();
+	boost::shared_ptr<message_iface> msg = new_messages_->front();
 
 	if (!msg) {
 		throw error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
@@ -158,7 +158,7 @@ message_cache::move_sent_message_to_new(const std::string& uuid) {
 		return;
 	}
 
-	boost::shared_ptr<cached_message> msg = it->second;
+	boost::shared_ptr<message_iface> msg = it->second;
 
 	if (!msg) {
 		throw error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
@@ -179,7 +179,7 @@ message_cache::move_sent_message_to_new_front(const std::string& uuid) {
 		return;
 	}
 
-	boost::shared_ptr<cached_message> msg = it->second;
+	boost::shared_ptr<message_iface> msg = it->second;
 
 	if (!msg) {
 		throw error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
@@ -232,7 +232,7 @@ message_cache::process_expired_messages(std::vector<std::pair<std::string, messa
 	while (it != sent_messages_.end()) {
 
 		// get single sent message
-		boost::shared_ptr<cached_message> msg = it->second;
+		boost::shared_ptr<message_iface> msg = it->second;
 		if (!msg) {
 			throw error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
 		}
@@ -254,7 +254,7 @@ message_cache::process_expired_messages(std::vector<std::pair<std::string, messa
 	message_queue_t::iterator it2 = new_messages_->begin();
 	while (it2 != new_messages_->end()) {
 		// get single pending message
-		boost::shared_ptr<cached_message> msg = *it2;
+		boost::shared_ptr<message_iface> msg = *it2;
 
 		if (!msg) {
 			throw error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
