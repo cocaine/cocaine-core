@@ -1,14 +1,14 @@
 #!/bin/sh
+
 ### BEGIN INIT INFO
-# Provides:          cocaine
-# Required-Start:    $network $local_fs
-# Required-Stop:
+# Provides:          cocained
+# Required-Start:    $network $local_fs $remote_fs
+# Required-Stop:     $network $local_fs $remote_fs
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: Cocaine
-# Description:       ZeroMQ-based event broker with a plugin-based event collectors.
-#                    Plugins are in separate packages, so install something if you want
-#                    it to actually start.
+# Short-Description: Cocaine Server
+# Description:       ZeroMQ-based modular asynchronous application server.
+#                    Install some language-support modules if you want it to actually start.
 ### END INIT INFO
 
 # Author: Andrey Sibiryov <kobolog@yandex-team.ru>

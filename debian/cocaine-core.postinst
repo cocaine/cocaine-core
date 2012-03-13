@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 case $1 in
     configure)
         # Create a new system user to run the server
@@ -10,24 +12,12 @@ case $1 in
         # runtime resources directory
         chown -R cocaine /var/lib/cocaine
         
-        # Update the ld cache
-        ldconfig
-        
         # Restart the syslog-ng daemon to load the
         # new configuration for server logs
         invoke-rc.d syslog-ng restart
 
-        if [ -x "/etc/init.d/cocaine-core" ]; then
-            # Enable the server to run automatically on boot
-            update-rc.d cocaine-core defaults >/dev/null
+        #DEBHELPER#
         
-            # Start the server
-            if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
-                invoke-rc.d cocaine-core start || exit $?
-            else
-                /etc/init.d/cocaine-core start || exit $?
-            fi
-        fi
         ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
