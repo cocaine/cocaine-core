@@ -2,10 +2,9 @@ Source: cocaine
 Section: utils
 Priority: extra
 Maintainer: Andrey Sibiryov <kobolog@yandex-team.ru>
-Build-Depends: cdbs, debhelper (>= 7.0.13), libzmq-dev (>= 2.1.9), libev-dev,
- libssl-dev, libboost-dev, libmsgpack-dev, yandex-git-cdbs, python-dev, 
- libboost-filesystem-dev, uuid-dev, libboost-program-options-dev, libboost-thread-dev, 
- libv8-dev, libltdl-dev, libperl-dev, libmongoclient-dev
+Build-Depends: cdbs, debhelper (>= 7.0.13), libzmq-dev (>= 2.1.9), libev-dev, libmsgpack-dev,
+ libboost-dev, libboost-filesystem-dev, libboost-thread-dev, libboost-program-options-dev,
+ libssl-dev, libltdl-dev, uuid-dev, libv8-dev, python-dev, libperl-dev, libmongoclient-dev
 Standards-Version: 3.8.4
 Vcs-Git: git://github.com/Kobolog/cocaine.git
 Vcs-Browser: https://github.com/Kobolog/cocaine
