@@ -58,7 +58,7 @@ class overseer_t:
         void terminate();
 
     private:
-        // Application manifest.
+        // Application configuration.
         app_t m_app;
 
         // Application instance.

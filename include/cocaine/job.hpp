@@ -23,7 +23,9 @@
 #include "cocaine/forwards.hpp"
 
 #include "cocaine/events.hpp"
+
 #include "cocaine/helpers/blob.hpp"
+
 #include "cocaine/dealer/types.hpp"
 
 namespace cocaine { namespace engine {

@@ -14,8 +14,8 @@
 #ifndef COCAINE_HELPERS_BLOB_HPP
 #define COCAINE_HELPERS_BLOB_HPP
 
-#include <boost/shared_ptr.hpp>
 #include <boost/detail/atomic_count.hpp>
+#include <boost/shared_ptr.hpp>
 #include <boost/thread/mutex.hpp>
 
 namespace cocaine { namespace helpers {

@@ -19,9 +19,9 @@
 #include "cocaine/slaves/generic.hpp"
 
 #include "cocaine/context.hpp"
-#include "cocaine/engine.hpp"
 #include "cocaine/logging.hpp"
-#include "cocaine/overseer.hpp"
+
+#include "cocaine/engine.hpp"
 
 using namespace cocaine::engine::slaves;
 

@@ -13,8 +13,9 @@
 
 #include "cocaine/drivers/lsd_server.hpp"
 
-#include "cocaine/engine.hpp"
 #include "cocaine/logging.hpp"
+
+#include "cocaine/engine.hpp"
 
 #include "cocaine/dealer/types.hpp"
 

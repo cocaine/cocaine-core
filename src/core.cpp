@@ -11,18 +11,20 @@
 // limitations under the License.
 //
 
-#include <sstream>
 #include <boost/algorithm/string/join.hpp>
 #include <boost/assign.hpp>
+#include <sstream>
 
 #include "cocaine/core.hpp"
 
-#include "cocaine/auth.hpp"
 #include "cocaine/context.hpp"
-#include "cocaine/engine.hpp"
-#include "cocaine/interfaces/storage.hpp"
-#include "cocaine/job.hpp"
 #include "cocaine/logging.hpp"
+
+#include "cocaine/auth.hpp"
+#include "cocaine/engine.hpp"
+#include "cocaine/job.hpp"
+
+#include "cocaine/interfaces/storage.hpp"
 
 using namespace cocaine;
 using namespace cocaine::core;

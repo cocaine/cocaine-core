@@ -24,6 +24,7 @@
 #include "cocaine/object.hpp"
 
 #include "cocaine/events.hpp"
+
 #include "cocaine/helpers/unique_id.hpp"
 
 namespace cocaine { namespace engine { namespace slaves {

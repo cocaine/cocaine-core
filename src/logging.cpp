@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#include <cstdio>
 #include <boost/tuple/tuple.hpp>
+#include <cstdio>
 
 #include "cocaine/logging.hpp"
 

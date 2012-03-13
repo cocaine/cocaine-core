@@ -11,9 +11,9 @@
 // limitations under the License.
 //
 
-#include <sstream>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/format.hpp>
+#include <sstream>
 
 #include "python.hpp"
 #include "log.hpp"

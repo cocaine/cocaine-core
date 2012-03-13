@@ -11,14 +11,15 @@
 // limitations under the License.
 //
 
-#include <sstream>
 #include <boost/filesystem/fstream.hpp>
+#include <sstream>
 
 #include <v8.h>
 
 #include "cocaine/app.hpp"
-#include "cocaine/interfaces/plugin.hpp"
 #include "cocaine/registry.hpp"
+
+#include "cocaine/interfaces/plugin.hpp"
 
 namespace cocaine { namespace engine {
 

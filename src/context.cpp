@@ -18,6 +18,7 @@
 #include "cocaine/context.hpp"
 
 #include "cocaine/logging.hpp"
+
 #include "cocaine/networking.hpp"
 #include "cocaine/storages.hpp"
 

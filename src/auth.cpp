@@ -18,8 +18,9 @@
 #include "cocaine/auth.hpp"
 
 #include "cocaine/context.hpp"
-#include "cocaine/interfaces/storage.hpp"
 #include "cocaine/logging.hpp"
+
+#include "cocaine/interfaces/storage.hpp"
 
 using namespace cocaine;
 using namespace cocaine::crypto;

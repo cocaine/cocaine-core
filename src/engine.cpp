@@ -16,8 +16,9 @@
 
 #include "cocaine/engine.hpp"
 
-#include "cocaine/drivers.hpp"
 #include "cocaine/logging.hpp"
+
+#include "cocaine/drivers.hpp"
 #include "cocaine/rpc.hpp"
 
 using namespace cocaine::engine;

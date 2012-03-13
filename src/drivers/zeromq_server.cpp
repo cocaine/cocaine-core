@@ -17,8 +17,9 @@
 #include "cocaine/drivers/zeromq_server.hpp"
 
 #include "cocaine/context.hpp"
-#include "cocaine/engine.hpp"
 #include "cocaine/logging.hpp"
+
+#include "cocaine/engine.hpp"
 
 using namespace cocaine::engine::drivers;
 using namespace cocaine::networking;

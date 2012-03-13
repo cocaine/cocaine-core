@@ -14,9 +14,10 @@
 #include "cocaine/slaves/base.hpp"
 
 #include "cocaine/context.hpp"
+#include "cocaine/logging.hpp"
+
 #include "cocaine/engine.hpp"
 #include "cocaine/job.hpp"
-#include "cocaine/logging.hpp"
 
 #include "cocaine/dealer/types.hpp"
 

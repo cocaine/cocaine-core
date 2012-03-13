@@ -16,6 +16,7 @@
 #include "mongo.hpp"
 
 #include "cocaine/context.hpp"
+
 #include "cocaine/registry.hpp"
 
 using namespace cocaine::core;
