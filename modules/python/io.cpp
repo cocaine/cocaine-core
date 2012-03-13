@@ -16,8 +16,6 @@
 
 using namespace cocaine::engine;
 
-static char * read_kwds[] = { "block" };
-
 int python_io_t::constructor(python_io_t * self, PyObject * args, PyObject * kwargs) {
     PyObject * io_object;
 
@@ -39,7 +37,10 @@ PyObject* python_io_t::read(python_io_t * self, PyObject * args, PyObject * kwar
     PyObject * block = NULL;
     PyObject * result = NULL;
     
-    if(!PyArg_ParseTupleAndKeywords(args, kwargs, "|O:read", read_kwds, &block)) {
+    static char block_keyword[] = "block";
+    static char * keywords[] = { block_keyword };
+
+    if(!PyArg_ParseTupleAndKeywords(args, kwargs, "|O:read", keywords, &block)) {
         return result;
     }
 
