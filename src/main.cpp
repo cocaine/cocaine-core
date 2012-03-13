@@ -84,7 +84,7 @@ int main(int argc, char * argv[]) {
     po::variables_map vm;
 
     hidden_options.add_options()
-        ("endpoints", po::value< std::vector<std::string> >
+        ("core:endpoints", po::value< std::vector<std::string> >
             (&config.core.endpoints)->composing(),
             "core endpoints for server management");
     
@@ -115,17 +115,17 @@ int main(int argc, char * argv[]) {
 
     engine_options.add_options()
         ("engine:suicide-timeout", po::value<float>
-            (&config.engine.suicide_timeout)->default_value(600.0f),
-            "default stale slave suicide timeout, seconds")
+            (&config.defaults.suicide_timeout)->default_value(600.0f),
+            "default idle slave suicide timeout, seconds")
         ("engine:heartbeat-timeout", po::value<float>
-            (&config.engine.heartbeat_timeout)->default_value(30.0f),
+            (&config.defaults.heartbeat_timeout)->default_value(30.0f),
             "default unresponsive slave termination timeout, seconds")
         ("engine:pool-limit", po::value<unsigned int>
-            (&config.engine.pool_limit)->default_value(10),
-            "default maximum engine slave pool size")
+            (&config.defaults.pool_limit)->default_value(10),
+            "default engine slave pool maximum size")
         ("engine:queue-limit", po::value<unsigned int>
-            (&config.engine.queue_limit)->default_value(10),
-            "default maximum engine queue depth");
+            (&config.defaults.queue_limit)->default_value(10),
+            "default engine queue depth");
 
     storage_options.add_options()
         ("storage:driver", po::value<std::string>

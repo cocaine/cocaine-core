@@ -59,12 +59,18 @@ void slave_t::react(const events::heartbeat_t& event) {
     m_heartbeat_timer.stop();
     
     const busy * state = state_downcast<const busy*>();
-    float timeout = object_t::context().config.engine.heartbeat_timeout;
+    float timeout = m_engine.app().policy.heartbeat_timeout;
 
     if(state && state->job()->policy().timeout > 0.0f) {
         timeout = state->job()->policy().timeout;
     }
-            
+           
+    m_engine.app().log->debug(
+        "resetting slave %s heartbeat timeout to %.02f seconds",
+        id().c_str(),
+        timeout
+    );
+
     m_heartbeat_timer.start(timeout);
 
 }

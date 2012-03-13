@@ -31,6 +31,7 @@ struct app_t {
     Json::Value manifest;
 
     struct {
+        float heartbeat_timeout;
         float suicide_timeout;
         unsigned int pool_limit;
         unsigned int queue_limit;
