@@ -16,8 +16,6 @@ case $1 in
         # new configuration for server logs
         invoke-rc.d syslog-ng restart
 
-        #DEBHELPER#
-        
         ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
@@ -28,4 +26,6 @@ case $1 in
         ;;
 esac
 
+#DEBHELPER#
+        
 exit 0
