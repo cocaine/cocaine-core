@@ -42,13 +42,11 @@ struct dead;
 // Slave FSM
 // ---------
 
-using helpers::unique_id_t;
-
 struct slave_t:
     public sc::state_machine<slave_t, unknown>,
     public unique_id_t,
     public object_t,
-    public helpers::birth_control_t<slave_t>
+    public birth_control_t<slave_t>
 {
     friend class alive;
 

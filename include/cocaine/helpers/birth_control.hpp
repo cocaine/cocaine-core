@@ -39,6 +39,10 @@ uint64_t birth_control_t<T>::objects_alive(0);
 template<class T>
 uint64_t birth_control_t<T>::objects_created(0);
 
-}}
+}
+
+using helpers::birth_control_t;
+
+}
 
 #endif

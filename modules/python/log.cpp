@@ -58,7 +58,7 @@ PyObject* log_object_t::debug(log_object_t * self, PyObject * args) {
     }
 
     if(!PyString_Check(object)) {
-        python_object_t string(PyObject_Str(object));
+        tracked_object_t string(PyObject_Str(object));
         message = PyString_AsString(string);
     } else {
         message = PyString_AsString(object);
@@ -87,7 +87,7 @@ PyObject* log_object_t::info(log_object_t * self, PyObject * args) {
     }
 
     if(!PyString_Check(object)) {
-        python_object_t string(PyObject_Str(object));
+        tracked_object_t string(PyObject_Str(object));
         message = PyString_AsString(string);
     } else {
         message = PyString_AsString(object);
@@ -116,7 +116,7 @@ PyObject* log_object_t::warning(log_object_t * self, PyObject * args) {
     }
 
     if(!PyString_Check(object)) {
-        python_object_t string(PyObject_Str(object));
+        tracked_object_t string(PyObject_Str(object));
         message = PyString_AsString(string);
     } else {
         message = PyString_AsString(object);
@@ -145,7 +145,7 @@ PyObject* log_object_t::error(log_object_t * self, PyObject * args) {
     }
 
     if(!PyString_Check(object)) {
-        python_object_t string(PyObject_Str(object));
+        tracked_object_t string(PyObject_Str(object));
         message = PyString_AsString(string);
     } else {
         message = PyString_AsString(object);

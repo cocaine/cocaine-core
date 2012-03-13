@@ -84,7 +84,7 @@ void python_t::initialize(const app_t& app) {
     // so that it could import various local stuff from there.
     PyObject * syspaths = PySys_GetObject("path");
     
-    python_object_t path(
+    tracked_object_t path(
         PyString_FromString(
 #if BOOST_FILESYSTEM_VERSION == 3
             source.parent_path().string().c_str()
@@ -124,7 +124,7 @@ void python_t::initialize(const app_t& app) {
 
     PyObject * builtins = PyEval_GetBuiltins();
 
-    python_object_t plugin(
+    tracked_object_t plugin(
         PyCObject_FromVoidPtr(this, NULL)
     );
 
@@ -154,7 +154,7 @@ void python_t::initialize(const app_t& app) {
     std::stringstream stream;
     stream << input.rdbuf();
 
-    python_object_t bytecode(
+    tracked_object_t bytecode(
         Py_CompileString(
             stream.str().c_str(),
             source.string().c_str(),
@@ -170,7 +170,7 @@ void python_t::initialize(const app_t& app) {
     
     // NOTE: This will return None or NULL due to the Py_file_input flag above,
     // so we can safely drop it without even checking.
-    python_object_t result(
+    tracked_object_t result(
         PyEval_EvalCode(
             reinterpret_cast<PyCodeObject*>(*bytecode), 
             globals,
@@ -205,16 +205,16 @@ void python_t::invoke(io_t& io, const std::string& method) {
         throw unrecoverable_error_t("'" + method + "' is not callable");
     }
 
-    python_object_t args(NULL);
+    tracked_object_t args(NULL);
 
     // Passing io_t object to the python io_t wrapper.
-    python_object_t io_object(
+    tracked_object_t io_object(
         PyCObject_FromVoidPtr(&io, NULL)
     );
 
     args = PyTuple_Pack(1, *io_object);
 
-    python_object_t io_proxy(
+    tracked_object_t io_proxy(
         PyObject_Call(
             reinterpret_cast<PyObject*>(&python_io_object_type), 
             args,
@@ -224,7 +224,7 @@ void python_t::invoke(io_t& io, const std::string& method) {
 
     args = PyTuple_Pack(1, *io_proxy);
 
-    python_object_t result(PyObject_Call(object, args, NULL));
+    tracked_object_t result(PyObject_Call(object, args, NULL));
 
     if(PyErr_Occurred()) {
         throw recoverable_error_t(exception());
@@ -311,12 +311,12 @@ PyObject* python_t::wrap(const Json::Value& value) {
 }
 
 std::string python_t::exception() {
-    python_object_t type(NULL), value(NULL), traceback(NULL);
+    tracked_object_t type(NULL), value(NULL), traceback(NULL);
     
     PyErr_Fetch(&type, &value, &traceback);
 
-    python_object_t name(PyObject_Str(type));
-    python_object_t message(PyObject_Str(value));
+    tracked_object_t name(PyObject_Str(type));
+    tracked_object_t message(PyObject_Str(value));
     
     boost::format formatter("uncaught exception %s: %s");
     

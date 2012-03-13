@@ -35,7 +35,7 @@ class sink_t;
 
 class logger_t:
     public boost::noncopyable,
-    public helpers::birth_control_t<logger_t>
+    public birth_control_t<logger_t>
 {
     public:
         logger_t(sink_t& sink, const std::string& name);

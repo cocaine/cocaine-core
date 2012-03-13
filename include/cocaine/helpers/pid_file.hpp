@@ -16,22 +16,26 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
+#include <boost/noncopyable.hpp>
+#include <stdexcept>
 
 #include "cocaine/common.hpp"
 
 namespace cocaine { namespace helpers {
 
+namespace fs = boost::filesystem;
+
 class pid_file_t:
     public boost::noncopyable
 {
     public:
-        pid_file_t(const boost::filesystem::path& filepath):
+        pid_file_t(const fs::path& filepath):
             m_filepath(filepath)
         {
             // NOTE: If the pidfile exists, check if the process is still active.
-            if(boost::filesystem::exists(m_filepath)) {
+            if(fs::exists(m_filepath)) {
                 pid_t pid;
-                boost::filesystem::ifstream stream(m_filepath);
+                fs::ifstream stream(m_filepath);
 
                 if(stream) {
                     stream >> pid;
@@ -47,7 +51,7 @@ class pid_file_t:
                 }
             }
 
-            boost::filesystem::ofstream stream(m_filepath);
+            fs::ofstream stream(m_filepath);
 
             if(!stream) {
                 throw std::runtime_error("failed to write " + m_filepath.string());
@@ -68,16 +72,20 @@ class pid_file_t:
     private:
         inline void remove() {
             try {
-                boost::filesystem::remove(m_filepath);
+                fs::remove(m_filepath);
             } catch(const std::runtime_error& e) {
                 throw std::runtime_error("failed to remove " + m_filepath.string());
             }
         }
 
     private:
-        const boost::filesystem::path m_filepath;
+        const fs::path m_filepath;
 };
 
-}}
+}
+
+using helpers::pid_file_t;
+
+}
 
 #endif

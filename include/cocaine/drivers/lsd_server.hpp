@@ -22,8 +22,6 @@ namespace cocaine { namespace engine { namespace drivers {
 
 class lsd_server_t;
 
-using helpers::unique_id_t;
-
 class lsd_job_t:
     public unique_id_t,
     public job_t
@@ -32,7 +30,7 @@ class lsd_job_t:
         lsd_job_t(const unique_id_t::identifier_type& id,
                   lsd_server_t& driver,
                   const client::policy_t& policy,
-                  const data_container_t& data,
+                  const blob_t& request,
                   const networking::route_t& route);
 
         virtual void react(const events::push_t& event);

@@ -23,8 +23,8 @@
 using namespace cocaine::engine::drivers;
 using namespace cocaine::networking;
 
-zeromq_server_job_t::zeromq_server_job_t(zeromq_server_t& driver, const data_container_t& data, const route_t& route):
-    job_t(driver, data),
+zeromq_server_job_t::zeromq_server_job_t(zeromq_server_t& driver, const blob_t& request, const route_t& route):
+    job_t(driver, request),
     m_route(route)
 { }
 
@@ -157,7 +157,7 @@ void zeromq_server_t::process(ev::idle&, int) {
             m_engine.enqueue(
                 boost::make_shared<zeromq_server_job_t>(
                     boost::ref(*this),
-                    data_container_t(
+                    blob_t(
                         message.data(), 
                         message.size()
                     ),

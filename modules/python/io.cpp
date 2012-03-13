@@ -43,7 +43,7 @@ PyObject* python_io_t::read(python_io_t * self, PyObject * args, PyObject * kwar
         return result;
     }
 
-    data_container_t chunk;
+    blob_t chunk;
 
     Py_BEGIN_ALLOW_THREADS
         chunk = self->io->pull(
@@ -51,7 +51,7 @@ PyObject* python_io_t::read(python_io_t * self, PyObject * args, PyObject * kwar
         );
     Py_END_ALLOW_THREADS
 
-    if(chunk.data() && chunk.size()) {
+    if(!chunk.empty()) {
         result = PyString_FromStringAndSize(
             static_cast<const char*>(chunk.data()),
             chunk.size());

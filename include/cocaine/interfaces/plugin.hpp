@@ -18,7 +18,7 @@
 #include "cocaine/forwards.hpp"
 #include "cocaine/object.hpp"
 
-#include "cocaine/helpers/data_container.hpp"
+#include "cocaine/helpers/blob.hpp"
 
 namespace cocaine { namespace engine {
 
@@ -27,8 +27,6 @@ class overseer_t;
 // Plugin I/O
 // ----------
 
-using helpers::data_container_t;
-
 class io_t:
     public boost::noncopyable
 {
@@ -36,7 +34,7 @@ class io_t:
         io_t(overseer_t& overseer);
 
         // Pulls in the next request chunk from the engine.
-        data_container_t pull(bool block);
+        blob_t pull(bool block);
 
         // Pushes a response chunk to the engine.
         void push(const void * data, size_t size);

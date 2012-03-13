@@ -25,11 +25,11 @@ lsd_job_t::lsd_job_t(
     const unique_id_t::identifier_type& id_, 
     lsd_server_t& driver, 
     const client::policy_t& policy, 
-    const data_container_t& data, 
+    const blob_t& request, 
     const route_t& route
 ):
     unique_id_t(id_),
-    job_t(driver, policy, data),
+    job_t(driver, policy, request),
     m_route(route)
 { }
 
@@ -173,7 +173,7 @@ void lsd_server_t::process(ev::idle&, int) {
                             root.get("timeout", 0.0f).asDouble(),
                             root.get("deadline", 0.0f).asDouble()
                         ),
-                        data_container_t(
+                        blob_t(
                             message.data(), 
                             message.size()
                         ),

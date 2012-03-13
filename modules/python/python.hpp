@@ -25,7 +25,7 @@
 
 namespace cocaine { namespace engine {
 
-typedef helpers::track<PyObject*, Py_DecRef> python_object_t;
+typedef track_t<PyObject*, Py_DecRef> tracked_object_t;
 
 /*
 class interpreter_t {
@@ -90,7 +90,7 @@ class python_t:
 
     private:
         PyObject * m_python_module;
-        python_object_t m_manifest;
+        tracked_object_t m_manifest;
 
         boost::shared_ptr<logging::logger_t> m_app_log;
 };

@@ -16,13 +16,14 @@
 #include "cocaine/overseer.hpp"
 #include "cocaine/rpc.hpp"
 
+using namespace cocaine;
 using namespace cocaine::engine;
 
 io_t::io_t(overseer_t& overseer):
     m_overseer(overseer)
 { }
 
-data_container_t io_t::pull(bool block) {
+blob_t io_t::pull(bool block) {
     return m_overseer.recv(block);
 }
 

@@ -62,13 +62,16 @@ namespace cocaine { namespace engine { namespace rpc {
     struct packed<events::invoke_t> {
         typedef boost::tuple<int, std::string, zmq::message_t&> type;
 
-        // XXX: Test whether this zero-copy magic never backfires.
         packed(const events::invoke_t& event):
-            message(event.job->request().data(), 
-                    event.job->request().size(), 
-                    NULL),
+            message(event.job->request().size()),
             pack(invoke, event.job->method(), message)
-        { }
+        {
+            memcpy(
+                message.data(),
+                event.job->request().data(),
+                event.job->request().size()
+            );
+        }
 
         type& get() {
             return pack;

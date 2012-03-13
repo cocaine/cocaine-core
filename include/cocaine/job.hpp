@@ -23,8 +23,7 @@
 #include "cocaine/forwards.hpp"
 
 #include "cocaine/events.hpp"
-#include "cocaine/helpers/data_container.hpp"
-
+#include "cocaine/helpers/blob.hpp"
 #include "cocaine/dealer/types.hpp"
 
 namespace cocaine { namespace engine {
@@ -43,11 +42,9 @@ struct complete;
 // Job FSM
 // -------
 
-using helpers::data_container_t;
-
 class job_t:
     public sc::state_machine<job_t, incomplete>,
-    public helpers::birth_control_t<job_t>
+    public birth_control_t<job_t>
 {
     friend class waiting;
     friend class processing;
@@ -55,11 +52,11 @@ class job_t:
     public:
         job_t(drivers::driver_t& driver);
         job_t(drivers::driver_t& driver, client::policy_t policy);
-        job_t(drivers::driver_t& driver, const data_container_t& request);
+        job_t(drivers::driver_t& driver, const blob_t& request);
         
         job_t(drivers::driver_t& driver,
               client::policy_t policy, 
-              const data_container_t& request);
+              const blob_t& request);
 
         virtual ~job_t();
 
@@ -74,7 +71,7 @@ class job_t:
             return m_policy;
         }
 
-        inline const data_container_t& request() const {
+        inline const blob_t& request() const {
             return m_request;
         }
 
@@ -86,7 +83,7 @@ class job_t:
 
     private:
         const client::policy_t m_policy;
-        data_container_t m_request;
+        blob_t m_request;
 
         ev::periodic m_expiration_timer;
 };

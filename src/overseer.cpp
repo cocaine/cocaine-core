@@ -87,10 +87,12 @@ void overseer_t::run() {
     m_loop.loop();
 }
 
-data_container_t overseer_t::recv(bool block) {
+blob_t overseer_t::recv(bool block) {
     zmq::message_t message;
+    
     m_messages.recv(&message, block ? 0 : ZMQ_NOBLOCK);
-    return data_container_t(message.data(), message.size());
+    
+    return blob_t(message.data(), message.size());
 }
 
 void overseer_t::message(ev::io&, int) {

@@ -27,7 +27,7 @@ class zeromq_server_job_t:
 {
     public:
         zeromq_server_job_t(zeromq_server_t& driver,
-                            const data_container_t& data,
+                            const blob_t& request,
                             const networking::route_t& route);
 
         virtual void react(const events::push_t& event);

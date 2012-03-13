@@ -37,14 +37,14 @@ job_t::job_t(drivers::driver_t& driver, policy_t policy):
     initiate();
 }
 
-job_t::job_t(drivers::driver_t& driver, const data_container_t& request):
+job_t::job_t(drivers::driver_t& driver, const blob_t& request):
     m_driver(driver),
     m_request(request)
 {
     initiate();
 }
 
-job_t::job_t(drivers::driver_t& driver, policy_t policy, const data_container_t& request):
+job_t::job_t(drivers::driver_t& driver, policy_t policy, const blob_t& request):
     m_driver(driver),
     m_policy(policy),
     m_request(request)

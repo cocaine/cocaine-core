@@ -18,15 +18,12 @@
 #include "cocaine/forwards.hpp"
 #include "cocaine/object.hpp"
 
-#include "cocaine/helpers/data_container.hpp"
+#include "cocaine/helpers/blob.hpp"
 #include "cocaine/helpers/unique_id.hpp"
 #include "cocaine/interfaces/plugin.hpp"
 #include "cocaine/networking.hpp"
 
 namespace cocaine { namespace engine {
-
-using helpers::data_container_t;
-using helpers::unique_id_t;
 
 class overseer_t:
     public unique_id_t,
@@ -41,7 +38,7 @@ class overseer_t:
 
         void run();
 
-        data_container_t recv(bool block);
+        blob_t recv(bool block);
 
         template<class Packed>
         void send(Packed& packed) {

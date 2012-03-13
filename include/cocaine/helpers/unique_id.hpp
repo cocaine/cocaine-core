@@ -14,6 +14,8 @@
 #ifndef COCAINE_HELPERS_UNIQUE_ID_HPP
 #define COCAINE_HELPERS_UNIQUE_ID_HPP
 
+#include <stdexcept>
+#include <string>
 #include <uuid/uuid.h>
 
 namespace cocaine { namespace helpers {
@@ -51,6 +53,10 @@ class unique_id_t {
         mutable identifier_type m_id;
 };
 
-}}
+}
+
+using helpers::unique_id_t;
+
+}
 
 #endif

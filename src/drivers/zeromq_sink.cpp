@@ -37,7 +37,7 @@ void zeromq_sink_t::process(ev::idle&, int) {
             m_engine.enqueue(
                 boost::make_shared<job_t>(
                     boost::ref(*this),
-                    data_container_t(
+                    blob_t(
                         message.data(), 
                         message.size()
                     )
