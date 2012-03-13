@@ -34,6 +34,8 @@ void zeromq_sink_t::process(ev::idle&, int) {
         zmq::message_t message;
 
         do {
+            m_socket.recv(&message);
+
             m_engine.enqueue(
                 boost::make_shared<job_t>(
                     boost::ref(*this),
