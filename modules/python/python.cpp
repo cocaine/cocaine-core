@@ -181,9 +181,13 @@ void python_t::initialize(const app_t& app) {
     if(PyErr_Occurred()) {
         throw unrecoverable_error_t(exception());
     }
+
+    m_thread_state = PyEval_SaveThread();
 }
 
 void python_t::invoke(io_t& io, const std::string& method) {
+    thread_lock_t thread(m_thread_state);
+
     if(!m_python_module) {
         throw unrecoverable_error_t("python module is not initialized");
     }

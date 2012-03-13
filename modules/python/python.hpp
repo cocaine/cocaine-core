@@ -70,6 +70,18 @@ class thread_state_t {
 };
 */
 
+class thread_lock_t {
+    public:
+        thread_lock_t(PyThreadState * thread) {
+            BOOST_ASSERT(thread != 0);
+            PyEval_RestoreThread(thread);
+        }
+
+        ~thread_lock_t() {
+            PyEval_SaveThread();
+        }
+};
+
 class python_t:
     public plugin_t
 {
@@ -91,6 +103,7 @@ class python_t:
     private:
         PyObject * m_python_module;
         tracked_object_t m_manifest;
+        PyThreadState * m_thread_state;
 
         boost::shared_ptr<logging::logger_t> m_app_log;
 };
