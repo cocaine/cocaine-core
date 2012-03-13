@@ -88,7 +88,7 @@ int main(int argc, char * argv[]) {
             (&config.core.endpoints)->composing(),
             "core endpoints for server management");
     
-    positional_options.add("endpoints", -1);
+    positional_options.add("core:endpoints", -1);
 
     general_options.add_options()
         ("help,h", "show this message")
