@@ -1,5 +1,5 @@
 {
-	"lsd_config" :
+	"dealer_config" :
 	{
 		"config_version" : 1,
 		"message_timeout" : 10,
@@ -21,10 +21,8 @@
 
 		"persistent_storage" :
 		{
-			"eblob_path" : "/home/rimz/eblob/messages",
-			"eblob_log_path" : "/tmp/lsd_eblob.log",
-			"eblob_log_flags" : 0,
-			"eblob_max_gb" : 20,
+			"eblob_path" : "/home/rimz/msg_cache",
+			"blob_size" : 2048,
 			"eblob_sync_interval" : 1
 		},
 		

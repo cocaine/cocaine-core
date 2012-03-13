@@ -146,7 +146,7 @@ data_container&
 data_container::operator = (const data_container& rhs) {
 	boost::mutex::scoped_lock lock(mutex_);
 
-	data_container(rhs).swap(*this);
+	data_container(rhs).copy(*this);
 	return *this;
 }
 
@@ -220,6 +220,16 @@ data_container::swap(data_container& other) {
 	memcpy(other.signature_, signature_tmp, SHA1_SIZE);
 
 	std::swap(ref_counter_, other.ref_counter_);
+}
+
+void
+data_container::copy(data_container& other) {
+	data_ = other.data_;
+	size_ = other.size_;
+	signed_ = other.signed_;
+
+	memcpy(signature_, other.signature_, SHA1_SIZE);
+	ref_counter_ = other.ref_counter_;
 }
 
 void

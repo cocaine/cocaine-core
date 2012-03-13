@@ -59,8 +59,7 @@ public:
 	const std::string& logger_syslog_name() const;
 	
 	std::string eblob_path() const;
-	std::string eblob_log_path() const;
-	unsigned int eblob_log_flags() const;
+	int64_t eblob_blob_size() const;
 	int eblob_sync_interval() const;
 	
 	enum autodiscovery_type autodiscovery_type() const;
@@ -107,8 +106,7 @@ private:
 
 	// persistent storage
 	std::string eblob_path_;
-	std::string eblob_log_path_;
-	unsigned int eblob_log_flags_;
+	uint64_t eblob_blob_size_;
 	int eblob_sync_interval_;
 	
 	// autodiscovery

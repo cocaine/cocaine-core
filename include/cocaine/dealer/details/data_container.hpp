@@ -59,6 +59,7 @@ private:
 	void init();
 	void init_with_data(unsigned char* data, size_t size);
 	void swap(data_container& other);
+	void copy(data_container& other);
 	void sign_data(unsigned char* data, size_t& size, unsigned char signature[SHA1_SIZE]);
 
 private:

@@ -36,7 +36,7 @@
 #include "cocaine/dealer/details/handle_info.hpp"
 #include "cocaine/dealer/details/service_info.hpp"
 #include "cocaine/dealer/details/smart_logger.hpp"
-#include "cocaine/dealer/details/cached_message.hpp"
+#include "cocaine/dealer/details/message_iface.hpp"
 #include "cocaine/dealer/details/cached_response.hpp"
 
 namespace cocaine {
@@ -57,7 +57,7 @@ public:
 	typedef std::map<typename LSD_T::ip_addr, std::string> hosts_map_t;
 	typedef std::map<std::string, handle_ptr_t> handles_map_t;
 
-	typedef boost::shared_ptr<cached_message> cached_message_prt_t;
+	typedef boost::shared_ptr<message_iface> cached_message_prt_t;
 	typedef boost::shared_ptr<cached_response> cached_response_prt_t;
 
 	typedef std::deque<cached_message_prt_t> cached_messages_deque_t;
@@ -271,6 +271,7 @@ service<LSD_T>::register_responder_callback(boost::function<void(const response&
 	}
 
 	responses_callbacks_map_[handle_name] = callback;
+	return true;
 }
 
 template <typename LSD_T> void

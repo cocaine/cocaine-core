@@ -33,8 +33,7 @@ configuration::configuration() :
 	logger_type_(STDOUT_LOGGER),
 	logger_flags_(PLOG_NONE),
 	eblob_path_(DEFAULT_EBLOB_PATH),
-	eblob_log_path_(DEFAULT_EBLOB_LOG_PATH),
-	eblob_log_flags_(DEFAULT_EBLOB_LOG_FLAGS),
+	eblob_blob_size_(DEFAULT_EBLOB_BLOB_SIZE),
 	eblob_sync_interval_(DEFAULT_EBLOB_SYNC_INTERVAL),
 	autodiscovery_type_(AT_HTTP),
 	multicast_ip_(DEFAULT_MULTICAST_IP),
@@ -55,8 +54,7 @@ configuration::configuration(const std::string& path) :
 	logger_type_(STDOUT_LOGGER),
 	logger_flags_(PLOG_NONE),
 	eblob_path_(DEFAULT_EBLOB_PATH),
-	eblob_log_path_(DEFAULT_EBLOB_LOG_PATH),
-	eblob_log_flags_(DEFAULT_EBLOB_LOG_FLAGS),
+	eblob_blob_size_(DEFAULT_EBLOB_BLOB_SIZE),
 	eblob_sync_interval_(DEFAULT_EBLOB_SYNC_INTERVAL),
 	autodiscovery_type_(AT_HTTP),
 	multicast_ip_(DEFAULT_MULTICAST_IP),
@@ -161,8 +159,8 @@ configuration::parse_persistant_storage_settings(const Json::Value& config_value
 	const Json::Value persistent_storage_value = config_value["persistent_storage"];
 
 	eblob_path_ = persistent_storage_value.get("eblob_path", "").asString();
-	eblob_log_path_ = persistent_storage_value.get("eblob_log_path", "").asString();
-	eblob_log_flags_ = persistent_storage_value.get("eblob_log_flags", 0).asUInt();
+	eblob_blob_size_ = persistent_storage_value.get("blob_size", "").asInt();
+	eblob_blob_size_ *= 1024;
 	eblob_sync_interval_ = persistent_storage_value.get("eblob_sync_interval", DEFAULT_EBLOB_SYNC_INTERVAL).asInt();
 }
 
@@ -277,7 +275,7 @@ configuration::load(const std::string& path) {
 	}
 	
 	// parse config data
-	const Json::Value config_value = root["lsd_config"];
+	const Json::Value config_value = root["dealer_config"];
 	
 	try {
 		parse_basic_settings(config_value);
@@ -351,14 +349,9 @@ configuration::eblob_path() const {
 	return eblob_path_;
 }
 
-std::string
-configuration::eblob_log_path() const {
-	return eblob_log_path_;
-}
-
-unsigned int
-configuration::eblob_log_flags() const {
-	return eblob_log_flags_;
+int64_t
+configuration::eblob_blob_size() const {
+	return eblob_blob_size_;
 }
 
 int
@@ -495,9 +488,8 @@ std::string configuration::as_json() const {
 
 	Json::Value persistant_storage;
 	persistant_storage["1 - eblob path"] = eblob_path_;
-	persistant_storage["2 - eblob log path"] = eblob_log_path_;
-	persistant_storage["3 - eblob log flags"] = eblob_log_flags_;
-	persistant_storage["4 - eblob sync interval"] = eblob_sync_interval_;
+	persistant_storage["2 - eblob size"] = (int)eblob_blob_size_;
+	persistant_storage["3 - eblob sync interval"] = eblob_sync_interval_;
 	root["4 - persistant storage"] = persistant_storage;
 
 	Json::Value autodiscovery;
@@ -614,8 +606,6 @@ std::string configuration::as_string() const {
  	// persistant storage
  	out << "persistant storage\n";
 	out << "\teblob path: " << eblob_path_ << "\n";
-	out << "\teblob log path: " << eblob_log_path_ << "\n";
-	out << "\teblob log flags: " << eblob_log_flags_ << "\n";
  	out << "\teblob sync interval: " << eblob_sync_interval_ << "\n\n";
 
  	// autodiscovery

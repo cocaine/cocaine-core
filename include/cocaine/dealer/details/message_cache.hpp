@@ -26,14 +26,14 @@
 
 #include "cocaine/dealer/structs.hpp"
 #include "cocaine/dealer/details/context.hpp"
-#include "cocaine/dealer/details/cached_message.hpp"
+#include "cocaine/dealer/details/message_iface.hpp"
 
 namespace cocaine {
 namespace dealer {
 
 class message_cache : private boost::noncopyable {
 public:
-	typedef boost::shared_ptr<cached_message> cached_message_ptr_t;
+	typedef boost::shared_ptr<message_iface> cached_message_ptr_t;
 	typedef std::deque<cached_message_ptr_t> message_queue_t;
 	typedef boost::shared_ptr<message_queue_t> message_queue_ptr_t;
 
@@ -46,7 +46,7 @@ public:
 
 	virtual ~message_cache();
 
-	void enqueue(boost::shared_ptr<cached_message> message);
+	void enqueue(boost::shared_ptr<message_iface> message);
 	void append_message_queue(message_queue_ptr_t queue);
 
 	size_t new_messages_count();

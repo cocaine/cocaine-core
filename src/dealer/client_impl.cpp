@@ -19,6 +19,7 @@
 #include "cocaine/dealer/details/http_heartbeats_collector.hpp"
 #include "cocaine/dealer/details/error.hpp"
 #include "cocaine/dealer/details/cached_message.hpp"
+#include "cocaine/dealer/details/data_container.hpp"
 
 namespace cocaine {
 namespace dealer {
@@ -156,8 +157,19 @@ client_impl::send_message(const void* data,
 {
 	boost::mutex::scoped_lock lock(mutex_);
 
+	size_t cached_message_class_size = 0;
+	if (config()->message_cache_type() == RAM_ONLY) {
+		cached_message_class_size += sizeof(cached_message<data_container>);
+	}
+
+	// calculate new message size
+	size_t message_size = 0;
+	message_size += size;						// data size
+	message_size += cached_message_class_size;  // container size
+	message_size += message_iface::UUID_SIZE;  // uuid size
+	message_size += path.data_size();			// size of data in path (strings)
+
 	// make sure we are not overcapacitated
-	size_t message_size = size + sizeof(cached_message) + cached_message::UUID_SIZE + path.container_size();
 	size_t new_resulting_size = messages_cache_size() + message_size;
 
 	if (new_resulting_size > config()->max_message_cache_size()) {
@@ -176,8 +188,12 @@ client_impl::send_message(const void* data,
 	services_map_t::iterator it = services_.find(path.service_name);
 
 	if (it != services_.end()) {
-		boost::shared_ptr<cached_message> msg;
-		msg.reset(new cached_message(path, policy, data, size));
+		boost::shared_ptr<message_iface> msg;
+
+		if (config()->message_cache_type() == RAM_ONLY) {
+			msg.reset(new cached_message<data_container>(path, policy, data, size));
+		}
+
 		uuid = msg->uuid();
 
 		// send message to handle
