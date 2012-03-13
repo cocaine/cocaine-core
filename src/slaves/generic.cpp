@@ -47,30 +47,19 @@ generic_t::generic_t(engine_t& engine):
         }
 #endif
 
-        std::string& self = engine.context().config.runtime.self;
-
-        char * command = new char[self.size()];
-        char   slave_option[] = "--slave";
-        
-        char   slave_id_option[] = "--slave:id";
-        char * slave_id = new char[id().size()];
-        
-        char   app_name_option[] = "--slave:app";
-        char * app_name = new char[engine.app().name.size()];
-
-        memcpy(command, self.c_str(), self.size());
-        memcpy(slave_id, id().c_str(), id().size());
-        memcpy(app_name, engine.app().name.c_str(), engine.app().name.size());
+        char slave_option[] = "--slave";
+        char slave_id_option[] = "--slave:id";
+        char app_name_option[] = "--slave:app";
 
         char * argv[] = {
-            command,
+            const_cast<char*>(engine.context().config.runtime.self.c_str()),
             slave_option,
-            slave_id_option, slave_id,
-            app_name_option, app_name,
+            slave_id_option, const_cast<char*>(id().c_str()),
+            app_name_option, const_cast<char*>(engine.app().name.c_str()),
             NULL 
         };
 
-        if(::execv(command, argv) == -1) {
+        if(::execv(argv[0], argv) == -1) {
             char message[1024];
 
             ::strerror_r(errno, message, 1024);
