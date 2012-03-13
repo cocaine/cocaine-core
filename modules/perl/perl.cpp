@@ -95,7 +95,7 @@ public:
         // Try to pull in the request w/o blocking.
         data_container_t request = io.pull(false);
 
-        if (request.data() && request.size() > 0) {
+        if (!request.empty()) {
            input = std::string((const char*)request.data(), request.size());
         }
 
@@ -160,7 +160,6 @@ public:
 
 private:
     PerlInterpreter* my_perl;
-
     boost::shared_ptr<logging::logger_t> m_app_log;
 };
 
