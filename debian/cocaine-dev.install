@@ -4,5 +4,4 @@ usr/include/cocaine/*.hpp
 usr/include/cocaine/drivers/*.hpp
 usr/include/cocaine/helpers/*.hpp
 usr/include/cocaine/interfaces/*.hpp
-usr/include/cocaine/slaves/*.hpp
 usr/include/cocaine/storages/*.hpp
