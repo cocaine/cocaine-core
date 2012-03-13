@@ -23,31 +23,16 @@
 using namespace cocaine::engine::drivers;
 using namespace cocaine::networking;
 
-zeromq_server_job_t::zeromq_server_job_t(zeromq_server_t& driver, const blob_t& request, const route_t& route):
+zeromq_server_job_t::zeromq_server_job_t(
+    zeromq_server_t& driver,
+    const blob_t& request,
+    const route_t& route
+):
     job_t(driver, request),
     m_route(route)
 { }
 
 void zeromq_server_job_t::react(const events::push_t& event) {
-    send(event.message);
-}
-
-void zeromq_server_job_t::react(const events::error_t& event) {
-    job_t::react(event);
-
-    Json::Value object(Json::objectValue);
-    
-    object["code"] = event.code;
-    object["message"] = event.message;
-
-    std::string response(Json::FastWriter().write(object));
-    zmq::message_t message(response.size());
-    memcpy(message.data(), response.data(), response.size());
-
-    send(message);
-}
-
-void zeromq_server_job_t::send(zmq::message_t& chunk) {
     zmq::message_t message;
     zeromq_server_t& server = static_cast<zeromq_server_t&>(m_driver);
     
@@ -69,7 +54,7 @@ void zeromq_server_job_t::send(zmq::message_t& chunk) {
     server.socket().send(message, ZMQ_SNDMORE);
 
     // Send the chunk.
-    server.socket().send(chunk);
+    server.socket().send(event.message);
 }
 
 zeromq_server_t::zeromq_server_t(engine_t& engine, const std::string& method, const Json::Value& args, int type) try:

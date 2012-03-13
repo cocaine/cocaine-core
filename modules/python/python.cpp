@@ -80,9 +80,11 @@ void python_t::initialize(const app_t& app) {
     // System paths
     // ------------
 
+    static char key[] = "path";
+
     // NOTE: Prepend the current application location to the sys.path,
     // so that it could import various local stuff from there.
-    PyObject * syspaths = PySys_GetObject("path");
+    PyObject * syspaths = PySys_GetObject(key);
     
     tracked_object_t path(
         PyString_FromString(

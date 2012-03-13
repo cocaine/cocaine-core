@@ -20,10 +20,13 @@
 #include <boost/program_options.hpp>
 
 #include "cocaine/config.hpp"
-#include "cocaine/core.hpp"
 #include "cocaine/logging.hpp"
 
+#include "cocaine/app.hpp"
+#include "cocaine/core.hpp"
 #include "cocaine/helpers/pid_file.hpp"
+#include "cocaine/overseer.hpp"
+#include "cocaine/interfaces/storage.hpp"
 
 using namespace cocaine;
 
@@ -69,11 +72,14 @@ class syslog_t:
 int main(int argc, char * argv[]) {
     config_t config;
 
+    std::string slave_id, slave_app;
+
     // Configuration
     // -------------
 
     po::options_description
         hidden_options,
+        slave_options,
         general_options("General options"),
         core_options("Core options"),
         engine_options("Engine options"),
@@ -89,6 +95,11 @@ int main(int argc, char * argv[]) {
             "core endpoints for server management");
     
     positional_options.add("core:endpoints", -1);
+
+    slave_options.add_options()
+        ("slave", "spawn a slave")
+        ("slave:id", po::value<std::string>(&slave_id))
+        ("slave:app", po::value<std::string>(&slave_app));
 
     general_options.add_options()
         ("help,h", "show this message")
@@ -136,6 +147,7 @@ int main(int argc, char * argv[]) {
             "storage location, format depends on the storage type");
 
     combined_options.add(hidden_options)
+                    .add(slave_options)
                     .add(general_options)
                     .add(core_options)
                     .add(engine_options)
@@ -189,44 +201,73 @@ int main(int argc, char * argv[]) {
         context->log("main")
     );
 
-    // NOTE: Will be used to hold the pid file, if needed.
-    std::auto_ptr<helpers::pid_file_t> pidfile;
+    if(vm.count("slave")) {
+        // Engine slave
+        // ------------
 
-    // Daemonize, if requested.
-    if(vm.count("daemonize")) {
-        if(daemon(0, 0) < 0) {
-            log->error("daemonization failed");
-            return EXIT_FAILURE;
-        }
+        std::auto_ptr<engine::overseer_t> overseer;
+
+        log->info("starting slave %s", slave_id.c_str());
 
         try {
-            pidfile.reset(new helpers::pid_file_t(vm["pidfile"].as<fs::path>()));
-        } catch(const std::runtime_error& e) {
+            overseer.reset(
+                new engine::overseer_t(
+                    slave_id,
+                    *context,
+                    engine::app_t(
+                        *context,
+                        slave_app,
+                        context->storage().get("apps", slave_app)
+                    )
+                )
+            );
+        } catch(const std::exception& e) {
             log->error("%s", e.what());
+        }
+
+        overseer->run();
+
+        log->info("slave %s terminated", slave_id.c_str());
+    } else {
+        // Server core
+        // -----------
+        
+        // NOTE: Will be used to hold the pid file, if needed.
+        std::auto_ptr<helpers::pid_file_t> pidfile;
+
+        // Daemonize, if requested.
+        if(vm.count("daemonize")) {
+            if(daemon(0, 0) < 0) {
+                log->error("daemonization failed");
+                return EXIT_FAILURE;
+            }
+
+            try {
+                pidfile.reset(new helpers::pid_file_t(vm["pidfile"].as<fs::path>()));
+            } catch(const std::runtime_error& e) {
+                log->error("%s", e.what());
+                return EXIT_FAILURE;
+            }
+        }
+ 
+        std::auto_ptr<core::core_t> core;
+        
+        log->info("starting the core");
+
+        try {
+            core.reset(new core::core_t(*context));
+        } catch(const std::exception& e) {
+            log->error("unable to start the core - %s", e.what());
             return EXIT_FAILURE;
         }
+
+        core->run();
+
+        // Cleanup
+        // -------
+
+        log->info("terminated");
     }
-
-    // Server core
-    // -----------
-
-    std::auto_ptr<core::core_t> core;
-    
-    log->info("starting the core");
-
-    try {
-        core.reset(new core::core_t(*context));
-    } catch(const std::exception& e) {
-        log->error("unable to start the core - %s", e.what());
-        return EXIT_FAILURE;
-    }
-
-    core->run();
-
-    // Cleanup
-    // -------
-
-    log->info("terminated");
 
     return EXIT_SUCCESS;
 }

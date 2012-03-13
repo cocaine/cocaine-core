@@ -11,6 +11,7 @@
 // limitations under the License.
 //
 
+#include <boost/format.hpp>
 #include <sys/wait.h>
 
 #include "cocaine/slaves/generic.hpp"
@@ -28,8 +29,6 @@ generic_t::generic_t(engine_t& engine):
     m_pid = fork();
 
     if(m_pid == 0) {
-        context_t context(engine.context());
-
 #ifdef HAVE_CGROUPS
         if(context.config.core.cgroups && engine.group()) {
             int rv = 0;
@@ -46,10 +45,18 @@ generic_t::generic_t(engine_t& engine):
         }
 #endif
 
-        overseer_t overseer(id(), context, engine.app());
-        overseer.run();
-        
-        exit(EXIT_SUCCESS);
+        std::string slave_id(
+            (boost::format("--slave:id %s") % id()).str()
+        );
+
+        std::string slave_app(
+            (boost::format("--slave:app %s") % engine.app().name).str()
+        );
+
+        char * argv[] = { "--slave", (char*)slave_id.c_str(), (char*)slave_app.c_str(), NULL };
+        char * envp[] = { NULL };
+
+        execve("cocained", argv, envp);
     } else if(m_pid < 0) {
         throw std::runtime_error("fork() failed");
     }

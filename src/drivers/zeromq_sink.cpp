@@ -17,7 +17,11 @@
 
 using namespace cocaine::engine::drivers;
 
-zeromq_sink_t::zeromq_sink_t(engine_t& engine, const std::string& method, const Json::Value& args):
+zeromq_sink_t::zeromq_sink_t(
+    engine_t& engine,
+    const std::string& method, 
+    const Json::Value& args
+):
     zeromq_server_t(engine, method, args, ZMQ_PULL)
 { }
 
