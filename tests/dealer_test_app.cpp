@@ -28,7 +28,6 @@ namespace cd = cocaine::dealer;
 
 std::string config_path = "tests/config_example.json";
 
-/*
 void response_callback(const cd::response& response, const cd::response_info& info) {
 	if (info.error != cd::MESSAGE_CHOKE) {
 
@@ -52,9 +51,8 @@ void response_callback(const cd::response& response, const cd::response_info& in
 		std::cout << "resp done!" << std::endl;
 	}
 }
-*/
+
 void create_client(int add_messages_count) {
-	/*
 	// create message path
 	cd::message_path path;
 	path.service_name = "perl-testing";
@@ -72,7 +70,7 @@ void create_client(int add_messages_count) {
 		std::string uuid1 = c.send_message(message, path);
 		std::cout << "mesg uuid: " << uuid1 << std::endl;
 	}
-	*/
+
 	/*
 	//lsd::time_value tv;
 	tv.init_from_current_time();
