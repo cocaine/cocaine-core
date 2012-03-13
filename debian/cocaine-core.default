@@ -1,4 +1,3 @@
-INSTANCE="default"
 ENDPOINT="tcp://*:5000"
 STORAGE_DRIVER="files"
 STORAGE_URI="/var/lib/cocaine"

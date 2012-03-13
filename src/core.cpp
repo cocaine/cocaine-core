@@ -12,8 +12,6 @@
 //
 
 #include <boost/algorithm/string/join.hpp>
-#include <boost/assign.hpp>
-#include <sstream>
 
 #include "cocaine/core.hpp"
 
@@ -35,12 +33,7 @@ core_t::core_t(context_t& ctx):
     m_log(ctx.log("core")),
     m_auth(ctx),
     m_birthstamp(ev::get_default_loop().now()),
-    m_server(ctx, ZMQ_REP, boost::algorithm::join(
-        boost::assign::list_of
-            (ctx.config.core.instance)
-            (ctx.config.runtime.hostname),
-        "/")
-    )
+    m_server(ctx, ZMQ_REP, ctx.config.runtime.hostname)
 {
     int minor, major, patch;
     zmq_version(&major, &minor, &patch);
@@ -361,13 +354,8 @@ Json::Value core_t::info() const {
 void core_t::announce(ev::timer&, int) {
     m_log->debug("announcing the node");
 
-    std::ostringstream envelope;
-
-    envelope << context().config.core.instance << " "
-             << m_server.endpoint();
-    
-    zmq::message_t message(envelope.str().size());
-    memcpy(message.data(), envelope.str().data(), envelope.str().size());
+    zmq::message_t message(m_server.endpoint().size());
+    memcpy(message.data(), m_server.endpoint().data(), m_server.endpoint().size());
     m_announces->send(message, ZMQ_SNDMORE);
 
     std::string announce(Json::FastWriter().write(info()));

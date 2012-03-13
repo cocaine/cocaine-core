@@ -25,7 +25,6 @@ using namespace mongo;
 
 mongo_storage_t::mongo_storage_t(context_t& ctx) try:
     storage_t(ctx),
-    m_instance(ctx.config.core.instance),
     m_uri(ctx.config.storage.uri, ConnectionString::SET)
 {
     if(!m_uri.isValid()) {
@@ -144,7 +143,7 @@ void mongo_storage_t::purge(const std::string& ns) {
 }
 
 std::string mongo_storage_t::resolve(const std::string& ns) const {
-    return "cocaine." + m_instance + "." + ns;
+    return "cocaine." + ns;
 }
 
 extern "C" {

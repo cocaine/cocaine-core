@@ -39,7 +39,6 @@ class mongo_storage_t:
         std::string resolve(const std::string& ns) const;
 
     private:
-        const std::string m_instance;
         const mongo::ConnectionString m_uri;
 };
 

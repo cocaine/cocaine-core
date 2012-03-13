@@ -64,7 +64,6 @@ zeromq_server_t::zeromq_server_t(engine_t& engine, const std::string& method, co
     m_linger(args.get("linger", 0).asInt()),
     m_socket(m_engine.context(), type, boost::algorithm::join(
         boost::assign::list_of
-            (m_engine.context().config.core.instance)
             (m_engine.context().config.runtime.hostname)
             (m_engine.app().name)
             (method),

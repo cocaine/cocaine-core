@@ -31,15 +31,14 @@ struct is_regular_file {
 
 file_storage_t::file_storage_t(context_t& context):
     storage_t(context),
-    m_storage_path(context.config.storage.uri),
-    m_instance(context.config.core.instance)
+    m_storage_path(context.config.storage.uri)
 { }
 
 void file_storage_t::put(const std::string& ns,
                          const std::string& key,
                          const Json::Value& value) 
 {
-    fs::path store_path(m_storage_path / m_instance / ns);
+    fs::path store_path(m_storage_path / ns);
 
     if(!fs::exists(store_path)) {
         try {
@@ -65,7 +64,7 @@ void file_storage_t::put(const std::string& ns,
 }
 
 bool file_storage_t::exists(const std::string& ns, const std::string& key) {
-    fs::path file_path(m_storage_path / m_instance / ns / key);
+    fs::path file_path(m_storage_path / ns / key);
     
     return (fs::exists(file_path) && 
             fs::is_regular(file_path));
@@ -73,7 +72,7 @@ bool file_storage_t::exists(const std::string& ns, const std::string& key) {
 
 Json::Value file_storage_t::get(const std::string& ns, const std::string& key) {
     Json::Value root(Json::objectValue);
-    fs::path file_path(m_storage_path / m_instance / ns / key);
+    fs::path file_path(m_storage_path / ns / key);
     fs::ifstream stream(file_path, fs::ifstream::in);
     
     if(stream) { 
@@ -89,7 +88,7 @@ Json::Value file_storage_t::get(const std::string& ns, const std::string& key) {
 
 Json::Value file_storage_t::all(const std::string& ns) {
     Json::Value root(Json::objectValue);
-    fs::path store_path(m_storage_path / m_instance / ns);
+    fs::path store_path(m_storage_path / ns);
 
     if(!fs::exists(store_path)) {
         return root;
@@ -120,7 +119,7 @@ Json::Value file_storage_t::all(const std::string& ns) {
 }
 
 void file_storage_t::remove(const std::string& ns, const std::string& key) {
-    fs::path file_path(m_storage_path / m_instance / ns / key);
+    fs::path file_path(m_storage_path / ns / key);
     
     if(fs::exists(file_path)) {
         try {
@@ -132,7 +131,7 @@ void file_storage_t::remove(const std::string& ns, const std::string& key) {
 }
 
 void file_storage_t::purge(const std::string& ns) {
-    fs::path store_path(m_storage_path / m_instance / ns);
+    fs::path store_path(m_storage_path / ns);
     fs::remove_all(store_path);
 }
 

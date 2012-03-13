@@ -27,12 +27,11 @@ struct config_t {
     config_t();
 
     struct {
-        // Plugin path.
+        // Module path.
         std::string modules;
 
-        // Administration and routing.
+        // Administration socket endpoint.
         std::vector<std::string> endpoints;
-        std::string instance;
         
         // Automatic discovery.
         std::string announce_endpoint;
@@ -57,7 +56,7 @@ struct config_t {
         std::string self;
         std::string hostname;
         
-        // Control groups availability.
+        // Control groups availability flag.
         bool cgroups;
     } runtime;
 };

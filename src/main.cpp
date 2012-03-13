@@ -115,9 +115,6 @@ int main(int argc, char * argv[]) {
         ("core:modules", po::value<std::string>
             (&cfg.core.modules)->default_value("/usr/lib/cocaine"),
             "where to load modules from")
-        ("core:instance", po::value<std::string>
-            (&cfg.core.instance)->default_value("default"),
-            "instance name")
         ("core:announce-endpoint", po::value<std::string>
             (&cfg.core.announce_endpoint),
             "multicast endpoint for automatic discovery")

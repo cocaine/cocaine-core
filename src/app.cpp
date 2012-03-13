@@ -33,7 +33,6 @@ app_t::app_t(context_t& ctx, const std::string& name_, const Json::Value& manife
     endpoint = boost::algorithm::join(
         boost::assign::list_of
             (std::string("ipc:///var/run/cocaine"))
-            (ctx.config.core.instance)
             (name),
         "/");
 

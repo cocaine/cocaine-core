@@ -26,7 +26,7 @@ SCRIPTNAME=/etc/init.d/cocaine-core
 # Read configuration variable file if it is present
 [ -r /etc/default/$NAME-core ] && . /etc/default/$NAME-core
 
-PIDFILE=/var/run/cocaine/$INSTANCE.pid
+PIDFILE=/var/run/cocaine.pid
 
 # Load the VERBOSE setting and other rcS variables
 . /lib/init/vars.sh
@@ -40,9 +40,9 @@ if [ ! -d /var/run/cocaine ]; then
     chown cocaine:adm /var/run/cocaine
 fi
 
-if [ ! -d /var/run/cocaine/$INSTANCE ]; then
-    mkdir -p /var/run/cocaine/$INSTANCE
-    chown cocaine:adm /var/run/cocaine/$INSTANCE
+if [ ! -d /var/run/cocaine ]; then
+    mkdir -p /var/run/cocaine
+    chown cocaine:adm /var/run/cocaine
 fi
 
 #
@@ -57,7 +57,7 @@ do_start() {
 		|| return 1
 	start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON --chuid cocaine -- \
 		$ENDPOINT $DAEMON_ARGS --storage:driver $STORAGE_DRIVER --storage:uri $STORAGE_URI \
-        --pidfile /var/run/cocaine/$INSTANCE.pid --core:instance $INSTANCE \
+        --pidfile $PIDFILE \
 		|| return 2
 }
 
