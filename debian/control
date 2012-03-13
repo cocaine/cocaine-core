@@ -1,0 +1,68 @@
+Source: cocaine
+Section: utils
+Priority: extra
+Maintainer: Andrey Sibiryov <kobolog@yandex-team.ru>
+Build-Depends: cdbs, debhelper (>= 7.0.13), libzmq-dev (>= 2.1.9), libev-dev,
+ libssl-dev, libboost-dev, libmsgpack-dev, yandex-git-cdbs, python-dev, 
+ libboost-filesystem-dev, uuid-dev, libboost-program-options-dev, libboost-thread-dev, 
+ libv8-dev, libltdl-dev, libperl-dev, libmongoclient-dev
+Standards-Version: 3.8.4
+Vcs-Git: git://github.com/Kobolog/cocaine.git
+Vcs-Browser: https://github.com/Kobolog/cocaine
+
+Package: cocaine-core
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, adduser
+Description: Cocaine - Core
+ Cocaine server.
+
+Package: cocaine-plugin-python
+Architecture: any
+Depends: cocaine-core (>= ${Source-Version}), ${shlibs:Depends}, ${misc:Depends}
+Description: Cocaine - Python Code Hosting
+ Python scripting support for Cocaine.
+
+Package: cocaine-plugin-javascript
+Architecture: any
+Depends: cocaine-core (>= ${Source-Version}), ${shlibs:Depends}, ${misc:Depends}
+Description: Cocaine - Javascript Code Hosting
+ Javascript scripting support for Cocaine.
+
+Package: cocaine-plugin-perl
+Architecture: any
+Depends: cocaine-core (>= ${Source-Version}), ${shlibs:Depends}, ${misc:Depends}
+Description: Cocaine - Perl Code Hosting
+ Perl scripting support for Cocaine.
+
+Package: cocaine-plugin-mongodb
+Architecture: any
+Depends: cocaine-core (>= ${Source-Version}), ${shlibs:Depends}, ${misc:Depends}
+Description: Cocaine - MongoDB Storage
+ MongoDB storage support for Cocaine.
+
+Package: cocaine-dealer
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Cocaine - Dealer
+ Cocaine scheduler and persistent transport.
+
+Package: cocaine-tools
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, python, python-zmq
+Description: Cocaine - Toolset
+ Various tools to query and manipulate running Cocaine instances.
+
+Package: cocaine-dev
+Architecture: any
+Section: libdevel
+Depends: ${shlibs:Depends}, ${misc:Depends}, libboost-dev, libssl-dev, uuid-dev, libev-dev
+Description: Cocaine - Development Files
+ Files needed to develop plugins, modules and to embed Cocaine.
+
+Package: cocaine-dealer-dev
+Architecture: any
+Section: libdevel
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Cocaine Dealer - Development Files
+ Files needed to use Cocaine Dealer in development.
+

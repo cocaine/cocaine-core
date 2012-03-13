@@ -1,0 +1,33 @@
+#!/bin/bash
+
+case $1 in
+    remove)
+        # Stop the server
+        if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
+            invoke-rc.d cocaine-core stop || exit $?
+        else
+            /etc/init.d/cocaine-core stop || exit $?
+        fi
+	    
+        # Update the ld cache
+        ldconfig
+        ;;
+
+    purge)
+        # Disable the server to run automatically on boot
+	    update-rc.d cocaine-core remove >/dev/null || exit $?
+
+        # Remove the system user used to run the server and to
+        # own the server runtime resources
+        deluser --quiet --system cocaine
+        ;;
+
+    upgrade|disappear|failed-upgrade|abort-install|abort-upgrade)
+        ;;
+
+    *)
+        echo "postrm called with an unknown argument \`$1'" >&2
+        ;;
+esac
+
+exit 0

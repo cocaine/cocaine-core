@@ -1,0 +1,4 @@
+usr/bin/cocained
+usr/lib/libcocaine-common.so.*
+usr/lib/libcocaine-core.so.*
+etc/syslog-ng/conf-available/cocained.conf

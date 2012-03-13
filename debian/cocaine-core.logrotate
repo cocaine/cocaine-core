@@ -1,0 +1,9 @@
+/var/log/cocained.log {
+    daily
+    rotate 7
+    compress
+    missingok
+    postrotate
+        kill -HUP $(cat /var/run/syslog-ng.pid)
+    endscript
+}
