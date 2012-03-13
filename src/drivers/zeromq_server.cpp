@@ -123,50 +123,51 @@ Json::Value zeromq_server_t::info() const {
 }
 
 void zeromq_server_t::process(ev::idle&, int) {
-    if(m_socket.pending()) {
-        zmq::message_t message;
-        route_t route;
-
-        do {
-            m_socket.recv(&message);
-
-            if(!message.size()) {
-                break;
-            }
-
-            route.push_back(
-                std::string(
-                    static_cast<const char*>(message.data()),
-                    message.size()
-                )
-            );
-        } while(m_socket.more());
-
-        if(route.empty() || !m_socket.more()) {
-            m_engine.app().log->error(
-                "driver '%s' got a corrupted request - invalid route",
-                m_method.c_str()
-            );
-            
-            return;
-        }
-
-        while(m_socket.more()) {
-            m_socket.recv(&message);
-
-            m_engine.enqueue(
-                boost::make_shared<zeromq_server_job_t>(
-                    boost::ref(*this),
-                    blob_t(
-                        message.data(), 
-                        message.size()
-                    ),
-                    route
-                )
-            );
-        }
-    } else {
+    if(!m_socket.pending()) {
         m_processor.stop();
+        return;
+    }
+    
+    zmq::message_t message;
+    route_t route;
+
+    do {
+        m_socket.recv(&message);
+
+        if(!message.size()) {
+            break;
+        }
+
+        route.push_back(
+            std::string(
+                static_cast<const char*>(message.data()),
+                message.size()
+            )
+        );
+    } while(m_socket.more());
+
+    if(route.empty() || !m_socket.more()) {
+        m_engine.app().log->error(
+            "driver '%s' got a corrupted request",
+            m_method.c_str()
+        );
+        
+        return;
+    }
+
+    while(m_socket.more()) {
+        m_socket.recv(&message);
+
+        m_engine.enqueue(
+            boost::make_shared<zeromq_server_job_t>(
+                boost::ref(*this),
+                blob_t(
+                    message.data(), 
+                    message.size()
+                ),
+                route
+            )
+        );
     }
 }
 

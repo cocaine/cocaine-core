@@ -104,91 +104,92 @@ Json::Value lsd_server_t::info() const {
 }
 
 void lsd_server_t::process(ev::idle&, int) {
-    if(m_socket.pending()) {
-        zmq::message_t message;
-        route_t route;
+    if(!m_socket.pending()) {
+        m_processor.stop();
+        return;
+    }
+    
+    zmq::message_t message;
+    route_t route;
 
-        do {
-            m_socket.recv(&message);
+    do {
+        m_socket.recv(&message);
 
-            if(!message.size()) {
-                break;
-            }
+        if(!message.size()) {
+            break;
+        }
 
-            route.push_back(
-                std::string(
-                    static_cast<const char*>(message.data()),
-                    message.size()
-                )
-            );
-        } while(m_socket.more());
+        route.push_back(
+            std::string(
+                static_cast<const char*>(message.data()),
+                message.size()
+            )
+        );
+    } while(m_socket.more());
 
-        if(route.empty() || !m_socket.more()) {
+    if(route.empty() || !m_socket.more()) {
+        m_engine.app().log->error(
+            "driver '%s' got a corrupted request",
+            m_method.c_str()
+        );
+
+        return;
+    }
+
+    Json::Reader reader(Json::Features::strictMode());
+    
+    while(m_socket.more()) {
+        Json::Value root;
+
+        // Receive the envelope.
+        m_socket.recv(&message);
+
+        // Parse the envelope and setup the job policy.
+        if(!reader.parse(
+            static_cast<const char*>(message.data()),
+            static_cast<const char*>(message.data()) + message.size(),
+            root))
+        {
             m_engine.app().log->error(
-                "driver '%s' got a corrupted request - invalid route",
+                "driver '%s' got a corrupted request - invalid envelope",
                 m_method.c_str()
             );
 
-            return;
+            continue;
         }
 
-        Json::Reader reader(Json::Features::strictMode());
-        
-        while(m_socket.more()) {
-            Json::Value root;
+        if(!m_socket.recv(&message, ZMQ_NOBLOCK)) {
+            m_engine.app().log->error(
+                "driver '%s' got a corrupted request - missing body",
+                m_method.c_str()
+            );
 
-            // Receive the envelope.
-            m_socket.recv(&message);
-
-            // Parse the envelope and setup the job policy.
-            if(!reader.parse(
-                static_cast<const char*>(message.data()),
-                static_cast<const char*>(message.data()) + message.size(),
-                root))
-            {
-                m_engine.app().log->error(
-                    "driver '%s' got a corrupted request - invalid envelope",
-                    m_method.c_str()
-                );
-
-                continue;
-            }
-
-            if(!m_socket.recv(&message, ZMQ_NOBLOCK)) {
-                m_engine.app().log->error(
-                    "driver '%s' got a corrupted request - missing body",
-                    m_method.c_str()
-                );
-
-                continue;
-            }
-
-            try {
-                m_engine.enqueue(
-                    boost::make_shared<lsd_job_t>(
-                        root.get("uuid", "").asString(),
-                        boost::ref(*this),
-                        client::policy_t(
-                            root.get("urgent", false).asBool(),
-                            root.get("timeout", 0.0f).asDouble(),
-                            root.get("deadline", 0.0f).asDouble()
-                        ),
-                        blob_t(
-                            message.data(), 
-                            message.size()
-                        ),
-                        route
-                    )
-                );
-            } catch(const std::runtime_error& e) {
-                m_engine.app().log->error(
-                    "driver '%s' got a corrupted request - %s",
-                    m_method.c_str(),
-                    e.what()
-                );
-            }
+            continue;
         }
-    } else {
-        m_processor.stop();
+
+        try {
+            m_engine.enqueue(
+                boost::make_shared<lsd_job_t>(
+                    root.get("uuid", "").asString(),
+                    boost::ref(*this),
+                    client::policy_t(
+                        root.get("urgent", false).asBool(),
+                        root.get("timeout", 0.0f).asDouble(),
+                        root.get("deadline", 0.0f).asDouble()
+                    ),
+                    blob_t(
+                        message.data(), 
+                        message.size()
+                    ),
+                    route
+                )
+            );
+        } catch(const std::runtime_error& e) {
+            m_engine.app().log->error(
+                "driver '%s' got a corrupted request - %s",
+                m_method.c_str(),
+                e.what()
+            );
+        }
     }
 }
