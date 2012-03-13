@@ -43,15 +43,15 @@ void context_t::initialize() {
     char hostname[HOSTNAME_MAX_LENGTH];
 
     if(gethostname(hostname, HOSTNAME_MAX_LENGTH) == 0) {
-        config.core.hostname = hostname;
+        config.runtime.hostname = hostname;
     } else {
         throw std::runtime_error("failed to determine the hostname");
     }
    
 #ifdef HAVE_CGROUPS 
-    config.core.cgroups = (cgroup_init() == 0);
+    config.runtime.cgroups = (cgroup_init() == 0);
 #else
-    config.core.cgroups = false;
+    config.runtime.cgroups = false;
 #endif
 
     // Initialize the module registry.

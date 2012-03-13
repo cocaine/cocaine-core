@@ -56,5 +56,5 @@ app_t::app_t(context_t& ctx, const std::string& name_, const Json::Value& manife
         "queue-limit",
         ctx.config.defaults.queue_limit
     ).asUInt();
-
 }
+

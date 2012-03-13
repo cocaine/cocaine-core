@@ -30,15 +30,11 @@ struct config_t {
 
         // Administration and routing.
         std::vector<std::string> endpoints;
-        std::string hostname;
         std::string instance;
         
         // Automatic discovery.
         std::string announce_endpoint;
         float announce_interval;
-
-        // Control groups availability.
-        bool cgroups;
     } core;
 
     struct {
@@ -54,6 +50,14 @@ struct config_t {
         std::string driver;
         std::string uri;
     } storage;
+    
+    struct {
+        std::string self;
+        std::string hostname;
+        
+        // Control groups availability.
+        bool cgroups;
+    } runtime;
 };
 
 class context_t {

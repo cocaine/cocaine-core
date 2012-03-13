@@ -60,7 +60,7 @@ class socket_t:
             size_t position = endpoint.find_last_of(":");
 
             if(position != std::string::npos) {
-                m_endpoint = context().config.core.hostname + 
+                m_endpoint = context().config.runtime.hostname + 
                     endpoint.substr(position, std::string::npos);
             } else {
                 m_endpoint = "<local>";

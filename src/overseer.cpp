@@ -13,10 +13,11 @@
 
 #include "cocaine/overseer.hpp"
 
-#include "cocaine/app.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/registry.hpp"
 #include "cocaine/rpc.hpp"
+
+#include "cocaine/interfaces/storage.hpp"
 
 #include "cocaine/dealer/types.hpp"
 
@@ -25,19 +26,23 @@ using namespace cocaine::engine;
 
 overseer_t::overseer_t(
     const unique_id_t::identifier_type& id_,
-    context_t& ctx,
-    const app_t& app
+    const std::string& app,
+    context_t& ctx
 ):
     unique_id_t(id_),
     object_t(ctx),
-    m_app(app),
-    m_messages(ctx, ZMQ_DEALER, id()),
+    m_app(
+        ctx,
+        app,
+        ctx.storage().get("apps", app)
+    ),
     m_loop(),
     m_watcher(m_loop),
     m_processor(m_loop),
     m_pumper(m_loop),
     m_suicide_timer(m_loop),
-    m_heartbeat_timer(m_loop)
+    m_heartbeat_timer(m_loop),
+    m_messages(ctx, ZMQ_DEALER, id())
 {
     m_messages.connect(m_app.endpoint);
     

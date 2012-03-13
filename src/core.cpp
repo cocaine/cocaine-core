@@ -36,7 +36,7 @@ core_t::core_t(context_t& ctx):
     m_server(ctx, ZMQ_REP, boost::algorithm::join(
         boost::assign::list_of
             (ctx.config.core.instance)
-            (ctx.config.core.hostname),
+            (ctx.config.runtime.hostname),
         "/")
     )
 {
@@ -50,7 +50,7 @@ core_t::core_t(context_t& ctx):
 
     m_log->info(
         "control groups are %s", 
-        context().config.core.cgroups ? "available" : "not available"
+        context().config.runtime.cgroups ? "available" : "not available"
     );
 
     // Server socket

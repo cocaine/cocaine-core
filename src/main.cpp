@@ -22,11 +22,10 @@
 #include "cocaine/config.hpp"
 #include "cocaine/logging.hpp"
 
-#include "cocaine/app.hpp"
 #include "cocaine/core.hpp"
-#include "cocaine/helpers/pid_file.hpp"
 #include "cocaine/overseer.hpp"
-#include "cocaine/interfaces/storage.hpp"
+
+#include "cocaine/helpers/pid_file.hpp"
 
 using namespace cocaine;
 
@@ -76,6 +75,8 @@ int main(int argc, char * argv[]) {
 
     // Configuration
     // -------------
+
+    config.runtime.self = argv[0];
 
     po::options_description
         hidden_options,
@@ -207,18 +208,14 @@ int main(int argc, char * argv[]) {
 
         std::auto_ptr<engine::overseer_t> overseer;
 
-        log->info("starting slave %s", slave_id.c_str());
+        log->info("starting slave %s for app %s", slave_id.c_str(), slave_app.c_str());
 
         try {
             overseer.reset(
                 new engine::overseer_t(
                     slave_id,
-                    *context,
-                    engine::app_t(
-                        *context,
-                        slave_app,
-                        context->storage().get("apps", slave_app)
-                    )
+                    slave_app,
+                    *context
                 )
             );
         } catch(const std::exception& e) {
@@ -270,4 +267,10 @@ int main(int argc, char * argv[]) {
     }
 
     return EXIT_SUCCESS;
+}
+
+void start_core(po::variables_map& vm) {
+}
+
+void start_slave(po::variables_map& vm) {
 }

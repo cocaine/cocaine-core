@@ -11,8 +11,10 @@
 // limitations under the License.
 //
 
-#include <boost/format.hpp>
+#include <errno.h>
+#include <string.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 #include "cocaine/slaves/generic.hpp"
 
@@ -30,7 +32,7 @@ generic_t::generic_t(engine_t& engine):
 
     if(m_pid == 0) {
 #ifdef HAVE_CGROUPS
-        if(context.config.core.cgroups && engine.group()) {
+        if(engine.context().config.runtime.cgroups && engine.group()) {
             int rv = 0;
             
             if((rv = cgroup_attach_task(engine.group())) != 0) {
@@ -45,18 +47,42 @@ generic_t::generic_t(engine_t& engine):
         }
 #endif
 
-        std::string slave_id(
-            (boost::format("--slave:id %s") % id()).str()
-        );
+        std::string& self = engine.context().config.runtime.self;
 
-        std::string slave_app(
-            (boost::format("--slave:app %s") % engine.app().name).str()
-        );
+        char * command = new char[self.size()];
+        char   slave_option[] = "--slave";
+        
+        char   slave_id_option[] = "--slave:id";
+        char * slave_id = new char[id().size()];
+        
+        char   app_name_option[] = "--slave:app";
+        char * app_name = new char[engine.app().name.size()];
 
-        char * argv[] = { "--slave", (char*)slave_id.c_str(), (char*)slave_app.c_str(), NULL };
-        char * envp[] = { NULL };
+        memcpy(command, self.c_str(), self.size());
+        memcpy(slave_id, id().c_str(), id().size());
+        memcpy(app_name, engine.app().name.c_str(), engine.app().name.size());
 
-        execve("cocained", argv, envp);
+        char * argv[] = {
+            command,
+            slave_option,
+            slave_id_option, slave_id,
+            app_name_option, app_name,
+            NULL 
+        };
+
+        if(::execv(command, argv) == -1) {
+            char message[1024];
+
+            ::strerror_r(errno, message, 1024);
+
+            m_engine.app().log->error(
+                "unable to start slave %s: %s",
+                id().c_str(),
+                message
+            );
+
+            exit(EXIT_FAILURE);
+        }
     } else if(m_pid < 0) {
         throw std::runtime_error("fork() failed");
     }

@@ -18,10 +18,13 @@
 #include "cocaine/forwards.hpp"
 #include "cocaine/object.hpp"
 
+#include "cocaine/app.hpp"
+#include "cocaine/networking.hpp"
+
+#include "cocaine/interfaces/plugin.hpp"
+
 #include "cocaine/helpers/blob.hpp"
 #include "cocaine/helpers/unique_id.hpp"
-#include "cocaine/interfaces/plugin.hpp"
-#include "cocaine/networking.hpp"
 
 namespace cocaine { namespace engine {
 
@@ -31,8 +34,8 @@ class overseer_t:
 {
     public:
         overseer_t(const unique_id_t::identifier_type& id,
-                   context_t& ctx,
-                   const app_t& app);
+                   const std::string& app,
+                   context_t& ctx);
 
         ~overseer_t();
 
@@ -55,10 +58,8 @@ class overseer_t:
         void terminate();
 
     private:
-        const app_t& m_app;
-
-        // Engine RPC.
-        networking::channel_t m_messages;
+        // Application manifest.
+        app_t m_app;
 
         // Application instance.
         std::auto_ptr<plugin_t> m_module;
@@ -74,6 +75,9 @@ class overseer_t:
         ev::timer m_pumper;
 
         ev::timer m_suicide_timer, m_heartbeat_timer;
+        
+        // Engine RPC.
+        networking::channel_t m_messages;
 };
 
 }}
