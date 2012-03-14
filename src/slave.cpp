@@ -214,8 +214,9 @@ void slave_t::signal(ev::child& event, int) {
             m_engine.stop();
         } else if(WIFSIGNALED(event.rstatus)) {
             m_engine.app().log->warning(
-                "slave %s has been killed by %s", 
-                id().c_str(), 
+                "slave %s has been killed by signal %d: %s", 
+                id().c_str(),
+                WTERMSIG(event.rstatus),
                 strsignal(WTERMSIG(event.rstatus))
             );
             
