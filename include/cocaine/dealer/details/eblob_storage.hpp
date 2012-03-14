@@ -89,10 +89,10 @@ public:
 private:
 	std::map<std::string, eblob> eblobs_;
 
+	std::string path_;
 	uint64_t blob_size_;
 	int sync_interval_;
 	int defrag_timeout_;
-	std::string path_;
 };
 
 } // namespace dealer

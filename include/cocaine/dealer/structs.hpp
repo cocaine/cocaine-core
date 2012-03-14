@@ -31,8 +31,8 @@ static const unsigned long long DEFAULT_SOCKET_POLL_TIMEOUT = 2000; // milliseco
 static const unsigned long long DEFAULT_SOCKET_PING_TIMEOUT = 1000; // milliseconds
 
 static const std::string DEFAULT_EBLOB_PATH = "/tmp/pmq_eblob";
-static int64_t DEFAULT_EBLOB_BLOB_SIZE = 2147483648; // 2 gb
-static const int DEFAULT_EBLOB_SYNC_INTERVAL = 1;
+static size_t DEFAULT_EBLOB_BLOB_SIZE = 2147483648; // 2 gb
+static const int DEFAULT_EBLOB_SYNC_INTERVAL = 2;
 
 static const std::string DEFAULT_HOSTS_URL = "";
 static const unsigned short DEFAULT_CONTROL_PORT = 5555;

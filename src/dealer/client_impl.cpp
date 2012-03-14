@@ -20,6 +20,7 @@
 #include "cocaine/dealer/details/error.hpp"
 #include "cocaine/dealer/details/cached_message.hpp"
 #include "cocaine/dealer/details/data_container.hpp"
+#include "cocaine/dealer/details/persistant_data_container.hpp"
 
 namespace cocaine {
 namespace dealer {
@@ -161,6 +162,9 @@ client_impl::send_message(const void* data,
 	if (config()->message_cache_type() == RAM_ONLY) {
 		cached_message_class_size += sizeof(cached_message<data_container>);
 	}
+	//else if(config()->message_cache_type() == PERSISTANT) {
+	//	cached_message_class_size += sizeof(cached_message<persistant_data_container>);	
+	//}
 
 	// calculate new message size
 	size_t message_size = 0;
@@ -193,6 +197,11 @@ client_impl::send_message(const void* data,
 		if (config()->message_cache_type() == RAM_ONLY) {
 			msg.reset(new cached_message<data_container>(path, policy, data, size));
 		}
+		//else if(config()->message_cache_type() == PERSISTANT) {
+		//	cached_message<persistant_data_container>* msg_ptr = new cached_message<persistant_data_container>(path, policy, data, size);
+			//msg_ptr
+		//	msg.reset(msg_ptr);
+		//}
 
 		uuid = msg->uuid();
 

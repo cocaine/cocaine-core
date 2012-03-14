@@ -21,6 +21,7 @@
 #include <boost/algorithm/string.hpp>
 
 #include "cocaine/dealer/details/configuration.hpp"
+#include "cocaine/dealer/structs.hpp"
 
 namespace cocaine {
 namespace dealer {
