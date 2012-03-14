@@ -53,6 +53,7 @@ class factory_model_t:
 // ---------------
 
 class registry_t:
+    public boost::noncopyable,
     public object_t
 {
     public:

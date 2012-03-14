@@ -189,9 +189,9 @@ int main(int argc, char * argv[]) {
         try {
             slave.reset(
                 new engine::overseer_t(
-                    slave_cfg.id,
-                    slave_cfg.app,
                     *ctx
+                    slave_cfg.id,
+                    slave_cfg.app
                 )
             );
         } catch(const std::exception& e) {

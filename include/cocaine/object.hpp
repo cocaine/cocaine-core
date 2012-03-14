@@ -22,9 +22,7 @@ namespace cocaine {
 // Basic object
 // ------------
 
-class object_t:
-    public boost::noncopyable
-{
+class object_t {
     public:        
         virtual ~object_t();
 

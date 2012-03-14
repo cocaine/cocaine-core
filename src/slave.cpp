@@ -133,7 +133,6 @@ void slave_t::spawn() {
             "--core:modules",   m_engine.context().config.core.modules.c_str(),
             "--storage:driver", m_engine.context().config.storage.driver.c_str(),
             "--storage:uri",    m_engine.context().config.storage.uri.c_str(),
-            "--verbose",
             (char*)0
         );
 

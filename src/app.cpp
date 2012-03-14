@@ -18,18 +18,32 @@
 
 #include "cocaine/context.hpp"
 
+#include "cocaine/interfaces/storage.hpp"
+
 using namespace cocaine::engine;
 
 // Application
 // -----------
 
 app_t::app_t(context_t& ctx, const std::string& name_, const Json::Value& manifest_):
+    object_t(ctx),
     name(name_),
     manifest(manifest_),
     log(ctx.log(name_))
 {
-    type = manifest["type"].asString();
+    initialize();
+}
 
+app_t::app_t(context_t& ctx, const std::string& name_):
+    object_t(ctx),
+    name(name_),
+    manifest(ctx.storage().get("apps", name_)),
+    log(ctx.log(name_))
+{
+    initialize();
+}
+
+void app_t::initialize() {
     endpoint = boost::algorithm::join(
         boost::assign::list_of
             (std::string("ipc:///var/run/cocaine"))
@@ -38,22 +52,21 @@ app_t::app_t(context_t& ctx, const std::string& name_, const Json::Value& manife
 
     policy.heartbeat_timeout = manifest["engine"].get(
         "heartbeat-timeout",
-        ctx.config.defaults.heartbeat_timeout
+        context().config.defaults.heartbeat_timeout
     ).asDouble();
 
     policy.suicide_timeout = manifest["engine"].get(
         "suicide-timeout",
-        ctx.config.defaults.suicide_timeout
+        context().config.defaults.suicide_timeout
     ).asDouble();
     
     policy.pool_limit = manifest["engine"].get(
         "pool-limit",
-        ctx.config.defaults.pool_limit
+        context().config.defaults.pool_limit
     ).asUInt();
     
     policy.queue_limit = manifest["engine"].get(
         "queue-limit",
-        ctx.config.defaults.queue_limit
+        context().config.defaults.queue_limit
     ).asUInt();
 }
-

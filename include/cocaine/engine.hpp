@@ -56,12 +56,13 @@ class job_queue_t:
 };
 
 class engine_t:
+    public boost::noncopyable,
     public object_t
 {
     public:
         engine_t(context_t& ctx, 
                  const std::string& name, 
-                 const Json::Value& manifest); 
+                 const Json::Value& manifest);
 
         ~engine_t();
 
@@ -126,7 +127,7 @@ class engine_t:
         bool m_running;
 
         // The application.
-        const app_t m_app;
+        app_t m_app;
         task_map_t m_tasks;
 
         // Job queue.

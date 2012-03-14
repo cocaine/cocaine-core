@@ -14,32 +14,39 @@
 #ifndef COCAINE_APP_HPP
 #define COCAINE_APP_HPP
 
-#include <msgpack.hpp>
-
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
+#include "cocaine/object.hpp"
 
 namespace cocaine { namespace engine {
 
-struct app_t {
-    app_t(context_t& ctx, 
-          const std::string& name, 
-          const Json::Value& manifest);
+class app_t:
+    public object_t
+{
+    public:
+        app_t(context_t& ctx, const std::string& name);
 
-    std::string name;
-    std::string type;
-    std::string endpoint;
+        app_t(context_t& ctx, 
+              const std::string& name, 
+              const Json::Value& manifest);
 
-    Json::Value manifest;
+    public:
+        std::string name;
+        std::string endpoint;
 
-    struct policy_t {
-        float heartbeat_timeout;
-        float suicide_timeout;
-        unsigned int pool_limit;
-        unsigned int queue_limit;
-    } policy;
+        Json::Value manifest;
 
-    boost::shared_ptr<logging::logger_t> log;
+        struct policy_t {
+            float heartbeat_timeout;
+            float suicide_timeout;
+            unsigned int pool_limit;
+            unsigned int queue_limit;
+        } policy;
+
+        boost::shared_ptr<logging::logger_t> log;
+
+    private:
+        void initialize();
 };
 
 }}

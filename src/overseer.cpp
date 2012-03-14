@@ -14,10 +14,10 @@
 #include "cocaine/overseer.hpp"
 
 #include "cocaine/context.hpp"
+
+#include "cocaine/app.hpp"
 #include "cocaine/registry.hpp"
 #include "cocaine/rpc.hpp"
-
-#include "cocaine/interfaces/storage.hpp"
 
 #include "cocaine/dealer/types.hpp"
 
@@ -25,17 +25,13 @@ using namespace cocaine;
 using namespace cocaine::engine;
 
 overseer_t::overseer_t(
+    context_t& ctx,
     const unique_id_t::identifier_type& id_,
-    const std::string& app,
-    context_t& ctx
+    const std::string& app
 ):
-    unique_id_t(id_),
     object_t(ctx),
-    m_app(
-        ctx,
-        app,
-        ctx.storage().get("apps", app)
-    ),
+    unique_id_t(id_),
+    m_app(ctx, app),
     m_loop(),
     m_watcher(m_loop),
     m_processor(m_loop),
@@ -65,8 +61,14 @@ overseer_t::~overseer_t() {
 
 void overseer_t::run() {
     try {
-        m_module = context().create<plugin_t>(m_app.type);
-        m_module->initialize(m_app);
+        std::string type = m_app.manifest["type"].asString();
+
+        if(!type.empty()) {
+            m_module = context().create<plugin_t>(type);
+            m_module->initialize(m_app);
+        } else {
+            throw std::runtime_error("no app type has been specified");
+        }
     } catch(const unrecoverable_error_t& e) {
         events::error_t event(e);
         rpc::packed<events::error_t> packed(event);

@@ -24,6 +24,7 @@
 namespace cocaine { namespace core {
 
 class core_t:
+    public boost::noncopyable,
     public object_t
 {
     public:

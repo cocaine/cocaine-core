@@ -29,24 +29,25 @@
 namespace cocaine { namespace engine {
 
 class overseer_t:
-    public unique_id_t,
-    public object_t
+    public boost::noncopyable,
+    public object_t,
+    public unique_id_t
 {
     public:
-        overseer_t(const unique_id_t::identifier_type& id,
-                   const std::string& app,
-                   context_t& ctx);
-
+        overseer_t(context_t& ctx,
+                   const unique_id_t::identifier_type& id, 
+                   const std::string& app);
+        
         ~overseer_t();
 
         void run();
-
-        blob_t recv(bool block);
 
         template<class Packed>
         void send(Packed& packed) {
             m_messages.send_multi(packed.get());
         }
+
+        blob_t recv(bool block);
 
     private:
         void message(ev::io&, int);
