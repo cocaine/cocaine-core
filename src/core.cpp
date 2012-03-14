@@ -105,8 +105,9 @@ core_t::core_t(context_t& ctx):
     recover();
 }
 
-core_t::~core_t()
-{ }
+core_t::~core_t() { 
+    ev_default_destroy();
+}
 
 void core_t::run() {
     ev::get_default_loop().loop();

@@ -105,6 +105,8 @@ registry_t::registry_t(context_t& ctx):
         module = NULL;
         ++it;
     }
+
+    lt_dladvise_destroy(&advice);
 }
 
 namespace {

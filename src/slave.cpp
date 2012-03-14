@@ -148,7 +148,7 @@ void slave_t::spawn() {
 
         int rv = 0;
 
-        rv = ::execlp(
+        rv = ::execl(
             m_engine.context().config.runtime.self.c_str(),
             m_engine.context().config.runtime.self.c_str(),
             "--slave",
