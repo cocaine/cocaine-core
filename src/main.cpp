@@ -11,17 +11,14 @@
 // limitations under the License.
 //
 
-#include <syslog.h>
-
 #include <iostream>
 
-#include <boost/algorithm/string/replace.hpp>
 #include <boost/program_options.hpp>
 
 #include "cocaine/config.hpp"
-#include "cocaine/logging.hpp"
 
 #include "cocaine/core.hpp"
+#include "cocaine/loggers/syslog.hpp"
 #include "cocaine/overseer.hpp"
 
 #include "cocaine/helpers/pid_file.hpp"
@@ -30,49 +27,8 @@ using namespace cocaine;
 
 namespace po = boost::program_options;
 
-class syslog_t:
-    public logging::sink_t
-{
-    public:
-        syslog_t(const std::string& identity, int verbosity):
-            m_identity(identity)
-        {
-            // Setting up the syslog.
-            openlog(m_identity.c_str(), LOG_PID | LOG_NDELAY, LOG_USER);
-            setlogmask(LOG_UPTO(verbosity));
-        }
-
-    public:
-        virtual void emit(logging::priorities priority, const std::string& message) const {
-            std::string m = boost::algorithm::replace_all_copy(message, "\n", " ");
-
-            switch(priority) {
-                case logging::debug:
-                    syslog(LOG_DEBUG, "%s", m.c_str());
-                    break;
-                case logging::info:
-                    syslog(LOG_INFO, "%s", m.c_str());
-                    break;
-                case logging::warning:
-                    syslog(LOG_WARNING, "%s", m.c_str());
-                    break;
-                case logging::error:
-                    syslog(LOG_ERR, "%s", m.c_str());
-                    break;
-            }
-        }
-
-    private:
-        const std::string m_identity;
-};
-
 int main(int argc, char * argv[]) {
     config_t cfg;
-
-    struct {
-        std::string id;
-        std::string app;
-    } slave_cfg;
 
     // Configuration
     // -------------
@@ -98,8 +54,9 @@ int main(int argc, char * argv[]) {
     positional_options.add("core:endpoints", -1);
 
     slave_options.add_options()
-        ("slave:id", po::value<std::string>(&slave_cfg.id))
-        ("slave:app", po::value<std::string>(&slave_cfg.app));
+        ("slave", "launch a new slave")
+        ("slave:app", po::value<std::string>())
+        ("slave:id", po::value<std::string>());
 
     general_options.add_options()
         ("help,h", "show this message")
@@ -167,7 +124,7 @@ int main(int argc, char * argv[]) {
 
     // Initialize the logging sink.
     std::auto_ptr<logging::sink_t> sink(
-        new syslog_t(
+        new logging::syslog_t(
             "cocaine",
             vm.count("verbose") ? LOG_DEBUG : LOG_INFO
         )
@@ -183,15 +140,15 @@ int main(int argc, char * argv[]) {
         ctx->log("main")
     );
 
-    if(!slave_cfg.id.empty() && !slave_cfg.app.empty()) {
+    if(vm.count("slave")) {
         std::auto_ptr<engine::overseer_t> slave;
 
         try {
             slave.reset(
                 new engine::overseer_t(
                     *ctx,
-                    slave_cfg.id,
-                    slave_cfg.app
+                    vm["slave:app"].as<std::string>(),
+                    vm["slave:id"].as<std::string>()
                 )
             );
         } catch(const std::exception& e) {

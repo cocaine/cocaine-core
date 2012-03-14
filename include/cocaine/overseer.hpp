@@ -35,8 +35,8 @@ class overseer_t:
 {
     public:
         overseer_t(context_t& ctx,
-                   const unique_id_t::identifier_type& id, 
-                   const std::string& app);
+                   const std::string& app,
+                   const unique_id_t::identifier_type& id); 
         
         ~overseer_t();
 

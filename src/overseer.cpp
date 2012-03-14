@@ -25,8 +25,8 @@ using namespace cocaine::engine;
 
 overseer_t::overseer_t(
     context_t& ctx,
-    const unique_id_t::identifier_type& id_,
-    const std::string& app
+    const std::string& app,
+    const unique_id_t::identifier_type& id_
 ):
     object_t(ctx),
     unique_id_t(id_),
