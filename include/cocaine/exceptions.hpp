@@ -18,6 +18,15 @@
 
 namespace cocaine {
 
+class registry_error_t:
+    public std::runtime_error
+{
+    public:
+        registry_error_t(const std::string& what):
+            std::runtime_error(what)
+        { }
+};
+
 // Application exceptions
 // ----------------------
 

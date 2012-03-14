@@ -141,8 +141,6 @@ void overseer_t::process(ev::idle&, int) {
                 }
                 
                 rpc::packed<events::release_t> packed;
-
-                // XXX: Not sure if it doesn't introduce a race here.
                 send(packed);
                 
                 // NOTE: Drop all the outstanding request chunks not pulled

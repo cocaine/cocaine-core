@@ -35,15 +35,15 @@ registry_t::registry_t(context_t& ctx):
     m_log(ctx.log("registry"))
 {
     if(lt_dlinit() != 0) {
-        throw std::runtime_error("unable to initialize the module loader");
+        throw registry_error_t("unable to initialize the module loader");
     }
 
     fs::path path(context().config.core.modules);
 
     if(!fs::exists(path)) {
-        throw std::runtime_error("path '" + path.string() + "' does not exist");
+        throw registry_error_t("path '" + path.string() + "' does not exist");
     } else if(fs::exists(path) && !fs::is_directory(path)) {
-        throw std::runtime_error("path '" + path.string() + "' is not a directory");
+        throw registry_error_t("path '" + path.string() + "' is not a directory");
     }
 
     lt_dladvise advice;

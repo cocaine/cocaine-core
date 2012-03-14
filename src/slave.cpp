@@ -36,55 +36,7 @@ slave_t::slave_t(engine_t& engine):
     m_heartbeat_timer.start(10.0f);
 
     initiate();
-
-    m_pid = ::fork();
-
-    if(m_pid == 0) {
-#ifdef HAVE_CGROUPS
-        if(m_engine.group()) {
-            int rv = 0;
-            
-            if((rv = cgroup_attach_task(engine.group())) != 0) {
-                m_engine.app().log->error(
-                    "unable to attach slave %s to a control group - %s",
-                    id().c_str(),
-                    cgroup_strerror(rv)
-                );
-
-                exit(EXIT_FAILURE);
-            }
-        }
-#endif
-
-        int rv = 0;
-
-        rv = ::execlp(
-            m_engine.context().config.runtime.self.c_str(),
-            m_engine.context().config.runtime.self.c_str(),
-            "--slave:id",  id().c_str(),
-            "--slave:app", m_engine.app().name.c_str(),
-            (char*)0
-        );
-
-        if(rv != 0) {
-            char message[1024];
-
-            ::strerror_r(errno, message, 1024);
-
-            m_engine.app().log->error(
-                "unable to start slave %s: %s",
-                id().c_str(),
-                message
-            );
-
-            exit(EXIT_FAILURE);
-        }
-    } else if(m_pid < 0) {
-        throw std::runtime_error("fork() failed");
-    }
-
-    m_child_watcher.set<slave_t, &slave_t::signal>(this);
-    m_child_watcher.start(m_pid);
+    spawn();
 }
 
 slave_t::~slave_t() {
@@ -135,14 +87,6 @@ void slave_t::react(const events::terminate_t& event) {
         id().c_str()
     );
 
-    reap();
-}
-
-bool slave_t::operator==(const slave_t& other) const {
-    return id() == other.id();
-}
-
-void slave_t::reap() {
     int status = 0;
 
     // XXX: Is it needed at all? Might as well check the state.
@@ -152,6 +96,61 @@ void slave_t::reap() {
 
     // NOTE: Children are automatically reaped by libev.
     m_child_watcher.stop();
+}
+
+bool slave_t::operator==(const slave_t& other) const {
+    return id() == other.id();
+}
+
+void slave_t::spawn() {
+    m_pid = ::fork();
+
+    if(m_pid == 0) {
+#ifdef HAVE_CGROUPS
+        if(m_engine.group()) {
+            int rv = 0;
+            
+            if((rv = cgroup_attach_task(engine.group())) != 0) {
+                m_engine.app().log->error(
+                    "unable to attach slave %s to a control group - %s",
+                    id().c_str(),
+                    cgroup_strerror(rv)
+                );
+
+                exit(EXIT_FAILURE);
+            }
+        }
+#endif
+
+        int rv = 0;
+
+        rv = ::execlp(
+            m_engine.context().config.runtime.self.c_str(),
+            m_engine.context().config.runtime.self.c_str(),
+            "--slave:id",  id().c_str(),
+            "--slave:app", m_engine.app().name.c_str(),
+            (char*)0
+        );
+
+        if(rv != 0) {
+            char message[1024];
+
+            ::strerror_r(errno, message, 1024);
+
+            m_engine.app().log->error(
+                "unable to start slave %s: %s",
+                id().c_str(),
+                message
+            );
+
+            exit(EXIT_FAILURE);
+        }
+    } else if(m_pid < 0) {
+        throw std::runtime_error("fork() failed");
+    }
+
+    m_child_watcher.set<slave_t, &slave_t::signal>(this);
+    m_child_watcher.start(m_pid);    
 }
 
 void slave_t::timeout(ev::timer&, int) {

@@ -31,13 +31,10 @@ namespace cocaine {
         class app_t;
         class engine_t;
         class job_t;
+        class slave_t;
 
         namespace drivers {        
             class driver_t;
-        }
-
-        namespace slaves {
-            class slave_t;
         }
     }
 

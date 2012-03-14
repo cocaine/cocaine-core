@@ -62,9 +62,9 @@ struct slave_t:
 
         bool operator==(const slave_t& other) const;
 
-        void reap();
-
     private:
+        void spawn();
+
         void timeout(ev::timer&, int);
         void signal(ev::child&, int);
 

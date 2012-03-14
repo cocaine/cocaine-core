@@ -64,11 +64,11 @@ class registry_t:
             factory_map_t::iterator it(m_factories.find(type));
 
             if(it == m_factories.end()) {
-                throw std::runtime_error("module '" + type + "' is not available");
+                throw registry_error_t("module '" + type + "' is not available");
             }
 
             if(it->second->category() != typeid(Category)) {
-                throw std::runtime_error("module '" + type + "' has an incompatible type");
+                throw registry_error_t("module '" + type + "' has an incompatible type");
             }
 
             std::auto_ptr<Category> module(
@@ -86,7 +86,7 @@ class registry_t:
         >::type 
         install(const std::string& type) {
             if(m_factories.find(type) != m_factories.end()) {
-                throw std::runtime_error("module '" + type + "' has been already installed");
+                throw registry_error_t("module '" + type + "' has been already installed");
             }
 
             m_log->info("registering '%s' module", type.c_str());
