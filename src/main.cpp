@@ -126,7 +126,7 @@ int main(int argc, char * argv[]) {
     std::auto_ptr<logging::sink_t> sink(
         new logging::syslog_t(
             "cocaine",
-            vm.count("verbose") ? LOG_DEBUG : LOG_INFO
+            vm.count("verbose") ? logging::debug : logging::info
         )
     );
 

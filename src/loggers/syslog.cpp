@@ -14,19 +14,22 @@
 #include <boost/algorithm/string/replace.hpp>
 #include <syslog.h>
 
-#include "cocaine/logging.hpp"
+#include "cocaine/loggers/syslog.hpp"
 
 using namespace cocaine::logging;
 
-syslog_t::syslog_t(const std::string& identity, int verbosity):
-    m_identity(identity)
+syslog_t::syslog_t(const std::string& identity, priorities verbosity):
+    m_identity(identity),
+    m_verbosity(verbosity)
 {
-    // Setting up the syslog.
     openlog(m_identity.c_str(), LOG_PID | LOG_NDELAY, LOG_USER);
-    setlogmask(LOG_UPTO(verbosity));
 }
 
 void syslog_t::emit(priorities priority, const std::string& message) const {
+    if(priority < m_verbosity) {
+        return;
+    }
+
     std::string m = boost::algorithm::replace_all_copy(message, "\n", " ");
 
     switch(priority) {
