@@ -15,7 +15,6 @@
 
 #include "cocaine/context.hpp"
 
-#include "cocaine/app.hpp"
 #include "cocaine/registry.hpp"
 #include "cocaine/rpc.hpp"
 

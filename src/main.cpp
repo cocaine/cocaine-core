@@ -189,7 +189,7 @@ int main(int argc, char * argv[]) {
         try {
             slave.reset(
                 new engine::overseer_t(
-                    *ctx
+                    *ctx,
                     slave_cfg.id,
                     slave_cfg.app
                 )
