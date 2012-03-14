@@ -15,6 +15,7 @@
 #define COCAINE_CONTEXT_HPP
 
 #include <boost/thread/mutex.hpp>
+// #include <msgpack.hpp>
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
@@ -26,7 +27,7 @@ namespace cocaine {
 struct config_t {
     config_t();
 
-    struct {
+    struct core_config_t {
         // Module path.
         std::string modules;
 
@@ -36,29 +37,34 @@ struct config_t {
         // Automatic discovery.
         std::string announce_endpoint;
         float announce_interval;
+
+        // MSGPACK_DEFINE(modules);
     } core;
 
-    struct {
+    struct engine_config_t {
         // Default engine policy.
         float heartbeat_timeout;
         float suicide_timeout;
         unsigned int pool_limit;
         unsigned int queue_limit;
+
+        // MSGPACK_DEFINE(heartbeat_timeout, suicide_timeout, pool_limit, queue_limit);
     } defaults;
 
-    struct {
+    struct storage_config_t {
         // Storage type and path.
         std::string driver;
         std::string uri;
+
+        // MSGPACK_DEFINE(driver, uri);
     } storage;
     
-    struct {
+    struct runtime_config_t {
         std::string self;
         std::string hostname;
-        
-        // Control groups availability flag.
-        bool cgroups;
     } runtime;
+
+    // MSGPACK_DEFINE(core, defaults, storage);
 };
 
 class context_t:

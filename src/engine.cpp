@@ -81,7 +81,7 @@ engine_t::engine_t(context_t& ctx, const std::string& name, const Json::Value& m
 #ifdef HAVE_CGROUPS
     Json::Value limits(manifest["engine"]["resource-limits"]);
 
-    if(!ctx.config.runtime.cgroups || !limits.isObject() || limits.empty()) {
+    if(!(cgroup_init() == 0) || !limits.isObject() || limits.empty()) {
         return;
     }
     

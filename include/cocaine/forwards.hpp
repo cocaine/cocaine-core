@@ -15,6 +15,7 @@
 #define COCAINE_FORWARDS_HPP
 
 namespace cocaine {
+    struct config_t;
     class context_t;
     class object_t;
 

@@ -11,10 +11,6 @@
 // limitations under the License.
 //
 
-#ifdef HAVE_CGROUPS 
-    #include <libcgroup.h>
-#endif
-
 #include "cocaine/context.hpp"
 
 #include "cocaine/logging.hpp"
@@ -57,12 +53,6 @@ void context_t::initialize() {
         throw std::runtime_error("failed to determine the hostname");
     }
    
-#ifdef HAVE_CGROUPS 
-    config.runtime.cgroups = (cgroup_init() == 0);
-#else
-    config.runtime.cgroups = false;
-#endif
-
     // Initialize the module registry.
     m_registry.reset(new core::registry_t(*this));
 

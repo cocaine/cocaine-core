@@ -42,11 +42,6 @@ core_t::core_t(context_t& ctx):
     m_log->info("using libzmq version %d.%d.%d", major, minor, patch);
     m_log->info("route to this node is '%s'", m_server.route().c_str());
 
-    m_log->info(
-        "control groups are %s", 
-        context().config.runtime.cgroups ? "available" : "not available"
-    );
-
     // Server socket
     // -------------
 

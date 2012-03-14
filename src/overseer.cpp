@@ -118,6 +118,11 @@ void overseer_t::process(ev::idle&, int) {
     m_messages.recv(command);
 
     switch(command) {
+        // case rpc::configure: {
+        //     m_messages.recv(context().config);
+        //     break;
+        // }
+
         case rpc::invoke: {
             std::string method;
 
