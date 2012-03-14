@@ -107,60 +107,67 @@ void overseer_t::message(ev::io&, int) {
 }
 
 void overseer_t::process(ev::idle&, int) {
-    if(m_messages.pending()) {
-        unsigned int command = 0;
+    if(!m_messages.pending()) {
+        m_processor.stop();
+        return;
+    }
+    
+    unsigned int command = 0;
 
-        m_messages.recv(command);
+    m_messages.recv(command);
 
-        switch(command) {
-            case rpc::invoke: {
-                std::string method;
+    switch(command) {
+        case rpc::invoke: {
+            std::string method;
 
-                m_messages.recv(method);
+            m_messages.recv(method);
 
-                try {
-                    io_t io(*this);
-                    m_module->invoke(io, method);
-                } catch(const recoverable_error_t& e) {
-                    events::error_t event(e);
-                    rpc::packed<events::error_t> packed(event);
-                    send(packed);
-                } catch(const unrecoverable_error_t& e) {
-                    events::error_t event(e);
-                    rpc::packed<events::error_t> packed(event);
-                    send(packed);
-                } catch(...) {
-                    rpc::packed<events::error_t> packed(
-                        events::error_t(
-                            client::server_error,
-                            "unexpected exception while invoking a method"
-                        )
-                    );
-                    
-                    send(packed);
-                }
-                
-                rpc::packed<events::release_t> packed;
+            try {
+                io_t io(*this);
+                m_module->invoke(io, method);
+            } catch(const recoverable_error_t& e) {
+                events::error_t event(e);
+                rpc::packed<events::error_t> packed(event);
                 send(packed);
+            } catch(const unrecoverable_error_t& e) {
+                events::error_t event(e);
+                rpc::packed<events::error_t> packed(event);
+                send(packed);
+            } catch(...) {
+                rpc::packed<events::error_t> packed(
+                    events::error_t(
+                        client::server_error,
+                        "unexpected exception while invoking a method"
+                    )
+                );
                 
-                // NOTE: Drop all the outstanding request chunks not pulled
-                // in by the user code. Might have a warning here?
-                m_messages.drop_remaining_parts();
-
-                m_suicide_timer.stop();
-                m_suicide_timer.start(m_app.policy.suicide_timeout);
-             
-                break;
+                send(packed);
             }
             
-            case rpc::terminate: {
-                terminate();
-                break;
-            }
+            rpc::packed<events::release_t> packed;
+            send(packed);
+            
+            // NOTE: Drop all the outstanding request chunks not pulled
+            // in by the user code. Might have a warning here?
+            m_messages.drop_remaining_parts();
+
+            m_suicide_timer.stop();
+            m_suicide_timer.start(m_app.policy.suicide_timeout);
+         
+            break;
         }
-    } else {
-        m_processor.stop();
+        
+        case rpc::terminate: {
+            terminate();
+            break;
+        }
+
+        default:
+            m_app.log->warning("ignoring unknown event type %d", command);
+            m_messages.drop_remaining_parts();
     }
+
+    BOOST_ASSERT(!m_messages.more());
 }
 
 void overseer_t::pump(ev::timer&, int) {

@@ -186,12 +186,6 @@ int main(int argc, char * argv[]) {
     if(!slave_cfg.id.empty() && !slave_cfg.app.empty()) {
         std::auto_ptr<engine::overseer_t> slave;
 
-        log->debug(
-            "starting slave %s for app %s",
-            slave_cfg.id.c_str(),
-            slave_cfg.app.c_str()
-        );
-
         try {
             slave.reset(
                 new engine::overseer_t(
@@ -238,9 +232,9 @@ int main(int argc, char * argv[]) {
         }
 
         core->run();
+    
+        log->debug("terminated");
     }
-
-    log->debug("terminated");
 
     return EXIT_SUCCESS;
 }

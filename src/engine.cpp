@@ -477,6 +477,10 @@ void engine_t::process(ev::idle&, int) {
             slave->second->process_event(events::terminate_t());
             return;
         }
+        
+        default:
+            m_app.log->warning("ignoring unknown event type %d", command);
+            m_messages.drop_remaining_parts();
     }
 
     // NOTE: Count all the RPC events as heartbeats.

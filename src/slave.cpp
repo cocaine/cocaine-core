@@ -26,23 +26,8 @@
 
 #include "cocaine/dealer/types.hpp"
 
-using namespace cocaine;
 using namespace cocaine::engine;
 using namespace cocaine::engine::slave;
-
-namespace {
-    struct this_slave {
-        this_slave(const slave_t& slave):
-            target(slave)
-        { }
-
-        bool operator()(pool_map_t::pointer slave) const {
-            return *slave->second == target;
-        }
-    
-        const slave_t& target;
-    };    
-}
 
 slave_t::slave_t(engine_t& engine):
     m_engine(engine)
@@ -65,8 +50,8 @@ slave_t::~slave_t() {
 }
 
 void slave_t::react(const events::heartbeat_t& event) {
-    if(!state_downcast<const alive*>()) {
 #if EV_VERSION_MAJOR == 3 && EV_VERSION_MINOR == 8
+    if(!state_downcast<const alive*>()) {
         m_engine.app().log->debug(
             "slave %s came alive in %.03f seconds",
             id().c_str(),
@@ -75,17 +60,8 @@ void slave_t::react(const events::heartbeat_t& event) {
                 static_cast<ev_timer*>(&m_heartbeat_timer)
             )
         );
-#endif
-
-        rpc::packed<events::initialize_t> pack(
-            events::initialize_t(m_engine.app())
-        );
-
-        m_engine.unicast(
-            this_slave(*this),
-            pack
-        );
     }
+#endif
 
     m_heartbeat_timer.stop();
     
@@ -152,8 +128,12 @@ void slave_t::spawn() {
         rv = ::execlp(
             m_engine.context().config.runtime.self.c_str(),
             m_engine.context().config.runtime.self.c_str(),
-            "--slave:id",  id().c_str(),
-            "--slave:app", m_engine.app().name.c_str(),
+            "--slave:id",       id().c_str(),
+            "--slave:app",      m_engine.app().name.c_str(),
+            "--core:modules",   m_engine.context().config.core.modules.c_str(),
+            "--storage:driver", m_engine.context().config.storage.driver.c_str(),
+            "--storage:uri",    m_engine.context().config.storage.uri.c_str(),
+            "--verbose",
             (char*)0
         );
 

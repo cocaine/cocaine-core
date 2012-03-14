@@ -37,13 +37,9 @@ struct app_t {
         float suicide_timeout;
         unsigned int pool_limit;
         unsigned int queue_limit;
-
-        MSGPACK_DEFINE(heartbeat_timeout, suicide_timeout, pool_limit, queue_limit);
     } policy;
 
     boost::shared_ptr<logging::logger_t> log;
-
-    MSGPACK_DEFINE(name, type, endpoint, policy);
 };
 
 }}
