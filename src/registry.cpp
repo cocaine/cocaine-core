@@ -122,3 +122,24 @@ registry_t::~registry_t() {
     std::for_each(m_modules.begin(), m_modules.end(), dispose());
     lt_dlexit();
 }
+
+namespace {
+    struct enumerate {
+        enumerate(std::vector<std::string>& list_):
+            list(list_)
+        { }
+
+        template<class T>
+        void operator()(const T& factory) {
+            list.push_back(factory->first);
+        }
+        
+        std::vector<std::string>& list;
+    };
+}
+
+std::vector<std::string> registry_t::list() const {
+    std::vector<std::string> list;
+    std::for_each(m_factories.begin(), m_factories.end(), enumerate(list));
+    return list;
+}

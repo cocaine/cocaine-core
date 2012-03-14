@@ -90,13 +90,13 @@ class registry_t:
                 throw registry_error_t("module '" + type + "' has been already installed");
             }
 
-            m_log->info("installing '%s' module", type.c_str());
-
             m_factories.insert(
                 type,
                 new factory_model_t<T, Category>()
             );
         }
+
+        std::vector<std::string> list() const;
 
     private:
         boost::shared_ptr<logging::logger_t> m_log;
