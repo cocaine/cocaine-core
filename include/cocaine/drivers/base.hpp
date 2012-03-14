@@ -61,8 +61,8 @@ class driver_t:
     
     protected:
        driver_t(engine_t& engine,
-                 const std::string& method,
-                 const Json::Value& args);
+                const std::string& method,
+                const Json::Value& args);
         
     protected:
         engine_t& m_engine;

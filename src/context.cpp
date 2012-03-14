@@ -71,23 +71,6 @@ void context_t::initialize() {
     m_registry->install<file_storage_t, storage_t>("files");
 }
 
-// XXX: Appears to be thread-unsafe in some hypothetical situations.
-context_t::context_t(const context_t& other):
-    config(other.config),
-    m_sink(other.m_sink),
-    m_registry(other.m_registry)
-{ }
-
-// XXX: Appears to be thread-unsafe in some hypothetical situations.
-context_t& context_t::operator=(const context_t& other) {
-    config = other.config;
-
-    m_sink = other.m_sink;
-    m_registry = other.m_registry;
-
-    return *this;
-}
-
 boost::shared_ptr<logging::logger_t> context_t::log(const std::string& name) {
     return m_sink->get(name);
 }

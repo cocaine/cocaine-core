@@ -22,7 +22,6 @@
 
 #include "cocaine/engine.hpp"
 #include "cocaine/job.hpp"
-#include "cocaine/rpc.hpp"
 
 #include "cocaine/dealer/types.hpp"
 
