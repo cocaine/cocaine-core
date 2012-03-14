@@ -32,6 +32,8 @@ namespace dealer {
 
 class eblob {
 public:
+	eblob() {}
+
 	eblob(boost::shared_ptr<base_logger> logger,
 		  const std::string& path,
 		  uint64_t blob_size = DEFAULT_BLOB_SIZE,
@@ -51,7 +53,7 @@ public:
 		create_eblob(logger, path, blob_size, sync_interval, defrag_timeout);
 	}
 
-	virtual ~eblob() {
+	virtual	~eblob() {
 		std::string msg = "eblob at path: ";
 		msg += path_ + " destroyed.";
 		logger_->log(msg);
@@ -70,6 +72,7 @@ public:
 			throw std::runtime_error(error_msg);
 		}
 
+		remove(key, column);
 		storage_->write_hashed(key, value, 0, 0, column);
 	}
 
@@ -87,6 +90,7 @@ public:
 		}
 
 		std::string value((char*)data, 0, size);
+		remove(key, column);
 		storage_->write_hashed(key, value, 0, 0, column);
 	}
 
@@ -112,7 +116,7 @@ public:
 		storage_->remove_all(ekey);
 	}
 
-	void remove(const std::string &key, int column = zbr::EBLOB_TYPE_DATA) {
+	void remove(const std::string& key, int column = zbr::EBLOB_TYPE_DATA) {
 		if (!storage_.get()) {
 			std::string error_msg = "empty eblob storage object at " + std::string(BOOST_CURRENT_FUNCTION);
 			error_msg += " key: " + key + " column: " + boost::lexical_cast<std::string>(column);
