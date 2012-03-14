@@ -60,7 +60,7 @@ class overseer_t:
 
     private:
         // Application configuration.
-        app_t m_app;
+        const app_t m_app;
 
         // Application instance.
         std::auto_ptr<plugin_t> m_module;

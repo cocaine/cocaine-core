@@ -127,7 +127,7 @@ class engine_t:
         bool m_running;
 
         // The application.
-        app_t m_app;
+        const app_t m_app;
         task_map_t m_tasks;
 
         // Job queue.

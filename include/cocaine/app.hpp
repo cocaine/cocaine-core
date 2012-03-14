@@ -16,13 +16,10 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
-#include "cocaine/object.hpp"
 
 namespace cocaine { namespace engine {
 
-class app_t:
-    public object_t
-{
+class app_t {
     public:
         app_t(context_t& ctx, const std::string& name);
 
@@ -46,7 +43,7 @@ class app_t:
         boost::shared_ptr<logging::logger_t> log;
 
     private:
-        void initialize();
+        void initialize(context_t& ctx);
 };
 
 }}
