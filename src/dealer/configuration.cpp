@@ -199,7 +199,7 @@ configuration::parse_services_settings(const Json::Value& config_value) {
 		si.description_ = service_value.get("description", "").asString();
 		si.name_ = service_value.get("name", "").asString();
 		si.app_name_ = service_value.get("app_name", "").asString();
-		si.instance_ = service_value.get("instance", "").asString();
+		//si.instance_ = service_value.get("instance", "").asString();
 		si.hosts_url_ = service_value.get("hosts_url", "").asString();
 		si.control_port_ = service_value.get("control_port", DEFAULT_CONTROL_PORT).asUInt();
 
@@ -212,9 +212,9 @@ configuration::parse_services_settings(const Json::Value& config_value) {
 			throw error("service with no application name was found in config! at: " + std::string(BOOST_CURRENT_FUNCTION));
 		}
 
-		if (si.instance_.empty()) {
-			throw error("service with no instance was found in config! at: " + std::string(BOOST_CURRENT_FUNCTION));
-		}
+		//if (si.instance_.empty()) {
+		//	throw error("service with no instance was found in config! at: " + std::string(BOOST_CURRENT_FUNCTION));
+		//}
 
 		if (si.hosts_url_.empty()) {
 			throw error("service with no hosts_url was found in config! at: " + std::string(BOOST_CURRENT_FUNCTION));
@@ -518,10 +518,10 @@ std::string configuration::as_json() const {
 	for (; it != sl.end(); ++it) {
 		Json::Value service;
 		service["1 - app name"] = it->second.app_name_;
-		service["2 - instance"] = it->second.instance_;
-		service["3 - description"] = it->second.description_;
-		service["4 - hosts url"] = it->second.hosts_url_;
-		service["5 - control port"] = it->second.control_port_;
+		//service["2 - instance"] = it->second.instance_;
+		service["2 - description"] = it->second.description_;
+		service["3 - hosts url"] = it->second.hosts_url_;
+		service["4 - control port"] = it->second.control_port_;
 
 		std::string service_name = boost::lexical_cast<std::string>(counter);
 		service_name += " - " + it->second.name_;

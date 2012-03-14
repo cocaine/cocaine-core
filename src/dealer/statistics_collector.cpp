@@ -286,10 +286,10 @@ statistics_collector::all_services_json() {
 	for (; services_it != services.end(); ++services_it) {
 		Json::Value service_info;
 		service_info["1 - cocaine app"] = services_it->second.app_name_;
-		service_info["2 - instance"] = services_it->second.instance_;
-		service_info["3 - description"] = services_it->second.description_;
-		service_info["4 - control port"] = services_it->second.hosts_url_;
-		service_info["5 - hosts url"] = services_it->second.hosts_url_;
+		//service_info["2 - instance"] = services_it->second.instance_;
+		service_info["2 - description"] = services_it->second.description_;
+		service_info["3 - control port"] = services_it->second.hosts_url_;
+		service_info["4 - hosts url"] = services_it->second.hosts_url_;
 
 		// get service stats
 		services_stats_t::iterator service_stat_it = services_stats_.find(services_it->second.name_);
@@ -439,7 +439,7 @@ statistics_collector::as_json() const {
 		Json::Value service_info;
 		service_info["cocaine app"] = it->second.app_name_;
 		service_info["description"] = it->second.description_;
-		service_info["instance"] = it->second.instance_;
+		//service_info["instance"] = it->second.instance_;
 		service_info["hosts url"] = it->second.hosts_url_;
 		service_info["control port"] = it->second.hosts_url_;
 
