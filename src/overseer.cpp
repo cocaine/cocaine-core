@@ -164,7 +164,7 @@ void overseer_t::process(ev::idle&, int) {
         }
 
         default:
-            m_app.log->warning("ignoring unknown event type %d", command);
+            m_app.log->warning("slave ignoring unknown event type %d", command);
             m_messages.drop_remaining_parts();
     }
 

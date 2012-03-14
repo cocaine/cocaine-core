@@ -431,6 +431,9 @@ void engine_t::process(ev::idle&, int) {
         slave->second->state_downcast<const slave::busy*>();
     
     switch(command) {
+        case rpc::heartbeat:
+            break;
+
         case rpc::push: {
             // TEST: Only active slaves can push the data chunks.
             BOOST_ASSERT(state != 0 && m_messages.more());
@@ -479,7 +482,7 @@ void engine_t::process(ev::idle&, int) {
         }
         
         default:
-            m_app.log->warning("ignoring unknown event type %d", command);
+            m_app.log->warning("engine ignoring unknown event type %d", command);
             m_messages.drop_remaining_parts();
     }
 

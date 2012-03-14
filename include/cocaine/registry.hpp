@@ -90,7 +90,7 @@ class registry_t:
                 throw registry_error_t("module '" + type + "' has been already installed");
             }
 
-            m_log->info("registering '%s' module", type.c_str());
+            m_log->info("installing '%s' module", type.c_str());
 
             m_factories.insert(
                 type,
