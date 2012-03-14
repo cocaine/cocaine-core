@@ -166,6 +166,8 @@ engine_t::~engine_t() {
     if(m_cgroup) {
         int rv = 0;
 
+        // XXX: Sometimes there're still slaves terminating at this point,
+        // so control group deletion fails with "Device or resource busy".
         if((rv = cgroup_delete_cgroup(m_cgroup, false)) != 0) {
             m_app.log->error(
                 "unable to delete the control group - %s", 
