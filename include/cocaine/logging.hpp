@@ -53,6 +53,7 @@ class logger_t:
         const std::string m_name;
 
         mutable char m_buffer[LOG_BUFFER_SIZE];
+        mutable boost::mutex m_mutex;
 };
 
 class sink_t:

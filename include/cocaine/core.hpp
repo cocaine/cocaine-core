@@ -76,6 +76,9 @@ class core_t:
 
         engine_map_t m_engines;
 
+        // Event loop
+        ev::default_loop m_loop;
+
         // Event watchers.
         ev::sig m_sigint, m_sigterm, m_sigquit, m_sighup;
         ev::io m_watcher;
