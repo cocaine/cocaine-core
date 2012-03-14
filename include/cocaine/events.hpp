@@ -29,6 +29,16 @@ struct heartbeat_t:
     public sc::event<heartbeat_t>
 { };
 
+struct initialize_t:
+    public sc::event<initialize_t>
+{
+    initialize_t(const app_t& app_):
+        app(app_)
+    { }
+
+    const app_t& app;
+};
+
 struct terminate_t:
     public sc::event<terminate_t>
 { };
