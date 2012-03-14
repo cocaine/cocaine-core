@@ -110,7 +110,7 @@ void slave_t::spawn() {
         if(m_engine.group()) {
             int rv = 0;
             
-            if((rv = cgroup_attach_task(engine.group())) != 0) {
+            if((rv = cgroup_attach_task(m_engine.group())) != 0) {
                 m_engine.app().log->error(
                     "unable to attach slave %s to a control group - %s",
                     id().c_str(),
