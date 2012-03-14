@@ -61,9 +61,6 @@ class core_t:
         // Authorization subsystem.
         crypto::auth_t m_auth;
 
-        // Server uptime.
-        const ev::tstamp m_birthstamp;
-        
         // Engines.
 #if BOOST_VERSION >= 104000
         typedef boost::ptr_unordered_map<
@@ -79,6 +76,9 @@ class core_t:
         // Event loop
         ev::default_loop m_loop;
 
+        // Server uptime.
+        const ev::tstamp m_birthstamp;
+        
         // Event watchers.
         ev::sig m_sigint, m_sigterm, m_sigquit, m_sighup;
         ev::io m_watcher;
