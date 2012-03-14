@@ -17,11 +17,14 @@
 #include <boost/program_options.hpp>
 #include <boost/bind.hpp> 
 #include <boost/filesystem.hpp> 
+#include <boost/shared_ptr.hpp> 
 
 #include <msgpack.hpp>
 
 #include "cocaine/dealer/client.hpp"
 #include "cocaine/dealer/details/time_value.hpp"
+#include "cocaine/dealer/details/eblob_storage.hpp"
+#include "cocaine/dealer/details/smart_logger.hpp"
 
 namespace po = boost::program_options;
 namespace cd = cocaine::dealer;
@@ -77,6 +80,26 @@ void create_client(int add_messages_count) {
 
 int
 main(int argc, char** argv) {
+	using namespace cocaine::dealer;
+	
+	boost::shared_ptr<base_logger> logger;
+	logger.reset(new smart_logger<stdout_logger>());
+
+	eblob_storage st("/var/tmp/eblobs");
+
+	st.open_eblob("test");
+	st["test"].write("huita", "poebta");
+	st["test"].write("aaaa", "sdfhb");
+	st["test"].write("aaaa", "VAL", 1);
+
+	//st.write("huita", "poebta", 1);
+	logger->log("%llu", st["test"].items_count());
+	logger->log("%s", st["test"].read("aaaa", 1).c_str());
+
+	st["est"].write("aaaa", "VAL", 1);
+	//st.open_eblob("huita");
+
+	/*
 	try {
 		po::options_description desc("Allowed options");
 		desc.add_options()
@@ -108,6 +131,6 @@ main(int argc, char** argv) {
 		std::cerr << ex.what() << std::endl;
 		return EXIT_FAILURE;
 	}
-
+	*/
 	return EXIT_SUCCESS;
 }
