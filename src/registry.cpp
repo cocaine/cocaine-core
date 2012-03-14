@@ -18,7 +18,6 @@
 
 #include "cocaine/context.hpp"
 
-using namespace cocaine;
 using namespace cocaine::core;
 
 namespace fs = boost::filesystem;

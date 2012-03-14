@@ -24,7 +24,6 @@
 
 #include "cocaine/interfaces/storage.hpp"
 
-using namespace cocaine;
 using namespace cocaine::core;
 using namespace cocaine::engine;
 

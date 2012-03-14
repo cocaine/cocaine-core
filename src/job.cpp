@@ -16,7 +16,6 @@
 #include "cocaine/drivers/base.hpp"
 #include "cocaine/engine.hpp"
 
-using namespace cocaine;
 using namespace cocaine::engine;
 using namespace cocaine::engine::job;
 

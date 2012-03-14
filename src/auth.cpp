@@ -22,7 +22,6 @@
 
 #include "cocaine/interfaces/storage.hpp"
 
-using namespace cocaine;
 using namespace cocaine::crypto;
 
 auth_t::auth_t(context_t& ctx):
