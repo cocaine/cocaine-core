@@ -71,18 +71,6 @@ class engine_t:
 
         void enqueue(job_queue_t::const_reference job, bool overflow = false);
 
-    public:
-        inline const app_t& app() const {
-            return m_app;
-        }
-
-#ifdef HAVE_CGROUPS
-        inline cgroup * const group() {
-            return m_cgroup;
-        }
-#endif
-
-    private:
         template<class S, class Packed>
         pool_map_t::iterator unicast(const S& selector, Packed& packed) {
             pool_map_t::iterator it(
@@ -116,6 +104,18 @@ class engine_t:
             return it;
         }
 
+    public:
+        inline const app_t& app() const {
+            return m_app;
+        }
+
+#ifdef HAVE_CGROUPS
+        inline cgroup * const group() {
+            return m_cgroup;
+        }
+#endif
+
+    private:
         void message(ev::io&, int);
         void process(ev::idle&, int);
         void pump(ev::timer&, int);

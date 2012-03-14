@@ -14,6 +14,8 @@
 #ifndef COCAINE_APP_HPP
 #define COCAINE_APP_HPP
 
+#include <msgpack.hpp>
+
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
 
@@ -30,14 +32,18 @@ struct app_t {
 
     Json::Value manifest;
 
-    struct {
+    struct policy_t {
         float heartbeat_timeout;
         float suicide_timeout;
         unsigned int pool_limit;
         unsigned int queue_limit;
+
+        MSGPACK_DEFINE(heartbeat_timeout, suicide_timeout, pool_limit, queue_limit);
     } policy;
 
     boost::shared_ptr<logging::logger_t> log;
+
+    MSGPACK_DEFINE(name, type, endpoint, policy);
 };
 
 }}
