@@ -35,6 +35,7 @@ using namespace boost::tuples;
 typedef std::vector<std::string> route_t;
 
 class socket_t: 
+    public boost::noncopyable,
     public object_t,
     public birth_control_t<socket_t>
 {

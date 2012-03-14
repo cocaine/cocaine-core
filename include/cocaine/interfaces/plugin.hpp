@@ -27,9 +27,7 @@ class overseer_t;
 // Plugin I/O
 // ----------
 
-class io_t:
-    public boost::noncopyable
-{
+class io_t {
     public:
         io_t(overseer_t& overseer);
 
@@ -50,6 +48,7 @@ class io_t:
 // --------------------------------------
 
 class plugin_t:
+    public boost::noncopyable,
     public object_t
 {
     public:

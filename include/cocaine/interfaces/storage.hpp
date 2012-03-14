@@ -21,6 +21,7 @@
 namespace cocaine { namespace storages {
 
 class storage_t:
+    public boost::noncopyable,
     public object_t
 {
     public:

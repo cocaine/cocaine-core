@@ -38,6 +38,7 @@ enum timing_type {
 };
 
 class driver_t:
+    public boost::noncopyable,
     public object_t
 {
     public:
