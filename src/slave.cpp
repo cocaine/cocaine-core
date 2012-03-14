@@ -127,6 +127,7 @@ void slave_t::spawn() {
         rv = ::execlp(
             m_engine.context().config.runtime.self.c_str(),
             m_engine.context().config.runtime.self.c_str(),
+            "--slave",
             "--slave:id",       id().c_str(),
             "--slave:app",      m_engine.app().name.c_str(),
             "--core:modules",   m_engine.context().config.core.modules.c_str(),
