@@ -98,7 +98,6 @@ int main(int argc, char * argv[]) {
     positional_options.add("core:endpoints", -1);
 
     slave_options.add_options()
-        ("slave", "spawn a slave")
         ("slave:id", po::value<std::string>(&slave_cfg.id))
         ("slave:app", po::value<std::string>(&slave_cfg.app));
 
@@ -184,7 +183,7 @@ int main(int argc, char * argv[]) {
         ctx->log("main")
     );
 
-    if(vm.count("slave")) {
+    if(!slave_cfg.id.empty() && !slave_cfg.app.empty()) {
         std::auto_ptr<engine::overseer_t> slave;
 
         log->debug(

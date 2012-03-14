@@ -21,7 +21,6 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
-#include "cocaine/object.hpp"
 
 #include "cocaine/events.hpp"
 
@@ -49,8 +48,8 @@ struct dead;
 
 struct slave_t:
     public sc::state_machine<slave_t, slave::unknown>,
-    public unique_id_t,
-    public birth_control_t<slave_t>
+    public birth_control_t<slave_t>,
+    public unique_id_t
 {
     friend class slave::alive;
 

@@ -11,6 +11,10 @@
 // limitations under the License.
 //
 
+#include <string.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
 #include "cocaine/slave.hpp"
 
 #include "cocaine/context.hpp"
@@ -57,7 +61,6 @@ slave_t::slave_t(engine_t& engine):
         rv = ::execlp(
             m_engine.context().config.runtime.self.c_str(),
             m_engine.context().config.runtime.self.c_str(),
-            "--slave",
             "--slave:id",  id().c_str(),
             "--slave:app", m_engine.app().name.c_str(),
             (char*)0
