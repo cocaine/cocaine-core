@@ -504,9 +504,9 @@ http_heartbeats_collector::parse_host_response(const service_info_t& s_info,
 			}
 
 			// not our service instance?
-			if (instance != s_info.instance_) {
-				handle_ok = false;
-			}
+			//if (instance != s_info.instance_) {
+			//	handle_ok = false;
+			//}
 
 			// port undefined?
 			if (s_handle.port_ == 0) {

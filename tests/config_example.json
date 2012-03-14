@@ -48,6 +48,14 @@
 				"instance" : "default",
 				"hosts_url" : "http://deltax.dev.yandex.net",
 				"control_port" : 5000
+			},
+			{
+            	"name" : "python",
+				"description" : "python plugin test service",
+				"app_name" : "cox_bug_run",
+				"instance" : "default",
+				"hosts_url" : "http://deltax.dev.yandex.net",
+				"control_port" : 5000
 			}
 		]
 	}
