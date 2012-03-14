@@ -31,7 +31,7 @@ core_t::core_t(context_t& ctx):
     object_t(ctx),
     m_log(ctx.log("core")),
     m_auth(ctx),
-    m_birthstamp(ev::get_default_loop().now()),
+    m_birthstamp(m_loop.now()),
     m_server(ctx, ZMQ_REP, ctx.config.runtime.hostname)
 {
     int minor, major, patch;
@@ -105,11 +105,11 @@ core_t::core_t(context_t& ctx):
     recover();
 }
 
-core_t::~core_t()
+core_t::~core_t() 
 { }
 
 void core_t::run() {
-    ev::get_default_loop().loop();
+    m_loop.loop();
 }
 
 void core_t::terminate(ev::sig&, int) {
@@ -118,7 +118,7 @@ void core_t::terminate(ev::sig&, int) {
         m_engines.clear();
     }
 
-    ev::get_default_loop().unloop(ev::ALL);
+    m_loop.unloop(ev::ALL);
 }
 
 void core_t::reload(ev::sig&, int) {
@@ -340,7 +340,7 @@ Json::Value core_t::info() const {
 
     result["loggers"] = static_cast<Json::UInt>(logging::logger_t::objects_alive);
 
-    result["uptime"] = ev::get_default_loop().now() - m_birthstamp;
+    result["uptime"] = m_loop.now() - m_birthstamp;
 
     return result;
 }

@@ -148,7 +148,7 @@ void slave_t::spawn() {
 
         int rv = 0;
 
-        rv = ::execlp(
+        rv = ::execl(
             m_engine.context().config.runtime.self.c_str(),
             m_engine.context().config.runtime.self.c_str(),
             "--slave",
@@ -205,18 +205,19 @@ void slave_t::signal(ev::child& event, int) {
     if(!state_downcast<const dead*>()) {
         process_event(events::terminate_t());
         
-        if(WIFEXITED(event.rstatus) && WEXITSTATUS(event.rstatus) == EXIT_FAILURE) {
+        if(WIFEXITED(event.rstatus) && WEXITSTATUS(event.rstatus) != EXIT_SUCCESS) {
             m_engine.app().log->warning(
-                "slave %s failed to start",
+                "slave %s terminated abnormally",
                 id().c_str()
             );
 
             m_engine.stop();
         } else if(WIFSIGNALED(event.rstatus)) {
             m_engine.app().log->warning(
-                "slave %s has been killed by a signal %d", 
-                id().c_str(), 
-                WTERMSIG(event.rstatus)
+                "slave %s has been killed by signal %d: %s", 
+                id().c_str(),
+                WTERMSIG(event.rstatus),
+                strsignal(WTERMSIG(event.rstatus))
             );
             
             m_engine.stop();

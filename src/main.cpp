@@ -55,8 +55,8 @@ int main(int argc, char * argv[]) {
 
     slave_options.add_options()
         ("slave", "launch a new slave")
-        ("slave:app", po::value<std::string>())
-        ("slave:id", po::value<std::string>());
+        ("slave:id", po::value<std::string>())
+        ("slave:app", po::value<std::string>());
 
     general_options.add_options()
         ("help,h", "show this message")
@@ -147,8 +147,8 @@ int main(int argc, char * argv[]) {
             slave.reset(
                 new engine::overseer_t(
                     *ctx,
-                    vm["slave:app"].as<std::string>(),
-                    vm["slave:id"].as<std::string>()
+                    vm["slave:id"].as<std::string>(),
+                    vm["slave:app"].as<std::string>()
                 )
             );
         } catch(const std::exception& e) {

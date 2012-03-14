@@ -55,6 +55,7 @@ void logger_t::error(const char * format, ...) const {
 }
 
 void logger_t::emit(priorities priority, const char * format, va_list args) const {
+    boost::lock_guard<boost::mutex> lock(m_mutex);
     vsnprintf(m_buffer, LOG_BUFFER_SIZE, format, args);
     m_sink.emit(priority, m_name + ": " + m_buffer);
 }
