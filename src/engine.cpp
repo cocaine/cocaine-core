@@ -225,7 +225,7 @@ Json::Value engine_t::start() {
 namespace {
     struct terminate {
         template<class T>
-        bool operator()(const T& slave) {
+        void operator()(const T& slave) {
             slave->second->process_event(events::terminate_t());
         }
     };
