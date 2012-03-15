@@ -63,6 +63,10 @@ public:
 	}
 
 	eblob operator[](const std::string& nm) {
+		return get_eblob(nm);
+	}
+
+	eblob get_eblob(const std::string& nm) {
 		std::map<std::string, eblob>::const_iterator it = eblobs_.find(nm);
 
 		// no such eblob was opened

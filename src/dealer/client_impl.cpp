@@ -44,6 +44,8 @@ client_impl::client_impl(const std::string& config_path) :
 	for (; it != services_info_list.end(); ++it) {
 		boost::shared_ptr<service_t> service_ptr(new service_t(it->second, context_));
 		services_[it->first] = service_ptr;
+
+		logger()->log("service name: %s", it->second.name_.c_str());
 	}
 
 	logger()->log("client created.");
@@ -78,7 +80,7 @@ client_impl::connect() {
 	else if (conf->autodiscovery_type() == AT_HTTP) {
 		heartbeats_collector_.reset(new http_heartbeats_collector(conf, context()->zmq_context()));
 		heartbeats_collector_->set_callback(boost::bind(&client_impl::service_hosts_pinged_callback, this, _1, _2, _3));
-		//heartbeats_collector_->set_logger(logger());
+		heartbeats_collector_->set_logger(logger());
 		heartbeats_collector_->run();
 	}
 }
@@ -156,14 +158,17 @@ client_impl::send_message(const void* data,
 						  const message_path& path,
 						  const message_policy& policy)
 {
+	typedef cached_message<data_container> message_t;
+	typedef cached_message<persistant_data_container> p_message_t;
+
 	boost::mutex::scoped_lock lock(mutex_);
 
 	size_t cached_message_class_size = 0;
 	if (config()->message_cache_type() == RAM_ONLY) {
-		cached_message_class_size += sizeof(cached_message<data_container>);
+		cached_message_class_size += sizeof(message_t);
 	}
 	else if(config()->message_cache_type() == PERSISTANT) {
-		cached_message_class_size += sizeof(cached_message<persistant_data_container>);	
+		cached_message_class_size += sizeof(p_message_t);	
 	}
 
 	// calculate new message size
@@ -195,11 +200,12 @@ client_impl::send_message(const void* data,
 		boost::shared_ptr<message_iface> msg;
 
 		if (config()->message_cache_type() == RAM_ONLY) {
-			msg.reset(new cached_message<data_container>(path, policy, data, size));
+			msg.reset(new message_t(path, policy, data, size));
 		}
 		else if(config()->message_cache_type() == PERSISTANT) {
-			cached_message<persistant_data_container>* msg_ptr = new cached_message<persistant_data_container>(path, policy, data, size);
-			//msg_ptr
+			eblob eb = context()->storage()->get_eblob(path.service_name);
+			p_message_t* msg_ptr = new p_message_t(path, policy, data, size);
+			msg_ptr->data_container().set_eblob(eb);
 			msg.reset(msg_ptr);
 		}
 
