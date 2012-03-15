@@ -14,6 +14,10 @@
 #ifndef _COCAINE_DEALER_CLIENT_IMPL_HPP_INCLUDED_
 #define _COCAINE_DEALER_CLIENT_IMPL_HPP_INCLUDED_
 
+// typedef uint32_t in_addr_t;
+// typedef uint16_t in_port_t;
+
+
 #include <string>
 #include <vector>
 #include <map>
@@ -28,6 +32,7 @@
 #include "cocaine/dealer/details/context.hpp"
 #include "cocaine/dealer/details/service.hpp"
 #include "cocaine/dealer/details/heartbeats_collector.hpp"
+
 
 namespace cocaine {
 namespace dealer {

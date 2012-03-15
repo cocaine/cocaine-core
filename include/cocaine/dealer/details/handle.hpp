@@ -21,6 +21,15 @@
 
 #include <zmq.hpp>
 
+// Mac = bullshit
+
+#ifdef IS_DARWIN
+	#undef _IN_ADDR_T
+	#undef _IN_PORT_T
+#endif
+
+#include <netinet/in.h>
+
 #include <msgpack.hpp>
 
 #include <boost/shared_ptr.hpp>
@@ -200,7 +209,7 @@ handle<LSD_T>::dispatch_messages() {
 		if (control_message > 0) {
 			dispatch_control_messages(control_message, main_socket);
 		}
-	
+
 		// send new message if any
 		if (is_running_ && is_connected_) {
 			if (dispatch_next_available_message(main_socket)) {
@@ -820,7 +829,7 @@ template <typename LSD_T> void
 handle<LSD_T>::disconnect() {
 	boost::mutex::scoped_lock lock(mutex_);
 	logger()->log(PLOG_DEBUG, "disconnect");
-	
+
 	if (!is_running_) {
 		return;
 	}
