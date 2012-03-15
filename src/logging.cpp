@@ -70,19 +70,17 @@ boost::shared_ptr<logger_t> sink_t::get(const std::string& name) {
 
     logger_map_t::iterator it(m_loggers.find(name));
 
-    if(it != m_loggers.end()) {
-        return it->second;
-    }
-
-    boost::tie(it, boost::tuples::ignore) = m_loggers.insert(
-        std::make_pair(
-            name,
-            boost::make_shared<logger_t>(
-                boost::ref(*this), 
-                name
+    if(it == m_loggers.end()) {
+        boost::tie(it, boost::tuples::ignore) = m_loggers.insert(
+            std::make_pair(
+                name,
+                boost::make_shared<logger_t>(
+                    boost::ref(*this), 
+                    name
+                )
             )
-        )
-    );
+        );
+    }
 
     return it->second;
 }
