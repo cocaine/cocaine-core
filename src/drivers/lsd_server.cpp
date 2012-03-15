@@ -66,7 +66,7 @@ void lsd_job_t::react(const events::release_t& event) {
 void lsd_job_t::send(const Json::Value& root, int flags) {
     zeromq_server_t& server = static_cast<zeromq_server_t&>(m_driver);
 
-    try {    
+    try {
         std::for_each(m_route.begin(), m_route.end(), route(server.socket()));
     } catch(const zmq::error_t& e) {
         // Host is down.
@@ -130,6 +130,7 @@ void lsd_server_t::process(ev::idle&, int) {
             m_method.c_str()
         );
 
+        m_socket.drop_remaining_parts();
         return;
     }
 
@@ -152,7 +153,8 @@ void lsd_server_t::process(ev::idle&, int) {
                 m_method.c_str()
             );
 
-            continue;
+            m_socket.drop_remaining_parts();
+            break;
         }
 
         if(!m_socket.recv(&message, ZMQ_NOBLOCK)) {
@@ -161,7 +163,8 @@ void lsd_server_t::process(ev::idle&, int) {
                 m_method.c_str()
             );
 
-            continue;
+            m_socket.drop_remaining_parts();
+            break;
         }
 
         try {
@@ -187,6 +190,9 @@ void lsd_server_t::process(ev::idle&, int) {
                 m_method.c_str(),
                 e.what()
             );
+
+            m_socket.drop_remaining_parts();
+            break;
         }
     }
 }

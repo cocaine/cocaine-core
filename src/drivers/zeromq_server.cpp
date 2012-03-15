@@ -49,7 +49,7 @@ void zeromq_server_job_t::react(const events::push_t& event) {
     server.socket().send(event.message);
 }
 
-zeromq_server_t::zeromq_server_t(engine_t& engine, const std::string& method, const Json::Value& args, int type) try:
+zeromq_server_t::zeromq_server_t(engine_t& engine, const std::string& method, const Json::Value& args, int type):
     driver_t(engine, method, args),
     m_backlog(args.get("backlog", 1000).asUInt()),
     m_linger(args.get("linger", 0).asInt()),
@@ -67,18 +67,19 @@ zeromq_server_t::zeromq_server_t(engine_t& engine, const std::string& method, co
         throw std::runtime_error("no endpoint has been specified");
     }
 
-    m_socket.setsockopt(ZMQ_HWM, &m_backlog, sizeof(m_backlog));
-    m_socket.setsockopt(ZMQ_LINGER, &m_linger, sizeof(m_linger));
-
-    m_socket.bind(endpoint);
+    try {
+        m_socket.setsockopt(ZMQ_HWM, &m_backlog, sizeof(m_backlog));
+        m_socket.setsockopt(ZMQ_LINGER, &m_linger, sizeof(m_linger));
+        m_socket.bind(endpoint);
+    } catch(const zmq::error_t& e) {
+        throw std::runtime_error(std::string("network failure - ") + e.what());
+    }
 
     m_watcher.set<zeromq_server_t, &zeromq_server_t::event>(this);
     m_watcher.start(m_socket.fd(), ev::READ);
     m_processor.set<zeromq_server_t, &zeromq_server_t::process>(this);
     m_pumper.set<zeromq_server_t, &zeromq_server_t::pump>(this);
     m_pumper.start(0.2f, 0.2f);
-} catch(const zmq::error_t& e) {
-    throw std::runtime_error(std::string("network failure - ") + e.what());
 }
 
 zeromq_server_t::~zeromq_server_t() {

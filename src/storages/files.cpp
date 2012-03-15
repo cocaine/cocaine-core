@@ -94,7 +94,8 @@ Json::Value file_storage_t::all(const std::string& ns) {
     }
 
     typedef boost::filter_iterator<is_regular_file, fs::directory_iterator> file_iterator;
-    file_iterator it = file_iterator(is_regular_file(), fs::directory_iterator(store_path)), end;
+    file_iterator it = file_iterator(is_regular_file(), fs::directory_iterator(store_path)), 
+                  end;
 
     while(it != end) {
 #if BOOST_FILESYSTEM_VERSION == 3
