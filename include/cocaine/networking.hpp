@@ -36,8 +36,7 @@ typedef std::vector<std::string> route_t;
 
 class socket_t: 
     public boost::noncopyable,
-    public object_t,
-    public birth_control_t<socket_t>
+    public object_t
 {
     public:
         socket_t(context_t& ctx, int type):
@@ -47,17 +46,16 @@ class socket_t:
 
         socket_t(context_t& ctx, int type, const std::string& route):
             object_t(ctx),
-            m_socket(ctx.io(), type),
-            m_route(route)
+            m_socket(ctx.io(), type)
         {
-            setsockopt(ZMQ_IDENTITY, m_route.data(), m_route.size());
+            setsockopt(ZMQ_IDENTITY, route.data(), route.size());
         }
 
         void bind(const std::string& endpoint) {
             m_socket.bind(endpoint.c_str());
 
             // Try to determine the connection string for clients.
-            // TODO: Do it the right way.
+            // XXX: Fix it when migrating to ZeroMQ 3.1+
             size_t position = endpoint.find_last_of(":");
 
             if(position != std::string::npos) {
@@ -79,15 +77,7 @@ class socket_t:
         bool recv(zmq::message_t * message, int flags = 0) {
             return m_socket.recv(message, flags);
         }
-        
-        void drop_remaining_parts() {
-            zmq::message_t null;
-
-            while(more()) {
-                recv(&null);
-            }
-        }
-        
+                
         void getsockopt(int name, void * value, size_t * size) {
             m_socket.getsockopt(name, value, size);
         }
@@ -96,13 +86,35 @@ class socket_t:
             m_socket.setsockopt(name, value, size);
         }
 
+        void drop_remaining_parts() {
+            zmq::message_t null;
+
+            while(more()) {
+                recv(&null);
+            }
+        }
+
     public:
         std::string endpoint() const { 
             return m_endpoint; 
         }
 
-        std::string route() const { 
-            return m_route; 
+        bool more() {
+            int64_t rcvmore = 0;
+            size_t size = sizeof(rcvmore);
+
+            getsockopt(ZMQ_RCVMORE, &rcvmore, &size);
+
+            return rcvmore != 0;
+        }
+
+        std::string route() {
+            char identity[256]; 
+            size_t size = sizeof(identity);
+
+            getsockopt(ZMQ_IDENTITY, &identity, &size);
+
+            return identity;
         }
 
         int fd() {
@@ -123,18 +135,9 @@ class socket_t:
             return (events & event) == event;
         }
 
-        bool more() {
-            int64_t rcvmore = 0;
-            size_t size = sizeof(rcvmore);
-
-            getsockopt(ZMQ_RCVMORE, &rcvmore, &size);
-
-            return rcvmore != 0;
-        }
-
     private:
         zmq::socket_t m_socket;
-        std::string m_endpoint, m_route;
+        std::string m_endpoint;
 };
 
 template<class T> class raw;
