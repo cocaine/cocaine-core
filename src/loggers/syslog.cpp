@@ -30,6 +30,8 @@ void syslog_t::emit(priorities priority, const std::string& message) const {
         return;
     }
 
+    // NOTE: Replacing all newlines with spaces here because certain sysloggers
+    // fail miserably interpreting them correctly.
     std::string m = boost::algorithm::replace_all_copy(message, "\n", " ");
 
     switch(priority) {
