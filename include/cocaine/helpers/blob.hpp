@@ -31,37 +31,39 @@ class blob_t {
         blob_t():
             m_data(NULL),
             m_size(0)
-        {
-            initialize();
-        }
+        { }
 
         blob_t(const void * data, size_t size):
             m_data(NULL),
             m_size(0)
         {
-            initialize(data, size);
+            if(data == NULL || size == 0) {
+                return;
+            }
+
+            m_ref_counter.reset(new reference_counter(1));
+
+            m_data = new unsigned char[size];
+            m_size = size;
+
+            memcpy(m_data, data, size);
         }
         
         blob_t(const blob_t& other):
             m_data(NULL),
             m_size(0)
         {
-            initialize();
             copy(other);
         }
 
         ~blob_t() {
-            if(*m_ref_counter == 0) {
-                return;
-            }
-
-            if(m_data && --*m_ref_counter == 0) {
-                delete[] m_data;
-            }
+            clear();
         }
  
         blob_t& operator=(const blob_t& other) {
+            clear();
             copy(other);
+
             return *this;
         }
         
@@ -77,33 +79,22 @@ class blob_t {
         }
 
         bool empty() const {
-            return m_size == 0;
+            return m_data == NULL && m_size == 0;
         }
         
-        void clear();
-
-    private:
-        typedef boost::detail::atomic_count reference_counter;
-        
-        void initialize() {
-            m_ref_counter.reset(new reference_counter(0));
-        }
-
-        void initialize(const void * data, size_t size) {
-            initialize();
-
-            if(data == NULL || size == 0) {
+        void clear() {
+            if(empty()) {
                 return;
             }
 
-            m_data = new unsigned char[size];
-            m_size = size;
-
-            memcpy(m_data, data, size);
-        
-            ++*m_ref_counter;
+            if(--*m_ref_counter == 0) {
+                delete[] m_data;
+                m_data = NULL;
+                m_size = 0;
+            }
         }
 
+    private:
         void copy(const blob_t& other) {
             if(other.empty()) {
                 return;
@@ -122,10 +113,8 @@ class blob_t {
         size_t m_size;
 
         // Atomic reference counter
+        typedef boost::detail::atomic_count reference_counter;
         boost::shared_ptr<reference_counter> m_ref_counter;
-
-        // Synchronization
-        boost::mutex m_mutex;
 };
 
 }
