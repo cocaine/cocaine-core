@@ -15,7 +15,6 @@
 
 #include <boost/lexical_cast.hpp>
 #include <boost/current_function.hpp>
-#include <boost/shared_ptr.hpp>
 
 #include <uuid/uuid.h>
 
@@ -24,7 +23,6 @@
 
 #include "json/json.h"
 
-#include "cocaine/dealer/structs.hpp"
 #include "cocaine/dealer/details/error.hpp"
 #include "cocaine/dealer/details/persistant_data_container.hpp"
 
@@ -47,7 +45,7 @@ persistant_data_container::persistant_data_container(const void* data, size_t si
 	init_with_data((unsigned char*)data, size);
 }
 
-persistant_data_container::persistant_data_container(const data_container& dc) {
+persistant_data_container::persistant_data_container(const persistant_data_container& dc) {
 	if (dc.empty()) {
 		init();
 		return;

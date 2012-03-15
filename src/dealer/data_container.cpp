@@ -15,7 +15,6 @@
 
 #include <boost/lexical_cast.hpp>
 #include <boost/current_function.hpp>
-#include <boost/shared_ptr.hpp>
 
 #include <uuid/uuid.h>
 
@@ -24,7 +23,6 @@
 
 #include "json/json.h"
 
-#include "cocaine/dealer/structs.hpp"
 #include "cocaine/dealer/details/error.hpp"
 #include "cocaine/dealer/details/data_container.hpp"
 

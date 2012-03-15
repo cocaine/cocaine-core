@@ -15,7 +15,7 @@
 #define _COCAINE_DEALER_PERSISTANT_DATA_CONTAINER_HPP_INCLUDED_
 
 #include <string>
-#include <stdexcept>
+#include <cstring>
 #include <sys/time.h>
 
 #include <boost/shared_ptr.hpp>
@@ -28,11 +28,10 @@ namespace cocaine {
 namespace dealer {
 
 class persistant_data_container {
-
 public:
 	persistant_data_container();
 	persistant_data_container(const void* data, size_t size);
-	persistant_data_container(const data_container& dc);
+	persistant_data_container(const persistant_data_container& dc);
 	virtual ~persistant_data_container();
 	
 	persistant_data_container& operator = (const persistant_data_container& rhs);
@@ -58,7 +57,7 @@ private:
 	
 	void init();
 	void init_with_data(unsigned char* data, size_t size);
-	void swap(data_container& other);
+	void swap(persistant_data_container& other);
 	void copy(const persistant_data_container& other);
 	void sign_data(unsigned char* data, size_t& size, unsigned char signature[SHA1_SIZE]);
 

@@ -15,7 +15,7 @@
 #define _COCAINE_DEALER_DATA_CONTAINER_HPP_INCLUDED_
 
 #include <string>
-#include <stdexcept>
+#include <cstring>
 #include <sys/time.h>
 
 #include <boost/shared_ptr.hpp>

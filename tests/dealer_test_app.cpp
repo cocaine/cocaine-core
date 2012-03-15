@@ -21,6 +21,7 @@
 
 #include <msgpack.hpp>
 
+
 #include "cocaine/dealer/client.hpp"
 #include "cocaine/dealer/details/time_value.hpp"
 #include "cocaine/dealer/details/eblob_storage.hpp"
@@ -80,6 +81,7 @@ void create_client(int add_messages_count) {
 
 int
 main(int argc, char** argv) {
+	/*
 	using namespace cocaine::dealer;
 	
 	boost::shared_ptr<base_logger> logger;
@@ -98,8 +100,8 @@ main(int argc, char** argv) {
 
 	st["est"].write("aaaa", "VAL", 1);
 	//st.open_eblob("huita");
+	*/
 
-	/*
 	try {
 		po::options_description desc("Allowed options");
 		desc.add_options()
@@ -131,6 +133,6 @@ main(int argc, char** argv) {
 		std::cerr << ex.what() << std::endl;
 		return EXIT_FAILURE;
 	}
-	*/
+
 	return EXIT_SUCCESS;
 }
