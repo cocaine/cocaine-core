@@ -20,8 +20,11 @@
 #include "cocaine/forwards.hpp"
 #include "cocaine/object.hpp"
 
+#include "cocaine/helpers/blob.hpp"
+
 namespace cocaine { namespace crypto {
 
+    
 class auth_t:
     public boost::noncopyable,
     public object_t
@@ -30,10 +33,8 @@ class auth_t:
         auth_t(context_t& ctx);
         ~auth_t();
 
-        void verify(const char * message,
-                    size_t message_size,
-                    const unsigned char * signature,
-                    size_t signature_size,
+        void verify(const blob_t& message,
+                    const blob_t& signature,
                     const std::string& username);
 
         // std::string sign(const std::string& message, const std::string& username);

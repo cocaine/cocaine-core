@@ -106,24 +106,29 @@ std::string auth_t::sign(const std::string& message, const std::string& username
 }
 */
 
-void auth_t::verify(const char * message,
-                          size_t message_size, 
-                          const unsigned char * signature,
-                          size_t signature_size, 
-                          const std::string& username)
+void auth_t::verify(const blob_t& message,
+                    const blob_t& signature,
+                    const std::string& username)
 {
     key_map_t::const_iterator it(m_keys.find(username));
 
     if(it == m_keys.end()) {
-        throw std::runtime_error("unauthorized user");
+        throw authorization_error_t("unauthorized user");
     }
     
     EVP_VerifyInit(m_md_context, EVP_sha1());
-    EVP_VerifyUpdate(m_md_context, message, message_size);
+    EVP_VerifyUpdate(m_md_context, message.data(), message.size());
     
-    if(!EVP_VerifyFinal(m_md_context, signature, signature_size, it->second)) {
+    bool success = EVP_VerifyFinal(
+        m_md_context,
+        static_cast<const unsigned char*>(signature.data()),
+        signature.size(),
+        it->second
+    );
+
+    if(!success) {
         EVP_MD_CTX_cleanup(m_md_context);
-        throw std::runtime_error("invalid signature");
+        throw authorization_error_t("invalid signature");
     }
 
     EVP_MD_CTX_cleanup(m_md_context);
