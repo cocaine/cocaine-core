@@ -122,7 +122,9 @@ class engine_t:
         template<class S, class Packed>
         void multicast(const S& selector, Packed& event) {
             typedef boost::filter_iterator<S, pool_map_t::iterator> filter;
-            filter it(selector, m_pool.begin()), end;
+            
+            filter it(selector, m_pool.begin()), 
+                   end;
 
             while(it != end) {
                 Packed copy(event);
