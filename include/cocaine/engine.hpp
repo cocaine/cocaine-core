@@ -14,6 +14,7 @@
 #ifndef COCAINE_ENGINE_HPP
 #define COCAINE_ENGINE_HPP
 
+#include <boost/iterator/filter_iterator.hpp>
 #include <deque>
 
 #ifdef HAVE_CGROUPS
@@ -59,15 +60,16 @@ class job_queue_t:
 // ---------
 
 namespace select {
-    struct idle_slave {
+    template<class State>
+    struct state {
         template<class T>
         bool operator()(const T& slave) const {
-            return slave->second->template state_downcast<const slave::idle*>();
+            return slave->second->template state_downcast<const State*>();
         }
     };
 
-    struct specific_slave {
-        specific_slave(const slave_t& slave):
+    struct specific {
+        specific(const slave_t& slave):
             target(slave)
         { }
 
@@ -101,7 +103,7 @@ class engine_t:
         void enqueue(job_queue_t::const_reference job, bool overflow = false);
 
         template<class S, class Packed>
-        pool_map_t::iterator unicast(const S& selector, Packed& packed) {
+        pool_map_t::iterator unicast(const S& selector, Packed& event) {
             pool_map_t::iterator it(
                 std::find_if(
                     m_pool.begin(),
@@ -110,27 +112,23 @@ class engine_t:
                 )
             );
 
-            if(it != m_pool.end()) {
-                try {
-                    m_messages.send(
-                        networking::protect(it->second->id()),
-                        ZMQ_SNDMORE
-                    );
-                } catch(const zmq::error_t& e) {
-                    m_app.log->error(
-                        "slave %d has died unexpectedly", 
-                        it->second->id().c_str()
-                    );
-                    
-                    it->second->process_event(events::terminate_t());
-
-                    return m_pool.end();
-                }
-
-                m_messages.send_multi(packed.get());
+            if(it != m_pool.end() && call(*it->second, event)) {
+                return it;
+            } else {
+                return m_pool.end();
             }
+        }
 
-            return it;
+        template<class S, class Packed>
+        void multicast(const S& selector, Packed& event) {
+            typedef boost::filter_iterator<S, pool_map_t::iterator> filter;
+            filter it(selector, m_pool.begin()), end;
+
+            while(it != end) {
+                Packed copy(event);
+                call(*it->second, copy);
+                ++it;
+            }
         }
 
     public:
@@ -145,6 +143,29 @@ class engine_t:
 #endif
 
     private:
+        template<class Packed>
+        bool call(slave_t& slave, Packed& event) {
+            try {
+                m_messages.send(
+                    networking::protect(slave.id()),
+                    ZMQ_SNDMORE
+                );
+            } catch(const zmq::error_t& e) {
+                m_app.log->error(
+                    "slave %d has disconnected unexpectedly", 
+                    slave.id().c_str()
+                );
+
+                slave.process_event(events::terminate_t());                
+            
+                return false;
+            }
+
+            m_messages.send_multi(event.get());
+
+            return true;
+        }
+
         void message(ev::io&, int);
         void process(ev::idle&, int);
         void pump(ev::timer&, int);

@@ -222,6 +222,15 @@ Json::Value engine_t::start() {
     return info();
 }
 
+namespace {
+    struct terminate {
+        template<class T>
+        bool operator()(const T& slave) {
+            slave->second->process_event(events::terminate_t());
+        }
+    };
+}
+
 Json::Value engine_t::stop() {
     BOOST_ASSERT(m_running);
     
@@ -251,18 +260,11 @@ Json::Value engine_t::stop() {
 
     rpc::packed<events::terminate_t> packed;
 
-    // Terminate the slaves.
-    for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
-        // NOTE: Avoid signaling dead or just born slaves.
-        if(it->second->state_downcast<const slave::alive*>()) {
-            unicast(
-                select::specific_slave(*it->second),
-                packed
-            );
-        }
+    // Send the termination event to active slaves.
+    multicast(select::state<slave::alive>(), packed);
 
-        it->second->process_event(events::terminate_t());
-    }
+    // XXX: Might be a good idea to wait for graceful termination.
+    std::for_each(m_pool.begin(), m_pool.end(), terminate());
 
     m_pool.clear();
     m_tasks.clear();
@@ -337,7 +339,7 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
 
     pool_map_t::iterator it(
         unicast(
-            select::idle_slave(),
+            select::state<slave::idle>(),
             packed
         )
     );
