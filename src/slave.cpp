@@ -49,29 +49,31 @@ slave_t::~slave_t() {
     terminate();
 }
 
-void slave_t::react(const events::heartbeat_t& event) {
-    if(!state_downcast<const alive*>()) {
+void slave_t::on_configure(const events::heartbeat_t& event) {
 #if EV_VERSION_MAJOR == 3 && EV_VERSION_MINOR == 8
-        m_engine.app().log->debug(
-            "slave %s came alive in %.03f seconds",
-            id().c_str(),
-            10.0f - ev_timer_remaining(
-                ev_default_loop(ev::AUTO),
-                static_cast<ev_timer*>(&m_heartbeat_timer)
-            )
-        );
+    m_engine.app().log->debug(
+        "slave %s came alive in %.03f seconds",
+        id().c_str(),
+        10.0f - ev_timer_remaining(
+            ev_default_loop(ev::AUTO),
+            static_cast<ev_timer*>(&m_heartbeat_timer)
+        )
+    );
 #endif
 
-        // rpc::packed<events::configure_t> pack(
-        //     events::configure_t(m_engine.context().config)
-        // );
+    // rpc::packed<events::configure_t> pack(
+    //     events::configure_t(m_engine.context().config)
+    // );
 
-        // m_engine.unicast(
-        //     select::specific_slave(*this),
-        //     pack
-        // );
-    }
+    // m_engine.unicast(
+    //     select::specific_slave(*this),
+    //     pack
+    // );
 
+    on_heartbeat(event);
+}
+
+void slave_t::on_heartbeat(const events::heartbeat_t& event) {
     m_heartbeat_timer.stop();
     
     const busy * state = state_downcast<const busy*>();
@@ -88,10 +90,9 @@ void slave_t::react(const events::heartbeat_t& event) {
     );
 
     m_heartbeat_timer.start(timeout);
-
 }
 
-void slave_t::react(const events::terminate_t& event) {
+void slave_t::on_terminate(const events::terminate_t& event) {
     m_engine.app().log->debug(
         "reaping slave %s", 
         id().c_str()
@@ -223,7 +224,7 @@ alive::~alive() {
     }
 }
 
-void alive::react(const events::invoke_t& event) {
+void alive::on_invoke(const events::invoke_t& event) {
     // TEST: Ensure that no job is being lost here.
     BOOST_ASSERT(!m_job);
 
@@ -237,7 +238,7 @@ void alive::react(const events::invoke_t& event) {
     );
 }
 
-void alive::react(const events::release_t& event) {
+void alive::on_release(const events::release_t& event) {
     // TEST: Ensure that the job is in fact here.
     BOOST_ASSERT(m_job);
 

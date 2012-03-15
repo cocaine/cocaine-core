@@ -48,7 +48,6 @@ struct dead;
 
 struct slave_t:
     public sc::state_machine<slave_t, slave::unknown>,
-    public birth_control_t<slave_t>,
     public unique_id_t
 {
     friend class slave::alive;
@@ -57,8 +56,9 @@ struct slave_t:
         slave_t(engine_t& engine);
         ~slave_t();
         
-        void react(const events::heartbeat_t& event);
-        void react(const events::terminate_t& event);
+        void on_configure(const events::heartbeat_t& event);
+        void on_heartbeat(const events::heartbeat_t& event);
+        void on_terminate(const events::terminate_t& event);
 
         bool operator==(const slave_t& other) const;
 
@@ -84,8 +84,8 @@ struct unknown:
 {
     public:
         typedef boost::mpl::list<
-            sc::transition<events::heartbeat_t, alive, slave_t, &slave_t::react>,
-            sc::transition<events::terminate_t, dead,  slave_t, &slave_t::react>
+            sc::transition<events::heartbeat_t, alive, slave_t, &slave_t::on_configure>,
+            sc::transition<events::terminate_t, dead,  slave_t, &slave_t::on_terminate>
         > reactions;
 };
 
@@ -94,17 +94,18 @@ struct alive:
 {
     public:
         typedef boost::mpl::list<
-            sc::in_state_reaction<events::heartbeat_t, slave_t, &slave_t::react>,
-            sc::transition<events::terminate_t, dead,  slave_t, &slave_t::react>
+            sc::in_state_reaction<events::heartbeat_t, slave_t, &slave_t::on_heartbeat>,
+            sc::transition<events::terminate_t, dead,  slave_t, &slave_t::on_terminate>
         > reactions;
 
         ~alive();
 
-        void react(const events::invoke_t& event);
-        void react(const events::release_t& event);
+        void on_invoke(const events::invoke_t& event);
+        void on_release(const events::release_t& event);
 
     public:
         const boost::shared_ptr<job_t>& job() const {
+            BOOST_ASSERT(m_job);
             return m_job;
         }
 
@@ -117,7 +118,7 @@ struct idle:
 {
     public:
         typedef sc::transition<
-            events::invoke_t, busy, alive, &alive::react
+            events::invoke_t, busy, alive, &alive::on_invoke
         > reactions;
 };
 
@@ -126,7 +127,7 @@ struct busy:
 {
     public:
         typedef sc::transition<
-            events::release_t, idle, alive, &alive::react
+            events::release_t, idle, alive, &alive::on_release
         > reactions;
 
     public:
