@@ -26,7 +26,7 @@ SCRIPTNAME=/etc/init.d/cocaine-core
 # Read configuration variable file if it is present
 [ -r /etc/default/$NAME-core ] && . /etc/default/$NAME-core
 
-PIDFILE=/var/run/cocaine.pid
+PIDFILE=/var/run/cocaine/cocaine.pid
 
 # Load the VERBOSE setting and other rcS variables
 . /lib/init/vars.sh
