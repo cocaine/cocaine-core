@@ -72,7 +72,7 @@ void job_t::react(const events::push_t& event) {
         m_driver.method().c_str(),
         event.message.size()
     );    
- 
+
     // TODO: Emitters.
 }
 

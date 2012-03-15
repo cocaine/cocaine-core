@@ -23,11 +23,9 @@
 using namespace cocaine;
 using namespace cocaine::engine;
 
-overseer_t::overseer_t(
-    context_t& ctx,
-    const unique_id_t::identifier_type& id_,
-    const std::string& app
-):
+overseer_t::overseer_t(context_t& ctx,
+                       const unique_id_t::identifier_type& id_,
+                       const std::string& app):
     object_t(ctx),
     unique_id_t(id_),
     m_app(ctx, app),
@@ -39,7 +37,7 @@ overseer_t::overseer_t(
     m_heartbeat_timer(m_loop),
     m_messages(ctx, ZMQ_DEALER, id())
 {
-    m_messages.connect(m_app.endpoint);
+    m_messages.connect(endpoint(app));
     
     m_watcher.set<overseer_t, &overseer_t::message>(this);
     m_watcher.start(m_messages.fd(), ev::READ);
@@ -113,7 +111,7 @@ void overseer_t::process(ev::idle&, int) {
         return;
     }
     
-    unsigned int command = 0;
+    int command = 0;
 
     m_messages.recv(command);
 
@@ -163,13 +161,17 @@ void overseer_t::process(ev::idle&, int) {
             break;
         }
         
-        case rpc::terminate: {
+        case rpc::terminate:
             terminate();
             break;
-        }
 
         default:
-            m_app.log->warning("slave ignoring unknown event type %d", command);
+            m_app.log->warning(
+                "slave %s dropping unknown event type %d", 
+                id().c_str(),
+                command
+            );
+            
             m_messages.drop_remaining_parts();
     }
 

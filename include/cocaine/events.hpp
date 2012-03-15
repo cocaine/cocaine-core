@@ -73,6 +73,18 @@ struct push_t:
     zmq::message_t& message;
 };
 
+// struct emit_t:
+//     public sc::event<emit_t>
+// {
+//     emit_t(const std::string& key_, zmq::message_t& message_):
+//         key(key_),
+//         message(message_)
+//     { }
+
+//     const std::string key;
+//     zmq::message_t& message;
+// };
+
 struct error_t:
     public sc::event<error_t>
 {
@@ -82,6 +94,11 @@ struct error_t:
     { }
 
     error_t(const std::runtime_error& e):
+        code(client::server_error),
+        message(e.what())
+    { }
+
+    error_t(const registry_error_t& e):
         code(client::server_error),
         message(e.what())
     { }

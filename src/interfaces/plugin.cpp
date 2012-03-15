@@ -38,9 +38,9 @@ void io_t::push(const void * data, size_t size) {
     m_overseer.send(packed);
 }
 
-void io_t::emit(const std::string& key, const void * data, size_t size) {
-    // TODO: Emitters.
-}
+// void io_t::emit(const std::string& key, const void * data, size_t size) {
+//     // TODO: Emitters.
+// }
 
 plugin_t::plugin_t(context_t& ctx):
     object_t(ctx)

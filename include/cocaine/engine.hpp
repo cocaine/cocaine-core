@@ -96,14 +96,15 @@ class engine_t:
 
         ~engine_t();
 
-        Json::Value start();
-        Json::Value stop();
-        Json::Value info() const;
+        void start();
+        void stop();
+        
+        Json::Value info() /* const */;
 
         void enqueue(job_queue_t::const_reference job, bool overflow = false);
 
         template<class S, class Packed>
-        pool_map_t::iterator unicast(const S& selector, Packed& event) {
+        pool_map_t::iterator unicast(const S& selector, Packed& packed) {
             pool_map_t::iterator it(
                 std::find_if(
                     m_pool.begin(),
@@ -112,7 +113,7 @@ class engine_t:
                 )
             );
 
-            if(it != m_pool.end() && call(*it->second, event)) {
+            if(it != m_pool.end() && call(*it->second, packed)) {
                 return it;
             } else {
                 return m_pool.end();
@@ -120,14 +121,14 @@ class engine_t:
         }
 
         template<class S, class Packed>
-        void multicast(const S& selector, Packed& event) {
+        void multicast(const S& selector, Packed& packed) {
             typedef boost::filter_iterator<S, pool_map_t::iterator> filter;
             
             filter it(selector, m_pool.begin(), m_pool.end()),
                    end(selector, m_pool.end(), m_pool.end());
             
             while(it != end) {
-                Packed copy(event);
+                Packed copy(packed);
                 call(*it->second, copy);
                 ++it;
             }
@@ -146,7 +147,7 @@ class engine_t:
 
     private:
         template<class Packed>
-        bool call(slave_t& slave, Packed& event) {
+        bool call(slave_t& slave, Packed& packed) {
             try {
                 m_messages.send(
                     networking::protect(slave.id()),
@@ -163,7 +164,7 @@ class engine_t:
                 return false;
             }
 
-            m_messages.send_multi(event.get());
+            m_messages.send_multi(packed.get());
 
             return true;
         }

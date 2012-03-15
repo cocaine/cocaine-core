@@ -154,7 +154,7 @@ engine_t::~engine_t() {
 // Operations
 // ----------
 
-Json::Value engine_t::start() {
+void engine_t::start() {
     BOOST_ASSERT(!m_running);
 
     m_app.log->info("starting the engine"); 
@@ -164,7 +164,7 @@ Json::Value engine_t::start() {
     m_messages.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
 
     try {
-        m_messages.bind(m_app.endpoint);
+        m_messages.bind(endpoint(m_app.name));
     } catch(const zmq::error_t& e) {
         throw std::runtime_error(std::string("invalid rpc endpoint - ") + e.what());
     }
@@ -218,8 +218,6 @@ Json::Value engine_t::start() {
     }
 
     m_running = true;
-    
-    return info();
 }
 
 namespace {
@@ -231,7 +229,7 @@ namespace {
     };
 }
 
-Json::Value engine_t::stop() {
+void engine_t::stop() {
     BOOST_ASSERT(m_running);
     
     m_app.log->info("stopping the engine"); 
@@ -250,7 +248,7 @@ Json::Value engine_t::stop() {
             m_queue.front()->process_event(
                 events::error_t(
                     client::server_error,
-                    "engine is shutting down"
+                    "engine is not active"
                 )
             );
 
@@ -263,7 +261,7 @@ Json::Value engine_t::stop() {
     // Send the termination event to active slaves.
     multicast(select::state<slave::alive>(), packed);
 
-    // XXX: Might be a good idea to wait for graceful termination.
+    // XXX: Might be a good idea to wait for a graceful termination.
     std::for_each(m_pool.begin(), m_pool.end(), terminate());
 
     m_pool.clear();
@@ -273,8 +271,6 @@ Json::Value engine_t::stop() {
     m_processor.stop();
     m_pumper.stop();
     m_gc_timer.stop();
-
-    return info();
 }
 
 namespace {
@@ -286,7 +282,7 @@ namespace {
     };
 }
 
-Json::Value engine_t::info() const {
+Json::Value engine_t::info() {
     Json::Value results(Json::objectValue);
 
     if(m_running) {
@@ -301,7 +297,7 @@ Json::Value engine_t::info() const {
             )
         );
 
-        for(task_map_t::const_iterator it = m_tasks.begin();
+        for(task_map_t::iterator it = m_tasks.begin();
             it != m_tasks.end();
             ++it) 
         {
@@ -393,16 +389,16 @@ void engine_t::process(ev::idle&, int) {
     }
 
     std::string slave_id;
-    unsigned int command = 0;
-    boost::tuple<raw<std::string>, unsigned int&> tier(protect(slave_id), command);
+    int command = 0;
+    boost::tuple<raw<std::string>, int&> tier(protect(slave_id), command);
             
     m_messages.recv_multi(tier);
 
     pool_map_t::iterator slave(m_pool.find(slave_id));
 
     if(slave == m_pool.end()) {
-        m_app.log->debug(
-            "ignoring type %d event from a dead slave %s", 
+        m_app.log->warning(
+            "dropping type %d event from a nonexistent slave %s", 
             command,
             slave_id.c_str()
         );
@@ -453,17 +449,15 @@ void engine_t::process(ev::idle&, int) {
             break;
         }
 
-        case rpc::release: {
+        case rpc::release:
             // TEST: Only active slaves can release the job.
             BOOST_ASSERT(state != 0);
             slave->second->process_event(events::release_t());
             break;
-        }
 
-        case rpc::terminate: {
+        case rpc::terminate:
             slave->second->process_event(events::terminate_t());
             return;
-        }
         
         default:
             m_app.log->warning("engine ignoring unknown event type %d", command);

@@ -39,7 +39,7 @@ class core_t:
         
         Json::Value delete_engine(const std::string& name);
 
-        Json::Value info() const;
+        Json::Value info() /* const */;
         
     private:        
         void terminate(ev::sig&, int);

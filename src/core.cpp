@@ -133,7 +133,7 @@ void core_t::reload(ev::sig&, int) {
 
     try {
         recover();
-    } catch(const std::runtime_error& e) {
+    } catch(const storage_error_t& e) {
         m_log->error("unable to reload the apps - %s", e.what());
     }
 }
@@ -180,10 +180,8 @@ void core_t::process(ev::idle&, int) {
 
                 if(!username.empty()) {
                     m_auth.verify(
-                        static_cast<const char*>(message.data()),
-                        message.size(),
-                        static_cast<const unsigned char*>(signature.data()),
-                        signature.size(),
+                        blob_t(message.data(), message.size()),
+                        blob_t(signature.data(), signature.size()),
                         username
                     );
                 } else {
@@ -192,6 +190,8 @@ void core_t::process(ev::idle&, int) {
             }
 
             response = dispatch(root);
+        } catch(const authorization_error_t& e) {
+            response = helpers::make_json("error", e.what());
         } catch(const std::runtime_error& e) {
             response = helpers::make_json("error", e.what());
         }
@@ -204,11 +204,8 @@ void core_t::process(ev::idle&, int) {
     message.rebuild(json.size());
     memcpy(message.data(), json.data(), json.size());
 
-    try {
-        m_server.send(message);
-    } catch(const zmq::error_t& e) {
-        m_log->debug("a client has disconnected unexpectedly");
-    }
+    // Send in non-blocking mode in case the client has disconnected.
+    m_server.send(message, ZMQ_NOBLOCK);
 }
 
 void core_t::pump(ev::timer&, int) {
@@ -219,7 +216,8 @@ Json::Value core_t::dispatch(const Json::Value& root) {
     std::string action(root["action"].asString());
 
     if(action == "create") {
-        Json::Value apps(root["apps"]), result(Json::objectValue);
+        Json::Value apps(root["apps"]),
+                    result(Json::objectValue);
 
         if(!apps.isObject() || !apps.size()) {
             throw std::runtime_error("no apps have been specified");
@@ -281,12 +279,15 @@ Json::Value core_t::create_engine(const std::string& name, const Json::Value& ma
     }
 
     std::auto_ptr<engine_t> engine(new engine_t(context(), name, manifest));
-    Json::Value result(engine->start());
+
+    engine->start();
+
+    Json::Value result(engine->info());
 
     if(!recovering) {
         try {
             context().storage().put("apps", name, manifest);
-        } catch(const std::runtime_error& e) {
+        } catch(const storage_error_t& e) {
             m_log->error(
                 "unable to create the '%s' engine - %s",
                 name.c_str(),
@@ -311,7 +312,7 @@ Json::Value core_t::delete_engine(const std::string& name) {
 
     try {
         context().storage().remove("apps", name);
-    } catch(const std::runtime_error& e) {
+    } catch(const storage_error_t& e) {
         m_log->error(
             "unable to destroy the '%s' engine - %s",
             name.c_str(),
@@ -321,19 +322,21 @@ Json::Value core_t::delete_engine(const std::string& name) {
         throw;
     }
 
-    Json::Value result(engine->second->stop());
+    engine->second->stop();
+
+    Json::Value result(engine->second->info());
 
     m_engines.erase(engine);
 
     return result;
 }
 
-Json::Value core_t::info() const {
+Json::Value core_t::info() {
     Json::Value result(Json::objectValue);
 
     result["route"] = m_server.route();
 
-    for(engine_map_t::const_iterator it = m_engines.begin();
+    for(engine_map_t::iterator it = m_engines.begin();
         it != m_engines.end(); 
         ++it) 
     {
@@ -354,6 +357,7 @@ void core_t::announce(ev::timer&, int) {
     m_log->debug("announcing the node");
 
     zmq::message_t message(m_server.endpoint().size());
+ 
     memcpy(message.data(), m_server.endpoint().data(), m_server.endpoint().size());
     m_announces->send(message, ZMQ_SNDMORE);
 
