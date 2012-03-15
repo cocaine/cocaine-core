@@ -283,6 +283,19 @@ class channel_t:
         }
 };
 
+struct route {
+    route(channel_t& channel_):
+        channel(channel_)
+    { }
+
+    template<class T>
+    void operator()(const T& route) {
+        channel.send(protect(route), ZMQ_SNDMORE);
+    }
+
+    channel_t& channel;
+};
+
 }}
 
 #endif

@@ -34,27 +34,18 @@ zeromq_server_job_t::zeromq_server_job_t(
 { }
 
 void zeromq_server_job_t::react(const events::push_t& event) {
-    zmq::message_t message;
     zeromq_server_t& server = static_cast<zeromq_server_t&>(m_driver);
-    
-    // Send the identity.
-    for(route_t::const_iterator id = m_route.begin(); id != m_route.end(); ++id) {
-        message.rebuild(id->size());
-        memcpy(message.data(), id->data(), id->size());
 
-        try {
-            server.socket().send(message, ZMQ_SNDMORE);
-        } catch(const zmq::error_t& e) {
-            // Host is down.
-            return;
-        }
+    try {    
+        std::for_each(m_route.begin(), m_route.end(), route(server.socket()));
+    } catch(const zmq::error_t& e) {
+        // Host is down.
+        return;
     }
 
-    // Send the delimiter.
-    message.rebuild(0);
-    server.socket().send(message, ZMQ_SNDMORE);
+    zmq::message_t message;
 
-    // Send the chunk.
+    server.socket().send(message, ZMQ_SNDMORE);
     server.socket().send(event.message);
 }
 

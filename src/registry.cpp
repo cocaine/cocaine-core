@@ -125,21 +125,22 @@ registry_t::~registry_t() {
 
 namespace {
     struct enumerate {
-        enumerate(std::vector<std::string>& list_):
-            list(list_)
-        { }
-
         template<class T>
-        void operator()(const T& factory) {
-            list.push_back(factory->first);
+        std::string operator()(const T& factory) {
+            return factory->first;
         }
-        
-        std::vector<std::string>& list;
     };
 }
 
 std::vector<std::string> registry_t::list() const {
     std::vector<std::string> list;
-    std::for_each(m_factories.begin(), m_factories.end(), enumerate(list));
+
+    std::transform(
+        m_factories.begin(),
+        m_factories.end(),
+        std::back_inserter(list),
+        enumerate()
+    );
+    
     return list;
 }

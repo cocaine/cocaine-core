@@ -70,11 +70,17 @@ auth_t::auth_t(context_t& ctx):
     m_log->info("loaded %zu public key(s)", m_keys.size());
 }
 
-auth_t::~auth_t() {
-    for(key_map_t::iterator it = m_keys.begin(); it != m_keys.end(); ++it) {
-        EVP_PKEY_free(it->second);
-    }
+namespace {
+    struct dispose {
+        template<class T>
+        void operator()(T& key) {
+            EVP_PKEY_free(key.second);
+        }
+    };
+}
 
+auth_t::~auth_t() {
+    std::for_each(m_keys.begin(), m_keys.end(), dispose());
     ERR_free_strings();
     EVP_MD_CTX_destroy(m_md_context);
 }

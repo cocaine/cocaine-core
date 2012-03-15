@@ -42,27 +42,23 @@ void job_queue_t::push(const_reference job) {
 
 namespace {
     struct idle_slave {
-        bool operator()(pool_map_t::pointer slave) const {
-            return slave->second->state_downcast<const slave::idle*>();
-        }
-    };
-
-    struct busy_slave {
-        bool operator()(pool_map_t::const_pointer slave) const {
-            return slave->second->state_downcast<const slave::busy*>();
+        template<class T>
+        bool operator()(const T& slave) const {
+            return slave->second->template state_downcast<const slave::idle*>();
         }
     };
 
     struct specific_slave {
-        specific_slave(pool_map_t::pointer target_):
+        specific_slave(const slave_t& target_):
             target(target_)
         { }
 
-        bool operator()(pool_map_t::pointer slave) const {
-            return slave == target;
+        template<class T>
+        bool operator()(const T& slave) const {
+            return *slave->second == target;
         }
     
-        pool_map_t::pointer target;
+        const slave_t& target;
     };
 }
 
@@ -285,7 +281,7 @@ Json::Value engine_t::stop() {
         // NOTE: Avoid signaling dead or just born slaves.
         if(it->second->state_downcast<const slave::alive*>()) {
             unicast(
-                specific_slave(*it),
+                specific_slave(*it->second),
                 packed
             );
         }
@@ -303,7 +299,16 @@ Json::Value engine_t::stop() {
 
     return info();
 }
-    
+
+namespace {
+    struct busy_slave {
+        template<class T>
+        bool operator()(const T& slave) const {
+            return slave->second->template state_downcast<const slave::busy*>();
+        }
+    };
+}
+
 Json::Value engine_t::info() const {
     Json::Value results(Json::objectValue);
 
