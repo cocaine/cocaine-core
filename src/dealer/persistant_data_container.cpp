@@ -30,7 +30,6 @@ namespace cocaine {
 namespace dealer {
 
 persistant_data_container::persistant_data_container() :
-	data_(NULL),
 	size_(0),
 	signed_(false)
 {
@@ -38,7 +37,6 @@ persistant_data_container::persistant_data_container() :
 }
 
 persistant_data_container::persistant_data_container(const void* data, size_t size) :
-	data_((unsigned char*)data),
 	size_(size),
 	signed_(false)
 {
@@ -51,7 +49,7 @@ persistant_data_container::persistant_data_container(const persistant_data_conta
 		return;
 	}
 
-	data_ = dc.data_;
+	blob_ = dc.blob_;
 	size_ = dc.size_;
 
 	if (dc.signed_) {
@@ -68,7 +66,6 @@ persistant_data_container::init_with_data(unsigned char* data, size_t size) {
 	init();
 
 	if (data == NULL || size == 0) {
-		data_ = NULL;
 		size_ = 0;
 		return;
 	}
@@ -76,6 +73,7 @@ persistant_data_container::init_with_data(unsigned char* data, size_t size) {
 	std::string error_msg = "not enough memory to create new data container at ";
 	error_msg += std::string(BOOST_CURRENT_FUNCTION);
 
+	/*
 	// allocate new space
 	try {
 		data_ = new unsigned char[size];
@@ -100,6 +98,7 @@ persistant_data_container::init_with_data(unsigned char* data, size_t size) {
 
 	sign_data(data_, size_, signature_);
 	signed_ = true;
+	*/
 }
 
 void
@@ -124,7 +123,7 @@ persistant_data_container::init() {
 	}
 
 	// init data
-	data_ = NULL;
+	//data_ = NULL;
 	size_ = 0;
 }
 
@@ -135,14 +134,14 @@ persistant_data_container::~persistant_data_container() {
 
 	--*ref_counter_;
 
-	if (data_ && *ref_counter_ == 0) {
-		delete [] data_;
-	}
+	//if (data_ && *ref_counter_ == 0) {
+	//	delete [] data_;
+	//}
 }
 
 void
 persistant_data_container::swap(persistant_data_container& other) {
-	std::swap(data_, other.data_);
+	//std::swap(data_, other.data_);
 	std::swap(size_, other.size_);
 	std::swap(signed_, other.signed_);
 
@@ -156,7 +155,7 @@ persistant_data_container::swap(persistant_data_container& other) {
 
 void
 persistant_data_container::copy(const persistant_data_container& other) {
-	data_ = other.data_;
+	//data_ = other.data_;
 	size_ = other.size_;
 	signed_ = other.signed_;
 
@@ -186,9 +185,9 @@ persistant_data_container::operator == (const persistant_data_container& rhs) co
 	}
 
 	// compare small containers
-	if (size_ <= SMALL_DATA_SIZE) {
-		return (0 == memcmp(data_, rhs.data_, size_));
-	}
+	//if (size_ <= SMALL_DATA_SIZE) {
+	//	return (0 == memcmp(data_, rhs.data_, size_));
+	//}
 
 	// compare big containers
 	return (0 == memcmp(signature_, rhs.signature_, SHA1_SIZE));
@@ -214,21 +213,21 @@ persistant_data_container::clear() {
 
 	--*ref_counter_;
 
-	if (data_ && *ref_counter_ == 0) {
-		delete data_;
-	}
+	//if (data_ && *ref_counter_ == 0) {
+	//	delete data_;
+	//}
 
 	init();
 }
 
 void*
 persistant_data_container::data() const {
-	return (void*)data_;
+	//return (void*)data_;
 }
 
 size_t
 persistant_data_container::size() const {
-	return size_;
+	//return size_;
 }
 
 void
@@ -264,6 +263,11 @@ persistant_data_container::sign_data(unsigned char* data, size_t& size, unsigned
 	}
 
 	SHA1_Final(signature, &sha_context);
+}
+
+void
+persistant_data_container::set_eblob(eblob blob) {
+	blob_ = blob;
 }
 
 } // namespace dealer

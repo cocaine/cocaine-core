@@ -60,7 +60,7 @@ void create_client(int add_messages_count) {
 	c.set_response_callback(boost::bind(&response_callback, _1, _2), path_py);
 	c.set_response_callback(boost::bind(&response_callback, _1, _2), path_perl);
 
-	sleep(3);
+	sleep(10);
 
 	// send message to py app
 	for (int i = 0; i < add_messages_count; ++i) {

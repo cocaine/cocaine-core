@@ -54,6 +54,24 @@ context::context(const std::string& config_path) {
 
 	// create statistics collector
 	stats_.reset(new statistics_collector(config_, zmq_context_, logger()));
+
+	// create eblob storage
+	if (config()->message_cache_type() == PERSISTANT) {
+		std::string st_path = config()->eblob_path();
+		int64_t st_blob_size = config()->eblob_blob_size();
+		int st_sync = config()->eblob_sync_interval();
+		
+		// create storage
+		eblob_storage* storage_ptr = new eblob_storage(st_path, st_blob_size, st_sync);
+		storage_.reset(storage_ptr);
+
+		// create eblob for each service
+		const configuration::services_list_t& services_info_list = config()->services_list();
+		configuration::services_list_t::const_iterator it = services_info_list.begin();
+		for (; it != services_info_list.end(); ++it) {
+			storage_->open_eblob(it->second.name_);
+		}
+	}
 }
 
 context::~context() {
@@ -68,7 +86,6 @@ context::config() {
 
 boost::shared_ptr<base_logger>
 context::logger() {
-	boost::mutex::scoped_lock lock(mutex_);
 	return logger_;
 }
 
@@ -79,8 +96,12 @@ context::zmq_context() {
 
 boost::shared_ptr<statistics_collector>
 context::stats() {
-	boost::mutex::scoped_lock lock(mutex_);
 	return stats_;
+}
+
+boost::shared_ptr<eblob_storage>
+context::storage() {
+	return storage_;
 }
 
 } // namespace dealer

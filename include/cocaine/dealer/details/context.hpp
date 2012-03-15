@@ -22,11 +22,11 @@
 
 #include <boost/shared_ptr.hpp>
 #include <boost/utility.hpp>
-#include <boost/thread/mutex.hpp>
 
 #include "cocaine/dealer/details/smart_logger.hpp"
 #include "cocaine/dealer/details/configuration.hpp"
 #include "cocaine/dealer/details/statistics_collector.hpp"
+#include "cocaine/dealer/details/eblob_storage.hpp"
 
 namespace cocaine {
 namespace dealer {
@@ -40,15 +40,14 @@ public:
 	boost::shared_ptr<configuration> config();
 	boost::shared_ptr<zmq::context_t> zmq_context();
 	boost::shared_ptr<statistics_collector> stats();
+	boost::shared_ptr<eblob_storage> storage();
 
 private:
 	boost::shared_ptr<zmq::context_t> zmq_context_;
 	boost::shared_ptr<base_logger> logger_;
 	boost::shared_ptr<configuration> config_;
 	boost::shared_ptr<statistics_collector> stats_;
-
-	// synchronization
-	boost::mutex mutex_;
+	boost::shared_ptr<eblob_storage> storage_;
 };
 
 } // namespace dealer

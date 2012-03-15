@@ -36,7 +36,7 @@
 namespace cocaine {
 namespace dealer {
 
-template<typename T>
+template<typename DataContainer>
 class cached_message : public message_iface {
 public:
 	cached_message();
@@ -51,6 +51,8 @@ public:
 
 	void* data();
 	size_t size() const;
+
+	DataContainer& data_container();
 
 	size_t container_size() const;
 
@@ -76,7 +78,7 @@ private:
 	
 private:
 	// message data
-	T data_;
+	DataContainer data_;
 	message_path path_;
 	message_policy policy_;
 	std::string uuid_;
@@ -91,20 +93,20 @@ private:
 	boost::mutex mutex_;
 };
 
-template<typename T>
-cached_message<T>::cached_message() :
+template<typename DataContainer>
+cached_message<DataContainer>::cached_message() :
 	is_sent_(false)
 {
 	init();
 }
 
-template<typename T>
-cached_message<T>::cached_message(const cached_message& message) {
+template<typename DataContainer>
+cached_message<DataContainer>::cached_message(const cached_message& message) {
 	*this = message;
 }
 
-template<typename T>
-cached_message<T>::cached_message(const message_path& path,
+template<typename DataContainer>
+cached_message<DataContainer>::cached_message(const message_path& path,
 							   const message_policy& policy,
 							   const void* data,
 							   size_t data_size) :
@@ -117,24 +119,24 @@ cached_message<T>::cached_message(const message_path& path,
 		throw error(DEALER_MESSAGE_DATA_TOO_BIG_ERROR, "can't create message, message data too big.");
 	}
 
-	data_ = T(data, data_size);
+	data_ = DataContainer(data, data_size);
 	init();
 }
 
-template<typename T>
-cached_message<T>::~cached_message() {
+template<typename DataContainer>
+cached_message<DataContainer>::~cached_message() {
 }
 
-template<typename T> void
-cached_message<T>::init() {
+template<typename DataContainer> void
+cached_message<DataContainer>::init() {
 	gen_uuid();
 
 	// calc data size
 	container_size_ = sizeof(cached_message) + data_.size() + UUID_SIZE + path_.data_size();
 }
 
-template<typename T> void
-cached_message<T>::gen_uuid() {
+template<typename DataContainer> void
+cached_message<DataContainer>::gen_uuid() {
 	char buff[128];
 	memset(buff, 0, sizeof(buff));
 
@@ -145,18 +147,23 @@ cached_message<T>::gen_uuid() {
 	uuid_ = buff;
 }
 
-template<typename T> void*
-cached_message<T>::data() {
+template<typename DataContainer> void*
+cached_message<DataContainer>::data() {
 	return data_.data();
 }
 
-template<typename T> size_t
-cached_message<T>::size() const {
+template<typename DataContainer> size_t
+cached_message<DataContainer>::size() const {
 	return data_.size();
 }
 
-template<typename T> message_iface&
-cached_message<T>::operator = (const message_iface& rhs) {
+template<typename DataContainer> DataContainer&
+cached_message<DataContainer>::data_container() {
+	return data_;
+}
+
+template<typename DataContainer> message_iface&
+cached_message<DataContainer>::operator = (const message_iface& rhs) {
 	/*
 	boost::mutex::scoped_lock lock(mutex_);
 
@@ -165,7 +172,7 @@ cached_message<T>::operator = (const message_iface& rhs) {
 	}
 
 	try {
-		const cached_message<T>& dc = dynamic_cast<const cached_message<T>& >(rhs);
+		const cached_message<DataContainer>& dc = dynamic_cast<const cached_message<DataContainer>& >(rhs);
 
 		data_			= dc.data_;
 		path_			= dc.path_;
@@ -177,66 +184,66 @@ cached_message<T>::operator = (const message_iface& rhs) {
 	}
 	catch (const std::exception& ex) {
 		std::string error_msg = ex.what();
-		throw error(DEALER_MESSAGE_DATA_TOO_BIG_ERROR, "error in cached_message<T>::operator = (), details: " + error_msg);
+		throw error(DEALER_MESSAGE_DATA_TOO_BIG_ERROR, "error in cached_message<DataContainer>::operator = (), details: " + error_msg);
 	}
 	*/
 	return *this;
 }
 
-template<typename T> bool
-cached_message<T>::operator == (const message_iface& rhs) const {
+template<typename DataContainer> bool
+cached_message<DataContainer>::operator == (const message_iface& rhs) const {
 
 	bool comparison_result = false;
 
 	try {
-		const cached_message<T>& dc = dynamic_cast<const cached_message<T>& >(rhs);
+		const cached_message<DataContainer>& dc = dynamic_cast<const cached_message<DataContainer>& >(rhs);
 		comparison_result = (uuid_ == dc.uuid_);
 	}
 	catch (const std::exception& ex) {
 		std::string error_msg = ex.what();
-		throw error(DEALER_MESSAGE_DATA_TOO_BIG_ERROR, "error in cached_message<T>::operator = (), details: " + error_msg);
+		throw error(DEALER_MESSAGE_DATA_TOO_BIG_ERROR, "error in cached_message<DataContainer>::operator = (), details: " + error_msg);
 	}
 
 	return comparison_result;
 }
 
-template<typename T> bool
-cached_message<T>::operator != (const message_iface& rhs) const {
+template<typename DataContainer> bool
+cached_message<DataContainer>::operator != (const message_iface& rhs) const {
 	return !(*this == rhs);
 }
 
-template<typename T> const std::string&
-cached_message<T>::uuid() const {
+template<typename DataContainer> const std::string&
+cached_message<DataContainer>::uuid() const {
 	return uuid_;
 }
 
-template<typename T> bool
-cached_message<T>::is_sent() const {
+template<typename DataContainer> bool
+cached_message<DataContainer>::is_sent() const {
 	return is_sent_;
 }
 
-template<typename T> const time_value&
-cached_message<T>::sent_timestamp() const {
+template<typename DataContainer> const time_value&
+cached_message<DataContainer>::sent_timestamp() const {
 	return sent_timestamp_;
 }
 
-template<typename T> const message_path&
-cached_message<T>::path() const {
+template<typename DataContainer> const message_path&
+cached_message<DataContainer>::path() const {
 	return path_;
 }
 
-template<typename T> const message_policy&
-cached_message<T>::policy() const {
+template<typename DataContainer> const message_policy&
+cached_message<DataContainer>::policy() const {
 	return policy_;
 }
 
-template<typename T> size_t
-cached_message<T>::container_size() const {
+template<typename DataContainer> size_t
+cached_message<DataContainer>::container_size() const {
 	return container_size_;
 }
 
-template<typename T> void
-cached_message<T>::mark_as_sent(bool value) {
+template<typename DataContainer> void
+cached_message<DataContainer>::mark_as_sent(bool value) {
 	boost::mutex::scoped_lock lock(mutex_);
 
 	if (value) {
@@ -249,8 +256,8 @@ cached_message<T>::mark_as_sent(bool value) {
 	}
 }
 
-template<typename T> bool
-cached_message<T>::is_expired() {
+template<typename DataContainer> bool
+cached_message<DataContainer>::is_expired() {
 	if (policy_.deadline == 0.0f) {
 		return false;
 	}
@@ -262,8 +269,8 @@ cached_message<T>::is_expired() {
 	return false;
 }
 
-template<typename T> std::string
-cached_message<T>::json() {
+template<typename DataContainer> std::string
+cached_message<DataContainer>::json() {
 	Json::Value envelope(Json::objectValue);
 	Json::FastWriter writer;
 

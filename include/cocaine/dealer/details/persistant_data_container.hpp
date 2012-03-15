@@ -23,6 +23,7 @@
 #include <boost/thread/mutex.hpp>
 
 #include "cocaine/dealer/structs.hpp"
+#include "cocaine/dealer/details/eblob.hpp"
 
 namespace cocaine {
 namespace dealer {
@@ -42,6 +43,8 @@ public:
 	size_t size() const;
 	bool empty() const;
 	void clear();
+
+	void set_eblob(eblob blob);
 
 private:
 	// sha1 size in bytes
@@ -63,7 +66,7 @@ private:
 
 private:
 	// data
-	unsigned char* data_;
+	eblob blob_;
 	size_t size_;
 
 	// data sha1 signature
