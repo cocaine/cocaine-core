@@ -28,7 +28,7 @@ class filesystem_monitor_t:
 
         virtual ~filesystem_monitor_t();
 
-        virtual Json::Value info() const;
+        virtual Json::Value info() /* const */;
 
     private:
         void event(ev::stat&, int);

@@ -29,7 +29,7 @@ drifting_timer_t::drifting_timer_t(engine_t& engine, const std::string& method, 
     recurring_timer_t(engine, method, args)
 { }
 
-Json::Value drifting_timer_t::info() const {
+Json::Value drifting_timer_t::info() {
     Json::Value result(recurring_timer_t::info());
 
     result["type"] = "drifting-timer";

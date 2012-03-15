@@ -22,13 +22,11 @@
 using namespace cocaine::engine::drivers;
 using namespace cocaine::networking;
 
-lsd_job_t::lsd_job_t(
-    const unique_id_t::identifier_type& id_, 
-    lsd_server_t& driver, 
-    const client::policy_t& policy, 
-    const blob_t& request, 
-    const route_t& route
-):
+lsd_job_t::lsd_job_t(const unique_id_t::identifier_type& id_, 
+                     lsd_server_t& driver, 
+                     const client::policy_t& policy, 
+                     const blob_t& request, 
+                     const route_t& route):
     unique_id_t(id_),
     job_t(driver, policy, request),
     m_route(route)
@@ -92,7 +90,7 @@ lsd_server_t::lsd_server_t(engine_t& engine, const std::string& method, const Js
     zeromq_server_t(engine, method, args, ZMQ_ROUTER)
 { }
 
-Json::Value lsd_server_t::info() const {
+Json::Value lsd_server_t::info() {
     Json::Value result(zeromq_server_t::info());
 
     result["type"] = "server+lsd";

@@ -33,7 +33,7 @@ filesystem_monitor_t::~filesystem_monitor_t() {
     m_watcher.stop();
 }
 
-Json::Value filesystem_monitor_t::info() const {
+Json::Value filesystem_monitor_t::info() {
     Json::Value result(driver_t::info());
 
     result["type"] = "filesystem-monitor";

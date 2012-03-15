@@ -18,6 +18,7 @@
 #include "cocaine/forwards.hpp"
 #include "cocaine/object.hpp"
 
+#include "cocaine/events.hpp"
 #include "cocaine/networking.hpp"
 
 #if BOOST_VERSION >= 103600
@@ -48,7 +49,9 @@ class driver_t:
         void audit(timing_type type, ev::tstamp value);
 
         // Retrieves the runtime statistics from the driver.
-        virtual Json::Value info() const;
+        virtual Json::Value info() /* const */;
+
+        // void emit(const events::emit_t& event);
 
     public:
         inline const engine_t& engine() {

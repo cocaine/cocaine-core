@@ -39,7 +39,7 @@ class drifting_timer_t:
                          const Json::Value& args);
 
         // Driver interface.
-        virtual Json::Value info() const;
+        virtual Json::Value info() /* const */;
 
         void rearm();
 

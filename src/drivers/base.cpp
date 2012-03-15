@@ -11,6 +11,8 @@
 // limitations under the License.
 //
 
+#include <iomanip>
+
 #include "cocaine/drivers/base.hpp"
 
 #include "cocaine/engine.hpp"
@@ -57,7 +59,7 @@ void driver_t::audit(timing_type type, ev::tstamp value) {
     }
 }
 
-Json::Value driver_t::info() const {
+Json::Value driver_t::info() {
     Json::Value results(Json::objectValue);
 
 #if BOOST_VERSION >= 103600
@@ -73,55 +75,22 @@ Json::Value driver_t::info() const {
     return results;
 }
 
-/*
-void driver_t::emit() {
-    publisher_t& publisher = static_cast<publisher_t&>(m_driver);
+// void driver_t::emit(const events::emit_t& event) {
+//     if(!m_emitter) {
+//         return;
+//     }
     
-    if(publisher.socket() && object.isObject()) {
-        zmq::message_t message;
-        ev::tstamp now = ev::get_default_loop().now();
+//     zmq::message_t message;
+//     std::stringstream envelope;
+    
+//     ev::tstamp now = ev::get_default_loop().now();
 
-        // Disassemble and send in the envelopes
-        Json::Value::Members members(object.getMemberNames());
+//     envelope << event.key << " " << context().config.runtime.hostname << " "
+//              << std::fixed << std::setprecision(3) << now;
 
-        for(Json::Value::Members::iterator it = members.begin(); it != members.end(); ++it) {
-            std::string field(*it);
-            std::ostringstream envelope;
-            
-            envelope << m_driver.identity() << " " << field << " " // << m_context.config.core.hostname << " "
-                     << std::fixed << std::setprecision(3) << now;
+//     message.rebuild(envelope.str().size());
+//     memcpy(message.data(), envelope.str().data(), envelope.str().size());
 
-            message.rebuild(envelope.str().size());
-            memcpy(message.data(), envelope.str().data(), envelope.str().size());
-            
-            if(publisher.socket()->send(message, ZMQ_SNDMORE)) {
-                Json::Value value(object[field]);
-                std::string result;
-
-                switch(value.type()) {
-                    case Json::booleanValue:
-                        result = value.asBool() ? "true" : "false";
-                        break;
-                    case Json::intValue:
-                    case Json::uintValue:
-                        result = boost::lexical_cast<std::string>(value.asInt());
-                        break;
-                    case Json::realValue:
-                        result = boost::lexical_cast<std::string>(value.asDouble());
-                        break;
-                    case Json::stringValue:
-                        result = value.asString();
-                        break;
-                    default:
-                        result = boost::lexical_cast<std::string>(value);
-                }
-
-                message.rebuild(result.size());
-                memcpy(message.data(), result.data(), result.size());
-                
-                (void)publisher.socket()->send(message);
-            }
-        }
-    }
-}
-*/
+//     m_emitter->send(message, ZMQ_SNDMORE);
+//     m_emitter->send(event.message);        
+// }

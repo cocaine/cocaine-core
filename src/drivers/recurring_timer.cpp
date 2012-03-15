@@ -34,7 +34,7 @@ recurring_timer_t::~recurring_timer_t() {
     m_watcher.stop();
 }
 
-Json::Value recurring_timer_t::info() const {
+Json::Value recurring_timer_t::info() {
     Json::Value result(driver_t::info());
 
     result["type"] = "recurring-timer";

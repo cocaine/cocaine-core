@@ -48,7 +48,7 @@ class zeromq_server_t:
         virtual ~zeromq_server_t();
 
         // Driver interface.
-        virtual Json::Value info() const;
+        virtual Json::Value info() /* const */;
 
     public:
         inline networking::channel_t& socket() {

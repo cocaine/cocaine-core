@@ -29,7 +29,7 @@ class recurring_timer_t:
         virtual ~recurring_timer_t();
 
         // Driver interface.
-        virtual Json::Value info() const;
+        virtual Json::Value info() /* const */;
 
     private:
         void event(ev::timer&, int);

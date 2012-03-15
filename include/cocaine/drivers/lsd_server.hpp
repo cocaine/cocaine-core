@@ -53,7 +53,7 @@ class lsd_server_t:
                      const Json::Value& args);
 
         // Driver interface.
-        virtual Json::Value info() const;
+        virtual Json::Value info() /* const */;
         
     protected:
         // Server interface.

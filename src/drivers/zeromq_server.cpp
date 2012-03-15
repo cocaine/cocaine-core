@@ -24,11 +24,9 @@
 using namespace cocaine::engine::drivers;
 using namespace cocaine::networking;
 
-zeromq_server_job_t::zeromq_server_job_t(
-    zeromq_server_t& driver,
-    const blob_t& request,
-    const route_t& route
-):
+zeromq_server_job_t::zeromq_server_job_t(zeromq_server_t& driver,
+                                         const blob_t& request,
+                                         const route_t& route):
     job_t(driver, request),
     m_route(route)
 { }
@@ -88,7 +86,7 @@ zeromq_server_t::~zeromq_server_t() {
     m_pumper.stop();
 }
 
-Json::Value zeromq_server_t::info() const {
+Json::Value zeromq_server_t::info() {
     Json::Value result(driver_t::info());
 
     result["type"] = "zeromq-server";
