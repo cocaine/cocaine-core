@@ -35,7 +35,8 @@ using namespace cocaine::engine::slave;
 //             target(slave)
 //         { }
 
-//         bool operator()(pool_map_t::pointer slave) const {
+//         template<class T>
+//         bool operator()(const T& slave) const {
 //             return *slave->second == target;
 //         }
     

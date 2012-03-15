@@ -49,8 +49,8 @@ namespace {
     };
 
     struct specific_slave {
-        specific_slave(const slave_t& target_):
-            target(target_)
+        specific_slave(const slave_t& slave):
+            target(slave)
         { }
 
         template<class T>
