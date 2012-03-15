@@ -43,17 +43,17 @@ void file_storage_t::put(const std::string& ns,
         try {
             fs::create_directories(store_path);
         } catch(const std::runtime_error& e) {
-            throw std::runtime_error("cannot create " + store_path.string());
+            throw storage_error_t("cannot create " + store_path.string());
         }
     } else if(fs::exists(store_path) && !fs::is_directory(store_path)) {
-        throw std::runtime_error(store_path.string() + " is not a directory");
+        throw storage_error_t(store_path.string() + " is not a directory");
     }
     
     fs::path file_path(store_path / key);
     fs::ofstream stream(file_path, fs::ofstream::out | fs::ofstream::trunc);
    
     if(!stream) {
-        throw std::runtime_error("unable to open " + file_path.string()); 
+        throw storage_error_t("unable to open " + file_path.string()); 
     }     
 
     std::string json(Json::StyledWriter().write(value));
@@ -78,7 +78,7 @@ Json::Value file_storage_t::get(const std::string& ns, const std::string& key) {
         Json::Reader reader(Json::Features::strictMode());
         
         if(!reader.parse(stream, root)) {
-            throw std::runtime_error("corrupted data in " + file_path.string());
+            throw storage_error_t("corrupted data in " + file_path.string());
         }
     }
 
@@ -94,6 +94,7 @@ Json::Value file_storage_t::all(const std::string& ns) {
     }
 
     typedef boost::filter_iterator<is_regular_file, fs::directory_iterator> file_iterator;
+    
     file_iterator it = file_iterator(is_regular_file(), fs::directory_iterator(store_path)), 
                   end;
 
@@ -124,8 +125,8 @@ void file_storage_t::remove(const std::string& ns, const std::string& key) {
     if(fs::exists(file_path)) {
         try {
             fs::remove(file_path);
-        } catch(...) {
-            throw std::runtime_error("unable to remove " + file_path.string());
+        } catch(const std::runtime_error& e) {
+            throw storage_error_t("unable to remove " + file_path.string());
         }
     }
 }

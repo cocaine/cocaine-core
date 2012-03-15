@@ -37,7 +37,7 @@ bool eblob_collector_t::callback(const zbr::eblob_disk_control * dco, const void
 
     if(!m_reader.parse(value, object)) {
         // TODO: Have to find out the storage name somehow.
-        throw std::runtime_error("corrupted data");
+        throw storage_error_t("corrupted data");
     } 
    
     // TODO: Have to find out the key somehow.
@@ -67,10 +67,10 @@ eblob_storage_t::eblob_storage_t(context_t& ctx):
         try {
             fs::create_directories(m_storage_path);
         } catch(const std::runtime_error& e) {
-            throw std::runtime_error("unable to create " + m_storage_path.string());
+            throw storage_error_t("unable to create " + m_storage_path.string());
         }
     } else if(fs::exists(m_storage_path) && !fs::is_directory(m_storage_path)) {
-        throw std::runtime_error(m_storage_path.string() + " is not a directory");
+        throw storage_error_t(m_storage_path.string() + " is not a directory");
     }
 }
 
@@ -95,7 +95,7 @@ void eblob_storage_t::put(const std::string& ns, const std::string& key, const J
             boost::tie(it, boost::tuples::ignore) = m_eblobs.insert(ns, new zbr::eblob(&cfg));
         } catch(const std::runtime_error& e) {
             // TODO: Have to do something more sophisticated here.
-            throw;
+            throw storage_error_t(e.what());
         }
     }
         
@@ -106,7 +106,7 @@ void eblob_storage_t::put(const std::string& ns, const std::string& key, const J
         it->second->write_hashed(key, object, 0);
     } catch(const std::runtime_error& e) {
         // TODO: Have to do something more sophisticated here.
-        throw;
+        throw storage_error_t(e.what());
     }
 }
 
@@ -120,7 +120,7 @@ bool eblob_storage_t::exists(const std::string& ns, const std::string& key) {
             object = it->second->read_hashed(key, 0, 0);
         } catch(const std::runtime_error& e) {
             // TODO: Have to do something more sophisticated here.
-            throw;
+            throw storage_error_t(e.what());
         }
 
         return !object.empty();
@@ -141,11 +141,11 @@ Json::Value eblob_storage_t::get(const std::string& ns, const std::string& key) 
             object = it->second->read_hashed(key, 0, 0);
         } catch(const std::runtime_error& e) {
             // TODO: Have to do something more sophisticated here.
-            throw;
+            throw storage_error_t(e.what());
         }
 
         if(!object.empty() && !reader.parse(object, result)) {
-            throw std::runtime_error("corrupted data in '" + ns + "'");
+            throw storage_error_t("corrupted data in '" + ns + "'");
         }
     }
 
@@ -173,7 +173,7 @@ void eblob_storage_t::remove(const std::string& ns, const std::string& key) {
         try {
             it->second->remove_hashed(key);
         } catch(const std::runtime_error& e) {
-            throw std::runtime_error("unable to remove from '" + ns + "'");
+            throw storage_error_t("unable to remove from '" + ns + "'");
         }
     }
 }

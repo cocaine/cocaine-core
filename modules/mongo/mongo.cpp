@@ -28,10 +28,10 @@ mongo_storage_t::mongo_storage_t(context_t& ctx) try:
     m_uri(ctx.config.storage.uri, ConnectionString::SET)
 {
     if(!m_uri.isValid()) {
-        throw std::runtime_error("invalid mongodb uri");
+        throw storage_error_t("invalid mongodb uri");
     }
 } catch(const DBException& e) {
-    throw std::runtime_error(e.what());
+    throw storage_error_t(e.what());
 }
 
 void mongo_storage_t::put(const std::string& ns,
@@ -56,7 +56,7 @@ void mongo_storage_t::put(const std::string& ns,
         connection->update(resolve(ns), BSON("key" << key), object, true); // Upsert
         connection.done();
     } catch(const DBException& e) {
-        throw std::runtime_error(e.what());
+        throw storage_error_t(e.what());
     }
 }
 
@@ -68,7 +68,7 @@ bool mongo_storage_t::exists(const std::string& ns, const std::string& key) {
         result = connection->count(resolve(ns), BSON("key" << key));
         connection.done();
     } catch(const DBException& e) {
-        throw std::runtime_error(e.what());
+        throw storage_error_t(e.what());
     }
 
     return result;
@@ -84,14 +84,14 @@ Json::Value mongo_storage_t::get(const std::string& ns, const std::string& key) 
         object = connection->findOne(resolve(ns), BSON("key" << key));
         connection.done();
     } catch(const DBException& e) {
-        throw std::runtime_error(e.what());
+        throw storage_error_t(e.what());
     }
 
     if(!object.isEmpty()) {
         if(reader.parse(object.jsonString(), result)) {
             return result["object"];
         } else {
-            throw std::runtime_error("corrupted data in '" + ns + "'");
+            throw storage_error_t("corrupted data in '" + ns + "'");
         }
     }
 
@@ -110,13 +110,13 @@ Json::Value mongo_storage_t::all(const std::string& ns) {
             if(reader.parse(cursor->nextSafe().jsonString(), result)) {
                 root[result["key"].asString()] = result["object"];
             } else {
-                throw std::runtime_error("corrupted data in '" + ns + "'");
+                throw storage_error_t("corrupted data in '" + ns + "'");
             }
         }
         
         connection.done();
     } catch(const DBException& e) {
-        throw std::runtime_error(e.what());
+        throw storage_error_t(e.what());
     }
 
     return root;
@@ -128,7 +128,7 @@ void mongo_storage_t::remove(const std::string& ns, const std::string& key) {
         connection->remove(resolve(ns), BSON("key" << key));
         connection.done();
     } catch(const DBException& e) {
-        throw std::runtime_error(e.what());
+        throw storage_error_t(e.what());
     }
 }
 
@@ -138,7 +138,7 @@ void mongo_storage_t::purge(const std::string& ns) {
         connection->remove(resolve(ns), BSONObj());
         connection.done();
     } catch(const DBException& e) {
-        throw std::runtime_error(e.what());
+        throw storage_error_t(e.what());
     }
 }
 
