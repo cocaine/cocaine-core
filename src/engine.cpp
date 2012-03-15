@@ -37,31 +37,6 @@ void job_queue_t::push(const_reference job) {
     }
 }
 
-// Selectors
-// ---------
-
-namespace {
-    struct idle_slave {
-        template<class T>
-        bool operator()(const T& slave) const {
-            return slave->second->template state_downcast<const slave::idle*>();
-        }
-    };
-
-    struct specific_slave {
-        specific_slave(const slave_t& slave):
-            target(slave)
-        { }
-
-        template<class T>
-        bool operator()(const T& slave) const {
-            return *slave->second == target;
-        }
-    
-        const slave_t& target;
-    };
-}
-
 // Basic stuff
 // -----------
 
@@ -281,7 +256,7 @@ Json::Value engine_t::stop() {
         // NOTE: Avoid signaling dead or just born slaves.
         if(it->second->state_downcast<const slave::alive*>()) {
             unicast(
-                specific_slave(*it->second),
+                select::specific_slave(*it->second),
                 packed
             );
         }
@@ -362,7 +337,7 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
 
     pool_map_t::iterator it(
         unicast(
-            idle_slave(),
+            select::idle_slave(),
             packed
         )
     );

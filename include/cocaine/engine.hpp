@@ -55,6 +55,34 @@ class job_queue_t:
         void push(const_reference job);
 };
 
+// Selectors
+// ---------
+
+namespace select {
+    struct idle_slave {
+        template<class T>
+        bool operator()(const T& slave) const {
+            return slave->second->template state_downcast<const slave::idle*>();
+        }
+    };
+
+    struct specific_slave {
+        specific_slave(const slave_t& slave):
+            target(slave)
+        { }
+
+        template<class T>
+        bool operator()(const T& slave) const {
+            return *slave->second == target;
+        }
+    
+        const slave_t& target;
+    };
+}
+
+// Engine
+// ------
+
 class engine_t:
     public boost::noncopyable,
     public object_t

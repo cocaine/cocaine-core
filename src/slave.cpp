@@ -29,21 +29,6 @@
 using namespace cocaine::engine;
 using namespace cocaine::engine::slave;
 
-// namespace {
-//     struct this_slave {
-//         this_slave(const slave_t& slave):
-//             target(slave)
-//         { }
-
-//         template<class T>
-//         bool operator()(const T& slave) const {
-//             return *slave->second == target;
-//         }
-    
-//         const slave_t& target;
-//     };
-// }
-
 slave_t::slave_t(engine_t& engine):
     m_engine(engine)
 {
@@ -82,7 +67,7 @@ void slave_t::react(const events::heartbeat_t& event) {
         // );
 
         // m_engine.unicast(
-        //     this_slave(*this),
+        //     select::specific_slave(*this),
         //     pack
         // );
     }
