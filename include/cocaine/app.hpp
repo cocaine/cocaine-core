@@ -29,8 +29,6 @@ class app_t {
 
     public:
         std::string name;
-        std::string endpoint;
-
         Json::Value manifest;
 
         struct policy_t {
@@ -44,6 +42,15 @@ class app_t {
 
     private:
         void initialize(context_t& ctx);
+};
+
+class endpoint {
+    public:
+        endpoint(const std::string& name);
+        operator std::string() const;
+
+    private:
+        std::string m_endpoint;
 };
 
 }}

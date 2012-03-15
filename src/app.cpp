@@ -42,12 +42,6 @@ app_t::app_t(context_t& ctx, const std::string& name_):
 }
 
 void app_t::initialize(context_t& ctx) {
-    endpoint = boost::algorithm::join(
-        boost::assign::list_of
-            (std::string("ipc:///var/run/cocaine"))
-            (name),
-        "/");
-
     policy.heartbeat_timeout = manifest["engine"].get(
         "heartbeat-timeout",
         ctx.config.defaults.heartbeat_timeout
@@ -67,4 +61,16 @@ void app_t::initialize(context_t& ctx) {
         "queue-limit",
         ctx.config.defaults.queue_limit
     ).asUInt();
+}
+
+endpoint::endpoint(const std::string& name) {
+    m_endpoint = boost::algorithm::join(
+        boost::assign::list_of
+            (std::string("ipc:///var/run/cocaine"))
+            (name),
+        "/");
+}
+
+endpoint::operator std::string() const {
+    return m_endpoint;
 }
