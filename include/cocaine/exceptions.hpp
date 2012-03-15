@@ -18,11 +18,29 @@
 
 namespace cocaine {
 
+class authorization_error_t:
+    public std::runtime_error
+{
+    public:
+        authorization_error_t(const std::string& what):
+            std::runtime_error(what)
+        { }
+};
+
 class registry_error_t:
     public std::runtime_error
 {
     public:
         registry_error_t(const std::string& what):
+            std::runtime_error(what)
+        { }
+};
+
+class storage_error_t:
+    public std::runtime_error
+{
+    public:
+        storage_error_t(const std::string& what):
             std::runtime_error(what)
         { }
 };
