@@ -64,15 +64,29 @@ PyObject* python_io_t::read(python_io_t * self, PyObject * args, PyObject * kwar
 }
 
 PyObject* python_io_t::readline(python_io_t * self, PyObject * args, PyObject * kwargs) {
-    Py_RETURN_NONE;
+    PyErr_SetString(
+        PyExc_NotImplementedError,
+        "Method is not yet implemented"
+    );
+
+    return NULL;
 }
 
 PyObject* python_io_t::readlines(python_io_t * self, PyObject * args, PyObject * kwargs) {
-    Py_RETURN_NONE;
+    PyErr_SetString(
+        PyExc_NotImplementedError,
+        "Method is not yet implemented"
+    );
+
+    return NULL;
 }
 
 PyObject* python_io_t::iter_next(python_io_t * it) {
-    PyObject *item;
+    PyErr_SetString(
+        PyExc_NotImplementedError,
+        "Method is not yet implemented"
+    );
+    
     return NULL;
 }
 
