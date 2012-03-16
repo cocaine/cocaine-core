@@ -132,4 +132,3 @@ void auth_t::verify(const blob_t& message,
 
     EVP_MD_CTX_cleanup(m_context);
 }
-

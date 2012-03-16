@@ -126,4 +126,3 @@ processing::~processing() {
         ev::get_default_loop().now() - m_timestamp
     );
 }
-

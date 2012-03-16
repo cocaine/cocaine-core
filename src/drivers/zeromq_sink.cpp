@@ -53,4 +53,3 @@ void zeromq_sink_t::process(ev::idle&, int) {
         );
     } while(m_socket.more()); 
 }
-

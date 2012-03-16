@@ -113,4 +113,3 @@ PyObject* python_io_t::iter_next(python_io_t * it) {
     
     return NULL;
 }
-

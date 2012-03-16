@@ -135,4 +135,3 @@ void file_storage_t::purge(const std::string& ns) {
     fs::path store_path(m_storage_path / ns);
     fs::remove_all(store_path);
 }
-

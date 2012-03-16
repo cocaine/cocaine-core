@@ -206,4 +206,3 @@ void overseer_t::invoke(const std::string& method) {
 void overseer_t::terminate() {
     m_loop.unloop();
 } 
-

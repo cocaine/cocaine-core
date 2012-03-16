@@ -49,4 +49,3 @@ void filesystem_monitor_t::event(ev::stat&, int) {
         )
     );
 }
-
