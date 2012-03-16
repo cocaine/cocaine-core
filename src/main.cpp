@@ -130,10 +130,18 @@ int main(int argc, char * argv[]) {
         )
     );
 
+    std::auto_ptr<context_t> ctx;
+
     // Initialize the runtime context.
-    std::auto_ptr<context_t> ctx(
-        new context_t(cfg, sink)
-    );
+    try {
+        ctx.reset(new context(cfg, sink));
+    } catch(const std::exception& e) {
+        std::cout << "Unable to initialize the runtime context: " 
+                  << e.what() 
+                  << std::endl;
+        
+        return EXIT_FAILURE;
+    }
 
     // Get the logger.
     boost::shared_ptr<logging::logger_t> log(
@@ -152,7 +160,7 @@ int main(int argc, char * argv[]) {
                 )
             );
         } catch(const std::exception& e) {
-            log->error("unable to start slave - %s", e.what());
+            log->error("unable to start the slave - %s", e.what());
             return EXIT_FAILURE;
         }
 
@@ -184,7 +192,7 @@ int main(int argc, char * argv[]) {
         try {
             core.reset(new core::core_t(*ctx));
         } catch(const std::exception& e) {
-            log->error("unable to start core - %s", e.what());
+            log->error("unable to start the core - %s", e.what());
             return EXIT_FAILURE;
         }
 
