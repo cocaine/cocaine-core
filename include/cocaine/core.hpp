@@ -15,20 +15,18 @@
 #define COCAINE_CORE_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/forwards.hpp"
-#include "cocaine/object.hpp"
 
 #include "cocaine/auth.hpp"
+#include "cocaine/context.hpp"
 #include "cocaine/networking.hpp"
 
 namespace cocaine { namespace core {
 
 class core_t:
-    public boost::noncopyable,
-    public object_t
+    public boost::noncopyable
 {
     public:
-        core_t(context_t& ctx);
+        core_t(const config_t& config);
         ~core_t();
 
         void run();
@@ -56,11 +54,9 @@ class core_t:
         void recover();
 
     private:
+        context_t m_context;
         boost::shared_ptr<logging::logger_t> m_log;
         
-        // Authorization subsystem.
-        crypto::auth_t m_auth;
-
         // Engines.
 #if BOOST_VERSION >= 104000
         typedef boost::ptr_unordered_map<
@@ -76,9 +72,6 @@ class core_t:
         // Event loop
         ev::default_loop m_loop;
 
-        // Server uptime.
-        const ev::tstamp m_birthstamp;
-        
         // Event watchers.
         ev::sig m_sigint, m_sigterm, m_sigquit, m_sighup;
         ev::io m_watcher;
@@ -94,6 +87,12 @@ class core_t:
         // Automatic discovery support.
         boost::shared_ptr<ev::timer> m_announce_timer;
         boost::shared_ptr<networking::socket_t> m_announces;
+        
+        // Authorization subsystem.
+        crypto::auth_t m_auth;
+        
+        // Server uptime.
+        const ev::tstamp m_birthstamp;
 };
 
 }}

@@ -15,7 +15,6 @@
 #define COCAINE_OBJECT_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/forwards.hpp"
 
 namespace cocaine {
 

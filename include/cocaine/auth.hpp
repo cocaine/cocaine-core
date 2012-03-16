@@ -17,8 +17,6 @@
 #include <openssl/evp.h>
 
 #include "cocaine/common.hpp"
-#include "cocaine/forwards.hpp"
-#include "cocaine/object.hpp"
 
 #include "cocaine/helpers/blob.hpp"
 
@@ -26,8 +24,7 @@ namespace cocaine { namespace crypto {
 
     
 class auth_t:
-    public boost::noncopyable,
-    public object_t
+    public boost::noncopyable
 {
     public:
         auth_t(context_t& ctx);
@@ -42,7 +39,7 @@ class auth_t:
     private:
         boost::shared_ptr<logging::logger_t> m_log;
 
-        EVP_MD_CTX * m_md_context;
+        EVP_MD_CTX * m_context;
 
         typedef std::map<const std::string, EVP_PKEY*> key_map_t;
         key_map_t m_keys;

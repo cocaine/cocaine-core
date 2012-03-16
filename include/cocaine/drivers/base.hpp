@@ -15,11 +15,10 @@
 #define COCAINE_DRIVER_BASE_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/forwards.hpp"
-#include "cocaine/object.hpp"
 
 #include "cocaine/events.hpp"
 #include "cocaine/networking.hpp"
+#include "cocaine/object.hpp"
 
 #if BOOST_VERSION >= 103600
 # include <boost/accumulators/accumulators.hpp>

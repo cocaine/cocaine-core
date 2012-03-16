@@ -15,7 +15,6 @@
 #define COCAINE_GENERIC_SLAVE_BACKEND_PLUGIN_INTERFACE_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/forwards.hpp"
 #include "cocaine/object.hpp"
 
 #include "cocaine/helpers/blob.hpp"
@@ -56,7 +55,7 @@ class plugin_t:
         virtual ~plugin_t();
 
         virtual void initialize(const app_t& app) = 0;
-        virtual void invoke(io_t& io, const std::string& method) = 0;
+        virtual void invoke(const std::string& method, io_t& io) = 0;
 };
 
 }}

@@ -15,6 +15,7 @@
 
 #include "cocaine/drivers/base.hpp"
 
+#include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
 
 using namespace cocaine::engine::drivers;
@@ -31,7 +32,7 @@ driver_t::driver_t(engine_t& engine, const std::string& method, const Json::Valu
     std::string endpoint(args.get("emitter", "").asString());
 
     if(!endpoint.empty()) {
-        m_emitter.reset(new networking::socket_t(context(), ZMQ_PUB));
+        m_emitter.reset(new networking::socket_t(context().io(), ZMQ_PUB));
         m_emitter->bind(endpoint);
     }
 }

@@ -22,11 +22,11 @@
 #endif
 
 #include "cocaine/common.hpp"
-#include "cocaine/forwards.hpp"
-#include "cocaine/object.hpp"
 
 #include "cocaine/app.hpp"
+#include "cocaine/logging.hpp"
 #include "cocaine/networking.hpp"
+#include "cocaine/object.hpp"
 #include "cocaine/slave.hpp"
 
 namespace cocaine { namespace engine {

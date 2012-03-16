@@ -17,7 +17,6 @@
 #include <boost/statechart/event.hpp>
 
 #include "cocaine/common.hpp"
-#include "cocaine/forwards.hpp"
 
 #include "cocaine/dealer/types.hpp"
 
@@ -29,15 +28,15 @@ struct heartbeat_t:
     public sc::event<heartbeat_t>
 { };
 
-// struct configure_t:
-//     public sc::event<configure_t>
-// {
-//     configure_t(const config_t& config_):
-//         config(config_)
-//     { }
+struct configure_t:
+    public sc::event<configure_t>
+{
+    configure_t(const config_t& config_):
+        config(config_)
+    { }
 
-//     const config_t& config;
-// };
+    const config_t& config;
+};
 
 struct terminate_t:
     public sc::event<terminate_t>

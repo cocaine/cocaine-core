@@ -24,9 +24,8 @@
 #endif
 
 #include "cocaine/common.hpp"
-#include "cocaine/object.hpp"
 
-#include "cocaine/context.hpp"
+#define HOSTNAME_MAX_LENGTH 256
 
 namespace cocaine { namespace networking {
 
@@ -35,18 +34,15 @@ using namespace boost::tuples;
 typedef std::vector<std::string> route_t;
 
 class socket_t: 
-    public boost::noncopyable,
-    public object_t
+    public boost::noncopyable
 {
     public:
-        socket_t(context_t& ctx, int type):
-            object_t(ctx),
-            m_socket(ctx.io(), type)
+        socket_t(zmq::context_t& ctx, int type):
+            m_socket(ctx, type)
         { }
 
-        socket_t(context_t& ctx, int type, const std::string& route):
-            object_t(ctx),
-            m_socket(ctx.io(), type)
+        socket_t(zmq::context_t& ctx, int type, const std::string& route):
+            m_socket(ctx, type)
         {
             setsockopt(ZMQ_IDENTITY, route.data(), route.size());
         }
@@ -57,10 +53,14 @@ class socket_t:
             // Try to determine the connection string for clients.
             // XXX: Fix it when migrating to ZeroMQ 3.1+
             size_t position = endpoint.find_last_of(":");
+            char hostname[HOSTNAME_MAX_LENGTH];
 
+            if(gethostname(hostname, HOSTNAME_MAX_LENGTH) != 0) {
+                throw system_error_t("failed to determine the hostname");
+            }
+            
             if(position != std::string::npos) {
-                m_endpoint = context().config.runtime.hostname + 
-                    endpoint.substr(position, std::string::npos);
+                m_endpoint = hostname + endpoint.substr(position, std::string::npos);
             } else {
                 m_endpoint = "<local>";
             }
@@ -188,11 +188,11 @@ class channel_t:
     public socket_t
 {
     public:
-        channel_t(context_t& ctx, int type):
+        channel_t(zmq::context_t& ctx, int type):
             socket_t(ctx, type)
         { }
 
-        channel_t(context_t& ctx, int type, const std::string& route):
+        channel_t(zmq::context_t& ctx, int type, const std::string& route):
             socket_t(ctx, type, route)
         { }
 

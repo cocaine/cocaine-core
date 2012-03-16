@@ -11,15 +11,16 @@
 // limitations under the License.
 //
 
-#include <iostream>
-
 #include <boost/program_options.hpp>
+#include <iostream>
 
 #include "cocaine/config.hpp"
 
+#include "cocaine/context.hpp"
 #include "cocaine/core.hpp"
-#include "cocaine/loggers/syslog.hpp"
 #include "cocaine/overseer.hpp"
+
+#include "cocaine/loggers/syslog.hpp"
 
 #include "cocaine/helpers/pid_file.hpp"
 
@@ -55,8 +56,8 @@ int main(int argc, char * argv[]) {
 
     slave_options.add_options()
         ("slave", "launch a new slave")
-        ("slave:id", po::value<std::string>())
-        ("slave:app", po::value<std::string>());
+        ("slave:id", po::value<std::string>(&cfg.slave.id))
+        ("slave:app:name", po::value<std::string>(&cfg.slave.name));
 
     general_options.add_options()
         ("help,h", "show this message")
@@ -69,7 +70,7 @@ int main(int argc, char * argv[]) {
 
     core_options.add_options()
         ("core:modules", po::value<std::string>
-            (&cfg.core.modules)->default_value("/usr/lib/cocaine"),
+            (&cfg.registry.modules)->default_value("/usr/lib/cocaine"),
             "where to load modules from")
         ("core:announce-endpoint", po::value<std::string>
             (&cfg.core.announce_endpoint),
@@ -119,57 +120,38 @@ int main(int argc, char * argv[]) {
         return EXIT_SUCCESS;
     }
     
-    // Runtime context setup
-    // ---------------------
+    // Startup
+    // -------
 
-    // Initialize the logging sink.
-    std::auto_ptr<logging::sink_t> sink(
+    cfg.sink.reset(
         new logging::syslog_t(
             "cocaine",
             vm.count("verbose") ? logging::debug : logging::info
         )
     );
 
-    std::auto_ptr<context_t> ctx;
-
-    // Initialize the runtime context.
-    try {
-        ctx.reset(new context_t(cfg, sink));
-    } catch(const std::exception& e) {
-        std::cout << "Unable to initialize the runtime context: " 
-                  << e.what() 
-                  << std::endl;
-        
-        return EXIT_FAILURE;
-    }
-
-    // Get the logger.
     boost::shared_ptr<logging::logger_t> log(
-        ctx->log("main")
+        cfg.sink->get("main")
     );
 
     if(vm.count("slave")) {
         std::auto_ptr<engine::overseer_t> slave;
 
         try {
-            slave.reset(
-                new engine::overseer_t(
-                    *ctx,
-                    vm["slave:id"].as<std::string>(),
-                    vm["slave:app"].as<std::string>()
-                )
-            );
+            slave.reset(new engine::overseer_t(cfg));
         } catch(const std::exception& e) {
             log->error("unable to start the slave - %s", e.what());
             return EXIT_FAILURE;
         }
 
         slave->run();
-    } else {
+    } 
+ 
+    else {
         std::auto_ptr<helpers::pid_file_t> pidfile;
         std::auto_ptr<core::core_t> core;
 
-        log->info("starting core");
+        log->info("starting the core");
 
         if(vm.count("daemonize")) {
             if(daemon(0, 0) < 0) {
@@ -190,15 +172,15 @@ int main(int argc, char * argv[]) {
         }
  
         try {
-            core.reset(new core::core_t(*ctx));
+            core.reset(new core::core_t(cfg));
         } catch(const std::exception& e) {
             log->error("unable to start the core - %s", e.what());
             return EXIT_FAILURE;
         }
 
         core->run();
-    
-        log->debug("terminated");
+
+        log->info("the core has terminated");
     }
 
     return EXIT_SUCCESS;

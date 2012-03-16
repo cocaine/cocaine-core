@@ -18,7 +18,6 @@
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
-
 #include "cocaine/engine.hpp"
 
 using namespace cocaine::engine::drivers;
@@ -51,7 +50,7 @@ zeromq_server_t::zeromq_server_t(engine_t& engine, const std::string& method, co
     driver_t(engine, method, args),
     m_backlog(args.get("backlog", 1000).asUInt()),
     m_linger(args.get("linger", 0).asInt()),
-    m_socket(m_engine.context(), type, boost::algorithm::join(
+    m_socket(m_engine.context().io(), type, boost::algorithm::join(
         boost::assign::list_of
             (m_engine.context().config.runtime.hostname)
             (m_engine.app().name)

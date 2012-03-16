@@ -14,7 +14,7 @@
 #include "cocaine/overseer.hpp"
 
 #include "cocaine/context.hpp"
-
+#include "cocaine/logging.hpp"
 #include "cocaine/registry.hpp"
 #include "cocaine/rpc.hpp"
 
@@ -23,21 +23,13 @@
 using namespace cocaine;
 using namespace cocaine::engine;
 
-overseer_t::overseer_t(context_t& ctx,
-                       const unique_id_t::identifier_type& id_,
-                       const std::string& app):
-    object_t(ctx),
-    unique_id_t(id_),
-    m_app(ctx, app),
-    m_loop(),
-    m_watcher(m_loop),
-    m_processor(m_loop),
-    m_pumper(m_loop),
-    m_suicide_timer(m_loop),
-    m_heartbeat_timer(m_loop),
-    m_messages(ctx, ZMQ_DEALER, id())
+overseer_t::overseer_t(const config_t& config):
+    unique_id_t(config.slave.id),
+    m_config(config),
+    m_io(1),
+    m_messages(m_io, ZMQ_DEALER, id())
 {
-    m_messages.connect(endpoint(app));
+    m_messages.connect(endpoint(config.slave.name));
     
     m_watcher.set<overseer_t, &overseer_t::message>(this);
     m_watcher.start(m_messages.fd(), ev::READ);
@@ -45,54 +37,14 @@ overseer_t::overseer_t(context_t& ctx,
     m_pumper.set<overseer_t, &overseer_t::pump>(this);
     m_pumper.start(0.2f, 0.2f);
 
-    m_suicide_timer.set<overseer_t, &overseer_t::timeout>(this);
-    m_suicide_timer.start(m_app.policy.suicide_timeout);
-
     m_heartbeat_timer.set<overseer_t, &overseer_t::heartbeat>(this);
     m_heartbeat_timer.start(0.0f, 5.0f);
 }
 
-overseer_t::~overseer_t() {
-    m_module.reset();
-}
+overseer_t::~overseer_t() 
+{ }
 
 void overseer_t::run() {
-    try {
-        std::string type = m_app.manifest["type"].asString();
-
-        if(!type.empty()) {
-            m_module = context().create<plugin_t>(type);
-            m_module->initialize(m_app);
-        } else {
-            throw configuration_error_t("no app type has been specified");
-        }
-    } catch(const configuration_error_t& e) {
-        events::error_t event(e);
-        rpc::packed<events::error_t> packed(event);
-        send(packed);
-        return;
-    } catch(const registry_error_t& e) {
-        events::error_t event(e);
-        rpc::packed<events::error_t> packed(event);
-        send(packed);
-        return;
-    } catch(const unrecoverable_error_t& e) {
-        events::error_t event(e);
-        rpc::packed<events::error_t> packed(event);
-        send(packed);
-        return;
-    } catch(...) {
-        rpc::packed<events::error_t> packed(
-            events::error_t(
-                client::server_error,
-                "unexpected exception while creating the plugin instance"
-            )
-        );
-        
-        send(packed);
-        return;
-    }
-
     m_loop.loop();
 }
 
@@ -121,48 +73,23 @@ void overseer_t::process(ev::idle&, int) {
     m_messages.recv(command);
 
     switch(command) {
-        // case rpc::configure: {
-        //     m_messages.recv(context().config);
-        //     break;
-        // }
+        case rpc::configure: {
+            BOOST_ASSERT(m_plugin.get() == NULL);
+            
+            m_messages.recv(m_config);
+            configure();
+            
+            break;
+        }
 
         case rpc::invoke: {
+            BOOST_ASSERT(m_plugin.get() != NULL);
+
             std::string method;
 
             m_messages.recv(method);
-
-            try {
-                io_t io(*this);
-                m_module->invoke(io, method);
-            } catch(const recoverable_error_t& e) {
-                events::error_t event(e);
-                rpc::packed<events::error_t> packed(event);
-                send(packed);
-            } catch(const unrecoverable_error_t& e) {
-                events::error_t event(e);
-                rpc::packed<events::error_t> packed(event);
-                send(packed);
-            } catch(...) {
-                rpc::packed<events::error_t> packed(
-                    events::error_t(
-                        client::server_error,
-                        "unexpected exception while invoking a method"
-                    )
-                );
-                
-                send(packed);
-            }
+            invoke(method);
             
-            rpc::packed<events::release_t> packed;
-            send(packed);
-            
-            // NOTE: Drop all the outstanding request chunks not pulled
-            // in by the user code. Might have a warning here?
-            m_messages.drop_remaining_parts();
-
-            m_suicide_timer.stop();
-            m_suicide_timer.start(m_app.policy.suicide_timeout);
-         
             break;
         }
         
@@ -171,7 +98,7 @@ void overseer_t::process(ev::idle&, int) {
             break;
 
         default:
-            m_app.log->warning(
+            m_app->log->warning(
                 "slave %s dropping unknown event type %d", 
                 id().c_str(),
                 command
@@ -196,6 +123,84 @@ void overseer_t::timeout(ev::timer&, int) {
 void overseer_t::heartbeat(ev::timer&, int) {
     rpc::packed<events::heartbeat_t> packed;
     send(packed);
+}
+
+void overseer_t::configure() {
+    try {
+        m_context.reset(new context_t(m_config));
+        m_app.reset(new app_t(*m_context, m_config.slave.name));
+
+        std::string type(m_app->manifest["type"].asString());
+
+        if(!type.empty()) {
+            m_plugin = m_context->create<plugin_t>(type);
+            m_plugin->initialize(*m_app);
+        } else {
+            throw configuration_error_t("no app type has been specified");
+        }
+        
+        m_suicide_timer.set<overseer_t, &overseer_t::timeout>(this);
+        m_suicide_timer.start(m_app->policy.suicide_timeout);
+    } catch(const configuration_error_t& e) {
+        events::error_t event(e);
+        rpc::packed<events::error_t> packed(event);
+        send(packed);
+        terminate();
+    } catch(const registry_error_t& e) {
+        events::error_t event(e);
+        rpc::packed<events::error_t> packed(event);
+        send(packed);
+        terminate();
+    } catch(const unrecoverable_error_t& e) {
+        events::error_t event(e);
+        rpc::packed<events::error_t> packed(event);
+        send(packed);
+        terminate();
+    } catch(...) {
+        rpc::packed<events::error_t> packed(
+            events::error_t(
+                client::server_error,
+                "unexpected exception while configuring the slave"
+            )
+        );
+        
+        send(packed);
+        terminate();
+    }
+}
+
+void overseer_t::invoke(const std::string& method) {
+    try {
+        io_t io(*this);
+        m_plugin->invoke(method, io);
+    } catch(const recoverable_error_t& e) {
+        events::error_t event(e);
+        rpc::packed<events::error_t> packed(event);
+        send(packed);
+    } catch(const unrecoverable_error_t& e) {
+        events::error_t event(e);
+        rpc::packed<events::error_t> packed(event);
+        send(packed);
+    } catch(...) {
+        rpc::packed<events::error_t> packed(
+            events::error_t(
+                client::server_error,
+                "unexpected exception while invoking a method"
+            )
+        );
+        
+        send(packed);
+    }
+    
+    rpc::packed<events::release_t> packed;
+    send(packed);
+    
+    // NOTE: Drop all the outstanding request chunks not pulled
+    // in by the user code. Might have a warning here?
+    m_messages.drop_remaining_parts();
+
+    m_suicide_timer.stop();
+    m_suicide_timer.start(m_app->policy.suicide_timeout);
 }
 
 void overseer_t::terminate() {

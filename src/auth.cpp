@@ -25,14 +25,13 @@
 using namespace cocaine::crypto;
 
 auth_t::auth_t(context_t& ctx):
-    object_t(ctx),
     m_log(ctx.log("crypto")),
-    m_md_context(EVP_MD_CTX_create())
+    m_context(EVP_MD_CTX_create())
 {
     ERR_load_crypto_strings();
 
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
-    Json::Value keys(context().storage().all("keys"));
+    Json::Value keys(ctx.storage().all("keys"));
     Json::Value::Members names(keys.getMemberNames());
 
     for(Json::Value::Members::const_iterator it = names.begin();
@@ -82,7 +81,7 @@ namespace {
 auth_t::~auth_t() {
     std::for_each(m_keys.begin(), m_keys.end(), dispose());
     ERR_free_strings();
-    EVP_MD_CTX_destroy(m_md_context);
+    EVP_MD_CTX_destroy(m_context);
 }
 
 /* XXX: Gotta invent something sophisticated here.
@@ -97,10 +96,10 @@ std::string auth_t::sign(const std::string& message, const std::string& username
     unsigned char buffer[EVP_PKEY_size(it->second)];
     unsigned int size = 0;
     
-    EVP_SignInit(m_md_context, EVP_sha1());
-    EVP_SignUpdate(m_md_context, message.data(), message.size());
-    EVP_SignFinal(m_md_context, buffer, &size, it->second);
-    EVP_MD_CTX_cleanup(m_md_context);
+    EVP_SignInit(m_context, EVP_sha1());
+    EVP_SignUpdate(m_context, message.data(), message.size());
+    EVP_SignFinal(m_context, buffer, &size, it->second);
+    EVP_MD_CTX_cleanup(m_context);
 
     return std::string(reinterpret_cast<char*>(buffer), size);
 }
@@ -116,21 +115,21 @@ void auth_t::verify(const blob_t& message,
         throw authorization_error_t("unauthorized user");
     }
     
-    EVP_VerifyInit(m_md_context, EVP_sha1());
-    EVP_VerifyUpdate(m_md_context, message.data(), message.size());
+    EVP_VerifyInit(m_context, EVP_sha1());
+    EVP_VerifyUpdate(m_context, message.data(), message.size());
     
     bool success = EVP_VerifyFinal(
-        m_md_context,
+        m_context,
         static_cast<const unsigned char*>(signature.data()),
         signature.size(),
         it->second
     );
 
     if(!success) {
-        EVP_MD_CTX_cleanup(m_md_context);
+        EVP_MD_CTX_cleanup(m_context);
         throw authorization_error_t("invalid signature");
     }
 
-    EVP_MD_CTX_cleanup(m_md_context);
+    EVP_MD_CTX_cleanup(m_context);
 }
 

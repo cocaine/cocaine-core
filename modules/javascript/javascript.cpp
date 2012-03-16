@@ -63,7 +63,7 @@ class javascript_t:
             compile(stream.str(), "iterate");
         }
 
-        virtual void invoke(io_t& io, const std::string& method) {
+        virtual void invoke(const std::string& method, io_t& io) {
             Json::Value result;
 
             HandleScope handle_scope;

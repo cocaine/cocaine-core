@@ -15,7 +15,6 @@
 #define COCAINE_STORAGE_INTERFACE_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/forwards.hpp"
 #include "cocaine/object.hpp"
 
 namespace cocaine { namespace storages {

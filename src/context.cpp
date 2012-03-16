@@ -14,8 +14,8 @@
 #include "cocaine/context.hpp"
 
 #include "cocaine/logging.hpp"
-
 #include "cocaine/networking.hpp"
+
 #include "cocaine/storages/void.hpp"
 #include "cocaine/storages/files.hpp"
 
@@ -29,22 +29,13 @@ config_t::config_t() {
     defaults.queue_limit = 10;
 }
 
-context_t::context_t(config_t config_, std::auto_ptr<logging::sink_t> sink):
-    config(config_),
-    m_sink(sink)
-{
-    initialize();
-}
-
 context_t::context_t(config_t config_):
-    config(config_),
-    m_sink(new logging::void_sink_t())
+    config(config_)
 {
-    initialize();
-}
+    if(!config.sink) {
+        config.sink.reset(new logging::void_sink_t());
+    }
 
-void context_t::initialize() {
-    const int HOSTNAME_MAX_LENGTH = 256;
     char hostname[HOSTNAME_MAX_LENGTH];
 
     if(gethostname(hostname, HOSTNAME_MAX_LENGTH) == 0) {
@@ -61,10 +52,6 @@ void context_t::initialize() {
     m_registry->install<file_storage_t, storage_t>("files");
 }
 
-boost::shared_ptr<logging::logger_t> context_t::log(const std::string& name) {
-    return m_sink->get(name);
-}
-
 zmq::context_t& context_t::io() {
     boost::lock_guard<boost::mutex> lock(m_mutex);
     
@@ -73,6 +60,10 @@ zmq::context_t& context_t::io() {
     }
 
     return *m_io;
+}
+
+boost::shared_ptr<logging::logger_t> context_t::log(const std::string& name) {
+    return config.sink->get(name);
 }
 
 storage_t& context_t::storage() {

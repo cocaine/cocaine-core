@@ -20,7 +20,6 @@
 #include <boost/statechart/transition.hpp>
 
 #include "cocaine/common.hpp"
-#include "cocaine/forwards.hpp"
 
 #include "cocaine/events.hpp"
 

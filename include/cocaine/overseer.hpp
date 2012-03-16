@@ -15,11 +15,10 @@
 #define COCAINE_GENERIC_SLAVE_BACKEND_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/forwards.hpp"
-#include "cocaine/object.hpp"
 
 #include "cocaine/app.hpp"
 #include "cocaine/networking.hpp"
+#include "cocaine/context.hpp"
 
 #include "cocaine/interfaces/plugin.hpp"
 
@@ -30,14 +29,10 @@ namespace cocaine { namespace engine {
 
 class overseer_t:
     public boost::noncopyable,
-    public object_t,
     public unique_id_t
 {
     public:
-        overseer_t(context_t& ctx,
-                   const unique_id_t::identifier_type& id,
-                   const std::string& app);
-        
+        overseer_t(const config_t& config);
         ~overseer_t();
 
         void run();
@@ -56,17 +51,21 @@ class overseer_t:
         void timeout(ev::timer&, int);
         void heartbeat(ev::timer&, int);
 
+        // Dispatching.
+        void configure();
+        void invoke(const std::string& method);
         void terminate();
 
     private:
-        // Application configuration.
-        const app_t m_app;
-
-        // Application instance.
-        std::auto_ptr<plugin_t> m_module;
+        config_t m_config;
+        
+        // Runtime application context.
+        std::auto_ptr<context_t> m_context;
+        std::auto_ptr<app_t> m_app;
+        std::auto_ptr<plugin_t> m_plugin;
 
         // Event loop.
-        ev::dynamic_loop m_loop;
+        ev::default_loop m_loop;
         
         ev::io m_watcher;
         ev::idle m_processor;
@@ -78,6 +77,7 @@ class overseer_t:
         ev::timer m_suicide_timer, m_heartbeat_timer;
         
         // Engine RPC.
+        zmq::context_t m_io;
         networking::channel_t m_messages;
 };
 

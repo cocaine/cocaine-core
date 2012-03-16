@@ -91,7 +91,7 @@ class python_t:
         virtual ~python_t();
         
         virtual void initialize(const engine::app_t& app);
-        virtual void invoke(io_t& io, const std::string& method);
+        virtual void invoke(const std::string& method, io_t& io);
 
         const logging::logger_t& log() const;
 

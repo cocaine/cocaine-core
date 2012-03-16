@@ -16,7 +16,6 @@
 
 #include <boost/detail/atomic_count.hpp>
 #include <boost/shared_ptr.hpp>
-#include <boost/thread/mutex.hpp>
 
 namespace cocaine { namespace helpers {
 

@@ -20,8 +20,7 @@
 #include <ltdl.h>
 
 #include "cocaine/common.hpp"
-#include "cocaine/forwards.hpp"
-#include "cocaine/logging.hpp"
+
 #include "cocaine/object.hpp"
 
 namespace cocaine { namespace core {

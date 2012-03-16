@@ -16,6 +16,7 @@
 
 #include <stdexcept>
 #include <string>
+
 #include <uuid/uuid.h>
 
 namespace cocaine { namespace helpers {

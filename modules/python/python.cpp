@@ -19,6 +19,7 @@
 #include "objects.hpp"
 
 #include "cocaine/app.hpp"
+#include "cocaine/logging.hpp"
 #include "cocaine/registry.hpp"
 
 using namespace cocaine;
@@ -187,7 +188,7 @@ void python_t::initialize(const app_t& app) {
     m_thread_state = PyEval_SaveThread();
 }
 
-void python_t::invoke(io_t& io, const std::string& method) {
+void python_t::invoke(const std::string& method, io_t& io) {
     thread_lock_t thread(m_thread_state);
 
     if(!m_python_module) {

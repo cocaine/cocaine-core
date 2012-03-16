@@ -16,9 +16,9 @@
 
 #include "cocaine/engine.hpp"
 
-#include "cocaine/logging.hpp"
-
+#include "cocaine/context.hpp"
 #include "cocaine/drivers.hpp"
+#include "cocaine/logging.hpp"
 #include "cocaine/rpc.hpp"
 
 using namespace cocaine::engine;
@@ -44,7 +44,7 @@ engine_t::engine_t(context_t& ctx, const std::string& name, const Json::Value& m
     object_t(ctx),
     m_running(false),
     m_app(ctx, name, manifest),
-    m_messages(ctx, ZMQ_ROUTER)
+    m_messages(ctx.io(), ZMQ_ROUTER)
 #ifdef HAVE_CGROUPS
     , m_cgroup(NULL)
 #endif

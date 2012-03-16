@@ -18,7 +18,6 @@
 #include <cstdarg>
 
 #include "cocaine/common.hpp"
-#include "cocaine/forwards.hpp"
 
 #define LOG_BUFFER_SIZE 50 * 1024
 

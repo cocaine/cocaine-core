@@ -17,11 +17,10 @@
 #include "cocaine/slave.hpp"
 
 #include "cocaine/context.hpp"
-#include "cocaine/logging.hpp"
-
 #include "cocaine/engine.hpp"
 #include "cocaine/job.hpp"
-// #include "cocaine/rpc.hpp"
+#include "cocaine/logging.hpp"
+#include "cocaine/rpc.hpp"
 
 #include "cocaine/dealer/types.hpp"
 
@@ -60,14 +59,14 @@ void slave_t::on_configure(const events::heartbeat_t& event) {
     );
 #endif
 
-    // rpc::packed<events::configure_t> pack(
-    //     events::configure_t(m_engine.context().config)
-    // );
+    rpc::packed<events::configure_t> pack(
+        events::configure_t(m_engine.context().config)
+    );
 
-    // m_engine.unicast(
-    //     select::specific_slave(*this),
-    //     pack
-    // );
+    m_engine.unicast(
+        select::specific(*this),
+        pack
+    );
 
     on_heartbeat(event);
 }
@@ -139,10 +138,7 @@ void slave_t::spawn() {
             m_engine.context().config.runtime.self.c_str(),
             "--slave",
             "--slave:id",       id().c_str(),
-            "--slave:app",      m_engine.app().name.c_str(),
-            "--core:modules",   m_engine.context().config.core.modules.c_str(),
-            "--storage:driver", m_engine.context().config.storage.driver.c_str(),
-            "--storage:uri",    m_engine.context().config.storage.uri.c_str(),
+            "--slave:app:name", m_engine.app().name.c_str(),
             (char*)0
         );
 

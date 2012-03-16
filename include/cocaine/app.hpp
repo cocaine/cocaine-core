@@ -15,7 +15,6 @@
 #define COCAINE_APP_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/forwards.hpp"
 
 namespace cocaine { namespace engine {
 

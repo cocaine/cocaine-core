@@ -22,7 +22,7 @@
 namespace cocaine { namespace engine { namespace rpc {    
     enum codes {
         heartbeat,
-        // configure,
+        configure,
         terminate,
         invoke,
         push,
@@ -59,20 +59,20 @@ namespace cocaine { namespace engine { namespace rpc {
     // Specific packers
     // ----------------
 
-    // template<>
-    // struct packed<events::configure_t> {
-    //     typedef boost::tuple<int, const config_t&> type;
+    template<>
+    struct packed<events::configure_t> {
+        typedef boost::tuple<int, const config_t&> type;
 
-    //     packed(const events::configure_t& event):
-    //         pack(configure, event.config)
-    //     { }
+        packed(const events::configure_t& event):
+            pack(configure, event.config)
+        { }
 
-    //     type& get() {
-    //         return pack;
-    //     }
+        type& get() {
+            return pack;
+        }
 
-    //     type pack;
-    // };
+        type pack;
+    };
 
     template<>
     struct packed<events::invoke_t> {

@@ -17,6 +17,7 @@
 #include "cocaine/registry.hpp"
 
 #include "cocaine/context.hpp"
+#include "cocaine/logging.hpp"
 
 using namespace cocaine::core;
 
@@ -37,7 +38,7 @@ registry_t::registry_t(context_t& ctx):
         throw registry_error_t("unable to initialize the module loader");
     }
 
-    fs::path path(context().config.core.modules);
+    fs::path path(context().config.registry.modules);
 
     if(!fs::exists(path)) {
         throw configuration_error_t("module path '" + path.string() + "' does not exist");

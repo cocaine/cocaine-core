@@ -18,6 +18,7 @@
 #include <perl.h>
 
 #include "cocaine/app.hpp"
+#include "cocaine/logging.hpp"
 #include "cocaine/registry.hpp"
 
 #include "cocaine/interfaces/plugin.hpp"
@@ -93,7 +94,7 @@ public:
         perl_run(my_perl);
     }
         
-    virtual void invoke(io_t& io, const std::string& method) {
+    virtual void invoke(const std::string& method, io_t& io) {
         m_app_log->info("%s", (std::string("invoking method ") + method + "...").c_str());
         std::string input;
         

@@ -15,10 +15,9 @@
 #define COCAINE_CONTEXT_HPP
 
 #include <boost/thread/mutex.hpp>
-// #include <msgpack.hpp>
+#include <msgpack.hpp>
 
 #include "cocaine/common.hpp"
-#include "cocaine/forwards.hpp"
 
 #include "cocaine/registry.hpp"
 
@@ -27,19 +26,19 @@ namespace cocaine {
 struct config_t {
     config_t();
 
-    struct core_config_t {
-        // Module path.
-        std::string modules;
-
+    struct {
         // Administration socket endpoint.
         std::vector<std::string> endpoints;
         
         // Automatic discovery.
         std::string announce_endpoint;
         float announce_interval;
-
-        // MSGPACK_DEFINE(modules);
     } core;
+
+    struct {
+        std::string id;
+        std::string name;
+    } slave;
 
     struct engine_config_t {
         // Default engine policy.
@@ -48,32 +47,42 @@ struct config_t {
         unsigned int pool_limit;
         unsigned int queue_limit;
 
-        // MSGPACK_DEFINE(heartbeat_timeout, suicide_timeout, pool_limit, queue_limit);
+        MSGPACK_DEFINE(heartbeat_timeout, suicide_timeout, pool_limit, queue_limit);
     } defaults;
+
+    struct registry_config_t {
+        // Module path.
+        std::string modules;
+        MSGPACK_DEFINE(modules);
+    } registry;
 
     struct storage_config_t {
         // Storage type and path.
         std::string driver;
         std::string uri;
 
-        // MSGPACK_DEFINE(driver, uri);
+        MSGPACK_DEFINE(driver, uri);
     } storage;
     
-    struct runtime_config_t {
+    struct {
         std::string self;
         std::string hostname;
     } runtime;
 
-    // MSGPACK_DEFINE(core, defaults, storage);
+    // Logging sink.
+    boost::shared_ptr<logging::sink_t> sink;
+    
+    MSGPACK_DEFINE(defaults, registry, storage);
 };
 
 class context_t:
     public boost::noncopyable
 {
     public:
-        context_t(config_t config, std::auto_ptr<logging::sink_t> sink);
         context_t(config_t config);
 
+        zmq::context_t& io();
+        
         // Returns a possibly cached logger with the specified name.
         boost::shared_ptr<logging::logger_t> log(const std::string& type);
 
@@ -86,11 +95,7 @@ class context_t:
             return m_registry->list();
         }
 
-        zmq::context_t& io();
         storages::storage_t& storage();
-
-    private:
-        void initialize();
 
     public:
         config_t config;
@@ -100,9 +105,8 @@ class context_t:
         boost::mutex m_mutex;
 
         // Core subsystems.
-        boost::shared_ptr<logging::sink_t> m_sink;
-        boost::shared_ptr<core::registry_t> m_registry;
         boost::shared_ptr<zmq::context_t> m_io;
+        boost::shared_ptr<core::registry_t> m_registry;
         boost::shared_ptr<storages::storage_t> m_storage;
 };
 

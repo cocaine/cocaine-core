@@ -16,23 +16,21 @@
 #include "cocaine/core.hpp"
 
 #include "cocaine/context.hpp"
-#include "cocaine/logging.hpp"
-
-#include "cocaine/auth.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/job.hpp"
+#include "cocaine/logging.hpp"
 
 #include "cocaine/interfaces/storage.hpp"
 
 using namespace cocaine::core;
 using namespace cocaine::engine;
 
-core_t::core_t(context_t& ctx):
-    object_t(ctx),
-    m_log(ctx.log("core")),
-    m_auth(ctx),
-    m_birthstamp(m_loop.now()),
-    m_server(ctx, ZMQ_REP, ctx.config.runtime.hostname)
+core_t::core_t(const config_t& config):
+    m_context(config),
+    m_log(m_context.log("core")),
+    m_server(m_context.io(), ZMQ_REP, m_context.config.runtime.hostname),
+    m_auth(m_context),
+    m_birthstamp(m_loop.now())
 {
     int minor, major, patch;
     zmq_version(&major, &minor, &patch);
@@ -44,7 +42,7 @@ core_t::core_t(context_t& ctx):
     
     m_log->info(
         "available modules: %s",
-        boost::algorithm::join(context().modules(), ", ").c_str()
+        boost::algorithm::join(m_context.modules(), ", ").c_str()
     );
     
     // Server socket
@@ -54,8 +52,8 @@ core_t::core_t(context_t& ctx):
 
     m_server.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
 
-    for(std::vector<std::string>::iterator it = context().config.core.endpoints.begin();
-        it != context().config.core.endpoints.end();
+    for(std::vector<std::string>::iterator it = m_context.config.core.endpoints.begin();
+        it != m_context.config.core.endpoints.end();
         ++it) 
     {
         try {
@@ -76,20 +74,20 @@ core_t::core_t(context_t& ctx):
     // Autodiscovery
     // -------------
 
-    if(!context().config.core.announce_endpoint.empty()) {
+    if(!m_context.config.core.announce_endpoint.empty()) {
         try {
-            m_announces.reset(new networking::socket_t(context(), ZMQ_PUB));
+            m_announces.reset(new networking::socket_t(m_context.io(), ZMQ_PUB));
             m_announces->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
-            m_announces->connect("epgm://" + context().config.core.announce_endpoint);
+            m_announces->connect("epgm://" + m_context.config.core.announce_endpoint);
         } catch(const zmq::error_t& e) {
             throw configuration_error_t(std::string("invalid announce endpoint - ") + e.what());
         }
 
-        m_log->info("announcing on %s", context().config.core.announce_endpoint.c_str());
+        m_log->info("announcing on %s", m_context.config.core.announce_endpoint.c_str());
 
         m_announce_timer.reset(new ev::timer());
         m_announce_timer->set<core_t, &core_t::announce>(this);
-        m_announce_timer->start(0.0f, context().config.core.announce_interval);
+        m_announce_timer->start(0.0f, m_context.config.core.announce_interval);
     }
 
     // Signals
@@ -290,7 +288,7 @@ Json::Value core_t::create_engine(const std::string& name, const Json::Value& ma
         throw configuration_error_t("the specified app is already active");
     }
 
-    std::auto_ptr<engine_t> engine(new engine_t(context(), name, manifest));
+    std::auto_ptr<engine_t> engine(new engine_t(m_context, name, manifest));
 
     engine->start();
 
@@ -298,7 +296,7 @@ Json::Value core_t::create_engine(const std::string& name, const Json::Value& ma
 
     if(!recovering) {
         try {
-            context().storage().put("apps", name, manifest);
+            m_context.storage().put("apps", name, manifest);
         } catch(const storage_error_t& e) {
             m_log->error(
                 "unable to create the '%s' engine - %s",
@@ -323,7 +321,7 @@ Json::Value core_t::delete_engine(const std::string& name) {
     }
 
     try {
-        context().storage().remove("apps", name);
+        m_context.storage().remove("apps", name);
     } catch(const storage_error_t& e) {
         m_log->error(
             "unable to destroy the '%s' engine - %s",
@@ -382,7 +380,7 @@ void core_t::announce(ev::timer&, int) {
 
 void core_t::recover() {
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
-    Json::Value root(context().storage().all("apps"));
+    Json::Value root(m_context.storage().all("apps"));
 
     if(root.size()) {
         Json::Value::Members apps(root.getMemberNames());
