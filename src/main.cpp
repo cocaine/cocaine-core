@@ -134,7 +134,7 @@ int main(int argc, char * argv[]) {
 
     // Initialize the runtime context.
     try {
-        ctx.reset(new context(cfg, sink));
+        ctx.reset(new context_t(cfg, sink));
     } catch(const std::exception& e) {
         std::cout << "Unable to initialize the runtime context: " 
                   << e.what() 
