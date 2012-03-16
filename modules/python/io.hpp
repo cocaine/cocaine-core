@@ -32,9 +32,11 @@ class python_io_t {
         static void destructor(python_io_t * self);
 
         static PyObject* read(python_io_t * self, PyObject * args, PyObject * kwargs);
+        static PyObject* write(python_io_t * self, PyObject * args);
+        
+        // WSGI requirements.
         static PyObject* readline(python_io_t * self, PyObject * args, PyObject * kwargs);
         static PyObject* readlines(python_io_t * self, PyObject * args, PyObject * kwargs);
-        static PyObject* write(python_io_t * self, PyObject * args);
         static PyObject* iter_next(python_io_t * it);
 
     public:

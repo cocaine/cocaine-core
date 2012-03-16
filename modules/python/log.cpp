@@ -155,3 +155,26 @@ PyObject* log_object_t::error(log_object_t * self, PyObject * args) {
 
     Py_RETURN_NONE;
 }
+
+PyObject* log_object_t::write(log_object_t * self, PyObject * args) {
+    PyErr_SetString(
+        PyExc_NotImplementedError,
+        "Method is not implemented yet"
+    );
+
+    return NULL;
+}
+
+PyObject* log_object_t::writelines(log_object_t * self, PyObject * args) {
+    PyErr_SetString(
+        PyExc_NotImplementedError,
+        "Method is not implemented yet"
+    );
+
+    return NULL;    
+}
+
+PyObject* log_object_t::flush(log_object_t * self, PyObject * args) {
+    // NOTE: This method is a no-op.
+    Py_RETURN_NONE;
+}

@@ -36,6 +36,11 @@ class log_object_t {
         static PyObject* warning(log_object_t * self, PyObject * args);
         static PyObject* error(log_object_t * self, PyObject * args);
 
+        // WSGI requirements.
+        static PyObject* write(log_object_t * self, PyObject * args);
+        static PyObject* writelines(log_object_t * self, PyObject * args);
+        static PyObject* flush(log_object_t * self, PyObject * args);
+
     public:
         python_t * plugin;
 };

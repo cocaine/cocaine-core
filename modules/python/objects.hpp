@@ -28,6 +28,12 @@ static PyMethodDef log_object_methods[] = {
         "Logs a message with a Warning priority" },
     { "error", (PyCFunction)log_object_t::error, METH_VARARGS, 
         "Logs a message with an Error priority" },
+    { "write", (PyCFunction)log_object_t::write, METH_VARARGS,
+        "Writes a message to the error stream" },
+    { "writelines", (PyCFunction)log_object_t::writelines, METH_VARARGS,
+        "Writes messages from the iterable to the error stream" },
+    { "flush", (PyCFunction)log_object_t::flush, METH_NOARGS,
+        "Flushes the error stream" },
     { NULL, NULL, 0, NULL }
 };
 
@@ -76,12 +82,12 @@ static PyTypeObject log_object_type = {
 static PyMethodDef python_io_object_methods[] = {
     { "read", (PyCFunction)python_io_t::read,
         METH_KEYWORDS, "Pulls in a request chunk from the engine" },
+    { "write", (PyCFunction)python_io_t::write,
+        METH_VARARGS, "Pushes a response chunk to the engine" },
     { "readline", (PyCFunction)python_io_t::readline,
         METH_KEYWORDS, "Pulls in a request line from the engine" },
     { "readlines", (PyCFunction)python_io_t::readlines,
         METH_KEYWORDS, "Pulls in all available request lines from the engine" },
-    { "write", (PyCFunction)python_io_t::write,
-        METH_VARARGS, "Pushes a response chunk to the engine" },
     { NULL }
 };
 
