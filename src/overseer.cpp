@@ -73,14 +73,13 @@ void overseer_t::process(ev::idle&, int) {
     m_messages.recv(command);
 
     switch(command) {
-        case rpc::configure: {
+        case rpc::configure:
             BOOST_ASSERT(m_plugin.get() == NULL);
             
             m_messages.recv(m_config);
             configure();
             
             break;
-        }
 
         case rpc::invoke: {
             BOOST_ASSERT(m_plugin.get() != NULL);

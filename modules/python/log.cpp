@@ -157,21 +157,68 @@ PyObject* log_object_t::error(log_object_t * self, PyObject * args) {
 }
 
 PyObject* log_object_t::write(log_object_t * self, PyObject * args) {
-    PyErr_SetString(
-        PyExc_NotImplementedError,
-        "Method is not implemented yet"
-    );
+    const char * message = NULL;
 
-    return NULL;
+    if(!self->plugin) {
+        PyErr_SetString(
+            PyExc_RuntimeError,
+            "Not initialized"
+        );
+
+        return NULL;
+    }
+
+    if(!PyArg_ParseTuple(args, "s:write", &message)) {
+        return NULL;
+    }
+
+    self->plugin->log().error("%s", message);
+
+    Py_RETURN_NONE;
 }
 
 PyObject* log_object_t::writelines(log_object_t * self, PyObject * args) {
-    PyErr_SetString(
-        PyExc_NotImplementedError,
-        "Method is not implemented yet"
-    );
+    PyObject * lines = NULL;
 
-    return NULL;    
+    if(!self->plugin) {
+        PyErr_SetString(
+            PyExc_RuntimeError,
+            "Not initialized"
+        );
+
+        return NULL;
+    }
+
+    if(!PyArg_ParseTuple(args, "O:writelines", &lines)) {
+        return NULL;
+    }
+
+    tracked_object_t iterator(PyObject_GetIter(lines));
+    tracked_object_t line(NULL);
+
+    if(PyErr_Occurred()) {
+        return NULL;
+    }
+
+    while(true) {
+        line = PyIter_Next(iterator);
+
+        if(!line.valid()) {
+            if(!PyErr_Occurred()) {
+                break;
+            } else {
+                return NULL;
+            }
+        }
+
+        tracked_object_t args(PyTuple_Pack(1, *line));
+
+        if(!write(self, args)) {
+            return NULL;
+        }
+    }
+
+    Py_RETURN_NONE;
 }
 
 PyObject* log_object_t::flush(log_object_t * self, PyObject * args) {
