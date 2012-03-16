@@ -42,19 +42,19 @@ class javascript_t:
             Json::Value args(app.manifest["args"]);
 
             if(!args.isObject()) {
-                throw unrecoverable_error_t("malformed manifest");
+                throw configuration_error_t("malformed manifest");
             }
             
             boost::filesystem::path source(args["source"].asString());
 
             if(source.empty()) {
-                throw unrecoverable_error_t("no code location has been specified");
+                throw configuration_error_t("no code location has been specified");
             }
 
             boost::filesystem::ifstream input(source);
     
             if(!input) {
-                throw unrecoverable_error_t("unable to open " + source.string());
+                throw configuration_error_t("unable to open " + source.string());
             }
 
             std::stringstream stream;
@@ -116,7 +116,7 @@ class javascript_t:
             Handle<Value> object(m_v8_context->Global()->Get(target));
 
             if(!object->IsFunction()) {
-                throw unrecoverable_error_t("target object is not a function");
+                throw configuration_error_t("target object is not a function");
             }
 
             Handle<Function> function(Handle<Function>::Cast(object));

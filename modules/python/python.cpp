@@ -56,13 +56,13 @@ void python_t::initialize(const app_t& app) {
     Json::Value args(app.manifest["args"]);
 
     if(!args.isObject()) {
-        throw unrecoverable_error_t("malformed manifest");
+        throw configuration_error_t("malformed manifest");
     }
     
     boost::filesystem::path source(args["source"].asString());
    
     if(source.empty()) {
-        throw unrecoverable_error_t("no code location has been specified");
+        throw configuration_error_t("no code location has been specified");
     }
 
     // NOTE: Means it's a module.
@@ -75,7 +75,7 @@ void python_t::initialize(const app_t& app) {
     boost::filesystem::ifstream input(source);
     
     if(!input) {
-        throw unrecoverable_error_t("unable to open " + source.string());
+        throw configuration_error_t("unable to open " + source.string());
     }
 
     // System paths

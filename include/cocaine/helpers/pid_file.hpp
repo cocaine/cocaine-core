@@ -64,7 +64,7 @@ class pid_file_t:
         ~pid_file_t() {
             try {
                 remove();
-            } catch(...) {
+            } catch(const std::runtime_error& e) {
                 // NOTE: Do nothing.
             }
         }

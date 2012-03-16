@@ -60,17 +60,17 @@ public:
         Json::Value args(app.manifest["args"]);
 
         if(!args.isObject()) {
-            throw unrecoverable_error_t("malformed manifest");
+            throw configuration_error_t("malformed manifest");
         }
 
         boost::filesystem::path source(args["source"].asString());
 
         if(source.empty()) {
-            throw unrecoverable_error_t("no code location has been specified");
+            throw configuration_error_t("no code location has been specified");
         }
 
         if(boost::filesystem::is_directory(source)) {
-            throw unrecoverable_error_t("malformed manifest, expected path to perl script, got a directory.");   
+            throw configuration_error_t("malformed manifest, expected path to perl script, got a directory.");   
         }
 
         std::string source_dir;
@@ -83,7 +83,7 @@ public:
         boost::filesystem::ifstream input(source);
 
         if(!input) {
-            throw unrecoverable_error_t("unable to open " + source.string());
+            throw configuration_error_t("unable to open " + source.string());
         }
 
         const char* embedding[] = {"", (char*)source.string().c_str(), "-I", (char*)source_dir.c_str()};
