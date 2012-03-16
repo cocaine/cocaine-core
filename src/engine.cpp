@@ -461,7 +461,7 @@ void engine_t::process(ev::idle&, int) {
             return;
         
         default:
-            m_app.log->warning("engine ignoring unknown event type %d", command);
+            m_app.log->warning("engine dropping unknown event type %d", command);
             m_messages.drop_remaining_parts();
     }
 

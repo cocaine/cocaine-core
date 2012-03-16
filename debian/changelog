@@ -1,3 +1,14 @@
+cocaine (0.7.3) lucid; urgency=low
+
+  * Proper fork() + exec() magic when spawning slaves.
+  * No more 'instances', nobody grasped the point of it anyway.
+  * Much more granular exception control in the code, for better diagnostics.
+  * Python: acquire GIL only on method invocations, so that other Python threads
+    could be spawned for some background idle processing tasks.
+  * A couple of bugfixes!
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 13 Mar 2012 13:22:02 +0300
+
 cocaine (0.7.2-7~20120313.3165dfc7-yandex0) lucid; urgency=low
 
   * Use the user-specified heartbeat timeouts from the manifest, really.
