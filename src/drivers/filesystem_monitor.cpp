@@ -22,7 +22,7 @@ filesystem_monitor_t::filesystem_monitor_t(engine_t& engine, const std::string& 
     m_path(args.get("path", "").asString())
 {
     if(m_path.empty()) {
-        throw std::runtime_error("no path has been specified");
+        throw configuration_error_t("no path has been specified");
     }
     
     m_watcher.set<filesystem_monitor_t, &filesystem_monitor_t::event>(this);

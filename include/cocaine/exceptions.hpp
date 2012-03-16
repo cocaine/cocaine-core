@@ -14,56 +14,79 @@
 #ifndef COCAINE_EXCEPTIONS_HPP
 #define COCAINE_EXCEPTIONS_HPP
 
+#include <errno.h>
 #include <stdexcept>
+#include <string.h>
 
 namespace cocaine {
 
-class authorization_error_t:
+struct authorization_error_t:
     public std::runtime_error
 {
-    public:
-        authorization_error_t(const std::string& what):
-            std::runtime_error(what)
-        { }
+    authorization_error_t(const std::string& what):
+        std::runtime_error(what)
+    { }
 };
 
-class registry_error_t:
+struct configuration_error_t:
     public std::runtime_error
 {
-    public:
-        registry_error_t(const std::string& what):
-            std::runtime_error(what)
-        { }
+    configuration_error_t(const std::string& what):
+        std::runtime_error(what)
+    { }
 };
 
-class storage_error_t:
+struct registry_error_t:
+    public std::runtime_error
+{
+    registry_error_t(const std::string& what):
+        std::runtime_error(what)
+    { }
+};
+
+struct system_error_t:
     public std::runtime_error
 {
     public:
-        storage_error_t(const std::string& what):
+        system_error_t(const std::string& what):
             std::runtime_error(what)
-        { }
+        {
+            ::strerror_r(errno, m_reason, 1024);
+        }
+
+        const char * reason() const {
+            return m_reason;
+        }
+
+    private:
+        char m_reason[1024];
+};
+
+struct storage_error_t:
+    public std::runtime_error
+{
+    storage_error_t(const std::string& what):
+        std::runtime_error(what)
+    { }
 };
 
 // Application exceptions
 // ----------------------
 
-class unrecoverable_error_t:
+struct unrecoverable_error_t:
     public std::runtime_error
 {
-    public:
-        unrecoverable_error_t(const std::string& what):
-            std::runtime_error(what)
-        { }
+    unrecoverable_error_t(const std::string& what):
+        std::runtime_error(what)
+    { }
 };
 
-class recoverable_error_t:
+struct recoverable_error_t:
     public std::runtime_error
 {
-    public:
-        recoverable_error_t(const std::string& what):
-            std::runtime_error(what)
-        { }
+    recoverable_error_t(const std::string& what):
+        std::runtime_error(what)
+    { }
 };
 
 }

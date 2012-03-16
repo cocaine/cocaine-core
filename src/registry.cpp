@@ -40,9 +40,9 @@ registry_t::registry_t(context_t& ctx):
     fs::path path(context().config.core.modules);
 
     if(!fs::exists(path)) {
-        throw registry_error_t("path '" + path.string() + "' does not exist");
+        throw configuration_error_t("module path '" + path.string() + "' does not exist");
     } else if(fs::exists(path) && !fs::is_directory(path)) {
-        throw registry_error_t("path '" + path.string() + "' is not a directory");
+        throw configuration_error_t("module path '" + path.string() + "' is not a directory");
     }
 
     lt_dladvise advice;

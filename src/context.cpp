@@ -50,7 +50,7 @@ void context_t::initialize() {
     if(gethostname(hostname, HOSTNAME_MAX_LENGTH) == 0) {
         config.runtime.hostname = hostname;
     } else {
-        throw std::runtime_error("failed to determine the hostname");
+        throw system_error_t("failed to determine the hostname");
     }
    
     // Initialize the module registry.

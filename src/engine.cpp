@@ -166,7 +166,7 @@ void engine_t::start() {
     try {
         m_messages.bind(endpoint(m_app.name));
     } catch(const zmq::error_t& e) {
-        throw std::runtime_error(std::string("invalid rpc endpoint - ") + e.what());
+        throw configuration_error_t(std::string("invalid rpc endpoint - ") + e.what());
     }
     
     m_watcher.set<engine_t, &engine_t::message>(this);
@@ -210,11 +210,11 @@ void engine_t::start() {
             } else if(type == "server+lsd") {
                 m_tasks.insert(task, new drivers::lsd_server_t(*this, task, tasks[task]));
             } else {
-               throw std::runtime_error("no driver for '" + type + "' is available");
+               throw configuration_error_t("no driver for '" + type + "' is available");
             }
         }
     } else {
-        throw std::runtime_error("no tasks has been specified");
+        throw configuration_error_t("no tasks has been specified");
     }
 
     m_running = true;
@@ -352,10 +352,11 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
                 slave.reset(new slave_t(*this));
                 std::string slave_id(slave->id());
                 m_pool.insert(slave_id, slave);
-            } catch(const std::exception& e) {
+            } catch(const system_error_t& e) {
                 m_app.log->error(
-                    "unable to spawn more slaves - %s",
-                    e.what()
+                    "unable to spawn more slaves - %s - %s",
+                    e.what(),
+                    e.reason()
                 );
             }
         } else if(!overflow && (m_queue.size() > m_app.policy.queue_limit)) {

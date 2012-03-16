@@ -62,7 +62,7 @@ zeromq_server_t::zeromq_server_t(engine_t& engine, const std::string& method, co
     std::string endpoint(args.get("endpoint", "").asString());
 
     if(endpoint.empty()) {
-        throw std::runtime_error("no endpoint has been specified");
+        throw configuration_error_t("no endpoint has been specified");
     }
 
     try {
@@ -70,7 +70,7 @@ zeromq_server_t::zeromq_server_t(engine_t& engine, const std::string& method, co
         m_socket.setsockopt(ZMQ_LINGER, &m_linger, sizeof(m_linger));
         m_socket.bind(endpoint);
     } catch(const zmq::error_t& e) {
-        throw std::runtime_error(std::string("network failure - ") + e.what());
+        throw configuration_error_t(std::string("invalid driver endpoint - ") + e.what());
     }
 
     m_watcher.set<zeromq_server_t, &zeromq_server_t::event>(this);

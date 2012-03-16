@@ -91,7 +91,7 @@ std::string auth_t::sign(const std::string& message, const std::string& username
     key_map_t::const_iterator it = m_private_keys.find(username);
 
     if(it == m_private_keys.end()) {
-        throw std::runtime_error("unauthorized user");
+        throw authorization_error_t("unauthorized user");
     }
  
     unsigned char buffer[EVP_PKEY_size(it->second)];

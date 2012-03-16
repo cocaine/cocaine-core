@@ -93,18 +93,18 @@ struct error_t:
         message(message_)
     { }
 
-    error_t(const std::runtime_error& e):
-        code(client::server_error),
-        message(e.what())
-    { }
-
-    error_t(const registry_error_t& e):
+    error_t(const configuration_error_t& e):
         code(client::server_error),
         message(e.what())
     { }
 
     error_t(const recoverable_error_t& e):
         code(client::app_error),
+        message(e.what())
+    { }
+
+    error_t(const registry_error_t& e):
+        code(client::server_error),
         message(e.what())
     { }
 

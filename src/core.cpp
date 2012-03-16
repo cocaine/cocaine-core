@@ -61,7 +61,7 @@ core_t::core_t(context_t& ctx):
         try {
             m_server.bind(*it);
         } catch(const zmq::error_t& e) {
-            throw std::runtime_error(std::string("invalid server endpoint - ") + e.what());
+            throw configuration_error_t(std::string("invalid server endpoint - ") + e.what());
         }
             
         m_log->info("listening on %s", it->c_str());
@@ -82,7 +82,7 @@ core_t::core_t(context_t& ctx):
             m_announces->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
             m_announces->connect("epgm://" + context().config.core.announce_endpoint);
         } catch(const zmq::error_t& e) {
-            throw std::runtime_error(std::string("invalid announce endpoint - ") + e.what());
+            throw configuration_error_t(std::string("invalid announce endpoint - ") + e.what());
         }
 
         m_log->info("announcing on %s", context().config.core.announce_endpoint.c_str());
@@ -133,8 +133,12 @@ void core_t::reload(ev::sig&, int) {
 
     try {
         recover();
+    } catch(const configuration_error_t& e) {
+        m_log->error("unable to reload the apps - %s", e.what());
     } catch(const storage_error_t& e) {
         m_log->error("unable to reload the apps - %s", e.what());
+    } catch(...) {
+        m_log->error("unable to reload the apps - unexpected exception");
     }
 }
 
@@ -163,14 +167,14 @@ void core_t::process(ev::idle&, int) {
     {
         try {
             if(!root.isObject()) {
-                throw std::runtime_error("json root must be an object");
+                throw configuration_error_t("json root must be an object");
             }
 
             unsigned int version = root["version"].asUInt();
             std::string username(root["username"].asString());
             
             if(version < 2 || version > 3) {
-                throw std::runtime_error("unsupported protocol version");
+                throw configuration_error_t("unsupported protocol version");
             }
   
             if(version == 3) {
@@ -185,15 +189,19 @@ void core_t::process(ev::idle&, int) {
                         username
                     );
                 } else {
-                    throw std::runtime_error("username expected");
+                    throw authorization_error_t("username expected");
                 }
             }
 
             response = dispatch(root);
         } catch(const authorization_error_t& e) {
             response = helpers::make_json("error", e.what());
-        } catch(const std::runtime_error& e) {
+        } catch(const configuration_error_t& e) {
             response = helpers::make_json("error", e.what());
+        } catch(const storage_error_t& e) {
+            response = helpers::make_json("error", e.what());
+        } catch(...) {
+            response = helpers::make_json("error", "unexpected exception");
         }
     } else {
         response = helpers::make_json("error", reader.getFormatedErrorMessages());
@@ -220,7 +228,7 @@ Json::Value core_t::dispatch(const Json::Value& root) {
                     result(Json::objectValue);
 
         if(!apps.isObject() || !apps.size()) {
-            throw std::runtime_error("no apps have been specified");
+            throw configuration_error_t("no apps have been specified");
         }
 
         // Iterate over all the apps.
@@ -237,10 +245,12 @@ Json::Value core_t::dispatch(const Json::Value& root) {
                 if(manifest.isObject()) {
                     result[app] = create_engine(app, manifest);
                 } else {
-                    throw std::runtime_error("app manifest is expected");
+                    throw configuration_error_t("app manifest is expected");
                 }
-            } catch(const std::exception& e) {
+            } catch(const configuration_error_t& e) {
                 result[app]["error"] = e.what();
+            } catch(...) {
+                result[app]["error"] = "unexpected exception";
             }
         }
 
@@ -249,7 +259,7 @@ Json::Value core_t::dispatch(const Json::Value& root) {
         Json::Value apps(root["apps"]), result(Json::objectValue);
 
         if(!apps.isArray() || !apps.size()) {
-            throw std::runtime_error("no apps have been specified");
+            throw configuration_error_t("no apps have been specified");
         }
 
         for(Json::Value::iterator it = apps.begin(); it != apps.end(); ++it) {
@@ -257,8 +267,10 @@ Json::Value core_t::dispatch(const Json::Value& root) {
             
             try {
                 result[app] = delete_engine(app);
-            } catch(const std::exception& e) {
+            } catch(const configuration_error_t& e) {
                 result[app]["error"] = e.what();
+            } catch(...) {
+                result[app]["error"] = "unexpected exception";
             }
         }
 
@@ -266,7 +278,7 @@ Json::Value core_t::dispatch(const Json::Value& root) {
     } else if(action == "info") {
         return info();
     } else {
-        throw std::runtime_error("unsupported action");
+        throw configuration_error_t("unsupported action");
     }
 }
 
@@ -275,7 +287,7 @@ Json::Value core_t::dispatch(const Json::Value& root) {
 
 Json::Value core_t::create_engine(const std::string& name, const Json::Value& manifest, bool recovering) {
     if(m_engines.find(name) != m_engines.end()) {
-        throw std::runtime_error("the specified app is already active");
+        throw configuration_error_t("the specified app is already active");
     }
 
     std::auto_ptr<engine_t> engine(new engine_t(context(), name, manifest));
@@ -307,7 +319,7 @@ Json::Value core_t::delete_engine(const std::string& name) {
     engine_map_t::iterator engine(m_engines.find(name));
 
     if(engine == m_engines.end()) {
-        throw std::runtime_error("the specified app is not active");
+        throw configuration_error_t("the specified app is not active");
     }
 
     try {
@@ -386,13 +398,7 @@ void core_t::recover() {
             it != apps.end(); 
             ++it) 
         {
-            std::string app(*it);
-            
-            try {
-                create_engine(app, root[app], true);
-            } catch(const std::exception& e) {
-                throw std::runtime_error("unable to recover '" + app + "' app - " + e.what());
-            }
+            create_engine(*it, root[*it], true);
         }
     }
 }

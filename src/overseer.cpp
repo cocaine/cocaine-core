@@ -64,14 +64,19 @@ void overseer_t::run() {
             m_module = context().create<plugin_t>(type);
             m_module->initialize(m_app);
         } else {
-            throw std::runtime_error("no app type has been specified");
+            throw configuration_error_t("no app type has been specified");
         }
-    } catch(const unrecoverable_error_t& e) {
+    } catch(const configuration_error_t& e) {
         events::error_t event(e);
         rpc::packed<events::error_t> packed(event);
         send(packed);
         return;
-    } catch(const std::runtime_error& e) {
+    } catch(const registry_error_t& e) {
+        events::error_t event(e);
+        rpc::packed<events::error_t> packed(event);
+        send(packed);
+        return;
+    } catch(const unrecoverable_error_t& e) {
         events::error_t event(e);
         rpc::packed<events::error_t> packed(event);
         send(packed);

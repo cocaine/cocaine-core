@@ -23,7 +23,7 @@ recurring_timer_t::recurring_timer_t(engine_t& engine, const std::string& method
     m_interval(args.get("interval", 0.0f).asInt() / 1000.0f)
 {
     if(m_interval <= 0.0f) {
-        throw std::runtime_error("no interval has been specified");
+        throw configuration_error_t("no interval has been specified");
     }
 
     m_watcher.set<recurring_timer_t, &recurring_timer_t::event>(this);

@@ -11,7 +11,6 @@
 // limitations under the License.
 //
 
-#include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -161,7 +160,7 @@ void slave_t::spawn() {
             exit(EXIT_FAILURE);
         }
     } else if(m_pid < 0) {
-        throw std::runtime_error("fork() failed");
+        throw system_error_t("fork() failed");
     }
 
     m_child_watcher.set<slave_t, &slave_t::signal>(this);
