@@ -16,8 +16,7 @@
 #include <sstream>
 
 #include "python.hpp"
-#include "log.hpp"
-#include "io.hpp"
+#include "objects.hpp"
 
 #include "cocaine/app.hpp"
 #include "cocaine/registry.hpp"

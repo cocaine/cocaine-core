@@ -11,8 +11,10 @@
 // limitations under the License.
 //
 
-#include "python.hpp"
+#include <cocaine/interfaces/plugin.hpp>
+
 #include "io.hpp"
+#include "python.hpp"
 
 using namespace cocaine::engine;
 
