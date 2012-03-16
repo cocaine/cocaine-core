@@ -1,6 +1,6 @@
 cocaine (0.7.3) lucid; urgency=low
 
-  * Proper fork() + exec() magic when spawning slaves.
+  * Proper fork() + exec() magic for slave spawning.
   * No more 'instances', nobody grasped the point of it anyway.
   * Much more granular exception control in the code, for better diagnostics.
   * Python: acquire GIL only on method invocations, so that other Python threads
