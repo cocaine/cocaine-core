@@ -115,9 +115,10 @@ void slave_t::spawn() {
     m_pid = ::fork();
 
     if(m_pid == 0) {
+        int rv = 0;
+
 #ifdef HAVE_CGROUPS
         if(m_engine.group()) {
-            int rv = 0;
             
             if((rv = cgroup_attach_task(m_engine.group())) != 0) {
                 m_engine.app().log->error(
@@ -130,8 +131,6 @@ void slave_t::spawn() {
             }
         }
 #endif
-
-        int rv = 0;
 
         rv = ::execl(
             m_engine.context().config.runtime.self.c_str(),
