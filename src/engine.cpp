@@ -273,15 +273,6 @@ void engine_t::stop() {
     m_gc_timer.stop();
 }
 
-namespace {
-    struct busy_slave {
-        template<class T>
-        bool operator()(const T& slave) const {
-            return slave->second->template state_downcast<const slave::busy*>();
-        }
-    };
-}
-
 Json::Value engine_t::info() {
     Json::Value results(Json::objectValue);
 
@@ -293,7 +284,7 @@ Json::Value engine_t::info() {
             std::count_if(
                 m_pool.begin(),
                 m_pool.end(),
-                busy_slave()
+                select::state<slave::busy>()
             )
         );
 
@@ -468,10 +459,18 @@ void engine_t::process(ev::idle&, int) {
     // NOTE: Count all the RPC events as heartbeats.
     slave->second->process_event(events::heartbeat_t());
 
-    if(slave->second->state_downcast<const slave::idle*>() && !m_queue.empty()) {
-        // NOTE: This will always succeed due to the test above.
-        enqueue(m_queue.front());
-        m_queue.pop_front();
+    if(slave->second->state_downcast<const slave::idle*>()) {
+        while(!m_queue.empty()) {
+            const boost::shared_ptr<job_t>& job = m_queue.front();
+            
+            if(!job->state_downcast<const job::complete*>()) {
+                // NOTE: This will always succeed due to the test above.
+                enqueue(job);
+                break;
+            }
+
+            m_queue.pop_front();
+        }
     }
 
     // TEST: Ensure that there're no more message parts pending on the channel.
