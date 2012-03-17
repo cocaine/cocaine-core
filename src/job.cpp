@@ -95,7 +95,6 @@ const std::string& job_t::method() const {
     return m_driver.method();
 }
 
-// XXX: Might be a good idea to stop this timer when the job is invoked.
 void job_t::discard(ev::periodic&, int) {
     process_event(
         events::error_t(
