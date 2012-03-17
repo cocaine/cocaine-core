@@ -13,7 +13,7 @@
 
 #include "cocaine/overseer.hpp"
 
-#include "cocaine/context.hpp"
+#include "cocaine/app.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/registry.hpp"
 #include "cocaine/rpc.hpp"
@@ -41,8 +41,7 @@ overseer_t::overseer_t(const config_t& config):
     m_heartbeat_timer.start(0.0f, 5.0f);
 }
 
-overseer_t::~overseer_t() 
-{ }
+overseer_t::~overseer_t() { }
 
 void overseer_t::run() {
     m_loop.loop();

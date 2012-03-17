@@ -46,5 +46,4 @@ plugin_t::plugin_t(context_t& ctx):
     object_t(ctx)
 { }
 
-plugin_t::~plugin_t()
-{ }
+plugin_t::~plugin_t() { }

@@ -53,6 +53,7 @@ struct config_t {
     struct registry_config_t {
         // Module path.
         std::string modules;
+        
         MSGPACK_DEFINE(modules);
     } registry;
 

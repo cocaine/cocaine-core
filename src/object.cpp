@@ -19,5 +19,4 @@ object_t::object_t(context_t& context):
     m_context(context)
 { }
 
-object_t::~object_t()
-{ }
+object_t::~object_t() { }

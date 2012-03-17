@@ -19,5 +19,4 @@ storage_t::storage_t(context_t& ctx):
     object_t(ctx)
 { }
 
-storage_t::~storage_t()
-{ }
+storage_t::~storage_t() { }

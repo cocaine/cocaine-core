@@ -16,7 +16,7 @@
 
 #include "cocaine/common.hpp"
 
-#include "cocaine/events.hpp"
+// #include "cocaine/events.hpp"
 #include "cocaine/networking.hpp"
 #include "cocaine/object.hpp"
 

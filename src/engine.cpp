@@ -390,7 +390,7 @@ void engine_t::process(ev::idle&, int) {
 
     if(slave == m_pool.end()) {
         m_app.log->warning(
-            "dropping type %d event from a nonexistent slave %s", 
+            "engine dropping type %d event from a nonexistent slave %s", 
             command,
             slave_id.c_str()
         );

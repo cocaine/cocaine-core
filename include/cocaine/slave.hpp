@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_SLAVE_HPP
-#define COCAINE_SLAVE_HPP
+#ifndef COCAINE_SLAVE_OVERSEER_HPP
+#define COCAINE_SLAVE_OVERSEER_HPP
 
 #include <boost/statechart/state_machine.hpp>
 #include <boost/statechart/simple_state.hpp>

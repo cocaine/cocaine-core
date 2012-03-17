@@ -108,8 +108,7 @@ core_t::core_t(const config_t& config):
     recover();
 }
 
-core_t::~core_t() 
-{ }
+core_t::~core_t() { }
 
 void core_t::run() {
     m_loop.loop();

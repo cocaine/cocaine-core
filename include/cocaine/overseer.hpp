@@ -11,14 +11,13 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_GENERIC_SLAVE_BACKEND_HPP
-#define COCAINE_GENERIC_SLAVE_BACKEND_HPP
+#ifndef COCAINE_SLAVE_HPP
+#define COCAINE_SLAVE_HPP
 
 #include "cocaine/common.hpp"
 
-#include "cocaine/app.hpp"
-#include "cocaine/networking.hpp"
 #include "cocaine/context.hpp"
+#include "cocaine/networking.hpp"
 
 #include "cocaine/interfaces/plugin.hpp"
 
