@@ -74,6 +74,7 @@ void overseer_t::process(ev::idle&, int) {
 
     switch(command) {
         case rpc::configure:
+            // TEST: No slave reconfiguration is allowed, yet.
             BOOST_ASSERT(m_plugin.get() == NULL);
             
             m_messages.recv(m_config);
@@ -82,6 +83,7 @@ void overseer_t::process(ev::idle&, int) {
             break;
 
         case rpc::invoke: {
+            // TEST: Ensure that we have the application first.
             BOOST_ASSERT(m_plugin.get() != NULL);
 
             std::string method;
@@ -106,6 +108,7 @@ void overseer_t::process(ev::idle&, int) {
             m_messages.drop_remaining_parts();
     }
 
+    // TEST: Ensure that we haven't missed something.
     BOOST_ASSERT(!m_messages.more());
 }
 
