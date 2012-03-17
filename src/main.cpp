@@ -161,9 +161,7 @@ int main(int argc, char * argv[]) {
 
             try {
                 pidfile.reset(
-                    new helpers::pid_file_t(
-                        vm["pidfile"].as<std::string>()
-                    )
+                    new helpers::pid_file_t(vm["pidfile"].as<std::string>())
                 );
             } catch(const std::runtime_error& e) {
                 log->error("%s", e.what());
