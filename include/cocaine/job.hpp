@@ -51,8 +51,8 @@ class job_t:
     public sc::state_machine<job_t, job::incomplete>,
     public birth_control_t<job_t>
 {
-    friend class job::waiting;
-    friend class job::processing;
+    friend struct job::waiting;
+    friend struct job::processing;
 
     public:
         job_t(drivers::driver_t& driver);

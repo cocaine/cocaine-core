@@ -45,11 +45,11 @@ struct dead;
 // Slave FSM
 // ---------
 
-struct slave_t:
+class slave_t:
     public sc::state_machine<slave_t, slave::unknown>,
     public unique_id_t
 {
-    friend class slave::alive;
+    friend struct slave::alive;
 
     public:
         slave_t(engine_t& engine);
