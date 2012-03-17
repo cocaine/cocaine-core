@@ -109,7 +109,7 @@ class socket_t:
         }
 
         std::string route() {
-            char identity[256]; 
+            char identity[256] = { 0 };
             size_t size = sizeof(identity);
 
             getsockopt(ZMQ_IDENTITY, &identity, &size);
