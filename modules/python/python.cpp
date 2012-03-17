@@ -46,7 +46,10 @@ python_t::python_t(context_t& ctx):
 }
 
 python_t::~python_t() {
-    PyEval_RestoreThread(m_thread_state); 
+    if(m_thread_state) {
+        PyEval_RestoreThread(m_thread_state); 
+    }
+        
     Py_Finalize();
 }
 
