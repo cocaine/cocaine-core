@@ -34,7 +34,8 @@ class auth_t:
                     const blob_t& signature,
                     const std::string& username);
 
-        // std::string sign(const std::string& message, const std::string& username);
+        // std::string sign(const std::string& message, 
+        //                  const std::string& username);
 
     private:
         boost::shared_ptr<logging::logger_t> m_log;

@@ -61,7 +61,9 @@ class eblob_storage_t:
         eblob_storage_t(context_t& ctx);
         ~eblob_storage_t();
 
-        virtual void put(const std::string& ns, const std::string& key, const Json::Value& value);
+        virtual void put(const std::string& ns,
+                         const std::string& key,
+                         const Json::Value& value);
 
         virtual bool exists(const std::string& ns, const std::string& key);
         virtual Json::Value get(const std::string& ns, const std::string& key);

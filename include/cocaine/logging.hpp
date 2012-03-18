@@ -45,7 +45,8 @@ class logger_t:
         void error(const char * format, ...) const;
 
     private:
-        void emit(priorities priority, const char * format, va_list args) const;
+        void emit(priorities priority,
+                  const char * format, va_list args) const;
 
     private:
         sink_t& m_sink;
@@ -59,13 +60,14 @@ class sink_t:
     public boost::noncopyable
 {
     public:
-        virtual ~sink_t();
+        virtual ~sink_t() = 0;
 
         // XXX: Might be a better idea to return the logger by reference.
         boost::shared_ptr<logger_t> get(const std::string& name);
     
     public:
-        virtual void emit(priorities priority, const std::string& message) const = 0;
+        virtual void emit(priorities priority,
+                          const std::string& message) const = 0;
 
     private:
         typedef std::map<

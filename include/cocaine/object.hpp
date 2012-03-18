@@ -23,7 +23,7 @@ namespace cocaine {
 
 class object_t {
     public:        
-        virtual ~object_t();
+        virtual ~object_t() = 0;
 
     protected:
         object_t(context_t& context);

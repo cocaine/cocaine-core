@@ -51,11 +51,13 @@ class plugin_t:
     public object_t
 {
     public:
-        plugin_t(context_t& ctx);
-        virtual ~plugin_t();
+        virtual ~plugin_t() = 0;
 
         virtual void initialize(const app_t& app) = 0;
         virtual void invoke(const std::string& method, io_t& io) = 0;
+
+    protected:
+        plugin_t(context_t& ctx);
 };
 
 }}

@@ -24,10 +24,11 @@ class storage_t:
     public object_t
 {
     public:
-        storage_t(context_t& ctx);
-        virtual ~storage_t();
+        virtual ~storage_t() = 0;
 
-        virtual void put(const std::string& ns, const std::string& key, const Json::Value& value) = 0;
+        virtual void put(const std::string& ns,
+                         const std::string& key,
+                         const Json::Value& value) = 0;
         
         virtual bool exists(const std::string& ns, const std::string& key) = 0;
         virtual Json::Value get(const std::string& ns, const std::string& key) = 0;
@@ -35,6 +36,9 @@ class storage_t:
 
         virtual void remove(const std::string& ns, const std::string& key) = 0;
         virtual void purge(const std::string& ns) = 0;
+
+    protected:
+        storage_t(context_t& ctx);
 };
 
 }}

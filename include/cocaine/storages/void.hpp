@@ -24,7 +24,9 @@ class void_storage_t:
     public:
         void_storage_t(context_t& ctx);
 
-        virtual void put(const std::string& ns, const std::string& key, const Json::Value& value);
+        virtual void put(const std::string& ns,
+                         const std::string& key,
+                         const Json::Value& value);
 
         virtual bool exists(const std::string& ns, const std::string& key);
         virtual Json::Value get(const std::string& ns, const std::string& key);

@@ -37,8 +37,7 @@ driver_t::driver_t(engine_t& engine, const std::string& method, const Json::Valu
     }
 }
 
-driver_t::~driver_t()
-{ }
+driver_t::~driver_t() { }
 
 void driver_t::audit(timing_type type, ev::tstamp value) {
     switch(type) {
