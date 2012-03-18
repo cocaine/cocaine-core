@@ -60,9 +60,11 @@ class blob_t {
         }
  
         blob_t& operator=(const blob_t& other) {
-            clear();
-            copy(other);
-
+            if(&other != this) {
+                clear();
+                copy(other);
+            }
+            
             return *this;
         }
         
