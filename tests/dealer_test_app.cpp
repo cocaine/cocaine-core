@@ -34,16 +34,17 @@ namespace po = boost::program_options;
 namespace cd = cocaine::dealer;
 
 std::string config_path = "tests/config_example.json";
-
+int msg_counter = 1;
 void response_callback(const cd::response& response, const cd::response_info& info) {
 	if (info.error != cd::MESSAGE_CHOKE) {
-		std::cout << "resp (CHUNK) uuid: " << response.uuid << std::endl;
-		std::string st((const char*)response.data, response.size);
-		std::cout << "resp data: " << st << std::endl;
+		//std::cout << "resp (CHUNK) uuid: " << response.uuid << std::endl;
+		//std::string st((const char*)response.data, response.size);
+		//std::cout << "resp data: " << st << std::endl;
 	}
 	else {
-		std::cout << "resp (CHOKE) uuid: " << response.uuid << std::endl;
-		std::cout << "resp done!" << std::endl;
+		//std::cout << "resp (CHOKE) uuid: " << response.uuid << std::endl;
+		std::cout << "resp done! " << msg_counter << std::endl;
+		++msg_counter;
 	}
 }
 
@@ -73,11 +74,11 @@ void create_client(int add_messages_count) {
 	}
 
 	// send message to perl app
-	for (int i = 0; i < add_messages_count; ++i) {
-		std::string message = "http://longcat.ru";
-		std::string uuid1 = c.send_message(message, path_perl);
-		std::cout << "mesg uuid: " << uuid1 << std::endl;
-	}
+	//for (int i = 0; i < add_messages_count; ++i) {
+	//	std::string message = "http://longcat.ru";
+	//	std::string uuid1 = c.send_message(message, path_perl);
+	//	std::cout << "mesg uuid: " << uuid1 << std::endl;
+	//}
 
 	sleep(5);
 }
