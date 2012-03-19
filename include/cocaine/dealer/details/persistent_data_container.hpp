@@ -43,6 +43,8 @@ public:
 	void set_eblob(eblob blob, const std::string& uuid);
 	void commit_data();
 
+	void set_data(const void* data, size_t size);
+
 	void* data() const;
 	size_t size() const;
 	bool empty() const;
@@ -50,6 +52,8 @@ public:
 	bool is_data_loaded();
 	void load_data();
 	void unload_data();
+
+	void remove_from_persistent_cache();
 
 	static const size_t EBLOB_COLUMN = 1;
 

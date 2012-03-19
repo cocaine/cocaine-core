@@ -55,7 +55,7 @@ public:
 	virtual	~eblob() {
 		std::string msg = "eblob at path: ";
 		msg += path_ + " destroyed.";
-		//logger_->log(msg);
+		logger_->log(msg);
 	}
 
 	void write(const std::string& key, const std::string& value, int column = zbr::EBLOB_TYPE_DATA) {

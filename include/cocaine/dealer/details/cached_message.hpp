@@ -75,6 +75,8 @@ public:
 	void load_data();
 	void unload_data();
 
+	void remove_from_persistent_cache();
+
 private:
 	void gen_uuid();
 	void init();
@@ -122,7 +124,7 @@ cached_message<DataContainer, MetadataContainer>::cached_message(const message_p
 		throw error(DEALER_MESSAGE_DATA_TOO_BIG_ERROR, "can't create message, message data too big.");
 	}
 
-	data_ = DataContainer(data, data_size);
+	data_.set_data(data, data_size);
 	init();
 }
 
@@ -302,6 +304,11 @@ cached_message<DataContainer, MetadataContainer>::json() {
 	envelope["uuid"] = mdata_.uuid;
 
 	return writer.write(envelope);
+}
+
+template<typename DataContainer, typename MetadataContainer> void
+cached_message<DataContainer, MetadataContainer>::remove_from_persistent_cache() {
+	return data_.remove_from_persistent_cache();
 }
 
 } // namespace dealer

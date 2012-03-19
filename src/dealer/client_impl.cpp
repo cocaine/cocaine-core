@@ -22,8 +22,7 @@
 #include "cocaine/dealer/details/cached_message.hpp"
 #include "cocaine/dealer/details/data_container.hpp"
 #include "cocaine/dealer/details/request_metadata.hpp"
-
-#include "cocaine/dealer/details/persistant_data_container.hpp"
+#include "cocaine/dealer/details/persistent_data_container.hpp"
 
 namespace cocaine {
 namespace dealer {
@@ -209,7 +208,6 @@ client_impl::send_message(const void* data,
 		}
 		else if(config()->message_cache_type() == PERSISTENT) {
 			p_message_t* msg_ptr = new p_message_t(path, policy, data, size);
-
 			eblob eb = context()->storage()->get_eblob(path.service_name);
 			
 			// init metadata and write to storage
@@ -217,12 +215,8 @@ client_impl::send_message(const void* data,
 			msg_ptr->mdata_container().commit_data();
 
 			// init data and write to storage
-			//std::cout << "items_count: " << eb.items_count() << std::endl;
-
-			//std::cout << "msg_ptr->data_container().size(): " << msg_ptr->data_container().size() << std::endl;
-			
-			//msg_ptr->data_container().set_eblob(eb, msg->uuid());
-			//msg_ptr->data_container().commit_data();
+			msg_ptr->data_container().set_eblob(eb, msg_ptr->uuid());
+			msg_ptr->data_container().commit_data();
 
 			msg.reset(msg_ptr);
 		}

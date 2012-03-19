@@ -26,7 +26,7 @@
 #include "cocaine/dealer/client.hpp"
 #include "cocaine/dealer/details/time_value.hpp"
 #include "cocaine/dealer/details/eblob_storage.hpp"
-#include "cocaine/dealer/details/persistant_data_container.hpp"
+#include "cocaine/dealer/details/persistent_data_container.hpp"
 #include "cocaine/dealer/details/data_container.hpp"
 #include "cocaine/dealer/details/smart_logger.hpp"
 

@@ -200,6 +200,7 @@ message_cache::remove_message_from_cache(const std::string& uuid) {
 		return;
 	}
 
+	it->second->remove_from_persistent_cache();
 	sent_messages_.erase(it);
 }
 

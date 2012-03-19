@@ -49,6 +49,8 @@ public:
 	void load_data();
 	void unload_data();
 
+	void remove_from_persistent_cache();
+
 protected:
 	// sha1 size in bytes
 	static const size_t SHA1_SIZE = 20;

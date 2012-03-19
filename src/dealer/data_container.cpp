@@ -253,5 +253,9 @@ void
 data_container::unload_data() {
 }
 
+void
+data_container::remove_from_persistent_cache() {
+}
+
 } // namespace dealer
 } // namespace cocaine

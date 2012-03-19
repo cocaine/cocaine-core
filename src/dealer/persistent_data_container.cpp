@@ -41,6 +41,22 @@ persistent_data_container::persistent_data_container(const void* data, size_t si
 	data_(NULL),
 	size_(0)
 {
+	set_data(data, size);
+}
+
+persistent_data_container::persistent_data_container(const persistent_data_container& dc)
+{
+	*this = dc;
+}
+
+persistent_data_container::~persistent_data_container() {
+	unload_data();
+}
+
+void
+persistent_data_container::set_data(const void* data, size_t size) {
+	unload_data();
+
 	data_in_memory_ = true;
 
 	// early exit
@@ -54,15 +70,6 @@ persistent_data_container::persistent_data_container(const void* data, size_t si
 
 	allocate_memory();
 	memcpy(data_, data, size_);
-}
-
-persistent_data_container::persistent_data_container(const persistent_data_container& dc)
-{
-	*this = dc;
-}
-
-persistent_data_container::~persistent_data_container() {
-	unload_data();
 }
 
 void
@@ -155,6 +162,11 @@ persistent_data_container::operator != (const persistent_data_container& rhs) co
 bool
 persistent_data_container::is_data_loaded() {
 	return data_in_memory_;
+}
+
+void
+persistent_data_container::remove_from_persistent_cache() {
+	blob_.remove_all(uuid_);
 }
 
 } // namespace dealer

@@ -220,7 +220,7 @@ void
 http_heartbeats_collector::ping_service_hosts(const service_info_t& s_info, std::vector<host_info_t>& hosts) {
 	logger_->log("pinging hosts from for service: " + s_info.name_);
 
-	boost::mutex::scoped_lock lock(mutex_);
+	//boost::mutex::scoped_lock lock(mutex_);
 
 	std::vector<host_info_t> responded_hosts;
 	std::vector<handle_info_t> collected_handles;
