@@ -29,7 +29,7 @@ class object_t {
         object_t(context_t& context);
 
     public:
-        inline context_t& context() {
+        context_t& context() {
             return m_context;
         }
 

@@ -70,7 +70,7 @@ class pid_file_t:
         }
 
     private:
-        inline void remove() {
+        void remove() {
             try {
                 fs::remove(m_filepath);
             } catch(const std::runtime_error& e) {

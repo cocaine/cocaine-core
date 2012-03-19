@@ -72,11 +72,11 @@ class job_t:
     public:
         const std::string& method() const;
         
-        inline const client::policy_t& policy() const {
+        const client::policy_t& policy() const {
             return m_policy;
         }
 
-        inline const blob_t& request() const {
+        const blob_t& request() const {
             return m_request;
         }
 

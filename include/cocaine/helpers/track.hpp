@@ -29,66 +29,66 @@ struct track_t {
             destroy();
         }
 
-        inline track_t<T, D>& operator=(T object) {
+        track_t<T, D>& operator=(T object) {
             destroy();
             m_object = object;
             return *this;
         }
 
-        inline track_t<T, D>& operator=(track_t<T, D>& other) {
+        track_t<T, D>& operator=(track_t<T, D>& other) {
             destroy();
             m_object = other.release();
             return *this;
         } 
 
-        inline T operator*() {
+        T operator*() {
             return m_object;
         }
 
-        inline const T operator*() const {
+        const T operator*() const {
             return m_object;
         }
 
-        inline T* operator&() {
+        T* operator&() {
             return &m_object;
         }
 
-        inline const T* operator&() const {
+        const T* operator&() const {
             return &m_object;
         }
 
-        inline T operator->() {
+        T operator->() {
             return m_object;
         }
 
-        inline const T operator->() const {
+        const T operator->() const {
             return m_object;
         }
 
-        inline operator T() {
+        operator T() {
             return m_object;
         }
 
-        inline operator const T() const {
+        operator const T() const {
             return m_object;
         }
 
-        inline bool valid() const {
+        bool valid() const {
             return (m_object != NULL);
         }
 
-        inline T release() {
+        T release() {
             T tmp = NULL;
             std::swap(tmp, m_object);
             return tmp;
         }
 
-        inline void reset() {
+        void reset() {
             destroy();
         }
 
     private:
-        inline void destroy() {
+        void destroy() {
             if(m_object) {
                 D(m_object);
             }

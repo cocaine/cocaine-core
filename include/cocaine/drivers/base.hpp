@@ -53,11 +53,11 @@ class driver_t:
         // void emit(const events::emit_t& event);
 
     public:
-        inline const engine_t& engine() {
+        const engine_t& engine() {
             return m_engine;
         }
 
-        inline const std::string& method() const {
+        const std::string& method() const {
             return m_method;
         }
     

@@ -53,8 +53,8 @@ struct chain<null_type, null_type> {
 }
 
 template<class LT, class RT>
-static typename helpers::chain<LT, RT>::type
-inline join_tuples(const LT& lt, const RT& rt) {
+static inline typename helpers::chain<LT, RT>::type
+join_tuples(const LT& lt, const RT& rt) {
     return helpers::chain<LT, RT>::apply(lt, rt);
 }
 

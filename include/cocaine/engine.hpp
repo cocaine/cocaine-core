@@ -135,12 +135,12 @@ class engine_t:
         }
 
     public:
-        inline const app_t& app() const {
+        const app_t& app() const {
             return m_app;
         }
 
 #ifdef HAVE_CGROUPS
-        inline cgroup * const group() {
+        cgroup * const group() {
             return m_cgroup;
         }
 #endif

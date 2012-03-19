@@ -143,7 +143,8 @@ class socket_t:
 template<class T> class raw;
 
 template<class T>
-inline static raw<T> protect(T& object) {
+static inline raw<T>
+protect(T& object) {
     return raw<T>(object);
 }
 
@@ -153,12 +154,12 @@ template<> class raw<std::string> {
             m_string(string)
         { }
 
-        inline void pack(zmq::message_t& message) const {
+        void pack(zmq::message_t& message) const {
             message.rebuild(m_string.size());
             memcpy(message.data(), m_string.data(), m_string.size());
         }
 
-        inline bool unpack(/* const */ zmq::message_t& message) {
+        bool unpack(/* const */ zmq::message_t& message) {
             m_string.assign(
                 static_cast<const char*>(message.data()),
                 message.size());
@@ -175,7 +176,7 @@ template<> class raw<const std::string> {
             m_string(string)
         { }
 
-        inline void pack(zmq::message_t& message) const {
+        void pack(zmq::message_t& message) const {
             message.rebuild(m_string.size());
             memcpy(message.data(), m_string.data(), m_string.size());
         }
@@ -215,24 +216,24 @@ class channel_t:
         }
         
         template<class T>
-        inline bool send(const raw<T>& object, int flags = 0) {
+        bool send(const raw<T>& object, int flags = 0) {
             zmq::message_t message;
             object.pack(message);
             return send(message, flags);
         }
 
         // Packs and sends a tuple.
-        inline bool send_multi(const null_type&, int flags = 0) {
+        bool send_multi(const null_type&, int flags = 0) {
             return true;
         }
 
         template<class Head>
-        inline bool send_multi(const cons<Head, null_type>& o, int flags = 0) {
+        bool send_multi(const cons<Head, null_type>& o, int flags = 0) {
             return send(o.get_head(), flags);
         }
 
         template<class Head, class Tail>
-        inline bool send_multi(const cons<Head, Tail>& o, int flags = 0) {
+        bool send_multi(const cons<Head, Tail>& o, int flags = 0) {
             return (send(o.get_head(), ZMQ_SNDMORE | flags) 
                     && send_multi(o.get_tail(), flags));
         }
@@ -264,7 +265,7 @@ class channel_t:
         }
       
         template<class T>
-        inline bool recv(raw<T>& result, int flags) {
+        bool recv(raw<T>& result, int flags) {
             zmq::message_t message;
 
             if(!recv(&message, flags)) {
@@ -275,12 +276,12 @@ class channel_t:
         }
 
         // Receives and unpacks a tuple.
-        inline bool recv_multi(const null_type&, int flags = 0) {
+        bool recv_multi(const null_type&, int flags = 0) {
             return true;
         }
 
         template<class Head, class Tail>
-        inline bool recv_multi(cons<Head, Tail>& o, int flags = 0) {
+        bool recv_multi(cons<Head, Tail>& o, int flags = 0) {
             return (recv(o.get_head(), flags)
                     && recv_multi(o.get_tail(), flags));
         }

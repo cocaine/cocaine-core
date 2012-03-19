@@ -51,7 +51,7 @@ class zeromq_server_t:
         virtual Json::Value info() /* const */;
 
     public:
-        inline networking::channel_t& socket() {
+        networking::channel_t& socket() {
             return m_socket;
         }
 

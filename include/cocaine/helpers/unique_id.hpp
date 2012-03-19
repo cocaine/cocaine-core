@@ -39,7 +39,7 @@ class unique_id_t {
             }
         }
 
-        inline const identifier_type& id() const {
+        const identifier_type& id() const {
             if(m_id.empty()) {
                 char unparsed_uuid[37];
                 uuid_unparse_lower(m_uuid, unparsed_uuid);
