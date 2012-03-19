@@ -164,7 +164,7 @@ client_impl::send_message(const void* data,
 						  const message_policy& policy)
 {
 	typedef cached_message<data_container, request_metadata> message_t;
-	typedef cached_message<persistant_data_container, persistant_request_metadata> p_message_t;
+	typedef cached_message<persistent_data_container, persistent_request_metadata> p_message_t;
 
 	boost::mutex::scoped_lock lock(mutex_);
 
@@ -217,8 +217,12 @@ client_impl::send_message(const void* data,
 			msg_ptr->mdata_container().commit_data();
 
 			// init data and write to storage
-			msg_ptr->data_container().set_eblob(eb, msg->uuid());
-			msg_ptr->data_container().commit_data();
+			//std::cout << "items_count: " << eb.items_count() << std::endl;
+
+			//std::cout << "msg_ptr->data_container().size(): " << msg_ptr->data_container().size() << std::endl;
+			
+			//msg_ptr->data_container().set_eblob(eb, msg->uuid());
+			//msg_ptr->data_container().commit_data();
 
 			msg.reset(msg_ptr);
 		}

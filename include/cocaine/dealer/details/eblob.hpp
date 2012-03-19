@@ -49,14 +49,13 @@ public:
 		  int defrag_timeout = DEFAULT_DEFRAG_TIMEOUT)
 	{
 		boost::shared_ptr<base_logger> logger;
-		logger.reset(new base_logger);
 		create_eblob(logger, path, blob_size, sync_interval, defrag_timeout);
 	}
 
 	virtual	~eblob() {
 		std::string msg = "eblob at path: ";
 		msg += path_ + " destroyed.";
-		logger_->log(msg);
+		//logger_->log(msg);
 	}
 
 	void write(const std::string& key, const std::string& value, int column = zbr::EBLOB_TYPE_DATA) {
@@ -154,6 +153,10 @@ private:
 
 		// create default logger
 		logger_ = logger;
+
+		if (!logger_) {
+			logger_.reset(new base_logger);
+		}
 
 		// create eblob logger
 		eblob_logger_.reset(new zbr::eblob_logger(NULL, 0));

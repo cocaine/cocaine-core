@@ -465,7 +465,12 @@ handle<LSD_T>::dispatch_next_available_message(socket_ptr_t main_socket) {
 		zmq::message_t message(data_size);
 
 		if (data_size > 0) {
+			if (!new_msg->is_data_loaded()) {
+				new_msg->load_data();
+			}
+
 			memcpy((void *)message.data(), new_msg->data(), data_size);
+			new_msg->unload_data();
 		}
 
 		if (true != main_socket->send(message)) {

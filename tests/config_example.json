@@ -21,9 +21,9 @@
 
 		"persistent_storage" :
 		{
-			"eblob_path" : "/home/rimz/msg_cache",
+			"eblob_path" : "/var/tmp/eblobs",
 			"blob_size" : 2048,
-			"eblob_sync_interval" : 1
+			"eblob_sync_interval" : 2
 		},
 		
 		"autodiscovery" :

@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef _COCAINE_DEALER_PERSISTANT_DATA_CONTAINER_HPP_INCLUDED_
-#define _COCAINE_DEALER_PERSISTANT_DATA_CONTAINER_HPP_INCLUDED_
+#ifndef _COCAINE_DEALER_PERSISTENT_DATA_CONTAINER_HPP_INCLUDED_
+#define _COCAINE_DEALER_PERSISTENT_DATA_CONTAINER_HPP_INCLUDED_
 
 #include <string>
 #include <cstring>
@@ -29,16 +29,16 @@
 namespace cocaine {
 namespace dealer {
 
-class persistant_data_container {
+class persistent_data_container {
 public:
-	persistant_data_container();
-	persistant_data_container(const void* data, size_t size);
-	persistant_data_container(const persistant_data_container& dc);
-	virtual ~persistant_data_container();
+	persistent_data_container();
+	persistent_data_container(const void* data, size_t size);
+	persistent_data_container(const persistent_data_container& dc);
+	virtual ~persistent_data_container();
 
-	persistant_data_container& operator = (const persistant_data_container& rhs);
-	bool operator == (const persistant_data_container& rhs) const;
-	bool operator != (const persistant_data_container& rhs) const;
+	persistent_data_container& operator = (const persistent_data_container& rhs);
+	bool operator == (const persistent_data_container& rhs) const;
+	bool operator != (const persistent_data_container& rhs) const;
 
 	void set_eblob(eblob blob, const std::string& uuid);
 	void commit_data();
@@ -72,4 +72,4 @@ protected:
 } // namespace dealer
 } // namespace cocaine
 
-#endif // _COCAINE_DEALER_PERSISTANT_DATA_CONTAINER_HPP_INCLUDED_
+#endif // _COCAINE_DEALER_PERSISTENT_DATA_CONTAINER_HPP_INCLUDED_
