@@ -38,11 +38,13 @@ void python_io_t::destructor(python_io_t * self) {
 PyObject* python_io_t::read(python_io_t * self, PyObject * args, PyObject * kwargs) {
     PyObject * block = NULL;
     PyObject * result = NULL;
-    
-    static char block_keyword[] = "block";
-    static char * keywords[] = { block_keyword };
+    Py_ssize_t size = 0;
 
-    if(!PyArg_ParseTupleAndKeywords(args, kwargs, "|O:read", keywords, &block)) {
+    static char block_keyword[] = "block";
+    static char size_keyword[] = "size";
+    static char * keywords[] = { size_keyword, block_keyword };
+
+    if(!PyArg_ParseTupleAndKeywords(args, kwargs, "|nO:read", keywords, &size, &block)) {
         return result;
     }
 
@@ -58,7 +60,7 @@ PyObject* python_io_t::read(python_io_t * self, PyObject * args, PyObject * kwar
         result = PyString_FromStringAndSize(
             static_cast<const char*>(chunk.data()),
             chunk.size());
-    } else { 
+    } else {
         result = PyString_FromString("");
     }
 
@@ -110,6 +112,6 @@ PyObject* python_io_t::iter_next(python_io_t * it) {
         PyExc_NotImplementedError,
         "Method is not yet implemented"
     );
-    
+
     return NULL;
 }

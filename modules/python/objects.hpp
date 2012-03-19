@@ -20,13 +20,13 @@
 namespace cocaine { namespace engine {
 
 static PyMethodDef log_object_methods[] = {
-    { "debug", (PyCFunction)log_object_t::debug, METH_VARARGS, 
+    { "debug", (PyCFunction)log_object_t::debug, METH_VARARGS,
         "Logs a message with a Debug priority" },
-    { "info", (PyCFunction)log_object_t::info, METH_VARARGS, 
+    { "info", (PyCFunction)log_object_t::info, METH_VARARGS,
         "Logs a message with an Information priority" },
-    { "warning", (PyCFunction)log_object_t::warning, METH_VARARGS, 
+    { "warning", (PyCFunction)log_object_t::warning, METH_VARARGS,
         "Logs a message with a Warning priority" },
-    { "error", (PyCFunction)log_object_t::error, METH_VARARGS, 
+    { "error", (PyCFunction)log_object_t::error, METH_VARARGS,
         "Logs a message with an Error priority" },
     { "write", (PyCFunction)log_object_t::write, METH_VARARGS,
         "Writes a message to the error stream" },
