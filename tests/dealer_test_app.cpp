@@ -15,9 +15,10 @@
 #include <sstream>
 
 #include <boost/program_options.hpp>
-#include <boost/bind.hpp> 
-#include <boost/filesystem.hpp> 
-#include <boost/shared_ptr.hpp> 
+#include <boost/bind.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include <msgpack.hpp>
 
@@ -25,6 +26,8 @@
 #include "cocaine/dealer/client.hpp"
 #include "cocaine/dealer/details/time_value.hpp"
 #include "cocaine/dealer/details/eblob_storage.hpp"
+#include "cocaine/dealer/details/persistant_data_container.hpp"
+#include "cocaine/dealer/details/data_container.hpp"
 #include "cocaine/dealer/details/smart_logger.hpp"
 
 namespace po = boost::program_options;
@@ -60,7 +63,7 @@ void create_client(int add_messages_count) {
 	c.set_response_callback(boost::bind(&response_callback, _1, _2), path_py);
 	c.set_response_callback(boost::bind(&response_callback, _1, _2), path_perl);
 
-	sleep(10);
+	sleep(3);
 
 	// send message to py app
 	for (int i = 0; i < add_messages_count; ++i) {
@@ -79,28 +82,57 @@ void create_client(int add_messages_count) {
 	sleep(5);
 }
 
+void show_contents(const cocaine::dealer::data_container& c) {
+	if (c.data()) {
+		std::string str((const char*)c.data(), 0, c.size());
+		std::cout << str << std::endl;
+	}
+	else {
+		std::cout << "- no data, ";
+
+		if (c.empty()) {
+			std::cout << " empty container -";	
+		}
+		else {
+			std::cout << " non-empty container -";
+		}
+
+		std::cout << std::endl;
+	}
+}
+
 int
 main(int argc, char** argv) {
 	/*
 	using namespace cocaine::dealer;
-	
+
 	boost::shared_ptr<base_logger> logger;
 	logger.reset(new smart_logger<stdout_logger>());
 
 	eblob_storage st("/var/tmp/eblobs");
-
 	st.open_eblob("test");
-	st["test"].write("huita", "poebta");
-	st["test"].write("aaaa", "sdfhb");
-	st["test"].write("aaaa", "VAL", 1);
+
+	std::string test_data = "Люди в тюрьме меньше времени сидят, чем вы на Лепре, mcore.";
+	persistant_data_container dc(test_data.data(), test_data.size());
+	dc.set_eblob(st["test"], "container test key");
+	dc.commit_data();
+	dc.load_data();
+
+	if (dc.is_data_in_memory()) {
+		logger->log("%s", std::string((char*)dc.data(), 0, dc.size()).c_str());
+	}
+	else {
+		logger->log("data is not in memory, load first");
+	}
+	*/
+	//st["test"].write("huita", "poebta");
+	//st["test"].write("aaaa", "sdfhb");
+	//st["test"].write("aaaa", "VAL", 1);
 
 	//st.write("huita", "poebta", 1);
-	logger->log("%llu", st["test"].items_count());
-	logger->log("%s", st["test"].read("aaaa", 1).c_str());
-
-	st["est"].write("aaaa", "VAL", 1);
-	//st.open_eblob("huita");
-	*/
+	//logger->log("%llu", st["test"].items_count());
+	//logger->log("%s", st["test"].read("aaaa", 1).c_str());
+	//st["est"].write("aaaa", "VAL", 1);
 
 	try {
 		po::options_description desc("Allowed options");
@@ -135,4 +167,65 @@ main(int argc, char** argv) {
 	}
 
 	return EXIT_SUCCESS;
+}
+
+void test_data_container() {
+	using namespace cocaine::dealer;
+
+	std::string str1 = "this is some test data right here.";
+	std::string str2 = "this is some other test data.";
+
+	data_container dc1(str1.data(), str1.size());
+	//show_contents(dc1);
+
+	data_container dc2;
+	dc2 = dc1;
+	//show_contents(dc2);
+
+	dc2.clear();
+	//show_contents(dc2);
+	//show_contents(dc1);
+
+	dc1.clear();
+	//show_contents(dc1);
+
+	dc1.set_data(str2.data(), str2.size());
+	//show_contents(dc1);
+
+	data_container dc3;
+	//show_contents(dc3);
+
+	dc1 = dc3;
+	//show_contents(dc1);
+	//show_contents(dc3);
+
+	dc1.set_data(str1.data(), str1.size());
+	dc2.set_data(str1.data(), str1.size());
+	dc3.set_data(str2.data(), str2.size());
+
+	if (dc1 == dc2) {
+		std::cout << "test 1 passed\n";
+	}
+
+	if (dc2 == dc1) {
+		std::cout << "test 2 passed\n";
+	}
+
+	if (dc1 != dc3) {
+		std::cout << "test 3 passed\n";
+	}
+
+	if (dc3 != dc1) {
+		std::cout << "test 4 passed\n";
+	}
+
+	dc2.set_data(NULL, 0);
+
+	if (dc2 != dc1) {
+		std::cout << "test 5 passed\n";
+	}
+
+	if (dc1 != dc2) {
+		std::cout << "test 6 passed\n";
+	}
 }

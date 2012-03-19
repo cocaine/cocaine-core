@@ -20,7 +20,6 @@
 
 #include <boost/shared_ptr.hpp>
 #include <boost/detail/atomic_count.hpp>
-#include <boost/thread/mutex.hpp>
 
 #include "cocaine/dealer/structs.hpp"
 
@@ -39,12 +38,18 @@ public:
 	bool operator == (const data_container& rhs) const;
 	bool operator != (const data_container& rhs) const;
 
+	void set_data(const void* data, size_t size);
+
 	void* data() const;
 	size_t size() const;
 	bool empty() const;
 	void clear();
 
-private:
+	bool is_data_loaded();
+	void load_data();
+	void unload_data();
+
+protected:
 	// sha1 size in bytes
 	static const size_t SHA1_SIZE = 20;
 
@@ -57,12 +62,11 @@ private:
 	typedef boost::detail::atomic_count reference_counter;
 	
 	void init();
-	void init_with_data(unsigned char* data, size_t size);
-	void swap(data_container& other);
-	void copy(const data_container& other);
+	void release();
+
 	void sign_data(unsigned char* data, size_t& size, unsigned char signature[SHA1_SIZE]);
 
-private:
+protected:
 	// data
 	unsigned char* data_;
 	size_t size_;
@@ -73,9 +77,6 @@ private:
 
 	// data reference counter
 	boost::shared_ptr<reference_counter> ref_counter_;
-
-	// synchronization
-	boost::mutex mutex_;
 };
 
 } // namespace dealer

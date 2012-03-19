@@ -152,7 +152,7 @@ handle<LSD_T>::handle(const handle_info<LSD_T>& info,
 	is_connected_(false),
 	receiving_control_socket_ok_(false)
 {
-	logger()->log(PLOG_DEBUG, "created service %s handle %s", info.service_name_.c_str(), info.name_.c_str());
+	logger()->log(PLOG_DEBUG, "STARTED HANDLE [%s].[%s]", info.service_name_.c_str(), info.name_.c_str());
 
 	// create message cache
 	message_cache_.reset(new message_cache(context(), config()->message_cache_type()));
@@ -190,7 +190,9 @@ handle<LSD_T>::dispatch_messages() {
 	socket_ptr_t control_socket;
 
 	establish_control_conection(control_socket);
-	log_dispatch_start();
+
+	std::string log_str = "started message dispatch for [%s].[%s]";
+	logger()->log(PLOG_DEBUG, log_str.c_str(), info_.service_name_.c_str(), info_.name_.c_str());
 
 	// process messages
 	while (is_running_) {
@@ -200,7 +202,6 @@ handle<LSD_T>::dispatch_messages() {
 
 		// received kill message, finalize everything
 		if (control_message == CONTROL_MESSAGE_KILL) {
-			logger()->log(PLOG_DEBUG, "CONTROL_MESSAGE_KILL");
 			is_running_ = false;
 			break;
 		}
@@ -258,6 +259,8 @@ handle<LSD_T>::dispatch_messages() {
 	main_socket.reset();
 
 	update_statistics();
+	log_str = "finished message dispatch for [%s].[%s]";
+	logger()->log(PLOG_DEBUG, log_str.c_str(), info_.service_name_.c_str(), info_.name_.c_str());
 }
 
 template <typename LSD_T> void
@@ -341,7 +344,7 @@ handle<LSD_T>::dispatch_control_messages(int type, socket_ptr_t& main_socket) {
 
 	switch (type) {
 		case CONTROL_MESSAGE_CONNECT:
-			logger()->log(PLOG_DEBUG, "CONTROL_MESSAGE_CONNECT");
+			//logger()->log(PLOG_DEBUG, "CONTROL_MESSAGE_CONNECT");
 
 			// create new main socket in case we're not connected
 			if (!is_connected_) {
@@ -352,7 +355,7 @@ handle<LSD_T>::dispatch_control_messages(int type, socket_ptr_t& main_socket) {
 			break;
 
 		case CONTROL_MESSAGE_RECONNECT:
-			logger()->log(PLOG_DEBUG, "CONTROL_MESSAGE_RECONNECT");
+			//logger()->log(PLOG_DEBUG, "CONTROL_MESSAGE_RECONNECT");
 
 			// kill old socket, create new
 			main_socket.reset(new zmq::socket_t(*(context()->zmq_context()), ZMQ_DEALER));
@@ -361,7 +364,7 @@ handle<LSD_T>::dispatch_control_messages(int type, socket_ptr_t& main_socket) {
 			break;
 
 		case CONTROL_MESSAGE_DISCONNECT:
-			logger()->log(PLOG_DEBUG, "CONTROL_MESSAGE_DISCONNECT");
+			//logger()->log(PLOG_DEBUG, "CONTROL_MESSAGE_DISCONNECT");
 
 			// kill socket
 			main_socket.reset();
@@ -369,7 +372,7 @@ handle<LSD_T>::dispatch_control_messages(int type, socket_ptr_t& main_socket) {
 			break;
 
 		case CONTROL_MESSAGE_CONNECT_NEW_HOSTS:
-			logger()->log(PLOG_DEBUG, "CONTROL_MESSAGE_CONNECT_NEW_HOSTS");
+			//logger()->log(PLOG_DEBUG, "CONTROL_MESSAGE_CONNECT_NEW_HOSTS");
 
 			// connect socket to new hosts
 			hosts_info_list_t new_hosts;
@@ -407,7 +410,7 @@ handle<LSD_T>::connect_zmq_socket_to_hosts(socket_ptr_t& socket,
 			std::string port = boost::lexical_cast<std::string>(info_.port_);
 			std::string ip = host_info<LSD_T>::string_from_ip(hosts[i].ip_);
 			connection_str = "tcp://" + ip + ":" + port;
-			logger()->log(PLOG_DEBUG, "handle connection str: %s", connection_str.c_str());
+			//logger()->log(PLOG_DEBUG, "handle connection str: %s", connection_str.c_str());
 			int timeout = 0;
 			socket->setsockopt(ZMQ_LINGER, &timeout, sizeof(timeout));
 			socket->connect(connection_str.c_str());
@@ -725,7 +728,7 @@ handle<LSD_T>::info() const {
 
 template <typename LSD_T> void
 handle<LSD_T>::kill() {
-	logger()->log(PLOG_DEBUG, "kill");
+	logger()->log(PLOG_DEBUG, "killing handle [%s].[%s]", info_.service_name_.c_str(), info_.name_.c_str());
 
 	if (!is_running_) {
 		return;
@@ -740,7 +743,7 @@ handle<LSD_T>::kill() {
 
 template <typename LSD_T> void
 handle<LSD_T>::connect() {
-	logger()->log(PLOG_DEBUG, "connect");
+	//logger()->log(PLOG_DEBUG, "connect");
 
 	get_statistics();
 	update_statistics();
@@ -758,7 +761,16 @@ handle<LSD_T>::connect() {
 
 template <typename LSD_T> void
 handle<LSD_T>::connect(const hosts_info_list_t& hosts) {
-	logger()->log(PLOG_DEBUG, "connect with hosts");
+	std::string log_str = "CONNECT HANDLE [" + info_.service_name_ +"].[" + info_.name_ + "] to hosts: ";
+	for (size_t i = 0; i < hosts.size(); ++i) {
+		log_str += host_info_t::string_from_ip(hosts[i].ip_);
+
+		if (i != hosts.size() - 1) {
+			log_str += ", ";
+		}
+	}
+
+	logger()->log(PLOG_DEBUG, log_str);
 
 	get_statistics();
 	update_statistics();

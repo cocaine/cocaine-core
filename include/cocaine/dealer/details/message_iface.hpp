@@ -29,6 +29,10 @@ public:
 	virtual void* data() = 0;
 	virtual size_t size() const = 0;
 
+	virtual bool is_data_loaded() = 0;
+	virtual void load_data() = 0;
+	virtual void unload_data() = 0;
+
 	virtual size_t container_size() const = 0;
 
 	virtual const message_path& path() const = 0;

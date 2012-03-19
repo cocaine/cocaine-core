@@ -42,7 +42,8 @@ data_container::data_container(const void* data, size_t size) :
 	size_(size),
 	signed_(false)
 {
-	init_with_data((unsigned char*)data, size);
+	init();
+	set_data(data, size);
 }
 
 data_container::data_container(const data_container& dc) {
@@ -51,32 +52,25 @@ data_container::data_container(const data_container& dc) {
 		return;
 	}
 
-	data_ = dc.data_;
-	size_ = dc.size_;
-
-	if (dc.signed_) {
-		memcpy(signature_, dc.signature_, SHA1_SIZE);
-		signed_ = dc.signed_;
-	}
-
-	ref_counter_ = dc.ref_counter_;
-	++*ref_counter_;
+	*this = dc;
 }
 
 void
-data_container::init_with_data(unsigned char* data, size_t size) {
-	init();
+data_container::set_data(const void* data, size_t size) {
+	// clean-up in case we have anything
+	clear();
 
+	// early exit
 	if (data == NULL || size == 0) {
 		data_ = NULL;
 		size_ = 0;
 		return;
 	}
 
+	// copy provided data
 	std::string error_msg = "not enough memory to create new data container at ";
 	error_msg += std::string(BOOST_CURRENT_FUNCTION);
 
-	// allocate new space
 	try {
 		data_ = new unsigned char[size];
 	}
@@ -88,16 +82,16 @@ data_container::init_with_data(unsigned char* data, size_t size) {
 		throw error(error_msg);
 	}
 
-	// copy data
 	memcpy(data_, data, size);
 	++*ref_counter_;
-
 	size_ = size;
 
-	if (size <= SMALL_DATA_SIZE) {
+	// data too small to compare by sha, we'll do comparisons with memcmp
+	if (size_ <= SMALL_DATA_SIZE) {
 		return;
 	}
 
+	// create sha signature
 	sign_data(data_, size_, signature_);
 	signed_ = true;
 }
@@ -129,6 +123,11 @@ data_container::init() {
 }
 
 data_container::~data_container() {
+	release();
+}
+
+void
+data_container::release() {
 	if (*ref_counter_ == 0) {
 		return;
 	}
@@ -137,39 +136,25 @@ data_container::~data_container() {
 
 	if (data_ && *ref_counter_ == 0) {
 		delete [] data_;
+		memset(&signature_, 0, SHA1_SIZE);
 	}
-}
-
-void
-data_container::swap(data_container& other) {
-	std::swap(data_, other.data_);
-	std::swap(size_, other.size_);
-	std::swap(signed_, other.signed_);
-
-	unsigned char signature_tmp[SHA1_SIZE];
-	memcpy(signature_tmp, signature_, SHA1_SIZE);
-	memcpy(signature_, other.signature_, SHA1_SIZE);
-	memcpy(other.signature_, signature_tmp, SHA1_SIZE);
-
-	std::swap(ref_counter_, other.ref_counter_);
-}
-
-void
-data_container::copy(const data_container& other) {
-	data_ = other.data_;
-	size_ = other.size_;
-	signed_ = other.signed_;
-
-	memcpy(signature_, other.signature_, SHA1_SIZE);
-	ref_counter_ = other.ref_counter_;
-	++*ref_counter_;
 }
 
 data_container&
 data_container::operator = (const data_container& rhs) {
-	boost::mutex::scoped_lock lock(mutex_);
+	this->release();
 
-	this->copy(rhs);
+	data_ = rhs.data_;
+	size_ = rhs.size_;
+	signed_ = rhs.signed_;
+
+	if (rhs.signed_) {
+		memcpy(signature_, rhs.signature_, SHA1_SIZE);
+	}
+
+	ref_counter_ = rhs.ref_counter_;
+	++*ref_counter_;
+
 	return *this;
 }
 
@@ -206,18 +191,7 @@ data_container::empty() const {
 
 void
 data_container::clear() {
-	boost::mutex::scoped_lock lock(mutex_);
-
-	if (*ref_counter_ == 0) {
-		return;
-	}
-
-	--*ref_counter_;
-
-	if (data_ && *ref_counter_ == 0) {
-		delete data_;
-	}
-
+	release();
 	init();
 }
 
@@ -264,6 +238,19 @@ data_container::sign_data(unsigned char* data, size_t& size, unsigned char signa
 	}
 
 	SHA1_Final(signature, &sha_context);
+}
+
+bool
+data_container::is_data_loaded() {
+	return true;
+}
+
+void
+data_container::load_data() {
+}
+
+void
+data_container::unload_data() {
 }
 
 } // namespace dealer

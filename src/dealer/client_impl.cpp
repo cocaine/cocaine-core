@@ -18,8 +18,11 @@
 #include "cocaine/dealer/details/client_impl.hpp"
 #include "cocaine/dealer/details/http_heartbeats_collector.hpp"
 #include "cocaine/dealer/details/error.hpp"
+
 #include "cocaine/dealer/details/cached_message.hpp"
 #include "cocaine/dealer/details/data_container.hpp"
+#include "cocaine/dealer/details/request_metadata.hpp"
+
 #include "cocaine/dealer/details/persistant_data_container.hpp"
 
 namespace cocaine {
@@ -38,6 +41,8 @@ client_impl::client_impl(const std::string& config_path) :
 		throw error(ctx_error_msg + ex.what());
 	}
 
+	logger()->log("creating client.");
+
 	// create services
 	const configuration::services_list_t& services_info_list = config()->services_list();
 	configuration::services_list_t::const_iterator it = services_info_list.begin();
@@ -45,7 +50,7 @@ client_impl::client_impl(const std::string& config_path) :
 		boost::shared_ptr<service_t> service_ptr(new service_t(it->second, context_));
 		services_[it->first] = service_ptr;
 
-		logger()->log("service name: %s", it->second.name_.c_str());
+		logger()->log("STARTING SERVICE [%s]", it->second.name_.c_str());
 	}
 
 	logger()->log("client created.");
@@ -80,7 +85,7 @@ client_impl::connect() {
 	else if (conf->autodiscovery_type() == AT_HTTP) {
 		heartbeats_collector_.reset(new http_heartbeats_collector(conf, context()->zmq_context()));
 		heartbeats_collector_->set_callback(boost::bind(&client_impl::service_hosts_pinged_callback, this, _1, _2, _3));
-		heartbeats_collector_->set_logger(logger());
+		//heartbeats_collector_->set_logger(logger());
 		heartbeats_collector_->run();
 	}
 }
@@ -158,8 +163,8 @@ client_impl::send_message(const void* data,
 						  const message_path& path,
 						  const message_policy& policy)
 {
-	typedef cached_message<data_container> message_t;
-	typedef cached_message<persistant_data_container> p_message_t;
+	typedef cached_message<data_container, request_metadata> message_t;
+	typedef cached_message<persistant_data_container, persistant_request_metadata> p_message_t;
 
 	boost::mutex::scoped_lock lock(mutex_);
 
@@ -167,7 +172,7 @@ client_impl::send_message(const void* data,
 	if (config()->message_cache_type() == RAM_ONLY) {
 		cached_message_class_size += sizeof(message_t);
 	}
-	else if(config()->message_cache_type() == PERSISTANT) {
+	else if(config()->message_cache_type() == PERSISTENT) {
 		cached_message_class_size += sizeof(p_message_t);	
 	}
 
@@ -202,10 +207,19 @@ client_impl::send_message(const void* data,
 		if (config()->message_cache_type() == RAM_ONLY) {
 			msg.reset(new message_t(path, policy, data, size));
 		}
-		else if(config()->message_cache_type() == PERSISTANT) {
-			eblob eb = context()->storage()->get_eblob(path.service_name);
+		else if(config()->message_cache_type() == PERSISTENT) {
 			p_message_t* msg_ptr = new p_message_t(path, policy, data, size);
-			msg_ptr->data_container().set_eblob(eb);
+
+			eblob eb = context()->storage()->get_eblob(path.service_name);
+			
+			// init metadata and write to storage
+			msg_ptr->mdata_container().set_eblob(eb);
+			msg_ptr->mdata_container().commit_data();
+
+			// init data and write to storage
+			msg_ptr->data_container().set_eblob(eb, msg->uuid());
+			msg_ptr->data_container().commit_data();
+
 			msg.reset(msg_ptr);
 		}
 

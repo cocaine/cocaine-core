@@ -141,15 +141,15 @@ configuration::parse_messages_cache_settings(const Json::Value& config_value) {
 
 	std::string message_cache_type_str = cache_value.get("type", "RAM_ONLY").asString();
 
-	if (message_cache_type_str == "PERSISTANT") {
-		message_cache_type_ = PERSISTANT;
+	if (message_cache_type_str == "PERSISTENT") {
+		message_cache_type_ = PERSISTENT;
 	}
 	else if (message_cache_type_str == "RAM_ONLY") {
 		message_cache_type_ = RAM_ONLY;
 	}
 	else {
 		std::string error_str = "unknown message cache type: " + message_cache_type_str;
-		error_str += "message_cache/type property can only take RAM_ONLY or PERSISTANT as value. ";
+		error_str += "message_cache/type property can only take RAM_ONLY or PERSISTENT as value. ";
 		error_str += "at " + std::string(BOOST_CURRENT_FUNCTION);
 		throw error(error_str);
 	}
@@ -482,8 +482,8 @@ std::string configuration::as_json() const {
 	if (message_cache_type_ == RAM_ONLY) {
 		message_cache["2 - type"] = "RAM_ONLY";
  	}
- 	else if (message_cache_type_ == PERSISTANT) {
- 		message_cache["2 - type"] = "PERSISTANT";
+ 	else if (message_cache_type_ == PERSISTENT) {
+ 		message_cache["2 - type"] = "PERSISTENT";
  	}
 	root["3 - message cache"] = message_cache;
 
@@ -600,8 +600,8 @@ std::string configuration::as_string() const {
  	if (message_cache_type_ == RAM_ONLY) {
  		out << "\ttype: RAM_ONLY\n\n";
  	}
- 	else if (message_cache_type_ == PERSISTANT) {
- 		out << "\ttype: PERSISTANT\n\n";
+ 	else if (message_cache_type_ == PERSISTENT) {
+ 		out << "\ttype: PERSISTENT\n\n";
  	}
 
  	// persistant storage

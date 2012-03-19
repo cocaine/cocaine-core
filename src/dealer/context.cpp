@@ -56,7 +56,8 @@ context::context(const std::string& config_path) {
 	stats_.reset(new statistics_collector(config_, zmq_context_, logger()));
 
 	// create eblob storage
-	if (config()->message_cache_type() == PERSISTANT) {
+	if (config()->message_cache_type() == PERSISTENT) {
+		logger()->log("loading cache from eblobs...");
 		std::string st_path = config()->eblob_path();
 		int64_t st_blob_size = config()->eblob_blob_size();
 		int st_sync = config()->eblob_sync_interval();
@@ -71,6 +72,7 @@ context::context(const std::string& config_path) {
 		for (; it != services_info_list.end(); ++it) {
 			storage_->open_eblob(it->second.name_);
 		}
+		logger()->log("done");
 	}
 }
 

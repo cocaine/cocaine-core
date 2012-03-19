@@ -30,172 +30,71 @@ namespace cocaine {
 namespace dealer {
 
 persistant_data_container::persistant_data_container() :
-	size_(0),
-	signed_(false)
+	data_in_memory_(false),
+	data_(NULL),
+	size_(0)
 {
-	init();
 }
 
 persistant_data_container::persistant_data_container(const void* data, size_t size) :
-	size_(size),
-	signed_(false)
+	data_in_memory_(false),
+	data_(NULL),
+	size_(0)
 {
-	init_with_data((unsigned char*)data, size);
-}
+	data_in_memory_ = true;
 
-persistant_data_container::persistant_data_container(const persistant_data_container& dc) {
-	if (dc.empty()) {
-		init();
-		return;
-	}
-
-	blob_ = dc.blob_;
-	size_ = dc.size_;
-
-	if (dc.signed_) {
-		memcpy(signature_, dc.signature_, SHA1_SIZE);
-		signed_ = dc.signed_;
-	}
-
-	ref_counter_ = dc.ref_counter_;
-	++*ref_counter_;
-}
-
-void
-persistant_data_container::init_with_data(unsigned char* data, size_t size) {
-	init();
-
+	// early exit
 	if (data == NULL || size == 0) {
+		data_ = NULL;
 		size_ = 0;
 		return;
 	}
 
-	std::string error_msg = "not enough memory to create new data container at ";
-	error_msg += std::string(BOOST_CURRENT_FUNCTION);
-
-	/*
-	// allocate new space
-	try {
-		data_ = new unsigned char[size];
-	}
-	catch (...) {
-		throw error(error_msg);
-	}
-
-	if (!data_) {
-		throw error(error_msg);
-	}
-
-	// copy data
-	memcpy(data_, data, size);
-	++*ref_counter_;
-
 	size_ = size;
 
-	if (size <= SMALL_DATA_SIZE) {
-		return;
-	}
-
-	sign_data(data_, size_, signature_);
-	signed_ = true;
-	*/
+	allocate_memory();
+	memcpy(data_, data, size_);
 }
 
-void
-persistant_data_container::init() {
-	// reset sha1 signature
-	signed_ = false;
-	memset(signature_, 0, SHA1_SIZE);
-
-	// create ref counter
-	std::string error_msg = "not enough memory to create new ref_counter in data container at ";
-	error_msg += std::string(BOOST_CURRENT_FUNCTION);
-
-	try {
-		ref_counter_.reset(new reference_counter(0));
-	}
-	catch (...) {
-		throw error(error_msg);
-	}
-
-	if (!ref_counter_.get()) {
-		throw error(error_msg);
-	}
-
-	// init data
-	//data_ = NULL;
-	size_ = 0;
+persistant_data_container::persistant_data_container(const persistant_data_container& dc)
+{
+	*this = dc;
 }
 
 persistant_data_container::~persistant_data_container() {
-	if (*ref_counter_ == 0) {
-		return;
-	}
-
-	--*ref_counter_;
-
-	//if (data_ && *ref_counter_ == 0) {
-	//	delete [] data_;
-	//}
+	unload_data();
 }
 
 void
-persistant_data_container::swap(persistant_data_container& other) {
-	//std::swap(data_, other.data_);
-	std::swap(size_, other.size_);
-	std::swap(signed_, other.signed_);
+persistant_data_container::unload_data() {
+	if (data_) {
+		delete [] data_;
+		data_ = NULL;
+	}
 
-	unsigned char signature_tmp[SHA1_SIZE];
-	memcpy(signature_tmp, signature_, SHA1_SIZE);
-	memcpy(signature_, other.signature_, SHA1_SIZE);
-	memcpy(other.signature_, signature_tmp, SHA1_SIZE);
-
-	std::swap(ref_counter_, other.ref_counter_);
+	data_in_memory_ = false;
 }
 
 void
-persistant_data_container::copy(const persistant_data_container& other) {
-	//data_ = other.data_;
-	size_ = other.size_;
-	signed_ = other.signed_;
+persistant_data_container::load_data() {
+	assert(data_ == NULL);
+	allocate_memory();
 
-	memcpy(signature_, other.signature_, SHA1_SIZE);
-	ref_counter_ = other.ref_counter_;
-	++*ref_counter_;
+	// read into allocated memory
+	std::string str = blob_.read(uuid_, EBLOB_COLUMN);
+	memcpy(data_, str.data(), size_);
+
+	data_in_memory_ = true;
 }
 
-persistant_data_container&
-persistant_data_container::operator = (const persistant_data_container& rhs) {
-	boost::mutex::scoped_lock lock(mutex_);
-
-	this->copy(rhs);
-	return *this;
+void*
+persistant_data_container::data() const {
+	return data_;
 }
 
-bool
-persistant_data_container::operator == (const persistant_data_container& rhs) const {
-	// data size differs?
-	if (size_ != rhs.size_) {
-		return false;
-	}
-
-	// both containers empty?
-	if (size_ == 0 && rhs.size_ == 0) {
-		return true;
-	}
-
-	// compare small containers
-	//if (size_ <= SMALL_DATA_SIZE) {
-	//	return (0 == memcmp(data_, rhs.data_, size_));
-	//}
-
-	// compare big containers
-	return (0 == memcmp(signature_, rhs.signature_, SHA1_SIZE));
-}
-
-bool
-persistant_data_container::operator != (const persistant_data_container& rhs) const {
-	return !(*this == rhs);
+size_t
+persistant_data_container::size() const {
+	return size_;
 }
 
 bool
@@ -204,70 +103,58 @@ persistant_data_container::empty() const {
 }
 
 void
-persistant_data_container::clear() {
-	boost::mutex::scoped_lock lock(mutex_);
+persistant_data_container::allocate_memory() {
+	std::string error_msg = "not enough memory to create new data container at ";
+	error_msg += std::string(BOOST_CURRENT_FUNCTION);
 
-	if (*ref_counter_ == 0) {
+	try {
+		data_ = new unsigned char[size_];
+	}
+	catch (...) {
+		throw error(error_msg);
+	}
+
+	if (!data_) {
+		throw error(error_msg);
+	}
+}
+
+void
+persistant_data_container::set_eblob(eblob blob, const std::string& uuid) {
+	blob_ = blob;
+	uuid_ = uuid;
+}
+
+void
+persistant_data_container::commit_data() {
+	if (!data_in_memory_) {
 		return;
 	}
 
-	--*ref_counter_;
-
-	//if (data_ && *ref_counter_ == 0) {
-	//	delete data_;
-	//}
-
-	init();
+	blob_.write(uuid_, data_, size_, EBLOB_COLUMN);
+	unload_data();
+	data_in_memory_ = false;
 }
 
-void*
-persistant_data_container::data() const {
-	//return (void*)data_;
+persistant_data_container&
+persistant_data_container::operator = (const persistant_data_container& rhs) {
+	blob_ = rhs.blob_;
+	uuid_ = rhs.uuid_;
 }
 
-size_t
-persistant_data_container::size() const {
-	//return size_;
+bool
+persistant_data_container::operator == (const persistant_data_container& rhs) const {
+	return (uuid_ == rhs.uuid_);
 }
 
-void
-persistant_data_container::sign_data(unsigned char* data, size_t& size, unsigned char signature[SHA1_SIZE]) {
-	SHA_CTX sha_context;
-	SHA1_Init(&sha_context);
-
-	// reset signature
-	memset(signature, 0, sizeof(signature));
-
-	// go through compiled and flattened data in chunks of 512 kb., building signature
-	unsigned int full_chunks_count = size / SHA1_CHUNK_SIZE;
-	char* data_offset_ptr = (char*)data;
-
-	// process full chunks
-	for (unsigned i = 0; i < full_chunks_count; i++) {
-		SHA1_Update(&sha_context, data_offset_ptr, SHA1_CHUNK_SIZE);
-		data_offset_ptr += SHA1_CHUNK_SIZE;
-	}
-
-	unsigned int remainder_chunk_size = 0;
-
-	if (size < SHA1_CHUNK_SIZE) {
-		remainder_chunk_size = size;
-	}
-	else {
-		remainder_chunk_size = size % SHA1_CHUNK_SIZE;
-	}
-
-	// process remained chunk
-	if (0 != remainder_chunk_size) {
-		SHA1_Update(&sha_context, data_offset_ptr, remainder_chunk_size);
-	}
-
-	SHA1_Final(signature, &sha_context);
+bool
+persistant_data_container::operator != (const persistant_data_container& rhs) const {
+	return !(*this == rhs);
 }
 
-void
-persistant_data_container::set_eblob(eblob blob) {
-	blob_ = blob;
+bool
+persistant_data_container::is_data_loaded() {
+	return data_in_memory_;
 }
 
 } // namespace dealer

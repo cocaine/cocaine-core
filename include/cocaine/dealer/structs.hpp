@@ -74,7 +74,7 @@ enum autodiscovery_type {
 
 enum message_cache_type {
 	RAM_ONLY = 1,
-	PERSISTANT
+	PERSISTENT
 };
 
 struct message_path {

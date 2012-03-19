@@ -16,7 +16,7 @@
 		"message_cache" :
 		{
 			"max_ram_limit" : 1024,
-			"type" : "RAM_ONLY"
+			"type" : "PERSISTENT"
 		},
 
 		"persistent_storage" :

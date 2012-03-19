@@ -23,6 +23,7 @@
 #include <boost/thread/mutex.hpp>
 
 #include "cocaine/dealer/structs.hpp"
+#include "cocaine/dealer/details/data_container.hpp"
 #include "cocaine/dealer/details/eblob.hpp"
 
 namespace cocaine {
@@ -34,50 +35,38 @@ public:
 	persistant_data_container(const void* data, size_t size);
 	persistant_data_container(const persistant_data_container& dc);
 	virtual ~persistant_data_container();
-	
+
 	persistant_data_container& operator = (const persistant_data_container& rhs);
 	bool operator == (const persistant_data_container& rhs) const;
 	bool operator != (const persistant_data_container& rhs) const;
 
+	void set_eblob(eblob blob, const std::string& uuid);
+	void commit_data();
+
 	void* data() const;
 	size_t size() const;
 	bool empty() const;
-	void clear();
 
-	void set_eblob(eblob blob);
+	bool is_data_loaded();
+	void load_data();
+	void unload_data();
 
-private:
-	// sha1 size in bytes
-	static const size_t SHA1_SIZE = 20;
+	static const size_t EBLOB_COLUMN = 1;
 
-	// sha1-encoded data chunk size - 512 kb
-	static const size_t SHA1_CHUNK_SIZE = 512 * 1024;
+protected:
+	void allocate_memory();
 
-	// max amount of data that does not need sha1 signature 1 mb
-	static const size_t SMALL_DATA_SIZE = 1024 * 1024;
-
-	typedef boost::detail::atomic_count reference_counter;
-	
-	void init();
-	void init_with_data(unsigned char* data, size_t size);
-	void swap(persistant_data_container& other);
-	void copy(const persistant_data_container& other);
-	void sign_data(unsigned char* data, size_t& size, unsigned char signature[SHA1_SIZE]);
-
-private:
-	// data
+protected:
+	// persistant storage
 	eblob blob_;
+	bool data_in_memory_;
+
+	// data
+	unsigned char* data_;
 	size_t size_;
 
-	// data sha1 signature
-	bool signed_;
-	unsigned char signature_[SHA1_SIZE];
-
-	// data reference counter
-	boost::shared_ptr<reference_counter> ref_counter_;
-
-	// synchronization
-	boost::mutex mutex_;
+	// key to store data in eblob
+	std::string uuid_;
 };
 
 } // namespace dealer
