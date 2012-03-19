@@ -24,19 +24,19 @@
 #include "json/json.h"
 
 #include "cocaine/dealer/details/error.hpp"
-#include "cocaine/dealer/details/persistant_data_container.hpp"
+#include "cocaine/dealer/details/persistent_data_container.hpp"
 
 namespace cocaine {
 namespace dealer {
 
-persistant_data_container::persistant_data_container() :
+persistent_data_container::persistent_data_container() :
 	data_in_memory_(false),
 	data_(NULL),
 	size_(0)
 {
 }
 
-persistant_data_container::persistant_data_container(const void* data, size_t size) :
+persistent_data_container::persistent_data_container(const void* data, size_t size) :
 	data_in_memory_(false),
 	data_(NULL),
 	size_(0)
@@ -56,17 +56,17 @@ persistant_data_container::persistant_data_container(const void* data, size_t si
 	memcpy(data_, data, size_);
 }
 
-persistant_data_container::persistant_data_container(const persistant_data_container& dc)
+persistent_data_container::persistent_data_container(const persistent_data_container& dc)
 {
 	*this = dc;
 }
 
-persistant_data_container::~persistant_data_container() {
+persistent_data_container::~persistent_data_container() {
 	unload_data();
 }
 
 void
-persistant_data_container::unload_data() {
+persistent_data_container::unload_data() {
 	if (data_) {
 		delete [] data_;
 		data_ = NULL;
@@ -76,7 +76,7 @@ persistant_data_container::unload_data() {
 }
 
 void
-persistant_data_container::load_data() {
+persistent_data_container::load_data() {
 	assert(data_ == NULL);
 	allocate_memory();
 
@@ -88,22 +88,22 @@ persistant_data_container::load_data() {
 }
 
 void*
-persistant_data_container::data() const {
+persistent_data_container::data() const {
 	return data_;
 }
 
 size_t
-persistant_data_container::size() const {
+persistent_data_container::size() const {
 	return size_;
 }
 
 bool
-persistant_data_container::empty() const {
+persistent_data_container::empty() const {
 	return (size_ == 0);
 }
 
 void
-persistant_data_container::allocate_memory() {
+persistent_data_container::allocate_memory() {
 	std::string error_msg = "not enough memory to create new data container at ";
 	error_msg += std::string(BOOST_CURRENT_FUNCTION);
 
@@ -120,13 +120,13 @@ persistant_data_container::allocate_memory() {
 }
 
 void
-persistant_data_container::set_eblob(eblob blob, const std::string& uuid) {
+persistent_data_container::set_eblob(eblob blob, const std::string& uuid) {
 	blob_ = blob;
 	uuid_ = uuid;
 }
 
 void
-persistant_data_container::commit_data() {
+persistent_data_container::commit_data() {
 	if (!data_in_memory_) {
 		return;
 	}
@@ -136,24 +136,24 @@ persistant_data_container::commit_data() {
 	data_in_memory_ = false;
 }
 
-persistant_data_container&
-persistant_data_container::operator = (const persistant_data_container& rhs) {
+persistent_data_container&
+persistent_data_container::operator = (const persistent_data_container& rhs) {
 	blob_ = rhs.blob_;
 	uuid_ = rhs.uuid_;
 }
 
 bool
-persistant_data_container::operator == (const persistant_data_container& rhs) const {
+persistent_data_container::operator == (const persistent_data_container& rhs) const {
 	return (uuid_ == rhs.uuid_);
 }
 
 bool
-persistant_data_container::operator != (const persistant_data_container& rhs) const {
+persistent_data_container::operator != (const persistent_data_container& rhs) const {
 	return !(*this == rhs);
 }
 
 bool
-persistant_data_container::is_data_loaded() {
+persistent_data_container::is_data_loaded() {
 	return data_in_memory_;
 }
 
