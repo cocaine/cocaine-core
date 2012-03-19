@@ -90,9 +90,10 @@ class blob_t {
 
             if(--*m_ref_counter == 0) {
                 delete[] m_data;
-                m_data = NULL;
-                m_size = 0;
             }
+
+            m_data = NULL;
+            m_size = 0;
         }
 
     private:
