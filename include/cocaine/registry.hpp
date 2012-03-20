@@ -77,6 +77,9 @@ class registry_t:
                 )
             );
 
+            // TEST: This should succeed due to the tests above.
+            BOOST_ASSERT(module.get() != 0);
+
             return module;
         }
 
