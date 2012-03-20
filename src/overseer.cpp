@@ -98,11 +98,13 @@ void overseer_t::process(ev::idle&, int) {
             break;
 
         default:
-            m_app->log->warning(
-                "slave %s dropping unknown event type %d", 
-                id().c_str(),
-                command
-            );
+            if(m_app.get() != 0) {
+                m_app->log->warning(
+                    "slave %s dropping unknown event type %d", 
+                    id().c_str(),
+                    command
+                );
+            }
             
             m_messages.drop_remaining_parts();
     }
@@ -116,8 +118,6 @@ void overseer_t::pump(ev::timer&, int) {
 }
 
 void overseer_t::timeout(ev::timer&, int) {
-    rpc::packed<events::terminate_t> packed;
-    send(packed);
     terminate();
 }
 

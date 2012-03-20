@@ -447,10 +447,6 @@ void engine_t::process(ev::idle&, int) {
             slave->second->process_event(events::release_t());
             break;
 
-        case rpc::terminate:
-            slave->second->process_event(events::terminate_t());
-            return;
-        
         default:
             m_app.log->warning("engine dropping unknown event type %d", command);
             m_messages.drop_remaining_parts();
