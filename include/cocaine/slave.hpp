@@ -64,8 +64,8 @@ class slave_t:
     private:
         void spawn();
 
-        void timeout(ev::timer&, int);
-        void signal(ev::child&, int);
+        void on_timeout(ev::timer&, int);
+        void on_signal(ev::child&, int);
 
     private:    
         engine_t& m_engine;

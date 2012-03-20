@@ -31,7 +31,7 @@ slave_t::slave_t(engine_t& engine):
     m_engine(engine)
 {
     // NOTE: These are the 10 seconds for the slave to come alive.
-    m_heartbeat_timer.set<slave_t, &slave_t::timeout>(this);
+    m_heartbeat_timer.set<slave_t, &slave_t::on_timeout>(this);
     m_heartbeat_timer.start(10.0f);
 
     initiate();
@@ -158,11 +158,11 @@ void slave_t::spawn() {
         throw system_error_t("fork() failed");
     }
 
-    m_child_watcher.set<slave_t, &slave_t::signal>(this);
+    m_child_watcher.set<slave_t, &slave_t::on_signal>(this);
     m_child_watcher.start(m_pid);    
 }
 
-void slave_t::timeout(ev::timer&, int) {
+void slave_t::on_timeout(ev::timer&, int) {
     m_engine.app().log->warning(
         "slave %s missed too many heartbeats",
         id().c_str()
@@ -182,7 +182,7 @@ void slave_t::timeout(ev::timer&, int) {
     process_event(events::terminate_t());
 }
 
-void slave_t::signal(ev::child& event, int) {
+void slave_t::on_signal(ev::child& event, int) {
     if(!state_downcast<const dead*>()) {
         process_event(events::terminate_t());
         
