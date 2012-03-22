@@ -49,23 +49,24 @@ class slave_t:
     public sc::state_machine<slave_t, slave::unknown>,
     public unique_id_t
 {
+    friend struct slave::unknown;
     friend struct slave::alive;
 
     public:
         slave_t(engine_t& engine);
         ~slave_t();
         
-        void on_configure(const events::heartbeat_t& event);
-        void on_heartbeat(const events::heartbeat_t& event);
-        void on_terminate(const events::terminate_t& event);
-
         bool operator==(const slave_t& other) const;
 
     private:
         void spawn();
 
+        void on_configure(const events::heartbeat_t& event);
+        void on_heartbeat(const events::heartbeat_t& event);
+        void on_terminate(const events::terminate_t& event);
+
         void on_timeout(ev::timer&, int);
-        void on_signal(ev::child&, int);
+        void on_signal(ev::child& event, int);
 
     private:    
         engine_t& m_engine;

@@ -54,6 +54,7 @@ struct packed {
         return pack;
     }
 
+private:
     type pack;
 };
 
@@ -72,6 +73,7 @@ struct packed<events::configure_t> {
         return pack;
     }
 
+private:
     type pack;
 };
 
@@ -94,6 +96,7 @@ struct packed<events::invoke_t> {
         return pack;
     }
 
+private:
     zmq::message_t message;
     type pack;
 };
@@ -112,6 +115,7 @@ struct packed<events::push_t> {
         return pack;
     }
 
+private:
     zmq::message_t message;
     type pack;
 };
@@ -128,6 +132,7 @@ struct packed<events::error_t> {
         return pack;
     }
 
+private:
     type pack;
 };
     

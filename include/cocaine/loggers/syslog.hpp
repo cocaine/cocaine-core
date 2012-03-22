@@ -26,7 +26,7 @@ class syslog_t:
 
     private:
         const std::string m_identity;
-        priorities m_verbosity;
+        const priorities m_verbosity;
 };
 
 }}
