@@ -36,6 +36,8 @@ public:
 	persistent_data_container(const persistent_data_container& dc);
 	virtual ~persistent_data_container();
 
+	void init_from_message_cache(eblob blob, const std::string& uuid, int64_t data_size);
+
 	persistent_data_container& operator = (const persistent_data_container& rhs);
 	bool operator == (const persistent_data_container& rhs) const;
 	bool operator != (const persistent_data_container& rhs) const;

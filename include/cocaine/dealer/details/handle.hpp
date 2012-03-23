@@ -22,7 +22,7 @@
 #include <zmq.hpp>
 
 // Mac = bullshit 
-// hey, mate, it's == alright.
+// hey, mate, it's "==" alright.
 
 #ifdef IS_DARWIN
 	#undef _IN_ADDR_T

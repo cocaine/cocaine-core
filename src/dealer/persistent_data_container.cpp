@@ -70,8 +70,10 @@ persistent_data_container::set_data(const void* data, size_t size) {
 
 	size_ = size;
 
-	allocate_memory();
-	memcpy(data_, data, size_);
+	if (size_ > 0) {
+		allocate_memory();
+		memcpy(data_, data, size_);
+	}
 }
 
 void
@@ -91,10 +93,11 @@ persistent_data_container::load_data() {
 	}
 
 	assert(data_ == NULL);
-	allocate_memory();
 
 	// read into allocated memory
 	std::string str = blob_.read(uuid_, EBLOB_COLUMN);
+	size_ = str.size();
+	allocate_memory();
 	memcpy(data_, str.data(), size_);
 
 	data_in_memory_ = true;
@@ -120,6 +123,10 @@ persistent_data_container::allocate_memory() {
 	std::string error_msg = "not enough memory to create new data container at ";
 	error_msg += std::string(BOOST_CURRENT_FUNCTION);
 
+	if (size_ == 0) {
+		return;
+	}
+
 	try {
 		data_ = new unsigned char[size_];
 	}
@@ -136,6 +143,16 @@ void
 persistent_data_container::set_eblob(eblob blob, const std::string& uuid) {
 	blob_ = blob;
 	uuid_ = uuid;
+}
+
+void
+persistent_data_container::init_from_message_cache(eblob blob,
+												   const std::string& uuid,
+												   int64_t data_size)
+{
+	blob_ = blob;
+	uuid_ = uuid;
+	size_ = data_size;
 }
 
 void
@@ -167,7 +184,7 @@ persistent_data_container::operator != (const persistent_data_container& rhs) co
 
 bool
 persistent_data_container::is_data_loaded() {
-	return true;
+	return data_in_memory_;
 }
 
 void

@@ -44,6 +44,7 @@ public:
         s << "policy [timeout]: " << policy.timeout << "\n";
         s << "policy [deadline]: " << policy.deadline << "\n";
         s << "policy [max timeout retries]: " << policy.max_timeout_retries << "\n";
+        s << "data_size: " << data_size << "\n";
         s << "enqueued timestamp: " << enqueued_timestamp.as_string();
         return s.str();
 	}
@@ -52,6 +53,7 @@ public:
 	message_path path;
 	message_policy policy;
 	std::string uuid;
+	uint64_t data_size;
 	time_value enqueued_timestamp;
 };
 
@@ -84,7 +86,7 @@ public:
 		blob_.write(uuid, buffer.data(), buffer.size(), EBLOB_COLUMN);
 	}
 
-	MSGPACK_DEFINE(path, policy, uuid, enqueued_timestamp);
+	MSGPACK_DEFINE(path, policy, uuid, data_size, enqueued_timestamp);
 
 private:
 	template<typename T> void unpack_next_value(msgpack::unpacker& upack, T& value) {
