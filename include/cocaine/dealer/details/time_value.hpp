@@ -15,10 +15,16 @@
 #define _COCAINE_DEALER_TIME_VALUE_HPP_INCLUDED_
 
 #include <string>
+
 #include <sys/time.h>
+
+#include <msgpack.hpp>
 
 namespace cocaine {
 namespace dealer {
+
+class time_value;
+std::ostream& operator<<(std::ostream& out, time_value& tval);
 
 class time_value {
 public:
@@ -28,6 +34,8 @@ public:
 	time_value(double tv);
 	virtual ~time_value();
 
+
+	std::string as_string() const;
 	double as_double() const;
 	timeval as_timeval() const;
 
@@ -59,6 +67,8 @@ public:
 	time_value& operator -= (double interval);
 
 	static time_value get_current_time();
+
+	MSGPACK_DEFINE(value_.tv_sec, value_.tv_usec);
 
 private:
 	timeval value_;

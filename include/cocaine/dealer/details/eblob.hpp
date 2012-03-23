@@ -22,6 +22,7 @@
 #include <boost/utility.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/current_function.hpp>
+#include <boost/function.hpp>
 
 #include <eblob/eblob.hpp>
 
@@ -32,6 +33,8 @@ namespace dealer {
 
 class eblob {
 public:
+	typedef boost::function<void(void*, uint64_t, int)> iteration_callback_t;
+
 	eblob() {}
 
 	eblob(boost::shared_ptr<base_logger> logger,
@@ -71,8 +74,8 @@ public:
 			throw std::runtime_error(error_msg);
 		}
 
-		remove(key, column);
-		storage_->write_hashed(key, value, 0, 0, column);
+		// 2DO: truncate written value
+		storage_->write_hashed(key, value, 0, BLOB_DISK_CTL_OVERWRITE, column);
 	}
 
 	void write(const std::string& key, void* data, size_t size, int column = zbr::EBLOB_TYPE_DATA) {
@@ -88,9 +91,9 @@ public:
 			throw std::runtime_error(error_msg);
 		}
 
-		std::string value((char*)data, 0, size);
-		remove(key, column);
-		storage_->write_hashed(key, value, 0, 0, column);
+		// 2DO: truncate written value
+		std::string value(reinterpret_cast<char*>(data), reinterpret_cast<char*>(data) + size);
+		storage_->write_hashed(key, value, 0, BLOB_DISK_CTL_OVERWRITE, column);
 	}
 
 	std::string read(const std::string& key, int column = zbr::EBLOB_TYPE_DATA) {
@@ -138,6 +141,34 @@ public:
 		logger_ = logger;
 	}
 
+	void iterate(iteration_callback_t iteration_callback, int start_column = 0, int end_column = 99999) {
+		if (!iteration_callback) {
+			return;
+		}
+
+		iteration_callback_ = iteration_callback;
+
+		// test iteration
+		zbr::eblob_iterate_control		ctl;
+        zbr::eblob_iterate_callbacks	iterator_cb;
+
+        iterator_cb.iterator = eblob::iteration_callback;
+        iterator_cb.iterator_init = NULL;
+        iterator_cb.iterator_free = NULL;
+
+        memset(&ctl, 0, sizeof(ctl));
+
+        ctl.check_index = 1;
+        ctl.flags = EBLOB_ITERATE_FLAGS_ALL;
+        ctl.priv = this;
+        ctl.iterator_cb = iterator_cb;
+        ctl.start_type = start_column;
+        ctl.max_type = end_column;
+        ctl.thread_num = 1;
+        storage_->iterate(ctl);
+    }
+
+public:
 	static const uint64_t DEFAULT_BLOB_SIZE = 2147483648; // 2 gb
 	static const int DEFAULT_SYNC_INTERVAL = 2; // secs
 	static const int DEFAULT_DEFRAG_TIMEOUT = -1; // secs
@@ -159,7 +190,7 @@ private:
 		}
 
 		// create eblob logger
-		eblob_logger_.reset(new zbr::eblob_logger(NULL, 0));
+		eblob_logger_.reset(new zbr::eblob_logger("/dev/stdout", 0));
 
 		// create config
         zbr::eblob_config cfg;
@@ -179,11 +210,23 @@ private:
 		logger_->log(msg);
 	}
 
+	static int iteration_callback(zbr::eblob_disk_control* dc, zbr::eblob_ram_control* rc, void* data, void* priv, void* thread_priv) {
+		eblob* eb = reinterpret_cast<eblob*>(priv);
+		eb->iteration_callback_instance(data, rc->size, rc->type);
+	}
+
+	void iteration_callback_instance(void* data, uint64_t size, int column) {
+		if (iteration_callback_) {
+			iteration_callback_(data, size, column);
+		}
+	}
+
 private:
 	std::string path_;
 	boost::shared_ptr<zbr::eblob> storage_;
 	boost::shared_ptr<zbr::eblob_logger> eblob_logger_;
 	boost::shared_ptr<base_logger> logger_;
+	iteration_callback_t iteration_callback_;
 };
 
 } // namespace dealer

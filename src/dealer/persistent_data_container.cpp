@@ -55,7 +55,9 @@ persistent_data_container::~persistent_data_container() {
 
 void
 persistent_data_container::set_data(const void* data, size_t size) {
-	unload_data();
+	if (data_in_memory_) {
+		return;
+	}
 
 	data_in_memory_ = true;
 
@@ -84,6 +86,10 @@ persistent_data_container::unload_data() {
 
 void
 persistent_data_container::load_data() {
+	if (data_in_memory_) {
+		return;
+	}
+
 	assert(data_ == NULL);
 	allocate_memory();
 
@@ -139,8 +145,8 @@ persistent_data_container::commit_data() {
 	}
 
 	blob_.write(uuid_, data_, size_, EBLOB_COLUMN);
-	unload_data();
-	data_in_memory_ = false;
+	//unload_data();
+	//data_in_memory_ = false;
 }
 
 persistent_data_container&
@@ -161,7 +167,7 @@ persistent_data_container::operator != (const persistent_data_container& rhs) co
 
 bool
 persistent_data_container::is_data_loaded() {
-	return data_in_memory_;
+	return true;
 }
 
 void

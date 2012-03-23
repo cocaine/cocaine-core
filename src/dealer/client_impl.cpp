@@ -27,6 +27,9 @@
 namespace cocaine {
 namespace dealer {
 
+typedef cached_message<data_container, request_metadata> message_t;
+typedef cached_message<persistent_data_container, persistent_request_metadata> p_message_t;
+
 client_impl::client_impl(const std::string& config_path) :
 	messages_cache_size_(0)
 {
@@ -42,14 +45,21 @@ client_impl::client_impl(const std::string& config_path) :
 
 	logger()->log("creating client.");
 
-	// create services
+	// get services list
 	const configuration::services_list_t& services_info_list = config()->services_list();
+
+	// create services
 	configuration::services_list_t::const_iterator it = services_info_list.begin();
 	for (; it != services_info_list.end(); ++it) {
 		boost::shared_ptr<service_t> service_ptr(new service_t(it->second, context_));
-		services_[it->first] = service_ptr;
 
 		logger()->log("STARTING SERVICE [%s]", it->second.name_.c_str());
+
+		if (config()->message_cache_type() == PERSISTENT) {
+			load_cached_messages_for_service(service_ptr);
+		}
+
+		services_[it->first] = service_ptr;
 	}
 
 	logger()->log("client created.");
@@ -162,9 +172,6 @@ client_impl::send_message(const void* data,
 						  const message_path& path,
 						  const message_policy& policy)
 {
-	typedef cached_message<data_container, request_metadata> message_t;
-	typedef cached_message<persistent_data_container, persistent_request_metadata> p_message_t;
-
 	boost::mutex::scoped_lock lock(mutex_);
 
 	size_t cached_message_class_size = 0;
@@ -206,7 +213,7 @@ client_impl::send_message(const void* data,
 		if (config()->message_cache_type() == RAM_ONLY) {
 			msg.reset(new message_t(path, policy, data, size));
 		}
-		else if(config()->message_cache_type() == PERSISTENT) {
+		else if (config()->message_cache_type() == PERSISTENT) {
 			p_message_t* msg_ptr = new p_message_t(path, policy, data, size);
 			eblob eb = context()->storage()->get_eblob(path.service_name);
 			
@@ -223,18 +230,18 @@ client_impl::send_message(const void* data,
 
 		uuid = msg->uuid();
 
-		// send message to handle
+		// send message to service
 		if (it->second) {
 			it->second->send_message(msg);
 		}
 		else {
-			std::string error_str = "object for service wth name " + path.service_name;
+			std::string error_str = "object for service with name " + path.service_name;
 			error_str += " is emty at " + std::string(BOOST_CURRENT_FUNCTION);
 			throw error(error_str);
 		}
 	}
 	else {
-		std::string error_str = "no service wth name " + path.service_name;
+		std::string error_str = "no service with name " + path.service_name;
 		error_str += " found at " + std::string(BOOST_CURRENT_FUNCTION);
 		throw error(error_str);
 	}
@@ -330,7 +337,7 @@ client_impl::update_messages_cache_size() {
 			messages_cache_size_ += service_ptr->cache_size();
 		}
 		else {
-			std::string error_str = "object for service wth name " + it->first;
+			std::string error_str = "object for service with name " + it->first;
 			error_str += " is empty at " + std::string(BOOST_CURRENT_FUNCTION);
 			throw error(error_str);
 		}
@@ -348,6 +355,58 @@ client_impl::config() {
 	}
 
 	return conf;
+}
+
+void
+client_impl::load_cached_messages_for_service(boost::shared_ptr<service_t>& service) {	
+	// validate input
+	std::string service_name = service->info().name_;
+
+	if (!service) {
+		std::string error_str = "object for service with name " + service_name;
+		error_str += " is emty at " + std::string(BOOST_CURRENT_FUNCTION);
+		throw error(error_str);
+	}
+
+	// show statistics
+	eblob blob = this->context()->storage()->get_eblob(service_name);
+	std::string log_str = "SERVICE [%s] is restoring %d messages from persistant cache...";
+	logger()->log(PLOG_DEBUG, log_str.c_str(), service_name.c_str(), (int)(blob.items_count() / 2));
+
+	restored_service_tmp_ptr_ = service;
+
+	// restore messages from
+	if (blob.items_count() > 0) {
+		eblob::iteration_callback_t callback;
+		callback = boost::bind(&client_impl::storage_iteration_callback, this, _1, _2, _3);
+		blob.iterate(callback, 0, 0);
+	}
+
+	restored_service_tmp_ptr_.reset();
+}
+
+void
+client_impl::storage_iteration_callback(void* data, uint64_t size, int column) {
+	if (!restored_service_tmp_ptr_) {
+		throw error("service object is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
+	}
+
+	if (column == 0 && (!data || size == 0)) {
+		throw error("metadata is missing at: " + std::string(BOOST_CURRENT_FUNCTION));	
+	}
+
+	// get service eblob
+	std::string service_name = restored_service_tmp_ptr_->info().name_;
+	eblob eb = context()->storage()->get_eblob(service_name);
+
+	p_message_t* msg_ptr = new p_message_t();
+	msg_ptr->mdata_container().load_data(data, size);
+	msg_ptr->mdata_container().set_eblob(eb);
+	msg_ptr->data_container().set_eblob(eb, msg_ptr->mdata_container().uuid);
+
+	// send message to service
+	boost::shared_ptr<message_iface> msg(msg_ptr);
+	restored_service_tmp_ptr_->send_message(msg);
 }
 
 } // namespace dealer

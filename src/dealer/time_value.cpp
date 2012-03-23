@@ -54,6 +54,20 @@ time_value::as_timeval() const {
 	return value_;
 }
 
+std::string
+time_value::as_string() const {
+	time_t nowtime;
+	struct tm *nowtm;
+	char tmbuf[64], buf[64];
+
+	nowtime = value_.tv_sec;
+	nowtm = localtime(&nowtime);
+	strftime(tmbuf, sizeof(tmbuf), "%d.%m.%Y %H:%M:%S", nowtm);
+	snprintf(buf, sizeof(buf), "%s.%06d", tmbuf, static_cast<int>(value_.tv_usec));
+
+	return buf;
+}
+
 long
 time_value::days() const {
 	return hours() / 24;
@@ -202,6 +216,11 @@ time_value::operator -= (double interval) {
 	}
 
 	return *this;
+}
+
+std::ostream& operator<<(std::ostream& out, time_value& tval) {
+	out << tval.as_string();
+	return out;
 }
 
 } // namespace dealer

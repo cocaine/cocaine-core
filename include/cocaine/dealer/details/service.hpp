@@ -29,6 +29,7 @@
 
 #include "cocaine/dealer/structs.hpp"
 
+#include "cocaine/dealer/details/eblob.hpp"
 #include "cocaine/dealer/details/error.hpp"
 #include "cocaine/dealer/details/handle.hpp"
 #include "cocaine/dealer/details/context.hpp"
@@ -84,7 +85,9 @@ public:
 								   const std::vector<handle_info<LSD_T> >& handles);
 
 	void send_message(cached_message_prt_t message);
+	
 	size_t cache_size() const;
+	service_info<LSD_T> info() const;
 
 	bool register_responder_callback(registered_callback_t callback,
 									 const std::string& handle_name);
@@ -170,6 +173,11 @@ service<LSD_T>::~service() {
 	thread_.join();
 }
 
+template <typename LSD_T> service_info<LSD_T>
+service<LSD_T>::info() const {
+	return info_;
+}
+
 template <typename LSD_T> void
 service<LSD_T>::dispatch_responces() {
 	while (is_running_) {
@@ -242,7 +250,7 @@ template <typename LSD_T> void
 service<LSD_T>::log_refreshed_hosts_and_handles(const hosts_info_list_t& hosts,
 												const handles_info_list_t& handles)
 {
-	logger()->log(PLOG_DEBUG, "service %s refreshed with:", info_.name_.c_str());
+	logger()->log(PLOG_DEBUG, "service %s refreshed with: ", info_.name_.c_str());
 
 	for (size_t i = 0; i < hosts.size(); ++i) {
 		std::stringstream tmp;

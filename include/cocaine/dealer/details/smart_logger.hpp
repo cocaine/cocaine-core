@@ -70,16 +70,16 @@ public:
 
 		if ((flags_ & PLOG_MSG_TYPES) == PLOG_MSG_TYPES) {
 			if ((message_type & PLOG_INFO) == PLOG_INFO) {
-				prefix += "[INFO] ";
+				prefix += "[INFO]   ";
 			}
 			else if ((message_type & PLOG_DEBUG) == PLOG_DEBUG) {
-				prefix += "[DEBUG] ";
+				prefix += "[DEBUG]  ";
 			}
 			else if ((message_type & PLOG_WARNING) == PLOG_WARNING) {
-				prefix += "[WARNING] ";
+				prefix += "[WARNING]";
 			}
 			else if ((message_type & PLOG_ERROR) == PLOG_ERROR) {
-				prefix += "[ERROR] ";
+				prefix += "[ERROR]  ";
 			}		
 		}
 		

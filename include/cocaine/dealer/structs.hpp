@@ -17,7 +17,11 @@
 #include <vector>
 #include <map>
 #include <stdexcept>
+
 #include <time.h>
+
+#include <msgpack.hpp>
+
 #include <boost/cstdint.hpp>
 
 namespace cocaine {
@@ -114,6 +118,8 @@ struct message_path {
 
 	std::string service_name;
 	std::string handle_name;
+
+	MSGPACK_DEFINE(service_name, handle_name);
 };
 
 struct message_policy {
@@ -175,6 +181,13 @@ struct message_policy {
     double timeout;
     double deadline;
     int max_timeout_retries;
+
+    MSGPACK_DEFINE(send_to_all_hosts,
+    			   urgent,
+    			   mailboxed,
+    			   timeout,
+    			   deadline,
+    			   max_timeout_retries);
 };
 
 struct msg_queue_status {

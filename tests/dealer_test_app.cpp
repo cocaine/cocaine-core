@@ -12,7 +12,10 @@
 //
 
 #include <iostream>
+#include <iomanip>
 #include <sstream>
+#include <map>
+#include <time.h>
 
 #include <boost/program_options.hpp>
 #include <boost/bind.hpp>
@@ -22,33 +25,133 @@
 
 #include <msgpack.hpp>
 
+#include <eblob/eblob.hpp>
 
 #include "cocaine/dealer/client.hpp"
-#include "cocaine/dealer/details/time_value.hpp"
+#include "cocaine/dealer/details/progress_timer.hpp"
 #include "cocaine/dealer/details/eblob_storage.hpp"
 #include "cocaine/dealer/details/persistent_data_container.hpp"
 #include "cocaine/dealer/details/data_container.hpp"
 #include "cocaine/dealer/details/smart_logger.hpp"
 
+#include <sys/time.h>
+
 namespace po = boost::program_options;
 namespace cd = cocaine::dealer;
 
 std::string config_path = "tests/config_example.json";
-int msg_counter = 1;
+int msg_counter = 0;
+cd::time_value tv;
+
+int test_client(int argc, char** argv);
+void test_data_container();
+void test_eblob_storage();
+void test_experiment();
+void show_contents(const cocaine::dealer::data_container& c);
+void create_client(int add_messages_count);
+
+int
+main(int argc, char** argv) {
+	//test_experiment();
+	//test_eblob_storage();
+	//test_data_container();
+	return test_client(argc, argv);
+
+	return EXIT_SUCCESS;
+}
+
+void test_experiment() {
+		// create eblob logger
+		zbr::eblob_logger elog("/var/tmp/eblobs/log", 0);
+
+		// create config
+		int64_t blob_size = 2147483648;  // 2gb
+        zbr::eblob_config cfg;
+        memset(&cfg, 0, sizeof(cfg));
+        cfg.file = (char*)"/var/tmp/eblobs/test1";
+        cfg.log = elog.log();
+        cfg.sync = 30;
+        cfg.blob_size = blob_size;
+        cfg.defrag_timeout = -1;
+        cfg.iterate_threads = 1;
+
+        // create eblob
+        zbr::eblob blob_a(&cfg);
+
+        // write data
+        std::string str = "If you do not want your code to be platform dependent, you may stick with more portable solutions";
+        
+        srand(time(NULL));
+        std::stringstream sstr;
+
+		timeval begin, end;
+		gettimeofday(&begin, NULL);
+        for (int i = 0; i < 10000; ++i) {
+        	sstr.str("");
+        	sstr << rand() << "_postfix";
+        	blob_a.write_hashed(sstr.str(), str, 0, BLOB_DISK_CTL_OVERWRITE, 0);
+        	blob_a.write_hashed(sstr.str(), str, 0, BLOB_DISK_CTL_OVERWRITE, 1);
+    	}
+    	gettimeofday(&end, NULL);
+
+    	double beg_time = ((double)begin.tv_sec + begin.tv_usec / 1000000.0);
+    	double end_time = ((double)end.tv_sec + end.tv_usec / 1000000.0);
+
+    	std::cout << std::fixed << std::setprecision(10) << "elapsed secs: " << end_time - beg_time << std::endl;
+    	std::cout << "records count in blob: " << blob_a.elements() << std::endl;
+}
+
 void response_callback(const cd::response& response, const cd::response_info& info) {
 	if (info.error != cd::MESSAGE_CHOKE) {
-		//std::cout << "resp (CHUNK) uuid: " << response.uuid << std::endl;
-		//std::string st((const char*)response.data, response.size);
-		//std::cout << "resp data: " << st << std::endl;
+		std::cout << "resp (CHUNK) uuid: " << response.uuid << std::endl;
+		std::string st((const char*)response.data, response.size);
+		std::cout << "resp data: " << st << std::endl;
 	}
 	else {
-		//std::cout << "resp (CHOKE) uuid: " << response.uuid << std::endl;
+		std::cout << "resp (CHOKE) uuid: " << response.uuid << std::endl;
 		std::cout << "resp done! " << msg_counter << std::endl;
-		++msg_counter;
+		//++msg_counter;
 	}
+
+	//if (msg_counter == 3000) {
+	//	cd::time_value tv2;
+	//	tv2.init_from_current_time();
+	//}
 }
 
 void create_client(int add_messages_count) {
+	// create py app message path
+	cd::message_path path_py;
+	path_py.service_name = "karma-tests";
+	path_py.handle_name = "event";
+
+	cd::client c(config_path);
+	c.connect();
+	c.set_response_callback(boost::bind(&response_callback, _1, _2), path_py);
+	sleep(5);
+
+	tv.init_from_current_time();
+
+	std::map<std::string, int> val;
+	val["uid"] = 123;
+	val["score"] = 1;
+	val["service"] = 1;
+
+	msgpack::sbuffer buffer;
+	msgpack::pack(buffer, val);
+
+	cd::progress_timer timer;
+
+	// send message to py app
+	for (int i = 0; i < add_messages_count; ++i) {
+		std::string uuid1 = c.send_message(buffer.data(), buffer.size(), path_py);
+	}
+
+	std::cout << std::fixed << std::setprecision(6) << "elapsed secs: " << timer.elapsed().as_double() << std::endl;
+
+	sleep(10);
+
+	/*
 	// create py app message path
 	cd::message_path path_py;
 	path_py.service_name = "python";
@@ -62,15 +165,17 @@ void create_client(int add_messages_count) {
 	cd::client c(config_path);
 	c.connect();
 	c.set_response_callback(boost::bind(&response_callback, _1, _2), path_py);
-	c.set_response_callback(boost::bind(&response_callback, _1, _2), path_perl);
+	//c.set_response_callback(boost::bind(&response_callback, _1, _2), path_perl);
 
-	sleep(3);
+	sleep(4);
+
+	tv.init_from_current_time();
 
 	// send message to py app
 	for (int i = 0; i < add_messages_count; ++i) {
 		std::string message = "{ \"key\" : \"some value\" }";
 		std::string uuid1 = c.send_message(message, path_py);
-		std::cout << "mesg uuid: " << uuid1 << std::endl;
+		//std::cout << "mesg uuid: " << uuid1 << std::endl;
 	}
 
 	// send message to perl app
@@ -80,30 +185,11 @@ void create_client(int add_messages_count) {
 	//	std::cout << "mesg uuid: " << uuid1 << std::endl;
 	//}
 
-	sleep(5);
+	sleep(10);
+	*/
 }
 
-void show_contents(const cocaine::dealer::data_container& c) {
-	if (c.data()) {
-		std::string str((const char*)c.data(), 0, c.size());
-		std::cout << str << std::endl;
-	}
-	else {
-		std::cout << "- no data, ";
-
-		if (c.empty()) {
-			std::cout << " empty container -";	
-		}
-		else {
-			std::cout << " non-empty container -";
-		}
-
-		std::cout << std::endl;
-	}
-}
-
-int
-main(int argc, char** argv) {
+void test_eblob_storage() {
 	/*
 	using namespace cocaine::dealer;
 
@@ -134,12 +220,13 @@ main(int argc, char** argv) {
 	//logger->log("%llu", st["test"].items_count());
 	//logger->log("%s", st["test"].read("aaaa", 1).c_str());
 	//st["est"].write("aaaa", "VAL", 1);
+}
 
+int test_client(int argc, char** argv) {
 	try {
 		po::options_description desc("Allowed options");
 		desc.add_options()
 			("help", "Produce help message")
-			("client,c", "Start as server")
 			("messages,m", po::value<int>(), "Add messages to server")
 		;
 
@@ -152,7 +239,7 @@ main(int argc, char** argv) {
 			return EXIT_SUCCESS;
 		}
 
-		if (vm.count("client")) {
+		if (vm.count("messages")) {
 			int add_messages_count = vm.count("messages") ? vm["messages"].as<int>() : 0;
 			create_client(add_messages_count);
 
@@ -166,8 +253,25 @@ main(int argc, char** argv) {
 		std::cerr << ex.what() << std::endl;
 		return EXIT_FAILURE;
 	}
+}
 
-	return EXIT_SUCCESS;
+void show_contents(const cocaine::dealer::data_container& c) {
+	if (c.data()) {
+		std::string str((const char*)c.data(), 0, c.size());
+		std::cout << str << std::endl;
+	}
+	else {
+		std::cout << "- no data, ";
+
+		if (c.empty()) {
+			std::cout << " empty container -";	
+		}
+		else {
+			std::cout << " non-empty container -";
+		}
+
+		std::cout << std::endl;
+	}
 }
 
 void test_data_container() {

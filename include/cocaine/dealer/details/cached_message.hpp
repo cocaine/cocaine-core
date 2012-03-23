@@ -43,7 +43,10 @@ public:
 	cached_message(const message_path& path,
 				   const message_policy& policy,
 				   const void* data,
-				   size_t data_size_);
+				   size_t data_size);
+
+	cached_message(void* mdata,
+				   size_t mdata_size);
 
 	~cached_message();
 
@@ -126,6 +129,11 @@ cached_message<DataContainer, MetadataContainer>::cached_message(const message_p
 
 	data_.set_data(data, data_size);
 	init();
+}
+
+template<typename DataContainer, typename MetadataContainer>
+cached_message<DataContainer, MetadataContainer>::cached_message(void* mdata, size_t mdata_size) {
+	mdata_.load_data(mdata_, mdata_size);
 }
 
 template<typename DataContainer, typename MetadataContainer>

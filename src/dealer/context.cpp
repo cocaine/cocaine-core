@@ -71,8 +71,8 @@ context::context(const std::string& config_path) {
 		configuration::services_list_t::const_iterator it = services_info_list.begin();
 		for (; it != services_info_list.end(); ++it) {
 			storage_->open_eblob(it->second.name_);
+			storage_->get_eblob(it->second.name_).set_logger(logger());
 		}
-		logger()->log("done");
 	}
 }
 

@@ -85,6 +85,10 @@ public:
 private:
 	void update_messages_cache_size();
 	void service_hosts_pinged_callback(const service_info_t& s_info, const std::vector<host_info_t>& hosts, const std::vector<handle_info_t>& handles);
+	
+	// restoring messages from storage cache
+	void load_cached_messages_for_service(boost::shared_ptr<service_t>& service);
+	void storage_iteration_callback(void* data, uint64_t size, int column);
 
 private:
 	typedef std::map<std::string, boost::shared_ptr<service_t> > services_map_t;
@@ -103,6 +107,9 @@ private:
 
 	// message response callback
 	boost::function<void(const std::string&, void* data, size_t size)> response_callback_;
+
+	// temporary service ptr (2 DO: refactor this utter crap)
+	boost::shared_ptr<service_t> restored_service_tmp_ptr_;
 
 	// synchronization
 	boost::mutex mutex_;
