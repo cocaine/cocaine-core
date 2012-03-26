@@ -21,16 +21,6 @@
 
 #include <zmq.hpp>
 
-// Mac = bullshit 
-// hey, mate, it's "==" alright.
-
-#ifdef IS_DARWIN
-	#undef _IN_ADDR_T
-	#undef _IN_PORT_T
-#endif
-
-#include <netinet/in.h>
-
 #include <msgpack.hpp>
 
 #include <boost/shared_ptr.hpp>

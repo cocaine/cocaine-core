@@ -14,10 +14,6 @@
 #ifndef _COCAINE_DEALER_CLIENT_IMPL_HPP_INCLUDED_
 #define _COCAINE_DEALER_CLIENT_IMPL_HPP_INCLUDED_
 
-// typedef uint32_t in_addr_t;
-// typedef uint16_t in_port_t;
-
-
 #include <string>
 #include <vector>
 #include <map>
