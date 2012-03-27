@@ -30,13 +30,7 @@ struct heartbeat_t:
 
 struct configure_t:
     public sc::event<configure_t>
-{
-    configure_t(const config_t& config_):
-        config(config_)
-    { }
-
-    const config_t& config;
-};
+{ };
 
 struct terminate_t:
     public sc::event<terminate_t>
@@ -113,7 +107,7 @@ struct error_t:
     { }
     
     const client::error_code code;
-    const std::string message;
+    const std::string& message;
 };
 
 struct release_t:

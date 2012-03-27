@@ -322,7 +322,7 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
     }
 
     events::invoke_t event(job);
-    rpc::packed<events::invoke_t> packed(event);
+    rpc::packed<events::invoke_t> packed(job);
 
     pool_map_t::iterator it(
         unicast(
@@ -455,17 +455,18 @@ void engine_t::process(ev::idle&, int) {
     // NOTE: Count all the RPC events as heartbeats.
     slave->second->process_event(events::heartbeat_t());
 
-    if(slave->second->state_downcast<const slave::idle*>()) {
+    if(!m_queue.empty() &&
+       slave->second->state_downcast<const slave::idle*>())
+    {
         while(!m_queue.empty()) {
-            const boost::shared_ptr<job_t>& job = m_queue.front();
-            
-            if(!job->state_downcast<const job::complete*>()) {
+            if(!m_queue.front()->state_downcast<const job::complete*>()) {
                 // NOTE: This will always succeed due to the test above.
-                enqueue(job);
+                enqueue(m_queue.front());
+                m_queue.pop_front();
                 break;
+            } else {
+                m_queue.pop_front();
             }
-
-            m_queue.pop_front();
         }
     }
 

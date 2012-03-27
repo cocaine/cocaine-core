@@ -28,13 +28,7 @@ blob_t io_t::pull(bool block) {
 }
 
 void io_t::push(const void * data, size_t size) {
-    zmq::message_t message(size);
-
-    memcpy(message.data(), data, size);
-
-    events::push_t event(message);
-    rpc::packed<events::push_t> packed(event);
-
+    rpc::packed<events::push_t> packed(data, size);
     m_overseer.send(packed);
 }
 
