@@ -371,7 +371,7 @@ client_impl::load_cached_messages_for_service(boost::shared_ptr<service_t>& serv
 
 	// show statistics
 	eblob blob = this->context()->storage()->get_eblob(service_name);
-	std::string log_str = "SERVICE [%s] is restoring %d messages from persistant cache...";
+	std::string log_str = "SERVICE [%s] is restoring %d messages from persistent cache...";
 	logger()->log(PLOG_DEBUG, log_str.c_str(), service_name.c_str(), (int)(blob.items_count() / 2));
 
 	restored_service_tmp_ptr_ = service;

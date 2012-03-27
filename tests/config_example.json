@@ -2,15 +2,12 @@
 	"dealer_config" :
 	{
 		"config_version" : 1,
-		"message_timeout" : 10,
-		"socket_poll_timeout" : 2000,
-		
+
 		"logger" :
 		{
 			"type" : "STDOUT_LOGGER",
 			"flags" : "PLOG_MSG_TIME | PLOG_INFO | PLOG_DEBUG | PLOG_ERROR | PLOG_MSG_TYPES",
 			"file" : "/tmp/lsd.log",
-			"syslog_name" : "lsd_log"
 		},
 		
 		"message_cache" :
@@ -19,33 +16,11 @@
 			"type" : "PERSISTENT"
 		},
 
-		"persistent_storage" :
-		{
-			"eblob_path" : "/var/tmp/eblobs",
-			"blob_size" : 2048,
-			"eblob_sync_interval" : 3
-		},
-		
-		"autodiscovery" :
-		{
-			"type" : "HTTP",
-			"multicast_ip" : "226.1.1.1",
-			"multicast_port" : 5555
-		},
-		
-		"statistics" :
-		{
-			"enabled" : true,
-			"remote_access" : true,
-			"remote_port" : 3333
-		},
-
 		"services" : [
 			{
             	"name" : "karma-tests",
-				"description" : "fuck off",
 				"app_name" : "karma@1",
-				"hosts_url" : "http://deltax.dev.yandex.net",
+				"hosts_file" : "/home/rimz/cocaine/tests/hosts",
 				"control_port" : 5000
 			}
 		]

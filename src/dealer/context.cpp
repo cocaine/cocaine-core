@@ -45,6 +45,8 @@ context::context(const std::string& config_path) {
 			logger_.reset(new smart_logger<empty_logger>);
 			break;
 	}
+
+	std::cout << *config() << std::endl;
 	
 	logger()->log("loaded config: %s", config()->config_path().c_str());
 	//logger()->log(config()->as_string());

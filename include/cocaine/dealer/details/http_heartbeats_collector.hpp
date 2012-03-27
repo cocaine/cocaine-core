@@ -34,7 +34,7 @@
 
 namespace cocaine {
 namespace dealer {
-	
+
 class http_heartbeats_collector : public heartbeats_collector, private boost::noncopyable {
 public:
 	http_heartbeats_collector(boost::shared_ptr<configuration> config,

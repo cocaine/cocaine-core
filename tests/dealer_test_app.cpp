@@ -101,21 +101,26 @@ void test_experiment() {
     	std::cout << "records count in blob: " << blob_a.elements() << std::endl;
 }
 
+int prev = -1;
+
 void response_callback(const cd::response& response, const cd::response_info& info) {
 	if (info.error != cd::MESSAGE_CHOKE) {
-		std::cout << "resp (CHUNK) uuid: " << response.uuid << std::endl;
-		std::string st((const char*)response.data, response.size);
-		std::cout << "resp data: " << st << std::endl;
+		//std::cout << "resp (CHUNK) uuid: " << response.uuid << std::endl;
+		//std::string st((const char*)response.data, response.size);
+		//std::cout << "resp data: " << st << std::endl;
 	}
 	else {
-		std::cout << "resp (CHOKE) uuid: " << response.uuid << std::endl;
-		std::cout << "resp done! " << msg_counter << std::endl;
+		++msg_counter;
+		//std::cout << "resp (CHOKE) uuid: " << response.uuid << std::endl;
+		//std::cout << "resp done! " << msg_counter << std::endl;
 		//++msg_counter;
 	}
 
-	//if (msg_counter == 3000) {
-	//	cd::time_value tv2;
-	//	tv2.init_from_current_time();
+	//if (msg_counter % 100 == 0) {
+	//	if (msg_counter / 100 > prev) {
+			std::cout << "received " << msg_counter << " responces" << std::endl;
+	//		prev = msg_counter / 100;
+	//	}
 	//}
 }
 

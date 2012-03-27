@@ -38,18 +38,19 @@ public:
 				  const std::string& description,
 				  const std::string& app_name,
 				  const std::string& instance,
+				  const std::string& hosts_file,
 				  const std::string& hosts_url) :
 					  name_(name),
 					  description_(description),
 					  app_name_(app_name),
-					  //instance_(instance),
+					  hosts_file_(hosts_file),
 					  hosts_url_(hosts_url),
 					  control_port_(DEFAULT_CONTROL_PORT) {};
 	
 	bool operator == (const service_info& rhs) {
 		return (name_ == rhs.name_ &&
 				hosts_url_ == rhs.hosts_url_ &&
-				//instance_ == rhs.instance_ &&
+				hosts_file_ == rhs.hosts_file_ &&
 				control_port_ == rhs.control_port_);
 	};
 
@@ -57,7 +58,7 @@ public:
 	std::string name_;
 	std::string description_;
 	std::string app_name_;
-	//std::string instance_;
+	std::string hosts_file_;
 	std::string hosts_url_;
 	typename LSD_T::port control_port_;
 };
@@ -67,7 +68,7 @@ std::ostream& operator << (std::ostream& out, const service_info<LSD_T>& service
 	out << "lsd service name: " << service_inf.name_ << "\n";
 	out << "description: " << service_inf.description_ << "\n";
 	out << "app name: " << service_inf.app_name_ << "\n";
-	//out << "instance: " << service_inf.instance_ << "\n";
+	out << "hosts file: " << service_inf.hosts_file_ << "\n";
 	out << "hosts url: " << service_inf.hosts_url_ << "\n";
 	out << "control port: " << service_inf.control_port_ << "\n";
 

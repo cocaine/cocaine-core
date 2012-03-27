@@ -36,7 +36,7 @@ configuration::configuration() :
 	eblob_path_(DEFAULT_EBLOB_PATH),
 	eblob_blob_size_(DEFAULT_EBLOB_BLOB_SIZE),
 	eblob_sync_interval_(DEFAULT_EBLOB_SYNC_INTERVAL),
-	autodiscovery_type_(AT_HTTP),
+	autodiscovery_type_(AT_TEXT),
 	multicast_ip_(DEFAULT_MULTICAST_IP),
 	multicast_port_(DEFAULT_MULTICAST_PORT),
 	is_statistics_enabled_(false),
@@ -57,7 +57,7 @@ configuration::configuration(const std::string& path) :
 	eblob_path_(DEFAULT_EBLOB_PATH),
 	eblob_blob_size_(DEFAULT_EBLOB_BLOB_SIZE),
 	eblob_sync_interval_(DEFAULT_EBLOB_SYNC_INTERVAL),
-	autodiscovery_type_(AT_HTTP),
+	autodiscovery_type_(AT_TEXT),
 	multicast_ip_(DEFAULT_MULTICAST_IP),
 	multicast_port_(DEFAULT_MULTICAST_PORT),
 	is_statistics_enabled_(false),
@@ -169,8 +169,12 @@ void
 configuration::parse_autodiscovery_settings(const Json::Value& config_value) {
 	const Json::Value autodiscovery_value = config_value["autodiscovery"];
 
-	std::string atype = autodiscovery_value.get("type", "HTTP").asString();
-	if (atype == "HTTP") {
+	std::string atype = autodiscovery_value.get("type", "TEXT").asString();
+
+	if (atype == "TEXT") {
+		autodiscovery_type_ = AT_TEXT;
+	}
+	else if (atype == "HTTP") {
 		autodiscovery_type_ = AT_HTTP;
 	}
 	else if (atype == "MULTICAST") {
@@ -200,7 +204,7 @@ configuration::parse_services_settings(const Json::Value& config_value) {
 		si.description_ = service_value.get("description", "").asString();
 		si.name_ = service_value.get("name", "").asString();
 		si.app_name_ = service_value.get("app_name", "").asString();
-		//si.instance_ = service_value.get("instance", "").asString();
+		si.hosts_file_ = service_value.get("hosts_file", "").asString();
 		si.hosts_url_ = service_value.get("hosts_url", "").asString();
 		si.control_port_ = service_value.get("control_port", DEFAULT_CONTROL_PORT).asUInt();
 
@@ -213,12 +217,8 @@ configuration::parse_services_settings(const Json::Value& config_value) {
 			throw error("service with no application name was found in config! at: " + std::string(BOOST_CURRENT_FUNCTION));
 		}
 
-		//if (si.instance_.empty()) {
-		//	throw error("service with no instance was found in config! at: " + std::string(BOOST_CURRENT_FUNCTION));
-		//}
-
-		if (si.hosts_url_.empty()) {
-			throw error("service with no hosts_url was found in config! at: " + std::string(BOOST_CURRENT_FUNCTION));
+		if (si.hosts_url_.empty() && si.hosts_file_.empty()) {
+			throw error("service with no hosts source was found in config! at: " + std::string(BOOST_CURRENT_FUNCTION));
 		}
 
 		if (si.control_port_ == 0) {
@@ -500,6 +500,9 @@ std::string configuration::as_json() const {
 	else if (autodiscovery_type_ == AT_HTTP) {
 		autodiscovery["1 - type"] = "HTTP";
 	}
+	else if (autodiscovery_type_ == AT_TEXT) {
+		autodiscovery["1 - type"] = "TEXT";
+	}
 
 	autodiscovery["2 - multicast ip"] = multicast_ip_;
 	autodiscovery["3 - multicast port"] = multicast_port_;
@@ -537,7 +540,7 @@ std::string configuration::as_json() const {
 std::string configuration::as_string() const {
 	std::stringstream out;
 
-	out << "---------- config path: ----------" << path_ << "\n";
+	out << "---------- config path: " << path_ << " ----------\n";
 
 	// basic
 	out << "basic settings\n";
@@ -546,7 +549,7 @@ std::string configuration::as_string() const {
 	out << "\tsocket poll timeout: " << socket_poll_timeout_ << "\n";
 	
 	// logger
-	out << "logger\n";
+	out << "\nlogger\n";
 	if (logger_type_ == STDOUT_LOGGER) {
 		out << "\ttype: STDOUT_LOGGER" << "\n";
 	}
@@ -617,6 +620,9 @@ std::string configuration::as_string() const {
 	else if (autodiscovery_type_ == AT_HTTP) {
 		out << "\ttype: HTTP" << "\n";
 	}
+	else if (autodiscovery_type_ == AT_TEXT) {
+		out << "\ttype: TEXT" << "\n";
+	}
 
 	out << "\tmulticast ip: " << multicast_ip_ << "\n";
 	out << "\tmulticast port: " << multicast_port_ << "\n\n";
@@ -647,8 +653,9 @@ std::string configuration::as_string() const {
 	for (; it != sl.end(); ++it) {
 		out << "\n\tname: " << it->second.name_ << "\n";
 		out << "\tdescription: " << it->second.description_ << "\n";
-		out << "\n\tapp name: " << it->second.app_name_ << "\n";
+		out << "\tapp name: " << it->second.app_name_ << "\n";
 		out << "\thosts url: " << it->second.hosts_url_ << "\n";
+		out << "\thosts file: " << it->second.hosts_file_ << "\n";
 		out << "\tcontrol port: " << it->second.control_port_ << "\n";
 	}
 

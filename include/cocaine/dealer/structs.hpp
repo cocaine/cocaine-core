@@ -73,7 +73,8 @@ enum logger_type {
 
 enum autodiscovery_type {
 	AT_MULTICAST = 1,
-	AT_HTTP
+	AT_HTTP,
+	AT_TEXT
 };
 
 enum message_cache_type {

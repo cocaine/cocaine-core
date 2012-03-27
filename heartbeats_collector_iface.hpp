@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef _COCAINE_DEALER_HEARTBEATS_COLLECTOR_HPP_INCLUDED_
-#define _COCAINE_DEALER_HEARTBEATS_COLLECTOR_HPP_INCLUDED_
+#ifndef _COCAINE_DEALER_HEARTBEATS_COLLECTOR_IFACE_HPP_INCLUDED_
+#define _COCAINE_DEALER_HEARTBEATS_COLLECTOR_IFACE_HPP_INCLUDED_
 
 #include <string>
 #include <map>
@@ -31,7 +31,7 @@
 namespace cocaine {
 namespace dealer {
 
-class heartbeats_collector {
+class heartbeats_collector_iface {
 public:
 	typedef boost::function<void(const service_info_t&, const std::vector<host_info_t>&, const std::vector<handle_info_t>&)> callback_t;
 
@@ -44,4 +44,4 @@ public:
 } // namespace dealer
 } // namespace cocaine
 
-#endif // _COCAINE_DEALER_HEARTBEATS_COLLECTOR_HPP_INCLUDED_
+#endif // _COCAINE_DEALER_HEARTBEATS_COLLECTOR_IFACE_HPP_INCLUDED_
