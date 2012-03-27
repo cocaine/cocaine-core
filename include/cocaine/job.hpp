@@ -51,6 +51,7 @@ class job_t:
     public sc::state_machine<job_t, job::incomplete>,
     public birth_control_t<job_t>
 {
+    friend struct job::incomplete;
     friend struct job::waiting;
     friend struct job::processing;
 
@@ -65,6 +66,7 @@ class job_t:
 
         virtual ~job_t();
 
+    protected:
         virtual void react(const events::push_t& event);
         virtual void react(const events::error_t& event);
         virtual void react(const events::release_t& event);

@@ -65,8 +65,8 @@ template<>
 struct packed<events::configure_t> {
     typedef boost::tuple<int, const config_t&> type;
 
-    packed(const events::configure_t& event):
-        pack(configure, event.config)
+    packed(const config_t& config):
+        pack(configure, config)
     { }
 
     type& get() {
@@ -79,16 +79,16 @@ private:
 
 template<>
 struct packed<events::invoke_t> {
-    typedef boost::tuple<int, std::string, zmq::message_t&> type;
+    typedef boost::tuple<int, const std::string&, zmq::message_t&> type;
 
-    packed(const events::invoke_t& event):
-        message(event.job->request().size()),
-        pack(invoke, event.job->method(), message)
+    packed(const boost::shared_ptr<job_t>& job):
+        message(job->request().size()),
+        pack(invoke, job->method(), message)
     {
         memcpy(
             message.data(),
-            event.job->request().data(),
-            event.job->request().size()
+            job->request().data(),
+            job->request().size()
         );
     }
 
@@ -105,10 +105,15 @@ template<>
 struct packed<events::push_t> {
     typedef boost::tuple<int, zmq::message_t&> type;
 
-    packed(const events::push_t& event):
+    packed(const void * data, std::size_t size):
+        message(size),
         pack(push, message)
     {
-        message.copy(&event.message);
+        memcpy(
+            message.data(),
+            data,
+            size
+        );
     }
 
     type& get() {

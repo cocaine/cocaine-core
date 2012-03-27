@@ -115,7 +115,7 @@ void slave_t::on_configure(const events::heartbeat_t& event) {
 #endif
 
     rpc::packed<events::configure_t> pack(
-        events::configure_t(m_engine.context().config)
+        m_engine.context().config
     );
 
     m_engine.unicast(
