@@ -16,7 +16,7 @@
 #include <boost/current_function.hpp>
 
 #include "cocaine/dealer/client.hpp"
-#include "cocaine/dealer/details/client_impl.hpp"
+#include "cocaine/dealer/core/client_impl.hpp"
 
 namespace cocaine {
 namespace dealer {

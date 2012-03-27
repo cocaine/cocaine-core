@@ -33,14 +33,14 @@
 
 #include "cocaine/dealer/structs.hpp"
 
-#include "cocaine/dealer/details/error.hpp"
-#include "cocaine/dealer/details/context.hpp"
-#include "cocaine/dealer/details/handle_info.hpp"
-#include "cocaine/dealer/details/host_info.hpp"
-#include "cocaine/dealer/details/message_iface.hpp"
-#include "cocaine/dealer/details/cached_response.hpp"
-#include "cocaine/dealer/details/message_cache.hpp"
-#include "cocaine/dealer/details/progress_timer.hpp"
+#include "cocaine/dealer/core/context.hpp"
+#include "cocaine/dealer/core/handle_info.hpp"
+#include "cocaine/dealer/core/host_info.hpp"
+#include "cocaine/dealer/core/message_iface.hpp"
+#include "cocaine/dealer/core/cached_response.hpp"
+#include "cocaine/dealer/core/message_cache.hpp"
+#include "cocaine/dealer/utils/error.hpp"
+#include "cocaine/dealer/utils/progress_timer.hpp"
 
 namespace cocaine {
 namespace dealer {
@@ -402,8 +402,13 @@ handle<LSD_T>::connect_zmq_socket_to_hosts(socket_ptr_t& socket,
 			std::string ip = host_info<LSD_T>::string_from_ip(hosts[i].ip_);
 			connection_str = "tcp://" + ip + ":" + port;
 			//logger()->log(PLOG_DEBUG, "handle connection str: %s", connection_str.c_str());
+			
 			int timeout = 0;
 			socket->setsockopt(ZMQ_LINGER, &timeout, sizeof(timeout));
+
+			int64_t hwm = 10000;
+			socket->setsockopt(ZMQ_HWM, &hwm, sizeof(hwm));
+
 			socket->connect(connection_str.c_str());
 		}
 	}
@@ -502,17 +507,27 @@ handle<LSD_T>::dispatch_responces(socket_ptr_t& main_socket) {
 				logger()->log(PLOG_ERROR, "bad envelope");
 				break;
 			}
+		}
+		catch (const std::exception& ex) {
+			std::string error_msg = "service: " + info_.service_name_;
+			error_msg += ", handle: " + info_.name_ + " — error while receiving response envelope ";
+			error_msg += " at " + std::string(BOOST_CURRENT_FUNCTION) + "reason: ";
+			error_msg += ex.what();
+			logger()->log(PLOG_DEBUG, error_msg);
+			break;
+		}
 
+		bool is_response_completed = false;
+		std::string uuid;
+		Json::Value envelope_val;
+		Json::Reader jreader;
+		int error_code = 0;
+		std::string error_message;
+
+		try {
 			// get envelope json string
 			json_header = std::string((const char*)reply.data(), reply.size());
 			//logger()->log(PLOG_DEBUG, "received header: %s", json_header.c_str());
-
-			bool is_response_completed = false;
-			std::string uuid;
-			Json::Value envelope_val;
-			Json::Reader jreader;
-			int error_code = 0;
-			std::string error_message;
 
 			// parse envelope json
 			if (jreader.parse(json_header.c_str(), envelope_val)) {
@@ -534,11 +549,21 @@ handle<LSD_T>::dispatch_responces(socket_ptr_t& main_socket) {
 				error_msg += " at " + std::string(BOOST_CURRENT_FUNCTION);
 				throw error(error_msg);
 			}
+		}
+		catch (const std::exception& ex) {
+			std::string error_msg = "service: " + info_.service_name_;
+			error_msg += ", handle: " + info_.name_ + " — error while parsing response envelope";
+			error_msg += " at " + std::string(BOOST_CURRENT_FUNCTION) + "reason: ";
+			error_msg += ex.what();
+			logger()->log(PLOG_DEBUG, error_msg);
+			break;
+		}
+		
+		// get message from sent cache
+		bool fetched_message = false;
+		boost::shared_ptr<message_iface> sent_msg;
 
-			bool fetched_message = false;
-
-			// get message from sent cache
-			boost::shared_ptr<message_iface> sent_msg;
+		try {
 			try {
 				sent_msg = messages_cache()->get_sent_message(uuid);
 				fetched_message = true;
@@ -556,7 +581,17 @@ handle<LSD_T>::dispatch_responces(socket_ptr_t& main_socket) {
 					continue;
 				}
 			}
+		}
+		catch (const std::exception& ex) {
+			std::string error_msg = "service: " + info_.service_name_;
+			error_msg += ", handle: " + info_.name_ + " — error while retrieving response message";
+			error_msg += " at " + std::string(BOOST_CURRENT_FUNCTION) + "reason: ";
+			error_msg += ex.what();
+			logger()->log(PLOG_DEBUG, error_msg);
+			break;
+		}
 
+		try {
 			if (error_code != 0) {
 				logger()->log(PLOG_DEBUG, "error code: %d, message: %s", error_code, error_message.c_str());
 
@@ -587,7 +622,17 @@ handle<LSD_T>::dispatch_responces(socket_ptr_t& main_socket) {
 
 				continue;
 			}
+		}
+		catch (const std::exception& ex) {
+			std::string error_msg = "service: " + info_.service_name_;
+			error_msg += ", handle: " + info_.name_ + " — error while resending message";
+			error_msg += " at " + std::string(BOOST_CURRENT_FUNCTION) + "reason: ";
+			error_msg += ex.what();
+			logger()->log(PLOG_DEBUG, error_msg);
+			break;
+		}
 
+		try {
 			// receive data
 			if (!is_response_completed) {
 				//logger()->log(PLOG_DEBUG, "responce not completed");
@@ -635,7 +680,7 @@ handle<LSD_T>::dispatch_responces(socket_ptr_t& main_socket) {
 		}
 		catch (const std::exception& ex) {
 			std::string error_msg = "service: " + info_.service_name_;
-			error_msg += ", handle: " + info_.name_ + " — error while receiving response";
+			error_msg += ", handle: " + info_.name_ + " — error while receiving response data";
 			error_msg += " at " + std::string(BOOST_CURRENT_FUNCTION) + "reason: ";
 			error_msg += ex.what();
 			logger()->log(PLOG_DEBUG, error_msg);
@@ -784,7 +829,18 @@ handle<LSD_T>::connect(const hosts_info_list_t& hosts) {
 
 template <typename LSD_T> void
 handle<LSD_T>::connect_new_hosts(const hosts_info_list_t& hosts) {
-	logger()->log(PLOG_DEBUG, "connect with new hosts");
+	std::string log_str = "CONNECT HANDLE [" + info_.service_name_ +"].[" + info_.name_ + "] to new hosts: ";
+	for (size_t i = 0; i < hosts.size(); ++i) {
+		log_str += host_info_t::string_from_ip(hosts[i].ip_);
+
+		if (i != hosts.size() - 1) {
+			log_str += ", ";
+		}
+	}
+
+	logger()->log(PLOG_DEBUG, log_str);
+
+
 
 	get_statistics();
 	update_statistics();

@@ -15,14 +15,16 @@
 
 #include <boost/current_function.hpp>
 
-#include "cocaine/dealer/details/client_impl.hpp"
-#include "cocaine/dealer/details/http_heartbeats_collector.hpp"
-#include "cocaine/dealer/details/error.hpp"
+#include "cocaine/dealer/core/cached_message.hpp"
+#include "cocaine/dealer/core/request_metadata.hpp"
+#include "cocaine/dealer/utils/data_container.hpp"
+#include "cocaine/dealer/utils/persistent_data_container.hpp"
+#include "cocaine/dealer/utils/error.hpp"
+#include "cocaine/dealer/heartbeats/http_heartbeats_collector.hpp"
+#include "cocaine/dealer/heartbeats/curl_hosts_fetcher.hpp"
+#include "cocaine/dealer/heartbeats/file_hosts_fetcher.hpp"
 
-#include "cocaine/dealer/details/cached_message.hpp"
-#include "cocaine/dealer/details/data_container.hpp"
-#include "cocaine/dealer/details/request_metadata.hpp"
-#include "cocaine/dealer/details/persistent_data_container.hpp"
+#include "cocaine/dealer/core/client_impl.hpp"
 
 namespace cocaine {
 namespace dealer {
@@ -88,15 +90,16 @@ client_impl::connect() {
 		throw error(error_msg);
 	}
 
-	if (conf->autodiscovery_type() == AT_MULTICAST) {
-		// 2 DO
+	if (conf->autodiscovery_type() == AT_FILE) {
+		heartbeats_collector_.reset(new http_heartbeats_collector<file_hosts_fetcher>(conf, context()->zmq_context()));
 	}
 	else if (conf->autodiscovery_type() == AT_HTTP) {
-		heartbeats_collector_.reset(new http_heartbeats_collector(conf, context()->zmq_context()));
-		heartbeats_collector_->set_callback(boost::bind(&client_impl::service_hosts_pinged_callback, this, _1, _2, _3));
-		//heartbeats_collector_->set_logger(logger());
-		heartbeats_collector_->run();
+		heartbeats_collector_.reset(new http_heartbeats_collector<curl_hosts_fetcher>(conf, context()->zmq_context()));
 	}
+
+	heartbeats_collector_->set_callback(boost::bind(&client_impl::service_hosts_pinged_callback, this, _1, _2, _3));
+	//heartbeats_collector_->set_logger(logger());
+	heartbeats_collector_->run();
 }
 
 void

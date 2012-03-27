@@ -22,8 +22,8 @@
 
 #include "cocaine/dealer/structs.hpp"
 
-#include "cocaine/dealer/details/cached_response.hpp"
-#include "cocaine/dealer/details/error.hpp"
+#include "cocaine/dealer/core/cached_response.hpp"
+#include "cocaine/dealer/utils/error.hpp"
 
 namespace cocaine {
 namespace dealer {

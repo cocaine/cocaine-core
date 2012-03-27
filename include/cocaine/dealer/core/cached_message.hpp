@@ -27,9 +27,9 @@
 #include <uuid/uuid.h>
 #include "json/json.h"
 
-#include "cocaine/dealer/details/message_iface.hpp"
-#include "cocaine/dealer/details/error.hpp"
-#include "cocaine/dealer/details/progress_timer.hpp"
+#include "cocaine/dealer/core/message_iface.hpp"
+#include "cocaine/dealer/utils/error.hpp"
+#include "cocaine/dealer/utils/progress_timer.hpp"
 
 namespace cocaine {
 namespace dealer {

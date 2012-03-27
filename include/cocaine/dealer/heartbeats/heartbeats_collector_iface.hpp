@@ -23,10 +23,10 @@
 
 #include "cocaine/dealer/structs.hpp"
 
-#include "cocaine/dealer/details/host_info.hpp"
-#include "cocaine/dealer/details/handle_info.hpp"
-#include "cocaine/dealer/details/smart_logger.hpp"
-#include "cocaine/dealer/details/configuration.hpp"
+#include "cocaine/dealer/core/host_info.hpp"
+#include "cocaine/dealer/core/handle_info.hpp"
+#include "cocaine/dealer/core/configuration.hpp"
+#include "cocaine/dealer/utils/smart_logger.hpp"
 
 namespace cocaine {
 namespace dealer {

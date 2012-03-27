@@ -23,8 +23,8 @@
 
 #include "json/json.h"
 
-#include "cocaine/dealer/details/error.hpp"
-#include "cocaine/dealer/details/persistent_data_container.hpp"
+#include "cocaine/dealer/utils/error.hpp"
+#include "cocaine/dealer/utils/persistent_data_container.hpp"
 
 namespace cocaine {
 namespace dealer {

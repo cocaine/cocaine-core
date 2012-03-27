@@ -11,8 +11,17 @@
 // limitations under the License.
 //
 
-#include <stdexcept>
+#ifndef _COCAINE_DEALER_HTTP_HEARTBEATS_COLLECTOR_HPP_INCLUDED_
+#define _COCAINE_DEALER_HTTP_HEARTBEATS_COLLECTOR_HPP_INCLUDED_
 
+#include <memory>
+#include <string>
+#include <map>
+
+#include <boost/thread/mutex.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/date_time.hpp>
+#include <boost/bind.hpp>
 #include <boost/tokenizer.hpp>
 #include <boost/function.hpp>
 #include <boost/lexical_cast.hpp>
@@ -20,27 +29,84 @@
 
 #include "json/json.h"
 
+#include <zmq.hpp>
+
 #include "cocaine/dealer/structs.hpp"
-#include "cocaine/dealer/details/progress_timer.hpp"
-#include "cocaine/dealer/details/http_heartbeats_collector.hpp"
+#include "cocaine/dealer/core/configuration.hpp"
+#include "cocaine/dealer/utils/smart_logger.hpp"
+#include "cocaine/dealer/utils/refresher.hpp"
+#include "cocaine/dealer/utils/error.hpp"
+#include "cocaine/dealer/utils/progress_timer.hpp"
+#include "cocaine/dealer/heartbeats/heartbeats_collector_iface.hpp"
 
 namespace cocaine {
 namespace dealer {
 
-http_heartbeats_collector::http_heartbeats_collector(boost::shared_ptr<configuration> config,
-													 boost::shared_ptr<zmq::context_t> zmq_context) :
+template <typename HostsFetcher>
+class http_heartbeats_collector : public heartbeats_collector_iface, private boost::noncopyable {
+public:
+	http_heartbeats_collector(boost::shared_ptr<configuration> config,
+							  boost::shared_ptr<zmq::context_t> zmq_context);
+
+	virtual ~http_heartbeats_collector();
+
+	void run();
+	void stop();
+
+	void set_logger(boost::shared_ptr<base_logger> logger);
+	void set_callback(heartbeats_collector_iface::callback_t callback);
+	
+private:
+	void hosts_callback(std::vector<cocaine::dealer::host_info_t>& hosts, service_info_t tag);
+	void services_ping_callback();
+	void ping_service_hosts(const service_info_t& s_info, std::vector<host_info_t>& hosts);
+
+	void parse_host_response(const service_info_t& s_info,
+							 DT::ip_addr ip,
+							 const std::string& response,
+							 std::vector<handle_info_t>& handles);
+
+	void validate_host_handles(const service_info_t& s_info,
+							   const std::vector<host_info_t>& hosts,
+							   const std::multimap<DT::ip_addr, handle_info_t>& hosts_and_handles) const;
+
+	bool get_metainfo_from_host(const service_info_t& s_info,
+								DT::ip_addr ip,
+								std::string& response);
+
+	static const int hosts_ping_timeout = 1;
+
+private:
+	boost::shared_ptr<configuration> config_;
+	boost::shared_ptr<zmq::context_t> zmq_context_;
+	boost::shared_ptr<base_logger> logger_;
+
+	typedef std::map<std::string, std::vector<host_info_t> > service_hosts_map;
+
+	std::vector<boost::shared_ptr<HostsFetcher> > hosts_fetchers_;
+	service_hosts_map fetched_services_hosts_;
+	std::auto_ptr<refresher> refresher_;
+
+	heartbeats_collector_iface::callback_t callback_;
+	boost::mutex mutex_;
+};
+
+template <typename HostsFetcher>
+http_heartbeats_collector<HostsFetcher>::http_heartbeats_collector(boost::shared_ptr<configuration> config,
+																   boost::shared_ptr<zmq::context_t> zmq_context) :
 	config_(config),
 	zmq_context_(zmq_context)
 {
 	logger_.reset(new base_logger);
 }
 
-http_heartbeats_collector::~http_heartbeats_collector() {
+template <typename HostsFetcher>
+http_heartbeats_collector<HostsFetcher>::~http_heartbeats_collector() {
 	stop();
 }
 
-void
-http_heartbeats_collector::run() {
+template <typename HostsFetcher> void
+http_heartbeats_collector<HostsFetcher>::run() {
 	boost::mutex::scoped_lock lock(mutex_);
 
 	// create http hosts fetchers
@@ -48,10 +114,10 @@ http_heartbeats_collector::run() {
 	std::map<std::string, service_info_t>::const_iterator it = services_list.begin();
 	
 	for (; it != services_list.end(); ++it) {
-		boost::shared_ptr<curl_hosts_fetcher> fetcher;
-		fetcher.reset(new curl_hosts_fetcher(it->second.hosts_url_, curl_fetcher_timeout, it->second));
+		boost::shared_ptr<HostsFetcher> fetcher;
+		fetcher.reset(new HostsFetcher(it->second));
 		fetcher->set_callback(boost::bind(&http_heartbeats_collector::hosts_callback, this, _1, _2));
-		
+
 		hosts_fetchers_.push_back(fetcher);
 	}
 
@@ -60,8 +126,8 @@ http_heartbeats_collector::run() {
 	refresher_.reset(new refresher(f, hosts_ping_timeout));
 }
 
-void
-http_heartbeats_collector::stop() {
+template <typename HostsFetcher> void
+http_heartbeats_collector<HostsFetcher>::stop() {
 	logger_->log("STOP");
 	boost::mutex::scoped_lock lock(mutex_);
 
@@ -74,22 +140,24 @@ http_heartbeats_collector::stop() {
 	refresher_.reset();
 }
 
-void
-http_heartbeats_collector::set_callback(heartbeats_collector::callback_t callback) {
+template <typename HostsFetcher> void
+http_heartbeats_collector<HostsFetcher>::set_callback(heartbeats_collector_iface::callback_t callback) {
 	boost::mutex::scoped_lock lock(mutex_);
 	callback_ = callback;
 }
 
-void
-http_heartbeats_collector::hosts_callback(std::vector<cocaine::dealer::host_info_t>& hosts, service_info_t s_info) {
+template <typename HostsFetcher> void
+http_heartbeats_collector<HostsFetcher>::hosts_callback(std::vector<cocaine::dealer::host_info_t>& hosts,
+														service_info_t s_info)
+{
 	logger_->log("received hosts from fetcher for service: " + s_info.name_);
 
 	boost::mutex::scoped_lock lock(mutex_);
 	fetched_services_hosts_[s_info.name_] = hosts;
 }
 
-void
-http_heartbeats_collector::services_ping_callback() {
+template <typename HostsFetcher> void
+http_heartbeats_collector<HostsFetcher>::services_ping_callback() {
 	try {
 		service_hosts_map services_2_ping;
 
@@ -116,10 +184,10 @@ http_heartbeats_collector::services_ping_callback() {
 	}
 }
 
-bool
-http_heartbeats_collector::get_metainfo_from_host(const service_info_t& s_info,
-												  DT::ip_addr ip,
-												  std::string& response)
+template <typename HostsFetcher> bool
+http_heartbeats_collector<HostsFetcher>::get_metainfo_from_host(const service_info_t& s_info,
+												 				DT::ip_addr ip,
+																std::string& response)
 {
 	// create req socket
 	std::auto_ptr<zmq::socket_t> zmq_socket;
@@ -216,8 +284,10 @@ http_heartbeats_collector::get_metainfo_from_host(const service_info_t& s_info,
 	return true;
 }
 
-void
-http_heartbeats_collector::ping_service_hosts(const service_info_t& s_info, std::vector<host_info_t>& hosts) {
+template <typename HostsFetcher> void
+http_heartbeats_collector<HostsFetcher>::ping_service_hosts(const service_info_t& s_info,
+															std::vector<host_info_t>& hosts)
+{
 	logger_->log("pinging hosts from for service: " + s_info.name_);
 
 	//boost::mutex::scoped_lock lock(mutex_);
@@ -288,10 +358,10 @@ http_heartbeats_collector::ping_service_hosts(const service_info_t& s_info, std:
 	callback_(s_info, responded_hosts, collected_handles);
 }
 
-void
-http_heartbeats_collector::validate_host_handles(const service_info_t& s_info,
-												 const std::vector<host_info_t>& hosts,
-												 const std::multimap<DT::ip_addr, handle_info_t>& hosts_and_handles) const
+template <typename HostsFetcher> void
+http_heartbeats_collector<HostsFetcher>::validate_host_handles(const service_info_t& s_info,
+															   const std::vector<host_info_t>& hosts,
+															   const std::multimap<DT::ip_addr, handle_info_t>& hosts_and_handles) const
 {
 	// check that all hosts have the same callback
 	if (hosts.empty()) {
@@ -381,11 +451,11 @@ http_heartbeats_collector::validate_host_handles(const service_info_t& s_info,
 	}
 }
 
-void
-http_heartbeats_collector::parse_host_response(const service_info_t& s_info,
-											   DT::ip_addr ip,
-											   const std::string& response,
-											   std::vector<handle_info_t>& handles)
+template <typename HostsFetcher> void
+http_heartbeats_collector<HostsFetcher>::parse_host_response(const service_info_t& s_info,
+															 DT::ip_addr ip,
+															 const std::string& response,
+															 std::vector<handle_info_t>& handles)
 {
 	Json::Value root;
 	Json::Reader reader;
@@ -503,11 +573,6 @@ http_heartbeats_collector::parse_host_response(const service_info_t& s_info,
 				logger_->log(PLOG_ERROR, err_msg);
 			}
 
-			// not our service instance?
-			//if (instance != s_info.instance_) {
-			//	handle_ok = false;
-			//}
-
 			// port undefined?
 			if (s_handle.port_ == 0) {
 				handle_ok = false;
@@ -525,11 +590,13 @@ http_heartbeats_collector::parse_host_response(const service_info_t& s_info,
     }
 }
 
-void
-http_heartbeats_collector::set_logger(boost::shared_ptr<base_logger> logger) {
+template <typename HostsFetcher> void
+http_heartbeats_collector<HostsFetcher>::set_logger(boost::shared_ptr<base_logger> logger) {
 	boost::mutex::scoped_lock lock(mutex_);
 	logger_ = logger;
 }
 
 } // namespace dealer
 } // namespace cocaine
+
+#endif // _COCAINE_DEALER_HTTP_HEARTBEATS_COLLECTOR_HPP_INCLUDED_

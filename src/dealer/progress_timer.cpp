@@ -13,7 +13,7 @@
 
 #include <cstddef>
 
-#include "cocaine/dealer/details/progress_timer.hpp"
+#include "cocaine/dealer/utils/progress_timer.hpp"
 
 namespace cocaine {
 namespace dealer {

@@ -29,16 +29,16 @@
 
 #include "cocaine/dealer/structs.hpp"
 
-#include "cocaine/dealer/details/eblob.hpp"
-#include "cocaine/dealer/details/error.hpp"
-#include "cocaine/dealer/details/handle.hpp"
-#include "cocaine/dealer/details/context.hpp"
-#include "cocaine/dealer/details/host_info.hpp"
-#include "cocaine/dealer/details/handle_info.hpp"
-#include "cocaine/dealer/details/service_info.hpp"
-#include "cocaine/dealer/details/smart_logger.hpp"
-#include "cocaine/dealer/details/message_iface.hpp"
-#include "cocaine/dealer/details/cached_response.hpp"
+#include "cocaine/dealer/core/handle.hpp"
+#include "cocaine/dealer/core/context.hpp"
+#include "cocaine/dealer/core/host_info.hpp"
+#include "cocaine/dealer/core/handle_info.hpp"
+#include "cocaine/dealer/core/service_info.hpp"
+#include "cocaine/dealer/core/message_iface.hpp"
+#include "cocaine/dealer/core/cached_response.hpp"
+#include "cocaine/dealer/utils/error.hpp"
+#include "cocaine/dealer/utils/smart_logger.hpp"
+#include "cocaine/dealer/storage/eblob.hpp"
 
 namespace cocaine {
 namespace dealer {

@@ -22,16 +22,16 @@
 #include <boost/cstdint.hpp>
 #include <curl/curl.h>
 
-#include "cocaine/dealer/details/refresher.hpp"
-#include "cocaine/dealer/details/host_info.hpp"
-#include "cocaine/dealer/details/service_info.hpp"
+#include "cocaine/dealer/core/host_info.hpp"
+#include "cocaine/dealer/core/service_info.hpp"
+#include "cocaine/dealer/utils/refresher.hpp"
 
 namespace cocaine {
 namespace dealer {
 
 class curl_hosts_fetcher : private boost::noncopyable  {
 public:
-	curl_hosts_fetcher(const std::string& url, boost::uint32_t interval, service_info_t service_info);
+	curl_hosts_fetcher(service_info_t service_info, boost::uint32_t interval = default_fetch_interval);
 	virtual ~curl_hosts_fetcher();
 	
 	void start();
@@ -40,6 +40,8 @@ public:
 	// passes list of hosts of specific service to callback
 	void set_callback(boost::function<void(std::vector<host_info_t>&, service_info_t)> callback);
 
+	static const int default_fetch_interval = 1;
+
 private:
 	void interval_func();
 	static int curl_writer(char* data, size_t size, size_t nmemb, std::string* buffer_in);
@@ -47,10 +49,9 @@ private:
 private:
 	CURL* curl_;
 	boost::function<void(std::vector<host_info_t>&, service_info_t)> callback_;
-	std::string url_;
+	service_info_t service_info_;
 	boost::uint32_t interval_;
 	std::auto_ptr<refresher> refresher_;
-	service_info_t service_info_;
 };
 
 } // namespace dealer

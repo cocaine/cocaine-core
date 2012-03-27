@@ -14,7 +14,7 @@
 #ifndef _COCAINE_DEALER_PROGRESS_TIMER_HPP_INCLUDED_
 #define _COCAINE_DEALER_PROGRESS_TIMER_HPP_INCLUDED_
 
-#include "cocaine/dealer/details/time_value.hpp"
+#include "cocaine/dealer/utils/time_value.hpp"
 
 namespace cocaine {
 namespace dealer {

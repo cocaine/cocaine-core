@@ -15,11 +15,11 @@
 #define _COCAINE_DEALER_GLOBALS_HPP_INCLUDED_
 
 #include "cocaine/dealer/structs.hpp"
-#include "cocaine/dealer/details/host_info.hpp"
-#include "cocaine/dealer/details/service.hpp"
-#include "cocaine/dealer/details/service_info.hpp"
-#include "cocaine/dealer/details/handle.hpp"
-#include "cocaine/dealer/details/handle_info.hpp"
+#include "cocaine/dealer/core/host_info.hpp"
+#include "cocaine/dealer/core/service.hpp"
+#include "cocaine/dealer/core/service_info.hpp"
+#include "cocaine/dealer/core/handle.hpp"
+#include "cocaine/dealer/core/handle_info.hpp"
 
 namespace cocaine {
 namespace dealer {

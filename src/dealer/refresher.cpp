@@ -14,7 +14,7 @@
 #include <iostream>
 #include <boost/bind.hpp>
 
-#include "cocaine/dealer/details/refresher.hpp"
+#include "cocaine/dealer/utils/refresher.hpp"
 
 namespace cocaine {
 namespace dealer {

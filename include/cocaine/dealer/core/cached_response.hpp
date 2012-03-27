@@ -21,7 +21,7 @@
 #include <boost/thread/mutex.hpp>
 
 #include "cocaine/dealer/structs.hpp"
-#include "cocaine/dealer/details/data_container.hpp"
+#include "cocaine/dealer/utils/data_container.hpp"
 
 namespace cocaine {
 namespace dealer {

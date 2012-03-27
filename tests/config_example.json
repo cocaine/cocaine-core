@@ -7,19 +7,31 @@
 		{
 			"type" : "STDOUT_LOGGER",
 			"flags" : "PLOG_MSG_TIME | PLOG_INFO | PLOG_DEBUG | PLOG_ERROR | PLOG_MSG_TYPES",
-			"file" : "/tmp/lsd.log",
+			"file" : "/tmp/lsd.log"
 		},
-		
+
 		"message_cache" :
 		{
 			"max_ram_limit" : 1024,
 			"type" : "PERSISTENT"
 		},
 
+		"persistent_storage" :
+		{
+			"eblob_path" : "/var/tmp/eblobs",
+			"eblob_sync_interval" : 3
+		},
+
 		"services" : [
 			{
             	"name" : "karma-tests",
 				"app_name" : "karma@1",
+				"hosts_file" : "/home/rimz/cocaine/tests/hosts",
+				"control_port" : 5000
+			},
+			{
+            	"name" : "cox",
+				"app_name" : "cox_bug_run",
 				"hosts_file" : "/home/rimz/cocaine/tests/hosts",
 				"control_port" : 5000
 			}

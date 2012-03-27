@@ -23,8 +23,8 @@
 #include <boost/thread/mutex.hpp>
 
 #include "cocaine/dealer/structs.hpp"
-#include "cocaine/dealer/details/data_container.hpp"
-#include "cocaine/dealer/details/eblob.hpp"
+#include "cocaine/dealer/utils/data_container.hpp"
+#include "cocaine/dealer/storage/eblob.hpp"
 
 namespace cocaine {
 namespace dealer {

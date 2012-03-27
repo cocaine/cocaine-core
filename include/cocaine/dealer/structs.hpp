@@ -29,6 +29,7 @@ namespace dealer {
 
 static const int PROTOCOL_VERSION = 1;
 static const int STATISTICS_PROTOCOL_VERSION = 1;
+static const int CONFIG_VERSION = 1;
 static const unsigned long long MESSAGE_TIMEOUT = 10;	// seconds
 static const unsigned long long HEARTBEAT_INTERVAL = 1;	// seconds
 static const unsigned long long DEFAULT_SOCKET_POLL_TIMEOUT = 2000; // milliseconds
@@ -74,7 +75,7 @@ enum logger_type {
 enum autodiscovery_type {
 	AT_MULTICAST = 1,
 	AT_HTTP,
-	AT_TEXT
+	AT_FILE
 };
 
 enum message_cache_type {

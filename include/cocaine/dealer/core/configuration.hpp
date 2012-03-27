@@ -24,8 +24,8 @@
 #include "json/json.h"
 
 #include "cocaine/dealer/structs.hpp"
-#include "cocaine/dealer/details/service_info.hpp"
-#include "cocaine/dealer/details/smart_logger.hpp"
+#include "cocaine/dealer/core/service_info.hpp"
+#include "cocaine/dealer/utils/smart_logger.hpp"
 
 namespace cocaine {
 namespace dealer {

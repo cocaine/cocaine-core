@@ -23,10 +23,10 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/utility.hpp>
 
-#include "cocaine/dealer/details/smart_logger.hpp"
-#include "cocaine/dealer/details/configuration.hpp"
-#include "cocaine/dealer/details/statistics_collector.hpp"
-#include "cocaine/dealer/details/eblob_storage.hpp"
+#include "cocaine/dealer/core/configuration.hpp"
+#include "cocaine/dealer/core/statistics_collector.hpp"
+#include "cocaine/dealer/utils/smart_logger.hpp"
+#include "cocaine/dealer/storage/eblob_storage.hpp"
 
 namespace cocaine {
 namespace dealer {

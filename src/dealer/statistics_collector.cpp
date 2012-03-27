@@ -20,10 +20,10 @@
 #include <zmq.hpp>
 
 #include "cocaine/dealer/structs.hpp"
-#include "cocaine/dealer/details/error.hpp"
-#include "cocaine/dealer/details/host_info.hpp"
-#include "cocaine/dealer/details/smart_logger.hpp"
-#include "cocaine/dealer/details/statistics_collector.hpp"
+#include "cocaine/dealer/utils/error.hpp"
+#include "cocaine/dealer/core/host_info.hpp"
+#include "cocaine/dealer/utils/smart_logger.hpp"
+#include "cocaine/dealer/core/statistics_collector.hpp"
 
 namespace cocaine {
 namespace dealer {

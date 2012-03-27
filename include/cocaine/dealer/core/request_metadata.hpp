@@ -20,8 +20,8 @@
 #include <boost/lexical_cast.hpp>
 
 #include "cocaine/dealer/structs.hpp"
-#include "cocaine/dealer/details/time_value.hpp"
-#include "cocaine/dealer/details/eblob.hpp"
+#include "cocaine/dealer/utils/time_value.hpp"
+#include "cocaine/dealer/storage/eblob.hpp"
 
 #include <msgpack.hpp>
 

@@ -16,8 +16,8 @@
 
 #include <string>
 
-#include "cocaine/dealer/details/time_value.hpp"
 #include "cocaine/dealer/structs.hpp"
+#include "cocaine/dealer/utils/time_value.hpp"
 
 namespace cocaine {
 namespace dealer {

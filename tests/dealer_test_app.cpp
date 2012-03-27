@@ -22,17 +22,19 @@
 #include <boost/filesystem.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/any.hpp>
 
 #include <msgpack.hpp>
 
 #include <eblob/eblob.hpp>
 
 #include "cocaine/dealer/client.hpp"
-#include "cocaine/dealer/details/progress_timer.hpp"
-#include "cocaine/dealer/details/eblob_storage.hpp"
-#include "cocaine/dealer/details/persistent_data_container.hpp"
-#include "cocaine/dealer/details/data_container.hpp"
-#include "cocaine/dealer/details/smart_logger.hpp"
+
+#include "cocaine/dealer/utils/persistent_data_container.hpp"
+#include "cocaine/dealer/utils/data_container.hpp"
+#include "cocaine/dealer/utils/smart_logger.hpp"
+#include "cocaine/dealer/utils/progress_timer.hpp"
+#include "cocaine/dealer/storage/eblob_storage.hpp"
 
 #include <sys/time.h>
 
@@ -41,7 +43,6 @@ namespace cd = cocaine::dealer;
 
 std::string config_path = "tests/config_example.json";
 int msg_counter = 0;
-cd::time_value tv;
 
 int test_client(int argc, char** argv);
 void test_data_container();
@@ -59,6 +60,8 @@ main(int argc, char** argv) {
 
 	return EXIT_SUCCESS;
 }
+
+cd::progress_timer timer;
 
 void test_experiment() {
 		// create eblob logger
@@ -108,17 +111,41 @@ void response_callback(const cd::response& response, const cd::response_info& in
 		//std::cout << "resp (CHUNK) uuid: " << response.uuid << std::endl;
 		//std::string st((const char*)response.data, response.size);
 		//std::cout << "resp data: " << st << std::endl;
+
+		/*
+		std::string st((const char*)response.data, response.size);
+
+		// deserialize it.
+        msgpack::unpacked msg;
+        msgpack::unpack(&msg, (const char*)response.data, response.size);
+ 
+        // print the deserialized object.
+        msgpack::object obj = msg.get();
+        std::cout << "resp data: " << obj << std::endl;
+ 		*/
+ 		/*
+        // convert it into statically typed object.
+        std::map<std::string, int> m;
+        obj.convert(&m);
+
+        std::map<std::string, int>::iterator it = m.begin();
+        std::cout << it->first << " : " << it->second << std::endl;
+        */
 	}
 	else {
 		++msg_counter;
 		//std::cout << "resp (CHOKE) uuid: " << response.uuid << std::endl;
 		//std::cout << "resp done! " << msg_counter << std::endl;
 		//++msg_counter;
+		//std::cout << "good responces: " << msg_counter << "\n";
+		if (msg_counter == 100000) {
+			std::cout << "elapsed: " << timer.elapsed().as_double() << " secs" << std::endl;
+		}
 	}
 
 	//if (msg_counter % 100 == 0) {
 	//	if (msg_counter / 100 > prev) {
-			std::cout << "received " << msg_counter << " responces" << std::endl;
+	//		std::cout << "received " << msg_counter << " responces" << std::endl;
 	//		prev = msg_counter / 100;
 	//	}
 	//}
@@ -135,7 +162,7 @@ void create_client(int add_messages_count) {
 	c.set_response_callback(boost::bind(&response_callback, _1, _2), path_py);
 	sleep(5);
 
-	tv.init_from_current_time();
+	//tv.init_from_current_time();
 
 	std::map<std::string, int> val;
 	val["uid"] = 123;
@@ -148,50 +175,41 @@ void create_client(int add_messages_count) {
 	cd::progress_timer timer;
 
 	// send message to py app
+	timer.reset();
+
 	for (int i = 0; i < add_messages_count; ++i) {
 		std::string uuid1 = c.send_message(buffer.data(), buffer.size(), path_py);
 	}
 
 	std::cout << std::fixed << std::setprecision(6) << "elapsed secs: " << timer.elapsed().as_double() << std::endl;
 
-	sleep(10);
+	sleep(600);
 
 	/*
 	// create py app message path
 	cd::message_path path_py;
-	path_py.service_name = "python";
+	path_py.service_name = "cox";
 	path_py.handle_name = "worker3";
-
-	// create perl app message path
-	cd::message_path path_perl;
-	path_perl.service_name = "perl-testing";
-	path_perl.handle_name = "test_handle";
 
 	cd::client c(config_path);
 	c.connect();
 	c.set_response_callback(boost::bind(&response_callback, _1, _2), path_py);
-	//c.set_response_callback(boost::bind(&response_callback, _1, _2), path_perl);
 
 	sleep(4);
-
-	tv.init_from_current_time();
 
 	// send message to py app
 	for (int i = 0; i < add_messages_count; ++i) {
 		std::string message = "{ \"key\" : \"some value\" }";
 		std::string uuid1 = c.send_message(message, path_py);
-		//std::cout << "mesg uuid: " << uuid1 << std::endl;
+		std::cout << "mesg uuid: " << uuid1 << std::endl;
 	}
-
+	*/
 	// send message to perl app
 	//for (int i = 0; i < add_messages_count; ++i) {
 	//	std::string message = "http://longcat.ru";
 	//	std::string uuid1 = c.send_message(message, path_perl);
 	//	std::cout << "mesg uuid: " << uuid1 << std::endl;
 	//}
-
-	sleep(10);
-	*/
 }
 
 void test_eblob_storage() {

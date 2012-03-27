@@ -20,8 +20,8 @@
 #include <boost/tokenizer.hpp>
 #include <boost/algorithm/string.hpp>
 
-#include "cocaine/dealer/details/configuration.hpp"
 #include "cocaine/dealer/structs.hpp"
+#include "cocaine/dealer/core/configuration.hpp"
 
 namespace cocaine {
 namespace dealer {
@@ -36,7 +36,7 @@ configuration::configuration() :
 	eblob_path_(DEFAULT_EBLOB_PATH),
 	eblob_blob_size_(DEFAULT_EBLOB_BLOB_SIZE),
 	eblob_sync_interval_(DEFAULT_EBLOB_SYNC_INTERVAL),
-	autodiscovery_type_(AT_TEXT),
+	autodiscovery_type_(AT_FILE),
 	multicast_ip_(DEFAULT_MULTICAST_IP),
 	multicast_port_(DEFAULT_MULTICAST_PORT),
 	is_statistics_enabled_(false),
@@ -57,7 +57,7 @@ configuration::configuration(const std::string& path) :
 	eblob_path_(DEFAULT_EBLOB_PATH),
 	eblob_blob_size_(DEFAULT_EBLOB_BLOB_SIZE),
 	eblob_sync_interval_(DEFAULT_EBLOB_SYNC_INTERVAL),
-	autodiscovery_type_(AT_TEXT),
+	autodiscovery_type_(AT_FILE),
 	multicast_ip_(DEFAULT_MULTICAST_IP),
 	multicast_port_(DEFAULT_MULTICAST_PORT),
 	is_statistics_enabled_(false),
@@ -74,6 +74,11 @@ configuration::~configuration() {
 void
 configuration::parse_basic_settings(const Json::Value& config_value) {
 	version_ = config_value.get("config_version", 0).asUInt();
+
+	if (version_ != CONFIG_VERSION) {
+		throw error("Unsupported config version: %d, current version: CONFIG_VERSION");
+	}
+
 	message_timeout_ = (unsigned long long)config_value.get("message_timeout", (int)MESSAGE_TIMEOUT).asInt();
 	socket_poll_timeout_ = (unsigned long long)config_value.get("socket_poll_timeout", (int)DEFAULT_SOCKET_POLL_TIMEOUT).asInt();
 }
@@ -159,9 +164,14 @@ void
 configuration::parse_persistant_storage_settings(const Json::Value& config_value) {
 	const Json::Value persistent_storage_value = config_value["persistent_storage"];
 
-	eblob_path_ = persistent_storage_value.get("eblob_path", "").asString();
-	eblob_blob_size_ = persistent_storage_value.get("blob_size", "").asInt();
+	eblob_path_ = persistent_storage_value.get("eblob_path", DEFAULT_EBLOB_PATH).asString();
+	eblob_blob_size_ = persistent_storage_value.get("blob_size", 0).asInt();
 	eblob_blob_size_ *= 1024;
+
+	if (eblob_blob_size_ == 0) {
+		eblob_blob_size_ = DEFAULT_EBLOB_BLOB_SIZE;
+	}
+
 	eblob_sync_interval_ = persistent_storage_value.get("eblob_sync_interval", DEFAULT_EBLOB_SYNC_INTERVAL).asInt();
 }
 
@@ -169,10 +179,10 @@ void
 configuration::parse_autodiscovery_settings(const Json::Value& config_value) {
 	const Json::Value autodiscovery_value = config_value["autodiscovery"];
 
-	std::string atype = autodiscovery_value.get("type", "TEXT").asString();
+	std::string atype = autodiscovery_value.get("type", "FILE").asString();
 
-	if (atype == "TEXT") {
-		autodiscovery_type_ = AT_TEXT;
+	if (atype == "FILE") {
+		autodiscovery_type_ = AT_FILE;
 	}
 	else if (atype == "HTTP") {
 		autodiscovery_type_ = AT_HTTP;
@@ -500,8 +510,8 @@ std::string configuration::as_json() const {
 	else if (autodiscovery_type_ == AT_HTTP) {
 		autodiscovery["1 - type"] = "HTTP";
 	}
-	else if (autodiscovery_type_ == AT_TEXT) {
-		autodiscovery["1 - type"] = "TEXT";
+	else if (autodiscovery_type_ == AT_FILE) {
+		autodiscovery["1 - type"] = "FILE";
 	}
 
 	autodiscovery["2 - multicast ip"] = multicast_ip_;
@@ -620,8 +630,8 @@ std::string configuration::as_string() const {
 	else if (autodiscovery_type_ == AT_HTTP) {
 		out << "\ttype: HTTP" << "\n";
 	}
-	else if (autodiscovery_type_ == AT_TEXT) {
-		out << "\ttype: TEXT" << "\n";
+	else if (autodiscovery_type_ == AT_FILE) {
+		out << "\ttype: FILE" << "\n";
 	}
 
 	out << "\tmulticast ip: " << multicast_ip_ << "\n";

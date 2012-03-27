@@ -25,8 +25,8 @@
 #include <eblob/eblob.hpp>
 
 #include "cocaine/dealer/structs.hpp"
-#include "cocaine/dealer/details/context.hpp"
-#include "cocaine/dealer/details/message_iface.hpp"
+#include "cocaine/dealer/core/context.hpp"
+#include "cocaine/dealer/core/message_iface.hpp"
 
 namespace cocaine {
 namespace dealer {

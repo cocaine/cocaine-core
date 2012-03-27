@@ -22,9 +22,9 @@
 #include <boost/tokenizer.hpp>
 #include <boost/progress.hpp>
 
-#include "cocaine/dealer/details/error.hpp"
-#include "cocaine/dealer/details/message_cache.hpp"
-#include "cocaine/dealer/details/progress_timer.hpp"
+#include "cocaine/dealer/core/message_cache.hpp"
+#include "cocaine/dealer/utils/error.hpp"
+#include "cocaine/dealer/utils/progress_timer.hpp"
 
 namespace cocaine {
 namespace dealer {

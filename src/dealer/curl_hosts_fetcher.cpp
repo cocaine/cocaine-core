@@ -17,18 +17,16 @@
 #include <boost/current_function.hpp>
 #include <boost/tokenizer.hpp>
 
-#include "cocaine/dealer/details/curl_hosts_fetcher.hpp"
+#include "cocaine/dealer/heartbeats/curl_hosts_fetcher.hpp"
 
 namespace cocaine {
 namespace dealer {
 
-curl_hosts_fetcher::curl_hosts_fetcher(const std::string& url,
-									   boost::uint32_t interval,
-									   service_info_t service_info) :
+curl_hosts_fetcher::curl_hosts_fetcher(service_info_t service_info,
+									   boost::uint32_t interval) :
 	curl_(NULL),
-	url_(url),
-	interval_(interval),
-	service_info_(service_info)
+	service_info_(service_info),
+	interval_(interval)
 {
 	curl_ = curl_easy_init();
 	start();
@@ -73,7 +71,7 @@ curl_hosts_fetcher::interval_func() {
 	
 	if (curl_) {
 		curl_easy_setopt(curl_, CURLOPT_ERRORBUFFER, error_buffer);
-		curl_easy_setopt(curl_, CURLOPT_URL, url_.c_str());
+		curl_easy_setopt(curl_, CURLOPT_URL, service_info_.hosts_url_.c_str());
 		curl_easy_setopt(curl_, CURLOPT_HEADER, 0);
 		curl_easy_setopt(curl_, CURLOPT_FOLLOWLOCATION, 1);
 		curl_easy_setopt(curl_, CURLOPT_WRITEFUNCTION, curl_writer);
