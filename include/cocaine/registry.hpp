@@ -43,7 +43,7 @@ class factory_model_t:
             return typeid(Category);
         }
 
-        virtual object_t* create(context_t& ctx) {
+        virtual Category* create(context_t& ctx) {
             return new T(ctx);
         }
 };
