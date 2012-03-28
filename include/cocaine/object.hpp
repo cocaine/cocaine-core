@@ -33,6 +33,10 @@ class object_t {
             return m_context;
         }
 
+        const context_t& context() const {
+            return m_context;
+        }
+
     private:
         context_t& m_context;
 };

@@ -93,7 +93,7 @@ class job_t:
     private:
         const std::string m_method;
         const client::policy_t m_policy;
-        blob_t m_request;
+        const blob_t m_request;
 
         ev::periodic m_expiration_timer;
 };

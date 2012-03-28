@@ -27,8 +27,8 @@ class app_t {
               const Json::Value& manifest);
 
     public:
-        std::string name;
-        Json::Value manifest;
+        const std::string name;
+        const Json::Value manifest;
 
         struct policy_t {
             float heartbeat_timeout;

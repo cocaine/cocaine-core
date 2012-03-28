@@ -140,7 +140,7 @@ class engine_t:
         }
 
 #ifdef HAVE_CGROUPS
-        cgroup * const group() {
+        cgroup* group() {
             return m_cgroup;
         }
 #endif
