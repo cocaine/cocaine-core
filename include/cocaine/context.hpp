@@ -106,9 +106,9 @@ class context_t:
         boost::mutex m_mutex;
 
         // Core subsystems.
-        boost::shared_ptr<zmq::context_t> m_io;
-        boost::shared_ptr<core::registry_t> m_registry;
-        boost::shared_ptr<storages::storage_t> m_storage;
+        std::auto_ptr<zmq::context_t> m_io;
+        std::auto_ptr<core::registry_t> m_registry;
+        std::auto_ptr<storages::storage_t> m_storage;
 };
 
 }

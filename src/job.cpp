@@ -20,13 +20,15 @@ using namespace cocaine::engine;
 using namespace cocaine::engine::job;
 
 job_t::job_t(drivers::driver_t& driver):
-    m_driver(driver)
+    m_driver(driver),
+    m_method(driver.method())
 {
     initiate();
 }
 
 job_t::job_t(drivers::driver_t& driver, client::policy_t policy):
     m_driver(driver),
+    m_method(driver.method()),
     m_policy(policy)
 {
     if(m_policy.deadline) {
@@ -39,6 +41,7 @@ job_t::job_t(drivers::driver_t& driver, client::policy_t policy):
 
 job_t::job_t(drivers::driver_t& driver, const blob_t& request):
     m_driver(driver),
+    m_method(driver.method()),
     m_request(request)
 {
     initiate();
@@ -46,6 +49,7 @@ job_t::job_t(drivers::driver_t& driver, const blob_t& request):
 
 job_t::job_t(drivers::driver_t& driver, client::policy_t policy, const blob_t& request):
     m_driver(driver),
+    m_method(driver.method()),
     m_policy(policy),
     m_request(request)
 {
@@ -89,10 +93,6 @@ void job_t::react(const events::error_t& event) {
 
 void job_t::react(const events::release_t& event) {
     // TODO: Emitters.
-}
-
-const std::string& job_t::method() const {
-    return m_driver.method();
 }
 
 void job_t::discard(ev::periodic&, int) {

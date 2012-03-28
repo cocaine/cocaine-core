@@ -207,22 +207,21 @@ void slave_t::on_signal(ev::child& event, int) {
 }
 
 alive::~alive() {
-    if(m_job && !m_job->state_downcast<const job::complete*>()) {
+    if(m_job.get() && !m_job->state_downcast<const job::complete*>()) {
         context<slave_t>().m_engine.app().log->debug(
             "rescheduling an incomplete '%s' job", 
             m_job->method().c_str()
         );
         
-        context<slave_t>().m_engine.enqueue(m_job, true);
-        m_job.reset();
+        context<slave_t>().m_engine.enqueue(m_job.release(), true);
     }
 }
 
 void alive::on_invoke(const events::invoke_t& event) {
     // TEST: Ensure that no job is being lost here.
-    BOOST_ASSERT(!m_job);
+    BOOST_ASSERT(!m_job.get());
 
-    m_job = event.job;
+    m_job.reset(event.job);
     m_job->process_event(event);
     
     context<slave_t>().m_engine.app().log->debug(
@@ -234,7 +233,7 @@ void alive::on_invoke(const events::invoke_t& event) {
 
 void alive::on_release(const events::release_t& event) {
     // TEST: Ensure that the job is in fact here.
-    BOOST_ASSERT(m_job);
+    BOOST_ASSERT(m_job.get());
 
     context<slave_t>().m_engine.app().log->debug(
         "job '%s' completed by slave %s",

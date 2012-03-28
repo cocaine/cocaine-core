@@ -104,13 +104,13 @@ struct alive:
         void on_release(const events::release_t& event);
 
     public:
-        const boost::shared_ptr<job_t>& job() const {
-            BOOST_ASSERT(m_job);
+        const std::auto_ptr<job_t>& job() const {
+            BOOST_ASSERT(m_job.get());
             return m_job;
         }
 
     private:
-        boost::shared_ptr<job_t> m_job;
+        std::auto_ptr<job_t> m_job;
 };
 
 struct idle: 
@@ -131,7 +131,7 @@ struct busy:
         > reactions;
 
     public:
-        const boost::shared_ptr<job_t>& job() const {
+        const std::auto_ptr<job_t>& job() const {
             return context<alive>().job();
         }
 };

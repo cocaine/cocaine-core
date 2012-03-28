@@ -43,9 +43,5 @@ Json::Value filesystem_monitor_t::info() {
 }
 
 void filesystem_monitor_t::event(ev::stat&, int) {
-    m_engine.enqueue(
-        boost::make_shared<job_t>(
-            boost::ref(*this)
-        )
-    );
+    m_engine.enqueue(new job_t(*this));
 }

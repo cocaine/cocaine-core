@@ -55,7 +55,7 @@ context_t::context_t(config_t config_):
 zmq::context_t& context_t::io() {
     boost::lock_guard<boost::mutex> lock(m_mutex);
     
-    if(!m_io) {
+    if(!m_io.get()) {
         m_io.reset(new zmq::context_t(1));
     }
 
@@ -69,7 +69,7 @@ boost::shared_ptr<logging::logger_t> context_t::log(const std::string& name) {
 storage_t& context_t::storage() {
     boost::lock_guard<boost::mutex> lock(m_mutex);
 
-    if(!m_storage) {
+    if(!m_storage.get()) {
         m_storage = create<storage_t>(config.storage.driver);
     }
 

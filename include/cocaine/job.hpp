@@ -72,7 +72,9 @@ class job_t:
         virtual void react(const events::release_t& event);
 
     public:
-        const std::string& method() const;
+        const std::string& method() const {
+            return m_method;
+        }
         
         const client::policy_t& policy() const {
             return m_policy;
@@ -89,6 +91,7 @@ class job_t:
         drivers::driver_t& m_driver;
 
     private:
+        const std::string m_method;
         const client::policy_t m_policy;
         blob_t m_request;
 

@@ -15,7 +15,7 @@
 #define COCAINE_ENGINE_HPP
 
 #include <boost/iterator/filter_iterator.hpp>
-#include <deque>
+#include <boost/ptr_container/ptr_deque.hpp>
 
 #ifdef HAVE_CGROUPS
     #include <libcgroup.h>
@@ -50,10 +50,10 @@ typedef boost::ptr_map<
 > pool_map_t;
 
 class job_queue_t:
-    public std::deque< boost::shared_ptr<job_t> >
+    public boost::ptr_deque<job_t>
 {
     public:
-        void push(const_reference job);
+        void push(value_type job);
 };
 
 // Selectors
@@ -101,7 +101,7 @@ class engine_t:
         
         Json::Value info() /* const */;
 
-        void enqueue(job_queue_t::const_reference job, bool overflow = false);
+        void enqueue(job_queue_t::value_type job, bool overflow = false);
 
         template<class S, class Packed>
         pool_map_t::iterator unicast(const S& selector, Packed& packed) {

@@ -167,9 +167,9 @@ void lsd_server_t::process(ev::idle&, int) {
 
         try {
             m_engine.enqueue(
-                boost::make_shared<lsd_job_t>(
+                new lsd_job_t(
                     root.get("uuid", "").asString(),
-                    boost::ref(*this),
+                    *this,
                     client::policy_t(
                         root.get("urgent", false).asBool(),
                         root.get("timeout", 0.0f).asDouble(),

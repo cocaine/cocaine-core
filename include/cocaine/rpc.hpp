@@ -81,7 +81,7 @@ template<>
 struct packed<events::invoke_t> {
     typedef boost::tuple<int, const std::string&, zmq::message_t&> type;
 
-    packed(const boost::shared_ptr<job_t>& job):
+    packed(const job_t * job):
         message(job->request().size()),
         pack(invoke, job->method(), message)
     {

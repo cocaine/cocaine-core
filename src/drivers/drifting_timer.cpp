@@ -43,10 +43,5 @@ void drifting_timer_t::rearm() {
 
 void drifting_timer_t::reschedule() {
     m_watcher.stop();
-    
-    m_engine.enqueue(
-        boost::make_shared<drifting_timer_job_t>(
-            boost::ref(*this)
-        )
-    );
+    m_engine.enqueue(new drifting_timer_job_t(*this));
 }

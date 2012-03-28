@@ -133,8 +133,8 @@ void zeromq_server_t::process(ev::idle&, int) {
         m_socket.recv(&message);
 
         m_engine.enqueue(
-            boost::make_shared<zeromq_server_job_t>(
-                boost::ref(*this),
+            new zeromq_server_job_t(
+                *this,
                 blob_t(
                     message.data(), 
                     message.size()

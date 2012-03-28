@@ -27,7 +27,7 @@ using namespace cocaine::networking;
 // Job queue
 // ---------
 
-void job_queue_t::push(const_reference job) {
+void job_queue_t::push(value_type job) {
     if(job->policy().urgent) {
         push_front(job);
         job->process_event(events::enqueue_t(1));
@@ -245,7 +245,7 @@ void engine_t::stop() {
         );
 
         while(!m_queue.empty()) {
-            m_queue.front()->process_event(
+            m_queue.front().process_event(
                 events::error_t(
                     client::server_error,
                     "engine is not active"
@@ -304,7 +304,7 @@ Json::Value engine_t::info() {
 // Queue operations
 // ----------------
 
-void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
+void engine_t::enqueue(job_queue_t::value_type job, bool overflow) {
     if(!m_running) {
         m_app.log->debug(
             "dropping an incomplete '%s' job",
@@ -318,6 +318,7 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
             )
         );
 
+        delete job;
         return;
     }
 
@@ -358,6 +359,7 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
                 )
             );
 
+            delete job;
             return;
         }
             
@@ -459,13 +461,12 @@ void engine_t::process(ev::idle&, int) {
        slave->second->state_downcast<const slave::idle*>())
     {
         while(!m_queue.empty()) {
-            if(!m_queue.front()->state_downcast<const job::complete*>()) {
+            job_queue_t::auto_type job(m_queue.release(m_queue.begin()));
+
+            if(!job->state_downcast<const job::complete*>()) {
                 // NOTE: This will always succeed due to the test above.
-                enqueue(m_queue.front());
-                m_queue.pop_front();
+                enqueue(job.release());
                 break;
-            } else {
-                m_queue.pop_front();
             }
         }
     }

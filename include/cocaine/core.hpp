@@ -85,8 +85,8 @@ class core_t:
         networking::socket_t m_server;
 
         // Automatic discovery support.
-        boost::shared_ptr<ev::timer> m_announce_timer;
-        boost::shared_ptr<networking::socket_t> m_announces;
+        std::auto_ptr<ev::timer> m_announce_timer;
+        std::auto_ptr<networking::socket_t> m_announces;
         
         // Authorization subsystem.
         crypto::auth_t m_auth;

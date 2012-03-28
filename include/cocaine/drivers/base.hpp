@@ -71,7 +71,7 @@ class driver_t:
         const std::string m_method;
 
     private:
-        boost::shared_ptr<networking::socket_t> m_emitter;
+        std::auto_ptr<networking::socket_t> m_emitter;
 
 #if BOOST_VERSION >= 103600
         accumulator_set< float, features<tag::sum, tag::median> > m_spent_in_queues;
