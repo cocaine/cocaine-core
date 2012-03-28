@@ -22,6 +22,8 @@
 
 #include "cocaine/interfaces/storage.hpp"
 
+#include "cocaine/helpers/json.hpp"
+
 using namespace cocaine::crypto;
 
 auth_t::auth_t(context_t& ctx):

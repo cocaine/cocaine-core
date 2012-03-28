@@ -14,9 +14,9 @@
 #ifndef COCAINE_EXCEPTIONS_HPP
 #define COCAINE_EXCEPTIONS_HPP
 
-#include <errno.h>
+#include <cerrno>
+#include <cstring>
 #include <stdexcept>
-#include <string.h>
 
 namespace cocaine {
 

@@ -17,6 +17,8 @@
 #include "cocaine/common.hpp"
 #include "cocaine/object.hpp"
 
+#include "cocaine/helpers/json.hpp"
+
 namespace cocaine { namespace storages {
 
 class storage_t:

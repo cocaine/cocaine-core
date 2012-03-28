@@ -38,7 +38,4 @@
 #include "cocaine/forwards.hpp"
 #include "cocaine/exceptions.hpp"
 
-#include "cocaine/helpers/birth_control.hpp"
-#include "cocaine/helpers/json.hpp"
-
 #endif

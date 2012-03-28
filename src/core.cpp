@@ -291,8 +291,6 @@ Json::Value core_t::create_engine(const std::string& name, const Json::Value& ma
 
     engine->start();
 
-    Json::Value result(engine->info());
-
     if(!recovering) {
         try {
             m_context.storage().put("apps", name, manifest);
@@ -306,6 +304,8 @@ Json::Value core_t::create_engine(const std::string& name, const Json::Value& ma
             throw;
         }
     }
+
+    Json::Value result(engine->info());
 
     m_engines.insert(name, engine);
     

@@ -16,15 +16,17 @@
 
 #include "cocaine/common.hpp"
 
-// #include "cocaine/events.hpp"
-#include "cocaine/networking.hpp"
-#include "cocaine/object.hpp"
-
 #if BOOST_VERSION >= 103600
 # include <boost/accumulators/accumulators.hpp>
 # include <boost/accumulators/statistics/median.hpp>
 # include <boost/accumulators/statistics/sum.hpp>
 #endif
+
+// #include "cocaine/events.hpp"
+#include "cocaine/networking.hpp"
+#include "cocaine/object.hpp"
+
+#include "cocaine/helpers/json.hpp"
 
 namespace cocaine { namespace engine { namespace drivers {
 

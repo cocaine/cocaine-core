@@ -24,6 +24,7 @@
 #include "cocaine/events.hpp"
 
 #include "cocaine/helpers/blob.hpp"
+#include "cocaine/helpers/birth_control.hpp"
 
 #include "cocaine/dealer/types.hpp"
 

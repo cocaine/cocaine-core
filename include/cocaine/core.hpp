@@ -20,6 +20,8 @@
 #include "cocaine/context.hpp"
 #include "cocaine/networking.hpp"
 
+#include "cocaine/helpers/json.hpp"
+
 namespace cocaine { namespace core {
 
 class core_t:

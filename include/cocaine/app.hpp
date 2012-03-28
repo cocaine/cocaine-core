@@ -16,6 +16,8 @@
 
 #include "cocaine/common.hpp"
 
+#include "cocaine/helpers/json.hpp"
+
 namespace cocaine { namespace engine {
 
 class app_t {

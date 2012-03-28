@@ -29,6 +29,8 @@
 #include "cocaine/object.hpp"
 #include "cocaine/slave.hpp"
 
+#include "cocaine/helpers/json.hpp"
+
 namespace cocaine { namespace engine {
 
 #if BOOST_VERSION >= 104000

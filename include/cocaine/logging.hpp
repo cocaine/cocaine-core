@@ -19,6 +19,8 @@
 
 #include "cocaine/common.hpp"
 
+#include "cocaine/helpers/birth_control.hpp"
+
 #define LOG_BUFFER_SIZE 50 * 1024
 
 namespace cocaine { namespace logging {
