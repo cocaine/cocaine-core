@@ -14,6 +14,8 @@
 #ifndef _COCAINE_DEALER_TYPES_HPP_INCLUDED_
 #define _COCAINE_DEALER_TYPES_HPP_INCLUDED_
 
+#include <msgpack.hpp>
+
 #include "cocaine/common.hpp"
 
 namespace cocaine { namespace client {
@@ -34,6 +36,8 @@ struct policy_t {
     bool urgent;
     ev::tstamp timeout;
     ev::tstamp deadline;
+
+    MSGPACK_DEFINE(urgent, timeout, deadline);
 };
 
 enum error_code {

@@ -16,46 +16,56 @@
 
 #include "cocaine/drivers/zeromq_server.hpp"
 
-#include "cocaine/helpers/unique_id.hpp"
-
 namespace cocaine { namespace engine { namespace drivers {
 
-class lsd_server_t;
+class native_server_t;
 
-class lsd_job_t:
-    public unique_id_t,
+class native_job_t:
     public job_t
 {
     public:
-        lsd_job_t(const unique_id_t::identifier_type& id,
-                  lsd_server_t& driver,
-                  const client::policy_t& policy,
-                  const blob_t& request,
-                  const networking::route_t& route);
+        native_job_t(native_server_t& driver,
+                     const client::policy_t& policy,
+                     const blob_t& request,
+                     const networking::route_t& route,
+                     const std::string& tag);
 
         virtual void react(const events::push_t& event);
         virtual void react(const events::error_t& event);
         virtual void react(const events::release_t& event);
 
     private:
-        void send(const Json::Value& envelope, int flags = 0);
+        template<class Packed>
+        void send(Packed& pack) {
+            zeromq_server_t& server = static_cast<zeromq_server_t&>(m_driver);
+
+            server.socket().send(m_tag, ZMQ_SNDMORE);
+            server.socket().send_multi(pack.get());
+        }
 
     private:
+        const std::string m_tag;
         const networking::route_t m_route;
 };
 
-class lsd_server_t:
+class native_server_t:
     public zeromq_server_t
 {
     public:
-        lsd_server_t(engine_t& engine,
-                     const std::string& method, 
-                     const Json::Value& args);
+        native_server_t(engine_t& engine,
+                        const std::string& method, 
+                        const Json::Value& args);
 
         // Driver interface.
         virtual Json::Value info() /* const */;
         
-    protected:
+    private:
+        typedef boost::tuple<
+            std::string&,
+            client::policy_t&,
+            zmq::message_t*
+        > request_proxy_t;
+
         // Server interface.
         virtual void process(ev::idle&, int);
 };

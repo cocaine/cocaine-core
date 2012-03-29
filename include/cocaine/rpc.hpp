@@ -105,23 +105,15 @@ template<>
 struct packed<events::push_t> {
     typedef boost::tuple<int, zmq::message_t&> type;
 
-    packed(const void * data, std::size_t size):
-        message(size),
+    packed(zmq::message_t& message):
         pack(push, message)
-    {
-        memcpy(
-            message.data(),
-            data,
-            size
-        );
-    }
+    { }
 
     type& get() {
         return pack;
     }
 
 private:
-    zmq::message_t message;
     type pack;
 };
 

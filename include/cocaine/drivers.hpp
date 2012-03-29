@@ -19,6 +19,6 @@
 #include "cocaine/drivers/filesystem_monitor.hpp"
 #include "cocaine/drivers/zeromq_server.hpp"
 #include "cocaine/drivers/zeromq_sink.hpp"
-#include "cocaine/drivers/lsd_server.hpp"
+#include "cocaine/drivers/native_server.hpp"
 
 #endif

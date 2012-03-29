@@ -207,8 +207,8 @@ void engine_t::start() {
                 m_tasks.insert(task, new drivers::zeromq_server_t(*this, task, tasks[task]));
             } else if(type == "zeromq-sink") {
                 m_tasks.insert(task, new drivers::zeromq_sink_t(*this, task, tasks[task]));
-            } else if(type == "server+lsd") {
-                m_tasks.insert(task, new drivers::lsd_server_t(*this, task, tasks[task]));
+            } else if(type == "server+lsd" || type == "native-server") {
+                m_tasks.insert(task, new drivers::native_server_t(*this, task, tasks[task]));
             } else {
                throw configuration_error_t("no driver for '" + type + "' is available");
             }
