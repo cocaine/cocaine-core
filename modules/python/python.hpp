@@ -22,6 +22,7 @@
 
 #include "cocaine/interfaces/plugin.hpp"
 
+#include "cocaine/helpers/json.hpp"
 #include "cocaine/helpers/track.hpp"
 
 namespace cocaine { namespace engine {

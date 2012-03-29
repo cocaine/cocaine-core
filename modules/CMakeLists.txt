@@ -1,7 +1,8 @@
 SET(MODULES
         python
         javascript
-        mongo)
+        mongo
+        test)
 
 IF(NOT APPLE)
     SET(MODULES ${MODULES} perl)
