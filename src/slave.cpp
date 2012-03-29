@@ -92,7 +92,7 @@ void slave_t::spawn() {
                 message
             );
 
-            exit(EXIT_FAILURE);
+            std::exit(EXIT_FAILURE);
         }
     } else if(m_pid < 0) {
         throw system_error_t("fork() failed");
