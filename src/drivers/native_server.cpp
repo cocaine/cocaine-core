@@ -97,12 +97,17 @@ void native_server_t::process(ev::idle&, int) {
 
         request_proxy_t tier(tag, policy, &message);
 
-        if(!m_socket.recv_multi(tier, ZMQ_NOBLOCK)) {
+        try {
+            if(!m_socket.recv_multi(tier, ZMQ_NOBLOCK)) {
+                throw std::runtime_error("incomplete object");
+            }
+        } catch(const std::runtime_error& e) {
             m_engine.app().log->error(
-                "driver %s got a corrupted request",
-                m_method.c_str()
+                "driver %s got a corrupted request - %s",
+                m_method.c_str(),
+                e.what()
             );
-        
+    
             m_socket.drop_remaining_parts();
             return;
         }

@@ -44,8 +44,8 @@ class native_job_t:
         }
 
     private:
-        const std::string m_tag;
         const networking::route_t m_route;
+        const std::string m_tag;
 };
 
 class native_server_t:
