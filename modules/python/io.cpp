@@ -38,7 +38,7 @@ void python_io_t::destructor(python_io_t * self) {
 PyObject* python_io_t::read(python_io_t * self, PyObject * args, PyObject * kwargs) {
     static char block_keyword[] = "block";
     static char size_keyword[] = "size";
-    static char * keywords[] = { size_keyword, block_keyword };
+    static char * keywords[] = { size_keyword, block_keyword, NULL };
 
     PyObject * block = NULL;
     PyObject * result = NULL;
@@ -90,8 +90,9 @@ PyObject* python_io_t::write(python_io_t * self, PyObject * args) {
 }
 
 PyObject* python_io_t::delegate(python_io_t * self, PyObject * args, PyObject * kwargs) {
+    static char method_keyword[] = "method"; 
     static char message_keyword[] = "message";
-    static char * keywords[] = { message_keyword };
+    static char * keywords[] = { method_keyword, message_keyword, NULL };
 
     const char * target = NULL;
     const char * message = NULL;

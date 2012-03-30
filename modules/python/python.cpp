@@ -201,10 +201,10 @@ void python_t::invoke(const std::string& method, io_t& io) {
     PyObject * globals = PyModule_GetDict(m_python_module);
     PyObject * object = PyDict_GetItemString(globals, method.c_str());
     
-    if(PyErr_Occurred()) {
-        throw unrecoverable_error_t(exception());
+    if(!object) {
+        throw unrecoverable_error_t("'" + method + "' does not exist");
     }
-
+    
     if(PyType_Check(object)) {
         if(PyType_Ready(reinterpret_cast<PyTypeObject*>(object)) != 0) {
             throw unrecoverable_error_t(exception());
