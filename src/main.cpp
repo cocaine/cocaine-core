@@ -57,7 +57,7 @@ int main(int argc, char * argv[]) {
     slave_options.add_options()
         ("slave", "launch a new slave")
         ("slave:id", po::value<std::string>(&cfg.slave.id))
-        ("slave:app:name", po::value<std::string>(&cfg.slave.name));
+        ("slave:app", po::value<std::string>(&cfg.slave.app));
 
     general_options.add_options()
         ("help,h", "show this message")

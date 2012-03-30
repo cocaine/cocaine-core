@@ -37,7 +37,7 @@ struct config_t {
 
     struct {
         std::string id;
-        std::string name;
+        std::string app;
     } slave;
 
     struct engine_config_t {

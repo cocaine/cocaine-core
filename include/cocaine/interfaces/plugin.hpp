@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_GENERIC_SLAVE_BACKEND_PLUGIN_INTERFACE_HPP
-#define COCAINE_GENERIC_SLAVE_BACKEND_PLUGIN_INTERFACE_HPP
+#ifndef COCAINE_SLAVE_PLUGIN_INTERFACE_HPP
+#define COCAINE_SLAVE_PLUGIN_INTERFACE_HPP
 
 #include "cocaine/common.hpp"
 #include "cocaine/object.hpp"
@@ -47,8 +47,8 @@ class io_t {
         overseer_t& m_overseer;
 };
 
-// Generic slave backend plugin interface
-// --------------------------------------
+// Slave plugin interface
+// ----------------------
 
 class plugin_t:
     public boost::noncopyable,

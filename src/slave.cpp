@@ -76,8 +76,8 @@ void slave_t::spawn() {
             m_engine.context().config.runtime.self.c_str(),
             m_engine.context().config.runtime.self.c_str(),
             "--slave",
-            "--slave:id",       id().c_str(),
-            "--slave:app:name", m_engine.app().name.c_str(),
+            "--slave:id",  id().c_str(),
+            "--slave:app", m_engine.app().name.c_str(),
             (char*)0
         );
 

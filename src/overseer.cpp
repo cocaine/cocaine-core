@@ -29,7 +29,7 @@ overseer_t::overseer_t(const config_t& config):
     m_io(1),
     m_messages(m_io, ZMQ_DEALER, id())
 {
-    m_messages.connect(endpoint(config.slave.name));
+    m_messages.connect(endpoint(config.slave.app));
     
     m_watcher.set<overseer_t, &overseer_t::message>(this);
     m_watcher.start(m_messages.fd(), ev::READ);
@@ -127,7 +127,7 @@ void overseer_t::heartbeat(ev::timer&, int) {
 void overseer_t::configure() {
     try {
         m_context.reset(new context_t(m_config));
-        m_app.reset(new app_t(*m_context, m_config.slave.name));
+        m_app.reset(new app_t(*m_context, m_config.slave.app));
 
         std::string type(m_app->manifest["type"].asString());
 
