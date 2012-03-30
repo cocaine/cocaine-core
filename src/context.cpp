@@ -52,6 +52,8 @@ context_t::context_t(config_t config_):
     m_registry->install<file_storage_t, storage_t>("files");
 }
 
+context_t::~context_t() { }
+
 zmq::context_t& context_t::io() {
     boost::lock_guard<boost::mutex> lock(m_mutex);
     

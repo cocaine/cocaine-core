@@ -81,6 +81,7 @@ class context_t:
 {
     public:
         context_t(config_t config);
+        ~context_t();
 
         zmq::context_t& io();
         
