@@ -31,17 +31,17 @@ native_job_t::native_job_t(native_server_t& driver,
 { }
 
 void native_job_t::react(const events::push_t& event) {
-    rpc::packed<events::push_t> pack(event.message);
+    rpc::packed<rpc::push> pack(event.message);
     send(pack);
 }
 
 void native_job_t::react(const events::error_t& event) {
-    rpc::packed<events::error_t> pack(event);
+    rpc::packed<rpc::error> pack(event.code, event.message);
     send(pack);
 }
 
 void native_job_t::react(const events::release_t& event) {
-    rpc::packed<events::release_t> pack;
+    rpc::packed<rpc::release> pack;
     send(pack);
 }
 

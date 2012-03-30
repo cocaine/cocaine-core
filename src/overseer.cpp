@@ -122,7 +122,7 @@ void overseer_t::timeout(ev::timer&, int) {
 }
 
 void overseer_t::heartbeat(ev::timer&, int) {
-    rpc::packed<events::heartbeat_t> packed;
+    rpc::packed<rpc::heartbeat> packed;
     send(packed);
 }
 
@@ -143,26 +143,21 @@ void overseer_t::configure() {
         m_suicide_timer.set<overseer_t, &overseer_t::timeout>(this);
         m_suicide_timer.start(m_app->policy.suicide_timeout);
     } catch(const configuration_error_t& e) {
-        events::error_t event(e);
-        rpc::packed<events::error_t> packed(event);
+        rpc::packed<rpc::error> packed(client::server_error, e.what());
         send(packed);
         terminate();
     } catch(const registry_error_t& e) {
-        events::error_t event(e);
-        rpc::packed<events::error_t> packed(event);
+        rpc::packed<rpc::error> packed(client::server_error, e.what());
         send(packed);
         terminate();
     } catch(const unrecoverable_error_t& e) {
-        events::error_t event(e);
-        rpc::packed<events::error_t> packed(event);
+        rpc::packed<rpc::error> packed(client::server_error, e.what());
         send(packed);
         terminate();
     } catch(...) {
-        rpc::packed<events::error_t> packed(
-            events::error_t(
-                client::server_error,
-                "unexpected exception while configuring the slave"
-            )
+        rpc::packed<rpc::error> packed(
+            client::server_error,
+            "unexpected exception while configuring the slave"
         );
         
         send(packed);
@@ -175,25 +170,21 @@ void overseer_t::invoke(const std::string& method) {
         io_t io(*this);
         m_plugin->invoke(method, io);
     } catch(const recoverable_error_t& e) {
-        events::error_t event(e);
-        rpc::packed<events::error_t> packed(event);
+        rpc::packed<rpc::error> packed(client::app_error, e.what());
         send(packed);
     } catch(const unrecoverable_error_t& e) {
-        events::error_t event(e);
-        rpc::packed<events::error_t> packed(event);
+        rpc::packed<rpc::error> packed(client::server_error, e.what());
         send(packed);
     } catch(...) {
-        rpc::packed<events::error_t> packed(
-            events::error_t(
-                client::server_error,
-                "unexpected exception while invoking a method"
-            )
+        rpc::packed<rpc::error> packed(
+            client::server_error,
+            "unexpected exception while invoking a method"
         );
         
         send(packed);
     }
     
-    rpc::packed<events::release_t> packed;
+    rpc::packed<rpc::release> packed;
     send(packed);
     
     // NOTE: Drop all the outstanding request chunks not pulled

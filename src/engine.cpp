@@ -256,7 +256,7 @@ void engine_t::stop() {
         }
     }
 
-    rpc::packed<events::terminate_t> packed;
+    rpc::packed<rpc::terminate> packed;
 
     // Send the termination event to active slaves.
     multicast(select::state<slave::alive>(), packed);
@@ -323,7 +323,12 @@ void engine_t::enqueue(job_queue_t::value_type job, bool overflow) {
     }
 
     events::invoke_t event(job);
-    rpc::packed<events::invoke_t> packed(job);
+
+    rpc::packed<rpc::invoke> packed(
+        job->method(), 
+        job->request().data(), 
+        job->request().size()
+    );
 
     pool_map_t::iterator it(
         unicast(
@@ -384,9 +389,9 @@ void engine_t::process(ev::idle&, int) {
 
     std::string slave_id;
     int command = 0;
-    boost::tuple<raw<std::string>, int&> tier(protect(slave_id), command);
+    boost::tuple<raw<std::string>, int&> proxy(protect(slave_id), command);
             
-    m_messages.recv_multi(tier);
+    m_messages.recv_multi(proxy);
 
     pool_map_t::iterator slave(m_pool.find(slave_id));
 
@@ -420,20 +425,39 @@ void engine_t::process(ev::idle&, int) {
             break;
         }
      
-        case rpc::error: {
-            unsigned int code = 0;
-            std::string message;
-            boost::tuple<unsigned int&, std::string&> tier(code, message);
+        case rpc::invoke: {
+            // TEST: Only active slaves can delegate new jobs.
+            BOOST_ASSERT(state != 0 && m_messages.more());
 
-            m_messages.recv_multi(tier);
+            std::string target;
+            zmq::message_t message;
+            boost::tuple<std::string&, zmq::message_t*> proxy(target, &message);
+
+            m_messages.recv_multi(proxy);
+
+            // TODO: Do something useful.
+            m_app.log->info(
+                "slave %s delegated a job for '%s' with %zu bytes of data",
+                slave_id.c_str(),
+                target.c_str(),
+                message.size()
+            );
+
+            break;
+        }
+
+        case rpc::error: {
+            // TEST: Ensure that we have the actual error following.
+            BOOST_ASSERT(m_messages.more());
+
+            int code = 0;
+            std::string message;
+            boost::tuple<int&, std::string&> proxy(code, message);
+
+            m_messages.recv_multi(proxy);
 
             if(state) {
-                state->job()->process_event(
-                    events::error_t(
-                        static_cast<client::error_code>(code), 
-                        message
-                    )
-                );
+                state->job()->process_event(events::error_t(code, message));
             } else {
                 m_app.log->error("the app seems to be broken - %s", message.c_str());
                 stop();

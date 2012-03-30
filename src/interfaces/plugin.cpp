@@ -28,17 +28,18 @@ blob_t io_t::pull(bool block) {
 }
 
 void io_t::push(const void * data, size_t size) {
-	zmq::message_t message(size);
-    rpc::packed<events::push_t> packed(message);
-
-	memcpy(message.data(), data, size);
-    
+    rpc::packed<rpc::push> packed(data, size);
     m_overseer.send(packed);
 }
 
 // void io_t::emit(const std::string& key, const void * data, size_t size) {
 //     // TODO: Emitters.
 // }
+
+void io_t::delegate(const std::string& target, const void * data, size_t size) {
+	rpc::packed<rpc::invoke> packed(target, data, size);
+	m_overseer.send(packed);
+}
 
 plugin_t::plugin_t(context_t& ctx):
     object_t(ctx)

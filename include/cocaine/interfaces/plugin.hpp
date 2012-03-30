@@ -39,6 +39,10 @@ class io_t {
         // Pushes a response chunk to be published via the driver's emitter.
         // void emit(const std::string& key, const void * data, size_t size);
 
+        void delegate(const std::string& target,
+                      const void * data,
+                      size_t size);
+
     private:
         overseer_t& m_overseer;
 };

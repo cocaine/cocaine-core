@@ -36,13 +36,13 @@ void python_io_t::destructor(python_io_t * self) {
 }
 
 PyObject* python_io_t::read(python_io_t * self, PyObject * args, PyObject * kwargs) {
-    PyObject * block = NULL;
-    PyObject * result = NULL;
-    Py_ssize_t size = 0;
-
     static char block_keyword[] = "block";
     static char size_keyword[] = "size";
     static char * keywords[] = { size_keyword, block_keyword };
+
+    PyObject * block = NULL;
+    PyObject * result = NULL;
+    Py_ssize_t size = 0;
 
     if(!PyArg_ParseTupleAndKeywords(args, kwargs, "|nO:read", keywords, &size, &block)) {
         return result;
@@ -84,6 +84,34 @@ PyObject* python_io_t::write(python_io_t * self, PyObject * args) {
         if(message && size) {
             self->io->push(message, size);
         }
+    Py_END_ALLOW_THREADS
+
+    Py_RETURN_NONE;
+}
+
+PyObject* python_io_t::delegate(python_io_t * self, PyObject * args, PyObject * kwargs) {
+    static char message_keyword[] = "message";
+    static char * keywords[] = { message_keyword };
+
+    const char * target = NULL;
+    const char * message = NULL;
+
+#ifdef  PY_SSIZE_T_CLEAN
+    Py_ssize_t size = 0;
+#else
+    int size = 0;
+#endif
+
+    if(!PyArg_ParseTupleAndKeywords(args, kwargs, "s|s#:delegate", keywords, &target, &message, &size)) {
+        return NULL;
+    }
+
+    Py_BEGIN_ALLOW_THREADS
+        self->io->delegate(
+            target,
+            message,
+            size
+        );
     Py_END_ALLOW_THREADS
 
     Py_RETURN_NONE;

@@ -14,15 +14,12 @@
 #ifndef COCAINE_RPC_HPP
 #define COCAINE_RPC_HPP
 
-#include <boost/mpl/map.hpp>
-
-#include "cocaine/events.hpp"
-#include "cocaine/job.hpp"
+#include "cocaine/networking.hpp"
 
 namespace cocaine { namespace engine { namespace rpc {    
     
 enum codes {
-    heartbeat,
+    heartbeat = 1,
     configure,
     terminate,
     invoke,
@@ -34,20 +31,12 @@ enum codes {
 // Generic packer
 // --------------
 
-using namespace boost::mpl;
-
-typedef map<
-    pair< events::heartbeat_t, int_<heartbeat> >,
-    pair< events::terminate_t, int_<terminate> >,
-    pair< events::release_t,   int_<release  > >
-> codemap;
-
-template<typename T> 
+template<codes Code> 
 struct packed {
     typedef boost::tuple<int> type;
 
     packed():
-        pack(typename at<codemap, T>::type())
+        pack(Code)
     { }
 
     type& get() {
@@ -62,7 +51,7 @@ private:
 // ----------------
 
 template<>
-struct packed<events::configure_t> {
+struct packed<configure> {
     typedef boost::tuple<int, const config_t&> type;
 
     packed(const config_t& config):
@@ -78,17 +67,17 @@ private:
 };
 
 template<>
-struct packed<events::invoke_t> {
+struct packed<invoke> {
     typedef boost::tuple<int, const std::string&, zmq::message_t&> type;
 
-    packed(const job_t * job):
-        message(job->request().size()),
-        pack(invoke, job->method(), message)
+    packed(const std::string& method, const void * data, size_t size):
+        message(size),
+        pack(invoke, method, message)
     {
         memcpy(
             message.data(),
-            job->request().data(),
-            job->request().size()
+            data,
+            size
         );
     }
 
@@ -102,27 +91,42 @@ private:
 };
 
 template<>
-struct packed<events::push_t> {
+struct packed<push> {
     typedef boost::tuple<int, zmq::message_t&> type;
 
-    packed(zmq::message_t& message):
+    packed(const void * data, size_t size):
+        message(size),
         pack(push, message)
-    { }
+    {
+        memcpy(
+            message.data(),
+            data,
+            size
+        );
+    }
+
+    packed(zmq::message_t& message_):
+        pack(push, message)
+    {
+        message.move(&message_);
+    }
 
     type& get() {
         return pack;
     }
 
 private:
+    zmq::message_t message;
     type pack;
 };
 
 template<>
-struct packed<events::error_t> {
+struct packed<error> {
+    // NOTE: Not a string reference to allow literal error messages.
     typedef boost::tuple<int, int, std::string> type;
 
-    packed(const events::error_t& event):
-        pack(error, event.code, event.message)
+    packed(int code, const std::string& message):
+        pack(error, code, message)
     { }
 
     type& get() {

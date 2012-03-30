@@ -36,12 +36,12 @@ class overseer_t:
 
         void run();
 
+        blob_t recv(bool block);
+
         template<class Packed>
         void send(Packed& packed) {
             m_messages.send_multi(packed.get());
         }
-
-        blob_t recv(bool block);
 
     private:
         void message(ev::io&, int);

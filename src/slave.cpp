@@ -114,7 +114,7 @@ void slave_t::on_configure(const events::heartbeat_t& event) {
     );
 #endif
 
-    rpc::packed<events::configure_t> pack(
+    rpc::packed<rpc::configure> pack(
         m_engine.context().config
     );
 

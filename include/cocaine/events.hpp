@@ -18,18 +18,12 @@
 
 #include "cocaine/common.hpp"
 
-#include "cocaine/dealer/types.hpp"
-
 namespace cocaine { namespace engine { namespace events {
 
 namespace sc = boost::statechart;
 
 struct heartbeat_t:
     public sc::event<heartbeat_t>
-{ };
-
-struct configure_t:
-    public sc::event<configure_t>
 { };
 
 struct terminate_t:
@@ -81,33 +75,13 @@ struct push_t:
 struct error_t:
     public sc::event<error_t>
 {
-    error_t(client::error_code code_, const std::string& message_):
+    error_t(int code_, const std::string& message_):
         code(code_),
         message(message_)
     { }
 
-    error_t(const configuration_error_t& e):
-        code(client::server_error),
-        message(e.what())
-    { }
-
-    error_t(const recoverable_error_t& e):
-        code(client::app_error),
-        message(e.what())
-    { }
-
-    error_t(const registry_error_t& e):
-        code(client::server_error),
-        message(e.what())
-    { }
-
-    error_t(const unrecoverable_error_t& e):
-        code(client::server_error),
-        message(e.what())
-    { }
-    
-    const client::error_code code;
-    const std::string message;
+    const int code;
+    const std::string& message;
 };
 
 struct release_t:
