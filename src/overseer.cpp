@@ -49,9 +49,7 @@ void overseer_t::run() {
 
 blob_t overseer_t::recv(bool block) {
     zmq::message_t message;
-    
     m_messages.recv(&message, block ? 0 : ZMQ_NOBLOCK);
-    
     return blob_t(message.data(), message.size());
 }
 
