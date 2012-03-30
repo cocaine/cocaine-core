@@ -436,6 +436,16 @@ void engine_t::process(ev::idle&, int) {
             m_messages.recv_multi(proxy);
 
             // TODO: Do something useful.
+            // enqueue(
+            //     state->job()->clone(
+            //         target, 
+            //         blob_t(
+            //             message.data(), 
+            //             message.size()
+            //         )
+            //     )
+            // );
+
             m_app.log->info(
                 "slave %s delegated a job for '%s' with %zu bytes of data",
                 slave_id.c_str(),

@@ -57,11 +57,11 @@ PyObject* python_io_t::read(python_io_t * self, PyObject * args, PyObject * kwar
     Py_END_ALLOW_THREADS
 
     if(!chunk.empty()) {
-        result = PyString_FromStringAndSize(
+        result = PyBytes_FromStringAndSize(
             static_cast<const char*>(chunk.data()),
             chunk.size());
     } else {
-        result = PyString_FromString("");
+        result = PyBytes_FromString("");
     }
 
     return result;
