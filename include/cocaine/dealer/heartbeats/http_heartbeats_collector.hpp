@@ -274,7 +274,7 @@ http_heartbeats_collector<HostsFetcher>::get_metainfo_from_host(const service_in
 
 	if (!received_response_ok) {
 		// in case of bad recv
-		std::string error_msg = "counl not receive metadata response for lsd app: " + s_info.name_;
+		std::string error_msg = "could not receive metadata response for cocaine app: " + s_info.name_;
 		error_msg += ", host: " + host_ip_str + " at " + std::string(BOOST_CURRENT_FUNCTION);
 		logger_->log(PLOG_ERROR, error_msg + ex_err);
 
@@ -312,7 +312,7 @@ http_heartbeats_collector<HostsFetcher>::ping_service_hosts(const service_info_t
 		}
 		catch (const std::exception& ex) {
 			// in case of unparsealbe response, skip
-			std::string error_msg = "heartbeat response parsing error for lsd app: " + s_info.name_;
+			std::string error_msg = "heartbeat response parsing error for cocaine app: " + s_info.name_;
 			error_msg += ", host: " + host_info_t::string_from_ip(hosts[i].ip_);
 			error_msg += " at " + std::string(BOOST_CURRENT_FUNCTION) + " details: ";
 			logger_->log(PLOG_ERROR, error_msg + ex.what());
@@ -384,7 +384,7 @@ http_heartbeats_collector<HostsFetcher>::validate_host_handles(const service_inf
 			// host not found in map — error!
 			std::string err_msg = "host ip 1: " + host_info_t::string_from_ip(ip1);
 			err_msg += " was not found in hosts_and_handles map";
-			err_msg += " for lsd app " + s_info.name_ + " at " + std::string(BOOST_CURRENT_FUNCTION);
+			err_msg += " for cocaine app " + s_info.name_ + " at " + std::string(BOOST_CURRENT_FUNCTION);
 			logger_->log(PLOG_ERROR, err_msg);
 			outstanding_handles = true;
 		}
@@ -392,7 +392,7 @@ http_heartbeats_collector<HostsFetcher>::validate_host_handles(const service_inf
 			// host not found in map — error!
 			std::string err_msg = "host ip 2: " + host_info_t::string_from_ip(ip2);
 			err_msg += " was not found in hosts_and_handles map";
-			err_msg += " for lsd app " + s_info.name_ + " at " + std::string(BOOST_CURRENT_FUNCTION);
+			err_msg += " for cocaine app " + s_info.name_ + " at " + std::string(BOOST_CURRENT_FUNCTION);
 			logger_->log(PLOG_ERROR, err_msg);
 			outstanding_handles = true;
 		}
@@ -413,7 +413,7 @@ http_heartbeats_collector<HostsFetcher>::validate_host_handles(const service_inf
 
 					std::string err_msg = "handle (" + handle_stream.str() + ") from host " + host_info_t::string_from_ip(ip1);
 					err_msg += " was not found in handles of host " + host_info_t::string_from_ip(ip2);
-					err_msg += " for lsd app " + s_info.name_ + " at " + std::string(BOOST_CURRENT_FUNCTION);
+					err_msg += " for cocaine app " + s_info.name_ + " at " + std::string(BOOST_CURRENT_FUNCTION);
 					logger_->log(PLOG_ERROR, err_msg);
 					outstanding_handles = true;
 				}
@@ -438,7 +438,7 @@ http_heartbeats_collector<HostsFetcher>::validate_host_handles(const service_inf
 
 					std::string err_msg = "handle (" + handle_stream.str() + ") from host " + host_info_t::string_from_ip(ip2);
 					err_msg += " was not found in handles of host " + host_info_t::string_from_ip(ip1);
-					err_msg += " for lsd app " + s_info.name_ + " at " + std::string(BOOST_CURRENT_FUNCTION);
+					err_msg += " for cocaine app " + s_info.name_ + " at " + std::string(BOOST_CURRENT_FUNCTION);
 					logger_->log(PLOG_ERROR, err_msg);
 					outstanding_handles = true;
 				}
@@ -533,7 +533,7 @@ http_heartbeats_collector<HostsFetcher>::parse_host_response(const service_info_
 
 			// get handle type
     		std::string handle_type = handle.get("type", "").asString();
-    		if (handle_type != "server+lsd") {
+    		if (handle_type != "native-server") {
     			continue;
     		}
 

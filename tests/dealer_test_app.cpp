@@ -105,6 +105,7 @@ void test_experiment() {
 }
 
 int prev = -1;
+int add_messages_count_tmp;
 
 void response_callback(const cd::response& response, const cd::response_info& info) {
 	if (info.error != cd::MESSAGE_CHOKE) {
@@ -112,17 +113,17 @@ void response_callback(const cd::response& response, const cd::response_info& in
 		//std::string st((const char*)response.data, response.size);
 		//std::cout << "resp data: " << st << std::endl;
 
-		/*
-		std::string st((const char*)response.data, response.size);
+		
+		//std::string st((const char*)response.data, response.size);
 
 		// deserialize it.
-        msgpack::unpacked msg;
-        msgpack::unpack(&msg, (const char*)response.data, response.size);
+        //msgpack::unpacked msg;
+        //msgpack::unpack(&msg, (const char*)response.data, response.size);
  
         // print the deserialized object.
-        msgpack::object obj = msg.get();
-        std::cout << "resp data: " << obj << std::endl;
- 		*/
+        //msgpack::object obj = msg.get();
+        //std::cout << "resp data: " << obj << std::endl;
+ 		
  		/*
         // convert it into statically typed object.
         std::map<std::string, int> m;
@@ -138,7 +139,7 @@ void response_callback(const cd::response& response, const cd::response_info& in
 		//std::cout << "resp done! " << msg_counter << std::endl;
 		//++msg_counter;
 		//std::cout << "good responces: " << msg_counter << "\n";
-		if (msg_counter == 100000) {
+		if (msg_counter == add_messages_count_tmp) {
 			std::cout << "elapsed: " << timer.elapsed().as_double() << " secs" << std::endl;
 		}
 	}
@@ -152,15 +153,20 @@ void response_callback(const cd::response& response, const cd::response_info& in
 }
 
 void create_client(int add_messages_count) {
+	add_messages_count_tmp = add_messages_count;
+
 	// create py app message path
 	cd::message_path path_py;
 	path_py.service_name = "karma-tests";
 	path_py.handle_name = "event";
 
+	//path_py.service_name = "test";
+	//path_py.handle_name = "event";
+
 	cd::client c(config_path);
 	c.connect();
 	c.set_response_callback(boost::bind(&response_callback, _1, _2), path_py);
-	sleep(5);
+	sleep(6);
 
 	//tv.init_from_current_time();
 
@@ -172,7 +178,7 @@ void create_client(int add_messages_count) {
 	msgpack::sbuffer buffer;
 	msgpack::pack(buffer, val);
 
-	cd::progress_timer timer;
+	//cd::progress_timer timer;
 
 	// send message to py app
 	timer.reset();
@@ -181,7 +187,18 @@ void create_client(int add_messages_count) {
 		std::string uuid1 = c.send_message(buffer.data(), buffer.size(), path_py);
 	}
 
-	std::cout << std::fixed << std::setprecision(6) << "elapsed secs: " << timer.elapsed().as_double() << std::endl;
+	/*
+	sleep(2);
+
+	timer.reset();
+	msg_counter = 0;
+	
+	for (int i = 0; i < add_messages_count; ++i) {
+		std::string uuid1 = c.send_message(buffer.data(), buffer.size(), path_py);
+	}
+	*/
+
+	//std::cout << std::fixed << std::setprecision(6) << "elapsed secs: " << timer.elapsed().as_double() << std::endl;
 
 	sleep(600);
 

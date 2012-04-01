@@ -141,20 +141,20 @@ void overseer_t::configure() {
         m_suicide_timer.set<overseer_t, &overseer_t::timeout>(this);
         m_suicide_timer.start(m_app->policy.suicide_timeout);
     } catch(const configuration_error_t& e) {
-        rpc::packed<rpc::error> packed(client::server_error, e.what());
+        rpc::packed<rpc::error> packed(dealer::server_error, e.what());
         send(packed);
         terminate();
     } catch(const registry_error_t& e) {
-        rpc::packed<rpc::error> packed(client::server_error, e.what());
+        rpc::packed<rpc::error> packed(dealer::server_error, e.what());
         send(packed);
         terminate();
     } catch(const unrecoverable_error_t& e) {
-        rpc::packed<rpc::error> packed(client::server_error, e.what());
+        rpc::packed<rpc::error> packed(dealer::server_error, e.what());
         send(packed);
         terminate();
     } catch(...) {
         rpc::packed<rpc::error> packed(
-            client::server_error,
+            dealer::server_error,
             "unexpected exception while configuring the slave"
         );
         
@@ -168,14 +168,14 @@ void overseer_t::invoke(const std::string& method) {
         io_t io(*this);
         m_plugin->invoke(method, io);
     } catch(const recoverable_error_t& e) {
-        rpc::packed<rpc::error> packed(client::app_error, e.what());
+        rpc::packed<rpc::error> packed(dealer::app_error, e.what());
         send(packed);
     } catch(const unrecoverable_error_t& e) {
-        rpc::packed<rpc::error> packed(client::server_error, e.what());
+        rpc::packed<rpc::error> packed(dealer::server_error, e.what());
         send(packed);
     } catch(...) {
         rpc::packed<rpc::error> packed(
-            client::server_error,
+            dealer::server_error,
             "unexpected exception while invoking a method"
         );
         

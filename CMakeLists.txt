@@ -146,7 +146,6 @@ INSTALL(
         cocaine-common
         cocaine-core
         cocained
-        cocaine-dealer
         json 
     RUNTIME DESTINATION bin COMPONENT runtime
     LIBRARY DESTINATION lib COMPONENT runtime

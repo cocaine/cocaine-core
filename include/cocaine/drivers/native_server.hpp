@@ -25,7 +25,7 @@ class native_job_t:
 {
     public:
         native_job_t(native_server_t& driver,
-                     const client::policy_t& policy,
+                     const dealer::policy_t& policy,
                      const blob_t& request,
                      const networking::route_t& route,
                      const std::string& tag);
@@ -71,7 +71,7 @@ class native_server_t:
     private:
         typedef boost::tuple<
             std::string&,
-            client::policy_t&,
+            dealer::policy_t&,
             zmq::message_t*
         > request_proxy_t;
 

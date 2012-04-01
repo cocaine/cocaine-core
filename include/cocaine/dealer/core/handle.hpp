@@ -28,6 +28,7 @@
 #include <boost/thread/thread.hpp>
 #include <boost/date_time.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/ptr_container/ptr_vector.hpp>
 
 #include "json/json.h"
 
@@ -51,6 +52,8 @@ namespace dealer {
 #define CONTROL_MESSAGE_DISCONNECT 3
 #define CONTROL_MESSAGE_CONNECT_NEW_HOSTS 4
 #define CONTROL_MESSAGE_KILL 5
+#define CONTROL_MESSAGE_PROCESS_MESSAGES 6
+#define CONTROL_MESSAGE_PROCESS_RESPONCES 7
 
 // predeclaration
 template <typename LSD_T> class handle;
@@ -83,6 +86,7 @@ public:
 
 	void set_responce_callback(responce_callback_t callback);
 	void enqueue_message(boost::shared_ptr<message_iface> message);
+	void notify_new_messages_enqueued();
 
 private:
 	void kill();
@@ -96,13 +100,17 @@ private:
 
 	// working with messages
 	bool dispatch_next_available_message(socket_ptr_t main_socket);
+	void recreate_main_socket(socket_ptr_t& main_socket, int timeout, int64_t hwm);
 	void connect_zmq_socket_to_hosts(socket_ptr_t& socket,
 									 hosts_info_list_t& hosts);
 
 	bool check_for_responses(socket_ptr_t& main_socket);
-	void dispatch_responces(socket_ptr_t& main_socket);
+	void dispatch_responce(socket_ptr_t& main_socket);
+	void process_responce(boost::ptr_vector<zmq::message_t>& chunks);
+	bool receive_responce_chunk(socket_ptr_t& socket, zmq::message_t& response);
 
 	void enqueue_response(cached_response_prt_t response);
+	void reshedule_message(const std::string& uuid);
 
 	// send collected statistics to global stats collector
 	handle_stats& get_statistics();
@@ -111,6 +119,8 @@ private:
 	boost::shared_ptr<base_logger> logger();
 	boost::shared_ptr<configuration> config();
 	boost::shared_ptr<cocaine::dealer::context> context();
+
+	static const int socket_poll_timeout = 0;
 
 private:
 	handle_info<LSD_T> info_;
@@ -123,6 +133,7 @@ private:
 	boost::mutex mutex_;
 	volatile bool is_running_;
 	volatile bool is_connected_;
+	boost::condition_variable cond_;
 
 	std::auto_ptr<zmq::socket_t> zmq_control_socket_;
 	bool receiving_control_socket_ok_;
@@ -192,9 +203,14 @@ handle<LSD_T>::dispatch_messages() {
 		int control_message = receive_control_messages(control_socket);
 
 		// received kill message, finalize everything
-		if (control_message == CONTROL_MESSAGE_KILL) {
-			is_running_ = false;
-			break;
+		switch (control_message) {
+			case CONTROL_MESSAGE_KILL:
+				is_running_ = false;
+				break;
+			case CONTROL_MESSAGE_PROCESS_MESSAGES:
+				break;
+			case CONTROL_MESSAGE_PROCESS_RESPONCES:
+				break;
 		}
 
 		// process incoming control messages
@@ -204,8 +220,11 @@ handle<LSD_T>::dispatch_messages() {
 
 		// send new message if any
 		if (is_running_ && is_connected_) {
-			if (dispatch_next_available_message(main_socket)) {
-				++statistics_.sent_messages;
+			// send new message if any
+			while (messages_cache()->new_messages_count() != 0) {
+				if (dispatch_next_available_message(main_socket)) {
+					++statistics_.sent_messages;
+				}
 			}
 		}
 
@@ -217,7 +236,7 @@ handle<LSD_T>::dispatch_messages() {
 
 		// process received responce(s)
 		if (is_connected_ && is_running_ && received_response) {
-			dispatch_responces(main_socket);
+			dispatch_responce(main_socket);
 		}
 
 		/*
@@ -235,7 +254,7 @@ handle<LSD_T>::dispatch_messages() {
 
 				// create response
 				cached_response_prt_t response;
-				response.reset(new cached_response(uuid, path, EXPIRED_MESSAGE_ERROR, error_msg));
+				response.reset(new cached_response(uuid, path, deadline_error, error_msg));
 				enqueue_response(response);
 
 				++statistics_.expired_responses;
@@ -288,7 +307,7 @@ handle<LSD_T>::receive_control_messages(socket_ptr_t& control_socket) {
 	poll_items[0].events = ZMQ_POLLIN;
 	poll_items[0].revents = 0;
 
-	int socket_response = zmq_poll(poll_items, 1, 0);
+	int socket_response = zmq_poll(poll_items, 1, socket_poll_timeout);
 
 	if (socket_response <= 0) {
 		return 0;
@@ -328,6 +347,13 @@ handle<LSD_T>::receive_control_messages(socket_ptr_t& control_socket) {
 }
 
 template <typename LSD_T> void
+handle<LSD_T>::recreate_main_socket(socket_ptr_t& main_socket, int timeout, int64_t hwm) {
+	main_socket.reset(new zmq::socket_t(*(context()->zmq_context()), ZMQ_DEALER));
+	main_socket->setsockopt(ZMQ_LINGER, &timeout, sizeof(timeout));
+	main_socket->setsockopt(ZMQ_HWM, &hwm, sizeof(hwm));
+}
+
+template <typename LSD_T> void
 handle<LSD_T>::dispatch_control_messages(int type, socket_ptr_t& main_socket) {
 	if (!is_running_) {
 		return;
@@ -339,7 +365,7 @@ handle<LSD_T>::dispatch_control_messages(int type, socket_ptr_t& main_socket) {
 
 			// create new main socket in case we're not connected
 			if (!is_connected_) {
-				main_socket.reset(new zmq::socket_t(*(context()->zmq_context()), ZMQ_DEALER));
+				recreate_main_socket(main_socket, 500, 0);
 				connect_zmq_socket_to_hosts(main_socket, hosts_);
 				is_connected_ = true;
 			}
@@ -348,8 +374,7 @@ handle<LSD_T>::dispatch_control_messages(int type, socket_ptr_t& main_socket) {
 		case CONTROL_MESSAGE_RECONNECT:
 			//logger()->log(PLOG_DEBUG, "CONTROL_MESSAGE_RECONNECT");
 
-			// kill old socket, create new
-			main_socket.reset(new zmq::socket_t(*(context()->zmq_context()), ZMQ_DEALER));
+			recreate_main_socket(main_socket, 500, 0);
 			connect_zmq_socket_to_hosts(main_socket, hosts_);
 			is_connected_ = true;
 			break;
@@ -402,12 +427,6 @@ handle<LSD_T>::connect_zmq_socket_to_hosts(socket_ptr_t& socket,
 			std::string ip = host_info<LSD_T>::string_from_ip(hosts[i].ip_);
 			connection_str = "tcp://" + ip + ":" + port;
 			//logger()->log(PLOG_DEBUG, "handle connection str: %s", connection_str.c_str());
-			
-			int timeout = 0;
-			socket->setsockopt(ZMQ_LINGER, &timeout, sizeof(timeout));
-
-			int64_t hwm = 10000;
-			socket->setsockopt(ZMQ_HWM, &hwm, sizeof(hwm));
 
 			socket->connect(connection_str.c_str());
 		}
@@ -439,34 +458,51 @@ handle<LSD_T>::dispatch_next_available_message(socket_ptr_t main_socket) {
 		boost::shared_ptr<message_iface> new_msg = messages_cache()->get_new_message();
 
 		// send header
-		zmq::message_t empty_message(0);
-		if (true != main_socket->send(empty_message, ZMQ_SNDMORE)) {
+		zmq::message_t empty_chunk(0);
+		if (true != main_socket->send(empty_chunk, ZMQ_SNDMORE)) {
 			++statistics_.bad_sent_messages;
 			return false;
 		}
 
-		// send envelope
-		std::string msg_header = new_msg->json();
-		size_t header_size = msg_header.length();
-		zmq::message_t header(header_size);
-		memcpy((void *)header.data(), msg_header.c_str(), header_size);
+		msgpack::sbuffer sbuf;
 
-		if (true != main_socket->send(header, ZMQ_SNDMORE)) {
+		// send message uuid
+		const std::string& uuid = new_msg->uuid();
+		msgpack::pack(sbuf, uuid);
+
+		zmq::message_t uuid_chunk(sbuf.size());
+		memcpy((void *)uuid_chunk.data(), sbuf.data(), sbuf.size());
+
+		if (true != main_socket->send(uuid_chunk, ZMQ_SNDMORE)) {
+			++statistics_.bad_sent_messages;
+			return false;
+		}
+
+		sbuf.clear();
+
+		// send message policy
+		const policy_t server_policy = new_msg->policy().server_policy();
+        msgpack::pack(sbuf, server_policy);
+
+		zmq::message_t policy_chunk(sbuf.size());
+		memcpy((void *)policy_chunk.data(), sbuf.data(), sbuf.size());
+
+		if (true != main_socket->send(policy_chunk, ZMQ_SNDMORE)) {
 			++statistics_.bad_sent_messages;
 			return false;
 		}
 
 		// send data
 		size_t data_size = new_msg->size();
-		zmq::message_t message(data_size);
+		zmq::message_t data_chunk(data_size);
 
 		if (data_size > 0) {
 			new_msg->load_data();
-			memcpy((void *)message.data(), new_msg->data(), data_size);
+			memcpy((void *)data_chunk.data(), new_msg->data(), data_size);
 			new_msg->unload_data();
 		}
 
-		if (true != main_socket->send(message)) {
+		if (true != main_socket->send(data_chunk)) {
 			++statistics_.bad_sent_messages;
 			return false;
 		}
@@ -488,204 +524,180 @@ handle<LSD_T>::dispatch_next_available_message(socket_ptr_t main_socket) {
 	return true;
 }
 
+template <typename LSD_T> bool
+handle<LSD_T>::receive_responce_chunk(socket_ptr_t& socket, zmq::message_t& response) {
+	try {
+		if (socket->recv(&response, ZMQ_NOBLOCK) == EAGAIN) {
+			return false;
+		}
+	}
+	catch (const std::exception& ex) {
+		std::string error_msg = "service: " + info_.service_name_;
+		error_msg += ", handle: " + info_.name_ + " — error while receiving response chunk ";
+		error_msg += " at " + std::string(BOOST_CURRENT_FUNCTION) + "reason: ";
+		error_msg += ex.what();
+		logger()->log(PLOG_DEBUG, error_msg);
+
+		return false;
+	}
+
+	return true;
+}
+
 template <typename LSD_T> void
-handle<LSD_T>::dispatch_responces(socket_ptr_t& main_socket) {
-	zmq::message_t reply;
+handle<LSD_T>::dispatch_responce(socket_ptr_t& main_socket) {
+	boost::ptr_vector<zmq::message_t> response_chunks;
 
-	// receive messages while we have any on the socket
-	while (true) {
-		std::string json_header;
+	// receive message
+	int64_t more = 1;
+	size_t more_size = sizeof(more);
 
-		try {
-			// receive reply header
-			if (!main_socket->recv(&reply, ZMQ_NOBLOCK)) {
-				break;
-			}
+	while (more) {
+		zmq::message_t* chunk = new zmq::message_t;
 
-			// receive json envelope
-			if (!main_socket->recv(&reply)) {
-				logger()->log(PLOG_ERROR, "bad envelope");
-				break;
-			}
-		}
-		catch (const std::exception& ex) {
-			std::string error_msg = "service: " + info_.service_name_;
-			error_msg += ", handle: " + info_.name_ + " — error while receiving response envelope ";
-			error_msg += " at " + std::string(BOOST_CURRENT_FUNCTION) + "reason: ";
-			error_msg += ex.what();
-			logger()->log(PLOG_DEBUG, error_msg);
+		if (!receive_responce_chunk(main_socket, *chunk)) {
+			delete chunk;
 			break;
 		}
 
-		bool is_response_completed = false;
-		std::string uuid;
-		Json::Value envelope_val;
-		Json::Reader jreader;
-		int error_code = 0;
-		std::string error_message;
+		response_chunks.push_back(chunk);
 
-		try {
-			// get envelope json string
-			json_header = std::string((const char*)reply.data(), reply.size());
-			//logger()->log(PLOG_DEBUG, "received header: %s", json_header.c_str());
+		int rc = zmq_getsockopt(*main_socket, ZMQ_RCVMORE, &more, &more_size);
+    	assert (rc == 0);
+	}
 
-			// parse envelope json
-			if (jreader.parse(json_header.c_str(), envelope_val)) {
-				uuid = envelope_val.get("uuid", "").asString();
-				is_response_completed = envelope_val.get("completed", false).asBool();
-				error_code = envelope_val.get("code", 0).asInt();
-				error_message = envelope_val.get("message", "").asString();
+	process_responce(response_chunks);
+}
 
-				if (uuid.empty()) {
-					std::string error_msg = "service: " + info_.service_name_;
-					error_msg += ", handle: " + info_.name_ + " — uuid is empty in response envelope";
-					error_msg += " at " + std::string(BOOST_CURRENT_FUNCTION);
-					throw error(error_msg);
-				}
+template <typename LSD_T> void
+handle<LSD_T>::reshedule_message(const std::string& uuid) {
+	// 2DO: must reshedule if allowed by policy
+	messages_cache()->move_sent_message_to_new_front(uuid);
+	++statistics_.resent_messages;
+	update_statistics();
+}
+
+template <typename LSD_T> void
+handle<LSD_T>::process_responce(boost::ptr_vector<zmq::message_t>& chunks) {
+	// we've received some useless crap
+	if (chunks.size() < 2) {
+		return;
+	}
+
+	// empty chunk must go first in multipart message
+	if(chunks[0].size() != 0) {
+		return;
+	}
+
+	// unpack uuid
+	std::string uuid;
+	msgpack::unpacked msg;
+	msgpack::unpack(&msg, reinterpret_cast<const char*>(chunks[1].data()), chunks[1].size());
+	msgpack::object obj = msg.get();
+    obj.convert(&uuid);
+
+    // unfinished message received
+	if (chunks.size() < 3) {
+		reshedule_message(uuid);
+		return;
+	}
+
+   	// unpack code
+	int code;
+	msgpack::unpacked msg2;
+	msgpack::unpack(&msg2, reinterpret_cast<const char*>(chunks[2].data()), chunks[2].size());
+	msgpack::object obj2 = msg2.get();
+    obj2.convert(&code);
+
+	// get message from sent cache
+	boost::shared_ptr<message_iface> sent_msg;
+	try {
+		sent_msg = messages_cache()->get_sent_message(uuid);
+	}
+	catch (...) {
+		// drop responce for missing message
+		return;
+	}
+
+	switch (code) {
+		case MESSAGE_CHUNK: {
+			if (chunks.size() >= 4) {
+				// enqueue chunk in response queue
+				cached_response_prt_t new_response;
+				new_response.reset(new cached_response(uuid, sent_msg->path(), chunks[3].data(), chunks[3].size()));
+				new_response->set_error(MESSAGE_CHUNK, "");
+				enqueue_response(new_response);
 			}
 			else {
-				std::string error_msg = "service: " + info_.service_name_;
-				error_msg += ", handle: " + info_.name_ + " — could not parse response envelope";
-				error_msg += " at " + std::string(BOOST_CURRENT_FUNCTION);
-				throw error(error_msg);
+				reshedule_message(uuid);
+				return;
 			}
 		}
-		catch (const std::exception& ex) {
-			std::string error_msg = "service: " + info_.service_name_;
-			error_msg += ", handle: " + info_.name_ + " — error while parsing response envelope";
-			error_msg += " at " + std::string(BOOST_CURRENT_FUNCTION) + "reason: ";
-			error_msg += ex.what();
-			logger()->log(PLOG_DEBUG, error_msg);
-			break;
-		}
-		
-		// get message from sent cache
-		bool fetched_message = false;
-		boost::shared_ptr<message_iface> sent_msg;
+		break;
 
-		try {
-			try {
-				sent_msg = messages_cache()->get_sent_message(uuid);
-				fetched_message = true;
-			}
-			catch (...) {
-			}
+		case MESSAGE_ERROR: {
+			int error_code = -1;
+			std::string error_message;
 
-			// just send message again
-			if (error_code == MESSAGE_QUEUE_IS_FULL) {
-				if (fetched_message) {
-					//messages_cache()->remove_message_from_cache(uuid);
-					messages_cache()->move_sent_message_to_new_front(uuid);
-					++statistics_.resent_messages;
-					update_statistics();
-					continue;
-				}
-			}
-		}
-		catch (const std::exception& ex) {
-			std::string error_msg = "service: " + info_.service_name_;
-			error_msg += ", handle: " + info_.name_ + " — error while retrieving response message";
-			error_msg += " at " + std::string(BOOST_CURRENT_FUNCTION) + "reason: ";
-			error_msg += ex.what();
-			logger()->log(PLOG_DEBUG, error_msg);
-			break;
-		}
-
-		try {
-			if (error_code != 0) {
-				logger()->log(PLOG_DEBUG, "error code: %d, message: %s", error_code, error_message.c_str());
-
-				// if we could not get message from cache, we assume, dealer has already processed it
-				// otherwise — make response!
-				if (fetched_message) {
-					// create response object
-					cached_response_prt_t new_response;
-					new_response.reset(new cached_response(uuid, sent_msg->path(), error_code, error_message));
-
-					// remove message from cache
-					messages_cache()->remove_message_from_cache(uuid);
-					enqueue_response(new_response);
-
-					// statistics
-					++statistics_.err_responces;
-
-					if (error_code == EXPIRED_MESSAGE_ERROR) {
-						++statistics_.expired_responses;
-					}
-					else {
-						++statistics_.err_responces;
-					}
-
-					++statistics_.all_responces;
-					update_statistics();
-				}
-
-				continue;
-			}
-		}
-		catch (const std::exception& ex) {
-			std::string error_msg = "service: " + info_.service_name_;
-			error_msg += ", handle: " + info_.name_ + " — error while resending message";
-			error_msg += " at " + std::string(BOOST_CURRENT_FUNCTION) + "reason: ";
-			error_msg += ex.what();
-			logger()->log(PLOG_DEBUG, error_msg);
-			break;
-		}
-
-		try {
-			// receive data
-			if (!is_response_completed) {
-				//logger()->log(PLOG_DEBUG, "responce not completed");
-
-				// receive data chunk
-				if (!main_socket->recv(&reply)) {
-					logger()->log(PLOG_DEBUG, "bad data");
-					break;
-				}
-
-				msgpack::unpacked msg;
-				msgpack::unpack(&msg, (const char*)reply.data(), reply.size());
-
-				msgpack::object obj = msg.get();
-				std::stringstream stream;
-				stream << obj;
-				//logger()->log(PLOG_DEBUG, "received data: %s", stream.str().c_str());
-
-				if (fetched_message) {
-					++statistics_.normal_responces;
-					++statistics_.all_responces;
-					update_statistics();
-
-					cached_response_prt_t new_response;
-					new_response.reset(new cached_response(uuid, sent_msg->path(), reply.data(), reply.size()));
-					new_response->set_error(MESSAGE_CHUNK, "");
-					enqueue_response(new_response);
-				}
+			if (chunks.size() < 4) {
+				// malformed error msg, do nothing
 			}
 			else {
-				//logger()->log(PLOG_DEBUG, "responce completed");
+				if (chunks.size() >= 4) {
+					// unpack error code
+					msgpack::unpacked msg3;
+					msgpack::unpack(&msg3, reinterpret_cast<const char*>(chunks[3].data()), chunks[3].size());
+					msgpack::object obj3 = msg3.get();
+				    obj3.convert(&error_code);
+				}
+
+				if (chunks.size() >= 5) {
+					// unpack error message
+					msgpack::unpacked msg3;
+					msgpack::unpack(&msg3, reinterpret_cast<const char*>(chunks[4].data()), chunks[4].size());
+					msgpack::object obj3 = msg3.get();
+				    obj3.convert(&error_message);
+				}
+			}
+
+			//logger()->log(PLOG_DEBUG, "error code: %d, message: %s", error_code, error_message.c_str());
+			cached_response_prt_t new_response;
+			new_response.reset(new cached_response(uuid, sent_msg->path(), error_code, error_message));
+			enqueue_response(new_response);
+
+			if (error_code == deadline_error) { // timed out
 				messages_cache()->remove_message_from_cache(uuid);
-
-				if (fetched_message) {
-					++statistics_.normal_responces;
-					++statistics_.all_responces;
-					update_statistics();
-
-					cached_response_prt_t new_response;
-					new_response.reset(new cached_response(uuid, sent_msg->path(), NULL, 0));
-					new_response->set_error(MESSAGE_CHOKE, "");
-					enqueue_response(new_response);
-				}
+				++statistics_.expired_responses;
 			}
+			else if (error_code == resource_error) { // queue is full
+				reshedule_message(uuid);
+			}
+			else {
+				messages_cache()->remove_message_from_cache(uuid);
+			}
+
+			++statistics_.err_responces;
+			++statistics_.all_responces;
+			update_statistics();
 		}
-		catch (const std::exception& ex) {
-			std::string error_msg = "service: " + info_.service_name_;
-			error_msg += ", handle: " + info_.name_ + " — error while receiving response data";
-			error_msg += " at " + std::string(BOOST_CURRENT_FUNCTION) + "reason: ";
-			error_msg += ex.what();
-			logger()->log(PLOG_DEBUG, error_msg);
-			break;
+		break;
+
+		case MESSAGE_CHOKE: {
+			messages_cache()->remove_message_from_cache(uuid);
+
+			cached_response_prt_t new_response;
+			new_response.reset(new cached_response(uuid, sent_msg->path(), NULL, 0));
+			new_response->set_error(MESSAGE_CHOKE, "");
+			enqueue_response(new_response);
+
+			++statistics_.normal_responces;
+			++statistics_.all_responces;
+			update_statistics();
 		}
+		break;
+
+		default:
+			return;
 	}
 }
 
@@ -734,7 +746,7 @@ handle<LSD_T>::check_for_responses(socket_ptr_t& main_socket) {
 	poll_items[0].events = ZMQ_POLLIN;
 	poll_items[0].revents = 0;
 
-	int socket_response = zmq_poll(poll_items, 1, 0);
+	int socket_response = zmq_poll(poll_items, 1, socket_poll_timeout);
 
 	if (socket_response <= 0) {
 		return false;
@@ -792,6 +804,21 @@ handle<LSD_T>::connect() {
 
 	// connect to hosts
 	int control_message = CONTROL_MESSAGE_CONNECT;
+	zmq::message_t message(sizeof(int));
+	memcpy((void *)message.data(), &control_message, sizeof(int));
+	zmq_control_socket_->send(message);
+}
+
+template <typename LSD_T> void
+handle<LSD_T>::notify_new_messages_enqueued() {
+	//logger()->log(PLOG_DEBUG, "new messages notification");
+
+	if (!is_running_ || hosts_.empty() || is_connected_) {
+		return;
+	}
+
+	// connect to hosts
+	int control_message = CONTROL_MESSAGE_PROCESS_MESSAGES;
 	zmq::message_t message(sizeof(int));
 	memcpy((void *)message.data(), &control_message, sizeof(int));
 	zmq_control_socket_->send(message);
@@ -923,9 +950,10 @@ handle<LSD_T>::set_responce_callback(responce_callback_t callback) {
 template <typename LSD_T> void
 handle<LSD_T>::enqueue_message(boost::shared_ptr<message_iface> message) {
 	boost::mutex::scoped_lock lock(mutex_);
-	messages_cache()->enqueue(message);
 
+	messages_cache()->enqueue(message);
 	update_statistics();
+	notify_new_messages_enqueued();
 }
 
 template <typename LSD_T> boost::shared_ptr<cocaine::dealer::context>

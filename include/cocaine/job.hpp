@@ -58,11 +58,11 @@ class job_t:
 
     public:
         job_t(drivers::driver_t& driver);
-        job_t(drivers::driver_t& driver, client::policy_t policy);
+        job_t(drivers::driver_t& driver, dealer::policy_t policy);
         job_t(drivers::driver_t& driver, const blob_t& request);
         
         job_t(drivers::driver_t& driver,
-              client::policy_t policy, 
+              dealer::policy_t policy, 
               const blob_t& request);
 
         virtual ~job_t();
@@ -77,7 +77,7 @@ class job_t:
             return m_method;
         }
         
-        const client::policy_t& policy() const {
+        const dealer::policy_t& policy() const {
             return m_policy;
         }
 
@@ -93,7 +93,7 @@ class job_t:
 
     private:
         const std::string m_method;
-        const client::policy_t m_policy;
+        const dealer::policy_t m_policy;
         const blob_t m_request;
 
         ev::periodic m_expiration_timer;

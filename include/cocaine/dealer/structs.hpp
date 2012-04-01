@@ -24,6 +24,8 @@
 
 #include <boost/cstdint.hpp>
 
+#include <cocaine/dealer/types.hpp>
+
 namespace cocaine {
 namespace dealer {
 
@@ -59,11 +61,10 @@ enum callback_error {
 	CALLBACK_EXISTS_ERROR = 2
 };
 
-enum response_error {
-	MESSAGE_CHUNK = 1,
-	MESSAGE_CHOKE = 2,
-	EXPIRED_MESSAGE_ERROR = 520,
-	MESSAGE_QUEUE_IS_FULL = 503
+enum response_code {
+	MESSAGE_CHUNK = 5,
+	MESSAGE_ERROR = 6,
+	MESSAGE_CHOKE = 7
 };
 
 enum logger_type {
@@ -122,74 +123,6 @@ struct message_path {
 	std::string handle_name;
 
 	MSGPACK_DEFINE(service_name, handle_name);
-};
-
-struct message_policy {
-	message_policy() :
-		send_to_all_hosts(false),
-		urgent(false),
-		mailboxed(false),
-		timeout(0.0f),
-		deadline(0.0f),
-		max_timeout_retries(0) {};
-
-	message_policy(bool send_to_all_hosts_,
-				   bool urgent_,
-				   float mailboxed_,
-				   float timeout_,
-				   float deadline_,
-				   int max_timeout_retries_) :
-		send_to_all_hosts(send_to_all_hosts_),
-		urgent(urgent_),
-		mailboxed(mailboxed_),
-		timeout(timeout_),
-		deadline(deadline_),
-		max_timeout_retries(max_timeout_retries_) {};
-
-	message_policy(const message_policy& mp) {
-		*this = mp;
-	}
-
-	message_policy& operator = (const message_policy& rhs) {
-		if (this == &rhs) {
-			return *this;
-		}
-
-		send_to_all_hosts = rhs.send_to_all_hosts;
-		urgent = rhs.urgent;
-		mailboxed = rhs.mailboxed;
-		timeout = rhs.timeout;
-		deadline = rhs.deadline;
-		max_timeout_retries = rhs.max_timeout_retries;
-
-		return *this;
-	}
-
-	bool operator == (const message_policy& rhs) const {
-		return (send_to_all_hosts == rhs.send_to_all_hosts &&
-				urgent == rhs.urgent &&
-				mailboxed == rhs.mailboxed &&
-				timeout == rhs.timeout &&
-				deadline == rhs.deadline);
-	}
-
-	bool operator != (const message_policy& rhs) const {
-		return !(*this == rhs);
-	}
-
-	bool send_to_all_hosts;
-    bool urgent;
-    bool mailboxed;
-    double timeout;
-    double deadline;
-    int max_timeout_retries;
-
-    MSGPACK_DEFINE(send_to_all_hosts,
-    			   urgent,
-    			   mailboxed,
-    			   timeout,
-    			   deadline,
-    			   max_timeout_retries);
 };
 
 struct msg_queue_status {
@@ -252,6 +185,78 @@ struct service_stats {
 
 	// <handle name, queue_size>
 	std::map<std::string, size_t> unhandled_messages;
+};
+
+struct message_policy {
+    message_policy() :
+        send_to_all_hosts(false),
+        urgent(false),
+        mailboxed(false),
+        timeout(0.0f),
+        deadline(0.0f),
+        max_timeout_retries(0) {};
+
+    message_policy(bool send_to_all_hosts_,
+                   bool urgent_,
+                   float mailboxed_,
+                   float timeout_,
+                   float deadline_,
+                   int max_timeout_retries_) :
+        send_to_all_hosts(send_to_all_hosts_),
+        urgent(urgent_),
+        mailboxed(mailboxed_),
+        timeout(timeout_),
+        deadline(deadline_),
+        max_timeout_retries(max_timeout_retries_) {};
+
+    message_policy(const message_policy& mp) {
+        *this = mp;
+    }
+
+    message_policy& operator = (const message_policy& rhs) {
+        if (this == &rhs) {
+            return *this;
+        }
+
+        send_to_all_hosts = rhs.send_to_all_hosts;
+        urgent = rhs.urgent;
+        mailboxed = rhs.mailboxed;
+        timeout = rhs.timeout;
+        deadline = rhs.deadline;
+        max_timeout_retries = rhs.max_timeout_retries;
+
+        return *this;
+    }
+
+    bool operator == (const message_policy& rhs) const {
+        return (send_to_all_hosts == rhs.send_to_all_hosts &&
+                urgent == rhs.urgent &&
+                mailboxed == rhs.mailboxed &&
+                timeout == rhs.timeout &&
+                deadline == rhs.deadline);
+    }
+
+    bool operator != (const message_policy& rhs) const {
+        return !(*this == rhs);
+    }
+
+    policy_t server_policy() const {
+    	return policy_t(urgent, timeout, deadline);
+    }
+
+    bool send_to_all_hosts;
+    bool urgent;
+    bool mailboxed;
+    double timeout;
+    double deadline;
+    int max_timeout_retries;
+
+    MSGPACK_DEFINE(send_to_all_hosts,
+                   urgent,
+                   mailboxed,
+                   timeout,
+                   deadline,
+                   max_timeout_retries);
 };
 
 struct response {
