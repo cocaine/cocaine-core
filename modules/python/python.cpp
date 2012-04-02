@@ -35,7 +35,8 @@ static PyMethodDef context_module_methods[] = {
 python_t::python_t(context_t& ctx):
     plugin_t(ctx),
     m_python_module(NULL),
-    m_manifest(NULL)
+    m_manifest(NULL),
+    m_thread_state(NULL)
 {
     Py_InitializeEx(0);
     PyEval_InitThreads();

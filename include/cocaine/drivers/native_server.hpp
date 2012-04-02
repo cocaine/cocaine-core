@@ -37,15 +37,20 @@ class native_job_t:
     private:
         template<class Packed>
         void send(Packed& pack) {
-            zmq::message_t null;
             zeromq_server_t& server = static_cast<zeromq_server_t&>(m_driver);
-    
-            std::for_each(
-                m_route.begin(),
-                m_route.end(),
-                networking::route(server.socket())
-            );
 
+            try {    
+                std::for_each(
+                    m_route.begin(),
+                    m_route.end(),
+                    networking::route(server.socket())
+                );
+            } catch(const zmq::error_t& e) {
+                // NOTE: The client is down.
+                return;
+            }
+
+            zmq::message_t null;
             server.socket().send(null, ZMQ_SNDMORE);
             
             server.socket().send(m_tag, ZMQ_SNDMORE);

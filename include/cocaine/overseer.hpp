@@ -73,7 +73,7 @@ class overseer_t:
         // reason doesn't trigger the socket's fd on message arrival (or I poll it in a wrong way).
         ev::timer m_pumper;
 
-        ev::timer m_suicide_timer, m_heartbeat_timer;
+        ev::timer m_heartbeat_timer, m_suicide_timer;
         
         // Engine RPC.
         zmq::context_t m_io;
