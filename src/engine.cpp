@@ -236,7 +236,7 @@ void engine_t::stop(std::string status) {
 
     m_running = false;
 
-    if(!m_status.empty()) {
+    if(!status.empty()) {
         m_status = status;
     }
 
