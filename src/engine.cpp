@@ -229,12 +229,16 @@ namespace {
     };
 }
 
-void engine_t::stop() {
+void engine_t::stop(std::string status) {
     BOOST_ASSERT(m_running);
     
     m_app.log->info("stopping the engine"); 
 
     m_running = false;
+
+    if(!m_status.empty()) {
+        m_status = status;
+    }
 
     // Abort all the outstanding jobs.
     if(!m_queue.empty()) {
@@ -297,6 +301,10 @@ Json::Value engine_t::info() {
     }
     
     results["running"] = m_running;
+
+    if(!m_status.empty()) {
+        results["status"] = m_status;
+    }
 
     return results;
 }
@@ -406,28 +414,26 @@ void engine_t::process(ev::idle&, int) {
         return;
     }
 
-    const slave::busy * state =
-        slave->second->state_downcast<const slave::busy*>();
-    
     switch(command) {
         case rpc::heartbeat:
+            slave->second->process_event(events::heartbeat_t());
             break;
 
         case rpc::push: {
-            // TEST: Only active slaves can push the data chunks.
-            BOOST_ASSERT(state != 0 && m_messages.more());
+            // TEST: Ensure we have the actual chunk following.
+            BOOST_ASSERT(m_messages.more());
 
             zmq::message_t message;
             m_messages.recv(&message);
             
-            state->job()->process_event(events::push_t(message));
+            slave->second->process_event(events::push_t(message));
 
             break;
         }
      
         case rpc::invoke: {
-            // TEST: Only active slaves can delegate new jobs.
-            BOOST_ASSERT(state != 0 && m_messages.more());
+            // TEST: Ensure we have the actual delegate following.
+            BOOST_ASSERT(m_messages.more());
 
             std::string target;
             zmq::message_t message;
@@ -435,23 +441,7 @@ void engine_t::process(ev::idle&, int) {
 
             m_messages.recv_multi(proxy);
 
-            // TODO: Do something useful.
-            // enqueue(
-            //     state->job()->clone(
-            //         target, 
-            //         blob_t(
-            //             message.data(), 
-            //             message.size()
-            //         )
-            //     )
-            // );
-
-            m_app.log->info(
-                "slave %s delegated a job for '%s' with %zu bytes of data",
-                slave_id.c_str(),
-                target.c_str(),
-                message.size()
-            );
+            m_app.log->error("delegation is not yet implemented");
 
             break;
         }
@@ -466,20 +456,12 @@ void engine_t::process(ev::idle&, int) {
 
             m_messages.recv_multi(proxy);
 
-            if(state) {
-                state->job()->process_event(events::error_t(code, message));
-            } else {
-                m_app.log->error("the app seems to be broken - %s", message.c_str());
-                stop();
-                return;
-            }
+            slave->second->process_event(events::error_t(code, message));
 
             break;
         }
 
         case rpc::release:
-            // TEST: Only active slaves can release the job.
-            BOOST_ASSERT(state != 0);
             slave->second->process_event(events::release_t());
             break;
 
@@ -487,9 +469,6 @@ void engine_t::process(ev::idle&, int) {
             m_app.log->warning("engine dropping unknown event type %d", command);
             m_messages.drop_remaining_parts();
     }
-
-    // NOTE: Count all the RPC events as heartbeats.
-    slave->second->process_event(events::heartbeat_t());
 
     if(!m_queue.empty() &&
        slave->second->state_downcast<const slave::idle*>())
@@ -534,7 +513,7 @@ void engine_t::cleanup(ev::timer&, int) {
             m_pool.erase(*it);
         }
 
-        m_app.log->info(
+        m_app.log->debug(
             "recycled %zu dead %s", 
             corpses.size(),
             corpses.size() == 1 ? "slave" : "slaves"

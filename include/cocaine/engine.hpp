@@ -99,7 +99,7 @@ class engine_t:
         ~engine_t();
 
         void start();
-        void stop();
+        void stop(std::string status = "");
         
         Json::Value info() /* const */;
 
@@ -179,6 +179,7 @@ class engine_t:
     private:
         // Current engine state.
         bool m_running;
+        std::string m_status;
 
         // The application.
         const app_t m_app;
@@ -186,7 +187,7 @@ class engine_t:
 
         // Job queue.
         job_queue_t m_queue;
-        
+
         // Slave pool.
         pool_map_t m_pool;
         

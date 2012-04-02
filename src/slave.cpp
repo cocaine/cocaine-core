@@ -51,6 +51,13 @@ bool slave_t::operator==(const slave_t& other) const {
     return id() == other.id();
 }
 
+void slave_t::unconsumed_event(const sc::event_base& event) {
+    m_engine.app().log->error(
+        "slave %s detected an unconsumed event",
+        id().c_str()
+    );
+}
+
 void slave_t::spawn() {
     m_pid = ::fork();
 
@@ -114,9 +121,7 @@ void slave_t::on_configure(const events::heartbeat_t& event) {
     );
 #endif
 
-    rpc::packed<rpc::configure> pack(
-        m_engine.context().config
-    );
+    rpc::packed<rpc::configure> pack(m_engine.context().config);
 
     m_engine.unicast(
         select::specific(*this),
@@ -191,8 +196,8 @@ void slave_t::on_signal(ev::child& event, int) {
                 "slave %s terminated abnormally",
                 id().c_str()
             );
-
-            m_engine.stop();
+            
+            m_engine.stop("the slaves terminate abnormally");
         } else if(WIFSIGNALED(event.rstatus)) {
             m_engine.app().log->warning(
                 "slave %s has been killed by signal %d: %s", 
@@ -201,7 +206,7 @@ void slave_t::on_signal(ev::child& event, int) {
                 strsignal(WTERMSIG(event.rstatus))
             );
             
-            m_engine.stop();
+            m_engine.stop("the slaves terminate abnormally");
         };
     }
 }
@@ -219,7 +224,7 @@ alive::~alive() {
 
 void alive::on_invoke(const events::invoke_t& event) {
     // TEST: Ensure that no job is being lost here.
-    BOOST_ASSERT(!m_job.get());
+    BOOST_ASSERT(!m_job.get() && event.job);
 
     m_job.reset(event.job);
     m_job->process_event(event);
@@ -243,4 +248,14 @@ void alive::on_release(const events::release_t& event) {
     
     m_job->process_event(event);
     m_job.reset();
+}
+
+void busy::on_chunk(const events::push_t& event) {
+    context<alive>().job()->process_event(event);
+    post_event(events::heartbeat_t());
+}
+
+void busy::on_error(const events::error_t& event) {
+    context<alive>().job()->process_event(event);
+    post_event(events::heartbeat_t());
 }

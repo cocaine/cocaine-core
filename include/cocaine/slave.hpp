@@ -58,6 +58,8 @@ class slave_t:
         
         bool operator==(const slave_t& other) const;
 
+        void unconsumed_event(const sc::event_base& event);
+    
     private:
         void spawn();
 
@@ -117,8 +119,8 @@ struct idle:
     public sc::simple_state<idle, alive>
 {
     public:
-        typedef sc::transition<
-            events::invoke_t, busy, alive, &alive::on_invoke
+        typedef boost::mpl::list<
+            sc::transition<events::invoke_t, busy, alive, &alive::on_invoke>
         > reactions;
 };
 
@@ -126,14 +128,20 @@ struct busy:
     public sc::simple_state<busy, alive>
 {
     public:
-        typedef sc::transition<
-            events::release_t, idle, alive, &alive::on_release
+        void on_chunk(const events::push_t& event);
+        void on_error(const events::error_t& event);
+
+        typedef boost::mpl::list<
+            sc::in_state_reaction<events::push_t,   busy, &busy::on_chunk>,
+            sc::in_state_reaction<events::error_t,  busy, &busy::on_error>,
+            sc::transition<events::release_t, idle, alive, &alive::on_release>
         > reactions;
 
     public:
         const std::auto_ptr<job_t>& job() const {
             return context<alive>().job();
         }
+
 };
 
 struct dead:
