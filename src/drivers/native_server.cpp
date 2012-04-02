@@ -21,7 +21,7 @@ using namespace cocaine::engine::drivers;
 using namespace cocaine::networking;
 
 native_job_t::native_job_t(native_server_t& driver, 
-                           const client::policy_t& policy, 
+                           const dealer::policy_t& policy, 
                            const blob_t& request, 
                            const route_t& route,
                            const std::string& tag):
@@ -93,7 +93,7 @@ void native_server_t::process(ev::idle&, int) {
 
     while(m_socket.more()) {
         std::string tag;
-        client::policy_t policy;
+        dealer::policy_t policy;
 
         request_proxy_t tier(tag, policy, &message);
 

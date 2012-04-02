@@ -18,7 +18,8 @@
 
 #include "cocaine/common.hpp"
 
-namespace cocaine { namespace client {
+namespace cocaine {
+namespace dealer {
 
 struct policy_t {
     policy_t():
@@ -48,7 +49,7 @@ enum error_code {
     timeout_error  = 504,
     deadline_error = 520
 };
-    
+
 }}
 
 #endif // _COCAINE_DEALER_TYPES_HPP_INCLUDED_

@@ -12,26 +12,14 @@
 
 		"message_cache" :
 		{
-			"max_ram_limit" : 1024,
-			"type" : "PERSISTENT"
-		},
-
-		"persistent_storage" :
-		{
-			"eblob_path" : "/var/tmp/eblobs",
-			"eblob_sync_interval" : 3
+			"max_ram_limit" : 4024,
+			"type" : "RAM_ONLY"
 		},
 
 		"services" : [
 			{
             	"name" : "karma-tests",
 				"app_name" : "karma@1",
-				"hosts_file" : "/home/rimz/cocaine/tests/hosts",
-				"control_port" : 5000
-			},
-			{
-            	"name" : "cox",
-				"app_name" : "cox_bug_run",
 				"hosts_file" : "/home/rimz/cocaine/tests/hosts",
 				"control_port" : 5000
 			}

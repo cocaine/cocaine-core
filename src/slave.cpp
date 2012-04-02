@@ -178,7 +178,7 @@ void slave_t::on_timeout(ev::timer&, int) {
     if(state) {
         state->job()->process_event(
             events::error_t(
-                client::timeout_error, 
+                dealer::timeout_error, 
                 "the job has timed out"
             )
         );

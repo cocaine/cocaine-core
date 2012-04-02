@@ -26,7 +26,7 @@ job_t::job_t(drivers::driver_t& driver):
     initiate();
 }
 
-job_t::job_t(drivers::driver_t& driver, client::policy_t policy):
+job_t::job_t(drivers::driver_t& driver, dealer::policy_t policy):
     m_driver(driver),
     m_method(driver.method()),
     m_policy(policy)
@@ -47,7 +47,7 @@ job_t::job_t(drivers::driver_t& driver, const blob_t& request):
     initiate();
 }
 
-job_t::job_t(drivers::driver_t& driver, client::policy_t policy, const blob_t& request):
+job_t::job_t(drivers::driver_t& driver, dealer::policy_t policy, const blob_t& request):
     m_driver(driver),
     m_method(driver.method()),
     m_policy(policy),
@@ -98,7 +98,7 @@ void job_t::react(const events::release_t& event) {
 void job_t::discard(ev::periodic&, int) {
     process_event(
         events::error_t(
-            client::deadline_error,
+            dealer::deadline_error,
             "the job has expired"
         )
     );

@@ -251,7 +251,7 @@ void engine_t::stop(std::string status) {
         while(!m_queue.empty()) {
             m_queue.front().process_event(
                 events::error_t(
-                    client::server_error,
+                    dealer::server_error,
                     "engine is not active"
                 )
             );
@@ -321,7 +321,7 @@ void engine_t::enqueue(job_queue_t::value_type job, bool overflow) {
 
         job->process_event(
             events::error_t(
-                client::server_error,
+                dealer::server_error,
                 "engine is not active"
             )
         );
@@ -367,7 +367,7 @@ void engine_t::enqueue(job_queue_t::value_type job, bool overflow) {
         } else if(!overflow && (m_queue.size() > m_app.policy.queue_limit)) {
             job->process_event(
                 events::error_t(
-                    client::resource_error,
+                    dealer::resource_error,
                     "the queue is full"
                 )
             );

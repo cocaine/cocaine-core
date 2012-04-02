@@ -110,8 +110,9 @@ private:
 	void log_refreshed_hosts_and_handles(const hosts_info_list_t& hosts,
 										 const handles_info_list_t& handles);
 
-	void enqueue_responce_callback(cached_response_prt_t response);
+	void enqueue_responce(cached_response_prt_t response);
 	void dispatch_responces();
+	bool responces_queues_empty() const;
 
 	// send collected statistics to global stats collector
 	void update_statistics();
@@ -147,6 +148,8 @@ private:
 
 	boost::thread thread_;
 	boost::mutex mutex_;
+	boost::condition_variable cond_;
+
 	volatile bool is_running_;
 
 	// responses callbacks
@@ -178,10 +181,27 @@ service<LSD_T>::info() const {
 	return info_;
 }
 
+template <typename LSD_T> bool
+service<LSD_T>::responces_queues_empty() const {
+	responces_map_t::const_iterator it = received_responces_.begin();
+	for (; it != received_responces_.end(); ++it) {
+		responces_deque_ptr_t handle_resp_queue = it->second;
+		if (!handle_resp_queue->empty()) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 template <typename LSD_T> void
 service<LSD_T>::dispatch_responces() {
 	while (is_running_) {
 		boost::mutex::scoped_lock lock(mutex_);
+
+		while(responces_queues_empty()) {
+            cond_.wait(lock);
+        }
 
 		// go through all callbacks
 		registered_callbacks_map_t::iterator it = responses_callbacks_map_.begin();
@@ -218,7 +238,6 @@ service<LSD_T>::dispatch_responces() {
 				}
 			}
 		}
-
 	}
 }
 
@@ -283,7 +302,7 @@ service<LSD_T>::register_responder_callback(boost::function<void(const response&
 }
 
 template <typename LSD_T> void
-service<LSD_T>::enqueue_responce_callback(cached_response_prt_t response) {
+service<LSD_T>::enqueue_responce(cached_response_prt_t response) {
 
 	// validate response
 	if (!response) {
@@ -301,8 +320,8 @@ service<LSD_T>::enqueue_responce_callback(cached_response_prt_t response) {
 
 	// check whether such callback is already registered
 	if (callback_it == responses_callbacks_map_.end()) {
-
 		// no callback -- drop response
+		lock.unlock();
 		return;
 	}
 
@@ -329,6 +348,8 @@ service<LSD_T>::enqueue_responce_callback(cached_response_prt_t response) {
 
 	// add responce to queue
 	handle_resp_queue->push_back(response);
+	lock.unlock();
+	cond_.notify_one();
 }
 
 template <typename LSD_T> void
@@ -589,7 +610,7 @@ service<LSD_T>::create_new_handles(const handles_info_list_t& handles, const hos
 
 		// set responce callback
 		typedef typename handle<LSD_T>::responce_callback_t resp_callback;
-		resp_callback callback = boost::bind(&service<LSD_T>::enqueue_responce_callback, this, _1);
+		resp_callback callback = boost::bind(&service<LSD_T>::enqueue_responce, this, _1);
 		handle_ptr->set_responce_callback(callback);
 
 		// find corresponding unhandled msgs queue
@@ -606,6 +627,7 @@ service<LSD_T>::create_new_handles(const handles_info_list_t& handles, const hos
 				if (handle_ptr->messages_cache().get()) {
 					logger()->log(PLOG_DEBUG, "appending existing mesage queue for handle %s, queue size: %d", handles[i].name_.c_str(), msg_queue->size());
 					handle_ptr->messages_cache()->append_message_queue(msg_queue);
+					handle_ptr->notify_new_messages_enqueued();
 				}
 				else {
 					std::string error_str = "found empty handle message queue when handle exists!";
