@@ -72,6 +72,18 @@ struct push_t:
 //     zmq::message_t& message;
 // };
 
+struct delegate_t:
+    public sc::event<delegate_t>
+{
+    delegate_t(const std::string& target_, zmq::message_t& message_):
+        target(target_),
+        message(message_)
+    { }
+
+    const std::string& target;
+    zmq::message_t& message;
+};
+
 struct error_t:
     public sc::event<error_t>
 {

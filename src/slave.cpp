@@ -250,8 +250,13 @@ void alive::on_release(const events::release_t& event) {
     m_job.reset();
 }
 
-void busy::on_chunk(const events::push_t& event) {
+void busy::on_push(const events::push_t& event) {
     context<alive>().job()->process_event(event);
+    post_event(events::heartbeat_t());
+}
+
+void busy::on_delegate(const events::delegate_t& event) {
+    context<slave_t>().m_engine.app().log->error("delegation is not implemented yet");
     post_event(events::heartbeat_t());
 }
 

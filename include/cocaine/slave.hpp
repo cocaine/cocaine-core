@@ -51,6 +51,7 @@ class slave_t:
 {
     friend struct slave::unknown;
     friend struct slave::alive;
+    friend struct slave::busy;
 
     public:
         slave_t(engine_t& engine);
@@ -128,12 +129,14 @@ struct busy:
     public sc::simple_state<busy, alive>
 {
     public:
-        void on_chunk(const events::push_t& event);
+        void on_push(const events::push_t& event);
+        void on_delegate(const events::delegate_t& event);
         void on_error(const events::error_t& event);
 
         typedef boost::mpl::list<
-            sc::in_state_reaction<events::push_t,   busy, &busy::on_chunk>,
-            sc::in_state_reaction<events::error_t,  busy, &busy::on_error>,
+            sc::in_state_reaction<events::push_t,     busy, &busy::on_push>,
+            sc::in_state_reaction<events::delegate_t, busy, &busy::on_delegate>,
+            sc::in_state_reaction<events::error_t,    busy, &busy::on_error>,
             sc::transition<events::release_t, idle, alive, &alive::on_release>
         > reactions;
 

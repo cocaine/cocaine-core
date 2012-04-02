@@ -441,7 +441,7 @@ void engine_t::process(ev::idle&, int) {
 
             m_messages.recv_multi(proxy);
 
-            m_app.log->error("delegation is not yet implemented");
+            slave->second->process_event(events::delegate_t(target, message));
 
             break;
         }
