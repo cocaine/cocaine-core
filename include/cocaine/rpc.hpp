@@ -32,47 +32,33 @@ enum codes {
 // --------------
 
 template<codes Code> 
-struct packed {
-    typedef boost::tuple<int> type;
-
+struct packed:
+    public boost::tuple<int>
+{
     packed():
-        pack(Code)
+        boost::tuple<int>(Code)
     { }
-
-    type& get() {
-        return pack;
-    }
-
-private:
-    type pack;
 };
 
 // Specific packers
 // ----------------
 
 template<>
-struct packed<configure> {
-    typedef boost::tuple<int, const config_t&> type;
-
+struct packed<configure>:
+    public boost::tuple<int, const config_t&>
+{
     packed(const config_t& config):
-        pack(configure, config)
+        boost::tuple<int, const config_t&>(configure, config)
     { }
-
-    type& get() {
-        return pack;
-    }
-
-private:
-    type pack;
 };
 
 template<>
-struct packed<invoke> {
-    typedef boost::tuple<int, const std::string&, zmq::message_t&> type;
-
+struct packed<invoke>:
+    public boost::tuple<int, const std::string&, zmq::message_t&>
+{
     packed(const std::string& method, const void * data, size_t size):
-        message(size),
-        pack(invoke, method, message)
+        boost::tuple<int, const std::string&, zmq::message_t&>(invoke, method, message),
+        message(size)
     {
         memcpy(
             message.data(),
@@ -81,22 +67,17 @@ struct packed<invoke> {
         );
     }
 
-    type& get() {
-        return pack;
-    }
-
 private:
     zmq::message_t message;
-    type pack;
 };
 
 template<>
-struct packed<push> {
-    typedef boost::tuple<int, zmq::message_t&> type;
-
+struct packed<push>:
+    public boost::tuple<int, zmq::message_t&>
+{
     packed(const void * data, size_t size):
-        message(size),
-        pack(push, message)
+        boost::tuple<int, zmq::message_t&>(push, message),
+        message(size)
     {
         memcpy(
             message.data(),
@@ -106,35 +87,23 @@ struct packed<push> {
     }
 
     packed(zmq::message_t& message_):
-        pack(push, message)
+        boost::tuple<int, zmq::message_t&>(push, message)
     {
         message.move(&message_);
     }
 
-    type& get() {
-        return pack;
-    }
-
 private:
     zmq::message_t message;
-    type pack;
 };
 
 template<>
-struct packed<error> {
+struct packed<error>:
     // NOTE: Not a string reference to allow literal error messages.
-    typedef boost::tuple<int, int, std::string> type;
-
+    public boost::tuple<int, int, std::string>
+{
     packed(int code, const std::string& message):
-        pack(error, code, message)
+        boost::tuple<int, int, std::string>(error, code, message)
     { }
-
-    type& get() {
-        return pack;
-    }
-
-private:
-    type pack;
 };
     
 }}}

@@ -40,7 +40,7 @@ class overseer_t:
 
         template<class Packed>
         void send(Packed& packed) {
-            m_messages.send_multi(packed.get());
+            m_messages.send_multi(packed);
         }
 
     private:

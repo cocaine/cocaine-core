@@ -36,7 +36,7 @@ class native_job_t:
 
     private:
         template<class Packed>
-        void send(Packed& pack) {
+        void send(Packed& packed) {
             zeromq_server_t& server = static_cast<zeromq_server_t&>(m_driver);
 
             try {    
@@ -54,7 +54,7 @@ class native_job_t:
             server.socket().send(null, ZMQ_SNDMORE);
             
             server.socket().send(m_tag, ZMQ_SNDMORE);
-            server.socket().send_multi(pack.get());
+            server.socket().send_multi(packed);
         }
 
     private:

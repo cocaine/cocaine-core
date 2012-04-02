@@ -166,7 +166,7 @@ class engine_t:
                 return false;
             }
 
-            m_messages.send_multi(packed.get());
+            m_messages.send_multi(packed);
 
             return true;
         }
