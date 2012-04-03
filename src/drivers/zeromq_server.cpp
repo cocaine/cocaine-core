@@ -126,10 +126,11 @@ void zeromq_server_t::process(ev::idle&, int) {
             m_method.c_str()
         );
         
+        m_socket.drop_remaining_parts();
         return;
     }
 
-    while(m_socket.more()) {
+    do {
         m_socket.recv(&message);
 
         m_engine.enqueue(
@@ -142,7 +143,7 @@ void zeromq_server_t::process(ev::idle&, int) {
                 route
             )
         );
-    }
+    } while(m_socket.more());
 }
 
 void zeromq_server_t::event(ev::io&, int) {

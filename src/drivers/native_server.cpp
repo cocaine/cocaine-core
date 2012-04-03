@@ -91,16 +91,14 @@ void native_server_t::process(ev::idle&, int) {
         return;
     }
 
-    while(m_socket.more()) {
+    do {
         std::string tag;
         dealer::policy_t policy;
 
         request_proxy_t tier(tag, policy, &message);
 
         try {
-            if(!m_socket.recv_multi(tier)) {
-                throw std::runtime_error("incomplete object");
-            }
+            m_socket.recv_multi(tier);
         } catch(const std::runtime_error& e) {
             m_engine.app().log->error(
                 "driver %s got a corrupted request - %s",
@@ -124,5 +122,5 @@ void native_server_t::process(ev::idle&, int) {
                 tag
             )
         );
-    }
+    } while(m_socket.more());
 }
