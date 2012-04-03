@@ -281,7 +281,7 @@ class channel_t:
 
         template<class Head>
         bool recv_multi(cons<Head, null_type>& o, int flags = 0) {
-            return recv(o.get_head());
+            return recv(o.get_head(), flags);
         }
 
         template<class Head, class Tail>
