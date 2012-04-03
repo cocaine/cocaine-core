@@ -98,7 +98,7 @@ void native_server_t::process(ev::idle&, int) {
         request_proxy_t tier(tag, policy, &message);
 
         try {
-            if(!m_socket.recv_multi(tier, ZMQ_NOBLOCK)) {
+            if(!m_socket.recv_multi(tier)) {
                 throw std::runtime_error("incomplete object");
             }
         } catch(const std::runtime_error& e) {
