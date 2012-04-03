@@ -204,12 +204,10 @@ class channel_t:
         // Packs and sends a single object.
         template<class T>
         bool send(const T& value, int flags = 0) {
-            zmq::message_t message;
-            
             msgpack::sbuffer buffer;
             msgpack::pack(buffer, value);
             
-            message.rebuild(buffer.size());
+            zmq::message_t message(buffer.size());
             memcpy(message.data(), buffer.data(), buffer.size());
             
             return send(message, flags);
@@ -234,8 +232,8 @@ class channel_t:
 
         template<class Head, class Tail>
         bool send_multi(const cons<Head, Tail>& o, int flags = 0) {
-            return (send(o.get_head(), ZMQ_SNDMORE | flags) 
-                    && send_multi(o.get_tail(), flags));
+            return send(o.get_head(), ZMQ_SNDMORE | flags) &&
+                   send_multi(o.get_tail(), flags);
         }
 
         // Receives and unpacks a single object.
@@ -251,7 +249,8 @@ class channel_t:
             try { 
                 msgpack::unpack(
                     &unpacked,
-                    static_cast<const char*>(message.data()), message.size()
+                    static_cast<const char*>(message.data()),
+                    message.size()
                 );
                 
                 unpacked.get().convert(&result);
@@ -282,8 +281,12 @@ class channel_t:
 
         template<class Head, class Tail>
         bool recv_multi(cons<Head, Tail>& o, int flags = 0) {
-            return (recv(o.get_head(), flags)
-                    && recv_multi(o.get_tail(), flags));
+            if(more()) {
+                return recv(o.get_head(), flags) &&
+                       recv_multi(o.get_tail(), flags);
+            } else {
+                throw std::runtime_error("corrupted object - not enough parts");
+            }
         }
 };
 
