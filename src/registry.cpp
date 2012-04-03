@@ -26,7 +26,8 @@ namespace fs = boost::filesystem;
 struct is_module {
     template<typename T> 
     bool operator()(const T& entry) {
-        return fs::is_regular(entry) && entry.path().extension() == ".cocaine-module";
+        return fs::is_regular(entry) &&
+               entry.path().extension() == ".cocaine-module";
     }
 };
 

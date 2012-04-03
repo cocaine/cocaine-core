@@ -95,10 +95,10 @@ void native_server_t::process(ev::idle&, int) {
         std::string tag;
         dealer::policy_t policy;
 
-        request_proxy_t tier(tag, policy, &message);
+        request_proxy_t proxy(tag, policy, &message);
 
         try {
-            m_socket.recv_multi(tier);
+            m_socket.recv_multi(proxy);
         } catch(const std::runtime_error& e) {
             m_engine.app().log->error(
                 "driver %s got a corrupted request - %s",
