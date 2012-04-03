@@ -279,13 +279,19 @@ class channel_t:
             return true;
         }
 
+        template<class Head>
+        bool recv_multi(cons<Head, null_type>& o, int flags = 0) {
+            return recv(o.get_head());
+        }
+
         template<class Head, class Tail>
         bool recv_multi(cons<Head, Tail>& o, int flags = 0) {
-            if(more()) {
-                return recv(o.get_head(), flags) &&
-                       recv_multi(o.get_tail(), flags);
+            if(!recv(o.get_head(), flags)) {
+                return false;
+            } else if(more()) {
+                return recv_multi(o.get_tail(), flags);
             } else {
-                throw std::runtime_error("corrupted object - not enough parts");
+                throw std::runtime_error("corrupted object - misplaced chunks");
             }
         }
 };
