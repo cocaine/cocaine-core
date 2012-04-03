@@ -88,7 +88,7 @@ struct unknown:
     public:
         typedef boost::mpl::list<
             sc::transition<events::heartbeat_t, alive, slave_t, &slave_t::on_configure>,
-            sc::transition<events::terminate_t, dead,  slave_t, &slave_t::on_terminate>
+            sc::transition<events::terminate_t, dead, slave_t, &slave_t::on_terminate>
         > reactions;
 };
 
@@ -98,7 +98,7 @@ struct alive:
     public:
         typedef boost::mpl::list<
             sc::in_state_reaction<events::heartbeat_t, slave_t, &slave_t::on_heartbeat>,
-            sc::transition<events::terminate_t, dead,  slave_t, &slave_t::on_terminate>
+            sc::transition<events::terminate_t, dead, slave_t, &slave_t::on_terminate>
         > reactions;
 
         ~alive();
@@ -134,9 +134,9 @@ struct busy:
         void on_error(const events::error_t& event);
 
         typedef boost::mpl::list<
-            sc::in_state_reaction<events::push_t,     busy, &busy::on_push>,
+            sc::in_state_reaction<events::push_t, busy, &busy::on_push>,
             sc::in_state_reaction<events::delegate_t, busy, &busy::on_delegate>,
-            sc::in_state_reaction<events::error_t,    busy, &busy::on_error>,
+            sc::in_state_reaction<events::error_t, busy, &busy::on_error>,
             sc::transition<events::release_t, idle, alive, &alive::on_release>
         > reactions;
 
