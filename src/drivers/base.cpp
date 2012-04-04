@@ -29,12 +29,12 @@ driver_t::driver_t(engine_t& engine, const std::string& method, const Json::Valu
     , m_spent_on_slaves(0.0f)
 #endif
 {
-    std::string endpoint(args.get("emitter", "").asString());
+    // std::string endpoint(args.get("emitter", "").asString());
 
-    if(!endpoint.empty()) {
-        m_emitter.reset(new networking::socket_t(context().io(), ZMQ_PUB));
-        m_emitter->bind(endpoint);
-    }
+    // if(!endpoint.empty()) {
+    //     m_emitter.reset(new networking::socket_t(context().io(), ZMQ_PUB));
+    //     m_emitter->bind(endpoint);
+    // }
 }
 
 driver_t::~driver_t() { }

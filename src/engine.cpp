@@ -333,8 +333,8 @@ void engine_t::enqueue(job_queue_t::value_type job, bool overflow) {
     events::invoke_t event(job);
 
     rpc::packed<rpc::invoke> packed(
-        job->method(), 
-        job->request().data(), 
+        job->method(),
+        job->request().data(),
         job->request().size()
     );
 

@@ -99,7 +99,7 @@ class engine_t:
         ~engine_t();
 
         void start();
-        void stop(std::string status = "");
+        void stop(std::string status = std::string());
         
         Json::Value info() /* const */;
 

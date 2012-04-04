@@ -74,7 +74,7 @@ void slave_t::spawn() {
                     cgroup_strerror(rv)
                 );
 
-                exit(EXIT_FAILURE);
+                std::exit(EXIT_FAILURE);
             }
         }
 #endif
@@ -256,6 +256,7 @@ void busy::on_push(const events::push_t& event) {
 }
 
 void busy::on_delegate(const events::delegate_t& event) {
+    context<slave_t>().m_engine.app().log->error("the delegation is not implemented yet");
     post_event(events::heartbeat_t());
 }
 
