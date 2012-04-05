@@ -178,6 +178,7 @@ class engine_t:
 
     private:
         // Current engine state.
+        // XXX: Do it in a better way.
         bool m_running;
         std::string m_status;
 

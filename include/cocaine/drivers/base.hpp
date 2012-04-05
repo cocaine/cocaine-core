@@ -22,7 +22,6 @@
 # include <boost/accumulators/statistics/sum.hpp>
 #endif
 
-// #include "cocaine/events.hpp"
 #include "cocaine/networking.hpp"
 #include "cocaine/object.hpp"
 
@@ -52,8 +51,6 @@ class driver_t:
         // Retrieves the runtime statistics from the driver.
         virtual Json::Value info() /* const */;
 
-        // void emit(const events::emit_t& event);
-
     public:
         const engine_t& engine() {
             return m_engine;
@@ -73,8 +70,6 @@ class driver_t:
         const std::string m_method;
 
     private:
-        // std::auto_ptr<networking::socket_t> m_emitter;
-
 #if BOOST_VERSION >= 103600
         accumulator_set< float, features<tag::sum, tag::median> > m_spent_in_queues;
         accumulator_set< float, features<tag::sum, tag::median> > m_spent_on_slaves;

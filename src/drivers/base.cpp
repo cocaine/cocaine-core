@@ -11,8 +11,6 @@
 // limitations under the License.
 //
 
-// #include <iomanip>
-
 #include "cocaine/drivers/base.hpp"
 
 #include "cocaine/context.hpp"
@@ -28,14 +26,7 @@ driver_t::driver_t(engine_t& engine, const std::string& method, const Json::Valu
     , m_spent_in_queues(0.0f)
     , m_spent_on_slaves(0.0f)
 #endif
-{
-    // std::string endpoint(args.get("emitter", "").asString());
-
-    // if(!endpoint.empty()) {
-    //     m_emitter.reset(new networking::socket_t(context().io(), ZMQ_PUB));
-    //     m_emitter->bind(endpoint);
-    // }
-}
+{ }
 
 driver_t::~driver_t() { }
 
@@ -74,23 +65,3 @@ Json::Value driver_t::info() {
 
     return results;
 }
-
-// void driver_t::emit(const events::emit_t& event) {
-//     if(!m_emitter) {
-//         return;
-//     }
-    
-//     zmq::message_t message;
-//     std::stringstream envelope;
-    
-//     ev::tstamp now = ev::get_default_loop().now();
-
-//     envelope << event.key << " " << context().config.runtime.hostname << " "
-//              << std::fixed << std::setprecision(3) << now;
-
-//     message.rebuild(envelope.str().size());
-//     memcpy(message.data(), envelope.str().data(), envelope.str().size());
-
-//     m_emitter->send(message, ZMQ_SNDMORE);
-//     m_emitter->send(event.message);        
-// }

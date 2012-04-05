@@ -59,6 +59,7 @@ class overseer_t:
         config_t m_config;
         
         // Runtime application context.
+        // XXX: Initialize it in a better way.
         std::auto_ptr<context_t> m_context;
         std::auto_ptr<const app_t> m_app;
         std::auto_ptr<plugin_t> m_plugin;

@@ -60,18 +60,6 @@ struct push_t:
     zmq::message_t& message;
 };
 
-// struct emit_t:
-//     public sc::event<emit_t>
-// {
-//     emit_t(const std::string& key_, zmq::message_t& message_):
-//         key(key_),
-//         message(message_)
-//     { }
-
-//     const std::string key;
-//     zmq::message_t& message;
-// };
-
 struct delegate_t:
     public sc::event<delegate_t>
 {

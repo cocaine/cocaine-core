@@ -61,6 +61,11 @@ void app_t::initialize(context_t& ctx) {
         "queue-limit",
         ctx.config.defaults.queue_limit
     ).asUInt();
+
+    policy.grow_threshold = manifest["engine"].get(
+        "grow-threshold",
+        policy.queue_limit / policy.pool_limit
+    ).asUInt();
 }
 
 endpoint::endpoint(const std::string& name) {

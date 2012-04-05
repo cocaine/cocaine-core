@@ -37,6 +37,7 @@ class app_t {
             float suicide_timeout;
             unsigned int pool_limit;
             unsigned int queue_limit;
+            unsigned int grow_threshold;
         } policy;
 
         boost::shared_ptr<logging::logger_t> log;
