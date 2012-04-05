@@ -33,6 +33,9 @@ int python_io_t::constructor(python_io_t * self, PyObject * args, PyObject * kwa
 
 void python_io_t::destructor(python_io_t * self) {
     self->ob_type->tp_free(self);
+    if(!self->result.empty()){
+        self->result.clear();
+    }
 }
 
 PyObject* python_io_t::read(python_io_t * self, PyObject * args, PyObject * kwargs) {
@@ -48,19 +51,35 @@ PyObject* python_io_t::read(python_io_t * self, PyObject * args, PyObject * kwar
         return result;
     }
 
-    blob_t chunk;
+    if(self->result.empty()) {
+        Py_BEGIN_ALLOW_THREADS
+            self->result = self->io->pull(
+                block ? PyObject_IsTrue(block) : false
+            );
+        Py_END_ALLOW_THREADS
+        self->offset = 0;
+    }
 
-    Py_BEGIN_ALLOW_THREADS
-        chunk = self->io->pull(
-            block ? PyObject_IsTrue(block) : false
-        );
-    Py_END_ALLOW_THREADS
+    if(!self->result.empty() && (self->result.size() - self->offset)) {
 
-    if(!chunk.empty()) {
-        result = PyBytes_FromStringAndSize(
-            static_cast<const char*>(chunk.data()),
-            chunk.size()
-        );
+        //if the size argument is negative or omitted, read all data until EOF is reached.
+        if (size <= 0){
+            result = PyBytes_FromStringAndSize(
+                static_cast<const char *>(self->result.data()) + self->offset,
+                self->result.size()
+            );
+            self->offset += self->result.size();
+        }
+        else{
+            int size_to_read  = size > (self->result.size() - self->offset) ? (self->result.size() - self->offset) : size;
+            result = PyBytes_FromStringAndSize(
+                static_cast<const char *>(self->result.data()) + self->offset,
+                size_to_read
+            );
+            self->offset += size_to_read;
+        }
+
+
     } else {
         result = PyBytes_FromString("");
     }
@@ -91,7 +110,7 @@ PyObject* python_io_t::write(python_io_t * self, PyObject * args) {
 }
 
 PyObject* python_io_t::delegate(python_io_t * self, PyObject * args, PyObject * kwargs) {
-    static char method_keyword[] = "method"; 
+    static char method_keyword[] = "method";
     static char message_keyword[] = "message";
     static char * keywords[] = { method_keyword, message_keyword, NULL };
 
