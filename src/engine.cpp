@@ -458,6 +458,11 @@ void engine_t::process(ev::idle&, int) {
 
             slave->second->process_event(events::error_t(code, message));
 
+            if(code == dealer::server_error) {
+                m_app.log->error("the app seems to be broken");
+                stop();
+            }
+
             break;
         }
 
