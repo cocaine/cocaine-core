@@ -59,7 +59,8 @@ PyObject* python_io_t::read(python_io_t * self, PyObject * args, PyObject * kwar
     if(!chunk.empty()) {
         result = PyBytes_FromStringAndSize(
             static_cast<const char*>(chunk.data()),
-            chunk.size());
+            chunk.size()
+        );
     } else {
         result = PyBytes_FromString("");
     }
