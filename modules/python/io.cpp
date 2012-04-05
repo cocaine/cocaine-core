@@ -33,8 +33,9 @@ int python_io_t::constructor(python_io_t * self, PyObject * args, PyObject * kwa
 
 void python_io_t::destructor(python_io_t * self) {
     self->ob_type->tp_free(self);
-    if(!self->result.empty()){
-        self->result.clear();
+    
+    if(!self->request.empty()){
+        self->request.clear();
     }
 }
 
@@ -43,43 +44,36 @@ PyObject* python_io_t::read(python_io_t * self, PyObject * args, PyObject * kwar
     static char size_keyword[] = "size";
     static char * keywords[] = { size_keyword, block_keyword, NULL };
 
+    Py_ssize_t size = 0;
     PyObject * block = NULL;
     PyObject * result = NULL;
-    Py_ssize_t size = 0;
 
     if(!PyArg_ParseTupleAndKeywords(args, kwargs, "|nO:read", keywords, &size, &block)) {
         return result;
     }
 
-    if(self->result.empty()) {
+    if(self->request.empty()) {
         Py_BEGIN_ALLOW_THREADS
-            self->result = self->io->pull(
+            self->request = self->io->pull(
                 block ? PyObject_IsTrue(block) : false
             );
         Py_END_ALLOW_THREADS
+        
         self->offset = 0;
     }
 
-    if(!self->result.empty() && (self->result.size() - self->offset)) {
-
-        //if the size argument is negative or omitted, read all data until EOF is reached.
-        if (size <= 0){
-            result = PyBytes_FromStringAndSize(
-                static_cast<const char *>(self->result.data()) + self->offset,
-                self->result.size()
-            );
-            self->offset += self->result.size();
-        }
-        else{
-            int size_to_read  = size > (self->result.size() - self->offset) ? (self->result.size() - self->offset) : size;
-            result = PyBytes_FromStringAndSize(
-                static_cast<const char *>(self->result.data()) + self->offset,
-                size_to_read
-            );
-            self->offset += size_to_read;
+    if(!self->request.empty() && (self->request.size() - self->offset)) {
+        // NOTE: If the size argument is negative or omitted, read all data until EOF is reached.
+        if(size <= 0 || size > (self->request.size() - self->offset)) {
+            size = self->request.size() - self->offset;
         }
 
+        result = PyBytes_FromStringAndSize(
+            static_cast<const char *>(self->request.data()) + self->offset,
+            size
+        );
 
+        self->offset += size;
     } else {
         result = PyBytes_FromString("");
     }

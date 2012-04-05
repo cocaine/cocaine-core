@@ -42,8 +42,9 @@ class python_io_t {
 
     public:
         io_t * io;
+
+        blob_t request;
         off_t offset;
-        blob_t result;
 };
 
 }}
