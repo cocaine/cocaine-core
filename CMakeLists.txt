@@ -118,28 +118,26 @@ TARGET_LINK_LIBRARIES(cocained
     boost_program_options-mt
     cocaine-core)
 
-IF(NOT DISABLE_DEALER)
-    FILE(GLOB DEALER_SOURCES
-        "src/dealer/*.cpp")
+FILE(GLOB DEALER_SOURCES
+    "src/dealer/*.cpp")
 
-    ADD_LIBRARY(cocaine-dealer SHARED
-        ${DEALER_SOURCES})
+ADD_LIBRARY(cocaine-dealer SHARED
+    ${DEALER_SOURCES})
 
-    TARGET_LINK_LIBRARIES(cocaine-dealer
-        boost_thread-mt
-        crypto
-        curl
-        json
-        msgpack
-        zmq
-        eblob_cpp
-        eblob
-        ${Boost_SYSTEM_LIBRARY}
-        ${LIBUUID_LIBRARY})
+TARGET_LINK_LIBRARIES(cocaine-dealer
+    boost_thread-mt
+    crypto
+    curl
+    json
+    msgpack
+    zmq
+    eblob_cpp
+    eblob
+    ${Boost_SYSTEM_LIBRARY}
+    ${LIBUUID_LIBRARY})
 
-    SET_TARGET_PROPERTIES(cocaine-dealer PROPERTIES
-        VERSION 1)
-ENDIF()
+SET_TARGET_PROPERTIES(cocaine-dealer PROPERTIES
+    VERSION 1)
 
 ADD_SUBDIRECTORY(modules)
 
@@ -147,6 +145,7 @@ INSTALL(
     TARGETS
         cocaine-common
         cocaine-core
+        cocaine-dealer
         cocained
         json
     RUNTIME DESTINATION bin COMPONENT runtime
