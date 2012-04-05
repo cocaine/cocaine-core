@@ -118,7 +118,7 @@ TARGET_LINK_LIBRARIES(cocained
     boost_program_options-mt
     cocaine-core)
 
-IF (${DEALER})
+IF(NOT DISABLE_DEALER)
     FILE(GLOB DEALER_SOURCES
         "src/dealer/*.cpp")
 
