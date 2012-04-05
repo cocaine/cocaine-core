@@ -1,3 +1,7 @@
 [submodule "foreign/http-parser"]
 	path = foreign/http-parser
-	url = git://github.com/joyent/http-parser.git
+    url = git://github.com/joyent/http-parser.git
+
+[submodule "foreign/fastcgi-daemon"]
+	path = foreign/fastcgi-daemon
+	url = git://github.com/golubtsov/Fastcgi-Daemon.git
