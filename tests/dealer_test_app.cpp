@@ -106,24 +106,41 @@ void test_experiment() {
 
 int prev = -1;
 int add_messages_count_tmp;
+int bad_responces = 0;
 
 void response_callback(const cd::response& response, const cd::response_info& info) {
-	if (info.error != cd::MESSAGE_CHOKE) {
+	if (info.error == cd::MESSAGE_CHOKE) {
+		++msg_counter;
+		//std::cout << "resp (CHOKE) uuid: " << response.uuid << std::endl;
+		//std::cout << "resp done! " << msg_counter << std::endl;
+		//++msg_counter;
+
+		if (msg_counter % 10000 == 0) {
+			std::cout << "good responces: " << msg_counter << "\n";
+		}
+
+		if (msg_counter + bad_responces == add_messages_count_tmp) {
+			std::cout << "good responces: " << msg_counter << "\n";
+			std::cout << "bad responces: " << bad_responces << "\n";
+			std::cout << "elapsed: " << timer.elapsed().as_double() << " secs" << std::endl;
+		}
+	}
+	else if (info.error == cd::MESSAGE_CHUNK) {
 		//std::cout << "resp (CHUNK) uuid: " << response.uuid << std::endl;
 		//std::string st((const char*)response.data, response.size);
 		//std::cout << "resp data: " << st << std::endl;
 
-		
-		//std::string st((const char*)response.data, response.size);
+		/*
+		std::string st((const char*)response.data, response.size);
 
 		// deserialize it.
-        //msgpack::unpacked msg;
-        //msgpack::unpack(&msg, (const char*)response.data, response.size);
+        msgpack::unpacked msg;
+        msgpack::unpack(&msg, (const char*)response.data, response.size);
  
         // print the deserialized object.
-        //msgpack::object obj = msg.get();
-        //std::cout << "resp data: " << obj << std::endl;
- 		
+        msgpack::object obj = msg.get();
+        std::cout << "resp data: " << obj << std::endl;
+ 		*/
  		/*
         // convert it into statically typed object.
         std::map<std::string, int> m;
@@ -134,14 +151,9 @@ void response_callback(const cd::response& response, const cd::response_info& in
         */
 	}
 	else {
-		++msg_counter;
-		//std::cout << "resp (CHOKE) uuid: " << response.uuid << std::endl;
-		//std::cout << "resp done! " << msg_counter << std::endl;
-		//++msg_counter;
-		//std::cout << "good responces: " << msg_counter << "\n";
-		if (msg_counter == add_messages_count_tmp) {
-			std::cout << "elapsed: " << timer.elapsed().as_double() << " secs" << std::endl;
-		}
+		++bad_responces;
+		std::cout << "error: " << info.error << ", " << info.error_msg << std::endl;
+		// errors
 	}
 
 	//if (msg_counter % 100 == 0) {
@@ -183,23 +195,26 @@ void create_client(int add_messages_count) {
 	// send message to py app
 	timer.reset();
 
+	std::cout << "sending " << add_messages_count << " messages...\n";
 	for (int i = 0; i < add_messages_count; ++i) {
 		std::string uuid1 = c.send_message(buffer.data(), buffer.size(), path_py);
 	}
 
 	/*
-	sleep(2);
+	std::cout << "sleeping 10 seconds\n";
+	sleep(20);
 
 	timer.reset();
 	msg_counter = 0;
 	
+	std::cout << "sending " << add_messages_count << " more messages...\n";
 	for (int i = 0; i < add_messages_count; ++i) {
 		std::string uuid1 = c.send_message(buffer.data(), buffer.size(), path_py);
 	}
-	*/
 
+	std::cout << "done sending all.\n";
 	//std::cout << std::fixed << std::setprecision(6) << "elapsed secs: " << timer.elapsed().as_double() << std::endl;
-
+	*/
 	sleep(600);
 
 	/*

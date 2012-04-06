@@ -61,7 +61,7 @@ public:
 		logger_->log(msg);
 	}
 
-	void write(const std::string& key, const std::string& value, int column = zbr::EBLOB_TYPE_DATA) {
+	void write(const std::string& key, const std::string& value, int column = EBLOB_TYPE_DATA) {
 		if (!storage_.get()) {
 			std::string error_msg = "empty eblob storage object at " + std::string(BOOST_CURRENT_FUNCTION);
 			error_msg += " key: " + key + " column: " + boost::lexical_cast<std::string>(column);
@@ -78,7 +78,7 @@ public:
 		storage_->write_hashed(key, value, 0, BLOB_DISK_CTL_OVERWRITE, column);
 	}
 
-	void write(const std::string& key, void* data, size_t size, int column = zbr::EBLOB_TYPE_DATA) {
+	void write(const std::string& key, void* data, size_t size, int column = EBLOB_TYPE_DATA) {
 		if (!storage_.get()) {
 			std::string error_msg = "empty eblob storage object at " + std::string(BOOST_CURRENT_FUNCTION);
 			error_msg += " key: " + key + " column: " + boost::lexical_cast<std::string>(column);
@@ -96,7 +96,7 @@ public:
 		storage_->write_hashed(key, value, 0, BLOB_DISK_CTL_OVERWRITE, column);
 	}
 
-	std::string read(const std::string& key, int column = zbr::EBLOB_TYPE_DATA) {
+	std::string read(const std::string& key, int column = EBLOB_TYPE_DATA) {
 		if (!storage_.get()) {
 			std::string error_msg = "empty eblob storage object at " + std::string(BOOST_CURRENT_FUNCTION);
 			error_msg += " key: " + key + " column: " + boost::lexical_cast<std::string>(column);
@@ -113,12 +113,12 @@ public:
 			throw std::runtime_error(error_msg);
 		}
 
-		zbr::eblob_key ekey;
+		eblob_key ekey;
 		storage_->key(key, ekey);
 		storage_->remove_all(ekey);
 	}
 
-	void remove(const std::string& key, int column = zbr::EBLOB_TYPE_DATA) {
+	void remove(const std::string& key, int column = EBLOB_TYPE_DATA) {
 		if (!storage_.get()) {
 			std::string error_msg = "empty eblob storage object at " + std::string(BOOST_CURRENT_FUNCTION);
 			error_msg += " key: " + key + " column: " + boost::lexical_cast<std::string>(column);
@@ -148,9 +148,8 @@ public:
 
 		iteration_callback_ = iteration_callback;
 
-		// test iteration
-		zbr::eblob_iterate_control		ctl;
-        zbr::eblob_iterate_callbacks	iterator_cb;
+		eblob_iterate_control ctl;
+        eblob_iterate_callbacks	iterator_cb;
 
         iterator_cb.iterator = eblob::iteration_callback;
         iterator_cb.iterator_init = NULL;
@@ -193,7 +192,7 @@ private:
 		eblob_logger_.reset(new zbr::eblob_logger("/dev/stdout", 0));
 
 		// create config
-        zbr::eblob_config cfg;
+        eblob_config cfg;
         memset(&cfg, 0, sizeof(cfg));
         cfg.file = const_cast<char*>(path_.c_str());
         cfg.log = eblob_logger_->log();
@@ -210,7 +209,7 @@ private:
 		logger_->log(msg);
 	}
 
-	static int iteration_callback(zbr::eblob_disk_control* dc, zbr::eblob_ram_control* rc, void* data, void* priv, void* thread_priv) {
+	static int iteration_callback(eblob_disk_control* dc, eblob_ram_control* rc, void* data, void* priv, void* thread_priv) {
 		eblob* eb = reinterpret_cast<eblob*>(priv);
 		eb->iteration_callback_instance(data, rc->size, rc->type);
 	}

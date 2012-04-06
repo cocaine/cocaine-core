@@ -53,7 +53,6 @@ namespace dealer {
 #define CONTROL_MESSAGE_CONNECT_NEW_HOSTS 4
 #define CONTROL_MESSAGE_KILL 5
 #define CONTROL_MESSAGE_PROCESS_MESSAGES 6
-#define CONTROL_MESSAGE_PROCESS_RESPONCES 7
 
 // predeclaration
 template <typename LSD_T> class handle;
@@ -95,8 +94,9 @@ private:
 
 	// working with control messages
 	void establish_control_conection(socket_ptr_t& control_socket);
-	int receive_control_messages(socket_ptr_t& control_socket);
+	int receive_control_messages(socket_ptr_t& control_socket, int poll_timeout);
 	void dispatch_control_messages(int type, socket_ptr_t& main_socket);
+	void reshedule_message(const std::string& uuid);
 
 	// working with messages
 	bool dispatch_next_available_message(socket_ptr_t main_socket);
@@ -104,13 +104,12 @@ private:
 	void connect_zmq_socket_to_hosts(socket_ptr_t& socket,
 									 hosts_info_list_t& hosts);
 
-	bool check_for_responses(socket_ptr_t& main_socket);
+	// working with responces
+	bool check_for_responses(socket_ptr_t& main_socket, int poll_timeout);
 	void dispatch_responce(socket_ptr_t& main_socket);
 	void process_responce(boost::ptr_vector<zmq::message_t>& chunks);
 	bool receive_responce_chunk(socket_ptr_t& socket, zmq::message_t& response);
-
 	void enqueue_response(cached_response_prt_t response);
-	void reshedule_message(const std::string& uuid);
 
 	// send collected statistics to global stats collector
 	handle_stats& get_statistics();
@@ -120,7 +119,7 @@ private:
 	boost::shared_ptr<configuration> config();
 	boost::shared_ptr<cocaine::dealer::context> context();
 
-	static const int socket_poll_timeout = 0;
+	static const int socket_poll_timeout = 200; // millisecs
 
 private:
 	handle_info<LSD_T> info_;
@@ -198,45 +197,60 @@ handle<LSD_T>::dispatch_messages() {
 
 	// process messages
 	while (is_running_) {
+		static bool have_enqueued_messages = false;
 
 		// receive control message
-		int control_message = receive_control_messages(control_socket);
+		int poll_timeout = have_enqueued_messages ? 0 : socket_poll_timeout;
+		int control_message = receive_control_messages(control_socket, poll_timeout);
 
-		// received kill message, finalize everything
 		switch (control_message) {
+			// received kill message, finalize everything
 			case CONTROL_MESSAGE_KILL:
 				is_running_ = false;
 				break;
+
+			// we have new messages, enable processing them
 			case CONTROL_MESSAGE_PROCESS_MESSAGES:
-				break;
-			case CONTROL_MESSAGE_PROCESS_RESPONCES:
+				have_enqueued_messages = true;
 				break;
 		}
 
 		// process incoming control messages
-		if (control_message > 0) {
+		if (control_message > 0 && control_message != CONTROL_MESSAGE_PROCESS_MESSAGES) {
 			dispatch_control_messages(control_message, main_socket);
 		}
 
 		// send new message if any
 		if (is_running_ && is_connected_) {
 			// send new message if any
-			while (messages_cache()->new_messages_count() != 0) {
+			if (have_enqueued_messages) {
 				if (dispatch_next_available_message(main_socket)) {
 					++statistics_.sent_messages;
+				}
+
+				if (messages_cache()->new_messages_count() == 0) {
+					have_enqueued_messages = false;
 				}
 			}
 		}
 
 		// check for message responces
 		bool received_response = false;
-		if (is_connected_ && is_running_) {
-			received_response = check_for_responses(main_socket);
-		}
 
-		// process received responce(s)
-		if (is_connected_ && is_running_ && received_response) {
-			dispatch_responce(main_socket);
+		if (is_connected_ && is_running_) {
+			received_response = check_for_responses(main_socket, socket_poll_timeout);
+
+			// process received responce(s)
+			while (received_response) {
+				dispatch_responce(main_socket);
+
+				if (!have_enqueued_messages) {
+					received_response = check_for_responses(main_socket, socket_poll_timeout);
+				}
+				else {
+					received_response = false;
+				}
+			}
 		}
 
 		/*
@@ -295,7 +309,7 @@ handle<LSD_T>::enqueue_response(cached_response_prt_t response) {
 }
 
 template <typename LSD_T> int
-handle<LSD_T>::receive_control_messages(socket_ptr_t& control_socket) {
+handle<LSD_T>::receive_control_messages(socket_ptr_t& control_socket, int poll_timeout) {
 	if (!is_running_) {
 		return 0;
 	}
@@ -307,7 +321,7 @@ handle<LSD_T>::receive_control_messages(socket_ptr_t& control_socket) {
 	poll_items[0].events = ZMQ_POLLIN;
 	poll_items[0].revents = 0;
 
-	int socket_response = zmq_poll(poll_items, 1, socket_poll_timeout);
+	int socket_response = zmq_poll(poll_items, 1, poll_timeout);
 
 	if (socket_response <= 0) {
 		return 0;
@@ -573,6 +587,8 @@ template <typename LSD_T> void
 handle<LSD_T>::reshedule_message(const std::string& uuid) {
 	// 2DO: must reshedule if allowed by policy
 	messages_cache()->move_sent_message_to_new_front(uuid);
+	notify_new_messages_enqueued();
+
 	++statistics_.resent_messages;
 	update_statistics();
 }
@@ -661,11 +677,11 @@ handle<LSD_T>::process_responce(boost::ptr_vector<zmq::message_t>& chunks) {
 			}
 
 			//logger()->log(PLOG_DEBUG, "error code: %d, message: %s", error_code, error_message.c_str());
-			cached_response_prt_t new_response;
-			new_response.reset(new cached_response(uuid, sent_msg->path(), error_code, error_message));
-			enqueue_response(new_response);
-
 			if (error_code == deadline_error) { // timed out
+				cached_response_prt_t new_response;
+				new_response.reset(new cached_response(uuid, sent_msg->path(), error_code, error_message));
+				enqueue_response(new_response);
+
 				messages_cache()->remove_message_from_cache(uuid);
 				++statistics_.expired_responses;
 			}
@@ -673,6 +689,10 @@ handle<LSD_T>::process_responce(boost::ptr_vector<zmq::message_t>& chunks) {
 				reshedule_message(uuid);
 			}
 			else {
+				cached_response_prt_t new_response;
+				new_response.reset(new cached_response(uuid, sent_msg->path(), error_code, error_message));
+				enqueue_response(new_response);
+
 				messages_cache()->remove_message_from_cache(uuid);
 			}
 
@@ -726,7 +746,7 @@ handle<LSD_T>::update_statistics() {
 }
 
 template <typename LSD_T> bool
-handle<LSD_T>::check_for_responses(socket_ptr_t& main_socket) {
+handle<LSD_T>::check_for_responses(socket_ptr_t& main_socket, int poll_timeout) {
 	if (!is_running_) {
 		return false;
 	}
@@ -746,7 +766,7 @@ handle<LSD_T>::check_for_responses(socket_ptr_t& main_socket) {
 	poll_items[0].events = ZMQ_POLLIN;
 	poll_items[0].revents = 0;
 
-	int socket_response = zmq_poll(poll_items, 1, socket_poll_timeout);
+	int socket_response = zmq_poll(poll_items, 1, poll_timeout);
 
 	if (socket_response <= 0) {
 		return false;
@@ -813,7 +833,7 @@ template <typename LSD_T> void
 handle<LSD_T>::notify_new_messages_enqueued() {
 	//logger()->log(PLOG_DEBUG, "new messages notification");
 
-	if (!is_running_ || hosts_.empty() || is_connected_) {
+	if (!is_running_) {
 		return;
 	}
 
