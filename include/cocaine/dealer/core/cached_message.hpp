@@ -124,7 +124,7 @@ cached_message<DataContainer, MetadataContainer>::cached_message(const message_p
 	mdata_.enqueued_timestamp.init_from_current_time();
 
 	if (data_size > MAX_MESSAGE_DATA_SIZE) {
-		throw error(DEALER_MESSAGE_DATA_TOO_BIG_ERROR, "can't create message, message data too big.");
+		throw error(response_code::message_data_too_big_error, "can't create message, message data too big.");
 	}
 
 	data_.set_data(data, data_size);
@@ -215,7 +215,8 @@ cached_message<DataContainer, MetadataContainer>::operator = (const message_ifac
 	}
 	catch (const std::exception& ex) {
 		std::string error_msg = ex.what();
-		throw error(DEALER_MESSAGE_DATA_TOO_BIG_ERROR, "error in cached_message<DataContainer, MetadataContainer>::operator = (), details: " + error_msg);
+		error_msg = "error in cached_message<DataContainer, MetadataContainer>::operator = (), details: " + error_msg;
+		throw error(error_msg);
 	}
 
 	return *this;
@@ -232,7 +233,8 @@ cached_message<DataContainer, MetadataContainer>::operator == (const message_ifa
 	}
 	catch (const std::exception& ex) {
 		std::string error_msg = ex.what();
-		throw error(DEALER_MESSAGE_DATA_TOO_BIG_ERROR, "error in cached_message<DataContainer, MetadataContainer>::operator = (), details: " + error_msg);
+		error_msg = "error in cached_message<DataContainer, MetadataContainer>::operator = (), details: " + error_msg;
+		throw error(error_msg);
 	}
 
 	return comparison_result;

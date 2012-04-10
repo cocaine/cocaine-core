@@ -29,13 +29,13 @@ namespace cocaine {
 namespace dealer {
 
 cached_response::cached_response() :
-	error_code_(0)
+	code_(0)
 {
 
 }
 
 cached_response::cached_response(const cached_response& response) :
-	error_code_(0)
+	code_(0)
 {
 	*this = response;
 }
@@ -46,10 +46,10 @@ cached_response::cached_response(const std::string& uuid,
 								 size_t data_size) :
 	uuid_(uuid),
 	path_(path),
-	error_code_(0)
+	code_(0)
 {
 	if (data_size > MAX_RESPONSE_DATA_SIZE) {
-		throw error(DEALER_MESSAGE_DATA_TOO_BIG_ERROR, "can't create response, response data too big.");
+		throw error(response_code::response_data_too_big_error, "can't create response, response data too big.");
 	}
 
 	data_ = data_container(data, data_size);
@@ -61,11 +61,11 @@ cached_response::cached_response(const std::string& uuid,
 
 cached_response::cached_response(const std::string& uuid,
 								 const message_path& path,
-								 int error_code,
+								 int code,
 								 const std::string& error_message) :
 	uuid_(uuid),
 	path_(path),
-	error_code_(error_code),
+	code_(code),
 	error_message_(error_message)
 
 {
@@ -119,8 +119,8 @@ cached_response::received_timestamp() const {
 }
 
 int
-cached_response::error_code() const {
-	return error_code_;
+cached_response::code() const {
+	return code_;
 }
 
 std::string
@@ -135,8 +135,12 @@ cached_response::set_received_timestamp(const timeval& val) {
 }
 
 void
-cached_response::set_error(int code, const std::string& message) {
-	error_code_ = code;
+cached_response::set_code(int code) {
+	code_ = code;
+}
+
+void
+cached_response::set_error_message(const std::string& message) {
 	error_message_ = message;
 }
 

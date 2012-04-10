@@ -54,6 +54,12 @@ namespace dealer {
 #define CONTROL_MESSAGE_KILL 5
 #define CONTROL_MESSAGE_PROCESS_MESSAGES 6
 
+enum server_response_code {
+	SERVER_RPC_MESSAGE_CHUNK = 5,
+	SERVER_RPC_MESSAGE_ERROR = 6,
+	SERVER_RPC_MESSAGE_CHOKE = 7
+};
+
 // predeclaration
 template <typename LSD_T> class handle;
 typedef handle<DT> handle_t;
@@ -618,12 +624,12 @@ handle<LSD_T>::process_responce(boost::ptr_vector<zmq::message_t>& chunks) {
 		return;
 	}
 
-   	// unpack code
-	int code;
+   	// unpack rpc code
+	int rpc_code;
 	msgpack::unpacked msg2;
 	msgpack::unpack(&msg2, reinterpret_cast<const char*>(chunks[2].data()), chunks[2].size());
 	msgpack::object obj2 = msg2.get();
-    obj2.convert(&code);
+    obj2.convert(&rpc_code);
 
 	// get message from sent cache
 	boost::shared_ptr<message_iface> sent_msg;
@@ -635,13 +641,13 @@ handle<LSD_T>::process_responce(boost::ptr_vector<zmq::message_t>& chunks) {
 		return;
 	}
 
-	switch (code) {
-		case MESSAGE_CHUNK: {
+	switch (rpc_code) {
+		case SERVER_RPC_MESSAGE_CHUNK: {
 			if (chunks.size() >= 4) {
 				// enqueue chunk in response queue
 				cached_response_prt_t new_response;
 				new_response.reset(new cached_response(uuid, sent_msg->path(), chunks[3].data(), chunks[3].size()));
-				new_response->set_error(MESSAGE_CHUNK, "");
+				new_response->set_code(response_code::message_chunk);
 				enqueue_response(new_response);
 			}
 			else {
@@ -651,7 +657,7 @@ handle<LSD_T>::process_responce(boost::ptr_vector<zmq::message_t>& chunks) {
 		}
 		break;
 
-		case MESSAGE_ERROR: {
+		case SERVER_RPC_MESSAGE_ERROR: {
 			int error_code = -1;
 			std::string error_message;
 
@@ -702,12 +708,12 @@ handle<LSD_T>::process_responce(boost::ptr_vector<zmq::message_t>& chunks) {
 		}
 		break;
 
-		case MESSAGE_CHOKE: {
+		case SERVER_RPC_MESSAGE_CHOKE: {
 			messages_cache()->remove_message_from_cache(uuid);
 
 			cached_response_prt_t new_response;
 			new_response.reset(new cached_response(uuid, sent_msg->path(), NULL, 0));
-			new_response->set_error(MESSAGE_CHOKE, "");
+			new_response->set_code(response_code::message_choke);
 			enqueue_response(new_response);
 
 			++statistics_.normal_responces;

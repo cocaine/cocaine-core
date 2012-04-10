@@ -16,6 +16,7 @@
 #include <boost/current_function.hpp>
 
 #include "cocaine/dealer/client.hpp"
+#include "cocaine/dealer/response.hpp"
 #include "cocaine/dealer/core/client_impl.hpp"
 
 namespace cocaine {
@@ -23,85 +24,23 @@ namespace dealer {
 
 client::client(const std::string& config_path) {
 	impl_.reset(new client_impl(config_path));
+	get_impl()->connect();
 }
 
 client::~client() {
 }
 
 void
-client::connect() {
-	get_impl()->connect();
+client::set_response_callback(const std::string& message_uuid, response_callback callback, const message_path& path) {
+	set_response_callback(message_uuid, callback, path);
 }
 
-void
-client::disconnect() {
-	get_impl()->disconnect();
+response
+client::send_message(const void* data, size_t size, const message_path& path, const message_policy& policy, bool discard_answer, bool block) {
+	response r(this);
+	r.init(data, size, path, policy);
+	return r;
 }
-
-std::string
-client::send_message(const void* data,
-					 size_t size,
-					 const std::string& service_name,
-					 const std::string& handle_name)
-{
-	return get_impl()->send_message(data, size, service_name, handle_name);
-}
-
-std::string
-client::send_message(const void* data,
-					 size_t size,
-					 const message_path& path)
-{
-	return get_impl()->send_message(data, size, path);
-}
-
-std::string
-client::send_message(const void* data,
-					 size_t size,
-					 const message_path& path,
-					 const message_policy& policy)
-{
-	return get_impl()->send_message(data, size, path, policy);
-}
-
-std::string
-client::send_message(const std::string& data,
-					 const std::string& service_name,
-					 const std::string& handle_name)
-{
-	return get_impl()->send_message(data, service_name, handle_name);
-}
-
-std::string
-client::send_message(const std::string& data,
-					 const message_path& path)
-{
-	return get_impl()->send_message(data, path);
-}
-
-std::string
-client::send_message(const std::string& data,
-					 const message_path& path,
-					 const message_policy& policy)
-{
-	return get_impl()->send_message(data, path, policy);
-}
-
-int
-client::set_response_callback(boost::function<void(const response&, const response_info&)> callback,
-						   	  const std::string& service_name,
-						   	  const std::string& handle_name)
-{
-	return get_impl()->set_response_callback(callback, service_name, handle_name);
-}
-
-int
-client::set_response_callback(boost::function<void(const response&, const response_info&)> callback,
-							  const message_path& path)
-{
-	return set_response_callback(callback, path.service_name, path.handle_name);
-}
-
 
 inline boost::shared_ptr<client_impl>
 client::get_impl() {

@@ -139,6 +139,15 @@ TARGET_LINK_LIBRARIES(cocaine-dealer
 SET_TARGET_PROPERTIES(cocaine-dealer PROPERTIES
     VERSION 1)
 
+ADD_EXECUTABLE(dealer_test_app
+    tests/dealer_test_app.cpp)
+
+TARGET_LINK_LIBRARIES(dealer_test_app
+    boost_program_options-mt
+    cocaine-dealer
+    boost_filesystem-mt
+    zmq)
+
 ADD_SUBDIRECTORY(modules)
 
 INSTALL(

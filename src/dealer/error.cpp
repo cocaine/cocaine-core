@@ -20,18 +20,17 @@
 namespace cocaine {
 namespace dealer {
 
-int const error::MESSAGE_SIZE;
-
 error::error(const std::string& format, ...) :
 	std::exception(),
 	type_(DEALER_UNKNOWN_ERROR)
 {
 	va_list args;
 	va_start(args, format);
-	vsnprintf(message_, MESSAGE_SIZE, format.c_str(), args);
+	vsnprintf(message_, ERROR_MESSAGE_SIZE, format.c_str(), args);
 	va_end(args);
 }
 
+/*
 error::error(enum error_type type, const std::string& format, ...) :
 	std::exception(),
 	type_(type)
@@ -41,17 +40,28 @@ error::error(enum error_type type, const std::string& format, ...) :
 	vsnprintf(message_, MESSAGE_SIZE, format.c_str(), args);
 	va_end(args);
 }
+*/
+
+error::error(int type, const std::string& format, ...) :
+	std::exception(),
+	type_(type)
+{
+	va_list args;
+	va_start(args, format);
+	vsnprintf(message_, ERROR_MESSAGE_SIZE, format.c_str(), args);
+	va_end(args);
+}
 
 error::~error() throw () {
 }
 
 error::error(const error& other) : std::exception(other) {
-	memcpy(message_, other.message_, MESSAGE_SIZE);
+	memcpy(message_, other.message_, ERROR_MESSAGE_SIZE);
 }
 
 error&
 error::operator = (const error& other) {
-	memcpy(message_, other.message_, MESSAGE_SIZE);
+	memcpy(message_, other.message_, ERROR_MESSAGE_SIZE);
 	return *this;
 }
 

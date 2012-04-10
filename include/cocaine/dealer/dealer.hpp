@@ -11,21 +11,12 @@
 // limitations under the License.
 //
 
-#ifndef _COCAINE_DEALER_CLIENT_FORWARD_HPP_INCLUDED_
-#define _COCAINE_DEALER_CLIENT_FORWARD_HPP_INCLUDED_
+#ifndef _COCAINE_DEALER_DEALER_HPP_INCLUDED_
+#define _COCAINE_DEALER_DEALER_HPP_INCLUDED_
 
-namespace cocaine {
-namespace dealer {
+#include <boost/utility.hpp>
 
-class client;
-class client_impl;
+#include <cocaine/dealer/client.hpp>
+#include <cocaine/dealer/response.hpp>
 
-class response;
-class response_impl;
-
-template<typename LSD_T> class service;
-
-} // namespace dealer
-} // namespace cocaine
-
-#endif // _COCAINE_DEALER_CLIENT_FORWARD_HPP_INCLUDED_
+#endif // _COCAINE_DEALER_DEALER_HPP_INCLUDED_

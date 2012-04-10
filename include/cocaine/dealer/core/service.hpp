@@ -16,6 +16,7 @@
 
 #include <string>
 #include <sstream>
+#include <memory>
 #include <map>
 #include <vector>
 #include <deque>
@@ -39,6 +40,7 @@
 #include "cocaine/dealer/utils/error.hpp"
 #include "cocaine/dealer/utils/smart_logger.hpp"
 #include "cocaine/dealer/storage/eblob.hpp"
+#include "cocaine/dealer/utils/refresher.hpp"
 
 namespace cocaine {
 namespace dealer {
@@ -74,7 +76,7 @@ public:
 	typedef std::map<std::string, responces_deque_ptr_t> responces_map_t;
 
 	// registered response callback
-	typedef boost::function<void(const response&, const response_info&)> registered_callback_t;
+	typedef boost::function<void(const response_data&, const response_info&)> registered_callback_t;
 	typedef std::map<std::string, registered_callback_t> registered_callbacks_map_t;
 
 public:
@@ -89,8 +91,8 @@ public:
 	size_t cache_size() const;
 	service_info<LSD_T> info() const;
 
-	bool register_responder_callback(registered_callback_t callback,
-									 const std::string& handle_name);
+	void register_responder_callback(const std::string& message_uuid,
+									 registered_callback_t callback);
 
 public:
 	template<typename T> friend std::ostream& operator << (std::ostream& out, const service<T>& s);
@@ -120,6 +122,8 @@ private:
 	boost::shared_ptr<base_logger> logger();
 	boost::shared_ptr<configuration> config();
 	boost::shared_ptr<cocaine::dealer::context> context();
+
+	void check_for_deadlined_messages();
 
 private:
 	// service information
@@ -154,6 +158,11 @@ private:
 
 	// responses callbacks
 	registered_callbacks_map_t responses_callbacks_map_;
+
+	// deadlined messages refresher
+	std::auto_ptr<refresher> deadlined_messages_refresher_;
+
+	static const int deadline_check_interval = 1;
 };
 
 template <typename LSD_T>
@@ -168,6 +177,9 @@ service<LSD_T>::service(const service_info<LSD_T>& info, boost::shared_ptr<cocai
 	// run response dispatch thread
 	is_running_ = true;
 	thread_ = boost::thread(&service<LSD_T>::dispatch_responces, this);
+
+	// run timed out messages checker
+	//deadlined_messages_refresher_.reset(new refresher(boost::bind(&service<LSD_T>::check_for_deadlined_messages, this), deadline_check_interval));
 }
 
 template <typename LSD_T>
@@ -203,39 +215,37 @@ service<LSD_T>::dispatch_responces() {
             cond_.wait(lock);
         }
 
-		// go through all callbacks
-		registered_callbacks_map_t::iterator it = responses_callbacks_map_.begin();
-		for (; it != responses_callbacks_map_.end(); ++it) {
+		// go through each response queue
+		responces_map_t::iterator qit = received_responces_.begin();
+		for (; qit != received_responces_.end(); ++qit) {
 
-			// get responces queue for registered callback
-			responces_map_t::iterator qit = received_responces_.find(it->first);
-			if (qit != received_responces_.end()) {
+			// get first responce from queue
+			responces_deque_ptr_t handle_resp_queue = qit->second;
 
-				// get first responce from queue
-				responces_deque_ptr_t handle_resp_queue = qit->second;
+			if (!handle_resp_queue->empty()) {
+				cached_response_prt_t resp_ptr = handle_resp_queue->front();
 
-				if (!handle_resp_queue->empty()) {
-					cached_response_prt_t resp_ptr = handle_resp_queue->front();
-					registered_callback_t callback = it->second;
+				// create simplified response
+				response_data resp_data;
+				resp_data.data = resp_ptr->data().data();
+				resp_data.size = resp_ptr->data().size();
 
-					// create simplified response
-					response resp;
-					resp.uuid = resp_ptr->uuid();
-					resp.data = resp_ptr->data().data();
-					resp.size = resp_ptr->data().size();
+				response_info resp_info;
+				resp_info.uuid = resp_ptr->uuid();
+				resp_info.path = resp_ptr->path();
+				resp_info.code = resp_ptr->code();
+				resp_info.error_msg = resp_ptr->error_message();
 
-					response_info resp_info;
-					resp_info.error = resp_ptr->error_code();
-					resp_info.error_msg = resp_ptr->error_message();
-					resp_info.service = resp_ptr->path().service_name;
-					resp_info.handle = resp_ptr->path().handle_name;
+				// invoke callback for given handle and response
+				registered_callbacks_map_t::iterator it = responses_callbacks_map_.find(resp_info.uuid);
+				assert(it != responses_callbacks_map_.end());
 
-					// invoke callback for given handle and response
-					callback(resp, resp_info);
+				registered_callback_t callback = it->second;
 
-					// remove processed response
-					handle_resp_queue->pop_front();
-				}
+				callback(resp_data, resp_info);
+
+				// remove processed response
+				handle_resp_queue->pop_front();
 			}
 		}
 	}
@@ -284,21 +294,12 @@ service<LSD_T>::log_refreshed_hosts_and_handles(const hosts_info_list_t& hosts,
 	}
 }
 
-template <typename LSD_T> bool
-service<LSD_T>::register_responder_callback(boost::function<void(const response&, const response_info&)> callback,
-											const std::string& handle_name)
+template <typename LSD_T> void
+service<LSD_T>::register_responder_callback(const std::string& message_uuid,
+											registered_callback_t callback)
 {
 	boost::mutex::scoped_lock lock(mutex_);
-
-	registered_callbacks_map_t::iterator it = responses_callbacks_map_.find(handle_name);
-
-	// check whether such callback is already registered
-	if (it != responses_callbacks_map_.end()) {
-		return false;
-	}
-
-	responses_callbacks_map_[handle_name] = callback;
-	return true;
+	responses_callbacks_map_[message_uuid] = callback;
 }
 
 template <typename LSD_T> void
@@ -315,12 +316,12 @@ service<LSD_T>::enqueue_responce(cached_response_prt_t response) {
 	boost::mutex::scoped_lock lock(mutex_);
 	const message_path& path = response->path();
 
-	// see whether there exists registered callback for response handle
-	registered_callbacks_map_t::iterator callback_it = responses_callbacks_map_.find(path.handle_name);
+	// see whether there exists registered callback for message
+	registered_callbacks_map_t::iterator callback_it = responses_callbacks_map_.find(response->uuid());
 
-	// check whether such callback is already registered
+	// is there a callback for given response path?
 	if (callback_it == responses_callbacks_map_.end()) {
-		// no callback -- drop response
+		// drop response
 		lock.unlock();
 		return;
 	}
@@ -519,7 +520,13 @@ service<LSD_T>::remove_outstanding_handles(const handles_info_list_t& handles) {
 		return;
 	}
 
-	logger()->log("remove_outstanding_handles");
+	std::string message_str = "service: " + info_.name_ + "is removing outstanding handles: ";
+
+	for (size_t i = 0; i < handles.size(); ++i) {
+		message_str += handles[i].name_ + ", ";
+	}
+
+	logger()->log(message_str);
 
 	// destroy handles
 	for (size_t i = 0; i < handles.size(); ++i) {
@@ -716,6 +723,11 @@ service<LSD_T>::send_message(cached_message_prt_t message) {
 template <typename LSD_T> size_t
 service<LSD_T>::cache_size() const {
 	return cache_size_;
+}
+
+template<typename LSD_T> void
+service<LSD_T>::check_for_deadlined_messages() {
+	//unhandled_messages_
 }
 
 template<typename T>

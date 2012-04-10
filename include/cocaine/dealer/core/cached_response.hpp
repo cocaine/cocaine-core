@@ -38,7 +38,7 @@ public:
 
 	cached_response(const std::string& uuid,
 					const message_path& path,
-					int error_code,
+					int code,
 					const std::string& error_message);
 
 	virtual ~cached_response();
@@ -49,10 +49,11 @@ public:
 	const message_path& path() const;
 	const std::string& uuid() const;
 
-	int error_code() const;
+	int code() const;
 	std::string error_message() const;
 
-	void set_error(int code, const std::string& message);
+	void set_code(int code);
+	void set_error_message(const std::string& message);
 
 	const timeval& received_timestamp() const;
 	void set_received_timestamp(const timeval& val);
@@ -72,7 +73,7 @@ private:
 	timeval received_timestamp_;
 	size_t container_size_;
 
-	int error_code_;
+	int code_;
 	std::string error_message_;
 
 	// synchronization

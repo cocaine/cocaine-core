@@ -35,6 +35,8 @@ typedef cached_message<persistent_data_container, persistent_request_metadata> p
 client_impl::client_impl(const std::string& config_path) :
 	messages_cache_size_(0)
 {
+	std::cout << "client_impl ctor\n";
+
 	// create dealer context
 	std::string ctx_error_msg = "could not create dealer context at: " + std::string(BOOST_CURRENT_FUNCTION) + " ";
 
@@ -74,6 +76,7 @@ client_impl::~client_impl() {
 
 void
 client_impl::connect() {
+	std::cout << "client_impl connect\n";
 	boost::mutex::scoped_lock lock(mutex_);
 	boost::shared_ptr<configuration> conf;
 
@@ -185,25 +188,11 @@ client_impl::send_message(const void* data,
 		cached_message_class_size += sizeof(p_message_t);	
 	}
 
-	// calculate new message size
-	size_t message_size = 0;
-	message_size += size;						// data size
-	message_size += cached_message_class_size;  // container size
-	message_size += message_iface::UUID_SIZE;  // uuid size
-	message_size += path.data_size();			// size of data in path (strings)
-
-	// make sure we are not overcapacitated
-	size_t new_resulting_size = messages_cache_size() + message_size;
-
-	if (new_resulting_size > config()->max_message_cache_size()) {
-		throw error(DEALER_MESSAGE_CACHE_OVER_CAPACITY_ERROR, "can not send message, balancer over capacity.");
-	}
-
 	// validate message path
 	if (!config()->service_info_by_name(path.service_name)) {
 		std::string error_str = "message sent to unknown service, check your config file.";
 		error_str += " at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw error(DEALER_UNKNOWN_SERVICE_ERROR, error_str);
+		throw error(response_code::unknown_service_error, error_str);
 	}
 
 	// find service to send message to
@@ -241,13 +230,13 @@ client_impl::send_message(const void* data,
 		else {
 			std::string error_str = "object for service with name " + path.service_name;
 			error_str += " is emty at " + std::string(BOOST_CURRENT_FUNCTION);
-			throw error(error_str);
+			throw error(response_code::unknown_error, error_str);
 		}
 	}
 	else {
 		std::string error_str = "no service with name " + path.service_name;
 		error_str += " found at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw error(error_str);
+		throw error(response_code::unknown_service_error, error_str);
 	}
 
 	update_messages_cache_size();
@@ -282,31 +271,30 @@ client_impl::send_message(const std::string& data,
 	return send_message(data.c_str(), data.length(), path, policy);
 }
 
-int
-client_impl::set_response_callback(boost::function<void(const response&, const response_info&)> callback,
-						   	   	   const std::string& service_name,
-						   	   	   const std::string& handle_name)
+void
+client_impl::set_response_callback(const std::string& message_uuid,
+								   response_callback callback,
+								   const message_path& path)
 {
 	// check for services
-	services_map_t::iterator it = services_.find(service_name);
+	services_map_t::iterator it = services_.find(path.service_name);
 	if (it == services_.end()) {
-		return UNKNOWN_SERVICE_ERROR;
+		std::string error_msg = "message sent to unknown service \"" + path.service_name + "\"";
+		error_msg += " at: " + std::string(BOOST_CURRENT_FUNCTION);
+		error_msg += " please make sure you've defined service in dealer configuration file.";
+		throw error(response_code::unknown_service_error, error_msg);
 	}
 
 	if (!callback) {
-		throw error("callback function is empty at " + std::string(BOOST_CURRENT_FUNCTION));
+		throw error("callback function is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	if (!it->second) {
-		throw error("service object is empty at " + std::string(BOOST_CURRENT_FUNCTION));
+		throw error("service object is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	// assign to service
-	if (!it->second->register_responder_callback(callback, handle_name)) {
-		return CALLBACK_EXISTS_ERROR;
-	}
-
-	return 0;
+	it->second->register_responder_callback(message_uuid, callback);
 }
 
 boost::shared_ptr<context>

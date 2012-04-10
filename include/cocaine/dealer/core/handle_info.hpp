@@ -17,6 +17,8 @@
 #include <string>
 #include <map>
 
+#include <boost/lexical_cast.hpp>
+
 #include "cocaine/dealer/structs.hpp"
 
 namespace cocaine {
@@ -48,6 +50,11 @@ public:
 				service_name_ == sh.service_name_ &&
 				port_ == sh.port_);
 	};
+
+	std::string as_string() {
+		std::string str_result = service_name_ + "." + name_ + " port: ";
+		return str_result + boost::lexical_cast<std::string>(port_);
+	}
 
 	std::string name_;
 	std::string service_name_;

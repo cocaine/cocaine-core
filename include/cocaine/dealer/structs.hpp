@@ -56,15 +56,20 @@ struct dealer_types {
 // main types definition
 typedef dealer_types DT;
 
-enum callback_error {
-	UNKNOWN_SERVICE_ERROR = 1,
-	CALLBACK_EXISTS_ERROR = 2
-};
-
-enum response_code {
-	MESSAGE_CHUNK = 5,
-	MESSAGE_ERROR = 6,
-	MESSAGE_CHOKE = 7
+struct response_code {
+	static const int unknown_error = 1;
+	static const int message_chunk = 2;
+	static const int message_choke = 3;
+	static const int message_data_too_big_error		= 4;
+	static const int response_data_too_big_error	= 5;
+	static const int unknown_service_error	= 6;
+	static const int callback_exists_error	= 7;
+    static const int request_error			= 400; // bad input data
+    static const int server_error			= 500; // 
+    static const int app_error				= 502; // err from app code
+    static const int resource_error			= 503; // 
+    static const int timeout_error			= 504;
+    static const int deadline_error			= 520;
 };
 
 enum logger_type {
@@ -82,47 +87,6 @@ enum autodiscovery_type {
 enum message_cache_type {
 	RAM_ONLY = 1,
 	PERSISTENT
-};
-
-struct message_path {
-	message_path() {};
-	message_path(const std::string& service_name_,
-				 const std::string& handle_name_) :
-		service_name(service_name_),
-		handle_name(handle_name_) {};
-
-	message_path(const message_path& path) :
-		service_name(path.service_name),
-		handle_name(path.handle_name) {};
-
-	message_path& operator = (const message_path& rhs) {
-		if (this == &rhs) {
-			return *this;
-		}
-
-		service_name = rhs.service_name;
-		handle_name = rhs.handle_name;
-
-		return *this;
-	}
-
-	bool operator == (const message_path& mp) const {
-		return (service_name == mp.service_name &&
-				handle_name == mp.handle_name);
-	}
-
-	bool operator != (const message_path& mp) const {
-		return !(*this == mp);
-	}
-
-	size_t data_size() const {
-		return (service_name.length() + handle_name.length());
-	}
-
-	std::string service_name;
-	std::string handle_name;
-
-	MSGPACK_DEFINE(service_name, handle_name);
 };
 
 struct msg_queue_status {
@@ -185,6 +149,47 @@ struct service_stats {
 
 	// <handle name, queue_size>
 	std::map<std::string, size_t> unhandled_messages;
+};
+
+struct message_path {
+	message_path() {};
+	message_path(const std::string& service_name_,
+				 const std::string& handle_name_) :
+		service_name(service_name_),
+		handle_name(handle_name_) {};
+
+	message_path(const message_path& path) :
+		service_name(path.service_name),
+		handle_name(path.handle_name) {};
+
+	message_path& operator = (const message_path& rhs) {
+		if (this == &rhs) {
+			return *this;
+		}
+
+		service_name = rhs.service_name;
+		handle_name = rhs.handle_name;
+
+		return *this;
+	}
+
+	bool operator == (const message_path& mp) const {
+		return (service_name == mp.service_name &&
+				handle_name == mp.handle_name);
+	}
+
+	bool operator != (const message_path& mp) const {
+		return !(*this == mp);
+	}
+
+	size_t data_size() const {
+		return (service_name.length() + handle_name.length());
+	}
+
+	std::string service_name;
+	std::string handle_name;
+
+	MSGPACK_DEFINE(service_name, handle_name);
 };
 
 struct message_policy {
@@ -259,18 +264,17 @@ struct message_policy {
                    max_timeout_retries);
 };
 
-struct response {
-	response() : data(NULL), size(0) {};
-	std::string uuid;
+struct response_data {
+	response_data() : data(NULL), size(0) {};
 	void* data;
 	size_t size;
 };
 
 struct response_info {
-	response_info() : error(0) {};
-	std::string service;
-	std::string handle;
-	int error;
+	response_info() : code(0) {};
+	std::string uuid;
+	message_path path;
+	int code;
 	std::string error_msg;
 };
 

@@ -29,45 +29,18 @@ namespace dealer {
 
 class client : private boost::noncopyable {
 public:
+	typedef boost::function<void(const response_data&, const response_info&)> response_callback;
+
 	explicit client(const std::string& config_path = "");
 	virtual ~client();
 
-	void connect();
-	void disconnect();
-
-	std::string send_message(const void* data,
-							 size_t size,
-							 const std::string& service_name,
-							 const std::string& handle_name);
-
-	std::string send_message(const void* data,
-							 size_t size,
-							 const message_path& path);
-
-	std::string send_message(const void* data,
-							 size_t size,
-							 const message_path& path,
-							 const message_policy& policy);
-
-	std::string send_message(const std::string& data,
-							 const std::string& service_name,
-							 const std::string& handle_name);
-
-	std::string send_message(const std::string& data,
-							 const message_path& path);
-
-	std::string send_message(const std::string& data,
-							 const message_path& path,
-							 const message_policy& policy);
-
-	int set_response_callback(boost::function<void(const response&, const response_info&)> callback,
-							  const std::string& service_name,
-							  const std::string& handle_name);
-
-	int set_response_callback(boost::function<void(const response&, const response_info&)> callback,
-							  const message_path& path);
+	response send_message(const void* data, size_t size, const message_path& path, const message_policy& policy, bool discard_answer = false, bool block = true);
 
 private:
+	friend class response_impl;
+
+	void set_response_callback(const std::string& message_uuid, response_callback callback, const message_path& path);
+
 	boost::shared_ptr<client_impl> get_impl();
 
 	boost::shared_ptr<client_impl> impl_;

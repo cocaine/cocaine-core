@@ -298,11 +298,27 @@ http_heartbeats_collector<HostsFetcher>::ping_service_hosts(const service_info_t
 
 	for (size_t i = 0; i < hosts.size(); ++i) {
 
+		std::string error_msg = "pinging cocaine app: " + s_info.name_;
+		error_msg += ", host: " + host_info_t::string_from_ip(hosts[i].ip_);
+		logger_->log(PLOG_ERROR, error_msg);
+
 		// request host metadata
 		std::string metadata;
 		if (!get_metainfo_from_host(s_info, hosts[i].ip_, metadata)) {
+
+			std::string error_msg = "could not get metainfo for cocaine app: " + s_info.name_;
+			error_msg += ", host: " + host_info_t::string_from_ip(hosts[i].ip_);
+			logger_->log(PLOG_ERROR, error_msg);
+
 			continue;
 		}
+
+		/*
+		error_msg = "pinging cocaine app: " + s_info.name_;
+		error_msg += ", host: " + host_info_t::string_from_ip(hosts[i].ip_) + " metadata: ";
+		error_msg += metadata;
+		logger_->log(PLOG_ERROR, error_msg);
+		*/
 
 		// collect service handles info from host responce
 		std::vector<handle_info_t> host_handles;
@@ -320,7 +336,7 @@ http_heartbeats_collector<HostsFetcher>::ping_service_hosts(const service_info_t
 			continue;
 		}
 
-		// if we found valid lsd handles at host
+		// if we found valid app handles at host
 		if (!host_handles.empty()) {
 
 			// add properly pinged and alive host
@@ -349,12 +365,25 @@ http_heartbeats_collector<HostsFetcher>::ping_service_hosts(const service_info_t
 		}
 	}
 
+	std::string error_msg = "responded hosts for cocaine app: " + s_info.name_ + ": ";
+	for (size_t i = 0; i < responded_hosts.size(); ++i) {
+		error_msg += responded_hosts[i].as_string() + "\n";
+	}
+
+	error_msg += " collected handles: ";
+
+	for (size_t i = 0; i < collected_handles.size(); ++i) {
+		error_msg += collected_handles[i].as_string() + "\n";
+	}
+
+	logger_->log(PLOG_ERROR, error_msg);
+
+
 	// check that all handles from pinged hosts are the same
 	logger_->log(PLOG_DEBUG, "--- validating hosts handles ---");
 	validate_host_handles(s_info, responded_hosts, hosts_and_handles);
 
 	// pass collected data to callback
-	logger_->log("CALL");
 	callback_(s_info, responded_hosts, collected_handles);
 }
 
