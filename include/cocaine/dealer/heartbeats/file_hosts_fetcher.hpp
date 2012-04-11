@@ -39,7 +39,7 @@ public:
 	// passes list of hosts of specific service to callback
 	void set_callback(boost::function<void(std::vector<host_info_t>&, service_info_t)> callback);
 
-	static const int default_fetch_interval = 3;
+	static const int default_fetch_interval = 1;
 
 private:
 	void interval_func();

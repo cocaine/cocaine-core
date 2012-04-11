@@ -17,12 +17,12 @@
 #include <boost/current_function.hpp>
 #include <boost/tokenizer.hpp>
 
-#include "cocaine/dealer/heartbeats/curl_hosts_fetcher.hpp"
+#include "cocaine/dealer/heartbeats/http_hosts_fetcher.hpp"
 
 namespace cocaine {
 namespace dealer {
 
-curl_hosts_fetcher::curl_hosts_fetcher(service_info_t service_info,
+http_hosts_fetcher::http_hosts_fetcher(service_info_t service_info,
 									   boost::uint32_t interval) :
 	curl_(NULL),
 	service_info_(service_info),
@@ -32,29 +32,29 @@ curl_hosts_fetcher::curl_hosts_fetcher(service_info_t service_info,
 	start();
 }
 
-curl_hosts_fetcher::~curl_hosts_fetcher() {
+http_hosts_fetcher::~http_hosts_fetcher() {
 	stop();
 	curl_easy_cleanup(curl_);
 }
 
 // passes list of hosts to callback
 void
-curl_hosts_fetcher::set_callback(boost::function<void(std::vector<host_info_t>&, service_info_t)> callback) {
+http_hosts_fetcher::set_callback(boost::function<void(std::vector<host_info_t>&, service_info_t)> callback) {
 	callback_ = callback;
 }
 
 void
-curl_hosts_fetcher::start() {
-	refresher_.reset(new refresher(boost::bind(&curl_hosts_fetcher::interval_func, this), interval_));
+http_hosts_fetcher::start() {
+	refresher_.reset(new refresher(boost::bind(&http_hosts_fetcher::interval_func, this), interval_));
 }
 
 void
-curl_hosts_fetcher::stop() {
+http_hosts_fetcher::stop() {
 	refresher_.reset(NULL);
 }
 
 int
-curl_hosts_fetcher::curl_writer(char* data, size_t size, size_t nmemb, std::string* buffer_in) {
+http_hosts_fetcher::curl_writer(char* data, size_t size, size_t nmemb, std::string* buffer_in) {
 	if (buffer_in != NULL) {
 		buffer_in->append(data, size * nmemb);
 		return size * nmemb;
@@ -64,7 +64,7 @@ curl_hosts_fetcher::curl_writer(char* data, size_t size, size_t nmemb, std::stri
 }
 
 void
-curl_hosts_fetcher::interval_func() {
+http_hosts_fetcher::interval_func() {
 	CURLcode result = CURLE_OK;
 	char error_buffer[CURL_ERROR_SIZE];
 	std::string buffer;

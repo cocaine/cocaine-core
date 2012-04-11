@@ -103,7 +103,7 @@ void create_client(int add_messages_count) {
 		pool[i] = boost::thread(&worker);
 	}
 
-	sleep(10);
+	sleep(360);
 
 	// wait for them to finish
 	for (int i = 0; i < pool_size; ++i) {

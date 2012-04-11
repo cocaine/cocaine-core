@@ -231,25 +231,16 @@ handle<LSD_T>::dispatch_messages() {
 			if (messages_cache()->new_messages_count() > 0) {
 				dispatch_next_available_message(main_socket);
 			}
-			/*
-			// send new message if any
-			if (have_enqueued_messages) {
-				if (dispatch_next_available_message(main_socket)) {
-					++statistics_.sent_messages;
-				}
-
-				if (messages_cache()->new_messages_count() == 0) {
-					have_enqueued_messages = false;
-				}
+			else {
+				have_enqueued_messages = false;
 			}
-			*/
 		}
 
 		// check for message responces
 		bool received_response = false;
 
 		if (is_connected_ && is_running_) {
-			received_response = check_for_responses(main_socket, socket_poll_timeout);
+			received_response = check_for_responses(main_socket, poll_timeout);
 			if (received_response) {
 				dispatch_responce(main_socket);
 			}
@@ -572,10 +563,10 @@ handle<LSD_T>::receive_responce_chunk(socket_ptr_t& socket, zmq::message_t& resp
 	return true;
 }
 
-static int mcount = 0;
-
 template <typename LSD_T> void
 handle<LSD_T>::dispatch_responce(socket_ptr_t& main_socket) {
+	static int mcount = 0;
+
 	boost::ptr_vector<zmq::message_t> response_chunks;
 
 	// receive message
@@ -596,13 +587,17 @@ handle<LSD_T>::dispatch_responce(socket_ptr_t& main_socket) {
     	assert (rc == 0);
 	}
 
+	if (response_chunks.size() == 0) {
+		return;
+	}
+
 	++mcount;
 
 	if ((mcount / 2) % 1000 == 0) {
 		std::cout << "responces: " << mcount / 2 << std::endl;
 	}
 	
-	//process_responce(response_chunks);
+	process_responce(response_chunks);
 }
 
 template <typename LSD_T> void

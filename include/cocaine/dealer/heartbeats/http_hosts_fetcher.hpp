@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef _COCAINE_DEALER_CURL_HOSTS_FETCHER_HPP_INCLUDED_
-#define _COCAINE_DEALER_CURL_HOSTS_FETCHER_HPP_INCLUDED_
+#ifndef _COCAINE_DEALER_HTTP_HOSTS_FETCHER_HPP_INCLUDED_
+#define _COCAINE_DEALER_HTTP_HOSTS_FETCHER_HPP_INCLUDED_
 
 #include <memory>
 #include <string>
@@ -29,10 +29,10 @@
 namespace cocaine {
 namespace dealer {
 
-class curl_hosts_fetcher : private boost::noncopyable  {
+class http_hosts_fetcher : private boost::noncopyable  {
 public:
-	curl_hosts_fetcher(service_info_t service_info, boost::uint32_t interval = default_fetch_interval);
-	virtual ~curl_hosts_fetcher();
+	http_hosts_fetcher(service_info_t service_info, boost::uint32_t interval = default_fetch_interval);
+	virtual ~http_hosts_fetcher();
 	
 	void start();
 	void stop();
