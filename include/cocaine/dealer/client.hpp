@@ -41,7 +41,11 @@ public:
 
 	template <typename T> response send_message(const T& object,
 												const message_path& path,
-												const message_policy& policy);
+												const message_policy& policy) {
+		msgpack::sbuffer buffer;
+		msgpack::pack(buffer, object);
+		return send_message(reinterpret_cast<const void*>(buffer.data()), buffer.size(), path, policy);
+	}
 
 private:
 	friend class response_impl;
