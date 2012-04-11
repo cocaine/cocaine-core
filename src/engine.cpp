@@ -350,8 +350,6 @@ void engine_t::enqueue(job_queue_t::value_type job, bool overflow) {
     if(it != m_pool.end()) {
         it->second->process_event(event);
     } else {
-        m_queue.push(job);
-
         if(m_pool.empty() || 
           (m_pool.size() < m_app.policy.pool_limit && 
            m_pool.size() * m_app.policy.grow_threshold < m_queue.size()))
@@ -380,6 +378,8 @@ void engine_t::enqueue(job_queue_t::value_type job, bool overflow) {
             delete job;
             return;
         }
+            
+        m_queue.push(job);
     }
 }
 
