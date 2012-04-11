@@ -74,7 +74,7 @@ private:
 								DT::ip_addr ip,
 								std::string& response);
 
-	static const int hosts_ping_timeout = 1;
+	static const int hosts_ping_timeout = 3;
 
 private:
 	boost::shared_ptr<configuration> config_;

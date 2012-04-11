@@ -20,8 +20,8 @@
 namespace cocaine {
 namespace dealer {
 
-response::response(client* c) {
-	impl_.reset(new response_impl(c));
+response::response(client* c, const std::string& uuid, const message_path& path) {
+	impl_.reset(new response_impl(c, uuid, path));
 }
 
 response::~response() {
@@ -29,8 +29,8 @@ response::~response() {
 }
 
 bool
-response::get() {
-	return get_impl()->get();
+response::get(data_container* data) {
+	return get_impl()->get(data);
 }
 
 const void*
@@ -53,14 +53,14 @@ response::error_message() {
 	return get_impl()->error_message();
 }
 
-void
-response::init(const void* data, size_t size, const message_path& path, const message_policy& policy) {
-	get_impl()->init(data, size, path, policy);	
-}
-
 boost::shared_ptr<response_impl>
 response::get_impl() {
 	return impl_;
+}
+
+void
+response::response_callback(const response_data& resp_data, const response_info& resp_info) {
+	get_impl()->response_callback(resp_data, resp_info);
 }
 
 } // namespace dealer

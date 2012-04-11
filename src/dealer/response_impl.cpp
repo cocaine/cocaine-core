@@ -20,85 +20,87 @@
 #include "cocaine/dealer/client.hpp"
 #include <cocaine/dealer/core/response_impl.hpp>
 #include <cocaine/dealer/core/client_impl.hpp>
+#include <cocaine/dealer/utils/error.hpp>
 
 namespace cocaine {
 namespace dealer {
 
-response_impl::response_impl(client* c) :
+response_impl::response_impl(client* c, const std::string& uuid, const message_path& path) :
 	client_(c),
-	message_data_(NULL),
-	message_size_(0),
+	uuid_(uuid),
+	path_(path),
 	response_finished_(false),
-	message_sent_(false),
 	message_finished_(false)
 {
 	assert(c != NULL);
 }
 
 response_impl::~response_impl() {
-
-}
-
-void
-response_impl::init(const void* data, size_t size, const message_path& path, const message_policy& policy) {
-	message_data_ = data;
-	message_size_ = size;
-	message_path_ = path;
-	message_policy_ = policy;
+	//std::cout << "killing: " << uuid_ << std::endl;
+	//client_->unset_response_callback(uuid_, path_);
+	//message_finished_ = true;
+	//response_finished_ = true;
 }
 
 bool
-response_impl::get() {
+response_impl::get(data_container* data) {
+	//std::cout << "get\n";
+
 	boost::mutex::scoped_lock lock(mutex_);
-	
+
 	// no more chunks?
 	if (message_finished_) {
 		return false;
 	}
 
-	if (!message_sent_) {
-		// send message
-		std::cout << "sending message...\n";
-		uuid_ = client_->get_impl()->send_message(message_data_, 
-												  message_size_,
-												  message_path_,
-												  message_policy_);
-		message_sent_ = true;
-
-		// assign callback
-		client_->set_response_callback(uuid_,
-									   boost::bind(&response_impl::response_callback, this, _1, _2),
-									   message_path_);
-	}
+	data_ = *data;
 
 	// block until received callback
-	std::cout << "blocking...\n";
-
 	while (!response_finished_) {
 		cond_var_.wait(lock);
 	}
 
-	response_finished_ = false;
-
-	std::cout << "done blocking.\n";
+	//response_finished_ = false;
 
 	// expecting another chunk
 	if (resp_info_.code == response_code::message_chunk) {
+		lock.unlock();
+		*data = data_;
+		client_->unset_response_callback(uuid_, path_);
 		return true;
 	}
 
+	//client_->unset_response_callback(uuid_, path_);
 	message_finished_ = true;
-	return true;
+	response_finished_ = true;
+
+	throw error(resp_info_.code, resp_info_.error_msg);
+	return false;
 }
 
 void
-response_impl::response_callback(const response_data& resp_data, const response_info& resp_info) {
-	std::cout << "callback received.\n";
+response_impl::response_callback(const response_data& resp_data, const response_info& resp_info) { 
+	if (message_finished_) {
+		return;
+	}
 
 	boost::mutex::scoped_lock lock(mutex_);
 
+	if (resp_info.code == response_code::message_choke) {
+		//std::cout << "choke\n";
+		return;
+	}
+	else if (resp_info.code == response_code::message_chunk) {
+		//std::cout << "chunk\n";
+		data_.set_data(resp_data.data, resp_data.size);
+	}
+	else {
+		//std::cout << "error!\n";
+	}
+
 	resp_info_ = resp_info;
 	response_finished_ = true;
+	message_finished_ = true;
 
 	lock.unlock();
 	cond_var_.notify_one();

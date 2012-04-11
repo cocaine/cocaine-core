@@ -20,7 +20,7 @@
 			{
             	"name" : "karma-tests",
 				"app_name" : "karma@1",
-				"hosts_file" : "/Users/creator/Projects/cocaine/tests/hosts",
+				"hosts_file" : "/home/rimz/cocaine/tests/hosts",
 				"control_port" : 5000
 			}
 		]

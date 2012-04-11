@@ -19,16 +19,17 @@
 
 #include <cocaine/dealer/forwards.hpp>
 #include <cocaine/dealer/structs.hpp>
+#include <cocaine/dealer/utils/data_container.hpp>
 
 namespace cocaine {
 namespace dealer {
 
 class response_impl {
 public:
-	explicit response_impl(client* c);
+	explicit response_impl(client* c, const std::string& uuid, const message_path& path);
 	virtual ~response_impl();
 
-	bool get();
+	bool get(data_container* data);
 	const void* data();
 	size_t size();
 	int code();
@@ -37,19 +38,14 @@ public:
 private:
 	friend class response;
 
-	void init(const void* data, size_t size, const message_path& path, const message_policy& policy);
 	void response_callback(const response_data& resp_data, const response_info& resp_info);
 
 	client* client_;
-
-	const void* message_data_;
-	size_t message_size_;
-	message_path message_path_;
-	message_policy message_policy_;
+	data_container data_;
 	std::string uuid_;
+	const message_path& path_;
 	bool response_finished_;
 	bool message_finished_;
-	bool message_sent_;
 
 	response_info resp_info_;
 

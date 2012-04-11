@@ -37,6 +37,10 @@ public:
 
 	static const int ERROR_MESSAGE_SIZE = 512;
 
+	virtual int type() const throw () {
+		return type_;
+	}
+
 	virtual char const* what() const throw ();
 
 private:

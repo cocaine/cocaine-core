@@ -94,6 +94,8 @@ public:
 	void register_responder_callback(const std::string& message_uuid,
 									 registered_callback_t callback);
 
+	void unregister_responder_callback(const std::string& message_uuid);
+
 public:
 	template<typename T> friend std::ostream& operator << (std::ostream& out, const service<T>& s);
 
@@ -185,6 +187,7 @@ service<LSD_T>::service(const service_info<LSD_T>& info, boost::shared_ptr<cocai
 template <typename LSD_T>
 service<LSD_T>::~service() {
 	is_running_ = false;
+	cond_.notify_one();
 	thread_.join();
 }
 
@@ -208,10 +211,10 @@ service<LSD_T>::responces_queues_empty() const {
 
 template <typename LSD_T> void
 service<LSD_T>::dispatch_responces() {
+	boost::mutex::scoped_lock lock(mutex_);
+	
 	while (is_running_) {
-		boost::mutex::scoped_lock lock(mutex_);
-
-		while(responces_queues_empty()) {
+		while(responces_queues_empty() && is_running_) {
             cond_.wait(lock);
         }
 
@@ -238,11 +241,12 @@ service<LSD_T>::dispatch_responces() {
 
 				// invoke callback for given handle and response
 				registered_callbacks_map_t::iterator it = responses_callbacks_map_.find(resp_info.uuid);
-				assert(it != responses_callbacks_map_.end());
 
-				registered_callback_t callback = it->second;
-
-				callback(resp_data, resp_info);
+				// call callback it it's there
+				if (it != responses_callbacks_map_.end()) {
+					registered_callback_t callback = it->second;
+					callback(resp_data, resp_info);
+				}
 
 				// remove processed response
 				handle_resp_queue->pop_front();
@@ -303,6 +307,22 @@ service<LSD_T>::register_responder_callback(const std::string& message_uuid,
 }
 
 template <typename LSD_T> void
+service<LSD_T>::unregister_responder_callback(const std::string& message_uuid) {
+	boost::mutex::scoped_lock lock(mutex_);
+	registered_callbacks_map_t::iterator callback_it = responses_callbacks_map_.find(message_uuid);
+
+	//std::cout << "erasing callback 2\n";
+	// is there a callback for given response uuid?
+	if (callback_it == responses_callbacks_map_.end()) {
+		//std::cout << "erasing callback 3\n";
+		return;
+	}
+
+	//std::cout << "erasing callback 4\n"; 
+	responses_callbacks_map_.erase(callback_it);
+}
+
+template <typename LSD_T> void
 service<LSD_T>::enqueue_responce(cached_response_prt_t response) {
 
 	// validate response
@@ -319,7 +339,7 @@ service<LSD_T>::enqueue_responce(cached_response_prt_t response) {
 	// see whether there exists registered callback for message
 	registered_callbacks_map_t::iterator callback_it = responses_callbacks_map_.find(response->uuid());
 
-	// is there a callback for given response path?
+	// is there a callback for given response uuid?
 	if (callback_it == responses_callbacks_map_.end()) {
 		// drop response
 		lock.unlock();

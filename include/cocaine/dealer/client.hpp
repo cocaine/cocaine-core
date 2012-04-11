@@ -34,12 +34,20 @@ public:
 	explicit client(const std::string& config_path = "");
 	virtual ~client();
 
-	response send_message(const void* data, size_t size, const message_path& path, const message_policy& policy, bool discard_answer = false, bool block = true);
+	response send_message(const void* data,
+						  size_t size,
+						  const message_path& path,
+						  const message_policy& policy);
+
+	template <typename T> response send_message(const T& object,
+												const message_path& path,
+												const message_policy& policy);
 
 private:
 	friend class response_impl;
 
 	void set_response_callback(const std::string& message_uuid, response_callback callback, const message_path& path);
+	void unset_response_callback(const std::string& message_uuid, const message_path& path);
 
 	boost::shared_ptr<client_impl> get_impl();
 

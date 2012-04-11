@@ -32,14 +32,36 @@ client::~client() {
 
 void
 client::set_response_callback(const std::string& message_uuid, response_callback callback, const message_path& path) {
-	set_response_callback(message_uuid, callback, path);
+	get_impl()->set_response_callback(message_uuid, callback, path);
+}
+
+void
+client::unset_response_callback(const std::string& message_uuid, const message_path& path) {
+	//std::cout << "unset_response_callback cli\n";
+	get_impl()->unset_response_callback(message_uuid, path);	
 }
 
 response
-client::send_message(const void* data, size_t size, const message_path& path, const message_policy& policy, bool discard_answer, bool block) {
-	response r(this);
-	r.init(data, size, path, policy);
-	return r;
+client::send_message(const void* data,
+					 size_t size,
+					 const message_path& path,
+					 const message_policy& policy)
+{
+	boost::shared_ptr<message_iface> msg = get_impl()->create_message(data, size, path, policy);
+
+	response resp(this, msg->uuid(), path);
+	std::string uuid = get_impl()->send_message(msg, boost::bind(&response::response_callback, resp, _1, _2));
+	return resp;
+}
+
+template <typename T> response
+client::send_message(const T& object,
+					 const message_path& path,
+					 const message_policy& policy)
+{
+	msgpack::sbuffer buffer;
+	msgpack::pack(buffer, object);
+	return send_message(reinterpret_cast<const void*>(buffer.data()), buffer.size(), path, policy);
 }
 
 inline boost::shared_ptr<client_impl>

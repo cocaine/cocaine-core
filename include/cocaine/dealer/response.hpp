@@ -20,25 +20,27 @@
 
 #include <cocaine/dealer/forwards.hpp>
 #include <cocaine/dealer/structs.hpp>
+#include <cocaine/dealer/utils/data_container.hpp>
 
 namespace cocaine {
 namespace dealer {
 
 class response {
 public:
-	explicit response(client* c);
+	explicit response(client* c, const std::string& uuid, const message_path& path);
 	virtual ~response();
 
-	bool get();
+	bool get(data_container* data);
+
 	const void* data();
 	size_t size();
 	int code();
 	std::string error_message();
 
+	void response_callback(const response_data& resp_data, const response_info& resp_info);
+
 private:
 	friend class client;
-
-	void init(const void* data, size_t size, const message_path& path, const message_policy& policy);
 
 	boost::shared_ptr<response_impl> get_impl();
 	boost::shared_ptr<response_impl> impl_;

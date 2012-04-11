@@ -35,8 +35,6 @@ typedef cached_message<persistent_data_container, persistent_request_metadata> p
 client_impl::client_impl(const std::string& config_path) :
 	messages_cache_size_(0)
 {
-	std::cout << "client_impl ctor\n";
-
 	// create dealer context
 	std::string ctx_error_msg = "could not create dealer context at: " + std::string(BOOST_CURRENT_FUNCTION) + " ";
 
@@ -76,7 +74,6 @@ client_impl::~client_impl() {
 
 void
 client_impl::connect() {
-	std::cout << "client_impl connect\n";
 	boost::mutex::scoped_lock lock(mutex_);
 	boost::shared_ptr<configuration> conf;
 
@@ -172,6 +169,36 @@ client_impl::send_message(const void* data,
 	return send_message(data, size, path, mpolicy);
 }
 
+boost::shared_ptr<message_iface>
+client_impl::create_message(const void* data,
+							size_t size,
+							const message_path& path,
+							const message_policy& policy)
+{
+	boost::shared_ptr<message_iface> msg;
+
+	if (config()->message_cache_type() == RAM_ONLY) {
+		msg.reset(new message_t(path, policy, data, size));
+	}
+	else if (config()->message_cache_type() == PERSISTENT) {
+		p_message_t* msg_ptr = new p_message_t(path, policy, data, size);
+		eblob eb = context()->storage()->get_eblob(path.service_name);
+		
+		// init metadata and write to storage
+		msg_ptr->mdata_container().set_eblob(eb);
+		msg_ptr->mdata_container().commit_data();
+		msg_ptr->mdata_container().data_size = size;
+
+		// init data and write to storage
+		msg_ptr->data_container().set_eblob(eb, msg_ptr->uuid());
+		msg_ptr->data_container().commit_data();
+
+		msg.reset(msg_ptr);
+	}
+
+	return msg;
+}
+
 std::string
 client_impl::send_message(const void* data,
 						  size_t size,
@@ -180,66 +207,28 @@ client_impl::send_message(const void* data,
 {
 	boost::mutex::scoped_lock lock(mutex_);
 
-	size_t cached_message_class_size = 0;
-	if (config()->message_cache_type() == RAM_ONLY) {
-		cached_message_class_size += sizeof(message_t);
-	}
-	else if(config()->message_cache_type() == PERSISTENT) {
-		cached_message_class_size += sizeof(p_message_t);	
-	}
-
-	// validate message path
-	if (!config()->service_info_by_name(path.service_name)) {
-		std::string error_str = "message sent to unknown service, check your config file.";
-		error_str += " at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw error(response_code::unknown_service_error, error_str);
-	}
-
 	// find service to send message to
 	std::string uuid;
 	services_map_t::iterator it = services_.find(path.service_name);
 
-	if (it != services_.end()) {
-		boost::shared_ptr<message_iface> msg;
-
-		if (config()->message_cache_type() == RAM_ONLY) {
-			msg.reset(new message_t(path, policy, data, size));
-		}
-		else if (config()->message_cache_type() == PERSISTENT) {
-			p_message_t* msg_ptr = new p_message_t(path, policy, data, size);
-			eblob eb = context()->storage()->get_eblob(path.service_name);
-			
-			// init metadata and write to storage
-			msg_ptr->mdata_container().set_eblob(eb);
-			msg_ptr->mdata_container().commit_data();
-			msg_ptr->mdata_container().data_size = size;
-
-			// init data and write to storage
-			msg_ptr->data_container().set_eblob(eb, msg_ptr->uuid());
-			msg_ptr->data_container().commit_data();
-
-			msg.reset(msg_ptr);
-		}
-
-		uuid = msg->uuid();
-
-		// send message to service
-		if (it->second) {
-			it->second->send_message(msg);
-		}
-		else {
-			std::string error_str = "object for service with name " + path.service_name;
-			error_str += " is emty at " + std::string(BOOST_CURRENT_FUNCTION);
-			throw error(response_code::unknown_error, error_str);
-		}
-	}
-	else {
+	if (it == services_.end()) {
 		std::string error_str = "no service with name " + path.service_name;
 		error_str += " found at " + std::string(BOOST_CURRENT_FUNCTION);
 		throw error(response_code::unknown_service_error, error_str);
 	}
 
-	update_messages_cache_size();
+	boost::shared_ptr<message_iface> msg = create_message(data, size, path, policy);
+	uuid = msg->uuid();
+
+	// send message to service
+	if (it->second) {
+		it->second->send_message(msg);
+	}
+	else {
+		std::string error_str = "object for service with name " + path.service_name;
+		error_str += " is emty at " + std::string(BOOST_CURRENT_FUNCTION);
+		throw error(response_code::unknown_error, error_str);
+	}
 
 	// return message uuid
 	return uuid;
@@ -271,6 +260,39 @@ client_impl::send_message(const std::string& data,
 	return send_message(data.c_str(), data.length(), path, policy);
 }
 
+std::string
+client_impl::send_message(boost::shared_ptr<message_iface> msg, response_callback callback) {
+	boost::mutex::scoped_lock lock(mutex_);
+
+	// find service to send message to
+	std::string uuid;
+	services_map_t::iterator it = services_.find(msg->path().service_name);
+
+	if (it == services_.end()) {
+		std::string error_str = "no service with name " + msg->path().service_name;
+		error_str += " found at " + std::string(BOOST_CURRENT_FUNCTION);
+		throw error(response_code::unknown_service_error, error_str);
+	}
+
+	uuid = msg->uuid();
+
+	// assign callback
+	it->second->register_responder_callback(uuid, callback);
+
+	// send message to service
+	if (it->second) {
+		it->second->send_message(msg);
+	}
+	else {
+		std::string error_str = "object for service with name " + msg->path().service_name;
+		error_str += " is emty at " + std::string(BOOST_CURRENT_FUNCTION);
+		throw error(response_code::unknown_error, error_str);
+	}
+
+	// return message uuid
+	return uuid;
+}
+
 void
 client_impl::set_response_callback(const std::string& message_uuid,
 								   response_callback callback,
@@ -295,6 +317,29 @@ client_impl::set_response_callback(const std::string& message_uuid,
 
 	// assign to service
 	it->second->register_responder_callback(message_uuid, callback);
+}
+
+void
+client_impl::unset_response_callback(const std::string& message_uuid,
+								 	 const message_path& path)
+{
+	//std::cout << "unset_response_callback\n";
+
+	// check for services
+	services_map_t::iterator it = services_.find(path.service_name);
+	if (it == services_.end()) {
+		std::string error_msg = "message sent to unknown service \"" + path.service_name + "\"";
+		error_msg += " at: " + std::string(BOOST_CURRENT_FUNCTION);
+		error_msg += " please make sure you've defined service in dealer configuration file.";
+		throw error(response_code::unknown_service_error, error_msg);
+	}
+
+	if (!it->second) {
+		throw error("service object is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
+	}
+
+	// assign to service
+	it->second->unregister_responder_callback(message_uuid);
 }
 
 boost::shared_ptr<context>

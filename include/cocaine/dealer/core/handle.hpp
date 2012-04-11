@@ -125,7 +125,7 @@ private:
 	boost::shared_ptr<configuration> config();
 	boost::shared_ptr<cocaine::dealer::context> context();
 
-	static const int socket_poll_timeout = 200; // millisecs
+	static const int socket_poll_timeout = 50; // millisecs
 
 private:
 	handle_info<LSD_T> info_;
@@ -228,6 +228,10 @@ handle<LSD_T>::dispatch_messages() {
 
 		// send new message if any
 		if (is_running_ && is_connected_) {
+			if (messages_cache()->new_messages_count() > 0) {
+				dispatch_next_available_message(main_socket);
+			}
+			/*
 			// send new message if any
 			if (have_enqueued_messages) {
 				if (dispatch_next_available_message(main_socket)) {
@@ -238,6 +242,7 @@ handle<LSD_T>::dispatch_messages() {
 					have_enqueued_messages = false;
 				}
 			}
+			*/
 		}
 
 		// check for message responces
@@ -245,8 +250,12 @@ handle<LSD_T>::dispatch_messages() {
 
 		if (is_connected_ && is_running_) {
 			received_response = check_for_responses(main_socket, socket_poll_timeout);
+			if (received_response) {
+				dispatch_responce(main_socket);
+			}
 
 			// process received responce(s)
+			/*
 			while (received_response) {
 				dispatch_responce(main_socket);
 
@@ -257,6 +266,7 @@ handle<LSD_T>::dispatch_messages() {
 					received_response = false;
 				}
 			}
+			*/
 		}
 
 		/*
@@ -281,8 +291,6 @@ handle<LSD_T>::dispatch_messages() {
 			}
 		}
 		*/
-
-		update_statistics();
 	}
 
 	control_socket.reset();
@@ -564,6 +572,8 @@ handle<LSD_T>::receive_responce_chunk(socket_ptr_t& socket, zmq::message_t& resp
 	return true;
 }
 
+static int mcount = 0;
+
 template <typename LSD_T> void
 handle<LSD_T>::dispatch_responce(socket_ptr_t& main_socket) {
 	boost::ptr_vector<zmq::message_t> response_chunks;
@@ -586,7 +596,13 @@ handle<LSD_T>::dispatch_responce(socket_ptr_t& main_socket) {
     	assert (rc == 0);
 	}
 
-	process_responce(response_chunks);
+	++mcount;
+
+	if ((mcount / 2) % 1000 == 0) {
+		std::cout << "responces: " << mcount / 2 << std::endl;
+	}
+	
+	//process_responce(response_chunks);
 }
 
 template <typename LSD_T> void

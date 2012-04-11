@@ -18,21 +18,28 @@
 #include <time.h>
 
 #include <boost/program_options.hpp>
-#include <boost/heap/priority_queue.hpp>
+#include <boost/thread.hpp>
+#include <boost/shared_ptr.hpp>
 
 #include <msgpack.hpp>
 
 #include "cocaine/dealer/dealer.hpp"
 #include "cocaine/dealer/utils/progress_timer.hpp"
+#include <cocaine/dealer/utils/data_container.hpp>
+#include <cocaine/dealer/utils/error.hpp>
 
+using namespace cocaine::dealer;
 namespace po = boost::program_options;
-namespace cd = cocaine::dealer;
 
-cd::progress_timer timer;
 std::string config_path = "tests/config_example.json";
 
-void create_client(int add_messages_count) {
-	
+// create client
+boost::shared_ptr<client> client_ptr;
+
+int messages_count = 0;
+int responces_count = 0;
+
+void worker() {
 	// prepare data
 	std::map<std::string, int> val;
 	val["uid"] = 123;
@@ -43,49 +50,67 @@ void create_client(int add_messages_count) {
 	msgpack::pack(buffer, val);
 
 	//message path
-	cd::message_path path;
+	message_path path;
 	path.service_name = "karma-tests";
 	path.handle_name = "event";
 
 	// message policy
-	cd::message_policy policy;
+	message_policy policy;
 
-	// create client
-	cd::client client(config_path);
-	//cd::response resp = client.send_message(buffer.data(), buffer.size(), path, policy);
+	for (int i = 0; i < messages_count; ++i) {
+		response resp = client_ptr->send_message(buffer.data(), buffer.size(), path, policy);
 
-	/*
-	int code;
-	while (resp.get(code)) {
-		switch (resp.code()) {
-			case cd::response_code::message_chunk:
-				std::cout << "got chunk!" << std::endl;
-				break;
+		try {
+			//data_container data;
+			//resp.get(&data);
 
-			case cd::response_code::message_choke:
-				std::cout << "got choke!" << std::endl;
-				break;
+			//++responces_count;
+			//if (responces_count % 1000 == 0) {
+			//	std::cout << "processed: " << responces_count << std::endl;
+			//}
+
+			/*
+			msgpack::unpacked msg;
+			msgpack::unpack(&msg, (const char*)data.data(), data.size());
+			msgpack::object obj = msg.get();
+			std::cout << "resp data: " << obj << std::endl;
+			*/
+		}
+		catch (const error& err) {
+			const int t = err.type();
+			std::cout << "error type: " << t << ", error message: " << err.what() << std::endl;
+		}
+		catch (const std::exception& ex) {
+			std::cout << "error message: " << ex.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "caught exception, no error message." << std::endl;
 		}
 	}
-	*/
+}
 
-	//std::cout << "got bad response!" << std::endl;
+void create_client(int add_messages_count) {
+	messages_count = add_messages_count;
+	client_ptr.reset(new client(config_path));
 
-	/*
-	c.set_response_callback(boost::bind(&response_callback, _1, _2), path_py);
-	sleep(6);
+	int pool_size = 1;
+	boost::thread pool[pool_size];
 
+	progress_timer timer;
 
-	timer.reset();
-
-	// send messages to py app
-	std::cout << "sending " << add_messages_count << " messages...\n";
-	for (int i = 0; i < add_messages_count; ++i) {
-		std::string uuid1 = c.send_message(buffer.data(), buffer.size(), path_py);
+	// create threads
+	for (int i = 0; i < pool_size; ++i) {
+		pool[i] = boost::thread(&worker);
 	}
 
-	sleep(600);
-	*/
+	sleep(10);
+
+	// wait for them to finish
+	for (int i = 0; i < pool_size; ++i) {
+		pool[i].join();
+	}
+
+	std::cout << "elapsed: " << timer.elapsed().as_double() << std::endl;
 }
 
 int
