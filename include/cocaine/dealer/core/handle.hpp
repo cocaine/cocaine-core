@@ -112,7 +112,7 @@ private:
 
 	// working with responces
 	bool check_for_responses(socket_ptr_t& main_socket, int poll_timeout);
-	void dispatch_responce(socket_ptr_t& main_socket);
+	bool dispatch_responce(socket_ptr_t& main_socket);
 	void process_responce(boost::ptr_vector<zmq::message_t>& chunks);
 	bool receive_responce_chunk(socket_ptr_t& socket, zmq::message_t& response);
 	void enqueue_response(cached_response_prt_t response);
@@ -125,7 +125,7 @@ private:
 	boost::shared_ptr<configuration> config();
 	boost::shared_ptr<cocaine::dealer::context> context();
 
-	static const int socket_poll_timeout = 50; // millisecs
+	static const int socket_poll_timeout = 100; // millisecs
 
 private:
 	handle_info<LSD_T> info_;
@@ -206,7 +206,7 @@ handle<LSD_T>::dispatch_messages() {
 		static bool have_enqueued_messages = false;
 
 		// receive control message
-		int poll_timeout = have_enqueued_messages ? 0 : socket_poll_timeout;
+		int poll_timeout = have_enqueued_messages ? 10 : 100;
 		int control_message = receive_control_messages(control_socket, poll_timeout);
 
 		switch (control_message) {
@@ -228,11 +228,14 @@ handle<LSD_T>::dispatch_messages() {
 
 		// send new message if any
 		if (is_running_ && is_connected_) {
-			if (messages_cache()->new_messages_count() > 0) {
-				dispatch_next_available_message(main_socket);
-			}
-			else {
-				have_enqueued_messages = false;
+			for (int i = 0; i < 50; ++i) { // batching
+				if (messages_cache()->new_messages_count() > 0) {
+					dispatch_next_available_message(main_socket);
+				}
+				else {
+					have_enqueued_messages = false;
+					break;
+				}
 			}
 		}
 
@@ -240,24 +243,32 @@ handle<LSD_T>::dispatch_messages() {
 		bool received_response = false;
 
 		if (is_connected_ && is_running_) {
-			received_response = check_for_responses(main_socket, poll_timeout);
-			if (received_response) {
-				dispatch_responce(main_socket);
-			}
+			received_response = check_for_responses(main_socket, 100);
 
 			// process received responce(s)
-			/*
+
 			while (received_response) {
+				
+				/*
+				for (int i = 0; i < 100; ++i) {
+					dispatch_responce(main_socket);
+					//received_response = check_for_responses(main_socket, 20);
+
+					//if (!received_response) {
+					//	break;
+					//}
+				}
+				*/
+				
 				dispatch_responce(main_socket);
 
-				if (!have_enqueued_messages) {
-					received_response = check_for_responses(main_socket, socket_poll_timeout);
-				}
-				else {
-					received_response = false;
-				}
+				//if (!have_enqueued_messages) {
+					received_response = check_for_responses(main_socket, 10);
+				//}
+				//else {
+				//	received_response = false;
+				//}
 			}
-			*/
 		}
 	}
 
@@ -310,33 +321,35 @@ handle<LSD_T>::receive_control_messages(socket_ptr_t& control_socket, int poll_t
 	}
 
 	// in case we received control message
-    if ((ZMQ_POLLIN & poll_items[0].revents) == ZMQ_POLLIN) {
-    	int received_message = 0;
+    if ((ZMQ_POLLIN & poll_items[0].revents) != ZMQ_POLLIN) {
+    	return 0;
+    }
 
-    	bool recv_failed = false;
-    	zmq::message_t reply;
+	int received_message = 0;
 
-    	try {
-    		if (!control_socket->recv(&reply)) {
-    			recv_failed = true;
-    		}
-    		else {
-    			memcpy((void *)&received_message, reply.data(), reply.size());
-    			return received_message;
-    		}
-    	}
-    	catch (const std::exception& ex) {
-			std::string error_msg = "some very ugly shit happend while recv on socket at ";
-			error_msg += std::string(BOOST_CURRENT_FUNCTION);
-			error_msg += " details: " + std::string(ex.what());
-			throw error(error_msg);
-    	}
+	bool recv_failed = false;
+	zmq::message_t reply;
 
-        if (recv_failed) {
-        	std::string sname = info_.service_name_;
-        	std::string hname = info_.name_;
-        	logger()->log("recv failed on service: %s, handle %s", sname.c_str(), hname.c_str());
-        }
+	try {
+		if (!control_socket->recv(&reply)) {
+			recv_failed = true;
+		}
+		else {
+			memcpy((void *)&received_message, reply.data(), reply.size());
+			return received_message;
+		}
+	}
+	catch (const std::exception& ex) {
+		std::string error_msg = "some very ugly shit happend while recv on socket at ";
+		error_msg += std::string(BOOST_CURRENT_FUNCTION);
+		error_msg += " details: " + std::string(ex.what());
+		throw error(error_msg);
+	}
+
+    if (recv_failed) {
+    	std::string sname = info_.service_name_;
+    	std::string hname = info_.name_;
+    	logger()->log("recv failed on service: %s, handle %s", sname.c_str(), hname.c_str());
     }
 
     return 0;
@@ -540,7 +553,7 @@ handle<LSD_T>::receive_responce_chunk(socket_ptr_t& socket, zmq::message_t& resp
 	return true;
 }
 
-template <typename LSD_T> void
+template <typename LSD_T> bool
 handle<LSD_T>::dispatch_responce(socket_ptr_t& main_socket) {
 	//static int mcount = 0;
 
@@ -565,7 +578,7 @@ handle<LSD_T>::dispatch_responce(socket_ptr_t& main_socket) {
 	}
 
 	if (response_chunks.size() == 0) {
-		return;
+		return false;
 	}
 
 	/*
@@ -577,6 +590,7 @@ handle<LSD_T>::dispatch_responce(socket_ptr_t& main_socket) {
 	*/
 	
 	process_responce(response_chunks);
+	return true;
 }
 
 template <typename LSD_T> void

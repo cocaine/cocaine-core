@@ -535,15 +535,21 @@ service<LSD_T>::refresh_handles(const handles_info_list_t& handles,
 
 template <typename LSD_T> void
 service<LSD_T>::remove_outstanding_handles(const handles_info_list_t& handles) {
+	return;
+
 	// no handles to destroy
 	if (handles.empty()) {
 		return;
 	}
 
-	std::string message_str = "service: " + info_.name_ + "is removing outstanding handles: ";
+	std::string message_str = "service: [" + info_.name_ + "] is removing outstanding handles: ";
 
 	for (size_t i = 0; i < handles.size(); ++i) {
-		message_str += handles[i].name_ + ", ";
+		message_str += handles[i].name_;
+
+		if (i != handles.size() - 1) {
+			message_str += ", ";
+		}
 	}
 
 	logger()->log(message_str);
