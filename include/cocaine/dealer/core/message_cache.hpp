@@ -46,7 +46,7 @@ public:
 
 	virtual ~message_cache();
 
-	void enqueue(boost::shared_ptr<message_iface> message);
+	void enqueue(const boost::shared_ptr<message_iface>& message);
 	void append_message_queue(message_queue_ptr_t queue);
 
 	size_t new_messages_count();

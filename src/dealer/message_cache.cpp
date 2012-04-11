@@ -74,7 +74,7 @@ message_cache::new_messages() {
 }
 
 void
-message_cache::enqueue(boost::shared_ptr<message_iface> message) {
+message_cache::enqueue(const boost::shared_ptr<message_iface>& message) {
 	boost::mutex::scoped_lock lock(mutex_);
 	new_messages_->push_back(message);
 }

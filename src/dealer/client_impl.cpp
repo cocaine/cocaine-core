@@ -261,7 +261,7 @@ client_impl::send_message(const std::string& data,
 }
 
 std::string
-client_impl::send_message(boost::shared_ptr<message_iface> msg, response_callback callback) {
+client_impl::send_message(const boost::shared_ptr<message_iface>& msg, response_callback callback) {
 	boost::mutex::scoped_lock lock(mutex_);
 
 	// find service to send message to

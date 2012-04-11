@@ -90,7 +90,7 @@ public:
 	void disconnect();
 
 	void set_responce_callback(responce_callback_t callback);
-	void enqueue_message(boost::shared_ptr<message_iface> message);
+	void enqueue_message(const boost::shared_ptr<message_iface>& message);
 	void notify_new_messages_enqueued();
 
 private:
@@ -964,7 +964,7 @@ handle<LSD_T>::set_responce_callback(responce_callback_t callback) {
 }
 
 template <typename LSD_T> void
-handle<LSD_T>::enqueue_message(boost::shared_ptr<message_iface> message) {
+handle<LSD_T>::enqueue_message(const boost::shared_ptr<message_iface>& message) {
 	boost::mutex::scoped_lock lock(mutex_);
 
 	messages_cache()->enqueue(message);
