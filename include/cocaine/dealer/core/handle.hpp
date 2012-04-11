@@ -246,28 +246,9 @@ handle<LSD_T>::dispatch_messages() {
 			received_response = check_for_responses(main_socket, 100);
 
 			// process received responce(s)
-
 			while (received_response) {
-				
-				/*
-				for (int i = 0; i < 100; ++i) {
-					dispatch_responce(main_socket);
-					//received_response = check_for_responses(main_socket, 20);
-
-					//if (!received_response) {
-					//	break;
-					//}
-				}
-				*/
-				
 				dispatch_responce(main_socket);
-
-				//if (!have_enqueued_messages) {
-					received_response = check_for_responses(main_socket, 10);
-				//}
-				//else {
-				//	received_response = false;
-				//}
+				received_response = check_for_responses(main_socket, 10);
 			}
 		}
 	}

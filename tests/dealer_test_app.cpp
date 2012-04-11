@@ -97,7 +97,7 @@ void create_client(int add_messages_count) {
 	messages_count = add_messages_count;
 	client_ptr.reset(new client(config_path));
 
-	int pool_size = 100;
+	int pool_size = 200;
 	boost::thread pool[pool_size];
 
 	progress_timer timer;
