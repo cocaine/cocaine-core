@@ -38,6 +38,7 @@ boost::shared_ptr<client> client_ptr;
 
 int messages_count = 0;
 int responces_count = 0;
+int last_responces_count = 0;
 
 void worker() {
 	// prepare data
@@ -58,16 +59,19 @@ void worker() {
 	message_policy policy;
 
 	for (int i = 0; i < messages_count; ++i) {
-		response resp = client_ptr->send_message(buffer.data(), buffer.size(), path, policy);
+		boost::shared_ptr<response> resp = client_ptr->send_message(buffer.data(), buffer.size(), path, policy);
 
 		try {
-			//data_container data;
-			//resp.get(&data);
+			data_container data;
+			resp->get(&data);
 
-			//++responces_count;
-			//if (responces_count % 1000 == 0) {
-			//	std::cout << "processed: " << responces_count << std::endl;
-			//}
+			/*
+			++responces_count;
+			if (responces_count % 1000 == 0 && responces_count != last_responces_count) {
+				last_responces_count = responces_count;
+				std::cout << "processed: " << responces_count << std::endl;
+			}
+			*/
 
 			/*
 			msgpack::unpacked msg;
@@ -102,8 +106,6 @@ void create_client(int add_messages_count) {
 	for (int i = 0; i < pool_size; ++i) {
 		pool[i] = boost::thread(&worker);
 	}
-
-	sleep(360);
 
 	// wait for them to finish
 	for (int i = 0; i < pool_size; ++i) {

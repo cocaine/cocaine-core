@@ -22,35 +22,15 @@
 namespace cocaine {
 namespace dealer {
 
-http_hosts_fetcher::http_hosts_fetcher(service_info_t service_info,
-									   boost::uint32_t interval) :
+http_hosts_fetcher::http_hosts_fetcher(service_info_t service_info) :
 	curl_(NULL),
-	service_info_(service_info),
-	interval_(interval)
+	service_info_(service_info)
 {
 	curl_ = curl_easy_init();
-	start();
 }
 
 http_hosts_fetcher::~http_hosts_fetcher() {
-	stop();
 	curl_easy_cleanup(curl_);
-}
-
-// passes list of hosts to callback
-void
-http_hosts_fetcher::set_callback(boost::function<void(std::vector<host_info_t>&, service_info_t)> callback) {
-	callback_ = callback;
-}
-
-void
-http_hosts_fetcher::start() {
-	refresher_.reset(new refresher(boost::bind(&http_hosts_fetcher::interval_func, this), interval_));
-}
-
-void
-http_hosts_fetcher::stop() {
-	refresher_.reset(NULL);
 }
 
 int
@@ -64,7 +44,7 @@ http_hosts_fetcher::curl_writer(char* data, size_t size, size_t nmemb, std::stri
 }
 
 void
-http_hosts_fetcher::interval_func() {
+http_hosts_fetcher::get_hosts(std::vector<host_info_t>& hosts, service_info_t& service_info) {
 	CURLcode result = CURLE_OK;
 	char error_buffer[CURL_ERROR_SIZE];
 	std::string buffer;
@@ -97,7 +77,6 @@ http_hosts_fetcher::interval_func() {
 	boost::char_separator<char> sep("\n");
 	tokenizer tokens(buffer, sep);
 	
-	std::vector<host_info_t> hosts;
 	for (tokenizer::iterator tok_iter = tokens.begin(); tok_iter != tokens.end(); ++tok_iter) {
 		try {
 			host_info_t host(*tok_iter);
@@ -107,7 +86,7 @@ http_hosts_fetcher::interval_func() {
 		}
 	}
 	
-	callback_(hosts, service_info_);
+	service_info = service_info_;
 }
 
 } // namespace dealer

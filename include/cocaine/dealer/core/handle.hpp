@@ -259,29 +259,6 @@ handle<LSD_T>::dispatch_messages() {
 			}
 			*/
 		}
-
-		/*
-		// check for expired messages
-		if (is_connected_ && is_running_) {
-			std::vector<std::pair<std::string, message_path> > expired;
-			messages_cache()->process_expired_messages(expired);
-
-			// put expired messages to response queue
-			for (size_t i = 0; i < expired.size(); ++i) {
-				// shortcuts
-				std::string& uuid = expired[i].first;
-				message_path& path = expired[i].second;
-				std::string error_msg = "the job has expired";
-
-				// create response
-				cached_response_prt_t response;
-				response.reset(new cached_response(uuid, path, deadline_error, error_msg));
-				enqueue_response(response);
-
-				++statistics_.expired_responses;
-			}
-		}
-		*/
 	}
 
 	control_socket.reset();
@@ -565,7 +542,7 @@ handle<LSD_T>::receive_responce_chunk(socket_ptr_t& socket, zmq::message_t& resp
 
 template <typename LSD_T> void
 handle<LSD_T>::dispatch_responce(socket_ptr_t& main_socket) {
-	static int mcount = 0;
+	//static int mcount = 0;
 
 	boost::ptr_vector<zmq::message_t> response_chunks;
 
@@ -591,11 +568,13 @@ handle<LSD_T>::dispatch_responce(socket_ptr_t& main_socket) {
 		return;
 	}
 
+	/*
 	++mcount;
 
 	if ((mcount / 2) % 1000 == 0) {
 		std::cout << "responces: " << mcount / 2 << std::endl;
 	}
+	*/
 	
 	process_responce(response_chunks);
 }

@@ -34,14 +34,15 @@ public:
 	explicit client(const std::string& config_path = "");
 	virtual ~client();
 
-	response send_message(const void* data,
-						  size_t size,
-						  const message_path& path,
-						  const message_policy& policy);
+	boost::shared_ptr<response> send_message(const void* data,
+											 size_t size,
+											 const message_path& path,
+											 const message_policy& policy);
 
-	template <typename T> response send_message(const T& object,
-												const message_path& path,
-												const message_policy& policy) {
+	template <typename T> boost::shared_ptr<response>
+								send_message(const T& object,
+											 const message_path& path,
+											 const message_policy& policy) {
 		msgpack::sbuffer buffer;
 		msgpack::pack(buffer, object);
 		return send_message(reinterpret_cast<const void*>(buffer.data()), buffer.size(), path, policy);

@@ -94,7 +94,7 @@ private:
 
 template <typename HostsFetcher>
 heartbeats_collector<HostsFetcher>::heartbeats_collector(boost::shared_ptr<configuration> config,
-																   boost::shared_ptr<zmq::context_t> zmq_context) :
+														 boost::shared_ptr<zmq::context_t> zmq_context) :
 	config_(config),
 	zmq_context_(zmq_context)
 {
@@ -110,15 +110,13 @@ template <typename HostsFetcher> void
 heartbeats_collector<HostsFetcher>::run() {
 	boost::mutex::scoped_lock lock(mutex_);
 
-	// create http hosts fetchers
+	// create hosts fetchers
 	const std::map<std::string, service_info_t>& services_list = config_->services_list();
 	std::map<std::string, service_info_t>::const_iterator it = services_list.begin();
 	
 	for (; it != services_list.end(); ++it) {
 		boost::shared_ptr<HostsFetcher> fetcher;
 		fetcher.reset(new HostsFetcher(it->second));
-		fetcher->set_callback(boost::bind(&heartbeats_collector::hosts_callback, this, _1, _2));
-
 		hosts_fetchers_.push_back(fetcher);
 	}
 
@@ -149,7 +147,7 @@ heartbeats_collector<HostsFetcher>::set_callback(heartbeats_collector_iface::cal
 
 template <typename HostsFetcher> void
 heartbeats_collector<HostsFetcher>::hosts_callback(std::vector<cocaine::dealer::host_info_t>& hosts,
-														service_info_t s_info)
+												   service_info_t s_info)
 {
 	logger_->log("received hosts from fetcher for service: " + s_info.name_);
 
@@ -160,23 +158,21 @@ heartbeats_collector<HostsFetcher>::hosts_callback(std::vector<cocaine::dealer::
 template <typename HostsFetcher> void
 heartbeats_collector<HostsFetcher>::services_ping_callback() {
 	try {
-		service_hosts_map services_2_ping;
-
-		{
-			boost::mutex::scoped_lock lock(mutex_);
-			services_2_ping.insert(fetched_services_hosts_.begin(), fetched_services_hosts_.end());
-		}
-
+		// for each service hosts fetcher
 		const std::map<std::string, service_info_t>& services_list = config_->services_list();
+		std::map<std::string, service_info_t>::const_iterator it = services_list.begin();
+		
+		for (size_t i = 0; i < hosts_fetchers_.size(); ++i) {
+			service_info_t sinfo;
+			std::vector<host_info_t> hosts;
 
-		for (service_hosts_map::iterator it = services_2_ping.begin(); it != services_2_ping.end(); ++it) {
-			std::map<std::string, service_info_t>::const_iterator sit = services_list.find(it->first);
-
-			if (sit != services_list.end()) {
-				const service_info_t& s_info = sit->second;
-				std::vector<host_info_t>& hosts = it->second;
-				ping_service_hosts(s_info, hosts);
+			{
+				// get service hosts list
+				boost::mutex::scoped_lock lock(mutex_);
+				hosts_fetchers_[i]->get_hosts(hosts, sinfo);
 			}
+
+			ping_service_hosts(sinfo, hosts);
 		}
 	}
 	catch (const std::exception& ex) {
@@ -278,7 +274,7 @@ heartbeats_collector<HostsFetcher>::get_metainfo_from_host(const service_info_t&
 
 template <typename HostsFetcher> void
 heartbeats_collector<HostsFetcher>::ping_service_hosts(const service_info_t& s_info,
-															std::vector<host_info_t>& hosts)
+													   std::vector<host_info_t>& hosts)
 {
 	logger_->log("pinging hosts from for service: " + s_info.name_);
 

@@ -27,37 +27,17 @@
 namespace cocaine {
 namespace dealer {
 
-file_hosts_fetcher::file_hosts_fetcher(service_info_t service_info,
-									   boost::uint32_t interval) :
+file_hosts_fetcher::file_hosts_fetcher(service_info_t service_info) :
 	service_info_(service_info),
-	interval_(interval),
 	file_modification_time_(0)
 {
-	start();
 }
 
 file_hosts_fetcher::~file_hosts_fetcher() {
-	stop();
-}
-
-// passes list of hosts to callback
-void
-file_hosts_fetcher::set_callback(boost::function<void(std::vector<host_info_t>&, service_info_t)> callback) {
-	callback_ = callback;
 }
 
 void
-file_hosts_fetcher::start() {
-	refresher_.reset(new refresher(boost::bind(&file_hosts_fetcher::interval_func, this), interval_));
-}
-
-void
-file_hosts_fetcher::stop() {
-	refresher_.reset(NULL);
-}
-
-void
-file_hosts_fetcher::interval_func() {
+file_hosts_fetcher::get_hosts(std::vector<host_info_t>& hosts, service_info_t& service_info) {
 	std::string buffer;
 
 	// check file modification time
@@ -80,7 +60,7 @@ file_hosts_fetcher::interval_func() {
 	size_t max_size = 512;
 	char buff[max_size];
 
-	while (!file.eof()) {		
+	while (!file.eof()) {
 		memset(buff, 0, sizeof(buff));
 		file.getline(buff, max_size);
 		buffer += buff;
@@ -93,8 +73,7 @@ file_hosts_fetcher::interval_func() {
 	typedef boost::tokenizer<boost::char_separator<char> > tokenizer;
 	boost::char_separator<char> sep("\n");
 	tokenizer tokens(buffer, sep);
-	
-	std::vector<host_info_t> hosts;
+
 	for (tokenizer::iterator tok_iter = tokens.begin(); tok_iter != tokens.end(); ++tok_iter) {
 		try {
 			host_info_t host(*tok_iter);
@@ -104,7 +83,7 @@ file_hosts_fetcher::interval_func() {
 		}
 	}
 	
-	callback_(hosts, service_info_);
+	service_info = service_info_;
 }
 
 } // namespace dealer

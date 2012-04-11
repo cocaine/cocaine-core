@@ -40,7 +40,7 @@ client::unset_response_callback(const std::string& message_uuid, const message_p
 	get_impl()->unset_response_callback(message_uuid, path);	
 }
 
-response
+boost::shared_ptr<response>
 client::send_message(const void* data,
 					 size_t size,
 					 const message_path& path,
@@ -48,8 +48,9 @@ client::send_message(const void* data,
 {
 	boost::shared_ptr<message_iface> msg = get_impl()->create_message(data, size, path, policy);
 
-	response resp(this, msg->uuid(), path);
-	std::string uuid = get_impl()->send_message(msg, boost::bind(&response::response_callback, resp, _1, _2));
+	boost::shared_ptr<response> resp;
+	resp.reset(new response(this, msg->uuid(), path));
+	std::string uuid = get_impl()->send_message(msg, boost::bind(&response::response_callback, *(resp.get()), _1, _2));
 	return resp;
 }
 
