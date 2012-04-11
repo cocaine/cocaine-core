@@ -37,7 +37,6 @@ client::set_response_callback(const std::string& message_uuid, response_callback
 
 void
 client::unset_response_callback(const std::string& message_uuid, const message_path& path) {
-	//std::cout << "unset_response_callback cli\n";
 	get_impl()->unset_response_callback(message_uuid, path);	
 }
 
@@ -52,16 +51,6 @@ client::send_message(const void* data,
 	response resp(this, msg->uuid(), path);
 	std::string uuid = get_impl()->send_message(msg, boost::bind(&response::response_callback, resp, _1, _2));
 	return resp;
-}
-
-template <typename T> response
-client::send_message(const T& object,
-					 const message_path& path,
-					 const message_policy& policy)
-{
-	msgpack::sbuffer buffer;
-	msgpack::pack(buffer, object);
-	return send_message(reinterpret_cast<const void*>(buffer.data()), buffer.size(), path, policy);
 }
 
 inline boost::shared_ptr<client_impl>
