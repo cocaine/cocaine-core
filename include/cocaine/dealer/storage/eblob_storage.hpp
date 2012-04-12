@@ -25,6 +25,7 @@
 #include <eblob/eblob.hpp>
 
 #include "cocaine/dealer/utils/smart_logger.hpp"
+#include "cocaine/dealer/utils/error.hpp"
 #include "cocaine/dealer/storage/eblob.hpp"
 
 namespace cocaine {
@@ -73,7 +74,7 @@ public:
 		if (it == eblobs_.end()) {
 			std::string error_msg = "no eblob storage object with path: " + path_ + nm;
 			error_msg += " at " + std::string(BOOST_CURRENT_FUNCTION);
-			throw std::runtime_error(error_msg);
+			throw error(error_msg);
 		}
 
 		return it->second;

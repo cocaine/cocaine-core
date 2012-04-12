@@ -29,6 +29,7 @@
 #include <arpa/inet.h>
 
 #include "cocaine/dealer/structs.hpp"
+#include "cocaine/dealer/utils/error.hpp"
 
 namespace cocaine {
 namespace dealer {
@@ -70,10 +71,10 @@ public:
         int res = inet_pton(AF_INET, ip.c_str(), &addr);
 
         if (0 == res) {
-			throw std::runtime_error(std::string("bad ip address ") + ip);
+			throw error(std::string("bad ip address ") + ip);
         }
         else if (res < 0) {
-			throw std::runtime_error("bad address translation");
+			throw error("bad address translation");
         }
 
         return htonl(addr);
