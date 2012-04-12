@@ -27,6 +27,7 @@
 #include <eblob/eblob.hpp>
 
 #include "cocaine/dealer/utils/smart_logger.hpp"
+#include "cocaine/dealer/utils/error.hpp"
 
 namespace cocaine {
 namespace dealer {
@@ -65,13 +66,13 @@ public:
 		if (!storage_.get()) {
 			std::string error_msg = "empty eblob storage object at " + std::string(BOOST_CURRENT_FUNCTION);
 			error_msg += " key: " + key + " column: " + boost::lexical_cast<std::string>(column);
-			throw std::runtime_error(error_msg);
+			throw error(error_msg);
 		}
 
 		if (column < 0) {
 			std::string error_msg = "bad column index at " + std::string(BOOST_CURRENT_FUNCTION);
 			error_msg += " key: " + key + " column: " + boost::lexical_cast<std::string>(column);
-			throw std::runtime_error(error_msg);
+			throw error(error_msg);
 		}
 
 		// 2DO: truncate written value
@@ -82,13 +83,13 @@ public:
 		if (!storage_.get()) {
 			std::string error_msg = "empty eblob storage object at " + std::string(BOOST_CURRENT_FUNCTION);
 			error_msg += " key: " + key + " column: " + boost::lexical_cast<std::string>(column);
-			throw std::runtime_error(error_msg);
+			throw error(error_msg);
 		}
 
 		if (column < 0) {
 			std::string error_msg = "bad column index at " + std::string(BOOST_CURRENT_FUNCTION);
 			error_msg += " key: " + key + " column: " + boost::lexical_cast<std::string>(column);
-			throw std::runtime_error(error_msg);
+			throw error(error_msg);
 		}
 
 		// 2DO: truncate written value
@@ -100,7 +101,7 @@ public:
 		if (!storage_.get()) {
 			std::string error_msg = "empty eblob storage object at " + std::string(BOOST_CURRENT_FUNCTION);
 			error_msg += " key: " + key + " column: " + boost::lexical_cast<std::string>(column);
-			throw std::runtime_error(error_msg);
+			throw error(error_msg);
 		}
 
 		return storage_->read_hashed(key, 0, 0, column);
@@ -110,7 +111,7 @@ public:
 		if (!storage_.get()) {
 			std::string error_msg = "empty eblob storage object at " + std::string(BOOST_CURRENT_FUNCTION);
 			error_msg += " key: " + key;
-			throw std::runtime_error(error_msg);
+			throw error(error_msg);
 		}
 
 		eblob_key ekey;
@@ -122,7 +123,7 @@ public:
 		if (!storage_.get()) {
 			std::string error_msg = "empty eblob storage object at " + std::string(BOOST_CURRENT_FUNCTION);
 			error_msg += " key: " + key + " column: " + boost::lexical_cast<std::string>(column);
-			throw std::runtime_error(error_msg);
+			throw error(error_msg);
 		}
 
 		storage_->remove_hashed(key, column);
@@ -131,10 +132,10 @@ public:
 	unsigned long long items_count() {
 		if (!storage_.get()) {
 			std::string error_msg = "empty eblob storage object at " + std::string(BOOST_CURRENT_FUNCTION);
-			throw std::runtime_error(error_msg);
+			throw error(error_msg);
 		}
 
-		return storage_->elements();	
+		return storage_->elements();
 	}
 
 	void set_logger(boost::shared_ptr<base_logger> logger) {

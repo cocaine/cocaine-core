@@ -484,7 +484,7 @@ heartbeats_collector<HostsFetcher>::parse_host_response(const service_info_t& s_
 	if (!parsing_successful) {
 		std::string err_msg = "server metadata response could not be parsed for ";
 		err_msg += host_info_err + " at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw std::runtime_error(err_msg);
+		logger_->log(PLOG_ERROR, err_msg);
 	}
 	
 	const Json::Value apps = root["apps"];
@@ -492,7 +492,7 @@ heartbeats_collector<HostsFetcher>::parse_host_response(const service_info_t& s_
 	if (!apps.isObject() || !apps.size()) {
 		std::string err_msg = "no apps found in server metadata response for ";
 		err_msg += host_info_err + " at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw std::runtime_error(err_msg);
+		logger_->log(PLOG_ERROR, err_msg);
 	}
 
 	// iterate throuhg the apps
@@ -533,7 +533,7 @@ heartbeats_collector<HostsFetcher>::parse_host_response(const service_info_t& s_
     	if (!app_tasks.isObject() || !app_tasks.size()) {
         	std::string err_msg = "no existing handles found for ";
         	err_msg += host_info_err + " at " + std::string(BOOST_CURRENT_FUNCTION);
-			throw std::runtime_error(err_msg);
+			logger_->log(PLOG_ERROR, err_msg);
 		}
 
     	Json::Value::Members handles_names(app_tasks.getMemberNames());
@@ -545,7 +545,7 @@ heartbeats_collector<HostsFetcher>::parse_host_response(const service_info_t& s_
     		if (!handle.isObject() || !handle.size()) {
     			std::string err_msg = "error while parsing handle " + handle_name + " for " ;
     			err_msg += host_info_err + " at " + std::string(BOOST_CURRENT_FUNCTION);
-				throw std::runtime_error(err_msg);
+				logger_->log(PLOG_ERROR, err_msg);
 			}
 
 			// get handle type
