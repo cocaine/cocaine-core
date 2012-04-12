@@ -22,6 +22,7 @@
 #include <boost/current_function.hpp>
 #include <boost/tokenizer.hpp>
 
+#include <cocaine/dealer/utils/error.hpp>
 #include "cocaine/dealer/heartbeats/file_hosts_fetcher.hpp"
 
 namespace cocaine {
@@ -54,7 +55,7 @@ file_hosts_fetcher::get_hosts(std::vector<host_info_t>& hosts, service_info_t& s
 	file.open(service_info_.hosts_file_.c_str(), std::ifstream::in);
 
 	if (!file.is_open()) {
-		return;
+		throw error("config file: " + service_info_.hosts_file_ + " failed to open at: " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	size_t max_size = 512;

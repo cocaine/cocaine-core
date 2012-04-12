@@ -91,9 +91,11 @@ client_impl::connect() {
 	}
 
 	if (conf->autodiscovery_type() == AT_FILE) {
+		logger()->log("creating file heartbeats collector");
 		heartbeats_collector_.reset(new heartbeats_collector<file_hosts_fetcher>(conf, context()->zmq_context()));
 	}
 	else if (conf->autodiscovery_type() == AT_HTTP) {
+		logger()->log("creating http heartbeats collector");
 		heartbeats_collector_.reset(new heartbeats_collector<http_hosts_fetcher>(conf, context()->zmq_context()));
 	}
 
@@ -179,9 +181,12 @@ client_impl::create_message(const void* data,
 
 	if (config()->message_cache_type() == RAM_ONLY) {
 		msg.reset(new message_t(path, policy, data, size));
+		logger()->log(PLOG_DEBUG, "created message, size: %d bytes, uuid: %s", size, msg->uuid().c_str());
 	}
 	else if (config()->message_cache_type() == PERSISTENT) {
 		p_message_t* msg_ptr = new p_message_t(path, policy, data, size);
+		logger()->log(PLOG_DEBUG, "created message, size: %d bytes, uuid: %s", size, msg_ptr->uuid().c_str());
+
 		eblob eb = context()->storage()->get_eblob(path.service_name);
 		
 		// init metadata and write to storage
@@ -192,6 +197,8 @@ client_impl::create_message(const void* data,
 		// init data and write to storage
 		msg_ptr->data_container().set_eblob(eb, msg_ptr->uuid());
 		msg_ptr->data_container().commit_data();
+
+		logger()->log(PLOG_DEBUG, "commited message with uuid: " + msg_ptr->uuid() + " to persistent storage.");
 
 		msg.reset(msg_ptr);
 	}
@@ -277,6 +284,9 @@ client_impl::send_message(const boost::shared_ptr<message_iface>& msg, response_
 	uuid = msg->uuid();
 
 	// assign callback
+	std::string message_str = "registered callback for message with uuid: " + msg->uuid();
+	logger()->log(PLOG_DEBUG, message_str);
+
 	it->second->register_responder_callback(uuid, callback);
 
 	// send message to service
@@ -288,6 +298,10 @@ client_impl::send_message(const boost::shared_ptr<message_iface>& msg, response_
 		error_str += " is emty at " + std::string(BOOST_CURRENT_FUNCTION);
 		throw error(response_code::unknown_error, error_str);
 	}
+
+	message_str = "enqueued message with uuid: %s to [%s.%s]";
+	logger()->log(PLOG_DEBUG, message_str.c_str(), uuid.c_str(),
+				  msg->path().service_name.c_str(), msg->path().handle_name.c_str());
 
 	// return message uuid
 	return uuid;
@@ -317,14 +331,15 @@ client_impl::set_response_callback(const std::string& message_uuid,
 
 	// assign to service
 	it->second->register_responder_callback(message_uuid, callback);
+
+	std::string message_str = "registered callback for message with uuid: " + message_uuid;
+	logger()->log(PLOG_DEBUG, message_str);
 }
 
 void
 client_impl::unset_response_callback(const std::string& message_uuid,
 								 	 const message_path& path)
 {
-	//std::cout << "unset_response_callback\n";
-
 	// check for services
 	services_map_t::iterator it = services_.find(path.service_name);
 	if (it == services_.end()) {
@@ -340,6 +355,9 @@ client_impl::unset_response_callback(const std::string& message_uuid,
 
 	// assign to service
 	it->second->unregister_responder_callback(message_uuid);
+
+	std::string message_str = "unregistered callback for message with uuid: " + message_uuid;
+	logger()->log(PLOG_DEBUG, message_str);
 }
 
 boost::shared_ptr<context>

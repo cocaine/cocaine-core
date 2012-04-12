@@ -60,11 +60,8 @@ struct response_code {
 	static const int unknown_error = 1;
 	static const int message_chunk = 2;
 	static const int message_choke = 3;
-	static const int message_data_too_big_error		= 4;
-	static const int response_data_too_big_error	= 5;
-	static const int unknown_service_error	= 6;
-	static const int callback_exists_error	= 7;
     static const int request_error			= 400; // bad input data
+    static const int unknown_service_error	= 404;
     static const int server_error			= 500; // 
     static const int app_error				= 502; // err from app code
     static const int resource_error			= 503; // 

@@ -75,7 +75,7 @@ private:
 								std::string& response);
 
 	static const int hosts_ping_timeout = 1; // seconds
-	static const int host_socket_ping_timeout = 2000000; // microseconds FIX in zmq 3.1
+	static const int host_socket_ping_timeout = 2000000; // (2 seconds) microseconds FIX in zmq 3.1
 
 private:
 	boost::shared_ptr<configuration> config_;
@@ -108,6 +108,8 @@ heartbeats_collector<HostsFetcher>::~heartbeats_collector() {
 
 template <typename HostsFetcher> void
 heartbeats_collector<HostsFetcher>::run() {
+	logger_->log(PLOG_DEBUG, "heartbeast collector started.");
+
 	boost::mutex::scoped_lock lock(mutex_);
 
 	// create hosts fetchers
@@ -120,6 +122,9 @@ heartbeats_collector<HostsFetcher>::run() {
 		hosts_fetchers_.push_back(fetcher);
 	}
 
+	// ping first time without delay
+	services_ping_callback();
+
 	// create hosts pinger
 	boost::function<void()> f = boost::bind(&heartbeats_collector::services_ping_callback, this);
 	refresher_.reset(new refresher(f, hosts_ping_timeout));
@@ -127,10 +132,10 @@ heartbeats_collector<HostsFetcher>::run() {
 
 template <typename HostsFetcher> void
 heartbeats_collector<HostsFetcher>::stop() {
-	logger_->log("STOP");
+	logger_->log(PLOG_DEBUG, "heartbeast collector stopped.");
 	boost::mutex::scoped_lock lock(mutex_);
 
-	// kill http hosts fetchers	
+	// kill http hosts fetchers
 	for (size_t i = 0; i < hosts_fetchers_.size(); ++i) {
 		hosts_fetchers_[i].reset();
 	}
@@ -149,7 +154,7 @@ template <typename HostsFetcher> void
 heartbeats_collector<HostsFetcher>::hosts_callback(std::vector<cocaine::dealer::host_info_t>& hosts,
 												   service_info_t s_info)
 {
-	logger_->log("received hosts from fetcher for service: " + s_info.name_);
+	logger_->log(PLOG_DEBUG, "received hosts from fetcher for service: " + s_info.name_);
 
 	boost::mutex::scoped_lock lock(mutex_);
 	fetched_services_hosts_[s_info.name_] = hosts;
@@ -168,16 +173,43 @@ heartbeats_collector<HostsFetcher>::services_ping_callback() {
 
 			{
 				// get service hosts list
-				boost::mutex::scoped_lock lock(mutex_);
-				hosts_fetchers_[i]->get_hosts(hosts, sinfo);
+				try {
+					hosts_fetchers_[i]->get_hosts(hosts, sinfo);
+				}
+				catch (const error& err) {
+					std::string error_msg = "failed fo retrieve hosts list at: %s, details: %s";
+					logger_->log(PLOG_ERROR, error_msg.c_str(),
+								 std::string(BOOST_CURRENT_FUNCTION).c_str(),
+								 err.what());
+				}
+				catch (const std::exception& ex) {
+					std::string error_msg = "failed fo retrieve hosts list at: %s, details: %s";
+					logger_->log(PLOG_ERROR, error_msg.c_str(),
+								 std::string(BOOST_CURRENT_FUNCTION).c_str(),
+								 ex.what());
+				}
+				catch (...) {
+					std::string error_msg = "failed fo retrieve hosts list at: %s, no further details available.";
+					logger_->log(PLOG_ERROR, error_msg.c_str(),
+								 std::string(BOOST_CURRENT_FUNCTION).c_str());
+				}
+			}
+
+			if (hosts.size() == 0) {
+				logger_->log(PLOG_DEBUG, "fetcher returned no hosts for service %s", sinfo.name_.c_str());
+				return;
 			}
 
 			ping_service_hosts(sinfo, hosts);
 		}
 	}
 	catch (const std::exception& ex) {
-		std::string error_msg = "something ugly happened with heartbeats collector at %s";
-		logger_->log(error_msg.c_str(), std::string(BOOST_CURRENT_FUNCTION).c_str());
+		std::string error_msg = "something ugly happened with heartbeats collector at %s, details: %s";
+		logger_->log(PLOG_ERROR, error_msg.c_str(), std::string(BOOST_CURRENT_FUNCTION).c_str(), ex.what());
+	}
+	catch (...) {
+		std::string error_msg = "something ugly happened with heartbeats collector at %s, , no further details available.";
+		logger_->log(PLOG_ERROR, error_msg.c_str(), std::string(BOOST_CURRENT_FUNCTION).c_str());
 	}
 }
 
@@ -223,7 +255,7 @@ heartbeats_collector<HostsFetcher>::get_metainfo_from_host(const service_info_t&
 
 	if (!sent_request_ok) {
 		// in case of bad send
-		std::string error_msg = "could not send metadata request to cocaine app: " + s_info.name_;
+		std::string error_msg = "could not send metadata request to service: " + s_info.name_;
 		error_msg += ", host: " + host_ip_str + " at " + std::string(BOOST_CURRENT_FUNCTION);
 		logger_->log(PLOG_ERROR, error_msg + ex_err);
 
@@ -262,7 +294,7 @@ heartbeats_collector<HostsFetcher>::get_metainfo_from_host(const service_info_t&
 
 	if (!received_response_ok) {
 		// in case of bad recv
-		std::string error_msg = "could not receive metadata response for cocaine app: " + s_info.name_;
+		std::string error_msg = "could not receive metadata response for service: " + s_info.name_;
 		error_msg += ", host: " + host_ip_str + " at " + std::string(BOOST_CURRENT_FUNCTION);
 		logger_->log(PLOG_ERROR, error_msg + ex_err);
 
@@ -276,37 +308,26 @@ template <typename HostsFetcher> void
 heartbeats_collector<HostsFetcher>::ping_service_hosts(const service_info_t& s_info,
 													   std::vector<host_info_t>& hosts)
 {
-	logger_->log("pinging hosts from for service: " + s_info.name_);
-
-	//boost::mutex::scoped_lock lock(mutex_);
-
 	std::vector<host_info_t> responded_hosts;
 	std::vector<handle_info_t> collected_handles;
 	std::multimap<DT::ip_addr, handle_info_t> hosts_and_handles;
 
 	for (size_t i = 0; i < hosts.size(); ++i) {
 
-		std::string error_msg = "pinging cocaine app: " + s_info.name_;
+		std::string error_msg = "pinging service: " + s_info.name_;
 		error_msg += ", host: " + host_info_t::string_from_ip(hosts[i].ip_);
-		logger_->log(PLOG_ERROR, error_msg);
+		logger_->log(PLOG_DEBUG, error_msg);
 
 		// request host metadata
 		std::string metadata;
 		if (!get_metainfo_from_host(s_info, hosts[i].ip_, metadata)) {
 
-			std::string error_msg = "could not get metainfo for cocaine app: " + s_info.name_;
+			std::string error_msg = "could not retvieve metainfo from service: " + s_info.name_;
 			error_msg += ", host: " + host_info_t::string_from_ip(hosts[i].ip_);
 			logger_->log(PLOG_ERROR, error_msg);
 
 			continue;
 		}
-
-		/*
-		error_msg = "pinging cocaine app: " + s_info.name_;
-		error_msg += ", host: " + host_info_t::string_from_ip(hosts[i].ip_) + " metadata: ";
-		error_msg += metadata;
-		logger_->log(PLOG_ERROR, error_msg);
-		*/
 
 		// collect service handles info from host responce
 		std::vector<handle_info_t> host_handles;
@@ -316,7 +337,7 @@ heartbeats_collector<HostsFetcher>::ping_service_hosts(const service_info_t& s_i
 		}
 		catch (const std::exception& ex) {
 			// in case of unparsealbe response, skip
-			std::string error_msg = "heartbeat response parsing error for cocaine app: " + s_info.name_;
+			std::string error_msg = "could not parse host heartbeat response for service: " + s_info.name_;
 			error_msg += ", host: " + host_info_t::string_from_ip(hosts[i].ip_);
 			error_msg += " at " + std::string(BOOST_CURRENT_FUNCTION) + " details: ";
 			logger_->log(PLOG_ERROR, error_msg + ex.what());
@@ -353,22 +374,27 @@ heartbeats_collector<HostsFetcher>::ping_service_hosts(const service_info_t& s_i
 		}
 	}
 
-	std::string error_msg = "responded hosts for cocaine app: " + s_info.name_ + ": ";
+	std::string error_msg = "responded hosts for service: " + s_info.name_ + ": ";
 	for (size_t i = 0; i < responded_hosts.size(); ++i) {
-		error_msg += responded_hosts[i].as_string() + "\n";
+		error_msg += responded_hosts[i].as_string();
+
+		if (i != responded_hosts.size() - 1) {
+			error_msg += "\n";
+		}
 	}
+	logger_->log(PLOG_DEBUG, error_msg);
 
-	error_msg += " collected handles: ";
-
+	error_msg = "collected handles: ";
 	for (size_t i = 0; i < collected_handles.size(); ++i) {
-		error_msg += collected_handles[i].as_string() + "\n";
+		error_msg += collected_handles[i].as_string();
+
+		if (i != collected_handles.size() - 1) {
+			error_msg += "\n";
+		}
 	}
-
-	logger_->log(PLOG_ERROR, error_msg);
-
+	logger_->log(PLOG_DEBUG, error_msg);
 
 	// check that all handles from pinged hosts are the same
-	logger_->log(PLOG_DEBUG, "--- validating hosts handles ---");
 	validate_host_handles(s_info, responded_hosts, hosts_and_handles);
 
 	// pass collected data to callback
@@ -470,9 +496,9 @@ heartbeats_collector<HostsFetcher>::validate_host_handles(const service_info_t& 
 
 template <typename HostsFetcher> void
 heartbeats_collector<HostsFetcher>::parse_host_response(const service_info_t& s_info,
-															 DT::ip_addr ip,
-															 const std::string& response,
-															 std::vector<handle_info_t>& handles)
+														DT::ip_addr ip,
+														const std::string& response,
+														std::vector<handle_info_t>& handles)
 {
 	Json::Value root;
 	Json::Reader reader;
@@ -522,9 +548,10 @@ heartbeats_collector<HostsFetcher>::parse_host_response(const service_info_t& s_
 		}
 
         if (!is_app_running) {
-        	std::string err_msg = "server is not running for ";
-        	err_msg += host_info_err + " at " + std::string(BOOST_CURRENT_FUNCTION);
-			logger_->log(PLOG_ERROR, err_msg);
+        	std::string err_msg = "service " + s_info.app_name_ + " at host ";
+        	err_msg += host_ip + "is stopped ";
+        	err_msg += ", call at " + std::string(BOOST_CURRENT_FUNCTION);
+			logger_->log(PLOG_DEBUG, err_msg);
 			continue;
         }
 
@@ -554,7 +581,7 @@ heartbeats_collector<HostsFetcher>::parse_host_response(const service_info_t& s_
     			continue;
     		}
 
-			// parse lsd handle
+			// parse native handle
 			std::string endpoint = handle.get("endpoint", "").asString();
 			std::string route = handle.get("route", "").asString();
 			std::string instance = "";

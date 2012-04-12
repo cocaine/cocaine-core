@@ -30,10 +30,6 @@ public:
 	virtual ~response_impl();
 
 	bool get(data_container* data);
-	const void* data();
-	size_t size();
-	int code();
-	std::string error_message();
 
 private:
 	friend class response;
