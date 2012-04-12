@@ -33,26 +33,6 @@ response::get(data_container* data) {
 	return get_impl()->get(data);
 }
 
-const void*
-response::data() {
-	return get_impl()->data();
-}
-
-size_t
-response::size() {
-	return get_impl()->size();
-}
-
-int
-response::code() {
-	return get_impl()->code();
-}
-
-std::string
-response::error_message() {
-	return get_impl()->error_message();
-}
-
 boost::shared_ptr<response_impl>
 response::get_impl() {
 	return impl_;

@@ -535,8 +535,6 @@ service<LSD_T>::refresh_handles(const handles_info_list_t& handles,
 
 template <typename LSD_T> void
 service<LSD_T>::remove_outstanding_handles(const handles_info_list_t& handles) {
-	return;
-
 	// no handles to destroy
 	if (handles.empty()) {
 		return;
@@ -658,7 +656,8 @@ service<LSD_T>::create_new_handles(const handles_info_list_t& handles, const hos
 
 				// validate handle's message cache object
 				if (handle_ptr->messages_cache().get()) {
-					logger()->log(PLOG_DEBUG, "appending existing mesage queue for handle %s, queue size: %d", handles[i].name_.c_str(), msg_queue->size());
+					logger()->log(PLOG_DEBUG, "appending existing mesage queue for [%s.%s], queue size: %d",
+								  info_.name_.c_str(), handles[i].name_.c_str(), msg_queue->size());
 					handle_ptr->messages_cache()->append_message_queue(msg_queue);
 					handle_ptr->notify_new_messages_enqueued();
 				}

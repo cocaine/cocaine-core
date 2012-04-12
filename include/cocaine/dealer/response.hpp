@@ -32,11 +32,6 @@ public:
 
 	bool get(data_container* data);
 
-	const void* data();
-	size_t size();
-	int code();
-	std::string error_message();
-
 	void response_callback(const response_data& resp_data, const response_info& resp_info);
 
 private:

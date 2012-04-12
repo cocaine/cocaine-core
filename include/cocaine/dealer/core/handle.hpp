@@ -502,6 +502,9 @@ handle<LSD_T>::dispatch_next_available_message(socket_ptr_t main_socket) {
 
 		// move message to sent
 		messages_cache()->move_new_message_to_sent();
+
+		logger()->log(PLOG_DEBUG, "sent message with uuid: " + new_msg->uuid() +
+					  " to [" + info_.name_ + "." + info_.service_name_ + "]");
 	}
 	catch (const std::exception& ex) {
 		std::string error_msg = " service: " + info_.service_name_;
@@ -562,14 +565,6 @@ handle<LSD_T>::dispatch_responce(socket_ptr_t& main_socket) {
 		return false;
 	}
 
-	/*
-	++mcount;
-
-	if ((mcount / 2) % 1000 == 0) {
-		std::cout << "responces: " << mcount / 2 << std::endl;
-	}
-	*/
-	
 	process_responce(response_chunks);
 	return true;
 }
@@ -626,6 +621,25 @@ handle<LSD_T>::process_responce(boost::ptr_vector<zmq::message_t>& chunks) {
 		return;
 	}
 
+	std::string message_str = "received response for message with uuid: " + sent_msg->uuid(); 
+	message_str += " from [" + info_.name_ + "." + info_.service_name_ + "], type: ";
+
+	switch (rpc_code) {
+		case SERVER_RPC_MESSAGE_CHUNK: 
+			message_str += "CHUNK";
+			break;
+
+		case SERVER_RPC_MESSAGE_CHOKE: 
+			message_str += "CHOKE";
+			break;
+
+		case SERVER_RPC_MESSAGE_ERROR: 
+			message_str += "ERROR";
+			break;
+	}
+
+	logger()->log(PLOG_DEBUG, message_str);
+
 	switch (rpc_code) {
 		case SERVER_RPC_MESSAGE_CHUNK: {
 			if (chunks.size() >= 4) {
@@ -668,15 +682,7 @@ handle<LSD_T>::process_responce(boost::ptr_vector<zmq::message_t>& chunks) {
 			}
 
 			//logger()->log(PLOG_DEBUG, "error code: %d, message: %s", error_code, error_message.c_str());
-			if (error_code == deadline_error) { // timed out
-				cached_response_prt_t new_response;
-				new_response.reset(new cached_response(uuid, sent_msg->path(), error_code, error_message));
-				enqueue_response(new_response);
-
-				messages_cache()->remove_message_from_cache(uuid);
-				++statistics_.expired_responses;
-			}
-			else if (error_code == resource_error) { // queue is full
+			if (error_code == resource_error) { // queue is full
 				reshedule_message(uuid);
 			}
 			else {

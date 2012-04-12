@@ -21,7 +21,7 @@ namespace cocaine {
 namespace dealer {
 
 enum error_type {
-	DEALER_UNKNOWN_ERROR = 1,
+	DEALER_UNKNOWN_ERROR = 0,
 };
 
 class error : public std::exception {

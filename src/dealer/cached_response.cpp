@@ -49,7 +49,7 @@ cached_response::cached_response(const std::string& uuid,
 	code_(0)
 {
 	if (data_size > MAX_RESPONSE_DATA_SIZE) {
-		throw error(response_code::response_data_too_big_error, "can't create response, response data too big.");
+		throw error(response_code::resource_error, "can't create response, response data too big.");
 	}
 
 	data_ = data_container(data, data_size);

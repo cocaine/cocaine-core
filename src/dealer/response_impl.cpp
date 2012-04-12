@@ -106,25 +106,5 @@ response_impl::response_callback(const response_data& resp_data, const response_
 	cond_var_.notify_one();
 }
 
-const void*
-response_impl::data() {
-	return NULL;
-}
-
-size_t
-response_impl::size() {
-	return 0;
-}
-
-int
-response_impl::code() {
-	return resp_info_.code;
-}
-
-std::string
-response_impl::error_message() {
-	return "";
-}
-
 } // namespace dealer
 } // namespace cocaine
