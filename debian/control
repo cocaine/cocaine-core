@@ -55,13 +55,13 @@ Depends: ${shlibs:Depends}, ${misc:Depends}, libzmq-dev (>= 2.1.9), libev-dev, l
 Description: Cocaine - Development Files
  Files needed to develop plugins, modules or to embed Cocaine.
 
-Package: cocaine-dealer
+Package: libcocaine-dealer
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Cocaine - Dealer
  Cocaine scheduler and persistent transport.
 
-Package: cocaine-dealer-dev
+Package: libcocaine-dealer-dev
 Architecture: any
 Section: libdevel
 Depends: ${shlibs:Depends}, ${misc:Depends}
