@@ -251,7 +251,7 @@ void engine_t::stop(std::string status) {
         while(!m_queue.empty()) {
             m_queue.front().process_event(
                 events::error_t(
-                    dealer::server_error,
+                    dealer::resource_error,
                     "engine is not active"
                 )
             );
@@ -321,7 +321,7 @@ void engine_t::enqueue(job_queue_t::value_type job, bool overflow) {
 
         job->process_event(
             events::error_t(
-                dealer::server_error,
+                dealer::resource_error,
                 "engine is not active"
             )
         );

@@ -93,10 +93,6 @@ class context_t:
             return m_registry->create<Category>(type);
         }
 
-        std::vector<std::string> modules() const {
-            return m_registry->list();
-        }
-
         storages::storage_t& storage();
 
     public:

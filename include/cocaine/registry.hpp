@@ -98,8 +98,6 @@ class registry_t:
             );
         }
 
-        std::vector<std::string> list() const;
-
     private:
         boost::shared_ptr<logging::logger_t> m_log;
 
