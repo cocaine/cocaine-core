@@ -38,13 +38,13 @@ statistics_collector::statistics_collector(boost::shared_ptr<configuration> conf
 	if (!config_) {
 		std::string error_str = "configuration object is empty";
 		error_str += " at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw error(error_str);
+		throw internal_error(error_str);
 	}
 
 	if (!zmq_context_) {
 		std::string error_str = "zmq context object is empty";
 		error_str += " at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw error(error_str);
+		throw internal_error(error_str);
 	}
 
 	logger_.reset(new smart_logger<empty_logger>);
@@ -63,13 +63,13 @@ statistics_collector::statistics_collector(boost::shared_ptr<configuration> conf
 	if (!config_) {
 		std::string error_str = "configuration object is empty";
 		error_str += " at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw error(error_str);
+		throw internal_error(error_str);
 	}
 
 	if (!zmq_context_) {
 		std::string error_str = "zmq context object is empty";
 		error_str += " at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw error(error_str);
+		throw internal_error(error_str);
 	}
 
 	set_logger(logger);
@@ -164,7 +164,7 @@ statistics_collector::process_remote_connection() {
 			std::string error_msg = "some very ugly shit happend while recv on socket at ";
 			error_msg += std::string(BOOST_CURRENT_FUNCTION);
 			error_msg += " details: " + std::string(ex.what());
-			throw error(error_msg);
+			throw internal_error(error_msg);
     	}
 
     	// see if we're still running
@@ -188,7 +188,7 @@ statistics_collector::process_remote_connection() {
 			std::string error_msg = "some very ugly shit happend while send on socket at ";
 			error_msg += std::string(BOOST_CURRENT_FUNCTION);
 			error_msg += " details: " + std::string(ex.what());
-			throw error(error_msg);
+			throw internal_error(error_msg);
 		}
 	}
 }

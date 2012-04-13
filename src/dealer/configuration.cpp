@@ -76,7 +76,7 @@ configuration::parse_basic_settings(const Json::Value& config_value) {
 	version_ = config_value.get("config_version", 0).asUInt();
 
 	if (version_ != CONFIG_VERSION) {
-		throw error("Unsupported config version: %d, current version: CONFIG_VERSION");
+		throw internal_error("Unsupported config version: %d, current version: CONFIG_VERSION");
 	}
 
 	message_timeout_ = (unsigned long long)config_value.get("message_timeout", (int)MESSAGE_TIMEOUT).asInt();
@@ -156,7 +156,7 @@ configuration::parse_messages_cache_settings(const Json::Value& config_value) {
 		std::string error_str = "unknown message cache type: " + message_cache_type_str;
 		error_str += "message_cache/type property can only take RAM_ONLY or PERSISTENT as value. ";
 		error_str += "at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw error(error_str);
+		throw internal_error(error_str);
 	}
 }
 
@@ -220,26 +220,26 @@ configuration::parse_services_settings(const Json::Value& config_value) {
 
 		// check values for validity
 		if (si.name_.empty()) {
-			throw error("service with no name was found in config! at: " + std::string(BOOST_CURRENT_FUNCTION));
+			throw internal_error("service with no name was found in config! at: " + std::string(BOOST_CURRENT_FUNCTION));
 		}
 
 		if (si.app_name_.empty()) {
-			throw error("service with no application name was found in config! at: " + std::string(BOOST_CURRENT_FUNCTION));
+			throw internal_error("service with no application name was found in config! at: " + std::string(BOOST_CURRENT_FUNCTION));
 		}
 
 		if (si.hosts_url_.empty() && si.hosts_file_.empty()) {
-			throw error("service with no hosts source was found in config! at: " + std::string(BOOST_CURRENT_FUNCTION));
+			throw internal_error("service with no hosts source was found in config! at: " + std::string(BOOST_CURRENT_FUNCTION));
 		}
 
 		if (si.control_port_ == 0) {
-			throw error("service with no control port == 0 was found in config! at: " + std::string(BOOST_CURRENT_FUNCTION));
+			throw internal_error("service with no control port == 0 was found in config! at: " + std::string(BOOST_CURRENT_FUNCTION));
 		}
 
 		// check for duplicate services
 		std::map<std::string, service_info_t>::iterator it = services_list_.begin();
 		for (;it != services_list_.end(); ++it) {
 			if (it->second.name_ == si.name_) {
-				throw error("duplicate service with name " + si.name_ + " was found in config! at: " + std::string(BOOST_CURRENT_FUNCTION));
+				throw internal_error("duplicate service with name " + si.name_ + " was found in config! at: " + std::string(BOOST_CURRENT_FUNCTION));
 			}
 		}
 
@@ -249,7 +249,7 @@ configuration::parse_services_settings(const Json::Value& config_value) {
 			if (it->second == si) {
 				std::string error_msg = "duplicate service with app name " + si.app_name_ + " and ";
 				error_msg += "control port " + boost::lexical_cast<std::string>(si.control_port_) + " was found in config! at: " + std::string(BOOST_CURRENT_FUNCTION);
-				throw error(error_msg);
+				throw internal_error(error_msg);
 			}
 		}
 
@@ -266,7 +266,7 @@ configuration::load(const std::string& path) {
 	std::ifstream file(path.c_str(), std::ifstream::in);
 	
 	if (!file.is_open()) {
-		throw error("config file: " + path + " failed to open at: " + std::string(BOOST_CURRENT_FUNCTION));
+		throw internal_error("config file: " + path + " failed to open at: " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	std::string config_data;
@@ -282,7 +282,7 @@ configuration::load(const std::string& path) {
 	bool parsing_successful = reader.parse(config_data, root);
 		
 	if (!parsing_successful) {
-		throw error("config file: " + path + " could not be parsed at: " + std::string(BOOST_CURRENT_FUNCTION));
+		throw internal_error("config file: " + path + " could not be parsed at: " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 	
 	// parse config data
@@ -301,7 +301,7 @@ configuration::load(const std::string& path) {
 		std::string error_msg = "config file: " + path + " could not be parsed. details: ";
 		error_msg += ex.what();
 		error_msg += " at: " + std::string(BOOST_CURRENT_FUNCTION);
-		throw error(error_msg);
+		throw internal_error(error_msg);
 	}
 }
 

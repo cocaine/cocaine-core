@@ -20,7 +20,13 @@
 			{
             	"name" : "karma-tests",
 				"app_name" : "karma@1",
-				"hosts_file" : "/home/rimz/cocaine/tests/hosts",
+				"hosts_file" : "/home/rimz/cocaine-core/tests/hosts",
+				"control_port" : 5000
+			},
+			{
+            	"name" : "rimz_app",
+				"app_name" : "rimz_app@1",
+				"hosts_file" : "/home/rimz/cocaine-core/tests/hosts",
 				"control_port" : 5000
 			}
 		]

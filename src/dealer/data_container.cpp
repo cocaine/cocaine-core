@@ -75,11 +75,11 @@ data_container::set_data(const void* data, size_t size) {
 		data_ = new unsigned char[size];
 	}
 	catch (...) {
-		throw error(error_msg);
+		throw internal_error(error_msg);
 	}
 
 	if (!data_) {
-		throw error(error_msg);
+		throw internal_error(error_msg);
 	}
 
 	memcpy(data_, data, size);
@@ -110,11 +110,11 @@ data_container::init() {
 		ref_counter_.reset(new reference_counter(0));
 	}
 	catch (...) {
-		throw error(error_msg);
+		throw internal_error(error_msg);
 	}
 
 	if (!ref_counter_.get()) {
-		throw error(error_msg);
+		throw internal_error(error_msg);
 	}
 
 	// init data

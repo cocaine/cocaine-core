@@ -71,10 +71,10 @@ public:
         int res = inet_pton(AF_INET, ip.c_str(), &addr);
 
         if (0 == res) {
-			throw error(std::string("bad ip address ") + ip);
+			throw internal_error(std::string("bad ip address ") + ip);
         }
         else if (res < 0) {
-			throw error("bad address translation");
+			throw internal_error("bad address translation");
         }
 
         return htonl(addr);

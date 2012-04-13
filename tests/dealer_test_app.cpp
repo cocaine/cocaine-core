@@ -37,52 +37,30 @@ std::string config_path = "tests/config_example.json";
 boost::shared_ptr<client> client_ptr;
 
 int messages_count = 0;
-int responces_count = 0;
-int last_responces_count = 0;
 
 void worker() {
-	// prepare data
-	std::map<std::string, int> val;
-	val["uid"] = 123;
-	val["score"] = 1;
-	val["service"] = 1;
-
-	msgpack::sbuffer buffer;
-	msgpack::pack(buffer, val);
-
 	//message path
 	message_path path;
-	path.service_name = "karma-tests";
-	path.handle_name = "event";
+	path.service_name = "rimz_app";
+	path.handle_name = "rimz_func";
 
 	// message policy
 	message_policy policy;
 
+	// payload
+	std::string payload = "response chunk: ";
+
 	for (int i = 0; i < messages_count; ++i) {
-		boost::shared_ptr<response> resp = client_ptr->send_message(buffer.data(), buffer.size(), path, policy);
+		boost::shared_ptr<response> resp = client_ptr->send_message(payload.data(), payload.size(), path, policy);
 
 		try {
 			data_container data;
 			resp->get(&data);
 
-			/*
-			++responces_count;
-			if (responces_count % 1000 == 0 && responces_count != last_responces_count) {
-				last_responces_count = responces_count;
-				std::cout << "processed: " << responces_count << std::endl;
-			}
-			*/
-
-			/*
-			msgpack::unpacked msg;
-			msgpack::unpack(&msg, (const char*)data.data(), data.size());
-			msgpack::object obj = msg.get();
-			std::cout << "resp data: " << obj << std::endl;
-			*/
+			std::cout << std::string(reinterpret_cast<const char*>(data.data()), 0, data.size()) << std::endl;
 		}
-		catch (const error& err) {
-			const int t = err.type();
-			std::cout << "error type: " << t << ", error message: " << err.what() << std::endl;
+		catch (const dealer_error& err) {
+			std::cout << "error code: " << err.code() << ", error message: " << err.what() << std::endl;
 		}
 		catch (const std::exception& ex) {
 			std::cout << "error message: " << ex.what() << std::endl;

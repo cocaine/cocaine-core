@@ -62,7 +62,7 @@ client::get_impl() {
 		return impl_;
 	}
 	else {
-		throw error("client_impl object is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
+		throw internal_error("client_impl object is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 }
 

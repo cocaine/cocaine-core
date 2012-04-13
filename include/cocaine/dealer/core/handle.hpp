@@ -324,7 +324,7 @@ handle<LSD_T>::receive_control_messages(socket_ptr_t& control_socket, int poll_t
 		std::string error_msg = "some very ugly shit happend while recv on socket at ";
 		error_msg += std::string(BOOST_CURRENT_FUNCTION);
 		error_msg += " details: " + std::string(ex.what());
-		throw error(error_msg);
+		throw internal_error(error_msg);
 	}
 
     if (recv_failed) {
@@ -406,7 +406,7 @@ handle<LSD_T>::connect_zmq_socket_to_hosts(socket_ptr_t& socket,
 		std::string error_msg = "service: " + info_.service_name_;
 		error_msg += ", handle: " + info_.name_ + " — socket object is empty";
 		error_msg += " at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw error(error_msg);
+		throw internal_error(error_msg);
 	}
 
 	// connect socket to hosts
@@ -425,7 +425,7 @@ handle<LSD_T>::connect_zmq_socket_to_hosts(socket_ptr_t& socket,
 		std::string error_msg = "service: " + info_.service_name_;
 		error_msg += ", handle: " + info_.name_ + " — could not connect to ";
 		error_msg += connection_str + " at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw error(error_msg);
+		throw internal_error(error_msg);
 	}
 }
 
@@ -436,7 +436,7 @@ handle<LSD_T>::dispatch_next_available_message(socket_ptr_t main_socket) {
 		std::string error_msg = "service: " + info_.service_name_;
 		error_msg += ", handle: " + info_.name_ + " — empty socket object";
 		error_msg += " at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw error(error_msg);
+		throw internal_error(error_msg);
 	}
 
 	// send new message if any
@@ -511,7 +511,7 @@ handle<LSD_T>::dispatch_next_available_message(socket_ptr_t main_socket) {
 		error_msg += ", handle: " + info_.name_ + " — could not send message";
 		error_msg += " at " + std::string(BOOST_CURRENT_FUNCTION) + "reason: ";
 		error_msg += ex.what();
-		throw error(error_msg);
+		throw internal_error(error_msg);
 	}
 
 	return true;
@@ -753,7 +753,7 @@ handle<LSD_T>::check_for_responses(socket_ptr_t& main_socket, int poll_timeout) 
 		std::string error_msg = "service: " + info_.service_name_;
 		error_msg += ", handle: " + info_.name_ + " — empty socket object";
 		error_msg += " at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw error(error_msg);
+		throw internal_error(error_msg);
 	}
 
 	// poll for responce
@@ -952,7 +952,7 @@ handle<LSD_T>::messages_cache() {
 		std::string error_str = "messages cache object is empty for service: ";
 		error_str += info_.service_name_ + ", handle: " + info_.name_;
 		error_str += " at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw error(error_str);
+		throw internal_error(error_str);
 	}
 
 	return message_cache_;
@@ -976,7 +976,7 @@ handle<LSD_T>::enqueue_message(const boost::shared_ptr<message_iface>& message) 
 template <typename LSD_T> boost::shared_ptr<cocaine::dealer::context>
 handle<LSD_T>::context() {
 	if (!context_) {
-		throw error("dealer context object is empty at " + std::string(BOOST_CURRENT_FUNCTION));
+		throw internal_error("dealer context object is empty at " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	return context_;
@@ -991,7 +991,7 @@ template <typename LSD_T> boost::shared_ptr<configuration>
 handle<LSD_T>::config() {
 	boost::shared_ptr<configuration> conf = context()->config();
 	if (!conf.get()) {
-		throw error("configuration object is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
+		throw internal_error("configuration object is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	return conf;

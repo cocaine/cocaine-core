@@ -74,7 +74,7 @@ public:
 		if (it == eblobs_.end()) {
 			std::string error_msg = "no eblob storage object with path: " + path_ + nm;
 			error_msg += " at " + std::string(BOOST_CURRENT_FUNCTION);
-			throw error(error_msg);
+			throw internal_error(error_msg);
 		}
 
 		return it->second;

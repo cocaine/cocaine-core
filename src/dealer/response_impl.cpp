@@ -74,7 +74,7 @@ response_impl::get(data_container* data) {
 	message_finished_ = true;
 	response_finished_ = true;
 
-	throw error(resp_info_.code, resp_info_.error_msg);
+	throw dealer_error(static_cast<enum error_code>(resp_info_.code), resp_info_.error_msg);
 	return false;
 }
 

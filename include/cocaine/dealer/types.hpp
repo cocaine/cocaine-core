@@ -42,12 +42,13 @@ struct policy_t {
 };
 
 enum error_code {
-    request_error  = 400,
-    server_error   = 500,
-    app_error      = 502,
-    resource_error = 503,
-    timeout_error  = 504,
-    deadline_error = 520
+    request_error   = 400,
+    location_error  = 404,
+    server_error    = 500,
+    app_error       = 502,
+    resource_error  = 503,
+    timeout_error   = 504,
+    deadline_error  = 520
 };
 
 }}

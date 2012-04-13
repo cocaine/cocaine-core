@@ -55,7 +55,7 @@ file_hosts_fetcher::get_hosts(std::vector<host_info_t>& hosts, service_info_t& s
 	file.open(service_info_.hosts_file_.c_str(), std::ifstream::in);
 
 	if (!file.is_open()) {
-		throw error("config file: " + service_info_.hosts_file_ + " failed to open at: " + std::string(BOOST_CURRENT_FUNCTION));
+		throw internal_error("config file: " + service_info_.hosts_file_ + " failed to open at: " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	size_t max_size = 512;

@@ -20,7 +20,7 @@ namespace dealer {
 context::context(const std::string& config_path) {
 	// load configuration from file
 	if (config_path.empty()) {
-		throw error("config file path is empty string at: " + std::string(BOOST_CURRENT_FUNCTION));
+		throw internal_error("config file path is empty string at: " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	config_.reset(new configuration(config_path));

@@ -258,7 +258,7 @@ service<LSD_T>::dispatch_responces() {
 template <typename LSD_T> boost::shared_ptr<cocaine::dealer::context>
 service<LSD_T>::context() {
 	if (!context_.get()) {
-		throw error("dealer context object is empty at " + std::string(BOOST_CURRENT_FUNCTION));
+		throw internal_error("dealer context object is empty at " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	return context_;
@@ -273,7 +273,7 @@ template <typename LSD_T> boost::shared_ptr<configuration>
 service<LSD_T>::config() {
 	boost::shared_ptr<configuration> conf = context()->config();
 	if (!conf.get()) {
-		throw error("configuration object is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
+		throw internal_error("configuration object is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	return conf;
@@ -330,7 +330,7 @@ service<LSD_T>::enqueue_responce(cached_response_prt_t response) {
 		std::string error_str = "received empty response object!";
 		error_str += " service: " + info_.name_;
 		error_str += " at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw error(error_str);
+		throw internal_error(error_str);
 	}
 
 	boost::mutex::scoped_lock lock(mutex_);
@@ -363,7 +363,7 @@ service<LSD_T>::enqueue_responce(cached_response_prt_t response) {
 			std::string error_str = "found empty response queue object!";
 			error_str += " service: " + info_.name_ + " handle: " + path.handle_name;
 			error_str += " at " + std::string(BOOST_CURRENT_FUNCTION);
-			throw error(error_str);
+			throw internal_error(error_str);
 		}
 	}
 
@@ -390,7 +390,7 @@ service<LSD_T>::update_statistics() {
 			std::string error_str = "found empty unhandled messages queue object!";
 			error_str += " service: " + info_.name_ + " handle: " + it->first;
 			error_str += " at " + std::string(BOOST_CURRENT_FUNCTION);
-			throw error(error_str);
+			throw internal_error(error_str);
 		}
 	}
 
@@ -408,7 +408,7 @@ service<LSD_T>::update_statistics() {
 			std::string error_str = "found empty handle object!";
 			error_str += " service: " + info_.name_ + " handle: " + it2->first;
 			error_str += " at " + std::string(BOOST_CURRENT_FUNCTION);
-			throw error(error_str);
+			throw internal_error(error_str);
 		}
 	}
 
@@ -564,7 +564,7 @@ service<LSD_T>::remove_outstanding_handles(const handles_info_list_t& handles) {
 				std::string error_str = "service handle object is empty. service: " + info_.name_;
 				error_str += ", handle: " + handles[i].name_;
 				error_str += ". at " + std::string(BOOST_CURRENT_FUNCTION);
-				throw error(error_str);
+				throw internal_error(error_str);
 			}
 
 			// immediately terminate all handle activity
@@ -576,7 +576,7 @@ service<LSD_T>::remove_outstanding_handles(const handles_info_list_t& handles) {
 				std::string error_str = "handle message cache object is empty. service: " + info_.name_;
 				error_str += ", handle: " + handles[i].name_;
 				error_str += ". at " + std::string(BOOST_CURRENT_FUNCTION);
-				throw error(error_str);
+				throw internal_error(error_str);
 			}
 
 			// consolidate all handle messages
@@ -593,7 +593,7 @@ service<LSD_T>::remove_outstanding_handles(const handles_info_list_t& handles) {
 					std::string error_str = "found unhandled non-empty message queue with existing handle!";
 					error_str += " service: " + info_.name_ + ", handle: " + handles[i].name_;
 					error_str += ". at " + std::string(BOOST_CURRENT_FUNCTION);
-					throw error(error_str);
+					throw internal_error(error_str);
 				}
 
 				// remove empty queue if any
@@ -608,7 +608,7 @@ service<LSD_T>::remove_outstanding_handles(const handles_info_list_t& handles) {
 				std::string error_str = "found empty handle message queue when handle exists!";
 				error_str += " service: " + info_.name_ + ", handle: " + handles[i].name_;
 				error_str += ". at " + std::string(BOOST_CURRENT_FUNCTION);
-				throw error(error_str);
+				throw internal_error(error_str);
 			}
 
 			// in case there are messages, store them
@@ -665,7 +665,7 @@ service<LSD_T>::create_new_handles(const handles_info_list_t& handles, const hos
 					std::string error_str = "found empty handle message queue when handle exists!";
 					error_str += " service: " + info_.name_ + ", handle: " + handles[i].name_;
 					error_str += ". at " + std::string(BOOST_CURRENT_FUNCTION);
-					throw error(error_str);
+					throw internal_error(error_str);
 				}
 			}
 
@@ -691,7 +691,7 @@ service<LSD_T>::send_message(cached_message_prt_t message) {
 	if (!message) {
 		std::string error_str = "message object is empty. service: " + info_.name_;
 		error_str += ". at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw error(error_str);
+		throw internal_error(error_str);
 	}
 
 	const std::string& handle_name = message->path().handle_name;
@@ -710,7 +710,7 @@ service<LSD_T>::send_message(cached_message_prt_t message) {
 			std::string error_str = "handle object " + handle_name;
 			error_str += " for service: " + info_.name_ + " is empty.";
 			error_str += " at " + std::string(BOOST_CURRENT_FUNCTION);
-			throw error(error_str);
+			throw internal_error(error_str);
 		}
 	}
 	else {
@@ -733,7 +733,7 @@ service<LSD_T>::send_message(cached_message_prt_t message) {
 				std::string error_str = "found empty message queue object in unhandled messages map!";
 				error_str += " service: " + info_.name_ + ", handle: " + handle_name;
 				error_str += ". at " + std::string(BOOST_CURRENT_FUNCTION);
-				throw error(error_str);
+				throw internal_error(error_str);
 			}
 
 			queue_ptr->push_back(message);

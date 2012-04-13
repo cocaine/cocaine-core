@@ -54,7 +54,7 @@ boost::shared_ptr<configuration>
 message_cache::config() {
 	boost::shared_ptr<configuration> conf = context()->config();
 	if (!conf.get()) {
-		throw error("configuration object is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
+		throw internal_error("configuration object is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	return conf;
@@ -67,7 +67,7 @@ message_cache::new_messages() {
 	if (!new_messages_) {
 		std::string error_str = "new messages queue object is empty at ";
 		error_str += std::string(BOOST_CURRENT_FUNCTION);
-		throw error(error_str);
+		throw internal_error(error_str);
 	}
 
 	return new_messages_;
@@ -100,7 +100,7 @@ message_cache::get_new_message() {
 	if (!new_messages_->front()) {
 		std::string error_str = "empty message object at ";
 		error_str += std::string(BOOST_CURRENT_FUNCTION);
-		throw error(error_str);
+		throw internal_error(error_str);
 	}
 
 	return new_messages_->front();
@@ -126,11 +126,11 @@ message_cache::get_sent_message(const std::string& uuid) {
 	if (it == sent_messages_.end()) {
 		std::string error_str = "can not find message with uuid " + uuid;
 		error_str += " at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw error(error_str);
+		throw internal_error(error_str);
 	}
 
 	if (!it->second) {
-		throw error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
+		throw internal_error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	return it->second;
@@ -142,7 +142,7 @@ message_cache::move_new_message_to_sent() {
 	boost::shared_ptr<message_iface> msg = new_messages_->front();
 
 	if (!msg) {
-		throw error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
+		throw internal_error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	sent_messages_.insert(std::make_pair(msg->uuid(), msg));
@@ -161,7 +161,7 @@ message_cache::move_sent_message_to_new(const std::string& uuid) {
 	boost::shared_ptr<message_iface> msg = it->second;
 
 	if (!msg) {
-		throw error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
+		throw internal_error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	sent_messages_.erase(it);
@@ -182,7 +182,7 @@ message_cache::move_sent_message_to_new_front(const std::string& uuid) {
 	boost::shared_ptr<message_iface> msg = it->second;
 
 	if (!msg) {
-		throw error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
+		throw internal_error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	sent_messages_.erase(it);
@@ -210,7 +210,7 @@ message_cache::make_all_messages_new() {
 	messages_index_t::iterator it = sent_messages_.begin();
 	for (; it != sent_messages_.end(); ++it) {
 		if (!it->second) {
-			throw error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
+			throw internal_error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
 		}
 
 		new_messages_->push_back(it->second);
@@ -235,7 +235,7 @@ message_cache::process_expired_messages(std::vector<std::pair<std::string, messa
 		// get single sent message
 		boost::shared_ptr<message_iface> msg = it->second;
 		if (!msg) {
-			throw error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
+			throw internal_error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
 		}
 
 		// remove expired messages
@@ -249,7 +249,7 @@ message_cache::process_expired_messages(std::vector<std::pair<std::string, messa
 	}
 
 	if (!new_messages_) {
-		throw error("empty pending message queue object at " + std::string(BOOST_CURRENT_FUNCTION));
+		throw internal_error("empty pending message queue object at " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	message_queue_t::iterator it2 = new_messages_->begin();
@@ -258,7 +258,7 @@ message_cache::process_expired_messages(std::vector<std::pair<std::string, messa
 		boost::shared_ptr<message_iface> msg = *it2;
 
 		if (!msg) {
-			throw error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
+			throw internal_error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
 		}
 
 		// remove expired messages

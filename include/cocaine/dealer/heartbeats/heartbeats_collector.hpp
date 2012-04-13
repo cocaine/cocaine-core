@@ -135,13 +135,13 @@ heartbeats_collector<HostsFetcher>::stop() {
 	logger_->log(PLOG_DEBUG, "heartbeast collector stopped.");
 	boost::mutex::scoped_lock lock(mutex_);
 
+	// kill hosts pinger
+	refresher_.reset();
+
 	// kill http hosts fetchers
 	for (size_t i = 0; i < hosts_fetchers_.size(); ++i) {
 		hosts_fetchers_[i].reset();
 	}
-
-	// kill hosts pinger
-	refresher_.reset();
 }
 
 template <typename HostsFetcher> void
@@ -176,7 +176,7 @@ heartbeats_collector<HostsFetcher>::services_ping_callback() {
 				try {
 					hosts_fetchers_[i]->get_hosts(hosts, sinfo);
 				}
-				catch (const error& err) {
+				catch (const internal_error& err) {
 					std::string error_msg = "failed fo retrieve hosts list at: %s, details: %s";
 					logger_->log(PLOG_ERROR, error_msg.c_str(),
 								 std::string(BOOST_CURRENT_FUNCTION).c_str(),

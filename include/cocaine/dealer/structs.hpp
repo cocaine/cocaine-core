@@ -60,13 +60,6 @@ struct response_code {
 	static const int unknown_error = 1;
 	static const int message_chunk = 2;
 	static const int message_choke = 3;
-    static const int request_error			= 400; // bad input data
-    static const int unknown_service_error	= 404;
-    static const int server_error			= 500; // 
-    static const int app_error				= 502; // err from app code
-    static const int resource_error			= 503; // 
-    static const int timeout_error			= 504;
-    static const int deadline_error			= 520;
 };
 
 enum logger_type {

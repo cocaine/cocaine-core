@@ -42,7 +42,7 @@ client_impl::client_impl(const std::string& config_path) :
 		context_.reset(new cocaine::dealer::context(config_path));
 	}
 	catch (const std::exception& ex) {
-		throw error(ctx_error_msg + ex.what());
+		throw internal_error(ctx_error_msg + ex.what());
 	}
 
 	logger()->log("creating client.");
@@ -79,7 +79,7 @@ client_impl::connect() {
 
 	if (!context_) {
 		std::string error_msg = "dealer context is NULL at: " + std::string(BOOST_CURRENT_FUNCTION);
-		throw error(error_msg);
+		throw internal_error(error_msg);
 	}
 	else {
 		conf = context_->config();
@@ -87,7 +87,7 @@ client_impl::connect() {
 
 	if (!conf) {
 		std::string error_msg = "configuration object is empty at: " + std::string(BOOST_CURRENT_FUNCTION);
-		throw error(error_msg);
+		throw internal_error(error_msg);
 	}
 
 	if (conf->autodiscovery_type() == AT_FILE) {
@@ -115,7 +115,7 @@ client_impl::disconnect() {
 	else {
 		std::string error_msg = "empty heartbeats collector object at ";
 		error_msg += std::string(BOOST_CURRENT_FUNCTION);
-		throw error(error_msg);
+		throw internal_error(error_msg);
 	}
 
 	// stop services
@@ -141,13 +141,13 @@ client_impl::service_hosts_pinged_callback(const service_info_t& s_info,
 		else {
 			std::string error_msg = "empty service object with dealer name " + s_info.name_;
 			error_msg += " was found in services. at: " + std::string(BOOST_CURRENT_FUNCTION);
-			throw error(error_msg);
+			throw internal_error(error_msg);
 		}
 	}
 	else {
 		std::string error_msg = "dealer service with name " + s_info.name_;
 		error_msg += " was not found in services. at: " + std::string(BOOST_CURRENT_FUNCTION);
-		throw error(error_msg);
+		throw internal_error(error_msg);
 	}
 }
 
@@ -221,7 +221,7 @@ client_impl::send_message(const void* data,
 	if (it == services_.end()) {
 		std::string error_str = "no service with name " + path.service_name;
 		error_str += " found at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw error(response_code::unknown_service_error, error_str);
+		throw dealer_error(location_error, error_str);
 	}
 
 	boost::shared_ptr<message_iface> msg = create_message(data, size, path, policy);
@@ -234,7 +234,7 @@ client_impl::send_message(const void* data,
 	else {
 		std::string error_str = "object for service with name " + path.service_name;
 		error_str += " is emty at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw error(response_code::unknown_error, error_str);
+		throw internal_error(error_str);
 	}
 
 	// return message uuid
@@ -278,7 +278,7 @@ client_impl::send_message(const boost::shared_ptr<message_iface>& msg, response_
 	if (it == services_.end()) {
 		std::string error_str = "no service with name " + msg->path().service_name;
 		error_str += " found at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw error(response_code::unknown_service_error, error_str);
+		throw dealer_error(location_error, error_str);
 	}
 
 	uuid = msg->uuid();
@@ -296,7 +296,7 @@ client_impl::send_message(const boost::shared_ptr<message_iface>& msg, response_
 	else {
 		std::string error_str = "object for service with name " + msg->path().service_name;
 		error_str += " is emty at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw error(response_code::unknown_error, error_str);
+		throw internal_error(error_str);
 	}
 
 	message_str = "enqueued message with uuid: %s to [%s.%s]";
@@ -318,15 +318,15 @@ client_impl::set_response_callback(const std::string& message_uuid,
 		std::string error_msg = "message sent to unknown service \"" + path.service_name + "\"";
 		error_msg += " at: " + std::string(BOOST_CURRENT_FUNCTION);
 		error_msg += " please make sure you've defined service in dealer configuration file.";
-		throw error(response_code::unknown_service_error, error_msg);
+		throw dealer_error(location_error, error_msg);
 	}
 
 	if (!callback) {
-		throw error("callback function is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
+		throw internal_error("callback function is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	if (!it->second) {
-		throw error("service object is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
+		throw internal_error("service object is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	// assign to service
@@ -346,11 +346,11 @@ client_impl::unset_response_callback(const std::string& message_uuid,
 		std::string error_msg = "message sent to unknown service \"" + path.service_name + "\"";
 		error_msg += " at: " + std::string(BOOST_CURRENT_FUNCTION);
 		error_msg += " please make sure you've defined service in dealer configuration file.";
-		throw error(response_code::unknown_service_error, error_msg);
+		throw dealer_error(location_error, error_msg);
 	}
 
 	if (!it->second) {
-		throw error("service object is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
+		throw internal_error("service object is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	// assign to service
@@ -363,7 +363,7 @@ client_impl::unset_response_callback(const std::string& message_uuid,
 boost::shared_ptr<context>
 client_impl::context() {
 	if (!context_) {
-		throw error("dealer context object is empty at " + std::string(BOOST_CURRENT_FUNCTION));
+		throw internal_error("dealer context object is empty at " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	return context_;
@@ -394,7 +394,7 @@ client_impl::update_messages_cache_size() {
 		else {
 			std::string error_str = "object for service with name " + it->first;
 			error_str += " is empty at " + std::string(BOOST_CURRENT_FUNCTION);
-			throw error(error_str);
+			throw internal_error(error_str);
 		}
 	}
 
@@ -406,7 +406,7 @@ boost::shared_ptr<configuration>
 client_impl::config() {
 	boost::shared_ptr<configuration> conf = context()->config();
 	if (!conf.get()) {
-		throw error("configuration object is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
+		throw internal_error("configuration object is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	return conf;
@@ -420,7 +420,7 @@ client_impl::load_cached_messages_for_service(boost::shared_ptr<service_t>& serv
 	if (!service) {
 		std::string error_str = "object for service with name " + service_name;
 		error_str += " is emty at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw error(error_str);
+		throw internal_error(error_str);
 	}
 
 	// show statistics
@@ -443,11 +443,11 @@ client_impl::load_cached_messages_for_service(boost::shared_ptr<service_t>& serv
 void
 client_impl::storage_iteration_callback(void* data, uint64_t size, int column) {
 	if (!restored_service_tmp_ptr_) {
-		throw error("service object is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
+		throw internal_error("service object is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	if (column == 0 && (!data || size == 0)) {
-		throw error("metadata is missing at: " + std::string(BOOST_CURRENT_FUNCTION));	
+		throw internal_error("metadata is missing at: " + std::string(BOOST_CURRENT_FUNCTION));	
 	}
 
 	// get service eblob

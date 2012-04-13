@@ -131,11 +131,11 @@ persistent_data_container::allocate_memory() {
 		data_ = new unsigned char[size_];
 	}
 	catch (...) {
-		throw error(error_msg);
+		throw internal_error(error_msg);
 	}
 
 	if (!data_) {
-		throw error(error_msg);
+		throw internal_error(error_msg);
 	}
 }
 

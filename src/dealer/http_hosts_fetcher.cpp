@@ -78,8 +78,8 @@ http_hosts_fetcher::get_hosts(std::vector<host_info_t>& hosts, service_info_t& s
 	tokenizer tokens(buffer, sep);
 	
 	for (tokenizer::iterator tok_iter = tokens.begin(); tok_iter != tokens.end(); ++tok_iter) {
-			host_info_t host(*tok_iter);
-			hosts.push_back(host);
+		host_info_t host(*tok_iter);
+		hosts.push_back(host);
 	}
 	
 	service_info = service_info_;

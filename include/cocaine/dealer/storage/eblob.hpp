@@ -66,13 +66,13 @@ public:
 		if (!storage_.get()) {
 			std::string error_msg = "empty eblob storage object at " + std::string(BOOST_CURRENT_FUNCTION);
 			error_msg += " key: " + key + " column: " + boost::lexical_cast<std::string>(column);
-			throw error(error_msg);
+			throw internal_error(error_msg);
 		}
 
 		if (column < 0) {
 			std::string error_msg = "bad column index at " + std::string(BOOST_CURRENT_FUNCTION);
 			error_msg += " key: " + key + " column: " + boost::lexical_cast<std::string>(column);
-			throw error(error_msg);
+			throw internal_error(error_msg);
 		}
 
 		// 2DO: truncate written value
@@ -83,13 +83,13 @@ public:
 		if (!storage_.get()) {
 			std::string error_msg = "empty eblob storage object at " + std::string(BOOST_CURRENT_FUNCTION);
 			error_msg += " key: " + key + " column: " + boost::lexical_cast<std::string>(column);
-			throw error(error_msg);
+			throw internal_error(error_msg);
 		}
 
 		if (column < 0) {
 			std::string error_msg = "bad column index at " + std::string(BOOST_CURRENT_FUNCTION);
 			error_msg += " key: " + key + " column: " + boost::lexical_cast<std::string>(column);
-			throw error(error_msg);
+			throw internal_error(error_msg);
 		}
 
 		// 2DO: truncate written value
@@ -101,7 +101,7 @@ public:
 		if (!storage_.get()) {
 			std::string error_msg = "empty eblob storage object at " + std::string(BOOST_CURRENT_FUNCTION);
 			error_msg += " key: " + key + " column: " + boost::lexical_cast<std::string>(column);
-			throw error(error_msg);
+			throw internal_error(error_msg);
 		}
 
 		return storage_->read_hashed(key, 0, 0, column);
@@ -111,7 +111,7 @@ public:
 		if (!storage_.get()) {
 			std::string error_msg = "empty eblob storage object at " + std::string(BOOST_CURRENT_FUNCTION);
 			error_msg += " key: " + key;
-			throw error(error_msg);
+			throw internal_error(error_msg);
 		}
 
 		eblob_key ekey;
@@ -123,7 +123,7 @@ public:
 		if (!storage_.get()) {
 			std::string error_msg = "empty eblob storage object at " + std::string(BOOST_CURRENT_FUNCTION);
 			error_msg += " key: " + key + " column: " + boost::lexical_cast<std::string>(column);
-			throw error(error_msg);
+			throw internal_error(error_msg);
 		}
 
 		storage_->remove_hashed(key, column);
@@ -132,7 +132,7 @@ public:
 	unsigned long long items_count() {
 		if (!storage_.get()) {
 			std::string error_msg = "empty eblob storage object at " + std::string(BOOST_CURRENT_FUNCTION);
-			throw error(error_msg);
+			throw internal_error(error_msg);
 		}
 
 		return storage_->elements();

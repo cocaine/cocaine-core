@@ -165,12 +165,12 @@ public:
 		}
 		catch (...) {
 			file_.close();
-			throw error(error_msg + " at: " + std::string(BOOST_CURRENT_FUNCTION));
+			throw internal_error(error_msg + " at: " + std::string(BOOST_CURRENT_FUNCTION));
 		}
 
 		if (!file_.is_open()) {
 			file_.close();
-			throw error(error_msg + " at: " + std::string(BOOST_CURRENT_FUNCTION));
+			throw internal_error(error_msg + " at: " + std::string(BOOST_CURRENT_FUNCTION));
 		}
 
 		file_ << first_message_;
@@ -191,7 +191,7 @@ public:
 
 		if (!file_.is_open()) {
 			file_.close();
-			throw error(error_msg + "at: " + std::string(BOOST_CURRENT_FUNCTION));
+			throw internal_error(error_msg + "at: " + std::string(BOOST_CURRENT_FUNCTION));
 		}
 
 		file_ << get_message_prefix(type) << message << "\n" << std::flush;
