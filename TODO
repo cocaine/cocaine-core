@@ -55,7 +55,10 @@ Version: 0.7
 * Networking: authentication replay protection (timestamps)
 * Networking: encrypted responses
 * Networking: encrypted publishing
-* Dealer: working persistance based on eblob backend
+v Dealer: working persistance based on eblob backend
+v Dealer: cleaner logging and error handling
+v Dealer: JSON -> Msgpack for communications with engine
+v Dealer: sync/async interfaces [implemented similar to 0x "future" object]
 * Dealer: properly handling timed out messages
-* Dealer: asynchronous interface
+* Dealer: perl binding
 * Dealer: python binding
