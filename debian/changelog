@@ -1,3 +1,15 @@
+cocaine (0.7.3-b3) lucid; urgency=low
+
+  * More stuff.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 13 Apr 2012 05:09:47 +0400
+
+cocaine (0.7.3-b2) lucid; urgency=low
+
+  * More dev headers for Dealer.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Thu, 12 Apr 2012 21:51:08 +0400
+
 cocaine (0.7.3-b1) lucid; urgency=low
 
   * Renamed Cocaine Dealer packages.

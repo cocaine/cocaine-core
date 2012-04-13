@@ -1,1 +1,2 @@
 usr/include/cocaine/dealer/*.hpp
+usr/include/cocaine/dealer/utils/*.hpp

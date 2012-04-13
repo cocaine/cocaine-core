@@ -40,11 +40,6 @@ core_t::core_t(const config_t& config):
     m_log->info("using libzmq version %d.%d.%d", major, minor, patch);
     m_log->info("route to this node is '%s'", m_server.route().c_str());
     
-    m_log->info(
-        "available modules: %s",
-        boost::algorithm::join(m_context.modules(), ", ").c_str()
-    );
-    
     // Server socket
     // -------------
 

@@ -121,24 +121,3 @@ registry_t::~registry_t() {
     lt_dlexit();
 }
 
-namespace {
-    struct enumerate {
-        template<class T>
-        std::string operator()(const T& factory) {
-            return factory->first;
-        }
-    };
-}
-
-std::vector<std::string> registry_t::list() const {
-    std::vector<std::string> list;
-
-    std::transform(
-        m_factories.begin(),
-        m_factories.end(),
-        std::back_inserter(list),
-        enumerate()
-    );
-    
-    return list;
-}
