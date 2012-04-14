@@ -1,17 +1,21 @@
-LOCATE_LIBRARY(LIBMONGOCLIENT "dbclient.h" "mongoclient" "mongo" "mongo/client")
+find_package (MongoDB)
 
-ADD_LIBRARY(mongodb MODULE
-    mongo)
+IF (MongoDB_FOUND)
+	LOCATE_LIBRARY(LIBMONGOCLIENT "dbclient.h" "mongoclient" "mongo" "mongo/client")
 
-TARGET_LINK_LIBRARIES(mongodb
-    cocaine-common
-    boost_thread-mt
-    mongoclient)
+	ADD_LIBRARY(mongodb MODULE
+	    mongo)
 
-SET_TARGET_PROPERTIES(mongodb PROPERTIES
-    PREFIX ""
-    SUFFIX ".cocaine-module")
+	TARGET_LINK_LIBRARIES(mongodb
+	    cocaine-common
+	    boost_thread-mt
+	    mongoclient)
 
-INSTALL(TARGETS mongodb
-    LIBRARY DESTINATION lib/cocaine
-    COMPONENT runtime)
+	SET_TARGET_PROPERTIES(mongodb PROPERTIES
+	    PREFIX ""
+	    SUFFIX ".cocaine-module")
+
+	INSTALL(TARGETS mongodb
+	    LIBRARY DESTINATION lib/cocaine
+	    COMPONENT runtime)
+ENDIF()
