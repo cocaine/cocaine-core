@@ -20,14 +20,15 @@
 #include <cocaine/dealer/forwards.hpp>
 #include <cocaine/dealer/structs.hpp>
 #include <cocaine/dealer/utils/data_container.hpp>
+#include <boost/ptr_container/ptr_vector.hpp>
 
 namespace cocaine {
 namespace dealer {
 
 class response_impl {
 public:
-	explicit response_impl(client* c, const std::string& uuid, const message_path& path);
-	virtual ~response_impl();
+	response_impl(const boost::shared_ptr<client_impl>& client, const std::string& uuid, const message_path& path);
+	~response_impl();
 
 	bool get(data_container* data);
 
@@ -36,8 +37,9 @@ private:
 
 	void response_callback(const response_data& resp_data, const response_info& resp_info);
 
-	client* client_;
-	data_container data_;
+	boost::ptr_vector<data_container> chunks_;
+
+	boost::shared_ptr<client_impl> client_;
 	std::string uuid_;
 	const message_path& path_;
 	bool response_finished_;

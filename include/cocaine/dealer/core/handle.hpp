@@ -159,6 +159,8 @@ handle<LSD_T>::handle(const handle_info<LSD_T>& info,
 	is_connected_(false),
 	receiving_control_socket_ok_(false)
 {
+	boost::mutex::scoped_lock lock(mutex_);
+
 	logger()->log(PLOG_DEBUG, "STARTED HANDLE [%s].[%s]", info.service_name_.c_str(), info.name_.c_str());
 
 	// create message cache
@@ -176,8 +178,9 @@ handle<LSD_T>::handle(const handle_info<LSD_T>& info,
 	is_running_ = true;
 	thread_ = boost::thread(&handle<LSD_T>::dispatch_messages, this);
 
-	get_statistics();
-	update_statistics();
+	// connect to hosts 
+	lock.unlock();
+	connect();
 }
 
 template <typename LSD_T>
@@ -203,6 +206,8 @@ handle<LSD_T>::dispatch_messages() {
 
 	// process messages
 	while (is_running_) {
+		boost::mutex::scoped_lock lock(mutex_);
+
 		static bool have_enqueued_messages = false;
 
 		// receive control message
@@ -247,7 +252,10 @@ handle<LSD_T>::dispatch_messages() {
 
 			// process received responce(s)
 			while (received_response) {
+				lock.unlock();
 				dispatch_responce(main_socket);
+				lock.lock();
+
 				received_response = check_for_responses(main_socket, 10);
 			}
 		}
@@ -539,7 +547,7 @@ handle<LSD_T>::receive_responce_chunk(socket_ptr_t& socket, zmq::message_t& resp
 
 template <typename LSD_T> bool
 handle<LSD_T>::dispatch_responce(socket_ptr_t& main_socket) {
-	//static int mcount = 0;
+	boost::mutex::scoped_lock lock(mutex_);
 
 	boost::ptr_vector<zmq::message_t> response_chunks;
 
@@ -565,6 +573,7 @@ handle<LSD_T>::dispatch_responce(socket_ptr_t& main_socket) {
 		return false;
 	}
 
+	lock.unlock();
 	process_responce(response_chunks);
 	return true;
 }
@@ -581,6 +590,8 @@ handle<LSD_T>::reshedule_message(const std::string& uuid) {
 
 template <typename LSD_T> void
 handle<LSD_T>::process_responce(boost::ptr_vector<zmq::message_t>& chunks) {
+	boost::mutex::scoped_lock lock(mutex_);
+
 	// we've received some useless crap
 	if (chunks.size() < 2) {
 		return;
@@ -647,7 +658,10 @@ handle<LSD_T>::process_responce(boost::ptr_vector<zmq::message_t>& chunks) {
 				cached_response_prt_t new_response;
 				new_response.reset(new cached_response(uuid, sent_msg->path(), chunks[3].data(), chunks[3].size()));
 				new_response->set_code(response_code::message_chunk);
+
+				lock.unlock();
 				enqueue_response(new_response);
+				lock.lock();
 			}
 			else {
 				reshedule_message(uuid);
@@ -688,14 +702,13 @@ handle<LSD_T>::process_responce(boost::ptr_vector<zmq::message_t>& chunks) {
 			else {
 				cached_response_prt_t new_response;
 				new_response.reset(new cached_response(uuid, sent_msg->path(), error_code, error_message));
+
+				lock.unlock();
 				enqueue_response(new_response);
+				lock.lock();
 
 				messages_cache()->remove_message_from_cache(uuid);
 			}
-
-			++statistics_.err_responces;
-			++statistics_.all_responces;
-			update_statistics();
 		}
 		break;
 
@@ -705,11 +718,10 @@ handle<LSD_T>::process_responce(boost::ptr_vector<zmq::message_t>& chunks) {
 			cached_response_prt_t new_response;
 			new_response.reset(new cached_response(uuid, sent_msg->path(), NULL, 0));
 			new_response->set_code(response_code::message_choke);
-			enqueue_response(new_response);
 
-			++statistics_.normal_responces;
-			++statistics_.all_responces;
-			update_statistics();
+			lock.unlock();
+			enqueue_response(new_response);
+			lock.lock();
 		}
 		break;
 
@@ -809,24 +821,6 @@ handle<LSD_T>::kill() {
 }
 
 template <typename LSD_T> void
-handle<LSD_T>::connect() {
-	//logger()->log(PLOG_DEBUG, "connect");
-
-	get_statistics();
-	update_statistics();
-
-	if (!is_running_ || hosts_.empty() || is_connected_) {
-		return;
-	}
-
-	// connect to hosts
-	int control_message = CONTROL_MESSAGE_CONNECT;
-	zmq::message_t message(sizeof(int));
-	memcpy((void *)message.data(), &control_message, sizeof(int));
-	zmq_control_socket_->send(message);
-}
-
-template <typename LSD_T> void
 handle<LSD_T>::notify_new_messages_enqueued() {
 	//logger()->log(PLOG_DEBUG, "new messages notification");
 
@@ -842,7 +836,26 @@ handle<LSD_T>::notify_new_messages_enqueued() {
 }
 
 template <typename LSD_T> void
+handle<LSD_T>::connect() {
+	boost::mutex::scoped_lock lock(mutex_);
+
+	logger()->log(PLOG_INFO, "connect");
+
+	if (!is_running_ || hosts_.empty() || is_connected_) {
+		return;
+	}
+
+	// connect to hosts
+	int control_message = CONTROL_MESSAGE_CONNECT;
+	zmq::message_t message(sizeof(int));
+	memcpy((void *)message.data(), &control_message, sizeof(int));
+	zmq_control_socket_->send(message);
+}
+
+template <typename LSD_T> void
 handle<LSD_T>::connect(const hosts_info_list_t& hosts) {
+	boost::mutex::scoped_lock lock(mutex_);
+
 	std::string log_str = "CONNECT HANDLE [" + info_.service_name_ +"].[" + info_.name_ + "] to hosts: ";
 	for (size_t i = 0; i < hosts.size(); ++i) {
 		log_str += host_info_t::string_from_ip(hosts[i].ip_);
@@ -854,25 +867,24 @@ handle<LSD_T>::connect(const hosts_info_list_t& hosts) {
 
 	logger()->log(PLOG_DEBUG, log_str);
 
-	get_statistics();
-	update_statistics();
-
 	// no hosts to connect to
 	if (!is_running_ || is_connected_ || hosts.empty()) {
 		return;
 	}
 	else {
 		// store new hosts
-		boost::mutex::scoped_lock lock(mutex_);
 		hosts_ = hosts;
 	}
 
 	// connect to hosts
+	lock.unlock();
 	connect();
 }
 
 template <typename LSD_T> void
 handle<LSD_T>::connect_new_hosts(const hosts_info_list_t& hosts) {
+	boost::mutex::scoped_lock lock(mutex_);
+
 	std::string log_str = "CONNECT HANDLE [" + info_.service_name_ +"].[" + info_.name_ + "] to new hosts: ";
 	for (size_t i = 0; i < hosts.size(); ++i) {
 		log_str += host_info_t::string_from_ip(hosts[i].ip_);
@@ -884,18 +896,12 @@ handle<LSD_T>::connect_new_hosts(const hosts_info_list_t& hosts) {
 
 	logger()->log(PLOG_DEBUG, log_str);
 
-
-
-	get_statistics();
-	update_statistics();
-
 	// no new hosts to connect to
 	if (!is_running_ || hosts.empty()) {
 		return;
 	}
 	else {
 		// append new hosts
-		boost::mutex::scoped_lock lock(mutex_);
 		new_hosts_.insert(new_hosts_.end(), hosts.begin(), hosts.end());
 	}
 
@@ -908,10 +914,9 @@ handle<LSD_T>::connect_new_hosts(const hosts_info_list_t& hosts) {
 
 template <typename LSD_T> void
 handle<LSD_T>::reconnect(const hosts_info_list_t& hosts) {
-	logger()->log(PLOG_DEBUG, "reconnect");
+	boost::mutex::scoped_lock lock(mutex_);
 
-	get_statistics();
-	update_statistics();
+	logger()->log(PLOG_DEBUG, "reconnect");
 
 	// no new hosts to connect to
 	if (!is_running_ || hosts.empty()) {
@@ -919,7 +924,6 @@ handle<LSD_T>::reconnect(const hosts_info_list_t& hosts) {
 	}
 	else {
 		// replace hosts with new hosts
-		boost::mutex::scoped_lock lock(mutex_);
 		hosts_ = hosts;
 	}
 

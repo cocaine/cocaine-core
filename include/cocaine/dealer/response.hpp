@@ -27,7 +27,7 @@ namespace dealer {
 
 class response {
 public:
-	explicit response(client* c, const std::string& uuid, const message_path& path);
+	response(const boost::shared_ptr<client_impl>& client, const std::string& uuid, const message_path& path);
 	virtual ~response();
 
 	bool get(data_container* data);

@@ -24,15 +24,9 @@ namespace dealer {
 
 client::client(const std::string& config_path) {
 	impl_.reset(new client_impl(config_path));
-	get_impl()->connect();
 }
 
 client::~client() {
-}
-
-void
-client::set_response_callback(const std::string& message_uuid, response_callback callback, const message_path& path) {
-	get_impl()->set_response_callback(message_uuid, callback, path);
 }
 
 void
@@ -47,10 +41,11 @@ client::send_message(const void* data,
 					 const message_policy& policy)
 {
 	boost::shared_ptr<message_iface> msg = get_impl()->create_message(data, size, path, policy);
+	response* resp_ptr = new response(get_impl(), msg->uuid(), path);
+	
+	get_impl()->send_message(msg, boost::bind(&response::response_callback, resp_ptr, _1, _2));
 
-	boost::shared_ptr<response> resp;
-	resp.reset(new response(this, msg->uuid(), path));
-	std::string uuid = get_impl()->send_message(msg, boost::bind(&response::response_callback, *(resp.get()), _1, _2));
+	boost::shared_ptr<response> resp(resp_ptr);
 	return resp;
 }
 
