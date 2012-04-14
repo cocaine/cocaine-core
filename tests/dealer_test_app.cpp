@@ -17,6 +17,7 @@
 #include <map>
 #include <time.h>
 
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/program_options.hpp>
 #include <boost/thread.hpp>
 #include <boost/shared_ptr.hpp>
@@ -55,9 +56,10 @@ void worker() {
 
 		try {
 			data_container data;
-			resp->get(&data);
-
-			std::cout << std::string(reinterpret_cast<const char*>(data.data()), 0, data.size()) << std::endl;
+			
+			while(resp->get(&data)) {
+				//std::cout << std::string(reinterpret_cast<const char*>(data.data()), 0, data.size()) << std::endl;
+			}
 		}
 		catch (const dealer_error& err) {
 			std::cout << "error code: " << err.code() << ", error message: " << err.what() << std::endl;
@@ -69,10 +71,11 @@ void worker() {
 			std::cout << "caught exception, no error message." << std::endl;
 		}
 	}
+
 }
 
 void create_client(int add_messages_count) {
-	int pool_size = 1;
+	int pool_size = 100;
 	
 	std::cout << "----------------------------------- test info -------------------------------------------\n";
 	std::cout << "sending " << add_messages_count * pool_size << " messages using " << pool_size << " threads\n";

@@ -51,7 +51,6 @@ public:
 private:
 	friend class response_impl;
 
-	void set_response_callback(const std::string& message_uuid, response_callback callback, const message_path& path);
 	void unset_response_callback(const std::string& message_uuid, const message_path& path);
 
 	boost::shared_ptr<client_impl> get_impl();

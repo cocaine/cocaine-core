@@ -64,6 +64,7 @@ client_impl::client_impl(const std::string& config_path) :
 		services_[it->first] = service_ptr;
 	}
 
+	connect();
 	logger()->log("client created.");
 }
 
@@ -74,7 +75,6 @@ client_impl::~client_impl() {
 
 void
 client_impl::connect() {
-	boost::mutex::scoped_lock lock(mutex_);
 	boost::shared_ptr<configuration> conf;
 
 	if (!context_) {
@@ -106,8 +106,6 @@ client_impl::connect() {
 
 void
 client_impl::disconnect() {
-	boost::mutex::scoped_lock lock(mutex_);
-
 	// stop collecting heartbeats
 	if (heartbeats_collector_.get()) {
 		heartbeats_collector_->stop();
@@ -130,6 +128,8 @@ client_impl::service_hosts_pinged_callback(const service_info_t& s_info,
 										   const std::vector<host_info_t>& hosts,
 										   const std::vector<handle_info_t>& handles)
 {
+	boost::mutex::scoped_lock lock(mutex_);
+
 	// find corresponding service
 	services_map_t::iterator it = services_.find(s_info.name_);
 
@@ -151,32 +151,13 @@ client_impl::service_hosts_pinged_callback(const service_info_t& s_info,
 	}
 }
 
-std::string
-client_impl::send_message(const void* data,
-						  size_t size,
-						  const std::string& service_name,
-						  const std::string& handle_name)
-{
-	message_path mpath(service_name, handle_name);
-	message_policy mpolicy;
-	return send_message(data, size, mpath, mpolicy);
-}
-
-std::string
-client_impl::send_message(const void* data,
-						  size_t size,
-						  const message_path& path)
-{
-	message_policy mpolicy;
-	return send_message(data, size, path, mpolicy);
-}
-
 boost::shared_ptr<message_iface>
 client_impl::create_message(const void* data,
 							size_t size,
 							const message_path& path,
 							const message_policy& policy)
 {
+	boost::mutex::scoped_lock lock(mutex_);
 	boost::shared_ptr<message_iface> msg;
 
 	if (config()->message_cache_type() == RAM_ONLY) {
@@ -207,67 +188,6 @@ client_impl::create_message(const void* data,
 }
 
 std::string
-client_impl::send_message(const void* data,
-						  size_t size,
-						  const message_path& path,
-						  const message_policy& policy)
-{
-	boost::mutex::scoped_lock lock(mutex_);
-
-	// find service to send message to
-	std::string uuid;
-	services_map_t::iterator it = services_.find(path.service_name);
-
-	if (it == services_.end()) {
-		std::string error_str = "no service with name " + path.service_name;
-		error_str += " found at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw dealer_error(location_error, error_str);
-	}
-
-	boost::shared_ptr<message_iface> msg = create_message(data, size, path, policy);
-	uuid = msg->uuid();
-
-	// send message to service
-	if (it->second) {
-		it->second->send_message(msg);
-	}
-	else {
-		std::string error_str = "object for service with name " + path.service_name;
-		error_str += " is emty at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw internal_error(error_str);
-	}
-
-	// return message uuid
-	return uuid;
-}
-
-std::string
-client_impl::send_message(const std::string& data,
-						  const std::string& service_name,
-						  const std::string& handle_name)
-{
-	message_path mpath(service_name, handle_name);
-	message_policy mpolicy;
-	return send_message(data, mpath, mpolicy);
-}
-
-std::string
-client_impl::send_message(const std::string& data,
-						  const message_path& path)
-{
-	message_policy mpolicy;
-	return send_message(data, path, mpolicy);
-}
-
-std::string
-client_impl::send_message(const std::string& data,
-						  const message_path& path,
-						  const message_policy& policy)
-{
-	return send_message(data.c_str(), data.length(), path, policy);
-}
-
-std::string
 client_impl::send_message(const boost::shared_ptr<message_iface>& msg, response_callback callback) {
 	boost::mutex::scoped_lock lock(mutex_);
 
@@ -284,14 +204,21 @@ client_impl::send_message(const boost::shared_ptr<message_iface>& msg, response_
 	uuid = msg->uuid();
 
 	// assign callback
-	std::string message_str = "registered callback for message with uuid: " + msg->uuid();
+	std::string message_str = "registering callback for message with uuid: " + msg->uuid();
 	logger()->log(PLOG_DEBUG, message_str);
 
+	lock.unlock();
 	it->second->register_responder_callback(uuid, callback);
+	lock.lock();
+
+	message_str = "registered callback for message with uuid: " + msg->uuid();
+	logger()->log(PLOG_DEBUG, message_str);
 
 	// send message to service
 	if (it->second) {
+		lock.unlock();
 		it->second->send_message(msg);
+		lock.lock();
 	}
 	else {
 		std::string error_str = "object for service with name " + msg->path().service_name;
@@ -303,43 +230,17 @@ client_impl::send_message(const boost::shared_ptr<message_iface>& msg, response_
 	logger()->log(PLOG_DEBUG, message_str.c_str(), uuid.c_str(),
 				  msg->path().service_name.c_str(), msg->path().handle_name.c_str());
 
-	// return message uuid
 	return uuid;
-}
-
-void
-client_impl::set_response_callback(const std::string& message_uuid,
-								   response_callback callback,
-								   const message_path& path)
-{
-	// check for services
-	services_map_t::iterator it = services_.find(path.service_name);
-	if (it == services_.end()) {
-		std::string error_msg = "message sent to unknown service \"" + path.service_name + "\"";
-		error_msg += " at: " + std::string(BOOST_CURRENT_FUNCTION);
-		error_msg += " please make sure you've defined service in dealer configuration file.";
-		throw dealer_error(location_error, error_msg);
-	}
-
-	if (!callback) {
-		throw internal_error("callback function is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
-	}
-
-	if (!it->second) {
-		throw internal_error("service object is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
-	}
-
-	// assign to service
-	it->second->register_responder_callback(message_uuid, callback);
-
-	std::string message_str = "registered callback for message with uuid: " + message_uuid;
-	logger()->log(PLOG_DEBUG, message_str);
 }
 
 void
 client_impl::unset_response_callback(const std::string& message_uuid,
 								 	 const message_path& path)
 {
+	boost::mutex::scoped_lock lock(mutex_);
+
+	logger()->log(PLOG_DEBUG, "TMP - unset_response_callback in client_impl");
+
 	// check for services
 	services_map_t::iterator it = services_.find(path.service_name);
 	if (it == services_.end()) {
@@ -353,11 +254,13 @@ client_impl::unset_response_callback(const std::string& message_uuid,
 		throw internal_error("service object is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
+	lock.unlock();
+
 	// assign to service
 	it->second->unregister_responder_callback(message_uuid);
 
-	std::string message_str = "unregistered callback for message with uuid: " + message_uuid;
-	logger()->log(PLOG_DEBUG, message_str);
+	//std::string message_str = "unregistered callback for message with uuid: " + message_uuid;
+	//logger()->log(PLOG_DEBUG, message_str);
 }
 
 boost::shared_ptr<context>
@@ -372,34 +275,6 @@ client_impl::context() {
 boost::shared_ptr<base_logger>
 client_impl::logger() {
 	return context()->logger();
-}
-
-size_t
-client_impl::messages_cache_size() const {
-	return messages_cache_size_;
-}
-
-void
-client_impl::update_messages_cache_size() {
-	// collect cache sizes of all services
-	messages_cache_size_ = 0;
-
-	services_map_t::iterator it = services_.begin();
-	for (; it != services_.end(); ++it) {
-
-		boost::shared_ptr<service_t> service_ptr = it->second;
-		if (service_ptr) {
-			messages_cache_size_ += service_ptr->cache_size();
-		}
-		else {
-			std::string error_str = "object for service with name " + it->first;
-			error_str += " is empty at " + std::string(BOOST_CURRENT_FUNCTION);
-			throw internal_error(error_str);
-		}
-	}
-
-	// total size of all queues in all services
-	context()->stats()->update_used_cache_size(messages_cache_size_);
 }
 
 boost::shared_ptr<configuration>

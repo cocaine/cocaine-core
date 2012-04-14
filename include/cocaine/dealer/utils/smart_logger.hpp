@@ -37,7 +37,7 @@ namespace dealer {
 #define PLOG_ERROR		(0x1 << 3)
 #define PLOG_MSG_TYPES	(0x1 << 4)
 #define PLOG_MSG_TIME	(0x1 << 5)
-#define PLOG_ALL		(PLOG_MSG_TIME | PLOG_INFO | PLOG_DEBUG | PLOG_WARNING | PLOG_ERROR)
+#define PLOG_ALL		(PLOG_MSG_TYPES | PLOG_MSG_TIME | PLOG_INFO | PLOG_DEBUG | PLOG_WARNING | PLOG_ERROR)
 
 class base_logger {
 public:
@@ -70,17 +70,20 @@ public:
 
 		if ((flags_ & PLOG_MSG_TYPES) == PLOG_MSG_TYPES) {
 			if ((message_type & PLOG_INFO) == PLOG_INFO) {
-				prefix += "[INFO]   ";
+				prefix += "[INFO]    ";
 			}
 			else if ((message_type & PLOG_DEBUG) == PLOG_DEBUG) {
-				prefix += "[DEBUG]  ";
+				prefix += "[DEBUG]   ";
 			}
 			else if ((message_type & PLOG_WARNING) == PLOG_WARNING) {
-				prefix += "[WARNING]";
+				prefix += "[WARNING] ";
 			}
 			else if ((message_type & PLOG_ERROR) == PLOG_ERROR) {
-				prefix += "[ERROR]  ";
+				prefix += "[ERROR]   ";
 			}		
+		}
+		else {
+			prefix += "    ";
 		}
 		
 		return prefix;

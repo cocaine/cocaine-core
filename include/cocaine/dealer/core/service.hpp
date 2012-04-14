@@ -87,8 +87,7 @@ public:
 								   const std::vector<handle_info<LSD_T> >& handles);
 
 	void send_message(cached_message_prt_t message);
-	
-	size_t cache_size() const;
+
 	service_info<LSD_T> info() const;
 
 	void register_responder_callback(const std::string& message_uuid,
@@ -146,9 +145,6 @@ private:
 	// dealer context
 	boost::shared_ptr<cocaine::dealer::context> context_;
 
-	// total cache size
-	size_t cache_size_;
-
 	// statistics
 	service_stats stats_;
 
@@ -171,7 +167,6 @@ template <typename LSD_T>
 service<LSD_T>::service(const service_info<LSD_T>& info, boost::shared_ptr<cocaine::dealer::context> context) :
 	info_(info),
 	context_(context),
-	cache_size_(0),
 	is_running_(false)
 {
 	update_statistics();
@@ -211,9 +206,11 @@ service<LSD_T>::responces_queues_empty() const {
 
 template <typename LSD_T> void
 service<LSD_T>::dispatch_responces() {
-	boost::mutex::scoped_lock lock(mutex_);
-	
 	while (is_running_) {
+		logger()->log(PLOG_DEBUG, "TMP - dispatch_responces");
+
+		boost::mutex::scoped_lock lock(mutex_);
+
 		while(responces_queues_empty() && is_running_) {
             cond_.wait(lock);
         }
@@ -240,12 +237,19 @@ service<LSD_T>::dispatch_responces() {
 				resp_info.error_msg = resp_ptr->error_message();
 
 				// invoke callback for given handle and response
-				registered_callbacks_map_t::iterator it = responses_callbacks_map_.find(resp_info.uuid);
+				try {
+					registered_callbacks_map_t::iterator it = responses_callbacks_map_.find(resp_info.uuid);
 
-				// call callback it it's there
-				if (it != responses_callbacks_map_.end()) {
-					registered_callback_t callback = it->second;
-					callback(resp_data, resp_info);
+					// call callback it it's there
+					if (it != responses_callbacks_map_.end()) {
+						registered_callback_t callback = it->second;
+
+						lock.unlock();
+						callback(resp_data, resp_info);
+						lock.lock();
+					}
+				}
+				catch (...) {
 				}
 
 				// remove processed response
@@ -283,7 +287,7 @@ template <typename LSD_T> void
 service<LSD_T>::log_refreshed_hosts_and_handles(const hosts_info_list_t& hosts,
 												const handles_info_list_t& handles)
 {
-	logger()->log(PLOG_DEBUG, "service %s refreshed with: ", info_.name_.c_str());
+	logger()->log(PLOG_INFO, "service %s refreshed with: ", info_.name_.c_str());
 
 	for (size_t i = 0; i < hosts.size(); ++i) {
 		std::stringstream tmp;
@@ -302,28 +306,36 @@ template <typename LSD_T> void
 service<LSD_T>::register_responder_callback(const std::string& message_uuid,
 											registered_callback_t callback)
 {
+	logger()->log(PLOG_DEBUG, "TMP - register_responder_callback in service");
+
 	boost::mutex::scoped_lock lock(mutex_);
 	responses_callbacks_map_[message_uuid] = callback;
+
+	logger()->log(PLOG_DEBUG, "TMP - register_responder_callback done in service");
 }
 
 template <typename LSD_T> void
 service<LSD_T>::unregister_responder_callback(const std::string& message_uuid) {
+	logger()->log(PLOG_DEBUG, "TMP - unregister_responder_callback in service");
+
 	boost::mutex::scoped_lock lock(mutex_);
 	registered_callbacks_map_t::iterator callback_it = responses_callbacks_map_.find(message_uuid);
 
-	//std::cout << "erasing callback 2\n";
 	// is there a callback for given response uuid?
 	if (callback_it == responses_callbacks_map_.end()) {
-		//std::cout << "erasing callback 3\n";
 		return;
 	}
 
-	//std::cout << "erasing callback 4\n"; 
 	responses_callbacks_map_.erase(callback_it);
+
+	logger()->log(PLOG_DEBUG, "TMP - unregister_responder_callback done in service");
 }
 
 template <typename LSD_T> void
 service<LSD_T>::enqueue_responce(cached_response_prt_t response) {
+	boost::mutex::scoped_lock lock(mutex_);
+
+	logger()->log(PLOG_DEBUG, "TMP - enqueue_responce in service");
 
 	// validate response
 	if (!response) {
@@ -333,7 +345,6 @@ service<LSD_T>::enqueue_responce(cached_response_prt_t response) {
 		throw internal_error(error_str);
 	}
 
-	boost::mutex::scoped_lock lock(mutex_);
 	const message_path& path = response->path();
 
 	// see whether there exists registered callback for message
@@ -342,7 +353,7 @@ service<LSD_T>::enqueue_responce(cached_response_prt_t response) {
 	// is there a callback for given response uuid?
 	if (callback_it == responses_callbacks_map_.end()) {
 		// drop response
-		lock.unlock();
+		//lock.unlock();
 		return;
 	}
 
@@ -436,7 +447,9 @@ service<LSD_T>::refresh_hosts_and_handles(const hosts_info_list_t& hosts,
 	refresh_handles(handles, outstanding_handles, new_handles);
 
 	// remove oustanding handles
+	lock.unlock();
 	remove_outstanding_handles(outstanding_handles);
+	lock.lock();
 
 	// make list of hosts
 	hosts_info_list_t hosts_v;
@@ -448,7 +461,9 @@ service<LSD_T>::refresh_hosts_and_handles(const hosts_info_list_t& hosts,
 	if (!outstanding_hosts.empty()) {
 		typename handles_map_t::iterator it = handles_.begin();
 		for (;it != handles_.end(); ++it) {
+			lock.unlock();
 			it->second->reconnect(hosts_v);
+			lock.lock();
 		}
 	}
 	else {
@@ -456,18 +471,16 @@ service<LSD_T>::refresh_hosts_and_handles(const hosts_info_list_t& hosts,
 		if (!new_hosts.empty()) {
 			typename handles_map_t::iterator it = handles_.begin();
 			for (;it != handles_.end(); ++it) {
+				lock.unlock();
 				it->second->connect_new_hosts(new_hosts);
+				lock.lock();
 			}
 		}
 	}
 
-	lock.unlock();
-
 	// create new handles if any
+	lock.unlock();
 	create_new_handles(new_handles, hosts_v);
-
-	lock.lock();
-	update_statistics();
 }
 
 template <typename LSD_T> void
@@ -535,6 +548,8 @@ service<LSD_T>::refresh_handles(const handles_info_list_t& handles,
 
 template <typename LSD_T> void
 service<LSD_T>::remove_outstanding_handles(const handles_info_list_t& handles) {
+	boost::mutex::scoped_lock lock(mutex_);
+
 	// no handles to destroy
 	if (handles.empty()) {
 		return;
@@ -568,7 +583,10 @@ service<LSD_T>::remove_outstanding_handles(const handles_info_list_t& handles) {
 			}
 
 			// immediately terminate all handle activity
+			lock.unlock();
 			handle->disconnect();
+			lock.lock();
+
 			boost::shared_ptr<message_cache> msg_cache = handle->messages_cache();
 
 			// check handle message cache
@@ -625,24 +643,30 @@ service<LSD_T>::remove_outstanding_handles(const handles_info_list_t& handles) {
 
 template <typename LSD_T> void
 service<LSD_T>::create_new_handles(const handles_info_list_t& handles, const hosts_info_list_t& hosts) {
+	boost::mutex::scoped_lock lock(mutex_);
+
 	// no handles to create
 	if (handles.empty()) {
 		return;
 	}
-
-	boost::mutex::scoped_lock lock(mutex_);
 
 	// create handles
 	for (size_t i = 0; i < handles.size(); ++i) {
 		handle_ptr_t handle_ptr;
 		handle_info<LSD_T> handle_info = handles[i];
 		handle_info.service_name_ = info_.name_;
+
+		lock.unlock();
 		handle_ptr.reset(new handle<LSD_T>(handle_info, context_, hosts));
+		lock.lock();
 
 		// set responce callback
 		typedef typename handle<LSD_T>::responce_callback_t resp_callback;
 		resp_callback callback = boost::bind(&service<LSD_T>::enqueue_responce, this, _1);
+
+		lock.unlock();
 		handle_ptr->set_responce_callback(callback);
+		lock.lock();
 
 		// find corresponding unhandled msgs queue
 		unhandled_messages_map_t::iterator it = unhandled_messages_.find(handles[i].name_);
@@ -655,6 +679,7 @@ service<LSD_T>::create_new_handles(const handles_info_list_t& handles, const hos
 			if (msg_queue.get() && !msg_queue->empty()) {
 
 				// validate handle's message cache object
+				lock.unlock();
 				if (handle_ptr->messages_cache().get()) {
 					logger()->log(PLOG_DEBUG, "appending existing mesage queue for [%s.%s], queue size: %d",
 								  info_.name_.c_str(), handles[i].name_.c_str(), msg_queue->size());
@@ -667,6 +692,7 @@ service<LSD_T>::create_new_handles(const handles_info_list_t& handles, const hos
 					error_str += ". at " + std::string(BOOST_CURRENT_FUNCTION);
 					throw internal_error(error_str);
 				}
+				lock.lock();
 			}
 
 			// remove message queue from unhandled messages map
@@ -675,17 +701,14 @@ service<LSD_T>::create_new_handles(const handles_info_list_t& handles, const hos
 
 		// add handle to storage and connect it
 		handles_[handles[i].name_] = handle_ptr;
-
-		lock.unlock();
-		handles_[handles[i].name_]->connect(hosts);
-		lock.lock();
+		//handles_[handles[i].name_]->connect(hosts);
 	}
-
-	update_statistics();
 }
 
 template <typename LSD_T> void
 service<LSD_T>::send_message(cached_message_prt_t message) {
+	logger()->log(PLOG_DEBUG, "TMP - send_message in service");
+
 	boost::mutex::scoped_lock lock(mutex_);
 
 	if (!message) {
@@ -703,8 +726,9 @@ service<LSD_T>::send_message(cached_message_prt_t message) {
 
 		// make sure we have valid handle
 		if (handle_ptr) {
+			lock.unlock();
 			handle_ptr->enqueue_message(message);
-			cache_size_ += message->container_size();
+			lock.lock();
 		}
 		else {
 			std::string error_str = "handle object " + handle_name;
@@ -738,16 +762,7 @@ service<LSD_T>::send_message(cached_message_prt_t message) {
 
 			queue_ptr->push_back(message);
 		}
-
-		cache_size_ += message->container_size();
 	}
-
-	update_statistics();
-}
-
-template <typename LSD_T> size_t
-service<LSD_T>::cache_size() const {
-	return cache_size_;
 }
 
 template<typename LSD_T> void
