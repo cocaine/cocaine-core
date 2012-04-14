@@ -3,6 +3,8 @@ PROJECT(Cocaine)
 
 SET(COCAINE_VERSION 0.7)
 
+SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+
 CONFIGURE_FILE(
     "${PROJECT_SOURCE_DIR}/config.hpp.in"
     "${PROJECT_SOURCE_DIR}/include/cocaine/config.hpp")
