@@ -75,6 +75,7 @@ void worker() {
 }
 
 void create_client(int add_messages_count) {
+	// dear inkvi plz learn some c++ before you change my code? thank you.
 	int pool_size = 100;
 	
 	std::cout << "----------------------------------- test info -------------------------------------------\n";
