@@ -75,8 +75,9 @@ void worker() {
 }
 
 void create_client(int add_messages_count) {
-	// dear inkvi plz learn some c++ before you change my code? thank you.
-	int pool_size = 100;
+	// well, i was wrong. without const it won't compile with -pedantic, but come on, it's a test app
+	// http://gcc.gnu.org/onlinedocs/gcc-4.1.2/gcc/Variable-Length.html#Variable-Length
+	const int pool_size = 100;
 	
 	std::cout << "----------------------------------- test info -------------------------------------------\n";
 	std::cout << "sending " << add_messages_count * pool_size << " messages using " << pool_size << " threads\n";
