@@ -239,8 +239,6 @@ client_impl::unset_response_callback(const std::string& message_uuid,
 {
 	boost::mutex::scoped_lock lock(mutex_);
 
-	logger()->log(PLOG_DEBUG, "TMP - unset_response_callback in client_impl");
-
 	// check for services
 	services_map_t::iterator it = services_.find(path.service_name);
 	if (it == services_.end()) {
@@ -259,8 +257,8 @@ client_impl::unset_response_callback(const std::string& message_uuid,
 	// assign to service
 	it->second->unregister_responder_callback(message_uuid);
 
-	//std::string message_str = "unregistered callback for message with uuid: " + message_uuid;
-	//logger()->log(PLOG_DEBUG, message_str);
+	std::string message_str = "unregistered callback for message with uuid: " + message_uuid;
+	logger()->log(PLOG_DEBUG, message_str);
 }
 
 boost::shared_ptr<context>

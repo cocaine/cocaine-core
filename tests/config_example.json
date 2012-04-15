@@ -5,9 +5,9 @@
 
 		"logger" :
 		{
-			"type" : "STDOUT_LOGGER",
-			"flags" : "PLOG_MSG_TYPES | PLOG_MSG_TIME | PLOG_INFO | PLOG_ERROR",
-			"file" : "/tmp/lsd.log"
+			"type" : "FILE_LOGGER",
+			"flags" : "PLOG_ALL",
+			"file" : "/tmp/cocaine-dealer.log"
 		},
 
 		"message_cache" :

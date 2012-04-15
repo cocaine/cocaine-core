@@ -1,0 +1,6 @@
+TYPEMAP
+MessagePath * O_OBJECT
+MessagePolicy * O_OBJECT
+Client * O_OBJECT
+Response * O_OBJECT
+DataContainer * O_OBJECT

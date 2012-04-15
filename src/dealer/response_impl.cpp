@@ -43,9 +43,6 @@ response_impl::~response_impl() {
 
 bool
 response_impl::get(data_container* data) {
-	//std::cout << "response_impl::get\n";
-	//std::cout << "get\n";
-
 	boost::mutex::scoped_lock lock(mutex_);
 
 	// no more chunks?
@@ -81,26 +78,11 @@ response_impl::get(data_container* data) {
 		return true;
 	}
 
-	/*
-	if (resp_info_.code == response_code::message_choke) {
-		client_->unset_response_callback(uuid_, path_);
-		return false;
-	}
-
-	//client_->unset_response_callback(uuid_, path_);
-	message_finished_ = true;
-	response_finished_ = true;
-
-	throw dealer_error(static_cast<enum error_code>(resp_info_.code), resp_info_.error_msg);
-	*/
-
 	return false;
 }
 
 void
 response_impl::response_callback(const response_data& resp_data, const response_info& resp_info) {
-	//std::cout << "response_impl::response_callback!\n";
-
 	boost::mutex::scoped_lock lock(mutex_);
 
 	if (message_finished_) {
@@ -108,15 +90,13 @@ response_impl::response_callback(const response_data& resp_data, const response_
 	}
 
 	if (resp_info.code == response_code::message_choke) {
-		//std::cout << "choke\n";
 		message_finished_ = true;
 	}
 	else if (resp_info.code == response_code::message_chunk) {
-		//std::cout << "chunk\n";
 		chunks_.push_back(new data_container(resp_data.data, resp_data.size));
 	}
 	else {
-		std::cout << "error!\n";
+		// process errors
 	}
 
 	resp_info_ = resp_info;

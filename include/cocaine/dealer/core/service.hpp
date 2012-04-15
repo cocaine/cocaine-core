@@ -207,8 +207,6 @@ service<LSD_T>::responces_queues_empty() const {
 template <typename LSD_T> void
 service<LSD_T>::dispatch_responces() {
 	while (is_running_) {
-		logger()->log(PLOG_DEBUG, "TMP - dispatch_responces");
-
 		boost::mutex::scoped_lock lock(mutex_);
 
 		while(responces_queues_empty() && is_running_) {
@@ -306,18 +304,12 @@ template <typename LSD_T> void
 service<LSD_T>::register_responder_callback(const std::string& message_uuid,
 											registered_callback_t callback)
 {
-	logger()->log(PLOG_DEBUG, "TMP - register_responder_callback in service");
-
 	boost::mutex::scoped_lock lock(mutex_);
 	responses_callbacks_map_[message_uuid] = callback;
-
-	logger()->log(PLOG_DEBUG, "TMP - register_responder_callback done in service");
 }
 
 template <typename LSD_T> void
 service<LSD_T>::unregister_responder_callback(const std::string& message_uuid) {
-	logger()->log(PLOG_DEBUG, "TMP - unregister_responder_callback in service");
-
 	boost::mutex::scoped_lock lock(mutex_);
 	registered_callbacks_map_t::iterator callback_it = responses_callbacks_map_.find(message_uuid);
 
@@ -327,15 +319,11 @@ service<LSD_T>::unregister_responder_callback(const std::string& message_uuid) {
 	}
 
 	responses_callbacks_map_.erase(callback_it);
-
-	logger()->log(PLOG_DEBUG, "TMP - unregister_responder_callback done in service");
 }
 
 template <typename LSD_T> void
 service<LSD_T>::enqueue_responce(cached_response_prt_t response) {
 	boost::mutex::scoped_lock lock(mutex_);
-
-	logger()->log(PLOG_DEBUG, "TMP - enqueue_responce in service");
 
 	// validate response
 	if (!response) {
@@ -707,8 +695,6 @@ service<LSD_T>::create_new_handles(const handles_info_list_t& handles, const hos
 
 template <typename LSD_T> void
 service<LSD_T>::send_message(cached_message_prt_t message) {
-	logger()->log(PLOG_DEBUG, "TMP - send_message in service");
-
 	boost::mutex::scoped_lock lock(mutex_);
 
 	if (!message) {
