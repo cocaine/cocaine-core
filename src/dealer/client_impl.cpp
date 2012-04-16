@@ -211,7 +211,7 @@ client_impl::send_message(const boost::shared_ptr<message_iface>& msg,
 	logger()->log(PLOG_DEBUG, message_str);
 
 	lock.unlock();
-	it->second->register_responder_callback(uuid, callback, response);
+	it->second->register_responder_callback(uuid, response);
 	lock.lock();
 
 	message_str = "registered callback for message with uuid: " + msg->uuid();
@@ -254,8 +254,6 @@ client_impl::unset_response_callback(const std::string& message_uuid,
 	if (!it->second) {
 		throw internal_error("service object is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
 	}
-
-	lock.unlock();
 
 	// assign to service
 	it->second->unregister_responder_callback(message_uuid);

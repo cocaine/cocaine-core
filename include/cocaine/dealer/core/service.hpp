@@ -75,9 +75,8 @@ public:
 	// map <handle_name/handle's responces deque>
 	typedef std::map<std::string, responces_deque_ptr_t> responces_map_t;
 
-	// registered response callback
-	typedef boost::function<void(const response_data&, const response_info&)> registered_callback_t;
-	typedef std::map<std::string, registered_callback_t> registered_callbacks_map_t;
+	// registered response callback 
+	typedef std::map<std::string, boost::weak_ptr<response> > registered_callbacks_map_t;
 
 public:
 	service(const service_info<LSD_T>& info, boost::shared_ptr<cocaine::dealer::context> context);
@@ -90,10 +89,7 @@ public:
 
 	service_info<LSD_T> info() const;
 
-	void register_responder_callback(const std::string& message_uuid,
-									 registered_callback_t callback,
-									 const boost::shared_ptr<response>& response);
-
+	void register_responder_callback(const std::string& message_uuid, const boost::shared_ptr<response>& response);
 	void unregister_responder_callback(const std::string& message_uuid);
 
 public:
@@ -235,18 +231,23 @@ service<LSD_T>::dispatch_responces() {
 				resp_info.code = resp_ptr->code();
 				resp_info.error_msg = resp_ptr->error_message();
 
-				// invoke callback for given handle and response
+				// invoke callback for given message uuid
 				try {
 					registered_callbacks_map_t::iterator it = responses_callbacks_map_.find(resp_info.uuid);
 
 					// call callback it it's there
 					if (it != responses_callbacks_map_.end()) {
-						registered_callback_t callback = it->second;
-
-						//lock.unlock();
-						std::cout << "calling callback\n";
-						callback(resp_data, resp_info);
-						//lock.lock();
+						boost::weak_ptr<response> response_wptr = it->second;
+						boost::shared_ptr<response> response_ptr = response_wptr.lock();
+						
+						if (!response_ptr) {
+							std::cout << "callback expired\n";
+							responses_callbacks_map_.erase(it);
+						}
+						else {
+							std::cout << "calling callback\n";
+							response_ptr->response_callback(resp_data, resp_info);
+						}
 					}
 				}
 				catch (...) {
@@ -303,11 +304,11 @@ service<LSD_T>::log_refreshed_hosts_and_handles(const hosts_info_list_t& hosts,
 }
 
 template <typename LSD_T> void
-service<LSD_T>::register_responder_callback(const std::string& message_uuid,
-											registered_callback_t callback)
+service<LSD_T>::register_responder_callback(const std::string& message_uuid, const boost::shared_ptr<response>& resp)
 {
 	boost::mutex::scoped_lock lock(mutex_);
-	responses_callbacks_map_[message_uuid] = callback;
+	boost::weak_ptr<response> wptr(resp);
+	responses_callbacks_map_[message_uuid] = wptr;
 }
 
 template <typename LSD_T> void

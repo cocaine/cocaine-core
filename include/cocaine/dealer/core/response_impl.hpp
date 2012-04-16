@@ -15,6 +15,7 @@
 #define _COCAINE_DEALER_RESPONSE_IMPL_HPP_INCLUDED_
 
 #include <boost/shared_ptr.hpp>
+#include <boost/weak_ptr.hpp>
 #include <boost/thread.hpp>
 
 #include <cocaine/dealer/forwards.hpp>
@@ -39,7 +40,7 @@ private:
 
 	boost::ptr_vector<data_container> chunks_;
 
-	boost::shared_ptr<client_impl> client_;
+	boost::weak_ptr<client_impl> client_;
 	std::string uuid_;
 	const message_path& path_;
 	bool response_finished_;

@@ -25,8 +25,8 @@
 namespace cocaine {
 namespace dealer {
 
-response_impl::response_impl(const boost::shared_ptr<client_impl>& client, const std::string& uuid, const message_path& path) :
-	client_(client),
+response_impl::response_impl(const boost::shared_ptr<client_impl>& client_ptr, const std::string& uuid, const message_path& path) :
+	client_(client_ptr),
 	uuid_(uuid),
 	path_(path),
 	response_finished_(false),
@@ -40,7 +40,11 @@ response_impl::~response_impl() {
 
 	message_finished_ = true;
 	response_finished_ = true;
-	client_->unset_response_callback(uuid_, path_);
+
+	boost::shared_ptr<client_impl> client_ptr = client_.lock();
+	if (client_ptr) {
+		client_ptr->unset_response_callback(uuid_, path_);
+	}
 
 	std::cout << "resp killed\n";
 }
