@@ -188,7 +188,10 @@ client_impl::create_message(const void* data,
 }
 
 std::string
-client_impl::send_message(const boost::shared_ptr<message_iface>& msg, response_callback callback) {
+client_impl::send_message(const boost::shared_ptr<message_iface>& msg,
+						  response_callback callback,
+						  const boost::shared_ptr<response>& response)
+{
 	boost::mutex::scoped_lock lock(mutex_);
 
 	// find service to send message to
@@ -208,7 +211,7 @@ client_impl::send_message(const boost::shared_ptr<message_iface>& msg, response_
 	logger()->log(PLOG_DEBUG, message_str);
 
 	lock.unlock();
-	it->second->register_responder_callback(uuid, callback);
+	it->second->register_responder_callback(uuid, callback, response);
 	lock.lock();
 
 	message_str = "registered callback for message with uuid: " + msg->uuid();

@@ -5,15 +5,8 @@
 
 		"logger" :
 		{
-			"type" : "FILE_LOGGER",
-			"flags" : "PLOG_ALL",
-			"file" : "/tmp/cocaine-dealer.log"
-		},
-
-		"message_cache" :
-		{
-			"max_ram_limit" : 4024,
-			"type" : "RAM_ONLY"
+			"type" : "STDOUT_LOGGER",
+			"flags" : "PLOG_MSG_TYPES | PLOG_MSG_TIME | PLOG_INFO"
 		},
 
 		"services" : [

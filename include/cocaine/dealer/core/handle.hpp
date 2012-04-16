@@ -146,6 +146,8 @@ private:
 	responce_callback_t response_callback_;
 
 	handle_stats statistics_;
+
+	progress_timer last_response_timer_;
 };
 
 template <typename LSD_T>
@@ -204,6 +206,8 @@ handle<LSD_T>::dispatch_messages() {
 	std::string log_str = "started message dispatch for [%s].[%s]";
 	logger()->log(PLOG_DEBUG, log_str.c_str(), info_.service_name_.c_str(), info_.name_.c_str());
 
+	last_response_timer_.reset();
+
 	// process messages
 	while (is_running_) {
 		boost::mutex::scoped_lock lock(mutex_);
@@ -211,8 +215,7 @@ handle<LSD_T>::dispatch_messages() {
 		static bool have_enqueued_messages = false;
 
 		// receive control message
-		int poll_timeout = have_enqueued_messages ? 10 : 100;
-		int control_message = receive_control_messages(control_socket, poll_timeout);
+		int control_message = receive_control_messages(control_socket, 0);
 
 		switch (control_message) {
 			// received kill message, finalize everything
@@ -233,7 +236,7 @@ handle<LSD_T>::dispatch_messages() {
 
 		// send new message if any
 		if (is_running_ && is_connected_) {
-			for (int i = 0; i < 50; ++i) { // batching
+			for (int i = 0; i < 100; ++i) { // batching
 				if (messages_cache()->new_messages_count() > 0) {
 					dispatch_next_available_message(main_socket);
 				}
@@ -247,16 +250,27 @@ handle<LSD_T>::dispatch_messages() {
 		// check for message responces
 		bool received_response = false;
 
+		int fast_poll_timeout = 10;
+		int long_poll_timeout = 1000;
+
+		int response_poll_timeout = fast_poll_timeout;
+		if (last_response_timer_.elapsed() > 0.5f) {
+			response_poll_timeout = long_poll_timeout;			
+		}
+
 		if (is_connected_ && is_running_) {
-			received_response = check_for_responses(main_socket, 100);
+			received_response = check_for_responses(main_socket, response_poll_timeout);
 
 			// process received responce(s)
 			while (received_response) {
+				last_response_timer_.reset();
+				response_poll_timeout = fast_poll_timeout;
+
 				lock.unlock();
 				dispatch_responce(main_socket);
 				lock.lock();
 
-				received_response = check_for_responses(main_socket, 10);
+				received_response = check_for_responses(main_socket, fast_poll_timeout);
 			}
 		}
 	}
@@ -582,10 +596,7 @@ template <typename LSD_T> void
 handle<LSD_T>::reshedule_message(const std::string& uuid) {
 	// 2DO: must reshedule if allowed by policy
 	messages_cache()->move_sent_message_to_new_front(uuid);
-	notify_new_messages_enqueued();
-
-	++statistics_.resent_messages;
-	update_statistics();
+	//notify_new_messages_enqueued();
 }
 
 template <typename LSD_T> void
@@ -974,7 +985,7 @@ handle<LSD_T>::enqueue_message(const boost::shared_ptr<message_iface>& message) 
 
 	messages_cache()->enqueue(message);
 	update_statistics();
-	notify_new_messages_enqueued();
+	//notify_new_messages_enqueued();
 }
 
 template <typename LSD_T> boost::shared_ptr<cocaine::dealer::context>

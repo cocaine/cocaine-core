@@ -489,6 +489,8 @@ heartbeats_collector<HostsFetcher>::parse_host_response(const service_info_t& s_
 														const std::string& response,
 														std::vector<handle_info_t>& handles)
 {
+	std::cout << response << std::endl;
+
 	Json::Value root;
 	Json::Reader reader;
 	bool parsing_successful = reader.parse(response, root);

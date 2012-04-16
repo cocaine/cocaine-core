@@ -14,7 +14,7 @@ my $client = cocaine_dealer::client->new($config_path);
 my $response = cocaine_dealer::response->new();
 my $message = "here's chunk: ";
 
-$client->send_message($message, length($message), $path, $policy, $response);
+$response = $client->send_message($message, length($message), $path, $policy);
 
 my $data_container = cocaine_dealer::data_container->new();
 while ($response->get($data_container)) {
@@ -37,3 +37,6 @@ while ($response->get($data_container)) {
 #print "timeout: ".$policy->timeout()."\n";
 #print "deadline: ".$policy->deadline()."\n";
 #print "max timeout retries: ".$policy->max_timeout_retries()."\n";
+
+# -- make flyweights
+# -- make resp.discard

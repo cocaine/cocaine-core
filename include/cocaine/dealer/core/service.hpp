@@ -28,7 +28,7 @@
 #include <boost/thread/thread.hpp>
 #include <boost/function.hpp>
 
-#include "cocaine/dealer/structs.hpp"
+#include "cocaine/dealer/response.hpp"
 
 #include "cocaine/dealer/core/handle.hpp"
 #include "cocaine/dealer/core/context.hpp"
@@ -39,8 +39,8 @@
 #include "cocaine/dealer/core/cached_response.hpp"
 #include "cocaine/dealer/utils/error.hpp"
 #include "cocaine/dealer/utils/smart_logger.hpp"
-#include "cocaine/dealer/storage/eblob.hpp"
 #include "cocaine/dealer/utils/refresher.hpp"
+#include "cocaine/dealer/storage/eblob.hpp"
 
 namespace cocaine {
 namespace dealer {
@@ -91,7 +91,8 @@ public:
 	service_info<LSD_T> info() const;
 
 	void register_responder_callback(const std::string& message_uuid,
-									 registered_callback_t callback);
+									 registered_callback_t callback,
+									 const boost::shared_ptr<response>& response);
 
 	void unregister_responder_callback(const std::string& message_uuid);
 
@@ -242,9 +243,10 @@ service<LSD_T>::dispatch_responces() {
 					if (it != responses_callbacks_map_.end()) {
 						registered_callback_t callback = it->second;
 
-						lock.unlock();
+						//lock.unlock();
+						std::cout << "calling callback\n";
 						callback(resp_data, resp_info);
-						lock.lock();
+						//lock.lock();
 					}
 				}
 				catch (...) {

@@ -42,17 +42,14 @@ client::send_message(const void* data,
 {
 	boost::shared_ptr<message_iface> msg = get_impl()->create_message(data, size, path, policy);
 	response* resp_ptr = new response(get_impl(), msg->uuid(), path);
-	
-	get_impl()->send_message(msg, boost::bind(&response::response_callback, resp_ptr, _1, _2));
-
 	boost::shared_ptr<response> resp(resp_ptr);
+
+	get_impl()->send_message(msg, boost::bind(&response::response_callback, resp_ptr, _1, _2), resp);
 	return resp;
 }
 
 inline boost::shared_ptr<client_impl>
 client::get_impl() {
-	boost::mutex::scoped_lock lock(mutex_);
-
 	if (impl_.get()) {
 		return impl_;
 	}
