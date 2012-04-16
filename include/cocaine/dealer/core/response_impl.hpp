@@ -42,7 +42,7 @@ private:
 
 	boost::weak_ptr<client_impl> client_;
 	std::string uuid_;
-	const message_path& path_;
+	const message_path path_;
 	bool response_finished_;
 	bool message_finished_;
 

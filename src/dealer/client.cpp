@@ -23,10 +23,13 @@ namespace cocaine {
 namespace dealer {
 
 client::client(const std::string& config_path) {
+	std::cout << "client_impl created\n";
 	impl_.reset(new client_impl(config_path));
 }
 
 client::~client() {
+	std::cout << "client_impl destroyed\n";
+	impl_.reset();
 }
 
 void
