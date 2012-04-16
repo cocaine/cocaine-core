@@ -1,3 +1,9 @@
+cocaine (0.7.3-b4) lucid; urgency=low
+
+  * More dev headers for Dealer.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Mon, 16 Apr 2012 17:24:23 +0400
+
 cocaine (0.7.3-b3) lucid; urgency=low
 
   * More stuff.

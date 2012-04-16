@@ -6,6 +6,10 @@ SET(COCAINE_VERSION 0.7)
 SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
 OPTION(DEALER "Build dealer library" ON)
+OPTION(PYTHON "Build python module" ON)
+OPTION(PERL "Build perl module" ON)
+OPTION(JAVASCRIPT "Build javascript module" ON)
+OPTION(MONGO "Build mongo module" ON)
 
 CONFIGURE_FILE(
     "${PROJECT_SOURCE_DIR}/config.hpp.in"
