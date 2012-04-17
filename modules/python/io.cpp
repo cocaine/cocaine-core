@@ -22,7 +22,7 @@ int python_io_t::constructor(python_io_t * self, PyObject * args, PyObject * kwa
     PyObject * io_object;
 
     if(!PyArg_ParseTuple(args, "O", &io_object)) {
-        return NULL;
+        return -1;
     }
 
     self->io = static_cast<io_t*>(PyCObject_AsVoidPtr(io_object));
