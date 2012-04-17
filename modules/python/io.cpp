@@ -133,12 +133,34 @@ PyObject* python_io_t::delegate(python_io_t * self, PyObject * args, PyObject * 
 }
 
 PyObject* python_io_t::readline(python_io_t * self, PyObject * args, PyObject * kwargs) {
-    PyErr_SetString(
-        PyExc_NotImplementedError,
-        "Method is not yet implemented"
-    );
+    PyObject * result = NULL;
 
-    return NULL;
+    if(self->request.empty()) {
+        Py_BEGIN_ALLOW_THREADS
+            self->request = self->io->pull(true);
+        Py_END_ALLOW_THREADS
+        
+        self->offset = 0;
+    }
+
+    if(!self->request.empty() && (self->request.size() - self->offset)) {
+        const char * data = static_cast<const char *>(self->request.data());
+        off_t offset = self->offset;      
+
+        while((self->request.size() - offset) && data[offset++]!='\n');
+
+        result = PyBytes_FromStringAndSize(
+            static_cast<const char *>(self->request.data()) + self->offset,
+            offset-self->offset
+        );
+
+        self->offset += offset-self->offset;
+    } else {
+        result = PyBytes_FromString("");
+    }    
+
+
+    return result;
 }
 
 PyObject* python_io_t::readlines(python_io_t * self, PyObject * args, PyObject * kwargs) {
