@@ -428,12 +428,7 @@ handle<LSD_T>::connect_zmq_socket_to_hosts(socket_ptr_t& socket,
 		return;
 	}
 
-	if (!socket.get()) {
-		std::string error_msg = "service: " + info_.service_name_;
-		error_msg += ", handle: " + info_.name_ + " — socket object is empty";
-		error_msg += " at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw internal_error(error_msg);
-	}
+	assert(socket);
 
 	// connect socket to hosts
 	std::string connection_str;
@@ -776,12 +771,7 @@ handle<LSD_T>::check_for_responses(socket_ptr_t& main_socket, int poll_timeout) 
 	}
 
 	// validate socket
-	if (!main_socket.get()) {
-		std::string error_msg = "service: " + info_.service_name_;
-		error_msg += ", handle: " + info_.name_ + " — empty socket object";
-		error_msg += " at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw internal_error(error_msg);
-	}
+	assert(main_socket);
 
 	// poll for responce
 	zmq_pollitem_t poll_items[1];
@@ -967,13 +957,7 @@ handle<LSD_T>::disconnect() {
 
 template <typename LSD_T> boost::shared_ptr<message_cache>
 handle<LSD_T>::messages_cache() {
-	if (!message_cache_) {
-		std::string error_str = "messages cache object is empty for service: ";
-		error_str += info_.service_name_ + ", handle: " + info_.name_;
-		error_str += " at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw internal_error(error_str);
-	}
-
+	assert (message_cache_);
 	return message_cache_;
 }
 
@@ -994,10 +978,7 @@ handle<LSD_T>::enqueue_message(const boost::shared_ptr<message_iface>& message) 
 
 template <typename LSD_T> boost::shared_ptr<cocaine::dealer::context>
 handle<LSD_T>::context() {
-	if (!context_) {
-		throw internal_error("dealer context object is empty at " + std::string(BOOST_CURRENT_FUNCTION));
-	}
-
+	assert(context_);
 	return context_;
 }
 
@@ -1009,10 +990,7 @@ handle<LSD_T>::logger() {
 template <typename LSD_T> boost::shared_ptr<configuration>
 handle<LSD_T>::config() {
 	boost::shared_ptr<configuration> conf = context()->config();
-	if (!conf.get()) {
-		throw internal_error("configuration object is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
-	}
-
+	assert (conf);
 	return conf;
 }
 

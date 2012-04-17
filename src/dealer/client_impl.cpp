@@ -77,18 +77,10 @@ void
 client_impl::connect() {
 	boost::shared_ptr<configuration> conf;
 
-	if (!context_) {
-		std::string error_msg = "dealer context is NULL at: " + std::string(BOOST_CURRENT_FUNCTION);
-		throw internal_error(error_msg);
-	}
-	else {
-		conf = context_->config();
-	}
+	assert(context_);
+	conf = context_->config();
 
-	if (!conf) {
-		std::string error_msg = "configuration object is empty at: " + std::string(BOOST_CURRENT_FUNCTION);
-		throw internal_error(error_msg);
-	}
+	assert(conf);
 
 	if (conf->autodiscovery_type() == AT_FILE) {
 		logger()->log("creating file heartbeats collector");
@@ -106,15 +98,10 @@ client_impl::connect() {
 
 void
 client_impl::disconnect() {
+	assert(heartbeats_collector_);
+
 	// stop collecting heartbeats
-	if (heartbeats_collector_.get()) {
-		heartbeats_collector_->stop();
-	}
-	else {
-		std::string error_msg = "empty heartbeats collector object at ";
-		error_msg += std::string(BOOST_CURRENT_FUNCTION);
-		throw internal_error(error_msg);
-	}
+	heartbeats_collector_->stop();
 
 	// stop services
 	//services_map_t::iterator it = services_.begin();
@@ -209,7 +196,6 @@ client_impl::send_message(const boost::shared_ptr<message_iface>& msg,
 	std::string message_str = "registering callback for message with uuid: " + msg->uuid();
 	logger()->log(PLOG_DEBUG, message_str);
 
-	//std::cout << "register callback\n";
 	it->second->register_responder_callback(uuid, response);
 
 	message_str = "registered callback for message with uuid: " + msg->uuid();
@@ -217,7 +203,6 @@ client_impl::send_message(const boost::shared_ptr<message_iface>& msg,
 
 	// send message to service
 	if (it->second) {
-		//std::cout << "send message\n";
 		it->second->send_message(msg);
 	}
 	else {
@@ -237,32 +222,21 @@ void
 client_impl::unset_response_callback(const std::string& message_uuid,
 								 	 const message_path& path)
 {
-	//std::cout << "unregister_responder_callback ENTER\n";
-
 	boost::mutex::scoped_lock lock(mutex_);
 
 	// check for services
 	services_map_t::iterator it = services_.find(path.service_name);
 	if (it == services_.end()) {
-		std::string error_msg = "message sent to unknown service \"" + path.service_name + "\"";
-		error_msg += " at: " + std::string(BOOST_CURRENT_FUNCTION);
-		error_msg += " please make sure you've defined service in dealer configuration file.";
-		throw dealer_error(location_error, error_msg);
+		return;
 	}
 
-	if (!it->second) {
-		throw internal_error("service object is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
-	}
+	assert(it->second);
 
 	// assign to service
-	//std::cout << "unregister_responder_callback\n";
 	it->second->unregister_responder_callback(message_uuid);
-	//std::cout << "unregister_responder_callback done\n";
 
 	std::string message_str = "unregistered callback for message with uuid: " + message_uuid;
 	logger()->log(PLOG_DEBUG, message_str);
-
-	//std::cout << "unregister_responder_callback EXIT\n";
 }
 
 boost::shared_ptr<context>

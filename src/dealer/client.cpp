@@ -19,6 +19,8 @@
 #include "cocaine/dealer/response.hpp"
 #include "cocaine/dealer/core/client_impl.hpp"
 
+#include "cocaine/dealer/utils/error.hpp"
+
 namespace cocaine {
 namespace dealer {
 
@@ -37,27 +39,17 @@ client::send_message(const void* data,
 					 const message_policy& policy)
 {
 	boost::mutex::scoped_lock lock(mutex_);
-
-	//std::cout << "+ enter send_message\n";
 	boost::shared_ptr<message_iface> msg = get_impl()->create_message(data, size, path, policy);
-	//std::cout << "+ message created\n";
-	response* resp_ptr = new response(get_impl(), msg->uuid(), path);
-	//std::cout << "+ response created\n";
-	boost::shared_ptr<response> resp(resp_ptr);
-	//std::cout << "+ message ptr created\n";
+	boost::shared_ptr<response> resp(new response(get_impl(), msg->uuid(), path));
 	get_impl()->send_message(msg, resp);
-	//std::cout << "+ message sent\n";
+
 	return resp;
 }
 
 inline boost::shared_ptr<client_impl>
 client::get_impl() {
-	if (impl_.get()) {
-		return impl_;
-	}
-	else {
-		throw internal_error("client_impl object is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
-	}
+	assert(impl_.get());
+	return impl_;
 }
 
 } // namespace dealer

@@ -44,12 +44,11 @@ void worker() {
 	std::string payload = "response chunk: ";
 
 	for (int i = 0; i < messages_count; ++i) {
-		boost::shared_ptr<response> resp = client_ptr->send_message(payload.data(), payload.size(), path, policy);
-
 		try {
+			boost::shared_ptr<response> resp = client_ptr->send_message(payload.data(), payload.size(), path, policy);
 			data_container data;	
 			while(resp->get(&data)) {
-				//std::cout << std::string(reinterpret_cast<const char*>(data.data()), 0, data.size()) << std::endl;
+				std::cout << std::string(reinterpret_cast<const char*>(data.data()), 0, data.size()) << std::endl;
 			}
 		}
 		catch (const dealer_error& err) {
@@ -62,11 +61,10 @@ void worker() {
 			std::cout << "caught exception, no error message." << std::endl;
 		}
 	}
-
 }
 
 void create_client(int add_messages_count) {
-	const int pool_size = 200;
+	const int pool_size = 1;
 	
 	std::cout << "----------------------------------- test info -------------------------------------------\n";
 	std::cout << "sending " << add_messages_count * pool_size << " messages using " << pool_size << " threads\n";

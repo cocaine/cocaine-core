@@ -50,6 +50,8 @@ private:
 
 	boost::mutex mutex_;
 	boost::condition_variable cond_var_;
+
+	bool caught_error_;
 };
 
 } // namespace dealer

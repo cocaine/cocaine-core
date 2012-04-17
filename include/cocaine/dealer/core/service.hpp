@@ -176,8 +176,6 @@ service<LSD_T>::~service() {
 	is_running_ = false;
 	cond_.notify_one();
 	thread_.join();
-
-	std::cout << responses_callbacks_map_.size() << std::endl;
 }
 
 template <typename LSD_T> service_info<LSD_T>
