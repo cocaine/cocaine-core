@@ -30,7 +30,8 @@ response_impl::response_impl(const boost::shared_ptr<client_impl>& client_ptr, c
 	uuid_(uuid),
 	path_(path),
 	response_finished_(false),
-	message_finished_(false)
+	message_finished_(false),
+	caught_error_(false)
 {
 	assert(client_ptr.get() != NULL);
 }
@@ -53,7 +54,9 @@ response_impl::get(data_container* data) {
 
 	// no more chunks?
 	if (message_finished_ && chunks_.size() == 0) {
-		return false;
+		if (!caught_error_) {
+			return false;
+		}
 	}
 
 	// block until received callback
@@ -74,6 +77,12 @@ response_impl::get(data_container* data) {
 		}
 		else {
 			message_finished_ = true;
+
+			if (caught_error_) {
+				caught_error_ = false;
+				throw dealer_error(static_cast<cocaine::dealer::error_code>(resp_info_.code), resp_info_.error_msg);
+			}
+
 			return false;
 		}
 	}
@@ -83,6 +92,11 @@ response_impl::get(data_container* data) {
 		*data = chunks_.at(0);
 		chunks_.erase(chunks_.begin());
 		return true;
+	}
+
+	if (caught_error_) {
+		caught_error_ = false;
+		throw dealer_error(static_cast<cocaine::dealer::error_code>(resp_info_.code), resp_info_.error_msg);
 	}
 
 	message_finished_ = true;
@@ -104,8 +118,8 @@ response_impl::response_callback(const response_data& resp_data, const response_
 		chunks_.push_back(new data_container(resp_data.data, resp_data.size));
 	}
 	else {
-		// process errors
-		std::cout << "ERROR\n";
+		caught_error_ = true;
+		resp_info_ = resp_info; // remember error data
 		message_finished_ = true;
 	}
 
