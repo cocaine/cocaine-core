@@ -48,7 +48,7 @@ client::send_message(const void* data,
 
 inline boost::shared_ptr<client_impl>
 client::get_impl() {
-	assert(impl_.get());
+	assert(impl_);
 	return impl_;
 }
 

@@ -98,7 +98,7 @@ client_impl::connect() {
 
 void
 client_impl::disconnect() {
-	assert(heartbeats_collector_);
+	assert(heartbeats_collector_.get());
 
 	// stop collecting heartbeats
 	heartbeats_collector_->stop();

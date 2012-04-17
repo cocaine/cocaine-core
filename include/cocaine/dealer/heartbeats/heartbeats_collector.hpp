@@ -596,7 +596,7 @@ heartbeats_collector<HostsFetcher>::parse_host_response(const service_info_t& s_
 					err_msg += ", details: " + std::string(ex.what());
 					logger_->log(PLOG_ERROR, err_msg);
 				}
-				catch(...) {
+				catch (...) {
 					std::string err_msg = "heartbeats - error while parsing handle " + handle_name;
 					err_msg += ", bad port string ";
 					err_msg += host_info_err + " at " + std::string(BOOST_CURRENT_FUNCTION);
