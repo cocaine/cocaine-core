@@ -45,11 +45,16 @@ void worker() {
 
 	for (int i = 0; i < messages_count; ++i) {
 		try {
-			boost::shared_ptr<response> resp = client_ptr->send_message(payload.data(), payload.size(), path, policy);
-			data_container data;	
-			while(resp->get(&data)) {
-				std::cout << std::string(reinterpret_cast<const char*>(data.data()), 0, data.size()) << std::endl;
+			boost::shared_ptr<response> resp;
+
+			if (client_ptr) {
+				resp = client_ptr->send_message(payload.data(), payload.size(), path, policy);
 			}
+
+			//data_container data;	
+			//while(resp->get(&data)) {
+			//	std::cout << std::string(reinterpret_cast<const char*>(data.data()), 0, data.size()) << std::endl;
+			//}
 		}
 		catch (const dealer_error& err) {
 			std::cout << "error code: " << err.code() << ", error message: " << err.what() << std::endl;
@@ -64,7 +69,7 @@ void worker() {
 }
 
 void create_client(int add_messages_count) {
-	const int pool_size = 1;
+	const int pool_size = 200;
 	
 	std::cout << "----------------------------------- test info -------------------------------------------\n";
 	std::cout << "sending " << add_messages_count * pool_size << " messages using " << pool_size << " threads\n";
@@ -88,6 +93,8 @@ void create_client(int add_messages_count) {
 	for (int i = 0; i < pool_size; ++i) {
 		pool[i].join();
 	}
+
+	client_ptr.reset();
 
 	std::cout << "done!\n";
 

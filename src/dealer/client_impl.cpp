@@ -33,7 +33,8 @@ typedef cached_message<data_container, request_metadata> message_t;
 typedef cached_message<persistent_data_container, persistent_request_metadata> p_message_t;
 
 client_impl::client_impl(const std::string& config_path) :
-	messages_cache_size_(0)
+	messages_cache_size_(0),
+	is_dead_(false)
 {
 	// create dealer context
 	std::string ctx_error_msg = "could not create dealer context at: " + std::string(BOOST_CURRENT_FUNCTION) + " ";
@@ -69,6 +70,7 @@ client_impl::client_impl(const std::string& config_path) :
 }
 
 client_impl::~client_impl() {
+	is_dead_ = true;
 	disconnect();
 	logger()->log("client destroyed.");
 }
@@ -104,10 +106,13 @@ client_impl::disconnect() {
 	heartbeats_collector_->stop();
 
 	// stop services
-	//services_map_t::iterator it = services_.begin();
-	//for (; it != services_.end(); ++it) {
-		//if(it->second)
-	//}
+	services_map_t::iterator it = services_.begin();
+	for (; it != services_.end(); ++it) {
+		assert(it->second);
+		it->second.reset();
+	}
+
+	services_.clear();
 }
 
 void
@@ -178,8 +183,10 @@ std::string
 client_impl::send_message(const boost::shared_ptr<message_iface>& msg,
 						  const boost::shared_ptr<response>& response)
 {
+	BOOST_VERIFY(!is_dead_);
+	
 	boost::mutex::scoped_lock lock(mutex_);
-
+	
 	// find service to send message to
 	std::string uuid;
 	services_map_t::iterator it = services_.find(msg->path().service_name);
@@ -188,6 +195,13 @@ client_impl::send_message(const boost::shared_ptr<message_iface>& msg,
 		std::string error_str = "no service with name " + msg->path().service_name;
 		error_str += " found at " + std::string(BOOST_CURRENT_FUNCTION);
 		throw dealer_error(location_error, error_str);
+	}
+
+	assert(it->second);
+
+	if (it->second->is_dead()) {
+		std::cout << "service is dead!\n";
+		throw dealer_error(request_error, "service %s is being killed", msg->path().service_name.c_str());
 	}
 
 	uuid = msg->uuid();
@@ -202,14 +216,8 @@ client_impl::send_message(const boost::shared_ptr<message_iface>& msg,
 	logger()->log(PLOG_DEBUG, message_str);
 
 	// send message to service
-	if (it->second) {
-		it->second->send_message(msg);
-	}
-	else {
-		std::string error_str = "object for service with name " + msg->path().service_name;
-		error_str += " is emty at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw internal_error(error_str);
-	}
+	it->second->send_message(msg);
+
 
 	message_str = "enqueued message with uuid: %s to [%s.%s]";
 	logger()->log(PLOG_DEBUG, message_str.c_str(), uuid.c_str(),

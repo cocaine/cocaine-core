@@ -88,6 +88,7 @@ public:
 	void send_message(cached_message_prt_t message);
 
 	service_info<LSD_T> info() const;
+	bool is_dead();
 
 	void register_responder_callback(const std::string& message_uuid, const boost::shared_ptr<response>& response);
 	void unregister_responder_callback(const std::string& message_uuid);
@@ -155,13 +156,16 @@ private:
 	std::auto_ptr<refresher> deadlined_messages_refresher_;
 
 	static const int deadline_check_interval = 1;
+
+	bool is_dead_;
 };
 
 template <typename LSD_T>
 service<LSD_T>::service(const service_info<LSD_T>& info, boost::shared_ptr<cocaine::dealer::context> context) :
 	info_(info),
 	context_(context),
-	is_running_(false)
+	is_running_(false),
+	is_dead_(false)
 {
 	// run response dispatch thread
 	is_running_ = true;
@@ -173,9 +177,22 @@ service<LSD_T>::service(const service_info<LSD_T>& info, boost::shared_ptr<cocai
 
 template <typename LSD_T>
 service<LSD_T>::~service() {
+	is_dead_ = true;
+
+	// kill handles
+	typename handles_map_t::iterator it = handles_.begin();
+	for (;it != handles_.end(); ++it) {
+		it->second->disconnect();
+	}
+
 	is_running_ = false;
 	cond_.notify_one();
 	thread_.join();
+}
+
+template <typename LSD_T> bool
+service<LSD_T>::is_dead() {
+	return is_dead_;
 }
 
 template <typename LSD_T> service_info<LSD_T>
@@ -323,12 +340,7 @@ service<LSD_T>::enqueue_responce(cached_response_prt_t response) {
 	boost::mutex::scoped_lock lock(mutex_);
 
 	// validate response
-	if (!response) {
-		std::string error_str = "received empty response object!";
-		error_str += " service: " + info_.name_;
-		error_str += " at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw internal_error(error_str);
-	}
+	assert(response);
 
 	const message_path& path = response->path();
 

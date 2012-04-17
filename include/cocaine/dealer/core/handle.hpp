@@ -187,12 +187,15 @@ handle<LSD_T>::handle(const handle_info<LSD_T>& info,
 
 template <typename LSD_T>
 handle<LSD_T>::~handle() {
+	std::cout << "destroying handle...\n";
+
 	kill();
 
 	zmq_control_socket_->close();
 	zmq_control_socket_.reset(NULL);
 
 	thread_.join();
+	std::cout << "handle destroyed!\n";
 }
 
 template <typename LSD_T> void
@@ -303,7 +306,7 @@ handle<LSD_T>::establish_control_conection(socket_ptr_t& control_socket) {
 
 template <typename LSD_T> void
 handle<LSD_T>::enqueue_response(cached_response_prt_t response) {
-	if (response_callback_) {
+	if (response_callback_ && is_running_) {
 		response_callback_(response);
 	}
 }
