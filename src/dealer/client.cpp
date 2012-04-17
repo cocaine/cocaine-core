@@ -23,18 +23,11 @@ namespace cocaine {
 namespace dealer {
 
 client::client(const std::string& config_path) {
-	std::cout << "client_impl created\n";
 	impl_.reset(new client_impl(config_path));
 }
 
 client::~client() {
-	std::cout << "client_impl destroyed\n";
 	impl_.reset();
-}
-
-void
-client::unset_response_callback(const std::string& message_uuid, const message_path& path) {
-	get_impl()->unset_response_callback(message_uuid, path);	
 }
 
 boost::shared_ptr<response>
@@ -43,11 +36,17 @@ client::send_message(const void* data,
 					 const message_path& path,
 					 const message_policy& policy)
 {
-	boost::shared_ptr<message_iface> msg = get_impl()->create_message(data, size, path, policy);
-	response* resp_ptr = new response(get_impl(), msg->uuid(), path);
-	boost::shared_ptr<response> resp(resp_ptr);
+	boost::mutex::scoped_lock lock(mutex_);
 
-	get_impl()->send_message(msg, boost::bind(&response::response_callback, resp_ptr, _1, _2), resp);
+	//std::cout << "+ enter send_message\n";
+	boost::shared_ptr<message_iface> msg = get_impl()->create_message(data, size, path, policy);
+	//std::cout << "+ message created\n";
+	response* resp_ptr = new response(get_impl(), msg->uuid(), path);
+	//std::cout << "+ response created\n";
+	boost::shared_ptr<response> resp(resp_ptr);
+	//std::cout << "+ message ptr created\n";
+	get_impl()->send_message(msg, resp);
+	//std::cout << "+ message sent\n";
 	return resp;
 }
 

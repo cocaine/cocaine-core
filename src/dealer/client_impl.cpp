@@ -189,7 +189,6 @@ client_impl::create_message(const void* data,
 
 std::string
 client_impl::send_message(const boost::shared_ptr<message_iface>& msg,
-						  response_callback callback,
 						  const boost::shared_ptr<response>& response)
 {
 	boost::mutex::scoped_lock lock(mutex_);
@@ -210,18 +209,16 @@ client_impl::send_message(const boost::shared_ptr<message_iface>& msg,
 	std::string message_str = "registering callback for message with uuid: " + msg->uuid();
 	logger()->log(PLOG_DEBUG, message_str);
 
-	lock.unlock();
+	//std::cout << "register callback\n";
 	it->second->register_responder_callback(uuid, response);
-	lock.lock();
 
 	message_str = "registered callback for message with uuid: " + msg->uuid();
 	logger()->log(PLOG_DEBUG, message_str);
 
 	// send message to service
 	if (it->second) {
-		lock.unlock();
+		//std::cout << "send message\n";
 		it->second->send_message(msg);
-		lock.lock();
 	}
 	else {
 		std::string error_str = "object for service with name " + msg->path().service_name;
@@ -240,6 +237,8 @@ void
 client_impl::unset_response_callback(const std::string& message_uuid,
 								 	 const message_path& path)
 {
+	//std::cout << "unregister_responder_callback ENTER\n";
+
 	boost::mutex::scoped_lock lock(mutex_);
 
 	// check for services
@@ -256,10 +255,14 @@ client_impl::unset_response_callback(const std::string& message_uuid,
 	}
 
 	// assign to service
+	//std::cout << "unregister_responder_callback\n";
 	it->second->unregister_responder_callback(message_uuid);
+	//std::cout << "unregister_responder_callback done\n";
 
 	std::string message_str = "unregistered callback for message with uuid: " + message_uuid;
 	logger()->log(PLOG_DEBUG, message_str);
+
+	//std::cout << "unregister_responder_callback EXIT\n";
 }
 
 boost::shared_ptr<context>

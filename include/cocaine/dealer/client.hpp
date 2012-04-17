@@ -51,8 +51,6 @@ public:
 private:
 	friend class response_impl;
 
-	void unset_response_callback(const std::string& message_uuid, const message_path& path);
-
 	boost::shared_ptr<client_impl> get_impl();
 
 	boost::shared_ptr<client_impl> impl_;

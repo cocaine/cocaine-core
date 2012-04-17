@@ -114,9 +114,6 @@ private:
 	void dispatch_responces();
 	bool responces_queues_empty() const;
 
-	// send collected statistics to global stats collector
-	void update_statistics();
-
 	boost::shared_ptr<base_logger> logger();
 	boost::shared_ptr<configuration> config();
 	boost::shared_ptr<cocaine::dealer::context> context();
@@ -166,8 +163,6 @@ service<LSD_T>::service(const service_info<LSD_T>& info, boost::shared_ptr<cocai
 	context_(context),
 	is_running_(false)
 {
-	update_statistics();
-
 	// run response dispatch thread
 	is_running_ = true;
 	thread_ = boost::thread(&service<LSD_T>::dispatch_responces, this);
@@ -237,15 +232,16 @@ service<LSD_T>::dispatch_responces() {
 
 					// call callback it it's there
 					if (it != responses_callbacks_map_.end()) {
+						lock.unlock();
 						boost::weak_ptr<response> response_wptr = it->second;
 						boost::shared_ptr<response> response_ptr = response_wptr.lock();
 						
 						if (!response_ptr) {
-							std::cout << "callback expired\n";
+							//std::cout << "callback expired\n";
 							responses_callbacks_map_.erase(it);
 						}
 						else {
-							std::cout << "calling callback\n";
+							//std::cout << "calling callback\n";
 							response_ptr->response_callback(resp_data, resp_info);
 						}
 					}
@@ -373,49 +369,6 @@ service<LSD_T>::enqueue_responce(cached_response_prt_t response) {
 	handle_resp_queue->push_back(response);
 	lock.unlock();
 	cond_.notify_one();
-}
-
-template <typename LSD_T> void
-service<LSD_T>::update_statistics() {
-
-	// reset containers
-	stats_.unhandled_messages.clear();
-	stats_.handles.clear();
-
-	// gather statistics of unhandled messages
-	unhandled_messages_map_t::iterator it = unhandled_messages_.begin();
-	for (; it != unhandled_messages_.end(); ++it) {
-		if (it->second) {
-			stats_.unhandled_messages[it->first] = it->second->size();
-		}
-		else {
-			std::string error_str = "found empty unhandled messages queue object!";
-			error_str += " service: " + info_.name_ + " handle: " + it->first;
-			error_str += " at " + std::string(BOOST_CURRENT_FUNCTION);
-			throw internal_error(error_str);
-		}
-	}
-
-	// gather hosts info
-	stats_.hosts = hosts_;
-
-	// gather handles info
-	typename handles_map_t::iterator it2 = handles_.begin();
-
-	for (; it2 != handles_.end(); ++it2) {
-		if (it2->second) {
-			stats_.handles.push_back(it2->first);
-		}
-		else {
-			std::string error_str = "found empty handle object!";
-			error_str += " service: " + info_.name_ + " handle: " + it2->first;
-			error_str += " at " + std::string(BOOST_CURRENT_FUNCTION);
-			throw internal_error(error_str);
-		}
-	}
-
-	// post collected statistics to collector obj
-	context()->stats()->update_service_stats(info_.name_, stats_);
 }
 
 template <typename LSD_T> void
@@ -628,8 +581,6 @@ service<LSD_T>::remove_outstanding_handles(const handles_info_list_t& handles) {
 
 		handles_.erase(it);
 	}
-
-	update_statistics();
 }
 
 template <typename LSD_T> void

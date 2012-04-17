@@ -36,86 +36,71 @@ response_impl::response_impl(const boost::shared_ptr<client_impl>& client_ptr, c
 }
 
 response_impl::~response_impl() {
-	std::cout << "resp is being killed\n";
-
+	boost::mutex::scoped_lock lock(mutex_);
 	message_finished_ = true;
 	response_finished_ = true;
+	chunks_.clear();
 
 	boost::shared_ptr<client_impl> client_ptr = client_.lock();
 	if (client_ptr) {
 		client_ptr->unset_response_callback(uuid_, path_);
-	}
-
-	std::cout << "resp killed\n";
+	}	
 }
 
 bool
 response_impl::get(data_container* data) {
-	std::cout << "lock in GET - enter\n";
 	boost::mutex::scoped_lock lock(mutex_);
 
 	// no more chunks?
 	if (message_finished_ && chunks_.size() == 0) {
-		std::cout << "unlock in GET - finished\n";
 		return false;
 	}
 
 	// block until received callback
 	if (!message_finished_) {
-		while (!response_finished_) {
-			std::cout << "condvar BEGIN WAIT\n";
+		while (!response_finished_ && !message_finished_) {
 			cond_var_.wait(lock);
-			std::cout << "condvar END WAIT\n";
 		}
 
-		response_finished_ = false;
+		if (!message_finished_) {
+			response_finished_ = false;
+		}
 	}
 	else {
 		if (chunks_.size() > 0) {
 			*data = chunks_.at(0);
 			chunks_.erase(chunks_.begin());
-			std::cout << "unlock in GET - message finished, return chunk\n";
 			return true;
 		}
 		else {
 			message_finished_ = true;
-			std::cout << "unlock in GET - message finished, no chunks\n";
 			return false;
 		}
 	}
 
 	// expecting another chunk
 	if (chunks_.size() > 0) {
-		//*data = chunks_.at(0);
-		//chunks_.erase(chunks_.begin());
-		lock.unlock();
-		std::cout << "unlock in GET - message NOT finished, return chunk\n";
+		*data = chunks_.at(0);
+		chunks_.erase(chunks_.begin());
 		return true;
 	}
 
 	message_finished_ = true;
-
-	lock.unlock();
-	std::cout << "unlock in GET - message finished, DONE\n";
 	return false;
 }
 
 void
 response_impl::response_callback(const response_data& resp_data, const response_info& resp_info) {
-	std::cout << "lock in response_callback - enter, this: " << this << "\n";
 	boost::mutex::scoped_lock lock(mutex_);
 
 	if (message_finished_) {
-		std::cout << "unlock in response_callback - FINISHED\n";
 		return;
 	}
 
 	if (resp_info.code == response_code::message_choke) {
-		std::cout << "CHOKE\n";
 		message_finished_ = true;
 	}
 	else if (resp_info.code == response_code::message_chunk) {
-		std::cout << "CHUNK\n";
 		chunks_.push_back(new data_container(resp_data.data, resp_data.size));
 	}
 	else {
@@ -124,13 +109,9 @@ response_impl::response_callback(const response_data& resp_data, const response_
 		message_finished_ = true;
 	}
 
-	resp_info_ = resp_info;
 	response_finished_ = true;
 
-	std::cout << "unlock in response_callback\n";
 	lock.unlock();
-
-	std::cout << "notify_one in response_callback\n";
 	cond_var_.notify_one();
 }
 

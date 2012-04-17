@@ -34,25 +34,20 @@ using namespace cocaine::dealer;
 namespace po = boost::program_options;
 
 std::string config_path = "tests/config_example.json";
-
-// create client
 boost::shared_ptr<client> client_ptr;
-boost::shared_ptr<response> resp;
 
 int messages_count = 0;
 
-/*
 void worker() {
 	message_path path("rimz_app", "rimz_func");
 	message_policy policy;
 	std::string payload = "response chunk: ";
 
 	for (int i = 0; i < messages_count; ++i) {
-		resp = client_ptr->send_message(payload.data(), payload.size(), path, policy);
+		boost::shared_ptr<response> resp = client_ptr->send_message(payload.data(), payload.size(), path, policy);
 
 		try {
-			data_container data;
-			
+			data_container data;	
 			while(resp->get(&data)) {
 				//std::cout << std::string(reinterpret_cast<const char*>(data.data()), 0, data.size()) << std::endl;
 			}
@@ -69,39 +64,8 @@ void worker() {
 	}
 
 }
-*/
+
 void create_client(int add_messages_count) {
-	client_ptr.reset(new client(config_path));
-
-	message_path path("rimz_app", "rimz_func");
-	message_policy policy;
-	std::string payload = "response chunk: ";
-
-	resp = client_ptr->send_message(payload.data(), payload.size(), path, policy);
-
-	try {
-		data_container data;
-		resp->get(&data);
-		std::cout << "get done!\n";
-		//std::cout << std::string(reinterpret_cast<const char*>(data.data()), 0, data.size()) << std::endl;
-	}
-	catch (const dealer_error& err) {
-		std::cout << "error code: " << err.code() << ", error message: " << err.what() << std::endl;
-	}
-	catch (const std::exception& ex) {
-		std::cout << "error message: " << ex.what() << std::endl;
-	}
-	catch (...) {
-		std::cout << "caught exception, no error message." << std::endl;
-	}
-
-	//client_ptr.reset();
-
-	return;
-
-	/*
-	// well, i was wrong. without const it won't compile with -pedantic, but come on, it's a test app
-	// http://gcc.gnu.org/onlinedocs/gcc-4.1.2/gcc/Variable-Length.html#Variable-Length
 	const int pool_size = 200;
 	
 	std::cout << "----------------------------------- test info -------------------------------------------\n";
@@ -129,14 +93,9 @@ void create_client(int add_messages_count) {
 
 	std::cout << "done!\n";
 
-	sleep(10);
-
-	client_ptr.reset();
-
 	std::cout << "----------------------------------- test results ----------------------------------------\n";
 	std::cout << "elapsed: " << timer.elapsed().as_double() << std::endl;
 	std::cout << "approx performance: " << (add_messages_count * pool_size) / timer.elapsed().as_double() << " rps." << std::endl;
-	*/
 }
 
 int
