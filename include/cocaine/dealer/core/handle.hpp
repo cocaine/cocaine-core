@@ -259,7 +259,9 @@ handle<LSD_T>::dispatch_messages() {
 		}
 
 		if (is_connected_ && is_running_) {
+			lock.unlock();
 			received_response = check_for_responses(main_socket, response_poll_timeout);
+			lock.lock();
 
 			// process received responce(s)
 			while (received_response) {
@@ -270,7 +272,9 @@ handle<LSD_T>::dispatch_messages() {
 				dispatch_responce(main_socket);
 				lock.lock();
 
+				lock.unlock();
 				received_response = check_for_responses(main_socket, fast_poll_timeout);
+				lock.lock();
 			}
 		}
 	}

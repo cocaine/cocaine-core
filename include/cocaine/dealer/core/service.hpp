@@ -176,6 +176,8 @@ service<LSD_T>::~service() {
 	is_running_ = false;
 	cond_.notify_one();
 	thread_.join();
+
+	std::cout << responses_callbacks_map_.size() << std::endl;
 }
 
 template <typename LSD_T> service_info<LSD_T>
@@ -237,11 +239,9 @@ service<LSD_T>::dispatch_responces() {
 						boost::shared_ptr<response> response_ptr = response_wptr.lock();
 						
 						if (!response_ptr) {
-							//std::cout << "callback expired\n";
-							responses_callbacks_map_.erase(it);
+							unregister_responder_callback(resp_ptr->uuid());
 						}
 						else {
-							//std::cout << "calling callback\n";
 							response_ptr->response_callback(resp_data, resp_info);
 						}
 					}
