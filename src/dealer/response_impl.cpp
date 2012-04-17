@@ -32,7 +32,7 @@ response_impl::response_impl(const boost::shared_ptr<client_impl>& client_ptr, c
 	response_finished_(false),
 	message_finished_(false)
 {
-	assert(client.get() != NULL);
+	assert(client_ptr.get() != NULL);
 }
 
 response_impl::~response_impl() {
