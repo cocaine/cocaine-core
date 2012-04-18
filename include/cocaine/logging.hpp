@@ -29,7 +29,8 @@ enum priorities {
     debug,
     info,
     warning,
-    error
+    error,
+    ignore
 };
 
 class sink_t;
@@ -63,16 +64,23 @@ class sink_t:
     public boost::noncopyable
 {
     public:
+        sink_t(priorities verbosity);
         virtual ~sink_t() = 0;
 
         // XXX: Might be a better idea to return the logger by reference.
         boost::shared_ptr<logger_t> get(const std::string& name);
+
+        bool ignores(priorities priority) const {
+            return priority < m_verbosity;
+        }
     
     public:
         virtual void emit(priorities priority,
                           const std::string& message) const = 0;
 
     private:
+        const priorities m_verbosity;
+
         typedef std::map<
             const std::string,
             boost::shared_ptr<logger_t>
@@ -86,6 +94,8 @@ class void_sink_t:
     public sink_t
 {
     public:
+        void_sink_t();
+
         virtual void emit(priorities, const std::string&) const;
 };
 

@@ -18,18 +18,14 @@
 
 using namespace cocaine::logging;
 
-syslog_t::syslog_t(const std::string& identity, priorities verbosity):
-    m_identity(identity),
-    m_verbosity(verbosity)
+syslog_t::syslog_t(priorities verbosity, const std::string& identity):
+    sink_t(verbosity),
+    m_identity(identity)
 {
-    openlog(m_identity.c_str(), LOG_PID | LOG_NDELAY, LOG_USER);
+    openlog(m_identity.c_str(), LOG_PID, LOG_USER);
 }
 
 void syslog_t::emit(priorities priority, const std::string& message) const {
-    if(priority < m_verbosity) {
-        return;
-    }
-
     // NOTE: Replacing all newlines with spaces here because certain sysloggers
     // fail miserably interpreting them correctly.
     std::string m = boost::algorithm::replace_all_copy(message, "\n", " ");
@@ -38,14 +34,20 @@ void syslog_t::emit(priorities priority, const std::string& message) const {
         case debug:
             syslog(LOG_DEBUG, "%s", m.c_str());
             break;
+        
         case info:
             syslog(LOG_INFO, "%s", m.c_str());
             break;
+        
         case warning:
             syslog(LOG_WARNING, "%s", m.c_str());
             break;
+        
         case error:
             syslog(LOG_ERR, "%s", m.c_str());
+            break;
+        
+        default:
             break;
     }
 }

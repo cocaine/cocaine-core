@@ -144,7 +144,6 @@ struct busy:
         const std::auto_ptr<job_t>& job() const {
             return context<alive>().job();
         }
-
 };
 
 struct dead:
