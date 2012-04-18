@@ -1,3 +1,9 @@
+cocaine (0.7.3-b8) lucid; urgency=low
+
+  * Beta 8.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 18 Apr 2012 16:56:02 +0400
+
 cocaine (0.7.3-b7) lucid; urgency=low
 
   * Beta 7. 
