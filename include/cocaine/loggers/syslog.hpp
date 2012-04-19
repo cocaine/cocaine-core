@@ -19,14 +19,13 @@ class syslog_t:
     public sink_t
 {
     public:
-        syslog_t(const std::string& identity, priorities verbosity);
+        syslog_t(priorities verbosity, const std::string& identity);
 
         virtual void emit(priorities priority,
                           const std::string& message) const;
 
     private:
         const std::string m_identity;
-        const priorities m_verbosity;
 };
 
 }}

@@ -125,8 +125,8 @@ int main(int argc, char * argv[]) {
 
     cfg.sink.reset(
         new logging::syslog_t(
-            "cocaine",
-            vm.count("verbose") ? logging::debug : logging::info
+            vm.count("verbose") ? logging::debug : logging::info,
+            "cocaine"
         )
     );
 

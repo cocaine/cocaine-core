@@ -23,13 +23,13 @@ io_t::io_t(overseer_t& overseer):
     m_overseer(overseer)
 { }
 
-blob_t io_t::pull(bool block) {
-    return m_overseer.recv(block);
+blob_t io_t::pull(int timeout) {
+    return m_overseer.pull(timeout);
 }
 
 void io_t::push(const void * data, size_t size) {
     rpc::packed<rpc::push> packed(data, size);
-    m_overseer.send(packed);
+    m_overseer.push(packed);
 }
 
 // void io_t::emit(const std::string& key, const void * data, size_t size) {
@@ -38,7 +38,7 @@ void io_t::push(const void * data, size_t size) {
 
 void io_t::delegate(const std::string& target, const void * data, size_t size) {
 	rpc::packed<rpc::invoke> packed(target, data, size);
-	m_overseer.send(packed);
+	m_overseer.push(packed);
 }
 
 plugin_t::plugin_t(context_t& ctx):

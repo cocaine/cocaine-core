@@ -36,10 +36,10 @@ class overseer_t:
 
         void run();
 
-        blob_t recv(bool block);
+        blob_t pull(int timeout);
 
         template<class Packed>
-        void send(Packed& packed) {
+        void push(Packed& packed) {
             m_messages.send_multi(packed);
         }
 
