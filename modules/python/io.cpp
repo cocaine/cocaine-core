@@ -40,23 +40,21 @@ void python_io_t::destructor(python_io_t * self) {
 }
 
 PyObject* python_io_t::read(python_io_t * self, PyObject * args, PyObject * kwargs) {
-    static char block_keyword[] = "block";
     static char size_keyword[] = "size";
-    static char * keywords[] = { size_keyword, block_keyword, NULL };
+    static char timeout_keyword[] = "timeout";
+    static char * keywords[] = { size_keyword, timeout_keyword, NULL };
 
     Py_ssize_t size = 0;
-    PyObject * block = NULL;
+    int timeout = 0;
     PyObject * result = NULL;
 
-    if(!PyArg_ParseTupleAndKeywords(args, kwargs, "|nO:read", keywords, &size, &block)) {
+    if(!PyArg_ParseTupleAndKeywords(args, kwargs, "|ni:read", keywords, &size, &timeout)) {
         return result;
     }
 
     if(self->request.empty()) {
         Py_BEGIN_ALLOW_THREADS
-            self->request = self->io->pull(
-                block ? PyObject_IsTrue(block) : false
-            );
+            self->request = self->io->pull(timeout);
         Py_END_ALLOW_THREADS
         
         self->offset = 0;
@@ -137,7 +135,7 @@ PyObject* python_io_t::readline(python_io_t * self, PyObject * args, PyObject * 
 
     if(self->request.empty()) {
         Py_BEGIN_ALLOW_THREADS
-            self->request = self->io->pull(true);
+            self->request = self->io->pull(-1);
         Py_END_ALLOW_THREADS
         
         self->offset = 0;

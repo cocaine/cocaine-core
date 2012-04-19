@@ -19,8 +19,8 @@
 
 #include <zmq.hpp>
 
-#if ZMQ_VERSION < 20107
-    #error ZeroMQ version 2.1.7+ required!
+#if ZMQ_VERSION < 20200
+    #error ZeroMQ version 2.2.0+ required!
 #endif
 
 #include "cocaine/common.hpp"
@@ -138,6 +138,27 @@ class socket_t:
     private:
         zmq::socket_t m_socket;
         std::string m_endpoint;
+};
+
+template<int OptionType, class ValueType>
+struct scoped_option {
+    scoped_option(socket_t& socket_, ValueType value):
+        socket(socket_),
+        saved(ValueType()),
+        size(sizeof(saved))
+    {
+        socket.getsockopt(OptionType, &saved, &size);
+        socket.setsockopt(OptionType, &value, sizeof(value));
+    }
+
+    ~scoped_option() {
+        socket.setsockopt(OptionType, &saved, sizeof(saved));
+    }
+
+    socket_t& socket;
+
+    ValueType saved;
+    size_t size;
 };
 
 template<class T> class raw;
@@ -264,7 +285,7 @@ class channel_t:
         }
       
         template<class T>
-        bool recv(raw<T>& result, int flags) {
+        bool recv(raw<T>& result, int flags = 0) {
             zmq::message_t message;
 
             if(!recv(&message, flags)) {

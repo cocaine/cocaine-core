@@ -99,7 +99,7 @@ public:
         std::string input;
         
         // Try to pull in the request w/o blocking.
-        blob_t request = io.pull(false);
+        blob_t request = io.pull(0);
 
         if (!request.empty()) {
            input = std::string((const char*)request.data(), request.size());
