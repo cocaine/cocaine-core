@@ -1,3 +1,23 @@
+cocaine (0.7.4-0) lucid; urgency=low
+
+  * Core: proper fork() + exec() magic for slave spawning.
+  * Core: pool grow control via the 'grow-threshold' variable.
+  * Core: no more 'instances', nobody grasped the point of it anyway.
+  * Core: much more granular exception control in the code, for better diagnostics.
+  * Core: the reason for engine shutdown is now visible in the status response.
+  * Core: loggers no longer parse messages if they're not going to be emitted
+    because of the verbosity settings.
+  * Core: worker i/o now supports timeouts.
+  * Drivers: native server major speedup.
+  * Python: acquire GIL only on method invocations, so that other Python threads
+    could be spawned for some background idle processing tasks.
+  * Python: read() now accepts the 'size' argument to read the request in
+    chunks.
+  * Python: i/o object now supports readline() method for additional WSGI
+    compatibility.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Thu, 19 Apr 2012 18:49:00 +0400
+
 cocaine (0.7.3-b8) lucid; urgency=low
 
   * Beta 8.
@@ -48,17 +68,7 @@ cocaine (0.7.3-b1) lucid; urgency=low
 
 cocaine (0.7.3-b0) lucid; urgency=low
 
-  * Proper fork() + exec() magic for slave spawning.
-  * Pool grow control via the 'grow-threshold' variable.
-  * No more 'instances', nobody grasped the point of it anyway.
-  * Much more granular exception control in the code, for better diagnostics.
-  * Native server: major speedup.
-  * The reason for engine shutdown is now visible in the status response.
-  * Python: acquire GIL only on method invocations, so that other Python threads
-    could be spawned for some background idle processing tasks.
-  * Python: read() now accepts the 'size' argument to read the request in
-    chunks.
-  * A couple of bugfixes!
+ * Beta 0.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 13 Mar 2012 13:22:02 +0300
 
