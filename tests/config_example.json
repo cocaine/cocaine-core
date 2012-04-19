@@ -6,7 +6,7 @@
 		"logger" :
 		{
 			"type" : "STDOUT_LOGGER",
-			"flags" : "PLOG_MSG_TYPES | PLOG_MSG_TIME | PLOG_INFO"
+			"flags" : "PLOG_ALL"
 		},
 
 		"services" : [

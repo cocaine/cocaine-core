@@ -119,7 +119,7 @@ cached_message<DataContainer, MetadataContainer>::cached_message(const message_p
 	is_sent_(false),
 	container_size_(0)
 {
-	mdata_.path = path;
+	mdata_.set_path(path);
 	mdata_.policy = policy;
 	mdata_.enqueued_timestamp.init_from_current_time();
 
@@ -144,9 +144,6 @@ template<typename DataContainer, typename MetadataContainer> void
 cached_message<DataContainer, MetadataContainer>::init() {
 	gen_uuid();
 	mdata_.enqueued_timestamp.init_from_current_time();
-
-	// calc data size
-	container_size_ = sizeof(cached_message) + data_.size() + UUID_SIZE + mdata_.path.data_size();
 }
 
 template<typename DataContainer, typename MetadataContainer> bool
@@ -262,7 +259,7 @@ cached_message<DataContainer, MetadataContainer>::sent_timestamp() const {
 
 template<typename DataContainer, typename MetadataContainer> const message_path&
 cached_message<DataContainer, MetadataContainer>::path() const {
-	return mdata_.path;
+	return mdata_.path();
 }
 
 template<typename DataContainer, typename MetadataContainer> const message_policy&

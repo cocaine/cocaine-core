@@ -20,8 +20,10 @@
 #include <boost/lexical_cast.hpp>
 
 #include "cocaine/dealer/structs.hpp"
+#include "cocaine/dealer/message_path.hpp"
 #include "cocaine/dealer/utils/time_value.hpp"
 #include "cocaine/dealer/storage/eblob.hpp"
+#include <boost/flyweight.hpp>
 
 #include <msgpack.hpp>
 
@@ -36,7 +38,8 @@ public:
 	std::string as_string() const {
 		std::stringstream s;
 		s << std::boolalpha;
-		s << "service/handle: " << path.service_name << "/" << path.handle_name << "\n";
+		s << "service: "<< path_.get().service_name << ", handle: ";
+		s << path_.get().handle_name + "\n";
         s << "uuid: " << uuid << "\n";
         s << "policy [send to all hosts]: " << policy.send_to_all_hosts << "\n";
         s << "policy [urgent]: " << policy.urgent << "\n";
@@ -49,8 +52,15 @@ public:
         return s.str();
 	}
 
-	// metadata
-	message_path path;
+	const message_path& path() const {
+		return path_.get();
+	}
+
+	void set_path(const message_path& path) {
+		path_ = path;
+	}
+
+	boost::flyweight<message_path> path_;
 	message_policy policy;
 	std::string uuid;
 	uint64_t data_size;
@@ -73,29 +83,39 @@ public:
 			return;
 		}
 
-		msgpack::unpacked msg;
-		msgpack::unpack(&msg, reinterpret_cast<char*>(data), size);
-		msgpack::object obj = msg.get();
-		obj.convert(this);
+		msgpack::unpacker pac(size);
+		memcpy(pac.buffer(), data, size);
+		pac.buffer_consumed(size);
+
+		message_path path;
+		unpack_next_value(pac, path);
+		path_ = path;
+
+		unpack_next_value(pac, policy);
+		unpack_next_value(pac, uuid);
+		unpack_next_value(pac, data_size);
+		unpack_next_value(pac, enqueued_timestamp);
 	}
 
 	void commit_data() {
-		// serialize to eblob with uuid as key
+		// serialize all metadata
 		msgpack::sbuffer buffer;
-		msgpack::pack(buffer, *this);
+		msgpack::packer<msgpack::sbuffer> pk(&buffer);
+    	pk.pack(path());
+    	pk.pack(policy);
+    	pk.pack(uuid);
+    	pk.pack(data_size);
+    	pk.pack(enqueued_timestamp);
+
+    	// write to eblob with uuid as key
 		blob_.write(uuid, buffer.data(), buffer.size(), EBLOB_COLUMN);
 	}
 
-	MSGPACK_DEFINE(path, policy, uuid, data_size, enqueued_timestamp);
-
 private:
 	template<typename T> void unpack_next_value(msgpack::unpacker& upack, T& value) {
-		msgpack::unpacked result;
-		msgpack::object obj;
-
-        upack.next(&result);
-		obj = result.get();
-        obj.convert(&value);
+	 	msgpack::unpacked result;
+		upack.next(&result);
+		result.get().convert(&value);
 	}
 
 private:

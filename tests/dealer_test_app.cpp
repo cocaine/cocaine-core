@@ -22,6 +22,7 @@
 #include <boost/thread.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/weak_ptr.hpp>
+#include <boost/flyweight.hpp>
 
 #include <msgpack.hpp>
 
@@ -40,6 +41,7 @@ int messages_count = 0;
 
 void worker() {
 	message_path path("rimz_app", "rimz_func");
+
 	message_policy policy;
 	std::string payload = "response chunk: ";
 
@@ -51,10 +53,10 @@ void worker() {
 				resp = client_ptr->send_message(payload.data(), payload.size(), path, policy);
 			}
 
-			//data_container data;	
-			//while(resp->get(&data)) {
-			//	std::cout << std::string(reinterpret_cast<const char*>(data.data()), 0, data.size()) << std::endl;
-			//}
+			data_container data;	
+			while(resp->get(&data)) {
+				//std::cout << std::string(reinterpret_cast<const char*>(data.data()), 0, data.size()) << std::endl;
+			}
 		}
 		catch (const dealer_error& err) {
 			std::cout << "error code: " << err.code() << ", error message: " << err.what() << std::endl;
@@ -69,7 +71,7 @@ void worker() {
 }
 
 void create_client(int add_messages_count) {
-	const int pool_size = 200;
+	const int pool_size = 1;
 	
 	std::cout << "----------------------------------- test info -------------------------------------------\n";
 	std::cout << "sending " << add_messages_count * pool_size << " messages using " << pool_size << " threads\n";
@@ -94,9 +96,9 @@ void create_client(int add_messages_count) {
 		pool[i].join();
 	}
 
-	client_ptr.reset();
+	std::cout << "sending messages done.\n";
 
-	std::cout << "done!\n";
+	client_ptr.reset();
 
 	std::cout << "----------------------------------- test results ----------------------------------------\n";
 	std::cout << "elapsed: " << timer.elapsed().as_double() << std::endl;

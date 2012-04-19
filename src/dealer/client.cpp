@@ -39,6 +39,7 @@ client::send_message(const void* data,
 					 const message_policy& policy)
 {
 	boost::mutex::scoped_lock lock(mutex_);
+
 	boost::shared_ptr<message_iface> msg = get_impl()->create_message(data, size, path, policy);
 	boost::shared_ptr<response> resp(new response(get_impl(), msg->uuid(), path));
 	get_impl()->send_message(msg, resp);

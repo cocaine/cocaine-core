@@ -636,7 +636,6 @@ service<LSD_T>::create_new_handles(const handles_info_list_t& handles, const hos
 					logger()->log(PLOG_DEBUG, "appending existing mesage queue for [%s.%s], queue size: %d",
 								  info_.name_.c_str(), handles[i].name_.c_str(), msg_queue->size());
 					handle_ptr->messages_cache()->append_message_queue(msg_queue);
-					handle_ptr->notify_new_messages_enqueued();
 				}
 				else {
 					std::string error_str = "found empty handle message queue when handle exists!";

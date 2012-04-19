@@ -94,7 +94,7 @@ client_impl::connect() {
 	}
 
 	heartbeats_collector_->set_callback(boost::bind(&client_impl::service_hosts_pinged_callback, this, _1, _2, _3));
-	//heartbeats_collector_->set_logger(logger());
+	heartbeats_collector_->set_logger(logger());
 	heartbeats_collector_->run();
 }
 
