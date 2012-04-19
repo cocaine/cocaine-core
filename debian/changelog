@@ -1,3 +1,9 @@
+cocaine (0.7.4-1) lucid; urgency=low
+
+  * Dealer: enabled heartbeat logs.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Thu, 19 Apr 2012 21:02:00 +0400
+
 cocaine (0.7.4-0) lucid; urgency=low
 
   * Core: proper fork() + exec() magic for slave spawning.
@@ -904,20 +910,4 @@ cocaine (0.1.3-~20110414.6cb2c2cc-yandex0) unstable; urgency=low
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Thu, 14 Apr 2011 20:49:08 +0400
 
-cocaine (0.1.2-~20110414.3c2cf025-yandex0) unstable; urgency=low
-
-  * Pinger protocol conformity in MySQL plugin.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Thu, 14 Apr 2011 15:03:03 +0400
-
-cocaine (0.1.1-~20110414.0d3c244d-yandex0) unstable; urgency=low
-
-  * Added cocaine-dev package for plugin developers.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Thu, 14 Apr 2011 01:11:55 +0400
-
-cocaine (0.1.0-~20110413.77038b75-yandex0) unstable; urgency=low
-
-  * Initial release.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Sat, 26 Mar 2011 02:01:41 +0300
+cocaine (0.1.2-~20110414.3c2cf025
