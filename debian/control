@@ -2,17 +2,17 @@ Source: cocaine
 Section: utils
 Priority: extra
 Maintainer: Andrey Sibiryov <kobolog@yandex-team.ru>
-Build-Depends: cdbs, debhelper (>= 7.0.13), libzmq-dev (>= 2.1.9), libev-dev, libmsgpack-dev,
+Build-Depends: cdbs, debhelper (>= 7.0.13), libzmq-dev (>= 2.2.0), libev-dev, libmsgpack-dev,
  libboost-dev, libboost-filesystem-dev, libboost-thread-dev, libboost-program-options-dev,
  libssl-dev, libltdl-dev, libcgroup-dev, uuid-dev, libv8-dev, python-dev, libperl-dev, 
  libmongoclient-dev
 Standards-Version: 3.9.1
-Vcs-Git: git://github.com/Kobolog/cocaine.git
-Vcs-Browser: https://github.com/Kobolog/cocaine
+Vcs-Git: git://github.com/cocaine/cocaine-core.git
+Vcs-Browser: https://github.com/cocaine/cocaine-core
 
 Package: cocaine-core
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, adduser
+Depends: ${shlibs:Depends}, ${misc:Depends}, libzmq1 (>= 2.2.0), adduser
 Description: Cocaine - Core
  Cocaine server.
 
@@ -49,9 +49,9 @@ Description: Cocaine - Toolset
 Package: cocaine-dev
 Architecture: any
 Section: libdevel
-Depends: ${shlibs:Depends}, ${misc:Depends}, libzmq-dev (>= 2.1.9), libev-dev, libmsgpack-dev,
- libboost-dev, libboost-filesystem-dev, libboost-thread-dev, libssl-dev, libltdl-dev, uuid-dev,
- libcgroup-dev
+Depends: ${shlibs:Depends}, ${misc:Depends}, libzmq-dev (>= 2.2.0), libev-dev, libmsgpack-dev,
+ libboost-dev, libboost-filesystem-dev, libboost-thread-dev, libssl-dev, libltdl-dev, libcgroup-dev,
+ uuid-dev
 Description: Cocaine - Development Files
  Files needed to develop plugins, modules or to embed Cocaine.
 
