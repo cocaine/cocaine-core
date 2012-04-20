@@ -75,7 +75,7 @@ cocaine (0.7.3-b1) lucid; urgency=low
 
 cocaine (0.7.3-b0) lucid; urgency=low
 
- * Beta 0.
+  * Beta 0.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 13 Mar 2012 13:22:02 +0300
 
@@ -911,4 +911,3 @@ cocaine (0.1.3-~20110414.6cb2c2cc-yandex0) unstable; urgency=low
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Thu, 14 Apr 2011 20:49:08 +0400
 
-cocaine (0.1.2-~20110414.3c2cf025
