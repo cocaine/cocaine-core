@@ -13,6 +13,7 @@
 
 #include "cocaine/drivers/zeromq_sink.hpp"
 
+#include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
 
 using namespace cocaine::engine::drivers;
@@ -32,24 +33,29 @@ Json::Value zeromq_sink_t::info() {
 }
 
 void zeromq_sink_t::process(ev::idle&, int) {
-    if(!m_socket.pending()) {
-        m_processor.stop();
-        return;
-    }
-    
-    zmq::message_t message;
+    int counter = context().config.defaults.io_bulk_size;
 
     do {
-        m_socket.recv(&message);
+        if(!m_socket.pending()) {
+            m_processor.stop();
+            return;
+        }
+        
+        zmq::message_t message;
 
-        m_engine.enqueue(
-            new job_t(
-                *this,
-                blob_t(
-                    message.data(), 
-                    message.size()
+        do {
+            m_socket.recv(&message);
+
+            m_engine.enqueue(
+                new job_t(
+                    *this,
+                    blob_t(
+                        message.data(), 
+                        message.size()
+                    )
                 )
-            )
-        );
-    } while(m_socket.more()); 
+            );
+        } while(m_socket.more()); 
+    } while(--counter);
 }
+

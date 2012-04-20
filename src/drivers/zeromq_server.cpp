@@ -97,53 +97,57 @@ Json::Value zeromq_server_t::info() {
 }
 
 void zeromq_server_t::process(ev::idle&, int) {
-    if(!m_socket.pending()) {
-        m_processor.stop();
-        return;
-    }
-    
-    zmq::message_t message;
-    route_t route;
+    int counter = context().config.defaults.io_bulk_size;
 
     do {
-        m_socket.recv(&message);
+        if(!m_socket.pending()) {
+            m_processor.stop();
+            return;
+        }
+        
+        zmq::message_t message;
+        route_t route;
 
-        if(!message.size()) {
-            break;
+        do {
+            m_socket.recv(&message);
+
+            if(!message.size()) {
+                break;
+            }
+
+            route.push_back(
+                std::string(
+                    static_cast<const char*>(message.data()),
+                    message.size()
+                )
+            );
+        } while(m_socket.more());
+
+        if(route.empty() || !m_socket.more()) {
+            m_engine.app().log->error(
+                "driver '%s' got a corrupted request",
+                m_method.c_str()
+            );
+            
+            m_socket.drop_remaining_parts();
+            return;
         }
 
-        route.push_back(
-            std::string(
-                static_cast<const char*>(message.data()),
-                message.size()
-            )
-        );
-    } while(m_socket.more());
+        do {
+            m_socket.recv(&message);
 
-    if(route.empty() || !m_socket.more()) {
-        m_engine.app().log->error(
-            "driver '%s' got a corrupted request",
-            m_method.c_str()
-        );
-        
-        m_socket.drop_remaining_parts();
-        return;
-    }
-
-    do {
-        m_socket.recv(&message);
-
-        m_engine.enqueue(
-            new zeromq_server_job_t(
-                *this,
-                blob_t(
-                    message.data(), 
-                    message.size()
-                ),
-                route
-            )
-        );
-    } while(m_socket.more());
+            m_engine.enqueue(
+                new zeromq_server_job_t(
+                    *this,
+                    blob_t(
+                        message.data(), 
+                        message.size()
+                    ),
+                    route
+                )
+            );
+        } while(m_socket.more());
+    } while(--counter);
 }
 
 void zeromq_server_t::event(ev::io&, int) {

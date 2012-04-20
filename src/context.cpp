@@ -27,6 +27,7 @@ config_t::config_t() {
     defaults.suicide_timeout = 600.0f;
     defaults.pool_limit = 10;
     defaults.queue_limit = 100;
+    defaults.io_bulk_size = 100;
 }
 
 context_t::context_t(config_t config_):

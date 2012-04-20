@@ -393,107 +393,111 @@ void engine_t::message(ev::io&, int) {
 }
 
 void engine_t::process(ev::idle&, int) {
-    if(!m_messages.pending()) {
-        m_processor.stop();
-        return;
-    }
+    int counter = context().config.defaults.io_bulk_size;
+    
+    do {
+        if(!m_messages.pending()) {
+            m_processor.stop();
+            return;
+        }
 
-    std::string slave_id;
-    int command = 0;
-    boost::tuple<raw<std::string>, int&> proxy(protect(slave_id), command);
+        std::string slave_id;
+        int command = 0;
+        boost::tuple<raw<std::string>, int&> proxy(protect(slave_id), command);
+                
+        m_messages.recv_multi(proxy);
+
+        pool_map_t::iterator slave(m_pool.find(slave_id));
+
+        if(slave == m_pool.end()) {
+            m_app.log->warning(
+                "engine dropping type %d event from a nonexistent slave %s", 
+                command,
+                slave_id.c_str()
+            );
             
-    m_messages.recv_multi(proxy);
-
-    pool_map_t::iterator slave(m_pool.find(slave_id));
-
-    if(slave == m_pool.end()) {
-        m_app.log->warning(
-            "engine dropping type %d event from a nonexistent slave %s", 
-            command,
-            slave_id.c_str()
-        );
-        
-        m_messages.drop_remaining_parts();
-        return;
-    }
-
-    switch(command) {
-        case rpc::heartbeat:
-            slave->second->process_event(events::heartbeat_t());
-            break;
-
-        case rpc::push: {
-            // TEST: Ensure we have the actual chunk following.
-            BOOST_ASSERT(m_messages.more());
-
-            zmq::message_t message;
-            m_messages.recv(&message);
-            
-            slave->second->process_event(events::push_t(message));
-
-            break;
-        }
-     
-        case rpc::invoke: {
-            // TEST: Ensure we have the actual delegate following.
-            BOOST_ASSERT(m_messages.more());
-
-            std::string target;
-            zmq::message_t message;
-            boost::tuple<std::string&, zmq::message_t*> proxy(target, &message);
-
-            m_messages.recv_multi(proxy);
-
-            slave->second->process_event(events::delegate_t(target, message));
-
-            break;
-        }
-
-        case rpc::error: {
-            // TEST: Ensure that we have the actual error following.
-            BOOST_ASSERT(m_messages.more());
-
-            int code = 0;
-            std::string message;
-            boost::tuple<int&, std::string&> proxy(code, message);
-
-            m_messages.recv_multi(proxy);
-
-            slave->second->process_event(events::error_t(code, message));
-
-            if(code == dealer::server_error) {
-                m_app.log->error("the app seems to be broken");
-                stop();
-            }
-
-            break;
-        }
-
-        case rpc::release:
-            slave->second->process_event(events::release_t());
-            break;
-
-        default:
-            m_app.log->warning("engine dropping unknown event type %d", command);
             m_messages.drop_remaining_parts();
-    }
+            return;
+        }
 
-    if(!m_queue.empty() &&
-       slave->second->state_downcast<const slave::idle*>())
-    {
-        while(!m_queue.empty()) {
-            job_queue_t::auto_type job(m_queue.release(m_queue.begin()));
+        switch(command) {
+            case rpc::heartbeat:
+                slave->second->process_event(events::heartbeat_t());
+                break;
 
-            if(!job->state_downcast<const job::complete*>()) {
-                // NOTE: This will always succeed due to the test above.
-                enqueue(job.release());
+            case rpc::push: {
+                // TEST: Ensure we have the actual chunk following.
+                BOOST_ASSERT(m_messages.more());
+
+                zmq::message_t message;
+                m_messages.recv(&message);
+                
+                slave->second->process_event(events::push_t(message));
+
                 break;
             }
-        }
-    }
+         
+            case rpc::invoke: {
+                // TEST: Ensure we have the actual delegate following.
+                BOOST_ASSERT(m_messages.more());
 
-    // TEST: Ensure that there're no more message parts pending on the channel.
-    BOOST_ASSERT(!m_messages.more());
+                std::string target;
+                zmq::message_t message;
+                boost::tuple<std::string&, zmq::message_t*> proxy(target, &message);
+
+                m_messages.recv_multi(proxy);
+
+                slave->second->process_event(events::delegate_t(target, message));
+
+                break;
+            }
+
+            case rpc::error: {
+                // TEST: Ensure that we have the actual error following.
+                BOOST_ASSERT(m_messages.more());
+
+                int code = 0;
+                std::string message;
+                boost::tuple<int&, std::string&> proxy(code, message);
+
+                m_messages.recv_multi(proxy);
+
+                slave->second->process_event(events::error_t(code, message));
+
+                if(code == dealer::server_error) {
+                    m_app.log->error("the app seems to be broken");
+                    stop();
+                }
+
+                break;
+            }
+
+            case rpc::release:
+                slave->second->process_event(events::release_t());
+                break;
+
+            default:
+                m_app.log->warning("engine dropping unknown event type %d", command);
+                m_messages.drop_remaining_parts();
+        }
+
+        if(!m_queue.empty() &&
+           slave->second->state_downcast<const slave::idle*>())
+        {
+            while(!m_queue.empty()) {
+                job_queue_t::auto_type job(m_queue.release(m_queue.begin()));
+
+                if(!job->state_downcast<const job::complete*>()) {
+                    // NOTE: This will always succeed due to the test above.
+                    enqueue(job.release());
+                    break;
+                }
+            }
+        }
+
+        // TEST: Ensure that there're no more message parts pending on the channel.
+        BOOST_ASSERT(!m_messages.more());
+    } while(--counter);
 }
 
 void engine_t::pump(ev::timer&, int) {

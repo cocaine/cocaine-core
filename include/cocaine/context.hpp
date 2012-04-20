@@ -47,6 +47,9 @@ struct config_t {
         unsigned int pool_limit;
         unsigned int queue_limit;
 
+        // I/O bulk size
+        unsigned int io_bulk_size;
+
         MSGPACK_DEFINE(heartbeat_timeout, suicide_timeout, pool_limit, queue_limit);
     } defaults;
 

@@ -13,6 +13,7 @@
 
 #include "cocaine/drivers/native_server.hpp"
 
+#include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/rpc.hpp"
@@ -58,69 +59,73 @@ Json::Value native_server_t::info() {
 }
 
 void native_server_t::process(ev::idle&, int) {
-    if(!m_socket.pending()) {
-        m_processor.stop();
-        return;
-    }
+    int counter = context().config.defaults.io_bulk_size;
     
-    zmq::message_t message;
-    route_t route;
-
     do {
-        m_socket.recv(&message);
-
-        if(!message.size()) {
-            break;
+        if(!m_socket.pending()) {
+            m_processor.stop();
+            return;
         }
+        
+        zmq::message_t message;
+        route_t route;
 
-        route.push_back(
-            std::string(
-                static_cast<const char*>(message.data()),
-                message.size()
-            )
-        );
-    } while(m_socket.more());
+        do {
+            m_socket.recv(&message);
 
-    if(route.empty() || !m_socket.more()) {
-        m_engine.app().log->error(
-            "driver '%s' got a corrupted request",
-            m_method.c_str()
-        );
+            if(!message.size()) {
+                break;
+            }
 
-        m_socket.drop_remaining_parts();
-        return;
-    }
-
-    do {
-        std::string tag;
-        dealer::policy_t policy;
-
-        request_proxy_t proxy(tag, policy, &message);
-
-        try {
-            m_socket.recv_multi(proxy);
-        } catch(const std::runtime_error& e) {
-            m_engine.app().log->error(
-                "driver %s got a corrupted request - %s",
-                m_method.c_str(),
-                e.what()
+            route.push_back(
+                std::string(
+                    static_cast<const char*>(message.data()),
+                    message.size()
+                )
             );
-    
+        } while(m_socket.more());
+
+        if(route.empty() || !m_socket.more()) {
+            m_engine.app().log->error(
+                "driver '%s' got a corrupted request",
+                m_method.c_str()
+            );
+
             m_socket.drop_remaining_parts();
             return;
         }
 
-        m_engine.enqueue(
-            new native_job_t(
-                *this,
-                policy,
-                blob_t(
-                    message.data(), 
-                    message.size()
-                ),
-                route,
-                tag
-            )
-        );
-    } while(m_socket.more());
+        do {
+            std::string tag;
+            dealer::policy_t policy;
+
+            request_proxy_t proxy(tag, policy, &message);
+
+            try {
+                m_socket.recv_multi(proxy);
+            } catch(const std::runtime_error& e) {
+                m_engine.app().log->error(
+                    "driver %s got a corrupted request - %s",
+                    m_method.c_str(),
+                    e.what()
+                );
+        
+                m_socket.drop_remaining_parts();
+                return;
+            }
+
+            m_engine.enqueue(
+                new native_job_t(
+                    *this,
+                    policy,
+                    blob_t(
+                        message.data(), 
+                        message.size()
+                    ),
+                    route,
+                    tag
+                )
+            );
+        } while(m_socket.more());
+    } while(--counter);
 }
