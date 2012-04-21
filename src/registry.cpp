@@ -54,7 +54,7 @@ registry_t::registry_t(context_t& ctx):
     lt_dlhandle module;
 
     typedef void (*initialize_fn_t)(registry_t& registry);
-    initialize_fn_t initialize;
+    initialize_fn_t initialize = NULL;
 
     typedef boost::filter_iterator<is_module, fs::directory_iterator> module_iterator_t;
     module_iterator_t it = module_iterator_t(is_module(), fs::directory_iterator(path)), 

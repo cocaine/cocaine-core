@@ -52,7 +52,7 @@ bool slave_t::operator==(const slave_t& other) const {
 }
 
 void slave_t::unconsumed_event(const sc::event_base& event) {
-    m_engine.app().log->error(
+    m_engine.app().log->warning(
         "slave %s detected an unconsumed event",
         id().c_str()
     );
@@ -167,7 +167,7 @@ void slave_t::on_terminate(const events::terminate_t& event) {
 }
 
 void slave_t::on_timeout(ev::timer&, int) {
-    m_engine.app().log->warning(
+    m_engine.app().log->error(
         "slave %s missed too many heartbeats",
         id().c_str()
     );
@@ -187,32 +187,34 @@ void slave_t::on_timeout(ev::timer&, int) {
 }
 
 void slave_t::on_signal(ev::child& event, int) {
-    if(!state_downcast<const dead*>()) {
-        process_event(events::terminate_t());
-        
-        if(WIFEXITED(event.rstatus) && WEXITSTATUS(event.rstatus) != EXIT_SUCCESS) {
-            m_engine.app().log->warning(
-                "slave %s terminated abnormally",
-                id().c_str()
-            );
-            
-            m_engine.stop("the slaves terminate abnormally");
-        } else if(WIFSIGNALED(event.rstatus)) {
-            m_engine.app().log->warning(
-                "slave %s has been killed by signal %d: %s", 
-                id().c_str(),
-                WTERMSIG(event.rstatus),
-                strsignal(WTERMSIG(event.rstatus))
-            );
-            
-            m_engine.stop("the slaves terminate abnormally");
-        };
+    if(state_downcast<const dead*>()) {
+        return;
     }
+    
+    process_event(events::terminate_t());
+    
+    if(WIFEXITED(event.rstatus) && WEXITSTATUS(event.rstatus) != EXIT_SUCCESS) {
+        m_engine.app().log->warning(
+            "slave %s terminated abnormally",
+            id().c_str()
+        );
+        
+        m_engine.stop("the slaves terminate abnormally");
+    } else if(WIFSIGNALED(event.rstatus)) {
+        m_engine.app().log->warning(
+            "slave %s has been killed by signal %d: %s", 
+            id().c_str(),
+            WTERMSIG(event.rstatus),
+            strsignal(WTERMSIG(event.rstatus))
+        );
+        
+        m_engine.stop("the slaves terminate abnormally");
+    };
 }
 
 alive::~alive() {
     if(m_job.get() && !m_job->state_downcast<const job::complete*>()) {
-        context<slave_t>().m_engine.app().log->debug(
+        context<slave_t>().m_engine.app().log->warning(
             "rescheduling an incomplete '%s' job", 
             m_job->method().c_str()
         );

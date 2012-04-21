@@ -89,7 +89,7 @@ class registry_t:
         >::type 
         install(const std::string& type) {
             if(m_factories.find(type) != m_factories.end()) {
-                throw registry_error_t("duplicate module '" + type + "' has been found");
+                throw registry_error_t("duplicate module '" + type + "' has been detected");
             }
 
             m_factories.insert(
