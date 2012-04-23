@@ -76,4 +76,4 @@ The JSON above is an application manifest, a description of the application you 
 Okay, I want to try it!
 =======================
 
-Then it's time to read our [Wiki](https://github.com/cocaine-core/cocaine/wiki) for installation instructions, reference manuals and cookies!
+Then it's time to read our [Wiki](https://github.com/cocaine/cocaine-core/wiki) for installation instructions, reference manuals and cookies!
