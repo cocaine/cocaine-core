@@ -249,9 +249,10 @@ service<LSD_T>::dispatch_responces() {
 
 					// call callback it it's there
 					if (it != responses_callbacks_map_.end()) {
-						lock.unlock();
 						boost::weak_ptr<response> response_wptr = it->second;
 						boost::shared_ptr<response> response_ptr = response_wptr.lock();
+						
+						lock.unlock();
 						
 						if (!response_ptr) {
 							unregister_responder_callback(resp_ptr->uuid());
