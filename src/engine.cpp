@@ -173,7 +173,7 @@ void engine_t::start() {
     m_watcher.start(m_messages.fd(), ev::READ);
     m_processor.set<engine_t, &engine_t::process>(this);
     m_pumper.set<engine_t, &engine_t::pump>(this);
-    m_pumper.start(0.2f, 0.2f);
+    m_pumper.start(0.005f, 0.005f);
 
     m_gc_timer.set<engine_t, &engine_t::cleanup>(this);
     m_gc_timer.start(5.0f, 5.0f);
