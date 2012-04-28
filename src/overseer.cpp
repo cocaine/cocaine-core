@@ -35,7 +35,7 @@ overseer_t::overseer_t(const config_t& config):
     m_watcher.start(m_messages.fd(), ev::READ);
     m_processor.set<overseer_t, &overseer_t::process>(this);
     m_pumper.set<overseer_t, &overseer_t::pump>(this);
-    m_pumper.start(0.2f, 0.2f);
+    m_pumper.start(0.005f, 0.005f);
 
     m_heartbeat_timer.set<overseer_t, &overseer_t::heartbeat>(this);
     m_heartbeat_timer.start(0.0f, 5.0f);

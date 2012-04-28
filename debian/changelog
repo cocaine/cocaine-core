@@ -1,3 +1,16 @@
+cocaine (0.7.4-3) lucid; urgency=low
+
+  * Version bump.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 25 Apr 2012 19:49:44 +0400
+
+cocaine (0.7.4-2) lucid; urgency=low
+
+  * Core: normalizing the response distribution function.
+  * Dealer: fixed a race condition.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 25 Apr 2012 19:41:34 +0400
+
 cocaine (0.7.4-1) lucid; urgency=low
 
   * Dealer: enabled heartbeat logs.

@@ -167,7 +167,7 @@ message_cache::move_sent_message_to_new(const std::string& uuid) {
 	sent_messages_.erase(it);
 
 	msg->mark_as_sent(false);
-	new_messages_->push_back(msg);
+	new_messages_->push_front(msg);
 }
 
 void

@@ -90,7 +90,7 @@ zeromq_server_t::zeromq_server_t(engine_t& engine, const std::string& method, co
     m_watcher.start(m_socket.fd(), ev::READ);
     m_processor.set<zeromq_server_t, &zeromq_server_t::process>(this);
     m_pumper.set<zeromq_server_t, &zeromq_server_t::pump>(this);
-    m_pumper.start(0.2f, 0.2f);
+    m_pumper.start(0.005f, 0.005f);
 }
 
 zeromq_server_t::~zeromq_server_t() {

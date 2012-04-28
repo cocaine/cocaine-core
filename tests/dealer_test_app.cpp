@@ -23,6 +23,11 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/weak_ptr.hpp>
 #include <boost/flyweight.hpp>
+#include <boost/accumulators/accumulators.hpp>
+#include <boost/accumulators/statistics/median.hpp>
+#include <boost/accumulators/statistics/mean.hpp>
+#include <boost/accumulators/statistics/max.hpp>
+#include <boost/accumulators/statistics/min.hpp>
 
 #include <msgpack.hpp>
 
@@ -32,20 +37,28 @@
 #include <cocaine/dealer/utils/error.hpp>
 
 using namespace cocaine::dealer;
-namespace po = boost::program_options;
+using namespace boost::program_options;
+using namespace boost::accumulators;
 
 std::string config_path = "tests/config_example.json";
 boost::shared_ptr<client> client_ptr;
 
 int messages_count = 0;
+volatile int slow_messages_count = 0;
+
+boost::mutex mutex;
 
 void worker() {
+	accumulator_set<float, features<tag::min, tag::max, tag::mean, tag::median> > accum;
+
 	message_path path("rimz_app", "rimz_func");
 
 	message_policy policy;
 	std::string payload = "response chunk: ";
 
 	for (int i = 0; i < messages_count; ++i) {
+		progress_timer t;
+
 		try {
 			boost::shared_ptr<response> resp;
 
@@ -53,10 +66,13 @@ void worker() {
 				resp = client_ptr->send_message(payload.data(), payload.size(), path, policy);
 			}
 
-			data_container data;	
-			while(resp->get(&data)) {
-				//std::cout << std::string(reinterpret_cast<const char*>(data.data()), 0, data.size()) << std::endl;
-			}
+			data_container data;
+			resp->get(&data);
+			accum(t.elapsed().as_double());
+
+			//while (resp->get(&data)) {
+			//std::cout << std::string(reinterpret_cast<const char*>(data.data()), 0, data.size()) << std::endl;
+			//}
 		}
 		catch (const dealer_error& err) {
 			std::cout << "error code: " << err.code() << ", error message: " << err.what() << std::endl;
@@ -67,11 +83,23 @@ void worker() {
 		catch (...) {
 			std::cout << "caught exception, no error message." << std::endl;
 		}
+
+		if (t.elapsed().as_double() > 0.200) {
+			++slow_messages_count;
+			std::cout << "slow time: " << t.elapsed().as_double() << ", num:" << slow_messages_count << "\n";
+		}
 	}
+
+	boost::mutex::scoped_lock lock(mutex);
+	std::cout << std::fixed << std::setprecision(6);
+	std::cout << "min - " << boost::accumulators::min(accum);
+	std::cout << "\tmax - " << boost::accumulators::max(accum);
+	std::cout << "\tmean - " << boost::accumulators::mean(accum);
+	std::cout << " \tmedian - " << boost::accumulators::median(accum) << "\n" << std::flush;
 }
 
 void create_client(int add_messages_count) {
-	const int pool_size = 1;
+	const int pool_size = 200;
 	
 	std::cout << "----------------------------------- test info -------------------------------------------\n";
 	std::cout << "sending " << add_messages_count * pool_size << " messages using " << pool_size << " threads\n";
@@ -108,15 +136,15 @@ void create_client(int add_messages_count) {
 int
 main(int argc, char** argv) {
 	try {
-		po::options_description desc("Allowed options");
+		options_description desc("Allowed options");
 		desc.add_options()
 			("help", "Produce help message")
-			("messages,m", po::value<int>(), "Add messages to server")
+			("messages,m", value<int>(), "Add messages to server")
 		;
 
-		po::variables_map vm;
-		po::store(po::parse_command_line(argc, argv, desc), vm);
-		po::notify(vm);
+		variables_map vm;
+		store(parse_command_line(argc, argv, desc), vm);
+		notify(vm);
 
 		if (vm.count("help")) {
 			std::cout << desc << std::endl;
