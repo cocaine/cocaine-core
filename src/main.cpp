@@ -11,6 +11,8 @@
 // limitations under the License.
 //
 
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/split.hpp>
 #include <boost/program_options.hpp>
 #include <iostream>
 
@@ -77,7 +79,9 @@ int main(int argc, char * argv[]) {
             "multicast endpoint for automatic discovery")
         ("core:announce-interval", po::value<float>
             (&cfg.core.announce_interval)->default_value(5.0f),
-            "multicast announce interval for automatic discovery, seconds");
+            "multicast announce interval for automatic discovery, seconds")
+        ("core:port-range", po::value<std::string>(),
+            "available port range for driver binding [EXPERIMENTAL]");
 
     storage_options.add_options()
         ("storage:driver", po::value<std::string>
@@ -148,6 +152,28 @@ int main(int argc, char * argv[]) {
     } 
  
     else {
+        if(vm.count("core:port-range")) {
+            std::string range(vm["core:port-range"].as<std::string>());
+            std::vector<std::string> limits;
+
+            boost::algorithm::split(limits, range, boost::algorithm::is_any_of(":-"));
+
+            if(limits.size() != 2) {
+                std::cout << "Error: invalid port range" << std::endl;
+                return EXIT_FAILURE;
+            }
+
+            try {
+                cfg.runtime.ports.assign(
+                    boost::lexical_cast<uint8_t>(limits[0]),
+                    boost::lexical_cast<uint8_t>(limits[1])
+                );
+            } catch(const boost::bad_lexical_cast& e) {
+                std::cout << "Error: invalid port range" << std::endl;
+                return EXIT_FAILURE;
+            }
+        }
+
         std::auto_ptr<helpers::pid_file_t> pidfile;
         std::auto_ptr<core::core_t> core;
 

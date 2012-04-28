@@ -13,6 +13,7 @@
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/assign.hpp>
+#include <boost/format.hpp>
 
 #include "cocaine/drivers/zeromq_server.hpp"
 
@@ -50,6 +51,7 @@ zeromq_server_t::zeromq_server_t(engine_t& engine, const std::string& method, co
     driver_t(engine, method, args),
     m_backlog(args.get("backlog", 1000).asUInt()),
     m_linger(args.get("linger", 0).asInt()),
+    m_port(0),
     m_socket(m_engine.context().io(), type, boost::algorithm::join(
         boost::assign::list_of
             (m_engine.context().config.runtime.hostname)
@@ -61,7 +63,19 @@ zeromq_server_t::zeromq_server_t(engine_t& engine, const std::string& method, co
     std::string endpoint(args.get("endpoint", "").asString());
 
     if(endpoint.empty()) {
-        throw configuration_error_t("no endpoint has been specified");
+        if(m_engine.context().config.runtime.ports.empty()) {
+            throw configuration_error_t("no more free ports left");
+        }
+
+        m_port = m_engine.context().config.runtime.ports.front();
+
+        std::string endpoint = (
+            boost::format(
+                "tcp://*:%d"
+            ) % m_port
+        ).str();
+    
+        m_engine.context().config.runtime.ports.pop_front();
     }
 
     try {
@@ -83,6 +97,10 @@ zeromq_server_t::~zeromq_server_t() {
     m_watcher.stop();
     m_processor.stop();
     m_pumper.stop();
+
+    if(m_port) {
+        m_engine.context().config.runtime.ports.push_front(m_port);
+    }
 }
 
 Json::Value zeromq_server_t::info() {

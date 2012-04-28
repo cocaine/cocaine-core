@@ -15,6 +15,7 @@
 #define COCAINE_CONTEXT_HPP
 
 #include <boost/thread/mutex.hpp>
+#include <deque>
 #include <msgpack.hpp>
 
 #include "cocaine/common.hpp"
@@ -71,6 +72,9 @@ struct config_t {
     struct {
         std::string self;
         std::string hostname;
+
+        // Usable port range
+        std::deque<uint8_t> ports;
     } runtime;
 
     // Logging sink.

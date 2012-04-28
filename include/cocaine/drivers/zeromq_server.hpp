@@ -66,6 +66,7 @@ class zeromq_server_t:
     protected:
         uint64_t m_backlog;
         int m_linger;
+        uint8_t m_port;
 
         ev::io m_watcher; 
         ev::idle m_processor;
