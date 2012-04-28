@@ -74,7 +74,7 @@ struct config_t {
         std::string hostname;
 
         // Usable port range
-        std::deque<uint8_t> ports;
+        std::deque<uint16_t> ports;
     } runtime;
 
     // Logging sink.

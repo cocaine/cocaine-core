@@ -69,9 +69,9 @@ zeromq_server_t::zeromq_server_t(engine_t& engine, const std::string& method, co
 
         m_port = m_engine.context().config.runtime.ports.front();
 
-        std::string endpoint = (
+        endpoint = (
             boost::format(
-                "tcp://*:%d"
+                "tcp://*:%1%"
             ) % m_port
         ).str();
     

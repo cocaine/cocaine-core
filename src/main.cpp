@@ -13,6 +13,7 @@
 
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
+#include <boost/iterator/counting_iterator.hpp>
 #include <boost/program_options.hpp>
 #include <iostream>
 
@@ -81,7 +82,7 @@ int main(int argc, char * argv[]) {
             (&cfg.core.announce_interval)->default_value(5.0f),
             "multicast announce interval for automatic discovery, seconds")
         ("core:port-range", po::value<std::string>(),
-            "available port range for driver binding [EXPERIMENTAL]");
+            "available port range for applications");
 
     storage_options.add_options()
         ("storage:driver", po::value<std::string>
@@ -153,23 +154,26 @@ int main(int argc, char * argv[]) {
  
     else {
         if(vm.count("core:port-range")) {
-            std::string range(vm["core:port-range"].as<std::string>());
             std::vector<std::string> limits;
 
-            boost::algorithm::split(limits, range, boost::algorithm::is_any_of(":-"));
+            boost::algorithm::split(
+                limits,
+                vm["core:port-range"].as<std::string>(),
+                boost::algorithm::is_any_of(":-")
+            );
 
             if(limits.size() != 2) {
-                std::cout << "Error: invalid port range" << std::endl;
+                std::cout << "Error: invalid port range format" << std::endl;
                 return EXIT_FAILURE;
             }
 
             try {
                 cfg.runtime.ports.assign(
-                    boost::lexical_cast<uint8_t>(limits[0]),
-                    boost::lexical_cast<uint8_t>(limits[1])
+                    boost::make_counting_iterator(boost::lexical_cast<uint16_t>(limits[0])),
+                    boost::make_counting_iterator(boost::lexical_cast<uint16_t>(limits[1]))
                 );
             } catch(const boost::bad_lexical_cast& e) {
-                std::cout << "Error: invalid port range" << std::endl;
+                std::cout << "Error: invalid port range values" << std::endl;
                 return EXIT_FAILURE;
             }
         }
