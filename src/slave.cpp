@@ -11,6 +11,7 @@
 // limitations under the License.
 //
 
+#include <boost/assign.hpp>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -51,10 +52,32 @@ bool slave_t::operator==(const slave_t& other) const {
     return id() == other.id();
 }
 
+namespace {
+    typedef std::map<
+        sc::event_base::id_type,
+        std::string
+    > event_names_t;
+
+    event_names_t names = boost::assign::map_list_of
+        (events::heartbeat_t::static_type(), "heartbeat")
+        (events::terminate_t::static_type(), "terminate")
+        (events::invoke_t::static_type(), "invoke")
+        (events::push_t::static_type(), "push")
+        (events::delegate_t::static_type(), "delegate")
+        (events::error_t::static_type(), "error")
+        (events::release_t::static_type(), "release");
+}
+
 void slave_t::unconsumed_event(const sc::event_base& event) {
+    event_names_t::const_iterator it(names.find(event.dynamic_type()));
+
+    // TEST: Unconsumed rogue event is a fatal error.
+    BOOST_ASSERT(it != names.end());
+
     m_engine.app().log->warning(
-        "slave %s detected an unconsumed event",
-        id().c_str()
+        "slave %s detected an unconsumed '%s' event",
+        id().c_str(),
+        it->second.c_str()
     );
 }
 
