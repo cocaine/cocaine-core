@@ -18,7 +18,6 @@
 
 #include "cocaine/context.hpp"
 #include "cocaine/drivers.hpp"
-#include "cocaine/logging.hpp"
 #include "cocaine/rpc.hpp"
 
 using namespace cocaine::engine;
@@ -367,7 +366,9 @@ void engine_t::enqueue(job_queue_t::value_type job, bool overflow) {
                     e.reason()
                 );
             }
-        } else if(!overflow && (m_queue.size() > m_app.policy.queue_limit)) {
+        }
+
+        if((m_queue.size() >= m_app.policy.queue_limit) && !overflow) {
             job->process_event(
                 events::error_t(
                     dealer::resource_error,
