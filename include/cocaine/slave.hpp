@@ -69,7 +69,7 @@ class slave_t:
         void on_terminate(const events::terminate_t& event);
 
         void on_timeout(ev::timer&, int);
-        void on_signal(ev::child& event, int);
+        void on_signal(ev::child&, int);
 
     private:    
         engine_t& m_engine;
