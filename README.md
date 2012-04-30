@@ -1,7 +1,7 @@
 What the hell is it?
 ====================
 
-Your personal application engine.
+**Your personal application engine.**
 
 WAT?
 ====
@@ -65,8 +65,7 @@ An example
             "interval": 60000
         },
         "event": {
-            "type" : "zeromq-server",
-            "endpoint" : "tcp://lo:9100"
+            "type" : "native-server"
         },
         "spool": {
             "type": "filesystem-monitor",
