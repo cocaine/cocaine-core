@@ -1,7 +1,12 @@
 What the hell is it?
 ====================
 
-Cocaine is a fast and lightweight multi-language (you can easily write your own language binding) event-driven (also, you can easily write your own event drivers) task-based distributed application server built on top of ZeroMQ transport and MessagePack serialization library. Yeah, it __is__ cool.
+**Your personal application engine.**
+
+WAT?
+====
+
+Cocaine is a fast and lightweight multi-language (you can easily write your own language binding) event-driven (also, you can easily write your own event drivers) task-based distributed application engine. Yeah, it __is__ cool.
 
 Notable features:
 
@@ -60,8 +65,7 @@ An example
             "interval": 60000
         },
         "event": {
-            "type" : "zeromq-server",
-            "endpoint" : "tcp://lo:9100"
+            "type" : "native-server"
         },
         "spool": {
             "type": "filesystem-monitor",
