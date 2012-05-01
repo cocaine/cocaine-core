@@ -1,21 +1,21 @@
 What the hell is it?
 ====================
 
-**Your personal application engine.**
+__Your personal App Engine.__
 
-WAT?
-====
+Like GAE?
+=========
 
-Cocaine is a fast and lightweight multi-language (you can easily write your own language binding) event-driven (also, you can easily write your own event drivers) task-based distributed application engine. Yeah, it __is__ cool.
+Sort of. Cocaine is a fast and lightweight multi-language (you can easily write your own language binding) event-driven (also, you can easily write your own event drivers) task-based distributed application engine. Actually, it's better.
 
 Notable features:
 
 * Apps are defined as a set of tasks, which trigger events in the app engine, which are then processed on a slave pool. Tasks can be servers, time-based jobs, filesystem monitors, etc.
-* Dynamic self-managing slave pools for each app with a rich configuration to suit the application needs in the best way.
+* Dynamic self-managing slave pools for each app with a rich but simple configuration to scale with the application needs.
+* Data streaming and pipelining.
+* Automatic node discovery and smart peer-to-peer balancing. Note that ZeroMQ already offers built-in fair balancing features which you can use, although they do not consider real node load.
 * Optional resource control via Linux cgroups.
 * Optional secure communications using RSA encryption.
-* Support for chunked responses and, soon, requests.
-* Automatic node discovery and smart peer-to-peer balancing. Note that ZeroMQ already offers built-in fair balancing features which you can use, although they do not consider real node load.
 * Simple modular design to add new languages, task types, storages and slave backends easily.
 
 At the moment, Cocaine supports the following languages and specifications:
@@ -34,13 +34,13 @@ The application tasks can be driven by any of the following drivers:
 * Filesystem Monitor
 * ZeroMQ Server (Request-Response)
 * [In Development] ZeroMQ Subscriber (Publishing Chain)
-* Native Server
+* Native Server (Request-Response + Smart Balancing)
 * ZeroMQ Sink (Request-Publish)
-* Native Sink (Request-Publish)
-* [Planned] Raw Socket Server
+* [Planned] Native Sink (Request-Publish)
+* [In Development] Raw Socket Server
 
-An example
-==========
+A motivating example
+====================
 
 ```python
 {
