@@ -28,7 +28,7 @@ struct message_policy {
         urgent(false),
         mailboxed(false),
         timeout(0.0f),
-        deadline(0.0f),
+        deadline(0.05f), // 500 millisec
         max_timeout_retries(0) {};
 
     message_policy(bool send_to_all_hosts_,
@@ -76,6 +76,10 @@ struct message_policy {
     }
 
     policy_t server_policy() const {
+        return policy_t(urgent, timeout, deadline);
+    }
+
+    policy_t server_policy() {
         return policy_t(urgent, timeout, deadline);
     }
 

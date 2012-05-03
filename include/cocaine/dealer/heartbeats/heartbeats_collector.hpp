@@ -73,7 +73,11 @@ private:
 								DT::ip_addr ip,
 								std::string& response);
 
-	static const int hosts_ping_timeout = 2; // seconds
+	void log_responded_hosts_handles(const service_info_t& s_info,
+									 const std::vector<host_info_t>& responded_hosts,
+									 const std::vector<handle_info_t>& collected_handles);
+
+	static const int hosts_ping_timeout = 2000; // milliseconds
 	static const int host_socket_ping_timeout = 2000000; // (2 seconds) microseconds FIX in zmq 3.1
 
 private:
@@ -362,25 +366,7 @@ heartbeats_collector<HostsFetcher>::ping_service_hosts(const service_info_t& s_i
 		}
 	}
 
-	std::string error_msg = "heartbeats - responded hosts for service: " + s_info.name_ + ": ";
-	for (size_t i = 0; i < responded_hosts.size(); ++i) {
-		error_msg += responded_hosts[i].as_string();
-
-		if (i != responded_hosts.size() - 1) {
-			error_msg += "\n";
-		}
-	}
-	logger_->log(PLOG_DEBUG, error_msg);
-
-	error_msg = "heartbeats - collected handles: ";
-	for (size_t i = 0; i < collected_handles.size(); ++i) {
-		error_msg += collected_handles[i].as_string();
-
-		if (i != collected_handles.size() - 1) {
-			error_msg += "\n";
-		}
-	}
-	logger_->log(PLOG_DEBUG, error_msg);
+	log_responded_hosts_handles(s_info, responded_hosts, collected_handles);
 
 	// check that all handles from pinged hosts are the same
 	validate_host_handles(s_info, responded_hosts, hosts_and_handles);
@@ -388,6 +374,33 @@ heartbeats_collector<HostsFetcher>::ping_service_hosts(const service_info_t& s_i
 	// pass collected data to callback
 	boost::mutex::scoped_lock lock(mutex_);
 	callback_(s_info, responded_hosts, collected_handles);
+}
+
+template <typename HostsFetcher> void
+heartbeats_collector<HostsFetcher>::log_responded_hosts_handles(const service_info_t& s_info,
+																const std::vector<host_info_t>& responded_hosts,
+																const std::vector<handle_info_t>& collected_handles)
+{
+	std::string log_msg = "heartbeats - responded hosts for service \"" + s_info.name_ + "\":";
+
+	if (responded_hosts.size() == 0) {
+		log_msg += " no hosts";
+
+		logger_->log(PLOG_DEBUG, log_msg);
+	}
+	else {
+		logger_->log(PLOG_DEBUG, log_msg);
+
+		for (size_t i = 0; i < responded_hosts.size(); ++i) {
+			logger_->log(PLOG_DEBUG, "heartbeats - host %d - %s", i + 1, responded_hosts[i].as_string().c_str());
+		}
+
+		logger_->log(PLOG_DEBUG, "heartbeats - collected handles: ");
+
+		for (size_t i = 0; i < collected_handles.size(); ++i) {
+			logger_->log(PLOG_DEBUG, "heartbeats - handle %d - %s", i + 1, collected_handles[i].as_string().c_str());
+		}
+	}
 }
 
 template <typename HostsFetcher> void
@@ -538,8 +551,7 @@ heartbeats_collector<HostsFetcher>::parse_host_response(const service_info_t& s_
 
         if (!is_app_running) {
         	std::string err_msg = "heartbeats - service " + s_info.app_name_ + " at host ";
-        	err_msg += host_ip + "is stopped ";
-        	err_msg += ", call at " + std::string(BOOST_CURRENT_FUNCTION);
+        	err_msg += host_ip + " is STOPPED.";
 			logger_->log(PLOG_DEBUG, err_msg);
 			continue;
         }

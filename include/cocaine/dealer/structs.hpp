@@ -31,25 +31,6 @@
 namespace cocaine {
 namespace dealer {
 
-static const int PROTOCOL_VERSION = 1;
-static const int STATISTICS_PROTOCOL_VERSION = 1;
-static const int CONFIG_VERSION = 1;
-static const unsigned long long MESSAGE_TIMEOUT = 10;	// seconds
-static const unsigned long long HEARTBEAT_INTERVAL = 1;	// seconds
-static const unsigned long long DEFAULT_SOCKET_POLL_TIMEOUT = 2000; // milliseconds
-static const unsigned long long DEFAULT_SOCKET_PING_TIMEOUT = 1000; // milliseconds
-
-static const std::string DEFAULT_EBLOB_PATH = "/tmp/pmq_eblob";
-static size_t DEFAULT_EBLOB_BLOB_SIZE = 2147483648; // 2 gb
-static const int DEFAULT_EBLOB_SYNC_INTERVAL = 2;
-
-static const std::string DEFAULT_HOSTS_URL = "";
-static const unsigned short DEFAULT_CONTROL_PORT = 5555;
-static const std::string DEFAULT_MULTICAST_IP = "226.1.1.1";
-static const unsigned short DEFAULT_MULTICAST_PORT = 5556;
-static const unsigned short DEFAULT_STATISTICS_PORT = 3333;
-static const size_t DEFAULT_MAX_MESSAGE_CACHE_SIZE = 512; // megabytes
-
 struct dealer_types {
 	typedef boost::uint32_t ip_addr;
 	typedef boost::uint16_t port;
@@ -62,23 +43,6 @@ struct response_code {
 	static const int unknown_error = 1;
 	static const int message_chunk = 2;
 	static const int message_choke = 3;
-};
-
-enum logger_type {
-	STDOUT_LOGGER = 1,
-	FILE_LOGGER,
-	SYSLOG_LOGGER
-};
-
-enum autodiscovery_type {
-	AT_MULTICAST = 1,
-	AT_HTTP,
-	AT_FILE
-};
-
-enum message_cache_type {
-	RAM_ONLY = 1,
-	PERSISTENT
 };
 
 struct msg_queue_status {

@@ -101,7 +101,7 @@ public:
 		return hostname_for_ip(string_from_ip(ip));
 	}
 
-	std::string as_string() {
+	std::string as_string() const {
 		return string_from_ip(ip_) + " (" + hostname_ + ")";
 	}
 

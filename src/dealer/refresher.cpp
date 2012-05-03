@@ -19,16 +19,15 @@
 namespace cocaine {
 namespace dealer {
 
-refresher::refresher(boost::function<void()> f, boost::uint32_t timeout_seconds) :
+refresher::refresher(boost::function<void()> f, boost::uint32_t timeout) :
 	f_(f),
-	timeout_(timeout_seconds),
+	timeout_(timeout),
 	stopping_(false),
 	refreshing_thread_(boost::bind(&refresher::refreshing_thread, this)) {
 }
 
 refresher::~refresher() {
 	stopping_ = true;
-	condition_.notify_one();
 	refreshing_thread_.join();
 }
 
@@ -40,11 +39,8 @@ refresher::refreshing_thread() {
 
 	while (!stopping_) {
 		boost::mutex::scoped_lock lock(mutex_);
-		boost::xtime t;
-		boost::xtime_get(&t, boost::TIME_UTC);
 		
-		t.sec += timeout_;
-		condition_.timed_wait(lock, t);
+		boost::this_thread::sleep(boost::posix_time::milliseconds(timeout_));
 		
 		if (!stopping_ && f_) {
 			f_();

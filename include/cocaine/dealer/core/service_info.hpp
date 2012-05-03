@@ -18,6 +18,7 @@
 #include <map>
 
 #include "cocaine/dealer/structs.hpp"
+#include "cocaine/dealer/defaults.hpp"
 
 namespace cocaine {
 namespace dealer {
@@ -39,13 +40,14 @@ public:
 				  const std::string& app_name,
 				  const std::string& instance,
 				  const std::string& hosts_file,
-				  const std::string& hosts_url) :
+				  const std::string& hosts_url,
+				  typename LSD_T::port control_port) :
 					  name_(name),
 					  description_(description),
 					  app_name_(app_name),
 					  hosts_file_(hosts_file),
 					  hosts_url_(hosts_url),
-					  control_port_(DEFAULT_CONTROL_PORT) {};
+					  control_port_(control_port) {};
 	
 	bool operator == (const service_info& rhs) {
 		return (name_ == rhs.name_ &&

@@ -64,6 +64,7 @@ public:
 
 	bool is_sent() const;
 	const time_value& sent_timestamp() const;
+	const time_value& enqued_timestamp() const;
 
 	void mark_as_sent(bool value);
 
@@ -257,6 +258,11 @@ cached_message<DataContainer, MetadataContainer>::sent_timestamp() const {
 	return sent_timestamp_;
 }
 
+template<typename DataContainer, typename MetadataContainer> const time_value&
+cached_message<DataContainer, MetadataContainer>::enqued_timestamp() const {
+	return mdata_.enqueued_timestamp;
+}
+
 template<typename DataContainer, typename MetadataContainer> const message_path&
 cached_message<DataContainer, MetadataContainer>::path() const {
 	return mdata_.path();
@@ -292,7 +298,10 @@ cached_message<DataContainer, MetadataContainer>::is_expired() {
 		return false;
 	}
 
-	if (time_value::get_current_time() > time_value(mdata_.policy.deadline)) {
+	time_value curr_time = time_value::get_current_time();
+	time_value elapsed = curr_time.distance(mdata_.enqueued_timestamp);
+
+	if (elapsed.as_double() > mdata_.policy.deadline) {
 		return true;
 	}
 

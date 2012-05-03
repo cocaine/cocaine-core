@@ -19,9 +19,7 @@
 #include <memory>
 #include <map>
 #include <vector>
-#include <deque>
-
-#include <zmq.hpp>
+#include <list>
 
 #include <boost/shared_ptr.hpp>
 #include <boost/utility.hpp>
@@ -37,9 +35,11 @@
 #include "cocaine/dealer/core/service_info.hpp"
 #include "cocaine/dealer/core/message_iface.hpp"
 #include "cocaine/dealer/core/cached_response.hpp"
+
 #include "cocaine/dealer/utils/error.hpp"
 #include "cocaine/dealer/utils/smart_logger.hpp"
 #include "cocaine/dealer/utils/refresher.hpp"
+
 #include "cocaine/dealer/storage/eblob.hpp"
 
 namespace cocaine {
@@ -86,9 +86,9 @@ public:
 								   const std::vector<handle_info<LSD_T> >& handles);
 
 	void send_message(cached_message_prt_t message);
+	bool is_dead();
 
 	service_info<LSD_T> info() const;
-	bool is_dead();
 
 	void register_responder_callback(const std::string& message_uuid, const boost::shared_ptr<response>& response);
 	void unregister_responder_callback(const std::string& message_uuid);
@@ -114,6 +114,7 @@ private:
 	void enqueue_responce(cached_response_prt_t response);
 	void dispatch_responces();
 	bool responces_queues_empty() const;
+	void verify_unhandled_msg_queue_for_handle(const handle_ptr_t& handle);
 
 	boost::shared_ptr<base_logger> logger();
 	boost::shared_ptr<configuration> config();
@@ -155,7 +156,7 @@ private:
 	// deadlined messages refresher
 	std::auto_ptr<refresher> deadlined_messages_refresher_;
 
-	static const int deadline_check_interval = 1;
+	static const int deadline_check_interval = 10; // millisecs
 
 	bool is_dead_;
 };
@@ -172,7 +173,7 @@ service<LSD_T>::service(const service_info<LSD_T>& info, boost::shared_ptr<cocai
 	thread_ = boost::thread(&service<LSD_T>::dispatch_responces, this);
 
 	// run timed out messages checker
-	//deadlined_messages_refresher_.reset(new refresher(boost::bind(&service<LSD_T>::check_for_deadlined_messages, this), deadline_check_interval));
+	deadlined_messages_refresher_.reset(new refresher(boost::bind(&service<LSD_T>::check_for_deadlined_messages, this), deadline_check_interval));
 }
 
 template <typename LSD_T>
@@ -502,6 +503,29 @@ service<LSD_T>::refresh_handles(const handles_info_list_t& handles,
 }
 
 template <typename LSD_T> void
+service<LSD_T>::verify_unhandled_msg_queue_for_handle(const handle_ptr_t& handle) {
+	// find corresponding unhandled message queue
+	unhandled_messages_map_t::iterator it = unhandled_messages_.find(handle->info().name_);
+
+	// should not find a queue with messages!
+	if (it == unhandled_messages_.end()) {
+		return;
+	}
+
+	messages_deque_ptr_t msg_queue = it->second;
+
+	if (msg_queue && !msg_queue->empty()) {
+		std::string error_str = "found unhandled non-empty message queue with existing handle for ";
+		error_str += " handle " + handle->description();
+		error_str += ". at " + std::string(BOOST_CURRENT_FUNCTION);
+		throw internal_error(error_str);
+	}
+
+	// remove empty queue if any
+	unhandled_messages_.erase(it);
+}
+
+template <typename LSD_T> void
 service<LSD_T>::remove_outstanding_handles(const handles_info_list_t& handles) {
 	boost::mutex::scoped_lock lock(mutex_);
 
@@ -511,7 +535,6 @@ service<LSD_T>::remove_outstanding_handles(const handles_info_list_t& handles) {
 	}
 
 	std::string message_str = "service: [" + info_.name_ + "] is removing outstanding handles: ";
-
 	for (size_t i = 0; i < handles.size(); ++i) {
 		message_str += handles[i].name_;
 
@@ -529,63 +552,26 @@ service<LSD_T>::remove_outstanding_handles(const handles_info_list_t& handles) {
 		if (it != handles_.end()) {
 			handle_ptr_t handle = it->second;
 
-			// check handle
-			if (!handle) {
-				std::string error_str = "service handle object is empty. service: " + info_.name_;
-				error_str += ", handle: " + handles[i].name_;
-				error_str += ". at " + std::string(BOOST_CURRENT_FUNCTION);
-				throw internal_error(error_str);
-			}
-
 			// immediately terminate all handle activity
 			lock.unlock();
 			handle->disconnect();
 			lock.lock();
 
-			boost::shared_ptr<message_cache> msg_cache = handle->messages_cache();
+			verify_unhandled_msg_queue_for_handle(handle);
 
-			// check handle message cache
-			if (!msg_cache) {
-				std::string error_str = "handle message cache object is empty. service: " + info_.name_;
-				error_str += ", handle: " + handles[i].name_;
-				error_str += ". at " + std::string(BOOST_CURRENT_FUNCTION);
-				throw internal_error(error_str);
-			}
-
-			// consolidate all handle messages
-			msg_cache->make_all_messages_new();
-
-			// find corresponding unhandled msgs queue
-			unhandled_messages_map_t::iterator it = unhandled_messages_.find(handle->info().name_);
-
-			// should not find a queue with messages!
-			if (it != unhandled_messages_.end()) {
-				messages_deque_ptr_t msg_queue = it->second;
-
-				if (msg_queue && !msg_queue->empty()) {
-					std::string error_str = "found unhandled non-empty message queue with existing handle!";
-					error_str += " service: " + info_.name_ + ", handle: " + handles[i].name_;
-					error_str += ". at " + std::string(BOOST_CURRENT_FUNCTION);
-					throw internal_error(error_str);
-				}
-
-				// remove empty queue if any
-				unhandled_messages_.erase(it);
-			}
+			// consolidate all handle's messages
+			handle->make_all_messages_new();
 
 			// move handle messages to unhandled messages map in service
-			messages_deque_ptr_t handle_msg_queue = msg_cache->new_messages();
+			messages_deque_ptr_t handle_msg_queue = handle->new_messages();
 
 			// validate handle queue
-			if (!handle_msg_queue) {
-				std::string error_str = "found empty handle message queue when handle exists!";
-				error_str += " service: " + info_.name_ + ", handle: " + handles[i].name_;
-				error_str += ". at " + std::string(BOOST_CURRENT_FUNCTION);
-				throw internal_error(error_str);
-			}
+			assert(handle_msg_queue);
 
 			// in case there are messages, store them
 			if (!handle_msg_queue->empty()) {
+				logger()->log(PLOG_DEBUG, "moving message queue from handle %s to service, queue size: %d",
+							  handle->description().c_str(), handle_msg_queue->size());
 				unhandled_messages_[handle->info().name_] = handle_msg_queue;
 			}
 		}
@@ -605,55 +591,39 @@ service<LSD_T>::create_new_handles(const handles_info_list_t& handles, const hos
 
 	// create handles
 	for (size_t i = 0; i < handles.size(); ++i) {
-		handle_ptr_t handle_ptr;
+		handle_ptr_t handle;
 		handle_info<LSD_T> handle_info = handles[i];
 		handle_info.service_name_ = info_.name_;
 
 		lock.unlock();
-		handle_ptr.reset(new handle<LSD_T>(handle_info, context_, hosts));
+		handle.reset(new dealer::handle<LSD_T>(handle_info, context_, hosts));
 		lock.lock();
 
 		// set responce callback
-		typedef typename handle<LSD_T>::responce_callback_t resp_callback;
+		typedef typename dealer::handle<LSD_T>::responce_callback_t resp_callback;
 		resp_callback callback = boost::bind(&service<LSD_T>::enqueue_responce, this, _1);
 
 		lock.unlock();
-		handle_ptr->set_responce_callback(callback);
+		handle->set_responce_callback(callback);
 		lock.lock();
 
-		// find corresponding unhandled msgs queue
+		// move existing unhandled message queue to handle
 		unhandled_messages_map_t::iterator it = unhandled_messages_.find(handles[i].name_);
-
-		// validate queue
 		if (it != unhandled_messages_.end()) {
 			messages_deque_ptr_t msg_queue = it->second;
 
-			// add existing message queue to handle
-			if (msg_queue.get() && !msg_queue->empty()) {
-
-				// validate handle's message cache object
+			if (msg_queue && !msg_queue->empty()) {
 				lock.unlock();
-				if (handle_ptr->messages_cache().get()) {
-					logger()->log(PLOG_DEBUG, "appending existing mesage queue for [%s.%s], queue size: %d",
-								  info_.name_.c_str(), handles[i].name_.c_str(), msg_queue->size());
-					handle_ptr->messages_cache()->append_message_queue(msg_queue);
-				}
-				else {
-					std::string error_str = "found empty handle message queue when handle exists!";
-					error_str += " service: " + info_.name_ + ", handle: " + handles[i].name_;
-					error_str += ". at " + std::string(BOOST_CURRENT_FUNCTION);
-					throw internal_error(error_str);
-				}
+				logger()->log(PLOG_DEBUG, "assign unhandled message queue to handle %s, queue size: %d",
+							  handle->description().c_str(), msg_queue->size());
+				handle->assign_message_queue(it->second);
 				lock.lock();
 			}
 
-			// remove message queue from unhandled messages map
 			unhandled_messages_.erase(it);
 		}
 
-		// add handle to storage and connect it
-		handles_[handles[i].name_] = handle_ptr;
-		//handles_[handles[i].name_]->connect(hosts);
+		handles_[handles[i].name_] = handle;
 	}
 }
 
@@ -661,63 +631,86 @@ template <typename LSD_T> void
 service<LSD_T>::send_message(cached_message_prt_t message) {
 	boost::mutex::scoped_lock lock(mutex_);
 
-	if (!message) {
-		std::string error_str = "message object is empty. service: " + info_.name_;
-		error_str += ". at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw internal_error(error_str);
-	}
-
 	const std::string& handle_name = message->path().handle_name;
 
 	// find existing handle to enqueue message
 	typename handles_map_t::iterator it = handles_.find(handle_name);
 	if (it != handles_.end()) {
-		handle_ptr_t handle_ptr = it->second;
+		handle_ptr_t handle = it->second;
 
 		// make sure we have valid handle
-		if (handle_ptr) {
-			lock.unlock();
-			handle_ptr->enqueue_message(message);
-			lock.lock();
-		}
-		else {
-			std::string error_str = "handle object " + handle_name;
-			error_str += " for service: " + info_.name_ + " is empty.";
-			error_str += " at " + std::string(BOOST_CURRENT_FUNCTION);
-			throw internal_error(error_str);
-		}
+		lock.unlock();
+		assert(handle);
+		handle->enqueue_message(message);
+		lock.lock();
 	}
 	else {
 		// if no handle, store locally
 		unhandled_messages_map_t::iterator it = unhandled_messages_.find(handle_name);
 
 		// check for existing messages queue for handle
-		messages_deque_ptr_t queue_ptr;
+		messages_deque_ptr_t queue;
 
 		if (it == unhandled_messages_.end()) {
-			queue_ptr.reset(new cached_messages_deque_t);
-			queue_ptr->push_back(message);
-			unhandled_messages_[handle_name] = queue_ptr;
+			queue.reset(new cached_messages_deque_t);
+			queue->push_back(message);
+			unhandled_messages_[handle_name] = queue;
 		}
 		else {
-			queue_ptr = it->second;
-
-			// validate msg queue
-			if (!queue_ptr) {
-				std::string error_str = "found empty message queue object in unhandled messages map!";
-				error_str += " service: " + info_.name_ + ", handle: " + handle_name;
-				error_str += ". at " + std::string(BOOST_CURRENT_FUNCTION);
-				throw internal_error(error_str);
-			}
-
-			queue_ptr->push_back(message);
+			queue = it->second;
+			assert(queue);
+			queue->push_back(message);
 		}
 	}
 }
 
 template<typename LSD_T> void
 service<LSD_T>::check_for_deadlined_messages() {
-	//unhandled_messages_
+	boost::mutex::scoped_lock lock(mutex_);
+
+	unhandled_messages_map_t::iterator it = unhandled_messages_.begin();
+
+	for (; it != unhandled_messages_.end(); ++it) {
+		messages_deque_ptr_t queue = it->second;
+		cached_messages_deque_t::iterator qit = queue->begin();
+
+		// create tmp queue
+		messages_deque_ptr_t not_expired_queue(new cached_messages_deque_t);
+		messages_deque_ptr_t expired_queue(new cached_messages_deque_t);
+		bool found_expired = false;
+
+		for (;qit != queue->end(); ++qit) {
+			if ((*qit)->is_expired()) {
+				expired_queue->push_back(*qit);
+				found_expired = true;
+			}
+			else {
+				not_expired_queue->push_back(*qit);
+			}
+		}
+
+		if (!found_expired) {
+			continue;
+		}
+
+		logger()->log(PLOG_DEBUG, "message expired");		
+		it->second = not_expired_queue;
+
+		// create error response for deadlined message
+		cached_messages_deque_t::iterator expired_qit = expired_queue->begin();
+
+		for (;expired_qit != expired_queue->end(); ++expired_qit) {
+			cached_response_prt_t response;
+			response.reset(new cached_response((*expired_qit)->uuid(),
+											   (*expired_qit)->path(),
+											   deadline_error,
+											   "message expired"));
+
+			lock.unlock();
+			enqueue_responce(response);
+			lock.lock();
+		}
+	}
 }
 
 template<typename T>

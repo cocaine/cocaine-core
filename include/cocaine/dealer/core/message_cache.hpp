@@ -17,7 +17,7 @@
 #include <string>
 #include <memory>
 #include <map>
-#include <deque>
+#include <list>
 
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/mutex.hpp>
@@ -25,6 +25,7 @@
 #include <eblob/eblob.hpp>
 
 #include "cocaine/dealer/structs.hpp"
+#include "cocaine/dealer/defaults.hpp"
 #include "cocaine/dealer/core/context.hpp"
 #include "cocaine/dealer/core/message_iface.hpp"
 
@@ -42,7 +43,7 @@ public:
 
 public:
 	explicit message_cache(boost::shared_ptr<cocaine::dealer::context> context,
-						   enum message_cache_type type);
+						   enum e_message_cache_type type);
 
 	virtual ~message_cache();
 
@@ -70,7 +71,7 @@ private:
 
 private:
 	boost::shared_ptr<cocaine::dealer::context> context_;
-	enum message_cache_type type_;
+	enum e_message_cache_type type_;
 
 	messages_index_t sent_messages_;
 	message_queue_ptr_t new_messages_;

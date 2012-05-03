@@ -51,8 +51,8 @@ public:
 				port_ == sh.port_);
 	};
 
-	std::string as_string() {
-		std::string str_result = service_name_ + "." + name_ + " port: ";
+	std::string as_string() const {
+		std::string str_result = "[" + service_name_ + "].[" + name_ + "], port: ";
 		return str_result + boost::lexical_cast<std::string>(port_);
 	}
 

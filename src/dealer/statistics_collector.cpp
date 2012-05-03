@@ -20,6 +20,7 @@
 #include <zmq.hpp>
 
 #include "cocaine/dealer/structs.hpp"
+#include "cocaine/dealer/defaults.hpp"
 #include "cocaine/dealer/utils/error.hpp"
 #include "cocaine/dealer/core/host_info.hpp"
 #include "cocaine/dealer/utils/smart_logger.hpp"
@@ -194,7 +195,7 @@ statistics_collector::process_remote_connection() {
 }
 
 std::string
-statistics_collector::get_error_json(enum statictics_req_error err) const {
+statistics_collector::get_error_json(enum e_statictics_req_error err) const {
 	Json::Value error_json(Json::objectValue);
 	Json::FastWriter writer;
 
@@ -229,29 +230,11 @@ statistics_collector::get_error_json(enum statictics_req_error err) const {
 }
 
 std::string
-statistics_collector::cache_stats_json() const {
-	Json::FastWriter writer;
-	Json::Value root;
-	root["1 - max cache size"] = (unsigned int)config()->max_message_cache_size();
-	root["2 - used bytes"] = (unsigned int)used_cache_size_;
-	root["3 - free bytes"] = (unsigned int)(config()->max_message_cache_size() - used_cache_size_);
-
-	return writer.write(root);
-}
-
-std::string
 statistics_collector::all_services_json() {
 	boost::mutex::scoped_lock lock(mutex_);
 
 	Json::FastWriter writer;
 	Json::Value root;
-
-	// cache info
-	Json::Value cache_info;
-	cache_info["1 - max cache size"] = (unsigned int)config()->max_message_cache_size();
-	cache_info["2 - used bytes"] = (unsigned int)used_cache_size_;
-	cache_info["3 - free bytes"] = (unsigned int)(config()->max_message_cache_size() - used_cache_size_);
-	root["1 - cache info"] = cache_info;
 
 	// queues totals info
 	size_t total_queued_messages = 0;
@@ -384,10 +367,10 @@ statistics_collector::process_request_json(const std::string& request_json) {
 	}
 
 	// check protocol version
-	int version = root.get("version", 1239846245).asUInt();
+	int version = root.get("version", -1).asUInt();
 
-	if (version != STATISTICS_PROTOCOL_VERSION) {
-		if (version == 1239846245) {
+	if (version != defaults::statistics_protocol_version) {
+		if (version == -1) {
 			return get_error_json(SRE_NO_VERSION_ERROR);
 		}
 		else {
@@ -396,8 +379,8 @@ statistics_collector::process_request_json(const std::string& request_json) {
 	}
 
 	// check action
-	std::string action = root.get("action", "1239846245").asString();
-	if (action == "1239846245") {
+	std::string action = root.get("action", "").asString();
+	if (action == "") {
 		return get_error_json(SRE_NO_ACTION_ERROR);
 	}
 
@@ -406,11 +389,6 @@ statistics_collector::process_request_json(const std::string& request_json) {
 		action != "all_services" &&
 		action != "service") {
 		return get_error_json(SRE_UNSUPPORTED_ACTION_ERROR);
-	}
-
-	// get cache stats
-	if (action == "cache_stats") {
-		return cache_stats_json();
 	}
 
 	// get all config data

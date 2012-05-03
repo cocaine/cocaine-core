@@ -52,8 +52,8 @@ void worker() {
 	accumulator_set<float, features<tag::min, tag::max, tag::mean, tag::median> > accum;
 
 	message_path path("rimz_app", "rimz_func");
-
 	message_policy policy;
+	policy.deadline = 7.0;
 	std::string payload = "response chunk: ";
 
 	for (int i = 0; i < messages_count; ++i) {
@@ -67,12 +67,12 @@ void worker() {
 			}
 
 			data_container data;
-			resp->get(&data);
+			//iresp->get(&data);
 			accum(t.elapsed().as_double());
 
-			//while (resp->get(&data)) {
-			//std::cout << std::string(reinterpret_cast<const char*>(data.data()), 0, data.size()) << std::endl;
-			//}
+			while (resp->get(&data)) {
+				//std::cout << std::string(reinterpret_cast<const char*>(data.data()), 0, data.size()) << std::endl;
+			}
 		}
 		catch (const dealer_error& err) {
 			std::cout << "error code: " << err.code() << ", error message: " << err.what() << std::endl;
@@ -99,7 +99,7 @@ void worker() {
 }
 
 void create_client(int add_messages_count) {
-	const int pool_size = 200;
+	const int pool_size = 1;
 	
 	std::cout << "----------------------------------- test info -------------------------------------------\n";
 	std::cout << "sending " << add_messages_count * pool_size << " messages using " << pool_size << " threads\n";

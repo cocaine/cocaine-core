@@ -22,47 +22,44 @@
 
 #include "cocaine/dealer/structs.hpp"
 #include "cocaine/dealer/core/configuration.hpp"
+#include "cocaine/dealer/utils/smart_logger.hpp"
 
 namespace cocaine {
 namespace dealer {
 
 configuration::configuration() :
-	version_ (0),
-	message_timeout_(MESSAGE_TIMEOUT),
-	socket_poll_timeout_(DEFAULT_SOCKET_POLL_TIMEOUT),
-	max_message_cache_size_(DEFAULT_MAX_MESSAGE_CACHE_SIZE),
-	logger_type_(STDOUT_LOGGER),
-	logger_flags_(PLOG_NONE),
-	eblob_path_(DEFAULT_EBLOB_PATH),
-	eblob_blob_size_(DEFAULT_EBLOB_BLOB_SIZE),
-	eblob_sync_interval_(DEFAULT_EBLOB_SYNC_INTERVAL),
-	autodiscovery_type_(AT_FILE),
-	multicast_ip_(DEFAULT_MULTICAST_IP),
-	multicast_port_(DEFAULT_MULTICAST_PORT),
+	message_deadline_(defaults::message_deadline),
+	socket_poll_timeout_(defaults::socket_poll_timeout),
+	logger_type_(defaults::logger_type),
+	logger_flags_(defaults::logger_flags),
+	eblob_path_(defaults::eblob_path),
+	eblob_blob_size_(defaults::eblob_blob_size),
+	eblob_sync_interval_(defaults::eblob_sync_interval),
+	autodiscovery_type_(defaults::autodiscovery_type),
+	multicast_ip_(defaults::heartbeat_multicast_ip),
+	multicast_port_(defaults::heartbeat_multicast_port),
 	is_statistics_enabled_(false),
 	is_remote_statistics_enabled_(false),
-	remote_statistics_port_(DEFAULT_STATISTICS_PORT)
+	remote_statistics_port_(defaults::statistics_port)
 {
 	
 }
 
 configuration::configuration(const std::string& path) :
 	path_(path),
-	version_ (0),
-	message_timeout_(MESSAGE_TIMEOUT),
-	socket_poll_timeout_(DEFAULT_SOCKET_POLL_TIMEOUT),
-	max_message_cache_size_(DEFAULT_MAX_MESSAGE_CACHE_SIZE),
-	logger_type_(STDOUT_LOGGER),
-	logger_flags_(PLOG_NONE),
-	eblob_path_(DEFAULT_EBLOB_PATH),
-	eblob_blob_size_(DEFAULT_EBLOB_BLOB_SIZE),
-	eblob_sync_interval_(DEFAULT_EBLOB_SYNC_INTERVAL),
-	autodiscovery_type_(AT_FILE),
-	multicast_ip_(DEFAULT_MULTICAST_IP),
-	multicast_port_(DEFAULT_MULTICAST_PORT),
+	message_deadline_(defaults::message_deadline),
+	socket_poll_timeout_(defaults::socket_poll_timeout),
+	logger_type_(defaults::logger_type),
+	logger_flags_(defaults::logger_flags),
+	eblob_path_(defaults::eblob_path),
+	eblob_blob_size_(defaults::eblob_blob_size),
+	eblob_sync_interval_(defaults::eblob_sync_interval),
+	autodiscovery_type_(defaults::autodiscovery_type),
+	multicast_ip_(defaults::heartbeat_multicast_ip),
+	multicast_port_(defaults::heartbeat_multicast_port),
 	is_statistics_enabled_(false),
 	is_remote_statistics_enabled_(false),
-	remote_statistics_port_(DEFAULT_STATISTICS_PORT)
+	remote_statistics_port_(defaults::statistics_port)
 {
 	load(path);
 }
@@ -73,14 +70,23 @@ configuration::~configuration() {
 
 void
 configuration::parse_basic_settings(const Json::Value& config_value) {
-	version_ = config_value.get("config_version", 0).asUInt();
+	int version = config_value.get("config_version", 0).asUInt();
 
-	if (version_ != CONFIG_VERSION) {
+	if (version != current_config_version) {
 		throw internal_error("Unsupported config version: %d, current version: CONFIG_VERSION");
 	}
 
-	message_timeout_ = (unsigned long long)config_value.get("message_timeout", (int)MESSAGE_TIMEOUT).asInt();
-	socket_poll_timeout_ = (unsigned long long)config_value.get("socket_poll_timeout", (int)DEFAULT_SOCKET_POLL_TIMEOUT).asInt();
+	// parse message_deadline
+	const Json::Value message_timeout_value = config_value.get("message_deadline",
+															   static_cast<int>(defaults::message_deadline));
+
+	message_deadline_ = static_cast<unsigned long long>(message_timeout_value.asInt());
+
+	// parse socket_poll_timeout
+	const Json::Value socket_poll_timeout_value = config_value.get("socket_poll_timeout",
+															   static_cast<int>(defaults::socket_poll_timeout));
+
+	socket_poll_timeout_ = static_cast<unsigned long long>(socket_poll_timeout_value.asInt());
 }
 
 void
@@ -141,9 +147,7 @@ configuration::parse_logger_settings(const Json::Value& config_value) {
 void
 configuration::parse_messages_cache_settings(const Json::Value& config_value) {
 	const Json::Value cache_value = config_value["message_cache"];
-	max_message_cache_size_ = (size_t)cache_value.get("max_ram_limit", (int)DEFAULT_MAX_MESSAGE_CACHE_SIZE).asInt();
-	max_message_cache_size_ *= 1048576; // convert mb to bytes
-
+	
 	std::string message_cache_type_str = cache_value.get("type", "RAM_ONLY").asString();
 
 	if (message_cache_type_str == "PERSISTENT") {
@@ -164,15 +168,15 @@ void
 configuration::parse_persistant_storage_settings(const Json::Value& config_value) {
 	const Json::Value persistent_storage_value = config_value["persistent_storage"];
 
-	eblob_path_ = persistent_storage_value.get("eblob_path", DEFAULT_EBLOB_PATH).asString();
+	eblob_path_ = persistent_storage_value.get("eblob_path", defaults::eblob_path).asString();
 	eblob_blob_size_ = persistent_storage_value.get("blob_size", 0).asInt();
 	eblob_blob_size_ *= 1024;
 
 	if (eblob_blob_size_ == 0) {
-		eblob_blob_size_ = DEFAULT_EBLOB_BLOB_SIZE;
+		eblob_blob_size_ = defaults::eblob_blob_size;
 	}
 
-	eblob_sync_interval_ = persistent_storage_value.get("eblob_sync_interval", DEFAULT_EBLOB_SYNC_INTERVAL).asInt();
+	eblob_sync_interval_ = persistent_storage_value.get("eblob_sync_interval", defaults::eblob_sync_interval).asInt();
 }
 
 void
@@ -191,8 +195,8 @@ configuration::parse_autodiscovery_settings(const Json::Value& config_value) {
 		autodiscovery_type_ = AT_MULTICAST;
 	}
 
-	multicast_ip_ = autodiscovery_value.get("multicast_ip", DEFAULT_MULTICAST_IP).asString();
-	multicast_port_ = autodiscovery_value.get("multicast_port", DEFAULT_MULTICAST_PORT).asUInt();
+	multicast_ip_ = autodiscovery_value.get("multicast_ip", defaults::heartbeat_multicast_ip).asString();
+	multicast_port_ = autodiscovery_value.get("multicast_port", defaults::heartbeat_multicast_port).asUInt();
 }
 
 void
@@ -201,7 +205,7 @@ configuration::parse_statistics_settings(const Json::Value& config_value) {
 
 	is_statistics_enabled_ = statistics_value.get("enabled", false).asBool();
 	is_remote_statistics_enabled_ = statistics_value.get("remote_access", false).asBool();
-	remote_statistics_port_ = (DT::port)statistics_value.get("remote_port", DEFAULT_STATISTICS_PORT).asUInt();
+	remote_statistics_port_ = (DT::port)statistics_value.get("remote_port", defaults::statistics_port).asUInt();
 }
 
 void
@@ -216,7 +220,7 @@ configuration::parse_services_settings(const Json::Value& config_value) {
 		si.app_name_ = service_value.get("app_name", "").asString();
 		si.hosts_file_ = service_value.get("hosts_file", "").asString();
 		si.hosts_url_ = service_value.get("hosts_url", "").asString();
-		si.control_port_ = service_value.get("control_port", DEFAULT_CONTROL_PORT).asUInt();
+		si.control_port_ = service_value.get("control_port", defaults::control_port).asUInt();
 
 		// check values for validity
 		if (si.name_.empty()) {
@@ -312,12 +316,12 @@ configuration::config_path() const {
 
 unsigned int
 configuration::config_version() const {
-	return version_;
+	return current_config_version;
 }
 
 unsigned long long
-configuration::message_timeout() const {
-	return message_timeout_;
+configuration::message_deadline() const {
+	return message_deadline_;
 }
 
 unsigned long long
@@ -325,17 +329,12 @@ configuration::socket_poll_timeout() const {
 	return socket_poll_timeout_;
 }
 
-size_t
-configuration::max_message_cache_size() const {
-	return max_message_cache_size_;
-}
-
-enum message_cache_type
+enum e_message_cache_type
 configuration::message_cache_type() const {
 	return message_cache_type_;
 }
 
-enum logger_type
+enum e_logger_type
 configuration::logger_type() const {
 	return logger_type_;
 }
@@ -370,7 +369,7 @@ configuration::eblob_sync_interval() const {
 	return eblob_sync_interval_;
 }
 
-enum autodiscovery_type
+enum e_autodiscovery_type
 configuration::autodiscovery_type() const {
 	return autodiscovery_type_;
 }
@@ -433,9 +432,9 @@ std::string configuration::as_json() const {
 	Json::Value root;
 
 	Json::Value basic_settings;
-	basic_settings["1 - config version"] = version_;
-	basic_settings["2 - message timeout"] = (unsigned int)message_timeout_;
-	basic_settings["3 - socket poll timeout"] = (unsigned int)socket_poll_timeout_;
+	basic_settings["1 - config version"] = current_config_version;
+	basic_settings["2 - message deadline"] = static_cast<unsigned int>(message_deadline_);
+	basic_settings["3 - socket poll timeout"] = static_cast<unsigned int>(socket_poll_timeout_);
 	root["1 - basic settings"] = basic_settings;
 
 	Json::Value logger;
@@ -485,15 +484,13 @@ std::string configuration::as_json() const {
 	root["2 - logger"] = logger;
 
 	Json::Value message_cache;
-	std::string mcache_size_str = boost::lexical_cast<std::string>(max_message_cache_size_ / 1048576);
-	mcache_size_str += " Mb";
-	message_cache["1 - max ram limit"] = mcache_size_str;
+	std::string mcache_size_str;
 
 	if (message_cache_type_ == RAM_ONLY) {
-		message_cache["2 - type"] = "RAM_ONLY";
+		message_cache["1 - type"] = "RAM_ONLY";
  	}
  	else if (message_cache_type_ == PERSISTENT) {
- 		message_cache["2 - type"] = "PERSISTENT";
+ 		message_cache["1 - type"] = "PERSISTENT";
  	}
 	root["3 - message cache"] = message_cache;
 
@@ -554,8 +551,8 @@ std::string configuration::as_string() const {
 
 	// basic
 	out << "basic settings\n";
-	out << "\tconfig version: " << version_ << "\n";
-	out << "\tmessage timeout: " << message_timeout_ << "\n";
+	out << "\tconfig version: " << current_config_version << "\n";
+	out << "\tmessage deadline: " << message_deadline_ << "\n";
 	out << "\tsocket poll timeout: " << socket_poll_timeout_ << "\n";
 	
 	// logger
@@ -608,7 +605,6 @@ std::string configuration::as_string() const {
 
  	// message cache
  	out << "message cache\n";
- 	out << "\tmax ram limit: " << max_message_cache_size_ / 1048576 << " Mb\n";
 
  	if (message_cache_type_ == RAM_ONLY) {
  		out << "\ttype: RAM_ONLY\n\n";

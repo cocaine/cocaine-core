@@ -43,6 +43,7 @@ public:
 
 	virtual bool is_sent() const = 0;
 	virtual const time_value& sent_timestamp() const = 0;
+	virtual const time_value& enqued_timestamp() const = 0;
 
 	virtual void mark_as_sent(bool value) = 0;
 

@@ -30,7 +30,7 @@ namespace cocaine {
 namespace dealer {
 
 message_cache::message_cache(boost::shared_ptr<cocaine::dealer::context> context,
-							 enum message_cache_type type) :
+							 enum e_message_cache_type type) :
 	context_(context),
 	type_(type)
 {
@@ -60,10 +60,8 @@ message_cache::config() {
 	return conf;
 }
 
-boost::shared_ptr<std::deque<boost::shared_ptr<message_iface> > >
+message_cache::message_queue_ptr_t
 message_cache::new_messages() {
-	logger()->log("message_cache::new_messages");
-
 	if (!new_messages_) {
 		std::string error_str = "new messages queue object is empty at ";
 		error_str += std::string(BOOST_CURRENT_FUNCTION);

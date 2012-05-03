@@ -37,7 +37,14 @@ namespace dealer {
 #define PLOG_ERROR		(0x1 << 3)
 #define PLOG_MSG_TYPES	(0x1 << 4)
 #define PLOG_MSG_TIME	(0x1 << 5)
+#define PLOG_BASIC		(PLOG_MSG_TYPES | PLOG_MSG_TIME | PLOG_INFO)
 #define PLOG_ALL		(PLOG_MSG_TYPES | PLOG_MSG_TIME | PLOG_INFO | PLOG_DEBUG | PLOG_WARNING | PLOG_ERROR)
+
+enum e_logger_type {
+	STDOUT_LOGGER = 1,
+	FILE_LOGGER,
+	SYSLOG_LOGGER
+};
 
 class base_logger {
 public:

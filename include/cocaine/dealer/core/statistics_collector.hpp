@@ -27,7 +27,7 @@
 namespace cocaine {
 namespace dealer {
 
-enum statictics_req_error {
+enum e_statictics_req_error {
 	SRE_BAD_JSON_ERROR = 1,
 	SRE_NO_VERSION_ERROR,
 	SRE_UNSUPPORTED_VERSION_ERROR,
@@ -54,7 +54,7 @@ public:
 
 	virtual ~statistics_collector();
 	
-	std::string get_error_json(enum statictics_req_error err) const;
+	std::string get_error_json(enum e_statictics_req_error err) const;
 
 	void set_logger(boost::shared_ptr<base_logger> logger);
 	void enable(bool value);
@@ -80,7 +80,6 @@ public:
 private:
 	void init();
 	void process_remote_connection();
-	std::string cache_stats_json() const;
 	std::string all_services_json();
 	std::string process_request_json(const std::string& request_json);
 

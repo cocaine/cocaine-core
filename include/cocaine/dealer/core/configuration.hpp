@@ -24,6 +24,7 @@
 #include "json/json.h"
 
 #include "cocaine/dealer/structs.hpp"
+#include "cocaine/dealer/defaults.hpp"
 #include "cocaine/dealer/core/service_info.hpp"
 #include "cocaine/dealer/utils/smart_logger.hpp"
 
@@ -38,6 +39,7 @@ class configuration : private boost::noncopyable {
 public:
 	// map dealer service name to service info
 	typedef std::map<std::string, service_info_t> services_list_t;
+	static const int current_config_version = 1;
 
 public:
 	configuration();
@@ -48,12 +50,11 @@ public:
 	
 	const std::string& config_path() const;
 	unsigned int config_version() const;
-	unsigned long long message_timeout() const;
+	unsigned long long message_deadline() const;
 	unsigned long long socket_poll_timeout() const;
-	size_t max_message_cache_size() const;
-	enum message_cache_type message_cache_type() const;
+	enum e_message_cache_type message_cache_type() const;
 	
-	enum logger_type logger_type() const;
+	enum e_logger_type logger_type() const;
 	unsigned int logger_flags() const;
 	const std::string& logger_file_path() const;
 	const std::string& logger_syslog_name() const;
@@ -62,7 +63,7 @@ public:
 	int64_t eblob_blob_size() const;
 	int eblob_sync_interval() const;
 	
-	enum autodiscovery_type autodiscovery_type() const;
+	enum e_autodiscovery_type autodiscovery_type() const;
 	std::string multicast_ip() const;
 	unsigned short multicast_port() const;
 	
@@ -90,16 +91,14 @@ private:
 private:
 	// config
 	std::string path_;
-	unsigned int version_;
 	
 	// general
-	unsigned long long message_timeout_;
+	unsigned long long message_deadline_;
 	unsigned long long socket_poll_timeout_;
-	size_t max_message_cache_size_;
-	enum message_cache_type message_cache_type_;
+	enum e_message_cache_type message_cache_type_;
 	
 	// logger
-	enum logger_type logger_type_;
+	enum e_logger_type logger_type_;
 	unsigned int logger_flags_;
 	std::string logger_file_path_;
 	std::string logger_syslog_name_;
@@ -110,7 +109,7 @@ private:
 	int eblob_sync_interval_;
 	
 	// autodiscovery
-	enum autodiscovery_type autodiscovery_type_;
+	enum e_autodiscovery_type autodiscovery_type_;
 	std::string multicast_ip_;
 	unsigned short multicast_port_;
 	

@@ -52,9 +52,8 @@ namespace dealer {
 #define CONTROL_MESSAGE_DISCONNECT 3
 #define CONTROL_MESSAGE_CONNECT_NEW_HOSTS 4
 #define CONTROL_MESSAGE_KILL 5
-#define CONTROL_MESSAGE_PROCESS_MESSAGES 6
 
-enum server_response_code {
+enum e_server_response_code {
 	SERVER_RPC_MESSAGE_CHUNK = 5,
 	SERVER_RPC_MESSAGE_ERROR = 6,
 	SERVER_RPC_MESSAGE_CHOKE = 7
@@ -81,17 +80,24 @@ public:
 	virtual ~handle();
 
 	const handle_info<LSD_T>& info() const;
-	boost::shared_ptr<message_cache> messages_cache();
 
+	// networking
 	void connect();
 	void connect(const hosts_info_list_t& hosts);
 	void connect_new_hosts(const hosts_info_list_t& hosts);
 	void reconnect(const hosts_info_list_t& hosts);
 	void disconnect();
 
+	// responses consumer
 	void set_responce_callback(responce_callback_t callback);
+
+	// message processing
 	void enqueue_message(const boost::shared_ptr<message_iface>& message);
-	void notify_new_messages_enqueued();
+	void make_all_messages_new();
+	void assign_message_queue(const message_cache::message_queue_ptr_t& message_queue);
+	message_cache::message_queue_ptr_t new_messages();
+
+	std::string description();
 
 private:
 	void kill();
@@ -106,6 +112,8 @@ private:
 
 	// working with messages
 	bool dispatch_next_available_message(socket_ptr_t main_socket);
+
+	// networking
 	void recreate_main_socket(socket_ptr_t& main_socket, int timeout, int64_t hwm);
 	void connect_zmq_socket_to_hosts(socket_ptr_t& socket,
 									 hosts_info_list_t& hosts);
@@ -116,6 +124,9 @@ private:
 	void process_responce(boost::ptr_vector<zmq::message_t>& chunks);
 	bool receive_responce_chunk(socket_ptr_t& socket, zmq::message_t& response);
 	void enqueue_response(cached_response_prt_t response);
+
+	// misc
+	void log_connection(const std::string prefix, const hosts_info_list_t& hosts);
 
 	// send collected statistics to global stats collector
 	handle_stats& get_statistics();
@@ -163,7 +174,7 @@ handle<LSD_T>::handle(const handle_info<LSD_T>& info,
 {
 	boost::mutex::scoped_lock lock(mutex_);
 
-	logger()->log(PLOG_DEBUG, "STARTED HANDLE [%s].[%s]", info.service_name_.c_str(), info.name_.c_str());
+	logger()->log(PLOG_DEBUG, "CREATED HANDLE [%s].[%s]", info.service_name_.c_str(), info.name_.c_str());
 
 	// create message cache
 	message_cache_.reset(new message_cache(context(), config()->message_cache_type()));
@@ -187,15 +198,14 @@ handle<LSD_T>::handle(const handle_info<LSD_T>& info,
 
 template <typename LSD_T>
 handle<LSD_T>::~handle() {
-	std::cout << "destroying handle...\n";
-
 	kill();
 
 	zmq_control_socket_->close();
 	zmq_control_socket_.reset(NULL);
 
 	thread_.join();
-	std::cout << "handle destroyed!\n";
+
+	logger()->log(PLOG_DEBUG, "KILLED HANDLE [%s].[%s]", info_.service_name_.c_str(), info_.name_.c_str());
 }
 
 template <typename LSD_T> void
@@ -217,36 +227,26 @@ handle<LSD_T>::dispatch_messages() {
 
 		static bool have_enqueued_messages = false;
 
-		// receive control message
+		// process incoming control messages
 		int control_message = receive_control_messages(control_socket, 0);
 
-		switch (control_message) {
-			// received kill message, finalize everything
-			case CONTROL_MESSAGE_KILL:
-				is_running_ = false;
-				break;
-
-			// we have new messages, enable processing them
-			case CONTROL_MESSAGE_PROCESS_MESSAGES:
-				have_enqueued_messages = true;
-				break;
+		if (control_message == CONTROL_MESSAGE_KILL) {
+			// stop message dispatch, finalize everything
+			is_running_ = false;
+			break;
 		}
-
-		// process incoming control messages
-		if (control_message > 0 && control_message != CONTROL_MESSAGE_PROCESS_MESSAGES) {
+		else {
 			dispatch_control_messages(control_message, main_socket);
 		}
 
 		// send new message if any
 		if (is_running_ && is_connected_) {
 			for (int i = 0; i < 100; ++i) { // batching
-				if (messages_cache()->new_messages_count() > 0) {
-					dispatch_next_available_message(main_socket);
+				if (message_cache_->new_messages_count() == 0) {
+					break;	
 				}
-				else {
-					have_enqueued_messages = false;
-					break;
-				}
+
+				dispatch_next_available_message(main_socket);
 			}
 		}
 
@@ -464,12 +464,12 @@ handle<LSD_T>::dispatch_next_available_message(socket_ptr_t main_socket) {
 	}
 
 	// send new message if any
-	if (messages_cache()->new_messages_count() == 0) {
+	if (message_cache_->new_messages_count() == 0) {
 		return false;
 	}
 
 	try {
-		boost::shared_ptr<message_iface> new_msg = messages_cache()->get_new_message();
+		boost::shared_ptr<message_iface> new_msg = message_cache_->get_new_message();
 
 		// send header
 		zmq::message_t empty_chunk(0);
@@ -495,7 +495,10 @@ handle<LSD_T>::dispatch_next_available_message(socket_ptr_t main_socket) {
 		sbuf.clear();
 
 		// send message policy
-		const policy_t server_policy = new_msg->policy().server_policy();
+		policy_t server_policy = new_msg->policy().server_policy();
+		time_value server_deadline = new_msg->enqued_timestamp();
+		server_deadline += server_policy.deadline;
+		server_policy.deadline = server_deadline.as_double();
         msgpack::pack(sbuf, server_policy);
 
 		zmq::message_t policy_chunk(sbuf.size());
@@ -525,7 +528,7 @@ handle<LSD_T>::dispatch_next_available_message(socket_ptr_t main_socket) {
 		new_msg->mark_as_sent(true);
 
 		// move message to sent
-		messages_cache()->move_new_message_to_sent();
+		message_cache_->move_new_message_to_sent();
 
 		logger()->log(PLOG_DEBUG, "sent message with uuid: " + new_msg->uuid() +
 					  " to [" + info_.name_ + "." + info_.service_name_ + "]");
@@ -597,8 +600,7 @@ handle<LSD_T>::dispatch_responce(socket_ptr_t& main_socket) {
 template <typename LSD_T> void
 handle<LSD_T>::reshedule_message(const std::string& uuid) {
 	// 2DO: must reshedule if allowed by policy
-	messages_cache()->move_sent_message_to_new_front(uuid);
-	//notify_new_messages_enqueued();
+	message_cache_->move_sent_message_to_new_front(uuid);
 }
 
 template <typename LSD_T> void
@@ -638,31 +640,33 @@ handle<LSD_T>::process_responce(boost::ptr_vector<zmq::message_t>& chunks) {
 	// get message from sent cache
 	boost::shared_ptr<message_iface> sent_msg;
 	try {
-		sent_msg = messages_cache()->get_sent_message(uuid);
+		sent_msg = message_cache_->get_sent_message(uuid);
 	}
 	catch (...) {
 		// drop responce for missing message
 		return;
 	}
 
+	std::string handle_desc = "[" + info_.name_ + "." + info_.service_name_ + "]";
 	std::string message_str = "received response for message with uuid: " + sent_msg->uuid(); 
-	message_str += " from [" + info_.name_ + "." + info_.service_name_ + "], type: ";
+	message_str += " from " + handle_desc + ", type: ";
 
+	std::string rpc_message_type_as_string;
 	switch (rpc_code) {
 		case SERVER_RPC_MESSAGE_CHUNK: 
-			message_str += "CHUNK";
+			rpc_message_type_as_string = "CHUNK";
 			break;
 
 		case SERVER_RPC_MESSAGE_CHOKE: 
-			message_str += "CHOKE";
+			rpc_message_type_as_string = "CHOKE";
 			break;
 
 		case SERVER_RPC_MESSAGE_ERROR: 
-			message_str += "ERROR";
+			rpc_message_type_as_string = "ERROR";
 			break;
 	}
 
-	logger()->log(PLOG_DEBUG, message_str);
+	logger()->log(PLOG_DEBUG, message_str + rpc_message_type_as_string);
 
 	switch (rpc_code) {
 		case SERVER_RPC_MESSAGE_CHUNK: {
@@ -708,9 +712,14 @@ handle<LSD_T>::process_responce(boost::ptr_vector<zmq::message_t>& chunks) {
 				}
 			}
 
-			//logger()->log(PLOG_DEBUG, "error code: %d, message: %s", error_code, error_message.c_str());
 			if (error_code == resource_error) { // queue is full
 				reshedule_message(uuid);
+
+				std::string message_str = "resheduled message with uuid: " + uuid; 
+				message_str += " from " + handle_desc + ", type: " + rpc_message_type_as_string;
+				message_str += ", error code: ";
+
+				logger()->log(PLOG_DEBUG, "%s%d", message_str.c_str(), error_code);
 			}
 			else {
 				cached_response_prt_t new_response;
@@ -720,13 +729,19 @@ handle<LSD_T>::process_responce(boost::ptr_vector<zmq::message_t>& chunks) {
 				enqueue_response(new_response);
 				lock.lock();
 
-				messages_cache()->remove_message_from_cache(uuid);
+				message_cache_->remove_message_from_cache(uuid);
+
+				std::string message_str = "enqueued response for message with uuid: " + uuid; 
+				message_str += " from " + handle_desc + ", type: " + rpc_message_type_as_string;
+				message_str += ", error code: ";
+
+				logger()->log(PLOG_DEBUG, "%s%d", message_str.c_str(), error_code);
 			}
 		}
 		break;
 
 		case SERVER_RPC_MESSAGE_CHOKE: {
-			messages_cache()->remove_message_from_cache(uuid);
+			message_cache_->remove_message_from_cache(uuid);
 
 			cached_response_prt_t new_response;
 			new_response.reset(new cached_response(uuid, sent_msg->path(), NULL, 0));
@@ -759,8 +774,8 @@ handle<LSD_T>::get_statistics() {
 
 template <typename LSD_T> void
 handle<LSD_T>::update_statistics() {
-	statistics_.queue_status.pending = messages_cache()->new_messages_count();
-	statistics_.queue_status.sent = messages_cache()->sent_messages_count();
+	statistics_.queue_status.pending = message_cache_->new_messages_count();
+	statistics_.queue_status.sent = message_cache_->sent_messages_count();
 
 	context()->stats()->update_handle_stats(info_.service_name_,
 											info_.name_,
@@ -815,8 +830,6 @@ handle<LSD_T>::info() const {
 
 template <typename LSD_T> void
 handle<LSD_T>::kill() {
-	logger()->log(PLOG_DEBUG, "killing handle [%s].[%s]", info_.service_name_.c_str(), info_.name_.c_str());
-
 	if (!is_running_) {
 		return;
 	}
@@ -828,30 +841,42 @@ handle<LSD_T>::kill() {
 	zmq_control_socket_->send(message);
 }
 
-template <typename LSD_T> void
-handle<LSD_T>::notify_new_messages_enqueued() {
-	//logger()->log(PLOG_DEBUG, "new messages notification");
+template <typename LSD_T> std::string
+handle<LSD_T>::description() {
+	return std::string("[" + info_.service_name_ +"].[" + info_.name_ + "]");
+}
 
-	if (!is_running_) {
+template <typename LSD_T> void
+handle<LSD_T>::log_connection(const std::string prefix, const hosts_info_list_t& hosts) {
+	std::string log_str = prefix + " " + description();
+
+	if (prefix == "DISCONNECT HANDLE") {
+		logger()->log(PLOG_DEBUG, log_str + " from all hosts.");
 		return;
 	}
 
-	// connect to hosts
-	int control_message = CONTROL_MESSAGE_PROCESS_MESSAGES;
-	zmq::message_t message(sizeof(int));
-	memcpy((void *)message.data(), &control_message, sizeof(int));
-	zmq_control_socket_->send(message);
+	log_str += " to hosts: ";
+	
+	for (size_t i = 0; i < hosts.size(); ++i) {
+		log_str += host_info_t::string_from_ip(hosts[i].ip_);
+
+		if (i != hosts.size() - 1) {
+			log_str += ", ";
+		}
+	}
+
+	logger()->log(PLOG_DEBUG, log_str);
 }
 
 template <typename LSD_T> void
 handle<LSD_T>::connect() {
 	boost::mutex::scoped_lock lock(mutex_);
 
-	logger()->log(PLOG_INFO, "connect");
-
 	if (!is_running_ || hosts_.empty() || is_connected_) {
 		return;
 	}
+
+	log_connection("CONNECT HANDLE", hosts_);
 
 	// connect to hosts
 	int control_message = CONTROL_MESSAGE_CONNECT;
@@ -864,17 +889,6 @@ template <typename LSD_T> void
 handle<LSD_T>::connect(const hosts_info_list_t& hosts) {
 	boost::mutex::scoped_lock lock(mutex_);
 
-	std::string log_str = "CONNECT HANDLE [" + info_.service_name_ +"].[" + info_.name_ + "] to hosts: ";
-	for (size_t i = 0; i < hosts.size(); ++i) {
-		log_str += host_info_t::string_from_ip(hosts[i].ip_);
-
-		if (i != hosts.size() - 1) {
-			log_str += ", ";
-		}
-	}
-
-	logger()->log(PLOG_DEBUG, log_str);
-
 	// no hosts to connect to
 	if (!is_running_ || is_connected_ || hosts.empty()) {
 		return;
@@ -883,6 +897,8 @@ handle<LSD_T>::connect(const hosts_info_list_t& hosts) {
 		// store new hosts
 		hosts_ = hosts;
 	}
+
+	log_connection("CONNECT HANDLE", hosts);
 
 	// connect to hosts
 	lock.unlock();
@@ -893,17 +909,6 @@ template <typename LSD_T> void
 handle<LSD_T>::connect_new_hosts(const hosts_info_list_t& hosts) {
 	boost::mutex::scoped_lock lock(mutex_);
 
-	std::string log_str = "CONNECT HANDLE [" + info_.service_name_ +"].[" + info_.name_ + "] to new hosts: ";
-	for (size_t i = 0; i < hosts.size(); ++i) {
-		log_str += host_info_t::string_from_ip(hosts[i].ip_);
-
-		if (i != hosts.size() - 1) {
-			log_str += ", ";
-		}
-	}
-
-	logger()->log(PLOG_DEBUG, log_str);
-
 	// no new hosts to connect to
 	if (!is_running_ || hosts.empty()) {
 		return;
@@ -912,6 +917,8 @@ handle<LSD_T>::connect_new_hosts(const hosts_info_list_t& hosts) {
 		// append new hosts
 		new_hosts_.insert(new_hosts_.end(), hosts.begin(), hosts.end());
 	}
+
+	log_connection("CONNECT NEW HOSTS TO HANDLE", hosts);
 
 	// connect to new hosts
 	int control_message = CONTROL_MESSAGE_CONNECT_NEW_HOSTS;
@@ -924,8 +931,6 @@ template <typename LSD_T> void
 handle<LSD_T>::reconnect(const hosts_info_list_t& hosts) {
 	boost::mutex::scoped_lock lock(mutex_);
 
-	logger()->log(PLOG_DEBUG, "reconnect");
-
 	// no new hosts to connect to
 	if (!is_running_ || hosts.empty()) {
 		return;
@@ -934,6 +939,8 @@ handle<LSD_T>::reconnect(const hosts_info_list_t& hosts) {
 		// replace hosts with new hosts
 		hosts_ = hosts;
 	}
+
+	log_connection("RECONNECT HANDLE", hosts);
 
 	// reconnect to hosts
 	int control_message = CONTROL_MESSAGE_RECONNECT;
@@ -945,11 +952,12 @@ handle<LSD_T>::reconnect(const hosts_info_list_t& hosts) {
 template <typename LSD_T> void
 handle<LSD_T>::disconnect() {
 	boost::mutex::scoped_lock lock(mutex_);
-	logger()->log(PLOG_DEBUG, "disconnect");
 
 	if (!is_running_) {
 		return;
 	}
+
+	log_connection("DISCONNECT HANDLE", hosts_);
 
 	// disconnect from all hosts
 	std::string control_message = boost::lexical_cast<std::string>(CONTROL_MESSAGE_DISCONNECT);
@@ -958,10 +966,22 @@ handle<LSD_T>::disconnect() {
 	zmq_control_socket_->send(message);
 }
 
-template <typename LSD_T> boost::shared_ptr<message_cache>
-handle<LSD_T>::messages_cache() {
+template <typename LSD_T> void
+handle<LSD_T>::make_all_messages_new() {
 	assert (message_cache_);
-	return message_cache_;
+	return message_cache_->make_all_messages_new();
+}
+
+template <typename LSD_T> message_cache::message_queue_ptr_t
+handle<LSD_T>::new_messages() {
+	assert (message_cache_);
+	return message_cache_->new_messages();
+}
+
+template <typename LSD_T> void
+handle<LSD_T>::assign_message_queue(const message_cache::message_queue_ptr_t& message_queue) {
+	assert (message_cache_);
+	return message_cache_->append_message_queue(message_queue);
 }
 
 template <typename LSD_T> void
@@ -974,9 +994,8 @@ template <typename LSD_T> void
 handle<LSD_T>::enqueue_message(const boost::shared_ptr<message_iface>& message) {
 	boost::mutex::scoped_lock lock(mutex_);
 
-	messages_cache()->enqueue(message);
+	message_cache_->enqueue(message);
 	update_statistics();
-	//notify_new_messages_enqueued();
 }
 
 template <typename LSD_T> boost::shared_ptr<cocaine::dealer::context>
