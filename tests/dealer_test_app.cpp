@@ -53,7 +53,7 @@ void worker() {
 
 	message_path path("rimz_app", "rimz_func");
 	message_policy policy;
-	policy.deadline = 7.0;
+	policy.deadline = 0.05;
 	std::string payload = "response chunk: ";
 
 	for (int i = 0; i < messages_count; ++i) {

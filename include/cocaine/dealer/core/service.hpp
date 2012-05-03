@@ -156,7 +156,7 @@ private:
 	// deadlined messages refresher
 	std::auto_ptr<refresher> deadlined_messages_refresher_;
 
-	static const int deadline_check_interval = 10; // millisecs
+	static const int deadline_check_interval = 1000; // millisecs
 
 	bool is_dead_;
 };
@@ -507,11 +507,13 @@ service<LSD_T>::verify_unhandled_msg_queue_for_handle(const handle_ptr_t& handle
 	// find corresponding unhandled message queue
 	unhandled_messages_map_t::iterator it = unhandled_messages_.find(handle->info().name_);
 
-	// should not find a queue with messages!
 	if (it == unhandled_messages_.end()) {
+		messages_deque_ptr_t new_queue(new cached_messages_deque_t);
+		unhandled_messages_[handle->info().name_] = new_queue;
 		return;
 	}
 
+	// should not find a queue with messages!
 	messages_deque_ptr_t msg_queue = it->second;
 
 	if (msg_queue && !msg_queue->empty()) {
@@ -520,9 +522,6 @@ service<LSD_T>::verify_unhandled_msg_queue_for_handle(const handle_ptr_t& handle
 		error_str += ". at " + std::string(BOOST_CURRENT_FUNCTION);
 		throw internal_error(error_str);
 	}
-
-	// remove empty queue if any
-	unhandled_messages_.erase(it);
 }
 
 template <typename LSD_T> void
@@ -572,7 +571,9 @@ service<LSD_T>::remove_outstanding_handles(const handles_info_list_t& handles) {
 			if (!handle_msg_queue->empty()) {
 				logger()->log(PLOG_DEBUG, "moving message queue from handle %s to service, queue size: %d",
 							  handle->description().c_str(), handle_msg_queue->size());
-				unhandled_messages_[handle->info().name_] = handle_msg_queue;
+
+				messages_deque_ptr_t unhandled_queue = unhandled_messages_[handle->info().name_];
+				unhandled_queue->insert(unhandled_queue->end(), handle_msg_queue->begin(), handle_msg_queue->end());
 			}
 		}
 
@@ -693,7 +694,6 @@ service<LSD_T>::check_for_deadlined_messages() {
 			continue;
 		}
 
-		logger()->log(PLOG_DEBUG, "message expired");		
 		it->second = not_expired_queue;
 
 		// create error response for deadlined message
