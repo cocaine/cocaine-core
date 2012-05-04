@@ -29,8 +29,8 @@ response::~response() {
 }
 
 bool
-response::get(data_container* data) {
-	return get_impl()->get(data);
+response::get(data_container* data, double timeout) {
+	return get_impl()->get(data, timeout);
 }
 
 boost::shared_ptr<response_impl>

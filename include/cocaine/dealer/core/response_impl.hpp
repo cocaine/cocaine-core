@@ -31,7 +31,11 @@ public:
 	response_impl(const boost::shared_ptr<client_impl>& client, const std::string& uuid, const message_path& path);
 	~response_impl();
 
-	bool get(data_container* data);
+	// 1) timeout < 0 - block indefinitely until response received
+	// 2) timeout == 0 - check for response chunk and return result immediately
+	// 3) timeout > 0 - check for response chunk with some timeout value
+
+	bool get(data_container* data, double timeout);
 
 private:
 	friend class response;

@@ -53,13 +53,13 @@ void worker() {
 
 	message_path path("rimz_app", "rimz_func");
 	message_policy policy;
-	policy.deadline = 0.5;
+	policy.deadline = 0.0;
 	std::string payload = "response chunk: ";
 
 	for (int i = 0; i < messages_count; ++i) {
 		progress_timer t;
 
-		boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
+		//boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
 
 		try {
 			boost::shared_ptr<response> resp;
@@ -69,10 +69,12 @@ void worker() {
 			}
 
 			data_container data;
+			resp->get(&data, 0.000175);
+
 			//accum(t.elapsed().as_double());
-			while (resp->get(&data)) {
+			//while (resp->get(&data)) {
 				//std::cout << std::string(reinterpret_cast<const char*>(data.data()), 0, data.size()) << std::endl;
-			}
+			//}
 		}
 		catch (const dealer_error& err) {
 			std::cout << "error code: " << err.code() << ", error message: " << err.what() << std::endl;
@@ -86,7 +88,7 @@ void worker() {
 
 		if (t.elapsed().as_double() > 0.200) {
 			++slow_messages_count;
-			std::cout << "slow time: " << t.elapsed().as_double() << ", num:" << slow_messages_count << "\n";
+			//std::cout << "slow time: " << t.elapsed().as_double() << ", num:" << slow_messages_count << "\n";
 		}
 	}
 

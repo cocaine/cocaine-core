@@ -285,7 +285,7 @@ handle<LSD_T>::dispatch_messages() {
 		}
 
 		if (is_running_) {
-			if (deadlined_messages_timer_.elapsed() > 0.1f) {	// 0.1f == 100 millisecs
+			if (deadlined_messages_timer_.elapsed() > 0.01f) {	// 0.01f == 10 millisecs
 				lock.unlock();
 				process_deadlined_messages();
 				lock.lock();

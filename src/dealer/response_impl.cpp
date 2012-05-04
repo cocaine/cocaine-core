@@ -49,7 +49,7 @@ response_impl::~response_impl() {
 }
 
 bool
-response_impl::get(data_container* data) {
+response_impl::get(data_container* data, double timeout) {
 	boost::mutex::scoped_lock lock(mutex_);
 
 	// no more chunks?
@@ -62,10 +62,18 @@ response_impl::get(data_container* data) {
 	// block until received callback
 	if (!message_finished_) {
 		while (!response_finished_ && !message_finished_) {
-			cond_var_.wait(lock);
+			if (timeout < 0.0) {
+				cond_var_.wait(lock);
+			}
+			else {
+				unsigned long long millisecs = static_cast<unsigned long long>(timeout * 1000000);
+				boost::system_time t = boost::get_system_time() + boost::posix_time::milliseconds(millisecs);
+				cond_var_.timed_wait(lock, t);
+				break;
+			}
 		}
 
-		if (!message_finished_) {
+		if (!message_finished_ && response_finished_) {
 			response_finished_ = false;
 		}
 	}
@@ -85,6 +93,10 @@ response_impl::get(data_container* data) {
 
 			return false;
 		}
+	}
+
+	if (timeout >= 0.0 && chunks_.empty() && !caught_error_) {
+		return false;
 	}
 
 	// expecting another chunk

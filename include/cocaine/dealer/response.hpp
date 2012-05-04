@@ -30,7 +30,7 @@ public:
 	response(const boost::shared_ptr<client_impl>& client, const std::string& uuid, const message_path& path);
 	virtual ~response();
 
-	bool get(data_container* data);
+	bool get(data_container* data, double timeout = -1.0);
 
 	void response_callback(const response_data& resp_data, const response_info& resp_info);
 
