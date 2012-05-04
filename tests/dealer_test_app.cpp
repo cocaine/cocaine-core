@@ -53,11 +53,13 @@ void worker() {
 
 	message_path path("rimz_app", "rimz_func");
 	message_policy policy;
-	policy.deadline = 0.05;
+	policy.deadline = 0.5;
 	std::string payload = "response chunk: ";
 
 	for (int i = 0; i < messages_count; ++i) {
 		progress_timer t;
+
+		boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
 
 		try {
 			boost::shared_ptr<response> resp;
@@ -67,9 +69,7 @@ void worker() {
 			}
 
 			data_container data;
-			//iresp->get(&data);
-			accum(t.elapsed().as_double());
-
+			//accum(t.elapsed().as_double());
 			while (resp->get(&data)) {
 				//std::cout << std::string(reinterpret_cast<const char*>(data.data()), 0, data.size()) << std::endl;
 			}
@@ -90,12 +90,14 @@ void worker() {
 		}
 	}
 
+	/*
 	boost::mutex::scoped_lock lock(mutex);
 	std::cout << std::fixed << std::setprecision(6);
 	std::cout << "min - " << boost::accumulators::min(accum);
 	std::cout << "\tmax - " << boost::accumulators::max(accum);
 	std::cout << "\tmean - " << boost::accumulators::mean(accum);
 	std::cout << " \tmedian - " << boost::accumulators::median(accum) << "\n" << std::flush;
+	*/
 }
 
 void create_client(int add_messages_count) {

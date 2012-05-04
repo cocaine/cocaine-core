@@ -37,6 +37,8 @@ public:
 	typedef boost::shared_ptr<message_iface> cached_message_ptr_t;
 	typedef std::deque<cached_message_ptr_t> message_queue_t;
 	typedef boost::shared_ptr<message_queue_t> message_queue_ptr_t;
+	typedef std::pair<std::string, message_path> message_data_t;
+	typedef std::vector<message_data_t> expired_messages_data_t;
 
 	// map <uuid, cached message>
 	typedef std::map<std::string, cached_message_ptr_t> messages_index_t;
@@ -60,7 +62,7 @@ public:
 	void move_sent_message_to_new_front(const std::string& uuid);
 	void remove_message_from_cache(const std::string& uuid);
 	void make_all_messages_new();
-	void process_expired_messages(std::vector<std::pair<std::string, message_path> >& expired_uuids);
+	void get_expired_messages(expired_messages_data_t& expired_messages_data);
 
 private:
 	static bool is_message_expired(cached_message_ptr_t msg);

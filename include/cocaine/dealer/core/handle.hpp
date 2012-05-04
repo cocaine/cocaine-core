@@ -112,6 +112,7 @@ private:
 
 	// working with messages
 	bool dispatch_next_available_message(socket_ptr_t main_socket);
+	void process_deadlined_messages();
 
 	// networking
 	void recreate_main_socket(socket_ptr_t& main_socket, int timeout, int64_t hwm);
@@ -159,6 +160,7 @@ private:
 	handle_stats statistics_;
 
 	progress_timer last_response_timer_;
+	progress_timer deadlined_messages_timer_;
 };
 
 template <typename LSD_T>
@@ -220,6 +222,7 @@ handle<LSD_T>::dispatch_messages() {
 	logger()->log(PLOG_DEBUG, log_str.c_str(), info_.service_name_.c_str(), info_.name_.c_str());
 
 	last_response_timer_.reset();
+	deadlined_messages_timer_.reset();
 
 	// process messages
 	while (is_running_) {
@@ -229,14 +232,14 @@ handle<LSD_T>::dispatch_messages() {
 
 		// process incoming control messages
 		int control_message = receive_control_messages(control_socket, 0);
-
 		if (control_message == CONTROL_MESSAGE_KILL) {
 			// stop message dispatch, finalize everything
 			is_running_ = false;
 			break;
 		}
-		else {
+		else if (control_message > 0) {
 			dispatch_control_messages(control_message, main_socket);
+			logger()->log(PLOG_DEBUG, "DONE PROCESSING CONTROL msgs: %d", message_cache_->new_messages_count());
 		}
 
 		// send new message if any
@@ -253,11 +256,11 @@ handle<LSD_T>::dispatch_messages() {
 		// check for message responces
 		bool received_response = false;
 
-		int fast_poll_timeout = 10;
-		int long_poll_timeout = 1000;
+		int fast_poll_timeout = 10;		// microsecs
+		int long_poll_timeout = 1000;	// microsecs
 
 		int response_poll_timeout = fast_poll_timeout;
-		if (last_response_timer_.elapsed() > 0.5f) {
+		if (last_response_timer_.elapsed() > 0.5f) {	// 0.5f == 500 millisecs
 			response_poll_timeout = long_poll_timeout;			
 		}
 
@@ -280,6 +283,15 @@ handle<LSD_T>::dispatch_messages() {
 				lock.lock();
 			}
 		}
+
+		if (is_running_) {
+			if (deadlined_messages_timer_.elapsed() > 0.1f) {	// 0.1f == 100 millisecs
+				lock.unlock();
+				process_deadlined_messages();
+				lock.lock();
+				deadlined_messages_timer_.reset();
+			}
+		}
 	}
 
 	control_socket.reset();
@@ -288,6 +300,26 @@ handle<LSD_T>::dispatch_messages() {
 	update_statistics();
 	log_str = "finished message dispatch for [%s].[%s]";
 	logger()->log(PLOG_DEBUG, log_str.c_str(), info_.service_name_.c_str(), info_.name_.c_str());
+}
+
+template <typename LSD_T> void
+handle<LSD_T>::process_deadlined_messages() {
+	assert(message_cache_);
+	message_cache::expired_messages_data_t expired_messages;
+	message_cache_->get_expired_messages(expired_messages);
+
+	if (expired_messages.empty()) {
+		return;
+	}
+
+	for (size_t i = 0; i < expired_messages.size(); ++i) {
+		cached_response_prt_t new_response;
+		new_response.reset(new cached_response(expired_messages.at(i).first,
+											   expired_messages.at(i).second,
+											   deadline_error,
+											   "message expired"));
+		enqueue_response(new_response);
+	}
 }
 
 template <typename LSD_T> void
@@ -391,11 +423,12 @@ handle<LSD_T>::dispatch_control_messages(int type, socket_ptr_t& main_socket) {
 			break;
 
 		case CONTROL_MESSAGE_RECONNECT:
-			//logger()->log(PLOG_DEBUG, "CONTROL_MESSAGE_RECONNECT");
+			logger()->log(PLOG_DEBUG, "CONTROL_MESSAGE_RECONNECT - DO");
 
 			recreate_main_socket(main_socket, 500, 0);
 			connect_zmq_socket_to_hosts(main_socket, hosts_);
 			is_connected_ = true;
+			logger()->log(PLOG_DEBUG, "CONTROL_MESSAGE_RECONNECT - DONE");
 			break;
 
 		case CONTROL_MESSAGE_DISCONNECT:
@@ -496,9 +529,14 @@ handle<LSD_T>::dispatch_next_available_message(socket_ptr_t main_socket) {
 
 		// send message policy
 		policy_t server_policy = new_msg->policy().server_policy();
-		time_value server_deadline = new_msg->enqued_timestamp();
-		server_deadline += server_policy.deadline;
-		server_policy.deadline = server_deadline.as_double();
+
+		// awful semantics! convert deadline [timeout value] to actual [deadline time]
+		if (server_policy.deadline > 0.0) {
+			time_value server_deadline = new_msg->enqued_timestamp();
+			server_deadline += server_policy.deadline;
+			server_policy.deadline = server_deadline.as_double();
+		}
+
         msgpack::pack(sbuf, server_policy);
 
 		zmq::message_t policy_chunk(sbuf.size());
@@ -719,7 +757,7 @@ handle<LSD_T>::process_responce(boost::ptr_vector<zmq::message_t>& chunks) {
 				message_str += " from " + handle_desc + ", type: " + rpc_message_type_as_string;
 				message_str += ", error code: ";
 
-				logger()->log(PLOG_DEBUG, "%s%d", message_str.c_str(), error_code);
+				logger()->log(PLOG_DEBUG, "%s%d, message: %s", message_str.c_str(), error_code, error_message.c_str());
 			}
 			else {
 				cached_response_prt_t new_response;

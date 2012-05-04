@@ -223,7 +223,7 @@ message_cache::is_message_expired(cached_message_ptr_t msg) {
 }
 
 void
-message_cache::process_expired_messages(std::vector<std::pair<std::string, message_path> >& expired_uuids) {
+message_cache::get_expired_messages(expired_messages_data_t& expired_messages_data) {
 	boost::mutex::scoped_lock lock(mutex_);
 
 	// remove expired from sent
@@ -238,7 +238,7 @@ message_cache::process_expired_messages(std::vector<std::pair<std::string, messa
 
 		// remove expired messages
 		if (msg->is_expired()) {
-			expired_uuids.push_back(std::make_pair(msg->uuid(), msg->path()));
+			expired_messages_data.push_back(std::make_pair(msg->uuid(), msg->path()));
 			sent_messages_.erase(it++);
 		}
 		else {
@@ -261,7 +261,7 @@ message_cache::process_expired_messages(std::vector<std::pair<std::string, messa
 
 		// remove expired messages
 		if (msg->is_expired()) {
-			expired_uuids.push_back(std::make_pair(msg->uuid(), msg->path()));
+			expired_messages_data.push_back(std::make_pair(msg->uuid(), msg->path()));
 		}
 
 		++it2;
