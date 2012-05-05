@@ -57,7 +57,7 @@ do_start() {
 		|| return 1
 	start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON --chuid cocaine -- \
 		$ENDPOINT $DAEMON_ARGS --storage:driver $STORAGE_DRIVER --storage:uri $STORAGE_URI \
-        --pidfile $PIDFILE \
+        --core:port-range $PORT_RANGE --pidfile $PIDFILE \
 		|| return 2
 }
 
