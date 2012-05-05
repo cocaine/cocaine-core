@@ -23,7 +23,6 @@
 #endif
 
 #include "cocaine/networking.hpp"
-#include "cocaine/object.hpp"
 
 #include "cocaine/helpers/json.hpp"
 
@@ -39,8 +38,7 @@ enum timing_type {
 };
 
 class driver_t:
-    public boost::noncopyable,
-    public object_t
+    public boost::noncopyable
 {
     public:
         virtual ~driver_t();

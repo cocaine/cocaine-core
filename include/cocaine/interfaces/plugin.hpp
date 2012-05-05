@@ -15,7 +15,6 @@
 #define COCAINE_SLAVE_PLUGIN_INTERFACE_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/object.hpp"
 
 #include "cocaine/helpers/blob.hpp"
 
@@ -51,8 +50,7 @@ class io_t {
 // ----------------------
 
 class plugin_t:
-    public boost::noncopyable,
-    public object_t
+    public boost::noncopyable
 {
     public:
         virtual ~plugin_t() = 0;
@@ -62,6 +60,9 @@ class plugin_t:
 
     protected:
         plugin_t(context_t& ctx);
+
+    protected:
+        context_t& m_context;
 };
 
 }}

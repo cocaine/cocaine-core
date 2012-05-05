@@ -19,7 +19,6 @@
 using namespace cocaine::engine::drivers;
         
 driver_t::driver_t(engine_t& engine, const std::string& method, const Json::Value& args):
-    object_t(engine.context()),
     m_engine(engine),
     m_method(method)
 #if BOOST_VERSION < 103600

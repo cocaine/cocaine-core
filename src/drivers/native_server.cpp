@@ -59,7 +59,7 @@ Json::Value native_server_t::info() {
 }
 
 void native_server_t::process(ev::idle&, int) {
-    int counter = context().config.defaults.io_bulk_size;
+    int counter = m_engine.context().config.defaults.io_bulk_size;
     
     do {
         if(!m_socket.pending()) {

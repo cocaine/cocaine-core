@@ -76,7 +76,6 @@ ADD_LIBRARY(cocaine-common SHARED
     src/interfaces/storage
     src/loggers/syslog
     src/logging
-    src/object
     src/registry
     src/storages/files
     src/storages/void)

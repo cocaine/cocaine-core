@@ -42,7 +42,7 @@ void io_t::delegate(const std::string& target, const void * data, size_t size) {
 }
 
 plugin_t::plugin_t(context_t& ctx):
-    object_t(ctx)
+    m_context(ctx)
 { }
 
 plugin_t::~plugin_t() { }

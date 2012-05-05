@@ -21,8 +21,6 @@
 
 #include "cocaine/common.hpp"
 
-#include "cocaine/object.hpp"
-
 namespace cocaine { namespace core {
 
 // Type-erased factory
@@ -31,12 +29,19 @@ namespace cocaine { namespace core {
 class factory_concept_t {
     public:
         virtual const std::type_info& category() const = 0;
-        virtual object_t* create(context_t& ctx) = 0;
+};
+
+template<class Category>
+class category_concept_t:
+    public factory_concept_t
+{
+    public:
+        virtual Category* create(context_t& ctx) = 0;
 };
 
 template<class T, class Category>
-class factory_model_t:
-    public factory_concept_t
+class factory_t:
+    public category_concept_t<Category>
 {
     public:
         virtual const std::type_info& category() const {
@@ -52,8 +57,7 @@ class factory_model_t:
 // ---------------
 
 class registry_t:
-    public boost::noncopyable,
-    public object_t
+    public boost::noncopyable
 {
     public:
         registry_t(context_t& ctx);
@@ -72,9 +76,9 @@ class registry_t:
             }
 
             std::auto_ptr<Category> module(
-                dynamic_cast<Category*>(
-                    it->second->create(context())
-                )
+                dynamic_cast< category_concept_t<Category>* >(
+                    it->second
+                )->create(m_context)
             );
 
             // TEST: This should succeed due to the tests above.
@@ -94,11 +98,12 @@ class registry_t:
 
             m_factories.insert(
                 type,
-                new factory_model_t<T, Category>()
+                new factory_t<T, Category>()
             );
         }
 
     private:
+        context_t& m_context;
         boost::shared_ptr<logging::logger_t> m_log;
 
         // Used to unload all the modules on shutdown.

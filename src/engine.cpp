@@ -40,7 +40,7 @@ void job_queue_t::push(value_type job) {
 // -----------
 
 engine_t::engine_t(context_t& ctx, const std::string& name, const Json::Value& manifest):
-    object_t(ctx),
+    m_context(ctx),
     m_running(false),
     m_app(ctx, name, manifest),
     m_messages(ctx.io(), ZMQ_ROUTER)

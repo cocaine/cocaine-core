@@ -15,15 +15,13 @@
 #define COCAINE_STORAGE_INTERFACE_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/object.hpp"
 
 #include "cocaine/helpers/json.hpp"
 
 namespace cocaine { namespace storages {
 
 class storage_t:
-    public boost::noncopyable,
-    public object_t
+    public boost::noncopyable
 {
     public:
         virtual ~storage_t() = 0;
@@ -41,6 +39,9 @@ class storage_t:
 
     protected:
         storage_t(context_t& ctx);
+
+    protected:
+        context_t& m_context;
 };
 
 }}

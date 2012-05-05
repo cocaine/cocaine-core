@@ -16,7 +16,7 @@
 using namespace cocaine::storages;
 
 storage_t::storage_t(context_t& ctx):
-    object_t(ctx)
+    m_context(ctx)
 { }
 
 storage_t::~storage_t() { }

@@ -24,9 +24,9 @@
 #include "cocaine/common.hpp"
 
 #include "cocaine/app.hpp"
+#include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/networking.hpp"
-#include "cocaine/object.hpp"
 #include "cocaine/slave.hpp"
 
 #include "cocaine/helpers/json.hpp"
@@ -88,8 +88,7 @@ namespace select {
 // ------
 
 class engine_t:
-    public boost::noncopyable,
-    public object_t
+    public boost::noncopyable
 {
     public:
         engine_t(context_t& ctx, 
@@ -137,6 +136,14 @@ class engine_t:
         }
 
     public:
+        context_t& context() {
+            return m_context;
+        }
+
+        const context_t& context() const {
+            return m_context;
+        }
+
         const app_t& app() const {
             return m_app;
         }
@@ -177,6 +184,8 @@ class engine_t:
         void cleanup(ev::timer&, int);
 
     private:
+        context_t& m_context;
+
         // Current engine state.
         // XXX: Do it in a better way.
         bool m_running;
