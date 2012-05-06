@@ -23,17 +23,14 @@
 
 namespace cocaine { namespace core {
 
-// Type-erased factory
-// -------------------
-
-class factory_concept_t {
+class category_concept_t {
     public:
         virtual const std::type_info& category() const = 0;
 };
 
 template<class Category>
-class category_concept_t:
-    public factory_concept_t
+class factory_concept_t:
+    public category_concept_t
 {
     public:
         virtual Category* create(context_t& ctx) = 0;
@@ -41,7 +38,7 @@ class category_concept_t:
 
 template<class T, class Category>
 class factory_t:
-    public category_concept_t<Category>
+    public factory_concept_t<Category>
 {
     public:
         virtual const std::type_info& category() const {
@@ -76,7 +73,7 @@ class registry_t:
             }
 
             std::auto_ptr<Category> module(
-                dynamic_cast< category_concept_t<Category>* >(
+                dynamic_cast< factory_concept_t<Category>* >(
                     it->second
                 )->create(m_context)
             );
@@ -115,7 +112,7 @@ class registry_t:
         typedef boost::ptr_map<
 #endif
             const std::string, 
-            factory_concept_t
+            category_concept_t
         > factory_map_t;
         
         factory_map_t m_factories;

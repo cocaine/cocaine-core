@@ -22,8 +22,8 @@ namespace cocaine { namespace engine {
 
 class overseer_t;
 
-// Plugin I/O
-// ----------
+// App plugin I/O
+// --------------
 
 class io_t {
     public:
@@ -46,12 +46,10 @@ class io_t {
         overseer_t& m_overseer;
 };
 
-// Slave plugin interface
-// ----------------------
+// App plugin interface
+// --------------------
 
-class plugin_t:
-    public boost::noncopyable
-{
+class plugin_t {
     public:
         virtual ~plugin_t() = 0;
 
