@@ -27,7 +27,7 @@ class auth_t:
     public boost::noncopyable
 {
     public:
-        auth_t(context_t& ctx);
+        auth_t(context_t& context);
         ~auth_t();
 
         void verify(const blob_t& message,

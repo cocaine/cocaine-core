@@ -30,14 +30,14 @@ namespace cocaine { namespace core {
 namespace policies {
     struct none {
         template<class T>
-        struct pointer {
+        struct ptr {
             typedef std::auto_ptr<T> type;
         };
     };
 
     struct share {
         template<class T>
-        struct pointer {
+        struct ptr {
             typedef boost::shared_ptr<T> type;
         };
     };
@@ -55,10 +55,17 @@ template<class Category>
 class factory_concept_t:
     public category_concept_t
 {
-    typedef typename Category::policy::template pointer<Category>::type pointer_type;
+    public:
+        typedef typename Category::policy::
+            template ptr<Category>::type 
+        ptr_type;
     
     public:
-        virtual pointer_type create(context_t& ctx) = 0;
+        virtual const std::type_info& category() const {
+            return typeid(Category);
+        }
+
+        virtual ptr_type get(context_t&) = 0;
 };
 
 template<class T, class Category, class RetentionPolicy>
@@ -68,15 +75,13 @@ template<class T, class Category>
 class factory_t<T, Category, policies::none>:
     public factory_concept_t<Category>
 {
-    typedef typename Category::policy::template pointer<Category>::type pointer_type;
-    
     public:
-        virtual const std::type_info& category() const {
-            return typeid(Category);
-        }
-
-        virtual pointer_type create(context_t& ctx) {
-            return pointer_type(new T(ctx));
+        virtual
+        typename factory_concept_t<Category>::ptr_type
+        get(context_t& context) {
+            return typename factory_concept_t<Category>::ptr_type(
+                new T(context)
+            );
         }
 };
 
@@ -84,18 +89,14 @@ template<class T, class Category>
 class factory_t<T, Category, policies::share>:
     public factory_concept_t<Category>
 {
-    typedef typename Category::policy::template pointer<Category>::type pointer_type;
-    
     public:
-        virtual const std::type_info& category() const {
-            return typeid(Category);
-        }
-
-        virtual pointer_type create(context_t& ctx) {
+        virtual
+        typename factory_concept_t<Category>::ptr_type
+        get(context_t& context) {
             boost::lock_guard<boost::mutex> lock(m_mutex);
 
             if(!m_instance) {
-                m_instance.reset(new T(ctx));
+                m_instance.reset(new T(context));
             }
 
             return m_instance;
@@ -103,11 +104,11 @@ class factory_t<T, Category, policies::share>:
 
     private:
         boost::mutex m_mutex;
-        pointer_type m_instance;
+        typename factory_concept_t<Category>::ptr_type m_instance;
 };
 
-// Module registry
-// ---------------
+// Component registry
+// ------------------
 
 class registry_t:
     public boost::noncopyable
@@ -117,8 +118,8 @@ class registry_t:
         ~registry_t();
 
         template<class Category>
-        typename Category::policy::template pointer<Category>::type
-        create(const std::string& type) {
+        typename factory_concept_t<Category>::ptr_type
+        get(const std::string& type) {
             factory_map_t::iterator it(m_factories.find(type));
 
             if(it == m_factories.end()) {
@@ -129,10 +130,10 @@ class registry_t:
                 throw registry_error_t("module '" + type + "' has an incompatible type");
             }
 
-            return typename Category::policy::template pointer<Category>::type(
+            return typename factory_concept_t<Category>::ptr_type(
                 dynamic_cast< factory_concept_t<Category>* >(
                     it->second
-                )->create(m_context)
+                )->get(m_context)
             );
         }
 
@@ -140,7 +141,7 @@ class registry_t:
         typename boost::enable_if<
             boost::is_base_of<Category, T>
         >::type 
-        install(const std::string& type) {
+        insert(const std::string& type) {
             if(m_factories.find(type) != m_factories.end()) {
                 throw registry_error_t("duplicate module '" + type + "' has been detected");
             }

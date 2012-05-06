@@ -49,8 +49,8 @@ context_t::context_t(config_t config_):
     m_registry.reset(new core::registry_t(*this));
 
     // Register the builtins.
-    m_registry->install<void_storage_t, storage_t>("void");
-    m_registry->install<file_storage_t, storage_t>("files");
+    m_registry->insert<void_storage_t, storage_t>("void");
+    m_registry->insert<file_storage_t, storage_t>("files");
 }
 
 context_t::~context_t() { }

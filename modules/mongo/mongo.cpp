@@ -148,6 +148,6 @@ std::string mongo_storage_t::resolve(const std::string& ns) const {
 
 extern "C" {
     void initialize(registry_t& registry) {
-        registry.install<mongo_storage_t, storage_t>("mongodb");
+        registry.insert<mongo_storage_t, storage_t>("mongodb");
     }
 }

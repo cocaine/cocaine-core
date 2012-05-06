@@ -90,16 +90,14 @@ class context_t:
         context_t(config_t config);
         ~context_t();
 
+        core::registry_t& meta() {
+            return *m_registry;
+        }
+
         zmq::context_t& io();
         
         // Returns a possibly cached logger with the specified name.
         boost::shared_ptr<logging::logger_t> log(const std::string& type);
-
-        template<class Category>
-        typename Category::policy::template pointer<Category>::type
-        create(const std::string& type) {
-            return m_registry->create<Category>(type);
-        }
 
     public:
         config_t config;

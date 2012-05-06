@@ -343,6 +343,6 @@ std::string python_t::exception() {
 
 extern "C" {
     void initialize(registry_t& registry) {
-        registry.install<python_t, plugin_t>("python");
+        registry.insert<python_t, plugin_t>("python");
     }
 }

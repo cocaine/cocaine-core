@@ -35,7 +35,7 @@ app_t::app_t(context_t& ctx, const std::string& name_, const Json::Value& manife
 
 app_t::app_t(context_t& ctx, const std::string& name_):
     name(name_),
-    manifest(ctx.create<storages::storage_t>(ctx.config.storage.driver)->get("apps", name_)),
+    manifest(ctx.meta().get<storages::storage_t>(ctx.config.storage.driver)->get("apps", name_)),
     log(ctx.log(name_))
 {
     initialize(ctx);

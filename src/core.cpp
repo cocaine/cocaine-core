@@ -24,10 +24,12 @@
 
 using namespace cocaine::core;
 using namespace cocaine::engine;
+using namespace cocaine::storages;
 
 core_t::core_t(const config_t& config):
     m_context(config),
     m_log(m_context.log("core")),
+    m_storage(m_context.meta().get<storage_t>(config.storage.driver)),
     m_server(m_context.io(), ZMQ_REP, m_context.config.runtime.hostname),
     m_auth(m_context),
     m_birthstamp(m_loop.now())
@@ -288,7 +290,7 @@ Json::Value core_t::create_engine(const std::string& name, const Json::Value& ma
 
     if(!recovering) {
         try {
-            m_context.create<storages::storage_t>(m_context.config.storage.driver)->put("apps", name, manifest);
+            m_storage->put("apps", name, manifest);
         } catch(const storage_error_t& e) {
             m_log->error(
                 "unable to create the '%s' engine - %s",
@@ -315,7 +317,7 @@ Json::Value core_t::delete_engine(const std::string& name) {
     }
 
     try {
-        m_context.create<storages::storage_t>(m_context.config.storage.driver)->remove("apps", name);
+        m_storage->remove("apps", name);
     } catch(const storage_error_t& e) {
         m_log->error(
             "unable to destroy the '%s' engine - %s",
@@ -374,7 +376,7 @@ void core_t::announce(ev::timer&, int) {
 
 void core_t::recover() {
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
-    Json::Value root(m_context.create<storages::storage_t>(m_context.config.storage.driver)->all("apps"));
+    Json::Value root(m_storage->all("apps"));
 
     if(root.size()) {
         Json::Value::Members apps(root.getMemberNames());

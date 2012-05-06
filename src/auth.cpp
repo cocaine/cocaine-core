@@ -25,15 +25,20 @@
 #include "cocaine/helpers/json.hpp"
 
 using namespace cocaine::crypto;
+using namespace cocaine::storages;
 
-auth_t::auth_t(context_t& ctx):
-    m_log(ctx.log("crypto")),
+auth_t::auth_t(context_t& context):
+    m_log(context.log("crypto")),
     m_context(EVP_MD_CTX_create())
 {
     ERR_load_crypto_strings();
 
+    boost::shared_ptr<storage_t> storage(
+        context.meta().get<storage_t>(context.config.storage.driver)
+    );
+
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
-    Json::Value keys(ctx.create<storages::storage_t>(ctx.config.storage.driver)->all("keys"));
+    Json::Value keys(storage->all("keys"));
     Json::Value::Members names(keys.getMemberNames());
 
     for(Json::Value::Members::const_iterator it = names.begin();

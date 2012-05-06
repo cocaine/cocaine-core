@@ -171,7 +171,7 @@ private:
 
 extern "C" {
     void initialize(core::registry_t& registry) {
-        registry.install<perl_t, plugin_t>("perl");
+        registry.insert<perl_t, plugin_t>("perl");
     }
 
     __attribute__((destructor)) void finalize() {
