@@ -19,6 +19,7 @@
 #include <msgpack.hpp>
 
 #include "cocaine/common.hpp"
+#include "cocaine/rpc.hpp"
 
 namespace cocaine {
 namespace dealer {
@@ -51,6 +52,13 @@ enum error_code {
     resource_error  = 503,
     timeout_error   = 504,
     deadline_error  = 520
+};
+
+enum rpc_code {
+    acknowledgement = 1,
+    chunk           = engine::rpc::push,
+    error           = engine::rpc::error,
+    choke           = engine::rpc::release
 };
 
 }}

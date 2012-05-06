@@ -18,7 +18,7 @@
 
 namespace cocaine { namespace engine { namespace rpc {    
     
-enum codes {
+enum {
     heartbeat = 1,
     configure,
     terminate,
@@ -31,7 +31,7 @@ enum codes {
 // Generic packer
 // --------------
 
-template<codes Code> 
+template<int Code> 
 struct packed:
     public boost::tuple<int>
 {

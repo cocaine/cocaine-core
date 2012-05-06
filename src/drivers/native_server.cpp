@@ -29,20 +29,23 @@ native_job_t::native_job_t(native_server_t& driver,
     job_t(driver, policy, request),
     m_route(route),
     m_tag(tag)
-{ }
+{
+    rpc::packed<dealer::acknowledgement> pack;
+    send(pack);
+}
 
 void native_job_t::react(const events::push_t& event) {
-    rpc::packed<rpc::push> pack(event.message);
+    rpc::packed<dealer::chunk> pack(event.message);
     send(pack);
 }
 
 void native_job_t::react(const events::error_t& event) {
-    rpc::packed<rpc::error> pack(event.code, event.message);
+    rpc::packed<dealer::error> pack(event.code, event.message);
     send(pack);
 }
 
 void native_job_t::react(const events::release_t& event) {
-    rpc::packed<rpc::release> pack;
+    rpc::packed<dealer::choke> pack;
     send(pack);
 }
 
