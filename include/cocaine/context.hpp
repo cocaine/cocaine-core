@@ -96,11 +96,10 @@ class context_t:
         boost::shared_ptr<logging::logger_t> log(const std::string& type);
 
         template<class Category>
-        std::auto_ptr<Category> create(const std::string& type) {
+        typename Category::policy::template pointer<Category>::type
+        create(const std::string& type) {
             return m_registry->create<Category>(type);
         }
-
-        storages::storage_t& storage();
 
     public:
         config_t config;
@@ -112,7 +111,6 @@ class context_t:
         // Core subsystems.
         std::auto_ptr<zmq::context_t> m_io;
         std::auto_ptr<core::registry_t> m_registry;
-        std::auto_ptr<storages::storage_t> m_storage;
 };
 
 }

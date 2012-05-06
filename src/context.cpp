@@ -68,13 +68,3 @@ zmq::context_t& context_t::io() {
 boost::shared_ptr<logging::logger_t> context_t::log(const std::string& name) {
     return config.sink->get(name);
 }
-
-storage_t& context_t::storage() {
-    boost::lock_guard<boost::mutex> lock(m_mutex);
-
-    if(!m_storage.get()) {
-        m_storage = create<storage_t>(config.storage.driver);
-    }
-
-    return *m_storage;
-}

@@ -11,10 +11,11 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_SLAVE_PLUGIN_INTERFACE_HPP
-#define COCAINE_SLAVE_PLUGIN_INTERFACE_HPP
+#ifndef COCAINE_APP_PLUGIN_INTERFACE_HPP
+#define COCAINE_APP_PLUGIN_INTERFACE_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/registry.hpp"
 
 #include "cocaine/helpers/blob.hpp"
 
@@ -50,6 +51,9 @@ class io_t {
 // --------------------
 
 class plugin_t {
+    public:
+        typedef core::policies::none policy;
+
     public:
         virtual ~plugin_t() = 0;
 

@@ -15,6 +15,7 @@
 #define COCAINE_STORAGE_INTERFACE_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/registry.hpp"
 
 #include "cocaine/helpers/json.hpp"
 
@@ -23,6 +24,9 @@ namespace cocaine { namespace storages {
 class storage_t:
     public boost::noncopyable
 {
+    public:
+        typedef core::policies::share policy;
+
     public:
         virtual ~storage_t() = 0;
 

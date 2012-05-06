@@ -15,6 +15,7 @@
 #define COCAINE_REGISTRY_HPP
 
 #include <typeinfo>
+#include <boost/thread/mutex.hpp>
 #include <boost/type_traits/is_base_of.hpp>
 
 #include <ltdl.h>
@@ -22,6 +23,28 @@
 #include "cocaine/common.hpp"
 
 namespace cocaine { namespace core {
+
+// Retention policies
+// ------------------
+
+namespace policies {
+    struct none {
+        template<class T>
+        struct pointer {
+            typedef std::auto_ptr<T> type;
+        };
+    };
+
+    struct share {
+        template<class T>
+        struct pointer {
+            typedef boost::shared_ptr<T> type;
+        };
+    };
+}
+
+// Class factory
+// -------------
 
 class category_concept_t {
     public:
@@ -32,22 +55,55 @@ template<class Category>
 class factory_concept_t:
     public category_concept_t
 {
+    typedef typename Category::policy::template pointer<Category>::type pointer_type;
+    
     public:
-        virtual Category* create(context_t& ctx) = 0;
+        virtual pointer_type create(context_t& ctx) = 0;
 };
 
+template<class T, class Category, class RetentionPolicy>
+class factory_t;
+
 template<class T, class Category>
-class factory_t:
+class factory_t<T, Category, policies::none>:
     public factory_concept_t<Category>
 {
+    typedef typename Category::policy::template pointer<Category>::type pointer_type;
+    
     public:
         virtual const std::type_info& category() const {
             return typeid(Category);
         }
 
-        virtual Category* create(context_t& ctx) {
-            return new T(ctx);
+        virtual pointer_type create(context_t& ctx) {
+            return pointer_type(new T(ctx));
         }
+};
+
+template<class T, class Category>
+class factory_t<T, Category, policies::share>:
+    public factory_concept_t<Category>
+{
+    typedef typename Category::policy::template pointer<Category>::type pointer_type;
+    
+    public:
+        virtual const std::type_info& category() const {
+            return typeid(Category);
+        }
+
+        virtual pointer_type create(context_t& ctx) {
+            boost::lock_guard<boost::mutex> lock(m_mutex);
+
+            if(!m_instance) {
+                m_instance.reset(new T(ctx));
+            }
+
+            return m_instance;
+        }
+
+    private:
+        boost::mutex m_mutex;
+        pointer_type m_instance;
 };
 
 // Module registry
@@ -61,7 +117,8 @@ class registry_t:
         ~registry_t();
 
         template<class Category>
-        std::auto_ptr<Category> create(const std::string& type) {
+        typename Category::policy::template pointer<Category>::type
+        create(const std::string& type) {
             factory_map_t::iterator it(m_factories.find(type));
 
             if(it == m_factories.end()) {
@@ -72,16 +129,11 @@ class registry_t:
                 throw registry_error_t("module '" + type + "' has an incompatible type");
             }
 
-            std::auto_ptr<Category> module(
+            return typename Category::policy::template pointer<Category>::type(
                 dynamic_cast< factory_concept_t<Category>* >(
                     it->second
                 )->create(m_context)
             );
-
-            // TEST: This should succeed due to the tests above.
-            BOOST_ASSERT(module.get() != 0);
-
-            return module;
         }
 
         template<class T, class Category>
@@ -95,7 +147,7 @@ class registry_t:
 
             m_factories.insert(
                 type,
-                new factory_t<T, Category>()
+                new factory_t<T, Category, typename Category::policy>()
             );
         }
 

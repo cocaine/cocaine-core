@@ -39,7 +39,7 @@ core_t::core_t(const config_t& config):
     m_log->info("using libmsgpack version %s", msgpack_version());
     m_log->info("using libzmq version %d.%d.%d", major, minor, patch);
     m_log->info("route to this node is '%s'", m_server.route().c_str());
-    
+
     // Server socket
     // -------------
 
@@ -288,7 +288,7 @@ Json::Value core_t::create_engine(const std::string& name, const Json::Value& ma
 
     if(!recovering) {
         try {
-            m_context.storage().put("apps", name, manifest);
+            m_context.create<storages::storage_t>(m_context.config.storage.driver)->put("apps", name, manifest);
         } catch(const storage_error_t& e) {
             m_log->error(
                 "unable to create the '%s' engine - %s",
@@ -315,7 +315,7 @@ Json::Value core_t::delete_engine(const std::string& name) {
     }
 
     try {
-        m_context.storage().remove("apps", name);
+        m_context.create<storages::storage_t>(m_context.config.storage.driver)->remove("apps", name);
     } catch(const storage_error_t& e) {
         m_log->error(
             "unable to destroy the '%s' engine - %s",
@@ -374,7 +374,7 @@ void core_t::announce(ev::timer&, int) {
 
 void core_t::recover() {
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
-    Json::Value root(m_context.storage().all("apps"));
+    Json::Value root(m_context.create<storages::storage_t>(m_context.config.storage.driver)->all("apps"));
 
     if(root.size()) {
         Json::Value::Members apps(root.getMemberNames());

@@ -33,7 +33,7 @@ auth_t::auth_t(context_t& ctx):
     ERR_load_crypto_strings();
 
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
-    Json::Value keys(ctx.storage().all("keys"));
+    Json::Value keys(ctx.create<storages::storage_t>(ctx.config.storage.driver)->all("keys"));
     Json::Value::Members names(keys.getMemberNames());
 
     for(Json::Value::Members::const_iterator it = names.begin();
