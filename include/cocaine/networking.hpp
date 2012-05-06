@@ -37,12 +37,12 @@ class socket_t:
     public boost::noncopyable
 {
     public:
-        socket_t(zmq::context_t& ctx, int type):
-            m_socket(ctx, type)
+        socket_t(zmq::context_t& context, int type):
+            m_socket(context, type)
         { }
 
-        socket_t(zmq::context_t& ctx, int type, const std::string& route):
-            m_socket(ctx, type)
+        socket_t(zmq::context_t& context, int type, const std::string& route):
+            m_socket(context, type)
         {
             setsockopt(ZMQ_IDENTITY, route.data(), route.size());
         }
@@ -210,12 +210,12 @@ class channel_t:
     public socket_t
 {
     public:
-        channel_t(zmq::context_t& ctx, int type):
-            socket_t(ctx, type)
+        channel_t(zmq::context_t& context, int type):
+            socket_t(context, type)
         { }
 
-        channel_t(zmq::context_t& ctx, int type, const std::string& route):
-            socket_t(ctx, type, route)
+        channel_t(zmq::context_t& context, int type, const std::string& route):
+            socket_t(context, type, route)
         { }
 
         // Brings the original methods into the scope.

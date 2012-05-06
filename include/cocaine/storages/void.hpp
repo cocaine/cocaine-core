@@ -22,7 +22,7 @@ class void_storage_t:
     public storage_t
 {
     public:
-        void_storage_t(context_t& ctx);
+        void_storage_t(context_t& context);
 
         virtual void put(const std::string& ns,
                          const std::string& key,

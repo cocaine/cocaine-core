@@ -32,8 +32,8 @@ static PyMethodDef context_module_methods[] = {
     { NULL, NULL, 0, NULL }
 };
 
-python_t::python_t(context_t& ctx):
-    plugin_t(ctx),
+python_t::python_t(context_t& context):
+    plugin_t(context),
     m_python_module(NULL),
     m_manifest(NULL),
     m_thread_state(NULL)

@@ -88,7 +88,7 @@ class python_t:
     public plugin_t
 {
     public:
-        python_t(context_t& ctx);
+        python_t(context_t& context);
         virtual ~python_t();
         
         virtual void initialize(const engine::app_t& app);

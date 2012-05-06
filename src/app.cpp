@@ -21,45 +21,51 @@
 #include "cocaine/interfaces/storage.hpp"
 
 using namespace cocaine::engine;
+using namespace cocaine::storages;
 
 // Application
 // -----------
 
-app_t::app_t(context_t& ctx, const std::string& name_, const Json::Value& manifest_):
+app_t::app_t(context_t& context, const std::string& name_, const Json::Value& manifest_):
     name(name_),
     manifest(manifest_),
-    log(ctx.log(name_))
+    log(context.log(name_))
 {
-    initialize(ctx);
+    initialize(context);
 }
 
-app_t::app_t(context_t& ctx, const std::string& name_):
+app_t::app_t(context_t& context, const std::string& name_):
     name(name_),
-    manifest(ctx.meta().get<storages::storage_t>(ctx.config.storage.driver)->get("apps", name_)),
-    log(ctx.log(name_))
+    log(context.log(name_))
 {
-    initialize(ctx);
+    boost::shared_ptr<storage_t> storage(
+        context.meta().get<storage_t>(context.config.storage.driver)
+    );
+
+    manifest = storage->get("apps", name_);
+
+    initialize(context);
 }
 
-void app_t::initialize(context_t& ctx) {
+void app_t::initialize(context_t& context) {
     policy.heartbeat_timeout = manifest["engine"].get(
         "heartbeat-timeout",
-        ctx.config.defaults.heartbeat_timeout
+        context.config.defaults.heartbeat_timeout
     ).asDouble();
 
     policy.suicide_timeout = manifest["engine"].get(
         "suicide-timeout",
-        ctx.config.defaults.suicide_timeout
+        context.config.defaults.suicide_timeout
     ).asDouble();
     
     policy.pool_limit = manifest["engine"].get(
         "pool-limit",
-        ctx.config.defaults.pool_limit
+        context.config.defaults.pool_limit
     ).asUInt();
     
     policy.queue_limit = manifest["engine"].get(
         "queue-limit",
-        ctx.config.defaults.queue_limit
+        context.config.defaults.queue_limit
     ).asUInt();
 
     policy.grow_threshold = manifest["engine"].get(

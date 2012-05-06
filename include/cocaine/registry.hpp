@@ -114,7 +114,7 @@ class registry_t:
     public boost::noncopyable
 {
     public:
-        registry_t(context_t& ctx);
+        registry_t(context_t& context);
         ~registry_t();
 
         template<class Category>

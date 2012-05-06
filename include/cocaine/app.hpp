@@ -22,15 +22,15 @@ namespace cocaine { namespace engine {
 
 class app_t {
     public:
-        app_t(context_t& ctx, const std::string& name);
+        app_t(context_t& context, const std::string& name);
 
-        app_t(context_t& ctx, 
+        app_t(context_t& context, 
               const std::string& name, 
               const Json::Value& manifest);
 
     public:
         const std::string name;
-        const Json::Value manifest;
+        Json::Value manifest;
 
         struct policy_t {
             float heartbeat_timeout;
@@ -43,7 +43,7 @@ class app_t {
         boost::shared_ptr<logging::logger_t> log;
 
     private:
-        void initialize(context_t& ctx);
+        void initialize(context_t& context);
 };
 
 class endpoint {

@@ -31,9 +31,9 @@ struct is_module {
     }
 };
 
-registry_t::registry_t(context_t& ctx):
-    m_context(ctx),
-    m_log(ctx.log("registry"))
+registry_t::registry_t(context_t& context):
+    m_context(context),
+    m_log(context.log("registry"))
 {
     if(lt_dlinit() != 0) {
         throw registry_error_t("unable to initialize the module loader");

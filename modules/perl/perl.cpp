@@ -38,7 +38,7 @@ namespace engine {
 
 class perl_t: public plugin_t {
 public:
-    perl_t(context_t& ctx) : plugin_t(ctx) {
+    perl_t(context_t& context) : plugin_t(context) {
 
         int argc = 0;
         char** argv = NULL;

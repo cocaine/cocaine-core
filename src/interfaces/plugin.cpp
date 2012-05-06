@@ -41,8 +41,8 @@ void io_t::delegate(const std::string& target, const void * data, size_t size) {
 	m_overseer.push(packed);
 }
 
-plugin_t::plugin_t(context_t& ctx):
-    m_context(ctx)
+plugin_t::plugin_t(context_t& context):
+    m_context(context)
 { }
 
 plugin_t::~plugin_t() { }

@@ -61,7 +61,7 @@ class plugin_t {
         virtual void invoke(const std::string& method, io_t& io) = 0;
 
     protected:
-        plugin_t(context_t& ctx);
+        plugin_t(context_t& context);
 
     protected:
         context_t& m_context;

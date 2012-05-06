@@ -29,8 +29,8 @@ class javascript_t:
     public plugin_t
 {
     public:
-        javascript_t(context_t& ctx):
-            plugin_t(ctx)
+        javascript_t(context_t& context):
+            plugin_t(context)
         { }
 
         ~javascript_t() {

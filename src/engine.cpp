@@ -39,11 +39,11 @@ void job_queue_t::push(value_type job) {
 // Basic stuff
 // -----------
 
-engine_t::engine_t(context_t& ctx, const std::string& name, const Json::Value& manifest):
-    m_context(ctx),
+engine_t::engine_t(context_t& context, const std::string& name, const Json::Value& manifest):
+    m_context(context),
     m_running(false),
-    m_app(ctx, name, manifest),
-    m_messages(ctx.io(), ZMQ_ROUTER)
+    m_app(context, name, manifest),
+    m_messages(context.io(), ZMQ_ROUTER)
 #ifdef HAVE_CGROUPS
     , m_cgroup(NULL)
 #endif

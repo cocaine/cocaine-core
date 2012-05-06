@@ -91,7 +91,7 @@ class engine_t:
     public boost::noncopyable
 {
     public:
-        engine_t(context_t& ctx, 
+        engine_t(context_t& context, 
                  const std::string& name, 
                  const Json::Value& manifest);
 

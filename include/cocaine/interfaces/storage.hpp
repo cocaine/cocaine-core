@@ -42,7 +42,7 @@ class storage_t:
         virtual void purge(const std::string& ns) = 0;
 
     protected:
-        storage_t(context_t& ctx);
+        storage_t(context_t& context);
 
     protected:
         context_t& m_context;
