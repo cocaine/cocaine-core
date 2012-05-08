@@ -144,37 +144,38 @@ class socket_t:
 namespace options {
     struct receive_timeout {
         typedef int value_type;
-        typedef boost::mpl::int_<ZMQ_RCVTIMEO> option_value;
+        typedef boost::mpl::int_<ZMQ_RCVTIMEO> option_type;
     };
 
     struct send_timeout {
         typedef int value_type;
-        typedef boost::mpl::int_<ZMQ_SNDTIMEO> option_value;
+        typedef boost::mpl::int_<ZMQ_SNDTIMEO> option_type;
     };
 }
 
 template<class Option>
-struct scoped_option {
+class scoped_option {
     typedef typename Option::value_type value_type;
-    typedef typename Option::option_value option_value;
+    typedef typename Option::option_type option_type;
 
-    scoped_option(socket_t& socket_, value_type value):
-        socket(socket_),
-        saved(value_type()),
-        size(sizeof(saved))
-    {
-        socket.getsockopt(option_value(), &saved, &size);
-        socket.setsockopt(option_value(), &value, sizeof(value));
-    }
+    public:
+        scoped_option(socket_t& socket_, value_type value):
+            socket(socket_),
+            saved(value_type()),
+            size(sizeof(saved))
+        {
+            socket.getsockopt(option_type(), &saved, &size);
+            socket.setsockopt(option_type(), &value, sizeof(value));
+        }
 
-    ~scoped_option() {
-        socket.setsockopt(option_value(), &saved, sizeof(saved));
-    }
+        ~scoped_option() {
+            socket.setsockopt(option_type(), &saved, sizeof(saved));
+        }
 
-    socket_t& socket;
-
-    value_type saved;
-    size_t size;
+    private:
+        socket_t& socket;
+        value_type saved;
+        size_t size;
 };
 
 template<class T> class raw;
