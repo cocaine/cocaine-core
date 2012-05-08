@@ -14,6 +14,7 @@
 #ifndef COCAINE_NETWORKING_HPP
 #define COCAINE_NETWORKING_HPP
 
+#include <boost/mpl/int.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <msgpack.hpp>
 
@@ -140,34 +141,43 @@ class socket_t:
         std::string m_endpoint;
 };
 
-template<int OptionType, class ValueType>
+namespace options {
+    struct receive_timeout {
+        typedef int value_type;
+        typedef boost::mpl::int_<ZMQ_RCVTIMEO> option_value;
+    };
+
+    struct send_timeout {
+        typedef int value_type;
+        typedef boost::mpl::int_<ZMQ_SNDTIMEO> option_value;
+    };
+}
+
+template<class Option>
 struct scoped_option {
-    scoped_option(socket_t& socket_, ValueType value):
+    typedef typename Option::value_type value_type;
+    typedef typename Option::option_value option_value;
+
+    scoped_option(socket_t& socket_, value_type value):
         socket(socket_),
-        saved(ValueType()),
+        saved(value_type()),
         size(sizeof(saved))
     {
-        socket.getsockopt(OptionType, &saved, &size);
-        socket.setsockopt(OptionType, &value, sizeof(value));
+        socket.getsockopt(option_value(), &saved, &size);
+        socket.setsockopt(option_value(), &value, sizeof(value));
     }
 
     ~scoped_option() {
-        socket.setsockopt(OptionType, &saved, sizeof(saved));
+        socket.setsockopt(option_value(), &saved, sizeof(saved));
     }
 
     socket_t& socket;
 
-    ValueType saved;
+    value_type saved;
     size_t size;
 };
 
 template<class T> class raw;
-
-template<class T>
-static inline raw<T>
-protect(T& object) {
-    return raw<T>(object);
-}
 
 template<> class raw<std::string> {
     public:
@@ -205,6 +215,12 @@ template<> class raw<const std::string> {
     private:
         const std::string& m_string;
 };
+
+template<class T>
+static inline raw<T>
+protect(T& object) {
+    return raw<T>(object);
+}
 
 class channel_t:
     public socket_t
