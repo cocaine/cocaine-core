@@ -49,7 +49,10 @@ void overseer_t::run() {
 
 blob_t overseer_t::pull(int timeout) {
     zmq::message_t message;
-    networking::scoped_option<ZMQ_RCVTIMEO, int> option(m_messages, timeout);
+
+    networking::scoped_option<
+        networking::options::receive_timeout
+    > option(m_messages, timeout);
 
     m_messages.recv(&message);
     
@@ -135,7 +138,7 @@ void overseer_t::configure() {
         std::string type(m_app->manifest["type"].asString());
 
         if(!type.empty()) {
-            m_plugin = m_context->meta().get<plugin_t>(type);
+            m_plugin = m_context->repository().get<plugin_t>(type);
             m_plugin->initialize(*m_app);
         } else {
             throw configuration_error_t("no app type has been specified");

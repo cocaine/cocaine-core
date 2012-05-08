@@ -39,7 +39,7 @@ app_t::app_t(context_t& context, const std::string& name_):
     log(context.log(name_))
 {
     boost::shared_ptr<storage_t> storage(
-        context.meta().get<storage_t>(context.config.storage.driver)
+        context.repository().get<storage_t>(context.config.storage.driver)
     );
 
     manifest = storage->get("apps", name_);

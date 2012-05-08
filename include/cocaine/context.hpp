@@ -90,7 +90,7 @@ class context_t:
         context_t(config_t config);
         ~context_t();
 
-        core::registry_t& meta() {
+        core::registry_t& repository() {
             return *m_registry;
         }
 

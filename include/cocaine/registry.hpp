@@ -29,19 +29,26 @@ namespace cocaine { namespace core {
 
 namespace policies {
     struct none {
-        template<class T>
+        template<class Category>
         struct ptr {
-            typedef std::auto_ptr<T> type;
+            typedef std::auto_ptr<Category> type;
         };
     };
 
     struct share {
-        template<class T>
+        template<class Category>
         struct ptr {
-            typedef boost::shared_ptr<T> type;
+            typedef boost::shared_ptr<Category> type;
         };
     };
 }
+
+template<class Category>
+struct category_traits {
+    typedef typename Category::policy::
+        template ptr<Category>::type
+    ptr_type;
+};
 
 // Class factory
 // -------------
@@ -51,14 +58,12 @@ class category_concept_t {
         virtual const std::type_info& category() const = 0;
 };
 
-template<class Category>
+template<class Category, class Traits = category_traits<Category> >
 class factory_concept_t:
     public category_concept_t
 {
     public:
-        typedef typename Category::policy::
-            template ptr<Category>::type 
-        ptr_type;
+        typedef typename Traits::ptr_type ptr_type;
     
     public:
         virtual const std::type_info& category() const {
@@ -75,13 +80,11 @@ template<class T, class Category>
 class factory_t<T, Category, policies::none>:
     public factory_concept_t<Category>
 {
+    typedef factory_concept_t<Category> base_type;
+
     public:
-        virtual
-        typename factory_concept_t<Category>::ptr_type
-        get(context_t& context) {
-            return typename factory_concept_t<Category>::ptr_type(
-                new T(context)
-            );
+        virtual typename base_type::ptr_type get(context_t& context) {
+            return typename base_type::ptr_type(new T(context));
         }
 };
 
@@ -89,10 +92,10 @@ template<class T, class Category>
 class factory_t<T, Category, policies::share>:
     public factory_concept_t<Category>
 {
+    typedef factory_concept_t<Category> base_type;
+    
     public:
-        virtual
-        typename factory_concept_t<Category>::ptr_type
-        get(context_t& context) {
+        virtual typename base_type::ptr_type get(context_t& context) {
             boost::lock_guard<boost::mutex> lock(m_mutex);
 
             if(!m_instance) {
@@ -104,11 +107,11 @@ class factory_t<T, Category, policies::share>:
 
     private:
         boost::mutex m_mutex;
-        typename factory_concept_t<Category>::ptr_type m_instance;
+        typename base_type::ptr_type m_instance;
 };
 
-// Component registry
-// ------------------
+// Component repository
+// --------------------
 
 class registry_t:
     public boost::noncopyable
@@ -118,7 +121,7 @@ class registry_t:
         ~registry_t();
 
         template<class Category>
-        typename factory_concept_t<Category>::ptr_type
+        typename category_traits<Category>::ptr_type
         get(const std::string& type) {
             factory_map_t::iterator it(m_factories.find(type));
 
@@ -130,7 +133,7 @@ class registry_t:
                 throw registry_error_t("module '" + type + "' has an incompatible type");
             }
 
-            return typename factory_concept_t<Category>::ptr_type(
+            return typename category_traits<Category>::ptr_type(
                 dynamic_cast< factory_concept_t<Category>* >(
                     it->second
                 )->get(m_context)
