@@ -1,9 +1,17 @@
+cocaine (0.7.4-5) lucid; urgency=low
+
+  * More adequate endpoints in cocaine:info.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 11 May 2012 20:40:05 +0400
+
 cocaine (0.7.4-4) lucid; urgency=low
 
   * Core: added an ability to specify the port range for use by the server to
     avoid specifying endpoints manually.
   * Core: fixed a bug which allowed the queue to overflow if a new slave was
     spawned during the job queueing process.
+  * Core: generalization of the component repository.
+  * Core: acknowledgements in native server.
   * Dealer: support for get() timeouts and deadline timeouts.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Sat, 28 Apr 2012 18:51:26 +0400

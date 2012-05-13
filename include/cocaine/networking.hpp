@@ -61,7 +61,9 @@ class socket_t:
             }
             
             if(position != std::string::npos) {
-                m_endpoint = hostname + endpoint.substr(position, std::string::npos);
+                m_endpoint = std::string("tcp://")
+                             + hostname
+                             + endpoint.substr(position, std::string::npos);
             } else {
                 m_endpoint = "<local>";
             }
