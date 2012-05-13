@@ -108,7 +108,6 @@ struct alive:
 
     public:
         const std::auto_ptr<job_t>& job() const {
-            BOOST_ASSERT(m_job.get());
             return m_job;
         }
 
