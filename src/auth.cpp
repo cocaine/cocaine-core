@@ -34,7 +34,7 @@ auth_t::auth_t(context_t& context):
     ERR_load_crypto_strings();
 
     boost::shared_ptr<storage_t> storage(
-        context.repository().get<storage_t>(context.config.storage.driver)
+        context.get<storage_t>(context.config.storage.driver)
     );
 
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.

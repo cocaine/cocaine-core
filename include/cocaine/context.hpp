@@ -90,8 +90,10 @@ class context_t:
         context_t(config_t config);
         ~context_t();
 
-        core::registry_t& repository() {
-            return *m_registry;
+        template<class Category>
+        typename core::category_traits<Category>::ptr_type
+        get(const std::string& type) {
+            return m_registry->get<Category>(type);
         }
 
         zmq::context_t& io();

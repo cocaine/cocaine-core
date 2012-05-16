@@ -138,7 +138,7 @@ void overseer_t::configure() {
         std::string type(m_app->manifest["type"].asString());
 
         if(!type.empty()) {
-            m_plugin = m_context->repository().get<plugin_t>(type);
+            m_plugin = m_context->get<plugin_t>(type);
             m_plugin->initialize(*m_app);
         } else {
             throw configuration_error_t("no app type has been specified");

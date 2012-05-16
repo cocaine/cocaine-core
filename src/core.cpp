@@ -29,7 +29,7 @@ using namespace cocaine::storages;
 core_t::core_t(const config_t& config):
     m_context(config),
     m_log(m_context.log("core")),
-    m_storage(m_context.repository().get<storage_t>(config.storage.driver)),
+    m_storage(m_context.get<storage_t>(config.storage.driver)),
     m_server(m_context.io(), ZMQ_REP, m_context.config.runtime.hostname),
     m_auth(m_context),
     m_birthstamp(m_loop.now())
