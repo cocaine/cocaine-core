@@ -24,48 +24,30 @@
 namespace cocaine {
 namespace dealer {
 
-// predeclaration
-template <typename LSD_T> class handle_info;
-typedef handle_info<DT> handle_info_t;
-
-template <typename LSD_T>
-class handle_info {
+class handle_info_t {
 public:
-	handle_info() {};
+	handle_info_t() {};
 
-	handle_info(const std::string& name,
-				const std::string& service_name,
-				typename LSD_T::port port) :
+	handle_info_t(const std::string& name,
+				const std::string& service_name) :
 		name_(name),
-		service_name_(service_name),
-		port_(port) {};
+		service_name_(service_name) {};
 
-	handle_info(const handle_info<LSD_T>& h_info) :
-		name_(h_info.name_),
-		service_name_(h_info.service_name_),
-		port_(h_info.port_) {};
+	handle_info_t(const handle_info_t& rhs) :
+		name_(rhs.name_),
+		service_name_(rhs.service_name_) {};
 
-	bool operator == (const handle_info<LSD_T>& sh) const {
-		return (name_ == sh.name_ &&
-				service_name_ == sh.service_name_ &&
-				port_ == sh.port_);
+	bool operator == (const handle_info_t& rhs) const {
+		return (name_ == rhs.name_ &&
+				service_name_ == rhs.service_name_);
 	};
 
 	std::string as_string() const {
-		std::string str_result = "[" + service_name_ + "].[" + name_ + "], port: ";
-		return str_result + boost::lexical_cast<std::string>(port_);
+		return "[" + service_name_ + "].[" + name_ + "]";
 	}
 
 	std::string name_;
 	std::string service_name_;
-	typename LSD_T::port port_;
-};
-
-template <typename LSD_T>
-std::ostream& operator << (std::ostream& out, const handle_info<LSD_T>& handle) {
-	out << "service name: " << handle.service_name_ << " name: " << handle.name_ << ", port: " << handle.port_;
-
-	return out;
 };
 
 } // namespace dealer

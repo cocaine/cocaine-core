@@ -155,11 +155,12 @@ heartbeats_collector::process_alive_endpoints() {
 	std::map<std::string, service_info_t>::const_iterator it = services_list.begin();
 	
 	for (; it != services_list.end(); ++it) {
+		// <handle name, endpoints list>
+		handles_endpoints_t handles_endpoints;
+
+		std::vector<cocaine_endpoint> endpoints;
 		const std::string& service_name = it->first;
 		const service_info_t& service_info = it->second;
-
-		// <handle, endpoint> - endpoints for each handle of the service
-		std::multimap<std::string, cocaine_endpoint> handles_endpoints;
 
 		// collect alive endpoints for service
 		std::map<std::string, inetv4_endpoints>::const_iterator sit;
@@ -195,10 +196,17 @@ heartbeats_collector::process_alive_endpoints() {
 
 			cocaine_node_app_info::application_tasks::const_iterator task_it = app.tasks.begin();
 			for (; task_it != app.tasks.end(); ++task_it) {
-				cocaine_endpoint cp;
-				cp.endpoint_ = task_it->second.endpoint;
-				cp.route_ = task_it->second.route;
-				handles_endpoints.insert(std::make_pair(task_it->second.name, cp));
+				cocaine_endpoint ce(task_it->second.endpoint, task_it->second.route);
+				
+				handles_endpoints_t::iterator hit = handles_endpoints.find(task_it->second.name);
+				if (hit != handles_endpoints.end()) {
+					hit->second.push_back(ce);
+				}
+				else {
+					std::vector<cocaine_endpoint> endpoints_vec;
+					endpoints_vec.push_back(ce);
+					handles_endpoints[task_it->second.name] = endpoints_vec;
+				}
 			}
 		}
 
@@ -211,25 +219,16 @@ heartbeats_collector::process_alive_endpoints() {
 }
 
 void
-heartbeats_collector::log_responded_hosts_handles(const service_info_t& s_info,
-												  const std::multimap<std::string, cocaine_endpoint>& handles_endpoints)
+heartbeats_collector::log_responded_hosts_handles(const service_info_t& service_info,
+												  const handles_endpoints_t& handles_endpoints)
 {
-	std::string log_msg = "heartbeats - responded endpoints for handle";
-	std::set<std::string> handles;
-	
-	std::multimap<std::string, cocaine_endpoint>::const_iterator it = handles_endpoints.begin();
+	handles_endpoints_t::const_iterator it = handles_endpoints.begin();
 	for (; it != handles_endpoints.end(); ++it) {
-		handles.insert(it->first);
-	}
+		std::string log_msg = "heartbeats - responded endpoints for handle";
+		logger_->log(PLOG_DEBUG, log_msg + ": [" + service_info.name_ + "." + it->first + "]");
 
-	for (std::set<std::string>::const_iterator it = handles.begin(); it != handles.end(); ++it) {
-		logger_->log(PLOG_DEBUG, log_msg + ": [" + s_info.name_ + "." + *it + "]");
-
-		std::multimap<std::string, cocaine_endpoint>::const_iterator eit, it_begin, it_end;
-		boost::tie(it_begin, it_end) = handles_endpoints.equal_range(*it);
-
-		for (eit = it_begin; eit != it_end; ++eit) {
-			logger_->log(PLOG_DEBUG, "heartbeats - " + eit->second.endpoint_);
+		for (size_t i = 0; i < it->second.size(); ++i) {
+			logger_->log(PLOG_DEBUG, "heartbeats - " + it->second[i].endpoint_);
 		}
 	}
 }

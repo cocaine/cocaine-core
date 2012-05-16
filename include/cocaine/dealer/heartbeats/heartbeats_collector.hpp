@@ -40,7 +40,6 @@
 #include "cocaine/dealer/heartbeats/hosts_fetcher_iface.hpp"
 #include "cocaine/dealer/core/handle_info.hpp"
 #include "cocaine/dealer/core/inetv4_host.hpp"
-#include "cocaine/dealer/core/host_info.hpp"
 #include "cocaine/dealer/cocaine_node_info/cocaine_node_info.hpp"
 #include "cocaine/dealer/core/cocaine_endpoint.hpp"
 
@@ -49,7 +48,8 @@ namespace dealer {
 
 class heartbeats_collector : private boost::noncopyable {
 public:
-	typedef boost::function<void(const service_info_t&, const std::multimap<std::string, cocaine_endpoint>&)> callback_t;
+	typedef std::map<std::string, std::vector<cocaine_endpoint> > handles_endpoints_t;
+	typedef boost::function<void(const service_info_t&, const handles_endpoints_t&)> callback_t;
 
 	heartbeats_collector(boost::shared_ptr<configuration> config,
 						 boost::shared_ptr<zmq::context_t> zmq_context);
@@ -72,8 +72,8 @@ private:
 
 	bool get_metainfo_from_endpoint(const inetv4_endpoint& endpoint, std::string& response);
 
-	void log_responded_hosts_handles(const service_info_t& s_info,
-									 const std::multimap<std::string, cocaine_endpoint>& handles_endpoints);
+	void log_responded_hosts_handles(const service_info_t& service_info,
+									 const handles_endpoints_t& handles_endpoints);
 
 	static const int hosts_ping_timeout = 2000; // milliseconds
 	static const int host_socket_ping_timeout = 2000000; // (2 seconds) microseconds FIX in zmq 3.1

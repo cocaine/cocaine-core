@@ -22,6 +22,10 @@ namespace dealer {
  // predeclaration
 class cocaine_endpoint {
 public:
+	cocaine_endpoint(const std::string& endpoint, const std::string& route) :
+		endpoint_(endpoint),
+		route_(route) {}
+
 	cocaine_endpoint() {}
 	~cocaine_endpoint() {}
 

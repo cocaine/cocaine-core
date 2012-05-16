@@ -145,7 +145,6 @@ void worker() {
 }
 
 void create_client(int add_messages_count) {
-	/*
 	const int pool_size = 1;
 	
 	std::cout << "----------------------------------- test info -------------------------------------------\n";
@@ -153,12 +152,9 @@ void create_client(int add_messages_count) {
 	std::cout << "-----------------------------------------------------------------------------------------\n";
 	
 	messages_count = add_messages_count;
-	*/
 	
 	client_ptr.reset(new client(config_path));
-	sleep(10);
 
-	/*
 	boost::thread pool[pool_size];
 
 	progress_timer timer;
@@ -182,7 +178,6 @@ void create_client(int add_messages_count) {
 	std::cout << "----------------------------------- test results ----------------------------------------\n";
 	std::cout << "elapsed: " << timer.elapsed().as_double() << std::endl;
 	std::cout << "approx performance: " << (add_messages_count * pool_size) / timer.elapsed().as_double() << " rps." << std::endl;
-	*/
 }
 
 int

@@ -83,7 +83,7 @@ client_impl::connect() {
 	conf = context_->config();
 	assert(conf);
 
-	logger()->log("creating file heartbeats collector");
+	logger()->log("creating heartbeats collector");
 	heartbeats_collector_.reset(new heartbeats_collector(conf, context()->zmq_context()));
 
 	heartbeats_collector_->set_callback(boost::bind(&client_impl::service_hosts_pinged_callback, this, _1, _2));
@@ -109,32 +109,24 @@ client_impl::disconnect() {
 }
 
 void
-client_impl::service_hosts_pinged_callback(const service_info_t& s_info,
-										   const std::multimap<std::string, cocaine_endpoint>& enpoints_for_handles)
+client_impl::service_hosts_pinged_callback(const service_info_t& service_info,
+										   const handles_endpoints_t& endpoints_for_handles)
 {
-	/*
 	boost::mutex::scoped_lock lock(mutex_);
 
 	// find corresponding service
-	services_map_t::iterator it = services_.find(s_info.name_);
+	services_map_t::iterator it = services_.find(service_info.name_);
 
 	// populate service with pinged hosts and handles
 	if (it != services_.end()) {
-		if (it->second.get()) {
-			it->second->refresh_hosts_and_handles(hosts, handles);
-		}
-		else {
-			std::string error_msg = "empty service object with dealer name " + s_info.name_;
-			error_msg += " was found in services. at: " + std::string(BOOST_CURRENT_FUNCTION);
-			throw internal_error(error_msg);
-		}
+		assert(it->second);
+		it->second->refresh_handles(endpoints_for_handles);
 	}
 	else {
-		std::string error_msg = "dealer service with name " + s_info.name_;
+		std::string error_msg = "service with name " + service_info.name_;
 		error_msg += " was not found in services. at: " + std::string(BOOST_CURRENT_FUNCTION);
 		throw internal_error(error_msg);
 	}
-	*/
 }
 
 boost::shared_ptr<message_iface>
