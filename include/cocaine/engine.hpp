@@ -40,7 +40,7 @@ typedef boost::ptr_map<
 #endif
     const std::string,
     drivers::driver_t
-> task_map_t;
+> driver_map_t;
 
 #if BOOST_VERSION >= 104000
 typedef boost::ptr_unordered_map<
@@ -193,7 +193,7 @@ class engine_t:
 
         // The application.
         const app_t m_app;
-        task_map_t m_tasks;
+        driver_map_t m_drivers;
 
         // Job queue.
         job_queue_t m_queue;

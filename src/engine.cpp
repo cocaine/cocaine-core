@@ -177,43 +177,43 @@ void engine_t::start() {
     m_gc_timer.set<engine_t, &engine_t::cleanup>(this);
     m_gc_timer.start(5.0f, 5.0f);
    
-    // Tasks configuration
+    // Event configuration
     // -------------------
 
-    Json::Value tasks(m_app.manifest["tasks"]);
+    Json::Value events(m_app.manifest["tasks"]);
 
-    if(!tasks.isNull() && tasks.size()) {
-        Json::Value::Members names(tasks.getMemberNames());
+    if(!events.isNull() && events.size()) {
+        Json::Value::Members names(events.getMemberNames());
 
         m_app.log->info(
             "initializing drivers for %zu %s: %s",
-            tasks.size(),
-            tasks.size() == 1 ? "task" : "tasks",
+            events.size(),
+            events.size() == 1 ? "events" : "events",
             boost::algorithm::join(names, ", ").c_str()
         );
     
         for(Json::Value::Members::iterator it = names.begin(); it != names.end(); ++it) {
-            std::string task(*it);
-            std::string type(tasks[task]["type"].asString());
+            std::string event(*it);
+            std::string type(events[event]["type"].asString());
             
             if(type == "recurring-timer") {
-                m_tasks.insert(task, new drivers::recurring_timer_t(*this, task, tasks[task]));
+                m_drivers.insert(event, new drivers::recurring_timer_t(*this, event, events[event]));
             } else if(type == "drifting-timer") {
-                m_tasks.insert(task, new drivers::drifting_timer_t(*this, task, tasks[task]));
+                m_drivers.insert(event, new drivers::drifting_timer_t(*this, event, events[event]));
             } else if(type == "filesystem-monitor") {
-                m_tasks.insert(task, new drivers::filesystem_monitor_t(*this, task, tasks[task]));
+                m_drivers.insert(event, new drivers::filesystem_monitor_t(*this, event, events[event]));
             } else if(type == "zeromq-server") {
-                m_tasks.insert(task, new drivers::zeromq_server_t(*this, task, tasks[task]));
+                m_drivers.insert(event, new drivers::zeromq_server_t(*this, event, events[event]));
             } else if(type == "zeromq-sink") {
-                m_tasks.insert(task, new drivers::zeromq_sink_t(*this, task, tasks[task]));
+                m_drivers.insert(event, new drivers::zeromq_sink_t(*this, event, events[event]));
             } else if(type == "server+lsd" || type == "native-server") {
-                m_tasks.insert(task, new drivers::native_server_t(*this, task, tasks[task]));
+                m_drivers.insert(event, new drivers::native_server_t(*this, event, events[event]));
             } else {
                throw configuration_error_t("no driver for '" + type + "' is available");
             }
         }
     } else {
-        throw configuration_error_t("no tasks has been specified");
+        throw configuration_error_t("no events has been specified");
     }
 
     m_running = true;
@@ -268,7 +268,7 @@ void engine_t::stop(std::string status) {
     std::for_each(m_pool.begin(), m_pool.end(), terminate());
 
     m_pool.clear();
-    m_tasks.clear();
+    m_drivers.clear();
 
     m_watcher.stop();
     m_processor.stop();
@@ -291,8 +291,8 @@ Json::Value engine_t::info() {
             )
         );
 
-        for(task_map_t::iterator it = m_tasks.begin();
-            it != m_tasks.end();
+        for(driver_map_t::iterator it = m_drivers.begin();
+            it != m_drivers.end();
             ++it) 
         {
             results["tasks"][it->first] = it->second->info();
