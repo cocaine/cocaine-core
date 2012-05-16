@@ -14,23 +14,19 @@
 #ifndef _COCAINE_DEALER_FILE_HOSTS_FETCHER_HPP_INCLUDED_
 #define _COCAINE_DEALER_FILE_HOSTS_FETCHER_HPP_INCLUDED_
 
-#include <string>
 #include <vector>
 
-#include <boost/cstdint.hpp>
-
-#include "cocaine/dealer/core/host_info.hpp"
-#include "cocaine/dealer/core/service_info.hpp"
+#include "cocaine/dealer/heartbeats/hosts_fetcher_iface.hpp"
 
 namespace cocaine {
 namespace dealer {
 
-class file_hosts_fetcher : private boost::noncopyable  {
+class file_hosts_fetcher : public hosts_fetcher_iface, private boost::noncopyable  {
 public:
-	file_hosts_fetcher(service_info_t service_info);
+	file_hosts_fetcher(const service_info_t& service_info);
 	virtual ~file_hosts_fetcher();
 	
-	void get_hosts(std::vector<host_info_t>& hosts, service_info_t& service_info);
+	bool get_hosts(inetv4_endpoints& endpoints, service_info_t& service_info);
 
 private:
 	service_info_t service_info_;

@@ -37,42 +37,52 @@ public:
 
 	service_info (const std::string& name,
 				  const std::string& description,
-				  const std::string& app_name,
-				  const std::string& instance,
-				  const std::string& hosts_file,
-				  const std::string& hosts_url,
-				  typename LSD_T::port control_port) :
+				  const std::string& app,
+				  const std::string& hosts_source,
+				  enum e_autodiscovery_type discovery_type) :
 					  name_(name),
 					  description_(description),
-					  app_name_(app_name),
-					  hosts_file_(hosts_file),
-					  hosts_url_(hosts_url),
-					  control_port_(control_port) {};
+					  app_(app),
+					  hosts_source_(hosts_source),
+					  discovery_type_(discovery_type) {};
 	
 	bool operator == (const service_info& rhs) {
 		return (name_ == rhs.name_ &&
-				hosts_url_ == rhs.hosts_url_ &&
-				hosts_file_ == rhs.hosts_file_ &&
-				control_port_ == rhs.control_port_);
+				app_ == rhs.app_ &&
+				hosts_source_ == rhs.hosts_source_ &&
+				discovery_type_ == rhs.discovery_type_);
 	};
 
 	// config-defined data
 	std::string name_;
 	std::string description_;
-	std::string app_name_;
-	std::string hosts_file_;
-	std::string hosts_url_;
-	typename LSD_T::port control_port_;
+	std::string app_;
+
+	// autodetection
+	std::string hosts_source_;
+	enum e_autodiscovery_type discovery_type_;
 };
 
 template <typename LSD_T>
 std::ostream& operator << (std::ostream& out, const service_info<LSD_T>& service_inf) {
-	out << "lsd service name: " << service_inf.name_ << "\n";
+	out << "service name: " << service_inf.name_ << "\n";
 	out << "description: " << service_inf.description_ << "\n";
-	out << "app name: " << service_inf.app_name_ << "\n";
-	out << "hosts file: " << service_inf.hosts_file_ << "\n";
-	out << "hosts url: " << service_inf.hosts_url_ << "\n";
-	out << "control port: " << service_inf.control_port_ << "\n";
+	out << "app: " << service_inf.app_name_ << "\n";
+	out << "hosts source: " << service_inf.hosts_source_ << "\n";
+
+	switch (service_inf.discovery_type_) {
+		case AT_MULTICAST:
+			out << "discovery type: multicast\n";
+			break;
+
+		case AT_HTTP:
+			out << "discovery type: http\n";
+			break;
+
+		case AT_FILE:
+			out << "discovery type: file\n";
+			break;
+	}
 
 	return out;
 };

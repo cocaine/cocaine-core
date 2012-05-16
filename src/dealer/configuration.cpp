@@ -28,16 +28,13 @@ namespace cocaine {
 namespace dealer {
 
 configuration::configuration() :
-	message_deadline_(defaults::message_deadline),
-	socket_poll_timeout_(defaults::socket_poll_timeout),
+	default_message_deadline_(defaults::default_message_deadline),
+	message_cache_type_(defaults::message_cache_type),
 	logger_type_(defaults::logger_type),
 	logger_flags_(defaults::logger_flags),
 	eblob_path_(defaults::eblob_path),
 	eblob_blob_size_(defaults::eblob_blob_size),
 	eblob_sync_interval_(defaults::eblob_sync_interval),
-	autodiscovery_type_(defaults::autodiscovery_type),
-	multicast_ip_(defaults::heartbeat_multicast_ip),
-	multicast_port_(defaults::heartbeat_multicast_port),
 	is_statistics_enabled_(false),
 	is_remote_statistics_enabled_(false),
 	remote_statistics_port_(defaults::statistics_port)
@@ -47,16 +44,13 @@ configuration::configuration() :
 
 configuration::configuration(const std::string& path) :
 	path_(path),
-	message_deadline_(defaults::message_deadline),
-	socket_poll_timeout_(defaults::socket_poll_timeout),
+	default_message_deadline_(defaults::default_message_deadline),
+	message_cache_type_(defaults::message_cache_type),
 	logger_type_(defaults::logger_type),
 	logger_flags_(defaults::logger_flags),
 	eblob_path_(defaults::eblob_path),
 	eblob_blob_size_(defaults::eblob_blob_size),
 	eblob_sync_interval_(defaults::eblob_sync_interval),
-	autodiscovery_type_(defaults::autodiscovery_type),
-	multicast_ip_(defaults::heartbeat_multicast_ip),
-	multicast_port_(defaults::heartbeat_multicast_port),
 	is_statistics_enabled_(false),
 	is_remote_statistics_enabled_(false),
 	remote_statistics_port_(defaults::statistics_port)
@@ -66,27 +60,6 @@ configuration::configuration(const std::string& path) :
 
 configuration::~configuration() {
 	
-}
-
-void
-configuration::parse_basic_settings(const Json::Value& config_value) {
-	int version = config_value.get("config_version", 0).asUInt();
-
-	if (version != current_config_version) {
-		throw internal_error("Unsupported config version: %d, current version: CONFIG_VERSION");
-	}
-
-	// parse message_deadline
-	const Json::Value message_timeout_value = config_value.get("message_deadline",
-															   static_cast<int>(defaults::message_deadline));
-
-	message_deadline_ = static_cast<unsigned long long>(message_timeout_value.asInt());
-
-	// parse socket_poll_timeout
-	const Json::Value socket_poll_timeout_value = config_value.get("socket_poll_timeout",
-															   static_cast<int>(defaults::socket_poll_timeout));
-
-	socket_poll_timeout_ = static_cast<unsigned long long>(socket_poll_timeout_value.asInt());
 }
 
 void
@@ -102,6 +75,11 @@ configuration::parse_logger_settings(const Json::Value& config_value) {
 	}
 	else if (log_type == "SYSLOG_LOGGER") {
 		logger_type_ = SYSLOG_LOGGER;
+	}
+	else {
+		std::string error_str = "unknown logger type: " + log_type;
+		error_str += "logger type property can only take STDOUT_LOGGER, FILE_LOGGER or SYSLOG_LOGGER as value.";
+		throw internal_error(error_str);
 	}
 
 	std::string log_flags = logger_value.get("flags", "PLOG_NONE").asString();
@@ -129,19 +107,49 @@ configuration::parse_logger_settings(const Json::Value& config_value) {
 		else if (flag == "PLOG_ERROR") {
 			logger_flags_ |= PLOG_ERROR;
 		}
-		else if (flag == "PLOG_MSG_TYPES") {
-			logger_flags_ |= PLOG_MSG_TYPES;
+		else if (flag == "PLOG_TYPES") {
+			logger_flags_ |= PLOG_TYPES;
+		}
+		else if (flag == "PLOG_TIME") {
+			logger_flags_ |= PLOG_TIME;
 		}
 		else if (flag == "PLOG_ALL") {
 			logger_flags_ |= PLOG_ALL;
 		}
-		else if (flag == "PLOG_MSG_TIME") {
-			logger_flags_ |= PLOG_MSG_TIME;
+		else if (flag == "PLOG_BASIC") {
+			logger_flags_ |= PLOG_BASIC;
+		}
+		else if (flag == "PLOG_INTRO") {
+			logger_flags_ |= PLOG_INTRO;
+		}
+		else {
+			std::string error_str = "unknown logger flag: " + flag;
+			error_str += ", logger flag property can only take a combination of these values: ";
+			error_str += "PLOG_NONE or PLOG_ALL, PLOG_BASIC, PLOG_INFO, PLOG_DEBUG, ";
+			error_str += "PLOG_WARNING, PLOG_ERROR, PLOG_TYPES, PLOG_TIME, PLOG_INTRO";
+			throw internal_error(error_str);
 		}
 	}
 
-	logger_file_path_  = logger_value.get("file", "").asString();
-	logger_syslog_name_  = logger_value.get("syslog_name", "").asString();
+	if (logger_type_ == FILE_LOGGER) {
+		logger_file_path_  = logger_value.get("file", "").asString();
+		boost::trim(logger_file_path_);
+
+		if (logger_file_path_.empty()) {
+			std::string error_str = "logger of type FILE_LOGGER must have non-empty \"file\" value.";
+			throw internal_error(error_str);
+		}
+	}
+
+	if (logger_type_ == SYSLOG_LOGGER) {
+		logger_syslog_identity_  = logger_value.get("identity", "").asString();
+		boost::trim(logger_syslog_identity_);
+
+		if (logger_syslog_identity_.empty()) {
+			std::string error_str = "logger of type SYSLOG_LOGGER must have non-empty \"identity\" value.";
+			throw internal_error(error_str);
+		}
+	}
 }
 
 void
@@ -158,8 +166,7 @@ configuration::parse_messages_cache_settings(const Json::Value& config_value) {
 	}
 	else {
 		std::string error_str = "unknown message cache type: " + message_cache_type_str;
-		error_str += "message_cache/type property can only take RAM_ONLY or PERSISTENT as value. ";
-		error_str += "at " + std::string(BOOST_CURRENT_FUNCTION);
+		error_str += "message_cache \"type\" property can only take RAM_ONLY or PERSISTENT as value.";
 		throw internal_error(error_str);
 	}
 }
@@ -180,26 +187,6 @@ configuration::parse_persistant_storage_settings(const Json::Value& config_value
 }
 
 void
-configuration::parse_autodiscovery_settings(const Json::Value& config_value) {
-	const Json::Value autodiscovery_value = config_value["autodiscovery"];
-
-	std::string atype = autodiscovery_value.get("type", "FILE").asString();
-
-	if (atype == "FILE") {
-		autodiscovery_type_ = AT_FILE;
-	}
-	else if (atype == "HTTP") {
-		autodiscovery_type_ = AT_HTTP;
-	}
-	else if (atype == "MULTICAST") {
-		autodiscovery_type_ = AT_MULTICAST;
-	}
-
-	multicast_ip_ = autodiscovery_value.get("multicast_ip", defaults::heartbeat_multicast_ip).asString();
-	multicast_port_ = autodiscovery_value.get("multicast_port", defaults::heartbeat_multicast_port).asUInt();
-}
-
-void
 configuration::parse_statistics_settings(const Json::Value& config_value) {
 	const Json::Value statistics_value = config_value["statistics"];
 
@@ -210,50 +197,87 @@ configuration::parse_statistics_settings(const Json::Value& config_value) {
 
 void
 configuration::parse_services_settings(const Json::Value& config_value) {
-	const Json::Value services_value = config_value["services"];
-	service_info_t si;
+	const Json::Value services_list = config_value["services"];
 
-	for (size_t index = 0; index < services_value.size(); ++index) {
-		const Json::Value service_value = services_value[index];
-		si.description_ = service_value.get("description", "").asString();
-		si.name_ = service_value.get("name", "").asString();
-		si.app_name_ = service_value.get("app_name", "").asString();
-		si.hosts_file_ = service_value.get("hosts_file", "").asString();
-		si.hosts_url_ = service_value.get("hosts_url", "").asString();
-		si.control_port_ = service_value.get("control_port", defaults::control_port).asUInt();
+	if (!services_list.isObject() || !services_list.size()) {
+		std::string error_str = "\"services\" section is malformed, it must have at least one service defined, ";
+		error_str += "see documentation for more info.";
+		throw internal_error(error_str);
+	}
 
-		// check values for validity
-		if (si.name_.empty()) {
-			throw internal_error("service with no name was found in config! at: " + std::string(BOOST_CURRENT_FUNCTION));
+	Json::Value::Members services_names(services_list.getMemberNames());
+	for (Json::Value::Members::iterator it = services_names.begin(); it != services_names.end(); ++it) {
+	    std::string service_name(*it);
+	    Json::Value service_data(services_list[service_name]);
+
+	    std::cout << service_name <<std::endl;
+	    
+	    if (!service_data.isObject()) {
+			std::string error_str = "\"service\" (with alias: " + service_name + ") is malformed, ";
+			error_str += "see documentation for more info.";
+			throw internal_error(error_str);
 		}
 
-		if (si.app_name_.empty()) {
-			throw internal_error("service with no application name was found in config! at: " + std::string(BOOST_CURRENT_FUNCTION));
+	    service_info_t si;
+		si.name_ = service_name;
+		boost::trim(si.name_);
+
+	    if (si.name_.empty()) {
+	    	std::string error_str = "malformed \"service\" section found, alias must me non-empty string";
+			throw internal_error(error_str);
+	    }
+
+	    si.description_ = service_data.get("description", "").asString();
+	    boost::trim(si.description_);
+
+		si.app_ = service_data.get("app", "").asString();
+		boost::trim(si.app_);
+		
+		if (si.app_.empty()) {
+			std::string error_str = "malformed \"service\" " + si.name_ + " section found, field";
+			error_str += "\"app\" must me non-empty string";
+			throw internal_error(error_str);
 		}
 
-		if (si.hosts_url_.empty() && si.hosts_file_.empty()) {
-			throw internal_error("service with no hosts source was found in config! at: " + std::string(BOOST_CURRENT_FUNCTION));
+		// cocaine nodes autodiscovery
+		const Json::Value autodiscovery = service_data["autodiscovery"];
+		if (!autodiscovery.isObject()) {
+			std::string error_str = "\"autodiscovery\" section for service " + service_name + " is malformed, ";
+			error_str += "see documentation for more info.";
+			throw internal_error(error_str);
 		}
 
-		if (si.control_port_ == 0) {
-			throw internal_error("service with no control port == 0 was found in config! at: " + std::string(BOOST_CURRENT_FUNCTION));
+		si.hosts_source_ = autodiscovery.get("source", "").asString();
+		boost::trim(si.hosts_source_);
+
+		if (si.hosts_source_.empty()) {
+			std::string error_str = "malformed \"service\" " + si.name_ + " section found, field";
+			error_str += "\"source\" must me non-empty string";
+			throw internal_error(error_str);
+		}
+
+		std::string autodiscovery_type_str = autodiscovery.get("type", "").asString();
+
+		if (autodiscovery_type_str == "FILE") {
+			si.discovery_type_ = AT_FILE;
+		}
+		else if (autodiscovery_type_str == "HTTP") {
+			si.discovery_type_ = AT_HTTP;
+		}
+		else if (autodiscovery_type_str == "MULTICAST") {
+			si.discovery_type_ = AT_MULTICAST;
+		}
+		else {
+			std::string error_str = "\"autodiscovery\" section for service " + service_name;
+			error_str += " has malformed field \"type\", which can only take values FILE, HTTP, MULTICAST.";
+			throw internal_error(error_str);
 		}
 
 		// check for duplicate services
 		std::map<std::string, service_info_t>::iterator it = services_list_.begin();
 		for (;it != services_list_.end(); ++it) {
 			if (it->second.name_ == si.name_) {
-				throw internal_error("duplicate service with name " + si.name_ + " was found in config! at: " + std::string(BOOST_CURRENT_FUNCTION));
-			}
-		}
-
-		// no service can have the same app_name + control_port
-		it = services_list_.begin();
-		for (;it != services_list_.end(); ++it) {
-			if (it->second == si) {
-				std::string error_msg = "duplicate service with app name " + si.app_name_ + " and ";
-				error_msg += "control port " + boost::lexical_cast<std::string>(si.control_port_) + " was found in config! at: " + std::string(BOOST_CURRENT_FUNCTION);
-				throw internal_error(error_msg);
+				throw internal_error("duplicate service with name " + si.name_ + " was found in config!");
 			}
 		}
 
@@ -276,7 +300,14 @@ configuration::load(const std::string& path) {
 	std::string config_data;
 	std::string line;
 	while (std::getline(file, line)) {
-		config_data += line;// + "\n";
+		// strip comments
+		boost::trim(line);
+		if (line.substr(0, 2) == "//") {
+			continue;
+		}
+
+		// append to config otherwise
+		config_data += line;
 	}
 	
 	file.close();
@@ -289,24 +320,34 @@ configuration::load(const std::string& path) {
 		throw internal_error("config file: " + path + " could not be parsed at: " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 	
-	// parse config data
-	const Json::Value config_value = root["dealer_config"];
-	
 	try {
-		parse_basic_settings(config_value);
-		parse_logger_settings(config_value);
-		parse_messages_cache_settings(config_value);
-		parse_persistant_storage_settings(config_value);
-		parse_autodiscovery_settings(config_value);
-		parse_statistics_settings(config_value);
-		parse_services_settings(config_value);
+		parse_basic_settings(root);
+		parse_logger_settings(root);
+		parse_messages_cache_settings(root);
+		parse_persistant_storage_settings(root);
+		parse_services_settings(root);
+		//parse_statistics_settings(config_value);
 	}
 	catch (const std::exception& ex) {
 		std::string error_msg = "config file: " + path + " could not be parsed. details: ";
 		error_msg += ex.what();
-		error_msg += " at: " + std::string(BOOST_CURRENT_FUNCTION);
 		throw internal_error(error_msg);
 	}
+}
+
+void
+configuration::parse_basic_settings(const Json::Value& config_value) {
+	int file_version = config_value.get("version", 0).asUInt();
+
+	if (file_version != current_config_version) {
+		throw internal_error("Unsupported config version: %d, current version: %d", file_version, current_config_version);
+	}
+
+	// parse message_deadline
+	const Json::Value deadline_value = config_value.get("default_message_deadline",
+															   static_cast<int>(defaults::default_message_deadline));
+
+	default_message_deadline_ = static_cast<unsigned long long>(deadline_value.asInt());
 }
 
 const std::string&
@@ -320,13 +361,8 @@ configuration::config_version() const {
 }
 
 unsigned long long
-configuration::message_deadline() const {
-	return message_deadline_;
-}
-
-unsigned long long
-configuration::socket_poll_timeout() const {
-	return socket_poll_timeout_;
+configuration::default_message_deadline() const {
+	return default_message_deadline_;
 }
 
 enum e_message_cache_type
@@ -350,8 +386,8 @@ configuration::logger_file_path() const {
 }
 
 const std::string&
-configuration::logger_syslog_name() const {
-	return logger_syslog_name_;
+configuration::logger_syslog_identity() const {
+	return logger_syslog_identity_;
 }
 
 std::string
@@ -367,21 +403,6 @@ configuration::eblob_blob_size() const {
 int
 configuration::eblob_sync_interval() const {
 	return eblob_sync_interval_;
-}
-
-enum e_autodiscovery_type
-configuration::autodiscovery_type() const {
-	return autodiscovery_type_;
-}
-
-std::string
-configuration::multicast_ip() const {
-	return multicast_ip_;
-}
-
-unsigned short
-configuration::multicast_port() const {
-	return multicast_port_;
 }
 
 bool
@@ -427,212 +448,89 @@ configuration::service_info_by_name(const std::string& name) const {
 	return false;
 }
 
-std::string configuration::as_json() const {
-	Json::FastWriter writer;
-	Json::Value root;
-
-	Json::Value basic_settings;
-	basic_settings["1 - config version"] = current_config_version;
-	basic_settings["2 - message deadline"] = static_cast<unsigned int>(message_deadline_);
-	basic_settings["3 - socket poll timeout"] = static_cast<unsigned int>(socket_poll_timeout_);
-	root["1 - basic settings"] = basic_settings;
-
-	Json::Value logger;
-	if (logger_type_ == STDOUT_LOGGER) {
-		logger["1 - type"] = "STDOUT_LOGGER";
-	}
-	else if (logger_type_ == FILE_LOGGER) {
-		logger["1 - type"] = "FILE_LOGGER";
-	}
-	else if (logger_type_ == SYSLOG_LOGGER) {
-		logger["1 - type"] = "SYSLOG_LOGGER";
-	}
-
-	std::string flags;
-
-	if (logger_flags_ == PLOG_NONE) {
-		flags = "PLOG_NONE";
-	}
-	else if (logger_flags_ == PLOG_ALL) {
-		flags = "PLOG_ALL";
-	}
-	else {
-		if ((logger_flags_ & PLOG_INFO) == PLOG_INFO) {
-			flags += "PLOG_INFO ";
-		}
-
-		if ((logger_flags_ & PLOG_DEBUG) == PLOG_DEBUG) {
-			flags += "PLOG_DEBUG ";
-		}
-
-		if ((logger_flags_ & PLOG_WARNING) == PLOG_WARNING) {
-			flags += "PLOG_WARNING ";
-		}
-
-		if ((logger_flags_ & PLOG_ERROR) == PLOG_ERROR) {
-			flags += "PLOG_ERROR ";
-		}
-
-		if ((logger_flags_ & PLOG_MSG_TYPES) == PLOG_MSG_TYPES) {
-			flags += "PLOG_MSG_TYPES ";
-		}
-	}
-
-	logger["2 - flags"] = flags;
-	logger["3 - file path"] = logger_file_path_;
-	logger["4 - syslog name"] = logger_syslog_name_;
-	root["2 - logger"] = logger;
-
-	Json::Value message_cache;
-	std::string mcache_size_str;
-
-	if (message_cache_type_ == RAM_ONLY) {
-		message_cache["1 - type"] = "RAM_ONLY";
- 	}
- 	else if (message_cache_type_ == PERSISTENT) {
- 		message_cache["1 - type"] = "PERSISTENT";
- 	}
-	root["3 - message cache"] = message_cache;
-
-	Json::Value persistant_storage;
-	persistant_storage["1 - eblob path"] = eblob_path_;
-	persistant_storage["2 - eblob size"] = (int)eblob_blob_size_;
-	persistant_storage["3 - eblob sync interval"] = eblob_sync_interval_;
-	root["4 - persistant storage"] = persistant_storage;
-
-	Json::Value autodiscovery;
-	if (autodiscovery_type_ == AT_MULTICAST) {
-		autodiscovery["1 - type"] = "MULTICAST";
-	}
-	else if (autodiscovery_type_ == AT_HTTP) {
-		autodiscovery["1 - type"] = "HTTP";
-	}
-	else if (autodiscovery_type_ == AT_FILE) {
-		autodiscovery["1 - type"] = "FILE";
-	}
-
-	autodiscovery["2 - multicast ip"] = multicast_ip_;
-	autodiscovery["3 - multicast port"] = multicast_port_;
-	root["5 - autodiscovery"] = autodiscovery;
-
-	Json::Value statistics;
-	statistics["1 - is statistics enabled"] = is_statistics_enabled_;
-	statistics["2 - is remote statistics_enabled"] = is_remote_statistics_enabled_;
-	statistics["3 - remote statistics port"] = remote_statistics_port_;
-	root["6 - statistics"] = statistics;
-
-	Json::Value services;
-	const std::map<std::string, service_info_t>& sl = services_list_;
-
-	int counter = 1;
-	std::map<std::string, service_info_t>::const_iterator it = sl.begin();
-	for (; it != sl.end(); ++it) {
-		Json::Value service;
-		service["1 - app name"] = it->second.app_name_;
-		//service["2 - instance"] = it->second.instance_;
-		service["2 - description"] = it->second.description_;
-		service["3 - hosts url"] = it->second.hosts_url_;
-		service["4 - control port"] = it->second.control_port_;
-
-		std::string service_name = boost::lexical_cast<std::string>(counter);
-		service_name += " - " + it->second.name_;
-		services[service_name] = service;
-		++counter;
-	}
-	root["7 - services"] = services;
-
-	return writer.write(root);
-}
-
-std::string configuration::as_string() const {
-	std::stringstream out;
-
-	out << "---------- config path: " << path_ << " ----------\n";
+std::ostream& operator << (std::ostream& out, configuration& c) {
+	out << "---------- config path: " << c.path_ << " ----------\n";
 
 	// basic
 	out << "basic settings\n";
-	out << "\tconfig version: " << current_config_version << "\n";
-	out << "\tmessage deadline: " << message_deadline_ << "\n";
-	out << "\tsocket poll timeout: " << socket_poll_timeout_ << "\n";
+	out << "\tconfig version: " << configuration::current_config_version << "\n";
+	out << "\tdefault message deadline: " << c.default_message_deadline_ << "\n";
 	
 	// logger
 	out << "\nlogger\n";
-	if (logger_type_ == STDOUT_LOGGER) {
-		out << "\ttype: STDOUT_LOGGER" << "\n";
-	}
-	else if (logger_type_ == FILE_LOGGER) {
-		out << "\ttype: FILE_LOGGER" << "\n";
-	}
-	else if (logger_type_ == SYSLOG_LOGGER) {
-		out << "\ttype: SYSLOG_LOGGER" << "\n";
+	switch (c.logger_type_) {
+		case STDOUT_LOGGER:
+			out << "\ttype: STDOUT_LOGGER" << "\n";
+			break;
+		case FILE_LOGGER:
+			out << "\ttype: FILE_LOGGER" << "\n";
+			out << "\tfile path: " << c.logger_file_path_ << "\n";
+			break;
+		case SYSLOG_LOGGER:
+			out << "\ttype: SYSLOG_LOGGER" << "\n";
+			out << "\tsyslog identity: " << c.logger_syslog_identity_ << "\n\n";
+			break;
 	}
 	
-	if (logger_flags_ == PLOG_NONE) {
-		out << "\tflags: PLOG_NONE" << "\n";
-	}
-	else if (logger_flags_ == PLOG_ALL) {
-		out << "\tflags: PLOG_ALL" << "\n";
-	}
-	else {
-		out << "\tflags: ";
-		
-		if ((logger_flags_ & PLOG_INFO) == PLOG_INFO) {
-			out << "PLOG_INFO ";
-		}
-		
-		if ((logger_flags_ & PLOG_DEBUG) == PLOG_DEBUG) {
-			out << "PLOG_DEBUG ";
-		}
-		
-		if ((logger_flags_ & PLOG_WARNING) == PLOG_WARNING) {
-			out << "PLOG_WARNING ";
-		}
-		
-		if ((logger_flags_ & PLOG_ERROR) == PLOG_ERROR) {
-			out << "PLOG_ERROR ";
-		}
-
-		if ((logger_flags_ & PLOG_MSG_TYPES) == PLOG_MSG_TYPES) {
-			out << "PLOG_MSG_TYPES ";
-		}
-
-		out << "\n";
+	switch (c.logger_flags_) {
+		case PLOG_NONE:
+			out << "\tflags: PLOG_NONE" << "\n";
+			break;
+		default:
+			out << "\tflags: ";
+			if ((c.logger_flags_ & PLOG_INFO) == PLOG_INFO) { out << "PLOG_INFO "; }
+			if ((c.logger_flags_ & PLOG_DEBUG) == PLOG_DEBUG) { out << "PLOG_DEBUG "; }
+			if ((c.logger_flags_ & PLOG_WARNING) == PLOG_WARNING) { out << "PLOG_WARNING "; }
+			if ((c.logger_flags_ & PLOG_ERROR) == PLOG_ERROR) { out << "PLOG_ERROR "; }
+			if ((c.logger_flags_ & PLOG_TYPES) == PLOG_TYPES) { out << "PLOG_TYPES "; }
+			if ((c.logger_flags_ & PLOG_TIME) == PLOG_TIME) { out << "PLOG_TIME "; }
+			if ((c.logger_flags_ & PLOG_INTRO) == PLOG_INTRO) { out << "PLOG_INTRO "; }
+			out << "\n";
+			break;
 	}
 
-	out << "\tfile path: " << logger_file_path_ << "\n";
- 	out << "\tsyslog name: " << logger_syslog_name_ << "\n\n";
-
+	out << "\n";
 
  	// message cache
  	out << "message cache\n";
 
- 	if (message_cache_type_ == RAM_ONLY) {
+ 	if (c.message_cache_type_ == RAM_ONLY) {
  		out << "\ttype: RAM_ONLY\n\n";
  	}
- 	else if (message_cache_type_ == PERSISTENT) {
+ 	else if (c.message_cache_type_ == PERSISTENT) {
  		out << "\ttype: PERSISTENT\n\n";
+
+ 		// persistant storage
+ 		out << "persistant storage\n";
+		out << "\teblob path: " << c.eblob_path_ << "\n";
+ 		out << "\teblob sync interval: " << c.eblob_sync_interval_ << "\n\n";
  	}
 
- 	// persistant storage
- 	out << "persistant storage\n";
-	out << "\teblob path: " << eblob_path_ << "\n";
- 	out << "\teblob sync interval: " << eblob_sync_interval_ << "\n\n";
+	// services
+	out << "services: ";
+	const std::map<std::string, service_info_t>& sl = c.services_list_;
+	
+	std::map<std::string, service_info_t>::const_iterator it = sl.begin();
+	for (; it != sl.end(); ++it) {
+		out << "\n\talias: " << it->second.name_ << "\n";
+		out << "\tdescription: " << it->second.description_ << "\n";
+		out << "\tapp: " << it->second.app_ << "\n";
+		out << "\thosts source: " << it->second.hosts_source_ << "\n";
 
- 	// autodiscovery
- 	out << "autodiscovery\n";
-	if (autodiscovery_type_ == AT_MULTICAST) {
-		out << "\ttype: MULTICAST" << "\n";
-	}
-	else if (autodiscovery_type_ == AT_HTTP) {
-		out << "\ttype: HTTP" << "\n";
-	}
-	else if (autodiscovery_type_ == AT_FILE) {
-		out << "\ttype: FILE" << "\n";
+		switch (it->second.discovery_type_) {
+			case AT_MULTICAST:
+				out << "\tautodiscovery type: multicast" << "\n";
+				break;
+			case AT_HTTP:
+				out << "\tautodiscovery type: http" << "\n";
+				break;
+			case AT_FILE:
+				out << "\tautodiscovery type: file" << "\n";
+				break;
+		}
 	}
 
-	out << "\tmulticast ip: " << multicast_ip_ << "\n";
-	out << "\tmulticast port: " << multicast_port_ << "\n\n";
-
+ 	/*
 	// statistics
 	out << "statistics\n";
 	if (is_statistics_enabled_ == true) {
@@ -650,26 +548,8 @@ std::string configuration::as_string() const {
 	}
 
 	out << "\tremote port: " << remote_statistics_port_ << "\n\n";
+	*/
 
-	// services
-	out << "services: ";
-	const std::map<std::string, service_info_t>& sl = services_list_;
-	
-	std::map<std::string, service_info_t>::const_iterator it = sl.begin();
-	for (; it != sl.end(); ++it) {
-		out << "\n\tname: " << it->second.name_ << "\n";
-		out << "\tdescription: " << it->second.description_ << "\n";
-		out << "\tapp name: " << it->second.app_name_ << "\n";
-		out << "\thosts url: " << it->second.hosts_url_ << "\n";
-		out << "\thosts file: " << it->second.hosts_file_ << "\n";
-		out << "\tcontrol port: " << it->second.control_port_ << "\n";
-	}
-
-	return out.str();
-}
-
-std::ostream& operator<<(std::ostream& out, configuration& config) {
-	out << config.as_string();
 	return out;
 }
 

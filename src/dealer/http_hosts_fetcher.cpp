@@ -15,6 +15,7 @@
 #include <iostream>
 
 #include <boost/current_function.hpp>
+#include <boost/lexical_cast.hpp>
 #include <boost/tokenizer.hpp>
 
 #include "cocaine/dealer/heartbeats/http_hosts_fetcher.hpp"
@@ -22,7 +23,7 @@
 namespace cocaine {
 namespace dealer {
 
-http_hosts_fetcher::http_hosts_fetcher(service_info_t service_info) :
+http_hosts_fetcher::http_hosts_fetcher(const service_info_t& service_info) :
 	curl_(NULL),
 	service_info_(service_info)
 {
@@ -43,15 +44,15 @@ http_hosts_fetcher::curl_writer(char* data, size_t size, size_t nmemb, std::stri
 	return 0;
 }
 
-void
-http_hosts_fetcher::get_hosts(std::vector<host_info_t>& hosts, service_info_t& service_info) {
+bool
+http_hosts_fetcher::get_hosts(inetv4_endpoints& endpoints, service_info_t& service_info) {
 	CURLcode result = CURLE_OK;
 	char error_buffer[CURL_ERROR_SIZE];
 	std::string buffer;
 	
 	if (curl_) {
 		curl_easy_setopt(curl_, CURLOPT_ERRORBUFFER, error_buffer);
-		curl_easy_setopt(curl_, CURLOPT_URL, service_info_.hosts_url_.c_str());
+		curl_easy_setopt(curl_, CURLOPT_URL, service_info_.hosts_source_.c_str());
 		curl_easy_setopt(curl_, CURLOPT_HEADER, 0);
 		curl_easy_setopt(curl_, CURLOPT_FOLLOWLOCATION, 1);
 		curl_easy_setopt(curl_, CURLOPT_WRITEFUNCTION, curl_writer);
@@ -62,14 +63,14 @@ http_hosts_fetcher::get_hosts(std::vector<host_info_t>& hosts, service_info_t& s
 	}
 	
 	if (CURLE_OK != result) {
-		return;
+		return false;
 	}
 	
 	long response_code = 0;
 	result = curl_easy_getinfo(curl_, CURLINFO_RESPONSE_CODE, &response_code);
 	
 	if (CURLE_OK != result || response_code != 200) {
-		return;
+		return false;
 	}
 	
 	// get hosts from received data
@@ -78,11 +79,28 @@ http_hosts_fetcher::get_hosts(std::vector<host_info_t>& hosts, service_info_t& s
 	tokenizer tokens(buffer, sep);
 	
 	for (tokenizer::iterator tok_iter = tokens.begin(); tok_iter != tokens.end(); ++tok_iter) {
-		host_info_t host(*tok_iter);
-		hosts.push_back(host);
+		try {
+			std::string line = *tok_iter;
+
+			// look for ip/port parts
+			size_t where = line.find_last_of(":");
+
+			if (where == std::string::npos) {
+				endpoints.push_back(inetv4_endpoint(inetv4_host(line)));
+			}
+			else {
+				std::string ip = line.substr(0, where);
+				std::string port = line.substr(where + 1, (line.length() - (where + 1)));
+
+				endpoints.push_back(inetv4_endpoint(ip, port));
+			}
+		}
+		catch (...) {
+		}
 	}
 	
 	service_info = service_info_;
+	return true;
 }
 
 } // namespace dealer

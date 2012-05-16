@@ -63,7 +63,7 @@ public:
 	}
 
 	bool operator == (const host_info<LSD_T>& info) {
-		return (ip_ == info.ip_ && hostname_ == info.hostname_);
+		return (ip_ == info.ip_ && hostname_ == info.hostname_ && identity_ == info.identity_);
 	}
 
 	static typename LSD_T::ip_addr ip_from_string(const std::string& ip) {
@@ -107,6 +107,7 @@ public:
 
 	typename LSD_T::ip_addr ip_;
 	std::string hostname_;
+	std::string identity_;
 };
 
 template <typename LSD_T>

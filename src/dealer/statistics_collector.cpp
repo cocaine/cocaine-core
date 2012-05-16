@@ -231,6 +231,8 @@ statistics_collector::get_error_json(enum e_statictics_req_error err) const {
 
 std::string
 statistics_collector::all_services_json() {
+	return "{}";
+	/*
 	boost::mutex::scoped_lock lock(mutex_);
 
 	Json::FastWriter writer;
@@ -353,6 +355,7 @@ statistics_collector::all_services_json() {
 	}
 
 	return writer.write(root);
+	*/
 }
 
 std::string
@@ -392,20 +395,22 @@ statistics_collector::process_request_json(const std::string& request_json) {
 	}
 
 	// get all config data
-	if (action == "config") {
-		return config()->as_json();
-	}
+	//if (action == "config") {
+	//	return config()->as_json();
+	//}
 
 	// get all services data
-	if (action == "all_services") {
-		return all_services_json();
-	}
+	//if (action == "all_services") {
+	//	return all_services_json();
+	//}
 
 	return "";
 }
 
 std::string
 statistics_collector::as_json() const {
+	return "{}";
+	/*
 	Json::FastWriter writer;
 	Json::Value root;
 
@@ -427,6 +432,7 @@ statistics_collector::as_json() const {
 	}
 
 	return writer.write(root);
+	*/
 }
 
 void

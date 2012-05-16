@@ -81,20 +81,13 @@ client_impl::connect() {
 
 	assert(context_);
 	conf = context_->config();
-
 	assert(conf);
 
-	if (conf->autodiscovery_type() == AT_FILE) {
-		logger()->log("creating file heartbeats collector");
-		heartbeats_collector_.reset(new heartbeats_collector<file_hosts_fetcher>(conf, context()->zmq_context()));
-	}
-	else if (conf->autodiscovery_type() == AT_HTTP) {
-		logger()->log("creating http heartbeats collector");
-		heartbeats_collector_.reset(new heartbeats_collector<http_hosts_fetcher>(conf, context()->zmq_context()));
-	}
+	logger()->log("creating file heartbeats collector");
+	heartbeats_collector_.reset(new heartbeats_collector(conf, context()->zmq_context()));
 
-	heartbeats_collector_->set_callback(boost::bind(&client_impl::service_hosts_pinged_callback, this, _1, _2, _3));
-	//heartbeats_collector_->set_logger(logger());
+	heartbeats_collector_->set_callback(boost::bind(&client_impl::service_hosts_pinged_callback, this, _1, _2));
+	heartbeats_collector_->set_logger(logger());
 	heartbeats_collector_->run();
 }
 
@@ -103,7 +96,7 @@ client_impl::disconnect() {
 	assert(heartbeats_collector_.get());
 
 	// stop collecting heartbeats
-	heartbeats_collector_->stop();
+	heartbeats_collector_.reset();
 
 	// stop services
 	services_map_t::iterator it = services_.begin();
@@ -117,9 +110,9 @@ client_impl::disconnect() {
 
 void
 client_impl::service_hosts_pinged_callback(const service_info_t& s_info,
-										   const std::vector<host_info_t>& hosts,
-										   const std::vector<handle_info_t>& handles)
+										   const std::multimap<std::string, cocaine_endpoint>& enpoints_for_handles)
 {
+	/*
 	boost::mutex::scoped_lock lock(mutex_);
 
 	// find corresponding service
@@ -141,6 +134,7 @@ client_impl::service_hosts_pinged_callback(const service_info_t& s_info,
 		error_msg += " was not found in services. at: " + std::string(BOOST_CURRENT_FUNCTION);
 		throw internal_error(error_msg);
 	}
+	*/
 }
 
 boost::shared_ptr<message_iface>

@@ -35,10 +35,11 @@ namespace dealer {
 #define PLOG_DEBUG		(0x1 << 1)
 #define PLOG_WARNING	(0x1 << 2)
 #define PLOG_ERROR		(0x1 << 3)
-#define PLOG_MSG_TYPES	(0x1 << 4)
-#define PLOG_MSG_TIME	(0x1 << 5)
-#define PLOG_BASIC		(PLOG_MSG_TYPES | PLOG_MSG_TIME | PLOG_INFO)
-#define PLOG_ALL		(PLOG_MSG_TYPES | PLOG_MSG_TIME | PLOG_INFO | PLOG_DEBUG | PLOG_WARNING | PLOG_ERROR)
+#define PLOG_TYPES 		(0x1 << 4)
+#define PLOG_TIME		(0x1 << 5)
+#define PLOG_INTRO		(0x1 << 6)
+#define PLOG_BASIC		(PLOG_TYPES | PLOG_TIME | PLOG_INFO)
+#define PLOG_ALL		(PLOG_TYPES | PLOG_TIME | PLOG_INFO | PLOG_DEBUG | PLOG_WARNING | PLOG_ERROR)
 
 enum e_logger_type {
 	STDOUT_LOGGER = 1,
@@ -49,7 +50,7 @@ enum e_logger_type {
 class base_logger {
 public:
 	base_logger() {
-		flags_ = PLOG_ALL | PLOG_MSG_TYPES;
+		flags_ = PLOG_ALL;
 		is_paused_ = false;
 		
 		create_first_message();
@@ -59,14 +60,16 @@ public:
 		flags_ = flags;
 		is_paused_ = false;
 		
-		create_first_message();
+		if ((flags_ & PLOG_INTRO) == PLOG_INTRO) {
+			create_first_message();
+		}
 	}
 	
 	std::string get_message_prefix(unsigned int message_type) {
 		std::string prefix;
 
 		time_t now = time(NULL);
-		if ((flags_ & PLOG_MSG_TIME) == PLOG_MSG_TIME) {
+		if ((flags_ & PLOG_TIME) == PLOG_TIME) {
 			struct tm* ptm = localtime(&now);
 			char buffer[32];
 			strftime (buffer, 32, "%H:%M:%S", ptm);
@@ -75,7 +78,7 @@ public:
 			prefix += "]";
 		}
 
-		if ((flags_ & PLOG_MSG_TYPES) == PLOG_MSG_TYPES) {
+		if ((flags_ & PLOG_TYPES) == PLOG_TYPES) {
 			if ((message_type & PLOG_INFO) == PLOG_INFO) {
 				prefix += "[INFO]    ";
 			}
@@ -139,11 +142,15 @@ public:
 class stdout_logger : public base_logger {
 public:
 	stdout_logger() {
-		std::cout << first_message_ << std::flush;
+		if ((flags_ & PLOG_INTRO) == PLOG_INTRO) {
+			std::cout << first_message_ << std::flush;
+		}
 	}
 
 	stdout_logger(unsigned int flags) : base_logger(flags) {
-		std::cout << first_message_ << std::flush;
+		if ((flags_ & PLOG_INTRO) == PLOG_INTRO) {
+			std::cout << first_message_ << std::flush;
+		}
 	}
 	
 	static void log_common(const std::string& message) {
@@ -183,7 +190,9 @@ public:
 			throw internal_error(error_msg + " at: " + std::string(BOOST_CURRENT_FUNCTION));
 		}
 
-		file_ << first_message_;
+		if ((flags_ & PLOG_INTRO) == PLOG_INTRO) {
+			file_ << first_message_;
+		}
 	}
 	
 	virtual ~file_logger () {
@@ -221,7 +230,10 @@ public:
 
 		setlogmask(LOG_UPTO (LOG_NOTICE));
 		openlog(syslog_name_.c_str(), LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-		syslog(LOG_NOTICE, "%s", first_message_.c_str());
+
+		if ((flags_ & PLOG_INTRO) == PLOG_INTRO) {
+			syslog(LOG_NOTICE, "%s", first_message_.c_str());
+		}
 	}
 	
 	virtual ~syslog_logger () {

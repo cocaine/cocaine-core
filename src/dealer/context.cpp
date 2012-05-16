@@ -38,7 +38,7 @@ context::context(const std::string& config_path) {
 			
 		case SYSLOG_LOGGER:
 			logger_.reset(new smart_logger<syslog_logger>(config_->logger_flags()));
-			((smart_logger<syslog_logger>*)logger_.get())->init(config_->logger_syslog_name());
+			((smart_logger<syslog_logger>*)logger_.get())->init(config_->logger_syslog_identity());
 			break;
 			
 		default:

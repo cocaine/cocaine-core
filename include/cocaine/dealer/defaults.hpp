@@ -49,16 +49,12 @@ struct defaults {
 	static const enum e_logger_type logger_type = STDOUT_LOGGER;
 	static const unsigned int logger_flags = PLOG_NONE;
 
-	// autodiscovery
-	static const enum e_autodiscovery_type autodiscovery_type = AT_FILE;
-
 	// persistance
 	static const enum e_message_cache_type message_cache_type = RAM_ONLY;
 
 	// the rest
 	static const int protocol_version = 1;
-	static const unsigned long long message_deadline = 500;	// milliseconds
-	static const unsigned long long socket_poll_timeout = 2000; // milliseconds
+	static const unsigned long long default_message_deadline = 500;	// milliseconds
 	static const unsigned long long socket_ping_timeout = 1000; // milliseconds
 
 	static const std::string eblob_path;
@@ -67,8 +63,6 @@ struct defaults {
 
 	static const unsigned short control_port = 5000;
 	static const unsigned long long heartbeat_interval = 2;	// seconds
-	static const std::string heartbeat_multicast_ip;
-	static const unsigned short heartbeat_multicast_port = 5556;
 
 	static const unsigned short statistics_port = 3333;
 	static const int statistics_protocol_version = 1;

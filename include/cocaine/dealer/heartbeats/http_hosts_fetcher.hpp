@@ -17,21 +17,19 @@
 #include <string>
 #include <vector>
 
-#include <boost/cstdint.hpp>
 #include <curl/curl.h>
 
-#include "cocaine/dealer/core/host_info.hpp"
-#include "cocaine/dealer/core/service_info.hpp"
+#include "cocaine/dealer/heartbeats/hosts_fetcher_iface.hpp"
 
 namespace cocaine {
 namespace dealer {
 
-class http_hosts_fetcher : private boost::noncopyable  {
+class http_hosts_fetcher : public hosts_fetcher_iface, private boost::noncopyable  {
 public:
-	http_hosts_fetcher(service_info_t service_info);
+	http_hosts_fetcher(const service_info_t& service_info);
 	virtual ~http_hosts_fetcher();
 
-	void get_hosts(std::vector<host_info_t>& hosts, service_info_t& service_info);
+	bool get_hosts(inetv4_endpoints& endpoints, service_info_t& service_info);
 
 private:
 	static int curl_writer(char* data, size_t size, size_t nmemb, std::string* buffer_in);

@@ -35,10 +35,54 @@
 #include "cocaine/dealer/utils/progress_timer.hpp"
 #include <cocaine/dealer/utils/data_container.hpp>
 #include <cocaine/dealer/utils/error.hpp>
+#include <cocaine/dealer/utils/smart_logger.hpp>
+#include <cocaine/dealer/utils/networking.hpp>
+
+#include "cocaine/dealer/cocaine_node_info/cocaine_node_info_parser.hpp"
+#include "cocaine/dealer/cocaine_node_info/cocaine_node_info.hpp"
+
+#include <cocaine/dealer/core/configuration.hpp>
 
 using namespace cocaine::dealer;
 using namespace boost::program_options;
 using namespace boost::accumulators;
+
+/*
+int
+main(int argc, char** argv) {
+	std::string json_string = "";
+
+	std::ifstream file;
+	file.open("/home/rimz/cocaine-core/cnode_response");
+
+	if (file.is_open()) {
+		while (!file.eof()) {
+			const int buff_size = 1024;
+			char buff[buff_size];
+			memset(buff, 0, sizeof(buff));
+			file.getline(buff, buff_size);
+			json_string += buff;
+		}
+	}
+
+	boost::shared_ptr<base_logger> logger(new smart_logger<stdout_logger>());
+	
+	cocaine_node_info info;
+	cocaine_node_info_parser parser(logger);
+	parser.set_host_info("127.0.0.1", 5000);
+
+	if (parser.parse(json_string, info)) {
+		logger->log("parsed ok");
+	}
+	else {
+		logger->log("parsing fail");
+	}
+
+	std::cout << info;
+
+	return EXIT_SUCCESS;
+}
+*/
 
 std::string config_path = "tests/config_example.json";
 boost::shared_ptr<client> client_ptr;
@@ -69,12 +113,12 @@ void worker() {
 			}
 
 			data_container data;
-			resp->get(&data, 0.000175);
+			//resp->get(&data, 0.000175);
 
 			//accum(t.elapsed().as_double());
-			//while (resp->get(&data)) {
-				//std::cout << std::string(reinterpret_cast<const char*>(data.data()), 0, data.size()) << std::endl;
-			//}
+			while (resp->get(&data)) {
+				std::cout << std::string(reinterpret_cast<const char*>(data.data()), 0, data.size()) << std::endl;
+			}
 		}
 		catch (const dealer_error& err) {
 			std::cout << "error code: " << err.code() << ", error message: " << err.what() << std::endl;
@@ -92,26 +136,29 @@ void worker() {
 		}
 	}
 
-	/*
-	boost::mutex::scoped_lock lock(mutex);
-	std::cout << std::fixed << std::setprecision(6);
-	std::cout << "min - " << boost::accumulators::min(accum);
-	std::cout << "\tmax - " << boost::accumulators::max(accum);
-	std::cout << "\tmean - " << boost::accumulators::mean(accum);
-	std::cout << " \tmedian - " << boost::accumulators::median(accum) << "\n" << std::flush;
-	*/
+	//boost::mutex::scoped_lock lock(mutex);
+	//std::cout << std::fixed << std::setprecision(6);
+	//std::cout << "min - " << boost::accumulators::min(accum);
+	//std::cout << "\tmax - " << boost::accumulators::max(accum);
+	//std::cout << "\tmean - " << boost::accumulators::mean(accum);
+	//std::cout << " \tmedian - " << boost::accumulators::median(accum) << "\n" << std::flush;
 }
 
 void create_client(int add_messages_count) {
+	/*
 	const int pool_size = 1;
 	
 	std::cout << "----------------------------------- test info -------------------------------------------\n";
 	std::cout << "sending " << add_messages_count * pool_size << " messages using " << pool_size << " threads\n";
 	std::cout << "-----------------------------------------------------------------------------------------\n";
-
+	
 	messages_count = add_messages_count;
+	*/
+	
 	client_ptr.reset(new client(config_path));
+	sleep(10);
 
+	/*
 	boost::thread pool[pool_size];
 
 	progress_timer timer;
@@ -135,6 +182,7 @@ void create_client(int add_messages_count) {
 	std::cout << "----------------------------------- test results ----------------------------------------\n";
 	std::cout << "elapsed: " << timer.elapsed().as_double() << std::endl;
 	std::cout << "approx performance: " << (add_messages_count * pool_size) / timer.elapsed().as_double() << " rps." << std::endl;
+	*/
 }
 
 int

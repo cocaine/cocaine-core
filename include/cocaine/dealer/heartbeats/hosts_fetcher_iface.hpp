@@ -11,12 +11,24 @@
 // limitations under the License.
 //
 
-#include "cocaine/dealer/defaults.hpp"
+#ifndef _COCAINE_DEALER_HOSTS_FETCHER_IFACE_HPP_INCLUDED_
+#define _COCAINE_DEALER_HOSTS_FETCHER_IFACE_HPP_INCLUDED_
+
+#include <vector>
+
+#include "cocaine/dealer/core/service_info.hpp"
+#include "cocaine/dealer/core/inetv4_endpoint.hpp"
 
 namespace cocaine {
 namespace dealer {
 
-const std::string defaults::eblob_path = "/tmp/pmq_eblob";
+class hosts_fetcher_iface {
+public:
+	typedef std::vector<inetv4_endpoint> inetv4_endpoints;
+	virtual bool get_hosts(inetv4_endpoints& endpoints, service_info_t& service_info) = 0;
+};
 
 } // namespace dealer
 } // namespace cocaine
+
+#endif // _COCAINE_DEALER_HOSTS_FETCHER_IFACE_HPP_INCLUDED_

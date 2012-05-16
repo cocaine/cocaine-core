@@ -115,7 +115,7 @@ private:
 	void process_deadlined_messages();
 
 	// networking
-	void recreate_main_socket(socket_ptr_t& main_socket, int timeout, int64_t hwm);
+	void recreate_main_socket(socket_ptr_t& main_socket, int timeout, int64_t hwm, const std::string& identity);
 	void connect_zmq_socket_to_hosts(socket_ptr_t& socket,
 									 hosts_info_list_t& hosts);
 
@@ -398,10 +398,11 @@ handle<LSD_T>::receive_control_messages(socket_ptr_t& control_socket, int poll_t
 }
 
 template <typename LSD_T> void
-handle<LSD_T>::recreate_main_socket(socket_ptr_t& main_socket, int timeout, int64_t hwm) {
-	main_socket.reset(new zmq::socket_t(*(context()->zmq_context()), ZMQ_DEALER));
+handle<LSD_T>::recreate_main_socket(socket_ptr_t& main_socket, int timeout, int64_t hwm, const std::string& identity) {
+	main_socket.reset(new zmq::socket_t(*(context()->zmq_context()), ZMQ_ROUTER));
 	main_socket->setsockopt(ZMQ_LINGER, &timeout, sizeof(timeout));
 	main_socket->setsockopt(ZMQ_HWM, &hwm, sizeof(hwm));
+	main_socket->setsockopt(ZMQ_IDENTITY, identity.c_str(), identity.length());
 }
 
 template <typename LSD_T> void
@@ -416,7 +417,7 @@ handle<LSD_T>::dispatch_control_messages(int type, socket_ptr_t& main_socket) {
 
 			// create new main socket in case we're not connected
 			if (!is_connected_) {
-				recreate_main_socket(main_socket, 500, 0);
+				recreate_main_socket(main_socket, 500, 0, "huita");
 				connect_zmq_socket_to_hosts(main_socket, hosts_);
 				is_connected_ = true;
 			}
@@ -425,7 +426,7 @@ handle<LSD_T>::dispatch_control_messages(int type, socket_ptr_t& main_socket) {
 		case CONTROL_MESSAGE_RECONNECT:
 			logger()->log(PLOG_DEBUG, "CONTROL_MESSAGE_RECONNECT - DO");
 
-			recreate_main_socket(main_socket, 500, 0);
+			recreate_main_socket(main_socket, 500, 0, "huita");
 			connect_zmq_socket_to_hosts(main_socket, hosts_);
 			is_connected_ = true;
 			logger()->log(PLOG_DEBUG, "CONTROL_MESSAGE_RECONNECT - DONE");
@@ -503,6 +504,15 @@ handle<LSD_T>::dispatch_next_available_message(socket_ptr_t main_socket) {
 
 	try {
 		boost::shared_ptr<message_iface> new_msg = message_cache_->get_new_message();
+
+		// send ident
+		std::string ident = "elisto20f.dev.yandex.net/rimz_app@1/rimz_func";
+		zmq::message_t ident_chunk(ident.size());
+		memcpy((void *)ident_chunk.data(), ident.data(), ident.size());
+		if (true != main_socket->send(ident_chunk, ZMQ_SNDMORE)) {
+			++statistics_.bad_sent_messages;
+			return false;
+		}
 
 		// send header
 		zmq::message_t empty_chunk(0);
@@ -645,35 +655,21 @@ template <typename LSD_T> void
 handle<LSD_T>::process_responce(boost::ptr_vector<zmq::message_t>& chunks) {
 	boost::mutex::scoped_lock lock(mutex_);
 
-	// we've received some useless crap
-	if (chunks.size() < 2) {
-		return;
-	}
-
-	// empty chunk must go first in multipart message
-	if(chunks[0].size() != 0) {
-		return;
-	}
+	// unpack node identity
+	std::string ident(reinterpret_cast<const char*>(chunks[0].data()));
 
 	// unpack uuid
 	std::string uuid;
 	msgpack::unpacked msg;
-	msgpack::unpack(&msg, reinterpret_cast<const char*>(chunks[1].data()), chunks[1].size());
+	msgpack::unpack(&msg, reinterpret_cast<const char*>(chunks[2].data()), chunks[2].size());
 	msgpack::object obj = msg.get();
     obj.convert(&uuid);
 
-    // unfinished message received
-	if (chunks.size() < 3) {
-		reshedule_message(uuid);
-		return;
-	}
-
    	// unpack rpc code
 	int rpc_code;
-	msgpack::unpacked msg2;
-	msgpack::unpack(&msg2, reinterpret_cast<const char*>(chunks[2].data()), chunks[2].size());
-	msgpack::object obj2 = msg2.get();
-    obj2.convert(&rpc_code);
+	msgpack::unpack(&msg, reinterpret_cast<const char*>(chunks[3].data()), chunks[3].size());
+	obj = msg.get();
+    obj.convert(&rpc_code);
 
 	// get message from sent cache
 	boost::shared_ptr<message_iface> sent_msg;
@@ -708,20 +704,14 @@ handle<LSD_T>::process_responce(boost::ptr_vector<zmq::message_t>& chunks) {
 
 	switch (rpc_code) {
 		case SERVER_RPC_MESSAGE_CHUNK: {
-			if (chunks.size() >= 4) {
-				// enqueue chunk in response queue
-				cached_response_prt_t new_response;
-				new_response.reset(new cached_response(uuid, sent_msg->path(), chunks[3].data(), chunks[3].size()));
-				new_response->set_code(response_code::message_chunk);
+			// enqueue chunk in response queue
+			cached_response_prt_t new_response;
+			new_response.reset(new cached_response(uuid, sent_msg->path(), chunks[4].data(), chunks[4].size()));
+			new_response->set_code(response_code::message_chunk);
 
-				lock.unlock();
-				enqueue_response(new_response);
-				lock.lock();
-			}
-			else {
-				reshedule_message(uuid);
-				return;
-			}
+			lock.unlock();
+			enqueue_response(new_response);
+			lock.lock();
 		}
 		break;
 
@@ -729,26 +719,15 @@ handle<LSD_T>::process_responce(boost::ptr_vector<zmq::message_t>& chunks) {
 			int error_code = -1;
 			std::string error_message;
 
-			if (chunks.size() < 4) {
-				// malformed error msg, do nothing
-			}
-			else {
-				if (chunks.size() >= 4) {
-					// unpack error code
-					msgpack::unpacked msg3;
-					msgpack::unpack(&msg3, reinterpret_cast<const char*>(chunks[3].data()), chunks[3].size());
-					msgpack::object obj3 = msg3.get();
-				    obj3.convert(&error_code);
-				}
+			// unpack error code
+			msgpack::unpack(&msg, reinterpret_cast<const char*>(chunks[4].data()), chunks[4].size());
+			obj = msg.get();
+		    obj.convert(&error_code);
 
-				if (chunks.size() >= 5) {
-					// unpack error message
-					msgpack::unpacked msg3;
-					msgpack::unpack(&msg3, reinterpret_cast<const char*>(chunks[4].data()), chunks[4].size());
-					msgpack::object obj3 = msg3.get();
-				    obj3.convert(&error_message);
-				}
-			}
+			// unpack error message
+			msgpack::unpack(&msg, reinterpret_cast<const char*>(chunks[5].data()), chunks[5].size());
+			obj = msg.get();
+		    obj.convert(&error_message);
 
 			if (error_code == resource_error) { // queue is full
 				reshedule_message(uuid);

@@ -11,12 +11,25 @@
 // limitations under the License.
 //
 
-#include "cocaine/dealer/defaults.hpp"
+#ifndef _COCAINE_DEALER_COCAINE_ENDPOINT_HPP_INCLUDED_
+#define _COCAINE_DEALER_COCAINE_ENDPOINT_HPP_INCLUDED_
+
+#include <string>
 
 namespace cocaine {
 namespace dealer {
 
-const std::string defaults::eblob_path = "/tmp/pmq_eblob";
+ // predeclaration
+class cocaine_endpoint {
+public:
+	cocaine_endpoint() {}
+	~cocaine_endpoint() {}
+
+	std::string endpoint_;
+	std::string route_;
+};
 
 } // namespace dealer
 } // namespace cocaine
+
+#endif // _COCAINE_DEALER_COCAINE_ENDPOINT_HPP_INCLUDED_

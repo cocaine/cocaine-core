@@ -20,6 +20,7 @@
 #include <iostream>
 
 #include <boost/current_function.hpp>
+#include <boost/lexical_cast.hpp>
 #include <boost/tokenizer.hpp>
 
 #include <cocaine/dealer/utils/error.hpp>
@@ -28,7 +29,7 @@
 namespace cocaine {
 namespace dealer {
 
-file_hosts_fetcher::file_hosts_fetcher(service_info_t service_info) :
+file_hosts_fetcher::file_hosts_fetcher(const service_info_t& service_info) :
 	service_info_(service_info),
 	file_modification_time_(0)
 {
@@ -37,25 +38,25 @@ file_hosts_fetcher::file_hosts_fetcher(service_info_t service_info) :
 file_hosts_fetcher::~file_hosts_fetcher() {
 }
 
-void
-file_hosts_fetcher::get_hosts(std::vector<host_info_t>& hosts, service_info_t& service_info) {
+bool
+file_hosts_fetcher::get_hosts(inetv4_endpoints& endpoints, service_info_t& service_info) {
 	std::string buffer;
 
 	// check file modification time
 	struct stat attrib;
-	stat(service_info_.hosts_file_.c_str(), &attrib);
+	stat(service_info_.hosts_source_.c_str(), &attrib);
 
 	if (attrib.st_mtime <= file_modification_time_) {
-		return;
+		return false;
 	}
 
 	// load file
 	std::string code;
 	std::ifstream file;
-	file.open(service_info_.hosts_file_.c_str(), std::ifstream::in);
+	file.open(service_info_.hosts_source_.c_str(), std::ifstream::in);
 
 	if (!file.is_open()) {
-		throw internal_error("config file: " + service_info_.hosts_file_ + " failed to open at: " + std::string(BOOST_CURRENT_FUNCTION));
+		throw internal_error("hosts file: " + service_info_.hosts_source_ + " failed to open at: " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	size_t max_size = 512;
@@ -77,14 +78,27 @@ file_hosts_fetcher::get_hosts(std::vector<host_info_t>& hosts, service_info_t& s
 
 	for (tokenizer::iterator tok_iter = tokens.begin(); tok_iter != tokens.end(); ++tok_iter) {
 		try {
-			host_info_t host(*tok_iter);
-			hosts.push_back(host);
+			std::string line = *tok_iter;
+
+			// look for ip/port parts
+			size_t where = line.find_last_of(":");
+
+			if (where == std::string::npos) {
+				endpoints.push_back(inetv4_endpoint(inetv4_host(line)));
+			}
+			else {
+				std::string ip = line.substr(0, where);
+				std::string port = line.substr(where + 1, (line.length() - (where + 1)));
+
+				endpoints.push_back(inetv4_endpoint(ip, port));
+			}
 		}
 		catch (...) {
 		}
 	}
 	
 	service_info = service_info_;
+	return true;
 }
 
 } // namespace dealer
