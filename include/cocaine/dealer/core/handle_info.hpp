@@ -29,24 +29,29 @@ public:
 	handle_info_t() {};
 
 	handle_info_t(const std::string& name,
-				const std::string& service_name) :
+				  const std::string& app_name,
+				  const std::string& service_name) :
 		name_(name),
+		app_name_(app_name),
 		service_name_(service_name) {};
 
 	handle_info_t(const handle_info_t& rhs) :
 		name_(rhs.name_),
+		app_name_(rhs.app_name_),
 		service_name_(rhs.service_name_) {};
 
 	bool operator == (const handle_info_t& rhs) const {
 		return (name_ == rhs.name_ &&
+				app_name_ == rhs.app_name_ &&
 				service_name_ == rhs.service_name_);
 	};
 
 	std::string as_string() const {
-		return "[" + service_name_ + "].[" + name_ + "]";
+		return "[" + service_name_ + "].[" + app_name_ + "].[" + name_ + "]";
 	}
 
 	std::string name_;
+	std::string app_name_;
 	std::string service_name_;
 };
 

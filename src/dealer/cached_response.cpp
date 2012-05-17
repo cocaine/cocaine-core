@@ -28,19 +28,19 @@
 namespace cocaine {
 namespace dealer {
 
-cached_response::cached_response() :
+cached_response_t::cached_response_t() :
 	code_(0)
 {
 
 }
 
-cached_response::cached_response(const cached_response& response) :
+cached_response_t::cached_response_t(const cached_response_t& response) :
 	code_(0)
 {
 	*this = response;
 }
 
-cached_response::cached_response(const std::string& uuid,
+cached_response_t::cached_response_t(const std::string& uuid,
 								 const message_path& path,
 								 const void* data,
 								 size_t data_size) :
@@ -55,7 +55,7 @@ cached_response::cached_response(const std::string& uuid,
 	data_ = data_container(data, data_size);
 }
 
-cached_response::cached_response(const std::string& uuid,
+cached_response_t::cached_response_t(const std::string& uuid,
 								 const message_path& path,
 								 int code,
 								 const std::string& error_message) :
@@ -67,16 +67,16 @@ cached_response::cached_response(const std::string& uuid,
 {
 }
 
-cached_response::~cached_response() {
+cached_response_t::~cached_response_t() {
 }
 
 const data_container&
-cached_response::data() const {
+cached_response_t::data() const {
 	return data_;
 }
 
-cached_response&
-cached_response::operator = (const cached_response& rhs) {
+cached_response_t&
+cached_response_t::operator = (const cached_response_t& rhs) {
 	boost::mutex::scoped_lock lock(mutex_);
 
 	if (this == &rhs) {
@@ -93,58 +93,58 @@ cached_response::operator = (const cached_response& rhs) {
 }
 
 bool
-cached_response::operator == (const cached_response& rhs) const {
+cached_response_t::operator == (const cached_response_t& rhs) const {
 	return (uuid_ == rhs.uuid_);
 }
 
 bool
-cached_response::operator != (const cached_response& rhs) const {
+cached_response_t::operator != (const cached_response_t& rhs) const {
 	return !(*this == rhs);
 }
 
 const std::string&
-cached_response::uuid() const {
+cached_response_t::uuid() const {
 	return uuid_;
 }
 
 const timeval&
-cached_response::received_timestamp() const {
+cached_response_t::received_timestamp() const {
 	return received_timestamp_;
 }
 
 int
-cached_response::code() const {
+cached_response_t::code() const {
 	return code_;
 }
 
 std::string
-cached_response::error_message() const {
+cached_response_t::error_message() const {
 	return error_message_;
 }
 
 void
-cached_response::set_received_timestamp(const timeval& val) {
+cached_response_t::set_received_timestamp(const timeval& val) {
 	boost::mutex::scoped_lock lock(mutex_);
 	received_timestamp_ = val;
 }
 
 void
-cached_response::set_code(int code) {
+cached_response_t::set_code(int code) {
 	code_ = code;
 }
 
 void
-cached_response::set_error_message(const std::string& message) {
+cached_response_t::set_error_message(const std::string& message) {
 	error_message_ = message;
 }
 
 const message_path&
-cached_response::path() const {
+cached_response_t::path() const {
 	return path_;
 }
 
 size_t
-cached_response::container_size() const {
+cached_response_t::container_size() const {
 	return container_size_;
 }
 

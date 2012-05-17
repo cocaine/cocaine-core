@@ -27,19 +27,19 @@
 namespace cocaine {
 namespace dealer {
 
-class cocaine_node_info_parser {
+class cocaine_node_info_parser_t {
 public:
-	cocaine_node_info_parser() {
+	cocaine_node_info_parser_t() {
 		set_host_info(0, 0);
 		logger_.reset(new base_logger);
 	}
 
-	cocaine_node_info_parser(boost::shared_ptr<base_logger> logger) {
+	cocaine_node_info_parser_t(boost::shared_ptr<base_logger> logger) {
 		set_host_info(0, 0);
 		logger_ = logger;
 	}
 
-	~cocaine_node_info_parser() {};
+	~cocaine_node_info_parser_t() {};
 
 	void set_host_info(unsigned int node_ip_address, unsigned short node_port) {
 		node_ip_address_ = node_ip_address;
@@ -66,7 +66,7 @@ public:
 		set_host_info(nutils::str_to_ipv4(node_ip_address), node_port);
 	}
 
-	bool parse(const std::string& json_string, cocaine_node_info& node_info) {
+	bool parse(const std::string& json_string, cocaine_node_info_t& node_info) {
 		Json::Value root;
 		Json::Reader reader;
 
@@ -89,7 +89,7 @@ public:
 	    	std::string parsed_app_name(*it);
 	    	Json::Value json_app_data(apps[parsed_app_name]);
 
-	    	cocaine_node_app_info app_info(parsed_app_name);
+	    	cocaine_node_app_info_t app_info(parsed_app_name);
 	    	if (!parse_app_info(json_app_data, app_info)) {
 	    		continue;
 	    	}
@@ -118,7 +118,7 @@ public:
 	}
 
 private:
-	bool parse_app_info(const Json::Value& json_app_data, cocaine_node_app_info& app_info) {
+	bool parse_app_info(const Json::Value& json_app_data, cocaine_node_app_info_t& app_info) {
 		// parse tasks
 		Json::Value tasks(json_app_data["tasks"]);
     	if (!tasks.isObject() || !tasks.size()) {
@@ -141,7 +141,7 @@ private:
 				continue;
 			}
 
-			cocaine_node_task_info task_info(task_name);
+			cocaine_node_task_info_t task_info(task_name);
 			if (!parse_task_info(task, task_info)) {
 				continue;
 			}
@@ -168,7 +168,7 @@ private:
 		return true;
 	}
 
-	bool parse_task_info(const Json::Value& json_app_data, cocaine_node_task_info& task_info) {
+	bool parse_task_info(const Json::Value& json_app_data, cocaine_node_task_info_t& task_info) {
 		std::string task_type = json_app_data.get("type", "").asString();
     	if (task_type != "native-server") {
     		return false;

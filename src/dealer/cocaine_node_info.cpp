@@ -23,7 +23,7 @@
 namespace cocaine {
 namespace dealer {
 
-std::ostream& operator << (std::ostream& out, const cocaine_node_info& node_info) {
+std::ostream& operator << (std::ostream& out, const cocaine_node_info_t& node_info) {
 	std::stringstream pending;
 	pending << "pending " << node_info.pending_jobs;
 	pending << ", processed " << node_info.processed_jobs;
@@ -37,7 +37,7 @@ std::ostream& operator << (std::ostream& out, const cocaine_node_info& node_info
 	out << std::left;
 	out << std::setw(12) << "apps:" << std::endl;
 
-	cocaine_node_info::applications::const_iterator it = node_info.apps.begin();
+	cocaine_node_info_t::applications::const_iterator it = node_info.apps.begin();
 	for (; it != node_info.apps.end(); ++it) {
 		out << it->second;
 	}

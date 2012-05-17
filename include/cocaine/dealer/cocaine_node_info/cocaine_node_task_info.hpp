@@ -20,12 +20,12 @@
 namespace cocaine {
 namespace dealer {
 
-class cocaine_node_task_info;
-std::ostream& operator << (std::ostream& out, const cocaine_node_task_info& task_info);
+class cocaine_node_task_info_t;
+std::ostream& operator << (std::ostream& out, const cocaine_node_task_info_t& task_info);
 
-class cocaine_node_task_info {
+class cocaine_node_task_info_t {
 public:
-	cocaine_node_task_info() :
+	cocaine_node_task_info_t() :
 		backlog(0),
 		median_processing_time(0.0f),
 		median_wait_time(0.0f),
@@ -33,7 +33,7 @@ public:
 		time_spent_on_slaves(0.0f)
 		 {};
 
-	explicit cocaine_node_task_info(const std::string& task_name) :
+	explicit cocaine_node_task_info_t(const std::string& task_name) :
 		name(task_name),
 		backlog(0),
 		median_processing_time(0.0f),
@@ -42,7 +42,7 @@ public:
 		time_spent_on_slaves(0.0f)
 		 {};
 
-	~cocaine_node_task_info() {};
+	~cocaine_node_task_info_t() {};
 
 	std::string name;
 
@@ -55,7 +55,7 @@ public:
 	double time_spent_in_queues;
 	double time_spent_on_slaves;
 
-	friend std::ostream& operator << (std::ostream& out, const cocaine_node_task_info& task_info);
+	friend std::ostream& operator << (std::ostream& out, const cocaine_node_task_info_t& task_info);
 };
 
 } // namespace dealer

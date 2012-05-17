@@ -17,6 +17,7 @@
 #include "cocaine/dealer/heartbeats/file_hosts_fetcher.hpp"
 #include "cocaine/dealer/heartbeats/http_hosts_fetcher.hpp"
 #include "cocaine/dealer/cocaine_node_info/cocaine_node_info_parser.hpp"
+#include "cocaine/dealer/utils/uuid.hpp"
 
 namespace cocaine {
 namespace dealer {
@@ -174,15 +175,15 @@ heartbeats_collector::process_alive_endpoints() {
 
 		// for each service endpoint obtain metadata if possible
 		for (size_t i = 0; i < service_endpoints.size(); ++i) {
-			std::map<inetv4_endpoint, cocaine_node_info>::const_iterator eit;
+			std::map<inetv4_endpoint, cocaine_node_info_t>::const_iterator eit;
 			eit = endpoints_metadata_.find(service_endpoints[i]);
 
 			if (eit == endpoints_metadata_.end()) {
 				continue;
 			}
 
-			const cocaine_node_info& node_info = eit->second;
-			cocaine_node_app_info app;
+			const cocaine_node_info_t& node_info = eit->second;
+			cocaine_node_app_info_t app;
 			
 			// no such app at endpoint
 			if (!node_info.app_by_name(service_info.app_, app)) {
@@ -194,7 +195,7 @@ heartbeats_collector::process_alive_endpoints() {
 				continue;
 			}
 
-			cocaine_node_app_info::application_tasks::const_iterator task_it = app.tasks.begin();
+			cocaine_node_app_info_t::application_tasks::const_iterator task_it = app.tasks.begin();
 			for (; task_it != app.tasks.end(); ++task_it) {
 				cocaine_endpoint ce(task_it->second.endpoint, task_it->second.route);
 				
@@ -251,8 +252,8 @@ heartbeats_collector::ping_endpoints() {
 		}
 
 		// parse metadata
-		cocaine_node_info node_info;
-		cocaine_node_info_parser parser(logger_);
+		cocaine_node_info_t node_info;
+		cocaine_node_info_parser_t parser(logger_);
 		parser.set_host_info(it->host_.ip_, it->port_);
 
 		if (!parser.parse(metadata, node_info)) {
@@ -279,6 +280,11 @@ heartbeats_collector::get_metainfo_from_endpoint(const inetv4_endpoint& endpoint
 
 	int timeout = 0;
 	zmq_socket->setsockopt(ZMQ_LINGER, &timeout, sizeof(timeout));
+
+	wuuid_t uuid;
+	uuid.generate();
+	zmq_socket->setsockopt(ZMQ_IDENTITY, uuid.str().c_str(), uuid.str().length());
+	
 	zmq_socket->connect(connection_str.c_str());
 
 	// send request for cocaine metadata

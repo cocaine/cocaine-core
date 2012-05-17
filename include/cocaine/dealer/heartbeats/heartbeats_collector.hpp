@@ -87,7 +87,7 @@ private:
 	// endpoints cache
 	std::map<std::string, inetv4_endpoints> services_endpoints_;
 	std::set<inetv4_endpoint> all_endpoints_;
-	std::map<inetv4_endpoint, cocaine_node_info> endpoints_metadata_;
+	std::map<inetv4_endpoint, cocaine_node_info_t> endpoints_metadata_;
 
 	std::auto_ptr<refresher> refresher_;
 	callback_t callback_;

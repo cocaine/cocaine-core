@@ -29,6 +29,36 @@ public:
 	cocaine_endpoint() {}
 	~cocaine_endpoint() {}
 
+	cocaine_endpoint(const cocaine_endpoint& rhs) :
+		endpoint_(rhs.endpoint_),
+		route_(rhs.route_) {}
+
+	cocaine_endpoint& operator = (const cocaine_endpoint& rhs) {
+		if (this != &rhs) {
+			endpoint_ = rhs.endpoint_;
+			route_ == rhs.route_;
+		}
+
+		return *this;
+	}
+
+	bool operator == (const cocaine_endpoint& rhs) const {
+		return (endpoint_ == rhs.endpoint_ &&
+				route_ == rhs.route_);
+	}
+
+	bool operator != (const cocaine_endpoint& rhs) const {
+		return (!(*this == rhs));
+	}
+
+	bool operator < (const cocaine_endpoint& rhs) const {
+		return ((endpoint_ + route_) < (rhs.endpoint_ + rhs.route_));
+	}
+
+	std::string as_string() const {
+		return "endpoint: " + endpoint_ + ", route: " + route_;
+	}
+
 	std::string endpoint_;
 	std::string route_;
 };

@@ -259,15 +259,34 @@ service_t::refresh_handles(const handles_endpoints_t& handles_endpoints) {
 		handles_map_t::iterator hit = handles_.find(it->first);
 
 		if (hit == handles_.end()) {
-			handle_info_t hinfo(it->first, info_.name_);
+			handle_info_t hinfo(it->first, info_.app_, info_.name_);
 			new_handles.push_back(hinfo);
 		}
 	}
 
-	// remove oustanding handles
 	lock.unlock();
 	remove_outstanding_handles(outstanding_handles);
+	update_existing_handles(handles_endpoints);
 	create_new_handles(new_handles, handles_endpoints);
+}
+
+void
+service_t::update_existing_handles(const handles_endpoints_t& handles_endpoints) {
+	boost::mutex::scoped_lock lock(mutex_);
+
+	handles_map_t::iterator it = handles_.begin();
+	for (; it != handles_.end(); ++it) {
+
+		handles_endpoints_t::const_iterator eit = handles_endpoints.find(it->first);
+
+		if (eit != handles_endpoints.end()) {
+			handle_ptr_t handle = it->second;
+
+			lock.unlock();
+			handle->update_endpoints(eit->second);
+			lock.lock();
+		}
+	}
 }
 
 void
@@ -351,7 +370,7 @@ service_t::remove_outstanding_handles(const handles_info_list_t& handles) {
 
 void
 service_t::create_new_handles(const handles_info_list_t& handles,
-								   const handles_endpoints_t& handles_endpoints)
+							  const handles_endpoints_t& handles_endpoints)
 {
 	boost::mutex::scoped_lock lock(mutex_);
 
@@ -364,7 +383,6 @@ service_t::create_new_handles(const handles_info_list_t& handles,
 	for (size_t i = 0; i < handles.size(); ++i) {
 		handle_ptr_t handle;
 		handle_info_t handle_info = handles[i];
-		handle_info.service_name_ = info_.name_;
 
 		handles_endpoints_t::const_iterator hit = handles_endpoints.find(handle_info.name_);
 		if (hit == handles_endpoints.end()) {
@@ -476,7 +494,7 @@ service_t::check_for_deadlined_messages() {
 
 		for (;expired_qit != expired_queue->end(); ++expired_qit) {
 			cached_response_prt_t response;
-			response.reset(new cached_response((*expired_qit)->uuid(),
+			response.reset(new cached_response_t((*expired_qit)->uuid(),
 											   (*expired_qit)->path(),
 											   deadline_error,
 											   "message expired"));

@@ -35,20 +35,20 @@ namespace cocaine {
 namespace dealer {
 
 template<typename DataContainer, typename MetadataContainer>
-class cached_message : public message_iface {
+class cached_message_t : public message_iface {
 public:
-	cached_message();
-	explicit cached_message(const cached_message& message);
+	cached_message_t();
+	explicit cached_message_t(const cached_message_t& message);
 
-	cached_message(const message_path& path,
+	cached_message_t(const message_path& path,
 				   const message_policy& policy,
 				   const void* data,
 				   size_t data_size);
 
-	cached_message(void* mdata,
+	cached_message_t(void* mdata,
 				   size_t mdata_size);
 
-	~cached_message();
+	~cached_message_t();
 
 	void* data();
 	size_t size() const;
@@ -101,19 +101,19 @@ private:
 };
 
 template<typename DataContainer, typename MetadataContainer>
-cached_message<DataContainer, MetadataContainer>::cached_message() :
+cached_message_t<DataContainer, MetadataContainer>::cached_message_t() :
 	is_sent_(false)
 {
 	init();
 }
 
 template<typename DataContainer, typename MetadataContainer>
-cached_message<DataContainer, MetadataContainer>::cached_message(const cached_message& message) {
+cached_message_t<DataContainer, MetadataContainer>::cached_message_t(const cached_message_t& message) {
 	*this = message;
 }
 
 template<typename DataContainer, typename MetadataContainer>
-cached_message<DataContainer, MetadataContainer>::cached_message(const message_path& path,
+cached_message_t<DataContainer, MetadataContainer>::cached_message_t(const message_path& path,
 							   									 const message_policy& policy,
 							   									 const void* data,
 							   									 size_t data_size) :
@@ -133,37 +133,37 @@ cached_message<DataContainer, MetadataContainer>::cached_message(const message_p
 }
 
 template<typename DataContainer, typename MetadataContainer>
-cached_message<DataContainer, MetadataContainer>::cached_message(void* mdata, size_t mdata_size) {
+cached_message_t<DataContainer, MetadataContainer>::cached_message_t(void* mdata, size_t mdata_size) {
 	mdata_.load_data(mdata_, mdata_size);
 }
 
 template<typename DataContainer, typename MetadataContainer>
-cached_message<DataContainer, MetadataContainer>::~cached_message() {
+cached_message_t<DataContainer, MetadataContainer>::~cached_message_t() {
 }
 
 template<typename DataContainer, typename MetadataContainer> void
-cached_message<DataContainer, MetadataContainer>::init() {
+cached_message_t<DataContainer, MetadataContainer>::init() {
 	gen_uuid();
 	mdata_.enqueued_timestamp.init_from_current_time();
 }
 
 template<typename DataContainer, typename MetadataContainer> bool
-cached_message<DataContainer, MetadataContainer>::is_data_loaded() {
+cached_message_t<DataContainer, MetadataContainer>::is_data_loaded() {
 	return data_.is_data_loaded();
 }
 
 template<typename DataContainer, typename MetadataContainer> void
-cached_message<DataContainer, MetadataContainer>::load_data() {
+cached_message_t<DataContainer, MetadataContainer>::load_data() {
 	data_.load_data();
 }
 
 template<typename DataContainer, typename MetadataContainer> void
-cached_message<DataContainer, MetadataContainer>::unload_data() {
+cached_message_t<DataContainer, MetadataContainer>::unload_data() {
 	data_.unload_data();
 }
 
 template<typename DataContainer, typename MetadataContainer> void
-cached_message<DataContainer, MetadataContainer>::gen_uuid() {
+cached_message_t<DataContainer, MetadataContainer>::gen_uuid() {
 	char buff[128];
 	memset(buff, 0, sizeof(buff));
 
@@ -175,27 +175,27 @@ cached_message<DataContainer, MetadataContainer>::gen_uuid() {
 }
 
 template<typename DataContainer, typename MetadataContainer> void*
-cached_message<DataContainer, MetadataContainer>::data() {
+cached_message_t<DataContainer, MetadataContainer>::data() {
 	return data_.data();
 }
 
 template<typename DataContainer, typename MetadataContainer> size_t
-cached_message<DataContainer, MetadataContainer>::size() const {
+cached_message_t<DataContainer, MetadataContainer>::size() const {
 	return data_.size();
 }
 
 template<typename DataContainer, typename MetadataContainer> DataContainer&
-cached_message<DataContainer, MetadataContainer>::data_container() {
+cached_message_t<DataContainer, MetadataContainer>::data_container() {
 	return data_;
 }
 
 template<typename DataContainer, typename MetadataContainer> MetadataContainer&
-cached_message<DataContainer, MetadataContainer>::mdata_container() {
+cached_message_t<DataContainer, MetadataContainer>::mdata_container() {
 	return mdata_;
 }
 
 template<typename DataContainer, typename MetadataContainer> message_iface&
-cached_message<DataContainer, MetadataContainer>::operator = (const message_iface& rhs) {
+cached_message_t<DataContainer, MetadataContainer>::operator = (const message_iface& rhs) {
 	boost::mutex::scoped_lock lock(mutex_);
 
 	if (this == &rhs) {
@@ -203,7 +203,7 @@ cached_message<DataContainer, MetadataContainer>::operator = (const message_ifac
 	}
 
 	try {
-		const cached_message<DataContainer, MetadataContainer>& dc = dynamic_cast<const cached_message<DataContainer, MetadataContainer>& >(rhs);
+		const cached_message_t<DataContainer, MetadataContainer>& dc = dynamic_cast<const cached_message_t<DataContainer, MetadataContainer>& >(rhs);
 
 		data_			= dc.data_;
 		mdata_			= dc.mdata_;
@@ -213,7 +213,7 @@ cached_message<DataContainer, MetadataContainer>::operator = (const message_ifac
 	}
 	catch (const std::exception& ex) {
 		std::string error_msg = ex.what();
-		error_msg = "error in cached_message<DataContainer, MetadataContainer>::operator = (), details: " + error_msg;
+		error_msg = "error in cached_message_t<DataContainer, MetadataContainer>::operator = (), details: " + error_msg;
 		throw internal_error(error_msg);
 	}
 
@@ -221,17 +221,17 @@ cached_message<DataContainer, MetadataContainer>::operator = (const message_ifac
 }
 
 template<typename DataContainer, typename MetadataContainer> bool
-cached_message<DataContainer, MetadataContainer>::operator == (const message_iface& rhs) const {
+cached_message_t<DataContainer, MetadataContainer>::operator == (const message_iface& rhs) const {
 
 	bool comparison_result = false;
 
 	try {
-		const cached_message<DataContainer, MetadataContainer>& dc = dynamic_cast<const cached_message<DataContainer, MetadataContainer>& >(rhs);
+		const cached_message_t<DataContainer, MetadataContainer>& dc = dynamic_cast<const cached_message_t<DataContainer, MetadataContainer>& >(rhs);
 		comparison_result = (mdata_.uuid == dc.mdata_.uuid);
 	}
 	catch (const std::exception& ex) {
 		std::string error_msg = ex.what();
-		error_msg = "error in cached_message<DataContainer, MetadataContainer>::operator = (), details: " + error_msg;
+		error_msg = "error in cached_message_t<DataContainer, MetadataContainer>::operator = (), details: " + error_msg;
 		throw internal_error(error_msg);
 	}
 
@@ -239,47 +239,47 @@ cached_message<DataContainer, MetadataContainer>::operator == (const message_ifa
 }
 
 template<typename DataContainer, typename MetadataContainer> bool
-cached_message<DataContainer, MetadataContainer>::operator != (const message_iface& rhs) const {
+cached_message_t<DataContainer, MetadataContainer>::operator != (const message_iface& rhs) const {
 	return !(*this == rhs);
 }
 
 template<typename DataContainer, typename MetadataContainer> const std::string&
-cached_message<DataContainer, MetadataContainer>::uuid() const {
+cached_message_t<DataContainer, MetadataContainer>::uuid() const {
 	return mdata_.uuid;
 }
 
 template<typename DataContainer, typename MetadataContainer> bool
-cached_message<DataContainer, MetadataContainer>::is_sent() const {
+cached_message_t<DataContainer, MetadataContainer>::is_sent() const {
 	return is_sent_;
 }
 
 template<typename DataContainer, typename MetadataContainer> const time_value&
-cached_message<DataContainer, MetadataContainer>::sent_timestamp() const {
+cached_message_t<DataContainer, MetadataContainer>::sent_timestamp() const {
 	return sent_timestamp_;
 }
 
 template<typename DataContainer, typename MetadataContainer> const time_value&
-cached_message<DataContainer, MetadataContainer>::enqued_timestamp() const {
+cached_message_t<DataContainer, MetadataContainer>::enqued_timestamp() const {
 	return mdata_.enqueued_timestamp;
 }
 
 template<typename DataContainer, typename MetadataContainer> const message_path&
-cached_message<DataContainer, MetadataContainer>::path() const {
+cached_message_t<DataContainer, MetadataContainer>::path() const {
 	return mdata_.path();
 }
 
 template<typename DataContainer, typename MetadataContainer> const message_policy&
-cached_message<DataContainer, MetadataContainer>::policy() const {
+cached_message_t<DataContainer, MetadataContainer>::policy() const {
 	return mdata_.policy;
 }
 
 template<typename DataContainer, typename MetadataContainer> size_t
-cached_message<DataContainer, MetadataContainer>::container_size() const {
+cached_message_t<DataContainer, MetadataContainer>::container_size() const {
 	return container_size_;
 }
 
 template<typename DataContainer, typename MetadataContainer> void
-cached_message<DataContainer, MetadataContainer>::mark_as_sent(bool value) {
+cached_message_t<DataContainer, MetadataContainer>::mark_as_sent(bool value) {
 	boost::mutex::scoped_lock lock(mutex_);
 
 	if (value) {
@@ -293,7 +293,7 @@ cached_message<DataContainer, MetadataContainer>::mark_as_sent(bool value) {
 }
 
 template<typename DataContainer, typename MetadataContainer> bool
-cached_message<DataContainer, MetadataContainer>::is_expired() {
+cached_message_t<DataContainer, MetadataContainer>::is_expired() {
 	if (mdata_.policy.deadline == 0.0f) {
 		return false;
 	}
@@ -309,7 +309,7 @@ cached_message<DataContainer, MetadataContainer>::is_expired() {
 }
 
 template<typename DataContainer, typename MetadataContainer> std::string
-cached_message<DataContainer, MetadataContainer>::json() {
+cached_message_t<DataContainer, MetadataContainer>::json() {
 	Json::Value envelope(Json::objectValue);
 	Json::FastWriter writer;
 
@@ -323,7 +323,7 @@ cached_message<DataContainer, MetadataContainer>::json() {
 }
 
 template<typename DataContainer, typename MetadataContainer> void
-cached_message<DataContainer, MetadataContainer>::remove_from_persistent_cache() {
+cached_message_t<DataContainer, MetadataContainer>::remove_from_persistent_cache() {
 	return data_.remove_from_persistent_cache();
 }
 

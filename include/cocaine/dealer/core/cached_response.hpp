@@ -26,22 +26,22 @@
 namespace cocaine {
 namespace dealer {
 
-class cached_response {
+class cached_response_t {
 public:
-	cached_response();
-	explicit cached_response(const cached_response& response);
+	cached_response_t();
+	explicit cached_response_t(const cached_response_t& response);
 
-	cached_response(const std::string& uuid,
+	cached_response_t(const std::string& uuid,
 					const message_path& path,
 					const void* data,
 					size_t data_size);
 
-	cached_response(const std::string& uuid,
+	cached_response_t(const std::string& uuid,
 					const message_path& path,
 					int code,
 					const std::string& error_message);
 
-	virtual ~cached_response();
+	virtual ~cached_response_t();
 
 	const data_container& data() const;
 	size_t container_size() const;
@@ -58,9 +58,9 @@ public:
 	const timeval& received_timestamp() const;
 	void set_received_timestamp(const timeval& val);
 
-	cached_response& operator = (const cached_response& rhs);
-	bool operator == (const cached_response& rhs) const;
-	bool operator != (const cached_response& rhs) const;
+	cached_response_t& operator = (const cached_response_t& rhs);
+	bool operator == (const cached_response_t& rhs) const;
+	bool operator != (const cached_response_t& rhs) const;
 
 	static const size_t MAX_RESPONSE_DATA_SIZE = 2147483648; // 2gb
 	static const size_t UUID_SIZE = 36; // bytes

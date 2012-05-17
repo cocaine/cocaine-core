@@ -26,24 +26,24 @@
 namespace cocaine {
 namespace dealer {
 
-class cocaine_node_info;
-std::ostream& operator << (std::ostream& out, const cocaine_node_info& node_info);
+class cocaine_node_info_t;
+std::ostream& operator << (std::ostream& out, const cocaine_node_info_t& node_info);
 
-class cocaine_node_info {
+class cocaine_node_info_t {
 public:
 	// <app name, app info>
-	typedef std::map<std::string, cocaine_node_app_info> applications;
+	typedef std::map<std::string, cocaine_node_app_info_t> applications;
 
-	cocaine_node_info() : 
+	cocaine_node_info_t() : 
 		pending_jobs(0),
 		processed_jobs(0),
 		uptime(0.0f),
 		ip_address(0),
 		port(0) {};
 
-	~cocaine_node_info() {};
+	~cocaine_node_info_t() {};
 
-	bool app_by_name(const std::string& name, cocaine_node_app_info& app) const {
+	bool app_by_name(const std::string& name, cocaine_node_app_info_t& app) const {
 		applications::const_iterator it = apps.find(name);
 
 		if (it != apps.end()) {
@@ -64,7 +64,7 @@ public:
 	unsigned int ip_address;
 	unsigned short port;
 
-	friend std::ostream& operator << (std::ostream& out, const cocaine_node_info& node_info);
+	friend std::ostream& operator << (std::ostream& out, const cocaine_node_info_t& node_info);
 };
 
 } // namespace dealer

@@ -29,8 +29,8 @@
 namespace cocaine {
 namespace dealer {
 
-typedef cached_message<data_container, request_metadata> message_t;
-typedef cached_message<persistent_data_container, persistent_request_metadata> p_message_t;
+typedef cached_message_t<data_container, request_metadata> message_t;
+typedef cached_message_t<persistent_data_container, persistent_request_metadata> p_message_t;
 
 client_impl::client_impl(const std::string& config_path) :
 	messages_cache_size_(0),

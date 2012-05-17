@@ -19,7 +19,7 @@
 namespace cocaine {
 namespace dealer {
 
-std::ostream& operator << (std::ostream& out, const cocaine_node_task_info& task_info) {
+std::ostream& operator << (std::ostream& out, const cocaine_node_task_info_t& task_info) {
 	std::string name = "- {" + task_info.name + "}";
 
 	char old_char = out.fill(' ');

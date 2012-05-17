@@ -42,6 +42,7 @@
 #include "cocaine/dealer/cocaine_node_info/cocaine_node_info.hpp"
 
 #include <cocaine/dealer/core/configuration.hpp>
+#include "cocaine/dealer/core/cocaine_endpoint.hpp"
 
 using namespace cocaine::dealer;
 using namespace boost::program_options;

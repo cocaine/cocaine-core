@@ -22,28 +22,28 @@
 namespace cocaine {
 namespace dealer {
 
-class cocaine_node_app_info;
-std::ostream& operator << (std::ostream& out, const cocaine_node_app_info& app_info);
+class cocaine_node_app_info_t;
+std::ostream& operator << (std::ostream& out, const cocaine_node_app_info_t& app_info);
 
-class cocaine_node_app_info {
+class cocaine_node_app_info_t {
 public:
 	// <task name, task info>
-	typedef std::map<std::string, cocaine_node_task_info> application_tasks;
+	typedef std::map<std::string, cocaine_node_task_info_t> application_tasks;
 
-	cocaine_node_app_info() :
+	cocaine_node_app_info_t() :
 		queue_depth(0),
 		is_running(false),
 		slaves_busy(0),
 		slaves_total(0) {};
 
-	explicit cocaine_node_app_info(const std::string& app_name) :
+	explicit cocaine_node_app_info_t(const std::string& app_name) :
 		name(app_name),
 		queue_depth(0),
 		is_running(false),
 		slaves_busy(0),
 		slaves_total(0) {};
 
-	~cocaine_node_app_info() {};
+	~cocaine_node_app_info_t() {};
 
 	std::string name;
 
@@ -54,7 +54,7 @@ public:
 	unsigned int slaves_busy;
 	unsigned int slaves_total;
 
-	friend std::ostream& operator << (std::ostream& out, const cocaine_node_app_info& app_info);
+	friend std::ostream& operator << (std::ostream& out, const cocaine_node_app_info_t& app_info);
 };
 
 } // namespace dealer
