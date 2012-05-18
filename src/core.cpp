@@ -402,8 +402,7 @@ void core_t::recover() {
             if(m_engines.find(*it) == m_engines.end()) {
                 create_engine(*it, root[*it], true);
             } else {
-                m_log->warning("the '%s' app is no longer available", it->c_str());
-                delete_engine(*it);
+                m_engines.find(*it)->second->stop("the app is no longer available");
             }
         }
     }
