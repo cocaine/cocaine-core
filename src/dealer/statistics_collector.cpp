@@ -22,7 +22,6 @@
 #include "cocaine/dealer/structs.hpp"
 #include "cocaine/dealer/defaults.hpp"
 #include "cocaine/dealer/utils/error.hpp"
-#include "cocaine/dealer/core/host_info.hpp"
 #include "cocaine/dealer/utils/smart_logger.hpp"
 #include "cocaine/dealer/core/statistics_collector.hpp"
 
