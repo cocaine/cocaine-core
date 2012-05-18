@@ -13,6 +13,8 @@
 
 #include <msgpack.hpp>
 
+#include <boost/thread.hpp>
+
 #include "cocaine/dealer/utils/error.hpp"
 #include "cocaine/dealer/core/balancer.hpp"
 
@@ -45,6 +47,8 @@ balancer_t::~balancer_t() {
 
 void
 balancer_t::connect(const std::vector<cocaine_endpoint>& endpoints) {
+	logger()->log("connect " + socket_identity_);
+
 	if (endpoints.empty()) {
 		return;
 	}
@@ -57,6 +61,8 @@ balancer_t::connect(const std::vector<cocaine_endpoint>& endpoints) {
 			connection_str = endpoints[i].endpoint_; 
 			socket_->connect(connection_str.c_str());
 		}
+
+		boost::this_thread::sleep(boost::posix_time::milliseconds(100));
 	}
 	catch (const std::exception& ex) {
 		std::string error_msg = "balancer with identity " + socket_identity_ + " could not connect to ";
@@ -66,13 +72,16 @@ balancer_t::connect(const std::vector<cocaine_endpoint>& endpoints) {
 }
 
 void balancer_t::disconnect() {
+	logger()->log("disconnect " + socket_identity_);
 	socket_.reset();
 }
 
-void
+void	
 balancer_t::update_endpoints(const std::vector<cocaine_endpoint>& endpoints,
 							 std::vector<cocaine_endpoint>& missing_endpoints)
 {
+	logger()->log("update_endpoints " + socket_identity_);
+
 	std::vector<cocaine_endpoint> endpoints_tmp = endpoints;
 	std::sort(endpoints_tmp.begin(), endpoints_tmp.end());
 
@@ -114,6 +123,7 @@ balancer_t::get_endpoints_diff(const std::vector<cocaine_endpoint>& updated_endp
 
 void
 balancer_t::recreate_socket() {
+	logger()->log("recreate_socket " + socket_identity_);
 	int timeout = balancer_t::socket_timeout;
 	int64_t hwm = balancer_t::socket_hwm;
 	socket_.reset(new zmq::socket_t(*(context_->zmq_context()), ZMQ_ROUTER));
@@ -123,7 +133,7 @@ balancer_t::recreate_socket() {
 }
 
 bool
-balancer_t::send(boost::shared_ptr<message_iface> message) {
+balancer_t::send(boost::shared_ptr<message_iface>& message) {
 	assert(socket_);
 
 	try {
@@ -156,7 +166,7 @@ balancer_t::send(boost::shared_ptr<message_iface> message) {
 		}
 
 		// send message policy
-		policy_t server_policy = message ->policy().server_policy();
+		policy_t server_policy = message->policy().server_policy();
 
 		if (server_policy.deadline > 0.0) {
 			// awful semantics! convert deadline [timeout value] to actual [deadline time]
@@ -203,7 +213,7 @@ balancer_t::send(boost::shared_ptr<message_iface> message) {
 
 bool
 balancer_t::check_for_responses(int poll_timeout) {
-	assert(socket);
+	assert(socket_);
 
 	// poll for responce
 	zmq_pollitem_t poll_items[1];
@@ -260,14 +270,15 @@ balancer_t::receive(boost::shared_ptr<cached_response_t>& response) {
 			delete chunk;
 			break;
 		}
-
+		
 		response_chunks.push_back(chunk);
+		
 
 		int rc = zmq_getsockopt(*socket_, ZMQ_RCVMORE, &more, &more_size);
     	assert (rc == 0);
 	}
 
-	if (response_chunks.size() == 0) {
+	if (response_chunks.size() < 0) {
 		return false;
 	}
 
@@ -309,12 +320,12 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 
 	switch (rpc_code) {
 		case SERVER_RPC_MESSAGE_ACK: {
-			logger()->log(PLOG_DEBUG, message_str + "ACK");
+			//logger()->log(PLOG_DEBUG, message_str + "ACK");
 			return false;
 		}
 
 		case SERVER_RPC_MESSAGE_CHUNK: {
-			logger()->log(PLOG_DEBUG, message_str + "CHUNK");
+			//logger()->log(PLOG_DEBUG, message_str + "CHUNK");
 
 			response.reset(new cached_response_t(uuid, sent_msg->path(), chunks[4].data(), chunks[4].size()));
 			response->set_code(response_code::message_chunk);
@@ -323,7 +334,7 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 		break;
 
 		case SERVER_RPC_MESSAGE_ERROR: {
-			logger()->log(PLOG_DEBUG, message_str + "ERROR");
+			//logger()->log(PLOG_DEBUG, message_str + "ERROR");
 
 			int error_code = -1;
 			std::string error_message;
@@ -344,7 +355,7 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 		break;
 
 		case SERVER_RPC_MESSAGE_CHOKE: {
-			logger()->log(PLOG_DEBUG, message_str + "CHOKE");
+			//logger()->log(PLOG_DEBUG, message_str + "CHOKE");
 
 			response.reset(new cached_response_t(uuid, sent_msg->path(), NULL, 0));
 			response->set_code(response_code::message_choke);

@@ -48,43 +48,6 @@ using namespace cocaine::dealer;
 using namespace boost::program_options;
 using namespace boost::accumulators;
 
-/*
-int
-main(int argc, char** argv) {
-	std::string json_string = "";
-
-	std::ifstream file;
-	file.open("/home/rimz/cocaine-core/cnode_response");
-
-	if (file.is_open()) {
-		while (!file.eof()) {
-			const int buff_size = 1024;
-			char buff[buff_size];
-			memset(buff, 0, sizeof(buff));
-			file.getline(buff, buff_size);
-			json_string += buff;
-		}
-	}
-
-	boost::shared_ptr<base_logger> logger(new smart_logger<stdout_logger>());
-	
-	cocaine_node_info info;
-	cocaine_node_info_parser parser(logger);
-	parser.set_host_info("127.0.0.1", 5000);
-
-	if (parser.parse(json_string, info)) {
-		logger->log("parsed ok");
-	}
-	else {
-		logger->log("parsing fail");
-	}
-
-	std::cout << info;
-
-	return EXIT_SUCCESS;
-}
-*/
-
 std::string config_path = "tests/config_example.json";
 boost::shared_ptr<client> client_ptr;
 
@@ -118,7 +81,7 @@ void worker() {
 
 			//accum(t.elapsed().as_double());
 			while (resp->get(&data)) {
-				std::cout << std::string(reinterpret_cast<const char*>(data.data()), 0, data.size()) << std::endl;
+				//std::cout << std::string(reinterpret_cast<const char*>(data.data()), 0, data.size()) << std::endl;
 			}
 		}
 		catch (const dealer_error& err) {
@@ -146,7 +109,7 @@ void worker() {
 }
 
 void create_client(int add_messages_count) {
-	const int pool_size = 1;
+	const int pool_size = 200;
 	
 	std::cout << "----------------------------------- test info -------------------------------------------\n";
 	std::cout << "sending " << add_messages_count * pool_size << " messages using " << pool_size << " threads\n";

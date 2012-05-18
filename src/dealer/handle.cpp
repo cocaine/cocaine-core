@@ -116,9 +116,7 @@ handle_t::dispatch_messages() {
 		}
 
 		if (is_connected_ && is_running_) {
-			lock.unlock();
 			received_response = balancer.check_for_responses(response_poll_timeout);
-			lock.lock();
 
 			// process received responce(s)
 			while (received_response) {
@@ -126,7 +124,13 @@ handle_t::dispatch_messages() {
 				response_poll_timeout = fast_poll_timeout;
 
 				cached_response_prt_t response;
-				if (balancer.receive(response)) {
+				bool response_ok = false;
+				
+				lock.unlock();
+				response_ok = balancer.receive(response);
+				lock.lock();
+
+				if (response_ok) {
 
 					switch (response->code()) {
 						case response_code::message_chunk:
@@ -136,8 +140,8 @@ handle_t::dispatch_messages() {
 						break;
 
 						case response_code::message_choke:
-							lock.unlock();
 							message_cache_->remove_message_from_cache(response->uuid());
+							lock.unlock();
 							enqueue_response(response);
 							lock.lock();
 						break;
@@ -336,8 +340,8 @@ handle_t::dispatch_next_available_message(balancer_t& balancer) {
 		message_cache_->move_new_message_to_sent();
 	}
 
-	logger()->log(PLOG_DEBUG, "sent message with uuid: " + new_msg->uuid() +
-				  " to " + description());
+	std::string log_msg = "sent message with uuid: %s to %s";
+	logger()->log(PLOG_DEBUG, log_msg.c_str(), new_msg->uuid().c_str(), description().c_str());
 
 	return true;
 }
@@ -416,10 +420,11 @@ void
 handle_t::update_endpoints(const std::vector<cocaine_endpoint>& endpoints) {
 	boost::mutex::scoped_lock lock(mutex_);
 
-	if (!is_running_ || endpoints_.empty() || is_connected_) {
+	if (!is_running_ || endpoints.empty()) {
 		return;
 	}
 
+	endpoints_ = endpoints;
 	logger()->log(PLOG_DEBUG, "UPDATE HANDLE" + description());
 
 	// connect to hosts

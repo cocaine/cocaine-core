@@ -42,8 +42,8 @@ public:
 
 	void connect(const std::vector<cocaine_endpoint>& endpoints);
 	void disconnect();
-	
-	bool send(boost::shared_ptr<message_iface> message);
+
+	bool send(boost::shared_ptr<message_iface>& message);
 	bool receive(boost::shared_ptr<cached_response_t>& response);
 
 	void update_endpoints(const std::vector<cocaine_endpoint>& endpoints,
@@ -51,7 +51,7 @@ public:
 
 	bool check_for_responses(int poll_timeout);
 
-	static const int socket_timeout = 500;
+	static const int socket_timeout = 0;
 	static const int64_t socket_hwm = 0;
 
 private:
