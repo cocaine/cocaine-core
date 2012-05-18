@@ -2,6 +2,7 @@ cocaine (0.7.4-6) lucid; urgency=low
 
   * Completely reworked autodetection, configuration scheme, added docs, lots of refactoring and clean-up (commit 8ca999efc1429dbe4b523029b454a05739228b94)
   * Proper logrotate and syslog-ng configs (commit 180abbf3c2118d86bc171670935089b6752e225d)
+  * [ae13edb] major code simplification and cleanup 
 
  -- Denis Zaitsev <dzaitsev@yandex-team.ru>  Wed, 16 May 2012 16:02:47 +0400
 

@@ -113,7 +113,7 @@ void core_t::run() {
 
 void core_t::terminate(ev::sig&, int) {
     if(!m_engines.empty()) {
-        m_log->info("stopping the engines");
+        m_log->info("stopping the apps");
         m_engines.clear();
     }
 
@@ -122,8 +122,6 @@ void core_t::terminate(ev::sig&, int) {
 
 void core_t::reload(ev::sig&, int) {
     m_log->info("reloading the apps");
-
-    m_engines.clear();
 
     try {
         recover();
@@ -293,7 +291,7 @@ Json::Value core_t::create_engine(const std::string& name, const Json::Value& ma
             m_storage->put("apps", name, manifest);
         } catch(const storage_error_t& e) {
             m_log->error(
-                "unable to create the '%s' engine - %s",
+                "unable to start the '%s' app - %s",
                 name.c_str(),
                 e.what()
             );
@@ -320,7 +318,7 @@ Json::Value core_t::delete_engine(const std::string& name) {
         m_storage->remove("apps", name);
     } catch(const storage_error_t& e) {
         m_log->error(
-            "unable to destroy the '%s' engine - %s",
+            "unable to stop the '%s' app - %s",
             name.c_str(),
             e.what()
         );
@@ -377,22 +375,36 @@ void core_t::announce(ev::timer&, int) {
 void core_t::recover() {
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
     Json::Value root(m_storage->all("apps"));
+    Json::Value::Members apps(root.getMemberNames());
+    
+    std::set<std::string> available(apps.begin(), apps.end()),
+                          active;
+  
+    for(engine_map_t::const_iterator it = m_engines.begin();
+        it != m_engines.end();
+        ++it)
+    {
+        active.insert(it->first);
+    }
 
-    if(root.size()) {
-        Json::Value::Members apps(root.getMemberNames());
-        
-        m_log->info(
-            "recovering %d %s: %s", 
-            root.size(),
-            root.size() == 1 ? "app" : "apps", 
-            boost::algorithm::join(apps, ", ").c_str()
-        );
-        
-        for(Json::Value::Members::iterator it = apps.begin();
-            it != apps.end(); 
-            ++it) 
+    std::vector<std::string> diff;
+
+    // Generate a list of apps which are either new or dead.
+    std::set_symmetric_difference(active.begin(), active.end(),
+                                  available.begin(), available.end(),
+                                  std::back_inserter(diff));
+
+    if(diff.size()) {
+        for(std::vector<std::string>::const_iterator it = diff.begin();
+            it != diff.end(); 
+            ++it)
         {
-            create_engine(*it, root[*it], true);
+            if(m_engines.find(*it) == m_engines.end()) {
+                create_engine(*it, root[*it], true);
+            } else {
+                m_log->warning("the '%s' app is no longer available", it->c_str());
+                delete_engine(*it);
+            }
         }
     }
 }
