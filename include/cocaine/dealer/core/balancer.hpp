@@ -65,6 +65,8 @@ private:
 	bool process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 						  boost::shared_ptr<cached_response_t>& response);
 
+	std::string get_next_route();
+
 	boost::shared_ptr<base_logger> logger();
 
 private:
@@ -73,6 +75,7 @@ private:
 	std::vector<cocaine_endpoint> endpoints_;
 	boost::shared_ptr<cocaine::dealer::context> context_;
 	boost::shared_ptr<message_cache> message_cache_;
+	int current_endpoint_index_;
 };
 
 } // namespace dealer

@@ -35,7 +35,8 @@ balancer_t::balancer_t(const std::string& identity,
 	socket_identity_(identity),
 	endpoints_(endpoints),
 	context_(context),
-	message_cache_(message_cache)
+	message_cache_(message_cache),
+	current_endpoint_index_(0)
 {
 	std::sort(endpoints_.begin(), endpoints_.end());
 	recreate_socket();
@@ -132,6 +133,18 @@ balancer_t::recreate_socket() {
 	socket_->setsockopt(ZMQ_IDENTITY, socket_identity_.c_str(), socket_identity_.length());
 }
 
+std::string
+balancer_t::get_next_route() {
+	if (current_endpoint_index_ < endpoints_.size() - 1) {
+		++current_endpoint_index_;
+	}
+	else {
+		current_endpoint_index_ = 0;	
+	}
+
+	return endpoints_[current_endpoint_index_].route_;
+}
+
 bool
 balancer_t::send(boost::shared_ptr<message_iface>& message) {
 	assert(socket_);
@@ -140,7 +153,7 @@ balancer_t::send(boost::shared_ptr<message_iface>& message) {
 		// pick ident-------
 
 		// send ident
-		std::string ident = "elisto20f.dev.yandex.net/rimz_app@1/rimz_func";
+		std::string ident = get_next_route();
 		zmq::message_t ident_chunk(ident.size());
 		memcpy((void *)ident_chunk.data(), ident.data(), ident.size());
 
