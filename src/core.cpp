@@ -279,7 +279,7 @@ Json::Value core_t::dispatch(const Json::Value& root) {
 
 Json::Value core_t::create_engine(const std::string& name, const Json::Value& manifest, bool recovering) {
     if(m_engines.find(name) != m_engines.end()) {
-        throw configuration_error_t("the specified app is already active");
+        throw configuration_error_t("the specified app already exists");
     }
 
     std::auto_ptr<engine_t> engine(new engine_t(m_context, name, manifest));
@@ -311,7 +311,7 @@ Json::Value core_t::delete_engine(const std::string& name) {
     engine_map_t::iterator engine(m_engines.find(name));
 
     if(engine == m_engines.end()) {
-        throw configuration_error_t("the specified app is not active");
+        throw configuration_error_t("the specified app does not exists");
     }
 
     try {
