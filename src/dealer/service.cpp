@@ -119,6 +119,8 @@ service_t::dispatch_responces() {
 				catch (...) {
 				}
 
+				lock.lock();
+
 				// remove processed response
 				handle_resp_queue->pop_front();
 			}

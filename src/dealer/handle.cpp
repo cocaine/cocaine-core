@@ -124,13 +124,7 @@ handle_t::dispatch_messages() {
 				response_poll_timeout = fast_poll_timeout;
 
 				cached_response_prt_t response;
-				bool response_ok = false;
-				
-				lock.unlock();
-				response_ok = balancer.receive(response);
-				lock.lock();
-
-				if (response_ok) {
+				if (balancer.receive(response)) {
 
 					switch (response->code()) {
 						case response_code::message_chunk:
