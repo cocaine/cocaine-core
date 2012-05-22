@@ -62,7 +62,7 @@ public:
 	void move_sent_message_to_new_front(const std::string& uuid);
 	void remove_message_from_cache(const std::string& uuid);
 	void make_all_messages_new();
-	void get_expired_messages(expired_messages_data_t& expired_messages_data);
+	void get_expired_messages(message_queue_t& expired_messages);
 
 private:
 	static bool is_message_expired(cached_message_ptr_t msg);

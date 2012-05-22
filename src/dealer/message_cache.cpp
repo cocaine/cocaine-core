@@ -165,6 +165,8 @@ message_cache::move_sent_message_to_new(const std::string& uuid) {
 	sent_messages_.erase(it);
 
 	msg->mark_as_sent(false);
+	msg->set_ack_received(false);
+
 	new_messages_->push_front(msg);
 }
 
@@ -223,8 +225,10 @@ message_cache::is_message_expired(cached_message_ptr_t msg) {
 }
 
 void
-message_cache::get_expired_messages(expired_messages_data_t& expired_messages_data) {
+message_cache::get_expired_messages(message_queue_t& expired_messages) {
 	boost::mutex::scoped_lock lock(mutex_);
+
+	assert(new_messages_);
 
 	// remove expired from sent
 	messages_index_t::iterator it = sent_messages_.begin();
@@ -232,13 +236,11 @@ message_cache::get_expired_messages(expired_messages_data_t& expired_messages_da
 
 		// get single sent message
 		boost::shared_ptr<message_iface> msg = it->second;
-		if (!msg) {
-			throw internal_error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
-		}
+		assert(msg);
 
 		// remove expired messages
 		if (msg->is_expired()) {
-			expired_messages_data.push_back(std::make_pair(msg->uuid(), msg->path()));
+			expired_messages.push_back(msg);
 			sent_messages_.erase(it++);
 		}
 		else {
@@ -246,22 +248,16 @@ message_cache::get_expired_messages(expired_messages_data_t& expired_messages_da
 		}
 	}
 
-	if (!new_messages_) {
-		throw internal_error("empty pending message queue object at " + std::string(BOOST_CURRENT_FUNCTION));
-	}
-
+	// remove expired from new
 	message_queue_t::iterator it2 = new_messages_->begin();
 	while (it2 != new_messages_->end()) {
 		// get single pending message
 		boost::shared_ptr<message_iface> msg = *it2;
-
-		if (!msg) {
-			throw internal_error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
-		}
+		assert(msg);
 
 		// remove expired messages
 		if (msg->is_expired()) {
-			expired_messages_data.push_back(std::make_pair(msg->uuid(), msg->path()));
+			expired_messages.push_back(msg);
 		}
 
 		++it2;

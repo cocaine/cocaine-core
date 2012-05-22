@@ -70,7 +70,7 @@ heartbeats_collector::run() {
 
 	// create hosts pinger
 	boost::function<void()> f = boost::bind(&heartbeats_collector::ping_services, this);
-	refresher_.reset(new refresher(f, hosts_ping_timeout));
+	refresher_.reset(new refresher(f, hosts_retrieval_interval));
 }
 
 void

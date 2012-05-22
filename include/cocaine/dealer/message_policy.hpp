@@ -28,21 +28,21 @@ struct message_policy {
         urgent(false),
         mailboxed(false),
         timeout(0.0f),
-        deadline(0.05f), // 500 millisec
-        max_timeout_retries(0) {};
+        deadline(0.0f),
+        max_retries(0) {}
 
     message_policy(bool send_to_all_hosts_,
                    bool urgent_,
                    float mailboxed_,
                    float timeout_,
                    float deadline_,
-                   int max_timeout_retries_) :
+                   int max_retries_) :
         send_to_all_hosts(send_to_all_hosts_),
         urgent(urgent_),
         mailboxed(mailboxed_),
         timeout(timeout_),
         deadline(deadline_),
-        max_timeout_retries(max_timeout_retries_) {};
+        max_retries(max_retries_) {};
 
     message_policy(const message_policy& mp) {
         *this = mp;
@@ -58,7 +58,7 @@ struct message_policy {
         mailboxed = rhs.mailboxed;
         timeout = rhs.timeout;
         deadline = rhs.deadline;
-        max_timeout_retries = rhs.max_timeout_retries;
+        max_retries = rhs.max_retries;
 
         return *this;
     }
@@ -88,14 +88,14 @@ struct message_policy {
     bool mailboxed;
     double timeout;
     double deadline;
-    int max_timeout_retries;
+    int max_retries;
 
     MSGPACK_DEFINE(send_to_all_hosts,
                    urgent,
                    mailboxed,
                    timeout,
                    deadline,
-                   max_timeout_retries);
+                   max_retries);
 };
 
 } // namespace dealer

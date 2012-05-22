@@ -45,6 +45,13 @@ public:
 	virtual const time_value& sent_timestamp() const = 0;
 	virtual const time_value& enqued_timestamp() const = 0;
 
+	virtual bool ack_received() const = 0;
+	virtual void set_ack_received(bool value) = 0;
+
+	virtual int retries_count() const = 0;
+	virtual void increment_retries_count() = 0;
+	virtual bool can_retry() const = 0;
+
 	virtual void mark_as_sent(bool value) = 0;
 
 	virtual std::string json() = 0;
@@ -56,6 +63,7 @@ public:
 
 	static const size_t MAX_MESSAGE_DATA_SIZE = 2147483648; // 2 gb
 	static const size_t UUID_SIZE = 36; // bytes
+	static const size_t ACK_TIMEOUT = 1000; // millisecs
 };
 
 } // namespace dealer

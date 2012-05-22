@@ -87,6 +87,7 @@ balancer_t::update_endpoints(const std::vector<cocaine_endpoint>& endpoints,
 	std::sort(endpoints_tmp.begin(), endpoints_tmp.end());
 
 	if (std::equal(endpoints_.begin(), endpoints_.end(), endpoints_tmp.begin())) {
+		logger()->log("no changes in endpoints on " + socket_identity_);
 		return;
 	}
 
@@ -94,9 +95,11 @@ balancer_t::update_endpoints(const std::vector<cocaine_endpoint>& endpoints,
 	get_endpoints_diff(endpoints, new_endpoints, missing_endpoints);
 
 	if (missing_endpoints.empty()) {
+		logger()->log("new endpoints on " + socket_identity_);
 		connect(new_endpoints);
 	}
 	else {
+		logger()->log("missing endpoints on " + socket_identity_);
 		recreate_socket();
 		connect(endpoints);
 	}
@@ -333,12 +336,13 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 
 	switch (rpc_code) {
 		case SERVER_RPC_MESSAGE_ACK: {
-			//logger()->log(PLOG_DEBUG, message_str + "ACK");
+			sent_msg->set_ack_received(true);
+			logger()->log(PLOG_DEBUG, message_str + "ACK");
 			return false;
 		}
 
 		case SERVER_RPC_MESSAGE_CHUNK: {
-			//logger()->log(PLOG_DEBUG, message_str + "CHUNK");
+			logger()->log(PLOG_DEBUG, message_str + "CHUNK");
 
 			response.reset(new cached_response_t(uuid, sent_msg->path(), chunks[4].data(), chunks[4].size()));
 			response->set_code(response_code::message_chunk);
@@ -347,7 +351,7 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 		break;
 
 		case SERVER_RPC_MESSAGE_ERROR: {
-			//logger()->log(PLOG_DEBUG, message_str + "ERROR");
+			logger()->log(PLOG_DEBUG, message_str + "ERROR");
 
 			int error_code = -1;
 			std::string error_message;
@@ -368,7 +372,7 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 		break;
 
 		case SERVER_RPC_MESSAGE_CHOKE: {
-			//logger()->log(PLOG_DEBUG, message_str + "CHOKE");
+			logger()->log(PLOG_DEBUG, message_str + "CHOKE");
 
 			response.reset(new cached_response_t(uuid, sent_msg->path(), NULL, 0));
 			response->set_code(response_code::message_choke);

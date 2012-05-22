@@ -111,7 +111,7 @@ handle_t::dispatch_messages() {
 		int long_poll_timeout = 1000;	// microsecs
 
 		int response_poll_timeout = fast_poll_timeout;
-		if (last_response_timer_.elapsed() > 0.5f) {	// 0.5f == 500 millisecs
+		if (last_response_timer_.elapsed().as_double() > 0.5f) {	// 0.5f == 500 millisecs
 			response_poll_timeout = long_poll_timeout;			
 		}
 
@@ -120,70 +120,22 @@ handle_t::dispatch_messages() {
 
 			// process received responce(s)
 			while (received_response) {
+				//logger()->log("begin RESP");
 				last_response_timer_.reset();
 				response_poll_timeout = fast_poll_timeout;
 
-				cached_response_prt_t response;
-				if (balancer.receive(response)) {
-
-					switch (response->code()) {
-						case response_code::message_chunk:
-							lock.unlock();
-							enqueue_response(response);
-							lock.lock();
-						break;
-
-						case response_code::message_choke:
-							message_cache_->remove_message_from_cache(response->uuid());
-							lock.unlock();
-							enqueue_response(response);
-							lock.lock();
-						break;
-
-						case resource_error: {
-							reshedule_message(response->uuid());
-
-							std::string message_str = "resheduled message with uuid: " + response->uuid();
-							message_str += " from " + description() + ", type: ERROR";
-							message_str += ", error code: ";
-
-							logger()->log(PLOG_DEBUG,
-										  "%s%d, error message: %s",
-										  message_str.c_str(),
-										  response->code(),
-										  response->error_message().c_str());
-						}
-						break;
-		
-						default: {
-							lock.unlock();
-							enqueue_response(response);
-							lock.lock();
-
-							message_cache_->remove_message_from_cache(response->uuid());
-
-							std::string message_str = "enqueued response for message with uuid: " + response->uuid();
-							message_str += " from " + description() + ", type: ERROR";
-							message_str += ", error code: ";
-
-							logger()->log(PLOG_DEBUG,
-										  "%s%d, error message: %s",
-										  message_str.c_str(),
-										  response->code(),
-										  response->error_message().c_str());
-						}
-						break;
-					}
-				}
-
 				lock.unlock();
-				received_response = balancer.check_for_responses(response_poll_timeout);
+				dispatch_next_available_response(balancer);
 				lock.lock();
+
+				received_response = balancer.check_for_responses(response_poll_timeout);
+
+				//logger()->log("end RESP");
 			}
 		}
 
 		if (is_running_) {
-			if (deadlined_messages_timer_.elapsed() > 0.01f) {	// 0.01f == 10 millisecs
+			if (deadlined_messages_timer_.elapsed().as_double() > 0.01f) {	// 0.01f == 10 millisecs
 				lock.unlock();
 				process_deadlined_messages();
 				lock.lock();
@@ -196,6 +148,60 @@ handle_t::dispatch_messages() {
 
 	update_statistics();
 	logger()->log(PLOG_DEBUG, "finished message dispatch for " + description());
+}
+
+void
+handle_t::dispatch_next_available_response(balancer_t& balancer) {
+	cached_response_prt_t response;
+	if (!balancer.receive(response)) {
+		return;
+	}
+
+	switch (response->code()) {
+		case response_code::message_chunk:
+			enqueue_response(response);
+		break;
+
+		case response_code::message_choke:
+			message_cache_->remove_message_from_cache(response->uuid());
+			enqueue_response(response);
+		break;
+
+		case resource_error: {
+			if (reshedule_message(response->uuid())) {
+				std::string message_str = "resheduled message with uuid: " + response->uuid();
+				message_str += " from " + description() + ", type: ERROR";
+				message_str += ", error code: ";
+
+				logger()->log(PLOG_DEBUG,
+							  "%s%d, error message: %s",
+							  message_str.c_str(),
+							  response->code(),
+							  response->error_message().c_str());
+			}
+			else {
+				enqueue_response(response);
+				message_cache_->remove_message_from_cache(response->uuid());
+			}
+		}
+		break;
+
+		default: {
+			enqueue_response(response);
+			message_cache_->remove_message_from_cache(response->uuid());
+
+			std::string message_str = "enqueued response for message with uuid: " + response->uuid();
+			message_str += " from " + description() + ", type: ERROR";
+			message_str += ", error code: ";
+
+			logger()->log(PLOG_DEBUG,
+						  "%s%d, error message: %s",
+						  message_str.c_str(),
+						  response->code(),
+						  response->error_message().c_str());
+		}
+		break;
+	}
 }
 
 void
@@ -229,20 +235,39 @@ handle_t::dispatch_control_messages(int type, balancer_t& balancer) {
 void
 handle_t::process_deadlined_messages() {
 	assert(message_cache_);
-	message_cache::expired_messages_data_t expired_messages;
+	message_cache::message_queue_t expired_messages;
 	message_cache_->get_expired_messages(expired_messages);
 
 	if (expired_messages.empty()) {
+		logger()->log(PLOG_DEBUG, "no expired messages");
 		return;
 	}
 
 	for (size_t i = 0; i < expired_messages.size(); ++i) {
-		cached_response_prt_t new_response;
-		new_response.reset(new cached_response_t(expired_messages.at(i).first,
-											   expired_messages.at(i).second,
-											   deadline_error,
-											   "message expired"));
-		enqueue_response(new_response);
+		if (!expired_messages.at(i)->ack_received()) {
+			logger()->log(PLOG_DEBUG, "no ACK for message " + expired_messages.at(i)->uuid());
+
+			if (!reshedule_message(expired_messages.at(i))) {
+				logger()->log(PLOG_DEBUG, "reshedule message policy exceeded, did not receive ACK " + expired_messages.at(i)->uuid());
+				cached_response_prt_t new_response;
+				new_response.reset(new cached_response_t(expired_messages.at(i)->uuid(),
+														 expired_messages.at(i)->path(),
+														 request_error,
+														 "server did not reply with ack in time"));
+				enqueue_response(new_response);
+			}
+			else {
+				logger()->log(PLOG_DEBUG, "reshedule message, did not receive ACK " + expired_messages.at(i)->uuid());
+			}
+		}
+		else {
+			cached_response_prt_t new_response;
+			new_response.reset(new cached_response_t(expired_messages.at(i)->uuid(),
+												   expired_messages.at(i)->path(),
+												   deadline_error,
+												   "message expired"));
+			enqueue_response(new_response);
+		}
 	}
 }
 
@@ -340,10 +365,21 @@ handle_t::dispatch_next_available_message(balancer_t& balancer) {
 	return true;
 }
 
-void
+bool
 handle_t::reshedule_message(const std::string& uuid) {
-	// 2DO: must reshedule if allowed by policy
-	message_cache_->move_sent_message_to_new_front(uuid);
+	boost::shared_ptr<message_iface> msg = message_cache_->get_sent_message(uuid);
+	return reshedule_message(msg);
+}
+
+bool
+handle_t::reshedule_message(boost::shared_ptr<message_iface>& msg) {
+	if (msg->can_retry()) {
+		msg->increment_retries_count();
+		message_cache_->move_sent_message_to_new_front(msg->uuid());
+		return true;
+	}
+
+	return false;
 }
 
 handle_stats&

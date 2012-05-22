@@ -151,7 +151,7 @@ client_impl::create_message(const void* data,
 		// init metadata and write to storage
 		msg_ptr->mdata_container().set_eblob(eb);
 		msg_ptr->mdata_container().commit_data();
-		msg_ptr->mdata_container().data_size = size;
+		msg_ptr->mdata_container().data_size_ = size;
 
 		// init data and write to storage
 		msg_ptr->data_container().set_eblob(eb, msg_ptr->uuid());
@@ -302,7 +302,7 @@ client_impl::storage_iteration_callback(void* data, uint64_t size, int column) {
 	p_message_t* msg_ptr = new p_message_t();
 	msg_ptr->mdata_container().load_data(data, size);
 	msg_ptr->mdata_container().set_eblob(eb);
-	msg_ptr->data_container().init_from_message_cache(eb, msg_ptr->mdata_container().uuid, size);
+	msg_ptr->data_container().init_from_message_cache(eb, msg_ptr->mdata_container().uuid_, size);
 
 	// send message to service
 	boost::shared_ptr<message_iface> msg(msg_ptr);

@@ -32,23 +32,29 @@ namespace dealer {
 
 class request_metadata {
 public:
-	request_metadata() {};
-	virtual ~request_metadata() {};
+	request_metadata() :
+		data_size_(0),
+		ack_received_(false),
+		is_sent_(false),
+		container_size_(false),
+		retries_count_(0) {}
+
+	virtual ~request_metadata() {}
 
 	std::string as_string() const {
 		std::stringstream s;
 		s << std::boolalpha;
 		s << "service: "<< path_.get().service_name << ", handle: ";
 		s << path_.get().handle_name + "\n";
-        s << "uuid: " << uuid << "\n";
-        s << "policy [send to all hosts]: " << policy.send_to_all_hosts << "\n";
-        s << "policy [urgent]: " << policy.urgent << "\n";
-        s << "policy [mailboxed]: " << policy.mailboxed << "\n";
-        s << "policy [timeout]: " << policy.timeout << "\n";
-        s << "policy [deadline]: " << policy.deadline << "\n";
-        s << "policy [max timeout retries]: " << policy.max_timeout_retries << "\n";
-        s << "data_size: " << data_size << "\n";
-        s << "enqueued timestamp: " << enqueued_timestamp.as_string();
+        s << "uuid: " << uuid_ << "\n";
+        s << "policy [send to all hosts]: " << policy_.send_to_all_hosts << "\n";
+        s << "policy [urgent]: " << policy_.urgent << "\n";
+        s << "policy [mailboxed]: " << policy_.mailboxed << "\n";
+        s << "policy [timeout]: " << policy_.timeout << "\n";
+        s << "policy [deadline]: " << policy_.deadline << "\n";
+        s << "policy [max retries]: " << policy_.max_retries << "\n";
+        s << "data_size: " << data_size_ << "\n";
+        s << "enqueued timestamp: " << enqued_timestamp_.as_string();
         return s.str();
 	}
 
@@ -61,10 +67,17 @@ public:
 	}
 
 	boost::flyweight<message_path> path_;
-	message_policy policy;
-	std::string uuid;
-	uint64_t data_size;
-	time_value enqueued_timestamp;
+	message_policy policy_;
+	std::string uuid_;
+	uint64_t data_size_;
+
+	time_value enqued_timestamp_;
+	time_value sent_timestamp_;
+	bool ack_received_;
+
+	bool is_sent_;
+	size_t container_size_;
+	int retries_count_;
 };
 
 class persistent_request_metadata : public request_metadata {
@@ -91,10 +104,10 @@ public:
 		unpack_next_value(pac, path);
 		path_ = path;
 
-		unpack_next_value(pac, policy);
-		unpack_next_value(pac, uuid);
-		unpack_next_value(pac, data_size);
-		unpack_next_value(pac, enqueued_timestamp);
+		unpack_next_value(pac, policy_);
+		unpack_next_value(pac, uuid_);
+		unpack_next_value(pac, data_size_);
+		unpack_next_value(pac, enqued_timestamp_);
 	}
 
 	void commit_data() {
@@ -102,13 +115,13 @@ public:
 		msgpack::sbuffer buffer;
 		msgpack::packer<msgpack::sbuffer> pk(&buffer);
     	pk.pack(path());
-    	pk.pack(policy);
-    	pk.pack(uuid);
-    	pk.pack(data_size);
-    	pk.pack(enqueued_timestamp);
+    	pk.pack(policy_);
+    	pk.pack(uuid_);
+    	pk.pack(data_size_);
+    	pk.pack(enqued_timestamp_);
 
     	// write to eblob with uuid as key
-		blob_.write(uuid, buffer.data(), buffer.size(), EBLOB_COLUMN);
+		blob_.write(uuid_, buffer.data(), buffer.size(), EBLOB_COLUMN);
 	}
 
 private:
