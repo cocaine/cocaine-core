@@ -54,7 +54,7 @@ public:
         s << "policy [deadline]: " << policy_.deadline << "\n";
         s << "policy [max retries]: " << policy_.max_retries << "\n";
         s << "data_size: " << data_size_ << "\n";
-        s << "enqueued timestamp: " << enqued_timestamp_.as_string();
+        s << "enqued timestamp: " << enqued_timestamp_.as_string();
         return s.str();
 	}
 

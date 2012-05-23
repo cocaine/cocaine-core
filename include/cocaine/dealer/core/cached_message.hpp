@@ -17,7 +17,7 @@
 #include <string>
 #include <sys/time.h>
 #include <cstring>
-#include <stdexcept>
+#include <iomanip>
 
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/mutex.hpp>
@@ -156,6 +156,10 @@ cached_message_t<DataContainer, MetadataContainer>::increment_retries_count() {
 
 template<typename DataContainer, typename MetadataContainer> bool
 cached_message_t<DataContainer, MetadataContainer>::can_retry() const {
+	if (mdata_.policy_.max_retries < 0) {
+		return true;
+	}
+
 	return (mdata_.retries_count_ < mdata_.policy_.max_retries ? true : false);
 }
 
@@ -290,7 +294,7 @@ cached_message_t<DataContainer, MetadataContainer>::mark_as_sent(bool value) {
 	boost::mutex::scoped_lock lock(mutex_);
 
 	if (value) {
-		mdata_.is_sent_ = false;
+		mdata_.is_sent_ = true;
 		mdata_.sent_timestamp_.init_from_current_time();
 	}
 	else {
@@ -303,22 +307,22 @@ template<typename DataContainer, typename MetadataContainer> bool
 cached_message_t<DataContainer, MetadataContainer>::is_expired() {
 	// check whether we received server ack or not
 	time_value curr_time = time_value::get_current_time();
-	time_value elapsed_from_sent = curr_time.distance(mdata_.sent_timestamp_);
 
-	if (elapsed_from_sent.as_double() > (ACK_TIMEOUT / 1000.0f)) {
-		std::cout << elapsed_from_sent.as_double() << std::endl;
-		return true;
+	if (mdata_.is_sent_ && !ack_received()) {
+		time_value elapsed_from_sent = curr_time.distance(mdata_.sent_timestamp_);
+
+		if (elapsed_from_sent.as_double() > (ACK_TIMEOUT / 1000.0f)) {
+			return true;
+		}
 	}
 
 	// process policy deadlie
-	if (mdata_.policy_.deadline == 0.0f) {
-		return false;
-	}
+	if (mdata_.policy_.deadline > 0.0f) {
+		time_value elapsed_from_enqued = curr_time.distance(mdata_.enqued_timestamp_);
 
-	time_value elapsed_from_enqued = curr_time.distance(mdata_.enqued_timestamp_);
-
-	if (elapsed_from_enqued.as_double() > mdata_.policy_.deadline) {
-		return true;
+		if (elapsed_from_enqued.as_double() > mdata_.policy_.deadline) {
+			return true;
+		}
 	}
 
 	return false;

@@ -168,8 +168,12 @@ persistent_data_container::commit_data() {
 
 persistent_data_container&
 persistent_data_container::operator = (const persistent_data_container& rhs) {
-	blob_ = rhs.blob_;
-	uuid_ = rhs.uuid_;
+	if (this != &rhs) {
+		blob_ = rhs.blob_;
+		uuid_ = rhs.uuid_;
+	}
+
+	return *this;
 }
 
 bool

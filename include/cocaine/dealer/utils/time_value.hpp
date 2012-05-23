@@ -34,7 +34,6 @@ public:
 	time_value(double tv);
 	virtual ~time_value();
 
-
 	std::string as_string() const;
 	double as_double() const;
 	timeval as_timeval() const;

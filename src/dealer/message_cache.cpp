@@ -72,6 +72,12 @@ message_cache::new_messages() {
 }
 
 void
+message_cache::enqueue_with_priority(const boost::shared_ptr<message_iface>& message) {
+	boost::mutex::scoped_lock lock(mutex_);
+	new_messages_->push_front(message);
+}
+
+void
 message_cache::enqueue(const boost::shared_ptr<message_iface>& message) {
 	boost::mutex::scoped_lock lock(mutex_);
 	new_messages_->push_back(message);
@@ -93,14 +99,6 @@ message_cache::append_message_queue(message_queue_ptr_t queue) {
 boost::shared_ptr<message_iface>
 message_cache::get_new_message() {
 	boost::mutex::scoped_lock lock(mutex_);
-
-	// validate message
-	if (!new_messages_->front()) {
-		std::string error_str = "empty message object at ";
-		error_str += std::string(BOOST_CURRENT_FUNCTION);
-		throw internal_error(error_str);
-	}
-
 	return new_messages_->front();
 }
 
@@ -139,9 +137,7 @@ message_cache::move_new_message_to_sent() {
 	boost::mutex::scoped_lock lock(mutex_);
 	boost::shared_ptr<message_iface> msg = new_messages_->front();
 
-	if (!msg) {
-		throw internal_error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
-	}
+	assert(msg);
 
 	sent_messages_.insert(std::make_pair(msg->uuid(), msg));
 	new_messages_->pop_front();
@@ -188,6 +184,8 @@ message_cache::move_sent_message_to_new_front(const std::string& uuid) {
 	sent_messages_.erase(it);
 
 	msg->mark_as_sent(false);
+	msg->set_ack_received(false);
+	
 	new_messages_->push_front(msg);
 }
 
@@ -213,6 +211,8 @@ message_cache::make_all_messages_new() {
 			throw internal_error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
 		}
 
+		it->second->mark_as_sent(false);
+		it->second->set_ack_received(false);
 		new_messages_->push_back(it->second);
 	}
 

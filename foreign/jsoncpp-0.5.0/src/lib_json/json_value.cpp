@@ -1,4 +1,4 @@
-#include <iostream>
+   #include <iostream>
 #include <json/value.h>
 #include <json/writer.h>
 #include <utility>
@@ -532,7 +532,7 @@ Value::type() const
 
 
 int 
-Value::compare( const Value &other )
+Value::compare(__attribute__ ((unused)) const Value& other )
 {
    /*
    int typeDelta = other.type_ - type_;
@@ -1600,7 +1600,7 @@ Path::makePath( const std::string &path,
 
 
 void 
-Path::addPathInArg( const std::string &path, 
+Path::addPathInArg(__attribute__ ((unused)) const std::string &path, 
                     const InArgs &in, 
                     InArgs::const_iterator &itInArg, 
                     PathArgument::Kind kind )
@@ -1621,8 +1621,8 @@ Path::addPathInArg( const std::string &path,
 
 
 void 
-Path::invalidPath( const std::string &path, 
-                   int location )
+Path::invalidPath(__attribute__ ((unused)) const std::string& path, 
+                   int __attribute__ ((unused)) location )
 {
    // Error: invalid path.
 }

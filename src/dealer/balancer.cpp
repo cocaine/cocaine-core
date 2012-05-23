@@ -73,7 +73,11 @@ balancer_t::connect(const std::vector<cocaine_endpoint>& endpoints) {
 }
 
 void balancer_t::disconnect() {
-	logger()->log("disconnect " + socket_identity_);
+	if (!socket_) {
+		return;
+	}
+
+	logger()->log("disconnect balancer " + socket_identity_);
 	socket_.reset();
 }
 
@@ -213,9 +217,6 @@ balancer_t::send(boost::shared_ptr<message_iface>& message) {
 		if (true != socket_->send(data_chunk)) {
 			return false;
 		}
-
-		// assign message flags
-		message->mark_as_sent(true);
 	}
 	catch (const std::exception& ex) {
 		std::string error_msg = "balancer with identity " + socket_identity_;
@@ -290,11 +291,11 @@ balancer_t::receive(boost::shared_ptr<cached_response_t>& response) {
 		response_chunks.push_back(chunk);
 		
 
-		int rc = zmq_getsockopt(*socket_, ZMQ_RCVMORE, &more, &more_size);
+		int __attribute__ ((unused)) rc = zmq_getsockopt(*socket_, ZMQ_RCVMORE, &more, &more_size);
     	assert (rc == 0);
 	}
 
-	if (response_chunks.size() < 0) {
+	if (response_chunks.size() == 0) {
 		return false;
 	}
 
@@ -331,7 +332,7 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 		return false;
 	}
 
-	std::string message_str = "balancer " + socket_identity_ + " received response for message with uuid: ";
+	std::string message_str = "balancer " + socket_identity_ + " received response for msg with uuid: ";
 	message_str += sent_msg->uuid() + ", type: ";
 
 	switch (rpc_code) {

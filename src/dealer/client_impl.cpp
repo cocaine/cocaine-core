@@ -140,11 +140,11 @@ client_impl::create_message(const void* data,
 
 	if (config()->message_cache_type() == RAM_ONLY) {
 		msg.reset(new message_t(path, policy, data, size));
-		logger()->log(PLOG_DEBUG, "created message, size: %d bytes, uuid: %s", size, msg->uuid().c_str());
+		//logger()->log(PLOG_DEBUG, "created message, size: %d bytes, uuid: %s", size, msg->uuid().c_str());
 	}
 	else if (config()->message_cache_type() == PERSISTENT) {
 		p_message_t* msg_ptr = new p_message_t(path, policy, data, size);
-		logger()->log(PLOG_DEBUG, "created message, size: %d bytes, uuid: %s", size, msg_ptr->uuid().c_str());
+		//logger()->log(PLOG_DEBUG, "created message, size: %d bytes, uuid: %s", size, msg_ptr->uuid().c_str());
 
 		eblob eb = context()->storage()->get_eblob(path.service_name);
 		
@@ -193,21 +193,25 @@ client_impl::send_message(const boost::shared_ptr<message_iface>& msg,
 	uuid = msg->uuid();
 
 	// assign callback
-	std::string message_str = "registering callback for message with uuid: " + msg->uuid();
-	logger()->log(PLOG_DEBUG, message_str);
+	//std::string message_str = "registering callback for message with uuid: " + msg->uuid();
+	//logger()->log(PLOG_DEBUG, message_str);
 
 	it->second->register_responder_callback(uuid, response);
 
-	message_str = "registered callback for message with uuid: " + msg->uuid();
-	logger()->log(PLOG_DEBUG, message_str);
+	//message_str = "registered callback for message with uuid: " + msg->uuid();
+	//logger()->log(PLOG_DEBUG, message_str);
 
 	// send message to service
 	it->second->send_message(msg);
 
 
-	message_str = "enqueued message with uuid: %s to [%s.%s]";
-	logger()->log(PLOG_DEBUG, message_str.c_str(), uuid.c_str(),
-				  msg->path().service_name.c_str(), msg->path().handle_name.c_str());
+	std::string message_str = "enqued msg (%d bytes) with uuid: %s to [%s.%s]";
+	logger()->log(PLOG_DEBUG,
+				  message_str.c_str(),
+				  msg->size(),
+				  uuid.c_str(),
+				  msg->path().service_name.c_str(),
+				  msg->path().handle_name.c_str());
 
 	return uuid;
 }
@@ -229,8 +233,8 @@ client_impl::unset_response_callback(const std::string& message_uuid,
 	// assign to service
 	it->second->unregister_responder_callback(message_uuid);
 
-	std::string message_str = "unregistered callback for message with uuid: " + message_uuid;
-	logger()->log(PLOG_DEBUG, message_str);
+	//std::string message_str = "unregistered callback for message with uuid: " + message_uuid;
+	//logger()->log(PLOG_DEBUG, message_str);
 }
 
 boost::shared_ptr<context>

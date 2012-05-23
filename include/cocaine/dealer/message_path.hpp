@@ -58,8 +58,8 @@ struct message_path {
     MSGPACK_DEFINE(service_name, handle_name);
 };
 
-static std::size_t hash_value(const message_path& path) {
-    boost::hash<std::string> hasher;
+static std::size_t __attribute__ ((unused)) hash_value(const message_path& path) {
+   boost::hash<std::string> hasher;
     return hasher(path.service_name + path.handle_name);
 }
 

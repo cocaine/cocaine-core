@@ -153,25 +153,6 @@ service_t::config() {
 }
 
 void
-service_t::log_refreshed_endpoints(const handles_endpoints_t& endpoints) {
-	/*
-	logger()->log(PLOG_INFO, "service %s refreshed with: ", info_.name_.c_str());
-
-	for (size_t i = 0; i < hosts.size(); ++i) {
-		std::stringstream tmp;
-		tmp << "host - " << hosts[i];
-		logger()->log(PLOG_DEBUG, tmp.str());
-	}
-
-	for (size_t i = 0; i < handles.size(); ++i) {
-		std::stringstream tmp;
-		tmp << "handle - " << handles[i].as_string();
-		logger()->log(PLOG_DEBUG, tmp.str());
-	}
-	*/
-}
-
-void
 service_t::register_responder_callback(const std::string& message_uuid,
 											const boost::shared_ptr<response>& resp)
 {
@@ -292,28 +273,6 @@ service_t::update_existing_handles(const handles_endpoints_t& handles_endpoints)
 }
 
 void
-service_t::verify_unhandled_msg_queue_for_handle(const handle_ptr_t& handle) {
-	// find corresponding unhandled message queue
-	unhandled_messages_map_t::iterator it = unhandled_messages_.find(handle->info().name_);
-
-	if (it == unhandled_messages_.end()) {
-		messages_deque_ptr_t new_queue(new cached_messages_deque_t);
-		unhandled_messages_[handle->info().name_] = new_queue;
-		return;
-	}
-
-	// should not find a queue with messages!
-	messages_deque_ptr_t msg_queue = it->second;
-
-	if (msg_queue && !msg_queue->empty()) {
-		std::string error_str = "found unhandled non-empty message queue with existing handle for ";
-		error_str += " handle " + handle->description();
-		error_str += ". at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw internal_error(error_str);
-	}
-}
-
-void
 service_t::remove_outstanding_handles(const handles_info_list_t& handles) {
 	boost::mutex::scoped_lock lock(mutex_);
 
@@ -340,18 +299,14 @@ service_t::remove_outstanding_handles(const handles_info_list_t& handles) {
 		if (it != handles_.end()) {
 			handle_ptr_t handle = it->second;
 
-			// immediately terminate all handle activity
-			lock.unlock();
-			handle->disconnect();
-			lock.lock();
+			// retrieve message cache and terminate all handle activity
+			handle_info_t handle_inf = handle->info();
+			boost::shared_ptr<message_cache> mcache = handle->messages_cache();
+			handle.reset();
 
-			verify_unhandled_msg_queue_for_handle(handle);
-
-			// consolidate all handle's messages
-			handle->make_all_messages_new();
-
-			// move handle messages to unhandled messages map in service
-			messages_deque_ptr_t handle_msg_queue = handle->new_messages();
+			// consolidate messages
+			mcache->make_all_messages_new();
+			messages_deque_ptr_t handle_msg_queue = mcache->new_messages();
 
 			// validate handle queue
 			assert(handle_msg_queue);
@@ -359,9 +314,28 @@ service_t::remove_outstanding_handles(const handles_info_list_t& handles) {
 			// in case there are messages, store them
 			if (!handle_msg_queue->empty()) {
 				logger()->log(PLOG_DEBUG, "moving message queue from handle %s to service, queue size: %d",
-							  handle->description().c_str(), handle_msg_queue->size());
+							  handle_inf.as_string().c_str(), handle_msg_queue->size());
 
-				messages_deque_ptr_t unhandled_queue = unhandled_messages_[handle->info().name_];
+				// find corresponding unhandled message queue
+				unhandled_messages_map_t::iterator it = unhandled_messages_.find(handle_inf.name_);
+
+				// make one if needed
+				if (it == unhandled_messages_.end()) {
+					messages_deque_ptr_t new_queue(new cached_messages_deque_t);
+					unhandled_messages_[handle_inf.name_] = new_queue;
+				}
+				else {
+					// should not find a queue with messages!
+					messages_deque_ptr_t msg_queue = it->second;
+
+					if (msg_queue && !msg_queue->empty()) {
+						std::string error_str = "found unhandled non-empty message queue with existing handle for ";
+						error_str += " handle " + handle_inf.as_string();
+						throw internal_error(error_str);
+					}
+				}
+
+				messages_deque_ptr_t unhandled_queue = unhandled_messages_[handle_inf.name_];
 				unhandled_queue->insert(unhandled_queue->end(), handle_msg_queue->begin(), handle_msg_queue->end());
 			}
 		}
@@ -414,6 +388,10 @@ service_t::create_new_handles(const handles_info_list_t& handles,
 							  handle->description().c_str(), msg_queue->size());
 				handle->assign_message_queue(it->second);
 				lock.lock();
+			}
+			else {
+				logger()->log(PLOG_DEBUG, "no unhandled message queue for handle %s",
+							  handle->description().c_str());
 			}
 
 			unhandled_messages_.erase(it);

@@ -61,7 +61,8 @@ void worker() {
 
 	message_path path("rimz_app", "rimz_func");
 	message_policy policy;
-	policy.deadline = 0.0;
+	policy.deadline = 1.0;
+	policy.max_retries = -1;
 	std::string payload = "response chunk: ";
 
 	for (int i = 0; i < messages_count; ++i) {
@@ -136,7 +137,7 @@ void create_client(int add_messages_count) {
 	}
 
 	std::cout << "sending messages done.\n";
-
+	sleep(20);
 	client_ptr.reset();
 
 	std::cout << "----------------------------------- test results ----------------------------------------\n";

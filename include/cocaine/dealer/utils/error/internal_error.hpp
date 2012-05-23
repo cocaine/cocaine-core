@@ -34,7 +34,7 @@ public:
 	virtual ~internal_error() throw () {
 	}
 
-	internal_error(internal_error const& other) {
+	internal_error(internal_error const& other) : basic_error() {
 		memcpy(message_, other.message_, ERROR_MESSAGE_SIZE);
 	}
 };

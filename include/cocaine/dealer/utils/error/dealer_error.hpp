@@ -35,7 +35,7 @@ public:
 	virtual ~dealer_error() throw () {
 	}
 
-	dealer_error(dealer_error const& other) {
+	dealer_error(dealer_error const& other) : basic_error() {
 		memcpy(message_, other.message_, ERROR_MESSAGE_SIZE);
 		code_ = other.code_;
 	}

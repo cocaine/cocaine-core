@@ -90,13 +90,10 @@ private:
 	void create_new_handles(const handles_info_list_t& handles, const handles_endpoints_t& handles_endpoints);
 	void remove_outstanding_handles(const handles_info_list_t& handles);
 	void update_existing_handles(const handles_endpoints_t& handles_endpoints);
-	
-	void log_refreshed_endpoints(const handles_endpoints_t& endpoints);
 
 	void enqueue_responce(cached_response_prt_t response);
 	void dispatch_responces();
 	bool responces_queues_empty() const;
-	void verify_unhandled_msg_queue_for_handle(const handle_ptr_t& handle);
 
 	boost::shared_ptr<base_logger> logger();
 	boost::shared_ptr<configuration> config();

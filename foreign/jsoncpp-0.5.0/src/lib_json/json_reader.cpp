@@ -477,7 +477,7 @@ Reader::readString()
 
 
 bool 
-Reader::readObject( Token &tokenStart )
+Reader::readObject(__attribute__ ((unused)) Token &tokenStart )
 {
    Token tokenName;
    std::string name;
@@ -536,7 +536,7 @@ Reader::readObject( Token &tokenStart )
 
 
 bool 
-Reader::readArray( Token &tokenStart )
+Reader::readArray(__attribute__ ((unused)) Token &tokenStart )
 {
    currentValue() = Value( arrayValue );
    skipSpaces();

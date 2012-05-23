@@ -84,6 +84,8 @@ public:
 	const handle_info_t& info() const;
 	std::string description();
 
+	boost::shared_ptr<message_cache> messages_cache() const;
+
 private:
 	void kill();
 	void dispatch_messages();
@@ -93,7 +95,6 @@ private:
 	void establish_control_conection(socket_ptr_t& control_socket);
 	int receive_control_messages(socket_ptr_t& control_socket, int poll_timeout);
 	bool reshedule_message(const std::string& uuid);
-	bool reshedule_message(boost::shared_ptr<message_iface>& msg);
 
 	// working with messages
 	bool dispatch_next_available_message(balancer_t& balancer);

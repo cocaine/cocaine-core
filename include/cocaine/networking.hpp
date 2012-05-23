@@ -261,7 +261,7 @@ class channel_t:
         }
 
         // Packs and sends a tuple.
-        bool send_multi(const null_type&, int flags = 0) {
+        bool send_multi(const null_type&, int __attribute__ ((unused)) flags = 0) {
             return true;
         }
 
@@ -315,7 +315,7 @@ class channel_t:
         }
 
         // Receives and unpacks a tuple.
-        bool recv_multi(const null_type&, int flags = 0) {
+        bool recv_multi(const null_type&, int __attribute__ ((unused)) flags = 0) {
             return true;
         }
 

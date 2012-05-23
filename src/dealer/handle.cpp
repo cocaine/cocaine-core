@@ -80,8 +80,6 @@ handle_t::dispatch_messages() {
 	while (is_running_) {
 		boost::mutex::scoped_lock lock(mutex_);
 
-		static bool have_enqueued_messages = false;
-
 		// process incoming control messages
 		int control_message = receive_control_messages(control_socket, 0);
 		if (control_message == CONTROL_MESSAGE_KILL) {
@@ -120,7 +118,6 @@ handle_t::dispatch_messages() {
 
 			// process received responce(s)
 			while (received_response) {
-				//logger()->log("begin RESP");
 				last_response_timer_.reset();
 				response_poll_timeout = fast_poll_timeout;
 
@@ -129,8 +126,6 @@ handle_t::dispatch_messages() {
 				lock.lock();
 
 				received_response = balancer.check_for_responses(response_poll_timeout);
-
-				//logger()->log("end RESP");
 			}
 		}
 
@@ -169,7 +164,7 @@ handle_t::dispatch_next_available_response(balancer_t& balancer) {
 
 		case resource_error: {
 			if (reshedule_message(response->uuid())) {
-				std::string message_str = "resheduled message with uuid: " + response->uuid();
+				std::string message_str = "resheduled msg with uuid: " + response->uuid();
 				message_str += " from " + description() + ", type: ERROR";
 				message_str += ", error code: ";
 
@@ -190,7 +185,7 @@ handle_t::dispatch_next_available_response(balancer_t& balancer) {
 			enqueue_response(response);
 			message_cache_->remove_message_from_cache(response->uuid());
 
-			std::string message_str = "enqueued response for message with uuid: " + response->uuid();
+			std::string message_str = "enqued response for msg with uuid: " + response->uuid();
 			message_str += " from " + description() + ", type: ERROR";
 			message_str += ", error code: ";
 
@@ -232,6 +227,11 @@ handle_t::dispatch_control_messages(int type, balancer_t& balancer) {
 	}
 }
 
+boost::shared_ptr<message_cache>
+handle_t::messages_cache() const {
+	return message_cache_;
+}
+
 void
 handle_t::process_deadlined_messages() {
 	assert(message_cache_);
@@ -239,15 +239,18 @@ handle_t::process_deadlined_messages() {
 	message_cache_->get_expired_messages(expired_messages);
 
 	if (expired_messages.empty()) {
-		logger()->log(PLOG_DEBUG, "no expired messages");
 		return;
 	}
 
 	for (size_t i = 0; i < expired_messages.size(); ++i) {
 		if (!expired_messages.at(i)->ack_received()) {
-			logger()->log(PLOG_DEBUG, "no ACK for message " + expired_messages.at(i)->uuid());
+			if (expired_messages.at(i)->can_retry()) {
+				expired_messages.at(i)->increment_retries_count();
+				message_cache_->enqueue_with_priority(expired_messages.at(i));
 
-			if (!reshedule_message(expired_messages.at(i))) {
+				logger()->log(PLOG_DEBUG, "no ACK, resheduled message " + expired_messages.at(i)->uuid());
+			}
+			else {
 				logger()->log(PLOG_DEBUG, "reshedule message policy exceeded, did not receive ACK " + expired_messages.at(i)->uuid());
 				cached_response_prt_t new_response;
 				new_response.reset(new cached_response_t(expired_messages.at(i)->uuid(),
@@ -256,16 +259,13 @@ handle_t::process_deadlined_messages() {
 														 "server did not reply with ack in time"));
 				enqueue_response(new_response);
 			}
-			else {
-				logger()->log(PLOG_DEBUG, "reshedule message, did not receive ACK " + expired_messages.at(i)->uuid());
-			}
 		}
 		else {
 			cached_response_prt_t new_response;
 			new_response.reset(new cached_response_t(expired_messages.at(i)->uuid(),
 												   expired_messages.at(i)->path(),
 												   deadline_error,
-												   "message expired"));
+												   "message expired 2"));
 			enqueue_response(new_response);
 		}
 	}
@@ -356,23 +356,25 @@ handle_t::dispatch_next_available_message(balancer_t& balancer) {
 	boost::shared_ptr<message_iface> new_msg = message_cache_->get_new_message();
 	
 	if (balancer.send(new_msg)) {
+		new_msg->mark_as_sent(true);
 		message_cache_->move_new_message_to_sent();
+
+		std::string log_msg = "sent msg with uuid: %s to %s";
+		logger()->log(PLOG_DEBUG, log_msg.c_str(), new_msg->uuid().c_str(), description().c_str());
+
+		return true;
+	}
+	else {
+		logger()->log("PPZ");		
 	}
 
-	std::string log_msg = "sent message with uuid: %s to %s";
-	logger()->log(PLOG_DEBUG, log_msg.c_str(), new_msg->uuid().c_str(), description().c_str());
-
-	return true;
+	return false;
 }
 
 bool
 handle_t::reshedule_message(const std::string& uuid) {
 	boost::shared_ptr<message_iface> msg = message_cache_->get_sent_message(uuid);
-	return reshedule_message(msg);
-}
 
-bool
-handle_t::reshedule_message(boost::shared_ptr<message_iface>& msg) {
 	if (msg->can_retry()) {
 		msg->increment_retries_count();
 		message_cache_->move_sent_message_to_new_front(msg->uuid());
@@ -426,7 +428,7 @@ handle_t::kill() {
 
 std::string
 handle_t::description() {
-	return std::string("[" + info_.service_name_ +"].[" + info_.name_ + "]");
+	return info_.as_string();
 }
 
 void
@@ -437,7 +439,7 @@ handle_t::connect() {
 		return;
 	}
 
-	logger()->log(PLOG_DEBUG, "CONNECT HANDLE" + description());
+	logger()->log(PLOG_DEBUG, "CONNECT HANDLE " + description());
 
 	// connect to hosts
 	int control_message = CONTROL_MESSAGE_CONNECT;
@@ -455,7 +457,7 @@ handle_t::update_endpoints(const std::vector<cocaine_endpoint>& endpoints) {
 	}
 
 	endpoints_ = endpoints;
-	logger()->log(PLOG_DEBUG, "UPDATE HANDLE" + description());
+	logger()->log(PLOG_DEBUG, "UPDATE HANDLE " + description());
 
 	// connect to hosts
 	int control_message = CONTROL_MESSAGE_UPDATE;
@@ -472,7 +474,7 @@ handle_t::disconnect() {
 		return;
 	}
 
-	logger()->log(PLOG_DEBUG, "DISCONNECT HANDLE" + description());
+	logger()->log(PLOG_DEBUG, "DISCONNECT HANDLE " + description());
 
 	// disconnect from all hosts
 	std::string control_message = boost::lexical_cast<std::string>(CONTROL_MESSAGE_DISCONNECT);

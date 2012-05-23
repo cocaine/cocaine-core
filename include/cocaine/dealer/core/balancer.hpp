@@ -75,7 +75,7 @@ private:
 	std::vector<cocaine_endpoint> endpoints_;
 	boost::shared_ptr<cocaine::dealer::context> context_;
 	boost::shared_ptr<message_cache> message_cache_;
-	int current_endpoint_index_;
+	size_t current_endpoint_index_;
 };
 
 } // namespace dealer

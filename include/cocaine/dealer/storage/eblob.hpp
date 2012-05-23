@@ -210,9 +210,17 @@ private:
 		logger_->log(msg);
 	}
 
-	static int iteration_callback(eblob_disk_control* dc, eblob_ram_control* rc, void* data, void* priv, void* thread_priv) {
+	static int iteration_callback(__attribute__ ((unused)) eblob_disk_control* dc,
+								  eblob_ram_control* rc,
+								  void* data,
+								  void* priv,
+								  __attribute__ ((unused)) void* thread_priv)
+	{
 		eblob* eb = reinterpret_cast<eblob*>(priv);
 		eb->iteration_callback_instance(data, rc->size, rc->type);
+
+		// 2DO find out what to return
+		return 0;
 	}
 
 	void iteration_callback_instance(void* data, uint64_t size, int column) {
