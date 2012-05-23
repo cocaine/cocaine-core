@@ -59,7 +59,7 @@ struct message_path {
 };
 
 static std::size_t __attribute__ ((unused)) hash_value(const message_path& path) {
-   boost::hash<std::string> hasher;
+    boost::hash<std::string> hasher;
     return hasher(path.service_name + path.handle_name);
 }
 

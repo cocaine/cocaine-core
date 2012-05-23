@@ -69,6 +69,7 @@ public:
 	boost::flyweight<message_path> path_;
 	message_policy policy_;
 	std::string uuid_;
+	std::string destination_endpoint_;
 	uint64_t data_size_;
 
 	time_value enqued_timestamp_;

@@ -354,10 +354,10 @@ handle_t::dispatch_next_available_message(balancer_t& balancer) {
 	}
 
 	boost::shared_ptr<message_iface> new_msg = message_cache_->get_new_message();
-	
-	if (balancer.send(new_msg)) {
+	cocaine_endpoint endpoint;
+	if (balancer.send(new_msg, endpoint)) {
 		new_msg->mark_as_sent(true);
-		message_cache_->move_new_message_to_sent();
+		message_cache_->move_new_message_to_sent(endpoint.as_string());
 
 		std::string log_msg = "sent msg with uuid: %s to %s";
 		logger()->log(PLOG_DEBUG, log_msg.c_str(), new_msg->uuid().c_str(), description().c_str());

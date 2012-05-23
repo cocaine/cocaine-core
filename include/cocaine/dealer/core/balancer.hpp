@@ -43,7 +43,7 @@ public:
 	void connect(const std::vector<cocaine_endpoint>& endpoints);
 	void disconnect();
 
-	bool send(boost::shared_ptr<message_iface>& message);
+	bool send(boost::shared_ptr<message_iface>& message, cocaine_endpoint& endpoint);
 	bool receive(boost::shared_ptr<cached_response_t>& response);
 
 	void update_endpoints(const std::vector<cocaine_endpoint>& endpoints,
@@ -65,7 +65,7 @@ private:
 	bool process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 						  boost::shared_ptr<cached_response_t>& response);
 
-	std::string get_next_route();
+	cocaine_endpoint& get_next_endpoint();
 
 	boost::shared_ptr<base_logger> logger();
 

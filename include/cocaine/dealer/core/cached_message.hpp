@@ -70,6 +70,9 @@ public:
 	bool ack_received() const;
 	void set_ack_received(bool value);
 
+	const std::string& destination_endpoint() const;
+	void set_destination_endpoint(const std::string& value);
+
 	void mark_as_sent(bool value);
 
 	std::string json();
@@ -144,7 +147,7 @@ cached_message_t<DataContainer, MetadataContainer>::init() {
 	mdata_.enqued_timestamp_.init_from_current_time();
 }
 
-template<typename DataContainer, typename MetadataContainer>  int
+template<typename DataContainer, typename MetadataContainer> int
 cached_message_t<DataContainer, MetadataContainer>::retries_count() const {
 	return mdata_.retries_count_;
 }
@@ -272,6 +275,16 @@ cached_message_t<DataContainer, MetadataContainer>::ack_received() const {
 template<typename DataContainer, typename MetadataContainer> void
 cached_message_t<DataContainer, MetadataContainer>::set_ack_received(bool value) {
 	mdata_.ack_received_ = value;
+}
+
+template<typename DataContainer, typename MetadataContainer> const std::string&
+cached_message_t<DataContainer, MetadataContainer>::destination_endpoint() const {
+	return mdata_.destination_endpoint_;
+}
+
+template<typename DataContainer, typename MetadataContainer> void
+cached_message_t<DataContainer, MetadataContainer>::set_destination_endpoint(const std::string& value) {
+	mdata_.destination_endpoint_ = value;	
 }
 
 template<typename DataContainer, typename MetadataContainer> const message_path&

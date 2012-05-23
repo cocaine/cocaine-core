@@ -140,8 +140,8 @@ balancer_t::recreate_socket() {
 	socket_->setsockopt(ZMQ_IDENTITY, socket_identity_.c_str(), socket_identity_.length());
 }
 
-std::string
-balancer_t::get_next_route() {
+cocaine_endpoint&
+balancer_t::get_next_endpoint() {
 	if (current_endpoint_index_ < endpoints_.size() - 1) {
 		++current_endpoint_index_;
 	}
@@ -149,20 +149,18 @@ balancer_t::get_next_route() {
 		current_endpoint_index_ = 0;	
 	}
 
-	return endpoints_[current_endpoint_index_].route_;
+	return endpoints_[current_endpoint_index_];
 }
 
 bool
-balancer_t::send(boost::shared_ptr<message_iface>& message) {
+balancer_t::send(boost::shared_ptr<message_iface>& message, cocaine_endpoint& endpoint) {
 	assert(socket_);
 
 	try {
-		// pick ident-------
-
 		// send ident
-		std::string ident = get_next_route();
-		zmq::message_t ident_chunk(ident.size());
-		memcpy((void *)ident_chunk.data(), ident.data(), ident.size());
+		endpoint = get_next_endpoint();
+		zmq::message_t ident_chunk(endpoint.route_.size());
+		memcpy((void *)ident_chunk.data(), endpoint.route_.data(), endpoint.route_.size());
 
 		if (true != socket_->send(ident_chunk, ZMQ_SNDMORE)) {
 			return false;
@@ -322,10 +320,12 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 	obj = msg.get();
     obj.convert(&rpc_code);
 
+    return false;
+
 	// get message from sent cache
 	boost::shared_ptr<message_iface> sent_msg;
 	try {
-		sent_msg = message_cache_->get_sent_message(uuid);
+		//sent_msg = message_cache_->get_sent_message(uuid);
 	}
 	catch (...) {
 		// drop responce for missing message

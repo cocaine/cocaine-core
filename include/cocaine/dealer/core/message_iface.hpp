@@ -48,6 +48,9 @@ public:
 	virtual bool ack_received() const = 0;
 	virtual void set_ack_received(bool value) = 0;
 
+	virtual const std::string& destination_endpoint() const = 0;
+	virtual void set_destination_endpoint(const std::string& value) = 0;
+
 	virtual int retries_count() const = 0;
 	virtual void increment_retries_count() = 0;
 	virtual bool can_retry() const = 0;

@@ -40,8 +40,11 @@ public:
 	typedef std::pair<std::string, message_path> message_data_t;
 	typedef std::vector<message_data_t> expired_messages_data_t;
 
-	// map <uuid, cached message>
-	typedef std::map<std::string, cached_message_ptr_t> messages_index_t;
+	// <uuid, sent message>
+	typedef std::map<std::string, cached_message_ptr_t> sent_messages_map_t;
+
+	// <endpoint, sent messages map>
+	typedef std::map<std::string, sent_messages_map_t> endpoints_sent_messages_map_t;
 
 public:
 	explicit message_cache(boost::shared_ptr<cocaine::dealer::context> context,
@@ -55,13 +58,14 @@ public:
 
 	size_t new_messages_count();
 	size_t sent_messages_count();
+
 	cached_message_ptr_t get_new_message();
-	cached_message_ptr_t get_sent_message(const std::string& uuid);
+	cached_message_ptr_t get_sent_message(const std::string& endpoint, const std::string& uuid);
 	message_queue_ptr_t new_messages();
-	void move_new_message_to_sent();
-	void move_sent_message_to_new(const std::string& uuid);
-	void move_sent_message_to_new_front(const std::string& uuid);
-	void remove_message_from_cache(const std::string& uuid);
+	void move_new_message_to_sent(const std::string& endpoint);
+	void move_sent_message_to_new(const std::string& endpoint, const std::string& uuid);
+	void move_sent_message_to_new_front(const std::string& endpoint, const std::string& uuid);
+	void remove_message_from_cache(const std::string& endpoint, const std::string& uuid);
 	void make_all_messages_new();
 	void get_expired_messages(message_queue_t& expired_messages);
 
@@ -76,7 +80,7 @@ private:
 	boost::shared_ptr<cocaine::dealer::context> context_;
 	enum e_message_cache_type type_;
 
-	messages_index_t sent_messages_;
+	endpoints_sent_messages_map_t sent_messages_;
 	message_queue_ptr_t new_messages_;
 
 	boost::mutex mutex_;
