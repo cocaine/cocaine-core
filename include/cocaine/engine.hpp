@@ -16,6 +16,7 @@
 
 #include <boost/iterator/filter_iterator.hpp>
 #include <boost/thread/mutex.hpp>
+#include <boost/thread/thread.hpp>
 #include <deque>
 
 #ifdef HAVE_CGROUPS
@@ -108,6 +109,8 @@ class engine_t:
         void enqueue(job_queue_t::const_reference,
                      bool overflow = false);
 
+        void process_queue();
+
         template<class S, class Packed>
         pool_map_t::iterator unicast(const S& selector, Packed& packed) {
             pool_map_t::iterator it(
@@ -159,8 +162,6 @@ class engine_t:
 #endif
 
     private:
-        void process_queue();
-
         template<class Packed>
         void call(slave_t& slave, Packed& packed) {
             m_bus.send(
@@ -211,6 +212,36 @@ class engine_t:
         // Control group to put the slaves into.
         cgroup * m_cgroup;
 #endif
+};
+
+class threaded_engine_t:
+    public boost::noncopyable
+{
+    public:
+        threaded_engine_t(context_t& context,
+                          const std::string& name);
+
+    public:
+        void start();
+        void stop();
+
+        void enqueue(job_queue_t::const_reference job);
+
+    private:
+        void bootstrap();
+
+        void do_enqueue(ev::async&, int);
+        void do_stop(ev::async&, int);
+
+    private:
+        ev::dynamic_loop m_loop;
+
+        ev::async m_async_enqueue,
+                  m_async_stop;
+
+        engine_t m_engine;
+
+        boost::shared_ptr<boost::thread> m_thread;
 };
 
 }}

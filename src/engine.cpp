@@ -55,7 +55,7 @@ engine_t::engine_t(context_t& context, ev::loop_ref& loop, const std::string& na
 #endif
 {
 #ifdef HAVE_CGROUPS
-    Json::Value limits(manifest["engine"]["resource-limits"]);
+    Json::Value limits(m_app.manifest["engine"]["resource-limits"]);
 
     if(!(cgroup_init() == 0) || !limits.isObject() || limits.empty()) {
         return;
@@ -528,4 +528,43 @@ void engine_t::cleanup(ev::timer&, int) {
             corpses.size() == 1 ? "slave" : "slaves"
         );
     }
+}
+
+threaded_engine_t::threaded_engine_t(context_t& context, const std::string& name):
+    m_engine(context, m_loop, name)
+{
+    m_async_enqueue.set<threaded_engine_t, &threaded_engine_t::do_enqueue>(this);
+    m_async_enqueue.start();
+    m_async_stop.set<threaded_engine_t, &threaded_engine_t::do_stop>(this);
+    m_async_stop.start();
+}
+
+void threaded_engine_t::start() {
+    m_thread.reset(
+        new boost::thread(
+            boost::bind(&threaded_engine_t::bootstrap, this)
+        )
+    );
+}
+
+void threaded_engine_t::stop() {
+    m_async_stop.send();
+}
+
+void threaded_engine_t::enqueue(job_queue_t::const_reference job) {
+    m_engine.enqueue(job, false);
+    m_async_enqueue.send();
+}
+
+void threaded_engine_t::bootstrap() {
+    m_engine.start();
+    m_loop.loop();
+}
+
+void threaded_engine_t::do_stop(ev::async&, int) {
+    m_engine.stop();
+}
+
+void threaded_engine_t::do_enqueue(ev::async&, int) {
+    m_engine.process_queue();
 }
