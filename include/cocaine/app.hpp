@@ -24,10 +24,6 @@ class app_t {
     public:
         app_t(context_t& context, const std::string& name);
 
-        app_t(context_t& context, 
-              const std::string& name, 
-              const Json::Value& manifest);
-
     public:
         const std::string name;
         Json::Value manifest;
@@ -41,9 +37,6 @@ class app_t {
         } policy;
 
         boost::shared_ptr<logging::logger_t> log;
-
-    private:
-        void initialize(context_t& context);
 };
 
 class endpoint {

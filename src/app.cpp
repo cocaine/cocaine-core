@@ -26,14 +26,6 @@ using namespace cocaine::storages;
 // Application
 // -----------
 
-app_t::app_t(context_t& context, const std::string& name_, const Json::Value& manifest_):
-    name(name_),
-    manifest(manifest_),
-    log(context.log(name_))
-{
-    initialize(context);
-}
-
 app_t::app_t(context_t& context, const std::string& name_):
     name(name_),
     log(context.log(name_))
@@ -44,10 +36,6 @@ app_t::app_t(context_t& context, const std::string& name_):
 
     manifest = storage->get("apps", name_);
 
-    initialize(context);
-}
-
-void app_t::initialize(context_t& context) {
     policy.heartbeat_timeout = manifest["engine"].get(
         "heartbeat-timeout",
         context.config.defaults.heartbeat_timeout

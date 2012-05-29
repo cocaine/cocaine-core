@@ -96,8 +96,7 @@ class engine_t:
     public:
         engine_t(context_t& context,
                  ev::loop_ref& loop,
-                 const std::string& name,
-                 const Json::Value& manifest);
+                 const std::string& name);
 
         ~engine_t();
 

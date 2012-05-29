@@ -215,40 +215,9 @@ void core_t::pump(ev::timer&, int) {
 Json::Value core_t::dispatch(const Json::Value& root) {
     std::string action(root["action"].asString());
 
-    if(action == "create") {
+    if(action == "create" || action == "delete") {
         Json::Value apps(root["apps"]),
                     result(Json::objectValue);
-
-        if(!apps.isObject() || !apps.size()) {
-            throw configuration_error_t("no apps have been specified");
-        }
-
-        // Iterate over all the apps.
-        Json::Value::Members names(apps.getMemberNames());
-
-        for(Json::Value::Members::iterator it = names.begin();
-            it != names.end(); 
-            ++it) 
-        {
-            std::string app(*it);
-            Json::Value manifest(apps[app]);
-
-            try {
-                if(manifest.isObject()) {
-                    result[app] = create_engine(app, manifest);
-                } else {
-                    throw configuration_error_t("app manifest is expected");
-                }
-            } catch(const configuration_error_t& e) {
-                result[app]["error"] = e.what();
-            } catch(...) {
-                result[app]["error"] = "unexpected exception";
-            }
-        }
-
-        return result;
-    } else if(action == "delete") {
-        Json::Value apps(root["apps"]), result(Json::objectValue);
 
         if(!apps.isArray() || !apps.size()) {
             throw configuration_error_t("no apps have been specified");
@@ -256,9 +225,13 @@ Json::Value core_t::dispatch(const Json::Value& root) {
 
         for(Json::Value::iterator it = apps.begin(); it != apps.end(); ++it) {
             std::string app((*it).asString());
-            
+
             try {
-                result[app] = delete_engine(app);
+                if(action == "create") {
+                    result[app] = create_engine(app);
+                } else if(action == "delete") {
+                    result[app] = delete_engine(app);                
+                }
             } catch(const configuration_error_t& e) {
                 result[app]["error"] = e.what();
             } catch(...) {
@@ -277,7 +250,7 @@ Json::Value core_t::dispatch(const Json::Value& root) {
 // Commands
 // --------
 
-Json::Value core_t::create_engine(const std::string& name, const Json::Value& manifest, bool recovering) {
+Json::Value core_t::create_engine(const std::string& name) {
     if(m_engines.find(name) != m_engines.end()) {
         throw configuration_error_t("the specified app already exists");
     }
@@ -286,26 +259,11 @@ Json::Value core_t::create_engine(const std::string& name, const Json::Value& ma
         new engine_t(
             m_context,
             m_loop,
-            name,
-            manifest
+            name
         )
     );
 
     engine->start();
-
-    if(!recovering) {
-        try {
-            m_storage->put("apps", name, manifest);
-        } catch(const storage_error_t& e) {
-            m_log->error(
-                "unable to start the '%s' app - %s",
-                name.c_str(),
-                e.what()
-            );
-            
-            throw;
-        }
-    }
 
     Json::Value result(engine->info());
 
@@ -319,18 +277,6 @@ Json::Value core_t::delete_engine(const std::string& name) {
 
     if(engine == m_engines.end()) {
         throw configuration_error_t("the specified app does not exists");
-    }
-
-    try {
-        m_storage->remove("apps", name);
-    } catch(const storage_error_t& e) {
-        m_log->error(
-            "unable to stop the '%s' app - %s",
-            name.c_str(),
-            e.what()
-        );
-
-        throw;
     }
 
     engine->second->stop();
@@ -407,7 +353,7 @@ void core_t::recover() {
             ++it)
         {
             if(m_engines.find(*it) == m_engines.end()) {
-                create_engine(*it, root[*it], true);
+                create_engine(*it);
             } else {
                 m_engines.find(*it)->second->stop();
             }

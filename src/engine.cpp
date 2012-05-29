@@ -40,10 +40,10 @@ void job_queue_t::push(const_reference job) {
 // Basic stuff
 // -----------
 
-engine_t::engine_t(context_t& context, ev::loop_ref& loop, const std::string& name, const Json::Value& manifest):
+engine_t::engine_t(context_t& context, ev::loop_ref& loop, const std::string& name):
     m_context(context),
     m_running(false),
-    m_app(context, name, manifest),
+    m_app(context, name),
     m_loop(loop),
     m_watcher(m_loop),
     m_processor(m_loop),

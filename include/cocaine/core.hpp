@@ -33,12 +33,8 @@ class core_t:
 
         void run();
 
-        Json::Value create_engine(const std::string& name, 
-                                  const Json::Value& manifest, 
-                                  bool recovering = false);
-        
+        Json::Value create_engine(const std::string& name);
         Json::Value delete_engine(const std::string& name);
-
         Json::Value info() /* const */;
         
     private:        
