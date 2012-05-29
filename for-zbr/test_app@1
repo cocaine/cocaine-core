@@ -1,0 +1,12 @@
+{
+    "type" : "python",
+    "args" : {
+        "source": "/home/rimz/test_cocaine_app"
+    },
+    "engine" : {
+        "heartbeat-timeout" : 60,
+        "pool-limit" : 100,
+        "queue-limit" : 10000,
+	"grow-threshold" : 0
+    }
+}
