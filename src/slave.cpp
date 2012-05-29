@@ -134,7 +134,7 @@ void slave_t::on_configure(const events::heartbeat& event) {
         "slave %s came alive in %.03f seconds",
         id().c_str(),
         10.0f - ev_timer_remaining(
-            ev_default_loop(ev::AUTO),
+            m_engine.loop(),
             static_cast<ev_timer*>(&m_heartbeat_timer)
         )
     );
@@ -228,6 +228,17 @@ void alive::on_choke(const events::choke& event) {
     
     job->process_event(event);
     job.reset();
+}
+
+alive::~alive() {
+    if(job && !job->state_downcast<const job::complete*>()) {
+        job->process_event(
+            events::error(
+                dealer::server_error,
+                "died with the slave"
+            )
+        );
+    }
 }
 
 void busy::on_chunk(const events::chunk& event) {

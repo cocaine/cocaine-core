@@ -34,6 +34,10 @@ app_t::app_t(context_t& context, const std::string& name_):
         context.get<storage_t>(context.config.storage.driver)
     );
 
+    if(!storage->exists("apps", name_)) {
+        throw configuration_error_t("the specified app does not exist");
+    }
+
     manifest = storage->get("apps", name_);
 
     policy.heartbeat_timeout = manifest["engine"].get(

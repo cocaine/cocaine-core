@@ -471,7 +471,7 @@ void engine_t::process(ev::idle&, int) {
                 slave->second->process_event(events::error(code, message));
 
                 if(code == dealer::server_error) {
-                    m_app.log->error("the app seems to be broken");
+                    m_app.log->error("the app seems to be broken: %s", message.c_str());
                     stop();
                 }
 
@@ -530,13 +530,15 @@ void engine_t::cleanup(ev::timer&, int) {
     }
 }
 
+// Threaded engine.
+// ----------------
+
 threaded_engine_t::threaded_engine_t(context_t& context, const std::string& name):
-    m_engine(context, m_loop, name)
+    m_engine(context, m_loop, name),
+    m_async_enqueue(m_loop)
 {
     m_async_enqueue.set<threaded_engine_t, &threaded_engine_t::do_enqueue>(this);
     m_async_enqueue.start();
-    m_async_stop.set<threaded_engine_t, &threaded_engine_t::do_stop>(this);
-    m_async_stop.start();
 }
 
 void threaded_engine_t::start() {
@@ -547,8 +549,8 @@ void threaded_engine_t::start() {
     );
 }
 
-void threaded_engine_t::stop() {
-    m_async_stop.send();
+Json::Value threaded_engine_t::info() {
+    return m_engine.info();
 }
 
 void threaded_engine_t::enqueue(job_queue_t::const_reference job) {
@@ -561,10 +563,7 @@ void threaded_engine_t::bootstrap() {
     m_loop.loop();
 }
 
-void threaded_engine_t::do_stop(ev::async&, int) {
-    m_engine.stop();
-}
-
-void threaded_engine_t::do_enqueue(ev::async&, int) {
+void threaded_engine_t::do_enqueue(ev::async& w, int r) {
     m_engine.process_queue();
 }
+

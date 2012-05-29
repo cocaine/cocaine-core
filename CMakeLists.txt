@@ -115,8 +115,14 @@ SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
 ADD_EXECUTABLE(cocained
     src/main)
 
+ADD_EXECUTABLE(test
+    test)
+
 TARGET_LINK_LIBRARIES(cocained
     boost_program_options-mt
+    cocaine-core)
+
+TARGET_LINK_LIBRARIES(test
     cocaine-core)
 
 ADD_SUBDIRECTORY(modules)

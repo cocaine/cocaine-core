@@ -223,7 +223,8 @@ class threaded_engine_t:
 
     public:
         void start();
-        void stop();
+
+        Json::Value info();
 
         void enqueue(job_queue_t::const_reference job);
 
