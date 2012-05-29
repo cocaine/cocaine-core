@@ -23,9 +23,9 @@ enum {
     configure,
     terminate,
     invoke,
-    push,
+    chunk,
     error,
-    release
+    choke
 };
 
 // Generic packer
@@ -72,11 +72,11 @@ private:
 };
 
 template<>
-struct packed<push>:
+struct packed<chunk>:
     public boost::tuple<int, zmq::message_t&>
 {
     packed(const void * data, size_t size):
-        boost::tuple<int, zmq::message_t&>(push, message),
+        boost::tuple<int, zmq::message_t&>(chunk, message),
         message(size)
     {
         memcpy(
@@ -87,7 +87,7 @@ struct packed<push>:
     }
 
     packed(zmq::message_t& message_):
-        boost::tuple<int, zmq::message_t&>(push, message)
+        boost::tuple<int, zmq::message_t&>(chunk, message)
     {
         message.move(&message_);
     }

@@ -17,7 +17,6 @@
 #include <boost/mpl/int.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <msgpack.hpp>
-
 #include <zmq.hpp>
 
 #if ZMQ_VERSION < 20200

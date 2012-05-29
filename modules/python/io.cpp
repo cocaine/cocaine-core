@@ -101,6 +101,7 @@ PyObject* python_io_t::write(python_io_t * self, PyObject * args) {
     Py_RETURN_NONE;
 }
 
+/*
 PyObject* python_io_t::delegate(python_io_t * self, PyObject * args, PyObject * kwargs) {
     static char method_keyword[] = "method";
     static char message_keyword[] = "message";
@@ -129,6 +130,7 @@ PyObject* python_io_t::delegate(python_io_t * self, PyObject * args, PyObject * 
 
     Py_RETURN_NONE;
 }
+*/
 
 PyObject* python_io_t::readline(python_io_t * self, PyObject * args, PyObject * kwargs) {
     PyObject * result = NULL;

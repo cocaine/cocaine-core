@@ -28,17 +28,8 @@ blob_t io_t::pull(int timeout) {
 }
 
 void io_t::push(const void * data, size_t size) {
-    rpc::packed<rpc::push> packed(data, size);
+    rpc::packed<rpc::chunk> packed(data, size);
     m_overseer.push(packed);
-}
-
-// void io_t::emit(const std::string& key, const void * data, size_t size) {
-//     // TODO: Emitters.
-// }
-
-void io_t::delegate(const std::string& target, const void * data, size_t size) {
-	rpc::packed<rpc::invoke> packed(target, data, size);
-	m_overseer.push(packed);
 }
 
 plugin_t::plugin_t(context_t& context):

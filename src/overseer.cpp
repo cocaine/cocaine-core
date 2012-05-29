@@ -122,6 +122,8 @@ void overseer_t::pump(ev::timer&, int) {
 }
 
 void overseer_t::timeout(ev::timer&, int) {
+    rpc::packed<rpc::terminate> packed;
+    push(packed);
     terminate();
 }
 
@@ -188,7 +190,7 @@ void overseer_t::invoke(const std::string& method) {
         push(packed);
     }
     
-    rpc::packed<rpc::release> packed;
+    rpc::packed<rpc::choke> packed;
     push(packed);
     
     // NOTE: Drop all the outstanding request chunks not pulled

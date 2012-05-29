@@ -282,7 +282,14 @@ Json::Value core_t::create_engine(const std::string& name, const Json::Value& ma
         throw configuration_error_t("the specified app already exists");
     }
 
-    std::auto_ptr<engine_t> engine(new engine_t(m_context, name, manifest));
+    std::auto_ptr<engine_t> engine(
+        new engine_t(
+            m_context,
+            m_loop,
+            name,
+            manifest
+        )
+    );
 
     engine->start();
 
@@ -402,7 +409,7 @@ void core_t::recover() {
             if(m_engines.find(*it) == m_engines.end()) {
                 create_engine(*it, root[*it], true);
             } else {
-                m_engines.find(*it)->second->stop("the app is no longer available");
+                m_engines.find(*it)->second->stop();
             }
         }
     }

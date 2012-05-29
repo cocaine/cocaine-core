@@ -15,7 +15,8 @@
 #define COCAINE_ENGINE_HPP
 
 #include <boost/iterator/filter_iterator.hpp>
-#include <boost/ptr_container/ptr_deque.hpp>
+#include <boost/thread/mutex.hpp>
+#include <deque>
 
 #ifdef HAVE_CGROUPS
     #include <libcgroup.h>
@@ -33,14 +34,14 @@
 
 namespace cocaine { namespace engine {
 
-#if BOOST_VERSION >= 104000
-typedef boost::ptr_unordered_map<
-#else
-typedef boost::ptr_map<
-#endif
-    const std::string,
-    drivers::driver_t
-> driver_map_t;
+// #if BOOST_VERSION >= 104000
+// typedef boost::ptr_unordered_map<
+// #else
+// typedef boost::ptr_map<
+// #endif
+//     const std::string,
+//     drivers::driver_t
+// > driver_map_t;
 
 #if BOOST_VERSION >= 104000
 typedef boost::ptr_unordered_map<
@@ -52,10 +53,12 @@ typedef boost::ptr_map<
 > pool_map_t;
 
 class job_queue_t:
-    public boost::ptr_deque<job_t>
+    public std::deque<
+        boost::shared_ptr<job_t>
+    >
 {
     public:
-        void push(value_type job);
+        void push(const_reference job);
 };
 
 // Selectors
@@ -91,18 +94,20 @@ class engine_t:
     public boost::noncopyable
 {
     public:
-        engine_t(context_t& context, 
-                 const std::string& name, 
+        engine_t(context_t& context,
+                 ev::loop_ref& loop,
+                 const std::string& name,
                  const Json::Value& manifest);
 
         ~engine_t();
 
         void start();
-        void stop(std::string status = std::string());
+        void stop();
         
         Json::Value info() /* const */;
 
-        void enqueue(job_queue_t::value_type job, bool overflow = false);
+        void enqueue(job_queue_t::const_reference,
+                     bool overflow = false);
 
         template<class S, class Packed>
         pool_map_t::iterator unicast(const S& selector, Packed& packed) {
@@ -114,11 +119,11 @@ class engine_t:
                 )
             );
 
-            if(it != m_pool.end() && call(*it->second, packed)) {
-                return it;
-            } else {
-                return m_pool.end();
+            if(it != m_pool.end()) {
+                call(*it->second, packed);
             }
+
+            return it;
         }
 
         template<class S, class Packed>
@@ -140,12 +145,12 @@ class engine_t:
             return m_context;
         }
 
-        const context_t& context() const {
-            return m_context;
-        }
-
         const app_t& app() const {
             return m_app;
+        }
+
+        ev::loop_ref& loop() {
+            return m_loop;
         }
 
 #ifdef HAVE_CGROUPS
@@ -155,27 +160,16 @@ class engine_t:
 #endif
 
     private:
+        void process_queue();
+
         template<class Packed>
-        bool call(slave_t& slave, Packed& packed) {
-            try {
-                m_messages.send(
-                    networking::protect(slave.id()),
-                    ZMQ_SNDMORE
-                );
-            } catch(const zmq::error_t& e) {
-                m_app.log->error(
-                    "slave %d has disconnected unexpectedly", 
-                    slave.id().c_str()
-                );
+        void call(slave_t& slave, Packed& packed) {
+            m_bus.send(
+                networking::protect(slave.id()),
+                ZMQ_SNDMORE
+            );
 
-                slave.process_event(events::terminate_t());                
-            
-                return false;
-            }
-
-            m_messages.send_multi(packed);
-
-            return true;
+            m_bus.send_multi(packed);
         }
 
         void message(ev::io&, int);
@@ -188,32 +182,31 @@ class engine_t:
 
         // Current engine state.
         // XXX: Do it in a better way.
-        bool m_running;
-        std::string m_status;
+        volatile bool m_running;
 
         // The application.
-        const app_t m_app;
-        driver_map_t m_drivers;
+        app_t m_app;
+        // driver_map_t m_drivers;
 
         // Job queue.
         job_queue_t m_queue;
+        boost::mutex m_queue_mutex;
 
         // Slave pool.
         pool_map_t m_pool;
         
-        // RPC watchers.
+        // Event loop.
+        ev::loop_ref& m_loop;
+
         ev::io m_watcher;
         ev::idle m_processor;
-
-        // XXX: This is a temporary workaround for the edge cases when ZeroMQ for some 
-        // reason doesn't trigger the socket's fd on message arrival (or I poll it in a wrong way).
         ev::timer m_pumper;
 
         // Garbage collector activation timer.
         ev::timer m_gc_timer;
 
         // Slave RPC.
-        networking::channel_t m_messages;
+        networking::channel_t m_bus;
 
 #ifdef HAVE_CGROUPS
         // Control group to put the slaves into.

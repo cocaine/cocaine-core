@@ -98,12 +98,6 @@ ADD_LIBRARY(cocaine-core SHARED
     src/app
     src/core
     src/drivers/base
-    src/drivers/recurring_timer
-    src/drivers/drifting_timer
-    src/drivers/filesystem_monitor
-    src/drivers/zeromq_server
-    src/drivers/zeromq_sink
-    src/drivers/native_server
     src/engine
     src/interfaces/plugin
     src/job
@@ -124,46 +118,6 @@ ADD_EXECUTABLE(cocained
 TARGET_LINK_LIBRARIES(cocained
     boost_program_options-mt
     cocaine-core)
-
-IF(DEALER)
-    FILE(GLOB DEALER_SOURCES
-        "src/dealer/*.cpp")
-
-    ADD_LIBRARY(cocaine-dealer SHARED
-        ${DEALER_SOURCES})
-
-    TARGET_LINK_LIBRARIES(cocaine-dealer
-        boost_thread-mt
-        crypto
-        curl
-        json
-        msgpack
-        zmq
-        eblob_cpp
-        eblob
-        ${Boost_SYSTEM_LIBRARY}
-        ${LIBUUID_LIBRARY})
-
-    SET_TARGET_PROPERTIES(cocaine-dealer PROPERTIES
-        VERSION 1)
-
-    ADD_EXECUTABLE(dealer_test_app
-        tests/dealer_test_app.cpp)
-
-    TARGET_LINK_LIBRARIES(dealer_test_app
-        boost_program_options-mt
-        cocaine-dealer
-        boost_filesystem-mt
-        zmq)
-
-    INSTALL(
-        TARGETS
-            cocaine-dealer
-        RUNTIME DESTINATION bin COMPONENT runtime
-        LIBRARY DESTINATION lib COMPONENT runtime
-        ARCHIVE DESTINATION lib COMPONENT developement)
-
-ENDIF()
 
 ADD_SUBDIRECTORY(modules)
 

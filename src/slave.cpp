@@ -29,7 +29,8 @@ using namespace cocaine::engine;
 using namespace cocaine::engine::slave;
 
 slave_t::slave_t(engine_t& engine):
-    m_engine(engine)
+    m_engine(engine),
+    m_heartbeat_timer(m_engine.loop())
 {
     // NOTE: These are the 10 seconds for the slave to come alive.
     m_heartbeat_timer.set<slave_t, &slave_t::on_timeout>(this);
@@ -59,13 +60,12 @@ namespace {
     > event_names_t;
 
     event_names_t names = boost::assign::map_list_of
-        (events::heartbeat_t::static_type(), "heartbeat")
-        (events::terminate_t::static_type(), "terminate")
-        (events::invoke_t::static_type(), "invoke")
-        (events::push_t::static_type(), "push")
-        (events::delegate_t::static_type(), "delegate")
-        (events::error_t::static_type(), "error")
-        (events::release_t::static_type(), "release");
+        (events::heartbeat::static_type(), "heartbeat")
+        (events::terminate::static_type(), "terminate")
+        (events::invoke::static_type(), "invoke")
+        (events::chunk::static_type(), "chunk")
+        (events::error::static_type(), "error")
+        (events::choke::static_type(), "choke");
 }
 
 void slave_t::unconsumed_event(const sc::event_base& event) {
@@ -116,7 +116,7 @@ void slave_t::spawn() {
             ::strerror_r(errno, message, 1024);
 
             m_engine.app().log->error(
-                "unable to start slave %s: %s",
+                "unable to start slave %s - %s",
                 id().c_str(),
                 message
             );
@@ -126,12 +126,9 @@ void slave_t::spawn() {
     } else if(m_pid < 0) {
         throw system_error_t("fork() failed");
     }
-
-    m_child_watcher.set<slave_t, &slave_t::on_signal>(this);
-    m_child_watcher.start(m_pid);    
 }
 
-void slave_t::on_configure(const events::heartbeat_t& event) {
+void slave_t::on_configure(const events::heartbeat& event) {
 #if EV_VERSION_MAJOR == 3 && EV_VERSION_MINOR == 8
     m_engine.app().log->debug(
         "slave %s came alive in %.03f seconds",
@@ -153,7 +150,7 @@ void slave_t::on_configure(const events::heartbeat_t& event) {
     on_heartbeat(event);
 }
 
-void slave_t::on_heartbeat(const events::heartbeat_t& event) {
+void slave_t::on_heartbeat(const events::heartbeat& event) {
     m_heartbeat_timer.stop();
     
     const busy * state = state_downcast<const busy*>();
@@ -172,7 +169,7 @@ void slave_t::on_heartbeat(const events::heartbeat_t& event) {
     m_heartbeat_timer.start(timeout);
 }
 
-void slave_t::on_terminate(const events::terminate_t& event) {
+void slave_t::on_terminate(const events::terminate& event) {
     m_engine.app().log->debug(
         "reaping slave %s", 
         id().c_str()
@@ -180,13 +177,9 @@ void slave_t::on_terminate(const events::terminate_t& event) {
 
     int status = 0;
 
-    // XXX: Is it needed at all? Might as well check the state.
     if(waitpid(m_pid, &status, WNOHANG) == 0) {
-        ::kill(m_pid, SIGKILL);
+        ::kill(m_pid, SIGTERM);
     }
-
-    // NOTE: Children are automatically reaped by libev.
-    m_child_watcher.stop();
 }
 
 void slave_t::on_timeout(ev::timer&, int) {
@@ -196,95 +189,53 @@ void slave_t::on_timeout(ev::timer&, int) {
     );
     
     const busy * state = state_downcast<const busy*>();
-    
+
     if(state) {
         state->job()->process_event(
-            events::error_t(
+            events::error(
                 dealer::timeout_error, 
                 "the job has timed out"
             )
         );
     }
     
-    process_event(events::terminate_t());
+    process_event(events::terminate());
 }
 
-void slave_t::on_signal(ev::child& event, int) {
-    if(state_downcast<const dead*>()) {
-        return;
-    }
-    
-    process_event(events::terminate_t());
-    
-    if(WIFEXITED(event.rstatus) && WEXITSTATUS(event.rstatus) != EXIT_SUCCESS) {
-        m_engine.app().log->warning(
-            "slave %s terminated abnormally",
-            id().c_str()
-        );
-        
-        m_engine.stop("the slaves terminate abnormally");
-    } else if(WIFSIGNALED(event.rstatus)) {
-        m_engine.app().log->warning(
-            "slave %s has been killed by signal %d: %s", 
-            id().c_str(),
-            WTERMSIG(event.rstatus),
-            strsignal(WTERMSIG(event.rstatus))
-        );
-        
-        m_engine.stop("the slaves terminate abnormally");
-    };
-}
-
-alive::~alive() {
-    if(m_job.get() && !m_job->state_downcast<const job::complete*>()) {
-        context<slave_t>().m_engine.app().log->warning(
-            "rescheduling an incomplete '%s' job", 
-            m_job->method().c_str()
-        );
-        
-        context<slave_t>().m_engine.enqueue(m_job.release(), true);
-    }
-}
-
-void alive::on_invoke(const events::invoke_t& event) {
+void alive::on_invoke(const events::invoke& event) {
     // TEST: Ensure that no job is being lost here.
-    BOOST_ASSERT(!m_job.get() && event.job);
+    BOOST_ASSERT(!job && event.job);
 
-    m_job.reset(event.job);
-    m_job->process_event(event);
+    job = event.job;
+    job->process_event(event);
     
     context<slave_t>().m_engine.app().log->debug(
         "job '%s' assigned to slave %s",
-        m_job->method().c_str(),
+        job->event().c_str(),
         context<slave_t>().id().c_str()
     );
 }
 
-void alive::on_release(const events::release_t& event) {
+void alive::on_choke(const events::choke& event) {
     // TEST: Ensure that the job is in fact here.
-    BOOST_ASSERT(m_job.get());
+    BOOST_ASSERT(job);
 
     context<slave_t>().m_engine.app().log->debug(
         "job '%s' completed by slave %s",
-        m_job->method().c_str(),
+        job->event().c_str(),
         context<slave_t>().id().c_str()
     );
     
-    m_job->process_event(event);
-    m_job.reset();
+    job->process_event(event);
+    job.reset();
 }
 
-void busy::on_push(const events::push_t& event) {
+void busy::on_chunk(const events::chunk& event) {
     job()->process_event(event);
-    post_event(events::heartbeat_t());
+    post_event(events::heartbeat());
 }
 
-void busy::on_delegate(const events::delegate_t& event) {
-    context<slave_t>().m_engine.app().log->error("the delegation is not implemented yet");
-    post_event(events::heartbeat_t());
-}
-
-void busy::on_error(const events::error_t& event) {
+void busy::on_error(const events::error& event) {
     job()->process_event(event);
-    post_event(events::heartbeat_t());
+    post_event(events::heartbeat());
 }

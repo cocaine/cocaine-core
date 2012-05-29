@@ -33,7 +33,7 @@ class python_io_t {
 
         static PyObject* read(python_io_t * self, PyObject * args, PyObject * kwargs);
         static PyObject* write(python_io_t * self, PyObject * args);
-        static PyObject* delegate(python_io_t * self, PyObject * args, PyObject * kwargs);
+        // static PyObject* delegate(python_io_t * self, PyObject * args, PyObject * kwargs);
 
         // WSGI requirements.
         static PyObject* readline(python_io_t * self, PyObject * args, PyObject * kwargs);

@@ -60,24 +60,19 @@ class slave_t:
         bool operator==(const slave_t& other) const;
 
         void unconsumed_event(const sc::event_base& event);
-    
+
     private:
         void spawn();
 
-        void on_configure(const events::heartbeat_t& event);
-        void on_heartbeat(const events::heartbeat_t& event);
-        void on_terminate(const events::terminate_t& event);
-
+        void on_configure(const events::heartbeat& event);
+        void on_heartbeat(const events::heartbeat& event);
+        void on_terminate(const events::terminate& event);
         void on_timeout(ev::timer&, int);
-        void on_signal(ev::child&, int);
 
     private:    
         engine_t& m_engine;
-        
-        pid_t m_pid;
-
         ev::timer m_heartbeat_timer;
-        ev::child m_child_watcher;
+        pid_t m_pid;
 };
 
 namespace slave {
@@ -85,64 +80,49 @@ namespace slave {
 struct unknown:
     public sc::simple_state<unknown, slave_t> 
 {
-    public:
-        typedef boost::mpl::list<
-            sc::transition<events::heartbeat_t, alive, slave_t, &slave_t::on_configure>,
-            sc::transition<events::terminate_t, dead, slave_t, &slave_t::on_terminate>
-        > reactions;
+    typedef boost::mpl::list<
+        sc::transition<events::heartbeat, alive, slave_t, &slave_t::on_configure>,
+        sc::transition<events::terminate, dead, slave_t, &slave_t::on_terminate>
+    > reactions;
 };
 
 struct alive:
     public sc::simple_state<alive, slave_t, idle>
 {
-    public:
-        typedef boost::mpl::list<
-            sc::in_state_reaction<events::heartbeat_t, slave_t, &slave_t::on_heartbeat>,
-            sc::transition<events::terminate_t, dead, slave_t, &slave_t::on_terminate>
-        > reactions;
+    void on_invoke(const events::invoke& event);
+    void on_choke(const events::choke& event);
 
-        ~alive();
+    typedef boost::mpl::list<
+        sc::in_state_reaction<events::heartbeat, slave_t, &slave_t::on_heartbeat>,
+        sc::transition<events::terminate, dead, slave_t, &slave_t::on_terminate>
+    > reactions;
 
-        void on_invoke(const events::invoke_t& event);
-        void on_release(const events::release_t& event);
-
-    public:
-        const std::auto_ptr<job_t>& job() const {
-            return m_job;
-        }
-
-    private:
-        std::auto_ptr<job_t> m_job;
+    boost::shared_ptr<job_t> job;
 };
 
 struct idle: 
     public sc::simple_state<idle, alive>
 {
-    public:
-        typedef boost::mpl::list<
-            sc::transition<events::invoke_t, busy, alive, &alive::on_invoke>
-        > reactions;
+    typedef boost::mpl::list<
+        sc::transition<events::invoke, busy, alive, &alive::on_invoke>
+    > reactions;
 };
 
 struct busy:
     public sc::simple_state<busy, alive>
 {
-    public:
-        void on_push(const events::push_t& event);
-        void on_delegate(const events::delegate_t& event);
-        void on_error(const events::error_t& event);
+    void on_chunk(const events::chunk& event);
+    void on_error(const events::error& event);
 
-        typedef boost::mpl::list<
-            sc::in_state_reaction<events::push_t, busy, &busy::on_push>,
-            sc::in_state_reaction<events::delegate_t, busy, &busy::on_delegate>,
-            sc::in_state_reaction<events::error_t, busy, &busy::on_error>,
-            sc::transition<events::release_t, idle, alive, &alive::on_release>
-        > reactions;
+    typedef boost::mpl::list<
+        sc::in_state_reaction<events::chunk, busy, &busy::on_chunk>,
+        sc::in_state_reaction<events::error, busy, &busy::on_error>,
+        sc::transition<events::choke, idle, alive, &alive::on_choke>
+    > reactions;
 
-    public:
-        const std::auto_ptr<job_t>& job() const {
-            return context<alive>().job();
-        }
+    const boost::shared_ptr<job_t>& job() const {
+        return context<alive>().job;
+    }
 };
 
 struct dead:

@@ -56,9 +56,9 @@ enum error_code {
 
 enum rpc_code {
     acknowledgement = 1,
-    chunk           = engine::rpc::push,
+    chunk           = engine::rpc::chunk,
     error           = engine::rpc::error,
-    choke           = engine::rpc::release
+    choke           = engine::rpc::choke
 };
 
 }}
