@@ -23,13 +23,13 @@ io_t::io_t(overseer_t& overseer):
     m_overseer(overseer)
 { }
 
-blob_t io_t::pull(int timeout) {
-    return m_overseer.pull(timeout);
+blob_t io_t::read(int timeout) {
+    return m_overseer.recv(timeout);
 }
 
-void io_t::push(const void * data, size_t size) {
+void io_t::write(const void * data, size_t size) {
     rpc::packed<rpc::chunk> packed(data, size);
-    m_overseer.push(packed);
+    m_overseer.send(packed);
 }
 
 plugin_t::plugin_t(context_t& context):

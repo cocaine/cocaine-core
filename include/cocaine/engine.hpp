@@ -120,7 +120,7 @@ class engine_t:
             );
 
             if(it != m_pool.end()) {
-                call(*it->second, packed);
+                send(*it->second, packed);
             }
 
             return it;
@@ -135,7 +135,7 @@ class engine_t:
             
             while(it != end) {
                 Packed copy(packed);
-                call(*it->second, copy);
+                send(*it->second, copy);
                 ++it;
             }
         }
@@ -161,7 +161,7 @@ class engine_t:
 
     private:
         template<class Packed>
-        void call(slave_t& slave, Packed& packed) {
+        void send(slave_t& slave, Packed& packed) {
             m_bus.send(
                 networking::protect(slave.id()),
                 ZMQ_SNDMORE

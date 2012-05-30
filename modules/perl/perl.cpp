@@ -99,7 +99,7 @@ public:
         std::string input;
         
         // Try to pull in the request w/o blocking.
-        blob_t request = io.pull(0);
+        blob_t request = io.read(0);
 
         if (!request.empty()) {
            input = std::string((const char*)request.data(), request.size());
@@ -160,7 +160,7 @@ public:
 
         // invoke callback with resulting data
         if (!result.empty()) {
-            io.push(result.data(), result.size());
+            io.write(result.data(), result.size());
         }
     }
 

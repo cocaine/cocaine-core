@@ -47,7 +47,7 @@ void overseer_t::run() {
     m_loop.loop();
 }
 
-blob_t overseer_t::pull(int timeout) {
+blob_t overseer_t::recv(int timeout) {
     zmq::message_t message;
 
     networking::scoped_option<
@@ -123,13 +123,13 @@ void overseer_t::pump(ev::timer&, int) {
 
 void overseer_t::timeout(ev::timer&, int) {
     rpc::packed<rpc::terminate> packed;
-    push(packed);
+    send(packed);
     terminate();
 }
 
 void overseer_t::heartbeat(ev::timer&, int) {
     rpc::packed<rpc::heartbeat> packed;
-    push(packed);
+    send(packed);
 }
 
 void overseer_t::configure() {
@@ -150,15 +150,15 @@ void overseer_t::configure() {
         m_suicide_timer.start(m_app->policy.suicide_timeout);
     } catch(const configuration_error_t& e) {
         rpc::packed<rpc::error> packed(dealer::server_error, e.what());
-        push(packed);
+        send(packed);
         terminate();
     } catch(const registry_error_t& e) {
         rpc::packed<rpc::error> packed(dealer::server_error, e.what());
-        push(packed);
+        send(packed);
         terminate();
     } catch(const unrecoverable_error_t& e) {
         rpc::packed<rpc::error> packed(dealer::server_error, e.what());
-        push(packed);
+        send(packed);
         terminate();
     } catch(...) {
         rpc::packed<rpc::error> packed(
@@ -166,7 +166,7 @@ void overseer_t::configure() {
             "unexpected exception while configuring the slave"
         );
         
-        push(packed);
+        send(packed);
         terminate();
     }
 }
@@ -177,21 +177,21 @@ void overseer_t::invoke(const std::string& method) {
         m_plugin->invoke(method, io);
     } catch(const recoverable_error_t& e) {
         rpc::packed<rpc::error> packed(dealer::app_error, e.what());
-        push(packed);
+        send(packed);
     } catch(const unrecoverable_error_t& e) {
         rpc::packed<rpc::error> packed(dealer::server_error, e.what());
-        push(packed);
+        send(packed);
     } catch(...) {
         rpc::packed<rpc::error> packed(
             dealer::server_error,
             "unexpected exception while processing an event"
         );
         
-        push(packed);
+        send(packed);
     }
     
     rpc::packed<rpc::choke> packed;
-    push(packed);
+    send(packed);
     
     // NOTE: Drop all the outstanding request chunks not pulled
     // in by the user code. Might have a warning here?

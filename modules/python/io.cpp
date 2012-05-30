@@ -54,7 +54,7 @@ PyObject* python_io_t::read(python_io_t * self, PyObject * args, PyObject * kwar
 
     if(self->request.empty()) {
         Py_BEGIN_ALLOW_THREADS
-            self->request = self->io->pull(timeout);
+            self->request = self->io->read(timeout);
         Py_END_ALLOW_THREADS
         
         self->offset = 0;
@@ -94,7 +94,7 @@ PyObject* python_io_t::write(python_io_t * self, PyObject * args) {
 
     Py_BEGIN_ALLOW_THREADS
         if(message && size) {
-            self->io->push(message, size);
+            self->io->write(message, size);
         }
     Py_END_ALLOW_THREADS
 
@@ -137,7 +137,7 @@ PyObject* python_io_t::readline(python_io_t * self, PyObject * args, PyObject * 
 
     if(self->request.empty()) {
         Py_BEGIN_ALLOW_THREADS
-            self->request = self->io->pull(-1);
+            self->request = self->io->read(-1);
         Py_END_ALLOW_THREADS
         
         self->offset = 0;

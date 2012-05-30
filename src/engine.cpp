@@ -382,7 +382,7 @@ void engine_t::process_queue() {
         } else {
             if(m_pool.empty() || 
               (m_pool.size() < m_app.policy.pool_limit && 
-               m_pool.size() * m_app.policy.grow_threshold < m_queue.size()))
+               m_pool.size() * m_app.policy.grow_threshold < m_queue.size() * 2))
             {
                 std::auto_ptr<slave_t> slave;
                 

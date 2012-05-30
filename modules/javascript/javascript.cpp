@@ -82,7 +82,7 @@ class javascript_t:
             Json::FastWriter writer;
             std::string response(writer.write(result));
 
-            io.push(response.data(), response.size());
+            io.write(response.data(), response.size());
         }
 
     private:
