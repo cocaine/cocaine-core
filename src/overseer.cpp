@@ -110,7 +110,7 @@ void overseer_t::process(ev::idle&, int) {
                 );
             }
             
-            m_messages.drop_remaining_parts();
+            m_messages.drop();
     }
 
     // TEST: Ensure that we haven't missed something.
@@ -184,7 +184,7 @@ void overseer_t::invoke(const std::string& method) {
     } catch(...) {
         rpc::packed<rpc::error> packed(
             dealer::server_error,
-            "unexpected exception while invoking a method"
+            "unexpected exception while processing an event"
         );
         
         push(packed);
@@ -195,7 +195,7 @@ void overseer_t::invoke(const std::string& method) {
     
     // NOTE: Drop all the outstanding request chunks not pulled
     // in by the user code. Might have a warning here?
-    m_messages.drop_remaining_parts();
+    m_messages.drop();
 
     m_suicide_timer.stop();
     m_suicide_timer.start(m_app->policy.suicide_timeout);

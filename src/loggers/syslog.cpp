@@ -28,7 +28,7 @@ syslog_t::syslog_t(priorities verbosity, const std::string& identity):
 void syslog_t::emit(priorities priority, const std::string& message) const {
     // NOTE: Replacing all newlines with spaces here because certain sysloggers
     // fail miserably interpreting them correctly.
-    std::string m = boost::algorithm::replace_all_copy(message, "\n", " ");
+    std::string m(boost::algorithm::replace_all_copy(message, "\n", " "));
 
     switch(priority) {
         case debug:

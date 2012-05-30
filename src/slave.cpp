@@ -206,14 +206,14 @@ void alive::on_invoke(const events::invoke& event) {
     // TEST: Ensure that no job is being lost here.
     BOOST_ASSERT(!job && event.job);
 
-    job = event.job;
-    job->process_event(event);
-    
     context<slave_t>().m_engine.app().log->debug(
         "job '%s' assigned to slave %s",
-        job->event().c_str(),
+        event.job->event().c_str(),
         context<slave_t>().id().c_str()
     );
+
+    job = event.job;
+    job->process_event(event);    
 }
 
 void alive::on_choke(const events::choke& event) {
@@ -232,12 +232,12 @@ void alive::on_choke(const events::choke& event) {
 
 alive::~alive() {
     if(job && !job->state_downcast<const job::complete*>()) {
-        job->process_event(
-            events::error(
-                dealer::server_error,
-                "died with the slave"
-            )
+        context<slave_t>().m_engine.app().log->warning(
+            "trying to reschedule an incomplete '%s' job",
+            job->event().c_str()
         );
+
+        context<slave_t>().m_engine.enqueue(job);
     }
 }
 

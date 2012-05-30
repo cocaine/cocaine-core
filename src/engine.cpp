@@ -313,7 +313,7 @@ Json::Value engine_t::info() {
 // Queue operations
 // ----------------
 
-void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
+void engine_t::enqueue(job_queue_t::const_reference job) {
     boost::lock_guard<boost::mutex> lock(m_queue_mutex);
     
     if(!m_running) {
@@ -332,7 +332,7 @@ void engine_t::enqueue(job_queue_t::const_reference job, bool overflow) {
         return;
     }
 
-    if((m_queue.size() >= m_app.policy.queue_limit) && !overflow) {
+    if(m_queue.size() >= m_app.policy.queue_limit) {
         job->process_event(
             events::error(
                 dealer::resource_error,
@@ -437,7 +437,7 @@ void engine_t::process(ev::idle&, int) {
                 slave_id.c_str()
             );
             
-            m_bus.drop_remaining_parts();
+            m_bus.drop();
             return;
         }
 
@@ -484,7 +484,7 @@ void engine_t::process(ev::idle&, int) {
 
             default:
                 m_app.log->warning("engine dropping unknown event type %d", command);
-                m_bus.drop_remaining_parts();
+                m_bus.drop();
         }
 
         // TEST: Ensure that there're no more message parts pending on the bus.
@@ -503,6 +503,21 @@ void engine_t::pump(ev::timer&, int) {
 
 // Garbage collection
 // ------------------
+
+namespace {
+    struct expired {
+        expired(ev::tstamp now_):
+            now(now_)
+        { }
+
+        template<class T>
+        bool operator()(const T& job) {
+            return job->policy().deadline && job->policy().deadline <= now;
+        }
+
+        ev::tstamp now;
+    };
+}
 
 void engine_t::cleanup(ev::timer&, int) {
     typedef std::vector<pool_map_t::key_type> corpse_list_t;
@@ -528,10 +543,29 @@ void engine_t::cleanup(ev::timer&, int) {
             corpses.size() == 1 ? "slave" : "slaves"
         );
     }
+
+    {
+        typedef boost::filter_iterator<expired, job_queue_t::iterator> filter;
+
+        boost::lock_guard<boost::mutex> lock(m_queue_mutex);
+        
+        // Process all the expired jobs.
+        filter it(expired(m_loop.now()), m_queue.begin(), m_queue.end()),
+               end(expired(m_loop.now()), m_queue.end(), m_queue.end());
+
+        while(it != end) {
+            (*it++)->process_event(
+                events::error(
+                    dealer::deadline_error,
+                    "the job has expired"
+                )
+            );
+        }
+    }
 }
 
-// Threaded engine.
-// ----------------
+// Threaded engine
+// ---------------
 
 threaded_engine_t::threaded_engine_t(context_t& context, const std::string& name):
     m_engine(context, m_loop, name),
@@ -554,7 +588,7 @@ Json::Value threaded_engine_t::info() {
 }
 
 void threaded_engine_t::enqueue(job_queue_t::const_reference job) {
-    m_engine.enqueue(job, false);
+    m_engine.enqueue(job);
     m_async_enqueue.send();
 }
 
@@ -566,4 +600,3 @@ void threaded_engine_t::bootstrap() {
 void threaded_engine_t::do_enqueue(ev::async& w, int r) {
     m_engine.process_queue();
 }
-

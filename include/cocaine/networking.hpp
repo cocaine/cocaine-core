@@ -88,7 +88,7 @@ class socket_t:
             m_socket.setsockopt(name, value, size);
         }
 
-        void drop_remaining_parts() {
+        void drop() {
             zmq::message_t null;
 
             while(more()) {

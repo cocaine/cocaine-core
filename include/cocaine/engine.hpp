@@ -106,9 +106,7 @@ class engine_t:
         
         Json::Value info() /* const */;
 
-        void enqueue(job_queue_t::const_reference,
-                     bool overflow = false);
-
+        void enqueue(job_queue_t::const_reference);
         void process_queue();
 
         template<class S, class Packed>
@@ -213,6 +211,9 @@ class engine_t:
         cgroup * m_cgroup;
 #endif
 };
+
+// Threaded engine
+// ---------------
 
 class threaded_engine_t:
     public boost::noncopyable
