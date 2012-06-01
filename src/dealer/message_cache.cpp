@@ -114,7 +114,7 @@ message_cache::sent_messages_count() {
 
 	size_t sent_messages_count = 0;
 
-	endpoints_sent_messages_map_t::const_iterator it = sent_messages_.begin();
+	route_sent_messages_map_t::const_iterator it = sent_messages_.begin();
 	for (; it != sent_messages_.end(); ++it) {
 		sent_messages_count += it->second.size();
 	}
@@ -123,12 +123,12 @@ message_cache::sent_messages_count() {
 }
 
 boost::shared_ptr<message_iface>
-message_cache::get_sent_message(const std::string& endpoint, const std::string& uuid) {
+message_cache::get_sent_message(const std::string& route, const std::string& uuid) {
 	boost::mutex::scoped_lock lock(mutex_);
-	endpoints_sent_messages_map_t::const_iterator it = sent_messages_.find(endpoint);
+	route_sent_messages_map_t::const_iterator it = sent_messages_.find(route);
 
 	if (it == sent_messages_.end()) {
-		std::string error_str = "can't find sent messages for endpoint " + endpoint;
+		std::string error_str = "can't find sent messages for route " + route;
 		throw internal_error(error_str);
 	}
 
@@ -144,17 +144,17 @@ message_cache::get_sent_message(const std::string& endpoint, const std::string& 
 }
 
 void
-message_cache::move_new_message_to_sent(const std::string& endpoint) {
+message_cache::move_new_message_to_sent(const std::string& route) {
 	boost::mutex::scoped_lock lock(mutex_);
 
 	boost::shared_ptr<message_iface> msg = new_messages_->front();
 	assert(msg);
 
-	endpoints_sent_messages_map_t::iterator it = sent_messages_.find(endpoint);
+	route_sent_messages_map_t::iterator it = sent_messages_.find(route);
 	if (it == sent_messages_.end()) {
 		sent_messages_map_t msg_map;
 		msg_map.insert(std::make_pair(msg->uuid(), msg));
-		sent_messages_[endpoint] = msg_map;
+		sent_messages_[route] = msg_map;
 	}
 	else {
 		it->second.insert(std::make_pair(msg->uuid(), msg));
@@ -164,9 +164,9 @@ message_cache::move_new_message_to_sent(const std::string& endpoint) {
 }
 
 void
-message_cache::move_sent_message_to_new(const std::string& endpoint, const std::string& uuid) {
+message_cache::move_sent_message_to_new(const std::string& route, const std::string& uuid) {
 	boost::mutex::scoped_lock lock(mutex_);
-	endpoints_sent_messages_map_t::iterator it = sent_messages_.find(endpoint);
+	route_sent_messages_map_t::iterator it = sent_messages_.find(route);
 
 	if (it == sent_messages_.end()) {
 		return;
@@ -194,9 +194,9 @@ message_cache::move_sent_message_to_new(const std::string& endpoint, const std::
 }
 
 void
-message_cache::move_sent_message_to_new_front(const std::string& endpoint, const std::string& uuid) {
+message_cache::move_sent_message_to_new_front(const std::string& route, const std::string& uuid) {
 	boost::mutex::scoped_lock lock(mutex_);
-	endpoints_sent_messages_map_t::iterator it = sent_messages_.find(endpoint);
+	route_sent_messages_map_t::iterator it = sent_messages_.find(route);
 
 	if (it == sent_messages_.end()) {
 		return;
@@ -224,9 +224,9 @@ message_cache::move_sent_message_to_new_front(const std::string& endpoint, const
 }
 
 void
-message_cache::remove_message_from_cache(const std::string& endpoint, const std::string& uuid) {
+message_cache::remove_message_from_cache(const std::string& route, const std::string& uuid) {
 	boost::mutex::scoped_lock lock(mutex_);
-	endpoints_sent_messages_map_t::iterator it = sent_messages_.find(endpoint);
+	route_sent_messages_map_t::iterator it = sent_messages_.find(route);
 
 	if (it == sent_messages_.end()) {
 		return;
@@ -239,19 +239,13 @@ message_cache::remove_message_from_cache(const std::string& endpoint, const std:
 		return;
 	}
 
-	boost::shared_ptr<message_iface> msg = mit->second;
-
-	if (!msg) {
-		throw internal_error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
-	}
-
 	msg_map.erase(mit);
 }
 
 void
 message_cache::make_all_messages_new() {
 	boost::mutex::scoped_lock lock(mutex_);
-	endpoints_sent_messages_map_t::iterator it = sent_messages_.begin();
+	route_sent_messages_map_t::iterator it = sent_messages_.begin();
 	for (; it != sent_messages_.end(); ++it) {
 
 		sent_messages_map_t& msg_map = it->second;
@@ -284,7 +278,7 @@ message_cache::get_expired_messages(message_queue_t& expired_messages) {
 	assert(new_messages_);
 
 	// remove expired from sent
-	endpoints_sent_messages_map_t::iterator it = sent_messages_.begin();
+	route_sent_messages_map_t::iterator it = sent_messages_.begin();
 	for (; it != sent_messages_.end(); ++it) {
 
 		sent_messages_map_t& msg_map = it->second;

@@ -32,14 +32,16 @@ public:
 	explicit cached_response_t(const cached_response_t& response);
 
 	cached_response_t(const std::string& uuid,
-					const message_path& path,
-					const void* data,
-					size_t data_size);
+					  const std::string& route,
+					  const message_path& path,
+					  const void* data,
+					  size_t data_size);
 
 	cached_response_t(const std::string& uuid,
-					const message_path& path,
-					int code,
-					const std::string& error_message);
+					  const std::string& route,
+					  const message_path& path,
+					  int code,
+					  const std::string& error_message);
 
 	virtual ~cached_response_t();
 
@@ -48,6 +50,7 @@ public:
 
 	const message_path& path() const;
 	const std::string& uuid() const;
+	const std::string& route() const;
 
 	int code() const;
 	std::string error_message() const;
@@ -67,6 +70,7 @@ public:
 	
 private:
 	std::string uuid_;
+	std::string route_;
 	message_path path_;
 	data_container data_;
 

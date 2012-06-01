@@ -61,7 +61,7 @@ void worker() {
 
 	message_path path("rimz_app", "rimz_func");
 	message_policy policy;
-	policy.deadline = 1.0;
+	policy.deadline = 0.0;
 	policy.max_retries = -1;
 	std::string payload = "response chunk: ";
 
@@ -110,7 +110,7 @@ void worker() {
 }
 
 void create_client(int add_messages_count) {
-	const int pool_size = 200;
+	const int pool_size = 1;
 	
 	std::cout << "----------------------------------- test info -------------------------------------------\n";
 	std::cout << "sending " << add_messages_count * pool_size << " messages using " << pool_size << " threads\n";

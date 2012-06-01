@@ -78,7 +78,6 @@ public:
 	void enqueue_message(const boost::shared_ptr<message_iface>& message);
 	void make_all_messages_new();
 	void assign_message_queue(const message_cache::message_queue_ptr_t& message_queue);
-	message_cache::message_queue_ptr_t new_messages();
 
 	// info retrieval
 	const handle_info_t& info() const;
@@ -94,7 +93,7 @@ private:
 	void dispatch_control_messages(int type, balancer_t& balancer);
 	void establish_control_conection(socket_ptr_t& control_socket);
 	int receive_control_messages(socket_ptr_t& control_socket, int poll_timeout);
-	bool reshedule_message(const std::string& uuid);
+	bool reshedule_message(const std::string& route, const std::string& uuid);
 
 	// working with messages
 	bool dispatch_next_available_message(balancer_t& balancer);

@@ -112,7 +112,7 @@ handle_t::dispatch_messages() {
 		// check for message responces
 		bool received_response = false;
 
-		int fast_poll_timeout = 0;              // microsecs
+		int fast_poll_timeout = 10;		// microsecs
 		int long_poll_timeout = 5000;   // microsecs
 
 		int response_poll_timeout = fast_poll_timeout;
@@ -165,13 +165,12 @@ handle_t::dispatch_next_available_response(balancer_t& balancer) {
 		break;
 
 		case response_code::message_choke:
-			// 2DO
-			//message_cache_->remove_message_from_cache(response->uuid());
+			message_cache_->remove_message_from_cache(response->route(), response->uuid());
 			enqueue_response(response);
 		break;
 
 		case resource_error: {
-			if (reshedule_message(response->uuid())) {
+			if (reshedule_message(response->route(), response->uuid())) {
 				std::string message_str = "resheduled msg with uuid: " + response->uuid();
 				message_str += " from " + description() + ", type: ERROR";
 				message_str += ", error code: ";
@@ -183,19 +182,15 @@ handle_t::dispatch_next_available_response(balancer_t& balancer) {
 							  response->error_message().c_str());
 			}
 			else {
+				message_cache_->remove_message_from_cache(response->route(), response->uuid());
 				enqueue_response(response);
-				
-				// 2DO
-				//message_cache_->remove_message_from_cache(response->uuid());
 			}
 		}
 		break;
 
 		default: {
+			message_cache_->remove_message_from_cache(response->route(), response->uuid());
 			enqueue_response(response);
-
-			// 2DO
-			//message_cache_->remove_message_from_cache(response->uuid());
 
 			std::string message_str = "enqued response for msg with uuid: " + response->uuid();
 			message_str += " from " + description() + ", type: ERROR";
@@ -266,6 +261,7 @@ handle_t::process_deadlined_messages() {
 				logger()->log(PLOG_DEBUG, "reshedule message policy exceeded, did not receive ACK " + expired_messages.at(i)->uuid());
 				cached_response_prt_t new_response;
 				new_response.reset(new cached_response_t(expired_messages.at(i)->uuid(),
+														 "",
 														 expired_messages.at(i)->path(),
 														 request_error,
 														 "server did not reply with ack in time"));
@@ -275,9 +271,10 @@ handle_t::process_deadlined_messages() {
 		else {
 			cached_response_prt_t new_response;
 			new_response.reset(new cached_response_t(expired_messages.at(i)->uuid(),
-												   expired_messages.at(i)->path(),
-												   deadline_error,
-												   "message expired 2"));
+													 "",
+													 expired_messages.at(i)->path(),
+													 deadline_error,
+													 "message expired in service's handle"));
 			enqueue_response(new_response);
 		}
 	}
@@ -369,7 +366,7 @@ handle_t::dispatch_next_available_message(balancer_t& balancer) {
 	cocaine_endpoint endpoint;
 	if (balancer.send(new_msg, endpoint)) {
 		new_msg->mark_as_sent(true);
-		message_cache_->move_new_message_to_sent(endpoint.as_string());
+		message_cache_->move_new_message_to_sent(endpoint.route_);
 
 		std::string log_msg = "sent msg with uuid: %s to %s";
 		logger()->log(PLOG_DEBUG, log_msg.c_str(), new_msg->uuid().c_str(), description().c_str());
@@ -384,15 +381,15 @@ handle_t::dispatch_next_available_message(balancer_t& balancer) {
 }
 
 bool
-handle_t::reshedule_message(const std::string& uuid) {
-	// 2DO
-	boost::shared_ptr<message_iface> msg; // = message_cache_->get_sent_message(uuid);
+handle_t::reshedule_message(const std::string& route, const std::string& uuid) {
+	boost::shared_ptr<message_iface> msg = message_cache_->get_sent_message(route, uuid);
+
+	assert(msg);
 
 	if (msg->can_retry()) {
 		msg->increment_retries_count();
 		
-		// 2DO
-		//message_cache_->move_sent_message_to_new_front(msg->uuid());
+		message_cache_->move_sent_message_to_new_front(route, uuid);
 		return true;
 	}
 
@@ -503,12 +500,6 @@ void
 handle_t::make_all_messages_new() {
 	assert (message_cache_);
 	return message_cache_->make_all_messages_new();
-}
-
-message_cache::message_queue_ptr_t
-handle_t::new_messages() {
-	assert (message_cache_);
-	return message_cache_->new_messages();
 }
 
 void

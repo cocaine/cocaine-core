@@ -49,7 +49,7 @@ public:
 	void update_endpoints(const std::vector<cocaine_endpoint>& endpoints,
 						  std::vector<cocaine_endpoint>& missing_endpoints);
 
-	bool check_for_responses(int poll_timeout);
+	bool check_for_responses(int poll_timeout) const;
 
 	static const int socket_timeout = 0;
 	static const int64_t socket_hwm = 0;

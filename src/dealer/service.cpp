@@ -459,9 +459,10 @@ service_t::check_for_deadlined_messages() {
 		for (;expired_qit != expired_queue->end(); ++expired_qit) {
 			cached_response_prt_t response;
 			response.reset(new cached_response_t((*expired_qit)->uuid(),
-											   (*expired_qit)->path(),
-											   deadline_error,
-											   "message expired"));
+												 "",
+												 (*expired_qit)->path(),
+												 deadline_error,
+												 "message expired"));
 
 			lock.unlock();
 			enqueue_responce(response);

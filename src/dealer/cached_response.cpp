@@ -41,10 +41,12 @@ cached_response_t::cached_response_t(const cached_response_t& response) :
 }
 
 cached_response_t::cached_response_t(const std::string& uuid,
-								 const message_path& path,
-								 const void* data,
-								 size_t data_size) :
+									 const std::string& route,
+									 const message_path& path,
+									 const void* data,
+									 size_t data_size) :
 	uuid_(uuid),
+	route_(route),
 	path_(path),
 	code_(0)
 {
@@ -56,10 +58,12 @@ cached_response_t::cached_response_t(const std::string& uuid,
 }
 
 cached_response_t::cached_response_t(const std::string& uuid,
-								 const message_path& path,
-								 int code,
-								 const std::string& error_message) :
+									 const std::string& route,
+									 const message_path& path,
+									 int code,
+									 const std::string& error_message) :
 	uuid_(uuid),
+	route_(route),
 	path_(path),
 	code_(code),
 	error_message_(error_message)
@@ -105,6 +109,11 @@ cached_response_t::operator != (const cached_response_t& rhs) const {
 const std::string&
 cached_response_t::uuid() const {
 	return uuid_;
+}
+
+const std::string&
+cached_response_t::route() const {
+	return route_;
 }
 
 const timeval&

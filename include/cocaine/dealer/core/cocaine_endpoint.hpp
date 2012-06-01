@@ -36,7 +36,7 @@ public:
 	cocaine_endpoint& operator = (const cocaine_endpoint& rhs) {
 		if (this != &rhs) {
 			endpoint_ = rhs.endpoint_;
-			route_ == rhs.route_;
+			route_ = rhs.route_;
 		}
 
 		return *this;

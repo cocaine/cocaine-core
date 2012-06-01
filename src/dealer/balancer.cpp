@@ -59,7 +59,7 @@ balancer_t::connect(const std::vector<cocaine_endpoint>& endpoints) {
 	std::string connection_str;
 	try {
 		for (size_t i = 0; i < endpoints.size(); ++i) {
-			connection_str = endpoints[i].endpoint_; 
+			connection_str = endpoints[i].endpoint_;
 			socket_->connect(connection_str.c_str());
 		}
 
@@ -227,7 +227,7 @@ balancer_t::send(boost::shared_ptr<message_iface>& message, cocaine_endpoint& en
 }
 
 bool
-balancer_t::check_for_responses(int poll_timeout) {
+balancer_t::check_for_responses(int poll_timeout) const {
 	assert(socket_);
 
 	// poll for responce
@@ -305,7 +305,7 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 							 boost::shared_ptr<cached_response_t>& response)
 {
 	// unpack node identity
-	std::string ident(reinterpret_cast<const char*>(chunks[0].data()));
+	std::string route(reinterpret_cast<const char*>(chunks[0].data()));
 
 	// unpack uuid
 	std::string uuid;
@@ -325,7 +325,7 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 	// get message from sent cache
 	boost::shared_ptr<message_iface> sent_msg;
 	try {
-		//sent_msg = message_cache_->get_sent_message(uuid);
+		sent_msg = message_cache_->get_sent_message(route, uuid);
 	}
 	catch (...) {
 		// drop responce for missing message
@@ -345,7 +345,12 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 		case SERVER_RPC_MESSAGE_CHUNK: {
 			logger()->log(PLOG_DEBUG, message_str + "CHUNK");
 
-			response.reset(new cached_response_t(uuid, sent_msg->path(), chunks[4].data(), chunks[4].size()));
+			response.reset(new cached_response_t(uuid,
+												 route,
+												 sent_msg->path(),
+												 chunks[4].data(),
+												 chunks[4].size()));
+
 			response->set_code(response_code::message_chunk);
 			return true;
 		}
@@ -367,7 +372,11 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 			obj = msg.get();
 		    obj.convert(&error_message);
 
-			response.reset(new cached_response_t(uuid, sent_msg->path(), error_code, error_message));
+			response.reset(new cached_response_t(uuid,
+												 route,
+												 sent_msg->path(),
+												 error_code,
+												 error_message));
 			return true;
 		}
 		break;
@@ -375,7 +384,12 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 		case SERVER_RPC_MESSAGE_CHOKE: {
 			logger()->log(PLOG_DEBUG, message_str + "CHOKE");
 
-			response.reset(new cached_response_t(uuid, sent_msg->path(), NULL, 0));
+			response.reset(new cached_response_t(uuid,
+												 route,
+												 sent_msg->path(),
+												 NULL,
+												 0));
+
 			response->set_code(response_code::message_choke);
 			return true;
 		}
