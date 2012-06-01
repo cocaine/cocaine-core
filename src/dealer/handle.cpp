@@ -465,13 +465,14 @@ handle_t::connect() {
 
 void
 handle_t::update_endpoints(const std::vector<cocaine_endpoint>& endpoints) {
-	boost::mutex::scoped_lock lock(mutex_);
-
 	if (!is_running_ || endpoints.empty()) {
 		return;
 	}
 
+	boost::mutex::scoped_lock lock(mutex_);
 	endpoints_ = endpoints;
+	lock.unlock();
+
 	logger()->log(PLOG_DEBUG, "UPDATE HANDLE " + description());
 
 	// connect to hosts

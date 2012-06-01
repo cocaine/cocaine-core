@@ -112,8 +112,6 @@ void
 client_impl::service_hosts_pinged_callback(const service_info_t& service_info,
 										   const handles_endpoints_t& endpoints_for_handles)
 {
-	boost::mutex::scoped_lock lock(mutex_);
-
 	// find corresponding service
 	services_map_t::iterator it = services_.find(service_info.name_);
 

@@ -222,8 +222,6 @@ service_t::enqueue_responce(cached_response_prt_t response) {
 
 void
 service_t::refresh_handles(const handles_endpoints_t& handles_endpoints) {
-	boost::mutex::scoped_lock lock(mutex_);
-
 	handles_info_list_t outstanding_handles;
 	handles_info_list_t new_handles;
 
@@ -247,7 +245,6 @@ service_t::refresh_handles(const handles_endpoints_t& handles_endpoints) {
 		}
 	}
 
-	lock.unlock();
 	remove_outstanding_handles(outstanding_handles);
 	update_existing_handles(handles_endpoints);
 	create_new_handles(new_handles, handles_endpoints);
@@ -255,8 +252,6 @@ service_t::refresh_handles(const handles_endpoints_t& handles_endpoints) {
 
 void
 service_t::update_existing_handles(const handles_endpoints_t& handles_endpoints) {
-	boost::mutex::scoped_lock lock(mutex_);
-
 	handles_map_t::iterator it = handles_.begin();
 	for (; it != handles_.end(); ++it) {
 
@@ -264,18 +259,13 @@ service_t::update_existing_handles(const handles_endpoints_t& handles_endpoints)
 
 		if (eit != handles_endpoints.end()) {
 			handle_ptr_t handle = it->second;
-
-			lock.unlock();
 			handle->update_endpoints(eit->second);
-			lock.lock();
 		}
 	}
 }
 
 void
 service_t::remove_outstanding_handles(const handles_info_list_t& handles) {
-	boost::mutex::scoped_lock lock(mutex_);
-
 	// no handles to destroy
 	if (handles.empty()) {
 		return;
@@ -291,6 +281,8 @@ service_t::remove_outstanding_handles(const handles_info_list_t& handles) {
 	}
 
 	logger()->log(message_str);
+
+	boost::mutex::scoped_lock lock(mutex_);
 
 	// destroy handles
 	for (size_t i = 0; i < handles.size(); ++i) {
@@ -348,14 +340,12 @@ void
 service_t::create_new_handles(const handles_info_list_t& handles,
 							  const handles_endpoints_t& handles_endpoints)
 {
-	boost::mutex::scoped_lock lock(mutex_);
-
 	// no handles to create
 	if (handles.empty()) {
 		return;
 	}
 
-	// create handles
+	// create handles from info and endpoints
 	for (size_t i = 0; i < handles.size(); ++i) {
 		handle_ptr_t handle;
 		handle_info_t handle_info = handles[i];
@@ -365,19 +355,13 @@ service_t::create_new_handles(const handles_info_list_t& handles,
 			throw internal_error("no endpoints for new handle " + handle_info.as_string() + "].");
 		}
 
-		lock.unlock();
+		// create handles
 		handle.reset(new dealer::handle_t(handle_info, context_, hit->second));
-		lock.lock();
-
-		// set responce callback
-		typedef dealer::handle_t::responce_callback_t resp_callback;
-		resp_callback callback = boost::bind(&service_t::enqueue_responce, this, _1);
-
-		lock.unlock();
-		handle->set_responce_callback(callback);
-		lock.lock();
+		handle->set_responce_callback(boost::bind(&service_t::enqueue_responce, this, _1));
 
 		// move existing unhandled message queue to handle
+		boost::mutex::scoped_lock lock(mutex_);
+
 		unhandled_messages_map_t::iterator it = unhandled_messages_.find(handles[i].name_);
 		if (it != unhandled_messages_.end()) {
 			messages_deque_ptr_t msg_queue = it->second;

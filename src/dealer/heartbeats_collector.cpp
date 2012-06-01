@@ -214,7 +214,6 @@ heartbeats_collector::process_alive_endpoints() {
 		log_responded_hosts_handles(service_info, handles_endpoints);
 
 		// pass collected data to callback
-		boost::mutex::scoped_lock lock(mutex_);
 		callback_(service_info, handles_endpoints);
 	}
 }
