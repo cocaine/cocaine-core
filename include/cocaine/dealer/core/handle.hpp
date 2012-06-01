@@ -135,6 +135,7 @@ private:
 
 	progress_timer last_response_timer_;
 	progress_timer deadlined_messages_timer_;
+	progress_timer control_messages_timer_;
 };
 
 } // namespace dealer

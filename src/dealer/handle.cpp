@@ -75,13 +75,20 @@ handle_t::dispatch_messages() {
 
 	last_response_timer_.reset();
 	deadlined_messages_timer_.reset();
+	control_messages_timer_.reset();
 
 	// process messages
 	while (is_running_) {
 		boost::mutex::scoped_lock lock(mutex_);
 
-		// process incoming control messages
-		int control_message = receive_control_messages(control_socket, 0);
+		// process incoming control messages every 200 msec
+		int control_message = 0;
+		              
+		if (control_messages_timer_.elapsed().as_double() > 0.2f) {
+		      control_message = receive_control_messages(control_socket, 0);
+		      control_messages_timer_.reset();
+		}
+
 		if (control_message == CONTROL_MESSAGE_KILL) {
 			// stop message dispatch, finalize everything
 			is_running_ = false;
@@ -105,8 +112,8 @@ handle_t::dispatch_messages() {
 		// check for message responces
 		bool received_response = false;
 
-		int fast_poll_timeout = 10;		// microsecs
-		int long_poll_timeout = 1000;	// microsecs
+		int fast_poll_timeout = 0;              // microsecs
+		int long_poll_timeout = 5000;   // microsecs
 
 		int response_poll_timeout = fast_poll_timeout;
 		if (last_response_timer_.elapsed().as_double() > 0.5f) {	// 0.5f == 500 millisecs
@@ -158,7 +165,8 @@ handle_t::dispatch_next_available_response(balancer_t& balancer) {
 		break;
 
 		case response_code::message_choke:
-			message_cache_->remove_message_from_cache(response->uuid());
+			// 2DO
+			//message_cache_->remove_message_from_cache(response->uuid());
 			enqueue_response(response);
 		break;
 
@@ -176,14 +184,18 @@ handle_t::dispatch_next_available_response(balancer_t& balancer) {
 			}
 			else {
 				enqueue_response(response);
-				message_cache_->remove_message_from_cache(response->uuid());
+				
+				// 2DO
+				//message_cache_->remove_message_from_cache(response->uuid());
 			}
 		}
 		break;
 
 		default: {
 			enqueue_response(response);
-			message_cache_->remove_message_from_cache(response->uuid());
+
+			// 2DO
+			//message_cache_->remove_message_from_cache(response->uuid());
 
 			std::string message_str = "enqued response for msg with uuid: " + response->uuid();
 			message_str += " from " + description() + ", type: ERROR";
@@ -373,11 +385,14 @@ handle_t::dispatch_next_available_message(balancer_t& balancer) {
 
 bool
 handle_t::reshedule_message(const std::string& uuid) {
-	boost::shared_ptr<message_iface> msg = message_cache_->get_sent_message(uuid);
+	// 2DO
+	boost::shared_ptr<message_iface> msg; // = message_cache_->get_sent_message(uuid);
 
 	if (msg->can_retry()) {
 		msg->increment_retries_count();
-		message_cache_->move_sent_message_to_new_front(msg->uuid());
+		
+		// 2DO
+		//message_cache_->move_sent_message_to_new_front(msg->uuid());
 		return true;
 	}
 
