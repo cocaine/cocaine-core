@@ -122,9 +122,14 @@ message_cache::sent_messages_count() {
 	return sent_messages_count;
 }
 
-boost::shared_ptr<message_iface>
-message_cache::get_sent_message(const std::string& route, const std::string& uuid) {
+bool
+message_cache::get_sent_message(const std::string& route,
+								const std::string& uuid,
+								boost::shared_ptr<message_iface>& message) {
+	logger()->log("get_sent_message: %s, %s", route.c_str(), uuid.c_str());
+
 	boost::mutex::scoped_lock lock(mutex_);
+
 	route_sent_messages_map_t::const_iterator it = sent_messages_.find(route);
 
 	if (it == sent_messages_.end()) {
@@ -135,12 +140,16 @@ message_cache::get_sent_message(const std::string& route, const std::string& uui
 	const sent_messages_map_t& msg_map = it->second;
 	sent_messages_map_t::const_iterator mit = msg_map.find(uuid);
 
+	if (mit == msg_map.end()) {
+		return false;
+	}
 
 	if (!mit->second) {
 		throw internal_error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
-	return mit->second;
+	message = mit->second;
+	return true;
 }
 
 void
@@ -166,6 +175,7 @@ message_cache::move_new_message_to_sent(const std::string& route) {
 void
 message_cache::move_sent_message_to_new(const std::string& route, const std::string& uuid) {
 	boost::mutex::scoped_lock lock(mutex_);
+
 	route_sent_messages_map_t::iterator it = sent_messages_.find(route);
 
 	if (it == sent_messages_.end()) {
@@ -196,6 +206,7 @@ message_cache::move_sent_message_to_new(const std::string& route, const std::str
 void
 message_cache::move_sent_message_to_new_front(const std::string& route, const std::string& uuid) {
 	boost::mutex::scoped_lock lock(mutex_);
+
 	route_sent_messages_map_t::iterator it = sent_messages_.find(route);
 
 	if (it == sent_messages_.end()) {
@@ -226,6 +237,7 @@ message_cache::move_sent_message_to_new_front(const std::string& route, const st
 void
 message_cache::remove_message_from_cache(const std::string& route, const std::string& uuid) {
 	boost::mutex::scoped_lock lock(mutex_);
+
 	route_sent_messages_map_t::iterator it = sent_messages_.find(route);
 
 	if (it == sent_messages_.end()) {
@@ -245,6 +257,7 @@ message_cache::remove_message_from_cache(const std::string& route, const std::st
 void
 message_cache::make_all_messages_new() {
 	boost::mutex::scoped_lock lock(mutex_);
+
 	route_sent_messages_map_t::iterator it = sent_messages_.begin();
 	for (; it != sent_messages_.end(); ++it) {
 
@@ -264,6 +277,36 @@ message_cache::make_all_messages_new() {
 
 		msg_map.clear();
 	}
+}
+
+void
+message_cache::make_all_messages_new_for_route(const std::string& route) {
+	boost::mutex::scoped_lock lock(mutex_);
+
+	route_sent_messages_map_t::iterator it = sent_messages_.find(route);
+	if (it == sent_messages_.end()) {
+		return;
+	}
+
+	sent_messages_map_t& msg_map = it->second;
+	sent_messages_map_t::iterator mit = msg_map.begin();
+
+	if (msg_map.empty()) {
+		return;
+	}
+	
+	for (; mit != msg_map.end(); ++mit) {
+
+		if (!mit->second) {
+			throw internal_error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
+		}
+
+		mit->second->mark_as_sent(false);
+		mit->second->set_ack_received(false);
+		new_messages_->push_front(mit->second);
+	}
+
+	msg_map.clear();
 }
 
 bool

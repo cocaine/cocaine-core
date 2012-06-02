@@ -112,7 +112,7 @@ handle_t::dispatch_messages() {
 		// check for message responces
 		bool received_response = false;
 
-		int fast_poll_timeout = 10;		// microsecs
+		int fast_poll_timeout = 0;		// microsecs
 		int long_poll_timeout = 5000;   // microsecs
 
 		int response_poll_timeout = fast_poll_timeout;
@@ -224,6 +224,10 @@ handle_t::dispatch_control_messages(int type, balancer_t& balancer) {
 			if (is_connected_) {
 				std::vector<cocaine_endpoint> missing_endpoints;
 				balancer.update_endpoints(endpoints_, missing_endpoints);
+
+				for (size_t i = 0; i < missing_endpoints.size(); ++i) {
+					message_cache_->make_all_messages_new_for_route(missing_endpoints.at(i).route_);
+				}
 			}
 			break;
 
@@ -241,9 +245,13 @@ handle_t::messages_cache() const {
 
 void
 handle_t::process_deadlined_messages() {
+	boost::mutex::scoped_lock lock(mutex_);
+
 	assert(message_cache_);
 	message_cache::message_queue_t expired_messages;
 	message_cache_->get_expired_messages(expired_messages);
+	
+	lock.unlock();
 
 	if (expired_messages.empty()) {
 		return;
@@ -265,6 +273,7 @@ handle_t::process_deadlined_messages() {
 														 expired_messages.at(i)->path(),
 														 request_error,
 														 "server did not reply with ack in time"));
+
 				enqueue_response(new_response);
 			}
 		}
@@ -382,7 +391,10 @@ handle_t::dispatch_next_available_message(balancer_t& balancer) {
 
 bool
 handle_t::reshedule_message(const std::string& route, const std::string& uuid) {
-	boost::shared_ptr<message_iface> msg = message_cache_->get_sent_message(route, uuid);
+	boost::shared_ptr<message_iface> msg;
+	if (!message_cache_->get_sent_message(route, uuid, msg)) {
+		return false;
+	}
 
 	assert(msg);
 

@@ -305,7 +305,8 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 							 boost::shared_ptr<cached_response_t>& response)
 {
 	// unpack node identity
-	std::string route(reinterpret_cast<const char*>(chunks[0].data()));
+	const char* route_chars = reinterpret_cast<const char*>(chunks[0].data());
+	std::string route(route_chars, chunks[0].size());
 
 	// unpack uuid
 	std::string uuid;
@@ -320,12 +321,12 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 	obj = msg.get();
     obj.convert(&rpc_code);
 
-    return false;
-
 	// get message from sent cache
 	boost::shared_ptr<message_iface> sent_msg;
 	try {
-		sent_msg = message_cache_->get_sent_message(route, uuid);
+		if (!message_cache_->get_sent_message(route, uuid, sent_msg)) {
+			return false;
+		}
 	}
 	catch (...) {
 		// drop responce for missing message
@@ -338,12 +339,12 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 	switch (rpc_code) {
 		case SERVER_RPC_MESSAGE_ACK: {
 			sent_msg->set_ack_received(true);
-			logger()->log(PLOG_DEBUG, message_str + "ACK");
+			//logger()->log(PLOG_DEBUG, message_str + "ACK");
 			return false;
 		}
 
 		case SERVER_RPC_MESSAGE_CHUNK: {
-			logger()->log(PLOG_DEBUG, message_str + "CHUNK");
+			//logger()->log(PLOG_DEBUG, message_str + "CHUNK");
 
 			response.reset(new cached_response_t(uuid,
 												 route,
@@ -382,7 +383,7 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 		break;
 
 		case SERVER_RPC_MESSAGE_CHOKE: {
-			logger()->log(PLOG_DEBUG, message_str + "CHOKE");
+			//logger()->log(PLOG_DEBUG, message_str + "CHOKE");
 
 			response.reset(new cached_response_t(uuid,
 												 route,

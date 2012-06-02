@@ -110,7 +110,7 @@ void worker() {
 }
 
 void create_client(int add_messages_count) {
-	const int pool_size = 1;
+	const int pool_size = 200;
 	
 	std::cout << "----------------------------------- test info -------------------------------------------\n";
 	std::cout << "sending " << add_messages_count * pool_size << " messages using " << pool_size << " threads\n";
@@ -137,7 +137,6 @@ void create_client(int add_messages_count) {
 	}
 
 	std::cout << "sending messages done.\n";
-	sleep(20);
 	client_ptr.reset();
 
 	std::cout << "----------------------------------- test results ----------------------------------------\n";

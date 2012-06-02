@@ -60,7 +60,11 @@ public:
 	size_t sent_messages_count();
 
 	cached_message_ptr_t get_new_message();
-	cached_message_ptr_t get_sent_message(const std::string& route, const std::string& uuid);
+	
+	bool get_sent_message(const std::string& route,
+						  const std::string& uuid,
+						  boost::shared_ptr<message_iface>& message);
+
 	message_queue_ptr_t new_messages();
 	void move_new_message_to_sent(const std::string& route);
 	void move_sent_message_to_new(const std::string& route, const std::string& uuid);
@@ -68,6 +72,7 @@ public:
 	void remove_message_from_cache(const std::string& route, const std::string& uuid);
 	void make_all_messages_new();
 	void get_expired_messages(message_queue_t& expired_messages);
+	void make_all_messages_new_for_route(const std::string& route);
 
 private:
 	static bool is_message_expired(cached_message_ptr_t msg);
