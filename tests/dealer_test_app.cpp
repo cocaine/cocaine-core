@@ -50,6 +50,7 @@ using namespace boost::accumulators;
 
 std::string config_path = "tests/config_example.json";
 boost::shared_ptr<client> client_ptr;
+boost::shared_ptr<client> client2_ptr;
 
 int messages_count = 0;
 volatile int slow_messages_count = 0;
@@ -109,18 +110,73 @@ void worker() {
 	//std::cout << " \tmedian - " << boost::accumulators::median(accum) << "\n" << std::flush;
 }
 
+void worker2() {
+	accumulator_set<float, features<tag::min, tag::max, tag::mean, tag::median> > accum;
+
+	message_path path("rimz_app", "rimz_func");
+	message_policy policy;
+	policy.deadline = 0.0;
+	policy.max_retries = -1;
+	std::string payload = "response chunk: ";
+
+	for (int i = 0; i < messages_count; ++i) {
+		progress_timer t;
+
+		//boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
+
+		try {
+			boost::shared_ptr<response> resp;
+
+			if (client2_ptr) {
+				resp = client2_ptr->send_message(payload.data(), payload.size(), path, policy);
+			}
+
+			data_container data;
+			//resp->get(&data, 0.000175);
+
+			//accum(t.elapsed().as_double());
+			while (resp->get(&data)) {
+				//std::cout << std::string(reinterpret_cast<const char*>(data.data()), 0, data.size()) << std::endl;
+			}
+		}
+		catch (const dealer_error& err) {
+			std::cout << "error code: " << err.code() << ", error message: " << err.what() << std::endl;
+		}
+		catch (const std::exception& ex) {
+			std::cout << "error message: " << ex.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "caught exception, no error message." << std::endl;
+		}
+
+		if (t.elapsed().as_double() > 0.200) {
+			++slow_messages_count;
+			//std::cout << "slow time: " << t.elapsed().as_double() << ", num:" << slow_messages_count << "\n";
+		}
+	}
+
+	//boost::mutex::scoped_lock lock(mutex);
+	//std::cout << std::fixed << std::setprecision(6);
+	//std::cout << "min - " << boost::accumulators::min(accum);
+	//std::cout << "\tmax - " << boost::accumulators::max(accum);
+	//std::cout << "\tmean - " << boost::accumulators::mean(accum);
+	//std::cout << " \tmedian - " << boost::accumulators::median(accum) << "\n" << std::flush;
+}
+
 void create_client(int add_messages_count) {
 	const int pool_size = 200;
 	
 	std::cout << "----------------------------------- test info -------------------------------------------\n";
-	std::cout << "sending " << add_messages_count * pool_size << " messages using " << pool_size << " threads\n";
+	std::cout << "sending " << add_messages_count * pool_size * 2 << " messages using " << pool_size * 2 << " threads\n";
 	std::cout << "-----------------------------------------------------------------------------------------\n";
 	
 	messages_count = add_messages_count;
 	
 	client_ptr.reset(new client(config_path));
+	client2_ptr.reset(new client(config_path));
 
 	boost::thread pool[pool_size];
+	boost::thread pool2[pool_size];
 
 	progress_timer timer;
 
@@ -129,19 +185,23 @@ void create_client(int add_messages_count) {
 
 	for (int i = 0; i < pool_size; ++i) {
 		pool[i] = boost::thread(&worker);
+		pool2[i] = boost::thread(&worker2);
 	}
 
 	// wait for them to finish
 	for (int i = 0; i < pool_size; ++i) {
 		pool[i].join();
+		pool2[i].join();
 	}
 
 	std::cout << "sending messages done.\n";
-	client_ptr.reset();
-
+	
 	std::cout << "----------------------------------- test results ----------------------------------------\n";
 	std::cout << "elapsed: " << timer.elapsed().as_double() << std::endl;
-	std::cout << "approx performance: " << (add_messages_count * pool_size) / timer.elapsed().as_double() << " rps." << std::endl;
+	std::cout << "approx performance: " << (add_messages_count * pool_size * 2) / timer.elapsed().as_double() << " rps." << std::endl;
+
+	client_ptr.reset();
+	client2_ptr.reset();
 }
 
 int
