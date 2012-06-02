@@ -164,7 +164,7 @@ void worker2() {
 }
 
 void create_client(int add_messages_count) {
-	const int pool_size = 200;
+	const int pool_size = 1;
 	
 	std::cout << "----------------------------------- test info -------------------------------------------\n";
 	std::cout << "sending " << add_messages_count * pool_size * 2 << " messages using " << pool_size * 2 << " threads\n";

@@ -126,15 +126,13 @@ bool
 message_cache::get_sent_message(const std::string& route,
 								const std::string& uuid,
 								boost::shared_ptr<message_iface>& message) {
-	logger()->log("get_sent_message: %s, %s", route.c_str(), uuid.c_str());
 
 	boost::mutex::scoped_lock lock(mutex_);
 
 	route_sent_messages_map_t::const_iterator it = sent_messages_.find(route);
 
 	if (it == sent_messages_.end()) {
-		std::string error_str = "can't find sent messages for route " + route;
-		throw internal_error(error_str);
+		return false
 	}
 
 	const sent_messages_map_t& msg_map = it->second;
@@ -144,11 +142,9 @@ message_cache::get_sent_message(const std::string& route,
 		return false;
 	}
 
-	if (!mit->second) {
-		throw internal_error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
-	}
-
+	assert(mit->second);
 	message = mit->second;
+
 	return true;
 }
 

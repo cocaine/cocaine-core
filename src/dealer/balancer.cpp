@@ -323,13 +323,7 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 
 	// get message from sent cache
 	boost::shared_ptr<message_iface> sent_msg;
-	try {
-		if (!message_cache_->get_sent_message(route, uuid, sent_msg)) {
-			return false;
-		}
-	}
-	catch (...) {
-		// drop responce for missing message
+	if (!message_cache_->get_sent_message(route, uuid, sent_msg)) {
 		return false;
 	}
 
