@@ -65,7 +65,9 @@ class context_t:
     public boost::noncopyable
 {
     public:
-        context_t(config_t config);
+        context_t(config_t config,
+                  boost::shared_ptr<logging::sink_t> sink);
+
         ~context_t();
 
         // Registry API
@@ -99,9 +101,6 @@ class context_t:
     public:
         const config_t config;
 
-        // Logging sink.
-        boost::shared_ptr<logging::sink_t> sink;
-
     private:
         // Initialization interlocking.
         boost::mutex m_mutex;
@@ -109,6 +108,9 @@ class context_t:
         // Core subsystems.
         std::auto_ptr<zmq::context_t> m_io;
         std::auto_ptr<repository_t> m_repository;
+    
+        // Logging.    
+        boost::shared_ptr<logging::sink_t> m_sink;
 };
 
 }

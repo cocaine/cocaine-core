@@ -22,7 +22,8 @@ namespace cocaine { namespace engine {
 
 class app_t {
     public:
-        app_t(context_t& context, const std::string& name);
+        app_t(context_t& context,
+              const std::string& name);
 
     public:
         const std::string& name() const {

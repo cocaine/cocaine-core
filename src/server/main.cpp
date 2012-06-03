@@ -105,31 +105,34 @@ int main(int argc, char * argv[]) {
         return EXIT_SUCCESS;
     }
 
-    // Validation and configuration parsing
-    // ------------------------------------
+    // Validation
+    // ----------
 
     if(!vm.count("configuration")) {
         std::cerr << "Error: no configuration file has been specified" << std::endl;
         return EXIT_FAILURE;
     }
 
-    context_t context(vm["configuration"].as<std::string>());
-
     // Startup
     // -------
 
-    context.sink.reset(
+    boost::shared_ptr<logging::sink_t> sink(
         new logging::syslog_t(
             vm.count("verbose") ? logging::debug : logging::info,
             "cocaine"
         )
     );
 
-    boost::shared_ptr<logging::logger_t> log(
-        context.sink->get("main")
+    context_t context(
+        vm["configuration"].as<std::string>(),
+        sink
     );
 
-    if(vm.count("slave:app") && vm.count("slave:id")) {
+    boost::shared_ptr<logging::logger_t> log(
+        sink->get("main")
+    );
+
+    if(vm.count("slave:app") && vm.count("slave:uuid")) {
         std::auto_ptr<engine::overseer_t> slave;
 
         try {

@@ -28,7 +28,7 @@ using namespace cocaine::storages;
 
 app_t::app_t(context_t& context, const std::string& name):
     m_name(name),
-    log(context.log(m_name))
+    log(context.log(name))
 {
     boost::shared_ptr<storage_t> storage(
         context.storage("core")
@@ -40,6 +40,9 @@ app_t::app_t(context_t& context, const std::string& name):
 
     // Load the application manifest.
     m_manifest = storage->get("apps", m_name);
+
+    // Setup the app configuration.
+    m_type = m_manifest["type"].asString();
 
     // Setup the engine policies.
     policy.heartbeat_timeout = m_manifest["engine"].get(

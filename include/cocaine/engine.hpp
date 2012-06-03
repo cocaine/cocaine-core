@@ -106,8 +106,8 @@ class engine_t:
         void process_queue();
 
     public:
-        const std::auto_ptr<app_t>& app() const {
-            return m_app;
+        const app_t& app() const {
+            return *m_app;
         }
 
         ev::loop_ref& loop() {

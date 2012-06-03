@@ -15,6 +15,7 @@
 #define COCAINE_STORAGE_INTERFACE_HPP
 
 #include <boost/thread/mutex.hpp>
+#include <boost/tuple/tuple.hpp>
 
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
@@ -75,7 +76,7 @@ template<> struct category_traits<storages::storage_t> {
             );
 
             if(it == m_storages.end()) {
-                m_storages.insert(
+                boost::tie(it, boost::tuples::ignore) = m_storages.insert(
                     std::make_pair(
                         uri,
                         boost::make_shared<T>(

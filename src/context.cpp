@@ -32,12 +32,14 @@ const unsigned int defaults::pool_limit = 10;
 const unsigned int defaults::queue_limit = 100;
 const unsigned int defaults::io_bulk_size = 100;
 
-config_t::config_t(const std::string& path) {
-    if(!fs::exists(path)) {
+config_t::config_t(const std::string& path):
+    config_path(path)
+{
+    if(!fs::exists(config_path)) {
         throw configuration_error_t("the specified configuration file doesn't exist");
     }
 
-    fs::ifstream stream(path);
+    fs::ifstream stream(config_path);
 
     if(!stream) {
         throw configuration_error_t("unable to open the specified configuration file");
@@ -97,9 +99,14 @@ config_t::config_t(const std::string& path) {
     }   
 }
 
-context_t::context_t(config_t config_):
-    config(config_)
+context_t::context_t(config_t config_, boost::shared_ptr<logging::sink_t> sink):
+    config(config_),
+    m_sink(sink)
 {
+    if(!m_sink) {
+        m_sink.reset(new logging::void_sink_t());
+    }
+
     // Initialize the component repository.
     m_repository.reset(new repository_t(*this));
 
@@ -140,5 +147,5 @@ context_t::storage(const std::string& name) {
 
 boost::shared_ptr<logging::logger_t>
 context_t::log(const std::string& name) {
-    return sink->get(name);
+    return m_sink->get(name);
 }

@@ -115,8 +115,14 @@ ADD_EXECUTABLE(cocained
     src/server/server
     src/server/main)
 
+ADD_EXECUTABLE(library-test
+    tests/library_test)
+
 TARGET_LINK_LIBRARIES(cocained
     boost_program_options-mt
+    cocaine-core)
+
+TARGET_LINK_LIBRARIES(library-test
     cocaine-core)
 
 ADD_SUBDIRECTORY(modules)

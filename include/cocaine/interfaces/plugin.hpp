@@ -14,6 +14,8 @@
 #ifndef COCAINE_APP_PLUGIN_INTERFACE_HPP
 #define COCAINE_APP_PLUGIN_INTERFACE_HPP
 
+#include <boost/tuple/tuple.hpp>
+
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
 

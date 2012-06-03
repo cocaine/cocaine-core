@@ -75,7 +75,7 @@ void slave_t::unconsumed_event(const sc::event_base& event) {
     // TEST: Unconsumed rogue event is a fatal error.
     BOOST_ASSERT(it != names.end());
 
-    m_engine.app()->log->warning(
+    m_engine.app().log->warning(
         "slave %s detected an unconsumed '%s' event",
         id().c_str(),
         it->second.c_str()
@@ -91,7 +91,7 @@ void slave_t::spawn() {
 #ifdef HAVE_CGROUPS
         if(m_engine.group()) {
             if((rv = cgroup_attach_task(m_engine.group())) != 0) {
-                m_engine.app()->log->error(
+                m_engine.app().log->error(
                     "unable to attach slave %s to a control group - %s",
                     id().c_str(),
                     cgroup_strerror(rv)
@@ -105,18 +105,19 @@ void slave_t::spawn() {
         rv = ::execl(
             m_context.config.runtime.self.c_str(),
             m_context.config.runtime.self.c_str(),
-            "--slave:app", m_engine.app()->name().c_str(),
-            "--slave:id",  id().c_str(),
+            "--slave:app", m_engine.app().name().c_str(),
+            "--slave:uuid",  id().c_str(),
             "--configuration", m_context.config.config_path.c_str(),
             (char*)0
         );
 
         if(rv != 0) {
-            char message[1024];
+            char buffer[1024],
+                 *message;
 
-            ::strerror_r(errno, message, 1024);
+            message = ::strerror_r(errno, buffer, 1024);
 
-            m_engine.app()->log->error(
+            m_engine.app().log->error(
                 "unable to start slave %s - %s",
                 id().c_str(),
                 message
@@ -131,7 +132,7 @@ void slave_t::spawn() {
 
 void slave_t::on_initialize(const events::heartbeat& event) {
 #if EV_VERSION_MAJOR == 3 && EV_VERSION_MINOR == 8
-    m_engine.app()->log->debug(
+    m_engine.app().log->debug(
         "slave %s came alive in %.03f seconds",
         id().c_str(),
         10.0f - ev_timer_remaining(
@@ -148,13 +149,13 @@ void slave_t::on_heartbeat(const events::heartbeat& event) {
     m_heartbeat_timer.stop();
     
     const busy * state = state_downcast<const busy*>();
-    float timeout = m_engine.app()->policy.heartbeat_timeout;
+    float timeout = m_engine.app().policy.heartbeat_timeout;
 
     if(state && state->job()->policy.timeout > 0.0f) {
         timeout = state->job()->policy.timeout;
     }
            
-    m_engine.app()->log->debug(
+    m_engine.app().log->debug(
         "resetting slave %s heartbeat timeout to %.02f seconds",
         id().c_str(),
         timeout
@@ -164,7 +165,7 @@ void slave_t::on_heartbeat(const events::heartbeat& event) {
 }
 
 void slave_t::on_terminate(const events::terminate& event) {
-    m_engine.app()->log->debug(
+    m_engine.app().log->debug(
         "reaping slave %s", 
         id().c_str()
     );
@@ -177,8 +178,8 @@ void slave_t::on_terminate(const events::terminate& event) {
 }
 
 void slave_t::on_timeout(ev::timer&, int) {
-    m_engine.app()->log->error(
-        "slave %s missed too many heartbeats",
+    m_engine.app().log->error(
+        "slave %s doesn't respond in a timely fashion",
         id().c_str()
     );
     
@@ -200,7 +201,7 @@ void alive::on_invoke(const events::invoke& event) {
     // TEST: Ensure that no job is being lost here.
     BOOST_ASSERT(!job && event.job);
 
-    context<slave_t>().m_engine.app()->log->debug(
+    context<slave_t>().m_engine.app().log->debug(
         "job '%s' assigned to slave %s",
         event.job->event.c_str(),
         context<slave_t>().id().c_str()
@@ -214,7 +215,7 @@ void alive::on_choke(const events::choke& event) {
     // TEST: Ensure that the job is in fact here.
     BOOST_ASSERT(job);
 
-    context<slave_t>().m_engine.app()->log->debug(
+    context<slave_t>().m_engine.app().log->debug(
         "job '%s' completed by slave %s",
         job->event.c_str(),
         context<slave_t>().id().c_str()
@@ -226,7 +227,7 @@ void alive::on_choke(const events::choke& event) {
 
 alive::~alive() {
     if(job && !job->state_downcast<const job::complete*>()) {
-        context<slave_t>().m_engine.app()->log->warning(
+        context<slave_t>().m_engine.app().log->warning(
             "trying to reschedule an incomplete '%s' job",
             job->event.c_str()
         );
