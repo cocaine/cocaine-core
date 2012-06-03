@@ -11,25 +11,33 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_CORE_HPP
-#define COCAINE_CORE_HPP
+#ifndef COCAINE_SERVER_HPP
+#define COCAINE_SERVER_HPP
 
 #include "cocaine/common.hpp"
-
 #include "cocaine/auth.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/networking.hpp"
 
 #include "cocaine/helpers/json.hpp"
 
-namespace cocaine { namespace core {
+namespace cocaine {
 
-class core_t:
+struct server_config_t {
+    std::vector<std::string> listen_endpoints,
+                             announce_endpoints;
+    
+    float announce_interval;
+};
+
+class server_t:
     public boost::noncopyable
 {
     public:
-        core_t(const config_t& config);
-        ~core_t();
+        server_t(context_t& context,
+                 server_config_t config);
+
+        ~server_t();
 
         void run();
 
@@ -52,7 +60,7 @@ class core_t:
         void recover();
 
     private:
-        context_t m_context;
+        context_t& m_context;
 
         boost::shared_ptr<logging::logger_t> m_log;
         boost::shared_ptr<storages::storage_t> m_storage;
@@ -73,7 +81,11 @@ class core_t:
         ev::default_loop m_loop;
 
         // Event watchers.
-        ev::sig m_sigint, m_sigterm, m_sigquit, m_sighup;
+        ev::sig m_sigint,
+                m_sigterm,
+                m_sigquit, 
+                m_sighup;
+                
         ev::io m_watcher;
         ev::idle m_processor;
 
@@ -95,6 +107,6 @@ class core_t:
         const ev::tstamp m_birthstamp;
 };
 
-}}
+}
 
 #endif

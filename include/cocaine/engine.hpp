@@ -24,10 +24,6 @@
 #endif
 
 #include "cocaine/common.hpp"
-
-#include "cocaine/app.hpp"
-#include "cocaine/context.hpp"
-#include "cocaine/logging.hpp"
 #include "cocaine/networking.hpp"
 #include "cocaine/slave.hpp"
 
@@ -109,8 +105,26 @@ class engine_t:
         void enqueue(job_queue_t::const_reference);
         void process_queue();
 
+    public:
+        const std::auto_ptr<app_t>& app() const {
+            return m_app;
+        }
+
+        ev::loop_ref& loop() {
+            return m_loop;
+        }
+
+#ifdef HAVE_CGROUPS
+        cgroup* group() {
+            return m_cgroup;
+        }
+#endif
+
+    private:
         template<class S, class Packed>
-        pool_map_t::iterator unicast(const S& selector, Packed& packed) {
+        pool_map_t::iterator unicast(const S& selector,
+                                     Packed& packed)
+        {
             pool_map_t::iterator it(
                 std::find_if(
                     m_pool.begin(),
@@ -127,7 +141,9 @@ class engine_t:
         }
 
         template<class S, class Packed>
-        void multicast(const S& selector, Packed& packed) {
+        void multicast(const S& selector,
+                       Packed& packed)
+        {
             typedef boost::filter_iterator<S, pool_map_t::iterator> filter;
             
             filter it(selector, m_pool.begin(), m_pool.end()),
@@ -140,28 +156,10 @@ class engine_t:
             }
         }
 
-    public:
-        context_t& context() {
-            return m_context;
-        }
-
-        const app_t& app() const {
-            return m_app;
-        }
-
-        ev::loop_ref& loop() {
-            return m_loop;
-        }
-
-#ifdef HAVE_CGROUPS
-        cgroup* group() {
-            return m_cgroup;
-        }
-#endif
-
-    private:
         template<class Packed>
-        void send(slave_t& slave, Packed& packed) {
+        void send(slave_t& slave,
+                  Packed& packed)
+        {
             m_bus.send(
                 networking::protect(slave.id()),
                 ZMQ_SNDMORE
@@ -183,7 +181,7 @@ class engine_t:
         volatile bool m_running;
 
         // The application.
-        app_t m_app;
+        std::auto_ptr<app_t> m_app;
         // driver_map_t m_drivers;
 
         // Job queue.
@@ -243,7 +241,7 @@ class threaded_engine_t:
 
         engine_t m_engine;
 
-        boost::shared_ptr<boost::thread> m_thread;
+        std::auto_ptr<boost::thread> m_thread;
 };
 
 }}

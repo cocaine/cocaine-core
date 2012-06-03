@@ -12,12 +12,12 @@
 //
 
 #include <boost/filesystem/fstream.hpp>
+#include <boost/filesystem/operations.hpp>
 #include <sstream>
 
 #include <v8.h>
 
 #include "cocaine/app.hpp"
-#include "cocaine/registry.hpp"
 
 #include "cocaine/interfaces/plugin.hpp"
 
@@ -29,17 +29,10 @@ class javascript_t:
     public plugin_t
 {
     public:
-        javascript_t(context_t& context):
-            plugin_t(context)
-        { }
-
-        ~javascript_t() {
-            m_function.Dispose();
-            m_v8_context.Dispose();
-        }
-
-        virtual void initialize(const app_t& app) {
-            Json::Value args(app.manifest["args"]);
+        javascript_t(context_t& context, const app_t& app):
+            plugin_t(context, app)
+        {
+            Json::Value args(app.args());
 
             if(!args.isObject()) {
                 throw configuration_error_t("malformed manifest");
@@ -63,7 +56,14 @@ class javascript_t:
             compile(stream.str(), "iterate");
         }
 
-        virtual void invoke(const std::string& method, io_t& io) {
+        ~javascript_t() {
+            m_function.Dispose();
+            m_v8_context.Dispose();
+        }
+
+        virtual void invoke(const std::string& method,
+                            io_t& io)
+        {
             Json::Value result;
 
             HandleScope handle_scope;
@@ -129,8 +129,8 @@ class javascript_t:
 };
 
 extern "C" {
-    void initialize(core::registry_t& registry) {
-        registry.insert<javascript_t, plugin_t>("javascript");
+    void initialize(repository_t& repository) {
+        repository.insert<javascript_t, plugin_t>("javascript");
     }
 }
 

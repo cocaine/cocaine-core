@@ -22,9 +22,9 @@ using namespace cocaine::storages;
 
 namespace fs = boost::filesystem;
 
-file_storage_t::file_storage_t(context_t& context):
-    storage_t(context),
-    m_storage_path(context.config.storage.uri)
+file_storage_t::file_storage_t(context_t& context, const std::string& uri):
+    storage_t(context, uri),
+    m_storage_path(uri)
 { }
 
 void file_storage_t::put(const std::string& ns,
@@ -56,14 +56,18 @@ void file_storage_t::put(const std::string& ns,
     stream.close();
 }
 
-bool file_storage_t::exists(const std::string& ns, const std::string& key) {
+bool file_storage_t::exists(const std::string& ns,
+                            const std::string& key)
+{
     fs::path file_path(m_storage_path / ns / key);
     
     return (fs::exists(file_path) && 
             fs::is_regular(file_path));
 }
 
-Json::Value file_storage_t::get(const std::string& ns, const std::string& key) {
+Json::Value file_storage_t::get(const std::string& ns,
+                                const std::string& key)
+{
     Json::Value root(Json::objectValue);
     fs::path file_path(m_storage_path / ns / key);
     fs::ifstream stream(file_path, fs::ifstream::in);
@@ -81,7 +85,7 @@ Json::Value file_storage_t::get(const std::string& ns, const std::string& key) {
 
 namespace {
     struct is_regular_file {
-        template<typename T> bool operator()(T entry) {
+        template<typename T> bool operator()(const T& entry) {
             return fs::is_regular(entry);
         }
     };
@@ -121,7 +125,9 @@ Json::Value file_storage_t::all(const std::string& ns) {
     return root;
 }
 
-void file_storage_t::remove(const std::string& ns, const std::string& key) {
+void file_storage_t::remove(const std::string& ns,
+                            const std::string& key)
+{
     fs::path file_path(m_storage_path / ns / key);
     
     if(fs::exists(file_path)) {

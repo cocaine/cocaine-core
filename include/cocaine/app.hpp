@@ -25,10 +25,24 @@ class app_t {
         app_t(context_t& context, const std::string& name);
 
     public:
-        const std::string name;
-        Json::Value manifest;
+        const std::string& name() const {
+            return m_name;
+        }
 
-        struct policy_t {
+        const std::string& type() const {
+            return m_type;
+        }
+
+        Json::Value args() const {
+            return m_manifest["args"];
+        }
+
+        Json::Value limits() const {
+            return m_manifest["engine"]["resource-limits"];
+        }
+
+    public:
+        struct {
             float heartbeat_timeout;
             float suicide_timeout;
             unsigned int pool_limit;
@@ -37,6 +51,12 @@ class app_t {
         } policy;
 
         boost::shared_ptr<logging::logger_t> log;
+        
+    private:
+        Json::Value m_manifest;
+        
+        std::string m_name;
+        std::string m_type;
 };
 
 class endpoint {

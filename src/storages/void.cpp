@@ -15,17 +15,24 @@
 
 using namespace cocaine::storages;
 
-void_storage_t::void_storage_t(context_t& context):
-    storage_t(context)
+void_storage_t::void_storage_t(context_t& context, const std::string& uri):
+    storage_t(context, uri)
 { }
 
-void void_storage_t::put(const std::string& ns, const std::string& key, const Json::Value& value) { }
+void void_storage_t::put(const std::string& ns,
+						 const std::string& key,
+						 const Json::Value& value)
+{ }
 
-bool void_storage_t::exists(const std::string& ns, const std::string& key) {
+bool void_storage_t::exists(const std::string& ns,
+							const std::string& key)
+{
     return false;
 }
 
-Json::Value void_storage_t::get(const std::string& ns, const std::string& key) {
+Json::Value void_storage_t::get(const std::string& ns,
+								const std::string& key)
+{
     return Json::Value(Json::objectValue);
 }
 
@@ -33,6 +40,8 @@ Json::Value void_storage_t::all(const std::string& ns) {
     return Json::Value(Json::objectValue);  
 }
 
-void void_storage_t::remove(const std::string& ns, const std::string& key) { }
+void void_storage_t::remove(const std::string& ns,
+							const std::string& key)
+{ }
 
 void void_storage_t::purge(const std::string& ns) { }

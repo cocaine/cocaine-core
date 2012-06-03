@@ -17,15 +17,13 @@
 
 #include "cocaine/context.hpp"
 
-#include "cocaine/registry.hpp"
-
-using namespace cocaine::core;
+using namespace cocaine;
 using namespace cocaine::storages;
 using namespace mongo;
 
-mongo_storage_t::mongo_storage_t(context_t& context) try:
-    storage_t(context),
-    m_uri(context.config.storage.uri, ConnectionString::SET)
+mongo_storage_t::mongo_storage_t(context_t& context, const std::string& uri) try:
+    storage_t(context, uri),
+    m_uri(uri, ConnectionString::SET)
 {
     if(!m_uri.isValid()) {
         throw storage_error_t("invalid mongodb uri");
@@ -60,7 +58,9 @@ void mongo_storage_t::put(const std::string& ns,
     }
 }
 
-bool mongo_storage_t::exists(const std::string& ns, const std::string& key) {
+bool mongo_storage_t::exists(const std::string& ns,
+                             const std::string& key)
+{
     bool result;
     
     try {
@@ -74,7 +74,9 @@ bool mongo_storage_t::exists(const std::string& ns, const std::string& key) {
     return result;
 }
 
-Json::Value mongo_storage_t::get(const std::string& ns, const std::string& key) {
+Json::Value mongo_storage_t::get(const std::string& ns,
+                                 const std::string& key)
+{
     Json::Reader reader;
     Json::Value result(Json::objectValue);
     BSONObj object;
@@ -122,7 +124,9 @@ Json::Value mongo_storage_t::all(const std::string& ns) {
     return root;
 }
 
-void mongo_storage_t::remove(const std::string& ns, const std::string& key) {
+void mongo_storage_t::remove(const std::string& ns,
+                             const std::string& key)
+{
     try {
         ScopedDbConnection connection(m_uri);
         connection->remove(resolve(ns), BSON("key" << key));
@@ -147,7 +151,7 @@ std::string mongo_storage_t::resolve(const std::string& ns) const {
 }
 
 extern "C" {
-    void initialize(registry_t& registry) {
-        registry.insert<mongo_storage_t, storage_t>("mongodb");
+    void initialize(repository_t& repository) {
+        repository.insert<mongo_storage_t, storage_t>("mongodb");
     }
 }

@@ -54,7 +54,9 @@ class slave_t:
     friend struct slave::busy;
 
     public:
-        slave_t(engine_t& engine);
+        slave_t(context_t& context,
+                engine_t& engine);
+
         ~slave_t();
         
         bool operator==(const slave_t& other) const;
@@ -64,14 +66,17 @@ class slave_t:
     private:
         void spawn();
 
-        void on_configure(const events::heartbeat& event);
+        void on_initialize(const events::heartbeat& event);
         void on_heartbeat(const events::heartbeat& event);
         void on_terminate(const events::terminate& event);
         void on_timeout(ev::timer&, int);
 
     private:    
+        context_t& m_context;
         engine_t& m_engine;
+
         ev::timer m_heartbeat_timer;
+        
         pid_t m_pid;
 };
 
@@ -81,7 +86,7 @@ struct unknown:
     public sc::simple_state<unknown, slave_t> 
 {
     typedef boost::mpl::list<
-        sc::transition<events::heartbeat, alive, slave_t, &slave_t::on_configure>,
+        sc::transition<events::heartbeat, alive, slave_t, &slave_t::on_initialize>,
         sc::transition<events::terminate, dead, slave_t, &slave_t::on_terminate>
     > reactions;
 };

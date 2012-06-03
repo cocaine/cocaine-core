@@ -18,7 +18,10 @@
 
 using namespace cocaine::engine;
 
-int log_object_t::constructor(log_object_t * self, PyObject * args, PyObject * kwargs) {
+int log_object_t::constructor(log_object_t * self,
+                              PyObject * args,
+                              PyObject * kwargs)
+{
     PyObject * builtins = PyEval_GetBuiltins();
     PyObject * plugin = PyDict_GetItemString(builtins, "__plugin__");
     
@@ -40,7 +43,9 @@ void log_object_t::destructor(log_object_t * self) {
     self->ob_type->tp_free(self);
 }
 
-PyObject* log_object_t::debug(log_object_t * self, PyObject * args) {
+PyObject* log_object_t::debug(log_object_t * self,
+                              PyObject * args)
+{
     PyObject * object = NULL;
     const char * message = NULL;
 
@@ -69,7 +74,9 @@ PyObject* log_object_t::debug(log_object_t * self, PyObject * args) {
     Py_RETURN_NONE;
 }
 
-PyObject* log_object_t::info(log_object_t * self, PyObject * args) {
+PyObject* log_object_t::info(log_object_t * self,
+                             PyObject * args)
+{
     PyObject * object = NULL;
     const char * message = NULL;
 
@@ -98,7 +105,9 @@ PyObject* log_object_t::info(log_object_t * self, PyObject * args) {
     Py_RETURN_NONE;
 }
 
-PyObject* log_object_t::warning(log_object_t * self, PyObject * args) {
+PyObject* log_object_t::warning(log_object_t * self,
+                                PyObject * args)
+{
     PyObject * object = NULL;
     const char * message = NULL;
 
@@ -127,7 +136,9 @@ PyObject* log_object_t::warning(log_object_t * self, PyObject * args) {
     Py_RETURN_NONE;
 }
 
-PyObject* log_object_t::error(log_object_t * self, PyObject * args) {
+PyObject* log_object_t::error(log_object_t * self,
+                              PyObject * args)
+{
     PyObject * object = NULL;
     const char * message = NULL;
 
@@ -156,7 +167,9 @@ PyObject* log_object_t::error(log_object_t * self, PyObject * args) {
     Py_RETURN_NONE;
 }
 
-PyObject* log_object_t::write(log_object_t * self, PyObject * args) {
+PyObject* log_object_t::write(log_object_t * self,
+                              PyObject * args)
+{
     const char * message = NULL;
 
     if(!self->plugin) {
@@ -177,7 +190,9 @@ PyObject* log_object_t::write(log_object_t * self, PyObject * args) {
     Py_RETURN_NONE;
 }
 
-PyObject* log_object_t::writelines(log_object_t * self, PyObject * args) {
+PyObject* log_object_t::writelines(log_object_t * self,
+                                   PyObject * args)
+{
     PyObject * lines = NULL;
 
     if(!self->plugin) {
@@ -221,7 +236,8 @@ PyObject* log_object_t::writelines(log_object_t * self, PyObject * args) {
     Py_RETURN_NONE;
 }
 
-PyObject* log_object_t::flush(log_object_t * self, PyObject * args) {
-    // NOTE: This method is a no-op.
+PyObject* log_object_t::flush(log_object_t * self,
+                              PyObject * args)
+{
     Py_RETURN_NONE;
 }

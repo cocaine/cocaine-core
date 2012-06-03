@@ -20,7 +20,6 @@ namespace cocaine { namespace engine { namespace rpc {
     
 enum {
     heartbeat = 1,
-    configure,
     terminate,
     invoke,
     chunk,
@@ -42,15 +41,6 @@ struct packed:
 
 // Specific packers
 // ----------------
-
-template<>
-struct packed<configure>:
-    public boost::tuple<int, const config_t&>
-{
-    packed(const config_t& config):
-        boost::tuple<int, const config_t&>(configure, config)
-    { }
-};
 
 template<>
 struct packed<invoke>:

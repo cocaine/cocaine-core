@@ -19,8 +19,7 @@
 
 #include "cocaine/config.hpp"
 
-#include "cocaine/context.hpp"
-#include "cocaine/core.hpp"
+#include "cocaine/server/server.hpp"
 #include "cocaine/overseer.hpp"
 
 #include "cocaine/loggers/syslog.hpp"
@@ -32,71 +31,52 @@ using namespace cocaine;
 namespace po = boost::program_options;
 
 int main(int argc, char * argv[]) {
-    config_t cfg;
-
-    // Configuration
-    // -------------
-
-    cfg.runtime.self = argv[0];
-
-    po::options_description
-        hidden_options,
-        slave_options,
-        general_options("General options"),
-        core_options("Core options"),
-        storage_options("Storage options"),
-        combined_options;
+    po::options_description general_options("General options"),
+                            server_options("Server options"),
+                            slave_options,
+                            combined_options;
     
     po::positional_options_description positional_options;
     po::variables_map vm;
 
-    hidden_options.add_options()
-        ("core:endpoints", po::value< std::vector<std::string> >
-            (&cfg.core.endpoints)->composing(),
-            "core endpoints for server management");
-    
-    positional_options.add("core:endpoints", -1);
-
-    slave_options.add_options()
-        ("slave", "launch a new slave")
-        ("slave:id", po::value<std::string>(&cfg.slave.id))
-        ("slave:app", po::value<std::string>(&cfg.slave.app));
-
     general_options.add_options()
         ("help,h", "show this message")
         ("version,v", "show version and build information")
-        ("daemonize", "daemonize on start")
-        ("pidfile", po::value<std::string>
+        ("configuration,c", po::value<std::string>
+            ()->default_value("/etc/cocaine/default.json"),
+            "location of a configuration file")
+        ("daemonize,d", "daemonize on start")
+        ("pidfile,p", po::value<std::string>
             ()->default_value("/var/run/cocaine/default.pid"),
             "location of a pid file")
         ("verbose", "produce a lot of output");
 
-    core_options.add_options()
-        ("core:modules", po::value<std::string>
-            (&cfg.registry.modules)->default_value("/usr/lib/cocaine"),
-            "where to load modules from")
-        ("core:announce-endpoint", po::value<std::string>
-            (&cfg.core.announce_endpoint),
-            "multicast endpoint for automatic discovery")
-        ("core:announce-interval", po::value<float>
-            (&cfg.core.announce_interval)->default_value(5.0f),
-            "multicast announce interval for automatic discovery, seconds")
-        ("core:port-range", po::value<std::string>(),
-            "available port range for applications");
+    server_config_t server_config;
 
-    storage_options.add_options()
-        ("storage:driver", po::value<std::string>
-            (&cfg.storage.driver)->default_value("files"),
-            "storage driver type, built-in storages are: void, files")
-        ("storage:uri", po::value<std::string>
-            (&cfg.storage.uri)->default_value("/var/lib/cocaine"),
-            "storage location, format depends on the storage type");
+    server_options.add_options()
+        ("server:listen", po::value< std::vector<std::string> >
+            (&server_config.listen_endpoints)->composing(),
+            "server listen endpoints, can be specified multiple times")
+        ("server:announce", po::value< std::vector<std::string> >
+            (&server_config.announce_endpoints)->composing(),
+            "server announce endpoints, can be specified multiple times")
+        ("server:announce-interval", po::value<float>
+            (&server_config.announce_interval)->default_value(5.0f),
+            "server announce interval");
 
-    combined_options.add(hidden_options)
-                    .add(slave_options)
-                    .add(general_options)
-                    .add(core_options)
-                    .add(storage_options);
+    positional_options.add("server:listen", -1);
+
+    engine::slave_config_t slave_config;
+
+    slave_options.add_options()
+        ("slave:app", po::value<std::string>
+            (&slave_config.app))
+        ("slave:uuid", po::value<std::string>
+            (&slave_config.uuid));
+
+    combined_options.add(general_options)
+                    .add(server_options)
+                    .add(slave_options);
 
     try {
         po::store(
@@ -116,7 +96,7 @@ int main(int argc, char * argv[]) {
 
     if(vm.count("help")) {
         std::cout << "Usage: " << argv[0] << " endpoint-list [options]" << std::endl;
-        std::cout << general_options << core_options << storage_options;
+        std::cout << general_options << server_options;
         return EXIT_SUCCESS;
     }
 
@@ -124,11 +104,21 @@ int main(int argc, char * argv[]) {
         std::cout << "Cocaine " << COCAINE_VERSION << std::endl;
         return EXIT_SUCCESS;
     }
-    
+
+    // Validation and configuration parsing
+    // ------------------------------------
+
+    if(!vm.count("configuration")) {
+        std::cerr << "Error: no configuration file has been specified" << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    context_t context(vm["configuration"].as<std::string>());
+
     // Startup
     // -------
 
-    cfg.sink.reset(
+    context.sink.reset(
         new logging::syslog_t(
             vm.count("verbose") ? logging::debug : logging::info,
             "cocaine"
@@ -136,14 +126,19 @@ int main(int argc, char * argv[]) {
     );
 
     boost::shared_ptr<logging::logger_t> log(
-        cfg.sink->get("main")
+        context.sink->get("main")
     );
 
-    if(vm.count("slave")) {
+    if(vm.count("slave:app") && vm.count("slave:id")) {
         std::auto_ptr<engine::overseer_t> slave;
 
         try {
-            slave.reset(new engine::overseer_t(cfg));
+            slave.reset(
+                new engine::overseer_t(
+                    context,
+                    slave_config
+                )
+            );
         } catch(const std::exception& e) {
             log->error("unable to start the slave - %s", e.what());
             return EXIT_FAILURE;
@@ -153,6 +148,7 @@ int main(int argc, char * argv[]) {
     } 
  
     else {
+        /*
         if(vm.count("core:port-range")) {
             std::vector<std::string> limits;
 
@@ -168,7 +164,7 @@ int main(int argc, char * argv[]) {
             }
 
             try {
-                cfg.runtime.ports.assign(
+                config.runtime.ports.assign(
                     boost::make_counting_iterator(boost::lexical_cast<uint16_t>(limits[0])),
                     boost::make_counting_iterator(boost::lexical_cast<uint16_t>(limits[1]))
                 );
@@ -177,11 +173,12 @@ int main(int argc, char * argv[]) {
                 return EXIT_FAILURE;
             }
         }
+        */
 
         std::auto_ptr<helpers::pid_file_t> pidfile;
-        std::auto_ptr<core::core_t> core;
+        std::auto_ptr<server_t> server;
 
-        log->info("starting the core");
+        log->info("starting the server");
 
         if(vm.count("daemonize")) {
             if(daemon(0, 0) < 0) {
@@ -200,15 +197,20 @@ int main(int argc, char * argv[]) {
         }
  
         try {
-            core.reset(new core::core_t(cfg));
+            server.reset(
+                new server_t(
+                    context,
+                    server_config
+                )
+            );
         } catch(const std::exception& e) {
-            log->error("unable to start the core - %s", e.what());
+            log->error("unable to start the server - %s", e.what());
             return EXIT_FAILURE;
         }
 
-        core->run();
+        server->run();
 
-        log->info("the core has terminated");
+        log->info("the server has terminated");
     }
 
     return EXIT_SUCCESS;

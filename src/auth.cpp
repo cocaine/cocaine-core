@@ -33,12 +33,8 @@ auth_t::auth_t(context_t& context):
 {
     ERR_load_crypto_strings();
 
-    boost::shared_ptr<storage_t> storage(
-        context.get<storage_t>(context.config.storage.driver)
-    );
-
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
-    Json::Value keys(storage->all("keys"));
+    Json::Value keys(context.storage("core")->all("keys"));
     Json::Value::Members names(keys.getMemberNames());
 
     for(Json::Value::Members::const_iterator it = names.begin();

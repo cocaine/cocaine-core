@@ -18,7 +18,10 @@
 
 using namespace cocaine::engine;
 
-int python_io_t::constructor(python_io_t * self, PyObject * args, PyObject * kwargs) {
+int python_io_t::constructor(python_io_t * self,
+                             PyObject * args,
+                             PyObject * kwargs)
+{
     PyObject * io_object;
 
     if(!PyArg_ParseTuple(args, "O", &io_object)) {
@@ -39,7 +42,10 @@ void python_io_t::destructor(python_io_t * self) {
     }
 }
 
-PyObject* python_io_t::read(python_io_t * self, PyObject * args, PyObject * kwargs) {
+PyObject* python_io_t::read(python_io_t * self,
+                            PyObject * args,
+                            PyObject * kwargs)
+{
     static char size_keyword[] = "size";
     static char timeout_keyword[] = "timeout";
     static char * keywords[] = { size_keyword, timeout_keyword, NULL };
@@ -79,7 +85,9 @@ PyObject* python_io_t::read(python_io_t * self, PyObject * args, PyObject * kwar
     return result;
 }
 
-PyObject* python_io_t::write(python_io_t * self, PyObject * args) {
+PyObject* python_io_t::write(python_io_t * self,
+                             PyObject * args)
+{
     const char * message = NULL;
 
 #ifdef  PY_SSIZE_T_CLEAN
@@ -102,7 +110,10 @@ PyObject* python_io_t::write(python_io_t * self, PyObject * args) {
 }
 
 /*
-PyObject* python_io_t::delegate(python_io_t * self, PyObject * args, PyObject * kwargs) {
+PyObject* python_io_t::delegate(python_io_t * self,
+                                PyObject * args,
+                                PyObject * kwargs)
+{
     static char method_keyword[] = "method";
     static char message_keyword[] = "message";
     static char * keywords[] = { method_keyword, message_keyword, NULL };
@@ -132,7 +143,10 @@ PyObject* python_io_t::delegate(python_io_t * self, PyObject * args, PyObject * 
 }
 */
 
-PyObject* python_io_t::readline(python_io_t * self, PyObject * args, PyObject * kwargs) {
+PyObject* python_io_t::readline(python_io_t * self,
+                                PyObject * args,
+                                PyObject * kwargs)
+{
     PyObject * result = NULL;
 
     if(self->request.empty()) {
@@ -163,7 +177,10 @@ PyObject* python_io_t::readline(python_io_t * self, PyObject * args, PyObject * 
     return result;
 }
 
-PyObject* python_io_t::readlines(python_io_t * self, PyObject * args, PyObject * kwargs) {
+PyObject* python_io_t::readlines(python_io_t * self,
+                                 PyObject * args,
+                                 PyObject * kwargs)
+{
     PyErr_SetString(
         PyExc_NotImplementedError,
         "Method is not yet implemented"

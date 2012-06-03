@@ -60,7 +60,7 @@ LINK_DIRECTORIES(
 INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/foreign/jsoncpp-0.5.0/include)
 INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/include)
 
-ADD_DEFINITIONS("-DBOOST_FILESYSTEM_VERSION=2")
+#ADD_DEFINITIONS("-DBOOST_FILESYSTEM_VERSION=2")
 
 ADD_LIBRARY(json
     foreign/jsoncpp-0.5.0/src/lib_json/json_value
@@ -76,7 +76,7 @@ ADD_LIBRARY(cocaine-common SHARED
     src/interfaces/storage
     src/loggers/syslog
     src/logging
-    src/registry
+    src/repository
     src/storages/files
     src/storages/void)
 
@@ -96,7 +96,6 @@ SET_TARGET_PROPERTIES(cocaine-common PROPERTIES
 
 ADD_LIBRARY(cocaine-core SHARED
     src/app
-    src/core
     src/drivers/base
     src/engine
     src/interfaces/plugin
@@ -113,16 +112,11 @@ SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     VERSION 1)
 
 ADD_EXECUTABLE(cocained
-    src/main)
-
-ADD_EXECUTABLE(test
-    test)
+    src/server/server
+    src/server/main)
 
 TARGET_LINK_LIBRARIES(cocained
     boost_program_options-mt
-    cocaine-core)
-
-TARGET_LINK_LIBRARIES(test
     cocaine-core)
 
 ADD_SUBDIRECTORY(modules)

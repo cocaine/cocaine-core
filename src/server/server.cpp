@@ -13,7 +13,7 @@
 
 #include <boost/algorithm/string/join.hpp>
 
-#include "cocaine/core.hpp"
+#include "cocaine/server/server.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
@@ -22,14 +22,14 @@
 
 #include "cocaine/interfaces/storage.hpp"
 
-using namespace cocaine::core;
+using namespace cocaine;
 using namespace cocaine::engine;
 using namespace cocaine::storages;
 
-core_t::core_t(const config_t& config):
-    m_context(config),
+server_t::server_t(context_t& context, server_config_t config):
+    m_context(context),
     m_log(m_context.log("core")),
-    m_storage(m_context.get<storage_t>(config.storage.driver)),
+    m_storage(m_context.storage("core")),
     m_server(m_context.io(), ZMQ_REP, m_context.config.runtime.hostname),
     m_auth(m_context),
     m_birthstamp(m_loop.now())
@@ -49,69 +49,75 @@ core_t::core_t(const config_t& config):
 
     m_server.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
 
-    for(std::vector<std::string>::iterator it = m_context.config.core.endpoints.begin();
-        it != m_context.config.core.endpoints.end();
-        ++it) 
+    for(std::vector<std::string>::const_iterator it = config.listen_endpoints.begin();
+        it != config.listen_endpoints.end();
+        ++it)
     {
         try {
             m_server.bind(*it);
         } catch(const zmq::error_t& e) {
-            throw configuration_error_t(std::string("invalid server endpoint - ") + e.what());
+            throw configuration_error_t(std::string("invalid listen endpoint - ") + e.what());
         }
             
         m_log->info("listening on %s", it->c_str());
     }
     
-    m_watcher.set<core_t, &core_t::request>(this);
+    m_watcher.set<server_t, &server_t::request>(this);
     m_watcher.start(m_server.fd(), ev::READ);
-    m_processor.set<core_t, &core_t::process>(this);
-    m_pumper.set<core_t, &core_t::pump>(this);
+    m_processor.set<server_t, &server_t::process>(this);
+    m_pumper.set<server_t, &server_t::pump>(this);
     m_pumper.start(0.2f, 0.2f);    
 
     // Autodiscovery
     // -------------
 
-    if(!m_context.config.core.announce_endpoint.empty()) {
-        try {
-            m_announces.reset(new networking::socket_t(m_context.io(), ZMQ_PUB));
-            m_announces->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
-            m_announces->connect("epgm://" + m_context.config.core.announce_endpoint);
-        } catch(const zmq::error_t& e) {
-            throw configuration_error_t(std::string("invalid announce endpoint - ") + e.what());
+    if(!config.announce_endpoints.empty()) {
+        m_announces.reset(new networking::socket_t(m_context.io(), ZMQ_PUB));
+        m_announces->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
+        
+        for(std::vector<std::string>::const_iterator it = config.announce_endpoints.begin();
+            it != config.announce_endpoints.end();
+            ++it)
+        {
+            try {
+                m_announces->connect(*it);
+            } catch(const zmq::error_t& e) {
+                throw configuration_error_t(std::string("invalid announce endpoint - ") + e.what());
+            }
+
+            m_log->info("announcing on %s", it->c_str());
         }
 
-        m_log->info("announcing on %s", m_context.config.core.announce_endpoint.c_str());
-
         m_announce_timer.reset(new ev::timer());
-        m_announce_timer->set<core_t, &core_t::announce>(this);
-        m_announce_timer->start(0.0f, m_context.config.core.announce_interval);
+        m_announce_timer->set<server_t, &server_t::announce>(this);
+        m_announce_timer->start(0.0f, config.announce_interval);
     }
 
     // Signals
     // -------
 
-    m_sigint.set<core_t, &core_t::terminate>(this);
+    m_sigint.set<server_t, &server_t::terminate>(this);
     m_sigint.start(SIGINT);
 
-    m_sigterm.set<core_t, &core_t::terminate>(this);
+    m_sigterm.set<server_t, &server_t::terminate>(this);
     m_sigterm.start(SIGTERM);
 
-    m_sigquit.set<core_t, &core_t::terminate>(this);
+    m_sigquit.set<server_t, &server_t::terminate>(this);
     m_sigquit.start(SIGQUIT);
 
-    m_sighup.set<core_t, &core_t::reload>(this);
+    m_sighup.set<server_t, &server_t::reload>(this);
     m_sighup.start(SIGHUP);
     
     recover();
 }
 
-core_t::~core_t() { }
+server_t::~server_t() { }
 
-void core_t::run() {
+void server_t::run() {
     m_loop.loop();
 }
 
-void core_t::terminate(ev::sig&, int) {
+void server_t::terminate(ev::sig&, int) {
     if(!m_engines.empty()) {
         m_log->info("stopping the apps");
         m_engines.clear();
@@ -120,7 +126,7 @@ void core_t::terminate(ev::sig&, int) {
     m_loop.unloop(ev::ALL);
 }
 
-void core_t::reload(ev::sig&, int) {
+void server_t::reload(ev::sig&, int) {
     m_log->info("reloading the apps");
 
     try {
@@ -134,13 +140,13 @@ void core_t::reload(ev::sig&, int) {
     }
 }
 
-void core_t::request(ev::io&, int) {
+void server_t::request(ev::io&, int) {
     if(m_server.pending() && !m_processor.is_active()) {
         m_processor.start();
     }
 }
 
-void core_t::process(ev::idle&, int) {
+void server_t::process(ev::idle&, int) {
     if(!m_server.pending()) {
         m_processor.stop();
         return;
@@ -208,11 +214,11 @@ void core_t::process(ev::idle&, int) {
     m_server.send(message, ZMQ_NOBLOCK);
 }
 
-void core_t::pump(ev::timer&, int) {
+void server_t::pump(ev::timer&, int) {
     request(m_watcher, ev::READ);
 }
 
-Json::Value core_t::dispatch(const Json::Value& root) {
+Json::Value server_t::dispatch(const Json::Value& root) {
     std::string action(root["action"].asString());
 
     if(action == "create" || action == "delete") {
@@ -250,7 +256,7 @@ Json::Value core_t::dispatch(const Json::Value& root) {
 // Commands
 // --------
 
-Json::Value core_t::create_engine(const std::string& name) {
+Json::Value server_t::create_engine(const std::string& name) {
     if(m_engines.find(name) != m_engines.end()) {
         throw configuration_error_t("the specified app already exists");
     }
@@ -272,7 +278,7 @@ Json::Value core_t::create_engine(const std::string& name) {
     return result;
 }
 
-Json::Value core_t::delete_engine(const std::string& name) {
+Json::Value server_t::delete_engine(const std::string& name) {
     engine_map_t::iterator engine(m_engines.find(name));
 
     if(engine == m_engines.end()) {
@@ -288,7 +294,7 @@ Json::Value core_t::delete_engine(const std::string& name) {
     return result;
 }
 
-Json::Value core_t::info() {
+Json::Value server_t::info() {
     Json::Value result(Json::objectValue);
 
     result["route"] = m_server.route();
@@ -310,7 +316,7 @@ Json::Value core_t::info() {
     return result;
 }
 
-void core_t::announce(ev::timer&, int) {
+void server_t::announce(ev::timer&, int) {
     m_log->debug("announcing the node");
 
     zmq::message_t message(m_server.endpoint().size());
@@ -325,7 +331,7 @@ void core_t::announce(ev::timer&, int) {
     m_announces->send(message);
 }
 
-void core_t::recover() {
+void server_t::recover() {
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
     Json::Value root(m_storage->all("apps"));
     Json::Value::Members apps(root.getMemberNames());

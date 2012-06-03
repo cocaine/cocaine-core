@@ -40,7 +40,8 @@ class logger_t:
     public birth_control_t<logger_t>
 {
     public:
-        logger_t(sink_t& sink, const std::string& name);
+        logger_t(sink_t& sink,
+                 const std::string& name);
         
         void debug(const char * format, ...) const;
         void info(const char * format, ...) const;
@@ -96,7 +97,8 @@ class void_sink_t:
     public:
         void_sink_t();
 
-        virtual void emit(priorities, const std::string&) const;
+        virtual void emit(priorities, 
+                          const std::string&) const;
 };
 
 }}

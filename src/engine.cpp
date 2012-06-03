@@ -16,9 +16,11 @@
 
 #include "cocaine/engine.hpp"
 
+#include "cocaine/app.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/drivers.hpp"
 #include "cocaine/job.hpp"
+#include "cocaine/logging.hpp"
 #include "cocaine/rpc.hpp"
 
 using namespace cocaine::engine;
@@ -28,7 +30,7 @@ using namespace cocaine::networking;
 // ---------
 
 void job_queue_t::push(const_reference job) {
-    if(job->policy().urgent) {
+    if(job->policy.urgent) {
         push_front(job);
         job->process_event(events::enqueue(1));
     } else {
@@ -43,7 +45,6 @@ void job_queue_t::push(const_reference job) {
 engine_t::engine_t(context_t& context, ev::loop_ref& loop, const std::string& name):
     m_context(context),
     m_running(false),
-    m_app(context, name),
     m_loop(loop),
     m_watcher(m_loop),
     m_processor(m_loop),
@@ -54,8 +55,10 @@ engine_t::engine_t(context_t& context, ev::loop_ref& loop, const std::string& na
     , m_cgroup(NULL)
 #endif
 {
+    m_app.reset(new app_t(context, name));
+
 #ifdef HAVE_CGROUPS
-    Json::Value limits(m_app.manifest["engine"]["resource-limits"]);
+    Json::Value limits(app->limits());
 
     if(!(cgroup_init() == 0) || !limits.isObject() || limits.empty()) {
         return;
@@ -100,7 +103,7 @@ engine_t::engine_t(context_t& context, ev::loop_ref& loop, const std::string& na
                     cgroup_add_value_bool(ctl, p->c_str(), cfg[*p].asBool());
                     break;
                 } default: {
-                    m_app.log->error(
+                    m_app->log->error(
                         "controller '%s' parameter '%s' type is not supported",
                         c->c_str(),
                         p->c_str()
@@ -110,7 +113,7 @@ engine_t::engine_t(context_t& context, ev::loop_ref& loop, const std::string& na
                 }
             }
             
-            m_app.log->debug(
+            m_app->log->debug(
                 "setting controller '%s' parameter '%s' to %s", 
                 c->c_str(),
                 p->c_str(),
@@ -122,7 +125,7 @@ engine_t::engine_t(context_t& context, ev::loop_ref& loop, const std::string& na
     int rv = 0;
 
     if((rv = cgroup_create_cgroup(m_cgroup, false)) != 0) {
-        m_app.log->error(
+        m_app->log->error(
             "unable to create the control group - %s", 
             cgroup_strerror(rv)
         );
@@ -145,7 +148,7 @@ engine_t::~engine_t() {
         // XXX: Sometimes there're still slaves terminating at this point,
         // so control group deletion fails with "Device or resource busy".
         if((rv = cgroup_delete_cgroup(m_cgroup, false)) != 0) {
-            m_app.log->error(
+            m_app->log->error(
                 "unable to delete the control group - %s", 
                 cgroup_strerror(rv)
             );
@@ -162,14 +165,14 @@ engine_t::~engine_t() {
 void engine_t::start() {
     BOOST_ASSERT(!m_running);
 
-    m_app.log->info("starting the engine"); 
+    m_app->log->info("starting the engine"); 
 
     int linger = 0;
 
     m_bus.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
 
     try {
-        m_bus.bind(endpoint(m_app.name));
+        m_bus.bind(endpoint(m_app->name()));
     } catch(const zmq::error_t& e) {
         throw configuration_error_t(std::string("invalid rpc endpoint - ") + e.what());
     }
@@ -237,7 +240,7 @@ namespace {
 void engine_t::stop() {
     BOOST_ASSERT(m_running);
     
-    m_app.log->info("stopping the engine"); 
+    m_app->log->info("stopping the engine"); 
 
     {
         boost::lock_guard<boost::mutex> lock(m_queue_mutex);
@@ -246,7 +249,7 @@ void engine_t::stop() {
 
         // Abort all the outstanding jobs.
         if(!m_queue.empty()) {
-            m_app.log->debug(
+            m_app->log->debug(
                 "dropping %zu queued %s",
                 m_queue.size(),
                 m_queue.size() == 1 ? "job" : "jobs"
@@ -317,9 +320,9 @@ void engine_t::enqueue(job_queue_t::const_reference job) {
     boost::lock_guard<boost::mutex> lock(m_queue_mutex);
     
     if(!m_running) {
-        m_app.log->debug(
+        m_app->log->debug(
             "dropping a '%s' job",
-            job->event().c_str()
+            job->event.c_str()
         );
 
         job->process_event(
@@ -332,7 +335,7 @@ void engine_t::enqueue(job_queue_t::const_reference job) {
         return;
     }
 
-    if(m_queue.size() >= m_app.policy.queue_limit) {
+    if(m_queue.size() >= m_app->policy.queue_limit) {
         job->process_event(
             events::error(
                 dealer::resource_error,
@@ -362,9 +365,9 @@ void engine_t::process_queue() {
         events::invoke event(job);
 
         rpc::packed<rpc::invoke> packed(
-            job->event(),
-            job->request().data(),
-            job->request().size()
+            job->event,
+            job->request.data(),
+            job->request.size()
         );
 
         pool_map_t::iterator it(
@@ -381,17 +384,17 @@ void engine_t::process_queue() {
             m_queue.pop_front();
         } else {
             if(m_pool.empty() || 
-              (m_pool.size() < m_app.policy.pool_limit && 
-               m_pool.size() * m_app.policy.grow_threshold < m_queue.size() * 2))
+              (m_pool.size() < m_app->policy.pool_limit && 
+               m_pool.size() * m_app->policy.grow_threshold < m_queue.size() * 2))
             {
                 std::auto_ptr<slave_t> slave;
                 
                 try {
-                    slave.reset(new slave_t(*this));
+                    slave.reset(new slave_t(m_context, *this));
                     std::string slave_id(slave->id());
                     m_pool.insert(slave_id, slave);
                 } catch(const system_error_t& e) {
-                    m_app.log->error(
+                    m_app->log->error(
                         "unable to spawn more slaves - %s - %s",
                         e.what(),
                         e.reason()
@@ -414,7 +417,7 @@ void engine_t::message(ev::io&, int) {
 }
 
 void engine_t::process(ev::idle&, int) {
-    int counter = context().config.defaults.io_bulk_size;
+    int counter = defaults::io_bulk_size;
     
     do {
         if(!m_bus.pending()) {
@@ -431,7 +434,7 @@ void engine_t::process(ev::idle&, int) {
         pool_map_t::iterator slave(m_pool.find(slave_id));
 
         if(slave == m_pool.end()) {
-            m_app.log->warning(
+            m_app->log->warning(
                 "engine dropping type %d event from a nonexistent slave %s", 
                 command,
                 slave_id.c_str()
@@ -471,7 +474,7 @@ void engine_t::process(ev::idle&, int) {
                 slave->second->process_event(events::error(code, message));
 
                 if(code == dealer::server_error) {
-                    m_app.log->error("the app seems to be broken: %s", message.c_str());
+                    m_app->log->error("the app seems to be broken: %s", message.c_str());
                     stop();
                 }
 
@@ -483,7 +486,7 @@ void engine_t::process(ev::idle&, int) {
                 break;
 
             default:
-                m_app.log->warning("engine dropping unknown event type %d", command);
+                m_app->log->warning("engine dropping unknown event type %d", command);
                 m_bus.drop();
         }
 
@@ -512,7 +515,7 @@ namespace {
 
         template<class T>
         bool operator()(const T& job) {
-            return job->policy().deadline && job->policy().deadline <= now;
+            return job->policy.deadline && job->policy.deadline <= now;
         }
 
         ev::tstamp now;
@@ -537,7 +540,7 @@ void engine_t::cleanup(ev::timer&, int) {
             m_pool.erase(*it);
         }
 
-        m_app.log->debug(
+        m_app->log->debug(
             "recycled %zu dead %s", 
             corpses.size(),
             corpses.size() == 1 ? "slave" : "slaves"

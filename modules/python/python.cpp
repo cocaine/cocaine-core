@@ -12,6 +12,7 @@
 //
 
 #include <boost/filesystem/fstream.hpp>
+#include <boost/filesystem/operations.hpp>
 #include <boost/format.hpp>
 #include <sstream>
 
@@ -20,10 +21,8 @@
 
 #include "cocaine/app.hpp"
 #include "cocaine/logging.hpp"
-#include "cocaine/registry.hpp"
 
 using namespace cocaine;
-using namespace cocaine::core;
 using namespace cocaine::engine;
 
 static PyMethodDef context_module_methods[] = {
@@ -32,8 +31,8 @@ static PyMethodDef context_module_methods[] = {
     { NULL, NULL, 0, NULL }
 };
 
-python_t::python_t(context_t& context):
-    plugin_t(context),
+python_t::python_t(context_t& context, const app_t& app):
+    plugin_t(context, app),
     m_python_module(NULL),
     m_manifest(NULL),
     m_thread_state(NULL)
@@ -44,20 +43,8 @@ python_t::python_t(context_t& context):
     // Initializing types.
     PyType_Ready(&log_object_type);
     PyType_Ready(&python_io_object_type);
-}
 
-python_t::~python_t() {
-    if(m_thread_state) {
-        PyEval_RestoreThread(m_thread_state); 
-    }
-        
-    Py_Finalize();
-}
-
-void python_t::initialize(const app_t& app) {
-    m_app_log = app.log;
-
-    Json::Value args(app.manifest["args"]);
+    Json::Value args(app.args());
 
     if(!args.isObject()) {
         throw configuration_error_t("malformed manifest");
@@ -74,7 +61,7 @@ void python_t::initialize(const app_t& app) {
         source /= "__init__.py";
     }
 
-    m_app_log->debug("loading the app code from %s", source.string().c_str());
+    m_app.log->debug("loading the app code from %s", source.string().c_str());
     
     boost::filesystem::ifstream input(source);
     
@@ -125,7 +112,7 @@ void python_t::initialize(const app_t& app) {
     // ------------------
 
     m_python_module = Py_InitModule(
-        app.name.c_str(),
+        app.name().c_str(),
         NULL
     );
 
@@ -192,7 +179,17 @@ void python_t::initialize(const app_t& app) {
     m_thread_state = PyEval_SaveThread();
 }
 
-void python_t::invoke(const std::string& method, io_t& io) {
+python_t::~python_t() {
+    if(m_thread_state) {
+        PyEval_RestoreThread(m_thread_state); 
+    }
+        
+    Py_Finalize();
+}
+
+void python_t::invoke(const std::string& method,
+                      io_t& io)
+{
     thread_lock_t thread(m_thread_state);
 
     if(!m_python_module) {
@@ -242,7 +239,7 @@ void python_t::invoke(const std::string& method, io_t& io) {
     } 
    
     if(result != Py_None) {
-        m_app_log->warning(
+        m_app.log->warning(
             "ignoring an unused returned value of method '%s'",
             method.c_str()
         );
@@ -255,10 +252,12 @@ void python_t::invoke(const std::string& method, io_t& io) {
 }
 
 const logging::logger_t& python_t::log() const {
-    return *m_app_log;
+    return *m_app.log;
 }
 
-PyObject* python_t::manifest(PyObject * self, PyObject * args) {
+PyObject* python_t::manifest(PyObject * self,
+                             PyObject * args)
+{
     PyObject * builtins = PyEval_GetBuiltins();
     PyObject * plugin = PyDict_GetItemString(builtins, "__plugin__");
 
@@ -342,7 +341,7 @@ std::string python_t::exception() {
 }
 
 extern "C" {
-    void initialize(registry_t& registry) {
-        registry.insert<python_t, plugin_t>("python");
+    void initialize(repository_t& repository) {
+        repository.insert<python_t, plugin_t>("python");
     }
 }

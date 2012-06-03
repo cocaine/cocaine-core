@@ -15,7 +15,7 @@
 
 using namespace cocaine::storages;
 
-storage_t::storage_t(context_t& context):
+storage_t::storage_t(context_t& context, const std::string& uri):
     m_context(context)
 { }
 

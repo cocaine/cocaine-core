@@ -15,7 +15,6 @@
 
 #include "cocaine/app.hpp"
 #include "cocaine/logging.hpp"
-#include "cocaine/registry.hpp"
 #include "cocaine/rpc.hpp"
 
 #include "cocaine/dealer/types.hpp"
@@ -23,128 +22,35 @@
 using namespace cocaine;
 using namespace cocaine::engine;
 
-overseer_t::overseer_t(const config_t& config):
-    unique_id_t(config.slave.id),
-    m_config(config),
-    m_io(1),
-    m_messages(m_io, ZMQ_DEALER, id())
+overseer_t::overseer_t(context_t& context, slave_config_t config):
+    unique_id_t(config.uuid),
+    m_context(context),
+    m_bus(m_context.io(), ZMQ_DEALER, config.uuid)
 {
-    m_messages.connect(endpoint(config.slave.app));
+    m_bus.connect(endpoint(config.app));
     
     m_watcher.set<overseer_t, &overseer_t::message>(this);
-    m_watcher.start(m_messages.fd(), ev::READ);
+    m_watcher.start(m_bus.fd(), ev::READ);
     m_processor.set<overseer_t, &overseer_t::process>(this);
     m_pumper.set<overseer_t, &overseer_t::pump>(this);
     m_pumper.start(0.005f, 0.005f);
 
     m_heartbeat_timer.set<overseer_t, &overseer_t::heartbeat>(this);
     m_heartbeat_timer.start(0.0f, 5.0f);
+
+    configure(config.app);
 }
 
 overseer_t::~overseer_t() { }
 
-void overseer_t::run() {
-    m_loop.loop();
-}
-
-blob_t overseer_t::recv(int timeout) {
-    zmq::message_t message;
-
-    networking::scoped_option<
-        networking::options::receive_timeout
-    > option(m_messages, timeout);
-
-    m_messages.recv(&message);
-    
-    return blob_t(message.data(), message.size());
-}
-
-void overseer_t::message(ev::io&, int) {
-    if(m_messages.pending() && !m_processor.is_active()) {
-        m_processor.start();
-    }
-}
-
-void overseer_t::process(ev::idle&, int) {
-    if(!m_messages.pending()) {
-        m_processor.stop();
-        return;
-    }
-    
-    int command = 0;
-
-    m_messages.recv(command);
-
-    switch(command) {
-        case rpc::configure:
-            // TEST: No slave reconfiguration is allowed, yet.
-            BOOST_ASSERT(m_plugin.get() == NULL);
-            
-            m_messages.recv(m_config);
-            configure();
-            
-            break;
-
-        case rpc::invoke: {
-            // TEST: Ensure that we have the application first.
-            BOOST_ASSERT(m_plugin.get() != NULL);
-
-            std::string method;
-
-            m_messages.recv(method);
-            invoke(method);
-            
-            break;
-        }
-        
-        case rpc::terminate:
-            terminate();
-            break;
-
-        default:
-            if(m_app.get() != 0) {
-                m_app->log->warning(
-                    "slave %s dropping unknown event type %d", 
-                    id().c_str(),
-                    command
-                );
-            }
-            
-            m_messages.drop();
-    }
-
-    // TEST: Ensure that we haven't missed something.
-    BOOST_ASSERT(!m_messages.more());
-}
-
-void overseer_t::pump(ev::timer&, int) {
-    message(m_watcher, ev::READ);
-}
-
-void overseer_t::timeout(ev::timer&, int) {
-    rpc::packed<rpc::terminate> packed;
-    send(packed);
-    terminate();
-}
-
-void overseer_t::heartbeat(ev::timer&, int) {
-    rpc::packed<rpc::heartbeat> packed;
-    send(packed);
-}
-
-void overseer_t::configure() {
+void overseer_t::configure(const std::string& app) {
     try {
-        m_context.reset(new context_t(m_config));
-        m_app.reset(new app_t(*m_context, m_config.slave.app));
-
-        std::string type(m_app->manifest["type"].asString());
-
-        if(!type.empty()) {
-            m_plugin = m_context->get<plugin_t>(type);
-            m_plugin->initialize(*m_app);
-        } else {
-            throw configuration_error_t("no app type has been specified");
-        }
+        m_app.reset(new app_t(m_context, app));
+        
+        m_plugin = m_context.get<plugin_t>(
+            m_app->type(),
+            category_traits<plugin_t>::args_type(*m_app)
+        );
         
         m_suicide_timer.set<overseer_t, &overseer_t::timeout>(this);
         m_suicide_timer.start(m_app->policy.suicide_timeout);
@@ -171,6 +77,86 @@ void overseer_t::configure() {
     }
 }
 
+void overseer_t::run() {
+    m_loop.loop();
+}
+
+blob_t overseer_t::recv(int timeout) {
+    zmq::message_t message;
+
+    networking::scoped_option<
+        networking::options::receive_timeout
+    > option(m_bus, timeout);
+
+    m_bus.recv(&message);
+    
+    return blob_t(message.data(), message.size());
+}
+
+void overseer_t::message(ev::io&, int) {
+    if(m_bus.pending() && !m_processor.is_active()) {
+        m_processor.start();
+    }
+}
+
+void overseer_t::process(ev::idle&, int) {
+    if(!m_bus.pending()) {
+        m_processor.stop();
+        return;
+    }
+    
+    int command = 0;
+
+    m_bus.recv(command);
+
+    switch(command) {
+        case rpc::invoke: {
+            // TEST: Ensure that we have the application first.
+            BOOST_ASSERT(m_plugin.get() != NULL);
+
+            std::string method;
+
+            m_bus.recv(method);
+            invoke(method);
+            
+            break;
+        }
+        
+        case rpc::terminate:
+            terminate();
+            break;
+
+        default:
+            if(m_app.get() != 0) {
+                m_app->log->warning(
+                    "slave %s dropping unknown event type %d", 
+                    id().c_str(),
+                    command
+                );
+            }
+            
+            m_bus.drop();
+    }
+
+    // TEST: Ensure that we haven't missed something.
+    BOOST_ASSERT(!m_bus.more());
+}
+
+void overseer_t::pump(ev::timer&, int) {
+    message(m_watcher, ev::READ);
+}
+
+void overseer_t::timeout(ev::timer&, int) {
+    rpc::packed<rpc::terminate> packed;
+    send(packed);
+    terminate();
+}
+
+void overseer_t::heartbeat(ev::timer&, int) {
+    rpc::packed<rpc::heartbeat> packed;
+    send(packed);
+}
+
 void overseer_t::invoke(const std::string& method) {
     try {
         io_t io(*this);
@@ -195,7 +181,7 @@ void overseer_t::invoke(const std::string& method) {
     
     // NOTE: Drop all the outstanding request chunks not pulled
     // in by the user code. Might have a warning here?
-    m_messages.drop();
+    m_bus.drop();
 
     m_suicide_timer.stop();
     m_suicide_timer.start(m_app->policy.suicide_timeout);

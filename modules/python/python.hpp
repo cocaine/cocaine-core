@@ -88,16 +88,20 @@ class python_t:
     public plugin_t
 {
     public:
-        python_t(context_t& context);
+        python_t(context_t& context,
+                 const app_t& app);
+        
         virtual ~python_t();
         
-        virtual void initialize(const engine::app_t& app);
-        virtual void invoke(const std::string& method, io_t& io);
+        virtual void invoke(const std::string& method,
+                            io_t& io);
 
         const logging::logger_t& log() const;
 
     public:
-        static PyObject* manifest(PyObject * self, PyObject * args);
+        static PyObject* manifest(PyObject * self,
+                                  PyObject * args);
+        
         static PyObject* wrap(const Json::Value& value);
         
         static std::string exception();
@@ -106,8 +110,6 @@ class python_t:
         PyObject * m_python_module;
         tracked_object_t m_manifest;
         PyThreadState * m_thread_state;
-
-        boost::shared_ptr<logging::logger_t> m_app_log;
 };
 
 }}

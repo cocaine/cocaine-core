@@ -16,30 +16,30 @@
 using namespace cocaine::engine;
 using namespace cocaine::engine::job;
 
-job_t::job_t(const std::string& event):
-    m_event(event)
+job_t::job_t(const std::string& event_):
+    event(event_)
 {
     initiate();
 }
 
-job_t::job_t(const std::string& event, const blob_t& request):
-    m_event(event),
-    m_request(request)
+job_t::job_t(const std::string& event_, const blob_t& request_):
+    event(event_),
+    request(request_)
 {
     initiate();
 }
 
-job_t::job_t(const std::string& event, dealer::policy_t policy):
-    m_event(event),
-    m_policy(policy)
+job_t::job_t(const std::string& event_, dealer::policy_t policy_):
+    event(event_),
+    policy(policy_)
 {
     initiate();
 }
 
-job_t::job_t(const std::string& event, const blob_t& request, dealer::policy_t policy):
-    m_event(event),
-    m_request(request),
-    m_policy(policy)
+job_t::job_t(const std::string& event_, const blob_t& request_, dealer::policy_t policy_):
+    event(event_),
+    request(request_),
+    policy(policy_)
 {
     initiate();
 }

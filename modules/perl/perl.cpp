@@ -12,6 +12,7 @@
 //
 
 #include <boost/filesystem/fstream.hpp>
+#include <boost/filesystem/operations.hpp>
 #include <sstream>
 
 #include <EXTERN.h>
@@ -19,7 +20,6 @@
 
 #include "cocaine/app.hpp"
 #include "cocaine/logging.hpp"
-#include "cocaine/registry.hpp"
 
 #include "cocaine/interfaces/plugin.hpp"
 
@@ -38,8 +38,7 @@ namespace engine {
 
 class perl_t: public plugin_t {
 public:
-    perl_t(context_t& context) : plugin_t(context) {
-
+    perl_t(context_t& context, const app_t& app) : plugin_t(context, app) {
         int argc = 0;
         char** argv = NULL;
         char** env = NULL;
@@ -47,18 +46,8 @@ public:
 
         my_perl = perl_alloc();
         perl_construct(my_perl);
-    }
 
-    ~perl_t() {
-        perl_destruct(my_perl);
-        perl_free(my_perl);
-        PERL_SYS_TERM();
-    }
-
-    virtual void initialize(const app_t& app) {
-        m_app_log = app.log;
-
-        Json::Value args(app.manifest["args"]);
+        Json::Value args(app.args());
 
         if(!args.isObject()) {
             throw configuration_error_t("malformed manifest");
@@ -90,12 +79,18 @@ public:
         const char* embedding[] = {"", (char*)source.string().c_str(), "-I", (char*)source_dir.c_str()};
         perl_parse(my_perl, xs_init, 4, (char**)embedding, NULL);
         PL_exit_flags |= PERL_EXIT_DESTRUCT_END;
-        m_app_log->info("%s", "running interpreter...");
+        m_app.log->info("%s", "running interpreter...");
         perl_run(my_perl);
     }
         
+    ~perl_t() {
+        perl_destruct(my_perl);
+        perl_free(my_perl);
+        PERL_SYS_TERM();
+    }
+
     virtual void invoke(const std::string& method, io_t& io) {
-        m_app_log->info("%s", (std::string("invoking method ") + method + "...").c_str());
+        m_app.log->info("%s", (std::string("invoking method ") + method + "...").c_str());
         std::string input;
         
         // Try to pull in the request w/o blocking.
@@ -166,15 +161,11 @@ public:
 
 private:
     PerlInterpreter* my_perl;
-    boost::shared_ptr<logging::logger_t> m_app_log;
 };
 
 extern "C" {
-    void initialize(core::registry_t& registry) {
-        registry.insert<perl_t, plugin_t>("perl");
-    }
-
-    __attribute__((destructor)) void finalize() {
+    void initialize(repository_t& repository) {
+        repository.insert<perl_t, plugin_t>("perl");
     }
 }
 

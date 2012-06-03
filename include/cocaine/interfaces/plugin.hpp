@@ -15,7 +15,7 @@
 #define COCAINE_APP_PLUGIN_INTERFACE_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/registry.hpp"
+#include "cocaine/repository.hpp"
 
 #include "cocaine/helpers/blob.hpp"
 
@@ -34,7 +34,8 @@ class io_t {
         blob_t read(int timeout);
 
         // Pushes a response chunk to the engine.
-        void write(const void * data, size_t size);
+        void write(const void * data,
+                   size_t size);
 
     private:
         overseer_t& m_overseer;
@@ -45,21 +46,38 @@ class io_t {
 
 class plugin_t {
     public:
-        typedef core::policies::none policy;
-
-    public:
         virtual ~plugin_t() = 0;
-
-        virtual void initialize(const app_t& app) = 0;
-        virtual void invoke(const std::string& method, io_t& io) = 0;
+        
+        virtual void invoke(const std::string& method,
+                            io_t& io) = 0;
 
     protected:
-        plugin_t(context_t& context);
+        plugin_t(context_t& context,
+                 const app_t& app);
 
     protected:
         context_t& m_context;
+        const app_t& m_app;
 };
 
-}}
+}
+
+template<> struct category_traits<engine::plugin_t> {
+    typedef std::auto_ptr<engine::plugin_t> ptr_type;
+    typedef boost::tuple<const engine::app_t&> args_type;
+
+    template<class T>
+    struct factory_type:
+        public category_model<engine::plugin_t>
+    {
+        virtual ptr_type get(context_t& context,
+                             const args_type& args)
+        {
+            return ptr_type(new T(context, boost::get<0>(args)));
+        }
+    };
+};
+
+}
 
 #endif

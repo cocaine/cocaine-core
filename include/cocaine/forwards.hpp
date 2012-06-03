@@ -17,11 +17,7 @@
 namespace cocaine {
     struct config_t;    
     class context_t;
-
-    namespace core {
-        class core_t;
-        class registry_t;
-    }
+    class repository_t;
 
     namespace crypto {
         class auth_t;
@@ -30,7 +26,7 @@ namespace cocaine {
     namespace engine {
         class app_t;
         class engine_t;
-        class job_t;
+        struct job_t;
         class slave_t;
 
         namespace drivers {        

@@ -16,71 +16,49 @@
 
 #include <boost/thread/mutex.hpp>
 #include <deque>
-#include <msgpack.hpp>
 
 #include "cocaine/common.hpp"
+#include "cocaine/repository.hpp"
 
-#include "cocaine/registry.hpp"
+#include "cocaine/interfaces/storage.hpp"
 
 namespace cocaine {
 
+struct defaults {
+    // Default engine policy.
+    static const float heartbeat_timeout;
+    static const float suicide_timeout;
+    static const unsigned int pool_limit;
+    static const unsigned int queue_limit;
+
+    // I/O bulk size.
+    static const unsigned int io_bulk_size;
+};
+
 struct config_t {
-    config_t();
+    config_t(const std::string& config_path);
 
-    struct {
-        // Administration socket endpoint.
-        std::vector<std::string> endpoints;
-        
-        // Automatic discovery.
-        std::string announce_endpoint;
-        float announce_interval;
-    } core;
+    std::string config_path,
+                module_path;
 
-    struct {
-        std::string id;
-        std::string app;
-    } slave;
-
-    struct engine_config_t {
-        // Default engine policy.
-        float heartbeat_timeout;
-        float suicide_timeout;
-        unsigned int pool_limit;
-        unsigned int queue_limit;
-
-        // I/O bulk size
-        unsigned int io_bulk_size;
-
-        MSGPACK_DEFINE(heartbeat_timeout, suicide_timeout, pool_limit, queue_limit);
-    } defaults;
-
-    struct registry_config_t {
-        // Module path.
-        std::string modules;
-        
-        MSGPACK_DEFINE(modules);
-    } registry;
-
-    struct storage_config_t {
-        // Storage type and path.
-        std::string driver;
+    typedef struct {
+        std::string type;
         std::string uri;
+    } storage_info_t;
 
-        MSGPACK_DEFINE(driver, uri);
-    } storage;
-    
-    struct {
+    typedef std::map<
+        std::string,
+        storage_info_t
+    > storage_info_map_t;
+
+    storage_info_map_t storages;
+
+    typedef struct {
         std::string self;
         std::string hostname;
+    } runtime_info_t;
 
-        // Usable port range
-        std::deque<uint16_t> ports;
-    } runtime;
-
-    // Logging sink.
-    boost::shared_ptr<logging::sink_t> sink;
-    
-    MSGPACK_DEFINE(defaults, registry, storage);
+    runtime_info_t runtime;
 };
 
 class context_t:
@@ -90,19 +68,39 @@ class context_t:
         context_t(config_t config);
         ~context_t();
 
+        // Registry API
+        // ------------
+
         template<class Category>
-        typename core::category_traits<Category>::ptr_type
-        get(const std::string& type) {
-            return m_registry->get<Category>(type);
+        typename category_traits<Category>::ptr_type
+        get(const std::string& type,
+            const typename category_traits<Category>::args_type& args)
+        {
+            return m_repository->get<Category>(type, args);
         }
+
+        // Interconnect
+        // ------------
 
         zmq::context_t& io();
         
-        // Returns a possibly cached logger with the specified name.
-        boost::shared_ptr<logging::logger_t> log(const std::string& type);
+        // Storage
+        // -------
+
+        category_traits<storages::storage_t>::ptr_type
+        storage(const std::string& name);
+
+        // Logging
+        // -------
+
+        boost::shared_ptr<logging::logger_t>
+        log(const std::string& name);
 
     public:
-        config_t config;
+        const config_t config;
+
+        // Logging sink.
+        boost::shared_ptr<logging::sink_t> sink;
 
     private:
         // Initialization interlocking.
@@ -110,7 +108,7 @@ class context_t:
 
         // Core subsystems.
         std::auto_ptr<zmq::context_t> m_io;
-        std::auto_ptr<core::registry_t> m_registry;
+        std::auto_ptr<repository_t> m_repository;
 };
 
 }

@@ -19,8 +19,8 @@
 
 namespace cocaine { namespace helpers {
 
-class none { };
-class hash;
+struct none;
+struct hash;
 
 template<class IntegrityPolicy>
 class blob_t {

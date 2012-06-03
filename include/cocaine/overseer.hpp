@@ -15,7 +15,6 @@
 #define COCAINE_SLAVE_HPP
 
 #include "cocaine/common.hpp"
-
 #include "cocaine/context.hpp"
 #include "cocaine/networking.hpp"
 
@@ -26,21 +25,29 @@
 
 namespace cocaine { namespace engine {
 
+struct slave_config_t {
+    std::string app;
+    std::string uuid;
+};
+
 class overseer_t:
     public boost::noncopyable,
     public unique_id_t
 {
     public:
-        overseer_t(const config_t& config);
+        overseer_t(context_t& context,
+                   slave_config_t config);
+
         ~overseer_t();
 
+        void configure(const std::string& app);
         void run();
 
         blob_t recv(int timeout);
 
         template<class Packed>
         void send(Packed& packed) {
-            m_messages.send_multi(packed);
+            m_bus.send_multi(packed);
         }
 
     private:
@@ -51,17 +58,14 @@ class overseer_t:
         void heartbeat(ev::timer&, int);
 
         // Dispatching.
-        void configure();
         void invoke(const std::string& method);
         void terminate();
 
     private:
-        config_t m_config;
-        
         // Runtime application context.
-        // XXX: Initialize it in a better way.
-        std::auto_ptr<context_t> m_context;
-        std::auto_ptr<const app_t> m_app;
+        context_t& m_context;
+        
+        std::auto_ptr<app_t> m_app;
         std::auto_ptr<plugin_t> m_plugin;
 
         // Event loop.
@@ -74,11 +78,11 @@ class overseer_t:
         // reason doesn't trigger the socket's fd on message arrival (or I poll it in a wrong way).
         ev::timer m_pumper;
 
-        ev::timer m_heartbeat_timer, m_suicide_timer;
+        ev::timer m_heartbeat_timer,
+                  m_suicide_timer;
         
         // Engine RPC.
-        zmq::context_t m_io;
-        networking::channel_t m_messages;
+        networking::channel_t m_bus;
 };
 
 }}

@@ -48,47 +48,31 @@ struct complete;
 // Job FSM
 // -------
 
-class job_t:
+struct job_t:
     public sc::state_machine<job_t, job::incomplete>,
     public birth_control_t<job_t>
 {
-    friend struct job::incomplete;
-    friend struct job::waiting;
-    friend struct job::processing;
+    job_t(const std::string& event);
 
-    public:
-        job_t(const std::string& event);
-        job_t(const std::string& event, const blob_t& request);
-        job_t(const std::string& event, dealer::policy_t policy);
-        
-        job_t(const std::string& event,
-              const blob_t& request,
-              dealer::policy_t policy); 
+    job_t(const std::string& event,
+          const blob_t& request);
 
-        virtual ~job_t();
+    job_t(const std::string& event,
+          dealer::policy_t policy);
+    
+    job_t(const std::string& event,
+          const blob_t& request,
+          dealer::policy_t policy); 
 
-    protected:
-        virtual void react(const events::chunk& event);
-        virtual void react(const events::error& event);
-        virtual void react(const events::choke& event);
+    virtual ~job_t();
 
-    public:
-        const std::string& event() const {
-            return m_event;
-        }
-        
-        const blob_t& request() const {
-            return m_request;
-        }
+    virtual void react(const events::chunk& event);
+    virtual void react(const events::error& event);
+    virtual void react(const events::choke& event);
 
-        const dealer::policy_t& policy() const {
-            return m_policy;
-        }
-
-    private:
-        const std::string m_event;
-        const dealer::policy_t m_policy;
-        const blob_t m_request;
+    const std::string event;
+    const dealer::policy_t policy;
+    const blob_t request;
 };
 
 namespace job {

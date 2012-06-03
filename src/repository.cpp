@@ -14,12 +14,12 @@
 #include <boost/filesystem.hpp>
 #include <boost/iterator/filter_iterator.hpp>
 
-#include "cocaine/registry.hpp"
+#include "cocaine/repository.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
-using namespace cocaine::core;
+using namespace cocaine;
 
 namespace fs = boost::filesystem;
 
@@ -31,7 +31,7 @@ struct is_module {
     }
 };
 
-registry_t::registry_t(context_t& context):
+repository_t::repository_t(context_t& context):
     m_context(context),
     m_log(context.log("registry"))
 {
@@ -39,7 +39,7 @@ registry_t::registry_t(context_t& context):
         throw registry_error_t("unable to initialize the module loader");
     }
 
-    fs::path path(m_context.config.registry.modules);
+    fs::path path(m_context.config.module_path);
 
     if(!fs::exists(path)) {
         throw configuration_error_t("module path '" + path.string() + "' does not exist");
@@ -53,7 +53,7 @@ registry_t::registry_t(context_t& context):
 
     lt_dlhandle module;
 
-    typedef void (*initialize_fn_t)(registry_t& registry);
+    typedef void (*initialize_fn_t)(repository_t& registry);
     initialize_fn_t initialize = NULL;
 
     typedef boost::filter_iterator<is_module, fs::directory_iterator> module_iterator_t;
@@ -116,7 +116,7 @@ namespace {
     };
 }
 
-registry_t::~registry_t() {
+repository_t::~repository_t() {
     std::for_each(m_modules.begin(), m_modules.end(), dispose());
     lt_dlexit();
 }

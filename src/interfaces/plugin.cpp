@@ -32,8 +32,9 @@ void io_t::write(const void * data, size_t size) {
     m_overseer.send(packed);
 }
 
-plugin_t::plugin_t(context_t& context):
-    m_context(context)
+plugin_t::plugin_t(context_t& context, const app_t& app):
+    m_context(context),
+    m_app(app)
 { }
 
 plugin_t::~plugin_t() { }

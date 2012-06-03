@@ -24,17 +24,24 @@ class mongo_storage_t:
     public storage_t
 {
     public:
-        mongo_storage_t(context_t& context);
+        mongo_storage_t(context_t& context,
+                        const std::string& uri);
 
         virtual void put(const std::string& ns,
                          const std::string& key,
                          const Json::Value& value);
 
-        virtual bool exists(const std::string& ns, const std::string& key);
-        virtual Json::Value get(const std::string& ns, const std::string& key);
+        virtual bool exists(const std::string& ns,
+                            const std::string& key);
+
+        virtual Json::Value get(const std::string& ns,
+                                const std::string& key);
+
         virtual Json::Value all(const std::string& ns);
 
-        virtual void remove(const std::string& ns, const std::string& key);
+        virtual void remove(const std::string& ns,
+                            const std::string& key);
+        
         virtual void purge(const std::string& ns);
 
     private:
