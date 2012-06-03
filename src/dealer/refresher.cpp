@@ -28,6 +28,7 @@ refresher::refresher(boost::function<void()> f, boost::uint32_t timeout) :
 
 refresher::~refresher() {
 	stopping_ = true;
+	cond_var_.notify_one();
 	refreshing_thread_.join();
 }
 
@@ -40,14 +41,10 @@ refresher::refreshing_thread() {
 	while (!stopping_) {
 		boost::mutex::scoped_lock lock(mutex_);
 		
-		for (int i = 0; i < 100; ++i) {
-			boost::this_thread::sleep(boost::posix_time::milliseconds(timeout_ / 100));
+		unsigned long long millisecs = static_cast<unsigned long long>(timeout_ * 1000);
+		boost::system_time t = boost::get_system_time() + boost::posix_time::milliseconds(millisecs);
+		cond_var_.timed_wait(lock, t);
 
-			if (stopping_) {
-				break;
-			}
-		}
-		
 		if (!stopping_ && f_) {
 			f_();
 		}
