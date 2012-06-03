@@ -112,15 +112,23 @@ void slave_t::spawn() {
         );
 
         if(rv != 0) {
-            char buffer[1024],
-                 *message;
+            char buffer[1024];
 
+#ifdef _GNU_SOURCE
+            char * message;
             message = ::strerror_r(errno, buffer, 1024);
+#else
+            ::strerror_r(errno, buffer, 1024);
+#endif
 
             m_engine.app().log->error(
                 "unable to start slave %s - %s",
                 id().c_str(),
+#ifdef _GNU_SOURCE
                 message
+#else
+                buffer
+#endif
             );
 
             std::exit(EXIT_FAILURE);

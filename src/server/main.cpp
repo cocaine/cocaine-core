@@ -116,21 +116,15 @@ int main(int argc, char * argv[]) {
     // Startup
     // -------
 
-    boost::shared_ptr<logging::sink_t> sink(
-        new logging::syslog_t(
+    context_t context(
+        vm["configuration"].as<std::string>(),
+        boost::make_shared<logging::syslog_t>(
             vm.count("verbose") ? logging::debug : logging::info,
             "cocaine"
         )
     );
 
-    context_t context(
-        vm["configuration"].as<std::string>(),
-        sink
-    );
-
-    boost::shared_ptr<logging::logger_t> log(
-        sink->get("main")
-    );
+    boost::shared_ptr<logging::logger_t> log(context.log("main"));
 
     if(vm.count("slave:app") && vm.count("slave:uuid")) {
         std::auto_ptr<engine::overseer_t> slave;
