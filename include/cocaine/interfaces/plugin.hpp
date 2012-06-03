@@ -55,18 +55,18 @@ class plugin_t {
 
     protected:
         plugin_t(context_t& context,
-                 const app_t& app);
+                 const manifest_t& app);
 
     protected:
         context_t& m_context;
-        const app_t& m_app;
+        const manifest_t& m_manifest;
 };
 
 }
 
 template<> struct category_traits<engine::plugin_t> {
     typedef std::auto_ptr<engine::plugin_t> ptr_type;
-    typedef boost::tuple<const engine::app_t&> args_type;
+    typedef boost::tuple<const engine::manifest_t&> args_type;
 
     template<class T>
     struct factory_type:

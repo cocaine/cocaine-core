@@ -106,8 +106,8 @@ class engine_t:
         void process_queue();
 
     public:
-        const app_t& app() const {
-            return *m_app;
+        const manifest_t& manifest() const {
+            return *m_manifest;
         }
 
         ev::loop_ref& loop() {
@@ -180,8 +180,8 @@ class engine_t:
         // XXX: Do it in a better way.
         volatile bool m_running;
 
-        // The application.
-        std::auto_ptr<app_t> m_app;
+        // The application manifest.
+        std::auto_ptr<const manifest_t> m_manifest;
         // driver_map_t m_drivers;
 
         // Job queue.

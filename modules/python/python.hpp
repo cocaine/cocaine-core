@@ -89,7 +89,7 @@ class python_t:
 {
     public:
         python_t(context_t& context,
-                 const app_t& app);
+                 const manifest_t& manifest);
         
         virtual ~python_t();
         
@@ -108,7 +108,8 @@ class python_t:
 
     private:
         PyObject * m_python_module;
-        tracked_object_t m_manifest;
+        tracked_object_t m_python_manifest;
+        
         PyThreadState * m_thread_state;
 };
 

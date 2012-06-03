@@ -18,8 +18,8 @@
 #include <EXTERN.h>
 #include <perl.h>
 
-#include "cocaine/app.hpp"
 #include "cocaine/logging.hpp"
+#include "cocaine/manifest.hpp"
 
 #include "cocaine/interfaces/plugin.hpp"
 
@@ -38,7 +38,7 @@ namespace engine {
 
 class perl_t: public plugin_t {
 public:
-    perl_t(context_t& context, const app_t& app) : plugin_t(context, app) {
+    perl_t(context_t& context, const manifest_t& manifest) : plugin_t(context, manifest) {
         int argc = 0;
         char** argv = NULL;
         char** env = NULL;
@@ -47,7 +47,7 @@ public:
         my_perl = perl_alloc();
         perl_construct(my_perl);
 
-        Json::Value args(app.args());
+        Json::Value args(manifest.root["args"]);
 
         if(!args.isObject()) {
             throw configuration_error_t("malformed manifest");
@@ -79,7 +79,7 @@ public:
         const char* embedding[] = {"", (char*)source.string().c_str(), "-I", (char*)source_dir.c_str()};
         perl_parse(my_perl, xs_init, 4, (char**)embedding, NULL);
         PL_exit_flags |= PERL_EXIT_DESTRUCT_END;
-        m_app.log->info("%s", "running interpreter...");
+        manifest.log->info("%s", "running interpreter...");
         perl_run(my_perl);
     }
         
@@ -90,7 +90,7 @@ public:
     }
 
     virtual void invoke(const std::string& method, io_t& io) {
-        m_app.log->info("%s", (std::string("invoking method ") + method + "...").c_str());
+        m_manifest.log->info("%s", (std::string("invoking method ") + method + "...").c_str());
         std::string input;
         
         // Try to pull in the request w/o blocking.

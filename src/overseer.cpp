@@ -13,8 +13,8 @@
 
 #include "cocaine/overseer.hpp"
 
-#include "cocaine/app.hpp"
 #include "cocaine/logging.hpp"
+#include "cocaine/manifest.hpp"
 #include "cocaine/rpc.hpp"
 
 #include "cocaine/dealer/types.hpp"
@@ -45,15 +45,15 @@ overseer_t::~overseer_t() { }
 
 void overseer_t::configure(const std::string& app) {
     try {
-        m_app.reset(new app_t(m_context, app));
+        m_manifest.reset(new manifest_t(m_context, app));
         
         m_plugin = m_context.get<plugin_t>(
-            m_app->type(),
-            category_traits<plugin_t>::args_type(*m_app)
+            m_manifest->type,
+            category_traits<plugin_t>::args_type(*m_manifest)
         );
         
         m_suicide_timer.set<overseer_t, &overseer_t::timeout>(this);
-        m_suicide_timer.start(m_app->policy.suicide_timeout);
+        m_suicide_timer.start(m_manifest->policy.suicide_timeout);
     } catch(const configuration_error_t& e) {
         rpc::packed<rpc::error> packed(dealer::server_error, e.what());
         send(packed);
@@ -111,7 +111,7 @@ void overseer_t::process(ev::idle&, int) {
 
     switch(command) {
         case rpc::invoke: {
-            // TEST: Ensure that we have the application first.
+            // TEST: Ensure that we have the app first.
             BOOST_ASSERT(m_plugin.get() != NULL);
 
             std::string method;
@@ -127,8 +127,8 @@ void overseer_t::process(ev::idle&, int) {
             break;
 
         default:
-            if(m_app.get() != 0) {
-                m_app->log->warning(
+            if(m_manifest.get() != 0) {
+                m_manifest->log->warning(
                     "slave %s dropping unknown event type %d", 
                     id().c_str(),
                     command
@@ -184,7 +184,7 @@ void overseer_t::invoke(const std::string& method) {
     m_bus.drop();
 
     m_suicide_timer.stop();
-    m_suicide_timer.start(m_app->policy.suicide_timeout);
+    m_suicide_timer.start(m_manifest->policy.suicide_timeout);
 }
 
 void overseer_t::terminate() {

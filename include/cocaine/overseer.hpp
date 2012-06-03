@@ -65,7 +65,7 @@ class overseer_t:
         // Runtime application context.
         context_t& m_context;
         
-        std::auto_ptr<app_t> m_app;
+        std::auto_ptr<const manifest_t> m_manifest;
         std::auto_ptr<plugin_t> m_plugin;
 
         // Event loop.

@@ -14,7 +14,7 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/assign.hpp>
 
-#include "cocaine/app.hpp"
+#include "cocaine/manifest.hpp"
 
 #include "cocaine/context.hpp"
 
@@ -26,46 +26,46 @@ using namespace cocaine::storages;
 // Application
 // -----------
 
-app_t::app_t(context_t& context, const std::string& name):
-    m_name(name),
+manifest_t::manifest_t(context_t& context, const std::string& app):
+    name(app),
     log(context.log(name))
 {
     boost::shared_ptr<storage_t> storage(
         context.storage("core")
     );
 
-    if(!storage->exists("apps", m_name)) {
+    if(!storage->exists("apps", name)) {
         throw configuration_error_t("the specified app is not available");
     }
 
-    // Load the application manifest.
-    m_manifest = storage->get("apps", m_name);
+    // Load the app manifest.
+    root = storage->get("apps", name);
 
     // Setup the app configuration.
-    m_type = m_manifest["type"].asString();
+    type = root["type"].asString();
 
     // Setup the engine policies.
-    policy.heartbeat_timeout = m_manifest["engine"].get(
+    policy.heartbeat_timeout = root["engine"].get(
         "heartbeat-timeout",
         defaults::heartbeat_timeout
     ).asDouble();
 
-    policy.suicide_timeout = m_manifest["engine"].get(
+    policy.suicide_timeout = root["engine"].get(
         "suicide-timeout",
         defaults::suicide_timeout
     ).asDouble();
     
-    policy.pool_limit = m_manifest["engine"].get(
+    policy.pool_limit = root["engine"].get(
         "pool-limit",
         defaults::pool_limit
     ).asUInt();
     
-    policy.queue_limit = m_manifest["engine"].get(
+    policy.queue_limit = root["engine"].get(
         "queue-limit",
         defaults::queue_limit
     ).asUInt();
 
-    policy.grow_threshold = m_manifest["engine"].get(
+    policy.grow_threshold = root["engine"].get(
         "grow-threshold",
         policy.queue_limit / policy.pool_limit
     ).asUInt();

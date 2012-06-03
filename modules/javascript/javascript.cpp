@@ -17,7 +17,7 @@
 
 #include <v8.h>
 
-#include "cocaine/app.hpp"
+#include "cocaine/manifest.hpp"
 
 #include "cocaine/interfaces/plugin.hpp"
 
@@ -29,10 +29,10 @@ class javascript_t:
     public plugin_t
 {
     public:
-        javascript_t(context_t& context, const app_t& app):
-            plugin_t(context, app)
+        javascript_t(context_t& context, const manifest_t& manifest):
+            plugin_t(context, manifest)
         {
-            Json::Value args(app.args());
+            Json::Value args(manifest.root["args"]);
 
             if(!args.isObject()) {
                 throw configuration_error_t("malformed manifest");

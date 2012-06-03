@@ -19,8 +19,8 @@
 #include "python.hpp"
 #include "objects.hpp"
 
-#include "cocaine/app.hpp"
 #include "cocaine/logging.hpp"
+#include "cocaine/manifest.hpp"
 
 using namespace cocaine;
 using namespace cocaine::engine;
@@ -31,10 +31,10 @@ static PyMethodDef context_module_methods[] = {
     { NULL, NULL, 0, NULL }
 };
 
-python_t::python_t(context_t& context, const app_t& app):
-    plugin_t(context, app),
+python_t::python_t(context_t& context, const manifest_t& manifest):
+    plugin_t(context, manifest),
     m_python_module(NULL),
-    m_manifest(NULL),
+    m_python_manifest(NULL),
     m_thread_state(NULL)
 {
     Py_InitializeEx(0);
@@ -44,7 +44,7 @@ python_t::python_t(context_t& context, const app_t& app):
     PyType_Ready(&log_object_type);
     PyType_Ready(&python_io_object_type);
 
-    Json::Value args(app.args());
+    Json::Value args(manifest.root["args"]);
 
     if(!args.isObject()) {
         throw configuration_error_t("malformed manifest");
@@ -61,7 +61,7 @@ python_t::python_t(context_t& context, const app_t& app):
         source /= "__init__.py";
     }
 
-    m_app.log->debug("loading the app code from %s", source.string().c_str());
+    manifest.log->debug("loading the app code from %s", source.string().c_str());
     
     boost::filesystem::ifstream input(source);
     
@@ -74,7 +74,7 @@ python_t::python_t(context_t& context, const app_t& app):
 
     static char key[] = "path";
 
-    // NOTE: Prepend the current application location to the sys.path,
+    // NOTE: Prepend the current app location to the sys.path,
     // so that it could import various local stuff from there.
     PyObject * syspaths = PySys_GetObject(key);
     
@@ -93,7 +93,7 @@ python_t::python_t(context_t& context, const app_t& app):
     // Context access module
     // ---------------------
 
-    m_manifest = wrap(args);
+    m_python_manifest = wrap(args);
 
     PyObject * context_module = Py_InitModule(
         "__context__",
@@ -108,11 +108,11 @@ python_t::python_t(context_t& context, const app_t& app):
         reinterpret_cast<PyObject*>(&log_object_type)
     );
 
-    // Application module
-    // ------------------
+    // App module
+    // ----------
 
     m_python_module = Py_InitModule(
-        app.name().c_str(),
+        manifest.name.c_str(),
         NULL
     );
 
@@ -239,7 +239,7 @@ void python_t::invoke(const std::string& method,
     } 
    
     if(result != Py_None) {
-        m_app.log->warning(
+        m_manifest.log->warning(
             "ignoring an unused returned value of method '%s'",
             method.c_str()
         );
@@ -252,7 +252,7 @@ void python_t::invoke(const std::string& method,
 }
 
 const logging::logger_t& python_t::log() const {
-    return *m_app.log;
+    return *m_manifest.log;
 }
 
 PyObject* python_t::manifest(PyObject * self,
@@ -271,7 +271,7 @@ PyObject* python_t::manifest(PyObject * self,
     }
 
     return PyDictProxy_New(
-        static_cast<python_t*>(PyCObject_AsVoidPtr(plugin))->m_manifest
+        static_cast<python_t*>(PyCObject_AsVoidPtr(plugin))->m_python_manifest
     );
 }
 

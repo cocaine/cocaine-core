@@ -24,10 +24,10 @@ namespace cocaine {
     }
 
     namespace engine {
-        class app_t;
         class engine_t;
         struct job_t;
         class slave_t;
+        struct manifest_t;
 
         namespace drivers {        
             class driver_t;
