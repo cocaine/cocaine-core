@@ -11,7 +11,7 @@
 // limitations under the License.
 //
 
-#include "cocaine/slave.hpp"
+#include "cocaine/slave/slave.hpp"
 
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
@@ -81,7 +81,7 @@ void slave_t::run() {
     m_loop.loop();
 }
 
-blob_t slave_t::recv(int timeout) {
+blob_t slave_t::read(int timeout) {
     zmq::message_t message;
 
     networking::scoped_option<
@@ -91,6 +91,11 @@ blob_t slave_t::recv(int timeout) {
     m_bus.recv(&message);
     
     return blob_t(message.data(), message.size());
+}
+
+void slave_t::write(const void * data, size_t size) {
+    rpc::packed<rpc::chunk> packed(data, size);
+    send(packed);
 }
 
 void slave_t::message(ev::io&, int) {
@@ -159,8 +164,7 @@ void slave_t::heartbeat(ev::timer&, int) {
 
 void slave_t::invoke(const std::string& method) {
     try {
-        io_t io(*this);
-        m_plugin->invoke(method, io);
+        m_plugin->invoke(method, *this);
     } catch(const recoverable_error_t& e) {
         rpc::packed<rpc::error> packed(dealer::app_error, e.what());
         send(packed);

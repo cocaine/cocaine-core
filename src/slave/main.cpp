@@ -19,7 +19,7 @@
 
 #include "cocaine/config.hpp"
 
-#include "cocaine/slave.hpp"
+#include "cocaine/slave/slave.hpp"
 
 #include "cocaine/loggers/syslog.hpp"
 

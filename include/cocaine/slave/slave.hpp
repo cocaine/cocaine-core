@@ -32,7 +32,8 @@ struct slave_config_t {
 
 class slave_t:
     public boost::noncopyable,
-    public unique_id_t
+    public unique_id_t,
+    public io_t
 {
     public:
         slave_t(context_t& context,
@@ -43,12 +44,14 @@ class slave_t:
         void configure(const std::string& app);
         void run();
 
-        blob_t recv(int timeout);
-
         template<class Packed>
         void send(Packed& packed) {
             m_bus.send_multi(packed);
         }
+
+        // I/O object implementation.
+        virtual blob_t read(int timeout);
+        virtual void write(const void * data, size_t size);
 
     private:
         void message(ev::io&, int);

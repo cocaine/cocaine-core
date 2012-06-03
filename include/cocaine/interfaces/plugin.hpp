@@ -23,24 +23,15 @@
 
 namespace cocaine { namespace engine {
 
-class slave_t;
-
 // App plugin I/O
 // --------------
 
 class io_t {
     public:
-        io_t(slave_t& slave);
+        virtual blob_t read(int timeout) = 0;
 
-        // Pulls in the next request chunk from the engine.
-        blob_t read(int timeout);
-
-        // Pushes a response chunk to the engine.
-        void write(const void * data,
-                   size_t size);
-
-    private:
-        slave_t& m_slave;
+        virtual void write(const void * data,
+                           size_t size) = 0;
 };
 
 // App plugin interface
