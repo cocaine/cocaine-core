@@ -19,22 +19,19 @@
 
 #include "cocaine/config.hpp"
 
-#include "cocaine/server/server.hpp"
+#include "cocaine/slave.hpp"
 
 #include "cocaine/loggers/syslog.hpp"
 
-#include "cocaine/helpers/pid_file.hpp"
-
 using namespace cocaine;
+using namespace cocaine::engine;
 
 namespace po = boost::program_options;
 
 int main(int argc, char * argv[]) {
     po::options_description general_options("General options"),
-                            server_options("Server options"),
+                            slave_options,
                             combined_options;
-    
-    po::positional_options_description positional_options;
     
     po::variables_map vm;
 
@@ -44,35 +41,23 @@ int main(int argc, char * argv[]) {
         ("configuration,c", po::value<std::string>
             ()->default_value("/etc/cocaine/default.json"),
             "location of a configuration file")
-        ("daemonize,d", "daemonize on start")
-        ("pidfile,p", po::value<std::string>
-            ()->default_value("/var/run/cocaine/default.pid"),
-            "location of a pid file")
         ("verbose", "produce a lot of output");
 
-    server_config_t server_config;
+    slave_config_t slave_config;
 
-    server_options.add_options()
-        ("server:listen", po::value< std::vector<std::string> >
-            (&server_config.listen_endpoints)->composing(),
-            "server listen endpoints, can be specified multiple times")
-        ("server:announce", po::value< std::vector<std::string> >
-            (&server_config.announce_endpoints)->composing(),
-            "server announce endpoints, can be specified multiple times")
-        ("server:announce-interval", po::value<float>
-            (&server_config.announce_interval)->default_value(5.0f),
-            "server announce interval");
-
-    positional_options.add("server:listen", -1);
+    slave_options.add_options()
+        ("slave:app", po::value<std::string>
+            (&slave_config.app))
+        ("slave:uuid", po::value<std::string>
+            (&slave_config.uuid));
 
     combined_options.add(general_options)
-                    .add(server_options);
+                    .add(slave_options);
 
     try {
         po::store(
             po::command_line_parser(argc, argv).
                 options(combined_options).
-                positional(positional_options).
                 run(),
             vm);
         po::notify(vm);
@@ -86,7 +71,7 @@ int main(int argc, char * argv[]) {
 
     if(vm.count("help")) {
         std::cout << "Usage: " << argv[0] << " endpoint-list [options]" << std::endl;
-        std::cout << general_options << server_options;
+        std::cout << general_options << slave_options;
         return EXIT_SUCCESS;
     }
 
@@ -116,69 +101,21 @@ int main(int argc, char * argv[]) {
 
     boost::shared_ptr<logging::logger_t> log(context.log("main"));
 
-    /*
-    if(vm.count("core:port-range")) {
-        std::vector<std::string> limits;
-
-        boost::algorithm::split(
-            limits,
-            vm["core:port-range"].as<std::string>(),
-            boost::algorithm::is_any_of(":-")
-        );
-
-        if(limits.size() != 2) {
-            std::cout << "Error: invalid port range format" << std::endl;
-            return EXIT_FAILURE;
-        }
-
-        try {
-            config.runtime.ports.assign(
-                boost::make_counting_iterator(boost::lexical_cast<uint16_t>(limits[0])),
-                boost::make_counting_iterator(boost::lexical_cast<uint16_t>(limits[1]))
-            );
-        } catch(const boost::bad_lexical_cast& e) {
-            std::cout << "Error: invalid port range values" << std::endl;
-            return EXIT_FAILURE;
-        }
-    }
-    */
-
-    std::auto_ptr<helpers::pid_file_t> pidfile;
-    std::auto_ptr<server_t> server;
-
-    log->info("starting the server");
-
-    if(vm.count("daemonize")) {
-        if(daemon(0, 0) < 0) {
-            log->error("daemonization failed");
-            return EXIT_FAILURE;
-        }
-
-        try {
-            pidfile.reset(
-                new helpers::pid_file_t(vm["pidfile"].as<std::string>())
-            );
-        } catch(const std::runtime_error& e) {
-            log->error("%s", e.what());
-            return EXIT_FAILURE;
-        }
-    }
+    std::auto_ptr<engine::slave_t> slave;
 
     try {
-        server.reset(
-            new server_t(
+        slave.reset(
+            new engine::slave_t(
                 context,
-                server_config
+                slave_config
             )
         );
     } catch(const std::exception& e) {
-        log->error("unable to start the server - %s", e.what());
+        log->error("unable to start the slave - %s", e.what());
         return EXIT_FAILURE;
     }
 
-    server->run();
-
-    log->info("the server has terminated");
+    slave->run();
 
     return EXIT_SUCCESS;
 }

@@ -11,245 +11,182 @@
 // limitations under the License.
 //
 
-#include <boost/assign.hpp>
-#include <sys/wait.h>
-#include <unistd.h>
-
 #include "cocaine/slave.hpp"
 
-#include "cocaine/context.hpp"
-#include "cocaine/engine.hpp"
-#include "cocaine/job.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
+#include "cocaine/rpc.hpp"
 
 #include "cocaine/dealer/types.hpp"
 
+using namespace cocaine;
 using namespace cocaine::engine;
-using namespace cocaine::engine::slave;
 
-slave_t::slave_t(context_t& context, engine_t& engine):
+slave_t::slave_t(context_t& context, slave_config_t config):
+    unique_id_t(config.uuid),
     m_context(context),
-    m_engine(engine),
-    m_heartbeat_timer(m_engine.loop())
+    m_bus(m_context.io(), ZMQ_DEALER, config.uuid)
 {
-    // NOTE: These are the 10 seconds for the slave to come alive.
-    m_heartbeat_timer.set<slave_t, &slave_t::on_timeout>(this);
-    m_heartbeat_timer.start(10.0f);
+    m_bus.connect(endpoint(config.app));
+    
+    m_watcher.set<slave_t, &slave_t::message>(this);
+    m_watcher.start(m_bus.fd(), ev::READ);
+    m_processor.set<slave_t, &slave_t::process>(this);
+    m_pumper.set<slave_t, &slave_t::pump>(this);
+    m_pumper.start(0.005f, 0.005f);
 
-    initiate();
-    spawn();
+    m_heartbeat_timer.set<slave_t, &slave_t::heartbeat>(this);
+    m_heartbeat_timer.start(0.0f, 5.0f);
+
+    configure(config.app);
 }
 
-slave_t::~slave_t() {
-    m_heartbeat_timer.stop();
-    
-    // TEST: Make sure that the slave is really dead.
-    BOOST_ASSERT(state_downcast<const dead*>() != 0);
+slave_t::~slave_t() { }
 
+void slave_t::configure(const std::string& app) {
+    try {
+        m_manifest.reset(new manifest_t(m_context, app));
+        
+        m_plugin = m_context.get<plugin_t>(
+            m_manifest->type,
+            category_traits<plugin_t>::args_type(*m_manifest)
+        );
+        
+        m_suicide_timer.set<slave_t, &slave_t::timeout>(this);
+        m_suicide_timer.start(m_manifest->policy.suicide_timeout);
+    } catch(const configuration_error_t& e) {
+        rpc::packed<rpc::error> packed(dealer::server_error, e.what());
+        send(packed);
+        terminate();
+    } catch(const registry_error_t& e) {
+        rpc::packed<rpc::error> packed(dealer::server_error, e.what());
+        send(packed);
+        terminate();
+    } catch(const unrecoverable_error_t& e) {
+        rpc::packed<rpc::error> packed(dealer::server_error, e.what());
+        send(packed);
+        terminate();
+    } catch(...) {
+        rpc::packed<rpc::error> packed(
+            dealer::server_error,
+            "unexpected exception while configuring the slave"
+        );
+        
+        send(packed);
+        terminate();
+    }
+}
+
+void slave_t::run() {
+    m_loop.loop();
+}
+
+blob_t slave_t::recv(int timeout) {
+    zmq::message_t message;
+
+    networking::scoped_option<
+        networking::options::receive_timeout
+    > option(m_bus, timeout);
+
+    m_bus.recv(&message);
+    
+    return blob_t(message.data(), message.size());
+}
+
+void slave_t::message(ev::io&, int) {
+    if(m_bus.pending() && !m_processor.is_active()) {
+        m_processor.start();
+    }
+}
+
+void slave_t::process(ev::idle&, int) {
+    if(!m_bus.pending()) {
+        m_processor.stop();
+        return;
+    }
+    
+    int command = 0;
+
+    m_bus.recv(command);
+
+    switch(command) {
+        case rpc::invoke: {
+            // TEST: Ensure that we have the app first.
+            BOOST_ASSERT(m_plugin.get() != NULL);
+
+            std::string method;
+
+            m_bus.recv(method);
+            invoke(method);
+            
+            break;
+        }
+        
+        case rpc::terminate:
+            terminate();
+            break;
+
+        default:
+            if(m_manifest.get() != 0) {
+                m_manifest->log->warning(
+                    "slave %s dropping unknown event type %d", 
+                    id().c_str(),
+                    command
+                );
+            }
+            
+            m_bus.drop();
+    }
+
+    // TEST: Ensure that we haven't missed something.
+    BOOST_ASSERT(!m_bus.more());
+}
+
+void slave_t::pump(ev::timer&, int) {
+    message(m_watcher, ev::READ);
+}
+
+void slave_t::timeout(ev::timer&, int) {
+    rpc::packed<rpc::terminate> packed;
+    send(packed);
     terminate();
 }
 
-bool slave_t::operator==(const slave_t& other) const {
-    return id() == other.id();
+void slave_t::heartbeat(ev::timer&, int) {
+    rpc::packed<rpc::heartbeat> packed;
+    send(packed);
 }
 
-namespace {
-    typedef std::map<
-        sc::event_base::id_type,
-        std::string
-    > event_names_t;
-
-    event_names_t names = boost::assign::map_list_of
-        (events::heartbeat::static_type(), "heartbeat")
-        (events::terminate::static_type(), "terminate")
-        (events::invoke::static_type(), "invoke")
-        (events::chunk::static_type(), "chunk")
-        (events::error::static_type(), "error")
-        (events::choke::static_type(), "choke");
-}
-
-void slave_t::unconsumed_event(const sc::event_base& event) {
-    event_names_t::const_iterator it(names.find(event.dynamic_type()));
-
-    // TEST: Unconsumed rogue event is a fatal error.
-    BOOST_ASSERT(it != names.end());
-
-    m_engine.manifest().log->warning(
-        "slave %s detected an unconsumed '%s' event",
-        id().c_str(),
-        it->second.c_str()
-    );
-}
-
-void slave_t::spawn() {
-    m_pid = ::fork();
-
-    if(m_pid == 0) {
-        int rv = 0;
-
-#ifdef HAVE_CGROUPS
-        if(m_engine.group()) {
-            if((rv = cgroup_attach_task(m_engine.group())) != 0) {
-                m_engine.manifest().log->error(
-                    "unable to attach slave %s to a control group - %s",
-                    id().c_str(),
-                    cgroup_strerror(rv)
-                );
-
-                std::exit(EXIT_FAILURE);
-            }
-        }
-#endif
-
-        rv = ::execl(
-            m_context.config.runtime.self.c_str(),
-            m_context.config.runtime.self.c_str(),
-            "--slave:app", m_engine.manifest().name.c_str(),
-            "--slave:uuid",  id().c_str(),
-            "--configuration", m_context.config.config_path.c_str(),
-            (char*)0
+void slave_t::invoke(const std::string& method) {
+    try {
+        io_t io(*this);
+        m_plugin->invoke(method, io);
+    } catch(const recoverable_error_t& e) {
+        rpc::packed<rpc::error> packed(dealer::app_error, e.what());
+        send(packed);
+    } catch(const unrecoverable_error_t& e) {
+        rpc::packed<rpc::error> packed(dealer::server_error, e.what());
+        send(packed);
+    } catch(...) {
+        rpc::packed<rpc::error> packed(
+            dealer::server_error,
+            "unexpected exception while processing an event"
         );
-
-        if(rv != 0) {
-            char buffer[1024];
-
-#ifdef _GNU_SOURCE
-            char * message;
-            message = ::strerror_r(errno, buffer, 1024);
-#else
-            ::strerror_r(errno, buffer, 1024);
-#endif
-
-            m_engine.manifest().log->error(
-                "unable to start slave %s - %s",
-                id().c_str(),
-#ifdef _GNU_SOURCE
-                message
-#else
-                buffer
-#endif
-            );
-
-            std::exit(EXIT_FAILURE);
-        }
-    } else if(m_pid < 0) {
-        throw system_error_t("fork() failed");
-    }
-}
-
-void slave_t::on_initialize(const events::heartbeat& event) {
-#if EV_VERSION_MAJOR == 3 && EV_VERSION_MINOR == 8
-    m_engine.manifest().log->debug(
-        "slave %s came alive in %.03f seconds",
-        id().c_str(),
-        10.0f - ev_timer_remaining(
-            m_engine.loop(),
-            static_cast<ev_timer*>(&m_heartbeat_timer)
-        )
-    );
-#endif
-
-    on_heartbeat(event);
-}
-
-void slave_t::on_heartbeat(const events::heartbeat& event) {
-    m_heartbeat_timer.stop();
-    
-    const busy * state = state_downcast<const busy*>();
-    float timeout = m_engine.manifest().policy.heartbeat_timeout;
-
-    if(state && state->job()->policy.timeout > 0.0f) {
-        timeout = state->job()->policy.timeout;
-    }
-           
-    m_engine.manifest().log->debug(
-        "resetting slave %s heartbeat timeout to %.02f seconds",
-        id().c_str(),
-        timeout
-    );
-
-    m_heartbeat_timer.start(timeout);
-}
-
-void slave_t::on_terminate(const events::terminate& event) {
-    m_engine.manifest().log->debug(
-        "reaping slave %s", 
-        id().c_str()
-    );
-
-    int status = 0;
-
-    if(waitpid(m_pid, &status, WNOHANG) == 0) {
-        ::kill(m_pid, SIGTERM);
-    }
-}
-
-void slave_t::on_timeout(ev::timer&, int) {
-    m_engine.manifest().log->error(
-        "slave %s doesn't respond in a timely fashion",
-        id().c_str()
-    );
-    
-    const busy * state = state_downcast<const busy*>();
-
-    if(state) {
-        state->job()->process_event(
-            events::error(
-                dealer::timeout_error, 
-                "the job has timed out"
-            )
-        );
+        
+        send(packed);
     }
     
-    process_event(events::terminate());
-}
-
-void alive::on_invoke(const events::invoke& event) {
-    // TEST: Ensure that no job is being lost here.
-    BOOST_ASSERT(!job && event.job);
-
-    context<slave_t>().m_engine.manifest().log->debug(
-        "job '%s' assigned to slave %s",
-        event.job->event.c_str(),
-        context<slave_t>().id().c_str()
-    );
-
-    job = event.job;
-    job->process_event(event);    
-}
-
-void alive::on_choke(const events::choke& event) {
-    // TEST: Ensure that the job is in fact here.
-    BOOST_ASSERT(job);
-
-    context<slave_t>().m_engine.manifest().log->debug(
-        "job '%s' completed by slave %s",
-        job->event.c_str(),
-        context<slave_t>().id().c_str()
-    );
+    rpc::packed<rpc::choke> packed;
+    send(packed);
     
-    job->process_event(event);
-    job.reset();
+    // NOTE: Drop all the outstanding request chunks not pulled
+    // in by the user code. Might have a warning here?
+    m_bus.drop();
+
+    m_suicide_timer.stop();
+    m_suicide_timer.start(m_manifest->policy.suicide_timeout);
 }
 
-alive::~alive() {
-    if(job && !job->state_downcast<const job::complete*>()) {
-        context<slave_t>().m_engine.manifest().log->warning(
-            "trying to reschedule an incomplete '%s' job",
-            job->event.c_str()
-        );
-
-        context<slave_t>().m_engine.enqueue(job);
-    }
-}
-
-void busy::on_chunk(const events::chunk& event) {
-    job()->process_event(event);
-    post_event(events::heartbeat());
-}
-
-void busy::on_error(const events::error& event) {
-    job()->process_event(event);
-    post_event(events::heartbeat());
-}
+void slave_t::terminate() {
+    m_loop.unloop(ev::ALL);
+} 

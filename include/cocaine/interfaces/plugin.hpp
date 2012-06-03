@@ -23,14 +23,14 @@
 
 namespace cocaine { namespace engine {
 
-class overseer_t;
+class slave_t;
 
 // App plugin I/O
 // --------------
 
 class io_t {
     public:
-        io_t(overseer_t& overseer);
+        io_t(slave_t& slave);
 
         // Pulls in the next request chunk from the engine.
         blob_t read(int timeout);
@@ -40,7 +40,7 @@ class io_t {
                    size_t size);
 
     private:
-        overseer_t& m_overseer;
+        slave_t& m_slave;
 };
 
 // App plugin interface

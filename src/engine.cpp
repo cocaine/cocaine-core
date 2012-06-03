@@ -231,8 +231,8 @@ void engine_t::start() {
 namespace {
     struct terminate {
         template<class T>
-        void operator()(const T& slave) {
-            slave->second->process_event(events::terminate());
+        void operator()(const T& master) {
+            master->second->process_event(events::terminate());
         }
     };
 }
@@ -387,12 +387,12 @@ void engine_t::process_queue() {
               (m_pool.size() < manifest().policy.pool_limit && 
                m_pool.size() * manifest().policy.grow_threshold < m_queue.size() * 2))
             {
-                std::auto_ptr<slave_t> slave;
+                std::auto_ptr<master_t> master;
                 
                 try {
-                    slave.reset(new slave_t(m_context, *this));
-                    std::string slave_id(slave->id());
-                    m_pool.insert(slave_id, slave);
+                    master.reset(new master_t(m_context, *this));
+                    std::string master_id(master->id());
+                    m_pool.insert(master_id, master);
                 } catch(const system_error_t& e) {
                     manifest().log->error(
                         "unable to spawn more slaves - %s - %s",
@@ -431,9 +431,9 @@ void engine_t::process(ev::idle&, int) {
                 
         m_bus.recv_multi(proxy);
 
-        pool_map_t::iterator slave(m_pool.find(slave_id));
+        pool_map_t::iterator master(m_pool.find(slave_id));
 
-        if(slave == m_pool.end()) {
+        if(master == m_pool.end()) {
             manifest().log->warning(
                 "engine dropping type %d event from a nonexistent slave %s", 
                 command,
@@ -446,7 +446,7 @@ void engine_t::process(ev::idle&, int) {
 
         switch(command) {
             case rpc::heartbeat:
-                slave->second->process_event(events::heartbeat());
+                master->second->process_event(events::heartbeat());
                 break;
 
             case rpc::chunk: {
@@ -456,7 +456,7 @@ void engine_t::process(ev::idle&, int) {
                 zmq::message_t message;
                 m_bus.recv(&message);
                 
-                slave->second->process_event(events::chunk(message));
+                master->second->process_event(events::chunk(message));
 
                 break;
             }
@@ -471,7 +471,7 @@ void engine_t::process(ev::idle&, int) {
 
                 m_bus.recv_multi(proxy);
 
-                slave->second->process_event(events::error(code, message));
+                master->second->process_event(events::error(code, message));
 
                 if(code == dealer::server_error) {
                     manifest().log->error("the app seems to be broken: %s", message.c_str());
@@ -482,7 +482,7 @@ void engine_t::process(ev::idle&, int) {
             }
 
             case rpc::choke:
-                slave->second->process_event(events::choke());
+                master->second->process_event(events::choke());
                 break;
 
             default:
@@ -494,7 +494,7 @@ void engine_t::process(ev::idle&, int) {
         BOOST_ASSERT(!m_bus.more());
 
         // NOTE: If we have an idle slave now, process the queue.
-        if(slave->second->state_downcast<const slave::idle*>()) {
+        if(master->second->state_downcast<const slave::idle*>()) {
             process_queue();
         }
     } while(--counter);

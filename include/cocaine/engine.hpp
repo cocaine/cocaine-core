@@ -24,8 +24,8 @@
 #endif
 
 #include "cocaine/common.hpp"
+#include "cocaine/master.hpp"
 #include "cocaine/networking.hpp"
-#include "cocaine/slave.hpp"
 
 #include "cocaine/helpers/json.hpp"
 
@@ -45,8 +45,8 @@ typedef boost::ptr_unordered_map<
 #else
 typedef boost::ptr_map<
 #endif
-    slave_t::identifier_type,
-    slave_t
+    master_t::identifier_type,
+    master_t
 > pool_map_t;
 
 class job_queue_t:
@@ -65,22 +65,22 @@ namespace select {
     template<class State>
     struct state {
         template<class T>
-        bool operator()(const T& slave) const {
-            return slave->second->template state_downcast<const State*>();
+        bool operator()(const T& master) const {
+            return master->second->template state_downcast<const State*>();
         }
     };
 
     struct specific {
-        specific(const slave_t& slave):
-            target(slave)
+        specific(const master_t& master):
+            target(master)
         { }
 
         template<class T>
-        bool operator()(const T& slave) const {
-            return *slave->second == target;
+        bool operator()(const T& master) const {
+            return *master->second == target;
         }
     
-        const slave_t& target;
+        const master_t& target;
     };
 }
 
@@ -157,11 +157,11 @@ class engine_t:
         }
 
         template<class Packed>
-        void send(slave_t& slave,
+        void send(master_t& master,
                   Packed& packed)
         {
             m_bus.send(
-                networking::protect(slave.id()),
+                networking::protect(master.id()),
                 ZMQ_SNDMORE
             );
 

@@ -13,23 +13,23 @@
 
 #include "cocaine/interfaces/plugin.hpp"
 
-#include "cocaine/overseer.hpp"
 #include "cocaine/rpc.hpp"
+#include "cocaine/slave.hpp"
 
 using namespace cocaine;
 using namespace cocaine::engine;
 
-io_t::io_t(overseer_t& overseer):
-    m_overseer(overseer)
+io_t::io_t(slave_t& slave):
+    m_slave(slave)
 { }
 
 blob_t io_t::read(int timeout) {
-    return m_overseer.recv(timeout);
+    return m_slave.recv(timeout);
 }
 
 void io_t::write(const void * data, size_t size) {
     rpc::packed<rpc::chunk> packed(data, size);
-    m_overseer.send(packed);
+    m_slave.send(packed);
 }
 
 plugin_t::plugin_t(context_t& context, const manifest_t& manifest):

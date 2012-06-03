@@ -100,8 +100,8 @@ ADD_LIBRARY(cocaine-core SHARED
     src/interfaces/plugin
     src/job
     src/manifest
-    src/overseer
-    src/slave)
+    src/master
+    src/slave.cpp)
 
 TARGET_LINK_LIBRARIES(cocaine-core
     cocaine-common
@@ -111,12 +111,19 @@ TARGET_LINK_LIBRARIES(cocaine-core
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     VERSION 1)
 
+ADD_EXECUTABLE(cocained-slave
+    src/slave/main)
+
 ADD_EXECUTABLE(cocained
     src/server/server
     src/server/main)
 
 ADD_EXECUTABLE(library-test
     tests/library_test)
+
+TARGET_LINK_LIBRARIES(cocained-slave
+    boost_program_options-mt
+    cocaine-core)
 
 TARGET_LINK_LIBRARIES(cocained
     boost_program_options-mt
