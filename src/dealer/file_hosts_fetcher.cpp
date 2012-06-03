@@ -22,6 +22,7 @@
 #include <boost/current_function.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/tokenizer.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include <cocaine/dealer/utils/error.hpp>
 #include "cocaine/dealer/heartbeats/file_hosts_fetcher.hpp"
@@ -79,6 +80,11 @@ file_hosts_fetcher::get_hosts(inetv4_endpoints& endpoints, service_info_t& servi
 	for (tokenizer::iterator tok_iter = tokens.begin(); tok_iter != tokens.end(); ++tok_iter) {
 		try {
 			std::string line = *tok_iter;
+			boost::trim(line);
+
+			if (line.empty() || line.at(0) == '#') {
+				continue;
+			}
 
 			// look for ip/port parts
 			size_t where = line.find_last_of(":");

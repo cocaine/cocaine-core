@@ -41,7 +41,7 @@ refresher::refreshing_thread() {
 	while (!stopping_) {
 		boost::mutex::scoped_lock lock(mutex_);
 		
-		unsigned long long millisecs = static_cast<unsigned long long>(timeout_ * 1000);
+		unsigned long long millisecs = static_cast<unsigned long long>(timeout_);
 		boost::system_time t = boost::get_system_time() + boost::posix_time::milliseconds(millisecs);
 		cond_var_.timed_wait(lock, t);
 

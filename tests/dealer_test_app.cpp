@@ -111,6 +111,7 @@ void create_client(size_t dealers_count, size_t threads_per_dealer, size_t messa
 		}
 	}
 
+	sleep(30);
 	std::cout << "sending messages done.\n";
 
 	std::cout << "----------------------------------- test results ----------------------------------------\n";
