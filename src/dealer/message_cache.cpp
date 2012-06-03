@@ -132,7 +132,7 @@ message_cache::get_sent_message(const std::string& route,
 	route_sent_messages_map_t::const_iterator it = sent_messages_.find(route);
 
 	if (it == sent_messages_.end()) {
-		return false
+		return false;
 	}
 
 	const sent_messages_map_t& msg_map = it->second;
