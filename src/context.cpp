@@ -24,8 +24,6 @@
 using namespace cocaine;
 using namespace cocaine::storages;
 
-namespace fs = boost::filesystem;
-
 const float defaults::heartbeat_timeout = 30.0f;
 const float defaults::suicide_timeout = 600.0f;
 const unsigned int defaults::pool_limit = 10;
@@ -33,24 +31,33 @@ const unsigned int defaults::queue_limit = 100;
 const unsigned int defaults::io_bulk_size = 100;
 const char defaults::slave[] = "cocaine-slave";
 
+namespace fs = boost::filesystem;
+
 config_t::config_t(const std::string& path):
     config_path(path)
 {
     if(!fs::exists(config_path)) {
-        throw configuration_error_t("the specified configuration file doesn't exist");
+        throw configuration_error_t("the configuration file doesn't exist");
     }
 
     fs::ifstream stream(config_path);
 
     if(!stream) {
-        throw configuration_error_t("unable to open the specified configuration file");
+        throw configuration_error_t("unable to open the configuration file");
     }
 
     Json::Reader reader(Json::Features::strictMode());
     Json::Value root;
 
     if(!reader.parse(stream, root)) {
-        throw configuration_error_t("the specified configuration file is invalid");
+        throw configuration_error_t("the configuration file is invalid");
+    }
+
+    // Validation
+    // ----------
+
+    if(root.get("version", 0).asUInt() != 1) {
+        throw configuration_error_t("the configuration version is invalid");
     }
 
     // Component repository configuration

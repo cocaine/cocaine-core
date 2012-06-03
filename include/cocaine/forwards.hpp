@@ -25,9 +25,9 @@ namespace cocaine {
 
     namespace engine {
         class engine_t;
-        class master_t;
         struct job_t;
         struct manifest_t;
+        class master_t;
 
         namespace drivers {        
             class driver_t;
