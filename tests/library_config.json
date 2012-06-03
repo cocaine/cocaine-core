@@ -1,0 +1,10 @@
+{
+    "version": 1,
+    "module-path": "modules/python",
+    "storages": {
+        "core": {
+            "type": "files",
+            "uri": "/var/lib/cocaine"
+        }
+    }
+}

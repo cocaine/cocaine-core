@@ -1,0 +1,86 @@
+#include "cocaine/context.hpp"
+#include "cocaine/logging.hpp"
+#include "cocaine/engine.hpp"
+#include "cocaine/job.hpp"
+
+using namespace cocaine;
+
+class stdio_sink_t:
+    public cocaine::logging::sink_t
+{
+    public:
+        stdio_sink_t():
+            cocaine::logging::sink_t(cocaine::logging::debug)
+        { }
+
+        virtual void emit(cocaine::logging::priorities, const std::string& message) const {
+            std::cout << message << std::endl;
+        }
+};
+
+class my_job_t:
+    public cocaine::engine::job_t
+{
+    public:
+        my_job_t(const std::string& event, const cocaine::blob_t& blob):
+            cocaine::engine::job_t(event, blob)
+        { }
+
+    public:
+        virtual void react(const cocaine::engine::events::chunk& event) {
+            std::cout << "chunk: " << std::string((const char*)event.message.data(), event.message.size()) << std::endl;
+        }
+        
+        virtual void react(const cocaine::engine::events::choke& event) {
+            std::cout << "choke" << std::endl;
+        }
+        
+        virtual void react(const cocaine::engine::events::error& event) {
+            std::cout << "error: " << event.message << std::endl;
+        }
+};
+
+int main() {
+    const char data[] = "data";
+
+    cocaine::config_t config("tests/library_config.json");
+    config.runtime.self = "./cocained";
+
+    std::cout << "Configured" << std::endl;
+
+    cocaine::context_t context(
+        config,
+        boost::make_shared<stdio_sink_t>()
+    );
+
+    std::cout << "Created context" << std::endl;
+    
+    cocaine::engine::threaded_engine_t engine(context, "test_app@1");
+
+    std::cout << "Created engine" << std::endl;
+    
+    engine.start();
+    
+    std::cout << "Engine started" << std::endl;
+    
+    sleep(1);
+
+    for(int i = 0; i < 100; i++) {
+        engine.enqueue(
+            boost::make_shared<my_job_t>(
+                "rimz_func",
+                cocaine::blob_t(data, 5)
+            )
+        );
+    }
+
+    sleep(1);
+
+    Json::Value state(engine.info());
+    
+    std::cout << state;
+
+    sleep(1000);
+
+    return 0;
+}
