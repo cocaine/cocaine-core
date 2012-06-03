@@ -31,6 +31,7 @@ const float defaults::suicide_timeout = 600.0f;
 const unsigned int defaults::pool_limit = 10;
 const unsigned int defaults::queue_limit = 100;
 const unsigned int defaults::io_bulk_size = 100;
+const char defaults::slave[] = "cocaine-slave";
 
 config_t::config_t(const std::string& path):
     config_path(path)

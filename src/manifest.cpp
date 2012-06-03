@@ -69,6 +69,11 @@ manifest_t::manifest_t(context_t& context, const std::string& app):
         "grow-threshold",
         policy.queue_limit / policy.pool_limit
     ).asUInt();
+
+    slave = root.get(
+        "slave",
+        defaults::slave
+    ).asString();
 }
 
 endpoint::endpoint(const std::string& name) {

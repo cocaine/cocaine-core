@@ -103,8 +103,8 @@ void master_t::spawn() {
 #endif
 
         rv = ::execl(
-            m_context.config.runtime.self.c_str(),
-            m_context.config.runtime.self.c_str(),
+            m_engine.manifest().slave.c_str(),
+            m_engine.manifest().slave.c_str(),
             "--slave:app", m_engine.manifest().name.c_str(),
             "--slave:uuid",  id().c_str(),
             "--configuration", m_context.config.config_path.c_str(),

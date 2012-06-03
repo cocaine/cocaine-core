@@ -58,7 +58,7 @@ engine_t::engine_t(context_t& context, ev::loop_ref& loop, const std::string& na
     m_manifest.reset(new manifest_t(m_context, name));
 
 #ifdef HAVE_CGROUPS
-    Json::Value limits(manifest().limits());
+    Json::Value limits(manifest().root["resource-limits"]);
 
     if(!(cgroup_init() == 0) || !limits.isObject() || limits.empty()) {
         return;

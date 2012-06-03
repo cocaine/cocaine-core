@@ -35,6 +35,9 @@ struct manifest_t {
         unsigned int grow_threshold;
     } policy;
 
+    // Path to a binary which will be used as a slave.
+    std::string slave;
+
     Json::Value root;
 
     boost::shared_ptr<logging::logger_t> log;    

@@ -33,6 +33,9 @@ struct defaults {
 
     // I/O bulk size.
     static const unsigned int io_bulk_size;
+
+    // Default slave.
+    static const char slave[];
 };
 
 struct config_t {

@@ -111,7 +111,7 @@ TARGET_LINK_LIBRARIES(cocaine-core
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     VERSION 1)
 
-ADD_EXECUTABLE(cocained-slave
+ADD_EXECUTABLE(cocaine-slave
     src/slave/main)
 
 ADD_EXECUTABLE(cocained
@@ -121,7 +121,7 @@ ADD_EXECUTABLE(cocained
 ADD_EXECUTABLE(library-test
     tests/library_test)
 
-TARGET_LINK_LIBRARIES(cocained-slave
+TARGET_LINK_LIBRARIES(cocaine-slave
     boost_program_options-mt
     cocaine-core)
 

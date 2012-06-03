@@ -55,7 +55,7 @@ int main() {
 
     std::cout << "Created context" << std::endl;
     
-    cocaine::engine::threaded_engine_t engine(context, "test_app@1");
+    cocaine::engine::threaded_engine_t engine(context, "rimz_app@1");
 
     std::cout << "Created engine" << std::endl;
     
