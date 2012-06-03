@@ -13,12 +13,20 @@
 
 #include "cocaine/interfaces/plugin.hpp"
 
+#include "cocaine/context.hpp"
+#include "cocaine/manifest.hpp"
+
 using namespace cocaine;
 using namespace cocaine::engine;
 
 plugin_t::plugin_t(context_t& context, const manifest_t& manifest):
     m_context(context),
-    m_manifest(manifest)
+    m_manifest(manifest),
+    m_log(m_context.log(manifest.name))
 { }
 
 plugin_t::~plugin_t() { }
+
+const logging::logger_t& plugin_t::log() const {
+	return *m_log;
+}

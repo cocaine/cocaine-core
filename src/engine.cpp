@@ -44,6 +44,7 @@ void job_queue_t::push(const_reference job) {
 
 engine_t::engine_t(context_t& context, ev::loop_ref& loop, const std::string& name):
     m_context(context),
+    m_log(m_context.log(name)),
     m_running(false),
     m_loop(loop),
     m_watcher(m_loop),
@@ -103,7 +104,7 @@ engine_t::engine_t(context_t& context, ev::loop_ref& loop, const std::string& na
                     cgroup_add_value_bool(ctl, p->c_str(), cfg[*p].asBool());
                     break;
                 } default: {
-                    manifest().log->error(
+                    log().error(
                         "controller '%s' parameter '%s' type is not supported",
                         c->c_str(),
                         p->c_str()
@@ -113,7 +114,7 @@ engine_t::engine_t(context_t& context, ev::loop_ref& loop, const std::string& na
                 }
             }
             
-            manifest().log->debug(
+            log().debug(
                 "setting controller '%s' parameter '%s' to %s", 
                 c->c_str(),
                 p->c_str(),
@@ -125,7 +126,7 @@ engine_t::engine_t(context_t& context, ev::loop_ref& loop, const std::string& na
     int rv = 0;
 
     if((rv = cgroup_create_cgroup(m_cgroup, false)) != 0) {
-        manifest().log->error(
+        log().error(
             "unable to create the control group - %s", 
             cgroup_strerror(rv)
         );
@@ -148,7 +149,7 @@ engine_t::~engine_t() {
         // XXX: Sometimes there're still slaves terminating at this point,
         // so control group deletion fails with "Device or resource busy".
         if((rv = cgroup_delete_cgroup(m_cgroup, false)) != 0) {
-            manifest().log->error(
+            log().error(
                 "unable to delete the control group - %s", 
                 cgroup_strerror(rv)
             );
@@ -165,7 +166,7 @@ engine_t::~engine_t() {
 void engine_t::start() {
     BOOST_ASSERT(!m_running);
 
-    manifest().log->info("starting the engine"); 
+    log().info("starting the engine"); 
 
     int linger = 0;
 
@@ -240,7 +241,7 @@ namespace {
 void engine_t::stop() {
     BOOST_ASSERT(m_running);
     
-    manifest().log->info("stopping the engine"); 
+    log().info("stopping the engine"); 
 
     {
         boost::lock_guard<boost::mutex> lock(m_queue_mutex);
@@ -249,7 +250,7 @@ void engine_t::stop() {
 
         // Abort all the outstanding jobs.
         if(!m_queue.empty()) {
-            manifest().log->debug(
+            log().debug(
                 "dropping %zu queued %s",
                 m_queue.size(),
                 m_queue.size() == 1 ? "job" : "jobs"
@@ -320,7 +321,7 @@ void engine_t::enqueue(job_queue_t::const_reference job) {
     boost::lock_guard<boost::mutex> lock(m_queue_mutex);
     
     if(!m_running) {
-        manifest().log->debug(
+        log().debug(
             "dropping a '%s' job",
             job->event.c_str()
         );
@@ -394,7 +395,7 @@ void engine_t::process_queue() {
                     std::string master_id(master->id());
                     m_pool.insert(master_id, master);
                 } catch(const system_error_t& e) {
-                    manifest().log->error(
+                    log().error(
                         "unable to spawn more slaves - %s - %s",
                         e.what(),
                         e.reason()
@@ -434,7 +435,7 @@ void engine_t::process(ev::idle&, int) {
         pool_map_t::iterator master(m_pool.find(slave_id));
 
         if(master == m_pool.end()) {
-            manifest().log->warning(
+            log().warning(
                 "engine dropping type %d event from a nonexistent slave %s", 
                 command,
                 slave_id.c_str()
@@ -474,7 +475,7 @@ void engine_t::process(ev::idle&, int) {
                 master->second->process_event(events::error(code, message));
 
                 if(code == dealer::server_error) {
-                    manifest().log->error("the app seems to be broken: %s", message.c_str());
+                    log().error("the app seems to be broken: %s", message.c_str());
                     stop();
                 }
 
@@ -486,7 +487,7 @@ void engine_t::process(ev::idle&, int) {
                 break;
 
             default:
-                manifest().log->warning("engine dropping unknown event type %d", command);
+                log().warning("engine dropping unknown event type %d", command);
                 m_bus.drop();
         }
 
@@ -540,7 +541,7 @@ void engine_t::cleanup(ev::timer&, int) {
             m_pool.erase(*it);
         }
 
-        manifest().log->debug(
+        log().debug(
             "recycled %zu dead %s", 
             corpses.size(),
             corpses.size() == 1 ? "slave" : "slaves"

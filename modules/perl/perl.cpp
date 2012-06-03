@@ -79,7 +79,7 @@ public:
         const char* embedding[] = {"", (char*)source.string().c_str(), "-I", (char*)source_dir.c_str()};
         perl_parse(my_perl, xs_init, 4, (char**)embedding, NULL);
         PL_exit_flags |= PERL_EXIT_DESTRUCT_END;
-        manifest.log->info("%s", "running interpreter...");
+        log().info("%s", "running interpreter...");
         perl_run(my_perl);
     }
         
@@ -90,7 +90,7 @@ public:
     }
 
     virtual void invoke(const std::string& method, io_t& io) {
-        m_manifest.log->info("%s", (std::string("invoking method ") + method + "...").c_str());
+        log().info("%s", (std::string("invoking method ") + method + "...").c_str());
         std::string input;
         
         // Try to pull in the request w/o blocking.

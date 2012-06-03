@@ -44,6 +44,9 @@ class plugin_t {
         virtual void invoke(const std::string& method,
                             io_t& io) = 0;
 
+    public:
+        const logging::logger_t& log() const;
+    
     protected:
         plugin_t(context_t& context,
                  const manifest_t& app);
@@ -51,6 +54,8 @@ class plugin_t {
     protected:
         context_t& m_context;
         const manifest_t& m_manifest;
+
+        boost::shared_ptr<logging::logger_t> m_log;
 };
 
 }

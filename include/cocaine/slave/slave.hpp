@@ -65,9 +65,11 @@ class slave_t:
         void terminate();
 
     private:
-        // Runtime application context.
         context_t& m_context;
         
+        boost::shared_ptr<logging::logger_t> m_log;
+
+        // The app.
         std::auto_ptr<const manifest_t> m_manifest;
         std::auto_ptr<plugin_t> m_plugin;
 

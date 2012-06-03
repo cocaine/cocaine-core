@@ -24,8 +24,9 @@ struct manifest_t {
     manifest_t(context_t& context,
                const std::string& app);
 
-    std::string name;
-    std::string type;
+    std::string name,
+                type,
+                source;
 
     struct {
         float heartbeat_timeout;
@@ -38,9 +39,8 @@ struct manifest_t {
     // Path to a binary which will be used as a slave.
     std::string slave;
 
+    // Manifest root object.
     Json::Value root;
-
-    boost::shared_ptr<logging::logger_t> log;    
 };
 
 class endpoint {

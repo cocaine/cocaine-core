@@ -106,6 +106,10 @@ class engine_t:
         void process_queue();
 
     public:
+        const logging::logger_t& log() const {
+            return *m_log;
+        }
+
         const manifest_t& manifest() const {
             return *m_manifest;
         }
@@ -175,6 +179,8 @@ class engine_t:
 
     private:
         context_t& m_context;
+
+        boost::shared_ptr<logging::logger_t> m_log;
 
         // Current engine state.
         // XXX: Do it in a better way.

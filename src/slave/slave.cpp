@@ -25,6 +25,7 @@ using namespace cocaine::engine;
 slave_t::slave_t(context_t& context, slave_config_t config):
     unique_id_t(config.uuid),
     m_context(context),
+    m_log(m_context.log(config.app)),
     m_bus(m_context.io(), ZMQ_DEALER, config.uuid)
 {
     m_bus.connect(endpoint(config.app));
@@ -132,13 +133,11 @@ void slave_t::process(ev::idle&, int) {
             break;
 
         default:
-            if(m_manifest.get() != 0) {
-                m_manifest->log->warning(
-                    "slave %s dropping unknown event type %d", 
-                    id().c_str(),
-                    command
-                );
-            }
+            m_log->warning(
+                "slave %s dropping unknown event type %d", 
+                id().c_str(),
+                command
+            );
             
             m_bus.drop();
     }

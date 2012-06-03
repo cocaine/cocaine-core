@@ -61,7 +61,7 @@ python_t::python_t(context_t& context, const manifest_t& manifest):
         source /= "__init__.py";
     }
 
-    manifest.log->debug("loading the app code from %s", source.string().c_str());
+    log().debug("loading the app code from %s", source.string().c_str());
     
     boost::filesystem::ifstream input(source);
     
@@ -239,7 +239,7 @@ void python_t::invoke(const std::string& method,
     } 
    
     if(result != Py_None) {
-        m_manifest.log->warning(
+        log().warning(
             "ignoring an unused returned value of method '%s'",
             method.c_str()
         );
@@ -249,10 +249,6 @@ void python_t::invoke(const std::string& method,
     // else if(result.valid() && result != Py_None) {
     //     respond(io, result);
     // }
-}
-
-const logging::logger_t& python_t::log() const {
-    return *m_manifest.log;
 }
 
 PyObject* python_t::manifest(PyObject * self,

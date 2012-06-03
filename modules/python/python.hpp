@@ -96,8 +96,6 @@ class python_t:
         virtual void invoke(const std::string& method,
                             io_t& io);
 
-        const logging::logger_t& log() const;
-
     public:
         static PyObject* manifest(PyObject * self,
                                   PyObject * args);
