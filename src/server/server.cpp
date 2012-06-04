@@ -298,7 +298,7 @@ Json::Value server_t::info() {
 
     result["route"] = m_server.route();
 
-    for(engine_map_t::iterator it = m_engines.begin();
+    for(engine_map_t::const_iterator it = m_engines.begin();
         it != m_engines.end(); 
         ++it) 
     {
