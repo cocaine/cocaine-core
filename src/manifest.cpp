@@ -69,7 +69,7 @@ manifest_t::manifest_t(context_t& context, const std::string& app):
         policy.queue_limit / policy.pool_limit
     ).asUInt();
 
-    slave = root.get(
+    slave = root["engine"].get(
         "slave",
         defaults::slave
     ).asString();
