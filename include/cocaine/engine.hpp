@@ -102,6 +102,10 @@ class engine_t:
 
         Json::Value info() const;
         
+        // Main loop.
+        void run();
+
+        // Job scheduling.
         void enqueue(job_queue_t::const_reference);
 
     public:
@@ -171,19 +175,28 @@ class engine_t:
             m_bus.send_multi(packed);
         }
 
-        // Queue processing.
-        void process_queue();
-
         // Slave I/O.
         void message(ev::io&, int);
         void process(ev::idle&, int);
         void pump(ev::timer&, int);
 
+        // Queue processing.
+        void process_queue();
+
         // Garbage collection.
         void cleanup(ev::timer&, int);
 
-        // Asynchronous calls.
-        void do_start();
+        struct reasons {
+            enum value {
+                enqueue,
+                stop
+            };
+        };
+
+        // Asynchronous notifications.
+        void notify(reasons::value reason);
+
+        // Asynchronous callbacks.
         void do_stop(ev::async&, int);
         void do_enqueue(ev::async&, int);
 

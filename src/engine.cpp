@@ -170,11 +170,6 @@ engine_t::~engine_t() {
         stop();
     }
 
-    if(m_thread.get()) {
-        m_thread->join();
-        m_thread.reset();
-    }
-
 #ifdef HAVE_CGROUPS
     if(m_cgroup) {
         int rv = 0;
@@ -201,7 +196,7 @@ void engine_t::start() {
 
     m_thread.reset(
         new boost::thread(
-            boost::bind(&engine_t::do_start, this)
+            boost::bind(&engine_t::run, this)
         )
     );
 
@@ -249,7 +244,7 @@ void engine_t::stop() {
     BOOST_ASSERT(m_thread.get() && m_running);
 
     // Signal the engine to terminate.
-    m_do_stop.send();
+    notify(reasons::stop);
 
     // Wait for the termination.
     m_thread->join();
@@ -257,8 +252,6 @@ void engine_t::stop() {
 }
 
 Json::Value engine_t::info() const {
-    boost::lock_guard<boost::mutex> lock(m_queue_mutex);
-    
     Json::Value results(Json::objectValue);
 
     if(m_running) {
@@ -285,6 +278,24 @@ Json::Value engine_t::info() const {
 
     return results;
 }
+
+// Engine's main loop
+// ------------------
+
+void engine_t::run() {
+    log().info("starting");
+    
+    {
+        boost::lock_guard<boost::mutex> lock(m_queue_mutex);
+        m_running = true;
+    }
+    
+    m_loop.loop();
+}
+
+
+// Scheduling
+// ----------
 
 void engine_t::enqueue(job_queue_t::const_reference job) {
     boost::lock_guard<boost::mutex> lock(m_queue_mutex);
@@ -319,7 +330,7 @@ void engine_t::enqueue(job_queue_t::const_reference job) {
         );
     } else {
         m_queue.push(job);
-        m_do_enqueue.send();
+        notify(reasons::enqueue);
     }
 }
 
@@ -571,17 +582,24 @@ void engine_t::cleanup(ev::timer&, int) {
 // Asynchronous calls
 // ------------------
 
-void engine_t::do_start() {
-    {
-        boost::lock_guard<boost::mutex> lock(m_queue_mutex);
-
-        log().info("starting");
-
-        m_running = true;
+void engine_t::notify(reasons::value reason) {
+    switch(reason) {
+        case reasons::enqueue:
+            m_do_enqueue.send();
+            break;
+        case reasons::stop:
+            m_do_stop.send();
+            break;
+        default:
+            log().error(
+                "unknown asynchronous call code - %d",
+                reason
+            );
     }
-
-    m_loop.loop();
 }
+
+// Asynchronous callbacks
+// ----------------------
 
 namespace {
     struct terminate {
@@ -593,10 +611,10 @@ namespace {
 }
 
 void engine_t::do_stop(ev::async&, int) {
+    log().info("stopping");
+
     {
         boost::lock_guard<boost::mutex> lock(m_queue_mutex);
-
-        log().info("stopping"); 
 
         m_running = false;
 
