@@ -61,7 +61,6 @@ class server_t:
 
     private:
         context_t& m_context;
-
         boost::shared_ptr<logging::logger_t> m_log;
         boost::shared_ptr<storages::storage_t> m_storage;
 

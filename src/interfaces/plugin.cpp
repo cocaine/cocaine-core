@@ -21,8 +21,8 @@ using namespace cocaine::engine;
 
 plugin_t::plugin_t(context_t& context, const manifest_t& manifest):
     m_context(context),
-    m_manifest(manifest),
-    m_log(m_context.log(manifest.name))
+    m_log(m_context.log(manifest.name)),
+    m_manifest(manifest)
 { }
 
 plugin_t::~plugin_t() { }
