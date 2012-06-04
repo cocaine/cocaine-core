@@ -99,7 +99,9 @@ class engine_t:
         // Operations.
         void start();
         void stop();
-        Json::Value info() /* const */;
+
+        Json::Value info() const;
+        
         void enqueue(job_queue_t::const_reference);
 
     public:
