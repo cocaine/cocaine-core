@@ -54,7 +54,8 @@ engine_t::engine_t(context_t& context, const std::string& name):
     m_gc_timer(m_loop),
     m_do_enqueue(m_loop),
     m_do_stop(m_loop),
-    m_bus(context.io(), ZMQ_ROUTER)
+    m_bus(context.io(), ZMQ_ROUTER),
+    m_thread(NULL)
 #ifdef HAVE_CGROUPS
     , m_cgroup(NULL)
 #endif
@@ -285,9 +286,6 @@ Json::Value engine_t::info() {
     return results;
 }
 
-// Queue operations
-// ----------------
-
 void engine_t::enqueue(job_queue_t::const_reference job) {
     boost::lock_guard<boost::mutex> lock(m_queue_mutex);
     
@@ -399,7 +397,7 @@ void engine_t::process(ev::idle&, int) {
 
                 if(code == dealer::server_error) {
                     log().error("the app seems to be broken - %s", message.c_str());
-                    stop();
+                    m_do_stop.send();
                 }
 
                 break;
@@ -432,6 +430,9 @@ void engine_t::process(ev::idle&, int) {
 void engine_t::pump(ev::timer&, int) {
     message(m_watcher, ev::READ);
 }
+
+// Queue processing
+// ----------------
 
 void engine_t::process_queue() {
     boost::lock_guard<boost::mutex> lock(m_queue_mutex);
@@ -544,9 +545,9 @@ void engine_t::cleanup(ev::timer&, int) {
     }
 
     {
-        typedef boost::filter_iterator<expired, job_queue_t::iterator> filter;
-
         boost::lock_guard<boost::mutex> lock(m_queue_mutex);
+
+        typedef boost::filter_iterator<expired, job_queue_t::iterator> filter;
         
         // Process all the expired jobs.
         filter it(expired(m_loop.now()), m_queue.begin(), m_queue.end()),
@@ -594,27 +595,27 @@ void engine_t::do_stop(ev::async&, int) {
         log().info("stopping"); 
 
         m_running = false;
-    }        
 
-    // Abort all the outstanding jobs.
-    if(!m_queue.empty()) {
-        log().debug(
-            "dropping %zu queued %s",
-            m_queue.size(),
-            m_queue.size() == 1 ? "job" : "jobs"
-        );
-
-        while(!m_queue.empty()) {
-            m_queue.front()->process_event(
-                events::error(
-                    dealer::resource_error,
-                    "engine is not active"
-                )
+        // Abort all the outstanding jobs.
+        if(!m_queue.empty()) {
+            log().debug(
+                "dropping %zu queued %s",
+                m_queue.size(),
+                m_queue.size() == 1 ? "job" : "jobs"
             );
 
-            m_queue.pop_front();
+            while(!m_queue.empty()) {
+                m_queue.front()->process_event(
+                    events::error(
+                        dealer::resource_error,
+                        "engine is not active"
+                    )
+                );
+
+                m_queue.pop_front();
+            }
         }
-    }
+    }        
 
     rpc::packed<rpc::terminate> packed;
 
@@ -627,13 +628,14 @@ void engine_t::do_stop(ev::async&, int) {
     m_pool.clear();
     // m_drivers.clear();
 
-    m_watcher.stop();
-    m_processor.stop();
-    m_pumper.stop();
-    m_gc_timer.stop();
+    m_loop.unloop(ev::ALL);
 
-    m_do_enqueue.stop();
-    m_do_stop.stop();
+    // m_watcher.stop();
+    // m_processor.stop();
+    // m_pumper.stop();
+    // m_gc_timer.stop();
+    // m_do_enqueue.stop();
+    // m_do_stop.stop();
 }
 
 void engine_t::do_enqueue(ev::async&, int) {

@@ -96,11 +96,10 @@ class engine_t:
 
         ~engine_t();
 
+        // Operations.
         void start();
         void stop();
-
         Json::Value info() /* const */;
-
         void enqueue(job_queue_t::const_reference);
 
     public:
@@ -170,12 +169,15 @@ class engine_t:
             m_bus.send_multi(packed);
         }
 
+        // Queue processing.
         void process_queue();
 
-        // Event loop callbacks.
+        // Slave I/O.
         void message(ev::io&, int);
         void process(ev::idle&, int);
         void pump(ev::timer&, int);
+
+        // Garbage collection.
         void cleanup(ev::timer&, int);
 
         // Asynchronous calls.
@@ -191,7 +193,7 @@ class engine_t:
         // Current engine state.
         volatile bool m_running;
 
-        // The application manifest.
+        // The app manifest.
         std::auto_ptr<const manifest_t> m_manifest;
         // driver_map_t m_drivers;
 
@@ -205,6 +207,7 @@ class engine_t:
         // Event loop.
         ev::dynamic_loop m_loop;
 
+        // Slave I/O watchers.
         ev::io m_watcher;
         ev::idle m_processor;
         ev::timer m_pumper;
@@ -212,20 +215,20 @@ class engine_t:
         // Garbage collector activation timer.
         ev::timer m_gc_timer;
 
-        // Async notifications.
+        // Async notification watchers.
         ev::async m_do_enqueue,
                   m_do_stop;
 
-        // Slave RPC.
+        // Slave RPC bus.
         networking::channel_t m_bus;
+  
+        // Engine's thread.
+        std::auto_ptr<boost::thread> m_thread;
 
 #ifdef HAVE_CGROUPS
         // Control group to put the slaves into.
         cgroup * m_cgroup;
 #endif
-  
-        // Engine's thread.
-        std::auto_ptr<boost::thread> m_thread;
 };
 
 }}
