@@ -371,6 +371,10 @@ void engine_t::process(ev::idle&, int) {
                 master->second->process_event(events::heartbeat());
                 break;
 
+            case rpc::terminate:
+                master->second->process_event(events::terminate());
+                break;
+
             case rpc::chunk: {
                 // TEST: Ensure we have the actual chunk following.
                 BOOST_ASSERT(m_bus.more());
