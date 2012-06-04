@@ -186,14 +186,13 @@ engine_t::~engine_t() {
 // ----------
 
 void engine_t::start() {
-    BOOST_ASSERT(!m_thread.get() && !m_running);
-
-    log().info("starting");
-    
     {
         boost::lock_guard<boost::mutex> lock(m_queue_mutex);
+        BOOST_ASSERT(!m_thread.get() && !m_running);
         m_running = true;
     }
+
+    log().info("starting");
     
     m_thread.reset(
         new boost::thread(
@@ -246,7 +245,13 @@ void engine_t::start() {
 }
 
 void engine_t::stop() {
-    BOOST_ASSERT(m_thread.get() && m_running);
+    {
+        boost::lock_guard<boost::mutex> lock(m_queue_mutex);
+        BOOST_ASSERT(m_thread.get() && m_running);
+        m_running = false;
+    }
+
+    log().info("stopping");
 
     // Signal the engine to terminate.
     notify(reasons::stop);
@@ -601,12 +606,8 @@ namespace {
 }
 
 void engine_t::do_stop(ev::async&, int) {
-    log().info("stopping");
-
     {
         boost::lock_guard<boost::mutex> lock(m_queue_mutex);
-
-        m_running = false;
 
         // Abort all the outstanding jobs.
         if(!m_queue.empty()) {
