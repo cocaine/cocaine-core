@@ -192,7 +192,7 @@ void master_t::on_terminate(const events::terminate& event) {
 
 void master_t::on_timeout(ev::timer&, int) {
     m_engine.log().error(
-        "slave %s doesn't respond in a timely fashion",
+        "slave %s didn't respond in a timely fashion",
         id().c_str()
     );
     
