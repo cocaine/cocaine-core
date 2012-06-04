@@ -62,9 +62,7 @@ int main() {
     
     std::cout << "Engine started" << std::endl;
     
-    sleep(1);
-
-    for(int i = 0; i < 100; i++) {
+    for(int i = 0; i < 10; i++) {
         engine.enqueue(
             boost::make_shared<my_job_t>(
                 "rimz_func",
@@ -73,13 +71,22 @@ int main() {
         );
     }
 
-    sleep(1);
-
     Json::Value state(engine.info());
     
     std::cout << state;
 
-    sleep(1000);
+    sleep(1);
+
+    engine.stop();
+
+    for(int i = 0; i < 10; i++) {
+        engine.enqueue(
+            boost::make_shared<my_job_t>(
+                "rimz_func",
+                cocaine::blob_t(data, 5)
+            )
+        );
+    }
 
     return 0;
 }
