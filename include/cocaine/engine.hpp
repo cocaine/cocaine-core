@@ -114,7 +114,7 @@ class engine_t:
             return *m_manifest;
         }
 
-        ev::loop_ref& loop() {
+        ev::dynamic_loop& loop() {
             return m_loop;
         }
 
@@ -177,32 +177,28 @@ class engine_t:
         void process(ev::idle&, int);
         void pump(ev::timer&, int);
 
-        // Queue processing.
-        void process_queue();
-
         // Garbage collection.
         void cleanup(ev::timer&, int);
 
-        struct reasons {
-            enum value {
-                enqueue,
-                stop
-            };
-        };
+        // Asynchronous notification.
+        void notify(ev::async&, int);
 
-        // Asynchronous calls.
-        void notify(reasons::value reason);
+        // Queue processing.
+        void react();
 
-        // Asynchronous callbacks.
-        void do_stop(ev::async&, int);
-        void do_enqueue(ev::async&, int);
+        // Engine termination
+        void terminate();
 
     private:
         context_t& m_context;
         boost::shared_ptr<logging::logger_t> m_log;
 
         // Current engine state.
-        volatile bool m_running;
+        volatile enum {
+            running,
+            stopping,
+            stopped
+        } m_state;
 
         // The app manifest.
         std::auto_ptr<const manifest_t> m_manifest;
@@ -226,9 +222,8 @@ class engine_t:
         // Garbage collector activation timer.
         ev::timer m_gc_timer;
 
-        // Async notification watchers.
-        ev::async m_do_enqueue,
-                  m_do_stop;
+        // Async notification watcher.
+        ev::async m_notification;
 
         // Slave RPC bus.
         networking::channel_t m_bus;
