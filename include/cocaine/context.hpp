@@ -57,7 +57,6 @@ struct config_t {
     storage_info_map_t storages;
 
     typedef struct {
-        std::string self;
         std::string hostname;
     } runtime_info_t;
 

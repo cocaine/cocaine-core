@@ -44,7 +44,6 @@ int main() {
     const char data[] = "data";
 
     cocaine::config_t config("tests/library_config.json");
-    config.runtime.self = "./cocained";
 
     std::cout << "Configured" << std::endl;
 
