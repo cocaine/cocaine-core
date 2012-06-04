@@ -29,6 +29,7 @@ INCLUDE(cmake/locate_library.cmake)
 LOCATE_LIBRARY(LIBEV "ev++.h" "ev" "libev")
 LOCATE_LIBRARY(LIBMSGPACK "msgpack.hpp" "msgpack")
 LOCATE_LIBRARY(LIBZMQ "zmq.hpp" "zmq")
+LOCATE_LIBRARY(LIBARCHIVE "archive.hpp" "archive")
 
 IF(NOT APPLE)
     LOCATE_LIBRARY(LIBCGROUP "libcgroup.h" "cgroup")
@@ -49,13 +50,15 @@ INCLUDE_DIRECTORIES(
     ${OPENSSL_INCLUDE_DIR}
     ${LIBEV_INCLUDE_DIRS}
     ${LIBMSGPACK_INCLUDE_DIRS}
-    ${LIBZMQ_INCLUDE_DIRS})
+    ${LIBZMQ_INCLUDE_DIRS}
+    ${LIBARCHIVE_INCLUDE_DIRS})
 
 LINK_DIRECTORIES(
     ${Boost_LIBRARY_DIRS}
     ${LIBEV_LIBRARY_DIRS}
     ${LIBMSGPACK_LIBRARY_DIRS}
-    ${LIBZMQ_LIBRARY_DIRS})
+    ${LIBZMQ_LIBRARY_DIRS}
+    ${LIBARCHIVE_LIBRARY_DIRS})
 
 INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/foreign/jsoncpp-0.5.0/include)
 INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/include)
@@ -104,6 +107,7 @@ ADD_LIBRARY(cocaine-core SHARED
 
 TARGET_LINK_LIBRARIES(cocaine-core
     cocaine-common
+    archive
     ev
     msgpack)
 

@@ -23,6 +23,8 @@
 #include "cocaine/manifest.hpp"
 #include "cocaine/rpc.hpp"
 
+#include "cocaine/helpers/archive_file.hpp"
+
 using namespace cocaine::engine;
 using namespace cocaine::networking;
 
