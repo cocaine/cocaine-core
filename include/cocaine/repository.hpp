@@ -75,11 +75,6 @@ class repository_t:
                 throw registry_error_t("module '" + type + "' has an incompatible type");
             }
 
-            m_log->debug(
-                "fetching an '%s' object",
-                type.c_str()
-            );
-
             return typename category_traits<Category>::ptr_type(
                 dynamic_cast< category_model<Category>* >(
                     it->second

@@ -117,7 +117,7 @@ engine_t::engine_t(context_t& context, ev::loop_ref& loop, const std::string& na
             }
             
             log().debug(
-                "setting controller '%s' parameter '%s' to %s", 
+                "setting controller '%s' parameter '%s' to '%s'", 
                 c->c_str(),
                 p->c_str(),
                 boost::lexical_cast<std::string>(cfg[*p]).c_str()
@@ -168,7 +168,7 @@ engine_t::~engine_t() {
 void engine_t::start() {
     BOOST_ASSERT(!m_running);
 
-    log().info("starting the engine"); 
+    log().info("starting"); 
 
     int linger = 0;
 
@@ -243,7 +243,7 @@ namespace {
 void engine_t::stop() {
     BOOST_ASSERT(m_running);
     
-    log().info("stopping the engine"); 
+    log().info("stopping"); 
 
     {
         boost::lock_guard<boost::mutex> lock(m_queue_mutex);
@@ -324,7 +324,7 @@ void engine_t::enqueue(job_queue_t::const_reference job) {
     
     if(!m_running) {
         log().debug(
-            "dropping a '%s' job due to a stopped engine",
+            "dropping an incomplete '%s' job due to a stopped engine",
             job->event.c_str()
         );
 
@@ -340,7 +340,7 @@ void engine_t::enqueue(job_queue_t::const_reference job) {
 
     if(m_queue.size() >= manifest().policy.queue_limit) {
         log().debug(
-            "dropping a '%s' job due to a full queue",
+            "dropping an incomplete '%s' job due to a full queue",
             job->event.c_str()
         );
 
@@ -359,7 +359,7 @@ void engine_t::process_queue() {
     boost::lock_guard<boost::mutex> lock(m_queue_mutex);
 
     if(m_queue.empty()) {
-        log().debug("the engine is idle");
+        log().debug("idle");
         return;
     }
 
@@ -451,7 +451,7 @@ void engine_t::process(ev::idle&, int) {
 
         if(master == m_pool.end()) {
             log().warning(
-                "engine dropping type %d event from a nonexistent slave %s", 
+                "dropping type %d event from a nonexistent slave %s", 
                 command,
                 slave_id.c_str()
             );
@@ -509,7 +509,7 @@ void engine_t::process(ev::idle&, int) {
 
             default:
                 log().warning(
-                    "engine dropping unknown event type %d from slave %s",
+                    "dropping unknown event type %d from slave %s",
                     command,
                     slave_id.c_str()
                 );

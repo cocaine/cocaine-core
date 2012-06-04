@@ -17,6 +17,7 @@
 #include "cocaine/repository.hpp"
 
 #include "cocaine/context.hpp"
+#include "cocaine/logging.hpp"
 
 using namespace cocaine;
 
@@ -32,7 +33,7 @@ struct is_module {
 
 repository_t::repository_t(context_t& context):
     m_context(context),
-    m_log(context.log("registry"))
+    m_log(context.log("repository"))
 {
     if(lt_dlinit() != 0) {
         throw registry_error_t("unable to initialize the module loader");

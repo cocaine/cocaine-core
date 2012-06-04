@@ -97,7 +97,7 @@ void master_t::spawn() {
         if(m_engine.group()) {
             if((rv = cgroup_attach_task(m_engine.group())) != 0) {
                 m_engine.log().error(
-                    "unable to attach slave %s to a control group - %s",
+                    "unable to attach slave %s to the control group - %s",
                     id().c_str(),
                     cgroup_strerror(rv)
                 );
@@ -200,7 +200,7 @@ void master_t::on_timeout(ev::timer&, int) {
 
     if(state) {
         m_engine.log().debug(
-            "slave %s dropping a '%s' job due to a timeout",
+            "slave %s dropping '%s' job due to a timeout",
             id().c_str(),
             state->job()->event.c_str()
         );
