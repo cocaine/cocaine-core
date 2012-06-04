@@ -257,8 +257,6 @@ void engine_t::stop() {
 }
 
 Json::Value engine_t::info() const {
-    boost::lock_guard<boost::mutex> lock(m_queue_mutex);
-    
     Json::Value results(Json::objectValue);
 
     if(m_running) {
