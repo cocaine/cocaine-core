@@ -76,13 +76,18 @@ void master_t::unconsumed_event(const sc::event_base& event) {
     BOOST_ASSERT(it != names.end());
 
     m_engine.log().warning(
-        "master %s detected an unconsumed '%s' event",
+        "slave %s detected an unconsumed '%s' event",
         id().c_str(),
         it->second.c_str()
     );
 }
 
 void master_t::spawn() {
+    m_engine.log().debug(
+        "spawning slave %s",
+        id().c_str()
+    );
+
     m_pid = ::fork();
 
     if(m_pid == 0) {
@@ -194,6 +199,12 @@ void master_t::on_timeout(ev::timer&, int) {
     const busy * state = state_downcast<const busy*>();
 
     if(state) {
+        m_engine.log().debug(
+            "slave %s dropping a '%s' job due to a timeout",
+            id().c_str(),
+            state->job()->event.c_str()
+        );
+
         state->job()->process_event(
             events::error(
                 dealer::timeout_error, 

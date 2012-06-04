@@ -17,7 +17,6 @@
 #include "cocaine/repository.hpp"
 
 #include "cocaine/context.hpp"
-#include "cocaine/logging.hpp"
 
 using namespace cocaine;
 

@@ -324,7 +324,7 @@ void engine_t::enqueue(job_queue_t::const_reference job) {
     
     if(!m_running) {
         log().debug(
-            "dropping a '%s' job",
+            "dropping a '%s' job due to a stopped engine",
             job->event.c_str()
         );
 
@@ -339,6 +339,11 @@ void engine_t::enqueue(job_queue_t::const_reference job) {
     }
 
     if(m_queue.size() >= manifest().policy.queue_limit) {
+        log().debug(
+            "dropping a '%s' job due to a full queue",
+            job->event.c_str()
+        );
+
         job->process_event(
             events::error(
                 dealer::resource_error,
@@ -354,6 +359,7 @@ void engine_t::process_queue() {
     boost::lock_guard<boost::mutex> lock(m_queue_mutex);
 
     if(m_queue.empty()) {
+        log().debug("the engine is idle");
         return;
     }
 
@@ -361,6 +367,11 @@ void engine_t::process_queue() {
         job_queue_t::value_type job(m_queue.front());
 
         if(job->state_downcast<const job::complete*>()) {
+            log().debug(
+                "dropping a complete '%s' job from the queue",
+                job->event.c_str()
+            );
+
             m_queue.pop_front();
             continue;
         }
@@ -390,6 +401,8 @@ void engine_t::process_queue() {
               (m_pool.size() < manifest().policy.pool_limit && 
                m_pool.size() * manifest().policy.grow_threshold < m_queue.size() * 2))
             {
+                log().debug("enlarging the pool");
+                
                 std::auto_ptr<master_t> master;
                 
                 try {
@@ -447,6 +460,12 @@ void engine_t::process(ev::idle&, int) {
             return;
         }
 
+        log().debug(
+            "got type %d event from slave %s",
+            command,
+            slave_id.c_str()
+        );
+
         switch(command) {
             case rpc::heartbeat:
                 master->second->process_event(events::heartbeat());
@@ -477,7 +496,7 @@ void engine_t::process(ev::idle&, int) {
                 master->second->process_event(events::error(code, message));
 
                 if(code == dealer::server_error) {
-                    log().error("the app seems to be broken: %s", message.c_str());
+                    log().error("the app seems to be broken - %s", message.c_str());
                     stop();
                 }
 
@@ -489,7 +508,12 @@ void engine_t::process(ev::idle&, int) {
                 break;
 
             default:
-                log().warning("engine dropping unknown event type %d", command);
+                log().warning(
+                    "engine dropping unknown event type %d from slave %s",
+                    command,
+                    slave_id.c_str()
+                );
+
                 m_bus.drop();
         }
 

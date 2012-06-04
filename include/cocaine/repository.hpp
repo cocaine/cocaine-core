@@ -20,6 +20,7 @@
 #include <ltdl.h>
 
 #include "cocaine/common.hpp"
+#include "cocaine/logging.hpp"
 
 namespace cocaine {
 
@@ -73,6 +74,11 @@ class repository_t:
             if(it->second->category() != typeid(Category)) {
                 throw registry_error_t("module '" + type + "' has an incompatible type");
             }
+
+            m_log->debug(
+                "fetching an '%s' object",
+                type.c_str()
+            );
 
             return typename category_traits<Category>::ptr_type(
                 dynamic_cast< category_model<Category>* >(
