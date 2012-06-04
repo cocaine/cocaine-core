@@ -11,6 +11,7 @@
 // limitations under the License.
 //
 
+#include <boost/assign.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <boost/lexical_cast.hpp>
 
@@ -185,7 +186,7 @@ engine_t::~engine_t() {
 void engine_t::start() {
     {
         boost::lock_guard<boost::mutex> lock(m_queue_mutex);
-        BOOST_ASSERT(!m_thread.get() && m_state != running);
+        BOOST_ASSERT(!m_thread.get() && m_state == stopped);
         m_state = running;
     }
 
@@ -258,6 +259,13 @@ void engine_t::stop() {
     m_thread.reset();
 }
 
+namespace {
+    std::map<int, std::string> names = boost::assign::map_list_of
+        (0, "running")
+        (1, "stopping")
+        (2, "stopped");
+}
+
 Json::Value engine_t::info() const {
     Json::Value results(Json::objectValue);
 
@@ -281,7 +289,7 @@ Json::Value engine_t::info() const {
         // }
     }
     
-    results["state"] = m_state;
+    results["state"] = names[m_state];
 
     return results;
 }
@@ -523,10 +531,9 @@ void engine_t::react() {
 
     if(m_state == stopping) {
         terminate();
-        return;
     }
 
-    if(m_state != running || m_queue.empty()) {
+    if(m_queue.empty()) {
         return;
     }
 
