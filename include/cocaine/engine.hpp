@@ -193,7 +193,7 @@ class engine_t:
             };
         };
 
-        // Asynchronous notifications.
+        // Asynchronous calls.
         void notify(reasons::value reason);
 
         // Asynchronous callbacks.

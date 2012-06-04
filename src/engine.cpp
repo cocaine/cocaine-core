@@ -28,9 +28,6 @@
 using namespace cocaine::engine;
 using namespace cocaine::networking;
 
-// Job queue
-// ---------
-
 void job_queue_t::push(const_reference job) {
     if(job->policy.urgent) {
         push_front(job);
@@ -40,9 +37,6 @@ void job_queue_t::push(const_reference job) {
         job->process_event(events::enqueue(size()));
     }
 }
-
-// Basic stuff
-// -----------
 
 engine_t::engine_t(context_t& context, const std::string& name):
     m_context(context),
@@ -279,8 +273,8 @@ Json::Value engine_t::info() const {
     return results;
 }
 
-// Engine's main loop
-// ------------------
+// Main loop
+// ---------
 
 void engine_t::run() {
     log().info("starting");
@@ -294,8 +288,8 @@ void engine_t::run() {
 }
 
 
-// Scheduling
-// ----------
+// Job scheduling
+// --------------
 
 void engine_t::enqueue(job_queue_t::const_reference job) {
     boost::lock_guard<boost::mutex> lock(m_queue_mutex);
