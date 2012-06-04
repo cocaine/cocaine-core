@@ -264,7 +264,6 @@ Json::Value server_t::create_engine(const std::string& name) {
     std::auto_ptr<engine_t> engine(
         new engine_t(
             m_context,
-            m_loop,
             name
         )
     );

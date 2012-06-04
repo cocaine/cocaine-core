@@ -92,18 +92,16 @@ class engine_t:
 {
     public:
         engine_t(context_t& context,
-                 ev::loop_ref& loop,
                  const std::string& name);
 
         ~engine_t();
 
         void start();
         void stop();
-        
+
         Json::Value info() /* const */;
 
         void enqueue(job_queue_t::const_reference);
-        void process_queue();
 
     public:
         const logging::logger_t& log() const {
@@ -172,10 +170,18 @@ class engine_t:
             m_bus.send_multi(packed);
         }
 
+        void process_queue();
+
+        // Event loop callbacks.
         void message(ev::io&, int);
         void process(ev::idle&, int);
         void pump(ev::timer&, int);
         void cleanup(ev::timer&, int);
+
+        // Asynchronous calls.
+        void do_start();
+        void do_stop(ev::async&, int);
+        void do_enqueue(ev::async&, int);
 
     private:
         context_t& m_context;
@@ -183,7 +189,6 @@ class engine_t:
         boost::shared_ptr<logging::logger_t> m_log;
 
         // Current engine state.
-        // XXX: Do it in a better way.
         volatile bool m_running;
 
         // The application manifest.
@@ -198,7 +203,7 @@ class engine_t:
         pool_map_t m_pool;
         
         // Event loop.
-        ev::loop_ref& m_loop;
+        ev::dynamic_loop m_loop;
 
         ev::io m_watcher;
         ev::idle m_processor;
@@ -207,6 +212,10 @@ class engine_t:
         // Garbage collector activation timer.
         ev::timer m_gc_timer;
 
+        // Async notifications.
+        ev::async m_do_enqueue,
+                  m_do_stop;
+
         // Slave RPC.
         networking::channel_t m_bus;
 
@@ -214,39 +223,8 @@ class engine_t:
         // Control group to put the slaves into.
         cgroup * m_cgroup;
 #endif
-};
-
-// Threaded engine
-// ---------------
-
-class threaded_engine_t:
-    public boost::noncopyable
-{
-    public:
-        threaded_engine_t(context_t& context,
-                          const std::string& name);
-
-    public:
-        void start();
-
-        Json::Value info();
-
-        void enqueue(job_queue_t::const_reference job);
-
-    private:
-        void bootstrap();
-
-        void do_enqueue(ev::async&, int);
-        void do_stop(ev::async&, int);
-
-    private:
-        ev::dynamic_loop m_loop;
-
-        ev::async m_async_enqueue,
-                  m_async_stop;
-
-        engine_t m_engine;
-
+  
+        // Engine's thread.
         std::auto_ptr<boost::thread> m_thread;
 };
 
