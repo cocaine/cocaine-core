@@ -73,7 +73,7 @@ auth_t::auth_t(context_t& context):
 }
 
 namespace {
-    struct dispose {
+    struct disposer {
         template<class T>
         void operator()(T& key) {
             EVP_PKEY_free(key.second);
@@ -82,7 +82,7 @@ namespace {
 }
 
 auth_t::~auth_t() {
-    std::for_each(m_keys.begin(), m_keys.end(), dispose());
+    std::for_each(m_keys.begin(), m_keys.end(), disposer());
     ERR_free_strings();
     EVP_MD_CTX_destroy(m_context);
 }

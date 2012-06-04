@@ -108,7 +108,7 @@ repository_t::repository_t(context_t& context):
 }
 
 namespace {
-    struct dispose {
+    struct disposer {
         template<class T>
         void operator()(T& module) {
             lt_dlclose(module);
@@ -117,7 +117,7 @@ namespace {
 }
 
 repository_t::~repository_t() {
-    std::for_each(m_modules.begin(), m_modules.end(), dispose());
+    std::for_each(m_modules.begin(), m_modules.end(), disposer());
     lt_dlexit();
 }
 
