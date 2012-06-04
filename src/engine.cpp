@@ -188,9 +188,20 @@ engine_t::~engine_t() {
 void engine_t::start() {
     BOOST_ASSERT(!m_thread.get() && !m_running);
 
+    log().info("starting");
+    
+    {
+        boost::lock_guard<boost::mutex> lock(m_queue_mutex);
+        m_running = true;
+    }
+    
     m_thread.reset(
         new boost::thread(
-            boost::bind(&engine_t::run, this)
+            boost::bind(
+                &ev::dynamic_loop::loop,
+                &m_loop,
+                0
+            )
         )
     );
 
@@ -272,21 +283,6 @@ Json::Value engine_t::info() const {
 
     return results;
 }
-
-// Main loop
-// ---------
-
-void engine_t::run() {
-    log().info("starting");
-    
-    {
-        boost::lock_guard<boost::mutex> lock(m_queue_mutex);
-        m_running = true;
-    }
-    
-    m_loop.loop();
-}
-
 
 // Job scheduling
 // --------------

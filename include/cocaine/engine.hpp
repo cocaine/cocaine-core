@@ -102,9 +102,6 @@ class engine_t:
 
         Json::Value info() const;
         
-        // Main loop.
-        void run();
-
         // Job scheduling.
         void enqueue(job_queue_t::const_reference);
 
