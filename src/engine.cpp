@@ -61,6 +61,30 @@ engine_t::engine_t(context_t& context, const std::string& name):
 {
     m_manifest.reset(new manifest_t(m_context, name));
 
+    int linger = 0;
+
+    m_bus.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
+
+    try {
+        m_bus.bind(endpoint(manifest().name));
+    } catch(const zmq::error_t& e) {
+        throw configuration_error_t(std::string("invalid rpc endpoint - ") + e.what());
+    }
+    
+    m_watcher.set<engine_t, &engine_t::message>(this);
+    m_watcher.start(m_bus.fd(), ev::READ);
+    m_processor.set<engine_t, &engine_t::process>(this);
+    m_pumper.set<engine_t, &engine_t::pump>(this);
+    m_pumper.start(0.005f, 0.005f);
+
+    m_gc_timer.set<engine_t, &engine_t::cleanup>(this);
+    m_gc_timer.start(5.0f, 5.0f);
+
+    m_do_enqueue.set<engine_t, &engine_t::do_enqueue>(this);
+    m_do_enqueue.start();
+    m_do_stop.set<engine_t, &engine_t::do_stop>(this);
+    // m_do_stop.start();
+
 #ifdef HAVE_CGROUPS
     Json::Value limits(manifest().root["resource-limits"]);
 
@@ -138,30 +162,6 @@ engine_t::engine_t(context_t& context, const std::string& name):
         m_cgroup = NULL;
     }
 #endif
-
-    int linger = 0;
-
-    m_bus.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
-
-    try {
-        m_bus.bind(endpoint(manifest().name));
-    } catch(const zmq::error_t& e) {
-        throw configuration_error_t(std::string("invalid rpc endpoint - ") + e.what());
-    }
-    
-    m_watcher.set<engine_t, &engine_t::message>(this);
-    m_watcher.start(m_bus.fd(), ev::READ);
-    m_processor.set<engine_t, &engine_t::process>(this);
-    m_pumper.set<engine_t, &engine_t::pump>(this);
-    m_pumper.start(0.005f, 0.005f);
-
-    m_gc_timer.set<engine_t, &engine_t::cleanup>(this);
-    m_gc_timer.start(5.0f, 5.0f);
-
-    m_do_enqueue.set<engine_t, &engine_t::do_enqueue>(this);
-    m_do_enqueue.start();
-    m_do_stop.set<engine_t, &engine_t::do_stop>(this);
-    m_do_stop.start();
 }
 
 engine_t::~engine_t() {
