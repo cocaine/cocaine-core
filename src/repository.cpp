@@ -36,7 +36,7 @@ repository_t::repository_t(context_t& context):
     m_log(context.log("repository"))
 {
     if(lt_dlinit() != 0) {
-        throw registry_error_t("unable to initialize the plugin loader");
+        throw repository_error_t("unable to initialize the plugin loader");
     }
 
     fs::path path(m_context.config.plugin_path);

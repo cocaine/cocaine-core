@@ -72,7 +72,7 @@ class repository_t:
             factory_map_t::iterator it(m_categories[category].find(type));
 
             if(it == m_categories[category].end()) {
-                throw registry_error_t("plugin '" + type + "' is not available");
+                throw repository_error_t("plugin '" + type + "' is not available");
             }
 
             BOOST_ASSERT(it->second->category() != typeid(Category));
@@ -94,7 +94,7 @@ class repository_t:
             );
 
             if(m_categories[category].find(type) != m_categories[category].end()) {
-                throw registry_error_t("duplicate plugin '" + type + "' has been detected");
+                throw repository_error_t("duplicate plugin '" + type + "' has been detected");
             }
 
             m_categories[category].insert(

@@ -59,7 +59,7 @@ void slave_t::configure(const std::string& app) {
         rpc::packed<rpc::error> packed(dealer::server_error, e.what());
         send(packed);
         terminate();
-    } catch(const registry_error_t& e) {
+    } catch(const repository_error_t& e) {
         rpc::packed<rpc::error> packed(dealer::server_error, e.what());
         send(packed);
         terminate();

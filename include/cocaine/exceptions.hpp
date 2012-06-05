@@ -36,10 +36,10 @@ struct configuration_error_t:
     { }
 };
 
-struct registry_error_t:
+struct repository_error_t:
     public std::runtime_error
 {
-    registry_error_t(const std::string& what):
+    repository_error_t(const std::string& what):
         std::runtime_error(what)
     { }
 };
