@@ -39,7 +39,9 @@ class io_t {
 // Sandbox interface
 // -----------------
 
-class sandbox_t {
+class sandbox_t:
+    public boost::noncopyable
+{
     public:
         virtual ~sandbox_t() {
             // Empty.

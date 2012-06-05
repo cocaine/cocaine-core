@@ -41,7 +41,7 @@ public:
     typedef sandbox_t category_type;
 
 public:
-    perl_t(context_t& context, const manifest_t& manifest) : sandbox_t(context, manifest) {
+    perl_t(context_t& context, const manifest_t& manifest) : category_type(context, manifest) {
         int argc = 0;
         char** argv = NULL;
         char** env = NULL;

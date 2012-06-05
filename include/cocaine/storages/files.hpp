@@ -25,7 +25,7 @@ class blob_file_storage_t:
 {
     public:
         typedef blob_storage_t category_type;
-        typedef blob_storage_t::value_type value_type;
+        typedef category_type::value_type value_type;
 
     public:
         blob_file_storage_t(context_t& context,
@@ -57,11 +57,11 @@ class document_file_storage_t:
 {
     public:
         typedef document_storage_t category_type;
-        typedef document_storage_t::value_type value_type;
+        typedef category_type::value_type value_type;
 
     public:
         document_file_storage_t(context_t& context, const std::string& uri):
-            document_storage_t(context, uri),
+            category_type(context, uri),
             m_storage(context, uri)
         { }
 

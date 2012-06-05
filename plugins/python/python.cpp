@@ -32,7 +32,7 @@ static PyMethodDef context_module_methods[] = {
 };
 
 python_t::python_t(context_t& context, const manifest_t& manifest):
-    sandbox_t(context, manifest),
+    category_type(context, manifest),
     m_python_module(NULL),
     m_python_manifest(NULL),
     m_thread_state(NULL)

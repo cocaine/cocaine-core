@@ -118,12 +118,11 @@ context_t::context_t(config_t config_, boost::shared_ptr<logging::sink_t> sink):
     // Initialize the component repository.
     m_repository.reset(new repository_t(*this));
 
-    // Register the builtin document storages.
-    m_repository->insert<void_storage_t>("void");
+    // Register the builtin components.
+    m_repository->insert<document_void_storage_t>("void");
     m_repository->insert<document_file_storage_t>("files");
-
-    // Register the builtin blob storages.
-    m_repository->insert<blob_file_storage_t>("blobs");
+    m_repository->insert<blob_void_storage_t>("void");
+    m_repository->insert<blob_file_storage_t>("files");
 }
 
 context_t::~context_t() { }

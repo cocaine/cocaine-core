@@ -30,6 +30,7 @@ struct factory_concept_t {
 template<class Category>
 struct category_traits;
 
+// Custom factories should inherit from this interface.
 template<class Category>
 struct factory:
     public factory_concept_t
@@ -45,6 +46,8 @@ struct factory:
                          const args_type& args) = 0;
 };
 
+// Specialize this in your plugin to use
+// a custom factory for object instatiations.
 template<class T>
 struct plugin_traits {
     typedef typename category_traits<typename T::category_type>::template default_factory<T> factory_type;

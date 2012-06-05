@@ -29,8 +29,8 @@ namespace cocaine { namespace engine {
 
 namespace sc = boost::statechart;
 
-// Master states
-// -------------
+// Slave states
+// ------------
 
 namespace slave {
 

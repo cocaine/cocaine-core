@@ -152,6 +152,9 @@ class socket_t:
         std::string m_endpoint;
 };
 
+// RAII socket options
+// -------------------
+
 namespace options {
     struct receive_timeout {
         typedef int value_type;
@@ -189,6 +192,7 @@ class scoped_option {
         size_t size;
 };
 
+// Specialize this to disable specific type serialization.
 template<class T> class raw;
 
 template<> class raw<std::string> {
@@ -233,6 +237,9 @@ static inline raw<T>
 protect(T& object) {
     return raw<T>(object);
 }
+
+// Tuple-based RPC channel
+// -----------------------
 
 class channel_t:
     public socket_t

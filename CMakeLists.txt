@@ -79,8 +79,7 @@ ADD_LIBRARY(cocaine-common SHARED
     src/loggers/syslog
     src/logging
     src/repository
-    src/storages/files
-    src/storages/void)
+    src/storages/files)
 
 TARGET_LINK_LIBRARIES(cocaine-common
     boost_filesystem-mt

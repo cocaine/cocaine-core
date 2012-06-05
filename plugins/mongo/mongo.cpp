@@ -22,7 +22,7 @@ using namespace cocaine::storages;
 using namespace mongo;
 
 mongo_storage_t::mongo_storage_t(context_t& context, const std::string& uri) try:
-    document_storage_t(context, uri),
+    category_type(context, uri),
     m_uri(uri, ConnectionString::SET)
 {
     if(!m_uri.isValid()) {

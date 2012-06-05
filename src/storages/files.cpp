@@ -24,7 +24,7 @@ using namespace cocaine::storages;
 namespace fs = boost::filesystem;
 
 blob_file_storage_t::blob_file_storage_t(context_t& context, const std::string& uri):
-    blob_storage_t(context, uri),
+    category_type(context, uri),
     m_storage_path(uri)
 { }
 

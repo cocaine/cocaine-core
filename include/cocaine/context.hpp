@@ -72,8 +72,8 @@ class context_t:
 
         ~context_t();
 
-        // Registry API
-        // ------------
+        // Repository API
+        // --------------
 
         template<class Category>
         typename category_traits<Category>::ptr_type
@@ -83,8 +83,8 @@ class context_t:
             return m_repository->get<Category>(type, args);
         }
 
-        // Interconnect
-        // ------------
+        // Networking
+        // ----------
 
         zmq::context_t& io();
         

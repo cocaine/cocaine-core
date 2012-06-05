@@ -33,7 +33,7 @@ class javascript_t:
 
     public:
         javascript_t(context_t& context, const manifest_t& manifest):
-            sandbox_t(context, manifest)
+            category_type(context, manifest)
         {
             Json::Value args(manifest.root["args"]);
 

@@ -22,7 +22,6 @@
 
 namespace cocaine { namespace crypto {
 
-    
 class auth_t:
     public boost::noncopyable
 {
