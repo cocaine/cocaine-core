@@ -18,34 +18,49 @@
 
 namespace cocaine { namespace storages {
 
-class void_storage_t:
-    public document_storage_t
+template<class StorageType>
+class void_storage:
+    public StorageType
 {
     public:
-        typedef document_storage_t category_type;
-        typedef document_storage_t::value_type value_type;
+        typedef StorageType category_type;
+        typedef typename category_type::value_type value_type;
 
     public:
-        void_storage_t(context_t& context,
-                       const std::string& uri);
+        void_storage(context_t& context, const std::string& uri):
+            category_type(context, uri)
+        { }
 
         virtual void put(const std::string& ns,
                          const std::string& key,
-                         const value_type& value);
+                         const value_type& value)
+        { }
 
         virtual bool exists(const std::string& ns,
-                            const std::string& key);
+                            const std::string& key)
+        {
+            return false;
+        }
 
         virtual value_type get(const std::string& ns,
-                               const std::string& key);
+                               const std::string& key)
+        {
+            return value_type();
+        }
 
-        virtual std::vector<std::string> list(const std::string& ns);
+        virtual std::vector<std::string> list(const std::string& ns) {
+            return std::vector<std::string>();
+        }
 
         virtual void remove(const std::string& ns,
-                            const std::string& key);
+                            const std::string& key)
+        { }
         
-        virtual void purge(const std::string& ns);
+        virtual void purge(const std::string& ns) { }
 };
+
+typedef void_storage<document_storage_t> document_void_storage_t;
+typedef void_storage<blob_storage_t> blob_void_storage_t;
 
 }}
 
