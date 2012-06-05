@@ -528,8 +528,6 @@ handle_t::set_responce_callback(responce_callback_t callback) {
 
 void
 handle_t::enqueue_message(const boost::shared_ptr<message_iface>& message) {
-	boost::mutex::scoped_lock lock(mutex_);
-
 	message_cache_->enqueue(message);
 	update_statistics();
 }
