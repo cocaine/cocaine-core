@@ -68,15 +68,14 @@ class repository_t:
         get(const std::string& type,
             const typename category_traits<Category>::args_type& args)
         {
-            factory_map_t::iterator it(m_factories.find(type));
+            std::string category(typeid(Category).name());
+            factory_map_t::iterator it(m_categories[category].find(type));
 
-            if(it == m_factories.end()) {
+            if(it == m_categories[category].end()) {
                 throw registry_error_t("plugin '" + type + "' is not available");
             }
 
-            if(it->second->category() != typeid(Category)) {
-                throw registry_error_t("plugin '" + type + "' has an incompatible type");
-            }
+            BOOST_ASSERT(it->second->category() != typeid(Category));
 
             return typename category_traits<Category>::ptr_type(
                 dynamic_cast< factory<Category>* >(
@@ -90,11 +89,15 @@ class repository_t:
             boost::is_base_of<typename T::category_type, T>
         >::type 
         insert(const std::string& type) {
-            if(m_factories.find(type) != m_factories.end()) {
+            std::string category(
+                typeid(typename T::category_type).name()
+            );
+
+            if(m_categories[category].find(type) != m_categories[category].end()) {
                 throw registry_error_t("duplicate plugin '" + type + "' has been detected");
             }
 
-            m_factories.insert(
+            m_categories[category].insert(
                 type,
                 new typename plugin_traits<T>::factory_type()
             );
@@ -115,8 +118,17 @@ class repository_t:
             const std::string, 
             factory_concept_t
         > factory_map_t;
+
+#if BOOST_VERSION >= 104000
+        typedef boost::unordered_map<
+#else
+        typedef std::map<
+#endif
+            std::string,
+            factory_map_t
+        > category_map_t;
         
-        factory_map_t m_factories;
+        category_map_t m_categories;
 };
 
 }
