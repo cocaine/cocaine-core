@@ -34,15 +34,19 @@ auth_t::auth_t(context_t& context):
     ERR_load_crypto_strings();
 
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
-    Json::Value keys(context.storage("core")->all("keys"));
-    Json::Value::Members names(keys.getMemberNames());
+    std::vector<std::string> keys(
+        context.storage("core")->list("keys")
+    );
 
-    for(Json::Value::Members::const_iterator it = names.begin();
-        it != names.end();
-        ++it) 
+    for(std::vector<std::string>::const_iterator it = keys.begin();
+        it != keys.end();
+        ++it)
     {
         std::string identity(*it);
-        Json::Value object(keys[identity]);
+
+        document_storage_t::value_type object(
+            context.storage("core")->get("keys", identity)
+        );
 
         if(!object["key"].isString() || object["key"].empty()) {
             m_log->error("key for user '%s' is malformed", identity.c_str());

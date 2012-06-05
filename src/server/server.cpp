@@ -24,12 +24,10 @@
 
 using namespace cocaine;
 using namespace cocaine::engine;
-using namespace cocaine::storages;
 
 server_t::server_t(context_t& context, server_config_t config):
     m_context(context),
     m_log(m_context.log("core")),
-    m_storage(m_context.storage("core")),
     m_server(m_context.io(), ZMQ_REP, m_context.config.runtime.hostname),
     m_auth(m_context),
     m_birthstamp(m_loop.now())
@@ -332,9 +330,9 @@ void server_t::announce(ev::timer&, int) {
 
 void server_t::recover() {
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
-    Json::Value root(m_storage->all("apps"));
-    Json::Value::Members apps(root.getMemberNames());
-    
+    std::vector<std::string> apps(m_context.storage("core")->list("apps")),
+                             diff;
+
     std::set<std::string> available(apps.begin(), apps.end()),
                           active;
   
@@ -344,8 +342,6 @@ void server_t::recover() {
     {
         active.insert(it->first);
     }
-
-    std::vector<std::string> diff;
 
     // Generate a list of apps which are either new or dead.
     std::set_symmetric_difference(active.begin(), active.end(),

@@ -118,9 +118,12 @@ context_t::context_t(config_t config_, boost::shared_ptr<logging::sink_t> sink):
     // Initialize the component repository.
     m_repository.reset(new repository_t(*this));
 
-    // Register the builtins.
-    m_repository->insert<void_storage_t, json_storage_t>("void");
-    m_repository->insert<file_storage_t, json_storage_t>("files");
+    // Register the builtin document storages.
+    m_repository->insert<void_storage_t, document_storage_t>("void");
+    m_repository->insert<document_file_storage_t, document_storage_t>("files");
+
+    // Register the builtin blob storages.
+    m_repository->insert<blob_file_storage_t, blob_storage_t>("blobs");
 }
 
 context_t::~context_t() { }
@@ -135,7 +138,7 @@ zmq::context_t& context_t::io() {
     return *m_io;
 }
 
-category_traits<json_storage_t>::ptr_type
+category_traits<document_storage_t>::ptr_type
 context_t::storage(const std::string& name) {
     config_t::storage_info_map_t::const_iterator it(
         config.storages.find(name)
@@ -145,9 +148,9 @@ context_t::storage(const std::string& name) {
         throw configuration_error_t("the specified storage doesn't exist");
     }
 
-    return get<json_storage_t>(
+    return get<document_storage_t>(
         it->second.type,
-        category_traits<json_storage_t>::args_type(
+        category_traits<document_storage_t>::args_type(
             it->second.uri
         )
     );

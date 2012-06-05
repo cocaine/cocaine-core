@@ -30,21 +30,24 @@ class concept:
     public boost::noncopyable
 {
     public:
+        typedef T value_type;
+
+    public:
         virtual ~concept() { 
             // Empty.
         }
 
         virtual void put(const std::string& ns,
                          const std::string& key,
-                         const T& value) = 0;
+                         const value_type& value) = 0;
         
         virtual bool exists(const std::string& ns,
                             const std::string& key) = 0;
 
-        virtual T get(const std::string& ns,
+        virtual value_type get(const std::string& ns,
                                 const std::string& key) = 0;
 
-        virtual T all(const std::string& ns) = 0;
+        virtual std::vector<std::string> list(const std::string& ns) = 0;
 
         virtual void remove(const std::string& ns,
                             const std::string& key) = 0;
@@ -60,13 +63,13 @@ class concept:
         context_t& m_context;
 };
 
-typedef concept<json_t> json_storage_t;
+typedef concept<Json::Value> document_storage_t;
 typedef concept<blob_t> blob_storage_t;
 
 }
 
-template<class DataType> struct category_traits< storages::concept<DataType> > {
-    typedef storages::concept<DataType> storage_type;
+template<class ValueType> struct category_traits< storages::concept<ValueType> > {
+    typedef storages::concept<ValueType> storage_type;
     typedef boost::shared_ptr<storage_type> ptr_type;
     typedef boost::tuple<const std::string&> args_type;
     

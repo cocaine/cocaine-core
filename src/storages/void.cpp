@@ -16,12 +16,12 @@
 using namespace cocaine::storages;
 
 void_storage_t::void_storage_t(context_t& context, const std::string& uri):
-    json_storage_t(context, uri)
+    document_storage_t(context, uri)
 { }
 
 void void_storage_t::put(const std::string& ns,
 						 const std::string& key,
-						 const Json::Value& value)
+						 const value_type& value)
 { }
 
 bool void_storage_t::exists(const std::string& ns,
@@ -30,14 +30,14 @@ bool void_storage_t::exists(const std::string& ns,
     return false;
 }
 
-Json::Value void_storage_t::get(const std::string& ns,
-								const std::string& key)
+void_storage_t::value_type void_storage_t::get(const std::string& ns,
+				                 			   const std::string& key)
 {
-    return Json::Value(Json::objectValue);
+    return value_type();
 }
 
-Json::Value void_storage_t::all(const std::string& ns) {
-    return Json::Value(Json::objectValue);  
+std::vector<std::string> void_storage_t::list(const std::string& ns) {
+    return std::vector<std::string>();
 }
 
 void void_storage_t::remove(const std::string& ns,

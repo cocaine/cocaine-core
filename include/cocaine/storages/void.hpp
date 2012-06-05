@@ -19,23 +19,26 @@
 namespace cocaine { namespace storages {
 
 class void_storage_t:
-    public json_storage_t
+    public document_storage_t
 {
+    public:
+        typedef document_storage_t::value_type value_type;
+
     public:
         void_storage_t(context_t& context,
                        const std::string& uri);
 
         virtual void put(const std::string& ns,
                          const std::string& key,
-                         const Json::Value& value);
+                         const value_type& value);
 
         virtual bool exists(const std::string& ns,
                             const std::string& key);
 
-        virtual Json::Value get(const std::string& ns,
-                                const std::string& key);
+        virtual value_type get(const std::string& ns,
+                               const std::string& key);
 
-        virtual Json::Value all(const std::string& ns);
+        virtual std::vector<std::string> list(const std::string& ns);
 
         virtual void remove(const std::string& ns,
                             const std::string& key);

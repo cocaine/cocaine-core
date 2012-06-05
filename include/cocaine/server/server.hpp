@@ -62,7 +62,6 @@ class server_t:
     private:
         context_t& m_context;
         boost::shared_ptr<logging::logger_t> m_log;
-        boost::shared_ptr<storages::json_storage_t> m_storage;
 
         // Engines.
 #if BOOST_VERSION >= 104000
@@ -76,7 +75,7 @@ class server_t:
 
         engine_map_t m_engines;
 
-        // Event loop
+        // Event loop.
         ev::default_loop m_loop;
 
         // Event watchers.

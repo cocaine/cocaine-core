@@ -29,16 +29,12 @@ using namespace cocaine::storages;
 manifest_t::manifest_t(context_t& context, const std::string& app):
     name(app)
 {
-    boost::shared_ptr<json_storage_t> storage(
-        context.storage("core")
-    );
-
-    if(!storage->exists("apps", name)) {
+    if(!context.storage("core")->exists("apps", name)) {
         throw configuration_error_t("the specified app is not available");
     }
 
     // Load the app manifest.
-    root = storage->get("apps", name);
+    root = context.storage("core")->get("apps", name);
 
     // Setup the app configuration.
     type = root["type"].asString();

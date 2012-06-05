@@ -18,18 +18,19 @@
 
 #include "cocaine/context.hpp"
 
+using namespace cocaine;
 using namespace cocaine::storages;
 
 namespace fs = boost::filesystem;
 
-file_storage_t::file_storage_t(context_t& context, const std::string& uri):
-    json_storage_t(context, uri),
+blob_file_storage_t::blob_file_storage_t(context_t& context, const std::string& uri):
+    blob_storage_t(context, uri),
     m_storage_path(uri)
 { }
 
-void file_storage_t::put(const std::string& ns,
-                         const std::string& key,
-                         const Json::Value& value) 
+void blob_file_storage_t::put(const std::string& ns,
+                              const std::string& key,
+                              const value_type& blob) 
 {
     fs::path store_path(m_storage_path / ns);
 
@@ -50,14 +51,16 @@ void file_storage_t::put(const std::string& ns,
         throw storage_error_t("unable to open " + file_path.string()); 
     }     
 
-    std::string json(Json::StyledWriter().write(value));
-    
-    stream << json;
+    stream.write(
+        static_cast<const char*>(blob.data()),
+        blob.size()
+    );
+
     stream.close();
 }
 
-bool file_storage_t::exists(const std::string& ns,
-                            const std::string& key)
+bool blob_file_storage_t::exists(const std::string& ns,
+                                 const std::string& key)
 {
     fs::path file_path(m_storage_path / ns / key);
     
@@ -65,22 +68,24 @@ bool file_storage_t::exists(const std::string& ns,
             fs::is_regular(file_path));
 }
 
-Json::Value file_storage_t::get(const std::string& ns,
-                                const std::string& key)
+blob_file_storage_t::value_type blob_file_storage_t::get(const std::string& ns,
+                                                         const std::string& key)
 {
-    Json::Value root(Json::objectValue);
     fs::path file_path(m_storage_path / ns / key);
     fs::ifstream stream(file_path, fs::ifstream::in);
     
-    if(stream) { 
-        Json::Reader reader(Json::Features::strictMode());
-        
-        if(!reader.parse(stream, root)) {
-            throw storage_error_t("corrupted data in " + file_path.string());
-        }
+    if(stream) {
+        std::stringstream buffer;
+
+        buffer << stream.rdbuf();
+
+        return value_type(
+            buffer.str().data(),
+            buffer.str().size()
+        );
     }
 
-    return root;
+    return value_type();
 }
 
 namespace {
@@ -91,12 +96,12 @@ namespace {
     };
 }
 
-Json::Value file_storage_t::all(const std::string& ns) {
-    Json::Value root(Json::objectValue);
+std::vector<std::string> blob_file_storage_t::list(const std::string& ns) {
     fs::path store_path(m_storage_path / ns);
+    std::vector<std::string> result;
 
     if(!fs::exists(store_path)) {
-        return root;
+        return result;
     }
 
     typedef boost::filter_iterator<is_regular_file, fs::directory_iterator> file_iterator;
@@ -106,27 +111,19 @@ Json::Value file_storage_t::all(const std::string& ns) {
 
     while(it != end) {
 #if BOOST_FILESYSTEM_VERSION == 3
-        Json::Value value(get(ns, it->path().filename().string()));
+        result.push_back(it->path().filename().string());
 #else
-        Json::Value value(get(ns, it->leaf()));
+        result.push_back(it->leaf());
 #endif
-
-        if(!value.empty()) {
-#if BOOST_FILESYSTEM_VERSION == 3
-            root[it->path().filename().string()] = value;
-#else
-            root[it->leaf()] = value;
-#endif
-        }
-
+ 
         ++it;
     }
 
-    return root;
+    return result;
 }
 
-void file_storage_t::remove(const std::string& ns,
-                            const std::string& key)
+void blob_file_storage_t::remove(const std::string& ns,
+                                 const std::string& key)
 {
     fs::path file_path(m_storage_path / ns / key);
     
@@ -139,7 +136,45 @@ void file_storage_t::remove(const std::string& ns,
     }
 }
 
-void file_storage_t::purge(const std::string& ns) {
+void blob_file_storage_t::purge(const std::string& ns) {
     fs::path store_path(m_storage_path / ns);
     fs::remove_all(store_path);
+}
+
+void document_file_storage_t::put(const std::string& ns,
+                                  const std::string& key,
+                                  const value_type& value)
+{
+    std::string json(Json::StyledWriter().write(value));
+
+    m_storage.put(
+        ns,
+        key,
+        blob_storage_t::value_type(
+            json.data(),
+            json.size()
+        )
+    );
+}
+
+document_file_storage_t::value_type document_file_storage_t::get(const std::string& ns,
+                                                                 const std::string& key)
+{
+    blob_storage_t::value_type value(m_storage.get(ns, key));
+    value_type result;
+
+    if(!value.empty()) {
+        Json::Reader reader(Json::Features::strictMode());
+
+        std::string json(
+            static_cast<const char*>(value.data()),
+            static_cast<const char*>(value.data()) + value.size()
+        );
+        
+        if(!reader.parse(json, result)) {
+            throw storage_error_t("unparseable json in the storage");
+        }
+    }
+
+    return result;
 }

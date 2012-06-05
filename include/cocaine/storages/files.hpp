@@ -20,24 +20,27 @@
 
 namespace cocaine { namespace storages {
 
-class file_storage_t:
-    public json_storage_t
+class blob_file_storage_t:
+    public blob_storage_t
 {
     public:
-        file_storage_t(context_t& context,
-                       const std::string& uri);
+        typedef blob_storage_t::value_type value_type;
+
+    public:
+        blob_file_storage_t(context_t& context,
+                            const std::string& uri);
 
         virtual void put(const std::string& ns, 
                          const std::string& key, 
-                         const Json::Value& value);
+                         const value_type& value);
 
         virtual bool exists(const std::string& ns,
                             const std::string& key);
 
-        virtual Json::Value get(const std::string& ns,
-                                const std::string& key);
+        virtual value_type get(const std::string& ns,
+                           const std::string& key);
 
-        virtual Json::Value all(const std::string& ns);
+        virtual std::vector<std::string> list(const std::string& ns);
 
         virtual void remove(const std::string& ns,
                             const std::string& key);
@@ -46,6 +49,49 @@ class file_storage_t:
 
     private:
         const boost::filesystem::path m_storage_path;
+};
+
+class document_file_storage_t:
+    public document_storage_t
+{
+    public:
+        typedef document_storage_t::value_type value_type;
+
+    public:
+        document_file_storage_t(context_t& context, const std::string& uri):
+            document_storage_t(context, uri),
+            m_storage(context, uri)
+        { }
+
+        virtual void put(const std::string& ns, 
+                         const std::string& key, 
+                         const value_type& value);
+
+        virtual bool exists(const std::string& ns,
+                            const std::string& key)
+        {
+            return m_storage.exists(ns, key);
+        }
+
+        virtual value_type get(const std::string& ns,
+                               const std::string& key);
+
+        virtual std::vector<std::string> list(const std::string& ns) {
+            return m_storage.list(ns);
+        }
+
+        virtual void remove(const std::string& ns,
+                            const std::string& key)
+        {
+            m_storage.remove(ns, key);
+        }
+        
+        virtual void purge(const std::string& ns) {
+            m_storage.purge(ns);
+        }
+
+    private:
+        blob_file_storage_t m_storage;
 };
 
 }}

@@ -22,7 +22,7 @@ using namespace cocaine::storages;
 using namespace mongo;
 
 mongo_storage_t::mongo_storage_t(context_t& context, const std::string& uri) try:
-    json_storage_t(context, uri),
+    document_storage_t(context, uri),
     m_uri(uri, ConnectionString::SET)
 {
     if(!m_uri.isValid()) {
@@ -34,7 +34,7 @@ mongo_storage_t::mongo_storage_t(context_t& context, const std::string& uri) try
 
 void mongo_storage_t::put(const std::string& ns,
                           const std::string& key,
-                          const Json::Value& value)
+                          const value_type& value)
 {
     Json::FastWriter writer;
     Json::Value container(Json::objectValue);
@@ -74,11 +74,11 @@ bool mongo_storage_t::exists(const std::string& ns,
     return result;
 }
 
-Json::Value mongo_storage_t::get(const std::string& ns,
-                                 const std::string& key)
+mongo_storage_t::value_type mongo_storage_t::get(const std::string& ns,
+                                                 const std::string& key)
 {
     Json::Reader reader;
-    Json::Value result(Json::objectValue);
+    value_type result;
     BSONObj object;
 
     try {
@@ -100,20 +100,17 @@ Json::Value mongo_storage_t::get(const std::string& ns,
     return result;
 }
 
-Json::Value mongo_storage_t::all(const std::string& ns) {
-    Json::Reader reader;
-    Json::Value root(Json::objectValue), result;
+std::vector<std::string> mongo_storage_t::list(const std::string& ns) {
+    std::vector<std::string> result;
+    BSONObj object;
 
     try {
         ScopedDbConnection connection(m_uri);
         std::auto_ptr<DBClientCursor> cursor(connection->query(resolve(ns), BSONObj()));
         
         while(cursor->more()) {
-            if(reader.parse(cursor->nextSafe().jsonString(), result)) {
-                root[result["key"].asString()] = result["object"];
-            } else {
-                throw storage_error_t("corrupted data in '" + ns + "'");
-            }
+            object = cursor->nextSafe();
+            result.push_back(object["key"]);
         }
         
         connection.done();
@@ -121,7 +118,7 @@ Json::Value mongo_storage_t::all(const std::string& ns) {
         throw storage_error_t(e.what());
     }
 
-    return root;
+    return result;
 }
 
 void mongo_storage_t::remove(const std::string& ns,
@@ -152,6 +149,6 @@ std::string mongo_storage_t::resolve(const std::string& ns) const {
 
 extern "C" {
     void initialize(repository_t& repository) {
-        repository.insert<mongo_storage_t, json_storage_t>("mongodb");
+        repository.insert<mongo_storage_t, document_storage_t>("mongodb");
     }
 }
