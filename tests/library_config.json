@@ -1,6 +1,6 @@
 {
     "version": 1,
-    "module-path": "modules/python",
+    "plugin-path": "plugins/python",
     "storages": {
         "core": {
             "type": "files",
