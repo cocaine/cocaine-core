@@ -68,10 +68,13 @@ class repository_t:
         get(const std::string& type,
             const typename category_traits<Category>::args_type& args)
         {
-            std::string category(typeid(Category).name());
-            factory_map_t::iterator it(m_categories[category].find(type));
+            factory_map_t& factories(
+                m_categories[typeid(Category).name()]
+            );
 
-            if(it == m_categories[category].end()) {
+            factory_map_t::iterator it(factories.find(type));
+
+            if(it == factories.end()) {
                 throw repository_error_t("plugin '" + type + "' is not available");
             }
 
@@ -89,15 +92,15 @@ class repository_t:
             boost::is_base_of<typename T::category_type, T>
         >::type 
         insert(const std::string& type) {
-            std::string category(
-                typeid(typename T::category_type).name()
+            factory_map_t& factories(
+                m_categories[typeid(typename T::category_type).name()]
             );
 
-            if(m_categories[category].find(type) != m_categories[category].end()) {
+            if(factories.find(type) != factories.end()) {
                 throw repository_error_t("duplicate plugin '" + type + "' has been detected");
             }
 
-            m_categories[category].insert(
+            factories.insert(
                 type,
                 new typename plugin_traits<T>::factory_type()
             );
