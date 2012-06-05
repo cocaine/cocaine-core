@@ -138,24 +138,6 @@ zmq::context_t& context_t::io() {
     return *m_io;
 }
 
-category_traits<document_storage_t>::ptr_type
-context_t::storage(const std::string& name) {
-    config_t::storage_info_map_t::const_iterator it(
-        config.storages.find(name)
-    );
-    
-    if(it == config.storages.end()) {
-        throw configuration_error_t("the specified storage doesn't exist");
-    }
-
-    return get<document_storage_t>(
-        it->second.type,
-        category_traits<document_storage_t>::args_type(
-            it->second.uri
-        )
-    );
-}
-
 boost::shared_ptr<logging::logger_t>
 context_t::log(const std::string& name) {
     return m_sink->get(name);

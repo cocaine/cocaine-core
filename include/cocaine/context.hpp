@@ -91,8 +91,24 @@ class context_t:
         // Storage
         // -------
 
-        category_traits<storages::document_storage_t>::ptr_type
-        storage(const std::string& name);
+        template<class ValueType>
+        typename category_traits< storages::concept<ValueType> >::ptr_type
+        storage(const std::string& name) {
+            config_t::storage_info_map_t::const_iterator it(
+                config.storages.find(name)
+            );
+    
+            if(it == config.storages.end()) {
+                throw configuration_error_t("the specified storage doesn't exist");
+            }
+
+            return get< storages::concept<ValueType> >(
+                it->second.type,
+                typename category_traits< storages::concept<ValueType> >::args_type(
+                    it->second.uri
+                )
+            );
+        }
 
         // Logging
         // -------

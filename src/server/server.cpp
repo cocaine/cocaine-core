@@ -330,8 +330,9 @@ void server_t::announce(ev::timer&, int) {
 
 void server_t::recover() {
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
-    std::vector<std::string> apps(m_context.storage("core")->list("apps")),
-                             diff;
+    std::vector<std::string> apps(
+        m_context.storage<Json::Value>("core")->list("apps")
+    );
 
     std::set<std::string> available(apps.begin(), apps.end()),
                           active;
@@ -342,6 +343,8 @@ void server_t::recover() {
     {
         active.insert(it->first);
     }
+
+    std::vector<std::string> diff;
 
     // Generate a list of apps which are either new or dead.
     std::set_symmetric_difference(active.begin(), active.end(),
