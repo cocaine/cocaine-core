@@ -22,7 +22,7 @@ using namespace cocaine::storages;
 using namespace mongo;
 
 mongo_storage_t::mongo_storage_t(context_t& context, const std::string& uri) try:
-    storage_t(context, uri),
+    json_storage_t(context, uri),
     m_uri(uri, ConnectionString::SET)
 {
     if(!m_uri.isValid()) {
@@ -152,6 +152,6 @@ std::string mongo_storage_t::resolve(const std::string& ns) const {
 
 extern "C" {
     void initialize(repository_t& repository) {
-        repository.insert<mongo_storage_t, storage_t>("mongodb");
+        repository.insert<mongo_storage_t, json_storage_t>("mongodb");
     }
 }

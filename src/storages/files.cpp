@@ -23,7 +23,7 @@ using namespace cocaine::storages;
 namespace fs = boost::filesystem;
 
 file_storage_t::file_storage_t(context_t& context, const std::string& uri):
-    storage_t(context, uri),
+    json_storage_t(context, uri),
     m_storage_path(uri)
 { }
 

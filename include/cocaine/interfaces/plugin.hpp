@@ -17,6 +17,8 @@
 #include <boost/tuple/tuple.hpp>
 
 #include "cocaine/common.hpp"
+#include "cocaine/context.hpp"
+#include "cocaine/manifest.hpp"
 #include "cocaine/repository.hpp"
 
 #include "cocaine/helpers/blob.hpp"
@@ -39,17 +41,24 @@ class io_t {
 
 class plugin_t {
     public:
-        virtual ~plugin_t() = 0;
+        virtual ~plugin_t() {
+            // Empty.
+        }
         
         virtual void invoke(const std::string& method,
                             io_t& io) = 0;
 
     public:
-        const logging::logger_t& log() const;
+        const logging::logger_t& log() const {
+            return *m_log;
+        }
     
     protected:
-        plugin_t(context_t& context,
-                 const manifest_t& app);
+        plugin_t(context_t& context, const manifest_t& manifest):
+            m_context(context),
+            m_log(m_context.log(manifest.name)),
+            m_manifest(manifest)
+        { }
 
     protected:
         context_t& m_context;

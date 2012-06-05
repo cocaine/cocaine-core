@@ -76,7 +76,6 @@ SET_TARGET_PROPERTIES(json PROPERTIES
 ADD_LIBRARY(cocaine-common SHARED
     src/auth
     src/context
-    src/interfaces/storage
     src/loggers/syslog
     src/logging
     src/repository
@@ -100,7 +99,6 @@ SET_TARGET_PROPERTIES(cocaine-common PROPERTIES
 ADD_LIBRARY(cocaine-core SHARED
     src/drivers/base
     src/engine
-    src/interfaces/plugin
     src/job
     src/manifest
     src/master)

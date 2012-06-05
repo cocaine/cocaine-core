@@ -21,26 +21,30 @@
 #include "cocaine/repository.hpp"
 
 #include "cocaine/helpers/json.hpp"
+#include "cocaine/helpers/blob.hpp"
 
 namespace cocaine { namespace storages {
 
-class storage_t:
+template<class T>
+class concept:
     public boost::noncopyable
 {
     public:
-        virtual ~storage_t() = 0;
+        virtual ~concept() { 
+            // Empty.
+        }
 
         virtual void put(const std::string& ns,
                          const std::string& key,
-                         const Json::Value& value) = 0;
+                         const T& value) = 0;
         
         virtual bool exists(const std::string& ns,
                             const std::string& key) = 0;
 
-        virtual Json::Value get(const std::string& ns,
+        virtual T get(const std::string& ns,
                                 const std::string& key) = 0;
 
-        virtual Json::Value all(const std::string& ns) = 0;
+        virtual T all(const std::string& ns) = 0;
 
         virtual void remove(const std::string& ns,
                             const std::string& key) = 0;
@@ -48,22 +52,27 @@ class storage_t:
         virtual void purge(const std::string& ns) = 0;
 
     protected:
-        storage_t(context_t& context,
-                  const std::string& uri);
+        concept(context_t& context, const std::string& uri):
+            m_context(context)
+        { }
 
     protected:
         context_t& m_context;
 };
 
+typedef concept<json_t> json_storage_t;
+typedef concept<blob_t> blob_storage_t;
+
 }
 
-template<> struct category_traits<storages::storage_t> {
-    typedef boost::shared_ptr<storages::storage_t> ptr_type;
+template<class DataType> struct category_traits< storages::concept<DataType> > {
+    typedef storages::concept<DataType> storage_type;
+    typedef boost::shared_ptr<storage_type> ptr_type;
     typedef boost::tuple<const std::string&> args_type;
     
     template<class T>
     struct factory_type:
-        public category_model<storages::storage_t>
+        public category_model<storage_type>
     {
         virtual ptr_type get(context_t& context,
                              const args_type& args)
@@ -71,7 +80,7 @@ template<> struct category_traits<storages::storage_t> {
             boost::lock_guard<boost::mutex> lock(m_mutex);
             const std::string& uri(boost::get<0>(args));
 
-            storage_map_t::iterator it(
+            typename storage_map_t::iterator it(
                 m_storages.find(uri)
             );
 

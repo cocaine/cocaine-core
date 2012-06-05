@@ -29,7 +29,7 @@ using namespace cocaine::storages;
 manifest_t::manifest_t(context_t& context, const std::string& app):
     name(app)
 {
-    boost::shared_ptr<storage_t> storage(
+    boost::shared_ptr<json_storage_t> storage(
         context.storage("core")
     );
 

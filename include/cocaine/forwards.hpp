@@ -38,10 +38,6 @@ namespace cocaine {
         class logger_t;
         class sink_t;
     }
-
-    namespace storages {
-        class storage_t;
-    }
 }
 
 namespace zmq {

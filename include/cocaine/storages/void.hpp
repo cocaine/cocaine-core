@@ -19,7 +19,7 @@
 namespace cocaine { namespace storages {
 
 class void_storage_t:
-    public storage_t
+    public json_storage_t
 {
     public:
         void_storage_t(context_t& context,

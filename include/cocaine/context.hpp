@@ -91,7 +91,7 @@ class context_t:
         // Storage
         // -------
 
-        category_traits<storages::storage_t>::ptr_type
+        category_traits<storages::json_storage_t>::ptr_type
         storage(const std::string& name);
 
         // Logging

@@ -16,7 +16,7 @@
 using namespace cocaine::storages;
 
 void_storage_t::void_storage_t(context_t& context, const std::string& uri):
-    storage_t(context, uri)
+    json_storage_t(context, uri)
 { }
 
 void void_storage_t::put(const std::string& ns,

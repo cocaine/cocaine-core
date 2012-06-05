@@ -21,7 +21,7 @@
 namespace cocaine { namespace storages {
 
 class mongo_storage_t:
-    public storage_t
+    public json_storage_t
 {
     public:
         mongo_storage_t(context_t& context,

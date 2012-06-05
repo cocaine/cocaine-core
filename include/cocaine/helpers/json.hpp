@@ -27,6 +27,10 @@ inline Json::Value make_json(const std::string& key,
     return object;
 }
 
-}}
+}
+
+typedef Json::Value json_t;
+
+}
 
 #endif
