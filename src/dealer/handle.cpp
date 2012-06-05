@@ -116,7 +116,7 @@ handle_t::dispatch_messages() {
 		int long_poll_timeout = 5000;   // microsecs
 
 		int response_poll_timeout = fast_poll_timeout;
-		if (last_response_timer_.elapsed().as_double() > 0.5f) {	// 0.5f == 500 millisecs
+		if (last_response_timer_.elapsed().as_double() > 5.0f) {
 			response_poll_timeout = long_poll_timeout;			
 		}
 
@@ -137,7 +137,7 @@ handle_t::dispatch_messages() {
 		}
 
 		if (is_running_) {
-			if (deadlined_messages_timer_.elapsed().as_double() > 0.01f) {	// 0.01f == 10 millisecs
+			if (deadlined_messages_timer_.elapsed().as_double() > 1.0f) {
 				lock.unlock();
 				process_deadlined_messages();
 				lock.lock();
