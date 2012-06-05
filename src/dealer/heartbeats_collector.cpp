@@ -65,6 +65,9 @@ heartbeats_collector::run() {
 		hosts_fetchers_.push_back(fetcher);
 	}
 
+	// ping first time without delay
+	ping_services();
+
 	// create hosts pinger
 	boost::function<void()> f = boost::bind(&heartbeats_collector::ping_services, this);
 	refresher_.reset(new refresher(f, hosts_retrieval_interval));

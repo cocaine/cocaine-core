@@ -66,7 +66,7 @@ response_impl::get(data_container* data, double timeout) {
 				cond_var_.wait(lock);
 			}
 			else {
-				unsigned long long millisecs = static_cast<unsigned long long>(timeout * 1000);
+				unsigned long long millisecs = static_cast<unsigned long long>(timeout * 1000000);
 				boost::system_time t = boost::get_system_time() + boost::posix_time::milliseconds(millisecs);
 				cond_var_.timed_wait(lock, t);
 				break;

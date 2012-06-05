@@ -32,17 +32,12 @@ private:
 	void refreshing_thread();
 
 private:
-	// callback
 	boost::function<void()> f_;
-	
-	// ivars
 	boost::uint32_t timeout_;
 	volatile bool stopping_;
-
-	// threading
 	boost::mutex mutex_;
-	boost::condition_variable cond_var_;
 	boost::thread refreshing_thread_;
+
 };
 
 } // namespace dealer
