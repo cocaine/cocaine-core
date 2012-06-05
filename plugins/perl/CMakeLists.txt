@@ -21,7 +21,7 @@ IF (PERL)
         COMPILE_FLAGS "${PERL_CFLAGS}"
         LINK_FLAGS "${PERL_LDFLAGS}"
         PREFIX ""
-        SUFFIX ".cocaine-module")
+        SUFFIX ".cocaine-plugin")
 
     INSTALL(TARGETS perl
         LIBRARY DESTINATION lib/cocaine

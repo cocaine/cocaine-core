@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_PYTHON_PLUGIN_HPP
-#define COCAINE_PYTHON_PLUGIN_HPP
+#ifndef COCAINE_PYTHON_SANDBOX_HPP
+#define COCAINE_PYTHON_SANDBOX_HPP
 
 // NOTE: These are being redefined in Python.h
 #undef _POSIX_C_SOURCE
@@ -20,7 +20,7 @@
 
 #include <Python.h>
 
-#include "cocaine/interfaces/plugin.hpp"
+#include "cocaine/interfaces/sandbox.hpp"
 
 #include "cocaine/helpers/json.hpp"
 #include "cocaine/helpers/track.hpp"
@@ -85,8 +85,11 @@ class thread_lock_t {
 };
 
 class python_t:
-    public plugin_t
+    public sandbox_t
 {
+    public:
+        typedef sandbox_t category_type;
+
     public:
         python_t(context_t& context,
                  const manifest_t& manifest);

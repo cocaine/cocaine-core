@@ -26,7 +26,7 @@ IF (PYTHON)
         COMPILE_FLAGS "${PYTHON_CFLAGS} -fno-strict-aliasing"
         LINK_FLAGS "${PYTHON_LDFLAGS}"
         PREFIX ""
-        SUFFIX ".cocaine-module")
+        SUFFIX ".cocaine-plugin")
 
     INSTALL(TARGETS python
         LIBRARY DESTINATION lib/cocaine

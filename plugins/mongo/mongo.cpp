@@ -149,6 +149,6 @@ std::string mongo_storage_t::resolve(const std::string& ns) const {
 
 extern "C" {
     void initialize(repository_t& repository) {
-        repository.insert<mongo_storage_t, document_storage_t>("mongodb");
+        repository.insert<mongo_storage_t>("mongodb");
     }
 }

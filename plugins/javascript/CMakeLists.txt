@@ -10,7 +10,7 @@ IF (JAVASCRIPT)
 
 	SET_TARGET_PROPERTIES(javascript PROPERTIES
 	    PREFIX ""
-	    SUFFIX ".cocaine-module")
+	    SUFFIX ".cocaine-plugin")
 
 	INSTALL(TARGETS javascript
 	    LIBRARY DESTINATION lib/cocaine

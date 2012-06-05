@@ -42,7 +42,7 @@ struct config_t {
     config_t(const std::string& config_path);
 
     std::string config_path,
-                module_path;
+                plugin_path;
 
     typedef struct {
         std::string type;
@@ -92,7 +92,7 @@ class context_t:
         // -------
 
         template<class ValueType>
-        typename category_traits< storages::concept<ValueType> >::ptr_type
+        typename category_traits< storages::storage_concept<ValueType> >::ptr_type
         storage(const std::string& name) {
             config_t::storage_info_map_t::const_iterator it(
                 config.storages.find(name)
@@ -102,9 +102,9 @@ class context_t:
                 throw configuration_error_t("the specified storage doesn't exist");
             }
 
-            return get< storages::concept<ValueType> >(
+            return get< storages::storage_concept<ValueType> >(
                 it->second.type,
-                typename category_traits< storages::concept<ValueType> >::args_type(
+                typename category_traits< storages::storage_concept<ValueType> >::args_type(
                     it->second.uri
                 )
             );

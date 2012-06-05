@@ -63,7 +63,7 @@ config_t::config_t(const std::string& path):
     // Component repository configuration
     // ----------------------------------
 
-    module_path = root.get("module-path", "").asString();
+    plugin_path = root.get("plugin-path", "").asString();
 
     // Storage configuration
     // ---------------------
@@ -119,11 +119,11 @@ context_t::context_t(config_t config_, boost::shared_ptr<logging::sink_t> sink):
     m_repository.reset(new repository_t(*this));
 
     // Register the builtin document storages.
-    m_repository->insert<void_storage_t, document_storage_t>("void");
-    m_repository->insert<document_file_storage_t, document_storage_t>("files");
+    m_repository->insert<void_storage_t>("void");
+    m_repository->insert<document_file_storage_t>("files");
 
     // Register the builtin blob storages.
-    m_repository->insert<blob_file_storage_t, blob_storage_t>("blobs");
+    m_repository->insert<blob_file_storage_t>("blobs");
 }
 
 context_t::~context_t() { }

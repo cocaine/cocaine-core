@@ -21,7 +21,7 @@
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
 
-#include "cocaine/interfaces/plugin.hpp"
+#include "cocaine/interfaces/sandbox.hpp"
 
 EXTERN_C void boot_DynaLoader(pTHX_ CV* cv);
 
@@ -36,9 +36,12 @@ EXTERN_C void xs_init(pTHX) {
 namespace cocaine {
 namespace engine {
 
-class perl_t: public plugin_t {
+class perl_t: public sandbox_t {
 public:
-    perl_t(context_t& context, const manifest_t& manifest) : plugin_t(context, manifest) {
+    typedef sandbox_t category_type;
+
+public:
+    perl_t(context_t& context, const manifest_t& manifest) : sandbox_t(context, manifest) {
         int argc = 0;
         char** argv = NULL;
         char** env = NULL;
@@ -165,7 +168,7 @@ private:
 
 extern "C" {
     void initialize(repository_t& repository) {
-        repository.insert<perl_t, plugin_t>("perl");
+        repository.insert<perl_t>("perl");
     }
 }
 

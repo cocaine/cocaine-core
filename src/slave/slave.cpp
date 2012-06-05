@@ -48,9 +48,9 @@ void slave_t::configure(const std::string& app) {
     try {
         m_manifest.reset(new manifest_t(m_context, app));
         
-        m_plugin = m_context.get<plugin_t>(
+        m_sandbox = m_context.get<sandbox_t>(
             m_manifest->type,
-            category_traits<plugin_t>::args_type(*m_manifest)
+            category_traits<sandbox_t>::args_type(*m_manifest)
         );
         
         m_suicide_timer.set<slave_t, &slave_t::timeout>(this);
@@ -118,7 +118,7 @@ void slave_t::process(ev::idle&, int) {
     switch(command) {
         case rpc::invoke: {
             // TEST: Ensure that we have the app first.
-            BOOST_ASSERT(m_plugin.get() != NULL);
+            BOOST_ASSERT(m_sandbox.get() != NULL);
 
             std::string method;
 
@@ -163,7 +163,7 @@ void slave_t::heartbeat(ev::timer&, int) {
 
 void slave_t::invoke(const std::string& method) {
     try {
-        m_plugin->invoke(method, *this);
+        m_sandbox->invoke(method, *this);
     } catch(const recoverable_error_t& e) {
         rpc::packed<rpc::error> packed(dealer::app_error, e.what());
         send(packed);

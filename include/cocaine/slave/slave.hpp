@@ -18,7 +18,7 @@
 #include "cocaine/context.hpp"
 #include "cocaine/networking.hpp"
 
-#include "cocaine/interfaces/plugin.hpp"
+#include "cocaine/interfaces/sandbox.hpp"
 
 #include "cocaine/helpers/blob.hpp"
 #include "cocaine/helpers/unique_id.hpp"
@@ -70,7 +70,7 @@ class slave_t:
 
         // The app.
         std::auto_ptr<const manifest_t> m_manifest;
-        std::auto_ptr<plugin_t> m_plugin;
+        std::auto_ptr<sandbox_t> m_sandbox;
 
         // Event loop.
         ev::default_loop m_loop;

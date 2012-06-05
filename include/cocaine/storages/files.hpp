@@ -24,6 +24,7 @@ class blob_file_storage_t:
     public blob_storage_t
 {
     public:
+        typedef blob_storage_t category_type;
         typedef blob_storage_t::value_type value_type;
 
     public:
@@ -55,6 +56,7 @@ class document_file_storage_t:
     public document_storage_t
 {
     public:
+        typedef document_storage_t category_type;
         typedef document_storage_t::value_type value_type;
 
     public:

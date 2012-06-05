@@ -32,7 +32,7 @@ static PyMethodDef context_module_methods[] = {
 };
 
 python_t::python_t(context_t& context, const manifest_t& manifest):
-    plugin_t(context, manifest),
+    sandbox_t(context, manifest),
     m_python_module(NULL),
     m_python_manifest(NULL),
     m_thread_state(NULL)
@@ -118,14 +118,14 @@ python_t::python_t(context_t& context, const manifest_t& manifest):
 
     PyObject * builtins = PyEval_GetBuiltins();
 
-    tracked_object_t plugin(
+    tracked_object_t sandbox(
         PyCObject_FromVoidPtr(this, NULL)
     );
 
     PyDict_SetItemString(
         builtins,
-        "__plugin__",
-        plugin
+        "__sandbox__",
+        sandbox
     );
 
     Py_INCREF(builtins);
@@ -255,9 +255,9 @@ PyObject* python_t::manifest(PyObject * self,
                              PyObject * args)
 {
     PyObject * builtins = PyEval_GetBuiltins();
-    PyObject * plugin = PyDict_GetItemString(builtins, "__plugin__");
+    PyObject * sandbox = PyDict_GetItemString(builtins, "__sandbox__");
 
-    if(!plugin) {
+    if(!sandbox) {
         PyErr_SetString(
             PyExc_RuntimeError,
             "Corrupted context"
@@ -267,7 +267,7 @@ PyObject* python_t::manifest(PyObject * self,
     }
 
     return PyDictProxy_New(
-        static_cast<python_t*>(PyCObject_AsVoidPtr(plugin))->m_python_manifest
+        static_cast<python_t*>(PyCObject_AsVoidPtr(sandbox))->m_python_manifest
     );
 }
 
@@ -338,6 +338,6 @@ std::string python_t::exception() {
 
 extern "C" {
     void initialize(repository_t& repository) {
-        repository.insert<python_t, plugin_t>("python");
+        repository.insert<python_t>("python");
     }
 }

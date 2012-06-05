@@ -23,10 +23,10 @@ int log_object_t::constructor(log_object_t * self,
                               PyObject * kwargs)
 {
     PyObject * builtins = PyEval_GetBuiltins();
-    PyObject * plugin = PyDict_GetItemString(builtins, "__plugin__");
+    PyObject * sandbox = PyDict_GetItemString(builtins, "__sandbox__");
     
-    if(plugin) {
-        self->plugin = static_cast<python_t*>(PyCObject_AsVoidPtr(plugin));
+    if(sandbox) {
+        self->sandbox = static_cast<python_t*>(PyCObject_AsVoidPtr(sandbox));
     } else {
         PyErr_SetString(
             PyExc_RuntimeError,
@@ -49,7 +49,7 @@ PyObject* log_object_t::debug(log_object_t * self,
     PyObject * object = NULL;
     const char * message = NULL;
 
-    if(!self->plugin) {
+    if(!self->sandbox) {
         PyErr_SetString(
             PyExc_RuntimeError,
             "Not initialized"
@@ -69,7 +69,7 @@ PyObject* log_object_t::debug(log_object_t * self,
         message = PyString_AsString(object);
     }
 
-    self->plugin->log().debug("%s", message);
+    self->sandbox->log().debug("%s", message);
 
     Py_RETURN_NONE;
 }
@@ -80,7 +80,7 @@ PyObject* log_object_t::info(log_object_t * self,
     PyObject * object = NULL;
     const char * message = NULL;
 
-    if(!self->plugin) {
+    if(!self->sandbox) {
         PyErr_SetString(
             PyExc_RuntimeError,
             "Not initialized"
@@ -100,7 +100,7 @@ PyObject* log_object_t::info(log_object_t * self,
         message = PyString_AsString(object);
     }
 
-    self->plugin->log().info("%s", message);
+    self->sandbox->log().info("%s", message);
 
     Py_RETURN_NONE;
 }
@@ -111,7 +111,7 @@ PyObject* log_object_t::warning(log_object_t * self,
     PyObject * object = NULL;
     const char * message = NULL;
 
-    if(!self->plugin) {
+    if(!self->sandbox) {
         PyErr_SetString(
             PyExc_RuntimeError,
             "Not initialized"
@@ -131,7 +131,7 @@ PyObject* log_object_t::warning(log_object_t * self,
         message = PyString_AsString(object);
     }
 
-    self->plugin->log().warning("%s", message);
+    self->sandbox->log().warning("%s", message);
 
     Py_RETURN_NONE;
 }
@@ -142,7 +142,7 @@ PyObject* log_object_t::error(log_object_t * self,
     PyObject * object = NULL;
     const char * message = NULL;
 
-    if(!self->plugin) {
+    if(!self->sandbox) {
         PyErr_SetString(
             PyExc_RuntimeError,
             "Not initialized"
@@ -162,7 +162,7 @@ PyObject* log_object_t::error(log_object_t * self,
         message = PyString_AsString(object);
     }
 
-    self->plugin->log().error("%s", message);
+    self->sandbox->log().error("%s", message);
 
     Py_RETURN_NONE;
 }
@@ -172,7 +172,7 @@ PyObject* log_object_t::write(log_object_t * self,
 {
     const char * message = NULL;
 
-    if(!self->plugin) {
+    if(!self->sandbox) {
         PyErr_SetString(
             PyExc_RuntimeError,
             "Not initialized"
@@ -185,7 +185,7 @@ PyObject* log_object_t::write(log_object_t * self,
         return NULL;
     }
 
-    self->plugin->log().error("%s", message);
+    self->sandbox->log().error("%s", message);
 
     Py_RETURN_NONE;
 }
@@ -195,7 +195,7 @@ PyObject* log_object_t::writelines(log_object_t * self,
 {
     PyObject * lines = NULL;
 
-    if(!self->plugin) {
+    if(!self->sandbox) {
         PyErr_SetString(
             PyExc_RuntimeError,
             "Not initialized"

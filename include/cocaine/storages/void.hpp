@@ -22,6 +22,7 @@ class void_storage_t:
     public document_storage_t
 {
     public:
+        typedef document_storage_t category_type;
         typedef document_storage_t::value_type value_type;
 
     public:

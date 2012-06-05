@@ -14,7 +14,7 @@ IF (MONGO)
 
 		SET_TARGET_PROPERTIES(mongodb PROPERTIES
 		    PREFIX ""
-		    SUFFIX ".cocaine-module")
+		    SUFFIX ".cocaine-plugin")
 
 		INSTALL(TARGETS mongodb
 		    LIBRARY DESTINATION lib/cocaine

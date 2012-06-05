@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_PYTHON_PLUGIN_LOG_HPP
-#define COCAINE_PYTHON_PLUGIN_LOG_HPP
+#ifndef COCAINE_PYTHON_SANDBOX_LOG_HPP
+#define COCAINE_PYTHON_SANDBOX_LOG_HPP
 
 // NOTE: These are being redefined in Python.h
 #undef _POSIX_C_SOURCE
@@ -57,7 +57,7 @@ class log_object_t {
                                PyObject * args);
 
     public:
-        python_t * plugin;
+        python_t * sandbox;
 };
 
 }}

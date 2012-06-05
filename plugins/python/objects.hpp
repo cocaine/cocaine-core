@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_PYTHON_PLUGIN_OBJECTS_HPP
-#define COCAINE_PYTHON_PLUGIN_OBJECTS_HPP
+#ifndef COCAINE_PYTHON_SANDBOX_OBJECTS_HPP
+#define COCAINE_PYTHON_SANDBOX_OBJECTS_HPP
 
 #include "log.hpp"
 #include "io.hpp"

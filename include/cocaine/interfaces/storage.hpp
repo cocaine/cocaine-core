@@ -25,15 +25,15 @@
 
 namespace cocaine { namespace storages {
 
-template<class T>
-class concept:
+template<class ValueType>
+class storage_concept:
     public boost::noncopyable
 {
     public:
-        typedef T value_type;
+        typedef ValueType value_type;
 
     public:
-        virtual ~concept() { 
+        virtual ~storage_concept() { 
             // Empty.
         }
 
@@ -55,7 +55,7 @@ class concept:
         virtual void purge(const std::string& ns) = 0;
 
     protected:
-        concept(context_t& context, const std::string& uri):
+        storage_concept(context_t& context, const std::string& uri):
             m_context(context)
         { }
 
@@ -63,19 +63,19 @@ class concept:
         context_t& m_context;
 };
 
-typedef concept<Json::Value> document_storage_t;
-typedef concept<blob_t> blob_storage_t;
+typedef storage_concept<Json::Value> document_storage_t;
+typedef storage_concept<blob_t> blob_storage_t;
 
 }
 
-template<class ValueType> struct category_traits< storages::concept<ValueType> > {
-    typedef storages::concept<ValueType> storage_type;
+template<class ValueType> struct category_traits< storages::storage_concept<ValueType> > {
+    typedef storages::storage_concept<ValueType> storage_type;
     typedef boost::shared_ptr<storage_type> ptr_type;
     typedef boost::tuple<const std::string&> args_type;
     
     template<class T>
-    struct factory_type:
-        public category_model<storage_type>
+    struct default_factory:
+        public factory<storage_type>
     {
         virtual ptr_type get(context_t& context,
                              const args_type& args)

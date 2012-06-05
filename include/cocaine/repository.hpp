@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_REGISTRY_HPP
-#define COCAINE_REGISTRY_HPP
+#ifndef COCAINE_REPOSITORY_HPP
+#define COCAINE_REPOSITORY_HPP
 
 #include <typeinfo>
 #include <boost/type_traits/is_base_of.hpp>
@@ -23,10 +23,7 @@
 
 namespace cocaine {
 
-// Retention policies
-// ------------------
-
-struct category_concept {
+struct factory_concept_t {
     virtual const std::type_info& category() const = 0;
 };
 
@@ -34,8 +31,8 @@ template<class Category>
 struct category_traits;
 
 template<class Category>
-struct category_model:
-    public category_concept
+struct factory:
+    public factory_concept_t
 {
     typedef typename category_traits<Category>::ptr_type ptr_type;
     typedef typename category_traits<Category>::args_type args_type;
@@ -48,6 +45,10 @@ struct category_model:
                          const args_type& args) = 0;
 };
 
+template<class T>
+struct plugin_traits {
+    typedef typename category_traits<typename T::category_type>::template default_factory<T> factory_type;
+};
 
 // Component repository
 // --------------------
@@ -67,32 +68,32 @@ class repository_t:
             factory_map_t::iterator it(m_factories.find(type));
 
             if(it == m_factories.end()) {
-                throw registry_error_t("module '" + type + "' is not available");
+                throw registry_error_t("plugin '" + type + "' is not available");
             }
 
             if(it->second->category() != typeid(Category)) {
-                throw registry_error_t("module '" + type + "' has an incompatible type");
+                throw registry_error_t("plugin '" + type + "' has an incompatible type");
             }
 
             return typename category_traits<Category>::ptr_type(
-                dynamic_cast< category_model<Category>* >(
+                dynamic_cast< factory<Category>* >(
                     it->second
                 )->get(m_context, args)
             );
         }
 
-        template<class T, class Category>
+        template<class T>
         typename boost::enable_if<
-            boost::is_base_of<Category, T>
+            boost::is_base_of<typename T::category_type, T>
         >::type 
         insert(const std::string& type) {
             if(m_factories.find(type) != m_factories.end()) {
-                throw registry_error_t("duplicate module '" + type + "' has been detected");
+                throw registry_error_t("duplicate plugin '" + type + "' has been detected");
             }
 
             m_factories.insert(
                 type,
-                new typename category_traits<Category>::template factory_type<T>()
+                new typename plugin_traits<T>::factory_type()
             );
         }
 
@@ -100,8 +101,8 @@ class repository_t:
         context_t& m_context;
         boost::shared_ptr<logging::logger_t> m_log;
 
-        // Used to unload all the modules on shutdown.
-        std::vector<lt_dlhandle> m_modules;
+        // Used to unload all the plugins on shutdown.
+        std::vector<lt_dlhandle> m_plugins;
     
 #if BOOST_VERSION >= 104000
         typedef boost::ptr_unordered_map<
@@ -109,7 +110,7 @@ class repository_t:
         typedef boost::ptr_map<
 #endif
             const std::string, 
-            category_concept
+            factory_concept_t
         > factory_map_t;
         
         factory_map_t m_factories;

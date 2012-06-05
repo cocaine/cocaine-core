@@ -5,11 +5,11 @@ SET(COCAINE_VERSION 0.7)
 
 SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
-OPTION(DEALER "Build dealer library" ON)
-OPTION(PYTHON "Build python module" ON)
-OPTION(PERL "Build perl module" ON)
-OPTION(JAVASCRIPT "Build javascript module" ON)
-OPTION(MONGO "Build mongo module" ON)
+OPTION(DEALER "Build Dealer library" ON)
+OPTION(PYTHON "Build Python plugin" ON)
+OPTION(PERL "Build Perl plugin" ON)
+OPTION(JAVASCRIPT "Build Javascript plugin" ON)
+OPTION(MONGO "Build MongoDB plugin" ON)
 
 CONFIGURE_FILE(
     "${PROJECT_SOURCE_DIR}/config.hpp.in"
@@ -134,7 +134,7 @@ TARGET_LINK_LIBRARIES(cocained
 TARGET_LINK_LIBRARIES(library-test
     cocaine-core)
 
-ADD_SUBDIRECTORY(modules)
+ADD_SUBDIRECTORY(plugins)
 
 INSTALL(
     TARGETS

@@ -11,7 +11,7 @@
 // limitations under the License.
 //
 
-#include <cocaine/interfaces/plugin.hpp>
+#include <cocaine/interfaces/sandbox.hpp>
 
 #include "io.hpp"
 #include "python.hpp"

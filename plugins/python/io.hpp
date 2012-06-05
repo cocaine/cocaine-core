@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_PYTHON_PLUGIN_IO_HPP
-#define COCAINE_PYTHON_PLUGIN_IO_HPP
+#ifndef COCAINE_PYTHON_SANDBOX_IO_HPP
+#define COCAINE_PYTHON_SANDBOX_IO_HPP
 
 // NOTE: These are being redefined in Python.h
 #undef _POSIX_C_SOURCE

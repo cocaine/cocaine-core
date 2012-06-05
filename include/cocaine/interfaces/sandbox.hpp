@@ -11,8 +11,8 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_APP_PLUGIN_INTERFACE_HPP
-#define COCAINE_APP_PLUGIN_INTERFACE_HPP
+#ifndef COCAINE_SANDBOX_INTERFACE_HPP
+#define COCAINE_SANDBOX_INTERFACE_HPP
 
 #include <boost/tuple/tuple.hpp>
 
@@ -25,8 +25,8 @@
 
 namespace cocaine { namespace engine {
 
-// App plugin I/O
-// --------------
+// Sandbox I/O
+// -----------
 
 class io_t {
     public:
@@ -36,12 +36,12 @@ class io_t {
                            size_t size) = 0;
 };
 
-// App plugin interface
-// --------------------
+// Sandbox interface
+// -----------------
 
-class plugin_t {
+class sandbox_t {
     public:
-        virtual ~plugin_t() {
+        virtual ~sandbox_t() {
             // Empty.
         }
         
@@ -54,7 +54,7 @@ class plugin_t {
         }
     
     protected:
-        plugin_t(context_t& context, const manifest_t& manifest):
+        sandbox_t(context_t& context, const manifest_t& manifest):
             m_context(context),
             m_log(m_context.log(manifest.name)),
             m_manifest(manifest)
@@ -69,13 +69,13 @@ class plugin_t {
 
 }
 
-template<> struct category_traits<engine::plugin_t> {
-    typedef std::auto_ptr<engine::plugin_t> ptr_type;
+template<> struct category_traits<engine::sandbox_t> {
+    typedef std::auto_ptr<engine::sandbox_t> ptr_type;
     typedef boost::tuple<const engine::manifest_t&> args_type;
 
     template<class T>
-    struct factory_type:
-        public category_model<engine::plugin_t>
+    struct default_factory:
+        public factory<engine::sandbox_t>
     {
         virtual ptr_type get(context_t& context,
                              const args_type& args)

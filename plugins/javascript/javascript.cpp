@@ -19,18 +19,21 @@
 
 #include "cocaine/manifest.hpp"
 
-#include "cocaine/interfaces/plugin.hpp"
+#include "cocaine/interfaces/sandbox.hpp"
 
 namespace cocaine { namespace engine {
 
 using namespace v8;
 
 class javascript_t:
-    public plugin_t
+    public sandbox_t
 {
     public:
+        typedef sandbox_t category_type;
+
+    public:
         javascript_t(context_t& context, const manifest_t& manifest):
-            plugin_t(context, manifest)
+            sandbox_t(context, manifest)
         {
             Json::Value args(manifest.root["args"]);
 
@@ -130,7 +133,7 @@ class javascript_t:
 
 extern "C" {
     void initialize(repository_t& repository) {
-        repository.insert<javascript_t, plugin_t>("javascript");
+        repository.insert<javascript_t>("javascript");
     }
 }
 
