@@ -31,15 +31,15 @@ struct policy_t {
         deadline(0.0f)
     { }
 
-    policy_t(bool urgent_, ev::tstamp timeout_, ev::tstamp deadline_):
+    policy_t(bool urgent_, double timeout_, double deadline_):
         urgent(urgent_),
         timeout(timeout_),
         deadline(deadline_)
     { }
 
     bool urgent;
-    ev::tstamp timeout;
-    ev::tstamp deadline;
+    double timeout;
+    double deadline;
 
     MSGPACK_DEFINE(urgent, timeout, deadline);
 };

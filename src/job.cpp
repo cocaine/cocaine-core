@@ -77,7 +77,7 @@ void job_t::react(const events::choke& event) {
 }
 
 waiting::waiting():
-    timestamp(ev::get_default_loop().now())
+    timestamp(0.0f)
 { }
 
 waiting::~waiting() {
@@ -88,7 +88,7 @@ waiting::~waiting() {
 }
 
 processing::processing():
-    timestamp(ev::get_default_loop().now())
+    timestamp(0.0f)
 { }
 
 processing::~processing() {

@@ -29,7 +29,7 @@ driver_t::driver_t(engine_t& engine, const std::string& method, const Json::Valu
 
 driver_t::~driver_t() { }
 
-void driver_t::audit(timing_type type, ev::tstamp value) {
+void driver_t::audit(timing_type type, double value) {
     switch(type) {
         case in_queue:
 #if BOOST_VERSION >= 103600

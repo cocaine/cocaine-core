@@ -21,6 +21,9 @@
 
 #include "cocaine/common.hpp"
 
+// Has to be included after common.h
+#include <ev++.h>
+
 #include "cocaine/events.hpp"
 
 #include "cocaine/helpers/unique_id.hpp"

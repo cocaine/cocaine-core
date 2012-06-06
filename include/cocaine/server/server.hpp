@@ -15,6 +15,10 @@
 #define COCAINE_SERVER_HPP
 
 #include "cocaine/common.hpp"
+
+// Has to be included after common.h
+#include <ev++.h>
+
 #include "cocaine/auth.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/networking.hpp"

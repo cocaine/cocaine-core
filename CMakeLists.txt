@@ -104,6 +104,7 @@ SET_TARGET_PROPERTIES(cocaine-common PROPERTIES
     VERSION 1)
 
 ADD_LIBRARY(cocaine-core SHARED
+    src/app
     src/drivers/base
     src/engine
     src/job

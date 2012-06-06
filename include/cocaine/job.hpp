@@ -104,7 +104,7 @@ struct waiting:
     waiting();
     ~waiting();
 
-    const ev::tstamp timestamp;
+    const double timestamp;
 };
 
 struct processing:
@@ -120,7 +120,7 @@ struct processing:
     processing();
     ~processing();
 
-    const ev::tstamp timestamp;
+    const double timestamp;
 };
 
 struct complete:
