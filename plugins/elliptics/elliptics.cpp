@@ -15,6 +15,9 @@
 
 #include "elliptics.hpp"
 
+#include "cocaine/context.hpp"
+#include "cocaine/logging.hpp"
+
 using namespace cocaine;
 using namespace cocaine::storages;
 
@@ -26,25 +29,27 @@ log_adapter_t::log_adapter_t(context_t& context, const uint32_t mask):
 { }
 
 void log_adapter_t::log(const uint32_t mask, const char * message) {
+    size_t length = ::strlen(message) - 1;
+    
     switch(mask) {
         case DNET_LOG_NOTICE:
-            m_log->info(message);
+            m_log->info("%.*s", length, message);
             break;
 
         case DNET_LOG_INFO:
-            m_log->info(message);
+            m_log->info("%.*s", length, message);
             break;
 
         case DNET_LOG_TRANS:
-            m_log->debug(message);
+            m_log->debug("%.*s", length, message);
             break;
 
         case DNET_LOG_ERROR:
-            m_log->error(message);
+            m_log->error("%.*s", length, message);
             break;
 
         case DNET_LOG_DSA:
-            m_log->debug(message);
+            m_log->debug("%.*s", length, message);
             break;
 
         default:
