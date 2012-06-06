@@ -23,6 +23,8 @@ using namespace cocaine;
 
 namespace fs = boost::filesystem;
 
+factory_concept_t::~factory_concept_t() { }
+
 struct is_plugin {
     template<typename T> 
     bool operator()(const T& entry) {
@@ -117,7 +119,13 @@ namespace {
 }
 
 repository_t::~repository_t() {
+    // Destroy all the factories.
+    m_categories.clear();
+
+    // Dispose of the plugins.
     std::for_each(m_plugins.begin(), m_plugins.end(), disposer());
+    
+    // Terminate the dynamic loader.
     lt_dlexit();
 }
 

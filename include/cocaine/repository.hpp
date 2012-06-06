@@ -24,6 +24,7 @@
 namespace cocaine {
 
 struct factory_concept_t {
+    virtual ~factory_concept_t() = 0;
     virtual const std::type_info& category() const = 0;
 };
 
@@ -68,21 +69,21 @@ class repository_t:
         get(const std::string& type,
             const typename category_traits<Category>::args_type& args)
         {
-            factory_map_t& factories(
-                m_categories[typeid(Category).name()]
+            std::string category(
+                typeid(Category).name()
             );
-
-            factory_map_t::iterator it(factories.find(type));
-
-            if(it == factories.end()) {
+            
+            factory_map_t::iterator it(m_categories[category].find(type));
+            
+            if(it == m_categories[category].end()) {
                 throw repository_error_t("plugin '" + type + "' is not available");
             }
-
-            BOOST_ASSERT(it->second->category() != typeid(Category));
+            
+            BOOST_ASSERT(it->second->category() == typeid(Category));
 
             return typename category_traits<Category>::ptr_type(
                 dynamic_cast< factory<Category>* >(
-                    it->second
+                    it->second.get()
                 )->get(m_context, args)
             );
         }
@@ -92,17 +93,19 @@ class repository_t:
             boost::is_base_of<typename T::category_type, T>
         >::type 
         insert(const std::string& type) {
-            factory_map_t& factories(
-                m_categories[typeid(typename T::category_type).name()]
+            std::string category(
+                typeid(typename T::category_type).name()
             );
 
-            if(factories.find(type) != factories.end()) {
+            if(m_categories[category].find(type) != m_categories[category].end()) {
                 throw repository_error_t("duplicate plugin '" + type + "' has been detected");
             }
 
-            factories.insert(
-                type,
-                new typename plugin_traits<T>::factory_type()
+            m_categories[category].insert(
+                std::make_pair(
+                    type,
+                    boost::make_shared<typename plugin_traits<T>::factory_type>()
+                )
             );
         }
 
@@ -114,12 +117,12 @@ class repository_t:
         std::vector<lt_dlhandle> m_plugins;
     
 #if BOOST_VERSION >= 104000
-        typedef boost::ptr_unordered_map<
+        typedef boost::unordered_map<
 #else
-        typedef boost::ptr_map<
+        typedef std::map<
 #endif
-            const std::string, 
-            factory_concept_t
+            std::string, 
+            boost::shared_ptr<factory_concept_t>
         > factory_map_t;
 
 #if BOOST_VERSION >= 104000

@@ -52,6 +52,8 @@ int main() {
         boost::make_shared<stdio_sink_t>()
     );
 
+    context.storage<blob_t>("core")->get("sources", "rimz_app@1");
+
     std::cout << "Created context" << std::endl;
     
     cocaine::engine::engine_t engine(context, "rimz_app@1");
