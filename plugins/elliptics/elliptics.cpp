@@ -87,10 +87,14 @@ elliptics_storage_t::elliptics_storage_t(context_t& context, const Json::Value& 
         it != node_names.end();
         ++it)
     {
-        m_node.add_remote(
-            it->c_str(),
-            nodes[*it].asInt()
-        );
+        try {
+            m_node.add_remote(
+                it->c_str(),
+                nodes[*it].asInt()
+            );
+        } catch(const std::runtime_error& e) {
+            // Do nothing. Yes. Really.
+        }
     }
 
     Json::Value groups(args["groups"]);

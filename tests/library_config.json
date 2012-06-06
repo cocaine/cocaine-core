@@ -16,7 +16,7 @@
                     "elisto20f.dev.yandex.net": 1025
                 },
                 "groups": [1, 2],
-                "verbosity": 31
+                "verbosity": 10
             }
         }
     }
