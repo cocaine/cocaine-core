@@ -32,12 +32,15 @@ template<class Category>
 struct category_traits;
 
 // Custom factories should inherit from this interface.
-template<class Category>
+template<
+    class Category,
+    class Traits = category_traits<Category>
+>
 struct factory:
     public factory_concept_t
 {
-    typedef typename category_traits<Category>::ptr_type ptr_type;
-    typedef typename category_traits<Category>::args_type args_type;
+    typedef typename Traits::ptr_type ptr_type;
+    typedef typename Traits::args_type args_type;
 
     virtual const std::type_info& category() const {
         return typeid(Category);

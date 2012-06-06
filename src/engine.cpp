@@ -502,10 +502,10 @@ void engine_t::cleanup(ev::timer&, int) {
         );
     }
 
+    typedef boost::filter_iterator<expired, job_queue_t::iterator> filter;
+
     {
         boost::lock_guard<boost::mutex> lock(m_queue_mutex);
-
-        typedef boost::filter_iterator<expired, job_queue_t::iterator> filter;
         
         // Process all the expired jobs.
         filter it(expired(m_loop.now()), m_queue.begin(), m_queue.end()),

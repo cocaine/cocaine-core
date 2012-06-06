@@ -26,12 +26,12 @@ using namespace cocaine::storages;
 manifest_t::manifest_t(context_t& context, const std::string& app):
     name(app)
 {
-    if(!context.storage<Json::Value>("core")->exists("apps", name)) {
+    if(!context.storage<document>("core")->exists("apps", name)) {
         throw configuration_error_t("the specified app is not available");
     }
 
     // Load the app manifest.
-    root = context.storage<Json::Value>("core")->get("apps", name);
+    root = context.storage<document>("core")->get("apps", name);
 
     // Setup the app configuration.
     type = root["type"].asString();

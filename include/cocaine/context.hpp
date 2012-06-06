@@ -96,12 +96,12 @@ class context_t:
         // Storage
         // -------
 
-        template<class ValueType>
+        template<class T>
         typename category_traits<
-            storages::storage_concept<ValueType>
+            storages::storage_concept<T>
         >::ptr_type
         storage(const std::string& name) {
-            typedef storages::storage_concept<ValueType> storage_type;
+            typedef storages::storage_concept<T> storage_type;
 
             config_t::storage_info_map_t::const_iterator it(
                 config.storages.find(name)

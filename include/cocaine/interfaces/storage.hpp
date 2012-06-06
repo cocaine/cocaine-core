@@ -25,12 +25,20 @@
 
 namespace cocaine { namespace storages {
 
-template<class ValueType>
+struct document {
+    typedef Json::Value value_type;
+};
+
+struct blob {
+    typedef blob_t value_type;
+};
+
+template<class T>
 class storage_concept:
     public boost::noncopyable
 {
     public:
-        typedef ValueType value_type;
+        typedef typename T::value_type value_type;
 
     public:
         virtual ~storage_concept() { 
@@ -63,17 +71,17 @@ class storage_concept:
         context_t& m_context;
 };
 
-typedef storage_concept<Json::Value> document_storage_t;
-typedef storage_concept<blob_t> blob_storage_t;
+typedef storage_concept<document> document_storage_t;
+typedef storage_concept<blob> blob_storage_t;
 
 }
 
-template<class ValueType> struct category_traits< storages::storage_concept<ValueType> > {
-    typedef storages::storage_concept<ValueType> storage_type;
+template<class T> struct category_traits< storages::storage_concept<T> > {
+    typedef storages::storage_concept<T> storage_type;
     typedef boost::shared_ptr<storage_type> ptr_type;
     typedef boost::tuple<const std::string&> args_type;
     
-    template<class T>
+    template<class U>
     struct default_factory:
         public factory<storage_type>
     {
@@ -91,7 +99,7 @@ template<class ValueType> struct category_traits< storages::storage_concept<Valu
                 boost::tie(it, boost::tuples::ignore) = m_storages.insert(
                     std::make_pair(
                         uri,
-                        boost::make_shared<T>(
+                        boost::make_shared<U>(
                             boost::ref(context),
                             uri
                         )

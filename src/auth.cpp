@@ -35,7 +35,7 @@ auth_t::auth_t(context_t& context):
 
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
     std::vector<std::string> keys(
-        context.storage<Json::Value>("core")->list("keys")
+        context.storage<document>("core")->list("keys")
     );
 
     for(std::vector<std::string>::const_iterator it = keys.begin();
@@ -45,7 +45,7 @@ auth_t::auth_t(context_t& context):
         std::string identity(*it);
 
         document_storage_t::value_type object(
-            context.storage<Json::Value>("core")->get("keys", identity)
+            context.storage<document>("core")->get("keys", identity)
         );
 
         if(!object["key"].isString() || object["key"].empty()) {
