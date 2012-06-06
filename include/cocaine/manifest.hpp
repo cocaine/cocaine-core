@@ -43,15 +43,6 @@ struct manifest_t {
     Json::Value root;
 };
 
-class endpoint {
-    public:
-        endpoint(const std::string& name);
-        operator std::string() const;
-
-    private:
-        std::string m_endpoint;
-};
-
 }}
 
 #endif

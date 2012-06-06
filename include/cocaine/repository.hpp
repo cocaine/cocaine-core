@@ -48,10 +48,12 @@ struct factory:
 };
 
 // Specialize this in your plugin to use
-// a custom factory for object instatiations.
+// a custom factory for object instantiations.
 template<class T>
 struct plugin_traits {
-    typedef typename category_traits<typename T::category_type>::template default_factory<T> factory_type;
+    typedef typename category_traits<
+        typename T::category_type
+    >::template default_factory<T> factory_type;
 };
 
 // Component repository
@@ -82,9 +84,9 @@ class repository_t:
             BOOST_ASSERT(it->second->category() == typeid(Category));
 
             return typename category_traits<Category>::ptr_type(
-                dynamic_cast< factory<Category>* >(
-                    it->second.get()
-                )->get(m_context, args)
+                dynamic_cast< factory<Category>& >(
+                    *it->second
+                ).get(m_context, args)
             );
         }
 

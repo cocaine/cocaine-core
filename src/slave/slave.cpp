@@ -11,6 +11,8 @@
 // limitations under the License.
 //
 
+#include <boost/format.hpp>
+
 #include "cocaine/slave/slave.hpp"
 
 #include "cocaine/logging.hpp"
@@ -28,7 +30,12 @@ slave_t::slave_t(context_t& context, slave_config_t config):
     m_log(m_context.log(config.app)),
     m_bus(m_context.io(), ZMQ_DEALER, config.uuid)
 {
-    m_bus.connect(endpoint(config.app));
+    m_bus.connect(
+        (boost::format("ipc://%1%/%2%")
+            % m_context.config.ipc_path
+            % config.app
+        ).str()
+    );
     
     m_watcher.set<slave_t, &slave_t::message>(this);
     m_watcher.start(m_bus.fd(), ev::READ);

@@ -30,6 +30,8 @@ const unsigned int defaults::pool_limit = 10;
 const unsigned int defaults::queue_limit = 100;
 const unsigned int defaults::io_bulk_size = 100;
 const char defaults::slave[] = "cocaine-slave";
+const char defaults::plugin_path[] = "/usr/lib/cocaine";
+const char defaults::ipc_path[] = "/var/run/cocaine";
 
 namespace fs = boost::filesystem;
 
@@ -63,7 +65,7 @@ config_t::config_t(const std::string& path):
     // Component repository configuration
     // ----------------------------------
 
-    plugin_path = root.get("plugin-path", "").asString();
+    plugin_path = root.get("plugin-path", defaults::plugin_path).asString();
 
     // Storage configuration
     // ---------------------
@@ -97,6 +99,8 @@ config_t::config_t(const std::string& path):
 
     // Networking configuration
     // ------------------------
+
+    ipc_path = root.get("ipc-path", defaults::ipc_path).asString();
 
     char hostname[HOSTNAME_MAX_LENGTH];
 

@@ -34,15 +34,20 @@ struct defaults {
     // I/O bulk size.
     static const unsigned int io_bulk_size;
 
-    // Default slave.
+    // Default slave binary.
     static const char slave[];
+
+    // Default paths.
+    static const char plugin_path[];
+    static const char ipc_path[];
 };
 
 struct config_t {
     config_t(const std::string& config_path);
 
     std::string config_path,
-                plugin_path;
+                plugin_path,
+                ipc_path;
 
     typedef struct {
         std::string type;
@@ -92,8 +97,12 @@ class context_t:
         // -------
 
         template<class ValueType>
-        typename category_traits< storages::storage_concept<ValueType> >::ptr_type
+        typename category_traits<
+            storages::storage_concept<ValueType>
+        >::ptr_type
         storage(const std::string& name) {
+            typedef storages::storage_concept<ValueType> storage_type;
+
             config_t::storage_info_map_t::const_iterator it(
                 config.storages.find(name)
             );
@@ -102,9 +111,9 @@ class context_t:
                 throw configuration_error_t("the specified storage doesn't exist");
             }
 
-            return get< storages::storage_concept<ValueType> >(
+            return get<storage_type>(
                 it->second.type,
-                typename category_traits< storages::storage_concept<ValueType> >::args_type(
+                typename category_traits<storage_type>::args_type(
                     it->second.uri
                 )
             );

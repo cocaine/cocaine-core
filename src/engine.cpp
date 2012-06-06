@@ -13,6 +13,7 @@
 
 #include <boost/assign.hpp>
 #include <boost/algorithm/string/join.hpp>
+#include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include "cocaine/engine.hpp"
@@ -61,7 +62,12 @@ engine_t::engine_t(context_t& context, const std::string& name):
     m_bus.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
 
     try {
-        m_bus.bind(endpoint(manifest().name));
+        m_bus.bind(
+            (boost::format("ipc://%1%/%2%")
+                % m_context.config.ipc_path
+                % manifest().name
+            ).str()
+        );
     } catch(const zmq::error_t& e) {
         throw configuration_error_t(std::string("invalid rpc endpoint - ") + e.what());
     }

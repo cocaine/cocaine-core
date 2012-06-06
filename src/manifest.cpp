@@ -11,9 +11,6 @@
 // limitations under the License.
 //
 
-#include <boost/algorithm/string/join.hpp>
-#include <boost/assign.hpp>
-
 #include "cocaine/manifest.hpp"
 
 #include "cocaine/context.hpp"
@@ -69,16 +66,4 @@ manifest_t::manifest_t(context_t& context, const std::string& app):
         "slave",
         defaults::slave
     ).asString();
-}
-
-endpoint::endpoint(const std::string& name) {
-    m_endpoint = boost::algorithm::join(
-        boost::assign::list_of
-            (std::string("ipc:///var/run/cocaine"))
-            (name),
-        "/");
-}
-
-endpoint::operator std::string() const {
-    return m_endpoint;
 }
