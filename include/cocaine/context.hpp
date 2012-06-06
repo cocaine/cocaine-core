@@ -132,12 +132,12 @@ class context_t:
         // Initialization interlocking.
         boost::mutex m_mutex;
 
+        // Logging.    
+        boost::shared_ptr<logging::sink_t> m_sink;
+        
         // Core subsystems.
         std::auto_ptr<zmq::context_t> m_io;
         std::auto_ptr<repository_t> m_repository;
-    
-        // Logging.    
-        boost::shared_ptr<logging::sink_t> m_sink;
 };
 
 }
