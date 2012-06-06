@@ -1,6 +1,6 @@
+#include "cocaine/app.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
-#include "cocaine/engine.hpp"
 #include "cocaine/job.hpp"
 
 using namespace cocaine;
@@ -58,16 +58,16 @@ int main() {
 
     std::cout << "Created context" << std::endl;
     
-    cocaine::engine::engine_t engine(context, "rimz_app@1");
+    cocaine::app_t app(context, "rimz_app@1");
 
-    std::cout << "Created engine" << std::endl;
+    std::cout << "Created app" << std::endl;
     
-    engine.start();
+    app.start();
     
     std::cout << "Engine started" << std::endl;
     
     for(int i = 0; i < 10; i++) {
-        engine.enqueue(
+        app.enqueue(
             boost::make_shared<my_job_t>(
                 "rimz_func",
                 cocaine::blob_t(data, 5)
@@ -75,16 +75,16 @@ int main() {
         );
     }
 
-    Json::Value state(engine.info());
+    Json::Value state(app.info());
     
     std::cout << state;
 
     sleep(1);
 
-    engine.stop();
+    app.stop();
 
     for(int i = 0; i < 10; i++) {
-        engine.enqueue(
+        app.enqueue(
             boost::make_shared<my_job_t>(
                 "rimz_func",
                 cocaine::blob_t(data, 5)
