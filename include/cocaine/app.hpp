@@ -21,8 +21,10 @@
 namespace cocaine {
 
 class app_t {
-	public:
-		app_t(context_t& context, const std::string& name);
+    public:
+        app_t(context_t& context,
+              const std::string& name);
+        
         ~app_t();
 
         void start();
@@ -33,8 +35,8 @@ class app_t {
         // Job scheduling.
         void enqueue(const boost::shared_ptr<engine::job_t>& job);
 
-	private:
-		std::auto_ptr<engine::engine_t> m_engine;
+    private:
+        std::auto_ptr<engine::engine_t> m_engine;
 };
 
 }
