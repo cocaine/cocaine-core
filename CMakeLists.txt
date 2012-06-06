@@ -11,6 +11,8 @@ OPTION(PERL "Build Perl plugin" ON)
 OPTION(JAVASCRIPT "Build Javascript plugin" ON)
 OPTION(MONGO "Build MongoDB plugin" ON)
 
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 CONFIGURE_FILE(
     "${PROJECT_SOURCE_DIR}/config.hpp.in"
     "${PROJECT_SOURCE_DIR}/include/cocaine/config.hpp")
@@ -120,7 +122,7 @@ ADD_EXECUTABLE(cocained
     src/server/main)
 
 ADD_EXECUTABLE(library-test
-    tests/library_test)
+    tests/library_test.cpp)
 
 TARGET_LINK_LIBRARIES(cocaine-slave
     boost_program_options-mt
