@@ -15,8 +15,6 @@
 
 #include "mongo.hpp"
 
-#include "cocaine/context.hpp"
-
 using namespace cocaine;
 using namespace cocaine::storages;
 using namespace mongo;

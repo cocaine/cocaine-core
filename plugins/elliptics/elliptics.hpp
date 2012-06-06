@@ -11,25 +11,23 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_MONGO_STORAGE_HPP
-#define COCAINE_MONGO_STORAGE_HPP
-
-#include <mongo/client/dbclient.h>
+#ifndef COCAINE_ELLIPTICS_STORAGE_HPP
+#define COCAINE_ELLIPTICS_STORAGE_HPP
 
 #include "cocaine/interfaces/storage.hpp"
 
 namespace cocaine { namespace storages {
 
-class mongo_storage_t:
-    public document_storage_t
+class elliptics_storage_t:
+    public blob_storage_t
 {
     public:
-        typedef document_storage_t category_type;
+        typedef blob_storage_t category_type;
         typedef category_type::value_type value_type;
 
     public:
-        mongo_storage_t(context_t& context,
-                        const std::string& uri);
+        elliptics_storage_t(context_t& context,
+                            const std::string& uri);
 
         virtual void put(const std::string& ns,
                          const std::string& key,
@@ -47,12 +45,6 @@ class mongo_storage_t:
                             const std::string& key);
         
         virtual void purge(const std::string& ns);
-
-    private:
-        std::string resolve(const std::string& ns) const;
-
-    private:
-        const mongo::ConnectionString m_uri;
 };
 
 }}

@@ -6,6 +6,10 @@
         "core": {
             "type": "files",
             "uri": "/var/lib/cocaine"
+        },
+        "apps": {
+        	"type": "elliptics",
+        	"uri": "localhost:1234;localhost:1234"
         }
     }
 }

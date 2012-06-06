@@ -11,6 +11,12 @@ OPTION(PERL "Build Perl plugin" ON)
 OPTION(JAVASCRIPT "Build Javascript plugin" ON)
 OPTION(MONGO "Build MongoDB plugin" ON)
 
+IF(NOT APPLE)
+    OPTION(ELLIPTICS "Build Elliptics plugin" ON)
+ELSE()
+    OPTION(ELLIPTICS "Build Elliptics plugin" OFF)
+ENDIF()
+
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 CONFIGURE_FILE(
