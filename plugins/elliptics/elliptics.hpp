@@ -14,6 +14,8 @@
 #ifndef COCAINE_ELLIPTICS_STORAGE_HPP
 #define COCAINE_ELLIPTICS_STORAGE_HPP
 
+#include <elliptics/cppdef.h>
+
 #include "cocaine/interfaces/storage.hpp"
 
 namespace cocaine { namespace storages {
@@ -45,6 +47,17 @@ class elliptics_storage_t:
                             const std::string& key);
         
         virtual void purge(const std::string& ns);
+
+    private:
+        std::string id(const std::string& ns,
+                       const std::string& key)
+        {
+            return ns + '\0' + key;
+        };
+
+    private:
+        zbr::elliptics_log_file m_logfile;
+        zbr::elliptics_node m_node;
 };
 
 }}

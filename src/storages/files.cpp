@@ -83,9 +83,9 @@ blob_file_storage_t::value_type blob_file_storage_t::get(const std::string& ns,
             buffer.str().data(),
             buffer.str().size()
         );
+    } else {
+        throw storage_error_t("the specified object has not been found");
     }
-
-    return value_type();
 }
 
 namespace {

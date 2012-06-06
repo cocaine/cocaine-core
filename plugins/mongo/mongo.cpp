@@ -93,9 +93,9 @@ mongo_storage_t::value_type mongo_storage_t::get(const std::string& ns,
         } else {
             throw storage_error_t("corrupted data in '" + ns + "'");
         }
+    } else {
+        throw storage_error_t("the specified object has not been found");
     }
-
-    return result;
 }
 
 std::vector<std::string> mongo_storage_t::list(const std::string& ns) {
@@ -139,10 +139,6 @@ void mongo_storage_t::purge(const std::string& ns) {
     } catch(const DBException& e) {
         throw storage_error_t(e.what());
     }
-}
-
-std::string mongo_storage_t::resolve(const std::string& ns) const {
-    return "cocaine." + ns;
 }
 
 extern "C" {

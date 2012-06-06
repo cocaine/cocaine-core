@@ -42,6 +42,7 @@ class my_job_t:
 
 int main() {
     const char data[] = "data";
+    const char abc[] = "123123123123";
 
     cocaine::config_t config("tests/library_config.json");
 
@@ -52,7 +53,8 @@ int main() {
         boost::make_shared<stdio_sink_t>()
     );
 
-    context.storage<storages::blob>("core")->get("sources", "rimz_app@1");
+    context.storage<storages::blob>("apps")->put("sources", "rimz_app@1", blob_t(abc, sizeof(abc)));
+    std::cout << static_cast<const char*>(context.storage<storages::blob>("apps")->get("sources", "rimz_app@1").data()) << std::endl;
 
     std::cout << "Created context" << std::endl;
     
@@ -77,7 +79,7 @@ int main() {
     
     std::cout << state;
 
-    // sleep(1);
+    sleep(1);
 
     engine.stop();
 

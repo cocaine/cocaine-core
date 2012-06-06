@@ -9,7 +9,7 @@
         },
         "apps": {
         	"type": "elliptics",
-        	"uri": "localhost:1234;localhost:1234"
+        	"uri": "blah"
         }
     }
 }

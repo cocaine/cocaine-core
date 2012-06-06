@@ -49,7 +49,9 @@ class mongo_storage_t:
         virtual void purge(const std::string& ns);
 
     private:
-        std::string resolve(const std::string& ns) const;
+        std::string resolve(const std::string& ns) const {
+            return "cocaine." + ns;
+        }
 
     private:
         const mongo::ConnectionString m_uri;

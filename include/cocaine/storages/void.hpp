@@ -45,7 +45,7 @@ class void_storage:
         virtual value_type get(const std::string& ns,
                                const std::string& key)
         {
-            return value_type();
+            throw storage_error_t("the specified object has not been found");
         }
 
         virtual std::vector<std::string> list(const std::string& ns) {
