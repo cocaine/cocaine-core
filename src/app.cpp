@@ -22,6 +22,10 @@ app_t::app_t(context_t& context, const std::string& name):
 	m_engine(new engine_t(context, name))
 { }
 
+app_t::~app_t() {
+    m_engine.reset();
+}
+
 void app_t::start() {
 	m_engine->start();
 }

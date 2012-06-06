@@ -23,6 +23,7 @@ namespace cocaine {
 class app_t {
 	public:
 		app_t(context_t& context, const std::string& name);
+        ~app_t();
 
         void start();
         void stop();
