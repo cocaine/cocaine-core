@@ -56,7 +56,7 @@ class elliptics_storage_t:
                             const std::string& key);
 
         virtual value_type get(const std::string& ns,
-                                const std::string& key);
+                               const std::string& key);
 
         virtual std::vector<std::string> list(const std::string& ns);
 
@@ -73,7 +73,7 @@ class elliptics_storage_t:
         };
 
     private:
-        log_adapter_t m_log;
+        log_adapter_t m_log_adapter;
         zbr::elliptics_node m_node;
 };
 

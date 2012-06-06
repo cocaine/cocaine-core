@@ -65,8 +65,8 @@ unsigned long log_adapter_t::clone() {
 
 elliptics_storage_t::elliptics_storage_t(context_t& context, const std::string& uri) try:
     category_type(context, uri),
-    m_log(context, 31),
-    m_node(m_log)
+    m_log_adapter(context),
+    m_node(m_log_adapter)
 {
     m_node.add_remote("elisto20f.dev.yandex.net", 1025);
     
