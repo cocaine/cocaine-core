@@ -20,6 +20,23 @@
 
 namespace cocaine { namespace storages {
 
+class log_adapter_t:
+    public zbr::elliptics_log
+{
+    public:
+        log_adapter_t(context_t& context,
+                      const uint32_t mask = DNET_LOG_ERROR | DNET_LOG_INFO);
+
+        virtual void log(const uint32_t mask, const char * message);
+        virtual unsigned long clone();
+
+    private:
+        context_t& m_context;
+        const uint32_t m_mask;
+
+        boost::shared_ptr<logging::logger_t> m_log;
+};
+
 class elliptics_storage_t:
     public blob_storage_t
 {
@@ -56,7 +73,7 @@ class elliptics_storage_t:
         };
 
     private:
-        zbr::elliptics_log_file m_logfile;
+        log_adapter_t m_log;
         zbr::elliptics_node m_node;
 };
 

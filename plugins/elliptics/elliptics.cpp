@@ -18,10 +18,50 @@
 using namespace cocaine;
 using namespace cocaine::storages;
 
+log_adapter_t::log_adapter_t(context_t& context, const uint32_t mask):
+    zbr::elliptics_log(mask),
+    m_context(context),
+    m_mask(mask),
+    m_log(m_context.log("elliptics"))
+{ }
+
+void log_adapter_t::log(const uint32_t mask, const char * message) {
+    switch(mask) {
+        case DNET_LOG_NOTICE:
+            m_log->info(message);
+            break;
+
+        case DNET_LOG_INFO:
+            m_log->info(message);
+            break;
+
+        case DNET_LOG_TRANS:
+            m_log->debug(message);
+            break;
+
+        case DNET_LOG_ERROR:
+            m_log->error(message);
+            break;
+
+        case DNET_LOG_DSA:
+            m_log->debug(message);
+            break;
+
+        default:
+            break;
+    };
+}
+
+unsigned long log_adapter_t::clone() {
+    return reinterpret_cast<unsigned long>(
+        new log_adapter_t(m_context, m_mask)
+    );
+}
+
 elliptics_storage_t::elliptics_storage_t(context_t& context, const std::string& uri) try:
     category_type(context, uri),
-    m_logfile("/tmp/ell-plugin.log", 31),
-    m_node(m_logfile)
+    m_log(context, 31),
+    m_node(m_log)
 {
     m_node.add_remote("elisto20f.dev.yandex.net", 1025);
     
