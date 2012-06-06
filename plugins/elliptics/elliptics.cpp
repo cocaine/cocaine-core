@@ -11,8 +11,6 @@
 // limitations under the License.
 //
 
-#include <boost/assign.hpp>
-
 #include "elliptics.hpp"
 
 #include "cocaine/context.hpp"
@@ -63,18 +61,41 @@ unsigned long log_adapter_t::clone() {
     );
 }
 
-elliptics_storage_t::elliptics_storage_t(context_t& context, const std::string& uri) try:
-    category_type(context, uri),
-    m_log_adapter(context),
+elliptics_storage_t::elliptics_storage_t(context_t& context, const Json::Value& args) try:
+    category_type(context, args),
+    m_log_adapter(context, args.get("verbosity", DNET_LOG_ERROR).asUInt()),
     m_node(m_log_adapter)
 {
-    m_node.add_remote("elisto20f.dev.yandex.net", 1025);
-    
-    std::vector<int> groups = boost::assign::list_of
-        (1)
-        (2);
-    
-    m_node.add_groups(groups);
+    Json::Value nodes(args["nodes"]);
+
+    if(nodes.empty() !! !nodes.isObject()) {
+        throw storage_error_t("no nodes has been specified");
+    }
+
+    Json::Value::Members nodenames(nodes.getMemberNames());
+
+    for(Json::Value::Members::const_iterator it = nodenames.begin();
+        it != nodenames.end();
+        ++it)
+    {
+        m_node.add_remote(
+            *it,
+            nodes[*it].asUInt()
+        );
+    }
+
+    Json::Value groups(args["groups"]);
+
+    if(groups.empty() || !groups.isArray()) {
+        throw storage_error_t("no groups has been specified");
+    }
+
+    for(Json::Value::const_iterator it = groups.begin();
+        it != groups.end();
+        ++it)
+    {
+        m_node.add_groups(it->asUInt());
+    }
 } catch(const std::runtime_error& e) {
     throw storage_error_t(e.what());
 }

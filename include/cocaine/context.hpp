@@ -51,7 +51,7 @@ struct config_t {
 
     typedef struct {
         std::string type;
-        std::string uri;
+        Json::Value args;
     } storage_info_t;
 
     typedef std::map<
@@ -114,7 +114,7 @@ class context_t:
             return get<storage_type>(
                 it->second.type,
                 typename category_traits<storage_type>::args_type(
-                    it->second.uri
+                    it->second.args
                 )
             );
         }

@@ -5,11 +5,19 @@
     "storages": {
         "core": {
             "type": "files",
-            "uri": "/var/lib/cocaine"
+            "args": {
+                "path": "/var/lib/cocaine"
+            }
         },
         "apps": {
         	"type": "elliptics",
-        	"uri": "blah"
+            "args": {
+            	"nodes": {
+                    "elisto20f.dev.yandex.net": 1025
+                },
+                "groups": [1, 2],
+                "verbosity": 31
+            }
         }
     }
 }

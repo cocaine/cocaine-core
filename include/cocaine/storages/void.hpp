@@ -27,8 +27,8 @@ class void_storage:
         typedef typename category_type::value_type value_type;
 
     public:
-        void_storage(context_t& context, const std::string& uri):
-            category_type(context, uri)
+        void_storage(context_t& context, const Json::Value& args):
+            category_type(context, args)
         { }
 
         virtual void put(const std::string& ns,

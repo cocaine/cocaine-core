@@ -19,9 +19,9 @@ using namespace cocaine;
 using namespace cocaine::storages;
 using namespace mongo;
 
-mongo_storage_t::mongo_storage_t(context_t& context, const std::string& uri) try:
-    category_type(context, uri),
-    m_uri(uri, ConnectionString::SET)
+mongo_storage_t::mongo_storage_t(context_t& context, const Json::Value& args) try:
+    category_type(context, args),
+    m_uri(args["uri"].asString(), ConnectionString::SET)
 {
     if(!m_uri.isValid()) {
         throw storage_error_t("invalid mongodb uri");

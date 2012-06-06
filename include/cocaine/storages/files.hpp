@@ -29,7 +29,7 @@ class blob_file_storage_t:
 
     public:
         blob_file_storage_t(context_t& context,
-                            const std::string& uri);
+                            const Json::Value& args);
 
         virtual void put(const std::string& ns, 
                          const std::string& key, 
@@ -39,7 +39,7 @@ class blob_file_storage_t:
                             const std::string& key);
 
         virtual value_type get(const std::string& ns,
-                           const std::string& key);
+                               const std::string& key);
 
         virtual std::vector<std::string> list(const std::string& ns);
 
@@ -60,9 +60,9 @@ class document_file_storage_t:
         typedef category_type::value_type value_type;
 
     public:
-        document_file_storage_t(context_t& context, const std::string& uri):
-            category_type(context, uri),
-            m_storage(context, uri)
+        document_file_storage_t(context_t& context, const Json::Value& args):
+            category_type(context, args),
+            m_storage(context, args)
         { }
 
         virtual void put(const std::string& ns, 

@@ -82,7 +82,7 @@ config_t::config_t(const std::string& path):
     {
         storage_info_t info = {
             root["storages"][*it]["type"].asString(),
-            root["storages"][*it]["uri"].asString()
+            root["storages"][*it]["args"]
         };
 
         storages.insert(

@@ -25,7 +25,7 @@ class log_adapter_t:
 {
     public:
         log_adapter_t(context_t& context,
-                      const uint32_t mask = DNET_LOG_ERROR | DNET_LOG_INFO);
+                      const uint32_t mask);
 
         virtual void log(const uint32_t mask, const char * message);
         virtual unsigned long clone();
@@ -46,7 +46,7 @@ class elliptics_storage_t:
 
     public:
         elliptics_storage_t(context_t& context,
-                            const std::string& uri);
+                            const Json::Value& args);
 
         virtual void put(const std::string& ns,
                          const std::string& key,

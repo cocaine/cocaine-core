@@ -53,7 +53,7 @@ class storage_concept:
                             const std::string& key) = 0;
 
         virtual value_type get(const std::string& ns,
-                                const std::string& key) = 0;
+                               const std::string& key) = 0;
 
         virtual std::vector<std::string> list(const std::string& ns) = 0;
 
@@ -63,7 +63,7 @@ class storage_concept:
         virtual void purge(const std::string& ns) = 0;
 
     protected:
-        storage_concept(context_t& context, const std::string& uri):
+        storage_concept(context_t& context, const Json::Value& args):
             m_context(context)
         { }
 
@@ -79,7 +79,7 @@ typedef storage_concept<blob> blob_storage_t;
 template<class T> struct category_traits< storages::storage_concept<T> > {
     typedef storages::storage_concept<T> storage_type;
     typedef boost::shared_ptr<storage_type> ptr_type;
-    typedef boost::tuple<const std::string&> args_type;
+    typedef boost::tuple<const Json::Value&> args_type;
     
     template<class U>
     struct default_factory:
@@ -89,19 +89,19 @@ template<class T> struct category_traits< storages::storage_concept<T> > {
                              const args_type& args)
         {
             boost::lock_guard<boost::mutex> lock(m_mutex);
-            const std::string& uri(boost::get<0>(args));
+            const Json::Value& json(boost::get<0>(args));
 
             typename storage_map_t::iterator it(
-                m_storages.find(uri)
+                m_storages.find(json)
             );
 
             if(it == m_storages.end()) {
                 boost::tie(it, boost::tuples::ignore) = m_storages.insert(
                     std::make_pair(
-                        uri,
+                        json,
                         boost::make_shared<U>(
                             boost::ref(context),
-                            uri
+                            json
                         )
                     )
                 );
@@ -114,7 +114,7 @@ template<class T> struct category_traits< storages::storage_concept<T> > {
         boost::mutex m_mutex;
 
         typedef std::map<
-            std::string,
+            Json::Value,
             ptr_type
         > storage_map_t;
 
