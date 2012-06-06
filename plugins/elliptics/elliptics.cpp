@@ -40,7 +40,7 @@ elliptics_storage_t::value_type elliptics_storage_t::get(const std::string& ns,
 }
 
 std::vector<std::string> elliptics_storage_t::list(const std::string& ns) {
-    return std::vector<std::string>;
+    return std::vector<std::string>();
 }
 
 void elliptics_storage_t::remove(const std::string& ns,
