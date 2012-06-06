@@ -61,27 +61,40 @@ unsigned long log_adapter_t::clone() {
     );
 }
 
-elliptics_storage_t::elliptics_storage_t(context_t& context, const Json::Value& args) try:
+namespace {
+    struct digitizer {
+        template<class T>
+        int operator()(const T& value) {
+            return value.asInt();
+        }
+    };
+}
+
+elliptics_storage_t::elliptics_storage_t(context_t& context, const Json::Value& args):
     category_type(context, args),
     m_log_adapter(context, args.get("verbosity", DNET_LOG_ERROR).asUInt()),
     m_node(m_log_adapter)
 {
     Json::Value nodes(args["nodes"]);
 
-    if(nodes.empty() !! !nodes.isObject()) {
+    if(nodes.empty() || !nodes.isObject()) {
         throw storage_error_t("no nodes has been specified");
     }
 
-    Json::Value::Members nodenames(nodes.getMemberNames());
+    Json::Value::Members node_names(nodes.getMemberNames());
 
-    for(Json::Value::Members::const_iterator it = nodenames.begin();
-        it != nodenames.end();
+    for(Json::Value::Members::const_iterator it = node_names.begin();
+        it != node_names.end();
         ++it)
     {
-        m_node.add_remote(
-            *it,
-            nodes[*it].asUInt()
-        );
+        try {
+            m_node.add_remote(
+                it->c_str(),
+                nodes[*it].asInt()
+            );
+        } catch(const std::runtime_error& e) {
+            // Do nothing. Yes. Really.
+        }
     }
 
     Json::Value groups(args["groups"]);
@@ -90,14 +103,16 @@ elliptics_storage_t::elliptics_storage_t(context_t& context, const Json::Value& 
         throw storage_error_t("no groups has been specified");
     }
 
-    for(Json::Value::const_iterator it = groups.begin();
-        it != groups.end();
-        ++it)
-    {
-        m_node.add_groups(it->asUInt());
-    }
-} catch(const std::runtime_error& e) {
-    throw storage_error_t(e.what());
+    std::vector<int> group_numbers;
+
+    std::transform(
+        groups.begin(),
+        groups.end(),
+        std::back_inserter(group_numbers),
+        digitizer()
+    );
+
+    m_node.add_groups(group_numbers);
 }
 
 void elliptics_storage_t::put(const std::string& ns,
