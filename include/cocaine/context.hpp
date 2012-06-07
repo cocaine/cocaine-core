@@ -108,7 +108,7 @@ class context_t:
             );
     
             if(it == config.storages.end()) {
-                throw configuration_error_t("the specified storage doesn't exist");
+                throw configuration_error_t("the '" + name + "' storage doesn't exist");
             }
 
             return get<storage_type>(

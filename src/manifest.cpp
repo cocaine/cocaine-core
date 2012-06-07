@@ -32,7 +32,7 @@ manifest_t::manifest_t(context_t& context, const std::string& app):
         // Load the app manifest.
         object = context.storage<objects>("core")->get("apps", name);
     } catch(const storage_error_t& e) {
-        throw configuration_error_t("the specified app is not available");
+        throw configuration_error_t("the '" + name + "' app is not available");
     }
 
     root = object.meta;

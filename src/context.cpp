@@ -51,7 +51,7 @@ config_t::config_t(const std::string& path):
     Json::Value root;
 
     if(!reader.parse(stream, root)) {
-        throw configuration_error_t("the configuration file is invalid");
+        throw configuration_error_t("the configuration file is corrupted");
     }
 
     // Validation

@@ -322,7 +322,7 @@ class channel_t:
                 );
                 
                 unpacked.get().convert(&result);
-            } catch(const msgpack::unpack_error& e) {
+            } catch(const msgpack::type_error& e) {
                 throw std::runtime_error("corrupted object");
             } catch(const std::bad_cast& e) {
                 throw std::runtime_error("corrupted object - type mismatch");

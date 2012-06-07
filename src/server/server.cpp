@@ -280,7 +280,7 @@ Json::Value server_t::delete_engine(const std::string& name) {
     engine_map_t::iterator engine(m_engines.find(name));
 
     if(engine == m_engines.end()) {
-        throw configuration_error_t("the specified app does not exists");
+        throw configuration_error_t("the specified app doesn't exist");
     }
 
     engine->second->stop();

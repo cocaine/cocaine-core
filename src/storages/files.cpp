@@ -24,7 +24,9 @@ namespace fs = boost::filesystem;
 
 namespace msgpack {
     template<class Stream>
-    inline packer<Stream>& operator << (packer<Stream>& packer, const objects::value_type& value) {
+    inline packer<Stream>& operator << (packer<Stream>& packer, 
+                                        const objects::value_type& value)
+    {
         std::string meta(Json::FastWriter().write(value.meta));
 
         packer.pack_array(2);
@@ -38,7 +40,9 @@ namespace msgpack {
         return packer;
     }
 
-    inline objects::value_type& operator >> (msgpack::object o, objects::value_type& value) {
+    inline objects::value_type& operator >> (msgpack::object o,
+                                             objects::value_type& value)
+    {
         if(o.type != type::ARRAY || o.via.array.size != 2) {
             throw type_error();
         }
@@ -98,7 +102,7 @@ void file_storage_t::put(const std::string& ns,
     msgpack::pack(buffer, value);
 
     stream.write(
-        static_cast<const char*>(buffer.data()),
+        buffer.data(),
         buffer.size()
     );
 
