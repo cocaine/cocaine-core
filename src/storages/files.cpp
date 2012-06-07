@@ -25,19 +25,15 @@ namespace fs = boost::filesystem;
 namespace msgpack {
     template<class Stream>
     inline packer<Stream>& operator << (packer<Stream>& packer, const objects::value_type& value) {
-        std::string json(Json::FastWriter().write(value.meta));
+        std::string meta(Json::FastWriter().write(value.meta));
 
         packer.pack_array(2);
 
-        packer.pack_raw(json.size());
-        packer.pack_raw_body(json.data(), json.size());
+        packer.pack_raw(meta.size());
+        packer.pack_raw_body(meta.data(), meta.size());
 
         packer.pack_raw(value.blob.size());
-
-        packer.pack_raw_body(
-            static_cast<const char*>(value.blob.data()),
-            value.blob.size()
-        );
+        packer.pack_raw_body(static_cast<const char*>(value.blob.data()), value.blob.size());
 
         return packer;
     }
@@ -47,16 +43,17 @@ namespace msgpack {
             throw type_error();
         }
 
-        Json::Reader reader(Json::Features::strictMode());
-
         msgpack::object &meta = o.via.array.ptr[0],
                         &blob = o.via.array.ptr[1];
 
-        if(!reader.parse(
+        std::string json(
             meta.via.raw.ptr,
-            meta.via.raw.ptr + meta.via.raw.size,
-            value.meta))
-        {
+            meta.via.raw.ptr + meta.via.raw.size
+        );
+
+        Json::Reader reader(Json::Features::strictMode());
+
+        if(!reader.parse(json, value.meta)) {
             throw type_error();
         }
 
@@ -94,7 +91,7 @@ void file_storage_t::put(const std::string& ns,
     fs::ofstream stream(file_path, fs::ofstream::out | fs::ofstream::trunc);
    
     if(!stream) {
-        throw storage_error_t("unable to open the specified object"); 
+        throw storage_error_t("unable to access the specified object"); 
     }     
 
     msgpack::sbuffer buffer;
@@ -117,7 +114,7 @@ objects::meta_type file_storage_t::exists(const std::string& ns,
 file_storage_t::value_type file_storage_t::get(const std::string& ns,
                                                const std::string& key)
 {
-    fs::path file_path(m_storage_path / ns / "data" / key);
+    fs::path file_path(m_storage_path / ns / key);
     fs::ifstream stream(file_path, fs::ifstream::in);
     
     if(stream) {
@@ -126,14 +123,18 @@ file_storage_t::value_type file_storage_t::get(const std::string& ns,
         objects::value_type value;
 
         buffer << stream.rdbuf();
+        
+        msgpack::unpack(
+            &unpacked,
+            buffer.str().data(),
+            buffer.str().size()
+        );
 
         try {
-            msgpack::unpack(&unpacked, buffer.str().data(), buffer.str().size());
+            unpacked.get().convert(&value);
         } catch (const msgpack::type_error& e) {
             throw storage_error_t("the specified object is corrupted");
         }
-
-        unpacked.get().convert(&value);
 
         return value;
     } else {

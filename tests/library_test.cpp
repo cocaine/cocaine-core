@@ -54,7 +54,19 @@ int main() {
     );
 
     std::cout << "Created context" << std::endl;
-    
+
+    Json::Value v;
+
+    v["yo"] = "hi";
+
+    storages::objects::value_type x = {
+        v,
+        blob_t(data, sizeof(data))
+    };
+
+    context.storage<storages::objects>("core")->put("apps", "my_app@1", x);
+    std::cout << context.storage<storages::objects>("core")->get("apps", "my_app@1").meta;
+
     cocaine::app_t app(context, "rimz_app@1");
 
     std::cout << "Created app" << std::endl;
