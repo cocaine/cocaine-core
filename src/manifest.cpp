@@ -14,6 +14,7 @@
 #include "cocaine/manifest.hpp"
 
 #include "cocaine/context.hpp"
+#include "cocaine/logging.hpp"
 
 #include "cocaine/interfaces/storage.hpp"
 
@@ -24,15 +25,29 @@ using namespace cocaine::storages;
 // -----------
 
 manifest_t::manifest_t(context_t& context, const std::string& app):
-    name(app)
+    name(app),
+    m_log(context.log(name))
 {
     objects::value_type object;
 
     try {
         // Load the app manifest.
-        object = context.storage<objects>("core")->get("apps", name);
+        object = context.storage<objects>("core:cache")->get("apps", name);
     } catch(const storage_error_t& e) {
-        throw configuration_error_t("the '" + name + "' app is not available");
+        m_log->info(
+            "the '%s' app hasn't been found in the cache",
+            name.c_str()
+        );
+
+        try {
+            // Fetch the application object from the core storage.
+            object = context.storage<objects>("core")->get("apps", name);
+        } catch(const storage_error_t& e) {
+            throw configuration_error_t("the '" + name + "' app is not available");
+        }
+
+        // Put the application object into the cache for future reference.
+        context.storage<objects>("core:cache")->put("apps", name, object);
     }
 
     root = object.meta;
