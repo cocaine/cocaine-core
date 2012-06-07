@@ -53,9 +53,6 @@ int main() {
         boost::make_shared<stdio_sink_t>()
     );
 
-    context.storage<storages::blob>("apps")->put("sources", "rimz_app@1", blob_t(abc, sizeof(abc)));
-    std::cout << static_cast<const char*>(context.storage<storages::blob>("apps")->get("sources", "rimz_app@1").data()) << std::endl;
-
     std::cout << "Created context" << std::endl;
     
     cocaine::app_t app(context, "rimz_app@1");

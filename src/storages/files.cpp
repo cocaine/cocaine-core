@@ -13,24 +13,70 @@
 
 #include <boost/filesystem/fstream.hpp>
 #include <boost/iterator/filter_iterator.hpp>
+#include <msgpack.hpp>
 
 #include "cocaine/storages/files.hpp"
-
-#include "cocaine/context.hpp"
 
 using namespace cocaine;
 using namespace cocaine::storages;
 
 namespace fs = boost::filesystem;
 
-blob_file_storage_t::blob_file_storage_t(context_t& context, const Json::Value& args):
+namespace msgpack {
+    template<class Stream>
+    inline packer<Stream>& operator << (packer<Stream>& packer, const objects::value_type& value) {
+        std::string json(Json::FastWriter().write(value.meta));
+
+        packer.pack_array(2);
+
+        packer.pack_raw(json.size());
+        packer.pack_raw_body(json.data(), json.size());
+
+        packer.pack_raw(value.blob.size());
+
+        packer.pack_raw_body(
+            static_cast<const char*>(value.blob.data()),
+            value.blob.size()
+        );
+
+        return packer;
+    }
+
+    inline objects::value_type& operator >> (msgpack::object o, objects::value_type& value) {
+        if(o.type != type::ARRAY || o.via.array.size != 2) {
+            throw type_error();
+        }
+
+        Json::Reader reader(Json::Features::strictMode());
+
+        msgpack::object &meta = o.via.array.ptr[0],
+                        &blob = o.via.array.ptr[1];
+
+        if(!reader.parse(
+            meta.via.raw.ptr,
+            meta.via.raw.ptr + meta.via.raw.size,
+            value.meta))
+        {
+            throw type_error();
+        }
+
+        value.blob = objects::data_type(
+            blob.via.raw.ptr,
+            blob.via.raw.size
+        );
+
+        return value;
+    }
+}
+
+file_storage_t::file_storage_t(context_t& context, const Json::Value& args):
     category_type(context, args),
     m_storage_path(args["path"].asString())
 { }
 
-void blob_file_storage_t::put(const std::string& ns,
-                              const std::string& key,
-                              const value_type& blob) 
+void file_storage_t::put(const std::string& ns,
+                         const std::string& key,
+                         const value_type& value) 
 {
     fs::path store_path(m_storage_path / ns);
 
@@ -38,51 +84,58 @@ void blob_file_storage_t::put(const std::string& ns,
         try {
             fs::create_directories(store_path);
         } catch(const std::runtime_error& e) {
-            throw storage_error_t("cannot create " + store_path.string());
+            throw storage_error_t("cannot create the specified container");
         }
     } else if(fs::exists(store_path) && !fs::is_directory(store_path)) {
-        throw storage_error_t(store_path.string() + " is not a directory");
+        throw storage_error_t("the specified container is corrupted");
     }
     
     fs::path file_path(store_path / key);
     fs::ofstream stream(file_path, fs::ofstream::out | fs::ofstream::trunc);
    
     if(!stream) {
-        throw storage_error_t("unable to open " + file_path.string()); 
+        throw storage_error_t("unable to open the specified object"); 
     }     
 
+    msgpack::sbuffer buffer;
+    msgpack::pack(buffer, value);
+
     stream.write(
-        static_cast<const char*>(blob.data()),
-        blob.size()
+        static_cast<const char*>(buffer.data()),
+        buffer.size()
     );
 
     stream.close();
 }
 
-bool blob_file_storage_t::exists(const std::string& ns,
-                                 const std::string& key)
+objects::meta_type file_storage_t::exists(const std::string& ns,
+                                          const std::string& key)
 {
-    fs::path file_path(m_storage_path / ns / key);
-    
-    return (fs::exists(file_path) && 
-            fs::is_regular(file_path));
+    return get(ns, key).meta;
 }
 
-blob_file_storage_t::value_type blob_file_storage_t::get(const std::string& ns,
-                                                         const std::string& key)
+file_storage_t::value_type file_storage_t::get(const std::string& ns,
+                                               const std::string& key)
 {
-    fs::path file_path(m_storage_path / ns / key);
+    fs::path file_path(m_storage_path / ns / "data" / key);
     fs::ifstream stream(file_path, fs::ifstream::in);
     
     if(stream) {
         std::stringstream buffer;
+        msgpack::unpacked unpacked;
+        objects::value_type value;
 
         buffer << stream.rdbuf();
 
-        return value_type(
-            buffer.str().data(),
-            buffer.str().size()
-        );
+        try {
+            msgpack::unpack(&unpacked, buffer.str().data(), buffer.str().size());
+        } catch (const msgpack::type_error& e) {
+            throw storage_error_t("the specified object is corrupted");
+        }
+
+        unpacked.get().convert(&value);
+
+        return value;
     } else {
         throw storage_error_t("the specified object has not been found");
     }
@@ -96,7 +149,7 @@ namespace {
     };
 }
 
-std::vector<std::string> blob_file_storage_t::list(const std::string& ns) {
+std::vector<std::string> file_storage_t::list(const std::string& ns) {
     fs::path store_path(m_storage_path / ns);
     std::vector<std::string> result;
 
@@ -122,8 +175,8 @@ std::vector<std::string> blob_file_storage_t::list(const std::string& ns) {
     return result;
 }
 
-void blob_file_storage_t::remove(const std::string& ns,
-                                 const std::string& key)
+void file_storage_t::remove(const std::string& ns,
+                            const std::string& key)
 {
     fs::path file_path(m_storage_path / ns / key);
     
@@ -131,50 +184,7 @@ void blob_file_storage_t::remove(const std::string& ns,
         try {
             fs::remove(file_path);
         } catch(const std::runtime_error& e) {
-            throw storage_error_t("unable to remove " + file_path.string());
+            throw storage_error_t("unable to remove the specified object");
         }
     }
-}
-
-void blob_file_storage_t::purge(const std::string& ns) {
-    fs::path store_path(m_storage_path / ns);
-    fs::remove_all(store_path);
-}
-
-void document_file_storage_t::put(const std::string& ns,
-                                  const std::string& key,
-                                  const value_type& value)
-{
-    std::string json(Json::StyledWriter().write(value));
-
-    m_storage.put(
-        ns,
-        key,
-        blob_storage_t::value_type(
-            json.data(),
-            json.size()
-        )
-    );
-}
-
-document_file_storage_t::value_type document_file_storage_t::get(const std::string& ns,
-                                                                 const std::string& key)
-{
-    blob_storage_t::value_type value(m_storage.get(ns, key));
-    value_type result;
-
-    if(!value.empty()) {
-        Json::Reader reader(Json::Features::strictMode());
-
-        std::string json(
-            static_cast<const char*>(value.data()),
-            static_cast<const char*>(value.data()) + value.size()
-        );
-        
-        if(!reader.parse(json, result)) {
-            throw storage_error_t("unparseable json in the storage");
-        }
-    }
-
-    return result;
 }

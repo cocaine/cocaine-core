@@ -20,47 +20,50 @@
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
 
-#include "cocaine/helpers/json.hpp"
 #include "cocaine/helpers/blob.hpp"
+#include "cocaine/helpers/json.hpp"
 
 namespace cocaine { namespace storages {
 
-struct document {
-    typedef Json::Value value_type;
-};
+struct objects {
+    typedef Json::Value meta_type;
+    typedef blob_t data_type;
 
-struct blob {
-    typedef blob_t value_type;
+    typedef struct {
+        meta_type meta;
+        data_type blob;
+    } value_type;
 };
 
 template<class T>
-class storage_concept:
+class storage_concept;
+
+template<>
+class storage_concept<objects>:
     public boost::noncopyable
 {
     public:
-        typedef typename T::value_type value_type;
+        typedef objects::value_type value_type;
 
     public:
         virtual ~storage_concept() { 
             // Empty.
         }
 
+        virtual value_type get(const std::string& ns,
+                               const std::string& key) = 0;
+
         virtual void put(const std::string& ns,
                          const std::string& key,
                          const value_type& value) = 0;
         
-        virtual bool exists(const std::string& ns,
-                            const std::string& key) = 0;
-
-        virtual value_type get(const std::string& ns,
-                               const std::string& key) = 0;
+        virtual objects::meta_type exists(const std::string& ns,
+                                         const std::string& key) = 0;
 
         virtual std::vector<std::string> list(const std::string& ns) = 0;
 
         virtual void remove(const std::string& ns,
                             const std::string& key) = 0;
-        
-        virtual void purge(const std::string& ns) = 0;
 
     protected:
         storage_concept(context_t& context, const Json::Value& args):
@@ -71,12 +74,10 @@ class storage_concept:
         context_t& m_context;
 };
 
-typedef storage_concept<document> document_storage_t;
-typedef storage_concept<blob> blob_storage_t;
-
 }
 
-template<class T> struct category_traits< storages::storage_concept<T> > {
+template<class T>
+struct category_traits< storages::storage_concept<T> > {
     typedef storages::storage_concept<T> storage_type;
     typedef boost::shared_ptr<storage_type> ptr_type;
     typedef boost::tuple<const Json::Value&> args_type;

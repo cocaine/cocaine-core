@@ -21,10 +21,10 @@
 namespace cocaine { namespace storages {
 
 class mongo_storage_t:
-    public document_storage_t
+    public storage_concept<objects>
 {
     public:
-        typedef document_storage_t category_type;
+        typedef storage_concept<objects> category_type;
         typedef category_type::value_type value_type;
 
     public:
@@ -35,19 +35,17 @@ class mongo_storage_t:
                          const std::string& key,
                          const value_type& value);
 
-        virtual bool exists(const std::string& ns,
-                            const std::string& key);
+        virtual objects::meta_type exists(const std::string& ns,
+                                          const std::string& key);
 
         virtual value_type get(const std::string& ns,
-                                const std::string& key);
+                               const std::string& key);
 
         virtual std::vector<std::string> list(const std::string& ns);
 
         virtual void remove(const std::string& ns,
                             const std::string& key);
         
-        virtual void purge(const std::string& ns);
-
     private:
         std::string resolve(const std::string& ns) const {
             return "cocaine." + ns;

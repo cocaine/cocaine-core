@@ -18,7 +18,6 @@
 #include "cocaine/logging.hpp"
 #include "cocaine/networking.hpp"
 
-#include "cocaine/storages/void.hpp"
 #include "cocaine/storages/files.hpp"
 
 using namespace cocaine;
@@ -123,11 +122,7 @@ context_t::context_t(config_t config_, boost::shared_ptr<logging::sink_t> sink):
     m_repository.reset(new repository_t(*this));
 
     // Register the builtin components.
-    m_repository->insert<document_void_storage_t>("void");
-    m_repository->insert<blob_void_storage_t>("void");
-    
-    m_repository->insert<document_file_storage_t>("files");
-    m_repository->insert<blob_file_storage_t>("files");
+    m_repository->insert<file_storage_t>("files");
 }
 
 context_t::~context_t() { }

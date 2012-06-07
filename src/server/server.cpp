@@ -332,7 +332,7 @@ void server_t::announce(ev::timer&, int) {
 void server_t::recover() {
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
     std::vector<std::string> apps(
-        m_context.storage<document>("core")->list("apps")
+        m_context.storage<objects>("core")->list("apps")
     );
 
     std::set<std::string> available(apps.begin(), apps.end()),

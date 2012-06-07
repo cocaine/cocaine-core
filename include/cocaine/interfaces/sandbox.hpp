@@ -71,7 +71,8 @@ class sandbox_t:
 
 }
 
-template<> struct category_traits<engine::sandbox_t> {
+template<>
+struct category_traits<engine::sandbox_t> {
     typedef std::auto_ptr<engine::sandbox_t> ptr_type;
     typedef boost::tuple<const engine::manifest_t&> args_type;
 

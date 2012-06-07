@@ -35,7 +35,7 @@ auth_t::auth_t(context_t& context):
 
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
     std::vector<std::string> keys(
-        context.storage<document>("core")->list("keys")
+        context.storage<objects>("core")->list("keys")
     );
 
     for(std::vector<std::string>::const_iterator it = keys.begin();
@@ -44,19 +44,17 @@ auth_t::auth_t(context_t& context):
     {
         std::string identity(*it);
 
-        document_storage_t::value_type object(
-            context.storage<document>("core")->get("keys", identity)
+        objects::value_type object(
+            context.storage<objects>("core")->get("keys", identity)
         );
 
-        if(!object["key"].isString() || object["key"].empty()) {
+        if(object.blob.empty()) {
             m_log->error("key for user '%s' is malformed", identity.c_str());
             continue;
         }
 
-        std::string key(object["key"].asString());
-
         // Read the key into the BIO object.
-        BIO * bio = BIO_new_mem_buf(const_cast<char*>(key.data()), key.size());
+        BIO * bio = BIO_new_mem_buf(const_cast<void*>(object.blob.data()), object.blob.size());
         EVP_PKEY * pkey = NULL;
         
         pkey = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);

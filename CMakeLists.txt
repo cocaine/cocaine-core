@@ -95,6 +95,7 @@ TARGET_LINK_LIBRARIES(cocaine-common
     crypto
     json
     ltdl
+    msgpack
     zmq
     ${Boost_SYSTEM_LIBRARY}
     ${LIBCGROUP_LIBRARY}
@@ -114,8 +115,7 @@ ADD_LIBRARY(cocaine-core SHARED
 TARGET_LINK_LIBRARIES(cocaine-core
     cocaine-common
     archive
-    ev
-    msgpack)
+    ev)
 
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     VERSION 1)
