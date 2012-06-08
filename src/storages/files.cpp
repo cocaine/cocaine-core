@@ -99,14 +99,19 @@ objects::value_type file_storage_t::get(const std::string& ns,
     buffer << stream.rdbuf();
     std::string blob(buffer.str());
     
-    msgpack::unpack(
-        &unpacked,
-        blob.data(),
-        blob.size()
-    );
-
     try {
+        msgpack::unpack(&unpacked, blob.data(), blob.size());
         return unpacked.get().as<objects::value_type>();
+    } catch (const msgpack::unpack_error& e) {
+        m_log->error(
+            "the '%s' object is corrupted, namespace: '%s', path: '%s', reason: %s",
+            key.c_str(),
+            ns.c_str(),
+            file_path.string().c_str(),
+            e.what()
+        );
+
+        throw storage_error_t("the specified object is corrupted");
     } catch (const msgpack::type_error& e) {
         m_log->error(
             "the '%s' object is corrupted, namespace: '%s', path: '%s', reason: %s",

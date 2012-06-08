@@ -70,6 +70,8 @@ class elliptics_storage_t:
         };
 
     private:
+        boost::shared_ptr<logging::logger_t> m_log;
+        
         log_adapter_t m_log_adapter;
         zbr::elliptics_node m_node;
 };

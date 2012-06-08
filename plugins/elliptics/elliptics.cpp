@@ -74,6 +74,7 @@ namespace {
 
 elliptics_storage_t::elliptics_storage_t(context_t& context, const Json::Value& args):
     category_type(context, args),
+    m_log(m_context.log("storage/elliptics")),
     m_log_adapter(context, args.get("verbosity", DNET_LOG_ERROR).asUInt()),
     m_node(m_log_adapter)
 {
@@ -139,7 +140,6 @@ objects::value_type elliptics_storage_t::get(const std::string& ns,
     } catch(const std::runtime_error& e) {
         throw storage_error_t(e.what());
     }
-
 
     object.blob = objects::data_type(
         blob.data(),
@@ -251,11 +251,12 @@ std::vector<std::string> elliptics_storage_t::list(const std::string& ns) {
 
     msgpack::unpacked unpacked;
 
-    msgpack::unpack(&unpacked, blob.data(), blob.size());
-    
     try {
+        msgpack::unpack(&unpacked, blob.data(), blob.size());
         unpacked.get().convert(&result);
-    } catch(const std::string& e) {
+    } catch(const msgpack::unpack_error& e) {
+        throw storage_error_t("the namespace list object is corrupted");
+    } catch(const msgpack::type_error& e) {
         throw storage_error_t("the namespace list object is corrupted");
     }
 
