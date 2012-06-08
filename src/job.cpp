@@ -29,14 +29,14 @@ job_t::job_t(const std::string& event_, const blob_t& request_):
     initiate();
 }
 
-job_t::job_t(const std::string& event_, dealer::policy_t policy_):
+job_t::job_t(const std::string& event_, policy_t policy_):
     event(event_),
     policy(policy_)
 {
     initiate();
 }
 
-job_t::job_t(const std::string& event_, const blob_t& request_, dealer::policy_t policy_):
+job_t::job_t(const std::string& event_, const blob_t& request_, policy_t policy_):
     event(event_),
     request(request_),
     policy(policy_)

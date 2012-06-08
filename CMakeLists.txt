@@ -91,22 +91,21 @@ ADD_LIBRARY(cocaine-common SHARED
 
 TARGET_LINK_LIBRARIES(cocaine-common
     boost_filesystem-mt
+    ${Boost_SYSTEM_LIBRARY}
     boost_thread-mt
+    ${LIBCGROUP_LIBRARY}
     crypto
     json
     ltdl
     msgpack
-    zmq
-    ${Boost_SYSTEM_LIBRARY}
-    ${LIBCGROUP_LIBRARY}
-    ${LIBUUID_LIBRARY})
+    ${LIBUUID_LIBRARY}
+    zmq)
 
 SET_TARGET_PROPERTIES(cocaine-common PROPERTIES
     VERSION 1)
 
 ADD_LIBRARY(cocaine-core SHARED
     src/app
-    src/drivers/base
     src/engine
     src/job
     src/manifest
@@ -114,8 +113,8 @@ ADD_LIBRARY(cocaine-core SHARED
     src/package)
 
 TARGET_LINK_LIBRARIES(cocaine-core
-    cocaine-common
     archive
+    cocaine-common
     ev)
 
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES

@@ -18,6 +18,7 @@
 #include <EXTERN.h>
 #include <perl.h>
 
+#include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
 
@@ -159,6 +160,12 @@ public:
     }
 
 private:
+    const logging::logger_t& log() const {
+        return *m_log;
+    }    
+
+private:
+    boost::shared_ptr<logging::logger_t> m_log;
     PerlInterpreter* my_perl;
 };
 

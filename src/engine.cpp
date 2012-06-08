@@ -12,7 +12,6 @@
 //
 
 #include <boost/assign.hpp>
-#include <boost/algorithm/string/join.hpp>
 #include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
 
@@ -23,6 +22,8 @@
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
 #include "cocaine/rpc.hpp"
+
+#include "cocaine/dealer/types.hpp"
 
 using namespace cocaine::engine;
 using namespace cocaine::networking;
@@ -37,10 +38,11 @@ void job_queue_t::push(const_reference job) {
     }
 }
 
-engine_t::engine_t(context_t& context, const std::string& name):
+engine_t::engine_t(context_t& context, const manifest_t& manifest_):
     m_context(context),
-    m_log(m_context.log("app/" + name)),
+    m_log(m_context.log("app/" + manifest_.name)),
     m_state(stopped),
+    m_manifest(manifest_),
     m_watcher(m_loop),
     m_processor(m_loop),
     m_pumper(m_loop),
@@ -52,8 +54,6 @@ engine_t::engine_t(context_t& context, const std::string& name):
     , m_cgroup(NULL)
 #endif
 {
-    m_manifest.reset(new manifest_t(m_context, name));
-
     int linger = 0;
 
     m_bus.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
@@ -127,7 +127,7 @@ engine_t::engine_t(context_t& context, const std::string& name):
                     cgroup_add_value_bool(ctl, p->c_str(), cfg[*p].asBool());
                     break;
                 } default: {
-                    log().error(
+                    m_log->error(
                         "controller '%s' parameter '%s' type is not supported",
                         c->c_str(),
                         p->c_str()
@@ -137,7 +137,7 @@ engine_t::engine_t(context_t& context, const std::string& name):
                 }
             }
             
-            log().debug(
+            m_log->debug(
                 "setting controller '%s' parameter '%s' to '%s'", 
                 c->c_str(),
                 p->c_str(),
@@ -149,7 +149,7 @@ engine_t::engine_t(context_t& context, const std::string& name):
     int rv = 0;
 
     if((rv = cgroup_create_cgroup(m_cgroup, false)) != 0) {
-        log().error(
+        m_log->error(
             "unable to create the control group - %s", 
             cgroup_strerror(rv)
         );
@@ -172,7 +172,7 @@ engine_t::~engine_t() {
         // XXX: Sometimes there're still slaves terminating at this point,
         // so control group deletion fails with "Device or resource busy".
         if((rv = cgroup_delete_cgroup(m_cgroup, false)) != 0) {
-            log().error(
+            m_log->error(
                 "unable to delete the control group - %s", 
                 cgroup_strerror(rv)
             );
@@ -197,7 +197,7 @@ void engine_t::start() {
         m_state = running;
     }
 
-    log().info("starting");
+    m_log->info("starting");
     
     m_thread.reset(
         new boost::thread(
@@ -215,7 +215,7 @@ void engine_t::stop() {
         boost::lock_guard<boost::mutex> lock(m_queue_mutex);
 
         if(m_state == running) {
-            log().info("stopping");
+            m_log->info("stopping");
 
             m_state = stopping;
             
@@ -225,7 +225,7 @@ void engine_t::stop() {
     }
 
     if(m_thread.get()) {
-        log().debug("reaping the thread");
+        m_log->debug("reaping the thread");
         
         // Wait for the termination.
         m_thread->join();
@@ -268,7 +268,7 @@ void engine_t::enqueue(job_queue_t::const_reference job) {
     boost::lock_guard<boost::mutex> lock(m_queue_mutex);
     
     if(m_state != running) {
-        log().debug(
+        m_log->debug(
             "dropping an incomplete '%s' job due to an inactive engine",
             job->event.c_str()
         );
@@ -284,7 +284,7 @@ void engine_t::enqueue(job_queue_t::const_reference job) {
     }
 
     if(m_queue.size() >= manifest().policy.queue_limit) {
-        log().debug(
+        m_log->debug(
             "dropping an incomplete '%s' job due to a full queue",
             job->event.c_str()
         );
@@ -328,7 +328,7 @@ void engine_t::process(ev::idle&, int) {
         pool_map_t::iterator master(m_pool.find(slave_id));
 
         if(master == m_pool.end()) {
-            log().warning(
+            m_log->warning(
                 "dropping type %d event from a nonexistent slave %s", 
                 command,
                 slave_id.c_str()
@@ -338,7 +338,7 @@ void engine_t::process(ev::idle&, int) {
             return;
         }
 
-        log().debug(
+        m_log->debug(
             "got type %d event from slave %s",
             command,
             slave_id.c_str()
@@ -378,7 +378,7 @@ void engine_t::process(ev::idle&, int) {
                 master->second->process_event(events::error(code, message));
 
                 if(code == dealer::server_error) {
-                    log().error("the app seems to be broken - %s", message.c_str());
+                    m_log->error("the app seems to be broken - %s", message.c_str());
                     
                     {
                         boost::lock_guard<boost::mutex> lock(m_queue_mutex);
@@ -397,7 +397,7 @@ void engine_t::process(ev::idle&, int) {
                 break;
 
             default:
-                log().warning(
+                m_log->warning(
                     "dropping unknown event type %d from slave %s",
                     command,
                     slave_id.c_str()
@@ -456,7 +456,7 @@ void engine_t::cleanup(ev::timer&, int) {
             m_pool.erase(*it);
         }
 
-        log().debug(
+        m_log->debug(
             "recycled %zu dead %s", 
             corpses.size(),
             corpses.size() == 1 ? "slave" : "slaves"
@@ -508,7 +508,7 @@ void engine_t::react() {
         job_queue_t::value_type job(m_queue.front());
 
         if(job->state_downcast<const job::complete*>()) {
-            log().debug(
+            m_log->debug(
                 "dropping a complete '%s' job from the queue",
                 job->event.c_str()
             );
@@ -542,7 +542,7 @@ void engine_t::react() {
               (m_pool.size() < manifest().policy.pool_limit && 
                m_pool.size() * manifest().policy.grow_threshold < m_queue.size() * 2))
             {
-                log().debug("enlarging the pool");
+                m_log->debug("enlarging the pool");
                 
                 std::auto_ptr<master_t> master;
                 
@@ -551,7 +551,7 @@ void engine_t::react() {
                     std::string master_id(master->id());
                     m_pool.insert(master_id, master);
                 } catch(const system_error_t& e) {
-                    log().error(
+                    m_log->error(
                         "unable to spawn more slaves - %s - %s",
                         e.what(),
                         e.reason()
@@ -579,7 +579,7 @@ namespace {
 void engine_t::terminate() {
     // Abort all the outstanding jobs.
     if(!m_queue.empty()) {
-        log().debug(
+        m_log->debug(
             "dropping %zu incomplete %s due to the engine shutdown",
             m_queue.size(),
             m_queue.size() == 1 ? "job" : "jobs"

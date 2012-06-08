@@ -100,6 +100,11 @@ class python_t:
                             io_t& io);
 
     public:
+        const logging::logger_t& log() const {
+            return *m_log;
+        }
+    
+    public:
         static PyObject* manifest(PyObject * self,
                                   PyObject * args);
         
@@ -108,6 +113,8 @@ class python_t:
         static std::string exception();
 
     private:
+        boost::shared_ptr<logging::logger_t> m_log;
+        
         PyObject * m_python_module;
         tracked_object_t m_python_manifest;
         

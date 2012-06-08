@@ -1,5 +1,7 @@
 #include <fstream>
 
+#include <zmq.hpp>
+
 #include "cocaine/app.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"

@@ -20,7 +20,7 @@
 
 #include "cocaine/helpers/json.hpp"
 
-namespace cocaine { namespace engine {
+namespace cocaine {
 
 struct manifest_t {
     manifest_t(context_t& context,
@@ -49,6 +49,6 @@ private:
      boost::shared_ptr<logging::logger_t> m_log;
 };
 
-}}
+}
 
 #endif

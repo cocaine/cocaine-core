@@ -67,7 +67,7 @@ class storage_concept<objects>:
             m_context(context)
         { }
 
-    protected:
+    private:
         context_t& m_context;
 };
 

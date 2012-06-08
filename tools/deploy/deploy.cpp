@@ -82,9 +82,9 @@ namespace {
         );
 
         try {
-            engine::package_t package(context, blob);
+            package_t package(context, blob);
             compression = package.type();
-        } catch(const engine::package_error_t& e) {
+        } catch(const package_error_t& e) {
             std::cerr << "Error: the app package in '" << package_path << "' is corrupted." << std::endl;
             std::cerr << e.what() << std::endl;
             return;

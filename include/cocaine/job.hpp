@@ -26,11 +26,30 @@
 #include "cocaine/helpers/blob.hpp"
 #include "cocaine/helpers/birth_control.hpp"
 
-#include "cocaine/dealer/types.hpp"
-
 namespace cocaine { namespace engine {
 
 namespace sc = boost::statechart;
+
+// Job policy
+// ----------
+
+struct policy_t {
+    policy_t():
+        urgent(false),
+        timeout(0.0f),
+        deadline(0.0f)
+    { }
+
+    policy_t(bool urgent_, double timeout_, double deadline_):
+        urgent(urgent_),
+        timeout(timeout_),
+        deadline(deadline_)
+    { }
+
+    bool urgent;
+    double timeout;
+    double deadline;
+};
 
 // Job states
 // ----------
@@ -58,11 +77,11 @@ struct job_t:
           const blob_t& request);
 
     job_t(const std::string& event,
-          dealer::policy_t policy);
+          policy_t policy);
     
     job_t(const std::string& event,
           const blob_t& request,
-          dealer::policy_t policy); 
+          policy_t policy); 
 
     virtual ~job_t();
 
@@ -71,7 +90,7 @@ struct job_t:
     virtual void react(const events::choke& event);
 
     const std::string event;
-    const dealer::policy_t policy;
+    const policy_t policy;
     const blob_t request;
 };
 

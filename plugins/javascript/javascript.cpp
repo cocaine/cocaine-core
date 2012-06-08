@@ -17,6 +17,8 @@
 
 #include <v8.h>
 
+#include "cocaine/context.hpp"
+#include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
 
 #include "cocaine/interfaces/sandbox.hpp"
@@ -33,7 +35,8 @@ class javascript_t:
 
     public:
         javascript_t(context_t& context, const manifest_t& manifest):
-            category_type(context, manifest)
+            category_type(context, manifest),
+            m_log(context.log("app/" + manifest.name))
         {
             Json::Value args(manifest.root["args"]);
 
@@ -122,6 +125,13 @@ class javascript_t:
         }
 
     private:
+        const logging::logger_t& log() const {
+            return *m_log;
+        }
+    
+    private:
+        boost::shared_ptr<logging::logger_t> m_log;
+
         Persistent<Context> m_v8_context;
         Persistent<Function> m_function;
 };

@@ -15,19 +15,22 @@
 #define COCAINE_APP_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/manifest.hpp"
+
+#include "cocaine/interfaces/driver.hpp"
 
 #include "helpers/json.hpp"
 
 namespace cocaine {
 
-// #if BOOST_VERSION >= 104000
-// typedef boost::ptr_unordered_map<
-// #else
-// typedef boost::ptr_map<
-// #endif
-//     const std::string,
-//     drivers::driver_t
-// > driver_map_t;
+#if BOOST_VERSION >= 104000
+typedef boost::ptr_unordered_map<
+#else
+typedef boost::ptr_map<
+#endif
+    const std::string,
+    engine::drivers::driver_t
+> driver_map_t;
 
 class app_t {
     public:
@@ -45,8 +48,12 @@ class app_t {
         void enqueue(const boost::shared_ptr<engine::job_t>& job);
 
     private:
+        boost::shared_ptr<logging::logger_t> m_log;
+        
+        manifest_t m_manifest;
         std::auto_ptr<engine::engine_t> m_engine;
-        // driver_map_t m_drivers;
+        
+        driver_map_t m_drivers;
 };
 
 }

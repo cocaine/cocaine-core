@@ -19,6 +19,7 @@
 #include "python.hpp"
 #include "objects.hpp"
 
+#include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
 
@@ -33,6 +34,7 @@ static PyMethodDef context_module_methods[] = {
 
 python_t::python_t(context_t& context, const manifest_t& manifest):
     category_type(context, manifest),
+    m_log(context.log("app/" + manifest.name)),
     m_python_module(NULL),
     m_python_manifest(NULL),
     m_thread_state(NULL)

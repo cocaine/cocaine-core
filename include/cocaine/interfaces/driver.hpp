@@ -11,67 +11,65 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_SANDBOX_INTERFACE_HPP
-#define COCAINE_SANDBOX_INTERFACE_HPP
+#ifndef COCAINE_DRIVER_INTERFACE_HPP
+#define COCAINE_DRIVER_INTERFACE_HPP
 
 #include <boost/tuple/tuple.hpp>
 
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
 
-#include "cocaine/helpers/blob.hpp"
+#include "cocaine/helpers/json.hpp"
 
-namespace cocaine { namespace engine {
+namespace cocaine { namespace engine { namespace drivers {
 
-// Sandbox I/O
-// -----------
-
-class io_t {
-    public:
-        virtual blob_t read(int timeout) = 0;
-
-        virtual void write(const void * data,
-                           size_t size) = 0;
-};
-
-// Sandbox interface
-// -----------------
-
-class sandbox_t:
+class driver_t:
     public boost::noncopyable
 {
     public:
-        virtual ~sandbox_t() {
+        virtual ~driver_t() {
             // Empty.
         }
-        
-        virtual void invoke(const std::string& method,
-                            io_t& io) = 0;
+
+        virtual Json::Value info() const = 0;
+
+    public:
+        app_t& app() {
+            return m_app;
+        }
 
     protected:
-        sandbox_t(context_t& context, const manifest_t& manifest):
-            m_context(context)
+        driver_t(context_t& context, app_t& app, const Json::Value& args):
+            m_context(context),
+            m_app(app)
         { }
-
+        
     private:
         context_t& m_context;
+        app_t& m_app;
 };
 
-}
+}}
 
 template<>
-struct category_traits<engine::sandbox_t> {
-    typedef std::auto_ptr<engine::sandbox_t> ptr_type;
-    typedef boost::tuple<const manifest_t&> args_type;
+struct category_traits<engine::drivers::driver_t> {
+    typedef std::auto_ptr<engine::drivers::driver_t> ptr_type;
+    typedef boost::tuple<app_t&, const Json::Value&> args_type;
 
     template<class T>
     struct default_factory:
-        public factory<engine::sandbox_t>
+        public factory<engine::drivers::driver_t>
     {
         virtual ptr_type get(context_t& context,
                              const args_type& args)
         {
-            return ptr_type(new T(context, boost::get<0>(args)));
+            return ptr_type(
+                new T(
+                    context,
+                    boost::get<0>(args),
+                    boost::get<1>(args)
+                )
+            );
         }
     };
 };

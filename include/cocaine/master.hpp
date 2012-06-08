@@ -76,6 +76,8 @@ class master_t:
 
     private:    
         context_t& m_context;
+        boost::shared_ptr<logging::logger_t> m_log;
+
         engine_t& m_engine;
 
         ev::timer m_heartbeat_timer;

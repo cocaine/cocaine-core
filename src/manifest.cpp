@@ -19,7 +19,7 @@
 
 #include "cocaine/interfaces/storage.hpp"
 
-using namespace cocaine::engine;
+using namespace cocaine;
 using namespace cocaine::storages;
 
 // Application

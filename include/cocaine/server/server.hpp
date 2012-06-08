@@ -45,8 +45,8 @@ class server_t:
 
         void run();
 
-        Json::Value create_engine(const std::string& name);
-        Json::Value delete_engine(const std::string& name);
+        Json::Value create_app(const std::string& name);
+        Json::Value delete_app(const std::string& name);
         Json::Value info() /* const */;
         
     private:        
@@ -67,17 +67,17 @@ class server_t:
         context_t& m_context;
         boost::shared_ptr<logging::logger_t> m_log;
 
-        // Engines.
+        // Apps.
 #if BOOST_VERSION >= 104000
         typedef boost::ptr_unordered_map<
 #else
         typedef boost::ptr_map<
 #endif
             const std::string,
-            engine::engine_t
-        > engine_map_t;
+            app_t
+        > app_map_t;
 
-        engine_map_t m_engines;
+        app_map_t m_apps;
 
         // Event loop.
         ev::default_loop m_loop;

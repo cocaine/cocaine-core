@@ -11,78 +11,80 @@
 // limitations under the License.
 //
 
+#include <boost/algorithm/string/join.hpp>
+
 #include "cocaine/app.hpp"
 
+#include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
-#include "cocaine/drivers.hpp"
+#include "cocaine/logging.hpp"
 
 using namespace cocaine;
 using namespace cocaine::engine;
 
 app_t::app_t(context_t& context, const std::string& name):
-	m_engine(new engine_t(context, name))
+    m_log(context.log("app/" + name)),
+    m_manifest(context, name),
+    m_engine(new engine_t(context, m_manifest))
 {
-    // Json::Value events(m_app.manifest["tasks"]);
+    Json::Value drivers(m_manifest.root["drivers"]);
 
-    // if(!events.isNull() && events.size()) {
-    //     Json::Value::Members names(events.getMemberNames());
-
-    //     m_app.log->info(
-    //         "initializing drivers for %zu %s: %s",
-    //         events.size(),
-    //         events.size() == 1 ? "events" : "events",
-    //         boost::algorithm::join(names, ", ").c_str()
-    //     );
+    if(drivers.isNull() || !drivers.size()) {
+        return;
+    }
     
-    //     for(Json::Value::Members::iterator it = names.begin(); it != names.end(); ++it) {
-    //         std::string event(*it);
-    //         std::string type(events[event]["type"].asString());
-            
-    //         if(type == "recurring-timer") {
-    //             m_drivers.insert(event, new drivers::recurring_timer_t(*this, event, events[event]));
-    //         } else if(type == "drifting-timer") {
-    //             m_drivers.insert(event, new drivers::drifting_timer_t(*this, event, events[event]));
-    //         } else if(type == "filesystem-monitor") {
-    //             m_drivers.insert(event, new drivers::filesystem_monitor_t(*this, event, events[event]));
-    //         } else if(type == "zeromq-server") {
-    //             m_drivers.insert(event, new drivers::zeromq_server_t(*this, event, events[event]));
-    //         } else if(type == "zeromq-sink") {
-    //             m_drivers.insert(event, new drivers::zeromq_sink_t(*this, event, events[event]));
-    //         } else if(type == "server+lsd" || type == "native-server") {
-    //             m_drivers.insert(event, new drivers::native_server_t(*this, event, events[event]));
-    //         } else {
-    //            throw configuration_error_t("no driver for '" + type + "' is available");
-    //         }
-    //     }
-    // } else {
-    //     throw configuration_error_t("no events has been specified");
-    // }
+    Json::Value::Members names(drivers.getMemberNames());
+
+    m_log->info(
+        "initializing %zu %s: %s",
+        drivers.size(),
+        drivers.size() == 1 ? "driver" : "drivers",
+        boost::algorithm::join(names, ", ").c_str()
+    );
+
+    for(Json::Value::Members::iterator it = names.begin();
+        it != names.end();
+        ++it)
+    {
+        m_drivers.insert(
+            *it,
+            context.get<drivers::driver_t>(
+                drivers[*it]["type"].asString(),
+                category_traits<drivers::driver_t>::args_type(
+                    *this,
+                    drivers[*it]
+                )
+            )
+        );
+    }
 }
 
 app_t::~app_t() {
+    m_drivers.clear();
     m_engine.reset();
-    // m_drivers.clear();
 }
 
 void app_t::start() {
-	m_engine->start();
+    m_engine->start();
 }
 
 void app_t::stop() {
-	m_engine->stop();
+    m_engine->stop();
 }
 
 Json::Value app_t::info() const {
-    // for(driver_map_t::iterator it = m_drivers.begin();
-    //     it != m_drivers.end();
-    //     ++it) 
-    // {
-    //     results["tasks"][it->first] = it->second->info();
-    // }
+    Json::Value info(m_engine->info());
 
-	return m_engine->info();
+    for(driver_map_t::const_iterator it = m_drivers.begin();
+        it != m_drivers.end();
+        ++it) 
+    {
+        info["drivers"][it->first] = it->second->info();
+    }
+
+    return info;
 }
 
 void app_t::enqueue(const boost::shared_ptr<job_t>& job) {
-	m_engine->enqueue(job);
+    m_engine->enqueue(job);
 }

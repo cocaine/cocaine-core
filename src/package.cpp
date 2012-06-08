@@ -19,7 +19,7 @@
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
-using namespace cocaine::engine;
+using namespace cocaine;
 
 package_error_t::package_error_t(archive * source):
     std::runtime_error(archive_error_string(source))

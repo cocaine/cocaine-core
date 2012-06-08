@@ -30,6 +30,7 @@ using namespace cocaine::engine::slave;
 
 master_t::master_t(context_t& context, engine_t& engine):
     m_context(context),
+    m_log(context.log("app/" + engine.manifest().name)),
     m_engine(engine),
     m_heartbeat_timer(m_engine.loop())
 {
@@ -75,7 +76,7 @@ void master_t::unconsumed_event(const sc::event_base& event) {
     // TEST: Unconsumed rogue event is a fatal error.
     BOOST_ASSERT(it != names.end());
 
-    m_engine.log().warning(
+    m_log->warning(
         "slave %s detected an unconsumed '%s' event",
         id().c_str(),
         it->second.c_str()
@@ -83,7 +84,7 @@ void master_t::unconsumed_event(const sc::event_base& event) {
 }
 
 void master_t::spawn() {
-    m_engine.log().debug(
+    m_log->debug(
         "spawning slave %s",
         id().c_str()
     );
@@ -96,7 +97,7 @@ void master_t::spawn() {
 #ifdef HAVE_CGROUPS
         if(m_engine.group()) {
             if((rv = cgroup_attach_task(m_engine.group())) != 0) {
-                m_engine.log().error(
+                m_log->error(
                     "unable to attach slave %s to the control group - %s",
                     id().c_str(),
                     cgroup_strerror(rv)
@@ -126,7 +127,7 @@ void master_t::spawn() {
             ::strerror_r(errno, buffer, 1024);
 #endif
 
-            m_engine.log().error(
+            m_log->error(
                 "unable to start slave %s - %s",
                 id().c_str(),
 #ifdef _GNU_SOURCE
@@ -145,7 +146,7 @@ void master_t::spawn() {
 
 void master_t::on_initialize(const events::heartbeat& event) {
 #if EV_VERSION_MAJOR == 3 && EV_VERSION_MINOR == 8
-    m_engine.log().debug(
+    m_log->debug(
         "slave %s came alive in %.03f seconds",
         id().c_str(),
         10.0f - ev_timer_remaining(
@@ -168,7 +169,7 @@ void master_t::on_heartbeat(const events::heartbeat& event) {
         timeout = state->job()->policy.timeout;
     }
            
-    m_engine.log().debug(
+    m_log->debug(
         "resetting slave %s heartbeat timeout to %.02f seconds",
         id().c_str(),
         timeout
@@ -178,7 +179,7 @@ void master_t::on_heartbeat(const events::heartbeat& event) {
 }
 
 void master_t::on_terminate(const events::terminate& event) {
-    m_engine.log().debug(
+    m_log->debug(
         "reaping slave %s", 
         id().c_str()
     );
@@ -191,7 +192,7 @@ void master_t::on_terminate(const events::terminate& event) {
 }
 
 void master_t::on_timeout(ev::timer&, int) {
-    m_engine.log().error(
+    m_log->error(
         "slave %s didn't respond in a timely fashion",
         id().c_str()
     );
@@ -199,7 +200,7 @@ void master_t::on_timeout(ev::timer&, int) {
     const busy * state = state_downcast<const busy*>();
 
     if(state) {
-        m_engine.log().debug(
+        m_log->debug(
             "slave %s dropping '%s' job due to a timeout",
             id().c_str(),
             state->job()->event.c_str()
@@ -220,7 +221,7 @@ void alive::on_invoke(const events::invoke& event) {
     // TEST: Ensure that no job is being lost here.
     BOOST_ASSERT(!job && event.job);
 
-    context<master_t>().m_engine.log().debug(
+    context<master_t>().m_log->debug(
         "job '%s' assigned to slave %s",
         event.job->event.c_str(),
         context<master_t>().id().c_str()
@@ -234,7 +235,7 @@ void alive::on_choke(const events::choke& event) {
     // TEST: Ensure that the job is in fact here.
     BOOST_ASSERT(job);
 
-    context<master_t>().m_engine.log().debug(
+    context<master_t>().m_log->debug(
         "job '%s' completed by slave %s",
         job->event.c_str(),
         context<master_t>().id().c_str()
@@ -246,7 +247,7 @@ void alive::on_choke(const events::choke& event) {
 
 alive::~alive() {
     if(job && !job->state_downcast<const job::complete*>()) {
-        context<master_t>().m_engine.log().warning(
+        context<master_t>().m_log->warning(
             "trying to reschedule an incomplete '%s' job",
             job->event.c_str()
         );

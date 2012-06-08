@@ -87,7 +87,7 @@ class engine_t:
 {
     public:
         engine_t(context_t& context,
-                 const std::string& name);
+                 const manifest_t& manifest);
 
         ~engine_t();
 
@@ -101,12 +101,8 @@ class engine_t:
         void enqueue(job_queue_t::const_reference);
 
     public:
-        const logging::logger_t& log() const {
-            return *m_log;
-        }
-
         const manifest_t& manifest() const {
-            return *m_manifest;
+            return m_manifest;
         }
 
         ev::dynamic_loop& loop() {
@@ -196,7 +192,7 @@ class engine_t:
         } m_state;
 
         // The app manifest.
-        std::auto_ptr<const manifest_t> m_manifest;
+        const manifest_t& m_manifest;
 
         // Job queue.
         job_queue_t m_queue;

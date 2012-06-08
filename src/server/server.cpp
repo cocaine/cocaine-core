@@ -15,15 +15,13 @@
 
 #include "cocaine/server/server.hpp"
 
+#include "cocaine/app.hpp"
 #include "cocaine/context.hpp"
-#include "cocaine/engine.hpp"
-#include "cocaine/job.hpp"
 #include "cocaine/logging.hpp"
 
 #include "cocaine/interfaces/storage.hpp"
 
 using namespace cocaine;
-using namespace cocaine::engine;
 using namespace cocaine::storages;
 
 server_t::server_t(context_t& context, server_config_t config):
@@ -117,9 +115,9 @@ void server_t::run() {
 }
 
 void server_t::terminate(ev::sig&, int) {
-    if(!m_engines.empty()) {
+    if(!m_apps.empty()) {
         m_log->info("stopping the apps");
-        m_engines.clear();
+        m_apps.clear();
     }
 
     m_loop.unloop(ev::ALL);
@@ -233,9 +231,9 @@ Json::Value server_t::dispatch(const Json::Value& root) {
 
             try {
                 if(action == "create") {
-                    result[app] = create_engine(app);
+                    result[app] = create_app(app);
                 } else if(action == "delete") {
-                    result[app] = delete_engine(app);                
+                    result[app] = delete_app(app);                
                 }
             } catch(const configuration_error_t& e) {
                 result[app]["error"] = e.what();
@@ -255,39 +253,39 @@ Json::Value server_t::dispatch(const Json::Value& root) {
 // Commands
 // --------
 
-Json::Value server_t::create_engine(const std::string& name) {
-    if(m_engines.find(name) != m_engines.end()) {
+Json::Value server_t::create_app(const std::string& name) {
+    if(m_apps.find(name) != m_apps.end()) {
         throw configuration_error_t("the specified app already exists");
     }
 
-    std::auto_ptr<engine_t> engine(
-        new engine_t(
+    std::auto_ptr<app_t> app(
+        new app_t(
             m_context,
             name
         )
     );
 
-    engine->start();
+    app->start();
 
-    Json::Value result(engine->info());
+    Json::Value result(app->info());
 
-    m_engines.insert(name, engine);
+    m_apps.insert(name, app);
     
     return result;
 }
 
-Json::Value server_t::delete_engine(const std::string& name) {
-    engine_map_t::iterator engine(m_engines.find(name));
+Json::Value server_t::delete_app(const std::string& name) {
+    app_map_t::iterator app(m_apps.find(name));
 
-    if(engine == m_engines.end()) {
+    if(app == m_apps.end()) {
         throw configuration_error_t("the specified app doesn't exist");
     }
 
-    engine->second->stop();
+    app->second->stop();
 
-    Json::Value result(engine->second->info());
+    Json::Value result(app->second->info());
 
-    m_engines.erase(engine);
+    m_apps.erase(app);
 
     return result;
 }
@@ -297,15 +295,12 @@ Json::Value server_t::info() {
 
     result["route"] = m_server.route();
 
-    for(engine_map_t::const_iterator it = m_engines.begin();
-        it != m_engines.end(); 
+    for(app_map_t::const_iterator it = m_apps.begin();
+        it != m_apps.end(); 
         ++it) 
     {
         result["apps"][it->first] = it->second->info();
     }
-
-    result["jobs"]["pending"] = static_cast<Json::UInt>(job_t::objects_alive);
-    result["jobs"]["processed"] = static_cast<Json::UInt>(job_t::objects_created);
 
     result["loggers"] = static_cast<Json::UInt>(logging::logger_t::objects_alive);
 
@@ -338,8 +333,8 @@ void server_t::recover() {
     std::set<std::string> available(apps.begin(), apps.end()),
                           active;
   
-    for(engine_map_t::const_iterator it = m_engines.begin();
-        it != m_engines.end();
+    for(app_map_t::const_iterator it = m_apps.begin();
+        it != m_apps.end();
         ++it)
     {
         active.insert(it->first);
@@ -357,10 +352,10 @@ void server_t::recover() {
             it != diff.end(); 
             ++it)
         {
-            if(m_engines.find(*it) == m_engines.end()) {
-                create_engine(*it);
+            if(m_apps.find(*it) == m_apps.end()) {
+                create_app(*it);
             } else {
-                m_engines.find(*it)->second->stop();
+                m_apps.find(*it)->second->stop();
             }
         }
     }

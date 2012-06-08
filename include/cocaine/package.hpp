@@ -22,7 +22,7 @@
 
 struct archive;
 
-namespace cocaine { namespace engine {
+namespace cocaine {
 
 struct package_error_t:
     public std::runtime_error
@@ -51,6 +51,6 @@ class package_t {
         archive * m_archive;
 };
 
-}}
+}
 
 #endif
