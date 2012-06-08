@@ -32,7 +32,7 @@ namespace {
             }
     };
 
-    static void upload(context_t& context,
+    static void deploy(context_t& context,
                        const std::string& name,
                        const fs::path& manifest_path,
                        const fs::path& package_path)
@@ -84,12 +84,12 @@ namespace {
         try {
             context.storage<storages::objects>("core")->put("apps", name, object);
         } catch(const storage_error_t& e) {
-            std::cerr << "Error: unable to upload the app." << std::endl;
+            std::cerr << "Error: unable to deploy the app." << std::endl;
             std::cerr << e.what();
             return;
         }
 
-        std::cout << "The '" << name << "' app has been successfully uploaded." << std::endl;
+        std::cout << "The '" << name << "' app has been successfully deployed." << std::endl;
     }
 }
 
@@ -184,7 +184,7 @@ int main(int argc, char * argv[]) {
         )
     );
 
-    upload(
+    deploy(
         context,
         vm["name"].as<std::string>(),
         vm["manifest"].as<std::string>(),

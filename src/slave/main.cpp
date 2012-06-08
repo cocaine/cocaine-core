@@ -84,7 +84,7 @@ int main(int argc, char * argv[]) {
     // ----------
 
     if(!vm.count("configuration")) {
-        std::cerr << "Error: no configuration file location has been specified" << std::endl;
+        std::cerr << "Error: no configuration file location has been specified." << std::endl;
         return EXIT_FAILURE;
     }
 

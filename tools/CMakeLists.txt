@@ -1,5 +1,5 @@
 SET(TOOLS
-        upload)
+        deploy)
 
 FOREACH(TOOL ${TOOLS})
     ADD_SUBDIRECTORY(${TOOL})
