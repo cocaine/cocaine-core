@@ -69,9 +69,9 @@ int main() {
         storages::objects::data_type("\0", 1)
     };
 
-    context.storage<storages::objects>("core")->put("apps", "my_app@1", v);
+    //context.storage<storages::objects>("core")->put("apps", "my_app@1", v);
 
-    std::cout << "Stored" << std::endl;
+    //std::cout << "Stored" << std::endl;
 
     cocaine::app_t app(context, "my_app@1");
 

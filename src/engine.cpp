@@ -251,18 +251,24 @@ void engine_t::start() {
 void engine_t::stop() {
     {
         boost::lock_guard<boost::mutex> lock(m_queue_mutex);
-        BOOST_ASSERT(m_thread.get() && m_state == running);
-        m_state = stopping;
+
+        if(m_state == running) {
+            log().info("stopping");
+
+            m_state = stopping;
+            
+            // Signal the engine about the changed state.
+            m_notification.send();
+        }
     }
 
-    log().info("stopping");
-
-    // Signal the engine about the changed state.
-    m_notification.send();
-
-    // Wait for the termination.
-    m_thread->join();
-    m_thread.reset();
+    if(m_thread.get()) {
+        log().info("reaping the thread");
+        
+        // Wait for the termination.
+        m_thread->join();
+        m_thread.reset();
+    }
 }
 
 namespace {
