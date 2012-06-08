@@ -28,27 +28,27 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
     name(name_),
     m_log(context.log("app/" + name))
 {
-    objects::value_type object;
-
     try {
         // Load the app manifest.
-        object = context.storage<objects>("core:cache")->get("apps", name);
+        root = context.storage<objects>("core:cache")->exists("apps", name);
     } catch(const storage_error_t& e) {
         m_log->info("the app hasn't been found in the cache");
 
         try {
             // Fetch the application object from the core storage.
-            object = context.storage<objects>("core")->get("apps", name);
+            objects::value_type object(
+                context.storage<objects>("core")->get("apps", name)
+            );
+            
+            root = object.meta;
+            
+            // Put the application object into the cache for future reference.
+            context.storage<objects>("core:cache")->put("apps", name, object);
         } catch(const storage_error_t& e) {
             m_log->info("unable to fetch the app from the storage - %s", e.what());
             throw configuration_error_t("the '" + name + "' app is not available");
         }
-
-        // Put the application object into the cache for future reference.
-        context.storage<objects>("core:cache")->put("apps", name, object);
     }
-
-    root = object.meta;
 
     // Setup the app configuration.
     type = root["type"].asString();
