@@ -115,9 +115,41 @@ elliptics_storage_t::elliptics_storage_t(context_t& context, const Json::Value& 
     m_node.add_groups(group_numbers);
 }
 
+objects::value_type elliptics_storage_t::get(const std::string& ns,
+                                             const std::string& key)
+{
+    objects::value_type object;
+
+    // Fetch the metadata first.
+    object.meta = exists(ns, key);
+    
+    std::string blob;
+
+    try {
+        blob = m_node.read_data_wait(
+            id(ns, key),
+            0,
+            0,
+            0,
+            0,
+            0
+        );
+    } catch(const std::runtime_error& e) {
+        throw storage_error_t(e.what());
+    }
+
+
+    object.blob = objects::data_type(
+        blob.data(),
+        blob.size()
+    );
+
+    return object;
+}
+
 void elliptics_storage_t::put(const std::string& ns,
                               const std::string& key,
-                              const value_type& object)
+                              const objects::value_type& object)
 {
     try {
         m_node.write_data_wait(
@@ -148,17 +180,11 @@ void elliptics_storage_t::put(const std::string& ns,
 objects::meta_type elliptics_storage_t::exists(const std::string& ns,
                                                const std::string& key)
 {
-    return false;
-}
-
-elliptics_storage_t::value_type elliptics_storage_t::get(const std::string& ns,
-                                                         const std::string& key)
-{
-    std::string blob;
+    std::string meta;
 
     try {
-        blob = m_node.read_data_wait(
-            id(ns, key),
+        meta = m_node.read_data_wait(
+            "meta:" + id(ns, key),
             0,
             0,
             0,
@@ -169,12 +195,12 @@ elliptics_storage_t::value_type elliptics_storage_t::get(const std::string& ns,
         throw storage_error_t(e.what());
     }
 
-    value_type object;
+    Json::Reader reader;
+    objects::meta_type object;
 
-    object.blob = objects::data_type(
-        blob.data(),
-        blob.size()
-    );
+    if(!reader.parse(meta, object)) {
+        throw storage_error_t("the specified object is corrupted");
+    }
 
     return object;
 }
@@ -187,6 +213,7 @@ void elliptics_storage_t::remove(const std::string& ns,
                                  const std::string& key)
 {
     try {
+        m_node.remove("meta:" + id(ns, key));
         m_node.remove(id(ns, key));
     } catch(const std::runtime_error& e) {
         throw storage_error_t(e.what());

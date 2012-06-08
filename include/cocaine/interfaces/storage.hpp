@@ -43,22 +43,19 @@ class storage_concept<objects>:
     public boost::noncopyable
 {
     public:
-        typedef objects::value_type value_type;
-
-    public:
         virtual ~storage_concept() { 
             // Empty.
         }
 
-        virtual value_type get(const std::string& ns,
-                               const std::string& key) = 0;
+        virtual objects::value_type get(const std::string& ns,
+                                        const std::string& key) = 0;
 
         virtual void put(const std::string& ns,
                          const std::string& key,
-                         const value_type& value) = 0;
+                         const objects::value_type& value) = 0;
         
         virtual objects::meta_type exists(const std::string& ns,
-                                         const std::string& key) = 0;
+                                          const std::string& key) = 0;
 
         virtual std::vector<std::string> list(const std::string& ns) = 0;
 

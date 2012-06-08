@@ -25,18 +25,17 @@ class file_storage_t:
 {
     public:
         typedef storage_concept<objects> category_type;
-        typedef category_type::value_type value_type;
 
     public:
         file_storage_t(context_t& context,
                        const Json::Value& args);
 
-        virtual value_type get(const std::string& ns,
-                               const std::string& key);
+        virtual objects::value_type get(const std::string& ns,
+                                        const std::string& key);
 
         virtual void put(const std::string& ns, 
                          const std::string& key, 
-                         const value_type& object);
+                         const objects::value_type& object);
 
         virtual objects::meta_type exists(const std::string& ns,
                                           const std::string& key);

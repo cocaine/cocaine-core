@@ -30,9 +30,35 @@ mongo_storage_t::mongo_storage_t(context_t& context, const Json::Value& args) tr
     throw storage_error_t(e.what());
 }
 
+objects::value_type mongo_storage_t::get(const std::string& ns,
+                                         const std::string& key)
+{
+    Json::Reader reader;
+    objects::value_type result;
+    BSONObj object;
+
+    try {
+        ScopedDbConnection connection(m_uri);
+        object = connection->findOne(resolve(ns), BSON("key" << key));
+        connection.done();
+    } catch(const DBException& e) {
+        throw storage_error_t(e.what());
+    }
+
+    if(!object.isEmpty()) {
+        if(reader.parse(object.jsonString(), result)) {
+            return result["object"];
+        } else {
+            throw storage_error_t("corrupted data in '" + ns + "'");
+        }
+    } else {
+        throw storage_error_t("the specified object has not been found");
+    }
+}
+
 void mongo_storage_t::put(const std::string& ns,
                           const std::string& key,
-                          const value_type& value)
+                          const objects::value_type& value)
 {
     Json::FastWriter writer;
     Json::Value container(Json::objectValue);
@@ -70,32 +96,6 @@ bool mongo_storage_t::exists(const std::string& ns,
     }
 
     return result;
-}
-
-mongo_storage_t::value_type mongo_storage_t::get(const std::string& ns,
-                                                 const std::string& key)
-{
-    Json::Reader reader;
-    value_type result;
-    BSONObj object;
-
-    try {
-        ScopedDbConnection connection(m_uri);
-        object = connection->findOne(resolve(ns), BSON("key" << key));
-        connection.done();
-    } catch(const DBException& e) {
-        throw storage_error_t(e.what());
-    }
-
-    if(!object.isEmpty()) {
-        if(reader.parse(object.jsonString(), result)) {
-            return result["object"];
-        } else {
-            throw storage_error_t("corrupted data in '" + ns + "'");
-        }
-    } else {
-        throw storage_error_t("the specified object has not been found");
-    }
 }
 
 std::vector<std::string> mongo_storage_t::list(const std::string& ns) {

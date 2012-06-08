@@ -75,9 +75,54 @@ file_storage_t::file_storage_t(context_t& context, const Json::Value& args):
     m_storage_path(args["path"].asString())
 { }
 
+objects::value_type file_storage_t::get(const std::string& ns,
+                                        const std::string& key)
+{
+    boost::lock_guard<boost::mutex> lock(m_mutex);
+    fs::path file_path(m_storage_path / ns / key);
+    fs::ifstream stream(file_path);
+   
+    m_log->debug(
+        "reading the '%s' object, namespace: '%s', path: '%s'",
+        key.c_str(),
+        ns.c_str(),
+        file_path.string().c_str()
+    );
+
+    if(!stream) {
+        throw storage_error_t("the specified object has not been found");
+    }
+    
+    std::stringstream buffer;
+    msgpack::unpacked unpacked;
+
+    buffer << stream.rdbuf();
+    std::string blob(buffer.str());
+    
+    msgpack::unpack(
+        &unpacked,
+        blob.data(),
+        blob.size()
+    );
+
+    try {
+        return unpacked.get().as<objects::value_type>();
+    } catch (const msgpack::type_error& e) {
+        m_log->error(
+            "the '%s' object is corrupted, namespace: '%s', path: '%s', reason: %s",
+            key.c_str(),
+            ns.c_str(),
+            file_path.string().c_str(),
+            e.what()
+        );
+
+        throw storage_error_t("the specified object is corrupted");
+    }
+}
+
 void file_storage_t::put(const std::string& ns,
                          const std::string& key,
-                         const value_type& object) 
+                         const objects::value_type& object) 
 {
     boost::lock_guard<boost::mutex> lock(m_mutex);
     fs::path store_path(m_storage_path / ns);
@@ -127,51 +172,6 @@ objects::meta_type file_storage_t::exists(const std::string& ns,
                                           const std::string& key)
 {
     return get(ns, key).meta;
-}
-
-file_storage_t::value_type file_storage_t::get(const std::string& ns,
-                                               const std::string& key)
-{
-    boost::lock_guard<boost::mutex> lock(m_mutex);
-    fs::path file_path(m_storage_path / ns / key);
-    fs::ifstream stream(file_path);
-   
-    m_log->debug(
-        "reading the '%s' object, namespace: '%s', path: '%s'",
-        key.c_str(),
-        ns.c_str(),
-        file_path.string().c_str()
-    );
-
-    if(!stream) {
-        throw storage_error_t("the specified object has not been found");
-    }
-    
-    std::stringstream buffer;
-    msgpack::unpacked unpacked;
-
-    buffer << stream.rdbuf();
-    std::string blob(buffer.str());
-    
-    msgpack::unpack(
-        &unpacked,
-        blob.data(),
-        blob.size()
-    );
-
-    try {
-        return unpacked.get().as<objects::value_type>();
-    } catch (const msgpack::type_error& e) {
-        m_log->error(
-            "the '%s' object is corrupted, namespace: '%s', path: '%s', reason: %s",
-            key.c_str(),
-            ns.c_str(),
-            file_path.string().c_str(),
-            e.what()
-        );
-
-        throw storage_error_t("the specified object is corrupted");
-    }
 }
 
 namespace {
