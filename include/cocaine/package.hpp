@@ -77,27 +77,20 @@ static void extract(const void * data,
     archive_write_disk_set_options(target, flags);
     archive_write_disk_set_standard_lookup(target);
 
-    std::cout << "archive: sz = " << size << std::endl;
-    
     rv = archive_read_open_memory(
         source, 
         const_cast<void*>(data),
         size
     );
 
-    std::cout << "archive opened: " << archive_compression_name(source) << std::endl;
-
     if(rv) {
         throw archive_error_t(source);
     }
 
     while(true) {
-        std::cout << "header read" << std::endl;
-
         rv = archive_read_next_header(source, &entry);
         
         if(rv == ARCHIVE_EOF) {
-            std::cout << "eof" << std::endl;
             break;
         } else if(rv != ARCHIVE_OK) {
             throw archive_error_t(source);
@@ -117,13 +110,11 @@ static void extract(const void * data,
         }
     }
 
-    std::cout << "archive done" << std::endl;
-    
-    // rv = archive_write_finish_entry(target);
+    rv = archive_write_finish_entry(target);
 
-    //if(rv != ARCHIVE_OK) {
-    //    throw archive_error_t(target);
-    //}
+    if(rv != ARCHIVE_OK) {
+        throw archive_error_t(target);
+    }
 
     archive_read_close(source);
     archive_read_finish(source);
