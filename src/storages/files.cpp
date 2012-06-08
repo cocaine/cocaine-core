@@ -151,15 +151,13 @@ file_storage_t::value_type file_storage_t::get(const std::string& ns,
     msgpack::unpacked unpacked;
 
     buffer << stream.rdbuf();
-
+    std::string blob(buffer.str());
+    
     msgpack::unpack(
         &unpacked,
-        buffer.str().data(),
-        buffer.str().size()
+        blob.data(),
+        blob.size()
     );
-
-    // DEBUG
-    std::cout << unpacked.get() << std::endl;
 
     try {
         return unpacked.get().as<objects::value_type>();
