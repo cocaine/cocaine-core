@@ -2,7 +2,8 @@ SET(PLUGINS
         python
         javascript
         #mongo
-        elliptics)
+        elliptics
+        native-server)
 
 IF(NOT APPLE)
     SET(PLUGINS ${PLUGINS} perl)

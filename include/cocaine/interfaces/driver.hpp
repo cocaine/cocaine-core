@@ -34,19 +34,19 @@ class driver_t:
         virtual Json::Value info() const = 0;
 
     public:
-        app_t& app() {
-            return m_app;
+        engine_t& engine() {
+            return m_engine;
         }
 
     protected:
-        driver_t(context_t& context, app_t& app, const Json::Value& args):
+        driver_t(context_t& context, engine_t& engine, const Json::Value& args):
             m_context(context),
-            m_app(app)
+            m_engine(engine)
         { }
         
     private:
         context_t& m_context;
-        app_t& m_app;
+        engine_t& m_engine;
 };
 
 }}
@@ -54,7 +54,7 @@ class driver_t:
 template<>
 struct category_traits<engine::drivers::driver_t> {
     typedef std::auto_ptr<engine::drivers::driver_t> ptr_type;
-    typedef boost::tuple<app_t&, const Json::Value&> args_type;
+    typedef boost::tuple<engine::engine_t&, const Json::Value&> args_type;
 
     template<class T>
     struct default_factory:

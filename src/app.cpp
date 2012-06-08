@@ -51,7 +51,7 @@ app_t::app_t(context_t& context, const std::string& name):
             context.get<drivers::driver_t>(
                 drivers[*it]["type"].asString(),
                 category_traits<drivers::driver_t>::args_type(
-                    *this,
+                    *m_engine,
                     drivers[*it]
                 )
             )
