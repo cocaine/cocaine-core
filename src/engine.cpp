@@ -192,7 +192,11 @@ engine_t::~engine_t() {
 void engine_t::start() {
     {
         boost::lock_guard<boost::mutex> lock(m_queue_mutex);
-        BOOST_ASSERT(!m_thread.get() && m_state == stopped);
+        
+        if(m_state != stopped) {
+            return;
+        }
+        
         m_state = running;
     }
 
