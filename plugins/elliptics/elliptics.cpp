@@ -11,6 +11,8 @@
 // limitations under the License.
 //
 
+#include <msgpack.hpp>
+
 #include "elliptics.hpp"
 
 #include "cocaine/context.hpp"
@@ -161,12 +163,37 @@ void elliptics_storage_t::put(const std::string& ns,
             0
         );
         
+        std::string blob;
+
+        blob.assign(
+            static_cast<const char*>(object.blob.data()),
+            object.blob.size()
+        );
+
         m_node.write_data_wait(
             id(ns, key),
-            std::string(
-                static_cast<const char*>(object.blob.data()),
-                object.blob.size()
-            ),
+            blob,
+            0,
+            0,
+            0,
+            0
+        );
+
+        std::vector<std::string> keylist(list(ns));
+        
+        if(std::find(keylist.begin(), keylist.end(), key) != keylist.end()) {
+            return;
+        }
+        
+        msgpack::sbuffer buffer;
+        
+        keylist.push_back(key);
+        msgpack::pack(&buffer, keylist);
+        blob.assign(buffer.data(), buffer.size());
+
+        m_node.write_data_wait(
+            "list:" + ns,
+            blob,
             0,
             0,
             0,
@@ -206,7 +233,33 @@ objects::meta_type elliptics_storage_t::exists(const std::string& ns,
 }
 
 std::vector<std::string> elliptics_storage_t::list(const std::string& ns) {
-    throw storage_error_t("list() method is not implemented yet");
+    std::vector<std::string> result;
+    std::string blob;
+    
+    try {
+        blob = m_node.read_data_wait(
+            "list:" + ns,
+            0,
+            0,
+            0,
+            0,
+            0
+        );
+    } catch(const std::runtime_error& e) {
+        return result;
+    }
+
+    msgpack::unpacked unpacked;
+
+    msgpack::unpack(&unpacked, blob.data(), blob.size());
+    
+    try {
+        unpacked.get().convert(&result);
+    } catch(const std::string& e) {
+        throw storage_error_t("the namespace list object is corrupted");
+    }
+
+    return result;
 }
 
 void elliptics_storage_t::remove(const std::string& ns,
@@ -215,6 +268,31 @@ void elliptics_storage_t::remove(const std::string& ns,
     try {
         m_node.remove("meta:" + id(ns, key));
         m_node.remove(id(ns, key));
+
+        std::vector<std::string> keylist(list(ns)),
+                                 updated;
+
+        std::remove_copy(
+            keylist.begin(),
+            keylist.end(),
+            std::back_inserter(updated),
+            key
+        );
+
+        msgpack::sbuffer buffer;
+        std::string blob;
+
+        msgpack::pack(&buffer, updated);
+        blob.assign(buffer.data(), buffer.size());
+
+        m_node.write_data_wait(
+            "list:" + ns,
+            blob,
+            0,
+            0,
+            0,
+            0
+        );
     } catch(const std::runtime_error& e) {
         throw storage_error_t(e.what());
     }

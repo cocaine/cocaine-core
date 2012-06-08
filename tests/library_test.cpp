@@ -66,7 +66,7 @@ int main() {
 
     storages::objects::value_type v = {
         value,
-        storages::objects::data_type()
+        storages::objects::data_type("\0", 1)
     };
 
     context.storage<storages::objects>("core")->put("apps", "my_app@1", v);
