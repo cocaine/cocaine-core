@@ -38,10 +38,10 @@ class log_adapter_t:
 };
 
 class elliptics_storage_t:
-    public blob_storage_t
+    public storage_concept<objects>
 {
     public:
-        typedef blob_storage_t category_type;
+        typedef storage_concept<objects> category_type;
         typedef category_type::value_type value_type;
 
     public:
@@ -50,10 +50,10 @@ class elliptics_storage_t:
 
         virtual void put(const std::string& ns,
                          const std::string& key,
-                         const value_type& value);
+                         const value_type& object);
 
-        virtual bool exists(const std::string& ns,
-                            const std::string& key);
+        virtual objects::meta_type exists(const std::string& ns,
+                                          const std::string& key);
 
         virtual value_type get(const std::string& ns,
                                const std::string& key);
@@ -62,8 +62,6 @@ class elliptics_storage_t:
 
         virtual void remove(const std::string& ns,
                             const std::string& key);
-        
-        virtual void purge(const std::string& ns);
 
     private:
         std::string id(const std::string& ns,

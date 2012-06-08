@@ -34,15 +34,13 @@ manifest_t::manifest_t(context_t& context, const std::string& app):
         // Load the app manifest.
         object = context.storage<objects>("core:cache")->get("apps", name);
     } catch(const storage_error_t& e) {
-        m_log->info(
-            "the '%s' app hasn't been found in the cache",
-            name.c_str()
-        );
+        m_log->info("the app hasn't been found in the cache");
 
         try {
             // Fetch the application object from the core storage.
             object = context.storage<objects>("core")->get("apps", name);
         } catch(const storage_error_t& e) {
+            m_log->info("unable to fetch the app from the storage - %s", e.what());
             throw configuration_error_t("the '" + name + "' app is not available");
         }
 

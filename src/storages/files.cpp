@@ -17,6 +17,9 @@
 
 #include "cocaine/storages/files.hpp"
 
+#include "cocaine/context.hpp"
+#include "cocaine/logging.hpp"
+
 using namespace cocaine;
 using namespace cocaine::storages;
 
@@ -25,24 +28,25 @@ namespace fs = boost::filesystem;
 namespace msgpack {
     template<class Stream>
     inline packer<Stream>& operator << (packer<Stream>& packer, 
-                                        const objects::value_type& value)
+                                        const objects::value_type& object)
     {
-        std::string meta(Json::FastWriter().write(value.meta));
-
+        Json::FastWriter writer;
+        
         packer.pack_array(2);
 
-        packer.pack_raw(meta.size());
-        packer.pack_raw_body(meta.data(), meta.size());
+        packer << writer.write(object.meta);
 
-        packer.pack_raw(value.blob.size());
-        packer.pack_raw_body(static_cast<const char*>(value.blob.data()), value.blob.size());
+        packer.pack_raw(object.blob.size());
+        packer.pack_raw_body(static_cast<const char*>(object.blob.data()), object.blob.size());
 
         return packer;
     }
 
     inline objects::value_type& operator >> (msgpack::object o,
-                                             objects::value_type& value)
+                                             objects::value_type& object)
     {
+        Json::Reader reader(Json::Features::strictMode());
+
         if(o.type != type::ARRAY || o.via.array.size != 2) {
             throw type_error();
         }
@@ -50,38 +54,41 @@ namespace msgpack {
         msgpack::object &meta = o.via.array.ptr[0],
                         &blob = o.via.array.ptr[1];
 
-        std::string json(
-            meta.via.raw.ptr,
-            meta.via.raw.ptr + meta.via.raw.size
-        );
+        std::string json(meta.as<std::string>());
 
-        Json::Reader reader(Json::Features::strictMode());
-
-        if(!reader.parse(json, value.meta)) {
+        if(!reader.parse(json, object.meta)) {
             throw type_error();
         }
 
-        value.blob = objects::data_type(
+        object.blob = objects::data_type(
             blob.via.raw.ptr,
             blob.via.raw.size
         );
 
-        return value;
+        return object;
     }
 }
 
 file_storage_t::file_storage_t(context_t& context, const Json::Value& args):
     category_type(context, args),
+    m_log(context.log("storage/files")),
     m_storage_path(args["path"].asString())
 { }
 
 void file_storage_t::put(const std::string& ns,
                          const std::string& key,
-                         const value_type& value) 
+                         const value_type& object) 
 {
+    boost::lock_guard<boost::mutex> lock(m_mutex);
     fs::path store_path(m_storage_path / ns);
 
     if(!fs::exists(store_path)) {
+        m_log->info(
+            "creating the '%s' namespace in '%s'",
+            ns.c_str(),
+            store_path.string().c_str()
+        );
+
         try {
             fs::create_directories(store_path);
         } catch(const std::runtime_error& e) {
@@ -92,19 +99,26 @@ void file_storage_t::put(const std::string& ns,
     }
     
     fs::path file_path(store_path / key);
-    fs::ofstream stream(file_path, fs::ofstream::out | fs::ofstream::trunc);
+    
+    fs::ofstream stream(
+        file_path,
+        fs::ofstream::out | fs::ofstream::trunc
+    );
    
     if(!stream) {
         throw storage_error_t("unable to access the specified object"); 
     }     
 
-    msgpack::sbuffer buffer;
-    msgpack::pack(buffer, value);
+    msgpack::packer<fs::ofstream> packer(stream);
 
-    stream.write(
-        buffer.data(),
-        buffer.size()
+    m_log->debug(
+        "writing the '%s' object, namespace '%s', path: '%s'",
+        key.c_str(),
+        ns.c_str(),
+        file_path.string().c_str()
     );
+
+    packer << object;
 
     stream.close();
 }
@@ -118,31 +132,47 @@ objects::meta_type file_storage_t::exists(const std::string& ns,
 file_storage_t::value_type file_storage_t::get(const std::string& ns,
                                                const std::string& key)
 {
+    boost::lock_guard<boost::mutex> lock(m_mutex);
     fs::path file_path(m_storage_path / ns / key);
-    fs::ifstream stream(file_path, fs::ifstream::in);
-    
-    if(stream) {
-        std::stringstream buffer;
-        msgpack::unpacked unpacked;
-        objects::value_type value;
+    fs::ifstream stream(file_path);
+   
+    m_log->debug(
+        "reading the '%s' object, namespace: '%s', path: '%s'",
+        key.c_str(),
+        ns.c_str(),
+        file_path.string().c_str()
+    );
 
-        buffer << stream.rdbuf();
-        
-        msgpack::unpack(
-            &unpacked,
-            buffer.str().data(),
-            buffer.str().size()
+    if(!stream) {
+        throw storage_error_t("the specified object has not been found");
+    }
+    
+    std::stringstream buffer;
+    msgpack::unpacked unpacked;
+
+    buffer << stream.rdbuf();
+
+    msgpack::unpack(
+        &u,
+        buffer.str().data(),
+        buffer.str().size()
+    );
+
+    // DEBUG
+    std::cout << u.get() << std::endl;
+
+    try {
+        return u.get().as<objects::value_type>();
+    } catch (const msgpack::type_error& e) {
+        m_log->error(
+            "the '%s' object is corrupted, namespace: '%s', path: '%s', reason: %s",
+            key.c_str(),
+            ns.c_str(),
+            file_path.string().c_str(),
+            e.what()
         );
 
-        try {
-            unpacked.get().convert(&value);
-        } catch (const msgpack::type_error& e) {
-            throw storage_error_t("the specified object is corrupted");
-        }
-
-        return value;
-    } else {
-        throw storage_error_t("the specified object has not been found");
+        throw storage_error_t("the specified object is corrupted");
     }
 }
 
@@ -155,6 +185,7 @@ namespace {
 }
 
 std::vector<std::string> file_storage_t::list(const std::string& ns) {
+    boost::lock_guard<boost::mutex> lock(m_mutex);
     fs::path store_path(m_storage_path / ns);
     std::vector<std::string> result;
 
@@ -183,9 +214,17 @@ std::vector<std::string> file_storage_t::list(const std::string& ns) {
 void file_storage_t::remove(const std::string& ns,
                             const std::string& key)
 {
+    boost::lock_guard<boost::mutex> lock(m_mutex);
     fs::path file_path(m_storage_path / ns / key);
     
     if(fs::exists(file_path)) {
+        m_log->debug(
+            "removing the '%s' object, namespace: '%s', path: %s",
+            key.c_str(),
+            ns.c_str(),
+            file_path.string().c_str()
+        );
+
         try {
             fs::remove(file_path);
         } catch(const std::runtime_error& e) {

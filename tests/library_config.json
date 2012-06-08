@@ -4,19 +4,15 @@
     "ipc-path": ".",
     "storages": {
         "core": {
-            "type": "elliptics",
+            "type": "files",
             "args": {
-                "nodes": {
-                    "elisto20f.dev.yandex.net": 1025
-                },
-                "groups": [1, 2],
-                "verbosity": 31
+                "path": "/var/lib/cocaine"
             }
         },
         "core:cache": {
             "type": "files",
             "args": {
-                "path": "/var/cache/cocaine"
+                "path": "cache"
             }
         }
     }

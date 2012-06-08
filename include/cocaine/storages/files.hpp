@@ -36,10 +36,10 @@ class file_storage_t:
 
         virtual void put(const std::string& ns, 
                          const std::string& key, 
-                         const value_type& value);
+                         const value_type& object);
 
         virtual objects::meta_type exists(const std::string& ns,
-                                        const std::string& key);
+                                          const std::string& key);
 
         virtual std::vector<std::string> list(const std::string& ns);
 
@@ -47,6 +47,9 @@ class file_storage_t:
                             const std::string& key);
 
     private:
+        boost::mutex m_mutex;
+        boost::shared_ptr<logging::logger_t> m_log;
+        
         const boost::filesystem::path m_storage_path;
 };
 

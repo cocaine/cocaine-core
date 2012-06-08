@@ -1,3 +1,5 @@
+#include <fstream>
+
 #include "cocaine/app.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
@@ -55,19 +57,23 @@ int main() {
 
     std::cout << "Created context" << std::endl;
 
-    Json::Value v;
+    Json::Reader reader;
+    Json::Value value;
 
-    v["yo"] = "hi";
+    std::fstream fs("x");
 
-    storages::objects::value_type x = {
-        v,
-        blob_t(data, sizeof(data))
+    reader.parse(fs, value);
+
+    storages::objects::value_type v = {
+        value,
+        storages::objects::data_type()
     };
 
-    context.storage<storages::objects>("core")->put("apps", "my_app@1", x);
-    std::cout << context.storage<storages::objects>("core")->get("apps", "my_app@1").meta;
+    context.storage<storages::objects>("core")->put("apps", "my_app@1", v);
 
-    cocaine::app_t app(context, "rimz_app@1");
+    std::cout << "Stored" << std::endl;
+
+    cocaine::app_t app(context, "my_app@1");
 
     std::cout << "Created app" << std::endl;
     

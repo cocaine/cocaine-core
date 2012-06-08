@@ -23,7 +23,7 @@ log_adapter_t::log_adapter_t(context_t& context, const uint32_t mask):
     zbr::elliptics_log(mask),
     m_context(context),
     m_mask(mask),
-    m_log(m_context.log("elliptics"))
+    m_log(m_context.log("storage/elliptics"))
 { }
 
 void log_adapter_t::log(const uint32_t mask, const char * message) {
@@ -117,14 +117,23 @@ elliptics_storage_t::elliptics_storage_t(context_t& context, const Json::Value& 
 
 void elliptics_storage_t::put(const std::string& ns,
                               const std::string& key,
-                              const value_type& value)
+                              const value_type& object)
 {
     try {
         m_node.write_data_wait(
+            "meta:" + id(ns, key),
+            Json::FastWriter().write(object.meta),
+            0,
+            0,
+            0,
+            0
+        );
+        
+        m_node.write_data_wait(
             id(ns, key),
             std::string(
-                static_cast<const char*>(value.data()),
-                value.size()
+                static_cast<const char*>(object.blob.data()),
+                object.blob.size()
             ),
             0,
             0,
@@ -136,23 +145,19 @@ void elliptics_storage_t::put(const std::string& ns,
     }
 }
 
-bool elliptics_storage_t::exists(const std::string& ns,
-                                 const std::string& key)
+objects::meta_type elliptics_storage_t::exists(const std::string& ns,
+                                               const std::string& key)
 {
-    try {
-        return !m_node.lookup(id(ns, key)).empty();
-    } catch(const std::runtime_error& e) {
-        return false;
-    }
+    return false;
 }
 
 elliptics_storage_t::value_type elliptics_storage_t::get(const std::string& ns,
                                                          const std::string& key)
 {
-    std::string value;
+    std::string blob;
 
     try {
-        value = m_node.read_data_wait(
+        blob = m_node.read_data_wait(
             id(ns, key),
             0,
             0,
@@ -164,10 +169,14 @@ elliptics_storage_t::value_type elliptics_storage_t::get(const std::string& ns,
         throw storage_error_t(e.what());
     }
 
-    return value_type(
-        value.data(),
-        value.size()
+    value_type object;
+
+    object.blob = objects::data_type(
+        blob.data(),
+        blob.size()
     );
+
+    return object;
 }
 
 std::vector<std::string> elliptics_storage_t::list(const std::string& ns) {
@@ -182,10 +191,6 @@ void elliptics_storage_t::remove(const std::string& ns,
     } catch(const std::runtime_error& e) {
         throw storage_error_t(e.what());
     }
-}
-
-void elliptics_storage_t::purge(const std::string& ns) {
-    throw storage_error_t("purge() method is not implemented yet");
 }
 
 extern "C" {
