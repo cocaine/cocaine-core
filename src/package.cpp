@@ -95,9 +95,10 @@ void package_t::deploy(const boost::filesystem::path& prefix) {
     }
 
     m_log->info(
-        "app archive type: %s, extracted %d files to '%s'",
+        "app archive type: %s, extracted %d %s to '%s'",
         archive_compression_name(m_archive),
         archive_file_count(m_archive),
+        archive_file_count(m_archive) == 1 ? "file" : "files",
         prefix.string().c_str()
     );
 
