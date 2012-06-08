@@ -14,114 +14,39 @@
 #ifndef COCAINE_PACKAGE_HPP
 #define COCAINE_PACKAGE_HPP
 
-#include <archive.h>
-#include <archive_entry.h>
 #include <boost/filesystem/path.hpp>
+
+#include "cocaine/common.hpp"
+
+#include "cocaine/helpers/blob.hpp"
+
+struct archive;
 
 namespace cocaine { namespace engine {
 
-struct archive_error_t:
+struct package_error_t:
     public std::runtime_error
 {
-    archive_error_t(archive * source):
-        std::runtime_error(archive_error_string(source))
-    { }
+    package_error_t(archive * source);
 };
 
-static void emplace(archive * source, 
-                    archive * target)
-{
-    int rv = ARCHIVE_OK;
-
-    const void * buffer = NULL;
-    size_t size = 0;
-    off_t offset = 0;
-
-    while(true) {
-        rv = archive_read_data_block(source, &buffer, &size, &offset);
+class package_t {
+    public:
+        package_t(context_t& context,
+                  const blob_t& archive);
         
-        if(rv == ARCHIVE_EOF) {
-            return;
-        } else if(rv != ARCHIVE_OK) {
-            throw archive_error_t(source);
-        }
+        ~package_t();
 
-        rv = archive_write_data_block(target, buffer, size, offset);
-        
-        if(rv != ARCHIVE_OK) {
-            throw archive_error_t(target);
-        }
-    }
-}
+        void deploy(const boost::filesystem::path& prefix);
 
-static void extract(const void * data,
-                    size_t size,
-                    const boost::filesystem::path& prefix)
-{
-    int rv = ARCHIVE_OK;
+    private:
+        static void extract(archive * source, 
+                            archive * target);
 
-    archive * source = archive_read_new(),
-            * target = archive_write_disk_new();
-    
-    int flags = ARCHIVE_EXTRACT_TIME |
-                ARCHIVE_EXTRACT_PERM |
-                ARCHIVE_EXTRACT_ACL |
-                ARCHIVE_EXTRACT_FFLAGS |
-                ARCHIVE_EXTRACT_SECURE_NODOTDOT;
-
-    archive_entry * entry;
-
-    archive_read_support_format_all(source);
-    archive_read_support_compression_all(source);
-    
-    archive_write_disk_set_options(target, flags);
-    archive_write_disk_set_standard_lookup(target);
-
-    rv = archive_read_open_memory(
-        source, 
-        const_cast<void*>(data),
-        size
-    );
-
-    if(rv) {
-        throw archive_error_t(source);
-    }
-
-    while(true) {
-        rv = archive_read_next_header(source, &entry);
-        
-        if(rv == ARCHIVE_EOF) {
-            break;
-        } else if(rv != ARCHIVE_OK) {
-            throw archive_error_t(source);
-        }
-
-        boost::filesystem::path path = archive_entry_pathname(entry);
-
-        // Prepend the path.
-        archive_entry_set_pathname(entry, (prefix / path).string().c_str());
-
-        rv = archive_write_header(target, entry);
-        
-        if(rv != ARCHIVE_OK) {
-            throw archive_error_t(target);
-        } else if(archive_entry_size(entry) > 0) {
-            emplace(source, target);
-        }
-    }
-
-    rv = archive_write_finish_entry(target);
-
-    if(rv != ARCHIVE_OK) {
-        throw archive_error_t(target);
-    }
-
-    archive_read_close(source);
-    archive_read_finish(source);
-
-    archive_write_close(target);
-    archive_write_finish(target);
-}
+    private:
+        boost::shared_ptr<logging::logger_t> m_log;
+        archive * m_archive;
+};
 
 }}
 

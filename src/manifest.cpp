@@ -46,13 +46,14 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
             spool_path = context.config.spool_path / name;
             
             m_log->info(
-                "deploying the app package to %s",
+                "deploying the app package to '%s'",
                 spool_path.string().c_str()
             );
             
-            try {            
-                extract(object.blob.data(), object.blob.size(), spool_path);
-            } catch(const archive_error_t& e) {
+            try {
+                package_t package(context, object.blob);
+                package.deploy(spool_path); 
+            } catch(const package_error_t& e) {
                 m_log->info("unable to deploy the app - %s", e.what());
                 throw configuration_error_t("the '" + name + "' app is not available");
             }
