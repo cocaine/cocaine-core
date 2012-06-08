@@ -68,15 +68,15 @@ LINK_DIRECTORIES(
     ${LIBZMQ_LIBRARY_DIRS}
     ${LIBARCHIVE_LIBRARY_DIRS})
 
-INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/foreign/jsoncpp-0.5.0/include)
+INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/foreign/jsoncpp-0.6.0-rc2/include)
 INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/include)
 
 #ADD_DEFINITIONS("-DBOOST_FILESYSTEM_VERSION=2")
 
 ADD_LIBRARY(json
-    foreign/jsoncpp-0.5.0/src/lib_json/json_value
-    foreign/jsoncpp-0.5.0/src/lib_json/json_reader
-    foreign/jsoncpp-0.5.0/src/lib_json/json_writer)
+    foreign/jsoncpp-0.6.0-rc2/src/lib_json/json_value
+    foreign/jsoncpp-0.6.0-rc2/src/lib_json/json_reader
+    foreign/jsoncpp-0.6.0-rc2/src/lib_json/json_writer)
 
 SET_TARGET_PROPERTIES(json PROPERTIES
     COMPILE_FLAGS -fPIC)
@@ -157,6 +157,6 @@ INSTALL(
 INSTALL(
     DIRECTORY
         include/
-        foreign/jsoncpp-0.5.0/include/
+        foreign/jsoncpp-0.6.0-rc2/include/
     DESTINATION include
     COMPONENT development)
