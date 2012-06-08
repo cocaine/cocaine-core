@@ -1,7 +1,10 @@
 {
     "version": 1,
-    "plugin-path": "plugins/python",
-    "ipc-path": ".",
+    "paths": {
+        "plugins": "plugins/python",
+        "ipc": ".",
+        "spool": "spool"
+    },
     "storages": {
         "core": {
             "type": "elliptics",

@@ -15,6 +15,7 @@
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
+#include "cocaine/package.hpp"
 
 #include "cocaine/interfaces/storage.hpp"
 
@@ -31,6 +32,7 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
     try {
         // Load the app manifest.
         root = context.storage<objects>("core:cache")->exists("apps", name);
+        spool_path = root["spool"].asString();
     } catch(const storage_error_t& e) {
         m_log->info("the app hasn't been found in the cache");
 
@@ -39,11 +41,29 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
             objects::value_type object(
                 context.storage<objects>("core")->get("apps", name)
             );
+
+            // Unpack the app.
+            spool_path = context.config.spool_path / name;
             
-            root = object.meta;
+            m_log->info(
+                "deploying the app package to %s",
+                spool_path.string().c_str()
+            );
             
+            try {            
+                extract(object.blob.data(), object.blob.size(), spool_path);
+            } catch(const archive_error_t& e) {
+                m_log->info("unable to deploy the app - %s", e.what());
+                throw configuration_error_t("the '" + name + "' app is not available");
+            }
+
+            // Update the manifest in the cache.
+            object.meta["spool"] = spool_path.string();
+
             // Put the application object into the cache for future reference.
             context.storage<objects>("core:cache")->put("apps", name, object);
+            
+            root = object.meta;
         } catch(const storage_error_t& e) {
             m_log->info("unable to fetch the app from the storage - %s", e.what());
             throw configuration_error_t("the '" + name + "' app is not available");

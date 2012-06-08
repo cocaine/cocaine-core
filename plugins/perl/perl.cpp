@@ -56,11 +56,7 @@ public:
             throw configuration_error_t("malformed manifest");
         }
 
-        boost::filesystem::path source(args["source"].asString());
-
-        if(source.empty()) {
-            throw configuration_error_t("no code location has been specified");
-        }
+        boost::filesystem::path source(manifest.spool_path);
 
         if(boost::filesystem::is_directory(source)) {
             throw configuration_error_t("malformed manifest, expected path to perl script, got a directory.");   

@@ -58,20 +58,28 @@ int main() {
     std::cout << "Created context" << std::endl;
 
     Json::Reader reader;
-    Json::Value value;
+    Json::Value manifest;
 
-    std::fstream fs("x");
+    std::fstream m("package/manifest.json");
 
-    reader.parse(fs, value);
+    reader.parse(m, manifest);
+
+    std::fstream p("package/code.tar.gz", std::fstream::binary | std::fstream::in);
+
+    std::stringstream ss;
+    ss << p.rdbuf();
 
     storages::objects::value_type v = {
-        value,
-        storages::objects::data_type("\0", 1)
+        manifest,
+        storages::objects::data_type(
+            ss.str().data(),
+            ss.str().size()
+        )
     };
 
-    //context.storage<storages::objects>("core")->put("apps", "my_app@1", v);
+    context.storage<storages::objects>("core")->put("apps", "my_app@1", v);
 
-    //std::cout << "Stored" << std::endl;
+    std::cout << "Stored" << std::endl;
 
     cocaine::app_t app(context, "my_app@1");
 

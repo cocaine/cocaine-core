@@ -14,6 +14,7 @@
 #ifndef COCAINE_CONTEXT_HPP
 #define COCAINE_CONTEXT_HPP
 
+#include <boost/filesystem/path.hpp>
 #include <boost/thread/mutex.hpp>
 #include <deque>
 
@@ -40,14 +41,16 @@ struct defaults {
     // Default paths.
     static const char plugin_path[];
     static const char ipc_path[];
+    static const char spool_path[];
 };
 
 struct config_t {
     config_t(const std::string& config_path);
 
-    std::string config_path,
-                plugin_path,
-                ipc_path;
+    boost::filesystem::path config_path,
+                            plugin_path,
+                            ipc_path,
+                            spool_path;
 
     typedef struct {
         std::string type;

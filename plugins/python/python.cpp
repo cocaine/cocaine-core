@@ -50,12 +50,8 @@ python_t::python_t(context_t& context, const manifest_t& manifest):
         throw configuration_error_t("malformed manifest");
     }
     
-    boost::filesystem::path source(args["source"].asString());
+    boost::filesystem::path source(manifest.spool_path);
    
-    if(source.empty()) {
-        throw configuration_error_t("no code location has been specified");
-    }
-
     // NOTE: Means it's a module.
     if(boost::filesystem::is_directory(source)) {
         source /= "__init__.py";

@@ -32,7 +32,7 @@ slave_t::slave_t(context_t& context, slave_config_t config):
 {
     m_bus.connect(
         (boost::format("ipc://%1%/%2%")
-            % m_context.config.ipc_path
+            % m_context.config.ipc_path.string()
             % config.app
         ).str()
     );

@@ -43,12 +43,6 @@ repository_t::repository_t(context_t& context):
 
     fs::path path(m_context.config.plugin_path);
 
-    if(!fs::exists(path)) {
-        throw configuration_error_t("plugin path '" + path.string() + "' does not exist");
-    } else if(fs::exists(path) && !fs::is_directory(path)) {
-        throw configuration_error_t("plugin path '" + path.string() + "' is not a directory");
-    }
-
     lt_dladvise advice;
     lt_dladvise_init(&advice);
     lt_dladvise_global(&advice);

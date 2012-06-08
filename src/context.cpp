@@ -31,8 +31,19 @@ const unsigned int defaults::io_bulk_size = 100;
 const char defaults::slave[] = "cocaine-slave";
 const char defaults::plugin_path[] = "/usr/lib/cocaine";
 const char defaults::ipc_path[] = "/var/run/cocaine";
+const char defaults::spool_path[] = "/var/spool/cocaine";
 
 namespace fs = boost::filesystem;
+
+namespace {
+    void validate_path(const fs::path& path) {
+        if(!fs::exists(path)) {
+            throw configuration_error_t("the specified path '" + path.string() + "' does not exist");
+        } else if(fs::exists(path) && !fs::is_directory(path)) {
+            throw configuration_error_t("the specified path '" + path.string() + "' is not a directory");
+        }
+    }
+}
 
 config_t::config_t(const std::string& path):
     config_path(path)
@@ -64,7 +75,8 @@ config_t::config_t(const std::string& path):
     // Component repository configuration
     // ----------------------------------
 
-    plugin_path = root.get("plugin-path", defaults::plugin_path).asString();
+    plugin_path = root["paths"].get("plugins", defaults::plugin_path).asString();
+    validate_path(plugin_path);
 
     // Storage configuration
     // ---------------------
@@ -96,10 +108,17 @@ config_t::config_t(const std::string& path):
         throw configuration_error_t("mandatory 'core' storage has not been configured");
     }
 
+    // App spool
+    // ---------
+
+    spool_path = root["paths"].get("spool", defaults::spool_path).asString();
+    validate_path(spool_path);
+
     // Networking configuration
     // ------------------------
 
-    ipc_path = root.get("ipc-path", defaults::ipc_path).asString();
+    ipc_path = root["paths"].get("ipc", defaults::ipc_path).asString();
+    validate_path(ipc_path);
 
     char hostname[HOSTNAME_MAX_LENGTH];
 

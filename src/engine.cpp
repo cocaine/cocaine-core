@@ -25,8 +25,6 @@
 #include "cocaine/manifest.hpp"
 #include "cocaine/rpc.hpp"
 
-#include "cocaine/helpers/archive_file.hpp"
-
 using namespace cocaine::engine;
 using namespace cocaine::networking;
 
@@ -64,7 +62,7 @@ engine_t::engine_t(context_t& context, const std::string& name):
     try {
         m_bus.bind(
             (boost::format("ipc://%1%/%2%")
-                % m_context.config.ipc_path
+                % m_context.config.ipc_path.string()
                 % manifest().name
             ).str()
         );

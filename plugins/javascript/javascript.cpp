@@ -41,12 +41,7 @@ class javascript_t:
                 throw configuration_error_t("malformed manifest");
             }
             
-            boost::filesystem::path source(args["source"].asString());
-
-            if(source.empty()) {
-                throw configuration_error_t("no code location has been specified");
-            }
-
+            boost::filesystem::path source(manifest.spool_path);
             boost::filesystem::ifstream input(source);
     
             if(!input) {

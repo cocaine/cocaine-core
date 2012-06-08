@@ -11,13 +11,14 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_HELPERS_ARCHIVE_FILE_HPP
-#define COCAINE_HELPERS_ARCHIVE_FILE_HPP
+#ifndef COCAINE_PACKAGE_HPP
+#define COCAINE_PACKAGE_HPP
 
 #include <archive.h>
 #include <archive_entry.h>
+#include <boost/filesystem/path.hpp>
 
-namespace cocaine { namespace helpers {
+namespace cocaine { namespace engine {
 
 struct archive_error_t:
     public std::runtime_error
@@ -27,7 +28,9 @@ struct archive_error_t:
     { }
 };
 
-static void emplace(archive * source, archive * target) {
+static void emplace(archive * source, 
+                    archive * target)
+{
     int rv = ARCHIVE_OK;
 
     const void * buffer = NULL;
@@ -51,7 +54,10 @@ static void emplace(archive * source, archive * target) {
     }
 }
 
-static void extract(const void * data, size_t size) {
+static void extract(const void * data,
+                    size_t size,
+                    const boost::filesystem::path& prefix)
+{
     int rv = ARCHIVE_OK;
 
     archive * source = archive_read_new(),
@@ -71,24 +77,36 @@ static void extract(const void * data, size_t size) {
     archive_write_disk_set_options(target, flags);
     archive_write_disk_set_standard_lookup(target);
 
+    std::cout << "archive: sz = " << size << std::endl;
+    
     rv = archive_read_open_memory(
         source, 
         const_cast<void*>(data),
         size
     );
-    
+
+    std::cout << "archive opened: " << archive_compression_name(source) << std::endl;
+
     if(rv) {
         throw archive_error_t(source);
     }
 
     while(true) {
+        std::cout << "header read" << std::endl;
+
         rv = archive_read_next_header(source, &entry);
         
         if(rv == ARCHIVE_EOF) {
+            std::cout << "eof" << std::endl;
             break;
         } else if(rv != ARCHIVE_OK) {
             throw archive_error_t(source);
         }
+
+        boost::filesystem::path path = archive_entry_pathname(entry);
+
+        // Prepend the path.
+        archive_entry_set_pathname(entry, (prefix / path).string().c_str());
 
         rv = archive_write_header(target, entry);
         
@@ -99,11 +117,13 @@ static void extract(const void * data, size_t size) {
         }
     }
 
-    rv = archive_write_finish_entry(target);
+    std::cout << "archive done" << std::endl;
+    
+    // rv = archive_write_finish_entry(target);
 
-    if(rv != ARCHIVE_OK) {
-        throw archive_error_t(target);
-    }
+    //if(rv != ARCHIVE_OK) {
+    //    throw archive_error_t(target);
+    //}
 
     archive_read_close(source);
     archive_read_finish(source);
