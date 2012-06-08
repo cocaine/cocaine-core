@@ -42,7 +42,7 @@ void job_queue_t::push(const_reference job) {
 
 engine_t::engine_t(context_t& context, const std::string& name):
     m_context(context),
-    m_log(m_context.log(name)),
+    m_log(m_context.log("app/" + name)),
     m_state(stopped),
     m_watcher(m_loop),
     m_processor(m_loop),

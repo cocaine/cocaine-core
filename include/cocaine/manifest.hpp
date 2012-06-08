@@ -22,7 +22,7 @@ namespace cocaine { namespace engine {
 
 struct manifest_t {
     manifest_t(context_t& context,
-               const std::string& app);
+               const std::string& name);
 
     std::string name,
                 type,

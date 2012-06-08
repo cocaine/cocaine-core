@@ -24,9 +24,9 @@ using namespace cocaine::storages;
 // Application
 // -----------
 
-manifest_t::manifest_t(context_t& context, const std::string& app):
-    name(app),
-    m_log(context.log(name))
+manifest_t::manifest_t(context_t& context, const std::string& name_):
+    name(name_),
+    m_log(context.log("app/" + name))
 {
     objects::value_type object;
 

@@ -58,7 +58,7 @@ class sandbox_t:
     protected:
         sandbox_t(context_t& context, const manifest_t& manifest):
             m_context(context),
-            m_log(m_context.log(manifest.name)),
+            m_log(m_context.log("app/" + manifest.name)),
             m_manifest(manifest)
         { }
 
