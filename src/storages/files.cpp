@@ -153,16 +153,16 @@ file_storage_t::value_type file_storage_t::get(const std::string& ns,
     buffer << stream.rdbuf();
 
     msgpack::unpack(
-        &u,
+        &unpacked,
         buffer.str().data(),
         buffer.str().size()
     );
 
     // DEBUG
-    std::cout << u.get() << std::endl;
+    std::cout << unpacked.get() << std::endl;
 
     try {
-        return u.get().as<objects::value_type>();
+        return unpacked.get().as<objects::value_type>();
     } catch (const msgpack::type_error& e) {
         m_log->error(
             "the '%s' object is corrupted, namespace: '%s', path: '%s', reason: %s",
