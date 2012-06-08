@@ -263,7 +263,7 @@ void engine_t::stop() {
     }
 
     if(m_thread.get()) {
-        log().info("reaping the thread");
+        log().debug("reaping the thread");
         
         // Wait for the termination.
         m_thread->join();
