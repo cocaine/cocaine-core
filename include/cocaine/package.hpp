@@ -38,6 +38,9 @@ class package_t {
         ~package_t();
 
         void deploy(const boost::filesystem::path& prefix);
+        
+    public:
+        std::string type() const;
 
     private:
         static void extract(archive * source, 

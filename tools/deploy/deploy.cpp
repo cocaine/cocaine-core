@@ -37,6 +37,9 @@ namespace {
                        const fs::path& manifest_path,
                        const fs::path& package_path)
     {
+        std::string type,
+                    compression;
+        
         Json::Reader reader;
         Json::Value manifest;
 
@@ -50,6 +53,13 @@ namespace {
         if(!reader.parse(manifest_stream, manifest)) {
             std::cerr << "Error: the app manifest in '" << manifest_path << "' is corrupted." << std::endl;
             std::cerr << reader.getFormattedErrorMessages() << std::endl;
+            return;
+        }
+
+        type = manifest.get("type", "").asString();
+
+        if(type.empty()) {
+            std::cerr << "Error: no app type has been specified in the manifest." << std::endl;
             return;
         }
 
@@ -73,6 +83,7 @@ namespace {
 
         try {
             engine::package_t package(context, blob);
+            compression = package.type();
         } catch(const engine::package_error_t& e) {
             std::cerr << "Error: the app package in '" << package_path << "' is corrupted." << std::endl;
             std::cerr << e.what() << std::endl;
@@ -80,7 +91,11 @@ namespace {
         }
 
         objects::value_type object = { manifest, blob };
-        
+       
+        std::cout << "Detected app type: '" << type 
+                  << "', package compression: '" << compression
+                  << "'." << std::endl;
+
         try {
             context.storage<storages::objects>("core")->put("apps", name, object);
         } catch(const storage_error_t& e) {

@@ -96,7 +96,7 @@ void package_t::deploy(const boost::filesystem::path& prefix) {
 
     m_log->info(
         "app archive type: %s, extracted %d %s to '%s'",
-        archive_compression_name(m_archive),
+        type().c_str(),
         archive_file_count(m_archive),
         archive_file_count(m_archive) == 1 ? "file" : "files",
         prefix.string().c_str()
@@ -130,4 +130,8 @@ void package_t::extract(archive * source,
             throw package_error_t(target);
         }
     }
+}
+
+std::string package_t::type() const {
+    return archive_compression_name(m_archive);
 }
