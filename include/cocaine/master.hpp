@@ -58,7 +58,7 @@ class master_t:
 
     public:
         master_t(context_t& context,
-                engine_t& engine);
+                 engine_t& engine);
 
         ~master_t();
         

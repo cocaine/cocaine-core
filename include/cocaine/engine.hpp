@@ -35,15 +35,6 @@
 
 namespace cocaine { namespace engine {
 
-// #if BOOST_VERSION >= 104000
-// typedef boost::ptr_unordered_map<
-// #else
-// typedef boost::ptr_map<
-// #endif
-//     const std::string,
-//     drivers::driver_t
-// > driver_map_t;
-
 #if BOOST_VERSION >= 104000
 typedef boost::ptr_unordered_map<
 #else
@@ -206,7 +197,6 @@ class engine_t:
 
         // The app manifest.
         std::auto_ptr<const manifest_t> m_manifest;
-        // driver_map_t m_drivers;
 
         // Job queue.
         job_queue_t m_queue;

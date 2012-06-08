@@ -20,6 +20,15 @@
 
 namespace cocaine {
 
+// #if BOOST_VERSION >= 104000
+// typedef boost::ptr_unordered_map<
+// #else
+// typedef boost::ptr_map<
+// #endif
+//     const std::string,
+//     drivers::driver_t
+// > driver_map_t;
+
 class app_t {
     public:
         app_t(context_t& context,
@@ -37,6 +46,7 @@ class app_t {
 
     private:
         std::auto_ptr<engine::engine_t> m_engine;
+        // driver_map_t m_drivers;
 };
 
 }
