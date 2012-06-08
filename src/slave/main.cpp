@@ -40,7 +40,7 @@ int main(int argc, char * argv[]) {
         ("version,v", "show version and build information")
         ("configuration,c", po::value<std::string>
             ()->default_value("/etc/cocaine/default.json"),
-            "location of a configuration file")
+            "location of the configuration file")
         ("verbose", "produce a lot of output");
 
     slave_config_t slave_config;
@@ -84,7 +84,7 @@ int main(int argc, char * argv[]) {
     // ----------
 
     if(!vm.count("configuration")) {
-        std::cerr << "Error: no configuration file has been specified" << std::endl;
+        std::cerr << "Error: no configuration file location has been specified" << std::endl;
         return EXIT_FAILURE;
     }
 

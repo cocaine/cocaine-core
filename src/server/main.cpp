@@ -43,7 +43,7 @@ int main(int argc, char * argv[]) {
         ("version,v", "show version and build information")
         ("configuration,c", po::value<std::string>
             ()->default_value("/etc/cocaine/default.json"),
-            "location of a configuration file")
+            "location of the configuration file")
         ("daemonize,d", "daemonize on start")
         ("pidfile,p", po::value<std::string>
             ()->default_value("/var/run/cocaine/default.pid"),
@@ -99,7 +99,7 @@ int main(int argc, char * argv[]) {
     // ----------
 
     if(!vm.count("configuration")) {
-        std::cerr << "Error: no configuration file has been specified" << std::endl;
+        std::cerr << "Error: no configuration file location has been specified" << std::endl;
         return EXIT_FAILURE;
     }
 

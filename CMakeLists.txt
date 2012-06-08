@@ -144,6 +144,7 @@ TARGET_LINK_LIBRARIES(library-test
     cocaine-core)
 
 ADD_SUBDIRECTORY(plugins)
+ADD_SUBDIRECTORY(tools)
 
 INSTALL(
     TARGETS
