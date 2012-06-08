@@ -60,11 +60,11 @@ int main() {
     Json::Reader reader;
     Json::Value manifest;
 
-    std::fstream m("package/manifest.json");
+    std::fstream m("for-zbr/package/manifest.json");
 
     reader.parse(m, manifest);
 
-    std::fstream p("package/code.tar.gz", std::fstream::binary | std::fstream::in);
+    std::fstream p("for-zbr/package/code.tar.gz", std::fstream::binary | std::fstream::in);
 
     std::stringstream ss;
     ss << p.rdbuf();
