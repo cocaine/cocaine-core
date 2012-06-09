@@ -88,7 +88,7 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest_):
         return;
     }
     
-    m_cgroup = cgroup_new_cgroup(name.c_str());
+    m_cgroup = cgroup_new_cgroup(manifest().name.c_str());
 
     // XXX: Not sure if it changes anything.
     cgroup_set_uid_gid(m_cgroup, getuid(), getgid(), getuid(), getgid());

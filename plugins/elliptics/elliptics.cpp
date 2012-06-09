@@ -74,7 +74,7 @@ namespace {
 
 elliptics_storage_t::elliptics_storage_t(context_t& context, const Json::Value& args):
     category_type(context, args),
-    m_log(m_context.log("storage/elliptics")),
+    m_log(context.log("storage/elliptics")),
     m_log_adapter(context, args.get("verbosity", DNET_LOG_ERROR).asUInt()),
     m_node(m_log_adapter)
 {

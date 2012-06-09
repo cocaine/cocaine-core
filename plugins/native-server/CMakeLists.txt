@@ -5,7 +5,7 @@ ADD_LIBRARY(native-server MODULE
 TARGET_LINK_LIBRARIES(native-server
     cocaine-core)
 
-SET_TARGET_PROPERTIES(python PROPERTIES
+SET_TARGET_PROPERTIES(native-server PROPERTIES
     PREFIX ""
     SUFFIX ".cocaine-plugin")
 
