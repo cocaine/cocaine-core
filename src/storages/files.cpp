@@ -69,10 +69,10 @@ namespace msgpack {
     }
 }
 
-file_storage_t::file_storage_t(context_t& context, const Json::Value& args):
-    category_type(context, args),
+file_storage_t::file_storage_t(context_t& context, const component_config_t& config):
+    category_type(context, config),
     m_log(context.log("storage/files")),
-    m_storage_path(args["path"].asString())
+    m_storage_path(config.args["path"].asString())
 { }
 
 objects::value_type file_storage_t::get(const std::string& ns,

@@ -91,9 +91,14 @@ config_t::config_t(const std::string& path):
         it != storage_names.end();
         ++it)
     {
+        component_config_t config = {
+            *it,
+            root["storages"][*it]["args"]
+        };
+
         storage_info_t info = {
             root["storages"][*it]["type"].asString(),
-            root["storages"][*it]["args"]
+            config
         };
 
         storages.insert(

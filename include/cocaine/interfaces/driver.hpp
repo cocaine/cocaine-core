@@ -39,7 +39,7 @@ class driver_t:
         }
 
     protected:
-        driver_t(context_t& context, engine_t& engine, const Json::Value& args):
+        driver_t(context_t& context, engine_t& engine, const component_config_t& config):
             m_context(context),
             m_engine(engine)
         { }
@@ -54,7 +54,11 @@ class driver_t:
 template<>
 struct category_traits<engine::drivers::driver_t> {
     typedef std::auto_ptr<engine::drivers::driver_t> ptr_type;
-    typedef boost::tuple<engine::engine_t&, const Json::Value&> args_type;
+
+    typedef boost::tuple<
+        engine::engine_t&,
+        const component_config_t&
+    > args_type;
 
     template<class T>
     struct default_factory:

@@ -35,7 +35,7 @@ class native_server_t:
     public:
         native_server_t(context_t& context,
                         engine_t& engine,
-                        const Json::Value& args);
+                        const component_config_t& config);
 
         ~native_server_t();
 

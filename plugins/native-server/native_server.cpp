@@ -47,16 +47,16 @@ namespace msgpack {
     }
 }
 
-native_server_t::native_server_t(context_t& context, engine_t& engine, const Json::Value& args):
-    category_type(context, engine, args),
+native_server_t::native_server_t(context_t& context, engine_t& engine, const component_config_t& config):
+    category_type(context, engine, config),
     m_context(context),
     m_log(context.log("app/" + engine.manifest().name)),
-    m_event(args["emit"].asString()),
+    m_event(config.args["emit"].asString()),
     m_route(boost::algorithm::join(
         boost::assign::list_of
             (context.config.runtime.hostname)
             (engine.manifest().name)
-            (m_event),
+            (config.name),
         "/")
     ),
     m_watcher(engine.loop()),

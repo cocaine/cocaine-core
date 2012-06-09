@@ -63,7 +63,7 @@ class storage_concept<objects>:
                             const std::string& key) = 0;
 
     protected:
-        storage_concept(context_t& context, const Json::Value& args):
+        storage_concept(context_t& context, const component_config_t& config):
             m_context(context)
         { }
 
@@ -77,7 +77,7 @@ template<class T>
 struct category_traits< storages::storage_concept<T> > {
     typedef storages::storage_concept<T> storage_type;
     typedef boost::shared_ptr<storage_type> ptr_type;
-    typedef boost::tuple<const Json::Value&> args_type;
+    typedef boost::tuple<const component_config_t&> args_type;
     
     template<class U>
     struct default_factory:
@@ -87,19 +87,19 @@ struct category_traits< storages::storage_concept<T> > {
                              const args_type& args)
         {
             boost::lock_guard<boost::mutex> lock(m_mutex);
-            const Json::Value& json(boost::get<0>(args));
+            const component_config_t& config(boost::get<0>(args));
 
             typename storage_map_t::iterator it(
-                m_storages.find(json)
+                m_storages.find(config.name)
             );
 
             if(it == m_storages.end()) {
                 boost::tie(it, boost::tuples::ignore) = m_storages.insert(
                     std::make_pair(
-                        json,
+                        config.name,
                         boost::make_shared<U>(
                             boost::ref(context),
-                            json
+                            config
                         )
                     )
                 );
@@ -112,7 +112,7 @@ struct category_traits< storages::storage_concept<T> > {
         boost::mutex m_mutex;
 
         typedef std::map<
-            Json::Value,
+            std::string,
             ptr_type
         > storage_map_t;
 

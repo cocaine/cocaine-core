@@ -72,13 +72,13 @@ namespace {
     };
 }
 
-elliptics_storage_t::elliptics_storage_t(context_t& context, const Json::Value& args):
-    category_type(context, args),
+elliptics_storage_t::elliptics_storage_t(context_t& context, const component_config_t& config):
+    category_type(context, config),
     m_log(context.log("storage/elliptics")),
-    m_log_adapter(context, args.get("verbosity", DNET_LOG_ERROR).asUInt()),
+    m_log_adapter(context, config.args.get("verbosity", DNET_LOG_ERROR).asUInt()),
     m_node(m_log_adapter)
 {
-    Json::Value nodes(args["nodes"]);
+    Json::Value nodes(config.args["nodes"]);
 
     if(nodes.empty() || !nodes.isObject()) {
         throw storage_error_t("no nodes has been specified");
@@ -100,7 +100,7 @@ elliptics_storage_t::elliptics_storage_t(context_t& context, const Json::Value& 
         }
     }
 
-    Json::Value groups(args["groups"]);
+    Json::Value groups(config.args["groups"]);
 
     if(groups.empty() || !groups.isArray()) {
         throw storage_error_t("no groups has been specified");
