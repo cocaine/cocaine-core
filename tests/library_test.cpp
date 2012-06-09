@@ -77,9 +77,6 @@ int main() {
 
     std::cout << "=== Jobs enqueued while running ===" << std::endl;
     
-    Json::Value state(app.info());
-    std::cout << state;
-
     sleep(1);
 
     app.stop();
