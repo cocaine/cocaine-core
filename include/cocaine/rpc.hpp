@@ -14,7 +14,7 @@
 #ifndef COCAINE_RPC_HPP
 #define COCAINE_RPC_HPP
 
-#include "cocaine/networking.hpp"
+#include "cocaine/io.hpp"
 
 namespace cocaine { namespace engine { namespace rpc {    
     

@@ -69,7 +69,7 @@ server_t::server_t(context_t& context, server_config_t config):
     // -------------
 
     if(!config.announce_endpoints.empty()) {
-        m_announces.reset(new networking::socket_t(m_context.io(), ZMQ_PUB));
+        m_announces.reset(new io::socket_t(m_context.io(), ZMQ_PUB));
         m_announces->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
         
         for(std::vector<std::string>::const_iterator it = config.announce_endpoints.begin();

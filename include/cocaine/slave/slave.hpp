@@ -19,8 +19,7 @@
 // Has to be included after common.h
 #include <ev++.h>
 
-#include "cocaine/context.hpp"
-#include "cocaine/networking.hpp"
+#include "cocaine/io.hpp"
 
 #include "cocaine/interfaces/sandbox.hpp"
 
@@ -90,7 +89,7 @@ class slave_t:
                   m_suicide_timer;
         
         // Engine RPC.
-        networking::channel_t m_bus;
+        io::channel_t m_bus;
 };
 
 }}

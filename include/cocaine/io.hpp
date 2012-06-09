@@ -11,10 +11,11 @@
 // limitations under the License.
 //
 
-#ifndef COCAINE_NETWORKING_HPP
-#define COCAINE_NETWORKING_HPP
+#ifndef COCAINE_IO_HPP
+#define COCAINE_IO_HPP
 
 #include <boost/mpl/int.hpp>
+#include <boost/type_traits/remove_const.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <msgpack.hpp>
 #include <zmq.hpp>
@@ -27,7 +28,7 @@
 
 #define HOSTNAME_MAX_LENGTH 256
 
-namespace cocaine { namespace networking {
+namespace cocaine { namespace io {
 
 using namespace boost::tuples;
 
@@ -192,44 +193,37 @@ class scoped_option {
         size_t size;
 };
 
-// Specialize this to disable specific type serialization.
-template<class T> class raw;
+// A wrapper class to disable automatic type serialization.
+// --------------------------------------------------------
 
-template<> class raw<std::string> {
-    public:
-        raw(std::string& string):
-            m_string(string)
-        { }
+template<class T>
+struct raw {
+    raw(T& value_):
+        value(value_)
+    { }
 
-        void pack(zmq::message_t& message) const {
-            message.rebuild(m_string.size());
-            memcpy(message.data(), m_string.data(), m_string.size());
-        }
-
-        bool unpack(/* const */ zmq::message_t& message) {
-            m_string.assign(
-                static_cast<const char*>(message.data()),
-                message.size());
-            return true;
-        }
-
-    private:
-        std::string& m_string;
+    T& value;
 };
 
-template<> class raw<const std::string> {
-    public:
-        raw(const std::string& string):
-            m_string(string)
-        { }
+// Specialize this to disable specific type serialization.
+template<class T>
+struct serialization_traits;
 
-        void pack(zmq::message_t& message) const {
-            message.rebuild(m_string.size());
-            memcpy(message.data(), m_string.data(), m_string.size());
-        }
+template<>
+struct serialization_traits<std::string> {
+    static void pack(zmq::message_t& message, const std::string& value) {
+        message.rebuild(value.size());
+        memcpy(message.data(), value.data(), value.size());
+    }
 
-    private:
-        const std::string& m_string;
+    static bool unpack(zmq::message_t& message, std::string& value) {
+        value.assign(
+            static_cast<const char*>(message.data()),
+            message.size()
+        );
+
+        return true;
+    }
 };
 
 template<class T>
@@ -276,7 +270,11 @@ class channel_t:
                   int flags = 0)
         {
             zmq::message_t message;
-            object.pack(message);
+            
+            serialization_traits<
+                typename boost::remove_const<T>::type
+            >::pack(message, object.value);
+            
             return send(message, flags);
         }
 
@@ -341,7 +339,9 @@ class channel_t:
                 return false;
             }
 
-            return result.unpack(message);
+            return serialization_traits<
+                typename boost::remove_const<T>::type
+            >::unpack(message, result.value);
         }
 
         // Receives and unpacks a tuple.

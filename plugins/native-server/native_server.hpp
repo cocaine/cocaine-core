@@ -19,8 +19,8 @@
 // Has to be included after common.h
 #include <ev++.h>
 
+#include "cocaine/io.hpp"
 #include "cocaine/job.hpp"
-#include "cocaine/networking.hpp"
 
 #include "cocaine/interfaces/driver.hpp"
 
@@ -67,7 +67,7 @@ class native_server_t:
         // reason doesn't trigger the socket's fd on message arrival (or I poll it in a wrong way).
         ev::timer m_pumper;
         
-        networking::channel_t m_channel;
+        io::channel_t m_channel;
 
         // Dynamic port.
         uint16_t m_port;

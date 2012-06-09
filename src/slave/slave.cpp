@@ -15,6 +15,7 @@
 
 #include "cocaine/slave/slave.hpp"
 
+#include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
 #include "cocaine/rpc.hpp"
@@ -92,8 +93,8 @@ void slave_t::run() {
 blob_t slave_t::read(int timeout) {
     zmq::message_t message;
 
-    networking::scoped_option<
-        networking::options::receive_timeout
+    io::scoped_option<
+        io::options::receive_timeout
     > option(m_bus, timeout);
 
     m_bus.recv(&message);

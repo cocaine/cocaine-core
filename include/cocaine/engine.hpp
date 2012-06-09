@@ -28,8 +28,8 @@
 // Has to be included after common.h
 #include <ev++.h>
 
+#include "cocaine/io.hpp"
 #include "cocaine/master.hpp"
-#include "cocaine/networking.hpp"
 
 #include "cocaine/helpers/json.hpp"
 
@@ -156,7 +156,7 @@ class engine_t:
                   Packed& packed)
         {
             m_bus.send(
-                networking::protect(master.id()),
+                io::protect(master.id()),
                 ZMQ_SNDMORE
             );
 
@@ -216,7 +216,7 @@ class engine_t:
         ev::async m_notification;
 
         // Slave RPC bus.
-        networking::channel_t m_bus;
+        io::channel_t m_bus;
   
         // Engine's thread.
         std::auto_ptr<boost::thread> m_thread;

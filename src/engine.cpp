@@ -26,7 +26,7 @@
 #include "cocaine/dealer/types.hpp"
 
 using namespace cocaine::engine;
-using namespace cocaine::networking;
+using namespace cocaine::io;
 
 void job_queue_t::push(const_reference job) {
     if(job->policy.urgent) {

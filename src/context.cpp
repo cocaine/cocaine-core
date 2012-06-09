@@ -15,8 +15,8 @@
 
 #include "cocaine/context.hpp"
 
+#include "cocaine/io.hpp"
 #include "cocaine/logging.hpp"
-#include "cocaine/networking.hpp"
 
 #include "cocaine/storages/files.hpp"
 
@@ -114,8 +114,8 @@ config_t::config_t(const std::string& path):
     spool_path = root["paths"].get("spool", defaults::spool_path).asString();
     validate_path(spool_path);
 
-    // Networking configuration
-    // ------------------------
+    // IO configuration
+    // ----------------
 
     ipc_path = root["paths"].get("ipc", defaults::ipc_path).asString();
     validate_path(ipc_path);

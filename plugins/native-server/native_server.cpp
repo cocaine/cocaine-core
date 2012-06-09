@@ -25,7 +25,7 @@
 
 using namespace cocaine;
 using namespace cocaine::engine::drivers;
-using namespace cocaine::networking;
+using namespace cocaine::io;
 
 namespace msgpack {
     inline engine::policy_t& operator >> (msgpack::object o,

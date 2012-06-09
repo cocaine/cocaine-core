@@ -18,6 +18,7 @@
 #include <iostream>
 
 #include "cocaine/config.hpp"
+#include "cocaine/context.hpp"
 
 #include "cocaine/server/server.hpp"
 

@@ -20,8 +20,7 @@
 #include <ev++.h>
 
 #include "cocaine/auth.hpp"
-#include "cocaine/context.hpp"
-#include "cocaine/networking.hpp"
+#include "cocaine/io.hpp"
 
 #include "cocaine/helpers/json.hpp"
 
@@ -96,11 +95,11 @@ class server_t:
         ev::timer m_pumper;
 
         // System I/O.
-        networking::socket_t m_server;
+        io::socket_t m_server;
 
         // Automatic discovery support.
         std::auto_ptr<ev::timer> m_announce_timer;
-        std::auto_ptr<networking::socket_t> m_announces;
+        std::auto_ptr<io::socket_t> m_announces;
         
         // Authorization subsystem.
         crypto::auth_t m_auth;

@@ -14,8 +14,8 @@
 #ifndef COCAINE_NATIVE_SERVER_JOB_HPP
 #define COCAINE_NATIVE_SERVER_JOB_HPP
 
+#include "cocaine/io.hpp"
 #include "cocaine/job.hpp"
-#include "cocaine/networking.hpp"
 
 namespace cocaine { namespace engine { namespace drivers {
 
@@ -26,8 +26,8 @@ class native_job_t:
         native_job_t(const std::string& event,
                      const blob_t& request,
                      const policy_t& policy,
-                     networking::channel_t& channel,
-                     const networking::route_t& route,
+                     io::channel_t& channel,
+                     const io::route_t& route,
                      const std::string& tag);
 
         virtual void react(const events::chunk& event);
@@ -41,7 +41,7 @@ class native_job_t:
                 std::for_each(
                     m_route.begin(),
                     m_route.end(),
-                    networking::route(m_channel)
+                    io::route(m_channel)
                 );
             } catch(const zmq::error_t& e) {
                 // NOTE: The client is down.
@@ -56,8 +56,8 @@ class native_job_t:
         }
 
     private:
-        networking::channel_t& m_channel;        
-        const networking::route_t m_route;
+        io::channel_t& m_channel;        
+        const io::route_t m_route;
         const std::string m_tag;
 };
 

@@ -19,7 +19,7 @@
 
 using namespace cocaine::engine;
 using namespace cocaine::engine::drivers;
-using namespace cocaine::networking;
+using namespace cocaine::io;
 
 native_job_t::native_job_t(const std::string& event, 
                            const blob_t& request,
