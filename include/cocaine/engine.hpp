@@ -196,7 +196,6 @@ class engine_t:
 
         // Job queue.
         job_queue_t m_queue;
-        boost::mutex m_queue_mutex;
 
         // Slave pool.
         pool_map_t m_pool;
@@ -218,8 +217,9 @@ class engine_t:
         // Slave RPC bus.
         io::channel_t m_bus;
   
-        // Engine's thread.
+        // Threading.
         std::auto_ptr<boost::thread> m_thread;
+        mutable boost::mutex m_mutex;
 
 #ifdef HAVE_CGROUPS
         // Control group to put the slaves into.

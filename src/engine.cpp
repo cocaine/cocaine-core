@@ -188,7 +188,7 @@ engine_t::~engine_t() {
 
 void engine_t::start() {
     {
-        boost::lock_guard<boost::mutex> lock(m_queue_mutex);
+        boost::lock_guard<boost::mutex> lock(m_mutex);
         
         if(m_state != stopped) {
             return;
@@ -212,7 +212,7 @@ void engine_t::start() {
 
 void engine_t::stop() {
     {
-        boost::lock_guard<boost::mutex> lock(m_queue_mutex);
+        boost::lock_guard<boost::mutex> lock(m_mutex);
 
         if(m_state == running) {
             m_log->info("stopping");
@@ -247,13 +247,17 @@ Json::Value engine_t::info() const {
         results["queue-depth"] = static_cast<Json::UInt>(m_queue.size());
         results["slaves"]["total"] = static_cast<Json::UInt>(m_pool.size());
         
-        results["slaves"]["busy"] = static_cast<Json::UInt>(
-            std::count_if(
-                m_pool.begin(),
-                m_pool.end(),
-                select::state<slave::busy>()
-            )
-        );
+        {
+            boost::lock_guard<boost::mutex> lock(m_mutex);
+
+            results["slaves"]["busy"] = static_cast<Json::UInt>(
+                std::count_if(
+                    m_pool.begin(),
+                    m_pool.end(),
+                    select::state<slave::busy>()
+                )
+            );
+        }
     }
     
     results["state"] = names[m_state];
@@ -265,7 +269,7 @@ Json::Value engine_t::info() const {
 // --------------
 
 void engine_t::enqueue(job_queue_t::const_reference job) {
-    boost::lock_guard<boost::mutex> lock(m_queue_mutex);
+    boost::lock_guard<boost::mutex> lock(m_mutex);
     
     if(m_state != running) {
         m_log->debug(
@@ -344,74 +348,72 @@ void engine_t::process(ev::idle&, int) {
             slave_id.c_str()
         );
 
-        switch(command) {
-            case rpc::heartbeat:
-                master->second->process_event(events::heartbeat());
-                break;
+        {
+            boost::lock_guard<boost::mutex> lock(m_mutex);
 
-            case rpc::terminate:
-                master->second->process_event(events::terminate());
-                break;
+            switch(command) {
+                case rpc::heartbeat:
+                    master->second->process_event(events::heartbeat());
+                    break;
 
-            case rpc::chunk: {
-                // TEST: Ensure we have the actual chunk following.
-                BOOST_ASSERT(m_bus.more());
+                case rpc::terminate:
+                    master->second->process_event(events::terminate());
+                    break;
 
-                zmq::message_t message;
-                m_bus.recv(&message);
-                
-                master->second->process_event(events::chunk(message));
+                case rpc::chunk: {
+                    // TEST: Ensure we have the actual chunk following.
+                    BOOST_ASSERT(m_bus.more());
 
-                break;
-            }
-         
-            case rpc::error: {
-                // TEST: Ensure that we have the actual error following.
-                BOOST_ASSERT(m_bus.more());
-
-                int code = 0;
-                std::string message;
-                boost::tuple<int&, std::string&> proxy(code, message);
-
-                m_bus.recv_multi(proxy);
-
-                master->second->process_event(events::error(code, message));
-
-                if(code == dealer::server_error) {
-                    m_log->error("the app seems to be broken - %s", message.c_str());
+                    zmq::message_t message;
+                    m_bus.recv(&message);
                     
-                    {
-                        boost::lock_guard<boost::mutex> lock(m_queue_mutex);
-                        BOOST_ASSERT(m_state != stopped);
-                        m_state = stopping;
+                    master->second->process_event(events::chunk(message));
 
-                        m_notification.send();
+                    break;
+                }
+             
+                case rpc::error: {
+                    // TEST: Ensure that we have the actual error following.
+                    BOOST_ASSERT(m_bus.more());
+
+                    int code = 0;
+                    std::string message;
+                    boost::tuple<int&, std::string&> proxy(code, message);
+
+                    m_bus.recv_multi(proxy);
+
+                    master->second->process_event(events::error(code, message));
+
+                    if(code == dealer::server_error) {
+                        m_log->error("the app seems to be broken - %s", message.c_str());
+                        terminate();
+                        return;
                     }
+
+                    break;
                 }
 
-                break;
+                case rpc::choke:
+                    master->second->process_event(events::choke());
+                    break;
+
+                default:
+                    m_log->warning(
+                        "dropping unknown event type %d from slave %s",
+                        command,
+                        slave_id.c_str()
+                    );
+
+                    m_bus.drop();
             }
 
-            case rpc::choke:
-                master->second->process_event(events::choke());
-                break;
+            // TEST: Ensure that there're no more message parts pending on the bus.
+            BOOST_ASSERT(!m_bus.more());
 
-            default:
-                m_log->warning(
-                    "dropping unknown event type %d from slave %s",
-                    command,
-                    slave_id.c_str()
-                );
-
-                m_bus.drop();
-        }
-
-        // TEST: Ensure that there're no more message parts pending on the bus.
-        BOOST_ASSERT(!m_bus.more());
-
-        // NOTE: If we have an idle slave now, process the queue.
-        if(master->second->state_downcast<const slave::idle*>()) {
-            react();
+            // NOTE: If we have an idle slave now, process the queue.
+            if(master->second->state_downcast<const slave::idle*>()) {
+                react();
+            }
         }
     } while(--counter);
 }
@@ -439,6 +441,8 @@ namespace {
 }
 
 void engine_t::cleanup(ev::timer&, int) {
+    boost::lock_guard<boost::mutex> lock(m_mutex);
+    
     typedef std::vector<pool_map_t::key_type> corpse_list_t;
     corpse_list_t corpses;
 
@@ -465,21 +469,17 @@ void engine_t::cleanup(ev::timer&, int) {
 
     typedef boost::filter_iterator<expired, job_queue_t::iterator> filter;
 
-    {
-        boost::lock_guard<boost::mutex> lock(m_queue_mutex);
-        
-        // Process all the expired jobs.
-        filter it(expired(m_loop.now()), m_queue.begin(), m_queue.end()),
-               end(expired(m_loop.now()), m_queue.end(), m_queue.end());
+    // Process all the expired jobs.
+    filter it(expired(m_loop.now()), m_queue.begin(), m_queue.end()),
+           end(expired(m_loop.now()), m_queue.end(), m_queue.end());
 
-        while(it != end) {
-            (*it++)->process_event(
-                events::error(
-                    dealer::deadline_error,
-                    "the job has expired"
-                )
-            );
-        }
+    while(it != end) {
+        (*it++)->process_event(
+            events::error(
+                dealer::deadline_error,
+                "the job has expired"
+            )
+        );
     }
 }
 
@@ -487,6 +487,7 @@ void engine_t::cleanup(ev::timer&, int) {
 // -------------------------
 
 void engine_t::notify(ev::async&, int) {
+    boost::lock_guard<boost::mutex> lock(m_mutex);
     react();
 }
 
@@ -494,8 +495,6 @@ void engine_t::notify(ev::async&, int) {
 // ----------------
 
 void engine_t::react() {
-    boost::lock_guard<boost::mutex> lock(m_queue_mutex);
-
     if(m_state == stopping) {
         terminate();
     }

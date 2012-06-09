@@ -115,7 +115,7 @@ void native_server_t::process(ev::idle&, int) {
             m_processor.stop();
             return;
         }
-        
+       
         zmq::message_t message;
         route_t route;
 
@@ -144,6 +144,8 @@ void native_server_t::process(ev::idle&, int) {
             return;
         }
 
+        m_log->debug("received a request from '%s'", route[0].c_str());
+
         do {
             std::string tag;
             engine::policy_t policy;
@@ -163,6 +165,12 @@ void native_server_t::process(ev::idle&, int) {
                 return;
             }
 
+            m_log->debug(
+                "enqueuing a '%s' job with uuid: %s",
+                m_event.c_str(),
+                tag.c_str()
+            );
+            
             engine().enqueue(
                 boost::make_shared<native_job_t>(
                     m_event,
