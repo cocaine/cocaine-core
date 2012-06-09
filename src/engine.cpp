@@ -62,7 +62,7 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest_):
         m_bus.bind(
             (boost::format("ipc://%1%/%2%")
                 % m_context.config.ipc_path.string()
-                % manifest().name
+                % m_manifest.name
             ).str()
         );
     } catch(const zmq::error_t& e) {
@@ -82,13 +82,13 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest_):
     m_notification.start();
 
 #ifdef HAVE_CGROUPS
-    Json::Value limits(manifest().root["resource-limits"]);
+    Json::Value limits(m_manifest.root["resource-limits"]);
 
     if(!(cgroup_init() == 0) || !limits.isObject() || limits.empty()) {
         return;
     }
     
-    m_cgroup = cgroup_new_cgroup(manifest().name.c_str());
+    m_cgroup = cgroup_new_cgroup(m_manifest.name.c_str());
 
     // XXX: Not sure if it changes anything.
     cgroup_set_uid_gid(m_cgroup, getuid(), getgid(), getuid(), getgid());
@@ -283,7 +283,7 @@ void engine_t::enqueue(job_queue_t::const_reference job) {
         return;
     }
 
-    if(m_queue.size() >= manifest().policy.queue_limit) {
+    if(m_queue.size() >= m_manifest.policy.queue_limit) {
         m_log->debug(
             "dropping an incomplete '%s' job due to a full queue",
             job->event.c_str()
@@ -539,8 +539,8 @@ void engine_t::react() {
             m_queue.pop_front();
         } else {
             if(m_pool.empty() || 
-              (m_pool.size() < manifest().policy.pool_limit && 
-               m_pool.size() * manifest().policy.grow_threshold < m_queue.size() * 2))
+              (m_pool.size() < m_manifest.policy.pool_limit && 
+               m_pool.size() * m_manifest.policy.grow_threshold < m_queue.size() * 2))
             {
                 m_log->debug("enlarging the pool");
                 
