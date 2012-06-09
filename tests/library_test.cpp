@@ -46,50 +46,25 @@ class my_job_t:
 
 int main() {
     const char data[] = "data";
-    const char abc[] = "123123123123";
 
     cocaine::config_t config("tests/library_config.json");
 
-    std::cout << "Configured" << std::endl;
+    std::cout << "=== Configured ===" << std::endl;
 
     cocaine::context_t context(
         config,
         boost::make_shared<stdio_sink_t>()
     );
 
-    std::cout << "Created context" << std::endl;
-
-    Json::Reader reader;
-    Json::Value manifest;
-
-    std::fstream m("for-zbr/package/manifest.json");
-
-    reader.parse(m, manifest);
-
-    std::fstream p("for-zbr/package/code.tar.gz", std::fstream::binary | std::fstream::in);
-
-    std::stringstream ss;
-    ss << p.rdbuf();
-
-    storages::objects::value_type v = {
-        manifest,
-        storages::objects::data_type(
-            ss.str().data(),
-            ss.str().size()
-        )
-    };
-
-    context.storage<storages::objects>("core")->put("apps", "my_app@1", v);
-
-    std::cout << "Stored" << std::endl;
+    std::cout << "=== Context created ===" << std::endl;
 
     cocaine::app_t app(context, "my_app@1");
 
-    std::cout << "Created app" << std::endl;
+    std::cout << "=== App created ===" << std::endl;
     
     app.start();
     
-    std::cout << "Engine started" << std::endl;
+    std::cout << "=== App started ===" << std::endl;
     
     for(int i = 0; i < 10; i++) {
         app.enqueue(
@@ -100,14 +75,17 @@ int main() {
         );
     }
 
-    Json::Value state(app.info());
+    std::cout << "=== Jobs enqueued while running ===" << std::endl;
     
+    Json::Value state(app.info());
     std::cout << state;
 
     sleep(1);
 
     app.stop();
 
+    std::cout << "=== App stopped ===" << std::endl;
+    
     for(int i = 0; i < 10; i++) {
         app.enqueue(
             boost::make_shared<my_job_t>(
@@ -117,5 +95,9 @@ int main() {
         );
     }
 
+    std::cout << "=== Jobs enqueued while stopped ===" << std::endl;
+    
+    sleep(5);
+    
     return 0;
 }

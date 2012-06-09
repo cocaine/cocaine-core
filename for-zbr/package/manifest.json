@@ -5,6 +5,12 @@
         "pool-limit" : 10,
         "queue-limit" : 2000,
         "grow-threshold" : 0
+    },
+    "drivers" : {
+        "my-super-handle" : {
+            "type" : "servers/native",
+            "emit": "rimz_func"
+        }
     }
 }
 
