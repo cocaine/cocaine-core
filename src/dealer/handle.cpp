@@ -19,10 +19,10 @@ namespace cocaine {
 namespace dealer {
 
 handle_t::handle_t(const handle_info_t& info,
-				   boost::shared_ptr<cocaine::dealer::context> lsd_context,
+				   boost::shared_ptr<cocaine::dealer::context> context,
 				   const endpoints_list_t& endpoints) :
 	info_(info),
-	context_(lsd_context),
+	context_(context),
 	endpoints_(endpoints),
 	is_running_(false),
 	is_connected_(false),

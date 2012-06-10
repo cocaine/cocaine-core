@@ -17,13 +17,11 @@
 namespace cocaine {
 namespace dealer {
 
-class client;
-class client_impl;
+class dealer_t;
+class dealer_impl_t;
 
 class response;
 class response_impl;
-
-template<typename LSD_T> class service;
 
 } // namespace dealer
 } // namespace cocaine

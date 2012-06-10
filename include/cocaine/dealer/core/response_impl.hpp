@@ -28,7 +28,7 @@ namespace dealer {
 
 class response_impl {
 public:
-	response_impl(const boost::shared_ptr<client_impl>& client, const std::string& uuid, const message_path& path);
+	response_impl(const boost::shared_ptr<dealer_impl_t>& dealer, const std::string& uuid, const message_path& path);
 	~response_impl();
 
 	// 1) timeout < 0 - block indefinitely until response received
@@ -44,7 +44,7 @@ private:
 
 	boost::ptr_vector<data_container> chunks_;
 
-	boost::weak_ptr<client_impl> client_;
+	boost::weak_ptr<dealer_impl_t> client_;
 	std::string uuid_;
 	const message_path path_;
 	bool response_finished_;

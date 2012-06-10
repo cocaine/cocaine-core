@@ -27,7 +27,7 @@ using namespace boost::program_options;
 
 int sent_messages = 0;
 
-void worker(client* c,
+void worker(dealer_t* d,
 			std::vector<int>* dealer_messages_count,
 			int dealer_index)
 {
@@ -41,13 +41,13 @@ void worker(client* c,
 		try {
 			boost::shared_ptr<response> resp;
 
-			if (c) {
-				resp = c->send_message(payload.data(), payload.size(), path, policy);
+			if (d) {
+				resp = d->send_message(payload.data(), payload.size(), path, policy);
 			}
 
 			data_container data;
 			while (resp->get(&data)) {
-				//std::cout << std::string(reinterpret_cast<const char*>(data.data()), 0, data.size()) << std::endl;
+				std::cout << std::string(reinterpret_cast<const char*>(data.data()), 0, data.size()) << std::endl;
 			}
 
 			(*dealer_messages_count)[dealer_index] = (*dealer_messages_count)[dealer_index] - 1;
@@ -79,10 +79,10 @@ void create_client(size_t dealers_count, size_t threads_per_dealer, size_t messa
 	progress_timer timer;
 
 	std::vector<int> dealer_messages_count;
-	boost::ptr_vector<client> dealers;
+	boost::ptr_vector<dealer_t> dealers;
 
 	for (size_t i = 0; i < dealers_count; ++i) {
-		dealers.push_back(new client(config_path));
+		dealers.push_back(new dealer_t(config_path));
 		dealer_messages_count.push_back(messages_count);
 	}
 

@@ -27,7 +27,7 @@ namespace dealer {
 
 class response {
 public:
-	response(const boost::shared_ptr<client_impl>& client, const std::string& uuid, const message_path& path);
+	response(const boost::shared_ptr<dealer_impl_t>& dealer, const std::string& uuid, const message_path& path);
 	virtual ~response();
 
 	bool get(data_container* data, double timeout = -1.0);
@@ -35,7 +35,7 @@ public:
 	void response_callback(const response_data& resp_data, const response_info& resp_info);
 
 private:
-	friend class client;
+	friend class dealer;
 
 	boost::shared_ptr<response_impl> get_impl();
 	boost::shared_ptr<response_impl> impl_;

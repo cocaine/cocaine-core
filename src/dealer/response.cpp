@@ -14,14 +14,14 @@
 #include <stdexcept>
 
 #include <cocaine/dealer/response.hpp>
-#include <cocaine/dealer/core/client_impl.hpp>
+#include <cocaine/dealer/core/dealer_impl.hpp>
 #include <cocaine/dealer/core/response_impl.hpp>
 
 namespace cocaine {
 namespace dealer {
 
-response::response(const boost::shared_ptr<client_impl>& client, const std::string& uuid, const message_path& path) {
-	impl_.reset(new response_impl(client, uuid, path));
+response::response(const boost::shared_ptr<dealer_impl_t>& dealer, const std::string& uuid, const message_path& path) {
+	impl_.reset(new response_impl(dealer, uuid, path));
 }
 
 response::~response() {

@@ -17,15 +17,15 @@
 #include <boost/current_function.hpp>
 #include <boost/bind.hpp>
 
-#include "cocaine/dealer/client.hpp"
+#include "cocaine/dealer/dealer.hpp"
 #include <cocaine/dealer/core/response_impl.hpp>
-#include <cocaine/dealer/core/client_impl.hpp>
+#include <cocaine/dealer/core/dealer_impl.hpp>
 #include <cocaine/dealer/utils/error.hpp>
 
 namespace cocaine {
 namespace dealer {
 
-response_impl::response_impl(const boost::shared_ptr<client_impl>& client_ptr, const std::string& uuid, const message_path& path) :
+response_impl::response_impl(const boost::shared_ptr<dealer_impl_t>& client_ptr, const std::string& uuid, const message_path& path) :
 	client_(client_ptr),
 	uuid_(uuid),
 	path_(path),
@@ -42,9 +42,9 @@ response_impl::~response_impl() {
 	response_finished_ = true;
 	chunks_.clear();
 
-	boost::shared_ptr<client_impl> client_ptr = client_.lock();
-	if (client_ptr) {
-		client_ptr->unset_response_callback(uuid_, path_);
+	boost::shared_ptr<dealer_impl_t> dealer_ptr = client_.lock();
+	if (dealer_ptr) {
+		dealer_ptr->unset_response_callback(uuid_, path_);
 	}	
 }
 
