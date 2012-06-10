@@ -190,7 +190,7 @@ private:
 		}
 
 		// create eblob logger
-		eblob_logger_.reset(new zbr::eblob_logger("/dev/stdout", 0));
+		eblob_logger_.reset(new ioremap::eblob::eblob_logger("/dev/stdout", 0));
 
 		// create config
         eblob_config cfg;
@@ -203,7 +203,7 @@ private:
         cfg.iterate_threads = 1;
 
         // create eblob
-        storage_.reset(new zbr::eblob(&cfg));
+        storage_.reset(new ioremap::eblob::eblob(&cfg));
         
         std::string msg = "eblob at path: ";
 		msg += path_ + " created.";
@@ -231,8 +231,8 @@ private:
 
 private:
 	std::string path_;
-	boost::shared_ptr<zbr::eblob> storage_;
-	boost::shared_ptr<zbr::eblob_logger> eblob_logger_;
+	boost::shared_ptr<ioremap::eblob::eblob> storage_;
+	boost::shared_ptr<ioremap::eblob::eblob_logger> eblob_logger_;
 	boost::shared_ptr<base_logger> logger_;
 	iteration_callback_t iteration_callback_;
 };
