@@ -61,7 +61,7 @@ public:
 
 public:
 	handle_t(const handle_info_t& info,
-			 boost::shared_ptr<cocaine::dealer::context> context,
+			 const boost::shared_ptr<cocaine::dealer::context_t>& context,
 			 const endpoints_list_t& endpoints);
 
 	~handle_t();
@@ -109,13 +109,13 @@ private:
 
 	boost::shared_ptr<base_logger> logger();
 	boost::shared_ptr<configuration> config();
-	boost::shared_ptr<cocaine::dealer::context> context();
+	boost::shared_ptr<cocaine::dealer::context_t> context();
 
 	static const int socket_poll_timeout = 100; // millisecs
 
 private:
 	handle_info_t info_;
-	boost::shared_ptr<cocaine::dealer::context> context_;
+	boost::shared_ptr<cocaine::dealer::context_t> context_;
 	endpoints_list_t endpoints_;
 	boost::shared_ptr<message_cache> message_cache_;
 

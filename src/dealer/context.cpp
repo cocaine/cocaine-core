@@ -17,7 +17,7 @@
 namespace cocaine {
 namespace dealer {
 
-context::context(const std::string& config_path) {
+context_t::context_t(const std::string& config_path) {
 	// load configuration from file
 	if (config_path.empty()) {
 		throw internal_error("config file path is empty string at: " + std::string(BOOST_CURRENT_FUNCTION));
@@ -76,33 +76,33 @@ context::context(const std::string& config_path) {
 	}
 }
 
-context::~context() {
+context_t::~context_t() {
 	stats_.reset();
 	zmq_context_.reset();
 }
 
 boost::shared_ptr<configuration>
-context::config() {
+context_t::config() {
 	return config_;
 }
 
 boost::shared_ptr<base_logger>
-context::logger() {
+context_t::logger() {
 	return logger_;
 }
 
 boost::shared_ptr<zmq::context_t>
-context::zmq_context() {
+context_t::zmq_context() {
 	return zmq_context_;
 }
 
 boost::shared_ptr<statistics_collector>
-context::stats() {
+context_t::stats() {
 	return stats_;
 }
 
 boost::shared_ptr<eblob_storage>
-context::storage() {
+context_t::storage() {
 	return storage_;
 }
 

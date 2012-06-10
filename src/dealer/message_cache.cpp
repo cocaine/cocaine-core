@@ -29,7 +29,7 @@
 namespace cocaine {
 namespace dealer {
 
-message_cache::message_cache(boost::shared_ptr<cocaine::dealer::context> context,
+message_cache::message_cache(const boost::shared_ptr<cocaine::dealer::context_t>& context,
 							 enum e_message_cache_type type) :
 	context_(context),
 	type_(type)
@@ -40,7 +40,7 @@ message_cache::message_cache(boost::shared_ptr<cocaine::dealer::context> context
 message_cache::~message_cache() {
 }
 
-boost::shared_ptr<cocaine::dealer::context>
+boost::shared_ptr<cocaine::dealer::context_t>
 message_cache::context() {
 	return context_;
 }

@@ -19,7 +19,7 @@ namespace cocaine {
 namespace dealer {
 
 handle_t::handle_t(const handle_info_t& info,
-				   boost::shared_ptr<cocaine::dealer::context> context,
+				   const boost::shared_ptr<cocaine::dealer::context_t>& context,
 				   const endpoints_list_t& endpoints) :
 	info_(info),
 	context_(context),
@@ -33,11 +33,11 @@ handle_t::handle_t(const handle_info_t& info,
 	logger()->log(PLOG_DEBUG, "CREATED HANDLE " + description());
 
 	// create message cache
-	message_cache_.reset(new message_cache(context(), config()->message_cache_type()));
+	message_cache_.reset(new message_cache(context, config()->message_cache_type()));
 
 	// create control socket
 	std::string conn_str = "inproc://service_control_" + description();
-	zmq_control_socket_.reset(new zmq::socket_t(*(context()->zmq_context()), ZMQ_PAIR));
+	zmq_control_socket_.reset(new zmq::socket_t(*(context->zmq_context()), ZMQ_PAIR));
 
 	int timeout = 0;
 	zmq_control_socket_->setsockopt(ZMQ_LINGER, &timeout, sizeof(timeout));
@@ -532,7 +532,7 @@ handle_t::enqueue_message(const boost::shared_ptr<message_iface>& message) {
 	update_statistics();
 }
 
-boost::shared_ptr<cocaine::dealer::context>
+boost::shared_ptr<cocaine::dealer::context_t>
 handle_t::context() {
 	assert(context_);
 	return context_;

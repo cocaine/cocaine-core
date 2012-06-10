@@ -16,7 +16,7 @@
 namespace cocaine {
 namespace dealer {
 
-service_t::service_t(const service_info_t& info, boost::shared_ptr<cocaine::dealer::context> context) :
+service_t::service_t(const service_info_t& info, const boost::shared_ptr<cocaine::dealer::context_t>& context) :
 	info_(info),
 	context_(context),
 	is_running_(false),
@@ -128,7 +128,7 @@ service_t::dispatch_responces() {
 	}
 }
 
-boost::shared_ptr<cocaine::dealer::context>
+boost::shared_ptr<cocaine::dealer::context_t>
 service_t::context() {
 	if (!context_.get()) {
 		throw internal_error("dealer context object is empty at " + std::string(BOOST_CURRENT_FUNCTION));

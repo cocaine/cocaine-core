@@ -73,7 +73,7 @@ public:
 	typedef std::map<std::string, std::vector<cocaine_endpoint> > handles_endpoints_t;
 
 public:
-	service_t(const service_info_t& info, boost::shared_ptr<cocaine::dealer::context> context);
+	service_t(const service_info_t& info, const boost::shared_ptr<cocaine::dealer::context_t>& context);
 	virtual ~service_t();
 
 	void refresh_handles(const handles_endpoints_t& handles_endpoints);
@@ -97,7 +97,7 @@ private:
 
 	boost::shared_ptr<base_logger> logger();
 	boost::shared_ptr<configuration> config();
-	boost::shared_ptr<cocaine::dealer::context> context();
+	boost::shared_ptr<cocaine::dealer::context_t> context();
 
 	void check_for_deadlined_messages();
 
@@ -115,7 +115,7 @@ private:
 	responces_map_t received_responces_;
 
 	// dealer context
-	boost::shared_ptr<cocaine::dealer::context> context_;
+	boost::shared_ptr<cocaine::dealer::context_t> context_;
 
 	// statistics
 	service_stats stats_;

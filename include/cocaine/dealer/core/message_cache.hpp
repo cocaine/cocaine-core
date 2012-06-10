@@ -47,7 +47,7 @@ public:
 	typedef std::map<std::string, sent_messages_map_t> route_sent_messages_map_t;
 
 public:
-	explicit message_cache(boost::shared_ptr<cocaine::dealer::context> context,
+	explicit message_cache(const boost::shared_ptr<cocaine::dealer::context_t>& context,
 						   enum e_message_cache_type type);
 
 	virtual ~message_cache();
@@ -77,12 +77,12 @@ public:
 private:
 	static bool is_message_expired(cached_message_ptr_t msg);
 
-	boost::shared_ptr<cocaine::dealer::context> context();
+	boost::shared_ptr<cocaine::dealer::context_t> context();
 	boost::shared_ptr<base_logger> logger();
 	boost::shared_ptr<configuration> config();
 
 private:
-	boost::shared_ptr<cocaine::dealer::context> context_;
+	boost::shared_ptr<cocaine::dealer::context_t> context_;
 	enum e_message_cache_type type_;
 
 	route_sent_messages_map_t sent_messages_;

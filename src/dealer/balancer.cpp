@@ -30,7 +30,7 @@ enum e_server_response_code {
 
 balancer_t::balancer_t(const std::string& identity,
 					   const std::vector<cocaine_endpoint>& endpoints,
-					   const boost::shared_ptr<cocaine::dealer::context>& context,
+					   const boost::shared_ptr<cocaine::dealer::context_t>& context,
 					   boost::shared_ptr<message_cache> message_cache) :
 	socket_identity_(identity),
 	endpoints_(endpoints),

@@ -31,10 +31,10 @@
 namespace cocaine {
 namespace dealer {
 
-class context : private boost::noncopyable {
+class context_t : private boost::noncopyable {
 public:
-	explicit context(const std::string& config_path = "");
-	virtual ~context();
+	explicit context_t(const std::string& config_path = "");
+	virtual ~context_t();
 
 	boost::shared_ptr<base_logger> logger();
 	boost::shared_ptr<configuration> config();

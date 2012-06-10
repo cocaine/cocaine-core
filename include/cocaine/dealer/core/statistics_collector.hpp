@@ -45,18 +45,18 @@ public:
 
 
 public:
-	statistics_collector(boost::shared_ptr<configuration> config,
-						 boost::shared_ptr<zmq::context_t> context);
+	statistics_collector(const boost::shared_ptr<configuration>& config,
+						 const boost::shared_ptr<zmq::context_t>& context);
 
-	statistics_collector(boost::shared_ptr<configuration> config,
-						 boost::shared_ptr<zmq::context_t> context,
-						 boost::shared_ptr<base_logger> logger);
+	statistics_collector(const boost::shared_ptr<configuration>& config,
+						 const boost::shared_ptr<zmq::context_t>& context,
+						 const boost::shared_ptr<base_logger>& logger);
 
 	virtual ~statistics_collector();
 	
 	std::string get_error_json(enum e_statictics_req_error err) const;
 
-	void set_logger(boost::shared_ptr<base_logger> logger);
+	void set_logger(const boost::shared_ptr<base_logger>& logger);
 	void enable(bool value);
 	std::string as_json() const;
 

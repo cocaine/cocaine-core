@@ -35,7 +35,7 @@ class balancer_t : private boost::noncopyable {
 public:
 	balancer_t(const std::string& identity,
 			   const std::vector<cocaine_endpoint>& endpoints,
-			   const boost::shared_ptr<cocaine::dealer::context>& context,
+			   const boost::shared_ptr<cocaine::dealer::context_t>& context_t,
 			   boost::shared_ptr<message_cache> message_cache);
 
 	virtual ~balancer_t();
@@ -73,7 +73,7 @@ private:
 	boost::shared_ptr<zmq::socket_t> socket_;
 	std::string socket_identity_;
 	std::vector<cocaine_endpoint> endpoints_;
-	boost::shared_ptr<cocaine::dealer::context> context_;
+	boost::shared_ptr<cocaine::dealer::context_t> context_;
 	boost::shared_ptr<message_cache> message_cache_;
 	size_t current_endpoint_index_;
 };

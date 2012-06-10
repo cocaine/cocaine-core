@@ -28,8 +28,8 @@
 namespace cocaine {
 namespace dealer {
 
-statistics_collector::statistics_collector(boost::shared_ptr<configuration> config,
-										   boost::shared_ptr<zmq::context_t> zmq_context) :
+statistics_collector::statistics_collector(const boost::shared_ptr<configuration>& config,
+										   const boost::shared_ptr<zmq::context_t>& zmq_context) :
 	is_enabled_(false),
 	config_(config),
 	zmq_context_(zmq_context),
@@ -52,9 +52,9 @@ statistics_collector::statistics_collector(boost::shared_ptr<configuration> conf
 	init();
 }
 
-statistics_collector::statistics_collector(boost::shared_ptr<configuration> config,
-										   boost::shared_ptr<zmq::context_t> zmq_context,
-										   boost::shared_ptr<base_logger> logger) :
+statistics_collector::statistics_collector(const boost::shared_ptr<configuration>& config,
+										   const boost::shared_ptr<zmq::context_t>& zmq_context,
+										   const boost::shared_ptr<base_logger>& logger) :
 	is_enabled_(false),
 	config_(config),
 	zmq_context_(zmq_context),
@@ -95,7 +95,7 @@ statistics_collector::init() {
 }
 
 void
-statistics_collector::set_logger(boost::shared_ptr<base_logger> logger) {
+statistics_collector::set_logger(const boost::shared_ptr<base_logger>& logger) {
 	if (logger) {
 		logger_ = logger;
 	}
