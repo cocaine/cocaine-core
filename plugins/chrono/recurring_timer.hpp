@@ -14,7 +14,12 @@
 #ifndef COCAINE_RECURRING_TIMER_DRIVER_HPP
 #define COCAINE_RECURRING_TIMER_DRIVER_HPP
 
-#include "cocaine/drivers/base.hpp"
+#include "cocaine/common.hpp"
+
+// Has to be included after common.h
+#include <ev++.h>
+
+#include "cocaine/interfaces/driver.hpp"
 
 namespace cocaine { namespace engine { namespace drivers {
 
@@ -22,14 +27,17 @@ class recurring_timer_t:
     public driver_t
 {
     public:
-        recurring_timer_t(engine_t& engine,
-                          const std::string& method, 
-                          const Json::Value& args);
+        typedef driver_t category_type;
+
+    public:
+        recurring_timer_t(context_t& context,
+                          engine_t& engine,
+                          const plugin_config_t& config);
 
         virtual ~recurring_timer_t();
 
         // Driver interface.
-        virtual Json::Value info() /* const */;
+        virtual Json::Value info() const;
 
     private:
         void event(ev::timer&, int);
@@ -38,7 +46,9 @@ class recurring_timer_t:
         virtual void reschedule();
 
     protected:
-        const ev::tstamp m_interval;
+        const std::string m_event;
+        const double m_interval;
+
         ev::timer m_watcher;
 };
 

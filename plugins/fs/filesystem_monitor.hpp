@@ -14,7 +14,12 @@
 #ifndef COCAINE_FILESYSTEM_MONITOR_DRIVER_HPP
 #define COCAINE_FILESYSTEM_MONITOR_DRIVER_HPP
 
-#include "cocaine/drivers/base.hpp"
+#include "cocaine/common.hpp"
+
+// Has to be included after common.h
+#include <ev++.h>
+
+#include "cocaine/interfaces/driver.hpp"
 
 namespace cocaine { namespace engine { namespace drivers {
 
@@ -22,19 +27,24 @@ class filesystem_monitor_t:
     public driver_t
 {
     public:
-        filesystem_monitor_t(engine_t& engine,
-                             const std::string& method, 
-                             const Json::Value& args);
+        typedef driver_t category_type;
+
+    public:
+        filesystem_monitor_t(context_t& context,
+                             engine_t& engine,
+                             const plugin_config_t& config);
 
         virtual ~filesystem_monitor_t();
 
-        virtual Json::Value info() /* const */;
+        virtual Json::Value info() const;
 
     private:
         void event(ev::stat&, int);
 
     private:
-        const std::string m_path;
+        const std::string m_event,
+                          m_path;
+
         ev::stat m_watcher;
 };
 

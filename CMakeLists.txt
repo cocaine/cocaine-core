@@ -149,6 +149,7 @@ INSTALL(
     TARGETS
         cocaine-common
         cocaine-core
+        cocaine-slave
         cocained
         json
     RUNTIME DESTINATION bin COMPONENT runtime

@@ -11,25 +11,26 @@
 // limitations under the License.
 //
 
-#include "cocaine/drivers/drifting_timer.hpp"
+#include "drifting_timer.hpp"
 
 #include "cocaine/engine.hpp"
 
 using namespace cocaine::engine::drivers;
 
-drifting_timer_job_t::drifting_timer_job_t(drifting_timer_t& driver):
-    job_t(driver)
+drifting_timer_job_t::drifting_timer_job_t(const std::string& event, drifting_timer_t& driver):
+    job_t(event),
+    m_driver(driver)
 { }
 
 drifting_timer_job_t::~drifting_timer_job_t() {
-    static_cast<drifting_timer_t&>(m_driver).rearm();
+    m_driver.rearm();
 }
 
-drifting_timer_t::drifting_timer_t(engine_t& engine, const std::string& method, const Json::Value& args):
-    recurring_timer_t(engine, method, args)
+drifting_timer_t::drifting_timer_t(context_t& context, engine_t& engine, const plugin_config_t& config):
+    recurring_timer_t(context, engine, config)
 { }
 
-Json::Value drifting_timer_t::info() {
+Json::Value drifting_timer_t::info() const {
     Json::Value result(recurring_timer_t::info());
 
     result["type"] = "drifting-timer";
@@ -43,5 +44,11 @@ void drifting_timer_t::rearm() {
 
 void drifting_timer_t::reschedule() {
     m_watcher.stop();
-    m_engine.enqueue(new drifting_timer_job_t(*this));
+
+    engine().enqueue(
+    	boost::make_shared<drifting_timer_job_t>(
+    		m_event,
+    		boost::ref(*this)
+    	)
+    );
 }

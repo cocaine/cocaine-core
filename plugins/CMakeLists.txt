@@ -3,6 +3,8 @@ SET(PLUGINS
         javascript
         #mongo
         elliptics
+        chrono
+        fs
         native-server)
 
 IF(NOT APPLE)
