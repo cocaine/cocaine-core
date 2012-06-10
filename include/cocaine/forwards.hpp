@@ -16,35 +16,24 @@
 
 namespace cocaine {
     struct config_t;    
+    struct manifest_t;
+    class app_t;
     class context_t;
-
-    namespace core {
-        class core_t;
-        class registry_t;
-    }
-
-    namespace crypto {
-        class auth_t;
-    }
+    class repository_t;
 
     namespace engine {
-        class app_t;
+        struct job_t;
         class engine_t;
-        class job_t;
-        class slave_t;
+        class master_t;
+    }
 
-        namespace drivers {        
-            class driver_t;
-        }
+    namespace io {
+        class channel_t;
     }
 
     namespace logging {
         class logger_t;
         class sink_t;
-    }
-
-    namespace storages {
-        class storage_t;
     }
 }
 

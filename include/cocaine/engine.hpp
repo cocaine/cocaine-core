@@ -15,7 +15,9 @@
 #define COCAINE_ENGINE_HPP
 
 #include <boost/iterator/filter_iterator.hpp>
-#include <boost/ptr_container/ptr_deque.hpp>
+#include <boost/thread/mutex.hpp>
+#include <boost/thread/thread.hpp>
+#include <deque>
 
 #ifdef HAVE_CGROUPS
     #include <libcgroup.h>
@@ -23,11 +25,11 @@
 
 #include "cocaine/common.hpp"
 
-#include "cocaine/app.hpp"
-#include "cocaine/context.hpp"
-#include "cocaine/logging.hpp"
-#include "cocaine/networking.hpp"
-#include "cocaine/slave.hpp"
+// Has to be included after common.h
+#include <ev++.h>
+
+#include "cocaine/io.hpp"
+#include "cocaine/master.hpp"
 
 #include "cocaine/helpers/json.hpp"
 
@@ -38,24 +40,17 @@ typedef boost::ptr_unordered_map<
 #else
 typedef boost::ptr_map<
 #endif
-    const std::string,
-    drivers::driver_t
-> driver_map_t;
-
-#if BOOST_VERSION >= 104000
-typedef boost::ptr_unordered_map<
-#else
-typedef boost::ptr_map<
-#endif
-    slave_t::identifier_type,
-    slave_t
+    master_t::identifier_type,
+    master_t
 > pool_map_t;
 
 class job_queue_t:
-    public boost::ptr_deque<job_t>
+    public std::deque<
+        boost::shared_ptr<job_t>
+    >
 {
     public:
-        void push(value_type job);
+        void push(const_reference job);
 };
 
 // Selectors
@@ -65,22 +60,22 @@ namespace select {
     template<class State>
     struct state {
         template<class T>
-        bool operator()(const T& slave) const {
-            return slave->second->template state_downcast<const State*>();
+        bool operator()(const T& master) const {
+            return master->second->template state_downcast<const State*>();
         }
     };
 
     struct specific {
-        specific(const slave_t& slave):
-            target(slave)
+        specific(const master_t& master):
+            target(master)
         { }
 
         template<class T>
-        bool operator()(const T& slave) const {
-            return *slave->second == target;
+        bool operator()(const T& master) const {
+            return *master->second == target;
         }
     
-        const slave_t& target;
+        const master_t& target;
     };
 }
 
@@ -91,61 +86,27 @@ class engine_t:
     public boost::noncopyable
 {
     public:
-        engine_t(context_t& context, 
-                 const std::string& name, 
-                 const Json::Value& manifest);
+        engine_t(context_t& context,
+                 const manifest_t& manifest);
 
         ~engine_t();
 
+        // Operations.
         void start();
-        void stop(std::string status = std::string());
+        void stop();
+
+        Json::Value info() const;
         
-        Json::Value info() /* const */;
-
-        void enqueue(job_queue_t::value_type job, bool overflow = false);
-
-        template<class S, class Packed>
-        pool_map_t::iterator unicast(const S& selector, Packed& packed) {
-            pool_map_t::iterator it(
-                std::find_if(
-                    m_pool.begin(),
-                    m_pool.end(),
-                    selector
-                )
-            );
-
-            if(it != m_pool.end() && call(*it->second, packed)) {
-                return it;
-            } else {
-                return m_pool.end();
-            }
-        }
-
-        template<class S, class Packed>
-        void multicast(const S& selector, Packed& packed) {
-            typedef boost::filter_iterator<S, pool_map_t::iterator> filter;
-            
-            filter it(selector, m_pool.begin(), m_pool.end()),
-                   end(selector, m_pool.end(), m_pool.end());
-            
-            while(it != end) {
-                Packed copy(packed);
-                call(*it->second, copy);
-                ++it;
-            }
-        }
+        // Job scheduling.
+        void enqueue(job_queue_t::const_reference);
 
     public:
-        context_t& context() {
-            return m_context;
+        const manifest_t& manifest() const {
+            return m_manifest;
         }
 
-        const context_t& context() const {
-            return m_context;
-        }
-
-        const app_t& app() const {
-            return m_app;
+        ev::dynamic_loop& loop() {
+            return m_loop;
         }
 
 #ifdef HAVE_CGROUPS
@@ -155,45 +116,83 @@ class engine_t:
 #endif
 
     private:
-        template<class Packed>
-        bool call(slave_t& slave, Packed& packed) {
-            try {
-                m_messages.send(
-                    networking::protect(slave.id()),
-                    ZMQ_SNDMORE
-                );
-            } catch(const zmq::error_t& e) {
-                m_app.log->error(
-                    "slave %d has disconnected unexpectedly", 
-                    slave.id().c_str()
-                );
+        template<class S, class Packed>
+        pool_map_t::iterator unicast(const S& selector,
+                                     Packed& packed)
+        {
+            pool_map_t::iterator it(
+                std::find_if(
+                    m_pool.begin(),
+                    m_pool.end(),
+                    selector
+                )
+            );
 
-                slave.process_event(events::terminate_t());                
-            
-                return false;
+            if(it != m_pool.end()) {
+                send(*it->second, packed);
             }
 
-            m_messages.send_multi(packed);
-
-            return true;
+            return it;
         }
 
+        template<class S, class Packed>
+        void multicast(const S& selector,
+                       Packed& packed)
+        {
+            typedef boost::filter_iterator<S, pool_map_t::iterator> filter;
+            
+            filter it(selector, m_pool.begin(), m_pool.end()),
+                   end(selector, m_pool.end(), m_pool.end());
+            
+            while(it != end) {
+                Packed copy(packed);
+                send(*it->second, copy);
+                ++it;
+            }
+        }
+
+        template<class Packed>
+        void send(master_t& master,
+                  Packed& packed)
+        {
+            m_bus.send(
+                io::protect(master.id()),
+                ZMQ_SNDMORE
+            );
+
+            m_bus.send_multi(packed);
+        }
+
+        // Slave I/O.
         void message(ev::io&, int);
         void process(ev::idle&, int);
         void pump(ev::timer&, int);
+
+        // Garbage collection.
         void cleanup(ev::timer&, int);
+
+        // Asynchronous notification.
+        void notify(ev::async&, int);
+
+        // Queue processing.
+        void react();
+
+        // Engine termination
+        void terminate();
 
     private:
         context_t& m_context;
+        boost::shared_ptr<logging::logger_t> m_log;
 
         // Current engine state.
-        // XXX: Do it in a better way.
-        bool m_running;
-        std::string m_status;
+        volatile enum {
+            running,
+            stopping,
+            stopped
+        } m_state;
 
-        // The application.
-        const app_t m_app;
-        driver_map_t m_drivers;
+        // The app manifest.
+        const manifest_t& m_manifest;
 
         // Job queue.
         job_queue_t m_queue;
@@ -201,19 +200,26 @@ class engine_t:
         // Slave pool.
         pool_map_t m_pool;
         
-        // RPC watchers.
+        // Event loop.
+        ev::dynamic_loop m_loop;
+
+        // Slave I/O watchers.
         ev::io m_watcher;
         ev::idle m_processor;
-
-        // XXX: This is a temporary workaround for the edge cases when ZeroMQ for some 
-        // reason doesn't trigger the socket's fd on message arrival (or I poll it in a wrong way).
         ev::timer m_pumper;
 
         // Garbage collector activation timer.
         ev::timer m_gc_timer;
 
-        // Slave RPC.
-        networking::channel_t m_messages;
+        // Async notification watcher.
+        ev::async m_notification;
+
+        // Slave RPC bus.
+        io::channel_t m_bus;
+  
+        // Threading.
+        std::auto_ptr<boost::thread> m_thread;
+        mutable boost::mutex m_mutex;
 
 #ifdef HAVE_CGROUPS
         // Control group to put the slaves into.

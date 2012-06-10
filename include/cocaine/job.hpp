@@ -26,11 +26,30 @@
 #include "cocaine/helpers/blob.hpp"
 #include "cocaine/helpers/birth_control.hpp"
 
-#include "cocaine/dealer/types.hpp"
-
 namespace cocaine { namespace engine {
 
 namespace sc = boost::statechart;
+
+// Job policy
+// ----------
+
+struct policy_t {
+    policy_t():
+        urgent(false),
+        timeout(0.0f),
+        deadline(0.0f)
+    { }
+
+    policy_t(bool urgent_, double timeout_, double deadline_):
+        urgent(urgent_),
+        timeout(timeout_),
+        deadline(deadline_)
+    { }
+
+    bool urgent;
+    double timeout;
+    double deadline;
+};
 
 // Job states
 // ----------
@@ -48,55 +67,31 @@ struct complete;
 // Job FSM
 // -------
 
-class job_t:
+struct job_t:
     public sc::state_machine<job_t, job::incomplete>,
     public birth_control_t<job_t>
 {
-    friend struct job::incomplete;
-    friend struct job::waiting;
-    friend struct job::processing;
+    job_t(const std::string& event);
 
-    public:
-        job_t(drivers::driver_t& driver);
-        job_t(drivers::driver_t& driver, dealer::policy_t policy);
-        job_t(drivers::driver_t& driver, const blob_t& request);
-        
-        job_t(drivers::driver_t& driver,
-              dealer::policy_t policy, 
-              const blob_t& request);
+    job_t(const std::string& event,
+          const blob_t& request);
 
-        virtual ~job_t();
+    job_t(const std::string& event,
+          policy_t policy);
+    
+    job_t(const std::string& event,
+          const blob_t& request,
+          policy_t policy); 
 
-    protected:
-        virtual void react(const events::push_t& event);
-        virtual void react(const events::error_t& event);
-        virtual void react(const events::release_t& event);
+    virtual ~job_t();
 
-    public:
-        const std::string& method() const {
-            return m_method;
-        }
-        
-        const dealer::policy_t& policy() const {
-            return m_policy;
-        }
+    virtual void react(const events::chunk& event);
+    virtual void react(const events::error& event);
+    virtual void react(const events::choke& event);
 
-        const blob_t& request() const {
-            return m_request;
-        }
-
-    private:
-        void discard(ev::periodic&, int);
-
-    protected:
-        drivers::driver_t& m_driver;
-
-    private:
-        const std::string m_method;
-        const dealer::policy_t m_policy;
-        const blob_t m_request;
-
-        ev::periodic m_expiration_timer;
+    const std::string event;
+    const policy_t policy;
+    const blob_t request;
 };
 
 namespace job {
@@ -104,53 +99,47 @@ namespace job {
 struct incomplete:
     public sc::simple_state<incomplete, job_t, unknown>
 {
-    public:
-        typedef boost::mpl::list<
-            sc::transition<events::error_t, complete, job_t, &job_t::react>
-        > reactions;
+    typedef boost::mpl::list<
+        sc::transition<events::error, complete, job_t, &job_t::react>
+    > reactions;
 };
 
 struct unknown:
     public sc::simple_state<unknown, incomplete>
 {
-    public:
-        typedef boost::mpl::list<
-            sc::transition<events::enqueue_t, waiting>,
-            sc::transition<events::invoke_t, processing>
-        > reactions;
+    typedef boost::mpl::list<
+        sc::transition<events::enqueue, waiting>,
+        sc::transition<events::invoke, processing>
+    > reactions;
 };
 
 struct waiting:
     public sc::simple_state<waiting, incomplete>
 {
-    public:
-        typedef sc::transition<
-            events::invoke_t, processing
-        > reactions;
+    typedef boost::mpl::list<
+        sc::transition<events::invoke, processing>
+    > reactions;
 
-        waiting();
-        ~waiting();
+    waiting();
+    ~waiting();
 
-    private:
-        const ev::tstamp m_timestamp;
+    const double timestamp;
 };
 
 struct processing:
     public sc::simple_state<processing, incomplete>
 {
-    public:
-        typedef boost::mpl::list<
-            sc::in_state_reaction<events::push_t, job_t, &job_t::react>,
-            sc::transition<events::release_t, complete, job_t, &job_t::react>,
-            sc::transition<events::enqueue_t, waiting>,
-            sc::transition<events::invoke_t, processing>
-        > reactions;
+    typedef boost::mpl::list<
+        sc::in_state_reaction<events::chunk, job_t, &job_t::react>,
+        sc::transition<events::choke, complete, job_t, &job_t::react>,
+        sc::transition<events::enqueue, waiting>,
+        sc::transition<events::invoke, processing>
+    > reactions;
 
-        processing();
-        ~processing();
+    processing();
+    ~processing();
 
-    private:
-        const ev::tstamp m_timestamp;
+    const double timestamp;
 };
 
 struct complete:

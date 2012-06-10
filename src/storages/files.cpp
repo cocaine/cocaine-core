@@ -13,86 +13,187 @@
 
 #include <boost/filesystem/fstream.hpp>
 #include <boost/iterator/filter_iterator.hpp>
+#include <msgpack.hpp>
 
 #include "cocaine/storages/files.hpp"
 
 #include "cocaine/context.hpp"
+#include "cocaine/logging.hpp"
 
+using namespace cocaine;
 using namespace cocaine::storages;
 
 namespace fs = boost::filesystem;
 
-file_storage_t::file_storage_t(context_t& context):
-    storage_t(context),
-    m_storage_path(context.config.storage.uri)
+namespace msgpack {
+    template<class Stream>
+    inline packer<Stream>& operator << (packer<Stream>& packer, 
+                                        const objects::value_type& object)
+    {
+        Json::FastWriter writer;
+        
+        packer.pack_array(2);
+
+        packer << writer.write(object.meta);
+
+        packer.pack_raw(object.blob.size());
+        packer.pack_raw_body(static_cast<const char*>(object.blob.data()), object.blob.size());
+
+        return packer;
+    }
+
+    inline objects::value_type& operator >> (msgpack::object o,
+                                             objects::value_type& object)
+    {
+        Json::Reader reader(Json::Features::strictMode());
+
+        if(o.type != type::ARRAY || o.via.array.size != 2) {
+            throw type_error();
+        }
+
+        msgpack::object &meta = o.via.array.ptr[0],
+                        &blob = o.via.array.ptr[1];
+
+        std::string json(meta.as<std::string>());
+
+        if(!reader.parse(json, object.meta)) {
+            throw type_error();
+        }
+
+        object.blob = objects::data_type(
+            blob.via.raw.ptr,
+            blob.via.raw.size
+        );
+
+        return object;
+    }
+}
+
+file_storage_t::file_storage_t(context_t& context, const plugin_config_t& config):
+    category_type(context, config),
+    m_log(context.log("storage/files")),
+    m_storage_path(config.args["path"].asString())
 { }
+
+objects::value_type file_storage_t::get(const std::string& ns,
+                                        const std::string& key)
+{
+    boost::lock_guard<boost::mutex> lock(m_mutex);
+    fs::path file_path(m_storage_path / ns / key);
+    fs::ifstream stream(file_path);
+   
+    m_log->debug(
+        "reading the '%s' object, namespace: '%s', path: '%s'",
+        key.c_str(),
+        ns.c_str(),
+        file_path.string().c_str()
+    );
+
+    if(!stream) {
+        throw storage_error_t("the specified object has not been found");
+    }
+    
+    std::stringstream buffer;
+    msgpack::unpacked unpacked;
+
+    buffer << stream.rdbuf();
+    std::string blob(buffer.str());
+    
+    try {
+        msgpack::unpack(&unpacked, blob.data(), blob.size());
+        return unpacked.get().as<objects::value_type>();
+    } catch (const msgpack::unpack_error& e) {
+        m_log->error(
+            "the '%s' object is corrupted, namespace: '%s', path: '%s', reason: %s",
+            key.c_str(),
+            ns.c_str(),
+            file_path.string().c_str(),
+            e.what()
+        );
+
+        throw storage_error_t("the specified object is corrupted");
+    } catch (const msgpack::type_error& e) {
+        m_log->error(
+            "the '%s' object is corrupted, namespace: '%s', path: '%s', reason: %s",
+            key.c_str(),
+            ns.c_str(),
+            file_path.string().c_str(),
+            e.what()
+        );
+
+        throw storage_error_t("the specified object is corrupted");
+    }
+}
 
 void file_storage_t::put(const std::string& ns,
                          const std::string& key,
-                         const Json::Value& value) 
+                         const objects::value_type& object) 
 {
+    boost::lock_guard<boost::mutex> lock(m_mutex);
     fs::path store_path(m_storage_path / ns);
 
     if(!fs::exists(store_path)) {
+        m_log->info(
+            "creating the '%s' namespace in '%s'",
+            ns.c_str(),
+            store_path.string().c_str()
+        );
+
         try {
             fs::create_directories(store_path);
         } catch(const std::runtime_error& e) {
-            throw storage_error_t("cannot create " + store_path.string());
+            throw storage_error_t("cannot create the specified container");
         }
     } else if(fs::exists(store_path) && !fs::is_directory(store_path)) {
-        throw storage_error_t(store_path.string() + " is not a directory");
+        throw storage_error_t("the specified container is corrupted");
     }
     
     fs::path file_path(store_path / key);
-    fs::ofstream stream(file_path, fs::ofstream::out | fs::ofstream::trunc);
+    
+    fs::ofstream stream(
+        file_path,
+        fs::ofstream::out | fs::ofstream::trunc
+    );
    
     if(!stream) {
-        throw storage_error_t("unable to open " + file_path.string()); 
+        throw storage_error_t("unable to access the specified object"); 
     }     
 
-    std::string json(Json::StyledWriter().write(value));
-    
-    stream << json;
+    msgpack::packer<fs::ofstream> packer(stream);
+
+    m_log->debug(
+        "writing the '%s' object, namespace '%s', path: '%s'",
+        key.c_str(),
+        ns.c_str(),
+        file_path.string().c_str()
+    );
+
+    packer << object;
+
     stream.close();
 }
 
-bool file_storage_t::exists(const std::string& ns, const std::string& key) {
-    fs::path file_path(m_storage_path / ns / key);
-    
-    return (fs::exists(file_path) && 
-            fs::is_regular(file_path));
-}
-
-Json::Value file_storage_t::get(const std::string& ns, const std::string& key) {
-    Json::Value root(Json::objectValue);
-    fs::path file_path(m_storage_path / ns / key);
-    fs::ifstream stream(file_path, fs::ifstream::in);
-    
-    if(stream) { 
-        Json::Reader reader(Json::Features::strictMode());
-        
-        if(!reader.parse(stream, root)) {
-            throw storage_error_t("corrupted data in " + file_path.string());
-        }
-    }
-
-    return root;
+objects::meta_type file_storage_t::exists(const std::string& ns,
+                                          const std::string& key)
+{
+    return get(ns, key).meta;
 }
 
 namespace {
     struct is_regular_file {
-        template<typename T> bool operator()(T entry) {
+        template<typename T> bool operator()(const T& entry) {
             return fs::is_regular(entry);
         }
     };
 }
 
-Json::Value file_storage_t::all(const std::string& ns) {
-    Json::Value root(Json::objectValue);
+std::vector<std::string> file_storage_t::list(const std::string& ns) {
+    boost::lock_guard<boost::mutex> lock(m_mutex);
     fs::path store_path(m_storage_path / ns);
+    std::vector<std::string> result;
 
     if(!fs::exists(store_path)) {
-        return root;
+        return result;
     }
 
     typedef boost::filter_iterator<is_regular_file, fs::directory_iterator> file_iterator;
@@ -102,38 +203,35 @@ Json::Value file_storage_t::all(const std::string& ns) {
 
     while(it != end) {
 #if BOOST_FILESYSTEM_VERSION == 3
-        Json::Value value(get(ns, it->path().filename().string()));
+        result.push_back(it->path().filename().string());
 #else
-        Json::Value value(get(ns, it->leaf()));
+        result.push_back(it->leaf());
 #endif
-
-        if(!value.empty()) {
-#if BOOST_FILESYSTEM_VERSION == 3
-            root[it->path().filename().string()] = value;
-#else
-            root[it->leaf()] = value;
-#endif
-        }
-
+ 
         ++it;
     }
 
-    return root;
+    return result;
 }
 
-void file_storage_t::remove(const std::string& ns, const std::string& key) {
+void file_storage_t::remove(const std::string& ns,
+                            const std::string& key)
+{
+    boost::lock_guard<boost::mutex> lock(m_mutex);
     fs::path file_path(m_storage_path / ns / key);
     
     if(fs::exists(file_path)) {
+        m_log->debug(
+            "removing the '%s' object, namespace: '%s', path: %s",
+            key.c_str(),
+            ns.c_str(),
+            file_path.string().c_str()
+        );
+
         try {
             fs::remove(file_path);
         } catch(const std::runtime_error& e) {
-            throw storage_error_t("unable to remove " + file_path.string());
+            throw storage_error_t("unable to remove the specified object");
         }
     }
-}
-
-void file_storage_t::purge(const std::string& ns) {
-    fs::path store_path(m_storage_path / ns);
-    fs::remove_all(store_path);
 }

@@ -1,3 +1,9 @@
+cocaine (0.7.4-7) lucid; urgency=low
+
+  * Rebuild.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Mon, 21 May 2012 18:41:25 +0400
+
 cocaine (0.7.4-6) lucid; urgency=low
 
   * Completely reworked autodetection, configuration scheme, added docs, lots of refactoring and clean-up (commit 8ca999efc1429dbe4b523029b454a05739228b94)

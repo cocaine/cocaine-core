@@ -14,18 +14,17 @@
 #ifndef COCAINE_RPC_HPP
 #define COCAINE_RPC_HPP
 
-#include "cocaine/networking.hpp"
+#include "cocaine/io.hpp"
 
 namespace cocaine { namespace engine { namespace rpc {    
     
 enum {
     heartbeat = 1,
-    configure,
     terminate,
     invoke,
-    push,
+    chunk,
     error,
-    release
+    choke
 };
 
 // Generic packer
@@ -42,15 +41,6 @@ struct packed:
 
 // Specific packers
 // ----------------
-
-template<>
-struct packed<configure>:
-    public boost::tuple<int, const config_t&>
-{
-    packed(const config_t& config):
-        boost::tuple<int, const config_t&>(configure, config)
-    { }
-};
 
 template<>
 struct packed<invoke>:
@@ -72,11 +62,11 @@ private:
 };
 
 template<>
-struct packed<push>:
+struct packed<chunk>:
     public boost::tuple<int, zmq::message_t&>
 {
     packed(const void * data, size_t size):
-        boost::tuple<int, zmq::message_t&>(push, message),
+        boost::tuple<int, zmq::message_t&>(chunk, message),
         message(size)
     {
         memcpy(
@@ -87,7 +77,7 @@ struct packed<push>:
     }
 
     packed(zmq::message_t& message_):
-        boost::tuple<int, zmq::message_t&>(push, message)
+        boost::tuple<int, zmq::message_t&>(chunk, message)
     {
         message.move(&message_);
     }

@@ -15,46 +15,47 @@
 #define COCAINE_APP_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/manifest.hpp"
 
-#include "cocaine/helpers/json.hpp"
+#include "cocaine/interfaces/driver.hpp"
 
-namespace cocaine { namespace engine {
+#include "helpers/json.hpp"
+
+namespace cocaine {
+
+#if BOOST_VERSION >= 104000
+typedef boost::ptr_unordered_map<
+#else
+typedef boost::ptr_map<
+#endif
+    const std::string,
+    engine::drivers::driver_t
+> driver_map_t;
 
 class app_t {
     public:
-        app_t(context_t& context, const std::string& name);
+        app_t(context_t& context,
+              const std::string& name);
+        
+        ~app_t();
 
-        app_t(context_t& context, 
-              const std::string& name, 
-              const Json::Value& manifest);
+        void start();
+        void stop();
 
-    public:
-        const std::string name;
-        Json::Value manifest;
-
-        struct policy_t {
-            float heartbeat_timeout;
-            float suicide_timeout;
-            unsigned int pool_limit;
-            unsigned int queue_limit;
-            unsigned int grow_threshold;
-        } policy;
-
-        boost::shared_ptr<logging::logger_t> log;
+        Json::Value info() const;
+        
+        // Job scheduling.
+        void enqueue(const boost::shared_ptr<engine::job_t>& job);
 
     private:
-        void initialize(context_t& context);
+        boost::shared_ptr<logging::logger_t> m_log;
+        
+        manifest_t m_manifest;
+        std::auto_ptr<engine::engine_t> m_engine;
+        
+        driver_map_t m_drivers;
 };
 
-class endpoint {
-    public:
-        endpoint(const std::string& name);
-        operator std::string() const;
-
-    private:
-        std::string m_endpoint;
-};
-
-}}
+}
 
 #endif

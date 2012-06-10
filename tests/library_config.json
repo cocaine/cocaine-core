@@ -1,0 +1,26 @@
+{
+    "version": 1,
+    "paths": {
+        "plugins": "plugins/python",
+        "ipc": ".",
+        "spool": "spool"
+    },
+    "storages": {
+        "core": {
+            "type": "elliptics",
+            "args": {
+                "nodes": {
+                    "elisto20f.dev.yandex.net": 1025
+                },
+                "groups": [1, 2],
+                "verbosity": 10
+            }
+        },
+        "core:cache": {
+            "type": "files",
+            "args": {
+                "path": "cache"
+            }
+        }
+    }
+}

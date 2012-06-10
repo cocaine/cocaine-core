@@ -21,23 +21,34 @@
 namespace cocaine { namespace storages {
 
 class file_storage_t:
-    public storage_t
+    public storage_concept<objects>
 {
     public:
-        file_storage_t(context_t& context);
+        typedef storage_concept<objects> category_type;
+
+    public:
+        file_storage_t(context_t& context,
+                       const plugin_config_t& config);
+
+        virtual objects::value_type get(const std::string& ns,
+                                        const std::string& key);
 
         virtual void put(const std::string& ns, 
                          const std::string& key, 
-                         const Json::Value& value);
+                         const objects::value_type& object);
 
-        virtual bool exists(const std::string& ns, const std::string& key);
-        virtual Json::Value get(const std::string& ns, const std::string& key);
-        virtual Json::Value all(const std::string& ns);
+        virtual objects::meta_type exists(const std::string& ns,
+                                          const std::string& key);
 
-        virtual void remove(const std::string& ns, const std::string& key);
-        virtual void purge(const std::string& ns);
+        virtual std::vector<std::string> list(const std::string& ns);
+
+        virtual void remove(const std::string& ns,
+                            const std::string& key);
 
     private:
+        boost::shared_ptr<logging::logger_t> m_log;
+        boost::mutex m_mutex;
+        
         const boost::filesystem::path m_storage_path;
 };
 

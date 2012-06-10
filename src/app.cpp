@@ -12,76 +12,84 @@
 //
 
 #include <boost/algorithm/string/join.hpp>
-#include <boost/assign.hpp>
 
 #include "cocaine/app.hpp"
 
 #include "cocaine/context.hpp"
+#include "cocaine/engine.hpp"
+#include "cocaine/logging.hpp"
 
-#include "cocaine/interfaces/storage.hpp"
-
+using namespace cocaine;
 using namespace cocaine::engine;
-using namespace cocaine::storages;
 
-// Application
-// -----------
-
-app_t::app_t(context_t& context, const std::string& name_, const Json::Value& manifest_):
-    name(name_),
-    manifest(manifest_),
-    log(context.log(name_))
+app_t::app_t(context_t& context, const std::string& name):
+    m_log(context.log("app/" + name)),
+    m_manifest(context, name),
+    m_engine(new engine_t(context, m_manifest))
 {
-    initialize(context);
-}
+    Json::Value drivers(m_manifest.root["drivers"]);
 
-app_t::app_t(context_t& context, const std::string& name_):
-    name(name_),
-    log(context.log(name_))
-{
-    boost::shared_ptr<storage_t> storage(
-        context.get<storage_t>(context.config.storage.driver)
+    if(drivers.isNull() || !drivers.size()) {
+        return;
+    }
+    
+    Json::Value::Members names(drivers.getMemberNames());
+
+    m_log->info(
+        "initializing %zu %s: %s",
+        drivers.size(),
+        drivers.size() == 1 ? "driver" : "drivers",
+        boost::algorithm::join(names, ", ").c_str()
     );
 
-    manifest = storage->get("apps", name_);
+    for(Json::Value::Members::iterator it = names.begin();
+        it != names.end();
+        ++it)
+    {
+        plugin_config_t config = {
+            *it,
+            drivers[*it]
+        };
 
-    initialize(context);
+        m_drivers.insert(
+            *it,
+            context.get<drivers::driver_t>(
+                drivers[*it]["type"].asString(),
+                category_traits<drivers::driver_t>::args_type(
+                    *m_engine,
+                    config
+                )
+            )
+        );
+    }
 }
 
-void app_t::initialize(context_t& context) {
-    policy.heartbeat_timeout = manifest["engine"].get(
-        "heartbeat-timeout",
-        context.config.defaults.heartbeat_timeout
-    ).asDouble();
-
-    policy.suicide_timeout = manifest["engine"].get(
-        "suicide-timeout",
-        context.config.defaults.suicide_timeout
-    ).asDouble();
-    
-    policy.pool_limit = manifest["engine"].get(
-        "pool-limit",
-        context.config.defaults.pool_limit
-    ).asUInt();
-    
-    policy.queue_limit = manifest["engine"].get(
-        "queue-limit",
-        context.config.defaults.queue_limit
-    ).asUInt();
-
-    policy.grow_threshold = manifest["engine"].get(
-        "grow-threshold",
-        policy.queue_limit / policy.pool_limit
-    ).asUInt();
+app_t::~app_t() {
+    m_drivers.clear();
+    m_engine.reset();
 }
 
-endpoint::endpoint(const std::string& name) {
-    m_endpoint = boost::algorithm::join(
-        boost::assign::list_of
-            (std::string("ipc:///var/run/cocaine"))
-            (name),
-        "/");
+void app_t::start() {
+    m_engine->start();
 }
 
-endpoint::operator std::string() const {
-    return m_endpoint;
+void app_t::stop() {
+    m_engine->stop();
+}
+
+Json::Value app_t::info() const {
+    Json::Value info(m_engine->info());
+
+    for(driver_map_t::const_iterator it = m_drivers.begin();
+        it != m_drivers.end();
+        ++it) 
+    {
+        info["drivers"][it->first] = it->second->info();
+    }
+
+    return info;
+}
+
+void app_t::enqueue(const boost::shared_ptr<job_t>& job) {
+    m_engine->enqueue(job);
 }

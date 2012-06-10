@@ -22,7 +22,6 @@
 
 namespace cocaine { namespace crypto {
 
-    
 class auth_t:
     public boost::noncopyable
 {
@@ -32,10 +31,10 @@ class auth_t:
 
         void verify(const blob_t& message,
                     const blob_t& signature,
-                    const std::string& username);
+                    const std::string& username) const;
 
         // std::string sign(const std::string& message, 
-        //                  const std::string& username);
+        //                  const std::string& username) const;
 
     private:
         boost::shared_ptr<logging::logger_t> m_log;

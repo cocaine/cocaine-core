@@ -1,0 +1,16 @@
+{
+    "type" : "python",
+    "engine" : {
+        "heartbeat-timeout" : 60,
+        "pool-limit" : 100,
+        "queue-limit" : 10000,
+        "grow-threshold" : 0
+    },
+    "drivers" : {
+        "my-super-handle" : {
+            "type" : "servers/native",
+            "emit": "rimz_func"
+        }
+    }
+}
+

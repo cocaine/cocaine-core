@@ -14,40 +14,112 @@
 #ifndef COCAINE_STORAGE_INTERFACE_HPP
 #define COCAINE_STORAGE_INTERFACE_HPP
 
-#include "cocaine/common.hpp"
-#include "cocaine/registry.hpp"
+#include <boost/thread/mutex.hpp>
+#include <boost/tuple/tuple.hpp>
 
+#include "cocaine/common.hpp"
+#include "cocaine/repository.hpp"
+
+#include "cocaine/helpers/blob.hpp"
 #include "cocaine/helpers/json.hpp"
 
 namespace cocaine { namespace storages {
 
-class storage_t:
+struct objects {
+    typedef Json::Value meta_type;
+    typedef blob_t data_type;
+
+    typedef struct {
+        meta_type meta;
+        data_type blob;
+    } value_type;
+};
+
+template<class T>
+class storage_concept;
+
+template<>
+class storage_concept<objects>:
     public boost::noncopyable
 {
     public:
-        typedef core::policies::share policy;
+        virtual ~storage_concept() { 
+            // Empty.
+        }
 
-    public:
-        virtual ~storage_t() = 0;
+        virtual objects::value_type get(const std::string& ns,
+                                        const std::string& key) = 0;
 
         virtual void put(const std::string& ns,
                          const std::string& key,
-                         const Json::Value& value) = 0;
+                         const objects::value_type& value) = 0;
         
-        virtual bool exists(const std::string& ns, const std::string& key) = 0;
-        virtual Json::Value get(const std::string& ns, const std::string& key) = 0;
-        virtual Json::Value all(const std::string& ns) = 0;
+        virtual objects::meta_type exists(const std::string& ns,
+                                          const std::string& key) = 0;
 
-        virtual void remove(const std::string& ns, const std::string& key) = 0;
-        virtual void purge(const std::string& ns) = 0;
+        virtual std::vector<std::string> list(const std::string& ns) = 0;
 
-    protected:
-        storage_t(context_t& context);
+        virtual void remove(const std::string& ns,
+                            const std::string& key) = 0;
 
     protected:
+        storage_concept(context_t& context, const plugin_config_t& config):
+            m_context(context)
+        { }
+
+    private:
         context_t& m_context;
 };
 
-}}
+}
+
+template<class T>
+struct category_traits< storages::storage_concept<T> > {
+    typedef storages::storage_concept<T> storage_type;
+    typedef boost::shared_ptr<storage_type> ptr_type;
+    typedef boost::tuple<const plugin_config_t&> args_type;
+    
+    template<class U>
+    struct default_factory:
+        public factory<storage_type>
+    {
+        virtual ptr_type get(context_t& context,
+                             const args_type& args)
+        {
+            boost::lock_guard<boost::mutex> lock(m_mutex);
+            const plugin_config_t& config(boost::get<0>(args));
+
+            typename storage_map_t::iterator it(
+                m_storages.find(config.name)
+            );
+
+            if(it == m_storages.end()) {
+                boost::tie(it, boost::tuples::ignore) = m_storages.insert(
+                    std::make_pair(
+                        config.name,
+                        boost::make_shared<U>(
+                            boost::ref(context),
+                            config
+                        )
+                    )
+                );
+            }
+
+            return it->second;
+        }
+
+    private:
+        boost::mutex m_mutex;
+
+        typedef std::map<
+            std::string,
+            ptr_type
+        > storage_map_t;
+
+        storage_map_t m_storages;
+    };
+};
+
+}
 
 #endif

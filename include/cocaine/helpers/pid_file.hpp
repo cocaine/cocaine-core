@@ -19,8 +19,6 @@
 #include <boost/noncopyable.hpp>
 #include <stdexcept>
 
-#include "cocaine/common.hpp"
-
 namespace cocaine { namespace helpers {
 
 namespace fs = boost::filesystem;

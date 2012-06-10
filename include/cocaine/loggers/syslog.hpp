@@ -19,7 +19,8 @@ class syslog_t:
     public sink_t
 {
     public:
-        syslog_t(priorities verbosity, const std::string& identity);
+        syslog_t(priorities verbosity,
+        		 const std::string& identity);
 
         virtual void emit(priorities priority,
                           const std::string& message) const;
