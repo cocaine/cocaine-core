@@ -72,7 +72,7 @@ namespace {
     };
 }
 
-elliptics_storage_t::elliptics_storage_t(context_t& context, const component_config_t& config):
+elliptics_storage_t::elliptics_storage_t(context_t& context, const plugin_config_t& config):
     category_type(context, config),
     m_log(context.log("storage/elliptics")),
     m_log_adapter(context, config.args.get("verbosity", DNET_LOG_ERROR).asUInt()),

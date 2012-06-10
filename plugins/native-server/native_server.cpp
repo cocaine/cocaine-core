@@ -13,7 +13,6 @@
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/assign.hpp>
-#include <boost/format.hpp>
 
 #include "native_server.hpp"
 #include "native_job.hpp"
@@ -47,7 +46,7 @@ namespace msgpack {
     }
 }
 
-native_server_t::native_server_t(context_t& context, engine_t& engine, const component_config_t& config):
+native_server_t::native_server_t(context_t& context, engine_t& engine, const plugin_config_t& config):
     category_type(context, engine, config),
     m_context(context),
     m_log(context.log("app/" + engine.manifest().name)),
@@ -62,21 +61,13 @@ native_server_t::native_server_t(context_t& context, engine_t& engine, const com
     m_watcher(engine.loop()),
     m_processor(engine.loop()),
     m_pumper(engine.loop()),
-    m_channel(context.io(), ZMQ_ROUTER, m_route),
-    // m_port(context.ports.pop())
-    m_port(9171)
+    m_channel(context.io(), ZMQ_ROUTER, m_route)
 {
-    std::string endpoint = (
-        boost::format(
-            "tcp://*:%1%"
-        ) % m_port
-    ).str();
-
     int linger = 0;
 
     try {
         m_channel.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
-        m_channel.bind(endpoint);
+        m_channel.bind(config.args["endpoint"].asString());
     } catch(const zmq::error_t& e) {
         throw configuration_error_t(std::string("invalid driver endpoint - ") + e.what());
     }
@@ -92,9 +83,6 @@ native_server_t::~native_server_t() {
     m_watcher.stop();
     m_processor.stop();
     m_pumper.stop();
-
-    // Release the dynamic port.
-    // m_context.ports.push(m_port);
 }
 
 Json::Value native_server_t::info() const {
@@ -136,7 +124,7 @@ void native_server_t::process(ev::idle&, int) {
 
         if(route.empty() || !m_channel.more()) {
             m_log->error(
-                "driver '%s' got a corrupted request",
+                "received a corrupted request",
                 m_event.c_str()
             );
 
@@ -156,7 +144,7 @@ void native_server_t::process(ev::idle&, int) {
                 m_channel.recv_multi(proxy);
             } catch(const std::runtime_error& e) {
                 m_log->error(
-                    "driver %s got a corrupted request - %s",
+                    "received a corrupted request - %s",
                     m_event.c_str(),
                     e.what()
                 );

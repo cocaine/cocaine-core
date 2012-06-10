@@ -16,16 +16,19 @@
 
 namespace cocaine {
     struct config_t;    
-    class context_t;
-    class repository_t;
     struct manifest_t;
     class app_t;
+    class context_t;
+    class repository_t;
 
     namespace engine {
-        class engine_t;
         struct job_t;
+        class engine_t;
         class master_t;
+    }
 
+    namespace io {
+        class channel_t;
     }
 
     namespace logging {

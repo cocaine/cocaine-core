@@ -61,12 +61,12 @@ struct plugin_traits {
     >::template default_factory<T> factory_type;
 };
 
-// Standart component configuration
-// -------------------------------- 
+// Plugin configuration
+// -------------------- 
 
-struct component_config_t {
-    std::string name;
-    Json::Value args;
+struct plugin_config_t {
+    const std::string name;
+    const Json::Value args;
 };
 
 // Component repository

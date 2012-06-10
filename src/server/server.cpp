@@ -290,10 +290,10 @@ Json::Value server_t::delete_app(const std::string& name) {
     return result;
 }
 
-Json::Value server_t::info() {
+Json::Value server_t::info() const {
     Json::Value result(Json::objectValue);
 
-    result["route"] = m_server.route();
+    result["route"] = m_context.config.runtime.hostname;
 
     for(app_map_t::const_iterator it = m_apps.begin();
         it != m_apps.end(); 

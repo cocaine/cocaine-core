@@ -23,6 +23,8 @@
 using namespace cocaine;
 using namespace cocaine::storages;
 
+namespace fs = boost::filesystem;
+
 const float defaults::heartbeat_timeout = 30.0f;
 const float defaults::suicide_timeout = 600.0f;
 const unsigned int defaults::pool_limit = 10;
@@ -32,8 +34,6 @@ const char defaults::slave[] = "cocaine-slave";
 const char defaults::plugin_path[] = "/usr/lib/cocaine";
 const char defaults::ipc_path[] = "/var/run/cocaine";
 const char defaults::spool_path[] = "/var/spool/cocaine";
-
-namespace fs = boost::filesystem;
 
 namespace {
     void validate_path(const fs::path& path) {
@@ -72,11 +72,20 @@ config_t::config_t(const std::string& path):
         throw configuration_error_t("the configuration version is invalid");
     }
 
-    // Component repository configuration
-    // ----------------------------------
+    // Paths
+    // -----
 
     plugin_path = root["paths"].get("plugins", defaults::plugin_path).asString();
+    
     validate_path(plugin_path);
+
+    spool_path = root["paths"].get("spool", defaults::spool_path).asString();
+    
+    validate_path(spool_path);
+
+    ipc_path = root["paths"].get("ipc", defaults::ipc_path).asString();
+    
+    validate_path(ipc_path);
 
     // Storage configuration
     // ---------------------
@@ -91,7 +100,7 @@ config_t::config_t(const std::string& path):
         it != storage_names.end();
         ++it)
     {
-        component_config_t config = {
+        plugin_config_t config = {
             *it,
             root["storages"][*it]["args"]
         };
@@ -113,17 +122,9 @@ config_t::config_t(const std::string& path):
         throw configuration_error_t("mandatory 'core' storage has not been configured");
     }
 
-    // App spool
-    // ---------
-
-    spool_path = root["paths"].get("spool", defaults::spool_path).asString();
-    validate_path(spool_path);
 
     // IO configuration
     // ----------------
-
-    ipc_path = root["paths"].get("ipc", defaults::ipc_path).asString();
-    validate_path(ipc_path);
 
     char hostname[HOSTNAME_MAX_LENGTH];
 

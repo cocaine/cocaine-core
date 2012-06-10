@@ -22,9 +22,6 @@
 using namespace cocaine;
 using namespace cocaine::storages;
 
-// Application
-// -----------
-
 manifest_t::manifest_t(context_t& context, const std::string& name_):
     name(name_),
     m_log(context.log("app/" + name))
@@ -60,11 +57,10 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
 
             // Update the manifest in the cache.
             object.meta["spool"] = spool_path.string();
+            root = object.meta;
 
             // Put the application object into the cache for future reference.
             context.storage<objects>("core:cache")->put("apps", name, object);
-            
-            root = object.meta;
         } catch(const storage_error_t& e) {
             m_log->info("unable to fetch the app from the storage - %s", e.what());
             throw configuration_error_t("the '" + name + "' app is not available");

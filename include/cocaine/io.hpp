@@ -189,6 +189,7 @@ class scoped_option {
 
     private:
         socket_t& socket;
+        
         value_type saved;
         size_t size;
 };

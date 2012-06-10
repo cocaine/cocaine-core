@@ -22,8 +22,6 @@
 
 #include "cocaine/interfaces/storage.hpp"
 
-#include "cocaine/helpers/json.hpp"
-
 using namespace cocaine::crypto;
 using namespace cocaine::storages;
 
@@ -77,7 +75,7 @@ auth_t::auth_t(context_t& context):
 namespace {
     struct disposer {
         template<class T>
-        void operator()(T& key) {
+        void operator()(T& key) const {
             EVP_PKEY_free(key.second);
         }
     };
@@ -90,7 +88,8 @@ auth_t::~auth_t() {
 }
 
 /* XXX: Gotta invent something sophisticated here.
-std::string auth_t::sign(const std::string& message, const std::string& username)
+std::string auth_t::sign(const std::string& message,
+                         const std::string& username) const
 {
     key_map_t::const_iterator it = m_private_keys.find(username);
 
@@ -112,7 +111,7 @@ std::string auth_t::sign(const std::string& message, const std::string& username
 
 void auth_t::verify(const blob_t& message,
                     const blob_t& signature,
-                    const std::string& username)
+                    const std::string& username) const
 {
     key_map_t::const_iterator it(m_keys.find(username));
 

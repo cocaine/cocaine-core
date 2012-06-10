@@ -46,7 +46,7 @@ app_t::app_t(context_t& context, const std::string& name):
         it != names.end();
         ++it)
     {
-        component_config_t config = {
+        plugin_config_t config = {
             *it,
             drivers[*it]
         };

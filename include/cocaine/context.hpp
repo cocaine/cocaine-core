@@ -54,7 +54,7 @@ struct config_t {
 
     typedef struct {
         std::string type;
-        component_config_t config;
+        plugin_config_t config;
     } storage_info_t;
 
     typedef std::map<

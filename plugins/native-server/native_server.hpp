@@ -35,7 +35,7 @@ class native_server_t:
     public:
         native_server_t(context_t& context,
                         engine_t& engine,
-                        const component_config_t& config);
+                        const plugin_config_t& config);
 
         ~native_server_t();
 
@@ -66,11 +66,9 @@ class native_server_t:
         // XXX: This is a temporary workaround for the edge cases when ZeroMQ for some 
         // reason doesn't trigger the socket's fd on message arrival (or I poll it in a wrong way).
         ev::timer m_pumper;
-        
-        io::channel_t m_channel;
 
-        // Dynamic port.
-        uint16_t m_port;
+        // Server RPC channel.        
+        io::channel_t m_channel;
 };
 
 }}}

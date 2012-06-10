@@ -46,7 +46,8 @@ class server_t:
 
         Json::Value create_app(const std::string& name);
         Json::Value delete_app(const std::string& name);
-        Json::Value info() /* const */;
+        
+        Json::Value info() const;
         
     private:        
         void terminate(ev::sig&, int);

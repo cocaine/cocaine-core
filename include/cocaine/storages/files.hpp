@@ -28,7 +28,7 @@ class file_storage_t:
 
     public:
         file_storage_t(context_t& context,
-                       const component_config_t& config);
+                       const plugin_config_t& config);
 
         virtual objects::value_type get(const std::string& ns,
                                         const std::string& key);
@@ -46,8 +46,8 @@ class file_storage_t:
                             const std::string& key);
 
     private:
-        boost::mutex m_mutex;
         boost::shared_ptr<logging::logger_t> m_log;
+        boost::mutex m_mutex;
         
         const boost::filesystem::path m_storage_path;
 };
