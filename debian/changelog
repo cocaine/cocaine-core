@@ -1,3 +1,12 @@
+cocaine (0.8.0-0) lucid; urgency=low
+
+  * Threaded engines.
+  * Apps are now pulled from the storages.
+  * Drivers are now plugins, too.
+  * Elliptics storage support.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Mon, 11 Jun 2012 02:43:02 +0400
+
 cocaine (0.7.4-7) lucid; urgency=low
 
   * Rebuild.
