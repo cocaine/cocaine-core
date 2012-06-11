@@ -51,7 +51,8 @@ class native_server_t:
 
         void event(ev::io&, int);
         void process(ev::idle&, int);
-        void pump(ev::timer&, int);
+        void check(ev::prepare&, int);
+        // void pump(ev::timer&, int);
 
     private:
         context_t& m_context;
@@ -62,10 +63,11 @@ class native_server_t:
 
         ev::io m_watcher;
         ev::idle m_processor;
+        ev::prepare m_check;
 
         // XXX: This is a temporary workaround for the edge cases when ZeroMQ for some 
         // reason doesn't trigger the socket's fd on message arrival (or I poll it in a wrong way).
-        ev::timer m_pumper;
+        // ev::timer m_pumper;
 
         // Server RPC channel.        
         io::channel_t m_channel;

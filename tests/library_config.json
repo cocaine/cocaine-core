@@ -1,9 +1,9 @@
 {
     "version": 1,
     "paths": {
-        "plugins": "plugins/python",
-        "ipc": ".",
-        "spool": "spool"
+        "plugins": "root/lib/cocaine",
+        "ipc": "root/run",
+        "spool": "root/spool"
     },
     "storages": {
         "core": {
@@ -19,7 +19,7 @@
         "core:cache": {
             "type": "files",
             "args": {
-                "path": "cache"
+                "path": "root/cache"
             }
         }
     }

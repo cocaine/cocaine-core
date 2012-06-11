@@ -77,7 +77,7 @@ int main() {
 
     std::cout << "=== Jobs enqueued while running ===" << std::endl;
     
-    sleep(1);
+    sleep(10);
 
     app.stop();
 
@@ -94,7 +94,7 @@ int main() {
 
     std::cout << "=== Jobs enqueued while stopped ===" << std::endl;
     
-    sleep(5);
+    sleep(10);
     
     return 0;
 }

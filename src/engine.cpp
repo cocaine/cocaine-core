@@ -45,7 +45,8 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest_):
     m_manifest(manifest_),
     m_watcher(m_loop),
     m_processor(m_loop),
-    m_pumper(m_loop),
+    m_check(m_loop),
+    // m_pumper(m_loop),
     m_gc_timer(m_loop),
     m_notification(m_loop),
     m_bus(context.io(), ZMQ_ROUTER),
@@ -72,8 +73,10 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest_):
     m_watcher.set<engine_t, &engine_t::message>(this);
     m_watcher.start(m_bus.fd(), ev::READ);
     m_processor.set<engine_t, &engine_t::process>(this);
-    m_pumper.set<engine_t, &engine_t::pump>(this);
-    m_pumper.start(0.005f, 0.005f);
+    m_check.set<engine_t, &engine_t::check>(this);
+    m_check.start();
+    // m_pumper.set<engine_t, &engine_t::pump>(this);
+    // m_pumper.start(0.005f, 0.005f);
 
     m_gc_timer.set<engine_t, &engine_t::cleanup>(this);
     m_gc_timer.start(5.0f, 5.0f);
@@ -416,9 +419,13 @@ void engine_t::process(ev::idle&, int) {
     } while(--counter);
 }
 
-void engine_t::pump(ev::timer&, int) {
+void engine_t::check(ev::prepare&, int) {
     message(m_watcher, ev::READ);
 }
+
+// void engine_t::pump(ev::timer&, int) {
+//     message(m_watcher, ev::READ);
+// }
 
 // Garbage collection
 // ------------------

@@ -166,7 +166,8 @@ class engine_t:
         // Slave I/O.
         void message(ev::io&, int);
         void process(ev::idle&, int);
-        void pump(ev::timer&, int);
+        void check(ev::prepare&, int);
+        // void pump(ev::timer&, int);
 
         // Garbage collection.
         void cleanup(ev::timer&, int);
@@ -206,7 +207,11 @@ class engine_t:
         // Slave I/O watchers.
         ev::io m_watcher;
         ev::idle m_processor;
-        ev::timer m_pumper;
+        ev::prepare m_check;
+        
+        // XXX: This is a temporary workaround for the edge cases when ZeroMQ for some 
+        // reason doesn't trigger the socket's fd on message arrival (or I poll it in a wrong way).
+        // ev::timer m_pumper;
 
         // Garbage collector activation timer.
         ev::timer m_gc_timer;

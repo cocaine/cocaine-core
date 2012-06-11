@@ -55,6 +55,7 @@ class server_t:
 
         void request(ev::io&, int);
         void process(ev::idle&, int);
+        void check(ev::prepare&, int);
         void pump(ev::timer&, int);
 
         Json::Value dispatch(const Json::Value& root);
@@ -90,10 +91,11 @@ class server_t:
                 
         ev::io m_watcher;
         ev::idle m_processor;
+        ev::prepare m_check;
 
         // XXX: This is a temporary workaround for the edge cases when ZeroMQ for some 
         // reason doesn't trigger the socket's fd on message arrival (or I poll it in a wrong way).
-        ev::timer m_pumper;
+        // ev::timer m_pumper;
 
         // System I/O.
         io::socket_t m_server;
