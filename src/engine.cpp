@@ -161,9 +161,7 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest_):
 }
 
 engine_t::~engine_t() {
-    if(m_state == running) {
-        stop();
-    }
+    stop();
 
 #ifdef HAVE_CGROUPS
     if(m_cgroup) {

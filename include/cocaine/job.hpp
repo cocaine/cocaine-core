@@ -85,9 +85,9 @@ struct job_t:
 
     virtual ~job_t();
 
-    virtual void react(const events::chunk& event);
-    virtual void react(const events::error& event);
-    virtual void react(const events::choke& event);
+    virtual void react(const events::chunk& event) { }
+    virtual void react(const events::error& event) { }
+    virtual void react(const events::choke& event) { }
 
     const std::string event;
     const policy_t policy;
@@ -119,11 +119,6 @@ struct waiting:
     typedef boost::mpl::list<
         sc::transition<events::invoke, processing>
     > reactions;
-
-    waiting();
-    ~waiting();
-
-    const double timestamp;
 };
 
 struct processing:
@@ -135,11 +130,6 @@ struct processing:
         sc::transition<events::enqueue, waiting>,
         sc::transition<events::invoke, processing>
     > reactions;
-
-    processing();
-    ~processing();
-
-    const double timestamp;
 };
 
 struct complete:

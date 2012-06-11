@@ -33,37 +33,41 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
     } catch(const storage_error_t& e) {
         m_log->info("the app hasn't been found in the cache");
 
+        objects::value_type object;
+
         try {
             // Fetch the application object from the core storage.
-            objects::value_type object(
-                context.storage<objects>("core")->get("apps", name)
-            );
+            object = context.storage<objects>("core")->get("apps", name);
+        } catch(const storage_error_t& e) {
+            m_log->error("unable to fetch the app from the storage - %s", e.what());
+            throw configuration_error_t("the '" + name + "' app is not available");
+        }
 
-            // Unpack the app.
-            spool_path = context.config.spool_path / name;
-            
-            m_log->info(
-                "deploying the app package to '%s'",
-                spool_path.string().c_str()
-            );
-            
-            try {
-                package_t package(context, object.blob);
-                package.deploy(spool_path); 
-            } catch(const package_error_t& e) {
-                m_log->info("unable to deploy the app - %s", e.what());
-                throw configuration_error_t("the '" + name + "' app is not available");
-            }
+        // Unpack the app.
+        spool_path = context.config.spool_path / name;
+        
+        m_log->info(
+            "deploying the app to '%s'",
+            spool_path.string().c_str()
+        );
+        
+        try {
+            package_t package(context, object.blob);
+            package.deploy(spool_path); 
+        } catch(const package_error_t& e) {
+            m_log->error("unable to deploy the app - %s", e.what());
+            throw configuration_error_t("the '" + name + "' app is not available");
+        }
 
-            // Update the manifest in the cache.
-            object.meta["spool"] = spool_path.string();
-            root = object.meta;
+        // Update the manifest in the cache.
+        object.meta["spool"] = spool_path.string();
+        root = object.meta;
 
+        try {
             // Put the application object into the cache for future reference.
             context.storage<objects>("core:cache")->put("apps", name, object);
         } catch(const storage_error_t& e) {
-            m_log->info("unable to fetch the app from the storage - %s", e.what());
-            throw configuration_error_t("the '" + name + "' app is not available");
+            m_log->warning("unable to cache the app - %s", e.what());
         }
     }
 

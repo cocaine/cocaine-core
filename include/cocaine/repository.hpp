@@ -94,6 +94,7 @@ class repository_t:
                 throw repository_error_t("the '" + type + "' plugin is not available");
             }
             
+            // TEST: Ensure that the plugin is of the actually specified category.
             BOOST_ASSERT(it->second->category() == typeid(Category));
 
             return typename category_traits<Category>::ptr_type(

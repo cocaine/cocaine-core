@@ -128,7 +128,7 @@ void master_t::spawn() {
 #endif
 
             m_log->error(
-                "unable to start slave %s - %s",
+                "unable to execute slave %s - %s",
                 id().c_str(),
 #ifdef _GNU_SOURCE
                 message
