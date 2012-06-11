@@ -71,7 +71,7 @@ namespace msgpack {
 
 file_storage_t::file_storage_t(context_t& context, const plugin_config_t& config):
     category_type(context, config),
-    m_log(context.log("storage/files")),
+    m_log(context.log("storage/" + config.name)),
     m_storage_path(config.args["path"].asString())
 { }
 
@@ -102,23 +102,12 @@ objects::value_type file_storage_t::get(const std::string& ns,
     try {
         msgpack::unpack(&unpacked, blob.data(), blob.size());
         return unpacked.get().as<objects::value_type>();
-    } catch (const msgpack::unpack_error& e) {
+    } catch (const std::exception& e) {
         m_log->error(
-            "the '%s' object is corrupted, namespace: '%s', path: '%s', reason: %s",
+            "the '%s' object is corrupted, namespace: '%s', path: '%s'",
             key.c_str(),
             ns.c_str(),
-            file_path.string().c_str(),
-            e.what()
-        );
-
-        throw storage_error_t("the specified object is corrupted");
-    } catch (const msgpack::type_error& e) {
-        m_log->error(
-            "the '%s' object is corrupted, namespace: '%s', path: '%s', reason: %s",
-            key.c_str(),
-            ns.c_str(),
-            file_path.string().c_str(),
-            e.what()
+            file_path.string().c_str()
         );
 
         throw storage_error_t("the specified object is corrupted");
@@ -134,7 +123,7 @@ void file_storage_t::put(const std::string& ns,
 
     if(!fs::exists(store_path)) {
         m_log->info(
-            "creating the '%s' namespace in '%s'",
+            "creating the '%s' namespace, path: '%s'",
             ns.c_str(),
             store_path.string().c_str()
         );
@@ -142,10 +131,10 @@ void file_storage_t::put(const std::string& ns,
         try {
             fs::create_directories(store_path);
         } catch(const std::runtime_error& e) {
-            throw storage_error_t("cannot create the specified container");
+            throw storage_error_t("cannot create the specified namespace");
         }
     } else if(fs::exists(store_path) && !fs::is_directory(store_path)) {
-        throw storage_error_t("the specified container is corrupted");
+        throw storage_error_t("the specified namespace is corrupted");
     }
     
     fs::path file_path(store_path / key);
