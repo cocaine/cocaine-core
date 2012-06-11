@@ -24,17 +24,15 @@ class log_adapter_t:
     public zbr::elliptics_log
 {
     public:
-        log_adapter_t(context_t& context,
+        log_adapter_t(const boost::shared_ptr<logging::logger_t>& log,
                       const uint32_t mask);
 
         virtual void log(const uint32_t mask, const char * message);
         virtual unsigned long clone();
 
     private:
-        context_t& m_context;
-        const uint32_t m_mask;
-
         boost::shared_ptr<logging::logger_t> m_log;
+        const uint32_t m_mask;
 };
 
 class elliptics_storage_t:

@@ -21,11 +21,10 @@
 using namespace cocaine;
 using namespace cocaine::storages;
 
-log_adapter_t::log_adapter_t(context_t& context, const uint32_t mask):
+log_adapter_t::log_adapter_t(const boost::shared_ptr<logging::logger_t>& log, const uint32_t mask):
     zbr::elliptics_log(mask),
-    m_context(context),
-    m_mask(mask),
-    m_log(m_context.log("storage/elliptics"))
+    m_log(log),
+    m_mask(mask)
 { }
 
 void log_adapter_t::log(const uint32_t mask, const char * message) {
@@ -59,7 +58,7 @@ void log_adapter_t::log(const uint32_t mask, const char * message) {
 
 unsigned long log_adapter_t::clone() {
     return reinterpret_cast<unsigned long>(
-        new log_adapter_t(m_context, m_mask)
+        new log_adapter_t(m_log, m_mask)
     );
 }
 
@@ -74,8 +73,8 @@ namespace {
 
 elliptics_storage_t::elliptics_storage_t(context_t& context, const plugin_config_t& config):
     category_type(context, config),
-    m_log(context.log("storage/elliptics")),
-    m_log_adapter(context, config.args.get("verbosity", DNET_LOG_ERROR).asUInt()),
+    m_log(context.log("storage/" + config.name)),
+    m_log_adapter(m_log, config.args.get("verbosity", DNET_LOG_ERROR).asUInt()),
     m_node(m_log_adapter)
 {
     Json::Value nodes(config.args["nodes"]);
