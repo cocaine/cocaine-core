@@ -29,8 +29,8 @@ public:
 	bool get_hosts(inetv4_endpoints& endpoints, service_info_t& service_info);
 
 private:
-	service_info_t service_info_;
-	time_t file_modification_time_;
+	service_info_t service_info_m;
+	time_t file_modification_time_m;
 };
 
 } // namespace dealer

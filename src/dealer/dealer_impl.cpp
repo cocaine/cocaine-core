@@ -79,10 +79,8 @@ dealer_impl_t::~dealer_impl_t() {
 void
 dealer_impl_t::connect() {
 	log("creating heartbeats collector");
-	heartbeats_collector_.reset(new heartbeats_collector(config(), context()->zmq_context()));
-
+	heartbeats_collector_.reset(new heartbeats_collector(context()));
 	heartbeats_collector_->set_callback(boost::bind(&dealer_impl_t::service_hosts_pinged_callback, this, _1, _2));
-	heartbeats_collector_->set_logger(context()->logger());
 	heartbeats_collector_->run();
 }
 

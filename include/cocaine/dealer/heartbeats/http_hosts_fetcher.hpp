@@ -35,8 +35,8 @@ private:
 	static int curl_writer(char* data, size_t size, size_t nmemb, std::string* buffer_in);
 
 private:
-	CURL* curl_;
-	service_info_t service_info_;
+	CURL* curl_m;
+	service_info_t service_info_m;
 };
 
 } // namespace dealer

@@ -19,33 +19,34 @@ namespace cocaine {
 namespace dealer {
 
 handle_t::handle_t(const handle_info_t& info,
-				   const boost::shared_ptr<cocaine::dealer::context_t>& context,
-				   const endpoints_list_t& endpoints) :
-	info_(info),
-	context_(context),
-	endpoints_(endpoints),
-	is_running_(false),
-	is_connected_(false),
-	receiving_control_socket_ok_(false)
+				   const endpoints_list_t& endpoints,
+				   const boost::shared_ptr<context_t>& ctx,
+				   bool logging_enabled) :
+	dealer_object_t(ctx, logging_enabled),
+	info_m(info),
+	endpoints_m(endpoints),
+	is_running_m(false),
+	is_connected_m(false),
+	receiving_control_socket_ok_m(false)
 {
 	boost::mutex::scoped_lock lock(mutex_);
 
-	logger()->log(PLOG_DEBUG, "CREATED HANDLE " + description());
+	log(PLOG_DEBUG, "CREATED HANDLE " + description());
 
 	// create message cache
-	message_cache_.reset(new message_cache(context, config()->message_cache_type()));
+	message_cache_m.reset(new message_cache(context(), context()->config()->message_cache_type()));
 
 	// create control socket
 	std::string conn_str = "inproc://service_control_" + description();
-	zmq_control_socket_.reset(new zmq::socket_t(*(context->zmq_context()), ZMQ_PAIR));
+	zmq_control_socket_m.reset(new zmq::socket_t(*(context()->zmq_context()), ZMQ_PAIR));
 
 	int timeout = 0;
-	zmq_control_socket_->setsockopt(ZMQ_LINGER, &timeout, sizeof(timeout));
-	zmq_control_socket_->bind(conn_str.c_str());
+	zmq_control_socket_m->setsockopt(ZMQ_LINGER, &timeout, sizeof(timeout));
+	zmq_control_socket_m->bind(conn_str.c_str());
 
 	// run message dispatch thread
-	is_running_ = true;
-	thread_ = boost::thread(&handle_t::dispatch_messages, this);
+	is_running_m = true;
+	thread_m = boost::thread(&handle_t::dispatch_messages, this);
 
 	// connect to hosts 
 	lock.unlock();
@@ -55,43 +56,43 @@ handle_t::handle_t(const handle_info_t& info,
 handle_t::~handle_t() {
 	kill();
 
-	zmq_control_socket_->close();
-	zmq_control_socket_.reset(NULL);
+	zmq_control_socket_m->close();
+	zmq_control_socket_m.reset(NULL);
 
-	thread_.join();
+	thread_m.join();
 
-	logger()->log(PLOG_DEBUG, "KILLED HANDLE " + description());
+	log(PLOG_DEBUG, "KILLED HANDLE " + description());
 }
 
 void
 handle_t::dispatch_messages() {	
-	std::string balancer_ident = info_.as_string() + "." + wuuid_t().generate();
-	balancer_t balancer(balancer_ident, endpoints_, context(), message_cache_);
+	std::string balancer_ident = info_m.as_string() + "." + wuuid_t().generate();
+	balancer_t balancer(balancer_ident, endpoints_m, context(), message_cache_m);
 
 	socket_ptr_t control_socket;
 	establish_control_conection(control_socket);
 
-	logger()->log(PLOG_DEBUG, "started message dispatch for " + description());
+	log(PLOG_DEBUG, "started message dispatch for " + description());
 
-	last_response_timer_.reset();
-	deadlined_messages_timer_.reset();
-	control_messages_timer_.reset();
+	last_response_timer_m.reset();
+	deadlined_messages_timer_m.reset();
+	control_messages_timer_m.reset();
 
 	// process messages
-	while (is_running_) {
+	while (is_running_m) {
 		boost::mutex::scoped_lock lock(mutex_);
 
 		// process incoming control messages every 200 msec
 		int control_message = 0;
 		              
-		if (control_messages_timer_.elapsed().as_double() > 0.2f) {
+		if (control_messages_timer_m.elapsed().as_double() > 0.2f) {
 		      control_message = receive_control_messages(control_socket, 0);
-		      control_messages_timer_.reset();
+		      control_messages_timer_m.reset();
 		}
 
 		if (control_message == CONTROL_MESSAGE_KILL) {
 			// stop message dispatch, finalize everything
-			is_running_ = false;
+			is_running_m = false;
 			break;
 		}
 		else if (control_message > 0) {
@@ -99,9 +100,9 @@ handle_t::dispatch_messages() {
 		}
 
 		// send new message if any
-		if (is_running_ && is_connected_) {
+		if (is_running_m && is_connected_m) {
 			for (int i = 0; i < 100; ++i) { // batching
-				if (message_cache_->new_messages_count() == 0) {
+				if (message_cache_m->new_messages_count() == 0) {
 					break;	
 				}
 
@@ -116,16 +117,16 @@ handle_t::dispatch_messages() {
 		int long_poll_timeout = 5000;   // microsecs
 
 		int response_poll_timeout = fast_poll_timeout;
-		if (last_response_timer_.elapsed().as_double() > 5.0f) {
+		if (last_response_timer_m.elapsed().as_double() > 5.0f) {
 			response_poll_timeout = long_poll_timeout;			
 		}
 
-		if (is_connected_ && is_running_) {
+		if (is_connected_m && is_running_m) {
 			received_response = balancer.check_for_responses(response_poll_timeout);
 
 			// process received responce(s)
 			while (received_response) {
-				last_response_timer_.reset();
+				last_response_timer_m.reset();
 				response_poll_timeout = fast_poll_timeout;
 
 				lock.unlock();
@@ -136,20 +137,18 @@ handle_t::dispatch_messages() {
 			}
 		}
 
-		if (is_running_) {
-			if (deadlined_messages_timer_.elapsed().as_double() > 1.0f) {
+		if (is_running_m) {
+			if (deadlined_messages_timer_m.elapsed().as_double() > 1.0f) {
 				lock.unlock();
 				process_deadlined_messages();
 				lock.lock();
-				deadlined_messages_timer_.reset();
+				deadlined_messages_timer_m.reset();
 			}
 		}
 	}
 
 	control_socket.reset();
-
-	update_statistics();
-	logger()->log(PLOG_DEBUG, "finished message dispatch for " + description());
+	log(PLOG_DEBUG, "finished message dispatch for " + description());
 }
 
 void
@@ -165,7 +164,7 @@ handle_t::dispatch_next_available_response(balancer_t& balancer) {
 		break;
 
 		case response_code::message_choke:
-			message_cache_->remove_message_from_cache(response->route(), response->uuid());
+			message_cache_m->remove_message_from_cache(response->route(), response->uuid());
 			enqueue_response(response);
 		break;
 
@@ -175,32 +174,32 @@ handle_t::dispatch_next_available_response(balancer_t& balancer) {
 				message_str += " from " + description() + ", type: ERROR";
 				message_str += ", error code: ";
 
-				logger()->log(PLOG_DEBUG,
-							  "%s%d, error message: %s",
-							  message_str.c_str(),
-							  response->code(),
-							  response->error_message().c_str());
+				log(PLOG_DEBUG,
+					"%s%d, error message: %s",
+					message_str.c_str(),
+					response->code(),
+					response->error_message().c_str());
 			}
 			else {
-				message_cache_->remove_message_from_cache(response->route(), response->uuid());
+				message_cache_m->remove_message_from_cache(response->route(), response->uuid());
 				enqueue_response(response);
 			}
 		}
 		break;
 
 		default: {
-			message_cache_->remove_message_from_cache(response->route(), response->uuid());
+			message_cache_m->remove_message_from_cache(response->route(), response->uuid());
 			enqueue_response(response);
 
 			std::string message_str = "enqued response for msg with uuid: " + response->uuid();
 			message_str += " from " + description() + ", type: ERROR";
 			message_str += ", error code: ";
 
-			logger()->log(PLOG_DEBUG,
-						  "%s%d, error message: %s",
-						  message_str.c_str(),
-						  response->code(),
-						  response->error_message().c_str());
+			log(PLOG_DEBUG,
+				"%s%d, error message: %s",
+				message_str.c_str(),
+				response->code(),
+				response->error_message().c_str());
 		}
 		break;
 	}
@@ -208,48 +207,48 @@ handle_t::dispatch_next_available_response(balancer_t& balancer) {
 
 void
 handle_t::dispatch_control_messages(int type, balancer_t& balancer) {
-	if (!is_running_) {
+	if (!is_running_m) {
 		return;
 	}
 
 	switch (type) {
 		case CONTROL_MESSAGE_CONNECT:
-			if (!is_connected_) {
-				balancer.connect(endpoints_);
-				is_connected_ = true;
+			if (!is_connected_m) {
+				balancer.connect(endpoints_m);
+				is_connected_m = true;
 			}
 			break;
 
 		case CONTROL_MESSAGE_UPDATE:
-			if (is_connected_) {
+			if (is_connected_m) {
 				std::vector<cocaine_endpoint> missing_endpoints;
-				balancer.update_endpoints(endpoints_, missing_endpoints);
+				balancer.update_endpoints(endpoints_m, missing_endpoints);
 
 				for (size_t i = 0; i < missing_endpoints.size(); ++i) {
-					message_cache_->make_all_messages_new_for_route(missing_endpoints.at(i).route_);
+					message_cache_m->make_all_messages_new_for_route(missing_endpoints.at(i).route_);
 				}
 			}
 			break;
 
 		case CONTROL_MESSAGE_DISCONNECT:
 			balancer.disconnect();
-			is_connected_ = false;
+			is_connected_m = false;
 			break;
 	}
 }
 
 boost::shared_ptr<message_cache>
 handle_t::messages_cache() const {
-	return message_cache_;
+	return message_cache_m;
 }
 
 void
 handle_t::process_deadlined_messages() {
 	boost::mutex::scoped_lock lock(mutex_);
 
-	assert(message_cache_);
+	assert(message_cache_m);
 	message_cache::message_queue_t expired_messages;
-	message_cache_->get_expired_messages(expired_messages);
+	message_cache_m->get_expired_messages(expired_messages);
 	
 	lock.unlock();
 
@@ -261,12 +260,12 @@ handle_t::process_deadlined_messages() {
 		if (!expired_messages.at(i)->ack_received()) {
 			if (expired_messages.at(i)->can_retry()) {
 				expired_messages.at(i)->increment_retries_count();
-				message_cache_->enqueue_with_priority(expired_messages.at(i));
+				message_cache_m->enqueue_with_priority(expired_messages.at(i));
 
-				logger()->log(PLOG_DEBUG, "no ACK, resheduled message " + expired_messages.at(i)->uuid());
+				log(PLOG_DEBUG, "no ACK, resheduled message " + expired_messages.at(i)->uuid());
 			}
 			else {
-				logger()->log(PLOG_DEBUG, "reshedule message policy exceeded, did not receive ACK " + expired_messages.at(i)->uuid());
+				log(PLOG_DEBUG, "reshedule message policy exceeded, did not receive ACK " + expired_messages.at(i)->uuid());
 				cached_response_prt_t new_response;
 				new_response.reset(new cached_response_t(expired_messages.at(i)->uuid(),
 														 "",
@@ -299,20 +298,20 @@ handle_t::establish_control_conection(socket_ptr_t& control_socket) {
 		int timeout = 0;
 		control_socket->setsockopt(ZMQ_LINGER, &timeout, sizeof(timeout));
 		control_socket->connect(conn_str.c_str());
-		receiving_control_socket_ok_ = true;
+		receiving_control_socket_ok_m = true;
 	}
 }
 
 void
 handle_t::enqueue_response(cached_response_prt_t response) {
-	if (response_callback_ && is_running_) {
-		response_callback_(response);
+	if (response_callback_m && is_running_m) {
+		response_callback_m(response);
 	}
 }
 
 int
 handle_t::receive_control_messages(socket_ptr_t& control_socket, int poll_timeout) {
-	if (!is_running_) {
+	if (!is_running_m) {
 		return 0;
 	}
 
@@ -356,9 +355,9 @@ handle_t::receive_control_messages(socket_ptr_t& control_socket, int poll_timeou
 	}
 
     if (recv_failed) {
-    	std::string sname = info_.service_name_;
-    	std::string hname = info_.name_;
-    	logger()->log("control socket recv failed on " + description());
+    	std::string sname = info_m.service_name_;
+    	std::string hname = info_m.name_;
+    	log("control socket recv failed on " + description());
     }
 
     return 0;
@@ -367,23 +366,23 @@ handle_t::receive_control_messages(socket_ptr_t& control_socket, int poll_timeou
 bool
 handle_t::dispatch_next_available_message(balancer_t& balancer) {
 	// send new message if any
-	if (message_cache_->new_messages_count() == 0) {
+	if (message_cache_m->new_messages_count() == 0) {
 		return false;
 	}
 
-	boost::shared_ptr<message_iface> new_msg = message_cache_->get_new_message();
+	boost::shared_ptr<message_iface> new_msg = message_cache_m->get_new_message();
 	cocaine_endpoint endpoint;
 	if (balancer.send(new_msg, endpoint)) {
 		new_msg->mark_as_sent(true);
-		message_cache_->move_new_message_to_sent(endpoint.route_);
+		message_cache_m->move_new_message_to_sent(endpoint.route_);
 
 		std::string log_msg = "sent msg with uuid: %s to %s";
-		logger()->log(PLOG_DEBUG, log_msg.c_str(), new_msg->uuid().c_str(), description().c_str());
+		log(PLOG_DEBUG, log_msg.c_str(), new_msg->uuid().c_str(), description().c_str());
 
 		return true;
 	}
 	else {
-		logger()->log("PPZ");		
+		log(PLOG_ERROR, "dispatch_next_available_message failed");		
 	}
 
 	return false;
@@ -392,7 +391,7 @@ handle_t::dispatch_next_available_message(balancer_t& balancer) {
 bool
 handle_t::reshedule_message(const std::string& route, const std::string& uuid) {
 	boost::shared_ptr<message_iface> msg;
-	if (!message_cache_->get_sent_message(route, uuid, msg)) {
+	if (!message_cache_m->get_sent_message(route, uuid, msg)) {
 		return false;
 	}
 
@@ -401,45 +400,21 @@ handle_t::reshedule_message(const std::string& route, const std::string& uuid) {
 	if (msg->can_retry()) {
 		msg->increment_retries_count();
 		
-		message_cache_->move_sent_message_to_new_front(route, uuid);
+		message_cache_m->move_sent_message_to_new_front(route, uuid);
 		return true;
 	}
 
 	return false;
 }
 
-handle_stats&
-handle_t::get_statistics() {
-
-	handle_stats tmp_stats;
-	if (context()->stats()->get_handle_stats(info_.service_name_,
-											 info_.name_,
-											 tmp_stats))
-	{
-		statistics_ = tmp_stats;
-	}
-
-	return statistics_;
-}
-
-void
-handle_t::update_statistics() {
-	statistics_.queue_status.pending = message_cache_->new_messages_count();
-	statistics_.queue_status.sent = message_cache_->sent_messages_count();
-
-	context()->stats()->update_handle_stats(info_.service_name_,
-											info_.name_,
-											statistics_);
-}
-
 const handle_info_t&
 handle_t::info() const {
-	return info_;
+	return info_m;
 }
 
 void
 handle_t::kill() {
-	if (!is_running_) {
+	if (!is_running_m) {
 		return;
 	}
 
@@ -447,107 +422,88 @@ handle_t::kill() {
 	int control_message = CONTROL_MESSAGE_KILL;
 	zmq::message_t message(sizeof(int));
 	memcpy((void *)message.data(), &control_message, sizeof(int));
-	zmq_control_socket_->send(message);
+	zmq_control_socket_m->send(message);
 }
 
 std::string
 handle_t::description() {
-	return info_.as_string();
+	return info_m.as_string();
 }
 
 void
 handle_t::connect() {
 	boost::mutex::scoped_lock lock(mutex_);
 
-	if (!is_running_ || endpoints_.empty() || is_connected_) {
+	if (!is_running_m || endpoints_m.empty() || is_connected_m) {
 		return;
 	}
 
-	logger()->log(PLOG_DEBUG, "CONNECT HANDLE " + description());
+	log(PLOG_DEBUG, "CONNECT HANDLE " + description());
 
 	// connect to hosts
 	int control_message = CONTROL_MESSAGE_CONNECT;
 	zmq::message_t message(sizeof(int));
 	memcpy((void *)message.data(), &control_message, sizeof(int));
-	zmq_control_socket_->send(message);
+	zmq_control_socket_m->send(message);
 }
 
 void
 handle_t::update_endpoints(const std::vector<cocaine_endpoint>& endpoints) {
-	if (!is_running_ || endpoints.empty()) {
+	if (!is_running_m || endpoints.empty()) {
 		return;
 	}
 
 	boost::mutex::scoped_lock lock(mutex_);
-	endpoints_ = endpoints;
+	endpoints_m = endpoints;
 	lock.unlock();
 
-	logger()->log(PLOG_DEBUG, "UPDATE HANDLE " + description());
+	log(PLOG_DEBUG, "UPDATE HANDLE " + description());
 
 	// connect to hosts
 	int control_message = CONTROL_MESSAGE_UPDATE;
 	zmq::message_t message(sizeof(int));
 	memcpy((void *)message.data(), &control_message, sizeof(int));
-	zmq_control_socket_->send(message);
+	zmq_control_socket_m->send(message);
 }
 
 void
 handle_t::disconnect() {
 	boost::mutex::scoped_lock lock(mutex_);
 
-	if (!is_running_) {
+	if (!is_running_m) {
 		return;
 	}
 
-	logger()->log(PLOG_DEBUG, "DISCONNECT HANDLE " + description());
+	log(PLOG_DEBUG, "DISCONNECT HANDLE " + description());
 
 	// disconnect from all hosts
 	std::string control_message = boost::lexical_cast<std::string>(CONTROL_MESSAGE_DISCONNECT);
 	zmq::message_t message(control_message.length());
 	memcpy((void *)message.data(), control_message.c_str(), control_message.length());
-	zmq_control_socket_->send(message);
+	zmq_control_socket_m->send(message);
 }
 
 void
 handle_t::make_all_messages_new() {
-	assert (message_cache_);
-	return message_cache_->make_all_messages_new();
+	assert (message_cache_m);
+	return message_cache_m->make_all_messages_new();
 }
 
 void
 handle_t::assign_message_queue(const message_cache::message_queue_ptr_t& message_queue) {
-	assert (message_cache_);
-	return message_cache_->append_message_queue(message_queue);
+	assert (message_cache_m);
+	return message_cache_m->append_message_queue(message_queue);
 }
 
 void
 handle_t::set_responce_callback(responce_callback_t callback) {
 	boost::mutex::scoped_lock lock(mutex_);
-	response_callback_ = callback;
+	response_callback_m = callback;
 }
 
 void
 handle_t::enqueue_message(const boost::shared_ptr<message_iface>& message) {
-	message_cache_->enqueue(message);
-	update_statistics();
-}
-
-boost::shared_ptr<cocaine::dealer::context_t>
-handle_t::context() {
-	assert(context_);
-	return context_;
-}
-
-boost::shared_ptr<base_logger>
-handle_t::logger() {
-	return context()->logger();
-}
-
-boost::shared_ptr<configuration>
-handle_t::config() {
-	boost::shared_ptr<configuration> conf = context()->config();
-	assert (conf);
-	return conf;
+	message_cache_m->enqueue(message);
 }
 
 } // namespace dealer
