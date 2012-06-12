@@ -1,15 +1,23 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 PROJECT(Cocaine)
 
-SET(COCAINE_VERSION 0.7)
+SET(COCAINE_VERSION 0.8)
 
 SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
-OPTION(DEALER "Build dealer library" ON)
-OPTION(PYTHON "Build python module" ON)
-OPTION(PERL "Build perl module" ON)
-OPTION(JAVASCRIPT "Build javascript module" ON)
-OPTION(MONGO "Build mongo module" ON)
+OPTION(DEALER "Build Dealer library" ON)
+OPTION(PYTHON "Build Python plugin" ON)
+OPTION(PERL "Build Perl plugin" ON)
+OPTION(JAVASCRIPT "Build Javascript plugin" ON)
+OPTION(MONGO "Build MongoDB plugin" ON)
+
+IF(NOT APPLE)
+    OPTION(ELLIPTICS "Build Elliptics plugin" ON)
+ELSE()
+    OPTION(ELLIPTICS "Build Elliptics plugin" OFF)
+ENDIF()
+
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 CONFIGURE_FILE(
     "${PROJECT_SOURCE_DIR}/config.hpp.in"
@@ -29,6 +37,7 @@ INCLUDE(cmake/locate_library.cmake)
 LOCATE_LIBRARY(LIBEV "ev++.h" "ev" "libev")
 LOCATE_LIBRARY(LIBMSGPACK "msgpack.hpp" "msgpack")
 LOCATE_LIBRARY(LIBZMQ "zmq.hpp" "zmq")
+LOCATE_LIBRARY(LIBARCHIVE "archive.h" "archive")
 
 IF(NOT APPLE)
     LOCATE_LIBRARY(LIBCGROUP "libcgroup.h" "cgroup")
@@ -49,23 +58,25 @@ INCLUDE_DIRECTORIES(
     ${OPENSSL_INCLUDE_DIR}
     ${LIBEV_INCLUDE_DIRS}
     ${LIBMSGPACK_INCLUDE_DIRS}
-    ${LIBZMQ_INCLUDE_DIRS})
+    ${LIBZMQ_INCLUDE_DIRS}
+    ${LIBARCHIVE_INCLUDE_DIRS})
 
 LINK_DIRECTORIES(
     ${Boost_LIBRARY_DIRS}
     ${LIBEV_LIBRARY_DIRS}
     ${LIBMSGPACK_LIBRARY_DIRS}
-    ${LIBZMQ_LIBRARY_DIRS})
+    ${LIBZMQ_LIBRARY_DIRS}
+    ${LIBARCHIVE_LIBRARY_DIRS})
 
-INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/foreign/jsoncpp-0.5.0/include)
+INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/foreign/jsoncpp-0.6.0-rc2/include)
 INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/include)
 
-ADD_DEFINITIONS("-DBOOST_FILESYSTEM_VERSION=2")
+#ADD_DEFINITIONS("-DBOOST_FILESYSTEM_VERSION=2")
 
 ADD_LIBRARY(json
-    foreign/jsoncpp-0.5.0/src/lib_json/json_value
-    foreign/jsoncpp-0.5.0/src/lib_json/json_reader
-    foreign/jsoncpp-0.5.0/src/lib_json/json_writer)
+    foreign/jsoncpp-0.6.0-rc2/src/lib_json/json_value
+    foreign/jsoncpp-0.6.0-rc2/src/lib_json/json_reader
+    foreign/jsoncpp-0.6.0-rc2/src/lib_json/json_writer)
 
 SET_TARGET_PROPERTIES(json PROPERTIES
     COMPILE_FLAGS -fPIC)
@@ -73,104 +84,72 @@ SET_TARGET_PROPERTIES(json PROPERTIES
 ADD_LIBRARY(cocaine-common SHARED
     src/auth
     src/context
-    src/interfaces/storage
     src/loggers/syslog
     src/logging
-    src/registry
-    src/storages/files
-    src/storages/void)
+    src/repository
+    src/storages/files)
 
 TARGET_LINK_LIBRARIES(cocaine-common
     boost_filesystem-mt
+    ${Boost_SYSTEM_LIBRARY}
     boost_thread-mt
+    ${LIBCGROUP_LIBRARY}
     crypto
     json
     ltdl
-    zmq
-    ${Boost_SYSTEM_LIBRARY}
-    ${LIBCGROUP_LIBRARY}
-    ${LIBUUID_LIBRARY})
+    msgpack
+    ${LIBUUID_LIBRARY}
+    zmq)
 
 SET_TARGET_PROPERTIES(cocaine-common PROPERTIES
     VERSION 1)
 
 ADD_LIBRARY(cocaine-core SHARED
     src/app
-    src/core
-    src/drivers/base
-    src/drivers/recurring_timer
-    src/drivers/drifting_timer
-    src/drivers/filesystem_monitor
-    src/drivers/zeromq_server
-    src/drivers/zeromq_sink
-    src/drivers/native_server
     src/engine
-    src/interfaces/plugin
     src/job
-    src/overseer
-    src/slave)
+    src/manifest
+    src/master
+    src/package)
 
 TARGET_LINK_LIBRARIES(cocaine-core
+    archive
     cocaine-common
-    ev
-    msgpack)
+    ev)
 
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     VERSION 1)
 
+ADD_EXECUTABLE(cocaine-slave
+    src/slave/slave
+    src/slave/main)
+
 ADD_EXECUTABLE(cocained
-    src/main)
+    src/server/server
+    src/server/main)
+
+ADD_EXECUTABLE(library-test
+    tests/library_test.cpp)
+
+TARGET_LINK_LIBRARIES(cocaine-slave
+    boost_program_options-mt
+    cocaine-core)
 
 TARGET_LINK_LIBRARIES(cocained
     boost_program_options-mt
     cocaine-core)
 
-IF(DEALER)
-    FILE(GLOB DEALER_SOURCES
-        "src/dealer/*.cpp")
+TARGET_LINK_LIBRARIES(library-test
+    cocaine-core)
 
-    ADD_LIBRARY(cocaine-dealer SHARED
-        ${DEALER_SOURCES})
-
-    TARGET_LINK_LIBRARIES(cocaine-dealer
-        boost_thread-mt
-        crypto
-        curl
-        json
-        msgpack
-        zmq
-        eblob_cpp
-        eblob
-        ${Boost_SYSTEM_LIBRARY}
-        ${LIBUUID_LIBRARY})
-
-    SET_TARGET_PROPERTIES(cocaine-dealer PROPERTIES
-        VERSION 1)
-
-    ADD_EXECUTABLE(dealer_test_app
-        tests/dealer_test_app.cpp)
-
-    TARGET_LINK_LIBRARIES(dealer_test_app
-        boost_program_options-mt
-        cocaine-dealer
-        boost_filesystem-mt
-        zmq)
-
-    INSTALL(
-        TARGETS
-            cocaine-dealer
-        RUNTIME DESTINATION bin COMPONENT runtime
-        LIBRARY DESTINATION lib COMPONENT runtime
-        ARCHIVE DESTINATION lib COMPONENT developement)
-
-ENDIF()
-
-ADD_SUBDIRECTORY(modules)
+ADD_SUBDIRECTORY(plugins)
+ADD_SUBDIRECTORY(tools)
 
 INSTALL(
     TARGETS
         cocaine-common
         cocaine-core
+        cocaine-slave
         cocained
         json
     RUNTIME DESTINATION bin COMPONENT runtime
@@ -180,6 +159,6 @@ INSTALL(
 INSTALL(
     DIRECTORY
         include/
-        foreign/jsoncpp-0.5.0/include/
+        foreign/jsoncpp-0.6.0-rc2/include/
     DESTINATION include
     COMPONENT development)

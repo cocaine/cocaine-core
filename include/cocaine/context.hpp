@@ -1,116 +1,153 @@
-//
-// Copyright (C) 2011-2012 Andrey Sibiryov <me@kobology.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Andrey Sibiryov <me@kobology.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #ifndef COCAINE_CONTEXT_HPP
 #define COCAINE_CONTEXT_HPP
 
+#include <boost/filesystem/path.hpp>
 #include <boost/thread/mutex.hpp>
 #include <deque>
-#include <msgpack.hpp>
 
 #include "cocaine/common.hpp"
+#include "cocaine/repository.hpp"
 
-#include "cocaine/registry.hpp"
+#include "cocaine/interfaces/storage.hpp"
 
 namespace cocaine {
 
+struct defaults {
+    // Default engine policy.
+    static const float heartbeat_timeout;
+    static const float suicide_timeout;
+    static const unsigned int pool_limit;
+    static const unsigned int queue_limit;
+
+    // I/O bulk size.
+    static const unsigned int io_bulk_size;
+
+    // Default slave binary.
+    static const char slave[];
+
+    // Default paths.
+    static const char plugin_path[];
+    static const char ipc_path[];
+    static const char spool_path[];
+};
+
 struct config_t {
-    config_t();
+    config_t(const std::string& config_path);
 
-    struct {
-        // Administration socket endpoint.
-        std::vector<std::string> endpoints;
-        
-        // Automatic discovery.
-        std::string announce_endpoint;
-        float announce_interval;
-    } core;
+    boost::filesystem::path config_path,
+                            plugin_path,
+                            ipc_path,
+                            spool_path;
 
-    struct {
-        std::string id;
-        std::string app;
-    } slave;
+    typedef struct {
+        std::string type;
+        plugin_config_t config;
+    } storage_info_t;
 
-    struct engine_config_t {
-        // Default engine policy.
-        float heartbeat_timeout;
-        float suicide_timeout;
-        unsigned int pool_limit;
-        unsigned int queue_limit;
+    typedef std::map<
+        std::string,
+        storage_info_t
+    > storage_info_map_t;
 
-        // I/O bulk size
-        unsigned int io_bulk_size;
+    storage_info_map_t storages;
 
-        MSGPACK_DEFINE(heartbeat_timeout, suicide_timeout, pool_limit, queue_limit);
-    } defaults;
-
-    struct registry_config_t {
-        // Module path.
-        std::string modules;
-        
-        MSGPACK_DEFINE(modules);
-    } registry;
-
-    struct storage_config_t {
-        // Storage type and path.
-        std::string driver;
-        std::string uri;
-
-        MSGPACK_DEFINE(driver, uri);
-    } storage;
-    
-    struct {
-        std::string self;
+    typedef struct {
         std::string hostname;
+    } runtime_info_t;
 
-        // Usable port range
-        std::deque<uint16_t> ports;
-    } runtime;
-
-    // Logging sink.
-    boost::shared_ptr<logging::sink_t> sink;
-    
-    MSGPACK_DEFINE(defaults, registry, storage);
+    runtime_info_t runtime;
 };
 
 class context_t:
     public boost::noncopyable
 {
     public:
-        context_t(config_t config);
+        context_t(config_t config,
+                  boost::shared_ptr<logging::sink_t> sink);
+
         ~context_t();
 
+        // Repository API
+        // --------------
+
         template<class Category>
-        typename core::category_traits<Category>::ptr_type
-        get(const std::string& type) {
-            return m_registry->get<Category>(type);
+        typename category_traits<Category>::ptr_type
+        get(const std::string& type,
+            const typename category_traits<Category>::args_type& args)
+        {
+            return m_repository->get<Category>(type, args);
         }
+
+        // Networking
+        // ----------
 
         zmq::context_t& io();
         
-        // Returns a possibly cached logger with the specified name.
-        boost::shared_ptr<logging::logger_t> log(const std::string& type);
+        // Storage
+        // -------
+
+        template<class T>
+        typename category_traits<
+            storages::storage_concept<T>
+        >::ptr_type
+        storage(const std::string& name) {
+            typedef storages::storage_concept<T> storage_type;
+
+            config_t::storage_info_map_t::const_iterator it(
+                config.storages.find(name)
+            );
+    
+            if(it == config.storages.end()) {
+                throw configuration_error_t("the '" + name + "' storage doesn't exist");
+            }
+
+            return get<storage_type>(
+                it->second.type,
+                typename category_traits<storage_type>::args_type(
+                    it->second.config
+                )
+            );
+        }
+
+        // Logging
+        // -------
+
+        boost::shared_ptr<logging::logger_t>
+        log(const std::string& name);
 
     public:
-        config_t config;
+        const config_t config;
 
     private:
         // Initialization interlocking.
         boost::mutex m_mutex;
 
+        // Logging.    
+        boost::shared_ptr<logging::sink_t> m_sink;
+        
         // Core subsystems.
         std::auto_ptr<zmq::context_t> m_io;
-        std::auto_ptr<core::registry_t> m_registry;
+        std::auto_ptr<repository_t> m_repository;
 };
 
 }

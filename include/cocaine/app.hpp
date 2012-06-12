@@ -1,60 +1,68 @@
-//
-// Copyright (C) 2011-2012 Andrey Sibiryov <me@kobology.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Andrey Sibiryov <me@kobology.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #ifndef COCAINE_APP_HPP
 #define COCAINE_APP_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/manifest.hpp"
 
-#include "cocaine/helpers/json.hpp"
+#include "cocaine/interfaces/driver.hpp"
 
-namespace cocaine { namespace engine {
+#include "helpers/json.hpp"
+
+namespace cocaine {
+
+#if BOOST_VERSION >= 104000
+typedef boost::ptr_unordered_map<
+#else
+typedef boost::ptr_map<
+#endif
+    const std::string,
+    engine::drivers::driver_t
+> driver_map_t;
 
 class app_t {
     public:
-        app_t(context_t& context, const std::string& name);
+        app_t(context_t& context,
+              const std::string& name);
+        
+        ~app_t();
 
-        app_t(context_t& context, 
-              const std::string& name, 
-              const Json::Value& manifest);
+        void start();
+        void stop();
 
-    public:
-        const std::string name;
-        Json::Value manifest;
-
-        struct policy_t {
-            float heartbeat_timeout;
-            float suicide_timeout;
-            unsigned int pool_limit;
-            unsigned int queue_limit;
-            unsigned int grow_threshold;
-        } policy;
-
-        boost::shared_ptr<logging::logger_t> log;
+        Json::Value info() const;
+        
+        // Job scheduling.
+        void enqueue(const boost::shared_ptr<engine::job_t>& job);
 
     private:
-        void initialize(context_t& context);
+        boost::shared_ptr<logging::logger_t> m_log;
+        
+        manifest_t m_manifest;
+        std::auto_ptr<engine::engine_t> m_engine;
+        
+        driver_map_t m_drivers;
 };
 
-class endpoint {
-    public:
-        endpoint(const std::string& name);
-        operator std::string() const;
-
-    private:
-        std::string m_endpoint;
-};
-
-}}
+}
 
 #endif
