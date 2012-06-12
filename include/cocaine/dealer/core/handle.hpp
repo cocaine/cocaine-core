@@ -39,7 +39,6 @@
 #include "json/json.h"
 
 #include "cocaine/dealer/structs.hpp"
-#include "cocaine/dealer/core/context.hpp"
 #include "cocaine/dealer/core/balancer.hpp"
 #include "cocaine/dealer/core/handle_info.hpp"
 #include "cocaine/dealer/core/message_iface.hpp"

@@ -29,21 +29,22 @@
 
 #include <zmq.hpp>
 
-#include "cocaine/dealer/core/cocaine_endpoint.hpp"
 #include "cocaine/dealer/core/message_iface.hpp"
-#include "cocaine/dealer/core/context.hpp"
 #include "cocaine/dealer/core/message_cache.hpp"
+#include "cocaine/dealer/core/dealer_object.hpp"
 #include "cocaine/dealer/core/cached_response.hpp"
+#include "cocaine/dealer/core/cocaine_endpoint.hpp"
 
 namespace cocaine {
 namespace dealer {
 
-class balancer_t : private boost::noncopyable {
+class balancer_t : private boost::noncopyable, public dealer_object_t {
 public:
 	balancer_t(const std::string& identity,
 			   const std::vector<cocaine_endpoint>& endpoints,
-			   const boost::shared_ptr<cocaine::dealer::context_t>& context_t,
-			   boost::shared_ptr<message_cache> message_cache);
+			   boost::shared_ptr<message_cache> message_cache,
+			   const boost::shared_ptr<context_t>& ctx,
+			   bool logging_enabled = true);
 
 	virtual ~balancer_t();
 
@@ -74,15 +75,12 @@ private:
 
 	cocaine_endpoint& get_next_endpoint();
 
-	boost::shared_ptr<base_logger> logger();
-
 private:
-	boost::shared_ptr<zmq::socket_t> socket_;
-	std::string socket_identity_;
-	std::vector<cocaine_endpoint> endpoints_;
-	boost::shared_ptr<cocaine::dealer::context_t> context_;
-	boost::shared_ptr<message_cache> message_cache_;
-	size_t current_endpoint_index_;
+	boost::shared_ptr<zmq::socket_t> socket_m;
+	std::string socket_identity_m;
+	std::vector<cocaine_endpoint> endpoints_m;
+	boost::shared_ptr<message_cache> message_cache_m;
+	size_t current_endpoint_index_m;
 };
 
 } // namespace dealer
