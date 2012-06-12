@@ -51,7 +51,7 @@ file_hosts_fetcher::get_hosts(inetv4_endpoints& endpoints, service_info_t& servi
 
 	// check file modification time
 	struct stat attrib;
-	stat(service_info_m.hosts_source_.c_str(), &attrib);
+	stat(service_info_m.hosts_source.c_str(), &attrib);
 
 	if (attrib.st_mtime <= file_modification_time_m) {
 		return false;
@@ -60,10 +60,10 @@ file_hosts_fetcher::get_hosts(inetv4_endpoints& endpoints, service_info_t& servi
 	// load file
 	std::string code;
 	std::ifstream file;
-	file.open(service_info_m.hosts_source_.c_str(), std::ifstream::in);
+	file.open(service_info_m.hosts_source.c_str(), std::ifstream::in);
 
 	if (!file.is_open()) {
-		throw internal_error("hosts file: " + service_info_m.hosts_source_ + " failed to open at: " + std::string(BOOST_CURRENT_FUNCTION));
+		throw internal_error("hosts file: " + service_info_m.hosts_source + " failed to open at: " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	size_t max_size = 512;

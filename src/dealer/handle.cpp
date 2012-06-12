@@ -41,7 +41,7 @@ handle_t::handle_t(const handle_info_t& info,
 	log(PLOG_DEBUG, "CREATED HANDLE " + description());
 
 	// create message cache
-	message_cache_m.reset(new message_cache(context(), context()->config()->message_cache_type()));
+	message_cache_m.reset(new message_cache(context(), true));
 
 	// create control socket
 	std::string conn_str = "inproc://service_control_" + description();
@@ -74,7 +74,7 @@ handle_t::~handle_t() {
 void
 handle_t::dispatch_messages() {	
 	std::string balancer_ident = info_m.as_string() + "." + wuuid_t().generate();
-	balancer_t balancer(balancer_ident, endpoints_m, context(), message_cache_m);
+	balancer_t balancer(balancer_ident, endpoints_m, message_cache_m, context());
 
 	socket_ptr_t control_socket;
 	establish_control_conection(control_socket);
@@ -232,7 +232,7 @@ handle_t::dispatch_control_messages(int type, balancer_t& balancer) {
 				balancer.update_endpoints(endpoints_m, missing_endpoints);
 
 				for (size_t i = 0; i < missing_endpoints.size(); ++i) {
-					message_cache_m->make_all_messages_new_for_route(missing_endpoints.at(i).route_);
+					message_cache_m->make_all_messages_new_for_route(missing_endpoints.at(i).route);
 				}
 			}
 			break;
@@ -362,8 +362,6 @@ handle_t::receive_control_messages(socket_ptr_t& control_socket, int poll_timeou
 	}
 
     if (recv_failed) {
-    	std::string sname = info_m.service_name_;
-    	std::string hname = info_m.name_;
     	log("control socket recv failed on " + description());
     }
 
@@ -381,7 +379,7 @@ handle_t::dispatch_next_available_message(balancer_t& balancer) {
 	cocaine_endpoint endpoint;
 	if (balancer.send(new_msg, endpoint)) {
 		new_msg->mark_as_sent(true);
-		message_cache_m->move_new_message_to_sent(endpoint.route_);
+		message_cache_m->move_new_message_to_sent(endpoint.route);
 
 		std::string log_msg = "sent msg with uuid: %s to %s";
 		log(PLOG_DEBUG, log_msg.c_str(), new_msg->uuid().c_str(), description().c_str());

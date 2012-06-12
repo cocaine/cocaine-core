@@ -34,12 +34,13 @@
 #include "cocaine/dealer/structs.hpp"
 #include "cocaine/dealer/defaults.hpp"
 #include "cocaine/dealer/core/context.hpp"
+#include "cocaine/dealer/core/dealer_object.hpp"
 #include "cocaine/dealer/core/message_iface.hpp"
 
 namespace cocaine {
 namespace dealer {
 
-class message_cache : private boost::noncopyable {
+class message_cache : private boost::noncopyable, public dealer_object_t {
 public:
 	typedef boost::shared_ptr<message_iface> cached_message_ptr_t;
 	typedef std::deque<cached_message_ptr_t> message_queue_t;
@@ -54,8 +55,8 @@ public:
 	typedef std::map<std::string, sent_messages_map_t> route_sent_messages_map_t;
 
 public:
-	explicit message_cache(const boost::shared_ptr<cocaine::dealer::context_t>& context,
-						   enum e_message_cache_type type);
+	message_cache(const boost::shared_ptr<context_t>& ctx,
+				  bool logging_enabled = true);
 
 	virtual ~message_cache();
 
@@ -84,18 +85,12 @@ public:
 private:
 	static bool is_message_expired(cached_message_ptr_t msg);
 
-	boost::shared_ptr<cocaine::dealer::context_t> context();
-	boost::shared_ptr<base_logger> logger();
-	boost::shared_ptr<configuration> config();
-
 private:
-	boost::shared_ptr<cocaine::dealer::context_t> context_;
-	enum e_message_cache_type type_;
+	enum e_message_cache_type	type_m;
+	route_sent_messages_map_t	sent_messages_m;
+	message_queue_ptr_t			new_messages_m;
 
-	route_sent_messages_map_t sent_messages_;
-	message_queue_ptr_t new_messages_;
-
-	boost::mutex mutex_;
+	boost::mutex mutex_m;
 };
 
 } // namespace dealer

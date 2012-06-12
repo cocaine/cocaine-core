@@ -90,33 +90,33 @@ private:
 
 private:
 	// config
-	std::string path_;
+	std::string path_m;
 	
 	// general
-	unsigned long long default_message_deadline_;
-	enum e_message_cache_type message_cache_type_;
+	unsigned long long			default_message_deadline_m;
+	enum e_message_cache_type	message_cache_type_m;
 	
 	// logger
-	enum e_logger_type logger_type_;
-	unsigned int logger_flags_;
-	std::string logger_file_path_;
-	std::string logger_syslog_identity_;
+	enum e_logger_type	logger_type_m;
+	unsigned int		logger_flags_m;
+	std::string			logger_file_path_m;
+	std::string			logger_syslog_identity_m;
 
 	// persistent storage
-	std::string eblob_path_;
-	uint64_t eblob_blob_size_;
-	int eblob_sync_interval_;
+	std::string eblob_path_m;
+	uint64_t	eblob_blob_size_m;
+	int			eblob_sync_interval_;
 	
 	// statistics
-	bool is_statistics_enabled_;
-	bool is_remote_statistics_enabled_;
-	DT::port remote_statistics_port_;
+	bool		is_statistics_enabled_m;
+	bool		is_remote_statistics_enabled_m;
+	DT::port	remote_statistics_port_m;
 
 	// services
-	services_list_t services_list_;
+	services_list_t services_list_m;
 
 	// synchronization
-	boost::mutex mutex_;
+	boost::mutex mutex_m;
 };
 
 } // namespace dealer

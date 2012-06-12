@@ -30,13 +30,13 @@ namespace dealer {
 
 struct message_path {
     message_path() {};
-    message_path(const std::string& service_name_,
+    message_path(const std::string& service_alias_,
                  const std::string& handle_name_) :
-        service_name(service_name_),
+        service_alias(service_alias_),
         handle_name(handle_name_) {};
 
     message_path(const message_path& path) :
-        service_name(path.service_name),
+        service_alias(path.service_alias),
         handle_name(path.handle_name) {};
 
     message_path& operator = (const message_path& rhs) {
@@ -44,14 +44,14 @@ struct message_path {
             return *this;
         }
 
-        service_name = rhs.service_name;
+        service_alias = rhs.service_alias;
         handle_name = rhs.handle_name;
 
         return *this;
     }
 
     bool operator == (const message_path& mp) const {
-        return (service_name == mp.service_name &&
+        return (service_alias == mp.service_alias &&
                 handle_name == mp.handle_name);
     }
 
@@ -59,15 +59,19 @@ struct message_path {
         return !(*this == mp);
     }
 
-    std::string service_name;
+    std::string as_string() const {
+        return "[" + service_alias + "." + handle_name + "]";
+    }
+
+    std::string service_alias;
     std::string handle_name;
 
-    MSGPACK_DEFINE(service_name, handle_name);
+    MSGPACK_DEFINE(service_alias, handle_name);
 };
 
 static std::size_t __attribute__ ((unused)) hash_value(const message_path& path) {
     boost::hash<std::string> hasher;
-    return hasher(path.service_name + path.handle_name);
+    return hasher(path.service_alias + path.handle_name);
 }
 
 } // namespace dealer

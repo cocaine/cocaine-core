@@ -42,8 +42,6 @@ public:
 
 	virtual void remove_from_persistent_cache() = 0;
 
-	virtual size_t container_size() const = 0;
-
 	virtual const message_path& path() const = 0;
 	virtual const message_policy& policy() const = 0;
 	virtual const std::string& uuid() const = 0;
@@ -64,7 +62,6 @@ public:
 
 	virtual void mark_as_sent(bool value) = 0;
 
-	virtual std::string json() = 0;
 	virtual bool is_expired() = 0;
 
 	virtual message_iface& operator = (const message_iface& rhs) = 0;

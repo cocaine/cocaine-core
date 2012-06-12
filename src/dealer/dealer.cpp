@@ -32,11 +32,11 @@ namespace cocaine {
 namespace dealer {
 
 dealer_t::dealer_t(const std::string& config_path) {
-	impl_.reset(new dealer_impl_t(config_path));
+	impl_m.reset(new dealer_impl_t(config_path));
 }
 
 dealer_t::~dealer_t() {
-	impl_.reset();
+	impl_m.reset();
 }
 
 boost::shared_ptr<response>
@@ -45,19 +45,13 @@ dealer_t::send_message(const void* data,
 					 const message_path& path,
 					 const message_policy& policy)
 {
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(mutex_m);
 
-	boost::shared_ptr<message_iface> msg = get_impl()->create_message(data, size, path, policy);
-	boost::shared_ptr<response> resp(new response(get_impl(), msg->uuid(), path));
-	get_impl()->send_message(msg, resp);
+	boost::shared_ptr<message_iface> msg = impl_m->create_message(data, size, path, policy);
+	boost::shared_ptr<response> resp(new response(impl_m, msg->uuid(), path));
+	impl_m->send_message(msg, resp);
 
 	return resp;
-}
-
-inline boost::shared_ptr<dealer_impl_t>
-dealer_t::get_impl() {
-	assert(impl_);
-	return impl_;
 }
 
 } // namespace dealer

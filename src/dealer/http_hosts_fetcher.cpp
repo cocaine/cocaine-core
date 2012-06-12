@@ -59,7 +59,7 @@ http_hosts_fetcher::get_hosts(inetv4_endpoints& endpoints, service_info_t& servi
 	
 	if (curl_m) {
 		curl_easy_setopt(curl_m, CURLOPT_ERRORBUFFER, error_buffer);
-		curl_easy_setopt(curl_m, CURLOPT_URL, service_info_m.hosts_source_.c_str());
+		curl_easy_setopt(curl_m, CURLOPT_URL, service_info_m.hosts_source.c_str());
 		curl_easy_setopt(curl_m, CURLOPT_HEADER, 0);
 		curl_easy_setopt(curl_m, CURLOPT_FOLLOWLOCATION, 1);
 		curl_easy_setopt(curl_m, CURLOPT_WRITEFUNCTION, curl_writer);

@@ -40,7 +40,7 @@ namespace dealer {
 
 class context_t : private boost::noncopyable {
 public:
-	explicit context_t(const std::string& config_path = "");
+	explicit context_t(const std::string& config_path);
 	virtual ~context_t();
 
 	boost::shared_ptr<base_logger> logger();
@@ -50,11 +50,11 @@ public:
 	boost::shared_ptr<eblob_storage> storage();
 
 private:
-	boost::shared_ptr<zmq::context_t> zmq_context_;
-	boost::shared_ptr<base_logger> logger_;
-	boost::shared_ptr<configuration> config_;
-	boost::shared_ptr<statistics_collector> stats_;
-	boost::shared_ptr<eblob_storage> storage_;
+	boost::shared_ptr<zmq::context_t> zmq_context_m;
+	boost::shared_ptr<base_logger> logger_m;
+	boost::shared_ptr<configuration> config_m;
+	boost::shared_ptr<statistics_collector> stats_m;
+	boost::shared_ptr<eblob_storage> storage_m;
 };
 
 } // namespace dealer

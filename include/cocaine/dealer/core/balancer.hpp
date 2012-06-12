@@ -76,11 +76,11 @@ private:
 	cocaine_endpoint& get_next_endpoint();
 
 private:
-	boost::shared_ptr<zmq::socket_t> socket_m;
-	std::string socket_identity_m;
-	std::vector<cocaine_endpoint> endpoints_m;
-	boost::shared_ptr<message_cache> message_cache_m;
-	size_t current_endpoint_index_m;
+	boost::shared_ptr<zmq::socket_t>	socket_m;
+	std::vector<cocaine_endpoint>		endpoints_m;
+	boost::shared_ptr<message_cache>	message_cache_m;
+	size_t		current_endpoint_index_m;
+	std::string	socket_identity_m;
 };
 
 } // namespace dealer

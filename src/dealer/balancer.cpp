@@ -41,11 +41,10 @@ balancer_t::balancer_t(const std::string& identity,
 					   const boost::shared_ptr<context_t>& ctx,
 					   bool logging_enabled) :
 	dealer_object_t(ctx, logging_enabled),
-	socket_identity_m(identity),
 	endpoints_m(endpoints),
-	context_(context),
 	message_cache_m(message_cache),
-	current_endpoint_index_m(0)
+	current_endpoint_index_m(0),
+	socket_identity_m(identity)
 {
 	std::sort(endpoints_m.begin(), endpoints_m.end());
 	recreate_socket();
@@ -57,7 +56,7 @@ balancer_t::~balancer_t() {
 
 void
 balancer_t::connect(const std::vector<cocaine_endpoint>& endpoints) {
-	logger()->log("connect " + socket_identity_m);
+	log("connect " + socket_identity_m);
 
 	if (endpoints.empty()) {
 		return;
@@ -68,7 +67,7 @@ balancer_t::connect(const std::vector<cocaine_endpoint>& endpoints) {
 	std::string connection_str;
 	try {
 		for (size_t i = 0; i < endpoints.size(); ++i) {
-			connection_str = endpoints[i].endpoint_;
+			connection_str = endpoints[i].endpoint;
 			socket_m->connect(connection_str.c_str());
 		}
 
@@ -143,7 +142,7 @@ balancer_t::recreate_socket() {
 	log("recreate_socket " + socket_identity_m);
 	int timeout = balancer_t::socket_timeout;
 	int64_t hwm = balancer_t::socket_hwm;
-	socket_m.reset(new zmq::socket_t(*(context_->zmq_context()), ZMQ_ROUTER));
+	socket_m.reset(new zmq::socket_t(*(context()->zmq_context()), ZMQ_ROUTER));
 	socket_m->setsockopt(ZMQ_LINGER, &timeout, sizeof(timeout));
 	socket_m->setsockopt(ZMQ_HWM, &hwm, sizeof(hwm));
 	socket_m->setsockopt(ZMQ_IDENTITY, socket_identity_m.c_str(), socket_identity_m.length());
@@ -168,8 +167,8 @@ balancer_t::send(boost::shared_ptr<message_iface>& message, cocaine_endpoint& en
 	try {
 		// send ident
 		endpoint = get_next_endpoint();
-		zmq::message_t ident_chunk(endpoint.route_.size());
-		memcpy((void *)ident_chunk.data(), endpoint.route_.data(), endpoint.route_.size());
+		zmq::message_t ident_chunk(endpoint.route.size());
+		memcpy((void *)ident_chunk.data(), endpoint.route.data(), endpoint.route.size());
 
 		if (true != socket_m->send(ident_chunk, ZMQ_SNDMORE)) {
 			return false;

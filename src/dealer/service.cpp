@@ -194,7 +194,7 @@ service_t::enqueue_responce(cached_response_prt_t response) {
 		// validate existing responces queue
 		if (!handle_resp_queue) {
 			std::string error_str = "found empty response queue object!";
-			error_str += " service: " + info_m.name_ + " handle: " + path.handle_name;
+			error_str += " service: " + info_m.name + " handle: " + path.handle_name;
 			error_str += " at " + std::string(BOOST_CURRENT_FUNCTION);
 			throw internal_error(error_str);
 		}
@@ -226,7 +226,7 @@ service_t::refresh_handles(const handles_endpoints_t& handles_endpoints) {
 		handles_map_t::iterator hit = handles_m.find(it->first);
 
 		if (hit == handles_m.end()) {
-			handle_info_t hinfo(it->first, info_m.app_, info_m.name_);
+			handle_info_t hinfo(it->first, info_m.app, info_m.name);
 			new_handles.push_back(hinfo);
 		}
 	}
@@ -257,9 +257,9 @@ service_t::remove_outstanding_handles(const handles_info_list_t& handles) {
 		return;
 	}
 
-	std::string message_str = "service: [" + info_m.name_ + "] is removing outstanding handles: ";
+	std::string message_str = "service: [" + info_m.name + "] is removing outstanding handles: ";
 	for (size_t i = 0; i < handles.size(); ++i) {
-		message_str += handles[i].name_;
+		message_str += handles[i].name;
 
 		if (i != handles.size() - 1) {
 			message_str += ", ";
@@ -272,7 +272,7 @@ service_t::remove_outstanding_handles(const handles_info_list_t& handles) {
 
 	// destroy handles
 	for (size_t i = 0; i < handles.size(); ++i) {
-		handles_map_t::iterator it = handles_m.find(handles[i].name_);
+		handles_map_t::iterator it = handles_m.find(handles[i].name);
 
 		if (it != handles_m.end()) {
 			handle_ptr_t handle = it->second;
@@ -295,12 +295,12 @@ service_t::remove_outstanding_handles(const handles_info_list_t& handles) {
 					handle_inf.as_string().c_str(), handle_msg_queue->size());
 
 				// find corresponding unhandled message queue
-				unhandled_messages_map_t::iterator it = unhandled_messages_m.find(handle_inf.name_);
+				unhandled_messages_map_t::iterator it = unhandled_messages_m.find(handle_inf.name);
 
 				// make one if needed
 				if (it == unhandled_messages_m.end()) {
 					messages_deque_ptr_t new_queue(new cached_messages_deque_t);
-					unhandled_messages_m[handle_inf.name_] = new_queue;
+					unhandled_messages_m[handle_inf.name] = new_queue;
 				}
 				else {
 					// should not find a queue with messages!
@@ -313,7 +313,7 @@ service_t::remove_outstanding_handles(const handles_info_list_t& handles) {
 					}
 				}
 
-				messages_deque_ptr_t unhandled_queue = unhandled_messages_m[handle_inf.name_];
+				messages_deque_ptr_t unhandled_queue = unhandled_messages_m[handle_inf.name];
 				unhandled_queue->insert(unhandled_queue->end(), handle_msg_queue->begin(), handle_msg_queue->end());
 			}
 		}
@@ -336,7 +336,7 @@ service_t::create_new_handles(const handles_info_list_t& handles,
 		handle_ptr_t handle;
 		handle_info_t handle_info = handles[i];
 
-		handles_endpoints_t::const_iterator hit = handles_endpoints.find(handle_info.name_);
+		handles_endpoints_t::const_iterator hit = handles_endpoints.find(handle_info.name);
 		if (hit == handles_endpoints.end()) {
 			throw internal_error("no endpoints for new handle " + handle_info.as_string() + "].");
 		}
@@ -348,7 +348,7 @@ service_t::create_new_handles(const handles_info_list_t& handles,
 		// move existing unhandled message queue to handle
 		boost::mutex::scoped_lock lock(mutex_m);
 
-		unhandled_messages_map_t::iterator it = unhandled_messages_m.find(handles[i].name_);
+		unhandled_messages_map_t::iterator it = unhandled_messages_m.find(handles[i].name);
 		if (it != unhandled_messages_m.end()) {
 			messages_deque_ptr_t msg_queue = it->second;
 
@@ -367,7 +367,7 @@ service_t::create_new_handles(const handles_info_list_t& handles,
 			unhandled_messages_m.erase(it);
 		}
 
-		handles_m[handles[i].name_] = handle;
+		handles_m[handles[i].name] = handle;
 	}
 }
 

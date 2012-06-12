@@ -29,35 +29,34 @@
 namespace cocaine {
 namespace dealer {
 
-class cocaine_node_app_info_t;
+struct cocaine_node_app_info_t;
 std::ostream& operator << (std::ostream& out, const cocaine_node_app_info_t& info);
 
-class cocaine_node_app_info_t {
-public:
+struct cocaine_node_app_info_t {
 	// <task name, task info>
 	typedef std::map<std::string, cocaine_node_task_info_t> application_tasks;
 
 	cocaine_node_app_info_t() :
-		queue_depth_m(0),
-		is_running_m(false),
-		slaves_busy_m(0),
-		slaves_total_m(0) {}
+		queue_depth(0),
+		is_running(false),
+		slaves_busy(0),
+		slaves_total(0) {}
 
-	explicit cocaine_node_app_info_t(const std::string& name) :
-		name_m(name),
-		queue_depth_m(0),
-		is_running_m(false),
-		slaves_busy_m(0),
-		slaves_total_m(0) {}
+	explicit cocaine_node_app_info_t(const std::string& name_) :
+		name(name_),
+		queue_depth(0),
+		is_running(false),
+		slaves_busy(0),
+		slaves_total(0) {}
 
 	~cocaine_node_app_info_t() {}
 
-	std::string			name_m;
-	application_tasks	tasks_m;
-	unsigned int		queue_depth_m;
-	bool				is_running_m;
-	unsigned int		slaves_busy_m;
-	unsigned int		slaves_total_m;
+	std::string			name;
+	application_tasks	tasks;
+	unsigned int		queue_depth;
+	bool				is_running;
+	unsigned int		slaves_busy;
+	unsigned int		slaves_total;
 
 	friend std::ostream& operator << (std::ostream& out, const cocaine_node_app_info_t& info);
 };

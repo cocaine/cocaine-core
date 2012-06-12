@@ -53,7 +53,6 @@ public:
 	virtual ~cached_response_t();
 
 	const data_container& data() const;
-	size_t container_size() const;
 
 	const message_path& path() const;
 	const std::string& uuid() const;
@@ -76,19 +75,16 @@ public:
 	static const size_t UUID_SIZE = 36; // bytes
 	
 private:
-	std::string uuid_;
-	std::string route_;
-	message_path path_;
-	data_container data_;
+	std::string		uuid_m;
+	std::string		route_m;
+	message_path	path_m;
+	data_container	data_m;
+	timeval			received_timestamp_m;
 
-	timeval received_timestamp_;
-	size_t container_size_;
+	int code_m;
+	std::string error_message_m;
 
-	int code_;
-	std::string error_message_;
-
-	// synchronization
-	boost::mutex mutex_;
+	boost::mutex mutex_m;
 };
 
 } // namespace dealer

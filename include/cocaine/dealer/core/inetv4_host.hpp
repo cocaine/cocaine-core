@@ -31,32 +31,32 @@ namespace dealer {
  // predeclaration
 class inetv4_host {
 public:
-	inetv4_host() : ip_(0) {
+	inetv4_host() : ip(0) {
 	}
 
-	explicit inetv4_host(int ip) : ip_(ip) {
-		hostname_ = nutils::hostname_for_ipv4(ip);
+	explicit inetv4_host(int ip) : ip(ip) {
+		hostname = nutils::hostname_for_ipv4(ip);
 	}
 
 	explicit inetv4_host(const std::string& ip) {
-		ip_ = nutils::str_to_ipv4(ip);
-		hostname_ = nutils::hostname_for_ipv4(ip);
+		ip = nutils::str_to_ipv4(ip);
+		hostname = nutils::hostname_for_ipv4(ip);
 	}
 
 	inetv4_host(const inetv4_host& rhs) :
-		ip_(rhs.ip_), hostname_(rhs.hostname_) {
+		ip(rhs.ip), hostname(rhs.hostname) {
 	}
 
 	inetv4_host(int ip, const std::string& hostname) :
-		ip_(ip), hostname_(hostname) {
+		ip(ip), hostname(hostname) {
 	}
 
 	inetv4_host(const std::string& ip, const std::string& hostname) :
-		ip_(nutils::str_to_ipv4(ip)), hostname_(hostname) {
+		ip(nutils::str_to_ipv4(ip)), hostname(hostname) {
 	}
 
 	bool operator == (const inetv4_host& rhs) const {
-		return (ip_ == rhs.ip_ && hostname_ == rhs.hostname_);
+		return (ip == rhs.ip && hostname == rhs.hostname);
 	}
 
 	bool operator != (const inetv4_host& rhs) const {
@@ -64,11 +64,11 @@ public:
 	}
 
 	std::string as_string() const {
-		return nutils::ipv4_to_str(ip_) + " (" + hostname_ + ")";
+		return nutils::ipv4_to_str(ip) + " (" + hostname + ")";
 	}
 
-	unsigned int ip_;
-	std::string hostname_;
+	unsigned int ip;
+	std::string hostname;
 };
 
 } // namespace dealer

@@ -27,7 +27,7 @@ namespace cocaine {
 namespace dealer {
 
 std::ostream& operator << (std::ostream& out, const cocaine_node_task_info_t& info) {
-	std::string name = "- {" + info.name_m + "}";
+	std::string name = "- {" + info.name + "}";
 
 	char old_char = out.fill(' ');
 	int old_width = out.width(10);
@@ -37,27 +37,27 @@ std::ostream& operator << (std::ostream& out, const cocaine_node_task_info_t& in
 	out << name << std::endl;
 
 	out << std::setw(20) << "" << std::setw(10);
-	out << "backlog: " << info.backlog_m << std::endl;
+	out << "backlog: " << info.backlog << std::endl;
 
 	out << std::setw(20) << "" << std::setw(10);
-	out << "endpoint: " << info.endpoint_m << std::endl;
+	out << "endpoint: " << info.endpoint << std::endl;
 
 	out << std::setw(20) << "" << std::setw(10);
-	out << "route: " << info.route_m << std::endl;
+	out << "route: " << info.route << std::endl;
 
 	out << std::fixed << std::setprecision(9);
 
 	out << std::setw(20) << "" << std::setw(24);
-	out << "median processing time: " << info.median_processing_time_m << std::endl;
+	out << "median processing time: " << info.median_processing_time << std::endl;
 
 	out << std::setw(20) << "" << std::setw(24);
-	out << "median wait time: " << info.median_wait_time_m << std::endl;
+	out << "median wait time: " << info.median_wait_time << std::endl;
 
 	out << std::setw(20) << "" << std::setw(24);
-	out << "time spent in queues: " << info.time_spent_in_queues_m << std::endl;
+	out << "time spent in queues: " << info.time_spent_in_queues << std::endl;
 
 	out << std::setw(20) << "" << std::setw(24);
-	out << "time spent on slaves: " << info.time_spent_on_slaves_m << std::endl;
+	out << "time spent on slaves: " << info.time_spent_on_slaves << std::endl;
 
 	out << std::setw(old_width) << std::setfill(old_char);
 

@@ -31,35 +31,35 @@
 namespace cocaine {
 namespace dealer {
 
-class handle_info_t {
+struct handle_info_t {
 public:
 	handle_info_t() {};
 
-	handle_info_t(const std::string& name,
-				  const std::string& app_name,
-				  const std::string& service_name) :
-		name_(name),
-		app_name_(app_name),
-		service_name_(service_name) {};
+	handle_info_t(const std::string& name_,
+				  const std::string& app_name_,
+				  const std::string& service_alias_) :
+		name(name_),
+		app_name(app_name_),
+		service_alias(service_alias_) {};
 
 	handle_info_t(const handle_info_t& rhs) :
-		name_(rhs.name_),
-		app_name_(rhs.app_name_),
-		service_name_(rhs.service_name_) {};
+		name(rhs.name),
+		app_name(rhs.app_name),
+		service_alias(rhs.service_alias) {};
 
 	bool operator == (const handle_info_t& rhs) const {
-		return (name_ == rhs.name_ &&
-				app_name_ == rhs.app_name_ &&
-				service_name_ == rhs.service_name_);
+		return (name == rhs.name &&
+				app_name == rhs.app_name &&
+				service_alias == rhs.service_alias);
 	};
 
 	std::string as_string() const {
-		return "[" + service_name_ + "].[" + app_name_ + "].[" + name_ + "]";
+		return "[" + service_alias + "].[" + app_name + "].[" + name + "]";
 	}
 
-	std::string name_;
-	std::string app_name_;
-	std::string service_name_;
+	std::string name;
+	std::string app_name;
+	std::string service_alias;
 };
 
 } // namespace dealer

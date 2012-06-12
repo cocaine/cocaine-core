@@ -36,63 +36,43 @@
 namespace cocaine {
 namespace dealer {
 
-message_cache::message_cache(const boost::shared_ptr<cocaine::dealer::context_t>& context,
-							 enum e_message_cache_type type) :
-	context_(context),
-	type_(type)
+message_cache::message_cache(const boost::shared_ptr<context_t>& ctx,
+							 bool logging_enabled) :
+	dealer_object_t(ctx, logging_enabled)
 {
-	new_messages_.reset(new message_queue_t);
+	type_m = config()->message_cache_type();
+	new_messages_m.reset(new message_queue_t);
 }
 
 message_cache::~message_cache() {
 }
 
-boost::shared_ptr<cocaine::dealer::context_t>
-message_cache::context() {
-	return context_;
-}
-
-boost::shared_ptr<base_logger>
-message_cache::logger() {
-	return context()->logger();
-}
-
-boost::shared_ptr<configuration>
-message_cache::config() {
-	boost::shared_ptr<configuration> conf = context()->config();
-	if (!conf.get()) {
-		throw internal_error("configuration object is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
-	}
-
-	return conf;
-}
-
 message_cache::message_queue_ptr_t
 message_cache::new_messages() {
-	if (!new_messages_) {
+	if (!new_messages_m) {
 		std::string error_str = "new messages queue object is empty at ";
 		error_str += std::string(BOOST_CURRENT_FUNCTION);
 		throw internal_error(error_str);
 	}
 
-	return new_messages_;
+	return new_messages_m;
 }
 
 void
 message_cache::enqueue_with_priority(const boost::shared_ptr<message_iface>& message) {
-	boost::mutex::scoped_lock lock(mutex_);
-	new_messages_->push_front(message);
+	boost::mutex::scoped_lock lock(mutex_m);
+	new_messages_m->push_front(message);
 }
 
 void
 message_cache::enqueue(const boost::shared_ptr<message_iface>& message) {
-	boost::mutex::scoped_lock lock(mutex_);
-	new_messages_->push_back(message);
+	boost::mutex::scoped_lock lock(mutex_m);
+	new_messages_m->push_back(message);
 }
 
 void
 message_cache::append_message_queue(message_queue_ptr_t queue) {
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(mutex_m);
 
 	// validate new queue
 	if (!queue || queue->empty()) {
@@ -100,29 +80,29 @@ message_cache::append_message_queue(message_queue_ptr_t queue) {
 	}
 
 	// append messages
-	new_messages_->insert(new_messages_->end(), queue->begin(), queue->end());
+	new_messages_m->insert(new_messages_m->end(), queue->begin(), queue->end());
 }
 
 boost::shared_ptr<message_iface>
 message_cache::get_new_message() {
-	boost::mutex::scoped_lock lock(mutex_);
-	return new_messages_->front();
+	boost::mutex::scoped_lock lock(mutex_m);
+	return new_messages_m->front();
 }
 
 size_t
 message_cache::new_messages_count() {
-	boost::mutex::scoped_lock lock(mutex_);
-	return new_messages_->size();
+	boost::mutex::scoped_lock lock(mutex_m);
+	return new_messages_m->size();
 }
 
 size_t
 message_cache::sent_messages_count() {
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(mutex_m);
 
 	size_t sent_messages_count = 0;
 
-	route_sent_messages_map_t::const_iterator it = sent_messages_.begin();
-	for (; it != sent_messages_.end(); ++it) {
+	route_sent_messages_map_t::const_iterator it = sent_messages_m.begin();
+	for (; it != sent_messages_m.end(); ++it) {
 		sent_messages_count += it->second.size();
 	}
 
@@ -134,11 +114,11 @@ message_cache::get_sent_message(const std::string& route,
 								const std::string& uuid,
 								boost::shared_ptr<message_iface>& message) {
 
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(mutex_m);
 
-	route_sent_messages_map_t::const_iterator it = sent_messages_.find(route);
+	route_sent_messages_map_t::const_iterator it = sent_messages_m.find(route);
 
-	if (it == sent_messages_.end()) {
+	if (it == sent_messages_m.end()) {
 		return false;
 	}
 
@@ -157,31 +137,31 @@ message_cache::get_sent_message(const std::string& route,
 
 void
 message_cache::move_new_message_to_sent(const std::string& route) {
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(mutex_m);
 
-	boost::shared_ptr<message_iface> msg = new_messages_->front();
+	boost::shared_ptr<message_iface> msg = new_messages_m->front();
 	assert(msg);
 
-	route_sent_messages_map_t::iterator it = sent_messages_.find(route);
-	if (it == sent_messages_.end()) {
+	route_sent_messages_map_t::iterator it = sent_messages_m.find(route);
+	if (it == sent_messages_m.end()) {
 		sent_messages_map_t msg_map;
 		msg_map.insert(std::make_pair(msg->uuid(), msg));
-		sent_messages_[route] = msg_map;
+		sent_messages_m[route] = msg_map;
 	}
 	else {
 		it->second.insert(std::make_pair(msg->uuid(), msg));
 	}
 
-	new_messages_->pop_front();
+	new_messages_m->pop_front();
 }
 
 void
 message_cache::move_sent_message_to_new(const std::string& route, const std::string& uuid) {
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(mutex_m);
 
-	route_sent_messages_map_t::iterator it = sent_messages_.find(route);
+	route_sent_messages_map_t::iterator it = sent_messages_m.find(route);
 
-	if (it == sent_messages_.end()) {
+	if (it == sent_messages_m.end()) {
 		return;
 	}
 
@@ -203,16 +183,16 @@ message_cache::move_sent_message_to_new(const std::string& route, const std::str
 	msg->mark_as_sent(false);
 	msg->set_ack_received(false);
 
-	new_messages_->push_back(msg);
+	new_messages_m->push_back(msg);
 }
 
 void
 message_cache::move_sent_message_to_new_front(const std::string& route, const std::string& uuid) {
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(mutex_m);
 
-	route_sent_messages_map_t::iterator it = sent_messages_.find(route);
+	route_sent_messages_map_t::iterator it = sent_messages_m.find(route);
 
-	if (it == sent_messages_.end()) {
+	if (it == sent_messages_m.end()) {
 		return;
 	}
 
@@ -234,16 +214,16 @@ message_cache::move_sent_message_to_new_front(const std::string& route, const st
 	msg->mark_as_sent(false);
 	msg->set_ack_received(false);
 
-	new_messages_->push_front(msg);
+	new_messages_m->push_front(msg);
 }
 
 void
 message_cache::remove_message_from_cache(const std::string& route, const std::string& uuid) {
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(mutex_m);
 
-	route_sent_messages_map_t::iterator it = sent_messages_.find(route);
+	route_sent_messages_map_t::iterator it = sent_messages_m.find(route);
 
-	if (it == sent_messages_.end()) {
+	if (it == sent_messages_m.end()) {
 		return;
 	}
 
@@ -259,10 +239,10 @@ message_cache::remove_message_from_cache(const std::string& route, const std::st
 
 void
 message_cache::make_all_messages_new() {
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(mutex_m);
 
-	route_sent_messages_map_t::iterator it = sent_messages_.begin();
-	for (; it != sent_messages_.end(); ++it) {
+	route_sent_messages_map_t::iterator it = sent_messages_m.begin();
+	for (; it != sent_messages_m.end(); ++it) {
 
 		sent_messages_map_t& msg_map = it->second;
 		sent_messages_map_t::iterator mit = msg_map.begin();
@@ -275,7 +255,7 @@ message_cache::make_all_messages_new() {
 
 			mit->second->mark_as_sent(false);
 			mit->second->set_ack_received(false);
-			new_messages_->push_front(mit->second);
+			new_messages_m->push_front(mit->second);
 		}
 
 		msg_map.clear();
@@ -284,10 +264,10 @@ message_cache::make_all_messages_new() {
 
 void
 message_cache::make_all_messages_new_for_route(const std::string& route) {
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(mutex_m);
 
-	route_sent_messages_map_t::iterator it = sent_messages_.find(route);
-	if (it == sent_messages_.end()) {
+	route_sent_messages_map_t::iterator it = sent_messages_m.find(route);
+	if (it == sent_messages_m.end()) {
 		return;
 	}
 
@@ -306,7 +286,7 @@ message_cache::make_all_messages_new_for_route(const std::string& route) {
 
 		mit->second->mark_as_sent(false);
 		mit->second->set_ack_received(false);
-		new_messages_->push_front(mit->second);
+		new_messages_m->push_front(mit->second);
 	}
 
 	msg_map.clear();
@@ -319,13 +299,13 @@ message_cache::is_message_expired(cached_message_ptr_t msg) {
 
 void
 message_cache::get_expired_messages(message_queue_t& expired_messages) {
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(mutex_m);
 
-	assert(new_messages_);
+	assert(new_messages_m);
 
 	// remove expired from sent
-	route_sent_messages_map_t::iterator it = sent_messages_.begin();
-	for (; it != sent_messages_.end(); ++it) {
+	route_sent_messages_map_t::iterator it = sent_messages_m.begin();
+	for (; it != sent_messages_m.end(); ++it) {
 
 		sent_messages_map_t& msg_map = it->second;
 		sent_messages_map_t::iterator mit = msg_map.begin();
@@ -347,8 +327,8 @@ message_cache::get_expired_messages(message_queue_t& expired_messages) {
 	}
 
 	// remove expired from new
-	message_queue_t::iterator it2 = new_messages_->begin();
-	while (it2 != new_messages_->end()) {
+	message_queue_t::iterator it2 = new_messages_m->begin();
+	while (it2 != new_messages_m->end()) {
 		// get single pending message
 		boost::shared_ptr<message_iface> msg = *it2;
 		assert(msg);
@@ -361,10 +341,10 @@ message_cache::get_expired_messages(message_queue_t& expired_messages) {
 		++it2;
 	}
 
-	new_messages_->erase(std::remove_if(new_messages_->begin(),
-										new_messages_->end(),
-										&message_cache::is_message_expired),
-						 new_messages_->end());
+	new_messages_m->erase(std::remove_if(new_messages_m->begin(),
+										 new_messages_m->end(),
+										 &message_cache::is_message_expired),
+										 new_messages_m->end());
 }
 
 } // namespace dealer

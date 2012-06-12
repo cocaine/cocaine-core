@@ -33,119 +33,119 @@ namespace cocaine {
 namespace dealer {
 
 response_impl::response_impl(const boost::shared_ptr<dealer_impl_t>& client_ptr, const std::string& uuid, const message_path& path) :
-	client_(client_ptr),
-	uuid_(uuid),
-	path_(path),
-	response_finished_(false),
-	message_finished_(false),
-	caught_error_(false)
+	dealer_m(client_ptr),
+	uuid_m(uuid),
+	path_m(path),
+	response_finished_m(false),
+	message_finished_m(false),
+	caught_error_m(false)
 {
 	assert(client_ptr.get() != NULL);
 }
 
 response_impl::~response_impl() {
-	boost::mutex::scoped_lock lock(mutex_);
-	message_finished_ = true;
-	response_finished_ = true;
-	chunks_.clear();
+	boost::mutex::scoped_lock lock(mutex_m);
+	message_finished_m = true;
+	response_finished_m = true;
+	chunks_m.clear();
 
-	boost::shared_ptr<dealer_impl_t> dealer_ptr = client_.lock();
+	boost::shared_ptr<dealer_impl_t> dealer_ptr = dealer_m.lock();
 	if (dealer_ptr) {
-		dealer_ptr->unset_response_callback(uuid_, path_);
+		dealer_ptr->unset_response_callback(uuid_m, path_m);
 	}	
 }
 
 bool
 response_impl::get(data_container* data, double timeout) {
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(mutex_m);
 
 	// no more chunks?
-	if (message_finished_ && chunks_.size() == 0) {
-		if (!caught_error_) {
+	if (message_finished_m && chunks_m.size() == 0) {
+		if (!caught_error_m) {
 			return false;
 		}
 	}
 
 	// block until received callback
-	if (!message_finished_) {
-		while (!response_finished_ && !message_finished_) {
+	if (!message_finished_m) {
+		while (!response_finished_m && !message_finished_m) {
 			if (timeout < 0.0) {
-				cond_var_.wait(lock);
+				cond_var_m.wait(lock);
 			}
 			else {
 				unsigned long long millisecs = static_cast<unsigned long long>(timeout * 1000000);
 				boost::system_time t = boost::get_system_time() + boost::posix_time::milliseconds(millisecs);
-				cond_var_.timed_wait(lock, t);
+				cond_var_m.timed_wait(lock, t);
 				break;
 			}
 		}
 
-		if (!message_finished_ && response_finished_) {
-			response_finished_ = false;
+		if (!message_finished_m && response_finished_m) {
+			response_finished_m = false;
 		}
 	}
 	else {
-		if (chunks_.size() > 0) {
-			*data = chunks_.at(0);
-			chunks_.erase(chunks_.begin());
+		if (chunks_m.size() > 0) {
+			*data = chunks_m.at(0);
+			chunks_m.erase(chunks_m.begin());
 			return true;
 		}
 		else {
-			message_finished_ = true;
+			message_finished_m = true;
 
-			if (caught_error_) {
-				caught_error_ = false;
-				throw dealer_error(static_cast<cocaine::dealer::error_code>(resp_info_.code), resp_info_.error_msg);
+			if (caught_error_m) {
+				caught_error_m = false;
+				throw dealer_error(static_cast<cocaine::dealer::error_code>(resp_info_m.code), resp_info_m.error_msg);
 			}
 
 			return false;
 		}
 	}
 
-	if (timeout >= 0.0 && chunks_.empty() && !caught_error_) {
+	if (timeout >= 0.0 && chunks_m.empty() && !caught_error_m) {
 		return false;
 	}
 
 	// expecting another chunk
-	if (chunks_.size() > 0) {
-		*data = chunks_.at(0);
-		chunks_.erase(chunks_.begin());
+	if (chunks_m.size() > 0) {
+		*data = chunks_m.at(0);
+		chunks_m.erase(chunks_m.begin());
 		return true;
 	}
 
-	if (caught_error_) {
-		caught_error_ = false;
-		throw dealer_error(static_cast<cocaine::dealer::error_code>(resp_info_.code), resp_info_.error_msg);
+	if (caught_error_m) {
+		caught_error_m = false;
+		throw dealer_error(static_cast<cocaine::dealer::error_code>(resp_info_m.code), resp_info_m.error_msg);
 	}
 
-	message_finished_ = true;
+	message_finished_m = true;
 	return false;
 }
 
 void
 response_impl::response_callback(const response_data& resp_data, const response_info& resp_info) {
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(mutex_m);
 
-	if (message_finished_) {
+	if (message_finished_m) {
 		return;
 	}
 
 	if (resp_info.code == response_code::message_choke) {
-		message_finished_ = true;
+		message_finished_m = true;
 	}
 	else if (resp_info.code == response_code::message_chunk) {
-		chunks_.push_back(new data_container(resp_data.data, resp_data.size));
+		chunks_m.push_back(new data_container(resp_data.data, resp_data.size));
 	}
 	else {
-		caught_error_ = true;
-		resp_info_ = resp_info; // remember error data
-		message_finished_ = true;
+		caught_error_m = true;
+		resp_info_m = resp_info; // remember error data
+		message_finished_m = true;
 	}
 
-	response_finished_ = true;
+	response_finished_m = true;
 
 	lock.unlock();
-	cond_var_.notify_one();
+	cond_var_m.notify_one();
 }
 
 } // namespace dealer

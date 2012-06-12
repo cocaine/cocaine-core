@@ -33,23 +33,21 @@ struct message_policy {
     message_policy() :
         send_to_all_hosts(false),
         urgent(false),
-        mailboxed(false),
         timeout(0.0f),
         deadline(0.0f),
         max_retries(0) {}
 
-    message_policy(bool send_to_all_hosts_,
-                   bool urgent_,
-                   float mailboxed_,
-                   float timeout_,
-                   float deadline_,
-                   int max_retries_) :
-        send_to_all_hosts(send_to_all_hosts_),
-        urgent(urgent_),
-        mailboxed(mailboxed_),
-        timeout(timeout_),
-        deadline(deadline_),
-        max_retries(max_retries_) {};
+    message_policy(bool send_to_all_hosts,
+                   bool urgent,
+                   float mailboxed,
+                   float timeout,
+                   float deadline,
+                   int max_retries) :
+        send_to_all_hosts(send_to_all_hosts),
+        urgent(urgent),
+        timeout(timeout),
+        deadline(deadline),
+        max_retries(max_retries) {}
 
     message_policy(const message_policy& mp) {
         *this = mp;
@@ -62,7 +60,6 @@ struct message_policy {
 
         send_to_all_hosts = rhs.send_to_all_hosts;
         urgent = rhs.urgent;
-        mailboxed = rhs.mailboxed;
         timeout = rhs.timeout;
         deadline = rhs.deadline;
         max_retries = rhs.max_retries;
@@ -73,7 +70,6 @@ struct message_policy {
     bool operator == (const message_policy& rhs) const {
         return (send_to_all_hosts == rhs.send_to_all_hosts &&
                 urgent == rhs.urgent &&
-                mailboxed == rhs.mailboxed &&
                 timeout == rhs.timeout &&
                 deadline == rhs.deadline);
     }
@@ -92,14 +88,12 @@ struct message_policy {
 
     bool send_to_all_hosts;
     bool urgent;
-    bool mailboxed;
     double timeout;
     double deadline;
     int max_retries;
 
     MSGPACK_DEFINE(send_to_all_hosts,
                    urgent,
-                   mailboxed,
                    timeout,
                    deadline,
                    max_retries);

@@ -37,31 +37,28 @@
 namespace cocaine {
 namespace dealer {
 
-class request_metadata {
-public:
+struct request_metadata {
 	request_metadata() :
-		data_size_(0),
-		ack_received_(false),
-		is_sent_(false),
-		container_size_(false),
-		retries_count_(0) {}
+		data_size(0),
+		ack_received(false),
+		is_sent(false),
+		retries_count(0) {}
 
 	virtual ~request_metadata() {}
 
 	std::string as_string() const {
 		std::stringstream s;
 		s << std::boolalpha;
-		s << "service: "<< path_.get().service_name << ", handle: ";
-		s << path_.get().handle_name + "\n";
-        s << "uuid: " << uuid_ << "\n";
-        s << "policy [send to all hosts]: " << policy_.send_to_all_hosts << "\n";
-        s << "policy [urgent]: " << policy_.urgent << "\n";
-        s << "policy [mailboxed]: " << policy_.mailboxed << "\n";
-        s << "policy [timeout]: " << policy_.timeout << "\n";
-        s << "policy [deadline]: " << policy_.deadline << "\n";
-        s << "policy [max retries]: " << policy_.max_retries << "\n";
-        s << "data_size: " << data_size_ << "\n";
-        s << "enqued timestamp: " << enqued_timestamp_.as_string();
+		s << "service: "<< path().service_alias << ", handle: ";
+		s << path().handle_name + "\n";
+        s << "uuid: " << uuid << "\n";
+        s << "policy [send to all hosts]: " << policy.send_to_all_hosts << "\n";
+        s << "policy [urgent]: " << policy.urgent << "\n";
+        s << "policy [timeout]: " << policy.timeout << "\n";
+        s << "policy [deadline]: " << policy.deadline << "\n";
+        s << "policy [max retries]: " << policy.max_retries << "\n";
+        s << "data_size: " << data_size << "\n";
+        s << "enqued timestamp: " << enqued_timestamp.as_string();
         return s.str();
 	}
 
@@ -73,28 +70,30 @@ public:
 		path_ = path;
 	}
 
+	std::string		uuid;
+	message_policy	policy;
+	std::string		destination_endpoint;
+	uint64_t		data_size;
+
+	time_value	enqued_timestamp;
+	time_value	sent_timestamp;
+	bool		ack_received;
+
+	bool	is_sent;
+	int		retries_count;
+
+private:
 	boost::flyweight<message_path> path_;
-	message_policy policy_;
-	std::string uuid_;
-	std::string destination_endpoint_;
-	uint64_t data_size_;
-
-	time_value enqued_timestamp_;
-	time_value sent_timestamp_;
-	bool ack_received_;
-
-	bool is_sent_;
-	size_t container_size_;
-	int retries_count_;
 };
 
-class persistent_request_metadata : public request_metadata {
-public:
-	persistent_request_metadata() : request_metadata() {};
-	virtual ~persistent_request_metadata() {};
+struct persistent_request_metadata : public request_metadata {
+	persistent_request_metadata() :
+		request_metadata() {}
+
+	virtual ~persistent_request_metadata() {}
 
 	void set_eblob(eblob blob) {
-		blob_ = blob;
+		blob = blob;
 	}
 
 	static const size_t EBLOB_COLUMN = 0;
@@ -110,12 +109,12 @@ public:
 
 		message_path path;
 		unpack_next_value(pac, path);
-		path_ = path;
+		path = path;
 
-		unpack_next_value(pac, policy_);
-		unpack_next_value(pac, uuid_);
-		unpack_next_value(pac, data_size_);
-		unpack_next_value(pac, enqued_timestamp_);
+		unpack_next_value(pac, policy);
+		unpack_next_value(pac, uuid);
+		unpack_next_value(pac, data_size);
+		unpack_next_value(pac, enqued_timestamp);
 	}
 
 	void commit_data() {
@@ -123,13 +122,13 @@ public:
 		msgpack::sbuffer buffer;
 		msgpack::packer<msgpack::sbuffer> pk(&buffer);
     	pk.pack(path());
-    	pk.pack(policy_);
-    	pk.pack(uuid_);
-    	pk.pack(data_size_);
-    	pk.pack(enqued_timestamp_);
+    	pk.pack(policy);
+    	pk.pack(uuid);
+    	pk.pack(data_size);
+    	pk.pack(enqued_timestamp);
 
     	// write to eblob with uuid as key
-		blob_.write(uuid_, buffer.data(), buffer.size(), EBLOB_COLUMN);
+		blob.write(uuid, buffer.data(), buffer.size(), EBLOB_COLUMN);
 	}
 
 private:
@@ -139,8 +138,7 @@ private:
 		result.get().convert(&value);
 	}
 
-private:
-	eblob blob_;
+	eblob blob;
 };
 
 std::ostream& operator << (std::ostream& out, request_metadata& req_meta) {
@@ -148,8 +146,8 @@ std::ostream& operator << (std::ostream& out, request_metadata& req_meta) {
 	return out;
 }
 
-std::ostream& operator << (std::ostream& out, persistent_request_metadata& p_req_meta) {
-	out << p_req_meta.as_string();
+std::ostream& operator << (std::ostream& out, persistent_request_metadata& req_meta) {
+	out << req_meta.as_string();
 	return out;
 }
 

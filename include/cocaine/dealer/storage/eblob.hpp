@@ -226,7 +226,6 @@ private:
 		eblob* eb = reinterpret_cast<eblob*>(priv);
 		eb->iteration_callback_instance(data, rc->size, rc->type);
 
-		// 2DO find out what to return
 		return 0;
 	}
 

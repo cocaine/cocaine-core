@@ -36,8 +36,7 @@ namespace dealer {
 class cocaine_node_info_t;
 std::ostream& operator << (std::ostream& out, const cocaine_node_info_t& node_info);
 
-class cocaine_node_info_t {
-public:
+struct cocaine_node_info_t {
 	// <app name, app info>
 	typedef std::map<std::string, cocaine_node_app_info_t> applications;
 
@@ -61,15 +60,13 @@ public:
 		return false;
 	}
 
-	applications apps;
-	
-	unsigned int pending_jobs;
-	unsigned int processed_jobs;
-	std::string route;
-	double uptime;
-
-	unsigned int ip_address;
-	unsigned short port;
+	applications	apps;
+	unsigned int	pending_jobs;
+	unsigned int	processed_jobs;
+	std::string		route;
+	double			uptime;
+	unsigned int	ip_address;
+	unsigned short	port;
 
 	friend std::ostream& operator << (std::ostream& out, const cocaine_node_info_t& node_info);
 };

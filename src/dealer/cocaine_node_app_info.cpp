@@ -29,11 +29,11 @@ namespace cocaine {
 namespace dealer {
 
 std::ostream& operator << (std::ostream& out, const cocaine_node_app_info_t& info) {
-	std::string name = "+ [" + info.name_m + "]";
-	std::string running = info.is_running_m ? "yes" : "no";
+	std::string name = "+ [" + info.name + "]";
+	std::string running = info.is_running ? "yes" : "no";
 
 	std::stringstream slaves;
-	slaves << "busy " << info.slaves_busy_m << ", total " << info.slaves_total_m;
+	slaves << "busy " << info.slaves_busy << ", total " << info.slaves_total;
 
 	char old_char = out.fill(' ');
 	int old_width = out.width(10);
@@ -50,13 +50,13 @@ std::ostream& operator << (std::ostream& out, const cocaine_node_app_info_t& inf
 	out << "slaves: " << std::setw(0) << slaves.str() << std::endl;
 
 	out << std::setw(2) << "" << std::setw(4) << "" << std::setw(9);
-	out << "queue: " << std::setw(0) << info.queue_depth_m << std::endl;
+	out << "queue: " << std::setw(0) << info.queue_depth << std::endl;
 	
 	out << std::setw(2) << "" << std::setw(4) << "" << std::setw(9);
 	out << "tasks:" << std::endl;
 
-	cocaine_node_app_info_t::application_tasks::const_iterator it = info.tasks_m.begin();
-	for (; it != info.tasks_m.end(); ++it) {
+	cocaine_node_app_info_t::application_tasks::const_iterator it = info.tasks.begin();
+	for (; it != info.tasks.end(); ++it) {
 		out << it->second;
 	}
 

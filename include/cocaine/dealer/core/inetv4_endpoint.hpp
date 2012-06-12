@@ -33,35 +33,33 @@ namespace dealer {
  // predeclaration
 class inetv4_endpoint {
 public:
-	inetv4_endpoint() : port_(0) {
+	inetv4_endpoint() : port(0) {
 	}
 
 	explicit inetv4_endpoint(const inetv4_host& host) :
-		host_(host),
-		port_(0) {}
+		host(host),
+		port(0) {}
 
 	inetv4_endpoint(const inetv4_host& host, unsigned short port) :
-		host_(host),
-		port_(port) {}
+		host(host),
+		port(port) {}
 
 	inetv4_endpoint(unsigned int ip, unsigned short port) :
-		host_(inetv4_host(ip)),
-		port_(port) {}
+		host(inetv4_host(ip)),
+		port(port) {}
 
 	inetv4_endpoint(const std::string& ip, const std::string& port) :
-		host_(inetv4_host(ip))
+		host(inetv4_host(ip))
 	{
-		port_ = boost::lexical_cast<unsigned short>(port);
+		port = boost::lexical_cast<unsigned short>(port);
 	}
 
 	inetv4_endpoint(const inetv4_endpoint& rhs) :
-		host_(rhs.host_),
-		port_(rhs.port_)
-
-	{}
+		host(rhs.host),
+		port(rhs.port) {}
 
 	bool operator == (const inetv4_endpoint& rhs) const {
-		return (host_ == rhs.host_ && port_ == rhs.port_);
+		return (host == rhs.host && port == rhs.port);
 	}
 
 	bool operator != (const inetv4_endpoint& rhs) const {
@@ -73,11 +71,11 @@ public:
 	}
 
 	std::string as_string() const {
-		return host_.as_string() + ":" + boost::lexical_cast<std::string>(port_);
+		return host.as_string() + ":" + boost::lexical_cast<std::string>(port);
 	}
 
-	inetv4_host host_;
-	unsigned short port_;
+	inetv4_host host;
+	unsigned short port;
 };
 
 } // namespace dealer

@@ -49,7 +49,7 @@ heartbeats_collector::run() {
 		// create specific host fetcher for service
 		hosts_fetcher_ptr fetcher;
 
-		switch (it->second.discovery_type_) {
+		switch (it->second.discovery_type) {
 			case AT_FILE:
 				fetcher.reset(new file_hosts_fetcher(it->second));
 				break;
@@ -60,7 +60,7 @@ heartbeats_collector::run() {
 
 			default: {
 				std::string error_msg = "unknown autodiscovery type defined for service ";
-				error_msg += "\"" + it->second.name_ + "\"";
+				error_msg += "\"" + it->second.name + "\"";
 				throw internal_error(error_msg);
 			}
 		}
@@ -106,17 +106,17 @@ heartbeats_collector::ping_services() {
 		try {
 			if (hosts_fetchers_m[i]->get_hosts(endpoints, service_info)) {
 				for (size_t i = 0; i < endpoints.size(); ++i) {
-					if (endpoints[i].port_ == 0) {
-						endpoints[i].port_ = defaults::control_port;
+					if (endpoints[i].port == 0) {
+						endpoints[i].port = defaults::control_port;
 					}
 				}
 
 				if (endpoints.size() == 0) {
 					std::string error_msg = "heartbeats - fetcher returned no hosts for service %s";
-					log(PLOG_WARNING, error_msg.c_str(), service_info.name_.c_str());
+					log(PLOG_WARNING, error_msg.c_str(), service_info.name.c_str());
 				}
 
-				services_endpoints_m[service_info.name_] = endpoints;
+				services_endpoints_m[service_info.name] = endpoints;
 			}
 		}
 		catch (const std::exception& ex) {
@@ -181,27 +181,27 @@ heartbeats_collector::process_alive_endpoints() {
 			cocaine_node_app_info_t app;
 			
 			// no such app at endpoint
-			if (!node_info.app_by_name(service_info.app_, app)) {
+			if (!node_info.app_by_name(service_info.app, app)) {
 				continue;
 			}
 
 			// app stoped or no handles at endpoint's app
-			if (!app.is_running_m || app.tasks_m.size() == 0) {
+			if (!app.is_running || app.tasks.size() == 0) {
 				continue;
 			}
 
-			cocaine_node_app_info_t::application_tasks::const_iterator task_it = app.tasks_m.begin();
-			for (; task_it != app.tasks_m.end(); ++task_it) {
-				cocaine_endpoint ce(task_it->second.endpoint_m, task_it->second.route_m);
+			cocaine_node_app_info_t::application_tasks::const_iterator task_it = app.tasks.begin();
+			for (; task_it != app.tasks.end(); ++task_it) {
+				cocaine_endpoint ce(task_it->second.endpoint, task_it->second.route);
 				
-				handles_endpoints_t::iterator hit = handles_endpoints.find(task_it->second.name_m);
+				handles_endpoints_t::iterator hit = handles_endpoints.find(task_it->second.name);
 				if (hit != handles_endpoints.end()) {
 					hit->second.push_back(ce);
 				}
 				else {
 					std::vector<cocaine_endpoint> endpoints_vec;
 					endpoints_vec.push_back(ce);
-					handles_endpoints[task_it->second.name_m] = endpoints_vec;
+					handles_endpoints[task_it->second.name] = endpoints_vec;
 				}
 			}
 		}
@@ -220,10 +220,10 @@ heartbeats_collector::log_responded_hosts_handles(const service_info_t& service_
 	handles_endpoints_t::const_iterator it = handles_endpoints.begin();
 	for (; it != handles_endpoints.end(); ++it) {
 		std::string log_msg = "heartbeats - responded endpoints for handle";
-		log(PLOG_DEBUG, log_msg + ": [" + service_info.name_ + "." + it->first + "]");
+		log(PLOG_DEBUG, log_msg + ": [" + service_info.name + "." + it->first + "]");
 
 		for (size_t i = 0; i < it->second.size(); ++i) {
-			log(PLOG_DEBUG, "heartbeats - " + it->second[i].endpoint_);
+			log(PLOG_DEBUG, "heartbeats - " + it->second[i].endpoint);
 		}
 	}
 }
@@ -248,7 +248,7 @@ heartbeats_collector::ping_endpoints() {
 		// parse metadata
 		cocaine_node_info_t node_info;
 		cocaine_node_info_parser_t parser(context());
-		parser.set_host_info(it->host_.ip_, it->port_);
+		parser.set_host_info(it->host.ip, it->port);
 
 		if (!parser.parse(metadata, node_info)) {
 			continue;
@@ -268,9 +268,9 @@ heartbeats_collector::get_metainfo_from_endpoint(const inetv4_endpoint& endpoint
 	std::string ex_err;
 
 	// connect to host
-	std::string host_ip_str = nutils::ipv4_to_str(endpoint.host_.ip_);
+	std::string host_ip_str = nutils::ipv4_to_str(endpoint.host.ip);
 	std::string connection_str = "tcp://" + host_ip_str + ":";
-	connection_str += boost::lexical_cast<std::string>(endpoint.port_);
+	connection_str += boost::lexical_cast<std::string>(endpoint.port);
 
 	int timeout = 0;
 	zmq_socket->setsockopt(ZMQ_LINGER, &timeout, sizeof(timeout));

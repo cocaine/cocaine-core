@@ -35,7 +35,10 @@ namespace dealer {
 
 class response_impl {
 public:
-	response_impl(const boost::shared_ptr<dealer_impl_t>& dealer, const std::string& uuid, const message_path& path);
+	response_impl(const boost::shared_ptr<dealer_impl_t>& dealer,
+				  const std::string& uuid,
+				  const message_path& path);
+
 	~response_impl();
 
 	// 1) timeout < 0 - block indefinitely until response received
@@ -47,22 +50,23 @@ public:
 private:
 	friend class response;
 
-	void response_callback(const response_data& resp_data, const response_info& resp_info);
+	void response_callback(const response_data& resp_data,
+						   const response_info& resp_info);
 
-	boost::ptr_vector<data_container> chunks_;
+	boost::ptr_vector<data_container> chunks_m;
 
-	boost::weak_ptr<dealer_impl_t> client_;
-	std::string uuid_;
-	const message_path path_;
-	bool response_finished_;
-	bool message_finished_;
+	boost::weak_ptr<dealer_impl_t> dealer_m;
+	std::string uuid_m;
+	const message_path path_m;
+	bool response_finished_m;
+	bool message_finished_m;
 
-	response_info resp_info_;
+	response_info resp_info_m;
 
-	boost::mutex mutex_;
-	boost::condition_variable cond_var_;
+	boost::mutex mutex_m;
+	boost::condition_variable cond_var_m;
 
-	bool caught_error_;
+	bool caught_error_m;
 };
 
 } // namespace dealer

@@ -131,7 +131,7 @@ private:
 		// parse tasks
 		Json::Value tasks(json_app_data["tasks"]);
     	if (!tasks.isObject() || !tasks.size()) {
-        	std::string log_str = "no tasks info for app [" + app_info.name_m;
+        	std::string log_str = "no tasks info for app [" + app_info.name;
 	    	log_str += "] found in cocaine node %s rounting info";
 			log(PLOG_WARNING, log_str.c_str(), str_node_adress_m.c_str());
 
@@ -144,7 +144,7 @@ private:
     		Json::Value task(tasks[task_name]);
 
     		if (!task.isObject() || !task.size()) {
-    			std::string log_str = "no task info for app [" + app_info.name_m;
+    			std::string log_str = "no task info for app [" + app_info.name;
 	    		log_str += "], task [" + task_name + "] found in cocaine node %s rounting info";
 				log(PLOG_WARNING, log_str.c_str(), str_node_adress_m.c_str());
 				continue;
@@ -155,23 +155,23 @@ private:
 				continue;
 			}
 			else {
-				app_info.tasks_m[task_name] = task_info;
+				app_info.tasks[task_name] = task_info;
 			}
 		}
 
 		// parse remaining properties
-		app_info.queue_depth_m = json_app_data.get("queue-depth", 0).asInt();
-		app_info.is_running_m = json_app_data.get("running", false).asBool();
+		app_info.queue_depth = json_app_data.get("queue-depth", 0).asInt();
+		app_info.is_running = json_app_data.get("running", false).asBool();
 
 		const Json::Value slaves_props = json_app_data["slaves"];
 	    if (!slaves_props.isObject()) {
-	    	std::string log_str = "no slaves info for app [" + app_info.name_m;
+	    	std::string log_str = "no slaves info for app [" + app_info.name;
 	    	log_str += "] found in cocaine node %s rounting info";
 			log(PLOG_WARNING, log_str.c_str(), str_node_adress_m.c_str());
 	    }
 	    else {
-	    	app_info.slaves_busy_m = slaves_props.get("busy", 0).asInt();
-	    	app_info.slaves_total_m = slaves_props.get("total", 0).asInt();
+	    	app_info.slaves_busy = slaves_props.get("busy", 0).asInt();
+	    	app_info.slaves_total = slaves_props.get("total", 0).asInt();
 	    }
 
 		return true;
@@ -183,25 +183,25 @@ private:
     		return false;
     	}
 
-    	task_info.backlog_m = json_app_data.get("backlog", 0).asInt();
-	    task_info.endpoint_m = json_app_data.get("endpoint", "").asString();
-	    task_info.route_m = json_app_data.get("route", "").asString();
+    	task_info.backlog = json_app_data.get("backlog", 0).asInt();
+	    task_info.endpoint = json_app_data.get("endpoint", "").asString();
+	    task_info.route = json_app_data.get("route", "").asString();
 
 
 		const Json::Value stats_props = json_app_data["stats"];
 	    if (stats_props.isObject()) {
-	    	task_info.median_processing_time_m = stats_props.get("median-processing-time", 0).asDouble();
-	    	task_info.median_wait_time_m = stats_props.get("median-wait-time", 0).asDouble();
-	    	task_info.time_spent_in_queues_m = stats_props.get("time-spent-in-queues", 0).asDouble();
-	    	task_info.time_spent_on_slaves_m = stats_props.get("time-spent-on-slaves", 0).asDouble();
+	    	task_info.median_processing_time = stats_props.get("median-processing-time", 0).asDouble();
+	    	task_info.median_wait_time = stats_props.get("median-wait-time", 0).asDouble();
+	    	task_info.time_spent_in_queues = stats_props.get("time-spent-in-queues", 0).asDouble();
+	    	task_info.time_spent_on_slaves = stats_props.get("time-spent-on-slaves", 0).asDouble();
 	    }
 
 		return true;
 	}
 
-	unsigned int node_ip_address_m;
-	unsigned short node_port_m;
-	std::string str_node_adress_m;
+	unsigned int	node_ip_address_m;
+	unsigned short	node_port_m;
+	std::string		str_node_adress_m;
 };
 
 } // namespace dealer

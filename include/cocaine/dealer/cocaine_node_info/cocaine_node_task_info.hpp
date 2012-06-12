@@ -30,35 +30,33 @@ namespace dealer {
 class cocaine_node_task_info_t;
 std::ostream& operator << (std::ostream& out, const cocaine_node_task_info_t& info);
 
-class cocaine_node_task_info_t {
-public:
+struct cocaine_node_task_info_t {
 	cocaine_node_task_info_t() :
-		backlog_m(0),
-		median_processing_time_m(0.0f),
-		median_wait_time_m(0.0f),
-		time_spent_in_queues_m(0.0f),
-		time_spent_on_slaves_m(0.0f) {}
+		backlog(0),
+		median_processing_time(0.0f),
+		median_wait_time(0.0f),
+		time_spent_in_queues(0.0f),
+		time_spent_on_slaves(0.0f) {}
 
 	explicit cocaine_node_task_info_t(const std::string& task_name) :
-		name_m(task_name),
-		backlog_m(0),
-		median_processing_time_m(0.0f),
-		median_wait_time_m(0.0f),
-		time_spent_in_queues_m(0.0f),
-		time_spent_on_slaves_m(0.0f) {}
+		name(task_name),
+		backlog(0),
+		median_processing_time(0.0f),
+		median_wait_time(0.0f),
+		time_spent_in_queues(0.0f),
+		time_spent_on_slaves(0.0f) {}
 
 	~cocaine_node_task_info_t() {}
 
-	std::string name_m;
+	std::string		name;
+	unsigned int	backlog;
+    std::string		endpoint;
+    std::string		route;
 
-	unsigned int backlog_m;
-    std::string endpoint_m;
-    std::string route_m;
-
-	double median_processing_time_m;
-	double median_wait_time_m;
-	double time_spent_in_queues_m;
-	double time_spent_on_slaves_m;
+	double median_processing_time;
+	double median_wait_time;
+	double time_spent_in_queues;
+	double time_spent_on_slaves;
 
 	friend std::ostream& operator << (std::ostream& out, const cocaine_node_task_info_t& info);
 };

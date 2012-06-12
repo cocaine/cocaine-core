@@ -40,8 +40,8 @@ typedef cached_message_t<data_container, request_metadata> message_t;
 typedef cached_message_t<persistent_data_container, persistent_request_metadata> p_message_t;
 
 dealer_impl_t::dealer_impl_t(const std::string& config_path) :
-	messages_cache_size_(0),
-	is_dead_(false)
+	messages_cache_size_m(0),
+	is_dead_m(false)
 {
 	// create dealer context
 	std::string ctx_error_msg = "could not create dealer context at: " + std::string(BOOST_CURRENT_FUNCTION) + " ";
@@ -64,13 +64,13 @@ dealer_impl_t::dealer_impl_t(const std::string& config_path) :
 	for (; it != services_info_list.end(); ++it) {
 		boost::shared_ptr<service_t> service_ptr(new service_t(it->second, context()));
 
-		log("STARTING SERVICE [%s]", it->second.name_.c_str());
+		log("STARTING SERVICE [%s]", it->second.name.c_str());
 
 		if (config()->message_cache_type() == PERSISTENT) {
 			load_cached_messages_for_service(service_ptr);
 		}
 
-		services_[it->first] = service_ptr;
+		services_m[it->first] = service_ptr;
 	}
 
 	connect();
@@ -78,7 +78,7 @@ dealer_impl_t::dealer_impl_t(const std::string& config_path) :
 }
 
 dealer_impl_t::~dealer_impl_t() {
-	is_dead_ = true;
+	is_dead_m = true;
 	disconnect();
 	log("dealer destroyed.");
 }
@@ -86,26 +86,26 @@ dealer_impl_t::~dealer_impl_t() {
 void
 dealer_impl_t::connect() {
 	log("creating heartbeats collector");
-	heartbeats_collector_.reset(new heartbeats_collector(context()));
-	heartbeats_collector_->set_callback(boost::bind(&dealer_impl_t::service_hosts_pinged_callback, this, _1, _2));
-	heartbeats_collector_->run();
+	heartbeats_collector_m.reset(new heartbeats_collector(context()));
+	heartbeats_collector_m->set_callback(boost::bind(&dealer_impl_t::service_hosts_pinged_callback, this, _1, _2));
+	heartbeats_collector_m->run();
 }
 
 void
 dealer_impl_t::disconnect() {
-	assert(heartbeats_collector_.get());
+	assert(heartbeats_collector_m.get());
 
 	// stop collecting heartbeats
-	heartbeats_collector_.reset();
+	heartbeats_collector_m.reset();
 
 	// stop services
-	services_map_t::iterator it = services_.begin();
-	for (; it != services_.end(); ++it) {
+	services_map_t::iterator it = services_m.begin();
+	for (; it != services_m.end(); ++it) {
 		assert(it->second);
 		it->second.reset();
 	}
 
-	services_.clear();
+	services_m.clear();
 }
 
 void
@@ -113,15 +113,15 @@ dealer_impl_t::service_hosts_pinged_callback(const service_info_t& service_info,
 										   const handles_endpoints_t& endpoints_for_handles)
 {
 	// find corresponding service
-	services_map_t::iterator it = services_.find(service_info.name_);
+	services_map_t::iterator it = services_m.find(service_info.name);
 
 	// populate service with pinged hosts and handles
-	if (it != services_.end()) {
+	if (it != services_m.end()) {
 		assert(it->second);
 		it->second->refresh_handles(endpoints_for_handles);
 	}
 	else {
-		std::string error_msg = "service with name " + service_info.name_;
+		std::string error_msg = "service with name " + service_info.name;
 		error_msg += " was not found in services. at: " + std::string(BOOST_CURRENT_FUNCTION);
 		throw internal_error(error_msg);
 	}
@@ -133,7 +133,7 @@ dealer_impl_t::create_message(const void* data,
 							const message_path& path,
 							const message_policy& policy)
 {
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(mutex_m);
 	boost::shared_ptr<message_iface> msg;
 
 	if (config()->message_cache_type() == RAM_ONLY) {
@@ -144,12 +144,12 @@ dealer_impl_t::create_message(const void* data,
 		p_message_t* msg_ptr = new p_message_t(path, policy, data, size);
 		//logger()->log(PLOG_DEBUG, "created message, size: %d bytes, uuid: %s", size, msg_ptr->uuid().c_str());
 
-		eblob eb = context()->storage()->get_eblob(path.service_name);
+		eblob eb = context()->storage()->get_eblob(path.service_alias);
 		
 		// init metadata and write to storage
 		msg_ptr->mdata_container().set_eblob(eb);
 		msg_ptr->mdata_container().commit_data();
-		msg_ptr->mdata_container().data_size_ = size;
+		msg_ptr->mdata_container().data_size = size;
 
 		// init data and write to storage
 		msg_ptr->data_container().set_eblob(eb, msg_ptr->uuid());
@@ -167,16 +167,16 @@ std::string
 dealer_impl_t::send_message(const boost::shared_ptr<message_iface>& msg,
 						  const boost::shared_ptr<response>& response)
 {
-	BOOST_VERIFY(!is_dead_);
+	BOOST_VERIFY(!is_dead_m);
 	
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(mutex_m);
 	
 	// find service to send message to
 	std::string uuid;
-	services_map_t::iterator it = services_.find(msg->path().service_name);
+	services_map_t::iterator it = services_m.find(msg->path().service_alias);
 
-	if (it == services_.end()) {
-		std::string error_str = "no service with name " + msg->path().service_name;
+	if (it == services_m.end()) {
+		std::string error_str = "no service with name " + msg->path().service_alias;
 		error_str += " found at " + std::string(BOOST_CURRENT_FUNCTION);
 		throw dealer_error(location_error, error_str);
 	}
@@ -185,7 +185,7 @@ dealer_impl_t::send_message(const boost::shared_ptr<message_iface>& msg,
 
 	if (it->second->is_dead()) {
 		std::cout << "service is dead!\n";
-		throw dealer_error(request_error, "service %s is being killed", msg->path().service_name.c_str());
+		throw dealer_error(request_error, "service %s is being killed", msg->path().service_alias.c_str());
 	}
 
 	uuid = msg->uuid();
@@ -202,10 +202,13 @@ dealer_impl_t::send_message(const boost::shared_ptr<message_iface>& msg,
 	// send message to service
 	it->second->send_message(msg);
 
+	std::string message_str = "enqued msg (%d bytes) with uuid: %s to %s";
 
-	std::string message_str = "enqued msg (%d bytes) with uuid: %s to [%s.%s]";
-	log(PLOG_DEBUG, message_str.c_str(), msg->size(), uuid.c_str(),
-		msg->path().service_name.c_str(), msg->path().handle_name.c_str());
+	log(PLOG_DEBUG,
+		message_str,
+		msg->size(),
+		uuid.c_str(),
+		msg->path().as_string().c_str());
 
 	return uuid;
 }
@@ -214,11 +217,11 @@ void
 dealer_impl_t::unset_response_callback(const std::string& message_uuid,
 								 	 const message_path& path)
 {
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(mutex_m);
 
 	// check for services
-	services_map_t::iterator it = services_.find(path.service_name);
-	if (it == services_.end()) {
+	services_map_t::iterator it = services_m.find(path.service_alias);
+	if (it == services_m.end()) {
 		return;
 	}
 
@@ -234,7 +237,7 @@ dealer_impl_t::unset_response_callback(const std::string& message_uuid,
 void
 dealer_impl_t::load_cached_messages_for_service(boost::shared_ptr<service_t>& service) {	
 	// validate input
-	std::string service_name = service->info().name_;
+	std::string service_name = service->info().name;
 
 	if (!service) {
 		std::string error_str = "object for service with name " + service_name;
@@ -247,7 +250,7 @@ dealer_impl_t::load_cached_messages_for_service(boost::shared_ptr<service_t>& se
 	std::string log_str = "SERVICE [%s] is restoring %d messages from persistent cache...";
 	log(PLOG_DEBUG, log_str.c_str(), service_name.c_str(), (int)(blob.items_count() / 2));
 
-	restored_service_tmp_ptr_ = service;
+	restored_service_tmp_ptr_m = service;
 
 	// restore messages from
 	if (blob.items_count() > 0) {
@@ -256,12 +259,12 @@ dealer_impl_t::load_cached_messages_for_service(boost::shared_ptr<service_t>& se
 		blob.iterate(callback, 0, 0);
 	}
 
-	restored_service_tmp_ptr_.reset();
+	restored_service_tmp_ptr_m.reset();
 }
 
 void
 dealer_impl_t::storage_iteration_callback(void* data, uint64_t size, int column) {
-	if (!restored_service_tmp_ptr_) {
+	if (!restored_service_tmp_ptr_m) {
 		throw internal_error("service object is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
@@ -270,17 +273,17 @@ dealer_impl_t::storage_iteration_callback(void* data, uint64_t size, int column)
 	}
 
 	// get service eblob
-	std::string service_name = restored_service_tmp_ptr_->info().name_;
+	std::string service_name = restored_service_tmp_ptr_m->info().name;
 	eblob eb = context()->storage()->get_eblob(service_name);
 
 	p_message_t* msg_ptr = new p_message_t();
 	msg_ptr->mdata_container().load_data(data, size);
 	msg_ptr->mdata_container().set_eblob(eb);
-	msg_ptr->data_container().init_from_message_cache(eb, msg_ptr->mdata_container().uuid_, size);
+	msg_ptr->data_container().init_from_message_cache(eb, msg_ptr->mdata_container().uuid, size);
 
 	// send message to service
 	boost::shared_ptr<message_iface> msg(msg_ptr);
-	restored_service_tmp_ptr_->send_message(msg);
+	restored_service_tmp_ptr_m->send_message(msg);
 }
 
 } // namespace dealer

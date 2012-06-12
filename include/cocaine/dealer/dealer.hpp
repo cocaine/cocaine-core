@@ -59,10 +59,8 @@ public:
 private:
 	friend class response_impl;
 
-	boost::shared_ptr<dealer_impl_t> get_impl();
-
-	boost::shared_ptr<dealer_impl_t> impl_;
-	mutable boost::mutex mutex_;
+	boost::shared_ptr<dealer_impl_t> impl_m;
+	mutable boost::mutex mutex_m;
 };
 
 } // namespace dealer
