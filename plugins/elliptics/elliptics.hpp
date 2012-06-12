@@ -28,7 +28,7 @@
 namespace cocaine { namespace storages {
 
 class log_adapter_t:
-    public zbr::elliptics_log
+    public ioremap::elliptics::logger
 {
     public:
         log_adapter_t(const boost::shared_ptr<logging::logger_t>& log,
@@ -78,7 +78,7 @@ class elliptics_storage_t:
         boost::shared_ptr<logging::logger_t> m_log;
         
         log_adapter_t m_log_adapter;
-        zbr::elliptics_node m_node;
+	ioremap::elliptics::node m_node;
 };
 
 }}

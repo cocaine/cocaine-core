@@ -29,7 +29,7 @@ using namespace cocaine;
 using namespace cocaine::storages;
 
 log_adapter_t::log_adapter_t(const boost::shared_ptr<logging::logger_t>& log, const uint32_t mask):
-    zbr::elliptics_log(mask),
+    ioremap::elliptics::logger(mask),
     m_log(log),
     m_mask(mask)
 { }
