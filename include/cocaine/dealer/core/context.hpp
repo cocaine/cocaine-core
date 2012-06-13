@@ -31,12 +31,13 @@
 #include <boost/utility.hpp>
 
 #include "cocaine/dealer/core/configuration.hpp"
-#include "cocaine/dealer/core/statistics_collector.hpp"
+//#include "cocaine/dealer/core/statistics_collector.hpp"
 #include "cocaine/dealer/utils/smart_logger.hpp"
-#include "cocaine/dealer/storage/eblob_storage.hpp"
 
 namespace cocaine {
 namespace dealer {
+
+class eblob_storage;
 
 class context_t : private boost::noncopyable {
 public:
@@ -46,14 +47,14 @@ public:
 	boost::shared_ptr<base_logger> logger();
 	boost::shared_ptr<configuration> config();
 	boost::shared_ptr<zmq::context_t> zmq_context();
-	boost::shared_ptr<statistics_collector> stats();
+	//boost::shared_ptr<statistics_collector> stats();
 	boost::shared_ptr<eblob_storage> storage();
 
 private:
 	boost::shared_ptr<zmq::context_t> zmq_context_m;
 	boost::shared_ptr<base_logger> logger_m;
 	boost::shared_ptr<configuration> config_m;
-	boost::shared_ptr<statistics_collector> stats_m;
+	//boost::shared_ptr<statistics_collector> stats_m;
 	boost::shared_ptr<eblob_storage> storage_m;
 };
 

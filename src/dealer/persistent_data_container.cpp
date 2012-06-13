@@ -102,7 +102,7 @@ persistent_data_container::load_data() {
 	assert(data_ == NULL);
 
 	// read into allocated memory
-	std::string str = blob_.read(uuid_, EBLOB_COLUMN);
+	std::string str = blob_->read(uuid_, EBLOB_COLUMN);
 	size_ = str.size();
 	allocate_memory();
 	memcpy(data_, str.data(), size_);
@@ -147,13 +147,13 @@ persistent_data_container::allocate_memory() {
 }
 
 void
-persistent_data_container::set_eblob(eblob blob, const std::string& uuid) {
+persistent_data_container::set_eblob(boost::shared_ptr<eblob> blob, const std::string& uuid) {
 	blob_ = blob;
 	uuid_ = uuid;
 }
 
 void
-persistent_data_container::init_from_message_cache(eblob blob,
+persistent_data_container::init_from_message_cache(boost::shared_ptr<eblob> blob,
 												   const std::string& uuid,
 												   int64_t data_size)
 {
@@ -168,7 +168,7 @@ persistent_data_container::commit_data() {
 		return;
 	}
 
-	blob_.write(uuid_, data_, size_, EBLOB_COLUMN);
+	blob_->write(uuid_, data_, size_, EBLOB_COLUMN);
 	//unload_data();
 	//data_in_memory_ = false;
 }
@@ -200,7 +200,7 @@ persistent_data_container::is_data_loaded() {
 
 void
 persistent_data_container::remove_from_persistent_cache() {
-	blob_.remove_all(uuid_);
+	blob_->remove_all(uuid_);
 }
 
 } // namespace dealer

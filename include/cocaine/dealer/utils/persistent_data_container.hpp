@@ -43,13 +43,13 @@ public:
 	persistent_data_container(const persistent_data_container& dc);
 	virtual ~persistent_data_container();
 
-	void init_from_message_cache(eblob blob, const std::string& uuid, int64_t data_size);
+	void init_from_message_cache(boost::shared_ptr<eblob> blob, const std::string& uuid, int64_t data_size);
 
 	persistent_data_container& operator = (const persistent_data_container& rhs);
 	bool operator == (const persistent_data_container& rhs) const;
 	bool operator != (const persistent_data_container& rhs) const;
 
-	void set_eblob(eblob blob, const std::string& uuid);
+	void set_eblob(boost::shared_ptr<eblob> blob, const std::string& uuid);
 	void commit_data();
 
 	void set_data(const void* data, size_t size);
@@ -71,7 +71,7 @@ protected:
 
 protected:
 	// persistant storage
-	eblob blob_;
+	boost::shared_ptr<eblob> blob_;
 	bool data_in_memory_;
 
 	// data

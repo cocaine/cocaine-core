@@ -34,31 +34,35 @@
 #include "cocaine/dealer/utils/smart_logger.hpp"
 #include "cocaine/dealer/utils/error.hpp"
 #include "cocaine/dealer/storage/eblob.hpp"
+#include "cocaine/dealer/core/dealer_object.hpp"
 
 namespace cocaine {
 namespace dealer {
 
-class eblob_storage : private boost::noncopyable {
+class eblob_storage : private boost::noncopyable, public dealer_object_t {
 public:
 	eblob_storage(std::string path,
+				  const boost::shared_ptr<context_t>& ctx,
+				  bool logging_enabled = true,
 				  uint64_t blob_size = eblob::DEFAULT_BLOB_SIZE,
 				  int sync_interval = eblob::DEFAULT_SYNC_INTERVAL,
 				  int defrag_timeout = eblob::DEFAULT_DEFRAG_TIMEOUT) :
-		path_(path),
-		blob_size_(blob_size),
-		sync_interval_(sync_interval),
-		defrag_timeout_(defrag_timeout)
+		dealer_object_t(ctx, logging_enabled),
+		m_path(path),
+		m_blob_size(blob_size),
+		m_sync_interval(sync_interval),
+		m_defrag_timeout(defrag_timeout)
 	{
 		// add slash to path if missing
-		if (path_.at(path_.length() - 1) != '/') {
-			path_ += "/";
+		if (m_path.at(m_path.length() - 1) != '/') {
+			m_path += "/";
 		}
 	}
 
 	virtual ~eblob_storage() {};
 
 	void open_eblob(const std::string& nm) {
-		std::map<std::string, eblob>::const_iterator it = eblobs_.find(nm);
+		std::map<std::string, boost::shared_ptr<eblob> >::const_iterator it = eblobs_.find(nm);
 
 		// eblob is already open
 		if (it != eblobs_.end()) {
@@ -66,20 +70,26 @@ public:
 		}
 
 		// create eblob
-		eblob eb(path_ + nm, blob_size_, sync_interval_, defrag_timeout_);
+		boost::shared_ptr<eblob> eb(new eblob(m_path + nm,
+											  context(),
+											  true,
+											  m_blob_size,
+											  m_sync_interval,
+											  m_defrag_timeout));
+
 		eblobs_.insert(std::make_pair(nm, eb));
 	}
 
-	eblob operator[](const std::string& nm) {
+	boost::shared_ptr<eblob> operator[](const std::string& nm) {
 		return get_eblob(nm);
 	}
 
-	eblob get_eblob(const std::string& nm) {
-		std::map<std::string, eblob>::const_iterator it = eblobs_.find(nm);
+	boost::shared_ptr<eblob> get_eblob(const std::string& nm) {
+		std::map<std::string, boost::shared_ptr<eblob> >::const_iterator it = eblobs_.find(nm);
 
 		// no such eblob was opened
 		if (it == eblobs_.end()) {
-			std::string error_msg = "no eblob storage object with path: " + path_ + nm;
+			std::string error_msg = "no eblob storage object with path: " + m_path + nm;
 			error_msg += " at " + std::string(BOOST_CURRENT_FUNCTION);
 			throw internal_error(error_msg);
 		}
@@ -88,7 +98,7 @@ public:
 	}
 
 	void close_eblob(const std::string& nm) {
-		std::map<std::string, eblob>::iterator it = eblobs_.find(nm);
+		std::map<std::string, boost::shared_ptr<eblob> >::iterator it = eblobs_.find(nm);
 
 		// eblob is already open
 		if (it == eblobs_.end()) {
@@ -99,12 +109,12 @@ public:
 	}
 
 private:
-	std::map<std::string, eblob> eblobs_;
+	std::map<std::string, boost::shared_ptr<eblob> > eblobs_;
 
-	std::string path_;
-	uint64_t blob_size_;
-	int sync_interval_;
-	int defrag_timeout_;
+	std::string m_path;
+	uint64_t m_blob_size;
+	int m_sync_interval;
+	int m_defrag_timeout;
 };
 
 } // namespace dealer

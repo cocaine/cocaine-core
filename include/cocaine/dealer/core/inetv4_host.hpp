@@ -39,7 +39,8 @@ public:
 	}
 
 	explicit inetv4_host(const std::string& ip) {
-		ip = nutils::str_to_ipv4(ip);
+		// 2DO
+		//ip = nutils::str_to_ipv4(ip);
 		hostname = nutils::hostname_for_ipv4(ip);
 	}
 
