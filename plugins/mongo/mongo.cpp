@@ -66,8 +66,6 @@ objects::value_type mongo_storage_t::get(const std::string& ns,
 
         connection.done();
 
-        std::cout << file.getMetadata() << std::endl;
-
         std::stringstream buffer;
         std::string blob;
 
@@ -118,8 +116,6 @@ void mongo_storage_t::put(const std::string& ns,
         );
 
         connection.done();
-
-        std::cout << result << std::endl;
     } catch(const DBException& e) {
         throw storage_error_t(e.what());
     }
