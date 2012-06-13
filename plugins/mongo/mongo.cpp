@@ -19,6 +19,7 @@
 */
 
 #include <mongo/client/connpool.h>
+#include <mongo/client/gridfs.h>
 
 #include "mongo.hpp"
 
@@ -44,28 +45,44 @@ mongo_storage_t::mongo_storage_t(context_t& context, const plugin_config_t& conf
 objects::value_type mongo_storage_t::get(const std::string& ns,
                                          const std::string& key)
 {
-    BSONObj object;
+    objects::value_type result;
 
     try {
-        ScopedDbConnection connection(m_uri);
-        object = connection->findOne(resolve(ns), BSON("key" << key));
-        connection.done();
+        // Fetch the metadata.
+        result.meta = exists(ns, key);
     } catch(const DBException& e) {
         throw storage_error_t(e.what());
     }
 
-    if(!object.isEmpty()) {
-        objects::value_type result;
-        Json::Reader reader;
+    try {
+        ScopedDbConnection connection(m_uri);
+        GridFS gridfs(connection.conn(), "cocaine", ns);
+        GridFile file(gridfs.findFile(key));
 
-        if(reader.parse(object.jsonString(), result.meta)) {
-            return result;
-        } else {
-            throw storage_error_t("the specified object is corrupted");
+        // Fetch the blob.
+        if(!file.exists()) {
+            throw storage_error_t("the specified object has not been found");
         }
-    } else {
-        throw storage_error_t("the specified object has not been found");
+
+        connection.done();
+
+        std::cout << file.getMetadata() << std::endl;
+
+        std::stringstream buffer;
+        std::string blob;
+
+        file.write(buffer);
+        blob = buffer.str();
+
+        result.blob = objects::data_type(
+            blob.data(),
+            blob.size()
+        );
+    } catch(const DBException& e) {
+        throw storage_error_t(e.what());
     }
+
+    return result;
 }
 
 void mongo_storage_t::put(const std::string& ns,
@@ -86,9 +103,23 @@ void mongo_storage_t::put(const std::string& ns,
     
     try {
         ScopedDbConnection connection(m_uri);
+        
+        // Store the metadata.
         connection->ensureIndex(resolve(ns), BSON("key" << 1), true); // Unique index
         connection->update(resolve(ns), BSON("key" << key), object, true); // Upsert
+        
+        GridFS gridfs(connection.conn(), "cocaine", ns);
+
+        // Store the blob.
+        BSONObj result = gridfs.storeFile(
+            static_cast<const char*>(value.blob.data()),
+            value.blob.size(),
+            key
+        );
+
         connection.done();
+
+        std::cout << result << std::endl;
     } catch(const DBException& e) {
         throw storage_error_t(e.what());
     }
@@ -97,7 +128,29 @@ void mongo_storage_t::put(const std::string& ns,
 objects::meta_type mongo_storage_t::exists(const std::string& ns,
                                            const std::string& key)
 {
-    return get(ns, key).meta;
+    BSONObj object;
+
+    try {
+        // Fetch the metadata.
+        ScopedDbConnection connection(m_uri);
+        object = connection->findOne(resolve(ns), BSON("key" << key));
+        connection.done();
+    } catch(const DBException& e) {
+        throw storage_error_t(e.what());
+    }
+
+    if(!object.isEmpty()) {
+        objects::meta_type meta;
+        Json::Reader reader;
+
+        if(reader.parse(object.jsonString(), meta)) {
+            return meta["object"];
+        } else {
+            throw storage_error_t("the specified object is corrupted");
+        }
+    } else {
+        throw storage_error_t("the specified object has not been found");
+    }
 }
 
 std::vector<std::string> mongo_storage_t::list(const std::string& ns) {
@@ -126,7 +179,15 @@ void mongo_storage_t::remove(const std::string& ns,
 {
     try {
         ScopedDbConnection connection(m_uri);
+
+        // Remove the metadata.
         connection->remove(resolve(ns), BSON("key" << key));
+
+        GridFS gridfs(connection.conn(), "cocaine", ns);
+
+        // Remove the blob.
+        gridfs.removeFile(key);
+
         connection.done();
     } catch(const DBException& e) {
         throw storage_error_t(e.what());
