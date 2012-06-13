@@ -91,7 +91,12 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
         "suicide-timeout",
         defaults::suicide_timeout
     ).asDouble();
-    
+
+    policy.termination_timeout = root["engine"].get(
+        "termination-timeout",
+        defaults::termination_timeout
+    ).asDouble();
+        
     policy.pool_limit = root["engine"].get(
         "pool-limit",
         defaults::pool_limit

@@ -55,6 +55,7 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest_):
     m_check(m_loop),
     // m_pumper(m_loop),
     m_gc_timer(m_loop),
+    m_termination_timer(m_loop),
     m_notification(m_loop),
     m_bus(context.io(), ZMQ_ROUTER),
     m_thread(NULL)
@@ -87,6 +88,10 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest_):
 
     m_gc_timer.set<engine_t, &engine_t::cleanup>(this);
     m_gc_timer.start(5.0f, 5.0f);
+
+    // NOTE: Do not start this timeout right away, because
+    // it's only needed when the engine is shutting down.
+    m_termination_timer.set<engine_t, &engine_t::terminate>(this);
 
     m_notification.set<engine_t, &engine_t::notify>(this);
     m_notification.start();
@@ -366,6 +371,15 @@ void engine_t::process(ev::idle&, int) {
 
                 case rpc::terminate:
                     master->second->process_event(events::terminate());
+
+                    // Remove the dead slave from the pool.
+                    m_pool.erase(master);
+
+                    if(m_state == stopping && m_pool.empty()) {
+                        // If it was the last slave, shut the engine down.
+                        shutdown();
+                    }
+
                     break;
 
                 case rpc::chunk: {
@@ -394,7 +408,7 @@ void engine_t::process(ev::idle&, int) {
 
                     if(code == dealer::server_error) {
                         m_log->error("the app seems to be broken - %s", message.c_str());
-                        terminate();
+                        shutdown();
                         return;
                     }
 
@@ -403,6 +417,7 @@ void engine_t::process(ev::idle&, int) {
 
                 case rpc::choke:
                     master->second->process_event(events::choke());
+                    pump();
                     break;
 
                 default:
@@ -417,11 +432,6 @@ void engine_t::process(ev::idle&, int) {
 
             // TEST: Ensure that there're no more message parts pending on the bus.
             BOOST_ASSERT(!m_bus.more());
-
-            // NOTE: If we have an idle slave now, process the queue.
-            if(master->second->state_downcast<const slave::idle*>()) {
-                react();
-            }
         }
     } while(--counter);
 }
@@ -495,20 +505,41 @@ void engine_t::cleanup(ev::timer&, int) {
     }
 }
 
+// Forced engine termination
+// -------------------------
+
+namespace {
+    struct terminator {
+        template<class T>
+        void operator()(const T& master) {
+            master->second->process_event(events::terminate());
+        }
+    };
+}
+
+void engine_t::terminate(ev::timer&, int) {
+    boost::lock_guard<boost::mutex> lock(m_mutex);
+
+    std::for_each(m_pool.begin(), m_pool.end(), terminator());
+    m_pool.clear();
+    
+    shutdown();
+}
+
 // Asynchronous notification
 // -------------------------
 
 void engine_t::notify(ev::async&, int) {
     boost::lock_guard<boost::mutex> lock(m_mutex);
-    react();
+    pump();
 }
 
 // Queue processing
 // ----------------
 
-void engine_t::react() {
+void engine_t::pump() {
     if(m_state == stopping) {
-        terminate();
+        shutdown();
     }
 
     if(m_queue.empty()) {
@@ -575,19 +606,10 @@ void engine_t::react() {
     }
 }
 
-// Engine termination
-// ------------------
+// Engine shutdown
+// ---------------
 
-namespace {
-    struct terminator {
-        template<class T>
-        void operator()(const T& master) {
-            master->second->process_event(events::terminate());
-        }
-    };
-}
-
-void engine_t::terminate() {
+void engine_t::shutdown() {
     // Abort all the outstanding jobs.
     if(!m_queue.empty()) {
         m_log->debug(
@@ -611,15 +633,13 @@ void engine_t::terminate() {
     rpc::packed<rpc::terminate> packed;
 
     // Send the termination event to active slaves.
-    multicast(select::state<slave::alive>(), packed);
-
-    // XXX: Might be a good idea to wait for a graceful termination.
-    std::for_each(m_pool.begin(), m_pool.end(), terminator());
-
-    m_pool.clear();
-
-    m_state = stopped;
-
-    m_loop.unloop(ev::ALL);
+    if(multicast(select::state<slave::alive>(), packed) == 0) {
+        // Means there're no active slaves left.
+        m_state = stopped;
+        m_loop.unloop(ev::ALL);
+    } else {
+        // Wait a bit for the slaves to finish their jobs.
+        m_termination_timer.start(m_manifest.policy.termination_timeout);
+    }
 }
 

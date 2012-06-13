@@ -34,6 +34,7 @@ namespace fs = boost::filesystem;
 
 const float defaults::heartbeat_timeout = 30.0f;
 const float defaults::suicide_timeout = 600.0f;
+const float defaults::termination_timeout = 5.0f;
 const unsigned int defaults::pool_limit = 10;
 const unsigned int defaults::queue_limit = 100;
 const unsigned int defaults::io_bulk_size = 100;
