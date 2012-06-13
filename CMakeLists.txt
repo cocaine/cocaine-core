@@ -190,7 +190,6 @@ INSTALL(
         cocaine-common
         cocaine-core
         cocaine-slave
-        cocaine-dealer
         cocained
         json
     RUNTIME DESTINATION bin COMPONENT runtime
