@@ -144,7 +144,7 @@ class engine_t:
 
         template<class S, class Packed>
         unsigned int multicast(const S& selector,
-                       Packed& packed)
+                               Packed& packed)
         {
             typedef boost::filter_iterator<S, pool_map_t::iterator> filter;
             
@@ -186,7 +186,7 @@ class engine_t:
         // Garbage collection.
         void cleanup(ev::timer&, int);
 
-        // Engine termination.
+        // Forced engine termination.
         void terminate(ev::timer&, int);
 
         // Asynchronous notification.
@@ -195,7 +195,7 @@ class engine_t:
         // Queue processing.
         void pump();
 
-        // Engine termination
+        // Engine shutdown.
         void shutdown();
 
     private:
