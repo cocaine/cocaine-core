@@ -644,19 +644,20 @@ void engine_t::shutdown() {
     );
 
     // Send the termination event to active slaves.
-    if(pending == 0) {
+    if(!pending) {
         // Means there're no active slaves left.
         m_state = stopped;
         m_loop.unloop(ev::ALL);
+        m_log->info("stopped");
     } else {
         // Wait a bit for the slaves to finish their jobs.
+        m_termination_timer.start(m_manifest.policy.termination_timeout);
+        
         m_log->info(
-            "waiting for %d pending jobs for maximum of %d seconds",
+            "waiting for %d slaves to terminate, timeout: %.f seconds",
             pending,
             m_manifest.policy.termination_timeout
         );
-
-        m_termination_timer.start(m_manifest.policy.termination_timeout);
     }
 }
 

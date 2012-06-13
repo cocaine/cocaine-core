@@ -172,8 +172,6 @@ void slave_t::check(ev::prepare&, int) {
 // }
 
 void slave_t::timeout(ev::timer&, int) {
-    rpc::packed<rpc::terminate> packed;
-    send(packed);
     terminate();
 }
 
@@ -212,5 +210,7 @@ void slave_t::invoke(const std::string& event) {
 }
 
 void slave_t::terminate() {
+    rpc::packed<rpc::terminate> packed;
+    send(packed);
     m_loop.unloop(ev::ALL);
 } 
