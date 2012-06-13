@@ -380,7 +380,7 @@ void engine_t::process(ev::idle&, int) {
                         shutdown();
                     }
 
-                    break;
+                    return;
 
                 case rpc::chunk: {
                     // TEST: Ensure we have the actual chunk following.
@@ -391,7 +391,7 @@ void engine_t::process(ev::idle&, int) {
                     
                     master->second->process_event(events::chunk(message));
 
-                    break;
+                    return;
                 }
              
                 case rpc::error: {
@@ -408,16 +408,18 @@ void engine_t::process(ev::idle&, int) {
 
                     if(code == dealer::server_error) {
                         m_log->error("the app seems to be broken - %s", message.c_str());
-                        shutdown();
-                        return;
+                        
+                        if(m_state == running) {
+                            m_state = stopping;
+                            shutdown();
+                        }
                     }
 
-                    break;
+                    return;
                 }
 
                 case rpc::choke:
                     master->second->process_event(events::choke());
-                    pump();
                     break;
 
                 default:
@@ -430,8 +432,9 @@ void engine_t::process(ev::idle&, int) {
                     m_bus.drop();
             }
 
-            // TEST: Ensure that there're no more message parts pending on the bus.
-            BOOST_ASSERT(!m_bus.more());
+            if(master->second->state_downcast<const slave::idle*>()) {
+                pump();
+            }
         }
     } while(--counter);
 }
@@ -520,6 +523,8 @@ namespace {
 void engine_t::terminate(ev::timer&, int) {
     boost::lock_guard<boost::mutex> lock(m_mutex);
 
+    m_log->info("forcing engine termination");
+
     std::for_each(m_pool.begin(), m_pool.end(), terminator());
     m_pool.clear();
     
@@ -531,17 +536,18 @@ void engine_t::terminate(ev::timer&, int) {
 
 void engine_t::notify(ev::async&, int) {
     boost::lock_guard<boost::mutex> lock(m_mutex);
-    pump();
+
+    if(m_state == running) {
+        pump();
+    } else {
+        shutdown();
+    }
 }
 
 // Queue processing
 // ----------------
 
 void engine_t::pump() {
-    if(m_state == stopping) {
-        shutdown();
-    }
-
     if(m_queue.empty()) {
         return;
     }
@@ -632,13 +638,24 @@ void engine_t::shutdown() {
 
     rpc::packed<rpc::terminate> packed;
 
+    unsigned int pending = multicast(
+        select::state<slave::alive>(),
+        packed
+    );
+
     // Send the termination event to active slaves.
-    if(multicast(select::state<slave::alive>(), packed) == 0) {
+    if(pending == 0) {
         // Means there're no active slaves left.
         m_state = stopped;
         m_loop.unloop(ev::ALL);
     } else {
         // Wait a bit for the slaves to finish their jobs.
+        m_log->info(
+            "waiting for %d pending jobs for maximum of %d seconds",
+            pending,
+            m_manifest.policy.termination_timeout
+        );
+
         m_termination_timer.start(m_manifest.policy.termination_timeout);
     }
 }
