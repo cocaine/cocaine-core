@@ -22,13 +22,17 @@
 
 #include "mongo.hpp"
 
+#include "cocaine/context.hpp"
+#include "cocaine/logging.hpp"
+
 using namespace cocaine;
 using namespace cocaine::storages;
 using namespace mongo;
 
-mongo_storage_t::mongo_storage_t(context_t& context, const Json::Value& args) try:
-    category_type(context, args),
-    m_uri(args["uri"].asString(), ConnectionString::SET)
+mongo_storage_t::mongo_storage_t(context_t& context, const plugin_config_t& config) try:
+    category_type(context, config),
+    m_log(context.log("storage/" + config.name)),
+    m_uri(config.args["uri"].asString(), ConnectionString::SET)
 {
     if(!m_uri.isValid()) {
         throw storage_error_t("invalid mongodb uri");
@@ -40,8 +44,6 @@ mongo_storage_t::mongo_storage_t(context_t& context, const Json::Value& args) tr
 objects::value_type mongo_storage_t::get(const std::string& ns,
                                          const std::string& key)
 {
-    Json::Reader reader;
-    objects::value_type result;
     BSONObj object;
 
     try {
@@ -53,10 +55,13 @@ objects::value_type mongo_storage_t::get(const std::string& ns,
     }
 
     if(!object.isEmpty()) {
-        if(reader.parse(object.jsonString(), result)) {
-            return result["object"];
+        objects::value_type result;
+        Json::Reader reader;
+
+        if(reader.parse(object.jsonString(), result.meta)) {
+            return result;
         } else {
-            throw storage_error_t("corrupted data in '" + ns + "'");
+            throw storage_error_t("the specified object is corrupted");
         }
     } else {
         throw storage_error_t("the specified object has not been found");
@@ -71,7 +76,7 @@ void mongo_storage_t::put(const std::string& ns,
     Json::Value container(Json::objectValue);
 
     container["key"] = key;
-    container["object"] = value;
+    container["object"] = value.meta;
 
     // NOTE: Stupid double-conversion magic. 
     // For some reason, fromjson fails to parse strings with double null-terminator
@@ -89,20 +94,10 @@ void mongo_storage_t::put(const std::string& ns,
     }
 }
 
-bool mongo_storage_t::exists(const std::string& ns,
-                             const std::string& key)
+objects::meta_type mongo_storage_t::exists(const std::string& ns,
+                                           const std::string& key)
 {
-    bool result;
-    
-    try {
-        ScopedDbConnection connection(m_uri);
-        result = connection->count(resolve(ns), BSON("key" << key));
-        connection.done();
-    } catch(const DBException& e) {
-        throw storage_error_t(e.what());
-    }
-
-    return result;
+    return get(ns, key).meta;
 }
 
 std::vector<std::string> mongo_storage_t::list(const std::string& ns) {
@@ -132,16 +127,6 @@ void mongo_storage_t::remove(const std::string& ns,
     try {
         ScopedDbConnection connection(m_uri);
         connection->remove(resolve(ns), BSON("key" << key));
-        connection.done();
-    } catch(const DBException& e) {
-        throw storage_error_t(e.what());
-    }
-}
-
-void mongo_storage_t::purge(const std::string& ns) {
-    try {
-        ScopedDbConnection connection(m_uri);
-        connection->remove(resolve(ns), BSONObj());
         connection.done();
     } catch(const DBException& e) {
         throw storage_error_t(e.what());
