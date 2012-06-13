@@ -45,7 +45,6 @@ class package_t {
         ~package_t();
 
         void deploy(const boost::filesystem::path& prefix);
-        void build(const boost::filesystem::path& path);
         
     public:
         std::string type() const;

@@ -53,8 +53,8 @@ template<>
 struct packed<invoke>:
     public boost::tuple<int, const std::string&, zmq::message_t&>
 {
-    packed(const std::string& method, const void * data, size_t size):
-        boost::tuple<int, const std::string&, zmq::message_t&>(invoke, method, message),
+    packed(const std::string& event, const void * data, size_t size):
+        boost::tuple<int, const std::string&, zmq::message_t&>(invoke, event, message),
         message(size)
     {
         memcpy(

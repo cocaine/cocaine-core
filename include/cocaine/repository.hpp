@@ -21,10 +21,9 @@
 #ifndef COCAINE_REPOSITORY_HPP
 #define COCAINE_REPOSITORY_HPP
 
-#include <typeinfo>
 #include <boost/type_traits/is_base_of.hpp>
-
 #include <ltdl.h>
+#include <typeinfo>
 
 #include "cocaine/common.hpp"
 
@@ -60,7 +59,7 @@ struct factory:
 };
 
 // Specialize this in your plugin to use
-// a custom factory for object instantiations.
+// a custom factory for your object instantiations.
 template<class T>
 struct plugin_traits {
     typedef typename category_traits<

@@ -89,8 +89,8 @@ public:
         PERL_SYS_TERM();
     }
 
-    virtual void invoke(const std::string& method, io_t& io) {
-        log().info("%s", (std::string("invoking method ") + method + "...").c_str());
+    virtual void invoke(const std::string& event, io_t& io) {
+        log().info("%s", (std::string("invoking event ") + event + "...").c_str());
         std::string input;
         
         // Try to pull in the request w/o blocking.
@@ -125,7 +125,7 @@ public:
         }
 
         // call function
-        int ret_vals_count = call_pv(method.c_str(), call_flags);
+        int ret_vals_count = call_pv(event.c_str(), call_flags);
 
         // refresh stack pointer
         SPAGAIN;

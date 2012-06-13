@@ -192,7 +192,7 @@ python_t::~python_t() {
     Py_Finalize();
 }
 
-void python_t::invoke(const std::string& method,
+void python_t::invoke(const std::string& event,
                       io_t& io)
 {
     thread_lock_t thread(m_thread_state);
@@ -202,10 +202,10 @@ void python_t::invoke(const std::string& method,
     }
 
     PyObject * globals = PyModule_GetDict(m_python_module);
-    PyObject * object = PyDict_GetItemString(globals, method.c_str());
+    PyObject * object = PyDict_GetItemString(globals, event.c_str());
     
     if(!object) {
-        throw unrecoverable_error_t("callable '" + method + "' does not exist");
+        throw unrecoverable_error_t("callable '" + event + "' does not exist");
     }
     
     if(PyType_Check(object)) {
@@ -215,7 +215,7 @@ void python_t::invoke(const std::string& method,
     }
 
     if(!PyCallable_Check(object)) {
-        throw unrecoverable_error_t("'" + method + "' is not callable");
+        throw unrecoverable_error_t("'" + event + "' is not callable");
     }
 
     tracked_object_t args(NULL);
@@ -245,15 +245,10 @@ void python_t::invoke(const std::string& method,
    
     if(result != Py_None) {
         log().warning(
-            "ignoring an unused returned value of method '%s'",
-            method.c_str()
+            "ignoring an unused returned value of callable '%s'",
+            event.c_str()
         );
     }
-    
-    // Commented out due to the python io_t wrapper.
-    // else if(result.valid() && result != Py_None) {
-    //     respond(io, result);
-    // }
 }
 
 PyObject* python_t::manifest(PyObject * self,
