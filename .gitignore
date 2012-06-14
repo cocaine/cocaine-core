@@ -13,3 +13,24 @@ install_manifest.txt
 cmake_install.cmake
 
 include/cocaine/config.hpp
+Makefile
+*.o
+*.lo
+*.loT
+*.a
+*.la
+*~
+*.tar.gz
+.*
+*.exp
+*.so
+*.so.*
+*.a.*
+*.o.*
+tags
+*.cocaine-plugin
+
+library-test
+cocaine-slave
+tools/deploy/cocaine-deploy
+tests/library_test
