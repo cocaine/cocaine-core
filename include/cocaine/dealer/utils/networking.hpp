@@ -36,7 +36,7 @@ namespace dealer {
 class nutils {
 public:
 	static int str_to_ipv4(const std::string& str) {
-		int addr;
+        int addr;
         int res = inet_pton(AF_INET, str.c_str(), &addr);
 
         if (0 == res) {
