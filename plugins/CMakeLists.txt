@@ -3,6 +3,7 @@ SET(PLUGINS
         javascript
         #mongo
         elliptics
+	binary
         chrono
         fs
         native-server)
