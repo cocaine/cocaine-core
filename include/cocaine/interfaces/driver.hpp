@@ -46,7 +46,7 @@ class driver_t:
         }
 
     protected:
-        driver_t(context_t& context, engine_t& engine, const plugin_config_t& config):
+        driver_t(context_t& context, engine_t& engine, const plugin_config_t&):
             m_context(context),
             m_engine(engine)
         { }

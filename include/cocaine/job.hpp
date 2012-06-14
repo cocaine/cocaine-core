@@ -92,9 +92,9 @@ struct job_t:
 
     virtual ~job_t();
 
-    virtual void react(const events::chunk& event) { }
-    virtual void react(const events::error& event) { }
-    virtual void react(const events::choke& event) { }
+    virtual void react(const events::chunk& ) { }
+    virtual void react(const events::error& ) { }
+    virtual void react(const events::choke& ) { }
 
     const std::string event;
     const blob_t request;
