@@ -1,8 +1,5 @@
 usr/lib/libjson.a
 usr/include/json/*.h
 usr/include/cocaine/*.hpp
-usr/include/cocaine/drivers/*.hpp
 usr/include/cocaine/helpers/*.hpp
 usr/include/cocaine/interfaces/*.hpp
-usr/include/cocaine/loggers/*.hpp
-usr/include/cocaine/storages/*.hpp

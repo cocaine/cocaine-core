@@ -25,6 +25,7 @@
 #include <sstream>
 
 #include <boost/lexical_cast.hpp>
+#include <boost/shared_ptr.hpp>
 
 #include "cocaine/dealer/structs.hpp"
 #include "cocaine/dealer/message_path.hpp"
@@ -92,8 +93,8 @@ struct persistent_request_metadata : public request_metadata {
 
 	virtual ~persistent_request_metadata() {}
 
-	void set_eblob(eblob blob) {
-		blob = blob;
+	void set_eblob(const boost::shared_ptr<eblob>& blob_) {
+		blob = blob_;
 	}
 
 	static const size_t EBLOB_COLUMN = 0;
@@ -128,7 +129,7 @@ struct persistent_request_metadata : public request_metadata {
     	pk.pack(enqued_timestamp);
 
     	// write to eblob with uuid as key
-		blob.write(uuid, buffer.data(), buffer.size(), EBLOB_COLUMN);
+		blob->write(uuid, buffer.data(), buffer.size(), EBLOB_COLUMN);
 	}
 
 private:
@@ -138,7 +139,7 @@ private:
 		result.get().convert(&value);
 	}
 
-	eblob blob;
+	boost::shared_ptr<eblob> blob;
 };
 
 std::ostream& operator << (std::ostream& out, request_metadata& req_meta) {

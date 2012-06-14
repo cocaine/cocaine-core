@@ -1,4 +1,2 @@
 ENDPOINT="tcp://*:5000"
-STORAGE_DRIVER="files"
-STORAGE_URI="/var/lib/cocaine"
-PORT_RANGE="9000-9100"
+CONFIG_PATH="/etc/cocaine/cocaine.conf"

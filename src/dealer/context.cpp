@@ -20,7 +20,8 @@
 
 #include "cocaine/dealer/core/context.hpp"
 #include "cocaine/dealer/utils/error.hpp"
-
+#include "cocaine/dealer/storage/eblob_storage.hpp"
+    
 namespace cocaine {
 namespace dealer {
 
@@ -60,7 +61,7 @@ context_t::context_t(const std::string& config_path) {
 	zmq_context_m.reset(new zmq::context_t(1));
 
 	// create statistics collector
-	stats_m.reset(new statistics_collector(config_m, zmq_context_m, logger()));
+	//stats_m.reset(new statistics_collector(config_m, zmq_context_m, logger()));
 
 	// create eblob storage
 	if (config()->message_cache_type() == PERSISTENT) {
@@ -70,7 +71,11 @@ context_t::context_t(const std::string& config_path) {
 		int st_sync = config()->eblob_sync_interval();
 		
 		// create storage
-		eblob_storage* storage_ptr = new eblob_storage(st_path, st_blob_size, st_sync);
+		eblob_storage* storage_ptr = new eblob_storage(st_path,
+													   boost::shared_ptr<context_t>(this),
+													   true,
+													   st_blob_size,
+													   st_sync);
 		storage_m.reset(storage_ptr);
 
 		// create eblob for each service
@@ -78,13 +83,11 @@ context_t::context_t(const std::string& config_path) {
 		configuration::services_list_t::const_iterator it = services_info_list.begin();
 		for (; it != services_info_list.end(); ++it) {
 			storage_m->open_eblob(it->second.name);
-			storage_m->get_eblob(it->second.name).set_logger(logger());
 		}
 	}
 }
 
 context_t::~context_t() {
-	stats_m.reset();
 	zmq_context_m.reset();
 }
 
@@ -103,10 +106,10 @@ context_t::zmq_context() {
 	return zmq_context_m;
 }
 
-boost::shared_ptr<statistics_collector>
-context_t::stats() {
-	return stats_m;
-}
+//boost::shared_ptr<statistics_collector>
+//context_t::stats() {
+//	return stats_m;
+//}
 
 boost::shared_ptr<eblob_storage>
 context_t::storage() {

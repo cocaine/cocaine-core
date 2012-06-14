@@ -34,25 +34,25 @@ public:
 	inetv4_host() : ip(0) {
 	}
 
-	explicit inetv4_host(int ip) : ip(ip) {
-		hostname = nutils::hostname_for_ipv4(ip);
+	explicit inetv4_host(int ip_) : ip(ip_) {
+		hostname = nutils::hostname_for_ipv4(ip_);
 	}
 
-	explicit inetv4_host(const std::string& ip) {
-		ip = nutils::str_to_ipv4(ip);
-		hostname = nutils::hostname_for_ipv4(ip);
+	explicit inetv4_host(const std::string& ip_) {
+		ip = nutils::str_to_ipv4(ip_);
+		hostname = nutils::hostname_for_ipv4(ip_);
 	}
 
 	inetv4_host(const inetv4_host& rhs) :
 		ip(rhs.ip), hostname(rhs.hostname) {
 	}
 
-	inetv4_host(int ip, const std::string& hostname) :
-		ip(ip), hostname(hostname) {
+	inetv4_host(int ip_, const std::string& hostname_) :
+		ip(ip_), hostname(hostname_) {
 	}
 
-	inetv4_host(const std::string& ip, const std::string& hostname) :
-		ip(nutils::str_to_ipv4(ip)), hostname(hostname) {
+	inetv4_host(const std::string& ip_, const std::string& hostname_) :
+		ip(nutils::str_to_ipv4(ip_)), hostname(hostname_) {
 	}
 
 	bool operator == (const inetv4_host& rhs) const {

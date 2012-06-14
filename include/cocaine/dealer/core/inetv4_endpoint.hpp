@@ -36,22 +36,22 @@ public:
 	inetv4_endpoint() : port(0) {
 	}
 
-	explicit inetv4_endpoint(const inetv4_host& host) :
-		host(host),
+	explicit inetv4_endpoint(const inetv4_host& host_) :
+		host(host_),
 		port(0) {}
 
-	inetv4_endpoint(const inetv4_host& host, unsigned short port) :
-		host(host),
-		port(port) {}
+	inetv4_endpoint(const inetv4_host& host_, unsigned short port_) :
+		host(host_),
+		port(port_) {}
 
-	inetv4_endpoint(unsigned int ip, unsigned short port) :
-		host(inetv4_host(ip)),
-		port(port) {}
+	inetv4_endpoint(unsigned int ip_, unsigned short port_) :
+		host(inetv4_host(ip_)),
+		port(port_) {}
 
-	inetv4_endpoint(const std::string& ip, const std::string& port) :
-		host(inetv4_host(ip))
+	inetv4_endpoint(const std::string& ip_, const std::string& port_) :
+		host(inetv4_host(ip_))
 	{
-		port = boost::lexical_cast<unsigned short>(port);
+		port = boost::lexical_cast<unsigned short>(port_);
 	}
 
 	inetv4_endpoint(const inetv4_endpoint& rhs) :

@@ -50,7 +50,7 @@ int main(int argc, char * argv[]) {
         ("help,h", "show this message")
         ("version,v", "show version and build information")
         ("configuration,c", po::value<std::string>
-            ()->default_value("/etc/cocaine/default.json"),
+            ()->default_value("/etc/cocaine/cocaine.conf"),
             "location of the configuration file")
         ("daemonize,d", "daemonize on start")
         ("pidfile,p", po::value<std::string>
