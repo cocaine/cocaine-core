@@ -140,7 +140,7 @@ config_t::config_t(const std::string& path):
         runtime.hostname = hostname;
     } else {
         throw system_error_t("failed to determine the hostname");
-    }   
+    }
 }
 
 context_t::context_t(config_t config_, boost::shared_ptr<logging::sink_t> sink):

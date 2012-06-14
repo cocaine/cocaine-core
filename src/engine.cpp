@@ -57,7 +57,7 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest_):
     m_gc_timer(m_loop),
     m_termination_timer(m_loop),
     m_notification(m_loop),
-    m_bus(context.io(), ZMQ_ROUTER),
+    m_bus(context.io(), ZMQ_ROUTER, manifest_.name),
     m_thread(NULL)
 #ifdef HAVE_CGROUPS
     , m_cgroup(NULL)
@@ -67,17 +67,25 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest_):
 
     m_bus.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
 
+    std::string endpoint(
+        (boost::format("ipc://%1%/%2%")
+            % m_context.config.ipc_path.string()
+            % m_manifest.name
+        ).str()
+    );
+
     try {
-        m_bus.bind(
-            (boost::format("ipc://%1%/%2%")
-                % m_context.config.ipc_path.string()
-                % m_manifest.name
-            ).str()
-        );
+        m_bus.bind(endpoint);
     } catch(const zmq::error_t& e) {
         throw configuration_error_t(std::string("invalid rpc endpoint - ") + e.what());
     }
     
+    // Register the engine in the core dispatcher.
+    // context.dispatch().insert(
+    //     m_manifest.name,
+    //     endpoint
+    // );
+
     m_watcher.set<engine_t, &engine_t::message>(this);
     m_watcher.start(m_bus.fd(), ev::READ);
     m_processor.set<engine_t, &engine_t::process>(this);
@@ -394,6 +402,21 @@ void engine_t::process(ev::idle&, int) {
                     return;
                 }
              
+                // case rpc::call: {
+                //     // TEST: Ensure we have the actual call arguments following.
+                //     BOOST_ASSERT(m_bus.more());
+
+                //     std::string callee;
+                //     zmq::message_t message;
+                //     boost::tuple<std::string&, zmq::message_t*> proxy(callee, message);
+
+                //     m_bus.recv_multi(proxy);
+
+                //     m_context.dispatch().call(callee, message);
+
+                //     return;
+                // }
+
                 case rpc::error: {
                     // TEST: Ensure that we have the actual error following.
                     BOOST_ASSERT(m_bus.more());
@@ -548,10 +571,6 @@ void engine_t::notify(ev::async&, int) {
 // ----------------
 
 void engine_t::pump() {
-    if(m_queue.empty()) {
-        return;
-    }
-
     while(!m_queue.empty()) {
         job_queue_t::value_type job(m_queue.front());
 
@@ -638,12 +657,12 @@ void engine_t::shutdown() {
 
     rpc::packed<rpc::terminate> packed;
 
+    // Send the termination event to active slaves.
     unsigned int pending = multicast(
         select::state<slave::alive>(),
         packed
     );
 
-    // Send the termination event to active slaves.
     if(!pending) {
         // Means there're no active slaves left.
         m_state = stopped;
