@@ -1,7 +1,7 @@
 SET(PLUGINS
         python
         javascript
-        #mongo
+        mongo
         elliptics
 	binary
         chrono

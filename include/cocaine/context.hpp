@@ -36,6 +36,7 @@ struct defaults {
     // Default engine policy.
     static const float heartbeat_timeout;
     static const float suicide_timeout;
+    static const float termination_timeout;
     static const unsigned int pool_limit;
     static const unsigned int queue_limit;
 

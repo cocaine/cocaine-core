@@ -1,15 +1,22 @@
-//
-// Copyright (C) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #include <stdexcept>
 #include <iostream>
@@ -24,14 +31,14 @@ namespace cocaine {
 namespace dealer {
 
 http_hosts_fetcher::http_hosts_fetcher(const service_info_t& service_info) :
-	curl_(NULL),
-	service_info_(service_info)
+	curl_m(NULL),
+	service_info_m(service_info)
 {
-	curl_ = curl_easy_init();
+	curl_m = curl_easy_init();
 }
 
 http_hosts_fetcher::~http_hosts_fetcher() {
-	curl_easy_cleanup(curl_);
+	curl_easy_cleanup(curl_m);
 }
 
 int
@@ -50,16 +57,16 @@ http_hosts_fetcher::get_hosts(inetv4_endpoints& endpoints, service_info_t& servi
 	char error_buffer[CURL_ERROR_SIZE];
 	std::string buffer;
 	
-	if (curl_) {
-		curl_easy_setopt(curl_, CURLOPT_ERRORBUFFER, error_buffer);
-		curl_easy_setopt(curl_, CURLOPT_URL, service_info_.hosts_source_.c_str());
-		curl_easy_setopt(curl_, CURLOPT_HEADER, 0);
-		curl_easy_setopt(curl_, CURLOPT_FOLLOWLOCATION, 1);
-		curl_easy_setopt(curl_, CURLOPT_WRITEFUNCTION, curl_writer);
-		curl_easy_setopt(curl_, CURLOPT_WRITEDATA, &buffer);
+	if (curl_m) {
+		curl_easy_setopt(curl_m, CURLOPT_ERRORBUFFER, error_buffer);
+		curl_easy_setopt(curl_m, CURLOPT_URL, service_info_m.hosts_source.c_str());
+		curl_easy_setopt(curl_m, CURLOPT_HEADER, 0);
+		curl_easy_setopt(curl_m, CURLOPT_FOLLOWLOCATION, 1);
+		curl_easy_setopt(curl_m, CURLOPT_WRITEFUNCTION, curl_writer);
+		curl_easy_setopt(curl_m, CURLOPT_WRITEDATA, &buffer);
 
 		// Attempt to retrieve the remote page
-		result = curl_easy_perform(curl_);
+		result = curl_easy_perform(curl_m);
 	}
 	
 	if (CURLE_OK != result) {
@@ -67,7 +74,7 @@ http_hosts_fetcher::get_hosts(inetv4_endpoints& endpoints, service_info_t& servi
 	}
 	
 	long response_code = 0;
-	result = curl_easy_getinfo(curl_, CURLINFO_RESPONSE_CODE, &response_code);
+	result = curl_easy_getinfo(curl_m, CURLINFO_RESPONSE_CODE, &response_code);
 	
 	if (CURLE_OK != result || response_code != 200) {
 		return false;
@@ -99,7 +106,7 @@ http_hosts_fetcher::get_hosts(inetv4_endpoints& endpoints, service_info_t& servi
 		}
 	}
 	
-	service_info = service_info_;
+	service_info = service_info_m;
 	return true;
 }
 

@@ -97,8 +97,8 @@ struct job_t:
     virtual void react(const events::choke& event) { }
 
     const std::string event;
-    const policy_t policy;
     const blob_t request;
+    const policy_t policy;
 };
 
 namespace job {

@@ -69,7 +69,7 @@ class javascript_t:
             m_v8_context.Dispose();
         }
 
-        virtual void invoke(const std::string& method,
+        virtual void invoke(const std::string& event,
                             io_t& io)
         {
             Json::Value result;

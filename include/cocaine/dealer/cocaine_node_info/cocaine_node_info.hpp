@@ -1,15 +1,22 @@
-//
-// Copyright (C) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #ifndef _COCAINE_DEALER_COCAINE_NODE_INFO_HPP_INCLUDED_
 #define _COCAINE_DEALER_COCAINE_NODE_INFO_HPP_INCLUDED_
@@ -29,8 +36,7 @@ namespace dealer {
 class cocaine_node_info_t;
 std::ostream& operator << (std::ostream& out, const cocaine_node_info_t& node_info);
 
-class cocaine_node_info_t {
-public:
+struct cocaine_node_info_t {
 	// <app name, app info>
 	typedef std::map<std::string, cocaine_node_app_info_t> applications;
 
@@ -54,15 +60,13 @@ public:
 		return false;
 	}
 
-	applications apps;
-	
-	unsigned int pending_jobs;
-	unsigned int processed_jobs;
-	std::string route;
-	double uptime;
-
-	unsigned int ip_address;
-	unsigned short port;
+	applications	apps;
+	unsigned int	pending_jobs;
+	unsigned int	processed_jobs;
+	std::string		route;
+	double			uptime;
+	unsigned int	ip_address;
+	unsigned short	port;
 
 	friend std::ostream& operator << (std::ostream& out, const cocaine_node_info_t& node_info);
 };

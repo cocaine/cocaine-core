@@ -34,6 +34,7 @@ namespace fs = boost::filesystem;
 
 const float defaults::heartbeat_timeout = 30.0f;
 const float defaults::suicide_timeout = 600.0f;
+const float defaults::termination_timeout = 5.0f;
 const unsigned int defaults::pool_limit = 10;
 const unsigned int defaults::queue_limit = 100;
 const unsigned int defaults::io_bulk_size = 100;
@@ -139,7 +140,7 @@ config_t::config_t(const std::string& path):
         runtime.hostname = hostname;
     } else {
         throw system_error_t("failed to determine the hostname");
-    }   
+    }
 }
 
 context_t::context_t(config_t config_, boost::shared_ptr<logging::sink_t> sink):

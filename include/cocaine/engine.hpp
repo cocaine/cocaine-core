@@ -143,19 +143,26 @@ class engine_t:
         }
 
         template<class S, class Packed>
-        void multicast(const S& selector,
-                       Packed& packed)
+        unsigned int multicast(const S& selector,
+                               Packed& packed)
         {
             typedef boost::filter_iterator<S, pool_map_t::iterator> filter;
             
             filter it(selector, m_pool.begin(), m_pool.end()),
                    end(selector, m_pool.end(), m_pool.end());
             
+            unsigned int count = 0;
+
             while(it != end) {
                 Packed copy(packed);
+                
                 send(*it->second, copy);
+                
                 ++it;
+                ++count;
             }
+
+            return count;
         }
 
         template<class Packed>
@@ -179,14 +186,17 @@ class engine_t:
         // Garbage collection.
         void cleanup(ev::timer&, int);
 
+        // Forced engine termination.
+        void terminate(ev::timer&, int);
+
         // Asynchronous notification.
         void notify(ev::async&, int);
 
         // Queue processing.
-        void react();
+        void pump();
 
-        // Engine termination
-        void terminate();
+        // Engine shutdown.
+        void shutdown();
 
     private:
         context_t& m_context;
@@ -220,8 +230,10 @@ class engine_t:
         // reason doesn't trigger the socket's fd on message arrival (or I poll it in a wrong way).
         // ev::timer m_pumper;
 
-        // Garbage collector activation timer.
-        ev::timer m_gc_timer;
+        // Garbage collector activation timer and
+        // engine termination timer.
+        ev::timer m_gc_timer,
+                  m_termination_timer;
 
         // Async notification watcher.
         ev::async m_notification;

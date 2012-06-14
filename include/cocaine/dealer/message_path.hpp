@@ -1,15 +1,22 @@
-//
-// Copyright (C) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #ifndef _COCAINE_DEALER_MESSAGE_PATH_HPP_INCLUDED_
 #define _COCAINE_DEALER_MESSAGE_PATH_HPP_INCLUDED_
@@ -23,13 +30,13 @@ namespace dealer {
 
 struct message_path {
     message_path() {};
-    message_path(const std::string& service_name_,
+    message_path(const std::string& service_alias_,
                  const std::string& handle_name_) :
-        service_name(service_name_),
+        service_alias(service_alias_),
         handle_name(handle_name_) {};
 
     message_path(const message_path& path) :
-        service_name(path.service_name),
+        service_alias(path.service_alias),
         handle_name(path.handle_name) {};
 
     message_path& operator = (const message_path& rhs) {
@@ -37,14 +44,14 @@ struct message_path {
             return *this;
         }
 
-        service_name = rhs.service_name;
+        service_alias = rhs.service_alias;
         handle_name = rhs.handle_name;
 
         return *this;
     }
 
     bool operator == (const message_path& mp) const {
-        return (service_name == mp.service_name &&
+        return (service_alias == mp.service_alias &&
                 handle_name == mp.handle_name);
     }
 
@@ -52,15 +59,19 @@ struct message_path {
         return !(*this == mp);
     }
 
-    std::string service_name;
+    std::string as_string() const {
+        return "[" + service_alias + "." + handle_name + "]";
+    }
+
+    std::string service_alias;
     std::string handle_name;
 
-    MSGPACK_DEFINE(service_name, handle_name);
+    MSGPACK_DEFINE(service_alias, handle_name);
 };
 
 static std::size_t __attribute__ ((unused)) hash_value(const message_path& path) {
     boost::hash<std::string> hasher;
-    return hasher(path.service_name + path.handle_name);
+    return hasher(path.service_alias + path.handle_name);
 }
 
 } // namespace dealer

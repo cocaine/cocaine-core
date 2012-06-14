@@ -1,15 +1,22 @@
-//
-// Copyright (C) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #include <cstring>
 
@@ -95,7 +102,7 @@ persistent_data_container::load_data() {
 	assert(data_ == NULL);
 
 	// read into allocated memory
-	std::string str = blob_.read(uuid_, EBLOB_COLUMN);
+	std::string str = blob_->read(uuid_, EBLOB_COLUMN);
 	size_ = str.size();
 	allocate_memory();
 	memcpy(data_, str.data(), size_);
@@ -140,13 +147,13 @@ persistent_data_container::allocate_memory() {
 }
 
 void
-persistent_data_container::set_eblob(eblob blob, const std::string& uuid) {
+persistent_data_container::set_eblob(boost::shared_ptr<eblob> blob, const std::string& uuid) {
 	blob_ = blob;
 	uuid_ = uuid;
 }
 
 void
-persistent_data_container::init_from_message_cache(eblob blob,
+persistent_data_container::init_from_message_cache(boost::shared_ptr<eblob> blob,
 												   const std::string& uuid,
 												   int64_t data_size)
 {
@@ -161,7 +168,7 @@ persistent_data_container::commit_data() {
 		return;
 	}
 
-	blob_.write(uuid_, data_, size_, EBLOB_COLUMN);
+	blob_->write(uuid_, data_, size_, EBLOB_COLUMN);
 	//unload_data();
 	//data_in_memory_ = false;
 }
@@ -193,7 +200,7 @@ persistent_data_container::is_data_loaded() {
 
 void
 persistent_data_container::remove_from_persistent_cache() {
-	blob_.remove_all(uuid_);
+	blob_->remove_all(uuid_);
 }
 
 } // namespace dealer

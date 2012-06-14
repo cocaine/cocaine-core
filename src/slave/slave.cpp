@@ -137,10 +137,10 @@ void slave_t::process(ev::idle&, int) {
             // TEST: Ensure that we have the app first.
             BOOST_ASSERT(m_sandbox.get() != NULL);
 
-            std::string method;
+            std::string event;
 
-            m_bus.recv(method);
-            invoke(method);
+            m_bus.recv(event);
+            invoke(event);
             
             break;
         }
@@ -172,8 +172,6 @@ void slave_t::check(ev::prepare&, int) {
 // }
 
 void slave_t::timeout(ev::timer&, int) {
-    rpc::packed<rpc::terminate> packed;
-    send(packed);
     terminate();
 }
 
@@ -182,9 +180,9 @@ void slave_t::heartbeat(ev::timer&, int) {
     send(packed);
 }
 
-void slave_t::invoke(const std::string& method) {
+void slave_t::invoke(const std::string& event) {
     try {
-        m_sandbox->invoke(method, *this);
+        m_sandbox->invoke(event, *this);
     } catch(const recoverable_error_t& e) {
         rpc::packed<rpc::error> packed(dealer::app_error, e.what());
         send(packed);
@@ -212,5 +210,7 @@ void slave_t::invoke(const std::string& method) {
 }
 
 void slave_t::terminate() {
+    rpc::packed<rpc::terminate> packed;
+    send(packed);
     m_loop.unloop(ev::ALL);
 } 

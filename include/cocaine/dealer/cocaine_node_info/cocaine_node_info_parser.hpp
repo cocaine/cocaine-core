@@ -1,15 +1,22 @@
-//
-// Copyright (C) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #ifndef _COCAINE_DEALER_COCAINE_NODE_INFO_PARSER_HPP_INCLUDED_
 #define _COCAINE_DEALER_COCAINE_NODE_INFO_PARSER_HPP_INCLUDED_
@@ -21,44 +28,46 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/shared_ptr.hpp>
 
+#include "cocaine/dealer/core/dealer_object.hpp"
 #include "cocaine/dealer/cocaine_node_info/cocaine_node_info.hpp"
 #include "cocaine/dealer/utils/networking.hpp"
 
 namespace cocaine {
 namespace dealer {
 
-class cocaine_node_info_parser_t {
+class cocaine_node_info_parser_t : public dealer_object_t {
 public:
 	cocaine_node_info_parser_t() {
 		set_host_info(0, 0);
-		logger_.reset(new base_logger);
 	}
 
-	cocaine_node_info_parser_t(boost::shared_ptr<base_logger> logger) {
+	cocaine_node_info_parser_t(const boost::shared_ptr<context_t>& ctx,
+							   bool logging_enabled = true) :
+		dealer_object_t(ctx, logging_enabled)
+	{
 		set_host_info(0, 0);
-		logger_ = logger;
 	}
 
 	~cocaine_node_info_parser_t() {};
 
 	void set_host_info(unsigned int node_ip_address, unsigned short node_port) {
-		node_ip_address_ = node_ip_address;
-		node_port_ = node_port;
+		node_ip_address_m = node_ip_address;
+		node_port_m = node_port;
 
-		if (node_ip_address_ == 0 || node_port_ == 0) {
-			str_node_adress_ = "[undefined ip:undefined port]";
+		if (node_ip_address_m == 0 || node_port_m == 0) {
+			str_node_adress_m = "[undefined ip:undefined port]";
 			return;
 		}
 
-		str_node_adress_ = "[" + nutils::ipv4_to_str(node_ip_address);
-		str_node_adress_ += ":" + boost::lexical_cast<std::string>(node_port);
+		str_node_adress_m = "[" + nutils::ipv4_to_str(node_ip_address);
+		str_node_adress_m += ":" + boost::lexical_cast<std::string>(node_port);
 
 		std::string hostname = nutils::hostname_for_ipv4(node_ip_address);
 		if (!hostname.empty()) {
-			str_node_adress_ += " (" + hostname + ")]";
+			str_node_adress_m += " (" + hostname + ")]";
 		}
 		else {
-			str_node_adress_ += "]";
+			str_node_adress_m += "]";
 		}
 	}
 
@@ -72,7 +81,7 @@ public:
 
 		if (!reader.parse(json_string, root)) {
 			std::string log_str = "cocaine node %s routing info could not be parsed";
-			logger()->log(PLOG_WARNING, log_str.c_str(), str_node_adress_.c_str());
+			log(PLOG_WARNING, log_str.c_str(), str_node_adress_m.c_str());
 			return false;
 		}
 	
@@ -80,7 +89,7 @@ public:
 		const Json::Value apps = root["apps"];
 		if (!apps.isObject() || !apps.size()) {
 			std::string log_str = "no apps found in cocaine node %s rounting info";
-			logger()->log(PLOG_WARNING, log_str.c_str(), str_node_adress_.c_str());
+			log(PLOG_WARNING, log_str.c_str(), str_node_adress_m.c_str());
 			return false;
 		}
 
@@ -102,7 +111,7 @@ public:
 	    const Json::Value jobs_props = root["jobs"];
 	    if (!jobs_props.isObject()) {
 	    	std::string log_str = "no jobs object found in cocaine node %s rounting info";
-			logger()->log(PLOG_WARNING, log_str.c_str(), str_node_adress_.c_str());
+			log(PLOG_WARNING, log_str.c_str(), str_node_adress_m.c_str());
 	    }
 	    else {
 	    	node_info.pending_jobs = jobs_props.get("pending", 0).asInt();
@@ -111,8 +120,8 @@ public:
 
 	    node_info.route = root.get("route", "").asString();
 		node_info.uptime = root.get("uptime", 0.0f).asDouble();
-		node_info.ip_address = node_ip_address_;
-		node_info.port = node_port_;
+		node_info.ip_address = node_ip_address_m;
+		node_info.port = node_port_m;
 
 		return true;
 	}
@@ -124,7 +133,7 @@ private:
     	if (!tasks.isObject() || !tasks.size()) {
         	std::string log_str = "no tasks info for app [" + app_info.name;
 	    	log_str += "] found in cocaine node %s rounting info";
-			logger()->log(PLOG_WARNING, log_str.c_str(), str_node_adress_.c_str());
+			log(PLOG_WARNING, log_str.c_str(), str_node_adress_m.c_str());
 
 			return false;
 		}
@@ -137,7 +146,7 @@ private:
     		if (!task.isObject() || !task.size()) {
     			std::string log_str = "no task info for app [" + app_info.name;
 	    		log_str += "], task [" + task_name + "] found in cocaine node %s rounting info";
-				logger()->log(PLOG_WARNING, log_str.c_str(), str_node_adress_.c_str());
+				log(PLOG_WARNING, log_str.c_str(), str_node_adress_m.c_str());
 				continue;
 			}
 
@@ -158,7 +167,7 @@ private:
 	    if (!slaves_props.isObject()) {
 	    	std::string log_str = "no slaves info for app [" + app_info.name;
 	    	log_str += "] found in cocaine node %s rounting info";
-			logger()->log(PLOG_WARNING, log_str.c_str(), str_node_adress_.c_str());
+			log(PLOG_WARNING, log_str.c_str(), str_node_adress_m.c_str());
 	    }
 	    else {
 	    	app_info.slaves_busy = slaves_props.get("busy", 0).asInt();
@@ -190,14 +199,9 @@ private:
 		return true;
 	}
 
-	boost::shared_ptr<base_logger> logger() {
-		return logger_;
-	}
-
-	unsigned int node_ip_address_;
-	unsigned short node_port_;
-	std::string str_node_adress_;
-	boost::shared_ptr<base_logger> logger_;
+	unsigned int	node_ip_address_m;
+	unsigned short	node_port_m;
+	std::string		str_node_adress_m;
 };
 
 } // namespace dealer

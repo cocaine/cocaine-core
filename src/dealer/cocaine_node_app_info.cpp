@@ -1,15 +1,22 @@
-//
-// Copyright (C) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #include <string>
 #include <iostream>
@@ -21,12 +28,12 @@
 namespace cocaine {
 namespace dealer {
 
-std::ostream& operator << (std::ostream& out, const cocaine_node_app_info_t& app_info) {
-	std::string name = "+ [" + app_info.name + "]";
-	std::string running = app_info.is_running ? "yes" : "no";
+std::ostream& operator << (std::ostream& out, const cocaine_node_app_info_t& info) {
+	std::string name = "+ [" + info.name + "]";
+	std::string running = info.is_running ? "yes" : "no";
 
 	std::stringstream slaves;
-	slaves << "busy " << app_info.slaves_busy << ", total " << app_info.slaves_total;
+	slaves << "busy " << info.slaves_busy << ", total " << info.slaves_total;
 
 	char old_char = out.fill(' ');
 	int old_width = out.width(10);
@@ -43,13 +50,13 @@ std::ostream& operator << (std::ostream& out, const cocaine_node_app_info_t& app
 	out << "slaves: " << std::setw(0) << slaves.str() << std::endl;
 
 	out << std::setw(2) << "" << std::setw(4) << "" << std::setw(9);
-	out << "queue: " << std::setw(0) << app_info.queue_depth << std::endl;
+	out << "queue: " << std::setw(0) << info.queue_depth << std::endl;
 	
 	out << std::setw(2) << "" << std::setw(4) << "" << std::setw(9);
 	out << "tasks:" << std::endl;
 
-	cocaine_node_app_info_t::application_tasks::const_iterator it = app_info.tasks.begin();
-	for (; it != app_info.tasks.end(); ++it) {
+	cocaine_node_app_info_t::application_tasks::const_iterator it = info.tasks.begin();
+	for (; it != info.tasks.end(); ++it) {
 		out << it->second;
 	}
 

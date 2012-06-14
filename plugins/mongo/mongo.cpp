@@ -19,16 +19,21 @@
 */
 
 #include <mongo/client/connpool.h>
+#include <mongo/client/gridfs.h>
 
 #include "mongo.hpp"
+
+#include "cocaine/context.hpp"
+#include "cocaine/logging.hpp"
 
 using namespace cocaine;
 using namespace cocaine::storages;
 using namespace mongo;
 
-mongo_storage_t::mongo_storage_t(context_t& context, const Json::Value& args) try:
-    category_type(context, args),
-    m_uri(args["uri"].asString(), ConnectionString::SET)
+mongo_storage_t::mongo_storage_t(context_t& context, const plugin_config_t& config) try:
+    category_type(context, config),
+    m_log(context.log("storage/" + config.name)),
+    m_uri(config.args["uri"].asString(), ConnectionString::SET)
 {
     if(!m_uri.isValid()) {
         throw storage_error_t("invalid mongodb uri");
@@ -40,27 +45,42 @@ mongo_storage_t::mongo_storage_t(context_t& context, const Json::Value& args) tr
 objects::value_type mongo_storage_t::get(const std::string& ns,
                                          const std::string& key)
 {
-    Json::Reader reader;
     objects::value_type result;
-    BSONObj object;
 
     try {
-        ScopedDbConnection connection(m_uri);
-        object = connection->findOne(resolve(ns), BSON("key" << key));
-        connection.done();
+        // Fetch the metadata.
+        result.meta = exists(ns, key);
     } catch(const DBException& e) {
         throw storage_error_t(e.what());
     }
 
-    if(!object.isEmpty()) {
-        if(reader.parse(object.jsonString(), result)) {
-            return result["object"];
-        } else {
-            throw storage_error_t("corrupted data in '" + ns + "'");
+    try {
+        ScopedDbConnection connection(m_uri);
+        GridFS gridfs(connection.conn(), "cocaine", ns);
+        GridFile file(gridfs.findFile(key));
+
+        // Fetch the blob.
+        if(!file.exists()) {
+            throw storage_error_t("the specified object has not been found");
         }
-    } else {
-        throw storage_error_t("the specified object has not been found");
+
+        connection.done();
+
+        std::stringstream buffer;
+        std::string blob;
+
+        file.write(buffer);
+        blob = buffer.str();
+
+        result.blob = objects::data_type(
+            blob.data(),
+            blob.size()
+        );
+    } catch(const DBException& e) {
+        throw storage_error_t(e.what());
     }
+
+    return result;
 }
 
 void mongo_storage_t::put(const std::string& ns,
@@ -71,7 +91,7 @@ void mongo_storage_t::put(const std::string& ns,
     Json::Value container(Json::objectValue);
 
     container["key"] = key;
-    container["object"] = value;
+    container["object"] = value.meta;
 
     // NOTE: Stupid double-conversion magic. 
     // For some reason, fromjson fails to parse strings with double null-terminator
@@ -81,28 +101,52 @@ void mongo_storage_t::put(const std::string& ns,
     
     try {
         ScopedDbConnection connection(m_uri);
+        
+        // Store the metadata.
         connection->ensureIndex(resolve(ns), BSON("key" << 1), true); // Unique index
         connection->update(resolve(ns), BSON("key" << key), object, true); // Upsert
+        
+        GridFS gridfs(connection.conn(), "cocaine", ns);
+
+        // Store the blob.
+        BSONObj result = gridfs.storeFile(
+            static_cast<const char*>(value.blob.data()),
+            value.blob.size(),
+            key
+        );
+
         connection.done();
     } catch(const DBException& e) {
         throw storage_error_t(e.what());
     }
 }
 
-bool mongo_storage_t::exists(const std::string& ns,
-                             const std::string& key)
+objects::meta_type mongo_storage_t::exists(const std::string& ns,
+                                           const std::string& key)
 {
-    bool result;
-    
+    BSONObj object;
+
     try {
+        // Fetch the metadata.
         ScopedDbConnection connection(m_uri);
-        result = connection->count(resolve(ns), BSON("key" << key));
+        object = connection->findOne(resolve(ns), BSON("key" << key));
         connection.done();
     } catch(const DBException& e) {
         throw storage_error_t(e.what());
     }
 
-    return result;
+    if(!object.isEmpty()) {
+        objects::meta_type meta;
+        Json::Reader reader;
+
+        if(reader.parse(object.jsonString(), meta)) {
+            return meta["object"];
+        } else {
+            throw storage_error_t("the specified object is corrupted");
+        }
+    } else {
+        throw storage_error_t("the specified object has not been found");
+    }
 }
 
 std::vector<std::string> mongo_storage_t::list(const std::string& ns) {
@@ -131,17 +175,15 @@ void mongo_storage_t::remove(const std::string& ns,
 {
     try {
         ScopedDbConnection connection(m_uri);
-        connection->remove(resolve(ns), BSON("key" << key));
-        connection.done();
-    } catch(const DBException& e) {
-        throw storage_error_t(e.what());
-    }
-}
 
-void mongo_storage_t::purge(const std::string& ns) {
-    try {
-        ScopedDbConnection connection(m_uri);
-        connection->remove(resolve(ns), BSONObj());
+        // Remove the metadata.
+        connection->remove(resolve(ns), BSON("key" << key));
+
+        GridFS gridfs(connection.conn(), "cocaine", ns);
+
+        // Remove the blob.
+        gridfs.removeFile(key);
+
         connection.done();
     } catch(const DBException& e) {
         throw storage_error_t(e.what());

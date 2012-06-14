@@ -1,15 +1,22 @@
-//
-// Copyright (C) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #ifndef _COCAINE_DEALER_INETV4_ENDPOINT_HPP_INCLUDED_
 #define _COCAINE_DEALER_INETV4_ENDPOINT_HPP_INCLUDED_
@@ -26,35 +33,33 @@ namespace dealer {
  // predeclaration
 class inetv4_endpoint {
 public:
-	inetv4_endpoint() : port_(0) {
+	inetv4_endpoint() : port(0) {
 	}
 
-	explicit inetv4_endpoint(const inetv4_host& host) :
-		host_(host),
-		port_(0) {}
+	explicit inetv4_endpoint(const inetv4_host& host_) :
+		host(host_),
+		port(0) {}
 
-	inetv4_endpoint(const inetv4_host& host, unsigned short port) :
-		host_(host),
-		port_(port) {}
+	inetv4_endpoint(const inetv4_host& host_, unsigned short port_) :
+		host(host_),
+		port(port_) {}
 
-	inetv4_endpoint(unsigned int ip, unsigned short port) :
-		host_(inetv4_host(ip)),
-		port_(port) {}
+	inetv4_endpoint(unsigned int ip_, unsigned short port_) :
+		host(inetv4_host(ip_)),
+		port(port_) {}
 
-	inetv4_endpoint(const std::string& ip, const std::string& port) :
-		host_(inetv4_host(ip))
+	inetv4_endpoint(const std::string& ip_, const std::string& port_) :
+		host(inetv4_host(ip_))
 	{
-		port_ = boost::lexical_cast<unsigned short>(port);
+		port = boost::lexical_cast<unsigned short>(port_);
 	}
 
 	inetv4_endpoint(const inetv4_endpoint& rhs) :
-		host_(rhs.host_),
-		port_(rhs.port_)
-
-	{}
+		host(rhs.host),
+		port(rhs.port) {}
 
 	bool operator == (const inetv4_endpoint& rhs) const {
-		return (host_ == rhs.host_ && port_ == rhs.port_);
+		return (host == rhs.host && port == rhs.port);
 	}
 
 	bool operator != (const inetv4_endpoint& rhs) const {
@@ -66,11 +71,11 @@ public:
 	}
 
 	std::string as_string() const {
-		return host_.as_string() + ":" + boost::lexical_cast<std::string>(port_);
+		return host.as_string() + ":" + boost::lexical_cast<std::string>(port);
 	}
 
-	inetv4_host host_;
-	unsigned short port_;
+	inetv4_host host;
+	unsigned short port;
 };
 
 } // namespace dealer

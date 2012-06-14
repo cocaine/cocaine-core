@@ -1,15 +1,22 @@
-//
-// Copyright (C) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #ifndef _COCAINE_DEALER_BALANCER_HPP_INCLUDED_
 #define _COCAINE_DEALER_BALANCER_HPP_INCLUDED_
@@ -22,21 +29,22 @@
 
 #include <zmq.hpp>
 
-#include "cocaine/dealer/core/cocaine_endpoint.hpp"
 #include "cocaine/dealer/core/message_iface.hpp"
-#include "cocaine/dealer/core/context.hpp"
 #include "cocaine/dealer/core/message_cache.hpp"
+#include "cocaine/dealer/core/dealer_object.hpp"
 #include "cocaine/dealer/core/cached_response.hpp"
+#include "cocaine/dealer/core/cocaine_endpoint.hpp"
 
 namespace cocaine {
 namespace dealer {
 
-class balancer_t : private boost::noncopyable {
+class balancer_t : private boost::noncopyable, public dealer_object_t {
 public:
 	balancer_t(const std::string& identity,
 			   const std::vector<cocaine_endpoint>& endpoints,
-			   const boost::shared_ptr<cocaine::dealer::context_t>& context_t,
-			   boost::shared_ptr<message_cache> message_cache);
+			   boost::shared_ptr<message_cache> message_cache,
+			   const boost::shared_ptr<context_t>& ctx,
+			   bool logging_enabled = true);
 
 	virtual ~balancer_t();
 
@@ -67,15 +75,12 @@ private:
 
 	cocaine_endpoint& get_next_endpoint();
 
-	boost::shared_ptr<base_logger> logger();
-
 private:
-	boost::shared_ptr<zmq::socket_t> socket_;
-	std::string socket_identity_;
-	std::vector<cocaine_endpoint> endpoints_;
-	boost::shared_ptr<cocaine::dealer::context_t> context_;
-	boost::shared_ptr<message_cache> message_cache_;
-	size_t current_endpoint_index_;
+	boost::shared_ptr<zmq::socket_t>	socket_m;
+	std::vector<cocaine_endpoint>		endpoints_m;
+	boost::shared_ptr<message_cache>	message_cache_m;
+	size_t		current_endpoint_index_m;
+	std::string	socket_identity_m;
 };
 
 } // namespace dealer

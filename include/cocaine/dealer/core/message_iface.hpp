@@ -1,15 +1,22 @@
-//
-// Copyright (C) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #ifndef _COCAINE_DEALER_MESSAGE_IFACE_HPP_INCLUDED_
 #define _COCAINE_DEALER_MESSAGE_IFACE_HPP_INCLUDED_
@@ -35,8 +42,6 @@ public:
 
 	virtual void remove_from_persistent_cache() = 0;
 
-	virtual size_t container_size() const = 0;
-
 	virtual const message_path& path() const = 0;
 	virtual const message_policy& policy() const = 0;
 	virtual const std::string& uuid() const = 0;
@@ -57,7 +62,6 @@ public:
 
 	virtual void mark_as_sent(bool value) = 0;
 
-	virtual std::string json() = 0;
 	virtual bool is_expired() = 0;
 
 	virtual message_iface& operator = (const message_iface& rhs) = 0;

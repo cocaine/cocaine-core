@@ -1,63 +1,73 @@
-//
-// Copyright (C) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #include "cocaine/dealer/core/service.hpp"
 
 namespace cocaine {
 namespace dealer {
 
-service_t::service_t(const service_info_t& info, const boost::shared_ptr<cocaine::dealer::context_t>& context) :
-	info_(info),
-	context_(context),
-	is_running_(false),
-	is_dead_(false)
+service_t::service_t(const service_info_t& info,
+					 const boost::shared_ptr<context_t>& ctx,
+					 bool logging_enabled) :
+	dealer_object_t(ctx, logging_enabled),
+	info_m(info),
+	is_running_m(false),
+	is_dead_m(false)
 {
 	// run response dispatch thread
-	is_running_ = true;
-	thread_ = boost::thread(&service_t::dispatch_responces, this);
+	is_running_m = true;
+	thread_m = boost::thread(&service_t::dispatch_responces, this);
 
 	// run timed out messages checker
-	deadlined_messages_refresher_.reset(new refresher(boost::bind(&service_t::check_for_deadlined_messages, this), deadline_check_interval));
+	deadlined_messages_refresher_m.reset(new refresher(boost::bind(&service_t::check_for_deadlined_messages, this),
+										 deadline_check_interval));
 }
 
 service_t::~service_t() {
-	is_dead_ = true;
+	is_dead_m = true;
 
 	// kill handles
-	handles_map_t::iterator it = handles_.begin();
-	for (;it != handles_.end(); ++it) {
+	handles_map_t::iterator it = handles_m.begin();
+	for (;it != handles_m.end(); ++it) {
 		it->second->disconnect();
 	}
 
-	is_running_ = false;
-	cond_.notify_one();
-	thread_.join();
+	is_running_m = false;
+	cond_m.notify_one();
+	thread_m.join();
 }
 
 bool
 service_t::is_dead() {
-	return is_dead_;
+	return is_dead_m;
 }
 
 service_info_t
 service_t::info() const {
-	return info_;
+	return info_m;
 }
 
 bool
 service_t::responces_queues_empty() const {
-	responces_map_t::const_iterator it = received_responces_.begin();
-	for (; it != received_responces_.end(); ++it) {
+	responces_map_t::const_iterator it = received_responces_m.begin();
+	for (; it != received_responces_m.end(); ++it) {
 		responces_deque_ptr_t handle_resp_queue = it->second;
 		if (!handle_resp_queue->empty()) {
 			return false;
@@ -69,16 +79,16 @@ service_t::responces_queues_empty() const {
 
 void
 service_t::dispatch_responces() {
-	while (is_running_) {
-		boost::mutex::scoped_lock lock(mutex_);
+	while (is_running_m) {
+		boost::mutex::scoped_lock lock(mutex_m);
 
-		while(responces_queues_empty() && is_running_) {
-            cond_.wait(lock);
+		while(responces_queues_empty() && is_running_m) {
+            cond_m.wait(lock);
         }
 
 		// go through each response queue
-		responces_map_t::iterator qit = received_responces_.begin();
-		for (; qit != received_responces_.end(); ++qit) {
+		responces_map_t::iterator qit = received_responces_m.begin();
+		for (; qit != received_responces_m.end(); ++qit) {
 
 			// get first responce from queue
 			responces_deque_ptr_t handle_resp_queue = qit->second;
@@ -99,10 +109,10 @@ service_t::dispatch_responces() {
 
 				// invoke callback for given message uuid
 				try {
-					registered_callbacks_map_t::iterator it = responses_callbacks_map_.find(resp_info.uuid);
+					registered_callbacks_map_t::iterator it = responses_callbacks_map_m.find(resp_info.uuid);
 
 					// call callback it it's there
-					if (it != responses_callbacks_map_.end()) {
+					if (it != responses_callbacks_map_m.end()) {
 						boost::weak_ptr<response> response_wptr = it->second;
 						boost::shared_ptr<response> response_ptr = response_wptr.lock();
 						
@@ -128,55 +138,31 @@ service_t::dispatch_responces() {
 	}
 }
 
-boost::shared_ptr<cocaine::dealer::context_t>
-service_t::context() {
-	if (!context_.get()) {
-		throw internal_error("dealer context object is empty at " + std::string(BOOST_CURRENT_FUNCTION));
-	}
-
-	return context_;
-}
-
-boost::shared_ptr<base_logger>
-service_t::logger() {
-	return context()->logger();
-}
-
-boost::shared_ptr<configuration>
-service_t::config() {
-	boost::shared_ptr<configuration> conf = context()->config();
-	if (!conf.get()) {
-		throw internal_error("configuration object is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
-	}
-
-	return conf;
-}
-
 void
 service_t::register_responder_callback(const std::string& message_uuid,
 											const boost::shared_ptr<response>& resp)
 {
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(mutex_m);
 	boost::weak_ptr<response> wptr(resp);
-	responses_callbacks_map_[message_uuid] = wptr;
+	responses_callbacks_map_m[message_uuid] = wptr;
 }
 
 void
 service_t::unregister_responder_callback(const std::string& message_uuid) {
-	boost::mutex::scoped_lock lock(mutex_);
-	registered_callbacks_map_t::iterator callback_it = responses_callbacks_map_.find(message_uuid);
+	boost::mutex::scoped_lock lock(mutex_m);
+	registered_callbacks_map_t::iterator callback_it = responses_callbacks_map_m.find(message_uuid);
 
 	// is there a callback for given response uuid?
-	if (callback_it == responses_callbacks_map_.end()) {
+	if (callback_it == responses_callbacks_map_m.end()) {
 		return;
 	}
 
-	responses_callbacks_map_.erase(callback_it);
+	responses_callbacks_map_m.erase(callback_it);
 }
 
 void
 service_t::enqueue_responce(cached_response_prt_t response) {
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(mutex_m);
 
 	// validate response
 	assert(response);
@@ -184,23 +170,23 @@ service_t::enqueue_responce(cached_response_prt_t response) {
 	const message_path& path = response->path();
 
 	// see whether there exists registered callback for message
-	registered_callbacks_map_t::iterator callback_it = responses_callbacks_map_.find(response->uuid());
+	registered_callbacks_map_t::iterator callback_it = responses_callbacks_map_m.find(response->uuid());
 
 	// is there a callback for given response uuid?
-	if (callback_it == responses_callbacks_map_.end()) {
+	if (callback_it == responses_callbacks_map_m.end()) {
 		// drop response
 		//lock.unlock();
 		return;
 	}
 
 	// get responces queue for response handle
-	responces_map_t::iterator it = received_responces_.find(path.handle_name);
+	responces_map_t::iterator it = received_responces_m.find(path.handle_name);
 	responces_deque_ptr_t handle_resp_queue;
 
 	// if no queue for handle's responces exists, create one
-	if (it == received_responces_.end()) {
+	if (it == received_responces_m.end()) {
 		handle_resp_queue.reset(new cached_responces_deque_t);
-		received_responces_.insert(std::make_pair(path.handle_name, handle_resp_queue));
+		received_responces_m.insert(std::make_pair(path.handle_name, handle_resp_queue));
 	}
 	else {
 		handle_resp_queue = it->second;
@@ -208,7 +194,7 @@ service_t::enqueue_responce(cached_response_prt_t response) {
 		// validate existing responces queue
 		if (!handle_resp_queue) {
 			std::string error_str = "found empty response queue object!";
-			error_str += " service: " + info_.name_ + " handle: " + path.handle_name;
+			error_str += " service: " + info_m.name + " handle: " + path.handle_name;
 			error_str += " at " + std::string(BOOST_CURRENT_FUNCTION);
 			throw internal_error(error_str);
 		}
@@ -217,7 +203,7 @@ service_t::enqueue_responce(cached_response_prt_t response) {
 	// add responce to queue
 	handle_resp_queue->push_back(response);
 	lock.unlock();
-	cond_.notify_one();
+	cond_m.notify_one();
 }
 
 void
@@ -226,7 +212,7 @@ service_t::refresh_handles(const handles_endpoints_t& handles_endpoints) {
 	handles_info_list_t new_handles;
 
 	// check for outstanding handles
-	for (handles_map_t::iterator it = handles_.begin(); it != handles_.end(); ++it) {
+	for (handles_map_t::iterator it = handles_m.begin(); it != handles_m.end(); ++it) {
 		handles_endpoints_t::const_iterator hit = handles_endpoints.find(it->first);
 
 		if (hit == handles_endpoints.end()) {
@@ -237,10 +223,10 @@ service_t::refresh_handles(const handles_endpoints_t& handles_endpoints) {
 	// check for new handles
 	handles_endpoints_t::const_iterator it = handles_endpoints.begin();
 	for (; it != handles_endpoints.end(); ++it) {
-		handles_map_t::iterator hit = handles_.find(it->first);
+		handles_map_t::iterator hit = handles_m.find(it->first);
 
-		if (hit == handles_.end()) {
-			handle_info_t hinfo(it->first, info_.app_, info_.name_);
+		if (hit == handles_m.end()) {
+			handle_info_t hinfo(it->first, info_m.app, info_m.name);
 			new_handles.push_back(hinfo);
 		}
 	}
@@ -252,8 +238,8 @@ service_t::refresh_handles(const handles_endpoints_t& handles_endpoints) {
 
 void
 service_t::update_existing_handles(const handles_endpoints_t& handles_endpoints) {
-	handles_map_t::iterator it = handles_.begin();
-	for (; it != handles_.end(); ++it) {
+	handles_map_t::iterator it = handles_m.begin();
+	for (; it != handles_m.end(); ++it) {
 
 		handles_endpoints_t::const_iterator eit = handles_endpoints.find(it->first);
 
@@ -271,24 +257,24 @@ service_t::remove_outstanding_handles(const handles_info_list_t& handles) {
 		return;
 	}
 
-	std::string message_str = "service: [" + info_.name_ + "] is removing outstanding handles: ";
+	std::string message_str = "service: [" + info_m.name + "] is removing outstanding handles: ";
 	for (size_t i = 0; i < handles.size(); ++i) {
-		message_str += handles[i].name_;
+		message_str += handles[i].name;
 
 		if (i != handles.size() - 1) {
 			message_str += ", ";
 		}
 	}
 
-	logger()->log(message_str);
+	log(message_str);
 
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(mutex_m);
 
 	// destroy handles
 	for (size_t i = 0; i < handles.size(); ++i) {
-		handles_map_t::iterator it = handles_.find(handles[i].name_);
+		handles_map_t::iterator it = handles_m.find(handles[i].name);
 
-		if (it != handles_.end()) {
+		if (it != handles_m.end()) {
 			handle_ptr_t handle = it->second;
 
 			// retrieve message cache and terminate all handle activity
@@ -305,16 +291,16 @@ service_t::remove_outstanding_handles(const handles_info_list_t& handles) {
 
 			// in case there are messages, store them
 			if (!handle_msg_queue->empty()) {
-				logger()->log(PLOG_DEBUG, "moving message queue from handle %s to service, queue size: %d",
-							  handle_inf.as_string().c_str(), handle_msg_queue->size());
+				log(PLOG_DEBUG, "moving message queue from handle %s to service, queue size: %d",
+					handle_inf.as_string().c_str(), handle_msg_queue->size());
 
 				// find corresponding unhandled message queue
-				unhandled_messages_map_t::iterator it = unhandled_messages_.find(handle_inf.name_);
+				unhandled_messages_map_t::iterator it = unhandled_messages_m.find(handle_inf.name);
 
 				// make one if needed
-				if (it == unhandled_messages_.end()) {
+				if (it == unhandled_messages_m.end()) {
 					messages_deque_ptr_t new_queue(new cached_messages_deque_t);
-					unhandled_messages_[handle_inf.name_] = new_queue;
+					unhandled_messages_m[handle_inf.name] = new_queue;
 				}
 				else {
 					// should not find a queue with messages!
@@ -327,12 +313,12 @@ service_t::remove_outstanding_handles(const handles_info_list_t& handles) {
 					}
 				}
 
-				messages_deque_ptr_t unhandled_queue = unhandled_messages_[handle_inf.name_];
+				messages_deque_ptr_t unhandled_queue = unhandled_messages_m[handle_inf.name];
 				unhandled_queue->insert(unhandled_queue->end(), handle_msg_queue->begin(), handle_msg_queue->end());
 			}
 		}
 
-		handles_.erase(it);
+		handles_m.erase(it);
 	}
 }
 
@@ -350,50 +336,50 @@ service_t::create_new_handles(const handles_info_list_t& handles,
 		handle_ptr_t handle;
 		handle_info_t handle_info = handles[i];
 
-		handles_endpoints_t::const_iterator hit = handles_endpoints.find(handle_info.name_);
+		handles_endpoints_t::const_iterator hit = handles_endpoints.find(handle_info.name);
 		if (hit == handles_endpoints.end()) {
 			throw internal_error("no endpoints for new handle " + handle_info.as_string() + "].");
 		}
 
 		// create handles
-		handle.reset(new dealer::handle_t(handle_info, context_, hit->second));
+		handle.reset(new dealer::handle_t(handle_info, hit->second, context()));
 		handle->set_responce_callback(boost::bind(&service_t::enqueue_responce, this, _1));
 
 		// move existing unhandled message queue to handle
-		boost::mutex::scoped_lock lock(mutex_);
+		boost::mutex::scoped_lock lock(mutex_m);
 
-		unhandled_messages_map_t::iterator it = unhandled_messages_.find(handles[i].name_);
-		if (it != unhandled_messages_.end()) {
+		unhandled_messages_map_t::iterator it = unhandled_messages_m.find(handles[i].name);
+		if (it != unhandled_messages_m.end()) {
 			messages_deque_ptr_t msg_queue = it->second;
 
 			if (msg_queue && !msg_queue->empty()) {
 				lock.unlock();
-				logger()->log(PLOG_DEBUG, "assign unhandled message queue to handle %s, queue size: %d",
+				log(PLOG_DEBUG, "assign unhandled message queue to handle %s, queue size: %d",
 							  handle->description().c_str(), msg_queue->size());
 				handle->assign_message_queue(it->second);
 				lock.lock();
 			}
 			else {
-				logger()->log(PLOG_DEBUG, "no unhandled message queue for handle %s",
+				log(PLOG_DEBUG, "no unhandled message queue for handle %s",
 							  handle->description().c_str());
 			}
 
-			unhandled_messages_.erase(it);
+			unhandled_messages_m.erase(it);
 		}
 
-		handles_[handles[i].name_] = handle;
+		handles_m[handles[i].name] = handle;
 	}
 }
 
 void
 service_t::send_message(cached_message_prt_t message) {
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(mutex_m);
 
 	const std::string& handle_name = message->path().handle_name;
 
 	// find existing handle to enqueue message
-	handles_map_t::iterator it = handles_.find(handle_name);
-	if (it != handles_.end()) {
+	handles_map_t::iterator it = handles_m.find(handle_name);
+	if (it != handles_m.end()) {
 		handle_ptr_t handle = it->second;
 
 		// make sure we have valid handle
@@ -404,15 +390,15 @@ service_t::send_message(cached_message_prt_t message) {
 	}
 	else {
 		// if no handle, store locally
-		unhandled_messages_map_t::iterator it = unhandled_messages_.find(handle_name);
+		unhandled_messages_map_t::iterator it = unhandled_messages_m.find(handle_name);
 
 		// check for existing messages queue for handle
 		messages_deque_ptr_t queue;
 
-		if (it == unhandled_messages_.end()) {
+		if (it == unhandled_messages_m.end()) {
 			queue.reset(new cached_messages_deque_t);
 			queue->push_back(message);
-			unhandled_messages_[handle_name] = queue;
+			unhandled_messages_m[handle_name] = queue;
 		}
 		else {
 			queue = it->second;
@@ -424,11 +410,11 @@ service_t::send_message(cached_message_prt_t message) {
 
 void
 service_t::check_for_deadlined_messages() {
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(mutex_m);
 
-	unhandled_messages_map_t::iterator it = unhandled_messages_.begin();
+	unhandled_messages_map_t::iterator it = unhandled_messages_m.begin();
 
-	for (; it != unhandled_messages_.end(); ++it) {
+	for (; it != unhandled_messages_m.end(); ++it) {
 		messages_deque_ptr_t queue = it->second;
 		cached_messages_deque_t::iterator qit = queue->begin();
 

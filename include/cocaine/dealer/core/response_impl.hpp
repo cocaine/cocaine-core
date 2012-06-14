@@ -1,15 +1,22 @@
-//
-// Copyright (C) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #ifndef _COCAINE_DEALER_RESPONSE_IMPL_HPP_INCLUDED_
 #define _COCAINE_DEALER_RESPONSE_IMPL_HPP_INCLUDED_
@@ -28,7 +35,10 @@ namespace dealer {
 
 class response_impl {
 public:
-	response_impl(const boost::shared_ptr<dealer_impl_t>& dealer, const std::string& uuid, const message_path& path);
+	response_impl(const boost::shared_ptr<dealer_impl_t>& dealer,
+				  const std::string& uuid,
+				  const message_path& path);
+
 	~response_impl();
 
 	// 1) timeout < 0 - block indefinitely until response received
@@ -40,22 +50,23 @@ public:
 private:
 	friend class response;
 
-	void response_callback(const response_data& resp_data, const response_info& resp_info);
+	void response_callback(const response_data& resp_data,
+						   const response_info& resp_info);
 
-	boost::ptr_vector<data_container> chunks_;
+	boost::ptr_vector<data_container> chunks_m;
 
-	boost::weak_ptr<dealer_impl_t> client_;
-	std::string uuid_;
-	const message_path path_;
-	bool response_finished_;
-	bool message_finished_;
+	boost::weak_ptr<dealer_impl_t> dealer_m;
+	std::string uuid_m;
+	const message_path path_m;
+	bool response_finished_m;
+	bool message_finished_m;
 
-	response_info resp_info_;
+	response_info resp_info_m;
 
-	boost::mutex mutex_;
-	boost::condition_variable cond_var_;
+	boost::mutex mutex_m;
+	boost::condition_variable cond_var_m;
 
-	bool caught_error_;
+	bool caught_error_m;
 };
 
 } // namespace dealer

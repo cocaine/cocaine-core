@@ -52,7 +52,7 @@ class sandbox_t:
             // Empty.
         }
         
-        virtual void invoke(const std::string& method,
+        virtual void invoke(const std::string& event,
                             io_t& io) = 0;
 
     protected:

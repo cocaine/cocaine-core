@@ -1,15 +1,22 @@
-//
-// Copyright (C) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #ifndef _COCAINE_DEALER_PERSISTENT_STORAGE_HPP_INCLUDED_
 #define _COCAINE_DEALER_PERSISTENT_STORAGE_HPP_INCLUDED_
@@ -27,12 +34,13 @@
 #include "cocaine/dealer/structs.hpp"
 #include "cocaine/dealer/defaults.hpp"
 #include "cocaine/dealer/core/context.hpp"
+#include "cocaine/dealer/core/dealer_object.hpp"
 #include "cocaine/dealer/core/message_iface.hpp"
 
 namespace cocaine {
 namespace dealer {
 
-class message_cache : private boost::noncopyable {
+class message_cache : private boost::noncopyable, public dealer_object_t {
 public:
 	typedef boost::shared_ptr<message_iface> cached_message_ptr_t;
 	typedef std::deque<cached_message_ptr_t> message_queue_t;
@@ -47,8 +55,8 @@ public:
 	typedef std::map<std::string, sent_messages_map_t> route_sent_messages_map_t;
 
 public:
-	explicit message_cache(const boost::shared_ptr<cocaine::dealer::context_t>& context,
-						   enum e_message_cache_type type);
+	message_cache(const boost::shared_ptr<context_t>& ctx,
+				  bool logging_enabled = true);
 
 	virtual ~message_cache();
 
@@ -77,18 +85,12 @@ public:
 private:
 	static bool is_message_expired(cached_message_ptr_t msg);
 
-	boost::shared_ptr<cocaine::dealer::context_t> context();
-	boost::shared_ptr<base_logger> logger();
-	boost::shared_ptr<configuration> config();
-
 private:
-	boost::shared_ptr<cocaine::dealer::context_t> context_;
-	enum e_message_cache_type type_;
+	enum e_message_cache_type	type_m;
+	route_sent_messages_map_t	sent_messages_m;
+	message_queue_ptr_t			new_messages_m;
 
-	route_sent_messages_map_t sent_messages_;
-	message_queue_ptr_t new_messages_;
-
-	boost::mutex mutex_;
+	boost::mutex mutex_m;
 };
 
 } // namespace dealer

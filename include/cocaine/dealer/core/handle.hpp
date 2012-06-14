@@ -1,15 +1,22 @@
-//
-// Copyright (C) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #ifndef _COCAINE_DEALER_HANDLE_HPP_INCLUDED_
 #define _COCAINE_DEALER_HANDLE_HPP_INCLUDED_
@@ -32,13 +39,12 @@
 #include "json/json.h"
 
 #include "cocaine/dealer/structs.hpp"
-
-#include "cocaine/dealer/core/context.hpp"
 #include "cocaine/dealer/core/balancer.hpp"
 #include "cocaine/dealer/core/handle_info.hpp"
 #include "cocaine/dealer/core/message_iface.hpp"
-#include "cocaine/dealer/core/cached_response.hpp"
 #include "cocaine/dealer/core/message_cache.hpp"
+#include "cocaine/dealer/core/dealer_object.hpp"
+#include "cocaine/dealer/core/cached_response.hpp"
 #include "cocaine/dealer/core/cocaine_endpoint.hpp"
 #include "cocaine/dealer/utils/progress_timer.hpp"
 
@@ -51,7 +57,7 @@ namespace dealer {
 #define CONTROL_MESSAGE_KILL 4
 
 // predeclaration
-class handle_t : public boost::noncopyable {
+class handle_t : private boost::noncopyable, public dealer_object_t {
 public:
 	typedef std::vector<cocaine_endpoint> endpoints_list_t;
 	typedef boost::shared_ptr<zmq::socket_t> socket_ptr_t;
@@ -61,8 +67,9 @@ public:
 
 public:
 	handle_t(const handle_info_t& info,
-			 const boost::shared_ptr<cocaine::dealer::context_t>& context,
-			 const endpoints_list_t& endpoints);
+			 const endpoints_list_t& endpoints,
+			 const boost::shared_ptr<context_t>& context,
+			 bool logging_enabled = true);
 
 	~handle_t();
 
@@ -103,38 +110,26 @@ private:
 	// working with responces
 	void enqueue_response(cached_response_prt_t response);
 
-	// send collected statistics to global stats collector
-	handle_stats& get_statistics();
-	void update_statistics();
-
-	boost::shared_ptr<base_logger> logger();
-	boost::shared_ptr<configuration> config();
-	boost::shared_ptr<cocaine::dealer::context_t> context();
-
 	static const int socket_poll_timeout = 100; // millisecs
 
 private:
-	handle_info_t info_;
-	boost::shared_ptr<cocaine::dealer::context_t> context_;
-	endpoints_list_t endpoints_;
-	boost::shared_ptr<message_cache> message_cache_;
+	handle_info_t info_m;
+	endpoints_list_t endpoints_m;
+	boost::shared_ptr<message_cache> message_cache_m;
 
-	boost::thread thread_;
+	boost::thread thread_m;
 	boost::mutex mutex_;
-	volatile bool is_running_;
-	volatile bool is_connected_;
-	boost::condition_variable cond_;
+	volatile bool is_running_m;
+	volatile bool is_connected_m;
 
-	std::auto_ptr<zmq::socket_t> zmq_control_socket_;
-	bool receiving_control_socket_ok_;
+	std::auto_ptr<zmq::socket_t> zmq_control_socket_m;
+	bool receiving_control_socket_ok_m;
 
-	responce_callback_t response_callback_;
+	responce_callback_t response_callback_m;
 
-	handle_stats statistics_;
-
-	progress_timer last_response_timer_;
-	progress_timer deadlined_messages_timer_;
-	progress_timer control_messages_timer_;
+	progress_timer last_response_timer_m;
+	progress_timer deadlined_messages_timer_m;
+	progress_timer control_messages_timer_m;
 };
 
 } // namespace dealer

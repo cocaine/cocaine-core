@@ -1,15 +1,22 @@
-//
-// Copyright (C) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #ifndef _COCAINE_DEALER_COCAINE_NODE_APP_INFO_HPP_INCLUDED_
 #define _COCAINE_DEALER_COCAINE_NODE_APP_INFO_HPP_INCLUDED_
@@ -22,11 +29,10 @@
 namespace cocaine {
 namespace dealer {
 
-class cocaine_node_app_info_t;
-std::ostream& operator << (std::ostream& out, const cocaine_node_app_info_t& app_info);
+struct cocaine_node_app_info_t;
+std::ostream& operator << (std::ostream& out, const cocaine_node_app_info_t& info);
 
-class cocaine_node_app_info_t {
-public:
+struct cocaine_node_app_info_t {
 	// <task name, task info>
 	typedef std::map<std::string, cocaine_node_task_info_t> application_tasks;
 
@@ -34,27 +40,25 @@ public:
 		queue_depth(0),
 		is_running(false),
 		slaves_busy(0),
-		slaves_total(0) {};
+		slaves_total(0) {}
 
-	explicit cocaine_node_app_info_t(const std::string& app_name) :
-		name(app_name),
+	explicit cocaine_node_app_info_t(const std::string& name_) :
+		name(name_),
 		queue_depth(0),
 		is_running(false),
 		slaves_busy(0),
-		slaves_total(0) {};
+		slaves_total(0) {}
 
-	~cocaine_node_app_info_t() {};
+	~cocaine_node_app_info_t() {}
 
-	std::string name;
+	std::string			name;
+	application_tasks	tasks;
+	unsigned int		queue_depth;
+	bool				is_running;
+	unsigned int		slaves_busy;
+	unsigned int		slaves_total;
 
-	application_tasks tasks;
-
-	unsigned int queue_depth;
-	bool is_running;
-	unsigned int slaves_busy;
-	unsigned int slaves_total;
-
-	friend std::ostream& operator << (std::ostream& out, const cocaine_node_app_info_t& app_info);
+	friend std::ostream& operator << (std::ostream& out, const cocaine_node_app_info_t& info);
 };
 
 } // namespace dealer

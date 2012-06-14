@@ -35,7 +35,7 @@ class mongo_storage_t:
 
     public:
         mongo_storage_t(context_t& context,
-                        const Json::Value& args);
+                        const plugin_config_t& config);
 
         virtual objects::value_type get(const std::string& ns,
                                         const std::string& key);
@@ -58,6 +58,8 @@ class mongo_storage_t:
         }
 
     private:
+        boost::shared_ptr<logging::logger_t> m_log;
+        
         const mongo::ConnectionString m_uri;
 };
 

@@ -1,15 +1,22 @@
-//
-// Copyright (C) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #ifndef _COCAINE_DEALER_SERVICE_HPP_INCLUDED_
 #define _COCAINE_DEALER_SERVICE_HPP_INCLUDED_
@@ -32,6 +39,7 @@
 #include "cocaine/dealer/core/context.hpp"
 #include "cocaine/dealer/core/handle_info.hpp"
 #include "cocaine/dealer/core/service_info.hpp"
+#include "cocaine/dealer/core/dealer_object.hpp"
 #include "cocaine/dealer/core/message_iface.hpp"
 #include "cocaine/dealer/core/cached_response.hpp"
 #include "cocaine/dealer/core/cocaine_endpoint.hpp"
@@ -45,7 +53,7 @@
 namespace cocaine {
 namespace dealer {
 
-class service_t : private boost::noncopyable {
+class service_t : private boost::noncopyable, public dealer_object_t {
 public:
 	typedef std::vector<handle_info_t> handles_info_list_t;
 
@@ -73,7 +81,10 @@ public:
 	typedef std::map<std::string, std::vector<cocaine_endpoint> > handles_endpoints_t;
 
 public:
-	service_t(const service_info_t& info, const boost::shared_ptr<cocaine::dealer::context_t>& context);
+	service_t(const service_info_t& info,
+			  const boost::shared_ptr<context_t>& ctx,
+			  bool logging_enabled = true);
+
 	virtual ~service_t();
 
 	void refresh_handles(const handles_endpoints_t& handles_endpoints);
@@ -83,11 +94,15 @@ public:
 
 	service_info_t info() const;
 
-	void register_responder_callback(const std::string& message_uuid, const boost::shared_ptr<response>& response);
+	void register_responder_callback(const std::string& message_uuid,
+									 const boost::shared_ptr<response>& response);
+
 	void unregister_responder_callback(const std::string& message_uuid);
 
 private:
-	void create_new_handles(const handles_info_list_t& handles, const handles_endpoints_t& handles_endpoints);
+	void create_new_handles(const handles_info_list_t& handles,
+							const handles_endpoints_t& handles_endpoints);
+
 	void remove_outstanding_handles(const handles_info_list_t& handles);
 	void update_existing_handles(const handles_endpoints_t& handles_endpoints);
 
@@ -95,46 +110,36 @@ private:
 	void dispatch_responces();
 	bool responces_queues_empty() const;
 
-	boost::shared_ptr<base_logger> logger();
-	boost::shared_ptr<configuration> config();
-	boost::shared_ptr<cocaine::dealer::context_t> context();
-
 	void check_for_deadlined_messages();
 
 private:
 	// service information
-	service_info_t info_;
+	service_info_t info_m;
 
 	// handles map (handle name, handle ptr)
-	handles_map_t handles_;
+	handles_map_t handles_m;
 
 	// service messages for non-existing handles <handle name, handle ptr>
-	unhandled_messages_map_t unhandled_messages_;
+	unhandled_messages_map_t unhandled_messages_m;
 
 	// responces map <handle name, responces queue ptr>
-	responces_map_t received_responces_;
+	responces_map_t received_responces_m;
 
-	// dealer context
-	boost::shared_ptr<cocaine::dealer::context_t> context_;
+	boost::thread thread_m;
+	boost::mutex mutex_m;
+	boost::condition_variable cond_m;
 
-	// statistics
-	service_stats stats_;
-
-	boost::thread thread_;
-	boost::mutex mutex_;
-	boost::condition_variable cond_;
-
-	volatile bool is_running_;
+	volatile bool is_running_m;
 
 	// responses callbacks
-	registered_callbacks_map_t responses_callbacks_map_;
+	registered_callbacks_map_t responses_callbacks_map_m;
 
 	// deadlined messages refresher
-	std::auto_ptr<refresher> deadlined_messages_refresher_;
+	std::auto_ptr<refresher> deadlined_messages_refresher_m;
 
 	static const int deadline_check_interval = 10; // millisecs
 
-	bool is_dead_;
+	bool is_dead_m;
 };
 
 } // namespace dealer

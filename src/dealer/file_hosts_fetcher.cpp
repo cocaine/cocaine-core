@@ -1,15 +1,22 @@
-//
-// Copyright (C) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #include <sys/stat.h>	
 #include <unistd.h>
@@ -30,8 +37,8 @@ namespace cocaine {
 namespace dealer {
 
 file_hosts_fetcher::file_hosts_fetcher(const service_info_t& service_info) :
-	service_info_(service_info),
-	file_modification_time_(0)
+	service_info_m(service_info),
+	file_modification_time_m(0)
 {
 }
 
@@ -44,19 +51,19 @@ file_hosts_fetcher::get_hosts(inetv4_endpoints& endpoints, service_info_t& servi
 
 	// check file modification time
 	struct stat attrib;
-	stat(service_info_.hosts_source_.c_str(), &attrib);
+	stat(service_info_m.hosts_source.c_str(), &attrib);
 
-	if (attrib.st_mtime <= file_modification_time_) {
+	if (attrib.st_mtime <= file_modification_time_m) {
 		return false;
 	}
 
 	// load file
 	std::string code;
 	std::ifstream file;
-	file.open(service_info_.hosts_source_.c_str(), std::ifstream::in);
+	file.open(service_info_m.hosts_source.c_str(), std::ifstream::in);
 
 	if (!file.is_open()) {
-		throw internal_error("hosts file: " + service_info_.hosts_source_ + " failed to open at: " + std::string(BOOST_CURRENT_FUNCTION));
+		throw internal_error("hosts file: " + service_info_m.hosts_source + " failed to open at: " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	size_t max_size = 512;
@@ -97,7 +104,7 @@ file_hosts_fetcher::get_hosts(inetv4_endpoints& endpoints, service_info_t& servi
 		}
 	}
 	
-	service_info = service_info_;
+	service_info = service_info_m;
 	return true;
 }
 

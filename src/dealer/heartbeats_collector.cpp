@@ -1,15 +1,22 @@
-//
-// Copyright (C) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #include <memory>
 
@@ -22,13 +29,9 @@
 namespace cocaine {
 namespace dealer {
 
-heartbeats_collector::heartbeats_collector(boost::shared_ptr<configuration> config,
-										   boost::shared_ptr<zmq::context_t> zmq_context) :
-	config_(config),
-	zmq_context_(zmq_context)
-{
-	logger_.reset(new base_logger);
-}
+heartbeats_collector::heartbeats_collector(const boost::shared_ptr<context_t>& ctx,
+										   bool logging_enabled) :
+	dealer_object_t(ctx, logging_enabled) {}
 
 heartbeats_collector::~heartbeats_collector() {
 	stop();
@@ -36,17 +39,17 @@ heartbeats_collector::~heartbeats_collector() {
 
 void
 heartbeats_collector::run() {
-	logger_->log(PLOG_DEBUG, "heartbeats - collector started.");
+	log(PLOG_DEBUG, "heartbeats - collector started.");
 
 	// create hosts fetchers
-	const std::map<std::string, service_info_t>& services_list = config_->services_list();
+	const std::map<std::string, service_info_t>& services_list = config()->services_list();
 	std::map<std::string, service_info_t>::const_iterator it = services_list.begin();
 	
 	for (; it != services_list.end(); ++it) {
 		// create specific host fetcher for service
 		hosts_fetcher_ptr fetcher;
 
-		switch (it->second.discovery_type_) {
+		switch (it->second.discovery_type) {
 			case AT_FILE:
 				fetcher.reset(new file_hosts_fetcher(it->second));
 				break;
@@ -57,12 +60,12 @@ heartbeats_collector::run() {
 
 			default: {
 				std::string error_msg = "unknown autodiscovery type defined for service ";
-				error_msg += "\"" + it->second.name_ + "\"";
+				error_msg += "\"" + it->second.name + "\"";
 				throw internal_error(error_msg);
 			}
 		}
 
-		hosts_fetchers_.push_back(fetcher);
+		hosts_fetchers_m.push_back(fetcher);
 	}
 
 	// ping first time without delay
@@ -70,79 +73,71 @@ heartbeats_collector::run() {
 
 	// create hosts pinger
 	boost::function<void()> f = boost::bind(&heartbeats_collector::ping_services, this);
-	refresher_.reset(new refresher(f, hosts_retrieval_interval));
+	refresher_m.reset(new refresher(f, hosts_retrieval_interval));
 }
 
 void
 heartbeats_collector::stop() {
-	logger_->log(PLOG_DEBUG, "heartbeats - collector stopped.");
+	log(PLOG_DEBUG, "heartbeats - collector stopped.");
 
 	// kill hosts pinger
-	refresher_.reset();
+	refresher_m.reset();
 
 	// kill http hosts fetchers
-	for (size_t i = 0; i < hosts_fetchers_.size(); ++i) {
-		hosts_fetchers_[i].reset();
+	for (size_t i = 0; i < hosts_fetchers_m.size(); ++i) {
+		hosts_fetchers_m[i].reset();
 	}
 }
 
 void
 heartbeats_collector::set_callback(callback_t callback) {
-	boost::mutex::scoped_lock lock(mutex_);
-	callback_ = callback;
+	boost::mutex::scoped_lock lock(mutex_m);
+	callback_m = callback;
 }
 
 void
 heartbeats_collector::ping_services() {
 	// for each hosts fetcher
-	for (size_t i = 0; i < hosts_fetchers_.size(); ++i) {
+	for (size_t i = 0; i < hosts_fetchers_m.size(); ++i) {
 		hosts_fetcher_iface::inetv4_endpoints endpoints;
 		service_info_t service_info;
 
 		// get service endpoints list
 		try {
-			if (hosts_fetchers_[i]->get_hosts(endpoints, service_info)) {
+			if (hosts_fetchers_m[i]->get_hosts(endpoints, service_info)) {
 				for (size_t i = 0; i < endpoints.size(); ++i) {
-					if (endpoints[i].port_ == 0) {
-						endpoints[i].port_ = defaults::control_port;
+					if (endpoints[i].port == 0) {
+						endpoints[i].port = defaults::control_port;
 					}
 				}
 
 				if (endpoints.size() == 0) {
 					std::string error_msg = "heartbeats - fetcher returned no hosts for service %s";
-					logger_->log(PLOG_WARNING, error_msg.c_str(), service_info.name_.c_str());
+					log(PLOG_WARNING, error_msg.c_str(), service_info.name.c_str());
 				}
 
-				services_endpoints_[service_info.name_] = endpoints;
+				services_endpoints_m[service_info.name] = endpoints;
 			}
 		}
-		catch (const internal_error& err) {
-			std::string error_msg = "heartbeats - failed fo retrieve hosts list at: %s, details: %s";
-			logger_->log(PLOG_ERROR, error_msg.c_str(),
-						 std::string(BOOST_CURRENT_FUNCTION).c_str(),
-						 err.what());
-		}
 		catch (const std::exception& ex) {
-			std::string error_msg = "heartbeats - failed fo retrieve hosts list at: %s, details: %s";
-			logger_->log(PLOG_ERROR, error_msg.c_str(),
-						 std::string(BOOST_CURRENT_FUNCTION).c_str(),
-						 ex.what());
+			std::string error_msg = "heartbeats - failed fo retrieve hosts list, details: %s";
+			log(PLOG_ERROR, error_msg.c_str(), ex.what());
 		}
 		catch (...) {
-			std::string error_msg = "heartbeats - failed fo retrieve hosts list at: %s, no further details available.";
-			logger_->log(PLOG_ERROR, error_msg.c_str(), std::string(BOOST_CURRENT_FUNCTION).c_str());
+			std::string error_msg = "heartbeats - failed fo retrieve hosts list, no further details available.";
+			log(PLOG_ERROR, error_msg.c_str());
 		}
 	}
 
 	// collect all endpoints from services
-	all_endpoints_.clear();
-	std::map<std::string, inetv4_endpoints>::const_iterator it = services_endpoints_.begin();
+	all_endpoints_m.clear();
+	std::map<std::string, inetv4_endpoints>::const_iterator it = services_endpoints_m.begin();
 
-	for (; it != services_endpoints_.end(); ++it) {
+	for (; it != services_endpoints_m.end(); ++it) {
 		const hosts_fetcher_iface::inetv4_endpoints& endpoints = it->second;
 
 		for (size_t i = 0; i < endpoints.size(); ++i) {
-			all_endpoints_.insert(endpoints[i]);
+			all_endpoints_m.insert(endpoints[i]);
 		}
 	}
 
@@ -152,7 +147,7 @@ heartbeats_collector::ping_services() {
 
 void
 heartbeats_collector::process_alive_endpoints() {
-	const std::map<std::string, service_info_t>& services_list = config_->services_list();
+	const std::map<std::string, service_info_t>& services_list = config()->services_list();
 	std::map<std::string, service_info_t>::const_iterator it = services_list.begin();
 	
 	for (; it != services_list.end(); ++it) {
@@ -165,9 +160,9 @@ heartbeats_collector::process_alive_endpoints() {
 
 		// collect alive endpoints for service
 		std::map<std::string, inetv4_endpoints>::const_iterator sit;
-		sit = services_endpoints_.find(service_name);
+		sit = services_endpoints_m.find(service_name);
 
-		if (sit == services_endpoints_.end()) {
+		if (sit == services_endpoints_m.end()) {
 			continue;
 		}
 
@@ -176,9 +171,9 @@ heartbeats_collector::process_alive_endpoints() {
 		// for each service endpoint obtain metadata if possible
 		for (size_t i = 0; i < service_endpoints.size(); ++i) {
 			std::map<inetv4_endpoint, cocaine_node_info_t>::const_iterator eit;
-			eit = endpoints_metadata_.find(service_endpoints[i]);
+			eit = endpoints_metadata_m.find(service_endpoints[i]);
 
-			if (eit == endpoints_metadata_.end()) {
+			if (eit == endpoints_metadata_m.end()) {
 				continue;
 			}
 
@@ -186,7 +181,7 @@ heartbeats_collector::process_alive_endpoints() {
 			cocaine_node_app_info_t app;
 			
 			// no such app at endpoint
-			if (!node_info.app_by_name(service_info.app_, app)) {
+			if (!node_info.app_by_name(service_info.app, app)) {
 				continue;
 			}
 
@@ -214,7 +209,7 @@ heartbeats_collector::process_alive_endpoints() {
 		log_responded_hosts_handles(service_info, handles_endpoints);
 
 		// pass collected data to callback
-		callback_(service_info, handles_endpoints);
+		callback_m(service_info, handles_endpoints);
 	}
 }
 
@@ -225,41 +220,41 @@ heartbeats_collector::log_responded_hosts_handles(const service_info_t& service_
 	handles_endpoints_t::const_iterator it = handles_endpoints.begin();
 	for (; it != handles_endpoints.end(); ++it) {
 		std::string log_msg = "heartbeats - responded endpoints for handle";
-		logger_->log(PLOG_DEBUG, log_msg + ": [" + service_info.name_ + "." + it->first + "]");
+		log(PLOG_DEBUG, log_msg + ": [" + service_info.name + "." + it->first + "]");
 
 		for (size_t i = 0; i < it->second.size(); ++i) {
-			logger_->log(PLOG_DEBUG, "heartbeats - " + it->second[i].endpoint_);
+			log(PLOG_DEBUG, "heartbeats - " + it->second[i].endpoint);
 		}
 	}
 }
 
 void
 heartbeats_collector::ping_endpoints() {
-	endpoints_metadata_.clear();
+	endpoints_metadata_m.clear();
 
-	std::set<inetv4_endpoint>::const_iterator it = all_endpoints_.begin();
+	std::set<inetv4_endpoint>::const_iterator it = all_endpoints_m.begin();
 
-	for (; it != all_endpoints_.end(); ++it) {
+	for (; it != all_endpoints_m.end(); ++it) {
 		// request endpoint metadata
 		std::string metadata;
 
 		if (!get_metainfo_from_endpoint(*it, metadata)) {
 			std::string error_msg = "heartbeats - could not retvieve metainfo from cocaine node: " + it->as_string();
-			logger_->log(PLOG_WARNING, error_msg);
+			log(PLOG_WARNING, error_msg);
 
 			continue;
 		}
 
 		// parse metadata
 		cocaine_node_info_t node_info;
-		cocaine_node_info_parser_t parser(logger_);
-		parser.set_host_info(it->host_.ip_, it->port_);
+		cocaine_node_info_parser_t parser(context());
+		parser.set_host_info(it->host.ip, it->port);
 
 		if (!parser.parse(metadata, node_info)) {
 			continue;
 		}
 
-		endpoints_metadata_[*it] = node_info;
+		endpoints_metadata_m[*it] = node_info;
 	}
 }
 
@@ -269,13 +264,13 @@ heartbeats_collector::get_metainfo_from_endpoint(const inetv4_endpoint& endpoint
 {
 	// create req socket
 	std::auto_ptr<zmq::socket_t> zmq_socket;
-	zmq_socket.reset(new zmq::socket_t(*(zmq_context_), ZMQ_REQ));
+	zmq_socket.reset(new zmq::socket_t(*(context()->zmq_context()), ZMQ_REQ));
 	std::string ex_err;
 
 	// connect to host
-	std::string host_ip_str = nutils::ipv4_to_str(endpoint.host_.ip_);
+	std::string host_ip_str = nutils::ipv4_to_str(endpoint.host.ip);
 	std::string connection_str = "tcp://" + host_ip_str + ":";
-	connection_str += boost::lexical_cast<std::string>(endpoint.port_);
+	connection_str += boost::lexical_cast<std::string>(endpoint.port);
 
 	int timeout = 0;
 	zmq_socket->setsockopt(ZMQ_LINGER, &timeout, sizeof(timeout));
@@ -310,7 +305,7 @@ heartbeats_collector::get_metainfo_from_endpoint(const inetv4_endpoint& endpoint
 	if (!sent_request_ok) {
 		// in case of bad send
 		std::string error_msg = "heartbeats - could not send metadata request to endpoint: " + endpoint.as_string();
-		logger_->log(PLOG_ERROR, error_msg + ex_err);
+		log(PLOG_ERROR, error_msg + ex_err);
 
 		return false;
 	}
@@ -347,17 +342,12 @@ heartbeats_collector::get_metainfo_from_endpoint(const inetv4_endpoint& endpoint
 
 	if (!received_response_ok) {
 		std::string error_msg = "heartbeats - could not receive metadata response from endpoint: " + endpoint.as_string();
-		logger_->log(PLOG_ERROR, error_msg + ex_err);
+		log(PLOG_ERROR, error_msg + ex_err);
 
 		return false;
 	}
 
 	return true;
-}
-
-void
-heartbeats_collector::set_logger(boost::shared_ptr<base_logger> logger) {
-	logger_ = logger;
 }
 
 } // namespace dealer

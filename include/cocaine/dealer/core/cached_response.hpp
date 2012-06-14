@@ -1,15 +1,22 @@
-//
-// Copyright (C) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #ifndef _COCAINE_DEALER_CACHED_RESPONSE_HPP_INCLUDED_
 #define _COCAINE_DEALER_CACHED_RESPONSE_HPP_INCLUDED_
@@ -46,7 +53,6 @@ public:
 	virtual ~cached_response_t();
 
 	const data_container& data() const;
-	size_t container_size() const;
 
 	const message_path& path() const;
 	const std::string& uuid() const;
@@ -69,19 +75,16 @@ public:
 	static const size_t UUID_SIZE = 36; // bytes
 	
 private:
-	std::string uuid_;
-	std::string route_;
-	message_path path_;
-	data_container data_;
+	std::string		uuid_m;
+	std::string		route_m;
+	message_path	path_m;
+	data_container	data_m;
+	timeval			received_timestamp_m;
 
-	timeval received_timestamp_;
-	size_t container_size_;
+	int code_m;
+	std::string error_message_m;
 
-	int code_;
-	std::string error_message_;
-
-	// synchronization
-	boost::mutex mutex_;
+	boost::mutex mutex_m;
 };
 
 } // namespace dealer
