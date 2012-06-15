@@ -378,7 +378,7 @@ statistics_collector::process_request_json(const std::string& request_json) {
 	// check protocol version
 	int version = root.get("version", -1).asUInt();
 
-	if (version != defaults::statistics_protocol_version) {
+	if (version != defaults_t::statistics_protocol_version) {
 		if (version == -1) {
 			return get_error_json(SRE_NO_VERSION_ERROR);
 		}

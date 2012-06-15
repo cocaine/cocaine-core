@@ -93,7 +93,7 @@ struct persistent_request_metadata_t : public request_metadata_t {
 
 	virtual ~persistent_request_metadata_t() {}
 
-	void set_eblob(const boost::shared_ptr<eblob>& blob_) {
+	void set_eblob(const boost::shared_ptr<eblob_t>& blob_) {
 		blob = blob_;
 	}
 
@@ -128,7 +128,7 @@ struct persistent_request_metadata_t : public request_metadata_t {
     	pk.pack(data_size);
     	pk.pack(enqued_timestamp);
 
-    	// write to eblob with uuid as key
+    	// write to eblob_t with uuid as key
 		blob->write(uuid, buffer.data(), buffer.size(), EBLOB_COLUMN);
 	}
 
@@ -139,7 +139,7 @@ private:
 		result.get().convert(&value);
 	}
 
-	boost::shared_ptr<eblob> blob;
+	boost::shared_ptr<eblob_t> blob;
 };
 
 std::ostream& operator << (std::ostream& out, request_metadata_t& req_meta) {

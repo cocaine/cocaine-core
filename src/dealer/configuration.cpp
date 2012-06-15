@@ -35,32 +35,32 @@ namespace cocaine {
 namespace dealer {
 
 configuration_t::configuration_t() :
-	m_default_message_deadline(defaults::default_message_deadline),
-	m_message_cache_type(defaults::message_cache_type),
-	m_logger_type(defaults::logger_type),
-	m_logger_flags(defaults::logger_flags),
-	m_eblob_path(defaults::eblob_path),
-	m_eblob_blob_size(defaults::eblob_blob_size),
-	m_eblob_sync_interval(defaults::eblob_sync_interval),
+	m_default_message_deadline(defaults_t::default_message_deadline),
+	m_message_cache_type(defaults_t::message_cache_type),
+	m_logger_type(defaults_t::logger_type),
+	m_logger_flags(defaults_t::logger_flags),
+	m_eblob_path(defaults_t::eblob_path),
+	m_eblob_blob_size(defaults_t::eblob_blob_size),
+	m_eblob_sync_interval(defaults_t::eblob_sync_interval),
 	m_statistics_enabled(false),
 	m_remote_statistics_enabled(false),
-	m_remote_statistics_port(defaults::statistics_port)
+	m_remote_statistics_port(defaults_t::statistics_port)
 {
 	
 }
 
 configuration_t::configuration_t(const std::string& path) :
 	m_path(path),
-	m_default_message_deadline(defaults::default_message_deadline),
-	m_message_cache_type(defaults::message_cache_type),
-	m_logger_type(defaults::logger_type),
-	m_logger_flags(defaults::logger_flags),
-	m_eblob_path(defaults::eblob_path),
-	m_eblob_blob_size(defaults::eblob_blob_size),
-	m_eblob_sync_interval(defaults::eblob_sync_interval),
+	m_default_message_deadline(defaults_t::default_message_deadline),
+	m_message_cache_type(defaults_t::message_cache_type),
+	m_logger_type(defaults_t::logger_type),
+	m_logger_flags(defaults_t::logger_flags),
+	m_eblob_path(defaults_t::eblob_path),
+	m_eblob_blob_size(defaults_t::eblob_blob_size),
+	m_eblob_sync_interval(defaults_t::eblob_sync_interval),
 	m_statistics_enabled(false),
 	m_remote_statistics_enabled(false),
-	m_remote_statistics_port(defaults::statistics_port)
+	m_remote_statistics_port(defaults_t::statistics_port)
 {
 	load(path);
 }
@@ -182,15 +182,15 @@ void
 configuration_t::parse_persistant_storage_settings(const Json::Value& config_value) {
 	const Json::Value persistent_storage_value = config_value["persistent_storage"];
 
-	m_eblob_path = persistent_storage_value.get("eblob_path", defaults::eblob_path).asString();
+	m_eblob_path = persistent_storage_value.get("eblob_path", defaults_t::eblob_path).asString();
 	m_eblob_blob_size = persistent_storage_value.get("blob_size", 0).asInt();
 	m_eblob_blob_size *= 1024;
 
 	if (m_eblob_blob_size == 0) {
-		m_eblob_blob_size = defaults::eblob_blob_size;
+		m_eblob_blob_size = defaults_t::eblob_blob_size;
 	}
 
-	m_eblob_sync_interval = persistent_storage_value.get("eblob_sync_interval", defaults::eblob_sync_interval).asInt();
+	m_eblob_sync_interval = persistent_storage_value.get("eblob_sync_interval", defaults_t::eblob_sync_interval).asInt();
 }
 
 void
@@ -199,7 +199,7 @@ configuration_t::parse_statistics_settings(const Json::Value& config_value) {
 
 	m_statistics_enabled = statistics_value.get("enabled", false).asBool();
 	m_remote_statistics_enabled = statistics_value.get("remote_access", false).asBool();
-	m_remote_statistics_port = (DT::port)statistics_value.get("remote_port", defaults::statistics_port).asUInt();
+	m_remote_statistics_port = (DT::port)statistics_value.get("remote_port", defaults_t::statistics_port).asUInt();
 }
 
 void
@@ -350,7 +350,7 @@ configuration_t::parse_basic_settings(const Json::Value& config_value) {
 
 	// parse message_deadline
 	const Json::Value deadline_value = config_value.get("default_message_deadline",
-															   static_cast<int>(defaults::default_message_deadline));
+															   static_cast<int>(defaults_t::default_message_deadline));
 
 	m_default_message_deadline = static_cast<unsigned long long>(deadline_value.asInt());
 }

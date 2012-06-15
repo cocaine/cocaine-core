@@ -31,8 +31,8 @@ namespace dealer {
 
 class hosts_fetcher_iface {
 public:
-	typedef std::vector<inetv4_endpoint_t> inetv4_endpoints;
-	virtual bool get_hosts(inetv4_endpoints& endpoints, service_info_t& service_info) = 0;
+	typedef std::vector<inetv4_endpoint_t> inetv4_endpoints_t;
+	virtual bool get_hosts(inetv4_endpoints_t& endpoints, service_info_t& service_info) = 0;
 };
 
 } // namespace dealer

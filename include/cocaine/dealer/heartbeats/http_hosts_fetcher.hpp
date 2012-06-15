@@ -31,18 +31,18 @@
 namespace cocaine {
 namespace dealer {
 
-class http_hosts_fetcher : public hosts_fetcher_iface, private boost::noncopyable  {
+class http_hosts_fetcher_t : public hosts_fetcher_iface, private boost::noncopyable  {
 public:
-	http_hosts_fetcher(const service_info_t& service_info);
-	virtual ~http_hosts_fetcher();
+	http_hosts_fetcher_t(const service_info_t& service_info);
+	virtual ~http_hosts_fetcher_t();
 
-	bool get_hosts(inetv4_endpoints& endpoints, service_info_t& service_info);
+	bool get_hosts(inetv4_endpoints_t& endpoints, service_info_t& service_info);
 
 private:
 	static int curl_writer(char* data, size_t size, size_t nmemb, std::string* buffer_in);
 
 private:
-	CURL* curl_m;
+	CURL*          m_curl;
 	service_info_t m_service_info;
 };
 

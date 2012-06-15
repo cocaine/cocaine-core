@@ -40,20 +40,20 @@
 namespace cocaine {
 namespace dealer {
 
-class eblob : public dealer_object_t {
+class eblob_t : public dealer_object_t {
 public:
 	typedef boost::function<void(void*, uint64_t, int)> iteration_callback_t;
 
-	eblob();
+	eblob_t();
 
-	eblob(const std::string& path,
+	eblob_t(const std::string& path,
 		  const boost::shared_ptr<context_t>& ctx,
 		  bool logging_enabled = true,
 		  uint64_t blob_size = DEFAULT_BLOB_SIZE,
 		  int sync_interval = DEFAULT_SYNC_INTERVAL,
 		  int defrag_timeout = DEFAULT_DEFRAG_TIMEOUT);
 
-	virtual	~eblob();
+	virtual	~eblob_t();
 
 	void write(const std::string& key, const std::string& value, int column = EBLOB_TYPE_DATA);
 	void write(const std::string& key, void* data, size_t size, int column = EBLOB_TYPE_DATA);
@@ -86,10 +86,11 @@ private:
 	void iteration_callback_instance(void* data, uint64_t size, int column);
 
 private:
-	std::string m_path;
-	boost::shared_ptr<ioremap::eblob::eblob> m_storage;
-	boost::shared_ptr<ioremap::eblob::eblob_logger> eblob_logger_m;
-	iteration_callback_t iteration_callback_m;
+	std::string				m_path;
+	iteration_callback_t	m_iteration_callback;
+
+	boost::shared_ptr<ioremap::eblob::eblob>			m_storage;
+	boost::shared_ptr<ioremap::eblob::eblob_logger>		m_eblob_logger;
 };
 
 } // namespace dealer

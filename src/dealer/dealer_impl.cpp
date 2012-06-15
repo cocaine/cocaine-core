@@ -87,7 +87,7 @@ dealer_impl_t::~dealer_impl_t() {
 void
 dealer_impl_t::connect() {
 	log("creating heartbeats collector");
-	m_heartbeats_collector.reset(new heartbeats_collector(context()));
+	m_heartbeats_collector.reset(new heartbeats_collector_t(context()));
 	m_heartbeats_collector->set_callback(boost::bind(&dealer_impl_t::service_hosts_pinged_callback, this, _1, _2));
 	m_heartbeats_collector->run();
 }
@@ -145,7 +145,7 @@ dealer_impl_t::create_message(const void* data,
 		p_message_t* msg_ptr = new p_message_t(path, policy, data, size);
 		//logger()->log(PLOG_DEBUG, "created message, size: %d bytes, uuid: %s", size, msg_ptr->uuid().c_str());
 
-		boost::shared_ptr<eblob> eb = context()->storage()->get_eblob(path.service_alias);
+		boost::shared_ptr<eblob_t> eb = context()->storage()->get_eblob(path.service_alias);
 		
 		// init metadata and write to storage
 		msg_ptr->mdata_container().set_eblob(eb);
@@ -247,7 +247,7 @@ dealer_impl_t::load_cached_messages_for_service(boost::shared_ptr<service_t>& se
 	}
 
 	// show statistics
-	boost::shared_ptr<eblob> blob = this->context()->storage()->get_eblob(service_name);
+	boost::shared_ptr<eblob_t> blob = this->context()->storage()->get_eblob(service_name);
 	std::string log_str = "SERVICE [%s] is restoring %d messages from persistent cache...";
 	log(PLOG_DEBUG, log_str.c_str(), service_name.c_str(), (int)(blob->items_count() / 2));
 
@@ -255,7 +255,7 @@ dealer_impl_t::load_cached_messages_for_service(boost::shared_ptr<service_t>& se
 
 	// restore messages from
 	if (blob->items_count() > 0) {
-		eblob::iteration_callback_t callback;
+		eblob_t::iteration_callback_t callback;
 		callback = boost::bind(&dealer_impl_t::storage_iteration_callback, this, _1, _2, _3);
 		blob->iterate(callback, 0, 0);
 	}
@@ -273,9 +273,9 @@ dealer_impl_t::storage_iteration_callback(void* data, uint64_t size, int column)
 		throw internal_error("metadata is missing at: " + std::string(BOOST_CURRENT_FUNCTION));	
 	}
 
-	// get service eblob
+	// get service eblob_t
 	std::string service_name = m_restored_service_tmp_ptr->info().name;
-	boost::shared_ptr<eblob> eb = context()->storage()->get_eblob(service_name);
+	boost::shared_ptr<eblob_t> eb = context()->storage()->get_eblob(service_name);
 
 	p_message_t* msg_ptr = new p_message_t();
 	msg_ptr->mdata_container().load_data(data, size);

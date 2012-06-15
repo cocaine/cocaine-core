@@ -63,7 +63,7 @@ context_t::context_t(const std::string& config_path) {
 	// create statistics collector
 	//m_stats.reset(new statistics_collector(m_config, m_zmq_context, logger()));
 
-	// create eblob storage
+	// create eblob_t storage
 	if (config()->message_cache_type() == PERSISTENT) {
 		logger()->log("loading cache from eblobs...");
 		std::string st_path = config()->eblob_path();
@@ -71,14 +71,14 @@ context_t::context_t(const std::string& config_path) {
 		int st_sync = config()->eblob_sync_interval();
 		
 		// create storage
-		eblob_storage* storage_ptr = new eblob_storage(st_path,
+		eblob_storage_t* storage_ptr = new eblob_storage_t(st_path,
 													   boost::shared_ptr<context_t>(this),
 													   true,
 													   st_blob_size,
 													   st_sync);
 		m_storage.reset(storage_ptr);
 
-		// create eblob for each service
+		// create eblob_t for each service
 		const configuration_t::services_list_t& services_info_list = config()->services_list();
 		configuration_t::services_list_t::const_iterator it = services_info_list.begin();
 		for (; it != services_info_list.end(); ++it) {
@@ -111,7 +111,7 @@ context_t::zmq_context() {
 //	return m_stats;
 //}
 
-boost::shared_ptr<eblob_storage>
+boost::shared_ptr<eblob_storage_t>
 context_t::storage() {
 	return m_storage;
 }

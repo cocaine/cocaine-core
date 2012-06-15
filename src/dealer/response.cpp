@@ -28,21 +28,21 @@ namespace cocaine {
 namespace dealer {
 
 response::response(const boost::shared_ptr<dealer_impl_t>& dealer, const std::string& uuid, const message_path& path) {
-	impl_m.reset(new response_impl_t(dealer, uuid, path));
+	m_impl.reset(new response_impl_t(dealer, uuid, path));
 }
 
 response::~response() {
-	impl_m.reset();
+	m_impl.reset();
 }
 
 bool
 response::get(data_container* data, double timeout) {
-	return impl_m->get(data, timeout);
+	return m_impl->get(data, timeout);
 }
 
 void
 response::response_callback(const response_data& resp_data, const response_info& resp_info) {
-	impl_m->response_callback(resp_data, resp_info);
+	m_impl->response_callback(resp_data, resp_info);
 }
 
 } // namespace dealer

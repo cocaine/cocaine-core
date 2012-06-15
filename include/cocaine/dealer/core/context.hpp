@@ -37,7 +37,7 @@
 namespace cocaine {
 namespace dealer {
 
-class eblob_storage;
+class eblob_storage_t;
 
 class context_t : private boost::noncopyable {
 public:
@@ -48,14 +48,14 @@ public:
 	boost::shared_ptr<configuration_t> config();
 	boost::shared_ptr<zmq::context_t> zmq_context();
 	//boost::shared_ptr<statistics_collector> stats();
-	boost::shared_ptr<eblob_storage> storage();
+	boost::shared_ptr<eblob_storage_t> storage();
 
 private:
 	boost::shared_ptr<zmq::context_t> m_zmq_context;
 	boost::shared_ptr<base_logger> m_logger;
 	boost::shared_ptr<configuration_t> m_config;
 	//boost::shared_ptr<statistics_collector> m_stats;
-	boost::shared_ptr<eblob_storage> m_storage;
+	boost::shared_ptr<eblob_storage_t> m_storage;
 };
 
 } // namespace dealer

@@ -36,17 +36,17 @@
 namespace cocaine {
 namespace dealer {
 
-file_hosts_fetcher::file_hosts_fetcher(const service_info_t& service_info) :
+file_hosts_fetcher_t::file_hosts_fetcher_t(const service_info_t& service_info) :
 	m_service_info(service_info),
 	m_file_modification_time(0)
 {
 }
 
-file_hosts_fetcher::~file_hosts_fetcher() {
+file_hosts_fetcher_t::~file_hosts_fetcher_t() {
 }
 
 bool
-file_hosts_fetcher::get_hosts(inetv4_endpoints& endpoints, service_info_t& service_info) {
+file_hosts_fetcher_t::get_hosts(inetv4_endpoints_t& endpoints, service_info_t& service_info) {
 	std::string buffer;
 
 	// check file modification time
