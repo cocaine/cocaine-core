@@ -22,11 +22,7 @@
 #define _COCAINE_DEALER_TYPES_HPP_INCLUDED_
 
 #include <boost/flyweight.hpp>
-
 #include <msgpack.hpp>
-
-#include "cocaine/common.hpp"
-#include "cocaine/rpc.hpp"
 
 namespace cocaine {
 namespace dealer {
@@ -63,9 +59,9 @@ enum error_code {
 
 enum rpc_code {
     acknowledgement = 1,
-    chunk           = rpc::chunk,
-    error           = rpc::error,
-    choke           = rpc::choke
+    chunk           = 4,
+    error           = 5,
+    choke           = 6
 };
 
 }}
