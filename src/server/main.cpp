@@ -114,16 +114,6 @@ int main(int argc, char * argv[]) {
     // Startup
     // -------
 
-    context_t context(
-        vm["configuration"].as<std::string>(),
-        boost::make_shared<logging::syslog_t>(
-            vm.count("verbose") ? logging::debug : logging::info,
-            "cocaine"
-        )
-    );
-
-    boost::shared_ptr<logging::logger_t> log(context.log("main"));
-
     /*
     if(vm.count("core:port-range")) {
         std::vector<std::string> limits;
@@ -154,11 +144,9 @@ int main(int argc, char * argv[]) {
     std::auto_ptr<helpers::pid_file_t> pidfile;
     std::auto_ptr<server_t> server;
 
-    log->info("starting the server");
-
     if(vm.count("daemonize")) {
         if(daemon(0, 0) < 0) {
-            log->error("daemonization failed");
+            std::cerr << "Error: daemonization failed." << std::endl;
             return EXIT_FAILURE;
         }
 
@@ -167,10 +155,22 @@ int main(int argc, char * argv[]) {
                 new helpers::pid_file_t(vm["pidfile"].as<std::string>())
             );
         } catch(const std::runtime_error& e) {
-            log->error("%s", e.what());
+            std::cerr << "Error: " << e.what() << "." << std::endl;
             return EXIT_FAILURE;
         }
     }
+
+    context_t context(
+        vm["configuration"].as<std::string>(),
+        boost::make_shared<logging::syslog_t>(
+            vm.count("verbose") ? logging::debug : logging::info,
+            "cocaine"
+        )
+    );
+
+    boost::shared_ptr<logging::logger_t> log(context.log("main"));
+
+    log->info("starting the server");
 
     try {
         server.reset(
