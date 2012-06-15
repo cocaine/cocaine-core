@@ -98,9 +98,11 @@ balancer_t::update_endpoints(const std::vector<cocaine_endpoint_t>& endpoints,
 	std::vector<cocaine_endpoint_t> endpoints_tmp = endpoints;
 	std::sort(endpoints_tmp.begin(), endpoints_tmp.end());
 
-	if (std::equal(m_endpoints.begin(), m_endpoints.end(), endpoints_tmp.begin())) {
-		log("no changes in endpoints on " + m_socket_identity);
-		return;
+	if (m_endpoints.size() == endpoints_tmp.size()) {
+		if (std::equal(m_endpoints.begin(), m_endpoints.end(), endpoints_tmp.begin())) {
+			log("no changes in endpoints on " + m_socket_identity);
+			return;
+		}
 	}
 
 	std::vector<cocaine_endpoint_t> new_endpoints;
