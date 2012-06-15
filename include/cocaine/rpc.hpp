@@ -39,8 +39,10 @@ enum {
 
 template<int Code> 
 struct packed:
-    public boost::tuples::null_type
-{ };
+    public boost::tuple<>
+{
+    typedef boost::tuple<> tuple_type;
+};
 
 // Specific packers
 // ----------------
@@ -49,8 +51,10 @@ template<>
 struct packed<invoke>:
     public boost::tuple<const std::string&, zmq::message_t&>
 {
+    typedef boost::tuple<const std::string&, zmq::message_t&> tuple_type;
+
     packed(const std::string& event, const void * data, size_t size):
-        boost::tuple<const std::string&, zmq::message_t&>(event, message),
+        tuple_type(event, message),
         message(size)
     {
         memcpy(
@@ -68,8 +72,10 @@ template<>
 struct packed<chunk>:
     public boost::tuple<zmq::message_t&>
 {
+    typedef boost::tuple<zmq::message_t&> tuple_type;
+
     packed(const void * data, size_t size):
-        boost::tuple<zmq::message_t&>(message),
+        tuple_type(message),
         message(size)
     {
         memcpy(
@@ -80,7 +86,7 @@ struct packed<chunk>:
     }
 
     packed(zmq::message_t& message_):
-        boost::tuple<zmq::message_t&>(message)
+        tuple_type(message)
     {
         message.move(&message_);
     }
@@ -94,8 +100,10 @@ struct packed<error>:
     // NOTE: Not a string reference to allow literal error messages.
     public boost::tuple<int, std::string>
 {
+    typedef boost::tuple<int, std::string> tuple_type;
+
     packed(int code, const std::string& message):
-        boost::tuple<int, std::string>(code, message)
+        tuple_type(code, message)
     { }
 };
     
