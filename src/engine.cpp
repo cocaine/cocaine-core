@@ -681,7 +681,7 @@ void engine_t::shutdown() {
         m_termination_timer.start(m_manifest.policy.termination_timeout);
         
         m_log->info(
-            "waiting for %d slaves to terminate, timeout: %.f seconds",
+            "waiting for %d slaves to terminate, timeout: %.02f seconds",
             pending,
             m_manifest.policy.termination_timeout
         );
