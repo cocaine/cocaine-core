@@ -33,7 +33,6 @@
 #endif
 
 #include "cocaine/common.hpp"
-#include "cocaine/rpc.hpp"
 
 #define HOSTNAME_MAX_LENGTH 256
 
@@ -242,6 +241,16 @@ protect(T& object) {
     return raw<T>(object);
 }
 
+// RPC command tuple
+// -----------------
+
+template<int Code> 
+struct packed:
+    public boost::tuple<>
+{
+    typedef boost::tuple<> tuple_type;
+};
+
 // Tuple-based RPC channel
 // -----------------------
 
@@ -289,19 +298,19 @@ class channel_t:
             return send(message, flags);
         }
 
-        template<int Code>
-        bool send(rpc::packed<Code>& command,
+        template<int Command>
+        bool send(packed<Command>& command,
                   int flags = 0)
         {
             const bool multipart = boost::tuples::length<
-                typename rpc::packed<Code>::tuple_type
+                typename packed<Command>::tuple_type
             >::value;
 
             if(multipart) {
-                return send(Code, ZMQ_SNDMORE | flags) &&
+                return send(Command, ZMQ_SNDMORE | flags) &&
                        send_multipart(command, flags);
             } else {
-                return send(Code, flags);
+                return send(Command, flags);
             }
         }
 

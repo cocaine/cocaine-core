@@ -32,7 +32,6 @@
 #include "cocaine/dealer/types.hpp"
 
 using namespace cocaine::engine;
-using namespace cocaine::io;
 
 void job_queue_t::push(const_reference job) {
     if(job->policy.urgent) {
@@ -345,7 +344,11 @@ void engine_t::process(ev::idle&, int) {
 
         std::string slave_id;
         int command = 0;
-        boost::tuple<raw<std::string>, int&> proxy(protect(slave_id), command);
+        
+        boost::tuple<
+            io::raw<std::string>,
+            int&
+        > proxy(io::protect(slave_id), command);
                 
         m_bus.recv_multi(proxy);
 
@@ -585,7 +588,7 @@ void engine_t::pump() {
             
         events::invoke event(job);
 
-        rpc::packed<rpc::invoke> packed(
+        io::packed<rpc::invoke> packed(
             job->event,
             job->request.data(),
             job->request.size()
@@ -654,7 +657,7 @@ void engine_t::shutdown() {
         }
     }
 
-    rpc::packed<rpc::terminate> packed;
+    io::packed<rpc::terminate> packed;
     unsigned int pending = 0;
 
     // Send the termination event to active slaves.

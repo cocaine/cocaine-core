@@ -37,9 +37,7 @@ class unique_id_t {
         }
 
         explicit unique_id_t(const identifier_type& other) {
-            uuid_t uuid;
-
-            if(uuid_parse(other.c_str(), uuid) == 0) {
+            if(uuid_parse(other.c_str(), m_uuid) == 0) {
                 m_id = other;
             } else {
                 throw std::runtime_error("invalid unique id");

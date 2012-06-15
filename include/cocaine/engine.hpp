@@ -35,7 +35,6 @@
 // Has to be included after common.h
 #include <ev++.h>
 
-#include "cocaine/io.hpp"
 #include "cocaine/master.hpp"
 #include "cocaine/rpc.hpp"
 
@@ -124,9 +123,9 @@ class engine_t:
 #endif
 
     private:
-        template<class S, int Code>
+        template<class S, int Command>
         pool_map_t::iterator call(const S& selector,
-                                  rpc::packed<Code>& packed)
+                                  io::packed<Command>& packed)
         {
             pool_map_t::iterator it(
                 std::find_if(

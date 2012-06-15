@@ -89,10 +89,18 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
         defaults::heartbeat_timeout
     ).asDouble();
 
+    if(policy.heartbeat_timeout <= 0.0f) {
+        throw configuration_error_t("slave heartbeat timeout must be positive");
+    }
+
     policy.suicide_timeout = root["engine"].get(
         "suicide-timeout",
         defaults::suicide_timeout
     ).asDouble();
+
+    if(policy.suicide_timeout <= 0.0f) {
+        throw configuration_error_t("slave suicide timeout must be positive");
+    }
 
     policy.termination_timeout = root["engine"].get(
         "termination-timeout",
@@ -103,7 +111,11 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
         "pool-limit",
         defaults::pool_limit
     ).asUInt();
-    
+
+    if(policy.pool_limit == 0) {
+        throw configuration_error_t("engine pool limit must be positive");
+    }
+
     policy.queue_limit = root["engine"].get(
         "queue-limit",
         defaults::queue_limit
@@ -112,7 +124,7 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
     policy.grow_threshold = root["engine"].get(
         "grow-threshold",
         policy.queue_limit / policy.pool_limit
-    ).asUInt();
+    ).asInt();
 
     slave = root["engine"].get(
         "slave",
