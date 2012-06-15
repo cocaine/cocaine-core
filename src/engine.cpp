@@ -655,12 +655,18 @@ void engine_t::shutdown() {
     }
 
     rpc::packed<rpc::terminate> packed;
+    unsigned int pending = 0;
 
     // Send the termination event to active slaves.
-    unsigned int pending = 1; /*= multicast(
-        select::state<slave::alive>(),
-        packed
-    );*/
+    for(pool_map_t::iterator it = m_pool.begin();
+        it != m_pool.end();
+        ++it)
+    {
+        if(it->second->state_downcast<const slave::alive*>()) {
+            call(select::specific(*it->second), packed);
+            ++pending;
+        }
+    }
 
     if(!pending) {
         // Means there're no active slaves left.
