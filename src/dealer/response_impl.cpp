@@ -32,7 +32,7 @@
 namespace cocaine {
 namespace dealer {
 
-response_impl_t::response_impl_t(const boost::shared_ptr<dealer_impl_t>& client_ptr, const std::string& uuid, const message_path& path) :
+response_impl_t::response_impl_t(const boost::shared_ptr<dealer_impl_t>& client_ptr, const std::string& uuid, const message_path_t& path) :
 	m_dealer(client_ptr),
 	m_uuid(uuid),
 	m_path(path),

@@ -45,7 +45,7 @@ public:
 	typedef boost::shared_ptr<message_iface> cached_message_ptr_t;
 	typedef std::deque<cached_message_ptr_t> message_queue_t;
 	typedef boost::shared_ptr<message_queue_t> message_queue_ptr_t;
-	typedef std::pair<std::string, message_path> message_data_t;
+	typedef std::pair<std::string, message_path_t> message_data_t;
 	typedef std::vector<message_data_t> expired_messages_data_t;
 
 	// <uuid, sent message>

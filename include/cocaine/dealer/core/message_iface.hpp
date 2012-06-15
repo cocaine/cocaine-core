@@ -42,8 +42,8 @@ public:
 
 	virtual void remove_from_persistent_cache() = 0;
 
-	virtual const message_path& path() const = 0;
-	virtual const message_policy& policy() const = 0;
+	virtual const message_path_t& path() const = 0;
+	virtual const message_policy_t& policy() const = 0;
 	virtual const std::string& uuid() const = 0;
 
 	virtual bool is_sent() const = 0;

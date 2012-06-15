@@ -160,53 +160,53 @@ handle_t::dispatch_messages() {
 
 void
 handle_t::dispatch_next_available_response(balancer_t& balancer) {
-	cached_response_prt_t response;
-	if (!balancer.receive(response)) {
+	cached_response_prt_t response_t;
+	if (!balancer.receive(response_t)) {
 		return;
 	}
 
-	switch (response->code()) {
+	switch (response_t->code()) {
 		case response_code::message_chunk:
-			enqueue_response(response);
+			enqueue_response(response_t);
 		break;
 
 		case response_code::message_choke:
-			m_message_cache->remove_message_from_cache(response->route(), response->uuid());
-			enqueue_response(response);
+			m_message_cache->remove_message_from_cache(response_t->route(), response_t->uuid());
+			enqueue_response(response_t);
 		break;
 
 		case resource_error: {
-			if (reshedule_message(response->route(), response->uuid())) {
-				std::string message_str = "resheduled msg with uuid: " + response->uuid();
+			if (reshedule_message(response_t->route(), response_t->uuid())) {
+				std::string message_str = "resheduled msg with uuid: " + response_t->uuid();
 				message_str += " from " + description() + ", type: ERROR";
 				message_str += ", error code: ";
 
 				log(PLOG_DEBUG,
 					"%s%d, error message: %s",
 					message_str.c_str(),
-					response->code(),
-					response->error_message().c_str());
+					response_t->code(),
+					response_t->error_message().c_str());
 			}
 			else {
-				m_message_cache->remove_message_from_cache(response->route(), response->uuid());
-				enqueue_response(response);
+				m_message_cache->remove_message_from_cache(response_t->route(), response_t->uuid());
+				enqueue_response(response_t);
 			}
 		}
 		break;
 
 		default: {
-			m_message_cache->remove_message_from_cache(response->route(), response->uuid());
-			enqueue_response(response);
+			m_message_cache->remove_message_from_cache(response_t->route(), response_t->uuid());
+			enqueue_response(response_t);
 
-			std::string message_str = "enqued response for msg with uuid: " + response->uuid();
+			std::string message_str = "enqued response_t for msg with uuid: " + response_t->uuid();
 			message_str += " from " + description() + ", type: ERROR";
 			message_str += ", error code: ";
 
 			log(PLOG_DEBUG,
 				"%s%d, error message: %s",
 				message_str.c_str(),
-				response->code(),
-				response->error_message().c_str());
+				response_t->code(),
+				response_t->error_message().c_str());
 		}
 		break;
 	}
@@ -310,9 +310,9 @@ handle_t::establish_control_conection(socket_ptr_t& control_socket) {
 }
 
 void
-handle_t::enqueue_response(cached_response_prt_t response) {
+handle_t::enqueue_response(cached_response_prt_t response_t) {
 	if (m_response_callback && m_is_running) {
-		m_response_callback(response);
+		m_response_callback(response_t);
 	}
 }
 

@@ -39,16 +39,16 @@ dealer_t::~dealer_t() {
 	m_impl.reset();
 }
 
-boost::shared_ptr<response>
+boost::shared_ptr<response_t>
 dealer_t::send_message(const void* data,
 					 size_t size,
-					 const message_path& path,
-					 const message_policy& policy)
+					 const message_path_t& path,
+					 const message_policy_t& policy)
 {
 	boost::mutex::scoped_lock lock(m_mutex);
 
 	boost::shared_ptr<message_iface> msg = m_impl->create_message(data, size, path, policy);
-	boost::shared_ptr<response> resp(new response(m_impl, msg->uuid(), path));
+	boost::shared_ptr<response_t> resp(new response_t(m_impl, msg->uuid(), path));
 	m_impl->send_message(msg, resp);
 
 	return resp;

@@ -126,7 +126,7 @@ void
 statistics_collector::process_remote_connection() {
 	// create zmq resp socket
 	zmq::socket_t socket(*zmq_context_, ZMQ_REP);
-	DT::port port = config()->remote_statistics_port();
+	boost::uint16_t port = config()->remote_statistics_port();
 	std::string port_str = boost::lexical_cast<std::string>(port);
 	socket.bind(("tcp://*:" + port_str).c_str());
 
@@ -179,9 +179,9 @@ statistics_collector::process_remote_connection() {
     		continue;
     	}
 
-    	// send response
+    	// send response_t
 		try {
-			// send response
+			// send response_t
 			size_t data_len = response_json.length();
 
 			zmq::message_t reply(data_len);
@@ -286,7 +286,7 @@ statistics_collector::all_services_json() {
 		services_stats_t::iterator service_stat_it = services_stats_.find(services_it->second.name_);
 		if (service_stat_it != services_stats_.end()) {
 			// get references
-			std::map<DT::ip_addr, std::string>& hosts = service_stat_it->second.hosts;
+			std::map<boost::uint32_t, std::string>& hosts = service_stat_it->second.hosts;
 			std::map<std::string, size_t>& umsgs = service_stat_it->second.unhandled_messages;
 			std::vector<std::string>& handles = service_stat_it->second.handles;
 
@@ -341,7 +341,7 @@ statistics_collector::all_services_json() {
 			}
 			else {
 				Json::Value service_hosts;
-				std::map<DT::ip_addr, std::string>::iterator hosts_it = hosts.begin();
+				std::map<boost::uint32_t, std::string>::iterator hosts_it = hosts.begin();
 				size_t counter = 1;
 				for (; hosts_it != hosts.end(); ++hosts_it) {
 					std::string key = "host " + boost::lexical_cast<std::string>(counter);

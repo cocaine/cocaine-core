@@ -42,15 +42,15 @@ public:
 	explicit dealer_t(const std::string& config_path = "");
 	virtual ~dealer_t();
 
-	boost::shared_ptr<response> send_message(const void* data,
+	boost::shared_ptr<response_t> send_message(const void* data,
 											 size_t size,
-											 const message_path& path,
-											 const message_policy& policy);
+											 const message_path_t& path,
+											 const message_policy_t& policy);
 
-	template <typename T> boost::shared_ptr<response>
+	template <typename T> boost::shared_ptr<response_t>
 								send_message(const T& object,
-											 const message_path& path,
-											 const message_policy& policy) {
+											 const message_path_t& path,
+											 const message_policy_t& policy) {
 		msgpack::sbuffer buffer;
 		msgpack::pack(buffer, object);
 		return send_message(reinterpret_cast<const void*>(buffer.data()), buffer.size(), path, policy);

@@ -108,7 +108,7 @@ private:
 	void process_deadlined_messages();
 
 	// working with responces
-	void enqueue_response(cached_response_prt_t response);
+	void enqueue_response(cached_response_prt_t response_t);
 
 	static const int socket_poll_timeout = 100; // millisecs
 

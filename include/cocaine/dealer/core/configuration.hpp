@@ -72,7 +72,7 @@ public:
 	
 	bool is_statistics_enabled() const;
 	bool is_remote_statistics_enabled() const;
-	DT::port remote_statistics_port() const;
+	boost::uint16_t remote_statistics_port() const;
 
 	const services_list_t& services_list() const;
 	bool service_info_by_name(const std::string& name, service_info_t& info) const;
@@ -110,7 +110,7 @@ private:
 	// statistics
 	bool		m_statistics_enabled;
 	bool		m_remote_statistics_enabled;
-	DT::port	m_remote_statistics_port;
+	boost::uint16_t	m_remote_statistics_port;
 
 	// services
 	services_list_t m_services_list;

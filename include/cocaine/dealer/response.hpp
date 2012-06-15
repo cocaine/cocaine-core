@@ -32,12 +32,12 @@
 namespace cocaine {
 namespace dealer {
 
-class response {
+class response_t {
 public:
-	response(const boost::shared_ptr<dealer_impl_t>& dealer,
-             const std::string& uuid, const message_path& path);
+	response_t(const boost::shared_ptr<dealer_impl_t>& dealer,
+             const std::string& uuid, const message_path_t& path);
 
-	virtual ~response();
+	virtual ~response_t();
 
 	bool get(data_container* data, double timeout = -1.0);
 

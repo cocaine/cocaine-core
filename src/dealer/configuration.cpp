@@ -199,7 +199,7 @@ configuration_t::parse_statistics_settings(const Json::Value& config_value) {
 
 	m_statistics_enabled = statistics_value.get("enabled", false).asBool();
 	m_remote_statistics_enabled = statistics_value.get("remote_access", false).asBool();
-	m_remote_statistics_port = (DT::port)statistics_value.get("remote_port", defaults_t::statistics_port).asUInt();
+	m_remote_statistics_port = (boost::uint16_t)statistics_value.get("remote_port", defaults_t::statistics_port).asUInt();
 }
 
 void
@@ -420,7 +420,7 @@ configuration_t::is_remote_statistics_enabled() const {
 	return m_remote_statistics_enabled;
 }
 
-DT::port
+boost::uint16_t
 configuration_t::remote_statistics_port() const {
 	return m_remote_statistics_port;
 }

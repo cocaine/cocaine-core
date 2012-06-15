@@ -41,15 +41,15 @@ cached_response_t::cached_response_t() :
 
 }
 
-cached_response_t::cached_response_t(const cached_response_t& response) :
+cached_response_t::cached_response_t(const cached_response_t& response_t) :
 	m_code(0)
 {
-	*this = response;
+	*this = response_t;
 }
 
 cached_response_t::cached_response_t(const std::string& uuid,
 									 const std::string& route,
-									 const message_path& path,
+									 const message_path_t& path,
 									 const void* data,
 									 size_t data_size) :
 	m_uuid(uuid),
@@ -58,7 +58,7 @@ cached_response_t::cached_response_t(const std::string& uuid,
 	m_code(0)
 {
 	if (data_size > MAX_RESPONSE_DATA_SIZE) {
-		throw dealer_error(resource_error, "can't create response, response data too big.");
+		throw dealer_error(resource_error, "can't create response_t, response_t data too big.");
 	}
 
 	m_data = data_container(data, data_size);
@@ -66,7 +66,7 @@ cached_response_t::cached_response_t(const std::string& uuid,
 
 cached_response_t::cached_response_t(const std::string& uuid,
 									 const std::string& route,
-									 const message_path& path,
+									 const message_path_t& path,
 									 int code,
 									 const std::string& error_message) :
 	m_uuid(uuid),
@@ -153,7 +153,7 @@ cached_response_t::set_error_message(const std::string& message) {
 	m_error_message = message;
 }
 
-const message_path&
+const message_path_t&
 cached_response_t::path() const {
 	return m_path;
 }

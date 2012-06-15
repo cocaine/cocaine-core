@@ -31,15 +31,15 @@ void worker(dealer_t* d,
 			std::vector<int>* dealer_messages_count,
 			int dealer_index)
 {
-	message_path path("rimz_app", "rimz_func");
-	message_policy policy;
+	message_path_t path("rimz_app", "rimz_func");
+	message_policy_t policy;
 	policy.deadline = 0.0;
 	policy.max_retries = -1;
 	std::string payload = "response chunk: ";
 
 	while ((*dealer_messages_count)[dealer_index] >= 0) {
 		try {
-			boost::shared_ptr<response> resp;
+			boost::shared_ptr<response_t> resp;
 
 			if (d) {
 				resp = d->send_message(payload.data(), payload.size(), path, policy);

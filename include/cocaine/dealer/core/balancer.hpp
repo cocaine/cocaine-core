@@ -52,7 +52,7 @@ public:
 	void disconnect();
 
 	bool send(boost::shared_ptr<message_iface>& message, cocaine_endpoint_t& endpoint);
-	bool receive(boost::shared_ptr<cached_response_t>& response);
+	bool receive(boost::shared_ptr<cached_response_t>& response_t);
 
 	void update_endpoints(const std::vector<cocaine_endpoint_t>& endpoints,
 						  std::vector<cocaine_endpoint_t>& missing_endpoints);
@@ -69,9 +69,9 @@ private:
 
 	void recreate_socket();
 	
-	bool receive_chunk(zmq::message_t& response);
+	bool receive_chunk(zmq::message_t& response_t);
 	bool process_responce(boost::ptr_vector<zmq::message_t>& chunks,
-						  boost::shared_ptr<cached_response_t>& response);
+						  boost::shared_ptr<cached_response_t>& response_t);
 
 	cocaine_endpoint_t& get_next_endpoint();
 

@@ -75,8 +75,8 @@ public:
 	// map <handle_name/handle's responces deque>
 	typedef std::map<std::string, responces_deque_ptr_t> responces_map_t;
 
-	// registered response callback 
-	typedef std::map<std::string, boost::weak_ptr<response> > registered_callbacks_map_t;
+	// registered response_t callback 
+	typedef std::map<std::string, boost::weak_ptr<response_t> > registered_callbacks_map_t;
 
 	typedef std::map<std::string, std::vector<cocaine_endpoint_t> > handles_endpoints_t;
 
@@ -95,7 +95,7 @@ public:
 	service_info_t info() const;
 
 	void register_responder_callback(const std::string& message_uuid,
-									 const boost::shared_ptr<response>& response);
+									 const boost::shared_ptr<response_t>& response_t);
 
 	void unregister_responder_callback(const std::string& message_uuid);
 
@@ -106,7 +106,7 @@ private:
 	void remove_outstanding_handles(const handles_info_list_t& handles);
 	void update_existing_handles(const handles_endpoints_t& handles_endpoints);
 
-	void enqueue_responce(cached_response_prt_t response);
+	void enqueue_responce(cached_response_prt_t response_t);
 	void dispatch_responces();
 	bool responces_queues_empty() const;
 

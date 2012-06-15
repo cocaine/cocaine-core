@@ -131,8 +131,8 @@ dealer_impl_t::service_hosts_pinged_callback(const service_info_t& service_info,
 boost::shared_ptr<message_iface>
 dealer_impl_t::create_message(const void* data,
 							size_t size,
-							const message_path& path,
-							const message_policy& policy)
+							const message_path_t& path,
+							const message_policy_t& policy)
 {
 	boost::mutex::scoped_lock lock(m_mutex);
 	boost::shared_ptr<message_iface> msg;
@@ -166,7 +166,7 @@ dealer_impl_t::create_message(const void* data,
 
 std::string
 dealer_impl_t::send_message(const boost::shared_ptr<message_iface>& msg,
-						  const boost::shared_ptr<response>& response)
+						  const boost::shared_ptr<response_t>& response_t)
 {
 	BOOST_VERIFY(!m_is_dead);
 	
@@ -195,7 +195,7 @@ dealer_impl_t::send_message(const boost::shared_ptr<message_iface>& msg,
 	//std::string message_str = "registering callback for message with uuid: " + msg->uuid();
 	//logger()->log(PLOG_DEBUG, message_str);
 
-	it->second->register_responder_callback(uuid, response);
+	it->second->register_responder_callback(uuid, response_t);
 
 	//message_str = "registered callback for message with uuid: " + msg->uuid();
 	//logger()->log(PLOG_DEBUG, message_str);
@@ -216,7 +216,7 @@ dealer_impl_t::send_message(const boost::shared_ptr<message_iface>& msg,
 
 void
 dealer_impl_t::unset_response_callback(const std::string& message_uuid,
-								 	 const message_path& path)
+								 	 const message_path_t& path)
 {
 	boost::mutex::scoped_lock lock(m_mutex);
 

@@ -260,7 +260,7 @@ heartbeats_collector_t::ping_endpoints() {
 
 bool
 heartbeats_collector_t::get_metainfo_from_endpoint(const inetv4_endpoint_t& endpoint,
-												 std::string& response)
+												 std::string& response_t)
 {
 	// create req socket
 	std::auto_ptr<zmq::socket_t> zmq_socket;
@@ -333,7 +333,7 @@ heartbeats_collector_t::get_metainfo_from_endpoint(const inetv4_endpoint_t& endp
 
 	try {
 		received_response_ok = zmq_socket->recv(&reply);
-		response = std::string(static_cast<char*>(reply.data()), reply.size());
+		response_t = std::string(static_cast<char*>(reply.data()), reply.size());
 	}
 	catch (const std::exception& ex) {
 		received_response_ok = false;
@@ -341,7 +341,7 @@ heartbeats_collector_t::get_metainfo_from_endpoint(const inetv4_endpoint_t& endp
 	}
 
 	if (!received_response_ok) {
-		std::string error_msg = "heartbeats - could not receive metadata response from endpoint: " + endpoint.as_string();
+		std::string error_msg = "heartbeats - could not receive metadata response_t from endpoint: " + endpoint.as_string();
 		log(PLOG_ERROR, error_msg + ex_err);
 
 		return false;

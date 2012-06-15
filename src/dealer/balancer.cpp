@@ -251,7 +251,7 @@ balancer_t::check_for_responses(int poll_timeout) const {
 		return false;
 	}
 
-	// in case we received message response
+	// in case we received message response_t
 	if ((ZMQ_POLLIN & poll_items[0].revents) == ZMQ_POLLIN) {
 		return true;
 	}
@@ -260,15 +260,15 @@ balancer_t::check_for_responses(int poll_timeout) const {
 }
 
 bool
-balancer_t::receive_chunk(zmq::message_t& response) {
+balancer_t::receive_chunk(zmq::message_t& response_t) {
 	try {
-		if (m_socket->recv(&response, ZMQ_NOBLOCK) == EAGAIN) {
+		if (m_socket->recv(&response_t, ZMQ_NOBLOCK) == EAGAIN) {
 			return false;
 		}
 	}
 	catch (const std::exception& ex) {
 		std::string error_msg = "balancer with identity " + m_socket_identity;
-		error_msg += " — error while receiving response chunk ";
+		error_msg += " — error while receiving response_t chunk ";
 		error_msg += ex.what();
 		log(PLOG_DEBUG, error_msg);
 
@@ -279,7 +279,7 @@ balancer_t::receive_chunk(zmq::message_t& response) {
 }
 
 bool
-balancer_t::receive(boost::shared_ptr<cached_response_t>& response) {
+balancer_t::receive(boost::shared_ptr<cached_response_t>& response_t) {
 	boost::ptr_vector<zmq::message_t> response_chunks;
 
 	// receive message
@@ -304,12 +304,12 @@ balancer_t::receive(boost::shared_ptr<cached_response_t>& response) {
 		return false;
 	}
 
-	return process_responce(response_chunks, response);
+	return process_responce(response_chunks, response_t);
 }
 
 bool
 balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
-							 boost::shared_ptr<cached_response_t>& response)
+							 boost::shared_ptr<cached_response_t>& response_t)
 {
 	// unpack node identity
 	const char* route_chars = reinterpret_cast<const char*>(chunks[0].data());
@@ -334,7 +334,7 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 		return false;
 	}
 
-	std::string message_str = "balancer " + m_socket_identity + " received response for msg with uuid: ";
+	std::string message_str = "balancer " + m_socket_identity + " received response_t for msg with uuid: ";
 	message_str += sent_msg->uuid() + ", type: ";
 
 	switch (rpc_code) {
@@ -347,13 +347,13 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 		case SERVER_RPC_MESSAGE_CHUNK: {
 			//log(PLOG_DEBUG, message_str + "CHUNK");
 
-			response.reset(new cached_response_t(uuid,
+			response_t.reset(new cached_response_t(uuid,
 												 route,
 												 sent_msg->path(),
 												 chunks[4].data(),
 												 chunks[4].size()));
 
-			response->set_code(response_code::message_chunk);
+			response_t->set_code(response_code::message_chunk);
 			return true;
 		}
 		break;
@@ -374,7 +374,7 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 			obj = msg.get();
 		    obj.convert(&error_message);
 
-			response.reset(new cached_response_t(uuid,
+			response_t.reset(new cached_response_t(uuid,
 												 route,
 												 sent_msg->path(),
 												 error_code,
@@ -386,13 +386,13 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 		case SERVER_RPC_MESSAGE_CHOKE: {
 			//log(PLOG_DEBUG, message_str + "CHOKE");
 
-			response.reset(new cached_response_t(uuid,
+			response_t.reset(new cached_response_t(uuid,
 												 route,
 												 sent_msg->path(),
 												 NULL,
 												 0));
 
-			response->set_code(response_code::message_choke);
+			response_t->set_code(response_code::message_choke);
 			return true;
 		}
 		break;

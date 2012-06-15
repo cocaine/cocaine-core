@@ -29,15 +29,15 @@
 namespace cocaine {
 namespace dealer {
 
-struct message_policy {
-    message_policy() :
+struct message_policy_t {
+    message_policy_t() :
         send_to_all_hosts(false),
         urgent(false),
         timeout(0.0f),
         deadline(0.0f),
         max_retries(0) {}
 
-    message_policy(bool send_to_all_hosts,
+    message_policy_t(bool send_to_all_hosts,
                    bool urgent,
                    float mailboxed,
                    float timeout,
@@ -49,11 +49,11 @@ struct message_policy {
         deadline(deadline),
         max_retries(max_retries) {}
 
-    message_policy(const message_policy& mp) {
+    message_policy_t(const message_policy_t& mp) {
         *this = mp;
     }
 
-    message_policy& operator = (const message_policy& rhs) {
+    message_policy_t& operator = (const message_policy_t& rhs) {
         if (this == &rhs) {
             return *this;
         }
@@ -67,14 +67,14 @@ struct message_policy {
         return *this;
     }
 
-    bool operator == (const message_policy& rhs) const {
+    bool operator == (const message_policy_t& rhs) const {
         return (send_to_all_hosts == rhs.send_to_all_hosts &&
                 urgent == rhs.urgent &&
                 timeout == rhs.timeout &&
                 deadline == rhs.deadline);
     }
 
-    bool operator != (const message_policy& rhs) const {
+    bool operator != (const message_policy_t& rhs) const {
         return !(*this == rhs);
     }
 

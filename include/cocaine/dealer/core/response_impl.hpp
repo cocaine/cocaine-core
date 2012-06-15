@@ -37,18 +37,18 @@ class response_impl_t {
 public:
 	response_impl_t(const boost::shared_ptr<dealer_impl_t>& dealer,
 				  const std::string& uuid,
-				  const message_path& path);
+				  const message_path_t& path);
 
 	~response_impl_t();
 
-	// 1) timeout < 0 - block indefinitely until response received
-	// 2) timeout == 0 - check for response chunk and return result immediately
-	// 3) timeout > 0 - check for response chunk with some timeout value
+	// 1) timeout < 0 - block indefinitely until response_t received
+	// 2) timeout == 0 - check for response_t chunk and return result immediately
+	// 3) timeout > 0 - check for response_t chunk with some timeout value
 
 	bool get(data_container* data, double timeout);
 
 private:
-	friend class response;
+	friend class response_t;
 
 	void response_callback(const response_data& resp_data,
 						   const response_info& resp_info);
@@ -56,7 +56,7 @@ private:
 	boost::ptr_vector<data_container>	m_chunks;
 	boost::weak_ptr<dealer_impl_t>		m_dealer;
 	std::string			m_uuid;
-	const message_path	m_path;
+	const message_path_t	m_path;
 	response_info		m_resp_info;
 
 	bool m_response_finished;

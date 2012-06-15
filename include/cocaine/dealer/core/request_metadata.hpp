@@ -63,16 +63,16 @@ struct request_metadata_t {
         return s.str();
 	}
 
-	const message_path& path() const {
+	const message_path_t& path() const {
 		return path_.get();
 	}
 
-	void set_path(const message_path& path) {
+	void set_path(const message_path_t& path) {
 		path_ = path;
 	}
 
 	std::string		uuid;
-	message_policy	policy;
+	message_policy_t	policy;
 	std::string		destination_endpoint;
 	uint64_t		data_size;
 
@@ -84,7 +84,7 @@ struct request_metadata_t {
 	int		retries_count;
 
 private:
-	boost::flyweight<message_path> path_;
+	boost::flyweight<message_path_t> path_;
 };
 
 struct persistent_request_metadata_t : public request_metadata_t {
@@ -108,7 +108,7 @@ struct persistent_request_metadata_t : public request_metadata_t {
 		memcpy(pac.buffer(), data, size);
 		pac.buffer_consumed(size);
 
-		message_path path;
+		message_path_t path;
 		unpack_next_value(pac, path);
 		path = path;
 

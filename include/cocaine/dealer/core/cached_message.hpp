@@ -48,8 +48,8 @@ public:
 	cached_message_t();
 	explicit cached_message_t(const cached_message_t& message);
 
-	cached_message_t(const message_path& path,
-					 const message_policy& policy,
+	cached_message_t(const message_path_t& path,
+					 const message_policy_t& policy,
 					 const void* data,
 					 size_t data_size);
 
@@ -64,8 +64,8 @@ public:
 	DataContainer& data_container();
 	MetadataContainer& mdata_container();
 
-	const message_path& path() const;
-	const message_policy& policy() const;
+	const message_path_t& path() const;
+	const message_policy_t& policy() const;
 	const std::string& uuid() const;
 
 	bool is_sent() const;
@@ -116,8 +116,8 @@ cached_message_t<DataContainer, MetadataContainer>::cached_message_t(const cache
 }
 
 template<typename DataContainer, typename MetadataContainer>
-cached_message_t<DataContainer, MetadataContainer>::cached_message_t(const message_path& path,
-							   										 const message_policy& policy,
+cached_message_t<DataContainer, MetadataContainer>::cached_message_t(const message_path_t& path,
+							   										 const message_policy_t& policy,
 							   										 const void* data,
 							   										 size_t data_size)
 {
@@ -288,12 +288,12 @@ cached_message_t<DataContainer, MetadataContainer>::set_destination_endpoint(con
 	m_metadata.destination_endpoint = value;	
 }
 
-template<typename DataContainer, typename MetadataContainer> const message_path&
+template<typename DataContainer, typename MetadataContainer> const message_path_t&
 cached_message_t<DataContainer, MetadataContainer>::path() const {
 	return m_metadata.path();
 }
 
-template<typename DataContainer, typename MetadataContainer> const message_policy&
+template<typename DataContainer, typename MetadataContainer> const message_policy_t&
 cached_message_t<DataContainer, MetadataContainer>::policy() const {
 	return m_metadata.policy;
 }

@@ -74,7 +74,7 @@ private:
 	void ping_endpoints();
 	void process_alive_endpoints();
 
-	bool get_metainfo_from_endpoint(const inetv4_endpoint_t& endpoint, std::string& response);
+	bool get_metainfo_from_endpoint(const inetv4_endpoint_t& endpoint, std::string& response_t);
 
 	void log_responded_hosts_handles(const service_info_t& service_info,
 									 const handles_endpoints_t& handles_endpoints);
