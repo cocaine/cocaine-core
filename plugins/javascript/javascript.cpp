@@ -51,7 +51,7 @@ class javascript_t:
                 throw configuration_error_t("malformed manifest");
             }
             
-            boost::filesystem::path source(manifest.spool_path);
+            boost::filesystem::path source(manifest.path);
             boost::filesystem::ifstream input(source);
     
             if(!input) {

@@ -59,7 +59,7 @@ python_t::python_t(context_t& context, const manifest_t& manifest):
         throw configuration_error_t("malformed manifest");
     }
     
-    boost::filesystem::path source(manifest.spool_path);
+    boost::filesystem::path source(manifest.path);
    
     // NOTE: Means it's a module.
     if(boost::filesystem::is_directory(source)) {

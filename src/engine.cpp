@@ -28,7 +28,6 @@
 #include "cocaine/job.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
-#include "cocaine/rpc.hpp"
 
 #include "cocaine/dealer/types.hpp"
 
@@ -69,7 +68,7 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest_):
 
     std::string endpoint(
         (boost::format("ipc://%1%/%2%")
-            % m_context.config.ipc_path.string()
+            % m_context.config.ipc_path
             % m_manifest.name
         ).str()
     );
@@ -593,7 +592,7 @@ void engine_t::pump() {
         );
 
         pool_map_t::iterator it(
-            unicast(
+            call(
                 select::state<slave::idle>(),
                 packed
             )
@@ -658,10 +657,10 @@ void engine_t::shutdown() {
     rpc::packed<rpc::terminate> packed;
 
     // Send the termination event to active slaves.
-    unsigned int pending = multicast(
+    unsigned int pending = 1; /*= multicast(
         select::state<slave::alive>(),
         packed
-    );
+    );*/
 
     if(!pending) {
         // Means there're no active slaves left.

@@ -23,7 +23,7 @@
 
 #include "cocaine/io.hpp"
 
-namespace cocaine { namespace engine { namespace rpc {    
+namespace cocaine { namespace rpc {    
     
 enum {
     heartbeat = 1,
@@ -39,22 +39,18 @@ enum {
 
 template<int Code> 
 struct packed:
-    public boost::tuple<int>
-{
-    packed():
-        boost::tuple<int>(Code)
-    { }
-};
+    public boost::tuples::null_type
+{ };
 
 // Specific packers
 // ----------------
 
 template<>
 struct packed<invoke>:
-    public boost::tuple<int, const std::string&, zmq::message_t&>
+    public boost::tuple<const std::string&, zmq::message_t&>
 {
     packed(const std::string& event, const void * data, size_t size):
-        boost::tuple<int, const std::string&, zmq::message_t&>(invoke, event, message),
+        boost::tuple<const std::string&, zmq::message_t&>(event, message),
         message(size)
     {
         memcpy(
@@ -70,10 +66,10 @@ private:
 
 template<>
 struct packed<chunk>:
-    public boost::tuple<int, zmq::message_t&>
+    public boost::tuple<zmq::message_t&>
 {
     packed(const void * data, size_t size):
-        boost::tuple<int, zmq::message_t&>(chunk, message),
+        boost::tuple<zmq::message_t&>(message),
         message(size)
     {
         memcpy(
@@ -84,7 +80,7 @@ struct packed<chunk>:
     }
 
     packed(zmq::message_t& message_):
-        boost::tuple<int, zmq::message_t&>(chunk, message)
+        boost::tuple<zmq::message_t&>(message)
     {
         message.move(&message_);
     }
@@ -96,13 +92,13 @@ private:
 template<>
 struct packed<error>:
     // NOTE: Not a string reference to allow literal error messages.
-    public boost::tuple<int, int, std::string>
+    public boost::tuple<int, std::string>
 {
     packed(int code, const std::string& message):
-        boost::tuple<int, int, std::string>(error, code, message)
+        boost::tuple<int, std::string>(code, message)
     { }
 };
     
-}}}
+}}
 
 #endif

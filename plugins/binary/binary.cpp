@@ -38,7 +38,7 @@ binary_t::binary_t(context_t &context, const manifest_t &manifest) :
 		throw configuration_error_t("malformed manifest");
 	}
 
-	boost::filesystem::path source(manifest.spool_path);
+	boost::filesystem::path source(manifest.path);
 
 	if (lt_dlinit() != 0)
 		throw repository_error_t("unable to initialize binary loader");

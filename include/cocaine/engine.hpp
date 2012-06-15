@@ -37,6 +37,7 @@
 
 #include "cocaine/io.hpp"
 #include "cocaine/master.hpp"
+#include "cocaine/rpc.hpp"
 
 #include "cocaine/helpers/json.hpp"
 
@@ -105,7 +106,7 @@ class engine_t:
         Json::Value info() const;
         
         // Job scheduling.
-        void enqueue(job_queue_t::const_reference);
+        void enqueue(job_queue_t::const_reference job);
 
     public:
         const manifest_t& manifest() const {
@@ -123,9 +124,9 @@ class engine_t:
 #endif
 
     private:
-        template<class S, class Packed>
-        pool_map_t::iterator unicast(const S& selector,
-                                     Packed& packed)
+        template<class S, int Code>
+        pool_map_t::iterator call(const S& selector,
+                                  rpc::packed<Code>& packed)
         {
             pool_map_t::iterator it(
                 std::find_if(
@@ -136,45 +137,15 @@ class engine_t:
             );
 
             if(it != m_pool.end()) {
-                send(*it->second, packed);
+                m_bus.send(
+                    io::protect(it->second->id()),
+                    ZMQ_SNDMORE
+                );
+
+                m_bus.send(packed);
             }
 
             return it;
-        }
-
-        template<class S, class Packed>
-        unsigned int multicast(const S& selector,
-                               Packed& packed)
-        {
-            typedef boost::filter_iterator<S, pool_map_t::iterator> filter;
-            
-            filter it(selector, m_pool.begin(), m_pool.end()),
-                   end(selector, m_pool.end(), m_pool.end());
-            
-            unsigned int count = 0;
-
-            while(it != end) {
-                Packed copy(packed);
-                
-                send(*it->second, copy);
-                
-                ++it;
-                ++count;
-            }
-
-            return count;
-        }
-
-        template<class Packed>
-        void send(master_t& master,
-                  Packed& packed)
-        {
-            m_bus.send(
-                io::protect(master.id()),
-                ZMQ_SNDMORE
-            );
-
-            m_bus.send_multi(packed);
         }
 
         // Slave I/O.
