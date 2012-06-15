@@ -30,19 +30,19 @@
 namespace cocaine {
 namespace dealer {
 
-http_hosts_fetcher::http_hosts_fetcher(const service_info_t& service_info) :
-	curl_m(NULL),
-	service_info_m(service_info)
+http_hosts_fetcher_t::http_hosts_fetcher_t(const service_info_t& service_info) :
+	m_curl(NULL),
+	m_service_info(service_info)
 {
-	curl_m = curl_easy_init();
+	m_curl = curl_easy_init();
 }
 
-http_hosts_fetcher::~http_hosts_fetcher() {
-	curl_easy_cleanup(curl_m);
+http_hosts_fetcher_t::~http_hosts_fetcher_t() {
+	curl_easy_cleanup(m_curl);
 }
 
 int
-http_hosts_fetcher::curl_writer(char* data, size_t size, size_t nmemb, std::string* buffer_in) {
+http_hosts_fetcher_t::curl_writer(char* data, size_t size, size_t nmemb, std::string* buffer_in) {
 	if (buffer_in != NULL) {
 		buffer_in->append(data, size * nmemb);
 		return size * nmemb;
@@ -52,21 +52,21 @@ http_hosts_fetcher::curl_writer(char* data, size_t size, size_t nmemb, std::stri
 }
 
 bool
-http_hosts_fetcher::get_hosts(inetv4_endpoints& endpoints, service_info_t& service_info) {
+http_hosts_fetcher_t::get_hosts(inetv4_endpoints_t& endpoints, service_info_t& service_info) {
 	CURLcode result = CURLE_OK;
 	char error_buffer[CURL_ERROR_SIZE];
 	std::string buffer;
 	
-	if (curl_m) {
-		curl_easy_setopt(curl_m, CURLOPT_ERRORBUFFER, error_buffer);
-		curl_easy_setopt(curl_m, CURLOPT_URL, service_info_m.hosts_source.c_str());
-		curl_easy_setopt(curl_m, CURLOPT_HEADER, 0);
-		curl_easy_setopt(curl_m, CURLOPT_FOLLOWLOCATION, 1);
-		curl_easy_setopt(curl_m, CURLOPT_WRITEFUNCTION, curl_writer);
-		curl_easy_setopt(curl_m, CURLOPT_WRITEDATA, &buffer);
+	if (m_curl) {
+		curl_easy_setopt(m_curl, CURLOPT_ERRORBUFFER, error_buffer);
+		curl_easy_setopt(m_curl, CURLOPT_URL, m_service_info.hosts_source.c_str());
+		curl_easy_setopt(m_curl, CURLOPT_HEADER, 0);
+		curl_easy_setopt(m_curl, CURLOPT_FOLLOWLOCATION, 1);
+		curl_easy_setopt(m_curl, CURLOPT_WRITEFUNCTION, curl_writer);
+		curl_easy_setopt(m_curl, CURLOPT_WRITEDATA, &buffer);
 
 		// Attempt to retrieve the remote page
-		result = curl_easy_perform(curl_m);
+		result = curl_easy_perform(m_curl);
 	}
 	
 	if (CURLE_OK != result) {
@@ -74,7 +74,7 @@ http_hosts_fetcher::get_hosts(inetv4_endpoints& endpoints, service_info_t& servi
 	}
 	
 	long response_code = 0;
-	result = curl_easy_getinfo(curl_m, CURLINFO_RESPONSE_CODE, &response_code);
+	result = curl_easy_getinfo(m_curl, CURLINFO_RESPONSE_CODE, &response_code);
 	
 	if (CURLE_OK != result || response_code != 200) {
 		return false;
@@ -93,20 +93,20 @@ http_hosts_fetcher::get_hosts(inetv4_endpoints& endpoints, service_info_t& servi
 			size_t where = line.find_last_of(":");
 
 			if (where == std::string::npos) {
-				endpoints.push_back(inetv4_endpoint(inetv4_host(line)));
+				endpoints.push_back(inetv4_endpoint_t(inetv4_host_t(line)));
 			}
 			else {
 				std::string ip = line.substr(0, where);
 				std::string port = line.substr(where + 1, (line.length() - (where + 1)));
 
-				endpoints.push_back(inetv4_endpoint(ip, port));
+				endpoints.push_back(inetv4_endpoint_t(ip, port));
 			}
 		}
 		catch (...) {
 		}
 	}
 	
-	service_info = service_info_m;
+	service_info = m_service_info;
 	return true;
 }
 

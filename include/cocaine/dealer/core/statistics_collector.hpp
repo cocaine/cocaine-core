@@ -42,6 +42,56 @@ enum e_statictics_req_error {
 	SRE_UNSUPPORTED_ACTION_ERROR
 };
 
+struct handle_stats {
+	handle_stats() :
+		sent_messages(0),
+		resent_messages(0),
+		bad_sent_messages(0),
+		all_responces(0),
+		normal_responces(0),
+		timedout_responces(0),
+		err_responces(0),
+		expired_responses(0) {};
+
+	// tatal sent msgs (with resent msgs)
+	size_t sent_messages;
+
+	// timeout or queue full msgs
+	size_t resent_messages;
+
+	// messages failed during sending
+	size_t bad_sent_messages;
+
+	// all responces received count
+	size_t all_responces;
+
+	// successful responces (no errs)
+	size_t normal_responces;
+
+	// responces with timedout msgs
+	size_t timedout_responces;
+
+	// error responces (deadline met, failed code parsing, app err, etc.)
+	size_t err_responces;
+
+	// expired messages
+	size_t expired_responses;
+
+	// handle queue status
+	//struct msg_queue_status queue_status;
+};
+
+struct service_stats {
+	// <ip address, hostname>
+	std::map<boost::uint32_t, std::string> hosts;
+
+	// <handle name>
+	std::vector<std::string> handles;
+
+	// <handle name, queue_size>
+	std::map<std::string, size_t> unhandled_messages;
+};
+
 class statistics_collector : private boost::noncopyable {
 public:
 	// status of all services
@@ -52,10 +102,10 @@ public:
 
 
 public:
-	statistics_collector(const boost::shared_ptr<configuration>& config,
+	statistics_collector(const boost::shared_ptr<configuration_t>& config,
 						 const boost::shared_ptr<zmq::context_t>& context);
 
-	statistics_collector(const boost::shared_ptr<configuration>& config,
+	statistics_collector(const boost::shared_ptr<configuration_t>& config,
 						 const boost::shared_ptr<zmq::context_t>& context,
 						 const boost::shared_ptr<base_logger>& logger);
 
@@ -92,7 +142,7 @@ private:
 
 
 	boost::shared_ptr<base_logger> logger();
-	boost::shared_ptr<configuration> config() const;
+	boost::shared_ptr<configuration_t> config() const;
 
 	/* --- collected data --- */
 	size_t used_cache_size_;
@@ -106,8 +156,8 @@ private:
 private:
 	bool is_enabled_;
 
-	// global configuration object
-	boost::shared_ptr<configuration> config_;
+	// global configuration_t object
+	boost::shared_ptr<configuration_t> config_;
 
 	// logger
 	boost::shared_ptr<base_logger> logger_;
@@ -116,7 +166,7 @@ private:
 	boost::shared_ptr<zmq::context_t> zmq_context_;
 
 	boost::thread thread_;
-	boost::mutex mutex_;
+	boost::mutex m_mutex;
 	bool is_running_;
 };
 

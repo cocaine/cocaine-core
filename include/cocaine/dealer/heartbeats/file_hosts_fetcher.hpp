@@ -28,16 +28,16 @@
 namespace cocaine {
 namespace dealer {
 
-class file_hosts_fetcher : public hosts_fetcher_iface, private boost::noncopyable  {
+class file_hosts_fetcher_t : public hosts_fetcher_iface, private boost::noncopyable  {
 public:
-	file_hosts_fetcher(const service_info_t& service_info);
-	virtual ~file_hosts_fetcher();
+	file_hosts_fetcher_t(const service_info_t& service_info);
+	virtual ~file_hosts_fetcher_t();
 	
-	bool get_hosts(inetv4_endpoints& endpoints, service_info_t& service_info);
+	bool get_hosts(inetv4_endpoints_t& endpoints, service_info_t& service_info);
 
 private:
-	service_info_t service_info_m;
-	time_t file_modification_time_m;
+	service_info_t m_service_info;
+	time_t         m_file_modification_time;
 };
 
 } // namespace dealer

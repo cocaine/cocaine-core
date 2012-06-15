@@ -31,42 +31,42 @@ namespace cocaine {
 namespace dealer {
 
  // predeclaration
-class inetv4_endpoint {
+class inetv4_endpoint_t {
 public:
-	inetv4_endpoint() : port(0) {
+	inetv4_endpoint_t() : port(0) {
 	}
 
-	explicit inetv4_endpoint(const inetv4_host& host_) :
+	explicit inetv4_endpoint_t(const inetv4_host_t& host_) :
 		host(host_),
 		port(0) {}
 
-	inetv4_endpoint(const inetv4_host& host_, unsigned short port_) :
+	inetv4_endpoint_t(const inetv4_host_t& host_, unsigned short port_) :
 		host(host_),
 		port(port_) {}
 
-	inetv4_endpoint(unsigned int ip_, unsigned short port_) :
-		host(inetv4_host(ip_)),
+	inetv4_endpoint_t(unsigned int ip_, unsigned short port_) :
+		host(inetv4_host_t(ip_)),
 		port(port_) {}
 
-	inetv4_endpoint(const std::string& ip_, const std::string& port_) :
-		host(inetv4_host(ip_))
+	inetv4_endpoint_t(const std::string& ip_, const std::string& port_) :
+		host(inetv4_host_t(ip_))
 	{
 		port = boost::lexical_cast<unsigned short>(port_);
 	}
 
-	inetv4_endpoint(const inetv4_endpoint& rhs) :
+	inetv4_endpoint_t(const inetv4_endpoint_t& rhs) :
 		host(rhs.host),
 		port(rhs.port) {}
 
-	bool operator == (const inetv4_endpoint& rhs) const {
+	bool operator == (const inetv4_endpoint_t& rhs) const {
 		return (host == rhs.host && port == rhs.port);
 	}
 
-	bool operator != (const inetv4_endpoint& rhs) const {
+	bool operator != (const inetv4_endpoint_t& rhs) const {
 		return (!(*this == rhs));
 	}
 
-	bool operator < (const inetv4_endpoint& rhs) const {
+	bool operator < (const inetv4_endpoint_t& rhs) const {
 		return (as_string() < rhs.as_string());
 	}
 
@@ -74,8 +74,8 @@ public:
 		return host.as_string() + ":" + boost::lexical_cast<std::string>(port);
 	}
 
-	inetv4_host host;
-	unsigned short port;
+	inetv4_host_t		host;
+	unsigned short	port;
 };
 
 } // namespace dealer

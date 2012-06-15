@@ -27,21 +27,21 @@ namespace cocaine {
 namespace dealer {
 
  // predeclaration
-struct cocaine_endpoint {
+struct cocaine_endpoint_t {
 public:
-	cocaine_endpoint() {}
+	cocaine_endpoint_t() {}
 
-	cocaine_endpoint(const std::string& endpoint_, const std::string& route_) :
+	cocaine_endpoint_t(const std::string& endpoint_, const std::string& route_) :
 		endpoint(endpoint_),
 		route(route_) {}
 
-	~cocaine_endpoint() {}
+	~cocaine_endpoint_t() {}
 
-	cocaine_endpoint(const cocaine_endpoint& rhs) :
+	cocaine_endpoint_t(const cocaine_endpoint_t& rhs) :
 		endpoint(rhs.endpoint),
 		route(rhs.route) {}
 
-	cocaine_endpoint& operator = (const cocaine_endpoint& rhs) {
+	cocaine_endpoint_t& operator = (const cocaine_endpoint_t& rhs) {
 		if (this != &rhs) {
 			endpoint = rhs.endpoint;
 			route = rhs.route;
@@ -50,16 +50,16 @@ public:
 		return *this;
 	}
 
-	bool operator == (const cocaine_endpoint& rhs) const {
+	bool operator == (const cocaine_endpoint_t& rhs) const {
 		return (endpoint == rhs.endpoint &&
 				route == rhs.route);
 	}
 
-	bool operator != (const cocaine_endpoint& rhs) const {
+	bool operator != (const cocaine_endpoint_t& rhs) const {
 		return (!(*this == rhs));
 	}
 
-	bool operator < (const cocaine_endpoint& rhs) const {
+	bool operator < (const cocaine_endpoint_t& rhs) const {
 		return ((endpoint + route) < (rhs.endpoint + rhs.route));
 	}
 

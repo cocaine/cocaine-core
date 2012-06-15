@@ -51,7 +51,7 @@ enum e_message_cache_type {
 	PERSISTENT
 };
 
-struct defaults {
+struct defaults_t {
 	// logger
 	static const enum e_logger_type logger_type = STDOUT_LOGGER;
 	static const unsigned int logger_flags = PLOG_NONE;

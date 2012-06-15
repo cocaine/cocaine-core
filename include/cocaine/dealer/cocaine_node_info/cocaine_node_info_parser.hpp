@@ -51,23 +51,23 @@ public:
 	~cocaine_node_info_parser_t() {};
 
 	void set_host_info(unsigned int node_ip_address, unsigned short node_port) {
-		node_ip_address_m = node_ip_address;
-		node_port_m = node_port;
+		m_node_ip_address = node_ip_address;
+		m_node_port = node_port;
 
-		if (node_ip_address_m == 0 || node_port_m == 0) {
-			str_node_adress_m = "[undefined ip:undefined port]";
+		if (m_node_ip_address == 0 || m_node_port == 0) {
+			m_str_node_adress = "[undefined ip:undefined port]";
 			return;
 		}
 
-		str_node_adress_m = "[" + nutils::ipv4_to_str(node_ip_address);
-		str_node_adress_m += ":" + boost::lexical_cast<std::string>(node_port);
+		m_str_node_adress = "[" + nutils::ipv4_to_str(node_ip_address);
+		m_str_node_adress += ":" + boost::lexical_cast<std::string>(node_port);
 
 		std::string hostname = nutils::hostname_for_ipv4(node_ip_address);
 		if (!hostname.empty()) {
-			str_node_adress_m += " (" + hostname + ")]";
+			m_str_node_adress += " (" + hostname + ")]";
 		}
 		else {
-			str_node_adress_m += "]";
+			m_str_node_adress += "]";
 		}
 	}
 
@@ -81,7 +81,7 @@ public:
 
 		if (!reader.parse(json_string, root)) {
 			std::string log_str = "cocaine node %s routing info could not be parsed";
-			log(PLOG_WARNING, log_str.c_str(), str_node_adress_m.c_str());
+			log(PLOG_WARNING, log_str.c_str(), m_str_node_adress.c_str());
 			return false;
 		}
 	
@@ -89,7 +89,7 @@ public:
 		const Json::Value apps = root["apps"];
 		if (!apps.isObject() || !apps.size()) {
 			std::string log_str = "no apps found in cocaine node %s rounting info";
-			log(PLOG_WARNING, log_str.c_str(), str_node_adress_m.c_str());
+			log(PLOG_WARNING, log_str.c_str(), m_str_node_adress.c_str());
 			return false;
 		}
 
@@ -111,7 +111,7 @@ public:
 	    const Json::Value jobs_props = root["jobs"];
 	    if (!jobs_props.isObject()) {
 	    	std::string log_str = "no jobs object found in cocaine node %s rounting info";
-			log(PLOG_WARNING, log_str.c_str(), str_node_adress_m.c_str());
+			log(PLOG_WARNING, log_str.c_str(), m_str_node_adress.c_str());
 	    }
 	    else {
 	    	node_info.pending_jobs = jobs_props.get("pending", 0).asInt();
@@ -120,8 +120,8 @@ public:
 
 	    node_info.route = root.get("route", "").asString();
 		node_info.uptime = root.get("uptime", 0.0f).asDouble();
-		node_info.ip_address = node_ip_address_m;
-		node_info.port = node_port_m;
+		node_info.ip_address = m_node_ip_address;
+		node_info.port = m_node_port;
 
 		return true;
 	}
@@ -133,7 +133,7 @@ private:
     	if (!tasks.isObject() || !tasks.size()) {
         	std::string log_str = "no tasks info for app [" + app_info.name;
 	    	log_str += "] found in cocaine node %s rounting info";
-			log(PLOG_WARNING, log_str.c_str(), str_node_adress_m.c_str());
+			log(PLOG_WARNING, log_str.c_str(), m_str_node_adress.c_str());
 
 			return false;
 		}
@@ -146,7 +146,7 @@ private:
     		if (!task.isObject() || !task.size()) {
     			std::string log_str = "no task info for app [" + app_info.name;
 	    		log_str += "], task [" + task_name + "] found in cocaine node %s rounting info";
-				log(PLOG_WARNING, log_str.c_str(), str_node_adress_m.c_str());
+				log(PLOG_WARNING, log_str.c_str(), m_str_node_adress.c_str());
 				continue;
 			}
 
@@ -167,7 +167,7 @@ private:
 	    if (!slaves_props.isObject()) {
 	    	std::string log_str = "no slaves info for app [" + app_info.name;
 	    	log_str += "] found in cocaine node %s rounting info";
-			log(PLOG_WARNING, log_str.c_str(), str_node_adress_m.c_str());
+			log(PLOG_WARNING, log_str.c_str(), m_str_node_adress.c_str());
 	    }
 	    else {
 	    	app_info.slaves_busy = slaves_props.get("busy", 0).asInt();
@@ -199,9 +199,9 @@ private:
 		return true;
 	}
 
-	unsigned int	node_ip_address_m;
-	unsigned short	node_port_m;
-	std::string		str_node_adress_m;
+	unsigned int	m_node_ip_address;
+	unsigned short	m_node_port;
+	std::string		m_str_node_adress;
 };
 
 } // namespace dealer

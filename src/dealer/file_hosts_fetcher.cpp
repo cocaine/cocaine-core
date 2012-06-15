@@ -36,34 +36,34 @@
 namespace cocaine {
 namespace dealer {
 
-file_hosts_fetcher::file_hosts_fetcher(const service_info_t& service_info) :
-	service_info_m(service_info),
-	file_modification_time_m(0)
+file_hosts_fetcher_t::file_hosts_fetcher_t(const service_info_t& service_info) :
+	m_service_info(service_info),
+	m_file_modification_time(0)
 {
 }
 
-file_hosts_fetcher::~file_hosts_fetcher() {
+file_hosts_fetcher_t::~file_hosts_fetcher_t() {
 }
 
 bool
-file_hosts_fetcher::get_hosts(inetv4_endpoints& endpoints, service_info_t& service_info) {
+file_hosts_fetcher_t::get_hosts(inetv4_endpoints_t& endpoints, service_info_t& service_info) {
 	std::string buffer;
 
 	// check file modification time
 	struct stat attrib;
-	stat(service_info_m.hosts_source.c_str(), &attrib);
+	stat(m_service_info.hosts_source.c_str(), &attrib);
 
-	if (attrib.st_mtime <= file_modification_time_m) {
+	if (attrib.st_mtime <= m_file_modification_time) {
 		return false;
 	}
 
 	// load file
 	std::string code;
 	std::ifstream file;
-	file.open(service_info_m.hosts_source.c_str(), std::ifstream::in);
+	file.open(m_service_info.hosts_source.c_str(), std::ifstream::in);
 
 	if (!file.is_open()) {
-		throw internal_error("hosts file: " + service_info_m.hosts_source + " failed to open at: " + std::string(BOOST_CURRENT_FUNCTION));
+		throw internal_error("hosts file: " + m_service_info.hosts_source + " failed to open at: " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	size_t max_size = 512;
@@ -91,20 +91,20 @@ file_hosts_fetcher::get_hosts(inetv4_endpoints& endpoints, service_info_t& servi
 			size_t where = line.find_last_of(":");
 
 			if (where == std::string::npos) {
-				endpoints.push_back(inetv4_endpoint(inetv4_host(line)));
+				endpoints.push_back(inetv4_endpoint_t(inetv4_host_t(line)));
 			}
 			else {
 				std::string ip = line.substr(0, where);
 				std::string port = line.substr(where + 1, (line.length() - (where + 1)));
 
-				endpoints.push_back(inetv4_endpoint(ip, port));
+				endpoints.push_back(inetv4_endpoint_t(ip, port));
 			}
 		}
 		catch (...) {
 		}
 	}
 	
-	service_info = service_info_m;
+	service_info = m_service_info;
 	return true;
 }
 

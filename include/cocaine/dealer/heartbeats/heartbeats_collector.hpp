@@ -52,14 +52,14 @@
 namespace cocaine {
 namespace dealer {
 
-class heartbeats_collector : private boost::noncopyable, public dealer_object_t {
+class heartbeats_collector_t : private boost::noncopyable, public dealer_object_t {
 public:
-	typedef std::map<std::string, std::vector<cocaine_endpoint> > handles_endpoints_t;
+	typedef std::map<std::string, std::vector<cocaine_endpoint_t> > handles_endpoints_t;
 	typedef boost::function<void(const service_info_t&, const handles_endpoints_t&)> callback_t;
 
-	heartbeats_collector(const boost::shared_ptr<context_t>& ctx, bool logging_enabled = true);
+	heartbeats_collector_t(const boost::shared_ptr<context_t>& ctx, bool logging_enabled = true);
 
-	virtual ~heartbeats_collector();
+	virtual ~heartbeats_collector_t();
 
 	void run();
 	void stop();
@@ -68,13 +68,13 @@ public:
 	
 private:
 	typedef boost::shared_ptr<hosts_fetcher_iface> hosts_fetcher_ptr;
-	typedef hosts_fetcher_iface::inetv4_endpoints inetv4_endpoints;
+	typedef hosts_fetcher_iface::inetv4_endpoints_t inetv4_endpoints_t;
 
 	void ping_services();
 	void ping_endpoints();
 	void process_alive_endpoints();
 
-	bool get_metainfo_from_endpoint(const inetv4_endpoint& endpoint, std::string& response);
+	bool get_metainfo_from_endpoint(const inetv4_endpoint_t& endpoint, std::string& response_t);
 
 	void log_responded_hosts_handles(const service_info_t& service_info,
 									 const handles_endpoints_t& handles_endpoints);
@@ -83,18 +83,18 @@ private:
 	static const int host_socket_ping_timeout = 2000000; // (2 seconds) microseconds FIX in zmq 3.1
 
 private:
-	std::vector<hosts_fetcher_ptr> hosts_fetchers_m;
+	std::vector<hosts_fetcher_ptr> m_hosts_fetchers;
 
 	// endpoints cache
-	std::map<std::string, inetv4_endpoints> services_endpoints_m;
-	std::set<inetv4_endpoint> all_endpoints_m;
-	std::map<inetv4_endpoint, cocaine_node_info_t> endpoints_metadata_m;
+	std::map<std::string, inetv4_endpoints_t> m_services_endpoints;
+	std::set<inetv4_endpoint_t> m_all_endpoints;
+	std::map<inetv4_endpoint_t, cocaine_node_info_t> m_endpoints_metadata;
 
-	std::auto_ptr<refresher> refresher_m;
-	callback_t callback_m;
+	std::auto_ptr<refresher> m_refresher;
+	callback_t m_callback;
 
 	// synchronization
-	boost::mutex mutex_m;
+	boost::mutex m_mutex;
 };
 
 } // namespace dealer

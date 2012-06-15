@@ -29,16 +29,16 @@
 namespace cocaine {
 namespace dealer {
 
-heartbeats_collector::heartbeats_collector(const boost::shared_ptr<context_t>& ctx,
+heartbeats_collector_t::heartbeats_collector_t(const boost::shared_ptr<context_t>& ctx,
 										   bool logging_enabled) :
 	dealer_object_t(ctx, logging_enabled) {}
 
-heartbeats_collector::~heartbeats_collector() {
+heartbeats_collector_t::~heartbeats_collector_t() {
 	stop();
 }
 
 void
-heartbeats_collector::run() {
+heartbeats_collector_t::run() {
 	log(PLOG_DEBUG, "heartbeats - collector started.");
 
 	// create hosts fetchers
@@ -51,11 +51,11 @@ heartbeats_collector::run() {
 
 		switch (it->second.discovery_type) {
 			case AT_FILE:
-				fetcher.reset(new file_hosts_fetcher(it->second));
+				fetcher.reset(new file_hosts_fetcher_t(it->second));
 				break;
 
 			case AT_HTTP:
-				fetcher.reset(new http_hosts_fetcher(it->second));
+				fetcher.reset(new http_hosts_fetcher_t(it->second));
 				break;
 
 			default: {
@@ -65,49 +65,49 @@ heartbeats_collector::run() {
 			}
 		}
 
-		hosts_fetchers_m.push_back(fetcher);
+		m_hosts_fetchers.push_back(fetcher);
 	}
 
 	// ping first time without delay
 	ping_services();
 
 	// create hosts pinger
-	boost::function<void()> f = boost::bind(&heartbeats_collector::ping_services, this);
-	refresher_m.reset(new refresher(f, hosts_retrieval_interval));
+	boost::function<void()> f = boost::bind(&heartbeats_collector_t::ping_services, this);
+	m_refresher.reset(new refresher(f, hosts_retrieval_interval));
 }
 
 void
-heartbeats_collector::stop() {
+heartbeats_collector_t::stop() {
 	log(PLOG_DEBUG, "heartbeats - collector stopped.");
 
 	// kill hosts pinger
-	refresher_m.reset();
+	m_refresher.reset();
 
 	// kill http hosts fetchers
-	for (size_t i = 0; i < hosts_fetchers_m.size(); ++i) {
-		hosts_fetchers_m[i].reset();
+	for (size_t i = 0; i < m_hosts_fetchers.size(); ++i) {
+		m_hosts_fetchers[i].reset();
 	}
 }
 
 void
-heartbeats_collector::set_callback(callback_t callback) {
-	boost::mutex::scoped_lock lock(mutex_m);
-	callback_m = callback;
+heartbeats_collector_t::set_callback(callback_t callback) {
+	boost::mutex::scoped_lock lock(m_mutex);
+	m_callback = callback;
 }
 
 void
-heartbeats_collector::ping_services() {
+heartbeats_collector_t::ping_services() {
 	// for each hosts fetcher
-	for (size_t i = 0; i < hosts_fetchers_m.size(); ++i) {
-		hosts_fetcher_iface::inetv4_endpoints endpoints;
+	for (size_t i = 0; i < m_hosts_fetchers.size(); ++i) {
+		hosts_fetcher_iface::inetv4_endpoints_t endpoints;
 		service_info_t service_info;
 
 		// get service endpoints list
 		try {
-			if (hosts_fetchers_m[i]->get_hosts(endpoints, service_info)) {
+			if (m_hosts_fetchers[i]->get_hosts(endpoints, service_info)) {
 				for (size_t i = 0; i < endpoints.size(); ++i) {
 					if (endpoints[i].port == 0) {
-						endpoints[i].port = defaults::control_port;
+						endpoints[i].port = defaults_t::control_port;
 					}
 				}
 
@@ -116,7 +116,7 @@ heartbeats_collector::ping_services() {
 					log(PLOG_WARNING, error_msg.c_str(), service_info.name.c_str());
 				}
 
-				services_endpoints_m[service_info.name] = endpoints;
+				m_services_endpoints[service_info.name] = endpoints;
 			}
 		}
 		catch (const std::exception& ex) {
@@ -130,14 +130,14 @@ heartbeats_collector::ping_services() {
 	}
 
 	// collect all endpoints from services
-	all_endpoints_m.clear();
-	std::map<std::string, inetv4_endpoints>::const_iterator it = services_endpoints_m.begin();
+	m_all_endpoints.clear();
+	std::map<std::string, inetv4_endpoints_t>::const_iterator it = m_services_endpoints.begin();
 
-	for (; it != services_endpoints_m.end(); ++it) {
-		const hosts_fetcher_iface::inetv4_endpoints& endpoints = it->second;
+	for (; it != m_services_endpoints.end(); ++it) {
+		const hosts_fetcher_iface::inetv4_endpoints_t& endpoints = it->second;
 
 		for (size_t i = 0; i < endpoints.size(); ++i) {
-			all_endpoints_m.insert(endpoints[i]);
+			m_all_endpoints.insert(endpoints[i]);
 		}
 	}
 
@@ -146,7 +146,7 @@ heartbeats_collector::ping_services() {
 }
 
 void
-heartbeats_collector::process_alive_endpoints() {
+heartbeats_collector_t::process_alive_endpoints() {
 	const std::map<std::string, service_info_t>& services_list = config()->services_list();
 	std::map<std::string, service_info_t>::const_iterator it = services_list.begin();
 	
@@ -154,26 +154,26 @@ heartbeats_collector::process_alive_endpoints() {
 		// <handle name, endpoints list>
 		handles_endpoints_t handles_endpoints;
 
-		std::vector<cocaine_endpoint> endpoints;
+		std::vector<cocaine_endpoint_t> endpoints;
 		const std::string& service_name = it->first;
 		const service_info_t& service_info = it->second;
 
 		// collect alive endpoints for service
-		std::map<std::string, inetv4_endpoints>::const_iterator sit;
-		sit = services_endpoints_m.find(service_name);
+		std::map<std::string, inetv4_endpoints_t>::const_iterator sit;
+		sit = m_services_endpoints.find(service_name);
 
-		if (sit == services_endpoints_m.end()) {
+		if (sit == m_services_endpoints.end()) {
 			continue;
 		}
 
-		const inetv4_endpoints& service_endpoints = sit->second;
+		const inetv4_endpoints_t& service_endpoints = sit->second;
 
 		// for each service endpoint obtain metadata if possible
 		for (size_t i = 0; i < service_endpoints.size(); ++i) {
-			std::map<inetv4_endpoint, cocaine_node_info_t>::const_iterator eit;
-			eit = endpoints_metadata_m.find(service_endpoints[i]);
+			std::map<inetv4_endpoint_t, cocaine_node_info_t>::const_iterator eit;
+			eit = m_endpoints_metadata.find(service_endpoints[i]);
 
-			if (eit == endpoints_metadata_m.end()) {
+			if (eit == m_endpoints_metadata.end()) {
 				continue;
 			}
 
@@ -192,14 +192,14 @@ heartbeats_collector::process_alive_endpoints() {
 
 			cocaine_node_app_info_t::application_tasks::const_iterator task_it = app.tasks.begin();
 			for (; task_it != app.tasks.end(); ++task_it) {
-				cocaine_endpoint ce(task_it->second.endpoint, task_it->second.route);
+				cocaine_endpoint_t ce(task_it->second.endpoint, task_it->second.route);
 				
 				handles_endpoints_t::iterator hit = handles_endpoints.find(task_it->second.name);
 				if (hit != handles_endpoints.end()) {
 					hit->second.push_back(ce);
 				}
 				else {
-					std::vector<cocaine_endpoint> endpoints_vec;
+					std::vector<cocaine_endpoint_t> endpoints_vec;
 					endpoints_vec.push_back(ce);
 					handles_endpoints[task_it->second.name] = endpoints_vec;
 				}
@@ -209,12 +209,12 @@ heartbeats_collector::process_alive_endpoints() {
 		log_responded_hosts_handles(service_info, handles_endpoints);
 
 		// pass collected data to callback
-		callback_m(service_info, handles_endpoints);
+		m_callback(service_info, handles_endpoints);
 	}
 }
 
 void
-heartbeats_collector::log_responded_hosts_handles(const service_info_t& service_info,
+heartbeats_collector_t::log_responded_hosts_handles(const service_info_t& service_info,
 												  const handles_endpoints_t& handles_endpoints)
 {
 	handles_endpoints_t::const_iterator it = handles_endpoints.begin();
@@ -229,12 +229,12 @@ heartbeats_collector::log_responded_hosts_handles(const service_info_t& service_
 }
 
 void
-heartbeats_collector::ping_endpoints() {
-	endpoints_metadata_m.clear();
+heartbeats_collector_t::ping_endpoints() {
+	m_endpoints_metadata.clear();
 
-	std::set<inetv4_endpoint>::const_iterator it = all_endpoints_m.begin();
+	std::set<inetv4_endpoint_t>::const_iterator it = m_all_endpoints.begin();
 
-	for (; it != all_endpoints_m.end(); ++it) {
+	for (; it != m_all_endpoints.end(); ++it) {
 		// request endpoint metadata
 		std::string metadata;
 
@@ -254,13 +254,13 @@ heartbeats_collector::ping_endpoints() {
 			continue;
 		}
 
-		endpoints_metadata_m[*it] = node_info;
+		m_endpoints_metadata[*it] = node_info;
 	}
 }
 
 bool
-heartbeats_collector::get_metainfo_from_endpoint(const inetv4_endpoint& endpoint,
-												 std::string& response)
+heartbeats_collector_t::get_metainfo_from_endpoint(const inetv4_endpoint_t& endpoint,
+												 std::string& response_t)
 {
 	// create req socket
 	std::auto_ptr<zmq::socket_t> zmq_socket;
@@ -333,7 +333,7 @@ heartbeats_collector::get_metainfo_from_endpoint(const inetv4_endpoint& endpoint
 
 	try {
 		received_response_ok = zmq_socket->recv(&reply);
-		response = std::string(static_cast<char*>(reply.data()), reply.size());
+		response_t = std::string(static_cast<char*>(reply.data()), reply.size());
 	}
 	catch (const std::exception& ex) {
 		received_response_ok = false;
@@ -341,7 +341,7 @@ heartbeats_collector::get_metainfo_from_endpoint(const inetv4_endpoint& endpoint
 	}
 
 	if (!received_response_ok) {
-		std::string error_msg = "heartbeats - could not receive metadata response from endpoint: " + endpoint.as_string();
+		std::string error_msg = "heartbeats - could not receive metadata response_t from endpoint: " + endpoint.as_string();
 		log(PLOG_ERROR, error_msg + ex_err);
 
 		return false;
