@@ -28,7 +28,7 @@ class dealer_t;
 class dealer_impl_t;
 
 class response;
-class response_impl;
+class response_impl_t;
 
 } // namespace dealer
 } // namespace cocaine

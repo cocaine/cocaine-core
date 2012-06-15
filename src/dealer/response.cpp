@@ -28,7 +28,7 @@ namespace cocaine {
 namespace dealer {
 
 response::response(const boost::shared_ptr<dealer_impl_t>& dealer, const std::string& uuid, const message_path& path) {
-	impl_m.reset(new response_impl(dealer, uuid, path));
+	impl_m.reset(new response_impl_t(dealer, uuid, path));
 }
 
 response::~response() {

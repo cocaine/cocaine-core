@@ -78,7 +78,7 @@ public:
 	// registered response callback 
 	typedef std::map<std::string, boost::weak_ptr<response> > registered_callbacks_map_t;
 
-	typedef std::map<std::string, std::vector<cocaine_endpoint> > handles_endpoints_t;
+	typedef std::map<std::string, std::vector<cocaine_endpoint_t> > handles_endpoints_t;
 
 public:
 	service_t(const service_info_t& info,
@@ -114,32 +114,32 @@ private:
 
 private:
 	// service information
-	service_info_t info_m;
+	service_info_t m_info;
 
 	// handles map (handle name, handle ptr)
-	handles_map_t handles_m;
+	handles_map_t m_handles;
 
 	// service messages for non-existing handles <handle name, handle ptr>
-	unhandled_messages_map_t unhandled_messages_m;
+	unhandled_messages_map_t m_unhandled_messages;
 
 	// responces map <handle name, responces queue ptr>
-	responces_map_t received_responces_m;
+	responces_map_t m_received_responces;
 
-	boost::thread thread_m;
-	boost::mutex mutex_m;
-	boost::condition_variable cond_m;
+	boost::thread				m_thread;
+	boost::mutex				m_mutex;
+	boost::condition_variable	m_cond_var;
 
-	volatile bool is_running_m;
+	volatile bool m_is_running;
 
 	// responses callbacks
-	registered_callbacks_map_t responses_callbacks_map_m;
+	registered_callbacks_map_t m_responses_callbacks_map;
 
 	// deadlined messages refresher
-	std::auto_ptr<refresher> deadlined_messages_refresher_m;
+	std::auto_ptr<refresher> m_deadlined_messages_refresher;
 
 	static const int deadline_check_interval = 10; // millisecs
 
-	bool is_dead_m;
+	bool m_is_dead;
 };
 
 } // namespace dealer

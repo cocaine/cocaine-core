@@ -59,7 +59,7 @@ namespace dealer {
 // predeclaration
 class handle_t : private boost::noncopyable, public dealer_object_t {
 public:
-	typedef std::vector<cocaine_endpoint> endpoints_list_t;
+	typedef std::vector<cocaine_endpoint_t> endpoints_list_t;
 	typedef boost::shared_ptr<zmq::socket_t> socket_ptr_t;
 
 	typedef boost::shared_ptr<cached_response_t> cached_response_prt_t;
@@ -76,7 +76,7 @@ public:
 	// networking
 	void connect();
 	void disconnect();
-	void update_endpoints(const std::vector<cocaine_endpoint>& endpoints);
+	void update_endpoints(const std::vector<cocaine_endpoint_t>& endpoints);
 
 	// responses consumer
 	void set_responce_callback(responce_callback_t callback);
@@ -84,13 +84,13 @@ public:
 	// message processing
 	void enqueue_message(const boost::shared_ptr<message_iface>& message);
 	void make_all_messages_new();
-	void assign_message_queue(const message_cache::message_queue_ptr_t& message_queue);
+	void assign_message_queue(const message_cache_t::message_queue_ptr_t& message_queue);
 
 	// info retrieval
 	const handle_info_t& info() const;
 	std::string description();
 
-	boost::shared_ptr<message_cache> messages_cache() const;
+	boost::shared_ptr<message_cache_t> messages_cache() const;
 
 private:
 	void kill();
@@ -113,23 +113,23 @@ private:
 	static const int socket_poll_timeout = 100; // millisecs
 
 private:
-	handle_info_t info_m;
-	endpoints_list_t endpoints_m;
-	boost::shared_ptr<message_cache> message_cache_m;
+	handle_info_t m_info;
+	endpoints_list_t m_endpoints;
+	boost::shared_ptr<message_cache_t> m_message_cache;
 
-	boost::thread thread_m;
-	boost::mutex mutex_;
-	volatile bool is_running_m;
-	volatile bool is_connected_m;
+	boost::thread m_thread;
+	boost::mutex m_mutex;
+	volatile bool m_is_running;
+	volatile bool m_is_connected;
 
-	std::auto_ptr<zmq::socket_t> zmq_control_socket_m;
-	bool receiving_control_socket_ok_m;
+	std::auto_ptr<zmq::socket_t> m_zmq_control_socket;
+	bool m_receiving_control_socket_ok;
 
-	responce_callback_t response_callback_m;
+	responce_callback_t m_response_callback;
 
-	progress_timer last_response_timer_m;
-	progress_timer deadlined_messages_timer_m;
-	progress_timer control_messages_timer_m;
+	progress_timer m_last_response_timer;
+	progress_timer m_deadlined_messages_timer;
+	progress_timer m_control_messages_timer;
 };
 
 } // namespace dealer

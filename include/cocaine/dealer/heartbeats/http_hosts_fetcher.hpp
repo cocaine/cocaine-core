@@ -43,7 +43,7 @@ private:
 
 private:
 	CURL* curl_m;
-	service_info_t service_info_m;
+	service_info_t m_service_info;
 };
 
 } // namespace dealer

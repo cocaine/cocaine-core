@@ -38,12 +38,12 @@ eblob::eblob(const std::string& path,
 }
 
 eblob::~eblob() {
-	log("eblob at path: %s destroyed.", path_m.c_str());
+	log("eblob at path: %s destroyed.", m_path.c_str());
 }
 
 void
 eblob::write(const std::string& key, const std::string& value, int column) {
-	if (!storage_m.get()) {
+	if (!m_storage.get()) {
 		std::string error_msg = "empty eblob storage object at " + std::string(BOOST_CURRENT_FUNCTION);
 		error_msg += " key: " + key + " column: " + boost::lexical_cast<std::string>(column);
 		throw internal_error(error_msg);
@@ -56,12 +56,12 @@ eblob::write(const std::string& key, const std::string& value, int column) {
 	}
 
 	// 2DO: truncate written value
-	storage_m->write_hashed(key, value, 0, BLOB_DISK_CTL_OVERWRITE, column);
+	m_storage->write_hashed(key, value, 0, BLOB_DISK_CTL_OVERWRITE, column);
 }
 
 void
 eblob::write(const std::string& key, void* data, size_t size, int column) {
-	if (!storage_m.get()) {
+	if (!m_storage.get()) {
 		std::string error_msg = "empty eblob storage object at " + std::string(BOOST_CURRENT_FUNCTION);
 		error_msg += " key: " + key + " column: " + boost::lexical_cast<std::string>(column);
 		throw internal_error(error_msg);
@@ -75,52 +75,52 @@ eblob::write(const std::string& key, void* data, size_t size, int column) {
 
 	// 2DO: truncate written value
 	std::string value(reinterpret_cast<char*>(data), reinterpret_cast<char*>(data) + size);
-	storage_m->write_hashed(key, value, 0, BLOB_DISK_CTL_OVERWRITE, column);
+	m_storage->write_hashed(key, value, 0, BLOB_DISK_CTL_OVERWRITE, column);
 }
 
 std::string
 eblob::read(const std::string& key, int column) {
-	if (!storage_m.get()) {
+	if (!m_storage.get()) {
 		std::string error_msg = "empty eblob storage object at " + std::string(BOOST_CURRENT_FUNCTION);
 		error_msg += " key: " + key + " column: " + boost::lexical_cast<std::string>(column);
 		throw internal_error(error_msg);
 	}
 
-	return storage_m->read_hashed(key, 0, 0, column);
+	return m_storage->read_hashed(key, 0, 0, column);
 }
 
 void
 eblob::remove_all(const std::string &key) {
-	if (!storage_m.get()) {
+	if (!m_storage.get()) {
 		std::string error_msg = "empty eblob storage object at " + std::string(BOOST_CURRENT_FUNCTION);
 		error_msg += " key: " + key;
 		throw internal_error(error_msg);
 	}
 
 	eblob_key ekey;
-	storage_m->key(key, ekey);
-	storage_m->remove_all(ekey);
+	m_storage->key(key, ekey);
+	m_storage->remove_all(ekey);
 }
 
 void
 eblob::remove(const std::string& key, int column) {
-	if (!storage_m.get()) {
+	if (!m_storage.get()) {
 		std::string error_msg = "empty eblob storage object at " + std::string(BOOST_CURRENT_FUNCTION);
 		error_msg += " key: " + key + " column: " + boost::lexical_cast<std::string>(column);
 		throw internal_error(error_msg);
 	}
 
-	storage_m->remove_hashed(key, column);
+	m_storage->remove_hashed(key, column);
 }
 
 unsigned long long
 eblob::items_count() {
-	if (!storage_m.get()) {
+	if (!m_storage.get()) {
 		std::string error_msg = "empty eblob storage object at " + std::string(BOOST_CURRENT_FUNCTION);
 		throw internal_error(error_msg);
 	}
 
-	return storage_m->elements();
+	return m_storage->elements();
 }
 
 void
@@ -147,7 +147,7 @@ eblob::iterate(iteration_callback_t iteration_callback, int start_column, int en
     ctl.start_type = start_column;
     ctl.max_type = end_column;
     ctl.thread_num = 1;
-    storage_m->iterate(ctl);
+    m_storage->iterate(ctl);
 }
 
 void
@@ -156,7 +156,7 @@ eblob::create_eblob(const std::string& path,
 					int sync_interval,
 					int defrag_timeout)
 {
-	path_m = path;
+	m_path = path;
 
 	// create eblob logger
 	eblob_logger_m.reset(new ioremap::eblob::eblob_logger("/dev/stdout", 0));
@@ -164,7 +164,7 @@ eblob::create_eblob(const std::string& path,
 	// create config
     eblob_config cfg;
     memset(&cfg, 0, sizeof(cfg));
-    cfg.file = const_cast<char*>(path_m.c_str());
+    cfg.file = const_cast<char*>(m_path.c_str());
     cfg.log = eblob_logger_m->log();
     cfg.sync = sync_interval;
     cfg.blob_size = blob_size;
@@ -172,9 +172,9 @@ eblob::create_eblob(const std::string& path,
     cfg.iterate_threads = 1;
 
     // create eblob
-    storage_m.reset(new ioremap::eblob::eblob(&cfg));
+    m_storage.reset(new ioremap::eblob::eblob(&cfg));
 
-	log("eblob at path: %s created.", path_m.c_str());
+	log("eblob at path: %s created.", m_path.c_str());
 }
 
 int

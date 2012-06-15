@@ -38,14 +38,14 @@
 namespace cocaine {
 namespace dealer {
 
-struct request_metadata {
-	request_metadata() :
+struct request_metadata_t {
+	request_metadata_t() :
 		data_size(0),
 		ack_received(false),
 		is_sent(false),
 		retries_count(0) {}
 
-	virtual ~request_metadata() {}
+	virtual ~request_metadata_t() {}
 
 	std::string as_string() const {
 		std::stringstream s;
@@ -87,11 +87,11 @@ private:
 	boost::flyweight<message_path> path_;
 };
 
-struct persistent_request_metadata : public request_metadata {
-	persistent_request_metadata() :
-		request_metadata() {}
+struct persistent_request_metadata_t : public request_metadata_t {
+	persistent_request_metadata_t() :
+		request_metadata_t() {}
 
-	virtual ~persistent_request_metadata() {}
+	virtual ~persistent_request_metadata_t() {}
 
 	void set_eblob(const boost::shared_ptr<eblob>& blob_) {
 		blob = blob_;
@@ -142,12 +142,12 @@ private:
 	boost::shared_ptr<eblob> blob;
 };
 
-std::ostream& operator << (std::ostream& out, request_metadata& req_meta) {
+std::ostream& operator << (std::ostream& out, request_metadata_t& req_meta) {
 	out << req_meta.as_string();
 	return out;
 }
 
-std::ostream& operator << (std::ostream& out, persistent_request_metadata& req_meta) {
+std::ostream& operator << (std::ostream& out, persistent_request_metadata_t& req_meta) {
 	out << req_meta.as_string();
 	return out;
 }

@@ -34,54 +34,54 @@
 namespace cocaine {
 namespace dealer {
 
-configuration::configuration() :
-	default_message_deadline_m(defaults::default_message_deadline),
-	message_cache_type_m(defaults::message_cache_type),
-	logger_type_m(defaults::logger_type),
-	logger_flags_m(defaults::logger_flags),
-	eblob_path_m(defaults::eblob_path),
-	eblob_blob_size_m(defaults::eblob_blob_size),
-	eblob_sync_interval_(defaults::eblob_sync_interval),
-	is_statistics_enabled_m(false),
-	is_remote_statistics_enabled_m(false),
-	remote_statistics_port_m(defaults::statistics_port)
+configuration_t::configuration_t() :
+	m_default_message_deadline(defaults::default_message_deadline),
+	m_message_cache_type(defaults::message_cache_type),
+	m_logger_type(defaults::logger_type),
+	m_logger_flags(defaults::logger_flags),
+	m_eblob_path(defaults::eblob_path),
+	m_eblob_blob_size(defaults::eblob_blob_size),
+	m_eblob_sync_interval(defaults::eblob_sync_interval),
+	m_statistics_enabled(false),
+	m_remote_statistics_enabled(false),
+	m_remote_statistics_port(defaults::statistics_port)
 {
 	
 }
 
-configuration::configuration(const std::string& path) :
-	path_m(path),
-	default_message_deadline_m(defaults::default_message_deadline),
-	message_cache_type_m(defaults::message_cache_type),
-	logger_type_m(defaults::logger_type),
-	logger_flags_m(defaults::logger_flags),
-	eblob_path_m(defaults::eblob_path),
-	eblob_blob_size_m(defaults::eblob_blob_size),
-	eblob_sync_interval_(defaults::eblob_sync_interval),
-	is_statistics_enabled_m(false),
-	is_remote_statistics_enabled_m(false),
-	remote_statistics_port_m(defaults::statistics_port)
+configuration_t::configuration_t(const std::string& path) :
+	m_path(path),
+	m_default_message_deadline(defaults::default_message_deadline),
+	m_message_cache_type(defaults::message_cache_type),
+	m_logger_type(defaults::logger_type),
+	m_logger_flags(defaults::logger_flags),
+	m_eblob_path(defaults::eblob_path),
+	m_eblob_blob_size(defaults::eblob_blob_size),
+	m_eblob_sync_interval(defaults::eblob_sync_interval),
+	m_statistics_enabled(false),
+	m_remote_statistics_enabled(false),
+	m_remote_statistics_port(defaults::statistics_port)
 {
 	load(path);
 }
 
-configuration::~configuration() {
+configuration_t::~configuration_t() {
 	
 }
 
 void
-configuration::parse_logger_settings(const Json::Value& config_value) {
+configuration_t::parse_logger_settings(const Json::Value& config_value) {
 	const Json::Value logger_value = config_value["logger"];
 	std::string log_type = logger_value.get("type", "STDOUT_LOGGER").asString();
 
 	if (log_type == "STDOUT_LOGGER") {
-		logger_type_m = STDOUT_LOGGER;
+		m_logger_type = STDOUT_LOGGER;
 	}
 	else if (log_type == "FILE_LOGGER") {
-		logger_type_m = FILE_LOGGER;
+		m_logger_type = FILE_LOGGER;
 	}
 	else if (log_type == "SYSLOG_LOGGER") {
-		logger_type_m = SYSLOG_LOGGER;
+		m_logger_type = SYSLOG_LOGGER;
 	}
 	else {
 		std::string error_str = "unknown logger type: " + log_type;
@@ -100,34 +100,34 @@ configuration::parse_logger_settings(const Json::Value& config_value) {
 		boost::trim(flag);
 
 		if (flag == "PLOG_NONE") {
-			logger_flags_m |= PLOG_NONE;
+			m_logger_flags |= PLOG_NONE;
 		}
 		else if (flag == "PLOG_INFO") {
-			logger_flags_m |= PLOG_INFO;
+			m_logger_flags |= PLOG_INFO;
 		}
 		else if (flag == "PLOG_DEBUG") {
-			logger_flags_m |= PLOG_DEBUG;
+			m_logger_flags |= PLOG_DEBUG;
 		}
 		else if (flag == "PLOG_WARNING") {
-			logger_flags_m |= PLOG_WARNING;
+			m_logger_flags |= PLOG_WARNING;
 		}
 		else if (flag == "PLOG_ERROR") {
-			logger_flags_m |= PLOG_ERROR;
+			m_logger_flags |= PLOG_ERROR;
 		}
 		else if (flag == "PLOG_TYPES") {
-			logger_flags_m |= PLOG_TYPES;
+			m_logger_flags |= PLOG_TYPES;
 		}
 		else if (flag == "PLOG_TIME") {
-			logger_flags_m |= PLOG_TIME;
+			m_logger_flags |= PLOG_TIME;
 		}
 		else if (flag == "PLOG_ALL") {
-			logger_flags_m |= PLOG_ALL;
+			m_logger_flags |= PLOG_ALL;
 		}
 		else if (flag == "PLOG_BASIC") {
-			logger_flags_m |= PLOG_BASIC;
+			m_logger_flags |= PLOG_BASIC;
 		}
 		else if (flag == "PLOG_INTRO") {
-			logger_flags_m |= PLOG_INTRO;
+			m_logger_flags |= PLOG_INTRO;
 		}
 		else {
 			std::string error_str = "unknown logger flag: " + flag;
@@ -138,21 +138,21 @@ configuration::parse_logger_settings(const Json::Value& config_value) {
 		}
 	}
 
-	if (logger_type_m == FILE_LOGGER) {
-		logger_file_path_m  = logger_value.get("file", "").asString();
-		boost::trim(logger_file_path_m);
+	if (m_logger_type == FILE_LOGGER) {
+		m_logger_file_path  = logger_value.get("file", "").asString();
+		boost::trim(m_logger_file_path);
 
-		if (logger_file_path_m.empty()) {
+		if (m_logger_file_path.empty()) {
 			std::string error_str = "logger of type FILE_LOGGER must have non-empty \"file\" value.";
 			throw internal_error(error_str);
 		}
 	}
 
-	if (logger_type_m == SYSLOG_LOGGER) {
-		logger_syslog_identity_m  = logger_value.get("identity", "").asString();
-		boost::trim(logger_syslog_identity_m);
+	if (m_logger_type == SYSLOG_LOGGER) {
+		m_logger_syslog_identity  = logger_value.get("identity", "").asString();
+		boost::trim(m_logger_syslog_identity);
 
-		if (logger_syslog_identity_m.empty()) {
+		if (m_logger_syslog_identity.empty()) {
 			std::string error_str = "logger of type SYSLOG_LOGGER must have non-empty \"identity\" value.";
 			throw internal_error(error_str);
 		}
@@ -160,50 +160,50 @@ configuration::parse_logger_settings(const Json::Value& config_value) {
 }
 
 void
-configuration::parse_messages_cache_settings(const Json::Value& config_value) {
-	const Json::Value cache_value = config_value["message_cache"];
+configuration_t::parse_messages_cache_settings(const Json::Value& config_value) {
+	const Json::Value cache_value = config_value["message_cache_t"];
 	
 	std::string message_cache_type_str = cache_value.get("type", "RAM_ONLY").asString();
 
 	if (message_cache_type_str == "PERSISTENT") {
-		message_cache_type_m = PERSISTENT;
+		m_message_cache_type = PERSISTENT;
 	}
 	else if (message_cache_type_str == "RAM_ONLY") {
-		message_cache_type_m = RAM_ONLY;
+		m_message_cache_type = RAM_ONLY;
 	}
 	else {
 		std::string error_str = "unknown message cache type: " + message_cache_type_str;
-		error_str += "message_cache \"type\" property can only take RAM_ONLY or PERSISTENT as value.";
+		error_str += "message_cache_t \"type\" property can only take RAM_ONLY or PERSISTENT as value.";
 		throw internal_error(error_str);
 	}
 }
 
 void
-configuration::parse_persistant_storage_settings(const Json::Value& config_value) {
+configuration_t::parse_persistant_storage_settings(const Json::Value& config_value) {
 	const Json::Value persistent_storage_value = config_value["persistent_storage"];
 
-	eblob_path_m = persistent_storage_value.get("eblob_path", defaults::eblob_path).asString();
-	eblob_blob_size_m = persistent_storage_value.get("blob_size", 0).asInt();
-	eblob_blob_size_m *= 1024;
+	m_eblob_path = persistent_storage_value.get("eblob_path", defaults::eblob_path).asString();
+	m_eblob_blob_size = persistent_storage_value.get("blob_size", 0).asInt();
+	m_eblob_blob_size *= 1024;
 
-	if (eblob_blob_size_m == 0) {
-		eblob_blob_size_m = defaults::eblob_blob_size;
+	if (m_eblob_blob_size == 0) {
+		m_eblob_blob_size = defaults::eblob_blob_size;
 	}
 
-	eblob_sync_interval_ = persistent_storage_value.get("eblob_sync_interval", defaults::eblob_sync_interval).asInt();
+	m_eblob_sync_interval = persistent_storage_value.get("eblob_sync_interval", defaults::eblob_sync_interval).asInt();
 }
 
 void
-configuration::parse_statistics_settings(const Json::Value& config_value) {
+configuration_t::parse_statistics_settings(const Json::Value& config_value) {
 	const Json::Value statistics_value = config_value["statistics"];
 
-	is_statistics_enabled_m = statistics_value.get("enabled", false).asBool();
-	is_remote_statistics_enabled_m = statistics_value.get("remote_access", false).asBool();
-	remote_statistics_port_m = (DT::port)statistics_value.get("remote_port", defaults::statistics_port).asUInt();
+	m_statistics_enabled = statistics_value.get("enabled", false).asBool();
+	m_remote_statistics_enabled = statistics_value.get("remote_access", false).asBool();
+	m_remote_statistics_port = (DT::port)statistics_value.get("remote_port", defaults::statistics_port).asUInt();
 }
 
 void
-configuration::parse_services_settings(const Json::Value& config_value) {
+configuration_t::parse_services_settings(const Json::Value& config_value) {
 	const Json::Value services_list = config_value["services"];
 
 	if (!services_list.isObject() || !services_list.size()) {
@@ -279,22 +279,22 @@ configuration::parse_services_settings(const Json::Value& config_value) {
 		}
 
 		// check for duplicate services
-		std::map<std::string, service_info_t>::iterator it = services_list_m.begin();
-		for (;it != services_list_m.end(); ++it) {
+		std::map<std::string, service_info_t>::iterator it = m_services_list.begin();
+		for (;it != m_services_list.end(); ++it) {
 			if (it->second.name == si.name) {
 				throw internal_error("duplicate service with name " + si.name + " was found in config!");
 			}
 		}
 
-		services_list_m[si.name] = si;
+		m_services_list[si.name] = si;
 	}
 }
 
 void
-configuration::load(const std::string& path) {
-	boost::mutex::scoped_lock lock(mutex_m);
+configuration_t::load(const std::string& path) {
+	boost::mutex::scoped_lock lock(m_mutex);
 
-	path_m = path;
+	m_path = path;
 
 	std::ifstream file(path.c_str(), std::ifstream::in);
 	
@@ -341,7 +341,7 @@ configuration::load(const std::string& path) {
 }
 
 void
-configuration::parse_basic_settings(const Json::Value& config_value) {
+configuration_t::parse_basic_settings(const Json::Value& config_value) {
 	int file_version = config_value.get("version", 0).asUInt();
 
 	if (file_version != current_config_version) {
@@ -352,89 +352,89 @@ configuration::parse_basic_settings(const Json::Value& config_value) {
 	const Json::Value deadline_value = config_value.get("default_message_deadline",
 															   static_cast<int>(defaults::default_message_deadline));
 
-	default_message_deadline_m = static_cast<unsigned long long>(deadline_value.asInt());
+	m_default_message_deadline = static_cast<unsigned long long>(deadline_value.asInt());
 }
 
 const std::string&
-configuration::config_path() const {
-	return path_m;
+configuration_t::config_path() const {
+	return m_path;
 }
 
 unsigned int
-configuration::config_version() const {
+configuration_t::config_version() const {
 	return current_config_version;
 }
 
 unsigned long long
-configuration::default_message_deadline() const {
-	return default_message_deadline_m;
+configuration_t::default_message_deadline() const {
+	return m_default_message_deadline;
 }
 
 enum e_message_cache_type
-configuration::message_cache_type() const {
-	return message_cache_type_m;
+configuration_t::message_cache_type() const {
+	return m_message_cache_type;
 }
 
 enum e_logger_type
-configuration::logger_type() const {
-	return logger_type_m;
+configuration_t::logger_type() const {
+	return m_logger_type;
 }
 
 unsigned int
-configuration::logger_flags() const {
-	return logger_flags_m;
+configuration_t::logger_flags() const {
+	return m_logger_flags;
 }
 
 const std::string&
-configuration::logger_file_path() const {
-	return logger_file_path_m;
+configuration_t::logger_file_path() const {
+	return m_logger_file_path;
 }
 
 const std::string&
-configuration::logger_syslog_identity() const {
-	return logger_syslog_identity_m;
+configuration_t::logger_syslog_identity() const {
+	return m_logger_syslog_identity;
 }
 
 std::string
-configuration::eblob_path() const {
-	return eblob_path_m;
+configuration_t::eblob_path() const {
+	return m_eblob_path;
 }
 
 int64_t
-configuration::eblob_blob_size() const {
-	return eblob_blob_size_m;
+configuration_t::eblob_blob_size() const {
+	return m_eblob_blob_size;
 }
 
 int
-configuration::eblob_sync_interval() const {
-	return eblob_sync_interval_;
+configuration_t::eblob_sync_interval() const {
+	return m_eblob_sync_interval;
 }
 
 bool
-configuration::is_statistics_enabled() const {
-	return is_statistics_enabled_m;
+configuration_t::is_statistics_enabled() const {
+	return m_statistics_enabled;
 }
 
 bool
-configuration::is_remote_statistics_enabled() const {
-	return is_remote_statistics_enabled_m;
+configuration_t::is_remote_statistics_enabled() const {
+	return m_remote_statistics_enabled;
 }
 
 DT::port
-configuration::remote_statistics_port() const {
-	return remote_statistics_port_m;
+configuration_t::remote_statistics_port() const {
+	return m_remote_statistics_port;
 }
 
 const std::map<std::string, service_info_t>&
-configuration::services_list() const {
-	return services_list_m;
+configuration_t::services_list() const {
+	return m_services_list;
 }
 
 bool
-configuration::service_info_by_name(const std::string& name, service_info_t& info) const {
-	std::map<std::string, service_info_t>::const_iterator it = services_list_m.find(name);
+configuration_t::service_info_by_name(const std::string& name, service_info_t& info) const {
+	std::map<std::string, service_info_t>::const_iterator it = m_services_list.find(name);
 	
-	if (it != services_list_m.end()) {
+	if (it != m_services_list.end()) {
 		info = it->second;
 		return true;
 	}
@@ -443,53 +443,53 @@ configuration::service_info_by_name(const std::string& name, service_info_t& inf
 }
 
 bool
-configuration::service_info_by_name(const std::string& name) const {
-	std::map<std::string, service_info_t>::const_iterator it = services_list_m.find(name);
+configuration_t::service_info_by_name(const std::string& name) const {
+	std::map<std::string, service_info_t>::const_iterator it = m_services_list.find(name);
 
-	if (it != services_list_m.end()) {
+	if (it != m_services_list.end()) {
 		return true;
 	}
 
 	return false;
 }
 
-std::ostream& operator << (std::ostream& out, configuration& c) {
-	out << "---------- config path: " << c.path_m << " ----------\n";
+std::ostream& operator << (std::ostream& out, configuration_t& c) {
+	out << "---------- config path: " << c.m_path << " ----------\n";
 
 	// basic
 	out << "basic settings\n";
-	out << "\tconfig version: " << configuration::current_config_version << "\n";
-	out << "\tdefault message deadline: " << c.default_message_deadline_m << "\n";
+	out << "\tconfig version: " << configuration_t::current_config_version << "\n";
+	out << "\tdefault message deadline: " << c.m_default_message_deadline << "\n";
 	
 	// logger
 	out << "\nlogger\n";
-	switch (c.logger_type_m) {
+	switch (c.m_logger_type) {
 		case STDOUT_LOGGER:
 			out << "\ttype: STDOUT_LOGGER" << "\n";
 			break;
 		case FILE_LOGGER:
 			out << "\ttype: FILE_LOGGER" << "\n";
-			out << "\tfile path: " << c.logger_file_path_m << "\n";
+			out << "\tfile path: " << c.m_logger_file_path << "\n";
 			break;
 		case SYSLOG_LOGGER:
 			out << "\ttype: SYSLOG_LOGGER" << "\n";
-			out << "\tsyslog identity: " << c.logger_syslog_identity_m << "\n\n";
+			out << "\tsyslog identity: " << c.m_logger_syslog_identity << "\n\n";
 			break;
 	}
 	
-	switch (c.logger_flags_m) {
+	switch (c.m_logger_flags) {
 		case PLOG_NONE:
 			out << "\tflags: PLOG_NONE" << "\n";
 			break;
 		default:
 			out << "\tflags: ";
-			if ((c.logger_flags_m & PLOG_INFO) == PLOG_INFO) { out << "PLOG_INFO "; }
-			if ((c.logger_flags_m & PLOG_DEBUG) == PLOG_DEBUG) { out << "PLOG_DEBUG "; }
-			if ((c.logger_flags_m & PLOG_WARNING) == PLOG_WARNING) { out << "PLOG_WARNING "; }
-			if ((c.logger_flags_m & PLOG_ERROR) == PLOG_ERROR) { out << "PLOG_ERROR "; }
-			if ((c.logger_flags_m & PLOG_TYPES) == PLOG_TYPES) { out << "PLOG_TYPES "; }
-			if ((c.logger_flags_m & PLOG_TIME) == PLOG_TIME) { out << "PLOG_TIME "; }
-			if ((c.logger_flags_m & PLOG_INTRO) == PLOG_INTRO) { out << "PLOG_INTRO "; }
+			if ((c.m_logger_flags & PLOG_INFO) == PLOG_INFO) { out << "PLOG_INFO "; }
+			if ((c.m_logger_flags & PLOG_DEBUG) == PLOG_DEBUG) { out << "PLOG_DEBUG "; }
+			if ((c.m_logger_flags & PLOG_WARNING) == PLOG_WARNING) { out << "PLOG_WARNING "; }
+			if ((c.m_logger_flags & PLOG_ERROR) == PLOG_ERROR) { out << "PLOG_ERROR "; }
+			if ((c.m_logger_flags & PLOG_TYPES) == PLOG_TYPES) { out << "PLOG_TYPES "; }
+			if ((c.m_logger_flags & PLOG_TIME) == PLOG_TIME) { out << "PLOG_TIME "; }
+			if ((c.m_logger_flags & PLOG_INTRO) == PLOG_INTRO) { out << "PLOG_INTRO "; }
 			out << "\n";
 			break;
 	}
@@ -499,21 +499,21 @@ std::ostream& operator << (std::ostream& out, configuration& c) {
  	// message cache
  	out << "message cache\n";
 
- 	if (c.message_cache_type_m == RAM_ONLY) {
+ 	if (c.m_message_cache_type == RAM_ONLY) {
  		out << "\ttype: RAM_ONLY\n\n";
  	}
- 	else if (c.message_cache_type_m == PERSISTENT) {
+ 	else if (c.m_message_cache_type == PERSISTENT) {
  		out << "\ttype: PERSISTENT\n\n";
 
  		// persistant storage
  		out << "persistant storage\n";
-		out << "\teblob path: " << c.eblob_path_m << "\n";
- 		out << "\teblob sync interval: " << c.eblob_sync_interval_ << "\n\n";
+		out << "\teblob path: " << c.m_eblob_path << "\n";
+ 		out << "\teblob sync interval: " << c.m_eblob_sync_interval << "\n\n";
  	}
 
 	// services
 	out << "services: ";
-	const std::map<std::string, service_info_t>& sl = c.services_list_m;
+	const std::map<std::string, service_info_t>& sl = c.m_services_list;
 	
 	std::map<std::string, service_info_t>::const_iterator it = sl.begin();
 	for (; it != sl.end(); ++it) {
@@ -538,21 +538,21 @@ std::ostream& operator << (std::ostream& out, configuration& c) {
  	/*
 	// statistics
 	out << "statistics\n";
-	if (is_statistics_enabled_m == true) {
+	if (m_statistics_enabled == true) {
 		out << "\tenabled: true" << "\n";
 	}
 	else {
 		out << "\tenabled: false" << "\n";
 	}
 
-	if (is_remote_statistics_enabled_m == true) {
+	if (m_remote_statistics_enabled == true) {
 		out << "\tremote enabled: true" << "\n";
 	}
 	else {
 		out << "\tremote enabled: false" << "\n";
 	}
 
-	out << "\tremote port: " << remote_statistics_port_m << "\n\n";
+	out << "\tremote port: " << m_remote_statistics_port << "\n\n";
 	*/
 
 	return out;

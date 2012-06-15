@@ -33,13 +33,13 @@
 namespace cocaine {
 namespace dealer {
 
-class response_impl {
+class response_impl_t {
 public:
-	response_impl(const boost::shared_ptr<dealer_impl_t>& dealer,
+	response_impl_t(const boost::shared_ptr<dealer_impl_t>& dealer,
 				  const std::string& uuid,
 				  const message_path& path);
 
-	~response_impl();
+	~response_impl_t();
 
 	// 1) timeout < 0 - block indefinitely until response received
 	// 2) timeout == 0 - check for response chunk and return result immediately
@@ -53,20 +53,18 @@ private:
 	void response_callback(const response_data& resp_data,
 						   const response_info& resp_info);
 
-	boost::ptr_vector<data_container> chunks_m;
+	boost::ptr_vector<data_container>	m_chunks;
+	boost::weak_ptr<dealer_impl_t>		m_dealer;
+	std::string			m_uuid;
+	const message_path	m_path;
+	response_info		m_resp_info;
 
-	boost::weak_ptr<dealer_impl_t> dealer_m;
-	std::string uuid_m;
-	const message_path path_m;
-	bool response_finished_m;
-	bool message_finished_m;
+	bool m_response_finished;
+	bool m_message_finished;
+	bool m_caught_error;
 
-	response_info resp_info_m;
-
-	boost::mutex mutex_m;
-	boost::condition_variable cond_var_m;
-
-	bool caught_error_m;
+	boost::mutex				m_mutex;
+	boost::condition_variable	m_cond_var;
 };
 
 } // namespace dealer

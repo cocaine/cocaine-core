@@ -36,43 +36,43 @@
 namespace cocaine {
 namespace dealer {
 
-message_cache::message_cache(const boost::shared_ptr<context_t>& ctx,
+message_cache_t::message_cache_t(const boost::shared_ptr<context_t>& ctx,
 							 bool logging_enabled) :
 	dealer_object_t(ctx, logging_enabled)
 {
-	type_m = config()->message_cache_type();
-	new_messages_m.reset(new message_queue_t);
+	m_type = config()->message_cache_type();
+	m_new_messages.reset(new message_queue_t);
 }
 
-message_cache::~message_cache() {
+message_cache_t::~message_cache_t() {
 }
 
-message_cache::message_queue_ptr_t
-message_cache::new_messages() {
-	if (!new_messages_m) {
+message_cache_t::message_queue_ptr_t
+message_cache_t::new_messages() {
+	if (!m_new_messages) {
 		std::string error_str = "new messages queue object is empty at ";
 		error_str += std::string(BOOST_CURRENT_FUNCTION);
 		throw internal_error(error_str);
 	}
 
-	return new_messages_m;
+	return m_new_messages;
 }
 
 void
-message_cache::enqueue_with_priority(const boost::shared_ptr<message_iface>& message) {
-	boost::mutex::scoped_lock lock(mutex_m);
-	new_messages_m->push_front(message);
+message_cache_t::enqueue_with_priority(const boost::shared_ptr<message_iface>& message) {
+	boost::mutex::scoped_lock lock(m_mutex);
+	m_new_messages->push_front(message);
 }
 
 void
-message_cache::enqueue(const boost::shared_ptr<message_iface>& message) {
-	boost::mutex::scoped_lock lock(mutex_m);
-	new_messages_m->push_back(message);
+message_cache_t::enqueue(const boost::shared_ptr<message_iface>& message) {
+	boost::mutex::scoped_lock lock(m_mutex);
+	m_new_messages->push_back(message);
 }
 
 void
-message_cache::append_message_queue(message_queue_ptr_t queue) {
-	boost::mutex::scoped_lock lock(mutex_m);
+message_cache_t::append_message_queue(message_queue_ptr_t queue) {
+	boost::mutex::scoped_lock lock(m_mutex);
 
 	// validate new queue
 	if (!queue || queue->empty()) {
@@ -80,29 +80,29 @@ message_cache::append_message_queue(message_queue_ptr_t queue) {
 	}
 
 	// append messages
-	new_messages_m->insert(new_messages_m->end(), queue->begin(), queue->end());
+	m_new_messages->insert(m_new_messages->end(), queue->begin(), queue->end());
 }
 
 boost::shared_ptr<message_iface>
-message_cache::get_new_message() {
-	boost::mutex::scoped_lock lock(mutex_m);
-	return new_messages_m->front();
+message_cache_t::get_new_message() {
+	boost::mutex::scoped_lock lock(m_mutex);
+	return m_new_messages->front();
 }
 
 size_t
-message_cache::new_messages_count() {
-	boost::mutex::scoped_lock lock(mutex_m);
-	return new_messages_m->size();
+message_cache_t::new_messages_count() {
+	boost::mutex::scoped_lock lock(m_mutex);
+	return m_new_messages->size();
 }
 
 size_t
-message_cache::sent_messages_count() {
-	boost::mutex::scoped_lock lock(mutex_m);
+message_cache_t::sent_messages_count() {
+	boost::mutex::scoped_lock lock(m_mutex);
 
 	size_t sent_messages_count = 0;
 
-	route_sent_messages_map_t::const_iterator it = sent_messages_m.begin();
-	for (; it != sent_messages_m.end(); ++it) {
+	route_sent_messages_map_t::const_iterator it = m_sent_messages.begin();
+	for (; it != m_sent_messages.end(); ++it) {
 		sent_messages_count += it->second.size();
 	}
 
@@ -110,15 +110,15 @@ message_cache::sent_messages_count() {
 }
 
 bool
-message_cache::get_sent_message(const std::string& route,
+message_cache_t::get_sent_message(const std::string& route,
 								const std::string& uuid,
 								boost::shared_ptr<message_iface>& message) {
 
-	boost::mutex::scoped_lock lock(mutex_m);
+	boost::mutex::scoped_lock lock(m_mutex);
 
-	route_sent_messages_map_t::const_iterator it = sent_messages_m.find(route);
+	route_sent_messages_map_t::const_iterator it = m_sent_messages.find(route);
 
-	if (it == sent_messages_m.end()) {
+	if (it == m_sent_messages.end()) {
 		return false;
 	}
 
@@ -136,32 +136,32 @@ message_cache::get_sent_message(const std::string& route,
 }
 
 void
-message_cache::move_new_message_to_sent(const std::string& route) {
-	boost::mutex::scoped_lock lock(mutex_m);
+message_cache_t::move_new_message_to_sent(const std::string& route) {
+	boost::mutex::scoped_lock lock(m_mutex);
 
-	boost::shared_ptr<message_iface> msg = new_messages_m->front();
+	boost::shared_ptr<message_iface> msg = m_new_messages->front();
 	assert(msg);
 
-	route_sent_messages_map_t::iterator it = sent_messages_m.find(route);
-	if (it == sent_messages_m.end()) {
+	route_sent_messages_map_t::iterator it = m_sent_messages.find(route);
+	if (it == m_sent_messages.end()) {
 		sent_messages_map_t msg_map;
 		msg_map.insert(std::make_pair(msg->uuid(), msg));
-		sent_messages_m[route] = msg_map;
+		m_sent_messages[route] = msg_map;
 	}
 	else {
 		it->second.insert(std::make_pair(msg->uuid(), msg));
 	}
 
-	new_messages_m->pop_front();
+	m_new_messages->pop_front();
 }
 
 void
-message_cache::move_sent_message_to_new(const std::string& route, const std::string& uuid) {
-	boost::mutex::scoped_lock lock(mutex_m);
+message_cache_t::move_sent_message_to_new(const std::string& route, const std::string& uuid) {
+	boost::mutex::scoped_lock lock(m_mutex);
 
-	route_sent_messages_map_t::iterator it = sent_messages_m.find(route);
+	route_sent_messages_map_t::iterator it = m_sent_messages.find(route);
 
-	if (it == sent_messages_m.end()) {
+	if (it == m_sent_messages.end()) {
 		return;
 	}
 
@@ -183,16 +183,16 @@ message_cache::move_sent_message_to_new(const std::string& route, const std::str
 	msg->mark_as_sent(false);
 	msg->set_ack_received(false);
 
-	new_messages_m->push_back(msg);
+	m_new_messages->push_back(msg);
 }
 
 void
-message_cache::move_sent_message_to_new_front(const std::string& route, const std::string& uuid) {
-	boost::mutex::scoped_lock lock(mutex_m);
+message_cache_t::move_sent_message_to_new_front(const std::string& route, const std::string& uuid) {
+	boost::mutex::scoped_lock lock(m_mutex);
 
-	route_sent_messages_map_t::iterator it = sent_messages_m.find(route);
+	route_sent_messages_map_t::iterator it = m_sent_messages.find(route);
 
-	if (it == sent_messages_m.end()) {
+	if (it == m_sent_messages.end()) {
 		return;
 	}
 
@@ -214,16 +214,16 @@ message_cache::move_sent_message_to_new_front(const std::string& route, const st
 	msg->mark_as_sent(false);
 	msg->set_ack_received(false);
 
-	new_messages_m->push_front(msg);
+	m_new_messages->push_front(msg);
 }
 
 void
-message_cache::remove_message_from_cache(const std::string& route, const std::string& uuid) {
-	boost::mutex::scoped_lock lock(mutex_m);
+message_cache_t::remove_message_from_cache(const std::string& route, const std::string& uuid) {
+	boost::mutex::scoped_lock lock(m_mutex);
 
-	route_sent_messages_map_t::iterator it = sent_messages_m.find(route);
+	route_sent_messages_map_t::iterator it = m_sent_messages.find(route);
 
-	if (it == sent_messages_m.end()) {
+	if (it == m_sent_messages.end()) {
 		return;
 	}
 
@@ -238,11 +238,11 @@ message_cache::remove_message_from_cache(const std::string& route, const std::st
 }
 
 void
-message_cache::make_all_messages_new() {
-	boost::mutex::scoped_lock lock(mutex_m);
+message_cache_t::make_all_messages_new() {
+	boost::mutex::scoped_lock lock(m_mutex);
 
-	route_sent_messages_map_t::iterator it = sent_messages_m.begin();
-	for (; it != sent_messages_m.end(); ++it) {
+	route_sent_messages_map_t::iterator it = m_sent_messages.begin();
+	for (; it != m_sent_messages.end(); ++it) {
 
 		sent_messages_map_t& msg_map = it->second;
 		sent_messages_map_t::iterator mit = msg_map.begin();
@@ -255,7 +255,7 @@ message_cache::make_all_messages_new() {
 
 			mit->second->mark_as_sent(false);
 			mit->second->set_ack_received(false);
-			new_messages_m->push_front(mit->second);
+			m_new_messages->push_front(mit->second);
 		}
 
 		msg_map.clear();
@@ -263,11 +263,11 @@ message_cache::make_all_messages_new() {
 }
 
 void
-message_cache::make_all_messages_new_for_route(const std::string& route) {
-	boost::mutex::scoped_lock lock(mutex_m);
+message_cache_t::make_all_messages_new_for_route(const std::string& route) {
+	boost::mutex::scoped_lock lock(m_mutex);
 
-	route_sent_messages_map_t::iterator it = sent_messages_m.find(route);
-	if (it == sent_messages_m.end()) {
+	route_sent_messages_map_t::iterator it = m_sent_messages.find(route);
+	if (it == m_sent_messages.end()) {
 		return;
 	}
 
@@ -286,26 +286,26 @@ message_cache::make_all_messages_new_for_route(const std::string& route) {
 
 		mit->second->mark_as_sent(false);
 		mit->second->set_ack_received(false);
-		new_messages_m->push_front(mit->second);
+		m_new_messages->push_front(mit->second);
 	}
 
 	msg_map.clear();
 }
 
 bool
-message_cache::is_message_expired(cached_message_ptr_t msg) {
+message_cache_t::is_message_expired(cached_message_ptr_t msg) {
 	return msg->is_expired();
 }
 
 void
-message_cache::get_expired_messages(message_queue_t& expired_messages) {
-	boost::mutex::scoped_lock lock(mutex_m);
+message_cache_t::get_expired_messages(message_queue_t& expired_messages) {
+	boost::mutex::scoped_lock lock(m_mutex);
 
-	assert(new_messages_m);
+	assert(m_new_messages);
 
 	// remove expired from sent
-	route_sent_messages_map_t::iterator it = sent_messages_m.begin();
-	for (; it != sent_messages_m.end(); ++it) {
+	route_sent_messages_map_t::iterator it = m_sent_messages.begin();
+	for (; it != m_sent_messages.end(); ++it) {
 
 		sent_messages_map_t& msg_map = it->second;
 		sent_messages_map_t::iterator mit = msg_map.begin();
@@ -327,8 +327,8 @@ message_cache::get_expired_messages(message_queue_t& expired_messages) {
 	}
 
 	// remove expired from new
-	message_queue_t::iterator it2 = new_messages_m->begin();
-	while (it2 != new_messages_m->end()) {
+	message_queue_t::iterator it2 = m_new_messages->begin();
+	while (it2 != m_new_messages->end()) {
 		// get single pending message
 		boost::shared_ptr<message_iface> msg = *it2;
 		assert(msg);
@@ -341,10 +341,10 @@ message_cache::get_expired_messages(message_queue_t& expired_messages) {
 		++it2;
 	}
 
-	new_messages_m->erase(std::remove_if(new_messages_m->begin(),
-										 new_messages_m->end(),
-										 &message_cache::is_message_expired),
-										 new_messages_m->end());
+	m_new_messages->erase(std::remove_if(m_new_messages->begin(),
+										 m_new_messages->end(),
+										 &message_cache_t::is_message_expired),
+										 m_new_messages->end());
 }
 
 } // namespace dealer

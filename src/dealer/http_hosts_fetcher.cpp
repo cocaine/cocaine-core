@@ -32,7 +32,7 @@ namespace dealer {
 
 http_hosts_fetcher::http_hosts_fetcher(const service_info_t& service_info) :
 	curl_m(NULL),
-	service_info_m(service_info)
+	m_service_info(service_info)
 {
 	curl_m = curl_easy_init();
 }
@@ -59,7 +59,7 @@ http_hosts_fetcher::get_hosts(inetv4_endpoints& endpoints, service_info_t& servi
 	
 	if (curl_m) {
 		curl_easy_setopt(curl_m, CURLOPT_ERRORBUFFER, error_buffer);
-		curl_easy_setopt(curl_m, CURLOPT_URL, service_info_m.hosts_source.c_str());
+		curl_easy_setopt(curl_m, CURLOPT_URL, m_service_info.hosts_source.c_str());
 		curl_easy_setopt(curl_m, CURLOPT_HEADER, 0);
 		curl_easy_setopt(curl_m, CURLOPT_FOLLOWLOCATION, 1);
 		curl_easy_setopt(curl_m, CURLOPT_WRITEFUNCTION, curl_writer);
@@ -93,20 +93,20 @@ http_hosts_fetcher::get_hosts(inetv4_endpoints& endpoints, service_info_t& servi
 			size_t where = line.find_last_of(":");
 
 			if (where == std::string::npos) {
-				endpoints.push_back(inetv4_endpoint(inetv4_host(line)));
+				endpoints.push_back(inetv4_endpoint_t(inetv4_host_t(line)));
 			}
 			else {
 				std::string ip = line.substr(0, where);
 				std::string port = line.substr(where + 1, (line.length() - (where + 1)));
 
-				endpoints.push_back(inetv4_endpoint(ip, port));
+				endpoints.push_back(inetv4_endpoint_t(ip, port));
 			}
 		}
 		catch (...) {
 		}
 	}
 	
-	service_info = service_info_m;
+	service_info = m_service_info;
 	return true;
 }
 

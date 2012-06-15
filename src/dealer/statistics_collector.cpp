@@ -35,7 +35,7 @@
 namespace cocaine {
 namespace dealer {
 
-statistics_collector::statistics_collector(const boost::shared_ptr<configuration>& config,
+statistics_collector::statistics_collector(const boost::shared_ptr<configuration_t>& config,
 										   const boost::shared_ptr<zmq::context_t>& zmq_context) :
 	is_enabled_(false),
 	config_(config),
@@ -43,7 +43,7 @@ statistics_collector::statistics_collector(const boost::shared_ptr<configuration
 	is_running_(false)
 {
 	if (!config_) {
-		std::string error_str = "configuration object is empty";
+		std::string error_str = "configuration_t object is empty";
 		error_str += " at " + std::string(BOOST_CURRENT_FUNCTION);
 		throw internal_error(error_str);
 	}
@@ -59,7 +59,7 @@ statistics_collector::statistics_collector(const boost::shared_ptr<configuration
 	init();
 }
 
-statistics_collector::statistics_collector(const boost::shared_ptr<configuration>& config,
+statistics_collector::statistics_collector(const boost::shared_ptr<configuration_t>& config,
 										   const boost::shared_ptr<zmq::context_t>& zmq_context,
 										   const boost::shared_ptr<base_logger>& logger) :
 	is_enabled_(false),
@@ -68,7 +68,7 @@ statistics_collector::statistics_collector(const boost::shared_ptr<configuration
 	is_running_(false)
 {
 	if (!config_) {
-		std::string error_str = "configuration object is empty";
+		std::string error_str = "configuration_t object is empty";
 		error_str += " at " + std::string(BOOST_CURRENT_FUNCTION);
 		throw internal_error(error_str);
 	}
@@ -113,11 +113,11 @@ statistics_collector::set_logger(const boost::shared_ptr<base_logger>& logger) {
 
 boost::shared_ptr<base_logger>
 statistics_collector::logger() {
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(m_mutex);
 	return logger_;
 }
 
-boost::shared_ptr<configuration>
+boost::shared_ptr<configuration_t>
 statistics_collector::config() const {
 	return config_;
 }
@@ -239,7 +239,7 @@ std::string
 statistics_collector::all_services_json() {
 	return "{}";
 	/*
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(m_mutex);
 
 	Json::FastWriter writer;
 	Json::Value root;
@@ -249,7 +249,7 @@ statistics_collector::all_services_json() {
 	size_t total_unhandled_messages = 0;
 
 	Json::Value messages_statistics;
-	typedef configuration::services_list_t slist_t;
+	typedef configuration_t::services_list_t slist_t;
 	const slist_t& services = config()->services_list();
 
 	// get unhandled messages total
@@ -420,7 +420,7 @@ statistics_collector::as_json() const {
 	Json::FastWriter writer;
 	Json::Value root;
 
-	typedef configuration::services_list_t slist_t;
+	typedef configuration_t::services_list_t slist_t;
 	const slist_t& services = config()->services_list();
 
 	slist_t::const_iterator it = services.begin();
@@ -452,7 +452,7 @@ statistics_collector::update_used_cache_size(size_t used_cache_size) {
 		return;
 	}
 
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(m_mutex);
 	used_cache_size_ = used_cache_size;
 }
 
@@ -462,7 +462,7 @@ statistics_collector::update_service_stats(const std::string& service_name, cons
 		return;
 	}
 
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(m_mutex);
 	services_stats_[service_name] = stats;
 }
 
@@ -475,7 +475,7 @@ statistics_collector::update_handle_stats(const std::string& service,
 		return;
 	}
 
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(m_mutex);
 	handles_stats_[std::make_pair(service, handle)] = stats;
 }
 
@@ -488,7 +488,7 @@ statistics_collector::get_handle_stats(const std::string& service,
 		return false;
 	}
 
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(m_mutex);
 	handle_stats_t::iterator it = handles_stats_.find(std::make_pair(service, handle));
 
 	if (it == handles_stats_.end()) {

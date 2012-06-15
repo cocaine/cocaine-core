@@ -33,18 +33,18 @@ namespace dealer {
 class dealer_object_t {
 public:
 	dealer_object_t() :
-		logging_enabled_m(true) {}
+		m_logging_enabled(true) {}
 
 	dealer_object_t(const boost::shared_ptr<context_t>& ctx, bool logging_enabled) :
-		ctx_m(ctx),
-		logging_enabled_m(logging_enabled) {}
+		m_ctx(ctx),
+		m_logging_enabled(logging_enabled) {}
 
 	void set_context(const boost::shared_ptr<context_t>& ctx) {
-		ctx_m = ctx;
+		m_ctx = ctx;
 	}
 
 	void log(const std::string& message, ...) {
-		if (!logging_enabled_m || !ctx_m || !(ctx_m->logger())) {
+		if (!m_logging_enabled || !m_ctx || !(m_ctx->logger())) {
 			return;
 		}
 
@@ -56,11 +56,11 @@ public:
 		vsnprintf(buff, sizeof(buff) - 1, message.c_str(), vl);
 		va_end(vl);
 
-		ctx_m->logger()->log(std::string(buff));
+		m_ctx->logger()->log(std::string(buff));
 	}
 
 	void log(unsigned int type, const std::string& message, ...) {
-		if (!logging_enabled_m || !ctx_m || !(ctx_m->logger())) {
+		if (!m_logging_enabled || !m_ctx || !(m_ctx->logger())) {
 			return;
 		}
 
@@ -72,20 +72,20 @@ public:
 		vsnprintf(buff, sizeof(buff) - 1, message.c_str(), vl);
 		va_end(vl);
 
-		ctx_m->logger()->log(type, std::string(buff));
+		m_ctx->logger()->log(type, std::string(buff));
 	}
 
 	boost::shared_ptr<context_t> context() const {
-		return ctx_m;
+		return m_ctx;
 	}
 
-	boost::shared_ptr<configuration> config() const {
-		return ctx_m->config();
+	boost::shared_ptr<configuration_t> config() const {
+		return m_ctx->config();
 	}
 
 private:
-	boost::shared_ptr<context_t> ctx_m;
-	bool logging_enabled_m;
+	boost::shared_ptr<context_t> m_ctx;
+	bool m_logging_enabled;
 };
 
 } // namespace dealer

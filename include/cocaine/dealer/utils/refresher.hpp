@@ -42,7 +42,7 @@ private:
 	boost::function<void()> f_;
 	boost::uint32_t timeout_;
 	volatile bool stopping_;
-	boost::mutex mutex_;
+	boost::mutex m_mutex;
 	boost::thread refreshing_thread_;
 
 };

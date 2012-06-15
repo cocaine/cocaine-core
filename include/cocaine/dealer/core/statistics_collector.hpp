@@ -52,10 +52,10 @@ public:
 
 
 public:
-	statistics_collector(const boost::shared_ptr<configuration>& config,
+	statistics_collector(const boost::shared_ptr<configuration_t>& config,
 						 const boost::shared_ptr<zmq::context_t>& context);
 
-	statistics_collector(const boost::shared_ptr<configuration>& config,
+	statistics_collector(const boost::shared_ptr<configuration_t>& config,
 						 const boost::shared_ptr<zmq::context_t>& context,
 						 const boost::shared_ptr<base_logger>& logger);
 
@@ -92,7 +92,7 @@ private:
 
 
 	boost::shared_ptr<base_logger> logger();
-	boost::shared_ptr<configuration> config() const;
+	boost::shared_ptr<configuration_t> config() const;
 
 	/* --- collected data --- */
 	size_t used_cache_size_;
@@ -106,8 +106,8 @@ private:
 private:
 	bool is_enabled_;
 
-	// global configuration object
-	boost::shared_ptr<configuration> config_;
+	// global configuration_t object
+	boost::shared_ptr<configuration_t> config_;
 
 	// logger
 	boost::shared_ptr<base_logger> logger_;
@@ -116,7 +116,7 @@ private:
 	boost::shared_ptr<zmq::context_t> zmq_context_;
 
 	boost::thread thread_;
-	boost::mutex mutex_;
+	boost::mutex m_mutex;
 	bool is_running_;
 };
 

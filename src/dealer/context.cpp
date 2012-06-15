@@ -26,31 +26,31 @@ namespace cocaine {
 namespace dealer {
 
 context_t::context_t(const std::string& config_path) {
-	// load configuration from file
+	// load configuration_t from file
 	if (config_path.empty()) {
 		throw internal_error("config file path is empty string at: " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
-	config_m.reset(new configuration(config_path));
+	m_config.reset(new configuration_t(config_path));
 
 	// create logger
-	switch (config_m->logger_type()) {
+	switch (m_config->logger_type()) {
 		case STDOUT_LOGGER:
-			logger_m.reset(new smart_logger<stdout_logger>(config_m->logger_flags()));
+			m_logger.reset(new smart_logger<stdout_logger>(m_config->logger_flags()));
 			break;
 			
 		case FILE_LOGGER:
-			logger_m.reset(new smart_logger<file_logger>(config_m->logger_flags()));
-			((smart_logger<file_logger>*)logger_m.get())->init(config_m->logger_file_path());
+			m_logger.reset(new smart_logger<file_logger>(m_config->logger_flags()));
+			((smart_logger<file_logger>*)m_logger.get())->init(m_config->logger_file_path());
 			break;
 			
 		case SYSLOG_LOGGER:
-			logger_m.reset(new smart_logger<syslog_logger>(config_m->logger_flags()));
-			((smart_logger<syslog_logger>*)logger_m.get())->init(config_m->logger_syslog_identity());
+			m_logger.reset(new smart_logger<syslog_logger>(m_config->logger_flags()));
+			((smart_logger<syslog_logger>*)m_logger.get())->init(m_config->logger_syslog_identity());
 			break;
 			
 		default:
-			logger_m.reset(new smart_logger<empty_logger>);
+			m_logger.reset(new smart_logger<empty_logger>);
 			break;
 	}
 	
@@ -58,10 +58,10 @@ context_t::context_t(const std::string& config_path) {
 	//logger()->log(config()->as_string());
 	
 	// create zmq context
-	zmq_context_m.reset(new zmq::context_t(1));
+	m_zmq_context.reset(new zmq::context_t(1));
 
 	// create statistics collector
-	//stats_m.reset(new statistics_collector(config_m, zmq_context_m, logger()));
+	//m_stats.reset(new statistics_collector(m_config, m_zmq_context, logger()));
 
 	// create eblob storage
 	if (config()->message_cache_type() == PERSISTENT) {
@@ -76,44 +76,44 @@ context_t::context_t(const std::string& config_path) {
 													   true,
 													   st_blob_size,
 													   st_sync);
-		storage_m.reset(storage_ptr);
+		m_storage.reset(storage_ptr);
 
 		// create eblob for each service
-		const configuration::services_list_t& services_info_list = config()->services_list();
-		configuration::services_list_t::const_iterator it = services_info_list.begin();
+		const configuration_t::services_list_t& services_info_list = config()->services_list();
+		configuration_t::services_list_t::const_iterator it = services_info_list.begin();
 		for (; it != services_info_list.end(); ++it) {
-			storage_m->open_eblob(it->second.name);
+			m_storage->open_eblob(it->second.name);
 		}
 	}
 }
 
 context_t::~context_t() {
-	zmq_context_m.reset();
+	m_zmq_context.reset();
 }
 
-boost::shared_ptr<configuration>
+boost::shared_ptr<configuration_t>
 context_t::config() {
-	return config_m;
+	return m_config;
 }
 
 boost::shared_ptr<base_logger>
 context_t::logger() {
-	return logger_m;
+	return m_logger;
 }
 
 boost::shared_ptr<zmq::context_t>
 context_t::zmq_context() {
-	return zmq_context_m;
+	return m_zmq_context;
 }
 
 //boost::shared_ptr<statistics_collector>
 //context_t::stats() {
-//	return stats_m;
+//	return m_stats;
 //}
 
 boost::shared_ptr<eblob_storage>
 context_t::storage() {
-	return storage_m;
+	return m_storage;
 }
 
 } // namespace dealer

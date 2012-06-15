@@ -45,7 +45,7 @@ refresher::refreshing_thread() {
 	}
 
 	while (!stopping_) {
-		boost::mutex::scoped_lock lock(mutex_);
+		boost::mutex::scoped_lock lock(m_mutex);
 		
 		for (int i = 0; i < 100; ++i) {
 			boost::this_thread::sleep(boost::posix_time::milliseconds(timeout_ / 100));

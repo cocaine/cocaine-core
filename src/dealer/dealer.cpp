@@ -45,7 +45,7 @@ dealer_t::send_message(const void* data,
 					 const message_path& path,
 					 const message_policy& policy)
 {
-	boost::mutex::scoped_lock lock(mutex_m);
+	boost::mutex::scoped_lock lock(m_mutex);
 
 	boost::shared_ptr<message_iface> msg = impl_m->create_message(data, size, path, policy);
 	boost::shared_ptr<response> resp(new response(impl_m, msg->uuid(), path));

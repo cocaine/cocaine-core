@@ -45,17 +45,17 @@ public:
 	virtual ~context_t();
 
 	boost::shared_ptr<base_logger> logger();
-	boost::shared_ptr<configuration> config();
+	boost::shared_ptr<configuration_t> config();
 	boost::shared_ptr<zmq::context_t> zmq_context();
 	//boost::shared_ptr<statistics_collector> stats();
 	boost::shared_ptr<eblob_storage> storage();
 
 private:
-	boost::shared_ptr<zmq::context_t> zmq_context_m;
-	boost::shared_ptr<base_logger> logger_m;
-	boost::shared_ptr<configuration> config_m;
-	//boost::shared_ptr<statistics_collector> stats_m;
-	boost::shared_ptr<eblob_storage> storage_m;
+	boost::shared_ptr<zmq::context_t> m_zmq_context;
+	boost::shared_ptr<base_logger> m_logger;
+	boost::shared_ptr<configuration_t> m_config;
+	//boost::shared_ptr<statistics_collector> m_stats;
+	boost::shared_ptr<eblob_storage> m_storage;
 };
 
 } // namespace dealer

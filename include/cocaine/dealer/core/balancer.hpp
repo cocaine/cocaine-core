@@ -41,21 +41,21 @@ namespace dealer {
 class balancer_t : private boost::noncopyable, public dealer_object_t {
 public:
 	balancer_t(const std::string& identity,
-			   const std::vector<cocaine_endpoint>& endpoints,
-			   boost::shared_ptr<message_cache> message_cache,
+			   const std::vector<cocaine_endpoint_t>& endpoints,
+			   boost::shared_ptr<message_cache_t> message_cache_t,
 			   const boost::shared_ptr<context_t>& ctx,
 			   bool logging_enabled = true);
 
 	virtual ~balancer_t();
 
-	void connect(const std::vector<cocaine_endpoint>& endpoints);
+	void connect(const std::vector<cocaine_endpoint_t>& endpoints);
 	void disconnect();
 
-	bool send(boost::shared_ptr<message_iface>& message, cocaine_endpoint& endpoint);
+	bool send(boost::shared_ptr<message_iface>& message, cocaine_endpoint_t& endpoint);
 	bool receive(boost::shared_ptr<cached_response_t>& response);
 
-	void update_endpoints(const std::vector<cocaine_endpoint>& endpoints,
-						  std::vector<cocaine_endpoint>& missing_endpoints);
+	void update_endpoints(const std::vector<cocaine_endpoint_t>& endpoints,
+						  std::vector<cocaine_endpoint_t>& missing_endpoints);
 
 	bool check_for_responses(int poll_timeout) const;
 
@@ -63,9 +63,9 @@ public:
 	static const int64_t socket_hwm = 0;
 
 private:
-	void get_endpoints_diff(const std::vector<cocaine_endpoint>& updated_endpoints,
-							std::vector<cocaine_endpoint>& new_endpoints,
-							std::vector<cocaine_endpoint>& missing_endpoints);
+	void get_endpoints_diff(const std::vector<cocaine_endpoint_t>& updated_endpoints,
+							std::vector<cocaine_endpoint_t>& new_endpoints,
+							std::vector<cocaine_endpoint_t>& missing_endpoints);
 
 	void recreate_socket();
 	
@@ -73,14 +73,14 @@ private:
 	bool process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 						  boost::shared_ptr<cached_response_t>& response);
 
-	cocaine_endpoint& get_next_endpoint();
+	cocaine_endpoint_t& get_next_endpoint();
 
 private:
-	boost::shared_ptr<zmq::socket_t>	socket_m;
-	std::vector<cocaine_endpoint>		endpoints_m;
-	boost::shared_ptr<message_cache>	message_cache_m;
-	size_t		current_endpoint_index_m;
-	std::string	socket_identity_m;
+	boost::shared_ptr<zmq::socket_t>	m_socket;
+	std::vector<cocaine_endpoint_t>		m_endpoints;
+	boost::shared_ptr<message_cache_t>	m_message_cache;
+	size_t		m_current_endpoint_index;
+	std::string	m_socket_identity;
 };
 
 } // namespace dealer

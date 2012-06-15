@@ -91,7 +91,7 @@ heartbeats_collector::stop() {
 
 void
 heartbeats_collector::set_callback(callback_t callback) {
-	boost::mutex::scoped_lock lock(mutex_m);
+	boost::mutex::scoped_lock lock(m_mutex);
 	callback_m = callback;
 }
 
@@ -154,7 +154,7 @@ heartbeats_collector::process_alive_endpoints() {
 		// <handle name, endpoints list>
 		handles_endpoints_t handles_endpoints;
 
-		std::vector<cocaine_endpoint> endpoints;
+		std::vector<cocaine_endpoint_t> endpoints;
 		const std::string& service_name = it->first;
 		const service_info_t& service_info = it->second;
 
@@ -170,7 +170,7 @@ heartbeats_collector::process_alive_endpoints() {
 
 		// for each service endpoint obtain metadata if possible
 		for (size_t i = 0; i < service_endpoints.size(); ++i) {
-			std::map<inetv4_endpoint, cocaine_node_info_t>::const_iterator eit;
+			std::map<inetv4_endpoint_t, cocaine_node_info_t>::const_iterator eit;
 			eit = endpoints_metadata_m.find(service_endpoints[i]);
 
 			if (eit == endpoints_metadata_m.end()) {
@@ -192,14 +192,14 @@ heartbeats_collector::process_alive_endpoints() {
 
 			cocaine_node_app_info_t::application_tasks::const_iterator task_it = app.tasks.begin();
 			for (; task_it != app.tasks.end(); ++task_it) {
-				cocaine_endpoint ce(task_it->second.endpoint, task_it->second.route);
+				cocaine_endpoint_t ce(task_it->second.endpoint, task_it->second.route);
 				
 				handles_endpoints_t::iterator hit = handles_endpoints.find(task_it->second.name);
 				if (hit != handles_endpoints.end()) {
 					hit->second.push_back(ce);
 				}
 				else {
-					std::vector<cocaine_endpoint> endpoints_vec;
+					std::vector<cocaine_endpoint_t> endpoints_vec;
 					endpoints_vec.push_back(ce);
 					handles_endpoints[task_it->second.name] = endpoints_vec;
 				}
@@ -232,7 +232,7 @@ void
 heartbeats_collector::ping_endpoints() {
 	endpoints_metadata_m.clear();
 
-	std::set<inetv4_endpoint>::const_iterator it = all_endpoints_m.begin();
+	std::set<inetv4_endpoint_t>::const_iterator it = all_endpoints_m.begin();
 
 	for (; it != all_endpoints_m.end(); ++it) {
 		// request endpoint metadata
@@ -259,7 +259,7 @@ heartbeats_collector::ping_endpoints() {
 }
 
 bool
-heartbeats_collector::get_metainfo_from_endpoint(const inetv4_endpoint& endpoint,
+heartbeats_collector::get_metainfo_from_endpoint(const inetv4_endpoint_t& endpoint,
 												 std::string& response)
 {
 	// create req socket

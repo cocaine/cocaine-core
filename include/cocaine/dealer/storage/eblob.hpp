@@ -86,8 +86,8 @@ private:
 	void iteration_callback_instance(void* data, uint64_t size, int column);
 
 private:
-	std::string path_m;
-	boost::shared_ptr<ioremap::eblob::eblob> storage_m;
+	std::string m_path;
+	boost::shared_ptr<ioremap::eblob::eblob> m_storage;
 	boost::shared_ptr<ioremap::eblob::eblob_logger> eblob_logger_m;
 	iteration_callback_t iteration_callback_m;
 };

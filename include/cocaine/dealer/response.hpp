@@ -47,7 +47,7 @@ public:
 private:
 	friend class dealer;
 
-	boost::shared_ptr<response_impl> impl_m;
+	boost::shared_ptr<response_impl_t> impl_m;
 };
 
 } // namespace dealer
