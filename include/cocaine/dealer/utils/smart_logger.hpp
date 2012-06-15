@@ -235,7 +235,6 @@ public:
 	void init(const std::string& syslog_name) {				
 		syslog_name_ = syslog_name;
 
-		setlogmask(LOG_UPTO (LOG_NOTICE));
 		openlog(syslog_name_.c_str(), LOG_PID | LOG_NDELAY, LOG_LOCAL1);
 
 		if ((flags_ & PLOG_INTRO) == PLOG_INTRO) {
