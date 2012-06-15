@@ -107,13 +107,13 @@ public:
 
 	statistics_collector(const boost::shared_ptr<configuration_t>& config,
 						 const boost::shared_ptr<zmq::context_t>& context,
-						 const boost::shared_ptr<base_logger>& logger);
+						 const boost::shared_ptr<base_logger_t>& logger);
 
 	virtual ~statistics_collector();
 	
 	std::string get_error_json(enum e_statictics_req_error err) const;
 
-	void set_logger(const boost::shared_ptr<base_logger>& logger);
+	void set_logger(const boost::shared_ptr<base_logger_t>& logger);
 	void enable(bool value);
 	std::string as_json() const;
 
@@ -141,7 +141,7 @@ private:
 	std::string process_request_json(const std::string& request_json);
 
 
-	boost::shared_ptr<base_logger> logger();
+	boost::shared_ptr<base_logger_t> logger();
 	boost::shared_ptr<configuration_t> config() const;
 
 	/* --- collected data --- */
@@ -160,7 +160,7 @@ private:
 	boost::shared_ptr<configuration_t> config_;
 
 	// logger
-	boost::shared_ptr<base_logger> logger_;
+	boost::shared_ptr<base_logger_t> logger_;
 
 	// zmq context
 	boost::shared_ptr<zmq::context_t> zmq_context_;

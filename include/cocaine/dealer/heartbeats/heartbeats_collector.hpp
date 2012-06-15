@@ -80,7 +80,7 @@ private:
 									 const handles_endpoints_t& handles_endpoints);
 
 	static const int hosts_retrieval_interval = 2000; // milliseconds
-	static const int host_socket_ping_timeout = 2000000; // (2 seconds) microseconds FIX in zmq 3.1
+	static const int host_socket_ping_timeout = 50000; // (2 seconds) microseconds FIX in zmq 3.1
 
 private:
 	std::vector<hosts_fetcher_ptr> m_hosts_fetchers;

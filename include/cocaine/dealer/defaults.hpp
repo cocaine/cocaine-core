@@ -41,7 +41,8 @@ namespace cocaine {
 namespace dealer {
 
 enum e_autodiscovery_type {
-	AT_MULTICAST = 1,
+	AT_UNDEFINED = 1,
+	AT_MULTICAST,
 	AT_HTTP,
 	AT_FILE
 };

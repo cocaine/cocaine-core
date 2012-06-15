@@ -54,14 +54,14 @@ statistics_collector::statistics_collector(const boost::shared_ptr<configuration
 		throw internal_error(error_str);
 	}
 
-	logger_.reset(new smart_logger<empty_logger>);
+	logger_.reset(new empty_logger_t);
 
 	init();
 }
 
 statistics_collector::statistics_collector(const boost::shared_ptr<configuration_t>& config,
 										   const boost::shared_ptr<zmq::context_t>& zmq_context,
-										   const boost::shared_ptr<base_logger>& logger) :
+										   const boost::shared_ptr<base_logger_t>& logger) :
 	is_enabled_(false),
 	config_(config),
 	zmq_context_(zmq_context),
@@ -102,16 +102,16 @@ statistics_collector::init() {
 }
 
 void
-statistics_collector::set_logger(const boost::shared_ptr<base_logger>& logger) {
+statistics_collector::set_logger(const boost::shared_ptr<base_logger_t>& logger) {
 	if (logger) {
 		logger_ = logger;
 	}
 	else {
-		logger_.reset(new smart_logger<empty_logger>);
+		logger_.reset(new empty_logger_t);
 	}
 }
 
-boost::shared_ptr<base_logger>
+boost::shared_ptr<base_logger_t>
 statistics_collector::logger() {
 	boost::mutex::scoped_lock lock(m_mutex);
 	return logger_;

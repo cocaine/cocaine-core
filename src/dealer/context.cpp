@@ -35,22 +35,27 @@ context_t::context_t(const std::string& config_path) {
 
 	// create logger
 	switch (m_config->logger_type()) {
-		case STDOUT_LOGGER:
-			m_logger.reset(new smart_logger<stdout_logger>(m_config->logger_flags()));
+		case STDOUT_LOGGER: {
+				m_logger.reset(new stdout_logger_t(m_config->logger_flags()));
+			}
 			break;
 			
-		case FILE_LOGGER:
-			m_logger.reset(new smart_logger<file_logger>(m_config->logger_flags()));
-			((smart_logger<file_logger>*)m_logger.get())->init(m_config->logger_file_path());
+		case FILE_LOGGER: {
+				file_logger_t* fl = new file_logger_t(m_config->logger_flags());
+				fl->init(m_config->logger_file_path());
+				m_logger.reset(fl);
+			}
 			break;
 			
-		case SYSLOG_LOGGER:
-			m_logger.reset(new smart_logger<syslog_logger>(m_config->logger_flags()));
-			((smart_logger<syslog_logger>*)m_logger.get())->init(m_config->logger_syslog_identity());
+		case SYSLOG_LOGGER: {
+				syslog_logger_t* sl = new syslog_logger_t(m_config->logger_flags());
+				sl->init(m_config->logger_syslog_identity());
+				m_logger.reset(sl);
+			}
 			break;
 			
 		default:
-			m_logger.reset(new smart_logger<empty_logger>);
+			m_logger.reset(new empty_logger_t);
 			break;
 	}
 	
@@ -96,7 +101,7 @@ context_t::config() {
 	return m_config;
 }
 
-boost::shared_ptr<base_logger>
+boost::shared_ptr<base_logger_t>
 context_t::logger() {
 	return m_logger;
 }
