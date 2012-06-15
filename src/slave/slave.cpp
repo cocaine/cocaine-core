@@ -73,19 +73,19 @@ void slave_t::configure(const std::string& app) {
         m_suicide_timer.set<slave_t, &slave_t::timeout>(this);
         m_suicide_timer.start(m_manifest->policy.suicide_timeout);
     } catch(const configuration_error_t& e) {
-        rpc::packed<rpc::error> packed(dealer::server_error, e.what());
+        io::packed<rpc::error> packed(dealer::server_error, e.what());
         m_bus.send(packed);
         terminate();
     } catch(const repository_error_t& e) {
-        rpc::packed<rpc::error> packed(dealer::server_error, e.what());
+        io::packed<rpc::error> packed(dealer::server_error, e.what());
         m_bus.send(packed);
         terminate();
     } catch(const unrecoverable_error_t& e) {
-        rpc::packed<rpc::error> packed(dealer::server_error, e.what());
+        io::packed<rpc::error> packed(dealer::server_error, e.what());
         m_bus.send(packed);
         terminate();
     } catch(...) {
-        rpc::packed<rpc::error> packed(
+        io::packed<rpc::error> packed(
             dealer::server_error,
             "unexpected exception while configuring the slave"
         );
@@ -112,7 +112,7 @@ blob_t slave_t::read(int timeout) {
 }
 
 void slave_t::write(const void * data, size_t size) {
-    rpc::packed<rpc::chunk> packed(data, size);
+    io::packed<rpc::chunk> packed(data, size);
     m_bus.send(packed);
 }
 
@@ -176,7 +176,7 @@ void slave_t::timeout(ev::timer&, int) {
 }
 
 void slave_t::heartbeat(ev::timer&, int) {
-    rpc::packed<rpc::heartbeat> packed;
+    io::packed<rpc::heartbeat> packed;
     m_bus.send(packed);
 }
 
@@ -184,13 +184,13 @@ void slave_t::invoke(const std::string& event) {
     try {
         m_sandbox->invoke(event, *this);
     } catch(const recoverable_error_t& e) {
-        rpc::packed<rpc::error> packed(dealer::app_error, e.what());
+        io::packed<rpc::error> packed(dealer::app_error, e.what());
         m_bus.send(packed);
     } catch(const unrecoverable_error_t& e) {
-        rpc::packed<rpc::error> packed(dealer::server_error, e.what());
+        io::packed<rpc::error> packed(dealer::server_error, e.what());
         m_bus.send(packed);
     } catch(...) {
-        rpc::packed<rpc::error> packed(
+        io::packed<rpc::error> packed(
             dealer::server_error,
             "unexpected exception while processing an event"
         );
@@ -198,7 +198,7 @@ void slave_t::invoke(const std::string& event) {
         m_bus.send(packed);
     }
     
-    rpc::packed<rpc::choke> packed;
+    io::packed<rpc::choke> packed;
     m_bus.send(packed);
     
     // NOTE: Drop all the outstanding request chunks not pulled
@@ -210,7 +210,7 @@ void slave_t::invoke(const std::string& event) {
 }
 
 void slave_t::terminate() {
-    rpc::packed<rpc::terminate> packed;
+    io::packed<rpc::terminate> packed;
     m_bus.send(packed);
     m_loop.unloop(ev::ALL);
 } 

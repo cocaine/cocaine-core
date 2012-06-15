@@ -23,8 +23,10 @@
 
 #include "cocaine/io.hpp"
 
-namespace cocaine { namespace rpc {    
-    
+namespace cocaine {
+
+namespace rpc {
+
 enum {
     heartbeat = 1,
     terminate,
@@ -34,21 +36,15 @@ enum {
     choke
 };
 
-// Generic packer
-// --------------
+}
 
-template<int Code> 
-struct packed:
-    public boost::tuple<>
-{
-    typedef boost::tuple<> tuple_type;
-};
+namespace io {
 
 // Specific packers
 // ----------------
 
 template<>
-struct packed<invoke>:
+struct packed<rpc::invoke>:
     public boost::tuple<const std::string&, zmq::message_t&>
 {
     typedef boost::tuple<const std::string&, zmq::message_t&> tuple_type;
@@ -69,7 +65,7 @@ private:
 };
 
 template<>
-struct packed<chunk>:
+struct packed<rpc::chunk>:
     public boost::tuple<zmq::message_t&>
 {
     typedef boost::tuple<zmq::message_t&> tuple_type;
@@ -96,7 +92,7 @@ private:
 };
 
 template<>
-struct packed<error>:
+struct packed<rpc::error>:
     // NOTE: Not a string reference to allow literal error messages.
     public boost::tuple<int, std::string>
 {

@@ -31,7 +31,9 @@ using namespace cocaine::logging;
 logger_t::logger_t(sink_t& sink, const std::string& name):
     m_sink(sink),
     m_name(name)
-{ }
+{
+    memset(m_buffer, 0, LOG_BUFFER_SIZE);
+}
 
 void logger_t::debug(const char * format, ...) const {
     va_list args;

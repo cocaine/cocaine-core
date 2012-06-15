@@ -233,9 +233,9 @@ PyObject* log_object_t::writelines(log_object_t * self,
             }
         }
 
-        tracked_object_t args(PyTuple_Pack(1, *line));
+        tracked_object_t argpack(PyTuple_Pack(1, *line));
 
-        if(!write(self, args)) {
+        if(!write(self, argpack)) {
             return NULL;
         }
     }
