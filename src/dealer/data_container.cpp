@@ -45,11 +45,9 @@ data_container::data_container() :
 }
 
 data_container::data_container(const void* data, size_t size) :
-	data_((unsigned char*)data),
 	size_(size),
 	signed_(false)
 {
-	init();
 	set_data(data, size);
 }
 
@@ -135,6 +133,10 @@ data_container::~data_container() {
 
 void
 data_container::release() {
+	if (!ref_counter_) {
+		return;
+	}
+
 	if (*ref_counter_ == 0) {
 		return;
 	}

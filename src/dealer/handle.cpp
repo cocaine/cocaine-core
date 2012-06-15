@@ -36,8 +36,6 @@ handle_t::handle_t(const handle_info_t& info,
 	m_is_connected(false),
 	m_receiving_control_socket_ok(false)
 {
-	boost::mutex::scoped_lock lock(m_mutex);
-
 	log(PLOG_DEBUG, "CREATED HANDLE " + description());
 
 	// create message cache
@@ -56,7 +54,6 @@ handle_t::handle_t(const handle_info_t& info,
 	m_thread = boost::thread(&handle_t::dispatch_messages, this);
 
 	// connect to hosts 
-	lock.unlock();
 	connect();
 }
 
@@ -87,8 +84,6 @@ handle_t::dispatch_messages() {
 
 	// process messages
 	while (m_is_running) {
-		boost::mutex::scoped_lock lock(m_mutex);
-
 		// process incoming control messages every 200 msec
 		int control_message = 0;
 		              
@@ -136,19 +131,14 @@ handle_t::dispatch_messages() {
 				m_last_response_timer.reset();
 				response_poll_timeout = fast_poll_timeout;
 
-				lock.unlock();
 				dispatch_next_available_response(balancer);
-				lock.lock();
-
 				received_response = balancer.check_for_responses(response_poll_timeout);
 			}
 		}
 
 		if (m_is_running) {
 			if (m_deadlined_messages_timer.elapsed().as_double() > 1.0f) {
-				lock.unlock();
 				process_deadlined_messages();
-				lock.lock();
 				m_deadlined_messages_timer.reset();
 			}
 		}
@@ -251,13 +241,9 @@ handle_t::messages_cache() const {
 
 void
 handle_t::process_deadlined_messages() {
-	boost::mutex::scoped_lock lock(m_mutex);
-
 	assert(m_message_cache);
 	message_cache_t::message_queue_t expired_messages;
 	m_message_cache->get_expired_messages(expired_messages);
-	
-	lock.unlock();
 
 	if (expired_messages.empty()) {
 		return;

@@ -108,6 +108,7 @@ service_t::dispatch_responces() {
 				resp_info.error_msg = resp_ptr->error_message();
 
 				// invoke callback for given message uuid
+				bool unlocked = true;
 				try {
 					registered_callbacks_map_t::iterator it = m_responses_callbacks_map.find(resp_info.uuid);
 
@@ -117,6 +118,7 @@ service_t::dispatch_responces() {
 						boost::shared_ptr<response_t> response_ptr = response_wptr.lock();
 						
 						lock.unlock();
+						unlocked = true;
 						
 						if (!response_ptr) {
 							unregister_responder_callback(resp_ptr->uuid());
@@ -126,10 +128,13 @@ service_t::dispatch_responces() {
 						}
 					}
 				}
-				catch (...) {
+				catch (const std::exception& ex) {
+					log(PLOG_ERROR, "could not process response: %s", ex.what());
 				}
 
-				lock.lock();
+				if (unlocked) {
+					lock.lock();
+				}
 
 				// remove processed response_t
 				handle_resp_queue->pop_front();
@@ -162,20 +167,18 @@ service_t::unregister_responder_callback(const std::string& message_uuid) {
 
 void
 service_t::enqueue_responce(cached_response_prt_t response_t) {
-	boost::mutex::scoped_lock lock(m_mutex);
-
 	// validate response_t
 	assert(response_t);
 
 	const message_path_t& path = response_t->path();
 
 	// see whether there exists registered callback for message
+	boost::mutex::scoped_lock lock(m_mutex);
 	registered_callbacks_map_t::iterator callback_it = m_responses_callbacks_map.find(response_t->uuid());
 
 	// is there a callback for given response_t uuid?
 	if (callback_it == m_responses_callbacks_map.end()) {
-		// drop response_t
-		//lock.unlock();
+		// drop response
 		return;
 	}
 

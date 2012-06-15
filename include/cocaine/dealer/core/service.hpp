@@ -137,7 +137,7 @@ private:
 	// deadlined messages refresher
 	std::auto_ptr<refresher> m_deadlined_messages_refresher;
 
-	static const int deadline_check_interval = 10; // millisecs
+	static const int deadline_check_interval = 1000; // millisecs
 
 	bool m_is_dead;
 };
