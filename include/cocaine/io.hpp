@@ -260,6 +260,9 @@ class channel_t:
         using socket_t::send;
         using socket_t::recv;
 
+        // Sending
+        // -------
+
         template<class T>
         bool send(const T& value,
                   int flags = 0)
@@ -290,9 +293,20 @@ class channel_t:
         bool send(rpc::packed<Code>& command,
                   int flags = 0)
         {
-            return send(Code, ZMQ_SNDMORE | flags) &&
-                   send_multipart(command, flags);
+            const bool multipart = boost::tuples::length<
+                typename rpc::packed<Code>::tuple_type
+            >::value;
+
+            if(multipart) {
+                return send(Code, ZMQ_SNDMORE | flags) &&
+                       send_multipart(command, flags);
+            } else {
+                return send(Code, flags);
+            }
         }
+
+        // Receiving
+        // ---------
 
         template<class T>
         bool recv(T& result,
