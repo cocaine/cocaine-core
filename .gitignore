@@ -3,7 +3,7 @@
 *.os
 *.so*
 *.dylib
-*.cocaine-module
+*.cocaine-plugin
 cocained
 
 CMakeCache.txt
@@ -28,7 +28,6 @@ Makefile
 *.a.*
 *.o.*
 tags
-*.cocaine-plugin
 
 library-test
 cocaine-slave
