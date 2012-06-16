@@ -54,7 +54,7 @@ int main(int argc, char * argv[]) {
             "location of the configuration file")
         ("daemonize,d", "daemonize on start")
         ("pidfile,p", po::value<std::string>
-            ()->default_value("/var/run/cocaine/default.pid"),
+            ()->default_value("/var/run/cocaine/cocained.pid"),
             "location of a pid file")
         ("verbose", "produce a lot of output");
 
