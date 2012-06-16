@@ -55,7 +55,7 @@ repository_t::repository_t(context_t& context):
     lt_dladvise_global(&advice);
 
     lt_dlhandle plugin;
-
+    
     typedef void (*initialize_fn_t)(repository_t& registry);
     initialize_fn_t initialize = NULL;
 

@@ -18,7 +18,6 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include <iostream>
 #include <boost/bind.hpp>
 
 #include "cocaine/dealer/utils/refresher.hpp"
@@ -27,36 +26,33 @@ namespace cocaine {
 namespace dealer {
 
 refresher::refresher(boost::function<void()> f, boost::uint32_t timeout) :
-	f_(f),
-	timeout_(timeout),
-	stopping_(false),
-	refreshing_thread_(boost::bind(&refresher::refreshing_thread, this)) {
+	m_func(f),
+	m_timeout(timeout),
+	m_stopping(false),
+	m_refreshing_thread(boost::bind(&refresher::refreshing_thread, this)) {
 }
 
 refresher::~refresher() {
-	stopping_ = true;
-	refreshing_thread_.join();
+	m_stopping = true;
+	m_cond_var.notify_one();
+	m_refreshing_thread.join();
 }
 
 void
 refresher::refreshing_thread() {
-	if (!stopping_ && f_) {
-		f_();
+	if (!m_stopping && m_func) {
+		m_func();
 	}
 
-	while (!stopping_) {
-		boost::mutex::scoped_lock lock(mutex_);
+	while (!m_stopping) {
+		boost::mutex::scoped_lock lock(m_mutex);
 		
-		for (int i = 0; i < 100; ++i) {
-			boost::this_thread::sleep(boost::posix_time::milliseconds(timeout_ / 100));
+		unsigned long long millisecs = static_cast<unsigned long long>(m_timeout * 1000);
+		boost::system_time t = boost::get_system_time() + boost::posix_time::milliseconds(millisecs);
+		m_cond_var.timed_wait(lock, t);
 
-			if (stopping_) {
-				break;
-			}
-		}
-		
-		if (!stopping_ && f_) {
-			f_();
+		if (!m_stopping && m_func) {
+			m_func();
 		}
 	}
 }

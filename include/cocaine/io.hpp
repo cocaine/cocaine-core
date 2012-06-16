@@ -25,6 +25,7 @@
 #include <boost/type_traits/remove_const.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <msgpack.hpp>
+
 #include <zmq.hpp>
 
 #if ZMQ_VERSION < 20200
@@ -32,6 +33,8 @@
 #endif
 
 #include "cocaine/common.hpp"
+
+#include "cocaine/helpers/birth_control.hpp"
 
 #define HOSTNAME_MAX_LENGTH 256
 
@@ -42,7 +45,8 @@ using namespace boost::tuples;
 typedef std::vector<std::string> route_t;
 
 class socket_t: 
-    public boost::noncopyable
+    public boost::noncopyable,
+    public birth_control<socket_t>
 {
     public:
         socket_t(zmq::context_t& context, int type):
@@ -240,6 +244,16 @@ protect(T& object) {
     return raw<T>(object);
 }
 
+// RPC command tuple
+// -----------------
+
+template<int Code> 
+struct packed:
+    public boost::tuple<>
+{
+    typedef boost::tuple<> tuple_type;
+};
+
 // Tuple-based RPC channel
 // -----------------------
 
@@ -255,11 +269,12 @@ class channel_t:
             socket_t(context, type, route)
         { }
 
-        // Brings the original methods into the scope.
         using socket_t::send;
         using socket_t::recv;
 
-        // Packs and sends a single object.
+        // Sending
+        // -------
+
         template<class T>
         bool send(const T& value,
                   int flags = 0)
@@ -286,29 +301,25 @@ class channel_t:
             return send(message, flags);
         }
 
-        // Packs and sends a tuple.
-        bool send_multi(const null_type&,
-                        int __attribute__ ((unused)) flags = 0)
+        template<int Command>
+        bool send(packed<Command>& command,
+                  int flags = 0)
         {
-            return true;
+            const bool multipart = boost::tuples::length<
+                typename packed<Command>::tuple_type
+            >::value;
+
+            if(multipart) {
+                return send(Command, ZMQ_SNDMORE | flags) &&
+                       send_multipart(command, flags);
+            } else {
+                return send(Command, flags);
+            }
         }
 
-        template<class Head>
-        bool send_multi(const cons<Head, null_type>& o,
-                        int flags = 0)
-        {
-            return send(o.get_head(), flags);
-        }
+        // Receiving
+        // ---------
 
-        template<class Head, class Tail>
-        bool send_multi(const cons<Head, Tail>& o,
-                        int flags = 0)
-        {
-            return send(o.get_head(), ZMQ_SNDMORE | flags) &&
-                   send_multi(o.get_tail(), flags);
-        }
-
-        // Receives and unpacks a single object.
         template<class T>
         bool recv(T& result,
                   int flags = 0)
@@ -352,7 +363,6 @@ class channel_t:
             >::unpack(message, result.value);
         }
 
-        // Receives and unpacks a tuple.
         bool recv_multi(const null_type&,
                         int __attribute__ ((unused)) flags = 0)
         {
@@ -377,6 +387,28 @@ class channel_t:
             } else {
                 throw std::runtime_error("corrupted object - misplaced chunks");
             }
+        }
+
+    private:
+        bool send_multipart(const null_type&,
+                            int __attribute__ ((unused)) flags = 0)
+        {
+            return true;
+        }
+
+        template<class Head>
+        bool send_multipart(const cons<Head, null_type>& o,
+                            int flags = 0)
+        {
+            return send(o.get_head(), flags);
+        }
+
+        template<class Head, class Tail>
+        bool send_multipart(const cons<Head, Tail>& o,
+                            int flags = 0)
+        {
+            return send(o.get_head(), ZMQ_SNDMORE | flags) &&
+                   send_multipart(o.get_tail(), flags);
         }
 };
 

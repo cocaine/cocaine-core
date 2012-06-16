@@ -45,11 +45,9 @@ data_container::data_container() :
 }
 
 data_container::data_container(const void* data, size_t size) :
-	data_((unsigned char*)data),
 	size_(size),
 	signed_(false)
 {
-	init();
 	set_data(data, size);
 }
 
@@ -135,6 +133,10 @@ data_container::~data_container() {
 
 void
 data_container::release() {
+	if (!ref_counter_) {
+		return;
+	}
+
 	if (*ref_counter_ == 0) {
 		return;
 	}
@@ -218,7 +220,7 @@ data_container::sign_data(unsigned char* data, size_t& size, unsigned char signa
 	SHA1_Init(&sha_context);
 
 	// reset signature
-	memset(signature, 0, sizeof(signature));
+	memset(signature, 0, SHA1_SIZE);
 
 	// go through compiled and flattened data in chunks of 512 kb., building signature
 	unsigned int full_chunks_count = size / SHA1_CHUNK_SIZE;

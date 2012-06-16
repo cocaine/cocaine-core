@@ -36,17 +36,17 @@ enum e_server_response_code {
 };
 
 balancer_t::balancer_t(const std::string& identity,
-					   const std::vector<cocaine_endpoint>& endpoints,
-					   boost::shared_ptr<message_cache> message_cache,
+					   const std::vector<cocaine_endpoint_t>& endpoints,
+					   boost::shared_ptr<message_cache_t> message_cache_t,
 					   const boost::shared_ptr<context_t>& ctx,
 					   bool logging_enabled) :
 	dealer_object_t(ctx, logging_enabled),
-	endpoints_m(endpoints),
-	message_cache_m(message_cache),
-	current_endpoint_index_m(0),
-	socket_identity_m(identity)
+	m_endpoints(endpoints),
+	m_message_cache(message_cache_t),
+	m_current_endpoint_index(0),
+	m_socket_identity(identity)
 {
-	std::sort(endpoints_m.begin(), endpoints_m.end());
+	std::sort(m_endpoints.begin(), m_endpoints.end());
 	recreate_socket();
 }
 
@@ -55,114 +55,116 @@ balancer_t::~balancer_t() {
 }
 
 void
-balancer_t::connect(const std::vector<cocaine_endpoint>& endpoints) {
-	log("connect " + socket_identity_m);
+balancer_t::connect(const std::vector<cocaine_endpoint_t>& endpoints) {
+	log("connect " + m_socket_identity);
 
 	if (endpoints.empty()) {
 		return;
 	}
 
-	assert(socket_m);
+	assert(m_socket);
 
 	std::string connection_str;
 	try {
 		for (size_t i = 0; i < endpoints.size(); ++i) {
 			connection_str = endpoints[i].endpoint;
-			socket_m->connect(connection_str.c_str());
+			m_socket->connect(connection_str.c_str());
 		}
 
 		boost::this_thread::sleep(boost::posix_time::milliseconds(100));
 	}
 	catch (const std::exception& ex) {
-		std::string error_msg = "balancer with identity " + socket_identity_m + " could not connect to ";
+		std::string error_msg = "balancer with identity " + m_socket_identity + " could not connect to ";
 		error_msg += connection_str + " at " + std::string(BOOST_CURRENT_FUNCTION);
 		throw internal_error(error_msg);
 	}
 }
 
 void balancer_t::disconnect() {
-	if (!socket_m) {
+	if (!m_socket) {
 		return;
 	}
 
-	log("disconnect balancer " + socket_identity_m);
-	socket_m.reset();
+	log("disconnect balancer " + m_socket_identity);
+	m_socket.reset();
 }
 
 void	
-balancer_t::update_endpoints(const std::vector<cocaine_endpoint>& endpoints,
-							 std::vector<cocaine_endpoint>& missing_endpoints)
+balancer_t::update_endpoints(const std::vector<cocaine_endpoint_t>& endpoints,
+							 std::vector<cocaine_endpoint_t>& missing_endpoints)
 {
-	log("update_endpoints " + socket_identity_m);
+	log("update_endpoints " + m_socket_identity);
 
-	std::vector<cocaine_endpoint> endpoints_tmp = endpoints;
+	std::vector<cocaine_endpoint_t> endpoints_tmp = endpoints;
 	std::sort(endpoints_tmp.begin(), endpoints_tmp.end());
 
-	if (std::equal(endpoints_m.begin(), endpoints_m.end(), endpoints_tmp.begin())) {
-		log("no changes in endpoints on " + socket_identity_m);
-		return;
+	if (m_endpoints.size() == endpoints_tmp.size()) {
+		if (std::equal(m_endpoints.begin(), m_endpoints.end(), endpoints_tmp.begin())) {
+			log("no changes in endpoints on " + m_socket_identity);
+			return;
+		}
 	}
 
-	std::vector<cocaine_endpoint> new_endpoints;
+	std::vector<cocaine_endpoint_t> new_endpoints;
 	get_endpoints_diff(endpoints, new_endpoints, missing_endpoints);
 
 	if (missing_endpoints.empty()) {
-		log("new endpoints on " + socket_identity_m);
+		log("new endpoints on " + m_socket_identity);
 		connect(new_endpoints);
 	}
 	else {
-		log("missing endpoints on " + socket_identity_m);
+		log("missing endpoints on " + m_socket_identity);
 		recreate_socket();
 		connect(endpoints);
 	}
 
-	endpoints_m = endpoints_tmp;
+	m_endpoints = endpoints_tmp;
 }
 
 void
-balancer_t::get_endpoints_diff(const std::vector<cocaine_endpoint>& updated_endpoints,
-							   std::vector<cocaine_endpoint>& new_endpoints,
-							   std::vector<cocaine_endpoint>& missing_endpoints)
+balancer_t::get_endpoints_diff(const std::vector<cocaine_endpoint_t>& updated_endpoints,
+							   std::vector<cocaine_endpoint_t>& new_endpoints,
+							   std::vector<cocaine_endpoint_t>& missing_endpoints)
 {
 	for (size_t i = 0; i < updated_endpoints.size(); ++i) {
-		if (false == std::binary_search(endpoints_m.begin(), endpoints_m.end(), updated_endpoints[i])) {
+		if (false == std::binary_search(m_endpoints.begin(), m_endpoints.end(), updated_endpoints[i])) {
 			new_endpoints.push_back(updated_endpoints[i]);
 		}
 	}
 
-	for (size_t i = 0; i < endpoints_m.size(); ++i) {
-		if (false == std::binary_search(updated_endpoints.begin(), updated_endpoints.end(), endpoints_m[i])) {
-			missing_endpoints.push_back(endpoints_m[i]);
+	for (size_t i = 0; i < m_endpoints.size(); ++i) {
+		if (false == std::binary_search(updated_endpoints.begin(), updated_endpoints.end(), m_endpoints[i])) {
+			missing_endpoints.push_back(m_endpoints[i]);
 		}
 	}
 }
 
 void
 balancer_t::recreate_socket() {
-	log("recreate_socket " + socket_identity_m);
+	log("recreate_socket " + m_socket_identity);
 	int timeout = balancer_t::socket_timeout;
 	int64_t hwm = balancer_t::socket_hwm;
-	socket_m.reset(new zmq::socket_t(*(context()->zmq_context()), ZMQ_ROUTER));
-	socket_m->setsockopt(ZMQ_LINGER, &timeout, sizeof(timeout));
-	socket_m->setsockopt(ZMQ_HWM, &hwm, sizeof(hwm));
-	socket_m->setsockopt(ZMQ_IDENTITY, socket_identity_m.c_str(), socket_identity_m.length());
+	m_socket.reset(new zmq::socket_t(*(context()->zmq_context()), ZMQ_ROUTER));
+	m_socket->setsockopt(ZMQ_LINGER, &timeout, sizeof(timeout));
+	m_socket->setsockopt(ZMQ_HWM, &hwm, sizeof(hwm));
+	m_socket->setsockopt(ZMQ_IDENTITY, m_socket_identity.c_str(), m_socket_identity.length());
 }
 
-cocaine_endpoint&
+cocaine_endpoint_t&
 balancer_t::get_next_endpoint() {
-	if (current_endpoint_index_m < endpoints_m.size() - 1) {
-		++current_endpoint_index_m;
+	if (m_current_endpoint_index < m_endpoints.size() - 1) {
+		++m_current_endpoint_index;
 	}
 	else {
-		current_endpoint_index_m = 0;	
+		m_current_endpoint_index = 0;	
 	}
 
-	return endpoints_m[current_endpoint_index_m];
+	return m_endpoints[m_current_endpoint_index];
 }
 
 bool
-balancer_t::send(boost::shared_ptr<message_iface>& message, cocaine_endpoint& endpoint) {
-	assert(socket_m);
+balancer_t::send(boost::shared_ptr<message_iface>& message, cocaine_endpoint_t& endpoint) {
+	assert(m_socket);
 
 	try {
 		// send ident
@@ -170,13 +172,13 @@ balancer_t::send(boost::shared_ptr<message_iface>& message, cocaine_endpoint& en
 		zmq::message_t ident_chunk(endpoint.route.size());
 		memcpy((void *)ident_chunk.data(), endpoint.route.data(), endpoint.route.size());
 
-		if (true != socket_m->send(ident_chunk, ZMQ_SNDMORE)) {
+		if (true != m_socket->send(ident_chunk, ZMQ_SNDMORE)) {
 			return false;
 		}
 
 		// send header
 		zmq::message_t empty_message(0);
-		if (true != socket_m->send(empty_message, ZMQ_SNDMORE)) {
+		if (true != m_socket->send(empty_message, ZMQ_SNDMORE)) {
 			return false;
 		}
 
@@ -187,7 +189,7 @@ balancer_t::send(boost::shared_ptr<message_iface>& message, cocaine_endpoint& en
 		zmq::message_t uuid_chunk(sbuf.size());
 		memcpy((void *)uuid_chunk.data(), sbuf.data(), sbuf.size());
 
-		if (true != socket_m->send(uuid_chunk, ZMQ_SNDMORE)) {
+		if (true != m_socket->send(uuid_chunk, ZMQ_SNDMORE)) {
 			return false;
 		}
 
@@ -206,7 +208,7 @@ balancer_t::send(boost::shared_ptr<message_iface>& message, cocaine_endpoint& en
 		zmq::message_t policy_chunk(sbuf.size());
 		memcpy((void *)policy_chunk.data(), sbuf.data(), sbuf.size());
 
-		if (true != socket_m->send(policy_chunk, ZMQ_SNDMORE)) {
+		if (true != m_socket->send(policy_chunk, ZMQ_SNDMORE)) {
 			return false;
 		}
 
@@ -220,12 +222,12 @@ balancer_t::send(boost::shared_ptr<message_iface>& message, cocaine_endpoint& en
 			message->unload_data();
 		}
 
-		if (true != socket_m->send(data_chunk)) {
+		if (true != m_socket->send(data_chunk)) {
 			return false;
 		}
 	}
 	catch (const std::exception& ex) {
-		std::string error_msg = "balancer with identity " + socket_identity_m;
+		std::string error_msg = "balancer with identity " + m_socket_identity;
 		error_msg += " could not send message, details: ";
 		error_msg += ex.what();
 		throw internal_error(error_msg);
@@ -236,11 +238,11 @@ balancer_t::send(boost::shared_ptr<message_iface>& message, cocaine_endpoint& en
 
 bool
 balancer_t::check_for_responses(int poll_timeout) const {
-	assert(socket_m);
+	assert(m_socket);
 
 	// poll for responce
 	zmq_pollitem_t poll_items[1];
-	poll_items[0].socket = *socket_m;
+	poll_items[0].socket = *m_socket;
 	poll_items[0].fd = 0;
 	poll_items[0].events = ZMQ_POLLIN;
 	poll_items[0].revents = 0;
@@ -251,7 +253,7 @@ balancer_t::check_for_responses(int poll_timeout) const {
 		return false;
 	}
 
-	// in case we received message response
+	// in case we received message response_t
 	if ((ZMQ_POLLIN & poll_items[0].revents) == ZMQ_POLLIN) {
 		return true;
 	}
@@ -260,15 +262,15 @@ balancer_t::check_for_responses(int poll_timeout) const {
 }
 
 bool
-balancer_t::receive_chunk(zmq::message_t& response) {
+balancer_t::receive_chunk(zmq::message_t& response_t) {
 	try {
-		if (socket_m->recv(&response, ZMQ_NOBLOCK) == EAGAIN) {
+		if (m_socket->recv(&response_t, ZMQ_NOBLOCK) == EAGAIN) {
 			return false;
 		}
 	}
 	catch (const std::exception& ex) {
-		std::string error_msg = "balancer with identity " + socket_identity_m;
-		error_msg += " — error while receiving response chunk ";
+		std::string error_msg = "balancer with identity " + m_socket_identity;
+		error_msg += " — error while receiving response_t chunk ";
 		error_msg += ex.what();
 		log(PLOG_DEBUG, error_msg);
 
@@ -279,7 +281,7 @@ balancer_t::receive_chunk(zmq::message_t& response) {
 }
 
 bool
-balancer_t::receive(boost::shared_ptr<cached_response_t>& response) {
+balancer_t::receive(boost::shared_ptr<cached_response_t>& response_t) {
 	boost::ptr_vector<zmq::message_t> response_chunks;
 
 	// receive message
@@ -296,7 +298,7 @@ balancer_t::receive(boost::shared_ptr<cached_response_t>& response) {
 		
 		response_chunks.push_back(chunk);
 
-		int __attribute__ ((unused)) rc = zmq_getsockopt(*socket_m, ZMQ_RCVMORE, &more, &more_size);
+		int __attribute__ ((unused)) rc = zmq_getsockopt(*m_socket, ZMQ_RCVMORE, &more, &more_size);
     	assert (rc == 0);
 	}
 
@@ -304,12 +306,12 @@ balancer_t::receive(boost::shared_ptr<cached_response_t>& response) {
 		return false;
 	}
 
-	return process_responce(response_chunks, response);
+	return process_responce(response_chunks, response_t);
 }
 
 bool
 balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
-							 boost::shared_ptr<cached_response_t>& response)
+							 boost::shared_ptr<cached_response_t>& response_t)
 {
 	// unpack node identity
 	const char* route_chars = reinterpret_cast<const char*>(chunks[0].data());
@@ -330,11 +332,11 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 
 	// get message from sent cache
 	boost::shared_ptr<message_iface> sent_msg;
-	if (!message_cache_m->get_sent_message(route, uuid, sent_msg)) {
+	if (!m_message_cache->get_sent_message(route, uuid, sent_msg)) {
 		return false;
 	}
 
-	std::string message_str = "balancer " + socket_identity_m + " received response for msg with uuid: ";
+	std::string message_str = "balancer " + m_socket_identity + " received response_t for msg with uuid: ";
 	message_str += sent_msg->uuid() + ", type: ";
 
 	switch (rpc_code) {
@@ -347,13 +349,13 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 		case SERVER_RPC_MESSAGE_CHUNK: {
 			//log(PLOG_DEBUG, message_str + "CHUNK");
 
-			response.reset(new cached_response_t(uuid,
+			response_t.reset(new cached_response_t(uuid,
 												 route,
 												 sent_msg->path(),
 												 chunks[4].data(),
 												 chunks[4].size()));
 
-			response->set_code(response_code::message_chunk);
+			response_t->set_code(response_code::message_chunk);
 			return true;
 		}
 		break;
@@ -374,7 +376,7 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 			obj = msg.get();
 		    obj.convert(&error_message);
 
-			response.reset(new cached_response_t(uuid,
+			response_t.reset(new cached_response_t(uuid,
 												 route,
 												 sent_msg->path(),
 												 error_code,
@@ -386,13 +388,13 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 		case SERVER_RPC_MESSAGE_CHOKE: {
 			//log(PLOG_DEBUG, message_str + "CHOKE");
 
-			response.reset(new cached_response_t(uuid,
+			response_t.reset(new cached_response_t(uuid,
 												 route,
 												 sent_msg->path(),
 												 NULL,
 												 0));
 
-			response->set_code(response_code::message_choke);
+			response_t->set_code(response_code::message_choke);
 			return true;
 		}
 		break;

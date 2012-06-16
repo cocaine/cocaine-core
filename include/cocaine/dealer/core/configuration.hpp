@@ -38,20 +38,20 @@
 namespace cocaine {
 namespace dealer {
 
-class configuration;
+class configuration_t;
 	
-std::ostream& operator << (std::ostream& out, configuration& config);
+std::ostream& operator << (std::ostream& out, configuration_t& config);
 	
-class configuration : private boost::noncopyable {
+class configuration_t : private boost::noncopyable {
 public:
 	// map dealer service name to service info
 	typedef std::map<std::string, service_info_t> services_list_t;
 	static const int current_config_version = 1;
 
 public:
-	configuration();
-	explicit configuration(const std::string& path);
-	virtual ~configuration();
+	configuration_t();
+	explicit configuration_t(const std::string& path);
+	virtual ~configuration_t();
 	
 	void load(const std::string& path);
 	
@@ -72,13 +72,13 @@ public:
 	
 	bool is_statistics_enabled() const;
 	bool is_remote_statistics_enabled() const;
-	DT::port remote_statistics_port() const;
+	boost::uint16_t remote_statistics_port() const;
 
 	const services_list_t& services_list() const;
 	bool service_info_by_name(const std::string& name, service_info_t& info) const;
 	bool service_info_by_name(const std::string& name) const;
 	
-	friend std::ostream& operator << (std::ostream& out, configuration& config);
+	friend std::ostream& operator << (std::ostream& out, configuration_t& config);
 	
 private:
 	void parse_basic_settings(const Json::Value& config_value);
@@ -90,33 +90,33 @@ private:
 
 private:
 	// config
-	std::string path_m;
+	std::string m_path;
 	
 	// general
-	unsigned long long			default_message_deadline_m;
-	enum e_message_cache_type	message_cache_type_m;
+	unsigned long long			m_default_message_deadline;
+	enum e_message_cache_type	m_message_cache_type;
 	
 	// logger
-	enum e_logger_type	logger_type_m;
-	unsigned int		logger_flags_m;
-	std::string			logger_file_path_m;
-	std::string			logger_syslog_identity_m;
+	enum e_logger_type	m_logger_type;
+	unsigned int		m_logger_flags;
+	std::string			m_logger_file_path;
+	std::string			m_logger_syslog_identity;
 
 	// persistent storage
-	std::string eblob_path_m;
-	uint64_t	eblob_blob_size_m;
-	int			eblob_sync_interval_;
+	std::string m_eblob_path;
+	uint64_t	m_eblob_blob_size;
+	int			m_eblob_sync_interval;
 	
 	// statistics
-	bool		is_statistics_enabled_m;
-	bool		is_remote_statistics_enabled_m;
-	DT::port	remote_statistics_port_m;
+	bool		m_statistics_enabled;
+	bool		m_remote_statistics_enabled;
+	boost::uint16_t	m_remote_statistics_port;
 
 	// services
-	services_list_t services_list_m;
+	services_list_t m_services_list;
 
 	// synchronization
-	boost::mutex mutex_m;
+	boost::mutex m_mutex;
 };
 
 } // namespace dealer

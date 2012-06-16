@@ -23,8 +23,10 @@
 
 #include "cocaine/io.hpp"
 
-namespace cocaine { namespace engine { namespace rpc {    
-    
+namespace cocaine {
+
+namespace rpc {
+
 enum {
     heartbeat = 1,
     terminate,
@@ -34,27 +36,21 @@ enum {
     choke
 };
 
-// Generic packer
-// --------------
+}
 
-template<int Code> 
-struct packed:
-    public boost::tuple<int>
-{
-    packed():
-        boost::tuple<int>(Code)
-    { }
-};
+namespace io {
 
 // Specific packers
 // ----------------
 
 template<>
-struct packed<invoke>:
-    public boost::tuple<int, const std::string&, zmq::message_t&>
+struct packed<rpc::invoke>:
+    public boost::tuple<const std::string&, zmq::message_t&>
 {
+    typedef boost::tuple<const std::string&, zmq::message_t&> tuple_type;
+
     packed(const std::string& event, const void * data, size_t size):
-        boost::tuple<int, const std::string&, zmq::message_t&>(invoke, event, message),
+        tuple_type(event, message),
         message(size)
     {
         memcpy(
@@ -69,11 +65,13 @@ private:
 };
 
 template<>
-struct packed<chunk>:
-    public boost::tuple<int, zmq::message_t&>
+struct packed<rpc::chunk>:
+    public boost::tuple<zmq::message_t&>
 {
+    typedef boost::tuple<zmq::message_t&> tuple_type;
+
     packed(const void * data, size_t size):
-        boost::tuple<int, zmq::message_t&>(chunk, message),
+        tuple_type(message),
         message(size)
     {
         memcpy(
@@ -84,7 +82,7 @@ struct packed<chunk>:
     }
 
     packed(zmq::message_t& message_):
-        boost::tuple<int, zmq::message_t&>(chunk, message)
+        tuple_type(message)
     {
         message.move(&message_);
     }
@@ -94,15 +92,17 @@ private:
 };
 
 template<>
-struct packed<error>:
+struct packed<rpc::error>:
     // NOTE: Not a string reference to allow literal error messages.
-    public boost::tuple<int, int, std::string>
+    public boost::tuple<int, std::string>
 {
+    typedef boost::tuple<int, std::string> tuple_type;
+
     packed(int code, const std::string& message):
-        boost::tuple<int, int, std::string>(error, code, message)
+        tuple_type(code, message)
     { }
 };
     
-}}}
+}}
 
 #endif

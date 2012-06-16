@@ -3,7 +3,7 @@ SET(PLUGINS
         javascript
         mongo
         elliptics
-	binary
+        binary
         chrono
         fs
         native-server)

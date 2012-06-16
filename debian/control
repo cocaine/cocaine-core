@@ -34,6 +34,12 @@ Depends: ${shlibs:Depends}, ${misc:Depends}, cocaine-core (>= 0.8)
 Description: Cocaine - Perl Code Hosting
  Perl scripting support for Cocaine.
 
+Package: cocaine-plugin-binary
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, cocaine-core (>= 0.8)
+Description: Cocaine - Binary Code Hosting
+ Binary C/C++ support for Cocaine.
+
 Package: cocaine-plugin-mongodb
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, cocaine-core (>= 0.8)

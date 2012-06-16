@@ -44,7 +44,7 @@ class sink_t;
 
 class logger_t:
     public boost::noncopyable,
-    public birth_control_t<logger_t>
+    public birth_control<logger_t>
 {
     public:
         logger_t(sink_t& sink,

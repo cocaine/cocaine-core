@@ -40,12 +40,12 @@
 namespace cocaine {
 namespace dealer {
 
-class message_cache : private boost::noncopyable, public dealer_object_t {
+class message_cache_t : private boost::noncopyable, public dealer_object_t {
 public:
 	typedef boost::shared_ptr<message_iface> cached_message_ptr_t;
 	typedef std::deque<cached_message_ptr_t> message_queue_t;
 	typedef boost::shared_ptr<message_queue_t> message_queue_ptr_t;
-	typedef std::pair<std::string, message_path> message_data_t;
+	typedef std::pair<std::string, message_path_t> message_data_t;
 	typedef std::vector<message_data_t> expired_messages_data_t;
 
 	// <uuid, sent message>
@@ -55,10 +55,10 @@ public:
 	typedef std::map<std::string, sent_messages_map_t> route_sent_messages_map_t;
 
 public:
-	message_cache(const boost::shared_ptr<context_t>& ctx,
+	message_cache_t(const boost::shared_ptr<context_t>& ctx,
 				  bool logging_enabled = true);
 
-	virtual ~message_cache();
+	virtual ~message_cache_t();
 
 	void enqueue(const boost::shared_ptr<message_iface>& message);
 	void enqueue_with_priority(const boost::shared_ptr<message_iface>& message);
@@ -86,11 +86,11 @@ private:
 	static bool is_message_expired(cached_message_ptr_t msg);
 
 private:
-	enum e_message_cache_type	type_m;
-	route_sent_messages_map_t	sent_messages_m;
-	message_queue_ptr_t			new_messages_m;
+	enum e_message_cache_type	m_type;
+	route_sent_messages_map_t	m_sent_messages;
+	message_queue_ptr_t			m_new_messages;
 
-	boost::mutex mutex_m;
+	boost::mutex m_mutex;
 };
 
 } // namespace dealer

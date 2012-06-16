@@ -147,13 +147,13 @@ persistent_data_container::allocate_memory() {
 }
 
 void
-persistent_data_container::set_eblob(boost::shared_ptr<eblob> blob, const std::string& uuid) {
+persistent_data_container::set_eblob(boost::shared_ptr<eblob_t> blob, const std::string& uuid) {
 	blob_ = blob;
 	uuid_ = uuid;
 }
 
 void
-persistent_data_container::init_from_message_cache(boost::shared_ptr<eblob> blob,
+persistent_data_container::init_from_message_cache(boost::shared_ptr<eblob_t> blob,
 												   const std::string& uuid,
 												   int64_t data_size)
 {

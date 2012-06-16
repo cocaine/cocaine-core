@@ -18,6 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
+#include <boost/filesystem/path.hpp>
+
 #include "cocaine/manifest.hpp"
 
 #include "cocaine/context.hpp"
@@ -36,7 +38,7 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
     try {
         // Load the app manifest.
         root = context.storage<objects>("core:cache")->exists("apps", name);
-        spool_path = root["spool"].asString();
+        path = root["path"].asString();
     } catch(const storage_error_t& e) {
         m_log->info("the app hasn't been found in the cache");
 
@@ -51,23 +53,23 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
         }
 
         // Unpack the app.
-        spool_path = context.config.spool_path / name;
+        path = (boost::filesystem::path(context.config.spool_path) / name).string();
         
         m_log->info(
             "deploying the app to '%s'",
-            spool_path.string().c_str()
+            path.c_str()
         );
         
         try {
             package_t package(context, object.blob);
-            package.deploy(spool_path); 
+            package.deploy(path); 
         } catch(const package_error_t& e) {
             m_log->error("unable to deploy the app - %s", e.what());
             throw configuration_error_t("the '" + name + "' app is not available");
         }
 
         // Update the manifest in the cache.
-        object.meta["spool"] = spool_path.string();
+        object.meta["path"] = path;
         root = object.meta;
 
         try {
@@ -87,10 +89,18 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
         defaults::heartbeat_timeout
     ).asDouble();
 
+    if(policy.heartbeat_timeout <= 0.0f) {
+        throw configuration_error_t("slave heartbeat timeout must be positive");
+    }
+
     policy.suicide_timeout = root["engine"].get(
         "suicide-timeout",
         defaults::suicide_timeout
     ).asDouble();
+
+    if(policy.suicide_timeout <= 0.0f) {
+        throw configuration_error_t("slave suicide timeout must be positive");
+    }
 
     policy.termination_timeout = root["engine"].get(
         "termination-timeout",
@@ -101,7 +111,11 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
         "pool-limit",
         defaults::pool_limit
     ).asUInt();
-    
+
+    if(policy.pool_limit == 0) {
+        throw configuration_error_t("engine pool limit must be positive");
+    }
+
     policy.queue_limit = root["engine"].get(
         "queue-limit",
         defaults::queue_limit
@@ -110,7 +124,7 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
     policy.grow_threshold = root["engine"].get(
         "grow-threshold",
         policy.queue_limit / policy.pool_limit
-    ).asUInt();
+    ).asInt();
 
     slave = root["engine"].get(
         "slave",

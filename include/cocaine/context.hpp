@@ -21,10 +21,6 @@
 #ifndef COCAINE_CONTEXT_HPP
 #define COCAINE_CONTEXT_HPP
 
-#include <boost/filesystem/path.hpp>
-#include <boost/thread/mutex.hpp>
-#include <deque>
-
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
 
@@ -55,10 +51,10 @@ struct defaults {
 struct config_t {
     config_t(const std::string& config_path);
 
-    boost::filesystem::path config_path,
-                            plugin_path,
-                            ipc_path,
-                            spool_path;
+    std::string config_path,
+                plugin_path,
+                ipc_path,
+                spool_path;
 
     typedef struct {
         std::string type;
@@ -102,7 +98,9 @@ class context_t:
         // Networking
         // ----------
 
-        zmq::context_t& io();
+        zmq::context_t& io() {
+            return *m_io;
+        }
         
         // Storage
         // -------
@@ -140,9 +138,6 @@ class context_t:
         const config_t config;
 
     private:
-        // Initialization interlocking.
-        boost::mutex m_mutex;
-
         // Logging.    
         boost::shared_ptr<logging::sink_t> m_sink;
         

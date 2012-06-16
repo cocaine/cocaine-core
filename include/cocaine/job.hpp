@@ -76,7 +76,7 @@ struct complete;
 
 struct job_t:
     public sc::state_machine<job_t, job::incomplete>,
-    public birth_control_t<job_t>
+    public birth_control<job_t>
 {
     job_t(const std::string& event);
 
@@ -92,9 +92,9 @@ struct job_t:
 
     virtual ~job_t();
 
-    virtual void react(const events::chunk& ) { }
-    virtual void react(const events::error& ) { }
-    virtual void react(const events::choke& ) { }
+    virtual void react(const events::chunk& event) { }
+    virtual void react(const events::error& event) { }
+    virtual void react(const events::choke& event) { }
 
     const std::string event;
     const blob_t request;

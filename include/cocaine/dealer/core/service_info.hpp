@@ -33,8 +33,11 @@ namespace dealer {
 
 struct service_info_t {
 public:	
-	service_info_t() {};
-	service_info_t(const service_info_t& info) {
+	service_info_t() : discovery_type(AT_UNDEFINED) {};
+	
+	service_info_t(const service_info_t& info) : 
+		discovery_type(AT_UNDEFINED)
+	{
 		*this = info;
 	}
 
@@ -75,6 +78,10 @@ public:
 
 			case AT_FILE:
 				out << "discovery type: file\n";
+				break;
+
+			case AT_UNDEFINED:
+				out << "discovery type: undefined\n";
 				break;
 		}
 

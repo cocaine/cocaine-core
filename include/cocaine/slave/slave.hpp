@@ -47,17 +47,12 @@ class slave_t:
 {
     public:
         slave_t(context_t& context,
-                   slave_config_t config);
+                slave_config_t config);
 
         ~slave_t();
 
         void configure(const std::string& app);
         void run();
-
-        template<class Packed>
-        void send(Packed& packed) {
-            m_bus.send_multi(packed);
-        }
 
         // I/O object implementation.
         virtual blob_t read(int timeout);

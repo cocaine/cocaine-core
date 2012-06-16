@@ -36,44 +36,44 @@ namespace cocaine {
 namespace dealer {
 
 cached_response_t::cached_response_t() :
-	code_m(0)
+	m_code(0)
 {
 
 }
 
-cached_response_t::cached_response_t(const cached_response_t& response) :
-	code_m(0)
+cached_response_t::cached_response_t(const cached_response_t& response_t) :
+	m_code(0)
 {
-	*this = response;
+	*this = response_t;
 }
 
 cached_response_t::cached_response_t(const std::string& uuid,
 									 const std::string& route,
-									 const message_path& path,
+									 const message_path_t& path,
 									 const void* data,
 									 size_t data_size) :
-	uuid_m(uuid),
-	route_m(route),
-	path_m(path),
-	code_m(0)
+	m_uuid(uuid),
+	m_route(route),
+	m_path(path),
+	m_code(0)
 {
 	if (data_size > MAX_RESPONSE_DATA_SIZE) {
-		throw dealer_error(resource_error, "can't create response, response data too big.");
+		throw dealer_error(resource_error, "can't create response_t, response_t data too big.");
 	}
 
-	data_m = data_container(data, data_size);
+	m_data = data_container(data, data_size);
 }
 
 cached_response_t::cached_response_t(const std::string& uuid,
 									 const std::string& route,
-									 const message_path& path,
+									 const message_path_t& path,
 									 int code,
 									 const std::string& error_message) :
-	uuid_m(uuid),
-	route_m(route),
-	path_m(path),
-	code_m(code),
-	error_message_m(error_message)
+	m_uuid(uuid),
+	m_route(route),
+	m_path(path),
+	m_code(code),
+	m_error_message(error_message)
 
 {
 }
@@ -83,28 +83,28 @@ cached_response_t::~cached_response_t() {
 
 const data_container&
 cached_response_t::data() const {
-	return data_m;
+	return m_data;
 }
 
 cached_response_t&
 cached_response_t::operator = (const cached_response_t& rhs) {
-	boost::mutex::scoped_lock lock(mutex_m);
+	boost::mutex::scoped_lock lock(m_mutex);
 
 	if (this == &rhs) {
 		return *this;
 	}
 
-	uuid_m			= rhs.uuid_m;
-	path_m			= rhs.path_m;
-	data_m			= rhs.data_m;
-	received_timestamp_m = rhs.received_timestamp_m;
+	m_uuid			= rhs.m_uuid;
+	m_path			= rhs.m_path;
+	m_data			= rhs.m_data;
+	m_received_timestamp = rhs.m_received_timestamp;
 
 	return *this;
 }
 
 bool
 cached_response_t::operator == (const cached_response_t& rhs) const {
-	return (uuid_m == rhs.uuid_m);
+	return (m_uuid == rhs.m_uuid);
 }
 
 bool
@@ -114,48 +114,48 @@ cached_response_t::operator != (const cached_response_t& rhs) const {
 
 const std::string&
 cached_response_t::uuid() const {
-	return uuid_m;
+	return m_uuid;
 }
 
 const std::string&
 cached_response_t::route() const {
-	return route_m;
+	return m_route;
 }
 
 const timeval&
 cached_response_t::received_timestamp() const {
-	return received_timestamp_m;
+	return m_received_timestamp;
 }
 
 int
 cached_response_t::code() const {
-	return code_m;
+	return m_code;
 }
 
 std::string
 cached_response_t::error_message() const {
-	return error_message_m;
+	return m_error_message;
 }
 
 void
 cached_response_t::set_received_timestamp(const timeval& val) {
-	boost::mutex::scoped_lock lock(mutex_m);
-	received_timestamp_m = val;
+	boost::mutex::scoped_lock lock(m_mutex);
+	m_received_timestamp = val;
 }
 
 void
 cached_response_t::set_code(int code) {
-	code_m = code;
+	m_code = code;
 }
 
 void
 cached_response_t::set_error_message(const std::string& message) {
-	error_message_m = message;
+	m_error_message = message;
 }
 
-const message_path&
+const message_path_t&
 cached_response_t::path() const {
-	return path_m;
+	return m_path;
 }
 
 } // namespace dealer

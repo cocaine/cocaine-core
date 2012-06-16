@@ -130,7 +130,6 @@ config_t::config_t(const std::string& path):
         throw configuration_error_t("mandatory 'core' storage has not been configured");
     }
 
-
     // IO configuration
     // ----------------
 
@@ -156,18 +155,13 @@ context_t::context_t(config_t config_, boost::shared_ptr<logging::sink_t> sink):
 
     // Register the builtin components.
     m_repository->insert<file_storage_t>("files");
+    
+    // Initialize the ZeroMQ context.
+    m_io.reset(new zmq::context_t(1));
 }
 
-context_t::~context_t() { }
-
-zmq::context_t& context_t::io() {
-    boost::lock_guard<boost::mutex> lock(m_mutex);
-    
-    if(!m_io.get()) {
-        m_io.reset(new zmq::context_t(1));
-    }
-
-    return *m_io;
+context_t::~context_t() {
+    BOOST_ASSERT(io::socket_t::objects_alive == 0);
 }
 
 boost::shared_ptr<logging::logger_t>

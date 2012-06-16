@@ -28,12 +28,10 @@
 #include "cocaine/job.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
-#include "cocaine/rpc.hpp"
 
 #include "cocaine/dealer/types.hpp"
 
 using namespace cocaine::engine;
-using namespace cocaine::io;
 
 void job_queue_t::push(const_reference job) {
     if(job->policy.urgent) {
@@ -69,7 +67,7 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest_):
 
     std::string endpoint(
         (boost::format("ipc://%1%/%2%")
-            % m_context.config.ipc_path.string()
+            % m_context.config.ipc_path
             % m_manifest.name
         ).str()
     );
@@ -346,7 +344,11 @@ void engine_t::process(ev::idle&, int) {
 
         std::string slave_id;
         int command = 0;
-        boost::tuple<raw<std::string>, int&> proxy(protect(slave_id), command);
+        
+        boost::tuple<
+            io::raw<std::string>,
+            int&
+        > proxy(io::protect(slave_id), command);
                 
         m_bus.recv_multi(proxy);
 
@@ -586,14 +588,14 @@ void engine_t::pump() {
             
         events::invoke event(job);
 
-        rpc::packed<rpc::invoke> packed(
+        io::packed<rpc::invoke> packed(
             job->event,
             job->request.data(),
             job->request.size()
         );
 
         pool_map_t::iterator it(
-            unicast(
+            call(
                 select::state<slave::idle>(),
                 packed
             )
@@ -655,13 +657,19 @@ void engine_t::shutdown() {
         }
     }
 
-    rpc::packed<rpc::terminate> packed;
+    io::packed<rpc::terminate> packed;
+    unsigned int pending = 0;
 
     // Send the termination event to active slaves.
-    unsigned int pending = multicast(
-        select::state<slave::alive>(),
-        packed
-    );
+    for(pool_map_t::iterator it = m_pool.begin();
+        it != m_pool.end();
+        ++it)
+    {
+        if(it->second->state_downcast<const slave::alive*>()) {
+            call(select::specific(*it->second), packed);
+            ++pending;
+        }
+    }
 
     if(!pending) {
         // Means there're no active slaves left.
@@ -673,7 +681,7 @@ void engine_t::shutdown() {
         m_termination_timer.start(m_manifest.policy.termination_timeout);
         
         m_log->info(
-            "waiting for %d slaves to terminate, timeout: %.f seconds",
+            "waiting for %d slaves to terminate, timeout: %.02f seconds",
             pending,
             m_manifest.policy.termination_timeout
         );

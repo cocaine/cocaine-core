@@ -35,7 +35,7 @@
 namespace cocaine {
 namespace dealer {
 
-statistics_collector::statistics_collector(const boost::shared_ptr<configuration>& config,
+statistics_collector::statistics_collector(const boost::shared_ptr<configuration_t>& config,
 										   const boost::shared_ptr<zmq::context_t>& zmq_context) :
 	is_enabled_(false),
 	config_(config),
@@ -43,7 +43,7 @@ statistics_collector::statistics_collector(const boost::shared_ptr<configuration
 	is_running_(false)
 {
 	if (!config_) {
-		std::string error_str = "configuration object is empty";
+		std::string error_str = "configuration_t object is empty";
 		error_str += " at " + std::string(BOOST_CURRENT_FUNCTION);
 		throw internal_error(error_str);
 	}
@@ -54,21 +54,21 @@ statistics_collector::statistics_collector(const boost::shared_ptr<configuration
 		throw internal_error(error_str);
 	}
 
-	logger_.reset(new smart_logger<empty_logger>);
+	logger_.reset(new empty_logger_t);
 
 	init();
 }
 
-statistics_collector::statistics_collector(const boost::shared_ptr<configuration>& config,
+statistics_collector::statistics_collector(const boost::shared_ptr<configuration_t>& config,
 										   const boost::shared_ptr<zmq::context_t>& zmq_context,
-										   const boost::shared_ptr<base_logger>& logger) :
+										   const boost::shared_ptr<base_logger_t>& logger) :
 	is_enabled_(false),
 	config_(config),
 	zmq_context_(zmq_context),
 	is_running_(false)
 {
 	if (!config_) {
-		std::string error_str = "configuration object is empty";
+		std::string error_str = "configuration_t object is empty";
 		error_str += " at " + std::string(BOOST_CURRENT_FUNCTION);
 		throw internal_error(error_str);
 	}
@@ -102,22 +102,22 @@ statistics_collector::init() {
 }
 
 void
-statistics_collector::set_logger(const boost::shared_ptr<base_logger>& logger) {
+statistics_collector::set_logger(const boost::shared_ptr<base_logger_t>& logger) {
 	if (logger) {
 		logger_ = logger;
 	}
 	else {
-		logger_.reset(new smart_logger<empty_logger>);
+		logger_.reset(new empty_logger_t);
 	}
 }
 
-boost::shared_ptr<base_logger>
+boost::shared_ptr<base_logger_t>
 statistics_collector::logger() {
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(m_mutex);
 	return logger_;
 }
 
-boost::shared_ptr<configuration>
+boost::shared_ptr<configuration_t>
 statistics_collector::config() const {
 	return config_;
 }
@@ -126,7 +126,7 @@ void
 statistics_collector::process_remote_connection() {
 	// create zmq resp socket
 	zmq::socket_t socket(*zmq_context_, ZMQ_REP);
-	DT::port port = config()->remote_statistics_port();
+	boost::uint16_t port = config()->remote_statistics_port();
 	std::string port_str = boost::lexical_cast<std::string>(port);
 	socket.bind(("tcp://*:" + port_str).c_str());
 
@@ -179,9 +179,9 @@ statistics_collector::process_remote_connection() {
     		continue;
     	}
 
-    	// send response
+    	// send response_t
 		try {
-			// send response
+			// send response_t
 			size_t data_len = response_json.length();
 
 			zmq::message_t reply(data_len);
@@ -239,7 +239,7 @@ std::string
 statistics_collector::all_services_json() {
 	return "{}";
 	/*
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(m_mutex);
 
 	Json::FastWriter writer;
 	Json::Value root;
@@ -249,7 +249,7 @@ statistics_collector::all_services_json() {
 	size_t total_unhandled_messages = 0;
 
 	Json::Value messages_statistics;
-	typedef configuration::services_list_t slist_t;
+	typedef configuration_t::services_list_t slist_t;
 	const slist_t& services = config()->services_list();
 
 	// get unhandled messages total
@@ -286,7 +286,7 @@ statistics_collector::all_services_json() {
 		services_stats_t::iterator service_stat_it = services_stats_.find(services_it->second.name_);
 		if (service_stat_it != services_stats_.end()) {
 			// get references
-			std::map<DT::ip_addr, std::string>& hosts = service_stat_it->second.hosts;
+			std::map<boost::uint32_t, std::string>& hosts = service_stat_it->second.hosts;
 			std::map<std::string, size_t>& umsgs = service_stat_it->second.unhandled_messages;
 			std::vector<std::string>& handles = service_stat_it->second.handles;
 
@@ -341,7 +341,7 @@ statistics_collector::all_services_json() {
 			}
 			else {
 				Json::Value service_hosts;
-				std::map<DT::ip_addr, std::string>::iterator hosts_it = hosts.begin();
+				std::map<boost::uint32_t, std::string>::iterator hosts_it = hosts.begin();
 				size_t counter = 1;
 				for (; hosts_it != hosts.end(); ++hosts_it) {
 					std::string key = "host " + boost::lexical_cast<std::string>(counter);
@@ -378,7 +378,7 @@ statistics_collector::process_request_json(const std::string& request_json) {
 	// check protocol version
 	int version = root.get("version", -1).asUInt();
 
-	if (version != defaults::statistics_protocol_version) {
+	if (version != defaults_t::statistics_protocol_version) {
 		if (version == -1) {
 			return get_error_json(SRE_NO_VERSION_ERROR);
 		}
@@ -420,7 +420,7 @@ statistics_collector::as_json() const {
 	Json::FastWriter writer;
 	Json::Value root;
 
-	typedef configuration::services_list_t slist_t;
+	typedef configuration_t::services_list_t slist_t;
 	const slist_t& services = config()->services_list();
 
 	slist_t::const_iterator it = services.begin();
@@ -452,7 +452,7 @@ statistics_collector::update_used_cache_size(size_t used_cache_size) {
 		return;
 	}
 
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(m_mutex);
 	used_cache_size_ = used_cache_size;
 }
 
@@ -462,7 +462,7 @@ statistics_collector::update_service_stats(const std::string& service_name, cons
 		return;
 	}
 
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(m_mutex);
 	services_stats_[service_name] = stats;
 }
 
@@ -475,7 +475,7 @@ statistics_collector::update_handle_stats(const std::string& service,
 		return;
 	}
 
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(m_mutex);
 	handles_stats_[std::make_pair(service, handle)] = stats;
 }
 
@@ -488,7 +488,7 @@ statistics_collector::get_handle_stats(const std::string& service,
 		return false;
 	}
 
-	boost::mutex::scoped_lock lock(mutex_);
+	boost::mutex::scoped_lock lock(m_mutex);
 	handle_stats_t::iterator it = handles_stats_.find(std::make_pair(service, handle));
 
 	if (it == handles_stats_.end()) {

@@ -120,7 +120,7 @@ namespace {
             context.storage<storages::objects>("core")->put("apps", name, object);
         } catch(const storage_error_t& e) {
             std::cerr << "Error: unable to deploy the app." << std::endl;
-            std::cerr << e.what();
+            std::cerr << e.what() << std::endl;
             return;
         }
 
@@ -176,7 +176,7 @@ int main(int argc, char * argv[]) {
     }
 
     if(vm.count("help")) {
-        std::cout << "Usage: " << argv[0] << "[options] app-name" << std::endl;
+        std::cout << "Usage: " << argv[0] << " [options] app-name" << std::endl;
         std::cout << general_options;
         return EXIT_SUCCESS;
     }
@@ -191,21 +191,25 @@ int main(int argc, char * argv[]) {
 
     if(!vm.count("configuration")) {
         std::cerr << "Error: no configuration file location has been specified." << std::endl;
+        std::cerr << "Type '" << argv[0] << " --help' for usage information." << std::endl;
         return EXIT_FAILURE;
     }
 
     if(!vm.count("manifest")) {
         std::cerr << "Error: no app manifest file location has been specified." << std::endl;
+        std::cerr << "Type '" << argv[0] << " --help' for usage information." << std::endl;
         return EXIT_FAILURE;
     }
     
     if(!vm.count("package")) {
         std::cerr << "Error: no app package file location has been specified." << std::endl;
+        std::cerr << "Type '" << argv[0] << " --help' for usage information." << std::endl;
         return EXIT_FAILURE;
     }
     
     if(!vm.count("name")) {
         std::cerr << "Error: no app name has been specified." << std::endl;
+        std::cerr << "Type '" << argv[0] << " --help' for usage information." << std::endl;
         return EXIT_FAILURE;
     }
     

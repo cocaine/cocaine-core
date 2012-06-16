@@ -38,14 +38,14 @@
 namespace cocaine {
 namespace dealer {
 
-struct request_metadata {
-	request_metadata() :
+struct request_metadata_t {
+	request_metadata_t() :
 		data_size(0),
 		ack_received(false),
 		is_sent(false),
 		retries_count(0) {}
 
-	virtual ~request_metadata() {}
+	virtual ~request_metadata_t() {}
 
 	std::string as_string() const {
 		std::stringstream s;
@@ -63,16 +63,16 @@ struct request_metadata {
         return s.str();
 	}
 
-	const message_path& path() const {
+	const message_path_t& path() const {
 		return path_.get();
 	}
 
-	void set_path(const message_path& path) {
+	void set_path(const message_path_t& path) {
 		path_ = path;
 	}
 
 	std::string		uuid;
-	message_policy	policy;
+	message_policy_t	policy;
 	std::string		destination_endpoint;
 	uint64_t		data_size;
 
@@ -84,16 +84,16 @@ struct request_metadata {
 	int		retries_count;
 
 private:
-	boost::flyweight<message_path> path_;
+	boost::flyweight<message_path_t> path_;
 };
 
-struct persistent_request_metadata : public request_metadata {
-	persistent_request_metadata() :
-		request_metadata() {}
+struct persistent_request_metadata_t : public request_metadata_t {
+	persistent_request_metadata_t() :
+		request_metadata_t() {}
 
-	virtual ~persistent_request_metadata() {}
+	virtual ~persistent_request_metadata_t() {}
 
-	void set_eblob(const boost::shared_ptr<eblob>& blob_) {
+	void set_eblob(const boost::shared_ptr<eblob_t>& blob_) {
 		blob = blob_;
 	}
 
@@ -108,7 +108,7 @@ struct persistent_request_metadata : public request_metadata {
 		memcpy(pac.buffer(), data, size);
 		pac.buffer_consumed(size);
 
-		message_path path;
+		message_path_t path;
 		unpack_next_value(pac, path);
 		path = path;
 
@@ -128,7 +128,7 @@ struct persistent_request_metadata : public request_metadata {
     	pk.pack(data_size);
     	pk.pack(enqued_timestamp);
 
-    	// write to eblob with uuid as key
+    	// write to eblob_t with uuid as key
 		blob->write(uuid, buffer.data(), buffer.size(), EBLOB_COLUMN);
 	}
 
@@ -139,15 +139,15 @@ private:
 		result.get().convert(&value);
 	}
 
-	boost::shared_ptr<eblob> blob;
+	boost::shared_ptr<eblob_t> blob;
 };
 
-std::ostream& operator << (std::ostream& out, request_metadata& req_meta) {
+std::ostream& operator << (std::ostream& out, request_metadata_t& req_meta) {
 	out << req_meta.as_string();
 	return out;
 }
 
-std::ostream& operator << (std::ostream& out, persistent_request_metadata& req_meta) {
+std::ostream& operator << (std::ostream& out, persistent_request_metadata_t& req_meta) {
 	out << req_meta.as_string();
 	return out;
 }

@@ -38,7 +38,7 @@ binary_t::binary_t(context_t &context, const manifest_t &manifest) :
 		throw configuration_error_t("malformed manifest");
 	}
 
-	boost::filesystem::path source(manifest.spool_path);
+	boost::filesystem::path source(manifest.path);
 
 	if (lt_dlinit() != 0)
 		throw repository_error_t("unable to initialize binary loader");
@@ -57,9 +57,9 @@ binary_t::binary_t(context_t &context, const manifest_t &manifest) :
 	lt_dladvise_init(&m_advice);
 	lt_dladvise_global(&m_advice);
 
-	m_bin = lt_dlopenadvise(source.c_str(), m_advice);
+	m_bin = lt_dlopenadvise(source.string().c_str(), m_advice);
 	if (!m_bin) {
-		m_log->error("unable to load binary object %s: %s", source.c_str(), lt_dlerror());
+		m_log->error("unable to load binary object %s: %s", source.string().c_str(), lt_dlerror());
 		lt_dladvise_destroy(&m_advice);
 		throw repository_error_t("unable to load binary object");
 	}
@@ -86,7 +86,7 @@ binary_t::binary_t(context_t &context, const manifest_t &manifest) :
 		throw repository_error_t("binary initialization failed");
 	}
 
-	m_log->info("successfully initialized binary module from %s", source.c_str());
+	m_log->info("successfully initialized binary module from %s", source.string().c_str());
 }
 
 binary_t::~binary_t()

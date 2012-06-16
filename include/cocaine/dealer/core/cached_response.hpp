@@ -36,17 +36,17 @@ namespace dealer {
 class cached_response_t {
 public:
 	cached_response_t();
-	explicit cached_response_t(const cached_response_t& response);
+	explicit cached_response_t(const cached_response_t& response_t);
 
 	cached_response_t(const std::string& uuid,
 					  const std::string& route,
-					  const message_path& path,
+					  const message_path_t& path,
 					  const void* data,
 					  size_t data_size);
 
 	cached_response_t(const std::string& uuid,
 					  const std::string& route,
-					  const message_path& path,
+					  const message_path_t& path,
 					  int code,
 					  const std::string& error_message);
 
@@ -54,7 +54,7 @@ public:
 
 	const data_container& data() const;
 
-	const message_path& path() const;
+	const message_path_t& path() const;
 	const std::string& uuid() const;
 	const std::string& route() const;
 
@@ -75,16 +75,15 @@ public:
 	static const size_t UUID_SIZE = 36; // bytes
 	
 private:
-	std::string		uuid_m;
-	std::string		route_m;
-	message_path	path_m;
-	data_container	data_m;
-	timeval			received_timestamp_m;
+	std::string		m_uuid;
+	std::string		m_route;
+	message_path_t	m_path;
+	data_container	m_data;
+	timeval			m_received_timestamp;
+	boost::mutex	m_mutex;
 
-	int code_m;
-	std::string error_message_m;
-
-	boost::mutex mutex_m;
+	int			m_code;
+	std::string m_error_message;
 };
 
 } // namespace dealer

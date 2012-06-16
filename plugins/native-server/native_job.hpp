@@ -72,7 +72,7 @@ class native_job_t:
 
             m_channel.send(null, ZMQ_SNDMORE);          
             m_channel.send(m_tag, ZMQ_SNDMORE);
-            m_channel.send_multi(packed);
+            m_channel.send(packed);
         }
 
     private:

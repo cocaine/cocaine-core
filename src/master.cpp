@@ -120,7 +120,7 @@ void master_t::spawn() {
             m_engine.manifest().slave.c_str(),
             "--slave:app", m_engine.manifest().name.c_str(),
             "--slave:uuid",  id().c_str(),
-            "--configuration", m_context.config.config_path.string().c_str(),
+            "--configuration", m_context.config.config_path.c_str(),
             (char*)0
         );
 

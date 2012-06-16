@@ -21,8 +21,6 @@
 #ifndef COCAINE_APP_MANIFEST_HPP
 #define COCAINE_APP_MANIFEST_HPP
 
-#include <boost/filesystem/path.hpp>
-
 #include "cocaine/common.hpp"
 
 #include "cocaine/helpers/json.hpp"
@@ -34,9 +32,8 @@ struct manifest_t {
                const std::string& name);
 
     std::string name,
-                type;
-
-    boost::filesystem::path spool_path;
+                type,
+                path;
 
     struct {
         float heartbeat_timeout;

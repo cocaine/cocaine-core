@@ -57,7 +57,7 @@ public:
             throw configuration_error_t("malformed manifest");
         }
 
-        boost::filesystem::path source(manifest.spool_path);
+        boost::filesystem::path source(manifest.path);
 
         if(boost::filesystem::is_directory(source)) {
             throw configuration_error_t("malformed manifest, expected path to perl script, got a directory.");   

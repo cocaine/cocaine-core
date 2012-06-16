@@ -20,29 +20,29 @@
 
 #include <stdexcept>
 
-#include <cocaine/dealer/response.hpp>
-#include <cocaine/dealer/core/dealer_impl.hpp>
-#include <cocaine/dealer/core/response_impl.hpp>
+#include "cocaine/dealer/response.hpp"
+#include "cocaine/dealer/core/dealer_impl.hpp"
+#include "cocaine/dealer/core/response_impl.hpp"
 
 namespace cocaine {
 namespace dealer {
 
-response::response(const boost::shared_ptr<dealer_impl_t>& dealer, const std::string& uuid, const message_path& path) {
-	impl_m.reset(new response_impl(dealer, uuid, path));
+response_t::response_t(const boost::shared_ptr<dealer_impl_t>& dealer, const std::string& uuid, const message_path_t& path) {
+	m_impl.reset(new response_impl_t(dealer, uuid, path));
 }
 
-response::~response() {
-	impl_m.reset();
+response_t::~response_t() {
+	m_impl.reset();
 }
 
 bool
-response::get(data_container* data, double timeout) {
-	return impl_m->get(data, timeout);
+response_t::get(data_container* data, double timeout) {
+	return m_impl->get(data, timeout);
 }
 
 void
-response::response_callback(const response_data& resp_data, const response_info& resp_info) {
-	impl_m->response_callback(resp_data, resp_info);
+response_t::response_callback(const response_data& resp_data, const response_info& resp_info) {
+	m_impl->response_callback(resp_data, resp_info);
 }
 
 } // namespace dealer
