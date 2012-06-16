@@ -81,12 +81,6 @@ struct packed<rpc::chunk>:
         );
     }
 
-    packed(zmq::message_t& message_):
-        tuple_type(message)
-    {
-        message.move(&message_);
-    }
-
 private:
     zmq::message_t message;
 };
