@@ -120,7 +120,7 @@ namespace {
             context.storage<storages::objects>("core")->put("apps", name, object);
         } catch(const storage_error_t& e) {
             std::cerr << "Error: unable to deploy the app." << std::endl;
-            std::cerr << e.what();
+            std::cerr << e.what() << std::endl;
             return;
         }
 
