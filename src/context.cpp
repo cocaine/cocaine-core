@@ -160,7 +160,9 @@ context_t::context_t(config_t config_, boost::shared_ptr<logging::sink_t> sink):
     m_io.reset(new zmq::context_t(1));
 }
 
-context_t::~context_t() { }
+context_t::~context_t() {
+    BOOST_ASSERT(io::socket_t::objects_alive == 0);
+}
 
 boost::shared_ptr<logging::logger_t>
 context_t::log(const std::string& name) {
