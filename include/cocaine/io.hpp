@@ -302,19 +302,17 @@ class channel_t:
         }
 
         template<int Command>
-        bool send(packed<Command>& command,
+        bool send(const std::string& route,
+                  packed<Command>& command,
                   int flags = 0)
         {
             const bool multipart = boost::tuples::length<
                 typename packed<Command>::tuple_type
             >::value;
 
-            if(multipart) {
-                return send(Command, ZMQ_SNDMORE | flags) &&
-                       send_multipart(command, flags);
-            } else {
-                return send(Command, flags);
-            }
+            return send(protect(route), ZMQ_SNDMORE | ZMQ_NOBLOCK) &&
+                   send(Command, (multipart ? ZMQ_SNDMORE : 0) | flags) &&
+                   send_multipart(command, flags);
         }
 
         // Receiving
@@ -391,7 +389,7 @@ class channel_t:
 
     private:
         bool send_multipart(const null_type&,
-                            int __attribute__ ((unused)) flags = 0)
+                            int __attribute__ ((unused)) flags = 0) const
         {
             return true;
         }

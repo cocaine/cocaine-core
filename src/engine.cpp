@@ -356,12 +356,18 @@ void engine_t::process(ev::idle&, int) {
 
         if(master == m_pool.end()) {
             m_log->warning(
-                "dropping type %d event from a nonexistent slave %s", 
+                "dropping type %d event from an unknown slave %s", 
                 command,
                 slave_id.c_str()
             );
             
             m_bus.drop();
+
+            io::packed<rpc::terminate> packed;
+
+            // Try to kill it, just in case.
+            m_bus.send(slave_id, packed);
+
             return;
         }
 

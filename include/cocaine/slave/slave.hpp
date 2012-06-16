@@ -51,7 +51,7 @@ class slave_t:
 
         ~slave_t();
 
-        void configure(const std::string& app);
+        void configure();
         void run();
 
         // I/O object implementation.
@@ -75,6 +75,7 @@ class slave_t:
         boost::shared_ptr<logging::logger_t> m_log;
 
         // The app.
+        const std::string m_app;
         std::auto_ptr<const manifest_t> m_manifest;
         std::auto_ptr<sandbox_t> m_sandbox;
 

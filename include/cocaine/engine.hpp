@@ -136,12 +136,14 @@ class engine_t:
             );
 
             if(it != m_pool.end()) {
-                m_bus.send(
-                    io::protect(it->second->id()),
-                    ZMQ_SNDMORE
+                bool success = m_bus.send(
+                    it->second->id(),
+                    packed
                 );
 
-                m_bus.send(packed);
+                if(!success) {
+                    return m_pool.end();
+                }
             }
 
             return it;

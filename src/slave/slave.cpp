@@ -36,7 +36,8 @@ slave_t::slave_t(context_t& context, slave_config_t config):
     unique_id_t(config.uuid),
     m_context(context),
     m_log(m_context.log("app/" + config.app)),
-    m_bus(m_context.io(), ZMQ_DEALER, config.uuid)
+    m_app(config.app),
+    m_bus(m_context.io(), ZMQ_ROUTER, config.uuid)
 {
     m_bus.connect(
         (boost::format("ipc://%1%/%2%")
@@ -56,14 +57,14 @@ slave_t::slave_t(context_t& context, slave_config_t config):
     m_heartbeat_timer.set<slave_t, &slave_t::heartbeat>(this);
     m_heartbeat_timer.start(0.0f, 5.0f);
 
-    configure(config.app);
+    configure();
 }
 
 slave_t::~slave_t() { }
 
-void slave_t::configure(const std::string& app) {
+void slave_t::configure() {
     try {
-        m_manifest.reset(new manifest_t(m_context, app));
+        m_manifest.reset(new manifest_t(m_context, m_app));
         
         m_sandbox = m_context.get<sandbox_t>(
             m_manifest->type,
@@ -74,15 +75,15 @@ void slave_t::configure(const std::string& app) {
         m_suicide_timer.start(m_manifest->policy.suicide_timeout);
     } catch(const configuration_error_t& e) {
         io::packed<rpc::error> packed(dealer::server_error, e.what());
-        m_bus.send(packed);
+        m_bus.send(m_app, packed);
         terminate();
     } catch(const repository_error_t& e) {
         io::packed<rpc::error> packed(dealer::server_error, e.what());
-        m_bus.send(packed);
+        m_bus.send(m_app, packed);
         terminate();
     } catch(const unrecoverable_error_t& e) {
         io::packed<rpc::error> packed(dealer::server_error, e.what());
-        m_bus.send(packed);
+        m_bus.send(m_app, packed);
         terminate();
     } catch(...) {
         io::packed<rpc::error> packed(
@@ -90,7 +91,7 @@ void slave_t::configure(const std::string& app) {
             "unexpected exception while configuring the slave"
         );
         
-        m_bus.send(packed);
+        m_bus.send(m_app, packed);
         terminate();
     }
 }
@@ -113,7 +114,7 @@ blob_t slave_t::read(int timeout) {
 
 void slave_t::write(const void * data, size_t size) {
     io::packed<rpc::chunk> packed(data, size);
-    m_bus.send(packed);
+    m_bus.send(m_app, packed);
 }
 
 void slave_t::message(ev::io&, int) {
@@ -127,10 +128,22 @@ void slave_t::process(ev::idle&, int) {
         m_processor.stop();
         return;
     }
-    
+   
+    std::string source; 
     int command = 0;
 
-    m_bus.recv(command);
+    boost::tuple<
+        io::raw<std::string>,
+        int&
+    > proxy(io::protect(source), command);
+    
+    m_bus.recv_multi(proxy);
+
+    m_log->debug(
+        "got type %d event from engine %s",
+        command,
+        source.c_str()
+    );
 
     switch(command) {
         case rpc::invoke: {
@@ -177,7 +190,7 @@ void slave_t::timeout(ev::timer&, int) {
 
 void slave_t::heartbeat(ev::timer&, int) {
     io::packed<rpc::heartbeat> packed;
-    m_bus.send(packed);
+    m_bus.send(m_app, packed);
 }
 
 void slave_t::invoke(const std::string& event) {
@@ -185,21 +198,21 @@ void slave_t::invoke(const std::string& event) {
         m_sandbox->invoke(event, *this);
     } catch(const recoverable_error_t& e) {
         io::packed<rpc::error> packed(dealer::app_error, e.what());
-        m_bus.send(packed);
+        m_bus.send(m_app, packed);
     } catch(const unrecoverable_error_t& e) {
         io::packed<rpc::error> packed(dealer::server_error, e.what());
-        m_bus.send(packed);
+        m_bus.send(m_app, packed);
     } catch(...) {
         io::packed<rpc::error> packed(
             dealer::server_error,
             "unexpected exception while processing an event"
         );
         
-        m_bus.send(packed);
+        m_bus.send(m_app, packed);
     }
     
     io::packed<rpc::choke> packed;
-    m_bus.send(packed);
+    m_bus.send(m_app, packed);
     
     // NOTE: Drop all the outstanding request chunks not pulled
     // in by the user code. Might have a warning here?
@@ -211,6 +224,6 @@ void slave_t::invoke(const std::string& event) {
 
 void slave_t::terminate() {
     io::packed<rpc::terminate> packed;
-    m_bus.send(packed);
+    m_bus.send(m_app, packed);
     m_loop.unloop(ev::ALL);
 } 
