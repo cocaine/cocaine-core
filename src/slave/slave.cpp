@@ -46,6 +46,11 @@ slave_t::slave_t(context_t& context, slave_config_t config):
         ).str()
     );
     
+#ifdef ZMQ_ROUTER_BEHAVIOR
+    int mode = 1;
+    m_bus.setsockopt(ZMQ_ROUTER_BEHAVIOR, &mode, sizeof(mode));
+#endif
+
     m_watcher.set<slave_t, &slave_t::message>(this);
     m_watcher.start(m_bus.fd(), ev::READ);
     m_processor.set<slave_t, &slave_t::process>(this);

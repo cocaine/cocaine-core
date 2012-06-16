@@ -310,7 +310,7 @@ class channel_t:
                 typename packed<Command>::tuple_type
             >::value;
 
-            return send(protect(route), ZMQ_SNDMORE | ZMQ_NOBLOCK) &&
+            return send(protect(route), ZMQ_SNDMORE | flags) &&
                    send(Command, (multipart ? ZMQ_SNDMORE : 0) | flags) &&
                    send_multipart(command, flags);
         }
