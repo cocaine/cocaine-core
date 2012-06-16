@@ -26,19 +26,6 @@
 
 namespace cocaine { namespace engine { namespace drivers {
 
-struct route {
-    route(io::channel_t& channel_):
-        channel(channel_)
-    { }
-
-    template<class T>
-    void operator()(const T& route) {
-        channel.send(io::protect(route), ZMQ_SNDMORE);
-    }
-
-    io::channel_t& channel;
-};
-
 class native_job_t:
     public job_t
 {
@@ -53,27 +40,6 @@ class native_job_t:
         virtual void react(const events::chunk& event);
         virtual void react(const events::error& event);
         virtual void react(const events::choke& event);
-
-    private:
-        template<class Packed>
-        void send(Packed& packed) {
-            try {
-                std::for_each(
-                    m_route.begin(),
-                    m_route.end(),
-                    route(m_channel)
-                );
-            } catch(const zmq::error_t& e) {
-                // NOTE: The client is down.
-                return;
-            }
-
-            zmq::message_t null;
-
-            m_channel.send(null, ZMQ_SNDMORE);          
-            m_channel.send(m_tag, ZMQ_SNDMORE);
-            m_channel.send(packed);
-        }
 
     private:
         io::channel_t& m_channel;        
