@@ -316,6 +316,7 @@ Json::Value server_t::info() const {
     }
 
     result["loggers"] = static_cast<Json::UInt>(logging::logger_t::objects_alive);
+    result["sockets"] = static_cast<Json::UInt>(io::socket_t::objects_alive);
 
     result["uptime"] = m_loop.now() - m_birthstamp;
 

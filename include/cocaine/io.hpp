@@ -34,6 +34,8 @@
 
 #include "cocaine/common.hpp"
 
+#include "cocaine/helpers/birth_control.hpp"
+
 #define HOSTNAME_MAX_LENGTH 256
 
 namespace cocaine { namespace io {
@@ -43,7 +45,8 @@ using namespace boost::tuples;
 typedef std::vector<std::string> route_t;
 
 class socket_t: 
-    public boost::noncopyable
+    public boost::noncopyable,
+    public birth_control<socket_t>
 {
     public:
         socket_t(zmq::context_t& context, int type):

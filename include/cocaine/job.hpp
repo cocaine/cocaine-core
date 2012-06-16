@@ -76,7 +76,7 @@ struct complete;
 
 struct job_t:
     public sc::state_machine<job_t, job::incomplete>,
-    public birth_control_t<job_t>
+    public birth_control<job_t>
 {
     job_t(const std::string& event);
 
