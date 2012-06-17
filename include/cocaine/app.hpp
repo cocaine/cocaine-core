@@ -57,7 +57,7 @@ class app_t {
     private:
         boost::shared_ptr<logging::logger_t> m_log;
         
-        manifest_t m_manifest;
+        const manifest_t m_manifest;
         std::auto_ptr<engine::engine_t> m_engine;
         
         driver_map_t m_drivers;
