@@ -69,7 +69,7 @@ native_server_t::native_server_t(context_t& context, engine_t& engine, const plu
     m_processor(engine.loop()),
     // m_pumper(engine.loop()),
     m_check(engine.loop()),
-    m_channel(context.io(), ZMQ_ROUTER, m_route)
+    m_channel(context.io(), m_route)
 {
     int linger = 0;
 

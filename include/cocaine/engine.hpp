@@ -138,7 +138,8 @@ class engine_t:
             if(it != m_pool.end()) {
                 bool success = m_bus.send(
                     it->second->id(),
-                    packed
+                    packed,
+                    ZMQ_NOBLOCK
                 );
 
                 if(!success) {
