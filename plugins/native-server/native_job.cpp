@@ -20,8 +20,6 @@
 
 #include "native_job.hpp"
 
-#include "cocaine/rpc.hpp"
-
 #include "cocaine/dealer/types.hpp"
 
 using namespace cocaine::engine;
