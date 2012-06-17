@@ -62,7 +62,6 @@ class slave_t:
         void message(ev::io&, int);
         void process(ev::idle&, int);
         void check(ev::prepare&, int);
-        // void pump(ev::timer&, int);
         void timeout(ev::timer&, int);
         void heartbeat(ev::timer&, int);
 
@@ -86,10 +85,6 @@ class slave_t:
         ev::idle m_processor;
         ev::prepare m_check;
         
-        // XXX: This is a temporary workaround for the edge cases when ZeroMQ for some 
-        // reason doesn't trigger the socket's fd on message arrival (or I poll it in a wrong way).
-        // ev::timer m_pumper;
-
         ev::timer m_heartbeat_timer,
                   m_suicide_timer;
         

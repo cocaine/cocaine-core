@@ -71,8 +71,6 @@ server_t::server_t(context_t& context, server_config_t config):
     m_processor.set<server_t, &server_t::process>(this);
     m_check.set<server_t, &server_t::check>(this);
     m_check.start();
-    // m_pumper.set<server_t, &server_t::pump>(this);
-    // m_pumper.start(0.2f, 0.2f);    
 
     // Autodiscovery
     // -------------
@@ -223,10 +221,6 @@ void server_t::process(ev::idle&, int) {
 void server_t::check(ev::prepare&, int) {
     request(m_watcher, ev::READ);
 }
-
-// void server_t::pump(ev::timer&, int) {
-//     request(m_watcher, ev::READ);
-// }
 
 Json::Value server_t::dispatch(const Json::Value& root) {
     std::string action(root["action"].asString());

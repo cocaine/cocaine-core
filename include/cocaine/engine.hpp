@@ -154,7 +154,6 @@ class engine_t:
         void message(ev::io&, int);
         void process(ev::idle&, int);
         void check(ev::prepare&, int);
-        // void pump(ev::timer&, int);
 
         // Garbage collection.
         void cleanup(ev::timer&, int);
@@ -199,10 +198,6 @@ class engine_t:
         ev::idle m_processor;
         ev::prepare m_check;
         
-        // XXX: This is a temporary workaround for the edge cases when ZeroMQ for some 
-        // reason doesn't trigger the socket's fd on message arrival (or I poll it in a wrong way).
-        // ev::timer m_pumper;
-
         // Garbage collector activation timer and
         // engine termination timer.
         ev::timer m_gc_timer,

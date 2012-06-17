@@ -56,8 +56,6 @@ slave_t::slave_t(context_t& context, slave_config_t config):
     m_processor.set<slave_t, &slave_t::process>(this);
     m_check.set<slave_t, &slave_t::check>(this);
     m_check.start();
-    // m_pumper.set<slave_t, &slave_t::pump>(this);
-    // m_pumper.start(0.005f, 0.005f);
 
     m_heartbeat_timer.set<slave_t, &slave_t::heartbeat>(this);
     m_heartbeat_timer.start(0.0f, 5.0f);
@@ -184,10 +182,6 @@ void slave_t::process(ev::idle&, int) {
 void slave_t::check(ev::prepare&, int) {
     message(m_watcher, ev::READ);
 }
-
-// void slave_t::pump(ev::timer&, int) {
-//     message(m_watcher, ev::READ);
-// }
 
 void slave_t::timeout(ev::timer&, int) {
     terminate();
