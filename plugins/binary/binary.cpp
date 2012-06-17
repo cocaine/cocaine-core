@@ -95,18 +95,38 @@ binary_t::~binary_t()
 	lt_dladvise_destroy(&m_advice);
 }
 
+namespace {
+	void binary_write(struct binary_io *__io, const void *data, size_t size)
+	{
+		io_t *io = (io_t *)__io->priv_io;
+		io->write(data, size);
+	}
+}
+
 void binary_t::invoke(const std::string &method, io_t &io)
 {
+	struct binary_io bio;
 	int err;
 
-	blob_t data = io.read(0);
-	err = m_process(m_handle, method.data(), method.size(), (char *)data.data(), data.size());
-	if (err < 0) {
-		m_log->error("process failed: %d", err);
-		throw unrecoverable_error_t("processing error: " + boost::lexical_cast<std::string>(err));
+	while (true) {
+		blob_t data = io.read(0);
+
+		if (!data.size())
+			break;
+
+		bio.chunk.data = (const char *)data.data();
+		bio.chunk.size = data.size();
+		bio.priv_io = (void *)&io;
+		bio.write = binary_write;
+
+		err = m_process(m_handle, &bio);
+		if (err < 0) {
+			m_log->error("process failed: %d", err);
+			throw unrecoverable_error_t("processing error: " + boost::lexical_cast<std::string>(err));
+		}
 	}
 
-	m_log->debug("process: method: %.*s, data-size: %zd, err: %d", (int)method.size(), method.data(), data.size(), err);
+	m_log->debug("process: method: %.*s, err: %d", (int)method.size(), method.data(), err);
 }
 
 extern "C" {

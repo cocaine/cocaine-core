@@ -56,7 +56,7 @@ class sandbox_t:
                             io_t& io) = 0;
 
     protected:
-        sandbox_t(context_t& context, const manifest_t& manifest):
+        sandbox_t(context_t& context, const manifest_t&):
             m_context(context)
         { }
 

@@ -207,6 +207,9 @@ void slave_t::invoke(const std::string& event) {
     } catch(const unrecoverable_error_t& e) {
         io::packed<rpc::error> packed(dealer::server_error, e.what());
         m_bus.send(m_app, packed);
+    } catch(const std::exception &e) {
+        io::packed<rpc::error> packed(dealer::app_error, e.what());
+        m_bus.send(m_app, packed);
     } catch(...) {
         io::packed<rpc::error> packed(
             dealer::server_error,

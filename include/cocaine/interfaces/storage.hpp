@@ -70,7 +70,7 @@ class storage_concept<objects>:
                             const std::string& key) = 0;
 
     protected:
-        storage_concept(context_t& context, const plugin_config_t& config):
+        storage_concept(context_t& context, const plugin_config_t&):
             m_context(context)
         { }
 
