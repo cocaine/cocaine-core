@@ -261,12 +261,8 @@ class channel_t:
     public socket_t
 {
     public:
-        channel_t(zmq::context_t& context, int type):
-            socket_t(context, type)
-        { }
-
-        channel_t(zmq::context_t& context, int type, const std::string& route):
-            socket_t(context, type, route)
+        channel_t(zmq::context_t& context, const std::string& route):
+            socket_t(context, ZMQ_ROUTER, route)
         { }
 
         using socket_t::send;
@@ -362,7 +358,7 @@ class channel_t:
         }
 
         bool recv_multi(const null_type&,
-                        int __attribute__ ((unused)) flags = 0)
+                        int __attribute__ ((unused)) flags = 0) const
         {
             return true;
         }

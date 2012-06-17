@@ -55,7 +55,7 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest_):
     m_gc_timer(m_loop),
     m_termination_timer(m_loop),
     m_notification(m_loop),
-    m_bus(context.io(), ZMQ_ROUTER, manifest_.name),
+    m_bus(context.io(), manifest_.name),
     m_thread(NULL)
 #ifdef HAVE_CGROUPS
     , m_cgroup(NULL)

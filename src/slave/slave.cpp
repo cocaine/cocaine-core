@@ -37,7 +37,7 @@ slave_t::slave_t(context_t& context, slave_config_t config):
     m_context(context),
     m_log(m_context.log("app/" + config.app)),
     m_app(config.app),
-    m_bus(m_context.io(), ZMQ_ROUTER, config.uuid)
+    m_bus(m_context.io(), config.uuid)
 {
     m_bus.connect(
         (boost::format("ipc://%1%/%2%")
