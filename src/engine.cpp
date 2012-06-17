@@ -363,10 +363,12 @@ void engine_t::process(ev::idle&, int) {
             
             m_bus.drop();
 
-            io::packed<rpc::terminate> packed;
-
             // Try to kill it, just in case.
-            m_bus.send(slave_id, packed, ZMQ_NOBLOCK);
+            m_bus.send(
+                slave_id,
+                io::packed<rpc::terminate>(),
+                ZMQ_NOBLOCK
+            );
 
             return;
         }
@@ -592,9 +594,7 @@ void engine_t::pump() {
             continue;
         }
             
-        events::invoke event(job);
-
-        io::packed<rpc::invoke> packed(
+        io::packed<rpc::invoke> command(
             job->event,
             job->request.data(),
             job->request.size()
@@ -603,14 +603,14 @@ void engine_t::pump() {
         pool_map_t::iterator it(
             call(
                 select::state<slave::idle>(),
-                packed
+                command
             )
         );
 
         // NOTE: If we got an idle slave, then we're lucky and got an instant scheduling;
         // if not, try to spawn more slaves, and enqueue the job.
         if(it != m_pool.end()) {
-            it->second->process_event(event);
+            it->second->process_event(events::invoke(job));
             m_queue.pop_front();
         } else {
             if(m_pool.empty() || 
@@ -643,7 +643,6 @@ void engine_t::pump() {
 // ---------------
 
 void engine_t::shutdown() {
-    // Abort all the outstanding jobs.
     if(!m_queue.empty()) {
         m_log->debug(
             "dropping %zu incomplete %s due to the engine shutdown",
@@ -651,6 +650,7 @@ void engine_t::shutdown() {
             m_queue.size() == 1 ? "job" : "jobs"
         );
 
+        // Abort all the outstanding jobs.
         while(!m_queue.empty()) {
             m_queue.front()->process_event(
                 events::error(
@@ -663,7 +663,6 @@ void engine_t::shutdown() {
         }
     }
 
-    io::packed<rpc::terminate> packed;
     unsigned int pending = 0;
 
     // Send the termination event to active slaves.
@@ -672,7 +671,11 @@ void engine_t::shutdown() {
         ++it)
     {
         if(it->second->state_downcast<const slave::alive*>()) {
-            call(select::specific(*it->second), packed);
+            call(
+                select::specific(*it->second),
+                io::packed<rpc::terminate>()
+            );
+
             ++pending;
         }
     }

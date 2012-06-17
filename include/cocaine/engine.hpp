@@ -125,7 +125,7 @@ class engine_t:
     private:
         template<class S, int Command>
         pool_map_t::iterator call(const S& selector,
-                                  io::packed<Command>& packed)
+                                  const io::packed<Command>& command)
         {
             pool_map_t::iterator it(
                 std::find_if(
@@ -138,7 +138,7 @@ class engine_t:
             if(it != m_pool.end()) {
                 bool success = m_bus.send(
                     it->second->id(),
-                    packed,
+                    command,
                     ZMQ_NOBLOCK
                 );
 

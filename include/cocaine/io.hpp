@@ -299,7 +299,7 @@ class channel_t:
 
         template<int Command>
         bool send(const std::string& route,
-                  packed<Command>& command,
+                  const packed<Command>& command,
                   int flags = 0)
         {
             const bool multipart = boost::tuples::length<
