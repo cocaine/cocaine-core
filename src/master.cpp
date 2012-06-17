@@ -115,7 +115,7 @@ void master_t::spawn() {
         }
 #endif
 
-        rv = ::execl(
+        rv = ::execlp(
             m_engine.manifest().slave.c_str(),
             m_engine.manifest().slave.c_str(),
             "--slave:app", m_engine.manifest().name.c_str(),
@@ -135,8 +135,8 @@ void master_t::spawn() {
 #endif
 
             m_log->error(
-                "unable to execute slave %s - %s",
-                id().c_str(),
+                "unable to execute '%s' - %s",
+                m_engine.manifest().slave.c_str(),
 #ifdef _GNU_SOURCE
                 message
 #else
