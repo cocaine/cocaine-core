@@ -29,61 +29,51 @@ namespace cocaine { namespace io {
 
 template<>
 struct packed<dealer::acknowledgement>:
-    public boost::tuple<zmq::message_t&, const std::string&>
+    public boost::tuple<const std::string&>
 {
-    typedef boost::tuple<zmq::message_t&, const std::string&> tuple_type;
+    typedef boost::tuple<const std::string&> tuple_type;
 
     packed(const std::string& tag):
-        tuple_type(null, tag)
+        tuple_type(tag)
     { }
-
-private:
-    zmq::message_t null;
 };
 
 template<>
 struct packed<dealer::chunk>:
-    public boost::tuple<zmq::message_t&, const std::string&, zmq::message_t&>
+    public boost::tuple<const std::string&, zmq::message_t&>
 {
-    typedef boost::tuple<zmq::message_t&, const std::string&, zmq::message_t&> tuple_type;
+    typedef boost::tuple<const std::string&, zmq::message_t&> tuple_type;
 
     packed(const std::string& tag, zmq::message_t& message_):
-        tuple_type(null, tag, message)
+        tuple_type(tag, message)
     {
         message.move(&message_);
     }
 
 private:
-    zmq::message_t null,
-                   message;
+    zmq::message_t message;
 };
 
 template<>
 struct packed<dealer::error>:
-    public boost::tuple<zmq::message_t&, const std::string&, int, const std::string&>
+    public boost::tuple<const std::string&, int, const std::string&>
 {
-    typedef boost::tuple<zmq::message_t&, const std::string&, int, const std::string&> tuple_type;
+    typedef boost::tuple<const std::string&, int, const std::string&> tuple_type;
 
     packed(const std::string& tag, int code, const std::string& message):
-        tuple_type(null, tag, code, message)
+        tuple_type(tag, code, message)
     { }
-
-private:
-    zmq::message_t null;
 };
 
 template<>
 struct packed<dealer::choke>:
-    public boost::tuple<zmq::message_t&, const std::string&>
+    public boost::tuple<const std::string&>
 {
-    typedef boost::tuple<zmq::message_t&, const std::string&> tuple_type;
+    typedef boost::tuple<const std::string&> tuple_type;
 
     packed(const std::string& tag):
-        tuple_type(null, tag)
+        tuple_type(tag)
     { }
-
-private:
-    zmq::message_t null;
 };
 
 }}
