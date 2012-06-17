@@ -366,7 +366,7 @@ void engine_t::process(ev::idle&, int) {
             io::packed<rpc::terminate> packed;
 
             // Try to kill it, just in case.
-            m_bus.send(slave_id, packed);
+            m_bus.send(slave_id, packed, ZMQ_NOBLOCK);
 
             return;
         }
