@@ -17,11 +17,30 @@
 #include <cocaine/helpers/json.hpp>
 #include <cocaine/helpers/track.hpp>
 
+extern "C" {
+	struct binary_chunk {
+		const char		*data;
+		size_t			size;
+	};
+
+	struct binary_io;
+
+	typedef void (* binary_write_fn)(struct binary_io *, const void *, size_t);
+
+	struct binary_io {
+		struct binary_chunk	chunk;
+
+		binary_write_fn		write;
+
+		void			*priv_io;
+	};
+}
+
 namespace cocaine { namespace engine {
 
 typedef void *(* init_fn_t)(const char *cfg, const size_t size);
 typedef void (* cleanup_fn_t)(void *);
-typedef int (* process_fn_t)(void *, const char *event, const size_t esize, const char *data, const size_t dsize);
+typedef int (* process_fn_t)(void *, struct binary_io *);
 
 class binary_t: public sandbox_t {
 	public:

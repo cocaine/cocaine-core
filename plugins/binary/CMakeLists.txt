@@ -9,3 +9,4 @@ SUFFIX ".cocaine-plugin")
 INSTALL(TARGETS binary
 	LIBRARY DESTINATION lib/cocaine
 	COMPONENT runtime)
+INSTALL(FILES binary.hpp DESTINATION include/cocaine/) 
