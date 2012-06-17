@@ -366,7 +366,7 @@ void engine_t::process(ev::idle&, int) {
             // Try to kill it, just in case.
             m_bus.send(
                 slave_id,
-                io::packed<rpc::terminate>(),
+                io::packed<rpc::domain, rpc::terminate>(),
                 ZMQ_NOBLOCK
             );
 
@@ -594,7 +594,7 @@ void engine_t::pump() {
             continue;
         }
             
-        io::packed<rpc::invoke> command(
+        io::packed<rpc::domain, rpc::invoke> command(
             job->event,
             job->request.data(),
             job->request.size()
@@ -673,7 +673,7 @@ void engine_t::shutdown() {
         if(it->second->state_downcast<const slave::alive*>()) {
             call(
                 select::specific(*it->second),
-                io::packed<rpc::terminate>()
+                io::packed<rpc::domain, rpc::terminate>()
             );
 
             ++pending;

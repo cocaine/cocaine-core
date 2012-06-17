@@ -27,7 +27,7 @@ namespace cocaine {
 
 namespace rpc {
 
-enum {
+enum domain {
     heartbeat = 1,
     terminate,
     invoke,
@@ -44,7 +44,7 @@ namespace io {
 // ----------------
 
 template<>
-struct packed<rpc::invoke>:
+struct packed<rpc::domain, rpc::invoke>:
     public boost::tuple<const std::string&, zmq::message_t&>
 {
     typedef boost::tuple<const std::string&, zmq::message_t&> tuple_type;
@@ -65,7 +65,7 @@ private:
 };
 
 template<>
-struct packed<rpc::chunk>:
+struct packed<rpc::domain, rpc::chunk>:
     public boost::tuple<zmq::message_t&>
 {
     typedef boost::tuple<zmq::message_t&> tuple_type;
@@ -86,7 +86,7 @@ private:
 };
 
 template<>
-struct packed<rpc::error>:
+struct packed<rpc::domain, rpc::error>:
     // NOTE: Not a string reference to allow literal error messages.
     public boost::tuple<int, std::string>
 {

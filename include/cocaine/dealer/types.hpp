@@ -60,12 +60,11 @@ enum error_code {
     deadline_error  = 520
 };
 
-// 2DO does not build with cocaine::rpc:: codes! kobolog?
-enum rpc_code {
-    acknowledgement = 10,
-    chunk           = 11,
-    error           = 12,
-    choke           = 13
+enum domain {
+    acknowledgement = 1,
+    chunk,
+    error,
+    choke
 };
 
 }}

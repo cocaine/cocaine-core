@@ -27,8 +27,8 @@ using namespace cocaine::engine::drivers;
 
 namespace cocaine { namespace io {
 
-template<>
-struct packed<dealer::acknowledgement>:
+template<dealer::domain Command>
+struct packed<dealer::domain, Command>:
     public boost::tuple<const std::string&>
 {
     typedef boost::tuple<const std::string&> tuple_type;
@@ -39,7 +39,7 @@ struct packed<dealer::acknowledgement>:
 };
 
 template<>
-struct packed<dealer::chunk>:
+struct packed<dealer::domain, dealer::chunk>:
     public boost::tuple<const std::string&, zmq::message_t&>
 {
     typedef boost::tuple<const std::string&, zmq::message_t&> tuple_type;
@@ -55,24 +55,13 @@ private:
 };
 
 template<>
-struct packed<dealer::error>:
+struct packed<dealer::domain, dealer::error>:
     public boost::tuple<const std::string&, int, const std::string&>
 {
     typedef boost::tuple<const std::string&, int, const std::string&> tuple_type;
 
     packed(const std::string& tag, int code, const std::string& message):
         tuple_type(tag, code, message)
-    { }
-};
-
-template<>
-struct packed<dealer::choke>:
-    public boost::tuple<const std::string&>
-{
-    typedef boost::tuple<const std::string&> tuple_type;
-
-    packed(const std::string& tag):
-        tuple_type(tag)
     { }
 };
 
@@ -89,21 +78,21 @@ native_job_t::native_job_t(const std::string& event,
     m_route(route),
     m_tag(tag)
 {
-    io::packed<dealer::acknowledgement> pack(m_tag);
+    io::packed<dealer::domain, dealer::acknowledgement> pack(m_tag);
     m_channel.send(m_route.front(), pack);
 }
 
 void native_job_t::react(const events::chunk& event) {
-    io::packed<dealer::chunk> pack(m_tag, event.message);
+    io::packed<dealer::domain, dealer::chunk> pack(m_tag, event.message);
     m_channel.send(m_route.front(), pack);
 }
 
 void native_job_t::react(const events::error& event) {
-    io::packed<dealer::error> pack(m_tag, event.code, event.message);
+    io::packed<dealer::domain, dealer::error> pack(m_tag, event.code, event.message);
     m_channel.send(m_route.front(), pack);
 }
 
 void native_job_t::react(const events::choke& event) {
-    io::packed<dealer::choke> pack(m_tag);
+    io::packed<dealer::domain, dealer::choke> pack(m_tag);
     m_channel.send(m_route.front(), pack);
 }

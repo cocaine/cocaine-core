@@ -123,9 +123,9 @@ class engine_t:
 #endif
 
     private:
-        template<class S, int Command>
+        template<class S, class T>
         pool_map_t::iterator call(const S& selector,
-                                  const io::packed<Command>& command)
+                                  const T& command)
         {
             pool_map_t::iterator it(
                 std::find_if(

@@ -247,7 +247,7 @@ protect(T& object) {
 // RPC command tuple
 // -----------------
 
-template<int Code> 
+template<typename T, T Command> 
 struct packed:
     public boost::tuple<>
 {
@@ -297,17 +297,17 @@ class channel_t:
             return send(message, flags);
         }
 
-        template<int Command>
+        template<typename T, T Command>
         bool send(const std::string& route,
-                  const packed<Command>& command,
+                  const packed<T, Command>& command,
                   int flags = 0)
         {
             const bool multipart = boost::tuples::length<
-                typename packed<Command>::tuple_type
+                typename packed<T, Command>::tuple_type
             >::value;
 
             return send(protect(route), ZMQ_SNDMORE | flags) &&
-                   send(Command, (multipart ? ZMQ_SNDMORE : 0) | flags) &&
+                   send(static_cast<int>(Command), (multipart ? ZMQ_SNDMORE : 0) | flags) &&
                    send_multipart(command, flags);
         }
 
