@@ -44,12 +44,16 @@ namespace msgpack {
         packer << writer.write(object.meta);
 
         packer.pack_raw(object.blob.size());
-        packer.pack_raw_body(static_cast<const char*>(object.blob.data()), object.blob.size());
+
+        packer.pack_raw_body(
+            static_cast<const char*>(object.blob.data()),
+            object.blob.size()
+        );
 
         return packer;
     }
 
-    inline objects::value_type& operator >> (msgpack::object o,
+    inline objects::value_type& operator >> (const msgpack::object& o,
                                              objects::value_type& object)
     {
         Json::Reader reader(Json::Features::strictMode());
