@@ -30,7 +30,7 @@ namespace cocaine {
 namespace dealer {
 
 heartbeats_collector_t::heartbeats_collector_t(const boost::shared_ptr<context_t>& ctx,
-										   bool logging_enabled) :
+											   bool logging_enabled) :
 	dealer_object_t(ctx, logging_enabled) {}
 
 heartbeats_collector_t::~heartbeats_collector_t() {
@@ -97,6 +97,8 @@ heartbeats_collector_t::set_callback(callback_t callback) {
 
 void
 heartbeats_collector_t::ping_services() {
+	boost::mutex::scoped_lock lock(m_mutex);
+
 	// for each hosts fetcher
 	for (size_t i = 0; i < m_hosts_fetchers.size(); ++i) {
 		hosts_fetcher_iface::inetv4_endpoints_t endpoints;

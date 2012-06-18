@@ -79,8 +79,8 @@ private:
 	void log_responded_hosts_handles(const service_info_t& service_info,
 									 const handles_endpoints_t& handles_endpoints);
 
-	static const int hosts_retrieval_interval = 500; // milliseconds
-	static const int host_socket_ping_timeout = 50000; // (2 seconds) microseconds FIX in zmq 3.1
+	static const int hosts_retrieval_interval = 10; // milliseconds
+	static const int host_socket_ping_timeout = 50000; // microseconds FIX in zmq 3.1
 
 private:
 	std::vector<hosts_fetcher_ptr> m_hosts_fetchers;

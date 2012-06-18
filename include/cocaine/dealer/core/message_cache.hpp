@@ -82,6 +82,8 @@ public:
 	void get_expired_messages(message_queue_t& expired_messages);
 	void make_all_messages_new_for_route(const std::string& route);
 
+	void lock();
+
 private:
 	static bool is_message_expired(cached_message_ptr_t msg);
 
@@ -89,7 +91,7 @@ private:
 	enum e_message_cache_type	m_type;
 	route_sent_messages_map_t	m_sent_messages;
 	message_queue_ptr_t			m_new_messages;
-
+	bool m_locked;
 	boost::mutex m_mutex;
 };
 

@@ -111,7 +111,7 @@ dealer_impl_t::disconnect() {
 
 void
 dealer_impl_t::service_hosts_pinged_callback(const service_info_t& service_info,
-										   const handles_endpoints_t& endpoints_for_handles)
+											 const handles_endpoints_t& endpoints_for_handles)
 {
 	// find corresponding service
 	services_map_t::iterator it = m_services.find(service_info.name);
@@ -205,11 +205,13 @@ dealer_impl_t::send_message(const boost::shared_ptr<message_iface>& msg,
 
 	std::string message_str = "enqued msg (%d bytes) with uuid: %s to %s";
 
+	/*
 	log(PLOG_DEBUG,
 		message_str,
 		msg->size(),
 		uuid.c_str(),
 		msg->path().as_string().c_str());
+	*/
 
 	return uuid;
 }

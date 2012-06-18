@@ -100,10 +100,13 @@ public:
 	void unregister_responder_callback(const std::string& message_uuid);
 
 private:
-	void create_new_handles(const handles_info_list_t& handles,
+	void create_new_handles(const handles_info_list_t& handles_info,
 							const handles_endpoints_t& handles_endpoints);
 
-	void remove_outstanding_handles(const handles_info_list_t& handles);
+	void create_handle(const handle_info_t& handle_info,
+					   const handles_endpoints_t& handles_endpoints);
+
+	void remove_outstanding_handles(const handles_info_list_t& handles_info);
 	void update_existing_handles(const handles_endpoints_t& handles_endpoints);
 
 	void enqueue_responce(cached_response_prt_t response_t);
@@ -111,6 +114,22 @@ private:
 	bool responces_queues_empty() const;
 
 	void check_for_deadlined_messages();
+
+	bool enque_to_handle(const cached_message_prt_t& message);
+	void enque_to_unhandled(const cached_message_prt_t& message);
+	
+	void append_to_unhandled(const std::string& handle_name,
+							 const messages_deque_ptr_t& handle_queue);
+
+	void get_outstanding_handles(const handles_endpoints_t& handles_endpoints,
+								 handles_info_list_t& outstanding_handles);
+
+	void get_new_handles(const handles_endpoints_t& handles_endpoints,
+						 handles_info_list_t& new_handles);
+
+	void destroy_handle(const std::string& handle_name);
+
+	boost::shared_ptr<std::deque<boost::shared_ptr<message_iface> > > get_and_remove_unhandled_queue(const std::string& handle_name);
 
 private:
 	// service information
@@ -126,7 +145,9 @@ private:
 	responces_map_t m_received_responces;
 
 	boost::thread				m_thread;
-	boost::mutex				m_mutex;
+	boost::mutex				m_responces_mutex;
+	boost::mutex				m_handles_mutex;
+	boost::mutex				m_unhandled_mutex;
 	boost::condition_variable	m_cond_var;
 
 	volatile bool m_is_running;

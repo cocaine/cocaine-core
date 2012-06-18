@@ -91,9 +91,9 @@ public:
 	std::string description();
 
 	boost::shared_ptr<message_cache_t> messages_cache() const;
-
-private:
 	void kill();
+	
+private:
 	void dispatch_messages();
 
 	// working with control messages

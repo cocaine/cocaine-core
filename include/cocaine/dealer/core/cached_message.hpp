@@ -321,6 +321,7 @@ cached_message_t<DataContainer, MetadataContainer>::is_expired() {
 		time_value elapsed_from_sent = curr_time.distance(m_metadata.sent_timestamp);
 
 		if (elapsed_from_sent.as_double() > (ACK_TIMEOUT / 1000.0f)) {
+			//std::cout << "EXP A\n";
 			return true;
 		}
 	}
@@ -330,6 +331,7 @@ cached_message_t<DataContainer, MetadataContainer>::is_expired() {
 		time_value elapsed_from_enqued = curr_time.distance(m_metadata.enqued_timestamp);
 
 		if (elapsed_from_enqued.as_double() > m_metadata.policy.deadline) {
+			//std::cout << "EXP B\n";
 			return true;
 		}
 	}
