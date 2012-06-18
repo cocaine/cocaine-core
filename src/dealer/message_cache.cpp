@@ -264,6 +264,7 @@ message_cache_t::make_all_messages_new() {
 
 void
 message_cache_t::make_all_messages_new_for_route(const std::string& route) {
+	log(PLOG_ERROR, "make_all_messages_new_for_route");
 	boost::mutex::scoped_lock lock(m_mutex);
 
 	route_sent_messages_map_t::iterator it = m_sent_messages.find(route);

@@ -220,10 +220,10 @@ heartbeats_collector_t::log_responded_hosts_handles(const service_info_t& servic
 	handles_endpoints_t::const_iterator it = handles_endpoints.begin();
 	for (; it != handles_endpoints.end(); ++it) {
 		std::string log_msg = "heartbeats - responded endpoints for handle";
-		log(PLOG_DEBUG, log_msg + ": [" + service_info.name + "." + it->first + "]");
+		log(PLOG_ERROR, log_msg + ": [" + service_info.name + "." + it->first + "]");
 
 		for (size_t i = 0; i < it->second.size(); ++i) {
-			log(PLOG_DEBUG, "heartbeats - " + it->second[i].endpoint);
+			log(PLOG_ERROR, "heartbeats - " + it->second[i].endpoint);
 		}
 	}
 }

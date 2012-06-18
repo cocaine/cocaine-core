@@ -110,8 +110,6 @@ private:
 	// working with responces
 	void enqueue_response(cached_response_prt_t response_t);
 
-	static const int socket_poll_timeout = 100; // millisecs
-
 private:
 	handle_info_t m_info;
 	endpoints_list_t m_endpoints;

@@ -115,8 +115,8 @@ handle_t::dispatch_messages() {
 		// check for message responces
 		bool received_response = false;
 
-		int fast_poll_timeout = 0;		// microsecs
-		int long_poll_timeout = 5000;   // microsecs
+		int fast_poll_timeout = 0;		  // microsecs
+		int long_poll_timeout = 100000;   // microsecs
 
 		int response_poll_timeout = fast_poll_timeout;
 		if (m_last_response_timer.elapsed().as_double() > 5.0f) {

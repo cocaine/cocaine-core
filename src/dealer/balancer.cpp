@@ -93,14 +93,11 @@ void
 balancer_t::update_endpoints(const std::vector<cocaine_endpoint_t>& endpoints,
 							 std::vector<cocaine_endpoint_t>& missing_endpoints)
 {
-	log("update_endpoints " + m_socket_identity);
-
 	std::vector<cocaine_endpoint_t> endpoints_tmp = endpoints;
 	std::sort(endpoints_tmp.begin(), endpoints_tmp.end());
 
 	if (m_endpoints.size() == endpoints_tmp.size()) {
 		if (std::equal(m_endpoints.begin(), m_endpoints.end(), endpoints_tmp.begin())) {
-			log("no changes in endpoints on " + m_socket_identity);
 			return;
 		}
 	}
@@ -109,11 +106,11 @@ balancer_t::update_endpoints(const std::vector<cocaine_endpoint_t>& endpoints,
 	get_endpoints_diff(endpoints, new_endpoints, missing_endpoints);
 
 	if (missing_endpoints.empty()) {
-		log("new endpoints on " + m_socket_identity);
+		log(PLOG_INFO, "new endpoints on " + m_socket_identity);
 		connect(new_endpoints);
 	}
 	else {
-		log("missing endpoints on " + m_socket_identity);
+		log(PLOG_INFO, "missing endpoints on " + m_socket_identity);
 		recreate_socket();
 		connect(endpoints);
 	}
