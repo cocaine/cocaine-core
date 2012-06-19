@@ -1,3 +1,9 @@
+cocaine (0.8.0-5) lucid; urgency=low
+
+  * Fixed build-depends.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 19 Jun 2012 23:12:04 +0400
+
 cocaine (0.8.0-4) lucid; urgency=low
 
   * Comment out some future stuff for real.
