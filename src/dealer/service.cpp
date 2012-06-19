@@ -43,8 +43,6 @@ service_t::service_t(const service_info_t& info,
 service_t::~service_t() {
 	m_is_dead = true;
 
-	log(PLOG_INFO, "FINISH SERVICE [%s]", m_info.name.c_str());
-
 	// kill handles
 	handles_map_t::iterator it = m_handles.begin();
 	for (;it != m_handles.end(); ++it) {
@@ -61,6 +59,8 @@ service_t::~service_t() {
 	m_is_running = false;
 	m_cond_var.notify_one();
 	m_thread.join();
+
+	log(PLOG_INFO, "FINISHED SERVICE [%s]", m_info.name.c_str());
 }
 
 bool
