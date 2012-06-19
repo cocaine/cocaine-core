@@ -1,15 +1,22 @@
-//
-// Copyright (C) 2011-2012 Andrey Sibiryov <me@kobology.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Andrey Sibiryov <me@kobology.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #include <openssl/bio.h>
 #include <openssl/pem.h>
@@ -22,36 +29,37 @@
 
 #include "cocaine/interfaces/storage.hpp"
 
-#include "cocaine/helpers/json.hpp"
-
 using namespace cocaine::crypto;
+using namespace cocaine::storages;
 
-auth_t::auth_t(context_t& ctx):
-    m_log(ctx.log("crypto")),
+auth_t::auth_t(context_t& context):
+    m_log(context.log("crypto")),
     m_context(EVP_MD_CTX_create())
 {
     ERR_load_crypto_strings();
 
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
-    Json::Value keys(ctx.storage().all("keys"));
-    Json::Value::Members names(keys.getMemberNames());
+    std::vector<std::string> keys(
+        context.storage<objects>("core")->list("keys")
+    );
 
-    for(Json::Value::Members::const_iterator it = names.begin();
-        it != names.end();
-        ++it) 
+    for(std::vector<std::string>::const_iterator it = keys.begin();
+        it != keys.end();
+        ++it)
     {
         std::string identity(*it);
-        Json::Value object(keys[identity]);
 
-        if(!object["key"].isString() || object["key"].empty()) {
+        objects::value_type object(
+            context.storage<objects>("core")->get("keys", identity)
+        );
+
+        if(object.blob.empty()) {
             m_log->error("key for user '%s' is malformed", identity.c_str());
             continue;
         }
 
-        std::string key(object["key"].asString());
-
         // Read the key into the BIO object.
-        BIO * bio = BIO_new_mem_buf(const_cast<char*>(key.data()), key.size());
+        BIO * bio = BIO_new_mem_buf(const_cast<void*>(object.blob.data()), object.blob.size());
         EVP_PKEY * pkey = NULL;
         
         pkey = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
@@ -72,22 +80,23 @@ auth_t::auth_t(context_t& ctx):
 }
 
 namespace {
-    struct dispose {
+    struct disposer {
         template<class T>
-        void operator()(T& key) {
+        void operator()(T& key) const {
             EVP_PKEY_free(key.second);
         }
     };
 }
 
 auth_t::~auth_t() {
-    std::for_each(m_keys.begin(), m_keys.end(), dispose());
+    std::for_each(m_keys.begin(), m_keys.end(), disposer());
     ERR_free_strings();
     EVP_MD_CTX_destroy(m_context);
 }
 
 /* XXX: Gotta invent something sophisticated here.
-std::string auth_t::sign(const std::string& message, const std::string& username)
+std::string auth_t::sign(const std::string& message,
+                         const std::string& username) const
 {
     key_map_t::const_iterator it = m_private_keys.find(username);
 
@@ -109,7 +118,7 @@ std::string auth_t::sign(const std::string& message, const std::string& username
 
 void auth_t::verify(const blob_t& message,
                     const blob_t& signature,
-                    const std::string& username)
+                    const std::string& username) const
 {
     key_map_t::const_iterator it(m_keys.find(username));
 

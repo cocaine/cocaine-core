@@ -1,127 +1,59 @@
-//
-// Copyright (C) 2011-2012 Andrey Sibiryov <me@kobology.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Andrey Sibiryov <me@kobology.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #include "cocaine/job.hpp"
-
-#include "cocaine/drivers/base.hpp"
-#include "cocaine/engine.hpp"
 
 using namespace cocaine::engine;
 using namespace cocaine::engine::job;
 
-job_t::job_t(drivers::driver_t& driver):
-    m_driver(driver),
-    m_method(driver.method())
+job_t::job_t(const std::string& event_):
+    event(event_)
 {
     initiate();
 }
 
-job_t::job_t(drivers::driver_t& driver, dealer::policy_t policy):
-    m_driver(driver),
-    m_method(driver.method()),
-    m_policy(policy)
-{
-    if(m_policy.deadline) {
-        m_expiration_timer.set<job_t, &job_t::discard>(this);
-        m_expiration_timer.start(m_policy.deadline);
-    }
-
-    initiate();
-}
-
-job_t::job_t(drivers::driver_t& driver, const blob_t& request):
-    m_driver(driver),
-    m_method(driver.method()),
-    m_request(request)
+job_t::job_t(const std::string& event_, const blob_t& request_):
+    event(event_),
+    request(request_)
 {
     initiate();
 }
 
-job_t::job_t(drivers::driver_t& driver, dealer::policy_t policy, const blob_t& request):
-    m_driver(driver),
-    m_method(driver.method()),
-    m_policy(policy),
-    m_request(request)
+job_t::job_t(const std::string& event_, policy_t policy_):
+    event(event_),
+    policy(policy_)
 {
-    if(m_policy.deadline) {
-        m_expiration_timer.set<job_t, &job_t::discard>(this);
-        m_expiration_timer.start(m_policy.deadline);
-    }
+    initiate();
+}
 
+job_t::job_t(const std::string& event_, const blob_t& request_, policy_t policy_):
+    event(event_),
+    request(request_),
+    policy(policy_)
+{
     initiate();
 }
 
 job_t::~job_t() {
-    m_expiration_timer.stop();
-
     // TEST: Ensure that the job has been completed.
     BOOST_ASSERT(state_downcast<const complete*>() != 0);
 
     terminate();
-}
-
-void job_t::react(const events::push_t& event) {
-    m_driver.engine().app().log->error(
-        "job '%s' ignored a %zu byte response chunk",
-        m_driver.method().c_str(),
-        event.message.size()
-    );    
-
-    // TODO: Emitters.
-}
-
-void job_t::react(const events::error_t& event) {
-    m_driver.engine().app().log->error(
-        "job '%s' failed - [%d] %s",
-        m_driver.method().c_str(),
-        event.code,
-        event.message.c_str()
-    );
- 
-    // TODO: Emitters.
-}
-
-void job_t::react(const events::release_t& event) {
-    // TODO: Emitters.
-}
-
-void job_t::discard(ev::periodic&, int) {
-    process_event(
-        events::error_t(
-            dealer::deadline_error,
-            "the job has expired"
-        )
-    );
-}
-
-waiting::waiting():
-    m_timestamp(ev::get_default_loop().now())
-{ }
-
-waiting::~waiting() {
-    context<job_t>().m_driver.audit(
-        drivers::in_queue,
-        ev::get_default_loop().now() - m_timestamp
-    );
-}
-
-processing::processing():
-    m_timestamp(ev::get_default_loop().now())
-{ }
-
-processing::~processing() {
-    context<job_t>().m_driver.audit(
-        drivers::on_slave,
-        ev::get_default_loop().now() - m_timestamp
-    );
 }

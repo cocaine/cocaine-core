@@ -1,15 +1,22 @@
-//
-// Copyright (C) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #ifndef _COCAINE_DEALER_RESPONSE_IMPL_HPP_INCLUDED_
 #define _COCAINE_DEALER_RESPONSE_IMPL_HPP_INCLUDED_
@@ -26,32 +33,38 @@
 namespace cocaine {
 namespace dealer {
 
-class response_impl {
+class response_impl_t {
 public:
-	response_impl(const boost::shared_ptr<client_impl>& client, const std::string& uuid, const message_path& path);
-	~response_impl();
+	response_impl_t(const boost::shared_ptr<dealer_impl_t>& dealer,
+				  const std::string& uuid,
+				  const message_path_t& path);
 
-	bool get(data_container* data);
+	~response_impl_t();
+
+	// 1) timeout < 0 - block indefinitely until response_t received
+	// 2) timeout == 0 - check for response_t chunk and return result immediately
+	// 3) timeout > 0 - check for response_t chunk with some timeout value
+
+	bool get(data_container* data, double timeout);
 
 private:
-	friend class response;
+	friend class response_t;
 
-	void response_callback(const response_data& resp_data, const response_info& resp_info);
+	void response_callback(const response_data& resp_data,
+						   const response_info& resp_info);
 
-	boost::ptr_vector<data_container> chunks_;
+	boost::ptr_vector<data_container>	m_chunks;
+	boost::weak_ptr<dealer_impl_t>		m_dealer;
+	std::string			m_uuid;
+	const message_path_t	m_path;
+	response_info		m_resp_info;
 
-	boost::weak_ptr<client_impl> client_;
-	std::string uuid_;
-	const message_path path_;
-	bool response_finished_;
-	bool message_finished_;
+	bool m_response_finished;
+	bool m_message_finished;
+	bool m_caught_error;
 
-	response_info resp_info_;
-
-	boost::mutex mutex_;
-	boost::condition_variable cond_var_;
-
-	bool caught_error_;
+	boost::mutex				m_mutex;
+	boost::condition_variable	m_cond_var;
 };
 
 } // namespace dealer

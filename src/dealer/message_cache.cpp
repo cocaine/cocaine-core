@@ -1,15 +1,22 @@
-//
-// Copyright (C) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #include <algorithm>
 #include <stdexcept>
@@ -29,59 +36,44 @@
 namespace cocaine {
 namespace dealer {
 
-message_cache::message_cache(boost::shared_ptr<cocaine::dealer::context> context,
-							 enum message_cache_type type) :
-	context_(context),
-	type_(type)
+message_cache_t::message_cache_t(const boost::shared_ptr<context_t>& ctx,
+							 bool logging_enabled) :
+	dealer_object_t(ctx, logging_enabled),
+	m_locked(false)
 {
-	new_messages_.reset(new message_queue_t);
+	m_type = config()->message_cache_type();
+	m_new_messages.reset(new message_queue_t);
 }
 
-message_cache::~message_cache() {
+message_cache_t::~message_cache_t() {
 }
 
-boost::shared_ptr<cocaine::dealer::context>
-message_cache::context() {
-	return context_;
-}
-
-boost::shared_ptr<base_logger>
-message_cache::logger() {
-	return context()->logger();
-}
-
-boost::shared_ptr<configuration>
-message_cache::config() {
-	boost::shared_ptr<configuration> conf = context()->config();
-	if (!conf.get()) {
-		throw internal_error("configuration object is empty at: " + std::string(BOOST_CURRENT_FUNCTION));
-	}
-
-	return conf;
-}
-
-boost::shared_ptr<std::deque<boost::shared_ptr<message_iface> > >
-message_cache::new_messages() {
-	logger()->log("message_cache::new_messages");
-
-	if (!new_messages_) {
+message_cache_t::message_queue_ptr_t
+message_cache_t::new_messages() {
+	if (!m_new_messages) {
 		std::string error_str = "new messages queue object is empty at ";
 		error_str += std::string(BOOST_CURRENT_FUNCTION);
 		throw internal_error(error_str);
 	}
 
-	return new_messages_;
+	return m_new_messages;
 }
 
 void
-message_cache::enqueue(const boost::shared_ptr<message_iface>& message) {
-	boost::mutex::scoped_lock lock(mutex_);
-	new_messages_->push_back(message);
+message_cache_t::enqueue_with_priority(const boost::shared_ptr<message_iface>& message) {
+	boost::mutex::scoped_lock lock(m_mutex);
+	m_new_messages->push_front(message);
 }
 
 void
-message_cache::append_message_queue(message_queue_ptr_t queue) {
-	boost::mutex::scoped_lock lock(mutex_);
+message_cache_t::enqueue(const boost::shared_ptr<message_iface>& message) {
+	boost::mutex::scoped_lock lock(m_mutex);
+	m_new_messages->push_back(message);
+}
+
+void
+message_cache_t::append_message_queue(message_queue_ptr_t queue) {
+	boost::mutex::scoped_lock lock(m_mutex);
 
 	// validate new queue
 	if (!queue || queue->empty()) {
@@ -89,190 +81,322 @@ message_cache::append_message_queue(message_queue_ptr_t queue) {
 	}
 
 	// append messages
-	new_messages_->insert(new_messages_->end(), queue->begin(), queue->end());
+	m_new_messages->insert(m_new_messages->end(), queue->begin(), queue->end());
 }
 
 boost::shared_ptr<message_iface>
-message_cache::get_new_message() {
-	boost::mutex::scoped_lock lock(mutex_);
-
-	// validate message
-	if (!new_messages_->front()) {
-		std::string error_str = "empty message object at ";
-		error_str += std::string(BOOST_CURRENT_FUNCTION);
-		throw internal_error(error_str);
-	}
-
-	return new_messages_->front();
+message_cache_t::get_new_message() {
+	boost::mutex::scoped_lock lock(m_mutex);
+	return m_new_messages->front();
 }
 
 size_t
-message_cache::new_messages_count() {
-	boost::mutex::scoped_lock lock(mutex_);
-	return new_messages_->size();
+message_cache_t::new_messages_count() {
+	boost::mutex::scoped_lock lock(m_mutex);
+	return m_new_messages->size();
 }
 
 size_t
-message_cache::sent_messages_count() {
-	boost::mutex::scoped_lock lock(mutex_);
-	return sent_messages_.size();
-}
+message_cache_t::sent_messages_count() {
+	boost::mutex::scoped_lock lock(m_mutex);
 
-boost::shared_ptr<message_iface>
-message_cache::get_sent_message(const std::string& uuid) {
-	boost::mutex::scoped_lock lock(mutex_);
-	messages_index_t::const_iterator it = sent_messages_.find(uuid);
+	size_t sent_messages_count = 0;
 
-	if (it == sent_messages_.end()) {
-		std::string error_str = "can not find message with uuid " + uuid;
-		error_str += " at " + std::string(BOOST_CURRENT_FUNCTION);
-		throw internal_error(error_str);
+	route_sent_messages_map_t::const_iterator it = m_sent_messages.begin();
+	for (; it != m_sent_messages.end(); ++it) {
+		sent_messages_count += it->second.size();
 	}
 
-	if (!it->second) {
-		throw internal_error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
-	}
-
-	return it->second;
-}
-
-void
-message_cache::move_new_message_to_sent() {
-	boost::mutex::scoped_lock lock(mutex_);
-	boost::shared_ptr<message_iface> msg = new_messages_->front();
-
-	if (!msg) {
-		throw internal_error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
-	}
-
-	sent_messages_.insert(std::make_pair(msg->uuid(), msg));
-	new_messages_->pop_front();
-}
-
-void
-message_cache::move_sent_message_to_new(const std::string& uuid) {
-	boost::mutex::scoped_lock lock(mutex_);
-	messages_index_t::iterator it = sent_messages_.find(uuid);
-
-	if (it == sent_messages_.end()) {
-		return;
-	}
-
-	boost::shared_ptr<message_iface> msg = it->second;
-
-	if (!msg) {
-		throw internal_error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
-	}
-
-	sent_messages_.erase(it);
-
-	msg->mark_as_sent(false);
-	new_messages_->push_back(msg);
-}
-
-void
-message_cache::move_sent_message_to_new_front(const std::string& uuid) {
-	boost::mutex::scoped_lock lock(mutex_);
-	messages_index_t::iterator it = sent_messages_.find(uuid);
-
-	if (it == sent_messages_.end()) {
-		return;
-	}
-
-	boost::shared_ptr<message_iface> msg = it->second;
-
-	if (!msg) {
-		throw internal_error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
-	}
-
-	sent_messages_.erase(it);
-
-	msg->mark_as_sent(false);
-	new_messages_->push_front(msg);
-}
-
-void
-message_cache::remove_message_from_cache(const std::string& uuid) {
-	boost::mutex::scoped_lock lock(mutex_);
-	messages_index_t::iterator it = sent_messages_.find(uuid);
-
-	if (it == sent_messages_.end()) {
-		return;
-	}
-
-	//it->second->remove_from_persistent_cache();
-	sent_messages_.erase(it);
-}
-
-void
-message_cache::make_all_messages_new() {
-	boost::mutex::scoped_lock lock(mutex_);
-	messages_index_t::iterator it = sent_messages_.begin();
-	for (; it != sent_messages_.end(); ++it) {
-		if (!it->second) {
-			throw internal_error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
-		}
-
-		new_messages_->push_back(it->second);
-	}
-
-	sent_messages_.clear();
+	return sent_messages_count;
 }
 
 bool
-message_cache::is_message_expired(cached_message_ptr_t msg) {
+message_cache_t::get_sent_message(const std::string& route,
+								const std::string& uuid,
+								boost::shared_ptr<message_iface>& message) {
+
+	boost::mutex::scoped_lock lock(m_mutex);
+
+	route_sent_messages_map_t::const_iterator it = m_sent_messages.find(route);
+
+	if (it == m_sent_messages.end()) {
+		return false;
+	}
+
+	const sent_messages_map_t& msg_map = it->second;
+	sent_messages_map_t::const_iterator mit = msg_map.find(uuid);
+
+	if (mit == msg_map.end()) {
+		return false;
+	}
+
+	assert(mit->second);
+	message = mit->second;
+
+	return true;
+}
+
+void
+message_cache_t::move_new_message_to_sent(const std::string& route) {
+	boost::mutex::scoped_lock lock(m_mutex);
+
+	boost::shared_ptr<message_iface> msg = m_new_messages->front();
+	assert(msg);
+
+	route_sent_messages_map_t::iterator it = m_sent_messages.find(route);
+	if (it == m_sent_messages.end()) {
+		sent_messages_map_t msg_map;
+		msg_map.insert(std::make_pair(msg->uuid(), msg));
+		m_sent_messages[route] = msg_map;
+	}
+	else {
+		it->second.insert(std::make_pair(msg->uuid(), msg));
+	}
+
+	m_new_messages->pop_front();
+}
+
+bool
+message_cache_t::reshedule_message(const std::string& route, const std::string& uuid) {
+	boost::mutex::scoped_lock lock(m_mutex);
+
+	route_sent_messages_map_t::iterator it = m_sent_messages.find(route);
+
+	if (it == m_sent_messages.end()) {
+		return false;
+	}
+
+	sent_messages_map_t& msg_map = it->second;
+	sent_messages_map_t::iterator mit = msg_map.find(uuid);
+
+	if (mit == msg_map.end()) {
+		return false;
+	}
+
+	boost::shared_ptr<message_iface> msg = mit->second;
+
+	if (!msg) {
+		throw internal_error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
+	}
+
+	if (msg->can_retry()) {
+		msg->increment_retries_count();
+		msg_map.erase(mit);
+
+		msg->mark_as_sent(false);
+		msg->set_ack_received(false);
+
+		m_new_messages->push_front(msg);
+
+		return true;
+	}
+
+	return false;
+}
+
+void
+message_cache_t::move_sent_message_to_new(const std::string& route, const std::string& uuid) {
+	boost::mutex::scoped_lock lock(m_mutex);
+
+	route_sent_messages_map_t::iterator it = m_sent_messages.find(route);
+
+	if (it == m_sent_messages.end()) {
+		return;
+	}
+
+	sent_messages_map_t& msg_map = it->second;
+	sent_messages_map_t::iterator mit = msg_map.find(uuid);
+
+	if (mit == msg_map.end()) {
+		return;
+	}
+
+	boost::shared_ptr<message_iface> msg = mit->second;
+
+	if (!msg) {
+		throw internal_error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
+	}
+
+	msg_map.erase(mit);
+
+	msg->mark_as_sent(false);
+	msg->set_ack_received(false);
+
+	m_new_messages->push_back(msg);
+}
+
+void
+message_cache_t::move_sent_message_to_new_front(const std::string& route, const std::string& uuid) {
+	boost::mutex::scoped_lock lock(m_mutex);
+
+	route_sent_messages_map_t::iterator it = m_sent_messages.find(route);
+
+	if (it == m_sent_messages.end()) {
+		return;
+	}
+
+	sent_messages_map_t& msg_map = it->second;
+	sent_messages_map_t::iterator mit = msg_map.find(uuid);
+
+	if (mit == msg_map.end()) {
+		return;
+	}
+
+	boost::shared_ptr<message_iface> msg = mit->second;
+
+	if (!msg) {
+		throw internal_error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
+	}
+
+	msg_map.erase(mit);
+	m_new_messages->push_front(msg);
+}
+
+void
+message_cache_t::remove_message_from_cache(const std::string& route, const std::string& uuid) {
+	boost::mutex::scoped_lock lock(m_mutex);
+
+	route_sent_messages_map_t::iterator it = m_sent_messages.find(route);
+
+	if (it == m_sent_messages.end()) {
+		return;
+	}
+
+	sent_messages_map_t& msg_map = it->second;
+	sent_messages_map_t::iterator mit = msg_map.find(uuid);
+
+	if (mit == msg_map.end()) {
+		return;
+	}
+
+	msg_map.erase(mit);
+}
+
+void
+message_cache_t::make_all_messages_new() {
+	boost::mutex::scoped_lock lock(m_mutex);
+
+	route_sent_messages_map_t::iterator it = m_sent_messages.begin();
+	for (; it != m_sent_messages.end(); ++it) {
+
+		sent_messages_map_t& msg_map = it->second;
+		sent_messages_map_t::iterator mit = msg_map.begin();
+
+		for (; mit != msg_map.end(); ++mit) {
+
+			if (!mit->second) {
+				throw internal_error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
+			}
+
+			mit->second->mark_as_sent(false);
+			mit->second->set_ack_received(false);
+			m_new_messages->push_front(mit->second);
+		}
+
+		msg_map.clear();
+	}
+
+	for (message_queue_t::iterator it = m_new_messages->begin(); it != m_new_messages->end(); ++it) {
+		(*it)->mark_as_sent(false);
+		(*it)->set_ack_received(false);
+	}
+}
+
+void
+message_cache_t::make_all_messages_new_for_route(const std::string& route) {
+	log(PLOG_DEBUG, "make_all_messages_new_for_route");
+	boost::mutex::scoped_lock lock(m_mutex);
+
+	route_sent_messages_map_t::iterator it = m_sent_messages.find(route);
+	if (it == m_sent_messages.end()) {
+		return;
+	}
+
+	sent_messages_map_t& msg_map = it->second;
+	sent_messages_map_t::iterator mit = msg_map.begin();
+
+	if (msg_map.empty()) {
+		return;
+	}
+	
+	for (; mit != msg_map.end(); ++mit) {
+
+		if (!mit->second) {
+			throw internal_error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
+		}
+
+		mit->second->mark_as_sent(false);
+		mit->second->set_ack_received(false);
+		m_new_messages->push_front(mit->second);
+	}
+
+	msg_map.clear();
+}
+
+bool
+message_cache_t::is_message_expired(cached_message_ptr_t msg) {
 	return msg->is_expired();
 }
 
 void
-message_cache::process_expired_messages(std::vector<std::pair<std::string, message_path> >& expired_uuids) {
-	boost::mutex::scoped_lock lock(mutex_);
+message_cache_t::get_expired_messages(message_queue_t& expired_messages) {
+	boost::mutex::scoped_lock lock(m_mutex);
+
+	assert(m_new_messages);
 
 	// remove expired from sent
-	messages_index_t::iterator it = sent_messages_.begin();
-	while (it != sent_messages_.end()) {
+	route_sent_messages_map_t::iterator it = m_sent_messages.begin();
+	for (; it != m_sent_messages.end(); ++it) {
 
-		// get single sent message
-		boost::shared_ptr<message_iface> msg = it->second;
-		if (!msg) {
-			throw internal_error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
-		}
+		sent_messages_map_t& msg_map = it->second;
+		sent_messages_map_t::iterator mit = msg_map.begin();
 
-		// remove expired messages
-		if (msg->is_expired()) {
-			expired_uuids.push_back(std::make_pair(msg->uuid(), msg->path()));
-			sent_messages_.erase(it++);
-		}
-		else {
-			++it;
+		while (mit != msg_map.end()) {
+			// get single sent message
+			boost::shared_ptr<message_iface> msg = mit->second;
+			assert(msg);
+
+			// remove expired messages
+			if (msg->is_expired()) {
+				expired_messages.push_back(msg);
+				msg_map.erase(mit++);
+			}
+			else {
+				++mit;
+			}
 		}
 	}
 
-	if (!new_messages_) {
-		throw internal_error("empty pending message queue object at " + std::string(BOOST_CURRENT_FUNCTION));
-	}
-
-	message_queue_t::iterator it2 = new_messages_->begin();
-	while (it2 != new_messages_->end()) {
+	// remove expired from new
+	message_queue_t::iterator it2 = m_new_messages->begin();
+	while (it2 != m_new_messages->end()) {
 		// get single pending message
 		boost::shared_ptr<message_iface> msg = *it2;
-
-		if (!msg) {
-			throw internal_error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
-		}
+		assert(msg);
 
 		// remove expired messages
 		if (msg->is_expired()) {
-			expired_uuids.push_back(std::make_pair(msg->uuid(), msg->path()));
+			expired_messages.push_back(msg);
 		}
 
 		++it2;
 	}
 
-	new_messages_->erase(std::remove_if(new_messages_->begin(),
-										new_messages_->end(),
-										&message_cache::is_message_expired),
-						 new_messages_->end());
+	m_new_messages->erase(std::remove_if(m_new_messages->begin(),
+										 m_new_messages->end(),
+										 &message_cache_t::is_message_expired),
+										 m_new_messages->end());
+}
+
+void
+message_cache_t::log_stats() {
+	log(PLOG_DEBUG, "new messages: %d", m_new_messages->size());
+
+	route_sent_messages_map_t::iterator it = m_sent_messages.begin();
+	for (; it != m_sent_messages.end(); ++it) {
+		sent_messages_map_t& msg_map = it->second;
+		log(PLOG_DEBUG, "sent messages for route: %s, size: %d", it->first.c_str(), msg_map.size());
+	}
 }
 
 } // namespace dealer

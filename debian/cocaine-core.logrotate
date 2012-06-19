@@ -1,8 +1,11 @@
-/var/log/cocained.log {
+/var/log/cocaine-core/*.log {
     daily
     rotate 7
     compress
+    delaycompress
     missingok
+    dateext
+    dateformat -%Y%m%d-%s
     postrotate
         kill -HUP $(cat /var/run/syslog-ng.pid)
     endscript

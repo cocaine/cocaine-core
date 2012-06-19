@@ -1,15 +1,22 @@
-//
-// Copyright (C) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #ifndef _COCAINE_DEALER_PERSISTENT_DATA_CONTAINER_HPP_INCLUDED_
 #define _COCAINE_DEALER_PERSISTENT_DATA_CONTAINER_HPP_INCLUDED_
@@ -36,13 +43,13 @@ public:
 	persistent_data_container(const persistent_data_container& dc);
 	virtual ~persistent_data_container();
 
-	void init_from_message_cache(eblob blob, const std::string& uuid, int64_t data_size);
+	void init_from_message_cache(boost::shared_ptr<eblob_t> blob, const std::string& uuid, int64_t data_size);
 
 	persistent_data_container& operator = (const persistent_data_container& rhs);
 	bool operator == (const persistent_data_container& rhs) const;
 	bool operator != (const persistent_data_container& rhs) const;
 
-	void set_eblob(eblob blob, const std::string& uuid);
+	void set_eblob(boost::shared_ptr<eblob_t> blob, const std::string& uuid);
 	void commit_data();
 
 	void set_data(const void* data, size_t size);
@@ -64,14 +71,14 @@ protected:
 
 protected:
 	// persistant storage
-	eblob blob_;
+	boost::shared_ptr<eblob_t> blob_;
 	bool data_in_memory_;
 
 	// data
 	unsigned char* data_;
 	size_t size_;
 
-	// key to store data in eblob
+	// key to store data in eblob_t
 	std::string uuid_;
 };
 

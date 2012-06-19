@@ -1,15 +1,22 @@
-//
-// Copyright (C) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #include <sys/stat.h>	
 #include <unistd.h>
@@ -20,7 +27,9 @@
 #include <iostream>
 
 #include <boost/current_function.hpp>
+#include <boost/lexical_cast.hpp>
 #include <boost/tokenizer.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include <cocaine/dealer/utils/error.hpp>
 #include "cocaine/dealer/heartbeats/file_hosts_fetcher.hpp"
@@ -28,34 +37,34 @@
 namespace cocaine {
 namespace dealer {
 
-file_hosts_fetcher::file_hosts_fetcher(service_info_t service_info) :
-	service_info_(service_info),
-	file_modification_time_(0)
+file_hosts_fetcher_t::file_hosts_fetcher_t(const service_info_t& service_info) :
+	m_service_info(service_info),
+	m_file_modification_time(0)
 {
 }
 
-file_hosts_fetcher::~file_hosts_fetcher() {
+file_hosts_fetcher_t::~file_hosts_fetcher_t() {
 }
 
-void
-file_hosts_fetcher::get_hosts(std::vector<host_info_t>& hosts, service_info_t& service_info) {
+bool
+file_hosts_fetcher_t::get_hosts(inetv4_endpoints_t& endpoints, service_info_t& service_info) {
 	std::string buffer;
 
 	// check file modification time
 	struct stat attrib;
-	stat(service_info_.hosts_file_.c_str(), &attrib);
+	stat(m_service_info.hosts_source.c_str(), &attrib);
 
-	if (attrib.st_mtime <= file_modification_time_) {
-		return;
+	if (attrib.st_mtime <= m_file_modification_time) {
+		return false;
 	}
 
 	// load file
 	std::string code;
 	std::ifstream file;
-	file.open(service_info_.hosts_file_.c_str(), std::ifstream::in);
+	file.open(m_service_info.hosts_source.c_str(), std::ifstream::in);
 
 	if (!file.is_open()) {
-		throw internal_error("config file: " + service_info_.hosts_file_ + " failed to open at: " + std::string(BOOST_CURRENT_FUNCTION));
+		throw internal_error("hosts file: " + m_service_info.hosts_source + " failed to open at: " + std::string(BOOST_CURRENT_FUNCTION));
 	}
 
 	size_t max_size = 512;
@@ -77,14 +86,32 @@ file_hosts_fetcher::get_hosts(std::vector<host_info_t>& hosts, service_info_t& s
 
 	for (tokenizer::iterator tok_iter = tokens.begin(); tok_iter != tokens.end(); ++tok_iter) {
 		try {
-			host_info_t host(*tok_iter);
-			hosts.push_back(host);
+			std::string line = *tok_iter;
+
+			boost::trim(line);
+			if (line.empty() || line.at(0) == '#') {
+				continue;
+			}
+
+			// look for ip/port parts
+			size_t where = line.find_last_of(":");
+
+			if (where == std::string::npos) {
+				endpoints.push_back(inetv4_endpoint_t(inetv4_host_t(line)));
+			}
+			else {
+				std::string ip = line.substr(0, where);
+				std::string port = line.substr(where + 1, (line.length() - (where + 1)));
+
+				endpoints.push_back(inetv4_endpoint_t(ip, port));
+			}
 		}
 		catch (...) {
 		}
 	}
 	
-	service_info = service_info_;
+	service_info = m_service_info;
+	return true;
 }
 
 } // namespace dealer

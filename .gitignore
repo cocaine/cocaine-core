@@ -3,7 +3,7 @@
 *.os
 *.so*
 *.dylib
-*.cocaine-module
+*.cocaine-plugin
 cocained
 
 CMakeCache.txt
@@ -13,3 +13,23 @@ install_manifest.txt
 cmake_install.cmake
 
 include/cocaine/config.hpp
+Makefile
+*.o
+*.lo
+*.loT
+*.a
+*.la
+*~
+*.tar.gz
+.*
+*.exp
+*.so
+*.so.*
+*.a.*
+*.o.*
+tags
+
+library-test
+cocaine-slave
+tools/deploy/cocaine-deploy
+tests/library_test

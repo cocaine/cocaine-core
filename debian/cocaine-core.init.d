@@ -56,8 +56,7 @@ do_start() {
 	start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON --test > /dev/null \
 		|| return 1
 	start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON --chuid cocaine -- \
-		$ENDPOINT $DAEMON_ARGS --storage:driver $STORAGE_DRIVER --storage:uri $STORAGE_URI \
-        --pidfile $PIDFILE \
+		$ENDPOINT $DAEMON_ARGS --pidfile $PIDFILE --configuration $CONFIG_PATH \
 		|| return 2
 }
 

@@ -1,15 +1,22 @@
-//
-// Copyright (C) 2011-2012 Andrey Sibiryov <me@kobology.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Andrey Sibiryov <me@kobology.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #ifndef COCAINE_JOB_HPP
 #define COCAINE_JOB_HPP
@@ -22,11 +29,10 @@
 #include "cocaine/common.hpp"
 
 #include "cocaine/events.hpp"
+#include "cocaine/policy.hpp"
 
 #include "cocaine/helpers/blob.hpp"
 #include "cocaine/helpers/birth_control.hpp"
-
-#include "cocaine/dealer/types.hpp"
 
 namespace cocaine { namespace engine {
 
@@ -48,55 +54,31 @@ struct complete;
 // Job FSM
 // -------
 
-class job_t:
+struct job_t:
     public sc::state_machine<job_t, job::incomplete>,
-    public birth_control_t<job_t>
+    public birth_control<job_t>
 {
-    friend struct job::incomplete;
-    friend struct job::waiting;
-    friend struct job::processing;
+    job_t(const std::string& event);
 
-    public:
-        job_t(drivers::driver_t& driver);
-        job_t(drivers::driver_t& driver, dealer::policy_t policy);
-        job_t(drivers::driver_t& driver, const blob_t& request);
-        
-        job_t(drivers::driver_t& driver,
-              dealer::policy_t policy, 
-              const blob_t& request);
+    job_t(const std::string& event,
+          const blob_t& request);
 
-        virtual ~job_t();
+    job_t(const std::string& event,
+          policy_t policy);
+    
+    job_t(const std::string& event,
+          const blob_t& request,
+          policy_t policy); 
 
-    protected:
-        virtual void react(const events::push_t& event);
-        virtual void react(const events::error_t& event);
-        virtual void react(const events::release_t& event);
+    virtual ~job_t();
 
-    public:
-        const std::string& method() const {
-            return m_method;
-        }
-        
-        const dealer::policy_t& policy() const {
-            return m_policy;
-        }
+    virtual void react(const events::chunk& event) { }
+    virtual void react(const events::error& event) { }
+    virtual void react(const events::choke& event) { }
 
-        const blob_t& request() const {
-            return m_request;
-        }
-
-    private:
-        void discard(ev::periodic&, int);
-
-    protected:
-        drivers::driver_t& m_driver;
-
-    private:
-        const std::string m_method;
-        const dealer::policy_t m_policy;
-        const blob_t m_request;
-
-        ev::periodic m_expiration_timer;
+    const std::string event;
+    const blob_t request;
+    const policy_t policy;
 };
 
 namespace job {
@@ -104,53 +86,37 @@ namespace job {
 struct incomplete:
     public sc::simple_state<incomplete, job_t, unknown>
 {
-    public:
-        typedef boost::mpl::list<
-            sc::transition<events::error_t, complete, job_t, &job_t::react>
-        > reactions;
+    typedef boost::mpl::list<
+        sc::transition<events::error, complete, job_t, &job_t::react>
+    > reactions;
 };
 
 struct unknown:
     public sc::simple_state<unknown, incomplete>
 {
-    public:
-        typedef boost::mpl::list<
-            sc::transition<events::enqueue_t, waiting>,
-            sc::transition<events::invoke_t, processing>
-        > reactions;
+    typedef boost::mpl::list<
+        sc::transition<events::enqueue, waiting>,
+        sc::transition<events::invoke, processing>
+    > reactions;
 };
 
 struct waiting:
     public sc::simple_state<waiting, incomplete>
 {
-    public:
-        typedef sc::transition<
-            events::invoke_t, processing
-        > reactions;
-
-        waiting();
-        ~waiting();
-
-    private:
-        const ev::tstamp m_timestamp;
+    typedef boost::mpl::list<
+        sc::transition<events::invoke, processing>
+    > reactions;
 };
 
 struct processing:
     public sc::simple_state<processing, incomplete>
 {
-    public:
-        typedef boost::mpl::list<
-            sc::in_state_reaction<events::push_t, job_t, &job_t::react>,
-            sc::transition<events::release_t, complete, job_t, &job_t::react>,
-            sc::transition<events::enqueue_t, waiting>,
-            sc::transition<events::invoke_t, processing>
-        > reactions;
-
-        processing();
-        ~processing();
-
-    private:
-        const ev::tstamp m_timestamp;
+    typedef boost::mpl::list<
+        sc::in_state_reaction<events::chunk, job_t, &job_t::react>,
+        sc::transition<events::choke, complete, job_t, &job_t::react>,
+        sc::transition<events::enqueue, waiting>,
+        sc::transition<events::invoke, processing>
+    > reactions;
 };
 
 struct complete:

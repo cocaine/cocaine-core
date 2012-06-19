@@ -1,63 +1,56 @@
-//
-// Copyright (C) 2011-2012 Andrey Sibiryov <me@kobology.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Andrey Sibiryov <me@kobology.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #ifndef COCAINE_RPC_HPP
 #define COCAINE_RPC_HPP
 
-#include "cocaine/networking.hpp"
+#include "cocaine/io.hpp"
 
-namespace cocaine { namespace engine { namespace rpc {    
-    
-enum codes {
+namespace cocaine {
+
+namespace rpc {
+
+enum domain {
     heartbeat = 1,
-    configure,
     terminate,
     invoke,
-    push,
+    chunk,
     error,
-    release
+    choke
 };
 
-// Generic packer
-// --------------
+}
 
-template<codes Code> 
-struct packed:
-    public boost::tuple<int>
-{
-    packed():
-        boost::tuple<int>(Code)
-    { }
-};
+namespace io {
 
 // Specific packers
 // ----------------
 
 template<>
-struct packed<configure>:
-    public boost::tuple<int, const config_t&>
+struct packed<rpc::domain, rpc::invoke>:
+    public boost::tuple<const std::string&, zmq::message_t&>
 {
-    packed(const config_t& config):
-        boost::tuple<int, const config_t&>(configure, config)
-    { }
-};
+    typedef boost::tuple<const std::string&, zmq::message_t&> tuple_type;
 
-template<>
-struct packed<invoke>:
-    public boost::tuple<int, const std::string&, zmq::message_t&>
-{
-    packed(const std::string& method, const void * data, size_t size):
-        boost::tuple<int, const std::string&, zmq::message_t&>(invoke, method, message),
+    packed(const std::string& event, const void * data, size_t size):
+        tuple_type(event, message),
         message(size)
     {
         memcpy(
@@ -72,11 +65,13 @@ private:
 };
 
 template<>
-struct packed<push>:
-    public boost::tuple<int, zmq::message_t&>
+struct packed<rpc::domain, rpc::chunk>:
+    public boost::tuple<zmq::message_t&>
 {
+    typedef boost::tuple<zmq::message_t&> tuple_type;
+
     packed(const void * data, size_t size):
-        boost::tuple<int, zmq::message_t&>(push, message),
+        tuple_type(message),
         message(size)
     {
         memcpy(
@@ -86,26 +81,22 @@ struct packed<push>:
         );
     }
 
-    packed(zmq::message_t& message_):
-        boost::tuple<int, zmq::message_t&>(push, message)
-    {
-        message.move(&message_);
-    }
-
 private:
     zmq::message_t message;
 };
 
 template<>
-struct packed<error>:
+struct packed<rpc::domain, rpc::error>:
     // NOTE: Not a string reference to allow literal error messages.
-    public boost::tuple<int, int, std::string>
+    public boost::tuple<int, std::string>
 {
+    typedef boost::tuple<int, std::string> tuple_type;
+
     packed(int code, const std::string& message):
-        boost::tuple<int, int, std::string>(error, code, message)
+        tuple_type(code, message)
     { }
 };
     
-}}}
+}}
 
 #endif

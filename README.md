@@ -1,26 +1,24 @@
 What the hell is it?
 ====================
 
-Cocaine is a fast and lightweight multi-language (you can easily write your own language binding) event-driven (also, you can easily write your own event drivers) task-based distributed application server built on top of ZeroMQ transport and MessagePack serialization library. Yeah, it __is__ cool.
+__Your personal app engine.__ Technically speaking, it's an open-source cloud platform enabling you to build your own PaaS clouds using simple yet effective dynamic components.
 
 Notable features:
 
-* Apps are defined as a set of tasks, which trigger events in the app engine, which are then processed on a slave pool. Tasks can be servers, time-based jobs, filesystem monitors, etc.
-* Dynamic self-managing slave pools for each app with a rich configuration to suit the application needs in the best way.
-* Optional resource control via Linux cgroups.
-* Optional secure communications using RSA encryption.
-* Support for chunked responses and, soon, requests.
-* Automatic node discovery and smart peer-to-peer balancing. Note that ZeroMQ already offers built-in fair balancing features which you can use, although they do not consider real node load.
-* Simple modular design to add new languages, task types, storages and slave backends easily.
+* You are not restricted by a language or a framework. Language support is plugin-based, and we already support several common languages, so your needs are probably covered. Of course, if you want to write your apps in Whitespace, you'll need to write the language support plugin first, but it's easier to write the actual Whitespace code, we bet.
+* Your apps are driven by events, which is fancy. In order for events to actually appear from somewhere, your app defines a set of event drivers. We got lots of predefined event drivers, so unless you need to handle clients via a PS/2 port, you're good.
+* We got dynamic self-managing slave pools for each app with a rich but simple configuration and resource usage control to scale with the app needs. Yeah, it's scales automatically, you don't need to think about it.
+* Even more, it scales automatically across your server cluser via automatic node discovery and smart peer-to-peer balancing.
+* If your startup idea is about processing terabytes of pirated video, we got data streaming and pipelining for you, enjoy.
 
-At the moment, Cocaine supports the following languages and specifications:
+At the moment, Cocaine Core supports the following languages and specifications:
 
 * C++
 * Python
-* [In Development] Perl
+* Perl
 * [In Development] JavaScript
 
-The application tasks can be driven by any of the following drivers:
+Also, we have the following event drivers built-in:
 
 * Recurring Timer (multiple jobs can be run if they are not finished in the timer intervals)
 * Drifting Timer (only one job can be run, hence the drift)
@@ -28,21 +26,17 @@ The application tasks can be driven by any of the following drivers:
 * [In Development] Manual Scheduler
 * Filesystem Monitor
 * ZeroMQ Server (Request-Response)
-* [In Development] ZeroMQ Subscriber (Publishing Chain)
-* Native Server
-* ZeroMQ Sink (Request-Publish)
-* Native Sink (Request-Publish)
-* [Planned] Raw Socket Server
+* Native Server (Request-Response + Smart Balancing)
+* ZeroMQ Sink (Push-Pull)
+* Native Sink (Push-Pull + Smart Balancing)
+* [In Development] Raw Socket Server
 
-An example
-==========
+A motivating example
+====================
 
 ```python
 {
     "type": "python",
-    "args": {
-        "source": "/path/to/application",
-    },
     "engine": {
         "heartbeat-timeout": 60,
         "pool-limit": 20,
@@ -54,16 +48,18 @@ An example
             }
         }
     },
-    "tasks": {
-        "aggregate": {
+    "drivers": {
+        "ultimate-aggregator": {
+            "emit": "aggregte",
             "type": "recurring-timer",
             "interval": 60000
         },
         "event": {
-            "type" : "zeromq-server",
-            "endpoint" : "tcp://lo:9100"
+            "emit": "event",
+            "type" : "native-server"
         },
         "spool": {
+            "emit": "on_spool_changed",
             "type": "filesystem-monitor",
             "path": "/var/spool/my-app-data"
         }
@@ -71,9 +67,9 @@ An example
 }
 ```
 
-The JSON above is an application manifest, a description of the application you feed into Cocaine for it to be able to host it. In a distributed setup, this manifest will be sent to all the other nodes of the cluster automatically. Apart from this manifest, there is __no other configuration needed to start serving the application__.
+The JSON above is an app manifest, a description of the application you feed into Cocaine Core for it to be able to host it. In a distributed setup, this manifest will be sent to all the other nodes of the cluster automatically. Apart from this manifest, there is __no other configuration needed to start serving the application__.
 
 Okay, I want to try it!
 =======================
 
-Then it's time to read our [Wiki](https://github.com/cocaine-core/cocaine/wiki) for installation instructions, reference manuals and cookies!
+Then it's time to read our [Wiki](https://github.com/cocaine/cocaine-core/wiki) for installation instructions, reference manuals and cookies!

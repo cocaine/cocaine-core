@@ -1,15 +1,22 @@
-//
-// Copyright (C) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #ifndef _COCAINE_DEALER_REQUEST_METADATA_HPP_INCLUDED_
 #define _COCAINE_DEALER_REQUEST_METADATA_HPP_INCLUDED_
@@ -18,52 +25,76 @@
 #include <sstream>
 
 #include <boost/lexical_cast.hpp>
+#include <boost/shared_ptr.hpp>
 
 #include "cocaine/dealer/structs.hpp"
+#include "cocaine/dealer/message_path.hpp"
 #include "cocaine/dealer/utils/time_value.hpp"
 #include "cocaine/dealer/storage/eblob.hpp"
+#include <boost/flyweight.hpp>
 
 #include <msgpack.hpp>
 
 namespace cocaine {
 namespace dealer {
 
-class request_metadata {
-public:
-	request_metadata() {};
-	virtual ~request_metadata() {};
+struct request_metadata_t {
+	request_metadata_t() :
+		data_size(0),
+		ack_received(false),
+		is_sent(false),
+		retries_count(0) {}
+
+	virtual ~request_metadata_t() {}
 
 	std::string as_string() const {
 		std::stringstream s;
 		s << std::boolalpha;
-		s << "service/handle: " << path.service_name << "/" << path.handle_name << "\n";
+		s << "service: "<< path().service_alias << ", handle: ";
+		s << path().handle_name + "\n";
         s << "uuid: " << uuid << "\n";
         s << "policy [send to all hosts]: " << policy.send_to_all_hosts << "\n";
         s << "policy [urgent]: " << policy.urgent << "\n";
-        s << "policy [mailboxed]: " << policy.mailboxed << "\n";
         s << "policy [timeout]: " << policy.timeout << "\n";
         s << "policy [deadline]: " << policy.deadline << "\n";
-        s << "policy [max timeout retries]: " << policy.max_timeout_retries << "\n";
+        s << "policy [max retries]: " << policy.max_retries << "\n";
         s << "data_size: " << data_size << "\n";
-        s << "enqueued timestamp: " << enqueued_timestamp.as_string();
+        s << "enqued timestamp: " << enqued_timestamp.as_string();
         return s.str();
 	}
 
-	// metadata
-	message_path path;
-	message_policy policy;
-	std::string uuid;
-	uint64_t data_size;
-	time_value enqueued_timestamp;
+	const message_path_t& path() const {
+		return path_.get();
+	}
+
+	void set_path(const message_path_t& path) {
+		path_ = path;
+	}
+
+	std::string		uuid;
+	message_policy_t	policy;
+	std::string		destination_endpoint;
+	uint64_t		data_size;
+
+	time_value	enqued_timestamp;
+	time_value	sent_timestamp;
+	bool		ack_received;
+
+	bool	is_sent;
+	int		retries_count;
+
+private:
+	boost::flyweight<message_path_t> path_;
 };
 
-class persistent_request_metadata : public request_metadata {
-public:
-	persistent_request_metadata() : request_metadata() {};
-	virtual ~persistent_request_metadata() {};
+struct persistent_request_metadata_t : public request_metadata_t {
+	persistent_request_metadata_t() :
+		request_metadata_t() {}
 
-	void set_eblob(eblob blob) {
-		blob_ = blob;
+	virtual ~persistent_request_metadata_t() {}
+
+	void set_eblob(const boost::shared_ptr<eblob_t>& blob_) {
+		blob = blob_;
 	}
 
 	static const size_t EBLOB_COLUMN = 0;
@@ -73,42 +104,51 @@ public:
 			return;
 		}
 
-		msgpack::unpacked msg;
-		msgpack::unpack(&msg, reinterpret_cast<char*>(data), size);
-		msgpack::object obj = msg.get();
-		obj.convert(this);
+		msgpack::unpacker pac(size);
+		memcpy(pac.buffer(), data, size);
+		pac.buffer_consumed(size);
+
+		message_path_t path;
+		unpack_next_value(pac, path);
+		path = path;
+
+		unpack_next_value(pac, policy);
+		unpack_next_value(pac, uuid);
+		unpack_next_value(pac, data_size);
+		unpack_next_value(pac, enqued_timestamp);
 	}
 
 	void commit_data() {
-		// serialize to eblob with uuid as key
+		// serialize all metadata
 		msgpack::sbuffer buffer;
-		msgpack::pack(buffer, *this);
-		blob_.write(uuid, buffer.data(), buffer.size(), EBLOB_COLUMN);
-	}
+		msgpack::packer<msgpack::sbuffer> pk(&buffer);
+    	pk.pack(path());
+    	pk.pack(policy);
+    	pk.pack(uuid);
+    	pk.pack(data_size);
+    	pk.pack(enqued_timestamp);
 
-	MSGPACK_DEFINE(path, policy, uuid, data_size, enqueued_timestamp);
+    	// write to eblob_t with uuid as key
+		blob->write(uuid, buffer.data(), buffer.size(), EBLOB_COLUMN);
+	}
 
 private:
 	template<typename T> void unpack_next_value(msgpack::unpacker& upack, T& value) {
-		msgpack::unpacked result;
-		msgpack::object obj;
-
-        upack.next(&result);
-		obj = result.get();
-        obj.convert(&value);
+	 	msgpack::unpacked result;
+		upack.next(&result);
+		result.get().convert(&value);
 	}
 
-private:
-	eblob blob_;
+	boost::shared_ptr<eblob_t> blob;
 };
 
-std::ostream& operator << (std::ostream& out, request_metadata& req_meta) {
+std::ostream& operator << (std::ostream& out, request_metadata_t& req_meta) {
 	out << req_meta.as_string();
 	return out;
 }
 
-std::ostream& operator << (std::ostream& out, persistent_request_metadata& p_req_meta) {
-	out << p_req_meta.as_string();
+std::ostream& operator << (std::ostream& out, persistent_request_metadata_t& req_meta) {
+	out << req_meta.as_string();
 	return out;
 }
 

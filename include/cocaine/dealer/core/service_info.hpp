@@ -1,78 +1,101 @@
-//
-// Copyright (C) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #ifndef _COCAINE_DEALER_SERVICE_INFO_HPP_INCLUDED_
 #define _COCAINE_DEALER_SERVICE_INFO_HPP_INCLUDED_
 
 #include <string>
+#include <sstream>
 #include <map>
 
 #include "cocaine/dealer/structs.hpp"
+#include "cocaine/dealer/defaults.hpp"
 
 namespace cocaine {
 namespace dealer {
 
-// predeclaration
-template <typename LSD_T> class service_info;
-typedef service_info<DT> service_info_t;
-
-template <typename LSD_T>
-class service_info {
+struct service_info_t {
 public:	
-	service_info() {};
-	service_info(const service_info<LSD_T>& info) {
-		*this = info;
-	};
-
-	service_info (const std::string& name,
-				  const std::string& description,
-				  const std::string& app_name,
-				  const std::string& instance,
-				  const std::string& hosts_file,
-				  const std::string& hosts_url) :
-					  name_(name),
-					  description_(description),
-					  app_name_(app_name),
-					  hosts_file_(hosts_file),
-					  hosts_url_(hosts_url),
-					  control_port_(DEFAULT_CONTROL_PORT) {};
+	service_info_t() : discovery_type(AT_UNDEFINED) {};
 	
-	bool operator == (const service_info& rhs) {
-		return (name_ == rhs.name_ &&
-				hosts_url_ == rhs.hosts_url_ &&
-				hosts_file_ == rhs.hosts_file_ &&
-				control_port_ == rhs.control_port_);
-	};
+	service_info_t(const service_info_t& info) : 
+		discovery_type(AT_UNDEFINED)
+	{
+		*this = info;
+	}
+
+	service_info_t(const std::string& name,
+				  const std::string& description,
+				  const std::string& app,
+				  const std::string& hosts_source,
+				  enum e_autodiscovery_type discovery_type) :
+					  name(name),
+					  description(description),
+					  app(app),
+					  hosts_source(hosts_source),
+					  discovery_type(discovery_type) {}
+	
+	bool operator == (const service_info_t& rhs) {
+		return (name == rhs.name &&
+				app == rhs.app &&
+				hosts_source == rhs.hosts_source &&
+				discovery_type == rhs.discovery_type);
+	}
+
+	std::string as_string() const {
+		std::stringstream out;
+
+		out << "service name: " << name << "\n";
+		out << "description: " << description << "\n";
+		out << "app: " << app << "\n";
+		out << "hosts source: " << hosts_source << "\n";
+
+		switch (discovery_type) {
+			case AT_MULTICAST:
+				out << "discovery type: multicast\n";
+				break;
+
+			case AT_HTTP:
+				out << "discovery type: http\n";
+				break;
+
+			case AT_FILE:
+				out << "discovery type: file\n";
+				break;
+
+			case AT_UNDEFINED:
+				out << "discovery type: undefined\n";
+				break;
+		}
+
+		return out.str();
+	}
 
 	// config-defined data
-	std::string name_;
-	std::string description_;
-	std::string app_name_;
-	std::string hosts_file_;
-	std::string hosts_url_;
-	typename LSD_T::port control_port_;
-};
+	std::string name;
+	std::string description;
+	std::string app;
 
-template <typename LSD_T>
-std::ostream& operator << (std::ostream& out, const service_info<LSD_T>& service_inf) {
-	out << "lsd service name: " << service_inf.name_ << "\n";
-	out << "description: " << service_inf.description_ << "\n";
-	out << "app name: " << service_inf.app_name_ << "\n";
-	out << "hosts file: " << service_inf.hosts_file_ << "\n";
-	out << "hosts url: " << service_inf.hosts_url_ << "\n";
-	out << "control port: " << service_inf.control_port_ << "\n";
-
-	return out;
+	// autodetection
+	std::string hosts_source;
+	enum e_autodiscovery_type discovery_type;
 };
 
 } // namespace dealer

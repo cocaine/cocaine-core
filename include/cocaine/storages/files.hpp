@@ -1,15 +1,22 @@
-//
-// Copyright (C) 2011-2012 Andrey Sibiryov <me@kobology.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Andrey Sibiryov <me@kobology.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #ifndef COCAINE_FILE_STORAGE_HPP
 #define COCAINE_FILE_STORAGE_HPP
@@ -21,23 +28,34 @@
 namespace cocaine { namespace storages {
 
 class file_storage_t:
-    public storage_t
+    public storage_concept<objects>
 {
     public:
-        file_storage_t(context_t& ctx);
+        typedef storage_concept<objects> category_type;
+
+    public:
+        file_storage_t(context_t& context,
+                       const plugin_config_t& config);
+
+        virtual objects::value_type get(const std::string& ns,
+                                        const std::string& key);
 
         virtual void put(const std::string& ns, 
                          const std::string& key, 
-                         const Json::Value& value);
+                         const objects::value_type& object);
 
-        virtual bool exists(const std::string& ns, const std::string& key);
-        virtual Json::Value get(const std::string& ns, const std::string& key);
-        virtual Json::Value all(const std::string& ns);
+        virtual objects::meta_type exists(const std::string& ns,
+                                          const std::string& key);
 
-        virtual void remove(const std::string& ns, const std::string& key);
-        virtual void purge(const std::string& ns);
+        virtual std::vector<std::string> list(const std::string& ns);
+
+        virtual void remove(const std::string& ns,
+                            const std::string& key);
 
     private:
+        boost::shared_ptr<logging::logger_t> m_log;
+        boost::mutex m_mutex;
+        
         const boost::filesystem::path m_storage_path;
 };
 

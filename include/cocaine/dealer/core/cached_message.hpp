@@ -1,15 +1,22 @@
-//
-// Copyright (C) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
-//
-// Licensed under the BSD 2-Clause License (the "License");
-// you may not use this file except in compliance with the License.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+    Copyright (c) 2011-2012 Rim Zaidullin <creator@bash.org.ru>
+    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+*/
 
 #ifndef _COCAINE_DEALER_CACHED_MESSAGE_HPP_INCLUDED_
 #define _COCAINE_DEALER_CACHED_MESSAGE_HPP_INCLUDED_
@@ -17,7 +24,7 @@
 #include <string>
 #include <sys/time.h>
 #include <cstring>
-#include <stdexcept>
+#include <iomanip>
 
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/mutex.hpp>
@@ -29,26 +36,27 @@
 
 #include "cocaine/dealer/core/message_iface.hpp"
 #include "cocaine/dealer/utils/error.hpp"
+#include "cocaine/dealer/utils/uuid.hpp"
 #include "cocaine/dealer/utils/progress_timer.hpp"
 
 namespace cocaine {
 namespace dealer {
 
 template<typename DataContainer, typename MetadataContainer>
-class cached_message : public message_iface {
+class cached_message_t : public message_iface {
 public:
-	cached_message();
-	explicit cached_message(const cached_message& message);
+	cached_message_t();
+	explicit cached_message_t(const cached_message_t& message);
 
-	cached_message(const message_path& path,
-				   const message_policy& policy,
-				   const void* data,
-				   size_t data_size);
+	cached_message_t(const message_path_t& path,
+					 const message_policy_t& policy,
+					 const void* data,
+					 size_t data_size);
 
-	cached_message(void* mdata,
-				   size_t mdata_size);
+	cached_message_t(void* mdata,
+					 size_t mdata_size);
 
-	~cached_message();
+	~cached_message_t();
 
 	void* data();
 	size_t size() const;
@@ -56,18 +64,22 @@ public:
 	DataContainer& data_container();
 	MetadataContainer& mdata_container();
 
-	size_t container_size() const;
-
-	const message_path& path() const;
-	const message_policy& policy() const;
+	const message_path_t& path() const;
+	const message_policy_t& policy() const;
 	const std::string& uuid() const;
 
 	bool is_sent() const;
 	const time_value& sent_timestamp() const;
+	const time_value& enqued_timestamp() const;
+
+	bool ack_received() const;
+	void set_ack_received(bool value);
+
+	const std::string& destination_endpoint() const;
+	void set_destination_endpoint(const std::string& value);
 
 	void mark_as_sent(bool value);
 
-	std::string json();
 	bool is_expired();
 
 	message_iface& operator = (const message_iface& rhs);
@@ -78,144 +90,135 @@ public:
 	void load_data();
 	void unload_data();
 
+	int retries_count() const;
+	void increment_retries_count();
+	bool can_retry() const;
+
 	void remove_from_persistent_cache();
 
 private:
-	void gen_uuid();
 	void init();
 	
 private:
-	// message data
-	DataContainer data_;
-	MetadataContainer mdata_;
-
-	// ivars
-	time_value sent_timestamp_;
-	bool is_sent_;
-	size_t container_size_;
-	int timeout_retries_count_;
-
-	// synchronization
-	boost::mutex mutex_;
+	DataContainer		m_data;
+	MetadataContainer	m_metadata;
+	boost::mutex		m_mutex;
 };
 
 template<typename DataContainer, typename MetadataContainer>
-cached_message<DataContainer, MetadataContainer>::cached_message() :
-	is_sent_(false)
-{
+cached_message_t<DataContainer, MetadataContainer>::cached_message_t() {
 	init();
 }
 
 template<typename DataContainer, typename MetadataContainer>
-cached_message<DataContainer, MetadataContainer>::cached_message(const cached_message& message) {
+cached_message_t<DataContainer, MetadataContainer>::cached_message_t(const cached_message_t& message) {
 	*this = message;
 }
 
 template<typename DataContainer, typename MetadataContainer>
-cached_message<DataContainer, MetadataContainer>::cached_message(const message_path& path,
-							   									 const message_policy& policy,
-							   									 const void* data,
-							   									 size_t data_size) :
-	is_sent_(false),
-	container_size_(0)
+cached_message_t<DataContainer, MetadataContainer>::cached_message_t(const message_path_t& path,
+							   										 const message_policy_t& policy,
+							   										 const void* data,
+							   										 size_t data_size)
 {
-	mdata_.path = path;
-	mdata_.policy = policy;
-	mdata_.enqueued_timestamp.init_from_current_time();
+	m_metadata.set_path(path);
+	m_metadata.policy = policy;
+	m_metadata.enqued_timestamp.init_from_current_time();
 
 	if (data_size > MAX_MESSAGE_DATA_SIZE) {
 		throw dealer_error(resource_error, "can't create message, message data too big.");
 	}
 
-	data_.set_data(data, data_size);
+	m_data.set_data(data, data_size);
 	init();
 }
 
 template<typename DataContainer, typename MetadataContainer>
-cached_message<DataContainer, MetadataContainer>::cached_message(void* mdata, size_t mdata_size) {
-	mdata_.load_data(mdata_, mdata_size);
+cached_message_t<DataContainer, MetadataContainer>::cached_message_t(void* mdata, size_t mdata_size) {
+	m_metadata.load_data(m_metadata, mdata_size);
 }
 
 template<typename DataContainer, typename MetadataContainer>
-cached_message<DataContainer, MetadataContainer>::~cached_message() {
+cached_message_t<DataContainer, MetadataContainer>::~cached_message_t() {
 }
 
 template<typename DataContainer, typename MetadataContainer> void
-cached_message<DataContainer, MetadataContainer>::init() {
-	gen_uuid();
-	mdata_.enqueued_timestamp.init_from_current_time();
+cached_message_t<DataContainer, MetadataContainer>::init() {
+	m_metadata.uuid = wuuid_t().generate();
+	m_metadata.enqued_timestamp.init_from_current_time();
+}
 
-	// calc data size
-	container_size_ = sizeof(cached_message) + data_.size() + UUID_SIZE + mdata_.path.data_size();
+template<typename DataContainer, typename MetadataContainer> int
+cached_message_t<DataContainer, MetadataContainer>::retries_count() const {
+	return m_metadata.retries_count;
+}
+
+template<typename DataContainer, typename MetadataContainer> void
+cached_message_t<DataContainer, MetadataContainer>::increment_retries_count() {
+	++m_metadata.retries_count;
 }
 
 template<typename DataContainer, typename MetadataContainer> bool
-cached_message<DataContainer, MetadataContainer>::is_data_loaded() {
-	return data_.is_data_loaded();
+cached_message_t<DataContainer, MetadataContainer>::can_retry() const {
+	if (m_metadata.policy.max_retries < 0) {
+		return true;
+	}
+
+	return (m_metadata.retries_count < m_metadata.policy.max_retries ? true : false);
+}
+
+template<typename DataContainer, typename MetadataContainer> bool
+cached_message_t<DataContainer, MetadataContainer>::is_data_loaded() {
+	return m_data.is_data_loaded();
 }
 
 template<typename DataContainer, typename MetadataContainer> void
-cached_message<DataContainer, MetadataContainer>::load_data() {
-	data_.load_data();
+cached_message_t<DataContainer, MetadataContainer>::load_data() {
+	m_data.load_data();
 }
 
 template<typename DataContainer, typename MetadataContainer> void
-cached_message<DataContainer, MetadataContainer>::unload_data() {
-	data_.unload_data();
-}
-
-template<typename DataContainer, typename MetadataContainer> void
-cached_message<DataContainer, MetadataContainer>::gen_uuid() {
-	char buff[128];
-	memset(buff, 0, sizeof(buff));
-
-	uuid_t uuid;
-	uuid_generate(uuid);
-	uuid_unparse(uuid, buff);
-
-	mdata_.uuid = buff;
+cached_message_t<DataContainer, MetadataContainer>::unload_data() {
+	m_data.unload_data();
 }
 
 template<typename DataContainer, typename MetadataContainer> void*
-cached_message<DataContainer, MetadataContainer>::data() {
-	return data_.data();
+cached_message_t<DataContainer, MetadataContainer>::data() {
+	return m_data.data();
 }
 
 template<typename DataContainer, typename MetadataContainer> size_t
-cached_message<DataContainer, MetadataContainer>::size() const {
-	return data_.size();
+cached_message_t<DataContainer, MetadataContainer>::size() const {
+	return m_data.size();
 }
 
 template<typename DataContainer, typename MetadataContainer> DataContainer&
-cached_message<DataContainer, MetadataContainer>::data_container() {
-	return data_;
+cached_message_t<DataContainer, MetadataContainer>::data_container() {
+	return m_data;
 }
 
 template<typename DataContainer, typename MetadataContainer> MetadataContainer&
-cached_message<DataContainer, MetadataContainer>::mdata_container() {
-	return mdata_;
+cached_message_t<DataContainer, MetadataContainer>::mdata_container() {
+	return m_metadata;
 }
 
 template<typename DataContainer, typename MetadataContainer> message_iface&
-cached_message<DataContainer, MetadataContainer>::operator = (const message_iface& rhs) {
-	boost::mutex::scoped_lock lock(mutex_);
+cached_message_t<DataContainer, MetadataContainer>::operator = (const message_iface& rhs) {
+	boost::mutex::scoped_lock lock(m_mutex);
 
 	if (this == &rhs) {
 		return *this;
 	}
 
 	try {
-		const cached_message<DataContainer, MetadataContainer>& dc = dynamic_cast<const cached_message<DataContainer, MetadataContainer>& >(rhs);
+		const cached_message_t<DataContainer, MetadataContainer>& dc = dynamic_cast<const cached_message_t<DataContainer, MetadataContainer>& >(rhs);
 
-		data_			= dc.data_;
-		mdata_			= dc.mdata_;
-		is_sent_		= dc.is_sent_;
-		sent_timestamp_	= dc.sent_timestamp_;
-		container_size_	= dc.container_size_;
+		m_data = dc.m_data;
+		m_metadata = dc.m_metadata;
 	}
 	catch (const std::exception& ex) {
 		std::string error_msg = ex.what();
-		error_msg = "error in cached_message<DataContainer, MetadataContainer>::operator = (), details: " + error_msg;
+		error_msg = "error in cached_message_t<DataContainer, MetadataContainer>::operator = (), details: " + error_msg;
 		throw internal_error(error_msg);
 	}
 
@@ -223,17 +226,17 @@ cached_message<DataContainer, MetadataContainer>::operator = (const message_ifac
 }
 
 template<typename DataContainer, typename MetadataContainer> bool
-cached_message<DataContainer, MetadataContainer>::operator == (const message_iface& rhs) const {
+cached_message_t<DataContainer, MetadataContainer>::operator == (const message_iface& rhs) const {
 
 	bool comparison_result = false;
 
 	try {
-		const cached_message<DataContainer, MetadataContainer>& dc = dynamic_cast<const cached_message<DataContainer, MetadataContainer>& >(rhs);
-		comparison_result = (mdata_.uuid == dc.mdata_.uuid);
+		const cached_message_t<DataContainer, MetadataContainer>& dc = dynamic_cast<const cached_message_t<DataContainer, MetadataContainer>&>(rhs);
+		comparison_result = (m_metadata.uuid == dc.m_metadata.uuid);
 	}
 	catch (const std::exception& ex) {
 		std::string error_msg = ex.what();
-		error_msg = "error in cached_message<DataContainer, MetadataContainer>::operator = (), details: " + error_msg;
+		error_msg = "error in cached_message_t<DataContainer, MetadataContainer>::operator = (), details: " + error_msg;
 		throw internal_error(error_msg);
 	}
 
@@ -241,84 +244,102 @@ cached_message<DataContainer, MetadataContainer>::operator == (const message_ifa
 }
 
 template<typename DataContainer, typename MetadataContainer> bool
-cached_message<DataContainer, MetadataContainer>::operator != (const message_iface& rhs) const {
+cached_message_t<DataContainer, MetadataContainer>::operator != (const message_iface& rhs) const {
 	return !(*this == rhs);
 }
 
 template<typename DataContainer, typename MetadataContainer> const std::string&
-cached_message<DataContainer, MetadataContainer>::uuid() const {
-	return mdata_.uuid;
+cached_message_t<DataContainer, MetadataContainer>::uuid() const {
+	return m_metadata.uuid;
 }
 
 template<typename DataContainer, typename MetadataContainer> bool
-cached_message<DataContainer, MetadataContainer>::is_sent() const {
-	return is_sent_;
+cached_message_t<DataContainer, MetadataContainer>::is_sent() const {
+	return m_metadata.is_sent;
 }
 
 template<typename DataContainer, typename MetadataContainer> const time_value&
-cached_message<DataContainer, MetadataContainer>::sent_timestamp() const {
-	return sent_timestamp_;
+cached_message_t<DataContainer, MetadataContainer>::sent_timestamp() const {
+	return m_metadata.sent_timestamp;
 }
 
-template<typename DataContainer, typename MetadataContainer> const message_path&
-cached_message<DataContainer, MetadataContainer>::path() const {
-	return mdata_.path;
+template<typename DataContainer, typename MetadataContainer> const time_value&
+cached_message_t<DataContainer, MetadataContainer>::enqued_timestamp() const {
+	return m_metadata.enqued_timestamp;
 }
 
-template<typename DataContainer, typename MetadataContainer> const message_policy&
-cached_message<DataContainer, MetadataContainer>::policy() const {
-	return mdata_.policy;
-}
-
-template<typename DataContainer, typename MetadataContainer> size_t
-cached_message<DataContainer, MetadataContainer>::container_size() const {
-	return container_size_;
+template<typename DataContainer, typename MetadataContainer> bool
+cached_message_t<DataContainer, MetadataContainer>::ack_received() const {
+	return m_metadata.ack_received;
 }
 
 template<typename DataContainer, typename MetadataContainer> void
-cached_message<DataContainer, MetadataContainer>::mark_as_sent(bool value) {
-	boost::mutex::scoped_lock lock(mutex_);
+cached_message_t<DataContainer, MetadataContainer>::set_ack_received(bool value) {
+	m_metadata.ack_received = value;
+}
+
+template<typename DataContainer, typename MetadataContainer> const std::string&
+cached_message_t<DataContainer, MetadataContainer>::destination_endpoint() const {
+	return m_metadata.destination_endpoint;
+}
+
+template<typename DataContainer, typename MetadataContainer> void
+cached_message_t<DataContainer, MetadataContainer>::set_destination_endpoint(const std::string& value) {
+	m_metadata.destination_endpoint = value;	
+}
+
+template<typename DataContainer, typename MetadataContainer> const message_path_t&
+cached_message_t<DataContainer, MetadataContainer>::path() const {
+	return m_metadata.path();
+}
+
+template<typename DataContainer, typename MetadataContainer> const message_policy_t&
+cached_message_t<DataContainer, MetadataContainer>::policy() const {
+	return m_metadata.policy;
+}
+
+template<typename DataContainer, typename MetadataContainer> void
+cached_message_t<DataContainer, MetadataContainer>::mark_as_sent(bool value) {
+	boost::mutex::scoped_lock lock(m_mutex);
 
 	if (value) {
-		is_sent_ = false;
-		sent_timestamp_.init_from_current_time();
+		m_metadata.is_sent = true;
+		m_metadata.sent_timestamp.init_from_current_time();
 	}
 	else {
-		is_sent_ = false;
-		sent_timestamp_.reset();
+		m_metadata.is_sent = false;
+		m_metadata.sent_timestamp.reset();
 	}
 }
 
 template<typename DataContainer, typename MetadataContainer> bool
-cached_message<DataContainer, MetadataContainer>::is_expired() {
-	if (mdata_.policy.deadline == 0.0f) {
-		return false;
+cached_message_t<DataContainer, MetadataContainer>::is_expired() {
+	// check whether we received server ack or not
+	time_value curr_time = time_value::get_current_time();
+
+	if (m_metadata.is_sent && !ack_received()) {
+		time_value elapsed_from_sent = curr_time.distance(m_metadata.sent_timestamp);
+
+		if (elapsed_from_sent.as_double() > (ACK_TIMEOUT / 1000.0f)) {
+			return true;
+		}
 	}
 
-	if (time_value::get_current_time() > time_value(mdata_.policy.deadline)) {
-		return true;
+	// process policy deadlie
+	if (m_metadata.policy.deadline > 0.0f) {
+		time_value elapsed_from_enqued = curr_time.distance(m_metadata.enqued_timestamp);
+
+		if (elapsed_from_enqued.as_double() > m_metadata.policy.deadline) {
+			return true;
+		}
 	}
 
 	return false;
 }
 
-template<typename DataContainer, typename MetadataContainer> std::string
-cached_message<DataContainer, MetadataContainer>::json() {
-	Json::Value envelope(Json::objectValue);
-	Json::FastWriter writer;
-
-	envelope["urgent"] = mdata_.policy.urgent;
-	envelope["mailboxed"] = mdata_.policy.mailboxed;
-	envelope["timeout"] = mdata_.policy.timeout;
-	envelope["deadline"] = mdata_.policy.deadline;
-	envelope["uuid"] = mdata_.uuid;
-
-	return writer.write(envelope);
-}
-
 template<typename DataContainer, typename MetadataContainer> void
-cached_message<DataContainer, MetadataContainer>::remove_from_persistent_cache() {
-	return data_.remove_from_persistent_cache();
+cached_message_t<DataContainer, MetadataContainer>::remove_from_persistent_cache() {
+	return m_data.remove_from_persistent_cache();
 }
 
 } // namespace dealer
