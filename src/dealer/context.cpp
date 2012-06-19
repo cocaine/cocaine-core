@@ -59,7 +59,7 @@ context_t::context_t(const std::string& config_path) {
 			break;
 	}
 	
-	logger()->log("loaded config: %s", config()->config_path().c_str());
+	logger()->log(PLOG_DEBUG, "loaded config: %s", config()->config_path().c_str());
 	//logger()->log(config()->as_string());
 	
 	// create zmq context
@@ -70,7 +70,7 @@ context_t::context_t(const std::string& config_path) {
 
 	// create eblob_t storage
 	if (config()->message_cache_type() == PERSISTENT) {
-		logger()->log("loading cache from eblobs...");
+		logger()->log(PLOG_DEBUG, "loading cache from eblobs...");
 		std::string st_path = config()->eblob_path();
 		int64_t st_blob_size = config()->eblob_blob_size();
 		int st_sync = config()->eblob_sync_interval();

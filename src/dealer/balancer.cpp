@@ -56,7 +56,7 @@ balancer_t::~balancer_t() {
 
 void
 balancer_t::connect(const std::vector<cocaine_endpoint_t>& endpoints) {
-	log("connect " + m_socket_identity);
+	log(PLOG_DEBUG, "connect " + m_socket_identity);
 
 	if (endpoints.empty()) {
 		return;
@@ -85,7 +85,7 @@ void balancer_t::disconnect() {
 		return;
 	}
 
-	log("disconnect balancer " + m_socket_identity);
+	log(PLOG_DEBUG, "disconnect balancer " + m_socket_identity);
 	m_socket.reset();
 }
 
@@ -105,17 +105,19 @@ balancer_t::update_endpoints(const std::vector<cocaine_endpoint_t>& endpoints,
 	std::vector<cocaine_endpoint_t> new_endpoints;
 	get_endpoints_diff(endpoints, new_endpoints, missing_endpoints);
 
-	if (missing_endpoints.empty()) {
-		log(PLOG_INFO, "new endpoints on " + m_socket_identity);
-		connect(new_endpoints);
-	}
-	else {
-		log(PLOG_INFO, "missing endpoints on " + m_socket_identity);
+	if (!missing_endpoints.empty()) {
+		log(PLOG_DEBUG, "missing endpoints on " + m_socket_identity);
 		recreate_socket();
 		connect(endpoints);
 	}
+	else {
+		if (!new_endpoints.empty()) {
+			log(PLOG_DEBUG, "new endpoints on " + m_socket_identity);
+			connect(new_endpoints);
+		}
+	}
 
-	m_endpoints = endpoints_tmp;
+	m_endpoints = endpoints;
 }
 
 void
@@ -138,7 +140,7 @@ balancer_t::get_endpoints_diff(const std::vector<cocaine_endpoint_t>& updated_en
 
 void
 balancer_t::recreate_socket() {
-	log("recreate_socket " + m_socket_identity);
+	log(PLOG_DEBUG, "recreate_socket " + m_socket_identity);
 	int timeout = balancer_t::socket_timeout;
 	int64_t hwm = balancer_t::socket_hwm;
 	m_socket.reset(new zmq::socket_t(*(context()->zmq_context()), ZMQ_ROUTER));
@@ -259,25 +261,6 @@ balancer_t::check_for_responses(int poll_timeout) const {
 }
 
 bool
-balancer_t::receive_chunk(zmq::message_t& response_t) {
-	try {
-		if (m_socket->recv(&response_t, ZMQ_NOBLOCK) == EAGAIN) {
-			return false;
-		}
-	}
-	catch (const std::exception& ex) {
-		std::string error_msg = "balancer with identity " + m_socket_identity;
-		error_msg += " — error while receiving response_t chunk ";
-		error_msg += ex.what();
-		log(PLOG_DEBUG, error_msg);
-
-		return false;
-	}
-
-	return true;
-}
-
-bool
 balancer_t::receive(boost::shared_ptr<cached_response_t>& response_t) {
 	boost::ptr_vector<zmq::message_t> response_chunks;
 
@@ -288,7 +271,7 @@ balancer_t::receive(boost::shared_ptr<cached_response_t>& response_t) {
 	while (more) {
 		zmq::message_t* chunk = new zmq::message_t;
 
-		if (!receive_chunk(*chunk)) {
+		if (!m_socket->recv(chunk, ZMQ_NOBLOCK)) {
 			delete chunk;
 			break;
 		}
@@ -339,12 +322,12 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 	switch (rpc_code) {
 		case SERVER_RPC_MESSAGE_ACK: {
 			sent_msg->set_ack_received(true);
-			//log(PLOG_DEBUG, message_str + "ACK");
+			log(PLOG_DEBUG, message_str + "ACK");
 			return false;
 		}
 
 		case SERVER_RPC_MESSAGE_CHUNK: {
-			//log(PLOG_DEBUG, message_str + "CHUNK");
+			log(PLOG_DEBUG, message_str + "CHUNK");
 
 			response_t.reset(new cached_response_t(uuid,
 												 route,
@@ -358,8 +341,6 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 		break;
 
 		case SERVER_RPC_MESSAGE_ERROR: {
-			log(PLOG_DEBUG, message_str + "ERROR");
-
 			int error_code = -1;
 			std::string error_message;
 
@@ -378,12 +359,15 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 												 sent_msg->path(),
 												 error_code,
 												 error_message));
+			
+			log(PLOG_ERROR, message_str + "ERROR, error message: %s, error code: %d", error_message.c_str(), error_code);
+
 			return true;
 		}
 		break;
 
 		case SERVER_RPC_MESSAGE_CHOKE: {
-			//log(PLOG_DEBUG, message_str + "CHOKE");
+			log(PLOG_DEBUG, message_str + "CHOKE");
 
 			response_t.reset(new cached_response_t(uuid,
 												 route,

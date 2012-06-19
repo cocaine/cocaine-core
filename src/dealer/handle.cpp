@@ -113,7 +113,7 @@ handle_t::dispatch_messages() {
 
 		int response_poll_timeout = fast_poll_timeout;
 		if (m_last_response_timer.elapsed().as_double() > 5.0f) {
-			response_poll_timeout = long_poll_timeout;			
+			response_poll_timeout = long_poll_timeout;
 		}
 
 		if (m_is_connected && m_is_running) {
@@ -143,56 +143,60 @@ handle_t::dispatch_messages() {
 
 void
 handle_t::dispatch_next_available_response(balancer_t& balancer) {
-	cached_response_prt_t response_t;
-	if (!balancer.receive(response_t)) {
+	cached_response_prt_t response;
+	if (!balancer.receive(response)) {
 		return;
 	}
 
-	switch (response_t->code()) {
+	bool resheduled = false;
+
+	switch (response->code()) {
 		case response_code::message_chunk:
-			enqueue_response(response_t);
+			enqueue_response(response);
 		break;
 
 		case response_code::message_choke:
-			m_message_cache->remove_message_from_cache(response_t->route(), response_t->uuid());
-			enqueue_response(response_t);
+			m_message_cache->remove_message_from_cache(response->route(), response->uuid());
+			enqueue_response(response);
 		break;
 
 		case resource_error: {
-			if (reshedule_message(response_t->route(), response_t->uuid())) {
-				std::string message_str = "resheduled msg with uuid: " + response_t->uuid();
-				message_str += " from " + description() + ", type: ERROR";
-				message_str += ", error code: ";
-
-				log(PLOG_DEBUG,
-					"%s%d, error message: %s",
-					message_str.c_str(),
-					response_t->code(),
-					response_t->error_message().c_str());
+			if (m_message_cache->reshedule_message(response->route(), response->uuid())) {
+				resheduled = true;
 			}
 			else {
-				m_message_cache->remove_message_from_cache(response_t->route(), response_t->uuid());
-				enqueue_response(response_t);
+				m_message_cache->remove_message_from_cache(response->route(), response->uuid());
+				enqueue_response(response);
 			}
 		}
 		break;
 
 		default: {
-			m_message_cache->remove_message_from_cache(response_t->route(), response_t->uuid());
-			enqueue_response(response_t);
-
-			std::string message_str = "enqued response_t for msg with uuid: " + response_t->uuid();
-			message_str += " from " + description() + ", type: ERROR";
-			message_str += ", error code: ";
-
-			log(PLOG_DEBUG,
-				"%s%d, error message: %s",
-				message_str.c_str(),
-				response_t->code(),
-				response_t->error_message().c_str());
+			m_message_cache->remove_message_from_cache(response->route(), response->uuid());
+			enqueue_response(response);
 		}
 		break;
 	}
+
+	std::string message_str;
+	int log_level = 0;
+	if (resheduled) {
+		log_level = PLOG_WARNING;
+		message_str = "resheduled message with uuid: " + response->uuid();
+	}
+	else {
+		log_level = PLOG_DEBUG;
+		message_str = "enqued response with uuid: " + response->uuid();	
+	}
+	
+	message_str += " from " + description() + ", type: ERROR";
+	message_str += ", error code: ";
+
+	log(log_level,
+	"%s%d, error message: %s",
+	message_str.c_str(),
+	response->code(),
+	response->error_message().c_str());
 }
 
 void
@@ -214,8 +218,8 @@ handle_t::dispatch_control_messages(int type, balancer_t& balancer) {
 				std::vector<cocaine_endpoint_t> missing_endpoints;
 				balancer.update_endpoints(m_endpoints, missing_endpoints);
 
-				for (size_t i = 0; i < missing_endpoints.size(); ++i) {
-					m_message_cache->make_all_messages_new_for_route(missing_endpoints.at(i).route);
+				if (!missing_endpoints.empty()) {
+					m_message_cache->make_all_messages_new();
 				}
 			}
 			break;
@@ -248,10 +252,10 @@ handle_t::process_deadlined_messages() {
 				expired_messages.at(i)->increment_retries_count();
 				m_message_cache->enqueue_with_priority(expired_messages.at(i));
 
-				log(PLOG_DEBUG, "no ACK, resheduled message " + expired_messages.at(i)->uuid());
+				log(PLOG_WARNING, "no ACK, resheduled message " + expired_messages.at(i)->uuid());
 			}
 			else {
-				log(PLOG_DEBUG, "reshedule message policy exceeded, did not receive ACK " + expired_messages.at(i)->uuid());
+				log(PLOG_ERROR, "reshedule message policy exceeded, did not receive ACK " + expired_messages.at(i)->uuid());
 				cached_response_prt_t new_response;
 				new_response.reset(new cached_response_t(expired_messages.at(i)->uuid(),
 														 "",
@@ -269,6 +273,7 @@ handle_t::process_deadlined_messages() {
 													 expired_messages.at(i)->path(),
 													 deadline_error,
 													 "message expired in service's handle"));
+			log(PLOG_ERROR, "deadline policy exceeded, for message " + expired_messages.at(i)->uuid());
 			enqueue_response(new_response);
 		}
 	}
@@ -341,7 +346,7 @@ handle_t::receive_control_messages(socket_ptr_t& control_socket, int poll_timeou
 	}
 
     if (recv_failed) {
-    	log("control socket recv failed on " + description());
+    	log(PLOG_ERROR, "control socket recv failed on " + description());
     }
 
     return 0;
@@ -361,31 +366,12 @@ handle_t::dispatch_next_available_message(balancer_t& balancer) {
 		m_message_cache->move_new_message_to_sent(endpoint.route);
 
 		std::string log_msg = "sent msg with uuid: %s to %s";
-		//log(PLOG_DEBUG, log_msg.c_str(), new_msg->uuid().c_str(), description().c_str());
+		log(PLOG_DEBUG, log_msg.c_str(), new_msg->uuid().c_str(), description().c_str());
 
 		return true;
 	}
 	else {
 		log(PLOG_ERROR, "dispatch_next_available_message failed");		
-	}
-
-	return false;
-}
-
-bool
-handle_t::reshedule_message(const std::string& route, const std::string& uuid) {
-	boost::shared_ptr<message_iface> msg;
-	if (!m_message_cache->get_sent_message(route, uuid, msg)) {
-		return false;
-	}
-
-	assert(msg);
-
-	if (msg->can_retry()) {
-		msg->increment_retries_count();
-		
-		m_message_cache->move_sent_message_to_new_front(route, uuid);
-		return true;
 	}
 
 	return false;
@@ -403,7 +389,6 @@ handle_t::kill() {
 	}
 
 	m_is_running = false;
-	m_is_connected = false;
 
 	m_zmq_control_socket->close();
 	m_zmq_control_socket.reset(NULL);

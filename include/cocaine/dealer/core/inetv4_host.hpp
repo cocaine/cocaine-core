@@ -40,7 +40,7 @@ public:
 
 	explicit inetv4_host_t(const std::string& ip_) {
 		ip = nutils::str_to_ipv4(ip_);
-		hostname = nutils::hostname_for_ipv4(ip_);
+		hostname = nutils::hostname_for_ipv4(ip);
 	}
 
 	inetv4_host_t(const inetv4_host_t& rhs) :

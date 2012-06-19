@@ -82,7 +82,11 @@ public:
 	void get_expired_messages(message_queue_t& expired_messages);
 	void make_all_messages_new_for_route(const std::string& route);
 
+	bool reshedule_message(const std::string& route, const std::string& uuid);
+
 	void lock();
+
+	void log_stats();
 
 private:
 	static bool is_message_expired(cached_message_ptr_t msg);

@@ -129,7 +129,7 @@ private:
 
 	void destroy_handle(const std::string& handle_name);
 
-	boost::shared_ptr<std::deque<boost::shared_ptr<message_iface> > > get_and_remove_unhandled_queue(const std::string& handle_name);
+	messages_deque_ptr_t get_and_remove_unhandled_queue(const std::string& handle_name);
 
 private:
 	// service information

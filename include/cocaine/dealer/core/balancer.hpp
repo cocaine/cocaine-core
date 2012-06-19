@@ -68,8 +68,7 @@ private:
 							std::vector<cocaine_endpoint_t>& missing_endpoints);
 
 	void recreate_socket();
-	
-	bool receive_chunk(zmq::message_t& response_t);
+
 	bool process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 						  boost::shared_ptr<cached_response_t>& response_t);
 

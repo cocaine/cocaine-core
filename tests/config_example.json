@@ -48,10 +48,10 @@
 	{
 		//"type" : "FILE_LOGGER",
 		//"flags" : "PLOG_ALL | PLOG_INTRO",
-		//"file" : "/home/rimz/dealer.log"
+		//"file" : "/home/rimz/dealer.log",
  
 		"type" : "STDOUT_LOGGER",
-		"flags" : "PLOG_ALL | PLOG_INTRO"
+		"flags" : "PLOG_INFO | PLOG_INTRO"
 		//"flags" : "PLOG_NONE"
 	},
 
