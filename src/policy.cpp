@@ -28,17 +28,17 @@ namespace msgpack {
     policy_t& operator >> (const object& o,
                            policy_t& policy)
     {
-        if(o.type != type::ARRAY || o.via.array.size != 4) {
+        if(o.type != type::ARRAY || o.via.array.size != 3) {
             throw type_error();
         }
 
         object &urgent = o.via.array.ptr[0],
-               &persistent = o.via.array.ptr[1],
+               // &persistent = o.via.array.ptr[1],
                &timeout = o.via.array.ptr[2],
                &deadline = o.via.array.ptr[3];
 
         urgent >> policy.urgent;
-        persistent >> policy.persistent;
+        // persistent >> policy.persistent;
         timeout >> policy.timeout;
         deadline >> policy.deadline;
 

@@ -1,3 +1,9 @@
+cocaine (0.8.0-3) lucid; urgency=low
+
+  * Comment out some future stuff.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 19 Jun 2012 18:44:26 +0400
+
 cocaine (0.8.0-2) lucid; urgency=low
 
   * Reverted general job counts in info().

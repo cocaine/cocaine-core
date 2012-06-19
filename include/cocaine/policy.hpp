@@ -38,6 +38,7 @@ struct policy_t {
 
     policy_t(bool urgent_, double timeout_, double deadline_):
         urgent(urgent_),
+        persistent(false),
         timeout(timeout_),
         deadline(deadline_)
     { }
@@ -62,7 +63,7 @@ namespace msgpack {
     {
         packer.pack_array(4);
         packer.pack(policy.urgent);
-        packer.pack(policy.persistent);
+        // packer.pack(policy.persistent);
         packer.pack(policy.timeout);
         packer.pack(policy.deadline);
     }
