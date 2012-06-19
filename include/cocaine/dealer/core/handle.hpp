@@ -91,9 +91,9 @@ public:
 	std::string description();
 
 	boost::shared_ptr<message_cache_t> messages_cache() const;
-
-private:
 	void kill();
+	
+private:
 	void dispatch_messages();
 
 	// working with control messages
@@ -109,8 +109,6 @@ private:
 
 	// working with responces
 	void enqueue_response(cached_response_prt_t response_t);
-
-	static const int socket_poll_timeout = 100; // millisecs
 
 private:
 	handle_info_t m_info;

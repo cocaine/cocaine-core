@@ -30,7 +30,7 @@ namespace cocaine {
 namespace dealer {
 
 heartbeats_collector_t::heartbeats_collector_t(const boost::shared_ptr<context_t>& ctx,
-										   bool logging_enabled) :
+											   bool logging_enabled) :
 	dealer_object_t(ctx, logging_enabled) {}
 
 heartbeats_collector_t::~heartbeats_collector_t() {
@@ -97,6 +97,8 @@ heartbeats_collector_t::set_callback(callback_t callback) {
 
 void
 heartbeats_collector_t::ping_services() {
+	boost::mutex::scoped_lock lock(m_mutex);
+
 	// for each hosts fetcher
 	for (size_t i = 0; i < m_hosts_fetchers.size(); ++i) {
 		hosts_fetcher_iface::inetv4_endpoints_t endpoints;
@@ -220,10 +222,10 @@ heartbeats_collector_t::log_responded_hosts_handles(const service_info_t& servic
 	handles_endpoints_t::const_iterator it = handles_endpoints.begin();
 	for (; it != handles_endpoints.end(); ++it) {
 		std::string log_msg = "heartbeats - responded endpoints for handle";
-		log(PLOG_DEBUG, log_msg + ": [" + service_info.name + "." + it->first + "]");
+		log(PLOG_ERROR, log_msg + ": [" + service_info.name + "." + it->first + "]");
 
 		for (size_t i = 0; i < it->second.size(); ++i) {
-			log(PLOG_DEBUG, "heartbeats - " + it->second[i].endpoint);
+			log(PLOG_ERROR, "heartbeats - " + it->second[i].endpoint);
 		}
 	}
 }

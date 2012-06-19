@@ -59,13 +59,6 @@ handle_t::handle_t(const handle_info_t& info,
 
 handle_t::~handle_t() {
 	kill();
-
-	m_zmq_control_socket->close();
-	m_zmq_control_socket.reset(NULL);
-
-	m_thread.join();
-
-	log(PLOG_DEBUG, "KILLED HANDLE " + description());
 }
 
 void
@@ -115,8 +108,8 @@ handle_t::dispatch_messages() {
 		// check for message responces
 		bool received_response = false;
 
-		int fast_poll_timeout = 0;		// microsecs
-		int long_poll_timeout = 5000;   // microsecs
+		int fast_poll_timeout = 0;		  // microsecs
+		int long_poll_timeout = 100000;   // microsecs
 
 		int response_poll_timeout = fast_poll_timeout;
 		if (m_last_response_timer.elapsed().as_double() > 5.0f) {
@@ -368,7 +361,7 @@ handle_t::dispatch_next_available_message(balancer_t& balancer) {
 		m_message_cache->move_new_message_to_sent(endpoint.route);
 
 		std::string log_msg = "sent msg with uuid: %s to %s";
-		log(PLOG_DEBUG, log_msg.c_str(), new_msg->uuid().c_str(), description().c_str());
+		//log(PLOG_DEBUG, log_msg.c_str(), new_msg->uuid().c_str(), description().c_str());
 
 		return true;
 	}
@@ -409,11 +402,15 @@ handle_t::kill() {
 		return;
 	}
 
-	// kill dispatch thread from the inside
-	int control_message = CONTROL_MESSAGE_KILL;
-	zmq::message_t message(sizeof(int));
-	memcpy((void *)message.data(), &control_message, sizeof(int));
-	m_zmq_control_socket->send(message);
+	m_is_running = false;
+	m_is_connected = false;
+
+	m_zmq_control_socket->close();
+	m_zmq_control_socket.reset(NULL);
+
+	m_thread.join();
+
+	log(PLOG_DEBUG, "KILLED HANDLE " + description());
 }
 
 std::string
@@ -465,25 +462,19 @@ handle_t::disconnect() {
 		return;
 	}
 
-	log(PLOG_DEBUG, "DISCONNECT HANDLE " + description());
-
-	// disconnect from all hosts
-	std::string control_message = boost::lexical_cast<std::string>(CONTROL_MESSAGE_DISCONNECT);
-	zmq::message_t message(control_message.length());
-	memcpy((void *)message.data(), control_message.c_str(), control_message.length());
-	m_zmq_control_socket->send(message);
+	m_is_running = false;
 }
 
 void
 handle_t::make_all_messages_new() {
 	assert (m_message_cache);
-	return m_message_cache->make_all_messages_new();
+	m_message_cache->make_all_messages_new();
 }
 
 void
 handle_t::assign_message_queue(const message_cache_t::message_queue_ptr_t& message_queue) {
 	assert (m_message_cache);
-	return m_message_cache->append_message_queue(message_queue);
+	m_message_cache->append_message_queue(message_queue);
 }
 
 void

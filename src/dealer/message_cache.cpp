@@ -38,7 +38,8 @@ namespace dealer {
 
 message_cache_t::message_cache_t(const boost::shared_ptr<context_t>& ctx,
 							 bool logging_enabled) :
-	dealer_object_t(ctx, logging_enabled)
+	dealer_object_t(ctx, logging_enabled),
+	m_locked(false)
 {
 	m_type = config()->message_cache_type();
 	m_new_messages.reset(new message_queue_t);
@@ -210,10 +211,6 @@ message_cache_t::move_sent_message_to_new_front(const std::string& route, const 
 	}
 
 	msg_map.erase(mit);
-
-	msg->mark_as_sent(false);
-	msg->set_ack_received(false);
-
 	m_new_messages->push_front(msg);
 }
 
@@ -260,10 +257,16 @@ message_cache_t::make_all_messages_new() {
 
 		msg_map.clear();
 	}
+
+	for (message_queue_t::iterator it = m_new_messages->begin(); it != m_new_messages->end(); ++it) {
+		(*it)->mark_as_sent(false);
+		(*it)->set_ack_received(false);
+	}
 }
 
 void
 message_cache_t::make_all_messages_new_for_route(const std::string& route) {
+	log(PLOG_ERROR, "make_all_messages_new_for_route");
 	boost::mutex::scoped_lock lock(m_mutex);
 
 	route_sent_messages_map_t::iterator it = m_sent_messages.find(route);
