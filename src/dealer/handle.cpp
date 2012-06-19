@@ -163,8 +163,18 @@ handle_t::dispatch_next_available_response(balancer_t& balancer) {
 		case resource_error: {
 			if (m_message_cache->reshedule_message(response->route(), response->uuid())) {
 				resheduled = true;
+
+				std::string message_str = "resheduled message with uuid: " + response->uuid();	
+				message_str += " from " + description() + ", reason: error received, code: ";
+				message_str += response->code() + ", error message: " + response->error_message();
+				log(PLOG_WARNING, message_str);
 			}
 			else {
+				std::string message_str = "error received for message with uuid: " + response->uuid();	
+				message_str += " from " + description() + ", code: %d";
+				message_str += ", error message: " + response->error_message();
+				log(PLOG_ERROR, message_str, response->code());
+
 				m_message_cache->remove_message_from_cache(response->route(), response->uuid());
 				enqueue_response(response);
 			}
@@ -172,31 +182,16 @@ handle_t::dispatch_next_available_response(balancer_t& balancer) {
 		break;
 
 		default: {
+			std::string message_str = "error received for message with uuid: " + response->uuid();	
+			message_str += " from " + description() + ", code: %d";
+			message_str += ", error message: " + response->error_message();
+			log(PLOG_ERROR, message_str, response->code());
+
 			m_message_cache->remove_message_from_cache(response->route(), response->uuid());
 			enqueue_response(response);
 		}
 		break;
 	}
-
-	std::string message_str;
-	int log_level = 0;
-	if (resheduled) {
-		log_level = PLOG_WARNING;
-		message_str = "resheduled message with uuid: " + response->uuid();
-	}
-	else {
-		log_level = PLOG_DEBUG;
-		message_str = "enqued response with uuid: " + response->uuid();	
-	}
-	
-	message_str += " from " + description() + ", type: ERROR";
-	message_str += ", error code: ";
-
-	log(log_level,
-	"%s%d, error message: %s",
-	message_str.c_str(),
-	response->code(),
-	response->error_message().c_str());
 }
 
 void

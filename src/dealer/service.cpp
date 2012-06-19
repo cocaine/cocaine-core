@@ -46,12 +46,21 @@ service_t::~service_t() {
 	// kill handles
 	handles_map_t::iterator it = m_handles.begin();
 	for (;it != m_handles.end(); ++it) {
+		
+		log(PLOG_INFO,
+		"DESTROY HANDLE [%s.%s.%s]",
+		m_info.name.c_str(),
+		m_info.app.c_str(),
+		it->second->info().name.c_str());
+
 		it->second->disconnect();
 	}
 
 	m_is_running = false;
 	m_cond_var.notify_one();
 	m_thread.join();
+
+	log(PLOG_INFO, "FINISHED SERVICE [%s]", m_info.name.c_str());
 }
 
 bool
@@ -457,7 +466,12 @@ service_t::create_handle(const handle_info_t& handle_info,
 						 const handles_endpoints_t& handles_endpoints)
 {
 	const std::string& handle_name = handle_info.name;
-	log(PLOG_INFO, "CREATE HANDLE [%s]", handle_name.c_str());
+
+	log(PLOG_INFO,
+		"CREATE HANDLE [%s.%s.%s]",
+		m_info.name.c_str(),
+		m_info.app.c_str(),
+		handle_name.c_str());
 
 	// create new handle
 	handles_endpoints_t::const_iterator it = handles_endpoints.find(handle_name);

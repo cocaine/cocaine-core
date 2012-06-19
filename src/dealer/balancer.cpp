@@ -30,9 +30,9 @@ namespace dealer {
 
 enum e_server_response_code {
 	SERVER_RPC_MESSAGE_ACK = 1,
-	SERVER_RPC_MESSAGE_CHUNK = 5,
-	SERVER_RPC_MESSAGE_ERROR = 6,
-	SERVER_RPC_MESSAGE_CHOKE = 7
+	SERVER_RPC_MESSAGE_CHUNK,
+	SERVER_RPC_MESSAGE_ERROR,
+	SERVER_RPC_MESSAGE_CHOKE
 };
 
 balancer_t::balancer_t(const std::string& identity,
@@ -297,18 +297,20 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 	const char* route_chars = reinterpret_cast<const char*>(chunks[0].data());
 	std::string route(route_chars, chunks[0].size());
 
-	// unpack uuid
-	std::string uuid;
 	msgpack::unpacked msg;
-	msgpack::unpack(&msg, reinterpret_cast<const char*>(chunks[2].data()), chunks[2].size());
-	msgpack::object obj = msg.get();
-    obj.convert(&uuid);
+	msgpack::object obj;
 
    	// unpack rpc code
 	int rpc_code;
-	msgpack::unpack(&msg, reinterpret_cast<const char*>(chunks[3].data()), chunks[3].size());
+	msgpack::unpack(&msg, reinterpret_cast<const char*>(chunks[1].data()), chunks[1].size());
 	obj = msg.get();
     obj.convert(&rpc_code);
+
+	// unpack uuid
+	std::string uuid;
+	msgpack::unpack(&msg, reinterpret_cast<const char*>(chunks[2].data()), chunks[2].size());
+	obj = msg.get();
+    obj.convert(&uuid);
 
 	// get message from sent cache
 	boost::shared_ptr<message_iface> sent_msg;
@@ -332,8 +334,8 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 			response_t.reset(new cached_response_t(uuid,
 												 route,
 												 sent_msg->path(),
-												 chunks[4].data(),
-												 chunks[4].size()));
+												 chunks[3].data(),
+												 chunks[3].size()));
 
 			response_t->set_code(response_code::message_chunk);
 			return true;
@@ -345,12 +347,12 @@ balancer_t::process_responce(boost::ptr_vector<zmq::message_t>& chunks,
 			std::string error_message;
 
 			// unpack error code
-			msgpack::unpack(&msg, reinterpret_cast<const char*>(chunks[4].data()), chunks[4].size());
+			msgpack::unpack(&msg, reinterpret_cast<const char*>(chunks[3].data()), chunks[3].size());
 			obj = msg.get();
 		    obj.convert(&error_code);
 
 			// unpack error message
-			msgpack::unpack(&msg, reinterpret_cast<const char*>(chunks[5].data()), chunks[5].size());
+			msgpack::unpack(&msg, reinterpret_cast<const char*>(chunks[4].data()), chunks[4].size());
 			obj = msg.get();
 		    obj.convert(&error_message);
 
