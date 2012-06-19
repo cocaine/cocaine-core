@@ -274,7 +274,7 @@ public:
 	}
 	
 	void init(const std::string& syslog_identity) {
-		if (syslog_identity_m.empty()) {
+		if (syslog_identity.empty()) {
 			std::string error_msg = "can not create logger with empty identity";
 			error_msg += " for SYSLOG_LOGGER";
 			throw internal_error(error_msg);

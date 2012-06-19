@@ -55,7 +55,7 @@ dealer_impl_t::dealer_impl_t(const std::string& config_path) :
 		throw internal_error(ctx_error_msg + ex.what());
 	}
 
-	log("creating dealer.");
+	log(PLOG_INFO, "creating dealer.");
 
 	// get services list
 	const configuration_t::services_list_t& services_info_list = config()->services_list();
@@ -65,7 +65,7 @@ dealer_impl_t::dealer_impl_t(const std::string& config_path) :
 	for (; it != services_info_list.end(); ++it) {
 		boost::shared_ptr<service_t> service_ptr(new service_t(it->second, context()));
 
-		log("STARTING SERVICE [%s]", it->second.name.c_str());
+		log(PLOG_INFO, "STARTING SERVICE [%s]", it->second.name.c_str());
 
 		if (config()->message_cache_type() == PERSISTENT) {
 			load_cached_messages_for_service(service_ptr);
@@ -75,18 +75,18 @@ dealer_impl_t::dealer_impl_t(const std::string& config_path) :
 	}
 
 	connect();
-	log("dealer created.");
+	log(PLOG_INFO, "dealer created.");
 }
 
 dealer_impl_t::~dealer_impl_t() {
 	m_is_dead = true;
 	disconnect();
-	log("dealer destroyed.");
+	log(PLOG_INFO, "dealer destroyed.");
 }
 
 void
 dealer_impl_t::connect() {
-	log("creating heartbeats collector");
+	log(PLOG_DEBUG, "creating heartbeats collector");
 	m_heartbeats_collector.reset(new heartbeats_collector_t(context()));
 	m_heartbeats_collector->set_callback(boost::bind(&dealer_impl_t::service_hosts_pinged_callback, this, _1, _2));
 	m_heartbeats_collector->run();
@@ -185,7 +185,6 @@ dealer_impl_t::send_message(const boost::shared_ptr<message_iface>& msg,
 	assert(it->second);
 
 	if (it->second->is_dead()) {
-		std::cout << "service is dead!\n";
 		throw dealer_error(request_error, "service %s is being killed", msg->path().service_alias.c_str());
 	}
 
@@ -205,13 +204,11 @@ dealer_impl_t::send_message(const boost::shared_ptr<message_iface>& msg,
 
 	std::string message_str = "enqued msg (%d bytes) with uuid: %s to %s";
 
-	/*
 	log(PLOG_DEBUG,
 		message_str,
 		msg->size(),
 		uuid.c_str(),
 		msg->path().as_string().c_str());
-	*/
 
 	return uuid;
 }

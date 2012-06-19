@@ -159,7 +159,7 @@ statistics_collector::process_remote_connection() {
 
     	try {
     		if(!socket.recv(&request)) {
-    			logger()->log("recv failed at " + std::string(BOOST_CURRENT_FUNCTION));
+    			logger()->log(PLOG_DEBUG, "recv failed at " + std::string(BOOST_CURRENT_FUNCTION));
     			continue;
     		}
     		else {
@@ -188,7 +188,7 @@ statistics_collector::process_remote_connection() {
 			memcpy((void*)reply.data(), response_json.c_str(), data_len);
 
 			if(!socket.send(reply)) {
-				logger()->log("sending failed at " + std::string(BOOST_CURRENT_FUNCTION));
+				logger()->log(PLOG_DEBUG, "sending failed at " + std::string(BOOST_CURRENT_FUNCTION));
 			}
 		}
 		catch (const std::exception& ex) {

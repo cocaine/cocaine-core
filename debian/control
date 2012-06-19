@@ -5,7 +5,8 @@ Maintainer: Andrey Sibiryov <kobolog@yandex-team.ru>
 Build-Depends: cdbs, debhelper (>= 7.0.13), libzmq-dev (>= 2.2.0), libev-dev, libmsgpack-dev,
  libboost-dev, libboost-filesystem-dev, libboost-thread-dev, libboost-program-options-dev,
  libssl-dev, libltdl-dev, libcgroup-dev, uuid-dev, libv8-dev, python-dev, libperl-dev, 
- libmongoclient-dev, eblob (>= 0.15.9), elliptics-2.10
+ libmongoclient-dev, eblob (>= 0.15.9), elliptics-2.10 (>= 2.14.0.1), cmake, libcurl4-openssl-dev,
+ libarchive-dev
 Standards-Version: 3.9.1
 Vcs-Git: git://github.com/cocaine/cocaine-core.git
 Vcs-Browser: https://github.com/cocaine/cocaine-core
@@ -76,7 +77,7 @@ Description: Cocaine - Dealer
 Package: libcocaine-dealer-dev
 Architecture: any
 Section: libdevel
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-dealer (>= 0.8)
 Description: Cocaine Dealer - Development Files
  Files needed to use Cocaine Dealer in development.
 

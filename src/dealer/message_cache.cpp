@@ -156,6 +156,44 @@ message_cache_t::move_new_message_to_sent(const std::string& route) {
 	m_new_messages->pop_front();
 }
 
+bool
+message_cache_t::reshedule_message(const std::string& route, const std::string& uuid) {
+	boost::mutex::scoped_lock lock(m_mutex);
+
+	route_sent_messages_map_t::iterator it = m_sent_messages.find(route);
+
+	if (it == m_sent_messages.end()) {
+		return false;
+	}
+
+	sent_messages_map_t& msg_map = it->second;
+	sent_messages_map_t::iterator mit = msg_map.find(uuid);
+
+	if (mit == msg_map.end()) {
+		return false;
+	}
+
+	boost::shared_ptr<message_iface> msg = mit->second;
+
+	if (!msg) {
+		throw internal_error("empty cached message object at " + std::string(BOOST_CURRENT_FUNCTION));
+	}
+
+	if (msg->can_retry()) {
+		msg->increment_retries_count();
+		msg_map.erase(mit);
+
+		msg->mark_as_sent(false);
+		msg->set_ack_received(false);
+
+		m_new_messages->push_front(msg);
+
+		return true;
+	}
+
+	return false;
+}
+
 void
 message_cache_t::move_sent_message_to_new(const std::string& route, const std::string& uuid) {
 	boost::mutex::scoped_lock lock(m_mutex);
@@ -266,7 +304,7 @@ message_cache_t::make_all_messages_new() {
 
 void
 message_cache_t::make_all_messages_new_for_route(const std::string& route) {
-	log(PLOG_ERROR, "make_all_messages_new_for_route");
+	log(PLOG_DEBUG, "make_all_messages_new_for_route");
 	boost::mutex::scoped_lock lock(m_mutex);
 
 	route_sent_messages_map_t::iterator it = m_sent_messages.find(route);
@@ -348,6 +386,17 @@ message_cache_t::get_expired_messages(message_queue_t& expired_messages) {
 										 m_new_messages->end(),
 										 &message_cache_t::is_message_expired),
 										 m_new_messages->end());
+}
+
+void
+message_cache_t::log_stats() {
+	log(PLOG_DEBUG, "new messages: %d", m_new_messages->size());
+
+	route_sent_messages_map_t::iterator it = m_sent_messages.begin();
+	for (; it != m_sent_messages.end(); ++it) {
+		sent_messages_map_t& msg_map = it->second;
+		log(PLOG_DEBUG, "sent messages for route: %s, size: %d", it->first.c_str(), msg_map.size());
+	}
 }
 
 } // namespace dealer

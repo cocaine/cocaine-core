@@ -74,7 +74,7 @@ public:
 		return host.as_string() + ":" + boost::lexical_cast<std::string>(port);
 	}
 
-	inetv4_host_t		host;
+	inetv4_host_t	host;
 	unsigned short	port;
 };
 

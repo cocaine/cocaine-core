@@ -31,7 +31,7 @@ void worker(dealer_t* d,
 			std::vector<int>* dealer_messages_count,
 			int dealer_index)
 {
-	message_path_t path("rimz_app", "rimz_func");
+	message_path_t path("rimz_app", "my-super-handle");
 	message_policy_t policy;
 	policy.deadline = 0.0;
 	policy.max_retries = -1;
@@ -49,9 +49,6 @@ void worker(dealer_t* d,
 			while (resp->get(&data)) {
 				//std::cout << std::string(reinterpret_cast<const char*>(data.data()), 0, data.size()) << std::endl;
 			}
-
-			(*dealer_messages_count)[dealer_index] = (*dealer_messages_count)[dealer_index] - 1;
-			sent_messages++;
 		}
 		catch (const dealer_error& err) {
 			std::cout << "error code: " << err.code() << ", error message: " << err.what() << std::endl;
@@ -62,6 +59,9 @@ void worker(dealer_t* d,
 		catch (...) {
 			std::cout << "caught exception, no error message." << std::endl;
 		}
+
+		(*dealer_messages_count)[dealer_index] = (*dealer_messages_count)[dealer_index] - 1;
+		sent_messages++;
 	}
 }
 

@@ -115,7 +115,7 @@ heartbeats_collector_t::ping_services() {
 
 				if (endpoints.size() == 0) {
 					std::string error_msg = "heartbeats - fetcher returned no hosts for service %s";
-					log(PLOG_WARNING, error_msg.c_str(), service_info.name.c_str());
+					log(PLOG_ERROR, error_msg.c_str(), service_info.name.c_str());
 				}
 
 				m_services_endpoints[service_info.name] = endpoints;
@@ -222,10 +222,10 @@ heartbeats_collector_t::log_responded_hosts_handles(const service_info_t& servic
 	handles_endpoints_t::const_iterator it = handles_endpoints.begin();
 	for (; it != handles_endpoints.end(); ++it) {
 		std::string log_msg = "heartbeats - responded endpoints for handle";
-		log(PLOG_ERROR, log_msg + ": [" + service_info.name + "." + it->first + "]");
+		log(PLOG_DEBUG, log_msg + ": [" + service_info.name + "." + it->first + "]");
 
 		for (size_t i = 0; i < it->second.size(); ++i) {
-			log(PLOG_ERROR, "heartbeats - " + it->second[i].endpoint);
+			log(PLOG_DEBUG, "heartbeats - " + it->second[i].endpoint);
 		}
 	}
 }
@@ -253,6 +253,9 @@ heartbeats_collector_t::ping_endpoints() {
 		parser.set_host_info(it->host.ip, it->port);
 
 		if (!parser.parse(metadata, node_info)) {
+			std::string error_msg = "heartbeats - could not parse metainfo from cocaine node: " + it->as_string();
+			log(PLOG_WARNING, error_msg);
+
 			continue;
 		}
 
@@ -307,7 +310,7 @@ heartbeats_collector_t::get_metainfo_from_endpoint(const inetv4_endpoint_t& endp
 	if (!sent_request_ok) {
 		// in case of bad send
 		std::string error_msg = "heartbeats - could not send metadata request to endpoint: " + endpoint.as_string();
-		log(PLOG_ERROR, error_msg + ex_err);
+		log(PLOG_WARNING, error_msg + ex_err);
 
 		return false;
 	}
@@ -343,8 +346,8 @@ heartbeats_collector_t::get_metainfo_from_endpoint(const inetv4_endpoint_t& endp
 	}
 
 	if (!received_response_ok) {
-		std::string error_msg = "heartbeats - could not receive metadata response_t from endpoint: " + endpoint.as_string();
-		log(PLOG_ERROR, error_msg + ex_err);
+		std::string error_msg = "heartbeats - could not receive metadata response from endpoint: " + endpoint.as_string();
+		log(PLOG_WARNING, error_msg + ex_err);
 
 		return false;
 	}

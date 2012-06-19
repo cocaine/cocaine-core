@@ -1,3 +1,33 @@
+cocaine (0.8.0-5) lucid; urgency=low
+
+  * Fixed build-depends.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 19 Jun 2012 23:12:04 +0400
+
+cocaine (0.8.0-4) lucid; urgency=low
+
+  * Comment out some future stuff for real.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 19 Jun 2012 19:02:57 +0400
+
+cocaine (0.8.0-3) lucid; urgency=low
+
+  * Comment out some future stuff.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 19 Jun 2012 18:44:26 +0400
+
+cocaine (0.8.0-2) lucid; urgency=low
+
+  * Reverted general job counts in info().
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 19 Jun 2012 18:39:42 +0400
+
+cocaine (0.8.0-1) lucid; urgency=low
+
+  * Rebuild with a proper Elliptics version.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 19 Jun 2012 15:14:51 +0400
+
 cocaine (0.8.0-0) lucid; urgency=low
 
   * Threaded engines.
