@@ -34,8 +34,8 @@ namespace msgpack {
 
         object &urgent = o.via.array.ptr[0],
                // &persistent = o.via.array.ptr[1],
-               &timeout = o.via.array.ptr[2],
-               &deadline = o.via.array.ptr[3];
+               &timeout = o.via.array.ptr[1],
+               &deadline = o.via.array.ptr[2];
 
         urgent >> policy.urgent;
         // persistent >> policy.persistent;

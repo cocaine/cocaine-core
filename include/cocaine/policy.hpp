@@ -61,7 +61,7 @@ namespace msgpack {
     inline packer<Stream>& operator << (packer<Stream>& packer,
                                         const policy_t& policy)
     {
-        packer.pack_array(4);
+        packer.pack_array(3);
         packer.pack(policy.urgent);
         // packer.pack(policy.persistent);
         packer.pack(policy.timeout);
