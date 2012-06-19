@@ -24,6 +24,7 @@
 
 #include "cocaine/app.hpp"
 #include "cocaine/context.hpp"
+#include "cocaine/job.hpp"
 #include "cocaine/logging.hpp"
 
 #include "cocaine/interfaces/storage.hpp"
@@ -311,6 +312,9 @@ Json::Value server_t::info() const {
 
     result["loggers"] = static_cast<Json::UInt>(logging::logger_t::objects_alive);
     result["sockets"] = static_cast<Json::UInt>(io::socket_t::objects_alive);
+
+    result["jobs"]["pending"] = static_cast<Json::UInt>(engine::job_t::objects_alive);
+    result["jobs"]["processed"] = static_cast<Json::UInt>(engine::job_t::objects_created);
 
     result["uptime"] = m_loop.now() - m_birthstamp;
 

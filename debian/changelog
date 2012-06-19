@@ -1,3 +1,9 @@
+cocaine (0.8.0-2) lucid; urgency=low
+
+  * Reverted general job counts in info().
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 19 Jun 2012 18:39:42 +0400
+
 cocaine (0.8.0-1) lucid; urgency=low
 
   * Rebuild with a proper Elliptics version.
