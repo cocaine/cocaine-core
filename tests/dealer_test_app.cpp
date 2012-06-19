@@ -31,9 +31,9 @@ void worker(dealer_t* d,
 			std::vector<int>* dealer_messages_count,
 			int dealer_index)
 {
-	message_path_t path("rimz_app", "rimz_func");
+	message_path_t path("rimz_app", "my-super-handle");
 	message_policy_t policy;
-	policy.deadline = 1.3;
+	policy.deadline = 0.0;
 	policy.max_retries = -1;
 	std::string payload = "response chunk: ";
 

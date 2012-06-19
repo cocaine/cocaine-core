@@ -253,6 +253,9 @@ heartbeats_collector_t::ping_endpoints() {
 		parser.set_host_info(it->host.ip, it->port);
 
 		if (!parser.parse(metadata, node_info)) {
+			std::string error_msg = "heartbeats - could not parse metainfo from cocaine node: " + it->as_string();
+			log(PLOG_WARNING, error_msg);
+
 			continue;
 		}
 
