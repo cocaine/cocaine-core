@@ -18,42 +18,30 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#ifndef COCAINE_FORWARDS_HPP
-#define COCAINE_FORWARDS_HPP
+#include <msgpack.hpp>
 
-namespace cocaine {
-    struct config_t;    
-    struct manifest_t;
-    class app_t;
-    class context_t;
-    class repository_t;
+#include "cocaine/policy.hpp"
 
-    namespace engine {
-        struct job_t;
-        class engine_t;
-        class master_t;
-    }
-
-    namespace io {
-        class channel_t;
-    }
-
-    namespace logging {
-        class logger_t;
-        class sink_t;
-    }
-}
+using cocaine::engine::policy_t;
 
 namespace msgpack {
-    class object;
-    
-    template<typename>
-    class packer;
-}
+    policy_t& operator >> (const object& o,
+                           policy_t& policy)
+    {
+        if(o.type != type::ARRAY || o.via.array.size != 4) {
+            throw type_error();
+        }
 
-namespace zmq {
-    class context_t;
-    class message_t;
-}
+        object &urgent = o.via.array.ptr[0],
+               &persistent = o.via.array.ptr[1],
+               &timeout = o.via.array.ptr[2],
+               &deadline = o.via.array.ptr[3];
 
-#endif
+        urgent >> policy.urgent;
+        persistent >> policy.persistent;
+        timeout >> policy.timeout;
+        deadline >> policy.deadline;
+
+        return policy;
+    }
+}

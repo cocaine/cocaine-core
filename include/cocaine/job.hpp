@@ -29,6 +29,7 @@
 #include "cocaine/common.hpp"
 
 #include "cocaine/events.hpp"
+#include "cocaine/policy.hpp"
 
 #include "cocaine/helpers/blob.hpp"
 #include "cocaine/helpers/birth_control.hpp"
@@ -36,27 +37,6 @@
 namespace cocaine { namespace engine {
 
 namespace sc = boost::statechart;
-
-// Job policy
-// ----------
-
-struct policy_t {
-    policy_t():
-        urgent(false),
-        timeout(0.0f),
-        deadline(0.0f)
-    { }
-
-    policy_t(bool urgent_, double timeout_, double deadline_):
-        urgent(urgent_),
-        timeout(timeout_),
-        deadline(deadline_)
-    { }
-
-    bool urgent;
-    double timeout;
-    double deadline;
-};
 
 // Job states
 // ----------

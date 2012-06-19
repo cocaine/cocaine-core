@@ -33,26 +33,6 @@ using namespace cocaine;
 using namespace cocaine::engine::drivers;
 using namespace cocaine::io;
 
-namespace msgpack {
-    inline engine::policy_t& operator >> (msgpack::object o,
-                                          engine::policy_t& object)
-    {
-        if(o.type != type::ARRAY || o.via.array.size != 3) {
-            throw type_error();
-        }
-
-        msgpack::object &urgent = o.via.array.ptr[0],
-                        &timeout = o.via.array.ptr[1],
-                        &deadline = o.via.array.ptr[2];
-
-        urgent >> object.urgent;
-        timeout >> object.timeout;
-        deadline >> object.deadline;
-
-        return object;
-    }
-}
-
 native_server_t::native_server_t(context_t& context, engine_t& engine, const plugin_config_t& config):
     category_type(context, engine, config),
     m_context(context),
@@ -67,7 +47,6 @@ native_server_t::native_server_t(context_t& context, engine_t& engine, const plu
     ),
     m_watcher(engine.loop()),
     m_processor(engine.loop()),
-    // m_pumper(engine.loop()),
     m_check(engine.loop()),
     m_channel(context.io(), m_route)
 {
@@ -85,15 +64,12 @@ native_server_t::native_server_t(context_t& context, engine_t& engine, const plu
     m_processor.set<native_server_t, &native_server_t::process>(this);
     m_check.set<native_server_t, &native_server_t::check>(this);
     m_check.start();
-    // m_pumper.set<native_server_t, &native_server_t::pump>(this);
-    // m_pumper.start(0.005f, 0.005f);
 }
 
 native_server_t::~native_server_t() {
     m_watcher.stop();
     m_processor.stop();
     m_check.stop();
-    // m_pumper.stop();
 }
 
 Json::Value native_server_t::info() const {
@@ -196,10 +172,6 @@ void native_server_t::event(ev::io&, int) {
 void native_server_t::check(ev::prepare&, int) {
     event(m_watcher, ev::READ);
 }
-
-// void native_server_t::pump(ev::timer&, int) {
-//     event(m_watcher, ev::READ);
-// }
 
 extern "C" {
     void initialize(repository_t& repository) {
