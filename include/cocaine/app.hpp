@@ -55,6 +55,7 @@ class app_t {
         void enqueue(const boost::shared_ptr<engine::job_t>& job);
 
     private:
+        context_t& m_context;
         boost::shared_ptr<logging::logger_t> m_log;
         
         const manifest_t m_manifest;

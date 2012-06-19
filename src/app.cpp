@@ -19,6 +19,7 @@
 */
 
 #include <boost/algorithm/string/join.hpp>
+#include <boost/filesystem/operations.hpp>
 
 #include "cocaine/app.hpp"
 
@@ -28,8 +29,10 @@
 
 using namespace cocaine;
 using namespace cocaine::engine;
+using namespace cocaine::storages;
 
 app_t::app_t(context_t& context, const std::string& name):
+    m_context(context),
     m_log(context.log("app/" + name)),
     m_manifest(context, name),
     m_engine(new engine_t(context, m_manifest))
@@ -74,6 +77,24 @@ app_t::app_t(context_t& context, const std::string& name):
 app_t::~app_t() {
     m_drivers.clear();
     m_engine.reset();
+
+    m_log->info("cleaning up");
+
+    try {
+        // Remove the cached app.
+        m_context.storage<objects>("core:cache")->remove("apps", m_manifest.name);    
+    } catch(const repository_error_t& e) {
+        // Cache is not available, so do nothing.
+    } catch(const storage_error_t& e) {
+        m_log->warning("unable cleanup the app cache - %s", e.what());
+    }
+
+    try {
+        // Remove the app from the spool.
+        boost::filesystem::remove_all(m_manifest.path);
+    } catch(const boost::filesystem::filesystem_error& e) {
+        m_log->warning("unable to cleanup the app spool - %s", e.what());
+    }
 }
 
 void app_t::start() {
