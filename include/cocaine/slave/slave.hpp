@@ -54,10 +54,14 @@ class slave_t:
         void configure();
         void run();
 
-        // I/O object implementation.
+        // I/O object implementation
+        // -------------------------
+        
         virtual blob_t read(int timeout);
-        virtual void write(const void * data, size_t size);
 
+        virtual void write(const void * data,
+                           size_t size);
+        
     private:
         void message(ev::io&, int);
         void process(ev::idle&, int);
