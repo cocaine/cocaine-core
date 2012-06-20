@@ -36,7 +36,7 @@ using namespace cocaine::io;
 native_server_t::native_server_t(context_t& context, engine_t& engine, const plugin_config_t& config):
     category_type(context, engine, config),
     m_context(context),
-    m_log(context.log("app/" + engine.manifest().name)),
+    m_log(context.log("app/" + engine.manifest().name + "/" + config.name)),
     m_event(config.args["emit"].asString()),
     m_route(boost::algorithm::join(
         boost::assign::list_of
@@ -67,6 +67,8 @@ native_server_t::native_server_t(context_t& context, engine_t& engine, const plu
 }
 
 native_server_t::~native_server_t() {
+    m_log->debug("stopping");
+    
     m_watcher.stop();
     m_processor.stop();
     m_check.stop();

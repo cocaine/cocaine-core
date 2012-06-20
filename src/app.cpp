@@ -75,7 +75,10 @@ app_t::app_t(context_t& context, const std::string& name):
 }
 
 app_t::~app_t() {
+    m_log->debug("stopping the drivers");
     m_drivers.clear();
+
+    m_log->debug("stopping the engine");
     m_engine.reset();
 
     m_log->info("cleaning up");
