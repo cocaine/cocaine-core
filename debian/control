@@ -19,19 +19,22 @@ Description: Cocaine - Core
 
 Package: cocaine-plugin-python
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, cocaine-core (>= 0.8)
+Depends: ${shlibs:Depends}, ${misc:Depends}, cocaine-core (>= 0.8),
+ python
 Description: Cocaine - Python Code Hosting
  Python scripting support for Cocaine.
 
 Package: cocaine-plugin-javascript
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, cocaine-core (>= 0.8)
+Depends: ${shlibs:Depends}, ${misc:Depends}, cocaine-core (>= 0.8),
+ libv8
 Description: Cocaine - Javascript Code Hosting
  Javascript scripting support for Cocaine.
 
 Package: cocaine-plugin-perl
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, cocaine-core (>= 0.8)
+Depends: ${shlibs:Depends}, ${misc:Depends}, cocaine-core (>= 0.8),
+ perl
 Description: Cocaine - Perl Code Hosting
  Perl scripting support for Cocaine.
 
@@ -43,13 +46,15 @@ Description: Cocaine - Binary Code Hosting
 
 Package: cocaine-plugin-mongodb
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, cocaine-core (>= 0.8)
+Depends: ${shlibs:Depends}, ${misc:Depends}, cocaine-core (>= 0.8),
+ libmongoclient
 Description: Cocaine - MongoDB Storage
  MongoDB storage support for Cocaine.
 
 Package: cocaine-plugin-elliptics
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, cocaine-core (>= 0.8)
+Depends: ${shlibs:Depends}, ${misc:Depends}, cocaine-core (>= 0.8),
+ elliptics-2.10 (>= 2.14.0.1)
 Description: Cocaine - Elliptics Storage
  Elliptics storage support for Cocaine.
 
@@ -64,7 +69,7 @@ Architecture: any
 Section: libdevel
 Depends: ${shlibs:Depends}, ${misc:Depends}, libzmq-dev (>= 2.2.0), libev-dev, libmsgpack-dev,
  libboost-dev, libboost-filesystem-dev, libboost-thread-dev, libssl-dev, libltdl-dev, libcgroup-dev,
- uuid-dev
+ uuid-dev, cmake
 Description: Cocaine - Development Files
  Files needed to develop plugins, modules or to embed Cocaine.
 
