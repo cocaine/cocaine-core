@@ -36,7 +36,7 @@ native_server_t::native_server_t(context_t& context, engine_t& engine, const plu
     category_type(context, engine, config),
     m_context(context),
     m_log(context.log(
-        (boost::format("app/%2%/%3%")
+        (boost::format("app/%1%/%2%")
             % engine.manifest().name
             % config.name
         ).str()
