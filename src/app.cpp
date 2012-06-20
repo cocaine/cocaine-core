@@ -83,8 +83,6 @@ app_t::~app_t() {
     try {
         // Remove the cached app.
         m_context.storage<objects>("core:cache")->remove("apps", m_manifest.name);    
-    } catch(const repository_error_t& e) {
-        // Cache is not available, so do nothing.
     } catch(const storage_error_t& e) {
         m_log->warning("unable cleanup the app cache - %s", e.what());
     }

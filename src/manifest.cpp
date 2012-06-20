@@ -40,9 +40,6 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
         // Try to load the app manifest from the cache.
         root = m_context.storage<objects>("core:cache")->exists("apps", name);
         path = root["path"].asString();
-    } catch(const repository_error_t& e) {
-        m_log->info("app cache is not available");
-        deploy();
     } catch(const storage_error_t& e) {
         m_log->info("the app hasn't been found in the app cache");
         deploy();
@@ -123,7 +120,7 @@ void manifest_t::deploy() {
         package_t package(m_context, object.blob);
         package.deploy(path); 
     } catch(const package_error_t& e) {
-        m_log->error("unable to deploy the app - %s", e.what());
+        m_log->error("unable to extract the app - %s", e.what());
         throw configuration_error_t("the '" + name + "' app is not available");
     }
 
@@ -134,9 +131,8 @@ void manifest_t::deploy() {
     try {
         // Put the application object into the cache for future reference.
         m_context.storage<objects>("core:cache")->put("apps", name, object);
-    } catch(const repository_error_t& e) {
-        // Cache is not available, so do nothing.
     } catch(const storage_error_t& e) {
         m_log->warning("unable to cache the app - %s", e.what());
+        throw configuration_error_t("the '" + name + "' app is not available");
     }    
 }
