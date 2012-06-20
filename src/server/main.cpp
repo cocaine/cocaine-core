@@ -173,17 +173,17 @@ int main(int argc, char * argv[]) {
 
     std::auto_ptr<server_t> server;
     
-    try {
+    //try {
         server.reset(
             new server_t(
                 context,
                 server_config
             )
         );
-    } catch(const std::exception& e) {
-        log->error("unable to start the server - %s", e.what());
-        return EXIT_FAILURE;
-    }
+    //} catch(const std::exception& e) {
+    //    log->error("unable to start the server - %s", e.what());
+    //    return EXIT_FAILURE;
+    //}
 
     server->run();
 
