@@ -18,6 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
+#include <boost/format.hpp>
 #include <msgpack.hpp>
 
 #include "elliptics.hpp"
@@ -80,7 +81,11 @@ namespace {
 
 elliptics_storage_t::elliptics_storage_t(context_t& context, const plugin_config_t& config):
     category_type(context, config),
-    m_log(context.log("storage/" + config.name)),
+    m_log(context.log(
+        (boost::format("storage/%1%")
+            % config.name
+        ).str()
+    )),
     m_log_adapter(m_log, config.args.get("verbosity", DNET_LOG_ERROR).asUInt()),
     m_node(m_log_adapter)
 {

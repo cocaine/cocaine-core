@@ -20,6 +20,7 @@
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/filesystem/operations.hpp>
+#include <boost/format.hpp>
 
 #include "cocaine/app.hpp"
 
@@ -33,7 +34,11 @@ using namespace cocaine::storages;
 
 app_t::app_t(context_t& context, const std::string& name):
     m_context(context),
-    m_log(context.log("app/" + name)),
+    m_log(context.log(
+        (boost::format("app/%1%")
+            % name
+        ).str()
+    )),
     m_manifest(context, name),
     m_engine(new engine_t(context, m_manifest))
 {
@@ -75,11 +80,11 @@ app_t::app_t(context_t& context, const std::string& name):
 }
 
 app_t::~app_t() {
-    m_log->debug("stopping the drivers");
+    // NOTE: Stop the engine, then stop the drivers, so that
+    // the pending jobs would still have their drivers available
+    // to process the outstanding results.
+    m_engine->stop();
     m_drivers.clear();
-
-    m_log->debug("stopping the engine");
-    m_engine.reset();
 
     m_log->info("cleaning up");
 
@@ -96,6 +101,8 @@ app_t::~app_t() {
     } catch(const boost::filesystem::filesystem_error& e) {
         m_log->warning("unable to cleanup the app spool - %s", e.what());
     }
+
+    m_engine.reset();
 }
 
 void app_t::start() {

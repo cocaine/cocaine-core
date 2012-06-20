@@ -19,6 +19,7 @@
 */
 
 #include <boost/filesystem/fstream.hpp>
+#include <boost/format.hpp>
 #include <boost/iterator/filter_iterator.hpp>
 #include <msgpack.hpp>
 
@@ -82,7 +83,11 @@ namespace msgpack {
 
 file_storage_t::file_storage_t(context_t& context, const plugin_config_t& config):
     category_type(context, config),
-    m_log(context.log("storage/" + config.name)),
+    m_log(context.log(
+        (boost::format("storage/%1%")
+            % config.name
+        ).str()
+    )),
     m_storage_path(config.args["path"].asString())
 { }
 

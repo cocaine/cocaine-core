@@ -35,7 +35,11 @@ using namespace cocaine::engine;
 slave_t::slave_t(context_t& context, slave_config_t config):
     unique_id_t(config.uuid),
     m_context(context),
-    m_log(m_context.log("app/" + config.app)),
+    m_log(context.log(
+        (boost::format("app/%1%")
+            % config.app
+        ).str()
+    )),
     m_app(config.app),
     m_bus(m_context.io(), config.uuid)
 {

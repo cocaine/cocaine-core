@@ -19,6 +19,7 @@
 */
 
 #include <boost/filesystem/path.hpp>
+#include <boost/format.hpp>
 
 #include "cocaine/manifest.hpp"
 
@@ -34,7 +35,11 @@ using namespace cocaine::storages;
 manifest_t::manifest_t(context_t& context, const std::string& name_):
     name(name_),
     m_context(context),
-    m_log(context.log("app/" + name))
+    m_log(context.log(
+        (boost::format("app/%1%")
+            % name_
+        ).str()
+    ))
 {
     try {
         // Try to load the app manifest from the cache.
