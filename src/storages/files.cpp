@@ -19,6 +19,7 @@
 */
 
 #include <boost/filesystem/fstream.hpp>
+#include <boost/filesystem/operations.hpp>
 #include <boost/format.hpp>
 #include <boost/iterator/filter_iterator.hpp>
 #include <msgpack.hpp>

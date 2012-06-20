@@ -21,7 +21,7 @@
 #ifndef COCAINE_FILE_STORAGE_HPP
 #define COCAINE_FILE_STORAGE_HPP
 
-#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 
 #include "cocaine/interfaces/storage.hpp"
 

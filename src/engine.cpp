@@ -20,6 +20,7 @@
 
 #include <boost/assign.hpp>
 #include <boost/format.hpp>
+#include <boost/iterator/filter_iterator.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include "cocaine/engine.hpp"
@@ -28,6 +29,7 @@
 #include "cocaine/job.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
+#include "cocaine/rpc.hpp"
 
 #include "cocaine/dealer/types.hpp"
 
