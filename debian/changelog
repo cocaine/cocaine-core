@@ -1,3 +1,40 @@
+cocaine (0.8.0-11) lucid; urgency=low
+
+  * Regression fixed.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 20 Jun 2012 17:18:47 +0400
+
+cocaine (0.8.0-10) lucid; urgency=low
+
+  * Fixing a regression.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 20 Jun 2012 17:13:45 +0400
+
+cocaine (0.8.0-9) lucid; urgency=low
+
+  * Stop the engine before stopping the drivers, so that the pending driver jobs
+    would still have the driver availabe to process their outstanding results.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 20 Jun 2012 16:59:44 +0400
+
+cocaine (0.8.0-8) lucid; urgency=low
+
+  * Bug hunt.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 20 Jun 2012 16:29:23 +0400
+
+cocaine (0.8.0-7) lucid; urgency=low
+
+  * Proper missing cache handling logic.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 20 Jun 2012 13:29:48 +0400
+
+cocaine (0.8.0-6) lucid; urgency=low
+
+  * Cleanup the app cache on server shutdown.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 20 Jun 2012 03:06:46 +0400
+
 cocaine (0.8.0-5) lucid; urgency=low
 
   * Fixed build-depends.
