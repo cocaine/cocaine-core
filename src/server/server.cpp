@@ -35,7 +35,6 @@ using namespace cocaine::storages;
 server_t::server_t(context_t& context, server_config_t config):
     m_context(context),
     m_log(m_context.log("core")),
-    m_loop(EVFLAG_NOSIGNALFD),
     m_server(m_context.io(), ZMQ_REP, m_context.config.runtime.hostname),
     m_auth(m_context),
     m_birthstamp(m_loop.now())
