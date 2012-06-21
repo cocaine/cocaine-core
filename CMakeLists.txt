@@ -11,7 +11,7 @@ CONFIGURE_FILE(
     "${PROJECT_SOURCE_DIR}/config.hpp.in"
     "${PROJECT_SOURCE_DIR}/include/cocaine/config.hpp")
 
-FIND_PACKAGE(Boost 1.34.1 REQUIRED
+FIND_PACKAGE(Boost 1.40.0 REQUIRED
     COMPONENTS
         filesystem
         program_options
@@ -35,10 +35,6 @@ IF(NOT APPLE)
     SET(LIBUUID_LIBRARY "uuid")
 
     ADD_DEFINITIONS("-DHAVE_CGROUPS")
-ENDIF()
-
-IF(Boost_MINOR_VERSION GREATER 34)
-    SET(Boost_SYSTEM_LIBRARY "boost_system-mt")
 ENDIF()
 
 INCLUDE_DIRECTORIES(
@@ -77,7 +73,7 @@ ADD_LIBRARY(cocaine-common SHARED
 
 TARGET_LINK_LIBRARIES(cocaine-common
     boost_filesystem-mt
-    ${Boost_SYSTEM_LIBRARY}
+    boost_system-mt
     boost_thread-mt
     ${LIBCGROUP_LIBRARY}
     crypto
@@ -139,7 +135,7 @@ IF(DEALER)
         zmq
         eblob_cpp
         eblob
-        ${Boost_SYSTEM_LIBRARY}
+        boost_system-mt
         ${LIBUUID_LIBRARY})
 
     SET_TARGET_PROPERTIES(cocaine-dealer PROPERTIES
