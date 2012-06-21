@@ -63,13 +63,13 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
         throw configuration_error_t("slave heartbeat timeout must be positive");
     }
 
-    policy.suicide_timeout = root["engine"].get(
-        "suicide-timeout",
-        defaults::suicide_timeout
+    policy.idle_timeout = root["engine"].get(
+        "idle-timeout",
+        defaults::idle_timeout
     ).asDouble();
 
-    if(policy.suicide_timeout <= 0.0f) {
-        throw configuration_error_t("slave suicide timeout must be positive");
+    if(policy.idle_timeout <= 0.0f) {
+        throw configuration_error_t("slave idle timeout must be positive");
     }
 
     policy.termination_timeout = root["engine"].get(

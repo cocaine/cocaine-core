@@ -34,11 +34,12 @@ using namespace cocaine::storages;
 namespace fs = boost::filesystem;
 
 const float defaults::heartbeat_timeout = 30.0f;
-const float defaults::suicide_timeout = 600.0f;
+const float defaults::idle_timeout = 600.0f;
 const float defaults::termination_timeout = 5.0f;
 const unsigned int defaults::pool_limit = 10;
 const unsigned int defaults::queue_limit = 100;
 const unsigned int defaults::io_bulk_size = 100;
+const int defaults::bus_timeout = 1000;
 const char defaults::slave[] = "cocaine-slave";
 const char defaults::plugin_path[] = "/usr/lib/cocaine";
 const char defaults::ipc_path[] = "/var/run/cocaine";

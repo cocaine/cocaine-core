@@ -361,10 +361,14 @@ void engine_t::process(ev::idle&, int) {
             m_bus.drop();
 
             // Try to kill it, just in case.
+            io::scoped_option<io::options::send_timeout> option(
+                m_bus,
+                0
+            );
+
             m_bus.send(
                 slave_id,
-                io::packed<rpc::domain, rpc::terminate>(),
-                ZMQ_NOBLOCK
+                io::packed<rpc::domain, rpc::terminate>()
             );
 
             return;

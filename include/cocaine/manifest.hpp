@@ -37,7 +37,7 @@ struct manifest_t {
 
     struct {
         float heartbeat_timeout;
-        float suicide_timeout;
+        float idle_timeout;
         float termination_timeout;
         unsigned int pool_limit;
         unsigned int queue_limit;

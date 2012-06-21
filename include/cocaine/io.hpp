@@ -44,6 +44,45 @@ using namespace boost::tuples;
 
 typedef std::vector<std::string> route_t;
 
+// A wrapper class to disable automatic type serialization.
+// --------------------------------------------------------
+
+template<class T>
+struct raw {
+    raw(T& value_):
+        value(value_)
+    { }
+
+    T& value;
+};
+
+// Specialize this to disable specific type serialization.
+template<class T>
+struct serialization_traits;
+
+template<>
+struct serialization_traits<std::string> {
+    static void pack(zmq::message_t& message, const std::string& value) {
+        message.rebuild(value.size());
+        memcpy(message.data(), value.data(), value.size());
+    }
+
+    static bool unpack(zmq::message_t& message, std::string& value) {
+        value.assign(
+            static_cast<const char*>(message.data()),
+            message.size()
+        );
+
+        return true;
+    }
+};
+
+template<class T>
+static inline raw<T>
+protect(T& object) {
+    return raw<T>(object);
+}
+
 class socket_t: 
     public boost::noncopyable,
     public birth_control<socket_t>
@@ -90,10 +129,79 @@ class socket_t:
             return m_socket.send(message, flags);
         }
 
+        template<class T>
+        bool send(const T& value,
+                  int flags = 0)
+        {
+            msgpack::sbuffer buffer;
+            msgpack::pack(buffer, value);
+            
+            zmq::message_t message(buffer.size());
+            memcpy(message.data(), buffer.data(), buffer.size());
+            
+            return send(message, flags);
+        }
+        
+        template<class T>
+        bool send(const raw<T>& object,
+                  int flags = 0)
+        {
+            zmq::message_t message;
+            
+            serialization_traits<
+                typename boost::remove_const<T>::type
+            >::pack(message, object.value);
+            
+            return send(message, flags);
+        }
+
         bool recv(zmq::message_t * message,
                   int flags = 0)
         {
             return m_socket.recv(message, flags);
+        }
+
+        template<class T>
+        bool recv(T& result,
+                  int flags = 0)
+        {
+            zmq::message_t message;
+            msgpack::unpacked unpacked;
+
+            if(!recv(&message, flags)) {
+                return false;
+            }
+           
+            try { 
+                msgpack::unpack(
+                    &unpacked,
+                    static_cast<const char*>(message.data()),
+                    message.size()
+                );
+                
+                unpacked.get().convert(&result);
+            } catch(const msgpack::type_error& e) {
+                throw std::runtime_error("corrupted object");
+            } catch(const std::bad_cast& e) {
+                throw std::runtime_error("corrupted object - type mismatch");
+            }
+
+            return true;
+        }
+      
+        template<class T>
+        bool recv(raw<T>& result,
+                  int flags = 0)
+        {
+            zmq::message_t message;
+
+            if(!recv(&message, flags)) {
+                return false;
+            }
+
+            return serialization_traits<
+                typename boost::remove_const<T>::type
+            >::unpack(message, result.value);
         }
                 
         void getsockopt(int name,
@@ -205,45 +313,6 @@ class scoped_option {
         size_t size;
 };
 
-// A wrapper class to disable automatic type serialization.
-// --------------------------------------------------------
-
-template<class T>
-struct raw {
-    raw(T& value_):
-        value(value_)
-    { }
-
-    T& value;
-};
-
-// Specialize this to disable specific type serialization.
-template<class T>
-struct serialization_traits;
-
-template<>
-struct serialization_traits<std::string> {
-    static void pack(zmq::message_t& message, const std::string& value) {
-        message.rebuild(value.size());
-        memcpy(message.data(), value.data(), value.size());
-    }
-
-    static bool unpack(zmq::message_t& message, std::string& value) {
-        value.assign(
-            static_cast<const char*>(message.data()),
-            message.size()
-        );
-
-        return true;
-    }
-};
-
-template<class T>
-static inline raw<T>
-protect(T& object) {
-    return raw<T>(object);
-}
-
 // RPC command tuple
 // -----------------
 
@@ -271,91 +340,21 @@ class channel_t:
         // Sending
         // -------
 
-        template<class T>
-        bool send(const T& value,
-                  int flags = 0)
-        {
-            msgpack::sbuffer buffer;
-            msgpack::pack(buffer, value);
-            
-            zmq::message_t message(buffer.size());
-            memcpy(message.data(), buffer.data(), buffer.size());
-            
-            return send(message, flags);
-        }
-        
-        template<class T>
-        bool send(const raw<T>& object,
-                  int flags = 0)
-        {
-            zmq::message_t message;
-            
-            serialization_traits<
-                typename boost::remove_const<T>::type
-            >::pack(message, object.value);
-            
-            return send(message, flags);
-        }
-
         template<typename T, T Command>
         bool send(const std::string& route,
-                  const packed<T, Command>& command,
-                  int flags = 0)
+                  const packed<T, Command>& command)
         {
             const bool multipart = boost::tuples::length<
                 typename packed<T, Command>::tuple_type
             >::value;
 
-            return send(protect(route), ZMQ_SNDMORE | flags) &&
-                   send(static_cast<int>(Command), (multipart ? ZMQ_SNDMORE : 0) | flags) &&
-                   send_multipart(command, flags);
+            return send(protect(route), ZMQ_SNDMORE) &&
+                   send(static_cast<int>(Command), multipart ? ZMQ_SNDMORE : 0) &&
+                   send_multipart(command);
         }
 
         // Receiving
         // ---------
-
-        template<class T>
-        bool recv(T& result,
-                  int flags = 0)
-        {
-            zmq::message_t message;
-            msgpack::unpacked unpacked;
-
-            if(!recv(&message, flags)) {
-                return false;
-            }
-           
-            try { 
-                msgpack::unpack(
-                    &unpacked,
-                    static_cast<const char*>(message.data()),
-                    message.size()
-                );
-                
-                unpacked.get().convert(&result);
-            } catch(const msgpack::type_error& e) {
-                throw std::runtime_error("corrupted object");
-            } catch(const std::bad_cast& e) {
-                throw std::runtime_error("corrupted object - type mismatch");
-            }
-
-            return true;
-        }
-      
-        template<class T>
-        bool recv(raw<T>& result,
-                  int flags = 0)
-        {
-            zmq::message_t message;
-
-            if(!recv(&message, flags)) {
-                return false;
-            }
-
-            return serialization_traits<
-                typename boost::remove_const<T>::type
-            >::unpack(message, result.value);
-        }
 
         bool recv_multi(const null_type&,
                         int __attribute__ ((unused)) flags = 0) const

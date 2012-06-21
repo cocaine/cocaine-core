@@ -90,10 +90,11 @@ class slave_t:
         ev::prepare m_check;
         
         ev::timer m_heartbeat_timer,
-                  m_suicide_timer;
+                  m_idle_timer;
         
         // Engine RPC.
         io::channel_t m_bus;
+        io::scoped_option<io::options::send_timeout> m_bus_timeout;
 };
 
 }}

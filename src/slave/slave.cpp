@@ -41,8 +41,19 @@ slave_t::slave_t(context_t& context, slave_config_t config):
         ).str()
     )),
     m_app(config.app),
-    m_bus(m_context.io(), config.uuid)
+    m_bus(m_context.io(), config.uuid),
+    m_bus_timeout(m_bus, defaults::bus_timeout)
 {
+    int linger = 0;
+
+    m_bus.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
+
+#ifdef ZMQ_ROUTER_BEHAVIOR
+    int mode = 1;
+    
+    m_bus.setsockopt(ZMQ_ROUTER_BEHAVIOR, &mode, sizeof(mode));
+#endif
+
     m_bus.connect(
         (boost::format("ipc://%1%/%2%")
             % m_context.config.ipc_path
@@ -50,11 +61,6 @@ slave_t::slave_t(context_t& context, slave_config_t config):
         ).str()
     );
     
-#ifdef ZMQ_ROUTER_BEHAVIOR
-    int mode = 1;
-    m_bus.setsockopt(ZMQ_ROUTER_BEHAVIOR, &mode, sizeof(mode));
-#endif
-
     m_watcher.set<slave_t, &slave_t::message>(this);
     m_watcher.start(m_bus.fd(), ev::READ);
     m_processor.set<slave_t, &slave_t::process>(this);
@@ -73,8 +79,8 @@ void slave_t::configure() {
     try {
         m_manifest.reset(new manifest_t(m_context, m_app));
         
-        m_suicide_timer.set<slave_t, &slave_t::timeout>(this);
-        m_suicide_timer.start(m_manifest->policy.suicide_timeout);
+        m_idle_timer.set<slave_t, &slave_t::timeout>(this);
+        m_idle_timer.start(m_manifest->policy.idle_timeout);
         
         m_sandbox = m_context.get<sandbox_t>(
             m_manifest->type,
@@ -192,7 +198,14 @@ void slave_t::timeout(ev::timer&, int) {
 }
 
 void slave_t::heartbeat(ev::timer&, int) {
-    m_bus.send(m_app, io::packed<rpc::domain, rpc::heartbeat>());
+    if(!m_bus.send(m_app, io::packed<rpc::domain, rpc::heartbeat>())) {
+        m_log->error(
+            "slave %s has lost the controlling engine",
+            id().c_str()
+        );
+
+        terminate();
+    }
 }
 
 void slave_t::invoke(const std::string& event) {
@@ -222,11 +235,11 @@ void slave_t::invoke(const std::string& event) {
     // in by the user code. Might have a warning here?
     m_bus.drop();
 
-    m_suicide_timer.stop();
-    m_suicide_timer.start(m_manifest->policy.suicide_timeout);
+    m_idle_timer.stop();
+    m_idle_timer.start(m_manifest->policy.idle_timeout);
 }
 
 void slave_t::terminate() {
     m_bus.send(m_app, io::packed<rpc::domain, rpc::terminate>());
     m_loop.unloop(ev::ALL);
-} 
+}

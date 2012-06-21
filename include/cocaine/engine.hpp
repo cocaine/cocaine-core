@@ -135,10 +135,14 @@ class engine_t:
             );
 
             if(it != m_pool.end()) {
+                io::scoped_option<io::options::send_timeout> option(
+                    m_bus,
+                    0
+                );
+
                 bool success = m_bus.send(
                     it->second->id(),
-                    command,
-                    ZMQ_NOBLOCK
+                    command
                 );
 
                 if(!success) {
