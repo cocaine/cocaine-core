@@ -1,8 +1,0 @@
-usr/lib/libcocaine-common.so.*
-usr/lib/libcocaine-core.so.*
-usr/lib/cocaine/chrono.cocaine-plugin
-usr/lib/cocaine/native-server.cocaine-plugin
-usr/bin/cocaine-slave
-usr/bin/cocained
-etc/cocaine/cocaine.conf
-etc/syslog-ng/conf-available/cocained.conf

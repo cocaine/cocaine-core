@@ -1,23 +1,12 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
-PROJECT(Cocaine)
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
+PROJECT(COCAINE-CORE)
 
 SET(COCAINE_VERSION 0.8)
 
-SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 OPTION(DEALER "Build Dealer library" ON)
-OPTION(PYTHON "Build Python plugin" ON)
-OPTION(PERL "Build Perl plugin" ON)
-OPTION(JAVASCRIPT "Build Javascript plugin" ON)
-OPTION(MONGO "Build MongoDB plugin" ON)
-
-IF(NOT APPLE)
-    OPTION(ELLIPTICS "Build Elliptics plugin" ON)
-ELSE()
-    OPTION(ELLIPTICS "Build Elliptics plugin" OFF)
-ENDIF()
-
-SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 CONFIGURE_FILE(
     "${PROJECT_SOURCE_DIR}/config.hpp.in"
@@ -70,8 +59,6 @@ LINK_DIRECTORIES(
 
 INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/foreign/jsoncpp-0.6.0-rc2/include)
 INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/include)
-
-#ADD_DEFINITIONS("-DBOOST_FILESYSTEM_VERSION=2")
 
 ADD_LIBRARY(json
     foreign/jsoncpp-0.6.0-rc2/src/lib_json/json_value
@@ -129,18 +116,12 @@ ADD_EXECUTABLE(cocained
     src/server/server
     src/server/main)
 
-ADD_EXECUTABLE(library-test
-    tests/library_test.cpp)
-
 TARGET_LINK_LIBRARIES(cocaine-slave
     boost_program_options-mt
     cocaine-core)
 
 TARGET_LINK_LIBRARIES(cocained
     boost_program_options-mt
-    cocaine-core)
-
-TARGET_LINK_LIBRARIES(library-test
     cocaine-core)
 
 IF(DEALER)
@@ -183,7 +164,6 @@ IF(DEALER)
 
 ENDIF()
 
-ADD_SUBDIRECTORY(plugins)
 ADD_SUBDIRECTORY(tools)
 
 INSTALL(
