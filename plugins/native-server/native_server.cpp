@@ -18,8 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include <boost/algorithm/string/join.hpp>
-#include <boost/assign.hpp>
+#include <boost/format.hpp>
 
 #include "native_server.hpp"
 #include "native_job.hpp"
@@ -36,14 +35,19 @@ using namespace cocaine::io;
 native_server_t::native_server_t(context_t& context, engine_t& engine, const plugin_config_t& config):
     category_type(context, engine, config),
     m_context(context),
-    m_log(context.log("app/" + engine.manifest().name)),
+    m_log(context.log(
+        (boost::format("app/%1%/%2%")
+            % engine.manifest().name
+            % config.name
+        ).str()
+    )),
     m_event(config.args["emit"].asString()),
-    m_route(boost::algorithm::join(
-        boost::assign::list_of
-            (context.config.runtime.hostname)
-            (engine.manifest().name)
-            (config.name),
-        "/")
+    m_route(
+        (boost::format("%1%/%2%/%3%")
+            % context.config.runtime.hostname
+            % engine.manifest().name
+            % config.name
+        ).str()
     ),
     m_watcher(engine.loop()),
     m_processor(engine.loop()),

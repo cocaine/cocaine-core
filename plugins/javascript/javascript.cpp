@@ -20,6 +20,7 @@
 
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/operations.hpp>
+#include <boost/format.hpp>
 #include <sstream>
 
 #include <v8.h>
@@ -43,7 +44,11 @@ class javascript_t:
     public:
         javascript_t(context_t& context, const manifest_t& manifest):
             category_type(context, manifest),
-            m_log(context.log("app/" + manifest.name))
+            m_log(context.log(
+                (boost::format("app/%1%")
+                    % manifest.name
+                ).str()
+            ))
         {
             Json::Value args(manifest.root["args"]);
 

@@ -18,6 +18,7 @@
  */
 
 #include <boost/filesystem.hpp>
+#include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include "binary.hpp"
@@ -28,7 +29,11 @@ namespace fs = boost::filesystem;
 
 binary_t::binary_t(context_t &context, const manifest_t &manifest) :
     category_type(context, manifest),
-    m_log(context.log("app/" + manifest.name)),
+    m_log(context.log(
+        (boost::format("app/%1%")
+            % manifest.name
+        ).str()
+    )),
     m_process(NULL), m_cleanup(NULL)
 {
 	Json::Value args(manifest.root["args"]);

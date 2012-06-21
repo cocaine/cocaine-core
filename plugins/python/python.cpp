@@ -41,7 +41,11 @@ static PyMethodDef context_module_methods[] = {
 
 python_t::python_t(context_t& context, const manifest_t& manifest):
     category_type(context, manifest),
-    m_log(context.log("app/" + manifest.name)),
+    m_log(context.log(
+        (boost::format("app/%1%")
+            % manifest.name
+        ).str()
+    )),
     m_python_module(NULL),
     m_python_manifest(NULL),
     m_thread_state(NULL)

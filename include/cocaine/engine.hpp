@@ -21,7 +21,6 @@
 #ifndef COCAINE_ENGINE_HPP
 #define COCAINE_ENGINE_HPP
 
-#include <boost/iterator/filter_iterator.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/thread.hpp>
 #include <deque>
@@ -35,8 +34,8 @@
 // Has to be included after common.h
 #include <ev++.h>
 
+#include "cocaine/io.hpp"
 #include "cocaine/master.hpp"
-#include "cocaine/rpc.hpp"
 
 #include "cocaine/helpers/json.hpp"
 

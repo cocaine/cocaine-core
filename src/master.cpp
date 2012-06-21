@@ -19,6 +19,7 @@
 */
 
 #include <boost/assign.hpp>
+#include <boost/format.hpp>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -37,7 +38,11 @@ using namespace cocaine::engine::slave;
 
 master_t::master_t(context_t& context, engine_t& engine):
     m_context(context),
-    m_log(context.log("app/" + engine.manifest().name)),
+    m_log(context.log(
+        (boost::format("app/%1%")
+            % engine.manifest().name
+        ).str()
+    )),
     m_engine(engine),
     m_heartbeat_timer(m_engine.loop())
 {

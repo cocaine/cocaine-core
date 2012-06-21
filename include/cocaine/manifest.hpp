@@ -51,7 +51,11 @@ struct manifest_t {
     Json::Value root;
 
 private:
-     boost::shared_ptr<logging::logger_t> m_log;
+    void deploy();
+
+private:
+    context_t& m_context;
+    boost::shared_ptr<logging::logger_t> m_log;
 };
 
 }

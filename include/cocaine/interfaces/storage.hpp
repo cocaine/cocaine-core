@@ -96,12 +96,12 @@ struct category_traits< storages::storage_concept<T> > {
             boost::lock_guard<boost::mutex> lock(m_mutex);
             const plugin_config_t& config(boost::get<0>(args));
 
-            typename storage_map_t::iterator it(
-                m_storages.find(config.name)
+            typename instance_map_t::iterator it(
+                m_instances.find(config.name)
             );
 
-            if(it == m_storages.end()) {
-                boost::tie(it, boost::tuples::ignore) = m_storages.insert(
+            if(it == m_instances.end()) {
+                boost::tie(it, boost::tuples::ignore) = m_instances.insert(
                     std::make_pair(
                         config.name,
                         boost::make_shared<U>(
@@ -121,9 +121,9 @@ struct category_traits< storages::storage_concept<T> > {
         typedef std::map<
             std::string,
             ptr_type
-        > storage_map_t;
+        > instance_map_t;
 
-        storage_map_t m_storages;
+        instance_map_t m_instances;
     };
 };
 

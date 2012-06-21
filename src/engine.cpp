@@ -20,6 +20,7 @@
 
 #include <boost/assign.hpp>
 #include <boost/format.hpp>
+#include <boost/iterator/filter_iterator.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include "cocaine/engine.hpp"
@@ -28,6 +29,7 @@
 #include "cocaine/job.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
+#include "cocaine/rpc.hpp"
 
 #include "cocaine/dealer/types.hpp"
 
@@ -45,7 +47,11 @@ void job_queue_t::push(const_reference job) {
 
 engine_t::engine_t(context_t& context, const manifest_t& manifest_):
     m_context(context),
-    m_log(m_context.log("app/" + manifest_.name)),
+    m_log(context.log(
+        (boost::format("app/%1%")
+            % manifest_.name
+        ).str()
+    )),
     m_state(stopped),
     m_manifest(manifest_),
     m_watcher(m_loop),
@@ -77,12 +83,6 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest_):
         throw configuration_error_t(std::string("invalid rpc endpoint - ") + e.what());
     }
     
-    // Register the engine in the core dispatcher.
-    // context.dispatch().insert(
-    //     m_manifest.name,
-    //     endpoint
-    // );
-
     m_watcher.set<engine_t, &engine_t::message>(this);
     m_watcher.start(m_bus.fd(), ev::READ);
     m_processor.set<engine_t, &engine_t::process>(this);
@@ -179,7 +179,7 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest_):
 }
 
 engine_t::~engine_t() {
-    stop();
+    BOOST_ASSERT(m_state == stopped);
 
 #ifdef HAVE_CGROUPS
     if(m_cgroup) {
@@ -409,21 +409,6 @@ void engine_t::process(ev::idle&, int) {
                     return;
                 }
              
-                // case rpc::call: {
-                //     // TEST: Ensure we have the actual call arguments following.
-                //     BOOST_ASSERT(m_bus.more());
-
-                //     std::string callee;
-                //     zmq::message_t message;
-                //     boost::tuple<std::string&, zmq::message_t*> proxy(callee, message);
-
-                //     m_bus.recv_multi(proxy);
-
-                //     m_context.dispatch().call(callee, message);
-
-                //     return;
-                // }
-
                 case rpc::error: {
                     // TEST: Ensure that we have the actual error following.
                     BOOST_ASSERT(m_bus.more());
@@ -683,8 +668,9 @@ void engine_t::shutdown() {
         m_termination_timer.start(m_manifest.policy.termination_timeout);
         
         m_log->info(
-            "waiting for %d slaves to terminate, timeout: %.02f seconds",
+            "waiting for %d %s to terminate, timeout: %.02f seconds",
             pending,
+            pending == 1 ? "slave" : "slaves",
             m_manifest.policy.termination_timeout
         );
     }

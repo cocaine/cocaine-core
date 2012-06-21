@@ -13,6 +13,7 @@
 
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/operations.hpp>
+#include <boost/format.hpp>
 #include <sstream>
 
 #include <EXTERN.h>
@@ -42,7 +43,14 @@ public:
     typedef sandbox_t category_type;
 
 public:
-    perl_t(context_t& context, const manifest_t& manifest) : category_type(context, manifest) {
+    perl_t(context_t& context, const manifest_t& manifest):
+        category_type(context, manifest),
+        m_log(context.log(
+            (boost::format("app/%1%")
+                % manifest.name
+            ).str()
+        ))
+    {
         int argc = 0;
         char** argv = NULL;
         char** env = NULL;
