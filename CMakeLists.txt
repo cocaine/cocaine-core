@@ -75,7 +75,6 @@ TARGET_LINK_LIBRARIES(cocaine-common
     boost_filesystem-mt
     boost_system-mt
     boost_thread-mt
-    ${LIBCGROUP_LIBRARY}
     crypto
     json
     ltdl
@@ -97,6 +96,7 @@ ADD_LIBRARY(cocaine-core SHARED
 
 TARGET_LINK_LIBRARIES(cocaine-core
     archive
+    ${LIBCGROUP_LIBRARY}
     cocaine-common
     ev)
 
