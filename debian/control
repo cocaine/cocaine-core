@@ -5,8 +5,8 @@ Maintainer: Andrey Sibiryov <kobolog@yandex-team.ru>
 Build-Depends: cdbs, debhelper (>= 7.0.13), libzmq-dev (>= 2.2.0), libev-dev, libmsgpack-dev,
  libboost-dev, libboost-filesystem-dev, libboost-thread-dev, libboost-program-options-dev,
  libssl-dev, libltdl-dev, libcgroup-dev, uuid-dev, libv8-dev, python-dev, libperl-dev, 
- libmongoclient-dev, eblob (>= 0.15.9), elliptics-2.10 (>= 2.14.0.1), cmake, libcurl4-openssl-dev,
- libarchive-dev
+ libmongoclient-dev | mongodb-dev, eblob (>= 0.15.9), elliptics-2.10 (>= 2.14.0.1), cmake,
+ libcurl4-openssl-dev, libarchive-dev
 Standards-Version: 3.9.1
 Vcs-Git: git://github.com/cocaine/cocaine-core.git
 Vcs-Browser: https://github.com/cocaine/cocaine-core
@@ -47,7 +47,7 @@ Description: Cocaine - Binary Code Hosting
 Package: cocaine-plugin-mongodb
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, cocaine-core (>= 0.8),
- libmongoclient
+ libmongoclient | mongodb-clients
 Description: Cocaine - MongoDB Storage
  MongoDB storage support for Cocaine.
 

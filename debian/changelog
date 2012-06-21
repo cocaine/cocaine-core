@@ -1,3 +1,9 @@
+cocaine (0.8.0-12) lucid; urgency=low
+
+  * Build dependencies.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Thu, 21 Jun 2012 14:55:47 +0400
+
 cocaine (0.8.0-11) lucid; urgency=low
 
   * Regression fixed.
