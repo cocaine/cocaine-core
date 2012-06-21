@@ -181,8 +181,8 @@ int main(int argc, char * argv[]) {
             )
         );
     } catch(const std::exception& e) {
-       log->error("unable to start the server - %s", e.what());
-       return EXIT_FAILURE;
+        log->error("unable to start the server - %s", e.what());
+        return EXIT_FAILURE;
     }
 
     server->run();
