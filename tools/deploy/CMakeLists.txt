@@ -8,4 +8,5 @@ TARGET_LINK_LIBRARIES(cocaine-deploy
 INSTALL(
     TARGETS
         cocaine-deploy
-    RUNTIME DESTINATION bin COMPONENT runtime)
+    RUNTIME DESTINATION bin
+    COMPONENT runtime)
