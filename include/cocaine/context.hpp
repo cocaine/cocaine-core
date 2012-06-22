@@ -134,7 +134,7 @@ class context_t:
         // Logging
         // -------
 
-        const boost::shared_ptr<logging::logger_t>&
+        boost::shared_ptr<logging::logger_t>
         log(const std::string&);
 
     public:
