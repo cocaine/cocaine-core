@@ -32,6 +32,9 @@ class syslog_t:
         virtual void emit(priorities priority,
                           const std::string& source,
                           const std::string& message) const;
+
+    private:
+        const std::string m_identity;
 };
 
 }}

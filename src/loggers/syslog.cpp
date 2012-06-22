@@ -26,9 +26,10 @@
 using namespace cocaine::logging;
 
 syslog_t::syslog_t(priorities verbosity, const std::string& identity):
-    sink_t(verbosity)
+    sink_t(verbosity),
+    m_identity(identity)
 {
-    openlog(identity.c_str(), LOG_PID, LOG_USER);
+    openlog(m_identity.c_str(), LOG_PID, LOG_USER);
 }
 
 void syslog_t::emit(priorities priority,
