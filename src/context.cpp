@@ -20,6 +20,7 @@
 
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/operations.hpp>
+#include <boost/tuple/tuple.hpp>
 
 #include "cocaine/context.hpp"
 
@@ -166,7 +167,25 @@ context_t::~context_t() {
     BOOST_ASSERT(io::socket_t::objects_alive == 0);
 }
 
-boost::shared_ptr<logging::logger_t>
+const boost::shared_ptr<logging::logger_t>&
 context_t::log(const std::string& name) {
-    return m_sink->get(name);
+    boost::lock_guard<boost::mutex> lock(m_mutex);
+
+    instance_map_t::iterator it(
+        m_instances.find(name)
+    );
+
+    if(it == m_instances.end()) {
+        boost::tie(it, boost::tuples::ignore) = m_instances.insert(
+            std::make_pair(
+                name,
+                boost::make_shared<logging::logger_t>(
+                    *m_sink,
+                    name
+                )
+            )
+        );
+    }
+
+    return it->second;
 }

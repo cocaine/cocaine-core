@@ -47,8 +47,8 @@ class logger_t:
     public birth_control<logger_t>
 {
     public:
-        logger_t(sink_t& sink,
-                 const std::string& name);
+        logger_t(const sink_t& sink,
+                 const std::string& source);
         
         void debug(const char * format, ...) const;
         void info(const char * format, ...) const;
@@ -57,12 +57,12 @@ class logger_t:
 
     private:
         void emit(priorities priority,
-                  const char * format, 
+                  const char * format,
                   va_list args) const;
 
     private:
-        sink_t& m_sink;
-        const std::string m_name;
+        const sink_t& m_sink;
+        const std::string m_source;
 
         mutable char m_buffer[LOG_BUFFER_SIZE];
         mutable boost::mutex m_mutex;
@@ -73,10 +73,8 @@ class sink_t:
 {
     public:
         sink_t(priorities verbosity);
-        virtual ~sink_t() = 0;
 
-        // XXX: Might be a better idea to return the logger by reference.
-        boost::shared_ptr<logger_t> get(const std::string& name);
+        virtual ~sink_t();
 
         bool ignores(priorities priority) const {
             return priority < m_verbosity;
@@ -84,18 +82,11 @@ class sink_t:
     
     public:
         virtual void emit(priorities priority,
+                          const std::string& source,
                           const std::string& message) const = 0;
 
     private:
         const priorities m_verbosity;
-
-        typedef std::map<
-            const std::string,
-            boost::shared_ptr<logger_t>
-        > logger_map_t;
-
-        logger_map_t m_loggers;
-        boost::mutex m_mutex;
 };
 
 class void_sink_t:
@@ -104,7 +95,8 @@ class void_sink_t:
     public:
         void_sink_t();
 
-        virtual void emit(priorities, 
+        virtual void emit(priorities,
+                          const std::string&,
                           const std::string&) const;
 };
 

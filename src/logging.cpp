@@ -18,19 +18,18 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include <boost/tuple/tuple.hpp>
 #include <cstdio>
 
 #include "cocaine/logging.hpp"
 
 using namespace cocaine::logging;
 
-// Loggers
-// -------
+// Logger
+// ------
 
-logger_t::logger_t(sink_t& sink, const std::string& name):
+logger_t::logger_t(const sink_t& sink, const std::string& source):
     m_sink(sink),
-    m_name(name)
+    m_source(source)
 {
     memset(m_buffer, 0, LOG_BUFFER_SIZE);
 }
@@ -63,16 +62,20 @@ void logger_t::error(const char * format, ...) const {
     va_end(args);
 }
 
-void logger_t::emit(priorities priority, const char * format, va_list args) const {
+void logger_t::emit(priorities priority,
+                    const char * format,
+                    va_list args) const
+{
     if(m_sink.ignores(priority)) {
         return;
     }
 
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    {
+        boost::lock_guard<boost::mutex> lock(m_mutex);
 
-    vsnprintf(m_buffer, LOG_BUFFER_SIZE, format, args);
-    
-    m_sink.emit(priority, m_name + ": " + m_buffer);
+        vsnprintf(m_buffer, LOG_BUFFER_SIZE, format, args);
+        m_sink.emit(priority, m_source, m_buffer);
+    }
 }
 
 // Logging sinks
@@ -82,26 +85,8 @@ sink_t::sink_t(priorities verbosity):
     m_verbosity(verbosity)
 { }
 
-sink_t::~sink_t() { }
-
-boost::shared_ptr<logger_t> sink_t::get(const std::string& name) {
-    boost::lock_guard<boost::mutex> lock(m_mutex);
-
-    logger_map_t::iterator it(m_loggers.find(name));
-
-    if(it == m_loggers.end()) {
-        boost::tie(it, boost::tuples::ignore) = m_loggers.insert(
-            std::make_pair(
-                name,
-                boost::make_shared<logger_t>(
-                    boost::ref(*this), 
-                    name
-                )
-            )
-        );
-    }
-
-    return it->second;
+sink_t::~sink_t() {
+    // Empty.
 }
 
 // Void logger
@@ -111,4 +96,7 @@ void_sink_t::void_sink_t():
     sink_t(ignore)
 { }
 
-void void_sink_t::emit(priorities, const std::string&) const { }
+void void_sink_t::emit(priorities,
+                       const std::string&,
+                       const std::string&) const
+{ }

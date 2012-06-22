@@ -21,6 +21,8 @@
 #ifndef COCAINE_CONTEXT_HPP
 #define COCAINE_CONTEXT_HPP
 
+#include <boost/thread/mutex.hpp>
+
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
 
@@ -132,8 +134,8 @@ class context_t:
         // Logging
         // -------
 
-        boost::shared_ptr<logging::logger_t>
-        log(const std::string& name);
+        const boost::shared_ptr<logging::logger_t>&
+        log(const std::string&);
 
     public:
         const config_t config;
@@ -141,6 +143,14 @@ class context_t:
     private:
         // Logging.    
         boost::shared_ptr<logging::sink_t> m_sink;
+
+        typedef std::map<
+            std::string,
+            boost::shared_ptr<logging::logger_t>
+        > instance_map_t;
+
+        instance_map_t m_instances;
+        boost::mutex m_mutex;
         
         // Core subsystems.
         std::auto_ptr<zmq::context_t> m_io;

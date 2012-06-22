@@ -26,32 +26,34 @@
 using namespace cocaine::logging;
 
 syslog_t::syslog_t(priorities verbosity, const std::string& identity):
-    sink_t(verbosity),
-    m_identity(identity)
+    sink_t(verbosity)
 {
-    openlog(m_identity.c_str(), LOG_PID, LOG_USER);
+    openlog(identity.c_str(), LOG_PID, LOG_USER);
 }
 
-void syslog_t::emit(priorities priority, const std::string& message) const {
+void syslog_t::emit(priorities priority,
+                    const std::string& source,
+                    const std::string& message) const
+{
     // NOTE: Replacing all newlines with spaces here because certain sysloggers
     // fail miserably interpreting them correctly.
     std::string m(boost::algorithm::replace_all_copy(message, "\n", " "));
 
     switch(priority) {
         case debug:
-            syslog(LOG_DEBUG, "%s", m.c_str());
+            syslog(LOG_DEBUG, "%s: %s", source.c_str(), m.c_str());
             break;
         
         case info:
-            syslog(LOG_INFO, "%s", m.c_str());
+            syslog(LOG_INFO, "%s: %s", source.c_str(), m.c_str());
             break;
         
         case warning:
-            syslog(LOG_WARNING, "%s", m.c_str());
+            syslog(LOG_WARNING, "%s: %s", source.c_str(), m.c_str());
             break;
         
         case error:
-            syslog(LOG_ERR, "%s", m.c_str());
+            syslog(LOG_ERR, "%s: %s", source.c_str(), m.c_str());
             break;
         
         default:

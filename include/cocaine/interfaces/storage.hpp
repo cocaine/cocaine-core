@@ -116,14 +116,13 @@ struct category_traits< storages::storage_concept<T> > {
         }
 
     private:
-        boost::mutex m_mutex;
-
         typedef std::map<
             std::string,
             ptr_type
         > instance_map_t;
 
         instance_map_t m_instances;
+        boost::mutex m_mutex;
     };
 };
 

@@ -46,9 +46,11 @@ namespace {
             { }
 
             virtual void emit(logging::priorities,
+                              const std::string& source,
                               const std::string& message) const 
             {
-                std::cout << message << std::endl;
+                std::cout << source << ": " 
+                          << message << std::endl;
             }
     };
 
