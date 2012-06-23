@@ -135,10 +135,7 @@ class engine_t:
             );
 
             if(it != m_pool.end()) {
-                io::scoped_option<io::options::send_timeout> option(
-                    m_bus,
-                    0
-                );
+                io::scoped_option<io::options::send_timeout> option(m_bus, 0);
 
                 bool success = m_bus.send(
                     it->second->id(),
@@ -170,7 +167,7 @@ class engine_t:
         // Queue processing.
         void pump();
 
-        // Engine shutdown.
+        // Engine termination.
         void shutdown();
 
     private:

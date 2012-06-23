@@ -239,15 +239,12 @@ void engine_t::stop() {
             // LOCK: Obtain an exclusive lock for state operations.
             boost::upgrade_to_unique_lock<boost::shared_mutex> unique(lock);
 
-            m_state = stopping;
-            
-            // Signal the engine about the changed state.
-            m_notification.send();
+            shutdown();
         }
     }
 
     if(m_thread.get()) {
-        m_log->debug("reaping the thread");
+        m_log->debug("waiting for the engine to terminate");
         
         // Wait for the termination.
         m_thread->join();
@@ -309,7 +306,7 @@ void engine_t::enqueue(job_queue_t::const_reference job) {
         return;
     }
 
-    if(m_queue.size() < m_manifest.policy.queue_limit) {
+    if(m_queue.size() >= m_manifest.policy.queue_limit) {
         m_log->debug(
             "dropping an incomplete '%s' job due to a full queue",
             job->event.c_str()
@@ -355,10 +352,16 @@ void engine_t::process(ev::idle&, int) {
             io::raw<std::string>,
             int&
         > proxy(io::protect(slave_id), command);
-                
-        if(!m_bus.recv_multi(proxy)) {
-            m_processor.stop();
-            return;            
+        
+        {
+            io::scoped_option<io::options::receive_timeout> option(m_bus, 0);
+         
+            // Try to read the next RPC command from the bus in a
+            // non-blocking fashion. If it fails, break the loop.
+            if(!m_bus.recv_multi(proxy)) {
+                m_processor.stop();
+                return;            
+            }
         }
 
         pool_map_t::iterator master(m_pool.find(slave_id));
@@ -372,11 +375,10 @@ void engine_t::process(ev::idle&, int) {
             
             m_bus.drop();
 
-            // Try to kill it, just in case.
-            io::scoped_option<io::options::send_timeout> option(
-                m_bus,
-                0
-            );
+            io::scoped_option<io::options::send_timeout> option(m_bus, 0);
+
+            // Try to kill the unknown slave, just in case.
+            // FIXME: This doesn't work for some reason.
 
             m_bus.send(
                 slave_id,
@@ -408,10 +410,12 @@ void engine_t::process(ev::idle&, int) {
 
                 if(m_state == stopping && m_pool.empty()) {
                     // If it was the last slave, shut the engine down.
-                    shutdown();
+                    m_state = stopped;
+                    m_notification.send();
+                    return;
                 }
 
-                return;
+                continue;
 
             case rpc::chunk: {
                 // TEST: Ensure we have the actual chunk following.
@@ -422,7 +426,7 @@ void engine_t::process(ev::idle&, int) {
                 
                 master->second->process_event(events::chunk(message));
 
-                return;
+                continue;
             }
          
             case rpc::error: {
@@ -439,14 +443,11 @@ void engine_t::process(ev::idle&, int) {
 
                 if(code == server_error) {
                     m_log->error("the app seems to be broken - %s", message.c_str());
-                    
-                    if(m_state == running) {
-                        m_state = stopping;
-                        shutdown();
-                    }
+                    shutdown();
+                    return;
                 }
 
-                return;
+                continue;
             }
 
             case rpc::choke:
@@ -522,7 +523,7 @@ void engine_t::cleanup(ev::timer&, int) {
         );
     }
 
-    // NOTE: Looks like the exclusive lock is not needed here as we don't
+    // LOCK: Looks like the exclusive lock is not needed here as we don't
     // change the queue itself, but the jobs in it.
 
     typedef boost::filter_iterator<expired, job_queue_t::iterator> filter;
@@ -561,8 +562,9 @@ void engine_t::terminate(ev::timer&, int) {
 
     std::for_each(m_pool.begin(), m_pool.end(), terminator());
     m_pool.clear();
-    
-    shutdown();
+   
+    m_state = stopped;
+    m_notification.send();
 }
 
 // Asynchronous notification
@@ -572,11 +574,20 @@ void engine_t::notify(ev::async&, int) {
     // LOCK: Obtain an exclusive lock for state operations.
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
 
-    if(m_state == running) {
-        pump();
-    } else {
-        shutdown();
-    }
+    switch(m_state) {
+        case running:
+            pump();
+            break;
+        
+        case stopping:
+            m_termination_timer.set<engine_t, &engine_t::terminate>(this);
+            m_termination_timer.start(m_manifest.policy.termination_timeout);
+            break;
+
+        case stopped:
+            m_loop.unloop(ev::ALL);
+            break;
+    };
 }
 
 // Queue processing
@@ -593,6 +604,7 @@ void engine_t::pump() {
             );
 
             m_queue.pop_front();
+
             continue;
         }
             
@@ -641,8 +653,8 @@ void engine_t::pump() {
     }
 }
 
-// Engine shutdown
-// ---------------
+// Engine termination
+// ------------------
 
 void engine_t::shutdown() {
     if(!m_queue.empty()) {
@@ -657,7 +669,7 @@ void engine_t::shutdown() {
             m_queue.front()->process_event(
                 events::error(
                     resource_error,
-                    "engine is not active"
+                    "engine is shutting down"
                 )
             );
 
@@ -668,6 +680,10 @@ void engine_t::shutdown() {
     unsigned int pending = 0;
 
     // Send the termination event to active slaves.
+    // If there're no active slaves, the engine can terminate right away,
+    // otherwise, the engine should wait for the specified timeout for slaves
+    // to finish their jobs and then force the termination.
+
     for(pool_map_t::iterator it = m_pool.begin();
         it != m_pool.end();
         ++it)
@@ -682,15 +698,8 @@ void engine_t::shutdown() {
         }
     }
 
-    if(!pending) {
-        // Means there're no active slaves left.
-        m_state = stopped;
-        m_loop.unloop(ev::ALL);
-        m_log->info("stopped");
-    } else {
-        // Wait a bit for the slaves to finish their jobs.
-        m_termination_timer.set<engine_t, &engine_t::terminate>(this);
-        m_termination_timer.start(m_manifest.policy.termination_timeout);
+    if(pending) {
+        m_state = stopping;
         
         m_log->info(
             "waiting for %d %s to terminate, timeout: %.02f seconds",
@@ -698,6 +707,10 @@ void engine_t::shutdown() {
             pending == 1 ? "slave" : "slaves",
             m_manifest.policy.termination_timeout
         );
+    } else {
+        m_state = stopped;
     }
+
+    m_notification.send();
 }
 
