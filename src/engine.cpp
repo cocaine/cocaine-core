@@ -90,10 +90,6 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest):
     m_gc_timer.set<engine_t, &engine_t::cleanup>(this);
     m_gc_timer.start(5.0f, 5.0f);
 
-    // NOTE: Do not start this timeout right away, because
-    // it's only needed when the engine is shutting down.
-    m_termination_timer.set<engine_t, &engine_t::terminate>(this);
-
     m_notification.set<engine_t, &engine_t::notify>(this);
     m_notification.start();
 
@@ -326,7 +322,7 @@ void engine_t::enqueue(job_queue_t::const_reference job) {
             )
         );
     } else {
-        // Obtain an exclusive lock for queue operations.
+        // LOCK: Obtain an exclusive lock for queue operations.
         boost::upgrade_to_unique_lock<boost::shared_mutex> unique(lock);
 
         m_queue.push(job);
@@ -344,7 +340,7 @@ void engine_t::message(ev::io&, int) {
 }
 
 void engine_t::process(ev::idle&, int) {
-    // Obtain an upgradable lock to block pool and state changes.
+    // LOCK: Obtain an upgradable lock to block pool and state changes.
     boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
 
     // NOTE: Try to read RPC calls in bulk, where the maximum size
@@ -387,7 +383,7 @@ void engine_t::process(ev::idle&, int) {
                 io::packed<rpc::domain, rpc::terminate>()
             );
 
-            return;
+            continue;
         }
 
         m_log->debug(
@@ -396,7 +392,7 @@ void engine_t::process(ev::idle&, int) {
             slave_id.c_str()
         );
 
-        // Obtain an exclusive lock for pool operations.
+        // LOCK: Obtain an exclusive lock for pool operations.
         boost::upgrade_to_unique_lock<boost::shared_mutex> unique(lock);
 
         switch(command) {
@@ -496,7 +492,7 @@ namespace {
 }
 
 void engine_t::cleanup(ev::timer&, int) {
-    // Obtain a upgradable lock for pool observation.
+    // LOCK: Obtain an upgradable lock for pool observation.
     boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
     
     typedef std::vector<pool_map_t::key_type> corpse_list_t;
@@ -509,7 +505,7 @@ void engine_t::cleanup(ev::timer&, int) {
     }
 
     if(!corpses.empty()) {
-        // Obtain an exclusive lock for pool cleanup.
+        // LOCK: Obtain an exclusive lock for pool cleanup.
         boost::upgrade_to_unique_lock<boost::shared_mutex> upgrade(lock);
 
         for(corpse_list_t::iterator it = corpses.begin();
@@ -526,14 +522,15 @@ void engine_t::cleanup(ev::timer&, int) {
         );
     }
 
+    // NOTE: Looks like the exclusive lock is not needed here as we don't
+    // change the queue itself, but the jobs in it.
+
     typedef boost::filter_iterator<expired, job_queue_t::iterator> filter;
 
     // Process all the expired jobs.
     filter it(expired(m_loop.now()), m_queue.begin(), m_queue.end()),
            end(expired(m_loop.now()), m_queue.end(), m_queue.end());
 
-    // NOTE: Looks like the exclusive lock is not needed here as we don't
-    // change the queue itself, but the jobs in it.
     while(it != end) {
         (*it++)->process_event(
             events::error(
@@ -557,7 +554,7 @@ namespace {
 }
 
 void engine_t::terminate(ev::timer&, int) {
-    // Obtain an exclusive lock for pool, queue and state operations.
+    // LOCK: Obtain an exclusive lock for state operations.
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
 
     m_log->info("forcing engine termination");
@@ -572,7 +569,7 @@ void engine_t::terminate(ev::timer&, int) {
 // -------------------------
 
 void engine_t::notify(ev::async&, int) {
-    // Obtain an exclusive lock for pool, queue and state operations.
+    // LOCK: Obtain an exclusive lock for state operations.
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
 
     if(m_state == running) {
@@ -692,6 +689,7 @@ void engine_t::shutdown() {
         m_log->info("stopped");
     } else {
         // Wait a bit for the slaves to finish their jobs.
+        m_termination_timer.set<engine_t, &engine_t::terminate>(this);
         m_termination_timer.start(m_manifest.policy.termination_timeout);
         
         m_log->info(
