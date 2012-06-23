@@ -152,16 +152,19 @@ void server_t::request(ev::io&, int) {
 }
 
 void server_t::process(ev::idle&, int) {
-    if(!m_server.pending()) {
-        m_processor.stop();
-        return;
+    zmq::message_t message;
+    
+    {
+        io::scoped_option<io::options::receive_timeout> option(m_server, 0);
+        
+        if(!m_server.recv(&message)) {
+            m_processor.stop();
+            return;
+        }
     }
 
-    zmq::message_t message, signature;
     Json::Reader reader(Json::Features::strictMode());
     Json::Value root, response;
-
-    m_server.recv(&message);
 
     if(reader.parse(
         static_cast<const char*>(message.data()),
@@ -181,6 +184,8 @@ void server_t::process(ev::idle&, int) {
             }
   
             if(version == 3) {
+                zmq::message_t signature;
+
                 if(m_server.more()) {
                     m_server.recv(&signature);
                 }

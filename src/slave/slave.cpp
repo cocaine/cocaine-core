@@ -135,11 +135,9 @@ void slave_t::message(ev::io&, int) {
 }
 
 void slave_t::process(ev::idle&, int) {
-    if(!m_bus.pending()) {
-        m_processor.stop();
-        return;
-    }
-   
+    // TEST: Ensure that we haven't missed something in a previous iteration.
+    BOOST_ASSERT(!m_bus.more());
+    
     std::string source; 
     int command = 0;
 
@@ -147,8 +145,15 @@ void slave_t::process(ev::idle&, int) {
         io::raw<std::string>,
         int&
     > proxy(io::protect(source), command);
-    
-    m_bus.recv_multi(proxy);
+   
+    {
+        io::scoped_option<io::options::receive_timeout> option(m_bus, 0);
+
+        if(!m_bus.recv_multi(proxy)) {
+            m_processor.stop();
+            return;
+        }
+    }
 
     m_log->debug(
         "got type %d event from engine %s",
@@ -182,9 +187,6 @@ void slave_t::process(ev::idle&, int) {
             
             m_bus.drop();
     }
-
-    // TEST: Ensure that we haven't missed something.
-    BOOST_ASSERT(!m_bus.more());
 }
 
 void slave_t::check(ev::prepare&, int) {

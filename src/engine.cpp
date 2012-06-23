@@ -345,6 +345,9 @@ void engine_t::process(ev::idle&, int) {
     int counter = m_pool.size();
     
     do {
+        // TEST: Ensure that we haven't missed something in a previous iteration.
+        BOOST_ASSERT(!m_bus.more());
+    
         std::string slave_id;
         int command = 0;
         
@@ -581,7 +584,7 @@ void engine_t::notify(ev::async&, int) {
         
         case stopping:
             m_termination_timer.set<engine_t, &engine_t::terminate>(this);
-            m_termination_timer.start(m_manifest.policy.termination_timeout);
+            m_termination_timer.start(m_manifest.policy.termination_timeout); 
             break;
 
         case stopped:
@@ -700,7 +703,7 @@ void engine_t::shutdown() {
 
     if(pending) {
         m_state = stopping;
-        
+
         m_log->info(
             "waiting for %d %s to terminate, timeout: %.02f seconds",
             pending,
@@ -709,8 +712,8 @@ void engine_t::shutdown() {
         );
     } else {
         m_state = stopped;
-    }
-
+    }    
+    
     m_notification.send();
 }
 
