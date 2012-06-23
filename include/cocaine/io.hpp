@@ -44,8 +44,8 @@ using namespace boost::tuples;
 
 typedef std::vector<std::string> route_t;
 
-// A wrapper class to disable automatic type serialization.
-// --------------------------------------------------------
+// Raw message container
+// ---------------------
 
 template<class T>
 struct raw {
@@ -82,6 +82,9 @@ static inline raw<T>
 protect(T& object) {
     return raw<T>(object);
 }
+
+// ZeroMQ socket wrapper
+// ---------------------
 
 class socket_t: 
     public boost::noncopyable,
@@ -272,8 +275,8 @@ class socket_t:
         std::string m_endpoint;
 };
 
-// RAII socket options
-// -------------------
+// Socket options
+// --------------
 
 namespace options {
     struct receive_timeout {
@@ -313,8 +316,8 @@ class scoped_option {
         size_t size;
 };
 
-// RPC command tuple
-// -----------------
+// Tuple-based RPC command
+// -----------------------
 
 template<typename T, T Command> 
 struct packed:
@@ -340,12 +343,12 @@ class channel_t:
         // Sending
         // -------
 
-        template<typename T, T Command>
+        template<typename Domain, Domain Command>
         bool send(const std::string& route,
-                  const packed<T, Command>& command)
+                  const packed<Domain, Command>& command)
         {
             const bool multipart = boost::tuples::length<
-                typename packed<T, Command>::tuple_type
+                typename packed<Domain, Command>::tuple_type
             >::value;
 
             return send(protect(route), ZMQ_SNDMORE) &&
