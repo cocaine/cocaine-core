@@ -21,7 +21,7 @@
 #ifndef COCAINE_ENGINE_HPP
 #define COCAINE_ENGINE_HPP
 
-#include <boost/thread/mutex.hpp>
+#include <boost/thread/shared_mutex.hpp>
 #include <boost/thread/thread.hpp>
 #include <deque>
 
@@ -214,7 +214,7 @@ class engine_t:
   
         // Threading.
         std::auto_ptr<boost::thread> m_thread;
-        mutable boost::mutex m_mutex;
+        mutable boost::shared_mutex m_mutex;
 
 #ifdef HAVE_CGROUPS
         // Control group to put the slaves into.

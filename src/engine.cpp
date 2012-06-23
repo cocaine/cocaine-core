@@ -204,12 +204,16 @@ engine_t::~engine_t() {
 
 void engine_t::start() {
     {
-        boost::lock_guard<boost::mutex> lock(m_mutex);
+        // Obtain a shared lock to block state changes.
+        boost::shared_lock<boost::shared_mutex> lock(m_mutex);
         
         if(m_state != stopped) {
             return;
         }
         
+        // Obtain an exclusive lock for state operations.
+        lock.lock();
+
         m_state = running;
     }
 
@@ -228,10 +232,14 @@ void engine_t::start() {
 
 void engine_t::stop() {
     {
-        boost::lock_guard<boost::mutex> lock(m_mutex);
+        // Obtain a shared lock to block state changes.
+        boost::shared_lock<boost::shared_mutex> lock(m_mutex);
 
         if(m_state == running) {
             m_log->info("stopping");
+
+            // Obtain an exclusive lock for state operations.
+            lock.lock();
 
             m_state = stopping;
             
@@ -259,21 +267,20 @@ namespace {
 Json::Value engine_t::info() const {
     Json::Value results(Json::objectValue);
 
+    // Obtain a shared lock to block state changes.
+    boost::shared_lock<boost::shared_mutex> lock(m_mutex);
+
     if(m_state == running) {
         results["queue-depth"] = static_cast<Json::UInt>(m_queue.size());
         results["slaves"]["total"] = static_cast<Json::UInt>(m_pool.size());
         
-        {
-            boost::lock_guard<boost::mutex> lock(m_mutex);
-
-            results["slaves"]["busy"] = static_cast<Json::UInt>(
-                std::count_if(
-                    m_pool.begin(),
-                    m_pool.end(),
-                    select::state<slave::busy>()
-                )
-            );
-        }
+        results["slaves"]["busy"] = static_cast<Json::UInt>(
+            std::count_if(
+                m_pool.begin(),
+                m_pool.end(),
+                select::state<slave::busy>()
+            )
+        );
     }
     
     results["state"] = names[m_state];
@@ -285,7 +292,8 @@ Json::Value engine_t::info() const {
 // --------------
 
 void engine_t::enqueue(job_queue_t::const_reference job) {
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    // Obtain a shared lock to block state changes.
+    boost::shared_lock<boost::shared_mutex> lock(m_mutex);
     
     if(m_state != running) {
         m_log->debug(
@@ -302,6 +310,9 @@ void engine_t::enqueue(job_queue_t::const_reference job) {
 
         return;
     }
+
+    // Obtain an exclusive lock for queue operations.
+    lock.lock();
 
     if(m_queue.size() >= m_manifest.policy.queue_limit) {
         m_log->debug(
@@ -334,11 +345,6 @@ void engine_t::process(ev::idle&, int) {
     int counter = defaults::io_bulk_size;
     
     do {
-        if(!m_bus.pending()) {
-            m_processor.stop();
-            return;
-        }
-
         std::string slave_id;
         int command = 0;
         
@@ -347,7 +353,13 @@ void engine_t::process(ev::idle&, int) {
             int&
         > proxy(io::protect(slave_id), command);
                 
-        m_bus.recv_multi(proxy);
+        if(!m_bus.recv_multi(proxy)) {
+            m_processor.stop();
+            return;            
+        }
+
+        // Obtain a shared lock to block pool changes.
+        boost::shared_lock<boost::shared_mutex> lock(m_mutex);
 
         pool_map_t::iterator master(m_pool.find(slave_id));
 
@@ -380,80 +392,79 @@ void engine_t::process(ev::idle&, int) {
             slave_id.c_str()
         );
 
-        {
-            boost::lock_guard<boost::mutex> lock(m_mutex);
+        // Obtain an exclusive lock for pool operations.
+        lock.lock();
 
-            switch(command) {
-                case rpc::heartbeat:
-                    master->second->process_event(events::heartbeat());
-                    break;
+        switch(command) {
+            case rpc::heartbeat:
+                master->second->process_event(events::heartbeat());
+                break;
 
-                case rpc::terminate:
-                    master->second->process_event(events::terminate());
+            case rpc::terminate:
+                master->second->process_event(events::terminate());
 
-                    // Remove the dead slave from the pool.
-                    m_pool.erase(master);
+                // Remove the dead slave from the pool.
+                m_pool.erase(master);
 
-                    if(m_state == stopping && m_pool.empty()) {
-                        // If it was the last slave, shut the engine down.
+                if(m_state == stopping && m_pool.empty()) {
+                    // If it was the last slave, shut the engine down.
+                    shutdown();
+                }
+
+                return;
+
+            case rpc::chunk: {
+                // TEST: Ensure we have the actual chunk following.
+                BOOST_ASSERT(m_bus.more());
+
+                zmq::message_t message;
+                m_bus.recv(&message);
+                
+                master->second->process_event(events::chunk(message));
+
+                return;
+            }
+         
+            case rpc::error: {
+                // TEST: Ensure that we have the actual error following.
+                BOOST_ASSERT(m_bus.more());
+
+                int code = 0;
+                std::string message;
+                boost::tuple<int&, std::string&> proxy(code, message);
+
+                m_bus.recv_multi(proxy);
+
+                master->second->process_event(events::error(code, message));
+
+                if(code == dealer::server_error) {
+                    m_log->error("the app seems to be broken - %s", message.c_str());
+                    
+                    if(m_state == running) {
+                        m_state = stopping;
                         shutdown();
                     }
-
-                    return;
-
-                case rpc::chunk: {
-                    // TEST: Ensure we have the actual chunk following.
-                    BOOST_ASSERT(m_bus.more());
-
-                    zmq::message_t message;
-                    m_bus.recv(&message);
-                    
-                    master->second->process_event(events::chunk(message));
-
-                    return;
-                }
-             
-                case rpc::error: {
-                    // TEST: Ensure that we have the actual error following.
-                    BOOST_ASSERT(m_bus.more());
-
-                    int code = 0;
-                    std::string message;
-                    boost::tuple<int&, std::string&> proxy(code, message);
-
-                    m_bus.recv_multi(proxy);
-
-                    master->second->process_event(events::error(code, message));
-
-                    if(code == dealer::server_error) {
-                        m_log->error("the app seems to be broken - %s", message.c_str());
-                        
-                        if(m_state == running) {
-                            m_state = stopping;
-                            shutdown();
-                        }
-                    }
-
-                    return;
                 }
 
-                case rpc::choke:
-                    master->second->process_event(events::choke());
-                    break;
-
-                default:
-                    m_log->warning(
-                        "dropping unknown event type %d from slave %s",
-                        command,
-                        slave_id.c_str()
-                    );
-
-                    m_bus.drop();
+                return;
             }
 
-            if(master->second->state_downcast<const slave::idle*>()) {
-                pump();
-            }
+            case rpc::choke:
+                master->second->process_event(events::choke());
+                break;
+
+            default:
+                m_log->warning(
+                    "dropping unknown event type %d from slave %s",
+                    command,
+                    slave_id.c_str()
+                );
+
+                m_bus.drop();
+        }
+
+        if(master->second->state_downcast<const slave::idle*>()) {
+            pump();
         }
     } while(--counter);
 }
@@ -481,7 +492,8 @@ namespace {
 }
 
 void engine_t::cleanup(ev::timer&, int) {
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    // Obtain a shared lock for pool observation.
+    boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
     
     typedef std::vector<pool_map_t::key_type> corpse_list_t;
     corpse_list_t corpses;
@@ -493,6 +505,9 @@ void engine_t::cleanup(ev::timer&, int) {
     }
 
     if(!corpses.empty()) {
+        // Obtain an exclusive lock for pool cleanup.
+        boost::upgrade_to_unique_lock<boost::shared_mutex> upgrade(lock);
+
         for(corpse_list_t::iterator it = corpses.begin();
             it != corpses.end();
             ++it)
@@ -513,6 +528,8 @@ void engine_t::cleanup(ev::timer&, int) {
     filter it(expired(m_loop.now()), m_queue.begin(), m_queue.end()),
            end(expired(m_loop.now()), m_queue.end(), m_queue.end());
 
+    // NOTE: Looks like the exclusive lock is not needed here as we don't
+    // change the queue itself, but the jobs in it.
     while(it != end) {
         (*it++)->process_event(
             events::error(
@@ -536,7 +553,8 @@ namespace {
 }
 
 void engine_t::terminate(ev::timer&, int) {
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    // Obtain an exclusive lock for pool, queue and state operations.
+    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
 
     m_log->info("forcing engine termination");
 
@@ -550,7 +568,8 @@ void engine_t::terminate(ev::timer&, int) {
 // -------------------------
 
 void engine_t::notify(ev::async&, int) {
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    // Obtain an exclusive lock for pool, queue and state operations.
+    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
 
     if(m_state == running) {
         pump();
