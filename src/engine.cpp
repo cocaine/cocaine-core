@@ -47,7 +47,7 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest):
     m_context(context),
     m_log(context.log(
         (boost::format("app/%1%")
-            % manifest_.name
+            % manifest.name
         ).str()
     )),
     m_state(stopped),
@@ -178,7 +178,7 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest):
 
 engine_t::~engine_t() {
     {
-        // Obtain a shared lock to block state changes.
+        // LOCK: Obtain a shared lock to block state changes.
         boost::shared_lock<boost::shared_mutex> lock(m_mutex);
         BOOST_VERIFY(m_state == stopped);
     }
@@ -187,7 +187,7 @@ engine_t::~engine_t() {
     if(m_cgroup) {
         int rv = 0;
 
-        // XXX: Sometimes there're still slaves terminating at this point,
+        // FIXME: Sometimes there're still slaves terminating at this point,
         // so control group deletion fails with "Device or resource busy".
         if((rv = cgroup_delete_cgroup(m_cgroup, false)) != 0) {
             m_log->error(
@@ -206,16 +206,15 @@ engine_t::~engine_t() {
 
 void engine_t::start() {
     {
-        // Obtain a shared lock to block state changes.
+        // LOCK: Obtain an upgradable lock to block state changes.
         boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
         
         if(m_state != stopped) {
-            m_log->warning("attempting to start an already started engine");
             return;
         }
         
-        // Obtain an exclusive lock for state operations.
-        
+        // LOCK: Obtain an exclusive lock for state operations.
+        boost::upgrade_to_unique_lock<boost::shared_mutex> unique(lock);
 
         m_state = running;
     }
@@ -235,14 +234,14 @@ void engine_t::start() {
 
 void engine_t::stop() {
     {
-        // Obtain a shared lock to block state changes.
-        boost::shared_lock<boost::shared_mutex> lock(m_mutex);
+        // LOCK: Obtain an upgradable lock to block state changes.
+        boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
 
         if(m_state == running) {
             m_log->info("stopping");
 
-            // Obtain an exclusive lock for state operations.
-            lock.lock();
+            // LOCK: Obtain an exclusive lock for state operations.
+            boost::upgrade_to_unique_lock<boost::shared_mutex> unique(lock);
 
             m_state = stopping;
             
@@ -261,7 +260,7 @@ void engine_t::stop() {
 }
 
 namespace {
-    std::map<int, std::string> names = boost::assign::map_list_of
+    static std::map<int, std::string> state_names = boost::assign::map_list_of
         (0, "running")
         (1, "stopping")
         (2, "stopped");
@@ -270,7 +269,7 @@ namespace {
 Json::Value engine_t::info() const {
     Json::Value results(Json::objectValue);
 
-    // Obtain a shared lock to block state changes.
+    // LOCK: Obtain a shared lock to block state changes.
     boost::shared_lock<boost::shared_mutex> lock(m_mutex);
 
     if(m_state == running) {
@@ -286,7 +285,7 @@ Json::Value engine_t::info() const {
         );
     }
     
-    results["state"] = names[m_state];
+    results["state"] = state_names[m_state];
 
     return results;
 }
@@ -295,8 +294,8 @@ Json::Value engine_t::info() const {
 // --------------
 
 void engine_t::enqueue(job_queue_t::const_reference job) {
-    // Obtain a shared lock to block state changes.
-    boost::shared_lock<boost::shared_mutex> lock(m_mutex);
+    // LOCK: Obtain an upgradable lock to block state changes.
+    boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
     
     if(m_state != running) {
         m_log->debug(
@@ -314,10 +313,7 @@ void engine_t::enqueue(job_queue_t::const_reference job) {
         return;
     }
 
-    // Obtain an exclusive lock for queue operations.
-    lock.lock();
-
-    if(m_queue.size() >= m_manifest.policy.queue_limit) {
+    if(m_queue.size() < m_manifest.policy.queue_limit) {
         m_log->debug(
             "dropping an incomplete '%s' job due to a full queue",
             job->event.c_str()
@@ -330,6 +326,9 @@ void engine_t::enqueue(job_queue_t::const_reference job) {
             )
         );
     } else {
+        // Obtain an exclusive lock for queue operations.
+        boost::upgrade_to_unique_lock<boost::shared_mutex> unique(lock);
+
         m_queue.push(job);
         m_notification.send();
     }
@@ -361,8 +360,8 @@ void engine_t::process(ev::idle&, int) {
             return;            
         }
 
-        // Obtain a shared lock to block pool changes.
-        boost::shared_lock<boost::shared_mutex> lock(m_mutex);
+        // Obtain a upgradable lock to block pool changes.
+        boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
 
         pool_map_t::iterator master(m_pool.find(slave_id));
 
@@ -396,7 +395,7 @@ void engine_t::process(ev::idle&, int) {
         );
 
         // Obtain an exclusive lock for pool operations.
-        lock.lock();
+        boost::upgrade_to_unique_lock<boost::shared_mutex> unique(lock);
 
         switch(command) {
             case rpc::heartbeat:
@@ -495,7 +494,7 @@ namespace {
 }
 
 void engine_t::cleanup(ev::timer&, int) {
-    // Obtain a shared lock for pool observation.
+    // Obtain a upgradable lock for pool observation.
     boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
     
     typedef std::vector<pool_map_t::key_type> corpse_list_t;
