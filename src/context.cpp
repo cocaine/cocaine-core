@@ -164,7 +164,7 @@ context_t::context_t(config_t config_, boost::shared_ptr<logging::sink_t> sink):
 }
 
 context_t::~context_t() {
-    BOOST_ASSERT(io::socket_t::objects_alive == 0);
+    BOOST_ASSERT(io::socket_t::objects_alive() == 0);
 }
 
 boost::shared_ptr<logging::logger_t>
