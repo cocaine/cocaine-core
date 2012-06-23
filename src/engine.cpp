@@ -43,7 +43,7 @@ void job_queue_t::push(const_reference job) {
     }
 }
 
-engine_t::engine_t(context_t& context, const manifest_t& manifest_):
+engine_t::engine_t(context_t& context, const manifest_t& manifest):
     m_context(context),
     m_log(context.log(
         (boost::format("app/%1%")
@@ -51,14 +51,14 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest_):
         ).str()
     )),
     m_state(stopped),
-    m_manifest(manifest_),
+    m_manifest(manifest),
     m_watcher(m_loop),
     m_processor(m_loop),
     m_check(m_loop),
     m_gc_timer(m_loop),
     m_termination_timer(m_loop),
     m_notification(m_loop),
-    m_bus(context.io(), manifest_.name),
+    m_bus(context.io(), m_manifest.name),
     m_thread(NULL)
 #ifdef HAVE_CGROUPS
     , m_cgroup(NULL)
@@ -177,7 +177,11 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest_):
 }
 
 engine_t::~engine_t() {
-    BOOST_ASSERT(m_state == stopped);
+    {
+        // Obtain a shared lock to block state changes.
+        boost::shared_lock<boost::shared_mutex> lock(m_mutex);
+        BOOST_VERIFY(m_state == stopped);
+    }
 
 #ifdef HAVE_CGROUPS
     if(m_cgroup) {
@@ -203,14 +207,15 @@ engine_t::~engine_t() {
 void engine_t::start() {
     {
         // Obtain a shared lock to block state changes.
-        boost::shared_lock<boost::shared_mutex> lock(m_mutex);
+        boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
         
         if(m_state != stopped) {
+            m_log->warning("attempting to start an already started engine");
             return;
         }
         
         // Obtain an exclusive lock for state operations.
-        lock.lock();
+        
 
         m_state = running;
     }
