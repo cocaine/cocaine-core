@@ -344,7 +344,12 @@ void engine_t::message(ev::io&, int) {
 }
 
 void engine_t::process(ev::idle&, int) {
-    int counter = defaults::io_bulk_size;
+    // Obtain an upgradable lock to block pool and state changes.
+    boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
+
+    // NOTE: Try to read RPC calls in bulk, where the maximum size
+    // of the bulk is equal to the number of spawned slaves.
+    int counter = m_pool.size();
     
     do {
         std::string slave_id;
@@ -359,9 +364,6 @@ void engine_t::process(ev::idle&, int) {
             m_processor.stop();
             return;            
         }
-
-        // Obtain a upgradable lock to block pool changes.
-        boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
 
         pool_map_t::iterator master(m_pool.find(slave_id));
 
