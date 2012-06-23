@@ -167,7 +167,7 @@ context_t::~context_t() {
     BOOST_ASSERT(io::socket_t::objects_alive == 0);
 }
 
-const boost::shared_ptr<logging::logger_t>&
+boost::shared_ptr<logging::logger_t>
 context_t::log(const std::string& name) {
     boost::lock_guard<boost::mutex> lock(m_mutex);
 
