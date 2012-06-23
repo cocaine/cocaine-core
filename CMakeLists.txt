@@ -5,8 +5,6 @@ SET(COCAINE_VERSION 0.8)
 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-OPTION(DEALER "Build Dealer library" ON)
-
 CONFIGURE_FILE(
     "${PROJECT_SOURCE_DIR}/config.hpp.in"
     "${PROJECT_SOURCE_DIR}/include/cocaine/config.hpp")
@@ -18,7 +16,6 @@ FIND_PACKAGE(Boost 1.40.0 REQUIRED
         thread)
 
 FIND_PACKAGE(OpenSSL REQUIRED)
-FIND_PACKAGE(CURL REQUIRED)
 
 INCLUDE(cmake/locate_library.cmake)
 
@@ -79,7 +76,6 @@ TARGET_LINK_LIBRARIES(cocaine-common
     json
     ltdl
     msgpack
-    ${LIBUUID_LIBRARY}
     zmq)
 
 SET_TARGET_PROPERTIES(cocaine-common PROPERTIES
@@ -98,7 +94,8 @@ TARGET_LINK_LIBRARIES(cocaine-core
     archive
     ${LIBCGROUP_LIBRARY}
     cocaine-common
-    ev)
+    ev
+    ${LIBUUID_LIBRARY})
 
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     VERSION 1)
@@ -118,46 +115,6 @@ TARGET_LINK_LIBRARIES(cocaine-slave
 TARGET_LINK_LIBRARIES(cocained
     boost_program_options-mt
     cocaine-core)
-
-IF(DEALER)
-    FILE(GLOB DEALER_SOURCES
-        "src/dealer/*.cpp")
-
-    ADD_LIBRARY(cocaine-dealer SHARED
-        ${DEALER_SOURCES})
-
-    TARGET_LINK_LIBRARIES(cocaine-dealer
-        boost_thread-mt
-        crypto
-        curl
-        json
-        msgpack
-        zmq
-        eblob_cpp
-        eblob
-        boost_system-mt
-        ${LIBUUID_LIBRARY})
-
-    SET_TARGET_PROPERTIES(cocaine-dealer PROPERTIES
-        VERSION 1)
-
-    ADD_EXECUTABLE(dealer_test_app
-        tests/dealer_test_app.cpp)
-
-    TARGET_LINK_LIBRARIES(dealer_test_app
-        boost_program_options-mt
-        cocaine-dealer
-        boost_filesystem-mt
-        zmq)
-
-    INSTALL(
-        TARGETS
-            cocaine-dealer
-        RUNTIME DESTINATION bin COMPONENT runtime
-        LIBRARY DESTINATION lib COMPONENT runtime
-        ARCHIVE DESTINATION lib COMPONENT developement)
-
-ENDIF()
 
 ADD_SUBDIRECTORY(tools)
 
