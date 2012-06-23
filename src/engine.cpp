@@ -31,8 +31,6 @@
 #include "cocaine/manifest.hpp"
 #include "cocaine/rpc.hpp"
 
-#include "cocaine/dealer/types.hpp"
-
 using namespace cocaine::engine;
 
 void job_queue_t::push(const_reference job) {
@@ -303,7 +301,7 @@ void engine_t::enqueue(job_queue_t::const_reference job) {
 
         job->process_event(
             events::error(
-                dealer::resource_error,
+                resource_error,
                 "engine is not active"
             )
         );
@@ -322,7 +320,7 @@ void engine_t::enqueue(job_queue_t::const_reference job) {
 
         job->process_event(
             events::error(
-                dealer::resource_error,
+                resource_error,
                 "the queue is full"
             )
         );
@@ -437,7 +435,7 @@ void engine_t::process(ev::idle&, int) {
 
                 master->second->process_event(events::error(code, message));
 
-                if(code == dealer::server_error) {
+                if(code == server_error) {
                     m_log->error("the app seems to be broken - %s", message.c_str());
                     
                     if(m_state == running) {
@@ -533,7 +531,7 @@ void engine_t::cleanup(ev::timer&, int) {
     while(it != end) {
         (*it++)->process_event(
             events::error(
-                dealer::deadline_error,
+                deadline_error,
                 "the job has expired"
             )
         );
@@ -655,7 +653,7 @@ void engine_t::shutdown() {
         while(!m_queue.empty()) {
             m_queue.front()->process_event(
                 events::error(
-                    dealer::resource_error,
+                    resource_error,
                     "engine is not active"
                 )
             );

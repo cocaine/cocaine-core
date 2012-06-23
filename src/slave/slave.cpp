@@ -27,8 +27,6 @@
 #include "cocaine/manifest.hpp"
 #include "cocaine/rpc.hpp"
 
-#include "cocaine/dealer/types.hpp"
-
 using namespace cocaine;
 using namespace cocaine::engine;
 
@@ -87,20 +85,20 @@ void slave_t::configure() {
             category_traits<sandbox_t>::args_type(*m_manifest)
         );
     } catch(const configuration_error_t& e) {
-        io::packed<rpc::domain, rpc::error> command(dealer::server_error, e.what());
+        io::packed<rpc::domain, rpc::error> command(server_error, e.what());
         m_bus.send(m_app, command);
         terminate();
     } catch(const repository_error_t& e) {
-        io::packed<rpc::domain, rpc::error> command(dealer::server_error, e.what());
+        io::packed<rpc::domain, rpc::error> command(server_error, e.what());
         m_bus.send(m_app, command);
         terminate();
     } catch(const unrecoverable_error_t& e) {
-        io::packed<rpc::domain, rpc::error> command(dealer::server_error, e.what());
+        io::packed<rpc::domain, rpc::error> command(server_error, e.what());
         m_bus.send(m_app, command);
         terminate();
     } catch(...) {
         io::packed<rpc::domain, rpc::error> command(
-            dealer::server_error,
+            server_error,
             "unexpected exception while configuring the slave"
         );
         
@@ -212,17 +210,17 @@ void slave_t::invoke(const std::string& event) {
     try {
         m_sandbox->invoke(event, *this);
     } catch(const recoverable_error_t& e) {
-        io::packed<rpc::domain, rpc::error> command(dealer::app_error, e.what());
+        io::packed<rpc::domain, rpc::error> command(app_error, e.what());
         m_bus.send(m_app, command);
     } catch(const unrecoverable_error_t& e) {
-        io::packed<rpc::domain, rpc::error> command(dealer::server_error, e.what());
+        io::packed<rpc::domain, rpc::error> command(server_error, e.what());
         m_bus.send(m_app, command);
     } catch(const std::exception& e) {
-        io::packed<rpc::domain, rpc::error> command(dealer::app_error, e.what());
+        io::packed<rpc::domain, rpc::error> command(app_error, e.what());
         m_bus.send(m_app, command);
     } catch(...) {
         io::packed<rpc::domain, rpc::error> command(
-            dealer::server_error,
+            server_error,
             "unexpected exception while processing an event"
         );
         

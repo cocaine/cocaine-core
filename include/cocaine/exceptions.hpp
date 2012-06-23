@@ -27,6 +27,16 @@
 
 namespace cocaine {
 
+enum error_code {
+    request_error   = 400,
+    location_error  = 404,
+    server_error    = 500,
+    app_error       = 502,
+    resource_error  = 503,
+    timeout_error   = 504,
+    deadline_error  = 520
+};
+
 struct authorization_error_t:
     public std::runtime_error
 {

@@ -31,8 +31,6 @@
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
 
-#include "cocaine/dealer/types.hpp"
-
 using namespace cocaine::engine;
 using namespace cocaine::engine::slave;
 
@@ -220,7 +218,7 @@ void master_t::on_timeout(ev::timer&, int) {
 
         state->job()->process_event(
             events::error(
-                dealer::timeout_error, 
+                timeout_error, 
                 "the job has timed out"
             )
         );
