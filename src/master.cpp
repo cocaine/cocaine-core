@@ -255,17 +255,6 @@ void alive::on_choke(const events::choke& event) {
     job.reset();
 }
 
-alive::~alive() {
-    if(job && !job->state_downcast<const job::complete*>()) {
-        context<master_t>().m_log->warning(
-            "trying to reschedule an incomplete '%s' job",
-            job->event.c_str()
-        );
-
-        context<master_t>().m_engine.enqueue(job);
-    }
-}
-
 void busy::on_chunk(const events::chunk& event) {
     job()->process_event(event);
     post_event(events::heartbeat());

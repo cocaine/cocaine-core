@@ -109,8 +109,6 @@ struct alive:
     void on_invoke(const events::invoke& event);
     void on_choke(const events::choke& event);
 
-    ~alive();
-
     typedef boost::mpl::list<
         sc::in_state_reaction<events::heartbeat, master_t, &master_t::on_heartbeat>,
         sc::transition<events::terminate, dead, master_t, &master_t::on_terminate>

@@ -406,6 +406,11 @@ void engine_t::process(ev::idle&, int) {
                 break;
 
             case rpc::terminate:
+                if(master->second->state_downcast<const slave::busy*>()) {
+                    // NOTE: Reschedule an incomplete job.
+                    m_queue.push(master->second->state_downcast<const slave::alive*>()->job);
+                }
+
                 master->second->process_event(events::terminate());
 
                 // Remove the dead slave from the pool.
