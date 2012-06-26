@@ -563,8 +563,8 @@ void engine_t::terminate(ev::timer&, int) {
 
     m_log->info("forcing engine termination");
 
+    // Force slave termination.
     std::for_each(m_pool.begin(), m_pool.end(), terminator());
-    m_pool.clear();
    
     m_state = stopped;
     m_notification.send();

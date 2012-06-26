@@ -187,12 +187,12 @@ class engine_t:
         // Job queue.
         job_queue_t m_queue;
 
-        // Slave pool.
-        pool_map_t m_pool;
-        
         // Event loop.
         ev::dynamic_loop m_loop;
 
+        // Slave pool.
+        pool_map_t m_pool;
+        
         // Slave I/O watchers.
         ev::io m_watcher;
         ev::idle m_processor;
