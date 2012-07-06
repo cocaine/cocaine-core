@@ -36,6 +36,7 @@ struct manifest_t {
                 path;
 
     struct {
+        float startup_timeout;
         float heartbeat_timeout;
         float idle_timeout;
         float termination_timeout;

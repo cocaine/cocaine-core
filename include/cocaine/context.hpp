@@ -32,6 +32,7 @@ namespace cocaine {
 
 struct defaults {
     // Default engine policy.
+    static const float startup_timeout;
     static const float heartbeat_timeout;
     static const float idle_timeout;
     static const float termination_timeout;

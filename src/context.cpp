@@ -34,6 +34,7 @@ using namespace cocaine::storages;
 
 namespace fs = boost::filesystem;
 
+const float defaults::startup_timeout = 10.0f;
 const float defaults::heartbeat_timeout = 30.0f;
 const float defaults::idle_timeout = 600.0f;
 const float defaults::termination_timeout = 5.0f;
