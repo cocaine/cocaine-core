@@ -98,6 +98,7 @@ class blob_t {
 
             if(--*m_ref_counter == 0) {
                 delete[] m_data;
+                m_ref_counter.reset();
             }
 
             m_data = NULL;
