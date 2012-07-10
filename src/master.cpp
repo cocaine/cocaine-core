@@ -44,11 +44,12 @@ master_t::master_t(context_t& context, engine_t& engine):
     m_engine(engine),
     m_heartbeat_timer(m_engine.loop())
 {
-    // NOTE: These are the 10 seconds for the slave to come alive.
-    m_heartbeat_timer.set<master_t, &master_t::on_timeout>(this);
-    m_heartbeat_timer.start(10.0f);
-
     initiate();
+    
+    // NOTE: Initialization heartbeat can be different.
+    m_heartbeat_timer.set<master_t, &master_t::on_timeout>(this);
+    m_heartbeat_timer.start(m_engine.manifest().policy.startup_timeout);
+
     spawn();
 }
 

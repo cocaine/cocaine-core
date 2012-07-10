@@ -23,17 +23,21 @@
 
 #include "json/json.h"
 
-namespace cocaine { namespace helpers {
+namespace cocaine { namespace helpers { namespace json {
 
 template<class T>
-inline Json::Value make_json(const std::string& key,
-							 const T& value)
+inline Json::Value build(const std::string& key,
+                         const T& value)
 {
     Json::Value object(Json::objectValue);
     object[key] = value;
     return object;
 }
 
-}}
+inline std::string serialize(const Json::Value& json) {
+    return Json::FastWriter().write(json);
+}
+
+}}}
 
 #endif

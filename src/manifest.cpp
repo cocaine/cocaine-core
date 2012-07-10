@@ -54,6 +54,15 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
     type = root["type"].asString();
 
     // Setup the engine policies.
+    policy.startup_timeout = root["engine"].get(
+        "startup-timeout",
+        defaults::startup_timeout
+    ).asDouble();
+
+    if(policy.startup_timeout <= 0.0f) {
+        throw configuration_error_t("slave startup timeout must be positive");
+    }
+    
     policy.heartbeat_timeout = root["engine"].get(
         "heartbeat-timeout",
         defaults::heartbeat_timeout
