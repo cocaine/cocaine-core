@@ -538,6 +538,20 @@ void engine_t::cleanup(ev::timer&, int) {
 // Forced engine termination
 // -------------------------
 
+void engine_t::terminate(ev::timer&, int) {
+    // LOCK: Obtain an exclusive lock for state operations.
+    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+
+    m_log->info("forcing engine termination");
+
+    // Force slave termination.
+    m_state = stopped;
+    m_notification.send();
+}
+
+// Asynchronous notification
+// -------------------------
+
 namespace {
     struct terminator {
         template<class T>
@@ -546,22 +560,6 @@ namespace {
         }
     };
 }
-
-void engine_t::terminate(ev::timer&, int) {
-    // LOCK: Obtain an exclusive lock for state operations.
-    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
-
-    m_log->info("forcing engine termination");
-
-    // Force slave termination.
-    std::for_each(m_pool.begin(), m_pool.end(), terminator());
-   
-    m_state = stopped;
-    m_notification.send();
-}
-
-// Asynchronous notification
-// -------------------------
 
 void engine_t::notify(ev::async&, int) {
     // LOCK: Obtain an exclusive lock for state operations.
@@ -578,6 +576,7 @@ void engine_t::notify(ev::async&, int) {
             break;
 
         case stopped:
+            std::for_each(m_pool.begin(), m_pool.end(), terminator());
             m_loop.unloop(ev::ALL);
             break;
     };
@@ -695,7 +694,7 @@ void engine_t::shutdown() {
         m_state = stopping;
 
         m_log->info(
-            "waiting for %d %s to terminate, timeout: %.02f seconds",
+            "waiting for %d active %s to terminate, timeout: %.02f seconds",
             pending,
             pending == 1 ? "slave" : "slaves",
             m_manifest.policy.termination_timeout

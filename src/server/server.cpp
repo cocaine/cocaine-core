@@ -31,13 +31,15 @@
 
 using namespace cocaine;
 using namespace cocaine::storages;
+using namespace cocaine::helpers;
 
 server_t::server_t(context_t& context, server_config_t config):
     m_context(context),
     m_log(m_context.log("core")),
     m_server(m_context.io(), ZMQ_REP, m_context.config.runtime.hostname),
     m_auth(m_context),
-    m_birthstamp(m_loop.now())
+    m_birthstamp(m_loop.now()),
+    m_infostamp(0.0f)
 {
     int minor, major, patch;
     zmq_version(&major, &minor, &patch);
@@ -164,7 +166,8 @@ void server_t::process(ev::idle&, int) {
     }
 
     Json::Reader reader(Json::Features::strictMode());
-    Json::Value root, response;
+    Json::Value root;
+    std::string response;
 
     if(reader.parse(
         static_cast<const char*>(message.data()),
@@ -177,7 +180,6 @@ void server_t::process(ev::idle&, int) {
             }
 
             unsigned int version = root["version"].asUInt();
-            std::string username(root["username"].asString());
             
             if(version < 2 || version > 3) {
                 throw configuration_error_t("unsupported protocol version");
@@ -190,6 +192,8 @@ void server_t::process(ev::idle&, int) {
                     m_server.recv(&signature);
                 }
 
+                std::string username(root["username"].asString());
+                
                 if(!username.empty()) {
                     m_auth.verify(
                         blob_t(message.data(), message.size()),
@@ -203,22 +207,23 @@ void server_t::process(ev::idle&, int) {
 
             response = dispatch(root);
         } catch(const authorization_error_t& e) {
-            response = helpers::make_json("error", e.what());
+            response = json::serialize(json::build("error", e.what()));
         } catch(const configuration_error_t& e) {
-            response = helpers::make_json("error", e.what());
+            response = json::serialize(json::build("error", e.what()));
         } catch(const storage_error_t& e) {
-            response = helpers::make_json("error", e.what());
+            response = json::serialize(json::build("error", e.what()));
         } catch(...) {
-            response = helpers::make_json("error", "unexpected exception");
+            response = json::serialize(json::build("error", "unexpected exception"));
         }
     } else {
-        response = helpers::make_json("error", reader.getFormatedErrorMessages());
+        response = json::serialize(
+            json::build("error", reader.getFormattedErrorMessages())
+        );
     }
 
     // Serialize and send the response.
-    std::string json(Json::FastWriter().write(response));
-    message.rebuild(json.size());
-    memcpy(message.data(), json.data(), json.size());
+    message.rebuild(response.size());
+    memcpy(message.data(), response.data(), response.size());
 
     // Send in non-blocking mode in case the client has disconnected.
     m_server.send(message, ZMQ_NOBLOCK);
@@ -228,7 +233,7 @@ void server_t::check(ev::prepare&, int) {
     request(m_watcher, ev::READ);
 }
 
-Json::Value server_t::dispatch(const Json::Value& root) {
+std::string server_t::dispatch(const Json::Value& root) {
     std::string action(root["action"].asString());
 
     if(action == "create" || action == "delete") {
@@ -255,9 +260,14 @@ Json::Value server_t::dispatch(const Json::Value& root) {
             }
         }
 
-        return result;
+        return json::serialize(result);
     } else if(action == "info") {
-        return info();
+        if(m_loop.now() >= (m_infostamp + 5.0f)) {
+            m_infostamp = m_loop.now();
+            m_infocache = json::serialize(info());
+        }
+
+        return m_infocache;
     } else {
         throw configuration_error_t("unsupported action");
     }

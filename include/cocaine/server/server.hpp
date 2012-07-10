@@ -51,23 +51,27 @@ class server_t:
 
         void run();
 
-        Json::Value create_app(const std::string& name);
-        Json::Value delete_app(const std::string& name);
-        
-        Json::Value info() const;
-        
     private:        
+        // Signal handling.
         void terminate(ev::sig&, int);
         void reload(ev::sig&, int);
 
+        // I/O handling.
         void request(ev::io&, int);
         void process(ev::idle&, int);
         void check(ev::prepare&, int);
 
-        Json::Value dispatch(const Json::Value& root);
+        // JSON-RPC command dispatching.
+        std::string dispatch(const Json::Value& root);
 
+        Json::Value create_app(const std::string& name);
+        Json::Value delete_app(const std::string& name);
+        Json::Value info() const;
+
+        // Multicast-based node announces.
         void announce(ev::timer&, int);
 
+        // App runlist revalidation.
         void recover();
 
     private:
@@ -111,6 +115,10 @@ class server_t:
         
         // Server uptime.
         const ev::tstamp m_birthstamp;
+
+        // Info cache.
+        ev::tstamp m_infostamp;
+        std::string m_infocache;
 };
 
 }
