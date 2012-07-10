@@ -45,7 +45,7 @@ namespace cocaine {
 }
 
 namespace msgpack {
-    class object;
+    struct object;
     
     template<typename>
     class packer;
