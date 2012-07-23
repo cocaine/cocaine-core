@@ -96,6 +96,10 @@ void slave_t::configure() {
         io::packed<rpc::domain, rpc::error> command(server_error, e.what());
         m_bus.send(m_app, command);
         terminate();
+    } catch(const std::exception& e) {
+        io::packed<rpc::domain, rpc::error> command(server_error, e.what());
+        m_bus.send(m_app, command);
+        terminate();
     } catch(...) {
         io::packed<rpc::domain, rpc::error> command(
             server_error,
