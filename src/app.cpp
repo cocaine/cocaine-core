@@ -126,6 +126,6 @@ Json::Value app_t::info() const {
     return info;
 }
 
-void app_t::enqueue(const boost::shared_ptr<job_t>& job) {
-    m_engine->enqueue(job);
+bool app_t::enqueue(const boost::shared_ptr<job_t>& job) {
+    return m_engine->enqueue(job);
 }

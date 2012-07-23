@@ -40,9 +40,9 @@ struct manifest_t {
         float heartbeat_timeout;
         float idle_timeout;
         float termination_timeout;
-        unsigned int pool_limit;
-        unsigned int queue_limit;
-        unsigned int grow_threshold;
+        unsigned long pool_limit;
+        unsigned long queue_limit;
+        unsigned long grow_threshold;
     } policy;
 
     // Path to a binary which will be used as a slave.

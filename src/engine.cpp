@@ -286,7 +286,7 @@ Json::Value engine_t::info() const {
 // Job scheduling
 // --------------
 
-void engine_t::enqueue(job_queue_t::const_reference job) {
+bool engine_t::enqueue(job_queue_t::const_reference job) {
     // LOCK: Obtain an upgradable lock to block state changes.
     boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
     
@@ -303,7 +303,7 @@ void engine_t::enqueue(job_queue_t::const_reference job) {
             )
         );
 
-        return;
+        return false;
     }
 
     if(m_queue.size() >= m_manifest.policy.queue_limit) {
@@ -318,13 +318,17 @@ void engine_t::enqueue(job_queue_t::const_reference job) {
                 "the queue is full"
             )
         );
-    } else {
-        // LOCK: Obtain an exclusive lock for queue operations.
-        boost::upgrade_to_unique_lock<boost::shared_mutex> unique(lock);
 
-        m_queue.push(job);
-        m_notification.send();
+        return false;
     }
+
+    // LOCK: Obtain an exclusive lock for queue operations.
+    boost::upgrade_to_unique_lock<boost::shared_mutex> unique(lock);
+
+    m_queue.push(job);
+    m_notification.send();
+    
+    return true;
 }
 
 // Slave I/O
@@ -337,14 +341,20 @@ void engine_t::message(ev::io&, int) {
 }
 
 void engine_t::process(ev::idle&, int) {
-    // LOCK: Obtain an upgradable lock to block pool and state changes.
-    boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
+    int counter = 0;
 
-    // NOTE: Try to read RPC calls in bulk, where the maximum size
-    // of the bulk is equal to the number of spawned slaves.
-    int counter = m_pool.size();
+    {
+        // LOCK: Obtain an upgradable lock to block pool changes.
+        boost::shared_lock<boost::shared_mutex> lock(m_mutex);
+
+        // NOTE: Try to read RPC calls in bulk, where the maximum size
+        // of the bulk is proportional to the number of spawned slaves.
+        counter = m_pool.size() * defaults::io_bulk_size;
+    }
     
     do {
+        boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
+
         // TEST: Ensure that we haven't missed something in a previous iteration.
         BOOST_ASSERT(!m_bus.more());
     
@@ -638,24 +648,39 @@ void engine_t::pump() {
               (m_pool.size() < m_manifest.policy.pool_limit && 
                m_pool.size() * m_manifest.policy.grow_threshold < m_queue.size() * 2))
             {
-                m_log->debug("enlarging the pool");
+                int target = std::min(
+                    m_manifest.policy.pool_limit,
+                    m_manifest.policy.grow_threshold ? 
+                        m_queue.size() * (2 / m_manifest.policy.grow_threshold) :
+                        m_manifest.policy.pool_limit
+                );
                 
-                std::auto_ptr<master_t> master;
+                m_log->debug(
+                    "enlarging the pool from %d to %d slaves",
+                    m_pool.size(),
+                    target
+                );
                 
-                try {
-                    master.reset(new master_t(m_context, *this));
-                    std::string master_id(master->id());
-                    m_pool.insert(master_id, master);
-                } catch(const system_error_t& e) {
-                    m_log->error(
-                        "unable to spawn more slaves - %s - %s",
-                        e.what(),
-                        e.reason()
-                    );
+                while(target--) {
+                    std::auto_ptr<master_t> master;
+                    
+                    try {
+                        master.reset(new master_t(m_context, *this));
+                        std::string master_id(master->id());
+                        m_pool.insert(master_id, master);
+                    } catch(const system_error_t& e) {
+                        m_log->error(
+                            "unable to spawn more slaves - %s - %s",
+                            e.what(),
+                            e.reason()
+                        );
+
+                        return;
+                    }
                 }
             }
 
-            break;
+            return;
         }
     }
 }

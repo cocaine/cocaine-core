@@ -36,12 +36,12 @@ struct defaults {
     static const float heartbeat_timeout;
     static const float idle_timeout;
     static const float termination_timeout;
-    static const unsigned int pool_limit;
-    static const unsigned int queue_limit;
+    static const unsigned long pool_limit;
+    static const unsigned long queue_limit;
 
     // Default I/O policy.
-    static const unsigned int io_bulk_size;
-    static const int bus_timeout;
+    static const unsigned long io_bulk_size;
+    static const long bus_timeout;
 
     // Default slave binary.
     static const char slave[];
