@@ -344,7 +344,7 @@ void engine_t::process(ev::idle&, int) {
     int counter = 0;
 
     {
-        // LOCK: Obtain an upgradable lock to block pool changes.
+        // LOCK: Obtain a shared lock to block pool changes.
         boost::shared_lock<boost::shared_mutex> lock(m_mutex);
 
         // NOTE: Try to read RPC calls in bulk, where the maximum size
@@ -353,6 +353,7 @@ void engine_t::process(ev::idle&, int) {
     }
     
     do {
+        // LOCK: Obtain an upgradable lock to block bus and pool changes.
         boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
 
         // TEST: Ensure that we haven't missed something in a previous iteration.
@@ -661,7 +662,7 @@ void engine_t::pump() {
                     target
                 );
                 
-                while(target--) {
+                while(m_pool.size() != target) {
                     std::auto_ptr<master_t> master;
                     
                     try {
