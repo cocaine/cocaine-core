@@ -474,7 +474,7 @@ void engine_t::process(ev::idle&, int) {
         if(master->second->state_downcast<const slave::idle*>()) {
             pump();
         }
-    } while(--counter);
+    } while (--counter);
 }
 
 void engine_t::check(ev::prepare&, int) {
