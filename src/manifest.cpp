@@ -88,7 +88,7 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
         
     policy.pool_limit = root["engine"].get(
         "pool-limit",
-        defaults::pool_limit
+        static_cast<Json::UInt>(defaults::pool_limit)
     ).asUInt();
 
     if(policy.pool_limit == 0) {
@@ -97,13 +97,13 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
 
     policy.queue_limit = root["engine"].get(
         "queue-limit",
-        defaults::queue_limit
+        static_cast<Json::UInt>(defaults::queue_limit)
     ).asUInt();
 
     policy.grow_threshold = root["engine"].get(
         "grow-threshold",
-        policy.queue_limit / policy.pool_limit
-    ).asInt();
+        static_cast<Json::UInt>(policy.queue_limit / policy.pool_limit)
+    ).asUInt();
 
     slave = root["engine"].get(
         "slave",

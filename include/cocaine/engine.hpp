@@ -104,7 +104,7 @@ class engine_t:
         Json::Value info() const;
         
         // Job scheduling.
-        void enqueue(job_queue_t::const_reference job);
+        bool enqueue(job_queue_t::const_reference job);
 
     public:
         const manifest_t& manifest() const {
