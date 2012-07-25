@@ -35,7 +35,7 @@ class file_storage_t:
 
     public:
         file_storage_t(context_t& context,
-                       const plugin_config_t& config);
+                       const storage_config_t& config);
 
         virtual objects::value_type get(const std::string& ns,
                                         const std::string& key);

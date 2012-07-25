@@ -18,7 +18,6 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include <boost/assign.hpp>
 #include <boost/format.hpp>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -64,34 +63,6 @@ master_t::~master_t() {
 
 bool master_t::operator==(const master_t& other) const {
     return id() == other.id();
-}
-
-namespace {
-    typedef std::map<
-        sc::event_base::id_type,
-        std::string
-    > event_names_t;
-
-    event_names_t names = boost::assign::map_list_of
-        (events::heartbeat::static_type(), "heartbeat")
-        (events::terminate::static_type(), "terminate")
-        (events::invoke::static_type(), "invoke")
-        (events::chunk::static_type(), "chunk")
-        (events::error::static_type(), "error")
-        (events::choke::static_type(), "choke");
-}
-
-void master_t::unconsumed_event(const sc::event_base& event) {
-    event_names_t::const_iterator it(names.find(event.dynamic_type()));
-
-    // TEST: Unconsumed rogue event is a fatal error.
-    BOOST_ASSERT(it != names.end());
-
-    m_log->warning(
-        "slave %s detected an unconsumed '%s' event",
-        id().c_str(),
-        it->second.c_str()
-    );
 }
 
 void master_t::spawn() {

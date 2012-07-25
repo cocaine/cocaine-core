@@ -21,7 +21,7 @@
 #ifndef COCAINE_ENGINE_HPP
 #define COCAINE_ENGINE_HPP
 
-#include <boost/thread/shared_mutex.hpp>
+#include <boost/thread/mutex.hpp>
 #include <boost/thread/thread.hpp>
 #include <deque>
 
@@ -34,7 +34,6 @@
 // Has to be included after common.h
 #include <ev++.h>
 
-#include "cocaine/io.hpp"
 #include "cocaine/master.hpp"
 
 #include "cocaine/helpers/json.hpp"
@@ -58,32 +57,6 @@ class job_queue_t:
     public:
         void push(const_reference job);
 };
-
-// Selectors
-// ---------
-
-namespace select {
-    template<class State>
-    struct state {
-        template<class T>
-        bool operator()(const T& master) const {
-            return master->second->template state_downcast<const State*>();
-        }
-    };
-
-    struct specific {
-        specific(const master_t& master):
-            target(master)
-        { }
-
-        template<class T>
-        bool operator()(const T& master) const {
-            return *master->second == target;
-        }
-    
-        const master_t& target;
-    };
-}
 
 // Engine
 // ------
@@ -122,34 +95,6 @@ class engine_t:
 #endif
 
     private:
-        template<class S, class T>
-        pool_map_t::iterator call(const S& selector,
-                                  const T& command)
-        {
-            pool_map_t::iterator it(
-                std::find_if(
-                    m_pool.begin(),
-                    m_pool.end(),
-                    selector
-                )
-            );
-
-            if(it != m_pool.end()) {
-                io::scoped_option<io::options::send_timeout> option(m_bus, 0);
-
-                bool success = m_bus.send(
-                    it->second->id(),
-                    command
-                );
-
-                if(!success) {
-                    return m_pool.end();
-                }
-            }
-
-            return it;
-        }
-
         // Slave I/O.
         void message(ev::io&, int);
         void process(ev::idle&, int);
@@ -174,15 +119,15 @@ class engine_t:
         context_t& m_context;
         boost::shared_ptr<logging::logger_t> m_log;
 
+        // The app manifest.
+        const manifest_t& m_manifest;
+
         // Current engine state.
-        volatile enum {
+        enum {
             running,
             stopping,
             stopped
         } m_state;
-
-        // The app manifest.
-        const manifest_t& m_manifest;
 
         // Job queue.
         job_queue_t m_queue;
@@ -199,7 +144,7 @@ class engine_t:
         ev::prepare m_check;
         
         // Garbage collector activation timer and
-        // engine termination timer.
+        // forced termination timer.
         ev::timer m_gc_timer,
                   m_termination_timer;
 
@@ -207,11 +152,11 @@ class engine_t:
         ev::async m_notification;
 
         // Slave RPC bus.
-        io::channel_t m_bus;
+        std::auto_ptr<io::channel_t> m_bus;
   
         // Threading.
         std::auto_ptr<boost::thread> m_thread;
-        mutable boost::shared_mutex m_mutex;
+        mutable boost::mutex m_mutex;
 
 #ifdef HAVE_CGROUPS
         // Control group to put the slaves into.

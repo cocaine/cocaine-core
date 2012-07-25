@@ -71,8 +71,6 @@ class master_t:
         
         bool operator==(const master_t& other) const;
 
-        void unconsumed_event(const sc::event_base& event);
-
     private:
         void spawn();
 
