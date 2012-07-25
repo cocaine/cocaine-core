@@ -324,8 +324,6 @@ bool engine_t::enqueue(job_queue_t::const_reference job) {
         return false;
     }
 
-    job_queue_t::lock_t queue_lock(m_queue);
-
     if(m_queue.size() >= m_manifest.policy.queue_limit) {
         m_log->debug(
             "dropping an incomplete '%s' job due to a full queue",
@@ -342,7 +340,10 @@ bool engine_t::enqueue(job_queue_t::const_reference job) {
         return false;
     }
 
-    m_queue.push(job);
+    {
+        job_queue_t::lock_t queue_lock(m_queue);
+        m_queue.push(job);
+    }
 
     // Notify the event loop about this new job.
     m_notification.send();
@@ -614,34 +615,8 @@ void engine_t::notify(ev::async&, int) {
 
 void engine_t::pump() {
     while(true) {
-        job_queue_t::lock_t queue_lock(m_queue);
-
-        if(m_queue.empty()) {
-            break;
-        }
-
-        job_queue_t::const_reference job(m_queue.front());
-
-        if(job->state_downcast<const job::complete*>()) {
-            m_log->debug(
-                "dropping a complete '%s' job from the queue",
-                job->event.c_str()
-            );
-
-            m_queue.pop_front();
-
-            continue;
-        }
-            
-        io::packed<rpc::domain, rpc::invoke> command(
-            job->event,
-            job->request.data(),
-            job->request.size()
-        );
-
         // NOTE: If we got an idle slave, then we're lucky and got an instant scheduling;
         // if not, try to spawn more slaves and wait.
-
         pool_map_t::iterator it(
             std::find_if(
                 m_pool.begin(),
@@ -651,6 +626,26 @@ void engine_t::pump() {
         );
 
         if(it != m_pool.end()) {
+            job_queue_t::lock_t queue_lock(m_queue);
+            job_queue_t::const_reference job(m_queue.front());
+            
+            if(job->state_downcast<const job::complete*>()) {
+                m_log->debug(
+                    "dropping a complete '%s' job from the queue",
+                    job->event.c_str()
+                );
+
+                m_queue.pop_front();
+
+                continue;
+            }
+            
+            io::packed<rpc::domain, rpc::invoke> command(
+                job->event,
+                job->request.data(),
+                job->request.size()
+            );
+
             // NOTE: Do a non-blocking send.
             io::scoped_option<io::options::send_timeout> option(*m_bus, 0);
 
@@ -668,10 +663,11 @@ void engine_t::pump() {
                 it->second->process_event(events::terminate());
                 m_pool.erase(it);
                 break;
+            } else {
+                m_queue.pop_front();
             }
 
             it->second->process_event(events::invoke(job));
-            m_queue.pop_front();
         } else {
             break;
         }
