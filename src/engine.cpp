@@ -44,10 +44,8 @@ job_queue_t::lock_t::lock_t(job_queue_t& queue):
 void job_queue_t::push(const_reference job) {
     if(job->policy.urgent) {
         push_front(job);
-        job->process_event(events::enqueue(1));
     } else {
         push_back(job);
-        job->process_event(events::enqueue(size()));
     }
 }
 
@@ -323,26 +321,25 @@ bool engine_t::enqueue(job_queue_t::const_reference job) {
 
         return false;
     }
+        
+    if(m_queue.size() >= m_manifest.policy.queue_limit) {
+        m_log->debug(
+            "dropping an incomplete '%s' job due to a full queue",
+            job->event.c_str()
+        );
+
+        job->process_event(
+            events::error(
+                resource_error,
+                "the queue is full"
+            )
+        );
+
+        return false;
+    }
 
     {
         job_queue_t::lock_t queue_lock(m_queue);
-        
-        if(m_queue.size() >= m_manifest.policy.queue_limit) {
-            m_log->debug(
-                "dropping an incomplete '%s' job due to a full queue",
-                job->event.c_str()
-            );
-
-            job->process_event(
-                events::error(
-                    resource_error,
-                    "the queue is full"
-                )
-            );
-
-            return false;
-        }
-
         m_queue.push(job);
     }
 
@@ -615,15 +612,7 @@ void engine_t::notify(ev::async&, int) {
 // ----------------
 
 void engine_t::pump() {
-    while(true) {
-        {
-            job_queue_t::lock_t queue_lock(m_queue);
-
-            if(m_queue.empty()) {
-                break;
-            }
-        }
-
+    while(!m_queue.empty()) {
         // NOTE: If we got an idle slave, then we're lucky and got an instant scheduling;
         // if not, try to spawn more slaves and wait.
         pool_map_t::iterator it(
@@ -639,6 +628,11 @@ void engine_t::pump() {
 
             {
                 job_queue_t::lock_t queue_lock(m_queue);
+
+                if(m_queue.empty()) {
+                    break;
+                }
+
                 job = m_queue.front();
                 m_queue.pop_front();
             }
