@@ -44,10 +44,8 @@ job_queue_t::lock_t::lock_t(job_queue_t& queue):
 void job_queue_t::push(const_reference job) {
     if(job->policy.urgent) {
         push_front(job);
-        job->process_event(events::enqueue(1));
     } else {
         push_back(job);
-        job->process_event(events::enqueue(size()));
     }
 }
 
