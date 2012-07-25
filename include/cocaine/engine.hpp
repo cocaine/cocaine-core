@@ -55,7 +55,18 @@ class job_queue_t:
     >
 {
     public:
+        struct lock_t {
+            lock_t(job_queue_t& queue);
+        
+        private:
+            boost::unique_lock m_lock;
+        };
+
+    public:
         void push(const_reference job);
+
+    private:
+        boost::mutex m_mutex;
 };
 
 // Engine

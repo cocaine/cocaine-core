@@ -37,6 +37,10 @@ using namespace cocaine::engine;
 // Job queue
 // ---------
 
+job_queue_t::lock_t::lock_t(job_queue_t& queue):
+    m_lock(queue.m_mutex)
+{ }
+
 void job_queue_t::push(const_reference job) {
     if(job->policy.urgent) {
         push_front(job);
@@ -277,9 +281,9 @@ namespace {
 }
 
 Json::Value engine_t::info() const {
-    Json::Value results(Json::objectValue);
-
     boost::unique_lock<boost::mutex> lock(m_mutex);
+    
+    Json::Value results(Json::objectValue);
 
     if(m_state == running) {
         results["queue-depth"] = static_cast<Json::UInt>(m_queue.size());
@@ -304,8 +308,6 @@ Json::Value engine_t::info() const {
 // --------------
 
 bool engine_t::enqueue(job_queue_t::const_reference job) {
-    boost::unique_lock<boost::mutex> lock(m_mutex);
-    
     if(m_state != running) {
         m_log->debug(
             "dropping an incomplete '%s' job due to an inactive engine",
@@ -321,6 +323,8 @@ bool engine_t::enqueue(job_queue_t::const_reference job) {
 
         return false;
     }
+
+    job_queue_t::lock_t lock(m_queue);
 
     if(m_queue.size() >= m_manifest.policy.queue_limit) {
         m_log->debug(
@@ -356,15 +360,9 @@ void engine_t::message(ev::io&, int) {
 }
 
 void engine_t::process(ev::idle&, int) {
-    int counter = 0;
-
-    {
-        boost::unique_lock<boost::mutex> lock(m_mutex);
-
-        // NOTE: Try to read RPC calls in bulk, where the maximum size
-        // of the bulk is proportional to the number of spawned slaves.
-        counter = m_pool.size() * defaults::io_bulk_size;
-    }
+    // NOTE: Try to read RPC calls in bulk, where the maximum size
+    // of the bulk is proportional to the number of spawned slaves.
+    int counter = m_pool.size() * defaults::io_bulk_size;
     
     do {
         boost::unique_lock<boost::mutex> lock(m_mutex);
@@ -548,6 +546,8 @@ void engine_t::cleanup(ev::timer&, int) {
         );
     }
 
+    job_queue_t::lock_t lock(m_queue);
+
     typedef boost::filter_iterator<expired, job_queue_t::iterator> filter;
 
     // Process all the expired jobs.
@@ -613,7 +613,13 @@ void engine_t::notify(ev::async&, int) {
 // ----------------
 
 void engine_t::pump() {
-    while(!m_queue.empty()) {
+    while(true) {
+        job_queue_t::lock_t lock(m_queue);
+
+        if(m_queue.empty()) {
+            break;
+        }
+
         job_queue_t::const_reference job(m_queue.front());
 
         if(job->state_downcast<const job::complete*>()) {
@@ -716,23 +722,27 @@ void engine_t::pump() {
 // ------------------
 
 void engine_t::shutdown() {
-    if(!m_queue.empty()) {
-        m_log->debug(
-            "dropping %zu incomplete %s due to the engine shutdown",
-            m_queue.size(),
-            m_queue.size() == 1 ? "job" : "jobs"
-        );
+    {
+        job_queue_t::lock_t lock(m_queue);
 
-        // Abort all the outstanding jobs.
-        while(!m_queue.empty()) {
-            m_queue.front()->process_event(
-                events::error(
-                    resource_error,
-                    "engine is shutting down"
-                )
+        if(!m_queue.empty()) {
+            m_log->debug(
+                "dropping %zu incomplete %s due to the engine shutdown",
+                m_queue.size(),
+                m_queue.size() == 1 ? "job" : "jobs"
             );
 
-            m_queue.pop_front();
+            // Abort all the outstanding jobs.
+            while(!m_queue.empty()) {
+                m_queue.front()->process_event(
+                    events::error(
+                        resource_error,
+                        "engine is shutting down"
+                    )
+                );
+
+                m_queue.pop_front();
+            }
         }
     }
 
