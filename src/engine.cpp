@@ -616,6 +616,14 @@ void engine_t::notify(ev::async&, int) {
 
 void engine_t::pump() {
     while(true) {
+        {
+            job_queue_t::lock_t queue_lock(m_queue);
+
+            if(m_queue.empty()) {
+                break;
+            }
+        }
+
         // NOTE: If we got an idle slave, then we're lucky and got an instant scheduling;
         // if not, try to spawn more slaves and wait.
         pool_map_t::iterator it(
