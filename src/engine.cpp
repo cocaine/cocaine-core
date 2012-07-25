@@ -324,7 +324,7 @@ bool engine_t::enqueue(job_queue_t::const_reference job) {
         return false;
     }
 
-    job_queue_t::lock_t lock(m_queue);
+    job_queue_t::lock_t queue_lock(m_queue);
 
     if(m_queue.size() >= m_manifest.policy.queue_limit) {
         m_log->debug(
@@ -546,7 +546,7 @@ void engine_t::cleanup(ev::timer&, int) {
         );
     }
 
-    job_queue_t::lock_t lock(m_queue);
+    job_queue_t::lock_t queue_lock(m_queue);
 
     typedef boost::filter_iterator<expired, job_queue_t::iterator> filter;
 
@@ -614,7 +614,7 @@ void engine_t::notify(ev::async&, int) {
 
 void engine_t::pump() {
     while(true) {
-        job_queue_t::lock_t lock(m_queue);
+        job_queue_t::lock_t queue_lock(m_queue);
 
         if(m_queue.empty()) {
             break;
@@ -723,7 +723,7 @@ void engine_t::pump() {
 
 void engine_t::shutdown() {
     {
-        job_queue_t::lock_t lock(m_queue);
+        job_queue_t::lock_t queue_lock(m_queue);
 
         if(!m_queue.empty()) {
             m_log->debug(

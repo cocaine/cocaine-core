@@ -59,7 +59,7 @@ class job_queue_t:
             lock_t(job_queue_t& queue);
         
         private:
-            boost::unique_lock m_lock;
+            boost::unique_lock<boost::mutex> m_lock;
         };
 
     public:
