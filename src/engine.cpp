@@ -324,24 +324,25 @@ bool engine_t::enqueue(job_queue_t::const_reference job) {
         return false;
     }
 
-    if(m_queue.size() >= m_manifest.policy.queue_limit) {
-        m_log->debug(
-            "dropping an incomplete '%s' job due to a full queue",
-            job->event.c_str()
-        );
-
-        job->process_event(
-            events::error(
-                resource_error,
-                "the queue is full"
-            )
-        );
-
-        return false;
-    }
-
     {
         job_queue_t::lock_t queue_lock(m_queue);
+        
+        if(m_queue.size() >= m_manifest.policy.queue_limit) {
+            m_log->debug(
+                "dropping an incomplete '%s' job due to a full queue",
+                job->event.c_str()
+            );
+
+            job->process_event(
+                events::error(
+                    resource_error,
+                    "the queue is full"
+                )
+            );
+
+            return false;
+        }
+
         m_queue.push(job);
     }
 
@@ -626,16 +627,19 @@ void engine_t::pump() {
         );
 
         if(it != m_pool.end()) {
-            job_queue_t::lock_t queue_lock(m_queue);
-            job_queue_t::const_reference job(m_queue.front());
+            job_queue_t::value_type job;
+
+            {
+                job_queue_t::lock_t queue_lock(m_queue);
+                job = m_queue.front();
+                m_queue.pop_front();
+            }
             
             if(job->state_downcast<const job::complete*>()) {
                 m_log->debug(
                     "dropping a complete '%s' job from the queue",
                     job->event.c_str()
                 );
-
-                m_queue.pop_front();
 
                 continue;
             }
@@ -662,9 +666,13 @@ void engine_t::pump() {
 
                 it->second->process_event(events::terminate());
                 m_pool.erase(it);
+                
+                {
+                    job_queue_t::lock_t queue_lock(m_queue);
+                    m_queue.push_front(job);
+                }
+
                 break;
-            } else {
-                m_queue.pop_front();
             }
 
             it->second->process_event(events::invoke(job));
