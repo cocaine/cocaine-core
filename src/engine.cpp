@@ -680,31 +680,33 @@ void engine_t::pump() {
         int target = std::min(
             m_manifest.policy.pool_limit,
             m_manifest.policy.grow_threshold ? 
-                m_queue.size() * (2 / m_manifest.policy.grow_threshold) :
+                (m_queue.size() * 2) / m_manifest.policy.grow_threshold :
                 m_manifest.policy.pool_limit
         );
-        
-        m_log->info(
-            "enlarging the pool from %d to %d slaves",
-            m_pool.size(),
-            target
-        );
-        
-        while(m_pool.size() != target) {
-            std::auto_ptr<master_t> master;
-            
-            try {
-                master.reset(new master_t(m_context, *this));
-                std::string master_id(master->id());
-                m_pool.insert(master_id, master);
-            } catch(const system_error_t& e) {
-                m_log->error(
-                    "unable to spawn more slaves - %s - %s",
-                    e.what(),
-                    e.reason()
-                );
+       
+        if(target > m_pool.size()) {
+            m_log->info(
+                "enlarging the pool from %d to %d slaves",
+                m_pool.size(),
+                target
+            );
 
-                return;
+            while(m_pool.size() != target) {
+                std::auto_ptr<master_t> master;
+                
+                try {
+                    master.reset(new master_t(m_context, *this));
+                    std::string master_id(master->id());
+                    m_pool.insert(master_id, master);
+                } catch(const system_error_t& e) {
+                    m_log->error(
+                        "unable to spawn more slaves - %s - %s",
+                        e.what(),
+                        e.reason()
+                    );
+
+                    return;
+                }
             }
         }
     }
