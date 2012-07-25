@@ -112,7 +112,7 @@ config_t::config_t(const std::string& path):
         it != storage_names.end();
         ++it)
     {
-        plugin_config_t config = {
+        storage_config_t config = {
             *it,
             root["storages"][*it]["args"]
         };

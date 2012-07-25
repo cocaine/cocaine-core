@@ -27,8 +27,6 @@
 
 #include "cocaine/common.hpp"
 
-#include "cocaine/helpers/json.hpp"
-
 namespace cocaine {
 
 template<class Category>
@@ -65,14 +63,6 @@ struct plugin_traits {
     typedef typename category_traits<
         typename T::category_type
     >::template default_factory<T> factory_type;
-};
-
-// Plugin configuration
-// -------------------- 
-
-struct plugin_config_t {
-    const std::string name;
-    const Json::Value args;
 };
 
 // Component repository

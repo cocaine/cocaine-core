@@ -62,7 +62,7 @@ struct config_t {
 
     typedef struct {
         std::string type;
-        plugin_config_t config;
+        storages::storage_config_t config;
     } storage_info_t;
 
     typedef std::map<

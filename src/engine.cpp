@@ -26,12 +26,20 @@
 #include "cocaine/engine.hpp"
 
 #include "cocaine/context.hpp"
+#include "cocaine/io.hpp"
 #include "cocaine/job.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
 #include "cocaine/rpc.hpp"
 
 using namespace cocaine::engine;
+
+// Job queue
+// ---------
+
+job_queue_t::lock_t::lock_t(job_queue_t& queue):
+    m_lock(queue.m_mutex)
+{ }
 
 void job_queue_t::push(const_reference job) {
     if(job->policy.urgent) {
@@ -43,6 +51,35 @@ void job_queue_t::push(const_reference job) {
     }
 }
 
+// Selectors
+// ---------
+
+namespace { namespace select {
+    template<class State>
+    struct state {
+        template<class T>
+        bool operator()(const T& master) const {
+            return master->second->template state_downcast<const State*>();
+        }
+    };
+
+    struct specific {
+        specific(const master_t& master):
+            target(master)
+        { }
+
+        template<class T>
+        bool operator()(const T& master) const {
+            return *master->second == target;
+        }
+    
+        const master_t& target;
+    };
+}}
+
+// Engine
+// ------
+
 engine_t::engine_t(context_t& context, const manifest_t& manifest):
     m_context(context),
     m_log(context.log(
@@ -50,15 +87,15 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest):
             % manifest.name
         ).str()
     )),
-    m_state(stopped),
     m_manifest(manifest),
+    m_state(stopped),
     m_watcher(m_loop),
     m_processor(m_loop),
     m_check(m_loop),
     m_gc_timer(m_loop),
     m_termination_timer(m_loop),
     m_notification(m_loop),
-    m_bus(context.io(), m_manifest.name),
+    m_bus(new io::channel_t(context.io(), m_manifest.name)),
     m_thread(NULL)
 #ifdef HAVE_CGROUPS
     , m_cgroup(NULL)
@@ -66,7 +103,7 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest):
 {
     int linger = 0;
 
-    m_bus.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
+    m_bus->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
 
     std::string endpoint(
         (boost::format("ipc://%1%/%2%")
@@ -76,13 +113,13 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest):
     );
 
     try {
-        m_bus.bind(endpoint);
+        m_bus->bind(endpoint);
     } catch(const zmq::error_t& e) {
         throw configuration_error_t(std::string("invalid rpc endpoint - ") + e.what());
     }
     
     m_watcher.set<engine_t, &engine_t::message>(this);
-    m_watcher.start(m_bus.fd(), ev::READ);
+    m_watcher.start(m_bus->fd(), ev::READ);
     m_processor.set<engine_t, &engine_t::process>(this);
     m_check.set<engine_t, &engine_t::check>(this);
     m_check.start();
@@ -173,18 +210,12 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest):
 }
 
 engine_t::~engine_t() {
-    {
-        // LOCK: Obtain a shared lock to block state changes.
-        boost::shared_lock<boost::shared_mutex> lock(m_mutex);
-        BOOST_VERIFY(m_state == stopped);
-    }
+    stop();
 
 #ifdef HAVE_CGROUPS
     if(m_cgroup) {
         int rv = 0;
 
-        // FIXME: Sometimes there're still slaves terminating at this point,
-        // so control group deletion fails with "Device or resource busy".
         if((rv = cgroup_delete_cgroup(m_cgroup, false)) != 0) {
             m_log->error(
                 "unable to delete the control group - %s", 
@@ -202,18 +233,16 @@ engine_t::~engine_t() {
 
 void engine_t::start() {
     {
-        // LOCK: Obtain an unique lock to block state changes.
-        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+        boost::unique_lock<boost::mutex> lock(m_mutex);
         
-        if(m_state != stopped) {
+        if(m_state == stopped) {
+            m_log->info("starting");
+            m_state = running;
+        } else {
             return;
         }
-
-        m_state = running;
     }
 
-    m_log->info("starting");
-    
     m_thread.reset(
         new boost::thread(
             boost::bind(
@@ -227,18 +256,16 @@ void engine_t::start() {
 
 void engine_t::stop() {
     {
-        // LOCK: Obtain an unique lock to block state changes.
-        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+        boost::unique_lock<boost::mutex> lock(m_mutex);
 
         if(m_state == running) {
             m_log->info("stopping");
-
             shutdown();
         }
     }
 
     if(m_thread.get()) {
-        m_log->debug("waiting for the engine to terminate");
+        m_log->debug("reaping the engine thread");
         
         // Wait for the termination.
         m_thread->join();
@@ -254,15 +281,15 @@ namespace {
 }
 
 Json::Value engine_t::info() const {
+    boost::unique_lock<boost::mutex> lock(m_mutex);
+    
     Json::Value results(Json::objectValue);
-
-    // LOCK: Obtain a shared lock to block state changes.
-    boost::shared_lock<boost::shared_mutex> lock(m_mutex);
 
     if(m_state == running) {
         results["queue-depth"] = static_cast<Json::UInt>(m_queue.size());
+
         results["slaves"]["total"] = static_cast<Json::UInt>(m_pool.size());
-        
+
         results["slaves"]["busy"] = static_cast<Json::UInt>(
             std::count_if(
                 m_pool.begin(),
@@ -271,9 +298,9 @@ Json::Value engine_t::info() const {
             )
         );
     }
-    
-    results["state"] = state_names[m_state];
 
+    results["state"] = state_names[m_state];
+    
     return results;
 }
 
@@ -281,9 +308,6 @@ Json::Value engine_t::info() const {
 // --------------
 
 bool engine_t::enqueue(job_queue_t::const_reference job) {
-    // LOCK: Obtain an upgradable lock to block state changes.
-    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
-
     if(m_state != running) {
         m_log->debug(
             "dropping an incomplete '%s' job due to an inactive engine",
@@ -300,23 +324,29 @@ bool engine_t::enqueue(job_queue_t::const_reference job) {
         return false;
     }
 
-    if(m_queue.size() >= m_manifest.policy.queue_limit) {
-        m_log->debug(
-            "dropping an incomplete '%s' job due to a full queue",
-            job->event.c_str()
-        );
+    {
+        job_queue_t::lock_t queue_lock(m_queue);
+        
+        if(m_queue.size() >= m_manifest.policy.queue_limit) {
+            m_log->debug(
+                "dropping an incomplete '%s' job due to a full queue",
+                job->event.c_str()
+            );
 
-        job->process_event(
-            events::error(
-                resource_error,
-                "the queue is full"
-            )
-        );
+            job->process_event(
+                events::error(
+                    resource_error,
+                    "the queue is full"
+                )
+            );
 
-        return false;
+            return false;
+        }
+
+        m_queue.push(job);
     }
 
-    m_queue.push(job);
+    // Notify the event loop about this new job.
     m_notification.send();
     
     return true;
@@ -326,29 +356,21 @@ bool engine_t::enqueue(job_queue_t::const_reference job) {
 // ---------
 
 void engine_t::message(ev::io&, int) {
-    if(m_bus.pending() && !m_processor.is_active()) {
+    if(m_bus->pending() && !m_processor.is_active()) {
         m_processor.start();
     }
 }
 
 void engine_t::process(ev::idle&, int) {
-    int counter = 0;
-
-    {
-        // LOCK: Obtain a shared lock to block pool changes.
-        boost::shared_lock<boost::shared_mutex> lock(m_mutex);
-
-        // NOTE: Try to read RPC calls in bulk, where the maximum size
-        // of the bulk is proportional to the number of spawned slaves.
-        counter = m_pool.size() * defaults::io_bulk_size;
-    }
+    // NOTE: Try to read RPC calls in bulk, where the maximum size
+    // of the bulk is proportional to the number of spawned slaves.
+    int counter = m_pool.size() * defaults::io_bulk_size;
     
     do {
-        // LOCK: Obtain an upgradable lock to block bus and pool changes.
-        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+        boost::unique_lock<boost::mutex> lock(m_mutex);
 
         // TEST: Ensure that we haven't missed something in a previous iteration.
-        BOOST_ASSERT(!m_bus.more());
+        BOOST_ASSERT(!m_bus->more());
     
         std::string slave_id;
         int command = 0;
@@ -359,11 +381,11 @@ void engine_t::process(ev::idle&, int) {
         > proxy(io::protect(slave_id), command);
         
         {
-            io::scoped_option<io::options::receive_timeout> option(m_bus, 0);
+            io::scoped_option<io::options::receive_timeout> option(*m_bus, 0);
          
             // Try to read the next RPC command from the bus in a
             // non-blocking fashion. If it fails, break the loop.
-            if(!m_bus.recv_multi(proxy)) {
+            if(!m_bus->recv_multi(proxy)) {
                 m_processor.stop();
                 return;            
             }
@@ -373,19 +395,19 @@ void engine_t::process(ev::idle&, int) {
 
         if(master == m_pool.end()) {
             m_log->warning(
-                "dropping type %d event from an unknown slave %s", 
+                "dropping type %d command from an unknown slave %s", 
                 command,
                 slave_id.c_str()
             );
             
-            m_bus.drop();
+            m_bus->drop();
 
-            io::scoped_option<io::options::send_timeout> option(m_bus, 0);
+            io::scoped_option<io::options::send_timeout> option(*m_bus, 0);
 
             // Try to kill the unknown slave, just in case.
             // FIXME: This doesn't work for some reason.
 
-            m_bus.send(
+            m_bus->send(
                 slave_id,
                 io::packed<rpc::domain, rpc::terminate>()
             );
@@ -394,7 +416,7 @@ void engine_t::process(ev::idle&, int) {
         }
 
         m_log->debug(
-            "got type %d event from slave %s",
+            "got type %d command from slave %s",
             command,
             slave_id.c_str()
         );
@@ -426,10 +448,10 @@ void engine_t::process(ev::idle&, int) {
 
             case rpc::chunk: {
                 // TEST: Ensure we have the actual chunk following.
-                BOOST_ASSERT(m_bus.more());
+                BOOST_ASSERT(m_bus->more());
 
                 zmq::message_t message;
-                m_bus.recv(&message);
+                m_bus->recv(&message);
                 
                 master->second->process_event(events::chunk(message));
 
@@ -438,13 +460,13 @@ void engine_t::process(ev::idle&, int) {
          
             case rpc::error: {
                 // TEST: Ensure that we have the actual error following.
-                BOOST_ASSERT(m_bus.more());
+                BOOST_ASSERT(m_bus->more());
 
                 int code = 0;
                 std::string message;
                 boost::tuple<int&, std::string&> proxy(code, message);
 
-                m_bus.recv_multi(proxy);
+                m_bus->recv_multi(proxy);
 
                 master->second->process_event(events::error(code, message));
 
@@ -463,12 +485,12 @@ void engine_t::process(ev::idle&, int) {
 
             default:
                 m_log->warning(
-                    "dropping unknown event type %d from slave %s",
+                    "dropping unknown type %d command from slave %s",
                     command,
                     slave_id.c_str()
                 );
 
-                m_bus.drop();
+                m_bus->drop();
         }
 
         if(master->second->state_downcast<const slave::idle*>()) {
@@ -500,11 +522,10 @@ namespace {
 }
 
 void engine_t::cleanup(ev::timer&, int) {
-    // LOCK: Obtain an unique lock for pool observation.
-    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
-    
     typedef std::vector<pool_map_t::key_type> corpse_list_t;
     corpse_list_t corpses;
+
+    boost::unique_lock<boost::mutex> lock(m_mutex);
 
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
         if(it->second->state_downcast<const slave::dead*>()) {
@@ -527,8 +548,7 @@ void engine_t::cleanup(ev::timer&, int) {
         );
     }
 
-    // LOCK: Looks like the exclusive lock is not needed here as we don't
-    // change the queue itself, but the jobs in it.
+    job_queue_t::lock_t queue_lock(m_queue);
 
     typedef boost::filter_iterator<expired, job_queue_t::iterator> filter;
 
@@ -550,10 +570,9 @@ void engine_t::cleanup(ev::timer&, int) {
 // -------------------------
 
 void engine_t::terminate(ev::timer&, int) {
-    // LOCK: Obtain an exclusive lock for state operations.
-    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+    boost::unique_lock<boost::mutex> lock(m_mutex);
 
-    m_log->info("forcing engine termination");
+    m_log->warning("forcing engine termination");
 
     // Force slave termination.
     m_state = stopped;
@@ -573,8 +592,7 @@ namespace {
 }
 
 void engine_t::notify(ev::async&, int) {
-    // LOCK: Obtain an exclusive lock for state operations.
-    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+    boost::unique_lock<boost::mutex> lock(m_mutex);
 
     switch(m_state) {
         case running:
@@ -597,76 +615,109 @@ void engine_t::notify(ev::async&, int) {
 // ----------------
 
 void engine_t::pump() {
-    while(!m_queue.empty()) {
-        job_queue_t::value_type job(m_queue.front());
-
-        if(job->state_downcast<const job::complete*>()) {
-            m_log->debug(
-                "dropping a complete '%s' job from the queue",
-                job->event.c_str()
-            );
-
-            m_queue.pop_front();
-
-            continue;
-        }
-            
-        io::packed<rpc::domain, rpc::invoke> command(
-            job->event,
-            job->request.data(),
-            job->request.size()
-        );
-
+    while(true) {
+        // NOTE: If we got an idle slave, then we're lucky and got an instant scheduling;
+        // if not, try to spawn more slaves and wait.
         pool_map_t::iterator it(
-            call(
-                select::state<slave::idle>(),
-                command
+            std::find_if(
+                m_pool.begin(),
+                m_pool.end(),
+                select::state<slave::idle>()
             )
         );
 
-        // NOTE: If we got an idle slave, then we're lucky and got an instant scheduling;
-        // if not, try to spawn more slaves, and enqueue the job.
         if(it != m_pool.end()) {
-            it->second->process_event(events::invoke(job));
-            m_queue.pop_front();
-        } else {
-            if(m_pool.empty() || 
-              (m_pool.size() < m_manifest.policy.pool_limit && 
-               m_pool.size() * m_manifest.policy.grow_threshold < m_queue.size() * 2))
-            {
-                int target = std::min(
-                    m_manifest.policy.pool_limit,
-                    m_manifest.policy.grow_threshold ? 
-                        m_queue.size() * (2 / m_manifest.policy.grow_threshold) :
-                        m_manifest.policy.pool_limit
-                );
-                
-                m_log->debug(
-                    "enlarging the pool from %d to %d slaves",
-                    m_pool.size(),
-                    target
-                );
-                
-                while(m_pool.size() != target) {
-                    std::auto_ptr<master_t> master;
-                    
-                    try {
-                        master.reset(new master_t(m_context, *this));
-                        std::string master_id(master->id());
-                        m_pool.insert(master_id, master);
-                    } catch(const system_error_t& e) {
-                        m_log->error(
-                            "unable to spawn more slaves - %s - %s",
-                            e.what(),
-                            e.reason()
-                        );
+            job_queue_t::value_type job;
 
-                        return;
-                    }
+            {
+                job_queue_t::lock_t queue_lock(m_queue);
+                job = m_queue.front();
+                m_queue.pop_front();
+            }
+            
+            if(job->state_downcast<const job::complete*>()) {
+                m_log->debug(
+                    "dropping a complete '%s' job from the queue",
+                    job->event.c_str()
+                );
+
+                continue;
+            }
+            
+            io::packed<rpc::domain, rpc::invoke> command(
+                job->event,
+                job->request.data(),
+                job->request.size()
+            );
+
+            // NOTE: Do a non-blocking send.
+            io::scoped_option<io::options::send_timeout> option(*m_bus, 0);
+
+            bool success = m_bus->send(
+                it->second->id(),
+                command
+            );
+
+            if(!success) {
+                m_log->error(
+                    "slave %s has unexpectedly died",
+                    it->first.c_str()
+                );
+
+                it->second->process_event(events::terminate());
+                m_pool.erase(it);
+                
+                {
+                    job_queue_t::lock_t queue_lock(m_queue);
+                    m_queue.push_front(job);
                 }
+
+                break;
             }
 
-            return;
+            it->second->process_event(events::invoke(job));
+        } else {
+            break;
+        }
+    }
+
+    // NOTE: Balance the slave pool in order to keep it in a proper shape
+    // based on the queue size and other policies.
+
+    if(m_pool.size() < m_manifest.policy.pool_limit &&
+       m_pool.size() * m_manifest.policy.grow_threshold < m_queue.size() * 2)
+    {
+        int target = std::min(
+            m_manifest.policy.pool_limit,
+            m_manifest.policy.grow_threshold ? 
+                (m_queue.size() * 2) / m_manifest.policy.grow_threshold :
+                m_manifest.policy.pool_limit
+        );
+       
+        if(target > m_pool.size()) {
+            m_log->info(
+                "enlarging the pool from %d to %d slaves",
+                m_pool.size(),
+                target
+            );
+
+            while(m_pool.size() != target) {
+                std::auto_ptr<master_t> master;
+                
+                try {
+                    master.reset(new master_t(m_context, *this));
+                    std::string master_id(master->id());
+                    m_pool.insert(master_id, master);
+                } catch(const system_error_t& e) {
+                    m_log->error(
+                        "unable to spawn more slaves - %s - %s",
+                        e.what(),
+                        e.reason()
+                    );
+
+                    return;
+                }
+            }
         }
     }
 }
@@ -675,23 +726,27 @@ void engine_t::pump() {
 // ------------------
 
 void engine_t::shutdown() {
-    if(!m_queue.empty()) {
-        m_log->debug(
-            "dropping %zu incomplete %s due to the engine shutdown",
-            m_queue.size(),
-            m_queue.size() == 1 ? "job" : "jobs"
-        );
+    {
+        job_queue_t::lock_t queue_lock(m_queue);
 
-        // Abort all the outstanding jobs.
-        while(!m_queue.empty()) {
-            m_queue.front()->process_event(
-                events::error(
-                    resource_error,
-                    "engine is shutting down"
-                )
+        if(!m_queue.empty()) {
+            m_log->debug(
+                "dropping %zu incomplete %s due to the engine shutdown",
+                m_queue.size(),
+                m_queue.size() == 1 ? "job" : "jobs"
             );
 
-            m_queue.pop_front();
+            // Abort all the outstanding jobs.
+            while(!m_queue.empty()) {
+                m_queue.front()->process_event(
+                    events::error(
+                        resource_error,
+                        "engine is shutting down"
+                    )
+                );
+
+                m_queue.pop_front();
+            }
         }
     }
 
@@ -702,13 +757,16 @@ void engine_t::shutdown() {
     // otherwise, the engine should wait for the specified timeout for slaves
     // to finish their jobs and then force the termination.
 
+    // NOTE: Do a non-blocking send.
+    io::scoped_option<io::options::send_timeout> option(*m_bus, 0);
+
     for(pool_map_t::iterator it = m_pool.begin();
         it != m_pool.end();
         ++it)
     {
         if(it->second->state_downcast<const slave::alive*>()) {
-            call(
-                select::specific(*it->second),
+            m_bus->send(
+                it->second->id(),
                 io::packed<rpc::domain, rpc::terminate>()
             );
 

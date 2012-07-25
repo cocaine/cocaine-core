@@ -160,7 +160,7 @@ void slave_t::process(ev::idle&, int) {
     }
 
     m_log->debug(
-        "got type %d event from engine %s",
+        "got type %d command from engine %s",
         command,
         source.c_str()
     );
@@ -184,9 +184,10 @@ void slave_t::process(ev::idle&, int) {
 
         default:
             m_log->warning(
-                "slave %s dropping unknown event type %d", 
+                "slave %s dropping unknown type %d command from engine %s", 
                 id().c_str(),
-                command
+                command,
+                source.c_str()
             );
             
             m_bus.drop();
