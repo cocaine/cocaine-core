@@ -21,6 +21,8 @@
 #ifndef COCAINE_APP_HPP
 #define COCAINE_APP_HPP
 
+#include <boost/thread/thread.hpp>
+
 #include "cocaine/common.hpp"
 #include "cocaine/manifest.hpp"
 
@@ -49,9 +51,16 @@ class app_t {
     private:
         context_t& m_context;
         boost::shared_ptr<logging::logger_t> m_log;
+
+        // App event loop.
+        ev::dynamic_loop m_loop;
         
+        // App configuration.
         const manifest_t m_manifest;
+
+        // App execution engine.
         std::auto_ptr<engine::engine_t> m_engine;
+        std::auto_ptr<boost::thread> m_thread;        
 
 #if BOOST_VERSION >= 104000
         typedef boost::ptr_unordered_map<

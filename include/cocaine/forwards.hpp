@@ -28,10 +28,10 @@ namespace cocaine {
     // Runtime context.
     class context_t;
     
-    // Application configuration.
+    // App configuration.
     struct manifest_t;
 
-    // Application container.
+    // App container.
     class app_t;
 
     namespace engine {

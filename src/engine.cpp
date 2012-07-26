@@ -73,7 +73,7 @@ namespace { namespace select {
 // Engine
 // ------
 
-engine_t::engine_t(context_t& context, const manifest_t& manifest):
+engine_t::engine_t(context_t& context, ev::loop_ref& loop, const manifest_t& manifest):
     m_context(context),
     m_log(context.log(
         (boost::format("app/%1%")
@@ -84,6 +84,7 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest):
     m_thread(NULL),
     m_state(stopped),
     m_bus(new io::channel_t(context.io(), m_manifest.name)),
+    m_loop(loop),
     m_watcher(m_loop),
     m_processor(m_loop),
     m_check(m_loop),
@@ -225,44 +226,20 @@ engine_t::~engine_t() {
 // ----------
 
 void engine_t::start() {
-    {
-        boost::unique_lock<boost::mutex> lock(m_mutex);
-        
-        if(m_state == stopped) {
-            m_log->info("starting");
-            m_state = running;
-        } else {
-            return;
-        }
+    boost::unique_lock<boost::mutex> lock(m_mutex);
+    
+    if(m_state == stopped) {
+        m_log->info("starting");
+        m_state = running;
     }
-
-    m_thread.reset(
-        new boost::thread(
-            boost::bind(
-                &ev::dynamic_loop::loop,
-                boost::ref(m_loop),
-                0
-            )
-        )
-    );
 }
 
 void engine_t::stop() {
-    {
-        boost::unique_lock<boost::mutex> lock(m_mutex);
+    boost::unique_lock<boost::mutex> lock(m_mutex);
 
-        if(m_state == running) {
-            m_log->info("stopping");
-            shutdown();
-        }
-    }
-
-    if(m_thread.get()) {
-        m_log->debug("reaping the engine thread");
-        
-        // Wait for the termination.
-        m_thread->join();
-        m_thread.reset();
+    if(m_state == running) {
+        m_log->info("stopping");
+        shutdown();
     }
 }
 

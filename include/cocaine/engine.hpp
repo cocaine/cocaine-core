@@ -23,7 +23,6 @@
 
 #include <boost/thread/condition.hpp>
 #include <boost/thread/mutex.hpp>
-#include <boost/thread/thread.hpp>
 #include <deque>
 
 #ifdef HAVE_CGROUPS
@@ -67,6 +66,7 @@ class engine_t:
 {
     public:
         engine_t(context_t& context,
+                 ev::loop_ref& loop,
                  const manifest_t& manifest);
 
         ~engine_t();
@@ -86,7 +86,7 @@ class engine_t:
             return m_manifest;
         }
 
-        ev::dynamic_loop& loop() {
+        ev::loop_ref& loop() {
             return m_loop;
         }
 
@@ -124,9 +124,6 @@ class engine_t:
         // The app manifest.
         const manifest_t& m_manifest;
 
-        // Engine's thread.
-        std::auto_ptr<boost::thread> m_thread;
-        
         // Engine's state.
         enum {
             running,
@@ -141,7 +138,7 @@ class engine_t:
         std::auto_ptr<io::channel_t> m_bus;
   
         // Event loop.
-        ev::dynamic_loop m_loop;
+        ev::loop_ref& m_loop;
 
         // Slave I/O watchers.
         ev::io m_watcher;
