@@ -28,12 +28,7 @@
 
 #include "cocaine/helpers/json.hpp"
 
-namespace cocaine { namespace engine { namespace drivers {
-
-struct driver_config_t {
-    const std::string name;
-    const Json::Value args;
-};
+namespace cocaine {
 
 class driver_t:
     public boost::noncopyable
@@ -45,36 +40,30 @@ class driver_t:
 
         virtual Json::Value info() const = 0;
 
-    public:
-        engine_t& engine() {
-            return m_engine;
-        }
-
     protected:
-        driver_t(context_t& context, engine_t& engine, const driver_config_t& config):
-            m_context(context),
-            m_engine(engine)
+        driver_t(context_t& context, const std::string& name, const Json::Value& args, app_t& app):
+            m_context(context)
         { }
         
     private:
         context_t& m_context;
-        engine_t& m_engine;
 };
 
 }}
 
 template<>
-struct category_traits<engine::drivers::driver_t> {
-    typedef std::auto_ptr<engine::drivers::driver_t> ptr_type;
+struct category_traits<driver_t> {
+    typedef std::auto_ptr<driver_t> ptr_type;
 
     typedef boost::tuple<
-        engine::engine_t&,
-        const engine::drivers::driver_config_t&
+        const std::string&,
+        const Json::Value&,
+        app_t&
     > args_type;
 
     template<class T>
     struct default_factory:
-        public factory<engine::drivers::driver_t>
+        public factory<driver_t>
     {
         virtual ptr_type get(context_t& context,
                              const args_type& args)
@@ -83,7 +72,8 @@ struct category_traits<engine::drivers::driver_t> {
                 new T(
                     context,
                     boost::get<0>(args),
-                    boost::get<1>(args)
+                    boost::get<1>(args),
+                    boost::get<2>(args)
                 )
             );
         }

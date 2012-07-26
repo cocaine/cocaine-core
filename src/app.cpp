@@ -25,7 +25,7 @@
 #include "cocaine/app.hpp"
 
 #include "cocaine/context.hpp"
-#include "cocaine/engine.hpp"
+#include "cocaine/detail/engine.hpp"
 #include "cocaine/logging.hpp"
 
 using namespace cocaine;
@@ -61,18 +61,14 @@ app_t::app_t(context_t& context, const std::string& name):
         it != names.end();
         ++it)
     {
-        drivers::driver_config_t config = {
-            *it,
-            drivers[*it]
-        };
-
         m_drivers.insert(
             *it,
-            context.get<drivers::driver_t>(
+            context.get<driver_t>(
                 config.args["type"].asString(),
-                category_traits<drivers::driver_t>::args_type(
-                    *m_engine,
-                    config
+                category_traits<driver_t>::args_type(
+                    *it,
+                    drivers[*it],
+                    *m_engine
                 )
             )
         );

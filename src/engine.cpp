@@ -23,14 +23,13 @@
 #include <boost/iterator/filter_iterator.hpp>
 #include <boost/lexical_cast.hpp>
 
-#include "cocaine/engine.hpp"
+#include "cocaine/detail/engine.hpp"
 
 #include "cocaine/context.hpp"
-#include "cocaine/io.hpp"
+#include "cocaine/detail/rpc.hpp"
 #include "cocaine/job.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
-#include "cocaine/rpc.hpp"
 
 using namespace cocaine::engine;
 
@@ -673,7 +672,9 @@ void engine_t::pump() {
                 command
             );
 
-            if(!success) {
+            if(success) {
+                it->second->process_event(events::invoke(job));
+            } else {
                 m_log->error(
                     "slave %s has unexpectedly died",
                     it->first.c_str()
@@ -686,11 +687,7 @@ void engine_t::pump() {
                     boost::unique_lock<boost::mutex> queue_lock(m_queue_mutex);
                     m_queue.push_front(job);
                 }
-
-                break;
             }
-
-            it->second->process_event(events::invoke(job));
         } else {
             break;
         }

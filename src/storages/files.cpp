@@ -83,14 +83,14 @@ namespace msgpack {
     }
 }
 
-file_storage_t::file_storage_t(context_t& context, const storage_config_t& config):
-    category_type(context, config),
+file_storage_t::file_storage_t(context_t& context, const std::string& name, const Json::Value& args):
+    category_type(context, name, args),
     m_log(context.log(
         (boost::format("storage/%1%")
-            % config.name
+            % name
         ).str()
     )),
-    m_storage_path(config.args["path"].asString())
+    m_storage_path(args["path"].asString())
 { }
 
 objects::value_type file_storage_t::get(const std::string& ns,

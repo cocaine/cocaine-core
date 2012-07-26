@@ -26,8 +26,8 @@
 // Has to be included after common.h
 #include <ev++.h>
 
-#include "cocaine/auth.hpp"
-#include "cocaine/io.hpp"
+#include "cocaine/detail/auth.hpp"
+#include "cocaine/detail/io.hpp"
 
 #include "cocaine/helpers/json.hpp"
 

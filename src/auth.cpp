@@ -22,7 +22,7 @@
 #include <openssl/pem.h>
 #include <openssl/err.h>
 
-#include "cocaine/auth.hpp"
+#include "cocaine/detail/auth.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"

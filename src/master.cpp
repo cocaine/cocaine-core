@@ -22,10 +22,10 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "cocaine/master.hpp"
+#include "cocaine/detail/master.hpp"
 
 #include "cocaine/context.hpp"
-#include "cocaine/engine.hpp"
+#include "cocaine/detail/engine.hpp"
 #include "cocaine/job.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"

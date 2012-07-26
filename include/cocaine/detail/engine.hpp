@@ -35,7 +35,7 @@
 // Has to be included after common.h
 #include <ev++.h>
 
-#include "cocaine/master.hpp"
+#include "cocaine/detail/master.hpp"
 
 #include "cocaine/helpers/json.hpp"
 
