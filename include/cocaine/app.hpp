@@ -21,8 +21,6 @@
 #ifndef COCAINE_APP_HPP
 #define COCAINE_APP_HPP
 
-#include <boost/thread/condition.hpp>
-
 #include "cocaine/common.hpp"
 #include "cocaine/manifest.hpp"
 
@@ -68,8 +66,6 @@ class app_t {
         > driver_map_t;
         
         driver_map_t m_drivers;
-
-	boost::condition m_cond;
 };
 
 }
