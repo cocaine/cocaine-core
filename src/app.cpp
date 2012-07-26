@@ -63,12 +63,12 @@ app_t::app_t(context_t& context, const std::string& name):
     {
         m_drivers.insert(
             *it,
-            context.get<driver_t>(
-                config.args["type"].asString(),
-                category_traits<driver_t>::args_type(
+            context.get<engine::drivers::driver_t>(
+                drivers[*it]["type"].asString(),
+                category_traits<engine::drivers::driver_t>::args_type(
+                    *m_engine,
                     *it,
-                    drivers[*it],
-                    *m_engine
+                    drivers[*it]
                 )
             )
         );

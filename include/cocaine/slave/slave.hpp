@@ -26,7 +26,7 @@
 // Has to be included after common.h
 #include <ev++.h>
 
-#include "cocaine/detail/io.hpp"
+#include "cocaine/io.hpp"
 
 #include "cocaine/interfaces/sandbox.hpp"
 

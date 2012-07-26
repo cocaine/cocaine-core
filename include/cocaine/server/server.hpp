@@ -27,7 +27,7 @@
 #include <ev++.h>
 
 #include "cocaine/detail/auth.hpp"
-#include "cocaine/detail/io.hpp"
+#include "cocaine/io.hpp"
 
 #include "cocaine/helpers/json.hpp"
 

@@ -24,7 +24,7 @@
 
 #include "cocaine/context.hpp"
 
-#include "cocaine/detail/io.hpp"
+#include "cocaine/io.hpp"
 #include "cocaine/logging.hpp"
 
 #include "cocaine/storages/files.hpp"

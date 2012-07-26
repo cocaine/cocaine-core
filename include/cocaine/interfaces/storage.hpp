@@ -100,7 +100,6 @@ struct category_traits< storages::storage_concept<T> > {
             boost::lock_guard<boost::mutex> lock(m_mutex);
 
             const std::string& name(boost::get<0>(args));
-            const Json::Value& args(boost::get<1>(args));
 
             typename instance_map_t::iterator it(
                 m_instances.find(name)
@@ -113,7 +112,7 @@ struct category_traits< storages::storage_concept<T> > {
                         boost::make_shared<U>(
                             boost::ref(context),
                             name,
-                            args
+                            boost::get<1>(args)
                         )
                     )
                 );
