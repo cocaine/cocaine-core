@@ -37,10 +37,6 @@ using namespace cocaine::engine;
 // Job queue
 // ---------
 
-job_queue_t::lock_t::lock_t(job_queue_t& queue):
-    m_lock(queue.m_mutex)
-{ }
-
 void job_queue_t::push(const_reference job) {
     if(job->policy.urgent) {
         push_front(job);
@@ -86,15 +82,15 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest):
         ).str()
     )),
     m_manifest(manifest),
+    m_thread(NULL),
     m_state(stopped),
+    m_bus(new io::channel_t(context.io(), m_manifest.name)),
     m_watcher(m_loop),
     m_processor(m_loop),
     m_check(m_loop),
     m_gc_timer(m_loop),
     m_termination_timer(m_loop),
-    m_notification(m_loop),
-    m_bus(new io::channel_t(context.io(), m_manifest.name)),
-    m_thread(NULL)
+    m_notification(m_loop)
 #ifdef HAVE_CGROUPS
     , m_cgroup(NULL)
 #endif
@@ -305,7 +301,7 @@ Json::Value engine_t::info() const {
 // Job scheduling
 // --------------
 
-bool engine_t::enqueue(job_queue_t::const_reference job) {
+bool engine_t::enqueue(job_queue_t::const_reference job, mode::value mode) {
     if(m_state != running) {
         m_log->debug(
             "dropping an incomplete '%s' job due to an inactive engine",
@@ -321,29 +317,43 @@ bool engine_t::enqueue(job_queue_t::const_reference job) {
 
         return false;
     }
-        
-    if(m_queue.size() >= m_manifest.policy.queue_limit) {
-        m_log->debug(
-            "dropping an incomplete '%s' job due to a full queue",
-            job->event.c_str()
-        );
-
-        job->process_event(
-            events::error(
-                resource_error,
-                "the queue is full"
-            )
-        );
-
-        return false;
-    }
 
     {
-        job_queue_t::lock_t queue_lock(m_queue);
-        m_queue.push(job);
-    }
+        boost::unique_lock<boost::mutex> queue_lock(m_queue_mutex);
+    
+        if(m_queue.size() < m_manifest.policy.queue_limit) {
+            m_queue.push(job);
+        } else {
+            switch(mode) {
+                case mode::normal:
+                    // Release the lock, as it's not needed anymore.
+                    queue_lock.unlock();
 
-    // Notify the event loop about this new job.
+                    m_log->debug(
+                        "dropping an incomplete '%s' job due to a full queue",
+                        job->event.c_str()
+                    );
+
+                    job->process_event(
+                        events::error(
+                            resource_error,
+                            "the queue is full"
+                        )
+                    );
+
+                    return false;
+
+                case mode::blocking:
+                    while(m_queue.size() >= m_manifest.policy.queue_limit) {
+                        m_queue_condition.wait(queue_lock);
+                    }
+
+                    m_queue.push(job);
+            }
+        }
+    }
+    
+    // Notify the engine about a new job.
     m_notification.send();
     
     return true;
@@ -545,7 +555,7 @@ void engine_t::cleanup(ev::timer&, int) {
         );
     }
 
-    job_queue_t::lock_t queue_lock(m_queue);
+    boost::unique_lock<boost::mutex> queue_lock(m_queue_mutex);
 
     typedef boost::filter_iterator<expired, job_queue_t::iterator> filter;
 
@@ -627,7 +637,7 @@ void engine_t::pump() {
             job_queue_t::value_type job;
 
             {
-                job_queue_t::lock_t queue_lock(m_queue);
+                boost::unique_lock<boost::mutex> queue_lock(m_queue_mutex);
 
                 if(m_queue.empty()) {
                     break;
@@ -636,6 +646,9 @@ void engine_t::pump() {
                 job = m_queue.front();
                 m_queue.pop_front();
             }
+
+            // Notify one of the blocked enqueue operations.
+            m_queue_condition.notify_one();
             
             if(job->state_downcast<const job::complete*>()) {
                 m_log->debug(
@@ -670,7 +683,7 @@ void engine_t::pump() {
                 m_pool.erase(it);
                 
                 {
-                    job_queue_t::lock_t queue_lock(m_queue);
+                    boost::unique_lock<boost::mutex> queue_lock(m_queue_mutex);
                     m_queue.push_front(job);
                 }
 
@@ -691,34 +704,33 @@ void engine_t::pump() {
     {
         int target = std::min(
             m_manifest.policy.pool_limit,
-            m_manifest.policy.grow_threshold ? 
-                (m_queue.size() * 2) / m_manifest.policy.grow_threshold :
-                m_manifest.policy.pool_limit
+            std::max(
+                2 * m_queue.size() / m_manifest.policy.grow_threshold, 
+                1UL
+            )
         );
        
-        if(target > m_pool.size()) {
-            m_log->info(
-                "enlarging the pool from %d to %d slaves",
-                m_pool.size(),
-                target
-            );
+        m_log->info(
+            "enlarging the pool from %d to %d slaves",
+            m_pool.size(),
+            target
+        );
 
-            while(m_pool.size() != target) {
-                std::auto_ptr<master_t> master;
-                
-                try {
-                    master.reset(new master_t(m_context, *this));
-                    std::string master_id(master->id());
-                    m_pool.insert(master_id, master);
-                } catch(const system_error_t& e) {
-                    m_log->error(
-                        "unable to spawn more slaves - %s - %s",
-                        e.what(),
-                        e.reason()
-                    );
+        while(m_pool.size() != target) {
+            std::auto_ptr<master_t> master;
+            
+            try {
+                master.reset(new master_t(m_context, *this));
+                std::string master_id(master->id());
+                m_pool.insert(master_id, master);
+            } catch(const system_error_t& e) {
+                m_log->error(
+                    "unable to spawn more slaves - %s - %s",
+                    e.what(),
+                    e.reason()
+                );
 
-                    return;
-                }
+                return;
             }
         }
     }
@@ -729,7 +741,7 @@ void engine_t::pump() {
 
 void engine_t::shutdown() {
     {
-        job_queue_t::lock_t queue_lock(m_queue);
+        boost::unique_lock<boost::mutex> queue_lock(m_queue_mutex);
 
         if(!m_queue.empty()) {
             m_log->debug(
