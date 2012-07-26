@@ -30,11 +30,6 @@
 
 namespace cocaine { namespace engine { namespace drivers {
 
-struct driver_config_t {
-    const std::string name;
-    const Json::Value args;
-};
-
 class driver_t:
     public boost::noncopyable
 {
@@ -51,7 +46,7 @@ class driver_t:
         }
 
     protected:
-        driver_t(context_t& context, engine_t& engine, const driver_config_t& config):
+        driver_t(context_t& context, engine_t& engine, const std::string& name, const Json::Value& args):
             m_context(context),
             m_engine(engine)
         { }
@@ -69,7 +64,8 @@ struct category_traits<engine::drivers::driver_t> {
 
     typedef boost::tuple<
         engine::engine_t&,
-        const engine::drivers::driver_config_t&
+        const std::string&,
+        const Json::Value&
     > args_type;
 
     template<class T>
@@ -83,7 +79,8 @@ struct category_traits<engine::drivers::driver_t> {
                 new T(
                     context,
                     boost::get<0>(args),
-                    boost::get<1>(args)
+                    boost::get<1>(args),
+                    boost::get<2>(args)
                 )
             );
         }

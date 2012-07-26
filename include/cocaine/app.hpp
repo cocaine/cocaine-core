@@ -45,13 +45,17 @@ class app_t {
         Json::Value info() const;
         
         // Job scheduling.
-        bool enqueue(const boost::shared_ptr<engine::job_t>& job);
+        bool enqueue(const boost::shared_ptr<engine::job_t>& job,
+                     engine::mode::value mode = engine::mode::normal);
 
     private:
         context_t& m_context;
         boost::shared_ptr<logging::logger_t> m_log;
-        
+
+        // App configuration.
         const manifest_t m_manifest;
+
+        // App execution engine.
         std::auto_ptr<engine::engine_t> m_engine;
 
 #if BOOST_VERSION >= 104000

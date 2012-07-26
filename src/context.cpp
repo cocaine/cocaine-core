@@ -112,14 +112,9 @@ config_t::config_t(const std::string& path):
         it != storage_names.end();
         ++it)
     {
-        storage_config_t config = {
-            *it,
-            root["storages"][*it]["args"]
-        };
-
         storage_info_t info = {
             root["storages"][*it]["type"].asString(),
-            config
+            root["storages"][*it]["args"]
         };
 
         storages.insert(

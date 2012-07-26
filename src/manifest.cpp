@@ -24,8 +24,8 @@
 #include "cocaine/manifest.hpp"
 
 #include "cocaine/context.hpp"
+#include "cocaine/detail/package.hpp"
 #include "cocaine/logging.hpp"
-#include "cocaine/package.hpp"
 
 #include "cocaine/interfaces/storage.hpp"
 
@@ -104,6 +104,10 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
         "grow-threshold",
         static_cast<Json::UInt>(policy.queue_limit / policy.pool_limit)
     ).asUInt();
+
+    if(policy.grow_threshold == 0) {
+        throw configuration_error_t("engine grow threshold must be positive");
+    }
 
     slave = root["engine"].get(
         "slave",

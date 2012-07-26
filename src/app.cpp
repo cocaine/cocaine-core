@@ -61,18 +61,14 @@ app_t::app_t(context_t& context, const std::string& name):
         it != names.end();
         ++it)
     {
-        drivers::driver_config_t config = {
-            *it,
-            drivers[*it]
-        };
-
         m_drivers.insert(
             *it,
-            context.get<drivers::driver_t>(
-                config.args["type"].asString(),
-                category_traits<drivers::driver_t>::args_type(
+            context.get<engine::drivers::driver_t>(
+                drivers[*it]["type"].asString(),
+                category_traits<engine::drivers::driver_t>::args_type(
                     *m_engine,
-                    config
+                    *it,
+                    drivers[*it]
                 )
             )
         );
@@ -126,6 +122,6 @@ Json::Value app_t::info() const {
     return info;
 }
 
-bool app_t::enqueue(const boost::shared_ptr<job_t>& job) {
-    return m_engine->enqueue(job);
+bool app_t::enqueue(const boost::shared_ptr<job_t>& job, mode::value mode) {
+    return m_engine->enqueue(job, mode);
 }

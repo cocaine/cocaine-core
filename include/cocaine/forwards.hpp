@@ -22,24 +22,44 @@
 #define COCAINE_FORWARDS_HPP
 
 namespace cocaine {
-    struct config_t;    
-    struct manifest_t;
-    class app_t;
+    // Core configuration.
+    struct config_t;
+
+    // Runtime context.
     class context_t;
-    class repository_t;
+    
+    // App configuration.
+    struct manifest_t;
+
+    // App container.
+    class app_t;
 
     namespace engine {
-        struct job_t;
+        // Job queueing mode.
+        struct mode {
+            enum value {
+                normal,
+                blocking
+            };
+        };
+
+        // Job execution engine.
         class engine_t;
-        class master_t;
+        
+        // Job abstraction.
+        struct job_t;
     }
 
     namespace io {
+        // Tuple-based RPC channel.
         class channel_t;
     }
 
     namespace logging {
+        // Logging proxy.
         class logger_t;
+
+        // Logging sink abstraction.
         class sink_t;
     }
 }

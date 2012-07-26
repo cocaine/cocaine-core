@@ -21,8 +21,10 @@
 #ifndef COCAINE_ENGINE_HPP
 #define COCAINE_ENGINE_HPP
 
+#include <boost/thread/condition.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/thread.hpp>
+
 #include <deque>
 
 #ifdef HAVE_CGROUPS
@@ -34,7 +36,7 @@
 // Has to be included after common.h
 #include <ev++.h>
 
-#include "cocaine/master.hpp"
+#include "cocaine/detail/master.hpp"
 
 #include "cocaine/helpers/json.hpp"
 
@@ -55,18 +57,7 @@ class job_queue_t:
     >
 {
     public:
-        struct lock_t {
-            lock_t(job_queue_t& queue);
-        
-        private:
-            boost::unique_lock<boost::mutex> m_lock;
-        };
-
-    public:
         void push(const_reference job);
-
-    private:
-        boost::mutex m_mutex;
 };
 
 // Engine
@@ -88,14 +79,15 @@ class engine_t:
         Json::Value info() const;
         
         // Job scheduling.
-        bool enqueue(job_queue_t::const_reference job);
+        bool enqueue(job_queue_t::const_reference job,
+                     mode::value mode = mode::normal);
 
     public:
         const manifest_t& manifest() const {
             return m_manifest;
         }
 
-        ev::dynamic_loop& loop() {
+        ev::loop_ref& loop() {
             return m_loop;
         }
 
@@ -133,22 +125,25 @@ class engine_t:
         // The app manifest.
         const manifest_t& m_manifest;
 
-        // Current engine state.
+        // Engine's state.
         enum {
             running,
             stopping,
             stopped
         } m_state;
 
-        // Job queue.
-        job_queue_t m_queue;
+        // Engine's state synchronization.
+        mutable boost::mutex m_mutex;
 
+        // Engine's thread.
+        std::auto_ptr<boost::thread> m_thread;        
+        
+        // Slave RPC bus.
+        std::auto_ptr<io::channel_t> m_bus;
+  
         // Event loop.
         ev::dynamic_loop m_loop;
 
-        // Slave pool.
-        pool_map_t m_pool;
-        
         // Slave I/O watchers.
         ev::io m_watcher;
         ev::idle m_processor;
@@ -162,13 +157,16 @@ class engine_t:
         // Async notification watcher.
         ev::async m_notification;
 
-        // Slave RPC bus.
-        std::auto_ptr<io::channel_t> m_bus;
-  
-        // Threading.
-        std::auto_ptr<boost::thread> m_thread;
-        mutable boost::mutex m_mutex;
+        // Job queue.
+        job_queue_t m_queue;
 
+        // Job queue synchronization.
+        boost::mutex m_queue_mutex;
+        boost::condition_variable m_queue_condition;
+
+        // Slave pool.
+        pool_map_t m_pool;
+        
 #ifdef HAVE_CGROUPS
         // Control group to put the slaves into.
         cgroup * m_cgroup;

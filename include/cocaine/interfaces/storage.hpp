@@ -32,11 +32,6 @@
 
 namespace cocaine { namespace storages {
 
-struct storage_config_t {
-    const std::string name;
-    const Json::Value args;
-};
-
 struct objects {
     typedef Json::Value meta_type;
     typedef blob_t data_type;
@@ -75,7 +70,7 @@ class storage_concept<objects>:
                             const std::string& key) = 0;
 
     protected:
-        storage_concept(context_t& context, const storage_config_t&):
+        storage_concept(context_t& context, const std::string& name, const Json::Value& args):
             m_context(context)
         { }
 
@@ -89,7 +84,11 @@ template<class T>
 struct category_traits< storages::storage_concept<T> > {
     typedef storages::storage_concept<T> storage_type;
     typedef boost::shared_ptr<storage_type> ptr_type;
-    typedef boost::tuple<const storages::storage_config_t&> args_type;
+
+    typedef boost::tuple<
+        const std::string&,
+        const Json::Value&
+    > args_type;
     
     template<class U>
     struct default_factory:
@@ -99,19 +98,21 @@ struct category_traits< storages::storage_concept<T> > {
                              const args_type& args)
         {
             boost::lock_guard<boost::mutex> lock(m_mutex);
-            const storages::storage_config_t& config(boost::get<0>(args));
+
+            const std::string& name(boost::get<0>(args));
 
             typename instance_map_t::iterator it(
-                m_instances.find(config.name)
+                m_instances.find(name)
             );
 
             if(it == m_instances.end()) {
                 boost::tie(it, boost::tuples::ignore) = m_instances.insert(
                     std::make_pair(
-                        config.name,
+                        name,
                         boost::make_shared<U>(
                             boost::ref(context),
-                            config
+                            name,
+                            boost::get<1>(args)
                         )
                     )
                 );

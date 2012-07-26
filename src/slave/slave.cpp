@@ -23,9 +23,9 @@
 #include "cocaine/slave/slave.hpp"
 
 #include "cocaine/context.hpp"
+#include "cocaine/detail/rpc.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
-#include "cocaine/rpc.hpp"
 
 using namespace cocaine;
 using namespace cocaine::engine;
