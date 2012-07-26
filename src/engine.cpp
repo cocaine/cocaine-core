@@ -23,7 +23,7 @@
 #include <boost/iterator/filter_iterator.hpp>
 #include <boost/lexical_cast.hpp>
 
-#include "cocaine/detail/engine.hpp"
+#include "cocaine/engine.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/detail/rpc.hpp"

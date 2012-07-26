@@ -43,7 +43,8 @@ class app_t {
         Json::Value info() const;
         
         // Job scheduling.
-        bool enqueue(const boost::shared_ptr<engine::job_t>& job);
+        bool enqueue(const boost::shared_ptr<engine::job_t>& job,
+                     engine::mode::value mode = engine::mode::normal);
 
     private:
         context_t& m_context;

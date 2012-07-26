@@ -77,13 +77,6 @@ class engine_t:
 
         Json::Value info() const;
         
-        struct mode {
-            enum value {
-                normal,
-                blocking
-            };
-        };
-
         // Job scheduling.
         bool enqueue(job_queue_t::const_reference job,
                      mode::value mode = mode::normal);
