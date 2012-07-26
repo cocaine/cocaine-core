@@ -40,7 +40,7 @@ app_t::app_t(context_t& context, const std::string& name):
         ).str()
     )),
     m_manifest(context, name),
-    m_engine(new engine_t(context, m_loop, m_manifest))
+    m_engine(new engine_t(context, m_manifest))
 {
     Json::Value drivers(m_manifest.root["drivers"]);
 
@@ -103,28 +103,10 @@ app_t::~app_t() {
 
 void app_t::start() {
     m_engine->start();
-
-    m_thread.reset(
-        new boost::thread(
-            boost::bind(
-                &ev::dynamic_loop::loop,
-                boost::ref(m_loop),
-                0
-            )
-        )
-    );
 }
 
 void app_t::stop() {
     m_engine->stop();
-
-    if(m_thread.get()) {
-        m_log->debug("reaping the engine thread");
-        
-        // Wait for the termination.
-        m_thread->join();
-        m_thread.reset();
-    }
 }
 
 Json::Value app_t::info() const {
