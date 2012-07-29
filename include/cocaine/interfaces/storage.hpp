@@ -70,7 +70,7 @@ class storage_concept<objects>:
                             const std::string& key) = 0;
 
     protected:
-        storage_concept(context_t& context, const std::string& name, const Json::Value& args):
+        storage_concept(context_t& context, const std::string& , const Json::Value& ):
             m_context(context)
         { }
 
