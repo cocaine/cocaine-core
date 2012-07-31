@@ -21,7 +21,13 @@
 #ifndef COCAINE_IO_HPP
 #define COCAINE_IO_HPP
 
+#include <boost/mpl/begin.hpp>
+#include <boost/mpl/contains.hpp>
+#include <boost/mpl/distance.hpp>
+#include <boost/mpl/find.hpp>
 #include <boost/mpl/int.hpp>
+#include <boost/mpl/vector.hpp>
+
 #include <boost/type_traits/remove_const.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <msgpack.hpp>
@@ -39,8 +45,6 @@
 #define HOSTNAME_MAX_LENGTH 256
 
 namespace cocaine { namespace io {
-
-using namespace boost::tuples;
 
 // Raw message container
 // ---------------------
@@ -317,11 +321,31 @@ class scoped_option {
 // Tuple-based RPC command
 // -----------------------
 
-template<typename T, T Command> 
-struct packed:
+using namespace boost::tuples;
+
+template<class Domain, class Tag> 
+struct command:
     public boost::tuple<>
 {
     typedef boost::tuple<> tuple_type;
+};
+
+template<class Domain, class Tag, class Validate = void>
+struct enumerate;
+
+template<class Domain, class Tag>
+struct enumerate<
+    Domain,
+    Tag,
+    typename boost::enable_if<
+        boost::mpl::contains<Domain, Tag>
+    >::type
+>
+{
+    typedef typename boost::mpl::distance<
+        typename boost::mpl::begin<Domain>::type,
+        typename boost::mpl::find<Domain, Tag>::type
+    >::type id;
 };
 
 // Tuple-based RPC channel
@@ -341,17 +365,17 @@ class channel_t:
         // Sending
         // -------
 
-        template<typename Domain, Domain Command>
+        template<class Domain, class Tag>
         bool send(const std::string& route,
-                  const packed<Domain, Command>& command)
+                  const command<Domain, Tag>& cmd)
         {
             const bool multipart = boost::tuples::length<
-                typename packed<Domain, Command>::tuple_type
+                typename command<Domain, Tag>::tuple_type
             >::value;
 
             return send(protect(route), ZMQ_SNDMORE) &&
-                   send(static_cast<int>(Command), multipart ? ZMQ_SNDMORE : 0) &&
-                   send_multipart(command);
+                   send(enumerate<Domain, Tag>::id::value, multipart ? ZMQ_SNDMORE : 0) &&
+                   send_multipart(cmd);
         }
 
         // Receiving

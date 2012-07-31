@@ -27,14 +27,16 @@ namespace cocaine {
 
 namespace rpc {
 
-enum domain {
-    heartbeat = 1,
-    terminate,
-    invoke,
-    chunk,
-    error,
-    choke
-};
+struct heartbeat;
+struct terminate;
+struct invoke;
+struct chunk;
+struct error;
+struct choke;
+
+typedef boost::mpl::vector<
+    heartbeat, terminate, invoke, chunk, error, choke
+>::type domain;
 
 }
 
@@ -44,12 +46,12 @@ namespace io {
 // ----------------
 
 template<>
-struct packed<rpc::domain, rpc::invoke>:
+struct command<rpc::domain, rpc::invoke>:
     public boost::tuple<const std::string&, zmq::message_t&>
 {
     typedef boost::tuple<const std::string&, zmq::message_t&> tuple_type;
 
-    packed(const std::string& event, const void * data, size_t size):
+    command(const std::string& event, const void * data, size_t size):
         tuple_type(event, message),
         message(size)
     {
@@ -65,12 +67,12 @@ private:
 };
 
 template<>
-struct packed<rpc::domain, rpc::chunk>:
+struct command<rpc::domain, rpc::chunk>:
     public boost::tuple<zmq::message_t&>
 {
     typedef boost::tuple<zmq::message_t&> tuple_type;
 
-    packed(const void * data, size_t size):
+    command(const void * data, size_t size):
         tuple_type(message),
         message(size)
     {
@@ -86,13 +88,13 @@ private:
 };
 
 template<>
-struct packed<rpc::domain, rpc::error>:
+struct command<rpc::domain, rpc::error>:
     // NOTE: Not a string reference to allow literal error messages.
     public boost::tuple<int, std::string>
 {
     typedef boost::tuple<int, std::string> tuple_type;
 
-    packed(int code, const std::string& message):
+    command(int code, const std::string& message):
         tuple_type(code, message)
     { }
 };

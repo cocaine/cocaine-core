@@ -85,23 +85,23 @@ void slave_t::configure() {
             category_traits<sandbox_t>::args_type(*m_manifest)
         );
     } catch(const configuration_error_t& e) {
-        io::packed<rpc::domain, rpc::error> command(server_error, e.what());
+        io::command<rpc::domain, rpc::error> command(server_error, e.what());
         m_bus.send(m_app, command);
         terminate();
     } catch(const repository_error_t& e) {
-        io::packed<rpc::domain, rpc::error> command(server_error, e.what());
+        io::command<rpc::domain, rpc::error> command(server_error, e.what());
         m_bus.send(m_app, command);
         terminate();
     } catch(const unrecoverable_error_t& e) {
-        io::packed<rpc::domain, rpc::error> command(server_error, e.what());
+        io::command<rpc::domain, rpc::error> command(server_error, e.what());
         m_bus.send(m_app, command);
         terminate();
     } catch(const std::exception& e) {
-        io::packed<rpc::domain, rpc::error> command(server_error, e.what());
+        io::command<rpc::domain, rpc::error> command(server_error, e.what());
         m_bus.send(m_app, command);
         terminate();
     } catch(...) {
-        io::packed<rpc::domain, rpc::error> command(
+        io::command<rpc::domain, rpc::error> command(
             server_error,
             "unexpected exception while configuring the slave"
         );
@@ -128,7 +128,7 @@ blob_t slave_t::read(int timeout) {
 }
 
 void slave_t::write(const void * data, size_t size) {
-    io::packed<rpc::domain, rpc::chunk> command(data, size);
+    io::command<rpc::domain, rpc::chunk> command(data, size);
     m_bus.send(m_app, command);
 }
 
@@ -166,7 +166,7 @@ void slave_t::process(ev::idle&, int) {
     );
 
     switch(command) {
-        case rpc::invoke: {
+        case io::enumerate<rpc::domain, rpc::invoke>::id::value: {
             // TEST: Ensure that we have the app first.
             BOOST_ASSERT(m_sandbox.get() != NULL);
 
@@ -178,7 +178,7 @@ void slave_t::process(ev::idle&, int) {
             break;
         }
         
-        case rpc::terminate:
+        case io::enumerate<rpc::domain, rpc::terminate>::id::value:
             terminate();
             break;
 
@@ -203,7 +203,7 @@ void slave_t::timeout(ev::timer&, int) {
 }
 
 void slave_t::heartbeat(ev::timer&, int) {
-    if(!m_bus.send(m_app, io::packed<rpc::domain, rpc::heartbeat>())) {
+    if(!m_bus.send(m_app, io::command<rpc::domain, rpc::heartbeat>())) {
         m_log->error(
             "slave %s has lost the controlling engine",
             id().c_str()
@@ -217,16 +217,16 @@ void slave_t::invoke(const std::string& event) {
     try {
         m_sandbox->invoke(event, *this);
     } catch(const recoverable_error_t& e) {
-        io::packed<rpc::domain, rpc::error> command(app_error, e.what());
+        io::command<rpc::domain, rpc::error> command(app_error, e.what());
         m_bus.send(m_app, command);
     } catch(const unrecoverable_error_t& e) {
-        io::packed<rpc::domain, rpc::error> command(server_error, e.what());
+        io::command<rpc::domain, rpc::error> command(server_error, e.what());
         m_bus.send(m_app, command);
     } catch(const std::exception& e) {
-        io::packed<rpc::domain, rpc::error> command(app_error, e.what());
+        io::command<rpc::domain, rpc::error> command(app_error, e.what());
         m_bus.send(m_app, command);
     } catch(...) {
-        io::packed<rpc::domain, rpc::error> command(
+        io::command<rpc::domain, rpc::error> command(
             server_error,
             "unexpected exception while processing an event"
         );
@@ -234,7 +234,7 @@ void slave_t::invoke(const std::string& event) {
         m_bus.send(m_app, command);
     }
     
-    m_bus.send(m_app, io::packed<rpc::domain, rpc::choke>());
+    m_bus.send(m_app, io::command<rpc::domain, rpc::choke>());
     
     // NOTE: Drop all the outstanding request chunks not pulled
     // in by the user code. Might have a warning here?
@@ -245,6 +245,6 @@ void slave_t::invoke(const std::string& event) {
 }
 
 void slave_t::terminate() {
-    m_bus.send(m_app, io::packed<rpc::domain, rpc::terminate>());
+    m_bus.send(m_app, io::command<rpc::domain, rpc::terminate>());
     m_loop.unloop(ev::ALL);
 }
