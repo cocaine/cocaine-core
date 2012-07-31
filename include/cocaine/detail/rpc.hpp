@@ -34,7 +34,7 @@ struct chunk;
 struct error;
 struct choke;
 
-typedef boost::mpl::vector<
+typedef boost::mpl::list<
     heartbeat, terminate, invoke, chunk, error, choke
 >::type domain;
 

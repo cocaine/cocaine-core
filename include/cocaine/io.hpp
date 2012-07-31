@@ -26,7 +26,7 @@
 #include <boost/mpl/distance.hpp>
 #include <boost/mpl/find.hpp>
 #include <boost/mpl/int.hpp>
-#include <boost/mpl/vector.hpp>
+#include <boost/mpl/list.hpp>
 
 #include <boost/type_traits/remove_const.hpp>
 #include <boost/tuple/tuple.hpp>
