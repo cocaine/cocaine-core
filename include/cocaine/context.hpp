@@ -72,11 +72,9 @@ struct config_t {
 
     storage_info_map_t storages;
 
-    typedef struct {
+    struct {
         std::string hostname;
-    } runtime_info_t;
-
-    runtime_info_t runtime;
+    } runtime;
 };
 
 class context_t:

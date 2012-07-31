@@ -97,9 +97,9 @@ struct category_traits< storages::storage_concept<T> > {
         virtual ptr_type get(context_t& context,
                              const args_type& args)
         {
-            boost::lock_guard<boost::mutex> lock(m_mutex);
-
             const std::string& name(boost::get<0>(args));
+
+            boost::lock_guard<boost::mutex> lock(m_mutex);
 
             typename instance_map_t::iterator it(
                 m_instances.find(name)

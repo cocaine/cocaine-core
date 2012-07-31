@@ -80,13 +80,9 @@ class repository_t:
         get(const std::string& type,
             const typename category_traits<Category>::args_type& args)
         {
-            std::string category(
-                typeid(Category).name()
-            );
+            factory_map_t::iterator it(m_factories.find(type));
             
-            factory_map_t::iterator it(m_categories[category].find(type));
-            
-            if(it == m_categories[category].end()) {
+            if(it == m_factories.end()) {
                 throw repository_error_t("the '" + type + "' plugin is not available");
             }
             
@@ -94,9 +90,9 @@ class repository_t:
             BOOST_ASSERT(it->second->category() == typeid(Category));
 
             return typename category_traits<Category>::ptr_type(
-                dynamic_cast< factory<Category>& >(
-                    *it->second
-                ).get(m_context, args)
+                dynamic_cast< factory<Category>* >(
+                    it->second
+                )->get(m_context, args)
             );
         }
 
@@ -105,18 +101,16 @@ class repository_t:
             boost::is_base_of<typename T::category_type, T>
         >::type 
         insert(const std::string& type) {
-            std::string category(
-                typeid(typename T::category_type).name()
-            );
-
-            if(m_categories[category].find(type) != m_categories[category].end()) {
+            if(m_factories.find(type) != m_factories.end()) {
                 throw repository_error_t("the '" + type + "' plugin is a duplicate");
             }
 
-            m_categories[category].insert(
+            m_factories.insert(
                 std::make_pair(
                     type,
-                    boost::make_shared<typename plugin_traits<T>::factory_type>()
+                    boost::make_shared<
+                        typename plugin_traits<T>::factory_type
+                    >()
                 )
             );
         }
@@ -133,20 +127,11 @@ class repository_t:
 #else
         typedef std::map<
 #endif
-            std::string, 
+            std::string,
             boost::shared_ptr<factory_concept_t>
         > factory_map_t;
 
-#if BOOST_VERSION >= 104000
-        typedef boost::unordered_map<
-#else
-        typedef std::map<
-#endif
-            std::string,
-            factory_map_t
-        > category_map_t;
-        
-        category_map_t m_categories;
+        factory_map_t m_factories;
 };
 
 }

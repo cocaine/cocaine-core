@@ -51,7 +51,6 @@ class slave_t:
 
         ~slave_t();
 
-        void configure();
         void run();
 
         // I/O object implementation
@@ -70,6 +69,7 @@ class slave_t:
         void heartbeat(ev::timer&, int);
 
         // Dispatching.
+        void configure();
         void invoke(const std::string& event);
         void terminate();
 

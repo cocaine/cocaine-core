@@ -42,8 +42,6 @@ namespace cocaine { namespace io {
 
 using namespace boost::tuples;
 
-typedef std::vector<std::string> route_t;
-
 // Raw message container
 // ---------------------
 

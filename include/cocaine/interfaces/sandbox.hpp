@@ -78,7 +78,12 @@ struct category_traits<engine::sandbox_t> {
         virtual ptr_type get(context_t& context,
                              const args_type& args)
         {
-            return ptr_type(new T(context, boost::get<0>(args)));
+            return ptr_type(
+                new T(
+                    context,
+                    boost::get<0>(args)
+                )
+            );
         }
     };
 };
