@@ -199,6 +199,19 @@ void master_t::on_timeout(ev::timer&, int) {
     process_event(events::terminate());
 }
 
+alive::~alive() {
+    if(job) {
+        job->process_event(
+            events::error(
+                server_error,
+                "the job is being cancelled"
+            )
+        );
+
+        job.reset();
+    }
+}
+
 void alive::on_invoke(const events::invoke& event) {
     // TEST: Ensure that no job is being lost here.
     BOOST_ASSERT(!job && event.job);

@@ -121,7 +121,7 @@ namespace {
 
 repository_t::~repository_t() {
     // Destroy all the factories.
-    m_categories.clear();
+    m_factories.clear();
 
     // Dispose of the plugins.
     std::for_each(m_plugins.begin(), m_plugins.end(), disposer());

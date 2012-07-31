@@ -90,9 +90,9 @@ class repository_t:
             BOOST_ASSERT(it->second->category() == typeid(Category));
 
             return typename category_traits<Category>::ptr_type(
-                dynamic_cast< factory<Category>* >(
-                    it->second
-                )->get(m_context, args)
+                dynamic_cast< factory<Category>& >(
+                    *it->second
+                ).get(m_context, args)
             );
         }
 

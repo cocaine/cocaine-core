@@ -104,6 +104,8 @@ struct unknown:
 struct alive:
     public sc::simple_state<alive, master_t, idle>
 {
+    ~alive();
+
     void on_invoke(const events::invoke& event);
     void on_choke(const events::choke& event);
 
