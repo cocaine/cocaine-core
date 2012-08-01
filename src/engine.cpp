@@ -413,7 +413,7 @@ void engine_t::process(ev::idle&, int) {
 
             m_bus->send(
                 slave_id,
-                io::command<rpc::domain, rpc::terminate>()
+                io::command<rpc::category, rpc::terminate>()
             );
 
             continue;
@@ -426,11 +426,11 @@ void engine_t::process(ev::idle&, int) {
         );
 
         switch(command) {
-            case io::enumerate<rpc::domain, rpc::heartbeat>::id::value:
+            case io::enumerate<rpc::category, rpc::heartbeat>::id::value:
                 master->second->process_event(events::heartbeat());
                 break;
 
-            case io::enumerate<rpc::domain, rpc::terminate>::id::value:
+            case io::enumerate<rpc::category, rpc::terminate>::id::value:
                 if(master->second->state_downcast<const slave::busy*>()) {
                     // NOTE: Reschedule an incomplete job.
                     m_queue.push(master->second->state_downcast<const slave::alive*>()->job);
@@ -450,7 +450,7 @@ void engine_t::process(ev::idle&, int) {
 
                 continue;
 
-            case io::enumerate<rpc::domain, rpc::chunk>::id::value: {
+            case io::enumerate<rpc::category, rpc::chunk>::id::value: {
                 // TEST: Ensure we have the actual chunk following.
                 BOOST_ASSERT(m_bus->more());
 
@@ -462,7 +462,7 @@ void engine_t::process(ev::idle&, int) {
                 continue;
             }
          
-            case io::enumerate<rpc::domain, rpc::error>::id::value: {
+            case io::enumerate<rpc::category, rpc::error>::id::value: {
                 // TEST: Ensure that we have the actual error following.
                 BOOST_ASSERT(m_bus->more());
 
@@ -483,7 +483,7 @@ void engine_t::process(ev::idle&, int) {
                 continue;
             }
 
-            case io::enumerate<rpc::domain, rpc::choke>::id::value:
+            case io::enumerate<rpc::category, rpc::choke>::id::value:
                 master->second->process_event(events::choke());
                 break;
 
@@ -656,7 +656,7 @@ void engine_t::pump() {
                 continue;
             }
             
-            io::command<rpc::domain, rpc::invoke> command(
+            io::command<rpc::category, rpc::invoke> command(
                 job->event,
                 job->request.data(),
                 job->request.size()
@@ -780,7 +780,7 @@ void engine_t::shutdown() {
         if(it->second->state_downcast<const slave::alive*>()) {
             m_bus->send(
                 it->second->id(),
-                io::command<rpc::domain, rpc::terminate>()
+                io::command<rpc::category, rpc::terminate>()
             );
 
             ++pending;

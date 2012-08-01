@@ -36,7 +36,7 @@ struct choke;
 
 typedef boost::mpl::list<
     heartbeat, terminate, invoke, chunk, error, choke
->::type domain;
+>::type category;
 
 }
 
@@ -46,7 +46,7 @@ namespace io {
 // ----------------
 
 template<>
-struct command<rpc::domain, rpc::invoke>:
+struct command<rpc::category, rpc::invoke>:
     public boost::tuple<const std::string&, zmq::message_t&>
 {
     typedef boost::tuple<const std::string&, zmq::message_t&> tuple_type;
@@ -67,7 +67,7 @@ private:
 };
 
 template<>
-struct command<rpc::domain, rpc::chunk>:
+struct command<rpc::category, rpc::chunk>:
     public boost::tuple<zmq::message_t&>
 {
     typedef boost::tuple<zmq::message_t&> tuple_type;
@@ -88,7 +88,7 @@ private:
 };
 
 template<>
-struct command<rpc::domain, rpc::error>:
+struct command<rpc::category, rpc::error>:
     // NOTE: Not a string reference to allow literal error messages.
     public boost::tuple<int, std::string>
 {
