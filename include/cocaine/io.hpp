@@ -335,7 +335,9 @@ struct dispatch;
 
 template<
     class Event,
-    class Category = typename dispatch<typename Event::tag>::category,
+    class Category = typename dispatch<
+        typename Event::tag
+    >::category,
     class Enable = void
 >
 struct get;
