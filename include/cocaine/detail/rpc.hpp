@@ -27,12 +27,14 @@ namespace cocaine {
 
 namespace rpc {
 
-struct heartbeat;
-struct terminate;
-struct invoke;
-struct chunk;
-struct error;
-struct choke;
+struct core_rpc_tag;
+
+struct heartbeat { typedef core_rpc_tag tag; };
+struct terminate { typedef core_rpc_tag tag; };
+struct invoke    { typedef core_rpc_tag tag; };
+struct chunk     { typedef core_rpc_tag tag; };
+struct error     { typedef core_rpc_tag tag; };
+struct choke     { typedef core_rpc_tag tag; };
 
 typedef boost::mpl::list<
     heartbeat, terminate, invoke, chunk, error, choke
@@ -42,11 +44,16 @@ typedef boost::mpl::list<
 
 namespace io {
 
+template<>
+struct dispatch<rpc::core_rpc_tag> {
+    typedef rpc::category category;
+};
+
 // Specific packers
 // ----------------
 
 template<>
-struct command<rpc::category, rpc::invoke>:
+struct command<rpc::invoke>:
     public boost::tuple<const std::string&, zmq::message_t&>
 {
     typedef boost::tuple<const std::string&, zmq::message_t&> tuple_type;
@@ -67,7 +74,7 @@ private:
 };
 
 template<>
-struct command<rpc::category, rpc::chunk>:
+struct command<rpc::chunk>:
     public boost::tuple<zmq::message_t&>
 {
     typedef boost::tuple<zmq::message_t&> tuple_type;
@@ -88,7 +95,7 @@ private:
 };
 
 template<>
-struct command<rpc::category, rpc::error>:
+struct command<rpc::error>:
     // NOTE: Not a string reference to allow literal error messages.
     public boost::tuple<int, std::string>
 {

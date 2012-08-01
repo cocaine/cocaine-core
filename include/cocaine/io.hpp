@@ -323,28 +323,38 @@ class scoped_option {
 
 using namespace boost::tuples;
 
-template<class Domain, class Tag> 
+template<class Event> 
 struct command:
     public boost::tuple<>
 {
     typedef boost::tuple<> tuple_type;
 };
 
-template<class Domain, class Tag, class Validate = void>
-struct enumerate;
+template<class Tag>
+struct dispatch;
 
-template<class Domain, class Tag>
-struct enumerate<
-    Domain,
-    Tag,
+template<
+    class Event,
+    class Category = typename dispatch<typename Event::tag>::category,
+    class Enable = void
+>
+struct get;
+
+template<class Event, class Category>
+struct get<
+    Event,
+    Category,
     typename boost::enable_if<
-        boost::mpl::contains<Domain, Tag>
+        boost::mpl::contains<
+            Category,
+            Event
+        >
     >::type
 >
 {
     typedef typename boost::mpl::distance<
-        typename boost::mpl::begin<Domain>::type,
-        typename boost::mpl::find<Domain, Tag>::type
+        typename boost::mpl::begin<Category>::type,
+        typename boost::mpl::find<Category, Event>::type
     >::type id;
 };
 
@@ -365,16 +375,16 @@ class channel_t:
         // Sending
         // -------
 
-        template<class Domain, class Tag>
+        template<class Event>
         bool send(const std::string& route,
-                  const command<Domain, Tag>& cmd)
+                  const command<Event>& cmd)
         {
             const bool multipart = boost::tuples::length<
-                typename command<Domain, Tag>::tuple_type
+                typename command<Event>::tuple_type
             >::value;
 
             return send(protect(route), ZMQ_SNDMORE) &&
-                   send(enumerate<Domain, Tag>::id::value, multipart ? ZMQ_SNDMORE : 0) &&
+                   send(get<Event>::id::value, multipart ? ZMQ_SNDMORE : 0) &&
                    send_multipart(cmd);
         }
 
