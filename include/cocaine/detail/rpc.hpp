@@ -27,14 +27,14 @@ namespace cocaine {
 
 namespace rpc {
 
-struct core_rpc_tag;
+struct core_tag;
 
-struct heartbeat { typedef core_rpc_tag tag; };
-struct terminate { typedef core_rpc_tag tag; };
-struct invoke    { typedef core_rpc_tag tag; };
-struct chunk     { typedef core_rpc_tag tag; };
-struct error     { typedef core_rpc_tag tag; };
-struct choke     { typedef core_rpc_tag tag; };
+struct heartbeat { typedef core_tag tag; };
+struct terminate { typedef core_tag tag; };
+struct invoke    { typedef core_tag tag; };
+struct chunk     { typedef core_tag tag; };
+struct error     { typedef core_tag tag; };
+struct choke     { typedef core_tag tag; };
 
 typedef boost::mpl::list<
     heartbeat, terminate, invoke, chunk, error, choke
@@ -45,7 +45,7 @@ typedef boost::mpl::list<
 namespace io {
 
 template<>
-struct dispatch<rpc::core_rpc_tag> {
+struct dispatch<rpc::core_tag> {
     typedef rpc::category category;
 };
 
