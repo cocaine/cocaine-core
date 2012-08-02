@@ -23,8 +23,8 @@
 
 #include "cocaine/io.hpp"
 
-namespace cocaine {
-
+namespace cocaine { 
+    
 namespace rpc {
 
 struct core_tag;

@@ -347,10 +347,7 @@ struct get<
     Event,
     Category,
     typename boost::enable_if<
-        boost::mpl::contains<
-            Category,
-            Event
-        >
+        boost::mpl::contains<Category, Event>
     >::type
 >
 {
@@ -379,7 +376,7 @@ class channel_t:
 
         template<class Event>
         bool send(const std::string& route,
-                  const command<Event>& cmd)
+                  const command<Event>& object)
         {
             const bool multipart = boost::tuples::length<
                 typename command<Event>::tuple_type
@@ -387,7 +384,7 @@ class channel_t:
 
             return send(protect(route), ZMQ_SNDMORE) &&
                    send(get<Event>::id::value, multipart ? ZMQ_SNDMORE : 0) &&
-                   send_multipart(cmd);
+                   send_tuple(object);
         }
 
         // Receiving
@@ -420,25 +417,25 @@ class channel_t:
         }
 
     private:
-        bool send_multipart(const null_type&,
-                            int __attribute__ ((unused)) flags = 0) const
+        bool send_tuple(const null_type&,
+                        int __attribute__ ((unused)) flags = 0) const
         {
             return true;
         }
-
+        
         template<class Head>
-        bool send_multipart(const cons<Head, null_type>& o,
-                            int flags = 0)
+        bool send_tuple(const cons<Head, null_type>& o,
+                        int flags = 0)
         {
             return send(o.get_head(), flags);
         }
 
         template<class Head, class Tail>
-        bool send_multipart(const cons<Head, Tail>& o,
-                            int flags = 0)
+        bool send_tuple(const cons<Head, Tail>& o,
+                        int flags = 0)
         {
             return send(o.get_head(), ZMQ_SNDMORE | flags) &&
-                   send_multipart(o.get_tail(), flags);
+                   send_tuple(o.get_tail(), flags);
         }
 };
 
