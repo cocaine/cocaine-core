@@ -75,12 +75,41 @@ repository_t::repository_t(context_t& context):
 
         if(plugin) {
             // Try to get the initialization routine.
-            initialize = reinterpret_cast<initialize_fn_t>(lt_dlsym(plugin, "initialize"));
+            initialize = reinterpret_cast<initialize_fn_t>(
+                lt_dlsym(plugin, "initialize")
+            );
 
             if(initialize) {
-                initialize(*this);
-                m_plugins.push_back(plugin);
+                try {
+                    initialize(*this);
+                    m_plugins.push_back(plugin);
+                } catch(const std::exception& e) {
+                    lt_dlclose(plugin);
+                    
+                    m_log->error(
+                        "failed to initialize '%s' - %s",
+#if BOOST_FILESYSTEM_VERSION == 3
+                        it->path().string().c_str(),
+#else
+                        it->string().c_str(),
+#endif
+                        e.what()
+                    );
+                } catch(...) {
+                    lt_dlclose(plugin);
+
+                    m_log->error(
+                        "failed to initialize '%s' - unexpected exception",
+#if BOOST_FILESYSTEM_VERSION == 3
+                        it->path().string().c_str()
+#else
+                        it->string().c_str()
+#endif
+                    );
+                }
             } else {
+                lt_dlclose(plugin);
+
                 m_log->error(
                     "'%s' is not a cocaine plugin",
 #if BOOST_FILESYSTEM_VERSION == 3
@@ -89,8 +118,6 @@ repository_t::repository_t(context_t& context):
                     it->string().c_str()
 #endif
                 );
-
-                lt_dlclose(plugin);
             }
         } else {
             m_log->error(
