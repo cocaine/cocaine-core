@@ -23,6 +23,7 @@ LOCATE_LIBRARY(LIBEV "ev++.h" "ev" "libev")
 LOCATE_LIBRARY(LIBMSGPACK "msgpack.hpp" "msgpack")
 LOCATE_LIBRARY(LIBZMQ "zmq.hpp" "zmq")
 LOCATE_LIBRARY(LIBARCHIVE "archive.h" "archive")
+LOCATE_LIBRARY(LIBLTDL "ltdl.h" "ltdl")
 
 IF(NOT APPLE)
     LOCATE_LIBRARY(LIBCGROUP "libcgroup.h" "cgroup")
