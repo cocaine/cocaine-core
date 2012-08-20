@@ -1,12 +1,12 @@
-ADD_EXECUTABLE(cocaine-deploy
-    deploy)
+ADD_EXECUTABLE(cocaine-tool
+    tool)
 
-TARGET_LINK_LIBRARIES(cocaine-deploy
+TARGET_LINK_LIBRARIES(cocaine-tool
     boost_program_options-mt
     cocaine-core)
 
 INSTALL(
     TARGETS
-        cocaine-deploy
+        cocaine-tool
     RUNTIME DESTINATION bin
     COMPONENT runtime)
