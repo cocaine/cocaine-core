@@ -24,13 +24,12 @@
 #include "cocaine/manifest.hpp"
 
 #include "cocaine/context.hpp"
-#include "cocaine/detail/package.hpp"
 #include "cocaine/logging.hpp"
+#include "cocaine/package.hpp"
 
-#include "cocaine/interfaces/storage.hpp"
+#include "cocaine/api/storage.hpp"
 
 using namespace cocaine;
-using namespace cocaine::storages;
 
 manifest_t::manifest_t(context_t& context, const std::string& name_):
     name(name_),
@@ -43,7 +42,7 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
 {
     try {
         // Try to load the app manifest from the cache.
-        root = m_context.storage<objects>("core:cache")->exists("apps", name);
+        root = m_context.storage<api::objects>("core:cache")->exists("apps", name);
         path = root["path"].asString();
     } catch(const storage_error_t& e) {
         m_log->info("the app hasn't been found in the app cache");
@@ -116,11 +115,11 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
 }
 
 void manifest_t::deploy() {
-    objects::value_type object;
+    api::objects::value_type object;
 
     try {
         // Fetch the application object from the core storage.
-        object = m_context.storage<objects>("core")->get("apps", name);
+        object = m_context.storage<api::objects>("core")->get("apps", name);
     } catch(const storage_error_t& e) {
         m_log->error("unable to fetch the app from the app storage - %s", e.what());
         throw configuration_error_t("the '" + name + "' app is not available");
@@ -148,7 +147,7 @@ void manifest_t::deploy() {
 
     try {
         // Put the application object into the cache for future reference.
-        m_context.storage<objects>("core:cache")->put("apps", name, object);
+        m_context.storage<api::objects>("core:cache")->put("apps", name, object);
     } catch(const storage_error_t& e) {
         m_log->warning("unable to cache the app - %s", e.what());
         throw configuration_error_t("the '" + name + "' app is not available");

@@ -22,15 +22,14 @@
 #include <openssl/pem.h>
 #include <openssl/err.h>
 
-#include "cocaine/detail/auth.hpp"
+#include "cocaine/auth.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
-#include "cocaine/interfaces/storage.hpp"
+#include "cocaine/api/storage.hpp"
 
 using namespace cocaine::crypto;
-using namespace cocaine::storages;
 
 auth_t::auth_t(context_t& context):
     m_log(context.log("crypto")),
@@ -40,7 +39,7 @@ auth_t::auth_t(context_t& context):
 
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
     std::vector<std::string> keys(
-        context.storage<objects>("core")->list("keys")
+        context.storage<api::objects>("core")->list("keys")
     );
 
     for(std::vector<std::string>::const_iterator it = keys.begin();
@@ -49,8 +48,8 @@ auth_t::auth_t(context_t& context):
     {
         std::string identity(*it);
 
-        objects::value_type object(
-            context.storage<objects>("core")->get("keys", identity)
+        api::objects::value_type object(
+            context.storage<api::objects>("core")->get("keys", identity)
         );
 
         if(object.blob.empty()) {

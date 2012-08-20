@@ -26,10 +26,10 @@
 #include "cocaine/engine.hpp"
 
 #include "cocaine/context.hpp"
-#include "cocaine/detail/rpc.hpp"
 #include "cocaine/job.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
+#include "cocaine/rpc.hpp"
 
 using namespace cocaine::engine;
 

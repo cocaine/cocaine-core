@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#ifndef COCAINE_DRIVER_INTERFACE_HPP
-#define COCAINE_DRIVER_INTERFACE_HPP
+#ifndef COCAINE_DRIVER_API_HPP
+#define COCAINE_DRIVER_API_HPP
 
 #include <boost/tuple/tuple.hpp>
 
@@ -28,7 +28,7 @@
 
 #include "cocaine/helpers/json.hpp"
 
-namespace cocaine { namespace engine { namespace drivers {
+namespace cocaine { namespace api {
 
 class driver_t:
     public boost::noncopyable
@@ -41,26 +41,24 @@ class driver_t:
         virtual Json::Value info() const = 0;
 
     public:
-        engine_t& engine() {
+        engine::engine_t& engine() {
             return m_engine;
         }
 
     protected:
-        driver_t(context_t& context, engine_t& engine, const std::string& , const Json::Value& ):
+        driver_t(context_t& context, engine::engine_t& engine, const std::string&, const Json::Value&):
             m_context(context),
             m_engine(engine)
         { }
         
     private:
         context_t& m_context;
-        engine_t& m_engine;
+        engine::engine_t& m_engine;
 };
 
-}}
-
 template<>
-struct category_traits<engine::drivers::driver_t> {
-    typedef std::auto_ptr<engine::drivers::driver_t> ptr_type;
+struct category_traits<api::driver_t> {
+    typedef std::auto_ptr<api::driver_t> ptr_type;
 
     typedef boost::tuple<
         engine::engine_t&,
@@ -70,7 +68,7 @@ struct category_traits<engine::drivers::driver_t> {
 
     template<class T>
     struct default_factory:
-        public factory<engine::drivers::driver_t>
+        public factory<api::driver_t>
     {
         virtual ptr_type get(context_t& context,
                              const args_type& args)
@@ -87,6 +85,6 @@ struct category_traits<engine::drivers::driver_t> {
     };
 };
 
-}
+}}
 
 #endif

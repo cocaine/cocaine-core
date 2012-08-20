@@ -28,7 +28,7 @@
 
 #include "cocaine/io.hpp"
 
-#include "cocaine/interfaces/sandbox.hpp"
+#include "cocaine/api/sandbox.hpp"
 
 #include "cocaine/helpers/blob.hpp"
 #include "cocaine/helpers/unique_id.hpp"
@@ -43,7 +43,7 @@ struct slave_config_t {
 class slave_t:
     public boost::noncopyable,
     public unique_id_t,
-    public io_t
+    public api::io_t
 {
     public:
         slave_t(context_t& context,
@@ -80,7 +80,7 @@ class slave_t:
         // The app.
         const std::string m_app;
         std::auto_ptr<const manifest_t> m_manifest;
-        std::auto_ptr<sandbox_t> m_sandbox;
+        std::auto_ptr<api::sandbox_t> m_sandbox;
 
         // Event loop.
         ev::default_loop m_loop;

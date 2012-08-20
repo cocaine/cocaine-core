@@ -24,14 +24,13 @@
 
 #include "cocaine/config.hpp"
 #include "cocaine/context.hpp"
-#include "cocaine/detail/package.hpp"
 #include "cocaine/logging.hpp"
+#include "cocaine/package.hpp"
 
 #include "cocaine/helpers/blob.hpp"
 #include "cocaine/helpers/json.hpp"
 
 using namespace cocaine;
-using namespace cocaine::storages;
 
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
@@ -98,7 +97,7 @@ namespace {
         std::stringstream buffer;
         buffer << package_stream.rdbuf();
 
-        objects::data_type blob(
+        api::objects::data_type blob(
             buffer.str().data(),
             buffer.str().size()
         );
@@ -112,14 +111,14 @@ namespace {
             return;
         }
 
-        objects::value_type object = { manifest, blob };
+        api::objects::value_type object = { manifest, blob };
        
         std::cout << "Detected app type: '" << type 
                   << "', package compression: '" << compression
                   << "'." << std::endl;
 
         try {
-            context.storage<storages::objects>("core")->put("apps", name, object);
+            context.storage<api::objects>("core")->put("apps", name, object);
         } catch(const storage_error_t& e) {
             std::cerr << "Error: unable to deploy the app." << std::endl;
             std::cerr << e.what() << std::endl;

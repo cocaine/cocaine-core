@@ -26,7 +26,7 @@
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
 
-#include "cocaine/interfaces/storage.hpp"
+#include "cocaine/api/storage.hpp"
 
 namespace cocaine {
 
@@ -90,9 +90,9 @@ class context_t:
         // --------------
 
         template<class Category>
-        typename category_traits<Category>::ptr_type
+        typename api::category_traits<Category>::ptr_type
         get(const std::string& type,
-            const typename category_traits<Category>::args_type& args)
+            const typename api::category_traits<Category>::args_type& args)
         {
             return m_repository->get<Category>(type, args);
         }
@@ -108,11 +108,11 @@ class context_t:
         // -------
 
         template<class T>
-        typename category_traits<
-            storages::storage_concept<T>
+        typename api::category_traits<
+            api::storage_concept<T>
         >::ptr_type
         storage(const std::string& name) {
-            typedef storages::storage_concept<T> storage_type;
+            typedef api::storage_concept<T> storage_type;
 
             config_t::storage_info_map_t::const_iterator it(
                 config.storages.find(name)
@@ -124,7 +124,7 @@ class context_t:
 
             return get<storage_type>(
                 it->second.type,
-                typename category_traits<storage_type>::args_type(
+                typename api::category_traits<storage_type>::args_type(
                     name,
                     it->second.args
                 )
@@ -154,7 +154,7 @@ class context_t:
         
         // Core subsystems.
         std::auto_ptr<zmq::context_t> m_io;
-        std::auto_ptr<repository_t> m_repository;
+        std::auto_ptr<api::repository_t> m_repository;
 };
 
 }

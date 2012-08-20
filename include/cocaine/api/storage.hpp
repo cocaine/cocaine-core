@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#ifndef COCAINE_STORAGE_INTERFACE_HPP
-#define COCAINE_STORAGE_INTERFACE_HPP
+#ifndef COCAINE_STORAGE_API_HPP
+#define COCAINE_STORAGE_API_HPP
 
 #include <boost/thread/mutex.hpp>
 #include <boost/tuple/tuple.hpp>
@@ -30,7 +30,7 @@
 #include "cocaine/helpers/blob.hpp"
 #include "cocaine/helpers/json.hpp"
 
-namespace cocaine { namespace storages {
+namespace cocaine { namespace api {
 
 struct objects {
     typedef Json::Value meta_type;
@@ -78,11 +78,12 @@ class storage_concept<objects>:
         context_t& m_context;
 };
 
-}
-
 template<class T>
-struct category_traits< storages::storage_concept<T> > {
-    typedef storages::storage_concept<T> storage_type;
+struct category_traits<
+    api::storage_concept<T>
+>
+{
+    typedef api::storage_concept<T> storage_type;
     typedef boost::shared_ptr<storage_type> ptr_type;
 
     typedef boost::tuple<
@@ -132,6 +133,6 @@ struct category_traits< storages::storage_concept<T> > {
     };
 };
 
-}
+}}
 
 #endif

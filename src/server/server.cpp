@@ -27,10 +27,9 @@
 #include "cocaine/job.hpp"
 #include "cocaine/logging.hpp"
 
-#include "cocaine/interfaces/storage.hpp"
+#include "cocaine/api/storage.hpp"
 
 using namespace cocaine;
-using namespace cocaine::storages;
 using namespace cocaine::helpers;
 
 server_t::server_t(context_t& context, server_config_t config):
@@ -354,7 +353,7 @@ void server_t::announce(ev::timer&, int) {
 void server_t::recover() {
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
     std::vector<std::string> apps(
-        m_context.storage<objects>("core")->list("apps")
+        m_context.storage<api::objects>("core")->list("apps")
     );
 
     std::set<std::string> available(apps.begin(), apps.end()),

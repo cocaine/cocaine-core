@@ -23,9 +23,9 @@
 #include "cocaine/slave/slave.hpp"
 
 #include "cocaine/context.hpp"
-#include "cocaine/detail/rpc.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
+#include "cocaine/rpc.hpp"
 
 using namespace cocaine;
 using namespace cocaine::engine;
@@ -80,9 +80,9 @@ void slave_t::configure() {
         m_idle_timer.set<slave_t, &slave_t::timeout>(this);
         m_idle_timer.start(m_manifest->policy.idle_timeout);
         
-        m_sandbox = m_context.get<sandbox_t>(
+        m_sandbox = m_context.get<api::sandbox_t>(
             m_manifest->type,
-            category_traits<sandbox_t>::args_type(*m_manifest)
+            api::category_traits<api::sandbox_t>::args_type(*m_manifest)
         );
     } catch(const configuration_error_t& e) {
         io::command<rpc::error> command(server_error, e.what());

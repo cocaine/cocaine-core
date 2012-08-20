@@ -27,7 +27,7 @@
 
 #include "cocaine/common.hpp"
 
-namespace cocaine {
+namespace cocaine { namespace api {
 
 template<class Category>
 struct category_traits;
@@ -134,6 +134,6 @@ class repository_t:
         factory_map_t m_factories;
 };
 
-}
+}}
 
 #endif

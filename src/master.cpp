@@ -22,7 +22,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "cocaine/detail/master.hpp"
+#include "cocaine/master.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"

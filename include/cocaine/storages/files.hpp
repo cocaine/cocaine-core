@@ -23,30 +23,30 @@
 
 #include <boost/filesystem/path.hpp>
 
-#include "cocaine/interfaces/storage.hpp"
+#include "cocaine/api/storage.hpp"
 
 namespace cocaine { namespace storages {
 
 class file_storage_t:
-    public storage_concept<objects>
+    public api::storage_concept<api::objects>
 {
     public:
-        typedef storage_concept<objects> category_type;
+        typedef api::storage_concept<api::objects> category_type;
 
     public:
         file_storage_t(context_t& context,
                        const std::string& name,
                        const Json::Value& args);
 
-        virtual objects::value_type get(const std::string& ns,
-                                        const std::string& key);
+        virtual api::objects::value_type get(const std::string& ns,
+                                             const std::string& key);
 
         virtual void put(const std::string& ns, 
                          const std::string& key, 
-                         const objects::value_type& object);
+                         const api::objects::value_type& object);
 
-        virtual objects::meta_type exists(const std::string& ns,
-                                          const std::string& key);
+        virtual api::objects::meta_type exists(const std::string& ns,
+                                               const std::string& key);
 
         virtual std::vector<std::string> list(const std::string& ns);
 

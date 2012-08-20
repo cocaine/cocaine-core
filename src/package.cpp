@@ -21,7 +21,7 @@
 #include <archive.h>
 #include <archive_entry.h>
 
-#include "cocaine/detail/package.hpp"
+#include "cocaine/package.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"

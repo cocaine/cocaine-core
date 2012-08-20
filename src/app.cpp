@@ -30,7 +30,6 @@
 
 using namespace cocaine;
 using namespace cocaine::engine;
-using namespace cocaine::storages;
 
 app_t::app_t(context_t& context, const std::string& name):
     m_context(context),
@@ -63,9 +62,9 @@ app_t::app_t(context_t& context, const std::string& name):
     {
         m_drivers.insert(
             *it,
-            context.get<engine::drivers::driver_t>(
+            context.get<api::driver_t>(
                 drivers[*it]["type"].asString(),
-                category_traits<engine::drivers::driver_t>::args_type(
+                api::category_traits<api::driver_t>::args_type(
                     *m_engine,
                     *it,
                     drivers[*it]
@@ -86,7 +85,7 @@ app_t::~app_t() {
 
     try {
         // Remove the cached app.
-        m_context.storage<objects>("core:cache")->remove("apps", m_manifest.name);    
+        m_context.storage<api::objects>("core:cache")->remove("apps", m_manifest.name);    
     } catch(const storage_error_t& e) {
         m_log->warning("unable cleanup the app cache - %s", e.what());
     }

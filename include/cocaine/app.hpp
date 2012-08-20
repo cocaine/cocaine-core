@@ -24,7 +24,7 @@
 #include "cocaine/common.hpp"
 #include "cocaine/manifest.hpp"
 
-#include "cocaine/interfaces/driver.hpp"
+#include "cocaine/api/driver.hpp"
 
 #include "helpers/json.hpp"
 
@@ -62,7 +62,7 @@ class app_t {
         typedef boost::ptr_map<
 #endif
             const std::string,
-            engine::drivers::driver_t
+            api::driver_t
         > driver_map_t;
         
         driver_map_t m_drivers;
