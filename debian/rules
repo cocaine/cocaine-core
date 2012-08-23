@@ -1,0 +1,14 @@
+#!/usr/bin/make -f
+
+include /usr/share/cdbs/1/class/cmake.mk
+include /usr/share/cdbs/1/rules/debhelper.mk
+
+install/cocaine-server::
+	install -d $(DEB_DESTDIR)etc/cocaine
+	install -m644 debian/cocaine-server.conf $(DEB_DESTDIR)etc/cocaine/cocaine.conf
+	
+install/cocaine-tools::
+	install -d $(DEB_DESTDIR)usr/bin
+	install -m755 scripts/cocaine-info.py $(DEB_DESTDIR)usr/bin/cocaine-info
+	install -m755 scripts/cocaine-engine-create.py $(DEB_DESTDIR)usr/bin/cocaine-engine-create
+	install -m755 scripts/cocaine-engine-delete.py $(DEB_DESTDIR)usr/bin/cocaine-engine-delete

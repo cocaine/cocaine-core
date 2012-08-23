@@ -1,0 +1,20 @@
+#!/bin/bash
+
+set -e
+
+#DEBHELPER#
+
+case $1 in
+    purge)
+        deluser --quiet --system cocaine
+        ;;
+
+    upgrade|disappear|failed-upgrade|abort-install|abort-upgrade)
+        ;;
+
+    *)
+        echo "postrm called with an unknown argument \`$1'" >&2
+        ;;
+esac
+
+exit 0

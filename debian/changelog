@@ -1,0 +1,5 @@
+cocaine-core (0.9.0) lucid; urgency=low
+
+  * Debianization is back.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Mon, 31 Oct 2011 19:37:29 +0300

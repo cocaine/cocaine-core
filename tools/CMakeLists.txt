@@ -1,6 +1,12 @@
-SET(TOOLS
-        tool)
+ADD_EXECUTABLE(cocaine-tool
+    tool)
 
-FOREACH(TOOL ${TOOLS})
-    ADD_SUBDIRECTORY(${TOOL})
-ENDFOREACH(TOOL)
+TARGET_LINK_LIBRARIES(cocaine-tool
+    boost_program_options-mt
+    cocaine-core)
+
+INSTALL(
+    TARGETS
+        cocaine-tool
+    RUNTIME DESTINATION bin
+    COMPONENT runtime)

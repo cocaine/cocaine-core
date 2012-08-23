@@ -1,0 +1,28 @@
+#!/bin/bash
+
+set -e
+
+case $1 in
+    configure)
+        # Create a new system user to run the server
+        # and to own the server runtime resources
+        adduser --quiet --system --ingroup adm cocaine
+        
+        # Set the correct permissions on the server
+        # runtime resources directory
+        chown -R cocaine /var/lib/cocaine
+        chown -R cocaine /var/cache/cocaine
+        chown -R cocaine /var/spool/cocaine
+        ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+
+    *)
+        echo "postinst called with an unknown argument \`$1'" >&2
+        ;;
+esac
+
+#DEBHELPER#
+        
+exit 0
