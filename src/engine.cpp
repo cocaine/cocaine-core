@@ -697,7 +697,7 @@ void engine_t::pump() {
     if(m_pool.size() < m_manifest.policy.pool_limit &&
        m_pool.size() * m_manifest.policy.grow_threshold < m_queue.size() * 2)
     {
-        int target = std::min(
+        unsigned int target = std::min(
             m_manifest.policy.pool_limit,
             std::max(
                 2 * m_queue.size() / m_manifest.policy.grow_threshold, 
