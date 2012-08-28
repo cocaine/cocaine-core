@@ -83,7 +83,7 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest):
     m_manifest(manifest),
     m_state(stopped),
     m_thread(NULL),
-    m_bus(new io::channel_t(context.io(), m_manifest.name)),
+    m_bus(new io::channel_t(context, m_manifest.name)),
     m_watcher(m_loop),
     m_processor(m_loop),
     m_check(m_loop),
