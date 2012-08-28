@@ -53,10 +53,31 @@ namespace {
             }
     };
 
-    static void deploy(context_t& context,
-                       const std::string& name,
-                       const fs::path& manifest_path,
-                       const fs::path& package_path)
+    void list(context_t& context) {
+        std::vector<std::string> apps;
+        
+        try {
+            apps = context.storage<storages::objects>("core")->list("apps");
+        } catch(const storage_error_t& e) {
+            std::cerr << "Error: unable to retrieve the app list." << std::endl;
+            std::cerr << e.what() << std::endl;
+            return;
+        }
+
+        std::cout << "Currently uploaded applications:" << std::endl;
+
+        for(std::vector<std::string>::const_iterator it = apps.begin();
+            it != apps.end();
+            ++it)
+        {
+            std::cout << "\t" << *it << std::endl;
+        }
+    }
+
+    void upload(context_t& context,
+                const std::string& name,
+                const fs::path& manifest_path,
+                const fs::path& package_path)
     {
         std::string type,
                     compression;
@@ -120,12 +141,26 @@ namespace {
         try {
             context.storage<api::objects>("core")->put("apps", name, object);
         } catch(const storage_error_t& e) {
-            std::cerr << "Error: unable to deploy the app." << std::endl;
+            std::cerr << "Error: unable to upload the app." << std::endl;
             std::cerr << e.what() << std::endl;
             return;
         }
 
-        std::cout << "The '" << name << "' app has been successfully deployed." << std::endl;
+        std::cout << "The '" << name << "' app has been successfully uploaded." << std::endl;
+    }
+
+    void remove(context_t& context,
+                std::string name)
+    {
+        try {
+            context.storage<storages::objects>("core")->remove("apps", name);
+        } catch(const storage_error_t& e) {
+            std::cerr << "Error: unable to remove the app." << std::endl;
+            std::cerr << e.what() << std::endl;
+            return;
+        }
+
+        std::cout << "The '" << name << "' app has been successfully removed." << std::endl;
     }
 }
 
@@ -135,7 +170,6 @@ int main(int argc, char * argv[]) {
                             combined_options;
     
     po::positional_options_description positional_options;
-    
     po::variables_map vm;
 
     general_options.add_options()
@@ -150,12 +184,14 @@ int main(int argc, char * argv[]) {
         ("package,p", po::value<std::string>
             ()->default_value("package.tar.gz"),
             "location of the app source package")
+        ("name,n", po::value<std::string>(),
+            "app name")
         ("verbose", "produce a lot of output");
 
     hidden_options.add_options()
-        ("name", po::value<std::string>());
+        ("operation", po::value<std::string>());
 
-    positional_options.add("name", -1);
+    positional_options.add("operation", 1);
 
     combined_options.add(general_options)
                     .add(hidden_options);
@@ -177,7 +213,7 @@ int main(int argc, char * argv[]) {
     }
 
     if(vm.count("help")) {
-        std::cout << "Usage: " << argv[0] << " [options] app-name" << std::endl;
+        std::cout << "Usage: " << argv[0] << " list|upload|delete <options>" << std::endl;
         std::cout << general_options;
         return EXIT_SUCCESS;
     }
@@ -190,30 +226,18 @@ int main(int argc, char * argv[]) {
     // Validation
     // ----------
 
+    if(!vm.count("operation")) {
+        std::cerr << "Error: no operation has been specified." << std::endl;
+        std::cerr << "Type '" << argv[0] << " --help' for usage information." << std::endl;
+        return EXIT_FAILURE;
+    }
+
     if(!vm.count("configuration")) {
         std::cerr << "Error: no configuration file location has been specified." << std::endl;
         std::cerr << "Type '" << argv[0] << " --help' for usage information." << std::endl;
         return EXIT_FAILURE;
     }
 
-    if(!vm.count("manifest")) {
-        std::cerr << "Error: no app manifest file location has been specified." << std::endl;
-        std::cerr << "Type '" << argv[0] << " --help' for usage information." << std::endl;
-        return EXIT_FAILURE;
-    }
-    
-    if(!vm.count("package")) {
-        std::cerr << "Error: no app package file location has been specified." << std::endl;
-        std::cerr << "Type '" << argv[0] << " --help' for usage information." << std::endl;
-        return EXIT_FAILURE;
-    }
-    
-    if(!vm.count("name")) {
-        std::cerr << "Error: no app name has been specified." << std::endl;
-        std::cerr << "Type '" << argv[0] << " --help' for usage information." << std::endl;
-        return EXIT_FAILURE;
-    }
-    
     // Startup
     // -------
 
@@ -224,11 +248,50 @@ int main(int argc, char * argv[]) {
         )
     );
 
-    deploy(
-        context,
-        vm["name"].as<std::string>(),
-        vm["manifest"].as<std::string>(),
-        vm["package"].as<std::string>()
-    );
+    std::string operation(vm["operation"].as<std::string>());
+
+    if(operation == "list") {
+        list(context);
+    } else if(operation == "upload") {
+        if(!vm.count("manifest")) {
+            std::cerr << "Error: no app manifest file location has been specified." << std::endl;
+            std::cerr << "Type '" << argv[0] << " --help' for usage information." << std::endl;
+            return EXIT_FAILURE;
+        }
+        
+        if(!vm.count("package")) {
+            std::cerr << "Error: no app package file location has been specified." << std::endl;
+            std::cerr << "Type '" << argv[0] << " --help' for usage information." << std::endl;
+            return EXIT_FAILURE;
+        }
+        
+        if(!vm.count("name")) {
+            std::cerr << "Error: no app name has been specified." << std::endl;
+            std::cerr << "Type '" << argv[0] << " --help' for usage information." << std::endl;
+            return EXIT_FAILURE;
+        }
+    
+        upload(
+            context,
+            vm["name"].as<std::string>(),
+            vm["manifest"].as<std::string>(),
+            vm["package"].as<std::string>()
+        );
+    } else if(operation == "remove") {
+        if(!vm.count("name")) {
+            std::cerr << "Error: no app name has been specified." << std::endl;
+            std::cerr << "Type '" << argv[0] << " --help' for usage information." << std::endl;
+            return EXIT_FAILURE;
+        }
+    
+        remove(
+            context,
+            vm["name"].as<std::string>()
+        );
+    } else {
+        std::cerr << "Error: unknown operation has been specified" << std::endl;
+        std::cerr << "Type '" << argv[0] << " --help' for usage information." << std::endl;
+        return EXIT_FAILURE;
+    }
 }
 

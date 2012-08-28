@@ -1,0 +1,11 @@
+cocaine-core (0.9.1) lucid; urgency=low
+
+  * Reworked the hostname determination logic to fix incorrect behavior in some cases.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 28 Aug 2012 18:31:49 +0400
+
+cocaine-core (0.9.0) lucid; urgency=low
+
+  * Debianization is back.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Mon, 31 Oct 2011 19:37:29 +0300

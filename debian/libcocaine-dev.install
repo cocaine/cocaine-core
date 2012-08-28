@@ -1,0 +1,5 @@
+usr/include/cocaine/*.hpp
+usr/include/cocaine/detail/*.hpp
+usr/include/cocaine/helpers/*.hpp
+usr/include/cocaine/interfaces/*.hpp
+usr/include/json

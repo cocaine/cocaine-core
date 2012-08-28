@@ -1,0 +1,2 @@
+ENDPOINT="tcp://*:5000"
+CONFIG_PATH="/etc/cocaine/cocaine.conf"

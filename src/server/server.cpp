@@ -35,7 +35,7 @@ using namespace cocaine::helpers;
 server_t::server_t(context_t& context, server_config_t config):
     m_context(context),
     m_log(m_context.log("core")),
-    m_server(m_context.io(), ZMQ_REP, m_context.config.runtime.hostname),
+    m_server(m_context, ZMQ_REP, m_context.config.runtime.hostname),
     m_auth(m_context),
     m_birthstamp(m_loop.now()),
     m_infostamp(0.0f)
@@ -78,7 +78,7 @@ server_t::server_t(context_t& context, server_config_t config):
     // -------------
 
     if(!config.announce_endpoints.empty()) {
-        m_announces.reset(new io::socket_t(m_context.io(), ZMQ_PUB));
+        m_announces.reset(new io::socket_t(m_context, ZMQ_PUB));
         m_announces->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
         
         for(std::vector<std::string>::const_iterator it = config.announce_endpoints.begin();

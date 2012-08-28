@@ -39,7 +39,7 @@ slave_t::slave_t(context_t& context, slave_config_t config):
         ).str()
     )),
     m_app(config.app),
-    m_bus(m_context.io(), config.uuid),
+    m_bus(m_context, config.uuid),
     m_bus_timeout(m_bus, defaults::bus_timeout)
 {
     int linger = 0;

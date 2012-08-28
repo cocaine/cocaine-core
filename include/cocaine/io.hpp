@@ -42,8 +42,6 @@
 
 #include "cocaine/helpers/birth_control.hpp"
 
-#define HOSTNAME_MAX_LENGTH 256
-
 namespace cocaine { namespace io {
 
 // Raw message container
@@ -93,40 +91,11 @@ class socket_t:
     public birth_control<socket_t>
 {
     public:
-        socket_t(zmq::context_t& context, int type):
-            m_socket(context, type)
-        { }
+        socket_t(context_t& context, int type);
+        socket_t(context_t& context, int type, const std::string& route);
 
-        socket_t(zmq::context_t& context, int type, const std::string& route):
-            m_socket(context, type)
-        {
-            setsockopt(ZMQ_IDENTITY, route.data(), route.size());
-        }
-
-        void bind(const std::string& endpoint) {
-            m_socket.bind(endpoint.c_str());
-
-            // Try to determine the connection string for clients.
-            // XXX: Fix it when migrating to ZeroMQ 3.1+
-            size_t position = endpoint.find_last_of(":");
-            char hostname[HOSTNAME_MAX_LENGTH];
-
-            if(gethostname(hostname, HOSTNAME_MAX_LENGTH) != 0) {
-                throw system_error_t("failed to determine the hostname");
-            }
-            
-            if(position != std::string::npos) {
-                m_endpoint = std::string("tcp://")
-                             + hostname
-                             + endpoint.substr(position, std::string::npos);
-            } else {
-                m_endpoint = "<local>";
-            }
-        }
-
-        void connect(const std::string& endpoint) {
-            m_socket.connect(endpoint.c_str());
-        }
+        void bind(const std::string& endpoint);
+        void connect(const std::string& endpoint);
        
         bool send(zmq::message_t& message,
                   int flags = 0)
@@ -211,25 +180,19 @@ class socket_t:
                 
         void getsockopt(int name,
                         void * value,
-                        size_t * size) 
+                        size_t * size)
         {
             m_socket.getsockopt(name, value, size);
         }
 
         void setsockopt(int name,
                         const void * value,
-                        size_t size) 
+                        size_t size)
         {
             m_socket.setsockopt(name, value, size);
         }
 
-        void drop() {
-            zmq::message_t null;
-
-            while(more()) {
-                recv(&null);
-            }
-        }
+        void drop();
 
     public:
         std::string endpoint() const { 
@@ -273,6 +236,8 @@ class socket_t:
         }
 
     private:
+        context_t& m_context;
+
         zmq::socket_t m_socket;
         std::string m_endpoint;
 };
@@ -364,7 +329,7 @@ class channel_t:
     public socket_t
 {
     public:
-        channel_t(zmq::context_t& context, const std::string& route):
+        channel_t(context_t& context, const std::string& route):
             socket_t(context, ZMQ_ROUTER, route)
         { }
 

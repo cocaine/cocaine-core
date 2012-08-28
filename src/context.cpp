@@ -22,6 +22,8 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/tuple/tuple.hpp>
 
+#include <netdb.h>
+
 #include "cocaine/context.hpp"
 
 #include "cocaine/io.hpp"
@@ -88,15 +90,12 @@ config_t::config_t(const std::string& path):
     // -----
 
     plugin_path = root["paths"].get("plugins", defaults::plugin_path).asString();
-    
     validate_path(plugin_path);
 
     spool_path = root["paths"].get("spool", defaults::spool_path).asString();
-    
     validate_path(spool_path);
 
     ipc_path = root["paths"].get("ipc", defaults::ipc_path).asString();
-    
     validate_path(ipc_path);
 
     // Storage configuration
@@ -132,10 +131,28 @@ config_t::config_t(const std::string& path):
     // IO configuration
     // ----------------
 
-    char hostname[HOSTNAME_MAX_LENGTH];
+    char hostname[256];
 
-    if(gethostname(hostname, HOSTNAME_MAX_LENGTH) == 0) {
-        runtime.hostname = hostname;
+    if(gethostname(hostname, 256) == 0) {
+        addrinfo hints,
+                 * result;
+        
+        memset(&hints, 0, sizeof(addrinfo));
+        hints.ai_flags = AI_CANONNAME;
+
+        int rv = getaddrinfo(hostname, NULL, &hints, &result);
+        
+        if(rv != 0) {
+            std::string message(gai_strerror(rv));
+            throw configuration_error_t("unable to determine the hostname - " + message);
+        }
+
+        if(result == NULL) {
+            throw configuration_error_t("unable to determine the hostname - no hostnames have been specified for the host");
+        }
+        
+        runtime.hostname = result->ai_canonname;
+        freeaddrinfo(result);
     } else {
         throw system_error_t("failed to determine the hostname");
     }
