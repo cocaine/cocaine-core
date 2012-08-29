@@ -1,3 +1,9 @@
+cocaine-core (0.9.2) lucid; urgency=low
+
+  * Fixed a build issue on 32-bit Ubuntu Precise due to the variable size mismatch.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 29 Aug 2012 17:53:48 +0400
+
 cocaine-core (0.9.1) lucid; urgency=low
 
   * Reworked the hostname determination logic to fix incorrect behavior in some cases.
