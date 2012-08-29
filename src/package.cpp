@@ -120,7 +120,12 @@ void package_t::extract(archive * source,
 
     const void * buffer = NULL;
     size_t size = 0;
+    
+#if ARCHIVE_VERSION_NUMBER < 3000000
     off_t offset = 0;
+#else
+    int64_t offset = 0;
+#endif
 
     while(true) {
         rv = archive_read_data_block(source, &buffer, &size, &offset);
