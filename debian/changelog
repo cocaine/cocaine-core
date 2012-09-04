@@ -1,3 +1,9 @@
+cocaine-core (0.9.3) lucid; urgency=low
+
+  * Rearm slave heartbeat timer on all event types.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 04 Sep 2012 21:21:57 +0400
+
 cocaine-core (0.9.2) lucid; urgency=low
 
   * Fixed a build issue on 32-bit Ubuntu Precise due to the variable size mismatch.
