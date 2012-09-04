@@ -24,7 +24,7 @@
 #include "cocaine/io.hpp"
 
 namespace cocaine { 
-    
+
 namespace rpc {
 
 struct core_tag;
@@ -36,17 +36,15 @@ struct chunk     { typedef core_tag tag; };
 struct error     { typedef core_tag tag; };
 struct choke     { typedef core_tag tag; };
 
-typedef boost::mpl::list<
-    heartbeat, terminate, invoke, chunk, error, choke
->::type category;
-
 }
 
 namespace io {
 
 template<>
 struct dispatch<rpc::core_tag> {
-    typedef rpc::category category;
+    typedef boost::mpl::list<
+        rpc::heartbeat, rpc::terminate, rpc::invoke, rpc::chunk, rpc::error, rpc::choke
+    >::type category;
 };
 
 // Specific packers
