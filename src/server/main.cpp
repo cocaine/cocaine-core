@@ -60,6 +60,9 @@ int main(int argc, char * argv[]) {
     server_config_t server_config;
 
     server_options.add_options()
+        ("server:runlist,r", po::value<std::string>
+            (&server_config.runlist)->default_value("default"),
+            "server runlist name")
         ("server:listen", po::value< std::vector<std::string> >
             (&server_config.listen_endpoints)->composing(),
             "server listen endpoints, can be specified multiple times")

@@ -35,6 +35,7 @@ using namespace cocaine::helpers;
 server_t::server_t(context_t& context, server_config_t config):
     m_context(context),
     m_log(m_context.log("core")),
+    m_runlist(config.runlist),
     m_server(m_context, ZMQ_REP, m_context.config.runtime.hostname),
     m_auth(m_context),
     m_birthstamp(m_loop.now()),
@@ -351,9 +352,15 @@ void server_t::announce(ev::timer&, int) {
 }
 
 void server_t::recover() {
+    api::category_traits<api::storage_t>::ptr_type storage(
+        m_context.get<api::storage_t>("storage/core")
+    );
+
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
     std::vector<std::string> apps(
-        m_context.get<api::storage_t>("storage/core")->list("apps")
+        storage->get<
+            std::vector<std::string>
+        >("runlists", m_runlist)
     );
 
     std::set<std::string> available(apps.begin(), apps.end()),

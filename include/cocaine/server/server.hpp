@@ -34,9 +34,14 @@
 namespace cocaine {
 
 struct server_config_t {
+    // Runlist name for this server instance.
+    std::string runlist;
+
+    // Control and multicast endpoints.
     std::vector<std::string> listen_endpoints,
                              announce_endpoints;
     
+    // Multicast announce interval.
     float announce_interval;
 };
 
@@ -79,6 +84,8 @@ class server_t:
         boost::shared_ptr<logging::logger_t> m_log;
 
         // Apps.
+        const std::string m_runlist;
+
 #if BOOST_VERSION >= 104000
         typedef boost::ptr_unordered_map<
 #else
