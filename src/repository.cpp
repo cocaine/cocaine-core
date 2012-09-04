@@ -34,7 +34,8 @@ factory_concept_t::~factory_concept_t() { }
 
 struct is_plugin {
     template<typename T> 
-    bool operator()(const T& entry) const {
+    bool
+    operator()(const T& entry) const {
         return fs::is_regular(entry) &&
                entry.path().extension() == ".cocaine-plugin";
     }
@@ -140,7 +141,8 @@ repository_t::repository_t(context_t& context):
 namespace {
     struct disposer {
         template<class T>
-        void operator()(T& plugin) const {
+        void
+        operator()(T& plugin) const {
             lt_dlclose(plugin);
         }
     };
