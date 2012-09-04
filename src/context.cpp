@@ -51,7 +51,8 @@ const char defaults::plugin_path[] = "/usr/lib/cocaine";
 const char defaults::spool_path[] = "/var/spool/cocaine";
 
 namespace {
-    void validate_path(const fs::path& path) {
+    void
+    validate_path(const fs::path& path) {
         if(!fs::exists(path)) {
             throw configuration_error_t("the specified path '" + path.string() + "' does not exist");
         } else if(fs::exists(path) && !fs::is_directory(path)) {

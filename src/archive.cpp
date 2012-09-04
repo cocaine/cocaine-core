@@ -57,7 +57,8 @@ archive_t::~archive_t() {
     archive_read_finish(m_archive);
 }
 
-void archive_t::deploy(const boost::filesystem::path& prefix) {
+void
+archive_t::deploy(const boost::filesystem::path& prefix) {
     archive * target = archive_write_disk_new();
     archive_entry * entry = NULL;
 
@@ -113,8 +114,9 @@ void archive_t::deploy(const boost::filesystem::path& prefix) {
     archive_write_finish(target);
 }
 
-void archive_t::extract(archive * source, 
-                        archive * target)
+void
+archive_t::extract(archive * source, 
+                   archive * target)
 {
     int rv = ARCHIVE_OK;
 
@@ -144,6 +146,7 @@ void archive_t::extract(archive * source,
     }
 }
 
-std::string archive_t::type() const {
+std::string
+archive_t::type() const {
     return archive_compression_name(m_archive);
 }

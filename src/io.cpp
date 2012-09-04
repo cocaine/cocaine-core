@@ -36,7 +36,8 @@ socket_t::socket_t(context_t& context, int type, const std::string& route):
     setsockopt(ZMQ_IDENTITY, route.data(), route.size());
 }
 
-void socket_t::bind(const std::string& endpoint) {
+void
+socket_t::bind(const std::string& endpoint) {
     m_socket.bind(endpoint.c_str());
 
     // Try to determine the connection string for clients.
@@ -52,11 +53,13 @@ void socket_t::bind(const std::string& endpoint) {
     }
 }
 
-void socket_t::connect(const std::string& endpoint) {
+void
+socket_t::connect(const std::string& endpoint) {
     m_socket.connect(endpoint.c_str());
 }
 
-void socket_t::drop() {
+void
+socket_t::drop() {
     zmq::message_t null;
 
     while(more()) {
