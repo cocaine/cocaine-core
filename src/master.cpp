@@ -224,6 +224,9 @@ void alive::on_invoke(const events::invoke& event) {
 
     job = event.job;
     job->process_event(event);    
+
+    // Reset the heartbeat timer.    
+    post_event(events::heartbeat());
 }
 
 void alive::on_choke(const events::choke& event) {
@@ -238,14 +241,21 @@ void alive::on_choke(const events::choke& event) {
     
     job->process_event(event);
     job.reset();
+    
+    // Reset the heartbeat timer.    
+    post_event(events::heartbeat());
 }
 
 void busy::on_chunk(const events::chunk& event) {
     job()->process_event(event);
+    
+    // Reset the heartbeat timer.    
     post_event(events::heartbeat());
 }
 
 void busy::on_error(const events::error& event) {
     job()->process_event(event);
+    
+    // Reset the heartbeat timer.    
     post_event(events::heartbeat());
 }
