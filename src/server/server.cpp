@@ -48,6 +48,7 @@ server_t::server_t(context_t& context, server_config_t config):
     m_log->info("using libmsgpack version %s", msgpack_version());
     m_log->info("using libzmq version %d.%d.%d", major, minor, patch);
     m_log->info("route to this node is '%s'", m_server.route().c_str());
+    m_log->info("using the '%s' runlist", m_runlist.c_str());
 
     // Server socket
     // -------------
