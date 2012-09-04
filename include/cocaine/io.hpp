@@ -57,7 +57,8 @@ struct raw {
 };
 
 template<class T>
-static inline raw<T>
+static inline
+raw<T>
 protect(T& object) {
     return raw<T>(object);
 }
@@ -70,12 +71,16 @@ struct raw_traits;
 
 template<>
 struct raw_traits<std::string> {
-    static void pack(zmq::message_t& message, const std::string& value) {
+    static
+    void
+    pack(zmq::message_t& message, const std::string& value) {
         message.rebuild(value.size());
         memcpy(message.data(), value.data(), value.size());
     }
 
-    static bool unpack(zmq::message_t& message, std::string& value) {
+    static
+    bool
+    unpack(zmq::message_t& message, std::string& value) {
         value.assign(
             static_cast<const char*>(message.data()),
             message.size()
@@ -93,21 +98,30 @@ class socket_t:
     public birth_control<socket_t>
 {
     public:
-        socket_t(context_t& context, int type);
-        socket_t(context_t& context, int type, const std::string& route);
+        socket_t(context_t& context,
+                 int type);
 
-        void bind(const std::string& endpoint);
-        void connect(const std::string& endpoint);
+        socket_t(context_t& context,
+                 int type,
+                 const std::string& route);
+
+        void
+        bind(const std::string& endpoint);
+        
+        void
+        connect(const std::string& endpoint);
        
-        bool send(zmq::message_t& message,
-                  int flags = 0)
+        bool
+        send(zmq::message_t& message,
+             int flags = 0)
         {
             return m_socket.send(message, flags);
         }
 
         template<class T>
-        bool send(const T& value,
-                  int flags = 0)
+        bool
+        send(const T& value,
+             int flags = 0)
         {
             msgpack::sbuffer buffer;
             msgpack::packer<msgpack::sbuffer> packer(buffer);
@@ -121,8 +135,9 @@ class socket_t:
         }
         
         template<class T>
-        bool send(const raw<T>& object,
-                  int flags = 0)
+        bool
+        send(const raw<T>& object,
+             int flags = 0)
         {
             zmq::message_t message;
             
@@ -133,15 +148,17 @@ class socket_t:
             return send(message, flags);
         }
 
-        bool recv(zmq::message_t * message,
-                  int flags = 0)
+        bool
+        recv(zmq::message_t * message,
+             int flags = 0)
         {
             return m_socket.recv(message, flags);
         }
 
         template<class T>
-        bool recv(T& result,
-                  int flags = 0)
+        bool
+        recv(T& result,
+             int flags = 0)
         {
             zmq::message_t message;
             msgpack::unpacked unpacked;
@@ -168,8 +185,9 @@ class socket_t:
         }
       
         template<class T>
-        bool recv(raw<T>& result,
-                  int flags = 0)
+        bool
+        recv(raw<T>& result,
+             int flags = 0)
         {
             zmq::message_t message;
 
@@ -182,28 +200,33 @@ class socket_t:
             >::unpack(message, result.value);
         }
                 
-        void getsockopt(int name,
-                        void * value,
-                        size_t * size)
+        void
+        getsockopt(int name,
+                   void * value,
+                   size_t * size)
         {
             m_socket.getsockopt(name, value, size);
         }
 
-        void setsockopt(int name,
-                        const void * value,
-                        size_t size)
+        void
+        setsockopt(int name,
+                   const void * value,
+                   size_t size)
         {
             m_socket.setsockopt(name, value, size);
         }
 
-        void drop();
+        void
+        drop();
 
     public:
-        std::string endpoint() const { 
+        std::string
+        endpoint() const { 
             return m_endpoint; 
         }
 
-        bool more() {
+        bool
+        more() {
             int64_t rcvmore = 0;
             size_t size = sizeof(rcvmore);
 
@@ -212,7 +235,8 @@ class socket_t:
             return rcvmore != 0;
         }
 
-        std::string route() {
+        std::string
+        route() {
             char identity[256] = { 0 };
             size_t size = sizeof(identity);
 
@@ -221,7 +245,8 @@ class socket_t:
             return identity;
         }
 
-        int fd() {
+        int
+        fd() {
             int fd = 0;
             size_t size = sizeof(fd);
 
@@ -230,7 +255,8 @@ class socket_t:
             return fd;
         }
 
-        bool pending(unsigned long event = ZMQ_POLLIN) {
+        bool
+        pending(unsigned long event = ZMQ_POLLIN) {
             unsigned long events = 0;
             size_t size = sizeof(events);
 
@@ -344,8 +370,9 @@ class channel_t:
         // -------
 
         template<class Event>
-        bool send(const std::string& route,
-                  const command<Event>& object)
+        bool
+        send(const std::string& route,
+             const command<Event>& object)
         {
             const bool multipart = boost::tuples::length<
                 typename command<Event>::tuple_type
@@ -359,22 +386,25 @@ class channel_t:
         // Receiving
         // ---------
 
-        bool recv_multi(const null_type&,
-                        int __attribute__ ((unused)) flags = 0) const
+        bool
+        recv_multi(const null_type&,
+                   int __attribute__ ((unused)) flags = 0) const
         {
             return true;
         }
 
         template<class Head>
-        bool recv_multi(cons<Head, null_type>& o,
-                        int flags = 0)
+        bool
+        recv_multi(cons<Head, null_type>& o,
+                   int flags = 0)
         {
             return recv(o.get_head(), flags);
         }
 
         template<class Head, class Tail>
-        bool recv_multi(cons<Head, Tail>& o,
-                        int flags = 0)
+        bool
+        recv_multi(cons<Head, Tail>& o,
+                   int flags = 0)
         {
             if(!recv(o.get_head(), flags)) {
                 return false;
@@ -386,22 +416,25 @@ class channel_t:
         }
 
     private:
-        bool send_tuple(const null_type&,
-                        int __attribute__ ((unused)) flags = 0) const
+        bool
+        send_tuple(const null_type&,
+                   int __attribute__ ((unused)) flags = 0) const
         {
             return true;
         }
         
         template<class Head>
-        bool send_tuple(const cons<Head, null_type>& o,
-                        int flags = 0)
+        bool
+        send_tuple(const cons<Head, null_type>& o,
+                   int flags = 0)
         {
             return send(o.get_head(), flags);
         }
 
         template<class Head, class Tail>
-        bool send_tuple(const cons<Head, Tail>& o,
-                        int flags = 0)
+        bool
+        send_tuple(const cons<Head, Tail>& o,
+                   int flags = 0)
         {
             return send(o.get_head(), ZMQ_SNDMORE | flags) &&
                    send_tuple(o.get_tail(), flags);

@@ -32,14 +32,18 @@ namespace cocaine { namespace io {
 template<class T>
 struct type_traits {
     template<class Stream>
-    static void pack(msgpack::packer<Stream>& packer,
-                     const T& object)
+    static
+    void
+    pack(msgpack::packer<Stream>& packer,
+         const T& object)
     {
         packer << object;
     }
     
-    static void unpack(const msgpack::object& packed,
-                       T& object)
+    static
+    void
+    unpack(const msgpack::object& packed,
+           T& object)
     {
         packed >> object;
     }
@@ -48,8 +52,10 @@ struct type_traits {
 template<>
 struct type_traits<engine::policy_t> {
     template<class Stream>
-    static void pack(msgpack::packer<Stream>& packer,
-                     const engine::policy_t& object)
+    static
+    void
+    pack(msgpack::packer<Stream>& packer,
+         const engine::policy_t& object)
     {
         packer.pack_array(3);
         packer.pack(object.urgent);
@@ -57,8 +63,10 @@ struct type_traits<engine::policy_t> {
         packer.pack(object.deadline);
     }
     
-    static void unpack(const msgpack::object& packed,
-                       engine::policy_t& object)
+    static
+    void
+    unpack(const msgpack::object& packed,
+           engine::policy_t& object)
     {
         if(packed.type != msgpack::type::ARRAY || packed.via.array.size != 3) {
             throw msgpack::type_error();
@@ -77,14 +85,18 @@ struct type_traits<engine::policy_t> {
 template<>
 struct type_traits<Json::Value> {
     template<class Stream>
-    static void pack(msgpack::packer<Stream>& packer,
-                     const Json::Value& object)
+    static
+    void
+    pack(msgpack::packer<Stream>& packer,
+         const Json::Value& object)
     {
         packer << Json::FastWriter().write(object);
     }
     
-    static void unpack(const msgpack::object& packed,
-                       Json::Value& object)
+    static
+    void
+    unpack(const msgpack::object& packed,
+           Json::Value& object)
     {
         if(packed.type != msgpack::type::RAW) {
             throw msgpack::type_error();

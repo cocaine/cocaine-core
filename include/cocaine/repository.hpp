@@ -33,8 +33,12 @@ template<class Category>
 struct category_traits;
 
 struct factory_concept_t {
-    virtual ~factory_concept_t() = 0;
-    virtual const std::type_info& category() const = 0;
+    virtual
+    ~factory_concept_t() = 0;
+    
+    virtual
+    const std::type_info
+    category() const = 0;
 };
 
 // Factory interface
@@ -50,12 +54,16 @@ struct factory:
     typedef typename Traits::ptr_type ptr_type;
     typedef typename Traits::args_type args_type;
 
-    virtual const std::type_info& category() const {
+    virtual
+    const std::type_info&
+    category() const {
         return typeid(Category);
     }
 
-    virtual ptr_type get(context_t& context,
-                         const args_type& args) = 0;
+    virtual
+    ptr_type
+    get(context_t& context,
+        const args_type& args) = 0;
 };
 
 // Customized plugin instantiation

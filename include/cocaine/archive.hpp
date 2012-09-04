@@ -42,14 +42,18 @@ class archive_t {
         
         ~archive_t();
 
-        void deploy(const boost::filesystem::path& prefix);
+        void
+        deploy(const boost::filesystem::path& prefix);
         
     public:
-        std::string type() const;
+        std::string
+        type() const;
 
     private:
-        static void extract(archive * source, 
-                            archive * target);
+        static
+        void
+        extract(archive * source, 
+                archive * target);
 
     private:
         boost::shared_ptr<logging::logger_t> m_log;

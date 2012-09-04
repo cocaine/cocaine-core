@@ -118,7 +118,8 @@ class context_t:
         // Networking
         // ----------
 
-        zmq::context_t& io() {
+        zmq::context_t&
+        io() {
             return *m_io;
         }
         
