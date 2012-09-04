@@ -37,7 +37,7 @@ struct factory_concept_t {
     ~factory_concept_t() = 0;
     
     virtual
-    const std::type_info
+    const std::type_info&
     category() const = 0;
 };
 
