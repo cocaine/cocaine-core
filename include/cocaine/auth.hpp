@@ -25,8 +25,6 @@
 
 #include "cocaine/common.hpp"
 
-#include "cocaine/helpers/blob.hpp"
-
 namespace cocaine { namespace crypto {
 
 class auth_t:
@@ -36,8 +34,8 @@ class auth_t:
         auth_t(context_t& context);
         ~auth_t();
 
-        void verify(const blob_t& message,
-                    const blob_t& signature,
+        void verify(const std::string& message,
+                    const std::string& signature,
                     const std::string& username) const;
 
         // std::string sign(const std::string& message, 

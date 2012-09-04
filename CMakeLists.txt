@@ -1,7 +1,7 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 PROJECT(COCAINE-CORE)
 
-SET(COCAINE_VERSION 0.8)
+SET(COCAINE_VERSION 0.10)
 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
@@ -65,7 +65,6 @@ ADD_LIBRARY(cocaine-common SHARED
     src/auth
     src/context
     src/io
-    src/loggers/syslog
     src/logging
     src/repository
     src/storages/files)
@@ -85,12 +84,11 @@ SET_TARGET_PROPERTIES(cocaine-common PROPERTIES
 
 ADD_LIBRARY(cocaine-core SHARED
     src/app
+    src/archive
     src/engine
     src/job
     src/manifest
-    src/master
-    src/package
-    src/policy)
+    src/master)
 
 TARGET_LINK_LIBRARIES(cocaine-core
     archive
@@ -104,10 +102,12 @@ SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
 
 ADD_EXECUTABLE(cocaine-slave
     src/slave/slave
+    src/server/syslog
     src/slave/main)
 
 ADD_EXECUTABLE(cocained
     src/server/server
+    src/server/syslog
     src/server/main)
 
 TARGET_LINK_LIBRARIES(cocaine-slave

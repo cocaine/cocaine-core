@@ -22,12 +22,13 @@
 #include <boost/filesystem/fstream.hpp>
 #include <boost/program_options.hpp>
 
+#include "cocaine/archive.hpp"
 #include "cocaine/config.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
-#include "cocaine/package.hpp"
 
-#include "cocaine/helpers/blob.hpp"
+#include "cocaine/api/storage.hpp"
+
 #include "cocaine/helpers/json.hpp"
 
 using namespace cocaine;
@@ -57,7 +58,7 @@ namespace {
         std::vector<std::string> apps;
         
         try {
-            apps = context.storage<storages::objects>("core")->list("apps");
+            apps = context.get<api::storage_t>("storage/core")->list("manifests");
         } catch(const storage_error_t& e) {
             std::cerr << "Error: unable to retrieve the app list." << std::endl;
             std::cerr << e.what() << std::endl;
@@ -118,28 +119,28 @@ namespace {
         std::stringstream buffer;
         buffer << package_stream.rdbuf();
 
-        api::objects::data_type blob(
-            buffer.str().data(),
-            buffer.str().size()
-        );
+        std::string blob(buffer.str());
 
         try {
-            package_t package(context, blob);
-            compression = package.type();
-        } catch(const package_error_t& e) {
+            archive_t archive(context, blob);
+            compression = archive.type();
+        } catch(const archive_error_t& e) {
             std::cerr << "Error: the app package in '" << package_path << "' is corrupted." << std::endl;
             std::cerr << e.what() << std::endl;
             return;
         }
 
-        api::objects::value_type object = { manifest, blob };
-       
         std::cout << "Detected app type: '" << type 
                   << "', package compression: '" << compression
                   << "'." << std::endl;
 
+        api::category_traits<api::storage_t>::ptr_type storage(
+            context.get<api::storage_t>("storage/core")
+        );
+        
         try {
-            context.storage<api::objects>("core")->put("apps", name, object);
+            storage->put("manifests", name, manifest);
+            storage->put("apps", name, blob);
         } catch(const storage_error_t& e) {
             std::cerr << "Error: unable to upload the app." << std::endl;
             std::cerr << e.what() << std::endl;
@@ -152,8 +153,13 @@ namespace {
     void remove(context_t& context,
                 std::string name)
     {
+        api::category_traits<api::storage_t>::ptr_type storage(
+            context.get<api::storage_t>("storage/core")
+        );
+        
         try {
-            context.storage<storages::objects>("core")->remove("apps", name);
+            storage->remove("manifests", name);
+            storage->remove("apps", name);
         } catch(const storage_error_t& e) {
             std::cerr << "Error: unable to remove the app." << std::endl;
             std::cerr << e.what() << std::endl;

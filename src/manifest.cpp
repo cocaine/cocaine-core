@@ -23,9 +23,9 @@
 
 #include "cocaine/manifest.hpp"
 
+#include "cocaine/archive.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
-#include "cocaine/package.hpp"
 
 #include "cocaine/api/storage.hpp"
 
@@ -42,7 +42,7 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
 {
     try {
         // Try to load the app manifest from the cache.
-        root = m_context.storage<api::objects>("core:cache")->exists("apps", name);
+        root = m_context.get<api::storage_t>("storage/cache")->get<Json::Value>("manifests", name);
         path = root["path"].asString();
     } catch(const storage_error_t& e) {
         m_log->info("the app hasn't been found in the app cache");
@@ -115,11 +115,16 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
 }
 
 void manifest_t::deploy() {
-    api::objects::value_type object;
+    std::string blob;
 
+    api::category_traits<api::storage_t>::ptr_type storage(
+        m_context.get<api::storage_t>("storage/core")
+    );
+    
     try {
-        // Fetch the application object from the core storage.
-        object = m_context.storage<api::objects>("core")->get("apps", name);
+        // Fetch the application manifest and archive from the core storage.
+        root = storage->get<Json::Value>("manifests", name);
+        blob = storage->get<std::string>("apps", name);
     } catch(const storage_error_t& e) {
         m_log->error("unable to fetch the app from the app storage - %s", e.what());
         throw configuration_error_t("the '" + name + "' app is not available");
@@ -134,20 +139,19 @@ void manifest_t::deploy() {
     );
     
     try {
-        package_t package(m_context, object.blob);
-        package.deploy(path); 
-    } catch(const package_error_t& e) {
+        archive_t archive(m_context, blob);
+        archive.deploy(path);
+    } catch(const archive_error_t& e) {
         m_log->error("unable to extract the app - %s", e.what());
         throw configuration_error_t("the '" + name + "' app is not available");
     }
 
     // Update the manifest in the cache.
-    object.meta["path"] = path;
-    root = object.meta;
+    root["path"] = path;
 
     try {
         // Put the application object into the cache for future reference.
-        m_context.storage<api::objects>("core:cache")->put("apps", name, object);
+        m_context.get<api::storage_t>("storage/cache")->put("manifests", name, root);
     } catch(const storage_error_t& e) {
         m_log->warning("unable to cache the app - %s", e.what());
         throw configuration_error_t("the '" + name + "' app is not available");

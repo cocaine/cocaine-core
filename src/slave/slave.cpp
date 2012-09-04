@@ -115,7 +115,7 @@ void slave_t::run() {
     m_loop.loop();
 }
 
-blob_t slave_t::read(int timeout) {
+std::string slave_t::read(int timeout) {
     zmq::message_t message;
 
     io::scoped_option<
@@ -124,7 +124,10 @@ blob_t slave_t::read(int timeout) {
 
     m_bus.recv(&message);
     
-    return blob_t(message.data(), message.size());
+    return std::string(
+        static_cast<const char*>(message.data()),
+        message.size()
+    );
 }
 
 void slave_t::write(const void * data, size_t size) {

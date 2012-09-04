@@ -26,81 +26,116 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
-
-#include "cocaine/helpers/blob.hpp"
-#include "cocaine/helpers/json.hpp"
+#include "cocaine/traits.hpp"
 
 namespace cocaine { namespace api {
 
-struct objects {
-    typedef Json::Value meta_type;
-    typedef blob_t data_type;
-
-    typedef struct {
-        meta_type meta;
-        data_type blob;
-    } value_type;
-};
-
-template<class T>
-class storage_concept;
-
-template<>
-class storage_concept<objects>:
+class storage_t:
     public boost::noncopyable
 {
     public:
-        virtual ~storage_concept() { 
+        virtual
+        ~storage_t() { 
             // Empty.
         }
 
-        virtual objects::value_type get(const std::string& ns,
-                                        const std::string& key) = 0;
+        template<class T>
+        T
+        get(const std::string& collection,
+            const std::string& key)
+        {
+            T result;
+            msgpack::unpacked unpacked;
+            
+            std::string blob(
+                read(collection, key)
+            );
 
-        virtual void put(const std::string& ns,
-                         const std::string& key,
-                         const objects::value_type& value) = 0;
+            try {
+                msgpack::unpack(&unpacked, blob.data(), blob.size());
+                io::type_traits<T>::unpack(unpacked.get(), result);
+            } catch(const std::exception& e) {
+                throw storage_error_t("corrupted object");
+            }
+            
+            return result;
+        }
+
+        template<class T>
+        void
+        put(const std::string& collection,
+            const std::string& key,
+            const T& object)
+        {
+            msgpack::sbuffer buffer;
+            msgpack::packer<msgpack::sbuffer> packer(buffer);
         
-        virtual objects::meta_type exists(const std::string& ns,
-                                          const std::string& key) = 0;
+            try {
+                io::type_traits<T>::pack(packer, object);
+            } catch(const std::exception& e) {
+                throw storage_error_t("corrupted object");
+            }
 
-        virtual std::vector<std::string> list(const std::string& ns) = 0;
+            std::string blob(
+                buffer.data(),
+                buffer.size()
+            );
+            
+            write(collection, key, blob);
+        }
 
-        virtual void remove(const std::string& ns,
-                            const std::string& key) = 0;
+        virtual
+        std::vector<std::string>
+        list(const std::string& collection) = 0;
 
+        virtual
+        void
+        remove(const std::string& collection,
+               const std::string& key) = 0;
+    
     protected:
-        storage_concept(context_t& context, const std::string& , const Json::Value& ):
+        storage_t(context_t& context, const std::string&, const Json::Value&):
             m_context(context)
         { }
+
+        virtual
+        std::string
+        read(const std::string& collection,
+             const std::string& key) = 0;
+
+        virtual
+        void
+        write(const std::string& collection,
+              const std::string& key,
+              const std::string& blob) = 0;
 
     private:
         context_t& m_context;
 };
 
-template<class T>
-struct category_traits<
-    api::storage_concept<T>
->
-{
-    typedef api::storage_concept<T> storage_type;
-    typedef boost::shared_ptr<storage_type> ptr_type;
+template<>
+struct category_traits<storage_t> {
+    typedef boost::shared_ptr<storage_t> ptr_type;
 
     typedef boost::tuple<
         const std::string&,
         const Json::Value&
     > args_type;
     
-    template<class U>
+    template<class T>
     struct default_factory:
-        public factory<storage_type>
+        public factory<storage_t>
     {
-        virtual ptr_type get(context_t& context,
-                             const args_type& args)
+        virtual
+        ptr_type
+        get(context_t& context,
+            const args_type& args)
         {
-            const std::string& name(boost::get<0>(args));
-
             boost::lock_guard<boost::mutex> lock(m_mutex);
+
+            const std::string& name(
+                boost::get<0>(args)
+            );
 
             typename instance_map_t::iterator it(
                 m_instances.find(name)
@@ -110,7 +145,7 @@ struct category_traits<
                 boost::tie(it, boost::tuples::ignore) = m_instances.insert(
                     std::make_pair(
                         name,
-                        boost::make_shared<U>(
+                        boost::make_shared<T>(
                             boost::ref(context),
                             name,
                             boost::get<1>(args)

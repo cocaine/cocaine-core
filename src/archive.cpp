@@ -21,18 +21,18 @@
 #include <archive.h>
 #include <archive_entry.h>
 
-#include "cocaine/package.hpp"
+#include "cocaine/archive.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
 using namespace cocaine;
 
-package_error_t::package_error_t(archive * source):
+archive_error_t::archive_error_t(archive * source):
     std::runtime_error(archive_error_string(source))
 { }
 
-package_t::package_t(context_t& context, const blob_t& archive):
+archive_t::archive_t(context_t& context, const std::string& archive):
     m_log(context.log("packaging")),
     m_archive(archive_read_new())
 {
@@ -43,21 +43,21 @@ package_t::package_t(context_t& context, const blob_t& archive):
     
     rv = archive_read_open_memory(
         m_archive, 
-        const_cast<void*>(archive.data()),
+        const_cast<char*>(archive.data()),
         archive.size()
     );
 
     if(rv) {
-        throw package_error_t(m_archive);
+        throw archive_error_t(m_archive);
     }
 }
 
-package_t::~package_t() {
+archive_t::~archive_t() {
     archive_read_close(m_archive);
     archive_read_finish(m_archive);
 }
 
-void package_t::deploy(const boost::filesystem::path& prefix) {
+void archive_t::deploy(const boost::filesystem::path& prefix) {
     archive * target = archive_write_disk_new();
     archive_entry * entry = NULL;
 
@@ -78,7 +78,7 @@ void package_t::deploy(const boost::filesystem::path& prefix) {
         if(rv == ARCHIVE_EOF) {
             break;
         } else if(rv != ARCHIVE_OK) {
-            throw package_error_t(m_archive);
+            throw archive_error_t(m_archive);
         }
 
         boost::filesystem::path path = archive_entry_pathname(entry);
@@ -89,7 +89,7 @@ void package_t::deploy(const boost::filesystem::path& prefix) {
         rv = archive_write_header(target, entry);
         
         if(rv != ARCHIVE_OK) {
-            throw package_error_t(target);
+            throw archive_error_t(target);
         } else if(archive_entry_size(entry) > 0) {
             extract(m_archive, target);
         }
@@ -98,7 +98,7 @@ void package_t::deploy(const boost::filesystem::path& prefix) {
     rv = archive_write_finish_entry(target);
 
     if(rv != ARCHIVE_OK) {
-        throw package_error_t(target);
+        throw archive_error_t(target);
     }
 
     m_log->info(
@@ -113,7 +113,7 @@ void package_t::deploy(const boost::filesystem::path& prefix) {
     archive_write_finish(target);
 }
 
-void package_t::extract(archive * source, 
+void archive_t::extract(archive * source, 
                         archive * target)
 {
     int rv = ARCHIVE_OK;
@@ -133,17 +133,17 @@ void package_t::extract(archive * source,
         if(rv == ARCHIVE_EOF) {
             return;
         } else if(rv != ARCHIVE_OK) {
-            throw package_error_t(source);
+            throw archive_error_t(source);
         }
 
         rv = archive_write_data_block(target, buffer, size, offset);
         
         if(rv != ARCHIVE_OK) {
-            throw package_error_t(target);
+            throw archive_error_t(target);
         }
     }
 }
 
-std::string package_t::type() const {
+std::string archive_t::type() const {
     return archive_compression_name(m_archive);
 }

@@ -195,8 +195,8 @@ void server_t::process(ev::idle&, int) {
                 
                 if(!username.empty()) {
                     m_auth.verify(
-                        blob_t(message.data(), message.size()),
-                        blob_t(signature.data(), signature.size()),
+                        std::string(static_cast<const char*>(message.data()), message.size()),
+                        std::string(static_cast<const char*>(signature.data()), signature.size()),
                         username
                     );
                 } else {
@@ -353,7 +353,7 @@ void server_t::announce(ev::timer&, int) {
 void server_t::recover() {
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
     std::vector<std::string> apps(
-        m_context.storage<api::objects>("core")->list("apps")
+        m_context.get<api::storage_t>("storage/core")->list("apps")
     );
 
     std::set<std::string> available(apps.begin(), apps.end()),

@@ -29,7 +29,7 @@ job_t::job_t(const std::string& event_):
     initiate();
 }
 
-job_t::job_t(const std::string& event_, const blob_t& request_):
+job_t::job_t(const std::string& event_, const std::string& request_):
     event(event_),
     request(request_)
 {
@@ -43,7 +43,7 @@ job_t::job_t(const std::string& event_, policy_t policy_):
     initiate();
 }
 
-job_t::job_t(const std::string& event_, const blob_t& request_, policy_t policy_):
+job_t::job_t(const std::string& event_, const std::string& request_, policy_t policy_):
     event(event_),
     request(request_),
     policy(policy_)

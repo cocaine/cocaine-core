@@ -32,21 +32,22 @@
 #include "cocaine/storages/files.hpp"
 
 using namespace cocaine;
-using namespace cocaine::storages;
 
 namespace fs = boost::filesystem;
 
-const float defaults::startup_timeout = 10.0f;
+const char defaults::slave[] = "cocaine-slave";
 const float defaults::heartbeat_timeout = 30.0f;
 const float defaults::idle_timeout = 600.0f;
+const float defaults::startup_timeout = 10.0f;
 const float defaults::termination_timeout = 5.0f;
 const unsigned long defaults::pool_limit = 10L;
 const unsigned long defaults::queue_limit = 100L;
-const unsigned long defaults::io_bulk_size = 100L;
+
 const long defaults::bus_timeout = 1000L;
-const char defaults::slave[] = "cocaine-slave";
-const char defaults::plugin_path[] = "/usr/lib/cocaine";
+const unsigned long defaults::io_bulk_size = 100L;
+
 const char defaults::ipc_path[] = "/var/run/cocaine";
+const char defaults::plugin_path[] = "/usr/lib/cocaine";
 const char defaults::spool_path[] = "/var/spool/cocaine";
 
 namespace {
@@ -82,12 +83,15 @@ config_t::config_t(const std::string& path):
     // Validation
     // ----------
 
-    if(root.get("version", 0).asUInt() != 1) {
+    if(root.get("version", 0).asUInt() != 2) {
         throw configuration_error_t("the configuration version is invalid");
     }
 
     // Paths
     // -----
+
+    ipc_path = root["paths"].get("ipc", defaults::ipc_path).asString();
+    validate_path(ipc_path);
 
     plugin_path = root["paths"].get("plugins", defaults::plugin_path).asString();
     validate_path(plugin_path);
@@ -95,37 +99,28 @@ config_t::config_t(const std::string& path):
     spool_path = root["paths"].get("spool", defaults::spool_path).asString();
     validate_path(spool_path);
 
-    ipc_path = root["paths"].get("ipc", defaults::ipc_path).asString();
-    validate_path(ipc_path);
+    // Component configuration
+    // -----------------------
 
-    // Storage configuration
-    // ---------------------
+    Json::Value::Members component_names(
+        root["components"].getMemberNames()
+    );
 
-    if(!root["storages"].isObject() || root["storages"].empty()) {
-        throw configuration_error_t("no storages has been configured");
-    }
-
-    Json::Value::Members storage_names(root["storages"].getMemberNames());
-
-    for(Json::Value::Members::const_iterator it = storage_names.begin();
-        it != storage_names.end();
+    for(Json::Value::Members::const_iterator it = component_names.begin();
+        it != component_names.end();
         ++it)
     {
-        storage_info_t info = {
-            root["storages"][*it]["type"].asString(),
-            root["storages"][*it]["args"]
+        component_info_t info = {
+            root["components"][*it]["type"].asString(),
+            root["components"][*it]["args"]
         };
 
-        storages.insert(
+        components.insert(
             std::make_pair(
                 *it,
                 info
             )
         );
-    }
-
-    if(storages.find("core") == storages.end()) {
-        throw configuration_error_t("mandatory 'core' storage has not been configured");
     }
 
     // IO configuration
@@ -170,7 +165,7 @@ context_t::context_t(config_t config_, boost::shared_ptr<logging::sink_t> sink):
     m_repository.reset(new api::repository_t(*this));
 
     // Register the builtin components.
-    m_repository->insert<file_storage_t>("files");
+    m_repository->insert<storage::file_storage_t>("files");
     
     // Initialize the ZeroMQ context.
     m_io.reset(new zmq::context_t(1));

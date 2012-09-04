@@ -31,7 +31,6 @@
 #include "cocaine/events.hpp"
 #include "cocaine/policy.hpp"
 
-#include "cocaine/helpers/blob.hpp"
 #include "cocaine/helpers/birth_control.hpp"
 
 namespace cocaine { namespace engine {
@@ -60,13 +59,13 @@ struct job_t:
     job_t(const std::string& event);
 
     job_t(const std::string& event,
-          const blob_t& request);
+          const std::string& request);
 
     job_t(const std::string& event,
           policy_t policy);
     
     job_t(const std::string& event,
-          const blob_t& request,
+          const std::string& request,
           policy_t policy); 
 
     virtual ~job_t();
@@ -75,8 +74,9 @@ struct job_t:
     virtual void react(const events::error& ) { }
     virtual void react(const events::choke& ) { }
 
-    const std::string event;
-    const blob_t request;
+    const std::string event,
+                      request;
+    
     const policy_t policy;
 };
 

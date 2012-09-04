@@ -37,7 +37,9 @@ struct factory_concept_t {
     virtual const std::type_info& category() const = 0;
 };
 
-// Custom factories should inherit from this interface.
+// Factory interface
+// -----------------
+
 template<
     class Category,
     class Traits = category_traits<Category>
@@ -56,8 +58,9 @@ struct factory:
                          const args_type& args) = 0;
 };
 
-// Specialize this in your plugin to use
-// a custom factory for your object instantiations.
+// Customized plugin instantiation
+// -------------------------------
+
 template<class T>
 struct plugin_traits {
     typedef typename category_traits<

@@ -28,6 +28,8 @@
 #include "cocaine/engine.hpp"
 #include "cocaine/logging.hpp"
 
+#include "cocaine/api/storage.hpp"
+
 using namespace cocaine;
 using namespace cocaine::engine;
 
@@ -85,7 +87,7 @@ app_t::~app_t() {
 
     try {
         // Remove the cached app.
-        m_context.storage<api::objects>("core:cache")->remove("apps", m_manifest.name);    
+        m_context.get<api::storage_t>("storage/cache")->remove("manifests", m_manifest.name);    
     } catch(const storage_error_t& e) {
         m_log->warning("unable cleanup the app cache - %s", e.what());
     }

@@ -30,7 +30,6 @@
 
 #include "cocaine/api/sandbox.hpp"
 
-#include "cocaine/helpers/blob.hpp"
 #include "cocaine/helpers/unique_id.hpp"
 
 namespace cocaine { namespace engine {
@@ -56,7 +55,7 @@ class slave_t:
         // I/O object implementation
         // -------------------------
         
-        virtual blob_t read(int timeout);
+        virtual std::string read(int timeout);
 
         virtual void write(const void * data,
                            size_t size);

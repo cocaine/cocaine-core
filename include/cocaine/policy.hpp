@@ -31,42 +31,21 @@ namespace cocaine { namespace engine {
 struct policy_t {
     policy_t():
         urgent(false),
-        persistent(false),
         timeout(0.0f),
         deadline(0.0f)
     { }
 
     policy_t(bool urgent_, double timeout_, double deadline_):
         urgent(urgent_),
-        persistent(false),
         timeout(timeout_),
         deadline(deadline_)
     { }
 
     bool urgent;
-    bool persistent;
     double timeout;
     double deadline;
 };
 
 }}
-
-namespace msgpack {
-    using cocaine::engine::policy_t;
-
-    policy_t& operator >> (const object& o,
-                           policy_t& policy);
-
-    template<class Stream>
-    inline packer<Stream>& operator << (packer<Stream>& packer,
-                                        const policy_t& policy)
-    {
-        packer.pack_array(3);
-        packer.pack(policy.urgent);
-        // packer.pack(policy.persistent);
-        packer.pack(policy.timeout);
-        packer.pack(policy.deadline);
-    }
-}
 
 #endif

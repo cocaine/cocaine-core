@@ -18,30 +18,44 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include <msgpack.hpp>
+#ifndef COCAINE_ARCHIVE_HPP
+#define COCAINE_ARCHIVE_HPP
 
-#include "cocaine/policy.hpp"
+#include <boost/filesystem/path.hpp>
 
-using cocaine::engine::policy_t;
+#include "cocaine/common.hpp"
 
-namespace msgpack {
-    policy_t& operator >> (const object& o,
-                           policy_t& policy)
-    {
-        if(o.type != type::ARRAY || o.via.array.size != 3) {
-            throw type_error();
-        }
+struct archive;
 
-        object &urgent = o.via.array.ptr[0],
-               // &persistent = o.via.array.ptr[1],
-               &timeout = o.via.array.ptr[1],
-               &deadline = o.via.array.ptr[2];
+namespace cocaine {
 
-        urgent >> policy.urgent;
-        // persistent >> policy.persistent;
-        timeout >> policy.timeout;
-        deadline >> policy.deadline;
+struct archive_error_t:
+    public std::runtime_error
+{
+    archive_error_t(archive * source);
+};
 
-        return policy;
-    }
+class archive_t {
+    public:
+        archive_t(context_t& context,
+                  const std::string& archive);
+        
+        ~archive_t();
+
+        void deploy(const boost::filesystem::path& prefix);
+        
+    public:
+        std::string type() const;
+
+    private:
+        static void extract(archive * source, 
+                            archive * target);
+
+    private:
+        boost::shared_ptr<logging::logger_t> m_log;
+        archive * m_archive;
+};
+
 }
+
+#endif

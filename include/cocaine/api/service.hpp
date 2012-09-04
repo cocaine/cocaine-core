@@ -34,11 +34,14 @@ class service_t:
     public boost::noncopyable
 {
     public:
-        virtual ~service_t() {
+        virtual
+        ~service_t() {
             // Empty.
         }
 
-        virtual void run() = 0;
+        virtual
+        void
+        run() = 0;
     
     protected:
         service_t(context_t& context, const std::string&, const Json::Value&):
@@ -62,8 +65,10 @@ struct category_traits<api::service_t> {
     struct default_factory:
         public factory<api::service_t>
     {
-        virtual ptr_type get(context_t& context,
-                             const args_type& args)
+        virtual
+        ptr_type
+        get(context_t& context,
+            const args_type& args)
         {
             return ptr_type(
                 new T(

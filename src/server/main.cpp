@@ -28,8 +28,7 @@
 #include "cocaine/context.hpp"
 
 #include "cocaine/server/server.hpp"
-
-#include "cocaine/loggers/syslog.hpp"
+#include "cocaine/server/syslog.hpp"
 
 #include "cocaine/helpers/pid_file.hpp"
 

@@ -26,29 +26,27 @@
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
 
-#include "cocaine/api/storage.hpp"
+#include "cocaine/helpers/json.hpp"
 
 namespace cocaine {
 
 struct defaults {
-    // Default engine policy.
-    static const float startup_timeout;
+    // Default profile.
+    static const char slave[];
     static const float heartbeat_timeout;
     static const float idle_timeout;
+    static const float startup_timeout;
     static const float termination_timeout;
     static const unsigned long pool_limit;
     static const unsigned long queue_limit;
 
     // Default I/O policy.
-    static const unsigned long io_bulk_size;
     static const long bus_timeout;
-
-    // Default slave binary.
-    static const char slave[];
+    static const unsigned long io_bulk_size;
 
     // Default paths.
-    static const char plugin_path[];
     static const char ipc_path[];
+    static const char plugin_path[];
     static const char spool_path[];
 };
 
@@ -56,21 +54,21 @@ struct config_t {
     config_t(const std::string& config_path);
 
     std::string config_path,
-                plugin_path,
                 ipc_path,
+                plugin_path,
                 spool_path;
 
     typedef struct {
         std::string type;
         Json::Value args;
-    } storage_info_t;
+    } component_info_t;
 
     typedef std::map<
         std::string,
-        storage_info_t
-    > storage_info_map_t;
+        component_info_t
+    > component_info_map_t;
 
-    storage_info_map_t storages;
+    component_info_map_t components;
 
     struct {
         std::string hostname;
@@ -86,15 +84,35 @@ class context_t:
 
         ~context_t();
 
-        // Repository API
-        // --------------
-
+        // Component API
+        // -------------
+        
         template<class Category>
         typename api::category_traits<Category>::ptr_type
         get(const std::string& type,
             const typename api::category_traits<Category>::args_type& args)
         {
             return m_repository->get<Category>(type, args);
+        }
+
+        template<class Category>
+        typename api::category_traits<Category>::ptr_type
+        get(const std::string& name) {
+            config_t::component_info_map_t::const_iterator it(
+                config.components.find(name)
+            );
+    
+            if(it == config.components.end()) {
+                throw configuration_error_t("the '" + name + "' component is not configured");
+            }
+
+            return get<Category>(
+                it->second.type,
+                typename api::category_traits<Category>::args_type(
+                    name,
+                    it->second.args
+                )
+            );
         }
 
         // Networking
@@ -104,33 +122,6 @@ class context_t:
             return *m_io;
         }
         
-        // Storage
-        // -------
-
-        template<class T>
-        typename api::category_traits<
-            api::storage_concept<T>
-        >::ptr_type
-        storage(const std::string& name) {
-            typedef api::storage_concept<T> storage_type;
-
-            config_t::storage_info_map_t::const_iterator it(
-                config.storages.find(name)
-            );
-    
-            if(it == config.storages.end()) {
-                throw configuration_error_t("the '" + name + "' storage doesn't exist");
-            }
-
-            return get<storage_type>(
-                it->second.type,
-                typename api::category_traits<storage_type>::args_type(
-                    name,
-                    it->second.args
-                )
-            );
-        }
-
         // Logging
         // -------
 

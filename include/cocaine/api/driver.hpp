@@ -34,14 +34,18 @@ class driver_t:
     public boost::noncopyable
 {
     public:
-        virtual ~driver_t() {
+        virtual
+        ~driver_t() {
             // Empty.
         }
 
-        virtual Json::Value info() const = 0;
+        virtual
+        Json::Value
+        info() const = 0;
 
     public:
-        engine::engine_t& engine() {
+        engine::engine_t&
+        engine() {
             return m_engine;
         }
 
@@ -70,8 +74,10 @@ struct category_traits<api::driver_t> {
     struct default_factory:
         public factory<api::driver_t>
     {
-        virtual ptr_type get(context_t& context,
-                             const args_type& args)
+        virtual
+        ptr_type
+        get(context_t& context,
+            const args_type& args)
         {
             return ptr_type(
                 new T(

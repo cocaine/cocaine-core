@@ -1,3 +1,9 @@
+cocaine-core (0.10.0) lucid; urgency=low
+
+  * Yeah.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Thu, 30 Aug 2012 20:49:59 +0400
+
 cocaine-core (0.9.2) lucid; urgency=low
 
   * Fixed a build issue on 32-bit Ubuntu Precise due to the variable size mismatch.

@@ -28,9 +28,8 @@
 #include <boost/mpl/int.hpp>
 #include <boost/mpl/list.hpp>
 
-#include <boost/type_traits/remove_const.hpp>
 #include <boost/tuple/tuple.hpp>
-#include <msgpack.hpp>
+#include <boost/type_traits/remove_const.hpp>
 
 #include <zmq.hpp>
 
@@ -39,13 +38,14 @@
 #endif
 
 #include "cocaine/common.hpp"
+#include "cocaine/traits.hpp"
 
 #include "cocaine/helpers/birth_control.hpp"
 
 namespace cocaine { namespace io {
 
-// Raw message container
-// ---------------------
+// Custom message container
+// ------------------------
 
 template<class T>
 struct raw {
@@ -56,12 +56,20 @@ struct raw {
     T& value;
 };
 
-// Specialize this to disable specific type serialization.
 template<class T>
-struct serialization_traits;
+static inline raw<T>
+protect(T& object) {
+    return raw<T>(object);
+}
+
+// Customized type serialization
+// -----------------------------
+
+template<class T>
+struct raw_traits;
 
 template<>
-struct serialization_traits<std::string> {
+struct raw_traits<std::string> {
     static void pack(zmq::message_t& message, const std::string& value) {
         message.rebuild(value.size());
         memcpy(message.data(), value.data(), value.size());
@@ -76,12 +84,6 @@ struct serialization_traits<std::string> {
         return true;
     }
 };
-
-template<class T>
-static inline raw<T>
-protect(T& object) {
-    return raw<T>(object);
-}
 
 // ZeroMQ socket wrapper
 // ---------------------
@@ -108,7 +110,9 @@ class socket_t:
                   int flags = 0)
         {
             msgpack::sbuffer buffer;
-            msgpack::pack(buffer, value);
+            msgpack::packer<msgpack::sbuffer> packer(buffer);
+
+            type_traits<T>::pack(packer, value);
             
             zmq::message_t message(buffer.size());
             memcpy(message.data(), buffer.data(), buffer.size());
@@ -122,7 +126,7 @@ class socket_t:
         {
             zmq::message_t message;
             
-            serialization_traits<
+            raw_traits<
                 typename boost::remove_const<T>::type
             >::pack(message, object.value);
             
@@ -152,8 +156,8 @@ class socket_t:
                     static_cast<const char*>(message.data()),
                     message.size()
                 );
-                
-                unpacked.get().convert(&result);
+               
+                type_traits<T>::unpack(unpacked.get(), result);
             } catch(const msgpack::type_error& e) {
                 throw std::runtime_error("corrupted object");
             } catch(const std::bad_cast& e) {
@@ -173,7 +177,7 @@ class socket_t:
                 return false;
             }
 
-            return serialization_traits<
+            return raw_traits<
                 typename boost::remove_const<T>::type
             >::unpack(message, result.value);
         }

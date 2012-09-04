@@ -26,19 +26,20 @@
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
 
-#include "cocaine/helpers/blob.hpp"
-
 namespace cocaine { namespace api {
 
 // Sandbox I/O
 // -----------
 
-class io_t {
-    public:
-        virtual blob_t read(int timeout) = 0;
+struct io_t {
+    virtual
+    std::string
+    read(int timeout) = 0;
 
-        virtual void write(const void * data,
-                           size_t size) = 0;
+    virtual
+    void
+    write(const void * data,
+          size_t size) = 0;
 };
 
 // Sandbox interface
@@ -48,12 +49,15 @@ class sandbox_t:
     public boost::noncopyable
 {
     public:
-        virtual ~sandbox_t() {
+        virtual
+        ~sandbox_t() {
             // Empty.
         }
         
-        virtual void invoke(const std::string& event,
-                            io_t& io) = 0;
+        virtual
+        void
+        invoke(const std::string& event,
+               io_t& io) = 0;
 
     protected:
         sandbox_t(context_t& context, const manifest_t&):
@@ -73,8 +77,10 @@ struct category_traits<api::sandbox_t> {
     struct default_factory:
         public factory<api::sandbox_t>
     {
-        virtual ptr_type get(context_t& context,
-                             const args_type& args)
+        virtual
+        ptr_type 
+        get(context_t& context,
+            const args_type& args)
         {
             return ptr_type(
                 new T(

@@ -39,7 +39,7 @@ auth_t::auth_t(context_t& context):
 
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
     std::vector<std::string> keys(
-        context.storage<api::objects>("core")->list("keys")
+        context.get<api::storage_t>("storage/core")->list("keys")
     );
 
     for(std::vector<std::string>::const_iterator it = keys.begin();
@@ -48,17 +48,17 @@ auth_t::auth_t(context_t& context):
     {
         std::string identity(*it);
 
-        api::objects::value_type object(
-            context.storage<api::objects>("core")->get("keys", identity)
+        std::string object(
+            context.get<api::storage_t>("storage/core")->get<std::string>("keys", identity)
         );
 
-        if(object.blob.empty()) {
+        if(object.empty()) {
             m_log->error("key for user '%s' is malformed", identity.c_str());
             continue;
         }
 
         // Read the key into the BIO object.
-        BIO * bio = BIO_new_mem_buf(const_cast<void*>(object.blob.data()), object.blob.size());
+        BIO * bio = BIO_new_mem_buf(const_cast<char*>(object.data()), object.size());
         EVP_PKEY * pkey = NULL;
         
         pkey = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
@@ -115,8 +115,8 @@ std::string auth_t::sign(const std::string& message,
 }
 */
 
-void auth_t::verify(const blob_t& message,
-                    const blob_t& signature,
+void auth_t::verify(const std::string& message,
+                    const std::string& signature,
                     const std::string& username) const
 {
     key_map_t::const_iterator it(m_keys.find(username));
@@ -130,7 +130,7 @@ void auth_t::verify(const blob_t& message,
     
     bool success = EVP_VerifyFinal(
         m_context,
-        static_cast<const unsigned char*>(signature.data()),
+        reinterpret_cast<const unsigned char*>(signature.data()),
         signature.size(),
         it->second
     );

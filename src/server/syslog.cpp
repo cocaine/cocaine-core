@@ -21,7 +21,7 @@
 #include <boost/algorithm/string/replace.hpp>
 #include <syslog.h>
 
-#include "cocaine/loggers/syslog.hpp"
+#include "cocaine/server/syslog.hpp"
 
 using namespace cocaine::logging;
 

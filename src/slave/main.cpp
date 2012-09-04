@@ -26,7 +26,7 @@
 
 #include "cocaine/slave/slave.hpp"
 
-#include "cocaine/loggers/syslog.hpp"
+#include "cocaine/server/syslog.hpp"
 
 using namespace cocaine;
 using namespace cocaine::engine;
