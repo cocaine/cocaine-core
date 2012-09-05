@@ -61,6 +61,8 @@ ADD_LIBRARY(json
 SET_TARGET_PROPERTIES(json PROPERTIES
     COMPILE_FLAGS -fPIC)
 
+ADD_DEFINITIONS("-std=c++0x")
+
 ADD_LIBRARY(cocaine-common SHARED
     src/auth
     src/context
