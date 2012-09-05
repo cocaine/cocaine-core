@@ -26,38 +26,72 @@
 namespace cocaine { 
 
 namespace rpc {
+    struct core_tag;
 
-struct core_tag;
+    struct heartbeat {
+        typedef core_tag tag;
+    };
 
-struct heartbeat { typedef core_tag tag; };
-struct terminate { typedef core_tag tag; };
-struct invoke    { typedef core_tag tag; };
-struct chunk     { typedef core_tag tag; };
-struct error     { typedef core_tag tag; };
-struct choke     { typedef core_tag tag; };
+    struct terminate {
+        typedef core_tag tag;
+    };
 
+    struct invoke {
+        typedef core_tag tag;
+        
+        typedef boost::tuple<
+            const std::string&,
+            zmq::message_t&
+        > tuple_type;
+    };
+
+    struct chunk {
+        typedef core_tag tag;
+        
+        typedef boost::tuple<
+            zmq::message_t&
+        > tuple_type;
+    };
+
+    struct error {
+        typedef core_tag tag;
+        
+        typedef boost::tuple<
+            int,
+            std::string
+        > tuple_type;
+    };
+
+    struct choke {
+        typedef core_tag tag;
+    };
 }
 
 namespace io {
+    template<>
+    struct dispatch<rpc::core_tag> {
+        typedef boost::mpl::list<
+            rpc::heartbeat,
+            rpc::terminate,
+            rpc::invoke,
+            rpc::chunk,
+            rpc::error,
+            rpc::choke
+        >::type category;
+    };
+}
 
-template<>
-struct dispatch<rpc::core_tag> {
-    typedef boost::mpl::list<
-        rpc::heartbeat, rpc::terminate, rpc::invoke, rpc::chunk, rpc::error, rpc::choke
-    >::type category;
-};
+/*
 
 // Specific packers
 // ----------------
 
 template<>
 struct command<rpc::invoke>:
-    public boost::tuple<const std::string&, zmq::message_t&>
+    public event_traits<rpc::invoke>::tuple_type
 {
-    typedef boost::tuple<const std::string&, zmq::message_t&> tuple_type;
-
     command(const std::string& event, const void * data, size_t size):
-        tuple_type(event, message),
+        event_traits<rpc::invoke>::tuple_type(event, message),
         message(size)
     {
         memcpy(
@@ -73,12 +107,10 @@ private:
 
 template<>
 struct command<rpc::chunk>:
-    public boost::tuple<zmq::message_t&>
+    public event_traits<rpc::chunk>::tuple_type
 {
-    typedef boost::tuple<zmq::message_t&> tuple_type;
-
     command(const void * data, size_t size):
-        tuple_type(message),
+        event_traits<rpc::chunk>::tuple_type(message),
         message(size)
     {
         memcpy(
@@ -94,16 +126,15 @@ private:
 
 template<>
 struct command<rpc::error>:
-    // NOTE: Not a string reference to allow literal error messages.
-    public boost::tuple<int, std::string>
+    public event_traits<rpc::error>::tuple_type
 {
-    typedef boost::tuple<int, std::string> tuple_type;
-
     command(int code, const std::string& message):
-        tuple_type(code, message)
+        event_traits<rpc::error>::tuple_type(code, message)
     { }
 };
+
+*/
     
-}}
+} // namespace cocaine
 
 #endif
