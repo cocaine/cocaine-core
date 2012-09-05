@@ -83,6 +83,6 @@ struct choke:
     public sc::event<choke>
 { };
 
-}}}
+}}} // namespace cocaine::engine::events
 
 #endif

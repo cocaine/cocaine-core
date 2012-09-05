@@ -168,6 +168,6 @@ struct category_traits<storage_t> {
     };
 };
 
-}}
+}} // namespace cocaine::api
 
 #endif

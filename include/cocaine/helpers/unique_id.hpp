@@ -59,10 +59,10 @@ class unique_id_t {
         mutable identifier_type m_id;
 };
 
-}
+} // namespace helpers
 
 using helpers::unique_id_t;
 
-}
+} // namespace cocaine
 
 #endif

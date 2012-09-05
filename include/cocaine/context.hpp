@@ -149,6 +149,6 @@ class context_t:
         std::auto_ptr<api::repository_t> m_repository;
 };
 
-}
+} // namespace cocaine
 
 #endif

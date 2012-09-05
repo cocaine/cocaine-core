@@ -43,13 +43,11 @@ namespace sc = boost::statechart;
 // ------------
 
 namespace slave {
-
-struct unknown;
-struct alive;
-    struct idle;
-    struct busy;
-struct dead;
-
+    struct unknown;
+    struct alive;
+        struct idle;
+        struct busy;
+    struct dead;
 }
 
 // Master FSM
@@ -91,63 +89,61 @@ class master_t:
 };
 
 namespace slave {
+    struct unknown:
+        public sc::simple_state<unknown, master_t> 
+    {
+        typedef boost::mpl::list<
+            sc::transition<events::heartbeat, alive, master_t, &master_t::on_initialize>,
+            sc::transition<events::terminate, dead, master_t, &master_t::on_terminate>
+        > reactions;
+    };
 
-struct unknown:
-    public sc::simple_state<unknown, master_t> 
-{
-    typedef boost::mpl::list<
-        sc::transition<events::heartbeat, alive, master_t, &master_t::on_initialize>,
-        sc::transition<events::terminate, dead, master_t, &master_t::on_terminate>
-    > reactions;
-};
+    struct alive:
+        public sc::simple_state<alive, master_t, idle>
+    {
+        ~alive();
 
-struct alive:
-    public sc::simple_state<alive, master_t, idle>
-{
-    ~alive();
+        void on_invoke(const events::invoke& event);
+        void on_choke(const events::choke& event);
 
-    void on_invoke(const events::invoke& event);
-    void on_choke(const events::choke& event);
+        typedef boost::mpl::list<
+            sc::in_state_reaction<events::heartbeat, master_t, &master_t::on_heartbeat>,
+            sc::transition<events::terminate, dead, master_t, &master_t::on_terminate>
+        > reactions;
 
-    typedef boost::mpl::list<
-        sc::in_state_reaction<events::heartbeat, master_t, &master_t::on_heartbeat>,
-        sc::transition<events::terminate, dead, master_t, &master_t::on_terminate>
-    > reactions;
+        boost::shared_ptr<job_t> job;
+    };
 
-    boost::shared_ptr<job_t> job;
-};
+    struct idle: 
+        public sc::simple_state<idle, alive>
+    {
+        typedef boost::mpl::list<
+            sc::transition<events::invoke, busy, alive, &alive::on_invoke>
+        > reactions;
+    };
 
-struct idle: 
-    public sc::simple_state<idle, alive>
-{
-    typedef boost::mpl::list<
-        sc::transition<events::invoke, busy, alive, &alive::on_invoke>
-    > reactions;
-};
+    struct busy:
+        public sc::simple_state<busy, alive>
+    {
+        void on_chunk(const events::chunk& event);
+        void on_error(const events::error& event);
 
-struct busy:
-    public sc::simple_state<busy, alive>
-{
-    void on_chunk(const events::chunk& event);
-    void on_error(const events::error& event);
+        typedef boost::mpl::list<
+            sc::in_state_reaction<events::chunk, busy, &busy::on_chunk>,
+            sc::in_state_reaction<events::error, busy, &busy::on_error>,
+            sc::transition<events::choke, idle, alive, &alive::on_choke>
+        > reactions;
 
-    typedef boost::mpl::list<
-        sc::in_state_reaction<events::chunk, busy, &busy::on_chunk>,
-        sc::in_state_reaction<events::error, busy, &busy::on_error>,
-        sc::transition<events::choke, idle, alive, &alive::on_choke>
-    > reactions;
+        const boost::shared_ptr<job_t>& job() const {
+            return context<alive>().job;
+        }
+    };
 
-    const boost::shared_ptr<job_t>& job() const {
-        return context<alive>().job;
-    }
-};
-
-struct dead:
-    public sc::simple_state<dead, master_t>
-{ };
-
+    struct dead:
+        public sc::simple_state<dead, master_t>
+    { };
 }
 
-}}
+}} // namespace cocaine::engine
 
 #endif

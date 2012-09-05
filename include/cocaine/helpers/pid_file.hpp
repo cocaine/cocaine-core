@@ -87,10 +87,10 @@ class pid_file_t:
         const fs::path m_filepath;
 };
 
-}
+} // namespace helpers
 
 using helpers::pid_file_t;
 
-}
+} // namespace cocaine
 
 #endif

@@ -59,6 +59,6 @@ private:
     boost::shared_ptr<logging::logger_t> m_log;
 };
 
-}
+} // namespace cocaine
 
 #endif

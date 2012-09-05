@@ -63,7 +63,7 @@ struct chain<null_type, null_type> {
     }
 };
 
-}
+} // namespace helpers
 
 template<class LT, class RT>
 static inline typename helpers::chain<LT, RT>::type
@@ -73,6 +73,6 @@ join_tuples(const LT& lt,
     return helpers::chain<LT, RT>::apply(lt, rt);
 }
 
-}
+} // namespace cocaine
 
 #endif

@@ -46,6 +46,6 @@ struct policy_t {
     double deadline;
 };
 
-}}
+}} // namespace cocaine::engine
 
 #endif

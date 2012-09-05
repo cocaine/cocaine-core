@@ -128,6 +128,6 @@ class server_t:
         std::string m_infocache;
 };
 
-}
+} // namespace cocaine
 
 #endif

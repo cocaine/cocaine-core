@@ -66,10 +66,10 @@ uint64_t birth_control<T>::g_objects_created(0);
 template<class T>
 boost::shared_mutex birth_control<T>::g_mutex;
 
-}
+} // namespace helpers
 
 using helpers::birth_control;
 
-}
+} // namespace cocaine
 
 #endif

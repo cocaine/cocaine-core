@@ -96,6 +96,6 @@ class slave_t:
         io::scoped_option<io::options::send_timeout> m_bus_timeout;
 };
 
-}}
+}} // namespace cocaine::engine
 
 #endif

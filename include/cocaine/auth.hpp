@@ -50,6 +50,6 @@ class auth_t:
         key_map_t m_keys;
 };
 
-}}
+}} // namespace cocaine::crypto
 
 #endif

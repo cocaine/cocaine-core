@@ -38,6 +38,6 @@ inline std::string serialize(const Json::Value& json) {
     return Json::FastWriter().write(json);
 }
 
-}}}
+}}} // namespace cocaine::helpers::json
 
 #endif

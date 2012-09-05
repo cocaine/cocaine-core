@@ -41,12 +41,10 @@ namespace sc = boost::statechart;
 // ----------
 
 namespace job {
-
-struct incomplete;
-    struct unknown;
-    struct processing;
-struct complete;
-
+    struct incomplete;
+        struct unknown;
+        struct processing;
+    struct complete;
 }
 
 // Job FSM
@@ -81,39 +79,37 @@ struct job_t:
 };
 
 namespace job {
+    struct incomplete:
+        public sc::simple_state<incomplete, job_t, unknown>
+    {
+        typedef boost::mpl::list<
+            sc::transition<events::error, complete, job_t, &job_t::react>
+        > reactions;
+    };
 
-struct incomplete:
-    public sc::simple_state<incomplete, job_t, unknown>
-{
-    typedef boost::mpl::list<
-        sc::transition<events::error, complete, job_t, &job_t::react>
-    > reactions;
-};
+    struct unknown:
+        public sc::simple_state<unknown, incomplete>
+    {
+        typedef boost::mpl::list<
+            sc::transition<events::invoke, processing>
+        > reactions;
+    };
 
-struct unknown:
-    public sc::simple_state<unknown, incomplete>
-{
-    typedef boost::mpl::list<
-        sc::transition<events::invoke, processing>
-    > reactions;
-};
+    struct processing:
+        public sc::simple_state<processing, incomplete>
+    {
+        typedef boost::mpl::list<
+            sc::in_state_reaction<events::chunk, job_t, &job_t::react>,
+            sc::transition<events::choke, complete, job_t, &job_t::react>,
+            sc::transition<events::invoke, processing>
+        > reactions;
+    };
 
-struct processing:
-    public sc::simple_state<processing, incomplete>
-{
-    typedef boost::mpl::list<
-        sc::in_state_reaction<events::chunk, job_t, &job_t::react>,
-        sc::transition<events::choke, complete, job_t, &job_t::react>,
-        sc::transition<events::invoke, processing>
-    > reactions;
-};
-
-struct complete:
-    public sc::simple_state<complete, job_t>
-{ };
-
+    struct complete:
+        public sc::simple_state<complete, job_t>
+    { };
 }
 
-}}
+}} // namespace cocaine::engine
 
 #endif

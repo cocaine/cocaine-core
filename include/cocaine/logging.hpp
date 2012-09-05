@@ -100,6 +100,6 @@ class void_sink_t:
                           const std::string&) const;
 };
 
-}}
+}} // namespace cocaine::logging
 
 #endif

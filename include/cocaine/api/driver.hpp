@@ -91,6 +91,6 @@ struct category_traits<api::driver_t> {
     };
 };
 
-}}
+}} // namespace cocaine::api
 
 #endif

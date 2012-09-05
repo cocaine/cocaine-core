@@ -60,6 +60,6 @@ class archive_t {
         archive * m_archive;
 };
 
-}
+} // namespace cocaine
 
 #endif

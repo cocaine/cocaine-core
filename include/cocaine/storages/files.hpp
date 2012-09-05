@@ -65,6 +65,6 @@ class file_storage_t:
         const boost::filesystem::path m_storage_path;
 };
 
-}}
+}} // namespace cocaine::storage
 
 #endif

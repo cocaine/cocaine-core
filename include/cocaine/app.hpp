@@ -68,6 +68,6 @@ class app_t {
         driver_map_t m_drivers;
 };
 
-}
+} // namespace cocaine
 
 #endif

@@ -37,4 +37,4 @@ class syslog_t:
         const std::string m_identity;
 };
 
-}}
+}} // namespace cocaine::logging

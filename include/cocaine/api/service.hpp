@@ -81,6 +81,6 @@ struct category_traits<api::service_t> {
     };
 };
 
-}}
+}} // namespace cocaine::api
 
 #endif

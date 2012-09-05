@@ -173,6 +173,6 @@ class engine_t:
 #endif
 };
 
-}}
+}} // namespace cocaine::engine
 
 #endif

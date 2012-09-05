@@ -104,10 +104,10 @@ struct track_t {
         T m_object;
 };
 
-}
+} // namespace helpers
 
 using helpers::track_t;
 
-}
+} // namespace cocaine
 
 #endif

@@ -106,6 +106,6 @@ struct recoverable_error_t:
     { }
 };
 
-}
+} // namespace cocaine
 
 #endif
