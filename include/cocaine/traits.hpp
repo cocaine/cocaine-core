@@ -90,7 +90,7 @@ struct type_traits<Json::Value> {
     pack(msgpack::packer<Stream>& packer,
          const Json::Value& object)
     {
-        packer << Json::FastWriter().write(object);
+        packer << helpers::json::serialize(object);
     }
     
     static
@@ -114,6 +114,6 @@ struct type_traits<Json::Value> {
     }
 };
 
-}}
+}} // namespace cocaine::io
 
 #endif
