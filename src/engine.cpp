@@ -413,7 +413,7 @@ void engine_t::process(ev::idle&, int) {
 
             m_bus->send(
                 slave_id,
-                io::command<rpc::terminate>()
+                io::message<rpc::terminate>()
             );
 
             continue;
@@ -426,11 +426,11 @@ void engine_t::process(ev::idle&, int) {
         );
 
         switch(command) {
-            case io::get<rpc::heartbeat>::id::value:
+            case io::get<rpc::heartbeat>::value:
                 master->second->process_event(events::heartbeat());
                 break;
 
-            case io::get<rpc::terminate>::id::value:
+            case io::get<rpc::terminate>::value:
                 if(master->second->state_downcast<const slave::busy*>()) {
                     // NOTE: Reschedule an incomplete job.
                     m_queue.push(master->second->state_downcast<const slave::alive*>()->job);
@@ -450,7 +450,7 @@ void engine_t::process(ev::idle&, int) {
 
                 continue;
 
-            case io::get<rpc::chunk>::id::value: {
+            case io::get<rpc::chunk>::value: {
                 // TEST: Ensure we have the actual chunk following.
                 BOOST_ASSERT(m_bus->more());
 
@@ -462,7 +462,7 @@ void engine_t::process(ev::idle&, int) {
                 continue;
             }
          
-            case io::get<rpc::error>::id::value: {
+            case io::get<rpc::error>::value: {
                 // TEST: Ensure that we have the actual error following.
                 BOOST_ASSERT(m_bus->more());
 
@@ -483,7 +483,7 @@ void engine_t::process(ev::idle&, int) {
                 continue;
             }
 
-            case io::get<rpc::choke>::id::value:
+            case io::get<rpc::choke>::value:
                 master->second->process_event(events::choke());
                 break;
 
@@ -656,10 +656,17 @@ void engine_t::pump() {
                 continue;
             }
             
-            io::command<rpc::invoke> command(
-                job->event,
+            zmq::message_t body(job->request.size());
+
+            memcpy(
+                body.data(),
                 job->request.data(),
                 job->request.size()
+            );
+
+            io::message<rpc::invoke> message(
+                job->event,
+                body
             );
 
             // NOTE: Do a non-blocking send.
@@ -667,7 +674,7 @@ void engine_t::pump() {
 
             bool success = m_bus->send(
                 it->second->id(),
-                command
+                message
             );
 
             if(success) {
@@ -780,7 +787,7 @@ void engine_t::shutdown() {
         if(it->second->state_downcast<const slave::alive*>()) {
             m_bus->send(
                 it->second->id(),
-                io::command<rpc::terminate>()
+                io::message<rpc::terminate>()
             );
 
             ++pending;

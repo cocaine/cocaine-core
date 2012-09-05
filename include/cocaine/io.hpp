@@ -313,17 +313,34 @@ class scoped_option {
         size_t size;
 };
 
-// Tuple-based RPC command
-// -----------------------
+// Event tuple type extraction
+// ---------------------------
 
 using namespace boost::tuples;
 
-template<class Event> 
-struct command:
-    public boost::tuple<>
-{
+template<class T>
+struct depend {
+    typedef void type;
+};
+
+template<class Event, class Tuple = void>
+struct event_traits {
     typedef boost::tuple<> tuple_type;
 };
+
+template<class Event>
+struct event_traits<
+    Event,
+    typename depend<
+        typename Event::tuple_type
+    >::type
+>
+{
+    typedef typename Event::tuple_type tuple_type;
+};
+
+// Event category enumeration
+// --------------------------
 
 template<class Tag>
 struct dispatch;
@@ -332,28 +349,119 @@ template<
     class Event,
     class Category = typename dispatch<
         typename Event::tag
-    >::category,
-    class Enable = void
+    >::category
 >
-struct get;
-
-template<class Event, class Category>
-struct get<
-    Event,
-    Category,
-    typename boost::enable_if<
-        boost::mpl::contains<Category, Event>
-    >::type
->
-{
-    typedef typename boost::mpl::distance<
+struct get:
+    public boost::mpl::distance<
         typename boost::mpl::begin<Category>::type,
         typename boost::mpl::find<Category, Event>::type
-    >::type id;
+    >::type
+{
+    // TEST: Event should be enumerated.
+    BOOST_MPL_ASSERT(( boost::mpl::contains<Category, Event> ));
 };
 
-// Tuple-based RPC channel
-// -----------------------
+// RPC message
+// -----------
+
+template<class Event> 
+struct message:
+    public event_traits<Event>::tuple_type
+{
+    template<typename... Args>
+    message(Args&&... args):
+        event_traits<Event>::tuple_type(args...)
+    { }
+};
+
+// Unknown message proxy
+/* ---------------------
+
+struct unknown;
+
+template<>
+struct message<unknown> {
+    message() { }
+    
+    message(const std::string& route, int type):
+        route_(route),
+        type_(type)
+    { }
+
+    ~message() {
+        for(std::deque<zmq::message_t*>::iterator it = chain_.begin();
+            it != chain_.end();
+            ++it)
+        {
+            delete *it;
+        }
+    }
+
+    int
+    type() const {
+        return type_;
+    }
+
+    std::string
+    route() const {
+        return route_;
+    }
+
+    template<class Event>
+    void 
+    as(message<Event>& message) {
+        BOOST_ASSERT(get<Event>::value == type());
+        unpack(message);
+    }
+
+    void
+    push(zmq::message_t * part) {
+        chain_.push_back(part);
+    }
+
+private:
+    void
+    unpack(const null_type&) const {
+        return;
+    }
+
+    template<class Head, class Tail>
+    void
+    unpack(cons<Head, Tail>& o) {
+        msgpack::unpacked unpacked;
+
+        msgpack::unpack(
+            &unpacked,
+            static_cast<const char*>(chain_.front()->data()),
+            chain_.front()->size()
+        );
+
+        type_traits<Head>::unpack(unpacked.get(), o.get_head());
+        std::rotate(chain_.begin(), chain_.begin() + 1, chain_.end());        
+
+        return unpack(o.get_tail());
+    }
+
+    template<class Tail>
+    void
+    unpack(cons<zmq::message_t&, Tail>& o) {
+        o.get_head().move(chain_.front());
+
+        std::rotate(chain_.begin(), chain_.begin() + 1, chain_.end());        
+
+        return unpack(o.get_tail());
+    }
+
+private:
+    std::string route_;
+    int type_;
+    std::deque<zmq::message_t*> chain_;
+};
+
+*/
+
+// RPC channel
+// -----------
 
 class channel_t:
     public socket_t
@@ -372,19 +480,46 @@ class channel_t:
         template<class Event>
         bool
         send(const std::string& route,
-             const command<Event>& object)
+             const message<Event>& object)
         {
             const bool multipart = boost::tuples::length<
-                typename command<Event>::tuple_type
+                typename event_traits<Event>::tuple_type
             >::value;
 
             return send(protect(route), ZMQ_SNDMORE) &&
-                   send(get<Event>::id::value, multipart ? ZMQ_SNDMORE : 0) &&
+                   send(get<Event>::value, multipart ? ZMQ_SNDMORE : 0) &&
                    send_tuple(object);
         }
 
         // Receiving
-        // ---------
+        /* ---------
+
+        message<unknown>
+        recv(int flags = 0) {
+            std::string route;
+            raw<std::string> raw(route);
+            int type;
+
+            if(!recv(raw, flags)) {
+                // Do something.
+            }
+
+            if(!recv(type, flags)) {
+                // Do something.
+            }
+
+            message<unknown> result(route, type);
+
+            while(more()) {
+                zmq::message_t * part = new zmq::message_t();
+                recv(part);
+                result.push(part);
+            }
+
+            return result;
+        }
+
+        */
 
         bool
         recv_multi(const null_type&,
@@ -441,6 +576,6 @@ class channel_t:
         }
 };
 
-}}
+}} // namespace cocaine::io
 
 #endif

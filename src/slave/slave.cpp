@@ -85,28 +85,28 @@ void slave_t::configure() {
             api::category_traits<api::sandbox_t>::args_type(*m_manifest)
         );
     } catch(const configuration_error_t& e) {
-        io::command<rpc::error> command(server_error, e.what());
-        m_bus.send(m_app, command);
+        io::message<rpc::error> message(server_error, e.what());
+        m_bus.send(m_app, message);
         terminate();
     } catch(const repository_error_t& e) {
-        io::command<rpc::error> command(server_error, e.what());
-        m_bus.send(m_app, command);
+        io::message<rpc::error> message(server_error, e.what());
+        m_bus.send(m_app, message);
         terminate();
     } catch(const unrecoverable_error_t& e) {
-        io::command<rpc::error> command(server_error, e.what());
-        m_bus.send(m_app, command);
+        io::message<rpc::error> message(server_error, e.what());
+        m_bus.send(m_app, message);
         terminate();
     } catch(const std::exception& e) {
-        io::command<rpc::error> command(server_error, e.what());
-        m_bus.send(m_app, command);
+        io::message<rpc::error> message(server_error, e.what());
+        m_bus.send(m_app, message);
         terminate();
     } catch(...) {
-        io::command<rpc::error> command(
+        io::message<rpc::error> message(
             server_error,
             "unexpected exception while configuring the slave"
         );
         
-        m_bus.send(m_app, command);
+        m_bus.send(m_app, message);
         terminate();
     }
 }
@@ -131,8 +131,12 @@ std::string slave_t::read(int timeout) {
 }
 
 void slave_t::write(const void * data, size_t size) {
-    io::command<rpc::chunk> command(data, size);
-    m_bus.send(m_app, command);
+    zmq::message_t body(size);
+
+    memcpy(body.data(), data, size);
+    io::message<rpc::chunk> message(body);
+
+    m_bus.send(m_app, message);
 }
 
 void slave_t::message(ev::io&, int) {
@@ -163,13 +167,14 @@ void slave_t::process(ev::idle&, int) {
     }
 
     m_log->debug(
-        "got type %d command from engine %s",
+        "slave %s got type %d command from engine %s",
+        id().c_str(),
         command,
         source.c_str()
     );
 
     switch(command) {
-        case io::get<rpc::invoke>::id::value: {
+        case io::get<rpc::invoke>::value: {
             // TEST: Ensure that we have the app first.
             BOOST_ASSERT(m_sandbox.get() != NULL);
 
@@ -181,7 +186,7 @@ void slave_t::process(ev::idle&, int) {
             break;
         }
         
-        case io::get<rpc::terminate>::id::value:
+        case io::get<rpc::terminate>::value:
             terminate();
             break;
 
@@ -206,7 +211,7 @@ void slave_t::timeout(ev::timer&, int) {
 }
 
 void slave_t::heartbeat(ev::timer&, int) {
-    if(!m_bus.send(m_app, io::command<rpc::heartbeat>())) {
+    if(!m_bus.send(m_app, io::message<rpc::heartbeat>())) {
         m_log->error(
             "slave %s has lost the controlling engine",
             id().c_str()
@@ -220,24 +225,24 @@ void slave_t::invoke(const std::string& event) {
     try {
         m_sandbox->invoke(event, *this);
     } catch(const recoverable_error_t& e) {
-        io::command<rpc::error> command(app_error, e.what());
-        m_bus.send(m_app, command);
+        io::message<rpc::error> message(app_error, e.what());
+        m_bus.send(m_app, message);
     } catch(const unrecoverable_error_t& e) {
-        io::command<rpc::error> command(server_error, e.what());
-        m_bus.send(m_app, command);
+        io::message<rpc::error> message(server_error, e.what());
+        m_bus.send(m_app, message);
     } catch(const std::exception& e) {
-        io::command<rpc::error> command(app_error, e.what());
-        m_bus.send(m_app, command);
+        io::message<rpc::error> message(app_error, e.what());
+        m_bus.send(m_app, message);
     } catch(...) {
-        io::command<rpc::error> command(
+        io::message<rpc::error> message(
             server_error,
             "unexpected exception while processing an event"
         );
         
-        m_bus.send(m_app, command);
+        m_bus.send(m_app, message);
     }
     
-    m_bus.send(m_app, io::command<rpc::choke>());
+    m_bus.send(m_app, io::message<rpc::choke>());
     
     // NOTE: Drop all the outstanding request chunks not pulled
     // in by the user code. Might have a warning here?
@@ -248,6 +253,6 @@ void slave_t::invoke(const std::string& event) {
 }
 
 void slave_t::terminate() {
-    m_bus.send(m_app, io::command<rpc::terminate>());
+    m_bus.send(m_app, io::message<rpc::terminate>());
     m_loop.unloop(ev::ALL);
 }
