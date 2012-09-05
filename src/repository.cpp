@@ -30,17 +30,6 @@ using namespace cocaine::api;
 
 namespace fs = boost::filesystem;
 
-factory_concept_t::~factory_concept_t() { }
-
-struct is_plugin {
-    template<typename T> 
-    bool
-    operator()(const T& entry) const {
-        return fs::is_regular(entry) &&
-               entry.path().extension() == ".cocaine-plugin";
-    }
-};
-
 repository_t::repository_t(context_t& context):
     m_context(context),
     m_log(context.log("repository"))
@@ -48,98 +37,10 @@ repository_t::repository_t(context_t& context):
     if(lt_dlinit() != 0) {
         throw repository_error_t("unable to initialize the plugin loader");
     }
-
-    fs::path path(m_context.config.plugin_path);
-
-    lt_dladvise advice;
-    lt_dladvise_init(&advice);
-    lt_dladvise_global(&advice);
-
-    lt_dlhandle plugin;
-    
-    typedef void (*initialize_fn_t)(repository_t& registry);
-    initialize_fn_t initialize = NULL;
-
-    typedef boost::filter_iterator<is_plugin, fs::directory_iterator> plugin_iterator_t;
-    plugin_iterator_t it = plugin_iterator_t(is_plugin(), fs::directory_iterator(path)), 
-                      end;
-
-    while(it != end) {
-        // Try to load the plugin.
-#if BOOST_FILESYSTEM_VERSION == 3
-        std::string plugin_path = it->path().string();
-#else
-        std::string plugin_path = it->string();
-#endif
-
-        plugin = lt_dlopenadvise(plugin_path.c_str(), advice);
-
-        if(plugin) {
-            // Try to get the initialization routine.
-            initialize = reinterpret_cast<initialize_fn_t>(
-                lt_dlsym(plugin, "initialize")
-            );
-
-            if(initialize) {
-                try {
-                    initialize(*this);
-                    m_plugins.push_back(plugin);
-                } catch(const std::exception& e) {
-                    lt_dlclose(plugin);
-                    
-                    m_log->error(
-                        "failed to initialize '%s' - %s",
-#if BOOST_FILESYSTEM_VERSION == 3
-                        it->path().string().c_str(),
-#else
-                        it->string().c_str(),
-#endif
-                        e.what()
-                    );
-                } catch(...) {
-                    lt_dlclose(plugin);
-
-                    m_log->error(
-                        "failed to initialize '%s' - unexpected exception",
-#if BOOST_FILESYSTEM_VERSION == 3
-                        it->path().string().c_str()
-#else
-                        it->string().c_str()
-#endif
-                    );
-                }
-            } else {
-                lt_dlclose(plugin);
-
-                m_log->error(
-                    "'%s' is not a cocaine plugin",
-#if BOOST_FILESYSTEM_VERSION == 3
-                    it->path().string().c_str()
-#else
-                    it->string().c_str()
-#endif
-                );
-            }
-        } else {
-            m_log->error(
-                "unable to load '%s' - %s",
-#if BOOST_FILESYSTEM_VERSION == 3
-                it->path().string().c_str(), 
-#else
-                it->string().c_str(),
-#endif
-                lt_dlerror()
-            );
-        }
-
-        ++it;
-    }
-
-    lt_dladvise_destroy(&advice);
 }
 
 namespace {
-    struct disposer {
+    struct dispose_t {
         template<class T>
         void
         operator()(T& plugin) const {
@@ -153,9 +54,104 @@ repository_t::~repository_t() {
     m_factories.clear();
 
     // Dispose of the plugins.
-    std::for_each(m_plugins.begin(), m_plugins.end(), disposer());
+    std::for_each(m_plugins.begin(), m_plugins.end(), dispose_t());
     
     // Terminate the dynamic loader.
     lt_dlexit();
+}
+
+namespace {
+    struct validate_t {
+        template<typename T> 
+        bool
+        operator()(const T& entry) const {
+            return fs::is_regular(entry) &&
+                   entry.path().extension() == ".cocaine-plugin";
+        }
+    };
+}
+
+void
+repository_t::load(const std::string& path_) {
+    fs::path path(path_);
+    validate_t validate;
+
+    if(fs::is_directory(path)) {
+        typedef boost::filter_iterator<
+            validate_t,
+            fs::directory_iterator
+        > plugin_iterator_t;
+        
+        plugin_iterator_t it = plugin_iterator_t(validate, fs::directory_iterator(path)), 
+                          end;
+
+        while(it != end) {
+            // Try to load the plugin.
+#if BOOST_FILESYSTEM_VERSION == 3
+            std::string leaf = it->path().string();
+#else
+            std::string leaf = it->string();
+#endif
+
+            open(leaf);
+
+            ++it;
+        }
+    } else {
+        open(path.string());
+    }
+}
+
+void
+repository_t::open(const std::string& target) {
+    lt_dladvise advice;
+    lt_dladvise_init(&advice);
+    lt_dladvise_global(&advice);
+
+    lt_dlhandle plugin = lt_dlopenadvise(
+        target.c_str(),
+        advice
+    );
+
+    lt_dladvise_destroy(&advice);
+    
+    if(plugin) {
+        // Try to get the initialization routine.
+        initialize_fn_t initialize = reinterpret_cast<initialize_fn_t>(
+            lt_dlsym(plugin, "initialize")
+        );
+
+        if(initialize) {
+            try {
+                initialize(*this);
+                m_plugins.push_back(plugin);
+                return;
+            } catch(const std::exception& e) {
+                m_log->error(
+                    "failed to initialize '%s' - %s",
+                    target.c_str(),
+                    e.what()
+                );
+            } catch(...) {
+                m_log->error(
+                    "failed to initialize '%s' - unexpected exception",
+                    target.c_str()
+                );
+            }
+        } else {
+            m_log->error(
+                "'%s' is not a cocaine plugin",
+                target.c_str()
+            );
+        }
+
+        lt_dlclose(plugin);
+    } else {
+        m_log->error(
+            "unable to load '%s' - %s",
+            target.c_str(),
+            lt_dlerror()
+        );
+    }
 }
 

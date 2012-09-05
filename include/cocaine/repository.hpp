@@ -34,7 +34,9 @@ struct category_traits;
 
 struct factory_concept_t {
     virtual
-    ~factory_concept_t() = 0;
+    ~factory_concept_t() {
+        // Empty.
+    }
     
     virtual
     const std::type_info&
@@ -86,6 +88,9 @@ class repository_t:
         repository_t(context_t& context);
         ~repository_t();
 
+        void
+        load(const std::string& path);
+
         template<class Category>
         typename category_traits<Category>::ptr_type
         get(const std::string& type,
@@ -127,6 +132,10 @@ class repository_t:
         }
 
     private:
+        void
+        open(const std::string& target);
+
+    private:
         context_t& m_context;
         boost::shared_ptr<logging::logger_t> m_log;
 
@@ -145,6 +154,8 @@ class repository_t:
         factory_map_t m_factories;
 };
 
-}}
+typedef void (*initialize_fn_t)(repository_t&);
+
+}} // namespace cocaine::api
 
 #endif
