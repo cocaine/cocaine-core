@@ -58,9 +58,10 @@ struct type_traits<engine::policy_t> {
          const engine::policy_t& object)
     {
         packer.pack_array(3);
-        packer.pack(object.urgent);
-        packer.pack(object.timeout);
-        packer.pack(object.deadline);
+        
+        packer << object.urgent;
+        packer << object.timeout;
+        packer << object.deadline;
     }
     
     static
