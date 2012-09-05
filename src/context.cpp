@@ -164,6 +164,7 @@ context_t::context_t(config_t config_, boost::shared_ptr<logging::sink_t> sink):
 
     // Initialize the component repository.
     m_repository.reset(new api::repository_t(*this));
+    m_repository->load(config.plugin_path);
 
     // Register the builtin components.
     m_repository->insert<storage::file_storage_t>("files");
