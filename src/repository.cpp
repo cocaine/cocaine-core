@@ -109,7 +109,7 @@ repository_t::open(const std::string& target) {
     lt_dladvise_global(&advice);
 
     m_log->debug(
-        "loading a plugin from '%s'",
+        "loading components from '%s'",
         target.c_str()
     );
 
