@@ -108,6 +108,11 @@ repository_t::open(const std::string& target) {
     lt_dladvise_init(&advice);
     lt_dladvise_global(&advice);
 
+    m_log->debug(
+        "loading a plugin from '%s'",
+        target.c_str()
+    );
+
     lt_dlhandle plugin = lt_dlopenadvise(
         target.c_str(),
         advice
@@ -128,19 +133,19 @@ repository_t::open(const std::string& target) {
                 return;
             } catch(const std::exception& e) {
                 m_log->error(
-                    "failed to initialize '%s' - %s",
+                    "unable to initialize '%s' - %s",
                     target.c_str(),
                     e.what()
                 );
             } catch(...) {
                 m_log->error(
-                    "failed to initialize '%s' - unexpected exception",
+                    "unable to initialize '%s' - unexpected exception",
                     target.c_str()
                 );
             }
         } else {
             m_log->error(
-                "'%s' is not a cocaine plugin",
+                "unable to initialize '%s' - invalid interface",
                 target.c_str()
             );
         }
