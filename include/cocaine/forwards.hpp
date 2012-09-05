@@ -64,13 +64,6 @@ namespace cocaine {
     }
 }
 
-namespace msgpack {
-    struct object;
-    
-    template<typename>
-    class packer;
-}
-
 namespace zmq {
     class context_t;
     class message_t;
