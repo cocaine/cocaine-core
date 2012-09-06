@@ -114,8 +114,10 @@ file_storage_t::write(const std::string& collection,
 }
 
 namespace {
-    struct is_regular_file {
-        template<typename T> bool operator()(const T& entry) {
+    struct validate_t {
+        template<typename T>
+        bool
+        operator()(const T& entry) {
             return fs::is_regular(entry);
         }
     };
@@ -132,9 +134,12 @@ file_storage_t::list(const std::string& collection) {
         return result;
     }
 
-    typedef boost::filter_iterator<is_regular_file, fs::directory_iterator> file_iterator;
+    typedef boost::filter_iterator<
+        validate_t,
+        fs::directory_iterator
+    > file_iterator;
     
-    file_iterator it = file_iterator(is_regular_file(), fs::directory_iterator(store_path)), 
+    file_iterator it = file_iterator(validate_t(), fs::directory_iterator(store_path)), 
                   end;
 
     while(it != end) {

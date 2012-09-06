@@ -511,8 +511,8 @@ void engine_t::check(ev::prepare&, int) {
 // ------------------
 
 namespace {
-    struct expired {
-        expired(ev::tstamp now_):
+    struct expired_t {
+        expired_t(ev::tstamp now_):
             now(now_)
         { }
 
@@ -554,11 +554,14 @@ void engine_t::cleanup(ev::timer&, int) {
 
     boost::unique_lock<boost::mutex> queue_lock(m_queue_mutex);
 
-    typedef boost::filter_iterator<expired, job_queue_t::iterator> filter;
+    typedef boost::filter_iterator<
+        expired_t,
+        job_queue_t::iterator
+    > filter;
 
     // Process all the expired jobs.
-    filter it(expired(m_loop.now()), m_queue.begin(), m_queue.end()),
-           end(expired(m_loop.now()), m_queue.end(), m_queue.end());
+    filter it(expired_t(m_loop.now()), m_queue.begin(), m_queue.end()),
+           end(expired_t(m_loop.now()), m_queue.end(), m_queue.end());
 
     while(it != end) {
         (*it++)->process_event(
