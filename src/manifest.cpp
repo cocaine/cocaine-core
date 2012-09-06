@@ -153,7 +153,7 @@ void manifest_t::deploy() {
         // Put the application object into the cache for future reference.
         m_context.get<api::storage_t>("storage/cache")->put("manifests", name, root);
     } catch(const storage_error_t& e) {
-        m_log->warning("unable to cache the app - %s", e.what());
+        m_log->warning("unable to cache the app manifest - %s", e.what());
         throw configuration_error_t("the '" + name + "' app is not available");
     }    
 }
