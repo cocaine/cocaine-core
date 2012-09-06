@@ -144,13 +144,13 @@ config_t::config_t(const std::string& path):
         }
 
         if(result == NULL) {
-            throw configuration_error_t("unable to determine the hostname - no hostnames have been specified for the host");
+            throw configuration_error_t("unable to determine the hostname - no hostnames have been configured for the host");
         }
         
         runtime.hostname = result->ai_canonname;
         freeaddrinfo(result);
     } else {
-        throw system_error_t("failed to determine the hostname");
+        throw system_error_t("unable to determine the hostname");
     }
 }
 
