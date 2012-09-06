@@ -590,7 +590,7 @@ void engine_t::terminate(ev::timer&, int) {
 // -------------------------
 
 namespace {
-    struct terminator {
+    struct terminate_t {
         template<class T>
         void operator()(const T& master) {
             master->second->process_event(events::terminate());
@@ -612,7 +612,7 @@ void engine_t::notify(ev::async&, int) {
             break;
 
         case stopped:
-            std::for_each(m_pool.begin(), m_pool.end(), terminator());
+            std::for_each(m_pool.begin(), m_pool.end(), terminate_t());
             m_loop.unloop(ev::ALL);
             break;
     };
