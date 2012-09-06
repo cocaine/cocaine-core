@@ -98,6 +98,7 @@ repository_t::load(const std::string& path_) {
             ++it;
         }
     } else {
+        // NOTE: Just try to open the file.
         open(path.string());
     }
 }
