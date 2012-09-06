@@ -73,20 +73,22 @@ template<>
 struct raw_traits<std::string> {
     static
     void
-    pack(zmq::message_t& message, const std::string& value) {
+    pack(zmq::message_t& message,
+         const std::string& value)
+    {
         message.rebuild(value.size());
         memcpy(message.data(), value.data(), value.size());
     }
 
     static
-    bool
-    unpack(zmq::message_t& message, std::string& value) {
+    void
+    unpack(zmq::message_t& message,
+           std::string& value)
+    {
         value.assign(
             static_cast<const char*>(message.data()),
             message.size()
         );
-
-        return true;
     }
 };
 
@@ -195,9 +197,11 @@ class socket_t:
                 return false;
             }
 
-            return raw_traits<
+            raw_traits<
                 typename boost::remove_const<T>::type
             >::unpack(message, result.value);
+        
+            return true;
         }
                 
         void
