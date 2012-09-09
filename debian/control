@@ -11,7 +11,7 @@ Vcs-Browser: https://github.com/cocaine/cocaine-core
 
 Package: libcocaine-common1
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libzmq1 (>= 2.2.0+yandex1)
+Depends: ${shlibs:Depends}, ${misc:Depends}, libzmq1 (>= 2.2.0)
 Provides: cocaine-core
 Replaces: cocaine-core
 Description: Cocaine - Common Libraries
@@ -30,7 +30,7 @@ Architecture: any
 Section: libdevel
 Provides: cocaine-dev
 Replaces: cocaine-dev
-Depends: ${shlibs:Depends}, ${misc:Depends}, libzmq-dev (>= 2.2.0+yandex1), libev-dev, libmsgpack-dev,
+Depends: ${shlibs:Depends}, ${misc:Depends}, libzmq-dev (>= 2.2.0), libev-dev, libmsgpack-dev,
  libboost-dev, libboost-thread-dev, libssl-dev, libcocaine-common1 (= ${Source-Version}),
  libcocaine-core1 (= ${Source-Version})
 Description: Cocaine - Development Headers
