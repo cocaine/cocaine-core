@@ -21,7 +21,6 @@ Makefile
 *.la
 *~
 *.tar.gz
-.*
 *.exp
 *.so
 *.so.*
