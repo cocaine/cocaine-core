@@ -52,8 +52,9 @@ job_t::job_t(const std::string& event_, const std::string& request_, policy_t po
 }
 
 job_t::~job_t() {
-    // TEST: Ensure that the job has been completed.
-    BOOST_ASSERT(state_downcast<const complete*>() != 0);
+    // TEST: Ensure that the job has been completed or not started at all.
+    BOOST_ASSERT(state_downcast<const complete*>() != 0
+                 || state_downcast<const unknown*>() != 0); 
 
     terminate();
 }
