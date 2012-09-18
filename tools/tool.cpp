@@ -219,7 +219,7 @@ int main(int argc, char * argv[]) {
     }
 
     if(vm.count("help")) {
-        std::cout << "Usage: " << argv[0] << " list|upload|delete <options>" << std::endl;
+        std::cout << "Usage: " << argv[0] << " list|upload|remove <options>" << std::endl;
         std::cout << general_options;
         return EXIT_SUCCESS;
     }
