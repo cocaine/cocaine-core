@@ -224,7 +224,7 @@ void alive::on_invoke(const events::invoke& event) {
 
     job = event.job;
     job->process_event(event);    
-
+    
     // Reset the heartbeat timer.    
     post_event(events::heartbeat());
 }
