@@ -4,6 +4,6 @@ compiler:
   - clang
 install:
   - sudo apt-get update -qq
-  - sudo apt-get install libboost-dev libboost-filesystem-dev libboost-thread-dev libboost-program-options-dev
+  - sudo apt-get install -qq libboost-dev libboost-filesystem-dev libboost-thread-dev libboost-program-options-dev
   - sudo apt-get install -qq cmake libev-dev libmsgpack-dev libssl-dev libltdl-dev libcgroup-dev uuid-dev libarchive-dev
 script: cmake . && make
