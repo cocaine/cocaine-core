@@ -353,20 +353,30 @@ void server_t::announce(ev::timer&, int) {
 }
 
 void server_t::recover() {
+    typedef std::map<
+        std::string,
+        std::string
+    > run_map_t;
+
     api::category_traits<api::storage_t>::ptr_type storage(
         m_context.get<api::storage_t>("storage/core")
     );
 
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
-    std::vector<std::string> apps(
-        storage->get<
-            std::vector<std::string>
-        >("runlists", m_runlist)
+    run_map_t runmap(
+        storage->get<run_map_t>("runlists", m_runlist)
     );
 
-    std::set<std::string> available(apps.begin(), apps.end()),
+    std::set<std::string> available,
                           active;
   
+    for(run_map_t::const_iterator it = runmap.begin();
+        it != runmap.end();
+        ++it)
+    {
+        available.insert(it->first);
+    }
+
     for(app_map_t::const_iterator it = m_apps.begin();
         it != m_apps.end();
         ++it)
@@ -394,3 +404,4 @@ void server_t::recover() {
         }
     }
 }
+
