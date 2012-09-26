@@ -1,34 +1,15 @@
-*.a
-*.o
-*.os
-*.so*
-*.dylib
-*.cocaine-plugin
-cocained
-
-CMakeCache.txt
-CMakeFiles
-Makefile
-install_manifest.txt
-cmake_install.cmake
-
-include/cocaine/config.hpp
-Makefile
-*.o
+# Compiled Object files
+*.slo
 *.lo
-*.loT
-*.a
-*.la
-*~
-*.tar.gz
-*.exp
-*.so
-*.so.*
-*.a.*
-*.o.*
-tags
+*.o
 
-library-test
-cocaine-slave
-tools/deploy/cocaine-deploy
-tests/library_test
+# Compiled Dynamic libraries
+*.so
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+
+# MacOS Trash
+.DS_Store
