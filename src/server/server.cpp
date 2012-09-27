@@ -115,7 +115,7 @@ server_t::server_t(context_t& context, server_config_t config):
 
     m_sighup.set<server_t, &server_t::reload>(this);
     m_sighup.start(SIGHUP);
-    
+   
     recover();
 }
 
@@ -369,7 +369,8 @@ void server_t::recover() {
 
     std::set<std::string> available,
                           active;
-  
+
+    // Runnable apps. 
     for(run_map_t::const_iterator it = runmap.begin();
         it != runmap.end();
         ++it)
@@ -377,6 +378,7 @@ void server_t::recover() {
         available.insert(it->first);
     }
 
+    // Currently running apps.
     for(app_map_t::const_iterator it = m_apps.begin();
         it != m_apps.end();
         ++it)

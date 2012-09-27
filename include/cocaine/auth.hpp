@@ -34,12 +34,14 @@ class auth_t:
         auth_t(context_t& context);
         ~auth_t();
 
-        void verify(const std::string& message,
-                    const std::string& signature,
-                    const std::string& username) const;
+        void
+        verify(const std::string& message,
+               const std::string& signature,
+               const std::string& username) const;
 
-        // std::string sign(const std::string& message, 
-        //                  const std::string& username) const;
+        // std::string 
+        // sign(const std::string& message, 
+        //      const std::string& username) const;
 
     private:
         boost::shared_ptr<logging::logger_t> m_log;

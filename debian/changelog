@@ -1,6 +1,14 @@
+cocaine-core (0.10.0-alpha2) lucid; urgency=low
+
+  * [04d89ebd] Correct serialization mechanics for property maps.
+  * [e45164b2] Support for mapped runlists.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 26 Sep 2012 15:58:08 +0400
+
 cocaine-core (0.10.0-alpha1) lucid; urgency=low
 
-  * Yeah.
+  * New API interfaces.
+  * Fully reworked blob storage subsystem.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Thu, 30 Aug 2012 20:49:59 +0400
 

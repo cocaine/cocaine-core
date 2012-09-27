@@ -18,6 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
+#include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/format.hpp>
 
@@ -40,13 +41,25 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
         ).str()
     ))
 {
+    api::category_traits<api::storage_t>::ptr_type cache(
+        m_context.get<api::storage_t>("storage/cache")
+    );
+
     try {
         // Try to load the app manifest from the cache.
-        root = m_context.get<api::storage_t>("storage/cache")->get<Json::Value>("manifests", name);
+        root = cache->get<Json::Value>("manifests", name);
         path = root["path"].asString();
     } catch(const storage_error_t& e) {
-        m_log->info("the app hasn't been found in the app cache");
+        m_log->info("the manifest hasn't been found in the cache");
         deploy();
+
+        try {
+            // Put the application object into the cache for future reference.
+            cache->put("manifests", name, root);
+        } catch(const storage_error_t& e) {
+            m_log->warning("unable to cache the manifest - %s", e.what());
+            throw configuration_error_t("the '" + name + "' app is not available");
+        }    
     }
 
     // Setup the app configuration.
@@ -126,7 +139,7 @@ void manifest_t::deploy() {
         root = storage->get<Json::Value>("manifests", name);
         blob = storage->get<std::string>("apps", name);
     } catch(const storage_error_t& e) {
-        m_log->error("unable to fetch the app from the app storage - %s", e.what());
+        m_log->error("unable to fetch the app from the storage - %s", e.what());
         throw configuration_error_t("the '" + name + "' app is not available");
     }
 
@@ -139,21 +152,21 @@ void manifest_t::deploy() {
     );
     
     try {
+        // Remove stale files from the spool, just in case.
+        boost::filesystem::remove_all(path);
+        
+        // Deploy the new files.
         archive_t archive(m_context, blob);
         archive.deploy(path);
+    } catch(const boost::filesystem::filesystem_error& e) {
+        m_log->warning("unable to clean up the app files - %s", e.what());
+        throw configuration_error_t("the '" + name + "' app is not available");
     } catch(const archive_error_t& e) {
-        m_log->error("unable to extract the app - %s", e.what());
+        m_log->error("unable to extract the app files - %s", e.what());
         throw configuration_error_t("the '" + name + "' app is not available");
     }
 
     // Update the manifest in the cache.
     root["path"] = path;
-
-    try {
-        // Put the application object into the cache for future reference.
-        m_context.get<api::storage_t>("storage/cache")->put("manifests", name, root);
-    } catch(const storage_error_t& e) {
-        m_log->warning("unable to cache the app manifest - %s", e.what());
-        throw configuration_error_t("the '" + name + "' app is not available");
-    }    
 }
+

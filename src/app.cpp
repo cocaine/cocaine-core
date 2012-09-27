@@ -19,7 +19,6 @@
 */
 
 #include <boost/algorithm/string/join.hpp>
-#include <boost/filesystem/operations.hpp>
 #include <boost/format.hpp>
 
 #include "cocaine/app.hpp"
@@ -27,8 +26,6 @@
 #include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/logging.hpp"
-
-#include "cocaine/api/storage.hpp"
 
 using namespace cocaine;
 using namespace cocaine::engine;
@@ -43,6 +40,9 @@ app_t::app_t(context_t& context, const std::string& name):
     m_manifest(context, name),
     m_engine(new engine_t(context, m_manifest))
 {
+    // Initialize the drivers
+    // ----------------------
+
     Json::Value drivers(m_manifest.root["drivers"]);
 
     if(drivers.isNull() || !drivers.size()) {
@@ -82,23 +82,6 @@ app_t::~app_t() {
     // to process the outstanding results.
     m_engine->stop();
     m_drivers.clear();
-
-    m_log->info("cleaning up");
-
-    try {
-        // Remove the cached app.
-        m_context.get<api::storage_t>("storage/cache")->remove("manifests", m_manifest.name);    
-    } catch(const storage_error_t& e) {
-        m_log->warning("unable cleanup the app cache - %s", e.what());
-    }
-
-    try {
-        // Remove the app from the spool.
-        boost::filesystem::remove_all(m_manifest.path);
-    } catch(const boost::filesystem::filesystem_error& e) {
-        m_log->warning("unable to cleanup the app spool - %s", e.what());
-    }
-
     m_engine.reset();
 }
 
@@ -126,3 +109,4 @@ Json::Value app_t::info() const {
 bool app_t::enqueue(const boost::shared_ptr<job_t>& job, mode::value mode) {
     return m_engine->enqueue(job, mode);
 }
+

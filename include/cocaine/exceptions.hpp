@@ -71,7 +71,8 @@ struct system_error_t:
             ::strerror_r(errno, m_reason, 1024);
         }
 
-        const char * reason() const {
+        const char *
+        reason() const {
             return m_reason;
         }
 

@@ -52,7 +52,8 @@ struct manifest_t {
     Json::Value root;
 
 private:
-    void deploy();
+    void
+    deploy();
 
 private:
     context_t& m_context;

@@ -34,12 +34,16 @@ class birth_control  {
             ++g_objects_created;
         }
 
-        static uint64_t objects_alive() {
+        static
+        uint64_t
+        objects_alive() {
             boost::shared_lock<boost::shared_mutex> lock(g_mutex);
             return g_objects_alive;
         }
 
-        static uint64_t objects_created() {
+        static
+        uint64_t
+        objects_created() {
             boost::shared_lock<boost::shared_mutex> lock(g_mutex);
             return g_objects_created;
         }
@@ -58,13 +62,16 @@ class birth_control  {
 };
 
 template<class T>
-uint64_t birth_control<T>::g_objects_alive(0);
+uint64_t
+birth_control<T>::g_objects_alive(0);
 
 template<class T>
-uint64_t birth_control<T>::g_objects_created(0);
+uint64_t
+birth_control<T>::g_objects_created(0);
 
 template<class T>
-boost::shared_mutex birth_control<T>::g_mutex;
+boost::shared_mutex
+birth_control<T>::g_mutex;
 
 } // namespace helpers
 

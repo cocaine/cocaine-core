@@ -37,14 +37,19 @@ class app_t {
         
         ~app_t();
 
-        void start();
-        void stop();
+        void
+        start();
+        
+        void
+        stop();
 
-        Json::Value info() const;
+        Json::Value
+        info() const;
         
         // Job scheduling.
-        bool enqueue(const boost::shared_ptr<engine::job_t>& job,
-                     engine::mode::value mode = engine::mode::normal);
+        bool 
+        enqueue(const boost::shared_ptr<engine::job_t>& job,
+                engine::mode::value mode = engine::mode::normal);
 
     private:
         context_t& m_context;

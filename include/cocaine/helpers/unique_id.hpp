@@ -36,7 +36,8 @@ class unique_id_t {
             uuid_generate(m_uuid);
         }
 
-        explicit unique_id_t(const identifier_type& other) {
+        explicit
+        unique_id_t(const identifier_type& other) {
             if(uuid_parse(other.c_str(), m_uuid) == 0) {
                 m_id = other;
             } else {
@@ -44,7 +45,8 @@ class unique_id_t {
             }
         }
 
-        const identifier_type& id() const {
+        const identifier_type&
+        id() const {
             if(m_id.empty()) {
                 char unparsed_uuid[37];
                 uuid_unparse_lower(m_uuid, unparsed_uuid);
