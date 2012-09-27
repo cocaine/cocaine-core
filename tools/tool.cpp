@@ -18,8 +18,9 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include <boost/filesystem/path.hpp>
 #include <boost/filesystem/fstream.hpp>
+#include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/path.hpp>
 #include <boost/program_options.hpp>
 
 #include "cocaine/archive.hpp"
@@ -45,16 +46,19 @@ namespace {
                 cocaine::logging::sink_t(verbosity)
             { }
 
-            virtual void emit(logging::priorities,
-                              const std::string& source,
-                              const std::string& message) const 
+            virtual
+            void
+            emit(logging::priorities,
+                 const std::string& source,
+                 const std::string& message) const 
             {
                 std::cout << source << ": " 
                           << message << std::endl;
             }
     };
 
-    void list(context_t& context) {
+    void
+    list(context_t& context) {
         std::vector<std::string> apps;
         
         try {
@@ -65,7 +69,7 @@ namespace {
             return;
         }
 
-        std::cout << "Currently uploaded applications:" << std::endl;
+        std::cout << "Currently uploaded apps:" << std::endl;
 
         for(std::vector<std::string>::const_iterator it = apps.begin();
             it != apps.end();
@@ -75,10 +79,11 @@ namespace {
         }
     }
 
-    void upload(context_t& context,
-                const std::string& name,
-                const fs::path& manifest_path,
-                const fs::path& package_path)
+    void
+    upload(context_t& context,
+           const std::string& name,
+           const fs::path& manifest_path,
+           const fs::path& package_path)
     {
         std::string type,
                     compression;
@@ -150,8 +155,9 @@ namespace {
         std::cout << "The '" << name << "' app has been successfully uploaded." << std::endl;
     }
 
-    void remove(context_t& context,
-                std::string name)
+    void
+    remove(context_t& context,
+           std::string name)
     {
         api::category_traits<api::storage_t>::ptr_type storage(
             context.get<api::storage_t>("storage/core")
@@ -168,9 +174,78 @@ namespace {
 
         std::cout << "The '" << name << "' app has been successfully removed." << std::endl;
     }
+
+    void
+    cleanup(context_t& context,
+          const std::string& name)
+    {
+        std::cout << "Cleaning up the '" << name << "' app." << std::endl;
+
+        api::category_traits<api::storage_t>::ptr_type cache(
+            context.get<api::storage_t>("storage/cache")
+        );
+
+        Json::Value manifest;
+
+        try {
+            manifest = cache->get<Json::Value>("manifests", name);
+        } catch(const storage_error_t& e) {
+            std::cerr << "Error: unable to clean up the app." << std::endl;
+            std::cerr << e.what() << std::endl;
+            return;
+        }
+
+        uint64_t filecount;
+
+        try {
+            filecount = boost::filesystem::remove_all(
+                manifest["path"].asString()
+            );
+        } catch(const boost::filesystem::filesystem_error& e) {
+            std::cerr << "Error: unable to remove app files." << std::endl;
+            std::cerr << e.what() << std::endl;
+            return;
+        }
+
+        std::cout << "Removed " << filecount << " file(s) from the app spool." << std::endl;
+        
+        try {
+            // Remove the cached app manifest.
+            cache->remove("manifests", name);
+        } catch(const storage_error_t& e) {
+            std::cerr << "Unable to clean up the app - " << std::endl;
+            std::cerr << e.what() << std::endl;
+        }
+    }
+
+    void
+    purge(context_t& context) {
+        api::category_traits<api::storage_t>::ptr_type cache(
+            context.get<api::storage_t>("storage/cache")
+        );
+        
+        std::vector<std::string> manifests(
+            cache->list("manifests")
+        );
+
+        if(manifests.empty()) {
+            std::cout << "No apps has been found in the cache." << std::endl;
+            return;
+        }
+
+        std::cout << "Cleaning up " << manifests.size() << " app(s)." << std::endl;
+        
+        for(std::vector<std::string>::const_iterator it = manifests.begin();
+            it != manifests.end();
+            ++it)
+        {
+            cleanup(context, *it);
+        }
+    }
 }
 
-int main(int argc, char * argv[]) {
+int
+main(int argc, char * argv[]) {
     po::options_description general_options("General options"),
                             hidden_options,
                             combined_options;
@@ -219,7 +294,7 @@ int main(int argc, char * argv[]) {
     }
 
     if(vm.count("help")) {
-        std::cout << "Usage: " << argv[0] << " list|upload|remove <options>" << std::endl;
+        std::cout << "Usage: " << argv[0] << " list|upload|remove|cleanup <options>" << std::endl;
         std::cout << general_options;
         return EXIT_SUCCESS;
     }
@@ -294,6 +369,15 @@ int main(int argc, char * argv[]) {
             context,
             vm["name"].as<std::string>()
         );
+    } else if(operation == "cleanup") {
+        if(vm.count("name")) {
+            cleanup(
+                context,
+                vm["name"].as<std::string>()
+            );
+        } else {
+            purge(context);
+        }
     } else {
         std::cerr << "Error: unknown operation has been specified" << std::endl;
         std::cerr << "Type '" << argv[0] << " --help' for usage information." << std::endl;
