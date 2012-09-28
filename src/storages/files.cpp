@@ -84,7 +84,7 @@ file_storage_t::write(const std::string& collection,
 
         try {
             fs::create_directories(store_path);
-        } catch(const std::runtime_error& e) {
+        } catch(const fs::filesystem_error& e) {
             throw storage_error_t("cannot create the specified collection");
         }
     } else if(fs::exists(store_path) && !fs::is_directory(store_path)) {
@@ -173,7 +173,7 @@ file_storage_t::remove(const std::string& collection,
 
         try {
             fs::remove(file_path);
-        } catch(const std::runtime_error& e) {
+        } catch(const fs::filesystem_error& e) {
             throw storage_error_t("unable to remove the specified object");
         }
     }

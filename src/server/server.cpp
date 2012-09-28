@@ -424,7 +424,17 @@ void server_t::recover() {
             ++it)
         {
             if(m_apps.find(*it) == m_apps.end()) {
-                create_app(*it, runlist[*it]);
+                try {
+                    create_app(*it, runlist[*it]);
+                } catch(const configuration_error_t& e) {
+                    m_log->error(
+                        "unable to start the '%s' app - %s",
+                        it->c_str(),
+                        e.what()
+                    );
+
+                    throw configuration_error_t("unstable runlist");
+                }
             } else {
                 m_apps.find(*it)->second->stop();
             }
