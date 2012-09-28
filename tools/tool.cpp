@@ -198,10 +198,10 @@ namespace {
         uint64_t filecount;
 
         try {
-            filecount = boost::filesystem::remove_all(
+            filecount = fs::remove_all(
                 manifest["path"].asString()
             );
-        } catch(const boost::filesystem::filesystem_error& e) {
+        } catch(const fs::filesystem_error& e) {
             std::cerr << "Error: unable to remove app files." << std::endl;
             std::cerr << e.what() << std::endl;
             return;

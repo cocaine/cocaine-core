@@ -21,6 +21,7 @@
 #ifndef COCAINE_HELPERS_UNIQUE_ID_HPP
 #define COCAINE_HELPERS_UNIQUE_ID_HPP
 
+#include <boost/format.hpp>
 #include <stdexcept>
 #include <string>
 
@@ -46,7 +47,8 @@ class unique_id_t {
             if(uuid_parse(other.c_str(), m_uuid) == 0) {
                 m_id = other;
             } else {
-                throw std::runtime_error("invalid unique id");
+                boost::format message("unable to parse '%s' as an unique id");
+                throw std::runtime_error((message % other).str());
             }
         }
 

@@ -23,12 +23,11 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
+#include <boost/format.hpp>
 #include <boost/noncopyable.hpp>
 #include <stdexcept>
 
 namespace cocaine { namespace helpers {
-
-namespace fs = boost::filesystem;
 
 class pid_file_t:
     public boost::noncopyable
@@ -38,9 +37,9 @@ class pid_file_t:
             m_filepath(filepath)
         {
             // NOTE: If the pidfile exists, check if the process is still active.
-            if(fs::exists(m_filepath)) {
+            if(boost::filesystem::exists(m_filepath)) {
                 pid_t pid;
-                fs::ifstream stream(m_filepath);
+                boost::filesystem::ifstream stream(m_filepath);
 
                 if(stream) {
                     stream >> pid;
@@ -49,17 +48,19 @@ class pid_file_t:
                         // NOTE: Unlink the stale pid file.
                         remove();
                     } else {
-                        throw std::runtime_error("another instance is active");
+                        throw std::runtime_error("another server process is active");
                     }
                 } else {
-                    throw std::runtime_error("failed to read " + m_filepath.string());
+                    boost::format message("unable to read '%s'");
+                    throw std::runtime_error((message % m_filepath.string()).str());
                 }
             }
 
-            fs::ofstream stream(m_filepath);
+            boost::filesystem::ofstream stream(m_filepath);
 
             if(!stream) {
-                throw std::runtime_error("failed to write " + m_filepath.string());
+                boost::format message("unable to write '%s'");
+                throw std::runtime_error((message % m_filepath.string()).str());
             }
 
             stream << getpid();
@@ -78,14 +79,15 @@ class pid_file_t:
         void
         remove() {
             try {
-                fs::remove(m_filepath);
+                boost::filesystem::remove(m_filepath);
             } catch(const std::runtime_error& e) {
-                throw std::runtime_error("failed to remove " + m_filepath.string());
+                boost::format message("unable to remove '%s'");
+                throw std::runtime_error((message % m_filepath.string()).str());
             }
         }
 
     private:
-        const fs::path m_filepath;
+        const boost::filesystem::path m_filepath;
 };
 
 } // namespace helpers

@@ -28,6 +28,8 @@
 
 using namespace cocaine;
 
+namespace fs = boost::filesystem;
+
 archive_error_t::archive_error_t(archive * source):
     std::runtime_error(archive_error_string(source))
 { }
@@ -58,7 +60,7 @@ archive_t::~archive_t() {
 }
 
 void
-archive_t::deploy(const boost::filesystem::path& prefix) {
+archive_t::deploy(const fs::path& prefix) {
     archive * target = archive_write_disk_new();
     archive_entry * entry = NULL;
 
@@ -82,7 +84,7 @@ archive_t::deploy(const boost::filesystem::path& prefix) {
             throw archive_error_t(m_archive);
         }
 
-        boost::filesystem::path path = archive_entry_pathname(entry);
+        fs::path path = archive_entry_pathname(entry);
 
         // Prepend the path.
         archive_entry_set_pathname(entry, (prefix / path).string().c_str());

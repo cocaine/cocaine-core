@@ -19,6 +19,7 @@
 */
 
 #include <boost/algorithm/string/join.hpp>
+#include <boost/format.hpp>
 
 #include "cocaine/server/server.hpp"
 
@@ -48,7 +49,6 @@ server_t::server_t(context_t& context, server_config_t config):
     m_log->info("using libmsgpack version %s", msgpack_version());
     m_log->info("using libzmq version %d.%d.%d", major, minor, patch);
     m_log->info("route to this node is '%s'", m_server.route().c_str());
-    m_log->info("using the '%s' runlist", m_runlist.c_str());
 
     // Server socket
     // -------------
@@ -64,7 +64,8 @@ server_t::server_t(context_t& context, server_config_t config):
         try {
             m_server.bind(*it);
         } catch(const zmq::error_t& e) {
-            throw configuration_error_t(std::string("invalid listen endpoint - ") + e.what());
+            boost::format message("invalid listen endpoint - %s");
+            throw configuration_error_t((message % e.what()).str());
         }
             
         m_log->info("listening on %s", it->c_str());
@@ -90,7 +91,8 @@ server_t::server_t(context_t& context, server_config_t config):
             try {
                 m_announces->connect(*it);
             } catch(const zmq::error_t& e) {
-                throw configuration_error_t(std::string("invalid announce endpoint - ") + e.what());
+                boost::format message("invalid announce endpoint - %s");
+                throw configuration_error_t((message % e.what()).str());
             }
 
             m_log->info("announcing on %s", it->c_str());
@@ -383,6 +385,8 @@ void server_t::recover() {
         m_context.get<api::storage_t>("storage/core")
     );
 
+    m_log->info("reading the '%s' runlist", m_runlist.c_str());
+    
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
     runlist_t runlist(
         storage->get<runlist_t>("runlists", m_runlist)

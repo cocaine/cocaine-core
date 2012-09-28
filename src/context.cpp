@@ -20,6 +20,7 @@
 
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/operations.hpp>
+#include <boost/format.hpp>
 #include <boost/tuple/tuple.hpp>
 
 #include <netdb.h>
@@ -54,9 +55,11 @@ namespace {
     void
     validate_path(const fs::path& path) {
         if(!fs::exists(path)) {
-            throw configuration_error_t("the specified path '" + path.string() + "' does not exist");
+            boost::format message("the specified path '%s' does not exist");
+            throw configuration_error_t((message % path.string()).str());
         } else if(fs::exists(path) && !fs::is_directory(path)) {
-            throw configuration_error_t("the specified path '" + path.string() + "' is not a directory");
+            boost::format message("the specified path '%s' is not a directory");
+            throw configuration_error_t((message % path.string()).str());
         }
     }
 }
@@ -139,8 +142,8 @@ config_t::config_t(const std::string& path):
         int rv = getaddrinfo(hostname, NULL, &hints, &result);
         
         if(rv != 0) {
-            std::string message(gai_strerror(rv));
-            throw configuration_error_t("unable to determine the hostname - " + message);
+            boost::format message("unable to determine the hostname - %s");
+            throw configuration_error_t((message % gai_strerror(rv)).str());
         }
 
         if(result == NULL) {

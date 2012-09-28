@@ -19,6 +19,7 @@
 */
 
 #include <boost/filesystem/operations.hpp>
+#include <boost/format.hpp>
 
 #include "cocaine/manifest.hpp"
 
@@ -39,7 +40,8 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
     ).asString();
 
     if(!fs::exists(fs::system_complete(slave))) {
-        throw configuration_error_t("the '" + slave + "' slave binary does not exist");
+        boost::format message("the '%s' slave binary does not exist");
+        throw configuration_error_t((message % name).str());
     }
 
     // Sandbox type.

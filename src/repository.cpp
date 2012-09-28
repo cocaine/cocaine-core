@@ -35,7 +35,7 @@ repository_t::repository_t(context_t& context):
     m_log(context.log("repository"))
 {
     if(lt_dlinit() != 0) {
-        throw repository_error_t("unable to initialize the plugin loader");
+        throw repository_error_t("unable to initialize the component repository");
     }
 }
 

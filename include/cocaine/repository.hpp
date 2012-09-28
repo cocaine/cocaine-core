@@ -21,6 +21,7 @@
 #ifndef COCAINE_REPOSITORY_HPP
 #define COCAINE_REPOSITORY_HPP
 
+#include <boost/format.hpp>
 #include <boost/type_traits/is_base_of.hpp>
 #include <ltdl.h>
 #include <typeinfo>
@@ -99,7 +100,8 @@ class repository_t:
             factory_map_t::iterator it(m_factories.find(type));
             
             if(it == m_factories.end()) {
-                throw repository_error_t("the '" + type + "' plugin is not available");
+                boost::format message("the '%s' plugin is not available");
+                throw repository_error_t((message % type).str());
             }
             
             // TEST: Ensure that the plugin is of the actually specified category.
@@ -118,7 +120,8 @@ class repository_t:
         >::type 
         insert(const std::string& type) {
             if(m_factories.find(type) != m_factories.end()) {
-                throw repository_error_t("the '" + type + "' plugin is a duplicate");
+                boost::format message("the '%s' plugin is a duplicate");
+                throw repository_error_t((message % type).str());
             }
 
             m_factories.insert(

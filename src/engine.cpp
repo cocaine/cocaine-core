@@ -109,7 +109,8 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest, const profile
     try {
         m_bus->bind(endpoint);
     } catch(const zmq::error_t& e) {
-        throw configuration_error_t(std::string("invalid rpc endpoint - ") + e.what());
+        boost::format message("invalid rpc endpoint - %s");
+        throw configuration_error_t((message % e.what()).str());
     }
     
     m_watcher.set<engine_t, &engine_t::message>(this);
@@ -291,6 +292,7 @@ Json::Value engine_t::info() const {
         );
     }
 
+    results["profile"] = m_profile.name;
     results["state"] = state_names[m_state];
     
     return results;

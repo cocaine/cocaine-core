@@ -150,7 +150,8 @@ void app_t::deploy(const std::string& name, const std::string& path) {
         blob = storage->get<std::string>("apps", name);
     } catch(const storage_error_t& e) {
         m_log->error("unable to fetch the app from the storage - %s", e.what());
-        throw configuration_error_t("the '" + name + "' app is not available");
+        boost::format message("the '%s' app is not available");
+        throw configuration_error_t((message % name).str());
     }
     
     try {
@@ -158,6 +159,7 @@ void app_t::deploy(const std::string& name, const std::string& path) {
         archive.deploy(path);
     } catch(const archive_error_t& e) {
         m_log->error("unable to extract the app files - %s", e.what());
-        throw configuration_error_t("the '" + name + "' app is not available");
+        boost::format message("the '%s' app is not available");
+        throw configuration_error_t((message % name).str());
     }
 }
