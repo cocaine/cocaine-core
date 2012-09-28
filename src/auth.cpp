@@ -81,7 +81,8 @@ auth_t::auth_t(context_t& context):
 namespace {
     struct dispose_t {
         template<class T>
-        void operator()(T& key) const {
+        void
+        operator()(T& key) const {
             EVP_PKEY_free(key.second);
         }
     };
@@ -115,9 +116,10 @@ std::string auth_t::sign(const std::string& message,
 }
 */
 
-void auth_t::verify(const std::string& message,
-                    const std::string& signature,
-                    const std::string& username) const
+void
+auth_t::verify(const std::string& message,
+               const std::string& signature,
+               const std::string& username) const
 {
     key_map_t::const_iterator it(m_keys.find(username));
 

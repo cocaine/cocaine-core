@@ -29,29 +29,49 @@ using namespace boost::tuples;
 
 template<class Current, class Next>
 struct chain {
-    typedef chain<typename Current::tail_type, Next> chain_type;
-    typedef cons<typename Current::head_type, typename chain_type::type> type;
+    typedef chain<
+        typename Current::tail_type,
+        Next
+    > chain_type;
+    
+    typedef cons<
+        typename Current::head_type,
+        typename chain_type::type
+    > type;
 
     static
     type
     apply(const Current& current,
           const Next& next)
     {
-        return type(current.get_head(), chain_type::apply(current.get_tail(), next));
+        return type(
+            current.get_head(),
+            chain_type::apply(current.get_tail(), next)
+        );
     }
 };
 
 template<class Next>
 struct chain<null_type, Next> {
-    typedef chain<typename Next::tail_type, null_type> chain_type;
-    typedef cons<typename Next::head_type, typename chain_type::type> type;
+    typedef chain<
+        typename Next::tail_type,
+        null_type
+    > chain_type;
+    
+    typedef cons<
+        typename Next::head_type,
+        typename chain_type::type
+    > type;
 
     static
     type
     apply(null_type null,
           const Next& next)
     {
-        return type(next.get_head(), chain_type::apply(next.get_tail(), null));
+        return type(
+            next.get_head(),
+            chain_type::apply(next.get_tail(), null)
+        );
     }
 };
 

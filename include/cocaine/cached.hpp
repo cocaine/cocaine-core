@@ -63,7 +63,8 @@ struct cached {
         }
     }
 
-    const T& object() const {
+    const T&
+    object() const {
         return m_object;
     }
 

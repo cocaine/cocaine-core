@@ -122,15 +122,18 @@ app_t::~app_t() {
     stop();
 }
 
-void app_t::start() {
+void
+app_t::start() {
     m_engine->start();
 }
 
-void app_t::stop() {
+void
+app_t::stop() {
     m_engine->stop();
 }
 
-Json::Value app_t::info() const {
+Json::Value
+app_t::info() const {
     Json::Value info(m_engine->info());
 
     for(driver_map_t::const_iterator it = m_drivers.begin();
@@ -143,11 +146,17 @@ Json::Value app_t::info() const {
     return info;
 }
 
-bool app_t::enqueue(const boost::shared_ptr<job_t>& job, mode::value mode) {
+bool
+app_t::enqueue(const boost::shared_ptr<job_t>& job,
+               mode::value mode)
+{
     return m_engine->enqueue(job, mode);
 }
 
-void app_t::deploy(const std::string& name, const std::string& path) {
+void
+app_t::deploy(const std::string& name, 
+              const std::string& path)
+{
     std::string blob;
 
     m_log->info(
