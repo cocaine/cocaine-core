@@ -19,10 +19,13 @@
 */
 
 #include <boost/algorithm/string/join.hpp>
+#include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/path.hpp>
 #include <boost/format.hpp>
 
 #include "cocaine/app.hpp"
 
+#include "cocaine/archive.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/logging.hpp"
@@ -30,7 +33,9 @@
 using namespace cocaine;
 using namespace cocaine::engine;
 
-app_t::app_t(context_t& context, const std::string& name):
+namespace fs = boost::filesystem;
+
+app_t::app_t(context_t& context, const std::string& name, const std::string& profile):
     m_context(context),
     m_log(context.log(
         (boost::format("app/%1%")
@@ -38,14 +43,32 @@ app_t::app_t(context_t& context, const std::string& name):
         ).str()
     )),
     m_manifest(context, name),
-    m_engine(new engine_t(context, m_manifest))
+    m_profile(context, profile)
 {
+    fs::path path(
+        fs::path(m_context.config.spool_path) / name
+    );
+    
+    // Checking if the app files are deployed.
+    if(!fs::exists(path)) {
+        deploy(name, path.string());
+    }
+
+    // NOTE: The event loop is not started here yet.
+    m_engine.reset(
+        new engine_t(
+            context,
+            m_manifest,
+            m_profile
+        )
+    );
+
     // Initialize the drivers
     // ----------------------
 
-    Json::Value drivers(m_manifest.root["drivers"]);
+    Json::Value drivers(m_manifest.drivers);
 
-    if(drivers.isNull() || !drivers.size()) {
+    if(drivers.empty()) {
         return;
     }
     
@@ -58,6 +81,8 @@ app_t::app_t(context_t& context, const std::string& name):
         boost::algorithm::join(names, ", ").c_str()
     );
 
+    boost::format format("%s/%s");
+
     for(Json::Value::Members::iterator it = names.begin();
         it != names.end();
         ++it)
@@ -68,21 +93,20 @@ app_t::app_t(context_t& context, const std::string& name):
                 drivers[*it]["type"].asString(),
                 api::category_traits<api::driver_t>::args_type(
                     *m_engine,
-                    *it,
+                    (format % name % *it).str(),
                     drivers[*it]
                 )
             )
         );
+
+        format.clear();
     }
 }
 
 app_t::~app_t() {
-    // NOTE: Stop the engine, then stop the drivers, so that
-    // the pending jobs would still have their drivers available
-    // to process the outstanding results.
-    m_engine->stop();
-    m_drivers.clear();
-    m_engine.reset();
+    // NOTE: Stop the engine first, so that there won't be any
+    // new events during the drivers shutdown process.
+    stop();
 }
 
 void app_t::start() {
@@ -110,3 +134,30 @@ bool app_t::enqueue(const boost::shared_ptr<job_t>& job, mode::value mode) {
     return m_engine->enqueue(job, mode);
 }
 
+void app_t::deploy(const std::string& name, const std::string& path) {
+    std::string blob;
+
+    m_log->info(
+        "deploying the app to '%s'",
+        path.c_str()
+    );
+    
+    api::category_traits<api::storage_t>::ptr_type storage(
+        m_context.get<api::storage_t>("storage/core")
+    );
+    
+    try {
+        blob = storage->get<std::string>("apps", name);
+    } catch(const storage_error_t& e) {
+        m_log->error("unable to fetch the app from the storage - %s", e.what());
+        throw configuration_error_t("the '" + name + "' app is not available");
+    }
+    
+    try {
+        archive_t archive(m_context, blob);
+        archive.deploy(path);
+    } catch(const archive_error_t& e) {
+        m_log->error("unable to extract the app files - %s", e.what());
+        throw configuration_error_t("the '" + name + "' app is not available");
+    }
+}

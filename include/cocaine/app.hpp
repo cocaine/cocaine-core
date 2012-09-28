@@ -23,6 +23,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/manifest.hpp"
+#include "cocaine/profile.hpp"
 
 #include "cocaine/api/driver.hpp"
 
@@ -33,7 +34,8 @@ namespace cocaine {
 class app_t {
     public:
         app_t(context_t& context,
-              const std::string& name);
+              const std::string& name,
+              const std::string& profile);
         
         ~app_t();
 
@@ -52,13 +54,19 @@ class app_t {
                 engine::mode::value mode = engine::mode::normal);
 
     private:
+        void
+        deploy(const std::string& name,
+               const std::string& path);
+
+    private:
         context_t& m_context;
         boost::shared_ptr<logging::logger_t> m_log;
 
-        // App configuration.
+        // Configuration.
         const manifest_t m_manifest;
+        const profile_t m_profile;
 
-        // App execution engine.
+        // Execution engine.
         std::auto_ptr<engine::engine_t> m_engine;
 
 #if BOOST_VERSION >= 104000
@@ -70,6 +78,7 @@ class app_t {
             api::driver_t
         > driver_map_t;
         
+        // Event drivers.
         driver_map_t m_drivers;
 };
 

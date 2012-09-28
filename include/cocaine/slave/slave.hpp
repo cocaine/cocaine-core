@@ -35,7 +35,8 @@
 namespace cocaine { namespace engine {
 
 struct slave_config_t {
-    std::string app;
+    std::string name;
+    std::string profile;
     std::string uuid;
 };
 
@@ -68,7 +69,7 @@ class slave_t:
         void heartbeat(ev::timer&, int);
 
         // Dispatching.
-        void configure();
+        void configure(const std::string& profile);
         void invoke(const std::string& event);
         void terminate();
 
@@ -77,8 +78,11 @@ class slave_t:
         boost::shared_ptr<logging::logger_t> m_log;
 
         // The app.
-        const std::string m_app;
+        const std::string m_name;
+
         std::auto_ptr<const manifest_t> m_manifest;
+        std::auto_ptr<const profile_t> m_profile;
+
         std::auto_ptr<api::sandbox_t> m_sandbox;
 
         // Event loop.

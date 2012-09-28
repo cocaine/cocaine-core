@@ -33,21 +33,23 @@
 using namespace cocaine::engine;
 using namespace cocaine::engine::slave;
 
-master_t::master_t(context_t& context, engine_t& engine):
+master_t::master_t(context_t& context, engine_t& engine, const manifest_t& manifest, const profile_t& profile):
     m_context(context),
     m_log(context.log(
         (boost::format("app/%1%")
-            % engine.manifest().name
+            % manifest.name
         ).str()
     )),
     m_engine(engine),
+    m_manifest(manifest),
+    m_profile(profile),
     m_heartbeat_timer(m_engine.loop())
 {
     initiate();
     
     // NOTE: Initialization heartbeat can be different.
     m_heartbeat_timer.set<master_t, &master_t::on_timeout>(this);
-    m_heartbeat_timer.start(m_engine.manifest().policy.startup_timeout);
+    m_heartbeat_timer.start(m_profile.startup_timeout);
 
     spawn();
 }
@@ -91,9 +93,10 @@ void master_t::spawn() {
 #endif
 
         rv = ::execlp(
-            m_engine.manifest().slave.c_str(),
-            m_engine.manifest().slave.c_str(),
-            "--slave:app", m_engine.manifest().name.c_str(),
+            m_manifest.slave.c_str(),
+            m_manifest.slave.c_str(),
+            "--slave:app", m_manifest.name.c_str(),
+            "--slave:profile", m_profile.name.c_str(),
             "--slave:uuid",  id().c_str(),
             "--configuration", m_context.config.config_path.c_str(),
             (char*)0
@@ -111,7 +114,7 @@ void master_t::spawn() {
 
             m_log->error(
                 "unable to execute '%s' - %s",
-                m_engine.manifest().slave.c_str(),
+                m_manifest.slave.c_str(),
 #ifdef _GNU_SOURCE
                 message
 #else
@@ -145,7 +148,7 @@ void master_t::on_heartbeat(const events::heartbeat& event) {
     m_heartbeat_timer.stop();
     
     const busy * state = state_downcast<const busy*>();
-    float timeout = m_engine.manifest().policy.heartbeat_timeout;
+    float timeout = m_profile.heartbeat_timeout;
 
     if(state && state->job()->policy.timeout > 0.0f) {
         timeout = state->job()->policy.timeout;

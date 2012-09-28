@@ -90,7 +90,8 @@ ADD_LIBRARY(cocaine-core SHARED
     src/engine
     src/job
     src/manifest
-    src/master)
+    src/master
+    src/profile)
 
 TARGET_LINK_LIBRARIES(cocaine-core
     archive

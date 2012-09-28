@@ -142,7 +142,7 @@ namespace {
         api::category_traits<api::storage_t>::ptr_type storage(
             context.get<api::storage_t>("storage/core")
         );
-        
+       
         try {
             storage->put("manifests", name, manifest);
             storage->put("apps", name, blob);

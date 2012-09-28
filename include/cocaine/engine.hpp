@@ -36,7 +36,9 @@
 // Has to be included after common.h
 #include <ev++.h>
 
+#include "cocaine/manifest.hpp"
 #include "cocaine/master.hpp"
+#include "cocaine/profile.hpp"
 
 #include "cocaine/helpers/json.hpp"
 
@@ -68,7 +70,8 @@ class engine_t:
 {
     public:
         engine_t(context_t& context,
-                 const manifest_t& manifest);
+                 const manifest_t& manifest,
+                 const profile_t& profile);
 
         ~engine_t();
 
@@ -83,10 +86,6 @@ class engine_t:
                      mode::value mode = mode::normal);
 
     public:
-        const manifest_t& manifest() const {
-            return m_manifest;
-        }
-
         ev::loop_ref& loop() {
             return m_loop;
         }
@@ -122,8 +121,9 @@ class engine_t:
         context_t& m_context;
         boost::shared_ptr<logging::logger_t> m_log;
 
-        // The app manifest.
+        // The app manifest and profile.
         const manifest_t& m_manifest;
+        const profile_t& m_profile;
 
         // Engine's state.
         enum {

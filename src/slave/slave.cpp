@@ -18,6 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
+#include <boost/filesystem/path.hpp>
 #include <boost/format.hpp>
 
 #include "cocaine/slave/slave.hpp"
@@ -25,20 +26,23 @@
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
+#include "cocaine/profile.hpp"
 #include "cocaine/rpc.hpp"
 
 using namespace cocaine;
 using namespace cocaine::engine;
+
+namespace fs = boost::filesystem;
 
 slave_t::slave_t(context_t& context, slave_config_t config):
     unique_id_t(config.uuid),
     m_context(context),
     m_log(context.log(
         (boost::format("app/%1%")
-            % config.app
+            % config.name
         ).str()
     )),
-    m_app(config.app),
+    m_name(config.name),
     m_bus(m_context, config.uuid),
     m_bus_timeout(m_bus, defaults::bus_timeout)
 {
@@ -55,7 +59,7 @@ slave_t::slave_t(context_t& context, slave_config_t config):
     m_bus.connect(
         (boost::format("ipc://%1%/%2%")
             % m_context.config.ipc_path
-            % config.app
+            % m_name
         ).str()
     );
     
@@ -68,37 +72,45 @@ slave_t::slave_t(context_t& context, slave_config_t config):
     m_heartbeat_timer.set<slave_t, &slave_t::heartbeat>(this);
     m_heartbeat_timer.start(0.0f, 5.0f);
 
-    configure();
+    configure(config.profile);
 }
 
 slave_t::~slave_t() { }
 
-void slave_t::configure() {
+void slave_t::configure(const std::string& profile) {
     try {
-        m_manifest.reset(new manifest_t(m_context, m_app));
+        m_manifest.reset(new manifest_t(m_context, m_name));
+        m_profile.reset(new profile_t(m_context, profile));
         
         m_idle_timer.set<slave_t, &slave_t::timeout>(this);
-        m_idle_timer.start(m_manifest->policy.idle_timeout);
+        m_idle_timer.start(m_profile->idle_timeout);
         
+        fs::path path(
+            fs::path(m_context.config.spool_path) / m_name
+        );
+         
         m_sandbox = m_context.get<api::sandbox_t>(
             m_manifest->type,
-            api::category_traits<api::sandbox_t>::args_type(*m_manifest)
+            api::category_traits<api::sandbox_t>::args_type(
+                *m_manifest,
+                path.string()
+            )
         );
     } catch(const configuration_error_t& e) {
         io::message<rpc::error> message(server_error, e.what());
-        m_bus.send(m_app, message);
+        m_bus.send(m_name, message);
         terminate();
     } catch(const repository_error_t& e) {
         io::message<rpc::error> message(server_error, e.what());
-        m_bus.send(m_app, message);
+        m_bus.send(m_name, message);
         terminate();
     } catch(const unrecoverable_error_t& e) {
         io::message<rpc::error> message(server_error, e.what());
-        m_bus.send(m_app, message);
+        m_bus.send(m_name, message);
         terminate();
     } catch(const std::exception& e) {
         io::message<rpc::error> message(server_error, e.what());
-        m_bus.send(m_app, message);
+        m_bus.send(m_name, message);
         terminate();
     } catch(...) {
         io::message<rpc::error> message(
@@ -106,7 +118,7 @@ void slave_t::configure() {
             "unexpected exception while configuring the slave"
         );
         
-        m_bus.send(m_app, message);
+        m_bus.send(m_name, message);
         terminate();
     }
 }
@@ -136,7 +148,7 @@ void slave_t::write(const void * data, size_t size) {
     memcpy(body.data(), data, size);
     io::message<rpc::chunk> message(body);
 
-    m_bus.send(m_app, message);
+    m_bus.send(m_name, message);
 }
 
 void slave_t::message(ev::io&, int) {
@@ -211,7 +223,7 @@ void slave_t::timeout(ev::timer&, int) {
 }
 
 void slave_t::heartbeat(ev::timer&, int) {
-    if(!m_bus.send(m_app, io::message<rpc::heartbeat>())) {
+    if(!m_bus.send(m_name, io::message<rpc::heartbeat>())) {
         m_log->error(
             "slave %s has lost the controlling engine",
             id().c_str()
@@ -226,33 +238,33 @@ void slave_t::invoke(const std::string& event) {
         m_sandbox->invoke(event, *this);
     } catch(const recoverable_error_t& e) {
         io::message<rpc::error> message(app_error, e.what());
-        m_bus.send(m_app, message);
+        m_bus.send(m_name, message);
     } catch(const unrecoverable_error_t& e) {
         io::message<rpc::error> message(server_error, e.what());
-        m_bus.send(m_app, message);
+        m_bus.send(m_name, message);
     } catch(const std::exception& e) {
         io::message<rpc::error> message(app_error, e.what());
-        m_bus.send(m_app, message);
+        m_bus.send(m_name, message);
     } catch(...) {
         io::message<rpc::error> message(
             server_error,
             "unexpected exception while processing an event"
         );
         
-        m_bus.send(m_app, message);
+        m_bus.send(m_name, message);
     }
     
-    m_bus.send(m_app, io::message<rpc::choke>());
+    m_bus.send(m_name, io::message<rpc::choke>());
     
     // NOTE: Drop all the outstanding request chunks not pulled
     // in by the user code. Might have a warning here?
     m_bus.drop();
 
     m_idle_timer.stop();
-    m_idle_timer.start(m_manifest->policy.idle_timeout);
+    m_idle_timer.start(m_profile->idle_timeout);
 }
 
 void slave_t::terminate() {
-    m_bus.send(m_app, io::message<rpc::terminate>());
+    m_bus.send(m_name, io::message<rpc::terminate>());
     m_loop.unloop(ev::ALL);
 }

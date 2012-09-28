@@ -237,11 +237,34 @@ void server_t::check(ev::prepare&, int) {
 std::string server_t::dispatch(const Json::Value& root) {
     std::string action(root["action"].asString());
 
-    if(action == "create" || action == "delete") {
+    if(action == "create") {
         Json::Value apps(root["apps"]),
                     result(Json::objectValue);
 
-        if(!apps.isArray() || !apps.size()) {
+        if(!apps.isObject() || apps.empty()) {
+            throw configuration_error_t("no apps have been specified");
+        }
+
+        Json::Value::Members names(apps.getMemberNames());
+
+        for(Json::Value::Members::const_iterator it = names.begin(); it != names.end(); ++it) {
+            std::string profile(apps[*it].asString());
+
+            try {
+                result[*it] = create_app(*it, profile);
+            } catch(const configuration_error_t& e) {
+                result[*it]["error"] = e.what();
+            } catch(...) {
+                result[*it]["error"] = "unexpected exception";
+            }
+        }
+
+        return json::serialize(result);
+    } else if(action == "delete") {
+        Json::Value apps(root["apps"]),
+                    result(Json::objectValue);
+
+        if(!apps.isArray() || apps.empty()) {
             throw configuration_error_t("no apps have been specified");
         }
 
@@ -249,11 +272,7 @@ std::string server_t::dispatch(const Json::Value& root) {
             std::string app((*it).asString());
 
             try {
-                if(action == "create") {
-                    result[app] = create_app(app);
-                } else if(action == "delete") {
-                    result[app] = delete_app(app);                
-                }
+                result[app] = delete_app(app);                
             } catch(const configuration_error_t& e) {
                 result[app]["error"] = e.what();
             } catch(...) {
@@ -277,7 +296,7 @@ std::string server_t::dispatch(const Json::Value& root) {
 // Commands
 // --------
 
-Json::Value server_t::create_app(const std::string& name) {
+Json::Value server_t::create_app(const std::string& name, const std::string& profile) {
     if(m_apps.find(name) != m_apps.end()) {
         throw configuration_error_t("the specified app already exists");
     }
@@ -285,7 +304,8 @@ Json::Value server_t::create_app(const std::string& name) {
     std::auto_ptr<app_t> app(
         new app_t(
             m_context,
-            name
+            name,
+            profile
         )
     );
 
@@ -356,27 +376,19 @@ void server_t::recover() {
     typedef std::map<
         std::string,
         std::string
-    > run_map_t;
+    > runlist_t;
 
     api::category_traits<api::storage_t>::ptr_type storage(
         m_context.get<api::storage_t>("storage/core")
     );
 
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
-    run_map_t runmap(
-        storage->get<run_map_t>("runlists", m_runlist)
+    runlist_t runlist(
+        storage->get<runlist_t>("runlists", m_runlist)
     );
 
-    std::set<std::string> available,
-                          active;
-
-    // Runnable apps. 
-    for(run_map_t::const_iterator it = runmap.begin();
-        it != runmap.end();
-        ++it)
-    {
-        available.insert(it->first);
-    }
+    std::set<std::string> active,
+                          available;
 
     // Currently running apps.
     for(app_map_t::const_iterator it = m_apps.begin();
@@ -384,6 +396,14 @@ void server_t::recover() {
         ++it)
     {
         active.insert(it->first);
+    }
+
+    // Runnable apps.
+    for(runlist_t::const_iterator it = runlist.begin();
+        it != runlist.end();
+        ++it)
+    {
+        available.insert(it->first);
     }
 
     std::vector<std::string> diff;
@@ -399,7 +419,7 @@ void server_t::recover() {
             ++it)
         {
             if(m_apps.find(*it) == m_apps.end()) {
-                create_app(*it);
+                create_app(*it, runlist[*it]);
             } else {
                 m_apps.find(*it)->second->stop();
             }

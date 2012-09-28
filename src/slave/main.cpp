@@ -52,7 +52,9 @@ int main(int argc, char * argv[]) {
 
     slave_options.add_options()
         ("slave:app", po::value<std::string>
-            (&slave_config.app))
+            (&slave_config.name))
+        ("slave:profile", po::value<std::string>
+            (&slave_config.profile))
         ("slave:uuid", po::value<std::string>
             (&slave_config.uuid));
 

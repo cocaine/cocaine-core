@@ -30,6 +30,7 @@ namespace cocaine {
     
     // App configuration.
     struct manifest_t;
+    struct profile_t;
 
     // App container.
     class app_t;

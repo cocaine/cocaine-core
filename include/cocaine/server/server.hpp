@@ -69,7 +69,7 @@ class server_t:
         // JSON-RPC command dispatching.
         std::string dispatch(const Json::Value& root);
 
-        Json::Value create_app(const std::string& name);
+        Json::Value create_app(const std::string& name, const std::string& profile);
         Json::Value delete_app(const std::string& name);
         Json::Value info() const;
 

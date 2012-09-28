@@ -73,7 +73,7 @@ namespace { namespace select {
 // Engine
 // ------
 
-engine_t::engine_t(context_t& context, const manifest_t& manifest):
+engine_t::engine_t(context_t& context, const manifest_t& manifest, const profile_t& profile):
     m_context(context),
     m_log(context.log(
         (boost::format("app/%1%")
@@ -81,6 +81,7 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest):
         ).str()
     )),
     m_manifest(manifest),
+    m_profile(profile),
     m_state(stopped),
     m_thread(NULL),
     m_bus(new io::channel_t(context, m_manifest.name)),
@@ -124,9 +125,9 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest):
     m_notification.start();
 
 #ifdef HAVE_CGROUPS
-    Json::Value limits(m_manifest.root["resource-limits"]);
+    Json::Value limits(m_manifest.limits);
 
-    if(!(cgroup_init() == 0) || !limits.isObject() || limits.empty()) {
+    if(!(cgroup_init() == 0) || limits.empty()) {
         return;
     }
     
@@ -318,7 +319,7 @@ bool engine_t::enqueue(job_queue_t::const_reference job, mode::value mode) {
     {
         boost::unique_lock<boost::mutex> queue_lock(m_queue_mutex);
     
-        if(m_queue.size() < m_manifest.policy.queue_limit) {
+        if(m_queue.size() < m_profile.queue_limit) {
             m_queue.push(job);
         } else {
             switch(mode) {
@@ -341,7 +342,7 @@ bool engine_t::enqueue(job_queue_t::const_reference job, mode::value mode) {
                     return false;
 
                 case mode::blocking:
-                    while(m_queue.size() >= m_manifest.policy.queue_limit) {
+                    while(m_queue.size() >= m_profile.queue_limit) {
                         m_queue_condition.wait(queue_lock);
                     }
 
@@ -608,7 +609,7 @@ void engine_t::notify(ev::async&, int) {
         
         case stopping:
             m_termination_timer.set<engine_t, &engine_t::terminate>(this);
-            m_termination_timer.start(m_manifest.policy.termination_timeout); 
+            m_termination_timer.start(m_profile.termination_timeout); 
             break;
 
         case stopped:
@@ -704,13 +705,13 @@ void engine_t::pump() {
     // NOTE: Balance the slave pool in order to keep it in a proper shape
     // based on the queue size and other policies.
 
-    if(m_pool.size() < m_manifest.policy.pool_limit &&
-       m_pool.size() * m_manifest.policy.grow_threshold < m_queue.size() * 2)
+    if(m_pool.size() < m_profile.pool_limit &&
+       m_pool.size() * m_profile.grow_threshold < m_queue.size() * 2)
     {
         unsigned int target = std::min(
-            m_manifest.policy.pool_limit,
+            m_profile.pool_limit,
             std::max(
-                2 * m_queue.size() / m_manifest.policy.grow_threshold, 
+                2 * m_queue.size() / m_profile.grow_threshold, 
                 1UL
             )
         );
@@ -729,7 +730,7 @@ void engine_t::pump() {
             std::auto_ptr<master_t> master;
             
             try {
-                master.reset(new master_t(m_context, *this));
+                master.reset(new master_t(m_context, *this, m_manifest, m_profile));
                 std::string master_id(master->id());
                 m_pool.insert(master_id, master);
             } catch(const system_error_t& e) {
@@ -804,7 +805,7 @@ void engine_t::shutdown() {
             "waiting for %d active %s to terminate, timeout: %.02f seconds",
             pending,
             pending == 1 ? "slave" : "slaves",
-            m_manifest.policy.termination_timeout
+            m_profile.termination_timeout
         );
     } else {
         m_state = stopped;

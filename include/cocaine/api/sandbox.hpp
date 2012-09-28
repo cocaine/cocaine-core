@@ -60,7 +60,7 @@ class sandbox_t:
                io_t& io) = 0;
 
     protected:
-        sandbox_t(context_t& context, const manifest_t&):
+        sandbox_t(context_t& context, const manifest_t&, const std::string&):
             m_context(context)
         { }
 
@@ -71,7 +71,11 @@ class sandbox_t:
 template<>
 struct category_traits<api::sandbox_t> {
     typedef std::auto_ptr<api::sandbox_t> ptr_type;
-    typedef boost::tuple<const manifest_t&> args_type;
+
+    typedef boost::tuple<
+        const manifest_t&,
+        const std::string&
+    > args_type;
 
     template<class T>
     struct default_factory:
@@ -85,7 +89,8 @@ struct category_traits<api::sandbox_t> {
             return ptr_type(
                 new T(
                     context,
-                    boost::get<0>(args)
+                    boost::get<0>(args),
+                    boost::get<1>(args)
                 )
             );
         }

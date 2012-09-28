@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#ifndef COCAINE_APP_MANIFEST_HPP
-#define COCAINE_APP_MANIFEST_HPP
+#ifndef COCAINE_APP_PROFILE_HPP
+#define COCAINE_APP_PROFILE_HPP
 
 #include "cocaine/common.hpp"
 #include "cocaine/cached.hpp"
@@ -28,21 +28,21 @@
 
 namespace cocaine {
 
-struct manifest_t:
+struct profile_t:
     private cached<Json::Value>
 {
-    manifest_t(context_t& context,
-               const std::string& name);
+    profile_t(context_t& context,
+              const std::string& name);
 
-    std::string name,
-                type;
+    std::string name;
 
-    // Path to a binary which will be used as a slave.
-    std::string slave;
-
-    Json::Value args,
-                drivers,
-                limits;
+    float startup_timeout;
+    float heartbeat_timeout;
+    float idle_timeout;
+    float termination_timeout;
+    unsigned long pool_limit;
+    unsigned long queue_limit;
+    unsigned long grow_threshold;
 };
 
 } // namespace cocaine
