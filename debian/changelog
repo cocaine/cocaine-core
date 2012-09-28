@@ -1,3 +1,10 @@
+cocaine-core (0.10.0-alpha3) lucid; urgency=low
+
+  * [cda2d074] Profile support.
+  * [75b3389c, d528f2f0] Cache cleanup logic moved into the tool.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 28 Sep 2012 20:28:16 +0400
+
 cocaine-core (0.10.0-alpha2) lucid; urgency=low
 
   * [04d89ebd] Correct serialization mechanics for property maps.
