@@ -49,10 +49,6 @@ file_storage_t::read(const std::string& collection,
     fs::path file_path(m_storage_path / collection / key);
     fs::ifstream stream(file_path);
    
-    if(!stream) {
-        throw storage_error_t("the specified object has not been found");
-    }
-    
     m_log->debug(
         "reading the '%s' object, collection: '%s', path: '%s'",
         key.c_str(),
@@ -60,6 +56,10 @@ file_storage_t::read(const std::string& collection,
         file_path.string().c_str()
     );
 
+    if(!stream) {
+        throw storage_error_t("the specified object has not been found");
+    }
+    
     std::stringstream buffer;
     buffer << stream.rdbuf();
 
@@ -98,16 +98,16 @@ file_storage_t::write(const std::string& collection,
         fs::ofstream::out | fs::ofstream::trunc
     );
    
-    if(!stream) {
-        throw storage_error_t("unable to access the specified object"); 
-    }     
-
     m_log->debug(
         "writing the '%s' object, collection: '%s', path: '%s'",
         key.c_str(),
         collection.c_str(),
         file_path.string().c_str()
     );
+
+    if(!stream) {
+        throw storage_error_t("unable to access the specified object"); 
+    }     
 
     stream << blob;
     stream.close();

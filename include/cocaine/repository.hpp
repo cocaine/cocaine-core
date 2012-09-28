@@ -100,7 +100,7 @@ class repository_t:
             factory_map_t::iterator it(m_factories.find(type));
             
             if(it == m_factories.end()) {
-                boost::format message("the '%s' plugin is not available");
+                boost::format message("the '%s' component is not available");
                 throw repository_error_t((message % type).str());
             }
             
@@ -120,7 +120,7 @@ class repository_t:
         >::type 
         insert(const std::string& type) {
             if(m_factories.find(type) != m_factories.end()) {
-                boost::format message("the '%s' plugin is a duplicate");
+                boost::format message("the '%s' component is a duplicate");
                 throw repository_error_t((message % type).str());
             }
 

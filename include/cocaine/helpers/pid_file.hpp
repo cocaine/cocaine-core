@@ -48,7 +48,7 @@ class pid_file_t:
                         // NOTE: Unlink the stale pid file.
                         remove();
                     } else {
-                        throw std::runtime_error("another server process is active");
+                        throw std::runtime_error("another process is active");
                     }
                 } else {
                     boost::format message("unable to read '%s'");
@@ -70,7 +70,7 @@ class pid_file_t:
         ~pid_file_t() {
             try {
                 remove();
-            } catch(const std::runtime_error& e) {
+            } catch(...) {
                 // NOTE: Do nothing.
             }
         }
@@ -80,7 +80,7 @@ class pid_file_t:
         remove() {
             try {
                 boost::filesystem::remove(m_filepath);
-            } catch(const std::runtime_error& e) {
+            } catch(const boost::filesystem::filesystem_error& e) {
                 boost::format message("unable to remove '%s'");
                 throw std::runtime_error((message % m_filepath.string()).str());
             }

@@ -50,7 +50,7 @@ struct cached {
                 m_object = storage->get<T>(collection, name);
             } catch(const storage_error_t& e) {
                 boost::format message("unable to fetch the '%s/%s' object from the storage - %s");
-                throw configuration_error_t((message % collection % name % e.what()).str());
+                throw storage_error_t((message % collection % name % e.what()).str());
             }
 
             try {

@@ -141,9 +141,7 @@ void server_t::reload(ev::sig&, int) {
 
     try {
         recover();
-    } catch(const configuration_error_t& e) {
-        m_log->error("unable to reload the apps - %s", e.what());
-    } catch(const storage_error_t& e) {
+    } catch(const std::exception& e) {
         m_log->error("unable to reload the apps - %s", e.what());
     } catch(...) {
         m_log->error("unable to reload the apps - unexpected exception");
@@ -209,11 +207,7 @@ void server_t::process(ev::idle&, int) {
             }
 
             response = dispatch(root);
-        } catch(const authorization_error_t& e) {
-            response = json::serialize(json::build("error", e.what()));
-        } catch(const configuration_error_t& e) {
-            response = json::serialize(json::build("error", e.what()));
-        } catch(const storage_error_t& e) {
+        } catch(const std::exception& e) {
             response = json::serialize(json::build("error", e.what()));
         } catch(...) {
             response = json::serialize(json::build("error", "unexpected exception"));
@@ -255,7 +249,7 @@ std::string server_t::dispatch(const Json::Value& root) {
 
             try {
                 result[name] = create_app(name, profile);
-            } catch(const configuration_error_t& e) {
+            } catch(const std::exception& e) {
                 result[name]["error"] = e.what();
             } catch(...) {
                 result[name]["error"] = "unexpected exception";
@@ -276,7 +270,7 @@ std::string server_t::dispatch(const Json::Value& root) {
 
             try {
                 result[name] = delete_app(name);                
-            } catch(const configuration_error_t& e) {
+            } catch(const std::exception& e) {
                 result[name]["error"] = e.what();
             } catch(...) {
                 result[name]["error"] = "unexpected exception";
@@ -426,14 +420,14 @@ void server_t::recover() {
             if(m_apps.find(*it) == m_apps.end()) {
                 try {
                     create_app(*it, runlist[*it]);
-                } catch(const configuration_error_t& e) {
+                } catch(const std::exception& e) {
                     m_log->error(
-                        "unable to start the '%s' app - %s",
+                        "unable to initialize the '%s' app - %s",
                         it->c_str(),
                         e.what()
                     );
 
-                    throw configuration_error_t("unstable runlist");
+                    throw configuration_error_t("unable to initialize the apps");
                 }
             } else {
                 m_apps.find(*it)->second->stop();

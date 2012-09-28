@@ -55,10 +55,10 @@ namespace {
     void
     validate_path(const fs::path& path) {
         if(!fs::exists(path)) {
-            boost::format message("the specified path '%s' does not exist");
+            boost::format message("the '%s' path does not exist");
             throw configuration_error_t((message % path.string()).str());
         } else if(fs::exists(path) && !fs::is_directory(path)) {
-            boost::format message("the specified path '%s' is not a directory");
+            boost::format message("the '%s' path is not a directory");
             throw configuration_error_t((message % path.string()).str());
         }
     }

@@ -1,3 +1,9 @@
+cocaine-core (0.10.0-alpha4) lucid; urgency=low
+
+  * Building for YaC 2012.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 28 Sep 2012 22:12:33 +0400
+
 cocaine-core (0.10.0-alpha3) lucid; urgency=low
 
   * [cda2d074] Profile support.

@@ -87,17 +87,30 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
         it != names.end();
         ++it)
     {
-        m_drivers.insert(
-            *it,
-            m_context.get<api::driver_t>(
-                drivers[*it]["type"].asString(),
-                api::category_traits<api::driver_t>::args_type(
-                    *m_engine,
-                    (format % name % *it).str(),
-                    drivers[*it]
+        try {
+            format % name % *it;
+
+            m_drivers.insert(
+                *it,
+                m_context.get<api::driver_t>(
+                    drivers[*it]["type"].asString(),
+                    api::category_traits<api::driver_t>::args_type(
+                        *m_engine,
+                        format.str(),
+                        drivers[*it]
+                    )
                 )
-            )
-        );
+            );
+        } catch(const std::exception& e) {
+            m_log->error(
+                "unable to initialize the '%s' driver - %s",
+                format.str().c_str(),
+                e.what()
+            );
+
+            boost::format message("unable to initialize the drivers");
+            throw configuration_error_t((message % name).str());
+        }
 
         format.clear();
     }

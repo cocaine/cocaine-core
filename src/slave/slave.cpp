@@ -93,18 +93,6 @@ slave_t::slave_t(context_t& context, slave_config_t config):
                 path.string()
             )
         );
-    } catch(const configuration_error_t& e) {
-        io::message<rpc::error> message(server_error, e.what());
-        m_bus.send(m_name, message);
-        terminate();
-    } catch(const repository_error_t& e) {
-        io::message<rpc::error> message(server_error, e.what());
-        m_bus.send(m_name, message);
-        terminate();
-    } catch(const unrecoverable_error_t& e) {
-        io::message<rpc::error> message(server_error, e.what());
-        m_bus.send(m_name, message);
-        terminate();
     } catch(const std::exception& e) {
         io::message<rpc::error> message(server_error, e.what());
         m_bus.send(m_name, message);
@@ -235,9 +223,6 @@ void slave_t::heartbeat(ev::timer&, int) {
 void slave_t::invoke(const std::string& event) {
     try {
         m_sandbox->invoke(event, *this);
-    } catch(const recoverable_error_t& e) {
-        io::message<rpc::error> message(app_error, e.what());
-        m_bus.send(m_name, message);
     } catch(const unrecoverable_error_t& e) {
         io::message<rpc::error> message(server_error, e.what());
         m_bus.send(m_name, message);

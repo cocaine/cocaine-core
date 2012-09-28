@@ -54,8 +54,10 @@ class storage_t:
             try {
                 msgpack::unpack(&unpacked, blob.data(), blob.size());
                 io::type_traits<T>::unpack(unpacked.get(), result);
-            } catch(const std::exception& e) {
+            } catch(const msgpack::type_error& e) {
                 throw storage_error_t("corrupted object");
+            } catch(const std::bad_cast& e) {
+                throw storage_error_t("corrupted object - type mismatch");
             }
             
             return result;
@@ -72,8 +74,10 @@ class storage_t:
         
             try {
                 io::type_traits<T>::pack(packer, object);
-            } catch(const std::exception& e) {
+            } catch(const msgpack::type_error& e) {
                 throw storage_error_t("corrupted object");
+            } catch(const std::bad_cast& e) {
+                throw storage_error_t("corrupted object - type mismatch");
             }
 
             std::string blob(
