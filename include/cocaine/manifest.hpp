@@ -35,10 +35,8 @@ struct manifest_t:
                const std::string& name);
 
     std::string name,
+                slave,
                 type;
-
-    // Path to a binary which will be used as a slave.
-    std::string slave;
 
     Json::Value args,
                 drivers,

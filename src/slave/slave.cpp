@@ -43,7 +43,7 @@ slave_t::slave_t(context_t& context, slave_config_t config):
         ).str()
     )),
     m_name(config.name),
-    m_bus(m_context, config.uuid),
+    m_bus(context, config.uuid),
     m_bus_timeout(m_bus, defaults::bus_timeout)
 {
     int linger = 0;
@@ -72,15 +72,12 @@ slave_t::slave_t(context_t& context, slave_config_t config):
     m_heartbeat_timer.set<slave_t, &slave_t::heartbeat>(this);
     m_heartbeat_timer.start(0.0f, 5.0f);
 
-    configure(config.profile);
-}
+    // Launching the app
+    // -----------------
 
-slave_t::~slave_t() { }
-
-void slave_t::configure(const std::string& profile) {
     try {
         m_manifest.reset(new manifest_t(m_context, m_name));
-        m_profile.reset(new profile_t(m_context, profile));
+        m_profile.reset(new profile_t(m_context, config.profile));
         
         m_idle_timer.set<slave_t, &slave_t::timeout>(this);
         m_idle_timer.start(m_profile->idle_timeout);
@@ -122,6 +119,8 @@ void slave_t::configure(const std::string& profile) {
         terminate();
     }
 }
+
+slave_t::~slave_t() { }
 
 void slave_t::run() {
     m_loop.loop();

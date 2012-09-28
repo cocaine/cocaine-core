@@ -57,7 +57,7 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
     // NOTE: The event loop is not started here yet.
     m_engine.reset(
         new engine_t(
-            context,
+            m_context,
             m_manifest,
             m_profile
         )
@@ -89,7 +89,7 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
     {
         m_drivers.insert(
             *it,
-            context.get<api::driver_t>(
+            m_context.get<api::driver_t>(
                 drivers[*it]["type"].asString(),
                 api::category_traits<api::driver_t>::args_type(
                     *m_engine,

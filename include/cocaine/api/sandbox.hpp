@@ -60,7 +60,7 @@ class sandbox_t:
                io_t& io) = 0;
 
     protected:
-        sandbox_t(context_t& context, const manifest_t&, const std::string&):
+        sandbox_t(context_t& context, const manifest_t&, const std::string& /* spool */):
             m_context(context)
         { }
 

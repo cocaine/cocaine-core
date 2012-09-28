@@ -69,7 +69,6 @@ class slave_t:
         void heartbeat(ev::timer&, int);
 
         // Dispatching.
-        void configure(const std::string& profile);
         void invoke(const std::string& event);
         void terminate();
 

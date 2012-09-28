@@ -27,15 +27,12 @@ using namespace cocaine;
 namespace fs = boost::filesystem;
 
 manifest_t::manifest_t(context_t& context, const std::string& name_):
-    cached<Json::Value>(context, "manifests", name_)
+    cached<Json::Value>(context, "manifests", name_),
+    name(name_)
 {
     const Json::Value cache(object());
 
-    // Common settings.
-    name = name_;
-    type = cache["type"].asString();
-   
-    // App host type.
+    // Slave type.
     slave = cache["engine"].get(
         "slave",
         defaults::slave
@@ -45,6 +42,9 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
         throw configuration_error_t("the '" + slave + "' slave binary does not exist");
     }
 
+    // Sandbox type.
+    type = cache["type"].asString();
+   
     // Custom app configuration.
     args = cache.get("args", Json::Value());
 

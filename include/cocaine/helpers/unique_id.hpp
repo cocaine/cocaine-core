@@ -33,7 +33,12 @@ class unique_id_t {
         typedef std::string identifier_type;
 
         unique_id_t() {
+            char unparsed_uuid[37];
+            
             uuid_generate(m_uuid);
+            uuid_unparse_lower(m_uuid, unparsed_uuid);
+            
+            m_id = unparsed_uuid;
         }
 
         explicit
@@ -47,18 +52,12 @@ class unique_id_t {
 
         const identifier_type&
         id() const {
-            if(m_id.empty()) {
-                char unparsed_uuid[37];
-                uuid_unparse_lower(m_uuid, unparsed_uuid);
-                m_id = unparsed_uuid;
-            }
-
             return m_id;
         }
 
     private:
         uuid_t m_uuid;
-        mutable identifier_type m_id;
+        identifier_type m_id;
 };
 
 } // namespace helpers

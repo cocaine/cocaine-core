@@ -102,11 +102,14 @@ archive_t::deploy(const boost::filesystem::path& prefix) {
         throw archive_error_t(target);
     }
 
+    // NOTE: The reported count is off by one for some reason.
+    size_t count = archive_file_count(m_archive) - 1;
+
     m_log->info(
         "archive type: %s, extracted %d %s to '%s'",
         type().c_str(),
-        archive_file_count(m_archive),
-        archive_file_count(m_archive) == 1 ? "file" : "files",
+        count,
+        count == 1 ? "file" : "files",
         prefix.string().c_str()
     );
 

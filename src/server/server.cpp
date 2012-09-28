@@ -34,11 +34,11 @@ using namespace cocaine::helpers;
 
 server_t::server_t(context_t& context, server_config_t config):
     m_context(context),
-    m_log(m_context.log("core")),
+    m_log(context.log("core")),
     m_runlist(config.runlist),
-    m_server(m_context, ZMQ_REP, m_context.config.runtime.hostname),
-    m_auth(m_context),
-    m_birthstamp(m_loop.now()),
+    m_server(context, ZMQ_REP, context.config.runtime.hostname),
+    m_auth(context),
+    m_birthstamp(m_loop.now()) /* I don't like it. */,
     m_infostamp(0.0f)
 {
     int minor, major, patch;
@@ -248,14 +248,15 @@ std::string server_t::dispatch(const Json::Value& root) {
         Json::Value::Members names(apps.getMemberNames());
 
         for(Json::Value::Members::const_iterator it = names.begin(); it != names.end(); ++it) {
-            std::string profile(apps[*it].asString());
+            std::string name(*it),
+                        profile(apps[name].asString());
 
             try {
-                result[*it] = create_app(*it, profile);
+                result[name] = create_app(name, profile);
             } catch(const configuration_error_t& e) {
-                result[*it]["error"] = e.what();
+                result[name]["error"] = e.what();
             } catch(...) {
-                result[*it]["error"] = "unexpected exception";
+                result[name]["error"] = "unexpected exception";
             }
         }
 
@@ -269,14 +270,14 @@ std::string server_t::dispatch(const Json::Value& root) {
         }
 
         for(Json::Value::iterator it = apps.begin(); it != apps.end(); ++it) {
-            std::string app((*it).asString());
+            std::string name((*it).asString());
 
             try {
-                result[app] = delete_app(app);                
+                result[name] = delete_app(name);                
             } catch(const configuration_error_t& e) {
-                result[app]["error"] = e.what();
+                result[name]["error"] = e.what();
             } catch(...) {
-                result[app]["error"] = "unexpected exception";
+                result[name]["error"] = "unexpected exception";
             }
         }
 

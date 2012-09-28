@@ -48,7 +48,11 @@ class auth_t:
 
         EVP_MD_CTX * m_context;
 
-        typedef std::map<const std::string, EVP_PKEY*> key_map_t;
+        typedef std::map<
+            const std::string,
+            EVP_PKEY*
+        > key_map_t;
+        
         key_map_t m_keys;
 };
 

@@ -30,26 +30,31 @@ namespace cocaine {
 
 template<class T>
 struct cached {
-    cached(context_t& context, const std::string& collection, const std::string& name):
-        m_context(context),
-        m_collection(collection),
-        m_name(name)
-    {
+    cached(context_t& context, const std::string& collection, const std::string& name) {
         api::category_traits<api::storage_t>::ptr_type cache(
-            m_context.get<api::storage_t>("storage/cache")
+            context.get<api::storage_t>("storage/cache")
         );
 
         try {
             // Try to load the object from the cache.
             m_object = cache->get<T>(collection, name);
         } catch(const storage_error_t& e) {
-            update();
+            api::category_traits<api::storage_t>::ptr_type storage(
+                context.get<api::storage_t>("storage/core")
+            );
+            
+            try {
+                // Fetch the application manifest and archive from the core storage.
+                m_object = storage->get<T>(collection, name);
+            } catch(const storage_error_t& e) {
+                throw configuration_error_t("unable to fetch the '" + name + "' object from the storage - " + e.what());
+            }
 
             try {
                 // Put the application object into the cache for future reference.
                 cache->put(collection, name, m_object);
             } catch(const storage_error_t& e) {
-                throw storage_error_t("unable to cache the '" + name + "' object");
+                throw storage_error_t("unable to cache the '" + name + "' object - " + e.what());
             }    
         }
     }
@@ -59,28 +64,6 @@ struct cached {
     }
 
 private:
-    void
-    update() {
-        api::category_traits<api::storage_t>::ptr_type storage(
-            m_context.get<api::storage_t>("storage/core")
-        );
-        
-        try {
-            // Fetch the application manifest and archive from the core storage.
-            m_object = storage->get<T>(m_collection, m_name);
-        } catch(const storage_error_t& e) {
-            throw configuration_error_t("unable to fetch the '" + m_name + "' object from the storage");
-        }
-    }
-
-private:
-    context_t& m_context;
-    boost::shared_ptr<logging::logger_t> m_log;
-
-    const std::string m_collection,
-                      m_name;
-
-    // The actual cached object.
     T m_object;
 };
 

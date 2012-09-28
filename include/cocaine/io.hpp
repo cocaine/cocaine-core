@@ -378,92 +378,6 @@ struct message:
     { }
 };
 
-// Unknown message proxy
-/* ---------------------
-
-struct unknown;
-
-template<>
-struct message<unknown> {
-    message() { }
-    
-    message(const std::string& route, int type):
-        route_(route),
-        type_(type)
-    { }
-
-    ~message() {
-        for(std::deque<zmq::message_t*>::iterator it = chain_.begin();
-            it != chain_.end();
-            ++it)
-        {
-            delete *it;
-        }
-    }
-
-    int
-    type() const {
-        return type_;
-    }
-
-    std::string
-    route() const {
-        return route_;
-    }
-
-    template<class Event>
-    void 
-    as(message<Event>& message) {
-        BOOST_ASSERT(get<Event>::value == type());
-        unpack(message);
-    }
-
-    void
-    push(zmq::message_t * part) {
-        chain_.push_back(part);
-    }
-
-private:
-    void
-    unpack(const null_type&) const {
-        return;
-    }
-
-    template<class Head, class Tail>
-    void
-    unpack(cons<Head, Tail>& o) {
-        msgpack::unpacked unpacked;
-
-        msgpack::unpack(
-            &unpacked,
-            static_cast<const char*>(chain_.front()->data()),
-            chain_.front()->size()
-        );
-
-        type_traits<Head>::unpack(unpacked.get(), o.get_head());
-        std::rotate(chain_.begin(), chain_.begin() + 1, chain_.end());        
-
-        return unpack(o.get_tail());
-    }
-
-    template<class Tail>
-    void
-    unpack(cons<zmq::message_t&, Tail>& o) {
-        o.get_head().move(chain_.front());
-
-        std::rotate(chain_.begin(), chain_.begin() + 1, chain_.end());        
-
-        return unpack(o.get_tail());
-    }
-
-private:
-    std::string route_;
-    int type_;
-    std::deque<zmq::message_t*> chain_;
-};
-
-*/
-
 // RPC channel
 // -----------
 
@@ -496,34 +410,7 @@ class channel_t:
         }
 
         // Receiving
-        /* ---------
-
-        message<unknown>
-        recv(int flags = 0) {
-            std::string route;
-            raw<std::string> raw(route);
-            int type;
-
-            if(!recv(raw, flags)) {
-                // Do something.
-            }
-
-            if(!recv(type, flags)) {
-                // Do something.
-            }
-
-            message<unknown> result(route, type);
-
-            while(more()) {
-                zmq::message_t * part = new zmq::message_t();
-                recv(part);
-                result.push(part);
-            }
-
-            return result;
-        }
-
-        */
+        // ---------
 
         bool
         recv_multi(const null_type&,
