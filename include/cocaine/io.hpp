@@ -95,6 +95,8 @@ struct raw_traits<std::string> {
 // ZeroMQ socket wrapper
 // ---------------------
 
+using namespace boost::tuples;
+
 class socket_t: 
     public boost::noncopyable,
     public birth_control<socket_t>
@@ -151,6 +153,29 @@ class socket_t:
         }
 
         bool
+        send_tuple(const null_type&,
+                   int __attribute__ ((unused)) flags = 0) const
+        {
+            return true;
+        }
+        
+        template<class Head>
+        bool
+        send_tuple(const cons<Head, null_type>& o,
+                   int flags = 0)
+        {
+            return send(o.get_head(), flags);
+        }
+
+        template<class Head, class Tail>
+        bool
+        send_tuple(const cons<Head, Tail>& o,
+                   int flags = 0)
+        {
+            return send(o.get_head(), ZMQ_SNDMORE | flags) &&
+                   send_tuple(o.get_tail(), flags);
+        }
+        bool
         recv(zmq::message_t * message,
              int flags = 0)
         {
@@ -204,6 +229,35 @@ class socket_t:
             return true;
         }
                 
+        bool
+        recv_tuple(const null_type&,
+                   int __attribute__ ((unused)) flags = 0) const
+        {
+            return true;
+        }
+
+        template<class Head>
+        bool
+        recv_tuple(cons<Head, null_type>& o,
+                   int flags = 0)
+        {
+            return recv(o.get_head(), flags);
+        }
+
+        template<class Head, class Tail>
+        bool
+        recv_tuple(cons<Head, Tail>& o,
+                   int flags = 0)
+        {
+            if(!recv(o.get_head(), flags)) {
+                return false;
+            } else if(more()) {
+                return recv_tuple(o.get_tail(), flags);
+            } else {
+                throw std::runtime_error("corrupted object - misplaced chunks");
+            }
+        }
+
         void
         getsockopt(int name,
                    void * value,
@@ -320,8 +374,6 @@ class scoped_option {
 // Event tuple type extraction
 // ---------------------------
 
-using namespace boost::tuples;
-
 template<class T>
 struct depend {
     typedef void type;
@@ -407,63 +459,6 @@ class channel_t:
             return send(protect(route), ZMQ_SNDMORE) &&
                    send(get<Event>::value, multipart ? ZMQ_SNDMORE : 0) &&
                    send_tuple(object);
-        }
-
-        // Receiving
-        // ---------
-
-        bool
-        recv_multi(const null_type&,
-                   int __attribute__ ((unused)) flags = 0) const
-        {
-            return true;
-        }
-
-        template<class Head>
-        bool
-        recv_multi(cons<Head, null_type>& o,
-                   int flags = 0)
-        {
-            return recv(o.get_head(), flags);
-        }
-
-        template<class Head, class Tail>
-        bool
-        recv_multi(cons<Head, Tail>& o,
-                   int flags = 0)
-        {
-            if(!recv(o.get_head(), flags)) {
-                return false;
-            } else if(more()) {
-                return recv_multi(o.get_tail(), flags);
-            } else {
-                throw std::runtime_error("corrupted object - misplaced chunks");
-            }
-        }
-
-    private:
-        bool
-        send_tuple(const null_type&,
-                   int __attribute__ ((unused)) flags = 0) const
-        {
-            return true;
-        }
-        
-        template<class Head>
-        bool
-        send_tuple(const cons<Head, null_type>& o,
-                   int flags = 0)
-        {
-            return send(o.get_head(), flags);
-        }
-
-        template<class Head, class Tail>
-        bool
-        send_tuple(const cons<Head, Tail>& o,
-                   int flags = 0)
-        {
-            return send(o.get_head(), ZMQ_SNDMORE | flags) &&
-                   send_tuple(o.get_tail(), flags);
         }
 };
 

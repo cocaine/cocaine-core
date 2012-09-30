@@ -60,7 +60,7 @@ namespace {
     void
     list(context_t& context) {
         std::vector<std::string> apps;
-        
+      
         try {
             apps = context.get<api::storage_t>("storage/core")->list("manifests");
         } catch(const storage_error_t& e) {

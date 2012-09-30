@@ -159,7 +159,7 @@ void slave_t::process(ev::idle&, int) {
     {
         io::scoped_option<io::options::receive_timeout> option(m_bus, 0);
 
-        if(!m_bus.recv_multi(proxy)) {
+        if(!m_bus.recv_tuple(proxy)) {
             m_processor.stop();
             return;
         }

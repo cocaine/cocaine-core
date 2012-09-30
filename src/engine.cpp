@@ -392,7 +392,7 @@ void engine_t::process(ev::idle&, int) {
          
             // Try to read the next RPC command from the bus in a
             // non-blocking fashion. If it fails, break the loop.
-            if(!m_bus->recv_multi(proxy)) {
+            if(!m_bus->recv_tuple(proxy)) {
                 m_processor.stop();
                 return;            
             }
@@ -471,9 +471,13 @@ void engine_t::process(ev::idle&, int) {
 
                 int code = 0;
                 std::string message;
-                boost::tuple<int&, std::string&> proxy(code, message);
 
-                m_bus->recv_multi(proxy);
+                boost::tuple<
+                    int&,
+                    std::string&
+                > proxy(code, message);
+
+                m_bus->recv_tuple(proxy);
 
                 master->second->process_event(events::error(code, message));
 
