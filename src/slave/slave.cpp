@@ -195,7 +195,7 @@ void slave_t::process(ev::idle&, int) {
 }
 
 void slave_t::check(ev::prepare&, int) {
-    message(m_watcher, ev::READ);
+    m_loop.feed_fd_event(m_bus.fd(), ev::READ);
 }
 
 void slave_t::timeout(ev::timer&, int) {

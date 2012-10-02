@@ -1,3 +1,10 @@
+cocaine-core (0.9.4) lucid; urgency=low
+
+  * Pump queue events even if no workers are available (fixes an issue when all the
+    slaves unexpectedly died and the queue is full already).
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 02 Oct 2012 19:16:59 +0400
+
 cocaine-core (0.9.3) lucid; urgency=low
 
   * Rearm slave heartbeat timer on all event types.

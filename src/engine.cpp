@@ -391,7 +391,7 @@ void engine_t::process(ev::idle&, int) {
             // non-blocking fashion. If it fails, break the loop.
             if(!m_bus->recv_multi(proxy)) {
                 m_processor.stop();
-                return;            
+                break; 
             }
         }
 
@@ -496,15 +496,14 @@ void engine_t::process(ev::idle&, int) {
 
                 m_bus->drop();
         }
-
-        if(master->second->state_downcast<const slave::idle*>()) {
-            pump();
-        }
     } while(--counter);
+
+    pump();
 }
 
 void engine_t::check(ev::prepare&, int) {
-    message(m_watcher, ev::READ);
+    m_loop.feed_fd_event(m_bus->fd(), ev::READ);
+    pump();
 }
 
 // Garbage collection

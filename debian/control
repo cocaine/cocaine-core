@@ -55,7 +55,7 @@ Description: Cocaine - Server
 
 Package: cocaine-tools
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core1, python, 
- python-zmq
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core1,
+ python, python-zmq
 Description: Cocaine - Toolset
  Various tools to query and manipulate running Cocaine instances.
