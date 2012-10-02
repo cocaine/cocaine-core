@@ -367,8 +367,9 @@ void engine_t::message(ev::io&, int) {
     if(m_bus->pending()) {
         m_checker.start();
         process();
-        pump();
     }
+        
+    pump();
 }
 
 void engine_t::check(ev::prepare&, int) {
@@ -397,7 +398,7 @@ void engine_t::process() {
         // Try to read the next RPC command from the bus in a
         // non-blocking fashion. If it fails, break the loop.
         if(!m_bus->recv_tuple(proxy, ZMQ_NOBLOCK)) {
-            return;            
+            break;            
         }
 
         pool_map_t::iterator master(m_pool.find(slave_id));
