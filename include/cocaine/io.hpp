@@ -251,10 +251,8 @@ class socket_t:
         {
             if(!recv(o.get_head(), flags)) {
                 return false;
-            } else if(more()) {
-                return recv_tuple(o.get_tail(), flags);
             } else {
-                throw std::runtime_error("corrupted object - misplaced chunks");
+                return recv_tuple(o.get_tail(), flags | ZMQ_NOBLOCK);
             }
         }
 

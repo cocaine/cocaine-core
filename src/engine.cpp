@@ -86,8 +86,7 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest, const profile
     m_thread(NULL),
     m_bus(new io::channel_t(context, m_manifest.name)),
     m_watcher(m_loop),
-    m_processor(m_loop),
-    m_check(m_loop),
+    m_checker(m_loop),
     m_gc_timer(m_loop),
     m_termination_timer(m_loop),
     m_notification(m_loop)
@@ -115,9 +114,9 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest, const profile
     
     m_watcher.set<engine_t, &engine_t::message>(this);
     m_watcher.start(m_bus->fd(), ev::READ);
-    m_processor.set<engine_t, &engine_t::process>(this);
-    m_check.set<engine_t, &engine_t::check>(this);
-    m_check.start();
+    m_checker.set<engine_t, &engine_t::check>(this);
+    m_checker.start();
+
 
     m_gc_timer.set<engine_t, &engine_t::cleanup>(this);
     m_gc_timer.start(5.0f, 5.0f);
@@ -363,12 +362,20 @@ bool engine_t::enqueue(job_queue_t::const_reference job, mode::value mode) {
 // ---------
 
 void engine_t::message(ev::io&, int) {
-    if(m_bus->pending() && !m_processor.is_active()) {
-        m_processor.start();
+    m_checker.stop();
+
+    if(m_bus->pending()) {
+        m_checker.start();
+        process();
+        pump();
     }
 }
 
-void engine_t::process(ev::idle&, int) {
+void engine_t::check(ev::prepare&, int) {
+    m_loop.feed_fd_event(m_bus->fd(), ev::READ);
+}
+
+void engine_t::process() {
     // NOTE: Try to read RPC calls in bulk, where the maximum size
     // of the bulk is proportional to the number of spawned slaves.
     int counter = m_pool.size() * defaults::io_bulk_size;
@@ -387,15 +394,10 @@ void engine_t::process(ev::idle&, int) {
             int&
         > proxy(io::protect(slave_id), command);
         
-        {
-            io::scoped_option<io::options::receive_timeout> option(*m_bus, 0);
-         
-            // Try to read the next RPC command from the bus in a
-            // non-blocking fashion. If it fails, break the loop.
-            if(!m_bus->recv_tuple(proxy)) {
-                m_processor.stop();
-                return;            
-            }
+        // Try to read the next RPC command from the bus in a
+        // non-blocking fashion. If it fails, break the loop.
+        if(!m_bus->recv_tuple(proxy, ZMQ_NOBLOCK)) {
+            return;            
         }
 
         pool_map_t::iterator master(m_pool.find(slave_id));
@@ -503,15 +505,7 @@ void engine_t::process(ev::idle&, int) {
 
                 m_bus->drop();
         }
-
-        if(master->second->state_downcast<const slave::idle*>()) {
-            pump();
-        }
     } while(--counter);
-}
-
-void engine_t::check(ev::prepare&, int) {
-    message(m_watcher, ev::READ);
 }
 
 // Garbage collection
@@ -571,6 +565,11 @@ void engine_t::cleanup(ev::timer&, int) {
            end(expired_t(m_loop.now()), m_queue.end(), m_queue.end());
 
     while(it != end) {
+        m_log->debug(
+            "the '%s' job has expired",
+            (*it)->event.c_str()
+        );
+
         (*it++)->process_event(
             events::error(
                 deadline_error,

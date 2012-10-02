@@ -97,70 +97,47 @@ class engine_t:
 #endif
 
     private:
-        // Slave I/O.
         void message(ev::io&, int);
-        void process(ev::idle&, int);
         void check(ev::prepare&, int);
-
-        // Garbage collection.
         void cleanup(ev::timer&, int);
-
-        // Forced engine termination.
         void terminate(ev::timer&, int);
-
-        // Asynchronous notification.
         void notify(ev::async&, int);
 
-        // Queue processing.
+        void process();
+        
         void pump();
-
-        // Engine termination.
         void shutdown();
 
     private:
         context_t& m_context;
         boost::shared_ptr<logging::logger_t> m_log;
 
-        // The app manifest and profile.
         const manifest_t& m_manifest;
         const profile_t& m_profile;
 
-        // Engine's state.
         enum {
             running,
             stopping,
             stopped
         } m_state;
 
-        // Engine's state synchronization.
         mutable boost::mutex m_mutex;
-
-        // Engine's thread.
         std::auto_ptr<boost::thread> m_thread;        
         
-        // Slave RPC bus.
+        // Slave RPC.
         std::auto_ptr<io::channel_t> m_bus;
-  
-        // Event loop.
+
+        // Event loop.  
         ev::dynamic_loop m_loop;
 
-        // Slave I/O watchers.
         ev::io m_watcher;
-        ev::idle m_processor;
-        ev::prepare m_check;
-        
-        // Garbage collector activation timer and
-        // forced termination timer.
+        ev::prepare m_checker;
         ev::timer m_gc_timer,
                   m_termination_timer;
-
-        // Async notification watcher.
         ev::async m_notification;
 
         // Job queue.
         job_queue_t m_queue;
-
-        // Job queue synchronization.
         boost::mutex m_queue_mutex;
         boost::condition_variable m_queue_condition;
 
@@ -168,7 +145,6 @@ class engine_t:
         pool_map_t m_pool;
         
 #ifdef HAVE_CGROUPS
-        // Control group to put the slaves into.
         cgroup * m_cgroup;
 #endif
 };

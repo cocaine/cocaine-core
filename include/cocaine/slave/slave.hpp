@@ -63,12 +63,12 @@ class slave_t:
         
     private:
         void message(ev::io&, int);
-        void process(ev::idle&, int);
         void check(ev::prepare&, int);
         void timeout(ev::timer&, int);
         void heartbeat(ev::timer&, int);
 
-        // Dispatching.
+        void process();
+        
         void invoke(const std::string& event);
         void terminate();
 
@@ -88,8 +88,7 @@ class slave_t:
         ev::default_loop m_loop;
         
         ev::io m_watcher;
-        ev::idle m_processor;
-        ev::prepare m_check;
+        ev::prepare m_checker;
         
         ev::timer m_heartbeat_timer,
                   m_idle_timer;

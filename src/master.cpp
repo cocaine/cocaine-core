@@ -99,6 +99,7 @@ void master_t::spawn() {
             "--slave:profile", m_profile.name.c_str(),
             "--slave:uuid",  id().c_str(),
             "--configuration", m_context.config.config_path.c_str(),
+            "--verbose",
             (char*)0
         );
 
