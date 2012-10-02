@@ -199,7 +199,7 @@ namespace {
 
         try {
             filecount = fs::remove_all(
-                manifest["path"].asString()
+                fs::path(context.config.spool_path) / name
             );
         } catch(const fs::filesystem_error& e) {
             std::cerr << "Error: unable to remove app files." << std::endl;
