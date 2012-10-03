@@ -362,18 +362,14 @@ bool engine_t::enqueue(job_queue_t::const_reference job, mode::value mode) {
 // ---------
 
 void engine_t::message(ev::io&, int) {
-    m_checker.stop();
-
     if(m_bus->pending()) {
-        m_checker.start();
         process();
     }
-        
-    pump();
 }
 
 void engine_t::check(ev::prepare&, int) {
     m_loop.feed_fd_event(m_bus->fd(), ev::READ);
+    pump();
 }
 
 void engine_t::process() {
