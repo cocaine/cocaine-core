@@ -365,11 +365,12 @@ void engine_t::message(ev::io&, int) {
     if(m_bus->pending()) {
         process();
     }
+    
+    pump();
 }
 
 void engine_t::check(ev::prepare&, int) {
     m_loop.feed_fd_event(m_bus->fd(), ev::READ);
-    pump();
 }
 
 void engine_t::process() {
@@ -391,10 +392,16 @@ void engine_t::process() {
             int&
         > proxy(io::protect(slave_id), command);
         
-        // Try to read the next RPC command from the bus in a
-        // non-blocking fashion. If it fails, break the loop.
-        if(!m_bus->recv_tuple(proxy, ZMQ_NOBLOCK)) {
-            break;            
+        {
+            // Try to read the next RPC command from the bus in a
+            // non-blocking fashion. If it fails, break the loop.
+            io::scoped_option<
+                io::options::receive_timeout
+            > option(*m_bus, 0);
+            
+            if(!m_bus->recv_tuple(proxy)) {
+                break;            
+            }
         }
 
         pool_map_t::iterator master(m_pool.find(slave_id));
@@ -408,15 +415,24 @@ void engine_t::process() {
             
             m_bus->drop();
 
-            io::scoped_option<io::options::send_timeout> option(*m_bus, 0);
-
+            // NOTE: Do a non-blocking send.
+            io::scoped_option<
+                io::options::send_timeout
+            > option(*m_bus, 0);
+            
             // Try to kill the unknown slave, just in case.
             // FIXME: This doesn't work for some reason.
-
-            m_bus->send(
+            bool success = m_bus->send(
                 slave_id,
                 io::message<rpc::terminate>()
             );
+
+            if(!success) {
+                m_log->warning(
+                    "unable to kill an unknown slave %s", 
+                    slave_id.c_str()
+                );
+            }
 
             continue;
         }
@@ -675,13 +691,22 @@ void engine_t::pump() {
                 body
             );
 
-            // NOTE: Do a non-blocking send.
-            io::scoped_option<io::options::send_timeout> option(*m_bus, 0);
+            bool success = false;
 
-            bool success = m_bus->send(
-                it->second->id(),
-                message
-            );
+            {
+                // NOTE: Do a non-blocking send.
+                io::scoped_option<
+                    io::options::send_timeout
+                > option(*m_bus, 0);
+
+                success = m_bus->send(
+                    it->second->id(),
+                    message
+                );
+            }
+
+            // NOTE: Feed the event loop.
+            m_loop.feed_fd_event(m_bus->fd(), ev::READ);
 
             if(success) {
                 it->second->process_event(events::invoke(job));
@@ -729,6 +754,7 @@ void engine_t::pump() {
         );
 
         while(m_pool.size() != target) {
+            // DEPRECATED: In order to support boost::ptr_map.
             std::auto_ptr<master_t> master;
             
             try {
@@ -778,25 +804,28 @@ void engine_t::shutdown() {
 
     unsigned int pending = 0;
 
-    // Send the termination event to active slaves.
-    // If there're no active slaves, the engine can terminate right away,
-    // otherwise, the engine should wait for the specified timeout for slaves
-    // to finish their jobs and then force the termination.
-
-    // NOTE: Do a non-blocking send.
-    io::scoped_option<io::options::send_timeout> option(*m_bus, 0);
-
-    for(pool_map_t::iterator it = m_pool.begin();
-        it != m_pool.end();
-        ++it)
     {
-        if(it->second->state_downcast<const slave::alive*>()) {
-            m_bus->send(
-                it->second->id(),
-                io::message<rpc::terminate>()
-            );
+        // NOTE: Do a non-blocking send.
+        io::scoped_option<
+            io::options::send_timeout
+        > option(*m_bus, 0);
+        
+        // Send the termination event to active slaves.
+        // If there're no active slaves, the engine can terminate right away,
+        // otherwise, the engine should wait for the specified timeout for slaves
+        // to finish their jobs and then force the termination.
+        for(pool_map_t::iterator it = m_pool.begin();
+            it != m_pool.end();
+            ++it)
+        {
+            if(it->second->state_downcast<const slave::alive*>()) {
+                m_bus->send(
+                    it->second->id(),
+                    io::message<rpc::terminate>()
+                );
 
-            ++pending;
+                ++pending;
+            }
         }
     }
 

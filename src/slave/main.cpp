@@ -108,7 +108,7 @@ int main(int argc, char * argv[]) {
 
     boost::shared_ptr<logging::logger_t> log(context.log("main"));
 
-    std::auto_ptr<engine::slave_t> slave;
+    std::unique_ptr<engine::slave_t> slave;
 
     try {
         slave.reset(

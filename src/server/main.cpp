@@ -143,7 +143,7 @@ int main(int argc, char * argv[]) {
     }
     */
 
-    std::auto_ptr<helpers::pid_file_t> pidfile;
+    std::unique_ptr<helpers::pid_file_t> pidfile;
 
     if(vm.count("daemonize")) {
         if(daemon(0, 0) < 0) {
@@ -173,7 +173,7 @@ int main(int argc, char * argv[]) {
 
     log->info("starting the server");
 
-    std::auto_ptr<server_t> server;
+    std::unique_ptr<server_t> server;
     
     try {
         server.reset(

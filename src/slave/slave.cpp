@@ -116,12 +116,14 @@ void slave_t::run() {
 std::string slave_t::read(int timeout) {
     zmq::message_t message;
 
-    io::scoped_option<
-        io::options::receive_timeout
-    > option(m_bus, timeout);
+    {
+        io::scoped_option<
+            io::options::receive_timeout
+        > option(m_bus, timeout);
 
-    m_bus.recv(&message);
-    
+        m_bus.recv(&message);
+    }
+
     return std::string(
         static_cast<const char*>(message.data()),
         message.size()
@@ -162,8 +164,14 @@ void slave_t::process() {
         int&
     > proxy(io::protect(source), command);
    
-    if(!m_bus.recv_tuple(proxy, ZMQ_NOBLOCK)) {
-        return;
+    {
+        io::scoped_option<
+            io::options::receive_timeout
+        > option(m_bus, 0);
+        
+        if(!m_bus.recv_tuple(proxy)) {
+            return;
+        }
     }
 
     m_log->debug(
@@ -243,6 +251,9 @@ void slave_t::invoke(const std::string& event) {
 
     m_idle_timer.stop();
     m_idle_timer.start(m_profile->idle_timeout);
+
+    // Feed the event loop.
+    m_loop.feed_fd_event(m_bus.fd(), ev::READ);
 }
 
 void slave_t::terminate() {

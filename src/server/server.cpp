@@ -71,11 +71,10 @@ server_t::server_t(context_t& context, server_config_t config):
         m_log->info("listening on %s", it->c_str());
     }
     
-    m_watcher.set<server_t, &server_t::request>(this);
+    m_watcher.set<server_t, &server_t::event>(this);
     m_watcher.start(m_server.fd(), ev::READ);
-    m_processor.set<server_t, &server_t::process>(this);
-    m_check.set<server_t, &server_t::check>(this);
-    m_check.start();
+    m_checker.set<server_t, &server_t::check>(this);
+    m_checker.start();
 
     // Autodiscovery
     // -------------
@@ -148,20 +147,28 @@ void server_t::reload(ev::sig&, int) {
     }
 }
 
-void server_t::request(ev::io&, int) {
-    if(m_server.pending() && !m_processor.is_active()) {
-        m_processor.start();
+void server_t::event(ev::io&, int) {
+    m_checker.stop();
+
+    if(m_server.pending()) {
+        m_checker.start();
+        process();
     }
 }
 
-void server_t::process(ev::idle&, int) {
+void server_t::check(ev::prepare&, int) {
+    m_loop.feed_fd_event(m_server.fd(), ev::READ);
+}
+
+void server_t::process() {
     zmq::message_t message;
     
     {
-        io::scoped_option<io::options::receive_timeout> option(m_server, 0);
+        io::scoped_option<
+            io::options::receive_timeout
+        > option(m_server, 0);
         
         if(!m_server.recv(&message)) {
-            m_processor.stop();
             return;
         }
     }
@@ -222,12 +229,12 @@ void server_t::process(ev::idle&, int) {
     message.rebuild(response.size());
     memcpy(message.data(), response.data(), response.size());
 
-    // Send in non-blocking mode in case the client has disconnected.
-    m_server.send(message, ZMQ_NOBLOCK);
-}
-
-void server_t::check(ev::prepare&, int) {
-    request(m_watcher, ev::READ);
+    // NOTE: Do a non-blocking send.
+    io::scoped_option<
+        io::options::send_timeout
+    > option(m_server, 0);
+    
+    m_server.send(message);
 }
 
 std::string server_t::dispatch(const Json::Value& root) {
@@ -298,6 +305,7 @@ Json::Value server_t::create_app(const std::string& name, const std::string& pro
         throw configuration_error_t("the specified app already exists");
     }
 
+    // DEPRECATED: In order to support boost::ptr_map.
     std::auto_ptr<app_t> app(
         new app_t(
             m_context,

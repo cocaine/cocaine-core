@@ -57,26 +57,21 @@ class server_t:
         void run();
 
     private:        
-        // Signal handling.
         void terminate(ev::sig&, int);
         void reload(ev::sig&, int);
 
-        // I/O handling.
-        void request(ev::io&, int);
-        void process(ev::idle&, int);
+        void event(ev::io&, int);
         void check(ev::prepare&, int);
 
-        // JSON-RPC command dispatching.
+        void process();
         std::string dispatch(const Json::Value& root);
 
         Json::Value create_app(const std::string& name, const std::string& profile);
         Json::Value delete_app(const std::string& name);
         Json::Value info() const;
 
-        // Multicast-based node announces.
         void announce(ev::timer&, int);
 
-        // App runlist revalidation.
         void recover();
 
     private:
@@ -107,15 +102,14 @@ class server_t:
                 m_sighup;
                 
         ev::io m_watcher;
-        ev::idle m_processor;
-        ev::prepare m_check;
+        ev::prepare m_checker;
 
         // System I/O.
         io::socket_t m_server;
 
         // Automatic discovery support.
-        std::auto_ptr<ev::timer> m_announce_timer;
-        std::auto_ptr<io::socket_t> m_announces;
+        std::unique_ptr<ev::timer> m_announce_timer;
+        std::unique_ptr<io::socket_t> m_announces;
         
         // Authorization subsystem.
         crypto::auth_t m_auth;

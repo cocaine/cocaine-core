@@ -122,10 +122,10 @@ class engine_t:
         } m_state;
 
         mutable boost::mutex m_mutex;
-        std::auto_ptr<boost::thread> m_thread;        
+        std::unique_ptr<boost::thread> m_thread;        
         
         // Slave RPC.
-        std::auto_ptr<io::channel_t> m_bus;
+        std::unique_ptr<io::channel_t> m_bus;
 
         // Event loop.  
         ev::dynamic_loop m_loop;

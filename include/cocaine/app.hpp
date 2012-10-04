@@ -67,7 +67,7 @@ class app_t {
         const profile_t m_profile;
 
         // Execution engine.
-        std::auto_ptr<engine::engine_t> m_engine;
+        std::unique_ptr<engine::engine_t> m_engine;
 
 #if BOOST_VERSION >= 104000
         typedef boost::ptr_unordered_map<

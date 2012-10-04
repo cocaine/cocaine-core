@@ -147,8 +147,8 @@ class context_t:
         boost::mutex m_mutex;
         
         // Core subsystems.
-        std::auto_ptr<zmq::context_t> m_io;
-        std::auto_ptr<api::repository_t> m_repository;
+        std::unique_ptr<zmq::context_t> m_io;
+        std::unique_ptr<api::repository_t> m_repository;
 };
 
 } // namespace cocaine

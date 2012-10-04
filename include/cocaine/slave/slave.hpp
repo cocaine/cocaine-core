@@ -79,9 +79,10 @@ class slave_t:
         // The app.
         const std::string m_name;
 
-        std::auto_ptr<const manifest_t> m_manifest;
-        std::auto_ptr<const profile_t> m_profile;
+        std::unique_ptr<const manifest_t> m_manifest;
+        std::unique_ptr<const profile_t> m_profile;
 
+        // DEPRECATED: In order to support API interface.
         std::auto_ptr<api::sandbox_t> m_sandbox;
 
         // Event loop.
@@ -95,7 +96,11 @@ class slave_t:
         
         // Engine RPC.
         io::channel_t m_bus;
-        io::scoped_option<io::options::send_timeout> m_bus_timeout;
+        
+        // Engine RPC timeout.
+        io::scoped_option<
+            io::options::send_timeout
+        > m_bus_timeout;
 };
 
 }} // namespace cocaine::engine
