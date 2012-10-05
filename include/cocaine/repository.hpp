@@ -23,6 +23,7 @@
 
 #include <boost/format.hpp>
 #include <boost/type_traits/is_base_of.hpp>
+#include <boost/utility/enable_if.hpp>
 #include <ltdl.h>
 #include <typeinfo>
 
@@ -124,13 +125,9 @@ class repository_t:
                 throw repository_error_t((message % type).str());
             }
 
-            m_factories.insert(
-                std::make_pair(
-                    type,
-                    boost::make_shared<
-                        typename plugin_traits<T>::factory_type
-                    >()
-                )
+            m_factories.emplace(
+                type,
+                new typename plugin_traits<T>::factory_type()
             );
         }
 
@@ -142,7 +139,7 @@ class repository_t:
         context_t& m_context;
         boost::shared_ptr<logging::logger_t> m_log;
 
-        // Used to unload all the plugins on shutdown.
+        // NOTE: Used to unload all the plugins on shutdown.
         std::vector<lt_dlhandle> m_plugins;
     
 #if BOOST_VERSION >= 104000
@@ -151,7 +148,7 @@ class repository_t:
         typedef std::map<
 #endif
             std::string,
-            boost::shared_ptr<factory_concept_t>
+            std::unique_ptr<factory_concept_t>
         > factory_map_t;
 
         factory_map_t m_factories;

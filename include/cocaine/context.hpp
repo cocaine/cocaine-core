@@ -64,7 +64,11 @@ struct config_t {
         Json::Value args;
     } component_info_t;
 
+#if BOOST_VERSION >= 103600
+    typedef boost::unordered_map<
+#else
     typedef std::map<
+#endif
         std::string,
         component_info_t
     > component_info_map_t;
@@ -135,10 +139,13 @@ class context_t:
         const config_t config;
 
     private:
-        // Logging.    
         boost::shared_ptr<logging::sink_t> m_sink;
 
+#if BOOST_VERSION >= 103600
+        typedef boost::unordered_map<
+#else
         typedef std::map<
+#endif
             std::string,
             boost::shared_ptr<logging::logger_t>
         > instance_map_t;
@@ -146,7 +153,6 @@ class context_t:
         instance_map_t m_instances;
         boost::mutex m_mutex;
         
-        // Core subsystems.
         std::unique_ptr<zmq::context_t> m_io;
         std::unique_ptr<api::repository_t> m_repository;
 };

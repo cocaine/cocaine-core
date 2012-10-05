@@ -33,9 +33,7 @@
 #include <boost/version.hpp>
 
 #if BOOST_VERSION >= 104000
-# include <boost/ptr_container/ptr_unordered_map.hpp>
-#else
-# include <boost/ptr_container/ptr_map.hpp>
+ #include <boost/unordered_map.hpp>
 #endif
 
 #define EV_MINIMAL       0

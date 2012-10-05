@@ -69,13 +69,13 @@ class app_t {
         // Execution engine.
         std::unique_ptr<engine::engine_t> m_engine;
 
-#if BOOST_VERSION >= 104000
-        typedef boost::ptr_unordered_map<
+#if BOOST_VERSION >= 103600
+        typedef boost::unordered_map<
 #else
-        typedef boost::ptr_map<
+        typedef std::map<
 #endif
-            const std::string,
-            api::driver_t
+            std::string,
+            std::unique_ptr<api::driver_t>
         > driver_map_t;
         
         // Event drivers.

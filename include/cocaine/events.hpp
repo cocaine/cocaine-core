@@ -37,6 +37,7 @@ struct terminate:
     public sc::event<terminate>
 { };
 
+/*
 struct enqueue:
     public sc::event<enqueue>
 {
@@ -46,15 +47,19 @@ struct enqueue:
 
     const size_t position;
 };
+*/
 
 struct invoke:
     public sc::event<invoke>
 {
-    invoke(const boost::shared_ptr<job_t>& job_):
-        job(job_)
+    invoke(const boost::shared_ptr<job_t>& job_,
+           const boost::weak_ptr<engine::master_t>& master_):
+        job(job_),
+        master(master_)
     { }
 
     const boost::shared_ptr<job_t>& job;
+    const boost::weak_ptr<engine::master_t>& master;
 };
 
 struct chunk:

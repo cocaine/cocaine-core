@@ -38,9 +38,9 @@ using namespace cocaine::engine;
 
 void job_queue_t::push(const_reference job) {
     if(job->policy.urgent) {
-        push_front(job);
+        emplace_front(job);
     } else {
-        push_back(job);
+        emplace_back(job);
     }
 }
 
@@ -52,7 +52,7 @@ namespace { namespace select {
     struct state {
         template<class T>
         bool operator()(const T& master) const {
-            return master->second->template state_downcast<const State*>();
+            return master.second->template state_downcast<const State*>();
         }
     };
 
@@ -63,7 +63,7 @@ namespace { namespace select {
 
         template<class T>
         bool operator()(const T& master) const {
-            return *master->second == target;
+            return *master.second == target;
         }
     
         const master_t& target;
@@ -307,7 +307,7 @@ bool engine_t::enqueue(job_queue_t::const_reference job, mode::value mode) {
             job->event.c_str()
         );
 
-        job->process_event(
+        job->process(
             events::error(
                 resource_error,
                 "engine is not active"
@@ -333,7 +333,7 @@ bool engine_t::enqueue(job_queue_t::const_reference job, mode::value mode) {
                         job->event.c_str()
                     );
 
-                    job->process_event(
+                    job->process(
                         events::error(
                             resource_error,
                             "the queue is full"
@@ -547,7 +547,7 @@ void engine_t::cleanup(ev::timer&, int) {
 
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
         if(it->second->state_downcast<const slave::dead*>()) {
-            corpses.push_back(it->first);
+            corpses.emplace_back(it->first);
         }
     }
 
@@ -583,7 +583,7 @@ void engine_t::cleanup(ev::timer&, int) {
             (*it)->event.c_str()
         );
 
-        (*it++)->process_event(
+        (*it++)->process(
             events::error(
                 deadline_error,
                 "the job has expired"
@@ -612,7 +612,7 @@ namespace {
     struct terminate_t {
         template<class T>
         void operator()(const T& master) {
-            master->second->process_event(events::terminate());
+            master.second->process_event(events::terminate());
         }
     };
 }
@@ -668,27 +668,22 @@ void engine_t::pump() {
 
             // Notify one of the blocked enqueue operations.
             m_queue_condition.notify_one();
-            
-            if(job->state_downcast<const job::complete*>()) {
-                m_log->debug(
-                    "dropping a complete '%s' job from the queue",
-                    job->event.c_str()
-                );
+           
+            {
+                job_t::lock_t lock(*job);
 
-                continue;
+                if(job->state == job_t::complete) {
+                    m_log->debug(
+                        "dropping a complete '%s' job from the queue",
+                        job->event.c_str()
+                    );
+
+                    continue;
+                }
             }
             
-            zmq::message_t body(job->request.size());
-
-            memcpy(
-                body.data(),
-                job->request.data(),
-                job->request.size()
-            );
-
             io::message<rpc::invoke> message(
-                job->event,
-                body
+                job->event
             );
 
             bool success = false;
@@ -709,7 +704,7 @@ void engine_t::pump() {
             m_loop.feed_fd_event(m_bus->fd(), ev::READ);
 
             if(success) {
-                it->second->process_event(events::invoke(job));
+                it->second->process_event(events::invoke(job, it->second));
             } else {
                 m_log->error(
                     "slave %s has unexpectedly died",
@@ -721,7 +716,7 @@ void engine_t::pump() {
                 
                 {
                     boost::unique_lock<boost::mutex> queue_lock(m_queue_mutex);
-                    m_queue.push_front(job);
+                    m_queue.emplace_front(job);
                 }
             }
         } else {
@@ -731,7 +726,6 @@ void engine_t::pump() {
 
     // NOTE: Balance the slave pool in order to keep it in a proper shape
     // based on the queue size and other policies.
-
     if(m_pool.size() < m_profile.pool_limit &&
        m_pool.size() * m_profile.grow_threshold < m_queue.size() * 2)
     {
@@ -754,13 +748,21 @@ void engine_t::pump() {
         );
 
         while(m_pool.size() != target) {
-            // DEPRECATED: In order to support boost::ptr_map.
-            std::auto_ptr<master_t> master;
-            
             try {
-                master.reset(new master_t(m_context, *this, m_manifest, m_profile));
-                std::string master_id(master->id());
-                m_pool.insert(master_id, master);
+                // Try to spawn a new slave process.
+                boost::shared_ptr<master_t> master(
+                    boost::make_shared<master_t>(
+                        m_context,
+                        *this,
+                        m_manifest,
+                        m_profile
+                    )
+                );
+              
+                m_pool.emplace(
+                    master->id(),
+                    master
+                );
             } catch(const system_error_t& e) {
                 m_log->error(
                     "unable to spawn more slaves - %s - %s",
@@ -790,7 +792,7 @@ void engine_t::shutdown() {
 
             // Abort all the outstanding jobs.
             while(!m_queue.empty()) {
-                m_queue.front()->process_event(
+                m_queue.front()->process(
                     events::error(
                         resource_error,
                         "engine is shutting down"

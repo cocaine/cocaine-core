@@ -57,6 +57,7 @@ class archive_t {
 
     private:
         boost::shared_ptr<logging::logger_t> m_log;
+        
         archive * m_archive;
 };
 

@@ -32,7 +32,10 @@ namespace cocaine {
 
 template<class T>
 struct cached {
-    cached(context_t& context, const std::string& collection, const std::string& name) {
+    cached(context_t& context,
+           const std::string& collection,
+           const std::string& name)
+    {
         api::category_traits<api::storage_t>::ptr_type cache(
             context.get<api::storage_t>("storage/cache")
         );

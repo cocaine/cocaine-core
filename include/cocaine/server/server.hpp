@@ -23,6 +23,12 @@
 
 #include "cocaine/common.hpp"
 
+#if BOOST_VERSION >= 104000
+# include <boost/ptr_container/ptr_unordered_map.hpp>
+#else
+# include <boost/ptr_container/ptr_map.hpp>
+#endif
+
 // Has to be included after common.h
 #include <ev++.h>
 

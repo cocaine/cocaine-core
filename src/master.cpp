@@ -26,9 +26,11 @@
 
 #include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
+#include "cocaine/io.hpp"
 #include "cocaine/job.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
+#include "cocaine/rpc.hpp"
 
 using namespace cocaine::engine;
 using namespace cocaine::engine::slave;
@@ -67,6 +69,30 @@ bool master_t::operator==(const master_t& other) const {
     return id() == other.id();
 }
 
+void master_t::push(const std::string& chunk_) {
+    zmq::message_t chunk(chunk_.size());
+
+    memcpy(
+        chunk.data(),
+        chunk_.data(),
+        chunk_.size()
+    );
+    
+    io::message<rpc::chunk> message(
+        chunk
+    );
+
+    // NOTE: Do a non-blocking send.
+    io::scoped_option<
+        io::options::send_timeout
+    > option(m_engine.bus(), 0);
+
+    m_engine.bus().send(
+        id(),
+        message
+    );
+}
+
 void master_t::spawn() {
     m_log->debug(
         "spawning slave %s",
@@ -99,6 +125,7 @@ void master_t::spawn() {
             "--slave:profile", m_profile.name.c_str(),
             "--slave:uuid",  id().c_str(),
             "--configuration", m_context.config.config_path.c_str(),
+            "--verbose",
             (char*)0
         );
 
@@ -191,7 +218,7 @@ void master_t::on_timeout(ev::timer&, int) {
             state->job()->event.c_str()
         );
 
-        state->job()->process_event(
+        state->job()->process(
             events::error(
                 timeout_error, 
                 "the job has timed out"
@@ -204,7 +231,7 @@ void master_t::on_timeout(ev::timer&, int) {
 
 alive::~alive() {
     if(job) {
-        job->process_event(
+        job->process(
             events::error(
                 server_error,
                 "the job is being cancelled"
@@ -226,7 +253,7 @@ void alive::on_invoke(const events::invoke& event) {
     );
 
     job = event.job;
-    job->process_event(event);    
+    job->process(event);    
     
     // Reset the heartbeat timer.    
     post_event(events::heartbeat());
@@ -242,7 +269,7 @@ void alive::on_choke(const events::choke& event) {
         context<master_t>().id().c_str()
     );
     
-    job->process_event(event);
+    job->process(event);
     job.reset();
     
     // Reset the heartbeat timer.    
@@ -250,14 +277,14 @@ void alive::on_choke(const events::choke& event) {
 }
 
 void busy::on_chunk(const events::chunk& event) {
-    job()->process_event(event);
+    job()->process(event);
     
     // Reset the heartbeat timer.    
     post_event(events::heartbeat());
 }
 
 void busy::on_error(const events::error& event) {
-    job()->process_event(event);
+    job()->process(event);
     
     // Reset the heartbeat timer.    
     post_event(events::heartbeat());

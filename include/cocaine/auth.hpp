@@ -48,7 +48,11 @@ class auth_t:
 
         EVP_MD_CTX * m_context;
 
+#if BOOST_VERSION >= 103600
+        typedef boost::unordered_map<
+#else
         typedef std::map<
+#endif
             const std::string,
             EVP_PKEY*
         > key_map_t;

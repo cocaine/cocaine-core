@@ -46,6 +46,7 @@ namespace cocaine {
 
         // Job execution engine.
         class engine_t;
+        class master_t;
         
         // Job abstraction.
         struct job_t;

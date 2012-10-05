@@ -40,8 +40,7 @@ namespace rpc {
         typedef core_tag tag;
         
         typedef boost::tuple<
-            const std::string&,
-            zmq::message_t&
+            const std::string&
         > tuple_type;
     };
 
@@ -81,60 +80,6 @@ namespace io {
     };
 }
 
-/*
-
-// Specific packers
-// ----------------
-
-template<>
-struct command<rpc::invoke>:
-    public event_traits<rpc::invoke>::tuple_type
-{
-    command(const std::string& event, const void * data, size_t size):
-        event_traits<rpc::invoke>::tuple_type(event, message),
-        message(size)
-    {
-        memcpy(
-            message.data(),
-            data,
-            size
-        );
-    }
-
-private:
-    zmq::message_t message;
-};
-
-template<>
-struct command<rpc::chunk>:
-    public event_traits<rpc::chunk>::tuple_type
-{
-    command(const void * data, size_t size):
-        event_traits<rpc::chunk>::tuple_type(message),
-        message(size)
-    {
-        memcpy(
-            message.data(),
-            data,
-            size
-        );
-    }
-
-private:
-    zmq::message_t message;
-};
-
-template<>
-struct command<rpc::error>:
-    public event_traits<rpc::error>::tuple_type
-{
-    command(int code, const std::string& message):
-        event_traits<rpc::error>::tuple_type(code, message)
-    { }
-};
-
-*/
-    
 } // namespace cocaine
 
 #endif

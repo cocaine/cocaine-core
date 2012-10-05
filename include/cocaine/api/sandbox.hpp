@@ -28,9 +28,6 @@
 
 namespace cocaine { namespace api {
 
-// Sandbox I/O
-// -----------
-
 struct io_t {
     virtual
     std::string
@@ -41,9 +38,6 @@ struct io_t {
     write(const void * data,
           size_t size) = 0;
 };
-
-// Sandbox interface
-// -----------------
 
 class sandbox_t:
     public boost::noncopyable
@@ -60,17 +54,17 @@ class sandbox_t:
                io_t& io) = 0;
 
     protected:
-        sandbox_t(context_t& context, const manifest_t&, const std::string& /* spool */):
-            m_context(context)
-        { }
-
-    private:
-        context_t& m_context;
+        sandbox_t(context_t& context,
+                  const manifest_t&,
+                  const std::string& /* spool */)
+        {
+           // Empty. 
+        }
 };
 
 template<>
 struct category_traits<api::sandbox_t> {
-    typedef std::auto_ptr<api::sandbox_t> ptr_type;
+    typedef std::unique_ptr<api::sandbox_t> ptr_type;
 
     typedef boost::tuple<
         const manifest_t&,

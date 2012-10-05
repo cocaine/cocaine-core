@@ -96,6 +96,7 @@ slave_t::slave_t(context_t& context, slave_config_t config):
         io::message<rpc::error> message(server_error, e.what());
         m_bus.send(m_name, message);
         terminate();
+        throw;
     } catch(...) {
         io::message<rpc::error> message(
             server_error,
@@ -104,6 +105,7 @@ slave_t::slave_t(context_t& context, slave_config_t config):
         
         m_bus.send(m_name, message);
         terminate();
+        throw;
     }
 }
 
@@ -114,26 +116,43 @@ void slave_t::run() {
 }
 
 std::string slave_t::read(int timeout) {
-    zmq::message_t message;
+    int command = 0;
+    zmq::message_t body;
 
+    boost::tuple<
+        io::ignore_t,
+        int&,
+        zmq::message_t*
+    > proxy(io::ignore_t(), command, &body);
+        
     {
         io::scoped_option<
             io::options::receive_timeout
-        > option(m_bus, timeout);
+        > option(m_bus, -1);
 
-        m_bus.recv(&message);
+        if(!m_bus.recv_tuple(proxy)) {
+            return std::string();
+        }
     }
 
+    // TEST: Ensure that we have the correct message type.
+    BOOST_ASSERT(command == io::get<rpc::chunk>::value);
+
     return std::string(
-        static_cast<const char*>(message.data()),
-        message.size()
+        static_cast<const char*>(body.data()),
+        body.size()
     );
 }
 
 void slave_t::write(const void * data, size_t size) {
     zmq::message_t body(size);
 
-    memcpy(body.data(), data, size);
+    memcpy(
+        body.data(),
+        data,
+        size
+    );
+    
     io::message<rpc::chunk> message(body);
 
     m_bus.send(m_name, message);
@@ -194,6 +213,11 @@ void slave_t::process() {
             break;
         }
         
+        case io::get<rpc::chunk>::value:
+            // NOTE: Drop outstanding chunks from the previous job.
+            m_bus.drop();
+            break;
+        
         case io::get<rpc::terminate>::value:
             terminate();
             break;
@@ -244,11 +268,8 @@ void slave_t::invoke(const std::string& event) {
     }
     
     m_bus.send(m_name, io::message<rpc::choke>());
-    
-    // NOTE: Drop all the outstanding request chunks not pulled
-    // in by the user code. Might have a warning here?
-    m_bus.drop();
-
+   
+    // Rearm the idle timer. 
     m_idle_timer.stop();
     m_idle_timer.start(m_profile->idle_timeout);
 

@@ -98,9 +98,12 @@ class storage_t:
                const std::string& key) = 0;
     
     protected:
-        storage_t(context_t& context, const std::string& /* name */, const Json::Value& /* args */):
-            m_context(context)
-        { }
+        storage_t(context_t& context,
+                  const std::string& /* name */,
+                  const Json::Value& /* args */)
+        {
+            // Empty.
+        }
 
         virtual
         std::string
@@ -112,9 +115,6 @@ class storage_t:
         write(const std::string& collection,
               const std::string& key,
               const std::string& blob) = 0;
-
-    private:
-        context_t& m_context;
 };
 
 template<>
@@ -146,14 +146,12 @@ struct category_traits<storage_t> {
             );
 
             if(it == m_instances.end()) {
-                boost::tie(it, boost::tuples::ignore) = m_instances.insert(
-                    std::make_pair(
+                boost::tie(it, boost::tuples::ignore) = m_instances.emplace(
+                    name,
+                    boost::make_shared<T>(
+                        boost::ref(context),
                         name,
-                        boost::make_shared<T>(
-                            boost::ref(context),
-                            name,
-                            boost::get<1>(args)
-                        )
+                        boost::get<1>(args)
                     )
                 );
             }
@@ -162,7 +160,11 @@ struct category_traits<storage_t> {
         }
 
     private:
+#if BOOST_VERSION >= 103600
+        typedef boost::unordered_map<
+#else
         typedef std::map<
+#endif
             std::string,
             ptr_type
         > instance_map_t;

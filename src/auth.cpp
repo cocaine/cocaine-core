@@ -64,7 +64,7 @@ auth_t::auth_t(context_t& context):
         pkey = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
             
         if(pkey != NULL) {
-            m_keys.insert(std::make_pair(identity, pkey));
+            m_keys.emplace(identity, pkey);
         } else { 
             m_log->error("key for user '%s' is invalid - %s",
                 identity.c_str(), 

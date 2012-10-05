@@ -24,7 +24,6 @@
 #include <boost/thread/condition.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/thread.hpp>
-
 #include <deque>
 
 #ifdef HAVE_CGROUPS
@@ -44,13 +43,13 @@
 
 namespace cocaine { namespace engine {
 
-#if BOOST_VERSION >= 104000
-typedef boost::ptr_unordered_map<
+#if BOOST_VERSION >= 103600
+typedef boost::unordered_map<
 #else
-typedef boost::ptr_map<
+typedef std::map<
 #endif
-    master_t::identifier_type,
-    master_t
+    std::string,
+    boost::shared_ptr<master_t>
 > pool_map_t;
 
 class job_queue_t:
@@ -90,6 +89,10 @@ class engine_t:
             return m_loop;
         }
 
+        io::channel_t& bus() {
+            return *m_bus;
+        }
+
 #ifdef HAVE_CGROUPS
         cgroup* group() {
             return m_cgroup;
@@ -104,8 +107,8 @@ class engine_t:
         void notify(ev::async&, int);
 
         void process();
-        
         void pump();
+        
         void shutdown();
 
     private:

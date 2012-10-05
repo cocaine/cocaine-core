@@ -130,7 +130,7 @@ repository_t::open(const std::string& target) {
         if(initialize) {
             try {
                 initialize(*this);
-                m_plugins.push_back(plugin);
+                m_plugins.emplace_back(plugin);
                 return;
             } catch(const std::exception& e) {
                 m_log->error(

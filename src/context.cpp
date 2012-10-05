@@ -119,11 +119,9 @@ config_t::config_t(const std::string& path):
             root["components"][*it]["args"]
         };
 
-        components.insert(
-            std::make_pair(
-                *it,
-                info
-            )
+        components.emplace(
+            *it,
+            info
         );
     }
 
@@ -189,13 +187,11 @@ context_t::log(const std::string& name) {
     );
 
     if(it == m_instances.end()) {
-        boost::tie(it, boost::tuples::ignore) = m_instances.insert(
-            std::make_pair(
-                name,
-                boost::make_shared<logging::logger_t>(
-                    *m_sink,
-                    name
-                )
+        boost::tie(it, boost::tuples::ignore) = m_instances.emplace(
+            name,
+            boost::make_shared<logging::logger_t>(
+                *m_sink,
+                name
             )
         );
     }

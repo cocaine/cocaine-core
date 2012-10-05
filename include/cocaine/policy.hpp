@@ -35,7 +35,9 @@ struct policy_t {
         deadline(0.0f)
     { }
 
-    policy_t(bool urgent_, double timeout_, double deadline_):
+    policy_t(bool urgent_,
+             double timeout_,
+             double deadline_):
         urgent(urgent_),
         timeout(timeout_),
         deadline(deadline_)

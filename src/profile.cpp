@@ -29,7 +29,7 @@ profile_t::profile_t(context_t& context, const std::string& name_):
     const Json::Value cache(object());
 
     // Engine profile.
-    startup_timeout = cache["engine"].get(
+    startup_timeout = cache.get(
         "startup-timeout",
         defaults::startup_timeout
     ).asDouble();
@@ -38,7 +38,7 @@ profile_t::profile_t(context_t& context, const std::string& name_):
         throw configuration_error_t("slave startup timeout must be positive");
     }
     
-    heartbeat_timeout = cache["engine"].get(
+    heartbeat_timeout = cache.get(
         "heartbeat-timeout",
         defaults::heartbeat_timeout
     ).asDouble();
@@ -47,7 +47,7 @@ profile_t::profile_t(context_t& context, const std::string& name_):
         throw configuration_error_t("slave heartbeat timeout must be positive");
     }
 
-    idle_timeout = cache["engine"].get(
+    idle_timeout = cache.get(
         "idle-timeout",
         defaults::idle_timeout
     ).asDouble();
@@ -56,12 +56,12 @@ profile_t::profile_t(context_t& context, const std::string& name_):
         throw configuration_error_t("slave idle timeout must be positive");
     }
 
-    termination_timeout = cache["engine"].get(
+    termination_timeout = cache.get(
         "termination-timeout",
         defaults::termination_timeout
     ).asDouble();
         
-    pool_limit = cache["engine"].get(
+    pool_limit = cache.get(
         "pool-limit",
         static_cast<Json::UInt>(defaults::pool_limit)
     ).asUInt();
@@ -70,12 +70,12 @@ profile_t::profile_t(context_t& context, const std::string& name_):
         throw configuration_error_t("engine pool limit must be positive");
     }
 
-    queue_limit = cache["engine"].get(
+    queue_limit = cache.get(
         "queue-limit",
         static_cast<Json::UInt>(defaults::queue_limit)
     ).asUInt();
 
-    grow_threshold = cache["engine"].get(
+    grow_threshold = cache.get(
         "grow-threshold",
         static_cast<Json::UInt>(queue_limit / pool_limit)
     ).asUInt();

@@ -71,6 +71,8 @@ class master_t:
         
         bool operator==(const master_t& other) const;
 
+        void push(const std::string& chunk);
+
     private:
         void spawn();
 

@@ -50,19 +50,22 @@ class driver_t:
         }
 
     protected:
-        driver_t(context_t& context, engine::engine_t& engine, const std::string& /* name */, const Json::Value& /* args */):
-            m_context(context),
+        driver_t(context_t& context,
+                 engine::engine_t& engine,
+                 const std::string& /* name */,
+                 const Json::Value& /* args */):
             m_engine(engine)
-        { }
+        {
+            // Empty.
+        }
         
     private:
-        context_t& m_context;
         engine::engine_t& m_engine;
 };
 
 template<>
 struct category_traits<api::driver_t> {
-    typedef std::auto_ptr<api::driver_t> ptr_type;
+    typedef std::unique_ptr<api::driver_t> ptr_type;
 
     typedef boost::tuple<
         engine::engine_t&,

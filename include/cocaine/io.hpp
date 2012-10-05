@@ -92,6 +92,13 @@ struct raw_traits<std::string> {
     }
 };
 
+// Message part placeholder
+// ------------------------
+
+struct ignore_t { 
+    // Empty type.
+};
+
 // ZeroMQ socket wrapper
 // ---------------------
 
@@ -228,7 +235,20 @@ class socket_t:
         
             return true;
         }
-                
+
+        bool
+        recv(ignore_t,
+             int flags = 0)
+        {
+            zmq::message_t message;
+
+            if(!recv(&message, flags)) {
+                return false;
+            }
+
+            return true;
+        }
+
         bool
         recv_tuple(const null_type&,
                    int __attribute__ ((unused)) flags = 0) const

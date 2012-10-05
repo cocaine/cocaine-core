@@ -21,13 +21,9 @@
 #ifndef COCAINE_JOB_HPP
 #define COCAINE_JOB_HPP
 
-#include <boost/statechart/state_machine.hpp>
-#include <boost/statechart/simple_state.hpp>
-#include <boost/statechart/in_state_reaction.hpp>
-#include <boost/statechart/transition.hpp>
+#include <boost/thread/recursive_mutex.hpp>
 
 #include "cocaine/common.hpp"
-
 #include "cocaine/events.hpp"
 #include "cocaine/policy.hpp"
 
@@ -35,80 +31,89 @@
 
 namespace cocaine { namespace engine {
 
-namespace sc = boost::statechart;
-
-// Job states
-// ----------
-
-namespace job {
-    struct incomplete;
-        struct unknown;
-        struct processing;
-    struct complete;
-}
-
-// Job FSM
-// -------
-
 struct job_t:
-    public sc::state_machine<job_t, job::incomplete>,
     public birth_control<job_t>
 {
-    job_t(const std::string& event);
+    struct lock_t {
+        lock_t(job_t& job):
+            lock(job.mutex)
+        { }
 
-    job_t(const std::string& event,
-          const std::string& request);
+    private:
+        boost::unique_lock<boost::recursive_mutex> lock;
+    };
+
+    typedef std::vector<
+        std::string
+    > chunk_list_t;
+
+public:
+    job_t(const std::string& event);
 
     job_t(const std::string& event,
           policy_t policy);
     
-    job_t(const std::string& event,
-          const std::string& request,
-          policy_t policy); 
+    virtual
+    ~job_t();
 
-    virtual ~job_t();
+    void
+    push(const std::string& chunk);
 
-    virtual void react(const events::chunk& ) { }
-    virtual void react(const events::error& ) { }
-    virtual void react(const events::choke& ) { }
-
-    const std::string event,
-                      request;
+public:
+    void
+    process(const events::invoke&);
     
+    void
+    process(const events::chunk&);
+    
+    void
+    process(const events::error&);
+    
+    void
+    process(const events::choke&);
+    
+public:
+    virtual
+    void
+    react(const events::chunk&) { }
+    
+    virtual
+    void
+    react(const events::error&) { }
+    
+    virtual
+    void
+    react(const events::choke&) { }
+
+public:
+    size_t
+    size() const;
+
+    const chunk_list_t&
+    chunks() const;
+
+public:
+    enum {
+        unknown,
+        processing,
+        complete
+    } state;
+
+    // Wrapped event type.
+    const std::string event;
+    
+    // Execution policy.
     const policy_t policy;
+
+private:
+    boost::recursive_mutex mutex;
+    
+    // Request chunk cache.
+    chunk_list_t cache;
+
+    // Weak reference to job's master.
+    boost::weak_ptr<master_t> master;
 };
-
-namespace job {
-    struct incomplete:
-        public sc::simple_state<incomplete, job_t, unknown>
-    {
-        typedef boost::mpl::list<
-            sc::transition<events::error, complete, job_t, &job_t::react>
-        > reactions;
-    };
-
-    struct unknown:
-        public sc::simple_state<unknown, incomplete>
-    {
-        typedef boost::mpl::list<
-            sc::transition<events::invoke, processing>
-        > reactions;
-    };
-
-    struct processing:
-        public sc::simple_state<processing, incomplete>
-    {
-        typedef boost::mpl::list<
-            sc::in_state_reaction<events::chunk, job_t, &job_t::react>,
-            sc::transition<events::choke, complete, job_t, &job_t::react>,
-            sc::transition<events::invoke, processing>
-        > reactions;
-    };
-
-    struct complete:
-        public sc::simple_state<complete, job_t>
-    { };
-}
 
 }} // namespace cocaine::engine
 

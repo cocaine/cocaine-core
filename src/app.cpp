@@ -90,7 +90,7 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
         try {
             format % name % *it;
 
-            m_drivers.insert(
+            m_drivers.emplace(
                 *it,
                 m_context.get<api::driver_t>(
                     drivers[*it]["type"].asString(),

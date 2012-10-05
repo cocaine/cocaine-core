@@ -76,14 +76,13 @@ class slave_t:
         context_t& m_context;
         boost::shared_ptr<logging::logger_t> m_log;
 
-        // The app.
         const std::string m_name;
 
         std::unique_ptr<const manifest_t> m_manifest;
         std::unique_ptr<const profile_t> m_profile;
 
-        // DEPRECATED: In order to support API interface.
-        std::auto_ptr<api::sandbox_t> m_sandbox;
+        // The app.
+        std::unique_ptr<api::sandbox_t> m_sandbox;
 
         // Event loop.
         ev::default_loop m_loop;
