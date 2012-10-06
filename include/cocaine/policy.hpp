@@ -31,7 +31,7 @@ namespace cocaine { namespace engine {
 struct policy_t {
     policy_t():
         urgent(false),
-        timeout(3.0f),
+        timeout(0.0f),
         deadline(0.0f)
     { }
 
