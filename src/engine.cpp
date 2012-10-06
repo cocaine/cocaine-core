@@ -36,7 +36,8 @@ using namespace cocaine::engine;
 // Job queue
 // ---------
 
-void job_queue_t::push(const_reference job) {
+void
+job_queue_t::push(const_reference job) {
     if(job->policy.urgent) {
         emplace_front(job);
     } else {
@@ -51,7 +52,8 @@ namespace { namespace select {
     template<class State>
     struct state {
         template<class T>
-        bool operator()(const T& master) const {
+        bool
+        operator()(const T& master) const {
             return master.second->template state_downcast<const State*>();
         }
     };
@@ -62,7 +64,8 @@ namespace { namespace select {
         { }
 
         template<class T>
-        bool operator()(const T& master) const {
+        bool
+        operator()(const T& master) const {
             return *master.second == target;
         }
     
@@ -83,10 +86,12 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest, const profile
     m_manifest(manifest),
     m_profile(profile),
     m_state(stopped),
-    m_thread(NULL),
     m_bus(new io::channel_t(context, m_manifest.name)),
-    m_watcher(m_loop),
-    m_checker(m_loop),
+    m_control(new io::channel_t(context, "engine")),
+    m_bus_watcher(m_loop),
+    m_ctl_watcher(m_loop),
+    m_bus_checker(m_loop),
+    m_ctl_checker(m_loop),
     m_gc_timer(m_loop),
     m_termination_timer(m_loop),
     m_notification(m_loop)
@@ -94,10 +99,6 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest, const profile
     , m_cgroup(NULL)
 #endif
 {
-    int linger = 0;
-
-    m_bus->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
-
     std::string endpoint(
         (boost::format("ipc://%1%/%2%")
             % m_context.config.ipc_path
@@ -111,13 +112,26 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest, const profile
         boost::format message("invalid rpc endpoint - %s");
         throw configuration_error_t((message % e.what()).str());
     }
+   
+    try {
+        m_control->connect(
+            (boost::format("inproc://%s") % m_manifest.name).str()
+        );
+    } catch(const zmq::error_t& e) {
+        boost::format message("unable to connect to the engine control channel - %s");
+        throw configuration_error_t((message % e.what()).str());
+    }
     
-    m_watcher.set<engine_t, &engine_t::message>(this);
-    m_watcher.start(m_bus->fd(), ev::READ);
-    m_checker.set<engine_t, &engine_t::check>(this);
-    m_checker.start();
+    m_bus_watcher.set<engine_t, &engine_t::bus_event>(this);
+    m_bus_watcher.start(m_bus->fd(), ev::READ);
+    m_bus_checker.set<engine_t, &engine_t::bus_check>(this);
+    m_bus_checker.start();
 
-
+    m_ctl_watcher.set<engine_t, &engine_t::ctl_event>(this);
+    m_ctl_watcher.start(m_control->fd(), ev::READ);
+    m_ctl_checker.set<engine_t, &engine_t::ctl_check>(this);
+    m_ctl_checker.start();
+    
     m_gc_timer.set<engine_t, &engine_t::cleanup>(this);
     m_gc_timer.start(5.0f, 5.0f);
 
@@ -204,8 +218,6 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest, const profile
 }
 
 engine_t::~engine_t() {
-    stop();
-
 #ifdef HAVE_CGROUPS
     if(m_cgroup) {
         int rv = 0;
@@ -222,85 +234,16 @@ engine_t::~engine_t() {
 #endif
 }
 
-// Operations
-// ----------
-
-void engine_t::start() {
-    {
-        boost::unique_lock<boost::mutex> lock(m_mutex);
-        
-        if(m_state == stopped) {
-            m_log->info("starting");
-            m_state = running;
-        }
-    }
-
-    m_thread.reset(
-        new boost::thread(
-            boost::bind(
-                &ev::dynamic_loop::loop,
-                boost::ref(m_loop),
-                0
-            )
-        )
-    );
+void
+engine_t::run() {
+    m_state = running;
+    m_loop.loop();
 }
 
-void engine_t::stop() {
-    {
-        boost::unique_lock<boost::mutex> lock(m_mutex);
-
-        if(m_state == running) {
-            m_log->info("stopping");
-            shutdown();
-        }
-    }
-
-    if(m_thread.get()) {
-        m_log->debug("reaping the engine thread");
-        
-        // Wait for the termination.
-        m_thread->join();
-        m_thread.reset();
-    }
-}
-
-namespace {
-    static std::map<int, std::string> state_names = boost::assign::map_list_of
-        (0, "running")
-        (1, "stopping")
-        (2, "stopped");
-}
-
-Json::Value engine_t::info() const {
-    boost::unique_lock<boost::mutex> lock(m_mutex);
-    
-    Json::Value results(Json::objectValue);
-
-    if(m_state == running) {
-        results["queue-depth"] = static_cast<Json::UInt>(m_queue.size());
-
-        results["slaves"]["total"] = static_cast<Json::UInt>(m_pool.size());
-
-        results["slaves"]["busy"] = static_cast<Json::UInt>(
-            std::count_if(
-                m_pool.begin(),
-                m_pool.end(),
-                select::state<slave::busy>()
-            )
-        );
-    }
-
-    results["profile"] = m_profile.name;
-    results["state"] = state_names[m_state];
-    
-    return results;
-}
-
-// Job scheduling
-// --------------
-
-bool engine_t::enqueue(job_queue_t::const_reference job, mode::value mode) {
+bool
+engine_t::enqueue(job_queue_t::const_reference job,
+                  mode::value mode)
+{
     if(m_state != running) {
         m_log->debug(
             "dropping an incomplete '%s' job due to an inactive engine",
@@ -314,41 +257,43 @@ bool engine_t::enqueue(job_queue_t::const_reference job, mode::value mode) {
             )
         );
 
+        job->process(events::choke());
+
         return false;
     }
 
-    {
-        boost::unique_lock<boost::mutex> queue_lock(m_queue_mutex);
-    
-        if(m_queue.size() < m_profile.queue_limit) {
-            m_queue.push(job);
-        } else {
-            switch(mode) {
-                case mode::normal:
-                    // Release the lock, as it's not needed anymore.
-                    queue_lock.unlock();
+    boost::unique_lock<boost::mutex> queue_lock(m_queue_mutex);
 
-                    m_log->debug(
-                        "dropping an incomplete '%s' job due to a full queue",
-                        job->event.c_str()
-                    );
+    if(m_queue.size() < m_profile.queue_limit) {
+        m_queue.push(job);
+    } else {
+        switch(mode) {
+            case mode::normal:
+                // Release the lock, as it's not needed anymore.
+                queue_lock.unlock();
 
-                    job->process(
-                        events::error(
-                            resource_error,
-                            "the queue is full"
-                        )
-                    );
+                m_log->debug(
+                    "dropping an incomplete '%s' job due to a full queue",
+                    job->event.c_str()
+                );
 
-                    return false;
+                job->process(
+                    events::error(
+                        resource_error,
+                        "the queue is full"
+                    )
+                );
 
-                case mode::blocking:
-                    while(m_queue.size() >= m_profile.queue_limit) {
-                        m_queue_condition.wait(queue_lock);
-                    }
+                job->process(events::choke());
+                
+                return false;
 
-                    m_queue.push(job);
-            }
+            case mode::blocking:
+                while(m_queue.size() >= m_profile.queue_limit) {
+                    m_queue_condition.wait(queue_lock);
+                }
+
+                m_queue.push(job);
         }
     }
     
@@ -358,10 +303,8 @@ bool engine_t::enqueue(job_queue_t::const_reference job, mode::value mode) {
     return true;
 }
 
-// Slave I/O
-// ---------
-
-void engine_t::message(ev::io&, int) {
+void
+engine_t::bus_event(ev::io&, int) {
     if(m_bus->pending()) {
         process();
     }
@@ -369,18 +312,183 @@ void engine_t::message(ev::io&, int) {
     pump();
 }
 
-void engine_t::check(ev::prepare&, int) {
+void
+engine_t::bus_check(ev::prepare&, int) {
     m_loop.feed_fd_event(m_bus->fd(), ev::READ);
 }
 
-void engine_t::process() {
+namespace {
+    static std::map<int, std::string> state_names = boost::assign::map_list_of
+        (0, "running")
+        (1, "stopping")
+        (2, "stopped");
+}
+
+void
+engine_t::ctl_event(ev::io&, int) {
+    m_ctl_checker.stop();
+
+    if(m_control->pending()) {
+        m_ctl_checker.start();
+        
+        int command = 0;
+
+        boost::tuple<
+            const io::ignore_t&,
+            int&
+        > proxy(io::ignore_t(), command);
+ 
+        if(!m_control->recv_tuple(proxy)) {
+            m_log->error("received a corrupted control message");
+            m_control->drop();
+            return;
+        }
+
+        switch(command) {
+            case io::get<control::status>::value: {
+                Json::Value info(Json::objectValue);
+
+                info["queue-depth"] = static_cast<Json::LargestUInt>(m_queue.size());
+
+                info["slaves"]["total"] = static_cast<Json::LargestUInt>(m_pool.size());
+
+                info["slaves"]["busy"] = static_cast<Json::LargestUInt>(
+                    std::count_if(
+                        m_pool.begin(),
+                        m_pool.end(),
+                        select::state<slave::busy>()
+                    )
+                );
+
+                info["state"] = state_names[m_state];
+
+                m_control->send(
+                    io::protect(std::string("parent")),
+                    ZMQ_SNDMORE
+                );
+                
+                m_control->send(
+                    info
+                );
+                
+                break;
+            }
+
+            case io::get<control::terminate>::value:
+                shutdown();
+                break;
+
+            default:
+                m_log->error(
+                    "received an unknown control message, code: %d",
+                    command
+                );
+
+                m_control->drop();
+        }
+    }
+}
+
+void
+engine_t::ctl_check(ev::prepare&, int) {
+    m_loop.feed_fd_event(m_control->fd(), ev::READ);
+}
+
+namespace {
+    struct expired_t {
+        expired_t(ev::tstamp now_):
+            now(now_)
+        { }
+
+        template<class T>
+        bool
+        operator()(const T& job) {
+            return job->policy.deadline && job->policy.deadline <= now;
+        }
+
+        ev::tstamp now;
+    };
+}
+
+void
+engine_t::cleanup(ev::timer&, int) {
+    typedef std::vector<
+        pool_map_t::key_type
+    > corpse_list_t;
+    
+    corpse_list_t corpses;
+
+    for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
+        if(it->second->state_downcast<const slave::dead*>()) {
+            corpses.emplace_back(it->first);
+        }
+    }
+
+    if(!corpses.empty()) {
+        for(corpse_list_t::iterator it = corpses.begin();
+            it != corpses.end();
+            ++it)
+        {
+            m_pool.erase(*it);
+        }
+
+        m_log->debug(
+            "recycled %zu dead %s", 
+            corpses.size(),
+            corpses.size() == 1 ? "slave" : "slaves"
+        );
+    }
+
+    typedef boost::filter_iterator<
+        expired_t,
+        job_queue_t::iterator
+    > filter_t;
+    
+    boost::unique_lock<boost::mutex> queue_lock(m_queue_mutex);
+
+    // Process all the expired jobs.
+    filter_t it(expired_t(m_loop.now()), m_queue.begin(), m_queue.end()),
+             end(expired_t(m_loop.now()), m_queue.end(), m_queue.end());
+
+    while(it != end) {
+        boost::shared_ptr<job_t>& job(*it);
+
+        m_log->debug(
+            "the '%s' job has expired",
+            job->event.c_str()
+        );
+
+        job->process(
+            events::error(
+                deadline_error,
+                "the job has expired"
+            )
+        );
+        
+        job->process(events::choke());
+
+        ++it;
+    }
+}
+
+void
+engine_t::terminate(ev::timer&, int) {
+    m_log->warning("forcing engine termination");
+    clear();
+}
+
+void
+engine_t::notify(ev::async&, int) {
+    pump();
+}
+
+void
+engine_t::process() {
     // NOTE: Try to read RPC calls in bulk, where the maximum size
     // of the bulk is proportional to the number of spawned slaves.
     int counter = m_pool.size() * defaults::io_bulk_size;
     
     do {
-        boost::unique_lock<boost::mutex> lock(m_mutex);
-
         // TEST: Ensure that we haven't missed something in a previous iteration.
         BOOST_ASSERT(!m_bus->more());
     
@@ -461,18 +569,18 @@ void engine_t::process() {
 
                 if(m_state == stopping && m_pool.empty()) {
                     // If it was the last slave, shut the engine down.
-                    m_state = stopped;
-                    m_notification.send();
+                    clear();
                     return;
                 }
 
                 continue;
 
             case io::get<rpc::chunk>::value: {
+                zmq::message_t message;
+                
                 // TEST: Ensure we have the actual chunk following.
                 BOOST_ASSERT(m_bus->more());
 
-                zmq::message_t message;
                 m_bus->recv(&message);
                 
                 master->second->process_event(events::chunk(message));
@@ -481,9 +589,6 @@ void engine_t::process() {
             }
          
             case io::get<rpc::error>::value: {
-                // TEST: Ensure that we have the actual error following.
-                BOOST_ASSERT(m_bus->more());
-
                 int code = 0;
                 std::string message;
 
@@ -491,6 +596,9 @@ void engine_t::process() {
                     int&,
                     std::string&
                 > proxy(code, message);
+
+                // TEST: Ensure that we have the actual error following.
+                BOOST_ASSERT(m_bus->more());
 
                 m_bus->recv_tuple(proxy);
 
@@ -521,126 +629,8 @@ void engine_t::process() {
     } while(--counter);
 }
 
-// Garbage collection
-// ------------------
-
-namespace {
-    struct expired_t {
-        expired_t(ev::tstamp now_):
-            now(now_)
-        { }
-
-        template<class T>
-        bool operator()(const T& job) {
-            return job->policy.deadline && job->policy.deadline <= now;
-        }
-
-        ev::tstamp now;
-    };
-}
-
-void engine_t::cleanup(ev::timer&, int) {
-    typedef std::vector<pool_map_t::key_type> corpse_list_t;
-    corpse_list_t corpses;
-
-    boost::unique_lock<boost::mutex> lock(m_mutex);
-
-    for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
-        if(it->second->state_downcast<const slave::dead*>()) {
-            corpses.emplace_back(it->first);
-        }
-    }
-
-    if(!corpses.empty()) {
-        for(corpse_list_t::iterator it = corpses.begin();
-            it != corpses.end();
-            ++it)
-        {
-            m_pool.erase(*it);
-        }
-
-        m_log->debug(
-            "recycled %zu dead %s", 
-            corpses.size(),
-            corpses.size() == 1 ? "slave" : "slaves"
-        );
-    }
-
-    boost::unique_lock<boost::mutex> queue_lock(m_queue_mutex);
-
-    typedef boost::filter_iterator<
-        expired_t,
-        job_queue_t::iterator
-    > filter;
-
-    // Process all the expired jobs.
-    filter it(expired_t(m_loop.now()), m_queue.begin(), m_queue.end()),
-           end(expired_t(m_loop.now()), m_queue.end(), m_queue.end());
-
-    while(it != end) {
-        m_log->debug(
-            "the '%s' job has expired",
-            (*it)->event.c_str()
-        );
-
-        (*it++)->process(
-            events::error(
-                deadline_error,
-                "the job has expired"
-            )
-        );
-    }
-}
-
-// Forced engine termination
-// -------------------------
-
-void engine_t::terminate(ev::timer&, int) {
-    boost::unique_lock<boost::mutex> lock(m_mutex);
-
-    m_log->warning("forcing engine termination");
-
-    // Force slave termination.
-    m_state = stopped;
-    m_notification.send();
-}
-
-// Asynchronous notification
-// -------------------------
-
-namespace {
-    struct terminate_t {
-        template<class T>
-        void operator()(const T& master) {
-            master.second->process_event(events::terminate());
-        }
-    };
-}
-
-void engine_t::notify(ev::async&, int) {
-    boost::unique_lock<boost::mutex> lock(m_mutex);
-
-    switch(m_state) {
-        case running:
-            pump();
-            break;
-        
-        case stopping:
-            m_termination_timer.set<engine_t, &engine_t::terminate>(this);
-            m_termination_timer.start(m_profile.termination_timeout); 
-            break;
-
-        case stopped:
-            std::for_each(m_pool.begin(), m_pool.end(), terminate_t());
-            m_loop.unloop(ev::ALL);
-            break;
-    };
-}
-
-// Queue processing
-// ----------------
-
-void engine_t::pump() {
+void
+engine_t::pump() {
     while(!m_queue.empty()) {
         // NOTE: If we got an idle slave, then we're lucky and got an instant scheduling;
         // if not, try to spawn more slaves and wait.
@@ -776,10 +766,10 @@ void engine_t::pump() {
     }
 }
 
-// Engine termination
-// ------------------
+void
+engine_t::shutdown() {
+    m_state = stopping;
 
-void engine_t::shutdown() {
     {
         boost::unique_lock<boost::mutex> queue_lock(m_queue_mutex);
 
@@ -798,6 +788,8 @@ void engine_t::shutdown() {
                         "engine is shutting down"
                     )
                 );
+
+                m_queue.front()->process(events::choke());
 
                 m_queue.pop_front();
             }
@@ -832,18 +824,41 @@ void engine_t::shutdown() {
     }
 
     if(pending) {
-        m_state = stopping;
-
         m_log->info(
             "waiting for %d active %s to terminate, timeout: %.02f seconds",
             pending,
             pending == 1 ? "slave" : "slaves",
             m_profile.termination_timeout
         );
+        
+        m_termination_timer.set<engine_t, &engine_t::terminate>(this);
+        m_termination_timer.start(m_profile.termination_timeout); 
     } else {
-        m_state = stopped;
+        clear();
     }    
-    
-    m_notification.send();
 }
 
+namespace {
+    struct terminate_t {
+        template<class T>
+        void
+        operator()(const T& master) {
+            master.second->process_event(events::terminate());
+        }
+    };
+}
+
+void
+engine_t::clear() {
+    // Force slave termination.
+    std::for_each(
+        m_pool.begin(),
+        m_pool.end(),
+        terminate_t()
+    );
+    
+    m_pool.clear();
+    m_loop.unloop(ev::ALL);
+    
+    m_state = stopped;
+}

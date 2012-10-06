@@ -21,6 +21,8 @@
 #ifndef COCAINE_APP_HPP
 #define COCAINE_APP_HPP
 
+#include <boost/thread/thread.hpp>
+
 #include "cocaine/common.hpp"
 #include "cocaine/manifest.hpp"
 #include "cocaine/profile.hpp"
@@ -67,7 +69,9 @@ class app_t {
         const profile_t m_profile;
 
         // Execution engine.
+        std::unique_ptr<io::channel_t> m_control;
         std::unique_ptr<engine::engine_t> m_engine;
+        std::unique_ptr<boost::thread> m_thread;
 
 #if BOOST_VERSION >= 103600
         typedef boost::unordered_map<

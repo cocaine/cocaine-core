@@ -66,6 +66,18 @@ namespace rpc {
     };
 }
 
+namespace control {
+    struct control_plane_tag;
+
+    struct status {
+        typedef control_plane_tag tag;
+    };
+
+    struct terminate {
+        typedef control_plane_tag tag;
+    };
+}
+
 namespace io {
     template<>
     struct dispatch<rpc::core_tag> {
@@ -76,6 +88,14 @@ namespace io {
             rpc::chunk,
             rpc::error,
             rpc::choke
+        >::type category;
+    };
+
+    template<>
+    struct dispatch<control::control_plane_tag> {
+        typedef boost::mpl::list<
+            control::status,
+            control::terminate
         >::type category;
     };
 }

@@ -29,6 +29,7 @@
 #include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/logging.hpp"
+#include "cocaine/rpc.hpp"
 
 using namespace cocaine;
 using namespace cocaine::engine;
@@ -49,9 +50,21 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
         fs::path(m_context.config.spool_path) / name
     );
     
-    // Checking if the app files are deployed.
     if(!fs::exists(path)) {
         deploy(name, path.string());
+    }
+
+    m_control.reset(
+        new io::channel_t(context, "parent")
+    );
+
+    try { 
+        m_control->bind(
+            (boost::format("inproc://%s") % m_manifest.name).str()
+        );
+    } catch(const zmq::error_t& e) {
+        boost::format message("unable to bind the engine control channel - %s");
+        throw configuration_error_t((message % e.what()).str());
     }
 
     // NOTE: The event loop is not started here yet.
@@ -124,17 +137,64 @@ app_t::~app_t() {
 
 void
 app_t::start() {
-    m_engine->start();
+    if(m_thread) {
+        return;
+    }
+
+    m_thread.reset(
+        new boost::thread(
+            boost::bind(
+                &engine_t::run,
+                boost::ref(*m_engine)
+            )
+        )
+    );
 }
 
 void
 app_t::stop() {
-    m_engine->stop();
+    if(!m_thread) {
+        return;
+    }
+
+    m_control->send(
+        "engine",
+        io::message<control::terminate>()
+    );
+
+    m_thread->join();
+    m_thread.reset();
 }
 
 Json::Value
 app_t::info() const {
-    Json::Value info(m_engine->info());
+    Json::Value info(Json::objectValue);
+
+    if(!m_thread) {
+        info["error"] = "engine is not active";
+        return info;
+    }
+
+    m_control->send(
+        "engine",
+        io::message<control::status>()
+    );
+
+    boost::tuple<
+        const io::ignore_t&,
+        Json::Value&
+    > proxy(io::ignore_t(), info);
+    
+    {
+        io::scoped_option<
+            io::options::receive_timeout
+        > option(*m_control, 0.5f);
+
+        if(!m_control->recv_tuple(proxy)) {
+            info["error"] = "engine is not responsive";
+            return info;
+        }
+    }
 
     for(driver_map_t::const_iterator it = m_drivers.begin();
         it != m_drivers.end();

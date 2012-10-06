@@ -23,7 +23,6 @@
 
 #include <boost/thread/condition.hpp>
 #include <boost/thread/mutex.hpp>
-#include <boost/thread/thread.hpp>
 #include <deque>
 
 #ifdef HAVE_CGROUPS
@@ -35,11 +34,10 @@
 // Has to be included after common.h
 #include <ev++.h>
 
+#include "cocaine/io.hpp"
 #include "cocaine/manifest.hpp"
 #include "cocaine/master.hpp"
 #include "cocaine/profile.hpp"
-
-#include "cocaine/helpers/json.hpp"
 
 namespace cocaine { namespace engine {
 
@@ -74,42 +72,76 @@ class engine_t:
 
         ~engine_t();
 
-        // Operations.
-        void start();
-        void stop();
+        void
+        run();
 
-        Json::Value info() const;
-        
         // Job scheduling.
-        bool enqueue(job_queue_t::const_reference job,
-                     mode::value mode = mode::normal);
+        bool
+        enqueue(job_queue_t::const_reference job,
+                mode::value mode = mode::normal);
+
+        template<class T>
+        bool
+        send(const master_t& target,
+             const T& message)
+        {
+            // NOTE: Do a non-blocking send.
+            io::scoped_option<
+                io::options::send_timeout
+            > option(*m_bus, 0);
+            
+            return m_bus->send(
+                target.id(),
+                message
+            );
+        }
 
     public:
-        ev::loop_ref& loop() {
+        ev::loop_ref&
+        loop() {
             return m_loop;
         }
 
-        io::channel_t& bus() {
-            return *m_bus;
-        }
-
 #ifdef HAVE_CGROUPS
-        cgroup* group() {
+        cgroup*
+        group() {
             return m_cgroup;
         }
 #endif
 
     private:
-        void message(ev::io&, int);
-        void check(ev::prepare&, int);
-        void cleanup(ev::timer&, int);
-        void terminate(ev::timer&, int);
-        void notify(ev::async&, int);
-
-        void process();
-        void pump();
+        void
+        bus_event(ev::io&, int);
         
-        void shutdown();
+        void
+        ctl_event(ev::io&, int);
+
+        void
+        bus_check(ev::prepare&, int);
+        
+        void
+        ctl_check(ev::prepare&, int);
+
+        void
+        cleanup(ev::timer&, int);
+        
+        void
+        terminate(ev::timer&, int);
+        
+        void
+        notify(ev::async&, int);
+
+        void
+        process();
+        
+        void
+        pump();
+        
+        void
+        shutdown();
+        
+        void
+        clear();
 
     private:
         context_t& m_context;
@@ -124,19 +156,22 @@ class engine_t:
             stopped
         } m_state;
 
-        mutable boost::mutex m_mutex;
-        std::unique_ptr<boost::thread> m_thread;        
-        
-        // Slave RPC.
-        std::unique_ptr<io::channel_t> m_bus;
+        // I/O.
+        std::unique_ptr<io::channel_t> m_control,
+                                       m_bus;
 
         // Event loop.  
         ev::dynamic_loop m_loop;
 
-        ev::io m_watcher;
-        ev::prepare m_checker;
+        ev::io m_bus_watcher,
+               m_ctl_watcher;
+
+        ev::prepare m_bus_checker,
+                    m_ctl_checker;
+
         ev::timer m_gc_timer,
                   m_termination_timer;
+
         ev::async m_notification;
 
         // Job queue.
