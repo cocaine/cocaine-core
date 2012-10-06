@@ -57,10 +57,6 @@ public:
     ~job_t();
 
     void
-    push(const std::string& chunk);
-
-public:
-    void
     process(const events::invoke&);
     
     void
@@ -72,33 +68,34 @@ public:
     void
     process(const events::choke&);
     
+    void
+    push(const std::string& chunk);
+
 public:
     virtual
     void
-    react(const events::chunk&) { }
+    react(const events::chunk&) { };
     
     virtual
     void
-    react(const events::error&) { }
+    react(const events::error&) { };
     
     virtual
     void
-    react(const events::choke&) { }
+    react(const events::choke&) { };
 
 public:
     size_t
     size() const;
 
-    const chunk_list_t&
-    chunks() const;
-
 public:
     enum {
         unknown,
+        waiting,
         processing,
         complete
     } state;
-
+    
     // Wrapped event type.
     const std::string event;
     

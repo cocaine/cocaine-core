@@ -82,13 +82,8 @@ void master_t::push(const std::string& chunk_) {
         chunk
     );
 
-    // NOTE: Do a non-blocking send.
-    io::scoped_option<
-        io::options::send_timeout
-    > option(m_engine.bus(), 0);
-
-    m_engine.bus().send(
-        id(),
+    m_engine.send(
+        *this,
         message
     );
 }
@@ -125,7 +120,6 @@ void master_t::spawn() {
             "--slave:profile", m_profile.name.c_str(),
             "--slave:uuid",  id().c_str(),
             "--configuration", m_context.config.config_path.c_str(),
-            "--verbose",
             (char*)0
         );
 
@@ -224,6 +218,8 @@ void master_t::on_timeout(ev::timer&, int) {
                 "the job has timed out"
             )
         );
+
+        state->job()->process(events::choke());
     }
     
     process_event(events::terminate());
@@ -238,6 +234,7 @@ alive::~alive() {
             )
         );
 
+        job->process(events::choke());
         job.reset();
     }
 }

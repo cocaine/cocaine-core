@@ -42,13 +42,37 @@ job_t::~job_t() {
 }
 
 void
+job_t::push(const std::string& chunk) {
+    lock_t lock(*this);
+    
+    if(state == complete) {
+        throw std::runtime_error("job has been completed");
+    }
+
+    // NOTE: Put the new chunk into the cache (in case
+    // the job will be retried or if the job is not yet
+    // assigned to the slave). 
+    cache.push_back(chunk);
+
+    if(state == processing) {
+        boost::shared_ptr<master_t> owner(
+            master.lock()
+        );
+
+        // TEST: Orphan jobs is a bug.
+        BOOST_ASSERT(owner);
+
+        owner->push(chunk);
+    }
+}
+
+void
 job_t::process(const events::invoke& event) {
     lock_t lock(*this);
 
     // TEST: Jobs cannot be invoked when already completed.
     BOOST_ASSERT(state != complete);
 
-    // Mark as in process.
     state = processing;
     master = event.master;
 
@@ -56,11 +80,9 @@ job_t::process(const events::invoke& event) {
         master.lock()
     );
 
-    if(!owner) {
-        throw std::runtime_error("orphan job");
-    }
+    // TEST: Orphan jobs is a bug.
+    BOOST_ASSERT(owner);
 
-    // Push all the cached chunks into the process.
     for(chunk_list_t::const_iterator it = cache.begin();
         it != cache.end();
         ++it)
@@ -74,11 +96,10 @@ job_t::process(const events::chunk& event) {
     {
         lock_t lock(*this);
 
-        // TEST: Jobs can only receive chunks when in process.
+        // TEST: Jobs can only receive chunks when assigned to the slave.
         BOOST_ASSERT(state = processing);
     }
 
-    // Process the chunk.
     react(event);
 }
 
@@ -88,14 +109,13 @@ job_t::process(const events::error& event) {
         lock_t lock(*this);
 
         if(state = complete) {
+            // NOTE: Do not forward multiple errors. 
             return;
         }
 
-        // Mark as complete.
         state = complete;
     }
 
-    // Process the error.
     react(event);
 }
 
@@ -104,14 +124,12 @@ job_t::process(const events::choke& event) {
     {
         lock_t lock(*this);
 
-        // Clear the master.
+        // TODO: Is this necessary at all?
         master.reset();
 
-        // Mark as complete.
         state = complete;
     }
 
-    // Finalize.
     react(event);
 }
 
@@ -138,34 +156,4 @@ job_t::size() const {
         0,
         accumulate_t()
     );
-}
-
-const job_t::chunk_list_t&
-job_t::chunks() const {
-    return cache;
-}
-
-void
-job_t::push(const std::string& chunk) {
-    lock_t lock(*this);
-    
-    if(state == complete) {
-        return;
-        throw std::runtime_error("pushing to an inactive job");
-    }
-
-    // Put the new chunk into the cache.
-    cache.push_back(chunk);
-
-    if(state == processing) {
-        boost::shared_ptr<master_t> owner(
-            master.lock()
-        );
-
-        if(!owner) {
-            return;
-        }
-        
-        owner->push(chunk);
-    }
 }
