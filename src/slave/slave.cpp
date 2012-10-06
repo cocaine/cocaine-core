@@ -46,14 +46,10 @@ slave_t::slave_t(context_t& context, slave_config_t config):
     m_bus(context, config.uuid),
     m_bus_timeout(m_bus, defaults::bus_timeout)
 {
-    int linger = 0;
-
-    m_bus.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
-
 #ifdef ZMQ_ROUTER_BEHAVIOR
-    int mode = 1;
+//    int mode = 1;
     
-    m_bus.setsockopt(ZMQ_ROUTER_BEHAVIOR, &mode, sizeof(mode));
+//    m_bus.setsockopt(ZMQ_ROUTER_BEHAVIOR, &mode, sizeof(mode));
 #endif
 
     m_bus.connect(
@@ -120,7 +116,7 @@ std::string slave_t::read(int timeout) {
     zmq::message_t body;
 
     boost::tuple<
-        io::ignore_t,
+        const io::ignore_t&,
         int&,
         zmq::message_t*
     > proxy(io::ignore_t(), command, &body);

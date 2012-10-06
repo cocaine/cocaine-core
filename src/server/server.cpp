@@ -53,10 +53,6 @@ server_t::server_t(context_t& context, server_config_t config):
     // Server socket
     // -------------
 
-    int linger = 0;
-
-    m_server.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
-
     for(std::vector<std::string>::const_iterator it = config.listen_endpoints.begin();
         it != config.listen_endpoints.end();
         ++it)
@@ -81,7 +77,6 @@ server_t::server_t(context_t& context, server_config_t config):
 
     if(!config.announce_endpoints.empty()) {
         m_announces.reset(new io::socket_t(m_context, ZMQ_PUB));
-        m_announces->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
         
         for(std::vector<std::string>::const_iterator it = config.announce_endpoints.begin();
             it != config.announce_endpoints.end();

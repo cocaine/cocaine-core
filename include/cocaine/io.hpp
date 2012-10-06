@@ -63,6 +63,13 @@ protect(T& object) {
     return raw<T>(object);
 }
 
+template<class T>
+static inline
+raw<const T>
+protect(const T& object) {
+    return raw<const T>(object);
+}
+
 // Customized type serialization
 // -----------------------------
 
@@ -237,7 +244,7 @@ class socket_t:
         }
 
         bool
-        recv(ignore_t,
+        recv(const ignore_t&,
              int flags = 0)
         {
             zmq::message_t message;
