@@ -68,10 +68,10 @@ class slave_t:
 
     private:
         void
-        on_bus_event(ev::io&, int);
+        on_event(ev::io&, int);
         
         void
-        on_bus_check(ev::prepare&, int);
+        on_check(ev::prepare&, int);
         
         void
         on_heartbeat(ev::timer&, int);
@@ -81,7 +81,7 @@ class slave_t:
         
     private:
         void
-        process_bus_events();
+        process_events();
         
         void
         invoke(const std::string& event);
@@ -106,8 +106,8 @@ class slave_t:
         // Event loop.
         ev::default_loop m_loop;
         
-        ev::io m_bus_watcher;
-        ev::prepare m_bus_checker;
+        ev::io m_watcher;
+        ev::prepare m_checker;
         
         ev::timer m_heartbeat_timer,
                   m_idle_timer;

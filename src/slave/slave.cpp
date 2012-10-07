@@ -51,19 +51,19 @@ slave_t::slave_t(context_t& context, slave_config_t config):
     // TODO: Make it SND_HWM in ZeroMQ 3.1+
     m_bus.setsockopt(ZMQ_HWM, &hwm, sizeof(hwm));
 
-    std::string bus_endpoint(
+    std::string endpoint(
         (boost::format("ipc://%1%/%2%")
             % m_context.config.ipc_path
             % m_name
         ).str()
     );
     
-    m_bus.connect(bus_endpoint);
+    m_bus.connect(endpoint);
     
-    m_bus_watcher.set<slave_t, &slave_t::on_bus_event>(this);
-    m_bus_watcher.start(m_bus.fd(), ev::READ);
-    m_bus_checker.set<slave_t, &slave_t::on_bus_check>(this);
-    m_bus_checker.start();
+    m_watcher.set<slave_t, &slave_t::on_event>(this);
+    m_watcher.start(m_bus.fd(), ev::READ);
+    m_checker.set<slave_t, &slave_t::on_check>(this);
+    m_checker.start();
 
     m_heartbeat_timer.set<slave_t, &slave_t::on_heartbeat>(this);
     m_heartbeat_timer.start(0.0f, 5.0f);
@@ -160,22 +160,22 @@ slave_t::write(const void * data,
 }
 
 void
-slave_t::on_bus_event(ev::io&, int) {
-    m_bus_checker.stop();
+slave_t::on_event(ev::io&, int) {
+    m_checker.stop();
 
     if(m_bus.pending()) {
-        m_bus_checker.start();
-        process_bus_events();
+        m_checker.start();
+        process_events();
     }
 }
 
 void
-slave_t::on_bus_check(ev::prepare&, int) {
+slave_t::on_check(ev::prepare&, int) {
     m_loop.feed_fd_event(m_bus.fd(), ev::READ);
 }
 
 void
-slave_t::process_bus_events() {
+slave_t::process_events() {
     // TEST: Ensure that we haven't missed something in a previous iteration.
     BOOST_ASSERT(!m_bus.more());
    
