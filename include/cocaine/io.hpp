@@ -265,7 +265,7 @@ class socket_t:
 
         template<class Head>
         bool
-        recv_tuple(cons<Head, null_type>& o,
+        recv_tuple(cons<Head, null_type>&& o,
                    int flags = 0)
         {
             return recv(o.get_head(), flags);
@@ -273,7 +273,7 @@ class socket_t:
 
         template<class Head, class Tail>
         bool
-        recv_tuple(cons<Head, Tail>& o,
+        recv_tuple(cons<Head, Tail>&& o,
                    int flags = 0)
         {
             if(!recv(o.get_head(), flags)) {
@@ -462,8 +462,12 @@ class channel_t:
     public socket_t
 {
     public:
-        channel_t(context_t& context, const std::string& route):
-            socket_t(context, ZMQ_ROUTER, route)
+        channel_t(context_t& context, int type):
+            socket_t(context, type)
+        { }
+        
+        channel_t(context_t& context, int type, const std::string& route):
+            socket_t(context, type, route)
         { }
 
         using socket_t::send;
@@ -474,15 +478,12 @@ class channel_t:
 
         template<class Event>
         bool
-        send(const std::string& route,
-             const message<Event>& object)
-        {
+        send_message(const message<Event>& object) {
             const bool multipart = boost::tuples::length<
                 typename event_traits<Event>::tuple_type
             >::value;
 
-            return send(protect(route), ZMQ_SNDMORE) &&
-                   send(get<Event>::value, multipart ? ZMQ_SNDMORE : 0) &&
+            return send(get<Event>::value, multipart ? ZMQ_SNDMORE : 0) &&
                    send_tuple(object);
         }
 };

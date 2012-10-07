@@ -52,7 +52,7 @@ socket_t::bind(const std::string& endpoint) {
     m_socket.bind(endpoint.c_str());
 
     // Try to determine the connection string for clients.
-    // XXX: Fix it when migrating to ZeroMQ 3.1+
+    // FIXME: Fix it when migrating to ZeroMQ 3.1+
     size_t position = endpoint.find_last_of(":");
 
     if(position != std::string::npos) {
