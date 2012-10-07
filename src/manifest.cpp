@@ -47,7 +47,7 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
     }
 
     // Sandbox type.
-    type = cache["type"].asString();
+    type = cache.get("type", "not specified").asString();
    
     // Custom app configuration.
     args = cache.get("args", Json::Value());

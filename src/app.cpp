@@ -117,7 +117,7 @@ app_t::start() {
                 m_drivers.emplace(
                     *it,
                     m_context.get<api::driver_t>(
-                        drivers[*it]["type"].asString(),
+                        drivers[*it].get("type", "not specified").asString(),
                         api::category_traits<api::driver_t>::args_type(
                             *m_engine,
                             format.str(),

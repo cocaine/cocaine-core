@@ -37,7 +37,7 @@ namespace fs = boost::filesystem;
 file_storage_t::file_storage_t(context_t& context, const std::string& name, const Json::Value& args):
     category_type(context, name, args),
     m_log(context.log(name)),
-    m_storage_path(args["path"].asString())
+    m_storage_path(args.get("path", "not specified").asString())
 { }
 
 std::string

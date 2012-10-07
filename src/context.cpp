@@ -116,7 +116,7 @@ config_t::config_t(const std::string& path):
         ++it)
     {
         component_info_t info = {
-            root["components"][*it]["type"].asString(),
+            root["components"][*it].get("type", "not specified").asString(),
             root["components"][*it]["args"]
         };
 
