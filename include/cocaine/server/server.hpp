@@ -23,14 +23,14 @@
 
 #include "cocaine/common.hpp"
 
+// Has to be included after common.h
+#include <ev++.h>
+
 #if BOOST_VERSION >= 104000
 # include <boost/ptr_container/ptr_unordered_map.hpp>
 #else
 # include <boost/ptr_container/ptr_map.hpp>
 #endif
-
-// Has to be included after common.h
-#include <ev++.h>
 
 #include "cocaine/auth.hpp"
 #include "cocaine/io.hpp"
