@@ -23,6 +23,8 @@
 
 #include "cocaine/manifest.hpp"
 
+#include "cocaine/traits/json.hpp"
+
 using namespace cocaine;
 
 namespace fs = boost::filesystem;
@@ -52,8 +54,5 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
 
     // Driver configuration.
     drivers = cache.get("drivers", Json::Value());
-    
-    // Isolation configuration.
-    limits = cache.get("resource-limits", Json::Value());
 }
 

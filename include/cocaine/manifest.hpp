@@ -39,8 +39,7 @@ struct manifest_t:
                 type;
 
     Json::Value args,
-                drivers,
-                limits;
+                drivers;
 };
 
 } // namespace cocaine
