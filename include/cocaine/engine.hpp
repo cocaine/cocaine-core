@@ -25,19 +25,13 @@
 #include <boost/thread/mutex.hpp>
 #include <deque>
 
-#ifdef HAVE_CGROUPS
-    #include <libcgroup.h>
-#endif
-
 #include "cocaine/common.hpp"
 
 // Has to be included after common.h
 #include <ev++.h>
 
 #include "cocaine/io.hpp"
-#include "cocaine/manifest.hpp"
 #include "cocaine/master.hpp"
-#include "cocaine/profile.hpp"
 
 namespace cocaine { namespace engine {
 
@@ -85,15 +79,20 @@ class engine_t:
         send(const master_t& target,
              const T& message)
         {
+#ifdef ZMQ_ROUTER_BEHAVIOR
             // NOTE: Do a non-blocking send.
             io::scoped_option<
                 io::options::send_timeout
             > option(*m_bus, 0);
             
-            return m_bus->send(
-                target.id(),
-                message
-            );
+            return m_bus->send(io::protect(target.id()), ZMQ_SNDMORE) &&
+                   m_bus->send_message(message);
+#else
+            m_bus->send(io::protect(target.id()), ZMQ_SNDMORE);
+            m_bus->send_message(message);
+
+            return true;
+#endif
         }
 
     public:
@@ -102,41 +101,41 @@ class engine_t:
             return m_loop;
         }
 
-#ifdef HAVE_CGROUPS
-        cgroup*
-        group() {
-            return m_cgroup;
-        }
-#endif
-
     private:
         void
-        bus_event(ev::io&, int);
+        on_bus_event(ev::io&, int);
         
         void
-        ctl_event(ev::io&, int);
+        on_ctl_event(ev::io&, int);
 
         void
-        bus_check(ev::prepare&, int);
+        on_bus_check(ev::prepare&, int);
         
         void
-        ctl_check(ev::prepare&, int);
+        on_ctl_check(ev::prepare&, int);
 
         void
-        cleanup(ev::timer&, int);
-        
-        void
-        terminate(ev::timer&, int);
-        
-        void
-        notify(ev::async&, int);
+        on_notification(ev::async&, int);
 
         void
-        process();
+        on_cleanup(ev::timer&, int);
         
+        void
+        on_termination(ev::timer&, int);
+        
+    private:
+        void
+        process_bus_events();
+        
+        void
+        process_ctl_events();
+
         void
         pump();
         
+        void
+        balance();
+
         void
         shutdown();
         
@@ -156,9 +155,9 @@ class engine_t:
             stopped
         } m_state;
 
-        // I/O.
-        std::unique_ptr<io::channel_t> m_control,
-                                       m_bus;
+        // Slave I/O.
+        std::unique_ptr<io::channel_t> m_bus,
+                                       m_ctl;
 
         // Event loop.  
         ev::dynamic_loop m_loop;
@@ -181,10 +180,6 @@ class engine_t:
 
         // Slave pool.
         pool_map_t m_pool;
-        
-#ifdef HAVE_CGROUPS
-        cgroup * m_cgroup;
-#endif
 };
 
 }} // namespace cocaine::engine

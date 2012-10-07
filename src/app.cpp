@@ -31,6 +31,8 @@
 #include "cocaine/logging.hpp"
 #include "cocaine/rpc.hpp"
 
+#include "cocaine/traits/json.hpp"
+
 using namespace cocaine;
 using namespace cocaine::engine;
 
@@ -55,7 +57,7 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
     }
 
     m_control.reset(
-        new io::channel_t(context, "parent")
+        new io::channel_t(context, ZMQ_PAIR)
     );
 
     try { 
@@ -75,58 +77,6 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
             m_profile
         )
     );
-
-    // Initialize the drivers
-    // ----------------------
-
-    Json::Value drivers(m_manifest.drivers);
-
-    if(drivers.empty()) {
-        return;
-    }
-    
-    Json::Value::Members names(drivers.getMemberNames());
-
-    m_log->info(
-        "initializing %zu %s: %s",
-        drivers.size(),
-        drivers.size() == 1 ? "driver" : "drivers",
-        boost::algorithm::join(names, ", ").c_str()
-    );
-
-    boost::format format("%s/%s");
-
-    for(Json::Value::Members::iterator it = names.begin();
-        it != names.end();
-        ++it)
-    {
-        try {
-            format % name % *it;
-
-            m_drivers.emplace(
-                *it,
-                m_context.get<api::driver_t>(
-                    drivers[*it]["type"].asString(),
-                    api::category_traits<api::driver_t>::args_type(
-                        *m_engine,
-                        format.str(),
-                        drivers[*it]
-                    )
-                )
-            );
-        } catch(const std::exception& e) {
-            m_log->error(
-                "unable to initialize the '%s' driver - %s",
-                format.str().c_str(),
-                e.what()
-            );
-
-            boost::format message("unable to initialize the drivers");
-            throw configuration_error_t((message % name).str());
-        }
-
-        format.clear();
-    }
 }
 
 app_t::~app_t() {
@@ -139,6 +89,54 @@ void
 app_t::start() {
     if(m_thread) {
         return;
+    }
+
+    m_log->info("starting the engine");
+
+    Json::Value drivers(m_manifest.drivers);
+
+    if(!drivers.empty()) {
+        Json::Value::Members names(drivers.getMemberNames());
+
+        m_log->info(
+            "starting %zu %s: %s",
+            drivers.size(),
+            drivers.size() == 1 ? "driver" : "drivers",
+            boost::algorithm::join(names, ", ").c_str()
+        );
+
+        boost::format format("%s/%s");
+
+        for(Json::Value::Members::iterator it = names.begin();
+            it != names.end();
+            ++it)
+        {
+            try {
+                format % m_manifest.name % *it;
+
+                m_drivers.emplace(
+                    *it,
+                    m_context.get<api::driver_t>(
+                        drivers[*it]["type"].asString(),
+                        api::category_traits<api::driver_t>::args_type(
+                            *m_engine,
+                            format.str(),
+                            drivers[*it]
+                        )
+                    )
+                );
+            } catch(const std::exception& e) {
+                m_log->error(
+                    "unable to initialize the '%s' driver - %s",
+                    format.str().c_str(),
+                    e.what()
+                );
+
+                throw configuration_error_t("unable to initialize the drivers");
+            }
+
+            format.clear();
+        }
     }
 
     m_thread.reset(
@@ -157,13 +155,18 @@ app_t::stop() {
         return;
     }
 
-    m_control->send(
-        "engine",
+    m_log->info("stopping the engine");
+    
+    m_control->send_message(
         io::message<control::terminate>()
     );
 
     m_thread->join();
     m_thread.reset();
+
+    // NOTE: Stop the drivers, so that there won't be any open
+    // sockets and so on while the engine is stopped.
+    m_drivers.clear();
 }
 
 Json::Value
@@ -175,26 +178,22 @@ app_t::info() const {
         return info;
     }
 
-    m_control->send(
-        "engine",
+    m_control->send_message(
         io::message<control::status>()
     );
 
-    boost::tuple<
-        const io::ignore_t&,
-        Json::Value&
-    > proxy(io::ignore_t(), info);
-    
     {
         io::scoped_option<
             io::options::receive_timeout
-        > option(*m_control, 0.5f);
+        > option(*m_control, defaults::control_timeout);
 
-        if(!m_control->recv_tuple(proxy)) {
+        if(!m_control->recv(info)) {
             info["error"] = "engine is not responsive";
             return info;
         }
     }
+
+    info["profile"] = m_profile.name;
 
     for(driver_map_t::const_iterator it = m_drivers.begin();
         it != m_drivers.end();

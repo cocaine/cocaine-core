@@ -29,7 +29,7 @@
 
 #include "cocaine/api/driver.hpp"
 
-#include "helpers/json.hpp"
+#include "cocaine/helpers/json.hpp"
 
 namespace cocaine {
 

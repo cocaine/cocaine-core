@@ -18,10 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include <boost/assign.hpp>
 #include <boost/format.hpp>
 #include <boost/iterator/filter_iterator.hpp>
-#include <boost/lexical_cast.hpp>
 
 #include "cocaine/engine.hpp"
 
@@ -29,7 +27,10 @@
 #include "cocaine/job.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
+#include "cocaine/profile.hpp"
 #include "cocaine/rpc.hpp"
+
+#include "cocaine/traits/json.hpp"
 
 using namespace cocaine::engine;
 
@@ -86,8 +87,8 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest, const profile
     m_manifest(manifest),
     m_profile(profile),
     m_state(stopped),
-    m_bus(new io::channel_t(context, m_manifest.name)),
-    m_control(new io::channel_t(context, "engine")),
+    m_bus(new io::channel_t(context, ZMQ_ROUTER, m_manifest.name)),
+    m_ctl(new io::channel_t(context, ZMQ_PAIR)),
     m_bus_watcher(m_loop),
     m_ctl_watcher(m_loop),
     m_bus_checker(m_loop),
@@ -95,11 +96,8 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest, const profile
     m_gc_timer(m_loop),
     m_termination_timer(m_loop),
     m_notification(m_loop)
-#ifdef HAVE_CGROUPS
-    , m_cgroup(NULL)
-#endif
 {
-    std::string endpoint(
+    std::string bus_endpoint(
         (boost::format("ipc://%1%/%2%")
             % m_context.config.ipc_path
             % m_manifest.name
@@ -107,131 +105,44 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest, const profile
     );
 
     try {
-        m_bus->bind(endpoint);
+        m_bus->bind(bus_endpoint);
     } catch(const zmq::error_t& e) {
-        boost::format message("invalid rpc endpoint - %s");
+        boost::format message("unable to bind the engine pool channel - %s");
         throw configuration_error_t((message % e.what()).str());
     }
    
+    std::string ctl_endpoint(
+        (boost::format("inproc://%s")
+            % m_manifest.name
+        ).str()
+    );
+
     try {
-        m_control->connect(
-            (boost::format("inproc://%s") % m_manifest.name).str()
-        );
+        m_ctl->connect(ctl_endpoint);
     } catch(const zmq::error_t& e) {
         boost::format message("unable to connect to the engine control channel - %s");
         throw configuration_error_t((message % e.what()).str());
     }
     
-    m_bus_watcher.set<engine_t, &engine_t::bus_event>(this);
+    m_bus_watcher.set<engine_t, &engine_t::on_bus_event>(this);
     m_bus_watcher.start(m_bus->fd(), ev::READ);
-    m_bus_checker.set<engine_t, &engine_t::bus_check>(this);
+    m_bus_checker.set<engine_t, &engine_t::on_bus_check>(this);
     m_bus_checker.start();
 
-    m_ctl_watcher.set<engine_t, &engine_t::ctl_event>(this);
-    m_ctl_watcher.start(m_control->fd(), ev::READ);
-    m_ctl_checker.set<engine_t, &engine_t::ctl_check>(this);
+    m_ctl_watcher.set<engine_t, &engine_t::on_ctl_event>(this);
+    m_ctl_watcher.start(m_ctl->fd(), ev::READ);
+    m_ctl_checker.set<engine_t, &engine_t::on_ctl_check>(this);
     m_ctl_checker.start();
     
-    m_gc_timer.set<engine_t, &engine_t::cleanup>(this);
+    m_gc_timer.set<engine_t, &engine_t::on_cleanup>(this);
     m_gc_timer.start(5.0f, 5.0f);
 
-    m_notification.set<engine_t, &engine_t::notify>(this);
+    m_notification.set<engine_t, &engine_t::on_notification>(this);
     m_notification.start();
-
-#ifdef HAVE_CGROUPS
-    Json::Value limits(m_manifest.limits);
-
-    if(!(cgroup_init() == 0) || limits.empty()) {
-        return;
-    }
-    
-    m_cgroup = cgroup_new_cgroup(m_manifest.name.c_str());
-
-    // XXX: Not sure if it changes anything.
-    cgroup_set_uid_gid(m_cgroup, getuid(), getgid(), getuid(), getgid());
-    
-    Json::Value::Members controllers(limits.getMemberNames());
-
-    for(Json::Value::Members::iterator c = controllers.begin();
-        c != controllers.end();
-        ++c)
-    {
-        Json::Value cfg(limits[*c]);
-
-        if(!cfg.isObject() || cfg.empty()) {
-            continue;
-        }
-        
-        cgroup_controller * ctl = cgroup_add_controller(m_cgroup, c->c_str());
-        
-        Json::Value::Members parameters(cfg.getMemberNames());
-
-        for(Json::Value::Members::iterator p = parameters.begin();
-            p != parameters.end();
-            ++p)
-        {
-            switch(cfg[*p].type()) {
-                case Json::stringValue: {
-                    cgroup_add_value_string(ctl, p->c_str(), cfg[*p].asCString());
-                    break;
-                } case Json::intValue: {
-                    cgroup_add_value_int64(ctl, p->c_str(), cfg[*p].asInt());
-                    break;
-                } case Json::uintValue: {
-                    cgroup_add_value_uint64(ctl, p->c_str(), cfg[*p].asUInt());
-                    break;
-                } case Json::booleanValue: {
-                    cgroup_add_value_bool(ctl, p->c_str(), cfg[*p].asBool());
-                    break;
-                } default: {
-                    m_log->error(
-                        "controller '%s' parameter '%s' type is not supported",
-                        c->c_str(),
-                        p->c_str()
-                    );
-
-                    continue;
-                }
-            }
-            
-            m_log->debug(
-                "setting controller '%s' parameter '%s' to '%s'", 
-                c->c_str(),
-                p->c_str(),
-                boost::lexical_cast<std::string>(cfg[*p]).c_str()
-            );
-        }
-    }
-
-    int rv = 0;
-
-    if((rv = cgroup_create_cgroup(m_cgroup, false)) != 0) {
-        m_log->error(
-            "unable to create the control group - %s", 
-            cgroup_strerror(rv)
-        );
-
-        cgroup_free(&m_cgroup);
-        m_cgroup = NULL;
-    }
-#endif
 }
 
 engine_t::~engine_t() {
-#ifdef HAVE_CGROUPS
-    if(m_cgroup) {
-        int rv = 0;
-
-        if((rv = cgroup_delete_cgroup(m_cgroup, false)) != 0) {
-            m_log->error(
-                "unable to delete the control group - %s", 
-                cgroup_strerror(rv)
-            );
-        }
-
-        cgroup_free(&m_cgroup);
-    }
-#endif
+    BOOST_ASSERT(m_state == stopped);
 }
 
 void
@@ -296,102 +207,41 @@ engine_t::enqueue(job_queue_t::const_reference job,
                 m_queue.push(job);
         }
     }
-    
-    // Notify the engine about a new job.
+  
+    // Pump the queue! 
     m_notification.send();
-    
+
     return true;
 }
 
 void
-engine_t::bus_event(ev::io&, int) {
+engine_t::on_bus_event(ev::io&, int) {
     if(m_bus->pending()) {
-        process();
+        process_bus_events();
     }
     
     pump();
+    balance();
 }
 
 void
-engine_t::bus_check(ev::prepare&, int) {
+engine_t::on_bus_check(ev::prepare&, int) {
     m_loop.feed_fd_event(m_bus->fd(), ev::READ);
 }
 
-namespace {
-    static std::map<int, std::string> state_names = boost::assign::map_list_of
-        (0, "running")
-        (1, "stopping")
-        (2, "stopped");
-}
-
 void
-engine_t::ctl_event(ev::io&, int) {
+engine_t::on_ctl_event(ev::io&, int) {
     m_ctl_checker.stop();
 
-    if(m_control->pending()) {
+    if(m_ctl->pending()) {
         m_ctl_checker.start();
-        
-        int command = 0;
-
-        boost::tuple<
-            const io::ignore_t&,
-            int&
-        > proxy(io::ignore_t(), command);
- 
-        if(!m_control->recv_tuple(proxy)) {
-            m_log->error("received a corrupted control message");
-            m_control->drop();
-            return;
-        }
-
-        switch(command) {
-            case io::get<control::status>::value: {
-                Json::Value info(Json::objectValue);
-
-                info["queue-depth"] = static_cast<Json::LargestUInt>(m_queue.size());
-
-                info["slaves"]["total"] = static_cast<Json::LargestUInt>(m_pool.size());
-
-                info["slaves"]["busy"] = static_cast<Json::LargestUInt>(
-                    std::count_if(
-                        m_pool.begin(),
-                        m_pool.end(),
-                        select::state<slave::busy>()
-                    )
-                );
-
-                info["state"] = state_names[m_state];
-
-                m_control->send(
-                    io::protect(std::string("parent")),
-                    ZMQ_SNDMORE
-                );
-                
-                m_control->send(
-                    info
-                );
-                
-                break;
-            }
-
-            case io::get<control::terminate>::value:
-                shutdown();
-                break;
-
-            default:
-                m_log->error(
-                    "received an unknown control message, code: %d",
-                    command
-                );
-
-                m_control->drop();
-        }
+        process_ctl_events();    
     }
 }
 
 void
-engine_t::ctl_check(ev::prepare&, int) {
-    m_loop.feed_fd_event(m_control->fd(), ev::READ);
+engine_t::on_ctl_check(ev::prepare&, int) {
+    m_loop.feed_fd_event(m_ctl->fd(), ev::READ);
 }
 
 namespace {
@@ -411,7 +261,7 @@ namespace {
 }
 
 void
-engine_t::cleanup(ev::timer&, int) {
+engine_t::on_cleanup(ev::timer&, int) {
     typedef std::vector<
         pool_map_t::key_type
     > corpse_list_t;
@@ -472,18 +322,19 @@ engine_t::cleanup(ev::timer&, int) {
 }
 
 void
-engine_t::terminate(ev::timer&, int) {
+engine_t::on_termination(ev::timer&, int) {
     m_log->warning("forcing engine termination");
     clear();
 }
 
 void
-engine_t::notify(ev::async&, int) {
+engine_t::on_notification(ev::async&, int) {
     pump();
+    balance();
 }
 
 void
-engine_t::process() {
+engine_t::process_bus_events() {
     // NOTE: Try to read RPC calls in bulk, where the maximum size
     // of the bulk is proportional to the number of spawned slaves.
     int counter = m_pool.size() * defaults::io_bulk_size;
@@ -493,7 +344,7 @@ engine_t::process() {
         BOOST_ASSERT(!m_bus->more());
     
         std::string slave_id;
-        int command = 0;
+        int command = -1;
         
         boost::tuple<
             io::raw<std::string>,
@@ -516,37 +367,38 @@ engine_t::process() {
 
         if(master == m_pool.end()) {
             m_log->warning(
-                "dropping type %d command from an unknown slave %s", 
+                "dropping type %d message from an unknown slave %s", 
                 command,
                 slave_id.c_str()
             );
             
             m_bus->drop();
 
+#ifdef ZMQ_ROUTER_BEHAVIOR
             // NOTE: Do a non-blocking send.
             io::scoped_option<
                 io::options::send_timeout
             > option(*m_bus, 0);
             
-            // Try to kill the unknown slave, just in case.
-            // FIXME: This doesn't work for some reason.
-            bool success = m_bus->send(
-                slave_id,
-                io::message<rpc::terminate>()
-            );
-
+            bool success = m_bus->send(io::protect(slave_id), ZMQ_SNDMORE) &&
+                           m_bus->send_message(io::message<rpc::terminate>());
+            
             if(!success) {
                 m_log->warning(
                     "unable to kill an unknown slave %s", 
                     slave_id.c_str()
                 );
             }
+#else
+            m_bus->send(io::protect(slave_id), ZMQ_SNDMORE);
+            m_bus->send_message(io::message<rpc::terminate>());
+#endif
 
             continue;
         }
 
         m_log->debug(
-            "got type %d command from slave %s",
+            "received type %d message from slave %s",
             command,
             slave_id.c_str()
         );
@@ -619,7 +471,7 @@ engine_t::process() {
 
             default:
                 m_log->warning(
-                    "dropping unknown type %d command from slave %s",
+                    "dropping unknown type %d message from slave %s",
                     command,
                     slave_id.c_str()
                 );
@@ -627,6 +479,61 @@ engine_t::process() {
                 m_bus->drop();
         }
     } while(--counter);
+}
+
+namespace {
+    static const char * states[] = {
+        "running",
+        "stopping",
+        "stopped"
+    };
+}
+
+void
+engine_t::process_ctl_events() {
+    int command = -1;
+
+    if(!m_ctl->recv(command)) {
+        m_log->error("received a corrupted control message");
+        m_ctl->drop();
+        return;
+    }
+
+    switch(command) {
+        case io::get<control::status>::value: {
+            Json::Value info(Json::objectValue);
+
+            info["queue-depth"] = static_cast<Json::LargestUInt>(m_queue.size());
+
+            info["slaves"]["total"] = static_cast<Json::LargestUInt>(m_pool.size());
+
+            info["slaves"]["busy"] = static_cast<Json::LargestUInt>(
+                std::count_if(
+                    m_pool.begin(),
+                    m_pool.end(),
+                    select::state<slave::busy>()
+                )
+            );
+
+            info["state"] = states[m_state];
+
+            m_ctl->send(info);
+
+            break;
+        }
+
+        case io::get<control::terminate>::value:
+            shutdown();
+            break;
+
+        default:
+            m_log->error(
+                "received an unknown control message, code: %d",
+                command
+            );
+
+            m_ctl->drop();
+    }
 }
 
 void
@@ -676,25 +583,14 @@ engine_t::pump() {
                 job->event
             );
 
-            bool success = false;
-
-            {
-                // NOTE: Do a non-blocking send.
-                io::scoped_option<
-                    io::options::send_timeout
-                > option(*m_bus, 0);
-
-                success = m_bus->send(
-                    it->second->id(),
-                    message
+#ifdef ZMQ_ROUTER_BEHAVIOR
+            if(send(*it->second, message)) {
+                it->second->process_event(
+                    events::invoke(job, it->second)
                 );
-            }
-
-            // NOTE: Feed the event loop.
-            m_loop.feed_fd_event(m_bus->fd(), ev::READ);
-
-            if(success) {
-                it->second->process_event(events::invoke(job, it->second));
+                
+                // TODO: Check if it helps.
+                m_loop.feed_fd_event(m_bus->fd(), ev::READ);
             } else {
                 m_log->error(
                     "slave %s has unexpectedly died",
@@ -702,6 +598,7 @@ engine_t::pump() {
                 );
 
                 it->second->process_event(events::terminate());
+                
                 m_pool.erase(it);
                 
                 {
@@ -709,59 +606,72 @@ engine_t::pump() {
                     m_queue.emplace_front(job);
                 }
             }
+#else
+            send(*it->second, message);
+            
+            it->second->process_event(
+                events::invoke(job, it->second)
+            );
+                        
+            // TODO: Check if it helps.
+            m_loop.feed_fd_event(m_bus->fd(), ev::READ);
+#endif
         } else {
             break;
         }
     }
+}
 
+void
+engine_t::balance() {
     // NOTE: Balance the slave pool in order to keep it in a proper shape
     // based on the queue size and other policies.
-    if(m_pool.size() < m_profile.pool_limit &&
-       m_pool.size() * m_profile.grow_threshold < m_queue.size() * 2)
+    if(m_pool.size() >= m_profile.pool_limit ||
+       m_pool.size() * m_profile.grow_threshold >= m_queue.size() * 2)
     {
-        unsigned int target = std::min(
-            m_profile.pool_limit,
-            std::max(
-                2 * m_queue.size() / m_profile.grow_threshold, 
-                1UL
-            )
-        );
-      
-        if(target <= m_pool.size()) {
-            return;
-        }
+        return;
+    }
 
-        m_log->info(
-            "enlarging the pool from %d to %d slaves",
-            m_pool.size(),
-            target
-        );
+    unsigned int target = std::min(
+        m_profile.pool_limit,
+        std::max(
+            2UL * m_queue.size() / m_profile.grow_threshold, 
+            1UL
+        )
+    );
+  
+    if(target <= m_pool.size()) {
+        return;
+    }
 
-        while(m_pool.size() != target) {
-            try {
-                // Try to spawn a new slave process.
-                boost::shared_ptr<master_t> master(
-                    boost::make_shared<master_t>(
-                        m_context,
-                        *this,
-                        m_manifest,
-                        m_profile
-                    )
-                );
-              
-                m_pool.emplace(
-                    master->id(),
-                    master
-                );
-            } catch(const system_error_t& e) {
-                m_log->error(
-                    "unable to spawn more slaves - %s - %s",
-                    e.what(),
-                    e.reason()
-                );
+    m_log->info(
+        "enlarging the pool from %d to %d slaves",
+        m_pool.size(),
+        target
+    );
 
-                return;
-            }
+    while(m_pool.size() != target) {
+        try {
+            // Try to spawn a new slave process.
+            boost::shared_ptr<master_t> master(
+                boost::make_shared<master_t>(
+                    m_context,
+                    *this,
+                    m_manifest,
+                    m_profile
+                )
+            );
+          
+            m_pool.emplace(
+                master->id(),
+                master
+            );
+        } catch(const system_error_t& e) {
+            m_log->error(
+                "unable to spawn more slaves - %s - %s",
+                e.what(),
+                e.reason()
+            );
         }
     }
 }
@@ -799,11 +709,6 @@ engine_t::shutdown() {
     unsigned int pending = 0;
 
     {
-        // NOTE: Do a non-blocking send.
-        io::scoped_option<
-            io::options::send_timeout
-        > option(*m_bus, 0);
-        
         // Send the termination event to active slaves.
         // If there're no active slaves, the engine can terminate right away,
         // otherwise, the engine should wait for the specified timeout for slaves
@@ -813,8 +718,8 @@ engine_t::shutdown() {
             ++it)
         {
             if(it->second->state_downcast<const slave::alive*>()) {
-                m_bus->send(
-                    it->second->id(),
+                send(
+                    *it->second,
                     io::message<rpc::terminate>()
                 );
 
@@ -831,8 +736,8 @@ engine_t::shutdown() {
             m_profile.termination_timeout
         );
         
-        m_termination_timer.set<engine_t, &engine_t::terminate>(this);
-        m_termination_timer.start(m_profile.termination_timeout); 
+        m_termination_timer.set<engine_t, &engine_t::on_termination>(this);
+        m_termination_timer.start(m_profile.termination_timeout);
     } else {
         clear();
     }    

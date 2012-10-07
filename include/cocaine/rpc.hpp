@@ -26,18 +26,18 @@
 namespace cocaine { 
 
 namespace rpc {
-    struct core_tag;
+    struct pool_plane_tag;
 
     struct heartbeat {
-        typedef core_tag tag;
+        typedef pool_plane_tag tag;
     };
 
     struct terminate {
-        typedef core_tag tag;
+        typedef pool_plane_tag tag;
     };
 
     struct invoke {
-        typedef core_tag tag;
+        typedef pool_plane_tag tag;
         
         typedef boost::tuple<
             const std::string&
@@ -45,7 +45,7 @@ namespace rpc {
     };
 
     struct chunk {
-        typedef core_tag tag;
+        typedef pool_plane_tag tag;
         
         typedef boost::tuple<
             zmq::message_t&
@@ -53,7 +53,7 @@ namespace rpc {
     };
 
     struct error {
-        typedef core_tag tag;
+        typedef pool_plane_tag tag;
         
         typedef boost::tuple<
             int,
@@ -62,7 +62,7 @@ namespace rpc {
     };
 
     struct choke {
-        typedef core_tag tag;
+        typedef pool_plane_tag tag;
     };
 }
 
@@ -80,7 +80,7 @@ namespace control {
 
 namespace io {
     template<>
-    struct dispatch<rpc::core_tag> {
+    struct dispatch<rpc::pool_plane_tag> {
         typedef boost::mpl::list<
             rpc::heartbeat,
             rpc::terminate,
