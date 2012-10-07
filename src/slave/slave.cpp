@@ -115,7 +115,7 @@ slave_t::run() {
 
 std::string
 slave_t::read(int timeout) {
-    int command = 0;
+    int command = -1;
     zmq::message_t body;
 
     boost::tuple<
@@ -126,7 +126,7 @@ slave_t::read(int timeout) {
     {
         io::scoped_option<
             io::options::receive_timeout
-        > option(m_bus, -1);
+        > option(m_bus, timeout);
 
         if(!m_bus.recv_tuple(proxy)) {
             return std::string();
@@ -179,7 +179,7 @@ slave_t::process_bus_events() {
     // TEST: Ensure that we haven't missed something in a previous iteration.
     BOOST_ASSERT(!m_bus.more());
    
-    int command = 0;
+    int command = -1;
 
     {
         io::scoped_option<
