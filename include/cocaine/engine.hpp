@@ -33,6 +33,8 @@
 #include "cocaine/io.hpp"
 #include "cocaine/master.hpp"
 
+#include "cocaine/api/isolate.hpp"
+
 namespace cocaine { namespace engine {
 
 #if BOOST_VERSION >= 103600
@@ -180,6 +182,11 @@ class engine_t:
 
         // Slave pool.
         pool_map_t m_pool;
+
+        // NOTE: Engine isolate reference, keeping it here
+        // avoids isolate destruction, as the factory stores
+        // only weak references to the isolate instances..
+        api::category_traits<api::isolate_t>::ptr_type m_isolate;
 };
 
 }} // namespace cocaine::engine

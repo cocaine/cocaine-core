@@ -97,6 +97,14 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest, const profile
     m_termination_timer(m_loop),
     m_notification(m_loop)
 {
+    m_isolate = m_context.get<api::isolate_t>(
+        m_profile.isolate.type,
+        api::category_traits<api::isolate_t>::args_type(
+            m_manifest.name,
+            m_profile.isolate.args
+        )
+    );
+    
     std::string bus_endpoint(
         (boost::format("ipc://%1%/%2%")
             % m_context.config.ipc_path
