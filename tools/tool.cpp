@@ -30,7 +30,7 @@
 
 #include "cocaine/api/storage.hpp"
 
-#include "cocaine/helpers/json.hpp"
+#include "cocaine/traits/json.hpp"
 
 using namespace cocaine;
 

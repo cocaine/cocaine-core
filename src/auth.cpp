@@ -94,7 +94,7 @@ auth_t::~auth_t() {
     EVP_MD_CTX_destroy(m_context);
 }
 
-/* XXX: Gotta invent something sophisticated here.
+/* TODO: Gotta invent something sophisticated here.
 std::string auth_t::sign(const std::string& message,
                          const std::string& username) const
 {
