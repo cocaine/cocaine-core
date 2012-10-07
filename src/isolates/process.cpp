@@ -81,7 +81,7 @@ process_t::spawn(const std::string& path,
         // NOTE: First element is the executable path,
         // last one should be null pointer.
         argv[0] = ::strdup(path.c_str());
-        argv[sizeof(argv) / sizeof(char*)] = NULL;
+        argv[sizeof(argv) / sizeof(argv[0])] = NULL;
 
         arg_map_t::const_iterator it(args.begin());
         
