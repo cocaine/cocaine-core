@@ -30,23 +30,6 @@ using namespace cocaine;
 using namespace cocaine::api;
 using namespace cocaine::isolate;
 
-/*
-#ifdef HAVE_CGROUPS
-        if(m_engine.group()) {
-            if((rv = cgroup_attach_task(m_engine.group())) != 0) {
-                m_log->error(
-                    "unable to attach slave %s to the control group - %s",
-                    id().c_str(),
-                    cgroup_strerror(rv)
-                );
-
-                std::exit(EXIT_FAILURE);
-            }
-        }
-#endif
-
- * */
-
 namespace {
     class process_handle_t:
         public api::handle_t

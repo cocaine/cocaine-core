@@ -45,7 +45,6 @@ struct profile_t:
     unsigned long grow_threshold;
 
     struct {
-        bool enabled;
         std::string type;
         Json::Value args;
     } isolate;
