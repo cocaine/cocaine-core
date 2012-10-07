@@ -43,6 +43,7 @@ struct defaults {
 
     // Default I/O policy.
     static const long bus_timeout;
+    static const long control_timeout;
     static const unsigned long io_bulk_size;
 
     // Default paths.

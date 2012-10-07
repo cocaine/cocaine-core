@@ -22,7 +22,6 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/format.hpp>
 #include <boost/tuple/tuple.hpp>
-
 #include <netdb.h>
 
 #include "cocaine/context.hpp"
@@ -30,6 +29,7 @@
 #include "cocaine/io.hpp"
 #include "cocaine/logging.hpp"
 
+#include "cocaine/isolates/process.hpp"
 #include "cocaine/storages/files.hpp"
 
 using namespace cocaine;
@@ -45,6 +45,7 @@ const unsigned long defaults::pool_limit = 10L;
 const unsigned long defaults::queue_limit = 100L;
 
 const long defaults::bus_timeout = 1000L;
+const long defaults::control_timeout = 500L;
 const unsigned long defaults::io_bulk_size = 100L;
 
 const char defaults::ipc_path[] = "/var/run/cocaine";
@@ -168,6 +169,7 @@ context_t::context_t(config_t config_, boost::shared_ptr<logging::sink_t> sink):
     m_repository->load(config.plugin_path);
 
     // Register the builtin components.
+    m_repository->insert<isolate::process_t>("process");
     m_repository->insert<storage::file_storage_t>("files");
     
     // Initialize the ZeroMQ context.
