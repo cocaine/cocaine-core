@@ -18,33 +18,49 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#ifndef COCAINE_TYPE_TRAITS_HPP
-#define COCAINE_TYPE_TRAITS_HPP
+#ifndef COCAINE_JOB_POLICY_TYPE_TRAITS_HPP
+#define COCAINE_JOB_POLICY_TYPE_TRAITS_HPP
 
-#include <msgpack.hpp>
+#include "cocaine/traits.hpp"
+
+#include "cocaine/policy.hpp"
 
 namespace cocaine { namespace io {
 
-template<class T>
-struct type_traits {
+template<>
+struct type_traits<engine::policy_t> {
     template<class Stream>
     static
     void
     pack(msgpack::packer<Stream>& packer,
-         const T& object)
+         const engine::policy_t& object)
     {
-        packer << object;
+        packer.pack_array(3);
+        
+        packer << object.urgent;
+        packer << object.timeout;
+        packer << object.deadline;
     }
     
     static
     void
     unpack(const msgpack::object& packed,
-           T& object)
+           engine::policy_t& object)
     {
-        packed >> object;
+        if(packed.type != msgpack::type::ARRAY || packed.via.array.size != 3) {
+            throw msgpack::type_error();
+        }
+
+        msgpack::object &urgent = packed.via.array.ptr[0],
+                        &timeout = packed.via.array.ptr[1],
+                        &deadline = packed.via.array.ptr[2];
+
+        urgent >> object.urgent;
+        timeout >> object.timeout;
+        deadline >> object.deadline;
     }
 };
 
-}} // namespace cocaine::io
+}}
 
 #endif
