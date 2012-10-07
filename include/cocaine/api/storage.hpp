@@ -28,6 +28,8 @@
 #include "cocaine/repository.hpp"
 #include "cocaine/traits.hpp"
 
+#include "cocaine/helpers/json.hpp"
+
 namespace cocaine { namespace api {
 
 class storage_t:
