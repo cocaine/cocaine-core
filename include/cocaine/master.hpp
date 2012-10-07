@@ -33,6 +33,8 @@
 
 #include "cocaine/events.hpp"
 
+#include "cocaine/api/isolate.hpp"
+
 #include "cocaine/helpers/unique_id.hpp"
 
 namespace cocaine { namespace engine {
@@ -74,8 +76,6 @@ class master_t:
         void push(const std::string& chunk);
 
     private:
-        void spawn();
-
         void on_initialize(const events::heartbeat& event);
         void on_heartbeat(const events::heartbeat& event);
         void on_terminate(const events::terminate& event);
@@ -85,15 +85,16 @@ class master_t:
         context_t& m_context;
         boost::shared_ptr<logging::logger_t> m_log;
 
-        // TODO: Drop this dependency.
+        // TODO: Drop this dependency?
         engine_t& m_engine;
 
         const manifest_t& m_manifest;
         const profile_t& m_profile;
 
         ev::timer m_heartbeat_timer;
-        
-        pid_t m_pid;
+    
+        // The actual slave handle.    
+        std::unique_ptr<api::handle_t> m_handle;
 };
 
 namespace slave {

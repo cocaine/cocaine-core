@@ -19,17 +19,15 @@
 */
 
 #include <boost/format.hpp>
-#include <sys/wait.h>
-#include <unistd.h>
 
 #include "cocaine/master.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
-#include "cocaine/io.hpp"
 #include "cocaine/job.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
+#include "cocaine/profile.hpp"
 #include "cocaine/rpc.hpp"
 
 using namespace cocaine::engine;
@@ -53,7 +51,30 @@ master_t::master_t(context_t& context, engine_t& engine, const manifest_t& manif
     m_heartbeat_timer.set<master_t, &master_t::on_timeout>(this);
     m_heartbeat_timer.start(m_profile.startup_timeout);
 
-    spawn();
+    api::category_traits<api::isolate_t>::ptr_type isolate = m_context.get<api::isolate_t>(
+        m_profile.isolate.type,
+        api::category_traits<api::isolate_t>::args_type(
+            m_manifest.name,
+            m_profile.isolate.args
+        )
+    );
+
+    std::map<std::string, std::string> args;
+
+    args["--configuration"] = m_context.config.config_path;
+    args["--slave:app"] = m_manifest.name;
+    args["--slave:profile"] = m_profile.name;
+    args["--slave:uuid"] = id();
+
+    m_log->debug(
+        "spawning slave %s",
+        id().c_str()
+    );
+
+    m_handle = isolate->spawn(
+        m_manifest.slave,
+        args
+    );
 }
 
 master_t::~master_t() {
@@ -82,72 +103,11 @@ void master_t::push(const std::string& chunk_) {
         chunk
     );
 
+    // TODO: Check for result.
     m_engine.send(
         *this,
         message
     );
-}
-
-void master_t::spawn() {
-    m_log->debug(
-        "spawning slave %s",
-        id().c_str()
-    );
-
-    m_pid = ::fork();
-
-    if(m_pid == 0) {
-        int rv = 0;
-
-#ifdef HAVE_CGROUPS
-        if(m_engine.group()) {
-            if((rv = cgroup_attach_task(m_engine.group())) != 0) {
-                m_log->error(
-                    "unable to attach slave %s to the control group - %s",
-                    id().c_str(),
-                    cgroup_strerror(rv)
-                );
-
-                std::exit(EXIT_FAILURE);
-            }
-        }
-#endif
-
-        rv = ::execlp(
-            m_manifest.slave.c_str(),
-            m_manifest.slave.c_str(),
-            "--slave:app", m_manifest.name.c_str(),
-            "--slave:profile", m_profile.name.c_str(),
-            "--slave:uuid",  id().c_str(),
-            "--configuration", m_context.config.config_path.c_str(),
-            (char*)0
-        );
-
-        if(rv != 0) {
-            char buffer[1024];
-
-#ifdef _GNU_SOURCE
-            char * message;
-            message = ::strerror_r(errno, buffer, 1024);
-#else
-            ::strerror_r(errno, buffer, 1024);
-#endif
-
-            m_log->error(
-                "unable to execute '%s' - %s",
-                m_manifest.slave.c_str(),
-#ifdef _GNU_SOURCE
-                message
-#else
-                buffer
-#endif
-            );
-
-            std::exit(EXIT_FAILURE);
-        }
-    } else if(m_pid < 0) {
-        throw system_error_t("fork() failed");
-    }
 }
 
 void master_t::on_initialize(const events::heartbeat& event) {
@@ -190,11 +150,8 @@ void master_t::on_terminate(const events::terminate& event) {
         id().c_str()
     );
 
-    int status = 0;
-
-    if(waitpid(m_pid, &status, WNOHANG) == 0) {
-        ::kill(m_pid, SIGTERM);
-    }
+    m_handle->terminate();
+    m_handle.reset();
 }
 
 void master_t::on_timeout(ev::timer&, int) {
