@@ -23,6 +23,7 @@
 
 #include <boost/thread/condition.hpp>
 #include <boost/thread/mutex.hpp>
+#include <cstdatomic>
 #include <deque>
 
 #include "cocaine/common.hpp"
@@ -142,7 +143,7 @@ class engine_t:
         shutdown();
         
         void
-        clear();
+        stop();
 
     private:
         context_t& m_context;
@@ -151,11 +152,16 @@ class engine_t:
         const manifest_t& m_manifest;
         const profile_t& m_profile;
 
-        enum {
-            running,
-            stopping,
-            stopped
-        } m_state;
+        struct state {
+            enum value: int {
+                running,
+                broken,
+                stopping,
+                stopped
+            };
+        };
+
+        std::atomic<int> m_state;
 
         // Slave I/O.
         std::unique_ptr<io::channel_t> m_bus,
@@ -185,7 +191,7 @@ class engine_t:
 
         // NOTE: Engine isolate reference, keeping it here
         // avoids isolate destruction, as the factory stores
-        // only weak references to the isolate instances..
+        // only weak references to the isolate instances.
         api::category_traits<api::isolate_t>::ptr_type m_isolate;
 };
 

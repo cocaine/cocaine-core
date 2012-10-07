@@ -86,7 +86,7 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest, const profile
     )),
     m_manifest(manifest),
     m_profile(profile),
-    m_state(stopped),
+    m_state(state::stopped),
     m_bus(new io::channel_t(context, ZMQ_ROUTER, m_manifest.name)),
     m_ctl(new io::channel_t(context, ZMQ_PAIR)),
     m_bus_watcher(m_loop),
@@ -150,12 +150,12 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest, const profile
 }
 
 engine_t::~engine_t() {
-    BOOST_ASSERT(m_state == stopped);
+    BOOST_ASSERT(m_state == state::stopped);
 }
 
 void
 engine_t::run() {
-    m_state = running;
+    m_state = state::running;
     m_loop.loop();
 }
 
@@ -163,7 +163,9 @@ bool
 engine_t::enqueue(job_queue_t::const_reference job,
                   mode::value mode)
 {
-    if(m_state != running) {
+    boost::unique_lock<boost::mutex> queue_lock(m_queue_mutex);
+
+    if(m_state != state::running) {
         m_log->debug(
             "dropping an incomplete '%s' job due to an inactive engine",
             job->event.c_str()
@@ -181,14 +183,12 @@ engine_t::enqueue(job_queue_t::const_reference job,
         return false;
     }
 
-    boost::unique_lock<boost::mutex> queue_lock(m_queue_mutex);
-
     if(m_queue.size() < m_profile.queue_limit) {
         m_queue.push(job);
+        queue_lock.unlock();
     } else {
         switch(mode) {
             case mode::normal:
-                // Release the lock, as it's not needed anymore.
                 queue_lock.unlock();
 
                 m_log->debug(
@@ -213,6 +213,7 @@ engine_t::enqueue(job_queue_t::const_reference job,
                 }
 
                 m_queue.push(job);
+                queue_lock.unlock();
         }
     }
   
@@ -332,7 +333,7 @@ engine_t::on_cleanup(ev::timer&, int) {
 void
 engine_t::on_termination(ev::timer&, int) {
     m_log->warning("forcing engine termination");
-    clear();
+    stop();
 }
 
 void
@@ -427,9 +428,9 @@ engine_t::process_bus_events() {
                 // Remove the dead slave from the pool.
                 m_pool.erase(master);
 
-                if(m_state == stopping && m_pool.empty()) {
+                if(m_state != state::running && m_pool.empty()) {
                     // If it was the last slave, shut the engine down.
-                    clear();
+                    stop();
                     return;
                 }
 
@@ -466,6 +467,7 @@ engine_t::process_bus_events() {
 
                 if(code == server_error) {
                     m_log->error("the app seems to be broken - %s", message.c_str());
+                    m_state = state::broken;
                     shutdown();
                     return;
                 }
@@ -490,8 +492,9 @@ engine_t::process_bus_events() {
 }
 
 namespace {
-    static const char * states[] = {
+    static const char * describe[] = {
         "running",
+        "broken",
         "stopping",
         "stopped"
     };
@@ -523,7 +526,7 @@ engine_t::process_ctl_events() {
                 )
             );
 
-            info["state"] = states[m_state];
+            info["state"] = describe[m_state];
 
             m_ctl->send(info);
 
@@ -531,6 +534,7 @@ engine_t::process_ctl_events() {
         }
 
         case io::get<control::terminate>::value:
+            m_state = state::stopping;
             shutdown();
             break;
 
@@ -686,53 +690,47 @@ engine_t::balance() {
 
 void
 engine_t::shutdown() {
-    m_state = stopping;
+    boost::unique_lock<boost::mutex> queue_lock(m_queue_mutex);
 
-    {
-        boost::unique_lock<boost::mutex> queue_lock(m_queue_mutex);
+    if(!m_queue.empty()) {
+        m_log->debug(
+            "dropping %zu incomplete %s due to the engine shutdown",
+            m_queue.size(),
+            m_queue.size() == 1 ? "job" : "jobs"
+        );
 
-        if(!m_queue.empty()) {
-            m_log->debug(
-                "dropping %zu incomplete %s due to the engine shutdown",
-                m_queue.size(),
-                m_queue.size() == 1 ? "job" : "jobs"
+        // Abort all the outstanding jobs.
+        while(!m_queue.empty()) {
+            m_queue.front()->process(
+                events::error(
+                    resource_error,
+                    "engine is shutting down"
+                )
             );
 
-            // Abort all the outstanding jobs.
-            while(!m_queue.empty()) {
-                m_queue.front()->process(
-                    events::error(
-                        resource_error,
-                        "engine is shutting down"
-                    )
-                );
+            m_queue.front()->process(events::choke());
 
-                m_queue.front()->process(events::choke());
-
-                m_queue.pop_front();
-            }
+            m_queue.pop_front();
         }
     }
 
     unsigned int pending = 0;
 
+    // Send the termination event to active slaves.
+    // If there're no active slaves, the engine can terminate right away,
+    // otherwise, the engine should wait for the specified timeout for slaves
+    // to finish their jobs and then force the termination.
+    for(pool_map_t::iterator it = m_pool.begin();
+        it != m_pool.end();
+        ++it)
     {
-        // Send the termination event to active slaves.
-        // If there're no active slaves, the engine can terminate right away,
-        // otherwise, the engine should wait for the specified timeout for slaves
-        // to finish their jobs and then force the termination.
-        for(pool_map_t::iterator it = m_pool.begin();
-            it != m_pool.end();
-            ++it)
-        {
-            if(it->second->state_downcast<const slave::alive*>()) {
-                send(
-                    *it->second,
-                    io::message<rpc::terminate>()
-                );
+        if(it->second->state_downcast<const slave::alive*>()) {
+            send(
+                *it->second,
+                io::message<rpc::terminate>()
+            );
 
-                ++pending;
-            }
+            ++pending;
         }
     }
 
@@ -747,7 +745,7 @@ engine_t::shutdown() {
         m_termination_timer.set<engine_t, &engine_t::on_termination>(this);
         m_termination_timer.start(m_profile.termination_timeout);
     } else {
-        clear();
+        stop();
     }    
 }
 
@@ -762,7 +760,7 @@ namespace {
 }
 
 void
-engine_t::clear() {
+engine_t::stop() {
     // Force slave termination.
     std::for_each(
         m_pool.begin(),
@@ -771,7 +769,9 @@ engine_t::clear() {
     );
     
     m_pool.clear();
-    m_loop.unloop(ev::ALL);
-    
-    m_state = stopped;
+
+    if(m_state == state::stopping) {
+        m_state = state::stopped;
+        m_loop.unloop(ev::ALL);
+    }
 }
