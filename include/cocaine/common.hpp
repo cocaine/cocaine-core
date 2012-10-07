@@ -22,6 +22,7 @@
 #define COCAINE_COMMON_HPP
 
 #include <map>
+#include <memory>
 #include <string>
 #include <tr1/cstdint>
 #include <vector>
