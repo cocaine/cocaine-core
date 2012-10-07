@@ -26,13 +26,8 @@ LOCATE_LIBRARY(LIBARCHIVE "archive.h" "archive")
 LOCATE_LIBRARY(LIBLTDL "ltdl.h" "ltdl")
 
 IF(NOT APPLE)
-    LOCATE_LIBRARY(LIBCGROUP "libcgroup.h" "cgroup")
     LOCATE_LIBRARY(LIBUUID "uuid/uuid.h" "uuid")
-
-    SET(LIBCGROUP_LIBRARY "cgroup")
     SET(LIBUUID_LIBRARY "uuid")
-
-    ADD_DEFINITIONS("-DHAVE_CGROUPS")
 ENDIF()
 
 INCLUDE_DIRECTORIES(
@@ -88,6 +83,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/app
     src/archive
     src/engine
+    src/isolates/process
     src/job
     src/manifest
     src/master
@@ -95,7 +91,6 @@ ADD_LIBRARY(cocaine-core SHARED
 
 TARGET_LINK_LIBRARIES(cocaine-core
     archive
-    ${LIBCGROUP_LIBRARY}
     cocaine-common
     ev
     ${LIBUUID_LIBRARY})
