@@ -43,28 +43,29 @@ slave_t::slave_t(context_t& context, slave_config_t config):
         ).str()
     )),
     m_name(config.name),
-    m_bus(context, config.uuid),
+    m_bus(context, ZMQ_DEALER, config.uuid),
     m_bus_timeout(m_bus, defaults::bus_timeout)
 {
-#ifdef ZMQ_ROUTER_BEHAVIOR
-//    int mode = 1;
-    
-//    m_bus.setsockopt(ZMQ_ROUTER_BEHAVIOR, &mode, sizeof(mode));
-#endif
+    uint64_t hwm = 10;
 
-    m_bus.connect(
+    // TODO: Make it SND_HWM in ZeroMQ 3.1+
+    m_bus.setsockopt(ZMQ_HWM, &hwm, sizeof(hwm));
+
+    std::string bus_endpoint(
         (boost::format("ipc://%1%/%2%")
             % m_context.config.ipc_path
             % m_name
         ).str()
     );
     
-    m_watcher.set<slave_t, &slave_t::message>(this);
-    m_watcher.start(m_bus.fd(), ev::READ);
-    m_checker.set<slave_t, &slave_t::check>(this);
-    m_checker.start();
+    m_bus.connect(bus_endpoint);
+    
+    m_bus_watcher.set<slave_t, &slave_t::on_bus_event>(this);
+    m_bus_watcher.start(m_bus.fd(), ev::READ);
+    m_bus_checker.set<slave_t, &slave_t::on_bus_check>(this);
+    m_bus_checker.start();
 
-    m_heartbeat_timer.set<slave_t, &slave_t::heartbeat>(this);
+    m_heartbeat_timer.set<slave_t, &slave_t::on_heartbeat>(this);
     m_heartbeat_timer.start(0.0f, 5.0f);
 
     // Launching the app
@@ -74,7 +75,7 @@ slave_t::slave_t(context_t& context, slave_config_t config):
         m_manifest.reset(new manifest_t(m_context, m_name));
         m_profile.reset(new profile_t(m_context, config.profile));
         
-        m_idle_timer.set<slave_t, &slave_t::timeout>(this);
+        m_idle_timer.set<slave_t, &slave_t::on_idle_timeout>(this);
         m_idle_timer.start(m_profile->idle_timeout);
         
         fs::path path(
@@ -90,7 +91,7 @@ slave_t::slave_t(context_t& context, slave_config_t config):
         );
     } catch(const std::exception& e) {
         io::message<rpc::error> message(server_error, e.what());
-        m_bus.send(m_name, message);
+        m_bus.send_message(message);
         terminate();
         throw;
     } catch(...) {
@@ -99,7 +100,7 @@ slave_t::slave_t(context_t& context, slave_config_t config):
             "unexpected exception while configuring the slave"
         );
         
-        m_bus.send(m_name, message);
+        m_bus.send_message(message);
         terminate();
         throw;
     }
@@ -107,19 +108,20 @@ slave_t::slave_t(context_t& context, slave_config_t config):
 
 slave_t::~slave_t() { }
 
-void slave_t::run() {
+void
+slave_t::run() {
     m_loop.loop();
 }
 
-std::string slave_t::read(int timeout) {
+std::string
+slave_t::read(int timeout) {
     int command = 0;
     zmq::message_t body;
 
     boost::tuple<
-        const io::ignore_t&,
         int&,
         zmq::message_t*
-    > proxy(io::ignore_t(), command, &body);
+    > proxy(command, &body);
         
     {
         io::scoped_option<
@@ -140,7 +142,10 @@ std::string slave_t::read(int timeout) {
     );
 }
 
-void slave_t::write(const void * data, size_t size) {
+void
+slave_t::write(const void * data,
+               size_t size)
+{
     zmq::message_t body(size);
 
     memcpy(
@@ -151,49 +156,45 @@ void slave_t::write(const void * data, size_t size) {
     
     io::message<rpc::chunk> message(body);
 
-    m_bus.send(m_name, message);
+    m_bus.send_message(message);
 }
 
-void slave_t::message(ev::io&, int) {
-    m_checker.stop();
+void
+slave_t::on_bus_event(ev::io&, int) {
+    m_bus_checker.stop();
 
     if(m_bus.pending()) {
-        m_checker.start();
-        process();
+        m_bus_checker.start();
+        process_bus_events();
     }
 }
 
-void slave_t::check(ev::prepare&, int) {
+void
+slave_t::on_bus_check(ev::prepare&, int) {
     m_loop.feed_fd_event(m_bus.fd(), ev::READ);
 }
 
-void slave_t::process() {
+void
+slave_t::process_bus_events() {
     // TEST: Ensure that we haven't missed something in a previous iteration.
     BOOST_ASSERT(!m_bus.more());
-    
-    std::string source; 
+   
     int command = 0;
 
-    boost::tuple<
-        io::raw<std::string>,
-        int&
-    > proxy(io::protect(source), command);
-   
     {
         io::scoped_option<
             io::options::receive_timeout
         > option(m_bus, 0);
         
-        if(!m_bus.recv_tuple(proxy)) {
+        if(!m_bus.recv(command)) {
             return;
         }
     }
 
     m_log->debug(
-        "slave %s got type %d command from engine %s",
+        "slave %s received type %d message",
         id().c_str(),
-        command,
-        source.c_str()
+        command
     );
 
     switch(command) {
@@ -220,50 +221,52 @@ void slave_t::process() {
 
         default:
             m_log->warning(
-                "slave %s dropping unknown type %d command from engine %s", 
+                "slave %s dropping unknown type %d message", 
                 id().c_str(),
-                command,
-                source.c_str()
+                command
             );
             
             m_bus.drop();
     }
 }
 
-void slave_t::timeout(ev::timer&, int) {
-    terminate();
-}
-
-void slave_t::heartbeat(ev::timer&, int) {
-    if(!m_bus.send(m_name, io::message<rpc::heartbeat>())) {
+void
+slave_t::on_heartbeat(ev::timer&, int) {
+    if(!m_bus.send_message(io::message<rpc::heartbeat>())) {
         m_log->error(
             "slave %s has lost the controlling engine",
             id().c_str()
         );
 
-        terminate();
+        m_loop.unloop(ev::ALL);
     }
 }
 
-void slave_t::invoke(const std::string& event) {
+void
+slave_t::on_idle_timeout(ev::timer&, int) {
+    terminate();
+}
+
+void
+slave_t::invoke(const std::string& event) {
     try {
         m_sandbox->invoke(event, *this);
     } catch(const unrecoverable_error_t& e) {
         io::message<rpc::error> message(server_error, e.what());
-        m_bus.send(m_name, message);
+        m_bus.send_message(message);
     } catch(const std::exception& e) {
         io::message<rpc::error> message(app_error, e.what());
-        m_bus.send(m_name, message);
+        m_bus.send_message(message);
     } catch(...) {
         io::message<rpc::error> message(
             server_error,
             "unexpected exception while processing an event"
         );
         
-        m_bus.send(m_name, message);
+        m_bus.send_message(message);
     }
     
-    m_bus.send(m_name, io::message<rpc::choke>());
+    m_bus.send_message(io::message<rpc::choke>());
    
     // Rearm the idle timer. 
     m_idle_timer.stop();
@@ -273,7 +276,8 @@ void slave_t::invoke(const std::string& event) {
     m_loop.feed_fd_event(m_bus.fd(), ev::READ);
 }
 
-void slave_t::terminate() {
-    m_bus.send(m_name, io::message<rpc::terminate>());
+void
+slave_t::terminate() {
+    m_bus.send_message(io::message<rpc::terminate>());
     m_loop.unloop(ev::ALL);
 }

@@ -51,26 +51,43 @@ class slave_t:
 
         ~slave_t();
 
-        void run();
+        void
+        run();
 
         // I/O object implementation
         // -------------------------
         
-        virtual std::string read(int timeout);
+        virtual
+        std::string
+        read(int timeout);
 
-        virtual void write(const void * data,
-                           size_t size);
+        virtual
+        void
+        write(const void * data,
+              size_t size);
+
+    private:
+        void
+        on_bus_event(ev::io&, int);
+        
+        void
+        on_bus_check(ev::prepare&, int);
+        
+        void
+        on_heartbeat(ev::timer&, int);
+
+        void
+        on_idle_timeout(ev::timer&, int);
         
     private:
-        void message(ev::io&, int);
-        void check(ev::prepare&, int);
-        void timeout(ev::timer&, int);
-        void heartbeat(ev::timer&, int);
-
-        void process();
+        void
+        process_bus_events();
         
-        void invoke(const std::string& event);
-        void terminate();
+        void
+        invoke(const std::string& event);
+        
+        void
+        terminate();
 
     private:
         context_t& m_context;
@@ -78,28 +95,27 @@ class slave_t:
 
         const std::string m_name;
 
-        std::unique_ptr<const manifest_t> m_manifest;
-        std::unique_ptr<const profile_t> m_profile;
-
-        // The app.
-        std::unique_ptr<api::sandbox_t> m_sandbox;
-
+        // Engine I/O.
+        io::channel_t m_bus;
+        
+        // Engine I/O timeout.
+        io::scoped_option<
+            io::options::send_timeout
+        > m_bus_timeout;
+        
         // Event loop.
         ev::default_loop m_loop;
         
-        ev::io m_watcher;
-        ev::prepare m_checker;
+        ev::io m_bus_watcher;
+        ev::prepare m_bus_checker;
         
         ev::timer m_heartbeat_timer,
                   m_idle_timer;
         
-        // Engine RPC.
-        io::channel_t m_bus;
-        
-        // Engine RPC timeout.
-        io::scoped_option<
-            io::options::send_timeout
-        > m_bus_timeout;
+        // The app.
+        std::unique_ptr<const manifest_t> m_manifest;
+        std::unique_ptr<const profile_t> m_profile;
+        std::unique_ptr<api::sandbox_t> m_sandbox;
 };
 
 }} // namespace cocaine::engine
