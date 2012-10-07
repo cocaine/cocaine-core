@@ -62,6 +62,7 @@ ADD_LIBRARY(cocaine-common SHARED
     src/auth
     src/context
     src/io
+    src/isolates/process
     src/logging
     src/repository
     src/storages/files)
@@ -83,7 +84,6 @@ ADD_LIBRARY(cocaine-core SHARED
     src/app
     src/archive
     src/engine
-    src/isolates/process
     src/job
     src/manifest
     src/master
