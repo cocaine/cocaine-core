@@ -641,7 +641,7 @@ engine_t::balance() {
             boost::shared_ptr<master_t> master(
                 boost::make_shared<master_t>(
                     m_context,
-                    *this,
+                    m_loop,
                     m_manifest,
                     m_profile
                 )

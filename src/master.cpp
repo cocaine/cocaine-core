@@ -23,7 +23,6 @@
 #include "cocaine/master.hpp"
 
 #include "cocaine/context.hpp"
-#include "cocaine/engine.hpp"
 #include "cocaine/job.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
@@ -32,17 +31,17 @@
 using namespace cocaine::engine;
 using namespace cocaine::engine::slave;
 
-master_t::master_t(context_t& context, engine_t& engine, const manifest_t& manifest, const profile_t& profile):
+master_t::master_t(context_t& context, ev::loop_ref& loop, const manifest_t& manifest, const profile_t& profile):
     m_context(context),
     m_log(context.log(
         (boost::format("app/%1%")
             % manifest.name
         ).str()
     )),
-    m_engine(engine),
+    m_loop(loop),
     m_manifest(manifest),
     m_profile(profile),
-    m_heartbeat_timer(m_engine.loop())
+    m_heartbeat_timer(loop)
 {
     initiate();
     
@@ -100,7 +99,7 @@ void master_t::on_initialize(const events::heartbeat& event) {
         "slave %s came alive in %.03f seconds",
         id().c_str(),
         10.0f - ev_timer_remaining(
-            m_engine.loop(),
+            m_loop,
             static_cast<ev_timer*>(&m_heartbeat_timer)
         )
     );

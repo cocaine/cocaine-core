@@ -61,7 +61,7 @@ class master_t:
 
     public:
         master_t(context_t& context,
-                 engine_t& engine,
+                 ev::loop_ref& loop,
                  const manifest_t& manifest,
                  const profile_t& profile);
 
@@ -82,8 +82,7 @@ class master_t:
         context_t& m_context;
         boost::shared_ptr<logging::logger_t> m_log;
 
-        // TODO: Drop this dependency?
-        engine_t& m_engine;
+        ev::loop_ref& m_loop;
 
         const manifest_t& m_manifest;
         const profile_t& m_profile;
