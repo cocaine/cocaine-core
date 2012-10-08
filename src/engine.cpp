@@ -27,6 +27,7 @@
 #include "cocaine/job.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
+#include "cocaine/master.hpp"
 #include "cocaine/profile.hpp"
 #include "cocaine/rpc.hpp"
 
@@ -163,7 +164,7 @@ bool
 engine_t::enqueue(job_queue_t::const_reference job,
                   mode::value mode)
 {
-    boost::unique_lock<boost::mutex> queue_lock(m_queue_mutex);
+    boost::unique_lock<boost::mutex> lock(m_queue_mutex);
 
     if(m_state != state::running) {
         m_log->debug(
@@ -185,11 +186,11 @@ engine_t::enqueue(job_queue_t::const_reference job,
 
     if(m_queue.size() < m_profile.queue_limit) {
         m_queue.push(job);
-        queue_lock.unlock();
+        lock.unlock();
     } else {
         switch(mode) {
             case mode::normal:
-                queue_lock.unlock();
+                lock.unlock();
 
                 m_log->debug(
                     "dropping an incomplete '%s' job due to a full queue",
@@ -209,11 +210,11 @@ engine_t::enqueue(job_queue_t::const_reference job,
 
             case mode::blocking:
                 while(m_queue.size() >= m_profile.queue_limit) {
-                    m_queue_condition.wait(queue_lock);
+                    m_queue_condition.wait(lock);
                 }
 
                 m_queue.push(job);
-                queue_lock.unlock();
+                lock.unlock();
         }
     }
   
@@ -303,7 +304,7 @@ engine_t::on_cleanup(ev::timer&, int) {
         job_queue_t::iterator
     > filter_t;
     
-    boost::unique_lock<boost::mutex> queue_lock(m_queue_mutex);
+    boost::unique_lock<boost::mutex> lock(m_queue_mutex);
 
     // Process all the expired jobs.
     filter_t it(expired_t(m_loop.now()), m_queue.begin(), m_queue.end()),
@@ -383,25 +384,12 @@ engine_t::process_bus_events() {
             
             m_bus->drop();
 
-#ifdef ZMQ_ROUTER_BEHAVIOR
-            // NOTE: Do a non-blocking send.
-            io::scoped_option<
-                io::options::send_timeout
-            > option(*m_bus, 0);
-            
-            bool success = m_bus->send(io::protect(slave_id), ZMQ_SNDMORE) &&
-                           m_bus->send_message(io::message<rpc::terminate>());
-            
-            if(!success) {
+            if(!send(slave_id, io::message<rpc::terminate>())) {
                 m_log->warning(
                     "unable to kill an unknown slave %s", 
                     slave_id.c_str()
                 );
             }
-#else
-            m_bus->send(io::protect(slave_id), ZMQ_SNDMORE);
-            m_bus->send_message(io::message<rpc::terminate>());
-#endif
 
             continue;
         }
@@ -565,7 +553,7 @@ engine_t::pump() {
             job_queue_t::value_type job;
 
             {
-                boost::unique_lock<boost::mutex> queue_lock(m_queue_mutex);
+                boost::unique_lock<boost::mutex> lock(m_queue_mutex);
 
                 if(m_queue.empty()) {
                     break;
@@ -578,25 +566,20 @@ engine_t::pump() {
             // Notify one of the blocked enqueue operations.
             m_queue_condition.notify_one();
            
-            {
-                job_t::lock_t lock(*job);
+            if(job->state == job_t::state::complete) {
+                m_log->debug(
+                    "dropping a complete '%s' job from the queue",
+                    job->event.c_str()
+                );
 
-                if(job->state == job_t::complete) {
-                    m_log->debug(
-                        "dropping a complete '%s' job from the queue",
-                        job->event.c_str()
-                    );
-
-                    continue;
-                }
+                continue;
             }
             
             io::message<rpc::invoke> message(
                 job->event
             );
 
-#ifdef ZMQ_ROUTER_BEHAVIOR
-            if(send(*it->second, message)) {
+            if(send(it->second->id(), message)) {
                 it->second->process_event(
                     events::invoke(job, it->second)
                 );
@@ -614,20 +597,10 @@ engine_t::pump() {
                 m_pool.erase(it);
                 
                 {
-                    boost::unique_lock<boost::mutex> queue_lock(m_queue_mutex);
+                    boost::unique_lock<boost::mutex> lock(m_queue_mutex);
                     m_queue.emplace_front(job);
                 }
             }
-#else
-            send(*it->second, message);
-            
-            it->second->process_event(
-                events::invoke(job, it->second)
-            );
-                        
-            // TODO: Check if it helps.
-            m_loop.feed_fd_event(m_bus->fd(), ev::READ);
-#endif
         } else {
             break;
         }
@@ -690,7 +663,7 @@ engine_t::balance() {
 
 void
 engine_t::shutdown() {
-    boost::unique_lock<boost::mutex> queue_lock(m_queue_mutex);
+    boost::unique_lock<boost::mutex> lock(m_queue_mutex);
 
     if(!m_queue.empty()) {
         m_log->debug(
@@ -726,7 +699,7 @@ engine_t::shutdown() {
     {
         if(it->second->state_downcast<const slave::alive*>()) {
             send(
-                *it->second,
+                it->second->id(),
                 io::message<rpc::terminate>()
             );
 

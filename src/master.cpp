@@ -28,7 +28,6 @@
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
 #include "cocaine/profile.hpp"
-#include "cocaine/rpc.hpp"
 
 using namespace cocaine::engine;
 using namespace cocaine::engine::slave;
@@ -88,26 +87,6 @@ master_t::~master_t() {
 
 bool master_t::operator==(const master_t& other) const {
     return id() == other.id();
-}
-
-void master_t::push(const std::string& chunk_) {
-    zmq::message_t chunk(chunk_.size());
-
-    memcpy(
-        chunk.data(),
-        chunk_.data(),
-        chunk_.size()
-    );
-    
-    io::message<rpc::chunk> message(
-        chunk
-    );
-
-    // TODO: Check for result.
-    m_engine.send(
-        *this,
-        message
-    );
 }
 
 void master_t::on_initialize(const events::heartbeat& event) {
