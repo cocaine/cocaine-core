@@ -53,8 +53,7 @@ namespace slave {
 // ----------
 
 class master_t:
-    public sc::state_machine<master_t, slave::unknown>,
-    public unique_id_t
+    public sc::state_machine<master_t, slave::unknown>
 {
     friend struct slave::unknown;
     friend struct slave::alive;
@@ -67,7 +66,10 @@ class master_t:
                  const profile_t& profile);
 
         ~master_t();
-        
+       
+        const std::string&
+        id() const;
+
         bool operator==(const master_t& other) const;
 
     private:
@@ -85,6 +87,9 @@ class master_t:
 
         const manifest_t& m_manifest;
         const profile_t& m_profile;
+
+        // Host-unique identifier for this slave.
+        const unique_id_t m_id;
 
         ev::timer m_heartbeat_timer;
     

@@ -35,13 +35,13 @@ using namespace cocaine::engine;
 namespace fs = boost::filesystem;
 
 slave_t::slave_t(context_t& context, slave_config_t config):
-    unique_id_t(config.uuid),
     m_context(context),
     m_log(context.log(
         (boost::format("app/%1%")
             % config.name
         ).str()
     )),
+    m_id(config.uuid),
     m_name(config.name),
     m_bus(context, ZMQ_DEALER, config.uuid),
     m_bus_timeout(m_bus, defaults::bus_timeout)
@@ -193,7 +193,7 @@ slave_t::process_events() {
 
     m_log->debug(
         "slave %s received type %d message",
-        id().c_str(),
+        m_id.string().c_str(),
         command
     );
 
@@ -222,7 +222,7 @@ slave_t::process_events() {
         default:
             m_log->warning(
                 "slave %s dropping unknown type %d message", 
-                id().c_str(),
+                m_id.string().c_str(),
                 command
             );
             
@@ -235,7 +235,7 @@ slave_t::on_heartbeat(ev::timer&, int) {
     if(!m_bus.send_message(io::message<rpc::heartbeat>())) {
         m_log->error(
             "slave %s has lost the controlling engine",
-            id().c_str()
+            m_id.string().c_str()
         );
 
         m_loop.unloop(ev::ALL);

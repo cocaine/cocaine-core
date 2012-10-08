@@ -28,37 +28,54 @@
 
 namespace cocaine { namespace helpers {
 
-class unique_id_t {
-    public:
-        typedef std::string identifier_type;
+struct unique_id_t {
+    unique_id_t() {
+        uuid_generate(
+            reinterpret_cast<unsigned char*>(uuid)
+        );
+    }
 
-        unique_id_t() {
-            char unparsed_uuid[37];
-            
-            uuid_generate(m_uuid);
-            uuid_unparse_lower(m_uuid, unparsed_uuid);
-            
-            m_id = unparsed_uuid;
+    explicit
+    unique_id_t(const std::string& other) {
+        int rv = uuid_parse(
+            other.c_str(),
+            reinterpret_cast<unsigned char*>(uuid)
+        );
+        
+        if(rv != 0) {
+            boost::format message("unable to parse '%s' as an unique id");
+            throw std::runtime_error((message % other).str());
         }
+    }
 
-        explicit
-        unique_id_t(const identifier_type& other) {
-            if(uuid_parse(other.c_str(), m_uuid) == 0) {
-                m_id = other;
-            } else {
-                boost::format message("unable to parse '%s' as an unique id");
-                throw std::runtime_error((message % other).str());
-            }
+    const std::string&
+    string() const {
+        if(cache.empty()) {
+            // NOTE: 36-character long UUID plus trailing zero.
+            char unparsed[37];
+
+            uuid_unparse_lower(
+                reinterpret_cast<const unsigned char*>(uuid),
+                unparsed
+            );
+
+            cache = unparsed;
         }
+    
+        return cache;
+    }
 
-        const identifier_type&
-        id() const {
-            return m_id;
-        }
+    bool
+    operator==(const unique_id_t& other) const {
+        return uuid[0] == other.uuid[0] &&
+               uuid[1] == other.uuid[1];
+    }
 
-    private:
-        uuid_t m_uuid;
-        identifier_type m_id;
+private:
+    uint64_t uuid[2];
+
+    // Textual representation cache.
+    mutable std::string cache;
 };
 
 } // namespace helpers

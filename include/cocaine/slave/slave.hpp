@@ -39,7 +39,6 @@ struct slave_config_t {
 
 class slave_t:
     public boost::noncopyable,
-    public unique_id_t,
     public api::io_t
 {
     public:
@@ -90,6 +89,7 @@ class slave_t:
         context_t& m_context;
         boost::shared_ptr<logging::logger_t> m_log;
 
+        const unique_id_t m_id;
         const std::string m_name;
 
         // Engine I/O.

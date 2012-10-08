@@ -85,8 +85,13 @@ master_t::~master_t() {
     terminate();
 }
 
+const std::string&
+master_t::id() const {
+    return m_id.string();
+}
+
 bool master_t::operator==(const master_t& other) const {
-    return id() == other.id();
+    return m_id == other.m_id;
 }
 
 void master_t::on_initialize(const events::heartbeat& event) {
