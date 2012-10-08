@@ -24,7 +24,6 @@
 #include <boost/format.hpp>
 #include <stdexcept>
 #include <string>
-
 #include <uuid/uuid.h>
 
 namespace cocaine { namespace helpers {
