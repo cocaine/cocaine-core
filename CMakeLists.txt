@@ -78,7 +78,7 @@ TARGET_LINK_LIBRARIES(cocaine-common
     zmq)
 
 SET_TARGET_PROPERTIES(cocaine-common PROPERTIES
-    VERSION 1)
+    VERSION 2)
 
 ADD_LIBRARY(cocaine-core SHARED
     src/app
@@ -96,7 +96,7 @@ TARGET_LINK_LIBRARIES(cocaine-core
     ${LIBUUID_LIBRARY})
 
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
-    VERSION 1)
+    VERSION 2)
 
 ADD_EXECUTABLE(cocaine-slave
     src/slave/slave

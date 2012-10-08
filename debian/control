@@ -2,14 +2,14 @@ Source: cocaine-core
 Section: utils
 Priority: extra
 Maintainer: Andrey Sibiryov <kobolog@yandex-team.ru>
-Build-Depends: cdbs, debhelper (>= 7.0.13), libzmq-dev (>= 2.2.0), libev-dev, libmsgpack-dev,
+Build-Depends: cmake, cdbs, debhelper (>= 7.0.13), libzmq-dev (>= 2.2.0), libev-dev, libmsgpack-dev,
  libboost-dev, libboost-filesystem-dev, libboost-thread-dev, libboost-program-options-dev,
- libssl-dev, libltdl-dev, uuid-dev, cmake, libarchive-dev
+ libssl-dev, libltdl-dev, uuid-dev, libarchive-dev
 Standards-Version: 3.9.1
 Vcs-Git: git://github.com/cocaine/cocaine-core.git
 Vcs-Browser: https://github.com/cocaine/cocaine-core
 
-Package: libcocaine-common1
+Package: libcocaine-common2
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, libzmq1 (>= 2.2.0)
 Provides: cocaine-core
@@ -17,7 +17,7 @@ Replaces: cocaine-core
 Description: Cocaine - Common Libraries
  Cocaine common libraries package.
 
-Package: libcocaine-core1
+Package: libcocaine-core2
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Provides: cocaine-core
@@ -31,14 +31,13 @@ Section: libdevel
 Provides: cocaine-dev
 Replaces: cocaine-dev
 Depends: ${shlibs:Depends}, ${misc:Depends}, libzmq-dev (>= 2.2.0), libev-dev, libmsgpack-dev,
- libboost-dev, libboost-thread-dev, libssl-dev, libcocaine-common1 (= ${Source-Version}),
- libcocaine-core1 (= ${Source-Version})
+ libboost-dev, libboost-thread-dev, libcocaine-common2, libcocaine-core2
 Description: Cocaine - Development Headers
  Cocaine development headers package.
 
 Package: cocaine-generic-slave
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core1
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2
 Provides: cocaine-core
 Replaces: cocaine-core
 Description: Cocaine - Generic Slave
@@ -48,14 +47,12 @@ Package: cocaine-server
 Architecture: any
 Provides: cocaine-core
 Replaces: cocaine-core
-Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core1,
- cocaine-generic-slave, adduser
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2, cocaine-generic-slave, adduser
 Description: Cocaine - Server
  Cocaine server package.
 
 Package: cocaine-tools
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core1, python, 
- python-zmq
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2, python, python-zmq
 Description: Cocaine - Toolset
  Various tools to query and manipulate running Cocaine instances.
