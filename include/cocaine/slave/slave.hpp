@@ -22,10 +22,7 @@
 #define COCAINE_SLAVE_HPP
 
 #include "cocaine/common.hpp"
-
-// Has to be included after common.h
-#include <ev++.h>
-
+#include "cocaine/asio.hpp"
 #include "cocaine/io.hpp"
 
 #include "cocaine/api/sandbox.hpp"
@@ -98,7 +95,6 @@ class slave_t:
         // Engine I/O.
         io::channel_t m_bus;
         
-        // Engine I/O timeout.
         io::scoped_option<
             io::options::send_timeout
         > m_bus_timeout;

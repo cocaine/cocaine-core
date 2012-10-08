@@ -18,26 +18,15 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#ifndef COCAINE_COMMON_HPP
-#define COCAINE_COMMON_HPP
+#ifndef COCAINE_ASIO_HPP
+#define COCAINE_ASIO_HPP
 
-#include <map>
-#include <memory>
-#include <string>
-#include <tr1/cstdint>
-#include <vector>
+#define EV_MINIMAL       0
+#define EV_USE_MONOTONIC 1
+#define EV_USE_REALTIME  1
+#define EV_USE_NANOSLEEP 1
+#define EV_USE_EVENTFD   1
 
-#include <boost/assert.hpp>
-#include <boost/make_shared.hpp>
-#include <boost/noncopyable.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/version.hpp>
-
-#if BOOST_VERSION >= 104000
- #include <boost/unordered_map.hpp>
-#endif
-
-#include "cocaine/forwards.hpp"
-#include "cocaine/exceptions.hpp"
+#include <ev++.h>
 
 #endif

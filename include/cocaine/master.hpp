@@ -27,10 +27,7 @@
 #include <boost/statechart/transition.hpp>
 
 #include "cocaine/common.hpp"
-
-// Has to be included after common.h
-#include <ev++.h>
-
+#include "cocaine/asio.hpp"
 #include "cocaine/events.hpp"
 
 #include "cocaine/api/isolate.hpp"
@@ -72,8 +69,6 @@ class master_t:
         ~master_t();
         
         bool operator==(const master_t& other) const;
-
-        void push(const std::string& chunk);
 
     private:
         void on_initialize(const events::heartbeat& event);

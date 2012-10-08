@@ -27,12 +27,8 @@
 #include <deque>
 
 #include "cocaine/common.hpp"
-
-// Has to be included after common.h
-#include <ev++.h>
-
+#include "cocaine/asio.hpp"
 #include "cocaine/io.hpp"
-#include "cocaine/master.hpp"
 
 #include "cocaine/api/isolate.hpp"
 
@@ -56,9 +52,6 @@ class job_queue_t:
         void push(const_reference job);
 };
 
-// Engine
-// ------
-
 class engine_t:
     public boost::noncopyable
 {
@@ -79,23 +72,18 @@ class engine_t:
 
         template<class T>
         bool
-        send(const master_t& target,
+        send(const std::string& uuid,
              const T& message)
         {
-#ifdef ZMQ_ROUTER_BEHAVIOR
+            boost::unique_lock<boost::mutex> lock(m_bus_mutex);
+
             // NOTE: Do a non-blocking send.
             io::scoped_option<
                 io::options::send_timeout
             > option(*m_bus, 0);
             
-            return m_bus->send(io::protect(target.id()), ZMQ_SNDMORE) &&
+            return m_bus->send(io::protect(uuid), ZMQ_SNDMORE) &&
                    m_bus->send_message(message);
-#else
-            m_bus->send(io::protect(target.id()), ZMQ_SNDMORE);
-            m_bus->send_message(message);
-
-            return true;
-#endif
         }
 
     public:
@@ -166,6 +154,8 @@ class engine_t:
         // Slave I/O.
         std::unique_ptr<io::channel_t> m_bus,
                                        m_ctl;
+
+        boost::mutex m_bus_mutex;
 
         // Event loop.  
         ev::dynamic_loop m_loop;

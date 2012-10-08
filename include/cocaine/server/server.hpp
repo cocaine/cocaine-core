@@ -22,20 +22,17 @@
 #define COCAINE_SERVER_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/asio.hpp"
+#include "cocaine/auth.hpp"
+#include "cocaine/io.hpp"
 
-// Has to be included after common.h
-#include <ev++.h>
+#include "cocaine/helpers/json.hpp"
 
 #if BOOST_VERSION >= 104000
 # include <boost/ptr_container/ptr_unordered_map.hpp>
 #else
 # include <boost/ptr_container/ptr_map.hpp>
 #endif
-
-#include "cocaine/auth.hpp"
-#include "cocaine/io.hpp"
-
-#include "cocaine/helpers/json.hpp"
 
 namespace cocaine {
 
