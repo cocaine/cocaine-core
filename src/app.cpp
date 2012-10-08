@@ -188,7 +188,7 @@ app_t::info() const {
         > option(*m_control, defaults::control_timeout);
 
         if(!m_control->recv(info)) {
-            info["error"] = "engine is not responsive";
+            info["error"] = "engine is unresponsive";
             return info;
         }
     }
