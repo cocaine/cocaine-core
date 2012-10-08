@@ -44,7 +44,7 @@ class pid_file_t:
                 if(stream) {
                     stream >> pid;
 
-                    if(kill(pid, 0) < 0 && errno == ESRCH) {
+                    if(::kill(pid, 0) < 0 && errno == ESRCH) {
                         // NOTE: Unlink the stale pid file.
                         remove();
                     } else {
@@ -63,7 +63,7 @@ class pid_file_t:
                 throw std::runtime_error((message % m_filepath.string()).str());
             }
 
-            stream << getpid();
+            stream << ::getpid();
             stream.close();
         }
 
