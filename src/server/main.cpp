@@ -106,7 +106,6 @@ int main(int argc, char * argv[]) {
     }
 
     // Validation
-    // ----------
 
     if(!vm.count("configuration")) {
         std::cerr << "Error: no configuration file location has been specified." << std::endl;
@@ -114,7 +113,6 @@ int main(int argc, char * argv[]) {
     }
 
     // Startup
-    // -------
 
     /*
     if(vm.count("core:port-range")) {

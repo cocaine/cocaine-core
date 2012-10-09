@@ -84,8 +84,6 @@ process_t::spawn(const std::string& path,
         argv[sizeof(argv) / sizeof(argv[0])] = NULL;
 
         arg_map_t::const_iterator it(args.begin());
-        
-        // NOTE: Start with the second element.
         int n = 1;
         
         while(it != args.end()) {

@@ -51,7 +51,6 @@ server_t::server_t(context_t& context, server_config_t config):
     m_log->info("route to this node is '%s'", m_server.route().c_str());
 
     // Server socket
-    // -------------
 
     for(std::vector<std::string>::const_iterator it = config.listen_endpoints.begin();
         it != config.listen_endpoints.end();
@@ -73,7 +72,6 @@ server_t::server_t(context_t& context, server_config_t config):
     m_checker.start();
 
     // Autodiscovery
-    // -------------
 
     if(!config.announce_endpoints.empty()) {
         m_announces.reset(new io::socket_t(m_context, ZMQ_PUB));
@@ -98,7 +96,6 @@ server_t::server_t(context_t& context, server_config_t config):
     }
 
     // Signals
-    // -------
 
     m_sigint.set<server_t, &server_t::terminate>(this);
     m_sigint.start(SIGINT);
@@ -224,7 +221,6 @@ void server_t::process() {
     message.rebuild(response.size());
     memcpy(message.data(), response.data(), response.size());
 
-    // NOTE: Do a non-blocking send.
     io::scoped_option<
         io::options::send_timeout
     > option(m_server, 0);
@@ -293,7 +289,6 @@ std::string server_t::dispatch(const Json::Value& root) {
 }
 
 // Commands
-// --------
 
 Json::Value server_t::create_app(const std::string& name, const std::string& profile) {
     if(m_apps.find(name) != m_apps.end()) {

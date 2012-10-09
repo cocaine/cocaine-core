@@ -102,7 +102,9 @@ struct type_traits<Json::Value> {
 
                 for(; ptr < end; ++ptr) {
                     if(ptr->key.type != msgpack::type::RAW) {
-                        // Key is not a string.
+                        // NOTE: Keys should be strings, as the object
+                        // representation of property maps is still a
+                        // JSON object.
                         throw msgpack::type_error();
                     }
 

@@ -86,7 +86,8 @@ archive_t::deploy(const fs::path& prefix) {
 
         fs::path path = archive_entry_pathname(entry);
 
-        // Prepend the path.
+        // NOTE: Prepend the target path to the stored file path
+        // in order to unpack it into the right place.
         archive_entry_set_pathname(entry, (prefix / path).string().c_str());
 
         rv = archive_write_header(target, entry);

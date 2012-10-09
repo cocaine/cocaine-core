@@ -30,7 +30,8 @@ profile_t::profile_t(context_t& context, const std::string& name_):
 {
     const Json::Value cache(object());
 
-    // Engine profile.
+    // Engine profile
+
     startup_timeout = cache.get(
         "startup-timeout",
         defaults::startup_timeout
@@ -85,6 +86,8 @@ profile_t::profile_t(context_t& context, const std::string& name_):
     if(grow_threshold == 0) {
         throw configuration_error_t("engine grow threshold must be positive");
     }
+
+    // Isolation
 
     if(!cache["isolate"].empty()) {
         isolate.type = cache["isolate"].get("type", "not specified").asString();

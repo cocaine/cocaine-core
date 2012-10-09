@@ -51,7 +51,6 @@ class slave_t:
         run();
 
         // I/O object implementation
-        // -------------------------
         
         virtual
         std::string
@@ -92,14 +91,16 @@ class slave_t:
         const unique_id_t m_id;
         const std::string m_name;
 
-        // Engine I/O.
+        // Engine I/O
+
         io::channel_t m_bus;
         
         io::scoped_option<
             io::options::send_timeout
         > m_bus_timeout;
         
-        // Event loop.
+        // Event loop
+
         ev::default_loop m_loop;
         
         ev::io m_watcher;
@@ -108,7 +109,8 @@ class slave_t:
         ev::timer m_heartbeat_timer,
                   m_idle_timer;
         
-        // The app.
+        // The app
+
         std::unique_ptr<const manifest_t> m_manifest;
         std::unique_ptr<const profile_t> m_profile;
         std::unique_ptr<api::sandbox_t> m_sandbox;

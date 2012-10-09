@@ -69,7 +69,6 @@ slave_t::slave_t(context_t& context, slave_config_t config):
     m_heartbeat_timer.start(0.0f, 5.0f);
 
     // Launching the app
-    // -----------------
 
     try {
         m_manifest.reset(new manifest_t(m_context, m_name));
@@ -211,7 +210,7 @@ slave_t::process_events() {
         }
         
         case io::get<rpc::chunk>::value:
-            // NOTE: Drop outstanding chunks from the previous job.
+            // Drop outstanding chunks from the previous job.
             m_bus.drop();
             break;
         
