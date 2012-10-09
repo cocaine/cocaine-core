@@ -90,51 +90,28 @@ class context_t:
 
         ~context_t();
 
+        // Logging
+
+        boost::shared_ptr<logging::logger_t>
+        log(const std::string&);
+        
         // Component API
-        // -------------
         
         template<class Category>
         typename api::category_traits<Category>::ptr_type
         get(const std::string& type,
-            const typename api::category_traits<Category>::args_type& args)
-        {
-            return m_repository->get<Category>(type, args);
-        }
+            const typename api::category_traits<Category>::args_type& args);
 
         template<class Category>
         typename api::category_traits<Category>::ptr_type
-        get(const std::string& name) {
-            config_t::component_info_map_t::const_iterator it(
-                config.components.find(name)
-            );
-    
-            if(it == config.components.end()) {
-                boost::format message("the '%s' component is not configured");
-                throw configuration_error_t((message % name).str());
-            }
-
-            return get<Category>(
-                it->second.type,
-                typename api::category_traits<Category>::args_type(
-                    name,
-                    it->second.args
-                )
-            );
-        }
+        get(const std::string& name);
 
         // Networking
-        // ----------
 
         zmq::context_t&
         io() {
             return *m_io;
         }
-        
-        // Logging
-        // -------
-
-        boost::shared_ptr<logging::logger_t>
-        log(const std::string&);
 
     public:
         const config_t config;
@@ -154,9 +131,38 @@ class context_t:
         instance_map_t m_instances;
         boost::mutex m_mutex;
         
-        std::unique_ptr<zmq::context_t> m_io;
         std::unique_ptr<api::repository_t> m_repository;
+        std::unique_ptr<zmq::context_t> m_io;
 };
+
+template<class Category>
+typename api::category_traits<Category>::ptr_type
+context_t::get(const std::string& type,
+               const typename api::category_traits<Category>::args_type& args)
+{
+    return m_repository->get<Category>(type, args);
+}
+
+template<class Category>
+typename api::category_traits<Category>::ptr_type
+context_t::get(const std::string& name) {
+    config_t::component_info_map_t::const_iterator it(
+        config.components.find(name)
+    );
+
+    if(it == config.components.end()) {
+        boost::format message("the '%s' component is not configured");
+        throw configuration_error_t((message % name).str());
+    }
+
+    return get<Category>(
+        it->second.type,
+        typename api::category_traits<Category>::args_type(
+            name,
+            it->second.args
+        )
+    );
+}
 
 } // namespace cocaine
 

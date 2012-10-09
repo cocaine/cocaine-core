@@ -65,7 +65,8 @@ class engine_t:
         void
         run();
 
-        // Job scheduling.
+        // Job scheduling
+        
         bool
         enqueue(job_queue_t::const_reference job,
                 mode::value mode = mode::normal);
@@ -73,18 +74,7 @@ class engine_t:
         template<class T>
         bool
         send(const std::string& uuid,
-             const T& message)
-        {
-            boost::unique_lock<boost::mutex> lock(m_bus_mutex);
-
-            // NOTE: Do a non-blocking send.
-            io::scoped_option<
-                io::options::send_timeout
-            > option(*m_bus, 0);
-            
-            return m_bus->send(io::protect(uuid), ZMQ_SNDMORE) &&
-                   m_bus->send_message(message);
-        }
+             const T& message);
 
     public:
         ev::loop_ref&
@@ -151,13 +141,15 @@ class engine_t:
 
         std::atomic<int> m_state;
 
-        // Slave I/O.
+        // I/O
+        
         std::unique_ptr<io::channel_t> m_bus,
                                        m_ctl;
 
         boost::mutex m_bus_mutex;
 
-        // Event loop.  
+        // Event loop
+        
         ev::dynamic_loop m_loop;
 
         ev::io m_bus_watcher,
@@ -171,12 +163,14 @@ class engine_t:
 
         ev::async m_notification;
 
-        // Job queue.
+        // Job queue
+        
         job_queue_t m_queue;
         boost::mutex m_queue_mutex;
         boost::condition_variable m_queue_condition;
 
-        // Slave pool.
+        // Slave pool
+        
         pool_map_t m_pool;
 
         // NOTE: Engine isolate reference, keeping it here
@@ -184,6 +178,21 @@ class engine_t:
         // only weak references to the isolate instances.
         api::category_traits<api::isolate_t>::ptr_type m_isolate;
 };
+
+template<class T>
+bool
+engine_t::send(const std::string& uuid,
+               const T& message)
+{
+    boost::unique_lock<boost::mutex> lock(m_bus_mutex);
+
+    io::scoped_option<
+        io::options::send_timeout
+    > option(*m_bus, 0);
+    
+    return m_bus->send(io::protect(uuid), ZMQ_SNDMORE) &&
+           m_bus->send_message(message);
+}
 
 }} // namespace cocaine::engine
 
