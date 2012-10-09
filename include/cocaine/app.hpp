@@ -24,8 +24,6 @@
 #include <boost/thread/thread.hpp>
 
 #include "cocaine/common.hpp"
-#include "cocaine/manifest.hpp"
-#include "cocaine/profile.hpp"
 
 #include "cocaine/api/driver.hpp"
 
@@ -50,8 +48,9 @@ class app_t {
         Json::Value
         info() const;
         
-        // Job scheduling.
-        bool 
+        // Job scheduling
+        
+        bool
         enqueue(const boost::shared_ptr<engine::job_t>& job,
                 engine::mode::value mode = engine::mode::normal);
 
@@ -64,14 +63,18 @@ class app_t {
         context_t& m_context;
         boost::shared_ptr<logging::logger_t> m_log;
 
-        // Configuration.
-        const manifest_t m_manifest;
-        const profile_t m_profile;
+        // Configuration
 
-        // Execution engine.
+        std::unique_ptr<const manifest_t> m_manifest;
+        std::unique_ptr<const profile_t> m_profile;
+
+        // Execution engine
+
         std::unique_ptr<io::channel_t> m_control;
         std::unique_ptr<engine::engine_t> m_engine;
         std::unique_ptr<boost::thread> m_thread;
+
+        // Event drivers
 
 #if BOOST_VERSION >= 103600
         typedef boost::unordered_map<
@@ -82,7 +85,6 @@ class app_t {
             std::unique_ptr<api::driver_t>
         > driver_map_t;
         
-        // Event drivers.
         driver_map_t m_drivers;
 };
 

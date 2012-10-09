@@ -29,6 +29,8 @@
 #include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/logging.hpp"
+#include "cocaine/manifest.hpp"
+#include "cocaine/profile.hpp"
 #include "cocaine/rpc.hpp"
 
 #include "cocaine/traits/json.hpp"
@@ -45,8 +47,8 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
             % name
         ).str()
     )),
-    m_manifest(context, name),
-    m_profile(context, profile)
+    m_manifest(new manifest_t(context, name)),
+    m_profile(new profile_t(context, profile))
 {
     fs::path path(
         fs::path(m_context.config.spool_path) / name
@@ -62,7 +64,7 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
 
     try { 
         m_control->bind(
-            (boost::format("inproc://%s") % m_manifest.name).str()
+            (boost::format("inproc://%s") % m_manifest->name).str()
         );
     } catch(const zmq::error_t& e) {
         boost::format message("unable to bind the engine control channel - %s");
@@ -73,8 +75,8 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
     m_engine.reset(
         new engine_t(
             m_context,
-            m_manifest,
-            m_profile
+            *m_manifest,
+            *m_profile
         )
     );
 }
@@ -93,7 +95,7 @@ app_t::start() {
 
     m_log->info("starting the engine");
 
-    Json::Value drivers(m_manifest.drivers);
+    Json::Value drivers(m_manifest->drivers);
 
     if(!drivers.empty()) {
         Json::Value::Members names(drivers.getMemberNames());
@@ -112,7 +114,7 @@ app_t::start() {
             ++it)
         {
             try {
-                format % m_manifest.name % *it;
+                format % m_manifest->name % *it;
 
                 m_drivers.emplace(
                     *it,
@@ -193,7 +195,7 @@ app_t::info() const {
         }
     }
 
-    info["profile"] = m_profile.name;
+    info["profile"] = m_profile->name;
 
     for(driver_map_t::const_iterator it = m_drivers.begin();
         it != m_drivers.end();
