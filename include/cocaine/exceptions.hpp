@@ -37,26 +37,10 @@ enum error_code {
     deadline_error  = 520
 };
 
-struct authorization_error_t:
-    public std::runtime_error
-{
-    authorization_error_t(const std::string& what):
-        std::runtime_error(what)
-    { }
-};
-
 struct configuration_error_t:
     public std::runtime_error
 {
     configuration_error_t(const std::string& what):
-        std::runtime_error(what)
-    { }
-};
-
-struct repository_error_t:
-    public std::runtime_error
-{
-    repository_error_t(const std::string& what):
         std::runtime_error(what)
     { }
 };
@@ -78,33 +62,6 @@ struct system_error_t:
 
     private:
         char m_reason[1024];
-};
-
-struct storage_error_t:
-    public std::runtime_error
-{
-    storage_error_t(const std::string& what):
-        std::runtime_error(what)
-    { }
-};
-
-// Application exceptions
-// ----------------------
-
-struct unrecoverable_error_t:
-    public std::runtime_error
-{
-    unrecoverable_error_t(const std::string& what):
-        std::runtime_error(what)
-    { }
-};
-
-struct recoverable_error_t:
-    public std::runtime_error
-{
-    recoverable_error_t(const std::string& what):
-        std::runtime_error(what)
-    { }
 };
 
 } // namespace cocaine

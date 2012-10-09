@@ -26,7 +26,25 @@
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
 
-namespace cocaine { namespace api {
+namespace cocaine {
+
+struct unrecoverable_error_t:
+    public std::runtime_error
+{
+    unrecoverable_error_t(const std::string& what):
+        std::runtime_error(what)
+    { }
+};
+
+struct recoverable_error_t:
+    public std::runtime_error
+{
+    recoverable_error_t(const std::string& what):
+        std::runtime_error(what)
+    { }
+};
+
+namespace api {
 
 struct io_t {
     virtual

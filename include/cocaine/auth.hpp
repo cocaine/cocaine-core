@@ -25,7 +25,17 @@
 
 #include "cocaine/common.hpp"
 
-namespace cocaine { namespace crypto {
+namespace cocaine {
+
+struct authorization_error_t:
+    public std::runtime_error
+{
+    authorization_error_t(const std::string& what):
+        std::runtime_error(what)
+    { }
+};
+
+namespace crypto {
 
 class auth_t:
     public boost::noncopyable

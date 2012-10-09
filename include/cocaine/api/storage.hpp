@@ -30,7 +30,17 @@
 
 #include "cocaine/helpers/json.hpp"
 
-namespace cocaine { namespace api {
+namespace cocaine {
+
+struct storage_error_t:
+    public std::runtime_error
+{
+    storage_error_t(const std::string& what):
+        std::runtime_error(what)
+    { }
+};
+
+namespace api {
 
 class storage_t:
     public boost::noncopyable
@@ -44,51 +54,13 @@ class storage_t:
         template<class T>
         T
         get(const std::string& collection,
-            const std::string& key)
-        {
-            T result;
-            msgpack::unpacked unpacked;
-            
-            std::string blob(
-                read(collection, key)
-            );
-
-            try {
-                msgpack::unpack(&unpacked, blob.data(), blob.size());
-                io::type_traits<T>::unpack(unpacked.get(), result);
-            } catch(const msgpack::type_error& e) {
-                throw storage_error_t("corrupted object");
-            } catch(const std::bad_cast& e) {
-                throw storage_error_t("corrupted object - type mismatch");
-            }
-            
-            return result;
-        }
+            const std::string& key);
 
         template<class T>
         void
         put(const std::string& collection,
             const std::string& key,
-            const T& object)
-        {
-            msgpack::sbuffer buffer;
-            msgpack::packer<msgpack::sbuffer> packer(buffer);
-        
-            try {
-                io::type_traits<T>::pack(packer, object);
-            } catch(const msgpack::type_error& e) {
-                throw storage_error_t("corrupted object");
-            } catch(const std::bad_cast& e) {
-                throw storage_error_t("corrupted object - type mismatch");
-            }
-
-            std::string blob(
-                buffer.data(),
-                buffer.size()
-            );
-            
-            write(collection, key, blob);
-        }
+            const T& object);
 
         virtual
         std::vector<std::string>
@@ -118,6 +90,55 @@ class storage_t:
               const std::string& key,
               const std::string& blob) = 0;
 };
+
+template<class T>
+T
+storage_t::get(const std::string& collection,
+               const std::string& key)
+{
+    T result;
+    msgpack::unpacked unpacked;
+    
+    std::string blob(
+        read(collection, key)
+    );
+
+    try {
+        msgpack::unpack(&unpacked, blob.data(), blob.size());
+        io::type_traits<T>::unpack(unpacked.get(), result);
+    } catch(const msgpack::type_error& e) {
+        throw storage_error_t("corrupted object");
+    } catch(const std::bad_cast& e) {
+        throw storage_error_t("corrupted object - type mismatch");
+    }
+    
+    return result;
+}
+
+template<class T>
+void
+storage_t::put(const std::string& collection,
+               const std::string& key,
+               const T& object)
+{
+    msgpack::sbuffer buffer;
+    msgpack::packer<msgpack::sbuffer> packer(buffer);
+
+    try {
+        io::type_traits<T>::pack(packer, object);
+    } catch(const msgpack::type_error& e) {
+        throw storage_error_t("corrupted object");
+    } catch(const std::bad_cast& e) {
+        throw storage_error_t("corrupted object - type mismatch");
+    }
+
+    std::string blob(
+        buffer.data(),
+        buffer.size()
+    );
+    
+    write(collection, key, blob);
+}
 
 template<>
 struct category_traits<storage_t> {

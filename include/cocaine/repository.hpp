@@ -46,7 +46,6 @@ struct factory_concept_t {
 };
 
 // Factory interface
-// -----------------
 
 template<
     class Category,
@@ -71,7 +70,6 @@ struct factory:
 };
 
 // Customized plugin instantiation
-// -------------------------------
 
 template<class T>
 struct plugin_traits {
@@ -81,7 +79,14 @@ struct plugin_traits {
 };
 
 // Component repository
-// --------------------
+
+struct repository_error_t:
+    public std::runtime_error
+{
+    repository_error_t(const std::string& what):
+        std::runtime_error(what)
+    { }
+};
 
 class repository_t:
     public boost::noncopyable
@@ -96,40 +101,13 @@ class repository_t:
         template<class Category>
         typename category_traits<Category>::ptr_type
         get(const std::string& type,
-            const typename category_traits<Category>::args_type& args)
-        {
-            factory_map_t::iterator it(m_factories.find(type));
-            
-            if(it == m_factories.end()) {
-                boost::format message("the '%s' component is not available");
-                throw repository_error_t((message % type).str());
-            }
-            
-            // TEST: Ensure that the plugin is of the actually specified category.
-            BOOST_ASSERT(it->second->category() == typeid(Category));
-
-            return typename category_traits<Category>::ptr_type(
-                dynamic_cast< factory<Category>& >(
-                    *it->second
-                ).get(m_context, args)
-            );
-        }
+            const typename category_traits<Category>::args_type& args);
 
         template<class T>
         typename boost::enable_if<
             boost::is_base_of<typename T::category_type, T>
         >::type 
-        insert(const std::string& type) {
-            if(m_factories.find(type) != m_factories.end()) {
-                boost::format message("the '%s' component is a duplicate");
-                throw repository_error_t((message % type).str());
-            }
-
-            m_factories.emplace(
-                type,
-                new typename plugin_traits<T>::factory_type()
-            );
-        }
+        insert(const std::string& type);
 
     private:
         void
@@ -140,8 +118,10 @@ class repository_t:
         boost::shared_ptr<logging::logger_t> m_log;
 
         // NOTE: Used to unload all the plugins on shutdown.
+        // Cannot use forward declaration here due to implementation
+        // details.
         std::vector<lt_dlhandle> m_plugins;
-    
+
 #if BOOST_VERSION >= 104000
         typedef boost::unordered_map<
 #else
@@ -153,6 +133,44 @@ class repository_t:
 
         factory_map_t m_factories;
 };
+
+template<class Category>
+typename category_traits<Category>::ptr_type
+repository_t::get(const std::string& type,
+                  const typename category_traits<Category>::args_type& args)
+{
+    factory_map_t::iterator it(m_factories.find(type));
+    
+    if(it == m_factories.end()) {
+        boost::format message("the '%s' component is not available");
+        throw repository_error_t((message % type).str());
+    }
+    
+    // TEST: Ensure that the plugin is of the actually specified category.
+    BOOST_ASSERT(it->second->category() == typeid(Category));
+
+    return typename category_traits<Category>::ptr_type(
+        dynamic_cast< factory<Category>& >(
+            *it->second
+        ).get(m_context, args)
+    );
+}
+
+template<class T>
+typename boost::enable_if<
+    boost::is_base_of<typename T::category_type, T>
+>::type 
+repository_t::insert(const std::string& type) {
+    if(m_factories.find(type) != m_factories.end()) {
+        boost::format message("the '%s' component is a duplicate");
+        throw repository_error_t((message % type).str());
+    }
+
+    m_factories.emplace(
+        type,
+        new typename plugin_traits<T>::factory_type()
+    );
+}
 
 typedef void (*initialize_fn_t)(repository_t&);
 
