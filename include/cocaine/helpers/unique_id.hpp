@@ -51,7 +51,7 @@ struct unique_id_t {
     const std::string&
     string() const {
         if(cache.empty()) {
-            // NOTE: 36-character long UUID plus trailing zero.
+            // 36-character long UUID plus trailing zero.
             char unparsed[37];
 
             uuid_unparse_lower(

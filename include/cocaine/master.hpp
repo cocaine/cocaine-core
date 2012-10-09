@@ -39,7 +39,6 @@ namespace cocaine { namespace engine {
 namespace sc = boost::statechart;
 
 // Slave states
-// ------------
 
 namespace slave {
     struct unknown;
@@ -50,7 +49,6 @@ namespace slave {
 }
 
 // Master FSM
-// ----------
 
 class master_t:
     public sc::state_machine<master_t, slave::unknown>

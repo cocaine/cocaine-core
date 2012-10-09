@@ -81,7 +81,8 @@ class server_t:
         context_t& m_context;
         boost::shared_ptr<logging::logger_t> m_log;
 
-        // Apps.
+        // Apps
+        
         const std::string m_runlist;
 
 #if BOOST_VERSION >= 104000
@@ -95,10 +96,10 @@ class server_t:
 
         app_map_t m_apps;
 
-        // Event loop.
+        // Event loop
+        
         ev::default_loop m_loop;
 
-        // Event watchers.
         ev::sig m_sigint,
                 m_sigterm,
                 m_sigquit, 
@@ -107,20 +108,21 @@ class server_t:
         ev::io m_watcher;
         ev::prepare m_checker;
 
-        // System I/O.
+        // I/O
+        
         io::socket_t m_server;
 
-        // Automatic discovery support.
         std::unique_ptr<ev::timer> m_announce_timer;
         std::unique_ptr<io::socket_t> m_announces;
         
-        // Authorization subsystem.
+        // Authorization subsystem
+        
         crypto::auth_t m_auth;
         
-        // Server uptime.
+        // Server info
+        
         const ev::tstamp m_birthstamp;
 
-        // Info cache.
         ev::tstamp m_infostamp;
         std::string m_infocache;
 };

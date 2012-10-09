@@ -45,7 +45,6 @@
 namespace cocaine { namespace io {
 
 // Custom message container
-// ------------------------
 
 template<class T>
 struct raw {
@@ -71,7 +70,6 @@ protect(const T& object) {
 }
 
 // Customized type serialization
-// -----------------------------
 
 template<class T>
 struct raw_traits;
@@ -100,7 +98,6 @@ struct raw_traits<std::string> {
 };
 
 // ZeroMQ socket wrapper
-// ---------------------
 
 using namespace boost::tuples;
 
@@ -336,7 +333,6 @@ class socket_t:
 };
 
 // Socket options
-// --------------
 
 namespace options {
     struct receive_timeout {
@@ -377,7 +373,6 @@ class scoped_option {
 };
 
 // Event tuple type extraction
-// ---------------------------
 
 template<class T>
 struct depend {
@@ -401,7 +396,6 @@ struct event_traits<
 };
 
 // Event category enumeration
-// --------------------------
 
 template<class Tag>
 struct dispatch;
@@ -423,7 +417,6 @@ struct get:
 };
 
 // RPC message
-// -----------
 
 template<class Event> 
 struct message:
@@ -436,7 +429,6 @@ struct message:
 };
 
 // RPC channel
-// -----------
 
 class channel_t:
     public socket_t
@@ -454,7 +446,6 @@ class channel_t:
         using socket_t::recv;
 
         // Sending
-        // -------
 
         template<class Event>
         bool

@@ -36,7 +36,7 @@ class pid_file_t:
         pid_file_t(const std::string& filepath):
             m_filepath(filepath)
         {
-            // NOTE: If the pidfile exists, check if the process is still active.
+            // If the pidfile exists, check if the process is still active.
             if(boost::filesystem::exists(m_filepath)) {
                 pid_t pid;
                 boost::filesystem::ifstream stream(m_filepath);
@@ -45,7 +45,7 @@ class pid_file_t:
                     stream >> pid;
 
                     if(::kill(pid, 0) < 0 && errno == ESRCH) {
-                        // NOTE: Unlink the stale pid file.
+                        // Unlink the stale pid file.
                         remove();
                     } else {
                         throw std::runtime_error("another process is active");
@@ -71,7 +71,7 @@ class pid_file_t:
             try {
                 remove();
             } catch(...) {
-                // NOTE: Do nothing.
+                // Do nothing.
             }
         }
 

@@ -61,6 +61,6 @@ struct type_traits<engine::policy_t> {
     }
 };
 
-}}
+}} // namespace cocaine::io
 
 #endif

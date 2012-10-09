@@ -86,14 +86,10 @@ config_t::config_t(const std::string& path):
     }
 
     // Validation
-    // ----------
 
     if(root.get("version", 0).asUInt() != 2) {
         throw configuration_error_t("the configuration version is invalid");
     }
-
-    // Paths
-    // -----
 
     ipc_path = root["paths"].get("ipc", defaults::ipc_path).asString();
     validate_path(ipc_path);
@@ -105,7 +101,6 @@ config_t::config_t(const std::string& path):
     validate_path(spool_path);
 
     // Component configuration
-    // -----------------------
 
     Json::Value::Members component_names(
         root["components"].getMemberNames()
@@ -127,7 +122,6 @@ config_t::config_t(const std::string& path):
     }
 
     // IO configuration
-    // ----------------
 
     char hostname[256];
 
@@ -164,7 +158,6 @@ context_t::context_t(config_t config_, boost::shared_ptr<logging::sink_t> sink):
         m_sink.reset(new logging::void_sink_t());
     }
 
-    // Initialize the component repository.
     m_repository.reset(new api::repository_t(*this));
     m_repository->load(config.plugin_path);
 
@@ -172,7 +165,6 @@ context_t::context_t(config_t config_, boost::shared_ptr<logging::sink_t> sink):
     m_repository->insert<isolate::process_t>("process");
     m_repository->insert<storage::file_storage_t>("files");
     
-    // Initialize the ZeroMQ context.
     m_io.reset(new zmq::context_t(1));
 }
 

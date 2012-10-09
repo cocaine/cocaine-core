@@ -25,9 +25,6 @@
 
 namespace cocaine { namespace engine {
 
-// Job policy
-// ----------
-
 struct policy_t {
     policy_t():
         urgent(false),
