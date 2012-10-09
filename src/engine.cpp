@@ -36,7 +36,6 @@
 using namespace cocaine::engine;
 
 // Job queue
-// ---------
 
 void
 job_queue_t::push(const_reference job) {
@@ -48,7 +47,6 @@ job_queue_t::push(const_reference job) {
 }
 
 // Selectors
-// ---------
 
 namespace { namespace select {
     template<class State>
@@ -76,7 +74,6 @@ namespace { namespace select {
 }}
 
 // Engine
-// ------
 
 engine_t::engine_t(context_t& context, const manifest_t& manifest, const profile_t& profile):
     m_context(context),
@@ -306,7 +303,6 @@ engine_t::on_cleanup(ev::timer&, int) {
     
     boost::unique_lock<boost::mutex> lock(m_queue_mutex);
 
-    // Process all the expired jobs.
     filter_t it(expired_t(m_loop.now()), m_queue.begin(), m_queue.end()),
              end(expired_t(m_loop.now()), m_queue.end(), m_queue.end());
 
@@ -362,8 +358,6 @@ engine_t::process_bus_events() {
         > proxy(io::protect(slave_id), command);
         
         {
-            // Try to read the next RPC command from the bus in a
-            // non-blocking fashion. If it fails, break the loop.
             io::scoped_option<
                 io::options::receive_timeout
             > option(*m_bus, 0);
@@ -609,14 +603,15 @@ engine_t::pump() {
 
 void
 engine_t::balance() {
-    // NOTE: Balance the slave pool in order to keep it in a proper shape
-    // based on the queue size and other policies.
     if(m_pool.size() >= m_profile.pool_limit ||
        m_pool.size() * m_profile.grow_threshold >= m_queue.size() * 2)
     {
         return;
     }
 
+    // NOTE: Balance the slave pool in order to keep it in a proper shape
+    // based on the queue size and other policies.
+    
     unsigned int target = std::min(
         m_profile.pool_limit,
         std::max(
@@ -637,7 +632,6 @@ engine_t::balance() {
 
     while(m_pool.size() != target) {
         try {
-            // Try to spawn a new slave process.
             boost::shared_ptr<master_t> master(
                 boost::make_shared<master_t>(
                     m_context,
@@ -689,10 +683,11 @@ engine_t::shutdown() {
 
     unsigned int pending = 0;
 
-    // Send the termination event to active slaves.
+    // NOTE: Send the termination event to active slaves.
     // If there're no active slaves, the engine can terminate right away,
     // otherwise, the engine should wait for the specified timeout for slaves
     // to finish their jobs and then force the termination.
+    
     for(pool_map_t::iterator it = m_pool.begin();
         it != m_pool.end();
         ++it)
