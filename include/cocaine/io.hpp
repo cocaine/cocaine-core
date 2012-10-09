@@ -99,13 +99,6 @@ struct raw_traits<std::string> {
     }
 };
 
-// Message part placeholder
-// ------------------------
-
-struct ignore_t { 
-    // Empty type.
-};
-
 // ZeroMQ socket wrapper
 // ---------------------
 
@@ -240,19 +233,6 @@ class socket_t:
                 typename boost::remove_const<T>::type
             >::unpack(message, result.value);
         
-            return true;
-        }
-
-        bool
-        recv(const ignore_t&,
-             int flags = 0)
-        {
-            zmq::message_t message;
-
-            if(!recv(&message, flags)) {
-                return false;
-            }
-
             return true;
         }
 
