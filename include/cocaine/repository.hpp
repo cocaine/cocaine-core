@@ -54,9 +54,6 @@ template<
 struct factory:
     public factory_concept_t
 {
-    typedef typename Traits::ptr_type ptr_type;
-    typedef typename Traits::args_type args_type;
-
     virtual
     const std::type_info&
     category() const {
@@ -64,9 +61,9 @@ struct factory:
     }
 
     virtual
-    ptr_type
+    typename Traits::ptr_type
     get(context_t& context,
-        const args_type& args) = 0;
+        const typename Traits::args_type& args) = 0;
 };
 
 // Customized plugin instantiation
