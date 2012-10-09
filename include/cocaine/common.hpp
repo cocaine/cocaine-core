@@ -33,7 +33,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/version.hpp>
 
-#if BOOST_VERSION >= 104000
+#if BOOST_VERSION >= 103600
  #include <boost/unordered_map.hpp>
 #endif
 
