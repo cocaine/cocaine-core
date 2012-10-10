@@ -48,7 +48,6 @@ server_t::server_t(context_t& context, server_config_t config):
     COCAINE_LOG_INFO(m_log, "using libev version %d.%d", ev_version_major(), ev_version_minor());
     COCAINE_LOG_INFO(m_log, "using libmsgpack version %s", msgpack_version());
     COCAINE_LOG_INFO(m_log, "using libzmq version %d.%d.%d", major, minor, patch);
-    COCAINE_LOG_INFO(m_log, "route to this node is '%s'", m_server.identity());
 
     // Server socket
 
@@ -58,6 +57,8 @@ server_t::server_t(context_t& context, server_config_t config):
         context.config.runtime.hostname.size()
     );
 
+    COCAINE_LOG_INFO(m_log, "identity of this node is '%s'", m_server.identity());
+    
     for(std::vector<std::string>::const_iterator it = config.listen_endpoints.begin();
         it != config.listen_endpoints.end();
         ++it)
