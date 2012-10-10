@@ -169,7 +169,7 @@ int main(int argc, char * argv[]) {
 
     boost::shared_ptr<logging::logger_t> log(context.log("main"));
 
-    log->info("starting the server");
+    COCAINE_LOG_INFO(log, "starting the server");
 
     std::unique_ptr<server_t> server;
     
@@ -181,13 +181,13 @@ int main(int argc, char * argv[]) {
             )
         );
     } catch(const std::exception& e) {
-        log->error("unable to start the server - %s", e.what());
+        COCAINE_LOG_ERROR(log, "unable to start the server - %s", e.what());
         return EXIT_FAILURE;
     }
 
     server->run();
 
-    log->info("the server has terminated");
+    COCAINE_LOG_INFO(log, "the server has terminated");
 
     return EXIT_SUCCESS;
 }

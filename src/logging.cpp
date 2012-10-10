@@ -24,59 +24,6 @@
 
 using namespace cocaine::logging;
 
-// Logger
-
-logger_t::logger_t(const sink_t& sink, const std::string& source):
-    m_sink(sink),
-    m_source(source)
-{
-    memset(m_buffer, 0, LOG_BUFFER_SIZE);
-}
-
-void logger_t::debug(const char * format, ...) const {
-    va_list args;
-    va_start(args, format);
-    emit(logging::debug, format, args);
-    va_end(args);
-}
-
-void logger_t::info(const char * format, ...) const {
-    va_list args;
-    va_start(args, format);
-    emit(logging::info, format, args);
-    va_end(args);
-}
-
-void logger_t::warning(const char * format, ...) const {
-    va_list args;
-    va_start(args, format);
-    emit(logging::warning, format, args);
-    va_end(args);
-}
-
-void logger_t::error(const char * format, ...) const {
-    va_list args;
-    va_start(args, format);
-    emit(logging::error, format, args);
-    va_end(args);
-}
-
-void logger_t::emit(priorities priority,
-                    const char * format,
-                    va_list args) const
-{
-    if(m_sink.ignores(priority)) {
-        return;
-    }
-
-    {
-        boost::lock_guard<boost::mutex> lock(m_mutex);
-
-        vsnprintf(m_buffer, LOG_BUFFER_SIZE, format, args);
-        m_sink.emit(priority, m_source, m_buffer);
-    }
-}
-
 // Logging sinks
 
 sink_t::sink_t(priorities verbosity):
@@ -87,13 +34,26 @@ sink_t::~sink_t() {
     // Empty.
 }
 
+// Logger
+
+logger_t::logger_t(const sink_t& sink, const std::string& source):
+    m_sink(sink),
+    m_source(source)
+{ }
+
+priorities
+logger_t::verbosity() const {
+    return m_sink.verbosity();
+}
+
 // Void logger
 
 void_sink_t::void_sink_t():
     sink_t(ignore)
 { }
 
-void void_sink_t::emit(priorities,
-                       const std::string&,
-                       const std::string&) const
+void
+void_sink_t::emit(priorities,
+                  const std::string&,
+                  const std::string&) const
 { }

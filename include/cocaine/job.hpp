@@ -21,11 +21,13 @@
 #ifndef COCAINE_JOB_HPP
 #define COCAINE_JOB_HPP
 
-#include <boost/thread/recursive_mutex.hpp>
+#include <boost/thread/mutex.hpp>
+#include <boost/weak_ptr.hpp>
 
 #include "cocaine/common.hpp"
 #include "cocaine/events.hpp"
 #include "cocaine/policy.hpp"
+#include "cocaine/unique_id.hpp"
 
 #include "cocaine/helpers/birth_control.hpp"
 
@@ -34,15 +36,6 @@ namespace cocaine { namespace engine {
 struct job_t:
     public birth_control<job_t>
 {
-    struct lock_t {
-        lock_t(job_t& job):
-            lock(job.mutex)
-        { }
-
-    private:
-        boost::unique_lock<boost::recursive_mutex> lock;
-    };
-
     typedef std::vector<
         std::string
     > chunk_list_t;
@@ -84,18 +77,23 @@ public:
     void
     react(const events::choke&) { };
 
-public:
-    size_t
-    size() const;
+private:
+    void
+    send(const unique_id_t& uuid,
+         const std::string& chunk);
 
 public:
-    enum {
-        unknown,
-        waiting,
-        processing,
-        complete
-    } state;
-    
+    struct state {
+        enum value: int {
+            unknown,
+            processing,
+            complete
+        };
+    };
+
+    // Current job state.
+    state::value state;
+
     // Wrapped event type.
     const std::string event;
     
@@ -103,13 +101,14 @@ public:
     const policy_t policy;
 
 private:
-    boost::recursive_mutex mutex;
+    boost::mutex mutex;
     
     // Request chunk cache.
     chunk_list_t cache;
 
     // Weak reference to job's master.
     boost::weak_ptr<master_t> master;
+    engine_t * engine;
 };
 
 }} // namespace cocaine::engine

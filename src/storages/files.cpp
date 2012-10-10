@@ -49,11 +49,12 @@ file_storage_t::read(const std::string& collection,
     fs::path file_path(m_storage_path / collection / key);
     fs::ifstream stream(file_path);
    
-    m_log->debug(
+    COCAINE_LOG_DEBUG(
+        m_log,
         "reading the '%s' object, collection: '%s', path: '%s'",
-        key.c_str(),
-        collection.c_str(),
-        file_path.string().c_str()
+        key,
+        collection,
+        file_path.string()
     );
 
     if(!stream) {
@@ -76,10 +77,11 @@ file_storage_t::write(const std::string& collection,
     fs::path store_path(m_storage_path / collection);
 
     if(!fs::exists(store_path)) {
-        m_log->info(
+        COCAINE_LOG_INFO(
+            m_log,
             "creating collection: %s, path: '%s'",
-            collection.c_str(),
-            store_path.string().c_str()
+            collection,
+            store_path.string()
         );
 
         try {
@@ -98,11 +100,12 @@ file_storage_t::write(const std::string& collection,
         fs::ofstream::out | fs::ofstream::trunc
     );
    
-    m_log->debug(
+    COCAINE_LOG_DEBUG(
+        m_log,
         "writing the '%s' object, collection: '%s', path: '%s'",
-        key.c_str(),
-        collection.c_str(),
-        file_path.string().c_str()
+        key,
+        collection,
+        file_path.string()
     );
 
     if(!stream) {
@@ -164,11 +167,12 @@ file_storage_t::remove(const std::string& collection,
     fs::path file_path(m_storage_path / collection / key);
     
     if(fs::exists(file_path)) {
-        m_log->debug(
+        COCAINE_LOG_DEBUG(
+            m_log,
             "removing the '%s' object, collection: '%s', path: %s",
-            key.c_str(),
-            collection.c_str(),
-            file_path.string().c_str()
+            key,
+            collection,
+            file_path.string()
         );
 
         try {

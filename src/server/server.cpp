@@ -37,7 +37,7 @@ server_t::server_t(context_t& context, server_config_t config):
     m_context(context),
     m_log(context.log("core")),
     m_runlist(config.runlist),
-    m_server(context, ZMQ_REP, context.config.runtime.hostname),
+    m_server(context, ZMQ_REP),
     m_auth(context),
     m_birthstamp(m_loop.now()) /* I don't like it. */,
     m_infostamp(0.0f)
@@ -45,12 +45,18 @@ server_t::server_t(context_t& context, server_config_t config):
     int minor, major, patch;
     zmq_version(&major, &minor, &patch);
 
-    m_log->info("using libev version %d.%d", ev_version_major(), ev_version_minor());
-    m_log->info("using libmsgpack version %s", msgpack_version());
-    m_log->info("using libzmq version %d.%d.%d", major, minor, patch);
-    m_log->info("route to this node is '%s'", m_server.route().c_str());
+    COCAINE_LOG_INFO(m_log, "using libev version %d.%d", ev_version_major(), ev_version_minor());
+    COCAINE_LOG_INFO(m_log, "using libmsgpack version %s", msgpack_version());
+    COCAINE_LOG_INFO(m_log, "using libzmq version %d.%d.%d", major, minor, patch);
+    COCAINE_LOG_INFO(m_log, "route to this node is '%s'", m_server.identity());
 
     // Server socket
+
+    m_server.setsockopt(
+        ZMQ_IDENTITY,
+        context.config.runtime.hostname.data(),
+        context.config.runtime.hostname.size()
+    );
 
     for(std::vector<std::string>::const_iterator it = config.listen_endpoints.begin();
         it != config.listen_endpoints.end();
@@ -63,7 +69,7 @@ server_t::server_t(context_t& context, server_config_t config):
             throw configuration_error_t((message % e.what()).str());
         }
             
-        m_log->info("listening on %s", it->c_str());
+        COCAINE_LOG_INFO(m_log, "listening on %s", *it);
     }
     
     m_watcher.set<server_t, &server_t::event>(this);
@@ -87,7 +93,7 @@ server_t::server_t(context_t& context, server_config_t config):
                 throw configuration_error_t((message % e.what()).str());
             }
 
-            m_log->info("announcing on %s", it->c_str());
+            COCAINE_LOG_INFO(m_log, "announcing on %s", *it);
         }
 
         m_announce_timer.reset(new ev::timer());
@@ -120,7 +126,7 @@ void server_t::run() {
 
 void server_t::terminate(ev::sig&, int) {
     if(!m_apps.empty()) {
-        m_log->info("stopping the apps");
+        COCAINE_LOG_INFO(m_log, "stopping the apps");
         m_apps.clear();
     }
 
@@ -128,14 +134,14 @@ void server_t::terminate(ev::sig&, int) {
 }
 
 void server_t::reload(ev::sig&, int) {
-    m_log->info("reloading the apps");
+    COCAINE_LOG_INFO(m_log, "reloading the apps");
 
     try {
         recover();
     } catch(const std::exception& e) {
-        m_log->error("unable to reload the apps - %s", e.what());
+        COCAINE_LOG_ERROR(m_log, "unable to reload the apps - %s", e.what());
     } catch(...) {
-        m_log->error("unable to reload the apps - unexpected exception");
+        COCAINE_LOG_ERROR(m_log, "unable to reload the apps - unexpected exception");
     }
 }
 
@@ -332,8 +338,6 @@ Json::Value server_t::delete_app(const std::string& name) {
 Json::Value server_t::info() const {
     Json::Value result(Json::objectValue);
 
-    result["route"] = m_context.config.runtime.hostname;
-
     for(app_map_t::const_iterator it = m_apps.begin();
         it != m_apps.end(); 
         ++it) 
@@ -341,11 +345,12 @@ Json::Value server_t::info() const {
         result["apps"][it->first] = it->second->info();
     }
 
-    result["loggers"] = static_cast<Json::UInt>(logging::logger_t::objects_alive());
-    result["sockets"] = static_cast<Json::UInt>(io::socket_t::objects_alive());
+    result["identity"] = m_context.config.runtime.hostname;
 
     result["jobs"]["pending"] = static_cast<Json::UInt>(engine::job_t::objects_alive());
     result["jobs"]["processed"] = static_cast<Json::UInt>(engine::job_t::objects_created());
+
+    result["sockets"] = static_cast<Json::UInt>(io::socket_t::objects_alive());
 
     result["uptime"] = m_loop.now() - m_birthstamp;
 
@@ -353,7 +358,7 @@ Json::Value server_t::info() const {
 }
 
 void server_t::announce(ev::timer&, int) {
-    m_log->debug("announcing the node");
+    COCAINE_LOG_DEBUG(m_log, "announcing the node");
 
     zmq::message_t message(m_server.endpoint().size());
  
@@ -377,7 +382,7 @@ void server_t::recover() {
         m_context.get<api::storage_t>("storage/core")
     );
 
-    m_log->info("reading the '%s' runlist", m_runlist.c_str());
+    COCAINE_LOG_INFO(m_log, "reading the '%s' runlist", m_runlist);
     
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
     runlist_t runlist(
@@ -419,9 +424,10 @@ void server_t::recover() {
                 try {
                     create_app(*it, runlist[*it]);
                 } catch(const std::exception& e) {
-                    m_log->error(
+                    COCAINE_LOG_ERROR(
+                        m_log,
                         "unable to initialize the '%s' app - %s",
-                        it->c_str(),
+                        *it,
                         e.what()
                     );
 

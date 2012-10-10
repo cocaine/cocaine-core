@@ -29,6 +29,8 @@
 #include "cocaine/profile.hpp"
 #include "cocaine/rpc.hpp"
 
+#include "cocaine/traits/unique_id.hpp"
+
 using namespace cocaine;
 using namespace cocaine::engine;
 
@@ -43,7 +45,7 @@ slave_t::slave_t(context_t& context, slave_config_t config):
     )),
     m_id(config.uuid),
     m_name(config.name),
-    m_bus(context, ZMQ_DEALER, config.uuid),
+    m_bus(context, ZMQ_DEALER, m_id),
     m_bus_timeout(m_bus, defaults::bus_timeout)
 {
     uint64_t hwm = 10;
@@ -190,9 +192,10 @@ slave_t::process_events() {
         }
     }
 
-    m_log->debug(
+    COCAINE_LOG_DEBUG(
+        m_log,
         "slave %s received type %d message",
-        m_id.string().c_str(),
+        m_id.string(),
         command
     );
 
@@ -219,9 +222,10 @@ slave_t::process_events() {
             break;
 
         default:
-            m_log->warning(
+            COCAINE_LOG_WARNING(
+                m_log,
                 "slave %s dropping unknown type %d message", 
-                m_id.string().c_str(),
+                m_id.string(),
                 command
             );
             
@@ -232,11 +236,7 @@ slave_t::process_events() {
 void
 slave_t::on_heartbeat(ev::timer&, int) {
     if(!m_bus.send_message(io::message<rpc::heartbeat>())) {
-        m_log->error(
-            "slave %s has lost the controlling engine",
-            m_id.string().c_str()
-        );
-
+        COCAINE_LOG_ERROR(m_log, "slave %s has lost the controlling engine", m_id.string());
         m_loop.unloop(ev::ALL);
     }
 }

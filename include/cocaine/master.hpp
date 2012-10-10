@@ -29,10 +29,9 @@
 #include "cocaine/common.hpp"
 #include "cocaine/asio.hpp"
 #include "cocaine/events.hpp"
+#include "cocaine/unique_id.hpp"
 
 #include "cocaine/api/isolate.hpp"
-
-#include "cocaine/helpers/unique_id.hpp"
 
 namespace cocaine { namespace engine {
 
@@ -65,7 +64,7 @@ class master_t:
 
         ~master_t();
        
-        const std::string&
+        const unique_id_t&
         id() const;
 
         bool operator==(const master_t& other) const;
@@ -76,8 +75,8 @@ class master_t:
         void on_terminate(const events::terminate& event);
         void on_timeout(ev::timer&, int);
 
-    private:    
-        context_t& m_context;
+    private:
+        context_t& m_context; 
         boost::shared_ptr<logging::logger_t> m_log;
 
         ev::loop_ref& m_loop;

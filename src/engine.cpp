@@ -32,6 +32,7 @@
 #include "cocaine/rpc.hpp"
 
 #include "cocaine/traits/json.hpp"
+#include "cocaine/traits/unique_id.hpp"
 
 using namespace cocaine::engine;
 
@@ -164,9 +165,10 @@ engine_t::enqueue(job_queue_t::const_reference job,
     boost::unique_lock<boost::mutex> lock(m_queue_mutex);
 
     if(m_state != state::running) {
-        m_log->debug(
+        COCAINE_LOG_DEBUG(
+            m_log,
             "dropping an incomplete '%s' job due to an inactive engine",
-            job->event.c_str()
+            job->event
         );
 
         job->process(
@@ -189,9 +191,10 @@ engine_t::enqueue(job_queue_t::const_reference job,
             case mode::normal:
                 lock.unlock();
 
-                m_log->debug(
+                COCAINE_LOG_DEBUG(
+                    m_log,
                     "dropping an incomplete '%s' job due to a full queue",
-                    job->event.c_str()
+                    job->event
                 );
 
                 job->process(
@@ -289,8 +292,9 @@ engine_t::on_cleanup(ev::timer&, int) {
             m_pool.erase(*it);
         }
 
-        m_log->debug(
-            "recycled %zu dead %s", 
+        COCAINE_LOG_DEBUG(
+            m_log,
+            "recycled %llu dead %s", 
             corpses.size(),
             corpses.size() == 1 ? "slave" : "slaves"
         );
@@ -309,10 +313,7 @@ engine_t::on_cleanup(ev::timer&, int) {
     while(it != end) {
         boost::shared_ptr<job_t>& job(*it);
 
-        m_log->debug(
-            "the '%s' job has expired",
-            job->event.c_str()
-        );
+        COCAINE_LOG_DEBUG(m_log, "the '%s' job has expired", job->event);
 
         job->process(
             events::error(
@@ -329,7 +330,7 @@ engine_t::on_cleanup(ev::timer&, int) {
 
 void
 engine_t::on_termination(ev::timer&, int) {
-    m_log->warning("forcing engine termination");
+    COCAINE_LOG_WARNING(m_log, "forcing engine termination");
     stop();
 }
 
@@ -349,13 +350,13 @@ engine_t::process_bus_events() {
         // TEST: Ensure that we haven't missed something in a previous iteration.
         BOOST_ASSERT(!m_bus->more());
     
-        std::string slave_id;
+        unique_id_t slave_id(uninitialized);
         int command = -1;
         
         boost::tuple<
-            io::raw<std::string>,
+            unique_id_t&,
             int&
-        > proxy(io::protect(slave_id), command);
+        > proxy(slave_id, command);
         
         {
             io::scoped_option<
@@ -370,28 +371,32 @@ engine_t::process_bus_events() {
         pool_map_t::iterator master(m_pool.find(slave_id));
 
         if(master == m_pool.end()) {
-            m_log->warning(
+            COCAINE_LOG_WARNING(
+                m_log,
                 "dropping type %d message from an unknown slave %s", 
                 command,
-                slave_id.c_str()
+                slave_id.string()
             );
             
             m_bus->drop();
-
-            if(!send(slave_id, io::message<rpc::terminate>())) {
-                m_log->warning(
-                    "unable to kill an unknown slave %s", 
-                    slave_id.c_str()
-                );
-            }
+            
+            // NOTE: Trying to kill the orphaned slave, just in case.
+            // For some reason, this doesn't work, so a new approach
+            // is needed to get rid of such stuff.
+            
+            send(
+                slave_id,
+                io::message<rpc::terminate>()
+            );
 
             continue;
         }
 
-        m_log->debug(
+        COCAINE_LOG_DEBUG(
+            m_log,
             "received type %d message from slave %s",
             command,
-            slave_id.c_str()
+            slave_id.string()
         );
 
         switch(command) {
@@ -448,7 +453,7 @@ engine_t::process_bus_events() {
                 master->second->process_event(events::error(code, message));
 
                 if(code == server_error) {
-                    m_log->error("the app seems to be broken - %s", message.c_str());
+                    COCAINE_LOG_ERROR(m_log, "the app seems to be broken - %s", message);
                     m_state = state::broken;
                     shutdown();
                     return;
@@ -462,10 +467,11 @@ engine_t::process_bus_events() {
                 break;
 
             default:
-                m_log->warning(
+                COCAINE_LOG_WARNING(
+                    m_log,
                     "dropping unknown type %d message from slave %s",
                     command,
-                    slave_id.c_str()
+                    slave_id.string()
                 );
 
                 m_bus->drop();
@@ -487,7 +493,7 @@ engine_t::process_ctl_events() {
     int command = -1;
 
     if(!m_ctl->recv(command)) {
-        m_log->error("received a corrupted control message");
+        COCAINE_LOG_ERROR(m_log, "received a corrupted control message");
         m_ctl->drop();
         return;
     }
@@ -521,11 +527,7 @@ engine_t::process_ctl_events() {
             break;
 
         default:
-            m_log->error(
-                "received an unknown control message, code: %d",
-                command
-            );
-
+            COCAINE_LOG_ERROR(m_log, "received an unknown control message, code: %d", command);
             m_ctl->drop();
     }
 }
@@ -561,11 +563,7 @@ engine_t::pump() {
             m_queue_condition.notify_one();
            
             if(job->state == job_t::state::complete) {
-                m_log->debug(
-                    "dropping a complete '%s' job from the queue",
-                    job->event.c_str()
-                );
-
+                COCAINE_LOG_DEBUG(m_log, "dropping a complete '%s' job from the queue", job->event);
                 continue;
             }
             
@@ -575,19 +573,15 @@ engine_t::pump() {
 
             if(send(it->second->id(), message)) {
                 it->second->process_event(
-                    events::invoke(job, it->second)
+                    events::invoke(job, this, it->second)
                 );
                 
                 // TODO: Check if it helps.
                 m_loop.feed_fd_event(m_bus->fd(), ev::READ);
             } else {
-                m_log->error(
-                    "slave %s has unexpectedly died",
-                    it->first.c_str()
-                );
-
-                it->second->process_event(events::terminate());
+                COCAINE_LOG_ERROR(m_log, "slave %s has unexpectedly died", it->first.string());
                 
+                it->second->process_event(events::terminate());
                 m_pool.erase(it);
                 
                 {
@@ -624,7 +618,8 @@ engine_t::balance() {
         return;
     }
 
-    m_log->info(
+    COCAINE_LOG_INFO(
+        m_log,
         "enlarging the pool from %d to %d slaves",
         m_pool.size(),
         target
@@ -646,7 +641,8 @@ engine_t::balance() {
                 master
             );
         } catch(const system_error_t& e) {
-            m_log->error(
+            COCAINE_LOG_ERROR(
+                m_log,
                 "unable to spawn more slaves - %s - %s",
                 e.what(),
                 e.reason()
@@ -660,8 +656,9 @@ engine_t::shutdown() {
     boost::unique_lock<boost::mutex> lock(m_queue_mutex);
 
     if(!m_queue.empty()) {
-        m_log->debug(
-            "dropping %zu incomplete %s due to the engine shutdown",
+        COCAINE_LOG_DEBUG(
+            m_log,
+            "dropping %llu incomplete %s due to the engine shutdown",
             m_queue.size(),
             m_queue.size() == 1 ? "job" : "jobs"
         );
@@ -703,7 +700,8 @@ engine_t::shutdown() {
     }
 
     if(pending) {
-        m_log->info(
+        COCAINE_LOG_INFO(
+            m_log,
             "waiting for %d active %s to terminate, timeout: %.02f seconds",
             pending,
             pending == 1 ? "slave" : "slaves",

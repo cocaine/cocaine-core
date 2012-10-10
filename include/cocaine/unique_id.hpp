@@ -18,15 +18,18 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#ifndef COCAINE_HELPERS_UNIQUE_ID_HPP
-#define COCAINE_HELPERS_UNIQUE_ID_HPP
+#ifndef COCAINE_UNIQUE_ID_HPP
+#define COCAINE_UNIQUE_ID_HPP
 
 #include <boost/format.hpp>
-#include <stdexcept>
-#include <string>
+#include <boost/functional/hash.hpp>
 #include <uuid/uuid.h>
 
-namespace cocaine { namespace helpers {
+#include "cocaine/common.hpp"
+
+namespace cocaine {
+
+struct uninitialized_t { };
 
 struct unique_id_t {
     unique_id_t() {
@@ -46,6 +49,10 @@ struct unique_id_t {
             boost::format message("unable to parse '%s' as an unique id");
             throw std::runtime_error((message % other).str());
         }
+    }
+
+    unique_id_t(const uninitialized_t&) {
+        // Empty.
     }
 
     const std::string&
@@ -71,16 +78,23 @@ struct unique_id_t {
                uuid[1] == other.uuid[1];
     }
 
-private:
+    // NOTE: Store the 128-bit UUID as two 64-bit unsigned integers.
     uint64_t uuid[2];
 
+private:
     // Textual representation cache.
     mutable std::string cache;
 };
 
-} // namespace helpers
+static
+const uninitialized_t
+uninitialized = uninitialized_t();
 
-using helpers::unique_id_t;
+static inline
+size_t
+hash_value(const unique_id_t& id) {
+    return boost::hash_range(&id.uuid[0], &id.uuid[1]);
+}
 
 } // namespace cocaine
 

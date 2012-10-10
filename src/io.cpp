@@ -34,19 +34,6 @@ socket_t::socket_t(context_t& context, int type):
     setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
 } 
 
-socket_t::socket_t(context_t& context, int type, const std::string& route):
-    m_context(context),
-    m_socket(context.io(), type)
-{
-    int linger = 0;
-
-    // Disable lingering on context termination. 
-    setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
-    
-    // Set the socket identity to enable routing.
-    setsockopt(ZMQ_IDENTITY, route.data(), route.size());
-}
-
 void
 socket_t::bind(const std::string& endpoint) {
     m_socket.bind(endpoint.c_str());

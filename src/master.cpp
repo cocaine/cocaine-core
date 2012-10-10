@@ -28,6 +28,7 @@
 #include "cocaine/manifest.hpp"
 #include "cocaine/profile.hpp"
 
+using namespace cocaine;
 using namespace cocaine::engine;
 using namespace cocaine::engine::slave;
 
@@ -62,12 +63,9 @@ master_t::master_t(context_t& context, ev::loop_ref& loop, const manifest_t& man
     args["--configuration"] = m_context.config.config_path;
     args["--slave:app"] = m_manifest.name;
     args["--slave:profile"] = m_profile.name;
-    args["--slave:uuid"] = id();
+    args["--slave:uuid"] = m_id.string();
 
-    m_log->debug(
-        "spawning slave %s",
-        id().c_str()
-    );
+    COCAINE_LOG_DEBUG(m_log, "spawning slave %s", m_id.string());
 
     m_handle = isolate->spawn(
         m_manifest.slave,
@@ -84,9 +82,9 @@ master_t::~master_t() {
     terminate();
 }
 
-const std::string&
+const unique_id_t&
 master_t::id() const {
-    return m_id.string();
+    return m_id;
 }
 
 bool master_t::operator==(const master_t& other) const {
@@ -95,9 +93,10 @@ bool master_t::operator==(const master_t& other) const {
 
 void master_t::on_initialize(const events::heartbeat& event) {
 #if EV_VERSION_MAJOR == 3 && EV_VERSION_MINOR == 8
-    m_log->debug(
+    COCAINE_LOG_DEBUG(
+        m_log,
         "slave %s came alive in %.03f seconds",
-        id().c_str(),
+        m_id.string(),
         10.0f - ev_timer_remaining(
             m_loop,
             static_cast<ev_timer*>(&m_heartbeat_timer)
@@ -118,9 +117,10 @@ void master_t::on_heartbeat(const events::heartbeat& event) {
         timeout = state->job()->policy.timeout;
     }
            
-    m_log->debug(
+    COCAINE_LOG_DEBUG(
+        m_log,
         "resetting slave %s heartbeat timeout to %.02f seconds",
-        id().c_str(),
+        m_id.string(),
         timeout
     );
 
@@ -128,28 +128,22 @@ void master_t::on_heartbeat(const events::heartbeat& event) {
 }
 
 void master_t::on_terminate(const events::terminate& event) {
-    m_log->debug(
-        "reaping slave %s", 
-        id().c_str()
-    );
-
+    COCAINE_LOG_DEBUG(m_log, "reaping slave %s", m_id.string());
     m_handle->terminate();
     m_handle.reset();
 }
 
 void master_t::on_timeout(ev::timer&, int) {
-    m_log->error(
-        "slave %s didn't respond in a timely fashion",
-        id().c_str()
-    );
+    COCAINE_LOG_ERROR(m_log, "slave %s didn't respond in a timely fashion", m_id.string());
     
     const busy * state = state_downcast<const busy*>();
 
     if(state) {
-        m_log->debug(
+        COCAINE_LOG_DEBUG(
+            m_log,
             "slave %s dropping '%s' job due to a timeout",
-            id().c_str(),
-            state->job()->event.c_str()
+            m_id.string(),
+            state->job()->event
         );
 
         state->job()->process(
@@ -183,10 +177,11 @@ void alive::on_invoke(const events::invoke& event) {
     // TEST: Ensure that no job is being lost here.
     BOOST_ASSERT(!job && event.job);
 
-    context<master_t>().m_log->debug(
+    COCAINE_LOG_DEBUG(
+        context<master_t>().m_log,
         "job '%s' assigned to slave %s",
-        event.job->event.c_str(),
-        context<master_t>().id().c_str()
+        event.job->event,
+        context<master_t>().m_id.string()
     );
 
     job = event.job;
@@ -200,10 +195,11 @@ void alive::on_choke(const events::choke& event) {
     // TEST: Ensure that the job is in fact here.
     BOOST_ASSERT(job);
 
-    context<master_t>().m_log->debug(
+    COCAINE_LOG_DEBUG(
+        context<master_t>().m_log,
         "job '%s' completed by slave %s",
-        job->event.c_str(),
-        context<master_t>().id().c_str()
+        job->event,
+        context<master_t>().m_id.string()
     );
     
     job->process(event);

@@ -53,7 +53,7 @@ auth_t::auth_t(context_t& context):
         );
 
         if(object.empty()) {
-            m_log->error("key for user '%s' is malformed", identity.c_str());
+            COCAINE_LOG_ERROR(m_log, "key for user '%s' is malformed", identity);
             continue;
         }
 
@@ -66,8 +66,10 @@ auth_t::auth_t(context_t& context):
         if(pkey != NULL) {
             m_keys.emplace(identity, pkey);
         } else { 
-            m_log->error("key for user '%s' is invalid - %s",
-                identity.c_str(), 
+            COCAINE_LOG_ERROR(
+                m_log,
+                "key for user '%s' is invalid - %s",
+                identity, 
                 ERR_reason_error_string(ERR_get_error())
             );
         }
@@ -75,7 +77,7 @@ auth_t::auth_t(context_t& context):
         BIO_free(bio);
     }
     
-    m_log->info("loaded %zu public key(s)", m_keys.size());
+    COCAINE_LOG_INFO(m_log, "loaded %llu public key(s)", m_keys.size());
 }
 
 namespace {

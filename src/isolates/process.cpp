@@ -18,8 +18,9 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
+#include <signal.h>
+#include <sys/types.h>
 #include <sys/wait.h>
-#include <unistd.h>
 
 #include "cocaine/isolates/process.hpp"
 
@@ -108,9 +109,10 @@ process_t::spawn(const std::string& path,
             ::strerror_r(errno, buffer, 1024);
 #endif
 
-            m_log->error(
+            COCAINE_LOG_ERROR(
+                m_log,
                 "unable to execute '%s' - %s",
-                path.c_str(),
+                path,
 #ifdef _GNU_SOURCE
                 message
 #else

@@ -50,17 +50,13 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
     m_manifest(new manifest_t(context, name)),
     m_profile(new profile_t(context, profile))
 {
-    fs::path path(
-        fs::path(m_context.config.spool_path) / name
-    );
+    fs::path path(fs::path(m_context.config.spool_path) / name);
     
     if(!fs::exists(path)) {
         deploy(name, path.string());
     }
 
-    m_control.reset(
-        new io::channel_t(context, ZMQ_PAIR)
-    );
+    m_control.reset(new io::channel_t(context, ZMQ_PAIR));
 
     try { 
         m_control->bind(
@@ -93,18 +89,19 @@ app_t::start() {
         return;
     }
 
-    m_log->info("starting the engine");
+    COCAINE_LOG_INFO(m_log, "starting the engine");
 
     Json::Value drivers(m_manifest->drivers);
 
     if(!drivers.empty()) {
         Json::Value::Members names(drivers.getMemberNames());
 
-        m_log->info(
-            "starting %zu %s: %s",
+        COCAINE_LOG_INFO(
+            m_log,
+            "starting %llu %s: %s",
             drivers.size(),
             drivers.size() == 1 ? "driver" : "drivers",
-            boost::algorithm::join(names, ", ").c_str()
+            boost::algorithm::join(names, ", ")
         );
 
         boost::format format("%s/%s");
@@ -128,9 +125,10 @@ app_t::start() {
                     )
                 );
             } catch(const std::exception& e) {
-                m_log->error(
+                COCAINE_LOG_ERROR(
+                    m_log,
                     "unable to initialize the '%s' driver - %s",
-                    format.str().c_str(),
+                    format.str(),
                     e.what()
                 );
 
@@ -157,7 +155,7 @@ app_t::stop() {
         return;
     }
 
-    m_log->info("stopping the engine");
+    COCAINE_LOG_INFO(m_log, "stopping the engine");
     
     m_control->send_message(
         io::message<control::terminate>()
@@ -220,10 +218,7 @@ app_t::deploy(const std::string& name,
 {
     std::string blob;
 
-    m_log->info(
-        "deploying the app to '%s'",
-        path.c_str()
-    );
+    COCAINE_LOG_INFO(m_log, "deploying the app to '%s'", path);
     
     api::category_traits<api::storage_t>::ptr_type storage(
         m_context.get<api::storage_t>("storage/core")
@@ -232,7 +227,7 @@ app_t::deploy(const std::string& name,
     try {
         blob = storage->get<std::string>("apps", name);
     } catch(const storage_error_t& e) {
-        m_log->error("unable to fetch the app from the storage - %s", e.what());
+        COCAINE_LOG_ERROR(m_log, "unable to fetch the app from the storage - %s", e.what());
         boost::format message("the '%s' app is not available");
         throw configuration_error_t((message % name).str());
     }
@@ -241,7 +236,7 @@ app_t::deploy(const std::string& name,
         archive_t archive(m_context, blob);
         archive.deploy(path);
     } catch(const archive_error_t& e) {
-        m_log->error("unable to extract the app files - %s", e.what());
+        COCAINE_LOG_ERROR(m_log, "unable to extract the app files - %s", e.what());
         boost::format message("the '%s' app is not available");
         throw configuration_error_t((message % name).str());
     }

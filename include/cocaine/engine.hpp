@@ -29,6 +29,7 @@
 #include "cocaine/common.hpp"
 #include "cocaine/asio.hpp"
 #include "cocaine/io.hpp"
+#include "cocaine/unique_id.hpp"
 
 #include "cocaine/api/isolate.hpp"
 
@@ -39,7 +40,7 @@ typedef boost::unordered_map<
 #else
 typedef std::map<
 #endif
-    std::string,
+    unique_id_t,
     boost::shared_ptr<master_t>
 > pool_map_t;
 
@@ -73,7 +74,7 @@ class engine_t:
 
         template<class T>
         bool
-        send(const std::string& uuid,
+        send(const unique_id_t& uuid,
              const T& message);
 
     public:
@@ -181,7 +182,7 @@ class engine_t:
 
 template<class T>
 bool
-engine_t::send(const std::string& uuid,
+engine_t::send(const unique_id_t& uuid,
                const T& message)
 {
     boost::unique_lock<boost::mutex> lock(m_bus_mutex);
@@ -190,7 +191,7 @@ engine_t::send(const std::string& uuid,
         io::options::send_timeout
     > option(*m_bus, 0);
     
-    return m_bus->send(io::protect(uuid), ZMQ_SNDMORE) &&
+    return m_bus->send(uuid, ZMQ_SNDMORE) &&
            m_bus->send_message(message);
 }
 

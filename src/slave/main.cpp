@@ -116,7 +116,7 @@ int main(int argc, char * argv[]) {
             )
         );
     } catch(const std::exception& e) {
-        log->error("unable to start the slave - %s", e.what());
+        COCAINE_LOG_ERROR(log, "unable to start the slave - %s", e.what());
         return EXIT_FAILURE;
     }
 

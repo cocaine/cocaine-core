@@ -53,12 +53,15 @@ struct invoke:
     public sc::event<invoke>
 {
     invoke(const boost::shared_ptr<job_t>& job_,
+           engine_t * engine_,
            const boost::weak_ptr<engine::master_t>& master_):
         job(job_),
+        engine(engine_),
         master(master_)
     { }
 
     const boost::shared_ptr<job_t>& job;
+    engine_t * engine;
     const boost::weak_ptr<engine::master_t>& master;
 };
 

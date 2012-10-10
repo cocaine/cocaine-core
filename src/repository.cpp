@@ -109,10 +109,7 @@ repository_t::open(const std::string& target) {
     lt_dladvise_init(&advice);
     lt_dladvise_global(&advice);
 
-    m_log->debug(
-        "loading components from '%s'",
-        target.c_str()
-    );
+    COCAINE_LOG_DEBUG(m_log, "loading components from '%s'", target);
 
     lt_dlhandle plugin = lt_dlopenadvise(
         target.c_str(),
@@ -133,31 +130,17 @@ repository_t::open(const std::string& target) {
                 m_plugins.emplace_back(plugin);
                 return;
             } catch(const std::exception& e) {
-                m_log->error(
-                    "unable to initialize '%s' - %s",
-                    target.c_str(),
-                    e.what()
-                );
+                COCAINE_LOG_ERROR(m_log, "unable to initialize '%s' - %s", target, e.what());
             } catch(...) {
-                m_log->error(
-                    "unable to initialize '%s' - unexpected exception",
-                    target.c_str()
-                );
+                COCAINE_LOG_ERROR(m_log, "unable to initialize '%s' - unexpected exception", target);
             }
         } else {
-            m_log->error(
-                "unable to initialize '%s' - invalid interface",
-                target.c_str()
-            );
+            COCAINE_LOG_ERROR(m_log, "unable to initialize '%s' - invalid interface", target);
         }
 
         lt_dlclose(plugin);
     } else {
-        m_log->error(
-            "unable to load '%s' - %s",
-            target.c_str(),
-            lt_dlerror()
-        );
+        COCAINE_LOG_ERROR(m_log, "unable to load '%s'", target);
     }
 }
 

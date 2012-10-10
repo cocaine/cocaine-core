@@ -108,12 +108,13 @@ archive_t::deploy(const fs::path& prefix) {
     // NOTE: The reported count is off by one for some reason.
     size_t count = archive_file_count(m_archive) - 1;
 
-    m_log->info(
+    COCAINE_LOG_INFO(
+        m_log,
         "archive type: %s, extracted %d %s to '%s'",
-        type().c_str(),
+        type(),
         count,
         count == 1 ? "file" : "files",
-        prefix.string().c_str()
+        prefix.string()
     );
 
     archive_write_close(target);

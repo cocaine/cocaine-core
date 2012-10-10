@@ -109,10 +109,6 @@ class socket_t:
         socket_t(context_t& context,
                  int type);
 
-        socket_t(context_t& context,
-                 int type,
-                 const std::string& route);
-
         void
         bind(const std::string& endpoint);
         
@@ -296,7 +292,7 @@ class socket_t:
         }
 
         std::string
-        route() {
+        identity() {
             char identity[256] = { 0 };
             size_t size = sizeof(identity);
 
@@ -322,7 +318,7 @@ class socket_t:
 
             getsockopt(ZMQ_EVENTS, &events, &size);
 
-            return (events & event) == event;
+            return events & event;
         }
 
     private:
@@ -438,9 +434,19 @@ class channel_t:
             socket_t(context, type)
         { }
         
-        channel_t(context_t& context, int type, const std::string& route):
-            socket_t(context, type, route)
-        { }
+        template<class T>
+        channel_t(context_t& context, int type, const T& identity):
+            socket_t(context, type)
+        {
+            msgpack::sbuffer buffer;
+            msgpack::packer<msgpack::sbuffer> packer(buffer);
+
+            // NOTE: Channels allow any serializable type to be its
+            // identity, for example UUIDs.
+            type_traits<T>::pack(packer, identity);
+            
+            setsockopt(ZMQ_IDENTITY, buffer.data(), buffer.size());
+        }
 
         using socket_t::send;
         using socket_t::recv;
