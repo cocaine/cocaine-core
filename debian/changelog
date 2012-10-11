@@ -1,3 +1,10 @@
+cocaine-core (0.9.5) lucid; urgency=low
+
+  * Do not assert in the slave on broken binary app.
+  * Fixes for cocaine-scripts.
+
+ -- kobolog <kobolog@idioteque.dev.yandex.net>  Thu, 11 Oct 2012 21:32:36 +0400
+
 cocaine-core (0.9.4) lucid; urgency=low
 
   * Pump queue events even if no workers are available (fixes an issue when all the
