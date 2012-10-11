@@ -49,7 +49,7 @@ def main(app, hosts):
 
 if __name__ == "__main__":
     if len(argv) == 1:
-        print "Fuck off"
+        print "Usage: %s <application name> ... <hostlist>" % argv[0]
     elif len(argv) == 2:
         main(argv[1], ['localhost'])
     else:
