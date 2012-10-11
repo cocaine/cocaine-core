@@ -19,6 +19,9 @@
 #    along with this program. If not, see <http://www.gnu.org/licenses/>. 
 #
 
+import zmq
+from sys import argv, exit
+
 def main(app, hosts):
     context = zmq.Context()
 
