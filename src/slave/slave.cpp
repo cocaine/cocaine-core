@@ -88,22 +88,22 @@ void slave_t::configure() {
         io::command<rpc::error> command(server_error, e.what());
         m_bus.send(m_app, command);
         terminate();
-        throw();
+        throw;
     } catch(const repository_error_t& e) {
         io::command<rpc::error> command(server_error, e.what());
         m_bus.send(m_app, command);
         terminate();
-        throw();
+        throw;
     } catch(const unrecoverable_error_t& e) {
         io::command<rpc::error> command(server_error, e.what());
         m_bus.send(m_app, command);
         terminate();
-        throw();
+        throw;
     } catch(const std::exception& e) {
         io::command<rpc::error> command(server_error, e.what());
         m_bus.send(m_app, command);
         terminate();
-        throw();
+        throw;
     } catch(...) {
         io::command<rpc::error> command(
             server_error,
@@ -112,7 +112,7 @@ void slave_t::configure() {
         
         m_bus.send(m_app, command);
         terminate();
-        throw();
+        throw;
     }
 }
 
