@@ -96,7 +96,7 @@ class logger_t:
         void
         emit(priorities priority,
              const std::string& format,
-             Args&&... args) const
+             const Args&... args) const
         {
             boost::format message(format);
 
@@ -115,8 +115,8 @@ class logger_t:
         template<typename T, typename... Args>
         void
         substitute(boost::format& message,
-                   T&& argument,
-                   Args&&... args) const
+                   const T& argument,
+                   const Args&... args) const
         {
             substitute(message % argument, args...);
         }
