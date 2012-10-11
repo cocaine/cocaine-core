@@ -420,7 +420,7 @@ struct message:
 {
     template<typename... Args>
     message(Args&&... args):
-        event_traits<Event>::tuple_type(args...)
+        event_traits<Event>::tuple_type(std::forward<Args>(args)...)
     { }
 };
 
