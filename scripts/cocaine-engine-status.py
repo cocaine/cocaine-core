@@ -19,10 +19,6 @@
 #    along with this program. If not, see <http://www.gnu.org/licenses/>. 
 #
 
-import zmq
-from sys import argv, exit
-
-
 def main(app, hosts):
     context = zmq.Context()
 
@@ -37,13 +33,13 @@ def main(app, hosts):
         })
 
         res=request.recv_json()
-	
+
         if app not in res["apps"]:
-            print "Not found on %s" % host
+            print "Engine %s was not found on %s" % (app,host)
             exit(1)
 
-        if res["apps"][app]["status"] != "running":
-           print "Not running on %s" % host
+        if res["apps"][app]["state"] != "running":
+           print "Engine %s is not running on %s" % (app,host)
            exit(1)
 
     exit(0)
@@ -55,3 +51,5 @@ if __name__ == "__main__":
         main(argv[1], ['localhost'])
     else:
         main(argv[1], argv[2:])
+
+
