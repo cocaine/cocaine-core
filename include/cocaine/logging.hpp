@@ -22,12 +22,8 @@
 #define COCAINE_LOGGING_HPP
 
 #include <boost/format.hpp>
-#include <boost/thread/mutex.hpp>
-#include <cstdarg>
 
 #include "cocaine/common.hpp"
-
-#include "cocaine/helpers/birth_control.hpp"
 
 // Logging macros
 
@@ -119,8 +115,8 @@ class logger_t:
         template<typename T, typename... Args>
         void
         substitute(boost::format& message,
-                        T&& argument,
-                        Args&&... args) const
+                   T&& argument,
+                   Args&&... args) const
         {
             substitute(message % argument, args...);
         }
