@@ -12,3 +12,4 @@ install/cocaine-tools::
 	install -m755 scripts/cocaine-info.py $(DEB_DESTDIR)usr/bin/cocaine-info
 	install -m755 scripts/cocaine-engine-create.py $(DEB_DESTDIR)usr/bin/cocaine-engine-create
 	install -m755 scripts/cocaine-engine-delete.py $(DEB_DESTDIR)usr/bin/cocaine-engine-delete
+	install -m755 scripts/cocaine-engine-status.py $(DEB_DESTDIR)usr/bin/cocaine-engine-status
