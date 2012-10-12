@@ -1,3 +1,9 @@
+cocaine-core (0.9.6) lucid; urgency=low
+
+  * Enhanced the cocaine-engine-status tool.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 12 Oct 2012 05:08:27 +0400
+
 cocaine-core (0.9.5) lucid; urgency=low
 
   * Do not assert in the slave on broken binary app.

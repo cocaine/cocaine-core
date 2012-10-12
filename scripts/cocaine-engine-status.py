@@ -20,13 +20,16 @@
 #
 
 import zmq
+
+from optparse import OptionParser
 from sys import argv, exit
 
-def main(app, hosts):
+def main(app, hosts, timeout):
     context = zmq.Context()
 
     for host in hosts:
         request = context.socket(zmq.REQ)
+        request.setsockopt(zmq.LINGER, 0)
         request.connect('tcp://%s:5000' % host)
 
         # Statistics
@@ -35,24 +38,51 @@ def main(app, hosts):
             'action': 'info'
         })
 
-        res=request.recv_json()
+        poller = zmq.Poller()
+        poller.register(request, zmq.POLLIN)
 
-        if app not in res["apps"]:
-            print "Engine %s was not found on %s" % (app,host)
+        # Poll the socket for response for 3 seconds
+        sockets = dict(poller.poll(timeout = timeout))
+
+        if request in sockets and sockets[request] == zmq.POLLIN:
+            response = request.recv_json()
+            
+            if app not in response["apps"]:
+                print "The '%s' app was not found on '%s'." % (app, host)
+                exit(1)
+
+            if response["apps"][app]["state"] != "running":
+               print "The '%s' app is not running on '%s'." % (app, host)
+               exit(1)
+        else:
+            print "Host '%s' is not responding." % host
             exit(1)
 
-        if res["apps"][app]["state"] != "running":
-           print "Engine %s is not running on %s" % (app,host)
-           exit(1)
+description = """This tool allows you to check if the specified app
+is up and running on one or multiple nodes. On success you'll get
+no output and an exit code of '0', otherwise the error message will
+describe the problem, and the exit code will be '1'."""
+    
+usage = "Usage: %prog <app-name> [options] [<host-name-1> ... <host-name-N>]"
 
-    exit(0)
+version = "0.9.6"
 
 if __name__ == "__main__":
-    if len(argv) == 1:
-        print "Usage: %s <application name> ... <hostlist>" % argv[0]
-    elif len(argv) == 2:
-        main(argv[1], ['localhost'])
-    else:
-        main(argv[1], argv[2:])
+    parser = OptionParser(usage = usage,
+                          description = description,
+                          version = version)
 
+    parser.add_option("-t", "--timeout",
+                      type = "int",
+                      default = 3000,
+                      help = "The amount of time to wait for the node to respond, in milliseconds")
+    
+    (options, args) = parser.parse_args()
+
+    if len(args) == 0:
+        parser.print_usage()
+    elif len(args) == 1:
+        main(args[0], ['localhost'], options.timeout)
+    else:
+        main(args[0], args[1:], options.timeout)
 

@@ -1,4 +1,5 @@
 usr/bin/cocaine-info
 usr/bin/cocaine-engine-create
 usr/bin/cocaine-engine-delete
+usr/bin/cocaine-engine-status
 usr/bin/cocaine-tool
