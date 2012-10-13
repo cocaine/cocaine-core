@@ -25,10 +25,10 @@
 #include <boost/thread/mutex.hpp>
 #include <deque>
 
-#if (defined(__GNUC__) && (__GNUC__ == 4 && __GNUC_MINOR__ == 4))
- #include <cstdatotmic>
+#if defined(__GNUC__) && (__GNUC__ == 4 && __GNUC_MINOR__ == 4)
+    #include <cstdatotmic>
 #else
- #include <atomic>
+    #include <atomic>
 #endif
 
 #include "cocaine/common.hpp"
