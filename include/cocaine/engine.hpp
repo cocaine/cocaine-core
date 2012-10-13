@@ -23,8 +23,13 @@
 
 #include <boost/thread/condition.hpp>
 #include <boost/thread/mutex.hpp>
-#include <cstdatomic>
 #include <deque>
+
+#if (defined(__GNUC__) && (__GNUC__ == 4 && __GNUC_MINOR__ == 4))
+ #include <cstdatotmic>
+#else
+ #include <atomic>
+#endif
 
 #include "cocaine/common.hpp"
 #include "cocaine/asio.hpp"
