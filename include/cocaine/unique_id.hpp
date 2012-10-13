@@ -33,9 +33,7 @@ struct uninitialized_t { };
 
 struct unique_id_t {
     unique_id_t() {
-        uuid_generate(
-            reinterpret_cast<unsigned char*>(uuid)
-        );
+        uuid_generate(reinterpret_cast<unsigned char*>(uuid));
     }
 
     explicit
@@ -55,21 +53,17 @@ struct unique_id_t {
         // Empty.
     }
 
-    const std::string&
+    std::string
     string() const {
-        if(cache.empty()) {
-            // 36-character long UUID plus trailing zero.
-            char unparsed[37];
+        // 36-character long UUID plus trailing zero.
+        char unparsed[37];
 
-            uuid_unparse_lower(
-                reinterpret_cast<const unsigned char*>(uuid),
-                unparsed
-            );
+        uuid_unparse_lower(
+            reinterpret_cast<const unsigned char*>(uuid),
+            unparsed
+        );
 
-            cache = unparsed;
-        }
-    
-        return cache;
+        return unparsed;
     }
 
     bool
@@ -80,10 +74,6 @@ struct unique_id_t {
 
     // NOTE: Store the 128-bit UUID as two 64-bit unsigned integers.
     uint64_t uuid[2];
-
-private:
-    // Textual representation cache.
-    mutable std::string cache;
 };
 
 static
