@@ -84,7 +84,7 @@ struct category_traits<api::driver_t> {
         {
             return ptr_type(
                 new T(
-                    context,
+                    boost::ref(context),
                     boost::get<0>(args),
                     boost::get<1>(args),
                     boost::get<2>(args)
