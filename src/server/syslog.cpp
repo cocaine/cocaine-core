@@ -32,9 +32,10 @@ syslog_t::syslog_t(priorities verbosity, const std::string& identity):
     openlog(m_identity.c_str(), LOG_PID, LOG_USER);
 }
 
-void syslog_t::emit(priorities priority,
-                    const std::string& source,
-                    const std::string& message) const
+void
+syslog_t::emit(priorities priority,
+               const std::string& source,
+               const std::string& message) const
 {
     // NOTE: Replacing all newlines with spaces here because certain sysloggers
     // fail miserably interpreting them correctly.

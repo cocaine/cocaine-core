@@ -29,9 +29,11 @@ class syslog_t:
         syslog_t(priorities verbosity,
         		 const std::string& identity);
 
-        virtual void emit(priorities priority,
-                          const std::string& source,
-                          const std::string& message) const;
+        virtual
+        void
+        emit(priorities priority,
+             const std::string& source,
+             const std::string& message) const;
 
     private:
         const std::string m_identity;

@@ -154,7 +154,7 @@ class socket_t:
 
         bool
         send_tuple(const null_type&,
-                   int __attribute__ ((unused)) flags = 0) const
+                   int __attribute__((unused)) flags = 0) const
         {
             return true;
         }
@@ -231,7 +231,7 @@ class socket_t:
 
         bool
         recv_tuple(const null_type&,
-                   int __attribute__ ((unused)) flags = 0) const
+                   int __attribute__((unused)) flags = 0) const
         {
             return true;
         }
