@@ -22,7 +22,7 @@
 #define COCAINE_HELPERS_BIRTH_CONTROL_HPP
 
 #if defined(__GNUC__) && (__GNUC__ == 4 && __GNUC_MINOR__ == 4)
-    #include <cstdatotmic>
+    #include <cstdatomic>
 #else
     #include <atomic>
 #endif
