@@ -21,10 +21,11 @@
 #ifndef COCAINE_COMMON_HPP
 #define COCAINE_COMMON_HPP
 
+#include <stdint.h>
+
 #include <map>
 #include <memory>
 #include <string>
-#include <tr1/cstdint>
 #include <vector>
 
 #include <boost/assert.hpp>
