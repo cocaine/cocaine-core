@@ -87,14 +87,9 @@ struct category_traits<isolate_t> {
         {
             boost::lock_guard<boost::mutex> lock(m_mutex);
 
-            const std::string& name(
-                boost::get<0>(args)
-            );
-
-            typename instance_map_t::iterator it(
-                m_instances.find(name)
-            );
-
+            const std::string& name(boost::get<0>(args));
+            typename instance_map_t::iterator it(m_instances.find(name));
+            
             ptr_type instance;
             
             if(it != m_instances.end()) {
@@ -108,10 +103,7 @@ struct category_traits<isolate_t> {
                     boost::get<1>(args)
                 );
 
-                m_instances.emplace(
-                    name,
-                    instance
-                );
+                m_instances.emplace(name, instance);
             }
                 
             return instance;
