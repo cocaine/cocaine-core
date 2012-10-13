@@ -99,9 +99,7 @@ storage_t::get(const std::string& collection,
     T result;
     msgpack::unpacked unpacked;
     
-    std::string blob(
-        read(collection, key)
-    );
+    std::string blob(read(collection, key));
 
     try {
         msgpack::unpack(&unpacked, blob.data(), blob.size());
@@ -132,11 +130,8 @@ storage_t::put(const std::string& collection,
         throw storage_error_t("corrupted object - type mismatch");
     }
 
-    std::string blob(
-        buffer.data(),
-        buffer.size()
-    );
-    
+    std::string blob(buffer.data(), buffer.size());
+
     write(collection, key, blob);
 }
 
@@ -160,13 +155,8 @@ struct category_traits<storage_t> {
         {
             boost::lock_guard<boost::mutex> lock(m_mutex);
 
-            const std::string& name(
-                boost::get<0>(args)
-            );
-
-            typename instance_map_t::iterator it(
-                m_instances.find(name)
-            );
+            const std::string& name(boost::get<0>(args));
+            typename instance_map_t::iterator it(m_instances.find(name));
 
             if(it == m_instances.end()) {
                 boost::tie(it, boost::tuples::ignore) = m_instances.emplace(
