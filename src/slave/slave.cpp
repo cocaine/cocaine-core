@@ -82,7 +82,7 @@ slave_t::slave_t(context_t& context, slave_config_t config):
         fs::path path(fs::path(m_context.config.spool_path) / m_name);
          
         m_sandbox = m_context.get<api::sandbox_t>(
-            m_manifest->type,
+            m_manifest->sandbox.type,
             api::category_traits<api::sandbox_t>::args_type(
                 *m_manifest,
                 path.string()

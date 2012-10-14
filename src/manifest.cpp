@@ -36,7 +36,7 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
     const Json::Value cache(object());
 
     // Slave type.
-    slave = cache["engine"].get(
+    slave = cache.get(
         "slave",
         defaults::slave
     ).asString();
@@ -46,15 +46,12 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
         throw configuration_error_t((message % name).str());
     }
 
-    // Sandbox type.
-    type = cache.get("type", "not specified").asString();
-   
-    // Driver configuration.
-    drivers = config_t::parse(
-        cache.get("drivers", Json::Value(Json::objectValue))
-    );
+    sandbox = {
+        cache.get("type", "not specified").asString(),
+        cache["args"]
+    };
 
-    // Custom app configuration.
-    args = cache.get("args", Json::Value(Json::objectValue));
+    // Driver configuration.
+    drivers = config_t::parse(cache["drivers"]);
 }
 

@@ -36,14 +36,15 @@ struct manifest_t:
                const std::string& name);
 
     std::string name,
-                slave,
-                type;
+                slave;
 
-    // A component configuration for drivers similar to the generic one
-    // found in the config_t structure.
+    // NOTE: The actual apps are hosted by the sandbox plugins. This configuration
+    // describes the required sandbox type and its instantiation arguments.
+    config_t::component_t sandbox;
+
+    // A configuration map for drivers, similar to the generic one found in the
+    // config_t structure.
     config_t::component_map_t drivers;
-
-    Json::Value args;
 };
 
 } // namespace cocaine
