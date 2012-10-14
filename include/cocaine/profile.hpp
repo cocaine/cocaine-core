@@ -23,6 +23,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/cached.hpp"
+#include "cocaine/context.hpp"
 
 #include "cocaine/helpers/json.hpp"
 
@@ -44,10 +45,7 @@ struct profile_t:
     unsigned long queue_limit;
     unsigned long grow_threshold;
 
-    struct {
-        std::string type;
-        Json::Value args;
-    } isolate;
+    config_t::component_t isolate;
 };
 
 } // namespace cocaine

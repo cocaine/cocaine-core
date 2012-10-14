@@ -145,7 +145,7 @@ config_t::parse(const Json::Value& config) {
     {
         component_t info = {
             config[*it].get("type", "not specified").asString(),
-            config[*it]["args"]
+            config[*it].get("args", Json::Value(Json::objectValue))
         };
 
         components.emplace(*it, info);

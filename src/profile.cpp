@@ -89,12 +89,13 @@ profile_t::profile_t(context_t& context, const std::string& name_):
 
     // Isolation
 
-    if(!cache["isolate"].empty()) {
-        isolate.type = cache["isolate"].get("type", "not specified").asString();
-        isolate.args = cache["isolate"]["args"];
-    } else {
-        isolate.type = "process";
-        isolate.args = Json::Value(Json::objectValue);
-    }
+    Json::Value section(
+        cache.get("isolate", Json::Value(Json::objectValue))
+    );
+
+    isolate = {
+        section.get("type", "process").asString(),
+        section.get("args", Json::Value(Json::objectValue))
+    };
 }
 

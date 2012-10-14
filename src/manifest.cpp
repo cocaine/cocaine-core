@@ -51,10 +51,10 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
    
     // Driver configuration.
     drivers = config_t::parse(
-        cache.get("drivers", Json::Value())
+        cache.get("drivers", Json::Value(Json::objectValue))
     );
 
     // Custom app configuration.
-    args = cache.get("args", Json::Value());
+    args = cache.get("args", Json::Value(Json::objectValue));
 }
 

@@ -348,10 +348,10 @@ Json::Value server_t::info() const {
 
     result["identity"] = m_context.config.runtime.hostname;
 
-    result["jobs"]["pending"] = static_cast<Json::UInt>(engine::job_t::objects_alive());
-    result["jobs"]["processed"] = static_cast<Json::UInt>(engine::job_t::objects_created());
+    result["jobs"]["pending"] = static_cast<Json::LargestUInt>(engine::job_t::objects_alive());
+    result["jobs"]["processed"] = static_cast<Json::LargestUInt>(engine::job_t::objects_created());
 
-    result["sockets"] = static_cast<Json::UInt>(io::socket_t::objects_alive());
+    result["sockets"] = static_cast<Json::LargestUInt>(io::socket_t::objects_alive());
 
     result["uptime"] = m_loop.now() - m_birthstamp;
 

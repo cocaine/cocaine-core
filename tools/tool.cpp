@@ -88,7 +88,7 @@ namespace {
         std::string type,
                     compression;
         
-        Json::Reader reader;
+        Json::Reader reader(Json::Features::strictMode());
         Json::Value manifest;
 
         fs::ifstream manifest_stream(manifest_path);
