@@ -67,10 +67,7 @@ master_t::master_t(context_t& context, ev::loop_ref& loop, const manifest_t& man
 
     COCAINE_LOG_DEBUG(m_log, "spawning slave %s", m_id.string());
 
-    m_handle = isolate->spawn(
-        m_manifest.slave,
-        args
-    );
+    m_handle = isolate->spawn(m_manifest.slave, args);
 }
 
 master_t::~master_t() {
@@ -97,7 +94,7 @@ void master_t::on_initialize(const events::heartbeat& event) {
         m_log,
         "slave %s came alive in %.03f seconds",
         m_id.string(),
-        10.0f - ev_timer_remaining(
+        m_profile.startup_timeout - ev_timer_remaining(
             m_loop,
             static_cast<ev_timer*>(&m_heartbeat_timer)
         )
@@ -134,7 +131,11 @@ void master_t::on_terminate(const events::terminate& event) {
 }
 
 void master_t::on_timeout(ev::timer&, int) {
-    COCAINE_LOG_ERROR(m_log, "slave %s didn't respond in a timely fashion", m_id.string());
+    COCAINE_LOG_ERROR(
+        m_log,
+        "slave %s didn't respond in a timely fashion",
+        m_id.string()
+    );
     
     const busy * state = state_downcast<const busy*>();
 

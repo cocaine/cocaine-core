@@ -24,8 +24,8 @@ using namespace cocaine::logging;
 
 // Logging sinks
 
-sink_t::sink_t(priorities verbosity):
-    m_verbosity(verbosity)
+sink_t::sink_t(priorities verbosity_):
+    verbosity(verbosity_)
 { }
 
 sink_t::~sink_t() {
@@ -41,7 +41,7 @@ logger_t::logger_t(const sink_t& sink, const std::string& source):
 
 priorities
 logger_t::verbosity() const {
-    return m_sink.verbosity();
+    return m_sink.verbosity;
 }
 
 // Void logger

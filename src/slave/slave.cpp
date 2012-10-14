@@ -79,9 +79,7 @@ slave_t::slave_t(context_t& context, slave_config_t config):
         m_idle_timer.set<slave_t, &slave_t::on_idle_timeout>(this);
         m_idle_timer.start(m_profile->idle_timeout);
         
-        fs::path path(
-            fs::path(m_context.config.spool_path) / m_name
-        );
+        fs::path path(fs::path(m_context.config.spool_path) / m_name);
          
         m_sandbox = m_context.get<api::sandbox_t>(
             m_manifest->type,
@@ -149,12 +147,7 @@ slave_t::write(const void * data,
 {
     zmq::message_t body(size);
 
-    memcpy(
-        body.data(),
-        data,
-        size
-    );
-    
+    memcpy(body.data(), data, size);
     io::message<rpc::chunk> message(body);
 
     m_bus.send_message(message);

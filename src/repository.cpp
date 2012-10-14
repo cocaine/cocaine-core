@@ -111,11 +111,7 @@ repository_t::open(const std::string& target) {
 
     COCAINE_LOG_DEBUG(m_log, "loading components from '%s'", target);
 
-    lt_dlhandle plugin = lt_dlopenadvise(
-        target.c_str(),
-        advice
-    );
-
+    lt_dlhandle plugin = lt_dlopenadvise(target.c_str(), advice);
     lt_dladvise_destroy(&advice);
     
     if(plugin) {

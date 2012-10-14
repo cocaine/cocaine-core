@@ -58,9 +58,7 @@ job_t::process(const events::invoke& event) {
     master = event.master;
 
     if(!cache.empty()) {
-        boost::shared_ptr<master_t> owner(
-            master.lock()
-        );
+        boost::shared_ptr<master_t> owner(master.lock());
 
         // TEST: There cannot be any orphan jobs.
         BOOST_ASSERT(engine && owner);

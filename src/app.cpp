@@ -58,10 +58,14 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
 
     m_control.reset(new io::channel_t(context, ZMQ_PAIR));
 
+    std::string endpoint(
+        (boost::format("inproc://%s")
+            % m_manifest->name
+        ).str()
+    );
+
     try { 
-        m_control->bind(
-            (boost::format("inproc://%s") % m_manifest->name).str()
-        );
+        m_control->bind(endpoint);
     } catch(const zmq::error_t& e) {
         boost::format message("unable to bind the engine control channel - %s");
         throw configuration_error_t((message % e.what()).str());

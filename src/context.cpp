@@ -102,9 +102,7 @@ config_t::config_t(const std::string& path):
 
     // Component configuration
 
-    Json::Value::Members component_names(
-        root["components"].getMemberNames()
-    );
+    Json::Value::Members component_names(root["components"].getMemberNames());
 
     for(Json::Value::Members::const_iterator it = component_names.begin();
         it != component_names.end();
@@ -115,10 +113,7 @@ config_t::config_t(const std::string& path):
             root["components"][*it]["args"]
         };
 
-        components.emplace(
-            *it,
-            info
-        );
+        components.emplace(*it, info);
     }
 
     // IO configuration
@@ -140,7 +135,7 @@ config_t::config_t(const std::string& path):
         }
 
         if(result == NULL) {
-            throw configuration_error_t("unable to determine the hostname - no hostnames have been configured for the host");
+            throw configuration_error_t("unable to determine the hostname");
         }
         
         runtime.hostname = result->ai_canonname;
@@ -176,9 +171,7 @@ boost::shared_ptr<logging::logger_t>
 context_t::log(const std::string& name) {
     boost::lock_guard<boost::mutex> lock(m_mutex);
 
-    instance_map_t::iterator it(
-        m_instances.find(name)
-    );
+    instance_map_t::iterator it(m_instances.find(name));
 
     if(it == m_instances.end()) {
         boost::tie(it, boost::tuples::ignore) = m_instances.emplace(

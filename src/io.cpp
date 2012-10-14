@@ -43,9 +43,9 @@ socket_t::bind(const std::string& endpoint) {
     size_t position = endpoint.find_last_of(":");
 
     if(position != std::string::npos) {
-        m_endpoint = std::string("tcp://")
-                     + m_context.config.runtime.hostname
-                     + endpoint.substr(position, std::string::npos);
+        m_endpoint = std::string("tcp://") +
+                     m_context.config.runtime.hostname +
+                     endpoint.substr(position, std::string::npos);
     } else {
         m_endpoint = "<local>";
     }

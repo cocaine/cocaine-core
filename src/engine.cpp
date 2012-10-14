@@ -185,10 +185,12 @@ engine_t::enqueue(job_queue_t::const_reference job,
 
     if(m_queue.size() < m_profile.queue_limit) {
         m_queue.push(job);
-        lock.unlock();
     } else {
         switch(mode) {
             case mode::normal:
+                // NOTE: Unlock the queue mutex here so that the job error
+                // processing would happen without it in order to let the
+                // engine continue to function.
                 lock.unlock();
 
                 COCAINE_LOG_DEBUG(
@@ -214,7 +216,6 @@ engine_t::enqueue(job_queue_t::const_reference job,
                 }
 
                 m_queue.push(job);
-                lock.unlock();
         }
     }
   
@@ -263,7 +264,8 @@ namespace {
         template<class T>
         bool
         operator()(const T& job) {
-            return job->policy.deadline && job->policy.deadline <= now;
+            return job->policy.deadline &&
+                   job->policy.deadline <= now;
         }
 
         ev::tstamp now;
@@ -330,7 +332,7 @@ engine_t::on_cleanup(ev::timer&, int) {
 
 void
 engine_t::on_termination(ev::timer&, int) {
-    COCAINE_LOG_WARNING(m_log, "forcing engine termination");
+    COCAINE_LOG_WARNING(m_log, "forcing the engine termination");
     stop();
 }
 
@@ -636,10 +638,7 @@ engine_t::balance() {
                 )
             );
           
-            m_pool.emplace(
-                master->id(),
-                master
-            );
+            m_pool.emplace(master->id(), master);
         } catch(const system_error_t& e) {
             COCAINE_LOG_ERROR(
                 m_log,
@@ -673,7 +672,6 @@ engine_t::shutdown() {
             );
 
             m_queue.front()->process(events::choke());
-
             m_queue.pop_front();
         }
     }
@@ -727,13 +725,8 @@ namespace {
 
 void
 engine_t::stop() {
-    // Force slave termination.
-    std::for_each(
-        m_pool.begin(),
-        m_pool.end(),
-        terminate_t()
-    );
-    
+    // Force the slave termination.
+    std::for_each(m_pool.begin(), m_pool.end(), terminate_t());
     m_pool.clear();
 
     if(m_state == state::stopping) {

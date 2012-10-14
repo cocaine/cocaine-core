@@ -69,11 +69,6 @@ std::unique_ptr<handle_t>
 process_t::spawn(const std::string& path,
                  const std::map<std::string, std::string>& args)
 {
-    typedef std::map<
-        std::string,
-        std::string
-    > arg_map_t;
-    
     pid_t pid = ::fork();
 
     if(pid == 0) {
@@ -84,20 +79,16 @@ process_t::spawn(const std::string& path,
         argv[0] = ::strdup(path.c_str());
         argv[sizeof(argv) / sizeof(argv[0])] = NULL;
 
-        arg_map_t::const_iterator it(args.begin());
+        std::map<std::string, std::string>::const_iterator it(args.begin());
         int n = 1;
         
         while(it != args.end()) {
             argv[n++] = ::strdup(it->first.c_str());
-            argv[n++] = ::strdup(it->second.c_str());
-            
+            argv[n++] = ::strdup(it->second.c_str());   
             ++it;
         }
 
-        int rv = ::execvp(
-            argv[0],
-            argv
-        );
+        int rv = ::execvp(argv[0], argv);
 
         if(rv != 0) {
             char buffer[1024];
@@ -126,7 +117,5 @@ process_t::spawn(const std::string& path,
         throw system_error_t("fork() failed");
     }
     
-    return std::unique_ptr<handle_t>(
-        new process_handle_t(pid)
-    );
+    return std::unique_ptr<handle_t>(new process_handle_t(pid));
 }
