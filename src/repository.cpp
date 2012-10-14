@@ -114,29 +114,30 @@ repository_t::open(const std::string& target) {
     lt_dlhandle plugin = lt_dlopenadvise(target.c_str(), advice);
     lt_dladvise_destroy(&advice);
     
-    if(plugin) {
-        // Try to get the initialization routine.
-        initialize_fn_t initialize = reinterpret_cast<initialize_fn_t>(
-            lt_dlsym(plugin, "initialize")
-        );
-
-        if(initialize) {
-            try {
-                initialize(*this);
-                m_plugins.emplace_back(plugin);
-                return;
-            } catch(const std::exception& e) {
-                COCAINE_LOG_ERROR(m_log, "unable to initialize '%s' - %s", target, e.what());
-            } catch(...) {
-                COCAINE_LOG_ERROR(m_log, "unable to initialize '%s' - unexpected exception", target);
-            }
-        } else {
-            COCAINE_LOG_ERROR(m_log, "unable to initialize '%s' - invalid interface", target);
-        }
-
-        lt_dlclose(plugin);
-    } else {
+    if(!plugin) {
         COCAINE_LOG_ERROR(m_log, "unable to load '%s'", target);
+        return;
     }
+
+    // Try to get the initialization routine.
+    initialize_fn_t initialize = reinterpret_cast<initialize_fn_t>(
+        lt_dlsym(plugin, "initialize")
+    );
+
+    if(initialize) {
+        try {
+            initialize(*this);
+            m_plugins.emplace_back(plugin);
+            return;
+        } catch(const std::exception& e) {
+            COCAINE_LOG_ERROR(m_log, "unable to initialize '%s' - %s", target, e.what());
+        } catch(...) {
+            COCAINE_LOG_ERROR(m_log, "unable to initialize '%s' - unexpected exception", target);
+        }
+    } else {
+        COCAINE_LOG_ERROR(m_log, "unable to initialize '%s' - invalid interface", target);
+    }
+
+    lt_dlclose(plugin);
 }
 
