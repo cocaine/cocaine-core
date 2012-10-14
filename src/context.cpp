@@ -137,6 +137,10 @@ config_t::component_map_t
 config_t::parse(const Json::Value& config) {
     component_map_t components;
 
+    if(config.empty()) {
+        return components;
+    }
+
     Json::Value::Members names(config.getMemberNames());
 
     for(Json::Value::Members::const_iterator it = names.begin();
@@ -145,7 +149,7 @@ config_t::parse(const Json::Value& config) {
     {
         component_t info = {
             config[*it].get("type", "not specified").asString(),
-            config[*it].get("args", Json::Value(Json::objectValue))
+            config[*it]["args"]
         };
 
         components.emplace(*it, info);
