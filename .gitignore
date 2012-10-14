@@ -1,16 +1,22 @@
-# Compiled Object files
+# Compiled object files
 *.slo
 *.lo
 *.o
 
-# Compiled Dynamic libraries
+# Compiled dynamic libraries
 *.so
 *.dylib
 
-# Compiled Static libraries
+# Compiled static libraries
 *.lai
 *.la
 *.a
 
-# MacOS Trash
+# MacOS trash
 .DS_Store
+
+# CMake trash
+CMakeFiles
+CMakeCache.txt
+Makefile
+cmake_install.cmake
