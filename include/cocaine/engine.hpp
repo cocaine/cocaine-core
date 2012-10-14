@@ -25,7 +25,7 @@
 #include <boost/thread/mutex.hpp>
 #include <deque>
 
-#if defined(__GNUC__) && (__GNUC__ == 4 && __GNUC_MINOR__ <= 4)
+#if defined(__GNUC__) && (__GNUC__ == 4 && __GNUC_MINOR__ <= 4) && !defined(__clang__)
     #include <cstdatomic>
 #else
     #include <atomic>
