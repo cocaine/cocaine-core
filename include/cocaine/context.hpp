@@ -78,8 +78,8 @@ struct config_t {
     component_map_t
     parse(const Json::Value& config);
 
-    // A list of the generic components specified in the configuration file
-    // along with their instantiation arguments.
+    // NOTE: A configuration map for the generic components, like storages or
+    // loggers, which are specified in the configuration file.
     component_map_t components;
 
     struct {
