@@ -56,8 +56,6 @@ ADD_LIBRARY(json
 SET_TARGET_PROPERTIES(json PROPERTIES
     COMPILE_FLAGS -fPIC)
 
-ADD_DEFINITIONS("-std=c++0x")
-
 ADD_LIBRARY(cocaine-common SHARED
     src/auth
     src/context
@@ -78,7 +76,8 @@ TARGET_LINK_LIBRARIES(cocaine-common
     zmq)
 
 SET_TARGET_PROPERTIES(cocaine-common PROPERTIES
-    VERSION 2)
+    VERSION 2
+    COMPILE_FLAGS "-std=c++0x")
 
 ADD_LIBRARY(cocaine-core SHARED
     src/app
@@ -96,25 +95,32 @@ TARGET_LINK_LIBRARIES(cocaine-core
     ${LIBUUID_LIBRARY})
 
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
-    VERSION 2)
+    VERSION 2
+    COMPILE_FLAGS "-std=c++0x")
 
 ADD_EXECUTABLE(cocaine-slave
     src/slave/slave
     src/server/syslog
     src/slave/main)
 
+TARGET_LINK_LIBRARIES(cocaine-slave
+    boost_program_options-mt
+    cocaine-core)
+
+SET_TARGET_PROPERTIES(cocaine-slave PROPERTIES
+    COMPILE_FLAGS "-std=c++0x")
+
 ADD_EXECUTABLE(cocained
     src/server/server
     src/server/syslog
     src/server/main)
 
-TARGET_LINK_LIBRARIES(cocaine-slave
-    boost_program_options-mt
-    cocaine-core)
-
 TARGET_LINK_LIBRARIES(cocained
     boost_program_options-mt
     cocaine-core)
+
+SET_TARGET_PROPERTIES(cocained PROPERTIES
+    COMPILE_FLAGS "-std=c++0x")
 
 ADD_SUBDIRECTORY(tools)
 
