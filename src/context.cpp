@@ -102,19 +102,7 @@ config_t::config_t(const std::string& path):
 
     // Component configuration
 
-    Json::Value::Members component_names(root["components"].getMemberNames());
-
-    for(Json::Value::Members::const_iterator it = component_names.begin();
-        it != component_names.end();
-        ++it)
-    {
-        component_info_t info = {
-            root["components"][*it].get("type", "not specified").asString(),
-            root["components"][*it]["args"]
-        };
-
-        components.emplace(*it, info);
-    }
+    components = parse(root["components"]);
 
     // IO configuration
 
@@ -143,6 +131,27 @@ config_t::config_t(const std::string& path):
     } else {
         throw system_error_t("unable to determine the hostname");
     }
+}
+
+config_t::component_map_t
+config_t::parse(const Json::Value& config) {
+    component_map_t components;
+
+    Json::Value::Members names(config.getMemberNames());
+
+    for(Json::Value::Members::const_iterator it = names.begin();
+        it != names.end();
+        ++it)
+    {
+        component_t info = {
+            config[*it].get("type", "not specified").asString(),
+            config[*it]["args"]
+        };
+
+        components.emplace(*it, info);
+    }
+
+    return components;
 }
 
 context_t::context_t(config_t config_, boost::shared_ptr<logging::sink_t> sink):

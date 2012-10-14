@@ -63,7 +63,7 @@ struct config_t {
     typedef struct {
         std::string type;
         Json::Value args;
-    } component_info_t;
+    } component_t;
 
 #if BOOST_VERSION >= 103600
     typedef boost::unordered_map<
@@ -71,10 +71,16 @@ struct config_t {
     typedef std::map<
 #endif
         std::string,
-        component_info_t
-    > component_info_map_t;
+        component_t
+    > component_map_t;
 
-    component_info_map_t components;
+    static
+    component_map_t
+    parse(const Json::Value& config);
+
+    // A list of the generic components specified in the configuration file
+    // along with their instantiation arguments.
+    component_map_t components;
 
     struct {
         std::string hostname;
@@ -146,7 +152,7 @@ context_t::get(const std::string& type,
 template<class Category>
 typename api::category_traits<Category>::ptr_type
 context_t::get(const std::string& name) {
-    config_t::component_info_map_t::const_iterator it(
+    config_t::component_map_t::const_iterator it(
         config.components.find(name)
     );
 

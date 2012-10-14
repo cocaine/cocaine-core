@@ -49,10 +49,12 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
     // Sandbox type.
     type = cache.get("type", "not specified").asString();
    
+    // Driver configuration.
+    drivers = config_t::parse(
+        cache.get("drivers", Json::Value())
+    );
+
     // Custom app configuration.
     args = cache.get("args", Json::Value());
-
-    // Driver configuration.
-    drivers = cache.get("drivers", Json::Value());
 }
 

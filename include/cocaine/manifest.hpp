@@ -23,6 +23,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/cached.hpp"
+#include "cocaine/context.hpp"
 
 #include "cocaine/helpers/json.hpp"
 
@@ -38,8 +39,11 @@ struct manifest_t:
                 slave,
                 type;
 
-    Json::Value args,
-                drivers;
+    // A component configuration for drivers similar to the generic one
+    // found in the config_t structure.
+    config_t::component_map_t drivers;
+
+    Json::Value args;
 };
 
 } // namespace cocaine

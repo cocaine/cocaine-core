@@ -18,7 +18,6 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include <boost/algorithm/string/join.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/format.hpp>
@@ -95,36 +94,31 @@ app_t::start() {
 
     COCAINE_LOG_INFO(m_log, "starting the engine");
 
-    Json::Value drivers(m_manifest->drivers);
-
-    if(!drivers.empty()) {
-        Json::Value::Members names(drivers.getMemberNames());
-
+    if(!m_manifest->drivers.empty()) {
         COCAINE_LOG_INFO(
             m_log,
-            "starting %llu %s: %s",
-            drivers.size(),
-            drivers.size() == 1 ? "driver" : "drivers",
-            boost::algorithm::join(names, ", ")
+            "starting %llu %s",
+            m_manifest->drivers.size(),
+            m_manifest->drivers.size() == 1 ? "driver" : "drivers"
         );
 
         boost::format format("%s/%s");
 
-        for(Json::Value::Members::iterator it = names.begin();
-            it != names.end();
+        for(config_t::component_map_t::const_iterator it = m_manifest->drivers.begin();
+            it != m_manifest->drivers.end();
             ++it)
         {
             try {
-                format % m_manifest->name % *it;
+                format % m_manifest->name % it->first;
 
                 m_drivers.emplace(
-                    *it,
+                    it->first,
                     m_context.get<api::driver_t>(
-                        drivers[*it].get("type", "not specified").asString(),
+                        it->second.type,
                         api::category_traits<api::driver_t>::args_type(
                             *m_engine,
                             format.str(),
-                            drivers[*it]
+                            it->second.args
                         )
                     )
                 );
