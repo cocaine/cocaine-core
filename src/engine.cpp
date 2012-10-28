@@ -727,6 +727,8 @@ namespace {
 
 void
 engine_t::stop() {
+    m_termination_timer.stop();
+
     // Force the slave termination.
     std::for_each(m_pool.begin(), m_pool.end(), terminate_t());
     m_pool.clear();
