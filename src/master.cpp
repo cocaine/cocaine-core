@@ -228,11 +228,13 @@ master_t::process(const events::chunk& event) {
 
 void
 master_t::process(const events::error& event) {
-    // TEST: Ensure that the job is in fact here.
-    BOOST_ASSERT(state == state::busy && job);
+    if(state == state::busy) {
+        // TEST: Ensure that the job is in fact here.
+        BOOST_ASSERT(job);
 
-    job->process(event);
-    
+        job->process(event);
+    }
+        
     // Reset the heartbeat timer.    
     process(events::heartbeat());
 }
