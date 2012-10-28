@@ -21,37 +21,15 @@
 #ifndef COCAINE_EVENTS_HPP
 #define COCAINE_EVENTS_HPP
 
-#include <boost/statechart/event.hpp>
-
 #include "cocaine/common.hpp"
 
 namespace cocaine { namespace engine { namespace events {
 
-namespace sc = boost::statechart;
+struct heartbeat { };
 
-struct heartbeat:
-    public sc::event<heartbeat>
-{ };
+struct terminate { };
 
-struct terminate:
-    public sc::event<terminate>
-{ };
-
-/*
-struct enqueue:
-    public sc::event<enqueue>
-{
-    enqueue(size_t position_):
-        position(position_)
-    { }
-
-    const size_t position;
-};
-*/
-
-struct invoke:
-    public sc::event<invoke>
-{
+struct invoke {
     invoke(const boost::shared_ptr<job_t>& job_,
            engine_t * engine_,
            const boost::weak_ptr<engine::master_t>& master_):
@@ -65,9 +43,7 @@ struct invoke:
     const boost::weak_ptr<engine::master_t>& master;
 };
 
-struct chunk:
-    public sc::event<chunk>
-{
+struct chunk {
     chunk(zmq::message_t& message_):
         message(message_)
     { }
@@ -75,9 +51,7 @@ struct chunk:
     zmq::message_t& message;
 };
 
-struct error:
-    public sc::event<error>
-{
+struct error {
     error(int code_, const std::string& message_):
         code(code_),
         message(message_)
@@ -87,9 +61,7 @@ struct error:
     const std::string& message;
 };
 
-struct choke:
-    public sc::event<choke>
-{ };
+struct choke { };
 
 }}} // namespace cocaine::engine::events
 

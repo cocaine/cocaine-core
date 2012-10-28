@@ -238,7 +238,7 @@ class socket_t:
 
         template<class Head>
         bool
-        recv_tuple(cons<Head, null_type>&& o,
+        recv_tuple(cons<Head, null_type>& o,
                    int flags = 0)
         {
             return recv(o.get_head(), flags);
@@ -246,7 +246,7 @@ class socket_t:
 
         template<class Head, class Tail>
         bool
-        recv_tuple(cons<Head, Tail>&& o,
+        recv_tuple(cons<Head, Tail>& o,
                    int flags = 0)
         {
             if(!recv(o.get_head(), flags)) {

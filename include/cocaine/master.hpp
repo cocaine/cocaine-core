@@ -21,11 +21,6 @@
 #ifndef COCAINE_MASTER_HPP
 #define COCAINE_MASTER_HPP
 
-#include <boost/statechart/state_machine.hpp>
-#include <boost/statechart/simple_state.hpp>
-#include <boost/statechart/in_state_reaction.hpp>
-#include <boost/statechart/transition.hpp>
-
 #include "cocaine/common.hpp"
 #include "cocaine/asio.hpp"
 #include "cocaine/events.hpp"
@@ -35,27 +30,9 @@
 
 namespace cocaine { namespace engine {
 
-namespace sc = boost::statechart;
-
-// Slave states
-
-namespace slave {
-    struct unknown;
-    struct alive;
-        struct idle;
-        struct busy;
-    struct dead;
-}
-
-// Master FSM
-
 class master_t:
-    public sc::state_machine<master_t, slave::unknown>
+    public boost::noncopyable
 {
-    friend struct slave::unknown;
-    friend struct slave::alive;
-    friend struct slave::busy;
-
     public:
         master_t(context_t& context,
                  ev::loop_ref& loop,
@@ -67,87 +44,63 @@ class master_t:
         const unique_id_t&
         id() const;
 
-        bool operator==(const master_t& other) const;
+        bool
+        operator==(const master_t& other) const;
+
+        void
+        process(const events::heartbeat& event);
+        
+        void
+        process(const events::terminate& event);
+ 
+        void
+        process(const events::invoke& event);
+ 
+        void
+        process(const events::chunk& event);
+ 
+        void
+        process(const events::error& event);
+ 
+       void
+        process(const events::choke& event);
 
     private:
-        void on_initialize(const events::heartbeat& event);
-        void on_heartbeat(const events::heartbeat& event);
-        void on_terminate(const events::terminate& event);
-        void on_timeout(ev::timer&, int);
+        void
+        on_timeout(ev::timer&, int);
+ 
+    public:
+        struct state {
+            enum value: int {
+                unknown,
+                idle,
+                busy,
+                dead
+            };
+        };
+
+        // The current slave state.
+        state::value state;
+
+        // The current job.
+        boost::shared_ptr<job_t> job;
 
     private:
         context_t& m_context; 
         boost::shared_ptr<logging::logger_t> m_log;
 
         ev::loop_ref& m_loop;
-
+        ev::timer m_heartbeat_timer;
+    
         const manifest_t& m_manifest;
         const profile_t& m_profile;
 
         // Host-unique identifier for this slave.
         const unique_id_t m_id;
 
-        ev::timer m_heartbeat_timer;
-    
         // The actual slave handle.    
         std::unique_ptr<api::handle_t> m_handle;
 };
-
-namespace slave {
-    struct unknown:
-        public sc::simple_state<unknown, master_t> 
-    {
-        typedef boost::mpl::list<
-            sc::transition<events::heartbeat, alive, master_t, &master_t::on_initialize>,
-            sc::transition<events::terminate, dead, master_t, &master_t::on_terminate>
-        > reactions;
-    };
-
-    struct alive:
-        public sc::simple_state<alive, master_t, idle>
-    {
-        ~alive();
-
-        void on_invoke(const events::invoke& event);
-        void on_choke(const events::choke& event);
-
-        typedef boost::mpl::list<
-            sc::in_state_reaction<events::heartbeat, master_t, &master_t::on_heartbeat>,
-            sc::transition<events::terminate, dead, master_t, &master_t::on_terminate>
-        > reactions;
-
-        boost::shared_ptr<job_t> job;
-    };
-
-    struct idle: 
-        public sc::simple_state<idle, alive>
-    {
-        typedef boost::mpl::list<
-            sc::transition<events::invoke, busy, alive, &alive::on_invoke>
-        > reactions;
-    };
-
-    struct busy:
-        public sc::simple_state<busy, alive>
-    {
-        void on_chunk(const events::chunk& event);
-        void on_error(const events::error& event);
-
-        typedef boost::mpl::list<
-            sc::in_state_reaction<events::chunk, busy, &busy::on_chunk>,
-            sc::in_state_reaction<events::error, busy, &busy::on_error>,
-            sc::transition<events::choke, idle, alive, &alive::on_choke>
-        > reactions;
-
-        const boost::shared_ptr<job_t>& job() const {
-            return context<alive>().job;
-        }
-    };
-
-    struct dead:
-        public sc::simple_state<dead, master_t>
-    { };
-}
 
 }} // namespace cocaine::engine
 

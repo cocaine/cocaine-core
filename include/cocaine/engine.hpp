@@ -25,10 +25,10 @@
 #include <boost/thread/mutex.hpp>
 #include <deque>
 
-#if defined(__GNUC__) && (__GNUC__ == 4 && __GNUC_MINOR__ <= 4) && !defined(__clang__)
-    #include <cstdatomic>
+#if !defined(__clang__) && defined(__GNUC__) && (__GNUC__ == 4 && __GNUC_MINOR__ <= 4)
+ #include <cstdatomic>
 #else
-    #include <atomic>
+ #include <atomic>
 #endif
 
 #include "cocaine/common.hpp"
@@ -39,15 +39,6 @@
 #include "cocaine/api/isolate.hpp"
 
 namespace cocaine { namespace engine {
-
-#if BOOST_VERSION >= 103600
-typedef boost::unordered_map<
-#else
-typedef std::map<
-#endif
-    unique_id_t,
-    boost::shared_ptr<master_t>
-> pool_map_t;
 
 class job_queue_t:
     public std::deque<
@@ -176,10 +167,19 @@ class engine_t:
         boost::condition_variable m_queue_condition;
 
         // Slave pool
+
+#if BOOST_VERSION >= 103600
+        typedef boost::unordered_map<
+#else
+        typedef std::map<
+#endif
+            unique_id_t,
+            boost::shared_ptr<master_t>
+        > pool_map_t;
         
         pool_map_t m_pool;
 
-        // NOTE: Engine isolate reference, keeping it here
+        // NOTE: A strong isolate reference, keeping it here
         // avoids isolate destruction, as the factory stores
         // only weak references to the isolate instances.
         api::category_traits<api::isolate_t>::ptr_type m_isolate;

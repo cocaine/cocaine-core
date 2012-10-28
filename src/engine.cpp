@@ -50,12 +50,12 @@ job_queue_t::push(const_reference job) {
 // Selectors
 
 namespace { namespace select {
-    template<class State>
+    template<int State>
     struct state {
         template<class T>
         bool
         operator()(const T& master) const {
-            return master.second->template state_downcast<const State*>();
+            return master.second->state == State;
         }
     };
 
@@ -162,8 +162,6 @@ bool
 engine_t::enqueue(job_queue_t::const_reference job,
                   mode::value mode)
 {
-    boost::unique_lock<boost::mutex> lock(m_queue_mutex);
-
     if(m_state != state::running) {
         COCAINE_LOG_DEBUG(
             m_log,
@@ -182,6 +180,8 @@ engine_t::enqueue(job_queue_t::const_reference job,
 
         return false;
     }
+
+    boost::unique_lock<boost::mutex> lock(m_queue_mutex);
 
     if(m_queue.size() < m_profile.queue_limit) {
         m_queue.push(job);
@@ -281,7 +281,7 @@ engine_t::on_cleanup(ev::timer&, int) {
     corpse_list_t corpses;
 
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
-        if(it->second->state_downcast<const slave::dead*>()) {
+        if(it->second->state == master_t::state::dead) {
             corpses.emplace_back(it->first);
         }
     }
@@ -403,16 +403,16 @@ engine_t::process_bus_events() {
 
         switch(command) {
             case io::get<rpc::heartbeat>::value:
-                master->second->process_event(events::heartbeat());
+                master->second->process(events::heartbeat());
                 break;
 
             case io::get<rpc::terminate>::value:
-                if(master->second->state_downcast<const slave::busy*>()) {
+                if(master->second->state == master_t::state::busy) {
                     // NOTE: Reschedule an incomplete job.
-                    m_queue.push(master->second->state_downcast<const slave::alive*>()->job);
+                    m_queue.push(master->second->job);
                 }
 
-                master->second->process_event(events::terminate());
+                master->second->process(events::terminate());
 
                 // Remove the dead slave from the pool.
                 m_pool.erase(master);
@@ -433,7 +433,7 @@ engine_t::process_bus_events() {
 
                 m_bus->recv(&message);
                 
-                master->second->process_event(events::chunk(message));
+                master->second->process(events::chunk(message));
 
                 continue;
             }
@@ -452,7 +452,7 @@ engine_t::process_bus_events() {
 
                 m_bus->recv_tuple(proxy);
 
-                master->second->process_event(events::error(code, message));
+                master->second->process(events::error(code, message));
 
                 if(code == server_error) {
                     COCAINE_LOG_ERROR(m_log, "the app seems to be broken - %s", message);
@@ -465,7 +465,7 @@ engine_t::process_bus_events() {
             }
 
             case io::get<rpc::choke>::value:
-                master->second->process_event(events::choke());
+                master->second->process(events::choke());
                 break;
 
             default:
@@ -512,7 +512,7 @@ engine_t::process_ctl_events() {
                 std::count_if(
                     m_pool.begin(),
                     m_pool.end(),
-                    select::state<slave::busy>()
+                    select::state<master_t::state::busy>()
                 )
             );
 
@@ -543,7 +543,7 @@ engine_t::pump() {
             std::find_if(
                 m_pool.begin(),
                 m_pool.end(),
-                select::state<slave::idle>()
+                select::state<master_t::state::idle>()
             )
         );
 
@@ -574,7 +574,7 @@ engine_t::pump() {
             );
 
             if(send(it->second->id(), message)) {
-                it->second->process_event(
+                it->second->process(
                     events::invoke(job, this, it->second)
                 );
                 
@@ -583,7 +583,7 @@ engine_t::pump() {
             } else {
                 COCAINE_LOG_ERROR(m_log, "slave %s has unexpectedly died", it->first.string());
                 
-                it->second->process_event(events::terminate());
+                it->second->process(events::terminate());
                 m_pool.erase(it);
                 
                 {
@@ -687,7 +687,9 @@ engine_t::shutdown() {
         it != m_pool.end();
         ++it)
     {
-        if(it->second->state_downcast<const slave::alive*>()) {
+        if(it->second->state == master_t::state::idle ||
+           it->second->state == master_t::state::busy)
+        {
             send(
                 it->second->id(),
                 io::message<rpc::terminate>()
@@ -718,7 +720,7 @@ namespace {
         template<class T>
         void
         operator()(const T& master) {
-            master.second->process_event(events::terminate());
+            master.second->process(events::terminate());
         }
     };
 }

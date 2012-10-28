@@ -45,6 +45,8 @@ struct profile_t:
     unsigned long queue_limit;
     unsigned long grow_threshold;
 
+    // NOTE: The slave processes are launched in sandboxed environments,
+    // called isolates. This one describes the isolate type and arguments.
     config_t::component_t isolate;
 };
 
