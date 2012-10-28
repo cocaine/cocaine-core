@@ -62,7 +62,7 @@ class master_t:
         void
         process(const events::error& event);
  
-       void
+        void
         process(const events::choke& event);
 
     private:
