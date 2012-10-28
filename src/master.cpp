@@ -31,7 +31,7 @@
 using namespace cocaine;
 using namespace cocaine::engine;
 
-master_t::master_t(context_t& context, ev::loop_ref& loop, const manifest_t& manifest, const profile_t& profile):
+master_t::master_t(context_t& context, const manifest_t& manifest, const profile_t& profile, ev::loop_ref& loop):
     state(state::unknown),
     m_context(context),
     m_log(context.log(
@@ -39,10 +39,10 @@ master_t::master_t(context_t& context, ev::loop_ref& loop, const manifest_t& man
             % manifest.name
         ).str()
     )),
-    m_loop(loop),
-    m_heartbeat_timer(loop),
     m_manifest(manifest),
-    m_profile(profile)
+    m_profile(profile),
+    m_loop(loop),
+    m_heartbeat_timer(loop)
 {
     // NOTE: Initialization heartbeat can be different.
     m_heartbeat_timer.set<master_t, &master_t::on_timeout>(this);
@@ -86,35 +86,6 @@ master_t::operator==(const master_t& other) const {
 }
 
 void
-master_t::on_timeout(ev::timer&, int) {
-    COCAINE_LOG_ERROR(
-        m_log,
-        "slave %s didn't respond in a timely fashion",
-        m_id.string()
-    );
-    
-    if(state == state::busy) {
-        COCAINE_LOG_DEBUG(
-            m_log,
-            "slave %s dropping '%s' job due to a timeout",
-            m_id.string(),
-            job->event
-        );
-
-        job->process(
-            events::error(
-                timeout_error, 
-                "the job has timed out"
-            )
-        );
-
-        job->process(events::choke());
-    }
-    
-    process(events::terminate());
-}
-
-void
 master_t::process(const events::heartbeat& event) {
     if(state == state::unknown) {
         COCAINE_LOG_DEBUG(
@@ -132,10 +103,10 @@ master_t::process(const events::heartbeat& event) {
 
     float timeout = m_profile.heartbeat_timeout;
 
-    if(job && job->policy.timeout > 0.0f) {
+    if(state == state::busy && job->policy.timeout > 0.0f) {
         timeout = job->policy.timeout;
     }
-           
+
     COCAINE_LOG_DEBUG(
         m_log,
         "resetting slave %s heartbeat timeout to %.02f seconds",
@@ -154,7 +125,14 @@ master_t::process(const events::terminate& event) {
 
     COCAINE_LOG_DEBUG(m_log, "reaping slave %s", m_id.string());
 
-    if(job) {
+    if(state == state::busy) {
+        COCAINE_LOG_DEBUG(
+            m_log,
+            "slave %s dropping '%s' job due to termination",
+            m_id.string(),
+            job->event
+        );
+        
         job->process(
             events::error(
                 server_error,
@@ -176,12 +154,15 @@ master_t::process(const events::terminate& event) {
 void
 master_t::process(const events::invoke& event) {
     // TEST: Ensure that no job is being lost here.
-    BOOST_ASSERT(state == state::idle && !job && event.job);
+    BOOST_ASSERT(state == state::idle && !job);
+    
+    // TEST: Ensure that the event has a bound job.
+    BOOST_ASSERT(event.job);
 
     COCAINE_LOG_DEBUG(
         m_log,
         "job '%s' assigned to slave %s",
-        event.job->event,
+        job->event,
         m_id.string()
     );
 
@@ -237,4 +218,35 @@ master_t::process(const events::error& event) {
         
     // Reset the heartbeat timer.    
     process(events::heartbeat());
+}
+
+void
+master_t::on_timeout(ev::timer&, int) {
+    COCAINE_LOG_ERROR(
+        m_log,
+        "slave %s didn't respond in a timely fashion",
+        m_id.string()
+    );
+    
+    if(state == state::busy) {
+        COCAINE_LOG_DEBUG(
+            m_log,
+            "slave %s dropping '%s' job due to a timeout",
+            m_id.string(),
+            job->event
+        );
+
+        job->process(
+            events::error(
+                timeout_error, 
+                "the job has timed out"
+            )
+        );
+
+        job->process(events::choke());
+
+        job.reset();
+    }
+    
+    process(events::terminate());
 }
