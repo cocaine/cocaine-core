@@ -57,19 +57,26 @@ enum priorities {
     debug
 };
 
-struct sink_t {
-    sink_t(priorities verbosity);
+class sink_t {
+    public:
+        sink_t(priorities verbosity);
 
-    virtual
-    ~sink_t();
+        virtual
+        ~sink_t();
 
-    virtual
-    void
-    emit(priorities priority,
-         const std::string& source,
-         const std::string& message) const = 0;
+        priorities
+        verbosity() const {
+            return m_verbosity;
+        }
 
-    const priorities verbosity;
+        virtual
+        void
+        emit(priorities priority,
+             const std::string& source,
+             const std::string& message) const = 0;
+
+    private:
+        const priorities m_verbosity;
 };
 
 class logger_t:
@@ -121,16 +128,17 @@ class logger_t:
         const std::string m_source;
 };
 
-struct void_sink_t:
+class void_sink_t:
     public sink_t
 {
-    void_sink_t();
+    public:
+        void_sink_t();
 
-    virtual
-    void
-    emit(priorities,
-         const std::string&,
-         const std::string&) const;
+        virtual
+        void
+        emit(priorities,
+             const std::string&,
+             const std::string&) const;
 };
 
 }} // namespace cocaine::logging

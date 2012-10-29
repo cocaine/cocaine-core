@@ -59,7 +59,7 @@ namespace cocaine {
 
     namespace logging {
         // Logging sink abstraction.
-        struct sink_t;
+        class sink_t;
 
         // Logging proxy.
         class logger_t;
