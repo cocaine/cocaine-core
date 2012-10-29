@@ -55,7 +55,7 @@ namespace { namespace select {
         template<class T>
         bool
         operator()(const T& master) const {
-            return master.second->state == State;
+            return master.second->state() == State;
         }
     };
 
@@ -281,7 +281,7 @@ engine_t::on_cleanup(ev::timer&, int) {
     corpse_list_t corpses;
 
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
-        if(it->second->state == master_t::state::dead) {
+        if(it->second->state() == master_t::state::dead) {
             corpses.emplace_back(it->first);
         }
     }
@@ -407,7 +407,7 @@ engine_t::process_bus_events() {
                 break;
 
             case io::get<rpc::terminate>::value:
-                if(master->second->state == master_t::state::busy) {
+                if(master->second->state() == master_t::state::busy) {
                     // NOTE: Reschedule an incomplete job.
                     m_queue.push(master->second->job);
                 }
@@ -687,8 +687,8 @@ engine_t::shutdown() {
         it != m_pool.end();
         ++it)
     {
-        if(it->second->state == master_t::state::idle ||
-           it->second->state == master_t::state::busy)
+        if(it->second->state() == master_t::state::idle ||
+           it->second->state() == master_t::state::busy)
         {
             send(
                 it->second->id(),

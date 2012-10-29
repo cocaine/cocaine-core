@@ -32,7 +32,6 @@ using namespace cocaine;
 using namespace cocaine::engine;
 
 master_t::master_t(context_t& context, const manifest_t& manifest, const profile_t& profile, ev::loop_ref& loop):
-    state(state::unknown),
     m_context(context),
     m_log(context.log(
         (boost::format("app/%1%")
@@ -42,7 +41,8 @@ master_t::master_t(context_t& context, const manifest_t& manifest, const profile
     m_manifest(manifest),
     m_profile(profile),
     m_loop(loop),
-    m_heartbeat_timer(loop)
+    m_heartbeat_timer(loop),
+    m_state(state::unknown)
 {
     // NOTE: Initialization heartbeat can be different.
     m_heartbeat_timer.set<master_t, &master_t::on_timeout>(this);
@@ -72,22 +72,12 @@ master_t::~master_t() {
     m_heartbeat_timer.stop();
     
     // TEST: Make sure that the slave is really dead.
-    BOOST_ASSERT(state == state::dead);
-}
-
-const unique_id_t&
-master_t::id() const {
-    return m_id;
-}
-
-bool
-master_t::operator==(const master_t& other) const {
-    return m_id == other.m_id;
+    BOOST_ASSERT(m_state == state::dead);
 }
 
 void
 master_t::process(const events::heartbeat& event) {
-    if(state == state::unknown) {
+    if(m_state == state::unknown) {
         COCAINE_LOG_DEBUG(
             m_log,
             "slave %s came alive in %.03f seconds",
@@ -98,12 +88,12 @@ master_t::process(const events::heartbeat& event) {
             )
         );
 
-        state = state::idle;
+        m_state = state::idle;
     }
 
     float timeout = m_profile.heartbeat_timeout;
 
-    if(state == state::busy && job->policy.timeout > 0.0f) {
+    if(m_state == state::busy && job->policy.timeout > 0.0f) {
         timeout = job->policy.timeout;
     }
 
@@ -121,14 +111,14 @@ master_t::process(const events::heartbeat& event) {
 void
 master_t::process(const events::terminate& event) {
     // Ensure that the slave is not being overkilled.
-    BOOST_ASSERT(state != state::dead);
+    BOOST_ASSERT(m_state != state::dead);
 
     COCAINE_LOG_DEBUG(m_log, "reaping slave %s", m_id.string());
 
-    if(state == state::busy) {
+    if(m_state == state::busy) {
         COCAINE_LOG_DEBUG(
             m_log,
-            "slave %s dropping '%s' job due to termination",
+            "slave %s dropping '%s' job due to the slave termination",
             m_id.string(),
             job->event
         );
@@ -148,13 +138,13 @@ master_t::process(const events::terminate& event) {
     m_handle->terminate();
     m_handle.reset();
 
-    state = state::dead;
+    m_state = state::dead;
 }
 
 void
 master_t::process(const events::invoke& event) {
     // TEST: Ensure that no job is being lost here.
-    BOOST_ASSERT(state == state::idle && !job);
+    BOOST_ASSERT(m_state == state::idle && !job);
     
     // TEST: Ensure that the event has a bound job.
     BOOST_ASSERT(event.job);
@@ -169,7 +159,7 @@ master_t::process(const events::invoke& event) {
     job = event.job;
     job->process(event);    
     
-    state = state::busy;
+    m_state = state::busy;
 
     // Reset the heartbeat timer.    
     process(events::heartbeat());
@@ -178,7 +168,7 @@ master_t::process(const events::invoke& event) {
 void
 master_t::process(const events::choke& event) {
     // TEST: Ensure that the job is in fact here.
-    BOOST_ASSERT(state == state::busy && job);
+    BOOST_ASSERT(m_state == state::busy && job);
 
     COCAINE_LOG_DEBUG(
         m_log,
@@ -190,7 +180,7 @@ master_t::process(const events::choke& event) {
     job->process(event);
     job.reset();
 
-    state = state::idle;
+    m_state = state::idle;
     
     // Reset the heartbeat timer.    
     process(events::heartbeat());
@@ -199,7 +189,7 @@ master_t::process(const events::choke& event) {
 void
 master_t::process(const events::chunk& event) {
     // TEST: Ensure that the job is in fact here.
-    BOOST_ASSERT(state == state::busy && job);
+    BOOST_ASSERT(m_state == state::busy && job);
 
     job->process(event);
     
@@ -209,7 +199,7 @@ master_t::process(const events::chunk& event) {
 
 void
 master_t::process(const events::error& event) {
-    if(state == state::busy) {
+    if(m_state == state::busy) {
         // TEST: Ensure that the job is in fact here.
         BOOST_ASSERT(job);
 
@@ -228,7 +218,7 @@ master_t::on_timeout(ev::timer&, int) {
         m_id.string()
     );
     
-    if(state == state::busy) {
+    if(m_state == state::busy) {
         COCAINE_LOG_DEBUG(
             m_log,
             "slave %s dropping '%s' job due to a timeout",

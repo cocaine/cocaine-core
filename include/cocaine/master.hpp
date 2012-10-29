@@ -34,6 +34,16 @@ class master_t:
     public boost::noncopyable
 {
     public:
+        struct state {
+            enum value: int {
+                unknown,
+                idle,
+                busy,
+                dead
+            };
+        };
+
+    public:
         master_t(context_t& context,
                  const manifest_t& manifest,
                  const profile_t& profile,
@@ -41,12 +51,6 @@ class master_t:
 
         ~master_t();
        
-        const unique_id_t&
-        id() const;
-
-        bool
-        operator==(const master_t& other) const;
-
         void
         process(const events::heartbeat& event);
         
@@ -65,23 +69,27 @@ class master_t:
         void
         process(const events::choke& event);
 
+    public:
+        bool
+        operator==(const master_t& other) const {
+            return m_id == other.m_id;
+        }
+
+        const unique_id_t&
+        id() const {
+            return m_id;
+        }
+
+        state::value
+        state() const {
+            return m_state;
+        }
+
     private:
         void
         on_timeout(ev::timer&, int);
  
     public:
-        struct state {
-            enum value: int {
-                unknown,
-                idle,
-                busy,
-                dead
-            };
-        };
-
-        // The current slave state.
-        state::value state;
-
         // The current job.
         boost::shared_ptr<job_t> job;
 
@@ -92,11 +100,13 @@ class master_t:
         const manifest_t& m_manifest;
         const profile_t& m_profile;
 
-        // Event loop
-
+        // TODO: Get rid of it.
         ev::loop_ref& m_loop;
         ev::timer m_heartbeat_timer;
     
+        // The current slave state.
+        state::value m_state;
+
         // Host-unique identifier for this slave.
         const unique_id_t m_id;
 
