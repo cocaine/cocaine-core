@@ -21,13 +21,9 @@
 #ifndef COCAINE_JOB_HPP
 #define COCAINE_JOB_HPP
 
-#include <boost/thread/mutex.hpp>
-#include <boost/weak_ptr.hpp>
-
 #include "cocaine/common.hpp"
 #include "cocaine/events.hpp"
 #include "cocaine/policy.hpp"
-#include "cocaine/unique_id.hpp"
 
 #include "cocaine/helpers/birth_control.hpp"
 
@@ -36,33 +32,20 @@ namespace cocaine { namespace engine {
 struct job_t:
     public birth_control<job_t>
 {
-    typedef std::vector<
-        std::string
-    > chunk_list_t;
+    job_t(const std::string& event_):
+        event(event_)
+    { }
 
-public:
-    job_t(const std::string& event);
-
-    job_t(const std::string& event,
-          policy_t policy);
+    job_t(const std::string& event_,
+          policy_t policy_):
+        event(event_),
+        policy(policy_)
+    { }
     
     virtual
-    ~job_t();
-
-    void
-    process(const events::invoke&);
-    
-    void
-    process(const events::chunk&);
-    
-    void
-    process(const events::error&);
-    
-    void
-    process(const events::choke&);
-    
-    void
-    push(const std::string& chunk);
+    ~job_t() {
+        // Empty.
+    }
 
 public:
     virtual
@@ -77,38 +60,12 @@ public:
     void
     react(const events::choke&) { };
 
-private:
-    void
-    send(const unique_id_t& uuid,
-         const std::string& chunk);
-
 public:
-    struct state {
-        enum value: int {
-            unknown,
-            processing,
-            complete
-        };
-    };
-
-    // Current job state.
-    state::value state;
-
     // Wrapped event type.
     const std::string event;
     
     // Execution policy.
     const policy_t policy;
-
-private:
-    boost::mutex mutex;
-    
-    // Request chunk cache.
-    chunk_list_t cache;
-
-    // Weak reference to job's master.
-    boost::weak_ptr<master_t> master;
-    engine_t * engine;
 };
 
 }} // namespace cocaine::engine

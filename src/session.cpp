@@ -18,36 +18,30 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include <numeric>
-
-#include "cocaine/job.hpp"
+#include "cocaine/session.hpp"
 
 #include "cocaine/engine.hpp"
 #include "cocaine/master.hpp"
 #include "cocaine/rpc.hpp"
 
+#include "cocaine/api/job.hpp"
+
 #include "cocaine/traits/unique_id.hpp"
 
 using namespace cocaine::engine;
 
-job_t::job_t(const std::string& event_):
+session_t::session_t(const boost::shared_ptr<job_t>& job_):
     state(state::unknown),
-    event(event_)
+    job(job_)
 { }
 
-job_t::job_t(const std::string& event_, policy_t policy_):
-    state(state::unknown),
-    event(event_),
-    policy(policy_)
-{ }
-
-job_t::~job_t() {
+session_t::~session_t() {
     // TEST: Active jobs cannot be destroyed.
     BOOST_ASSERT(state != state::processing);
 }
 
 void
-job_t::process(const events::invoke& event) {
+session_t::process(const events::invoke& event) {
     boost::unique_lock<boost::mutex> lock(mutex);    
 
     // TEST: Jobs cannot be invoked when already completed.
@@ -73,7 +67,7 @@ job_t::process(const events::invoke& event) {
 }
 
 void
-job_t::process(const events::chunk& event) {
+session_t::process(const events::chunk& event) {
     {
         boost::unique_lock<boost::mutex> lock(mutex);    
         
@@ -81,11 +75,11 @@ job_t::process(const events::chunk& event) {
         BOOST_ASSERT(state == state::processing);
     }
 
-    react(event);
+    job->react(event);
 }
 
 void
-job_t::process(const events::error& event) {
+session_t::process(const events::error& event) {
     {
         boost::unique_lock<boost::mutex> lock(mutex);    
         
@@ -93,11 +87,11 @@ job_t::process(const events::error& event) {
         cache.clear();
     }
 
-    react(event);
+    job->react(event);
 }
 
 void
-job_t::process(const events::choke& event) {
+session_t::process(const events::choke& event) {
     {
         boost::unique_lock<boost::mutex> lock(mutex);    
         
@@ -105,15 +99,15 @@ job_t::process(const events::choke& event) {
         cache.clear();
     }
     
-    react(event);
+    job->react(event);
 }
 
 void
-job_t::push(const std::string& data) {
+session_t::push(const std::string& data) {
     boost::unique_lock<boost::mutex> lock(mutex);
 
     if(state == state::complete) {
-        throw std::runtime_error("job has been already completed");
+        throw error_t("job has been already completed");
     }
 
     // NOTE: Put the new chunk into the cache (in case
@@ -134,8 +128,8 @@ job_t::push(const std::string& data) {
 }
 
 void
-job_t::send(const unique_id_t& uuid,
-            const std::string& data)
+session_t::send(const unique_id_t& uuid,
+                const std::string& data)
 {
     zmq::message_t chunk(data.size());
 
