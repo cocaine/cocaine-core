@@ -23,6 +23,7 @@
 
 #include <boost/format.hpp>
 #include <cerrno>
+#include <cstring>
 #include <exception>
 
 namespace cocaine {
@@ -55,6 +56,11 @@ struct error_t:
         }
 
         m_message = message.str();
+    }
+
+    virtual
+    ~error_t() throw() {
+        // Empty.
     }
 
     virtual

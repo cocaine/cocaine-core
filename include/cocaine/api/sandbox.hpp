@@ -31,18 +31,22 @@
 namespace cocaine {
 
 struct unrecoverable_error_t:
-    public std::runtime_error
+    public error_t
 {
-    unrecoverable_error_t(const std::string& what):
-        std::runtime_error(what)
+    template<typename... Args>
+    unrecoverable_error_t(const std::string& format,
+                          const Args&... args):
+        error_t(format, args...)
     { }
 };
 
 struct recoverable_error_t:
-    public std::runtime_error
+    public error_t
 {
-    recoverable_error_t(const std::string& what):
-        std::runtime_error(what)
+    template<typename... Args>
+    recoverable_error_t(const std::string& format,
+                        const Args&... args):
+        error_t(format, args...)
     { }
 };
 

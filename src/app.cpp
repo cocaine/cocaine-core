@@ -210,13 +210,7 @@ boost::weak_ptr<session_t>
 app_t::enqueue(const boost::shared_ptr<job_t>& job,
                mode::value mode)
 {
-    boost::shared_ptr<session_t> session(
-        boost::make_shared<session_t>(job)
-    );
-    
-    m_engine->enqueue(session, mode);
-
-    return session;
+    return m_engine->enqueue(job, mode);
 }
 
 void

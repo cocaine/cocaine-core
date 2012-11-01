@@ -45,6 +45,59 @@
 
 namespace cocaine { namespace io {
 
+// Custom message container
+
+template<class T>
+struct raw {
+    raw(T& value_):
+        value(value_)
+    { }
+
+    T& value;
+};
+
+template<class T>
+static inline
+raw<T>
+protect(T& object) {
+    return raw<T>(object);
+}
+
+template<class T>
+static inline
+raw<const T>
+protect(const T& object) {
+    return raw<const T>(object);
+}
+
+// Customized type serialization
+
+template<class T>
+struct raw_traits;
+
+template<>
+struct raw_traits<std::string> {
+    static
+    void
+    pack(zmq::message_t& message,
+         const std::string& value)
+    {
+        message.rebuild(value.size());
+        memcpy(message.data(), value.data(), value.size());
+    }
+
+    static
+    void
+    unpack(zmq::message_t& message,
+           std::string& value)
+    {
+        value.assign(
+            static_cast<const char*>(message.data()),
+            message.size()
+        );
+    }
+};
+
 // Socket sharing policies
 
 namespace policies {
@@ -131,6 +184,20 @@ class socket:
             return send(message, flags);
         }
         
+        template<class T>
+        bool
+        send(const raw<T>& object,
+             int flags = 0)
+        {
+            zmq::message_t message;
+
+            raw_traits<
+                typename boost::remove_const<T>::type
+            >::pack(message, object.value);
+
+            return send(message, flags);
+        }      
+        
         bool
         send_tuple(const null_type&,
                    int __attribute__((unused)) flags = 0) const
@@ -190,7 +257,25 @@ class socket:
 
             return true;
         }
-      
+
+        template<class T>
+        bool
+        recv(raw<T>& result,
+             int flags = 0)
+        {
+            zmq::message_t message;
+
+            if(!recv(&message, flags)) {
+                return false;
+            }
+
+            raw_traits<
+                typename boost::remove_const<T>::type
+            >::unpack(message, result.value);
+
+            return true;
+        }
+
         bool
         recv_tuple(const null_type&,
                    int __attribute__((unused)) flags = 0) const
@@ -305,22 +390,22 @@ class scoped_option {
     typedef typename Option::option_type option_type;
 
     public:
-        scoped_option(socket<SharingPolicy>& socket_,
+        scoped_option(socket<SharingPolicy>& socket,
                       value_type value):
-            socket(socket_),
+            target(socket),
             saved(value_type()),
             size(sizeof(saved))
         {
-            socket.getsockopt(option_type(), &saved, &size);
-            socket.setsockopt(option_type(), &value, sizeof(value));
+            target.getsockopt(option_type(), &saved, &size);
+            target.setsockopt(option_type(), &value, sizeof(value));
         }
 
         ~scoped_option() {
-            socket.setsockopt(option_type(), &saved, sizeof(saved));
+            target.setsockopt(option_type(), &saved, sizeof(saved));
         }
 
     private:
-        socket<SharingPolicy>& socket;
+        socket<SharingPolicy>& target;
         
         value_type saved;
         size_t size;

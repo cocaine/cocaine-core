@@ -160,10 +160,14 @@ engine_t::run() {
     m_loop.loop();
 }
 
-void
-engine_t::enqueue(job_queue_t::const_reference session,
+boost::weak_ptr<session_t>
+engine_t::enqueue(const boost::shared_ptr<job_t>& job,
                   mode::value mode)
 {
+    boost::shared_ptr<session_t> session(
+        boost::make_shared<session_t>(job)
+    );
+    
     if(m_state != state::running) {
         COCAINE_LOG_DEBUG(
             m_log,
@@ -178,7 +182,7 @@ engine_t::enqueue(job_queue_t::const_reference session,
             )
         );
 
-        return;
+        return session;
     }
 
     boost::unique_lock<job_queue_t> lock(m_queue);
@@ -206,7 +210,7 @@ engine_t::enqueue(job_queue_t::const_reference session,
                     )
                 );
 
-                return;
+                return session;
 
             case mode::blocking:
                 while(m_queue.size() >= m_profile.queue_limit) {
@@ -219,6 +223,8 @@ engine_t::enqueue(job_queue_t::const_reference session,
   
     // Pump the queue! 
     m_notification.send();
+
+    return session;
 }
 
 void

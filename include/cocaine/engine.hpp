@@ -80,8 +80,8 @@ class engine_t:
 
         // Scheduling
         
-        void
-        enqueue(job_queue_t::const_reference session,
+        boost::weak_ptr<engine::session_t>
+        enqueue(const boost::shared_ptr<job_t>& job,
                 mode::value mode = mode::normal);
 
         template<class T>

@@ -48,7 +48,7 @@ class app_t {
         Json::Value
         info() const;
         
-        // Job scheduling
+        // Scheduling
         
         boost::weak_ptr<engine::session_t>
         enqueue(const boost::shared_ptr<engine::job_t>& job,
