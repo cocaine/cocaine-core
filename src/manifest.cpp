@@ -19,7 +19,6 @@
 */
 
 #include <boost/filesystem/operations.hpp>
-#include <boost/format.hpp>
 
 #include "cocaine/manifest.hpp"
 
@@ -29,7 +28,8 @@ using namespace cocaine;
 
 namespace fs = boost::filesystem;
 
-manifest_t::manifest_t(context_t& context, const std::string& name_):
+manifest_t::manifest_t(context_t& context,
+                       const std::string& name_):
     cached<Json::Value>(context, "manifests", name_),
     name(name_)
 {
@@ -42,8 +42,7 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
     ).asString();
 
     if(!fs::exists(fs::system_complete(slave))) {
-        boost::format message("the '%s' slave binary does not exist");
-        throw configuration_error_t((message % name).str());
+        throw configuration_error_t("the '%s' slave executable file does not exist", name);
     }
 
     sandbox = {

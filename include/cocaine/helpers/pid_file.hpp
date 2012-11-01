@@ -23,9 +23,10 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
-#include <boost/format.hpp>
-#include <boost/noncopyable.hpp>
-#include <stdexcept>
+#include <signal.h>
+#include <sys/types.h>
+
+#include "cocaine/common.hpp"
 
 namespace cocaine { namespace helpers {
 
@@ -48,19 +49,17 @@ class pid_file_t:
                         // Unlink the stale pid file.
                         remove();
                     } else {
-                        throw std::runtime_error("another process is active");
+                        throw error_t("another process is active");
                     }
                 } else {
-                    boost::format message("unable to read '%s'");
-                    throw std::runtime_error((message % m_filepath.string()).str());
+                    throw error_t("unable to read '%s'", m_filepath.string());
                 }
             }
 
             boost::filesystem::ofstream stream(m_filepath);
 
             if(!stream) {
-                boost::format message("unable to write '%s'");
-                throw std::runtime_error((message % m_filepath.string()).str());
+                throw error_t("unable to write '%s'", m_filepath.string());
             }
 
             stream << ::getpid();
@@ -81,8 +80,7 @@ class pid_file_t:
             try {
                 boost::filesystem::remove(m_filepath);
             } catch(const boost::filesystem::filesystem_error& e) {
-                boost::format message("unable to remove '%s'");
-                throw std::runtime_error((message % m_filepath.string()).str());
+                throw error_t("unable to remove '%s'", m_filepath.string());
             }
         }
 

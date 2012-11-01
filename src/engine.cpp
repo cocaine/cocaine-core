@@ -24,12 +24,14 @@
 #include "cocaine/engine.hpp"
 
 #include "cocaine/context.hpp"
-#include "cocaine/job.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
 #include "cocaine/master.hpp"
 #include "cocaine/profile.hpp"
 #include "cocaine/rpc.hpp"
+#include "cocaine/session.hpp"
+
+#include "cocaine/api/job.hpp"
 
 #include "cocaine/traits/json.hpp"
 #include "cocaine/traits/unique_id.hpp"
@@ -39,11 +41,11 @@ using namespace cocaine::engine;
 // Job queue
 
 void
-job_queue_t::push(const_reference job) {
-    if(job->policy.urgent) {
-        emplace_front(job);
+job_queue_t::push(const_reference session) {
+    if(session->job->policy.urgent) {
+        emplace_front(session);
     } else {
-        emplace_back(job);
+        emplace_back(session);
     }
 }
 
@@ -76,7 +78,9 @@ namespace { namespace select {
 
 // Engine
 
-engine_t::engine_t(context_t& context, const manifest_t& manifest, const profile_t& profile):
+engine_t::engine_t(context_t& context,
+                   const manifest_t& manifest,
+                   const profile_t& profile):
     m_context(context),
     m_log(context.log(
         (boost::format("app/%1%")
@@ -86,8 +90,8 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest, const profile
     m_manifest(manifest),
     m_profile(profile),
     m_state(state::stopped),
-    m_bus(new io::channel_t(context, ZMQ_ROUTER, m_manifest.name)),
-    m_ctl(new io::channel_t(context, ZMQ_PAIR)),
+    m_bus(new io::channel<io::policies::shared>(context, ZMQ_ROUTER, m_manifest.name)),
+    m_ctl(new io::channel<io::policies::unique>(context, ZMQ_PAIR)),
     m_bus_watcher(m_loop),
     m_ctl_watcher(m_loop),
     m_bus_checker(m_loop),
@@ -114,8 +118,7 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest, const profile
     try {
         m_bus->bind(bus_endpoint);
     } catch(const zmq::error_t& e) {
-        boost::format message("unable to bind the engine pool channel - %s");
-        throw configuration_error_t((message % e.what()).str());
+        throw configuration_error_t("unable to bind the engine pool channel - %s", e.what());
     }
    
     std::string ctl_endpoint(
@@ -127,8 +130,7 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest, const profile
     try {
         m_ctl->connect(ctl_endpoint);
     } catch(const zmq::error_t& e) {
-        boost::format message("unable to connect to the engine control channel - %s");
-        throw configuration_error_t((message % e.what()).str());
+        throw configuration_error_t("unable to connect to the engine control channel - %s", e.what());
     }
     
     m_bus_watcher.set<engine_t, &engine_t::on_bus_event>(this);
@@ -158,76 +160,80 @@ engine_t::run() {
     m_loop.loop();
 }
 
-bool
-engine_t::enqueue(job_queue_t::const_reference job,
+void
+engine_t::enqueue(job_queue_t::const_reference session,
                   mode::value mode)
 {
     if(m_state != state::running) {
         COCAINE_LOG_DEBUG(
             m_log,
-            "dropping an incomplete '%s' job due to an inactive engine",
-            job->event
+            "dropping an incomplete session %s due to an inactive engine",
+            session->id
         );
 
-        job->process(
+        session->process(
             events::error(
                 resource_error,
                 "engine is not active"
             )
         );
 
-        job->process(events::choke());
-
-        return false;
+        return;
     }
 
-    boost::unique_lock<boost::mutex> lock(m_queue_mutex);
+    boost::unique_lock<job_queue_t> lock(m_queue);
 
     if(m_queue.size() < m_profile.queue_limit) {
-        m_queue.push(job);
+        m_queue.push(session);
     } else {
         switch(mode) {
             case mode::normal:
-                // NOTE: Unlock the queue mutex here so that the job error
-                // processing would happen without it in order to let the
-                // engine continue to function.
+                // NOTE: Unlock the queue mutex here so that the session error
+                // processing would happen without it in order to let the engine
+                // continue to function.
                 lock.unlock();
 
                 COCAINE_LOG_DEBUG(
                     m_log,
-                    "dropping an incomplete '%s' job due to a full queue",
-                    job->event
+                    "dropping an incomplete session %s due to a full queue",
+                    session->id
                 );
 
-                job->process(
+                session->process(
                     events::error(
                         resource_error,
                         "the queue is full"
                     )
                 );
 
-                job->process(events::choke());
-                
-                return false;
+                return;
 
             case mode::blocking:
                 while(m_queue.size() >= m_profile.queue_limit) {
-                    m_queue_condition.wait(lock);
+                    m_condition.wait(lock);
                 }
 
-                m_queue.push(job);
+                m_queue.push(session);
         }
     }
   
     // Pump the queue! 
     m_notification.send();
-
-    return true;
 }
 
 void
 engine_t::on_bus_event(ev::io&, int) {
-    if(m_bus->pending()) {
+    bool pending = false;
+
+    {
+        boost::unique_lock<
+            io::channel<io::policies::shared>
+        > lock(*m_bus);
+
+        pending = m_bus->pending();
+    }
+
+    if(pending) {
         process_bus_events();
     }
     
@@ -263,12 +269,12 @@ namespace {
 
         template<class T>
         bool
-        operator()(const T& job) {
-            return job->policy.deadline &&
-                   job->policy.deadline <= now;
+        operator()(const T& session) {
+            return session->job->policy.deadline &&
+                   session->job->policy.deadline <= now;
         }
 
-        ev::tstamp now;
+        const ev::tstamp now;
     };
 }
 
@@ -307,25 +313,23 @@ engine_t::on_cleanup(ev::timer&, int) {
         job_queue_t::iterator
     > filter_t;
     
-    boost::unique_lock<boost::mutex> lock(m_queue_mutex);
+    boost::unique_lock<job_queue_t> lock(m_queue);
 
     filter_t it(expired_t(m_loop.now()), m_queue.begin(), m_queue.end()),
              end(expired_t(m_loop.now()), m_queue.end(), m_queue.end());
 
     while(it != end) {
-        boost::shared_ptr<job_t>& job(*it);
+        boost::shared_ptr<session_t>& session(*it);
 
-        COCAINE_LOG_DEBUG(m_log, "the '%s' job has expired", job->event);
+        COCAINE_LOG_DEBUG(m_log, "session %s has expired", session->id);
 
-        job->process(
+        session->process(
             events::error(
                 deadline_error,
-                "the job has expired"
+                "the session has expired"
             )
         );
         
-        job->process(events::choke());
-
         ++it;
     }
 }
@@ -349,6 +353,10 @@ engine_t::process_bus_events() {
     int counter = m_pool.size() * defaults::io_bulk_size;
     
     do {
+        boost::unique_lock<
+            io::channel<io::policies::shared>
+        > lock(*m_bus);
+
         // TEST: Ensure that we haven't missed something in a previous iteration.
         BOOST_ASSERT(!m_bus->more());
     
@@ -362,7 +370,8 @@ engine_t::process_bus_events() {
         
         {
             io::scoped_option<
-                io::options::receive_timeout
+                io::options::receive_timeout,
+                io::policies::shared
             > option(*m_bus, 0);
             
             if(!m_bus->recv_tuple(proxy)) {
@@ -373,24 +382,16 @@ engine_t::process_bus_events() {
         pool_map_t::iterator master(m_pool.find(slave_id));
 
         if(master == m_pool.end()) {
-            COCAINE_LOG_WARNING(
+            COCAINE_LOG_DEBUG(
                 m_log,
                 "dropping type %d message from an unknown slave %s", 
                 command,
-                slave_id.string()
+                slave_id
             );
             
             m_bus->drop();
+            lock.unlock();
             
-            // NOTE: Trying to kill the orphaned slave, just in case.
-            // For some reason, this doesn't work, so a new approach
-            // is needed to get rid of such stuff.
-            
-            send(
-                slave_id,
-                io::message<rpc::terminate>()
-            );
-
             continue;
         }
 
@@ -398,18 +399,28 @@ engine_t::process_bus_events() {
             m_log,
             "received type %d message from slave %s",
             command,
-            slave_id.string()
+            slave_id
         );
 
         switch(command) {
-            case io::get<rpc::heartbeat>::value:
+            case io::get<rpc::ping>::value:
+                lock.unlock();
+
                 master->second->process(events::heartbeat());
+                
+                send(
+                    master->second->id(),
+                    io::message<rpc::pong>()
+                );
+
                 break;
 
             case io::get<rpc::terminate>::value:
+                lock.unlock();
+
                 if(master->second->state() == master_t::state::busy) {
-                    // NOTE: Reschedule an incomplete job.
-                    m_queue.push(master->second->job);
+                    // NOTE: Reschedule an incomplete session.
+                    m_queue.push(master->second->session);
                 }
 
                 master->second->process(events::terminate());
@@ -432,7 +443,8 @@ engine_t::process_bus_events() {
                 BOOST_ASSERT(m_bus->more());
 
                 m_bus->recv(&message);
-                
+                lock.unlock();
+
                 master->second->process(events::chunk(message));
 
                 continue;
@@ -451,6 +463,7 @@ engine_t::process_bus_events() {
                 BOOST_ASSERT(m_bus->more());
 
                 m_bus->recv_tuple(proxy);
+                lock.unlock();
 
                 master->second->process(events::error(code, message));
 
@@ -465,7 +478,10 @@ engine_t::process_bus_events() {
             }
 
             case io::get<rpc::choke>::value:
+                lock.unlock();
+
                 master->second->process(events::choke());
+                
                 break;
 
             default:
@@ -473,7 +489,7 @@ engine_t::process_bus_events() {
                     m_log,
                     "dropping unknown type %d message from slave %s",
                     command,
-                    slave_id.string()
+                    slave_id
                 );
 
                 m_bus->drop();
@@ -548,53 +564,64 @@ engine_t::pump() {
         );
 
         if(it != m_pool.end()) {
-            job_queue_t::value_type job;
+            job_queue_t::value_type session;
 
             {
-                boost::unique_lock<boost::mutex> lock(m_queue_mutex);
+                boost::unique_lock<job_queue_t> lock(m_queue);
 
                 if(m_queue.empty()) {
                     break;
                 }
 
-                job = m_queue.front();
+                session = m_queue.front();
                 m_queue.pop_front();
             }
 
             // Notify one of the blocked enqueue operations.
-            m_queue_condition.notify_one();
+            m_condition.notify_one();
            
-            if(job->state == job_t::state::complete) {
-                COCAINE_LOG_DEBUG(m_log, "dropping a complete '%s' job from the queue", job->event);
+            if(session->state == session_t::state::complete) {
                 continue;
             }
             
             io::message<rpc::invoke> message(
-                job->event
+                session->job->event
             );
 
             if(send(it->second->id(), message)) {
-                it->second->process(
-                    events::invoke(job, this, it->second)
-                );
-                
-                // TODO: Check if it helps.
+                it->second->process(events::invoke(session, it->second));
                 m_loop.feed_fd_event(m_bus->fd(), ev::READ);
             } else {
-                COCAINE_LOG_ERROR(m_log, "slave %s has unexpectedly died", it->first.string());
+                {
+                    boost::unique_lock<job_queue_t> lock(m_queue);
+                    m_queue.emplace_front(session);
+                }
+
+                COCAINE_LOG_ERROR(m_log, "slave %s has unexpectedly died", it->first);
                 
                 it->second->process(events::terminate());
+
                 m_pool.erase(it);
-                
-                {
-                    boost::unique_lock<boost::mutex> lock(m_queue_mutex);
-                    m_queue.emplace_front(job);
-                }
             }
         } else {
             break;
         }
     }
+}
+
+namespace {
+    struct warden_t {
+        void
+        operator()(master_t * master) {
+            if(master->state() != master_t::state::unknown) {
+                // NOTE: In case the engine is stopped while there were slaves
+                // still in the unknown state, they need to be forcefully terminated.
+                master->process(events::terminate());
+            }
+
+            delete master;
+        }
+    };
 }
 
 void
@@ -630,12 +657,13 @@ engine_t::balance() {
     while(m_pool.size() != target) {
         try {
             boost::shared_ptr<master_t> master(
-                boost::make_shared<master_t>(
+                new master_t(
                     m_context,
                     m_manifest,
                     m_profile,
-                    m_loop
-                )
+                    this
+                ),
+                warden_t()
             );
           
             m_pool.emplace(master->id(), master);
@@ -652,17 +680,17 @@ engine_t::balance() {
 
 void
 engine_t::shutdown() {
-    boost::unique_lock<boost::mutex> lock(m_queue_mutex);
+    boost::unique_lock<job_queue_t> lock(m_queue);
 
     if(!m_queue.empty()) {
         COCAINE_LOG_DEBUG(
             m_log,
             "dropping %llu incomplete %s due to the engine shutdown",
             m_queue.size(),
-            m_queue.size() == 1 ? "job" : "jobs"
+            m_queue.size() == 1 ? "session" : "sessions"
         );
 
-        // Abort all the outstanding jobs.
+        // Abort all the outstanding sessions.
         while(!m_queue.empty()) {
             m_queue.front()->process(
                 events::error(
@@ -671,7 +699,6 @@ engine_t::shutdown() {
                 )
             );
 
-            m_queue.front()->process(events::choke());
             m_queue.pop_front();
         }
     }
@@ -681,7 +708,7 @@ engine_t::shutdown() {
     // NOTE: Send the termination event to active slaves.
     // If there're no active slaves, the engine can terminate right away,
     // otherwise, the engine should wait for the specified timeout for slaves
-    // to finish their jobs and then force the termination.
+    // to finish their sessions and then force the termination.
     
     for(pool_map_t::iterator it = m_pool.begin();
         it != m_pool.end();
@@ -715,22 +742,13 @@ engine_t::shutdown() {
     }    
 }
 
-namespace {
-    struct terminate_t {
-        template<class T>
-        void
-        operator()(const T& master) {
-            master.second->process(events::terminate());
-        }
-    };
-}
-
 void
 engine_t::stop() {
-    m_termination_timer.stop();
+    if(m_termination_timer.is_active()) {
+        m_termination_timer.stop();
+    }
 
-    // Force the slave termination.
-    std::for_each(m_pool.begin(), m_pool.end(), terminate_t());
+    // NOTE: This will force the slave pool termination via smart pointer deleters.
     m_pool.clear();
 
     if(m_state == state::stopping) {

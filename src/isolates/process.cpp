@@ -60,35 +60,60 @@ namespace {
     };
 }
 
-process_t::process_t(context_t& context, const std::string& name, const Json::Value& args):
+process_t::process_t(context_t& context,
+                     const std::string& name,
+                     const Json::Value& args):
     category_type(context, name, args),
     m_log(context.log(name))
 { }
 
 std::unique_ptr<handle_t>
 process_t::spawn(const std::string& path,
-                 const std::map<std::string, std::string>& args)
+                 const std::map<std::string, std::string>& args,
+                 const std::map<std::string, std::string>& environment)
 {
     pid_t pid = ::fork();
 
     if(pid == 0) {
-        char * argv[args.size() * 2 + 2];
+        char * argv[args.size() * 2 + 2],
+             * envp[environment.size() + 1];
 
-        // NOTE: First element is the executable path,
-        // last one should be null pointer.
+        // NOTE: The first element is the executable path,
+        // the last one should be null pointer.
         argv[0] = ::strdup(path.c_str());
         argv[sizeof(argv) / sizeof(argv[0])] = NULL;
 
-        std::map<std::string, std::string>::const_iterator it(args.begin());
-        int n = 1;
+        // NOTE: The last element of the environment must be a null pointer.
+        envp[sizeof(envp) / sizeof(envp[0])] = NULL;
+
+        std::map<std::string, std::string>::const_iterator it;
+        int n;
+
+        it = args.begin();
+        n = 1;
         
         while(it != args.end()) {
             argv[n++] = ::strdup(it->first.c_str());
             argv[n++] = ::strdup(it->second.c_str());   
+            
             ++it;
         }
 
-        int rv = ::execvp(argv[0], argv);
+        boost::format format("%s=%s");
+
+        it = environment.begin();
+        n = 0;
+
+        while(it != environment.end()) {
+            format % it->first % it->second;
+            
+            envp[n++] = ::strdup(format.str().c_str());
+            
+            format.clear();
+            ++it;
+        }
+
+        int rv = ::execve(argv[0], argv, envp);
 
         if(rv != 0) {
             char buffer[1024];

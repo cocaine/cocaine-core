@@ -42,49 +42,46 @@ session_t::~session_t() {
 
 void
 session_t::process(const events::invoke& event) {
-    boost::unique_lock<boost::mutex> lock(mutex);    
-
     // TEST: Jobs cannot be invoked when already completed.
     BOOST_ASSERT(state != state::complete);
+    
+    boost::unique_lock<boost::mutex> lock(m_mutex);
 
     state = state::processing;
-    engine = event.engine;
-    master = event.master;
+    
+    // The controlling master.
+    m_master = event.master;
 
-    if(!cache.empty()) {
-        boost::shared_ptr<master_t> owner(master.lock());
+    if(!m_cache.empty()) {
+        boost::shared_ptr<master_t> owner(m_master.lock());
 
         // TEST: There cannot be any orphan jobs.
-        BOOST_ASSERT(engine && owner);
+        BOOST_ASSERT(owner);
 
-        for(chunk_list_t::const_iterator it = cache.begin();
-            it != cache.end();
+        for(chunk_list_t::const_iterator it = m_cache.begin();
+            it != m_cache.end();
             ++it)
         {
-            send(owner->id(), *it);
+            owner->push(*it);
         }
     }
 }
 
 void
 session_t::process(const events::chunk& event) {
-    {
-        boost::unique_lock<boost::mutex> lock(mutex);    
-        
-        // TEST: Jobs cannot process chunks when not active.
-        BOOST_ASSERT(state == state::processing);
-    }
+    // TEST: Jobs cannot process chunks when not active.
+    BOOST_ASSERT(state == state::processing);
 
     job->react(event);
 }
 
 void
 session_t::process(const events::error& event) {
+    state = state::complete;
+    
     {
-        boost::unique_lock<boost::mutex> lock(mutex);    
-        
-        state = state::complete;
-        cache.clear();
+        boost::unique_lock<boost::mutex> lock(m_mutex);    
+        m_cache.clear();
     }
 
     job->react(event);
@@ -92,11 +89,11 @@ session_t::process(const events::error& event) {
 
 void
 session_t::process(const events::choke& event) {
+    state = state::complete;
+    
     {
-        boost::unique_lock<boost::mutex> lock(mutex);    
-        
-        state = state::complete;
-        cache.clear();
+        boost::unique_lock<boost::mutex> lock(m_mutex);    
+        m_cache.clear();
     }
     
     job->react(event);
@@ -104,46 +101,25 @@ session_t::process(const events::choke& event) {
 
 void
 session_t::push(const std::string& data) {
-    boost::unique_lock<boost::mutex> lock(mutex);
-
     if(state == state::complete) {
         throw error_t("job has been already completed");
     }
 
-    // NOTE: Put the new chunk into the cache (in case
-    // the job will be retried or if the job is not yet
-    // assigned to the slave). 
-    cache.emplace_back(data);
+    {
+        boost::unique_lock<boost::mutex> lock(m_mutex);
+
+        // NOTE: Put the new chunk into the cache (in case
+        // the job will be retried or if the job is not yet
+        // assigned to the slave). 
+        m_cache.emplace_back(data);
+    }
 
     if(state == state::processing) {
-        boost::shared_ptr<master_t> owner(
-            master.lock()
-        );
+        boost::shared_ptr<master_t> owner(m_master.lock());
    
         // TEST: There cannot be any orphan jobs.
-        BOOST_ASSERT(engine && owner);
+        BOOST_ASSERT(owner);
 
-        send(owner->id(), data);
+        owner->push(data);
     }
 }
-
-void
-session_t::send(const unique_id_t& uuid,
-                const std::string& data)
-{
-    zmq::message_t chunk(data.size());
-
-    memcpy(
-        chunk.data(),
-        data.data(),
-        data.size()
-    );
-
-    io::message<rpc::chunk> message(chunk);
-
-    engine->send(
-        uuid,
-        message
-    );
-}
-

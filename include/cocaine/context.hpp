@@ -21,7 +21,6 @@
 #ifndef COCAINE_CONTEXT_HPP
 #define COCAINE_CONTEXT_HPP
 
-#include <boost/format.hpp>
 #include <boost/thread/mutex.hpp>
 
 #include "cocaine/common.hpp"
@@ -157,8 +156,7 @@ context_t::get(const std::string& name) {
     );
 
     if(it == config.components.end()) {
-        boost::format message("the '%s' component is not configured");
-        throw configuration_error_t((message % name).str());
+        throw configuration_error_t("the '%s' component is not configured", name);
     }
 
     return get<Category>(

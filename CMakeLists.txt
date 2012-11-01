@@ -83,10 +83,10 @@ ADD_LIBRARY(cocaine-core SHARED
     src/app
     src/archive
     src/engine
-    src/job
     src/manifest
     src/master
-    src/profile)
+    src/profile
+    src/session)
 
 TARGET_LINK_LIBRARIES(cocaine-core
     archive

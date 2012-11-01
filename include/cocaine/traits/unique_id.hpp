@@ -50,11 +50,11 @@ struct type_traits<unique_id_t> {
             throw msgpack::type_error();
         }
 
-        msgpack::object &lo = packed.via.array.ptr[0],
-                        &hi = packed.via.array.ptr[1];
+        msgpack::object &_1 = packed.via.array.ptr[0],
+                        &_2 = packed.via.array.ptr[1];
 
-        lo >> object.uuid[0];
-        hi >> object.uuid[1];
+        _1 >> object.uuid[0];
+        _2 >> object.uuid[1];
     }
 };
 

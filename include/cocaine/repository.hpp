@@ -21,7 +21,6 @@
 #ifndef COCAINE_REPOSITORY_HPP
 #define COCAINE_REPOSITORY_HPP
 
-#include <boost/format.hpp>
 #include <boost/type_traits/is_base_of.hpp>
 #include <boost/utility/enable_if.hpp>
 #include <ltdl.h>
@@ -78,10 +77,12 @@ struct plugin_traits {
 // Component repository
 
 struct repository_error_t:
-    public std::runtime_error
+    public error_t
 {
-    repository_error_t(const std::string& what):
-        std::runtime_error(what)
+    template<typename... Args>
+    repository_error_t(const std::string& format,
+                       const Args&... args):
+        error_t(format, args...)
     { }
 };
 
@@ -139,8 +140,7 @@ repository_t::get(const std::string& type,
     factory_map_t::iterator it(m_factories.find(type));
     
     if(it == m_factories.end()) {
-        boost::format message("the '%s' component is not available");
-        throw repository_error_t((message % type).str());
+        throw repository_error_t("the '%s' component is not available", type);
     }
     
     // TEST: Ensure that the plugin is of the actually specified category.
@@ -159,8 +159,7 @@ typename boost::enable_if<
 >::type 
 repository_t::insert(const std::string& type) {
     if(m_factories.find(type) != m_factories.end()) {
-        boost::format message("the '%s' component is a duplicate");
-        throw repository_error_t((message % type).str());
+        throw repository_error_t("the '%s' component is a duplicate", type);
     }
 
     m_factories.emplace(

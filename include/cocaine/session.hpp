@@ -24,6 +24,12 @@
 #include <boost/thread/mutex.hpp>
 #include <boost/weak_ptr.hpp>
 
+#if !defined(__clang__) && defined(__GNUC__) && (__GNUC__ == 4 && __GNUC_MINOR__ <= 4)
+ #include <cstdatomic>
+#else
+ #include <atomic>
+#endif
+
 #include "cocaine/common.hpp"
 #include "cocaine/events.hpp"
 #include "cocaine/unique_id.hpp"
@@ -59,22 +65,17 @@ public:
     push(const std::string& chunk);
 
 public:
-    // The current job state.
-    state::value state;
+    // Current session state.
+    std::atomic<int> state;
 
     // Session ID.
     const unique_id_t id;
 
-    // The tracked job.
+    // Tracked job.
     boost::shared_ptr<job_t> job;
 
 private:
-    void
-    send(const unique_id_t& uuid,
-         const std::string& chunk);
-
-private:
-    boost::mutex mutex;
+    boost::mutex m_mutex;
     
     // Request chunk cache.
 
@@ -82,11 +83,10 @@ private:
         std::string
     > chunk_list_t;
 
-    chunk_list_t cache;
+    chunk_list_t m_cache;
 
     // Weak reference to job's master.
-    boost::weak_ptr<master_t> master;
-    engine_t * engine;
+    boost::weak_ptr<master_t> m_master;
 };
 
 }} // namespace cocaine::engine

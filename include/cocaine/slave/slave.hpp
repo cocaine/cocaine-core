@@ -71,7 +71,10 @@ class slave_t:
         on_heartbeat(ev::timer&, int);
 
         void
-        on_idle_timeout(ev::timer&, int);
+        on_disown(ev::timer&, int);
+
+        void
+        on_idle(ev::timer&, int);
         
     private:
         void
@@ -92,10 +95,11 @@ class slave_t:
 
         // Engine I/O
 
-        io::channel_t m_bus;
+        io::channel<io::policies::unique> m_bus;
         
         io::scoped_option<
-            io::options::send_timeout
+            io::options::send_timeout,
+            io::policies::unique
         > m_bus_timeout;
         
         // Event loop
@@ -106,6 +110,7 @@ class slave_t:
         ev::prepare m_checker;
         
         ev::timer m_heartbeat_timer,
+                  m_disown_timer,
                   m_idle_timer;
         
         // The app

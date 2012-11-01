@@ -34,15 +34,11 @@ sink_t::~sink_t() {
 
 // Logger
 
-logger_t::logger_t(const sink_t& sink, const std::string& source):
+logger_t::logger_t(const sink_t& sink,
+                   const std::string& source):
     m_sink(sink),
     m_source(source)
 { }
-
-priorities
-logger_t::verbosity() const {
-    return m_sink.verbosity();
-}
 
 // Void logger
 

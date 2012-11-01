@@ -36,7 +36,7 @@ namespace cocaine {
     class app_t;
 
     namespace engine {
-        // Job queueing mode.
+        // Queueing modes.
         struct mode {
             enum value {
                 normal,
@@ -44,17 +44,24 @@ namespace cocaine {
             };
         };
 
-        // Job execution engine.
+        // Execution engine.
         class engine_t;
         class master_t;
         
-        // Job abstraction.
+        // Request abstractions.
         struct job_t;
+        struct session_t;
     }
 
     namespace io {
+        namespace policies {
+            struct unique;
+            struct shared;
+        }
+
         // Tuple-based RPC channel.
-        class channel_t;
+        template<class>
+        class channel;
     }
 
     namespace logging {

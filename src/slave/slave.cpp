@@ -36,7 +36,8 @@ using namespace cocaine::engine;
 
 namespace fs = boost::filesystem;
 
-slave_t::slave_t(context_t& context, slave_config_t config):
+slave_t::slave_t(context_t& context,
+                 slave_config_t config):
     m_context(context),
     m_log(context.log(
         (boost::format("app/%1%")
@@ -70,13 +71,16 @@ slave_t::slave_t(context_t& context, slave_config_t config):
     m_heartbeat_timer.set<slave_t, &slave_t::on_heartbeat>(this);
     m_heartbeat_timer.start(0.0f, 5.0f);
 
+    // NOTE: It will be restarted after the each heartbeat.
+    m_disown_timer.set<slave_t, &slave_t::on_disown>(this);
+
     // Launching the app
 
     try {
         m_manifest.reset(new manifest_t(m_context, m_name));
         m_profile.reset(new profile_t(m_context, config.profile));
         
-        m_idle_timer.set<slave_t, &slave_t::on_idle_timeout>(this);
+        m_idle_timer.set<slave_t, &slave_t::on_idle>(this);
         m_idle_timer.start(m_profile->idle_timeout);
         
         fs::path path(fs::path(m_context.config.spool_path) / m_name);
@@ -84,7 +88,8 @@ slave_t::slave_t(context_t& context, slave_config_t config):
         m_sandbox = m_context.get<api::sandbox_t>(
             m_manifest->sandbox.type,
             api::category_traits<api::sandbox_t>::args_type(
-                *m_manifest,
+                m_manifest->name,
+                m_manifest->sandbox.args,
                 path.string()
             )
         );
@@ -124,7 +129,8 @@ slave_t::read(int timeout) {
         
     {
         io::scoped_option<
-            io::options::receive_timeout
+            io::options::receive_timeout,
+            io::policies::unique
         > option(m_bus, timeout);
 
         if(!m_bus.recv_tuple(proxy)) {
@@ -177,7 +183,8 @@ slave_t::process_events() {
 
     {
         io::scoped_option<
-            io::options::receive_timeout
+            io::options::receive_timeout,
+            io::policies::unique
         > option(m_bus, 0);
         
         if(!m_bus.recv(command)) {
@@ -188,18 +195,20 @@ slave_t::process_events() {
     COCAINE_LOG_DEBUG(
         m_log,
         "slave %s received type %d message",
-        m_id.string(),
+        m_id,
         command
     );
 
     switch(command) {
-        case io::get<rpc::invoke>::value: {
-            // TEST: Ensure that we have the app first.
-            BOOST_ASSERT(m_sandbox.get() != NULL);
+        case io::get<rpc::pong>::value:
+            m_disown_timer.stop();
+            break;
 
+        case io::get<rpc::invoke>::value: {
             std::string event;
 
             m_bus.recv(event);
+            
             invoke(event);
             
             break;
@@ -218,7 +227,7 @@ slave_t::process_events() {
             COCAINE_LOG_WARNING(
                 m_log,
                 "slave %s dropping unknown type %d message", 
-                m_id.string(),
+                m_id,
                 command
             );
             
@@ -228,19 +237,26 @@ slave_t::process_events() {
 
 void
 slave_t::on_heartbeat(ev::timer&, int) {
-    if(!m_bus.send_message(io::message<rpc::heartbeat>())) {
-        COCAINE_LOG_ERROR(m_log, "slave %s has lost the controlling engine", m_id.string());
-        m_loop.unloop(ev::ALL);
-    }
+    m_bus.send_message(io::message<rpc::ping>());
+    m_disown_timer.start(5.0f);
 }
 
 void
-slave_t::on_idle_timeout(ev::timer&, int) {
+slave_t::on_disown(ev::timer&, int) {
+    COCAINE_LOG_ERROR(m_log, "slave %s has lost the controlling engine", m_id.string());
+    m_loop.unloop();    
+}
+
+void
+slave_t::on_idle(ev::timer&, int) {
     terminate();
 }
 
 void
 slave_t::invoke(const std::string& event) {
+    // TEST: Ensure that we have the app first.
+    BOOST_ASSERT(m_sandbox.get() != NULL);
+
     try {
         m_sandbox->invoke(event, *this);
     } catch(const unrecoverable_error_t& e) {

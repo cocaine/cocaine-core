@@ -18,22 +18,20 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include <boost/algorithm/string/join.hpp>
-#include <boost/format.hpp>
-
 #include "cocaine/server/server.hpp"
 
 #include "cocaine/app.hpp"
 #include "cocaine/context.hpp"
-#include "cocaine/job.hpp"
 #include "cocaine/logging.hpp"
 
+#include "cocaine/api/job.hpp"
 #include "cocaine/api/storage.hpp"
 
 using namespace cocaine;
 using namespace cocaine::helpers;
 
-server_t::server_t(context_t& context, server_config_t config):
+server_t::server_t(context_t& context, 
+                   server_config_t config):
     m_context(context),
     m_log(context.log("core")),
     m_runlist(config.runlist),
@@ -66,8 +64,7 @@ server_t::server_t(context_t& context, server_config_t config):
         try {
             m_server.bind(*it);
         } catch(const zmq::error_t& e) {
-            boost::format message("invalid listen endpoint - %s");
-            throw configuration_error_t((message % e.what()).str());
+            throw configuration_error_t("invalid listen endpoint - %s", e.what());
         }
             
         COCAINE_LOG_INFO(m_log, "listening on %s", *it);
@@ -81,7 +78,7 @@ server_t::server_t(context_t& context, server_config_t config):
     // Autodiscovery
 
     if(!config.announce_endpoints.empty()) {
-        m_announces.reset(new io::socket_t(m_context, ZMQ_PUB));
+        m_announces.reset(new io::socket<io::policies::unique>(m_context, ZMQ_PUB));
         
         for(std::vector<std::string>::const_iterator it = config.announce_endpoints.begin();
             it != config.announce_endpoints.end();
@@ -90,8 +87,7 @@ server_t::server_t(context_t& context, server_config_t config):
             try {
                 m_announces->connect(*it);
             } catch(const zmq::error_t& e) {
-                boost::format message("invalid announce endpoint - %s");
-                throw configuration_error_t((message % e.what()).str());
+                throw configuration_error_t("invalid announce endpoint - %s", e.what());
             }
 
             COCAINE_LOG_INFO(m_log, "announcing on %s", *it);
@@ -164,7 +160,8 @@ void server_t::process() {
     
     {
         io::scoped_option<
-            io::options::receive_timeout
+            io::options::receive_timeout,
+            io::policies::unique
         > option(m_server, 0);
         
         if(!m_server.recv(&message)) {
@@ -229,7 +226,8 @@ void server_t::process() {
     memcpy(message.data(), response.data(), response.size());
 
     io::scoped_option<
-        io::options::send_timeout
+        io::options::send_timeout,
+        io::policies::unique
     > option(m_server, 0);
     
     m_server.send(message);
@@ -351,7 +349,7 @@ Json::Value server_t::info() const {
     result["jobs"]["pending"] = static_cast<Json::LargestUInt>(engine::job_t::objects_alive());
     result["jobs"]["processed"] = static_cast<Json::LargestUInt>(engine::job_t::objects_created());
 
-    result["sockets"] = static_cast<Json::LargestUInt>(io::socket_t::objects_alive());
+    result["sockets"] = static_cast<Json::LargestUInt>(io::socket_base_t::objects_alive());
 
     result["uptime"] = m_loop.now() - m_birthstamp;
 

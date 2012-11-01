@@ -30,16 +30,13 @@ struct heartbeat { };
 struct terminate { };
 
 struct invoke {
-    invoke(const boost::shared_ptr<job_t>& job_,
-           engine_t * engine_,
+    invoke(const boost::shared_ptr<session_t>& session_,
            const boost::weak_ptr<engine::master_t>& master_):
-        job(job_),
-        engine(engine_),
+        session(session_),
         master(master_)
     { }
 
-    const boost::shared_ptr<job_t>& job;
-    engine_t * engine;
+    const boost::shared_ptr<session_t>& session;
     const boost::weak_ptr<engine::master_t>& master;
 };
 

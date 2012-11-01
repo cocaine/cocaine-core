@@ -21,7 +21,6 @@
 #ifndef COCAINE_UNIQUE_ID_HPP
 #define COCAINE_UNIQUE_ID_HPP
 
-#include <boost/format.hpp>
 #include <boost/functional/hash.hpp>
 #include <uuid/uuid.h>
 
@@ -36,6 +35,10 @@ struct unique_id_t {
         uuid_generate(reinterpret_cast<unsigned char*>(uuid));
     }
 
+    unique_id_t(const uninitialized_t&) {
+        // Empty.
+    }
+
     explicit
     unique_id_t(const std::string& other) {
         int rv = uuid_parse(
@@ -44,13 +47,8 @@ struct unique_id_t {
         );
         
         if(rv != 0) {
-            boost::format message("unable to parse '%s' as an unique id");
-            throw std::runtime_error((message % other).str());
+            throw error_t("unable to parse '%s' as an unique id", other);
         }
-    }
-
-    unique_id_t(const uninitialized_t&) {
-        // Empty.
     }
 
     std::string
@@ -84,6 +82,15 @@ static inline
 size_t
 hash_value(const unique_id_t& id) {
     return boost::hash_range(&id.uuid[0], &id.uuid[1]);
+}
+
+static inline
+std::ostream&
+operator<<(std::ostream& stream,
+           const unique_id_t& id)
+{
+    stream << id.string();
+    return stream;
 }
 
 } // namespace cocaine

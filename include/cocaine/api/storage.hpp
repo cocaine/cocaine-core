@@ -33,10 +33,12 @@
 namespace cocaine {
 
 struct storage_error_t:
-    public std::runtime_error
+    public error_t
 {
-    storage_error_t(const std::string& what):
-        std::runtime_error(what)
+    template<typename... Args>
+    storage_error_t(const std::string& format,
+                    const Args&... args):
+        error_t(format, args...)
     { }
 };
 

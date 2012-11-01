@@ -28,10 +28,12 @@
 namespace cocaine {
 
 struct authorization_error_t:
-    public std::runtime_error
+    public error_t
 {
-    authorization_error_t(const std::string& what):
-        std::runtime_error(what)
+    template<typename... Args>
+    authorization_error_t(const std::string& format,
+                          const Args&... args):
+        error_t(format, args...)
     { }
 };
 
@@ -54,9 +56,10 @@ class auth_t:
         //      const std::string& username) const;
 
     private:
+        context_t& m_context;
         boost::shared_ptr<logging::logger_t> m_log;
 
-        EVP_MD_CTX * m_context;
+        EVP_MD_CTX * m_evp_md_context;
 
 #if BOOST_VERSION >= 103600
         typedef boost::unordered_map<

@@ -47,7 +47,7 @@ class master_t:
         master_t(context_t& context,
                  const manifest_t& manifest,
                  const profile_t& profile,
-                 ev::loop_ref& loop);
+                 engine_t * engine);
 
         ~master_t();
        
@@ -69,15 +69,13 @@ class master_t:
         void
         process(const events::choke& event);
 
+        void
+        push(const std::string& chunk);
+
     public:
         bool
         operator==(const master_t& other) const {
             return m_id == other.m_id;
-        }
-
-        const unique_id_t&
-        id() const {
-            return m_id;
         }
 
         state::value
@@ -85,13 +83,18 @@ class master_t:
             return m_state;
         }
 
+        const unique_id_t&
+        id() const {
+            return m_id;
+        }
+
     private:
         void
         on_timeout(ev::timer&, int);
  
     public:
-        // The current job.
-        boost::shared_ptr<job_t> job;
+        // The current session.
+        boost::shared_ptr<session_t> session;
 
     private:
         context_t& m_context; 
@@ -100,8 +103,10 @@ class master_t:
         const manifest_t& m_manifest;
         const profile_t& m_profile;
 
-        // TODO: Get rid of it.
-        ev::loop_ref& m_loop;
+        // The controlling engine.
+        engine_t * m_engine;
+
+        // Slave health monitoring.
         ev::timer m_heartbeat_timer;
     
         // The current slave state.

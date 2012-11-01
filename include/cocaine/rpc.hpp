@@ -28,7 +28,11 @@ namespace cocaine {
 namespace rpc {
     struct rpc_plane_tag;
 
-    struct heartbeat {
+    struct ping {
+        typedef rpc_plane_tag tag;
+    };
+
+    struct pong {
         typedef rpc_plane_tag tag;
     };
 
@@ -82,7 +86,8 @@ namespace io {
     template<>
     struct dispatch<rpc::rpc_plane_tag> {
         typedef boost::mpl::list<
-            rpc::heartbeat,
+            rpc::ping,
+            rpc::pong,
             rpc::terminate,
             rpc::invoke,
             rpc::chunk,

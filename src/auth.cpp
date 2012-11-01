@@ -32,8 +32,9 @@
 using namespace cocaine::crypto;
 
 auth_t::auth_t(context_t& context):
+    m_context(context),
     m_log(context.log("crypto")),
-    m_context(EVP_MD_CTX_create())
+    m_evp_md_context(EVP_MD_CTX_create())
 {
     ERR_load_crypto_strings();
 
@@ -93,7 +94,7 @@ namespace {
 auth_t::~auth_t() {
     std::for_each(m_keys.begin(), m_keys.end(), dispose_t());
     ERR_free_strings();
-    EVP_MD_CTX_destroy(m_context);
+    EVP_MD_CTX_destroy(m_evp_md_context);
 }
 
 /* TODO: Gotta invent something sophisticated here.
@@ -129,20 +130,20 @@ auth_t::verify(const std::string& message,
         throw authorization_error_t("unauthorized user");
     }
     
-    EVP_VerifyInit(m_context, EVP_sha1());
-    EVP_VerifyUpdate(m_context, message.data(), message.size());
+    EVP_VerifyInit(m_evp_md_context, EVP_sha1());
+    EVP_VerifyUpdate(m_evp_md_context, message.data(), message.size());
     
     bool success = EVP_VerifyFinal(
-        m_context,
+        m_evp_md_context,
         reinterpret_cast<const unsigned char*>(signature.data()),
         signature.size(),
         it->second
     );
 
     if(!success) {
-        EVP_MD_CTX_cleanup(m_context);
+        EVP_MD_CTX_cleanup(m_evp_md_context);
         throw authorization_error_t("invalid signature");
     }
 
-    EVP_MD_CTX_cleanup(m_context);
+    EVP_MD_CTX_cleanup(m_evp_md_context);
 }

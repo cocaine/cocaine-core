@@ -25,7 +25,8 @@
 
 using namespace cocaine::logging;
 
-syslog_t::syslog_t(priorities verbosity, const std::string& identity):
+syslog_t::syslog_t(priorities verbosity,
+                   const std::string& identity):
     sink_t(verbosity),
     m_identity(identity)
 {

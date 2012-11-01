@@ -23,15 +23,24 @@
 #include "cocaine/master.hpp"
 
 #include "cocaine/context.hpp"
-#include "cocaine/job.hpp"
+#include "cocaine/engine.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
 #include "cocaine/profile.hpp"
+#include "cocaine/rpc.hpp"
+#include "cocaine/session.hpp"
+
+#include "cocaine/api/job.hpp"
+
+#include "cocaine/traits/unique_id.hpp" 
 
 using namespace cocaine;
 using namespace cocaine::engine;
 
-master_t::master_t(context_t& context, const manifest_t& manifest, const profile_t& profile, ev::loop_ref& loop):
+master_t::master_t(context_t& context,
+                   const manifest_t& manifest,
+                   const profile_t& profile,
+                   engine_t * engine):
     m_context(context),
     m_log(context.log(
         (boost::format("app/%1%")
@@ -40,8 +49,7 @@ master_t::master_t(context_t& context, const manifest_t& manifest, const profile
     )),
     m_manifest(manifest),
     m_profile(profile),
-    m_loop(loop),
-    m_heartbeat_timer(loop),
+    m_heartbeat_timer(engine->loop()),
     m_state(state::unknown)
 {
     // NOTE: Initialization heartbeat can be different.
@@ -56,16 +64,17 @@ master_t::master_t(context_t& context, const manifest_t& manifest, const profile
         )
     );
 
-    std::map<std::string, std::string> args;
+    std::map<std::string, std::string> args,
+                                       environment;
 
     args["--configuration"] = m_context.config.config_path;
     args["--slave:app"] = m_manifest.name;
     args["--slave:profile"] = m_profile.name;
     args["--slave:uuid"] = m_id.string();
 
-    COCAINE_LOG_DEBUG(m_log, "spawning slave %s", m_id.string());
+    COCAINE_LOG_DEBUG(m_log, "spawning slave %s", m_id);
 
-    m_handle = isolate->spawn(m_manifest.slave, args);
+    m_handle = isolate->spawn(m_manifest.slave, args, environment);
 }
 
 master_t::~master_t() {
@@ -81,9 +90,9 @@ master_t::process(const events::heartbeat& event) {
         COCAINE_LOG_DEBUG(
             m_log,
             "slave %s came alive in %.03f seconds",
-            m_id.string(),
+            m_id,
             m_profile.startup_timeout - ev_timer_remaining(
-                m_loop,
+                m_engine->loop(),
                 static_cast<ev_timer*>(&m_heartbeat_timer)
             )
         );
@@ -93,14 +102,14 @@ master_t::process(const events::heartbeat& event) {
 
     float timeout = m_profile.heartbeat_timeout;
 
-    if(m_state == state::busy && job->policy.timeout > 0.0f) {
-        timeout = job->policy.timeout;
+    if(m_state == state::busy && session->job->policy.timeout > 0.0f) {
+        timeout = session->job->policy.timeout;
     }
 
     COCAINE_LOG_DEBUG(
         m_log,
         "resetting slave %s heartbeat timeout to %.02f seconds",
-        m_id.string(),
+        m_id,
         timeout
     );
 
@@ -110,30 +119,13 @@ master_t::process(const events::heartbeat& event) {
 
 void
 master_t::process(const events::terminate& event) {
+    COCAINE_LOG_DEBUG(m_log, "terminating slave %s", m_id);
+
     // Ensure that the slave is not being overkilled.
     BOOST_ASSERT(m_state != state::dead);
 
-    COCAINE_LOG_DEBUG(m_log, "reaping slave %s", m_id.string());
-
-    if(m_state == state::busy) {
-        COCAINE_LOG_DEBUG(
-            m_log,
-            "slave %s dropping '%s' job due to the slave termination",
-            m_id.string(),
-            job->event
-        );
-        
-        job->process(
-            events::error(
-                server_error,
-                "the job is being cancelled"
-            )
-        );
-
-        job->process(events::choke());
-        
-        job.reset();
-    }
+    // Ensure that no session is being lost here.
+    BOOST_ASSERT(!session);
 
     m_handle->terminate();
     m_handle.reset();
@@ -143,21 +135,21 @@ master_t::process(const events::terminate& event) {
 
 void
 master_t::process(const events::invoke& event) {
-    // TEST: Ensure that no job is being lost here.
-    BOOST_ASSERT(m_state == state::idle && !job);
-    
-    // TEST: Ensure that the event has a bound job.
-    BOOST_ASSERT(event.job);
-
     COCAINE_LOG_DEBUG(
         m_log,
-        "job '%s' assigned to slave %s",
-        job->event,
-        m_id.string()
+        "session %s assigned to slave %s",
+        session->id,
+        m_id
     );
 
-    job = event.job;
-    job->process(event);    
+    // TEST: Ensure that no session is being lost here.
+    BOOST_ASSERT(m_state == state::idle && !session);
+    
+    // TEST: Ensure that the event has a bound session.
+    BOOST_ASSERT(event.session);
+
+    session = event.session;
+    session->process(event);
     
     m_state = state::busy;
 
@@ -167,18 +159,18 @@ master_t::process(const events::invoke& event) {
 
 void
 master_t::process(const events::choke& event) {
-    // TEST: Ensure that the job is in fact here.
-    BOOST_ASSERT(m_state == state::busy && job);
-
     COCAINE_LOG_DEBUG(
         m_log,
-        "job '%s' completed by slave %s",
-        job->event,
-        m_id.string()
+        "session %s completed by slave %s",
+        session->id,
+        m_id
     );
     
-    job->process(event);
-    job.reset();
+    // TEST: Ensure that the session is in fact here.
+    BOOST_ASSERT(m_state == state::busy && session);
+
+    session->process(event);
+    session.reset();
 
     m_state = state::idle;
     
@@ -188,10 +180,10 @@ master_t::process(const events::choke& event) {
 
 void
 master_t::process(const events::chunk& event) {
-    // TEST: Ensure that the job is in fact here.
-    BOOST_ASSERT(m_state == state::busy && job);
+    // TEST: Ensure that the session is in fact here.
+    BOOST_ASSERT(m_state == state::busy && session);
 
-    job->process(event);
+    session->process(event);
     
     // Reset the heartbeat timer.    
     process(events::heartbeat());
@@ -200,10 +192,10 @@ master_t::process(const events::chunk& event) {
 void
 master_t::process(const events::error& event) {
     if(m_state == state::busy) {
-        // TEST: Ensure that the job is in fact here.
-        BOOST_ASSERT(job);
+        // TEST: Ensure that the session is in fact here.
+        BOOST_ASSERT(session);
 
-        job->process(event);
+        session->process(event);
     }
         
     // Reset the heartbeat timer.    
@@ -211,32 +203,35 @@ master_t::process(const events::error& event) {
 }
 
 void
-master_t::on_timeout(ev::timer&, int) {
-    COCAINE_LOG_ERROR(
-        m_log,
-        "slave %s didn't respond in a timely fashion",
-        m_id.string()
-    );
-    
-    if(m_state == state::busy) {
-        COCAINE_LOG_DEBUG(
-            m_log,
-            "slave %s dropping '%s' job due to a timeout",
-            m_id.string(),
-            job->event
-        );
+master_t::push(const std::string& chunk) {
+    zmq::message_t message(chunk.size());
 
-        job->process(
+    memcpy(
+        message.data(),
+        chunk.data(),
+        chunk.size()
+    );
+
+    io::message<rpc::chunk> command(message);
+
+    m_engine->send(
+        m_id,
+        command
+    );
+}
+
+void
+master_t::on_timeout(ev::timer&, int) {
+    if(m_state == state::busy) {
+        session->process(
             events::error(
                 timeout_error, 
-                "the job has timed out"
+                "the session has timed out"
             )
         );
 
-        job->process(events::choke());
-
-        job.reset();
+        session.reset();
     }
-    
+
     process(events::terminate());
 }

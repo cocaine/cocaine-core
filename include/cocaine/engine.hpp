@@ -42,11 +42,27 @@ namespace cocaine { namespace engine {
 
 class job_queue_t:
     public std::deque<
-        boost::shared_ptr<job_t>
+        boost::shared_ptr<session_t>
     >
 {
     public:
-        void push(const_reference job);
+        void
+        push(const_reference session);
+
+        // Lockable concept implementation
+        
+        void
+        lock() {
+            m_mutex.lock();
+        }
+
+        void
+        unlock() {
+            m_mutex.unlock();
+        }
+
+    private:
+        boost::mutex m_mutex;
 };
 
 class engine_t:
@@ -62,10 +78,10 @@ class engine_t:
         void
         run();
 
-        // Job scheduling
+        // Scheduling
         
-        bool
-        enqueue(job_queue_t::const_reference job,
+        void
+        enqueue(job_queue_t::const_reference session,
                 mode::value mode = mode::normal);
 
         template<class T>
@@ -140,10 +156,13 @@ class engine_t:
 
         // I/O
         
-        std::unique_ptr<io::channel_t> m_bus,
-                                       m_ctl;
-
-        boost::mutex m_bus_mutex;
+        std::unique_ptr<
+            io::channel<io::policies::shared>
+        > m_bus;
+        
+        std::unique_ptr<
+            io::channel<io::policies::unique>
+        > m_ctl;
 
         // Event loop
         
@@ -163,8 +182,7 @@ class engine_t:
         // Job queue
         
         job_queue_t m_queue;
-        boost::mutex m_queue_mutex;
-        boost::condition_variable m_queue_condition;
+        boost::condition_variable_any m_condition;
 
         // Slave pool
 
@@ -190,10 +208,13 @@ bool
 engine_t::send(const unique_id_t& uuid,
                const T& message)
 {
-    boost::unique_lock<boost::mutex> lock(m_bus_mutex);
+    boost::unique_lock<
+        io::channel<io::policies::shared>
+    > lock(*m_bus);
 
     io::scoped_option<
-        io::options::send_timeout
+        io::options::send_timeout,
+        io::policies::shared
     > option(*m_bus, 0);
     
     return m_bus->send(uuid, ZMQ_SNDMORE) &&

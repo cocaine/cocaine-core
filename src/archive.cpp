@@ -34,7 +34,8 @@ archive_error_t::archive_error_t(archive * source):
     std::runtime_error(archive_error_string(source))
 { }
 
-archive_t::archive_t(context_t& context, const std::string& archive):
+archive_t::archive_t(context_t& context,
+                     const std::string& archive):
     m_log(context.log("packaging")),
     m_archive(archive_read_new())
 {

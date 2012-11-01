@@ -20,7 +20,6 @@
 
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/operations.hpp>
-#include <boost/format.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <netdb.h>
 
@@ -56,11 +55,9 @@ namespace {
     void
     validate_path(const fs::path& path) {
         if(!fs::exists(path)) {
-            boost::format message("the '%s' path does not exist");
-            throw configuration_error_t((message % path.string()).str());
+            throw configuration_error_t("the '%s' path does not exist", path.string());
         } else if(fs::exists(path) && !fs::is_directory(path)) {
-            boost::format message("the '%s' path is not a directory");
-            throw configuration_error_t((message % path.string()).str());
+            throw configuration_error_t("the '%s' path is not a directory", path.string());
         }
     }
 }
@@ -118,8 +115,7 @@ config_t::config_t(const std::string& path):
         int rv = getaddrinfo(hostname, NULL, &hints, &result);
         
         if(rv != 0) {
-            boost::format message("unable to determine the hostname - %s");
-            throw configuration_error_t((message % gai_strerror(rv)).str());
+            throw configuration_error_t("unable to determine the hostname - %s", gai_strerror(rv));
         }
 
         if(result == NULL) {
@@ -158,7 +154,8 @@ config_t::parse(const Json::Value& config) {
     return components;
 }
 
-context_t::context_t(config_t config_, boost::shared_ptr<logging::sink_t> sink):
+context_t::context_t(config_t config_,
+                     boost::shared_ptr<logging::sink_t> sink):
     config(config_),
     m_sink(sink)
 {
@@ -167,17 +164,19 @@ context_t::context_t(config_t config_, boost::shared_ptr<logging::sink_t> sink):
     }
 
     m_repository.reset(new api::repository_t(*this));
-    m_repository->load(config.plugin_path);
-
+    
     // Register the builtin components.
     m_repository->insert<isolate::process_t>("process");
     m_repository->insert<storage::file_storage_t>("files");
-    
+
+    // Register the plugins.
+    m_repository->load(config.plugin_path);
+
     m_io.reset(new zmq::context_t(1));
 }
 
 context_t::~context_t() {
-    BOOST_ASSERT(io::socket_t::objects_alive() == 0);
+    BOOST_ASSERT(io::socket_base_t::objects_alive() == 0);
 }
 
 boost::shared_ptr<logging::logger_t>

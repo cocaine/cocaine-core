@@ -51,9 +51,9 @@ class driver_t:
 
     protected:
         driver_t(context_t& context,
-                 engine::engine_t& engine,
                  const std::string& /* name */,
-                 const Json::Value& /* args */):
+                 const Json::Value& /* args */,
+                 engine::engine_t& engine):
             m_engine(engine)
         {
             // Empty.
@@ -68,9 +68,9 @@ struct category_traits<api::driver_t> {
     typedef std::unique_ptr<api::driver_t> ptr_type;
 
     typedef boost::tuple<
-        engine::engine_t&,
         const std::string&,
-        const Json::Value&
+        const Json::Value&,
+        engine::engine_t&
     > args_type;
 
     template<class T>

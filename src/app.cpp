@@ -31,6 +31,7 @@
 #include "cocaine/manifest.hpp"
 #include "cocaine/profile.hpp"
 #include "cocaine/rpc.hpp"
+#include "cocaine/session.hpp"
 
 #include "cocaine/traits/json.hpp"
 
@@ -39,7 +40,9 @@ using namespace cocaine::engine;
 
 namespace fs = boost::filesystem;
 
-app_t::app_t(context_t& context, const std::string& name, const std::string& profile):
+app_t::app_t(context_t& context,
+             const std::string& name,
+             const std::string& profile):
     m_context(context),
     m_log(context.log(
         (boost::format("app/%1%")
@@ -55,7 +58,7 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
         deploy(name, path.string());
     }
 
-    m_control.reset(new io::channel_t(context, ZMQ_PAIR));
+    m_control.reset(new io::channel<io::policies::unique>(context, ZMQ_PAIR));
 
     std::string endpoint(
         (boost::format("inproc://%s")
@@ -66,8 +69,7 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
     try { 
         m_control->bind(endpoint);
     } catch(const zmq::error_t& e) {
-        boost::format message("unable to bind the engine control channel - %s");
-        throw configuration_error_t((message % e.what()).str());
+        throw configuration_error_t("unable to bind the engine control channel - %s", e.what());
     }
 
     // NOTE: The event loop is not started here yet.
@@ -116,9 +118,9 @@ app_t::start() {
                     m_context.get<api::driver_t>(
                         it->second.type,
                         api::category_traits<api::driver_t>::args_type(
-                            *m_engine,
                             format.str(),
-                            it->second.args
+                            it->second.args,
+                            *m_engine
                         )
                     )
                 );
@@ -182,7 +184,8 @@ app_t::info() const {
 
     {
         io::scoped_option<
-            io::options::receive_timeout
+            io::options::receive_timeout,
+            io::policies::unique
         > option(*m_control, defaults::control_timeout);
 
         if(!m_control->recv(info)) {
@@ -203,11 +206,17 @@ app_t::info() const {
     return info;
 }
 
-bool
+boost::weak_ptr<session_t>
 app_t::enqueue(const boost::shared_ptr<job_t>& job,
                mode::value mode)
 {
-    return m_engine->enqueue(job, mode);
+    boost::shared_ptr<session_t> session(
+        boost::make_shared<session_t>(job)
+    );
+    
+    m_engine->enqueue(session, mode);
+
+    return session;
 }
 
 void
@@ -226,8 +235,7 @@ app_t::deploy(const std::string& name,
         blob = storage->get<std::string>("apps", name);
     } catch(const storage_error_t& e) {
         COCAINE_LOG_ERROR(m_log, "unable to fetch the app from the storage - %s", e.what());
-        boost::format message("the '%s' app is not available");
-        throw configuration_error_t((message % name).str());
+        throw configuration_error_t("the '%s' app is not available", name);
     }
     
     try {
@@ -235,7 +243,6 @@ app_t::deploy(const std::string& name,
         archive.deploy(path);
     } catch(const archive_error_t& e) {
         COCAINE_LOG_ERROR(m_log, "unable to extract the app files - %s", e.what());
-        boost::format message("the '%s' app is not available");
-        throw configuration_error_t((message % name).str());
+        throw configuration_error_t("the '%s' app is not available", name);
     }
 }

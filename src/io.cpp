@@ -24,18 +24,24 @@
 
 using namespace cocaine::io;
 
-socket_t::socket_t(context_t& context, int type):
-    m_context(context),
-    m_socket(context.io(), type)
+socket_base_t::socket_base_t(context_t& context,
+                             int type):
+    m_socket(context.io(), type),
+    m_context(context)
 {
     int linger = 0;
    
     // Disable lingering on context termination. 
-    setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
+    m_socket.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
+
+    size_t size = sizeof(m_fd);
+    
+    // Get the socket's file descriptor.
+    m_socket.getsockopt(ZMQ_FD, &m_fd, &size);
 } 
 
 void
-socket_t::bind(const std::string& endpoint) {
+socket_base_t::bind(const std::string& endpoint) {
     m_socket.bind(endpoint.c_str());
 
     // Try to determine the connection string for clients.
@@ -52,15 +58,6 @@ socket_t::bind(const std::string& endpoint) {
 }
 
 void
-socket_t::connect(const std::string& endpoint) {
+socket_base_t::connect(const std::string& endpoint) {
     m_socket.connect(endpoint.c_str());
-}
-
-void
-socket_t::drop() {
-    zmq::message_t null;
-
-    while(more()) {
-        recv(&null);
-    }
 }

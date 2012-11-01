@@ -50,7 +50,7 @@ class app_t {
         
         // Job scheduling
         
-        bool
+        boost::weak_ptr<engine::session_t>
         enqueue(const boost::shared_ptr<engine::job_t>& job,
                 engine::mode::value mode = engine::mode::normal);
 
@@ -70,7 +70,10 @@ class app_t {
 
         // Execution engine
 
-        std::unique_ptr<io::channel_t> m_control;
+        std::unique_ptr<
+            io::channel<io::policies::unique>
+        > m_control;
+        
         std::unique_ptr<engine::engine_t> m_engine;
         std::unique_ptr<boost::thread> m_thread;
 

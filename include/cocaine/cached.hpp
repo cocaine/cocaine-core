@@ -21,8 +21,6 @@
 #ifndef COCAINE_CACHED_HPP
 #define COCAINE_CACHED_HPP
 
-#include <boost/format.hpp>
-
 #include "cocaine/common.hpp"
 #include "cocaine/context.hpp"
 
@@ -66,16 +64,24 @@ cached<T>::cached(context_t& context,
             // Fetch the application manifest and archive from the core storage.
             m_object = storage->get<T>(collection, name);
         } catch(const storage_error_t& e) {
-            boost::format message("unable to fetch the '%s/%s' object from the storage - %s");
-            throw storage_error_t((message % collection % name % e.what()).str());
+            throw storage_error_t(
+                "unable to fetch the '%s/%s' object from the storage - %s",
+                collection,
+                name,
+                e.what()
+            );
         }
 
         try {
             // Put the application object into the cache for future reference.
             cache->put(collection, name, m_object);
         } catch(const storage_error_t& e) {
-            boost::format message("unable to cache the '%s/%s' object - %s");
-            throw storage_error_t((message % collection % name % e.what()).str());
+            throw storage_error_t(
+                "unable to cache the '%s/%s' object - %s",
+                collection,
+                name,
+                e.what()
+            );
         }    
     }
 }

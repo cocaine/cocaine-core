@@ -26,6 +26,8 @@
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
 
+#include "cocaine/helpers/json.hpp"
+
 namespace cocaine {
 
 struct unrecoverable_error_t:
@@ -73,7 +75,8 @@ class sandbox_t:
 
     protected:
         sandbox_t(context_t& context,
-                  const manifest_t&,
+                  const std::string& /* name */,
+                  const Json::Value& /* args */,
                   const std::string& /* spool */)
         {
            // Empty. 
@@ -85,7 +88,8 @@ struct category_traits<api::sandbox_t> {
     typedef std::unique_ptr<api::sandbox_t> ptr_type;
 
     typedef boost::tuple<
-        const manifest_t&,
+        const std::string&,
+        const Json::Value&,
         const std::string&
     > args_type;
 
@@ -102,7 +106,8 @@ struct category_traits<api::sandbox_t> {
                 new T(
                     boost::ref(context),
                     boost::get<0>(args),
-                    boost::get<1>(args)
+                    boost::get<1>(args),
+                    boost::get<2>(args)
                 )
             );
         }

@@ -87,7 +87,9 @@ class logger_t:
                  const std::string& source);
 
         priorities
-        verbosity() const;
+        verbosity() const {
+            return m_sink.verbosity();
+        }
 
         template<typename... Args>
         void

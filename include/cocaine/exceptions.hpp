@@ -21,9 +21,9 @@
 #ifndef COCAINE_EXCEPTIONS_HPP
 #define COCAINE_EXCEPTIONS_HPP
 
+#include <boost/format.hpp>
 #include <cerrno>
-#include <cstring>
-#include <stdexcept>
+#include <exception>
 
 namespace cocaine {
 
@@ -37,11 +37,58 @@ enum error_code {
     deadline_error  = 520
 };
 
-struct configuration_error_t:
-    public std::runtime_error
+struct error_t:
+    public std::exception
 {
-    configuration_error_t(const std::string& what):
-        std::runtime_error(what)
+    template<typename... Args>
+    error_t(const std::string& format,
+            const Args&... args)
+    {
+        boost::format message(format);
+
+        try {
+            // Recursively expand the argument pack.
+            substitute(message, args...);
+        } catch(const boost::io::format_error& e) {
+            m_message = "<unable to format the message>";
+            return;
+        }
+
+        m_message = message.str();
+    }
+
+    virtual
+    const char *
+    what() const throw() {
+        return m_message.c_str();
+    }
+
+private:
+    template<typename T, typename... Args>
+    void
+    substitute(boost::format& message,
+               const T& argument,
+               const Args&... args) const
+    {
+        substitute(message % argument, args...);
+    }
+
+    void
+    substitute(boost::format&) const {
+        return;
+    }
+
+private:
+    std::string m_message;
+};
+
+struct configuration_error_t:
+    public error_t
+{
+    template<typename... Args>
+    configuration_error_t(const std::string& format,
+                          const Args&... args):
+        error_t(format, args...)
     { }
 };
 
