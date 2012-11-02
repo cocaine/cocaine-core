@@ -28,7 +28,7 @@
 
 #include "cocaine/common.hpp"
 
-namespace cocaine { namespace helpers {
+namespace cocaine {
 
 class pid_file_t:
     public boost::noncopyable
@@ -87,10 +87,6 @@ class pid_file_t:
     private:
         const boost::filesystem::path m_filepath;
 };
-
-} // namespace helpers
-
-using helpers::pid_file_t;
 
 } // namespace cocaine
 

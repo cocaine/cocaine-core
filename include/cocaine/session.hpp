@@ -47,6 +47,7 @@ struct session_t {
 
 public:
     session_t(const boost::shared_ptr<job_t>& job_);
+    
     ~session_t();
 
     void
