@@ -18,19 +18,18 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include <boost/algorithm/string/classification.hpp>
-#include <boost/algorithm/string/split.hpp>
-#include <boost/iterator/counting_iterator.hpp>
+// #include <boost/algorithm/string/classification.hpp>
+// #include <boost/algorithm/string/split.hpp>
+// #include <boost/iterator/counting_iterator.hpp>
 #include <boost/program_options.hpp>
 #include <iostream>
 
 #include "cocaine/config.hpp"
 #include "cocaine/context.hpp"
 
+#include "cocaine/server/pid_file.hpp"
 #include "cocaine/server/server.hpp"
 #include "cocaine/server/syslog.hpp"
-
-#include "cocaine/helpers/pid_file.hpp"
 
 using namespace cocaine;
 
@@ -141,7 +140,7 @@ int main(int argc, char * argv[]) {
     }
     */
 
-    std::unique_ptr<helpers::pid_file_t> pidfile;
+    std::unique_ptr<pid_file_t> pidfile;
 
     if(vm.count("daemonize")) {
         if(daemon(0, 0) < 0) {
@@ -151,9 +150,9 @@ int main(int argc, char * argv[]) {
 
         try {
             pidfile.reset(
-                new helpers::pid_file_t(vm["pidfile"].as<std::string>())
+                new pid_file_t(vm["pidfile"].as<std::string>())
             );
-        } catch(const std::runtime_error& e) {
+        } catch(const error_t& e) {
             std::cerr << "Error: " << e.what() << "." << std::endl;
             return EXIT_FAILURE;
         }

@@ -45,12 +45,12 @@ session_t::process(const events::invoke& event) {
     // TEST: Jobs cannot be invoked when already completed.
     BOOST_ASSERT(state != state::complete);
     
-    boost::unique_lock<boost::mutex> lock(m_mutex);
-
     state = state::processing;
-    
+
     // The controlling master.
     m_master = event.master;
+    
+    boost::unique_lock<boost::mutex> lock(m_mutex);    
 
     if(!m_cache.empty()) {
         boost::shared_ptr<master_t> owner(m_master.lock());
@@ -69,7 +69,7 @@ session_t::process(const events::invoke& event) {
 
 void
 session_t::process(const events::chunk& event) {
-    // TEST: Jobs cannot process chunks when not active.
+    // TEST: Sessions cannot process chunks when not active.
     BOOST_ASSERT(state == state::processing);
 
     job->react(event);
@@ -77,6 +77,9 @@ session_t::process(const events::chunk& event) {
 
 void
 session_t::process(const events::error& event) {
+    // TEST: Sessions cannot be failed more than once.
+    BOOST_ASSERT(state != state::complete);
+    
     state = state::complete;
     
     {
@@ -89,6 +92,9 @@ session_t::process(const events::error& event) {
 
 void
 session_t::process(const events::choke& event) {
+    // TEST: Sessions cannot be completed more than once.
+    BOOST_ASSERT(state != state::complete);
+
     state = state::complete;
     
     {
