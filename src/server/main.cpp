@@ -152,7 +152,7 @@ int main(int argc, char * argv[]) {
             pidfile.reset(
                 new pid_file_t(vm["pidfile"].as<std::string>())
             );
-        } catch(const error_t& e) {
+        } catch(const cocaine::error_t& e) {
             std::cerr << "Error: " << e.what() << "." << std::endl;
             return EXIT_FAILURE;
         }
