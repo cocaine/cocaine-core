@@ -619,7 +619,7 @@ namespace {
     struct warden_t {
         void
         operator()(master_t * master) {
-            if(master->state() != master_t::state::unknown) {
+            if(master->state() == master_t::state::unknown) {
                 // NOTE: In case the engine is stopped while there were slaves
                 // still in the unknown state, they need to be forcefully terminated.
                 master->process(events::terminate());

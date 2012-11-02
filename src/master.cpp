@@ -49,6 +49,7 @@ master_t::master_t(context_t& context,
     )),
     m_manifest(manifest),
     m_profile(profile),
+    m_engine(engine),
     m_heartbeat_timer(engine->loop()),
     m_state(state::unknown)
 {
@@ -135,19 +136,19 @@ master_t::process(const events::terminate& event) {
 
 void
 master_t::process(const events::invoke& event) {
+    // TEST: Ensure that the event has a bound session.
+    BOOST_ASSERT(event.session);
+
     COCAINE_LOG_DEBUG(
         m_log,
         "session %s assigned to slave %s",
-        session->id,
+        event.session->id,
         m_id
     );
 
     // TEST: Ensure that no session is being lost here.
     BOOST_ASSERT(m_state == state::idle && !session);
     
-    // TEST: Ensure that the event has a bound session.
-    BOOST_ASSERT(event.session);
-
     session = event.session;
     session->process(event);
     
