@@ -1,22 +1,5 @@
-# Compiled object files
-*.slo
-*.lo
-*.o
+# Generated files
+include/cocaine/config.hpp
 
-# Compiled dynamic libraries
-*.so
-*.dylib
-
-# Compiled static libraries
-*.lai
-*.la
-*.a
-
-# MacOS trash
-.DS_Store
-
-# CMake trash
-CMakeFiles
-CMakeCache.txt
-Makefile
-cmake_install.cmake
+# Build directory
+build/*
