@@ -1,35 +1,5 @@
-*.a
-*.o
-*.os
-*.so*
-*.dylib
-*.cocaine-plugin
-cocained
-
-CMakeCache.txt
-CMakeFiles
-Makefile
-install_manifest.txt
-cmake_install.cmake
-
+# Generated files
 include/cocaine/config.hpp
-Makefile
-*.o
-*.lo
-*.loT
-*.a
-*.la
-*~
-*.tar.gz
-.*
-*.exp
-*.so
-*.so.*
-*.a.*
-*.o.*
-tags
 
-library-test
-cocaine-slave
-tools/deploy/cocaine-deploy
-tests/library_test
+# Build directory
+build/*
