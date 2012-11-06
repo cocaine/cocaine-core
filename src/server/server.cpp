@@ -344,7 +344,7 @@ Json::Value server_t::info() const {
         result["apps"][it->first] = it->second->info();
     }
 
-    result["identity"] = m_server.endpoint();
+    result["identity"] = m_context.config.network.hostname;
 
     result["jobs"]["pending"] = static_cast<Json::LargestUInt>(engine::job_t::objects_alive());
     result["jobs"]["processed"] = static_cast<Json::LargestUInt>(engine::job_t::objects_created());
