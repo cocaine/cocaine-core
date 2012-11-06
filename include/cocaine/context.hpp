@@ -89,6 +89,8 @@ struct config_t {
     } network;
 };
 
+// Free port dispenser for automatic socket binding.
+
 struct port_mapper_t {
     port_mapper_t(const std::pair<uint16_t, uint16_t>& limits);
 
@@ -99,8 +101,12 @@ struct port_mapper_t {
     retain(uint16_t port);
 
 private:
-    // Free ports for automatic socket bindings.
-    std::priority_queue<uint16_t> m_ports;
+    std::priority_queue<
+        uint16_t,
+        std::vector<uint16_t>,
+        std::greater<uint16_t>
+    > m_ports;
+    
     boost::mutex m_mutex;
 };
 
@@ -162,7 +168,7 @@ class context_t:
         std::unique_ptr<api::repository_t> m_repository;
         std::unique_ptr<zmq::context_t> m_io;
         
-        // A port dispenser for automatic socket bindings.
+        // TODO: I don't really like this implementation.
         std::unique_ptr<port_mapper_t> m_port_mapper;
 };
 

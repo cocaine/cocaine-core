@@ -49,17 +49,18 @@ socket_base_t::~socket_base_t() {
 
 void
 socket_base_t::bind() {
-    boost::format format("tcp://%s:%d");
-
     m_port = m_context.ports().get();
-    
-    format
+
+    m_socket.bind(
+        (boost::format("tcp://*:%d")
+            % m_port
+        ).str().c_str()
+    );
+
+    m_endpoint = (boost::format("tcp://%s:%d")
         % m_context.config.network.hostname
-        % m_port;
-
-    m_endpoint = format.str();
-
-    m_socket.bind(m_endpoint.c_str());
+        % m_port
+    ).str();
 }
 
 void
