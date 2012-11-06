@@ -18,9 +18,6 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-// #include <boost/algorithm/string/classification.hpp>
-// #include <boost/algorithm/string/split.hpp>
-// #include <boost/iterator/counting_iterator.hpp>
 #include <boost/program_options.hpp>
 #include <iostream>
 
@@ -113,33 +110,6 @@ int main(int argc, char * argv[]) {
 
     // Startup
 
-    /*
-    if(vm.count("core:port-range")) {
-        std::vector<std::string> limits;
-
-        boost::algorithm::split(
-            limits,
-            vm["core:port-range"].as<std::string>(),
-            boost::algorithm::is_any_of(":-")
-        );
-
-        if(limits.size() != 2) {
-            std::cout << "Error: invalid port range format" << std::endl;
-            return EXIT_FAILURE;
-        }
-
-        try {
-            config.runtime.ports.assign(
-                boost::make_counting_iterator(boost::lexical_cast<uint16_t>(limits[0])),
-                boost::make_counting_iterator(boost::lexical_cast<uint16_t>(limits[1]))
-            );
-        } catch(const boost::bad_lexical_cast& e) {
-            std::cout << "Error: invalid port range values" << std::endl;
-            return EXIT_FAILURE;
-        }
-    }
-    */
-
     std::unique_ptr<pid_file_t> pidfile;
 
     if(vm.count("daemonize")) {
@@ -149,9 +119,7 @@ int main(int argc, char * argv[]) {
         }
 
         try {
-            pidfile.reset(
-                new pid_file_t(vm["pidfile"].as<std::string>())
-            );
+            pidfile.reset(new pid_file_t(vm["pidfile"].as<std::string>()));
         } catch(const cocaine::error_t& e) {
             std::cerr << "Error: " << e.what() << "." << std::endl;
             return EXIT_FAILURE;

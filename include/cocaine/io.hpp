@@ -123,6 +123,11 @@ class socket_base_t:
         socket_base_t(context_t& context,
                       int type);
 
+        ~socket_base_t();
+
+        void
+        bind();
+
         void
         bind(const std::string& endpoint);
         
@@ -147,6 +152,8 @@ class socket_base_t:
 
         int m_fd;
         std::string m_endpoint;
+
+        uint16_t m_port;
 };
 
 using namespace boost::tuples;

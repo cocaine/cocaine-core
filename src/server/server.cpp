@@ -51,8 +51,8 @@ server_t::server_t(context_t& context,
 
     m_server.setsockopt(
         ZMQ_IDENTITY,
-        context.config.runtime.hostname.data(),
-        context.config.runtime.hostname.size()
+        context.config.network.hostname.data(),
+        context.config.network.hostname.size()
     );
 
     COCAINE_LOG_INFO(m_log, "identity of this node is '%s'", m_server.identity());
@@ -344,7 +344,7 @@ Json::Value server_t::info() const {
         result["apps"][it->first] = it->second->info();
     }
 
-    result["identity"] = m_context.config.runtime.hostname;
+    result["identity"] = m_server.endpoint();
 
     result["jobs"]["pending"] = static_cast<Json::LargestUInt>(engine::job_t::objects_alive());
     result["jobs"]["processed"] = static_cast<Json::LargestUInt>(engine::job_t::objects_created());

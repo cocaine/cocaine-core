@@ -21,6 +21,8 @@
 #ifndef COCAINE_CONTEXT_HPP
 #define COCAINE_CONTEXT_HPP
 
+#include <queue>
+
 #include <boost/thread/mutex.hpp>
 
 #include "cocaine/common.hpp"
@@ -59,10 +61,10 @@ struct config_t {
                 plugin_path,
                 spool_path;
 
-    typedef struct {
+    struct component_t {
         std::string type;
         Json::Value args;
-    } component_t;
+    };
 
 #if BOOST_VERSION >= 103600
     typedef boost::unordered_map<
@@ -83,7 +85,23 @@ struct config_t {
 
     struct {
         std::string hostname;
-    } runtime;
+        std::pair<uint16_t, uint16_t> ports;
+    } network;
+};
+
+struct port_mapper_t {
+    port_mapper_t(const std::pair<uint16_t, uint16_t>& limits);
+
+    uint16_t
+    get();
+
+    void
+    retain(uint16_t port);
+
+private:
+    // Free ports for automatic socket bindings.
+    std::priority_queue<uint16_t> m_ports;
+    boost::mutex m_mutex;
 };
 
 class context_t:
@@ -118,6 +136,11 @@ class context_t:
             return *m_io;
         }
 
+        port_mapper_t&
+        ports() {
+            return *m_port_mapper;
+        }
+
     public:
         const config_t config;
 
@@ -135,9 +158,12 @@ class context_t:
 
         instance_map_t m_instances;
         boost::mutex m_mutex;
-        
+
         std::unique_ptr<api::repository_t> m_repository;
         std::unique_ptr<zmq::context_t> m_io;
+        
+        // A port dispenser for automatic socket bindings.
+        std::unique_ptr<port_mapper_t> m_port_mapper;
 };
 
 template<class Category>

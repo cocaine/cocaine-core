@@ -47,7 +47,7 @@ class master_t:
         master_t(context_t& context,
                  const manifest_t& manifest,
                  const profile_t& profile,
-                 engine_t * engine);
+                 engine_t * const engine);
 
         ~master_t();
        
@@ -104,7 +104,7 @@ class master_t:
         const profile_t& m_profile;
 
         // The controlling engine.
-        engine_t * m_engine;
+        engine_t * const m_engine;
 
         // Slave health monitoring.
         ev::timer m_heartbeat_timer;

@@ -27,7 +27,8 @@ using namespace cocaine::io;
 socket_base_t::socket_base_t(context_t& context,
                              int type):
     m_socket(context.io(), type),
-    m_context(context)
+    m_context(context),
+    m_port(0)
 {
     int linger = 0;
    
@@ -40,6 +41,27 @@ socket_base_t::socket_base_t(context_t& context,
     m_socket.getsockopt(ZMQ_FD, &m_fd, &size);
 } 
 
+socket_base_t::~socket_base_t() {
+    if(m_port) {
+        m_context.ports().retain(m_port);
+    }
+}
+
+void
+socket_base_t::bind() {
+    boost::format format("tcp://%s:%d");
+
+    m_port = m_context.ports().get();
+    
+    format
+        % m_context.config.network.hostname
+        % m_port;
+
+    m_endpoint = format.str();
+
+    m_socket.bind(m_endpoint.c_str());
+}
+
 void
 socket_base_t::bind(const std::string& endpoint) {
     m_socket.bind(endpoint.c_str());
@@ -50,7 +72,7 @@ socket_base_t::bind(const std::string& endpoint) {
 
     if(position != std::string::npos) {
         m_endpoint = std::string("tcp://") +
-                     m_context.config.runtime.hostname +
+                     m_context.config.network.hostname +
                      endpoint.substr(position, std::string::npos);
     } else {
         m_endpoint = "<local>";

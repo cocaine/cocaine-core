@@ -20,6 +20,7 @@
 
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/operations.hpp>
+#include <boost/iterator/counting_iterator.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <netdb.h>
 
@@ -66,7 +67,11 @@ config_t::config_t(const std::string& path):
     config_path(path)
 {
     if(!fs::exists(config_path)) {
-        throw configuration_error_t("the configuration file doesn't exist");
+        throw configuration_error_t("the configuration path doesn't exist");
+    }
+
+    if(!fs::is_regular(config_path)) {
+        throw configuration_error_t("the configuration path doesn't point to a file");
     }
 
     fs::ifstream stream(config_path);
@@ -110,6 +115,7 @@ config_t::config_t(const std::string& path):
                  * result;
         
         memset(&hints, 0, sizeof(addrinfo));
+
         hints.ai_flags = AI_CANONNAME;
 
         int rv = getaddrinfo(hostname, NULL, &hints, &result);
@@ -122,11 +128,21 @@ config_t::config_t(const std::string& path):
             throw configuration_error_t("unable to determine the hostname");
         }
         
-        runtime.hostname = result->ai_canonname;
+        network.hostname = result->ai_canonname;
+
         freeaddrinfo(result);
     } else {
         throw system_error_t("unable to determine the hostname");
     }
+
+    // Port mapper
+
+    Json::Value range(root["port-mapper"]["range"]);
+
+    network.ports = {
+        range[0].asUInt(),
+        range[1].asUInt()
+    };
 }
 
 config_t::component_map_t
@@ -154,6 +170,33 @@ config_t::parse(const Json::Value& config) {
     return components;
 }
 
+port_mapper_t::port_mapper_t(const std::pair<uint16_t, uint16_t>& limits):
+    m_ports(
+        boost::make_counting_iterator(limits.first),
+        boost::make_counting_iterator(limits.second)
+    )
+{ }
+
+uint16_t
+port_mapper_t::get() {
+    boost::unique_lock<boost::mutex> lock(m_mutex);
+
+    if(m_ports.empty()) {
+        throw cocaine::error_t("no available ports left");
+    }
+
+    uint16_t port = m_ports.top();
+    m_ports.pop();
+
+    return port;
+}
+
+void
+port_mapper_t::retain(uint16_t port) {
+    boost::unique_lock<boost::mutex> lock(m_mutex);
+    m_ports.push(port);
+}
+
 context_t::context_t(config_t config_,
                      boost::shared_ptr<logging::sink_t> sink):
     config(config_),
@@ -172,7 +215,11 @@ context_t::context_t(config_t config_,
     // Register the plugins.
     m_repository->load(config.plugin_path);
 
+    // Initialize the ZeroMQ context.
     m_io.reset(new zmq::context_t(1));
+
+    // Initialize the port mapper.
+    m_port_mapper.reset(new port_mapper_t(config.network.ports));
 }
 
 context_t::~context_t() {
