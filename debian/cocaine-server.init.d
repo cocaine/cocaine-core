@@ -26,6 +26,10 @@ SCRIPTNAME=/etc/init.d/$NAME
 # Read configuration variable file if it is present
 [ -r /etc/default/$NAME ] && . /etc/default/$NAME
 
+if [ -f /etc/cocaine/cocaine.conf ]; then
+        CONFIG_PATH="/etc/cocaine/cocaine.conf"
+fi
+
 PIDFILE=/var/run/cocaine/cocained.pid
 
 # Load the VERBOSE setting and other rcS variables
