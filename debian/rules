@@ -5,7 +5,7 @@ include /usr/share/cdbs/1/rules/debhelper.mk
 
 install/cocaine-server::
 	install -d $(DEB_DESTDIR)etc/cocaine
-	install -m644 debian/cocaine-server.conf $(DEB_DESTDIR)etc/cocaine/cocaine.conf
+	install -m644 debian/cocaine-server.conf $(DEB_DESTDIR)etc/cocaine/cocaine-default.conf
 	
 install/cocaine-tools::
 	install -d $(DEB_DESTDIR)usr/bin
