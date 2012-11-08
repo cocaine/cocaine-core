@@ -43,7 +43,7 @@ void
 pipe_t::push(const char * chunk,
              size_t size)
 {
-    push({chunk, size});
+    push(std::string(chunk, size));
 }
 
 void

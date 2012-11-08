@@ -34,7 +34,7 @@ class slave_t:
     public boost::noncopyable
 {
     public:
-        enum state: int {
+        enum states: int {
             unknown,
             idle,
             busy,
@@ -65,7 +65,7 @@ class slave_t:
         process(const io::message<rpc::choke>& message);
 
     public:
-        state
+        states
         state() const {
             return m_state;
         }
@@ -99,7 +99,7 @@ class slave_t:
         ev::timer m_heartbeat_timer;
     
         // Current slave state.
-        enum state m_state;
+        states m_state;
 
         // Slave ID.
         const unique_id_t m_id;

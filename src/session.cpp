@@ -32,14 +32,14 @@ using namespace cocaine::engine;
 
 session_t::session_t(const boost::shared_ptr<event_t>& event,
                      engine_t * const engine):
-    state(state::inactive),
+    state(states::inactive),
     ptr(event),
     m_engine(engine),
-    m_slave(nullptr)
+    m_slave(NULL)
 { }
 
 session_t::~session_t() {
-    if(state != state::closed) {
+    if(state != states::closed) {
         ptr->on_close();
     }
 }
@@ -47,9 +47,9 @@ session_t::~session_t() {
 void
 session_t::attach(slave_t * const slave) {
     // TEST: Sessions can only be attached when inactive.
-    BOOST_ASSERT(state == state::inactive && !m_slave);
+    BOOST_ASSERT(state == states::inactive && !m_slave);
     
-    state = state::active;
+    state = states::active;
     m_slave = slave;
     
     boost::unique_lock<boost::mutex> lock(m_mutex);
@@ -69,16 +69,16 @@ session_t::attach(slave_t * const slave) {
 void
 session_t::detach() {
     // TEST: Sessions can only be dettached when active.
-    BOOST_ASSERT(state == state::active && m_slave);
+    BOOST_ASSERT(state == states::active && m_slave);
 
-    state = state::closed;
-    m_slave = nullptr;
+    state = states::closed;
+    m_slave = NULL;
 }
 
 void
 session_t::push(const std::string& data) {
     switch(state) {
-        case state::active: {
+        case states::active: {
             // TEST: An active session should always have a controlling slave.
             BOOST_ASSERT(m_slave);
 
@@ -100,7 +100,7 @@ session_t::push(const std::string& data) {
             break;
         }
 
-        case state::inactive: {
+        case states::inactive: {
             boost::unique_lock<boost::mutex> lock(m_mutex);
 
             // NOTE: Put the new chunk into the cache because the session is
@@ -110,14 +110,14 @@ session_t::push(const std::string& data) {
             break;
         }
 
-        case state::closed:
+        case states::closed:
             throw cocaine::error_t("session has been already closed");
     }
 }
 
 void
 session_t::close() {
-    if(state == state::active) {
+    if(state == states::active) {
         // TEST: An active session should always have a controlling slave.
         BOOST_ASSERT(m_slave);
 
@@ -129,5 +129,5 @@ session_t::close() {
 
     ptr->on_close();
 
-    state = state::closed;
+    state = states::closed;
 }

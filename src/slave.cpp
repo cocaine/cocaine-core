@@ -50,7 +50,7 @@ slave_t::slave_t(context_t& context,
     m_profile(profile),
     m_engine(engine),
     m_heartbeat_timer(engine->loop()),
-    m_state(state::unknown)
+    m_state(states::unknown)
 {
     api::category_traits<api::isolate_t>::ptr_type isolate = m_context.get<api::isolate_t>(
         m_profile.isolate.type,
@@ -78,7 +78,7 @@ slave_t::slave_t(context_t& context,
 }
 
 slave_t::~slave_t() {    
-    if(m_state != state::dead) {
+    if(m_state != states::dead) {
         terminate();
     }
 }
@@ -93,12 +93,12 @@ slave_t::assign(const boost::shared_ptr<session_t>& session) {
     );
 
     // TEST: Ensure that no session is being lost here.
-    BOOST_ASSERT(m_state == state::idle && !m_session);
+    BOOST_ASSERT(m_state == states::idle && !m_session);
     
     m_session = session;
     m_session->attach(this);
     
-    m_state = state::busy;
+    m_state = states::busy;
 }
 
 void
@@ -109,7 +109,7 @@ slave_t::process(const io::message<rpc::ping>&) {
 void
 slave_t::process(const io::message<rpc::chunk>& m) {
     // TEST: Ensure that the session is in fact here.
-    BOOST_ASSERT(m_state == state::busy && m_session);
+    BOOST_ASSERT(m_state == states::busy && m_session);
 
     zmq::message_t& message = boost::get<0>(m);
 
@@ -121,7 +121,7 @@ slave_t::process(const io::message<rpc::chunk>& m) {
         message.size()
     );
 
-    if(m_session->state == session_t::state::active) {
+    if(m_session->state == session_t::states::active) {
         m_session->ptr->on_chunk(message.data(), message.size());
         rearm();
     }
@@ -129,7 +129,7 @@ slave_t::process(const io::message<rpc::chunk>& m) {
 
 void
 slave_t::process(const io::message<rpc::error>& m) {
-    if(m_state != state::busy) {
+    if(m_state != states::busy) {
         // NOTE: This means that the slave has failed to start and reported
         // an error, without having a session assigned yet.
         return;
@@ -150,7 +150,7 @@ slave_t::process(const io::message<rpc::error>& m) {
         message
     );
 
-    if(m_session->state == session_t::state::active) {
+    if(m_session->state == session_t::states::active) {
         m_session->ptr->on_error(code, message);
         rearm();
     }
@@ -159,7 +159,7 @@ slave_t::process(const io::message<rpc::error>& m) {
 void
 slave_t::process(const io::message<rpc::choke>&) {
     // TEST: Ensure that the session is in fact here.
-    BOOST_ASSERT(m_state == state::busy && m_session);
+    BOOST_ASSERT(m_state == states::busy && m_session);
     
     COCAINE_LOG_DEBUG(
         m_log,
@@ -168,21 +168,21 @@ slave_t::process(const io::message<rpc::choke>&) {
         m_id
     );
 
-    if(m_session->state == session_t::state::active) {
+    if(m_session->state == session_t::states::active) {
         m_session->ptr->on_close();
         m_session->detach();
     }
 
     m_session.reset();
 
-    m_state = state::idle;
+    m_state = states::idle;
     
     rearm();
 }
 
 void
 slave_t::on_timeout(ev::timer&, int) {
-    if(m_state == state::busy) {
+    if(m_state == states::busy) {
         m_session->ptr->on_error(
             timeout_error, 
             "the session has timed out"
@@ -196,7 +196,7 @@ slave_t::on_timeout(ev::timer&, int) {
 
 void
 slave_t::rearm() {
-    if(m_state == state::unknown) {
+    if(m_state == states::unknown) {
         COCAINE_LOG_DEBUG(
             m_log,
             "slave %s came alive in %.03f seconds",
@@ -207,12 +207,12 @@ slave_t::rearm() {
             )
         );
 
-        m_state = state::idle;
+        m_state = states::idle;
     }
 
     float timeout = m_profile.heartbeat_timeout;
 
-    if(m_state == state::busy && m_session->ptr->policy.timeout > 0.0f) {
+    if(m_state == states::busy && m_session->ptr->policy.timeout > 0.0f) {
         timeout = m_session->ptr->policy.timeout;
     }
 
@@ -232,7 +232,7 @@ slave_t::terminate() {
     COCAINE_LOG_DEBUG(m_log, "terminating slave %s", m_id);
 
     // Ensure that the slave is not being overkilled.
-    BOOST_ASSERT(m_state != state::dead);
+    BOOST_ASSERT(m_state != states::dead);
 
     // Ensure that no session is being lost here.
     BOOST_ASSERT(!m_session);
@@ -242,5 +242,5 @@ slave_t::terminate() {
     m_handle->terminate();
     m_handle.reset();
 
-    m_state = state::dead;
+    m_state = states::dead;
 }

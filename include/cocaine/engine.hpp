@@ -67,7 +67,7 @@ class session_queue_t:
 class engine_t:
     public boost::noncopyable
 {
-    enum state: int {
+    enum states: int {
         running,
         broken,
         stopping,
@@ -137,7 +137,7 @@ class engine_t:
         balance();
 
         void
-        shutdown(state target);
+        shutdown(states target);
         
         void
         stop();

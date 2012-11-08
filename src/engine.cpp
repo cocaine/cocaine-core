@@ -74,7 +74,7 @@ engine_t::engine_t(context_t& context,
     )),
     m_manifest(manifest),
     m_profile(profile),
-    m_state(state::stopped),
+    m_state(states::stopped),
     m_bus(new rpc_channel_t(context, ZMQ_ROUTER, m_manifest.name)),
     m_ctl(new control_channel_t(context, ZMQ_PAIR)),
     m_bus_watcher(m_loop),
@@ -136,12 +136,12 @@ engine_t::engine_t(context_t& context,
 }
 
 engine_t::~engine_t() {
-    BOOST_ASSERT(m_state == state::stopped);
+    BOOST_ASSERT(m_state == states::stopped);
 }
 
 void
 engine_t::run() {
-    m_state = state::running;
+    m_state = states::running;
     m_loop.loop();
 }
 
@@ -151,7 +151,7 @@ engine_t::enqueue(const boost::shared_ptr<event_t>& event,
 {
     boost::unique_lock<session_queue_t> lock(m_queue);
 
-    if(m_state != state::running) {
+    if(m_state != states::running) {
         throw cocaine::error_t("engine is not active");
     }
 
@@ -245,7 +245,7 @@ engine_t::on_cleanup(ev::timer&, int) {
     corpse_list_t corpses;
 
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
-        if(it->second->state() == slave_t::state::dead) {
+        if(it->second->state() == slave_t::states::dead) {
             corpses.emplace_back(it->first);
         }
     }
@@ -363,7 +363,7 @@ engine_t::process_bus_events() {
 
                 m_pool.erase(slave);
 
-                if(m_state != state::running && m_pool.empty()) {
+                if(m_state != states::running && m_pool.empty()) {
                     // If it was the last slave, shut the engine down.
                     stop();
                     return;
@@ -399,7 +399,7 @@ engine_t::process_bus_events() {
 
                 if(code == server_error) {
                     COCAINE_LOG_ERROR(m_log, "the app seems to be broken — %s", message);
-                    shutdown(state::broken);
+                    shutdown(states::broken);
                     return;
                 }
 
@@ -457,7 +457,7 @@ engine_t::process_ctl_events() {
                 std::count_if(
                     m_pool.begin(),
                     m_pool.end(),
-                    select::state<slave_t::state::busy>()
+                    select::state<slave_t::states::busy>()
                 )
             );
 
@@ -469,7 +469,7 @@ engine_t::process_ctl_events() {
         }
 
         case io::message<control::terminate>::value:
-            shutdown(state::stopping);
+            shutdown(states::stopping);
             break;
 
         default:
@@ -487,7 +487,7 @@ engine_t::pump() {
             std::find_if(
                 m_pool.begin(),
                 m_pool.end(),
-                select::state<slave_t::state::idle>()
+                select::state<slave_t::states::idle>()
             )
         );
 
@@ -508,7 +508,7 @@ engine_t::pump() {
             // Notify one of the blocked enqueue operations.
             m_condition.notify_one();
            
-            if(session->state == session_t::state::closed) {
+            if(session->state == session_t::states::closed) {
                 continue;
             }
             
@@ -590,7 +590,7 @@ engine_t::balance() {
 }
 
 void
-engine_t::shutdown(state target) {
+engine_t::shutdown(states target) {
     boost::unique_lock<session_queue_t> lock(m_queue);
 
     m_state = target;
@@ -625,8 +625,8 @@ engine_t::shutdown(state target) {
         it != m_pool.end();
         ++it)
     {
-        if(it->second->state() == slave_t::state::idle ||
-           it->second->state() == slave_t::state::busy)
+        if(it->second->state() == slave_t::states::idle ||
+           it->second->state() == slave_t::states::busy)
         {
             send(
                 it->second->id(),
@@ -662,8 +662,8 @@ engine_t::stop() {
     // NOTE: This will force the slave pool termination via smart pointer deleters.
     m_pool.clear();
 
-    if(m_state == state::stopping) {
-        m_state = state::stopped;
+    if(m_state == states::stopping) {
+        m_state = states::stopped;
         m_loop.unloop(ev::ALL);
     }
 }

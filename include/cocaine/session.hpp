@@ -35,7 +35,7 @@
 namespace cocaine { namespace engine {
 
 struct session_t {
-    enum state: int {
+    enum states: int {
         inactive,
         active,
         closed
