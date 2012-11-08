@@ -18,48 +18,41 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#ifndef COCAINE_EVENTS_HPP
-#define COCAINE_EVENTS_HPP
+#include "cocaine/pipe.hpp"
 
-#include "cocaine/common.hpp"
+#include "cocaine/session.hpp"
 
-namespace cocaine { namespace engine { namespace events {
+using namespace cocaine::engine;
 
-struct heartbeat { };
+pipe_t::pipe_t(const boost::shared_ptr<session_t>& session):
+    ptr(session)
+{ }
 
-struct terminate { };
+void
+pipe_t::push(const std::string& chunk) {
+    boost::shared_ptr<session_t> session(ptr.lock());
 
-struct invoke {
-    invoke(const boost::shared_ptr<session_t>& session_,
-           const boost::weak_ptr<engine::master_t>& master_):
-        session(session_),
-        master(master_)
-    { }
+    if(!session) {
+        throw cocaine::error_t("session does not exists");
+    }
 
-    const boost::shared_ptr<session_t>& session;
-    const boost::weak_ptr<engine::master_t>& master;
-};
+    session->push(chunk);
+}
 
-struct chunk {
-    chunk(zmq::message_t& message_):
-        message(message_)
-    { }
+void
+pipe_t::push(const char * chunk,
+             size_t size)
+{
+    push({chunk, size});
+}
 
-    zmq::message_t& message;
-};
+void
+pipe_t::close() {
+    boost::shared_ptr<session_t> session(ptr.lock());
 
-struct error {
-    error(int code_, const std::string& message_):
-        code(code_),
-        message(message_)
-    { }
+    if(!session) {
+        return;
+    }
 
-    const int code;
-    const std::string& message;
-};
-
-struct choke { };
-
-}}} // namespace cocaine::engine::events
-
-#endif
+    session->close();
+}

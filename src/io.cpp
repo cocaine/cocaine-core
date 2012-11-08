@@ -32,7 +32,7 @@ socket_base_t::socket_base_t(context_t& context,
 {
     int linger = 0;
    
-    // Disable lingering on context termination. 
+    // Disable socket lingering on context termination. 
     m_socket.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
 
     size_t size = sizeof(m_fd);

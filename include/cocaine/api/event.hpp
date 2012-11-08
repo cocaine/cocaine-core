@@ -18,53 +18,56 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#ifndef COCAINE_JOB_HPP
-#define COCAINE_JOB_HPP
+#ifndef COCAINE_EVENT_API_HPP
+#define COCAINE_EVENT_API_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/events.hpp"
 #include "cocaine/policy.hpp"
 
 #include "cocaine/helpers/birth_control.hpp"
 
 namespace cocaine { namespace engine {
 
-struct job_t:
-    public birth_control<job_t>
+struct event_t:
+    public birth_control<event_t>
 {
-    job_t(const std::string& event_):
-        event(event_)
+    event_t(const std::string& type_):
+        type(type_)
     { }
 
-    job_t(const std::string& event_,
-          policy_t policy_):
-        event(event_),
+    event_t(const std::string& type_,
+            policy_t policy_):
+        type(type_),
         policy(policy_)
     { }
     
     virtual
-    ~job_t() {
+    ~event_t() {
         // Empty.
     }
 
 public:
     virtual
     void
-    react(const events::chunk&) { };
+    on_chunk(const void * /* chunk */,
+             size_t /* size */)
+    { };
     
     virtual
     void
-    react(const events::error&) { };
+    on_error(error_code,
+             const std::string& /* message */)
+    { };
     
     virtual
     void
-    react(const events::choke&) { };
+    on_close() { };
 
 public:
-    // Wrapped event type.
-    const std::string event;
+    // Event type.
+    const std::string type;
     
-    // Execution policy.
+    // Event execution policy.
     const policy_t policy;
 };
 

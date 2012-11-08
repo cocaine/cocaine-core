@@ -48,7 +48,7 @@ struct error_t:
         boost::format message(format);
 
         try {
-            // Recursively expand the argument pack.
+            // NOTE: Recursively expand the argument pack.
             substitute(message, args...);
         } catch(const boost::io::format_error& e) {
             m_message = "<unable to format the message>";

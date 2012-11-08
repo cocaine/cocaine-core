@@ -116,7 +116,7 @@ class repository_t:
         boost::shared_ptr<logging::logger_t> m_log;
 
         // NOTE: Used to unload all the plugins on shutdown.
-        // Cannot use forward declaration here due to implementation
+        // Cannot use a forward declaration here due to the implementation
         // details.
         std::vector<lt_dlhandle> m_plugins;
 

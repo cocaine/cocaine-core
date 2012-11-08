@@ -18,67 +18,54 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#ifndef COCAINE_MASTER_HPP
-#define COCAINE_MASTER_HPP
+#ifndef COCAINE_SLAVE_HPP
+#define COCAINE_SLAVE_HPP
 
 #include "cocaine/common.hpp"
 #include "cocaine/asio.hpp"
-#include "cocaine/events.hpp"
+#include "cocaine/rpc.hpp"
 #include "cocaine/unique_id.hpp"
 
 #include "cocaine/api/isolate.hpp"
 
 namespace cocaine { namespace engine {
 
-class master_t:
+class slave_t:
     public boost::noncopyable
 {
     public:
-        struct state {
-            enum value: int {
-                unknown,
-                idle,
-                busy,
-                dead
-            };
+        enum state: int {
+            unknown,
+            idle,
+            busy,
+            dead
         };
 
     public:
-        master_t(context_t& context,
-                 const manifest_t& manifest,
-                 const profile_t& profile,
-                 engine_t * const engine);
+        slave_t(context_t& context,
+                const manifest_t& manifest,
+                const profile_t& profile,
+                engine_t * const engine);
 
-        ~master_t();
+        ~slave_t();
+
+        void
+        assign(const boost::shared_ptr<session_t>& session);
        
         void
-        process(const events::heartbeat& event);
-        
-        void
-        process(const events::terminate& event);
- 
-        void
-        process(const events::invoke& event);
- 
-        void
-        process(const events::chunk& event);
- 
-        void
-        process(const events::error& event);
- 
-        void
-        process(const events::choke& event);
+        process(const io::message<rpc::ping>& message);
 
         void
-        push(const std::string& chunk);
+        process(const io::message<rpc::chunk>& message);
+
+        void
+        process(const io::message<rpc::error>& message);
+
+        void
+        process(const io::message<rpc::choke>& message);
 
     public:
-        bool
-        operator==(const master_t& other) const {
-            return m_id == other.m_id;
-        }
-
-        state::value
+        state
         state() const {
             return m_state;
         }
@@ -91,11 +78,13 @@ class master_t:
     private:
         void
         on_timeout(ev::timer&, int);
- 
-    public:
-        // The current session.
-        boost::shared_ptr<session_t> session;
 
+        void
+        rearm();
+
+        void
+        terminate();
+ 
     private:
         context_t& m_context; 
         boost::shared_ptr<logging::logger_t> m_log;
@@ -103,20 +92,23 @@ class master_t:
         const manifest_t& m_manifest;
         const profile_t& m_profile;
 
-        // The controlling engine.
+        // Controlling engine.
         engine_t * const m_engine;
 
         // Slave health monitoring.
         ev::timer m_heartbeat_timer;
     
-        // The current slave state.
-        state::value m_state;
+        // Current slave state.
+        enum state m_state;
 
-        // Host-unique identifier for this slave.
+        // Slave ID.
         const unique_id_t m_id;
 
-        // The actual slave handle.    
+        // Actual slave handle.    
         std::unique_ptr<api::handle_t> m_handle;
+
+        // Current job.
+        boost::shared_ptr<session_t> m_session;
 };
 
 }} // namespace cocaine::engine

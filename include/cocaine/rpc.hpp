@@ -44,6 +44,7 @@ namespace rpc {
         typedef rpc_plane_tag tag;
         
         typedef boost::tuple<
+            const unique_id_t&,
             const std::string&
         > tuple_type;
     };

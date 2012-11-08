@@ -84,9 +84,10 @@ ADD_LIBRARY(cocaine-core SHARED
     src/archive
     src/engine
     src/manifest
-    src/master
+    src/pipe
     src/profile
-    src/session)
+    src/session
+    src/slave)
 
 TARGET_LINK_LIBRARIES(cocaine-core
     archive
@@ -98,16 +99,16 @@ SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     VERSION 2
     COMPILE_FLAGS "-std=c++0x")
 
-ADD_EXECUTABLE(cocaine-slave
-    src/slave/slave
+ADD_EXECUTABLE(cocaine-generic-host
     src/server/syslog
-    src/slave/main)
+    src/generic-host/host
+    src/generic-host/main)
 
-TARGET_LINK_LIBRARIES(cocaine-slave
+TARGET_LINK_LIBRARIES(cocaine-generic-host
     boost_program_options-mt
     cocaine-core)
 
-SET_TARGET_PROPERTIES(cocaine-slave PROPERTIES
+SET_TARGET_PROPERTIES(cocaine-generic-host PROPERTIES
     COMPILE_FLAGS "-std=c++0x")
 
 ADD_EXECUTABLE(cocained
@@ -128,7 +129,7 @@ INSTALL(
     TARGETS
         cocaine-common
         cocaine-core
-        cocaine-slave
+        cocaine-generic-host
         cocained
         json
     RUNTIME DESTINATION bin COMPONENT runtime

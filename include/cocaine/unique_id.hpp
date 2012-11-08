@@ -35,6 +35,7 @@ struct unique_id_t {
         uuid_generate(reinterpret_cast<unsigned char*>(uuid));
     }
 
+    explicit
     unique_id_t(const uninitialized_t&) {
         // Empty.
     }
@@ -53,7 +54,7 @@ struct unique_id_t {
 
     std::string
     string() const {
-        // 36-character long UUID plus trailing zero.
+        // A storage for a 36-character long string plus the trailing zero.
         char unparsed[37];
 
         uuid_unparse_lower(
@@ -65,9 +66,18 @@ struct unique_id_t {
     }
 
     bool
-    operator==(const unique_id_t& other) const {
+    operator == (const unique_id_t& other) const {
         return uuid[0] == other.uuid[0] &&
                uuid[1] == other.uuid[1];
+    }
+
+    friend
+    std::ostream&
+    operator << (std::ostream& stream,
+                 const unique_id_t& id)
+    {
+        stream << id.string();
+        return stream;
     }
 
     // NOTE: Store the 128-bit UUID as two 64-bit unsigned integers.
@@ -82,15 +92,6 @@ static inline
 size_t
 hash_value(const unique_id_t& id) {
     return boost::hash_range(&id.uuid[0], &id.uuid[1]);
-}
-
-static inline
-std::ostream&
-operator<<(std::ostream& stream,
-           const unique_id_t& id)
-{
-    stream << id.string();
-    return stream;
 }
 
 } // namespace cocaine

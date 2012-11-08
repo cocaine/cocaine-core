@@ -38,8 +38,8 @@ struct manifest_t:
     std::string name,
                 slave;
 
-    // NOTE: The actual apps are hosted by the sandbox plugins.
-    // This one describes the sandbox type and its instantiation arguments.
+    // NOTE: The apps are hosted by the sandbox plugins. This one describes
+    // the sandbox type and its instantiation arguments.
     config_t::component_t sandbox;
 
     // A configuration map for drivers, similar to the generic one found

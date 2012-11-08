@@ -33,14 +33,13 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/asio.hpp"
-#include "cocaine/io.hpp"
-#include "cocaine/unique_id.hpp"
+#include "cocaine/rpc.hpp"
 
 #include "cocaine/api/isolate.hpp"
 
 namespace cocaine { namespace engine {
 
-class job_queue_t:
+class session_queue_t:
     public std::deque<
         boost::shared_ptr<session_t>
     >
@@ -68,6 +67,13 @@ class job_queue_t:
 class engine_t:
     public boost::noncopyable
 {
+    enum state: int {
+        running,
+        broken,
+        stopping,
+        stopped
+    };
+
     public:
         engine_t(context_t& context,
                  const manifest_t& manifest,
@@ -80,14 +86,14 @@ class engine_t:
 
         // Scheduling
         
-        boost::weak_ptr<engine::session_t>
-        enqueue(const boost::shared_ptr<job_t>& job,
-                mode::value mode = mode::normal);
+        boost::shared_ptr<engine::pipe_t>
+        enqueue(const boost::shared_ptr<event_t>& event,
+                engine::mode mode = engine::mode::normal);
 
-        template<class T>
+        template<class Event>
         bool
         send(const unique_id_t& uuid,
-             const T& message);
+             const io::message<Event>& message);
 
     public:
         ev::loop_ref&
@@ -131,7 +137,7 @@ class engine_t:
         balance();
 
         void
-        shutdown();
+        shutdown(state target);
         
         void
         stop();
@@ -143,26 +149,25 @@ class engine_t:
         const manifest_t& m_manifest;
         const profile_t& m_profile;
 
-        struct state {
-            enum value: int {
-                running,
-                broken,
-                stopping,
-                stopped
-            };
-        };
+        // Engine state
 
         std::atomic<int> m_state;
 
         // I/O
         
-        std::unique_ptr<
-            io::channel<io::policies::shared>
-        > m_bus;
+        typedef io::channel<
+            rpc::rpc_plane_tag,
+            io::policies::shared
+        > rpc_channel_t;
+
+        std::unique_ptr<rpc_channel_t> m_bus;
         
-        std::unique_ptr<
-            io::channel<io::policies::unique>
-        > m_ctl;
+        typedef io::channel<
+            control::control_plane_tag,
+            io::policies::unique
+        > control_channel_t;
+
+        std::unique_ptr<control_channel_t> m_ctl;
 
         // Event loop
         
@@ -179,9 +184,9 @@ class engine_t:
 
         ev::async m_notification;
 
-        // Job queue
+        // Session queue
         
-        job_queue_t m_queue;
+        session_queue_t m_queue;
         boost::condition_variable_any m_condition;
 
         // Slave pool
@@ -192,7 +197,7 @@ class engine_t:
         typedef std::map<
 #endif
             unique_id_t,
-            boost::shared_ptr<master_t>
+            boost::shared_ptr<slave_t>
         > pool_map_t;
         
         pool_map_t m_pool;
@@ -203,14 +208,12 @@ class engine_t:
         api::category_traits<api::isolate_t>::ptr_type m_isolate;
 };
 
-template<class T>
+template<class Event>
 bool
 engine_t::send(const unique_id_t& uuid,
-               const T& message)
+               const io::message<Event>& message)
 {
-    boost::unique_lock<
-        io::channel<io::policies::shared>
-    > lock(*m_bus);
+    boost::unique_lock<rpc_channel_t> lock(*m_bus);
 
     io::scoped_option<
         io::options::send_timeout,

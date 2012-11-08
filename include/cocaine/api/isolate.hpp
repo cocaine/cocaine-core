@@ -60,7 +60,7 @@ class isolate_t:
               const std::map<std::string, std::string>& environment) = 0;
 
     protected:
-        isolate_t(context_t& context,
+        isolate_t(context_t&,
                   const std::string&, /* name */
                   const Json::Value&  /* args */)
         {

@@ -21,111 +21,113 @@
 #include "cocaine/session.hpp"
 
 #include "cocaine/engine.hpp"
-#include "cocaine/master.hpp"
 #include "cocaine/rpc.hpp"
+#include "cocaine/slave.hpp"
 
-#include "cocaine/api/job.hpp"
+#include "cocaine/api/event.hpp"
 
 #include "cocaine/traits/unique_id.hpp"
 
 using namespace cocaine::engine;
 
-session_t::session_t(const boost::shared_ptr<job_t>& job_):
-    state(state::unknown),
-    job(job_)
+session_t::session_t(const boost::shared_ptr<event_t>& event,
+                     engine_t * const engine):
+    state(state::inactive),
+    ptr(event),
+    m_engine(engine),
+    m_slave(nullptr)
 { }
 
 session_t::~session_t() {
-    // TEST: Active jobs cannot be destroyed.
-    BOOST_ASSERT(state != state::processing);
+    if(state != state::closed) {
+        ptr->on_close();
+    }
 }
 
 void
-session_t::process(const events::invoke& event) {
-    // TEST: Jobs cannot be invoked when already completed.
-    BOOST_ASSERT(state != state::complete);
+session_t::attach(slave_t * const slave) {
+    // TEST: Sessions can only be attached when inactive.
+    BOOST_ASSERT(state == state::inactive && !m_slave);
     
-    state = state::processing;
-
-    // The controlling master.
-    m_master = event.master;
+    state = state::active;
+    m_slave = slave;
     
-    boost::unique_lock<boost::mutex> lock(m_mutex);    
+    boost::unique_lock<boost::mutex> lock(m_mutex);
 
     if(!m_cache.empty()) {
-        boost::shared_ptr<master_t> owner(m_master.lock());
-
-        // TEST: There cannot be any orphan jobs.
-        BOOST_ASSERT(owner);
-
         for(chunk_list_t::const_iterator it = m_cache.begin();
             it != m_cache.end();
             ++it)
         {
-            owner->push(*it);
+            push(*it);
         }
-    }
-}
-
-void
-session_t::process(const events::chunk& event) {
-    // TEST: Sessions cannot process chunks when not active.
-    BOOST_ASSERT(state == state::processing);
-
-    job->react(event);
-}
-
-void
-session_t::process(const events::error& event) {
-    // TEST: Sessions cannot be failed more than once.
-    BOOST_ASSERT(state != state::complete);
-    
-    state = state::complete;
-    
-    {
-        boost::unique_lock<boost::mutex> lock(m_mutex);    
+        
         m_cache.clear();
     }
-
-    job->react(event);
 }
 
 void
-session_t::process(const events::choke& event) {
-    // TEST: Sessions cannot be completed more than once.
-    BOOST_ASSERT(state != state::complete);
+session_t::detach() {
+    // TEST: Sessions can only be dettached when active.
+    BOOST_ASSERT(state == state::active && m_slave);
 
-    state = state::complete;
-    
-    {
-        boost::unique_lock<boost::mutex> lock(m_mutex);    
-        m_cache.clear();
-    }
-    
-    job->react(event);
+    state = state::closed;
+    m_slave = nullptr;
 }
 
 void
 session_t::push(const std::string& data) {
-    if(state == state::complete) {
-        throw error_t("job has been already completed");
+    switch(state) {
+        case state::active: {
+            // TEST: An active session should always have a controlling slave.
+            BOOST_ASSERT(m_slave);
+
+            zmq::message_t chunk(data.size());
+
+            memcpy(
+                chunk.data(),
+                data.data(),
+                data.size()
+            );
+
+            io::message<rpc::chunk> message(chunk);
+
+            m_engine->send(
+                m_slave->id(),
+                message
+            );
+        
+            break;
+        }
+
+        case state::inactive: {
+            boost::unique_lock<boost::mutex> lock(m_mutex);
+
+            // NOTE: Put the new chunk into the cache because the session is
+            // not yet assigned to a slave.
+            m_cache.emplace_back(data);
+
+            break;
+        }
+
+        case state::closed:
+            throw cocaine::error_t("session has been already closed");
+    }
+}
+
+void
+session_t::close() {
+    if(state == state::active) {
+        // TEST: An active session should always have a controlling slave.
+        BOOST_ASSERT(m_slave);
+
+        m_engine->send(
+            m_slave->id(),
+            io::message<rpc::choke>()
+        );
     }
 
-    {
-        boost::unique_lock<boost::mutex> lock(m_mutex);
+    ptr->on_close();
 
-        // NOTE: Put the new chunk into the cache (in case
-        // the job will be retried or if the job is not yet
-        // assigned to the slave). 
-        m_cache.emplace_back(data);
-    }
-
-    if(state == state::processing) {
-        boost::shared_ptr<master_t> owner(m_master.lock());
-   
-        // TEST: There cannot be any orphan jobs.
-        BOOST_ASSERT(owner);
-
-        owner->push(data);
-    }
+    state = state::closed;
 }

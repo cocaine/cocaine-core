@@ -22,7 +22,6 @@
 #define COCAINE_SESSION_HPP
 
 #include <boost/thread/mutex.hpp>
-#include <boost/weak_ptr.hpp>
 
 #if !defined(__clang__) && defined(__GNUC__) && (__GNUC__ == 4 && __GNUC_MINOR__ <= 4)
  #include <cstdatomic>
@@ -31,65 +30,60 @@
 #endif
 
 #include "cocaine/common.hpp"
-#include "cocaine/events.hpp"
 #include "cocaine/unique_id.hpp"
 
 namespace cocaine { namespace engine {
 
 struct session_t {
-    struct state {
-        enum value: int {
-            unknown,
-            processing,
-            complete
-        };
+    enum state: int {
+        inactive,
+        active,
+        closed
     };
 
 public:
-    session_t(const boost::shared_ptr<job_t>& job_);
-    
+    session_t(const boost::shared_ptr<event_t>& event,
+              engine_t * const engine);
+
     ~session_t();
 
     void
-    process(const events::invoke&);
-    
+    attach(slave_t * const slave);
+
     void
-    process(const events::chunk&);
-    
-    void
-    process(const events::error&);
-    
-    void
-    process(const events::choke&);
+    detach();
 
     void
     push(const std::string& chunk);
 
+    void
+    close();
+
 public:
-    // Current session state.
+    // Job state.
     std::atomic<int> state;
 
-    // Session ID.
+    // Job ID.
     const unique_id_t id;
 
-    // Tracked job.
-    boost::shared_ptr<job_t> job;
+    // Tracked event itself.
+    const boost::shared_ptr<event_t> ptr;
 
 private:
-    boost::mutex m_mutex;
-    
-    // Request chunk cache.
+    engine_t * const m_engine;
 
     typedef std::vector<
         std::string
     > chunk_list_t;
 
+    // Request chunk cache.
     chunk_list_t m_cache;
+    boost::mutex m_mutex;
 
-    // Weak reference to job's master.
-    boost::weak_ptr<master_t> m_master;
+    // Responsible slave.
+    slave_t * m_slave;
 };
 
-}} // namespace cocaine::engine
+}}
 
 #endif

@@ -22,7 +22,7 @@
 #define COCAINE_FORWARDS_HPP
 
 namespace cocaine {
-    // Core configuration.
+    // Common configuration.
     struct config_t;
 
     // Runtime context.
@@ -32,25 +32,34 @@ namespace cocaine {
     struct manifest_t;
     struct profile_t;
 
+    namespace rpc {
+        struct rpc_plane_tag;
+    }
+
+    namespace control {
+        struct control_plane_tag;
+    }
+
     // App container.
     class app_t;
 
     namespace engine {
         // Queueing modes.
-        struct mode {
-            enum value {
-                normal,
-                blocking
-            };
+        enum mode: int {
+            normal,
+            blocking
         };
 
         // Execution engine.
         class engine_t;
-        class master_t;
+        class slave_t;
         
-        // Request abstractions.
-        struct job_t;
+        // Event abstractions.
+        struct event_t;
         struct session_t;
+
+        // Session control pipe.
+        struct pipe_t;
     }
 
     namespace io {
@@ -59,8 +68,8 @@ namespace cocaine {
             struct shared;
         }
 
-        // Tuple-based RPC channel.
-        template<class>
+        // RPC channel.
+        template<class, class>
         class channel;
     }
 
@@ -71,6 +80,8 @@ namespace cocaine {
         // Logging proxy.
         class logger_t;
     }
+
+    struct unique_id_t;
 }
 
 namespace zmq {

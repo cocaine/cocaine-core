@@ -45,7 +45,7 @@
 
 namespace cocaine { namespace io {
 
-// Custom message container
+// Custom type serialization mechanics
 
 template<class T>
 struct raw {
@@ -69,8 +69,6 @@ raw<const T>
 protect(const T& object) {
     return raw<const T>(object);
 }
-
-// Customized type serialization
 
 template<class T>
 struct raw_traits;
@@ -283,6 +281,14 @@ class socket:
             return true;
         }
 
+        template<class T>
+        bool
+        recv(raw<T>&& result,
+             int flags = 0)
+        {
+            return recv(result, flags);
+        }
+
         bool
         recv_tuple(const null_type&,
                    int __attribute__((unused)) flags = 0) const
@@ -298,6 +304,14 @@ class socket:
             return recv(o.get_head(), flags);
         }
 
+        template<class Head>
+        bool
+        recv_tuple(cons<Head, null_type>&& o,
+                   int flags = 0)
+        {
+            return recv(o.get_head(), flags);
+        }
+
         template<class Head, class Tail>
         bool
         recv_tuple(cons<Head, Tail>& o,
@@ -305,6 +319,15 @@ class socket:
         {
             return recv(o.get_head(), flags) &&
                    recv_tuple(o.get_tail(), flags | ZMQ_NOBLOCK);
+        }
+
+        template<class Head, class Tail>
+        bool
+        recv_tuple(cons<Head, Tail>&& o,
+                   int flags = 0)
+        {
+            return recv(o.get_head(), flags) &&
+                   recv_tuple(std::move(o.get_tail()), flags | ZMQ_NOBLOCK);
         }
 
         void
@@ -452,7 +475,7 @@ template<
         typename Event::tag
     >::category
 >
-struct get:
+struct enumerate:
     public boost::mpl::distance<
         typename boost::mpl::begin<Category>::type,
         typename boost::mpl::find<Category, Event>::type
@@ -466,7 +489,8 @@ struct get:
 
 template<class Event> 
 struct message:
-    public event_traits<Event>::tuple_type
+    public event_traits<Event>::tuple_type,
+    public enumerate<Event>
 {
     template<typename... Args>
     message(Args&&... args):
@@ -476,7 +500,10 @@ struct message:
 
 // RPC channel
 
-template<class SharingPolicy>
+template<
+    class Tag,
+    class SharingPolicy
+>
 class channel:
     public socket<SharingPolicy>
 {
@@ -502,13 +529,16 @@ class channel:
         // Sending
 
         template<class Event>
-        bool
+        typename boost::enable_if<
+            boost::is_same<Tag, typename Event::tag>,
+            bool
+        >::type
         send_message(const message<Event>& object) {
             const bool multipart = boost::tuples::length<
                 typename event_traits<Event>::tuple_type
             >::value;
 
-            return this->send(get<Event>::value, multipart ? ZMQ_SNDMORE : 0) &&
+            return this->send(message<Event>::value, multipart ? ZMQ_SNDMORE : 0) &&
                    this->send_tuple(object);
         }
 };

@@ -75,8 +75,9 @@ process_t::spawn(const std::string& path,
     pid_t pid = ::fork();
 
     if(pid == 0) {
-        char * argv[args.size() * 2 + 2],
-             * envp[environment.size() + 1];
+        // NOTE: Don't bother freeing these ever.
+        char ** argv = new char * [args.size() * 2 + 2],
+             ** envp = new char * [environment.size() + 1];
 
         // NOTE: The first element is the executable path,
         // the last one should be null pointer.
@@ -116,24 +117,24 @@ process_t::spawn(const std::string& path,
         int rv = ::execve(argv[0], argv, envp);
 
         if(rv != 0) {
-            char buffer[1024];
+            char buffer[1024],
+                 * message;
 
 #ifdef _GNU_SOURCE
-            char * message;
             message = ::strerror_r(errno, buffer, 1024);
 #else
             ::strerror_r(errno, buffer, 1024);
+
+            // NOTE: XSI-compliant strerror_r() returns int instead of the
+            // string buffer, so complete the job manually.
+            message = buffer;
 #endif
 
             COCAINE_LOG_ERROR(
                 m_log,
                 "unable to execute '%s' - %s",
                 path,
-#ifdef _GNU_SOURCE
                 message
-#else
-                buffer
-#endif
             );
 
             std::exit(EXIT_FAILURE);

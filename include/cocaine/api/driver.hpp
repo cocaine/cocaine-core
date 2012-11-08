@@ -50,7 +50,7 @@ class driver_t:
         }
 
     protected:
-        driver_t(context_t& context,
+        driver_t(context_t&,
                  const std::string& /* name */,
                  const Json::Value& /* args */,
                  engine::engine_t& engine):

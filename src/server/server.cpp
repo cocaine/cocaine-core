@@ -24,7 +24,7 @@
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
-#include "cocaine/api/job.hpp"
+#include "cocaine/api/event.hpp"
 #include "cocaine/api/storage.hpp"
 
 using namespace cocaine;
@@ -346,8 +346,8 @@ Json::Value server_t::info() const {
 
     result["identity"] = m_context.config.network.hostname;
 
-    result["jobs"]["pending"] = static_cast<Json::LargestUInt>(engine::job_t::objects_alive());
-    result["jobs"]["processed"] = static_cast<Json::LargestUInt>(engine::job_t::objects_created());
+    result["events"]["pending"] = static_cast<Json::LargestUInt>(engine::event_t::objects_alive());
+    result["events"]["processed"] = static_cast<Json::LargestUInt>(engine::event_t::objects_created());
 
     result["sockets"] = static_cast<Json::LargestUInt>(io::socket_base_t::objects_alive());
 

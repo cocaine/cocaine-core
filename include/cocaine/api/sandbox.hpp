@@ -78,7 +78,7 @@ class sandbox_t:
                io_t& io) = 0;
 
     protected:
-        sandbox_t(context_t& context,
+        sandbox_t(context_t&,
                   const std::string& /* name */,
                   const Json::Value& /* args */,
                   const std::string& /* spool */)

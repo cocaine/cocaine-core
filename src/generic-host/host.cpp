@@ -21,7 +21,7 @@
 #include <boost/filesystem/path.hpp>
 #include <boost/format.hpp>
 
-#include "cocaine/slave/slave.hpp"
+#include "cocaine/generic-host/host.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
@@ -36,8 +36,8 @@ using namespace cocaine::engine;
 
 namespace fs = boost::filesystem;
 
-slave_t::slave_t(context_t& context,
-                 slave_config_t config):
+host_t::host_t(context_t& context,
+               host_config_t config):
     m_context(context),
     m_log(context.log(
         (boost::format("app/%1%")
@@ -46,14 +46,8 @@ slave_t::slave_t(context_t& context,
     )),
     m_id(config.uuid),
     m_name(config.name),
-    m_bus(context, ZMQ_DEALER, m_id),
-    m_bus_timeout(m_bus, defaults::bus_timeout)
+    m_bus(context, ZMQ_DEALER, m_id)
 {
-    uint64_t hwm = 10;
-
-    // TODO: Make it SND_HWM in ZeroMQ 3.1+
-    m_bus.setsockopt(ZMQ_HWM, &hwm, sizeof(hwm));
-
     std::string endpoint(
         (boost::format("ipc://%1%/%2%")
             % m_context.config.ipc_path
@@ -63,25 +57,22 @@ slave_t::slave_t(context_t& context,
     
     m_bus.connect(endpoint);
     
-    m_watcher.set<slave_t, &slave_t::on_event>(this);
+    m_watcher.set<host_t, &host_t::on_event>(this);
     m_watcher.start(m_bus.fd(), ev::READ);
-    m_checker.set<slave_t, &slave_t::on_check>(this);
+    m_checker.set<host_t, &host_t::on_check>(this);
     m_checker.start();
 
-    m_heartbeat_timer.set<slave_t, &slave_t::on_heartbeat>(this);
+    m_heartbeat_timer.set<host_t, &host_t::on_heartbeat>(this);
     m_heartbeat_timer.start(0.0f, 5.0f);
 
     // NOTE: It will be restarted after the each heartbeat.
-    m_disown_timer.set<slave_t, &slave_t::on_disown>(this);
+    m_disown_timer.set<host_t, &host_t::on_disown>(this);
 
     // Launching the app
 
     try {
         m_manifest.reset(new manifest_t(m_context, m_name));
         m_profile.reset(new profile_t(m_context, config.profile));
-        
-        m_idle_timer.set<slave_t, &slave_t::on_idle>(this);
-        m_idle_timer.start(m_profile->idle_timeout);
         
         fs::path path(fs::path(m_context.config.spool_path) / m_name);
          
@@ -101,55 +92,74 @@ slave_t::slave_t(context_t& context,
     } catch(...) {
         io::message<rpc::error> message(
             server_error,
-            "unexpected exception while configuring the slave"
+            "unexpected exception while configuring the generic host"
         );
         
         m_bus.send_message(message);
         terminate();
         throw;
     }
+
+    m_idle_timer.set<host_t, &host_t::on_idle>(this);
+    m_idle_timer.start(m_profile->idle_timeout);        
 }
 
-slave_t::~slave_t() { }
+host_t::~host_t() {
+    // Empty.
+}
 
 void
-slave_t::run() {
+host_t::run() {
     m_loop.loop();
 }
 
 std::string
-slave_t::read(int timeout) {
+host_t::read(int timeout) {
     int command = -1;
-    zmq::message_t body;
 
-    boost::tuple<
-        int&,
-        zmq::message_t*
-    > proxy(command, &body);
-        
     {
         io::scoped_option<
             io::options::receive_timeout,
             io::policies::unique
         > option(m_bus, timeout);
 
-        if(!m_bus.recv_tuple(proxy)) {
-            return std::string();
+        if(!m_bus.recv(command)) {
+            throw cocaine::error_t("timed out");
         }
     }
 
-    // TEST: Ensure that we have the correct message type.
-    BOOST_ASSERT(command == io::get<rpc::chunk>::value);
+    switch(command) {
+        case io::message<rpc::chunk>::value: {
+            zmq::message_t body;
+    
+            BOOST_ASSERT(m_bus.more());
 
-    return std::string(
-        static_cast<const char*>(body.data()),
-        body.size()
-    );
+            m_bus.recv(&body);
+
+            return std::string(
+                static_cast<const char*>(body.data()),
+                body.size()
+            );
+        }
+
+        case io::message<rpc::choke>::value:
+            throw cocaine::error_t("session is closed");
+
+        default:
+            COCAINE_LOG_ERROR(
+                m_log,
+                "generic host %s got unexpected type %d message",
+                m_id,
+                command
+            );
+
+            std::exit(EXIT_FAILURE);
+    }
 }
 
 void
-slave_t::write(const void * data,
-               size_t size)
+host_t::write(const void * data,
+              size_t size)
 {
     zmq::message_t body(size);
 
@@ -160,7 +170,7 @@ slave_t::write(const void * data,
 }
 
 void
-slave_t::on_event(ev::io&, int) {
+host_t::on_event(ev::io&, int) {
     m_checker.stop();
 
     if(m_bus.pending()) {
@@ -170,12 +180,12 @@ slave_t::on_event(ev::io&, int) {
 }
 
 void
-slave_t::on_check(ev::prepare&, int) {
+host_t::on_check(ev::prepare&, int) {
     m_loop.feed_fd_event(m_bus.fd(), ev::READ);
 }
 
 void
-slave_t::process_events() {
+host_t::process_events() {
     // TEST: Ensure that we haven't missed something in a previous iteration.
     BOOST_ASSERT(!m_bus.more());
    
@@ -194,39 +204,41 @@ slave_t::process_events() {
 
     COCAINE_LOG_DEBUG(
         m_log,
-        "slave %s received type %d message",
+        "generic host %s received type %d message",
         m_id,
         command
     );
 
     switch(command) {
-        case io::get<rpc::pong>::value:
+        case io::message<rpc::pong>::value:
             m_disown_timer.stop();
             break;
 
-        case io::get<rpc::invoke>::value: {
+        case io::message<rpc::invoke>::value: {
+            unique_id_t job_id;
             std::string event;
 
-            m_bus.recv(event);
+            m_bus.recv_tuple(boost::tie(job_id, event));
             
             invoke(event);
             
             break;
         }
         
-        case io::get<rpc::chunk>::value:
-            // Drop outstanding chunks from the previous job.
+        case io::message<rpc::chunk>::value:
+        case io::message<rpc::choke>::value:
+            // Drop the outstanding commands for the previous job.
             m_bus.drop();
             break;
         
-        case io::get<rpc::terminate>::value:
+        case io::message<rpc::terminate>::value:
             terminate();
             break;
 
         default:
             COCAINE_LOG_WARNING(
                 m_log,
-                "slave %s dropping unknown type %d message", 
+                "generic host %s dropping unknown type %d message", 
                 m_id,
                 command
             );
@@ -236,26 +248,30 @@ slave_t::process_events() {
 }
 
 void
-slave_t::on_heartbeat(ev::timer&, int) {
+host_t::on_heartbeat(ev::timer&, int) {
     m_bus.send_message(io::message<rpc::ping>());
     m_disown_timer.start(5.0f);
 }
 
 void
-slave_t::on_disown(ev::timer&, int) {
-    COCAINE_LOG_ERROR(m_log, "slave %s has lost the controlling engine", m_id.string());
+host_t::on_disown(ev::timer&, int) {
+    COCAINE_LOG_ERROR(m_log, "generic host %s has lost the controlling engine", m_id.string());
     m_loop.unloop();    
 }
 
 void
-slave_t::on_idle(ev::timer&, int) {
+host_t::on_idle(ev::timer&, int) {
     terminate();
 }
 
 void
-slave_t::invoke(const std::string& event) {
+host_t::invoke(const std::string& event) {
     // TEST: Ensure that we have the app first.
     BOOST_ASSERT(m_sandbox.get() != NULL);
+
+    // NOTE: Stop the disown timer so that generic host won't be immediately
+    // terminated after the invocation.
+    m_disown_timer.stop();
 
     try {
         m_sandbox->invoke(event, *this);
@@ -285,7 +301,7 @@ slave_t::invoke(const std::string& event) {
 }
 
 void
-slave_t::terminate() {
+host_t::terminate() {
     m_bus.send_message(io::message<rpc::terminate>());
     m_loop.unloop(ev::ALL);
 }

@@ -18,36 +18,32 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include "cocaine/logging.hpp"
+#ifndef COCAINE_PIPE_HPP
+#define COCAINE_PIPE_HPP
 
-using namespace cocaine::logging;
+#include <boost/weak_ptr.hpp>
 
-// Logging sink
+#include "cocaine/common.hpp"
 
-sink_t::sink_t(priorities verbosity):
-    m_verbosity(verbosity)
-{ }
+namespace cocaine { namespace engine {
 
-sink_t::~sink_t() {
-    // Empty.
-}
+struct pipe_t {
+    pipe_t(const boost::shared_ptr<session_t>& session);
 
-// Logging proxy
+    void
+    push(const std::string& chunk);
 
-logger_t::logger_t(const sink_t& sink,
-                   const std::string& source):
-    m_sink(sink),
-    m_source(source)
-{ }
+    void
+    push(const char * chunk,
+         size_t size);
 
-// Void logger
+    void
+    close();
 
-void_sink_t::void_sink_t():
-    sink_t(ignore)
-{ }
+private:
+    boost::weak_ptr<session_t> ptr;
+};
 
-void
-void_sink_t::emit(priorities,
-                  const std::string&,
-                  const std::string&) const
-{ }
+}} // namespace cocaine::engine
+
+#endif

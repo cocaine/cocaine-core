@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#ifndef COCAINE_SLAVE_HPP
-#define COCAINE_SLAVE_HPP
+#ifndef COCAINE_GENERIC_HOST_HPP
+#define COCAINE_GENERIC_HOST_HPP
 
 #include "cocaine/common.hpp"
 #include "cocaine/asio.hpp"
@@ -28,23 +28,23 @@
 
 #include "cocaine/api/sandbox.hpp"
 
-namespace cocaine { namespace engine {
+namespace cocaine {
 
-struct slave_config_t {
+struct host_config_t {
     std::string name;
     std::string profile;
     std::string uuid;
 };
 
-class slave_t:
+class host_t:
     public boost::noncopyable,
     public api::io_t
 {
     public:
-        slave_t(context_t& context,
-                slave_config_t config);
+        host_t(context_t& context,
+               host_config_t config);
 
-        ~slave_t();
+        ~host_t();
 
         void
         run();
@@ -95,12 +95,12 @@ class slave_t:
 
         // Engine I/O
 
-        io::channel<io::policies::unique> m_bus;
-        
-        io::scoped_option<
-            io::options::send_timeout,
+        typedef io::channel<
+            rpc::rpc_plane_tag,
             io::policies::unique
-        > m_bus_timeout;
+        > rpc_channel_t;
+
+        rpc_channel_t m_bus;
         
         // Event loop
 
@@ -120,6 +120,6 @@ class slave_t:
         std::unique_ptr<api::sandbox_t> m_sandbox;
 };
 
-}} // namespace cocaine::engine
+} // namespace cocaine::engine
 
 #endif

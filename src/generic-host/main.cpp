@@ -24,7 +24,7 @@
 #include "cocaine/config.hpp"
 #include "cocaine/context.hpp"
 
-#include "cocaine/slave/slave.hpp"
+#include "cocaine/generic-host/host.hpp"
 
 #include "cocaine/server/syslog.hpp"
 
@@ -48,15 +48,15 @@ int main(int argc, char * argv[]) {
             "location of the configuration file")
         ("verbose", "produce a lot of output");
 
-    slave_config_t slave_config;
+    host_config_t host_config;
 
     slave_options.add_options()
         ("slave:app", po::value<std::string>
-            (&slave_config.name))
+            (&host_config.name))
         ("slave:profile", po::value<std::string>
-            (&slave_config.profile))
+            (&host_config.profile))
         ("slave:uuid", po::value<std::string>
-            (&slave_config.uuid));
+            (&host_config.uuid));
 
     combined_options.add(general_options)
                     .add(slave_options);
@@ -106,21 +106,21 @@ int main(int argc, char * argv[]) {
 
     boost::shared_ptr<logging::logger_t> log(context.log("main"));
 
-    std::unique_ptr<engine::slave_t> slave;
+    std::unique_ptr<host_t> host;
 
     try {
-        slave.reset(
-            new engine::slave_t(
+        host.reset(
+            new host_t(
                 context,
-                slave_config
+                host_config
             )
         );
     } catch(const std::exception& e) {
-        COCAINE_LOG_ERROR(log, "unable to start the slave - %s", e.what());
+        COCAINE_LOG_ERROR(log, "unable to start the generic host - %s", e.what());
         return EXIT_FAILURE;
     }
 
-    slave->run();
+    host->run();
 
     return EXIT_SUCCESS;
 }

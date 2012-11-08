@@ -27,24 +27,24 @@
 
 // Logging macros
 
-#define COCAINE_LOG_DEBUG(log, format, ...)                 \
-    if(log->verbosity() >= logging::debug) {                \
-        log->emit(logging::debug, format, ##__VA_ARGS__);   \
+#define COCAINE_LOG_DEBUG(log, ...)                 \
+    if(log->verbosity() >= logging::debug) {        \
+        log->emit(logging::debug, __VA_ARGS__);     \
     }
 
-#define COCAINE_LOG_INFO(log, format, ...)                  \
-    if(log->verbosity() >= logging::info)  {                \
-        log->emit(logging::info, format, ##__VA_ARGS__);    \
+#define COCAINE_LOG_INFO(log, ...)                  \
+    if(log->verbosity() >= logging::info)  {        \
+        log->emit(logging::info, __VA_ARGS__);      \
     }
 
-#define COCAINE_LOG_WARNING(log, format, ...)               \
-    if(log->verbosity() >= logging::warning) {              \
-        log->emit(logging::warning, format, ##__VA_ARGS__); \
+#define COCAINE_LOG_WARNING(log, ...)               \
+    if(log->verbosity() >= logging::warning) {      \
+        log->emit(logging::warning, __VA_ARGS__);   \
     }
 
-#define COCAINE_LOG_ERROR(log, format, ...)                 \
-    if(log->verbosity() >= logging::error) {                \
-        log->emit(logging::error, format, ##__VA_ARGS__);   \
+#define COCAINE_LOG_ERROR(log, ...)                 \
+    if(log->verbosity() >= logging::error) {        \
+        log->emit(logging::error, __VA_ARGS__);     \
     }
 
 namespace cocaine { namespace logging {
@@ -100,7 +100,7 @@ class logger_t:
             boost::format message(format);
 
             try {
-                // Recursively expand the argument pack.
+                // NOTE: Recursively expand the argument pack.
                 substitute(message, args...);
             } catch(const boost::io::format_error& e) {
                 m_sink.emit(priority, m_source, "<unable to format the log message>");

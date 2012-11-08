@@ -31,7 +31,6 @@
 #include "cocaine/manifest.hpp"
 #include "cocaine/profile.hpp"
 #include "cocaine/rpc.hpp"
-#include "cocaine/session.hpp"
 
 #include "cocaine/traits/json.hpp"
 
@@ -58,7 +57,7 @@ app_t::app_t(context_t& context,
         deploy(name, path.string());
     }
 
-    m_control.reset(new io::channel<io::policies::unique>(context, ZMQ_PAIR));
+    m_control.reset(new control_channel_t(context, ZMQ_PAIR));
 
     std::string endpoint(
         (boost::format("inproc://%s")
@@ -206,11 +205,11 @@ app_t::info() const {
     return info;
 }
 
-boost::weak_ptr<session_t>
-app_t::enqueue(const boost::shared_ptr<job_t>& job,
-               mode::value mode)
+boost::shared_ptr<pipe_t>
+app_t::enqueue(const boost::shared_ptr<event_t>& event,
+               engine::mode mode)
 {
-    return m_engine->enqueue(job, mode);
+    return m_engine->enqueue(event, mode);
 }
 
 void

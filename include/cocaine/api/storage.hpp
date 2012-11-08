@@ -74,7 +74,7 @@ class storage_t:
                const std::string& key) = 0;
     
     protected:
-        storage_t(context_t& context,
+        storage_t(context_t&,
                   const std::string& /* name */,
                   const Json::Value& /* args */)
         {
