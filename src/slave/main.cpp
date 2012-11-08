@@ -44,7 +44,7 @@ int main(int argc, char * argv[]) {
         ("help,h", "show this message")
         ("version,v", "show version and build information")
         ("configuration,c", po::value<std::string>
-            ()->default_value("/etc/cocaine/cocaine.conf"),
+            ()->default_value("/etc/cocaine/cocaine-default.conf"),
             "location of the configuration file")
         ("verbose", "produce a lot of output");
 
