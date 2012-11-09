@@ -75,9 +75,8 @@ process_t::spawn(const std::string& path,
     pid_t pid = ::fork();
 
     if(pid == 0) {
-        // NOTE: Don't bother freeing these ever.
-        char ** argv = new char * [args.size() * 2 + 2],
-             ** envp = new char * [environment.size() + 1];
+        char * argv[args.size() * 2 + 2],
+             * envp[environment.size() + 1];
 
         // NOTE: The first element is the executable path,
         // the last one should be null pointer.
