@@ -103,6 +103,11 @@ slave_t::assign(const boost::shared_ptr<session_t>& session) {
 
 void
 slave_t::process(const io::message<rpc::ping>&) {
+    m_engine->send(
+        m_id,
+        io::message<rpc::pong>()
+    );
+
     rearm();
 }
 
