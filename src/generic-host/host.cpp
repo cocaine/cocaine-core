@@ -46,6 +46,7 @@ host_t::host_t(context_t& context,
     )),
     m_id(config.uuid),
     m_name(config.name),
+    m_state(states::idle),
     m_bus(context, ZMQ_DEALER, m_id)
 {
     std::string endpoint(
@@ -116,25 +117,32 @@ host_t::~host_t() {
 }
 
 void
-host_t::run(int timeout) {
-    io::scoped_option<
-        io::options::receive_timeout,
-        io::policies::unique
-    > option(m_bus, timeout);
-
-    m_loop.loop();
+host_t::run(modes mode) {
+    m_loop.loop(mode);
 }
 
 std::string
-host_t::read(int timeout) {
-    // Consume all the queued events and block for 'timeout' if no chunks
-    // arrived yet.
-    run(timeout);
+host_t::read(int timeout_) {
+    double begin = m_loop.now(),
+           timeout = timeout_ / 1000.0f;
+
+    bool infinite = (timeout_ < 0);
+
+    while(infinite ||
+          m_loop.now() < (begin + timeout))
+    {
+        if(!m_queue.empty()) {
+            break;
+        }
+        
+        // Consume all the queued events, block once.
+        run(modes::nonblock);
+    }
 
     if(!m_queue.empty()) {
         std::string chunk(m_queue.front());
         m_queue.pop_front();
-
+        
         return chunk;
     }
 
@@ -156,7 +164,7 @@ host_t::write(const void * data,
     m_bus.send_message(io::message<rpc::chunk>(message));
 
     // Consume all the queued events, don't block.
-    run();
+    run(modes::nonblock);
 }
 
 void
@@ -175,78 +183,6 @@ host_t::on_check(ev::prepare&, int) {
 }
 
 void
-host_t::process_events() {
-    // TEST: Ensure that we haven't missed something in a previous iteration.
-    BOOST_ASSERT(!m_bus.more());
-   
-    int command = -1;
-
-    if(!m_bus.recv(command)) {
-        // If this is not the outermost event loop and nothing left in the queue,
-        // break it and return control to the user code.
-        if(m_loop.depth() > 1) {
-            m_loop.unloop(ev::ONE);
-        }
-
-        return;
-    }
-
-    COCAINE_LOG_DEBUG(
-        m_log,
-        "generic host %s received type %d message",
-        m_id,
-        command
-    );
-
-    switch(command) {
-        case io::message<rpc::pong>::value:
-            m_disown_timer.stop();
-            break;
-
-        case io::message<rpc::invoke>::value: {
-            unique_id_t job_id;
-            std::string event;
-
-            m_bus.recv_tuple(boost::tie(job_id, event));
-            
-            invoke(event);
-            
-            break;
-        }
-        
-        case io::message<rpc::chunk>::value: {
-            zmq::message_t body;
-    
-            BOOST_ASSERT(m_bus.more());
-
-            m_bus.recv(&body);
-
-            m_queue.emplace_back(
-                static_cast<const char*>(body.data()),
-                body.size()
-            );
-        }
-
-        case io::message<rpc::choke>::value:
-            throw cocaine::error_t("the session has been closed");
-        
-        case io::message<rpc::terminate>::value:
-            terminate();
-            break;
-
-        default:
-            COCAINE_LOG_WARNING(
-                m_log,
-                "generic host %s dropping unknown type %d message", 
-                m_id,
-                command
-            );
-            
-            m_bus.drop();
-    }
-}
-
-void
 host_t::on_heartbeat(ev::timer&, int) {
     m_bus.send_message(io::message<rpc::ping>());
     m_disown_timer.start(5.0f);
@@ -260,12 +196,101 @@ host_t::on_disown(ev::timer&, int) {
         m_id
     );
 
-    m_loop.unloop();    
+    m_loop.unloop(ev::ALL);    
 }
 
 void
 host_t::on_idle(ev::timer&, int) {
     terminate();
+}
+
+void
+host_t::process_events() {
+    int counter = defaults::io_bulk_size;
+
+    do {
+        // TEST: Ensure that we haven't missed something in a previous iteration.
+        BOOST_ASSERT(!m_bus.more());
+       
+        int command = -1;
+
+        {
+            io::scoped_option<
+                io::options::receive_timeout,
+                io::policies::unique
+            > option(m_bus, 0);
+
+            if(!m_bus.recv(command)) {
+                return;
+            }
+        }
+
+        COCAINE_LOG_DEBUG(
+            m_log,
+            "generic host %s received type %d message",
+            m_id,
+            command
+        );
+
+        switch(command) {
+            case io::message<rpc::pong>::value:
+                m_disown_timer.stop();
+                break;
+
+            case io::message<rpc::invoke>::value: {
+                unique_id_t job_id;
+                std::string event;
+
+                m_bus.recv_tuple(boost::tie(job_id, event));
+                
+                invoke(event);
+                
+                break;
+            }
+            
+            case io::message<rpc::chunk>::value: {
+                if(m_state == states::idle) {
+                    m_bus.drop();
+                    break;
+                }
+                
+                BOOST_ASSERT(m_bus.more());
+
+                zmq::message_t body;
+        
+                m_bus.recv(&body);
+
+                m_queue.emplace_back(
+                    static_cast<const char*>(body.data()),
+                    body.size()
+                );
+
+                break;
+            }
+
+            case io::message<rpc::choke>::value:
+                if(m_state == states::idle) {
+                    m_bus.drop();
+                    break;
+                }
+                
+                throw cocaine::error_t("the session has been closed");
+            
+            case io::message<rpc::terminate>::value:
+                terminate();
+                break;
+
+            default:
+                COCAINE_LOG_WARNING(
+                    m_log,
+                    "generic host %s dropping unknown type %d message", 
+                    m_id,
+                    command
+                );
+                
+                m_bus.drop();
+        }
+    } while(--counter);
 }
 
 void
@@ -275,6 +300,7 @@ host_t::invoke(const std::string& event) {
 
     // Pause the idle timer. 
     m_idle_timer.stop();
+    m_state = states::active;
 
     try {
         m_sandbox->invoke(event, *this);
@@ -294,10 +320,14 @@ host_t::invoke(const std::string& event) {
     }
     
     m_bus.send_message(io::message<rpc::choke>());
-   
+    
+    // Drop all the outstanding cached chunks.
+    m_queue.clear();
+
     // Rearm the idle timer.
     m_idle_timer.start(m_profile->idle_timeout);
-
+    m_state = states::idle;
+    
     // Feed the event loop.
     m_loop.feed_fd_event(m_bus.fd(), ev::READ);
 }
