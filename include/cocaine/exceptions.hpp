@@ -49,13 +49,10 @@ struct error_t:
 
         try {
             // NOTE: Recursively expand the argument pack.
-            substitute(message, args...);
+            m_message = substitute(message, args...);
         } catch(const boost::io::format_error& e) {
             m_message = "<unable to format the message>";
-            return;
         }
-
-        m_message = message.str();
     }
 
     virtual
@@ -71,17 +68,17 @@ struct error_t:
 
 private:
     template<typename T, typename... Args>
-    void
+    std::string
     substitute(boost::format& message,
                const T& argument,
                const Args&... args) const
     {
-        substitute(message % argument, args...);
+        return substitute(message % argument, args...);
     }
 
-    void
-    substitute(boost::format&) const {
-        return;
+    std::string
+    substitute(boost::format& message) const {
+        return message.str();
     }
 
 private:

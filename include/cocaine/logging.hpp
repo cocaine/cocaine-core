@@ -101,28 +101,25 @@ class logger_t:
 
             try {
                 // NOTE: Recursively expand the argument pack.
-                substitute(message, args...);
+                m_sink.emit(priority, m_source, substitute(message, args...));
             } catch(const boost::io::format_error& e) {
                 m_sink.emit(priority, m_source, "<unable to format the log message>");
-                return;
             }
-
-            m_sink.emit(priority, m_source, message.str());
         }
 
     private:
         template<typename T, typename... Args>
-        void
+        std::string
         substitute(boost::format& message,
                    const T& argument,
                    const Args&... args) const
         {
-            substitute(message % argument, args...);
+            return substitute(message % argument, args...);
         }
 
-        void
-        substitute(boost::format&) const {
-            return;
+        std::string
+        substitute(boost::format& message) const {
+            return message.str();
         }
 
     private:
