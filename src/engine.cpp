@@ -153,25 +153,21 @@ engine_t::enqueue(const boost::shared_ptr<event_t>& event,
         throw cocaine::error_t("engine is not active");
     }
 
+    if(m_queue.size() >= m_profile.queue_limit &&
+       mode == engine::mode::normal)
+    {
+        throw cocaine::error_t("the queue is full");
+    };
+
     boost::shared_ptr<session_t> session(
         boost::make_shared<session_t>(event, this)
     );
 
-    if(m_queue.size() < m_profile.queue_limit) {
-        m_queue.push(session);
-    } else {
-        switch(mode) {
-            case engine::mode::normal:
-                throw cocaine::error_t("the queue is full");
-
-            case engine::mode::blocking:
-                while(m_queue.size() >= m_profile.queue_limit) {
-                    m_condition.wait(lock);
-                }
-
-                m_queue.push(session);
-        }
+    while(m_queue.size() >= m_profile.queue_limit) {
+        m_condition.wait(lock);
     }
+
+    m_queue.push(session);
   
     // Pump the queue! 
     m_notification.send();

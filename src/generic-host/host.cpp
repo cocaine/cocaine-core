@@ -89,8 +89,6 @@ host_t::host_t(context_t& context,
         );
         
         terminate();
-
-        // Rethrow so that the slave would terminate instead of looping once.
         throw;
     } catch(...) {
         m_bus.send_message(
@@ -101,8 +99,6 @@ host_t::host_t(context_t& context,
         );
 
         terminate();
-        
-        // Rethrow so that the slave would terminate instead of looping once.
         throw;
     }
 
@@ -181,7 +177,7 @@ host_t::on_check(ev::prepare&, int) {
 void
 host_t::on_heartbeat(ev::timer&, int) {
     m_bus.send_message(io::message<rpc::ping>());
-    m_disown_timer.start(5.0f);
+    m_disown_timer.start(30.0f);
 }
 
 void
