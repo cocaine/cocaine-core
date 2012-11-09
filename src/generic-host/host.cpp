@@ -85,18 +85,25 @@ host_t::host_t(context_t& context,
             )
         );
     } catch(const std::exception& e) {
-        io::message<rpc::error> message(server_error, e.what());
-        m_bus.send_message(message);
-        terminate();
-        throw;
-    } catch(...) {
-        io::message<rpc::error> message(
-            server_error,
-            "unexpected exception while configuring the generic host"
+        m_bus.send_message(
+            io::message<rpc::error>(server_error, e.what())
         );
         
-        m_bus.send_message(message);
         terminate();
+
+        // Rethrow so that the slave would terminate instead of looping once.
+        throw;
+    } catch(...) {
+        m_bus.send_message(
+            io::message<rpc::error>(
+                server_error,
+                "unexpected exception while configuring the generic host"
+            )
+        );
+
+        terminate();
+        
+        // Rethrow so that the slave would terminate instead of looping once.
         throw;
     }
 
@@ -109,64 +116,47 @@ host_t::~host_t() {
 }
 
 void
-host_t::run() {
+host_t::run(int timeout) {
+    io::scoped_option<
+        io::options::receive_timeout,
+        io::policies::unique
+    > option(m_bus, timeout);
+
     m_loop.loop();
 }
 
 std::string
 host_t::read(int timeout) {
-    int command = -1;
+    // Consume all the queued events and block for 'timeout' if no chunks
+    // arrived yet.
+    run(timeout);
 
-    {
-        io::scoped_option<
-            io::options::receive_timeout,
-            io::policies::unique
-        > option(m_bus, timeout);
+    if(!m_queue.empty()) {
+        std::string chunk(m_queue.front());
+        m_queue.pop_front();
 
-        if(!m_bus.recv(command)) {
-            throw cocaine::error_t("timed out");
-        }
+        return chunk;
     }
 
-    switch(command) {
-        case io::message<rpc::chunk>::value: {
-            zmq::message_t body;
-    
-            BOOST_ASSERT(m_bus.more());
-
-            m_bus.recv(&body);
-
-            return std::string(
-                static_cast<const char*>(body.data()),
-                body.size()
-            );
-        }
-
-        case io::message<rpc::choke>::value:
-            throw cocaine::error_t("session is closed");
-
-        default:
-            COCAINE_LOG_ERROR(
-                m_log,
-                "generic host %s got unexpected type %d message",
-                m_id,
-                command
-            );
-
-            std::exit(EXIT_FAILURE);
-    }
+    throw cocaine::error_t("timed out");
 }
 
 void
 host_t::write(const void * data,
               size_t size)
 {
-    zmq::message_t body(size);
+    zmq::message_t message(size);
 
-    memcpy(body.data(), data, size);
-    io::message<rpc::chunk> message(body);
+    memcpy(
+        message.data(),
+        data,
+        size
+    );
+    
+    m_bus.send_message(io::message<rpc::chunk>(message));
 
-    m_bus.send_message(message);
+    // Consume all the queued events, don't block.
+    run();
 }
 
 void
@@ -191,15 +181,14 @@ host_t::process_events() {
    
     int command = -1;
 
-    {
-        io::scoped_option<
-            io::options::receive_timeout,
-            io::policies::unique
-        > option(m_bus, 0);
-        
-        if(!m_bus.recv(command)) {
-            return;
+    if(!m_bus.recv(command)) {
+        // If this is not the outermost event loop and nothing left in the queue,
+        // break it and return control to the user code.
+        if(m_loop.depth() > 1) {
+            m_loop.unloop(ev::ONE);
         }
+
+        return;
     }
 
     COCAINE_LOG_DEBUG(
@@ -225,11 +214,21 @@ host_t::process_events() {
             break;
         }
         
-        case io::message<rpc::chunk>::value:
+        case io::message<rpc::chunk>::value: {
+            zmq::message_t body;
+    
+            BOOST_ASSERT(m_bus.more());
+
+            m_bus.recv(&body);
+
+            m_queue.emplace_back(
+                static_cast<const char*>(body.data()),
+                body.size()
+            );
+        }
+
         case io::message<rpc::choke>::value:
-            // Drop the outstanding commands for the previous job.
-            m_bus.drop();
-            break;
+            throw cocaine::error_t("the session has been closed");
         
         case io::message<rpc::terminate>::value:
             terminate();
@@ -255,7 +254,12 @@ host_t::on_heartbeat(ev::timer&, int) {
 
 void
 host_t::on_disown(ev::timer&, int) {
-    COCAINE_LOG_ERROR(m_log, "generic host %s has lost the controlling engine", m_id.string());
+    COCAINE_LOG_ERROR(
+        m_log,
+        "generic host %s has lost the controlling engine",
+        m_id
+    );
+
     m_loop.unloop();    
 }
 
@@ -269,9 +273,8 @@ host_t::invoke(const std::string& event) {
     // TEST: Ensure that we have the app first.
     BOOST_ASSERT(m_sandbox.get() != NULL);
 
-    // NOTE: Stop the disown timer so that generic host won't be immediately
-    // terminated after the invocation.
-    m_disown_timer.stop();
+    // Pause the idle timer. 
+    m_idle_timer.stop();
 
     try {
         m_sandbox->invoke(event, *this);
@@ -292,8 +295,7 @@ host_t::invoke(const std::string& event) {
     
     m_bus.send_message(io::message<rpc::choke>());
    
-    // Rearm the idle timer. 
-    m_idle_timer.stop();
+    // Rearm the idle timer.
     m_idle_timer.start(m_profile->idle_timeout);
 
     // Feed the event loop.

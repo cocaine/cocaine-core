@@ -49,7 +49,7 @@
 
 namespace cocaine { namespace logging {
 
-enum priorities {
+enum priorities: int {
     ignore,
     error,
     warning,

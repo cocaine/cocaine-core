@@ -32,14 +32,6 @@ namespace cocaine {
     struct manifest_t;
     struct profile_t;
 
-    namespace rpc {
-        struct rpc_plane_tag;
-    }
-
-    namespace control {
-        struct control_plane_tag;
-    }
-
     // App container.
     class app_t;
 
@@ -71,6 +63,14 @@ namespace cocaine {
         // RPC channel.
         template<class, class>
         class channel;
+    }
+
+    namespace rpc {
+        struct rpc_plane_tag;
+    }
+
+    namespace control {
+        struct control_plane_tag;
     }
 
     namespace logging {

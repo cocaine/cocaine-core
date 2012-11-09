@@ -21,6 +21,8 @@
 #ifndef COCAINE_GENERIC_HOST_HPP
 #define COCAINE_GENERIC_HOST_HPP
 
+#include <deque>
+
 #include "cocaine/common.hpp"
 #include "cocaine/asio.hpp"
 #include "cocaine/io.hpp"
@@ -47,7 +49,7 @@ class host_t:
         ~host_t();
 
         void
-        run();
+        run(int timeout = 0);
 
         // I/O object implementation
         
@@ -77,6 +79,9 @@ class host_t:
         on_idle(ev::timer&, int);
         
     private:
+        void
+        loop();
+
         void
         process_events();
         
@@ -118,6 +123,14 @@ class host_t:
         std::unique_ptr<const manifest_t> m_manifest;
         std::unique_ptr<const profile_t> m_profile;
         std::unique_ptr<api::sandbox_t> m_sandbox;
+
+        // Chunk cache
+
+        typedef std::deque<
+            std::string
+        > chunk_queue_t;
+
+        chunk_queue_t m_queue;
 };
 
 } // namespace cocaine::engine
