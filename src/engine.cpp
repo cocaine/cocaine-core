@@ -87,10 +87,8 @@ engine_t::engine_t(context_t& context,
 {
     m_isolate = m_context.get<api::isolate_t>(
         m_profile.isolate.type,
-        api::category_traits<api::isolate_t>::args_type(
-            m_manifest.name,
-            m_profile.isolate.args
-        )
+        m_manifest.name,
+        m_profile.isolate.args
     );
     
     std::string bus_endpoint(

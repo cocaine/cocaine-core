@@ -22,7 +22,6 @@
 #define COCAINE_ISOLATE_API_HPP
 
 #include <boost/thread/mutex.hpp>
-#include <boost/tuple/tuple.hpp>
 #include <boost/weak_ptr.hpp>
 
 #include "cocaine/common.hpp"
@@ -72,23 +71,28 @@ template<>
 struct category_traits<isolate_t> {
     typedef boost::shared_ptr<isolate_t> ptr_type;
 
-    typedef boost::tuple<
-        const std::string&,
-        const Json::Value&
-    > args_type;
-    
-    template<class T>
-    struct default_factory:
-        public factory<isolate_t>
+    struct factory_type:
+        public factory_base<isolate_t>
     {
         virtual
         ptr_type
         get(context_t& context,
-            const args_type& args)
+            const std::string& name,
+            const Json::Value& args) = 0;
+    };
+
+    template<class T>
+    struct default_factory:
+        public factory_type
+    {
+        virtual
+        ptr_type
+        get(context_t& context,
+            const std::string& name,
+            const Json::Value& args)
         {
             boost::lock_guard<boost::mutex> lock(m_mutex);
 
-            const std::string& name(boost::get<0>(args));
             typename instance_map_t::iterator it(m_instances.find(name));
             
             ptr_type instance;
@@ -101,7 +105,7 @@ struct category_traits<isolate_t> {
                 instance =  boost::make_shared<T>(
                     boost::ref(context),
                     name,
-                    boost::get<1>(args)
+                    args
                 );
 
                 m_instances.emplace(name, instance);

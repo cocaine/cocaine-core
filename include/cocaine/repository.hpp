@@ -25,6 +25,7 @@
 #include <boost/utility/enable_if.hpp>
 #include <ltdl.h>
 #include <typeinfo>
+#include <typeindex>
 
 #include "cocaine/common.hpp"
 
@@ -40,29 +41,19 @@ struct factory_concept_t {
     }
     
     virtual
-    const std::type_info&
-    category() const = 0;
+    std::type_index
+    id() const = 0;
 };
 
-// Factory interface
-
-template<
-    class Category,
-    class Traits = category_traits<Category>
->
-struct factory:
+template<class Category>
+struct factory_base:
     public factory_concept_t
 {
     virtual
-    const std::type_info&
-    category() const {
+    std::type_index
+    id() const {
         return typeid(Category);
     }
-
-    virtual
-    typename Traits::ptr_type
-    get(context_t& context,
-        const typename Traits::args_type& args) = 0;
 };
 
 // Customized plugin instantiation
@@ -96,15 +87,13 @@ class repository_t:
         void
         load(const std::string& path);
 
-        template<class Category>
+        template<class Category, typename... Args>
         typename category_traits<Category>::ptr_type
         get(const std::string& type,
-            const typename category_traits<Category>::args_type& args);
+            Args&&... args);
 
-        template<class T>
-        typename boost::enable_if<
-            boost::is_base_of<typename T::category_type, T>
-        >::type 
+        template<class T, class Category = typename T::category_type>
+        void
         insert(const std::string& type);
 
     private:
@@ -129,40 +118,70 @@ class repository_t:
             std::unique_ptr<factory_concept_t>
         > factory_map_t;
 
-        factory_map_t m_factories;
+#if BOOST_VERSION >= 104000
+        typedef boost::unordered_map<
+#else
+        typedef std::map<
+#endif
+            std::type_index,
+            factory_map_t
+        > category_map_t;
+
+        category_map_t m_categories;
 };
 
-template<class Category>
+template<class Category, typename... Args>
 typename category_traits<Category>::ptr_type
 repository_t::get(const std::string& type,
-                  const typename category_traits<Category>::args_type& args)
+                  Args&&... args)
 {
-    factory_map_t::iterator it(m_factories.find(type));
+    std::type_index id = typeid(Category);
+
+    factory_map_t& factories = m_categories[id];
+    factory_map_t::iterator it(factories.find(type));
     
-    if(it == m_factories.end()) {
+    if(it == factories.end()) {
         throw repository_error_t("the '%s' component is not available", type);
     }
     
     // TEST: Ensure that the plugin is of the actually specified category.
-    BOOST_ASSERT(it->second->category() == typeid(Category));
+    BOOST_ASSERT(it->second->id() == id);
+    
+    typedef category_traits<Category> traits;
 
-    return typename category_traits<Category>::ptr_type(
-        dynamic_cast< factory<Category>& >(
+    return typename traits::ptr_type(
+        dynamic_cast< typename traits::factory_type& >(
             *it->second
-        ).get(m_context, args)
+        ).get(m_context, std::forward<Args>(args)...)
     );
 }
 
-template<class T>
-typename boost::enable_if<
-    boost::is_base_of<typename T::category_type, T>
->::type 
+template<class T, class Category>
+void
 repository_t::insert(const std::string& type) {
-    if(m_factories.find(type) != m_factories.end()) {
+    static_assert(
+        boost::is_base_of<
+            Category,
+            T
+        >::value,
+        "component is not derived from its category"
+    );
+
+    static_assert(
+        boost::is_base_of<
+            typename category_traits<Category>::factory_type,
+            typename plugin_traits<T>::factory_type
+        >::value,
+        "component factory is not derived from its category"
+    );
+
+    factory_map_t& factories = m_categories[typeid(Category)];
+
+    if(factories.find(type) != factories.end()) {
         throw repository_error_t("the '%s' component is a duplicate", type);
     }
 
-    m_factories.emplace(
+    factories.emplace(
         type,
         new typename plugin_traits<T>::factory_type()
     );

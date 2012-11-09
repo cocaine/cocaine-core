@@ -79,11 +79,9 @@ host_t::host_t(context_t& context,
          
         m_sandbox = m_context.get<api::sandbox_t>(
             m_manifest->sandbox.type,
-            api::category_traits<api::sandbox_t>::args_type(
-                m_manifest->name,
-                m_manifest->sandbox.args,
-                path.string()
-            )
+            m_manifest->name,
+            m_manifest->sandbox.args,
+            path.string()
         );
     } catch(const std::exception& e) {
         m_bus.send_message(
@@ -122,20 +120,18 @@ host_t::run(modes mode) {
 }
 
 std::string
-host_t::read(int timeout_) {
-    double begin = m_loop.now(),
-           timeout = timeout_ / 1000.0f;
-
-    bool infinite = (timeout_ < 0);
+host_t::read(int timeout) {
+    bool infinite = (timeout < 0);
+    double target = m_loop.now() + timeout / 1000.0f;
 
     while(infinite ||
-          m_loop.now() < (begin + timeout))
+          m_loop.now() < target)
     {
         if(!m_queue.empty()) {
             break;
         }
         
-        // Consume all the queued events, block once.
+        // Consume all the queued events, don't block.
         run(modes::nonblock);
     }
 

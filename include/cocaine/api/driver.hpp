@@ -21,8 +21,6 @@
 #ifndef COCAINE_DRIVER_API_HPP
 #define COCAINE_DRIVER_API_HPP
 
-#include <boost/tuple/tuple.hpp>
-
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
 
@@ -64,31 +62,33 @@ class driver_t:
 };
 
 template<>
-struct category_traits<api::driver_t> {
-    typedef std::unique_ptr<api::driver_t> ptr_type;
+struct category_traits<driver_t> {
+    typedef std::unique_ptr<driver_t> ptr_type;
 
-    typedef boost::tuple<
-        const std::string&,
-        const Json::Value&,
-        engine::engine_t&
-    > args_type;
-
-    template<class T>
-    struct default_factory:
-        public factory<api::driver_t>
+    struct factory_type:
+        public factory_base<driver_t>
     {
         virtual
         ptr_type
         get(context_t& context,
-            const args_type& args)
+            const std::string& name,
+            const Json::Value& args,
+            engine::engine_t& engine) = 0;
+    };
+
+    template<class T>
+    struct default_factory:
+        public factory_type
+    {
+        virtual
+        ptr_type
+        get(context_t& context,
+            const std::string& name,
+            const Json::Value& args,
+            engine::engine_t& engine)
         {
             return ptr_type(
-                new T(
-                    boost::ref(context),
-                    boost::get<0>(args),
-                    boost::get<1>(args),
-                    boost::get<2>(args)
-                )
+                new T(context, name, args, engine)
             );
         }
     };

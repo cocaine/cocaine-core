@@ -21,8 +21,6 @@
 #ifndef COCAINE_SANDBOX_API_HPP
 #define COCAINE_SANDBOX_API_HPP
 
-#include <boost/tuple/tuple.hpp>
-
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
 
@@ -88,31 +86,33 @@ class sandbox_t:
 };
 
 template<>
-struct category_traits<api::sandbox_t> {
-    typedef std::unique_ptr<api::sandbox_t> ptr_type;
+struct category_traits<sandbox_t> {
+    typedef std::unique_ptr<sandbox_t> ptr_type;
 
-    typedef boost::tuple<
-        const std::string&,
-        const Json::Value&,
-        const std::string&
-    > args_type;
+    struct factory_type:
+        public factory_base<sandbox_t>
+    {
+        virtual
+        ptr_type
+        get(context_t& context,
+            const std::string& name,
+            const Json::Value& args,
+            const std::string& spool) = 0;
+    };
 
     template<class T>
     struct default_factory:
-        public factory<api::sandbox_t>
+        public factory_type
     {
         virtual
         ptr_type 
         get(context_t& context,
-            const args_type& args)
+            const std::string& name,
+            const Json::Value& args,
+            const std::string& spool)
         {
             return ptr_type(
-                new T(
-                    boost::ref(context),
-                    boost::get<0>(args),
-                    boost::get<1>(args),
-                    boost::get<2>(args)
-                )
+                new T(context, name, args, spool)
             );
         }
     };

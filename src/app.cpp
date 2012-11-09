@@ -116,11 +116,9 @@ app_t::start() {
                     it->first,
                     m_context.get<api::driver_t>(
                         it->second.type,
-                        api::category_traits<api::driver_t>::args_type(
-                            format.str(),
-                            it->second.args,
-                            *m_engine
-                        )
+                        format.str(),
+                        it->second.args,
+                        *m_engine
                     )
                 );
             } catch(const std::exception& e) {

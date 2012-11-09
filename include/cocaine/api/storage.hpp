@@ -22,7 +22,6 @@
 #define COCAINE_STORAGE_API_HPP
 
 #include <boost/thread/mutex.hpp>
-#include <boost/tuple/tuple.hpp>
 
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
@@ -141,23 +140,28 @@ template<>
 struct category_traits<storage_t> {
     typedef boost::shared_ptr<storage_t> ptr_type;
 
-    typedef boost::tuple<
-        const std::string&,
-        const Json::Value&
-    > args_type;
-    
-    template<class T>
-    struct default_factory:
-        public factory<storage_t>
+    struct factory_type:
+        public factory_base<storage_t>
     {
         virtual
         ptr_type
         get(context_t& context,
-            const args_type& args)
+            const std::string& name,
+            const Json::Value& args) = 0;
+    };
+
+    template<class T>
+    struct default_factory:
+        public factory_type
+    {
+        virtual
+        ptr_type
+        get(context_t& context,
+            const std::string& name,
+            const Json::Value& args)
         {
             boost::lock_guard<boost::mutex> lock(m_mutex);
 
-            const std::string& name(boost::get<0>(args));
             typename instance_map_t::iterator it(m_instances.find(name));
 
             if(it == m_instances.end()) {
@@ -166,7 +170,7 @@ struct category_traits<storage_t> {
                     boost::make_shared<T>(
                         boost::ref(context),
                         name,
-                        boost::get<1>(args)
+                        args
                     )
                 );
             }

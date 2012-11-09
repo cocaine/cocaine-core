@@ -126,10 +126,10 @@ class context_t:
         
         // Component API
         
-        template<class Category>
+        template<class Category, typename... Args>
         typename api::category_traits<Category>::ptr_type
         get(const std::string& type,
-            const typename api::category_traits<Category>::args_type& args);
+            Args&&... args);
 
         template<class Category>
         typename api::category_traits<Category>::ptr_type
@@ -172,12 +172,12 @@ class context_t:
         std::unique_ptr<port_mapper_t> m_port_mapper;
 };
 
-template<class Category>
+template<class Category, typename... Args>
 typename api::category_traits<Category>::ptr_type
 context_t::get(const std::string& type,
-               const typename api::category_traits<Category>::args_type& args)
+               Args&&... args)
 {
-    return m_repository->get<Category>(type, args);
+    return m_repository->get<Category>(type, std::forward<Args>(args)...);
 }
 
 template<class Category>
@@ -193,10 +193,8 @@ context_t::get(const std::string& name) {
 
     return get<Category>(
         it->second.type,
-        typename api::category_traits<Category>::args_type(
-            name,
-            it->second.args
-        )
+        name,
+        it->second.args
     );
 }
 
