@@ -21,6 +21,7 @@
 #ifndef COCAINE_ISOLATE_API_HPP
 #define COCAINE_ISOLATE_API_HPP
 
+#include <boost/ref.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/weak_ptr.hpp>
 

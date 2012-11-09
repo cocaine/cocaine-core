@@ -25,7 +25,6 @@
 #include <boost/utility/enable_if.hpp>
 #include <ltdl.h>
 #include <typeinfo>
-#include <typeindex>
 
 #include "cocaine/common.hpp"
 
@@ -41,7 +40,7 @@ struct factory_concept_t {
     }
     
     virtual
-    std::type_index
+    const std::type_info&
     id() const = 0;
 };
 
@@ -50,7 +49,7 @@ struct factory_base:
     public factory_concept_t
 {
     virtual
-    std::type_index
+    const std::type_info&
     id() const {
         return typeid(Category);
     }
@@ -123,7 +122,7 @@ class repository_t:
 #else
         typedef std::map<
 #endif
-            std::type_index,
+            std::string,
             factory_map_t
         > category_map_t;
 
@@ -135,7 +134,7 @@ typename category_traits<Category>::ptr_type
 repository_t::get(const std::string& type,
                   Args&&... args)
 {
-    std::type_index id = typeid(Category);
+    std::string id = typeid(Category).name();
 
     factory_map_t& factories = m_categories[id];
     factory_map_t::iterator it(factories.find(type));
@@ -145,7 +144,7 @@ repository_t::get(const std::string& type,
     }
     
     // TEST: Ensure that the plugin is of the actually specified category.
-    BOOST_ASSERT(it->second->id() == id);
+    BOOST_ASSERT(it->second->id() == typeid(Category));
     
     typedef category_traits<Category> traits;
 
@@ -175,7 +174,7 @@ repository_t::insert(const std::string& type) {
         "component factory is not derived from its category"
     );
 
-    factory_map_t& factories = m_categories[typeid(Category)];
+    factory_map_t& factories = m_categories[typeid(Category).name()];
 
     if(factories.find(type) != factories.end()) {
         throw repository_error_t("the '%s' component is a duplicate", type);

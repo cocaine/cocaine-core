@@ -22,6 +22,7 @@
 #define COCAINE_STORAGE_API_HPP
 
 #include <boost/thread/mutex.hpp>
+#include <boost/tuple/tuple.hpp>
 
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
