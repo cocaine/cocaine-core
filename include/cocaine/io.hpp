@@ -351,7 +351,7 @@ class socket:
                    size_t * size)
         {
             COCAINE_EINTR_GUARD(
-                m_socket.getsockopt(name, value, size)
+                return m_socket.getsockopt(name, value, size)
             );
         }
 
@@ -361,7 +361,7 @@ class socket:
                    size_t size)
         {
             COCAINE_EINTR_GUARD(
-                m_socket.setsockopt(name, value, size)
+                return m_socket.setsockopt(name, value, size)
             );
         }
 
