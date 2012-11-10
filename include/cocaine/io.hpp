@@ -156,6 +156,17 @@ class socket_base_t:
 
 using namespace boost::tuples;
 
+#define COCAINE_EINTR_GUARD(command)        \
+    while(true) {                           \
+        try {                               \
+            command;                        \
+        } catch(const zmq::error_t& e) {    \
+            if(e.num() != EINTR) {          \
+                throw;                      \
+            }                               \
+        }                                   \
+    }
+
 template<class SharingPolicy>
 class socket:
     public socket_base_t
@@ -170,7 +181,9 @@ class socket:
         send(zmq::message_t& message,
              int flags = 0)
         {
-            return m_socket.send(message, flags);
+            COCAINE_EINTR_GUARD(
+                return m_socket.send(message, flags)
+            );
         }
 
         template<class T>
@@ -231,7 +244,9 @@ class socket:
         recv(zmq::message_t * message,
              int flags = 0)
         {
-            return m_socket.recv(message, flags);
+            COCAINE_EINTR_GUARD(
+                return m_socket.recv(message, flags)
+            );
         }
 
         template<class T>
@@ -335,7 +350,9 @@ class socket:
                    void * value,
                    size_t * size)
         {
-            m_socket.getsockopt(name, value, size);
+            COCAINE_EINTR_GUARD(
+                m_socket.getsockopt(name, value, size)
+            );
         }
 
         void
@@ -343,7 +360,9 @@ class socket:
                    const void * value,
                    size_t size)
         {
-            m_socket.setsockopt(name, value, size);
+            COCAINE_EINTR_GUARD(
+                m_socket.setsockopt(name, value, size)
+            );
         }
 
         void
@@ -399,6 +418,8 @@ class socket:
     private:
         typename SharingPolicy::mutex_type m_mutex;
 };
+
+#undef COCAINE_EINTR_GUARD
 
 // Socket options
 
