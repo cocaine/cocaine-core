@@ -27,7 +27,6 @@
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
 #include "cocaine/profile.hpp"
-#include "cocaine/rpc.hpp"
 
 #include "cocaine/traits/unique_id.hpp"
 
@@ -46,7 +45,8 @@ host_t::host_t(context_t& context,
     )),
     m_id(config.uuid),
     m_name(config.name),
-    m_bus(context, ZMQ_DEALER, m_id)
+    m_bus(context, ZMQ_DEALER, m_id),
+    m_session_id(uninitialized)
 {
     std::string endpoint(
         (boost::format("ipc://%1%/%2%")
@@ -83,21 +83,10 @@ host_t::host_t(context_t& context,
             path.string()
         );
     } catch(const std::exception& e) {
-        m_bus.send_message(
-            io::message<rpc::error>(server_error, e.what())
-        );
-        
-        terminate();
+        terminate(rpc::suicide::abnormal, e.what());
         throw;
     } catch(...) {
-        m_bus.send_message(
-            io::message<rpc::error>(
-                server_error,
-                "unexpected exception while configuring the generic host"
-            )
-        );
-
-        terminate();
+        terminate(rpc::suicide::abnormal, "unexpected exception while configuring the sandbox");
         throw;
     }
 
@@ -154,7 +143,7 @@ host_t::write(const void * data,
         size
     );
     
-    m_bus.send_message(io::message<rpc::chunk>(message));
+    m_bus.send_message(io::message<rpc::chunk>(m_session_id, message));
 
     // Consume some of the queued events, don't block.
     poll(0);
@@ -194,7 +183,7 @@ host_t::on_disown(ev::timer&, int) {
 
 void
 host_t::on_idle(ev::timer&, int) {
-    terminate();
+    terminate(rpc::suicide::normal, "idle");
 }
 
 void
@@ -231,12 +220,15 @@ host_t::process_events() {
                 break;
 
             case io::message<rpc::invoke>::value: {
-                unique_id_t job_id;
+                unique_id_t session_id;
                 std::string event;
 
-                m_bus.recv_tuple(boost::tie(job_id, event));
+                // TEST: Ensure that there's an actual message following.
+                BOOST_ASSERT(m_bus.more());
+
+                m_bus.recv_tuple(boost::tie(session_id, event));
                 
-                invoke(event);
+                invoke(session_id, event);
                 
                 break;
             }
@@ -247,7 +239,7 @@ host_t::process_events() {
                 break;
             
             case io::message<rpc::terminate>::value:
-                terminate();
+                terminate(rpc::suicide::normal, "per request");
                 break;
 
             default:
@@ -264,9 +256,13 @@ host_t::process_events() {
 }
 
 void
-host_t::invoke(const std::string& event) {
+host_t::invoke(const unique_id_t& session_id,
+               const std::string& event)
+{
     // TEST: Ensure that we have the app first.
     BOOST_ASSERT(m_sandbox.get() != NULL);
+
+    m_session_id = session_id;
 
     // Pause the disown and idle timers. 
     m_disown_timer.stop();
@@ -275,21 +271,20 @@ host_t::invoke(const std::string& event) {
     try {
         m_sandbox->invoke(event, *this);
     } catch(const unrecoverable_error_t& e) {
-        io::message<rpc::error> message(server_error, e.what());
-        m_bus.send_message(message);
+        m_bus.send_message(io::message<rpc::error>(session_id, invocation_error, e.what()));
     } catch(const std::exception& e) {
-        io::message<rpc::error> message(app_error, e.what());
-        m_bus.send_message(message);
+        m_bus.send_message(io::message<rpc::error>(session_id, invocation_error, e.what()));
     } catch(...) {
-        io::message<rpc::error> message(
-            server_error,
-            "unexpected exception while processing an event"
+        m_bus.send_message(
+            io::message<rpc::error>(
+                session_id,
+                invocation_error,
+                "unexpected exception while processing an event"
+            )
         );
-        
-        m_bus.send_message(message);
     }
     
-    m_bus.send_message(io::message<rpc::choke>());
+    m_bus.send_message(io::message<rpc::choke>(session_id));
     
     // Drop all the outstanding cached chunks.
     m_queue.clear();
@@ -303,8 +298,10 @@ host_t::invoke(const std::string& event) {
 }
 
 void
-host_t::terminate() {
-    m_bus.send_message(io::message<rpc::terminate>());
+host_t::terminate(rpc::suicide::reasons reason,
+                  const std::string& message)
+{
+    m_bus.send_message(io::message<rpc::suicide>(reason, message));
     m_loop.unloop(ev::ALL);
 }
 
@@ -328,22 +325,32 @@ host_t::poll(int timeout) {
 
     switch(command) {
         case io::message<rpc::chunk>::value: {
-            BOOST_ASSERT(m_bus.more());
+            unique_id_t session_id(uninitialized);
+            zmq::message_t message;
 
-            zmq::message_t body;
-    
-            m_bus.recv(&body);
+            m_bus.recv_tuple(boost::tie(session_id, message));
+
+            // XXX: Proof-of-concept.
+            BOOST_ASSERT(session_id == m_session_id);
 
             m_queue.emplace_back(
-                static_cast<const char*>(body.data()),
-                body.size()
+                static_cast<const char*>(message.data()),
+                message.size()
             );
 
             break;
         }
 
-        case io::message<rpc::choke>::value:
+        case io::message<rpc::choke>::value: {
+            unique_id_t session_id(uninitialized);
+
+            m_bus.recv(session_id);
+
+            // XXX: Proof-of-concept.
+            BOOST_ASSERT(session_id == m_session_id);
+
             throw cocaine::error_t("the session has been closed");
+        }
 
         default:
             COCAINE_LOG_WARNING(

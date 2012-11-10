@@ -51,9 +51,6 @@ public:
     attach(slave_t * const slave);
 
     void
-    detach();
-
-    void
     push(const std::string& chunk);
 
     void

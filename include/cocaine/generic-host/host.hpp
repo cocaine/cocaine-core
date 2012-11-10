@@ -25,7 +25,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/asio.hpp"
-#include "cocaine/io.hpp"
+#include "cocaine/rpc.hpp"
 #include "cocaine/unique_id.hpp"
 
 #include "cocaine/api/sandbox.hpp"
@@ -83,10 +83,12 @@ class host_t:
         process_events();
         
         void
-        invoke(const std::string& event);
+        invoke(const unique_id_t& session_id,
+               const std::string& event);
         
         void
-        terminate();
+        terminate(rpc::suicide::reasons reason,
+                  const std::string& message);
 
         void
         poll(int timeout);
@@ -125,6 +127,8 @@ class host_t:
         std::unique_ptr<api::sandbox_t> m_sandbox;
 
         // Chunk cache
+
+        unique_id_t m_session_id;
 
         typedef std::deque<
             std::string

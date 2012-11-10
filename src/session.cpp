@@ -67,15 +67,6 @@ session_t::attach(slave_t * const slave) {
 }
 
 void
-session_t::detach() {
-    // TEST: Sessions can only be dettached when active.
-    BOOST_ASSERT(state == states::active && m_slave);
-
-    state = states::closed;
-    m_slave = NULL;
-}
-
-void
 session_t::push(const std::string& data) {
     switch(state) {
         case states::active: {
@@ -90,11 +81,9 @@ session_t::push(const std::string& data) {
                 data.size()
             );
 
-            io::message<rpc::chunk> message(chunk);
-
             m_engine->send(
                 m_slave->id(),
-                message
+                io::message<rpc::chunk>(id, chunk)
             );
         
             break;
@@ -111,7 +100,7 @@ session_t::push(const std::string& data) {
         }
 
         case states::closed:
-            throw cocaine::error_t("session has been already closed");
+            throw cocaine::error_t("the session has been closed");
     }
 }
 
@@ -123,7 +112,7 @@ session_t::close() {
 
         m_engine->send(
             m_slave->id(),
-            io::message<rpc::choke>()
+            io::message<rpc::choke>(id)
         );
     }
 

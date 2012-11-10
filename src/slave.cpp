@@ -66,7 +66,7 @@ slave_t::slave_t(context_t& context,
     args["--slave:profile"] = m_profile.name;
     args["--slave:uuid"] = m_id.string();
 
-    COCAINE_LOG_DEBUG(m_log, "spawning slave %s", m_id);
+    COCAINE_LOG_DEBUG(m_log, "slave %s spawning", m_id);
 
     m_handle = isolate->spawn(m_manifest.slave, args, environment);
 
@@ -85,9 +85,9 @@ void
 slave_t::assign(const boost::shared_ptr<session_t>& session) {
     COCAINE_LOG_DEBUG(
         m_log,
-        "session %s assigned to slave %s",
-        session->id,
-        m_id
+        "slave %s has started processing session %s",
+        m_id,
+        session->id
     );
 
     // TEST: Ensure that no session is being lost here.
@@ -110,19 +110,23 @@ slave_t::process(const io::message<rpc::ping>&) {
 }
 
 void
-slave_t::process(const io::message<rpc::chunk>& m) {
+slave_t::process(const io::message<rpc::chunk>& chunk) {
     // TEST: Ensure that the session is in fact here.
     BOOST_ASSERT(m_state == states::busy && m_session);
 
-    zmq::message_t& message = boost::get<0>(m);
+    const unique_id_t& session_id = boost::get<0>(chunk);
+    zmq::message_t& message = boost::get<1>(chunk);
 
     COCAINE_LOG_DEBUG(
         m_log,
-        "session %s sent a chunk from slave %s, size: %llu bytes",
-        m_session->id,
+        "slave %s received session %s chunk, size: %llu bytes",
         m_id,
+        session_id,
         message.size()
     );
+
+    // XXX: Proof-of-concept.
+    BOOST_ASSERT(session_id == m_session->id);
 
     if(m_session->state == session_t::states::active) {
         m_session->ptr->on_chunk(message.data(), message.size());
@@ -131,7 +135,7 @@ slave_t::process(const io::message<rpc::chunk>& m) {
 }
 
 void
-slave_t::process(const io::message<rpc::error>& m) {
+slave_t::process(const io::message<rpc::error>& error) {
     if(m_state != states::busy) {
         // NOTE: This means that the slave has failed to start and reported
         // an error, without having a session assigned yet.
@@ -141,17 +145,21 @@ slave_t::process(const io::message<rpc::error>& m) {
     // TEST: Ensure that the session is in fact here.
     BOOST_ASSERT(m_session);
 
-    error_code code = static_cast<error_code>(boost::get<0>(m));
-    const std::string& message = boost::get<1>(m);
+    const unique_id_t& session_id = boost::get<0>(error);
+    error_code code = static_cast<error_code>(boost::get<1>(error));
+    const std::string& message = boost::get<2>(error);
 
     COCAINE_LOG_DEBUG(
         m_log,
-        "session %s sent an error from slave %s, code: %d, message: %s",
-        m_session->id,
+        "slave %s received session %s error, code: %d, message: %s",
         m_id,
+        session_id,
         code,
         message
     );
+
+    // XXX: Proof-of-concept.
+    BOOST_ASSERT(session_id == m_session->id);
 
     if(m_session->state == session_t::states::active) {
         m_session->ptr->on_error(code, message);
@@ -160,21 +168,21 @@ slave_t::process(const io::message<rpc::error>& m) {
 }
 
 void
-slave_t::process(const io::message<rpc::choke>&) {
+slave_t::process(const io::message<rpc::choke>& choke) {
     // TEST: Ensure that the session is in fact here.
     BOOST_ASSERT(m_state == states::busy && m_session);
     
+    const unique_id_t session_id = boost::get<0>(choke);
+
     COCAINE_LOG_DEBUG(
         m_log,
-        "session %s completed by slave %s",
-        m_session->id,
-        m_id
+        "slave %s has completed session %s",
+        m_id,
+        session_id
     );
 
-    if(m_session->state == session_t::states::active) {
-        m_session->ptr->on_close();
-        m_session->detach();
-    }
+    // XXX: Proof-of-concept.
+    BOOST_ASSERT(session_id == m_session->id);
 
     m_session.reset();
 
@@ -221,7 +229,7 @@ slave_t::rearm() {
 
     COCAINE_LOG_DEBUG(
         m_log,
-        "resetting slave %s heartbeat timeout to %.02f seconds",
+        "slave %s resetting heartbeat timeout to %.02f seconds",
         m_id,
         timeout
     );
@@ -232,7 +240,7 @@ slave_t::rearm() {
 
 void
 slave_t::terminate() {
-    COCAINE_LOG_DEBUG(m_log, "terminating slave %s", m_id);
+    COCAINE_LOG_DEBUG(m_log, "slave %s terminating", m_id);
 
     // Ensure that the slave is not being overkilled.
     BOOST_ASSERT(m_state != states::dead);

@@ -40,6 +40,20 @@ namespace rpc {
         typedef rpc_plane_tag tag;
     };
 
+    struct suicide {
+        typedef rpc_plane_tag tag;
+
+        enum reasons: int {
+            normal,
+            abnormal
+        };
+
+        typedef boost::tuple<
+            int,
+            std::string
+        > tuple_type;
+    };
+
     struct invoke {
         typedef rpc_plane_tag tag;
         
@@ -53,6 +67,7 @@ namespace rpc {
         typedef rpc_plane_tag tag;
         
         typedef boost::tuple<
+            const unique_id_t&,
             zmq::message_t&
         > tuple_type;
     };
@@ -61,6 +76,7 @@ namespace rpc {
         typedef rpc_plane_tag tag;
         
         typedef boost::tuple<
+            const unique_id_t&,
             int,
             std::string
         > tuple_type;
@@ -68,6 +84,10 @@ namespace rpc {
 
     struct choke {
         typedef rpc_plane_tag tag;
+
+        typedef boost::tuple<
+            const unique_id_t&
+        > tuple_type;
     };
 }
 
@@ -90,6 +110,7 @@ namespace io {
             rpc::ping,
             rpc::pong,
             rpc::terminate,
+            rpc::suicide,
             rpc::invoke,
             rpc::chunk,
             rpc::error,

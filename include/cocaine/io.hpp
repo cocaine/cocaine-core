@@ -241,11 +241,11 @@ class socket:
         }
 
         bool
-        recv(zmq::message_t * message,
+        recv(zmq::message_t& message,
              int flags = 0)
         {
             COCAINE_EINTR_GUARD(
-                return m_socket.recv(message, flags)
+                return m_socket.recv(&message, flags)
             );
         }
 
@@ -257,7 +257,7 @@ class socket:
             zmq::message_t message;
             msgpack::unpacked unpacked;
 
-            if(!recv(&message, flags)) {
+            if(!recv(message, flags)) {
                 return false;
             }
            
@@ -285,7 +285,7 @@ class socket:
         {
             zmq::message_t message;
 
-            if(!recv(&message, flags)) {
+            if(!recv(message, flags)) {
                 return false;
             }
 
@@ -370,7 +370,7 @@ class socket:
             zmq::message_t null;
 
             while(more()) {
-                recv(&null);
+                recv(null);
             }
         }
 
@@ -502,8 +502,10 @@ struct enumerate:
         typename boost::mpl::find<Category, Event>::type
     >::type
 {
-    // TEST: Event should be enumerated.
-    BOOST_MPL_ASSERT(( boost::mpl::contains<Category, Event> ));
+    static_assert(
+        boost::mpl::contains<Category, Event>::value,
+        "event has not been enumerated within its category"
+    );
 };
 
 // RPC message

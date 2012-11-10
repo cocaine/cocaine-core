@@ -280,6 +280,10 @@ engine_t::on_cleanup(ev::timer&, int) {
             "the session has expired in the queue"
         );
 
+        // NOTE: Closing the session so that it would be impossible to push
+        // additional chunks until it's recycled.
+        session->close();
+
         ++it;
     }
 }
@@ -352,10 +356,20 @@ engine_t::process_bus_events() {
 
                 break;
 
-            case io::message<rpc::terminate>::value:
+            case io::message<rpc::suicide>::value: {
+                int code = 0;
+                std::string message;
+
+                m_bus->recv_tuple(boost::tie(code, message));
                 lock.unlock();
 
                 m_pool.erase(slave);
+
+                if(code == rpc::suicide::abnormal) {
+                    COCAINE_LOG_ERROR(m_log, "the app seems to be broken — %s", message);
+                    shutdown(states::broken);
+                    return;
+                }
 
                 if(m_state != states::running && m_pool.empty()) {
                     // If it was the last slave, shut the engine down.
@@ -363,49 +377,50 @@ engine_t::process_bus_events() {
                     return;
                 }
 
-                continue;
+                break;
+            }
 
             case io::message<rpc::chunk>::value: {
+                unique_id_t session_id(uninitialized);
                 zmq::message_t message;
                 
-                // TEST: Ensure we have the actual chunk following.
-                BOOST_ASSERT(m_bus->more());
-
-                m_bus->recv(&message);
+                m_bus->recv_tuple(boost::tie(session_id, message));
                 lock.unlock();
 
-                slave->second->process(io::message<rpc::chunk>(message));
+                slave->second->process(
+                    io::message<rpc::chunk>(session_id, message)
+                );
 
-                continue;
+                break;
             }
          
             case io::message<rpc::error>::value: {
+                unique_id_t session_id(uninitialized);
                 int code = 0;
                 std::string message;
 
-                // TEST: Ensure that we have the actual error following.
-                BOOST_ASSERT(m_bus->more());
-
-                m_bus->recv_tuple(boost::tie(code, message));
+                m_bus->recv_tuple(boost::tie(session_id, code, message));
                 lock.unlock();
 
-                slave->second->process(io::message<rpc::error>(code, message));
-
-                if(code == server_error) {
-                    COCAINE_LOG_ERROR(m_log, "the app seems to be broken — %s", message);
-                    shutdown(states::broken);
-                    return;
-                }
-
-                continue;
-            }
-
-            case io::message<rpc::choke>::value:
-                lock.unlock();
-
-                slave->second->process(io::message<rpc::choke>());
+                slave->second->process(
+                    io::message<rpc::error>(session_id, code, message)
+                );
 
                 break;
+            }
+
+            case io::message<rpc::choke>::value: {
+                unique_id_t session_id(uninitialized);
+
+                m_bus->recv(session_id);
+                lock.unlock();
+
+                slave->second->process(
+                    io::message<rpc::choke>(session_id)
+                );
+
+                break;
+            }
 
             default:
                 COCAINE_LOG_WARNING(
@@ -443,18 +458,15 @@ engine_t::process_ctl_events() {
         case io::message<control::status>::value: {
             Json::Value info(Json::objectValue);
 
-            info["queue-depth"] = static_cast<Json::LargestUInt>(m_queue.size());
-
-            info["slaves"]["total"] = static_cast<Json::LargestUInt>(m_pool.size());
-
-            info["slaves"]["busy"] = static_cast<Json::LargestUInt>(
-                std::count_if(
-                    m_pool.begin(),
-                    m_pool.end(),
-                    select::state<slave_t::states::busy>()
-                )
+            size_t active_pool_size = std::count_if(
+                m_pool.begin(),
+                m_pool.end(),
+                select::state<slave_t::states::busy>()
             );
 
+            info["queue-depth"] = static_cast<Json::LargestUInt>(m_queue.size());
+            info["slaves"]["total"] = static_cast<Json::LargestUInt>(m_pool.size());
+            info["slaves"]["busy"] = static_cast<Json::LargestUInt>(active_pool_size);
             info["state"] = describe[m_state];
 
             m_ctl->send(info);
@@ -653,7 +665,7 @@ engine_t::stop() {
         m_termination_timer.stop();
     }
 
-    // NOTE: This will force the slave pool termination via smart pointer deleters.
+    // NOTE: This will force the slave pool termination.
     m_pool.clear();
 
     if(m_state == states::stopping) {

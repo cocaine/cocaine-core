@@ -164,7 +164,7 @@ void server_t::process() {
             io::policies::unique
         > option(m_server, 0);
         
-        if(!m_server.recv(&message)) {
+        if(!m_server.recv(message)) {
             return;
         }
     }
@@ -193,7 +193,7 @@ void server_t::process() {
                 zmq::message_t signature;
 
                 if(m_server.more()) {
-                    m_server.recv(&signature);
+                    m_server.recv(signature);
                 }
 
                 std::string username(root["username"].asString());
