@@ -42,25 +42,14 @@ class host_t:
     public boost::noncopyable,
     public api::io_t
 {
-    enum states: int {
-        idle,
-        active
-    };
-
     public:
         host_t(context_t& context,
                host_config_t config);
 
         ~host_t();
 
-        enum modes: int {
-            normal   = 0,
-            oneshot  = ev::ONESHOT,
-            nonblock = ev::NONBLOCK
-        };
-
         void
-        run(modes mode = modes::normal);
+        run();
 
         // I/O object implementation
         
@@ -99,14 +88,15 @@ class host_t:
         void
         terminate();
 
+        void
+        poll(int timeout);
+
     private:
         context_t& m_context;
         boost::shared_ptr<logging::logger_t> m_log;
 
         const unique_id_t m_id;
         const std::string m_name;
-
-        states m_state;
 
         // Engine I/O
 

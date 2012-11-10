@@ -46,7 +46,6 @@ host_t::host_t(context_t& context,
     )),
     m_id(config.uuid),
     m_name(config.name),
-    m_state(states::idle),
     m_bus(context, ZMQ_DEALER, m_id)
 {
     std::string endpoint(
@@ -111,24 +110,26 @@ host_t::~host_t() {
 }
 
 void
-host_t::run(modes mode) {
-    m_loop.loop(mode);
+host_t::run() {
+    m_loop.loop();
 }
 
 std::string
 host_t::read(int timeout) {
     bool infinite = (timeout < 0);
-    double target = m_loop.now() + timeout / 1000.0f;
+    double target = m_loop.now() + (timeout / 1000.0f);
 
     while(infinite ||
-          m_loop.now() < target)
+          m_loop.now() <= target)
     {
         if(!m_queue.empty()) {
             break;
         }
-        
-        // Consume all the queued events, don't block.
-        run(modes::nonblock);
+
+        poll(infinite ? -1 : target - m_loop.now());
+
+        // Update the timestamp manually, because polling outside the loop.
+        ev_now_update(m_loop);
     }
 
     if(!m_queue.empty()) {
@@ -155,8 +156,8 @@ host_t::write(const void * data,
     
     m_bus.send_message(io::message<rpc::chunk>(message));
 
-    // Consume all the queued events, don't block.
-    run(modes::nonblock);
+    // Consume some of the queued events, don't block.
+    poll(0);
 }
 
 void
@@ -240,33 +241,10 @@ host_t::process_events() {
                 break;
             }
             
-            case io::message<rpc::chunk>::value: {
-                if(m_state == states::idle) {
-                    m_bus.drop();
-                    break;
-                }
-                
-                BOOST_ASSERT(m_bus.more());
-
-                zmq::message_t body;
-        
-                m_bus.recv(&body);
-
-                m_queue.emplace_back(
-                    static_cast<const char*>(body.data()),
-                    body.size()
-                );
-
-                break;
-            }
-
+            case io::message<rpc::chunk>::value:
             case io::message<rpc::choke>::value:
-                if(m_state == states::idle) {
-                    m_bus.drop();
-                    break;
-                }
-                
-                throw cocaine::error_t("the session has been closed");
+                m_bus.drop();
+                break;
             
             case io::message<rpc::terminate>::value:
                 terminate();
@@ -290,9 +268,9 @@ host_t::invoke(const std::string& event) {
     // TEST: Ensure that we have the app first.
     BOOST_ASSERT(m_sandbox.get() != NULL);
 
-    // Pause the idle timer. 
+    // Pause the disown and idle timers. 
+    m_disown_timer.stop();
     m_idle_timer.stop();
-    m_state = states::active;
 
     try {
         m_sandbox->invoke(event, *this);
@@ -316,9 +294,9 @@ host_t::invoke(const std::string& event) {
     // Drop all the outstanding cached chunks.
     m_queue.clear();
 
-    // Rearm the idle timer.
+    // NOTE: Rearm the idle timer. The disown timer will be rearmed
+    // on the next heartbeat interval.
     m_idle_timer.start(m_profile->idle_timeout);
-    m_state = states::idle;
     
     // Feed the event loop.
     m_loop.feed_fd_event(m_bus.fd(), ev::READ);
@@ -328,4 +306,53 @@ void
 host_t::terminate() {
     m_bus.send_message(io::message<rpc::terminate>());
     m_loop.unloop(ev::ALL);
+}
+
+void
+host_t::poll(int timeout) {
+    // TEST: Ensure that we haven't missed something in a previous iteration.
+    BOOST_ASSERT(!m_bus.more());
+   
+    int command = -1;
+
+    {
+        io::scoped_option<
+            io::options::receive_timeout,
+            io::policies::unique
+        > option(m_bus, timeout);
+
+        if(!m_bus.recv(command)) {
+            return;
+        }
+    }
+
+    switch(command) {
+        case io::message<rpc::chunk>::value: {
+            BOOST_ASSERT(m_bus.more());
+
+            zmq::message_t body;
+    
+            m_bus.recv(&body);
+
+            m_queue.emplace_back(
+                static_cast<const char*>(body.data()),
+                body.size()
+            );
+
+            break;
+        }
+
+        case io::message<rpc::choke>::value:
+            throw cocaine::error_t("the session has been closed");
+
+        default:
+            COCAINE_LOG_WARNING(
+                m_log,
+                "generic host %s dropping unknown type %d message while invoking", 
+                m_id,
+                command
+            );
+            
+            m_bus.drop();
+    }
 }
