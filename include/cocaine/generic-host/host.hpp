@@ -32,6 +32,130 @@
 
 namespace cocaine {
 
+class host_t;
+
+struct request_t:
+    public api::request_t
+{
+    request_t(const unique_id_t& id):
+        api::request_t(id)
+    { }
+
+    void
+    emit_chunk(const void * chunk,
+               size_t size)
+    {
+        std::string blob(
+            static_cast<const char*>(chunk),
+            size
+        );
+
+        for(const auto& callback: m_chunk_chain) {
+            callback(blob);
+        }
+    }
+
+    void
+    emit_close() {
+        for(const auto& callback: m_close_chain) {
+            callback();
+        }
+    }
+
+    virtual
+    void
+    on_chunk(api::chunk_fn_t callback) {
+        m_chunk_chain.emplace_back(callback);
+    }
+
+    virtual
+    void
+    on_close(api::close_fn_t callback) {
+        m_close_chain.emplace_back(callback);
+    }
+
+private:
+    typedef std::vector<
+        api::chunk_fn_t
+    > chunk_chain_t;
+
+    chunk_chain_t m_chunk_chain;
+
+    typedef std::vector<
+        api::close_fn_t
+    > close_chain_t;
+
+    close_chain_t m_close_chain;
+};
+
+struct response_t:
+    public api::response_t
+{
+    response_t(const unique_id_t& id,
+               host_t * const host):
+        api::response_t(id),
+        m_host(host)
+    { }
+
+    virtual
+    void
+    write(const void * chunk,
+          size_t size);
+
+    virtual
+    void
+    close();
+
+private:
+    host_t * const m_host;
+};
+
+struct emitter_t:
+    public api::emitter_t
+{
+    void
+    emit(const std::string& event,
+         const boost::shared_ptr<api::request_t>& request,
+         const boost::shared_ptr<api::response_t>& response)
+    {
+        chain_t& chain = m_chains[event];
+
+        for(const auto& callback: chain) {
+            callback(request, response);
+        }
+    }
+
+    virtual
+    void
+    on_event(const std::string& event,
+             api::event_fn_t callback)
+    {
+        chain_t& chain = m_chains[event];
+
+        // if(std::find_if(chain.begin(), chain.end(), equal()) != chain.end()) {
+        //    throw cocaine::error_t("duplicate callback");
+        // }
+
+        chain.emplace_back(callback);
+    }
+
+private:
+    typedef std::vector<
+        api::event_fn_t
+    > chain_t;
+
+#if BOOST_VERSION >= 103600
+    typedef boost::unordered_map<
+#else
+    typedef std::map<
+#endif
+        std::string,
+        chain_t
+    > chain_map_t;
+
+    chain_map_t m_chains;
+};
+
 struct host_config_t {
     std::string name;
     std::string profile;
@@ -39,8 +163,7 @@ struct host_config_t {
 };
 
 class host_t:
-    public boost::noncopyable,
-    public api::io_t
+    public boost::noncopyable
 {
     public:
         host_t(context_t& context,
@@ -51,23 +174,18 @@ class host_t:
         void
         run();
 
-        // I/O object implementation
-        
-        virtual
-        std::string
-        read(int timeout);
+        // Response I/O
 
-        virtual
+        template<class Event>
         void
-        write(const void * data,
-              size_t size);
+        send(const io::message<Event>& message);
 
     private:
         void
-        on_event(ev::io&, int);
+        on_bus_event(ev::io&, int);
         
         void
-        on_check(ev::prepare&, int);
+        on_bus_check(ev::prepare&, int);
         
         void
         on_heartbeat(ev::timer&, int);
@@ -80,7 +198,7 @@ class host_t:
         
     private:
         void
-        process_events();
+        process_bus_events();
         
         void
         invoke(const unique_id_t& session_id,
@@ -89,9 +207,6 @@ class host_t:
         void
         terminate(rpc::suicide::reasons reason,
                   const std::string& message);
-
-        void
-        poll(int timeout);
 
     private:
         context_t& m_context;
@@ -126,16 +241,27 @@ class host_t:
         std::unique_ptr<const profile_t> m_profile;
         std::unique_ptr<api::sandbox_t> m_sandbox;
 
-        // Chunk cache
+        // The event emitter
+        emitter_t m_emitter;
 
-        unique_id_t m_session_id;
+        // Session map
+#if BOOST_VERSION >= 103600
+        typedef boost::unordered_map<
+#else
+        typedef std::map<
+#endif
+            unique_id_t,
+            boost::shared_ptr<request_t>
+        > request_map_t;
 
-        typedef std::deque<
-            std::string
-        > chunk_queue_t;
-
-        chunk_queue_t m_queue;
+        request_map_t m_requests;
 };
+
+template<class Event>
+void
+host_t::send(const io::message<Event>& message) {
+    m_bus.send_message(message);
+}
 
 } // namespace cocaine::engine
 
