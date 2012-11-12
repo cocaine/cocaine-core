@@ -23,7 +23,6 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
-#include "cocaine/unique_id.hpp"
 
 #include "cocaine/helpers/json.hpp"
 
@@ -53,6 +52,11 @@ namespace api {
 
 struct stream_t {
     virtual
+    ~stream_t() {
+        // Empty.
+    }
+    
+    virtual
     void
     push(const void * chunk,
          size_t size) = 0;
@@ -74,7 +78,7 @@ class sandbox_t:
         virtual
         boost::shared_ptr<stream_t>
         invoke(const std::string& event,
-               const boost::shared_ptr<stream_t>&) = 0;
+               const boost::shared_ptr<stream_t>& upstream) = 0;
 
     protected:
         sandbox_t(context_t&,

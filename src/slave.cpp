@@ -111,8 +111,13 @@ slave_t::process(const io::message<rpc::ping>&) {
 
 void
 slave_t::process(const io::message<rpc::chunk>& chunk) {
+    if(m_state != states::busy) {
+        // NOTE: This is an overdue message, drop it.
+        return;
+    }
+
     // TEST: Ensure that the session is in fact here.
-    BOOST_ASSERT(m_state == states::busy && m_session);
+    BOOST_ASSERT(m_session);
 
     const unique_id_t& session_id = boost::get<0>(chunk);
     zmq::message_t& message = boost::get<1>(chunk);
@@ -137,8 +142,7 @@ slave_t::process(const io::message<rpc::chunk>& chunk) {
 void
 slave_t::process(const io::message<rpc::error>& error) {
     if(m_state != states::busy) {
-        // NOTE: This means that the slave has failed to start and reported
-        // an error, without having a session assigned yet.
+        // NOTE: This is an overdue message, drop it.
         return;
     }
 
@@ -169,8 +173,13 @@ slave_t::process(const io::message<rpc::error>& error) {
 
 void
 slave_t::process(const io::message<rpc::choke>& choke) {
+    if(m_state != states::busy) {
+        // NOTE: This is an overdue message, drop it.
+        return;
+    }
+
     // TEST: Ensure that the session is in fact here.
-    BOOST_ASSERT(m_state == states::busy && m_session);
+    BOOST_ASSERT(m_session);
     
     const unique_id_t session_id = boost::get<0>(choke);
 
@@ -185,6 +194,12 @@ slave_t::process(const io::message<rpc::choke>& choke) {
     BOOST_ASSERT(session_id == m_session->id);
 
     m_session.reset();
+
+    // NOTE: Signal the slave that the session is, in fact, closed.
+    m_engine->send(
+        m_id,
+        io::message<rpc::choke>(session_id)
+    );
 
     m_state = states::idle;
     

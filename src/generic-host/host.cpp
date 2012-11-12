@@ -111,7 +111,7 @@ host_t::host_t(context_t& context,
         terminate(rpc::suicide::abnormal, e.what());
         throw;
     } catch(...) {
-        terminate(rpc::suicide::abnormal, "unexpected exception while configuring the sandbox");
+        terminate(rpc::suicide::abnormal, "unexpected exception");
         throw;
     }
 
@@ -218,7 +218,13 @@ host_t::process_bus_events() {
                 stream_map_t::iterator it(m_streams.find(session_id));
 
                 if(it != m_streams.end()) {
-                    it->second->push(message.data(), message.size());
+                    try {
+                        it->second.downstream->push(message.data(), message.size());
+                    } catch(const std::exception& e) {
+                        send(io::message<rpc::error>(session_id, invocation_error, e.what()));
+                    } catch(...) {
+                        send(io::message<rpc::error>(session_id, invocation_error, "unexpected exception"));
+                    }
                 } else {
                     COCAINE_LOG_ERROR(m_log, "chunk: nonexistent session %s", session_id);
                 }
@@ -234,7 +240,13 @@ host_t::process_bus_events() {
                 stream_map_t::iterator it = m_streams.find(session_id);
 
                 if(it != m_streams.end()) {
-                    it->second->close();
+                    try {
+                        it->second.downstream->close();
+                    } catch(const std::exception& e) {
+                        send(io::message<rpc::error>(session_id, invocation_error, e.what()));
+                    } catch(...) {
+                        send(io::message<rpc::error>(session_id, invocation_error, "unexpected exception"));
+                    }
                 } else {
                     COCAINE_LOG_ERROR(m_log, "choke: nonexistent session %s", session_id);
                 }
@@ -271,27 +283,26 @@ host_t::invoke(const unique_id_t& session_id,
 {
     m_idle_timer.stop();
 
-    boost::shared_ptr<api::stream_t> response(
+    boost::shared_ptr<api::stream_t> upstream(
         boost::make_shared<response_stream_t>(session_id, this)
     );
 
     try {
+        io_pair_t io = {
+            m_sandbox->invoke(event, upstream),
+            upstream
+        };
+
         m_streams.emplace(
             session_id,
-            m_sandbox->invoke(event, response)
+            io
         );
-    } catch(const unrecoverable_error_t& e) {
-        send(io::message<rpc::error>(session_id, invocation_error, e.what()));
     } catch(const std::exception& e) {
         send(io::message<rpc::error>(session_id, invocation_error, e.what()));
+        send(io::message<rpc::choke>(session_id));
     } catch(...) {
-        send(
-            io::message<rpc::error>(
-                session_id,
-                invocation_error,
-                "unexpected exception while processing an event"
-            )
-        );
+        send(io::message<rpc::error>(session_id, invocation_error, "unexpected exception"));
+        send(io::message<rpc::choke>(session_id));
     }
     
     // Feed the event loop.

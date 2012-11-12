@@ -141,13 +141,18 @@ class host_t:
 
         // Session streams
 
+        struct io_pair_t {
+            boost::shared_ptr<api::stream_t> downstream;
+            boost::shared_ptr<api::stream_t> upstream;
+        };
+
 #if BOOST_VERSION >= 103600
         typedef boost::unordered_map<
 #else
         typedef std::map<
 #endif
             unique_id_t,
-            boost::shared_ptr<api::stream_t>
+            io_pair_t
         > stream_map_t;
 
         stream_map_t m_streams;
