@@ -34,126 +34,24 @@ namespace cocaine {
 
 class host_t;
 
-struct request_t:
-    public api::request_t
+struct response_stream_t:
+    public api::stream_t
 {
-    request_t(const unique_id_t& id):
-        api::request_t(id)
-    { }
-
-    void
-    emit_chunk(const void * chunk,
-               size_t size)
-    {
-        std::string blob(
-            static_cast<const char*>(chunk),
-            size
-        );
-
-        for(const auto& callback: m_chunk_chain) {
-            callback(blob);
-        }
-    }
-
-    void
-    emit_close() {
-        for(const auto& callback: m_close_chain) {
-            callback();
-        }
-    }
+    response_stream_t(const unique_id_t& id,
+                      host_t * const host);
 
     virtual
     void
-    on_chunk(api::chunk_fn_t callback) {
-        m_chunk_chain.emplace_back(callback);
-    }
-
-    virtual
-    void
-    on_close(api::close_fn_t callback) {
-        m_close_chain.emplace_back(callback);
-    }
-
-private:
-    typedef std::vector<
-        api::chunk_fn_t
-    > chunk_chain_t;
-
-    chunk_chain_t m_chunk_chain;
-
-    typedef std::vector<
-        api::close_fn_t
-    > close_chain_t;
-
-    close_chain_t m_close_chain;
-};
-
-struct response_t:
-    public api::response_t
-{
-    response_t(const unique_id_t& id,
-               host_t * const host):
-        api::response_t(id),
-        m_host(host)
-    { }
-
-    virtual
-    void
-    write(const void * chunk,
-          size_t size);
+    push(const void * chunk,
+         size_t size);
 
     virtual
     void
     close();
 
 private:
+    const unique_id_t& m_id;
     host_t * const m_host;
-};
-
-struct emitter_t:
-    public api::emitter_t
-{
-    void
-    emit(const std::string& event,
-         const boost::shared_ptr<api::request_t>& request,
-         const boost::shared_ptr<api::response_t>& response)
-    {
-        chain_t& chain = m_chains[event];
-
-        for(const auto& callback: chain) {
-            callback(request, response);
-        }
-    }
-
-    virtual
-    void
-    on_event(const std::string& event,
-             api::event_fn_t callback)
-    {
-        chain_t& chain = m_chains[event];
-
-        // if(std::find_if(chain.begin(), chain.end(), equal()) != chain.end()) {
-        //    throw cocaine::error_t("duplicate callback");
-        // }
-
-        chain.emplace_back(callback);
-    }
-
-private:
-    typedef std::vector<
-        api::event_fn_t
-    > chain_t;
-
-#if BOOST_VERSION >= 103600
-    typedef boost::unordered_map<
-#else
-    typedef std::map<
-#endif
-        std::string,
-        chain_t
-    > chain_map_t;
-
-    chain_map_t m_chains;
 };
 
 struct host_config_t {
@@ -241,20 +139,18 @@ class host_t:
         std::unique_ptr<const profile_t> m_profile;
         std::unique_ptr<api::sandbox_t> m_sandbox;
 
-        // The event emitter
-        emitter_t m_emitter;
+        // Session streams
 
-        // Session map
 #if BOOST_VERSION >= 103600
         typedef boost::unordered_map<
 #else
         typedef std::map<
 #endif
             unique_id_t,
-            boost::shared_ptr<request_t>
-        > request_map_t;
+            boost::shared_ptr<api::stream_t>
+        > stream_map_t;
 
-        request_map_t m_requests;
+        stream_map_t m_streams;
 };
 
 template<class Event>

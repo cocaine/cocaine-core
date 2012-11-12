@@ -35,9 +35,15 @@ using namespace cocaine::engine;
 
 namespace fs = boost::filesystem;
 
+response_stream_t::response_stream_t(const unique_id_t& id,
+                                     host_t * const host):
+    m_id(id),
+    m_host(host)
+{ }
+
 void
-response_t::write(const void * chunk,
-                  size_t size)
+response_stream_t::push(const void * chunk,
+                        size_t size)
 {
     zmq::message_t message(size);
 
@@ -47,12 +53,12 @@ response_t::write(const void * chunk,
         size
     );
 
-    m_host->send(io::message<rpc::chunk>(id, message));
+    m_host->send(io::message<rpc::chunk>(m_id, message));
 }
 
 void
-response_t::close() {
-    m_host->send(io::message<rpc::choke>(id));
+response_stream_t::close() {
+    m_host->send(io::message<rpc::choke>(m_id));
 }
 
 host_t::host_t(context_t& context,
@@ -99,8 +105,7 @@ host_t::host_t(context_t& context,
             m_manifest->sandbox.type,
             m_manifest->name,
             m_manifest->sandbox.args,
-            path.string(),
-            m_emitter
+            path.string()
         );
     } catch(const std::exception& e) {
         terminate(rpc::suicide::abnormal, e.what());
@@ -210,12 +215,12 @@ host_t::process_bus_events() {
 
                 m_bus.recv_tuple(boost::tie(session_id, message));
 
-                request_map_t::iterator it(m_requests.find(session_id));
+                stream_map_t::iterator it(m_streams.find(session_id));
 
-                if(it == m_requests.end()) {
-                    COCAINE_LOG_ERROR(m_log, "chunk: nonexistent session %s", session_id);
+                if(it != m_streams.end()) {
+                    it->second->push(message.data(), message.size());
                 } else {
-                    it->second->emit_chunk(message.data(), message.size());
+                    COCAINE_LOG_ERROR(m_log, "chunk: nonexistent session %s", session_id);
                 }
 
                 break;
@@ -226,17 +231,17 @@ host_t::process_bus_events() {
 
                 m_bus.recv(session_id);
 
-                request_map_t::iterator it = m_requests.find(session_id);
+                stream_map_t::iterator it = m_streams.find(session_id);
 
-                if(it == m_requests.end()) {
-                    COCAINE_LOG_ERROR(m_log, "choke: nonexistent session %s", session_id);
+                if(it != m_streams.end()) {
+                    it->second->close();
                 } else {
-                    it->second->emit_close();
+                    COCAINE_LOG_ERROR(m_log, "choke: nonexistent session %s", session_id);
                 }
 
-                m_requests.erase(it);
+                m_streams.erase(it);
 
-                if(m_requests.empty()) {
+                if(m_streams.empty()) {
                     m_idle_timer.start(m_profile->idle_timeout);
                 }
 
@@ -266,19 +271,15 @@ host_t::invoke(const unique_id_t& session_id,
 {
     m_idle_timer.stop();
 
-    request_map_t::iterator it;
-
-    boost::tie(it, boost::tuples::ignore) = m_requests.emplace(
-        session_id,
-        boost::make_shared<request_t>(session_id)
-    );
-
-    boost::shared_ptr<response_t> response(
-        boost::make_shared<response_t>(session_id, this)
+    boost::shared_ptr<api::stream_t> response(
+        boost::make_shared<response_stream_t>(session_id, this)
     );
 
     try {
-        m_emitter.emit(event, it->second, response);
+        m_streams.emplace(
+            session_id,
+            m_sandbox->invoke(event, response)
+        );
     } catch(const unrecoverable_error_t& e) {
         send(io::message<rpc::error>(session_id, invocation_error, e.what()));
     } catch(const std::exception& e) {

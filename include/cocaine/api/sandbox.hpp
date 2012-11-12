@@ -21,8 +21,6 @@
 #ifndef COCAINE_SANDBOX_API_HPP
 #define COCAINE_SANDBOX_API_HPP
 
-#include <boost/function.hpp>
-
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
 #include "cocaine/unique_id.hpp"
@@ -53,58 +51,15 @@ struct recoverable_error_t:
 
 namespace api {
 
-typedef boost::function<
-    void(const std::string&)
-> chunk_fn_t;
-
-typedef boost::function<
-    void()
-> close_fn_t;
-
-struct request_t {
-    request_t(const unique_id_t& id_):
-        id(id_)
-    { }
-
+struct stream_t {
     virtual
     void
-    on_chunk(chunk_fn_t callback) = 0;
-
-    virtual
-    void
-    on_close(close_fn_t callback) = 0;
-
-public:
-    const unique_id_t id;
-};
-
-struct response_t {
-    response_t(const unique_id_t& id_):
-        id(id_)
-    { }
-
-    virtual
-    void
-    write(const void * chunk,
-          size_t size) = 0;
+    push(const void * chunk,
+         size_t size) = 0;
 
     virtual
     void
     close() = 0;
-
-public:
-    const unique_id_t id;
-};
-
-typedef boost::function<
-    void(const boost::shared_ptr<request_t>&, const boost::shared_ptr<response_t>&)
-> event_fn_t;
-
-struct emitter_t {
-    virtual
-    void
-    on_event(const std::string& event,
-             event_fn_t callback) = 0;
 };
 
 class sandbox_t:
@@ -115,13 +70,17 @@ class sandbox_t:
         ~sandbox_t() {
             // Empty.
         }
-        
+
+        virtual
+        boost::shared_ptr<stream_t>
+        invoke(const std::string& event,
+               const boost::shared_ptr<stream_t>&) = 0;
+
     protected:
         sandbox_t(context_t&,
                   const std::string& /* name */,
                   const Json::Value& /* args */,
-                  const std::string& /* spool */,
-                  emitter_t&)
+                  const std::string& /* spool */)
         {
            // Empty. 
         }
@@ -139,8 +98,7 @@ struct category_traits<sandbox_t> {
         get(context_t& context,
             const std::string& name,
             const Json::Value& args,
-            const std::string& spool,
-            emitter_t& emitter) = 0;
+            const std::string& spool) = 0;
     };
 
     template<class T>
@@ -152,11 +110,10 @@ struct category_traits<sandbox_t> {
         get(context_t& context,
             const std::string& name,
             const Json::Value& args,
-            const std::string& spool,
-            emitter_t& emitter)
+            const std::string& spool)
         {
             return ptr_type(
-                new T(context, name, args, spool, emitter)
+                new T(context, name, args, spool)
             );
         }
     };
