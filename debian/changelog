@@ -7,7 +7,7 @@ cocaine-core (0.10.0) lucid; urgency=low
   * Pluggable isolations (processes, cgroups, lxc, et cetera).
   * TBD.
 
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Thu, 01 Dec 2012 00:00:00 +0400
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 30 Nov 2012 00:00:00 +0400
 
 cocaine-core (0.9.3) lucid; urgency=low
 
