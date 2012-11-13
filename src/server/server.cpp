@@ -85,7 +85,7 @@ server_t::server_t(context_t& context,
             ++it)
         {
             try {
-                m_announces->connect(*it);
+                m_announces->bind(*it);
             } catch(const zmq::error_t& e) {
                 throw configuration_error_t("invalid announce endpoint - %s", e.what());
             }
@@ -115,7 +115,9 @@ server_t::server_t(context_t& context,
     recover();
 }
 
-server_t::~server_t() { }
+server_t::~server_t() {
+    // Empty.
+}
 
 void server_t::run() {
     m_loop.loop();
