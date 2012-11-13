@@ -347,8 +347,11 @@ Json::Value server_t::info() const {
 
     result["identity"] = m_context.config.network.hostname;
 
-    result["events"]["pending"] = static_cast<Json::LargestUInt>(engine::event_t::objects_alive());
-    result["events"]["processed"] = static_cast<Json::LargestUInt>(engine::event_t::objects_created());
+    size_t total = engine::event_t::objects_created(),
+           current = engine::event_t::objects_alive();
+
+    result["events"]["pending"] = static_cast<Json::LargestUInt>(current);
+    result["events"]["processed"] = static_cast<Json::LargestUInt>(total - current);
 
     result["uptime"] = m_loop.now() - m_birthstamp;
 
