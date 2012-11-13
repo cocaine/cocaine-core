@@ -1,3 +1,9 @@
+cocaine-core (0.9.8) lucid; urgency=low
+
+  * Binding announce socket instead of connecting it
+
+ -- Rim Zaidullin <rimz@yandex-team.ru>  Tue, 13 Nov 2012 19:01:18 +0400
+
 cocaine-core (0.9.7) lucid; urgency=low
 
   * support cocaine-default.conf; 

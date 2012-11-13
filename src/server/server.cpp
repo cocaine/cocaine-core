@@ -87,7 +87,7 @@ server_t::server_t(context_t& context, server_config_t config):
             ++it)
         {
             try {
-                m_announces->connect(*it);
+                m_announces->bind(*it);
             } catch(const zmq::error_t& e) {
                 throw configuration_error_t(std::string("invalid announce endpoint - ") + e.what());
             }
