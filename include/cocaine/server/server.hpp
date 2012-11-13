@@ -28,12 +28,6 @@
 
 #include "cocaine/helpers/json.hpp"
 
-#if BOOST_VERSION >= 104000
-# include <boost/ptr_container/ptr_unordered_map.hpp>
-#else
-# include <boost/ptr_container/ptr_map.hpp>
-#endif
-
 namespace cocaine {
 
 struct server_config_t {
@@ -86,12 +80,12 @@ class server_t:
         const std::string m_runlist;
 
 #if BOOST_VERSION >= 104000
-        typedef boost::ptr_unordered_map<
+        typedef boost::unordered_map<
 #else
-        typedef boost::ptr_map<
+        typedef std::map<
 #endif
             const std::string,
-            app_t
+            boost::shared_ptr<app_t>
         > app_map_t;
 
         app_map_t m_apps;

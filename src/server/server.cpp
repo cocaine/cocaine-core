@@ -302,22 +302,25 @@ Json::Value server_t::create_app(const std::string& name, const std::string& pro
         throw configuration_error_t("the specified app already exists");
     }
 
-    // DEPRECATED: In order to support boost::ptr_map.
-    std::auto_ptr<app_t> app(
-        new app_t(
+    app_map_t::iterator it;
+
+    boost::tie(it, boost::tuples::ignore) = m_apps.emplace(
+        name,
+        boost::make_shared<app_t>(
             m_context,
             name,
             profile
         )
     );
 
-    app->start();
+    try {
+        it->second->start();
+    } catch(...) {
+        m_apps.erase(it);
+        throw;
+    }
 
-    Json::Value result(app->info());
-
-    m_apps.insert(name, app);
-    
-    return result;
+    return json::build("success", true);
 }
 
 Json::Value server_t::delete_app(const std::string& name) {
@@ -327,13 +330,9 @@ Json::Value server_t::delete_app(const std::string& name) {
         throw configuration_error_t("the specified app doesn't exist");
     }
 
-    app->second->stop();
-
-    Json::Value result(app->second->info());
-
     m_apps.erase(app);
 
-    return result;
+    return json::build("success", true);
 }
 
 Json::Value server_t::info() const {
@@ -350,8 +349,6 @@ Json::Value server_t::info() const {
 
     result["events"]["pending"] = static_cast<Json::LargestUInt>(engine::event_t::objects_alive());
     result["events"]["processed"] = static_cast<Json::LargestUInt>(engine::event_t::objects_created());
-
-    result["sockets"] = static_cast<Json::LargestUInt>(io::socket_base_t::objects_alive());
 
     result["uptime"] = m_loop.now() - m_birthstamp;
 
