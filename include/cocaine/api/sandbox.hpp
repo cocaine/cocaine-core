@@ -26,29 +26,7 @@
 
 #include "cocaine/helpers/json.hpp"
 
-namespace cocaine {
-
-struct unrecoverable_error_t:
-    public error_t
-{
-    template<typename... Args>
-    unrecoverable_error_t(const std::string& format,
-                          const Args&... args):
-        error_t(format, args...)
-    { }
-};
-
-struct recoverable_error_t:
-    public error_t
-{
-    template<typename... Args>
-    recoverable_error_t(const std::string& format,
-                        const Args&... args):
-        error_t(format, args...)
-    { }
-};
-
-namespace api {
+namespace cocaine { namespace api {
 
 struct stream_t {
     virtual
