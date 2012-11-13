@@ -247,14 +247,14 @@ host_t::process_bus_events() {
                     } catch(...) {
                         send(io::message<rpc::error>(session_id, invocation_error, "unexpected exception"));
                     }
+                    
+                    m_streams.erase(it);
+
+                    if(m_streams.empty()) {
+                        m_idle_timer.start(m_profile->idle_timeout);
+                    }
                 } else {
                     COCAINE_LOG_ERROR(m_log, "choke: nonexistent session %s", session_id);
-                }
-
-                m_streams.erase(it);
-
-                if(m_streams.empty()) {
-                    m_idle_timer.start(m_profile->idle_timeout);
                 }
 
                 break;
