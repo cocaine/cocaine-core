@@ -226,12 +226,16 @@ host_t::process_bus_events() {
 
                 BOOST_ASSERT(it != m_streams.end());
 
-                try {
-                    it->second.downstream->push(message.data(), message.size());
-                } catch(const std::exception& e) {
-                    it->second.upstream->abort(invocation_error, e.what());
-                } catch(...) {
-                    it->second.upstream->abort(invocation_error, "unexpected exception");
+                // NOTE: This may be a chunk for a failed invocation, in which case there
+                // will be no active stream, so drop the message.
+                if(it != m_streams.end()) {
+                    try {
+                        it->second.downstream->push(message.data(), message.size());
+                    } catch(const std::exception& e) {
+                        it->second.upstream->abort(invocation_error, e.what());
+                    } catch(...) {
+                        it->second.upstream->abort(invocation_error, "unexpected exception");
+                    }
                 }
 
                 break;
