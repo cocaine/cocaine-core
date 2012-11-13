@@ -51,7 +51,8 @@ public:
     attach(slave_t * const slave);
 
     void
-    push(const std::string& chunk);
+    push(const void * chunk,
+         size_t size);
 
     void
     close();

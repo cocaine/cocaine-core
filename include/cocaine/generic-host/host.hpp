@@ -49,6 +49,11 @@ struct response_stream_t:
     void
     close();
 
+    virtual
+    void
+    abort(error_code code,
+          const std::string& message);
+
 private:
     const unique_id_t& m_id;
     host_t * const m_host;

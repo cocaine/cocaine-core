@@ -24,25 +24,11 @@
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
 
+#include "cocaine/api/stream.hpp"
+
 #include "cocaine/helpers/json.hpp"
 
 namespace cocaine { namespace api {
-
-struct stream_t {
-    virtual
-    ~stream_t() {
-        // Empty.
-    }
-    
-    virtual
-    void
-    push(const void * chunk,
-         size_t size) = 0;
-
-    virtual
-    void
-    close() = 0;
-};
 
 class sandbox_t:
     public boost::noncopyable

@@ -361,13 +361,24 @@ void server_t::announce(ev::timer&, int) {
 
     zmq::message_t message(m_server.endpoint().size());
  
-    memcpy(message.data(), m_server.endpoint().data(), m_server.endpoint().size());
+    memcpy(
+        message.data(),
+        m_server.endpoint().data(),
+        m_server.endpoint().size()
+    );
+    
     m_announces->send(message, ZMQ_SNDMORE);
 
     std::string announce(Json::FastWriter().write(info()));
     
     message.rebuild(announce.size());
-    memcpy(message.data(), announce.data(), announce.size());
+    
+    memcpy(
+        message.data(),
+        announce.data(),
+        announce.size()
+    );
+    
     m_announces->send(message);
 }
 

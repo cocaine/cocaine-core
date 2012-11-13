@@ -203,7 +203,7 @@ app_t::info() const {
     return info;
 }
 
-boost::shared_ptr<pipe_t>
+boost::shared_ptr<api::stream_t>
 app_t::enqueue(const boost::shared_ptr<event_t>& event,
                engine::mode mode)
 {

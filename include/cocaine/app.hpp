@@ -26,6 +26,7 @@
 #include "cocaine/common.hpp"
 
 #include "cocaine/api/driver.hpp"
+#include "cocaine/api/stream.hpp"
 
 #include "cocaine/helpers/json.hpp"
 
@@ -50,7 +51,7 @@ class app_t {
         
         // Scheduling
         
-        boost::shared_ptr<engine::pipe_t>
+        boost::shared_ptr<api::stream_t>
         enqueue(const boost::shared_ptr<engine::event_t>& event,
                 engine::mode mode = engine::mode::normal);
 

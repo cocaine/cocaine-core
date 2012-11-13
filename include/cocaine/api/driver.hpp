@@ -24,6 +24,8 @@
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
 
+#include "cocaine/api/stream.hpp"
+
 #include "cocaine/helpers/json.hpp"
 
 namespace cocaine { namespace api {

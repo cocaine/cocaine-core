@@ -24,12 +24,15 @@
 #include "cocaine/common.hpp"
 #include "cocaine/policy.hpp"
 
+#include "cocaine/api/stream.hpp"
+
 #include "cocaine/helpers/birth_control.hpp"
 
 namespace cocaine { namespace engine {
 
 struct event_t:
-    public birth_control<event_t>
+    public birth_control<event_t>,
+    public api::stream_t
 {
     event_t(const std::string& type_):
         type(type_)
@@ -45,23 +48,6 @@ struct event_t:
     ~event_t() {
         // Empty.
     }
-
-public:
-    virtual
-    void
-    on_chunk(const void * /* chunk */,
-             size_t /* size */)
-    { };
-    
-    virtual
-    void
-    on_error(error_code,
-             const std::string& /* message */)
-    { };
-    
-    virtual
-    void
-    on_close() { };
 
 public:
     // Event type.

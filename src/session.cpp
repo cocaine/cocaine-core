@@ -40,7 +40,7 @@ session_t::session_t(const boost::shared_ptr<event_t>& event,
 
 session_t::~session_t() {
     if(state != states::closed) {
-        ptr->on_close();
+        ptr->close();
     }
 }
 
@@ -59,7 +59,7 @@ session_t::attach(slave_t * const slave) {
             it != m_cache.end();
             ++it)
         {
-            push(*it);
+            push(it->data(), it->size());
         }
         
         m_cache.clear();
@@ -67,23 +67,25 @@ session_t::attach(slave_t * const slave) {
 }
 
 void
-session_t::push(const std::string& data) {
+session_t::push(const void * chunk,
+                size_t size)
+{
     switch(state) {
         case states::active: {
             // TEST: An active session should always have a controlling slave.
             BOOST_ASSERT(m_slave);
 
-            zmq::message_t chunk(data.size());
+            zmq::message_t message(size);
 
             memcpy(
-                chunk.data(),
-                data.data(),
-                data.size()
+                message.data(),
+                chunk,
+                size
             );
 
             m_engine->send(
                 m_slave->id(),
-                io::message<rpc::chunk>(id, chunk)
+                io::message<rpc::chunk>(id, message)
             );
         
             break;
@@ -94,7 +96,7 @@ session_t::push(const std::string& data) {
 
             // NOTE: Put the new chunk into the cache because the session is
             // not yet assigned to a slave.
-            m_cache.emplace_back(data);
+            m_cache.emplace_back(static_cast<const char*>(chunk), size);
 
             break;
         }
@@ -116,7 +118,7 @@ session_t::close() {
         );
     }
 
-    ptr->on_close();
+    ptr->close();
 
     state = states::closed;
 }

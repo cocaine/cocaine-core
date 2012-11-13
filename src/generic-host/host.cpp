@@ -61,6 +61,13 @@ response_stream_t::close() {
     m_host->send(io::message<rpc::choke>(m_id));
 }
 
+void
+response_stream_t::abort(error_code code,
+                         const std::string& message)
+{
+    m_host->send(io::message<rpc::error>(m_id, code, message));
+}
+
 host_t::host_t(context_t& context,
                host_config_t config):
     m_context(context),
@@ -217,16 +224,14 @@ host_t::process_bus_events() {
 
                 stream_map_t::iterator it(m_streams.find(session_id));
 
-                if(it != m_streams.end()) {
-                    try {
-                        it->second.downstream->push(message.data(), message.size());
-                    } catch(const std::exception& e) {
-                        send(io::message<rpc::error>(session_id, invocation_error, e.what()));
-                    } catch(...) {
-                        send(io::message<rpc::error>(session_id, invocation_error, "unexpected exception"));
-                    }
-                } else {
-                    COCAINE_LOG_ERROR(m_log, "chunk: nonexistent session %s", session_id);
+                BOOST_ASSERT(it != m_streams.end());
+
+                try {
+                    it->second.downstream->push(message.data(), message.size());
+                } catch(const std::exception& e) {
+                    it->second.upstream->abort(invocation_error, e.what());
+                } catch(...) {
+                    it->second.upstream->abort(invocation_error, "unexpected exception");
                 }
 
                 break;
@@ -239,13 +244,15 @@ host_t::process_bus_events() {
 
                 stream_map_t::iterator it = m_streams.find(session_id);
 
+                // NOTE: This may be a choke for a failed invocation, in which case there
+                // will be no active stream, so drop the message.
                 if(it != m_streams.end()) {
                     try {
                         it->second.downstream->close();
                     } catch(const std::exception& e) {
-                        send(io::message<rpc::error>(session_id, invocation_error, e.what()));
+                        it->second.upstream->abort(invocation_error, e.what());
                     } catch(...) {
-                        send(io::message<rpc::error>(session_id, invocation_error, "unexpected exception"));
+                        it->second.upstream->abort(invocation_error, "unexpected exception");
                     }
                     
                     m_streams.erase(it);
@@ -253,8 +260,6 @@ host_t::process_bus_events() {
                     if(m_streams.empty()) {
                         m_idle_timer.start(m_profile->idle_timeout);
                     }
-                } else {
-                    COCAINE_LOG_ERROR(m_log, "choke: nonexistent session %s", session_id);
                 }
 
                 break;
@@ -288,21 +293,14 @@ host_t::invoke(const unique_id_t& session_id,
     );
 
     try {
-        io_pair_t io = {
-            m_sandbox->invoke(event, upstream),
-            upstream
-        };
-
-        m_streams.emplace(
-            session_id,
-            io
-        );
+        io_pair_t io = { m_sandbox->invoke(event, upstream), upstream };
+        m_streams.emplace(session_id, io);
     } catch(const std::exception& e) {
-        send(io::message<rpc::error>(session_id, invocation_error, e.what()));
-        send(io::message<rpc::choke>(session_id));
+        upstream->abort(invocation_error, e.what());
+        upstream->close();
     } catch(...) {
-        send(io::message<rpc::error>(session_id, invocation_error, "unexpected exception"));
-        send(io::message<rpc::choke>(session_id));
+        upstream->abort(invocation_error, "unexpected exception");
+        upstream->close();
     }
     
     // Feed the event loop.

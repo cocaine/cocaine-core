@@ -134,8 +134,7 @@ slave_t::process(const io::message<rpc::chunk>& chunk) {
     BOOST_ASSERT(session_id == m_session->id);
 
     if(m_session->state == session_t::states::active) {
-        m_session->ptr->on_chunk(message.data(), message.size());
-        rearm();
+        m_session->ptr->push(message.data(), message.size());
     }
 }
 
@@ -150,7 +149,7 @@ slave_t::process(const io::message<rpc::error>& error) {
     BOOST_ASSERT(m_session);
 
     const unique_id_t& session_id = boost::get<0>(error);
-    error_code code = static_cast<error_code>(boost::get<1>(error));
+    int code = boost::get<1>(error);
     const std::string& message = boost::get<2>(error);
 
     COCAINE_LOG_DEBUG(
@@ -166,8 +165,7 @@ slave_t::process(const io::message<rpc::error>& error) {
     BOOST_ASSERT(session_id == m_session->id);
 
     if(m_session->state == session_t::states::active) {
-        m_session->ptr->on_error(code, message);
-        rearm();
+        m_session->ptr->abort(static_cast<error_code>(code), message);
     }
 }
 
@@ -193,23 +191,21 @@ slave_t::process(const io::message<rpc::choke>& choke) {
     // XXX: Proof-of-concept.
     BOOST_ASSERT(session_id == m_session->id);
 
-    m_session.reset();
-
     // NOTE: Signal the slave that the session is, in fact, closed.
     m_engine->send(
         m_id,
         io::message<rpc::choke>(session_id)
     );
 
+    m_session.reset();
+
     m_state = states::idle;
-    
-    rearm();
 }
 
 void
 slave_t::on_timeout(ev::timer&, int) {
     if(m_state == states::busy) {
-        m_session->ptr->on_error(
+        m_session->ptr->abort(
             timeout_error, 
             "the session has timed out"
         );
@@ -270,3 +266,4 @@ slave_t::terminate() {
 
     m_state = states::dead;
 }
+

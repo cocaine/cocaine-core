@@ -20,12 +20,12 @@
 
 #include <boost/format.hpp>
 #include <boost/iterator/filter_iterator.hpp>
+#include <boost/weak_ptr.hpp>
 
 #include "cocaine/engine.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
-#include "cocaine/pipe.hpp"
 #include "cocaine/profile.hpp"
 #include "cocaine/session.hpp"
 #include "cocaine/slave.hpp"
@@ -35,6 +35,7 @@
 #include "cocaine/traits/json.hpp"
 #include "cocaine/traits/unique_id.hpp"
 
+using namespace cocaine;
 using namespace cocaine::engine;
 
 // Session queue
@@ -48,18 +49,63 @@ session_queue_t::push(const_reference session) {
     }
 }
 
-// Selectors
+namespace {
+    namespace select {
+        template<int State>
+        struct state {
+            template<class T>
+            bool
+            operator()(const T& slave) const {
+                return slave.second->state() == State;
+            }
+        };
+    }
 
-namespace { namespace select {
-    template<int State>
-    struct state {
-        template<class T>
-        bool
-        operator()(const T& slave) const {
-            return slave.second->state() == State;
+    struct request_stream_t:
+        public api::stream_t
+    {
+        request_stream_t(const boost::shared_ptr<session_t>& session):
+            ptr(session)
+        { }
+
+        virtual
+        void
+        push(const void * chunk,
+             size_t size)
+        {
+            boost::shared_ptr<session_t> session(ptr.lock());
+
+            if(!session) {
+                throw cocaine::error_t("session does not exists");
+            }
+
+            session->push(chunk, size);
         }
+
+        virtual
+        void
+        close() {
+            boost::shared_ptr<session_t> session(ptr.lock());
+
+            if(!session) {
+                return;
+            }
+
+            session->close();
+        }
+
+        virtual
+        void
+        abort(error_code code,
+              const std::string& message)
+        {
+            // TODO: No-op.
+        }
+
+    private:
+        boost::weak_ptr<session_t> ptr;
     };
-}}
+}
 
 // Engine
 
@@ -143,7 +189,7 @@ engine_t::run() {
     m_loop.loop();
 }
 
-boost::shared_ptr<pipe_t>
+boost::shared_ptr<api::stream_t>
 engine_t::enqueue(const boost::shared_ptr<event_t>& event,
                   engine::mode mode)
 {
@@ -172,7 +218,7 @@ engine_t::enqueue(const boost::shared_ptr<event_t>& event,
     // Pump the queue! 
     m_notification.send();
 
-    return boost::make_shared<pipe_t>(session);
+    return boost::make_shared<request_stream_t>(session);
 }
 
 void
@@ -275,7 +321,7 @@ engine_t::on_cleanup(ev::timer&, int) {
 
         COCAINE_LOG_DEBUG(m_log, "session %s has expired", session->id);
 
-        session->ptr->on_error(
+        session->ptr->abort(
             deadline_error,
             "the session has expired in the queue"
         );
@@ -611,11 +657,13 @@ engine_t::shutdown(states target) {
 
         // Abort all the outstanding sessions.
         while(!m_queue.empty()) {
-            m_queue.front()->ptr->on_error(
+            m_queue.front()->ptr->abort(
                 resource_error,
                 "engine is shutting down"
             );
 
+            // NOTE: No need to close the session here, as it will be closed
+            // upon destruction on this line.
             m_queue.pop_front();
         }
     }
