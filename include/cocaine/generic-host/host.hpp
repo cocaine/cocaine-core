@@ -30,40 +30,6 @@
 
 namespace cocaine {
 
-class host_t;
-
-struct upstream_t:
-    public api::stream_t
-{
-    upstream_t(const unique_id_t& id,
-               host_t * const host);
-
-    virtual
-    void
-    push(const void * chunk,
-         size_t size);
-
-    virtual
-    void
-    close();
-
-    virtual
-    void
-    error(error_code code,
-          const std::string& message);
-
-private:
-    const unique_id_t& m_id;
-    host_t * const m_host;
-
-    enum states: int {
-        attached,
-        closed
-    };
-
-    states m_state;
-};
-
 struct host_config_t {
     std::string name;
     std::string profile;
