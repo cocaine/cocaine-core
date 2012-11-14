@@ -51,17 +51,6 @@ session_queue_t::push(const_reference session) {
 }
 
 namespace {
-    namespace select {
-        template<int State>
-        struct state {
-            template<class T>
-            bool
-            operator()(const T& slave) const {
-                return slave.second->state() == State;
-            }
-        };
-    }
-
     struct downstream_t:
         public api::stream_t
     {
@@ -629,21 +618,6 @@ engine_t::process_ctl_events() {
 }
 
 namespace {
-    struct active_t {
-        active_t(size_t max_):
-            max(max_)
-        { }
-
-        template<class T>
-        bool
-        operator()(const T& slave) {
-            return slave.second->state() == slave_t::states::active &&
-                   slave.second->load() < max;
-        }
-
-        size_t max;
-    };
-
     struct load_t {
         template<class T>
         bool
@@ -651,24 +625,46 @@ namespace {
             return lhs.second->load() < rhs.second->load();
         }
     };
+    
+    struct active_t {
+        template<class T>
+        bool
+        operator()(const T& slave) {
+            return slave.second->state() == slave_t::states::active;
+        }
+    };
+
+    template<class It, class Compare, class Predicate>
+    It
+    min_element_if(It first,
+                   It last,
+                   Compare compare,
+                   Predicate predicate)
+    {
+        if(first == last) {
+            return first;
+        }
+      
+        It result = first;
+
+        while(++first != last) {
+	        if(predicate(*first), compare(*first, *last)) {
+	            result = first;
+            }
+        }
+
+        return result;
+    }
 }
 
 void
 engine_t::pump() {
-    typedef boost::filter_iterator<
-        active_t,
-        pool_map_t::iterator
-    > pump_iterator_t;
-
     while(!m_queue.empty()) {
-        pump_iterator_t begin(active_t(m_profile.concurrency), m_pool.begin(), m_pool.end()),
-                        end(active_t(m_profile.concurrency), m_pool.end(), m_pool.end());
-
-        pump_iterator_t it(
-            std::min_element(begin, end, load_t())
+        pool_map_t::iterator it(
+            min_element_if(m_pool.begin(), m_pool.end(), load_t(), active_t())
         );
 
-        if(it != end) {
+        if(it != m_pool.end()) {
             session_queue_t::value_type session;
 
             {
@@ -711,7 +707,7 @@ engine_t::pump() {
 
                 COCAINE_LOG_ERROR(m_log, "slave %s has unexpectedly died", it->first);
                 
-                m_pool.erase(it->first);
+                m_pool.erase(it);
             }
         } else {
             break;
