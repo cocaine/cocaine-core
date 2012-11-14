@@ -43,6 +43,7 @@ struct profile_t:
     unsigned long pool_limit;
     unsigned long queue_limit;
     unsigned long grow_threshold;
+    unsigned long concurrency;
 
     // NOTE: The slave processes are launched in sandboxed environments,
     // called isolates. This one describes the isolate type and arguments.

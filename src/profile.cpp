@@ -88,6 +88,15 @@ profile_t::profile_t(context_t& context,
         throw configuration_error_t("engine grow threshold must be positive");
     }
 
+    concurrency = cache.get(
+        "concurrency",
+        static_cast<Json::UInt>(defaults::concurrency)
+    ).asUInt();
+
+    if(concurrency == 0) {
+        throw configuration_error_t("engine concurrency must be positive");
+    }
+
     // Isolation
 
     isolate = {

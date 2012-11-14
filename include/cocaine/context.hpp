@@ -41,6 +41,7 @@ struct defaults {
     static const float termination_timeout;
     static const unsigned long pool_limit;
     static const unsigned long queue_limit;
+    static const unsigned long concurrency;
 
     // Default I/O policy.
     static const long bus_timeout;

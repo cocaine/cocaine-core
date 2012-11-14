@@ -577,6 +577,16 @@ namespace {
     };
 }
 
+namespace {
+    struct busy_t {
+        template<class T>
+        bool
+        operator()(const T& slave) {
+            return slave.second->load();
+        }
+    };
+}
+
 void
 engine_t::process_ctl_events() {
     int command = -1;
@@ -594,7 +604,7 @@ engine_t::process_ctl_events() {
             size_t active_pool_size = std::count_if(
                 m_pool.begin(),
                 m_pool.end(),
-                select::state<slave_t::states::busy>()
+                busy_t()
             );
 
             info["queue-depth"] = static_cast<Json::LargestUInt>(m_queue.size());
@@ -617,20 +627,30 @@ engine_t::process_ctl_events() {
     }
 }
 
+namespace {
+    struct load_t {
+        template<class T>
+        bool
+        operator()(const T& lhs, const T& rhs) {
+            return lhs.second->load() < rhs.second->load();
+        }
+    };
+}
+
 void
 engine_t::pump() {
     while(!m_queue.empty()) {
         // NOTE: If we got an idle slave, then we're lucky and got an instant scheduling;
         // if not, try to spawn more slaves and wait.
         pool_map_t::iterator it(
-            std::find_if(
+            std::min_element(
                 m_pool.begin(),
                 m_pool.end(),
-                select::state<slave_t::states::idle>()
+                load_t()
             )
         );
 
-        if(it != m_pool.end()) {
+        if(it != m_pool.end() && it->second->load() < m_profile.concurrency) {
             session_queue_t::value_type session;
 
             {
@@ -776,9 +796,7 @@ engine_t::shutdown(states target) {
         it != m_pool.end();
         ++it)
     {
-        if(it->second->state() == slave_t::states::idle ||
-           it->second->state() == slave_t::states::busy)
-        {
+        if(it->second->state() == slave_t::states::active) {
             send(
                 it->second->id(),
                 io::message<rpc::terminate>()

@@ -51,7 +51,7 @@ slave_t::slave_t(context_t& context,
     m_profile(profile),
     m_engine(engine),
     m_heartbeat_timer(engine->loop()),
-    m_state(states::unknown)
+    m_state(states::inactive)
 {
     api::category_traits<api::isolate_t>::ptr_type isolate = m_context.get<api::isolate_t>(
         m_profile.isolate.type,
@@ -91,11 +91,7 @@ slave_t::assign(const boost::shared_ptr<session_t>& session) {
         session->id
     );
 
-    // TEST: Ensure that no session is being lost here.
-    BOOST_ASSERT(m_state == states::idle && !m_session);
-    
-    m_session = session;
-    m_state = states::busy;
+    m_sessions.emplace(session->id, session);
 }
 
 void
@@ -110,9 +106,6 @@ slave_t::process(const io::message<rpc::ping>&) {
 
 void
 slave_t::process(const io::message<rpc::chunk>& chunk) {
-    // TEST: Ensure that the session is in fact here.
-    BOOST_ASSERT(m_session);
-
     const unique_id_t& session_id = boost::get<0>(chunk);
     zmq::message_t& message = boost::get<1>(chunk);
 
@@ -124,17 +117,16 @@ slave_t::process(const io::message<rpc::chunk>& chunk) {
         message.size()
     );
 
-    // XXX: Proof-of-concept.
-    BOOST_ASSERT(session_id == m_session->id);
+    session_map_t::iterator it(m_sessions.find(session_id));
 
-    m_session->upstream->push(message.data(), message.size());
+    // TEST: Ensure that this slave is responsible for the session.
+    BOOST_ASSERT(it != m_sessions.end());
+
+    it->second->upstream->push(message.data(), message.size());
 }
 
 void
 slave_t::process(const io::message<rpc::error>& error) {
-    // TEST: Ensure that the session is in fact here.
-    BOOST_ASSERT(m_session);
-
     const unique_id_t& session_id = boost::get<0>(error);
     int code = boost::get<1>(error);
     const std::string& message = boost::get<2>(error);
@@ -148,17 +140,16 @@ slave_t::process(const io::message<rpc::error>& error) {
         message
     );
 
-    // XXX: Proof-of-concept.
-    BOOST_ASSERT(session_id == m_session->id);
+    session_map_t::iterator it(m_sessions.find(session_id));
 
-    m_session->upstream->error(static_cast<error_code>(code), message);
+    // TEST: Ensure that this slave is responsible for the session.
+    BOOST_ASSERT(it != m_sessions.end());
+
+    it->second->upstream->error(static_cast<error_code>(code), message);
 }
 
 void
 slave_t::process(const io::message<rpc::choke>& choke) {
-    // TEST: Ensure that the session is in fact here.
-    BOOST_ASSERT(m_session);
-    
     const unique_id_t session_id = boost::get<0>(choke);
 
     COCAINE_LOG_DEBUG(
@@ -168,8 +159,10 @@ slave_t::process(const io::message<rpc::choke>& choke) {
         session_id
     );
 
-    // XXX: Proof-of-concept.
-    BOOST_ASSERT(session_id == m_session->id);
+    session_map_t::iterator it(m_sessions.find(session_id));
+
+    // TEST: Ensure that this slave is responsible for the session.
+    BOOST_ASSERT(it != m_sessions.end());
 
     // NOTE: Signal the slave that the session is, in fact, closed.
     m_engine->send(
@@ -177,29 +170,35 @@ slave_t::process(const io::message<rpc::choke>& choke) {
         io::message<rpc::choke>(session_id)
     );
 
-    m_session->upstream->close();
-    m_session.reset();
+    it->second->upstream->close();
 
-    m_state = states::idle;
+    m_sessions.erase(it);
+}
+
+namespace {
+    struct timeout_t {
+        template<class T>
+        void
+        operator()(T& session) {
+            session.second->upstream->error(
+                timeout_error, 
+                "the session has timed out"
+            );
+
+            session.second->upstream->close();
+        }
+    };
 }
 
 void
 slave_t::on_timeout(ev::timer&, int) {
-    if(m_state == states::busy) {
-        m_session->upstream->error(
-            timeout_error, 
-            "the session has timed out"
-        );
-
-        m_session->upstream->close();
-    }
-
+    std::for_each(m_sessions.begin(), m_sessions.end(), timeout_t());
     terminate();
 }
 
 void
 slave_t::rearm() {
-    if(m_state == states::unknown) {
+    if(m_state == states::inactive) {
         COCAINE_LOG_DEBUG(
             m_log,
             "slave %s came alive in %.03f seconds",
@@ -210,24 +209,18 @@ slave_t::rearm() {
             )
         );
 
-        m_state = states::idle;
-    }
-
-    float timeout = m_profile.heartbeat_timeout;
-
-    if(m_state == states::busy && m_session->event.policy.timeout > 0.0f) {
-        timeout = m_session->event.policy.timeout;
+        m_state = states::active;
     }
 
     COCAINE_LOG_DEBUG(
         m_log,
         "slave %s resetting heartbeat timeout to %.02f seconds",
         m_id,
-        timeout
+        m_profile.heartbeat_timeout
     );
 
     m_heartbeat_timer.stop();
-    m_heartbeat_timer.start(timeout);
+    m_heartbeat_timer.start(m_profile.heartbeat_timeout);
 }
 
 void
@@ -238,7 +231,7 @@ slave_t::terminate() {
     BOOST_ASSERT(m_state != states::dead);
 
     // Ensure that no session is being lost here.
-    BOOST_ASSERT(!m_session);
+    BOOST_ASSERT(m_sessions.empty());
 
     m_heartbeat_timer.stop();
 

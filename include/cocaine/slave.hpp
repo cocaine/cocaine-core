@@ -34,9 +34,8 @@ class slave_t:
 {
     public:
         enum states: int {
-            unknown,
-            idle,
-            busy,
+            inactive,
+            active,
             dead
         };
 
@@ -73,6 +72,11 @@ class slave_t:
             return m_state;
         }
 
+        size_t
+        load() const {
+            return m_sessions.size();
+        }
+
         const unique_id_t&
         id() const {
             return m_id;
@@ -107,11 +111,21 @@ class slave_t:
         // Slave ID.
         const unique_id_t m_id;
 
-        // Actual slave handle.    
+        // Actual slave process handle.    
         std::unique_ptr<api::handle_t> m_handle;
 
-        // Current job.
-        boost::shared_ptr<session_t> m_session;
+        // Current sessions
+
+#if BOOST_VERSION >= 103600
+        typedef boost::unordered_map<
+#else
+        typedef std::map<
+#endif
+            unique_id_t,
+            boost::shared_ptr<session_t>
+        > session_map_t;
+
+        session_map_t m_sessions;
 };
 
 template<class Event>
