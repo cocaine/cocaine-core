@@ -35,5 +35,5 @@ session_t::session_t(const unique_id_t& id_,
 bool
 session_t::closed() const {
     // TODO: No-op.
-    return true;    
+    return false; 
 }

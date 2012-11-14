@@ -22,6 +22,9 @@
 #define COCAINE_SESSION_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/unique_id.hpp"
+
+#include "cocaine/api/event.hpp"
 
 #include "cocaine/helpers/birth_control.hpp"
 
@@ -39,10 +42,10 @@ struct session_t:
     closed() const;
 
     // Session ID.
-    const unique_id_t& id;
+    const unique_id_t id;
 
     // Session event type.
-    const api::event_t& event;
+    const api::event_t event;
 
     // Session streams
 

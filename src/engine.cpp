@@ -69,7 +69,7 @@ namespace {
             m_id(id),
             m_state(states::detached)
         { }
-
+        
         virtual
         void
         push(const void * chunk,
@@ -162,7 +162,7 @@ namespace {
         }
 
     private:
-        const unique_id_t& m_id;
+        const unique_id_t m_id;
 
         enum states: int {
             detached,

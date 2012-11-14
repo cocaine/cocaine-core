@@ -94,7 +94,7 @@ struct upstream_t:
     }
 
 private:
-    const unique_id_t& m_id;
+    const unique_id_t m_id;
     host_t * const m_host;
 
     enum states: int {
