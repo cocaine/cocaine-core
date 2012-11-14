@@ -641,14 +641,18 @@ namespace {
                    Compare compare,
                    Predicate predicate)
     {
+        while(first != last && !predicate(*first)) {
+            ++first;
+        }
+
         if(first == last) {
             return first;
         }
-      
+     
         It result = first;
 
         while(++first != last) {
-	        if(predicate(*first), compare(*first, *last)) {
+	        if(predicate(*first) && compare(*first, *result)) {
 	            result = first;
             }
         }
