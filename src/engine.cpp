@@ -18,6 +18,10 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
+#include <boost/accumulators/accumulators.hpp>
+#include <boost/accumulators/statistics/median.hpp>
+
+#include <boost/bind.hpp>
 #include <boost/format.hpp>
 #include <boost/iterator/filter_iterator.hpp>
 #include <boost/weak_ptr.hpp>
@@ -567,13 +571,31 @@ namespace {
 }
 
 namespace {
-    struct busy_t {
+    struct active_t {
+        typedef bool result_type;
+
         template<class T>
         bool
         operator()(const T& slave) {
-            return slave.second->state() == slave_t::states::active &&
-                   slave.second->load();
+            size_t load = slave.second->load();
+
+            m_accumulator(load);
+
+            return slave.second->state() == slave_t::states::active && load;
         }
+
+        size_t
+        median() const {
+            return boost::accumulators::median(m_accumulator);
+        }
+
+    private:
+        boost::accumulators::accumulator_set<
+            size_t,
+            boost::accumulators::features<
+                boost::accumulators::tag::median
+            >
+        > m_accumulator;
     };
 }
 
@@ -591,13 +613,16 @@ engine_t::process_ctl_events() {
         case io::message<control::status>::value: {
             Json::Value info(Json::objectValue);
 
+            active_t active;
+
             size_t active_pool_size = std::count_if(
                 m_pool.begin(),
                 m_pool.end(),
-                busy_t()
+                boost::bind(boost::ref(active), _1)
             );
 
             info["queue-depth"] = static_cast<Json::LargestUInt>(m_queue.size());
+            info["load-median"] = static_cast<Json::LargestUInt>(active.median());
             info["slaves"]["total"] = static_cast<Json::LargestUInt>(m_pool.size());
             info["slaves"]["busy"] = static_cast<Json::LargestUInt>(active_pool_size);
             info["state"] = describe[m_state];
@@ -626,12 +651,19 @@ namespace {
         }
     };
     
-    struct active_t {
+    struct available_t {
+        available_t(size_t max_):
+            max(max_)
+        { }
+
         template<class T>
         bool
         operator()(const T& slave) {
-            return slave.second->state() == slave_t::states::active;
+            return slave.second->state() == slave_t::states::active &&
+                   slave.second->load() < max;
         }
+
+        const size_t max;
     };
 
     template<class It, class Compare, class Predicate>
@@ -664,8 +696,11 @@ namespace {
 void
 engine_t::pump() {
     while(!m_queue.empty()) {
-        pool_map_t::iterator it(
-            min_element_if(m_pool.begin(), m_pool.end(), load_t(), active_t())
+        pool_map_t::iterator it = min_element_if(
+            m_pool.begin(),
+            m_pool.end(),
+            load_t(),
+            available_t(m_profile.concurrency)
         );
 
         if(it != m_pool.end()) {
