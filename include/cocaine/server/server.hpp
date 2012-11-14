@@ -125,7 +125,7 @@ class server_t:
         typedef std::map<
 #endif
             const std::string,
-            std::unique_ptr<app_t>
+            boost::shared_ptr<app_t>
         > app_map_t;
 
         app_map_t m_apps;

@@ -340,7 +340,7 @@ Json::Value server_t::create_app(const std::string& name, const std::string& pro
 
     boost::tie(it, boost::tuples::ignore) = m_apps.emplace(
         name,
-        new app_t(
+        boost::make_shared<app_t>(
             m_context,
             name,
             profile
