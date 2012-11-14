@@ -22,18 +22,30 @@
 #define COCAINE_EVENT_API_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/policy.hpp"
 
-#include "cocaine/api/stream.hpp"
+namespace cocaine { namespace api {
 
-#include "cocaine/helpers/birth_control.hpp"
+struct policy_t {
+    policy_t():
+        urgent(false),
+        timeout(0.0f),
+        deadline(0.0f)
+    { }
 
-namespace cocaine { namespace engine {
+    policy_t(bool urgent_,
+             double timeout_,
+             double deadline_):
+        urgent(urgent_),
+        timeout(timeout_),
+        deadline(deadline_)
+    { }
 
-struct event_t:
-    public birth_control<event_t>,
-    public api::stream_t
-{
+    bool urgent;
+    double timeout;
+    double deadline;
+};
+
+struct event_t {
     event_t(const std::string& type_):
         type(type_)
     { }
@@ -43,11 +55,6 @@ struct event_t:
         type(type_),
         policy(policy_)
     { }
-    
-    virtual
-    ~event_t() {
-        // Empty.
-    }
 
 public:
     // Event type.
@@ -57,6 +64,6 @@ public:
     const policy_t policy;
 };
 
-}} // namespace cocaine::engine
+}} // namespace cocaine::api
 
 #endif

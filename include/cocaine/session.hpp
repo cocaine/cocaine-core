@@ -21,65 +21,37 @@
 #ifndef COCAINE_SESSION_HPP
 #define COCAINE_SESSION_HPP
 
-#include <boost/thread/mutex.hpp>
-
-#if !defined(__clang__) && defined(__GNUC__) && (__GNUC__ == 4 && __GNUC_MINOR__ <= 4)
- #include <cstdatomic>
-#else
- #include <atomic>
-#endif
-
 #include "cocaine/common.hpp"
-#include "cocaine/unique_id.hpp"
+
+#include "cocaine/helpers/birth_control.hpp"
 
 namespace cocaine { namespace engine {
 
-struct session_t {
-    enum states: int {
-        inactive,
-        active,
-        closed
-    };
+struct session_t:
+    public birth_control<session_t>
+{
+    session_t(const unique_id_t& id,
+              const api::event_t& event,
+              const boost::shared_ptr<api::stream_t>& upstream,
+              const boost::shared_ptr<api::stream_t>& downstream);
 
-public:
-    session_t(const boost::shared_ptr<event_t>& event,
-              engine_t * const engine);
+    bool
+    closed() const;
 
-    ~session_t();
+    // Session ID.
+    const unique_id_t& id;
 
-    void
-    attach(slave_t * const slave);
+    // Session event type.
+    const api::event_t& event;
 
-    void
-    push(const void * chunk,
-         size_t size);
+    // Session streams
 
-    void
-    close();
+    typedef boost::shared_ptr<
+        api::stream_t
+    > stream_ptr_t;
 
-public:
-    // Job state.
-    std::atomic<int> state;
-
-    // Job ID.
-    const unique_id_t id;
-
-    // Tracked event itself.
-    const boost::shared_ptr<event_t> ptr;
-
-private:
-    engine_t * const m_engine;
-
-    typedef std::vector<
-        std::string
-    > chunk_list_t;
-
-    // Request chunk cache.
-    chunk_list_t m_cache;
-    boost::mutex m_mutex;
-
-    // Responsible slave.
-    slave_t * m_slave;
+    const stream_ptr_t upstream,
+                       downstream;
 };
 
 }}

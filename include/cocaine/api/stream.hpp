@@ -40,12 +40,12 @@ struct stream_t {
 
     virtual
     void
-    close() = 0;
+    error(error_code code,
+          const std::string& message) = 0;
 
     virtual
     void
-    abort(error_code code,
-          const std::string& message) = 0;
+    close() = 0;
 };
 
 }}

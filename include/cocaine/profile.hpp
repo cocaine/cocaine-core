@@ -23,7 +23,6 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/cached.hpp"
-#include "cocaine/context.hpp"
 
 #include "cocaine/helpers/json.hpp"
 

@@ -51,45 +51,56 @@ class server_t:
 
         ~server_t();
 
-        void run();
+        void
+        run();
 
     private:        
-        void terminate(ev::sig&, int);
-        void reload(ev::sig&, int);
+        void
+        on_terminate(ev::sig&, int);
+        
+        void
+        on_reload(ev::sig&, int);
 
-        void event(ev::io&, int);
-        void check(ev::prepare&, int);
+        void
+        on_event(ev::io&, int);
+        
+        void
+        on_check(ev::prepare&, int);
 
-        void process();
-        std::string dispatch(const Json::Value& root);
+        void
+        on_announce(ev::timer&, int);
 
-        Json::Value create_app(const std::string& name, const std::string& profile);
-        Json::Value delete_app(const std::string& name);
-        Json::Value info() const;
+        void
+        process_events();
+        
+        std::string
+        dispatch(const Json::Value& root);
 
-        void announce(ev::timer&, int);
+        Json::Value
+        create_app(const std::string& name,
+                   const std::string& profile);
 
-        void recover();
+        Json::Value
+        delete_app(const std::string& name);
+
+        Json::Value
+        info() const;
+
+        void
+        recover();
 
     private:
         context_t& m_context;
         boost::shared_ptr<logging::logger_t> m_log;
 
-        // Apps
+        // I/O
         
-        const std::string m_runlist;
+        io::socket<io::policies::unique> m_server;
 
-#if BOOST_VERSION >= 104000
-        typedef boost::unordered_map<
-#else
-        typedef std::map<
-#endif
-            const std::string,
-            boost::shared_ptr<app_t>
-        > app_map_t;
-
-        app_map_t m_apps;
-
+        std::unique_ptr<
+            io::socket<io::policies::unique>
+        > m_announces;
+        
         // Event loop
         
         ev::default_loop m_loop;
@@ -102,23 +113,31 @@ class server_t:
         ev::io m_watcher;
         ev::prepare m_checker;
 
-        // I/O
-        
-        io::socket<io::policies::unique> m_server;
-
         std::unique_ptr<ev::timer> m_announce_timer;
 
-        std::unique_ptr<
-            io::socket<io::policies::unique>
-        > m_announces;
+        // Apps
         
+        const std::string m_runlist;
+
+#if BOOST_VERSION >= 104000
+        typedef boost::unordered_map<
+#else
+        typedef std::map<
+#endif
+            const std::string,
+            std::unique_ptr<app_t>
+        > app_map_t;
+
+        app_map_t m_apps;
+
         // Authorization subsystem
         
         crypto::auth_t m_auth;
         
         // Server info
         
-        const ev::tstamp m_birthstamp;
+        const ev::tstamp m_birthstamp,
+                         m_announce_interval;
 
         ev::tstamp m_infostamp;
         std::string m_infocache;

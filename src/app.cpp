@@ -32,6 +32,8 @@
 #include "cocaine/profile.hpp"
 #include "cocaine/rpc.hpp"
 
+#include "cocaine/api/driver.hpp"
+
 #include "cocaine/traits/json.hpp"
 
 using namespace cocaine;
@@ -204,10 +206,11 @@ app_t::info() const {
 }
 
 boost::shared_ptr<api::stream_t>
-app_t::enqueue(const boost::shared_ptr<event_t>& event,
+app_t::enqueue(const api::event_t& event,
+               const boost::shared_ptr<api::stream_t>& upstream,
                engine::mode mode)
 {
-    return m_engine->enqueue(event, mode);
+    return m_engine->enqueue(event, upstream, mode);
 }
 
 void

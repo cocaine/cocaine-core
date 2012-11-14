@@ -36,7 +36,6 @@
 #include "cocaine/rpc.hpp"
 
 #include "cocaine/api/isolate.hpp"
-#include "cocaine/api/stream.hpp"
 
 namespace cocaine { namespace engine {
 
@@ -88,7 +87,8 @@ class engine_t:
         // Scheduling
         
         boost::shared_ptr<api::stream_t>
-        enqueue(const boost::shared_ptr<event_t>& event,
+        enqueue(const api::event_t& event,
+                const boost::shared_ptr<api::stream_t>& upstream,
                 engine::mode mode = engine::mode::normal);
 
         template<class Event>

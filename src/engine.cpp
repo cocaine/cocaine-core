@@ -31,6 +31,7 @@
 #include "cocaine/slave.hpp"
 
 #include "cocaine/api/event.hpp"
+#include "cocaine/api/stream.hpp"
 
 #include "cocaine/traits/json.hpp"
 #include "cocaine/traits/unique_id.hpp"
@@ -42,7 +43,7 @@ using namespace cocaine::engine;
 
 void
 session_queue_t::push(const_reference session) {
-    if(session->ptr->policy.urgent) {
+    if(session->event.policy.urgent) {
         emplace_front(session);
     } else {
         emplace_back(session);
@@ -61,11 +62,12 @@ namespace {
         };
     }
 
-    struct request_stream_t:
+    struct downstream_t:
         public api::stream_t
     {
-        request_stream_t(const boost::shared_ptr<session_t>& session):
-            ptr(session)
+        downstream_t(const unique_id_t& id):
+            m_id(id),
+            m_state(states::detached)
         { }
 
         virtual
@@ -73,37 +75,114 @@ namespace {
         push(const void * chunk,
              size_t size)
         {
-            boost::shared_ptr<session_t> session(ptr.lock());
+            switch(m_state) {
+                case states::attached: {
+                    // TEST: An attached stream should always have a controlling slave.
+                    BOOST_ASSERT(m_slave);
 
-            if(!session) {
-                throw cocaine::error_t("session does not exists");
+                    zmq::message_t message(size);
+
+                    memcpy(
+                        message.data(),
+                        chunk,
+                        size
+                    );
+
+                    m_slave->send(
+                        io::message<rpc::chunk>(m_id, message)
+                    );
+                
+                    break;
+                }
+
+                case states::detached: {
+                    boost::unique_lock<boost::mutex> lock(m_mutex);
+
+                    // NOTE: Put the new chunk into the cache because the stream is
+                    // not yet attached to a slave.
+                    m_cache.emplace_back(static_cast<const char*>(chunk), size);
+
+                    break;
+                }
+
+                case states::closed:
+                    throw cocaine::error_t("the stream has been closed");
             }
+        }
 
-            session->push(chunk, size);
+        virtual
+        void
+        error(error_code,
+              const std::string&)
+        {
+            // TODO: No-op.
         }
 
         virtual
         void
         close() {
-            boost::shared_ptr<session_t> session(ptr.lock());
+            switch(m_state) {
+                case states::attached:
+                    // TEST: An attached stream should always have a controlling slave.
+                    BOOST_ASSERT(m_slave);
 
-            if(!session) {
-                return;
+                    m_slave->send(
+                        io::message<rpc::choke>(m_id)
+                    );
+
+                    break;
+
+                case states::closed:
+                    throw cocaine::error_t("the stream has been closed");
             }
 
-            session->close();
+            m_state = states::closed;
         }
 
-        virtual
         void
-        abort(error_code code,
-              const std::string& message)
-        {
-            // TODO: No-op.
+        attach(const boost::shared_ptr<slave_t>& slave) {
+            // TEST: Streams can only be attached when detached.
+            BOOST_ASSERT(m_state == states::detached && !m_slave);
+            
+            m_state = states::attached;
+            m_slave = slave;
+            
+            boost::unique_lock<boost::mutex> lock(m_mutex);
+
+            if(!m_cache.empty()) {
+                for(chunk_list_t::const_iterator it = m_cache.begin();
+                    it != m_cache.end();
+                    ++it)
+                {
+                    push(it->data(), it->size());
+                }
+                
+                m_cache.clear();
+            }
         }
 
     private:
-        boost::weak_ptr<session_t> ptr;
+        const unique_id_t& m_id;
+
+        enum states: int {
+            detached,
+            attached,
+            closed
+        };
+
+        // Stream state.
+        std::atomic<int> m_state;
+
+        typedef std::vector<
+            std::string
+        > chunk_list_t;
+
+        // Request chunk cache.
+        chunk_list_t m_cache;
+        boost::mutex m_mutex;
+
+        // Responsible slave.
+        boost::shared_ptr<slave_t> m_slave;
     };
 }
 
@@ -190,7 +269,8 @@ engine_t::run() {
 }
 
 boost::shared_ptr<api::stream_t>
-engine_t::enqueue(const boost::shared_ptr<event_t>& event,
+engine_t::enqueue(const api::event_t& event,
+                  const boost::shared_ptr<api::stream_t>& upstream,
                   engine::mode mode)
 {
     boost::unique_lock<session_queue_t> lock(m_queue);
@@ -205,8 +285,15 @@ engine_t::enqueue(const boost::shared_ptr<event_t>& event,
         throw cocaine::error_t("the queue is full");
     };
 
+    unique_id_t id;
+
     boost::shared_ptr<session_t> session(
-        boost::make_shared<session_t>(event, this)
+        boost::make_shared<session_t>(
+            id,
+            event,
+            upstream,
+            boost::make_shared<downstream_t>(id)
+        )
     );
 
     while(m_queue.size() >= m_profile.queue_limit) {
@@ -218,7 +305,7 @@ engine_t::enqueue(const boost::shared_ptr<event_t>& event,
     // Pump the queue! 
     m_notification.send();
 
-    return boost::make_shared<request_stream_t>(session);
+    return session->downstream;
 }
 
 void
@@ -267,8 +354,8 @@ namespace {
         template<class T>
         bool
         operator()(const T& session) {
-            return session->ptr->policy.deadline &&
-                   session->ptr->policy.deadline <= now;
+            return session->event.policy.deadline &&
+                   session->event.policy.deadline <= now;
         }
 
     private:
@@ -317,18 +404,18 @@ engine_t::on_cleanup(ev::timer&, int) {
              end(expired_t(m_loop.now()), m_queue.end(), m_queue.end());
 
     while(it != end) {
-        boost::shared_ptr<session_t>& session(*it);
+        session_queue_t::value_type& session(*it);
 
         COCAINE_LOG_DEBUG(m_log, "session %s has expired", session->id);
 
-        session->ptr->abort(
+        session->upstream->error(
             deadline_error,
             "the session has expired in the queue"
         );
 
-        // NOTE: Closing the session so that it would be impossible to push
-        // additional chunks until it's recycled.
-        session->close();
+        // NOTE: This will prevent writing to the downstream in case someone
+        // has the shared pointer to it after it's popped from the queue.
+        session->downstream->close();
 
         ++it;
     }
@@ -560,17 +647,23 @@ engine_t::pump() {
             // Notify one of the blocked enqueue operations.
             m_condition.notify_one();
            
-            if(session->state == session_t::states::closed) {
+            if(session->closed()) {
                 continue;
             }
             
             io::message<rpc::invoke> message(
                 session->id,
-                session->ptr->type
+                session->event.type
             );
 
             if(send(it->first, message)) {
                 it->second->assign(session);
+
+                static_cast<downstream_t&>(
+                    *session->downstream
+                ).attach(it->second);
+                
+                // TODO: Check if it helps.
                 m_loop.feed_fd_event(m_bus->fd(), ev::READ);
             } else {
                 {
@@ -657,13 +750,17 @@ engine_t::shutdown(states target) {
 
         // Abort all the outstanding sessions.
         while(!m_queue.empty()) {
-            m_queue.front()->ptr->abort(
+            session_queue_t::value_type& session(m_queue.front());
+
+            session->upstream->error(
                 resource_error,
                 "engine is shutting down"
             );
 
-            // NOTE: No need to close the session here, as it will be closed
-            // upon destruction on this line.
+            // NOTE: This will prevent writing to the downstream in case someone
+            // has the shared pointer to it after it's popped from the queue.
+            session->downstream->close();
+
             m_queue.pop_front();
         }
     }

@@ -23,17 +23,17 @@
 
 #include "cocaine/traits.hpp"
 
-#include "cocaine/policy.hpp"
+#include "cocaine/api/event.hpp"
 
 namespace cocaine { namespace io {
 
 template<>
-struct type_traits<engine::policy_t> {
+struct type_traits<api::policy_t> {
     template<class Stream>
     static
     void
     pack(msgpack::packer<Stream>& packer,
-         const engine::policy_t& object)
+         const api::policy_t& object)
     {
         packer.pack_array(3);
         
@@ -45,7 +45,7 @@ struct type_traits<engine::policy_t> {
     static
     void
     unpack(const msgpack::object& packed,
-           engine::policy_t& object)
+           api::policy_t& object)
     {
         if(packed.type != msgpack::type::ARRAY || packed.via.array.size != 3) {
             throw msgpack::type_error();

@@ -21,24 +21,22 @@
 #ifndef COCAINE_GENERIC_HOST_HPP
 #define COCAINE_GENERIC_HOST_HPP
 
-#include <deque>
-
 #include "cocaine/common.hpp"
 #include "cocaine/asio.hpp"
 #include "cocaine/rpc.hpp"
 #include "cocaine/unique_id.hpp"
 
-#include "cocaine/api/sandbox.hpp"
+#include "cocaine/api/stream.hpp"
 
 namespace cocaine {
 
 class host_t;
 
-struct response_stream_t:
+struct upstream_t:
     public api::stream_t
 {
-    response_stream_t(const unique_id_t& id,
-                      host_t * const host);
+    upstream_t(const unique_id_t& id,
+               host_t * const host);
 
     virtual
     void
@@ -51,12 +49,19 @@ struct response_stream_t:
 
     virtual
     void
-    abort(error_code code,
+    error(error_code code,
           const std::string& message);
 
 private:
     const unique_id_t& m_id;
     host_t * const m_host;
+
+    enum states: int {
+        attached,
+        closed
+    };
+
+    states m_state;
 };
 
 struct host_config_t {
@@ -68,6 +73,20 @@ struct host_config_t {
 class host_t:
     public boost::noncopyable
 {
+    struct io_pair_t {
+        boost::shared_ptr<api::stream_t> upstream;
+        boost::shared_ptr<api::stream_t> downstream;
+    };
+
+#if BOOST_VERSION >= 103600
+    typedef boost::unordered_map<
+#else
+    typedef std::map<
+#endif
+        unique_id_t,
+        io_pair_t
+    > stream_map_t;
+
     public:
         host_t(context_t& context,
                host_config_t config);
@@ -99,7 +118,6 @@ class host_t:
         void
         on_idle(ev::timer&, int);
         
-    private:
         void
         process_bus_events();
         
@@ -110,6 +128,9 @@ class host_t:
         void
         terminate(rpc::suicide::reasons reason,
                   const std::string& message);
+
+        void
+        erase(stream_map_t::iterator session);
 
     private:
         context_t& m_context;
@@ -145,20 +166,6 @@ class host_t:
         std::unique_ptr<api::sandbox_t> m_sandbox;
 
         // Session streams
-
-        struct io_pair_t {
-            boost::shared_ptr<api::stream_t> downstream;
-            boost::shared_ptr<api::stream_t> upstream;
-        };
-
-#if BOOST_VERSION >= 103600
-        typedef boost::unordered_map<
-#else
-        typedef std::map<
-#endif
-            unique_id_t,
-            io_pair_t
-        > stream_map_t;
 
         stream_map_t m_streams;
 };

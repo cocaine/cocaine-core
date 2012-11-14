@@ -28,6 +28,8 @@
 #include "cocaine/manifest.hpp"
 #include "cocaine/profile.hpp"
 
+#include "cocaine/api/sandbox.hpp"
+
 #include "cocaine/traits/unique_id.hpp"
 
 using namespace cocaine;
@@ -35,16 +37,21 @@ using namespace cocaine::engine;
 
 namespace fs = boost::filesystem;
 
-response_stream_t::response_stream_t(const unique_id_t& id,
-                                     host_t * const host):
+upstream_t::upstream_t(const unique_id_t& id,
+                       host_t * const host):
     m_id(id),
-    m_host(host)
+    m_host(host),
+    m_state(attached)
 { }
 
 void
-response_stream_t::push(const void * chunk,
-                        size_t size)
+upstream_t::push(const void * chunk,
+                 size_t size)
 {
+    if(m_state == closed) {
+        throw cocaine::error_t("the stream has been closed");
+    }
+
     zmq::message_t message(size);
 
     memcpy(
@@ -57,15 +64,27 @@ response_stream_t::push(const void * chunk,
 }
 
 void
-response_stream_t::close() {
-    m_host->send(io::message<rpc::choke>(m_id));
+upstream_t::error(error_code code,
+                  const std::string& message)
+{
+    if(m_state == closed) {
+        throw cocaine::error_t("the stream has been closed");
+    }
+
+    m_host->send(io::message<rpc::error>(m_id, code, message));
+
+    close();
 }
 
 void
-response_stream_t::abort(error_code code,
-                         const std::string& message)
-{
-    m_host->send(io::message<rpc::error>(m_id, code, message));
+upstream_t::close() {
+    if(m_state == closed) {
+        throw cocaine::error_t("the stream has been closed");
+    }
+
+    m_host->send(io::message<rpc::choke>(m_id));
+
+    m_state = closed;
 }
 
 host_t::host_t(context_t& context,
@@ -224,17 +243,17 @@ host_t::process_bus_events() {
 
                 stream_map_t::iterator it(m_streams.find(session_id));
 
-                BOOST_ASSERT(it != m_streams.end());
-
                 // NOTE: This may be a chunk for a failed invocation, in which case there
                 // will be no active stream, so drop the message.
                 if(it != m_streams.end()) {
                     try {
                         it->second.downstream->push(message.data(), message.size());
                     } catch(const std::exception& e) {
-                        it->second.upstream->abort(invocation_error, e.what());
+                        it->second.upstream->error(invocation_error, e.what());
+                        erase(it);
                     } catch(...) {
-                        it->second.upstream->abort(invocation_error, "unexpected exception");
+                        it->second.upstream->error(invocation_error, "unexpected exception");
+                        erase(it);
                     }
                 }
 
@@ -254,16 +273,12 @@ host_t::process_bus_events() {
                     try {
                         it->second.downstream->close();
                     } catch(const std::exception& e) {
-                        it->second.upstream->abort(invocation_error, e.what());
+                        it->second.upstream->error(invocation_error, e.what());
                     } catch(...) {
-                        it->second.upstream->abort(invocation_error, "unexpected exception");
+                        it->second.upstream->error(invocation_error, "unexpected exception");
                     }
                     
-                    m_streams.erase(it);
-
-                    if(m_streams.empty()) {
-                        m_idle_timer.start(m_profile->idle_timeout);
-                    }
+                    erase(it);
                 }
 
                 break;
@@ -290,23 +305,27 @@ void
 host_t::invoke(const unique_id_t& session_id,
                const std::string& event)
 {
-    m_idle_timer.stop();
-
     boost::shared_ptr<api::stream_t> upstream(
-        boost::make_shared<response_stream_t>(session_id, this)
+        boost::make_shared<upstream_t>(session_id, this)
     );
 
     try {
-        io_pair_t io = { m_sandbox->invoke(event, upstream), upstream };
+        io_pair_t io = {
+            upstream,
+            m_sandbox->invoke(event, upstream)
+        };
+
         m_streams.emplace(session_id, io);
+ 
+        // NOTE: Keeping this inside the try block so that the idle timer
+        // is stopped only if the event was successfully invoked.
+        m_idle_timer.stop();
     } catch(const std::exception& e) {
-        upstream->abort(invocation_error, e.what());
-        upstream->close();
+        upstream->error(invocation_error, e.what());
     } catch(...) {
-        upstream->abort(invocation_error, "unexpected exception");
-        upstream->close();
+        upstream->error(invocation_error, "unexpected exception");
     }
-    
+
     // Feed the event loop.
     m_loop.feed_fd_event(m_bus.fd(), ev::READ);
 }
@@ -317,4 +336,13 @@ host_t::terminate(rpc::suicide::reasons reason,
 {
     send(io::message<rpc::suicide>(reason, message));
     m_loop.unloop(ev::ALL);
+}
+
+void
+host_t::erase(stream_map_t::iterator it) {
+    m_streams.erase(it);
+
+    if(m_streams.empty()) {
+        m_idle_timer.start(m_profile->idle_timeout);
+    }
 }

@@ -22,9 +22,6 @@
 #define COCAINE_FORWARDS_HPP
 
 namespace cocaine {
-    // Common configuration.
-    struct config_t;
-
     // Runtime context.
     class context_t;
     
@@ -35,8 +32,21 @@ namespace cocaine {
     // App container.
     class app_t;
 
-    namespace engine {
-        // Queueing modes.
+    namespace api {
+        class driver_t;
+        class isolate_t;
+        class sandbox_t;
+        class storage_t;
+
+        struct event_t;
+        struct stream_t;
+    }
+
+    namespace engine {        
+        // Unit of execution.
+        struct session_t;
+
+        // Execution queueing modes.
         enum mode: int {
             normal,
             blocking
@@ -45,13 +55,6 @@ namespace cocaine {
         // Execution engine.
         class engine_t;
         class slave_t;
-        
-        // Event abstractions.
-        struct event_t;
-        struct session_t;
-
-        // Session control pipe.
-        struct pipe_t;
     }
 
     namespace io {

@@ -23,8 +23,8 @@
 #include "cocaine/app.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
+#include "cocaine/session.hpp"
 
-#include "cocaine/api/event.hpp"
 #include "cocaine/api/storage.hpp"
 
 using namespace cocaine;
@@ -34,10 +34,11 @@ server_t::server_t(context_t& context,
                    server_config_t config):
     m_context(context),
     m_log(context.log("core")),
-    m_runlist(config.runlist),
     m_server(context, ZMQ_REP),
+    m_runlist(config.runlist),
     m_auth(context),
     m_birthstamp(m_loop.now()) /* I don't like it. */,
+    m_announce_interval(config.announce_interval),
     m_infostamp(0.0f)
 {
     int minor, major, patch;
@@ -70,9 +71,9 @@ server_t::server_t(context_t& context,
         COCAINE_LOG_INFO(m_log, "listening on %s", *it);
     }
     
-    m_watcher.set<server_t, &server_t::event>(this);
+    m_watcher.set<server_t, &server_t::on_event>(this);
     m_watcher.start(m_server.fd(), ev::READ);
-    m_checker.set<server_t, &server_t::check>(this);
+    m_checker.set<server_t, &server_t::on_check>(this);
     m_checker.start();
 
     // Autodiscovery
@@ -94,22 +95,22 @@ server_t::server_t(context_t& context,
         }
 
         m_announce_timer.reset(new ev::timer());
-        m_announce_timer->set<server_t, &server_t::announce>(this);
-        m_announce_timer->start(0.0f, config.announce_interval);
+        m_announce_timer->set<server_t, &server_t::on_announce>(this);
+        m_announce_timer->start(0.0f, m_announce_interval);
     }
 
     // Signals
 
-    m_sigint.set<server_t, &server_t::terminate>(this);
+    m_sigint.set<server_t, &server_t::on_terminate>(this);
     m_sigint.start(SIGINT);
 
-    m_sigterm.set<server_t, &server_t::terminate>(this);
+    m_sigterm.set<server_t, &server_t::on_terminate>(this);
     m_sigterm.start(SIGTERM);
 
-    m_sigquit.set<server_t, &server_t::terminate>(this);
+    m_sigquit.set<server_t, &server_t::on_terminate>(this);
     m_sigquit.start(SIGQUIT);
 
-    m_sighup.set<server_t, &server_t::reload>(this);
+    m_sighup.set<server_t, &server_t::on_reload>(this);
     m_sighup.start(SIGHUP);
    
     recover();
@@ -119,11 +120,13 @@ server_t::~server_t() {
     // Empty.
 }
 
-void server_t::run() {
+void
+server_t::run() {
     m_loop.loop();
 }
 
-void server_t::terminate(ev::sig&, int) {
+void
+server_t::on_terminate(ev::sig&, int) {
     if(!m_apps.empty()) {
         COCAINE_LOG_INFO(m_log, "stopping the apps");
         m_apps.clear();
@@ -132,7 +135,8 @@ void server_t::terminate(ev::sig&, int) {
     m_loop.unloop(ev::ALL);
 }
 
-void server_t::reload(ev::sig&, int) {
+void
+server_t::on_reload(ev::sig&, int) {
     COCAINE_LOG_INFO(m_log, "reloading the apps");
 
     try {
@@ -144,20 +148,50 @@ void server_t::reload(ev::sig&, int) {
     }
 }
 
-void server_t::event(ev::io&, int) {
+void
+server_t::on_event(ev::io&, int) {
     m_checker.stop();
 
     if(m_server.pending()) {
         m_checker.start();
-        process();
+        process_events();
     }
 }
 
-void server_t::check(ev::prepare&, int) {
+void
+server_t::on_check(ev::prepare&, int) {
     m_loop.feed_fd_event(m_server.fd(), ev::READ);
 }
 
-void server_t::process() {
+void
+server_t::on_announce(ev::timer&, int) {
+    COCAINE_LOG_DEBUG(m_log, "announcing the node");
+
+    zmq::message_t message(m_server.endpoint().size());
+ 
+    memcpy(
+        message.data(),
+        m_server.endpoint().data(),
+        m_server.endpoint().size()
+    );
+    
+    m_announces->send(message, ZMQ_SNDMORE);
+
+    std::string announce(Json::FastWriter().write(info()));
+    
+    message.rebuild(announce.size());
+    
+    memcpy(
+        message.data(),
+        announce.data(),
+        announce.size()
+    );
+    
+    m_announces->send(message);
+}
+
+void
+server_t::process_events() {
     zmq::message_t message;
     
     {
@@ -306,7 +340,7 @@ Json::Value server_t::create_app(const std::string& name, const std::string& pro
 
     boost::tie(it, boost::tuples::ignore) = m_apps.emplace(
         name,
-        boost::make_shared<app_t>(
+        new app_t(
             m_context,
             name,
             profile
@@ -347,41 +381,19 @@ Json::Value server_t::info() const {
 
     result["identity"] = m_context.config.network.hostname;
 
-    size_t total = engine::event_t::objects_created(),
-           current = engine::event_t::objects_alive();
+    size_t total = engine::session_t::objects_created(),
+           current = engine::session_t::objects_alive();
 
-    result["events"]["pending"] = static_cast<Json::LargestUInt>(current);
-    result["events"]["processed"] = static_cast<Json::LargestUInt>(total - current);
+    result["sessions"]["pending"] = static_cast<Json::LargestUInt>(current);
+    result["sessions"]["processed"] = static_cast<Json::LargestUInt>(total - current);
 
+    if(m_announce_interval) {
+        result["announce-interval"] = m_announce_interval;
+    }
+    
     result["uptime"] = m_loop.now() - m_birthstamp;
 
     return result;
-}
-
-void server_t::announce(ev::timer&, int) {
-    COCAINE_LOG_DEBUG(m_log, "announcing the node");
-
-    zmq::message_t message(m_server.endpoint().size());
- 
-    memcpy(
-        message.data(),
-        m_server.endpoint().data(),
-        m_server.endpoint().size()
-    );
-    
-    m_announces->send(message, ZMQ_SNDMORE);
-
-    std::string announce(Json::FastWriter().write(info()));
-    
-    message.rebuild(announce.size());
-    
-    memcpy(
-        message.data(),
-        announce.data(),
-        announce.size()
-    );
-    
-    m_announces->send(message);
 }
 
 void server_t::recover() {

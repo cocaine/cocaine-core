@@ -23,13 +23,14 @@
 #include "cocaine/slave.hpp"
 
 #include "cocaine/context.hpp"
-#include "cocaine/engine.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
 #include "cocaine/profile.hpp"
 #include "cocaine/session.hpp"
 
 #include "cocaine/api/event.hpp"
+#include "cocaine/api/isolate.hpp"
+#include "cocaine/api/stream.hpp"
 
 #include "cocaine/traits/unique_id.hpp" 
 
@@ -94,8 +95,6 @@ slave_t::assign(const boost::shared_ptr<session_t>& session) {
     BOOST_ASSERT(m_state == states::idle && !m_session);
     
     m_session = session;
-    m_session->attach(this);
-    
     m_state = states::busy;
 }
 
@@ -111,11 +110,6 @@ slave_t::process(const io::message<rpc::ping>&) {
 
 void
 slave_t::process(const io::message<rpc::chunk>& chunk) {
-    if(m_state != states::busy) {
-        // NOTE: This is an overdue message, drop it.
-        return;
-    }
-
     // TEST: Ensure that the session is in fact here.
     BOOST_ASSERT(m_session);
 
@@ -133,18 +127,11 @@ slave_t::process(const io::message<rpc::chunk>& chunk) {
     // XXX: Proof-of-concept.
     BOOST_ASSERT(session_id == m_session->id);
 
-    if(m_session->state == session_t::states::active) {
-        m_session->ptr->push(message.data(), message.size());
-    }
+    m_session->upstream->push(message.data(), message.size());
 }
 
 void
 slave_t::process(const io::message<rpc::error>& error) {
-    if(m_state != states::busy) {
-        // NOTE: This is an overdue message, drop it.
-        return;
-    }
-
     // TEST: Ensure that the session is in fact here.
     BOOST_ASSERT(m_session);
 
@@ -164,18 +151,11 @@ slave_t::process(const io::message<rpc::error>& error) {
     // XXX: Proof-of-concept.
     BOOST_ASSERT(session_id == m_session->id);
 
-    if(m_session->state == session_t::states::active) {
-        m_session->ptr->abort(static_cast<error_code>(code), message);
-    }
+    m_session->upstream->error(static_cast<error_code>(code), message);
 }
 
 void
 slave_t::process(const io::message<rpc::choke>& choke) {
-    if(m_state != states::busy) {
-        // NOTE: This is an overdue message, drop it.
-        return;
-    }
-
     // TEST: Ensure that the session is in fact here.
     BOOST_ASSERT(m_session);
     
@@ -197,6 +177,7 @@ slave_t::process(const io::message<rpc::choke>& choke) {
         io::message<rpc::choke>(session_id)
     );
 
+    m_session->upstream->close();
     m_session.reset();
 
     m_state = states::idle;
@@ -205,12 +186,12 @@ slave_t::process(const io::message<rpc::choke>& choke) {
 void
 slave_t::on_timeout(ev::timer&, int) {
     if(m_state == states::busy) {
-        m_session->ptr->abort(
+        m_session->upstream->error(
             timeout_error, 
             "the session has timed out"
         );
 
-        m_session.reset();
+        m_session->upstream->close();
     }
 
     terminate();
@@ -234,8 +215,8 @@ slave_t::rearm() {
 
     float timeout = m_profile.heartbeat_timeout;
 
-    if(m_state == states::busy && m_session->ptr->policy.timeout > 0.0f) {
-        timeout = m_session->ptr->policy.timeout;
+    if(m_state == states::busy && m_session->event.policy.timeout > 0.0f) {
+        timeout = m_session->event.policy.timeout;
     }
 
     COCAINE_LOG_DEBUG(

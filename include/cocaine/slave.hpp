@@ -23,10 +23,9 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/asio.hpp"
+#include "cocaine/engine.hpp"
 #include "cocaine/rpc.hpp"
 #include "cocaine/unique_id.hpp"
-
-#include "cocaine/api/isolate.hpp"
 
 namespace cocaine { namespace engine {
 
@@ -63,6 +62,10 @@ class slave_t:
 
         void
         process(const io::message<rpc::choke>& message);
+
+        template<class Event>
+        void
+        send(const io::message<Event>& message);
 
     public:
         states
@@ -110,6 +113,19 @@ class slave_t:
         // Current job.
         boost::shared_ptr<session_t> m_session;
 };
+
+template<class Event>
+void
+slave_t::send(const io::message<Event>& message) {
+    if(m_state == states::dead) {
+        throw cocaine::error_t("the slave is dead");
+    }
+
+    m_engine->send(
+        m_id,
+        message
+    );
+}
 
 }} // namespace cocaine::engine
 
