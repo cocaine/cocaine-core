@@ -68,12 +68,9 @@ namespace cocaine {
         class channel;
     }
 
-    namespace rpc {
-        struct rpc_plane_tag;
-    }
-
-    namespace control {
-        struct control_plane_tag;
+    namespace tags {
+        struct rpc_tag;
+        struct control_tag;
     }
 
     namespace logging {

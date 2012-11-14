@@ -48,6 +48,22 @@ struct stream_t {
     close() = 0;
 };
 
+struct null_stream_t:
+    public stream_t
+{
+    virtual
+    void
+    push(const void *, size_t) { }
+
+    virtual
+    void
+    error(error_code, const std::string&) { }
+
+    virtual
+    void
+    close() { }
+};
+
 }}
 
 #endif

@@ -25,23 +25,26 @@
 
 namespace cocaine { 
 
-namespace rpc {
-    struct rpc_plane_tag;
+namespace tags {
+    struct rpc_tag;
+    struct control_tag;
+}
 
+namespace rpc {
     struct ping {
-        typedef rpc_plane_tag tag;
+        typedef tags::rpc_tag tag;
     };
 
     struct pong {
-        typedef rpc_plane_tag tag;
+        typedef tags::rpc_tag tag;
     };
 
     struct terminate {
-        typedef rpc_plane_tag tag;
+        typedef tags::rpc_tag tag;
     };
 
     struct suicide {
-        typedef rpc_plane_tag tag;
+        typedef tags::rpc_tag tag;
 
         enum reasons: int {
             normal,
@@ -55,7 +58,7 @@ namespace rpc {
     };
 
     struct invoke {
-        typedef rpc_plane_tag tag;
+        typedef tags::rpc_tag tag;
         
         typedef boost::tuple<
             const unique_id_t&,
@@ -64,7 +67,7 @@ namespace rpc {
     };
 
     struct chunk {
-        typedef rpc_plane_tag tag;
+        typedef tags::rpc_tag tag;
         
         typedef boost::tuple<
             const unique_id_t&,
@@ -73,7 +76,7 @@ namespace rpc {
     };
 
     struct error {
-        typedef rpc_plane_tag tag;
+        typedef tags::rpc_tag tag;
         
         typedef boost::tuple<
             const unique_id_t&,
@@ -83,7 +86,7 @@ namespace rpc {
     };
 
     struct choke {
-        typedef rpc_plane_tag tag;
+        typedef tags::rpc_tag tag;
 
         typedef boost::tuple<
             const unique_id_t&
@@ -92,20 +95,18 @@ namespace rpc {
 }
 
 namespace control {
-    struct control_plane_tag;
-
     struct status {
-        typedef control_plane_tag tag;
+        typedef tags::control_tag tag;
     };
 
     struct terminate {
-        typedef control_plane_tag tag;
+        typedef tags::control_tag tag;
     };
 }
 
 namespace io {
     template<>
-    struct dispatch<rpc::rpc_plane_tag> {
+    struct dispatch<tags::rpc_tag> {
         typedef boost::mpl::list<
             rpc::ping,
             rpc::pong,
@@ -119,7 +120,7 @@ namespace io {
     };
 
     template<>
-    struct dispatch<control::control_plane_tag> {
+    struct dispatch<tags::control_tag> {
         typedef boost::mpl::list<
             control::status,
             control::terminate

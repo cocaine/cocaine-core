@@ -142,7 +142,7 @@ class host_t:
         // Engine I/O
 
         typedef io::channel<
-            rpc::rpc_plane_tag,
+            tags::rpc_tag,
             io::policies::unique
         > rpc_channel_t;
 
