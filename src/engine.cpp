@@ -582,7 +582,8 @@ namespace {
         template<class T>
         bool
         operator()(const T& slave) {
-            return slave.second->load();
+            return slave.second->state() == slave_t::states::active &&
+                   slave.second->load();
         }
     };
 }
@@ -628,6 +629,21 @@ engine_t::process_ctl_events() {
 }
 
 namespace {
+    struct active_t {
+        active_t(size_t max_):
+            max(max_)
+        { }
+
+        template<class T>
+        bool
+        operator()(const T& slave) {
+            return slave.second->state() == slave_t::states::active &&
+                   slave.second->load() < max;
+        }
+
+        size_t max;
+    };
+
     struct load_t {
         template<class T>
         bool
@@ -639,18 +655,20 @@ namespace {
 
 void
 engine_t::pump() {
+    typedef boost::filter_iterator<
+        active_t,
+        pool_map_t::iterator
+    > pump_iterator_t;
+
     while(!m_queue.empty()) {
-        // NOTE: If we got an idle slave, then we're lucky and got an instant scheduling;
-        // if not, try to spawn more slaves and wait.
-        pool_map_t::iterator it(
-            std::min_element(
-                m_pool.begin(),
-                m_pool.end(),
-                load_t()
-            )
+        pump_iterator_t begin(active_t(m_profile.concurrency), m_pool.begin(), m_pool.end()),
+                        end(active_t(m_profile.concurrency), m_pool.end(), m_pool.end());
+
+        pump_iterator_t it(
+            std::min_element(begin, end, load_t())
         );
 
-        if(it != m_pool.end() && it->second->load() < m_profile.concurrency) {
+        if(it != end) {
             session_queue_t::value_type session;
 
             {
@@ -693,7 +711,7 @@ engine_t::pump() {
 
                 COCAINE_LOG_ERROR(m_log, "slave %s has unexpectedly died", it->first);
                 
-                m_pool.erase(it);
+                m_pool.erase(it->first);
             }
         } else {
             break;

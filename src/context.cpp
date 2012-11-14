@@ -43,7 +43,7 @@ const float defaults::startup_timeout = 10.0f;
 const float defaults::termination_timeout = 5.0f;
 const unsigned long defaults::pool_limit = 10L;
 const unsigned long defaults::queue_limit = 100L;
-const unsigned long defaults::concurrency = 1L;
+const unsigned long defaults::concurrency = 10L;
 
 const long defaults::bus_timeout = 1000L;
 const long defaults::control_timeout = 500L;
