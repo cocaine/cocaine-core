@@ -56,8 +56,8 @@ profile_t::profile_t(context_t& context,
         defaults::idle_timeout
     ).asDouble();
 
-    if(idle_timeout <= 0.0f) {
-        throw configuration_error_t("slave idle timeout must be positive");
+    if(idle_timeout < 0.0f) {
+        throw configuration_error_t("slave idle timeout must non-negative");
     }
 
     termination_timeout = cache.get(
@@ -83,10 +83,6 @@ profile_t::profile_t(context_t& context,
         "grow-threshold",
         static_cast<Json::UInt>(queue_limit / pool_limit)
     ).asUInt();
-
-    if(grow_threshold == 0) {
-        throw configuration_error_t("engine grow threshold must be positive");
-    }
 
     concurrency = cache.get(
         "concurrency",

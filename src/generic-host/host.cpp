@@ -158,9 +158,6 @@ host_t::host_t(context_t& context,
         terminate(rpc::suicide::abnormal, "unexpected exception");
         throw;
     }
-
-    m_idle_timer.set<host_t, &host_t::on_idle>(this);
-    m_idle_timer.start(m_profile->idle_timeout);        
 }
 
 host_t::~host_t() {
@@ -190,7 +187,7 @@ host_t::on_bus_check(ev::prepare&, int) {
 void
 host_t::on_heartbeat(ev::timer&, int) {
     m_bus.send_message(io::message<rpc::ping>());
-    m_disown_timer.start(60.0f);
+    m_disown_timer.start(m_profile->heartbeat_timeout);
 }
 
 void
@@ -202,11 +199,6 @@ host_t::on_disown(ev::timer&, int) {
     );
 
     m_loop.unloop(ev::ALL);    
-}
-
-void
-host_t::on_idle(ev::timer&, int) {
-    terminate(rpc::suicide::normal, "idle");
 }
 
 void
@@ -268,10 +260,10 @@ host_t::process_bus_events() {
                         it->second.downstream->push(message.data(), message.size());
                     } catch(const std::exception& e) {
                         it->second.upstream->error(invocation_error, e.what());
-                        erase(it);
+                        m_streams.erase(it);
                     } catch(...) {
                         it->second.upstream->error(invocation_error, "unexpected exception");
-                        erase(it);
+                        m_streams.erase(it);
                     }
                 }
 
@@ -296,7 +288,7 @@ host_t::process_bus_events() {
                         it->second.upstream->error(invocation_error, "unexpected exception");
                     }
                     
-                    erase(it);
+                    m_streams.erase(it);
                 }
 
                 break;
@@ -334,10 +326,6 @@ host_t::invoke(const unique_id_t& session_id,
         };
 
         m_streams.emplace(session_id, io);
- 
-        // NOTE: Keeping this inside the try block so that the idle timer
-        // is stopped only if the event was successfully invoked.
-        m_idle_timer.stop();
     } catch(const std::exception& e) {
         upstream->error(invocation_error, e.what());
     } catch(...) {
@@ -354,13 +342,4 @@ host_t::terminate(rpc::suicide::reasons reason,
 {
     send(io::message<rpc::suicide>(reason, message));
     m_loop.unloop(ev::ALL);
-}
-
-void
-host_t::erase(stream_map_t::iterator it) {
-    m_streams.erase(it);
-
-    if(m_streams.empty()) {
-        m_idle_timer.start(m_profile->idle_timeout);
-    }
 }

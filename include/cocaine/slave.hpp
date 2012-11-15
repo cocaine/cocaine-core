@@ -34,6 +34,7 @@ class slave_t:
 {
     public:
         enum states: int {
+            unknown,
             inactive,
             active,
             dead
@@ -87,6 +88,9 @@ class slave_t:
         on_timeout(ev::timer&, int);
 
         void
+        on_idle(ev::timer&, int);
+
+        void
         rearm();
 
         void
@@ -103,7 +107,8 @@ class slave_t:
         engine_t * const m_engine;
 
         // Slave health monitoring.
-        ev::timer m_heartbeat_timer;
+        ev::timer m_heartbeat_timer,
+                  m_idle_timer;
     
         // Current slave state.
         states m_state;
@@ -131,8 +136,8 @@ class slave_t:
 template<class Event>
 void
 slave_t::send(const io::message<Event>& message) {
-    if(m_state == states::dead) {
-        throw cocaine::error_t("the slave is dead");
+    if(m_state != states::active) {
+        throw cocaine::error_t("the slave is not active");
     }
 
     m_engine->send(

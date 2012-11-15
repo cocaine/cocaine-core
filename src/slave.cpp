@@ -51,7 +51,7 @@ slave_t::slave_t(context_t& context,
     m_profile(profile),
     m_engine(engine),
     m_heartbeat_timer(engine->loop()),
-    m_state(states::inactive)
+    m_state(states::unknown)
 {
     api::category_traits<api::isolate_t>::ptr_type isolate = m_context.get<api::isolate_t>(
         m_profile.isolate.type,
@@ -74,6 +74,10 @@ slave_t::slave_t(context_t& context,
     // NOTE: Initialization heartbeat can be different.
     m_heartbeat_timer.set<slave_t, &slave_t::on_timeout>(this);
     m_heartbeat_timer.start(m_profile.startup_timeout);
+
+    // XXX: Maybe start it after the slave has come alive?
+    m_idle_timer.set<slave_t, &slave_t::on_idle>(this);
+    m_idle_timer.start(m_profile.idle_timeout);
 }
 
 slave_t::~slave_t() {    
@@ -92,15 +96,15 @@ slave_t::assign(const boost::shared_ptr<session_t>& session) {
     );
 
     m_sessions.emplace(session->id, session);
+
+    if(m_idle_timer.is_active()) {
+        m_idle_timer.stop();
+    }
 }
 
 void
 slave_t::process(const io::message<rpc::ping>&) {
-    m_engine->send(
-        m_id,
-        io::message<rpc::pong>()
-    );
-
+    m_engine->send(m_id, io::message<rpc::pong>());
     rearm();
 }
 
@@ -165,14 +169,14 @@ slave_t::process(const io::message<rpc::choke>& choke) {
     BOOST_ASSERT(it != m_sessions.end());
 
     // NOTE: Signal the slave that the session is, in fact, closed.
-    m_engine->send(
-        m_id,
-        io::message<rpc::choke>(session_id)
-    );
+    m_engine->send(m_id, io::message<rpc::choke>(session_id));
 
     it->second->upstream->close();
-
     m_sessions.erase(it);
+
+    if(m_sessions.empty()) {
+        m_idle_timer.start(m_profile.idle_timeout);
+    }
 }
 
 namespace {
@@ -192,13 +196,28 @@ namespace {
 
 void
 slave_t::on_timeout(ev::timer&, int) {
+    COCAINE_LOG_DEBUG(
+        m_log,
+        "slave %s has timed out, dropping %llu sessions",
+        m_id,
+        m_sessions.size()
+    );
+
     std::for_each(m_sessions.begin(), m_sessions.end(), timeout_t());
+    m_sessions.clear();
+    
     terminate();
 }
 
 void
+slave_t::on_idle(ev::timer&, int) {
+    m_engine->send(m_id, io::message<rpc::terminate>());
+    m_state = states::inactive;
+}
+
+void
 slave_t::rearm() {
-    if(m_state == states::inactive) {
+    if(m_state == states::unknown) {
         COCAINE_LOG_DEBUG(
             m_log,
             "slave %s came alive in %.03f seconds",
@@ -234,6 +253,7 @@ slave_t::terminate() {
     BOOST_ASSERT(m_sessions.empty());
 
     m_heartbeat_timer.stop();
+    m_idle_timer.stop();
 
     m_handle->terminate();
     m_handle.reset();

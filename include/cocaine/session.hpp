@@ -30,6 +30,10 @@
 
 namespace cocaine { namespace engine {
 
+typedef boost::shared_ptr<
+    api::stream_t
+> stream_ptr_t;
+
 struct session_t:
     public birth_control<session_t>
 {
@@ -38,21 +42,18 @@ struct session_t:
               const boost::shared_ptr<api::stream_t>& upstream,
               const boost::shared_ptr<api::stream_t>& downstream);
 
-    bool
-    closed() const;
+    void
+    abort(error_code code,
+          const std::string& message);
 
+public:
     // Session ID.
     const unique_id_t id;
 
     // Session event type.
     const api::event_t event;
 
-    // Session streams
-
-    typedef boost::shared_ptr<
-        api::stream_t
-    > stream_ptr_t;
-
+    // Session streams.
     const stream_ptr_t upstream,
                        downstream;
 };

@@ -20,6 +20,8 @@
 
 #include "cocaine/session.hpp"
 
+#include "cocaine/api/stream.hpp"
+
 using namespace cocaine::engine;
 
 session_t::session_t(const unique_id_t& id_,
@@ -32,8 +34,13 @@ session_t::session_t(const unique_id_t& id_,
     downstream(downstream_)
 { }
 
-bool
-session_t::closed() const {
-    // TODO: No-op.
-    return false; 
+void
+session_t::abort(error_code code,
+                 const std::string& message)
+{
+    upstream->error(code, message);
+
+    // NOTE: This will prevent writing to the downstream in case someone
+    // has the shared pointer to it after it's popped from the queue.
+    downstream->close();
 }

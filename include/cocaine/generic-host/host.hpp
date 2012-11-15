@@ -82,9 +82,6 @@ class host_t:
         on_disown(ev::timer&, int);
 
         void
-        on_idle(ev::timer&, int);
-        
-        void
         process_bus_events();
         
         void
@@ -94,9 +91,6 @@ class host_t:
         void
         terminate(rpc::suicide::reasons reason,
                   const std::string& message);
-
-        void
-        erase(stream_map_t::iterator session);
 
     private:
         context_t& m_context;
@@ -122,8 +116,7 @@ class host_t:
         ev::prepare m_checker;
         
         ev::timer m_heartbeat_timer,
-                  m_disown_timer,
-                  m_idle_timer;
+                  m_disown_timer;
         
         // The app
 

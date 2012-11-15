@@ -69,6 +69,16 @@ namespace {
              size_t size)
         {
             switch(m_state) {
+                case states::detached: {
+                    boost::unique_lock<boost::mutex> lock(m_mutex);
+
+                    // NOTE: Put the new chunk into the cache because the stream is
+                    // not yet attached to a slave.
+                    m_cache.emplace_back(static_cast<const char*>(chunk), size);
+
+                    break;
+                }
+
                 case states::attached: {
                     // TEST: An attached stream should always have a controlling slave.
                     BOOST_ASSERT(m_slave);
@@ -88,16 +98,6 @@ namespace {
                     break;
                 }
 
-                case states::detached: {
-                    boost::unique_lock<boost::mutex> lock(m_mutex);
-
-                    // NOTE: Put the new chunk into the cache because the stream is
-                    // not yet attached to a slave.
-                    m_cache.emplace_back(static_cast<const char*>(chunk), size);
-
-                    break;
-                }
-
                 case states::closed:
                     throw cocaine::error_t("the stream has been closed");
             }
@@ -108,13 +108,17 @@ namespace {
         error(error_code,
               const std::string&)
         {
-            // TODO: No-op.
+            // TODO: Almost no-op.
+            close();
         }
 
         virtual
         void
         close() {
             switch(m_state) {
+                case states::detached:
+                    m_cache.clear();
+
                 case states::attached:
                     // TEST: An attached stream should always have a controlling slave.
                     BOOST_ASSERT(m_slave);
@@ -154,17 +158,22 @@ namespace {
             }
         }
 
+        bool
+        closed() const {
+            return m_state == states::closed;
+        }
+
     private:
         const unique_id_t m_id;
 
-        enum states: int {
+        enum class states: int {
             detached,
             attached,
             closed
         };
 
         // Stream state.
-        std::atomic<int> m_state;
+        std::atomic<states> m_state;
 
         typedef std::vector<
             std::string
@@ -272,12 +281,6 @@ engine_t::enqueue(const api::event_t& event,
         throw cocaine::error_t("engine is not active");
     }
 
-    if(m_queue.size() >= m_profile.queue_limit &&
-       mode == engine::mode::normal)
-    {
-        throw cocaine::error_t("the queue is full");
-    };
-
     unique_id_t id;
 
     boost::shared_ptr<session_t> session(
@@ -289,8 +292,16 @@ engine_t::enqueue(const api::event_t& event,
         )
     );
 
-    while(m_queue.size() >= m_profile.queue_limit) {
-        m_condition.wait(lock);
+    if(m_profile.queue_limit > 0) {
+        if(mode == engine::mode::normal &&
+           m_queue.size() >= m_profile.queue_limit)
+        {
+            throw cocaine::error_t("the queue is full");
+        }
+
+        while(m_queue.size() >= m_profile.queue_limit) {
+            m_condition.wait(lock);
+        }
     }
 
     m_queue.push(session);
@@ -399,16 +410,12 @@ engine_t::on_cleanup(ev::timer&, int) {
     while(it != end) {
         session_queue_t::value_type& session(*it);
 
-        COCAINE_LOG_DEBUG(m_log, "session %s has expired", session->id);
+        COCAINE_LOG_INFO(m_log, "session %s has expired", session->id);
 
-        session->upstream->error(
+        session->abort(
             deadline_error,
             "the session has expired in the queue"
         );
-
-        // NOTE: This will prevent writing to the downstream in case someone
-        // has the shared pointer to it after it's popped from the queue.
-        session->downstream->close();
 
         ++it;
     }
@@ -416,7 +423,10 @@ engine_t::on_cleanup(ev::timer&, int) {
 
 void
 engine_t::on_termination(ev::timer&, int) {
+    boost::unique_lock<session_queue_t> lock(m_queue);
+    
     COCAINE_LOG_WARNING(m_log, "forcing the engine termination");
+    
     stop();
 }
 
@@ -720,7 +730,12 @@ engine_t::pump() {
             // Notify one of the blocked enqueue operations.
             m_condition.notify_one();
            
-            if(session->closed()) {
+            downstream_t& downstream = static_cast<downstream_t&>(
+                *session->downstream
+            );
+
+            if(downstream.closed()) {
+                // NOTE: Drop the session if the streams are already closed.
                 continue;
             }
             
@@ -731,11 +746,8 @@ engine_t::pump() {
 
             if(send(it->first, message)) {
                 it->second->assign(session);
+                downstream.attach(it->second);
 
-                static_cast<downstream_t&>(
-                    *session->downstream
-                ).attach(it->second);
-                
                 // TODO: Check if it helps.
                 m_loop.feed_fd_event(m_bus->fd(), ev::READ);
             } else {
@@ -757,7 +769,7 @@ engine_t::pump() {
 void
 engine_t::balance() {
     if(m_pool.size() >= m_profile.pool_limit ||
-       m_pool.size() * m_profile.grow_threshold >= m_queue.size() * 2)
+       m_pool.size() * m_profile.grow_threshold >= m_queue.size())
     {
         return;
     }
@@ -767,10 +779,7 @@ engine_t::balance() {
     
     unsigned int target = std::min(
         m_profile.pool_limit,
-        std::max(
-            2UL * m_queue.size() / m_profile.grow_threshold, 
-            1UL
-        )
+        m_queue.size() / m_profile.grow_threshold
     );
   
     if(target <= m_pool.size()) {
@@ -803,6 +812,8 @@ engine_t::balance() {
                 e.what(),
                 e.reason()
             );
+
+            return;
         }
     }
 }
@@ -823,16 +834,10 @@ engine_t::shutdown(states target) {
 
         // Abort all the outstanding sessions.
         while(!m_queue.empty()) {
-            session_queue_t::value_type& session(m_queue.front());
-
-            session->upstream->error(
+            m_queue.front()->abort(
                 resource_error,
                 "engine is shutting down"
             );
-
-            // NOTE: This will prevent writing to the downstream in case someone
-            // has the shared pointer to it after it's popped from the queue.
-            session->downstream->close();
 
             m_queue.pop_front();
         }
