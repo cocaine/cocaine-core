@@ -118,7 +118,10 @@ namespace {
             switch(m_state) {
                 case states::detached: {
                     boost::unique_lock<boost::mutex> lock(m_mutex);
+                    
                     m_cache.clear();
+                    
+                    break;
                 }
 
                 case states::attached:
@@ -783,7 +786,10 @@ engine_t::balance() {
     
     unsigned int target = std::min(
         m_profile.pool_limit,
-        m_queue.size() / m_profile.grow_threshold
+        std::max(
+            1UL,
+            m_queue.size() / m_profile.grow_threshold
+        )
     );
   
     if(target <= m_pool.size()) {
