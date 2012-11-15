@@ -25,17 +25,13 @@
 #include <boost/thread/mutex.hpp>
 #include <deque>
 
-#if !defined(__clang__) && defined(__GNUC__) && (__GNUC__ == 4 && __GNUC_MINOR__ <= 4)
- #include <cstdatomic>
-#else
- #include <atomic>
-#endif
-
 #include "cocaine/common.hpp"
 #include "cocaine/asio.hpp"
 #include "cocaine/rpc.hpp"
 
 #include "cocaine/api/isolate.hpp"
+
+#include "cocaine/helpers/atomic.hpp"
 
 namespace cocaine { namespace engine {
 
@@ -67,11 +63,13 @@ class session_queue_t:
 class engine_t:
     public boost::noncopyable
 {
-    enum states: int {
-        running,
-        broken,
-        stopping,
-        stopped
+    struct states {
+        enum value: int {
+            running,
+            broken,
+            stopping,
+            stopped
+        };
     };
 
     public:
@@ -138,7 +136,7 @@ class engine_t:
         balance();
 
         void
-        shutdown(states target);
+        shutdown(states::value target);
         
         void
         stop();

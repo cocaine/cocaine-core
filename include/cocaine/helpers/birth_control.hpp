@@ -21,11 +21,7 @@
 #ifndef COCAINE_HELPERS_BIRTH_CONTROL_HPP
 #define COCAINE_HELPERS_BIRTH_CONTROL_HPP
 
-#if !defined(__clang__) && defined(__GNUC__) && (__GNUC__ == 4 && __GNUC_MINOR__ <= 4)
-    #include <cstdatomic>
-#else
-    #include <atomic>
-#endif
+#include "cocaine/helpers/atomic.hpp"
 
 namespace cocaine { namespace helpers {
 

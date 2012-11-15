@@ -27,17 +27,21 @@
 #include "cocaine/rpc.hpp"
 #include "cocaine/unique_id.hpp"
 
+#include "cocaine/helpers/atomic.hpp"
+
 namespace cocaine { namespace engine {
 
 class slave_t:
     public boost::noncopyable
 {
     public:
-        enum states: int {
-            unknown,
-            inactive,
-            active,
-            dead
+        struct states {
+            enum value: int {
+                unknown,
+                inactive,
+                active,
+                dead
+            };
         };
 
     public:
@@ -68,9 +72,9 @@ class slave_t:
         send(const io::message<Event>& message);
 
     public:
-        states
+        states::value
         state() const {
-            return m_state;
+            return static_cast<states::value>(m_state.load());
         }
 
         size_t
@@ -111,7 +115,7 @@ class slave_t:
                   m_idle_timer;
     
         // Current slave state.
-        states m_state;
+        std::atomic<int> m_state;
 
         // Slave ID.
         const unique_id_t m_id;

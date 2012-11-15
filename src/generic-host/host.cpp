@@ -32,6 +32,8 @@
 
 #include "cocaine/traits/unique_id.hpp"
 
+#include "cocaine/helpers/atomic.hpp"
+
 using namespace cocaine;
 using namespace cocaine::engine;
 
@@ -44,7 +46,7 @@ struct upstream_t:
                host_t * const host):
         m_id(id),
         m_host(host),
-        m_state(attached)
+        m_state(states::attached)
     { }
 
     virtual
@@ -52,7 +54,7 @@ struct upstream_t:
     push(const void * chunk,
          size_t size)
     {
-        if(m_state == closed) {
+        if(m_state == states::closed) {
             throw cocaine::error_t("the stream has been closed");
         }
 
@@ -72,7 +74,7 @@ struct upstream_t:
     error(error_code code,
           const std::string& message)
     {
-        if(m_state == closed) {
+        if(m_state == states::closed) {
             throw cocaine::error_t("the stream has been closed");
         }
 
@@ -84,7 +86,7 @@ struct upstream_t:
     virtual
     void
     close() {
-        if(m_state == closed) {
+        if(m_state == states::closed) {
             throw cocaine::error_t("the stream has been closed");
         }
 
@@ -97,12 +99,14 @@ private:
     const unique_id_t m_id;
     host_t * const m_host;
 
-    enum states: int {
-        attached,
-        closed
+    struct states {
+        enum value: int {
+            attached,
+            closed
+        };
     };
 
-    states m_state;
+    std::atomic<int> m_state;
 };
 
 host_t::host_t(context_t& context,

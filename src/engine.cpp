@@ -116,8 +116,10 @@ namespace {
         void
         close() {
             switch(m_state) {
-                case states::detached:
+                case states::detached: {
+                    boost::unique_lock<boost::mutex> lock(m_mutex);
                     m_cache.clear();
+                }
 
                 case states::attached:
                     // TEST: An attached stream should always have a controlling slave.
@@ -166,14 +168,16 @@ namespace {
     private:
         const unique_id_t m_id;
 
-        enum class states: int {
-            detached,
-            attached,
-            closed
+        struct states {
+            enum value: int {
+                detached,
+                attached,
+                closed
+            };
         };
 
         // Stream state.
-        std::atomic<states> m_state;
+        std::atomic<int> m_state;
 
         typedef std::vector<
             std::string
@@ -819,7 +823,7 @@ engine_t::balance() {
 }
 
 void
-engine_t::shutdown(states target) {
+engine_t::shutdown(states::value target) {
     boost::unique_lock<session_queue_t> lock(m_queue);
 
     m_state = target;
