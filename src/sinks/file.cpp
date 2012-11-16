@@ -20,16 +20,33 @@
 
 #include <boost/format.hpp>
 #include <ctime>
+#include <cstdio>
+#include <sys/uio.h>
 
-#include "cocaine/sinks/stdio.hpp"
+#include "cocaine/sinks/file.hpp"
 
 using namespace cocaine;
 using namespace cocaine::sink;
 
-stdio_t::stdio_t(const std::string& name,
-                 const Json::Value& args):
-    category_type(name, args)
-{ }
+file_t::file_t(const std::string& name,
+               const Json::Value& args):
+    category_type(name, args),
+    m_file(NULL)
+{
+    std::string path = args["path"].asString();
+
+    m_file = std::fopen(path.c_str(), "a");
+    
+    if(m_file == NULL) {
+        throw system_error_t("unable to open '%s' log file", path);
+    }
+}
+
+file_t::~file_t() {
+    if(m_file) {
+        std::fclose(m_file);
+    }
+}
 
 namespace {
     static const char * describe[] = {
@@ -42,9 +59,9 @@ namespace {
 }
 
 void
-stdio_t::emit(logging::priorities priority,
-              const std::string& source,
-              const std::string& message)
+file_t::emit(logging::priorities priority,
+             const std::string& source,
+             const std::string& message)
 {
     time_t time = 0;
     tm timeinfo;
@@ -59,12 +76,31 @@ stdio_t::emit(logging::priorities priority,
 
     size_t result = std::strftime(timestamp, 128, "%c", &timeinfo);
 
-    BOOST_ASSERT(result);
+    BOOST_ASSERT(result != 0);
 
-    std::cout << boost::format("[%s] [%s] %s: %s")
-                    % timestamp 
-                    % describe[priority] 
-                    % source 
-                    % message
-              << std::endl;
+    boost::format format("[%s] [%s] %s: %s\n");
+
+    format % timestamp 
+           % describe[priority] 
+           % source 
+           % message;
+
+    std::string out(format.str());
+
+    char * buffer = new char[out.size()];
+
+    std::memcpy(
+        buffer,
+        out.data(),
+        out.size()
+    );
+
+    iovec io = {
+        buffer,
+        out.size()
+    };
+
+    ssize_t written = ::writev(::fileno(m_file), &io, 1);
+
+    BOOST_ASSERT(written == out.size());
 }

@@ -30,6 +30,7 @@
 #include "cocaine/logging.hpp"
 
 #include "cocaine/isolates/process.hpp"
+#include "cocaine/sinks/file.hpp"
 #include "cocaine/sinks/stdio.hpp"
 #include "cocaine/sinks/syslog.hpp"
 #include "cocaine/storages/files.hpp"
@@ -205,10 +206,15 @@ context_t::context_t(config_t config_):
 {
     m_repository.reset(new api::repository_t());
     
-    // Register the builtin components.
+    // Register the builtin isolates.
     m_repository->insert<isolate::process_t>("process");
+
+    // Register the builtin logging sinks.
+    m_repository->insert<sink::file_t>("file");
     m_repository->insert<sink::stdio_t>("stdio");
     m_repository->insert<sink::syslog_t>("syslog");
+    
+    // Register the builtin storages.
     m_repository->insert<storage::file_storage_t>("files");
 
     // Register the plugins.

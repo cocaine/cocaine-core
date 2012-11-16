@@ -93,11 +93,13 @@ struct configuration_error_t:
 };
 
 struct system_error_t:
-    public std::runtime_error
+    public error_t
 {
     public:
-        system_error_t(const std::string& what):
-            std::runtime_error(what)
+        template<typename... Args>
+        system_error_t(const std::string& format,
+                       const Args&... args):
+            error_t(format, args...)
         {
             ::strerror_r(errno, m_reason, 1024);
         }

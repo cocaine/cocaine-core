@@ -307,7 +307,7 @@ main(int argc, char * argv[]) {
     try {
         context.reset(new context_t(vm["configuration"].as<std::string>()));
     } catch(const std::exception& e) {
-        std::cerr << "Error: unable to initialize the context - " << e.what();
+        std::cerr << "Error: unable to initialize the context - " << e.what() << std::endl;
         return EXIT_FAILURE;
     }
 

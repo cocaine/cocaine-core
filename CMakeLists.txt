@@ -62,6 +62,7 @@ ADD_LIBRARY(cocaine-common SHARED
     src/io
     src/isolates/process
     src/repository
+    src/sinks/file
     src/sinks/stdio
     src/sinks/syslog
     src/storages/files)
