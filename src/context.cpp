@@ -30,9 +30,11 @@
 #include "cocaine/logging.hpp"
 
 #include "cocaine/isolates/process.hpp"
+
 #include "cocaine/sinks/file.hpp"
 #include "cocaine/sinks/stdio.hpp"
 #include "cocaine/sinks/syslog.hpp"
+
 #include "cocaine/storages/files.hpp"
 
 using namespace cocaine;

@@ -74,8 +74,8 @@ process_t::spawn(const std::string& path,
     pid_t pid = ::fork();
 
     if(pid == 0) {
-        char * argv[args.size() * 2 + 2],
-             * envp[environment.size() + 1];
+        char * argv[args.size() * 2 + 2];
+        // char * envp[environment.size() + 1];
 
         // NOTE: The first element is the executable path,
         // the last one should be null pointer.
@@ -83,7 +83,7 @@ process_t::spawn(const std::string& path,
         argv[sizeof(argv) / sizeof(argv[0])] = NULL;
 
         // NOTE: The last element of the environment must be a null pointer.
-        envp[sizeof(envp) / sizeof(envp[0])] = NULL;
+        // envp[sizeof(envp) / sizeof(envp[0])] = NULL;
 
         std::map<std::string, std::string>::const_iterator it;
         int n;
@@ -98,6 +98,11 @@ process_t::spawn(const std::string& path,
             ++it;
         }
 
+        if(!environment.empty()) {
+            COCAINE_LOG_WARNING(m_log, "environment passing is not yet implemented");
+        }
+
+        /*
         boost::format format("%s=%s");
 
         it = environment.begin();
@@ -111,8 +116,11 @@ process_t::spawn(const std::string& path,
             format.clear();
             ++it;
         }
+        */
 
-        int rv = ::execve(argv[0], argv, envp);
+        // TODO: Merge the current environment and the passed one.
+        // It's disabled for now, as will only be needed in forking slave.
+        int rv = ::execv(argv[0], argv);
 
         if(rv != 0) {
             char buffer[1024],
