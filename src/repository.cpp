@@ -49,7 +49,7 @@ repository_t::~repository_t() {
 
     // Dispose of the plugins.
     std::for_each(m_plugins.begin(), m_plugins.end(), dispose_t());
-    
+
     // Terminate the dynamic loader.
     lt_dlexit();
 }

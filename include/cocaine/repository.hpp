@@ -94,6 +94,10 @@ class repository_t:
         void
         insert(const std::string& type);
 
+        template<class Category>
+        void
+        dispose();
+
     private:
         void
         open(const std::string& target);
@@ -180,6 +184,12 @@ repository_t::insert(const std::string& type) {
         type,
         boost::make_shared<typename plugin_traits<T>::factory_type>()
     );
+}
+
+template<class Category>
+void
+repository_t::dispose() {
+    m_categories.erase(typeid(Category).name());
 }
 
 typedef void (*initialize_fn_t)(repository_t&);

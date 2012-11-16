@@ -243,7 +243,10 @@ context_t::context_t(config_t config_):
 }
 
 context_t::~context_t() {
-    BOOST_ASSERT(io::socket_base_t::objects_alive() == 0);
+    // NOTE: Plugin categories have to be destroyed in a specific order,
+    // so that logging sinks would be destroyed after all the shared factories
+    // which may use logging subsystem. For now, it involes storages only.
+    m_repository->dispose<api::storage_t>();
 }
 
 boost::shared_ptr<logging::logger_t>
