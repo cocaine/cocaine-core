@@ -95,12 +95,11 @@ file_t::emit(logging::priorities priority,
         out.size()
     );
 
-    iovec io = {
-        buffer,
-        out.size()
+    iovec io[] = {
+        { buffer, out.size() }
     };
 
-    ssize_t written = ::writev(::fileno(m_file), &io, 1);
+    ssize_t written = ::writev(::fileno(m_file), io, sizeof(io));
 
     BOOST_ASSERT(written == out.size());
 }
