@@ -36,6 +36,7 @@ namespace cocaine {
         class driver_t;
         class isolate_t;
         class sandbox_t;
+        class sink_t;
         class storage_t;
 
         struct event_t;
@@ -74,8 +75,13 @@ namespace cocaine {
     }
 
     namespace logging {
-        // Logging sink abstraction.
-        class sink_t;
+        enum priorities: int {
+            ignore,
+            error,
+            warning,
+            info,
+            debug
+        };
 
         // Logging proxy.
         class logger_t;

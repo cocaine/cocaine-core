@@ -23,17 +23,11 @@
 
 #include "cocaine/repository.hpp"
 
-#include "cocaine/context.hpp"
-#include "cocaine/logging.hpp"
-
 using namespace cocaine::api;
 
 namespace fs = boost::filesystem;
 
-repository_t::repository_t(context_t& context):
-    m_context(context),
-    m_log(context.log("repository"))
-{
+repository_t::repository_t() {
     if(lt_dlinit() != 0) {
         throw repository_error_t("unable to initialize the component repository");
     }
@@ -109,14 +103,11 @@ repository_t::open(const std::string& target) {
     lt_dladvise_init(&advice);
     lt_dladvise_global(&advice);
 
-    COCAINE_LOG_DEBUG(m_log, "loading components from '%s'", target);
-
     lt_dlhandle plugin = lt_dlopenadvise(target.c_str(), advice);
     lt_dladvise_destroy(&advice);
     
     if(!plugin) {
-        COCAINE_LOG_ERROR(m_log, "unable to load '%s'", target);
-        return;
+        throw repository_error_t("unable to load '%s'", target);
     }
 
     // Try to get the initialization routine.
@@ -130,12 +121,12 @@ repository_t::open(const std::string& target) {
             m_plugins.emplace_back(plugin);
             return;
         } catch(const std::exception& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to initialize '%s' - %s", target, e.what());
+            throw repository_error_t("unable to initialize '%s' - %s", target, e.what());
         } catch(...) {
-            COCAINE_LOG_ERROR(m_log, "unable to initialize '%s' - unexpected exception", target);
+            throw repository_error_t("unable to initialize '%s' - unexpected exception", target);
         }
     } else {
-        COCAINE_LOG_ERROR(m_log, "unable to initialize '%s' - invalid interface", target);
+        throw repository_error_t("unable to initialize '%s' - invalid interface", target);
     }
 
     lt_dlclose(plugin);

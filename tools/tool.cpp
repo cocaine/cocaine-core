@@ -38,25 +38,6 @@ namespace po = boost::program_options;
 namespace fs = boost::filesystem;
 
 namespace {
-    class stdio_sink_t:
-        public logging::sink_t
-    {
-        public:
-            stdio_sink_t(logging::priorities verbosity):
-                cocaine::logging::sink_t(verbosity)
-            { }
-
-            virtual
-            void
-            emit(logging::priorities,
-                 const std::string& source,
-                 const std::string& message) const 
-            {
-                std::cout << source << ": " 
-                          << message << std::endl;
-            }
-    };
-
     void
     list(context_t& context) {
         std::vector<std::string> apps;
@@ -266,8 +247,7 @@ main(int argc, char * argv[]) {
             ()->default_value("package.tar.gz"),
             "location of the app source package")
         ("name,n", po::value<std::string>(),
-            "app name")
-        ("verbose", "produce a lot of output");
+            "app name");
 
     hidden_options.add_options()
         ("operation", po::value<std::string>());
@@ -322,17 +302,19 @@ main(int argc, char * argv[]) {
     // Startup
     // -------
 
-    context_t context(
-        vm["configuration"].as<std::string>(),
-        boost::make_shared<stdio_sink_t>(
-            vm.count("verbose") ? logging::debug : logging::info
-        )
-    );
+    std::unique_ptr<context_t> context;
+
+    try {
+        context.reset(new context_t(vm["configuration"].as<std::string>()));
+    } catch(const std::exception& e) {
+        std::cerr << "Error: unable to initialize the context - " << e.what();
+        return EXIT_FAILURE;
+    }
 
     std::string operation(vm["operation"].as<std::string>());
 
     if(operation == "list") {
-        list(context);
+        list(*context);
     } else if(operation == "upload") {
         if(!vm.count("manifest")) {
             std::cerr << "Error: no app manifest file location has been specified." << std::endl;
@@ -353,7 +335,7 @@ main(int argc, char * argv[]) {
         }
     
         upload(
-            context,
+            *context,
             vm["name"].as<std::string>(),
             vm["manifest"].as<std::string>(),
             vm["package"].as<std::string>()
@@ -366,17 +348,17 @@ main(int argc, char * argv[]) {
         }
     
         remove(
-            context,
+            *context,
             vm["name"].as<std::string>()
         );
     } else if(operation == "cleanup") {
         if(vm.count("name")) {
             cleanup(
-                context,
+                *context,
                 vm["name"].as<std::string>()
             );
         } else {
-            purge(context);
+            purge(*context);
         }
     } else {
         std::cerr << "Error: unknown operation has been specified" << std::endl;

@@ -23,10 +23,10 @@
 
 #include "cocaine/config.hpp"
 #include "cocaine/context.hpp"
+#include "cocaine/logging.hpp"
 
 #include "cocaine/server/pid_file.hpp"
 #include "cocaine/server/server.hpp"
-#include "cocaine/server/syslog.hpp"
 
 using namespace cocaine;
 
@@ -50,8 +50,7 @@ int main(int argc, char * argv[]) {
         ("daemonize,d", "daemonize on start")
         ("pidfile,p", po::value<std::string>
             ()->default_value("/var/run/cocaine/cocained.pid"),
-            "location of a pid file")
-        ("verbose", "produce a lot of output");
+            "location of a pid file");
 
     server_config_t server_config;
 
@@ -126,15 +125,16 @@ int main(int argc, char * argv[]) {
         }
     }
 
-    context_t context(
-        vm["configuration"].as<std::string>(),
-        boost::make_shared<logging::syslog_t>(
-            vm.count("verbose") ? logging::debug : logging::info,
-            "cocaine"
-        )
-    );
+    std::unique_ptr<context_t> context;
 
-    boost::shared_ptr<logging::logger_t> log(context.log("main"));
+    try {
+        context.reset(new context_t(vm["configuration"].as<std::string>()));
+    } catch(const std::exception& e) {
+        std::cerr << "Error: unable to initialize the context - " << e.what();
+        return EXIT_FAILURE;
+    }
+
+    boost::shared_ptr<logging::logger_t> log(context->log("main"));
 
     COCAINE_LOG_INFO(log, "starting the server");
 
@@ -143,7 +143,7 @@ int main(int argc, char * argv[]) {
     try {
         server.reset(
             new server_t(
-                context,
+                *context,
                 server_config
             )
         );

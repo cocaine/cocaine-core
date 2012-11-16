@@ -61,8 +61,9 @@ ADD_LIBRARY(cocaine-common SHARED
     src/context
     src/io
     src/isolates/process
-    src/logging
     src/repository
+    src/sinks/stdio
+    src/sinks/syslog
     src/storages/files)
 
 TARGET_LINK_LIBRARIES(cocaine-common
@@ -99,7 +100,6 @@ SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     COMPILE_FLAGS "-std=c++0x")
 
 ADD_EXECUTABLE(cocaine-generic-host
-    src/server/syslog
     src/generic-host/host
     src/generic-host/main)
 
@@ -112,7 +112,6 @@ SET_TARGET_PROPERTIES(cocaine-generic-host PROPERTIES
 
 ADD_EXECUTABLE(cocained
     src/server/server
-    src/server/syslog
     src/server/main)
 
 TARGET_LINK_LIBRARIES(cocained

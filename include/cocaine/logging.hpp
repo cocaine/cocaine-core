@@ -25,6 +25,8 @@
 
 #include "cocaine/common.hpp"
 
+#include "cocaine/api/sink.hpp"
+
 // Logging macros
 
 #define COCAINE_LOG_DEBUG(log, ...)                 \
@@ -49,42 +51,15 @@
 
 namespace cocaine { namespace logging {
 
-enum priorities: int {
-    ignore,
-    error,
-    warning,
-    info,
-    debug
-};
-
-class sink_t {
-    public:
-        sink_t(priorities verbosity);
-
-        virtual
-        ~sink_t();
-
-        priorities
-        verbosity() const {
-            return m_verbosity;
-        }
-
-        virtual
-        void
-        emit(priorities priority,
-             const std::string& source,
-             const std::string& message) const = 0;
-
-    private:
-        const priorities m_verbosity;
-};
-
 class logger_t:
     public boost::noncopyable
 {
     public:
-        logger_t(const sink_t& sink,
-                 const std::string& source);
+        logger_t(api::sink_t& sink,
+                 const std::string& source):
+            m_sink(sink),
+            m_source(source)
+        { }
 
         priorities
         verbosity() const {
@@ -95,7 +70,7 @@ class logger_t:
         void
         emit(priorities priority,
              const std::string& format,
-             const Args&... args) const
+             const Args&... args)
         {
             boost::format message(format);
 
@@ -109,35 +84,25 @@ class logger_t:
 
     private:
         template<typename T, typename... Args>
+        static
         std::string
         substitute(boost::format& message,
                    const T& argument,
-                   const Args&... args) const
+                   const Args&... args)
         {
             return substitute(message % argument, args...);
         }
 
+        static
         std::string
-        substitute(boost::format& message) const {
+        substitute(boost::format& message) {
             return message.str();
         }
 
     private:
-        const sink_t& m_sink;
+        api::sink_t& m_sink;
+        
         const std::string m_source;
-};
-
-class void_sink_t:
-    public sink_t
-{
-    public:
-        void_sink_t();
-
-        virtual
-        void
-        emit(priorities,
-             const std::string&,
-             const std::string&) const;
 };
 
 }} // namespace cocaine::logging

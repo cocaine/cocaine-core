@@ -18,25 +18,30 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include "cocaine/logging.hpp"
+#ifndef COCAINE_STDIO_SINK_HPP
+#define COCAINE_STDIO_SINK_HPP
 
-namespace cocaine { namespace logging {
+#include "cocaine/api/sink.hpp"
 
-class syslog_t:
-    public sink_t
+namespace cocaine { namespace sink {
+
+class stdio_t:
+    public api::sink_t
 {
     public:
-        syslog_t(priorities verbosity,
-        		 const std::string& identity);
+        typedef api::sink_t category_type;
+        
+    public:
+        stdio_t(const std::string& name,
+                const Json::Value& args);
 
         virtual
         void
-        emit(priorities priority,
+        emit(logging::priorities,
              const std::string& source,
-             const std::string& message) const;
-
-    private:
-        const std::string m_identity;
+             const std::string& message);
 };
 
-}} // namespace cocaine::logging
+}} // namespace cocaine::sink
+
+#endif

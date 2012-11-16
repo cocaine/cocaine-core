@@ -79,7 +79,7 @@ class repository_t:
     public boost::noncopyable
 {
     public:
-        repository_t(context_t& context);
+        repository_t();
         ~repository_t();
 
         void
@@ -99,9 +99,6 @@ class repository_t:
         open(const std::string& target);
 
     private:
-        context_t& m_context;
-        boost::shared_ptr<logging::logger_t> m_log;
-
         // NOTE: Used to unload all the plugins on shutdown.
         // Cannot use a forward declaration here due to the implementation
         // details.
@@ -150,7 +147,7 @@ repository_t::get(const std::string& type,
     return typename traits::ptr_type(
         dynamic_cast< typename traits::factory_type& >(
             *it->second
-        ).get(m_context, std::forward<Args>(args)...)
+        ).get(std::forward<Args>(args)...)
     );
 }
 

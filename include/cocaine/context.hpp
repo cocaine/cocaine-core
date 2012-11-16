@@ -67,6 +67,9 @@ struct config_t {
         Json::Value args;
     };
 
+    // Core logging sink configuration.
+    component_t sink;
+
 #if BOOST_VERSION >= 103600
     typedef boost::unordered_map<
 #else
@@ -80,8 +83,8 @@ struct config_t {
     component_map_t
     parse(const Json::Value& config);
 
-    // NOTE: A configuration map for the generic components, like storages or
-    // loggers, which are specified in the configuration file.
+    // NOTE: A configuration map for the generic components, like storages
+    // which are specified in the configuration file.
     component_map_t components;
 
     struct {
@@ -115,9 +118,7 @@ class context_t:
     public boost::noncopyable
 {
     public:
-        context_t(config_t config,
-                  boost::shared_ptr<logging::sink_t> sink);
-
+        context_t(config_t config);
         ~context_t();
 
         // Logging
@@ -152,7 +153,11 @@ class context_t:
         const config_t config;
 
     private:
-        boost::shared_ptr<logging::sink_t> m_sink;
+        std::unique_ptr<api::repository_t> m_repository;
+        
+        // NOTE: As the logging sinks themselves are components, the repository
+        // have to be initialized first without a logger, unfortunately.
+        std::unique_ptr<api::sink_t> m_sink;
 
 #if BOOST_VERSION >= 103600
         typedef boost::unordered_map<
@@ -166,7 +171,6 @@ class context_t:
         instance_map_t m_instances;
         boost::mutex m_mutex;
 
-        std::unique_ptr<api::repository_t> m_repository;
         std::unique_ptr<zmq::context_t> m_io;
         
         // TODO: I don't really like this implementation.
@@ -194,6 +198,7 @@ context_t::get(const std::string& name) {
 
     return get<Category>(
         it->second.type,
+        *this,
         name,
         it->second.args
     );

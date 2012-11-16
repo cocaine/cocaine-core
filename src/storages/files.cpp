@@ -29,7 +29,6 @@
 #include "cocaine/logging.hpp"
 
 using namespace cocaine;
-using namespace cocaine::api;
 using namespace cocaine::storage;
 
 namespace fs = boost::filesystem;

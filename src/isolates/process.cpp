@@ -28,7 +28,6 @@
 #include "cocaine/logging.hpp"
 
 using namespace cocaine;
-using namespace cocaine::api;
 using namespace cocaine::isolate;
 
 namespace {
@@ -67,7 +66,7 @@ process_t::process_t(context_t& context,
     m_log(context.log(name))
 { }
 
-std::unique_ptr<handle_t>
+std::unique_ptr<api::handle_t>
 process_t::spawn(const std::string& path,
                  const std::map<std::string, std::string>& args,
                  const std::map<std::string, std::string>& environment)
@@ -142,5 +141,5 @@ process_t::spawn(const std::string& path,
         throw system_error_t("fork() failed");
     }
     
-    return std::unique_ptr<handle_t>(new process_handle_t(pid));
+    return std::unique_ptr<api::handle_t>(new process_handle_t(pid));
 }

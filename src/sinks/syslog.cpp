@@ -21,41 +21,42 @@
 #include <boost/algorithm/string/replace.hpp>
 #include <syslog.h>
 
-#include "cocaine/server/syslog.hpp"
+#include "cocaine/sinks/syslog.hpp"
 
-using namespace cocaine::logging;
+using namespace cocaine;
+using namespace cocaine::sink;
 
-syslog_t::syslog_t(priorities verbosity,
-                   const std::string& identity):
-    sink_t(verbosity),
-    m_identity(identity)
+syslog_t::syslog_t(const std::string& name,
+                   const Json::Value& args):
+    category_type(name, args),
+    m_identity(name)
 {
     openlog(m_identity.c_str(), LOG_PID, LOG_USER);
 }
 
 void
-syslog_t::emit(priorities priority,
+syslog_t::emit(logging::priorities priority,
                const std::string& source,
-               const std::string& message) const
+               const std::string& message)
 {
     // NOTE: Replacing all newlines with spaces here because certain sysloggers
     // fail miserably interpreting them correctly.
     std::string m(boost::algorithm::replace_all_copy(message, "\n", " "));
 
     switch(priority) {
-        case debug:
+        case logging::debug:
             syslog(LOG_DEBUG, "%s: %s", source.c_str(), m.c_str());
             break;
         
-        case info:
+        case logging::info:
             syslog(LOG_INFO, "%s: %s", source.c_str(), m.c_str());
             break;
         
-        case warning:
+        case logging::warning:
             syslog(LOG_WARNING, "%s: %s", source.c_str(), m.c_str());
             break;
         
-        case error:
+        case logging::error:
             syslog(LOG_ERR, "%s: %s", source.c_str(), m.c_str());
             break;
         

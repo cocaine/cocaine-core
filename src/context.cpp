@@ -30,6 +30,8 @@
 #include "cocaine/logging.hpp"
 
 #include "cocaine/isolates/process.hpp"
+#include "cocaine/sinks/stdio.hpp"
+#include "cocaine/sinks/syslog.hpp"
 #include "cocaine/storages/files.hpp"
 
 using namespace cocaine;
@@ -102,6 +104,13 @@ config_t::config_t(const std::string& path):
 
     spool_path = root["paths"].get("spool", defaults::spool_path).asString();
     validate_path(spool_path);
+
+    // Logging sink configuration
+
+    sink = {
+        root["sink"].get("type", "void").asString(),
+        root["sink"]["args"]
+    };
 
     // Component configuration
 
@@ -198,23 +207,26 @@ port_mapper_t::retain(uint16_t port) {
     m_ports.push(port);
 }
 
-context_t::context_t(config_t config_,
-                     boost::shared_ptr<logging::sink_t> sink):
-    config(config_),
-    m_sink(sink)
+context_t::context_t(config_t config_):
+    config(config_)
 {
-    if(!m_sink) {
-        m_sink.reset(new logging::void_sink_t());
-    }
-
-    m_repository.reset(new api::repository_t(*this));
+    m_repository.reset(new api::repository_t());
     
     // Register the builtin components.
     m_repository->insert<isolate::process_t>("process");
+    m_repository->insert<sink::stdio_t>("stdio");
+    m_repository->insert<sink::syslog_t>("syslog");
     m_repository->insert<storage::file_storage_t>("files");
 
     // Register the plugins.
     m_repository->load(config.plugin_path);
+
+    // Get the logging sink.
+    m_sink = get<api::sink_t>(
+        config.sink.type,
+        "cocaine",
+        config.sink.args
+    );
 
     // Initialize the ZeroMQ context.
     m_io.reset(new zmq::context_t(1));

@@ -23,10 +23,9 @@
 
 #include "cocaine/config.hpp"
 #include "cocaine/context.hpp"
+#include "cocaine/logging.hpp"
 
 #include "cocaine/generic-host/host.hpp"
-
-#include "cocaine/server/syslog.hpp"
 
 using namespace cocaine;
 using namespace cocaine::engine;
@@ -45,8 +44,7 @@ int main(int argc, char * argv[]) {
         ("version,v", "show version and build information")
         ("configuration,c", po::value<std::string>
             ()->default_value("/etc/cocaine/cocaine.conf"),
-            "location of the configuration file")
-        ("verbose", "produce a lot of output");
+            "location of the configuration file");
 
     host_config_t host_config;
 
@@ -96,27 +94,31 @@ int main(int argc, char * argv[]) {
 
     // Startup
 
-    context_t context(
-        vm["configuration"].as<std::string>(),
-        boost::make_shared<logging::syslog_t>(
-            vm.count("verbose") ? logging::debug : logging::info,
-            "cocaine"
-        )
-    );
+    std::unique_ptr<context_t> context;
 
-    boost::shared_ptr<logging::logger_t> log(context.log("main"));
+    try {
+        context.reset(new context_t(vm["configuration"].as<std::string>()));
+    } catch(const std::exception& e) {
+        std::cerr << "Error: unable to initialize the context - " << e.what();
+        return EXIT_FAILURE;
+    }
 
     std::unique_ptr<host_t> host;
 
     try {
         host.reset(
             new host_t(
-                context,
+                *context,
                 host_config
             )
         );
     } catch(const std::exception& e) {
-        COCAINE_LOG_ERROR(log, "unable to start the generic host - %s", e.what());
+        COCAINE_LOG_ERROR(
+            context->log("main"),
+            "unable to start the generic host - %s",
+            e.what()
+        );
+        
         return EXIT_FAILURE;
     }
 
