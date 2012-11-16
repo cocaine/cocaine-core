@@ -29,7 +29,7 @@ using namespace cocaine::sink;
 syslog_t::syslog_t(const std::string& name,
                    const Json::Value& args):
     category_type(name, args),
-    m_identity(name)
+    m_identity(args.get("identity", name).asString())
 {
     openlog(m_identity.c_str(), LOG_PID, LOG_USER);
 }
