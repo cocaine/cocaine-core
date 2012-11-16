@@ -35,6 +35,9 @@ class app_t {
               const std::string& name,
               const std::string& profile);
         
+        app_t(context_t& context,
+              const std::string& name);
+
         ~app_t();
 
         void

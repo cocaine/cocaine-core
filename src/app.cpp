@@ -132,6 +132,9 @@ app_t::start() {
                     e.what()
                 );
 
+                // NOTE: In order for driver map to be repopulated if the app is restarted.
+                m_drivers.clear();
+
                 throw configuration_error_t("unable to initialize the drivers");
             }
 
