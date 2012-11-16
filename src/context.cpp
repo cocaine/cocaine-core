@@ -105,13 +105,6 @@ config_t::config_t(const std::string& path):
     spool_path = root["paths"].get("spool", defaults::spool_path).asString();
     validate_path(spool_path);
 
-    // Logging sink configuration
-
-    sink = {
-        root["sink"].get("type", "stdio").asString(),
-        root["sink"]["args"]
-    };
-
     // Component configuration
 
     components = parse(root["components"]);
@@ -221,11 +214,19 @@ context_t::context_t(config_t config_):
     // Register the plugins.
     m_repository->load(config.plugin_path);
 
+    config_t::component_t cfg;
+
+    try {
+        cfg = config.components.at("sink/core");
+    } catch(const std::out_of_range&) {
+        cfg.type = "stdio";
+    }
+
     // Get the logging sink.
     m_sink = get<api::sink_t>(
-        config.sink.type,
+        cfg.type,
         "cocaine",
-        config.sink.args
+        cfg.args
     );
 
     // Initialize the ZeroMQ context.

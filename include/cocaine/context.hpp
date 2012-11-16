@@ -67,9 +67,6 @@ struct config_t {
         Json::Value args;
     };
 
-    // Core logging sink configuration.
-    component_t sink;
-
 #if BOOST_VERSION >= 103600
     typedef boost::unordered_map<
 #else
@@ -83,7 +80,7 @@ struct config_t {
     component_map_t
     parse(const Json::Value& config);
 
-    // NOTE: A configuration map for the generic components, like storages
+    // NOTE: A configuration map for the generic components, like storages or loggers,
     // which are specified in the configuration file.
     component_map_t components;
 
