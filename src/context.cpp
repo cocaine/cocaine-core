@@ -108,7 +108,7 @@ config_t::config_t(const std::string& path):
     // Logging sink configuration
 
     sink = {
-        root["sink"].get("type", "void").asString(),
+        root["sink"].get("type", "stdio").asString(),
         root["sink"]["args"]
     };
 
