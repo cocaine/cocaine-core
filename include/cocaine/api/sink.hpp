@@ -31,15 +31,15 @@ namespace cocaine { namespace api {
 static inline
 logging::priorities
 resolve(const Json::Value& args) {
-    const std::string& priority = args["verbosity"].asString();
+    const std::string& verbosity = args["verbosity"].asString();
 
-    if(priority == "ignore") {
+    if(verbosity == "ignore") {
         return logging::ignore;
-    } else if(priority == "debug") {
+    } else if(verbosity == "debug") {
         return logging::debug;
-    } else if(priority == "warning") {
+    } else if(verbosity == "warning") {
         return logging::warning;
-    } else if(priority == "error") {
+    } else if(verbosity == "error") {
         return logging::error;
     } else {
         return logging::info;
