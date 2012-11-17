@@ -46,7 +46,7 @@ struct upstream_t:
                host_t * const host):
         m_id(id),
         m_host(host),
-        m_state(states::attached)
+        m_state(states::open)
     { }
 
     virtual
@@ -54,19 +54,24 @@ struct upstream_t:
     push(const void * chunk,
          size_t size)
     {
-        if(m_state == states::closed) {
-            throw cocaine::error_t("the stream has been closed");
+        switch(m_state) {
+            case states::open: {
+                zmq::message_t message(size);
+
+                memcpy(
+                    message.data(),
+                    chunk,
+                    size
+                );
+
+                m_host->send(io::message<rpc::chunk>(m_id, message));        
+                
+                break;
+            }
+
+            case states::closed:
+                throw cocaine::error_t("the stream has been closed");
         }
-
-        zmq::message_t message(size);
-
-        memcpy(
-            message.data(),
-            chunk,
-            size
-        );
-
-        m_host->send(io::message<rpc::chunk>(m_id, message));        
     }
 
     virtual
@@ -74,25 +79,29 @@ struct upstream_t:
     error(error_code code,
           const std::string& message)
     {
-        if(m_state == states::closed) {
-            throw cocaine::error_t("the stream has been closed");
+        switch(m_state) {
+            case states::open:
+                m_host->send(io::message<rpc::error>(m_id, code, message));
+                close();        
+                break;
+
+            case states::closed:
+                throw cocaine::error_t("the stream has been closed");
         }
-
-        m_host->send(io::message<rpc::error>(m_id, code, message));
-
-        close();        
     }
 
     virtual
     void
     close() {
-        if(m_state == states::closed) {
-            throw cocaine::error_t("the stream has been closed");
+        switch(m_state) {
+            case states::open:
+                m_host->send(io::message<rpc::choke>(m_id));
+                m_state = states::closed;
+                break;
+
+            case states::closed:
+                throw cocaine::error_t("the stream has been closed");
         }
-
-        m_host->send(io::message<rpc::choke>(m_id));
-
-        m_state = states::closed;
     }
 
 private:
@@ -101,7 +110,7 @@ private:
 
     struct states {
         enum value: int {
-            attached,
+            open,
             closed
         };
     };
