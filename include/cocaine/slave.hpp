@@ -77,14 +77,14 @@ class slave_t:
             return static_cast<states::value>(m_state.load());
         }
 
-        size_t
-        load() const {
-            return m_sessions.size();
-        }
-
         const unique_id_t&
         id() const {
             return m_id;
+        }
+
+        size_t
+        load() const {
+            return m_sessions.size();
         }
 
     private:

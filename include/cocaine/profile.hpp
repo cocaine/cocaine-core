@@ -36,9 +36,9 @@ struct profile_t:
 
     std::string name;
 
-    float startup_timeout;
     float heartbeat_timeout;
     float idle_timeout;
+    float startup_timeout;
     float termination_timeout;
     unsigned long pool_limit;
     unsigned long queue_limit;

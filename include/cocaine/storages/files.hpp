@@ -60,6 +60,8 @@ class file_storage_t:
 
     private:
         boost::shared_ptr<logging::logger_t> m_log;
+        
+        // TODO: Drop this, switch to atomic writes.
         boost::mutex m_mutex;
         
         const boost::filesystem::path m_storage_path;

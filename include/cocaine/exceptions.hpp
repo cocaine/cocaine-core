@@ -65,16 +65,18 @@ struct error_t:
 
 private:
     template<typename T, typename... Args>
+    static
     std::string
     substitute(boost::format& message,
                const T& argument,
-               const Args&... args) const
+               const Args&... args)
     {
         return substitute(message % argument, args...);
     }
 
+    static
     std::string
-    substitute(boost::format& message) const {
+    substitute(boost::format& message) {
         return message.str();
     }
 

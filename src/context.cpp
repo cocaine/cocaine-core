@@ -40,6 +40,7 @@ using namespace cocaine;
 namespace fs = boost::filesystem;
 
 const char defaults::slave[] = "/usr/bin/cocaine-generic-host";
+
 const float defaults::heartbeat_timeout = 30.0f;
 const float defaults::idle_timeout = 600.0f;
 const float defaults::startup_timeout = 10.0f;
@@ -48,7 +49,6 @@ const unsigned long defaults::pool_limit = 10L;
 const unsigned long defaults::queue_limit = 100L;
 const unsigned long defaults::concurrency = 10L;
 
-const long defaults::bus_timeout = 1000L;
 const long defaults::control_timeout = 500L;
 const unsigned long defaults::io_bulk_size = 100L;
 
@@ -164,7 +164,7 @@ config_t::parse(const Json::Value& config) {
         ++it)
     {
         component_t info = {
-            config[*it].get("type", "not specified").asString(),
+            config[*it].get("type", "unspecified").asString(),
             config[*it]["args"]
         };
 

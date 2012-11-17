@@ -33,8 +33,10 @@
 namespace cocaine {
 
 struct defaults {
-    // Default profile.
+    // Default slave.
     static const char slave[];
+    
+    // Default profile.
     static const float heartbeat_timeout;
     static const float idle_timeout;
     static const float startup_timeout;
@@ -44,7 +46,6 @@ struct defaults {
     static const unsigned long concurrency;
 
     // Default I/O policy.
-    static const long bus_timeout;
     static const long control_timeout;
     static const unsigned long io_bulk_size;
 

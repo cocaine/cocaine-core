@@ -102,6 +102,8 @@ class logger_t:
     private:
         api::sink_t& m_sink;
         
+        // This is the logging source component name, so that log messages could
+        // be processed based on where they came from.
         const std::string m_source;
 };
 

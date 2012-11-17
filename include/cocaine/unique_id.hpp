@@ -80,6 +80,7 @@ struct unique_id_t {
         return stream;
     }
 
+public:
     // NOTE: Store the 128-bit UUID as two 64-bit unsigned integers.
     uint64_t uuid[2];
 };
