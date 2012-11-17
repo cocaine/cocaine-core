@@ -32,16 +32,17 @@
 
 namespace cocaine { namespace api {
 
-class handle_t {
-    public:
-        virtual
-        ~handle_t() {
-            // Empty.
-        }
+struct handle_t:
+    public boost::noncopyable
+{
+    virtual
+    ~handle_t() {
+        // Empty.
+    }
 
-        virtual
-        void
-        terminate() = 0;
+    virtual
+    void
+    terminate() = 0;
 };
 
 class isolate_t:
