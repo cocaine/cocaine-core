@@ -29,20 +29,7 @@ profile_t::profile_t(context_t& context,
     cached<Json::Value>(context, "profiles", name_),
     name(name_)
 {
-    const Json::Value cache(object());
-
-    // Engine profile
-
-    startup_timeout = cache.get(
-        "startup-timeout",
-        defaults::startup_timeout
-    ).asDouble();
-
-    if(startup_timeout <= 0.0f) {
-        throw configuration_error_t("slave startup timeout must be positive");
-    }
-    
-    heartbeat_timeout = cache.get(
+    heartbeat_timeout = get(
         "heartbeat-timeout",
         defaults::heartbeat_timeout
     ).asDouble();
@@ -51,7 +38,7 @@ profile_t::profile_t(context_t& context,
         throw configuration_error_t("slave heartbeat timeout must be positive");
     }
 
-    idle_timeout = cache.get(
+    idle_timeout = get(
         "idle-timeout",
         defaults::idle_timeout
     ).asDouble();
@@ -60,12 +47,25 @@ profile_t::profile_t(context_t& context,
         throw configuration_error_t("slave idle timeout must non-negative");
     }
 
-    termination_timeout = cache.get(
+    startup_timeout = get(
+        "startup-timeout",
+        defaults::startup_timeout
+    ).asDouble();
+
+    if(startup_timeout <= 0.0f) {
+        throw configuration_error_t("slave startup timeout must be positive");
+    }
+    
+    termination_timeout = get(
         "termination-timeout",
         defaults::termination_timeout
     ).asDouble();
-        
-    pool_limit = cache.get(
+
+    if(termination_timeout <= 0.0f) {
+        throw configuration_error_t("engine termination timeout must be non-negative");
+    }
+            
+    pool_limit = get(
         "pool-limit",
         static_cast<Json::UInt>(defaults::pool_limit)
     ).asUInt();
@@ -74,17 +74,12 @@ profile_t::profile_t(context_t& context,
         throw configuration_error_t("engine pool limit must be positive");
     }
 
-    queue_limit = cache.get(
+    queue_limit = get(
         "queue-limit",
         static_cast<Json::UInt>(defaults::queue_limit)
     ).asUInt();
 
-    grow_threshold = cache.get(
-        "grow-threshold",
-        static_cast<Json::UInt>(queue_limit / pool_limit)
-    ).asUInt();
-
-    concurrency = cache.get(
+    concurrency = get(
         "concurrency",
         static_cast<Json::UInt>(defaults::concurrency)
     ).asUInt();
@@ -93,11 +88,16 @@ profile_t::profile_t(context_t& context,
         throw configuration_error_t("engine concurrency must be positive");
     }
 
+    grow_threshold = get(
+        "grow-threshold",
+        static_cast<Json::UInt>(queue_limit / pool_limit * concurrency)
+    ).asUInt();
+
     // Isolation
 
     isolate = {
-        cache["isolate"].get("type", "process").asString(),
-        cache["isolate"]["args"]
+        (*this)["isolate"].get("type", "process").asString(),
+        (*this)["isolate"]["args"]
     };
 }
 

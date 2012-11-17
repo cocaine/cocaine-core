@@ -29,18 +29,12 @@
 namespace cocaine {
 
 template<class T>
-struct cached {
+struct cached:
+    protected T
+{
     cached(context_t& context,
            const std::string& collection,
            const std::string& name);
-
-    const T&
-    object() const {
-        return m_object;
-    }
-
-private:
-    T m_object;
 };
 
 template<class T>
@@ -48,13 +42,15 @@ cached<T>::cached(context_t& context,
                   const std::string& collection,
                   const std::string& name)
 {
+    T& object = static_cast<T&>(*this);
+
     api::category_traits<api::storage_t>::ptr_type cache(
         context.get<api::storage_t>("storage/cache")
     );
 
     try {
         // Try to load the object from the cache.
-        m_object = cache->get<T>(collection, name);
+        object = cache->get<T>(collection, name);
     } catch(const storage_error_t& e) {
         api::category_traits<api::storage_t>::ptr_type storage(
             context.get<api::storage_t>("storage/core")
@@ -62,7 +58,7 @@ cached<T>::cached(context_t& context,
         
         try {
             // Fetch the application manifest and archive from the core storage.
-            m_object = storage->get<T>(collection, name);
+            object = storage->get<T>(collection, name);
         } catch(const storage_error_t& e) {
             throw storage_error_t(
                 "unable to fetch the '%s/%s' object from the storage - %s",
@@ -74,7 +70,7 @@ cached<T>::cached(context_t& context,
 
         try {
             // Put the application object into the cache for future reference.
-            cache->put(collection, name, m_object);
+            cache->put(collection, name, object);
         } catch(const storage_error_t& e) {
             throw storage_error_t(
                 "unable to cache the '%s/%s' object - %s",
