@@ -696,6 +696,12 @@ engine_t::pump() {
             if(session->event.policy.deadline &&
                session->event.policy.deadline <= m_loop.now())
             {
+                COCAINE_LOG_DEBUG(
+                    m_log,
+                    "session %s has expired, dropping",
+                    session->id
+                );
+
                 session->abandon(
                     deadline_error,
                     "the session has expired in the queue"
