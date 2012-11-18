@@ -155,7 +155,7 @@ slave_t::process(const io::message<rpc::error>& error) {
 
 void
 slave_t::process(const io::message<rpc::choke>& choke) {
-    const unique_id_t session_id = boost::get<0>(choke);
+    const unique_id_t& session_id = boost::get<0>(choke);
 
     COCAINE_LOG_DEBUG(
         m_log,
