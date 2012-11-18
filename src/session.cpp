@@ -35,8 +35,8 @@ session_t::session_t(const unique_id_t& id_,
 { }
 
 void
-session_t::abort(error_code code,
-                 const std::string& message)
+session_t::abandon(error_code code,
+                   const std::string& message)
 {
     upstream->error(code, message);
 

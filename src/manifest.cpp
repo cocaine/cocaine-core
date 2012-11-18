@@ -33,10 +33,7 @@ manifest_t::manifest_t(context_t& context,
     cached<Json::Value>(context, "manifests", name_),
     name(name_)
 {
-    const Json::Value cache(object());
-
-    // Slave type.
-    slave = cache.get(
+    slave = get(
         "slave",
         defaults::slave
     ).asString();
@@ -46,11 +43,10 @@ manifest_t::manifest_t(context_t& context,
     }
 
     sandbox = {
-        cache.get("type", "not specified").asString(),
-        cache["args"]
+        get("type", "unspecified").asString(),
+        (*this)["args"]
     };
 
-    // Driver configuration.
-    drivers = config_t::parse(cache["drivers"]);
+    drivers = config_t::parse((*this)["drivers"]);
 }
 

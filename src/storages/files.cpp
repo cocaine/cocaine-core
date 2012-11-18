@@ -38,7 +38,7 @@ file_storage_t::file_storage_t(context_t& context,
                                const Json::Value& args):
     category_type(context, name, args),
     m_log(context.log(name)),
-    m_storage_path(args.get("path", "not specified").asString())
+    m_storage_path(args["path"].asString())
 { }
 
 std::string

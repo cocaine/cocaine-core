@@ -43,8 +43,8 @@ struct session_t:
               const boost::shared_ptr<api::stream_t>& downstream);
 
     void
-    abort(error_code code,
-          const std::string& message);
+    abandon(error_code code,
+            const std::string& message);
 
 public:
     // Session ID.
