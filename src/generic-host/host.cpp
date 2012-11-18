@@ -82,7 +82,9 @@ struct upstream_t:
         switch(m_state) {
             case states::open:
                 m_host->send(io::message<rpc::error>(m_id, code, message));
+                
                 close();        
+                
                 break;
 
             case states::closed:
@@ -96,7 +98,9 @@ struct upstream_t:
         switch(m_state) {
             case states::open:
                 m_host->send(io::message<rpc::choke>(m_id));
+                
                 m_state = states::closed;
+                
                 break;
 
             case states::closed:
