@@ -123,7 +123,7 @@ namespace {
         api::category_traits<api::storage_t>::ptr_type storage(
             context.get<api::storage_t>("storage/core")
         );
-       
+
         try {
             storage->put("manifests", name, manifest);
             storage->put("apps", name, blob);
@@ -134,6 +134,42 @@ namespace {
         }
 
         std::cout << "The '" << name << "' app has been successfully uploaded." << std::endl;
+    }
+
+    void
+    upload_profile(context_t& context,
+                   const std::string& name,
+                   const fs::path& manifest_path)
+    {
+        Json::Reader reader(Json::Features::strictMode());
+        Json::Value manifest;
+
+        fs::ifstream manifest_stream(manifest_path);
+
+        if(!manifest_stream) {
+            std::cerr << "Error: unable to open '" << manifest_path << "'." << std::endl;
+            return;
+        }
+        
+        if(!reader.parse(manifest_stream, manifest)) {
+            std::cerr << "Error: the app manifest in '" << manifest_path << "' is corrupted." << std::endl;
+            std::cerr << reader.getFormattedErrorMessages() << std::endl;
+            return;
+        }
+
+        api::category_traits<api::storage_t>::ptr_type storage(
+            context.get<api::storage_t>("storage/core")
+        );
+
+        try {
+            storage->put("profiles", name, manifest);
+        } catch(const storage_error_t& e) {
+            std::cerr << "Error: unable to upload the profile." << std::endl;
+            std::cerr << e.what() << std::endl;
+            return;
+        }
+
+        std::cout << "The '" << name << "' profile has been successfully uploaded." << std::endl;
     }
 
     void
@@ -242,7 +278,7 @@ main(int argc, char * argv[]) {
             "location of the configuration file")
         ("manifest,m", po::value<std::string>
             ()->default_value("manifest.json"),
-            "location of the app manifest")
+            "location of the app manifest json or profile manifest json")
         ("package,p", po::value<std::string>
             ()->default_value("package.tar.gz"),
             "location of the app source package")
@@ -274,7 +310,7 @@ main(int argc, char * argv[]) {
     }
 
     if(vm.count("help")) {
-        std::cout << "Usage: " << argv[0] << " list|upload|remove|cleanup <options>" << std::endl;
+        std::cout << "Usage: " << argv[0] << " app:list|app:upload|profile:upload|app:remove|app:cleanup <options>" << std::endl;
         std::cout << general_options;
         return EXIT_SUCCESS;
     }
@@ -313,9 +349,9 @@ main(int argc, char * argv[]) {
 
     std::string operation(vm["operation"].as<std::string>());
 
-    if(operation == "list") {
+    if(operation == "app:list") {
         list(*context);
-    } else if(operation == "upload") {
+    } else if(operation == "app:upload") {
         if(!vm.count("manifest")) {
             std::cerr << "Error: no app manifest file location has been specified." << std::endl;
             std::cerr << "Type '" << argv[0] << " --help' for usage information." << std::endl;
@@ -327,7 +363,7 @@ main(int argc, char * argv[]) {
             std::cerr << "Type '" << argv[0] << " --help' for usage information." << std::endl;
             return EXIT_FAILURE;
         }
-        
+
         if(!vm.count("name")) {
             std::cerr << "Error: no app name has been specified." << std::endl;
             std::cerr << "Type '" << argv[0] << " --help' for usage information." << std::endl;
@@ -340,7 +376,25 @@ main(int argc, char * argv[]) {
             vm["manifest"].as<std::string>(),
             vm["package"].as<std::string>()
         );
-    } else if(operation == "remove") {
+    } else if(operation == "profile:upload") {
+        if(!vm.count("manifest")) {
+            std::cerr << "Error: no profile manifest file location has been specified." << std::endl;
+            std::cerr << "Type '" << argv[0] << " --help' for usage information." << std::endl;
+            return EXIT_FAILURE;
+        }
+        
+        if(!vm.count("name")) {
+            std::cerr << "Error: no app name has been specified." << std::endl;
+            std::cerr << "Type '" << argv[0] << " --help' for usage information." << std::endl;
+            return EXIT_FAILURE;
+        }
+
+        upload_profile(
+            *context,
+            vm["name"].as<std::string>(),
+            vm["manifest"].as<std::string>()
+        );
+    } else if(operation == "app:remove") {
         if(!vm.count("name")) {
             std::cerr << "Error: no app name has been specified." << std::endl;
             std::cerr << "Type '" << argv[0] << " --help' for usage information." << std::endl;
@@ -351,7 +405,7 @@ main(int argc, char * argv[]) {
             *context,
             vm["name"].as<std::string>()
         );
-    } else if(operation == "cleanup") {
+    } else if(operation == "app:cleanup") {
         if(vm.count("name")) {
             cleanup(
                 *context,
