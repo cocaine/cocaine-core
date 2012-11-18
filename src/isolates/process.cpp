@@ -31,31 +31,30 @@ using namespace cocaine;
 using namespace cocaine::isolate;
 
 namespace {
-    class process_handle_t:
+    struct process_handle_t:
         public api::handle_t
     {
-        public:
-            process_handle_t(pid_t pid):
-                m_pid(pid)
-            { }
+        process_handle_t(pid_t pid):
+            m_pid(pid)
+        { }
 
-            virtual
-            ~process_handle_t() {
-                terminate();
+        virtual
+        ~process_handle_t() {
+            terminate();
+        }
+
+        virtual
+        void
+        terminate() {
+            int status = 0;
+
+            if(::waitpid(m_pid, &status, WNOHANG) == 0) {
+                ::kill(m_pid, SIGTERM);
             }
+        }
 
-            virtual
-            void
-            terminate() {
-                int status = 0;
-
-                if(::waitpid(m_pid, &status, WNOHANG) == 0) {
-                    ::kill(m_pid, SIGTERM);
-                }
-            }
-
-        private:
-            pid_t m_pid;
+    private:
+        pid_t m_pid;
     };
 }
 
@@ -74,8 +73,8 @@ process_t::spawn(const std::string& path,
     pid_t pid = ::fork();
 
     if(pid == 0) {
-        char * argv[args.size() * 2 + 2],
-             * envp[environment.size() + 1];
+        char * argv[args.size() * 2 + 2];
+        // char * envp[environment.size() + 1];
 
         // NOTE: The first element is the executable path,
         // the last one should be null pointer.
@@ -83,7 +82,7 @@ process_t::spawn(const std::string& path,
         argv[sizeof(argv) / sizeof(argv[0])] = NULL;
 
         // NOTE: The last element of the environment must be a null pointer.
-        envp[sizeof(envp) / sizeof(envp[0])] = NULL;
+        // envp[sizeof(envp) / sizeof(envp[0])] = NULL;
 
         std::map<std::string, std::string>::const_iterator it;
         int n;
@@ -98,6 +97,11 @@ process_t::spawn(const std::string& path,
             ++it;
         }
 
+        if(!environment.empty()) {
+            COCAINE_LOG_WARNING(m_log, "environment passing is not implemented");
+        }
+
+        /*
         boost::format format("%s=%s");
 
         it = environment.begin();
@@ -111,8 +115,9 @@ process_t::spawn(const std::string& path,
             format.clear();
             ++it;
         }
+        */
 
-        int rv = ::execve(argv[0], argv, envp);
+        int rv = ::execv(argv[0], argv);
 
         if(rv != 0) {
             char buffer[1024],
