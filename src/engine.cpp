@@ -23,8 +23,6 @@
 
 #include <boost/bind.hpp>
 #include <boost/format.hpp>
-#include <boost/iterator/filter_iterator.hpp>
-#include <boost/weak_ptr.hpp>
 
 #include "cocaine/engine.hpp"
 #include "cocaine/context.hpp"
@@ -60,16 +58,22 @@ namespace {
     {
         downstream_t(const unique_id_t& id):
             m_id(id),
-            m_state(states::detached)
+            m_state(states::caching)
         { }
         
+        ~downstream_t() {
+            if(m_state != states::closed) {
+                close();
+            }
+        }
+
         virtual
         void
         push(const void * chunk,
              size_t size)
         {
             switch(m_state) {
-                case states::detached: {
+                case states::caching: {
                     boost::unique_lock<boost::mutex> lock(m_mutex);
 
                     // NOTE: Put the new chunk into the cache because the stream is
@@ -79,24 +83,9 @@ namespace {
                     break;
                 }
 
-                case states::attached: {
-                    // TEST: An attached stream should always have a controlling slave.
-                    BOOST_ASSERT(m_slave);
-
-                    zmq::message_t message(size);
-
-                    memcpy(
-                        message.data(),
-                        chunk,
-                        size
-                    );
-
-                    m_slave->send(
-                        io::message<rpc::chunk>(m_id, message)
-                    );
-                
+                case states::open:
+                    push_impl(chunk, size);
                     break;
-                }
 
                 case states::closed:
                     throw cocaine::error_t("the stream has been closed");
@@ -108,29 +97,18 @@ namespace {
         error(error_code,
               const std::string&)
         {
-            // TODO: Almost no-op.
-            close();
+            throw cocaine::error_t("not implemented");
         }
 
         virtual
         void
         close() {
             switch(m_state) {
-                case states::detached: {
-                    boost::unique_lock<boost::mutex> lock(m_mutex);
-                    
-                    m_cache.clear();
-                    
-                    break;
-                }
-
-                case states::attached:
+                case states::open:
                     // TEST: An attached stream should always have a controlling slave.
                     BOOST_ASSERT(m_slave);
 
-                    m_slave->send(
-                        io::message<rpc::choke>(m_id)
-                    );
+                    m_slave->send(io::message<rpc::choke>(m_id));
 
                     break;
 
@@ -143,12 +121,11 @@ namespace {
 
         void
         attach(const boost::shared_ptr<slave_t>& slave) {
-            // TEST: Streams can only be attached when detached.
-            BOOST_ASSERT(m_state == states::detached && !m_slave);
-            
-            m_state = states::attached;
+            // TEST: Ensure that the stream is in a proper state.
+            BOOST_ASSERT(m_state != states::open && !m_slave);
+
             m_slave = slave;
-            
+
             boost::unique_lock<boost::mutex> lock(m_mutex);
 
             if(!m_cache.empty()) {
@@ -156,16 +133,37 @@ namespace {
                     it != m_cache.end();
                     ++it)
                 {
-                    push(it->data(), it->size());
+                    push_impl(it->data(), it->size());
                 }
                 
                 m_cache.clear();
             }
+
+            if(m_state == states::closed) {
+                m_slave->send(io::message<rpc::choke>(m_id));
+                return;
+            }
+
+            m_state = states::open;
         }
 
-        bool
-        closed() const {
-            return m_state == states::closed;
+    private:
+        void
+        push_impl(const void * chunk,
+                  size_t size)
+        {
+            // TEST: An attached stream should always have a controlling slave.
+            BOOST_ASSERT(m_slave);
+
+            zmq::message_t message(size);
+
+            memcpy(
+                message.data(),
+                chunk,
+                size
+            );
+
+            m_slave->send(io::message<rpc::chunk>(m_id, message));
         }
 
     private:
@@ -173,8 +171,8 @@ namespace {
 
         struct states {
             enum value: int {
-                detached,
-                attached,
+                caching,
+                open,
                 closed
             };
         };
@@ -289,17 +287,6 @@ engine_t::enqueue(const api::event_t& event,
         throw cocaine::error_t("engine is not active");
     }
 
-    unique_id_t id;
-
-    boost::shared_ptr<session_t> session(
-        boost::make_shared<session_t>(
-            id,
-            event,
-            upstream,
-            boost::make_shared<downstream_t>(id)
-        )
-    );
-
     if(m_profile.queue_limit > 0) {
         if(mode == engine::mode::normal &&
            m_queue.size() >= m_profile.queue_limit)
@@ -311,6 +298,17 @@ engine_t::enqueue(const api::event_t& event,
             m_condition.wait(lock);
         }
     }
+
+    unique_id_t id;
+
+    boost::shared_ptr<session_t> session(
+        boost::make_shared<session_t>(
+            id,
+            event,
+            upstream,
+            boost::make_shared<downstream_t>(id)
+        )
+    );
 
     m_queue.push(session);
   
@@ -357,24 +355,6 @@ engine_t::on_ctl_check(ev::prepare&, int) {
     m_loop.feed_fd_event(m_ctl->fd(), ev::READ);
 }
 
-namespace {
-    struct expired_t {
-        expired_t(ev::tstamp now_):
-            now(now_)
-        { }
-
-        template<class T>
-        bool
-        operator()(const T& session) {
-            return session->event.policy.deadline &&
-                   session->event.policy.deadline <= now;
-        }
-
-    private:
-        const ev::tstamp now;
-    };
-}
-
 void
 engine_t::on_cleanup(ev::timer&, int) {
     typedef std::vector<
@@ -404,29 +384,6 @@ engine_t::on_cleanup(ev::timer&, int) {
             corpses.size() == 1 ? "slave" : "slaves"
         );
     }
-
-    typedef boost::filter_iterator<
-        expired_t,
-        session_queue_t::iterator
-    > filter_t;
-    
-    boost::unique_lock<session_queue_t> lock(m_queue);
-
-    filter_t it(expired_t(m_loop.now()), m_queue.begin(), m_queue.end()),
-             end(expired_t(m_loop.now()), m_queue.end(), m_queue.end());
-
-    while(it != end) {
-        session_queue_t::value_type& session(*it);
-
-        COCAINE_LOG_INFO(m_log, "session %s has expired", session->id);
-
-        session->abort(
-            deadline_error,
-            "the session has expired in the queue"
-        );
-
-        ++it;
-    }
 }
 
 void
@@ -441,7 +398,6 @@ engine_t::on_termination(ev::timer&, int) {
 void
 engine_t::on_notification(ev::async&, int) {
     pump();
-    balance();
 }
 
 void
@@ -466,7 +422,7 @@ engine_t::process_bus_events() {
             > option(*m_bus, 0);
             
             if(!m_bus->recv_tuple(boost::tie(slave_id, command))) {
-                break;            
+                return;
             }
         }
 
@@ -721,56 +677,52 @@ engine_t::pump() {
             available_t(m_profile.concurrency)
         );
 
-        if(it != m_pool.end()) {
-            session_queue_t::value_type session;
-
-            {
-                boost::unique_lock<session_queue_t> lock(m_queue);
-
-                if(m_queue.empty()) {
-                    break;
-                }
-
-                session = m_queue.front();
-                m_queue.pop_front();
-            }
-
-            // Notify one of the blocked enqueue operations.
-            m_condition.notify_one();
-           
-            downstream_t& downstream = static_cast<downstream_t&>(
-                *session->downstream
-            );
-
-            if(downstream.closed()) {
-                // NOTE: Drop the session if the streams are already closed.
-                continue;
-            }
-            
-            io::message<rpc::invoke> message(
-                session->id,
-                session->event.type
-            );
-
-            if(send(it->first, message)) {
-                it->second->assign(session);
-                downstream.attach(it->second);
-
-                // TODO: Check if it helps.
-                m_loop.feed_fd_event(m_bus->fd(), ev::READ);
-            } else {
-                {
-                    boost::unique_lock<session_queue_t> lock(m_queue);
-                    m_queue.push_front(session);
-                }
-
-                COCAINE_LOG_ERROR(m_log, "slave %s has unexpectedly died", it->first);
-                
-                m_pool.erase(it);
-            }
-        } else {
-            break;
+        if(it == m_pool.end()) {
+            return;
         }
+
+        session_queue_t::value_type session;
+
+        while(!session) {
+            boost::unique_lock<session_queue_t> lock(m_queue);
+
+            if(m_queue.empty()) {
+                return;
+            }
+
+            session = m_queue.front();
+            m_queue.pop_front();
+
+            if(session->event.policy.deadline &&
+               session->event.policy.deadline <= m_loop.now())
+            {
+                session->abandon(
+                    deadline_error,
+                    "the session has expired in the queue"
+                );
+
+                session.reset();
+            }
+        }
+
+        // Notify one of the blocked enqueue operations.
+        m_condition.notify_one();
+       
+        io::message<rpc::invoke> message(
+            session->id,
+            session->event.type
+        );
+
+        send(it->first, message);        
+
+        it->second->assign(session);
+
+        static_cast<downstream_t&>(
+            *session->downstream
+        ).attach(it->second);
+
+        // TODO: Check if it helps.
+        m_loop.feed_fd_event(m_bus->fd(), ev::READ);
     }
 }
 
@@ -845,7 +797,7 @@ engine_t::shutdown(states::value target) {
 
         // Abort all the outstanding sessions.
         while(!m_queue.empty()) {
-            m_queue.front()->abort(
+            m_queue.front()->abandon(
                 resource_error,
                 "engine is shutting down"
             );
@@ -856,10 +808,10 @@ engine_t::shutdown(states::value target) {
 
     unsigned int pending = 0;
 
-    // NOTE: Send the termination event to active slaves.
+    // NOTE: Send the termination event to the active slaves.
     // If there're no active slaves, the engine can terminate right away,
     // otherwise, the engine should wait for the specified timeout for slaves
-    // to finish their sessions and then force the termination.
+    // to finish their sessions and, if they are still active, force the termination.
     
     for(pool_map_t::iterator it = m_pool.begin();
         it != m_pool.end();
