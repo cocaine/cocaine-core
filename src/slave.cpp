@@ -169,10 +169,8 @@ slave_t::process(const io::message<rpc::choke>& choke) {
     // TEST: Ensure that this slave is responsible for the session.
     BOOST_ASSERT(it != m_sessions.end());
 
-    // NOTE: Signal the slave that the session is, in fact, closed.
-    m_engine->send(m_id, io::message<rpc::choke>(session_id));
-
     it->second->upstream->close();
+
     m_sessions.erase(it);
 
     if(m_sessions.empty()) {
