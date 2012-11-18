@@ -719,7 +719,22 @@ engine_t::pump() {
             session->event.type
         );
 
-        send(it->first, message);        
+        if(!send(it->first, message)) {
+            COCAINE_LOG_ERROR(
+                m_log,
+                "slave %s has unexpectedly died",
+                it->first
+            );
+
+            m_pool.erase(it);
+
+            {
+                boost::unique_lock<session_queue_t> lock(m_queue);
+                m_queue.push_front(session);
+            }
+            
+            continue;
+        }
 
         it->second->assign(session);
 
