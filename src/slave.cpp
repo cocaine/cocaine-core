@@ -183,12 +183,10 @@ namespace {
         template<class T>
         void
         operator()(T& session) {
-            session.second->upstream->error(
+            session.second->abandon(
                 timeout_error, 
                 "the session has timed out"
             );
-
-            session.second->upstream->close();
         }
     };
 }
