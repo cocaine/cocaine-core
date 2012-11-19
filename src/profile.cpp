@@ -90,7 +90,10 @@ profile_t::profile_t(context_t& context,
 
     grow_threshold = get(
         "grow-threshold",
-        static_cast<Json::UInt>(queue_limit / pool_limit * concurrency)
+        std::max(
+            static_cast<Json::UInt>(1UL),
+            static_cast<Json::UInt>(queue_limit / pool_limit * concurrency)
+        )
     ).asUInt();
 
     // Isolation

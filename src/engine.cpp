@@ -696,6 +696,12 @@ engine_t::pump() {
             if(session->event.policy.deadline &&
                session->event.policy.deadline <= m_loop.now())
             {
+                COCAINE_LOG_DEBUG(
+                    m_log,
+                    "session %s has expired, dropping",
+                    session->id
+                );
+
                 session->abandon(
                     deadline_error,
                     "the session has expired in the queue"
@@ -713,7 +719,22 @@ engine_t::pump() {
             session->event.type
         );
 
-        send(it->first, message);        
+        if(!send(it->first, message)) {
+            COCAINE_LOG_ERROR(
+                m_log,
+                "slave %s has unexpectedly died",
+                it->first
+            );
+
+            m_pool.erase(it);
+
+            {
+                boost::unique_lock<session_queue_t> lock(m_queue);
+                m_queue.push_front(session);
+            }
+            
+            continue;
+        }
 
         it->second->assign(session);
 

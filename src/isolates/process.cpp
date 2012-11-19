@@ -31,31 +31,30 @@ using namespace cocaine;
 using namespace cocaine::isolate;
 
 namespace {
-    class process_handle_t:
+    struct process_handle_t:
         public api::handle_t
     {
-        public:
-            process_handle_t(pid_t pid):
-                m_pid(pid)
-            { }
+        process_handle_t(pid_t pid):
+            m_pid(pid)
+        { }
 
-            virtual
-            ~process_handle_t() {
-                terminate();
+        virtual
+        ~process_handle_t() {
+            terminate();
+        }
+
+        virtual
+        void
+        terminate() {
+            int status = 0;
+
+            if(::waitpid(m_pid, &status, WNOHANG) == 0) {
+                ::kill(m_pid, SIGTERM);
             }
+        }
 
-            virtual
-            void
-            terminate() {
-                int status = 0;
-
-                if(::waitpid(m_pid, &status, WNOHANG) == 0) {
-                    ::kill(m_pid, SIGTERM);
-                }
-            }
-
-        private:
-            pid_t m_pid;
+    private:
+        pid_t m_pid;
     };
 }
 
@@ -99,7 +98,7 @@ process_t::spawn(const std::string& path,
         }
 
         if(!environment.empty()) {
-            COCAINE_LOG_WARNING(m_log, "environment passing is not yet implemented");
+            COCAINE_LOG_WARNING(m_log, "environment passing is not implemented");
         }
 
         /*

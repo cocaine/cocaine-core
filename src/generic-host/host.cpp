@@ -50,6 +50,13 @@ struct upstream_t:
     { }
 
     virtual
+    ~upstream_t() {
+        if(m_state != states::closed) {
+            close();
+        }
+    }
+
+    virtual
     void
     push(const void * chunk,
          size_t size)
