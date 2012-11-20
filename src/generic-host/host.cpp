@@ -334,6 +334,10 @@ host_t::process_bus_events() {
                 m_bus.drop();
         }
     } while(--counter);
+
+    // Feed the event loop.
+    m_loop.feed_fd_event(m_bus.fd(), ev::READ);
+
 }
 
 void
@@ -356,9 +360,6 @@ host_t::invoke(const unique_id_t& session_id,
     } catch(...) {
         upstream->error(invocation_error, "unexpected exception");
     }
-
-    // Feed the event loop.
-    m_loop.feed_fd_event(m_bus.fd(), ev::READ);
 }
 
 void
