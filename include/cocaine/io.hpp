@@ -536,8 +536,9 @@ pack_sequence(msgpack::packer<Stream>& packer,
     return pack_sequence(packer, std::forward<Tail>(tail)...);
 }
 
-static inline void deallocate(void * data, void * buffer) {
-    delete static_cast<msgpack::sbuffer*>(buffer);
+static inline
+void deallocate(void * data, void * hint) {
+    free(data);
 }
 
 template<
@@ -595,14 +596,16 @@ class channel:
             bool success = this->send(message<Event>::value, multipart ? ZMQ_SNDMORE : 0);
 
             if(success && multipart) {
-                msgpack::sbuffer * buffer = new msgpack::sbuffer();
-                msgpack::packer<msgpack::sbuffer> packer(*buffer);
+                msgpack::sbuffer buffer;
+                msgpack::packer<msgpack::sbuffer> packer(buffer);
 
                 packer.pack_array(sizeof...(Args));
                 pack_sequence(packer, std::forward<Args>(args)...);
 
-                zmq::message_t message(buffer->data(), buffer->size(), &deallocate, buffer);
-
+                zmq::message_t message(buffer.release(), buffer.size(), &deallocate, NULL);
+                //zmq::message_t message(buffer.size());
+                //memcpy(message.data(), buffer.data(), buffer.size());
+                    
                 return this->send(message);
             }
         }
