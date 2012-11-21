@@ -79,7 +79,7 @@ struct upstream_t:
     {
         switch(m_state) {
             case states::open:
-                send<rpc::error>(code, message);
+                send<rpc::error>((int)code, message);
                 close();
                 break;
 
@@ -359,6 +359,6 @@ void
 host_t::terminate(rpc::suicide::reasons reason,
                   const std::string& message)
 {
-    send<rpc::suicide>(reason, message);
+    send<rpc::suicide>((int)reason, message);
     m_loop.unloop(ev::ALL);
 }

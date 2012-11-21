@@ -511,6 +511,31 @@ struct message:
 
 // RPC channel
 
+template<class Stream>
+static inline
+void
+pack_sequence(msgpack::packer<Stream>&) {
+    return;
+}
+
+template<class Stream, class Head, typename... Tail>
+static inline
+void
+pack_sequence(msgpack::packer<Stream>& packer,
+              Head&& head,
+              Tail&&... tail)
+{
+    typedef typename boost::remove_const<
+        typename boost::remove_reference<Head>::type
+    >::type type;
+
+    // Pack the current tuple element using the correct packer.
+    type_traits<type>::pack(packer, head);
+
+    // Recurse to the next tuple element.
+    return pack_sequence(packer, std::forward<Tail>(tail)...);
+}
+        
 template<
     class Tag,
     class SharingPolicy
@@ -553,6 +578,37 @@ class channel:
                    this->send_tuple(object);
         }
 
+        template<class Event, typename... Args>
+        typename boost::enable_if<
+            boost::is_same<Tag, typename Event::tag>,
+            bool
+        >::type
+        send_messagex(Args&&... args) {
+            const bool multipart = length<
+                typename event_traits<Event>::tuple_type
+            >::value;
+
+            bool success = this->send(message<Event>::value, multipart ? ZMQ_SNDMORE : 0);
+
+            if(success && multipart) {
+                msgpack::sbuffer buffer;
+                msgpack::packer<msgpack::sbuffer> packer(buffer);
+
+                packer.pack_array(sizeof...(Args));
+                pack_sequence(packer, std::forward<Args>(args)...);
+
+                zmq::message_t message(buffer.size());
+
+                memcpy(
+                    message.data(),
+                    buffer.data(),
+                    buffer.size()
+                );
+
+                return this->send(message);
+            }
+        }
+        
         bool
         send_message(int message_id,
                      const std::string& message)

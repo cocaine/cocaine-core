@@ -95,7 +95,7 @@ namespace {
         {
             switch(m_state) {
                 case states::open: {
-                    m_session->send<rpc::error>(code, message);
+                    m_session->send<rpc::error>((int)code, message);
                     m_session->send<rpc::choke>();
 
                     m_state = states::closed;
@@ -380,7 +380,7 @@ engine_t::process_bus_events() {
                 io::policies::shared
             > option(*m_bus, 0);
             
-            if(!m_bus->recv(slave_id)) {
+            if(!m_bus->recv_multipart(boost::tie(slave_id, message_id))) {
                 return;
             }
         }
@@ -390,7 +390,8 @@ engine_t::process_bus_events() {
         if(slave == m_pool.end()) {
             COCAINE_LOG_DEBUG(
                 m_log,
-                "dropping a message from an unknown slave %s", 
+                "dropping type %d message from an unknown slave %s", 
+                message_id,
                 slave_id
             );
             
@@ -398,8 +399,6 @@ engine_t::process_bus_events() {
             
             continue;
         }
-
-        m_bus->recv(message_id);
 
         COCAINE_LOG_DEBUG(
             m_log,

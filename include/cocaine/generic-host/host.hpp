@@ -126,7 +126,7 @@ class host_t:
 template<class Event, typename... Args>
 void
 host_t::send(Args&&... args) {
-    m_bus.send_message(io::message<Event>(std::forward<Args>(args)...));
+    m_bus.send_messagex<Event>(std::forward<Args>(args)...);
 }
 
 } // namespace cocaine::engine

@@ -35,9 +35,5 @@ void
 session_t::abandon(error_code code,
                    const std::string& message)
 {
-    stream_ptr_t ptr = upstream.lock();
-
-    if(ptr) {
-        ptr->error(code, message);
-    }
+    upstream->error(code, message);
 }

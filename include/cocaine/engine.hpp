@@ -225,7 +225,7 @@ engine_t::send(const unique_id_t& uuid,
     > option(*m_bus, 0);
     
     return m_bus->send(uuid, ZMQ_SNDMORE) &&
-           m_bus->send_message(io::message<Event>(std::forward<Args>(args)...));
+           m_bus->send_messagex<Event>(std::forward<Args>(args)...);
 }
 
 }} // namespace cocaine::engine
