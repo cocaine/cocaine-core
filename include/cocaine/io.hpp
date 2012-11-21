@@ -154,6 +154,8 @@ class socket_base_t:
         uint16_t m_port;
 };
 
+using namespace boost::tuples;
+
 #define COCAINE_EINTR_GUARD(command)        \
     while(true) {                           \
         try {                               \
@@ -220,6 +222,30 @@ class socket:
         }      
         
         bool
+        send_multipart(const null_type&,
+                       int __attribute__((unused)) flags = 0) const
+        {
+            return true;
+        }
+        
+        template<class Head>
+        bool
+        send_multipart(const cons<Head, null_type>& o,
+                       int flags = 0)
+        {
+            return send(o.get_head(), flags);
+        }
+
+        template<class Head, class Tail>
+        bool
+        send_multipart(const cons<Head, Tail>& o,
+                       int flags = 0)
+        {
+            return send(o.get_head(), ZMQ_SNDMORE | flags) &&
+                   send_multipart(o.get_tail(), flags);
+        }
+        
+        bool
         recv(zmq::message_t& message,
              int flags = 0)
         {
@@ -283,6 +309,30 @@ class socket:
             return recv(result, flags);
         }
 
+        bool
+        recv_multipart(const null_type&,
+                       int __attribute__((unused)) flags = 0) const
+        {
+            return true;
+        }
+
+        template<class Head, class Tail>
+        bool
+        recv_multipart(cons<Head, Tail>& o,
+                       int flags = 0)
+        {
+            return recv(o.get_head(), flags) &&
+                   recv_multipart(o.get_tail(), flags | ZMQ_NOBLOCK);
+        }
+
+        template<class Head, class Tail>
+        bool
+        recv_multipart(cons<Head, Tail>&& o,
+                       int flags = 0)
+        {
+            return recv(o.get_head(), flags) &&
+                   recv_multipart(std::move(o.get_tail()), flags | ZMQ_NOBLOCK);
+        }
         void
         getsockopt(int name,
                    void * value,
@@ -402,8 +452,6 @@ class scoped_option {
 
 // Event tuple type extraction
 
-using namespace boost::tuples;
-
 template<class T>
 struct depend {
     typedef void type;
@@ -509,17 +557,31 @@ class channel:
         send_message(int message_id,
                      const std::string& message)
         {
-            return this->send(message_id) && this->send(protect(message));
+            return this->send(message_id, message.size() ? ZMQ_SNDMORE : 0) &&
+                   (!message.size() || this->send(protect(message)));
         }
 
     private:
-        bool
-        send_tuple(const null_type&) {
+        template<class Event>
+        typename boost::enable_if<
+            boost::is_same<
+                typename event_traits<Event>::tuple_type,
+                tuple<>
+            >,
+            bool
+        >::type
+        send_tuple(const message<Event>& object) {
             return true;
         }
 
         template<class Event>
-        bool
+        typename boost::disable_if<
+            boost::is_same<
+                typename event_traits<Event>::tuple_type,
+                tuple<>
+            >,
+            bool
+        >::type
         send_tuple(const message<Event>& object) {
             return this->send(object);
         }

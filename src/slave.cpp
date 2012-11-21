@@ -105,8 +105,8 @@ slave_t::assign(const boost::shared_ptr<session_t>& session) {
 
 void
 slave_t::process(const io::message<rpc::ping>&) {
-    send<rpc::pong>();
     rearm();
+    send<rpc::pong>();
 }
 
 void

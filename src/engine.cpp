@@ -64,7 +64,11 @@ namespace {
         
         ~downstream_t() {
             if(m_state != states::closed) {
-                close();
+                try {
+                    close();
+                } catch(...) {
+                    // Pass.
+                }
             }
         }
 

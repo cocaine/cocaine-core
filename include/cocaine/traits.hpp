@@ -56,7 +56,7 @@ pack(const T& object) {
 
     type_traits<T>::pack(packer, object);
 
-    return { buffer.data(), buffer.size() };
+    return std::string(buffer.data(), buffer.size());
 }
 
 template<class T, class It>
