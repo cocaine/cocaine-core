@@ -14,7 +14,7 @@ struct stream_t {
     
     virtual
     void
-    push(const void * chunk,
+    push(const char * chunk,
          size_t size) = 0;
 
     template<class T>
@@ -53,7 +53,7 @@ struct null_stream_t:
 {
     virtual
     void
-    push(const void *, size_t) { }
+    push(const char*, size_t) { }
 
     virtual
     void

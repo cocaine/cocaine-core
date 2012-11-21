@@ -62,11 +62,9 @@ class host_t:
         void
         run();
 
-        // Response I/O
-
-        template<class Event>
+        template<class Event, typename... Args>
         void
-        send(const io::message<Event>& message);
+        send(Args&&... args);
 
     private:
         void
@@ -83,10 +81,6 @@ class host_t:
 
         void
         process_bus_events();
-        
-        void
-        invoke(const unique_id_t& session_id,
-               const std::string& event);
         
         void
         terminate(rpc::suicide::reasons reason,
@@ -129,10 +123,10 @@ class host_t:
         stream_map_t m_streams;
 };
 
-template<class Event>
+template<class Event, typename... Args>
 void
-host_t::send(const io::message<Event>& message) {
-    m_bus.send_message(message);
+host_t::send(Args&&... args) {
+    m_bus.send_message(io::message<Event>(std::forward<Args>(args)...));
 }
 
 } // namespace cocaine::engine

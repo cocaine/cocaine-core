@@ -67,19 +67,32 @@ class slave_t:
         void
         process(const io::message<rpc::choke>& message);
 
-        template<class Event>
-        void
-        send(const io::message<Event>& message);
+        template<class Event, typename... Args>
+        bool
+        send(Args&&... args);
 
-    public:
-        states::value
-        state() const {
-            return static_cast<states::value>(m_state.load());
+        bool
+        send(int message_id,
+             const std::string& message)
+        {
+            BOOST_ASSERT(m_state == states::active);
+
+            return m_engine->send(
+                m_id,
+                message_id,
+                message
+            );
         }
 
+    public:
         const unique_id_t&
         id() const {
             return m_id;
+        }
+
+        states::value
+        state() const {
+            return static_cast<states::value>(m_state.load());
         }
 
         size_t
@@ -114,16 +127,14 @@ class slave_t:
         ev::timer m_heartbeat_timer,
                   m_idle_timer;
     
-        // Current slave state.
-        std::atomic<int> m_state;
-
         // Slave ID.
         const unique_id_t m_id;
 
+        // Current slave state.
+        std::atomic<int> m_state;
+
         // Actual slave process handle.    
         std::unique_ptr<api::handle_t> m_handle;
-
-        // Current sessions
 
 #if BOOST_VERSION >= 103600
         typedef boost::unordered_map<
@@ -134,19 +145,18 @@ class slave_t:
             boost::shared_ptr<session_t>
         > session_map_t;
 
+        // Current sessions.
         session_map_t m_sessions;
 };
 
-template<class Event>
-void
-slave_t::send(const io::message<Event>& message) {
-    if(m_state != states::active) {
-        throw cocaine::error_t("the slave is not active");
-    }
+template<class Event, typename... Args>
+bool
+slave_t::send(Args&&... args) {
+    BOOST_ASSERT(m_state == states::active);
 
-    m_engine->send(
+    return m_engine->send<Event>(
         m_id,
-        message
+        std::forward<Args>(args)...
     );
 }
 

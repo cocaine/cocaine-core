@@ -30,6 +30,7 @@
 
 #include "cocaine/api/sandbox.hpp"
 
+#include "cocaine/traits/message.hpp"
 #include "cocaine/traits/unique_id.hpp"
 
 #include "cocaine/helpers/atomic.hpp"
@@ -58,23 +59,13 @@ struct upstream_t:
 
     virtual
     void
-    push(const void * chunk,
+    push(const char * chunk,
          size_t size)
     {
         switch(m_state) {
-            case states::open: {
-                zmq::message_t message(size);
-
-                memcpy(
-                    message.data(),
-                    chunk,
-                    size
-                );
-
-                m_host->send(io::message<rpc::chunk>(m_id, message));        
-                
+            case states::open:
+                send<rpc::chunk>(std::string(chunk, size));
                 break;
-            }
 
             case states::closed:
                 throw cocaine::error_t("the stream has been closed");
@@ -88,10 +79,8 @@ struct upstream_t:
     {
         switch(m_state) {
             case states::open:
-                m_host->send(io::message<rpc::error>(m_id, code, message));
-                
-                close();        
-                
+                send<rpc::error>(code, message);
+                close();
                 break;
 
             case states::closed:
@@ -104,15 +93,20 @@ struct upstream_t:
     close() {
         switch(m_state) {
             case states::open:
-                m_host->send(io::message<rpc::choke>(m_id));
-                
+                send<rpc::choke>();
                 m_state = states::closed;
-                
                 break;
 
             case states::closed:
                 throw cocaine::error_t("the stream has been closed");
         }
+    }
+
+private:
+    template<class Event, typename... Args>
+    void
+    send(Args&&... args) {
+        m_host->send<Event>(m_id, std::forward<Args>(args)...);
     }
 
 private:
@@ -211,7 +205,7 @@ host_t::on_bus_check(ev::prepare&, int) {
 
 void
 host_t::on_heartbeat(ev::timer&, int) {
-    m_bus.send_message(io::message<rpc::ping>());
+    send<rpc::ping>();
     m_disown_timer.start(m_profile->heartbeat_timeout);
 }
 
@@ -260,21 +254,40 @@ host_t::process_bus_events() {
                 break;
 
             case io::message<rpc::invoke>::value: {
-                unique_id_t session_id;
-                std::string event;
+                io::message<rpc::invoke> invoke;
 
-                m_bus.recv_tuple(boost::tie(session_id, event));
+                m_bus.recv(invoke);
+
+                const unique_id_t& session_id = boost::get<0>(invoke);
+                const std::string& event = boost::get<1>(invoke);
                 
-                invoke(session_id, event);
-                
+                boost::shared_ptr<api::stream_t> upstream(
+                    boost::make_shared<upstream_t>(session_id, this)
+                );
+
+                try {
+                    io_pair_t io = {
+                        upstream,
+                        m_sandbox->invoke(event, upstream)
+                    };
+
+                    m_streams.emplace(session_id, io);
+                } catch(const std::exception& e) {
+                    upstream->error(invocation_error, e.what());
+                } catch(...) {
+                    upstream->error(invocation_error, "unexpected exception");
+                }
+
                 break;
             }
 
             case io::message<rpc::chunk>::value: {
-                unique_id_t session_id(uninitialized);
-                zmq::message_t message;
+                io::message<rpc::chunk> chunk;
 
-                m_bus.recv_tuple(boost::tie(session_id, message));
+                m_bus.recv(chunk);
+
+                const unique_id_t& session_id = boost::get<0>(chunk);
+                const std::string& message = boost::get<1>(chunk);
 
                 stream_map_t::iterator it(m_streams.find(session_id));
 
@@ -296,9 +309,11 @@ host_t::process_bus_events() {
             }
 
             case io::message<rpc::choke>::value: {
-                unique_id_t session_id(uninitialized);
+                io::message<rpc::choke> choke;
 
-                m_bus.recv(session_id);
+                m_bus.recv(choke);
+
+                const unique_id_t& session_id = boost::get<0>(choke);
 
                 stream_map_t::iterator it = m_streams.find(session_id);
 
@@ -341,31 +356,9 @@ host_t::process_bus_events() {
 }
 
 void
-host_t::invoke(const unique_id_t& session_id,
-               const std::string& event)
-{
-    boost::shared_ptr<api::stream_t> upstream(
-        boost::make_shared<upstream_t>(session_id, this)
-    );
-
-    try {
-        io_pair_t io = {
-            upstream,
-            m_sandbox->invoke(event, upstream)
-        };
-
-        m_streams.emplace(session_id, io);
-    } catch(const std::exception& e) {
-        upstream->error(invocation_error, e.what());
-    } catch(...) {
-        upstream->error(invocation_error, "unexpected exception");
-    }
-}
-
-void
 host_t::terminate(rpc::suicide::reasons reason,
                   const std::string& message)
 {
-    send(io::message<rpc::suicide>(reason, message));
+    send<rpc::suicide>(reason, message);
     m_loop.unloop(ev::ALL);
 }

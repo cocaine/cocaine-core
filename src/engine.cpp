@@ -36,6 +36,7 @@
 #include "cocaine/api/stream.hpp"
 
 #include "cocaine/traits/json.hpp"
+#include "cocaine/traits/message.hpp"
 #include "cocaine/traits/unique_id.hpp"
 
 using namespace cocaine;
@@ -56,9 +57,9 @@ namespace {
     struct downstream_t:
         public api::stream_t
     {
-        downstream_t(const unique_id_t& id):
-            m_id(id),
-            m_state(states::caching)
+        downstream_t(const boost::shared_ptr<session_t>& session):
+            m_session(session),
+            m_state(states::open)
         { }
         
         ~downstream_t() {
@@ -69,23 +70,21 @@ namespace {
 
         virtual
         void
-        push(const void * chunk,
+        push(const char * chunk,
              size_t size)
         {
             switch(m_state) {
-                case states::caching: {
-                    boost::unique_lock<boost::mutex> lock(m_mutex);
+                case states::open: {
+                    boost::shared_ptr<session_t> ptr = m_session.lock();
 
-                    // NOTE: Put the new chunk into the cache because the stream is
-                    // not yet attached to a slave.
-                    m_cache.emplace_back(static_cast<const char*>(chunk), size);
+                    if(!ptr) {
+                        throw cocaine::error_t("the session does not exist");
+                    }
 
+                    ptr->send<rpc::chunk>(std::string(chunk, size));
+                    
                     break;
                 }
-
-                case states::open:
-                    push_impl(chunk, size);
-                    break;
 
                 case states::closed:
                     throw cocaine::error_t("the stream has been closed");
@@ -94,84 +93,58 @@ namespace {
 
         virtual
         void
-        error(error_code,
-              const std::string&)
+        error(error_code code,
+              const std::string& message)
         {
-            throw cocaine::error_t("not implemented");
+            switch(m_state) {
+                case states::open: {
+                    boost::shared_ptr<session_t> ptr = m_session.lock();
+
+                    if(!ptr) {
+                        throw cocaine::error_t("the session does not exist");
+                    }
+
+                    ptr->send<rpc::error>(code, message);
+                    ptr->send<rpc::choke>();
+
+                    m_state = states::closed;
+                    
+                    break;
+                }
+
+                case states::closed:
+                    throw cocaine::error_t("the stream has been closed");
+            }
         }
 
         virtual
         void
         close() {
             switch(m_state) {
-                case states::open:
-                    // TEST: An attached stream should always have a controlling slave.
-                    BOOST_ASSERT(m_slave);
+                case states::open: {
+                    boost::shared_ptr<session_t> ptr = m_session.lock();
 
-                    m_slave->send(io::message<rpc::choke>(m_id));
+                    if(!ptr) {
+                        throw cocaine::error_t("the session does not exist");
+                    }
 
+                    ptr->send<rpc::choke>();
+
+                    m_state = states::closed;
+                    
                     break;
+                }
 
                 case states::closed:
                     throw cocaine::error_t("the stream has been closed");
             }
-
-            m_state = states::closed;
-        }
-
-        void
-        attach(const boost::shared_ptr<slave_t>& slave) {
-            // TEST: Ensure that the stream is in a proper state.
-            BOOST_ASSERT(m_state != states::open && !m_slave);
-
-            m_slave = slave;
-
-            boost::unique_lock<boost::mutex> lock(m_mutex);
-
-            if(!m_cache.empty()) {
-                for(chunk_list_t::const_iterator it = m_cache.begin();
-                    it != m_cache.end();
-                    ++it)
-                {
-                    push_impl(it->data(), it->size());
-                }
-                
-                m_cache.clear();
-            }
-
-            if(m_state == states::closed) {
-                m_slave->send(io::message<rpc::choke>(m_id));
-                return;
-            }
-
-            m_state = states::open;
         }
 
     private:
-        void
-        push_impl(const void * chunk,
-                  size_t size)
-        {
-            // TEST: An attached stream should always have a controlling slave.
-            BOOST_ASSERT(m_slave);
-
-            zmq::message_t message(size);
-
-            memcpy(
-                message.data(),
-                chunk,
-                size
-            );
-
-            m_slave->send(io::message<rpc::chunk>(m_id, message));
-        }
-
-    private:
-        const unique_id_t m_id;
+        const boost::weak_ptr<session_t> m_session;
 
         struct states {
             enum value: int {
-                caching,
                 open,
                 closed
             };
@@ -179,17 +152,6 @@ namespace {
 
         // Stream state.
         std::atomic<int> m_state;
-
-        typedef std::vector<
-            std::string
-        > chunk_list_t;
-
-        // Request chunk cache.
-        chunk_list_t m_cache;
-        boost::mutex m_mutex;
-
-        // Responsible slave.
-        boost::shared_ptr<slave_t> m_slave;
     };
 }
 
@@ -299,14 +261,10 @@ engine_t::enqueue(const api::event_t& event,
         }
     }
 
-    unique_id_t id;
-
     boost::shared_ptr<session_t> session(
         boost::make_shared<session_t>(
-            id,
             event,
-            upstream,
-            boost::make_shared<downstream_t>(id)
+            upstream
         )
     );
 
@@ -315,7 +273,23 @@ engine_t::enqueue(const api::event_t& event,
     // Pump the queue! 
     m_notification.send();
 
-    return session->downstream;
+    return boost::make_shared<downstream_t>(session);
+}
+
+bool
+engine_t::send(const unique_id_t& uuid,
+               int message_id,
+               const std::string& message)
+{
+    boost::unique_lock<rpc_channel_t> lock(*m_bus);
+
+    io::scoped_option<
+        io::options::send_timeout,
+        io::policies::shared
+    > option(*m_bus, 0);
+    
+    return m_bus->send(uuid, ZMQ_SNDMORE) &&
+           m_bus->send_message(message_id, message);    
 }
 
 void
@@ -413,7 +387,7 @@ engine_t::process_bus_events() {
         BOOST_ASSERT(!m_bus->more());
     
         unique_id_t slave_id(uninitialized);
-        int command = -1;
+        int message_id = -1;
         
         {
             io::scoped_option<
@@ -421,7 +395,7 @@ engine_t::process_bus_events() {
                 io::policies::shared
             > option(*m_bus, 0);
             
-            if(!m_bus->recv_tuple(boost::tie(slave_id, command))) {
+            if(!m_bus->recv(slave_id)) {
                 return;
             }
         }
@@ -431,8 +405,7 @@ engine_t::process_bus_events() {
         if(slave == m_pool.end()) {
             COCAINE_LOG_DEBUG(
                 m_log,
-                "dropping type %d message from an unknown slave %s", 
-                command,
+                "dropping a message from an unknown slave %s", 
                 slave_id
             );
             
@@ -441,14 +414,16 @@ engine_t::process_bus_events() {
             continue;
         }
 
+        m_bus->recv(message_id);
+
         COCAINE_LOG_DEBUG(
             m_log,
             "received type %d message from slave %s",
-            command,
+            message_id,
             slave_id
         );
 
-        switch(command) {
+        switch(message_id) {
             case io::message<rpc::ping>::value:
                 lock.unlock();
 
@@ -457,13 +432,16 @@ engine_t::process_bus_events() {
                 break;
 
             case io::message<rpc::suicide>::value: {
-                int code = 0;
-                std::string message;
+                io::message<rpc::suicide> suicide;
 
-                m_bus->recv_tuple(boost::tie(code, message));
+                m_bus->recv(suicide);
+
                 lock.unlock();
 
                 m_pool.erase(slave);
+
+                int code = boost::get<0>(suicide);
+                const std::string& message = boost::get<1>(suicide);
 
                 if(code == rpc::suicide::abnormal) {
                     COCAINE_LOG_ERROR(m_log, "the app seems to be broken — %s", message);
@@ -481,43 +459,37 @@ engine_t::process_bus_events() {
             }
 
             case io::message<rpc::chunk>::value: {
-                unique_id_t session_id(uninitialized);
-                zmq::message_t message;
+                io::message<rpc::chunk> chunk(uninitialized);
                 
-                m_bus->recv_tuple(boost::tie(session_id, message));
+                m_bus->recv(chunk);
+
                 lock.unlock();
 
-                slave->second->process(
-                    io::message<rpc::chunk>(session_id, message)
-                );
+                slave->second->process(chunk);
 
                 break;
             }
          
             case io::message<rpc::error>::value: {
-                unique_id_t session_id(uninitialized);
-                int code = 0;
-                std::string message;
+                io::message<rpc::error> error(uninitialized);
 
-                m_bus->recv_tuple(boost::tie(session_id, code, message));
+                m_bus->recv(error);
+                
                 lock.unlock();
 
-                slave->second->process(
-                    io::message<rpc::error>(session_id, code, message)
-                );
+                slave->second->process(error);
 
                 break;
             }
 
             case io::message<rpc::choke>::value: {
-                unique_id_t session_id(uninitialized);
+                io::message<rpc::choke> choke(uninitialized);
 
-                m_bus->recv(session_id);
+                m_bus->recv(choke);
+
                 lock.unlock();
 
-                slave->second->process(
-                    io::message<rpc::choke>(session_id)
-                );
+                slave->second->process(choke);
 
                 break;
             }
@@ -526,7 +498,7 @@ engine_t::process_bus_events() {
                 COCAINE_LOG_WARNING(
                     m_log,
                     "dropping unknown type %d message from slave %s",
-                    command,
+                    message_id,
                     slave_id
                 );
 
@@ -575,15 +547,15 @@ namespace {
 
 void
 engine_t::process_ctl_events() {
-    int command = -1;
+    int message_id = -1;
 
-    if(!m_ctl->recv(command)) {
+    if(!m_ctl->recv(message_id)) {
         COCAINE_LOG_ERROR(m_log, "received a corrupted control message");
         m_ctl->drop();
         return;
     }
 
-    switch(command) {
+    switch(message_id) {
         case io::message<control::status>::value: {
             Json::Value info(Json::objectValue);
 
@@ -611,7 +583,7 @@ engine_t::process_ctl_events() {
             break;
 
         default:
-            COCAINE_LOG_ERROR(m_log, "received an unknown control message, code: %d", command);
+            COCAINE_LOG_ERROR(m_log, "received an unknown control message, code: %d", message_id);
             m_ctl->drop();
     }
 }
@@ -693,6 +665,11 @@ engine_t::pump() {
             session = m_queue.front();
             m_queue.pop_front();
 
+            // Process the queue head outside the lock, because it might take
+            // some considerable amount of time if, for example, the session has
+            // expired and there's some heavy-lifting in the error handler.
+            lock.unlock();
+
             if(session->event.policy.deadline &&
                session->event.policy.deadline <= m_loop.now())
             {
@@ -714,12 +691,7 @@ engine_t::pump() {
         // Notify one of the blocked enqueue operations.
         m_condition.notify_one();
        
-        io::message<rpc::invoke> message(
-            session->id,
-            session->event.type
-        );
-
-        if(!send(it->first, message)) {
+        if(!send<rpc::invoke>(it->first, session->id, session->event.type)) {
             COCAINE_LOG_ERROR(
                 m_log,
                 "slave %s has unexpectedly died",
@@ -737,10 +709,6 @@ engine_t::pump() {
         }
 
         it->second->assign(session);
-
-        static_cast<downstream_t&>(
-            *session->downstream
-        ).attach(it->second);
 
         // TODO: Check if it helps.
         m_loop.feed_fd_event(m_bus->fd(), ev::READ);
@@ -839,11 +807,7 @@ engine_t::shutdown(states::value target) {
         ++it)
     {
         if(it->second->state() == slave_t::states::active) {
-            send(
-                it->second->id(),
-                io::message<rpc::terminate>()
-            );
-
+            send<rpc::terminate>(it->second->id());
             ++pending;
         }
     }

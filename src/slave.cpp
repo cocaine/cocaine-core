@@ -32,6 +32,7 @@
 #include "cocaine/api/isolate.hpp"
 #include "cocaine/api/stream.hpp"
 
+#include "cocaine/traits/message.hpp"
 #include "cocaine/traits/unique_id.hpp" 
 
 using namespace cocaine;
@@ -75,10 +76,6 @@ slave_t::slave_t(context_t& context,
     // NOTE: Initialization heartbeat can be different.
     m_heartbeat_timer.set<slave_t, &slave_t::on_timeout>(this);
     m_heartbeat_timer.start(m_profile.startup_timeout);
-
-    // XXX: Maybe start it after the slave has come alive?
-    m_idle_timer.set<slave_t, &slave_t::on_idle>(this);
-    m_idle_timer.start(m_profile.idle_timeout);
 }
 
 slave_t::~slave_t() {    
@@ -98,6 +95,9 @@ slave_t::assign(const boost::shared_ptr<session_t>& session) {
 
     m_sessions.emplace(session->id, session);
 
+    // This will potentially flood the slave with the cached messages.
+    session->attach(this);
+
     if(m_idle_timer.is_active()) {
         m_idle_timer.stop();
     }
@@ -105,14 +105,14 @@ slave_t::assign(const boost::shared_ptr<session_t>& session) {
 
 void
 slave_t::process(const io::message<rpc::ping>&) {
-    m_engine->send(m_id, io::message<rpc::pong>());
+    send<rpc::pong>();
     rearm();
 }
 
 void
 slave_t::process(const io::message<rpc::chunk>& chunk) {
     const unique_id_t& session_id = boost::get<0>(chunk);
-    zmq::message_t& message = boost::get<1>(chunk);
+    const std::string& message = boost::get<1>(chunk);
 
     COCAINE_LOG_DEBUG(
         m_log,
@@ -127,7 +127,11 @@ slave_t::process(const io::message<rpc::chunk>& chunk) {
     // TEST: Ensure that this slave is responsible for the session.
     BOOST_ASSERT(it != m_sessions.end());
 
-    it->second->upstream->push(message.data(), message.size());
+    stream_ptr_t ptr = it->second->upstream.lock();
+
+    if(ptr) {
+        ptr->push(message.data(), message.size());
+    }
 }
 
 void
@@ -150,7 +154,11 @@ slave_t::process(const io::message<rpc::error>& error) {
     // TEST: Ensure that this slave is responsible for the session.
     BOOST_ASSERT(it != m_sessions.end());
 
-    it->second->upstream->error(static_cast<error_code>(code), message);
+    stream_ptr_t ptr = it->second->upstream.lock();
+
+    if(ptr) {
+        ptr->error(static_cast<error_code>(code), message);
+    }
 }
 
 void
@@ -169,7 +177,12 @@ slave_t::process(const io::message<rpc::choke>& choke) {
     // TEST: Ensure that this slave is responsible for the session.
     BOOST_ASSERT(it != m_sessions.end());
 
-    it->second->upstream->close();
+    stream_ptr_t ptr = it->second->upstream.lock();
+
+    if(ptr) {
+        ptr->close();
+        ptr.reset();
+    }
 
     m_sessions.erase(it);
 
@@ -201,6 +214,7 @@ slave_t::on_timeout(ev::timer&, int) {
     );
 
     std::for_each(m_sessions.begin(), m_sessions.end(), timeout_t());
+    
     m_sessions.clear();
     
     terminate();
@@ -208,7 +222,7 @@ slave_t::on_timeout(ev::timer&, int) {
 
 void
 slave_t::on_idle(ev::timer&, int) {
-    m_engine->send(m_id, io::message<rpc::terminate>());
+    send<rpc::terminate>();
     m_state = states::inactive;
 }
 
@@ -226,6 +240,10 @@ slave_t::rearm() {
         );
 
         m_state = states::active;
+
+        // Start the idle timer, which will kill the slave when it's not used.
+        m_idle_timer.set<slave_t, &slave_t::on_idle>(this);
+        m_idle_timer.start(m_profile.idle_timeout);
     }
 
     COCAINE_LOG_DEBUG(

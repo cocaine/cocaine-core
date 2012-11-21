@@ -21,7 +21,11 @@
 #ifndef COCAINE_SESSION_HPP
 #define COCAINE_SESSION_HPP
 
+#include <boost/weak_ptr.hpp>
+
 #include "cocaine/common.hpp"
+#include "cocaine/io.hpp"
+#include "cocaine/slave.hpp"
 #include "cocaine/unique_id.hpp"
 
 #include "cocaine/api/event.hpp"
@@ -37,10 +41,28 @@ typedef boost::shared_ptr<
 struct session_t:
     public birth_control<session_t>
 {
-    session_t(const unique_id_t& id,
-              const api::event_t& event,
-              const boost::shared_ptr<api::stream_t>& upstream,
-              const boost::shared_ptr<api::stream_t>& downstream);
+    session_t(const api::event_t& event,
+              const boost::shared_ptr<api::stream_t>& upstream);
+
+    template<class Event, typename... Args>
+    bool
+    send(Args&&... args);
+
+    void
+    attach(slave_t * const slave) {
+        m_slave = slave;
+
+        boost::unique_lock<boost::mutex> lock(m_mutex);
+
+        for(chunk_list_t::iterator it = m_cache.begin();
+            it != m_cache.end();
+            ++it)
+        {
+            m_slave->send(it->first, it->second);
+        }
+
+        m_cache.clear();
+    }
 
     void
     abandon(error_code code,
@@ -53,10 +75,38 @@ public:
     // Session event type.
     const api::event_t event;
 
-    // Session streams.
-    const stream_ptr_t upstream,
-                       downstream;
+    // Session upstream.
+    const boost::weak_ptr<api::stream_t> upstream;
+
+private:
+    typedef std::vector<
+        std::pair<int, std::string>
+    > chunk_list_t;
+
+    // Request chunk cache.
+    chunk_list_t m_cache;
+    boost::mutex m_mutex;
+
+    // Responsible slave.
+    slave_t * m_slave;
 };
+
+template<class Event, typename... Args>
+bool
+session_t::send(Args&&... args) {
+    if(!m_slave) {
+        boost::unique_lock<boost::mutex> lock(m_mutex);
+
+        m_cache.emplace_back(
+            io::message<Event>::value,
+            io::pack(io::message<Event>(id, std::forward<Args>(args)...))
+        );
+
+        return true;
+    }
+
+    return m_slave->send<Event>(id, std::forward<Args>(args)...);    
+}
 
 }}
 

@@ -154,8 +154,6 @@ class socket_base_t:
         uint16_t m_port;
 };
 
-using namespace boost::tuples;
-
 #define COCAINE_EINTR_GUARD(command)        \
     while(true) {                           \
         try {                               \
@@ -197,7 +195,12 @@ class socket:
             type_traits<T>::pack(packer, value);
             
             zmq::message_t message(buffer.size());
-            memcpy(message.data(), buffer.data(), buffer.size());
+            
+            memcpy(
+                message.data(),
+                buffer.data(),
+                buffer.size()
+            );
             
             return send(message, flags);
         }
@@ -216,30 +219,6 @@ class socket:
             return send(message, flags);
         }      
         
-        bool
-        send_tuple(const null_type&,
-                   int __attribute__((unused)) flags = 0) const
-        {
-            return true;
-        }
-        
-        template<class Head>
-        bool
-        send_tuple(const cons<Head, null_type>& o,
-                   int flags = 0)
-        {
-            return send(o.get_head(), flags);
-        }
-
-        template<class Head, class Tail>
-        bool
-        send_tuple(const cons<Head, Tail>& o,
-                   int flags = 0)
-        {
-            return send(o.get_head(), ZMQ_SNDMORE | flags) &&
-                   send_tuple(o.get_tail(), flags);
-        }
-
         bool
         recv(zmq::message_t& message,
              int flags = 0)
@@ -302,47 +281,6 @@ class socket:
              int flags = 0)
         {
             return recv(result, flags);
-        }
-
-        bool
-        recv_tuple(const null_type&,
-                   int __attribute__((unused)) flags = 0) const
-        {
-            return true;
-        }
-
-        template<class Head>
-        bool
-        recv_tuple(cons<Head, null_type>& o,
-                   int flags = 0)
-        {
-            return recv(o.get_head(), flags);
-        }
-
-        template<class Head>
-        bool
-        recv_tuple(cons<Head, null_type>&& o,
-                   int flags = 0)
-        {
-            return recv(o.get_head(), flags);
-        }
-
-        template<class Head, class Tail>
-        bool
-        recv_tuple(cons<Head, Tail>& o,
-                   int flags = 0)
-        {
-            return recv(o.get_head(), flags) &&
-                   recv_tuple(o.get_tail(), flags | ZMQ_NOBLOCK);
-        }
-
-        template<class Head, class Tail>
-        bool
-        recv_tuple(cons<Head, Tail>&& o,
-                   int flags = 0)
-        {
-            return recv(o.get_head(), flags) &&
-                   recv_tuple(std::move(o.get_tail()), flags | ZMQ_NOBLOCK);
         }
 
         void
@@ -464,6 +402,8 @@ class scoped_option {
 
 // Event tuple type extraction
 
+using namespace boost::tuples;
+
 template<class T>
 struct depend {
     typedef void type;
@@ -471,7 +411,7 @@ struct depend {
 
 template<class Event, class Tuple = void>
 struct event_traits {
-    typedef boost::tuple<> tuple_type;
+    typedef tuple<> tuple_type;
 };
 
 template<class Event>
@@ -557,12 +497,31 @@ class channel:
             bool
         >::type
         send_message(const message<Event>& object) {
-            const bool multipart = boost::tuples::length<
+            const bool multipart = length<
                 typename event_traits<Event>::tuple_type
             >::value;
 
             return this->send(message<Event>::value, multipart ? ZMQ_SNDMORE : 0) &&
                    this->send_tuple(object);
+        }
+
+        bool
+        send_message(int message_id,
+                     const std::string& message)
+        {
+            return this->send(message_id) && this->send(protect(message));
+        }
+
+    private:
+        bool
+        send_tuple(const null_type&) {
+            return true;
+        }
+
+        template<class Event>
+        bool
+        send_tuple(const message<Event>& object) {
+            return this->send(object);
         }
 };
 

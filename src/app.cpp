@@ -35,6 +35,7 @@
 #include "cocaine/api/driver.hpp"
 
 #include "cocaine/traits/json.hpp"
+#include "cocaine/traits/message.hpp"
 
 using namespace cocaine;
 using namespace cocaine::engine;

@@ -35,7 +35,6 @@ struct unique_id_t {
         uuid_generate(reinterpret_cast<unsigned char*>(uuid));
     }
 
-    explicit
     unique_id_t(const uninitialized_t&) {
         // Empty.
     }

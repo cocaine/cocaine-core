@@ -89,10 +89,15 @@ class engine_t:
                 const boost::shared_ptr<api::stream_t>& upstream,
                 engine::mode mode = engine::mode::normal);
 
-        template<class Event>
+        template<class Event, typename... Args>
         bool
         send(const unique_id_t& uuid,
-             const io::message<Event>& message);
+             Args&&... args);
+
+        bool
+        send(const unique_id_t& uuid,
+             int message_id,
+             const std::string& message);
 
     public:
         ev::loop_ref&
@@ -207,10 +212,10 @@ class engine_t:
         api::category_traits<api::isolate_t>::ptr_type m_isolate;
 };
 
-template<class Event>
+template<class Event, typename... Args>
 bool
 engine_t::send(const unique_id_t& uuid,
-               const io::message<Event>& message)
+               Args&&... args)
 {
     boost::unique_lock<rpc_channel_t> lock(*m_bus);
 
@@ -220,7 +225,7 @@ engine_t::send(const unique_id_t& uuid,
     > option(*m_bus, 0);
     
     return m_bus->send(uuid, ZMQ_SNDMORE) &&
-           m_bus->send_message(message);
+           m_bus->send_message(io::message<Event>(std::forward<Args>(args)...));
 }
 
 }} // namespace cocaine::engine

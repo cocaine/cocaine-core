@@ -24,23 +24,20 @@
 
 using namespace cocaine::engine;
 
-session_t::session_t(const unique_id_t& id_,
-                     const api::event_t& event_,
-                     const boost::shared_ptr<api::stream_t>& upstream_,
-                     const boost::shared_ptr<api::stream_t>& downstream_):
-    id(id_),
+session_t::session_t(const api::event_t& event_,
+                     const boost::shared_ptr<api::stream_t>& upstream_):
     event(event_),
     upstream(upstream_),
-    downstream(downstream_)
+    m_slave(NULL)
 { }
 
 void
 session_t::abandon(error_code code,
                    const std::string& message)
 {
-    upstream->error(code, message);
+    stream_ptr_t ptr = upstream.lock();
 
-    // NOTE: This will prevent writing to the downstream in case someone
-    // has the shared pointer to it after it's popped from the queue.
-    downstream->close();
+    if(ptr) {
+        ptr->error(code, message);
+    }
 }

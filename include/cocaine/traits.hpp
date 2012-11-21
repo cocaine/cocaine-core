@@ -23,6 +23,8 @@
 
 #include <msgpack.hpp>
 
+#include "cocaine/common.hpp"
+
 namespace cocaine { namespace io {
 
 template<class T>
@@ -44,6 +46,42 @@ struct type_traits {
         packed >> object;
     }
 };
+
+template<class T>
+static inline
+std::string
+pack(const T& object) {
+    msgpack::sbuffer buffer;
+    msgpack::packer<msgpack::sbuffer> packer(buffer);
+
+    type_traits<T>::pack(packer, object);
+
+    return { buffer.data(), buffer.size() };
+}
+
+template<class T, class It>
+static inline
+T
+unpack(It begin,
+       It end)
+{
+    T result;
+    msgpack::unpacked unpacked;
+
+    try { 
+        msgpack::unpack(
+            &unpacked,
+            begin,
+            std::distance(begin, end)
+        );
+       
+        type_traits<T>::unpack(unpacked.get(), result);
+    } catch(const msgpack::type_error& e) {
+        throw cocaine::error_t("corrupted object");
+    } catch(const std::bad_cast& e) {
+        throw cocaine::error_t("corrupted object - type mismatch");
+    }
+}
 
 }} // namespace cocaine::io
 

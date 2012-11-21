@@ -61,8 +61,8 @@ namespace rpc {
         typedef tags::rpc_tag tag;
         
         typedef boost::tuple<
-            const unique_id_t&,
-            const std::string&
+            unique_id_t,
+            std::string
         > tuple_type;
     };
 
@@ -70,8 +70,8 @@ namespace rpc {
         typedef tags::rpc_tag tag;
         
         typedef boost::tuple<
-            const unique_id_t&,
-            zmq::message_t&
+            unique_id_t,
+            std::string
         > tuple_type;
     };
 
@@ -79,7 +79,7 @@ namespace rpc {
         typedef tags::rpc_tag tag;
         
         typedef boost::tuple<
-            const unique_id_t&,
+            unique_id_t,
             int,
             std::string
         > tuple_type;
@@ -89,7 +89,7 @@ namespace rpc {
         typedef tags::rpc_tag tag;
 
         typedef boost::tuple<
-            const unique_id_t&
+            unique_id_t
         > tuple_type;
     };
 }
