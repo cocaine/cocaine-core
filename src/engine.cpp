@@ -79,14 +79,7 @@ namespace {
         {
             switch(m_state) {
                 case states::open: {
-                    boost::shared_ptr<session_t> ptr = m_session.lock();
-
-                    if(!ptr) {
-                        throw cocaine::error_t("the session does not exist");
-                    }
-
-                    ptr->send<rpc::chunk>(std::string(chunk, size));
-                    
+                    m_session->send<rpc::chunk>(std::string(chunk, size));
                     break;
                 }
 
@@ -102,14 +95,8 @@ namespace {
         {
             switch(m_state) {
                 case states::open: {
-                    boost::shared_ptr<session_t> ptr = m_session.lock();
-
-                    if(!ptr) {
-                        throw cocaine::error_t("the session does not exist");
-                    }
-
-                    ptr->send<rpc::error>(code, message);
-                    ptr->send<rpc::choke>();
+                    m_session->send<rpc::error>(code, message);
+                    m_session->send<rpc::choke>();
 
                     m_state = states::closed;
                     
@@ -126,13 +113,7 @@ namespace {
         close() {
             switch(m_state) {
                 case states::open: {
-                    boost::shared_ptr<session_t> ptr = m_session.lock();
-
-                    if(!ptr) {
-                        throw cocaine::error_t("the session does not exist");
-                    }
-
-                    ptr->send<rpc::choke>();
+                    m_session->send<rpc::choke>();
 
                     m_state = states::closed;
                     
@@ -145,7 +126,7 @@ namespace {
         }
 
     private:
-        const boost::weak_ptr<session_t> m_session;
+        const boost::shared_ptr<session_t> m_session;
 
         struct states {
             enum value: int {

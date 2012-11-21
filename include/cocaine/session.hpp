@@ -76,7 +76,7 @@ public:
     const api::event_t event;
 
     // Session upstream.
-    const boost::weak_ptr<api::stream_t> upstream;
+    const boost::shared_ptr<api::stream_t> upstream;
 
 private:
     typedef std::vector<

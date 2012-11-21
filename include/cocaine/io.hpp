@@ -570,7 +570,7 @@ class channel:
             >,
             bool
         >::type
-        send_tuple(const message<Event>& object) {
+        send_tuple(const message<Event>&) {
             return true;
         }
 

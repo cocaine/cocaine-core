@@ -127,11 +127,7 @@ slave_t::process(const io::message<rpc::chunk>& chunk) {
     // TEST: Ensure that this slave is responsible for the session.
     BOOST_ASSERT(it != m_sessions.end());
 
-    stream_ptr_t ptr = it->second->upstream.lock();
-
-    if(ptr) {
-        ptr->push(message.data(), message.size());
-    }
+    it->second->upstream->push(message.data(), message.size());
 }
 
 void
@@ -154,11 +150,7 @@ slave_t::process(const io::message<rpc::error>& error) {
     // TEST: Ensure that this slave is responsible for the session.
     BOOST_ASSERT(it != m_sessions.end());
 
-    stream_ptr_t ptr = it->second->upstream.lock();
-
-    if(ptr) {
-        ptr->error(static_cast<error_code>(code), message);
-    }
+    it->second->upstream->error(static_cast<error_code>(code), message);
 }
 
 void
@@ -177,12 +169,7 @@ slave_t::process(const io::message<rpc::choke>& choke) {
     // TEST: Ensure that this slave is responsible for the session.
     BOOST_ASSERT(it != m_sessions.end());
 
-    stream_ptr_t ptr = it->second->upstream.lock();
-
-    if(ptr) {
-        ptr->close();
-        ptr.reset();
-    }
+    it->second->upstream->close();
 
     // NOTE: As we're destroying the session here, we have to close the
     // downstream, otherwise the client wouldn't be able to close it later.
