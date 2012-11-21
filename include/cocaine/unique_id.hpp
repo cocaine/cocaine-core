@@ -21,6 +21,8 @@
 #ifndef COCAINE_UNIQUE_ID_HPP
 #define COCAINE_UNIQUE_ID_HPP
 
+#include <iostream>
+
 #include <boost/functional/hash.hpp>
 #include <uuid/uuid.h>
 
