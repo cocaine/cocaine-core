@@ -95,11 +95,17 @@ template<class Event, typename... Args>
 bool
 session_t::send(Args&&... args) {
     if(!m_slave) {
+        msgpack::sbuffer buffer;
+        msgpack::packer<msgpack::sbuffer> packer(buffer);
+
+        packer.pack_array(sizeof...(args) + 1);        
+        io::pack_sequence(packer, id, std::forward<Args>(args)...);
+
         boost::unique_lock<boost::mutex> lock(m_mutex);
 
         m_cache.emplace_back(
             io::message<Event>::value,
-            io::pack(io::message<Event>(id, std::forward<Args>(args)...))
+            std::string(buffer.data(), buffer.size())
         );
 
         return true;
