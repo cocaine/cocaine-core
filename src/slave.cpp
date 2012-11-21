@@ -184,6 +184,10 @@ slave_t::process(const io::message<rpc::choke>& choke) {
         ptr.reset();
     }
 
+    // NOTE: As we're destroying the session here, we have to close the
+    // downstream, otherwise the client wouldn't be able to close it later.
+    it->second->send<rpc::choke>();
+
     m_sessions.erase(it);
 
     if(m_sessions.empty()) {
