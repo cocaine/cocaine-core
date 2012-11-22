@@ -30,20 +30,20 @@
 
 namespace cocaine {
 
-struct host_config_t {
+struct worker_config_t {
     std::string name;
     std::string profile;
     std::string uuid;
 };
 
-class host_t:
+class worker_t:
     public boost::noncopyable
 {
     public:
-        host_t(context_t& context,
-               host_config_t config);
+        worker_t(context_t& context,
+                 worker_config_t config);
 
-        ~host_t();
+        ~worker_t();
 
         void
         run();
@@ -124,7 +124,7 @@ class host_t:
 
 template<class Event, typename... Args>
 void
-host_t::send(Args&&... args) {
+worker_t::send(Args&&... args) {
     m_bus.send<Event>(std::forward<Args>(args)...);
 }
 

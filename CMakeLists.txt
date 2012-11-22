@@ -100,15 +100,15 @@ SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     VERSION 2
     COMPILE_FLAGS "-std=c++0x")
 
-ADD_EXECUTABLE(cocaine-generic-host
-    src/generic-host/host
-    src/generic-host/main)
+ADD_EXECUTABLE(cocaine-generic-worker
+    src/generic-worker/worker
+    src/generic-worker/main)
 
-TARGET_LINK_LIBRARIES(cocaine-generic-host
+TARGET_LINK_LIBRARIES(cocaine-generic-worker
     boost_program_options-mt
     cocaine-core)
 
-SET_TARGET_PROPERTIES(cocaine-generic-host PROPERTIES
+SET_TARGET_PROPERTIES(cocaine-generic-worker PROPERTIES
     COMPILE_FLAGS "-std=c++0x")
 
 ADD_EXECUTABLE(cocained
@@ -128,7 +128,7 @@ INSTALL(
     TARGETS
         cocaine-common
         cocaine-core
-        cocaine-generic-host
+        cocaine-generic-worker
         cocained
         json
     RUNTIME DESTINATION bin COMPONENT runtime

@@ -25,7 +25,7 @@
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
-#include "cocaine/generic-host/host.hpp"
+#include "cocaine/generic-worker/worker.hpp"
 
 using namespace cocaine;
 using namespace cocaine::engine;
@@ -46,15 +46,15 @@ int main(int argc, char * argv[]) {
             ()->default_value("/etc/cocaine/cocaine.conf"),
             "location of the configuration file");
 
-    host_config_t host_config;
+    worker_config_t worker_config;
 
     slave_options.add_options()
         ("slave:app", po::value<std::string>
-            (&host_config.name))
+            (&worker_config.name))
         ("slave:profile", po::value<std::string>
-            (&host_config.profile))
+            (&worker_config.profile))
         ("slave:uuid", po::value<std::string>
-            (&host_config.uuid));
+            (&worker_config.uuid));
 
     combined_options.add(general_options)
                     .add(slave_options);
@@ -103,26 +103,26 @@ int main(int argc, char * argv[]) {
         return EXIT_FAILURE;
     }
 
-    std::unique_ptr<host_t> host;
+    std::unique_ptr<worker_t> worker;
 
     try {
-        host.reset(
-            new host_t(
+        worker.reset(
+            new worker_t(
                 *context,
-                host_config
+                worker_config
             )
         );
     } catch(const std::exception& e) {
         COCAINE_LOG_ERROR(
             context->log("main"),
-            "unable to start the generic host - %s",
+            "unable to start the worker - %s",
             e.what()
         );
         
         return EXIT_FAILURE;
     }
 
-    host->run();
+    worker->run();
 
     return EXIT_SUCCESS;
 }

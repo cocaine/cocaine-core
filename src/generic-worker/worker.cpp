@@ -21,7 +21,7 @@
 #include <boost/filesystem/path.hpp>
 #include <boost/format.hpp>
 
-#include "cocaine/generic-host/host.hpp"
+#include "cocaine/generic-worker/worker.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
@@ -43,9 +43,9 @@ struct upstream_t:
     public api::stream_t
 {
     upstream_t(const unique_id_t& id,
-               host_t * const host):
+               worker_t * const worker):
         m_id(id),
-        m_host(host),
+        m_worker(worker),
         m_state(states::open)
     { }
 
@@ -105,12 +105,12 @@ private:
     template<class Event, typename... Args>
     void
     send(Args&&... args) {
-        m_host->send<Event>(m_id, std::forward<Args>(args)...);
+        m_worker->send<Event>(m_id, std::forward<Args>(args)...);
     }
 
 private:
     const unique_id_t m_id;
-    host_t * const m_host;
+    worker_t * const m_worker;
 
     struct states {
         enum value: int {
@@ -122,8 +122,8 @@ private:
     std::atomic<int> m_state;
 };
 
-host_t::host_t(context_t& context,
-               host_config_t config):
+worker_t::worker_t(context_t& context,
+                   worker_config_t config):
     m_context(context),
     m_log(context.log(
         (boost::format("app/%1%")
@@ -143,16 +143,16 @@ host_t::host_t(context_t& context,
     
     m_bus.connect(endpoint);
     
-    m_watcher.set<host_t, &host_t::on_bus_event>(this);
+    m_watcher.set<worker_t, &worker_t::on_bus_event>(this);
     m_watcher.start(m_bus.fd(), ev::READ);
-    m_checker.set<host_t, &host_t::on_bus_check>(this);
+    m_checker.set<worker_t, &worker_t::on_bus_check>(this);
     m_checker.start();
 
-    m_heartbeat_timer.set<host_t, &host_t::on_heartbeat>(this);
+    m_heartbeat_timer.set<worker_t, &worker_t::on_heartbeat>(this);
     m_heartbeat_timer.start(0.0f, 5.0f);
 
     // NOTE: It will be restarted after the each heartbeat.
-    m_disown_timer.set<host_t, &host_t::on_disown>(this);
+    m_disown_timer.set<worker_t, &worker_t::on_disown>(this);
 
     // Launching the app
 
@@ -178,17 +178,17 @@ host_t::host_t(context_t& context,
     }
 }
 
-host_t::~host_t() {
+worker_t::~worker_t() {
     // Empty.
 }
 
 void
-host_t::run() {
+worker_t::run() {
     m_loop.loop();
 }
 
 void
-host_t::on_bus_event(ev::io&, int) {
+worker_t::on_bus_event(ev::io&, int) {
     m_checker.stop();
 
     if(m_bus.pending()) {
@@ -198,21 +198,21 @@ host_t::on_bus_event(ev::io&, int) {
 }
 
 void
-host_t::on_bus_check(ev::prepare&, int) {
+worker_t::on_bus_check(ev::prepare&, int) {
     m_loop.feed_fd_event(m_bus.fd(), ev::READ);
 }
 
 void
-host_t::on_heartbeat(ev::timer&, int) {
+worker_t::on_heartbeat(ev::timer&, int) {
     send<rpc::ping>();
     m_disown_timer.start(m_profile->heartbeat_timeout);
 }
 
 void
-host_t::on_disown(ev::timer&, int) {
+worker_t::on_disown(ev::timer&, int) {
     COCAINE_LOG_ERROR(
         m_log,
-        "generic host %s has lost the controlling engine",
+        "slave %s has lost the controlling engine",
         m_id
     );
 
@@ -220,7 +220,7 @@ host_t::on_disown(ev::timer&, int) {
 }
 
 void
-host_t::process_bus_events() {
+worker_t::process_bus_events() {
     int counter = defaults::io_bulk_size;
 
     do {
@@ -241,7 +241,7 @@ host_t::process_bus_events() {
 
         COCAINE_LOG_DEBUG(
             m_log,
-            "generic host %s received type %d message",
+            "slave %s received type %d message",
             m_id,
             command
         );
@@ -333,7 +333,7 @@ host_t::process_bus_events() {
             default:
                 COCAINE_LOG_WARNING(
                     m_log,
-                    "generic host %s dropping unknown type %d message", 
+                    "slave %s dropping unknown type %d message", 
                     m_id,
                     command
                 );
@@ -348,8 +348,8 @@ host_t::process_bus_events() {
 }
 
 void
-host_t::terminate(rpc::suicide::reasons reason,
-                  const std::string& message)
+worker_t::terminate(rpc::suicide::reasons reason,
+                    const std::string& message)
 {
     send<rpc::suicide>(static_cast<int>(reason), message);
     m_loop.unloop(ev::ALL);
