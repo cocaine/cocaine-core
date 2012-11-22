@@ -21,34 +21,37 @@
 #ifndef COCAINE_CONTEXT_HPP
 #define COCAINE_CONTEXT_HPP
 
+#include <queue>
+
 #include <boost/thread/mutex.hpp>
 
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
 
-#include "cocaine/interfaces/storage.hpp"
+#include "cocaine/helpers/json.hpp"
 
 namespace cocaine {
 
 struct defaults {
-    // Default engine policy.
-    static const float startup_timeout;
+    // Default slave.
+    static const char slave[];
+    
+    // Default profile.
     static const float heartbeat_timeout;
     static const float idle_timeout;
+    static const float startup_timeout;
     static const float termination_timeout;
     static const unsigned long pool_limit;
     static const unsigned long queue_limit;
+    static const unsigned long concurrency;
 
     // Default I/O policy.
+    static const long control_timeout;
     static const unsigned long io_bulk_size;
-    static const long bus_timeout;
-
-    // Default slave binary.
-    static const char slave[];
 
     // Default paths.
-    static const char plugin_path[];
     static const char ipc_path[];
+    static const char plugin_path[];
     static const char spool_path[];
 };
 
@@ -56,107 +59,149 @@ struct config_t {
     config_t(const std::string& config_path);
 
     std::string config_path,
-                plugin_path,
                 ipc_path,
+                plugin_path,
                 spool_path;
 
-    typedef struct {
+    struct component_t {
         std::string type;
         Json::Value args;
-    } storage_info_t;
+    };
 
+#if BOOST_VERSION >= 103600
+    typedef boost::unordered_map<
+#else
     typedef std::map<
+#endif
         std::string,
-        storage_info_t
-    > storage_info_map_t;
+        component_t
+    > component_map_t;
 
-    storage_info_map_t storages;
+    static
+    component_map_t
+    parse(const Json::Value& config);
+
+    // NOTE: A configuration map for the generic components, like storages or loggers,
+    // which are specified in the configuration file.
+    component_map_t components;
 
     struct {
         std::string hostname;
-    } runtime;
+        std::pair<uint16_t, uint16_t> ports;
+    } network;
+};
+
+// Free port dispenser for automatic socket binding.
+
+struct port_mapper_t {
+    port_mapper_t(const std::pair<uint16_t, uint16_t>& limits);
+
+    uint16_t
+    get();
+
+    void
+    retain(uint16_t port);
+
+private:
+    std::priority_queue<
+        uint16_t,
+        std::vector<uint16_t>,
+        std::greater<uint16_t>
+    > m_ports;
+    
+    boost::mutex m_mutex;
 };
 
 class context_t:
     public boost::noncopyable
 {
     public:
-        context_t(config_t config,
-                  boost::shared_ptr<logging::sink_t> sink);
-
+        context_t(config_t config);
         ~context_t();
 
-        // Repository API
-        // --------------
-
-        template<class Category>
-        typename category_traits<Category>::ptr_type
-        get(const std::string& type,
-            const typename category_traits<Category>::args_type& args)
-        {
-            return m_repository->get<Category>(type, args);
-        }
-
-        // Networking
-        // ----------
-
-        zmq::context_t& io() {
-            return *m_io;
-        }
-        
-        // Storage
-        // -------
-
-        template<class T>
-        typename category_traits<
-            storages::storage_concept<T>
-        >::ptr_type
-        storage(const std::string& name) {
-            typedef storages::storage_concept<T> storage_type;
-
-            config_t::storage_info_map_t::const_iterator it(
-                config.storages.find(name)
-            );
-    
-            if(it == config.storages.end()) {
-                throw configuration_error_t("the '" + name + "' storage doesn't exist");
-            }
-
-            return get<storage_type>(
-                it->second.type,
-                typename category_traits<storage_type>::args_type(
-                    name,
-                    it->second.args
-                )
-            );
-        }
-
         // Logging
-        // -------
 
         boost::shared_ptr<logging::logger_t>
         log(const std::string&);
+        
+        // Component API
+        
+        template<class Category, typename... Args>
+        typename api::category_traits<Category>::ptr_type
+        get(const std::string& type,
+            Args&&... args);
+
+        template<class Category>
+        typename api::category_traits<Category>::ptr_type
+        get(const std::string& name);
+
+        // Networking
+
+        zmq::context_t&
+        io() {
+            return *m_io;
+        }
+
+        port_mapper_t&
+        ports() {
+            return *m_port_mapper;
+        }
 
     public:
         const config_t config;
 
     private:
-        // Logging.    
-        boost::shared_ptr<logging::sink_t> m_sink;
+        std::unique_ptr<api::repository_t> m_repository;
+        
+        // NOTE: As the logging sinks themselves are components, the repository
+        // have to be initialized first without a logger, unfortunately.
+        std::unique_ptr<api::sink_t> m_sink;
 
+#if BOOST_VERSION >= 103600
+        typedef boost::unordered_map<
+#else
         typedef std::map<
+#endif
             std::string,
             boost::shared_ptr<logging::logger_t>
         > instance_map_t;
 
         instance_map_t m_instances;
         boost::mutex m_mutex;
+
+        std::unique_ptr<zmq::context_t> m_io;
         
-        // Core subsystems.
-        std::auto_ptr<zmq::context_t> m_io;
-        std::auto_ptr<repository_t> m_repository;
+        // TODO: I don't really like this implementation.
+        std::unique_ptr<port_mapper_t> m_port_mapper;
 };
 
+template<class Category, typename... Args>
+typename api::category_traits<Category>::ptr_type
+context_t::get(const std::string& type,
+               Args&&... args)
+{
+    return m_repository->get<Category>(type, std::forward<Args>(args)...);
 }
+
+template<class Category>
+typename api::category_traits<Category>::ptr_type
+context_t::get(const std::string& name) {
+    config_t::component_map_t::const_iterator it(
+        config.components.find(name)
+    );
+
+    if(it == config.components.end()) {
+        throw configuration_error_t("the '%s' component is not configured", name);
+    }
+
+    return get<Category>(
+        it->second.type,
+        *this,
+        name,
+        it->second.args
+    );
+}
+
+} // namespace cocaine
 
 #endif

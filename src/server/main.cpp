@@ -18,20 +18,15 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include <boost/algorithm/string/classification.hpp>
-#include <boost/algorithm/string/split.hpp>
-#include <boost/iterator/counting_iterator.hpp>
 #include <boost/program_options.hpp>
 #include <iostream>
 
 #include "cocaine/config.hpp"
 #include "cocaine/context.hpp"
+#include "cocaine/logging.hpp"
 
+#include "cocaine/server/pid_file.hpp"
 #include "cocaine/server/server.hpp"
-
-#include "cocaine/loggers/syslog.hpp"
-
-#include "cocaine/helpers/pid_file.hpp"
 
 using namespace cocaine;
 
@@ -55,12 +50,14 @@ int main(int argc, char * argv[]) {
         ("daemonize,d", "daemonize on start")
         ("pidfile,p", po::value<std::string>
             ()->default_value("/var/run/cocaine/cocained.pid"),
-            "location of a pid file")
-        ("verbose", "produce a lot of output");
+            "location of a pid file");
 
     server_config_t server_config;
 
     server_options.add_options()
+        ("server:runlist,r", po::value<std::string>
+            (&server_config.runlist)->default_value("default"),
+            "server runlist name")
         ("server:listen", po::value< std::vector<std::string> >
             (&server_config.listen_endpoints)->composing(),
             "server listen endpoints, can be specified multiple times")
@@ -104,7 +101,6 @@ int main(int argc, char * argv[]) {
     }
 
     // Validation
-    // ----------
 
     if(!vm.count("configuration")) {
         std::cerr << "Error: no configuration file location has been specified." << std::endl;
@@ -112,36 +108,8 @@ int main(int argc, char * argv[]) {
     }
 
     // Startup
-    // -------
 
-    /*
-    if(vm.count("core:port-range")) {
-        std::vector<std::string> limits;
-
-        boost::algorithm::split(
-            limits,
-            vm["core:port-range"].as<std::string>(),
-            boost::algorithm::is_any_of(":-")
-        );
-
-        if(limits.size() != 2) {
-            std::cout << "Error: invalid port range format" << std::endl;
-            return EXIT_FAILURE;
-        }
-
-        try {
-            config.runtime.ports.assign(
-                boost::make_counting_iterator(boost::lexical_cast<uint16_t>(limits[0])),
-                boost::make_counting_iterator(boost::lexical_cast<uint16_t>(limits[1]))
-            );
-        } catch(const boost::bad_lexical_cast& e) {
-            std::cout << "Error: invalid port range values" << std::endl;
-            return EXIT_FAILURE;
-        }
-    }
-    */
-
-    std::auto_ptr<helpers::pid_file_t> pidfile;
+    std::unique_ptr<pid_file_t> pidfile;
 
     if(vm.count("daemonize")) {
         if(daemon(0, 0) < 0) {
@@ -150,44 +118,43 @@ int main(int argc, char * argv[]) {
         }
 
         try {
-            pidfile.reset(
-                new helpers::pid_file_t(vm["pidfile"].as<std::string>())
-            );
-        } catch(const std::runtime_error& e) {
+            pidfile.reset(new pid_file_t(vm["pidfile"].as<std::string>()));
+        } catch(const cocaine::error_t& e) {
             std::cerr << "Error: " << e.what() << "." << std::endl;
             return EXIT_FAILURE;
         }
     }
 
-    context_t context(
-        vm["configuration"].as<std::string>(),
-        boost::make_shared<logging::syslog_t>(
-            vm.count("verbose") ? logging::debug : logging::info,
-            "cocaine"
-        )
-    );
+    std::unique_ptr<context_t> context;
 
-    boost::shared_ptr<logging::logger_t> log(context.log("main"));
+    try {
+        context.reset(new context_t(vm["configuration"].as<std::string>()));
+    } catch(const std::exception& e) {
+        std::cerr << "Error: unable to initialize the context - " << e.what() << std::endl;
+        return EXIT_FAILURE;
+    }
 
-    log->info("starting the server");
+    boost::shared_ptr<logging::logger_t> log(context->log("main"));
 
-    std::auto_ptr<server_t> server;
+    COCAINE_LOG_INFO(log, "starting the server");
+
+    std::unique_ptr<server_t> server;
     
     try {
         server.reset(
             new server_t(
-                context,
+                *context,
                 server_config
             )
         );
     } catch(const std::exception& e) {
-        log->error("unable to start the server - %s", e.what());
+        COCAINE_LOG_ERROR(log, "unable to start the server - %s", e.what());
         return EXIT_FAILURE;
     }
 
     server->run();
 
-    log->info("the server has terminated");
+    COCAINE_LOG_INFO(log, "the server has terminated");
 
     return EXIT_SUCCESS;
 }

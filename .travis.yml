@@ -1,0 +1,9 @@
+language: cpp
+compiler:
+  - gcc
+  - clang
+install:
+  - sudo apt-get update -qq
+  - sudo apt-get install -qq libboost-dev libboost-filesystem-dev libboost-thread-dev libboost-program-options-dev
+  - sudo apt-get install -qq cmake libev-dev libzmq-dev libmsgpack-dev libssl-dev libltdl-dev uuid-dev libarchive-dev
+script: cd build && cmake .. && make

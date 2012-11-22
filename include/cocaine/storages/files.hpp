@@ -23,43 +23,50 @@
 
 #include <boost/filesystem/path.hpp>
 
-#include "cocaine/interfaces/storage.hpp"
+#include "cocaine/api/storage.hpp"
 
-namespace cocaine { namespace storages {
+namespace cocaine { namespace storage {
 
 class file_storage_t:
-    public storage_concept<objects>
+    public api::storage_t
 {
     public:
-        typedef storage_concept<objects> category_type;
+        typedef api::storage_t category_type;
 
     public:
         file_storage_t(context_t& context,
                        const std::string& name,
                        const Json::Value& args);
 
-        virtual objects::value_type get(const std::string& ns,
-                                        const std::string& key);
+        virtual
+        std::string
+        read(const std::string& collection,
+             const std::string& key);
 
-        virtual void put(const std::string& ns, 
-                         const std::string& key, 
-                         const objects::value_type& object);
+        virtual
+        void
+        write(const std::string& collection, 
+              const std::string& key, 
+              const std::string& blob);
 
-        virtual objects::meta_type exists(const std::string& ns,
-                                          const std::string& key);
+        virtual
+        std::vector<std::string>
+        list(const std::string& collection);
 
-        virtual std::vector<std::string> list(const std::string& ns);
-
-        virtual void remove(const std::string& ns,
-                            const std::string& key);
+        virtual
+        void
+        remove(const std::string& collection,
+               const std::string& key);
 
     private:
         boost::shared_ptr<logging::logger_t> m_log;
+        
+        // TODO: Drop this, switch to atomic writes.
         boost::mutex m_mutex;
         
         const boost::filesystem::path m_storage_path;
 };
 
-}}
+}} // namespace cocaine::storage
 
 #endif

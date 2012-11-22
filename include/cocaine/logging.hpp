@@ -21,85 +21,92 @@
 #ifndef COCAINE_LOGGING_HPP
 #define COCAINE_LOGGING_HPP
 
-#include <boost/thread/mutex.hpp>
-#include <cstdarg>
+#include <boost/format.hpp>
 
 #include "cocaine/common.hpp"
 
-#include "cocaine/helpers/birth_control.hpp"
+#include "cocaine/api/sink.hpp"
 
-#define LOG_BUFFER_SIZE 50 * 1024
+// Logging macros
+
+#define COCAINE_LOG_DEBUG(log, ...)                 \
+    if(log->verbosity() >= logging::debug) {        \
+        log->emit(logging::debug, __VA_ARGS__);     \
+    }
+
+#define COCAINE_LOG_INFO(log, ...)                  \
+    if(log->verbosity() >= logging::info)  {        \
+        log->emit(logging::info, __VA_ARGS__);      \
+    }
+
+#define COCAINE_LOG_WARNING(log, ...)               \
+    if(log->verbosity() >= logging::warning) {      \
+        log->emit(logging::warning, __VA_ARGS__);   \
+    }
+
+#define COCAINE_LOG_ERROR(log, ...)                 \
+    if(log->verbosity() >= logging::error) {        \
+        log->emit(logging::error, __VA_ARGS__);     \
+    }
 
 namespace cocaine { namespace logging {
 
-enum priorities {
-    debug,
-    info,
-    warning,
-    error,
-    ignore
-};
-
-class sink_t;
-
 class logger_t:
-    public boost::noncopyable,
-    public birth_control<logger_t>
-{
-    public:
-        logger_t(const sink_t& sink,
-                 const std::string& source);
-        
-        void debug(const char * format, ...) const;
-        void info(const char * format, ...) const;
-        void warning(const char * format, ...) const;
-        void error(const char * format, ...) const;
-
-    private:
-        void emit(priorities priority,
-                  const char * format,
-                  va_list args) const;
-
-    private:
-        const sink_t& m_sink;
-        const std::string m_source;
-
-        mutable char m_buffer[LOG_BUFFER_SIZE];
-        mutable boost::mutex m_mutex;
-};
-
-class sink_t:
     public boost::noncopyable
 {
     public:
-        sink_t(priorities verbosity);
+        logger_t(api::sink_t& sink,
+                 const std::string& source):
+            m_sink(sink),
+            m_source(source)
+        { }
 
-        virtual ~sink_t();
-
-        bool ignores(priorities priority) const {
-            return priority < m_verbosity;
+        priorities
+        verbosity() const {
+            return m_sink.verbosity();
         }
-    
-    public:
-        virtual void emit(priorities priority,
-                          const std::string& source,
-                          const std::string& message) const = 0;
+
+        template<typename... Args>
+        void
+        emit(priorities priority,
+             const std::string& format,
+             const Args&... args)
+        {
+            boost::format message(format);
+
+            try {
+                // NOTE: Recursively expand the argument pack.
+                m_sink.emit(priority, m_source, substitute(message, args...));
+            } catch(const boost::io::format_error& e) {
+                m_sink.emit(priority, m_source, "<unable to format the log message>");
+            }
+        }
 
     private:
-        const priorities m_verbosity;
+        template<typename T, typename... Args>
+        static
+        std::string
+        substitute(boost::format& message,
+                   const T& argument,
+                   const Args&... args)
+        {
+            return substitute(message % argument, args...);
+        }
+
+        static
+        std::string
+        substitute(boost::format& message) {
+            return message.str();
+        }
+
+    private:
+        api::sink_t& m_sink;
+        
+        // This is the logging source component name, so that log messages could
+        // be processed based on where they came from.
+        const std::string m_source;
 };
 
-class void_sink_t:
-    public sink_t
-{
-    public:
-        void_sink_t();
-
-        virtual void emit(priorities,
-                          const std::string&,
-                          const std::string&) const;
-};
-
-}}
+}} // namespace cocaine::logging
 
 #endif

@@ -22,11 +22,8 @@
 #define COCAINE_SERVER_HPP
 
 #include "cocaine/common.hpp"
-
-// Has to be included after common.h
-#include <ev++.h>
-
-#include "cocaine/detail/auth.hpp"
+#include "cocaine/asio.hpp"
+#include "cocaine/auth.hpp"
 #include "cocaine/io.hpp"
 
 #include "cocaine/helpers/json.hpp"
@@ -34,9 +31,14 @@
 namespace cocaine {
 
 struct server_config_t {
+    // Runlist name for this server instance.
+    std::string runlist;
+
+    // Control and multicast endpoints.
     std::vector<std::string> listen_endpoints,
                              announce_endpoints;
     
+    // Multicast announce interval.
     float announce_interval;
 };
 
@@ -49,78 +51,102 @@ class server_t:
 
         ~server_t();
 
-        void run();
+        void
+        run();
 
     private:        
-        // Signal handling.
-        void terminate(ev::sig&, int);
-        void reload(ev::sig&, int);
+        void
+        on_terminate(ev::sig&, int);
+        
+        void
+        on_reload(ev::sig&, int);
 
-        // I/O handling.
-        void request(ev::io&, int);
-        void process(ev::idle&, int);
-        void check(ev::prepare&, int);
+        void
+        on_event(ev::io&, int);
+        
+        void
+        on_check(ev::prepare&, int);
 
-        // JSON-RPC command dispatching.
-        std::string dispatch(const Json::Value& root);
+        void
+        on_announce(ev::timer&, int);
 
-        Json::Value create_app(const std::string& name);
-        Json::Value delete_app(const std::string& name);
-        Json::Value info() const;
+        void
+        process_events();
+        
+        std::string
+        dispatch(const Json::Value& root);
 
-        // Multicast-based node announces.
-        void announce(ev::timer&, int);
+        Json::Value
+        create_app(const std::string& name,
+                   const std::string& profile);
 
-        // App runlist revalidation.
-        void recover();
+        Json::Value
+        delete_app(const std::string& name);
+
+        Json::Value
+        info() const;
+
+        void
+        recover();
 
     private:
         context_t& m_context;
         boost::shared_ptr<logging::logger_t> m_log;
 
-        // Apps.
-#if BOOST_VERSION >= 104000
-        typedef boost::ptr_unordered_map<
-#else
-        typedef boost::ptr_map<
-#endif
-            const std::string,
-            app_t
-        > app_map_t;
+        // I/O
+        
+        typedef io::socket<
+            io::policies::unique
+        > server_socket_t;
 
-        app_map_t m_apps;
+        server_socket_t m_server;
 
-        // Event loop.
+        std::unique_ptr<
+            io::socket<io::policies::unique>
+        > m_announces;
+        
+        // Event loop
+        
         ev::default_loop m_loop;
 
-        // Event watchers.
         ev::sig m_sigint,
                 m_sigterm,
                 m_sigquit, 
                 m_sighup;
                 
         ev::io m_watcher;
-        ev::idle m_processor;
-        ev::prepare m_check;
+        ev::prepare m_checker;
 
-        // System I/O.
-        io::socket_t m_server;
+        std::unique_ptr<ev::timer> m_announce_timer;
 
-        // Automatic discovery support.
-        std::auto_ptr<ev::timer> m_announce_timer;
-        std::auto_ptr<io::socket_t> m_announces;
+        // Apps
         
-        // Authorization subsystem.
+        const std::string m_runlist;
+
+#if BOOST_VERSION >= 104000
+        typedef boost::unordered_map<
+#else
+        typedef std::map<
+#endif
+            const std::string,
+            boost::shared_ptr<app_t>
+        > app_map_t;
+
+        app_map_t m_apps;
+
+        // Authorization subsystem
+        
         crypto::auth_t m_auth;
         
-        // Server uptime.
-        const ev::tstamp m_birthstamp;
+        // Server info
+        
+        const ev::tstamp m_birthstamp,
+                         m_announce_interval;
 
-        // Info cache.
         ev::tstamp m_infostamp;
         std::string m_infocache;
 };
 
-}
+} // namespace cocaine
 
 #endif

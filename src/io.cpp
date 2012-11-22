@@ -24,42 +24,63 @@
 
 using namespace cocaine::io;
 
-socket_t::socket_t(context_t& context, int type):
+socket_base_t::socket_base_t(context_t& context,
+                             int type):
+    m_socket(context.io(), type),
     m_context(context),
-    m_socket(context.io(), type)
-{ }
-
-socket_t::socket_t(context_t& context, int type, const std::string& route):
-    m_context(context),
-    m_socket(context.io(), type)
+    m_port(0)
 {
-    setsockopt(ZMQ_IDENTITY, route.data(), route.size());
+    int linger = 0;
+   
+    // Disable socket lingering on context termination. 
+    m_socket.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
+
+    size_t size = sizeof(m_fd);
+    
+    // Get the socket's file descriptor.
+    m_socket.getsockopt(ZMQ_FD, &m_fd, &size);
+} 
+
+socket_base_t::~socket_base_t() {
+    if(m_port) {
+        m_context.ports().retain(m_port);
+    }
 }
 
-void socket_t::bind(const std::string& endpoint) {
+void
+socket_base_t::bind() {
+    m_port = m_context.ports().get();
+
+    m_socket.bind(
+        (boost::format("tcp://*:%d")
+            % m_port
+        ).str().c_str()
+    );
+
+    m_endpoint = (boost::format("tcp://%s:%d")
+        % m_context.config.network.hostname
+        % m_port
+    ).str();
+}
+
+void
+socket_base_t::bind(const std::string& endpoint) {
     m_socket.bind(endpoint.c_str());
 
     // Try to determine the connection string for clients.
-    // XXX: Fix it when migrating to ZeroMQ 3.1+
+    // FIXME: Fix it when migrating to ZeroMQ 3.1+
     size_t position = endpoint.find_last_of(":");
 
     if(position != std::string::npos) {
-        m_endpoint = std::string("tcp://")
-                     + m_context.config.runtime.hostname
-                     + endpoint.substr(position, std::string::npos);
+        m_endpoint = std::string("tcp://") +
+                     m_context.config.network.hostname +
+                     endpoint.substr(position, std::string::npos);
     } else {
         m_endpoint = "<local>";
     }
 }
 
-void socket_t::connect(const std::string& endpoint) {
+void
+socket_base_t::connect(const std::string& endpoint) {
     m_socket.connect(endpoint.c_str());
-}
-
-void socket_t::drop() {
-    zmq::message_t null;
-
-    while(more()) {
-        recv(&null);
-    }
 }

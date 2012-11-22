@@ -27,37 +27,35 @@
 
 #include "cocaine/common.hpp"
 
-namespace cocaine {
+namespace cocaine { namespace api {
 
 template<class Category>
 struct category_traits;
 
 struct factory_concept_t {
-    virtual ~factory_concept_t() = 0;
-    virtual const std::type_info& category() const = 0;
+    virtual
+    ~factory_concept_t() {
+        // Empty.
+    }
+    
+    virtual
+    const std::type_info&
+    id() const = 0;
 };
 
-// Custom factories should inherit from this interface.
-template<
-    class Category,
-    class Traits = category_traits<Category>
->
-struct factory:
+template<class Category>
+struct factory_base:
     public factory_concept_t
 {
-    typedef typename Traits::ptr_type ptr_type;
-    typedef typename Traits::args_type args_type;
-
-    virtual const std::type_info& category() const {
+    virtual
+    const std::type_info&
+    id() const {
         return typeid(Category);
     }
-
-    virtual ptr_type get(context_t& context,
-                         const args_type& args) = 0;
 };
 
-// Specialize this in your plugin to use
-// a custom factory for your object instantiations.
+// Customized plugin instantiation
+
 template<class T>
 struct plugin_traits {
     typedef typename category_traits<
@@ -66,62 +64,50 @@ struct plugin_traits {
 };
 
 // Component repository
-// --------------------
+
+struct repository_error_t:
+    public error_t
+{
+    template<typename... Args>
+    repository_error_t(const std::string& format,
+                       const Args&... args):
+        error_t(format, args...)
+    { }
+};
 
 class repository_t:
     public boost::noncopyable
 {
     public:
-        repository_t(context_t& context);
+        repository_t();
         ~repository_t();
 
-        template<class Category>
+        void
+        load(const std::string& path);
+
+        template<class Category, typename... Args>
         typename category_traits<Category>::ptr_type
         get(const std::string& type,
-            const typename category_traits<Category>::args_type& args)
-        {
-            factory_map_t::iterator it(m_factories.find(type));
-            
-            if(it == m_factories.end()) {
-                throw repository_error_t("the '" + type + "' plugin is not available");
-            }
-            
-            // TEST: Ensure that the plugin is of the actually specified category.
-            BOOST_ASSERT(it->second->category() == typeid(Category));
+            Args&&... args);
 
-            return typename category_traits<Category>::ptr_type(
-                dynamic_cast< factory<Category>& >(
-                    *it->second
-                ).get(m_context, args)
-            );
-        }
+        template<class T, class Category = typename T::category_type>
+        void
+        insert(const std::string& type);
 
-        template<class T>
-        typename boost::enable_if<
-            boost::is_base_of<typename T::category_type, T>
-        >::type 
-        insert(const std::string& type) {
-            if(m_factories.find(type) != m_factories.end()) {
-                throw repository_error_t("the '" + type + "' plugin is a duplicate");
-            }
-
-            m_factories.insert(
-                std::make_pair(
-                    type,
-                    boost::make_shared<
-                        typename plugin_traits<T>::factory_type
-                    >()
-                )
-            );
-        }
+        template<class Category>
+        void
+        dispose();
 
     private:
-        context_t& m_context;
-        boost::shared_ptr<logging::logger_t> m_log;
+        void
+        open(const std::string& target);
 
-        // Used to unload all the plugins on shutdown.
+    private:
+        // NOTE: Used to unload all the plugins on shutdown.
+        // Cannot use a forward declaration here due to the implementation
+        // details.
         std::vector<lt_dlhandle> m_plugins;
-    
+
 #if BOOST_VERSION >= 104000
         typedef boost::unordered_map<
 #else
@@ -131,9 +117,83 @@ class repository_t:
             boost::shared_ptr<factory_concept_t>
         > factory_map_t;
 
-        factory_map_t m_factories;
+#if BOOST_VERSION >= 104000
+        typedef boost::unordered_map<
+#else
+        typedef std::map<
+#endif
+            std::string,
+            factory_map_t
+        > category_map_t;
+
+        category_map_t m_categories;
 };
 
+template<class Category, typename... Args>
+typename category_traits<Category>::ptr_type
+repository_t::get(const std::string& type,
+                  Args&&... args)
+{
+    std::string id = typeid(Category).name();
+
+    factory_map_t& factories = m_categories[id];
+    factory_map_t::iterator it(factories.find(type));
+    
+    if(it == factories.end()) {
+        throw repository_error_t("the '%s' component is not available", type);
+    }
+    
+    // TEST: Ensure that the plugin is of the actually specified category.
+    BOOST_ASSERT(it->second->id() == typeid(Category));
+    
+    typedef category_traits<Category> traits;
+
+    return typename traits::ptr_type(
+        dynamic_cast< typename traits::factory_type& >(
+            *it->second
+        ).get(std::forward<Args>(args)...)
+    );
 }
+
+template<class T, class Category>
+void
+repository_t::insert(const std::string& type) {
+    static_assert(
+        boost::is_base_of<
+            Category,
+            T
+        >::value,
+        "component is not derived from its category"
+    );
+
+    static_assert(
+        boost::is_base_of<
+            typename category_traits<Category>::factory_type,
+            typename plugin_traits<T>::factory_type
+        >::value,
+        "component factory is not derived from its category"
+    );
+
+    factory_map_t& factories = m_categories[typeid(Category).name()];
+
+    if(factories.find(type) != factories.end()) {
+        throw repository_error_t("the '%s' component is a duplicate", type);
+    }
+
+    factories.emplace(
+        type,
+        boost::make_shared<typename plugin_traits<T>::factory_type>()
+    );
+}
+
+template<class Category>
+void
+repository_t::dispose() {
+    m_categories.erase(typeid(Category).name());
+}
+
+typedef void (*initialize_fn_t)(repository_t&);
+
+}} // namespace cocaine::api
 
 #endif

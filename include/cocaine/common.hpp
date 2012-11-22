@@ -21,9 +21,11 @@
 #ifndef COCAINE_COMMON_HPP
 #define COCAINE_COMMON_HPP
 
+#include <stdint.h>
+
 #include <map>
+#include <memory>
 #include <string>
-#include <tr1/cstdint>
 #include <vector>
 
 #include <boost/assert.hpp>
@@ -32,17 +34,9 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/version.hpp>
 
-#if BOOST_VERSION >= 104000
-# include <boost/ptr_container/ptr_unordered_map.hpp>
-#else
-# include <boost/ptr_container/ptr_map.hpp>
+#if BOOST_VERSION >= 103600
+ #include <boost/unordered_map.hpp>
 #endif
-
-#define EV_MINIMAL       0
-#define EV_USE_MONOTONIC 1
-#define EV_USE_REALTIME  1
-#define EV_USE_NANOSLEEP 1
-#define EV_USE_EVENTFD   1
 
 #include "cocaine/forwards.hpp"
 #include "cocaine/exceptions.hpp"

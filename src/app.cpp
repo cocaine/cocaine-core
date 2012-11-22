@@ -18,99 +18,181 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include <boost/algorithm/string/join.hpp>
 #include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/path.hpp>
 #include <boost/format.hpp>
 
 #include "cocaine/app.hpp"
 
+#include "cocaine/archive.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/logging.hpp"
+#include "cocaine/manifest.hpp"
+#include "cocaine/profile.hpp"
+#include "cocaine/rpc.hpp"
+
+#include "cocaine/api/driver.hpp"
+
+#include "cocaine/traits/json.hpp"
 
 using namespace cocaine;
 using namespace cocaine::engine;
-using namespace cocaine::storages;
 
-app_t::app_t(context_t& context, const std::string& name):
+namespace fs = boost::filesystem;
+
+app_t::app_t(context_t& context,
+             const std::string& name,
+             const std::string& profile):
     m_context(context),
     m_log(context.log(
         (boost::format("app/%1%")
             % name
         ).str()
     )),
-    m_manifest(context, name),
-    m_engine(new engine_t(context, m_manifest))
+    m_manifest(new manifest_t(context, name)),
+    m_profile(new profile_t(context, profile))
 {
-    Json::Value drivers(m_manifest.root["drivers"]);
-
-    if(drivers.isNull() || !drivers.size()) {
-        return;
-    }
+    fs::path path(fs::path(m_context.config.spool_path) / name);
     
-    Json::Value::Members names(drivers.getMemberNames());
+    if(!fs::exists(path)) {
+        deploy(name, path.string());
+    }
 
-    m_log->info(
-        "initializing %zu %s: %s",
-        drivers.size(),
-        drivers.size() == 1 ? "driver" : "drivers",
-        boost::algorithm::join(names, ", ").c_str()
+    m_control.reset(new control_channel_t(context, ZMQ_PAIR));
+
+    std::string endpoint(
+        (boost::format("inproc://%s")
+            % m_manifest->name
+        ).str()
     );
 
-    for(Json::Value::Members::iterator it = names.begin();
-        it != names.end();
-        ++it)
-    {
-        m_drivers.insert(
-            *it,
-            context.get<engine::drivers::driver_t>(
-                drivers[*it]["type"].asString(),
-                category_traits<engine::drivers::driver_t>::args_type(
-                    *m_engine,
-                    *it,
-                    drivers[*it]
-                )
-            )
-        );
+    try { 
+        m_control->bind(endpoint);
+    } catch(const zmq::error_t& e) {
+        throw configuration_error_t("unable to bind the engine control channel - %s", e.what());
     }
+
+    // NOTE: The event loop is not started here yet.
+    m_engine.reset(
+        new engine_t(
+            m_context,
+            *m_manifest,
+            *m_profile
+        )
+    );
 }
 
 app_t::~app_t() {
-    // NOTE: Stop the engine, then stop the drivers, so that
-    // the pending jobs would still have their drivers available
-    // to process the outstanding results.
-    m_engine->stop();
+    // NOTE: Stop the engine first, so that there won't be any
+    // new events during the drivers shutdown process.
+    stop();
+}
+
+void
+app_t::start() {
+    if(m_thread) {
+        return;
+    }
+
+    COCAINE_LOG_INFO(m_log, "starting the engine");
+
+    if(!m_manifest->drivers.empty()) {
+        COCAINE_LOG_INFO(
+            m_log,
+            "starting %llu %s",
+            m_manifest->drivers.size(),
+            m_manifest->drivers.size() == 1 ? "driver" : "drivers"
+        );
+
+        boost::format format("%s/%s");
+
+        for(config_t::component_map_t::const_iterator it = m_manifest->drivers.begin();
+            it != m_manifest->drivers.end();
+            ++it)
+        {
+            try {
+                format % m_manifest->name % it->first;
+
+                m_drivers.emplace(
+                    it->first,
+                    m_context.get<api::driver_t>(
+                        it->second.type,
+                        m_context,
+                        format.str(),
+                        it->second.args,
+                        *m_engine
+                    )
+                );
+            } catch(const std::exception& e) {
+                COCAINE_LOG_ERROR(
+                    m_log,
+                    "unable to initialize the '%s' driver - %s",
+                    format.str(),
+                    e.what()
+                );
+
+                // NOTE: In order for driver map to be repopulated if the app is restarted.
+                m_drivers.clear();
+
+                throw configuration_error_t("unable to initialize the drivers");
+            }
+
+            format.clear();
+        }
+    }
+
+    m_thread.reset(
+        new boost::thread(
+            boost::bind(
+                &engine_t::run,
+                boost::ref(*m_engine)
+            )
+        )
+    );
+}
+
+void
+app_t::stop() {
+    if(!m_thread) {
+        return;
+    }
+
+    COCAINE_LOG_INFO(m_log, "stopping the engine");
+    
+    m_control->send<control::terminate>();
+
+    m_thread->join();
+    m_thread.reset();
+
+    // NOTE: Stop the drivers, so that there won't be any open
+    // sockets and so on while the engine is stopped.
     m_drivers.clear();
+}
 
-    m_log->info("cleaning up");
+Json::Value
+app_t::info() const {
+    Json::Value info(Json::objectValue);
 
-    try {
-        // Remove the cached app.
-        m_context.storage<objects>("core:cache")->remove("apps", m_manifest.name);    
-    } catch(const storage_error_t& e) {
-        m_log->warning("unable cleanup the app cache - %s", e.what());
+    if(!m_thread) {
+        info["error"] = "engine is not active";
+        return info;
     }
 
-    try {
-        // Remove the app from the spool.
-        boost::filesystem::remove_all(m_manifest.path);
-    } catch(const boost::filesystem::filesystem_error& e) {
-        m_log->warning("unable to cleanup the app spool - %s", e.what());
+    m_control->send<control::status>();
+
+    {
+        io::scoped_option<
+            io::options::receive_timeout
+        > option(*m_control, defaults::control_timeout);
+
+        if(!m_control->recv(info)) {
+            info["error"] = "engine is unresponsive";
+            return info;
+        }
     }
 
-    m_engine.reset();
-}
-
-void app_t::start() {
-    m_engine->start();
-}
-
-void app_t::stop() {
-    m_engine->stop();
-}
-
-Json::Value app_t::info() const {
-    Json::Value info(m_engine->info());
+    info["profile"] = m_profile->name;
 
     for(driver_map_t::const_iterator it = m_drivers.begin();
         it != m_drivers.end();
@@ -122,6 +204,38 @@ Json::Value app_t::info() const {
     return info;
 }
 
-bool app_t::enqueue(const boost::shared_ptr<job_t>& job, mode::value mode) {
-    return m_engine->enqueue(job, mode);
+boost::shared_ptr<api::stream_t>
+app_t::enqueue(const api::event_t& event,
+               const boost::shared_ptr<api::stream_t>& upstream,
+               engine::mode mode)
+{
+    return m_engine->enqueue(event, upstream, mode);
+}
+
+void
+app_t::deploy(const std::string& name, 
+              const std::string& path)
+{
+    std::string blob;
+
+    COCAINE_LOG_INFO(m_log, "deploying the app to '%s'", path);
+    
+    api::category_traits<api::storage_t>::ptr_type storage(
+        m_context.get<api::storage_t>("storage/core")
+    );
+    
+    try {
+        blob = storage->get<std::string>("apps", name);
+    } catch(const storage_error_t& e) {
+        COCAINE_LOG_ERROR(m_log, "unable to fetch the app from the storage - %s", e.what());
+        throw configuration_error_t("the '%s' app is not available", name);
+    }
+    
+    try {
+        archive_t archive(m_context, blob);
+        archive.deploy(path);
+    } catch(const archive_error_t& e) {
+        COCAINE_LOG_ERROR(m_log, "unable to extract the app files - %s", e.what());
+        throw configuration_error_t("the '%s' app is not available", name);
+    }
 }

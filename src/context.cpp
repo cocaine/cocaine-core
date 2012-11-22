@@ -20,8 +20,8 @@
 
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/operations.hpp>
+#include <boost/iterator/counting_iterator.hpp>
 #include <boost/tuple/tuple.hpp>
-
 #include <netdb.h>
 
 #include "cocaine/context.hpp"
@@ -29,32 +29,42 @@
 #include "cocaine/io.hpp"
 #include "cocaine/logging.hpp"
 
+#include "cocaine/isolates/process.hpp"
+
+#include "cocaine/sinks/file.hpp"
+#include "cocaine/sinks/stdio.hpp"
+#include "cocaine/sinks/syslog.hpp"
+
 #include "cocaine/storages/files.hpp"
 
 using namespace cocaine;
-using namespace cocaine::storages;
 
 namespace fs = boost::filesystem;
 
-const float defaults::startup_timeout = 10.0f;
+const char defaults::slave[] = "/usr/bin/cocaine-generic-host";
+
 const float defaults::heartbeat_timeout = 30.0f;
 const float defaults::idle_timeout = 600.0f;
+const float defaults::startup_timeout = 10.0f;
 const float defaults::termination_timeout = 5.0f;
 const unsigned long defaults::pool_limit = 10L;
 const unsigned long defaults::queue_limit = 100L;
+const unsigned long defaults::concurrency = 10L;
+
+const long defaults::control_timeout = 500L;
 const unsigned long defaults::io_bulk_size = 100L;
-const long defaults::bus_timeout = 1000L;
-const char defaults::slave[] = "cocaine-slave";
-const char defaults::plugin_path[] = "/usr/lib/cocaine";
+
 const char defaults::ipc_path[] = "/var/run/cocaine";
+const char defaults::plugin_path[] = "/usr/lib/cocaine";
 const char defaults::spool_path[] = "/var/spool/cocaine";
 
 namespace {
-    void validate_path(const fs::path& path) {
+    void
+    validate_path(const fs::path& path) {
         if(!fs::exists(path)) {
-            throw configuration_error_t("the specified path '" + path.string() + "' does not exist");
+            throw configuration_error_t("the '%s' path does not exist", path.string());
         } else if(fs::exists(path) && !fs::is_directory(path)) {
-            throw configuration_error_t("the specified path '" + path.string() + "' is not a directory");
+            throw configuration_error_t("the '%s' path is not a directory", path.string());
         }
     }
 }
@@ -63,7 +73,11 @@ config_t::config_t(const std::string& path):
     config_path(path)
 {
     if(!fs::exists(config_path)) {
-        throw configuration_error_t("the configuration file doesn't exist");
+        throw configuration_error_t("the configuration path doesn't exist");
+    }
+
+    if(!fs::is_regular(config_path)) {
+        throw configuration_error_t("the configuration path doesn't point to a file");
     }
 
     fs::ifstream stream(config_path);
@@ -80,14 +94,13 @@ config_t::config_t(const std::string& path):
     }
 
     // Validation
-    // ----------
 
-    if(root.get("version", 0).asUInt() != 1) {
+    if(root.get("version", 0).asUInt() != 2) {
         throw configuration_error_t("the configuration version is invalid");
     }
 
-    // Paths
-    // -----
+    ipc_path = root["paths"].get("ipc", defaults::ipc_path).asString();
+    validate_path(ipc_path);
 
     plugin_path = root["paths"].get("plugins", defaults::plugin_path).asString();
     validate_path(plugin_path);
@@ -95,41 +108,11 @@ config_t::config_t(const std::string& path):
     spool_path = root["paths"].get("spool", defaults::spool_path).asString();
     validate_path(spool_path);
 
-    ipc_path = root["paths"].get("ipc", defaults::ipc_path).asString();
-    validate_path(ipc_path);
+    // Component configuration
 
-    // Storage configuration
-    // ---------------------
-
-    if(!root["storages"].isObject() || root["storages"].empty()) {
-        throw configuration_error_t("no storages has been configured");
-    }
-
-    Json::Value::Members storage_names(root["storages"].getMemberNames());
-
-    for(Json::Value::Members::const_iterator it = storage_names.begin();
-        it != storage_names.end();
-        ++it)
-    {
-        storage_info_t info = {
-            root["storages"][*it]["type"].asString(),
-            root["storages"][*it]["args"]
-        };
-
-        storages.insert(
-            std::make_pair(
-                *it,
-                info
-            )
-        );
-    }
-
-    if(storages.find("core") == storages.end()) {
-        throw configuration_error_t("mandatory 'core' storage has not been configured");
-    }
+    components = parse(root["components"]);
 
     // IO configuration
-    // ----------------
 
     char hostname[256];
 
@@ -138,64 +121,148 @@ config_t::config_t(const std::string& path):
                  * result;
         
         memset(&hints, 0, sizeof(addrinfo));
+
         hints.ai_flags = AI_CANONNAME;
 
         int rv = getaddrinfo(hostname, NULL, &hints, &result);
         
         if(rv != 0) {
-            std::string message(gai_strerror(rv));
-            throw configuration_error_t("unable to determine the hostname - " + message);
+            throw configuration_error_t("unable to determine the hostname - %s", gai_strerror(rv));
         }
 
         if(result == NULL) {
-            throw configuration_error_t("unable to determine the hostname - no hostnames have been specified for the host");
+            throw configuration_error_t("unable to determine the hostname");
         }
         
-        runtime.hostname = result->ai_canonname;
+        network.hostname = result->ai_canonname;
+
         freeaddrinfo(result);
     } else {
-        throw system_error_t("failed to determine the hostname");
+        throw system_error_t("unable to determine the hostname");
     }
+
+    // Port mapper
+
+    Json::Value range(root["port-mapper"]["range"]);
+
+    network.ports = {
+        range[0].asUInt(),
+        range[1].asUInt()
+    };
 }
 
-context_t::context_t(config_t config_, boost::shared_ptr<logging::sink_t> sink):
-    config(config_),
-    m_sink(sink)
-{
-    if(!m_sink) {
-        m_sink.reset(new logging::void_sink_t());
+config_t::component_map_t
+config_t::parse(const Json::Value& config) {
+    component_map_t components;
+
+    if(config.empty()) {
+        return components;
     }
 
-    // Initialize the component repository.
-    m_repository.reset(new repository_t(*this));
+    Json::Value::Members names(config.getMemberNames());
 
-    // Register the builtin components.
-    m_repository->insert<file_storage_t>("files");
+    for(Json::Value::Members::const_iterator it = names.begin();
+        it != names.end();
+        ++it)
+    {
+        component_t info = {
+            config[*it].get("type", "unspecified").asString(),
+            config[*it]["args"]
+        };
+
+        components.emplace(*it, info);
+    }
+
+    return components;
+}
+
+port_mapper_t::port_mapper_t(const std::pair<uint16_t, uint16_t>& limits):
+    m_ports(
+        boost::make_counting_iterator(limits.first),
+        boost::make_counting_iterator(limits.second)
+    )
+{ }
+
+uint16_t
+port_mapper_t::get() {
+    boost::unique_lock<boost::mutex> lock(m_mutex);
+
+    if(m_ports.empty()) {
+        throw cocaine::error_t("no available ports left");
+    }
+
+    uint16_t port = m_ports.top();
+    m_ports.pop();
+
+    return port;
+}
+
+void
+port_mapper_t::retain(uint16_t port) {
+    boost::unique_lock<boost::mutex> lock(m_mutex);
+    m_ports.push(port);
+}
+
+context_t::context_t(config_t config_):
+    config(config_)
+{
+    m_repository.reset(new api::repository_t());
     
+    // Register the builtin isolates.
+    m_repository->insert<isolate::process_t>("process");
+
+    // Register the builtin logging sinks.
+    m_repository->insert<sink::file_t>("file");
+    m_repository->insert<sink::stdio_t>("stdio");
+    m_repository->insert<sink::syslog_t>("syslog");
+    
+    // Register the builtin storages.
+    m_repository->insert<storage::file_storage_t>("files");
+
+    // Register the plugins.
+    m_repository->load(config.plugin_path);
+
+    config_t::component_t cfg;
+
+    try {
+        cfg = config.components.at("sink/core");
+    } catch(const std::out_of_range&) {
+        cfg.type = "stdio";
+    }
+
+    // Get the logging sink.
+    m_sink = get<api::sink_t>(
+        cfg.type,
+        "cocaine",
+        cfg.args
+    );
+
     // Initialize the ZeroMQ context.
     m_io.reset(new zmq::context_t(1));
+
+    // Initialize the port mapper.
+    m_port_mapper.reset(new port_mapper_t(config.network.ports));
 }
 
 context_t::~context_t() {
-    BOOST_ASSERT(io::socket_t::objects_alive() == 0);
+    // NOTE: Plugin categories have to be destroyed in a specific order,
+    // so that logging sinks would be destroyed after all the shared factories
+    // which may use logging subsystem. For now, it involes storages only.
+    m_repository->dispose<api::storage_t>();
 }
 
 boost::shared_ptr<logging::logger_t>
 context_t::log(const std::string& name) {
     boost::lock_guard<boost::mutex> lock(m_mutex);
 
-    instance_map_t::iterator it(
-        m_instances.find(name)
-    );
+    instance_map_t::iterator it(m_instances.find(name));
 
     if(it == m_instances.end()) {
-        boost::tie(it, boost::tuples::ignore) = m_instances.insert(
-            std::make_pair(
-                name,
-                boost::make_shared<logging::logger_t>(
-                    *m_sink,
-                    name
-                )
+        boost::tie(it, boost::tuples::ignore) = m_instances.emplace(
+            name,
+            boost::make_shared<logging::logger_t>(
+                *m_sink,
+                name
             )
         );
     }

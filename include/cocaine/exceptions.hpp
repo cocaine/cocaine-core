@@ -21,57 +21,93 @@
 #ifndef COCAINE_EXCEPTIONS_HPP
 #define COCAINE_EXCEPTIONS_HPP
 
+#include <boost/format.hpp>
 #include <cerrno>
 #include <cstring>
-#include <stdexcept>
+#include <exception>
 
 namespace cocaine {
 
 enum error_code {
-    request_error   = 400,
-    location_error  = 404,
-    server_error    = 500,
-    app_error       = 502,
-    resource_error  = 503,
-    timeout_error   = 504,
-    deadline_error  = 520
+    invocation_error = 1,
+    resource_error,
+    timeout_error,
+    deadline_error
 };
 
-struct authorization_error_t:
-    public std::runtime_error
+struct error_t:
+    public std::exception
 {
-    authorization_error_t(const std::string& what):
-        std::runtime_error(what)
-    { }
+    template<typename... Args>
+    error_t(const std::string& format,
+            const Args&... args)
+    {
+        boost::format message(format);
+
+        try {
+            // NOTE: Recursively expand the argument pack.
+            m_message = substitute(message, args...);
+        } catch(const boost::io::format_error& e) {
+            m_message = "<unable to format the message>";
+        }
+    }
+
+    virtual
+    ~error_t() throw() {
+        // Empty.
+    }
+
+    virtual
+    const char *
+    what() const throw() {
+        return m_message.c_str();
+    }
+
+private:
+    template<typename T, typename... Args>
+    static
+    std::string
+    substitute(boost::format& message,
+               const T& argument,
+               const Args&... args)
+    {
+        return substitute(message % argument, args...);
+    }
+
+    static
+    std::string
+    substitute(boost::format& message) {
+        return message.str();
+    }
+
+private:
+    std::string m_message;
 };
 
 struct configuration_error_t:
-    public std::runtime_error
+    public error_t
 {
-    configuration_error_t(const std::string& what):
-        std::runtime_error(what)
-    { }
-};
-
-struct repository_error_t:
-    public std::runtime_error
-{
-    repository_error_t(const std::string& what):
-        std::runtime_error(what)
+    template<typename... Args>
+    configuration_error_t(const std::string& format,
+                          const Args&... args):
+        error_t(format, args...)
     { }
 };
 
 struct system_error_t:
-    public std::runtime_error
+    public error_t
 {
     public:
-        system_error_t(const std::string& what):
-            std::runtime_error(what)
+        template<typename... Args>
+        system_error_t(const std::string& format,
+                       const Args&... args):
+            error_t(format, args...)
         {
             ::strerror_r(errno, m_reason, 1024);
         }
 
-        const char * reason() const {
+        const char*
+        reason() const {
             return m_reason;
         }
 
@@ -79,33 +115,6 @@ struct system_error_t:
         char m_reason[1024];
 };
 
-struct storage_error_t:
-    public std::runtime_error
-{
-    storage_error_t(const std::string& what):
-        std::runtime_error(what)
-    { }
-};
-
-// Application exceptions
-// ----------------------
-
-struct unrecoverable_error_t:
-    public std::runtime_error
-{
-    unrecoverable_error_t(const std::string& what):
-        std::runtime_error(what)
-    { }
-};
-
-struct recoverable_error_t:
-    public std::runtime_error
-{
-    recoverable_error_t(const std::string& what):
-        std::runtime_error(what)
-    { }
-};
-
-}
+} // namespace cocaine
 
 #endif

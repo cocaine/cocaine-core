@@ -22,43 +22,30 @@
 #define COCAINE_APP_MANIFEST_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/cached.hpp"
 
 #include "cocaine/helpers/json.hpp"
 
 namespace cocaine {
 
-struct manifest_t {
+struct manifest_t:
+    private cached<Json::Value>
+{
     manifest_t(context_t& context,
                const std::string& name);
 
     std::string name,
-                type,
-                path;
+                slave;
 
-    struct {
-        float startup_timeout;
-        float heartbeat_timeout;
-        float idle_timeout;
-        float termination_timeout;
-        unsigned long pool_limit;
-        unsigned long queue_limit;
-        unsigned long grow_threshold;
-    } policy;
+    // NOTE: The apps are hosted by the sandbox plugins. This one describes
+    // the sandbox type and its instantiation arguments.
+    config_t::component_t sandbox;
 
-    // Path to a binary which will be used as a slave.
-    std::string slave;
-
-    // Manifest root object.
-    Json::Value root;
-
-private:
-    void deploy();
-
-private:
-    context_t& m_context;
-    boost::shared_ptr<logging::logger_t> m_log;
+    // A configuration map for drivers, similar to the generic one found
+    // in the config_t structure.
+    config_t::component_map_t drivers;
 };
 
-}
+} // namespace cocaine
 
 #endif

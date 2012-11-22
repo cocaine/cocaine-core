@@ -26,18 +26,22 @@
 namespace cocaine { namespace helpers { namespace json {
 
 template<class T>
-inline Json::Value build(const std::string& key,
-                         const T& value)
+static inline
+Json::Value
+build(const std::string& key,
+      const T& value)
 {
     Json::Value object(Json::objectValue);
     object[key] = value;
     return object;
 }
 
-inline std::string serialize(const Json::Value& json) {
+static inline
+std::string
+serialize(const Json::Value& json) {
     return Json::FastWriter().write(json);
 }
 
-}}}
+}}} // namespace cocaine::helpers::json
 
 #endif

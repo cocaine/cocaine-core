@@ -21,53 +21,80 @@
 #ifndef COCAINE_APP_HPP
 #define COCAINE_APP_HPP
 
+#include <boost/thread/thread.hpp>
+
 #include "cocaine/common.hpp"
-#include "cocaine/manifest.hpp"
 
-#include "cocaine/interfaces/driver.hpp"
-
-#include "helpers/json.hpp"
+#include "cocaine/helpers/json.hpp"
 
 namespace cocaine {
 
 class app_t {
     public:
         app_t(context_t& context,
-              const std::string& name);
+              const std::string& name,
+              const std::string& profile);
         
+        app_t(context_t& context,
+              const std::string& name);
+
         ~app_t();
 
-        void start();
-        void stop();
-
-        Json::Value info() const;
+        void
+        start();
         
-        // Job scheduling.
-        bool enqueue(const boost::shared_ptr<engine::job_t>& job,
-                     engine::mode::value mode = engine::mode::normal);
+        void
+        stop();
+
+        Json::Value
+        info() const;
+        
+        // Scheduling
+        
+        boost::shared_ptr<api::stream_t>
+        enqueue(const api::event_t& event,
+                const boost::shared_ptr<api::stream_t>& upstream,
+                engine::mode mode = engine::mode::normal);
+
+    private:
+        void
+        deploy(const std::string& name,
+               const std::string& path);
 
     private:
         context_t& m_context;
         boost::shared_ptr<logging::logger_t> m_log;
 
-        // App configuration.
-        const manifest_t m_manifest;
+        // Configuration
 
-        // App execution engine.
-        std::auto_ptr<engine::engine_t> m_engine;
+        std::unique_ptr<const manifest_t> m_manifest;
+        std::unique_ptr<const profile_t> m_profile;
 
-#if BOOST_VERSION >= 104000
-        typedef boost::ptr_unordered_map<
+        // Execution engine
+
+        typedef io::channel<
+            tags::control_tag,
+            io::policies::unique
+        > control_channel_t;
+
+        std::unique_ptr<control_channel_t> m_control;
+        std::unique_ptr<engine::engine_t> m_engine;
+        std::unique_ptr<boost::thread> m_thread;
+
+        // Event drivers
+
+#if BOOST_VERSION >= 103600
+        typedef boost::unordered_map<
 #else
-        typedef boost::ptr_map<
+        typedef std::map<
 #endif
-            const std::string,
-            engine::drivers::driver_t
+            std::string,
+            std::unique_ptr<api::driver_t>
         > driver_map_t;
         
         driver_map_t m_drivers;
 };
 
-}
+} // namespace cocaine
 
 #endif

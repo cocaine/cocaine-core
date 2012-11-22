@@ -23,156 +23,206 @@
 
 #include <boost/thread/condition.hpp>
 #include <boost/thread/mutex.hpp>
-#include <boost/thread/thread.hpp>
-
 #include <deque>
 
-#ifdef HAVE_CGROUPS
-    #include <libcgroup.h>
-#endif
-
 #include "cocaine/common.hpp"
+#include "cocaine/asio.hpp"
+#include "cocaine/rpc.hpp"
 
-// Has to be included after common.h
-#include <ev++.h>
+#include "cocaine/api/isolate.hpp"
 
-#include "cocaine/detail/master.hpp"
-
-#include "cocaine/helpers/json.hpp"
+#include "cocaine/helpers/atomic.hpp"
 
 namespace cocaine { namespace engine {
 
-#if BOOST_VERSION >= 104000
-typedef boost::ptr_unordered_map<
-#else
-typedef boost::ptr_map<
-#endif
-    master_t::identifier_type,
-    master_t
-> pool_map_t;
-
-class job_queue_t:
+class session_queue_t:
     public std::deque<
-        boost::shared_ptr<job_t>
+        boost::shared_ptr<session_t>
     >
 {
     public:
-        void push(const_reference job);
-};
+        void
+        push(const_reference session);
 
-// Engine
-// ------
+        // Lockable concept implementation
+        
+        void
+        lock() {
+            m_mutex.lock();
+        }
+
+        void
+        unlock() {
+            m_mutex.unlock();
+        }
+
+    private:
+        boost::mutex m_mutex;
+};
 
 class engine_t:
     public boost::noncopyable
 {
+    struct states {
+        enum value: int {
+            running,
+            broken,
+            stopping,
+            stopped
+        };
+    };
+
     public:
         engine_t(context_t& context,
-                 const manifest_t& manifest);
+                 const manifest_t& manifest,
+                 const profile_t& profile);
 
         ~engine_t();
 
-        // Operations.
-        void start();
-        void stop();
+        void
+        run();
 
-        Json::Value info() const;
+        // Scheduling
         
-        // Job scheduling.
-        bool enqueue(job_queue_t::const_reference job,
-                     mode::value mode = mode::normal);
+        boost::shared_ptr<api::stream_t>
+        enqueue(const api::event_t& event,
+                const boost::shared_ptr<api::stream_t>& upstream,
+                engine::mode mode = engine::mode::normal);
+
+        template<class Event, typename... Args>
+        bool
+        send(const unique_id_t& uuid,
+             Args&&... args);
+
+        bool
+        send(const unique_id_t& uuid,
+             int message_id,
+             const std::string& message);
 
     public:
-        const manifest_t& manifest() const {
-            return m_manifest;
-        }
-
-        ev::loop_ref& loop() {
+        ev::loop_ref&
+        loop() {
             return m_loop;
         }
 
-#ifdef HAVE_CGROUPS
-        cgroup* group() {
-            return m_cgroup;
-        }
-#endif
-
     private:
-        // Slave I/O.
-        void message(ev::io&, int);
-        void process(ev::idle&, int);
-        void check(ev::prepare&, int);
+        void
+        on_bus_event(ev::io&, int);
+        
+        void
+        on_ctl_event(ev::io&, int);
 
-        // Garbage collection.
-        void cleanup(ev::timer&, int);
+        void
+        on_bus_check(ev::prepare&, int);
+        
+        void
+        on_ctl_check(ev::prepare&, int);
 
-        // Forced engine termination.
-        void terminate(ev::timer&, int);
+        void
+        on_notification(ev::async&, int);
 
-        // Asynchronous notification.
-        void notify(ev::async&, int);
+        void
+        on_cleanup(ev::timer&, int);
+        
+        void
+        on_termination(ev::timer&, int);
+        
+    private:
+        void
+        process_bus_events();
+        
+        void
+        process_ctl_events();
 
-        // Queue processing.
-        void pump();
+        void
+        pump();
+        
+        void
+        balance();
 
-        // Engine termination.
-        void shutdown();
+        void
+        shutdown(states::value target);
+        
+        void
+        stop();
 
     private:
         context_t& m_context;
         boost::shared_ptr<logging::logger_t> m_log;
 
-        // The app manifest.
         const manifest_t& m_manifest;
+        const profile_t& m_profile;
 
-        // Engine's state.
-        enum {
-            running,
-            stopping,
-            stopped
-        } m_state;
+        // Engine state
 
-        // Engine's state synchronization.
-        mutable boost::mutex m_mutex;
+        std::atomic<int> m_state;
 
-        // Engine's thread.
-        std::auto_ptr<boost::thread> m_thread;        
+        // I/O
         
-        // Slave RPC bus.
-        std::auto_ptr<io::channel_t> m_bus;
-  
-        // Event loop.
+        typedef io::channel<
+            tags::rpc_tag,
+            io::policies::shared
+        > rpc_channel_t;
+
+        std::unique_ptr<rpc_channel_t> m_bus;
+        
+        typedef io::channel<
+            tags::control_tag,
+            io::policies::unique
+        > control_channel_t;
+
+        std::unique_ptr<control_channel_t> m_ctl;
+
+        // Event loop
+        
         ev::dynamic_loop m_loop;
 
-        // Slave I/O watchers.
-        ev::io m_watcher;
-        ev::idle m_processor;
-        ev::prepare m_check;
-        
-        // Garbage collector activation timer and
-        // forced termination timer.
+        ev::io m_bus_watcher,
+               m_ctl_watcher;
+
+        ev::prepare m_bus_checker,
+                    m_ctl_checker;
+
         ev::timer m_gc_timer,
                   m_termination_timer;
 
-        // Async notification watcher.
         ev::async m_notification;
 
-        // Job queue.
-        job_queue_t m_queue;
-
-        // Job queue synchronization.
-        boost::mutex m_queue_mutex;
-        boost::condition_variable m_queue_condition;
-
-        // Slave pool.
-        pool_map_t m_pool;
+        // Session queue
         
-#ifdef HAVE_CGROUPS
-        // Control group to put the slaves into.
-        cgroup * m_cgroup;
+        session_queue_t m_queue;
+        boost::condition_variable_any m_condition;
+
+        // Slave pool
+
+#if BOOST_VERSION >= 103600
+        typedef boost::unordered_map<
+#else
+        typedef std::map<
 #endif
+            unique_id_t,
+            boost::shared_ptr<slave_t>
+        > pool_map_t;
+        
+        pool_map_t m_pool;
+
+        // NOTE: A strong isolate reference, keeping it here
+        // avoids isolate destruction, as the factory stores
+        // only weak references to the isolate instances.
+        api::category_traits<api::isolate_t>::ptr_type m_isolate;
 };
 
-}}
+template<class Event, typename... Args>
+bool
+engine_t::send(const unique_id_t& uuid,
+               Args&&... args)
+{
+    boost::unique_lock<rpc_channel_t> lock(*m_bus);
+
+    return m_bus->send(uuid, ZMQ_SNDMORE) &&
+           m_bus->send<Event>(std::forward<Args>(args)...);
+}
+
+}} // namespace cocaine::engine
 
 #endif

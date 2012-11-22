@@ -22,53 +22,72 @@
 #define COCAINE_FORWARDS_HPP
 
 namespace cocaine {
-    // Core configuration.
-    struct config_t;
-
     // Runtime context.
     class context_t;
     
     // App configuration.
     struct manifest_t;
+    struct profile_t;
 
     // App container.
     class app_t;
 
-    namespace engine {
-        // Job queueing mode.
-        struct mode {
-            enum value {
-                normal,
-                blocking
-            };
+    namespace api {
+        class driver_t;
+        class isolate_t;
+        class sandbox_t;
+        class sink_t;
+        class storage_t;
+
+        struct event_t;
+        struct stream_t;
+    }
+
+    namespace engine {        
+        // Unit of execution.
+        struct session_t;
+
+        // Execution queueing modes.
+        enum mode: int {
+            normal,
+            blocking
         };
 
-        // Job execution engine.
+        // Execution engine.
         class engine_t;
-        
-        // Job abstraction.
-        struct job_t;
+        class slave_t;
     }
 
     namespace io {
-        // Tuple-based RPC channel.
-        class channel_t;
+        namespace policies {
+            struct unique;
+            struct shared;
+        }
+
+        // RPC channel.
+        template<class, class>
+        class channel;
+    }
+
+    namespace tags {
+        struct rpc_tag;
+        struct control_tag;
     }
 
     namespace logging {
+        enum priorities: int {
+            ignore,
+            error,
+            warning,
+            info,
+            debug
+        };
+
         // Logging proxy.
         class logger_t;
-
-        // Logging sink abstraction.
-        class sink_t;
     }
-}
 
-namespace msgpack {
-    struct object;
-    
-    template<typename>
-    class packer;
+    struct unique_id_t;
 }
 
 namespace zmq {

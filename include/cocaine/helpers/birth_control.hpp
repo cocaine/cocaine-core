@@ -21,7 +21,7 @@
 #ifndef COCAINE_HELPERS_BIRTH_CONTROL_HPP
 #define COCAINE_HELPERS_BIRTH_CONTROL_HPP
 
-#include <boost/thread/shared_mutex.hpp>
+#include "cocaine/helpers/atomic.hpp"
 
 namespace cocaine { namespace helpers {
 
@@ -29,47 +29,44 @@ template<class T>
 class birth_control  {
     public:
         birth_control() {
-            boost::unique_lock<boost::shared_mutex> lock(g_mutex);
             ++g_objects_alive;
             ++g_objects_created;
         }
 
-        static uint64_t objects_alive() {
-            boost::shared_lock<boost::shared_mutex> lock(g_mutex);
+        static
+        uint64_t
+        objects_alive() {
             return g_objects_alive;
         }
 
-        static uint64_t objects_created() {
-            boost::shared_lock<boost::shared_mutex> lock(g_mutex);
+        static
+        uint64_t
+        objects_created() {
             return g_objects_created;
         }
 
     protected:
         ~birth_control() {
-            boost::unique_lock<boost::shared_mutex> lock(g_mutex);
             --g_objects_alive;
         }
 
     private:
-        static uint64_t g_objects_alive;
-        static uint64_t g_objects_created;
-
-        static boost::shared_mutex g_mutex;
+        static std::atomic<uint64_t> g_objects_alive;
+        static std::atomic<uint64_t> g_objects_created;
 };
 
 template<class T>
-uint64_t birth_control<T>::g_objects_alive(0);
+std::atomic<uint64_t>
+birth_control<T>::g_objects_alive(0);
 
 template<class T>
-uint64_t birth_control<T>::g_objects_created(0);
+std::atomic<uint64_t>
+birth_control<T>::g_objects_created(0);
 
-template<class T>
-boost::shared_mutex birth_control<T>::g_mutex;
-
-}
+} // namespace helpers
 
 using helpers::birth_control;
 
-}
+} // namespace cocaine
 
 #endif

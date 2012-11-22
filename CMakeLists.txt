@@ -1,7 +1,7 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 PROJECT(COCAINE-CORE)
 
-SET(COCAINE_VERSION 0.8)
+SET(COCAINE_VERSION 0.10)
 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
@@ -26,13 +26,8 @@ LOCATE_LIBRARY(LIBARCHIVE "archive.h" "archive")
 LOCATE_LIBRARY(LIBLTDL "ltdl.h" "ltdl")
 
 IF(NOT APPLE)
-    LOCATE_LIBRARY(LIBCGROUP "libcgroup.h" "cgroup")
     LOCATE_LIBRARY(LIBUUID "uuid/uuid.h" "uuid")
-
-    SET(LIBCGROUP_LIBRARY "cgroup")
     SET(LIBUUID_LIBRARY "uuid")
-
-    ADD_DEFINITIONS("-DHAVE_CGROUPS")
 ENDIF()
 
 INCLUDE_DIRECTORIES(
@@ -65,9 +60,11 @@ ADD_LIBRARY(cocaine-common SHARED
     src/auth
     src/context
     src/io
-    src/loggers/syslog
-    src/logging
+    src/isolates/process
     src/repository
+    src/sinks/file
+    src/sinks/stdio
+    src/sinks/syslog
     src/storages/files)
 
 TARGET_LINK_LIBRARIES(cocaine-common
@@ -81,42 +78,49 @@ TARGET_LINK_LIBRARIES(cocaine-common
     zmq)
 
 SET_TARGET_PROPERTIES(cocaine-common PROPERTIES
-    VERSION 1)
+    VERSION 2
+    COMPILE_FLAGS "-std=c++0x")
 
 ADD_LIBRARY(cocaine-core SHARED
     src/app
+    src/archive
     src/engine
-    src/job
     src/manifest
-    src/master
-    src/package
-    src/policy)
+    src/profile
+    src/session
+    src/slave)
 
 TARGET_LINK_LIBRARIES(cocaine-core
     archive
-    ${LIBCGROUP_LIBRARY}
     cocaine-common
     ev
     ${LIBUUID_LIBRARY})
 
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
-    VERSION 1)
+    VERSION 2
+    COMPILE_FLAGS "-std=c++0x")
 
-ADD_EXECUTABLE(cocaine-slave
-    src/slave/slave
-    src/slave/main)
+ADD_EXECUTABLE(cocaine-generic-host
+    src/generic-host/host
+    src/generic-host/main)
+
+TARGET_LINK_LIBRARIES(cocaine-generic-host
+    boost_program_options-mt
+    cocaine-core)
+
+SET_TARGET_PROPERTIES(cocaine-generic-host PROPERTIES
+    COMPILE_FLAGS "-std=c++0x")
 
 ADD_EXECUTABLE(cocained
     src/server/server
     src/server/main)
 
-TARGET_LINK_LIBRARIES(cocaine-slave
-    boost_program_options-mt
-    cocaine-core)
-
 TARGET_LINK_LIBRARIES(cocained
     boost_program_options-mt
     cocaine-core)
+
+SET_TARGET_PROPERTIES(cocained PROPERTIES
+    COMPILE_FLAGS "-std=c++0x")
 
 ADD_SUBDIRECTORY(tools)
 
@@ -124,7 +128,7 @@ INSTALL(
     TARGETS
         cocaine-common
         cocaine-core
-        cocaine-slave
+        cocaine-generic-host
         cocained
         json
     RUNTIME DESTINATION bin COMPONENT runtime

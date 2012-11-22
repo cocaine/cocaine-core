@@ -18,44 +18,48 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include <boost/algorithm/string/join.hpp>
+#include <boost/tuple/tuple.hpp>
 
 #include "cocaine/server/server.hpp"
 
 #include "cocaine/app.hpp"
 #include "cocaine/context.hpp"
-#include "cocaine/job.hpp"
 #include "cocaine/logging.hpp"
+#include "cocaine/session.hpp"
 
-#include "cocaine/interfaces/storage.hpp"
+#include "cocaine/api/storage.hpp"
 
 using namespace cocaine;
-using namespace cocaine::storages;
 using namespace cocaine::helpers;
 
-server_t::server_t(context_t& context, server_config_t config):
+server_t::server_t(context_t& context, 
+                   server_config_t config):
     m_context(context),
-    m_log(m_context.log("core")),
-    m_server(m_context, ZMQ_REP, m_context.config.runtime.hostname),
-    m_auth(m_context),
-    m_birthstamp(m_loop.now()),
+    m_log(context.log("core")),
+    m_server(context, ZMQ_REP),
+    m_runlist(config.runlist),
+    m_auth(context),
+    m_birthstamp(m_loop.now()) /* I don't like it. */,
+    m_announce_interval(config.announce_interval),
     m_infostamp(0.0f)
 {
     int minor, major, patch;
     zmq_version(&major, &minor, &patch);
 
-    m_log->info("using libev version %d.%d", ev_version_major(), ev_version_minor());
-    m_log->info("using libmsgpack version %s", msgpack_version());
-    m_log->info("using libzmq version %d.%d.%d", major, minor, patch);
-    m_log->info("route to this node is '%s'", m_server.route().c_str());
+    COCAINE_LOG_INFO(m_log, "using libev version %d.%d", ev_version_major(), ev_version_minor());
+    COCAINE_LOG_INFO(m_log, "using libmsgpack version %s", msgpack_version());
+    COCAINE_LOG_INFO(m_log, "using libzmq version %d.%d.%d", major, minor, patch);
 
     // Server socket
-    // -------------
 
-    int linger = 0;
+    m_server.setsockopt(
+        ZMQ_IDENTITY,
+        context.config.network.hostname.data(),
+        context.config.network.hostname.size()
+    );
 
-    m_server.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
-
+    COCAINE_LOG_INFO(m_log, "identity of this node is '%s'", m_server.identity());
+    
     for(std::vector<std::string>::const_iterator it = config.listen_endpoints.begin();
         it != config.listen_endpoints.end();
         ++it)
@@ -63,24 +67,21 @@ server_t::server_t(context_t& context, server_config_t config):
         try {
             m_server.bind(*it);
         } catch(const zmq::error_t& e) {
-            throw configuration_error_t(std::string("invalid listen endpoint - ") + e.what());
+            throw configuration_error_t("invalid listen endpoint - %s", e.what());
         }
             
-        m_log->info("listening on %s", it->c_str());
+        COCAINE_LOG_INFO(m_log, "listening on %s", *it);
     }
     
-    m_watcher.set<server_t, &server_t::request>(this);
+    m_watcher.set<server_t, &server_t::on_event>(this);
     m_watcher.start(m_server.fd(), ev::READ);
-    m_processor.set<server_t, &server_t::process>(this);
-    m_check.set<server_t, &server_t::check>(this);
-    m_check.start();
+    m_checker.set<server_t, &server_t::on_check>(this);
+    m_checker.start();
 
     // Autodiscovery
-    // -------------
 
     if(!config.announce_endpoints.empty()) {
-        m_announces.reset(new io::socket_t(m_context, ZMQ_PUB));
-        m_announces->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
+        m_announces.reset(new io::socket<io::policies::unique>(m_context, ZMQ_PUB));
         
         for(std::vector<std::string>::const_iterator it = config.announce_endpoints.begin();
             it != config.announce_endpoints.end();
@@ -89,78 +90,118 @@ server_t::server_t(context_t& context, server_config_t config):
             try {
                 m_announces->bind(*it);
             } catch(const zmq::error_t& e) {
-                throw configuration_error_t(std::string("invalid announce endpoint - ") + e.what());
+                throw configuration_error_t("invalid announce endpoint - %s", e.what());
             }
 
-            m_log->info("announcing on %s", it->c_str());
+            COCAINE_LOG_INFO(m_log, "announcing on %s", *it);
         }
 
         m_announce_timer.reset(new ev::timer());
-        m_announce_timer->set<server_t, &server_t::announce>(this);
-        m_announce_timer->start(0.0f, config.announce_interval);
+        m_announce_timer->set<server_t, &server_t::on_announce>(this);
+        m_announce_timer->start(0.0f, m_announce_interval);
     }
 
     // Signals
-    // -------
 
-    m_sigint.set<server_t, &server_t::terminate>(this);
+    m_sigint.set<server_t, &server_t::on_terminate>(this);
     m_sigint.start(SIGINT);
 
-    m_sigterm.set<server_t, &server_t::terminate>(this);
+    m_sigterm.set<server_t, &server_t::on_terminate>(this);
     m_sigterm.start(SIGTERM);
 
-    m_sigquit.set<server_t, &server_t::terminate>(this);
+    m_sigquit.set<server_t, &server_t::on_terminate>(this);
     m_sigquit.start(SIGQUIT);
 
-    m_sighup.set<server_t, &server_t::reload>(this);
+    m_sighup.set<server_t, &server_t::on_reload>(this);
     m_sighup.start(SIGHUP);
-    
+   
     recover();
 }
 
-server_t::~server_t() { }
+server_t::~server_t() {
+    // Empty.
+}
 
-void server_t::run() {
+void
+server_t::run() {
     m_loop.loop();
 }
 
-void server_t::terminate(ev::sig&, int) {
+void
+server_t::on_terminate(ev::sig&, int) {
     if(!m_apps.empty()) {
-        m_log->info("stopping the apps");
+        COCAINE_LOG_INFO(m_log, "stopping the apps");
         m_apps.clear();
     }
 
     m_loop.unloop(ev::ALL);
 }
 
-void server_t::reload(ev::sig&, int) {
-    m_log->info("reloading the apps");
+void
+server_t::on_reload(ev::sig&, int) {
+    COCAINE_LOG_INFO(m_log, "reloading the apps");
 
     try {
         recover();
-    } catch(const configuration_error_t& e) {
-        m_log->error("unable to reload the apps - %s", e.what());
-    } catch(const storage_error_t& e) {
-        m_log->error("unable to reload the apps - %s", e.what());
+    } catch(const std::exception& e) {
+        COCAINE_LOG_ERROR(m_log, "unable to reload the apps - %s", e.what());
     } catch(...) {
-        m_log->error("unable to reload the apps - unexpected exception");
+        COCAINE_LOG_ERROR(m_log, "unable to reload the apps - unexpected exception");
     }
 }
 
-void server_t::request(ev::io&, int) {
-    if(m_server.pending() && !m_processor.is_active()) {
-        m_processor.start();
+void
+server_t::on_event(ev::io&, int) {
+    m_checker.stop();
+
+    if(m_server.pending()) {
+        m_checker.start();
+        process_events();
     }
 }
 
-void server_t::process(ev::idle&, int) {
+void
+server_t::on_check(ev::prepare&, int) {
+    m_loop.feed_fd_event(m_server.fd(), ev::READ);
+}
+
+void
+server_t::on_announce(ev::timer&, int) {
+    COCAINE_LOG_DEBUG(m_log, "announcing the node");
+
+    zmq::message_t message(m_server.endpoint().size());
+ 
+    memcpy(
+        message.data(),
+        m_server.endpoint().data(),
+        m_server.endpoint().size()
+    );
+    
+    m_announces->send(message, ZMQ_SNDMORE);
+
+    std::string announce(Json::FastWriter().write(info()));
+    
+    message.rebuild(announce.size());
+    
+    memcpy(
+        message.data(),
+        announce.data(),
+        announce.size()
+    );
+    
+    m_announces->send(message);
+}
+
+void
+server_t::process_events() {
     zmq::message_t message;
     
     {
-        io::scoped_option<io::options::receive_timeout> option(m_server, 0);
+        io::scoped_option<
+            io::options::receive_timeout
+        > option(m_server, 0);
         
-        if(!m_server.recv(&message)) {
-            m_processor.stop();
+        if(!m_server.recv(message)) {
             return;
         }
     }
@@ -189,15 +230,15 @@ void server_t::process(ev::idle&, int) {
                 zmq::message_t signature;
 
                 if(m_server.more()) {
-                    m_server.recv(&signature);
+                    m_server.recv(signature);
                 }
 
                 std::string username(root["username"].asString());
                 
                 if(!username.empty()) {
                     m_auth.verify(
-                        blob_t(message.data(), message.size()),
-                        blob_t(signature.data(), signature.size()),
+                        std::string(static_cast<const char*>(message.data()), message.size()),
+                        std::string(static_cast<const char*>(signature.data()), signature.size()),
                         username
                     );
                 } else {
@@ -206,11 +247,7 @@ void server_t::process(ev::idle&, int) {
             }
 
             response = dispatch(root);
-        } catch(const authorization_error_t& e) {
-            response = json::serialize(json::build("error", e.what()));
-        } catch(const configuration_error_t& e) {
-            response = json::serialize(json::build("error", e.what()));
-        } catch(const storage_error_t& e) {
+        } catch(const std::exception& e) {
             response = json::serialize(json::build("error", e.what()));
         } catch(...) {
             response = json::serialize(json::build("error", "unexpected exception"));
@@ -225,38 +262,59 @@ void server_t::process(ev::idle&, int) {
     message.rebuild(response.size());
     memcpy(message.data(), response.data(), response.size());
 
-    // Send in non-blocking mode in case the client has disconnected.
-    m_server.send(message, ZMQ_NOBLOCK);
-}
-
-void server_t::check(ev::prepare&, int) {
-    request(m_watcher, ev::READ);
+    io::scoped_option<
+        io::options::send_timeout
+    > option(m_server, 0);
+    
+    if(!m_server.send(message)) {
+        COCAINE_LOG_ERROR(m_log, "unable to respond to an RPC request - client timed out");
+    }
 }
 
 std::string server_t::dispatch(const Json::Value& root) {
     std::string action(root["action"].asString());
 
-    if(action == "create" || action == "delete") {
+    if(action == "create") {
         Json::Value apps(root["apps"]),
                     result(Json::objectValue);
 
-        if(!apps.isArray() || !apps.size()) {
+        if(!apps.isObject() || apps.empty()) {
+            throw configuration_error_t("no apps have been specified");
+        }
+
+        Json::Value::Members names(apps.getMemberNames());
+
+        for(Json::Value::Members::const_iterator it = names.begin(); it != names.end(); ++it) {
+            std::string name(*it),
+                        profile(apps[name].asString());
+
+            try {
+                result[name] = create_app(name, profile);
+            } catch(const std::exception& e) {
+                result[name]["error"] = e.what();
+            } catch(...) {
+                result[name]["error"] = "unexpected exception";
+            }
+        }
+
+        return json::serialize(result);
+    } else if(action == "delete") {
+        Json::Value apps(root["apps"]),
+                    result(Json::objectValue);
+
+        if(!apps.isArray() || apps.empty()) {
             throw configuration_error_t("no apps have been specified");
         }
 
         for(Json::Value::iterator it = apps.begin(); it != apps.end(); ++it) {
-            std::string app((*it).asString());
+            std::string name((*it).asString());
 
             try {
-                if(action == "create") {
-                    result[app] = create_app(app);
-                } else if(action == "delete") {
-                    result[app] = delete_app(app);                
-                }
-            } catch(const configuration_error_t& e) {
-                result[app]["error"] = e.what();
+                result[name] = delete_app(name);                
+            } catch(const std::exception& e) {
+                result[name]["error"] = e.what();
             } catch(...) {
-                result[app]["error"] = "unexpected exception";
+                result[name]["error"] = "unexpected exception";
             }
         }
 
@@ -274,27 +332,31 @@ std::string server_t::dispatch(const Json::Value& root) {
 }
 
 // Commands
-// --------
 
-Json::Value server_t::create_app(const std::string& name) {
+Json::Value server_t::create_app(const std::string& name, const std::string& profile) {
     if(m_apps.find(name) != m_apps.end()) {
         throw configuration_error_t("the specified app already exists");
     }
 
-    std::auto_ptr<app_t> app(
-        new app_t(
+    app_map_t::iterator it;
+
+    boost::tie(it, boost::tuples::ignore) = m_apps.emplace(
+        name,
+        boost::make_shared<app_t>(
             m_context,
-            name
+            name,
+            profile
         )
     );
 
-    app->start();
+    try {
+        it->second->start();
+    } catch(...) {
+        m_apps.erase(it);
+        throw;
+    }
 
-    Json::Value result(app->info());
-
-    m_apps.insert(name, app);
-    
-    return result;
+    return json::build("success", true);
 }
 
 Json::Value server_t::delete_app(const std::string& name) {
@@ -304,19 +366,13 @@ Json::Value server_t::delete_app(const std::string& name) {
         throw configuration_error_t("the specified app doesn't exist");
     }
 
-    app->second->stop();
-
-    Json::Value result(app->second->info());
-
     m_apps.erase(app);
 
-    return result;
+    return json::build("success", true);
 }
 
 Json::Value server_t::info() const {
     Json::Value result(Json::objectValue);
-
-    result["route"] = m_context.config.runtime.hostname;
 
     for(app_map_t::const_iterator it = m_apps.begin();
         it != m_apps.end(); 
@@ -325,46 +381,57 @@ Json::Value server_t::info() const {
         result["apps"][it->first] = it->second->info();
     }
 
-    result["loggers"] = static_cast<Json::UInt>(logging::logger_t::objects_alive());
-    result["sockets"] = static_cast<Json::UInt>(io::socket_t::objects_alive());
+    result["identity"] = m_context.config.network.hostname;
 
-    result["jobs"]["pending"] = static_cast<Json::UInt>(engine::job_t::objects_alive());
-    result["jobs"]["processed"] = static_cast<Json::UInt>(engine::job_t::objects_created());
+    size_t total = engine::session_t::objects_created(),
+           current = engine::session_t::objects_alive();
 
+    result["sessions"]["pending"] = static_cast<Json::LargestUInt>(current);
+    result["sessions"]["processed"] = static_cast<Json::LargestUInt>(total - current);
+
+    if(m_announce_interval) {
+        result["announce-interval"] = m_announce_interval;
+    }
+    
     result["uptime"] = m_loop.now() - m_birthstamp;
 
     return result;
 }
 
-void server_t::announce(ev::timer&, int) {
-    m_log->debug("announcing the node");
-
-    zmq::message_t message(m_server.endpoint().size());
- 
-    memcpy(message.data(), m_server.endpoint().data(), m_server.endpoint().size());
-    m_announces->send(message, ZMQ_SNDMORE);
-
-    std::string announce(Json::FastWriter().write(info()));
-    
-    message.rebuild(announce.size());
-    memcpy(message.data(), announce.data(), announce.size());
-    m_announces->send(message);
-}
-
 void server_t::recover() {
-    // NOTE: Allowing the exception to propagate here, as this is a fatal error.
-    std::vector<std::string> apps(
-        m_context.storage<objects>("core")->list("apps")
+    typedef std::map<
+        std::string,
+        std::string
+    > runlist_t;
+
+    api::category_traits<api::storage_t>::ptr_type storage(
+        m_context.get<api::storage_t>("storage/core")
     );
 
-    std::set<std::string> available(apps.begin(), apps.end()),
-                          active;
-  
+    COCAINE_LOG_INFO(m_log, "reading the '%s' runlist", m_runlist);
+    
+    // NOTE: Allowing the exception to propagate here, as this is a fatal error.
+    runlist_t runlist(
+        storage->get<runlist_t>("runlists", m_runlist)
+    );
+
+    std::set<std::string> active,
+                          available;
+
+    // Currently running apps.
     for(app_map_t::const_iterator it = m_apps.begin();
         it != m_apps.end();
         ++it)
     {
         active.insert(it->first);
+    }
+
+    // Runnable apps.
+    for(runlist_t::const_iterator it = runlist.begin();
+        it != runlist.end();
+        ++it)
+    {
+        available.insert(it->first);
     }
 
     std::vector<std::string> diff;
@@ -380,10 +447,22 @@ void server_t::recover() {
             ++it)
         {
             if(m_apps.find(*it) == m_apps.end()) {
-                create_app(*it);
+                try {
+                    create_app(*it, runlist[*it]);
+                } catch(const std::exception& e) {
+                    COCAINE_LOG_ERROR(
+                        m_log,
+                        "unable to initialize the '%s' app - %s",
+                        *it,
+                        e.what()
+                    );
+
+                    throw configuration_error_t("unable to initialize the apps");
+                }
             } else {
                 m_apps.find(*it)->second->stop();
             }
         }
     }
 }
+
