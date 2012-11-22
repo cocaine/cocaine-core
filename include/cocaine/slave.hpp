@@ -38,8 +38,8 @@ class slave_t:
         struct states {
             enum value: int {
                 unknown,
-                inactive,
                 active,
+                inactive,
                 dead
             };
         };
@@ -56,16 +56,19 @@ class slave_t:
         assign(const boost::shared_ptr<session_t>& session);
        
         void
-        process(const io::message<rpc::ping>& message);
+        on_ping();
 
         void
-        process(const io::message<rpc::chunk>& message);
+        on_chunk(const unique_id_t& session_id,
+                 const std::string& message);
 
         void
-        process(const io::message<rpc::error>& message);
+        on_error(const unique_id_t& session_id,
+                 error_code code,
+                 const std::string& message);
 
         void
-        process(const io::message<rpc::choke>& message);
+        on_choke(const unique_id_t& session_id);
 
         template<class Event, typename... Args>
         bool

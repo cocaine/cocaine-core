@@ -21,6 +21,10 @@
 #ifndef COCAINE_TYPE_TRAITS_HPP
 #define COCAINE_TYPE_TRAITS_HPP
 
+#include <boost/mpl/begin.hpp>
+#include <boost/mpl/deref.hpp>
+#include <boost/mpl/next.hpp>
+
 #include <msgpack.hpp>
 
 #include "cocaine/common.hpp"
@@ -47,40 +51,111 @@ struct type_traits {
     }
 };
 
-template<class T>
-static inline
-std::string
-pack(const T& object) {
-    msgpack::sbuffer buffer;
-    msgpack::packer<msgpack::sbuffer> packer(buffer);
+namespace detail {
+    template<class T, class Stream>
+    static inline
+    void
+    pack_sequence(msgpack::packer<Stream>&) {
+        return;
+    }
 
-    type_traits<T>::pack(packer, object);
+    template<class T, class Stream, class Head, typename... Tail>
+    static inline
+    void
+    pack_sequence(msgpack::packer<Stream>& packer,
+                  Head&& head,
+                  Tail&&... tail)
+    {
+        // Strip the type.
+        typedef typename boost::remove_const<
+            typename boost::remove_reference<Head>::type
+        >::type type;
 
-    return std::string(buffer.data(), buffer.size());
+        static_assert(
+            boost::is_same<typename boost::mpl::deref<T>::type, type>::value,
+            "type mismatch"
+        );
+
+        // Pack the current element using the correct packer.
+        type_traits<type>::pack(packer, head);
+
+        // Recurse to the next element.
+        return pack_sequence<typename boost::mpl::next<T>::type>(
+            packer,
+            std::forward<Tail>(tail)...
+        );
+    }
+
+    template<class T>
+    static inline
+    void
+    unpack_sequence(const msgpack::object * unpacked) {
+        return;
+    }
+
+    template<class T, class Head, typename... Tail>
+    static
+    void
+    unpack_sequence(const msgpack::object * unpacked,
+                    Head&& head,
+                    Tail&&... tail)
+    {
+        // Strip the type.
+        typedef typename boost::remove_const<
+            typename boost::remove_reference<Head>::type
+        >::type type;
+
+        static_assert(
+            boost::is_same<typename boost::mpl::deref<T>::type, type>::value,
+            "type mismatch"
+        );
+
+        // Unpack the current element using the correct packer.
+        type_traits<type>::unpack(*unpacked, head);
+
+        // Recurse to the next element.
+        return unpack_sequence<typename boost::mpl::next<T>::type>(
+            ++unpacked,
+            std::forward<Tail>(tail)...
+        );
+    }
 }
 
-template<class T, class It>
+template<class T, class Stream, typename... Args>
 static inline
-T
-unpack(It begin,
-       It end)
+void
+pack_sequence(Stream& stream,
+              Args&&... sequence)
 {
-    T result;
-    msgpack::unpacked unpacked;
+    msgpack::packer<Stream> packer(stream);
 
-    try { 
-        msgpack::unpack(
-            &unpacked,
-            begin,
-            std::distance(begin, end)
-        );
-       
-        type_traits<T>::unpack(unpacked.get(), result);
-    } catch(const msgpack::type_error& e) {
-        throw cocaine::error_t("corrupted object");
-    } catch(const std::bad_cast& e) {
-        throw cocaine::error_t("corrupted object - type mismatch");
+    // The sequence will be packed as an array.
+    packer.pack_array(sizeof...(sequence));
+
+    // Recursively pack every sequence element.
+    detail::pack_sequence<typename boost::mpl::begin<T>::type>(
+        packer,
+        std::forward<Args>(sequence)...
+    );
+}
+
+template<class T, typename... Args>
+static inline
+void
+unpack_sequence(const msgpack::object& packed,
+                Args&&... sequence)
+{
+    if(packed.type != msgpack::type::ARRAY ||
+       packed.via.array.size != sizeof...(sequence))
+    {
+        throw msgpack::type_error();
     }
+
+    // Recursively unpack every tuple element while validating the types.
+    detail::unpack_sequence<typename boost::mpl::begin<T>::type>(
+        packed.via.array.ptr,
+        std::forward<Args>(sequence)...
+    );
 }
 
 }} // namespace cocaine::io

@@ -95,7 +95,11 @@ class server_t:
 
         // I/O
         
-        io::socket<io::policies::unique> m_server;
+        typedef io::socket<
+            io::policies::unique
+        > server_socket_t;
+
+        server_socket_t m_server;
 
         std::unique_ptr<
             io::socket<io::policies::unique>

@@ -49,20 +49,7 @@ struct session_t:
     send(Args&&... args);
 
     void
-    attach(slave_t * const slave) {
-        m_slave = slave;
-
-        boost::unique_lock<boost::mutex> lock(m_mutex);
-
-        for(chunk_list_t::iterator it = m_cache.begin();
-            it != m_cache.end();
-            ++it)
-        {
-            m_slave->send(it->first, it->second);
-        }
-
-        m_cache.clear();
-    }
+    attach(slave_t * const slave);
 
     void
     abandon(error_code code,
@@ -95,17 +82,13 @@ template<class Event, typename... Args>
 bool
 session_t::send(Args&&... args) {
     if(!m_slave) {
-        msgpack::sbuffer buffer;
-        msgpack::packer<msgpack::sbuffer> packer(buffer);
-
-        packer.pack_array(sizeof...(args) + 1);        
-        io::pack_sequence(packer, id, std::forward<Args>(args)...);
+        io::outgoing<Event> event(id, std::forward<Args>(args)...);
 
         boost::unique_lock<boost::mutex> lock(m_mutex);
 
         m_cache.emplace_back(
-            io::message<Event>::value,
-            std::string(buffer.data(), buffer.size())
+            io::outgoing<Event>::id,
+            std::string(event.data(), event.size())
         );
 
         return true;

@@ -32,7 +32,6 @@
 #include "cocaine/api/isolate.hpp"
 #include "cocaine/api/stream.hpp"
 
-#include "cocaine/traits/message.hpp"
 #include "cocaine/traits/unique_id.hpp" 
 
 using namespace cocaine;
@@ -104,16 +103,17 @@ slave_t::assign(const boost::shared_ptr<session_t>& session) {
 }
 
 void
-slave_t::process(const io::message<rpc::ping>&) {
+slave_t::on_ping() {
     rearm();
+
+    // Rearming first so that slave will be in a correct state.
     send<rpc::pong>();
 }
 
 void
-slave_t::process(const io::message<rpc::chunk>& chunk) {
-    const unique_id_t& session_id = boost::get<0>(chunk);
-    const std::string& message = boost::get<1>(chunk);
-
+slave_t::on_chunk(const unique_id_t& session_id,
+                  const std::string& message)
+{
     COCAINE_LOG_DEBUG(
         m_log,
         "slave %s received session %s chunk, size: %llu bytes",
@@ -131,11 +131,10 @@ slave_t::process(const io::message<rpc::chunk>& chunk) {
 }
 
 void
-slave_t::process(const io::message<rpc::error>& error) {
-    const unique_id_t& session_id = boost::get<0>(error);
-    int code = boost::get<1>(error);
-    const std::string& message = boost::get<2>(error);
-
+slave_t::on_error(const unique_id_t& session_id,
+                  error_code code,
+                  const std::string& message)
+{
     COCAINE_LOG_DEBUG(
         m_log,
         "slave %s received session %s error, code: %d, message: %s",
@@ -150,13 +149,11 @@ slave_t::process(const io::message<rpc::error>& error) {
     // TEST: Ensure that this slave is responsible for the session.
     BOOST_ASSERT(it != m_sessions.end());
 
-    it->second->upstream->error(static_cast<error_code>(code), message);
+    it->second->upstream->error(code, message);
 }
 
 void
-slave_t::process(const io::message<rpc::choke>& choke) {
-    const unique_id_t& session_id = boost::get<0>(choke);
-
+slave_t::on_choke(const unique_id_t& session_id) {
     COCAINE_LOG_DEBUG(
         m_log,
         "slave %s has completed session %s",
@@ -214,6 +211,8 @@ slave_t::on_timeout(ev::timer&, int) {
 void
 slave_t::on_idle(ev::timer&, int) {
     send<rpc::terminate>();
+
+    // Inactive slaves won't get any new sessions.
     m_state = states::inactive;
 }
 

@@ -27,6 +27,7 @@
 #include <boost/mpl/find.hpp>
 #include <boost/mpl/int.hpp>
 #include <boost/mpl/list.hpp>
+#include <boost/mpl/size.hpp>
 
 #include <boost/thread/mutex.hpp>
 #include <boost/tuple/tuple.hpp>
@@ -63,12 +64,14 @@ protect(T& object) {
     return raw<T>(object);
 }
 
+/*
 template<class T>
 static inline
 raw<const T>
 protect(const T& object) {
     return raw<const T>(object);
 }
+*/
 
 template<class T>
 struct raw_traits;
@@ -156,6 +159,102 @@ class socket_base_t:
 
 using namespace boost::tuples;
 
+// Event tuple type extraction
+
+template<class T>
+struct depend {
+    typedef void type;
+};
+
+template<class Event, class Tuple = void>
+struct event_traits {
+    typedef boost::mpl::list<> tuple_type;
+};
+
+template<class Event>
+struct event_traits<
+    Event,
+    typename depend<
+        typename Event::tuple_type
+    >::type
+>
+{
+    typedef typename Event::tuple_type tuple_type;
+};
+
+// Event category enumeration
+
+template<class Tag>
+struct dispatch;
+
+template<
+    class Event,
+    class Category = typename dispatch<
+        typename Event::tag
+    >::category
+>
+struct enumerate:
+    public boost::mpl::distance<
+        typename boost::mpl::begin<Category>::type,
+        typename boost::mpl::find<Category, Event>::type
+    >::type
+{
+    static_assert(
+        boost::mpl::contains<Category, Event>::value,
+        "event has not been enumerated within its category"
+    );
+};
+
+// RPC message
+
+template<class Event>
+struct message {
+    enum constants {
+        id = enumerate<Event>::value,
+        length = boost::mpl::size<typename event_traits<Event>::tuple_type>::type::value,
+        empty = length == 0
+    };
+};
+
+template<class Event>
+struct outgoing:
+    public message<Event>
+{
+    template<typename... Args>
+    outgoing(Args&&... args) {
+        pack_sequence<
+            typename event_traits<Event>::tuple_type
+        >(m_buffer, std::forward<Args>(args)...);
+    }
+
+    const char*
+    data() const {
+        return m_buffer.data();
+    }
+
+    size_t
+    size() const {
+        return m_buffer.size();
+    }
+
+private:
+    msgpack::sbuffer m_buffer;
+};
+
+template<class Event>
+struct incoming:
+    public message<Event>
+{
+    template<typename... Args>
+    incoming(const msgpack::object& object,
+             Args&&... args)
+    {
+        unpack_sequence<
+            typename event_traits<Event>::tuple_type
+        >(object, std::forward<Args>(args)...);
+    }
+};
+
 #define COCAINE_EINTR_GUARD(command)        \
     while(true) {                           \
         try {                               \
@@ -167,7 +266,7 @@ using namespace boost::tuples;
         }                                   \
     }
 
-template<class SharingPolicy>
+template<class SharingPolicy, class Tag = void>
 class socket:
     public socket_base_t
 {
@@ -177,6 +276,8 @@ class socket:
             socket_base_t(context, type)
         { }
 
+        // ZeroMQ messages
+
         bool
         send(zmq::message_t& message,
              int flags = 0)
@@ -185,6 +286,8 @@ class socket:
                 return m_socket.send(message, flags)
             );
         }
+
+        // Serialized objects
 
         template<class T>
         bool
@@ -207,6 +310,8 @@ class socket:
             return send(message, flags);
         }
         
+        // Custom-serialized objects
+
         template<class T>
         bool
         send(const raw<T>& object,
@@ -221,30 +326,70 @@ class socket:
             return send(message, flags);
         }      
         
-        bool
-        send_multipart(const null_type&,
-                       int __attribute__((unused)) flags = 0) const
-        {
-            return true;
-        }
-        
+        // Multipart messages
+
         template<class Head>
         bool
-        send_multipart(const cons<Head, null_type>& o,
-                       int flags = 0)
-        {
-            return send(o.get_head(), flags);
+        send_multipart(Head&& head) {
+            return send(head);
         }
 
-        template<class Head, class Tail>
+        template<class Head, class... Tail>
         bool
-        send_multipart(const cons<Head, Tail>& o,
-                       int flags = 0)
+        send_multipart(Head&& head,
+                       Tail&&... tail)
         {
-            return send(o.get_head(), ZMQ_SNDMORE | flags) &&
-                   send_multipart(o.get_tail(), flags);
+            return send(head, ZMQ_SNDMORE) &&
+                   send_multipart(std::forward<Tail>(tail)...);
+        }
+
+        // RPC messages
+
+        template<class Event, typename... Args>
+        typename boost::disable_if_c<
+            outgoing<Event>::empty,
+            bool
+        >::type
+        send(Args&&... args) {
+            static_assert(
+                boost::is_same<Tag, typename Event::tag>::value,
+                "invalid event category"
+            );
+
+            outgoing<Event> event(std::forward<Args>(args)...);
+
+            zmq::message_t body(event.size());
+
+            memcpy(
+                body.data(),
+                event.data(),
+                event.size()
+            );
+
+            return send_multipart(
+                static_cast<int>(outgoing<Event>::id),
+                body
+            );
+        }
+
+        template<class Event>
+        typename boost::enable_if_c<
+            outgoing<Event>::empty,
+            bool
+        >::type
+        send() {
+            static_assert(
+                boost::is_same<Tag, typename Event::tag>::value,
+                "invalid event category"
+            );
+
+            return send(
+                static_cast<int>(outgoing<Event>::id)
+            );
         }
         
+        // ZeroMQ messages
+
         bool
         recv(zmq::message_t& message,
              int flags = 0)
@@ -253,6 +398,8 @@ class socket:
                 return m_socket.recv(&message, flags)
             );
         }
+
+        // Serialized messages
 
         template<class T>
         bool
@@ -283,6 +430,8 @@ class socket:
             return true;
         }
 
+        // Custom-serialized messages
+
         template<class T>
         bool
         recv(raw<T>& result,
@@ -309,30 +458,63 @@ class socket:
             return recv(result, flags);
         }
 
+        // Multipart messages
+
+        template<class Head>
         bool
-        recv_multipart(const null_type&,
-                       int __attribute__((unused)) flags = 0) const
+        recv_multipart(Head&& head) {
+            return recv(head);
+        }
+
+        template<class Head, class... Tail>
+        bool
+        recv_multipart(Head&& head,
+                       Tail&&... tail)
         {
+            return recv(head) &&
+                   recv_multipart(std::forward<Tail>(tail)...);
+        }
+
+        // RPC messages
+
+        template<class Event, typename... Args>
+        typename boost::disable_if_c<
+            incoming<Event>::empty,
+            bool
+        >::type
+        recv(Args&&... args) {
+            static_assert(
+                boost::is_same<Tag, typename Event::tag>::value,
+                "invalid event category"
+            );
+
+            zmq::message_t message;
+            msgpack::unpacked unpacked;
+
+            if(!recv(message)) {
+                return false;
+            }
+
+            try {
+                msgpack::unpack(
+                    &unpacked,
+                    static_cast<const char*>(message.data()),
+                    message.size()
+                );
+
+                incoming<Event>(
+                    unpacked.get(),
+                    std::forward<Args>(args)...
+                );
+            } catch(const msgpack::type_error& e) {
+                throw error_t("corrupted object");
+            } catch(const std::bad_cast& e) {
+                throw error_t("corrupted object - type mismatch");
+            }
+
             return true;
         }
 
-        template<class Head, class Tail>
-        bool
-        recv_multipart(cons<Head, Tail>& o,
-                       int flags = 0)
-        {
-            return recv(o.get_head(), flags) &&
-                   recv_multipart(o.get_tail(), flags | ZMQ_NOBLOCK);
-        }
-
-        template<class Head, class Tail>
-        bool
-        recv_multipart(cons<Head, Tail>&& o,
-                       int flags = 0)
-        {
-            return recv(o.get_head(), flags) &&
-                   recv_multipart(std::move(o.get_tail()), flags | ZMQ_NOBLOCK);
-        }
         void
         getsockopt(int name,
                    void * value,
@@ -423,13 +605,13 @@ namespace options {
     };
 }
 
-template<class Option, class SharingPolicy>
+template<class Option, class SocketType>
 class scoped_option {
     typedef typename Option::value_type value_type;
     typedef typename Option::option_type option_type;
 
     public:
-        scoped_option(socket<SharingPolicy>& socket,
+        scoped_option(SocketType& socket,
                       value_type value):
             target(socket),
             saved(value_type()),
@@ -444,118 +626,29 @@ class scoped_option {
         }
 
     private:
-        socket<SharingPolicy>& target;
+        SocketType& target;
         
         value_type saved;
         size_t size;
 };
 
-// Event tuple type extraction
-
-template<class T>
-struct depend {
-    typedef void type;
-};
-
-template<class Event, class Tuple = void>
-struct event_traits {
-    typedef tuple<> tuple_type;
-};
-
-template<class Event>
-struct event_traits<
-    Event,
-    typename depend<
-        typename Event::tuple_type
-    >::type
->
-{
-    typedef typename Event::tuple_type tuple_type;
-};
-
-// Event category enumeration
-
-template<class Tag>
-struct dispatch;
-
-template<
-    class Event,
-    class Category = typename dispatch<
-        typename Event::tag
-    >::category
->
-struct enumerate:
-    public boost::mpl::distance<
-        typename boost::mpl::begin<Category>::type,
-        typename boost::mpl::find<Category, Event>::type
-    >::type
-{
-    static_assert(
-        boost::mpl::contains<Category, Event>::value,
-        "event has not been enumerated within its category"
-    );
-};
-
-// RPC message
-
-template<class Event> 
-struct message:
-    public event_traits<Event>::tuple_type,
-    public enumerate<Event>
-{
-    template<typename... Args>
-    message(Args&&... args):
-        event_traits<Event>::tuple_type(std::forward<Args>(args)...)
-    { }
-};
-
 // RPC channel
-
-template<class Stream>
-static inline
-void
-pack_sequence(msgpack::packer<Stream>&) {
-    return;
-}
-
-template<class Stream, class Head, typename... Tail>
-static inline
-void
-pack_sequence(msgpack::packer<Stream>& packer,
-              Head&& head,
-              Tail&&... tail)
-{
-    typedef typename boost::remove_const<
-        typename boost::remove_reference<Head>::type
-    >::type type;
-
-    // Pack the current tuple element using the correct packer.
-    type_traits<type>::pack(packer, head);
-
-    // Recurse to the next tuple element.
-    return pack_sequence(packer, std::forward<Tail>(tail)...);
-}
-
-static inline
-void deallocate(void * data, void * hint) {
-    free(data);
-}
 
 template<
     class Tag,
     class SharingPolicy
 >
 class channel:
-    public socket<SharingPolicy>
+    public socket<SharingPolicy, Tag>
 {
     public:
         channel(context_t& context, int type):
-            socket<SharingPolicy>(context, type)
+            socket<SharingPolicy, Tag>(context, type)
         { }
         
         template<class T>
         channel(context_t& context, int type, const T& identity):
-            socket<SharingPolicy>(context, type)
+            socket<SharingPolicy, Tag>(context, type)
         {
             msgpack::sbuffer buffer;
             msgpack::packer<msgpack::sbuffer> packer(buffer);
@@ -569,78 +662,12 @@ class channel:
 
         // Sending
 
-        template<class Event>
-        typename boost::enable_if<
-            boost::is_same<Tag, typename Event::tag>,
-            bool
-        >::type
-        send_message(const message<Event>& object) {
-            const bool multipart = length<
-                typename event_traits<Event>::tuple_type
-            >::value;
-
-            return this->send(message<Event>::value, multipart ? ZMQ_SNDMORE : 0) &&
-                   this->send_tuple(object);
-        }
-
-        template<class Event, typename... Args>
-        typename boost::enable_if<
-            boost::is_same<Tag, typename Event::tag>,
-            bool
-        >::type
-        send_messagex(Args&&... args) {
-            const bool multipart = length<
-                typename event_traits<Event>::tuple_type
-            >::value;
-
-            bool success = this->send(message<Event>::value, multipart ? ZMQ_SNDMORE : 0);
-
-            if(success && multipart) {
-                msgpack::sbuffer buffer;
-                msgpack::packer<msgpack::sbuffer> packer(buffer);
-
-                packer.pack_array(sizeof...(Args));
-                pack_sequence(packer, std::forward<Args>(args)...);
-
-                zmq::message_t message(buffer.release(), buffer.size(), &deallocate, NULL);
-                //zmq::message_t message(buffer.size());
-                //memcpy(message.data(), buffer.data(), buffer.size());
-                    
-                return this->send(message);
-            }
-        }
-        
         bool
         send_message(int message_id,
                      const std::string& message)
         {
             return this->send(message_id, message.size() ? ZMQ_SNDMORE : 0) &&
                    (!message.size() || this->send(protect(message)));
-        }
-
-    private:
-        template<class Event>
-        typename boost::enable_if<
-            boost::is_same<
-                typename event_traits<Event>::tuple_type,
-                tuple<>
-            >,
-            bool
-        >::type
-        send_tuple(const message<Event>&) {
-            return true;
-        }
-
-        template<class Event>
-        typename boost::disable_if<
-            boost::is_same<
-                typename event_traits<Event>::tuple_type,
-                tuple<>
-            >,
-            bool
-        >::type
-        send_tuple(const message<Event>& object) {
-            return this->send(object);
         }
 };
 

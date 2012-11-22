@@ -219,13 +219,8 @@ engine_t::send(const unique_id_t& uuid,
 {
     boost::unique_lock<rpc_channel_t> lock(*m_bus);
 
-    io::scoped_option<
-        io::options::send_timeout,
-        io::policies::shared
-    > option(*m_bus, 0);
-    
     return m_bus->send(uuid, ZMQ_SNDMORE) &&
-           m_bus->send_messagex<Event>(std::forward<Args>(args)...);
+           m_bus->send<Event>(std::forward<Args>(args)...);
 }
 
 }} // namespace cocaine::engine

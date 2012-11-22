@@ -35,7 +35,6 @@
 #include "cocaine/api/driver.hpp"
 
 #include "cocaine/traits/json.hpp"
-#include "cocaine/traits/message.hpp"
 
 using namespace cocaine;
 using namespace cocaine::engine;
@@ -161,9 +160,7 @@ app_t::stop() {
 
     COCAINE_LOG_INFO(m_log, "stopping the engine");
     
-    m_control->send_message(
-        io::message<control::terminate>()
-    );
+    m_control->send<control::terminate>();
 
     m_thread->join();
     m_thread.reset();
@@ -182,14 +179,12 @@ app_t::info() const {
         return info;
     }
 
-    m_control->send_message(
-        io::message<control::status>()
-    );
+    m_control->send<control::status>();
 
     {
         io::scoped_option<
             io::options::receive_timeout,
-            io::policies::unique
+            control_channel_t
         > option(*m_control, defaults::control_timeout);
 
         if(!m_control->recv(info)) {

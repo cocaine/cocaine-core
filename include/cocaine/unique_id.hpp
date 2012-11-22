@@ -21,8 +21,6 @@
 #ifndef COCAINE_UNIQUE_ID_HPP
 #define COCAINE_UNIQUE_ID_HPP
 
-#include <iostream>
-
 #include <boost/functional/hash.hpp>
 #include <uuid/uuid.h>
 
@@ -31,6 +29,10 @@
 namespace cocaine {
 
 struct uninitialized_t { };
+
+static
+const uninitialized_t
+uninitialized = uninitialized_t();
 
 struct unique_id_t {
     unique_id_t() {
@@ -85,10 +87,6 @@ public:
     // NOTE: Store the 128-bit UUID as two 64-bit unsigned integers.
     uint64_t uuid[2];
 };
-
-static
-const uninitialized_t
-uninitialized = uninitialized_t();
 
 static inline
 size_t

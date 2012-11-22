@@ -51,7 +51,7 @@ namespace rpc {
             abnormal
         };
 
-        typedef boost::tuple<
+        typedef boost::mpl::list<
             int,
             std::string
         > tuple_type;
@@ -60,7 +60,7 @@ namespace rpc {
     struct invoke {
         typedef tags::rpc_tag tag;
         
-        typedef boost::tuple<
+        typedef boost::mpl::list<
             unique_id_t,
             std::string
         > tuple_type;
@@ -69,7 +69,7 @@ namespace rpc {
     struct chunk {
         typedef tags::rpc_tag tag;
         
-        typedef boost::tuple<
+        typedef boost::mpl::list<
             unique_id_t,
             std::string
         > tuple_type;
@@ -78,7 +78,7 @@ namespace rpc {
     struct error {
         typedef tags::rpc_tag tag;
         
-        typedef boost::tuple<
+        typedef boost::mpl::list<
             unique_id_t,
             int,
             std::string
@@ -88,7 +88,7 @@ namespace rpc {
     struct choke {
         typedef tags::rpc_tag tag;
 
-        typedef boost::tuple<
+        typedef boost::mpl::list<
             unique_id_t
         > tuple_type;
     };

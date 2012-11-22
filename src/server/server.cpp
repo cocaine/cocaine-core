@@ -197,7 +197,7 @@ server_t::process_events() {
     {
         io::scoped_option<
             io::options::receive_timeout,
-            io::policies::unique
+            server_socket_t
         > option(m_server, 0);
         
         if(!m_server.recv(message)) {
@@ -263,7 +263,7 @@ server_t::process_events() {
 
     io::scoped_option<
         io::options::send_timeout,
-        io::policies::unique
+        server_socket_t
     > option(m_server, 0);
     
     m_server.send(message);

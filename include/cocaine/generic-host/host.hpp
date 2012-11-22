@@ -39,20 +39,6 @@ struct host_config_t {
 class host_t:
     public boost::noncopyable
 {
-    struct io_pair_t {
-        boost::shared_ptr<api::stream_t> upstream;
-        boost::shared_ptr<api::stream_t> downstream;
-    };
-
-#if BOOST_VERSION >= 103600
-    typedef boost::unordered_map<
-#else
-    typedef std::map<
-#endif
-        unique_id_t,
-        io_pair_t
-    > stream_map_t;
-
     public:
         host_t(context_t& context,
                host_config_t config);
@@ -118,15 +104,28 @@ class host_t:
         std::unique_ptr<const profile_t> m_profile;
         std::unique_ptr<api::sandbox_t> m_sandbox;
 
-        // Session streams
+        struct io_pair_t {
+            boost::shared_ptr<api::stream_t> upstream;
+            boost::shared_ptr<api::stream_t> downstream;
+        };
 
+    #if BOOST_VERSION >= 103600
+        typedef boost::unordered_map<
+    #else
+        typedef std::map<
+    #endif
+            unique_id_t,
+            io_pair_t
+        > stream_map_t;
+
+        // Session streams.
         stream_map_t m_streams;
 };
 
 template<class Event, typename... Args>
 void
 host_t::send(Args&&... args) {
-    m_bus.send_messagex<Event>(std::forward<Args>(args)...);
+    m_bus.send<Event>(std::forward<Args>(args)...);
 }
 
 } // namespace cocaine::engine

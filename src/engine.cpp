@@ -36,7 +36,6 @@
 #include "cocaine/api/stream.hpp"
 
 #include "cocaine/traits/json.hpp"
-#include "cocaine/traits/message.hpp"
 #include "cocaine/traits/unique_id.hpp"
 
 using namespace cocaine;
@@ -270,7 +269,7 @@ engine_t::send(const unique_id_t& uuid,
 
     io::scoped_option<
         io::options::send_timeout,
-        io::policies::shared
+        rpc_channel_t
     > option(*m_bus, 0);
     
     return m_bus->send(uuid, ZMQ_SNDMORE) &&
@@ -377,10 +376,10 @@ engine_t::process_bus_events() {
         {
             io::scoped_option<
                 io::options::receive_timeout,
-                io::policies::shared
+                rpc_channel_t
             > option(*m_bus, 0);
             
-            if(!m_bus->recv_multipart(boost::tie(slave_id, message_id))) {
+            if(!m_bus->recv_multipart(slave_id, message_id)) {
                 return;
             }
         }
@@ -408,24 +407,22 @@ engine_t::process_bus_events() {
         );
 
         switch(message_id) {
-            case io::message<rpc::ping>::value:
+            case io::message<rpc::ping>::id:
                 lock.unlock();
 
-                slave->second->process(io::message<rpc::ping>());
+                slave->second->on_ping();
 
                 break;
 
-            case io::message<rpc::suicide>::value: {
-                io::message<rpc::suicide> suicide;
+            case io::message<rpc::suicide>::id: {
+                int code = 0;
+                std::string message;
 
-                m_bus->recv(suicide);
+                m_bus->recv<rpc::suicide>(code, message);
 
                 lock.unlock();
 
                 m_pool.erase(slave);
-
-                int code = boost::get<0>(suicide);
-                const std::string& message = boost::get<1>(suicide);
 
                 if(code == rpc::suicide::abnormal) {
                     COCAINE_LOG_ERROR(m_log, "the app seems to be broken — %s", message);
@@ -442,38 +439,45 @@ engine_t::process_bus_events() {
                 break;
             }
 
-            case io::message<rpc::chunk>::value: {
-                io::message<rpc::chunk> chunk(uninitialized);
+            case io::message<rpc::chunk>::id: {
+                unique_id_t session_id(uninitialized);
+                std::string message;
                 
-                m_bus->recv(chunk);
+                m_bus->recv<rpc::chunk>(session_id, message);
 
                 lock.unlock();
 
-                slave->second->process(chunk);
+                slave->second->on_chunk(session_id, message);
 
                 break;
             }
          
-            case io::message<rpc::error>::value: {
-                io::message<rpc::error> error(uninitialized);
+            case io::message<rpc::error>::id: {
+                unique_id_t session_id(uninitialized);
+                int code = 0;
+                std::string message;
 
-                m_bus->recv(error);
+                m_bus->recv<rpc::error>(session_id, code, message);
                 
                 lock.unlock();
 
-                slave->second->process(error);
+                slave->second->on_error(
+                    session_id,
+                    static_cast<error_code>(code),
+                    message
+                );
 
                 break;
             }
 
-            case io::message<rpc::choke>::value: {
-                io::message<rpc::choke> choke(uninitialized);
+            case io::message<rpc::choke>::id: {
+                unique_id_t session_id(uninitialized);
 
-                m_bus->recv(choke);
+                m_bus->recv<rpc::choke>(session_id);
 
                 lock.unlock();
 
-                slave->second->process(choke);
+                slave->second->on_choke(session_id);
 
                 break;
             }
@@ -540,7 +544,7 @@ engine_t::process_ctl_events() {
     }
 
     switch(message_id) {
-        case io::message<control::status>::value: {
+        case io::incoming<control::status>::id: {
             Json::Value info(Json::objectValue);
 
             active_t active;
@@ -562,7 +566,7 @@ engine_t::process_ctl_events() {
             break;
         }
 
-        case io::message<control::terminate>::value:
+        case io::incoming<control::terminate>::id:
             shutdown(states::stopping);
             break;
 

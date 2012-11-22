@@ -30,7 +30,6 @@
 
 #include "cocaine/api/sandbox.hpp"
 
-#include "cocaine/traits/message.hpp"
 #include "cocaine/traits/unique_id.hpp"
 
 #include "cocaine/helpers/atomic.hpp"
@@ -233,7 +232,7 @@ host_t::process_bus_events() {
         {
             io::scoped_option<
                 io::options::receive_timeout,
-                io::policies::unique
+                rpc_channel_t
             > option(m_bus, 0);
 
             if(!m_bus.recv(command)) {
@@ -249,18 +248,16 @@ host_t::process_bus_events() {
         );
 
         switch(command) {
-            case io::message<rpc::pong>::value:
+            case io::message<rpc::pong>::id:
                 m_disown_timer.stop();
                 break;
 
-            case io::message<rpc::invoke>::value: {
-                io::message<rpc::invoke> invoke;
+            case io::message<rpc::invoke>::id: {
+                unique_id_t session_id(uninitialized);
+                std::string event;
 
-                m_bus.recv(invoke);
+                m_bus.recv<rpc::invoke>(session_id, event);
 
-                const unique_id_t& session_id = boost::get<0>(invoke);
-                const std::string& event = boost::get<1>(invoke);
-                
                 boost::shared_ptr<api::stream_t> upstream(
                     boost::make_shared<upstream_t>(session_id, this)
                 );
@@ -281,13 +278,11 @@ host_t::process_bus_events() {
                 break;
             }
 
-            case io::message<rpc::chunk>::value: {
-                io::message<rpc::chunk> chunk;
+            case io::message<rpc::chunk>::id: {
+                unique_id_t session_id(uninitialized);
+                std::string message;
 
-                m_bus.recv(chunk);
-
-                const unique_id_t& session_id = boost::get<0>(chunk);
-                const std::string& message = boost::get<1>(chunk);
+                m_bus.recv<rpc::chunk>(session_id, message);
 
                 stream_map_t::iterator it(m_streams.find(session_id));
 
@@ -308,12 +303,10 @@ host_t::process_bus_events() {
                 break;
             }
 
-            case io::message<rpc::choke>::value: {
-                io::message<rpc::choke> choke;
+            case io::message<rpc::choke>::id: {
+                unique_id_t session_id(uninitialized);
 
-                m_bus.recv(choke);
-
-                const unique_id_t& session_id = boost::get<0>(choke);
+                m_bus.recv<rpc::choke>(session_id);
 
                 stream_map_t::iterator it = m_streams.find(session_id);
 
@@ -334,7 +327,7 @@ host_t::process_bus_events() {
                 break;
             }
             
-            case io::message<rpc::terminate>::value:
+            case io::message<rpc::terminate>::id:
                 terminate(rpc::suicide::normal, "per request");
                 break;
 
@@ -359,6 +352,6 @@ void
 host_t::terminate(rpc::suicide::reasons reason,
                   const std::string& message)
 {
-    send<rpc::suicide>((int)reason, message);
+    send<rpc::suicide>(static_cast<int>(reason), message);
     m_loop.unloop(ev::ALL);
 }

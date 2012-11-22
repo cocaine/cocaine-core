@@ -32,6 +32,24 @@ session_t::session_t(const api::event_t& event_,
 { }
 
 void
+session_t::attach(slave_t * const slave) {
+    m_slave = slave;
+
+    if(!m_cache.empty()) {
+        boost::unique_lock<boost::mutex> lock(m_mutex);
+
+        for(chunk_list_t::iterator it = m_cache.begin();
+            it != m_cache.end();
+            ++it)
+        {
+            m_slave->send(it->first, it->second);
+        }
+
+        m_cache.clear();
+    }
+}
+
+void
 session_t::abandon(error_code code,
                    const std::string& message)
 {
