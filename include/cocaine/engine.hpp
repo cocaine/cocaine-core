@@ -27,7 +27,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/asio.hpp"
-#include "cocaine/rpc.hpp"
+#include "cocaine/io.hpp"
 
 #include "cocaine/api/isolate.hpp"
 

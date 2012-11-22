@@ -25,10 +25,12 @@
 #include <boost/format.hpp>
 
 #include "cocaine/engine.hpp"
+
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
 #include "cocaine/profile.hpp"
+#include "cocaine/rpc.hpp"
 #include "cocaine/session.hpp"
 #include "cocaine/slave.hpp"
 

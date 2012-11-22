@@ -21,8 +21,6 @@
 #ifndef COCAINE_SESSION_HPP
 #define COCAINE_SESSION_HPP
 
-#include <boost/weak_ptr.hpp>
-
 #include "cocaine/common.hpp"
 #include "cocaine/io.hpp"
 #include "cocaine/slave.hpp"

@@ -180,47 +180,6 @@ class socket_base_t:
         uint16_t m_port;
 };
 
-// Socket options
-
-namespace options {
-    struct receive_timeout {
-        typedef int value_type;
-        typedef boost::mpl::int_<ZMQ_RCVTIMEO> option_type;
-    };
-
-    struct send_timeout {
-        typedef int value_type;
-        typedef boost::mpl::int_<ZMQ_SNDTIMEO> option_type;
-    };
-}
-
-template<class Option>
-class scoped_option {
-    typedef typename Option::value_type value_type;
-    typedef typename Option::option_type option_type;
-
-    public:
-        scoped_option(socket_base_t& socket,
-                      value_type value):
-            m_socket(socket),
-            m_saved(value_type()),
-            m_size(sizeof(m_saved))
-        {
-            m_socket.getsockopt(option_type(), &m_saved, &m_size);
-            m_socket.setsockopt(option_type(), &value, sizeof(value));
-        }
-
-        ~scoped_option() {
-            m_socket.setsockopt(option_type(), &m_saved, m_size);
-        }
-
-    private:
-        socket_base_t& m_socket;
-        
-        value_type m_saved;
-        size_t m_size;
-};
-
 // Event tuple type extraction
 
 template<class Tag>
@@ -475,7 +434,10 @@ class socket:
                     message.size()
                 );
                
-                type_traits<T>::unpack(unpacked.get(), result);
+                type_traits<T>::unpack(
+                    unpacked.get(),
+                    result
+                );
             } catch(const msgpack::type_error& e) {
                 throw error_t("corrupted object");
             } catch(const std::bad_cast& e) {
@@ -625,6 +587,47 @@ class socket:
 };
 
 #undef COCAINE_EINTR_GUARD
+
+// Socket options
+
+namespace options {
+    struct receive_timeout {
+        typedef int value_type;
+        typedef boost::mpl::int_<ZMQ_RCVTIMEO> option_type;
+    };
+
+    struct send_timeout {
+        typedef int value_type;
+        typedef boost::mpl::int_<ZMQ_SNDTIMEO> option_type;
+    };
+}
+
+template<class Option>
+class scoped_option {
+    typedef typename Option::value_type value_type;
+    typedef typename Option::option_type option_type;
+
+    public:
+        scoped_option(socket_base_t& socket,
+                      value_type value):
+            m_socket(socket),
+            m_saved(value_type()),
+            m_size(sizeof(m_saved))
+        {
+            m_socket.getsockopt(option_type(), &m_saved, &m_size);
+            m_socket.setsockopt(option_type(), &value, sizeof(value));
+        }
+
+        ~scoped_option() {
+            m_socket.setsockopt(option_type(), &m_saved, m_size);
+        }
+
+    private:
+        socket_base_t& m_socket;
+        
+        value_type m_saved;
+        size_t m_size;
+};
 
 // RPC channel
 

@@ -24,7 +24,7 @@
 #include "cocaine/common.hpp"
 #include "cocaine/asio.hpp"
 #include "cocaine/engine.hpp"
-#include "cocaine/rpc.hpp"
+#include "cocaine/io.hpp"
 #include "cocaine/unique_id.hpp"
 
 #include "cocaine/helpers/atomic.hpp"
