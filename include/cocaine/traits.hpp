@@ -63,8 +63,8 @@ namespace detail {
     static inline
     void
     pack_sequence(msgpack::packer<Stream>& packer,
-                  Head&& head,
-                  Tail&&... tail)
+                  const Head& head,
+                  const Tail&... tail)
     {
         // Strip the type.
         typedef typename boost::remove_const<
@@ -82,14 +82,14 @@ namespace detail {
         // Recurse to the next element.
         return pack_sequence<typename boost::mpl::next<T>::type>(
             packer,
-            std::forward<Tail>(tail)...
+            tail...
         );
     }
 
     template<class T>
     static inline
     void
-    unpack_sequence(const msgpack::object * unpacked) {
+    unpack_sequence(const msgpack::object *) {
         return;
     }
 
@@ -97,8 +97,8 @@ namespace detail {
     static
     void
     unpack_sequence(const msgpack::object * unpacked,
-                    Head&& head,
-                    Tail&&... tail)
+                    Head& head,
+                    Tail&... tail)
     {
         // Strip the type.
         typedef typename boost::remove_const<
@@ -116,7 +116,7 @@ namespace detail {
         // Recurse to the next element.
         return unpack_sequence<typename boost::mpl::next<T>::type>(
             ++unpacked,
-            std::forward<Tail>(tail)...
+            tail...
         );
     }
 }
@@ -125,7 +125,7 @@ template<class T, class Stream, typename... Args>
 static inline
 void
 pack_sequence(Stream& stream,
-              Args&&... sequence)
+              const Args&... sequence)
 {
     msgpack::packer<Stream> packer(stream);
 
@@ -135,7 +135,7 @@ pack_sequence(Stream& stream,
     // Recursively pack every sequence element.
     detail::pack_sequence<typename boost::mpl::begin<T>::type>(
         packer,
-        std::forward<Args>(sequence)...
+        sequence...
     );
 }
 
@@ -143,7 +143,7 @@ template<class T, typename... Args>
 static inline
 void
 unpack_sequence(const msgpack::object& packed,
-                Args&&... sequence)
+                Args&... sequence)
 {
     if(packed.type != msgpack::type::ARRAY ||
        packed.via.array.size != sizeof...(sequence))
@@ -154,7 +154,7 @@ unpack_sequence(const msgpack::object& packed,
     // Recursively unpack every tuple element while validating the types.
     detail::unpack_sequence<typename boost::mpl::begin<T>::type>(
         packed.via.array.ptr,
-        std::forward<Args>(sequence)...
+        sequence...
     );
 }
 

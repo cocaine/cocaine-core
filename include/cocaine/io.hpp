@@ -69,12 +69,17 @@ struct raw_traits<std::string> {
          const std::string& value)
     {
         message.rebuild(value.size());
-        memcpy(message.data(), value.data(), value.size());
+        
+        std::memcpy(
+            message.data(),
+            value.data(),
+            value.size()
+        );
     }
 
     static
     void
-    unpack(zmq::message_t& message,
+    unpack(/* const */ zmq::message_t& message,
            std::string& value)
     {
         value.assign(
@@ -315,7 +320,7 @@ class socket:
             
             zmq::message_t message(buffer.size());
             
-            memcpy(
+            std::memcpy(
                 message.data(),
                 buffer.data(),
                 buffer.size()
@@ -374,7 +379,7 @@ class socket:
 
             zmq::message_t body(event.size());
 
-            memcpy(
+            std::memcpy(
                 body.data(),
                 event.data(),
                 event.size()

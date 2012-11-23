@@ -32,35 +32,27 @@
 
 namespace cocaine { namespace engine {
 
-typedef boost::shared_ptr<
-    api::stream_t
-> stream_ptr_t;
-
 struct session_t:
     public birth_control<session_t>
 {
     session_t(const api::event_t& event,
               const boost::shared_ptr<api::stream_t>& upstream);
 
-    template<class Event, typename... Args>
-    bool
-    send(Args&&... args);
-
     void
     attach(slave_t * const slave);
 
-    void
-    abandon(error_code code,
-            const std::string& message);
+    template<class Event, typename... Args>
+    bool
+    send(Args&&... args);
 
 public:
     // Session ID.
     const unique_id_t id;
 
-    // Session event type.
+    // Session event type and execution policy.
     const api::event_t event;
 
-    // Session upstream.
+    // Client's upstream for result delivery.
     const boost::shared_ptr<api::stream_t> upstream;
 
 private:
@@ -68,7 +60,7 @@ private:
         std::pair<int, std::string>
     > chunk_list_t;
 
-    // Request chunk cache.
+    // Message cache.
     chunk_list_t m_cache;
     boost::mutex m_mutex;
 
@@ -85,7 +77,7 @@ session_t::send(Args&&... args) {
         boost::unique_lock<boost::mutex> lock(m_mutex);
 
         m_cache.emplace_back(
-            io::detail::outgoing<Event>::id,
+            io::message<Event>::id,
             std::string(event.data(), event.size())
         );
 

@@ -81,6 +81,7 @@ namespace {
             switch(m_state) {
                 case states::open: {
                     m_session->send<rpc::chunk>(std::string(chunk, size));
+
                     break;
                 }
 
@@ -96,11 +97,11 @@ namespace {
         {
             switch(m_state) {
                 case states::open: {
-                    m_session->send<rpc::error>((int)code, message);
+                    m_state = states::closed;
+
+                    m_session->send<rpc::error>(static_cast<int>(code), message);
                     m_session->send<rpc::choke>();
 
-                    m_state = states::closed;
-                    
                     break;
                 }
 
@@ -114,9 +115,9 @@ namespace {
         close() {
             switch(m_state) {
                 case states::open: {
-                    m_session->send<rpc::choke>();
-
                     m_state = states::closed;
+
+                    m_session->send<rpc::choke>();
                     
                     break;
                 }
@@ -665,7 +666,7 @@ engine_t::pump() {
                     session->id
                 );
 
-                session->abandon(
+                session->upstream->error(
                     deadline_error,
                     "the session has expired in the queue"
                 );
@@ -694,7 +695,7 @@ engine_t::pump() {
             continue;
         }
 
-        it->second->assign(session);
+        it->second->assign(std::move(session));
 
         // TODO: Check if it helps.
         m_loop.feed_fd_event(m_bus->fd(), ev::READ);
@@ -772,7 +773,7 @@ engine_t::shutdown(states::value target) {
 
         // Abort all the outstanding sessions.
         while(!m_queue.empty()) {
-            m_queue.front()->abandon(
+            m_queue.front()->upstream->error(
                 resource_error,
                 "engine is shutting down"
             );

@@ -64,6 +64,7 @@ struct upstream_t:
         switch(m_state) {
             case states::open:
                 send<rpc::chunk>(std::string(chunk, size));
+                
                 break;
 
             case states::closed:
@@ -78,8 +79,11 @@ struct upstream_t:
     {
         switch(m_state) {
             case states::open:
-                send<rpc::error>((int)code, message);
-                close();
+                m_state = states::closed;
+
+                send<rpc::error>(static_cast<int>(code), message);
+                send<rpc::choke>();
+
                 break;
 
             case states::closed:
@@ -92,8 +96,10 @@ struct upstream_t:
     close() {
         switch(m_state) {
             case states::open:
-                send<rpc::choke>();
                 m_state = states::closed;
+
+                send<rpc::choke>();
+
                 break;
 
             case states::closed:
@@ -227,14 +233,14 @@ worker_t::process_bus_events() {
         // TEST: Ensure that we haven't missed something in a previous iteration.
         BOOST_ASSERT(!m_bus.more());
        
-        int command = -1;
+        int message_id = -1;
 
         {
             io::scoped_option<
                 io::options::receive_timeout
             > option(m_bus, 0);
 
-            if(!m_bus.recv(command)) {
+            if(!m_bus.recv(message_id)) {
                 return;
             }
         }
@@ -243,10 +249,10 @@ worker_t::process_bus_events() {
             m_log,
             "slave %s received type %d message",
             m_id,
-            command
+            message_id
         );
 
-        switch(command) {
+        switch(message_id) {
             case io::message<rpc::pong>::id:
                 m_disown_timer.stop();
                 break;
@@ -335,7 +341,7 @@ worker_t::process_bus_events() {
                     m_log,
                     "slave %s dropping unknown type %d message", 
                     m_id,
-                    command
+                    message_id
                 );
                 
                 m_bus.drop();

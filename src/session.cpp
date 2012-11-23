@@ -33,6 +33,8 @@ session_t::session_t(const api::event_t& event_,
 
 void
 session_t::attach(slave_t * const slave) {
+    BOOST_ASSERT(!m_slave);
+
     m_slave = slave;
 
     if(!m_cache.empty()) {
@@ -47,11 +49,4 @@ session_t::attach(slave_t * const slave) {
 
         m_cache.clear();
     }
-}
-
-void
-session_t::abandon(error_code code,
-                   const std::string& message)
-{
-    upstream->error(code, message);
 }

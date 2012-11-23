@@ -53,7 +53,7 @@ class slave_t:
         ~slave_t();
 
         void
-        assign(const boost::shared_ptr<session_t>& session);
+        assign(boost::shared_ptr<session_t>&& session);
        
         void
         on_ping();

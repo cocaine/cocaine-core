@@ -85,7 +85,7 @@ slave_t::~slave_t() {
 }
 
 void
-slave_t::assign(const boost::shared_ptr<session_t>& session) {
+slave_t::assign(boost::shared_ptr<session_t>&& session) {
     COCAINE_LOG_DEBUG(
         m_log,
         "slave %s has started processing session %s",
@@ -93,10 +93,11 @@ slave_t::assign(const boost::shared_ptr<session_t>& session) {
         session->id
     );
 
-    m_sessions.emplace(session->id, session);
-
-    // This will potentially flood the slave with the cached messages.
+    // XXX: Might as well be a better idea to attach the session after emplacing
+    // it into the session map.
     session->attach(this);
+
+    m_sessions.emplace(session->id, std::move(session));
 
     if(m_idle_timer.is_active()) {
         m_idle_timer.stop();
@@ -106,8 +107,6 @@ slave_t::assign(const boost::shared_ptr<session_t>& session) {
 void
 slave_t::on_ping() {
     rearm();
-
-    // Rearming first so that slave will be in a correct state.
     send<rpc::pong>();
 }
 
@@ -185,7 +184,7 @@ namespace {
         template<class T>
         void
         operator()(T& session) {
-            session.second->abandon(
+            session.second->upstream->error(
                 timeout_error, 
                 "the session has timed out"
             );
@@ -211,10 +210,8 @@ slave_t::on_timeout(ev::timer&, int) {
 
 void
 slave_t::on_idle(ev::timer&, int) {
-    send<rpc::terminate>();
-
-    // Inactive slaves won't get any new sessions.
     m_state = states::inactive;
+    send<rpc::terminate>();
 }
 
 void

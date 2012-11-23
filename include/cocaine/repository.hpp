@@ -149,7 +149,7 @@ repository_t::get(const std::string& type,
     typedef category_traits<Category> traits;
 
     return typename traits::ptr_type(
-        dynamic_cast< typename traits::factory_type& >(
+        dynamic_cast<typename traits::factory_type&>(
             *it->second
         ).get(std::forward<Args>(args)...)
     );

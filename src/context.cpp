@@ -120,7 +120,7 @@ config_t::config_t(const std::string& path):
         addrinfo hints,
                  * result;
         
-        memset(&hints, 0, sizeof(addrinfo));
+        std::memset(&hints, 0, sizeof(addrinfo));
 
         hints.ai_flags = AI_CANONNAME;
 
