@@ -22,8 +22,6 @@
 
 #include <ctime>
 
-#include <boost/format.hpp>
-
 using namespace cocaine;
 using namespace cocaine::sink;
 
@@ -62,10 +60,11 @@ stdio_t::emit(logging::priorities priority,
 
     BOOST_ASSERT(result);
 
-    std::cout << boost::format("[%s] [%s] %s: %s")
-                    % timestamp 
-                    % describe[priority] 
-                    % source 
-                    % message
-              << std::endl;
+    std::cout << cocaine::format(
+        "[%s] [%s] %s: %s\n",
+        timestamp,
+        describe[priority],
+        source,
+        message
+    );
 }

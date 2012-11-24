@@ -46,9 +46,7 @@ app_t::app_t(context_t& context,
              const std::string& profile):
     m_context(context),
     m_log(context.log(
-        (boost::format("app/%1%")
-            % name
-        ).str()
+        cocaine::format("app/%1%", name)
     )),
     m_manifest(new manifest_t(context, name)),
     m_profile(new profile_t(context, profile))
@@ -61,10 +59,9 @@ app_t::app_t(context_t& context,
 
     m_control.reset(new control_channel_t(context, ZMQ_PAIR));
 
-    std::string endpoint(
-        (boost::format("inproc://%s")
-            % m_manifest->name
-        ).str()
+    std::string endpoint = cocaine::format(
+        "inproc://%s",
+        m_manifest->name
     );
 
     try { 

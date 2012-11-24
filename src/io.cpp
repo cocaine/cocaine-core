@@ -63,15 +63,14 @@ socket_base_t::bind() {
     m_port = m_context.ports().get();
 
     m_socket.bind(
-        (boost::format("tcp://*:%d")
-            % m_port
-        ).str().c_str()
+        cocaine::format("tcp://*:%d", m_port).c_str()
     );
 
-    m_endpoint = (boost::format("tcp://%s:%d")
-        % m_context.config.network.hostname
-        % m_port
-    ).str();
+    m_endpoint = cocaine::format(
+        "tcp://%s:%d",
+        m_context.config.network.hostname,
+        m_port
+    );
 }
 
 void

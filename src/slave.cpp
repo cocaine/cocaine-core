@@ -33,8 +33,6 @@
 
 #include "cocaine/traits/unique_id.hpp" 
 
-#include <boost/format.hpp>
-
 using namespace cocaine;
 using namespace cocaine::engine;
 
@@ -44,9 +42,7 @@ slave_t::slave_t(context_t& context,
                  engine_t& engine):
     m_context(context),
     m_log(context.log(
-        (boost::format("app/%1%")
-            % manifest.name
-        ).str()
+        cocaine::format("app/%s", manifest.name)
     )),
     m_manifest(manifest),
     m_profile(profile),

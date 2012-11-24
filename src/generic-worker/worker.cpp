@@ -32,7 +32,6 @@
 #include "cocaine/helpers/atomic.hpp"
 
 #include <boost/filesystem/path.hpp>
-#include <boost/format.hpp>
 
 using namespace cocaine;
 using namespace cocaine::engine;
@@ -132,19 +131,16 @@ worker_t::worker_t(context_t& context,
                    worker_config_t config):
     m_context(context),
     m_log(context.log(
-        (boost::format("app/%1%")
-            % config.name
-        ).str()
+        cocaine::format("app/%1%", config.name)
     )),
     m_id(config.uuid),
     m_name(config.name),
     m_bus(context, ZMQ_DEALER, m_id)
 {
-    std::string endpoint(
-        (boost::format("ipc://%1%/%2%")
-            % m_context.config.ipc_path
-            % m_name
-        ).str()
+    std::string endpoint = cocaine::format(
+        "ipc://%1%/%2%",
+        m_context.config.ipc_path,
+        m_name
     );
     
     m_bus.connect(endpoint);

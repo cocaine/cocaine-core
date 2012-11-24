@@ -38,7 +38,6 @@
 #include <boost/accumulators/statistics/median.hpp>
 
 #include <boost/bind.hpp>
-#include <boost/format.hpp>
 
 using namespace cocaine;
 using namespace cocaine::engine;
@@ -145,9 +144,7 @@ engine_t::engine_t(context_t& context,
                    const profile_t& profile):
     m_context(context),
     m_log(context.log(
-        (boost::format("app/%1%")
-            % manifest.name
-        ).str()
+        cocaine::format("app/%1%", manifest.name)
     )),
     m_manifest(manifest),
     m_profile(profile),
@@ -169,11 +166,10 @@ engine_t::engine_t(context_t& context,
         m_profile.isolate.args
     );
     
-    std::string bus_endpoint(
-        (boost::format("ipc://%1%/%2%")
-            % m_context.config.ipc_path
-            % m_manifest.name
-        ).str()
+    std::string bus_endpoint = cocaine::format(
+        "ipc://%1%/%2%",
+        m_context.config.ipc_path,
+        m_manifest.name
     );
 
     try {
@@ -182,10 +178,9 @@ engine_t::engine_t(context_t& context,
         throw configuration_error_t("unable to bind the engine pool channel - %s", e.what());
     }
    
-    std::string ctl_endpoint(
-        (boost::format("inproc://%s")
-            % m_manifest.name
-        ).str()
+    std::string ctl_endpoint = cocaine::format(
+        "inproc://%s",
+        m_manifest.name
     );
 
     try {

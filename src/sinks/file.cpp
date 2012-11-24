@@ -23,8 +23,6 @@
 #include <ctime>
 #include <cstdio>
 
-#include <boost/format.hpp>
-
 #include <sys/uio.h>
 
 using namespace cocaine;
@@ -80,14 +78,13 @@ file_t::emit(logging::priorities priority,
 
     BOOST_ASSERT(result != 0);
 
-    boost::format format("[%s] [%s] %s: %s\n");
-
-    format % timestamp 
-           % describe[priority] 
-           % source 
-           % message;
-
-    std::string out(format.str());
+    std::string out = cocaine::format(
+        "[%s] [%s] %s: %s\n",
+        timestamp,
+        describe[priority],
+        source,
+        message
+    );
 
     char * buffer = new char[out.size()];
 
