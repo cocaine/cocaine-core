@@ -88,7 +88,7 @@ class socket_base_t:
                    const void * value,
                    size_t size);
 
-public:
+    public:
         int
         fd() const {
             return m_fd;
