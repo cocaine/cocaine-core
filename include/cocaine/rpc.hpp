@@ -39,10 +39,6 @@ namespace rpc {
         typedef tags::rpc_tag tag;
     };
 
-    struct terminate {
-        typedef tags::rpc_tag tag;
-    };
-
     struct suicide {
         typedef tags::rpc_tag tag;
 
@@ -55,6 +51,10 @@ namespace rpc {
             int,
             std::string
         > tuple_type;
+    };
+
+    struct terminate {
+        typedef tags::rpc_tag tag;
     };
 
     struct invoke {
@@ -110,8 +110,8 @@ namespace io {
         typedef boost::mpl::list<
             rpc::ping,
             rpc::pong,
-            rpc::terminate,
             rpc::suicide,
+            rpc::terminate,
             rpc::invoke,
             rpc::chunk,
             rpc::error,
