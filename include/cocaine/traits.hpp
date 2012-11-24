@@ -89,7 +89,7 @@ namespace detail {
     template<class T>
     static inline
     void
-    unpack_sequence(const msgpack::object *) {
+    unpack_sequence(const msgpack::object*) {
         return;
     }
 
