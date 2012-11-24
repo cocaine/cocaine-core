@@ -276,7 +276,7 @@ class socket:
             msgpack::packer<msgpack::sbuffer> packer(buffer);
 
             type_traits<T>::pack(packer, value);
-            
+
             zmq::message_t message(buffer.size());
             
             std::memcpy(
@@ -519,17 +519,17 @@ class channel:
                 typename event_traits<Event>::tuple_type
             >(buffer, std::forward<Args>(args)...);
 
-            zmq::message_t body(buffer.size());
+            zmq::message_t message(buffer.size());
 
             std::memcpy(
-                body.data(),
+                message.data(),
                 buffer.data(),
                 buffer.size()
             );
 
             return this->send_multipart(
                 static_cast<int>(event_traits<Event>::id),
-                body
+                message
             );
         }
 
