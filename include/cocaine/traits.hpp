@@ -94,7 +94,7 @@ namespace detail {
     }
 
     template<class T, class Head, typename... Tail>
-    static
+    static inline
     void
     unpack_sequence(const msgpack::object * unpacked,
                     Head& head,
