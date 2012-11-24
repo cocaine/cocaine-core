@@ -21,13 +21,14 @@
 #ifndef COCAINE_TYPE_TRAITS_HPP
 #define COCAINE_TYPE_TRAITS_HPP
 
+#include <type_traits>
+
 #include <boost/mpl/begin.hpp>
 #include <boost/mpl/deref.hpp>
 #include <boost/mpl/next.hpp>
+#include <boost/mpl/size.hpp>
 
 #include <msgpack.hpp>
-
-#include "cocaine/common.hpp"
 
 namespace cocaine { namespace io {
 
@@ -67,13 +68,13 @@ namespace detail {
                   const Tail&... tail)
     {
         // Strip the type.
-        typedef typename boost::remove_const<
-            typename boost::remove_reference<Head>::type
+        typedef typename std::remove_const<
+            typename std::remove_reference<Head>::type
         >::type type;
 
         static_assert(
-            boost::is_same<typename boost::mpl::deref<T>::type, type>::value,
-            "type mismatch"
+            std::is_same<typename boost::mpl::deref<T>::type, type>::value,
+            "sequence element type mismatch"
         );
 
         // Pack the current element using the correct packer.
@@ -101,13 +102,13 @@ namespace detail {
                     Tail&... tail)
     {
         // Strip the type.
-        typedef typename boost::remove_const<
-            typename boost::remove_reference<Head>::type
+        typedef typename std::remove_const<
+            typename std::remove_reference<Head>::type
         >::type type;
 
         static_assert(
-            boost::is_same<typename boost::mpl::deref<T>::type, type>::value,
-            "type mismatch"
+            std::is_same<typename boost::mpl::deref<T>::type, type>::value,
+            "sequence element type mismatch"
         );
 
         // Unpack the current element using the correct packer.
@@ -127,6 +128,11 @@ void
 pack_sequence(Stream& stream,
               const Args&... sequence)
 {
+    static_assert(
+        sizeof...(sequence) == boost::mpl::size<T>::value,
+        "sequence size mismatch"
+    );
+
     msgpack::packer<Stream> packer(stream);
 
     // The sequence will be packed as an array.
@@ -145,6 +151,11 @@ void
 unpack_sequence(const msgpack::object& packed,
                 Args&... sequence)
 {
+    static_assert(
+        sizeof...(sequence) == boost::mpl::size<T>::value,
+        "sequence size mismatch"
+    );
+
     if(packed.type != msgpack::type::ARRAY ||
        packed.via.array.size != sizeof...(sequence))
     {
