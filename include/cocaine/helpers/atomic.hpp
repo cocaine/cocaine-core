@@ -21,7 +21,7 @@
 #ifndef COCAINE_HELPERS_ATOMIC_HPP
 #define COCAINE_HELPERS_ATOMIC_HPP
 
-#if defined(__clang__) || (defined(__GNUC__) && (__GNUC__ == 4 && __GNUC_MINOR__ >= 4))
+#if defined(__clang__) || (defined(__GNUC__) && (__GNUC__ == 4 && __GNUC_MINOR__ > 4))
     #include <atomic>
 #else
     #include <cstdatomic>
