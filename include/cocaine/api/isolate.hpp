@@ -104,7 +104,7 @@ struct category_traits<isolate_t> {
             }
 
             if(!instance) {
-                instance =  boost::make_shared<T>(
+                instance = boost::make_shared<T>(
                     boost::ref(context),
                     name,
                     args
