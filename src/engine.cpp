@@ -65,11 +65,7 @@ namespace {
         
         ~downstream_t() {
             if(m_state != states::closed) {
-                try {
-                    close();
-                } catch(...) {
-                    // Pass.
-                }
+                close();
             }
         }
 
@@ -739,7 +735,7 @@ engine_t::balance() {
                     m_context,
                     m_manifest,
                     m_profile,
-                    this
+                    *this
                 )
             );
 
