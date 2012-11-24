@@ -21,10 +21,11 @@
 #ifndef COCAINE_EXCEPTIONS_HPP
 #define COCAINE_EXCEPTIONS_HPP
 
-#include <boost/format.hpp>
 #include <cerrno>
 #include <cstring>
 #include <exception>
+
+#include "cocaine/helpers/format.hpp"
 
 namespace cocaine {
 
@@ -40,17 +41,9 @@ struct error_t:
 {
     template<typename... Args>
     error_t(const std::string& format,
-            const Args&... args)
-    {
-        boost::format message(format);
-
-        try {
-            // NOTE: Recursively expand the argument pack.
-            m_message = substitute(message, args...);
-        } catch(const boost::io::format_error& e) {
-            m_message = "<unable to format the message>";
-        }
-    }
+            const Args&... args):
+        m_message(cocaine::format(format, args...))
+    { }
 
     virtual
     ~error_t() throw() {
@@ -58,30 +51,13 @@ struct error_t:
     }
 
     virtual
-    const char *
+    const char*
     what() const throw() {
         return m_message.c_str();
     }
 
 private:
-    template<typename T, typename... Args>
-    static
-    std::string
-    substitute(boost::format& message,
-               const T& argument,
-               const Args&... args)
-    {
-        return substitute(message % argument, args...);
-    }
-
-    static
-    std::string
-    substitute(boost::format& message) {
-        return message.str();
-    }
-
-private:
-    std::string m_message;
+    const std::string m_message;
 };
 
 struct configuration_error_t:

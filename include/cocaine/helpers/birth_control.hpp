@@ -23,7 +23,7 @@
 
 #include "cocaine/helpers/atomic.hpp"
 
-namespace cocaine { namespace helpers {
+namespace cocaine {
 
 template<class T>
 class birth_control  {
@@ -62,10 +62,6 @@ birth_control<T>::g_objects_alive(0);
 template<class T>
 std::atomic<uint64_t>
 birth_control<T>::g_objects_created(0);
-
-} // namespace helpers
-
-using helpers::birth_control;
 
 } // namespace cocaine
 

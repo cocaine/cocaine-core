@@ -23,7 +23,7 @@
 
 #include "json/json.h"
 
-namespace cocaine { namespace helpers { namespace json {
+namespace cocaine { namespace json {
 
 template<class T>
 static inline
@@ -42,6 +42,6 @@ serialize(const Json::Value& json) {
     return Json::FastWriter().write(json);
 }
 
-}}} // namespace cocaine::helpers::json
+}} // namespace cocaine::json
 
 #endif

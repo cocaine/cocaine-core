@@ -21,11 +21,11 @@
 #ifndef COCAINE_LOGGING_HPP
 #define COCAINE_LOGGING_HPP
 
-#include <boost/format.hpp>
-
 #include "cocaine/common.hpp"
 
 #include "cocaine/api/sink.hpp"
+
+#include "cocaine/helpers/format.hpp"
 
 // Logging macros
 
@@ -72,31 +72,7 @@ class logger_t:
              const std::string& format,
              const Args&... args)
         {
-            boost::format message(format);
-
-            try {
-                // NOTE: Recursively expand the argument pack.
-                m_sink.emit(priority, m_source, substitute(message, args...));
-            } catch(const boost::io::format_error& e) {
-                m_sink.emit(priority, m_source, "<unable to format the log message>");
-            }
-        }
-
-    private:
-        template<typename T, typename... Args>
-        static
-        std::string
-        substitute(boost::format& message,
-                   const T& argument,
-                   const Args&... args)
-        {
-            return substitute(message % argument, args...);
-        }
-
-        static
-        std::string
-        substitute(boost::format& message) {
-            return message.str();
+            m_sink.emit(priority, m_source, cocaine::format(format, args...));
         }
 
     private:

@@ -30,7 +30,6 @@
 #include "cocaine/api/storage.hpp"
 
 using namespace cocaine;
-using namespace cocaine::helpers;
 
 server_t::server_t(context_t& context, 
                    server_config_t config):
