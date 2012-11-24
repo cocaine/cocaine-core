@@ -51,7 +51,7 @@ struct unique_id_t {
         );
         
         if(rv != 0) {
-            throw error_t("unable to parse '%s' as an unique id", other);
+            throw cocaine::error_t("unable to parse '%s' as an unique id", other);
         }
     }
 
