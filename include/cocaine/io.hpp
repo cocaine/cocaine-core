@@ -347,9 +347,9 @@ class socket:
                     result
                 );
             } catch(const msgpack::type_error& e) {
-                throw error_t("corrupted object");
+                throw cocaine::error_t("corrupted object");
             } catch(const std::bad_cast& e) {
-                throw error_t("corrupted object - type mismatch");
+                throw cocaine::error_t("corrupted object - type mismatch");
             }
 
             return true;
@@ -578,9 +578,9 @@ class channel:
                     typename event_traits<Event>::tuple_type
                 >(unpacked.get(), std::forward<Args>(args)...);
             } catch(const msgpack::type_error& e) {
-                throw error_t("corrupted object");
+                throw cocaine::error_t("corrupted object");
             } catch(const std::bad_cast& e) {
-                throw error_t("corrupted object - type mismatch");
+                throw cocaine::error_t("corrupted object - type mismatch");
             }
 
             return true;

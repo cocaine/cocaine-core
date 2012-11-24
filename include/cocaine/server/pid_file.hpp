@@ -49,17 +49,17 @@ class pid_file_t:
                         // Unlink the stale pid file.
                         remove();
                     } else {
-                        throw error_t("another process is active");
+                        throw cocaine::error_t("another process is active");
                     }
                 } else {
-                    throw error_t("unable to read '%s'", m_filepath.string());
+                    throw cocaine::error_t("unable to read '%s'", m_filepath.string());
                 }
             }
 
             boost::filesystem::ofstream stream(m_filepath);
 
             if(!stream) {
-                throw error_t("unable to write '%s'", m_filepath.string());
+                throw cocaine::error_t("unable to write '%s'", m_filepath.string());
             }
 
             stream << ::getpid();
@@ -80,7 +80,7 @@ class pid_file_t:
             try {
                 boost::filesystem::remove(m_filepath);
             } catch(const boost::filesystem::filesystem_error& e) {
-                throw error_t("unable to remove '%s'", m_filepath.string());
+                throw cocaine::error_t("unable to remove '%s'", m_filepath.string());
             }
         }
 
