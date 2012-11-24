@@ -48,7 +48,7 @@ class slave_t:
         slave_t(context_t& context,
                 const manifest_t& manifest,
                 const profile_t& profile,
-                engine_t * const engine);
+                engine_t& engine);
 
         ~slave_t();
 
@@ -80,7 +80,7 @@ class slave_t:
         {
             BOOST_ASSERT(m_state == states::active);
 
-            return m_engine->send(
+            return m_engine.send(
                 m_id,
                 message_id,
                 message
@@ -124,7 +124,7 @@ class slave_t:
         const profile_t& m_profile;
 
         // Controlling engine.
-        engine_t * const m_engine;
+        engine_t& m_engine;
 
         // Slave health monitoring.
         ev::timer m_heartbeat_timer,
@@ -157,7 +157,7 @@ bool
 slave_t::send(Args&&... args) {
     BOOST_ASSERT(m_state == states::active);
 
-    return m_engine->send<Event>(
+    return m_engine.send<Event>(
         m_id,
         std::forward<Args>(args)...
     );

@@ -41,7 +41,7 @@ using namespace cocaine::engine;
 slave_t::slave_t(context_t& context,
                  const manifest_t& manifest,
                  const profile_t& profile,
-                 engine_t * engine):
+                 engine_t& engine):
     m_context(context),
     m_log(context.log(
         (boost::format("app/%1%")
@@ -51,7 +51,7 @@ slave_t::slave_t(context_t& context,
     m_manifest(manifest),
     m_profile(profile),
     m_engine(engine),
-    m_heartbeat_timer(engine->loop()),
+    m_heartbeat_timer(engine.loop()),
     m_state(states::unknown)
 {
     api::category_traits<api::isolate_t>::ptr_type isolate = m_context.get<api::isolate_t>(
@@ -222,7 +222,7 @@ slave_t::rearm() {
             "slave %s came alive in %.03f seconds",
             m_id,
             m_profile.startup_timeout - ev_timer_remaining(
-                m_engine->loop(),
+                m_engine.loop(),
                 static_cast<ev_timer*>(&m_heartbeat_timer)
             )
         );
