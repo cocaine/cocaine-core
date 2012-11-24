@@ -21,6 +21,13 @@
 #ifndef COCAINE_IO_HPP
 #define COCAINE_IO_HPP
 
+#include "cocaine/common.hpp"
+#include "cocaine/traits.hpp"
+
+#include "cocaine/helpers/birth_control.hpp"
+
+#include <type_traits>
+
 #include <boost/mpl/begin.hpp>
 #include <boost/mpl/contains.hpp>
 #include <boost/mpl/distance.hpp>
@@ -30,18 +37,12 @@
 #include <boost/mpl/size.hpp>
 
 #include <boost/thread/mutex.hpp>
-#include <boost/type_traits/remove_const.hpp>
 
 #include <zmq.hpp>
 
 #if ZMQ_VERSION < 20200
     #error ZeroMQ version 2.2.0+ required!
 #endif
-
-#include "cocaine/common.hpp"
-#include "cocaine/traits.hpp"
-
-#include "cocaine/helpers/birth_control.hpp"
 
 namespace cocaine { namespace io {
 
@@ -298,7 +299,7 @@ class socket:
             zmq::message_t message;
 
             raw_traits<
-                typename boost::remove_const<T>::type
+                typename std::remove_const<T>::type
             >::pack(message, object.value);
 
             return send(message, flags);
@@ -369,7 +370,7 @@ class socket:
             }
 
             raw_traits<
-                typename boost::remove_const<T>::type
+                typename std::remove_const<T>::type
             >::unpack(message, result.value);
 
             return true;

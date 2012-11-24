@@ -21,14 +21,14 @@
 #ifndef COCAINE_STORAGE_API_HPP
 #define COCAINE_STORAGE_API_HPP
 
-#include <boost/thread/mutex.hpp>
-#include <boost/tuple/tuple.hpp>
-
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
 #include "cocaine/traits.hpp"
 
 #include "cocaine/helpers/json.hpp"
+
+#include <boost/thread/mutex.hpp>
+#include <boost/tuple/tuple.hpp>
 
 namespace cocaine {
 

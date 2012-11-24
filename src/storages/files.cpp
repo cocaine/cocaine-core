@@ -18,15 +18,15 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include <boost/filesystem/fstream.hpp>
-#include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/convenience.hpp>
-#include <boost/iterator/filter_iterator.hpp>
-
 #include "cocaine/storages/files.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
+
+#include <boost/filesystem/fstream.hpp>
+#include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/convenience.hpp>
+#include <boost/iterator/filter_iterator.hpp>
 
 using namespace cocaine;
 using namespace cocaine::storage;

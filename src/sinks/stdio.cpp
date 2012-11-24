@@ -18,10 +18,11 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include <boost/format.hpp>
+#include "cocaine/sinks/stdio.hpp"
+
 #include <ctime>
 
-#include "cocaine/sinks/stdio.hpp"
+#include <boost/format.hpp>
 
 using namespace cocaine;
 using namespace cocaine::sink;

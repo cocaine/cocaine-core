@@ -18,13 +18,13 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include <archive.h>
-#include <archive_entry.h>
-
 #include "cocaine/archive.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
+
+#include <archive.h>
+#include <archive_entry.h>
 
 using namespace cocaine;
 

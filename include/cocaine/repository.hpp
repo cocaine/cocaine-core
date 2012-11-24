@@ -21,11 +21,12 @@
 #ifndef COCAINE_REPOSITORY_HPP
 #define COCAINE_REPOSITORY_HPP
 
-#include <boost/type_traits/is_base_of.hpp>
-#include <ltdl.h>
+#include "cocaine/common.hpp"
+
+#include <type_traits>
 #include <typeinfo>
 
-#include "cocaine/common.hpp"
+#include <ltdl.h>
 
 namespace cocaine { namespace api {
 
@@ -159,7 +160,7 @@ template<class T, class Category>
 void
 repository_t::insert(const std::string& type) {
     static_assert(
-        boost::is_base_of<
+        std::is_base_of<
             Category,
             T
         >::value,
@@ -167,7 +168,7 @@ repository_t::insert(const std::string& type) {
     );
 
     static_assert(
-        boost::is_base_of<
+        std::is_base_of<
             typename category_traits<Category>::factory_type,
             typename plugin_traits<T>::factory_type
         >::value,

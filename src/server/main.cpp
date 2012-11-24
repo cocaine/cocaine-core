@@ -18,15 +18,16 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include <boost/program_options.hpp>
-#include <iostream>
-
 #include "cocaine/config.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
 #include "cocaine/server/pid_file.hpp"
 #include "cocaine/server/server.hpp"
+
+#include <iostream>
+
+#include <boost/program_options.hpp>
 
 using namespace cocaine;
 

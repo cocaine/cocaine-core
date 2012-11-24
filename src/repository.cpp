@@ -18,10 +18,10 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
+#include "cocaine/repository.hpp"
+
 #include <boost/filesystem.hpp>
 #include <boost/iterator/filter_iterator.hpp>
-
-#include "cocaine/repository.hpp"
 
 using namespace cocaine::api;
 

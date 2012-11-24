@@ -21,9 +21,9 @@
 #ifndef COCAINE_ARCHIVE_HPP
 #define COCAINE_ARCHIVE_HPP
 
-#include <boost/filesystem/path.hpp>
-
 #include "cocaine/common.hpp"
+
+#include <boost/filesystem/path.hpp>
 
 struct archive;
 

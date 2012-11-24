@@ -21,10 +21,6 @@
 #ifndef COCAINE_ENGINE_HPP
 #define COCAINE_ENGINE_HPP
 
-#include <boost/thread/condition.hpp>
-#include <boost/thread/mutex.hpp>
-#include <deque>
-
 #include "cocaine/common.hpp"
 #include "cocaine/asio.hpp"
 #include "cocaine/io.hpp"
@@ -32,6 +28,11 @@
 #include "cocaine/api/isolate.hpp"
 
 #include "cocaine/helpers/atomic.hpp"
+
+#include <deque>
+
+#include <boost/thread/condition.hpp>
+#include <boost/thread/mutex.hpp>
 
 namespace cocaine { namespace engine {
 

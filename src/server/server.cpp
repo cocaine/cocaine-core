@@ -18,8 +18,6 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include <boost/tuple/tuple.hpp>
-
 #include "cocaine/server/server.hpp"
 
 #include "cocaine/app.hpp"
@@ -28,6 +26,8 @@
 #include "cocaine/session.hpp"
 
 #include "cocaine/api/storage.hpp"
+
+#include <boost/tuple/tuple.hpp>
 
 using namespace cocaine;
 

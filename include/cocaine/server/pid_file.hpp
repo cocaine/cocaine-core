@@ -21,12 +21,14 @@
 #ifndef COCAINE_HELPERS_PID_FILE_HPP
 #define COCAINE_HELPERS_PID_FILE_HPP
 
+#include "cocaine/common.hpp"
+
+#include <csignal>
+
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
-#include <signal.h>
-#include <sys/types.h>
 
-#include "cocaine/common.hpp"
+#include <sys/types.h>
 
 namespace cocaine {
 

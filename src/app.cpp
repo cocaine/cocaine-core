@@ -18,10 +18,6 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/path.hpp>
-#include <boost/format.hpp>
-
 #include "cocaine/app.hpp"
 
 #include "cocaine/archive.hpp"
@@ -35,6 +31,10 @@
 #include "cocaine/api/driver.hpp"
 
 #include "cocaine/traits/json.hpp"
+
+#include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/path.hpp>
+#include <boost/format.hpp>
 
 using namespace cocaine;
 using namespace cocaine::engine;

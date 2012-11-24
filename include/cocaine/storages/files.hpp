@@ -21,9 +21,9 @@
 #ifndef COCAINE_FILE_STORAGE_HPP
 #define COCAINE_FILE_STORAGE_HPP
 
-#include <boost/filesystem/path.hpp>
-
 #include "cocaine/api/storage.hpp"
+
+#include <boost/filesystem/path.hpp>
 
 namespace cocaine { namespace storage {
 

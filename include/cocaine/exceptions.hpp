@@ -21,11 +21,11 @@
 #ifndef COCAINE_EXCEPTIONS_HPP
 #define COCAINE_EXCEPTIONS_HPP
 
+#include "cocaine/helpers/format.hpp"
+
 #include <cerrno>
 #include <cstring>
 #include <exception>
-
-#include "cocaine/helpers/format.hpp"
 
 namespace cocaine {
 

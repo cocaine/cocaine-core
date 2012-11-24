@@ -21,9 +21,9 @@
 #ifndef COCAINE_AUTH_HPP
 #define COCAINE_AUTH_HPP
 
-#include <openssl/evp.h>
-
 #include "cocaine/common.hpp"
+
+#include <openssl/evp.h>
 
 namespace cocaine {
 

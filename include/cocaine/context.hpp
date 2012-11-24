@@ -21,14 +21,14 @@
 #ifndef COCAINE_CONTEXT_HPP
 #define COCAINE_CONTEXT_HPP
 
-#include <queue>
-
-#include <boost/thread/mutex.hpp>
-
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
 
 #include "cocaine/helpers/json.hpp"
+
+#include <queue>
+
+#include <boost/thread/mutex.hpp>
 
 namespace cocaine {
 

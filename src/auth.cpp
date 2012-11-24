@@ -18,16 +18,16 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include <openssl/bio.h>
-#include <openssl/pem.h>
-#include <openssl/err.h>
-
 #include "cocaine/auth.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
 #include "cocaine/api/storage.hpp"
+
+#include <openssl/bio.h>
+#include <openssl/pem.h>
+#include <openssl/err.h>
 
 using namespace cocaine::crypto;
 

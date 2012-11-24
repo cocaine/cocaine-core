@@ -18,9 +18,6 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include <boost/filesystem/path.hpp>
-#include <boost/format.hpp>
-
 #include "cocaine/generic-worker/worker.hpp"
 
 #include "cocaine/context.hpp"
@@ -33,6 +30,9 @@
 #include "cocaine/traits/unique_id.hpp"
 
 #include "cocaine/helpers/atomic.hpp"
+
+#include <boost/filesystem/path.hpp>
+#include <boost/format.hpp>
 
 using namespace cocaine;
 using namespace cocaine::engine;

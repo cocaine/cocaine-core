@@ -21,14 +21,14 @@
 #ifndef COCAINE_ISOLATE_API_HPP
 #define COCAINE_ISOLATE_API_HPP
 
-#include <boost/ref.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/weak_ptr.hpp>
-
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
 
 #include "cocaine/helpers/json.hpp"
+
+#include <boost/ref.hpp>
+#include <boost/thread/mutex.hpp>
+#include <boost/weak_ptr.hpp>
 
 namespace cocaine { namespace api {
 

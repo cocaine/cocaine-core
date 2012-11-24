@@ -18,14 +18,15 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include <signal.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-
 #include "cocaine/isolates/process.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
+
+#include <csignal>
+
+#include <sys/types.h>
+#include <sys/wait.h>
 
 using namespace cocaine;
 using namespace cocaine::isolate;

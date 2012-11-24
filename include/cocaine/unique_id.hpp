@@ -21,10 +21,11 @@
 #ifndef COCAINE_UNIQUE_ID_HPP
 #define COCAINE_UNIQUE_ID_HPP
 
-#include <boost/functional/hash.hpp>
-#include <uuid/uuid.h>
-
 #include "cocaine/common.hpp"
+
+#include <boost/functional/hash.hpp>
+
+#include <uuid/uuid.h>
 
 namespace cocaine {
 

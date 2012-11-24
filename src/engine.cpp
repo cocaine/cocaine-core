@@ -18,12 +18,6 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include <boost/accumulators/accumulators.hpp>
-#include <boost/accumulators/statistics/median.hpp>
-
-#include <boost/bind.hpp>
-#include <boost/format.hpp>
-
 #include "cocaine/engine.hpp"
 
 #include "cocaine/context.hpp"
@@ -39,6 +33,12 @@
 
 #include "cocaine/traits/json.hpp"
 #include "cocaine/traits/unique_id.hpp"
+
+#include <boost/accumulators/accumulators.hpp>
+#include <boost/accumulators/statistics/median.hpp>
+
+#include <boost/bind.hpp>
+#include <boost/format.hpp>
 
 using namespace cocaine;
 using namespace cocaine::engine;

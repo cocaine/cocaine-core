@@ -21,11 +21,11 @@
 #ifndef COCAINE_APP_HPP
 #define COCAINE_APP_HPP
 
-#include <boost/thread/thread.hpp>
-
 #include "cocaine/common.hpp"
 
 #include "cocaine/helpers/json.hpp"
+
+#include <boost/thread/thread.hpp>
 
 namespace cocaine {
 
