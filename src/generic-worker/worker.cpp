@@ -253,11 +253,11 @@ worker_t::process_bus_events() {
         );
 
         switch(message_id) {
-            case io::message<rpc::pong>::id:
+            case io::event_traits<rpc::pong>::id:
                 m_disown_timer.stop();
                 break;
 
-            case io::message<rpc::invoke>::id: {
+            case io::event_traits<rpc::invoke>::id: {
                 unique_id_t session_id(uninitialized);
                 std::string event;
 
@@ -283,7 +283,7 @@ worker_t::process_bus_events() {
                 break;
             }
 
-            case io::message<rpc::chunk>::id: {
+            case io::event_traits<rpc::chunk>::id: {
                 unique_id_t session_id(uninitialized);
                 std::string message;
 
@@ -308,7 +308,7 @@ worker_t::process_bus_events() {
                 break;
             }
 
-            case io::message<rpc::choke>::id: {
+            case io::event_traits<rpc::choke>::id: {
                 unique_id_t session_id(uninitialized);
 
                 m_bus.recv<rpc::choke>(session_id);
@@ -332,7 +332,7 @@ worker_t::process_bus_events() {
                 break;
             }
             
-            case io::message<rpc::terminate>::id:
+            case io::event_traits<rpc::terminate>::id:
                 terminate(rpc::suicide::normal, "per request");
                 break;
 

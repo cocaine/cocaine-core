@@ -404,14 +404,14 @@ engine_t::process_bus_events() {
         );
 
         switch(message_id) {
-            case io::message<rpc::ping>::id:
+            case io::event_traits<rpc::ping>::id:
                 lock.unlock();
 
                 slave->second->on_ping();
 
                 break;
 
-            case io::message<rpc::suicide>::id: {
+            case io::event_traits<rpc::suicide>::id: {
                 int code = 0;
                 std::string message;
 
@@ -436,7 +436,7 @@ engine_t::process_bus_events() {
                 break;
             }
 
-            case io::message<rpc::chunk>::id: {
+            case io::event_traits<rpc::chunk>::id: {
                 unique_id_t session_id(uninitialized);
                 std::string message;
                 
@@ -449,7 +449,7 @@ engine_t::process_bus_events() {
                 break;
             }
          
-            case io::message<rpc::error>::id: {
+            case io::event_traits<rpc::error>::id: {
                 unique_id_t session_id(uninitialized);
                 int code = 0;
                 std::string message;
@@ -467,7 +467,7 @@ engine_t::process_bus_events() {
                 break;
             }
 
-            case io::message<rpc::choke>::id: {
+            case io::event_traits<rpc::choke>::id: {
                 unique_id_t session_id(uninitialized);
 
                 m_bus->recv<rpc::choke>(session_id);
@@ -543,7 +543,7 @@ engine_t::process_ctl_events() {
     }
 
     switch(message_id) {
-        case io::message<control::status>::id: {
+        case io::event_traits<control::status>::id: {
             Json::Value info(Json::objectValue);
 
             active_t active;
@@ -565,7 +565,7 @@ engine_t::process_ctl_events() {
             break;
         }
 
-        case io::message<control::terminate>::id:
+        case io::event_traits<control::terminate>::id:
             shutdown(states::stopping);
             break;
 

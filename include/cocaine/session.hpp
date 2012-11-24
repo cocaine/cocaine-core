@@ -72,13 +72,17 @@ template<class Event, typename... Args>
 bool
 session_t::send(Args&&... args) {
     if(!m_slave) {
-        io::detail::outgoing<Event> event(id, std::forward<Args>(args)...);
+        msgpack::sbuffer buffer;
+
+        io::pack_sequence<
+            typename io::event_traits<Event>::tuple_type
+        >(buffer, id, std::forward<Args>(args)...);
 
         boost::unique_lock<boost::mutex> lock(m_mutex);
 
         m_cache.emplace_back(
-            io::message<Event>::id,
-            std::string(event.data(), event.size())
+            io::event_traits<Event>::id,
+            std::string(buffer.data(), buffer.size())
         );
 
         return true;

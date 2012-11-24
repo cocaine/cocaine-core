@@ -45,7 +45,161 @@
 
 namespace cocaine { namespace io {
 
-// Custom type serialization mechanics
+// ZeroMQ socket
+
+class socket_base_t: 
+    public boost::noncopyable,
+    public birth_control<socket_base_t>
+{
+    public:
+        socket_base_t(context_t& context,
+                      int type);
+
+        virtual
+        ~socket_base_t();
+
+        void
+        bind();
+
+        void
+        bind(const std::string& endpoint);
+        
+        void
+        connect(const std::string& endpoint);
+
+        bool
+        send(zmq::message_t& message,
+             int flags = 0);
+
+        bool
+        recv(zmq::message_t& message,
+             int flags = 0);
+
+        void
+        drop();
+
+        void
+        getsockopt(int name,
+                   void * value,
+                   size_t * size);
+
+        void
+        setsockopt(int name,
+                   const void * value,
+                   size_t size);
+
+public:
+        int
+        fd() const {
+            return m_fd;
+        }
+
+        std::string
+        endpoint() const { 
+            return m_endpoint; 
+        }
+
+        bool
+        more() {
+            int64_t rcvmore = 0;
+            size_t size = sizeof(rcvmore);
+
+            getsockopt(ZMQ_RCVMORE, &rcvmore, &size);
+
+            return rcvmore != 0;
+        }
+
+        std::string
+        identity() {
+            char identity[256] = { 0 };
+            size_t size = sizeof(identity);
+
+            getsockopt(ZMQ_IDENTITY, &identity, &size);
+
+            return identity;
+        }
+
+        bool
+        pending(unsigned long event = ZMQ_POLLIN) {
+            unsigned long events = 0;
+            size_t size = sizeof(events);
+
+            getsockopt(ZMQ_EVENTS, &events, &size);
+
+            return events & event;
+        }
+
+    protected:
+        zmq::socket_t m_socket;
+        
+    private:
+        context_t& m_context;
+
+        int m_fd;
+        std::string m_endpoint;
+
+        uint16_t m_port;
+};
+
+// Socket options
+
+namespace options {
+    struct receive_timeout {
+        typedef int value_type;
+        typedef boost::mpl::int_<ZMQ_RCVTIMEO> option_type;
+    };
+
+    struct send_timeout {
+        typedef int value_type;
+        typedef boost::mpl::int_<ZMQ_SNDTIMEO> option_type;
+    };
+}
+
+template<class Option>
+class scoped_option {
+    typedef typename Option::value_type value_type;
+    typedef typename Option::option_type option_type;
+
+    public:
+        scoped_option(socket_base_t& socket,
+                      value_type value):
+            m_socket(socket),
+            m_saved(value_type()),
+            m_size(sizeof(m_saved))
+        {
+            m_socket.getsockopt(option_type(), &m_saved, &m_size);
+            m_socket.setsockopt(option_type(), &value, sizeof(value));
+        }
+
+        ~scoped_option() {
+            m_socket.setsockopt(option_type(), &m_saved, m_size);
+        }
+
+    private:
+        socket_base_t& m_socket;
+        
+        // NOTE: Keep the previous values so that the socket state could be
+        // restored on scope exit.
+        value_type m_saved;
+        size_t m_size;
+};
+
+// Socket sharing policies
+
+namespace policies {
+    struct unique {
+        typedef struct {
+            void lock() { };
+            void unlock() { };
+        } mutex_type;
+    };
+
+    struct shared {
+        typedef boost::mutex mutex_type;
+    };
+}
+
+// Custom serialization
 
 namespace detail {
     template<class T>
@@ -96,196 +250,9 @@ protect(T& object) {
     return detail::raw<T>(object);
 }
 
-// Socket sharing policies
+// Shareable serializing socket
 
-namespace policies {
-    struct unique {
-        typedef struct {
-            void lock() { };
-            void unlock() { };
-        } mutex_type;
-    };
-
-    struct shared {
-        typedef boost::mutex mutex_type;
-    };
-}
-
-// ZeroMQ socket wrapper
-
-#define COCAINE_EINTR_GUARD(command)        \
-    while(true) {                           \
-        try {                               \
-            command;                        \
-        } catch(const zmq::error_t& e) {    \
-            if(e.num() != EINTR) {          \
-                throw;                      \
-            }                               \
-        }                                   \
-    }
-
-class socket_base_t: 
-    public boost::noncopyable,
-    public birth_control<socket_base_t>
-{
-    public:
-        socket_base_t(context_t& context,
-                      int type);
-
-        ~socket_base_t();
-
-        void
-        bind();
-
-        void
-        bind(const std::string& endpoint);
-        
-        void
-        connect(const std::string& endpoint);
-
-        int
-        fd() const {
-            return m_fd;
-        }
-
-        std::string
-        endpoint() const { 
-            return m_endpoint; 
-        }
-
-        void
-        getsockopt(int name,
-                   void * value,
-                   size_t * size)
-        {
-            COCAINE_EINTR_GUARD(
-                return m_socket.getsockopt(name, value, size)
-            );
-        }
-
-        void
-        setsockopt(int name,
-                   const void * value,
-                   size_t size)
-        {
-            COCAINE_EINTR_GUARD(
-                return m_socket.setsockopt(name, value, size)
-            );
-        }
-
-    protected:
-        zmq::socket_t m_socket;
-        
-    private:
-        context_t& m_context;
-
-        int m_fd;
-        std::string m_endpoint;
-
-        uint16_t m_port;
-};
-
-// Event tuple type extraction
-
-template<class Tag>
-struct dispatch;
-
-namespace detail {
-    template<class T>
-    struct depend {
-        typedef void type;
-    };
-
-    template<class Event, class Tuple = void>
-    struct event_traits {
-        typedef boost::mpl::list<> tuple_type;
-    };
-
-    template<class Event>
-    struct event_traits<
-        Event,
-        typename depend<
-            typename Event::tuple_type
-        >::type
-    >
-    {
-        typedef typename Event::tuple_type tuple_type;
-    };
-
-    // Event category enumeration
-
-    template<
-        class Event,
-        class Category = typename dispatch<
-            typename Event::tag
-        >::category
-    >
-    struct enumerate:
-        public boost::mpl::distance<
-            typename boost::mpl::begin<Category>::type,
-            typename boost::mpl::find<Category, Event>::type
-        >::type
-    {
-        static_assert(
-            boost::mpl::contains<Category, Event>::value,
-            "event has not been enumerated within its category"
-        );
-    };
-}
-
-// RPC message
-
-template<class Event>
-struct message {
-    enum constants {
-        id = detail::enumerate<Event>::value,
-        length = boost::mpl::size<typename detail::event_traits<Event>::tuple_type>::type::value,
-        empty = length == 0
-    };
-};
-
-namespace detail {
-    template<class Event>
-    struct outgoing:
-        public message<Event>
-    {
-        template<typename... Args>
-        outgoing(Args&&... args) {
-            io::pack_sequence<
-                typename event_traits<Event>::tuple_type
-            >(m_buffer, std::forward<Args>(args)...);
-        }
-
-        const char*
-        data() const {
-            return m_buffer.data();
-        }
-
-        size_t
-        size() const {
-            return m_buffer.size();
-        }
-
-    private:
-        msgpack::sbuffer m_buffer;
-    };
-
-    template<class Event>
-    struct incoming:
-        public message<Event>
-    {
-        template<typename... Args>
-        incoming(const msgpack::object& object,
-                 Args&&... args)
-        {
-            io::unpack_sequence<
-                typename event_traits<Event>::tuple_type
-            >(object, std::forward<Args>(args)...);
-        }
-    };
-}
-
-template<class SharingPolicy, class Tag = void>
+template<class SharingPolicy>
 class socket:
     public socket_base_t
 {
@@ -295,16 +262,8 @@ class socket:
             socket_base_t(context, type)
         { }
 
-        // ZeroMQ messages
-
-        bool
-        send(zmq::message_t& message,
-             int flags = 0)
-        {
-            COCAINE_EINTR_GUARD(
-                return m_socket.send(message, flags)
-            );
-        }
+        using socket_base_t::send;
+        using socket_base_t::recv;
 
         // Serialized objects
 
@@ -361,63 +320,7 @@ class socket:
             return send(head, ZMQ_SNDMORE) &&
                    send_multipart(std::forward<Tail>(tail)...);
         }
-
-        // RPC messages
-
-        template<class Event, typename... Args>
-        typename boost::disable_if_c<
-            message<Event>::empty,
-            bool
-        >::type
-        send(Args&&... args) {
-            static_assert(
-                boost::is_same<Tag, typename Event::tag>::value,
-                "invalid event category"
-            );
-
-            detail::outgoing<Event> event(std::forward<Args>(args)...);
-
-            zmq::message_t body(event.size());
-
-            std::memcpy(
-                body.data(),
-                event.data(),
-                event.size()
-            );
-
-            return send_multipart(
-                static_cast<int>(message<Event>::id),
-                body
-            );
-        }
-
-        template<class Event>
-        typename boost::enable_if_c<
-            message<Event>::empty,
-            bool
-        >::type
-        send() {
-            static_assert(
-                boost::is_same<Tag, typename Event::tag>::value,
-                "invalid event category"
-            );
-
-            return send(
-                static_cast<int>(message<Event>::id)
-            );
-        }
         
-        // ZeroMQ messages
-
-        bool
-        recv(zmq::message_t& message,
-             int flags = 0)
-        {
-            COCAINE_EINTR_GUARD(
-                return m_socket.recv(&message, flags)
-            );
-        }
-
         // Serialized messages
 
         template<class T>
@@ -497,11 +400,158 @@ class socket:
                    recv_multipart(std::forward<Tail>(tail)...);
         }
 
+        // Lockable concept implementation
+
+        void lock() {
+            m_mutex.lock();
+        }
+
+        void unlock() {
+            m_mutex.unlock();
+        }
+
+    private:
+        typename SharingPolicy::mutex_type m_mutex;
+};
+
+// RPC channel
+
+namespace mpl = boost::mpl;
+
+template<class Tag>
+struct dispatch;
+
+namespace detail {
+    template<
+        class Event,
+        class Category = typename dispatch<
+            typename Event::tag
+        >::category
+    >
+    struct enumerate:
+        public mpl::distance<
+            typename mpl::begin<Category>::type,
+            typename mpl::find<Category, Event>::type
+        >::type
+    {
+        static_assert(
+            mpl::contains<Category, Event>::value,
+            "event has not been enumerated within its category"
+        );
+    };
+
+    template<class T>
+    struct depend {
+        typedef void type;
+    };
+
+    template<class Event, class U = void>
+    struct tuple_type {
+        typedef mpl::list<> type;
+    };
+
+    template<class Event>
+    struct tuple_type<
+        Event,
+        typename depend<typename Event::tuple_type>::type
+    > 
+    {
+        typedef typename Event::tuple_type type;
+    };
+}
+
+template<class Event>
+struct event_traits {
+    typedef typename detail::tuple_type<Event>::type tuple_type;
+
+    enum {
+        id = detail::enumerate<Event>::value,
+        length = mpl::size<tuple_type>::value,
+        empty = length == 0
+    };
+};
+
+template<
+    class Tag,
+    class SharingPolicy
+>
+class channel:
+    public socket<SharingPolicy>
+{
+    public:
+        channel(context_t& context, int type):
+            socket<SharingPolicy>(context, type)
+        { }
+        
+        template<class T>
+        channel(context_t& context, int type, const T& identity):
+            socket<SharingPolicy>(context, type)
+        {
+            msgpack::sbuffer buffer;
+            msgpack::packer<msgpack::sbuffer> packer(buffer);
+
+            // NOTE: Channels allow any serializable type to be its
+            // identity, for example UUIDs.
+            type_traits<T>::pack(packer, identity);
+            
+            this->setsockopt(ZMQ_IDENTITY, buffer.data(), buffer.size());
+        }
+
+        using socket<SharingPolicy>::send;
+        using socket<SharingPolicy>::recv;
+
         // RPC messages
 
         template<class Event, typename... Args>
         typename boost::disable_if_c<
-            message<Event>::empty,
+            event_traits<Event>::empty,
+            bool
+        >::type
+        send(Args&&... args) {
+            static_assert(
+                boost::is_same<Tag, typename Event::tag>::value,
+                "invalid event category"
+            );
+
+            msgpack::sbuffer buffer;
+
+            io::pack_sequence<
+                typename event_traits<Event>::tuple_type
+            >(buffer, std::forward<Args>(args)...);
+
+            zmq::message_t body(buffer.size());
+
+            std::memcpy(
+                body.data(),
+                buffer.data(),
+                buffer.size()
+            );
+
+            return this->send_multipart(
+                static_cast<int>(event_traits<Event>::id),
+                body
+            );
+        }
+
+        template<class Event>
+        typename boost::enable_if_c<
+            event_traits<Event>::empty,
+            bool
+        >::type
+        send() {
+            static_assert(
+                boost::is_same<Tag, typename Event::tag>::value,
+                "invalid event category"
+            );
+
+            return this->send(
+                static_cast<int>(event_traits<Event>::id)
+            );
+        }
+
+        template<class Event, typename... Args>
+        typename boost::disable_if_c<
+            event_traits<Event>::empty,
             bool
         >::type
         recv(Args&&... args) {
@@ -513,7 +563,7 @@ class socket:
             zmq::message_t message;
             msgpack::unpacked unpacked;
 
-            if(!recv(message)) {
+            if(!this->recv(message)) {
                 return false;
             }
 
@@ -524,10 +574,9 @@ class socket:
                     message.size()
                 );
 
-                detail::incoming<Event>(
-                    unpacked.get(),
-                    std::forward<Args>(args)...
-                );
+                io::unpack_sequence<
+                    typename event_traits<Event>::tuple_type
+                >(unpacked.get(), std::forward<Args>(args)...);
             } catch(const msgpack::type_error& e) {
                 throw error_t("corrupted object");
             } catch(const std::bad_cast& e) {
@@ -537,130 +586,7 @@ class socket:
             return true;
         }
 
-        void
-        drop() {
-            zmq::message_t null;
-
-            while(more()) {
-                recv(null);
-            }
-        }
-
-        // Lockable concept implementation
-
-        void lock() {
-            m_mutex.lock();
-        }
-
-        void unlock() {
-            m_mutex.unlock();
-        }
-
-    public:
-        bool
-        more() {
-            int64_t rcvmore = 0;
-            size_t size = sizeof(rcvmore);
-
-            getsockopt(ZMQ_RCVMORE, &rcvmore, &size);
-
-            return rcvmore != 0;
-        }
-
-        std::string
-        identity() {
-            char identity[256] = { 0 };
-            size_t size = sizeof(identity);
-
-            getsockopt(ZMQ_IDENTITY, &identity, &size);
-
-            return identity;
-        }
-
-        bool
-        pending(unsigned long event = ZMQ_POLLIN) {
-            unsigned long events = 0;
-            size_t size = sizeof(events);
-
-            getsockopt(ZMQ_EVENTS, &events, &size);
-
-            return events & event;
-        }
-
-    private:
-        typename SharingPolicy::mutex_type m_mutex;
-};
-
-#undef COCAINE_EINTR_GUARD
-
-// Socket options
-
-namespace options {
-    struct receive_timeout {
-        typedef int value_type;
-        typedef boost::mpl::int_<ZMQ_RCVTIMEO> option_type;
-    };
-
-    struct send_timeout {
-        typedef int value_type;
-        typedef boost::mpl::int_<ZMQ_SNDTIMEO> option_type;
-    };
-}
-
-template<class Option>
-class scoped_option {
-    typedef typename Option::value_type value_type;
-    typedef typename Option::option_type option_type;
-
-    public:
-        scoped_option(socket_base_t& socket,
-                      value_type value):
-            m_socket(socket),
-            m_saved(value_type()),
-            m_size(sizeof(m_saved))
-        {
-            m_socket.getsockopt(option_type(), &m_saved, &m_size);
-            m_socket.setsockopt(option_type(), &value, sizeof(value));
-        }
-
-        ~scoped_option() {
-            m_socket.setsockopt(option_type(), &m_saved, m_size);
-        }
-
-    private:
-        socket_base_t& m_socket;
-        
-        value_type m_saved;
-        size_t m_size;
-};
-
-// RPC channel
-
-template<
-    class Tag,
-    class SharingPolicy
->
-class channel:
-    public socket<SharingPolicy, Tag>
-{
-    public:
-        channel(context_t& context, int type):
-            socket<SharingPolicy, Tag>(context, type)
-        { }
-        
-        template<class T>
-        channel(context_t& context, int type, const T& identity):
-            socket<SharingPolicy, Tag>(context, type)
-        {
-            msgpack::sbuffer buffer;
-            msgpack::packer<msgpack::sbuffer> packer(buffer);
-
-            // NOTE: Channels allow any serializable type to be its
-            // identity, for example UUIDs.
-            type_traits<T>::pack(packer, identity);
-            
-            this->setsockopt(ZMQ_IDENTITY, buffer.data(), buffer.size());
-        }
+        // XXX: This have to go.
 
         bool
         send_message(int message_id,

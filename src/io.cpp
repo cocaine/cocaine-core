@@ -22,6 +22,17 @@
 
 #include "cocaine/context.hpp"
 
+#define COCAINE_EINTR_GUARD(command)        \
+    while(true) {                           \
+        try {                               \
+            command;                        \
+        } catch(const zmq::error_t& e) {    \
+            if(e.num() != EINTR) {          \
+                throw;                      \
+            }                               \
+        }                                   \
+    }
+
 using namespace cocaine::io;
 
 socket_base_t::socket_base_t(context_t& context,
@@ -83,4 +94,51 @@ socket_base_t::bind(const std::string& endpoint) {
 void
 socket_base_t::connect(const std::string& endpoint) {
     m_socket.connect(endpoint.c_str());
+}
+
+bool
+socket_base_t::send(zmq::message_t& message,
+                    int flags)
+{
+    COCAINE_EINTR_GUARD(
+        return m_socket.send(message, flags)
+    );
+}
+
+bool
+socket_base_t::recv(zmq::message_t& message,
+                    int flags)
+{
+    COCAINE_EINTR_GUARD(
+        return m_socket.recv(&message, flags)
+    );
+}
+
+void
+socket_base_t::getsockopt(int name,
+                          void * value,
+                          size_t * size)
+{
+    COCAINE_EINTR_GUARD(
+        return m_socket.getsockopt(name, value, size)
+    );
+}
+
+void
+socket_base_t::setsockopt(int name,
+                          const void * value,
+                          size_t size)
+{
+    COCAINE_EINTR_GUARD(
+        return m_socket.setsockopt(name, value, size)
+    );
+}
+
+void
+socket_base_t::drop() {
+    zmq::message_t null;
+
+    while(more()) {
+        recv(null);
+    }
 }
