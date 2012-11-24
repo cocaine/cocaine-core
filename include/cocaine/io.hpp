@@ -464,7 +464,7 @@ template<class Event>
 struct event_traits {
     typedef typename detail::tuple_type<Event>::type tuple_type;
 
-    enum {
+    enum constants {
         id = detail::enumerate<Event>::value,
         length = mpl::size<tuple_type>::value,
         empty = length == 0
