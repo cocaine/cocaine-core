@@ -18,12 +18,6 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include <boost/filesystem/fstream.hpp>
-#include <boost/filesystem/operations.hpp>
-#include <boost/iterator/counting_iterator.hpp>
-#include <boost/tuple/tuple.hpp>
-#include <netdb.h>
-
 #include "cocaine/context.hpp"
 
 #include "cocaine/io.hpp"
@@ -36,6 +30,13 @@
 #include "cocaine/sinks/syslog.hpp"
 
 #include "cocaine/storages/files.hpp"
+
+#include <boost/filesystem/fstream.hpp>
+#include <boost/filesystem/operations.hpp>
+#include <boost/iterator/counting_iterator.hpp>
+#include <boost/tuple/tuple.hpp>
+
+#include <netdb.h>
 
 using namespace cocaine;
 
@@ -222,21 +223,6 @@ context_t::context_t(config_t config_):
     // Register the plugins.
     m_repository->load(config.plugin_path);
 
-    config_t::component_t cfg;
-
-    try {
-        cfg = config.components.at("sink/core");
-    } catch(const std::out_of_range&) {
-        cfg.type = "stdio";
-    }
-
-    // Get the logging sink.
-    m_sink = get<api::sink_t>(
-        cfg.type,
-        "cocaine",
-        cfg.args
-    );
-
     // Initialize the ZeroMQ context.
     m_io.reset(new zmq::context_t(1));
 
@@ -254,6 +240,23 @@ context_t::~context_t() {
 boost::shared_ptr<logging::logger_t>
 context_t::log(const std::string& name) {
     boost::lock_guard<boost::mutex> lock(m_mutex);
+
+    if(!m_sink) {
+        config_t::component_t cfg;
+
+        try {
+            cfg = config.components.at("sink/core");
+        } catch(const std::out_of_range&) {
+            cfg.type = "stdio";
+        }
+
+        // Get the logging sink.
+        m_sink = get<api::sink_t>(
+            cfg.type,
+            "cocaine",
+            cfg.args
+        );
+    }
 
     instance_map_t::iterator it(m_instances.find(name));
 
