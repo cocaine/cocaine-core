@@ -64,7 +64,6 @@ ADD_LIBRARY(cocaine-common SHARED
     src/loggers/files
     src/loggers/stdout
     src/loggers/syslog
-    src/loggers/upstream
     src/repository
     src/storages/files)
 
