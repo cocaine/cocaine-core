@@ -297,7 +297,11 @@ class service:
 
         // Handling
 
+#if BOOST_VERSION >= 103600
+        typedef boost::unordered_map<
+#else
         typedef std::map<
+#endif
             int,
             boost::shared_ptr<detail::dispatch_base_t>
         > dispatch_map_t;
