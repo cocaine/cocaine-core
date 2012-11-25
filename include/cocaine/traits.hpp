@@ -56,7 +56,7 @@ namespace detail {
     template<class T, class Stream>
     static inline
     void
-    pack_sequence(msgpack::packer<Stream>&) {
+    pack_sequence(msgpack::packer<Stream>& packer) {
         return;
     }
 
@@ -90,7 +90,7 @@ namespace detail {
     template<class T>
     static inline
     void
-    unpack_sequence(const msgpack::object*) {
+    unpack_sequence(const msgpack::object * unpacked) {
         return;
     }
 
@@ -112,11 +112,11 @@ namespace detail {
         );
 
         // Unpack the current element using the correct packer.
-        type_traits<type>::unpack(*unpacked, head);
+        type_traits<type>::unpack(*unpacked++, head);
 
         // Recurse to the next element.
         return unpack_sequence<typename boost::mpl::next<T>::type>(
-            ++unpacked,
+            unpacked,
             tail...
         );
     }

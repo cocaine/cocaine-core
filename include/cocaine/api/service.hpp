@@ -33,7 +33,7 @@
 #include <boost/function.hpp>
 #include <boost/function_types/function_type.hpp>
 
-#include <boost/mpl/insert_range.hpp>
+#include <boost/mpl/push_front.hpp>
 
 namespace cocaine { namespace api {
 
@@ -49,27 +49,23 @@ namespace detail {
         operator()(const msgpack::object& object) = 0;
     };
 
+    namespace mpl = boost::mpl;
+    namespace ft = boost::function_types;
+
     template<class Event>
     struct dispatch:
         public dispatch_base_t
     {
-        typedef typename io::event_traits<
-            Event
-        >::tuple_type tuple_type;
+        typedef typename io::event_traits<Event>::tuple_type tuple_type;
 
-        // Constructing a callable type from the event tuple type
+        // Constructing a callable type from the event tuple type: just push the
+        // void type up to the front.
 
-        typedef typename boost::function_types::function_type<
-            typename boost::mpl::insert_range<
-                tuple_type,
-                typename boost::mpl::begin<tuple_type>::type,
-                typename boost::mpl::list<void>::type
-            >::type
+        typedef typename ft::function_type<
+            typename mpl::push_front<tuple_type, void>::type
         >::type function_type;
 
-        typedef boost::function<
-            function_type
-        > callable_type;
+        typedef boost::function<function_type> callable_type;
 
         dispatch(callable_type callable):
             m_callable(callable)
@@ -84,8 +80,8 @@ namespace detail {
                 throw msgpack::type_error();
             }
 
-            typedef typename boost::mpl::begin<tuple_type>::type begin;
-            typedef typename boost::mpl::end<tuple_type>::type end;
+            typedef typename mpl::begin<tuple_type>::type begin;
+            typedef typename mpl::end<tuple_type>::type end;
 
             return invoke<begin, end>::apply(
                 m_callable,
@@ -103,18 +99,18 @@ namespace detail {
                   msgpack::object * packed,
                   Args&&... args)
             {
-                typedef typename boost::mpl::deref<It>::type element_type;
-                typedef typename boost::mpl::next<It>::type next_type;
+                typedef typename mpl::deref<It>::type argument_type;
+                typedef typename mpl::next<It>::type next_type;
                 
-                element_type element;
+                argument_type argument;
 
-                io::type_traits<element_type>::unpack(*packed, element);
+                io::type_traits<argument_type>::unpack(*packed++, argument);
 
                 return invoke<next_type, End>::apply(
                     callable,
-                    ++packed,
+                    packed,
                     std::forward<Args>(args)...,
-                    std::move(element)
+                    std::move(argument)
                 );
             }
         };
@@ -125,7 +121,7 @@ namespace detail {
             static inline
             void
             apply(callable_type& callable,
-                  msgpack::object*,
+                  msgpack::object * packed,
                   Args&&... args)
             {
                 callable(std::forward<Args>(args)...);
@@ -187,6 +183,11 @@ class service:
             COCAINE_LOG_INFO(m_log, "started");
         }
 
+        context_t&
+        context() {
+            return m_context;
+        }
+
         logging::logger_t*
         log() {
             return m_log.get();
@@ -240,7 +241,7 @@ class service:
 
                 COCAINE_LOG_DEBUG(
                     m_log,
-                    "received type %d message from %s",
+                    "received type %d message from '%s'",
                     message_id,
                     source
                 );

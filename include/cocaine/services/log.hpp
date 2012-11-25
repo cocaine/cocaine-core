@@ -69,10 +69,10 @@ class log_t:
                    std::string message)
         {
             COCAINE_LOG(
-                log(),
-                static_cast<logging::priorities>(priority),
-                "%s",
-                message
+               log(),
+               static_cast<logging::priorities>(priority),
+               "%s",
+               message
             );
         }
 
