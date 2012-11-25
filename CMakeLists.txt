@@ -61,10 +61,10 @@ ADD_LIBRARY(cocaine-common SHARED
     src/context
     src/io
     src/isolates/process
+    src/loggers/files
+    src/loggers/stdout
+    src/loggers/syslog
     src/repository
-    src/sinks/file
-    src/sinks/stdio
-    src/sinks/syslog
     src/storages/files)
 
 TARGET_LINK_LIBRARIES(cocaine-common

@@ -35,8 +35,8 @@ namespace cocaine {
     namespace api {
         class driver_t;
         class isolate_t;
+        class logger_t;
         class sandbox_t;
-        class sink_t;
         class storage_t;
 
         struct event_t;

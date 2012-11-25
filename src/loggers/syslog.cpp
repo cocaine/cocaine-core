@@ -18,14 +18,14 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include "cocaine/sinks/syslog.hpp"
+#include "cocaine/loggers/syslog.hpp"
 
 #include <boost/algorithm/string/replace.hpp>
 
 #include <syslog.h>
 
 using namespace cocaine;
-using namespace cocaine::sink;
+using namespace cocaine::logger;
 
 syslog_t::syslog_t(const std::string& name,
                    const Json::Value& args):

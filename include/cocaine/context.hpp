@@ -153,9 +153,9 @@ class context_t:
     private:
         std::unique_ptr<api::repository_t> m_repository;
         
-        // NOTE: As the logging sinks themselves are components, the repository
+        // NOTE: As the loggers themselves are components, the repository
         // have to be initialized first without a logger, unfortunately.
-        std::unique_ptr<api::sink_t> m_sink;
+        std::unique_ptr<api::logger_t> m_sink;
 
 #if BOOST_VERSION >= 103600
         typedef boost::unordered_map<

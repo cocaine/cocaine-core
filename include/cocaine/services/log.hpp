@@ -61,7 +61,7 @@ class log_t:
               const Json::Value& args):
             category_type(context, name, args)
         {
-            bind<message>(boost::bind(&log_t::on_message, this, _1, _2));
+            on<message>(boost::bind(&log_t::on_message, this, _1, _2));
         }
 
         void

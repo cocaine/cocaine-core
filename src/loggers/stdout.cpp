@@ -18,15 +18,15 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include "cocaine/sinks/stdio.hpp"
+#include "cocaine/loggers/stdout.hpp"
 
 #include <ctime>
 
 using namespace cocaine;
-using namespace cocaine::sink;
+using namespace cocaine::logger;
 
-stdio_t::stdio_t(const std::string& name,
-                 const Json::Value& args):
+stdout_t::stdout_t(const std::string& name,
+                   const Json::Value& args):
     category_type(name, args)
 { }
 
@@ -41,9 +41,9 @@ namespace {
 }
 
 void
-stdio_t::emit(logging::priorities priority,
-              const std::string& source,
-              const std::string& message)
+stdout_t::emit(logging::priorities priority,
+               const std::string& source,
+               const std::string& message)
 {
     time_t time = 0;
     tm timeinfo;

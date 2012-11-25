@@ -18,25 +18,25 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#ifndef COCAINE_FILE_SINK_HPP
-#define COCAINE_FILE_SINK_HPP
+#ifndef COCAINE_FILE_LOGGER_HPP
+#define COCAINE_FILE_LOGGER_HPP
 
-#include "cocaine/api/sink.hpp"
+#include "cocaine/api/logger.hpp"
 
-namespace cocaine { namespace sink {
+namespace cocaine { namespace logger {
 
-class file_t:
-    public api::sink_t
+class files_t:
+    public api::logger_t
 {
     public:
-        typedef api::sink_t category_type;
+        typedef api::logger_t category_type;
         
     public:
-        file_t(const std::string& name,
-               const Json::Value& args);
+        files_t(const std::string& name,
+                const Json::Value& args);
 
         virtual
-        ~file_t();
+        ~files_t();
 
         virtual
         void

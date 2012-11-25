@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#ifndef COCAINE_SINK_API_HPP
-#define COCAINE_SINK_API_HPP
+#ifndef COCAINE_LOGGER_API_HPP
+#define COCAINE_LOGGER_API_HPP
 
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
@@ -46,12 +46,12 @@ resolve(const Json::Value& args) {
     }
 }
 
-class sink_t:
+class logger_t:
     public boost::noncopyable
 {
     public:
         virtual
-        ~sink_t() { 
+        ~logger_t() { 
             // Empty.
         }
 
@@ -68,8 +68,8 @@ class sink_t:
              const std::string& message) = 0;
 
     protected:
-        sink_t(const std::string& /* name */,
-               const Json::Value& args):
+        logger_t(const std::string& /* name */,
+                 const Json::Value& args):
             m_verbosity(resolve(args))
         {
         }
@@ -79,11 +79,11 @@ class sink_t:
 };
 
 template<>
-struct category_traits<sink_t> {
-    typedef std::unique_ptr<sink_t> ptr_type;
+struct category_traits<logger_t> {
+    typedef std::unique_ptr<logger_t> ptr_type;
 
     struct factory_type:
-        public factory_base<sink_t>
+        public factory_base<logger_t>
     {
         virtual
         ptr_type

@@ -23,7 +23,7 @@
 
 #include "cocaine/common.hpp"
 
-#include "cocaine/api/sink.hpp"
+#include "cocaine/api/logger.hpp"
 
 #include "cocaine/helpers/format.hpp"
 
@@ -52,15 +52,15 @@ class logger_t:
     public boost::noncopyable
 {
     public:
-        logger_t(api::sink_t& sink,
+        logger_t(api::logger_t& logger,
                  const std::string& source):
-            m_sink(sink),
+            m_logger(logger),
             m_source(source)
         { }
 
         priorities
         verbosity() const {
-            return m_sink.verbosity();
+            return m_logger.verbosity();
         }
 
         template<typename... Args>
@@ -69,11 +69,11 @@ class logger_t:
              const std::string& format,
              const Args&... args)
         {
-            m_sink.emit(priority, m_source, cocaine::format(format, args...));
+            m_logger.emit(priority, m_source, cocaine::format(format, args...));
         }
 
     private:
-        api::sink_t& m_sink;
+        api::logger_t& m_logger;
         
         // This is the logging source component name, so that log messages could
         // be processed based on where they came from.

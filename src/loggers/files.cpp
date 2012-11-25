@@ -18,7 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include "cocaine/sinks/file.hpp"
+#include "cocaine/loggers/files.hpp"
 
 #include <ctime>
 #include <cstdio>
@@ -26,10 +26,10 @@
 #include <sys/uio.h>
 
 using namespace cocaine;
-using namespace cocaine::sink;
+using namespace cocaine::logger;
 
-file_t::file_t(const std::string& name,
-               const Json::Value& args):
+files_t::files_t(const std::string& name,
+                 const Json::Value& args):
     category_type(name, args),
     m_file(NULL)
 {
@@ -42,7 +42,7 @@ file_t::file_t(const std::string& name,
     }
 }
 
-file_t::~file_t() {
+files_t::~files_t() {
     if(m_file) {
         std::fclose(m_file);
     }
@@ -59,9 +59,9 @@ namespace {
 }
 
 void
-file_t::emit(logging::priorities priority,
-             const std::string& source,
-             const std::string& message)
+files_t::emit(logging::priorities priority,
+              const std::string& source,
+              const std::string& message)
 {
     time_t time = 0;
     tm timeinfo;

@@ -195,7 +195,7 @@ class service:
 
         template<class Event>
         void
-        bind(typename detail::dispatch<Event>::callable_type callable) {
+        on(typename detail::dispatch<Event>::callable_type callable) {
             m_dispatch.emplace(
                 io::event_traits<Event>::id,
                 boost::make_shared<detail::dispatch<Event>>(callable)

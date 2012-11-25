@@ -25,9 +25,9 @@
 
 #include "cocaine/isolates/process.hpp"
 
-#include "cocaine/sinks/file.hpp"
-#include "cocaine/sinks/stdio.hpp"
-#include "cocaine/sinks/syslog.hpp"
+#include "cocaine/loggers/files.hpp"
+#include "cocaine/loggers/stdout.hpp"
+#include "cocaine/loggers/syslog.hpp"
 
 #include "cocaine/storages/files.hpp"
 
@@ -212,10 +212,10 @@ context_t::context_t(config_t config_):
     // Register the builtin isolates.
     m_repository->insert<isolate::process_t>("process");
 
-    // Register the builtin logging sinks.
-    m_repository->insert<sink::file_t>("file");
-    m_repository->insert<sink::stdio_t>("stdio");
-    m_repository->insert<sink::syslog_t>("syslog");
+    // Register the builtin loggers
+    m_repository->insert<logger::files_t>("files");
+    m_repository->insert<logger::stdout_t>("stdout");
+    m_repository->insert<logger::syslog_t>("syslog");
     
     // Register the builtin storages.
     m_repository->insert<storage::file_storage_t>("files");
@@ -232,7 +232,7 @@ context_t::context_t(config_t config_):
 
 context_t::~context_t() {
     // NOTE: Plugin categories have to be destroyed in a specific order,
-    // so that logging sinks would be destroyed after all the shared factories
+    // so that loggers would be destroyed after all the shared factories
     // which may use logging subsystem. For now, it involes storages only.
     m_repository->dispose<api::storage_t>();
 }
@@ -247,11 +247,11 @@ context_t::log(const std::string& name) {
         try {
             cfg = config.components.at("sink/core");
         } catch(const std::out_of_range&) {
-            cfg.type = "stdio";
+            cfg.type = "stdout";
         }
 
         // Get the logging sink.
-        m_sink = get<api::sink_t>(
+        m_sink = get<api::logger_t>(
             cfg.type,
             "cocaine",
             cfg.args
