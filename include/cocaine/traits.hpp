@@ -130,7 +130,7 @@ pack_sequence(Stream& stream,
 {
     static_assert(
         sizeof...(sequence) == boost::mpl::size<T>::value,
-        "sequence size mismatch"
+        "sequence length mismatch"
     );
 
     msgpack::packer<Stream> packer(stream);
@@ -153,7 +153,7 @@ unpack_sequence(const msgpack::object& packed,
 {
     static_assert(
         sizeof...(sequence) == boost::mpl::size<T>::value,
-        "sequence size mismatch"
+        "sequence length mismatch"
     );
 
     if(packed.type != msgpack::type::ARRAY ||
