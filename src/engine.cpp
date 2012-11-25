@@ -159,7 +159,6 @@ engine_t::engine_t(context_t& context,
 {
     m_isolate = m_context.get<api::isolate_t>(
         m_profile.isolate.type,
-        m_context,
         m_manifest.name,
         m_profile.isolate.args
     );

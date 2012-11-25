@@ -27,9 +27,10 @@
 using namespace cocaine;
 using namespace cocaine::logger;
 
-syslog_t::syslog_t(const std::string& name,
+syslog_t::syslog_t(context_t& context,
+                   const std::string& name,
                    const Json::Value& args):
-    category_type(name, args),
+    category_type(context, name, args),
     m_identity(args.get("identity", name).asString())
 {
     openlog(m_identity.c_str(), LOG_PID, LOG_USER);

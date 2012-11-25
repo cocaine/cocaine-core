@@ -115,7 +115,6 @@ app_t::start() {
                     it->first,
                     m_context.get<api::driver_t>(
                         it->second.type,
-                        m_context,
                         format.str(),
                         it->second.args,
                         *m_engine

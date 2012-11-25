@@ -32,7 +32,8 @@ class files_t:
         typedef api::logger_t category_type;
         
     public:
-        files_t(const std::string& name,
+        files_t(context_t& context,
+                const std::string& name,
                 const Json::Value& args);
 
         virtual

@@ -68,7 +68,8 @@ class logger_t:
              const std::string& message) = 0;
 
     protected:
-        logger_t(const std::string& /* name */,
+        logger_t(context_t&,
+                 const std::string& /* name */,
                  const Json::Value& args):
             m_verbosity(resolve(args))
         {
@@ -87,7 +88,8 @@ struct category_traits<logger_t> {
     {
         virtual
         ptr_type
-        get(const std::string& name,
+        get(context_t& context,
+            const std::string& name,
             const Json::Value& args) = 0;
     };
 
@@ -97,10 +99,11 @@ struct category_traits<logger_t> {
     {
         virtual
         ptr_type
-        get(const std::string& name,
+        get(context_t& context,
+            const std::string& name,
             const Json::Value& args)
         {
-            return ptr_type(new T(name, args));
+            return ptr_type(new T(context, name, args));
         }
     };
 };

@@ -21,7 +21,7 @@
 #ifndef COCAINE_LOG_SERVICE_HPP
 #define COCAINE_LOG_SERVICE_HPP
 
-#include "cocaine/api/service.hpp"
+#include "cocaine/services/basic.hpp"
 
 #include <boost/bind.hpp>
 
@@ -50,16 +50,13 @@ namespace io {
 namespace service {
 
 class log_t:
-    public api::service<log_tag>
+    public api::basic_service<log_tag>
 {
-    public:
-        typedef api::service<log_tag> category_type;
-
     public:
         log_t(context_t& context,
               const std::string& name,
               const Json::Value& args):
-            category_type(context, name, args)
+            api::basic_service<log_tag>(context, name, args)
         {
             on<message>(boost::bind(&log_t::on_message, this, _1, _2));
         }

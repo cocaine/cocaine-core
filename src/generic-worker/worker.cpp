@@ -162,7 +162,6 @@ worker_t::worker_t(context_t& context,
          
         m_sandbox = m_context.get<api::sandbox_t>(
             m_manifest->sandbox.type,
-            m_context,
             m_manifest->name,
             m_manifest->sandbox.args,
             path.string()
