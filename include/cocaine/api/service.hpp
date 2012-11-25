@@ -73,9 +73,9 @@ namespace detail {
 
         virtual
         void
-        operator()(const msgpack::object& packed) {
-            if(packed.type != msgpack::type::ARRAY ||
-               packed.via.array.size != io::event_traits<Event>::length)
+        operator()(const msgpack::object& unpacked) {
+            if(unpacked.type != msgpack::type::ARRAY ||
+               unpacked.via.array.size != io::event_traits<Event>::length)
             {
                 throw msgpack::type_error();
             }
@@ -85,7 +85,7 @@ namespace detail {
 
             return invoke<begin, end>::apply(
                 m_callable,
-                packed.via.array.ptr
+                unpacked.via.array.ptr
             );
         }
 
@@ -96,7 +96,7 @@ namespace detail {
             static inline
             void
             apply(callable_type& callable,
-                  msgpack::object * packed,
+                  msgpack::object * unpacked,
                   Args&&... args)
             {
                 typedef typename mpl::deref<It>::type argument_type;
@@ -104,11 +104,11 @@ namespace detail {
                 
                 argument_type argument;
 
-                io::type_traits<argument_type>::unpack(*packed++, argument);
+                io::type_traits<argument_type>::unpack(*unpacked++, argument);
 
                 return invoke<next_type, End>::apply(
                     callable,
-                    packed,
+                    unpacked,
                     std::forward<Args>(args)...,
                     std::move(argument)
                 );
@@ -121,7 +121,7 @@ namespace detail {
             static inline
             void
             apply(callable_type& callable,
-                  msgpack::object * packed,
+                  msgpack::object * unpacked,
                   Args&&... args)
             {
                 callable(std::forward<Args>(args)...);
