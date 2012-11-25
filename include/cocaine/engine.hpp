@@ -27,8 +27,6 @@
 
 #include "cocaine/api/isolate.hpp"
 
-#include "cocaine/helpers/atomic.hpp"
-
 #include <deque>
 
 #include <boost/thread/condition.hpp>
@@ -64,13 +62,11 @@ class session_queue_t:
 class engine_t:
     public boost::noncopyable
 {
-    struct states {
-        enum value: int {
-            running,
-            broken,
-            stopping,
-            stopped
-        };
+    enum class state_t: int {
+        running,
+        broken,
+        stopping,
+        stopped
     };
 
     public:
@@ -142,7 +138,7 @@ class engine_t:
         balance();
 
         void
-        shutdown(states::value target);
+        shutdown(state_t target);
         
         void
         stop();
@@ -156,7 +152,7 @@ class engine_t:
 
         // Engine state
 
-        std::atomic<int> m_state;
+        state_t m_state;
 
         // I/O
         

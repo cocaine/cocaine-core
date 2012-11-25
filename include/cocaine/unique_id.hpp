@@ -40,7 +40,7 @@ struct unique_id_t {
         uuid_generate(reinterpret_cast<unsigned char*>(uuid));
     }
 
-    unique_id_t(const uninitialized_t&) {
+    unique_id_t(uninitialized_t) {
         // Empty.
     }
 

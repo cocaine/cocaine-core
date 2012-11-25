@@ -59,11 +59,11 @@ namespace {
     {
         downstream_t(const boost::shared_ptr<session_t>& session):
             m_session(session),
-            m_state(states::open)
+            m_state(state_t::open)
         { }
         
         ~downstream_t() {
-            if(m_state != states::closed) {
+            if(m_state != state_t::closed) {
                 close();
             }
         }
@@ -74,13 +74,13 @@ namespace {
              size_t size)
         {
             switch(m_state) {
-                case states::open: {
+                case state_t::open: {
                     m_session->send<rpc::chunk>(std::string(chunk, size));
 
                     break;
                 }
 
-                case states::closed:
+                case state_t::closed:
                     throw cocaine::error_t("the stream has been closed");
             }
         }
@@ -91,8 +91,8 @@ namespace {
               const std::string& message)
         {
             switch(m_state) {
-                case states::open: {
-                    m_state = states::closed;
+                case state_t::open: {
+                    m_state = state_t::closed;
 
                     m_session->send<rpc::error>(static_cast<int>(code), message);
                     m_session->send<rpc::choke>();
@@ -100,7 +100,7 @@ namespace {
                     break;
                 }
 
-                case states::closed:
+                case state_t::closed:
                     throw cocaine::error_t("the stream has been closed");
             }
         }
@@ -109,15 +109,15 @@ namespace {
         void
         close() {
             switch(m_state) {
-                case states::open: {
-                    m_state = states::closed;
+                case state_t::open: {
+                    m_state = state_t::closed;
 
                     m_session->send<rpc::choke>();
                     
                     break;
                 }
 
-                case states::closed:
+                case state_t::closed:
                     throw cocaine::error_t("the stream has been closed");
             }
         }
@@ -125,15 +125,13 @@ namespace {
     private:
         const boost::shared_ptr<session_t> m_session;
 
-        struct states {
-            enum value: int {
-                open,
-                closed
-            };
+        enum class state_t: int {
+            open,
+            closed
         };
 
         // Stream state.
-        std::atomic<int> m_state;
+        state_t m_state;
     };
 }
 
@@ -148,7 +146,7 @@ engine_t::engine_t(context_t& context,
     )),
     m_manifest(manifest),
     m_profile(profile),
-    m_state(states::stopped),
+    m_state(state_t::stopped),
     m_bus(new rpc_channel_t(context, ZMQ_ROUTER, m_manifest.name)),
     m_ctl(new control_channel_t(context, ZMQ_PAIR)),
     m_bus_watcher(m_loop),
@@ -207,12 +205,12 @@ engine_t::engine_t(context_t& context,
 }
 
 engine_t::~engine_t() {
-    BOOST_ASSERT(m_state == states::stopped);
+    BOOST_ASSERT(m_state == state_t::stopped);
 }
 
 void
 engine_t::run() {
-    m_state = states::running;
+    m_state = state_t::running;
     m_loop.loop();
 }
 
@@ -223,7 +221,7 @@ engine_t::enqueue(const api::event_t& event,
 {
     boost::unique_lock<session_queue_t> lock(m_queue);
 
-    if(m_state != states::running) {
+    if(m_state != state_t::running) {
         throw cocaine::error_t("engine is not active");
     }
 
@@ -311,7 +309,7 @@ engine_t::on_cleanup(ev::timer&, int) {
     corpse_list_t corpses;
 
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
-        if(it->second->state() == slave_t::states::dead) {
+        if(it->second->state() == slave_t::state_t::dead) {
             corpses.emplace_back(it->first);
         }
     }
@@ -414,11 +412,11 @@ engine_t::process_bus_events() {
 
                 if(code == rpc::suicide::abnormal) {
                     COCAINE_LOG_ERROR(m_log, "the app seems to be broken — %s", message);
-                    shutdown(states::broken);
+                    shutdown(state_t::broken);
                     return;
                 }
 
-                if(m_state != states::running && m_pool.empty()) {
+                if(m_state != state_t::running && m_pool.empty()) {
                     // If it was the last slave, shut the engine down.
                     stop();
                     return;
@@ -505,7 +503,8 @@ namespace {
 
             m_accumulator(load);
 
-            return slave.second->state() == slave_t::states::active && load;
+            return slave.second->state() == slave_t::state_t::active &&
+                   load;
         }
 
         size_t
@@ -549,7 +548,7 @@ engine_t::process_ctl_events() {
             info["load-median"] = static_cast<Json::LargestUInt>(active.median());
             info["slaves"]["total"] = static_cast<Json::LargestUInt>(m_pool.size());
             info["slaves"]["busy"] = static_cast<Json::LargestUInt>(active_pool_size);
-            info["state"] = describe[m_state];
+            info["state"] = describe[static_cast<int>(m_state)];
 
             m_ctl->send(info);
 
@@ -557,7 +556,7 @@ engine_t::process_ctl_events() {
         }
 
         case io::event_traits<control::terminate>::id:
-            shutdown(states::stopping);
+            shutdown(state_t::stopping);
             break;
 
         default:
@@ -583,7 +582,7 @@ namespace {
         template<class T>
         bool
         operator()(const T& slave) {
-            return slave.second->state() == slave_t::states::active &&
+            return slave.second->state() == slave_t::state_t::active &&
                    slave.second->load() < max;
         }
 
@@ -749,7 +748,7 @@ engine_t::balance() {
 }
 
 void
-engine_t::shutdown(states::value target) {
+engine_t::shutdown(state_t target) {
     boost::unique_lock<session_queue_t> lock(m_queue);
 
     m_state = target;
@@ -784,7 +783,7 @@ engine_t::shutdown(states::value target) {
         it != m_pool.end();
         ++it)
     {
-        if(it->second->state() == slave_t::states::active) {
+        if(it->second->state() == slave_t::state_t::active) {
             send<rpc::terminate>(it->second->id());
             ++pending;
         }
@@ -815,8 +814,8 @@ engine_t::stop() {
     // NOTE: This will force the slave pool termination.
     m_pool.clear();
 
-    if(m_state == states::stopping) {
-        m_state = states::stopped;
+    if(m_state == state_t::stopping) {
+        m_state = state_t::stopped;
         m_loop.unloop(ev::ALL);
     }
 }

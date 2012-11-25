@@ -29,8 +29,6 @@
 
 #include "cocaine/traits/unique_id.hpp"
 
-#include "cocaine/helpers/atomic.hpp"
-
 #include <boost/filesystem/path.hpp>
 
 using namespace cocaine;
@@ -45,12 +43,12 @@ struct upstream_t:
                worker_t * const worker):
         m_id(id),
         m_worker(worker),
-        m_state(states::open)
+        m_state(state_t::open)
     { }
 
     virtual
     ~upstream_t() {
-        if(m_state != states::closed) {
+        if(m_state != state_t::closed) {
             close();
         }
     }
@@ -61,12 +59,12 @@ struct upstream_t:
          size_t size)
     {
         switch(m_state) {
-            case states::open:
+            case state_t::open:
                 send<rpc::chunk>(std::string(chunk, size));
                 
                 break;
 
-            case states::closed:
+            case state_t::closed:
                 throw cocaine::error_t("the stream has been closed");
         }
     }
@@ -77,15 +75,15 @@ struct upstream_t:
           const std::string& message)
     {
         switch(m_state) {
-            case states::open:
-                m_state = states::closed;
+            case state_t::open:
+                m_state = state_t::closed;
 
                 send<rpc::error>(static_cast<int>(code), message);
                 send<rpc::choke>();
 
                 break;
 
-            case states::closed:
+            case state_t::closed:
                 throw cocaine::error_t("the stream has been closed");
         }
     }
@@ -94,14 +92,14 @@ struct upstream_t:
     void
     close() {
         switch(m_state) {
-            case states::open:
-                m_state = states::closed;
+            case state_t::open:
+                m_state = state_t::closed;
 
                 send<rpc::choke>();
 
                 break;
 
-            case states::closed:
+            case state_t::closed:
                 throw cocaine::error_t("the stream has been closed");
         }
     }
@@ -117,14 +115,12 @@ private:
     const unique_id_t m_id;
     worker_t * const m_worker;
 
-    struct states {
-        enum value: int {
-            open,
-            closed
-        };
+    enum class state_t: int {
+        open,
+        closed
     };
 
-    std::atomic<int> m_state;
+    state_t m_state;
 };
 
 worker_t::worker_t(context_t& context,

@@ -27,21 +27,17 @@
 #include "cocaine/io.hpp"
 #include "cocaine/unique_id.hpp"
 
-#include "cocaine/helpers/atomic.hpp"
-
 namespace cocaine { namespace engine {
 
 class slave_t:
     public boost::noncopyable
 {
     public:
-        struct states {
-            enum value: int {
-                unknown,
-                active,
-                inactive,
-                dead
-            };
+        enum class state_t: int {
+            unknown,
+            active,
+            inactive,
+            dead
         };
 
     public:
@@ -78,7 +74,7 @@ class slave_t:
         send(int message_id,
              const std::string& message)
         {
-            BOOST_ASSERT(m_state == states::active);
+            BOOST_ASSERT(m_state == state_t::active);
 
             return m_engine.send(
                 m_id,
@@ -93,9 +89,9 @@ class slave_t:
             return m_id;
         }
 
-        states::value
+        state_t
         state() const {
-            return static_cast<states::value>(m_state.load());
+            return m_state;
         }
 
         size_t
@@ -134,7 +130,7 @@ class slave_t:
         const unique_id_t m_id;
 
         // Current slave state.
-        std::atomic<int> m_state;
+        state_t m_state;
 
         // Actual slave process handle.    
         std::unique_ptr<api::handle_t> m_handle;
@@ -155,7 +151,7 @@ class slave_t:
 template<class Event, typename... Args>
 bool
 slave_t::send(Args&&... args) {
-    BOOST_ASSERT(m_state == states::active);
+    BOOST_ASSERT(m_state == state_t::active);
 
     return m_engine.send<Event>(
         m_id,

@@ -48,7 +48,7 @@ slave_t::slave_t(context_t& context,
     m_profile(profile),
     m_engine(engine),
     m_heartbeat_timer(engine.loop()),
-    m_state(states::unknown)
+    m_state(state_t::unknown)
 {
     api::category_traits<api::isolate_t>::ptr_type isolate = m_context.get<api::isolate_t>(
         m_profile.isolate.type,
@@ -75,7 +75,7 @@ slave_t::slave_t(context_t& context,
 }
 
 slave_t::~slave_t() {    
-    if(m_state != states::dead) {
+    if(m_state != state_t::dead) {
         terminate();
     }
 }
@@ -206,13 +206,13 @@ slave_t::on_timeout(ev::timer&, int) {
 
 void
 slave_t::on_idle(ev::timer&, int) {
-    m_state = states::inactive;
+    m_state = state_t::inactive;
     send<rpc::terminate>();
 }
 
 void
 slave_t::rearm() {
-    if(m_state == states::unknown) {
+    if(m_state == state_t::unknown) {
         COCAINE_LOG_DEBUG(
             m_log,
             "slave %s came alive in %.03f seconds",
@@ -223,7 +223,7 @@ slave_t::rearm() {
             )
         );
 
-        m_state = states::active;
+        m_state = state_t::active;
 
         // Start the idle timer, which will kill the slave when it's not used.
         m_idle_timer.set<slave_t, &slave_t::on_idle>(this);
@@ -246,7 +246,7 @@ slave_t::terminate() {
     COCAINE_LOG_DEBUG(m_log, "slave %s terminating", m_id);
 
     // Ensure that the slave is not being overkilled.
-    BOOST_ASSERT(m_state != states::dead);
+    BOOST_ASSERT(m_state != state_t::dead);
 
     // Ensure that no session is being lost here.
     BOOST_ASSERT(m_sessions.empty());
@@ -257,6 +257,6 @@ slave_t::terminate() {
     m_handle->terminate();
     m_handle.reset();
 
-    m_state = states::dead;
+    m_state = state_t::dead;
 }
 
