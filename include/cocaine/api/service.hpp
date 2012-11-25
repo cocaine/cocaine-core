@@ -57,7 +57,7 @@ namespace detail {
             Event
         >::tuple_type tuple_type;
 
-        // Constructing callable type from the event tuple type
+        // Constructing a callable type from the event tuple type
 
         typedef typename boost::function_types::function_type<
             typename boost::mpl::insert_range<
@@ -183,6 +183,8 @@ class service:
             m_watcher.start(m_channel.fd(), ev::READ);
             m_checker.set<service, &service::on_check>(this);
             m_checker.start();
+
+            COCAINE_LOG_INFO(m_log, "started");
         }
 
         logging::logger_t*
@@ -266,7 +268,7 @@ class service:
                 if(it != m_dispatch.end()) {
                     (*it->second)(unpacked.get());
                 } else {
-                    COCAINE_LOG_ERROR(
+                    COCAINE_LOG_WARNING(
                         m_log,
                         "no dispatch for event type %d, dropping",
                         message_id
