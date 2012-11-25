@@ -29,25 +29,22 @@
 
 // Logging macros
 
-#define COCAINE_LOG_DEBUG(log, ...)                 \
-    if(log->verbosity() >= logging::debug) {        \
-        log->emit(logging::debug, __VA_ARGS__);     \
+#define COCAINE_LOG(l, v, ...)      \
+    if(l->verbosity() >= v) {       \
+        l->emit(v, __VA_ARGS__);    \
     }
+
+#define COCAINE_LOG_DEBUG(log, ...)                 \
+    COCAINE_LOG(log, logging::debug, __VA_ARGS__)
 
 #define COCAINE_LOG_INFO(log, ...)                  \
-    if(log->verbosity() >= logging::info)  {        \
-        log->emit(logging::info, __VA_ARGS__);      \
-    }
+    COCAINE_LOG(log, logging::info, __VA_ARGS__)
 
 #define COCAINE_LOG_WARNING(log, ...)               \
-    if(log->verbosity() >= logging::warning) {      \
-        log->emit(logging::warning, __VA_ARGS__);   \
-    }
+    COCAINE_LOG(log, logging::warning, __VA_ARGS__)
 
 #define COCAINE_LOG_ERROR(log, ...)                 \
-    if(log->verbosity() >= logging::error) {        \
-        log->emit(logging::error, __VA_ARGS__);     \
-    }
+    COCAINE_LOG(log, logging::error, __VA_ARGS__)
 
 namespace cocaine { namespace logging {
 
