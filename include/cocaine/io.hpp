@@ -516,9 +516,9 @@ class channel:
 
             msgpack::sbuffer buffer;
 
-            io::pack_sequence<
+            io::type_traits<
                 typename event_traits<Event>::tuple_type
-            >(buffer, std::forward<Args>(args)...);
+            >::pack(buffer, std::forward<Args>(args)...);
 
             zmq::message_t message(buffer.size());
 
@@ -575,9 +575,9 @@ class channel:
                     message.size()
                 );
 
-                io::unpack_sequence<
+                io::type_traits<
                     typename event_traits<Event>::tuple_type
-                >(unpacked.get(), std::forward<Args>(args)...);
+                >::unpack(unpacked.get(), std::forward<Args>(args)...);
             } catch(const msgpack::type_error& e) {
                 throw cocaine::error_t("corrupted object");
             } catch(const std::bad_cast& e) {

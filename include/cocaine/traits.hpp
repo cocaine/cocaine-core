@@ -25,6 +25,7 @@
 
 #include <boost/mpl/begin.hpp>
 #include <boost/mpl/deref.hpp>
+#include <boost/mpl/is_sequence.hpp>
 #include <boost/mpl/next.hpp>
 #include <boost/mpl/size.hpp>
 
@@ -32,7 +33,7 @@
 
 namespace cocaine { namespace io {
 
-template<class T>
+template<class T, class Enable = void>
 struct type_traits {
     template<class Stream>
     static
@@ -52,15 +53,79 @@ struct type_traits {
     }
 };
 
-namespace detail {
-    template<class T, class Stream>
+// NOTE: The following structure is a template specialization for type lists,
+// to support validating sequence packing and unpacking, which can be used as
+// follows:
+//
+// type_traits<Sequence>::pack(buffer, std::forward<Args>(args)...);
+// type_traits<Sequence>::unpack(object, std::forward<Args>(args)...);
+//
+// It might be a better idea to do that via the type_traits<Args...> template,
+// but such kind of template argument pack expanding is not yet supported by
+// GCC 4.4, which we use on Ubuntu Lucid.
+
+template<class T>
+struct type_traits<
+    T,
+    typename std::enable_if<boost::mpl::is_sequence<T>::value>::type
+>
+{
+    template<class Stream, typename... Args>
+    static
+    void
+    pack(Stream& stream,
+         const Args&... sequence)
+    {
+        static_assert(
+            sizeof...(sequence) == boost::mpl::size<T>::value,
+            "sequence length mismatch"
+        );
+
+        msgpack::packer<Stream> packer(stream);
+
+        // The sequence will be packed as an array.
+        packer.pack_array(sizeof...(sequence));
+
+        // Recursively pack every sequence element.
+        pack_sequence<typename boost::mpl::begin<T>::type>(
+            packer,
+            sequence...
+        );
+    }
+
+    template<typename... Args>
+    static
+    void
+    unpack(const msgpack::object& packed,
+           Args&... sequence)
+    {
+        static_assert(
+            sizeof...(sequence) == boost::mpl::size<T>::value,
+            "sequence length mismatch"
+        );
+
+        if(packed.type != msgpack::type::ARRAY ||
+           packed.via.array.size != sizeof...(sequence))
+        {
+            throw msgpack::type_error();
+        }
+
+        // Recursively unpack every tuple element while validating the types.
+        unpack_sequence<typename boost::mpl::begin<T>::type>(
+            packed.via.array.ptr,
+            sequence...
+        );
+    }
+
+private:
+    template<class It, class Stream>
     static inline
     void
     pack_sequence(msgpack::packer<Stream>& packer) {
         return;
     }
 
-    template<class T, class Stream, class Head, typename... Tail>
+    template<class It, class Stream, class Head, typename... Tail>
     static inline
     void
     pack_sequence(msgpack::packer<Stream>& packer,
@@ -73,7 +138,7 @@ namespace detail {
         >::type type;
 
         static_assert(
-            std::is_same<typename boost::mpl::deref<T>::type, type>::value,
+            std::is_same<typename boost::mpl::deref<It>::type, type>::value,
             "sequence element type mismatch"
         );
 
@@ -81,20 +146,20 @@ namespace detail {
         type_traits<type>::pack(packer, head);
 
         // Recurse to the next element.
-        return pack_sequence<typename boost::mpl::next<T>::type>(
+        return pack_sequence<typename boost::mpl::next<It>::type>(
             packer,
             tail...
         );
     }
 
-    template<class T>
-    static inline
+    template<class It>
+    static
     void
     unpack_sequence(const msgpack::object * unpacked) {
         return;
     }
 
-    template<class T, class Head, typename... Tail>
+    template<class It, class Head, typename... Tail>
     static inline
     void
     unpack_sequence(const msgpack::object * unpacked,
@@ -107,7 +172,7 @@ namespace detail {
         >::type type;
 
         static_assert(
-            std::is_same<typename boost::mpl::deref<T>::type, type>::value,
+            std::is_same<typename boost::mpl::deref<It>::type, type>::value,
             "sequence element type mismatch"
         );
 
@@ -115,59 +180,12 @@ namespace detail {
         type_traits<type>::unpack(*unpacked++, head);
 
         // Recurse to the next element.
-        return unpack_sequence<typename boost::mpl::next<T>::type>(
+        return unpack_sequence<typename boost::mpl::next<It>::type>(
             unpacked,
             tail...
         );
     }
-}
-
-template<class T, class Stream, typename... Args>
-static inline
-void
-pack_sequence(Stream& stream,
-              const Args&... sequence)
-{
-    static_assert(
-        sizeof...(sequence) == boost::mpl::size<T>::value,
-        "sequence length mismatch"
-    );
-
-    msgpack::packer<Stream> packer(stream);
-
-    // The sequence will be packed as an array.
-    packer.pack_array(sizeof...(sequence));
-
-    // Recursively pack every sequence element.
-    detail::pack_sequence<typename boost::mpl::begin<T>::type>(
-        packer,
-        sequence...
-    );
-}
-
-template<class T, typename... Args>
-static inline
-void
-unpack_sequence(const msgpack::object& packed,
-                Args&... sequence)
-{
-    static_assert(
-        sizeof...(sequence) == boost::mpl::size<T>::value,
-        "sequence length mismatch"
-    );
-
-    if(packed.type != msgpack::type::ARRAY ||
-       packed.via.array.size != sizeof...(sequence))
-    {
-        throw msgpack::type_error();
-    }
-
-    // Recursively unpack every tuple element while validating the types.
-    detail::unpack_sequence<typename boost::mpl::begin<T>::type>(
-        packed.via.array.ptr,
-        sequence...
-    );
-}
+};
 
 }} // namespace cocaine::io
 

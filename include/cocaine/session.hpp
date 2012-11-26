@@ -74,9 +74,9 @@ session_t::send(Args&&... args) {
     if(!m_slave) {
         msgpack::sbuffer buffer;
 
-        io::pack_sequence<
+        io::type_traits<
             typename io::event_traits<Event>::tuple_type
-        >(buffer, id, std::forward<Args>(args)...);
+        >::pack(buffer, id, std::forward<Args>(args)...);
 
         boost::unique_lock<boost::mutex> lock(m_mutex);
 
