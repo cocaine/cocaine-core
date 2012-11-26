@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#ifndef COCAINE_BASIC_SERVICE_HPP
-#define COCAINE_BASIC_SERVICE_HPP
+#ifndef COCAINE_SERVICE_BASE_HPP
+#define COCAINE_SERVICE_BASE_HPP
 
 #include "cocaine/common.hpp"
 #include "cocaine/asio.hpp"
@@ -37,44 +37,46 @@
 namespace cocaine { namespace api {
 
 namespace detail {
-    struct dispatch_base_t {
+    namespace ft = boost::function_types;
+    namespace mpl = boost::mpl;
+
+    template<class Sequence, typename R = void>
+    struct callable {
+        typedef typename ft::function_type<
+            typename mpl::push_front<Sequence, R>::type
+        >::type function_type;
+
+        typedef boost::function<function_type> type;
+    };
+
+    template<typename R = void>
+    struct dispatch_base {
         virtual
-        ~dispatch_base_t() {
+        ~dispatch_base() {
             // Empty.
         }
 
         virtual
-        void
+        R
         operator()(const msgpack::object& object) = 0;
     };
 
-    namespace ft = boost::function_types;
-    namespace mpl = boost::mpl;
-
-    template<class Event>
+    template<class Event, typename R = void>
     struct dispatch:
-        public dispatch_base_t
+        public dispatch_base<R>
     {
         typedef typename io::event_traits<Event>::tuple_type tuple_type;
-
-        // Constructing a callable type from the event tuple type: just push the
-        // void type up to the front.
-
-        typedef typename ft::function_type<
-            typename mpl::push_front<tuple_type, void>::type
-        >::type function_type;
-
-        typedef boost::function<function_type> callable_type;
+        typedef typename callable<tuple_type, R>::type callable_type;
 
         dispatch(callable_type callable):
             m_callable(callable)
         { }
 
         virtual
-        void
-        operator()(const msgpack::object& unpacked) {
-            if(unpacked.type != msgpack::type::ARRAY ||
-               unpacked.via.array.size != io::event_traits<Event>::length)
+        R
+        operator()(const msgpack::object& packed) {
+            if(packed.type != msgpack::type::ARRAY ||
+               packed.via.array.size != io::event_traits<Event>::length)
             {
                 throw msgpack::type_error();
             }
@@ -84,7 +86,7 @@ namespace detail {
 
             return invoke<begin, end>::apply(
                 m_callable,
-                unpacked.via.array.ptr
+                packed.via.array.ptr
             );
         }
 
@@ -92,10 +94,10 @@ namespace detail {
         template<class It, class End>
         struct invoke {
             template<typename... Args>
-            static inline
-            void
+            static
+            R
             apply(callable_type& callable,
-                  msgpack::object * unpacked,
+                  msgpack::object * packed,
                   Args&&... args)
             {
                 typedef typename mpl::deref<It>::type argument_type;
@@ -103,11 +105,11 @@ namespace detail {
                 
                 argument_type argument;
 
-                io::type_traits<argument_type>::unpack(*unpacked++, argument);
+                io::type_traits<argument_type>::unpack(*packed++, argument);
 
                 return invoke<next_type, End>::apply(
                     callable,
-                    unpacked,
+                    packed,
                     std::forward<Args>(args)...,
                     std::move(argument)
                 );
@@ -117,13 +119,13 @@ namespace detail {
         template<class End>
         struct invoke<End, End> {
             template<typename... Args>
-            static inline
-            void
+            static
+            R
             apply(callable_type& callable,
-                  msgpack::object * unpacked,
+                  msgpack::object * packed,
                   Args&&... args)
             {
-                callable(std::forward<Args>(args)...);
+                return callable(std::forward<Args>(args)...);
             }
         };
 
@@ -133,7 +135,7 @@ namespace detail {
 }
 
 template<class Tag>
-class basic_service:
+class service_base:
     public api::service_t
 {
     public:
@@ -141,20 +143,21 @@ class basic_service:
 
     public:
         virtual
-        ~basic_service() {
-            // Empty.
-        }
-
-        virtual
         void
         run() {
             m_loop.loop();
         }
 
+        virtual
+        void
+        terminate() {
+            // TODO: No-op.
+        }
+
     protected:
-        basic_service(context_t& context,
-                      const std::string& name,
-                      const Json::Value& args):
+        service_base(context_t& context,
+                     const std::string& name,
+                     const Json::Value& args):
             category_type(context, name, args),
             m_context(context),
             m_log(context.log("service/" + name)),
@@ -163,7 +166,7 @@ class basic_service:
             m_checker(m_loop)
         {
             std::string endpoint = cocaine::format(
-                "ipc://%1%/service:%2%",
+                "ipc://%1%/services/%2%",
                 m_context.config.ipc_path,
                 name
             );
@@ -178,22 +181,12 @@ class basic_service:
                 );
             }
 
-            m_watcher.set<basic_service, &basic_service::on_event>(this);
+            m_watcher.set<service_base, &service_base::on_event>(this);
             m_watcher.start(m_channel.fd(), ev::READ);
-            m_checker.set<basic_service, &basic_service::on_check>(this);
+            m_checker.set<service_base, &service_base::on_check>(this);
             m_checker.start();
 
             COCAINE_LOG_INFO(m_log, "started");
-        }
-
-        context_t&
-        context() {
-            return m_context;
-        }
-
-        logging::logger_t*
-        log() {
-            return m_log.get();
         }
 
         template<class Event>
@@ -203,6 +196,17 @@ class basic_service:
                 io::event_traits<Event>::id,
                 boost::make_shared<detail::dispatch<Event>>(callable)
             );
+        }
+
+    public:
+        context_t&
+        context() {
+            return m_context;
+        }
+
+        logging::logger_t*
+        log() {
+            return m_log.get();
         }
 
     private:
@@ -309,7 +313,7 @@ class basic_service:
         typedef std::map<
 #endif
             int,
-            boost::shared_ptr<detail::dispatch_base_t>
+            boost::shared_ptr<detail::dispatch_base<void>>
         > dispatch_map_t;
 
         dispatch_map_t m_dispatch;

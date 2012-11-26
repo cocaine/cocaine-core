@@ -41,6 +41,10 @@ class service_t:
         void
         run() = 0;
 
+        virtual
+        void
+        terminate() = 0;
+
     protected:
         service_t(context_t&,
                   const std::string& /* name */,

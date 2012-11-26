@@ -21,28 +21,30 @@
 #ifndef COCAINE_LOG_SERVICE_HPP
 #define COCAINE_LOG_SERVICE_HPP
 
-#include "cocaine/services/basic.hpp"
+#include "cocaine/services/base.hpp"
 
 #include <boost/bind.hpp>
 
 namespace cocaine {
 
-struct log_tag;
+namespace service {
+    struct log_tag;
 
-struct message {
-    typedef log_tag tag;
+    struct message {
+        typedef log_tag tag;
 
-    typedef boost::mpl::list<
-        int,
-        std::string
-    > tuple_type;
-};
+        typedef boost::mpl::list<
+            int,
+            std::string
+        > tuple_type;
+    };
+}
 
 namespace io {
     template<>
-    struct dispatch<log_tag> {
+    struct dispatch<service::log_tag> {
         typedef mpl::list<
-            message
+            service::message
         > category;
     };
 }
@@ -50,13 +52,13 @@ namespace io {
 namespace service {
 
 class log_t:
-    public api::basic_service<log_tag>
+    public api::service_base<log_tag>
 {
     public:
         log_t(context_t& context,
               const std::string& name,
               const Json::Value& args):
-            api::basic_service<log_tag>(context, name, args)
+            api::service_base<log_tag>(context, "logging", args)
         {
             on<message>(boost::bind(&log_t::on_message, this, _1, _2));
         }
