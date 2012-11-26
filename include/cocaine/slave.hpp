@@ -24,7 +24,6 @@
 #include "cocaine/common.hpp"
 #include "cocaine/asio.hpp"
 #include "cocaine/engine.hpp"
-#include "cocaine/io.hpp"
 #include "cocaine/unique_id.hpp"
 
 namespace cocaine { namespace engine {
