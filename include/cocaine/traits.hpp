@@ -155,14 +155,14 @@ private:
     template<class It>
     static
     void
-    unpack_sequence(const msgpack::object * unpacked) {
+    unpack_sequence(const msgpack::object * packed) {
         return;
     }
 
     template<class It, class Head, typename... Tail>
     static inline
     void
-    unpack_sequence(const msgpack::object * unpacked,
+    unpack_sequence(const msgpack::object * packed,
                     Head& head,
                     Tail&... tail)
     {
@@ -177,11 +177,11 @@ private:
         );
 
         // Unpack the current element using the correct packer.
-        type_traits<type>::unpack(*unpacked++, head);
+        type_traits<type>::unpack(*packed++, head);
 
         // Recurse to the next element.
         return unpack_sequence<typename boost::mpl::next<It>::type>(
-            unpacked,
+            packed,
             tail...
         );
     }
