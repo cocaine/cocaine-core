@@ -205,8 +205,8 @@ slave_t::on_timeout(ev::timer&, int) {
 
 void
 slave_t::on_idle(ev::timer&, int) {
-    m_state = state_t::inactive;
     send<rpc::terminate>();
+    m_state = state_t::inactive;
 }
 
 void
