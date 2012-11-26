@@ -31,7 +31,9 @@
 namespace cocaine { namespace api {
 
 template<class Tag>
-class client {
+class client:
+    public boost::noncopyable
+{
     public:
         client(context_t& context,
                const std::string& name):
