@@ -149,9 +149,6 @@ worker_t::worker_t(context_t& context,
     m_heartbeat_timer.set<worker_t, &worker_t::on_heartbeat>(this);
     m_heartbeat_timer.start(0.0f, 5.0f);
 
-    // NOTE: It will be restarted after the each heartbeat.
-    m_disown_timer.set<worker_t, &worker_t::on_disown>(this);
-
     // Launching the app
 
     try {
@@ -173,6 +170,9 @@ worker_t::worker_t(context_t& context,
         terminate(rpc::suicide::abnormal, "unexpected exception");
         throw;
     }
+    
+    m_disown_timer.set<worker_t, &worker_t::on_disown>(this);
+    m_disown_timer.start(m_profile->heartbeat_timeout);
 }
 
 worker_t::~worker_t() {
@@ -201,8 +201,11 @@ worker_t::on_bus_check(ev::prepare&, int) {
 
 void
 worker_t::on_heartbeat(ev::timer&, int) {
+    io::scoped_option<
+        io::options::send_timeout
+    > option(m_bus, 0);
+    
     send<rpc::ping>();
-    m_disown_timer.start(m_profile->heartbeat_timeout);
 }
 
 void
@@ -246,6 +249,8 @@ worker_t::process_bus_events() {
         switch(message_id) {
             case io::event_traits<rpc::pong>::id:
                 m_disown_timer.stop();
+                m_disown_timer.start(m_profile->heartbeat_timeout);
+                
                 break;
 
             case io::event_traits<rpc::invoke>::id: {
