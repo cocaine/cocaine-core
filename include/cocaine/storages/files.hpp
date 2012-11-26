@@ -27,16 +27,16 @@
 
 namespace cocaine { namespace storage {
 
-class file_storage_t:
+class files_t:
     public api::storage_t
 {
     public:
         typedef api::storage_t category_type;
 
     public:
-        file_storage_t(context_t& context,
-                       const std::string& name,
-                       const Json::Value& args);
+        files_t(context_t& context,
+                const std::string& name,
+                const Json::Value& args);
 
         virtual
         std::string

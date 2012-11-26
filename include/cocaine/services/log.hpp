@@ -72,7 +72,6 @@ class log_t:
                message
             );
         }
-
 };
 
 }}

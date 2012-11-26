@@ -33,17 +33,17 @@ using namespace cocaine::storage;
 
 namespace fs = boost::filesystem;
 
-file_storage_t::file_storage_t(context_t& context,
-                               const std::string& name,
-                               const Json::Value& args):
+files_t::files_t(context_t& context,
+                 const std::string& name,
+                 const Json::Value& args):
     category_type(context, name, args),
     m_log(context.log(name)),
     m_storage_path(args["path"].asString())
 { }
 
 std::string
-file_storage_t::read(const std::string& collection,
-                     const std::string& key)
+files_t::read(const std::string& collection,
+              const std::string& key)
 {
     boost::lock_guard<boost::mutex> lock(m_mutex);
 
@@ -69,9 +69,9 @@ file_storage_t::read(const std::string& collection,
 }
 
 void
-file_storage_t::write(const std::string& collection,
-                      const std::string& key,
-                      const std::string& blob) 
+files_t::write(const std::string& collection,
+               const std::string& key,
+               const std::string& blob) 
 {
     boost::lock_guard<boost::mutex> lock(m_mutex);
 
@@ -128,7 +128,7 @@ namespace {
 }
 
 std::vector<std::string>
-file_storage_t::list(const std::string& collection) {
+files_t::list(const std::string& collection) {
     boost::lock_guard<boost::mutex> lock(m_mutex);
 
     fs::path store_path(m_storage_path / collection);
@@ -160,8 +160,8 @@ file_storage_t::list(const std::string& collection) {
 }
 
 void
-file_storage_t::remove(const std::string& collection,
-                     const std::string& key)
+files_t::remove(const std::string& collection,
+                const std::string& key)
 {
     boost::lock_guard<boost::mutex> lock(m_mutex);
     

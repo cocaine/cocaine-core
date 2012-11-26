@@ -77,9 +77,7 @@ class storage_t:
         storage_t(context_t&,
                   const std::string& /* name */,
                   const Json::Value& /* args */)
-        {
-            // Empty.
-        }
+        { }
 
         virtual
         std::string

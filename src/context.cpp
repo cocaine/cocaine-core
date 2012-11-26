@@ -218,7 +218,7 @@ context_t::context_t(config_t config_):
     m_repository->insert<logger::syslog_t>("syslog");
     
     // Register the builtin storages.
-    m_repository->insert<storage::file_storage_t>("files");
+    m_repository->insert<storage::files_t>("files");
 
     // Register the plugins.
     m_repository->load(config.plugin_path);
