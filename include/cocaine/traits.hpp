@@ -33,7 +33,7 @@
 
 namespace cocaine { namespace io {
 
-template<class T, class Enable = void>
+template<class T, class U = void>
 struct type_traits {
     template<class Stream>
     static
@@ -177,11 +177,11 @@ private:
         );
 
         // Unpack the current element using the correct packer.
-        type_traits<type>::unpack(*packed++, head);
+        type_traits<type>::unpack(*packed, head);
 
         // Recurse to the next element.
         return unpack_sequence<typename boost::mpl::next<It>::type>(
-            packed,
+            ++packed,
             tail...
         );
     }
