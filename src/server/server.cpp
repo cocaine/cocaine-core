@@ -27,6 +27,8 @@
 
 #include "cocaine/api/storage.hpp"
 
+#include "cocaine/traits/json.hpp"
+
 #include <boost/tuple/tuple.hpp>
 
 using namespace cocaine;
@@ -168,27 +170,10 @@ void
 server_t::on_announce(ev::timer&, int) {
     COCAINE_LOG_DEBUG(m_log, "announcing the node");
 
-    zmq::message_t message(m_server.endpoint().size());
- 
-    memcpy(
-        message.data(),
-        m_server.endpoint().data(),
-        m_server.endpoint().size()
+    m_announces->send_multipart(
+        io::protect(m_server.endpoint()),
+        info()
     );
-    
-    m_announces->send(message, ZMQ_SNDMORE);
-
-    std::string announce(Json::FastWriter().write(info()));
-    
-    message.rebuild(announce.size());
-    
-    memcpy(
-        message.data(),
-        announce.data(),
-        announce.size()
-    );
-    
-    m_announces->send(message);
 }
 
 void
@@ -440,27 +425,25 @@ void server_t::recover() {
                                   available.begin(), available.end(),
                                   std::back_inserter(diff));
 
-    if(diff.size()) {
-        for(std::vector<std::string>::const_iterator it = diff.begin();
-            it != diff.end(); 
-            ++it)
-        {
-            if(m_apps.find(*it) == m_apps.end()) {
-                try {
-                    create_app(*it, runlist[*it]);
-                } catch(const std::exception& e) {
-                    COCAINE_LOG_ERROR(
-                        m_log,
-                        "unable to initialize the '%s' app - %s",
-                        *it,
-                        e.what()
-                    );
+    for(std::vector<std::string>::const_iterator it = diff.begin();
+        it != diff.end(); 
+        ++it)
+    {
+        if(m_apps.find(*it) == m_apps.end()) {
+            try {
+                create_app(*it, runlist[*it]);
+            } catch(const std::exception& e) {
+                COCAINE_LOG_ERROR(
+                    m_log,
+                    "unable to initialize the '%s' app - %s",
+                    *it,
+                    e.what()
+                );
 
-                    throw configuration_error_t("unable to initialize the apps");
-                }
-            } else {
-                m_apps.find(*it)->second->stop();
+                throw configuration_error_t("unable to initialize the apps");
             }
+        } else {
+            m_apps.find(*it)->second->stop();
         }
     }
 }

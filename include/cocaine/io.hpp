@@ -205,11 +205,11 @@ namespace policies {
 namespace detail {
     template<class T>
     struct raw {
-        raw(T& value_):
-            value(value_)
+        raw(T&& value_):
+            value(std::forward<T>(value_))
         { }
 
-        T& value;
+        T&& value;
     };
 }
 
@@ -247,8 +247,8 @@ struct raw_traits<std::string> {
 template<class T>
 static inline
 detail::raw<T>
-protect(T& object) {
-    return detail::raw<T>(object);
+protect(T&& value) {
+    return detail::raw<T>(std::forward<T>(value));
 }
 
 // Shareable serializing socket
@@ -298,9 +298,11 @@ class socket:
         {
             zmq::message_t message;
 
-            raw_traits<
-                typename std::remove_const<T>::type
-            >::pack(message, object.value);
+            typedef typename std::remove_const<
+                typename std::remove_reference<T>::type
+            >::type argument_type;
+
+            raw_traits<argument_type>::pack(message, object.value);
 
             return send(message, flags);
         }      
@@ -370,9 +372,11 @@ class socket:
                 return false;
             }
 
-            raw_traits<
-                typename std::remove_const<T>::type
-            >::unpack(message, result.value);
+            typedef typename std::remove_const<
+                typename std::remove_reference<T>::type
+            >::type argument_type;
+
+            raw_traits<argument_type>::unpack(message, result.value);
 
             return true;
         }
