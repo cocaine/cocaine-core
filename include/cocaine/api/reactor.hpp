@@ -18,16 +18,14 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#ifndef COCAINE_SERVICE_BASE_HPP
-#define COCAINE_SERVICE_BASE_HPP
+#ifndef COCAINE_REACTOR_HPP
+#define COCAINE_REACTOR_HPP
 
 #include "cocaine/common.hpp"
 #include "cocaine/asio.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/io.hpp"
 #include "cocaine/logging.hpp"
-
-#include "cocaine/api/service.hpp"
 
 #include <boost/function.hpp>
 #include <boost/function_types/function_type.hpp>
@@ -50,9 +48,9 @@ namespace detail {
     };
 
     template<typename R = void>
-    struct dispatch_base {
+    struct slot_base {
         virtual
-        ~dispatch_base() {
+        ~slot_base() {
             // Empty.
         }
 
@@ -62,13 +60,13 @@ namespace detail {
     };
 
     template<class Event, typename R = void>
-    struct dispatch:
-        public dispatch_base<R>
+    struct slot:
+        public slot_base<R>
     {
         typedef typename io::event_traits<Event>::tuple_type tuple_type;
         typedef typename callable<tuple_type, R>::type callable_type;
 
-        dispatch(callable_type callable):
+        slot(callable_type callable):
             m_callable(callable)
         { }
 
@@ -135,30 +133,13 @@ namespace detail {
 }
 
 template<class Tag>
-class service_base:
-    public api::service_t
+class reactor:
+    public boost::noncopyable
 {
-    public:
-        typedef api::service_t category_type;
-
-    public:
-        virtual
-        void
-        run() {
-            m_loop.loop();
-        }
-
-        virtual
-        void
-        terminate() {
-            // TODO: No-op.
-        }
-
     protected:
-        service_base(context_t& context,
-                     const std::string& name,
-                     const Json::Value& args):
-            category_type(context, name, args),
+        reactor(context_t& context,
+                const std::string& name,
+                const Json::Value& args):
             m_context(context),
             m_log(context.log("service/" + name)),
             m_channel(context, ZMQ_ROUTER),
@@ -181,21 +162,24 @@ class service_base:
                 );
             }
 
-            m_watcher.set<service_base, &service_base::on_event>(this);
+            m_watcher.set<reactor, &reactor::on_event>(this);
             m_watcher.start(m_channel.fd(), ev::READ);
-            m_checker.set<service_base, &service_base::on_check>(this);
+            m_checker.set<reactor, &reactor::on_check>(this);
             m_checker.start();
-
-            COCAINE_LOG_INFO(m_log, "started");
         }
 
         template<class Event>
         void
-        on(typename detail::dispatch<Event>::callable_type callable) {
-            m_dispatch.emplace(
+        on(typename detail::slot<Event>::callable_type callable) {
+            m_slots.emplace(
                 io::event_traits<Event>::id,
-                boost::make_shared<detail::dispatch<Event>>(callable)
+                boost::make_shared<detail::slot<Event>>(callable)
             );
+        }
+        
+        void
+        loop() {
+            m_loop.loop();
         }
 
     public:
@@ -256,7 +240,7 @@ class service_base:
                 zmq::message_t message;
                 msgpack::unpacked unpacked;
 
-                // Will be properly unpacked in the dispatch object.
+                // Will be properly unpacked in the slot object.
                 m_channel.recv(message);
 
                 try {
@@ -271,14 +255,14 @@ class service_base:
                     throw cocaine::error_t("corrupted object - type mismatch");
                 }
 
-                dispatch_map_t::iterator it = m_dispatch.find(message_id);
+                slot_map_t::iterator it = m_slots.find(message_id);
 
-                if(it != m_dispatch.end()) {
+                if(it != m_slots.end()) {
                     (*it->second)(unpacked.get());
                 } else {
                     COCAINE_LOG_WARNING(
                         m_log,
-                        "no dispatch for event type %d, dropping",
+                        "no slot for event type %d, dropping",
                         message_id
                     );
                 }
@@ -289,7 +273,7 @@ class service_base:
         context_t& m_context;
         boost::shared_ptr<logging::logger_t> m_log;
 
-        // Engine I/O
+        // Service I/O
 
         typedef io::channel<
             Tag,
@@ -305,7 +289,7 @@ class service_base:
         ev::io m_watcher;
         ev::prepare m_checker;
 
-        // Handling
+        // Event slots
 
 #if BOOST_VERSION >= 103600
         typedef boost::unordered_map<
@@ -313,10 +297,10 @@ class service_base:
         typedef std::map<
 #endif
             int,
-            boost::shared_ptr<detail::dispatch_base<void>>
-        > dispatch_map_t;
+            boost::shared_ptr<detail::slot_base<void>>
+        > slot_map_t;
 
-        dispatch_map_t m_dispatch;
+        slot_map_t m_slots;
 };
 
 }} // namespace cocaine::api
