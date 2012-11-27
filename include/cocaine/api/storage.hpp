@@ -103,6 +103,11 @@ storage_t::get(const std::string& collection,
 
     try {
         msgpack::unpack(&unpacked, blob.data(), blob.size());
+    } catch(const msgpack::unpack_error& e) {
+        throw storage_error_t("corrupted object");
+    }
+
+    try {
         io::type_traits<T>::unpack(unpacked.get(), result);
     } catch(const msgpack::type_error& e) {
         throw storage_error_t("corrupted object");
@@ -122,17 +127,13 @@ storage_t::put(const std::string& collection,
     msgpack::sbuffer buffer;
     msgpack::packer<msgpack::sbuffer> packer(buffer);
 
-    try {
-        io::type_traits<T>::pack(packer, object);
-    } catch(const msgpack::type_error& e) {
-        throw storage_error_t("corrupted object");
-    } catch(const std::bad_cast& e) {
-        throw storage_error_t("corrupted object - type mismatch");
-    }
+    io::type_traits<T>::pack(packer, object);
 
-    std::string blob(buffer.data(), buffer.size());
-
-    write(collection, key, blob);
+    write(
+        collection,
+        key,
+        std::string(buffer.data(), buffer.size())
+    );
 }
 
 template<>

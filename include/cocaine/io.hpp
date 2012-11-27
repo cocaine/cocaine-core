@@ -342,11 +342,12 @@ class socket:
                     static_cast<const char*>(message.data()),
                     message.size()
                 );
+            } catch(const msgpack::unpack_error& e) {
+                throw cocaine::error_t("corrupted object");
+            }
                
-                type_traits<T>::unpack(
-                    unpacked.get(),
-                    result
-                );
+            try {
+                type_traits<T>::unpack(unpacked.get(), result);
             } catch(const msgpack::type_error& e) {
                 throw cocaine::error_t("corrupted object");
             } catch(const std::bad_cast& e) {
@@ -574,7 +575,11 @@ class channel:
                     static_cast<const char*>(message.data()),
                     message.size()
                 );
+            } catch(const msgpack::unpack_error& e) {
+                throw cocaine::error_t("corrupted object");
+            }
 
+            try {
                 io::type_traits<
                     typename event_traits<Event>::tuple_type
                 >::unpack(unpacked.get(), std::forward<Args>(args)...);
@@ -587,7 +592,7 @@ class channel:
             return true;
         }
 
-        // XXX: This have to go.
+        // XXX: This has to go.
 
         bool
         send_message(int message_id,
