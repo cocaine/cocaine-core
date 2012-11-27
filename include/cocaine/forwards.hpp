@@ -37,6 +37,7 @@ namespace cocaine {
         class isolate_t;
         class logger_t;
         class sandbox_t;
+        class service_t;
         class storage_t;
 
         struct event_t;
