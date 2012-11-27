@@ -40,7 +40,7 @@ class client:
             m_channel(context, ZMQ_DEALER)
         {
             std::string endpoint = cocaine::format(
-                "ipc://%1%/service:%2%",
+                "ipc://%1%/services/%2%",
                 context.config.ipc_path,
                 name
             );
