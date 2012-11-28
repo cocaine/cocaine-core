@@ -32,6 +32,7 @@
 #include <boost/tuple/tuple.hpp>
 
 using namespace cocaine;
+using namespace cocaine::io;
 
 server_t::server_t(context_t& context, 
                    server_config_t config):
@@ -82,7 +83,7 @@ server_t::server_t(context_t& context,
     // Autodiscovery
 
     if(!config.announce_endpoints.empty()) {
-        m_announces.reset(new io::socket<io::policies::unique>(m_context, ZMQ_PUB));
+        m_announces.reset(new socket<policies::unique>(m_context, ZMQ_PUB));
         
         for(std::vector<std::string>::const_iterator it = config.announce_endpoints.begin();
             it != config.announce_endpoints.end();
@@ -171,7 +172,7 @@ server_t::on_announce(ev::timer&, int) {
     COCAINE_LOG_DEBUG(m_log, "announcing the node");
 
     m_announces->send_multipart(
-        io::protect(m_server.endpoint()),
+        protect(m_server.endpoint()),
         info()
     );
 }
@@ -181,8 +182,8 @@ server_t::process_events() {
     zmq::message_t message;
     
     {
-        io::scoped_option<
-            io::options::receive_timeout
+        scoped_option<
+            options::receive_timeout
         > option(m_server, 0);
         
         if(!m_server.recv(message)) {
@@ -246,8 +247,8 @@ server_t::process_events() {
     message.rebuild(response.size());
     memcpy(message.data(), response.data(), response.size());
 
-    io::scoped_option<
-        io::options::send_timeout
+    scoped_option<
+        options::send_timeout
     > option(m_server, 0);
     
     if(!m_server.send(message)) {

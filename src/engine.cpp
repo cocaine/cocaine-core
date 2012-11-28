@@ -41,6 +41,7 @@
 
 using namespace cocaine;
 using namespace cocaine::engine;
+using namespace cocaine::io;
 
 // Session queue
 
@@ -360,8 +361,8 @@ engine_t::process_bus_events() {
         int message_id = -1;
         
         {
-            io::scoped_option<
-                io::options::receive_timeout
+            scoped_option<
+                options::receive_timeout
             > option(*m_bus, 0);
             
             if(!m_bus->recv_multipart(slave_id, message_id)) {
@@ -392,14 +393,14 @@ engine_t::process_bus_events() {
         );
 
         switch(message_id) {
-            case io::event_traits<rpc::ping>::id:
+            case event_traits<rpc::ping>::id:
                 lock.unlock();
 
                 slave->second->on_ping();
 
                 break;
 
-            case io::event_traits<rpc::suicide>::id: {
+            case event_traits<rpc::suicide>::id: {
                 int code = 0;
                 std::string message;
 
@@ -424,7 +425,7 @@ engine_t::process_bus_events() {
                 break;
             }
 
-            case io::event_traits<rpc::chunk>::id: {
+            case event_traits<rpc::chunk>::id: {
                 unique_id_t session_id(uninitialized);
                 std::string message;
                 
@@ -437,7 +438,7 @@ engine_t::process_bus_events() {
                 break;
             }
          
-            case io::event_traits<rpc::error>::id: {
+            case event_traits<rpc::error>::id: {
                 unique_id_t session_id(uninitialized);
                 int code = 0;
                 std::string message;
@@ -455,7 +456,7 @@ engine_t::process_bus_events() {
                 break;
             }
 
-            case io::event_traits<rpc::choke>::id: {
+            case event_traits<rpc::choke>::id: {
                 unique_id_t session_id(uninitialized);
 
                 m_bus->recv<rpc::choke>(session_id);
@@ -532,7 +533,7 @@ engine_t::process_ctl_events() {
     }
 
     switch(message_id) {
-        case io::event_traits<control::status>::id: {
+        case event_traits<control::status>::id: {
             Json::Value info(Json::objectValue);
 
             active_t active;
@@ -554,7 +555,7 @@ engine_t::process_ctl_events() {
             break;
         }
 
-        case io::event_traits<control::terminate>::id:
+        case event_traits<control::terminate>::id:
             shutdown(state_t::stopping);
             break;
 

@@ -33,6 +33,7 @@
 
 using namespace cocaine;
 using namespace cocaine::engine;
+using namespace cocaine::io;
 
 namespace fs = boost::filesystem;
 
@@ -141,9 +142,9 @@ worker_t::worker_t(context_t& context,
     
     m_bus.connect(endpoint);
     
-    m_watcher.set<worker_t, &worker_t::on_bus_event>(this);
+    m_watcher.set<worker_t, &worker_t::on_event>(this);
     m_watcher.start(m_bus.fd(), ev::READ);
-    m_checker.set<worker_t, &worker_t::on_bus_check>(this);
+    m_checker.set<worker_t, &worker_t::on_check>(this);
     m_checker.start();
 
     m_heartbeat_timer.set<worker_t, &worker_t::on_heartbeat>(this);
@@ -185,24 +186,24 @@ worker_t::run() {
 }
 
 void
-worker_t::on_bus_event(ev::io&, int) {
+worker_t::on_event(ev::io&, int) {
     m_checker.stop();
 
     if(m_bus.pending()) {
         m_checker.start();
-        process_bus_events();
+        process();
     }
 }
 
 void
-worker_t::on_bus_check(ev::prepare&, int) {
+worker_t::on_check(ev::prepare&, int) {
     m_loop.feed_fd_event(m_bus.fd(), ev::READ);
 }
 
 void
 worker_t::on_heartbeat(ev::timer&, int) {
-    io::scoped_option<
-        io::options::send_timeout
+    scoped_option<
+        options::send_timeout
     > option(m_bus, 0);
     
     send<rpc::ping>();
@@ -220,7 +221,7 @@ worker_t::on_disown(ev::timer&, int) {
 }
 
 void
-worker_t::process_bus_events() {
+worker_t::process() {
     int counter = defaults::io_bulk_size;
 
     do {
@@ -230,8 +231,8 @@ worker_t::process_bus_events() {
         int message_id = -1;
 
         {
-            io::scoped_option<
-                io::options::receive_timeout
+            scoped_option<
+                options::receive_timeout
             > option(m_bus, 0);
 
             if(!m_bus.recv(message_id)) {
@@ -247,13 +248,13 @@ worker_t::process_bus_events() {
         );
 
         switch(message_id) {
-            case io::event_traits<rpc::pong>::id:
+            case event_traits<rpc::pong>::id:
                 m_disown_timer.stop();
                 m_disown_timer.start(m_profile->heartbeat_timeout);
                 
                 break;
 
-            case io::event_traits<rpc::invoke>::id: {
+            case event_traits<rpc::invoke>::id: {
                 unique_id_t session_id(uninitialized);
                 std::string event;
 
@@ -279,7 +280,7 @@ worker_t::process_bus_events() {
                 break;
             }
 
-            case io::event_traits<rpc::chunk>::id: {
+            case event_traits<rpc::chunk>::id: {
                 unique_id_t session_id(uninitialized);
                 std::string message;
 
@@ -304,7 +305,7 @@ worker_t::process_bus_events() {
                 break;
             }
 
-            case io::event_traits<rpc::choke>::id: {
+            case event_traits<rpc::choke>::id: {
                 unique_id_t session_id(uninitialized);
 
                 m_bus.recv<rpc::choke>(session_id);
@@ -328,7 +329,7 @@ worker_t::process_bus_events() {
                 break;
             }
             
-            case io::event_traits<rpc::terminate>::id:
+            case event_traits<rpc::terminate>::id:
                 terminate(rpc::suicide::normal, "per request");
                 break;
 

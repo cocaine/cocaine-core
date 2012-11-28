@@ -157,14 +157,14 @@ class engine_t:
         // I/O
         
         typedef io::channel<
-            tags::rpc_tag,
+            io::tags::rpc_tag,
             io::policies::shared
         > rpc_channel_t;
 
         std::unique_ptr<rpc_channel_t> m_bus;
         
         typedef io::channel<
-            tags::control_tag,
+            io::tags::control_tag,
             io::policies::unique
         > control_channel_t;
 

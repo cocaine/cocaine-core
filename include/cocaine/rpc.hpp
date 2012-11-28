@@ -23,7 +23,7 @@
 
 #include "cocaine/io.hpp"
 
-namespace cocaine { 
+namespace cocaine { namespace io {
 
 namespace tags {
     struct rpc_tag;
@@ -104,30 +104,28 @@ namespace control {
     };
 }
 
-namespace io {
-    template<>
-    struct dispatch<tags::rpc_tag> {
-        typedef boost::mpl::list<
-            rpc::ping,
-            rpc::pong,
-            rpc::suicide,
-            rpc::terminate,
-            rpc::invoke,
-            rpc::chunk,
-            rpc::error,
-            rpc::choke
-        >::type category;
-    };
+template<>
+struct dispatch<tags::rpc_tag> {
+    typedef boost::mpl::list<
+        rpc::ping,
+        rpc::pong,
+        rpc::suicide,
+        rpc::terminate,
+        rpc::invoke,
+        rpc::chunk,
+        rpc::error,
+        rpc::choke
+    >::type category;
+};
 
-    template<>
-    struct dispatch<tags::control_tag> {
-        typedef boost::mpl::list<
-            control::status,
-            control::terminate
-        >::type category;
-    };
-}
+template<>
+struct dispatch<tags::control_tag> {
+    typedef boost::mpl::list<
+        control::status,
+        control::terminate
+    >::type category;
+};
 
-} // namespace cocaine
+}} // namespace cocaine::io
 
 #endif

@@ -38,6 +38,7 @@
 
 using namespace cocaine;
 using namespace cocaine::engine;
+using namespace cocaine::io;
 
 namespace fs = boost::filesystem;
 
@@ -178,8 +179,8 @@ app_t::info() const {
     m_control->send<control::status>();
 
     {
-        io::scoped_option<
-            io::options::receive_timeout
+        scoped_option<
+            options::receive_timeout
         > option(*m_control, defaults::control_timeout);
 
         if(!m_control->recv(info)) {

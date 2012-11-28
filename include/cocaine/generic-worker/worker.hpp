@@ -54,10 +54,10 @@ class worker_t:
 
     private:
         void
-        on_bus_event(ev::io&, int);
+        on_event(ev::io&, int);
         
         void
-        on_bus_check(ev::prepare&, int);
+        on_check(ev::prepare&, int);
         
         void
         on_heartbeat(ev::timer&, int);
@@ -66,10 +66,10 @@ class worker_t:
         on_disown(ev::timer&, int);
 
         void
-        process_bus_events();
+        process();
         
         void
-        terminate(rpc::suicide::reasons reason,
+        terminate(io::rpc::suicide::reasons reason,
                   const std::string& message);
 
     private:
@@ -82,7 +82,7 @@ class worker_t:
         // Engine I/O
 
         typedef io::channel<
-            tags::rpc_tag,
+            io::tags::rpc_tag,
             io::policies::unique
         > rpc_channel_t;
 

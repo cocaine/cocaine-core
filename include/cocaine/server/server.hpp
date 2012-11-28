@@ -95,13 +95,13 @@ class server_t:
 
         // I/O
         
-        io::socket<
+        typedef io::socket<
             io::policies::unique
-        > m_server;
+        > socket_t;
 
-        std::unique_ptr<
-            io::socket<io::policies::unique>
-        > m_announces;
+        socket_t m_server;
+
+        std::unique_ptr<socket_t> m_announces;
         
         // Event loop
         

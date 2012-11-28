@@ -521,7 +521,7 @@ class channel:
 
             msgpack::sbuffer buffer;
 
-            io::type_traits<
+            type_traits<
                 typename event_traits<Event>::tuple_type
             >::pack(buffer, std::forward<Args>(args)...);
 
@@ -584,7 +584,7 @@ class channel:
             }
 
             try {
-                io::type_traits<
+                type_traits<
                     typename event_traits<Event>::tuple_type
                 >::unpack(unpacked.get(), std::forward<Args>(args)...);
             } catch(const msgpack::type_error& e) {

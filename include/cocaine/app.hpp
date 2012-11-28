@@ -73,7 +73,7 @@ class app_t {
         // Execution engine
 
         typedef io::channel<
-            tags::control_tag,
+            io::tags::control_tag,
             io::policies::unique
         > control_channel_t;
 

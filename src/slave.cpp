@@ -35,6 +35,7 @@
 
 using namespace cocaine;
 using namespace cocaine::engine;
+using namespace cocaine::io;
 
 slave_t::slave_t(context_t& context,
                  const manifest_t& manifest,

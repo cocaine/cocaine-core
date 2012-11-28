@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#ifndef COCAINE_REACTOR_HPP
-#define COCAINE_REACTOR_HPP
+#ifndef COCAINE_REACTOR_API_HPP
+#define COCAINE_REACTOR_API_HPP
 
 #include "cocaine/common.hpp"
 #include "cocaine/asio.hpp"
