@@ -83,7 +83,7 @@ server_t::server_t(context_t& context,
     // Autodiscovery
 
     if(!config.announce_endpoints.empty()) {
-        m_announces.reset(new socket<policies::unique>(m_context, ZMQ_PUB));
+        m_announces.reset(new socket_t(m_context, ZMQ_PUB));
         
         for(std::vector<std::string>::const_iterator it = config.announce_endpoints.begin();
             it != config.announce_endpoints.end();
