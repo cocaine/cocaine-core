@@ -45,8 +45,9 @@ LINK_DIRECTORIES(
     ${LIBZMQ_LIBRARY_DIRS}
     ${LIBARCHIVE_LIBRARY_DIRS})
 
-INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/foreign/jsoncpp-0.6.0-rc2/include)
-INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/include)
+INCLUDE_DIRECTORIES(BEFORE
+    ${PROJECT_SOURCE_DIR}/foreign/jsoncpp-0.6.0-rc2/include
+    ${PROJECT_SOURCE_DIR}/include)
 
 ADD_LIBRARY(json
     foreign/jsoncpp-0.6.0-rc2/src/lib_json/json_value
@@ -100,17 +101,6 @@ SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     VERSION 2
     COMPILE_FLAGS "-std=c++0x")
 
-ADD_EXECUTABLE(cocaine-generic-worker
-    src/generic-worker/worker
-    src/generic-worker/main)
-
-TARGET_LINK_LIBRARIES(cocaine-generic-worker
-    boost_program_options-mt
-    cocaine-core)
-
-SET_TARGET_PROPERTIES(cocaine-generic-worker PROPERTIES
-    COMPILE_FLAGS "-std=c++0x")
-
 ADD_EXECUTABLE(cocained
     src/bootstrap)
 
@@ -127,7 +117,6 @@ INSTALL(
     TARGETS
         cocaine-common
         cocaine-core
-        cocaine-generic-worker
         cocained
         json
     RUNTIME DESTINATION bin COMPONENT runtime
