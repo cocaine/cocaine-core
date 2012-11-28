@@ -20,10 +20,11 @@
 
 #include "cocaine/config.hpp"
 #include "cocaine/context.hpp"
-#include "cocaine/logging.hpp"
 
-#include "cocaine/server/pid_file.hpp"
-#include "cocaine/server/server.hpp"
+#include "cocaine/api/service.hpp"
+
+#include "cocaine/helpers/pid_file.hpp"
+#include "cocaine/helpers/format.hpp"
 
 #include <iostream>
 
@@ -35,10 +36,8 @@ namespace po = boost::program_options;
 
 int main(int argc, char * argv[]) {
     po::options_description general_options("General options"),
-                            server_options("Server options"),
+                            service_options("Service options"),
                             combined_options;
-    
-    po::positional_options_description positional_options;
     
     po::variables_map vm;
 
@@ -53,51 +52,35 @@ int main(int argc, char * argv[]) {
             ()->default_value("/var/run/cocaine/cocained.pid"),
             "location of a pid file");
 
-    server_config_t server_config;
-
-    server_options.add_options()
-        ("server:runlist,r", po::value<std::string>
-            (&server_config.runlist)->default_value("default"),
-            "server runlist name")
-        ("server:listen", po::value< std::vector<std::string> >
-            (&server_config.listen_endpoints)->composing(),
-            "server listen endpoints, can be specified multiple times")
-        ("server:announce", po::value< std::vector<std::string> >
-            (&server_config.announce_endpoints)->composing(),
-            "server announce endpoints, can be specified multiple times")
-        ("server:announce-interval", po::value<float>
-            (&server_config.announce_interval)->default_value(5.0f),
-            "server announce interval");
-
-    positional_options.add("server:listen", -1);
-
+    service_options.add_options()
+        ("service,s", po::value<std::string>(), "name of a service to launch");
+    
     combined_options.add(general_options)
-                    .add(server_options);
+                    .add(service_options);
 
     try {
         po::store(
             po::command_line_parser(argc, argv).
                 options(combined_options).
-                positional(positional_options).
                 run(),
             vm);
         po::notify(vm);
     } catch(const po::unknown_option& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
+        std::cerr << cocaine::format("Error: %s.", e.what()) << std::endl;
         return EXIT_FAILURE;
     } catch(const po::ambiguous_option& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
+        std::cerr << cocaine::format("Error: %s.", e.what()) << std::endl;
         return EXIT_FAILURE;
     }
 
     if(vm.count("help")) {
-        std::cout << "Usage: " << argv[0] << " endpoint-list [options]" << std::endl;
-        std::cout << general_options << server_options;
+        std::cout << cocaine::format("Usage: %s <service-name> [options]", argv[0]) << std::endl;
+        std::cout << combined_options;
         return EXIT_SUCCESS;
     }
 
     if(vm.count("version")) {
-        std::cout << "Cocaine " << COCAINE_VERSION << std::endl;
+        std::cout << cocaine::format("Cocaine %d", COCAINE_VERSION) << std::endl;
         return EXIT_SUCCESS;
     }
 
@@ -108,6 +91,11 @@ int main(int argc, char * argv[]) {
         return EXIT_FAILURE;
     }
 
+    if(!vm.count("service")) {
+        std::cerr << "Error: no service name has been specified." << std::endl;
+        return EXIT_FAILURE;
+    }
+    
     // Startup
 
     std::unique_ptr<pid_file_t> pidfile;
@@ -121,7 +109,7 @@ int main(int argc, char * argv[]) {
         try {
             pidfile.reset(new pid_file_t(vm["pidfile"].as<std::string>()));
         } catch(const std::exception& e) {
-            std::cerr << "Error: " << e.what() << "." << std::endl;
+            std::cerr << cocaine::format("Error: %s.", e.what()) << std::endl;
             return EXIT_FAILURE;
         }
     }
@@ -131,31 +119,20 @@ int main(int argc, char * argv[]) {
     try {
         context.reset(new context_t(vm["configuration"].as<std::string>()));
     } catch(const std::exception& e) {
-        std::cerr << "Error: unable to initialize the context - " << e.what() << std::endl;
+        std::cerr << cocaine::format("Error: unable to initialize the context - %s.", e.what()) << std::endl;
         return EXIT_FAILURE;
     }
 
-    boost::shared_ptr<logging::logger_t> log(context->log("main"));
+    api::category_traits<api::service_t>::ptr_type service;
 
-    COCAINE_LOG_INFO(log, "starting the server");
-
-    std::unique_ptr<server_t> server;
-    
     try {
-        server.reset(
-            new server_t(
-                *context,
-                server_config
-            )
-        );
+        service = context->get<api::service_t>(vm["service"].as<std::string>());
     } catch(const std::exception& e) {
-        COCAINE_LOG_ERROR(log, "unable to start the server - %s", e.what());
+        std::cerr << cocaine::format("Error: unable to start the service - %s.", e.what()) << std::endl;
         return EXIT_FAILURE;
     }
 
-    server->run();
-
-    COCAINE_LOG_INFO(log, "the server has terminated");
+    service->run();
 
     return EXIT_SUCCESS;
 }

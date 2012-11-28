@@ -112,12 +112,11 @@ SET_TARGET_PROPERTIES(cocaine-generic-worker PROPERTIES
     COMPILE_FLAGS "-std=c++0x")
 
 ADD_EXECUTABLE(cocained
-    src/server/server
-    src/server/main)
+    src/bootstrap)
 
 TARGET_LINK_LIBRARIES(cocained
     boost_program_options-mt
-    cocaine-core)
+    cocaine-common)
 
 SET_TARGET_PROPERTIES(cocained PROPERTIES
     COMPILE_FLAGS "-std=c++0x")
