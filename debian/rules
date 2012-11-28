@@ -3,9 +3,9 @@
 include /usr/share/cdbs/1/class/cmake.mk
 include /usr/share/cdbs/1/rules/debhelper.mk
 
-install/cocaine-server::
+install/cocaine-runtime::
 	install -d $(DEB_DESTDIR)etc/cocaine
-	install -m644 debian/cocaine-server.conf $(DEB_DESTDIR)etc/cocaine/cocaine-default.conf
+	install -m644 debian/cocaine-runtime.conf $(DEB_DESTDIR)etc/cocaine/cocaine-default.conf
 	
 install/cocaine-tools::
 	install -d $(DEB_DESTDIR)usr/bin

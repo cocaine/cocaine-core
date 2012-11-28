@@ -42,7 +42,7 @@ using namespace cocaine;
 
 namespace fs = boost::filesystem;
 
-const char defaults::slave[] = "/usr/bin/cocaine-generic-worker";
+const char defaults::slave[] = "/usr/bin/cocaine-worker-generic";
 
 const float defaults::heartbeat_timeout = 30.0f;
 const float defaults::idle_timeout = 600.0f;

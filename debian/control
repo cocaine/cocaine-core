@@ -12,44 +12,28 @@ Vcs-Browser: https://github.com/cocaine/cocaine-core
 Package: libcocaine-common2
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, libzmq1 (>= 2.2.0)
-Provides: cocaine-core
-Replaces: cocaine-core
 Description: Cocaine - Common Libraries
  Cocaine common libraries package.
 
 Package: libcocaine-core2
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Provides: cocaine-core
-Replaces: cocaine-core
 Description: Cocaine - Core Libraries
  Cocaine core libraries package.
 
 Package: libcocaine-dev
 Architecture: any
 Section: libdevel
-Provides: cocaine-dev
-Replaces: cocaine-dev
 Depends: ${shlibs:Depends}, ${misc:Depends}, libzmq-dev (>= 2.2.0), libev-dev, libmsgpack-dev,
- libboost-dev, libboost-thread-dev, libcocaine-common2, libcocaine-core2
+ libboost-dev, libboost-thread-dev, libcocaine-common2 (>= 0.10), libcocaine-core2 (>= 0.10)
 Description: Cocaine - Development Headers
  Cocaine development headers package.
 
-Package: cocaine-generic-slave
+Package: cocaine-runtime
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2
-Provides: cocaine-core
-Replaces: cocaine-core
-Description: Cocaine - Generic Slave
- Cocaine generic slave package.
-
-Package: cocaine-server
-Architecture: any
-Provides: cocaine-core
-Replaces: cocaine-core
-Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2, cocaine-generic-slave, adduser
-Description: Cocaine - Server
- Cocaine server package.
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-common2, adduser
+Description: Cocaine - Runtime
+ Cocaine runtime components package.
 
 Package: cocaine-tools
 Architecture: any
