@@ -218,7 +218,7 @@ struct raw_traits;
 
 template<>
 struct raw_traits<std::string> {
-    static
+    static inline
     void
     pack(zmq::message_t& message,
          const std::string& value)
@@ -232,7 +232,7 @@ struct raw_traits<std::string> {
         );
     }
 
-    static
+    static inline
     void
     unpack(/* const */ zmq::message_t& message,
            std::string& value)

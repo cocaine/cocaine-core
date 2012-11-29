@@ -92,7 +92,7 @@ namespace detail {
         template<class It, class End>
         struct invoke {
             template<typename... Args>
-            static
+            static inline
             R
             apply(callable_type& callable,
                   msgpack::object * packed,
@@ -117,7 +117,7 @@ namespace detail {
         template<class End>
         struct invoke<End, End> {
             template<typename... Args>
-            static
+            static inline
             R
             apply(callable_type& callable,
                   msgpack::object * packed,
@@ -188,9 +188,9 @@ class reactor:
             return m_context;
         }
 
-        logging::logger_t*
+        boost::shared_ptr<logging::logger_t>
         log() {
-            return m_log.get();
+            return m_log;
         }
 
     private:

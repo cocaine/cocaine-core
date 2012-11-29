@@ -228,6 +228,21 @@ context_t::context_t(config_t config_):
 
     // Initialize the port mapper.
     m_port_mapper.reset(new port_mapper_t(config.network.ports));
+
+    config_t::component_t cfg;
+
+    try {
+        cfg = config.components.at("logger/default");
+    } catch(const std::out_of_range&) {
+        cfg.type = "stdout";
+    }
+
+    // Get the logging sink.
+    m_sink = get<api::logger_t>(
+        cfg.type,
+        "cocaine",
+        cfg.args
+    );
 }
 
 context_t::~context_t() {
@@ -239,36 +254,5 @@ context_t::~context_t() {
 
 boost::shared_ptr<logging::logger_t>
 context_t::log(const std::string& name) {
-    boost::lock_guard<boost::mutex> lock(m_mutex);
-
-    if(!m_sink) {
-        config_t::component_t cfg;
-
-        try {
-            cfg = config.components.at("logger/default");
-        } catch(const std::out_of_range&) {
-            cfg.type = "stdout";
-        }
-
-        // Get the logging sink.
-        m_sink = get<api::logger_t>(
-            cfg.type,
-            "cocaine",
-            cfg.args
-        );
-    }
-
-    instance_map_t::iterator it(m_instances.find(name));
-
-    if(it == m_instances.end()) {
-        boost::tie(it, boost::tuples::ignore) = m_instances.emplace(
-            name,
-            boost::make_shared<logging::logger_t>(
-                *m_sink,
-                name
-            )
-        );
-    }
-
-    return it->second;
+    return boost::make_shared<logging::logger_t>(*m_sink, name);
 }

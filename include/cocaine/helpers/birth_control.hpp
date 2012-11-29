@@ -33,13 +33,13 @@ class birth_control  {
             ++g_objects_created;
         }
 
-        static
+        static inline
         uint64_t
         objects_alive() {
             return g_objects_alive;
         }
 
-        static
+        static inline
         uint64_t
         objects_created() {
             return g_objects_created;

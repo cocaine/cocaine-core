@@ -117,6 +117,10 @@ class context_t:
 {
     public:
         context_t(config_t config);
+        
+        context_t(config_t config,
+                  std::unique_ptr<api::logger_t>&& sink);
+
         ~context_t();
 
         // Logging
@@ -151,26 +155,13 @@ class context_t:
         const config_t config;
 
     private:
+        std::unique_ptr<zmq::context_t> m_io;
         std::unique_ptr<api::repository_t> m_repository;
         
         // NOTE: As the loggers themselves are components, the repository
         // have to be initialized first without a logger, unfortunately.
         std::unique_ptr<api::logger_t> m_sink;
 
-#if BOOST_VERSION >= 103600
-        typedef boost::unordered_map<
-#else
-        typedef std::map<
-#endif
-            std::string,
-            boost::shared_ptr<logging::logger_t>
-        > instance_map_t;
-
-        instance_map_t m_instances;
-        boost::mutex m_mutex;
-
-        std::unique_ptr<zmq::context_t> m_io;
-        
         // TODO: I don't really like this implementation.
         std::unique_ptr<port_mapper_t> m_port_mapper;
 };

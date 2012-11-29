@@ -30,7 +30,7 @@ namespace cocaine { namespace io {
 template<>
 struct type_traits<api::policy_t> {
     template<class Stream>
-    static
+    static inline
     void
     pack(msgpack::packer<Stream>& packer,
          const api::policy_t& object)
@@ -42,7 +42,7 @@ struct type_traits<api::policy_t> {
         packer << object.deadline;
     }
     
-    static
+    static inline
     void
     unpack(const msgpack::object& packed,
            api::policy_t& object)

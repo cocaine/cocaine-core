@@ -30,7 +30,7 @@ namespace cocaine { namespace io {
 template<>
 struct type_traits<unique_id_t> {
     template<class Stream>
-    static
+    static inline
     void
     pack(msgpack::packer<Stream>& packer,
          const unique_id_t& object)
@@ -41,7 +41,7 @@ struct type_traits<unique_id_t> {
         packer << object.uuid[1];
     }
     
-    static
+    static inline
     void
     unpack(const msgpack::object& packed,
            unique_id_t& object)

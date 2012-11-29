@@ -48,36 +48,33 @@
 
 namespace cocaine { namespace logging {
 
-class logger_t:
-    public boost::noncopyable
-{
-    public:
-        logger_t(api::logger_t& logger,
-                 const std::string& source):
-            m_logger(logger),
-            m_source(source)
-        { }
+struct logger_t {
+    logger_t(api::logger_t& logger,
+             const std::string& source):
+        m_logger(logger),
+        m_source(source)
+    { }
 
-        priorities
-        verbosity() const {
-            return m_logger.verbosity();
-        }
+    priorities
+    verbosity() const {
+        return m_logger.verbosity();
+    }
 
-        template<typename... Args>
-        void
-        emit(priorities priority,
-             const std::string& format,
-             const Args&... args)
-        {
-            m_logger.emit(priority, m_source, cocaine::format(format, args...));
-        }
+    template<typename... Args>
+    void
+    emit(priorities priority,
+         const std::string& format,
+         const Args&... args)
+    {
+        m_logger.emit(priority, m_source, cocaine::format(format, args...));
+    }
 
-    private:
-        api::logger_t& m_logger;
-        
-        // This is the logging source component name, so that log messages could
-        // be processed based on where they came from.
-        const std::string m_source;
+private:
+    api::logger_t& m_logger;
+
+    // This is the logging source component name, so that log messages could
+    // be processed based on where they came from.
+    const std::string m_source;
 };
 
 }} // namespace cocaine::logging

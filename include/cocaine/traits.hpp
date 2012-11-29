@@ -36,7 +36,7 @@ namespace cocaine { namespace io {
 template<class T, class U = void>
 struct type_traits {
     template<class Stream>
-    static
+    static inline
     void
     pack(msgpack::packer<Stream>& packer,
          const T& object)
@@ -44,7 +44,7 @@ struct type_traits {
         packer << object;
     }
     
-    static
+    static inline
     void
     unpack(const msgpack::object& packed,
            T& object)
@@ -71,7 +71,7 @@ struct type_traits<
 >
 {
     template<class Stream, typename... Args>
-    static
+    static inline
     void
     pack(Stream& stream,
          const Args&... sequence)
@@ -94,7 +94,7 @@ struct type_traits<
     }
 
     template<typename... Args>
-    static
+    static inline
     void
     unpack(const msgpack::object& packed,
            Args&... sequence)
@@ -153,7 +153,7 @@ private:
     }
 
     template<class It>
-    static
+    static inline
     void
     unpack_sequence(const msgpack::object * packed) {
         return;
