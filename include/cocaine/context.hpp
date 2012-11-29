@@ -198,8 +198,9 @@ context_t::get(const std::string& name) {
         throw configuration_error_t("the '%s' component is not configured", name);
     }
 
-    return get<Category>(
+    return m_repository->get<Category>(
         it->second.type,
+        *this,
         name,
         it->second.args
     );
