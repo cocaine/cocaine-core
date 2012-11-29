@@ -24,9 +24,6 @@
 #include "cocaine/common.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/io.hpp"
-#include "cocaine/repository.hpp"
-
-#include "cocaine/helpers/json.hpp"
 
 namespace cocaine { namespace api {
 
@@ -59,13 +56,16 @@ class client:
         template<class Event, typename... Args>
         void
         send(Args&&... args) {
+            boost::unique_lock<rpc_channel_t> lock(m_channel);
+
+            // TODO: Check if the sending has actually succeeded.
             m_channel.template send<Event>(std::forward<Args>(args)...);
         }
 
     private:
         typedef io::channel<
             Tag,
-            io::policies::unique
+            io::policies::shared
         > rpc_channel_t;
 
         rpc_channel_t m_channel;

@@ -85,7 +85,7 @@ namespace cocaine {
         };
 
         // Logging proxy.
-        class logger_t;
+        struct logger_t;
     }
 
     struct unique_id_t;

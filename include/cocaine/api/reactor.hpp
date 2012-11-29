@@ -92,7 +92,7 @@ namespace detail {
         template<class It, class End>
         struct invoke {
             template<typename... Args>
-            static
+            static inline
             R
             apply(callable_type& callable,
                   msgpack::object * packed,
@@ -117,7 +117,7 @@ namespace detail {
         template<class End>
         struct invoke<End, End> {
             template<typename... Args>
-            static
+            static inline
             R
             apply(callable_type& callable,
                   msgpack::object * packed,
@@ -188,9 +188,9 @@ class reactor:
             return m_context;
         }
 
-        logging::logger_t*
+        boost::shared_ptr<logging::logger_t>
         log() {
-            return m_log.get();
+            return m_log;
         }
 
     private:
@@ -225,17 +225,10 @@ class reactor:
                         io::options::receive_timeout
                     > option(m_channel, 0);
                     
-                    if(!m_channel.recv_multipart(source, message_id)) {
+                    if(!m_channel.recv_multipart(io::protect(source), message_id)) {
                         return;
                     }
                 }
-
-                COCAINE_LOG_DEBUG(
-                    m_log,
-                    "received type %d message from '%s'",
-                    message_id,
-                    source
-                );
 
                 zmq::message_t message;
                 msgpack::unpacked unpacked;

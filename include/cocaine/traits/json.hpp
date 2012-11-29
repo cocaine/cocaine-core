@@ -30,7 +30,7 @@ namespace cocaine { namespace io {
 template<>
 struct type_traits<Json::Value> {
     template<class Stream>
-    static
+    static inline
     void
     pack(msgpack::packer<Stream>& packer,
          const Json::Value& object)
@@ -90,7 +90,7 @@ struct type_traits<Json::Value> {
         }
     }
     
-    static
+    static inline
     void
     unpack(const msgpack::object& packed,
            Json::Value& object)
