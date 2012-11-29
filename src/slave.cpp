@@ -60,7 +60,7 @@ slave_t::slave_t(context_t& context,
     std::map<std::string, std::string> args,
                                        environment;
 
-    args["--configuration"] = m_context.config.config_path;
+    args["-c"] = m_context.config.config_path;
     args["--slave:app"] = m_manifest.name;
     args["--slave:profile"] = m_profile.name;
     args["--slave:uuid"] = m_id.string();
