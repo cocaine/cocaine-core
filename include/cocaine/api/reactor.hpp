@@ -225,17 +225,10 @@ class reactor:
                         io::options::receive_timeout
                     > option(m_channel, 0);
                     
-                    if(!m_channel.recv_multipart(source, message_id)) {
+                    if(!m_channel.recv_multipart(io::protect(source), message_id)) {
                         return;
                     }
                 }
-
-                COCAINE_LOG_DEBUG(
-                    m_log,
-                    "received type %d message from '%s'",
-                    message_id,
-                    source
-                );
 
                 zmq::message_t message;
                 msgpack::unpacked unpacked;

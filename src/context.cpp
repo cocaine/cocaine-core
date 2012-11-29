@@ -245,7 +245,7 @@ context_t::log(const std::string& name) {
         config_t::component_t cfg;
 
         try {
-            cfg = config.components.at("sink/core");
+            cfg = config.components.at("logger/default");
         } catch(const std::out_of_range&) {
             cfg.type = "stdout";
         }

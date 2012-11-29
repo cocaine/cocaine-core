@@ -101,14 +101,14 @@ SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     VERSION 2
     COMPILE_FLAGS "-std=c++0x")
 
-ADD_EXECUTABLE(cocained
+ADD_EXECUTABLE(cocaine-runtime
     src/bootstrap)
 
-TARGET_LINK_LIBRARIES(cocained
+TARGET_LINK_LIBRARIES(cocaine-runtime
     boost_program_options-mt
     cocaine-common)
 
-SET_TARGET_PROPERTIES(cocained PROPERTIES
+SET_TARGET_PROPERTIES(cocaine-runtime PROPERTIES
     COMPILE_FLAGS "-std=c++0x")
 
 ADD_SUBDIRECTORY(tools)
@@ -117,7 +117,7 @@ INSTALL(
     TARGETS
         cocaine-common
         cocaine-core
-        cocained
+        cocaine-runtime
         json
     RUNTIME DESTINATION bin COMPONENT runtime
     LIBRARY DESTINATION lib COMPONENT runtime
