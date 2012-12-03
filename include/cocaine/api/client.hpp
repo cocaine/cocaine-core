@@ -43,6 +43,10 @@ class client:
                 name
             );
 
+            // Set the channel high watermark, so that if the service goes down
+            // it could be determined by the client within some reasonable timespan.
+            m_channel.setsockopt(ZMQ_HWM, &watermark, sizeof(watermark));
+            
             try {
                 m_channel.connect(endpoint);
             } catch(const zmq::error_t& e) {
@@ -52,10 +56,6 @@ class client:
                     e.what()
                 );
             }
-
-            // Set the channel high watermark, so that if the service goes down
-            // it could be determined by the client within some reasonable timespan.
-            m_channel.setsockopt(ZMQ_HWM, &watermark, sizeof(watermark));
         }
 
         template<class Event, typename... Args>
