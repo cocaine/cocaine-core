@@ -206,7 +206,7 @@ class engine_t:
         // NOTE: A strong isolate reference, keeping it here
         // avoids isolate destruction, as the factory stores
         // only weak references to the isolate instances.
-        api::category_traits<api::isolate_t>::ptr_type m_isolate;
+        api::isolate_ptr_t m_isolate;
 };
 
 template<class Event, typename... Args>

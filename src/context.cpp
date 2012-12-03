@@ -111,7 +111,9 @@ config_t::config_t(const std::string& path):
 
     // Component configuration
 
-    components = parse(root["components"]);
+    services = parse(root["services"]);
+    storages = parse(root["storages"]);
+    loggers = parse(root["loggers"]);
 
     // IO configuration
 
@@ -204,11 +206,45 @@ port_mapper_t::retain(uint16_t port) {
     m_ports.push(port);
 }
 
-context_t::context_t(config_t config_):
+context_t::context_t(config_t config_,
+                     const std::string& logger):
     config(config_)
 {
+    initialize_components();
+
+    // Get the default logger for this context.
+    m_sink = api::logger(*this, logger);
+}
+
+context_t::context_t(config_t config_,
+                     std::unique_ptr<api::logger_t>&& logger):
+    config(config_)
+{
+    initialize_components();
+
+    // NOTE: The context takes the ownership of the passed logger, so it would
+    // be invalid at the calling site after the call.
+    m_sink = std::move(logger);
+}
+
+context_t::~context_t() {
+    // NOTE: Plugin categories have to be destroyed in a specific order,
+    // so that loggers would be destroyed after all the shared factories
+    // which may use logging subsystem. For now, it involes storages only.
+    m_repository->dispose<api::storage_t>();
+}
+
+boost::shared_ptr<logging::logger_t>
+context_t::log(const std::string& name) {
+    return boost::make_shared<logging::logger_t>(*m_sink, name);
+}
+
+void
+context_t::initialize_components() {
+    m_io.reset(new zmq::context_t(1));
     m_repository.reset(new api::repository_t());
-    
+    m_port_mapper.reset(new port_mapper_t(config.network.ports));
+
     // Register the builtin isolates.
     m_repository->insert<isolate::process_t>("process");
 
@@ -222,37 +258,4 @@ context_t::context_t(config_t config_):
 
     // Register the plugins.
     m_repository->load(config.plugin_path);
-
-    // Initialize the ZeroMQ context.
-    m_io.reset(new zmq::context_t(1));
-
-    // Initialize the port mapper.
-    m_port_mapper.reset(new port_mapper_t(config.network.ports));
-
-    config_t::component_t cfg;
-
-    try {
-        cfg = config.components.at("logger/default");
-    } catch(const std::out_of_range&) {
-        cfg.type = "stdout";
-    }
-
-    // Get the logging sink.
-    m_sink = get<api::logger_t>(
-        cfg.type,
-        "cocaine",
-        cfg.args
-    );
-}
-
-context_t::~context_t() {
-    // NOTE: Plugin categories have to be destroyed in a specific order,
-    // so that loggers would be destroyed after all the shared factories
-    // which may use logging subsystem. For now, it involes storages only.
-    m_repository->dispose<api::storage_t>();
-}
-
-boost::shared_ptr<logging::logger_t>
-context_t::log(const std::string& name) {
-    return boost::make_shared<logging::logger_t>(*m_sink, name);
 }

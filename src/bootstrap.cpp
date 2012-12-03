@@ -114,19 +114,22 @@ int main(int argc, char * argv[]) {
         }
     }
 
+    std::string cfg = vm["configuration"].as<std::string>();
+    std::string svc = vm["service"].as<std::string>();
+
     std::unique_ptr<context_t> context;
 
     try {
-        context.reset(new context_t(vm["configuration"].as<std::string>()));
+        context.reset(new context_t(cfg, svc));
     } catch(const std::exception& e) {
         std::cerr << cocaine::format("Error: unable to initialize the context - %s.", e.what()) << std::endl;
         return EXIT_FAILURE;
     }
 
-    api::category_traits<api::service_t>::ptr_type service;
+    api::service_ptr_t service;
 
     try {
-        service = context->get<api::service_t>(vm["service"].as<std::string>());
+        service = api::service(*context, svc);
     } catch(const std::exception& e) {
         std::cerr << cocaine::format("Error: unable to start the service - %s.", e.what()) << std::endl;
         return EXIT_FAILURE;

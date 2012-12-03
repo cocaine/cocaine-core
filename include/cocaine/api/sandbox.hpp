@@ -85,6 +85,8 @@ struct category_traits<sandbox_t> {
     };
 };
 
+typedef category_traits<sandbox_t>::ptr_type sandbox_ptr_t;
+
 }} // namespace cocaine::api
 
 #endif

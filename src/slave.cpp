@@ -51,8 +51,9 @@ slave_t::slave_t(context_t& context,
     m_heartbeat_timer(engine.loop()),
     m_state(state_t::unknown)
 {
-    api::category_traits<api::isolate_t>::ptr_type isolate = m_context.get<api::isolate_t>(
+    auto isolate = m_context.get<api::isolate_t>(
         m_profile.isolate.type,
+        m_context,
         m_manifest.name,
         m_profile.isolate.args
     );

@@ -22,6 +22,7 @@
 #define COCAINE_STORAGE_API_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/context.hpp"
 #include "cocaine/repository.hpp"
 #include "cocaine/traits.hpp"
 
@@ -192,6 +193,29 @@ struct category_traits<storage_t> {
         boost::mutex m_mutex;
     };
 };
+
+typedef category_traits<storage_t>::ptr_type storage_ptr_t;
+
+static inline
+storage_ptr_t
+storage(context_t& context,
+        const std::string& name)
+{
+    config_t::component_map_t::const_iterator it(
+        context.config.storages.find(name)
+    );
+
+    if(it == context.config.storages.end()) {
+        throw configuration_error_t("the '%s' storage is not configured", name);
+    }
+
+    return context.get<storage_t>(
+        it->second.type,
+        context,
+        name,
+        it->second.args
+    );
+}
 
 }} // namespace cocaine::api
 

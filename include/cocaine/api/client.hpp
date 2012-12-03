@@ -33,7 +33,8 @@ class client:
 {
     public:
         client(context_t& context,
-               const std::string& name):
+               const std::string& name,
+               uint64_t watermark):
             m_channel(context, ZMQ_DEALER)
         {
             std::string endpoint = cocaine::format(
@@ -51,15 +52,22 @@ class client:
                     e.what()
                 );
             }
+
+            // Set the channel high watermark, so that if the service goes down
+            // it could be determined by the client within some reasonable timespan.
+            m_channel.setsockopt(ZMQ_HWM, &watermark, sizeof(watermark));
         }
 
         template<class Event, typename... Args>
-        void
+        bool
         send(Args&&... args) {
             boost::unique_lock<rpc_channel_t> lock(m_channel);
 
-            // TODO: Check if the sending has actually succeeded.
-            m_channel.template send<Event>(std::forward<Args>(args)...);
+            io::scoped_option<
+                io::options::send_timeout
+            > option(m_channel, 0);
+
+            return m_channel.template send<Event>(std::forward<Args>(args)...);
         }
 
     private:

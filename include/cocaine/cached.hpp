@@ -44,17 +44,13 @@ cached<T>::cached(context_t& context,
 {
     T& object = static_cast<T&>(*this);
 
-    api::category_traits<api::storage_t>::ptr_type cache(
-        context.get<api::storage_t>("storage/cache")
-    );
+    auto cache = api::storage(context, "cache");
 
     try {
         // Try to load the object from the cache.
         object = cache->get<T>(collection, name);
     } catch(const storage_error_t& e) {
-        api::category_traits<api::storage_t>::ptr_type storage(
-            context.get<api::storage_t>("storage/core")
-        );
+        auto storage = api::storage(context, "core");
         
         try {
             // Fetch the application manifest and archive from the core storage.

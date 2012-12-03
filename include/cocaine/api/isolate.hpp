@@ -131,6 +131,8 @@ struct category_traits<isolate_t> {
     };
 };
 
+typedef category_traits<isolate_t>::ptr_type isolate_ptr_t;
+
 }} // namespace cocaine::api
 
 #endif
