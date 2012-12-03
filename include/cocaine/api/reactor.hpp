@@ -31,6 +31,7 @@
 #include <boost/function_types/function_type.hpp>
 
 #include <boost/mpl/push_front.hpp>
+#include <boost/mpl/size.hpp>
 
 namespace cocaine { namespace api {
 
@@ -166,15 +167,20 @@ class reactor:
             m_watcher.start(m_channel.fd(), ev::READ);
             m_checker.set<reactor, &reactor::on_check>(this);
             m_checker.start();
+
+            const size_t length = boost::mpl::size<
+                typename io::dispatch<Tag>::category
+            >::value;
+
+            m_slots.reserve(length);
         }
 
         template<class Event>
         void
         on(typename detail::slot<Event>::callable_type callable) {
-            m_slots.emplace(
-                io::event_traits<Event>::id,
-                boost::make_shared<detail::slot<Event>>(callable)
-            );
+            m_slots[io::event_traits<Event>::id] = boost::make_shared<
+                detail::slot<Event>
+            >(callable);
         }
         
         void
@@ -248,14 +254,14 @@ class reactor:
                     throw cocaine::error_t("corrupted object - type mismatch");
                 }
 
-                slot_map_t::iterator it = m_slots.find(message_id);
+                slot_map_t::const_reference slot = m_slots[message_id];
 
-                if(it != m_slots.end()) {
-                    (*it->second)(unpacked.get());
+                if(slot) {
+                    (*slot)(unpacked.get());
                 } else {
                     COCAINE_LOG_WARNING(
                         m_log,
-                        "no slot for event type %d, dropping",
+                        "no slot bound to process message type %d",
                         message_id
                     );
                 }
@@ -284,12 +290,7 @@ class reactor:
 
         // Event slots
 
-#if BOOST_VERSION >= 103600
-        typedef boost::unordered_map<
-#else
-        typedef std::map<
-#endif
-            int,
+        typedef std::vector<
             boost::shared_ptr<detail::slot_base<void>>
         > slot_map_t;
 

@@ -116,6 +116,7 @@ app_t::start() {
                     it->first,
                     m_context.get<api::driver_t>(
                         it->second.type,
+                        m_context,
                         format.str(),
                         it->second.args,
                         *m_engine
@@ -217,9 +218,7 @@ app_t::deploy(const std::string& name,
 
     COCAINE_LOG_INFO(m_log, "deploying the app to '%s'", path);
     
-    api::category_traits<api::storage_t>::ptr_type storage(
-        m_context.get<api::storage_t>("storage/core")
-    );
+    auto storage = api::storage(m_context, "core");
     
     try {
         blob = storage->get<std::string>("apps", name);

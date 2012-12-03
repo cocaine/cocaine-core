@@ -43,7 +43,7 @@ namespace {
         std::vector<std::string> apps;
       
         try {
-            apps = context.get<api::storage_t>("storage/core")->list("manifests");
+            apps = api::storage(context, "core")->list("manifests");
         } catch(const storage_error_t& e) {
             std::cerr << "Error: unable to retrieve the app list." << std::endl;
             std::cerr << e.what() << std::endl;
@@ -120,9 +120,7 @@ namespace {
                   << "', package compression: '" << compression
                   << "'." << std::endl;
 
-        api::category_traits<api::storage_t>::ptr_type storage(
-            context.get<api::storage_t>("storage/core")
-        );
+        auto storage = api::storage(context, "core");
 
         try {
             storage->put("manifests", name, manifest);
@@ -157,9 +155,7 @@ namespace {
             return;
         }
 
-        api::category_traits<api::storage_t>::ptr_type storage(
-            context.get<api::storage_t>("storage/core")
-        );
+        auto storage = api::storage(context, "core");
 
         try {
             storage->put("profiles", name, manifest);
@@ -176,10 +172,8 @@ namespace {
     remove(context_t& context,
            std::string name)
     {
-        api::category_traits<api::storage_t>::ptr_type storage(
-            context.get<api::storage_t>("storage/core")
-        );
-        
+        auto storage = api::storage(context, "core");
+
         try {
             storage->remove("manifests", name);
             storage->remove("apps", name);
@@ -198,9 +192,7 @@ namespace {
     {
         std::cout << "Cleaning up the '" << name << "' app." << std::endl;
 
-        api::category_traits<api::storage_t>::ptr_type cache(
-            context.get<api::storage_t>("storage/cache")
-        );
+        auto cache = api::storage(context, "cache");
 
         Json::Value manifest;
 
@@ -237,9 +229,7 @@ namespace {
 
     void
     purge(context_t& context) {
-        api::category_traits<api::storage_t>::ptr_type cache(
-            context.get<api::storage_t>("storage/cache")
-        );
+        auto cache = api::storage(context, "cache");
         
         std::vector<std::string> manifests(
             cache->list("manifests")
@@ -341,7 +331,7 @@ main(int argc, char * argv[]) {
     std::unique_ptr<context_t> context;
 
     try {
-        context.reset(new context_t(vm["configuration"].as<std::string>()));
+        context.reset(new context_t(vm["configuration"].as<std::string>(), "tools"));
     } catch(const std::exception& e) {
         std::cerr << "Error: unable to initialize the context - " << e.what() << std::endl;
         return EXIT_FAILURE;

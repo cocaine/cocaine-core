@@ -81,9 +81,8 @@ struct config_t {
     component_map_t
     parse(const Json::Value& config);
 
-    // NOTE: A configuration map for the generic components, like storages or loggers,
-    // which are specified in the configuration file.
-    component_map_t components;
+    // Configuration maps.
+    component_map_t services, storages, loggers;
 
     struct {
         std::string hostname;
@@ -116,28 +115,13 @@ class context_t:
     public boost::noncopyable
 {
     public:
-        context_t(config_t config);
+        context_t(config_t config,
+                  const std::string& logger);
         
         context_t(config_t config,
-                  std::unique_ptr<api::logger_t>&& sink);
+                  std::unique_ptr<api::logger_t>&& logger);
 
         ~context_t();
-
-        // Logging
-
-        boost::shared_ptr<logging::logger_t>
-        log(const std::string&);
-        
-        // Component API
-        
-        template<class Category, typename... Args>
-        typename api::category_traits<Category>::ptr_type
-        get(const std::string& type,
-            Args&&... args);
-
-        template<class Category>
-        typename api::category_traits<Category>::ptr_type
-        get(const std::string& name);
 
         // Networking
 
@@ -146,10 +130,28 @@ class context_t:
             return *m_io;
         }
 
+        // Component API
+        
+        template<class Category, typename... Args>
+        typename api::category_traits<Category>::ptr_type
+        get(const std::string& type,
+            Args&&... args);
+
+        // Logging
+
+        boost::shared_ptr<logging::logger_t>
+        log(const std::string&);
+        
+        // Port mappings
+
         port_mapper_t&
         ports() {
             return *m_port_mapper;
         }
+
+    private:
+        void
+        initialize_components();
 
     public:
         const config_t config;
@@ -158,12 +160,12 @@ class context_t:
         std::unique_ptr<zmq::context_t> m_io;
         std::unique_ptr<api::repository_t> m_repository;
         
+        // TODO: I don't really like this implementation.
+        std::unique_ptr<port_mapper_t> m_port_mapper;
+
         // NOTE: As the loggers themselves are components, the repository
         // have to be initialized first without a logger, unfortunately.
         std::unique_ptr<api::logger_t> m_sink;
-
-        // TODO: I don't really like this implementation.
-        std::unique_ptr<port_mapper_t> m_port_mapper;
 };
 
 template<class Category, typename... Args>
@@ -173,27 +175,7 @@ context_t::get(const std::string& type,
 {
     return m_repository->get<Category>(
         type,
-        *this,
         std::forward<Args>(args)...
-    );
-}
-
-template<class Category>
-typename api::category_traits<Category>::ptr_type
-context_t::get(const std::string& name) {
-    config_t::component_map_t::const_iterator it(
-        config.components.find(name)
-    );
-
-    if(it == config.components.end()) {
-        throw configuration_error_t("the '%s' component is not configured", name);
-    }
-
-    return m_repository->get<Category>(
-        it->second.type,
-        *this,
-        name,
-        it->second.args
     );
 }
 

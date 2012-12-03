@@ -38,20 +38,17 @@ auth_t::auth_t(context_t& context):
 {
     ERR_load_crypto_strings();
 
+    auto storage = api::storage(context, "core");
+
     // NOTE: Allowing the exception to propagate here, as this is a fatal error.
-    std::vector<std::string> keys(
-        context.get<api::storage_t>("storage/core")->list("keys")
-    );
+    std::vector<std::string> keys = storage->list("keys");
 
     for(std::vector<std::string>::const_iterator it = keys.begin();
         it != keys.end();
         ++it)
     {
-        std::string identity(*it);
-
-        std::string object(
-            context.get<api::storage_t>("storage/core")->get<std::string>("keys", identity)
-        );
+        std::string identity = *it;
+        std::string object = storage->get<std::string>("keys", identity);
 
         if(object.empty()) {
             COCAINE_LOG_ERROR(m_log, "key for user '%s' is malformed", identity);

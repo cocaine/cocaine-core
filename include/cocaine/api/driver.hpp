@@ -94,6 +94,8 @@ struct category_traits<driver_t> {
     };
 };
 
+typedef category_traits<driver_t>::ptr_type driver_ptr_t;
+
 }} // namespace cocaine::api
 
 #endif
