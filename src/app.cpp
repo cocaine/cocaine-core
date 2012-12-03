@@ -148,6 +148,8 @@ app_t::start() {
             )
         )
     );
+    
+    COCAINE_LOG_INFO(m_log, "the engine has started");
 }
 
 void
@@ -163,6 +165,8 @@ app_t::stop() {
     m_thread->join();
     m_thread.reset();
 
+    COCAINE_LOG_INFO(m_log, "the engine has stopped");
+    
     // NOTE: Stop the drivers, so that there won't be any open
     // sockets and so on while the engine is stopped.
     m_drivers.clear();
