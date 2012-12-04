@@ -167,7 +167,7 @@ engine_t::engine_t(context_t& context,
     
     std::string bus_endpoint = cocaine::format(
         "ipc://%1%/%2%",
-        m_context.config.ipc_path,
+        m_context.config.path.runtime,
         m_manifest.name
     );
 

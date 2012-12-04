@@ -61,10 +61,10 @@ slave_t::slave_t(context_t& context,
     std::map<std::string, std::string> args,
                                        environment;
 
-    args["-c"] = m_context.config.config_path;
-    args["--slave:app"] = m_manifest.name;
-    args["--slave:profile"] = m_profile.name;
-    args["--slave:uuid"] = m_id.string();
+    args["-c"] = m_context.config.path.config;
+    args["--app"] = m_manifest.name;
+    args["--profile"] = m_profile.name;
+    args["--uuid"] = m_id.string();
 
     COCAINE_LOG_DEBUG(m_log, "slave %s spawning", m_id);
 

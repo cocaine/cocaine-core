@@ -52,7 +52,7 @@ app_t::app_t(context_t& context,
     m_manifest(new manifest_t(context, name)),
     m_profile(new profile_t(context, profile))
 {
-    fs::path path(fs::path(m_context.config.spool_path) / name);
+    fs::path path(fs::path(m_context.config.path.spool) / name);
     
     if(!fs::exists(path)) {
         deploy(name, path.string());

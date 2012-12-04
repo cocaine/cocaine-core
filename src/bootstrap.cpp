@@ -29,10 +29,12 @@
 #include <iostream>
 
 #include <boost/program_options.hpp>
+#include <boost/filesystem.hpp>
 
 using namespace cocaine;
 
 namespace po = boost::program_options;
+namespace fs = boost::filesystem;
 
 int main(int argc, char * argv[]) {
     po::options_description general_options("General options"),
@@ -44,13 +46,9 @@ int main(int argc, char * argv[]) {
     general_options.add_options()
         ("help,h", "show this message")
         ("version,v", "show version and build information")
-        ("configuration,c", po::value<std::string>
-            ()->default_value("/etc/cocaine/cocaine-default.conf"),
-            "location of the configuration file")
+        ("configuration,c", po::value<std::string>(), "location of the configuration file")
         ("daemonize,d", "daemonize on start")
-        ("pidfile,p", po::value<std::string>
-            ()->default_value("/var/run/cocaine/cocained.pid"),
-            "location of a pid file");
+        ("pidfile,p", po::value<std::string>(), "location of a pid file");
 
     service_options.add_options()
         ("service,s", po::value<std::string>(), "name of a service to launch");
@@ -98,44 +96,61 @@ int main(int argc, char * argv[]) {
     
     // Startup
 
+    std::string cfg = vm["configuration"].as<std::string>();
+    std::string service = vm["service"].as<std::string>();
+
+    std::unique_ptr<config_t> config;
+
+    try {
+        config.reset(new config_t(cfg));
+    } catch(const std::exception& e) {
+        std::cerr << cocaine::format("Error: unable to initialize the configuration - %s.", e.what()) << std::endl;
+        return EXIT_FAILURE;
+    }
+
     std::unique_ptr<pid_file_t> pidfile;
 
     if(vm.count("daemonize")) {
+        fs::path pid_path;
+
+        if(!vm["pidfile"].empty()) {
+            pid_path = fs::path(vm["pidfile"].as<std::string>());
+        } else {
+            pid_path = fs::path(config->path.runtime) / cocaine::format("%s.pid", service);
+        }
+
         if(daemon(0, 0) < 0) {
             std::cerr << "Error: daemonization failed." << std::endl;
             return EXIT_FAILURE;
         }
 
         try {
-            pidfile.reset(new pid_file_t(vm["pidfile"].as<std::string>()));
+            pidfile.reset(new pid_file_t(pid_path));
         } catch(const std::exception& e) {
             std::cerr << cocaine::format("Error: %s.", e.what()) << std::endl;
             return EXIT_FAILURE;
         }
     }
 
-    std::string cfg = vm["configuration"].as<std::string>();
-    std::string svc = vm["service"].as<std::string>();
-
     std::unique_ptr<context_t> context;
 
     try {
-        context.reset(new context_t(cfg, svc));
+        context.reset(new context_t(cfg, service));
     } catch(const std::exception& e) {
         std::cerr << cocaine::format("Error: unable to initialize the context - %s.", e.what()) << std::endl;
         return EXIT_FAILURE;
     }
 
-    api::service_ptr_t service;
+    api::service_ptr_t runnable;
 
     try {
-        service = api::service(*context, svc);
+        runnable = api::service(*context, service);
     } catch(const std::exception& e) {
         std::cerr << cocaine::format("Error: unable to start the service - %s.", e.what()) << std::endl;
         return EXIT_FAILURE;
     }
 
-    service->run();
+    runnable->run();
 
     return EXIT_SUCCESS;
 }

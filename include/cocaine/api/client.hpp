@@ -39,7 +39,7 @@ class client:
         {
             std::string endpoint = cocaine::format(
                 "ipc://%1%/services/%2%",
-                context.config.ipc_path,
+                context.config.path.runtime,
                 name
             );
 

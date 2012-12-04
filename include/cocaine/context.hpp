@@ -50,18 +50,20 @@ struct defaults {
     static const unsigned long io_bulk_size;
 
     // Default paths.
-    static const char ipc_path[];
-    static const char plugin_path[];
+    static const char runtime_path[];
+    static const char plugins_path[];
     static const char spool_path[];
 };
 
 struct config_t {
     config_t(const std::string& config_path);
 
-    std::string config_path,
-                ipc_path,
-                plugin_path,
-                spool_path;
+    struct {
+        std::string config;
+        std::string plugins;
+        std::string runtime;
+        std::string spool;
+    } path;
 
     struct component_t {
         std::string type;

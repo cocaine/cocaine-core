@@ -149,7 +149,7 @@ class reactor:
         {
             std::string endpoint = cocaine::format(
                 "ipc://%1%/services/%2%",
-                m_context.config.ipc_path,
+                m_context.config.path.runtime,
                 name
             );
 
@@ -157,8 +157,9 @@ class reactor:
                 m_channel.bind(endpoint);
             } catch(const zmq::error_t& e) {
                 throw configuration_error_t(
-                    "unable to bind the '%s' service channel - %s",
+                    "unable to bind the '%s' service channel at '%s' - %s",
                     name,
+                    endpoint,
                     e.what()
                 );
             }

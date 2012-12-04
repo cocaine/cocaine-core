@@ -54,8 +54,8 @@ const unsigned long defaults::concurrency = 10L;
 const long defaults::control_timeout = 500L;
 const unsigned long defaults::io_bulk_size = 100L;
 
-const char defaults::ipc_path[] = "/var/run/cocaine";
-const char defaults::plugin_path[] = "/usr/lib/cocaine";
+const char defaults::plugins_path[] = "/usr/lib/cocaine";
+const char defaults::runtime_path[] = "/var/run/cocaine";
 const char defaults::spool_path[] = "/var/spool/cocaine";
 
 // Config
@@ -71,9 +71,7 @@ namespace {
     }
 }
 
-config_t::config_t(const std::string& path):
-    config_path(path)
-{
+config_t::config_t(const std::string& config_path) {
     if(!fs::exists(config_path)) {
         throw configuration_error_t("the configuration path doesn't exist");
     }
@@ -82,7 +80,9 @@ config_t::config_t(const std::string& path):
         throw configuration_error_t("the configuration path doesn't point to a file");
     }
 
-    fs::ifstream stream(config_path);
+    path.config = config_path;
+
+    fs::ifstream stream(path.config);
 
     if(!stream) {
         throw configuration_error_t("unable to open the configuration file");
@@ -101,15 +101,14 @@ config_t::config_t(const std::string& path):
         throw configuration_error_t("the configuration version is invalid");
     }
 
-    ipc_path = root["paths"].get("ipc", defaults::ipc_path).asString();
-    validate_path(ipc_path);
+    path.plugins = root["paths"].get("plugins", defaults::plugins_path).asString();
+    path.runtime = root["paths"].get("runtime", defaults::runtime_path).asString();
+    path.spool = root["paths"].get("spool", defaults::spool_path).asString();
 
-    plugin_path = root["paths"].get("plugins", defaults::plugin_path).asString();
-    validate_path(plugin_path);
-
-    spool_path = root["paths"].get("spool", defaults::spool_path).asString();
-    validate_path(spool_path);
-
+    validate_path(path.plugins);
+    validate_path(path.runtime);
+    validate_path(path.spool);
+    
     // Component configuration
 
     services = parse(root["services"]);
@@ -259,5 +258,5 @@ context_t::initialize_components() {
     m_repository->insert<storage::files_t>("files");
 
     // Register the plugins.
-    m_repository->load(config.plugin_path);
+    m_repository->load(config.path.plugins);
 }

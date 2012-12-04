@@ -36,7 +36,7 @@ class pid_file_t:
     public boost::noncopyable
 {
     public:
-        pid_file_t(const std::string& filepath):
+        pid_file_t(const boost::filesystem::path& filepath):
             m_filepath(filepath)
         {
             // If the pidfile exists, check if the process is still active.
