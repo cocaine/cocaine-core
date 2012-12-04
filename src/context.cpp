@@ -232,6 +232,10 @@ context_t::context_t(config_t config_,
     m_sink = std::move(logger);
 }
 
+context_t::~context_t() {
+    // Empty.
+}
+
 boost::shared_ptr<logging::logger_t>
 context_t::log(const std::string& name) {
     return boost::make_shared<logging::logger_t>(*m_sink, name);

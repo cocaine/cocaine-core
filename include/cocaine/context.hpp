@@ -121,6 +121,8 @@ class context_t:
         context_t(config_t config,
                   std::unique_ptr<api::logger_t>&& logger);
 
+        ~context_t();
+
         // Networking
 
         zmq::context_t&
