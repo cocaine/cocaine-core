@@ -28,8 +28,9 @@
 
 #include "cocaine/helpers/json.hpp"
 
+#include <boost/ref.hpp>
 #include <boost/thread/mutex.hpp>
-#include <boost/tuple/tuple.hpp>
+#include <boost/weak_ptr.hpp>
 
 namespace cocaine {
 
@@ -164,19 +165,24 @@ struct category_traits<storage_t> {
             boost::lock_guard<boost::mutex> lock(m_mutex);
 
             typename instance_map_t::iterator it(m_instances.find(name));
-
-            if(it == m_instances.end()) {
-                boost::tie(it, boost::tuples::ignore) = m_instances.emplace(
-                    name,
-                    boost::make_shared<T>(
-                        boost::ref(context),
-                        name,
-                        args
-                    )
-                );
+            
+            ptr_type instance;
+            
+            if(it != m_instances.end()) {
+                instance = it->second.lock();
             }
 
-            return it->second;
+            if(!instance) {
+                instance = boost::make_shared<T>(
+                    boost::ref(context),
+                    name,
+                    args
+                );
+
+                m_instances.emplace(name, instance);
+            }
+                
+            return instance;
         }
 
     private:
@@ -186,7 +192,7 @@ struct category_traits<storage_t> {
         typedef std::map<
 #endif
             std::string,
-            ptr_type
+            boost::weak_ptr<storage_t>
         > instance_map_t;
 
         instance_map_t m_instances;
