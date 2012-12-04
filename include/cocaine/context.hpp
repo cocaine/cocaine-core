@@ -90,7 +90,7 @@ struct config_t {
     } network;
 };
 
-// Free port dispenser for automatic socket binding.
+// Free port dispenser for automatic socket binding
 
 struct port_mapper_t {
     port_mapper_t(const std::pair<uint16_t, uint16_t>& limits);
@@ -120,8 +120,6 @@ class context_t:
         
         context_t(config_t config,
                   std::unique_ptr<api::logger_t>&& logger);
-
-        ~context_t();
 
         // Networking
 
