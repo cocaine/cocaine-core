@@ -34,7 +34,6 @@
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/iterator/counting_iterator.hpp>
-#include <boost/tuple/tuple.hpp>
 
 #include <netdb.h>
 
@@ -58,6 +57,8 @@ const unsigned long defaults::io_bulk_size = 100L;
 const char defaults::ipc_path[] = "/var/run/cocaine";
 const char defaults::plugin_path[] = "/usr/lib/cocaine";
 const char defaults::spool_path[] = "/var/spool/cocaine";
+
+// Config
 
 namespace {
     void
@@ -179,6 +180,8 @@ config_t::parse(const Json::Value& config) {
     return components;
 }
 
+// Port mapper
+
 port_mapper_t::port_mapper_t(const std::pair<uint16_t, uint16_t>& limits):
     m_ports(
         boost::make_counting_iterator(limits.first),
@@ -206,6 +209,8 @@ port_mapper_t::retain(uint16_t port) {
     m_ports.push(port);
 }
 
+// Context
+
 context_t::context_t(config_t config_,
                      const std::string& logger):
     config(config_)
@@ -222,16 +227,9 @@ context_t::context_t(config_t config_,
 {
     initialize_components();
 
-    // NOTE: The context takes the ownership of the passed logger, so it would
-    // be invalid at the calling site after the call.
+    // NOTE: The context takes the ownership of the passed logger, so it will
+    // become invalid at the calling site after this call.
     m_sink = std::move(logger);
-}
-
-context_t::~context_t() {
-    // NOTE: Plugin categories have to be destroyed in a specific order,
-    // so that loggers would be destroyed after all the shared factories
-    // which may use logging subsystem. For now, it involes storages only.
-    m_repository->dispose<api::storage_t>();
 }
 
 boost::shared_ptr<logging::logger_t>
