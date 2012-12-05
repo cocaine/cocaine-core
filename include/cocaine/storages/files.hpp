@@ -59,7 +59,8 @@ class files_t:
                const std::string& key);
 
     private:
-        boost::shared_ptr<logging::logger_t> m_log;
+        context_t& m_context;
+        std::unique_ptr<logging::log_t> m_log;
         
         // TODO: Drop this, switch to atomic writes.
         boost::mutex m_mutex;

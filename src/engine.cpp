@@ -42,6 +42,7 @@
 using namespace cocaine;
 using namespace cocaine::engine;
 using namespace cocaine::io;
+using namespace cocaine::logging;
 
 // Session queue
 
@@ -142,9 +143,7 @@ engine_t::engine_t(context_t& context,
                    const manifest_t& manifest,
                    const profile_t& profile):
     m_context(context),
-    m_log(context.log(
-        cocaine::format("app/%1%", manifest.name)
-    )),
+    m_log(new log_t(context, cocaine::format("app/%1%", manifest.name))),
     m_manifest(manifest),
     m_profile(profile),
     m_state(state_t::stopped),

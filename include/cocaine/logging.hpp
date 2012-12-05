@@ -27,56 +27,58 @@
 
 #include "cocaine/helpers/format.hpp"
 
-// Logging macros
+#define COCAINE_LOG(l, v, ...) \
+    if(l->verbosity() >= v) l->emit(v, __VA_ARGS__);
 
-#define COCAINE_LOG(l, v, ...)      \
-    if(l->verbosity() >= v) {       \
-        l->emit(v, __VA_ARGS__);    \
-    }
+#define COCAINE_LOG_DEBUG(l, ...) \
+    COCAINE_LOG(l, logging::debug, __VA_ARGS__)
 
-#define COCAINE_LOG_DEBUG(log, ...)                 \
-    COCAINE_LOG(log, logging::debug, __VA_ARGS__)
+#define COCAINE_LOG_INFO(l, ...) \
+    COCAINE_LOG(l, logging::info, __VA_ARGS__)
 
-#define COCAINE_LOG_INFO(log, ...)                  \
-    COCAINE_LOG(log, logging::info, __VA_ARGS__)
+#define COCAINE_LOG_WARNING(l, ...) \
+    COCAINE_LOG(l, logging::warning, __VA_ARGS__)
 
-#define COCAINE_LOG_WARNING(log, ...)               \
-    COCAINE_LOG(log, logging::warning, __VA_ARGS__)
-
-#define COCAINE_LOG_ERROR(log, ...)                 \
-    COCAINE_LOG(log, logging::error, __VA_ARGS__)
+#define COCAINE_LOG_ERROR(l, ...) \
+    COCAINE_LOG(l, logging::error, __VA_ARGS__)
 
 namespace cocaine { namespace logging {
 
-struct logger_t {
-    logger_t(api::logger_t& logger,
-             const std::string& source):
-        m_logger(logger),
+struct log_t {
+    log_t(context_t& context,
+          const std::string& source):
+        m_logger(context.logger()),
         m_source(source)
     { }
 
-    priorities
+    logging::priorities
     verbosity() const {
         return m_logger.verbosity();
     }
 
     template<typename... Args>
     void
-    emit(priorities priority,
+    emit(logging::priorities level,
          const std::string& format,
          const Args&... args)
     {
-        m_logger.emit(priority, m_source, cocaine::format(format, args...));
+        m_logger.emit(level, m_source, cocaine::format(format, args...));
+    }
+
+    void
+    emit(logging::priorities level,
+         const std::string& message)
+    {
+        m_logger.emit(level, m_source, message);
     }
 
 private:
     api::logger_t& m_logger;
 
-    // This is the logging source component name, so that log messages could
-    // be processed based on where they came from.
+    // The name of this log, to be used as the logging source.
     const std::string m_source;
 };
 
-}} // namespace cocaine::logging
+}}
 
 #endif

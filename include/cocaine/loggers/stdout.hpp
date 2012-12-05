@@ -38,11 +38,11 @@ class stdout_t:
 
         virtual
         void
-        emit(logging::priorities,
+        emit(logging::priorities level,
              const std::string& source,
              const std::string& message);
 };
 
-}} // namespace cocaine::sink
+}} // namespace cocaine::logger
 
 #endif

@@ -30,6 +30,7 @@
 
 using namespace cocaine;
 using namespace cocaine::storage;
+using namespace cocaine::logging;
 
 namespace fs = boost::filesystem;
 
@@ -37,7 +38,8 @@ files_t::files_t(context_t& context,
                  const std::string& name,
                  const Json::Value& args):
     category_type(context, name, args),
-    m_log(context.log(name)),
+    m_context(context),
+    m_log(new log_t(context, name)),
     m_storage_path(args["path"].asString())
 { }
 

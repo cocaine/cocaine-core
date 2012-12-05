@@ -109,12 +109,6 @@ config_t::config_t(const std::string& config_path) {
     validate_path(path.runtime);
     validate_path(path.spool);
     
-    // Component configuration
-
-    services = parse(root["services"]);
-    storages = parse(root["storages"]);
-    loggers = parse(root["loggers"]);
-
     // IO configuration
 
     char hostname[256];
@@ -144,14 +138,20 @@ config_t::config_t(const std::string& config_path) {
         throw system_error_t("unable to determine the hostname");
     }
 
-    // Port mapper
-
     Json::Value range(root["port-mapper"]["range"]);
 
     network.ports = {
         range[0].asUInt(),
         range[1].asUInt()
     };
+
+    network.threads = 1;
+
+    // Component configuration
+
+    services = parse(root["services"]);
+    storages = parse(root["storages"]);
+    loggers = parse(root["loggers"]);
 }
 
 config_t::component_map_t
@@ -214,37 +214,37 @@ context_t::context_t(config_t config_,
                      const std::string& logger):
     config(config_)
 {
-    initialize_components();
+    initialize();
 
     // Get the default logger for this context.
-    m_sink = api::logger(*this, logger);
+    m_logger = api::logger(*this, logger);
 }
 
 context_t::context_t(config_t config_,
                      std::unique_ptr<api::logger_t>&& logger):
     config(config_)
 {
-    initialize_components();
+    initialize();
 
     // NOTE: The context takes the ownership of the passed logger, so it will
     // become invalid at the calling site after this call.
-    m_sink = std::move(logger);
+    m_logger = std::move(logger);
 }
 
 context_t::~context_t() {
     // Empty.
 }
 
-boost::shared_ptr<logging::logger_t>
-context_t::log(const std::string& name) {
-    return boost::make_shared<logging::logger_t>(*m_sink, name);
-}
-
 void
-context_t::initialize_components() {
-    m_io.reset(new zmq::context_t(1));
-    m_repository.reset(new api::repository_t());
+context_t::initialize() {
+    // Initialize the ZeroMQ context.
+    m_io.reset(new zmq::context_t(config.network.threads));
+
+    // Initialize the ZeroMQ port mapper.
     m_port_mapper.reset(new port_mapper_t(config.network.ports));
+
+    // Initialize the repository, without any components yet.
+    m_repository.reset(new api::repository_t());
 
     // Register the builtin isolates.
     m_repository->insert<isolate::process_t>("process");

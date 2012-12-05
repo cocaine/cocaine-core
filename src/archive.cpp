@@ -27,6 +27,7 @@
 #include <archive_entry.h>
 
 using namespace cocaine;
+using namespace cocaine::logging;
 
 namespace fs = boost::filesystem;
 
@@ -36,7 +37,8 @@ archive_error_t::archive_error_t(archive * source):
 
 archive_t::archive_t(context_t& context,
                      const std::string& archive):
-    m_log(context.log("packaging")),
+    m_context(context),
+    m_log(new log_t(context, "packaging")),
     m_archive(archive_read_new())
 {
     int rv = ARCHIVE_OK;

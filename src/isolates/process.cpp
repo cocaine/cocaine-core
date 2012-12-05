@@ -30,6 +30,7 @@
 
 using namespace cocaine;
 using namespace cocaine::isolate;
+using namespace cocaine::logging;
 
 namespace {
     struct process_handle_t:
@@ -63,7 +64,8 @@ process_t::process_t(context_t& context,
                      const std::string& name,
                      const Json::Value& args):
     category_type(context, name, args),
-    m_log(context.log(name))
+    m_context(context),
+    m_log(new logging::log_t(context, name))
 { }
 
 std::unique_ptr<api::handle_t>

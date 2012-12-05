@@ -38,7 +38,7 @@ class syslog_t:
 
         virtual
         void
-        emit(logging::priorities priority,
+        emit(logging::priorities level,
              const std::string& source,
              const std::string& message);
 
@@ -46,6 +46,6 @@ class syslog_t:
         const std::string m_identity;
 };
 
-}} // namespace cocaine::sink
+}} // namespace cocaine::logger
 
 #endif

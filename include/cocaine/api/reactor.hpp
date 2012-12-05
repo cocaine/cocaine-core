@@ -25,7 +25,6 @@
 #include "cocaine/asio.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/io.hpp"
-#include "cocaine/logging.hpp"
 
 #include <boost/function.hpp>
 #include <boost/function_types/function_type.hpp>
@@ -104,11 +103,11 @@ namespace detail {
                 
                 argument_type argument;
 
-                io::type_traits<argument_type>::unpack(*packed++, argument);
+                io::type_traits<argument_type>::unpack(*packed, argument);
 
                 return invoke<next_type, End>::apply(
                     callable,
-                    packed,
+                    ++packed,
                     std::forward<Args>(args)...,
                     std::move(argument)
                 );
@@ -141,15 +140,13 @@ class reactor:
         reactor(context_t& context,
                 const std::string& name,
                 const Json::Value& args):
-            m_context(context),
-            m_log(context.log("service/" + name)),
             m_channel(context, ZMQ_ROUTER),
             m_watcher(m_loop),
             m_checker(m_loop)
         {
             std::string endpoint = cocaine::format(
                 "ipc://%1%/services/%2%",
-                m_context.config.path.runtime,
+                context.config.path.runtime,
                 name
             );
 
@@ -187,17 +184,6 @@ class reactor:
         void
         loop() {
             m_loop.loop();
-        }
-
-    public:
-        context_t&
-        context() {
-            return m_context;
-        }
-
-        boost::shared_ptr<logging::logger_t>
-        log() {
-            return m_log;
         }
 
     private:
@@ -259,42 +245,31 @@ class reactor:
 
                 if(slot) {
                     (*slot)(unpacked.get());
-                } else {
-                    COCAINE_LOG_WARNING(
-                        m_log,
-                        "no slot bound to process message type %d",
-                        message_id
-                    );
                 }
             } while(--counter);
         }
 
     private:
-        context_t& m_context;
-        boost::shared_ptr<logging::logger_t> m_log;
-
-        // Service I/O
-
         typedef io::channel<
             Tag,
             io::policies::unique
         > rpc_channel_t;
 
+        // Service I/O.
         rpc_channel_t m_channel;
         
-        // Event loop
-
+        // Event loop.
         ev::dynamic_loop m_loop;
         
+        // I/O watchers.
         ev::io m_watcher;
         ev::prepare m_checker;
-
-        // Event slots
 
         typedef std::vector<
             boost::shared_ptr<detail::slot_base<void>>
         > slot_map_t;
 
+        // Event slots.
         slot_map_t m_slots;
 };
 

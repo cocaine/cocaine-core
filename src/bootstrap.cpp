@@ -135,7 +135,7 @@ int main(int argc, char * argv[]) {
     std::unique_ptr<context_t> context;
 
     try {
-        context.reset(new context_t(cfg, service));
+        context.reset(new context_t(*config, service));
     } catch(const std::exception& e) {
         std::cerr << cocaine::format("Error: unable to initialize the context - %s.", e.what()) << std::endl;
         return EXIT_FAILURE;

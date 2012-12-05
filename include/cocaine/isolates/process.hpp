@@ -43,7 +43,8 @@ class process_t:
               const std::map<std::string, std::string>& environment);
 
     private:
-        boost::shared_ptr<logging::logger_t> m_log;
+        context_t& m_context;
+        std::unique_ptr<logging::log_t> m_log;
 };
 
 }} // namespace cocaine::storage

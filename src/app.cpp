@@ -39,6 +39,7 @@
 using namespace cocaine;
 using namespace cocaine::engine;
 using namespace cocaine::io;
+using namespace cocaine::logging;
 
 namespace fs = boost::filesystem;
 
@@ -46,9 +47,7 @@ app_t::app_t(context_t& context,
              const std::string& name,
              const std::string& profile):
     m_context(context),
-    m_log(context.log(
-        cocaine::format("app/%1%", name)
-    )),
+    m_log(new log_t(context, cocaine::format("app/%1%", name))),
     m_manifest(new manifest_t(context, name)),
     m_profile(new profile_t(context, profile))
 {

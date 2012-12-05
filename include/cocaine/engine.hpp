@@ -145,7 +145,7 @@ class engine_t:
 
     private:
         context_t& m_context;
-        boost::shared_ptr<logging::logger_t> m_log;
+        std::unique_ptr<logging::log_t> m_log;
 
         const manifest_t& m_manifest;
         const profile_t& m_profile;

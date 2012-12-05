@@ -41,7 +41,7 @@ class files_t:
 
         virtual
         void
-        emit(logging::priorities,
+        emit(logging::priorities level,
              const std::string& source,
              const std::string& message);
 
@@ -49,6 +49,6 @@ class files_t:
         FILE * m_file;
 };
 
-}} // namespace cocaine::sink
+}} // namespace cocaine::logger
 
 #endif

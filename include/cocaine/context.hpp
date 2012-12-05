@@ -50,8 +50,8 @@ struct defaults {
     static const unsigned long io_bulk_size;
 
     // Default paths.
-    static const char runtime_path[];
     static const char plugins_path[];
+    static const char runtime_path[];
     static const char spool_path[];
 };
 
@@ -64,6 +64,12 @@ struct config_t {
         std::string runtime;
         std::string spool;
     } path;
+
+    struct {
+        std::string hostname;
+        std::pair<uint16_t, uint16_t> ports;
+        unsigned int threads;
+    } network;
 
     struct component_t {
         std::string type;
@@ -79,20 +85,15 @@ struct config_t {
         component_t
     > component_map_t;
 
+    component_map_t services,
+                    storages,
+                    loggers;
+
+public:
     static
     component_map_t
     parse(const Json::Value& config);
-
-    // Configuration maps.
-    component_map_t services, storages, loggers;
-
-    struct {
-        std::string hostname;
-        std::pair<uint16_t, uint16_t> ports;
-    } network;
 };
-
-// Free port dispenser for automatic socket binding
 
 struct port_mapper_t {
     port_mapper_t(const std::pair<uint16_t, uint16_t>& limits);
@@ -132,6 +133,13 @@ class context_t:
             return *m_io;
         }
 
+        // Port mappings
+
+        port_mapper_t&
+        ports() {
+            return *m_port_mapper;
+        }
+
         // Component API
         
         template<class Category, typename... Args>
@@ -141,33 +149,30 @@ class context_t:
 
         // Logging
 
-        boost::shared_ptr<logging::logger_t>
-        log(const std::string&);
-        
-        // Port mappings
-
-        port_mapper_t&
-        ports() {
-            return *m_port_mapper;
+        api::logger_t&
+        logger() {
+            return *m_logger;
         }
-
+        
     private:
         void
-        initialize_components();
+        initialize();
 
     public:
         const config_t config;
 
     private:
         std::unique_ptr<zmq::context_t> m_io;
-        std::unique_ptr<api::repository_t> m_repository;
-        
-        // TODO: I don't really like this implementation.
         std::unique_ptr<port_mapper_t> m_port_mapper;
+
+        // NOTE: This is the first object in the component tree, all the other
+        // components, including loggers, storages or isolates have to be declared
+        // after this one.
+        std::unique_ptr<api::repository_t> m_repository;        
 
         // NOTE: As the loggers themselves are components, the repository
         // have to be initialized first without a logger, unfortunately.
-        std::unique_ptr<api::logger_t> m_sink;
+        std::unique_ptr<api::logger_t> m_logger;
 };
 
 template<class Category, typename... Args>

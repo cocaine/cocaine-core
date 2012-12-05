@@ -56,8 +56,10 @@ class archive_t {
                 archive * target);
 
     private:
-        boost::shared_ptr<logging::logger_t> m_log;
+        context_t& m_context;
+        std::unique_ptr<logging::log_t> m_log;
         
+        // The source archive.
         archive * m_archive;
 };
 

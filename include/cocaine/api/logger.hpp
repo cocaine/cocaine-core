@@ -56,7 +56,6 @@ class logger_t:
             // Empty.
         }
 
-        virtual
         logging::priorities
         verbosity() const {
             return m_verbosity;
@@ -73,8 +72,7 @@ class logger_t:
                  const std::string& /* name */,
                  const Json::Value& args):
             m_verbosity(resolve(args))
-        {
-        }
+        { }
 
     private:
         const logging::priorities m_verbosity;

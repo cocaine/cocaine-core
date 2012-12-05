@@ -112,8 +112,8 @@ class slave_t:
         terminate();
  
     private:
-        context_t& m_context; 
-        boost::shared_ptr<logging::logger_t> m_log;
+        context_t& m_context;
+        std::unique_ptr<logging::log_t> m_log;
 
         const manifest_t& m_manifest;
         const profile_t& m_profile;

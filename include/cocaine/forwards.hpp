@@ -84,8 +84,7 @@ namespace cocaine {
             debug
         };
 
-        // Logging proxy.
-        struct logger_t;
+        struct log_t;
     }
 
     struct unique_id_t;
