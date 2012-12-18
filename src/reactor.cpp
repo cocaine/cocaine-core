@@ -66,9 +66,11 @@ reactor_t::run() {
 
     m_thread.reset(
         new boost::thread(
-            &ev::dynamic_loop::loop,
-            boost::ref(m_loop),
-            ev::NONE
+            boost::bind(
+                &ev::dynamic_loop::loop,
+                boost::ref(m_loop),
+                0
+            )
         )
     );
 }
