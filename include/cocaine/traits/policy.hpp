@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#ifndef COCAINE_JOB_POLICY_TYPE_TRAITS_HPP
-#define COCAINE_JOB_POLICY_TYPE_TRAITS_HPP
+#ifndef COCAINE_EVENT_POLICY_TYPE_TRAITS_HPP
+#define COCAINE_EVENT_POLICY_TYPE_TRAITS_HPP
 
 #include "cocaine/traits.hpp"
 
@@ -47,7 +47,9 @@ struct type_traits<api::policy_t> {
     unpack(const msgpack::object& packed,
            api::policy_t& object)
     {
-        if(packed.type != msgpack::type::ARRAY || packed.via.array.size != 3) {
+        if(packed.type != msgpack::type::ARRAY ||
+           packed.via.array.size != 3)
+        {
             throw msgpack::type_error();
         }
 

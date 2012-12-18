@@ -41,8 +41,14 @@ auth_t::auth_t(context_t& context):
 
     auto storage = api::storage(context, "core");
 
-    // NOTE: Allowing the exception to propagate here, as this is a fatal error.
-    std::vector<std::string> keys = storage->list("keys");
+    std::vector<std::string> keys;
+
+    try {
+        keys = storage->list("keys");
+    } catch(const storage_error_t& e) {
+        COCAINE_LOG_WARNING(m_log, "unable to read the key directory - %s", e.what());
+        return;
+    }
 
     for(std::vector<std::string>::const_iterator it = keys.begin();
         it != keys.end();

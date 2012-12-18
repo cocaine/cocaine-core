@@ -35,9 +35,6 @@ class app_t {
               const std::string& name,
               const std::string& profile);
         
-        app_t(context_t& context,
-              const std::string& name);
-
         ~app_t();
 
         void
@@ -70,14 +67,12 @@ class app_t {
         std::unique_ptr<const manifest_t> m_manifest;
         std::unique_ptr<const profile_t> m_profile;
 
+        // I/O
+
+        std::unique_ptr<io::unique_channel_t> m_control;
+
         // Execution engine
 
-        typedef io::channel<
-            io::tags::control_tag,
-            io::policies::unique
-        > control_channel_t;
-
-        std::unique_ptr<control_channel_t> m_control;
         std::unique_ptr<engine::engine_t> m_engine;
         std::unique_ptr<boost::thread> m_thread;
 

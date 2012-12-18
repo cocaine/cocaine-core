@@ -18,30 +18,30 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#ifndef COCAINE_COMMON_HPP
-#define COCAINE_COMMON_HPP
+#ifndef COCAINE_PID_FILE_HPP
+#define COCAINE_PID_FILE_HPP
 
-#include <stdint.h>
+#include "cocaine/common.hpp"
 
-#include <map>
-#include <memory>
-#include <string>
-#include <vector>
+#include <boost/filesystem.hpp>
 
-#define BOOST_THREAD_DONT_USE_CHRONO
-#define BOOST_FILESYSTEM_VERSION 3
+namespace cocaine {
 
-#include <boost/assert.hpp>
-#include <boost/make_shared.hpp>
-#include <boost/noncopyable.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/version.hpp>
+class pid_file_t:
+    public boost::noncopyable
+{
+    public:
+        pid_file_t(const boost::filesystem::path& filepath);
+        ~pid_file_t();
 
-#if BOOST_VERSION >= 103600
- #include <boost/unordered_map.hpp>
-#endif
+    private:
+        void
+        remove();
 
-#include "cocaine/forwards.hpp"
-#include "cocaine/exceptions.hpp"
+    private:
+        const boost::filesystem::path m_filepath;
+};
+
+} // namespace cocaine
 
 #endif

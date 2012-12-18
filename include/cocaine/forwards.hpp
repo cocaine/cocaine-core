@@ -60,19 +60,20 @@ namespace cocaine {
     }
 
     namespace io {
-        namespace tags {
-            struct rpc_tag;
-            struct control_tag;
-        }
-
         namespace policies {
             struct unique;
             struct shared;
         }
 
+        template<class>
+        struct protocol;
+
         // RPC channel.
-        template<class, class>
+        template<class>
         class channel;
+
+        typedef channel<policies::unique> unique_channel_t;
+        typedef channel<policies::shared> shared_channel_t;
     }
 
     namespace logging {

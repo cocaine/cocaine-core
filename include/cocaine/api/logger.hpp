@@ -107,16 +107,12 @@ struct category_traits<logger_t> {
     };
 };
 
-typedef category_traits<logger_t>::ptr_type logger_ptr_t;
-
 static inline
-logger_ptr_t
+category_traits<logger_t>::ptr_type
 logger(context_t& context,
         const std::string& name)
 {
-    config_t::component_map_t::const_iterator it(
-        context.config.loggers.find(name)
-    );
+    config_t::component_map_t::const_iterator it = context.config.loggers.find(name);
 
     if(it == context.config.loggers.end()) {
         throw configuration_error_t("the '%s' logger is not configured", name);

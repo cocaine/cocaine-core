@@ -53,9 +53,7 @@ class driver_t:
                  const Json::Value& /* args */,
                  engine::engine_t& engine):
             m_engine(engine)
-        {
-            // Empty.
-        }
+        { }
         
     private:
         engine::engine_t& m_engine;
@@ -93,8 +91,6 @@ struct category_traits<driver_t> {
         }
     };
 };
-
-typedef category_traits<driver_t>::ptr_type driver_ptr_t;
 
 }} // namespace cocaine::api
 

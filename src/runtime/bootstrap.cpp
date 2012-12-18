@@ -18,12 +18,15 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
+#include "cocaine/runtime/pid_file.hpp"
+
 #include "cocaine/config.hpp"
+#include "cocaine/asio.hpp"
 #include "cocaine/context.hpp"
+#include "cocaine/logging.hpp"
 
 #include "cocaine/api/service.hpp"
 
-#include "cocaine/helpers/pid_file.hpp"
 #include "cocaine/helpers/format.hpp"
 
 #include <iostream>
@@ -32,9 +35,83 @@
 #include <boost/filesystem.hpp>
 
 using namespace cocaine;
+using namespace cocaine::logging;
 
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
+
+namespace {
+    struct runtime_t {
+        runtime_t(context_t& context,
+                  const std::vector<std::string>& services):
+            m_context(context),
+            m_log(new log_t(context, "runtime"))
+        {
+            for(auto&& service: services) {
+                COCAINE_LOG_INFO(m_log, "starting the '%s' service", service);
+
+                m_services.emplace(
+                    service,
+                    api::service(m_context, service)
+                );
+            }
+
+            // Signal handling
+
+            m_sigint.set<runtime_t, &runtime_t::on_terminate>(this);
+            m_sigint.start(SIGINT);
+
+            m_sigterm.set<runtime_t, &runtime_t::on_terminate>(this);
+            m_sigterm.start(SIGTERM);
+
+            m_sigquit.set<runtime_t, &runtime_t::on_terminate>(this);
+            m_sigquit.start(SIGQUIT);
+        }
+
+        ~runtime_t() {
+            for(auto&& service: m_services) {
+                service.second->terminate();
+            }
+
+            m_services.clear();
+        }
+
+        void
+        run() {
+            m_loop.loop();
+        }
+
+    private:
+        void
+        on_terminate(ev::sig&, int) {
+            m_loop.unloop(ev::ALL);
+        }
+
+    private:
+        context_t& m_context;
+        std::unique_ptr<log_t> m_log;
+
+        // Main event loop, able to handle signals.
+        ev::default_loop m_loop;
+
+        // Signal watchers.
+        ev::sig m_sigint;
+        ev::sig m_sigterm;
+        ev::sig m_sigquit; 
+
+#if BOOST_VERSION >= 103600
+        typedef boost::unordered_map<
+#else
+        typedef std::map<
+#endif
+            std::string,
+            std::unique_ptr<api::service_t>
+        > service_map_t;
+
+        // Services.
+        service_map_t m_services;
+    };
+}
 
 int main(int argc, char * argv[]) {
     po::options_description general_options("General options"),
@@ -51,7 +128,7 @@ int main(int argc, char * argv[]) {
         ("pidfile,p", po::value<std::string>(), "location of a pid file");
 
     service_options.add_options()
-        ("service,s", po::value<std::string>(), "name of a service to launch");
+        ("service,s", po::value<std::vector<std::string>>(), "names of the services");
     
     combined_options.add(general_options)
                     .add(service_options);
@@ -90,19 +167,16 @@ int main(int argc, char * argv[]) {
     }
 
     if(!vm.count("service")) {
-        std::cerr << "Error: no service name has been specified." << std::endl;
+        std::cerr << "Error: no services has been specified." << std::endl;
         return EXIT_FAILURE;
     }
-    
-    // Startup
 
-    std::string cfg = vm["configuration"].as<std::string>();
-    std::string service = vm["service"].as<std::string>();
+    // Startup
 
     std::unique_ptr<config_t> config;
 
     try {
-        config.reset(new config_t(cfg));
+        config.reset(new config_t(vm["configuration"].as<std::string>()));
     } catch(const std::exception& e) {
         std::cerr << cocaine::format("Error: unable to initialize the configuration - %s.", e.what()) << std::endl;
         return EXIT_FAILURE;
@@ -116,7 +190,7 @@ int main(int argc, char * argv[]) {
         if(!vm["pidfile"].empty()) {
             pid_path = fs::path(vm["pidfile"].as<std::string>());
         } else {
-            pid_path = fs::path(config->path.runtime) / cocaine::format("%s.pid", service);
+            pid_path = cocaine::format("%s/cocained.pid", config->path.runtime);
         }
 
         if(daemon(0, 0) < 0) {
@@ -135,22 +209,25 @@ int main(int argc, char * argv[]) {
     std::unique_ptr<context_t> context;
 
     try {
-        context.reset(new context_t(*config, service));
+        context.reset(new context_t(*config, "logger/core"));
     } catch(const std::exception& e) {
         std::cerr << cocaine::format("Error: unable to initialize the context - %s.", e.what()) << std::endl;
         return EXIT_FAILURE;
     }
 
-    api::service_ptr_t runnable;
+    std::unique_ptr<runtime_t> runtime;
 
     try {
-        runnable = api::service(*context, service);
+        runtime.reset(new runtime_t(
+            *context,
+            vm["service"].as<std::vector<std::string>>()
+        ));
     } catch(const std::exception& e) {
-        std::cerr << cocaine::format("Error: unable to start the service - %s.", e.what()) << std::endl;
+        std::cerr << cocaine::format("Error: unable to initialize the runtime - %s.", e.what()) << std::endl;
         return EXIT_FAILURE;
     }
 
-    runnable->run();
+    runtime->run();
 
     return EXIT_SUCCESS;
 }

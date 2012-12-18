@@ -29,19 +29,23 @@
 
 namespace cocaine {
 
-struct uninitialized_t { };
+namespace detail {
+    struct uninitialized_t { };
+}
 
 static
-const uninitialized_t
-uninitialized = uninitialized_t();
+const detail::uninitialized_t
+uninitialized = detail::uninitialized_t();
 
 struct unique_id_t {
     unique_id_t() {
         uuid_generate(reinterpret_cast<unsigned char*>(uuid));
     }
 
-    unique_id_t(uninitialized_t) {
-        // Empty.
+    explicit
+    unique_id_t(detail::uninitialized_t) {
+        // NOTE: If this UUID is going to be a target for a message, there's no
+        // need to generate it, which saves a couple of ticks.
     }
 
     explicit
@@ -58,7 +62,7 @@ struct unique_id_t {
 
     std::string
     string() const {
-        // A storage for a 36-character long string plus the trailing zero.
+        // A storage for a 36-character long UUID plus the trailing zero.
         char unparsed[37];
 
         uuid_unparse_lower(

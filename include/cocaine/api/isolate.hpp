@@ -64,9 +64,7 @@ class isolate_t:
         isolate_t(context_t&,
                   const std::string&, /* name */
                   const Json::Value&  /* args */)
-        {
-           // Empty. 
-        }
+        { }
 };
 
 template<>
@@ -130,8 +128,6 @@ struct category_traits<isolate_t> {
         boost::mutex m_mutex;
     };
 };
-
-typedef category_traits<isolate_t>::ptr_type isolate_ptr_t;
 
 }} // namespace cocaine::api
 

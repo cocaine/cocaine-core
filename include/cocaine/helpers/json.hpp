@@ -23,25 +23,4 @@
 
 #include "json/json.h"
 
-namespace cocaine { namespace json {
-
-template<class T>
-static inline
-Json::Value
-build(const std::string& key,
-      const T& value)
-{
-    Json::Value object(Json::objectValue);
-    object[key] = value;
-    return object;
-}
-
-static inline
-std::string
-serialize(const Json::Value& json) {
-    return Json::FastWriter().write(json);
-}
-
-}} // namespace cocaine::json
-
 #endif

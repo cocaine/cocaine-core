@@ -23,60 +23,53 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/context.hpp"
-#include "cocaine/io.hpp"
+#include "cocaine/channel.hpp"
 
 namespace cocaine { namespace api {
 
-template<class Tag>
-class client:
+struct client_t:
     public boost::noncopyable
 {
-    public:
-        client(context_t& context,
-               const std::string& name,
-               uint64_t watermark):
-            m_channel(context, ZMQ_DEALER)
-        {
-            std::string endpoint = cocaine::format(
-                "ipc://%1%/services/%2%",
-                context.config.path.runtime,
-                name
+    client_t(context_t& context,
+             const std::string& name,
+             uint64_t watermark):
+        m_channel(context, ZMQ_DEALER)
+    {
+        std::string endpoint = cocaine::format(
+            "ipc://%1%/services/%2%",
+            context.config.path.runtime,
+            name
+        );
+
+        // Set the channel high watermark, so that if the service goes down
+        // it could be determined by the client within some reasonable timespan.
+        m_channel.setsockopt(ZMQ_HWM, &watermark, sizeof(watermark));
+        
+        try {
+            m_channel.connect(endpoint);
+        } catch(const zmq::error_t& e) {
+            throw configuration_error_t(
+                "unable to connect to the '%s' service channel - %s",
+                name,
+                e.what()
             );
-
-            // Set the channel high watermark, so that if the service goes down
-            // it could be determined by the client within some reasonable timespan.
-            m_channel.setsockopt(ZMQ_HWM, &watermark, sizeof(watermark));
-            
-            try {
-                m_channel.connect(endpoint);
-            } catch(const zmq::error_t& e) {
-                throw configuration_error_t(
-                    "unable to connect to the '%s' service channel - %s",
-                    name,
-                    e.what()
-                );
-            }
         }
+    }
 
-        template<class Event, typename... Args>
-        bool
-        send(Args&&... args) {
-            boost::unique_lock<rpc_channel_t> lock(m_channel);
+    template<class Event, typename... Args>
+    bool
+    send(Args&&... args) {
+        boost::unique_lock<io::shared_channel_t> lock(m_channel);
 
-            io::scoped_option<
-                io::options::send_timeout
-            > option(m_channel, 0);
+        io::scoped_option<
+            io::options::send_timeout
+        > option(m_channel, 0);
 
-            return m_channel.template send<Event>(std::forward<Args>(args)...);
-        }
+        return m_channel.send<Event>(std::forward<Args>(args)...);
+    }
 
-    private:
-        typedef io::channel<
-            Tag,
-            io::policies::shared
-        > rpc_channel_t;
-
-        rpc_channel_t m_channel;
+private:
+    io::shared_channel_t m_channel;
 };
 
 }} // namespace cocaine::api

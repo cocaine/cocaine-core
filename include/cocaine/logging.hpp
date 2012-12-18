@@ -27,20 +27,20 @@
 
 #include "cocaine/helpers/format.hpp"
 
-#define COCAINE_LOG(l, v, ...) \
-    if(l->verbosity() >= v) l->emit(v, __VA_ARGS__);
+#define COCAINE_LOG(log, level, ...) \
+    if(log->verbosity() >= level) log->emit(level, __VA_ARGS__);
 
-#define COCAINE_LOG_DEBUG(l, ...) \
-    COCAINE_LOG(l, logging::debug, __VA_ARGS__)
+#define COCAINE_LOG_DEBUG(log, ...) \
+    COCAINE_LOG(log, logging::debug, __VA_ARGS__)
 
-#define COCAINE_LOG_INFO(l, ...) \
-    COCAINE_LOG(l, logging::info, __VA_ARGS__)
+#define COCAINE_LOG_INFO(log, ...) \
+    COCAINE_LOG(log, logging::info, __VA_ARGS__)
 
-#define COCAINE_LOG_WARNING(l, ...) \
-    COCAINE_LOG(l, logging::warning, __VA_ARGS__)
+#define COCAINE_LOG_WARNING(log, ...) \
+    COCAINE_LOG(log, logging::warning, __VA_ARGS__)
 
-#define COCAINE_LOG_ERROR(l, ...) \
-    COCAINE_LOG(l, logging::error, __VA_ARGS__)
+#define COCAINE_LOG_ERROR(log, ...) \
+    COCAINE_LOG(log, logging::error, __VA_ARGS__)
 
 namespace cocaine { namespace logging {
 

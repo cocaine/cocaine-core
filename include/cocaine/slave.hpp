@@ -83,7 +83,7 @@ class slave_t:
         }
 
     public:
-        const unique_id_t&
+        unique_id_t
         id() const {
             return m_id;
         }
@@ -121,16 +121,16 @@ class slave_t:
         // Controlling engine.
         engine_t& m_engine;
 
-        // Slave health monitoring.
-        ev::timer m_heartbeat_timer,
-                  m_idle_timer;
-    
         // Slave ID.
         const unique_id_t m_id;
 
         // Current slave state.
         state_t m_state;
 
+        // Slave health monitoring.
+        ev::timer m_heartbeat_timer;
+        ev::timer m_idle_timer;
+    
         // Actual slave process handle.    
         std::unique_ptr<api::handle_t> m_handle;
 

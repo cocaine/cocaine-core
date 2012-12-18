@@ -200,10 +200,8 @@ struct category_traits<storage_t> {
     };
 };
 
-typedef category_traits<storage_t>::ptr_type storage_ptr_t;
-
 static inline
-storage_ptr_t
+category_traits<storage_t>::ptr_type
 storage(context_t& context,
         const std::string& name)
 {

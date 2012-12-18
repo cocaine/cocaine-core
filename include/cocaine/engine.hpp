@@ -23,7 +23,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/asio.hpp"
-#include "cocaine/io.hpp"
+#include "cocaine/channel.hpp"
 
 #include "cocaine/api/isolate.hpp"
 
@@ -35,9 +35,7 @@
 namespace cocaine { namespace engine {
 
 class session_queue_t:
-    public std::deque<
-        boost::shared_ptr<session_t>
-    >
+    public std::deque<boost::shared_ptr<session_t>>
 {
     public:
         void
@@ -107,24 +105,23 @@ class engine_t:
         on_bus_event(ev::io&, int);
         
         void
-        on_ctl_event(ev::io&, int);
-
-        void
         on_bus_check(ev::prepare&, int);
         
         void
-        on_ctl_check(ev::prepare&, int);
+        on_ctl_event(ev::io&, int);
 
         void
-        on_notification(ev::async&, int);
+        on_ctl_check(ev::prepare&, int);
 
         void
         on_cleanup(ev::timer&, int);
         
         void
+        on_notification(ev::async&, int);
+
+        void
         on_termination(ev::timer&, int);
         
-    private:
         void
         process_bus_events();
         
@@ -138,7 +135,7 @@ class engine_t:
         balance();
 
         void
-        shutdown(state_t target);
+        migrate(state_t target);
         
         void
         stop();
@@ -156,19 +153,8 @@ class engine_t:
 
         // I/O
         
-        typedef io::channel<
-            io::tags::rpc_tag,
-            io::policies::shared
-        > rpc_channel_t;
-
-        std::unique_ptr<rpc_channel_t> m_bus;
-        
-        typedef io::channel<
-            io::tags::control_tag,
-            io::policies::unique
-        > control_channel_t;
-
-        std::unique_ptr<control_channel_t> m_ctl;
+        std::unique_ptr<io::shared_channel_t> m_bus;
+        std::unique_ptr<io::unique_channel_t> m_ctl;
 
         // Event loop
         
@@ -206,7 +192,7 @@ class engine_t:
         // NOTE: A strong isolate reference, keeping it here
         // avoids isolate destruction, as the factory stores
         // only weak references to the isolate instances.
-        api::isolate_ptr_t m_isolate;
+        api::category_traits<api::isolate_t>::ptr_type m_isolate;
 };
 
 template<class Event, typename... Args>
@@ -214,7 +200,7 @@ bool
 engine_t::send(const unique_id_t& uuid,
                Args&&... args)
 {
-    boost::unique_lock<rpc_channel_t> lock(*m_bus);
+    boost::unique_lock<io::shared_channel_t> lock(*m_bus);
 
     return m_bus->send(uuid, ZMQ_SNDMORE) &&
            m_bus->send<Event>(std::forward<Args>(args)...);

@@ -57,7 +57,7 @@ app_t::app_t(context_t& context,
         deploy(name, path.string());
     }
 
-    m_control.reset(new control_channel_t(context, ZMQ_PAIR));
+    m_control.reset(new io::unique_channel_t(context, ZMQ_PAIR));
 
     std::string endpoint = cocaine::format(
         "inproc://%s",
@@ -141,10 +141,8 @@ app_t::start() {
 
     m_thread.reset(
         new boost::thread(
-            boost::bind(
-                &engine_t::run,
-                boost::ref(*m_engine)
-            )
+            &engine_t::run,
+            boost::ref(*m_engine)
         )
     );
     

@@ -28,14 +28,6 @@
 
 #include <type_traits>
 
-#include <boost/mpl/begin.hpp>
-#include <boost/mpl/contains.hpp>
-#include <boost/mpl/distance.hpp>
-#include <boost/mpl/find.hpp>
-#include <boost/mpl/int.hpp>
-#include <boost/mpl/list.hpp>
-#include <boost/mpl/size.hpp>
-
 #include <boost/thread/mutex.hpp>
 
 #include <zmq.hpp>
@@ -188,15 +180,21 @@ class scoped_option {
 // Socket sharing policies
 
 namespace policies {
-    struct unique {
-        typedef struct {
-            void lock() { };
-            void unlock() { };
-        } mutex_type;
-    };
+    struct unique { };
 
     struct shared {
-        typedef boost::mutex mutex_type;
+        void
+        lock() {
+            m_mutex.lock();
+        }
+
+        void
+        unlock() {
+            m_mutex.unlock();
+        }
+
+    private:
+        boost::mutex m_mutex;
     };
 }
 
@@ -254,357 +252,157 @@ protect(T&& value) {
 // Shareable serializing socket
 
 template<class SharingPolicy>
-class socket:
-    public socket_base_t
+struct socket:
+    public socket_base_t,
+    public SharingPolicy
 {
-    public:
-        socket(context_t& context,
-               int type):
-            socket_base_t(context, type)
-        { }
+    socket(context_t& context,
+           int type):
+        socket_base_t(context, type)
+    { }
 
-        using socket_base_t::send;
-        using socket_base_t::recv;
+    using socket_base_t::send;
+    using socket_base_t::recv;
 
-        // Serialized objects
-
-        template<class T>
-        bool
-        send(const T& value,
-             int flags = 0)
-        {
-            msgpack::sbuffer buffer;
-            msgpack::packer<msgpack::sbuffer> packer(buffer);
-
-            type_traits<T>::pack(packer, value);
-
-            zmq::message_t message(buffer.size());
-            
-            std::memcpy(
-                message.data(),
-                buffer.data(),
-                buffer.size()
-            );
-            
-            return send(message, flags);
-        }
-        
-        // Custom-serialized objects
-
-        template<class T>
-        bool
-        send(const detail::raw<T>& object,
-             int flags = 0)
-        {
-            zmq::message_t message;
-
-            typedef typename std::remove_const<
-                typename std::remove_reference<T>::type
-            >::type argument_type;
-
-            raw_traits<argument_type>::pack(message, object.value);
-
-            return send(message, flags);
-        }      
-        
-        // Multipart messages
-
-        template<class Head>
-        bool
-        send_multipart(Head&& head) {
-            return send(head);
-        }
-
-        template<class Head, class... Tail>
-        bool
-        send_multipart(Head&& head,
-                       Tail&&... tail)
-        {
-            return send(head, ZMQ_SNDMORE) &&
-                   send_multipart(std::forward<Tail>(tail)...);
-        }
-        
-        // Serialized messages
-
-        template<class T>
-        bool
-        recv(T& result,
-             int flags = 0)
-        {
-            zmq::message_t message;
-            msgpack::unpacked unpacked;
-
-            if(!recv(message, flags)) {
-                return false;
-            }
-           
-            try { 
-                msgpack::unpack(
-                    &unpacked,
-                    static_cast<const char*>(message.data()),
-                    message.size()
-                );
-            } catch(const msgpack::unpack_error& e) {
-                throw cocaine::error_t("corrupted object");
-            }
-               
-            try {
-                type_traits<T>::unpack(unpacked.get(), result);
-            } catch(const msgpack::type_error& e) {
-                throw cocaine::error_t("corrupted object");
-            } catch(const std::bad_cast& e) {
-                throw cocaine::error_t("corrupted object - type mismatch");
-            }
-
-            return true;
-        }
-
-        // Custom-serialized messages
-
-        template<class T>
-        bool
-        recv(detail::raw<T>& result,
-             int flags = 0)
-        {
-            zmq::message_t message;
-
-            if(!recv(message, flags)) {
-                return false;
-            }
-
-            typedef typename std::remove_const<
-                typename std::remove_reference<T>::type
-            >::type argument_type;
-
-            raw_traits<argument_type>::unpack(message, result.value);
-
-            return true;
-        }
-
-        template<class T>
-        bool
-        recv(detail::raw<T>&& result,
-             int flags = 0)
-        {
-            return recv(result, flags);
-        }
-
-        // Multipart messages
-
-        template<class Head>
-        bool
-        recv_multipart(Head&& head) {
-            return recv(head);
-        }
-
-        template<class Head, class... Tail>
-        bool
-        recv_multipart(Head&& head,
-                       Tail&&... tail)
-        {
-            return recv(head) &&
-                   recv_multipart(std::forward<Tail>(tail)...);
-        }
-
-        // Lockable concept implementation
-
-        void lock() {
-            m_mutex.lock();
-        }
-
-        void unlock() {
-            m_mutex.unlock();
-        }
-
-    private:
-        typename SharingPolicy::mutex_type m_mutex;
-};
-
-// RPC channel
-
-namespace mpl = boost::mpl;
-
-template<class Tag>
-struct dispatch;
-
-namespace detail {
-    template<
-        class Event,
-        class Category = typename dispatch<
-            typename Event::tag
-        >::category
-    >
-    struct enumerate:
-        public mpl::distance<
-            typename mpl::begin<Category>::type,
-            typename mpl::find<Category, Event>::type
-        >::type
-    {
-        static_assert(
-            mpl::contains<Category, Event>::value,
-            "event has not been enumerated within its category"
-        );
-    };
+    // Serialized objects
 
     template<class T>
-    struct depend {
-        typedef void type;
-    };
-
-    template<class Event, class U = void>
-    struct tuple_type {
-        typedef mpl::list<> type;
-    };
-
-    template<class Event>
-    struct tuple_type<
-        Event,
-        typename depend<typename Event::tuple_type>::type
-    > 
+    bool
+    send(const T& value,
+         int flags = 0)
     {
-        typedef typename Event::tuple_type type;
-    };
-}
+        msgpack::sbuffer buffer;
+        msgpack::packer<msgpack::sbuffer> packer(buffer);
 
-template<class Event>
-struct event_traits {
-    typedef typename detail::tuple_type<Event>::type tuple_type;
+        type_traits<T>::pack(packer, value);
 
-    enum constants {
-        id = detail::enumerate<Event>::value,
-        length = mpl::size<tuple_type>::value,
-        empty = length == 0
-    };
-};
-
-template<
-    class Tag,
-    class SharingPolicy
->
-class channel:
-    public socket<SharingPolicy>
-{
-    public:
-        channel(context_t& context, int type):
-            socket<SharingPolicy>(context, type)
-        { }
+        zmq::message_t message(buffer.size());
         
-        template<class T>
-        channel(context_t& context, int type, const T& identity):
-            socket<SharingPolicy>(context, type)
-        {
-            msgpack::sbuffer buffer;
-            msgpack::packer<msgpack::sbuffer> packer(buffer);
+        std::memcpy(
+            message.data(),
+            buffer.data(),
+            buffer.size()
+        );
+        
+        return send(message, flags);
+    }
+    
+    // Custom-serialized objects
 
-            // NOTE: Channels allow any serializable type to be its
-            // identity, for example UUIDs.
-            type_traits<T>::pack(packer, identity);
-            
-            this->setsockopt(ZMQ_IDENTITY, buffer.data(), buffer.size());
+    template<class T>
+    bool
+    send(const detail::raw<T>& object,
+         int flags = 0)
+    {
+        zmq::message_t message;
+
+        typedef typename std::remove_const<
+            typename std::remove_reference<T>::type
+        >::type argument_type;
+
+        raw_traits<argument_type>::pack(message, object.value);
+
+        return send(message, flags);
+    }      
+    
+    // Multipart messages
+
+    template<class Head>
+    bool
+    send_multipart(Head&& head) {
+        return send(head);
+    }
+
+    template<class Head, class... Tail>
+    bool
+    send_multipart(Head&& head,
+                   Tail&&... tail)
+    {
+        return send(head, ZMQ_SNDMORE) &&
+               send_multipart(std::forward<Tail>(tail)...);
+    }
+    
+    // Serialized messages
+
+    template<class T>
+    bool
+    recv(T& result,
+         int flags = 0)
+    {
+        zmq::message_t message;
+        msgpack::unpacked unpacked;
+
+        if(!recv(message, flags)) {
+            return false;
+        }
+       
+        try { 
+            msgpack::unpack(
+                &unpacked,
+                static_cast<const char*>(message.data()),
+                message.size()
+            );
+        } catch(const msgpack::unpack_error& e) {
+            throw cocaine::error_t("corrupted object");
+        }
+           
+        try {
+            type_traits<T>::unpack(unpacked.get(), result);
+        } catch(const msgpack::type_error& e) {
+            throw cocaine::error_t("corrupted object");
+        } catch(const std::bad_cast& e) {
+            throw cocaine::error_t("corrupted object - type mismatch");
         }
 
-        using socket<SharingPolicy>::send;
-        using socket<SharingPolicy>::recv;
+        return true;
+    }
 
-        // RPC messages
+    // Custom-serialized messages
 
-        template<class Event, typename... Args>
-        typename boost::disable_if_c<
-            event_traits<Event>::empty,
-            bool
-        >::type
-        send(Args&&... args) {
-            static_assert(
-                boost::is_same<Tag, typename Event::tag>::value,
-                "invalid event category"
-            );
+    template<class T>
+    bool
+    recv(detail::raw<T>& result,
+         int flags = 0)
+    {
+        zmq::message_t message;
 
-            msgpack::sbuffer buffer;
-
-            type_traits<
-                typename event_traits<Event>::tuple_type
-            >::pack(buffer, std::forward<Args>(args)...);
-
-            zmq::message_t message(buffer.size());
-
-            std::memcpy(
-                message.data(),
-                buffer.data(),
-                buffer.size()
-            );
-
-            return this->send_multipart(
-                static_cast<int>(event_traits<Event>::id),
-                message
-            );
+        if(!recv(message, flags)) {
+            return false;
         }
 
-        template<class Event>
-        typename boost::enable_if_c<
-            event_traits<Event>::empty,
-            bool
-        >::type
-        send() {
-            static_assert(
-                boost::is_same<Tag, typename Event::tag>::value,
-                "invalid event category"
-            );
+        typedef typename std::remove_const<
+            typename std::remove_reference<T>::type
+        >::type argument_type;
 
-            return this->send(
-                static_cast<int>(event_traits<Event>::id)
-            );
-        }
+        raw_traits<argument_type>::unpack(message, result.value);
 
-        template<class Event, typename... Args>
-        typename boost::disable_if_c<
-            event_traits<Event>::empty,
-            bool
-        >::type
-        recv(Args&&... args) {
-            static_assert(
-                boost::is_same<Tag, typename Event::tag>::value,
-                "invalid event category"
-            );
+        return true;
+    }
 
-            zmq::message_t message;
-            msgpack::unpacked unpacked;
+    template<class T>
+    bool
+    recv(detail::raw<T>&& result,
+         int flags = 0)
+    {
+        return recv(result, flags);
+    }
 
-            if(!this->recv(message)) {
-                return false;
-            }
+    // Multipart messages
 
-            try {
-                msgpack::unpack(
-                    &unpacked,
-                    static_cast<const char*>(message.data()),
-                    message.size()
-                );
-            } catch(const msgpack::unpack_error& e) {
-                throw cocaine::error_t("corrupted object");
-            }
+    template<class Head>
+    bool
+    recv_multipart(Head&& head) {
+        return recv(head);
+    }
 
-            try {
-                type_traits<
-                    typename event_traits<Event>::tuple_type
-                >::unpack(unpacked.get(), std::forward<Args>(args)...);
-            } catch(const msgpack::type_error& e) {
-                throw cocaine::error_t("corrupted object");
-            } catch(const std::bad_cast& e) {
-                throw cocaine::error_t("corrupted object - type mismatch");
-            }
-
-            return true;
-        }
-
-        // XXX: This has to go.
-
-        bool
-        send_message(int message_id,
-                     const std::string& message)
-        {
-            return this->send(message_id, message.size() ? ZMQ_SNDMORE : 0) &&
-                   (!message.size() || this->send(protect(message)));
-        }
+    template<class Head, class... Tail>
+    bool
+    recv_multipart(Head&& head,
+                   Tail&&... tail)
+    {
+        return recv(head) &&
+               recv_multipart(std::forward<Tail>(tail)...);
+    }
 };
 
 }} // namespace cocaine::io

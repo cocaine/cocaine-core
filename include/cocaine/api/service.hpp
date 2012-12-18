@@ -84,16 +84,12 @@ struct category_traits<service_t> {
     };
 };
 
-typedef category_traits<service_t>::ptr_type service_ptr_t;
-
 static inline
-service_ptr_t
+category_traits<service_t>::ptr_type
 service(context_t& context,
         const std::string& name)
 {
-    config_t::component_map_t::const_iterator it(
-        context.config.services.find(name)
-    );
+    config_t::component_map_t::const_iterator it = context.config.services.find(name);
 
     if(it == context.config.services.end()) {
         throw configuration_error_t("the '%s' service is not configured", name);

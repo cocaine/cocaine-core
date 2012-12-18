@@ -34,8 +34,8 @@ struct manifest_t:
     manifest_t(context_t& context,
                const std::string& name);
 
-    std::string name,
-                slave;
+    std::string name;
+    std::string slave;
 
     // NOTE: The apps are hosted by the sandbox plugins. This one describes
     // the sandbox type and its instantiation arguments.

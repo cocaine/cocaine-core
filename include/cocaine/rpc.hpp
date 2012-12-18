@@ -21,7 +21,7 @@
 #ifndef COCAINE_RPC_HPP
 #define COCAINE_RPC_HPP
 
-#include "cocaine/io.hpp"
+#include "cocaine/channel.hpp"
 
 namespace cocaine { namespace io {
 
@@ -31,11 +31,7 @@ namespace tags {
 }
 
 namespace rpc {
-    struct ping {
-        typedef tags::rpc_tag tag;
-    };
-
-    struct pong {
+    struct heartbeat {
         typedef tags::rpc_tag tag;
     };
 
@@ -105,25 +101,24 @@ namespace control {
 }
 
 template<>
-struct dispatch<tags::rpc_tag> {
+struct protocol<tags::rpc_tag> {
     typedef boost::mpl::list<
-        rpc::ping,
-        rpc::pong,
+        rpc::heartbeat,
         rpc::suicide,
         rpc::terminate,
         rpc::invoke,
         rpc::chunk,
         rpc::error,
         rpc::choke
-    >::type category;
+    >::type type;
 };
 
 template<>
-struct dispatch<tags::control_tag> {
+struct protocol<tags::control_tag> {
     typedef boost::mpl::list<
         control::status,
         control::terminate
-    >::type category;
+    >::type type;
 };
 
 }} // namespace cocaine::io

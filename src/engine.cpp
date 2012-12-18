@@ -36,6 +36,7 @@
 
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics/median.hpp>
+#include <boost/accumulators/statistics/sum.hpp>
 
 #include <boost/bind.hpp>
 
@@ -147,8 +148,8 @@ engine_t::engine_t(context_t& context,
     m_manifest(manifest),
     m_profile(profile),
     m_state(state_t::stopped),
-    m_bus(new rpc_channel_t(context, ZMQ_ROUTER, m_manifest.name)),
-    m_ctl(new control_channel_t(context, ZMQ_PAIR)),
+    m_bus(new io::shared_channel_t(context, ZMQ_ROUTER, m_manifest.name)),
+    m_ctl(new io::unique_channel_t(context, ZMQ_PAIR)),
     m_bus_watcher(m_loop),
     m_ctl_watcher(m_loop),
     m_bus_checker(m_loop),
@@ -165,7 +166,7 @@ engine_t::engine_t(context_t& context,
     );
     
     std::string bus_endpoint = cocaine::format(
-        "ipc://%1%/%2%",
+        "ipc://%1%/engines/%2%",
         m_context.config.path.runtime,
         m_manifest.name
     );
@@ -257,7 +258,7 @@ engine_t::send(const unique_id_t& uuid,
                int message_id,
                const std::string& message)
 {
-    boost::unique_lock<rpc_channel_t> lock(*m_bus);
+    boost::unique_lock<io::shared_channel_t> lock(*m_bus);
 
     return m_bus->send(uuid, ZMQ_SNDMORE) &&
            m_bus->send_message(message_id, message);    
@@ -268,7 +269,7 @@ engine_t::on_bus_event(ev::io&, int) {
     bool pending = false;
 
     {
-        boost::unique_lock<rpc_channel_t> lock(*m_bus);
+        boost::unique_lock<io::shared_channel_t> lock(*m_bus);
         pending = m_bus->pending();
     }
 
@@ -332,6 +333,11 @@ engine_t::on_cleanup(ev::timer&, int) {
 }
 
 void
+engine_t::on_notification(ev::async&, int) {
+    pump();
+}
+
+void
 engine_t::on_termination(ev::timer&, int) {
     boost::unique_lock<session_queue_t> lock(m_queue);
     
@@ -341,25 +347,20 @@ engine_t::on_termination(ev::timer&, int) {
 }
 
 void
-engine_t::on_notification(ev::async&, int) {
-    pump();
-}
-
-void
 engine_t::process_bus_events() {
     // NOTE: Try to read RPC calls in bulk, where the maximum size
     // of the bulk is proportional to the number of spawned slaves.
-    int counter = m_pool.size() * defaults::io_bulk_size;
+    unsigned int counter = m_pool.size() * defaults::io_bulk_size;
+    
+    unique_id_t slave_id(uninitialized);
+    int message_id = -1;
     
     do {
-        boost::unique_lock<rpc_channel_t> lock(*m_bus);
+        boost::unique_lock<io::shared_channel_t> lock(*m_bus);
 
         // TEST: Ensure that we haven't missed something in a previous iteration.
         BOOST_ASSERT(!m_bus->more());
     
-        unique_id_t slave_id(uninitialized);
-        int message_id = -1;
-        
         {
             scoped_option<
                 options::receive_timeout
@@ -393,7 +394,7 @@ engine_t::process_bus_events() {
         );
 
         switch(message_id) {
-            case event_traits<rpc::ping>::id:
+            case event_traits<rpc::heartbeat>::id:
                 lock.unlock();
 
                 slave->second->on_ping();
@@ -412,7 +413,7 @@ engine_t::process_bus_events() {
 
                 if(code == rpc::suicide::abnormal) {
                     COCAINE_LOG_ERROR(m_log, "the app seems to be broken — %s", message);
-                    shutdown(state_t::broken);
+                    migrate(state_t::broken);
                     return;
                 }
 
@@ -484,7 +485,9 @@ engine_t::process_bus_events() {
 }
 
 namespace {
-    static const char * describe[] = {
+    static
+    const char*
+    describe[] = {
         "running",
         "broken",
         "stopping",
@@ -512,11 +515,17 @@ namespace {
             return boost::accumulators::median(m_accumulator);
         }
 
+        size_t
+        sum() const {
+            return boost::accumulators::sum(m_accumulator);
+        }
+
     private:
         boost::accumulators::accumulator_set<
             size_t,
             boost::accumulators::features<
-                boost::accumulators::tag::median
+                boost::accumulators::tag::median,
+                boost::accumulators::tag::sum
             >
         > m_accumulator;
     };
@@ -544,8 +553,9 @@ engine_t::process_ctl_events() {
                 boost::bind(boost::ref(active), _1)
             );
 
-            info["queue-depth"] = static_cast<Json::LargestUInt>(m_queue.size());
             info["load-median"] = static_cast<Json::LargestUInt>(active.median());
+            info["queue-depth"] = static_cast<Json::LargestUInt>(m_queue.size());
+            info["sessions"]["pending"] = static_cast<Json::LargestUInt>(active.sum());
             info["slaves"]["total"] = static_cast<Json::LargestUInt>(m_pool.size());
             info["slaves"]["busy"] = static_cast<Json::LargestUInt>(active_pool_size);
             info["state"] = describe[static_cast<int>(m_state)];
@@ -556,7 +566,7 @@ engine_t::process_ctl_events() {
         }
 
         case event_traits<control::terminate>::id:
-            shutdown(state_t::stopping);
+            migrate(state_t::stopping);
             break;
 
         default:
@@ -632,7 +642,7 @@ engine_t::pump() {
 
         session_queue_t::value_type session;
 
-        while(!session) {
+        do {
             boost::unique_lock<session_queue_t> lock(m_queue);
 
             if(m_queue.empty()) {
@@ -663,7 +673,7 @@ engine_t::pump() {
 
                 session.reset();
             }
-        }
+        } while(!session);
 
         // Notify one of the blocked enqueue operations.
         m_condition.notify_one();
@@ -700,9 +710,6 @@ engine_t::balance() {
         return;
     }
 
-    // NOTE: Balance the slave pool in order to keep it in a proper shape
-    // based on the queue size and other policies.
-    
     unsigned int target = std::min(
         m_profile.pool_limit,
         std::max(
@@ -748,7 +755,7 @@ engine_t::balance() {
 }
 
 void
-engine_t::shutdown(state_t target) {
+engine_t::migrate(state_t target) {
     boost::unique_lock<session_queue_t> lock(m_queue);
 
     m_state = target;
@@ -756,7 +763,7 @@ engine_t::shutdown(state_t target) {
     if(!m_queue.empty()) {
         COCAINE_LOG_DEBUG(
             m_log,
-            "dropping %llu incomplete %s due to the engine shutdown",
+            "dropping %llu incomplete %s due to the engine state migration",
             m_queue.size(),
             m_queue.size() == 1 ? "session" : "sessions"
         );
@@ -784,7 +791,7 @@ engine_t::shutdown(state_t target) {
         ++it)
     {
         if(it->second->state() == slave_t::state_t::active) {
-            send<rpc::terminate>(it->second->id());
+            send<rpc::terminate>(it->first);
             ++pending;
         }
     }

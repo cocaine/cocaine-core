@@ -55,6 +55,8 @@ struct defaults {
     static const char spool_path[];
 };
 
+// Configuration
+
 struct config_t {
     config_t(const std::string& config_path);
 
@@ -85,15 +87,17 @@ struct config_t {
         component_t
     > component_map_t;
 
-    component_map_t services,
-                    storages,
-                    loggers;
+    component_map_t storages;
+    component_map_t loggers;
+    component_map_t services;
 
 public:
     static
     component_map_t
     parse(const Json::Value& config);
 };
+
+// Port mapping
 
 struct port_mapper_t {
     port_mapper_t(const std::pair<uint16_t, uint16_t>& limits);
@@ -113,6 +117,8 @@ private:
     
     boost::mutex m_mutex;
 };
+
+// Context
 
 class context_t:
     public boost::noncopyable

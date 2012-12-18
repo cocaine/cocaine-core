@@ -22,7 +22,7 @@
 #define COCAINE_SESSION_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/io.hpp"
+#include "cocaine/channel.hpp"
 #include "cocaine/slave.hpp"
 #include "cocaine/unique_id.hpp"
 

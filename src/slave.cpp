@@ -47,8 +47,9 @@ slave_t::slave_t(context_t& context,
     m_manifest(manifest),
     m_profile(profile),
     m_engine(engine),
+    m_state(state_t::unknown),
     m_heartbeat_timer(engine.loop()),
-    m_state(state_t::unknown)
+    m_idle_timer(engine.loop())
 {
     auto isolate = m_context.get<api::isolate_t>(
         m_profile.isolate.type,
@@ -103,7 +104,7 @@ slave_t::assign(boost::shared_ptr<session_t>&& session) {
 void
 slave_t::on_ping() {
     rearm();
-    send<rpc::pong>();
+    send<rpc::heartbeat>();
 }
 
 void

@@ -47,9 +47,7 @@ class sandbox_t:
                   const std::string& /* name */,
                   const Json::Value& /* args */,
                   const std::string& /* spool */)
-        {
-           // Empty. 
-        }
+        { }
 };
 
 template<>
@@ -84,8 +82,6 @@ struct category_traits<sandbox_t> {
         }
     };
 };
-
-typedef category_traits<sandbox_t>::ptr_type sandbox_ptr_t;
 
 }} // namespace cocaine::api
 

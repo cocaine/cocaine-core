@@ -88,7 +88,10 @@ ADD_LIBRARY(cocaine-core SHARED
     src/engine
     src/manifest
     src/profile
+    src/reactor
     src/session
+    src/services/logging
+    src/services/node
     src/slave)
 
 TARGET_LINK_LIBRARIES(cocaine-core
@@ -102,11 +105,13 @@ SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     COMPILE_FLAGS "-std=c++0x")
 
 ADD_EXECUTABLE(cocaine-runtime
-    src/bootstrap)
+    src/runtime/pid_file
+    src/runtime/bootstrap)
 
 TARGET_LINK_LIBRARIES(cocaine-runtime
     boost_program_options-mt
-    cocaine-common)
+    cocaine-common
+    ev)
 
 SET_TARGET_PROPERTIES(cocaine-runtime PROPERTIES
     COMPILE_FLAGS "-std=c++0x")

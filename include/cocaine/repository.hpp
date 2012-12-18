@@ -91,7 +91,7 @@ class repository_t:
         get(const std::string& type,
             Args&&... args);
 
-        template<class T, class Category = typename T::category_type>
+        template<class T>
         void
         insert(const std::string& type);
 
@@ -138,7 +138,7 @@ repository_t::get(const std::string& type,
     std::string id = typeid(Category).name();
 
     factory_map_t& factories = m_categories[id];
-    factory_map_t::iterator it(factories.find(type));
+    factory_map_t::iterator it = factories.find(type);
     
     if(it == factories.end()) {
         throw repository_error_t("the '%s' component is not available", type);
@@ -156,12 +156,14 @@ repository_t::get(const std::string& type,
     );
 }
 
-template<class T, class Category>
+template<class T>
 void
 repository_t::insert(const std::string& type) {
+    typedef typename T::category_type category_type;
+
     static_assert(
         std::is_base_of<
-            Category,
+            category_type,
             T
         >::value,
         "component is not derived from its category"
@@ -169,13 +171,13 @@ repository_t::insert(const std::string& type) {
 
     static_assert(
         std::is_base_of<
-            typename category_traits<Category>::factory_type,
+            typename category_traits<category_type>::factory_type,
             typename plugin_traits<T>::factory_type
         >::value,
         "component factory is not derived from its category"
     );
 
-    factory_map_t& factories = m_categories[typeid(Category).name()];
+    factory_map_t& factories = m_categories[typeid(category_type).name()];
 
     if(factories.find(type) != factories.end()) {
         throw repository_error_t("the '%s' component is a duplicate", type);
