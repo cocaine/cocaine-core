@@ -19,24 +19,29 @@
 #    along with this program. If not, see <http://www.gnu.org/licenses/>. 
 #
 
-import zmq
-
 from optparse import OptionParser
 from sys import argv, exit
+
+import zmq
+import msgpack
+
+SLOT_START_APP = 0
+SLOT_PAUSE_APP = 1
+SLOT_INFO      = 2
 
 def main(app, hosts, timeout):
     context = zmq.Context()
 
     for host in hosts:
-        request = context.socket(zmq.REQ)
+        request = context.socket(zmq.DEALER)
         request.setsockopt(zmq.LINGER, 0)
         request.connect('tcp://%s:5000' % host)
 
         # Statistics
-        request.send_json({
-            'version': 2,
-            'action': 'info'
-        })
+        request.send_multipart([
+            msgpack.packb(SLOT_INFO),
+            msgpack.packb([])
+        ])
 
         poller = zmq.Poller()
         poller.register(request, zmq.POLLIN)
@@ -45,7 +50,7 @@ def main(app, hosts, timeout):
         sockets = dict(poller.poll(timeout = timeout))
 
         if request in sockets and sockets[request] == zmq.POLLIN:
-            response = request.recv_json()
+            response = msgpack.unpackb(request.recv())
             
             if app not in response["apps"]:
                 print "The '%s' app was not found on '%s'." % (app, host)
@@ -65,7 +70,7 @@ describe the problem, and the exit code will be '1'."""
     
 usage = "Usage: %prog <app-name> [options] [<host-name-1> ... <host-name-N>]"
 
-version = "0.9.6"
+version = "0.10.0"
 
 if __name__ == "__main__":
     parser = OptionParser(usage = usage,

@@ -10,6 +10,6 @@ install/cocaine-runtime::
 install/cocaine-tools::
 	install -d $(DEB_DESTDIR)usr/bin
 	install -m755 scripts/cocaine-info.py $(DEB_DESTDIR)usr/bin/cocaine-info
-	install -m755 scripts/cocaine-engine-create.py $(DEB_DESTDIR)usr/bin/cocaine-engine-create
-	install -m755 scripts/cocaine-engine-delete.py $(DEB_DESTDIR)usr/bin/cocaine-engine-delete
-	install -m755 scripts/cocaine-engine-status.py $(DEB_DESTDIR)usr/bin/cocaine-engine-status
+	install -m755 scripts/cocaine-start-app.py $(DEB_DESTDIR)usr/bin/cocaine-start-app
+	install -m755 scripts/cocaine-pause-app.py $(DEB_DESTDIR)usr/bin/cocaine-pause-app
+	install -m755 scripts/cocaine-check-app.py $(DEB_DESTDIR)usr/bin/cocaine-check-app

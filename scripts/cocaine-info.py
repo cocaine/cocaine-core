@@ -19,26 +19,30 @@
 #    along with this program. If not, see <http://www.gnu.org/licenses/>. 
 #
 
-import zmq
 from sys import argv
 from pprint import pprint
 
+import zmq
+import msgpack
+
+SLOT_START_APP = 0
+SLOT_PAUSE_APP = 1
+SLOT_INFO      = 2
 
 def main(hosts):
     context = zmq.Context()
 
     for host in hosts:
-        request = context.socket(zmq.REQ)
+        request = context.socket(zmq.DEALER)
         request.connect('tcp://%s:5000' % host)
 
         # Statistics
-        request.send_json({
-            'version': 2,
-            'action': 'info'
-        })
+        request.send_multipart([
+            msgpack.packb(SLOT_INFO),
+            msgpack.packb([])
+        ])
 
-        pprint(request.recv_json())
-
+        pprint(msgpack.unpackb(request.recv()))
 
 if __name__ == "__main__":
     if len(argv) == 1:

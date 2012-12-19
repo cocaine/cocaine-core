@@ -119,28 +119,32 @@ node_t::on_announce(ev::timer&, int) {
 Json::Value
 node_t::on_start_app(runlist_t runlist) {
     Json::Value result;
+    app_map_t::iterator app;
 
     for(runlist_t::const_iterator it = runlist.begin();
         it != runlist.end();
         ++it)
     {
         if(m_apps.find(it->first) != m_apps.end()) {
-            result[it->first] = "already running";
+            result[it->first] = "the app is already running";
             continue;
         }
 
-        app_map_t::iterator app;
-
         COCAINE_LOG_INFO(m_log, "starting the '%s' app", it->first);
 
-        boost::tie(app, boost::tuples::ignore) = m_apps.emplace(
-            it->first,
-            boost::make_shared<app_t>(
-                m_context,
+        try {
+            boost::tie(app, boost::tuples::ignore) = m_apps.emplace(
                 it->first,
-                it->second
-            )
-        );
+                boost::make_shared<app_t>(
+                    m_context,
+                    it->first,
+                    it->second
+                )
+            );
+        } catch(const storage_error_t& e) {
+            result[it->first] = "the app was not found in the storage";
+            continue;
+        }
 
         try {
             app->second->start();
@@ -150,7 +154,7 @@ node_t::on_start_app(runlist_t runlist) {
             continue;
         }
 
-        result[it->first] = "started";
+        result[it->first] = "the app has been started";
     }
 
     return result;
@@ -167,7 +171,7 @@ node_t::on_pause_app(std::vector<std::string> applist) {
         app_map_t::iterator app(m_apps.find(*it));
 
         if(app == m_apps.end()) {
-            result[*it] = "not running";
+            result[*it] = "the app is not running";
             continue;
         }
 
@@ -175,7 +179,7 @@ node_t::on_pause_app(std::vector<std::string> applist) {
 
         m_apps.erase(app);
 
-        result[*it] = "stopped";
+        result[*it] = "the app has been stopped";
     }
 
     return result;

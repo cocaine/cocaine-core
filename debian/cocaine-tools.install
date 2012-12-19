@@ -1,5 +1,5 @@
 usr/bin/cocaine-info
-usr/bin/cocaine-engine-create
-usr/bin/cocaine-engine-delete
-usr/bin/cocaine-engine-status
+usr/bin/cocaine-start-app
+usr/bin/cocaine-pause-app
+usr/bin/cocaine-check-app
 usr/bin/cocaine-tool
