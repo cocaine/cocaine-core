@@ -23,14 +23,6 @@
 #include "cocaine/io.hpp"
 #include "cocaine/logging.hpp"
 
-#include "cocaine/isolates/process.hpp"
-
-#include "cocaine/loggers/files.hpp"
-#include "cocaine/loggers/stdout.hpp"
-#include "cocaine/loggers/syslog.hpp"
-
-#include "cocaine/storages/files.hpp"
-
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/iterator/counting_iterator.hpp>
@@ -245,17 +237,6 @@ context_t::initialize() {
 
     // Initialize the repository, without any components yet.
     m_repository.reset(new api::repository_t());
-
-    // Register the builtin isolates.
-    m_repository->insert<isolate::process_t>("process");
-
-    // Register the builtin loggers
-    m_repository->insert<logger::files_t>("files");
-    m_repository->insert<logger::stdout_t>("stdout");
-    m_repository->insert<logger::syslog_t>("syslog");
-    
-    // Register the builtin storages.
-    m_repository->insert<storage::files_t>("files");
 
     // Register the plugins.
     m_repository->load(config.path.plugins);

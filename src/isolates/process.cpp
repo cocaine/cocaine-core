@@ -68,6 +68,10 @@ process_t::process_t(context_t& context,
     m_log(new logging::log_t(context, name))
 { }
 
+process_t::~process_t() {
+    // Empty.
+}
+
 std::unique_ptr<api::handle_t>
 process_t::spawn(const std::string& path,
                  const std::map<std::string, std::string>& args,

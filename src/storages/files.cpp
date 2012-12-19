@@ -43,6 +43,10 @@ files_t::files_t(context_t& context,
     m_storage_path(args["path"].asString())
 { }
 
+files_t::~files_t() {
+    // Empty.
+}
+
 std::string
 files_t::read(const std::string& collection,
               const std::string& key)

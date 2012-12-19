@@ -62,7 +62,7 @@ class logging_t:
                   const Json::Value& args);
 
     private:
-        void
+        bool
         on_emit(int priority,
                 std::string source,
                 std::string message);

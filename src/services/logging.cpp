@@ -40,7 +40,7 @@ logging_t::logging_t(context_t& context,
     );
 }
 
-void
+bool
 logging_t::on_emit(int priority,
                    std::string source,
                    std::string message)
@@ -60,4 +60,6 @@ logging_t::on_emit(int priority,
         "%s",
         message
     );
+
+    return true;
 }

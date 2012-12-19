@@ -31,8 +31,9 @@
 
 #include <iostream>
 
-#include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/program_options.hpp>
+#include <boost/tuple/tuple.hpp>
 
 using namespace cocaine;
 using namespace cocaine::logging;
@@ -47,17 +48,6 @@ namespace {
             m_context(context),
             m_log(new log_t(context, "runtime"))
         {
-            for(auto&& service: services) {
-                COCAINE_LOG_INFO(m_log, "starting the '%s' service", service);
-
-                m_services.emplace(
-                    service,
-                    api::service(m_context, service)
-                );
-            }
-
-            // Signal handling
-
             m_sigint.set<runtime_t, &runtime_t::on_terminate>(this);
             m_sigint.start(SIGINT);
 
@@ -66,11 +56,31 @@ namespace {
 
             m_sigquit.set<runtime_t, &runtime_t::on_terminate>(this);
             m_sigquit.start(SIGQUIT);
+            
+            service_map_t::iterator service;
+
+            for(std::vector<std::string>::const_iterator it = services.begin();
+                it != services.end();
+                ++it)
+            {
+                COCAINE_LOG_INFO(m_log, "starting the '%s' service", *it);
+
+                boost::tie(service, boost::tuples::ignore) = m_services.emplace(
+                    *it,
+                    api::service(m_context, *it)
+                );
+
+                service->second->run();
+            }
         }
 
         ~runtime_t() {
-            for(auto&& service: m_services) {
-                service.second->terminate();
+            for(service_map_t::iterator it = m_services.begin();
+                it != m_services.end();
+                ++it)
+            {
+                COCAINE_LOG_INFO(m_log, "stopping the '%s' service", it->first);
+                it->second->terminate();
             }
 
             m_services.clear();
@@ -209,7 +219,7 @@ int main(int argc, char * argv[]) {
     std::unique_ptr<context_t> context;
 
     try {
-        context.reset(new context_t(*config, "logger/core"));
+        context.reset(new context_t(*config, "core"));
     } catch(const std::exception& e) {
         std::cerr << cocaine::format("Error: unable to initialize the context - %s.", e.what()) << std::endl;
         return EXIT_FAILURE;

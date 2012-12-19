@@ -64,15 +64,13 @@ void
 reactor_t::run() {
     BOOST_ASSERT(!m_thread);
 
-    m_thread.reset(
-        new boost::thread(
-            boost::bind(
-                &ev::dynamic_loop::loop,
-                boost::ref(m_loop),
-                0
-            )
-        )
+    auto runnable = boost::bind(
+        &ev::loop_ref::loop,
+        boost::ref(m_loop),
+        0
     );
+
+    m_thread.reset(new boost::thread(runnable));
 }
 
 void
@@ -153,12 +151,23 @@ reactor_t::process() {
                 continue;
             }
 
-            msgpack::object& request = unpacked.get(),
-                             response = (*slot)(request);
+            std::cout << "Calling " << slot << std::endl;
 
-            if(response.type != msgpack::type::NIL) {
-                m_channel.send_multipart(io::protect(source), response);
+            msgpack::object& request = unpacked.get();
+            std::string response = (*slot)(request);
+
+            std::cout << "Response " << response << std::endl;
+            
+            if(response.empty()) {
+                return;
             }
+           
+            std::cout << "Sending response" << std::endl;
+
+            m_channel.send_multipart(
+                io::protect(source),
+                io::protect(response)
+            );
         }
     } while(--counter);
 }

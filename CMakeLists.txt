@@ -57,52 +57,55 @@ ADD_LIBRARY(json
 SET_TARGET_PROPERTIES(json PROPERTIES
     COMPILE_FLAGS -fPIC)
 
-ADD_LIBRARY(cocaine-common SHARED
-    src/auth
-    src/context
-    src/io
-    src/isolates/process
-    src/loggers/files
-    src/loggers/stdout
-    src/loggers/syslog
-    src/repository
-    src/storages/files)
-
-TARGET_LINK_LIBRARIES(cocaine-common
-    boost_filesystem-mt
-    boost_system-mt
-    boost_thread-mt
-    crypto
-    json
-    ltdl
-    msgpack
-    zmq)
-
-SET_TARGET_PROPERTIES(cocaine-common PROPERTIES
-    VERSION 2
-    COMPILE_FLAGS "-std=c++0x")
-
 ADD_LIBRARY(cocaine-core SHARED
     src/app
     src/archive
+    src/auth
+    src/context
     src/engine
+    src/io
     src/manifest
     src/profile
     src/reactor
+    src/repository
     src/session
-    src/services/logging
-    src/services/node
     src/slave)
 
 TARGET_LINK_LIBRARIES(cocaine-core
     archive
-    cocaine-common
+    boost_filesystem-mt
+    boost_system-mt
+    boost_thread-mt
+    crypto
     ev
-    ${LIBUUID_LIBRARY})
+    json
+    ltdl
+    ${LIBUUID_LIBRARY}
+    msgpack
+    zmq)
 
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     VERSION 2
     COMPILE_FLAGS "-std=c++0x")
+
+ADD_LIBRARY(essentials SHARED
+    src/isolates/process
+    src/loggers/files
+    src/loggers/remote
+    src/loggers/stdout
+    src/loggers/syslog
+    src/services/logging
+    src/services/node
+    src/storages/files
+    src/essentials)
+
+TARGET_LINK_LIBRARIES(essentials
+    cocaine-core)
+
+SET_TARGET_PROPERTIES(essentials PROPERTIES
+    COMPILE_FLAGS "-std=c++0x"
+    PREFIX ""
+    SUFFIX ".cocaine-plugin")
 
 ADD_EXECUTABLE(cocaine-runtime
     src/runtime/pid_file
@@ -110,8 +113,7 @@ ADD_EXECUTABLE(cocaine-runtime
 
 TARGET_LINK_LIBRARIES(cocaine-runtime
     boost_program_options-mt
-    cocaine-common
-    ev)
+    cocaine-core)
 
 SET_TARGET_PROPERTIES(cocaine-runtime PROPERTIES
     COMPILE_FLAGS "-std=c++0x")
@@ -120,13 +122,17 @@ ADD_SUBDIRECTORY(tools)
 
 INSTALL(
     TARGETS
-        cocaine-common
         cocaine-core
         cocaine-runtime
         json
     RUNTIME DESTINATION bin COMPONENT runtime
     LIBRARY DESTINATION lib COMPONENT runtime
     ARCHIVE DESTINATION lib COMPONENT developement)
+
+INSTALL(
+    TARGETS
+        essentials
+    LIBRARY DESTINATION lib/cocaine COMPONENT runtime)
 
 INSTALL(
     DIRECTORY

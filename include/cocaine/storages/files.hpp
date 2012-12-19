@@ -39,6 +39,9 @@ class files_t:
                 const Json::Value& args);
 
         virtual
+        ~files_t();
+
+        virtual
         std::string
         read(const std::string& collection,
              const std::string& key);

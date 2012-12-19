@@ -128,12 +128,15 @@ node_t::on_announce(ev::timer&, int) {
 
 Json::Value
 node_t::on_start_app(runlist_t runlist) {
+    Json::Value result;
+
     for(runlist_t::const_iterator it = runlist.begin();
         it != runlist.end();
         ++it)
     {
         if(m_apps.find(it->first) != m_apps.end()) {
-            // ...
+            result[it->first] = "already running";
+            continue;
         }
 
         app_map_t::iterator app;
@@ -151,17 +154,22 @@ node_t::on_start_app(runlist_t runlist) {
 
         try {
             app->second->start();
-        } catch(...) {
+        } catch(const std::exception& e) {
             m_apps.erase(app);
-            // ...
+            result[it->first] = e.what();
+            continue;
         }
+
+        result[it->first] = "started";
     }
 
-    return Json::Value();
+    return result;
 }
 
 Json::Value
 node_t::on_pause_app(std::vector<std::string> applist) {
+    Json::Value result;
+    
     for(std::vector<std::string>::const_iterator it = applist.begin();
         it != applist.end();
         ++it)
@@ -169,15 +177,18 @@ node_t::on_pause_app(std::vector<std::string> applist) {
         app_map_t::iterator app(m_apps.find(*it));
 
         if(app == m_apps.end()) {
-            // ...
+            result[*it] = "not running";
+            continue;
         }
 
         COCAINE_LOG_INFO(m_log, "stopping the '%s' app", *it);
 
         m_apps.erase(app);
+
+        result[*it] = "stopped";
     }
 
-    return Json::Value();
+    return result;
 }
 
 Json::Value

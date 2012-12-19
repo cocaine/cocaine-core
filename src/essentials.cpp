@@ -18,35 +18,33 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include "cocaine/manifest.hpp"
+#include "cocaine/storages/files.hpp"
 
-#include "cocaine/traits/json.hpp"
+#include "cocaine/loggers/stdout.hpp"
+#include "cocaine/loggers/files.hpp"
+#include "cocaine/loggers/remote.hpp"
+#include "cocaine/loggers/syslog.hpp"
 
-#include <boost/filesystem/operations.hpp>
+#include "cocaine/isolates/process.hpp"
+
+#include "cocaine/services/logging.hpp"
+#include "cocaine/services/node.hpp"
 
 using namespace cocaine;
 
-namespace fs = boost::filesystem;
+extern "C" {
+    void
+    initialize(api::repository_t& repository) {
+        repository.insert<storage::files_t>("files");
 
-manifest_t::manifest_t(context_t& context,
-                       const std::string& name_):
-    cached<Json::Value>(context, "manifests", name_),
-    name(name_)
-{
-    slave = get(
-        "slave",
-        defaults::slave
-    ).asString();
+        repository.insert<logger::stdout_t>("stdout");
+        repository.insert<logger::files_t>("files");
+        repository.insert<logger::remote_t>("remote");
+        repository.insert<logger::syslog_t>("syslog");
 
-    if(!fs::exists(fs::system_complete(slave))) {
-        throw configuration_error_t("the '%s' slave executable file does not exist", slave);
+        repository.insert<isolate::process_t>("process");
+
+        repository.insert<service::logging_t>("logging");
+        repository.insert<service::node_t>("node");
     }
-
-    sandbox = {
-        get("type", "unspecified").asString(),
-        (*this)["args"]
-    };
-
-    drivers = config_t::parse((*this)["drivers"]);
 }
-

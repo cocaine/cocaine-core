@@ -22,19 +22,62 @@
 #define COCAINE_REACTOR_SLOT_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/channel.hpp"
 
 #include <boost/function.hpp>
 #include <boost/function_types/function_type.hpp>
 
 #include <boost/mpl/push_front.hpp>
 
-namespace cocaine {
-
 namespace ft = boost::function_types;
 namespace mpl = boost::mpl;
 
-template<class Sequence, typename R>
+namespace cocaine {
+
+struct slot_base_t {
+    virtual
+    std::string
+    operator()(const msgpack::object& request) = 0;
+};
+
+template<typename R, class It, class End>
+struct invoke {
+    template<class F, typename... Args>
+    static inline
+    R
+    apply(const F& callable,
+          const msgpack::object * tuple,
+          Args&&... args)
+    {
+        typedef typename mpl::deref<It>::type argument_type;
+        typedef typename mpl::next<It>::type next_type;
+        
+        argument_type argument;
+
+        io::type_traits<argument_type>::unpack(*tuple, argument);
+
+        return invoke<R, next_type, End>::apply(
+            callable,
+            ++tuple,
+            std::forward<Args>(args)...,
+            std::move(argument)
+        );
+    }
+};
+
+template<typename R, class End>
+struct invoke<R, End, End> {
+    template<class F, typename... Args>
+    static inline
+    R
+    apply(const F& callable,
+          const msgpack::object * tuple,
+          Args&&... args)
+    {
+        return callable(std::forward<Args>(args)...);
+    }
+};
+
+template<typename R, class Sequence>
 struct callable {
     typedef typename ft::function_type<
         typename mpl::push_front<Sequence, R>::type
@@ -43,83 +86,43 @@ struct callable {
     typedef boost::function<function_type> type;
 };
 
-struct slot_base_t {
-    virtual
-    msgpack::object
-    operator()(const msgpack::object& request) = 0;
-};
-
-template<class Event, typename R>
+template<typename R, class Sequence>
 struct slot:
     public slot_base_t
 {
-    typedef typename io::event_traits<Event>::tuple_type tuple_type;
-    typedef typename callable<tuple_type, R>::type callable_type;
+    typedef typename callable<R, Sequence>::type callable_type;
 
     slot(callable_type callable):
         m_callable(callable)
     { }
 
     virtual
-    msgpack::object
+    std::string
     operator()(const msgpack::object& tuple) {
         if(tuple.type != msgpack::type::ARRAY ||
-           tuple.via.array.size != io::event_traits<Event>::length)
+           tuple.via.array.size != mpl::size<Sequence>::value)
         {
             throw msgpack::type_error();
         }
 
-        typedef typename mpl::begin<tuple_type>::type begin;
-        typedef typename mpl::end<tuple_type>::type end;
+        msgpack::sbuffer buffer;
+        msgpack::packer<msgpack::sbuffer> packer(buffer);
 
-        msgpack::object response;
+        typedef typename mpl::begin<Sequence>::type begin;
+        typedef typename mpl::end<Sequence>::type end;
 
-        invoke<begin, end>::apply(
+        R result = invoke<R, begin, end>::apply(
             m_callable,
             tuple.via.array.ptr
         );
 
-        return response;
+        io::type_traits<R>::pack(packer, result);
+
+        return std::string(
+            buffer.data(),
+            buffer.size()
+        );
     }
-
-private:
-    template<class It, class End>
-    struct invoke {
-        template<typename... Args>
-        static inline
-        R
-        apply(callable_type& callable,
-              msgpack::object * tuple,
-              Args&&... args)
-        {
-            typedef typename mpl::deref<It>::type argument_type;
-            typedef typename mpl::next<It>::type next_type;
-            
-            argument_type argument;
-
-            io::type_traits<argument_type>::unpack(*tuple, argument);
-
-            return invoke<next_type, End>::apply(
-                callable,
-                ++tuple,
-                std::forward<Args>(args)...,
-                std::move(argument)
-            );
-        }
-    };
-
-    template<class End>
-    struct invoke<End, End> {
-        template<typename... Args>
-        static inline
-        R
-        apply(callable_type& callable,
-              msgpack::object * tuple,
-              Args&&... args)
-        {
-            return callable(std::forward<Args>(args)...);
-        }
-    };
 
 private:
     callable_type m_callable;

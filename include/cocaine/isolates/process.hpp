@@ -37,6 +37,9 @@ class process_t:
                   const Json::Value& args);
 
         virtual
+        ~process_t();
+
+        virtual
         std::unique_ptr<api::handle_t>
         spawn(const std::string& path,
               const std::map<std::string, std::string>& args,
