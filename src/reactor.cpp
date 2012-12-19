@@ -56,8 +56,6 @@ reactor_t::reactor_t(context_t& context,
 
     m_terminate.set<reactor_t, &reactor_t::on_terminate>(this);
     m_terminate.start();
-
-    m_slots.reserve(10);
 }
 
 void
@@ -134,11 +132,11 @@ reactor_t::process() {
         }
 
         zmq::message_t message;
-        slot_map_t::const_reference slot = m_slots[message_id];                
-
         m_channel.recv(message);
 
-        if(slot) {
+        slot_map_t::const_iterator slot = m_slots.find(message_id);
+
+        if(slot != m_slots.end()) {
             msgpack::unpacked unpacked;
             
             try {
@@ -151,19 +149,13 @@ reactor_t::process() {
                 continue;
             }
 
-            std::cout << "Calling " << slot << std::endl;
-
             msgpack::object& request = unpacked.get();
-            std::string response = (*slot)(request);
+            std::string response = (*slot->second)(request);
 
-            std::cout << "Response " << response << std::endl;
-            
             if(response.empty()) {
                 return;
             }
            
-            std::cout << "Sending response" << std::endl;
-
             m_channel.send_multipart(
                 io::protect(source),
                 io::protect(response)

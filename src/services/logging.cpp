@@ -35,9 +35,7 @@ logging_t::logging_t(context_t& context,
     reactor_t(context, name, args),
     m_context(context)
 {
-    on<io::logging::emit>(
-        boost::bind(&logging_t::on_emit, this, _1, _2, _3)
-    );
+    on<io::logging::emit>(boost::bind(&logging_t::on_emit, this, _1, _2, _3));
 }
 
 bool

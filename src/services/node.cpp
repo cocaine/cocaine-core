@@ -52,6 +52,10 @@ node_t::node_t(context_t& context,
     m_announce_timer(loop()),
     m_birthstamp(loop().now())
 {
+    on<io::node::start_app>(boost::bind(&node_t::on_start_app, this, _1));
+    on<io::node::pause_app>(boost::bind(&node_t::on_pause_app, this, _1));
+    on<io::node::info>(boost::bind(&node_t::on_info, this));
+    
     int minor, major, patch;
     zmq_version(&major, &minor, &patch);
 
@@ -93,20 +97,6 @@ node_t::node_t(context_t& context,
     >("runlists", runlist_id);
     
     on_start_app(runlist);
-
-    // Slots
-
-    on<io::node::start_app>(
-        boost::bind(&node_t::on_start_app, this, _1)
-    );
-
-    on<io::node::pause_app>(
-        boost::bind(&node_t::on_pause_app, this, _1)
-    );
-
-    on<io::node::info>(
-        boost::bind(&node_t::on_info, this)
-    );
 }
 
 node_t::~node_t() {

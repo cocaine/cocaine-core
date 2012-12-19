@@ -92,7 +92,12 @@ class reactor_t:
         ev::prepare m_checker;
         ev::async m_terminate;
 
-        typedef std::vector<
+#if BOOST_VERSION >= 103600
+        typedef boost::unordered_map<
+#else
+        typedef std::map<
+#endif
+            int,
             boost::shared_ptr<slot_base_t>
         > slot_map_t;
 
@@ -109,9 +114,10 @@ reactor_t::on(F callable) {
     typedef decltype(callable()) result_type;;
     typedef typename io::event_traits<Event>::tuple_type sequence_type;
 
-    m_slots[io::event_traits<Event>::id] = boost::make_shared<
-        slot<result_type, sequence_type>
-    >(callable);
+    m_slots.emplace(
+        io::event_traits<Event>::id,
+        boost::make_shared<slot<result_type, sequence_type>>(callable)
+    );
 }
 
 } // namespace cocaine
