@@ -9,12 +9,6 @@ Standards-Version: 3.9.1
 Vcs-Git: git://github.com/cocaine/cocaine-core.git
 Vcs-Browser: https://github.com/cocaine/cocaine-core
 
-Package: libcocaine-common2
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libzmq1 (>= 2.2.0)
-Description: Cocaine - Common Libraries
- Cocaine common libraries package.
-
 Package: libcocaine-core2
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}

@@ -1,2 +1,2 @@
 etc/cocaine/cocaine-default.conf
-usr/bin/cocained
+usr/bin/cocaine-runtime
