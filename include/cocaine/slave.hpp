@@ -82,7 +82,6 @@ class slave_t:
             );
         }
 
-    public:
         unique_id_t
         id() const {
             return m_id;

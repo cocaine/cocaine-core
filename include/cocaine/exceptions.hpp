@@ -83,7 +83,7 @@ struct system_error_t:
         }
 
         const char*
-        reason() const {
+        reason() const throw() {
             return m_reason;
         }
 

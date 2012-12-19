@@ -22,6 +22,7 @@
 #define COCAINE_REACTOR_SLOT_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/traits.hpp"
 
 #include <boost/function.hpp>
 #include <boost/function_types/function_type.hpp>
@@ -99,22 +100,22 @@ struct slot:
     virtual
     std::string
     operator()(const msgpack::object& tuple) {
+        typedef typename mpl::begin<Sequence>::type begin;
+        typedef typename mpl::end<Sequence>::type end;
+
         if(tuple.type != msgpack::type::ARRAY ||
            tuple.via.array.size != mpl::size<Sequence>::value)
         {
             throw msgpack::type_error();
         }
 
-        msgpack::sbuffer buffer;
-        msgpack::packer<msgpack::sbuffer> packer(buffer);
-
-        typedef typename mpl::begin<Sequence>::type begin;
-        typedef typename mpl::end<Sequence>::type end;
-
         R result = invoke<R, begin, end>::apply(
             m_callable,
             tuple.via.array.ptr
         );
+
+        msgpack::sbuffer buffer;
+        msgpack::packer<msgpack::sbuffer> packer(buffer);
 
         io::type_traits<R>::pack(packer, result);
 

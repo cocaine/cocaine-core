@@ -170,9 +170,6 @@ class scoped_option {
 
     private:
         socket_base_t& m_socket;
-        
-        // NOTE: Keep the previous values so that the socket state could be
-        // restored on scope exit.
         value_type m_saved;
         size_t m_size;
 };

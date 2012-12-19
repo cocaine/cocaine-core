@@ -83,7 +83,7 @@ struct event_traits {
         Event
     >::type tuple_type;
 
-    enum constants {
+    enum {
         id = detail::enumerate<Event>::value,
         length = mpl::size<tuple_type>::value,
         empty = length == 0
