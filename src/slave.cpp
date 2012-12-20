@@ -191,16 +191,30 @@ namespace {
 
 void
 slave_t::on_timeout(ev::timer&, int) {
-    COCAINE_LOG_DEBUG(
-        m_log,
-        "slave %s has timed out, dropping %llu sessions",
-        m_id,
-        m_sessions.size()
-    );
-
-    std::for_each(m_sessions.begin(), m_sessions.end(), timeout_t());
+    BOOST_ASSERT(m_state != state_t::dead);
     
-    m_sessions.clear();
+    switch(m_state) {
+        case state_t::unknown:
+            COCAINE_LOG_WARNING(m_log, "slave %s has failed to initialize", m_id);
+            break;
+
+        case state_t::active:
+            COCAINE_LOG_WARNING(
+                m_log,
+                "slave %s has timed out, dropping %llu sessions",
+                m_id,
+                m_sessions.size()
+            );
+
+            std::for_each(m_sessions.begin(), m_sessions.end(), timeout_t());
+            m_sessions.clear();
+
+            break;
+
+        case state_t::inactive:
+            COCAINE_LOG_WARNING(m_log, "slave %s has failed to terminate", m_id);
+            break;
+    }
     
     terminate();
 }
