@@ -1,4 +1,4 @@
-cocaine-core (0.10.0) lucid; urgency=low
+cocaine-core (0.10.0-b0) lucid; urgency=low
 
   * Streaming API.
   * Sessions.
@@ -6,7 +6,8 @@ cocaine-core (0.10.0) lucid; urgency=low
   * Asynchronous engines.
   * Pluggable isolations (processes, cgroups, lxc, ...).
   * Much faster I/O subsystem.
-  * Pluggable loggers (stdio, files, syslog, ...)
+  * Pluggable loggers (stdio, files, syslog, ...).
+  * Services.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 30 Nov 2012 00:00:00 +0400
 
