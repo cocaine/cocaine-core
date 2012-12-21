@@ -23,7 +23,9 @@
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
+#include <cerrno>
 #include <csignal>
+#include <cstring>
 
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -78,6 +80,23 @@ process_t::spawn(const std::string& path,
                  const std::map<std::string, std::string>& environment)
 {
     pid_t pid = ::fork();
+
+    if(pid < 0) {
+        char buffer[1024],
+             * message;
+
+#ifdef _GNU_SOURCE
+        message = ::strerror_r(errno, buffer, 1024);
+#else
+        ::strerror_r(errno, buffer, 1024);
+
+        // NOTE: XSI-compliant strerror_r() returns int instead of the
+        // string buffer, so complete the job manually.
+        message = buffer;
+#endif
+
+        throw cocaine::error_t("unable to fork - %s", message);
+    }
 
     if(pid == 0) {
         char * argv[args.size() * 2 + 2];
@@ -151,8 +170,6 @@ process_t::spawn(const std::string& path,
 
             std::exit(EXIT_FAILURE);
         }
-    } else if(pid < 0) {
-        throw system_error_t("fork() failed");
     }
     
     return std::unique_ptr<api::handle_t>(new process_handle_t(pid));

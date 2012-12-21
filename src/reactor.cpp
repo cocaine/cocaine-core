@@ -21,6 +21,7 @@
 #include "cocaine/reactor.hpp"
 
 #include "cocaine/context.hpp"
+#include "cocaine/logging.hpp"
 
 using namespace cocaine;
 
@@ -28,25 +29,57 @@ reactor_t::reactor_t(context_t& context,
                      const std::string& name,
                      const Json::Value& args):
     category_type(context, name, args),
+    m_context(context),
+    m_log(new logging::log_t(m_context, name)),
     m_channel(context, ZMQ_ROUTER),
     m_watcher(m_loop),
     m_checker(m_loop),
     m_terminate(m_loop)
 {
-    std::string endpoint = args.get("listen", cocaine::format(
-        "ipc:///%s/services/%s",
-        context.config.path.runtime,
-        name
-    )).asString();
+    std::vector<std::string> endpoints;
 
-    try {
-        m_channel.bind(endpoint);
-    } catch(const zmq::error_t& e) {
-        throw configuration_error_t(
-            "unable to bind a channel at '%s' - %s",
-            endpoint,
-            e.what()
+    if(!args["listen"].empty() && args["listen"].isArray()) {
+        for(Json::Value::const_iterator it = args["listen"].begin();
+            it != args["listen"].end();
+            ++it)
+        {
+            try {
+                endpoints.push_back((*it).asString());
+            } catch(const std::exception& e) {
+                COCAINE_LOG_WARNING(
+                    m_log,
+                    "ignoring an invalid listen endpoint '%s'",
+                    *it
+                );
+            }
+        }
+    }
+
+    if(endpoints.empty()) {
+        const std::string default_endpoint = cocaine::format(
+            "ipc://%s/services/%s",
+            context.config.path.runtime,
+            name
         );
+
+        endpoints.push_back(default_endpoint);
+    }
+
+    for(std::vector<std::string>::const_iterator it = endpoints.begin();
+        it != endpoints.end();
+        ++it)
+    {
+        COCAINE_LOG_INFO(m_log, "listening on '%s'", *it);
+
+        try {
+            m_channel.bind(*it);
+        } catch(const zmq::error_t& e) {
+            throw configuration_error_t(
+                "unable to bind at '%s' - %s",
+                *it,
+                e.what()
+            );
+        }
     }
 
     m_watcher.set<reactor_t, &reactor_t::on_event>(this);
@@ -112,50 +145,69 @@ void
 reactor_t::process() {
     int counter = defaults::io_bulk_size;
     
+    io::scoped_option<
+        io::options::receive_timeout
+    > option(m_channel, 0);
+            
     do {
         boost::unique_lock<io::shared_channel_t> lock(m_channel);
 
-        // TEST: Ensure that we haven't missed something in a previous iteration.
-        BOOST_ASSERT(!m_channel.more());
-    
         std::string source;
         int message_id = -1;
+        zmq::message_t message;
         
-        {
-            io::scoped_option<
-                io::options::receive_timeout
-            > option(m_channel, 0);
-            
-            if(!m_channel.recv_multipart(io::protect(source), message_id)) {
+        try {
+            bool rv = m_channel.recv_multipart(
+                io::protect(source),
+                message_id,
+                message
+            );
+
+            if(!rv) {
+                // NOTE: Means the non-blocking read got nothing.
                 return;
             }
+        } catch(const cocaine::error_t& e) {
+            m_channel.drop();
+            continue;
         }
-
-        zmq::message_t message;
-        m_channel.recv(message);
 
         slot_map_t::const_iterator slot = m_slots.find(message_id);
 
-        if(slot != m_slots.end()) {
-            msgpack::unpacked unpacked;
-            
-            try {
-                msgpack::unpack(
-                    &unpacked,
-                    static_cast<const char*>(message.data()),
-                    message.size()
-                );
-            } catch(const msgpack::unpack_error& e) {
-                continue;
-            }
+        if(slot == m_slots.end()) {
+            COCAINE_LOG_WARNING(m_log, "dropping an unknown message type %d", message_id);
+            continue;
+        }
 
-            msgpack::object& request = unpacked.get();
-            std::string response = (*slot->second)(request);
+        msgpack::unpacked unpacked;
+        
+        try {
+            msgpack::unpack(
+                &unpacked,
+                static_cast<const char*>(message.data()),
+                message.size()
+            );
+        } catch(const msgpack::unpack_error& e) {
+            return;
+        }
 
-            if(response.empty()) {
-                return;
-            }
-           
+        const msgpack::object& request = unpacked.get();
+        std::string response;
+
+        try {
+            response = (*slot->second)(request);
+        } catch(const std::exception& e) {
+            COCAINE_LOG_ERROR(
+                m_log,
+                "unable to process message type %d - %s",
+                message_id,
+                e.what()
+            );
+
+            return;
+        }
+
+        if(!response.empty()) {
             m_channel.send_multipart(
                 io::protect(source),
                 io::protect(response)

@@ -33,7 +33,6 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
-#include <boost/tuple/tuple.hpp>
 
 using namespace cocaine;
 using namespace cocaine::logging;
@@ -57,20 +56,19 @@ namespace {
             m_sigquit.set<runtime_t, &runtime_t::on_terminate>(this);
             m_sigquit.start(SIGQUIT);
             
-            service_map_t::iterator service;
-
             for(std::vector<std::string>::const_iterator it = services.begin();
                 it != services.end();
                 ++it)
             {
-                COCAINE_LOG_INFO(m_log, "starting the '%s' service", *it);
-
-                boost::tie(service, boost::tuples::ignore) = m_services.emplace(
-                    *it,
-                    api::service(m_context, *it)
-                );
-
-                service->second->run();
+                try {
+                    m_services.emplace(*it, api::service(m_context, *it));
+                } catch(const cocaine::error_t& e) {
+                    throw cocaine::error_t(
+                        "unable to initialize the '%s' service - %s", 
+                        *it,
+                        e.what()
+                    );
+                }
             }
         }
 
@@ -88,6 +86,14 @@ namespace {
 
         void
         run() {
+            for(service_map_t::iterator it = m_services.begin();
+                it != m_services.end();
+                ++it)
+            {
+                COCAINE_LOG_INFO(m_log, "starting the '%s' service", it->first);
+                it->second->run();
+            }
+
             m_loop.loop();
         }
 
@@ -150,16 +156,13 @@ int main(int argc, char * argv[]) {
                 run(),
             vm);
         po::notify(vm);
-    } catch(const po::unknown_option& e) {
-        std::cerr << cocaine::format("Error: %s.", e.what()) << std::endl;
-        return EXIT_FAILURE;
-    } catch(const po::ambiguous_option& e) {
-        std::cerr << cocaine::format("Error: %s.", e.what()) << std::endl;
+    } catch(const po::error& e) {
+        std::cerr << cocaine::format("ERROR: %s.", e.what()) << std::endl;
         return EXIT_FAILURE;
     }
 
     if(vm.count("help")) {
-        std::cout << cocaine::format("Usage: %s <service-name> [options]", argv[0]) << std::endl;
+        std::cout << cocaine::format("USAGE: %s <service-name> [options]", argv[0]) << std::endl;
         std::cout << combined_options;
         return EXIT_SUCCESS;
     }
@@ -172,12 +175,12 @@ int main(int argc, char * argv[]) {
     // Validation
 
     if(!vm.count("configuration")) {
-        std::cerr << "Error: no configuration file location has been specified." << std::endl;
+        std::cerr << "ERROR: no configuration file location has been specified." << std::endl;
         return EXIT_FAILURE;
     }
 
     if(!vm.count("service")) {
-        std::cerr << "Error: no services has been specified." << std::endl;
+        std::cerr << "ERROR: no services has been specified." << std::endl;
         return EXIT_FAILURE;
     }
 
@@ -187,8 +190,12 @@ int main(int argc, char * argv[]) {
 
     try {
         config.reset(new config_t(vm["configuration"].as<std::string>()));
-    } catch(const std::exception& e) {
-        std::cerr << cocaine::format("Error: unable to initialize the configuration - %s.", e.what()) << std::endl;
+    } catch(const cocaine::error_t& e) {
+        std::cerr << cocaine::format(
+            "ERROR: unable to initialize the configuration - %s.", 
+            e.what()
+        ) << std::endl;
+        
         return EXIT_FAILURE;
     }
 
@@ -204,14 +211,18 @@ int main(int argc, char * argv[]) {
         }
 
         if(daemon(0, 0) < 0) {
-            std::cerr << "Error: daemonization failed." << std::endl;
+            std::cerr << "ERROR: daemonization failed." << std::endl;
             return EXIT_FAILURE;
         }
 
         try {
             pidfile.reset(new pid_file_t(pid_path));
-        } catch(const std::exception& e) {
-            std::cerr << cocaine::format("Error: %s.", e.what()) << std::endl;
+        } catch(const cocaine::error_t& e) {
+            std::cerr << cocaine::format(
+                "ERROR: unable to create the pidfile - %s.",
+                e.what()
+            ) << std::endl;
+            
             return EXIT_FAILURE;
         }
     }
@@ -220,8 +231,12 @@ int main(int argc, char * argv[]) {
 
     try {
         context.reset(new context_t(*config, "core"));
-    } catch(const std::exception& e) {
-        std::cerr << cocaine::format("Error: unable to initialize the context - %s.", e.what()) << std::endl;
+    } catch(const cocaine::error_t& e) {
+        std::cerr << cocaine::format(
+            "ERROR: unable to initialize the context - %s.",
+            e.what()
+        ) << std::endl;
+        
         return EXIT_FAILURE;
     }
 
@@ -232,8 +247,12 @@ int main(int argc, char * argv[]) {
             *context,
             vm["service"].as<std::vector<std::string>>()
         ));
-    } catch(const std::exception& e) {
-        std::cerr << cocaine::format("Error: unable to initialize the runtime - %s.", e.what()) << std::endl;
+    } catch(const cocaine::error_t& e) {
+        std::cerr << cocaine::format(
+            "ERROR: unable to initialize the runtime - %s.",
+            e.what()
+        ) << std::endl;
+        
         return EXIT_FAILURE;
     }
 

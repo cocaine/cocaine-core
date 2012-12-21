@@ -23,8 +23,13 @@
 #include "cocaine/io.hpp"
 #include "cocaine/logging.hpp"
 
+#include <cerrno>
+#include <cstring>
+
+#include <boost/filesystem/convenience.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/operations.hpp>
+
 #include <boost/iterator/counting_iterator.hpp>
 
 #include <netdb.h>
@@ -56,79 +61,101 @@ namespace {
     void
     validate_path(const fs::path& path) {
         if(!fs::exists(path)) {
-            throw configuration_error_t("the '%s' path does not exist", path.string());
-        } else if(fs::exists(path) && !fs::is_directory(path)) {
-            throw configuration_error_t("the '%s' path is not a directory", path.string());
+            try {
+                fs::create_directories(path);
+            } catch(const fs::filesystem_error& e) {
+                throw configuration_error_t("unable to create the '%s' path", path);
+            }
+        }
+
+        if(!fs::is_directory(path)) {
+            throw configuration_error_t("the '%s' path is not a directory", path);
         }
     }
 }
 
 config_t::config_t(const std::string& config_path) {
-    if(!fs::exists(config_path)) {
-        throw configuration_error_t("the configuration path doesn't exist");
-    }
-
-    if(!fs::is_regular(config_path)) {
-        throw configuration_error_t("the configuration path doesn't point to a file");
-    }
-
     path.config = config_path;
+
+    if(!fs::exists(path.config) || !fs::is_regular(path.config)) {
+        throw configuration_error_t("the configuration file path is invalid");
+    }
 
     fs::ifstream stream(path.config);
 
     if(!stream) {
-        throw configuration_error_t("unable to open the configuration file");
+        throw configuration_error_t("unable to read the configuration file");
     }
 
     Json::Reader reader(Json::Features::strictMode());
     Json::Value root;
 
     if(!reader.parse(stream, root)) {
-        throw configuration_error_t("the configuration file is corrupted");
+        throw configuration_error_t(
+            "the configuration file is corrupted - %s",
+            reader.getFormattedErrorMessages()
+        );
     }
 
     // Validation
 
     if(root.get("version", 0).asUInt() != 2) {
-        throw configuration_error_t("the configuration version is invalid");
+        throw configuration_error_t("the configuration file version is invalid");
     }
 
     path.plugins = root["paths"].get("plugins", defaults::plugins_path).asString();
     path.runtime = root["paths"].get("runtime", defaults::runtime_path).asString();
     path.spool = root["paths"].get("spool", defaults::spool_path).asString();
 
-    validate_path(path.plugins);
-    validate_path(path.runtime);
+    fs::path runtime(path.runtime);
+    
+    validate_path(runtime);
+    validate_path(runtime / "engines");
+    validate_path(runtime / "services");
+    
     validate_path(path.spool);
     
     // IO configuration
 
     char hostname[256];
 
-    if(gethostname(hostname, 256) == 0) {
-        addrinfo hints,
-                 * result;
-        
-        std::memset(&hints, 0, sizeof(addrinfo));
+    if(gethostname(hostname, 256) != 0) {
+        char reason[1024],
+             * message;
 
-        hints.ai_flags = AI_CANONNAME;
-
-        int rv = getaddrinfo(hostname, NULL, &hints, &result);
-        
-        if(rv != 0) {
-            throw configuration_error_t("unable to determine the hostname - %s", gai_strerror(rv));
-        }
-
-        if(result == NULL) {
-            throw configuration_error_t("unable to determine the hostname");
-        }
-        
-        network.hostname = result->ai_canonname;
-
-        freeaddrinfo(result);
-    } else {
-        throw system_error_t("unable to determine the hostname");
+#ifdef _GNU_SOURCE
+        message = ::strerror_r(errno, reason, 1024);
+#else
+        ::strerror_r(errno, reason, 1024);
+            
+        // NOTE: XSI-compliant strerror_r() returns int instead of the
+        // string buffer, so complete the job manually.
+        message = reason
+#endif
+   
+        throw configuration_error_t("unable to determine the hostname - %s", message);
     }
+    
+    addrinfo hints,
+             * result;
+    
+    std::memset(&hints, 0, sizeof(addrinfo));
+
+    hints.ai_flags = AI_CANONNAME;
+
+    int rv = getaddrinfo(hostname, NULL, &hints, &result);
+    
+    if(rv != 0) {
+        throw configuration_error_t("unable to determine the hostname - %s", gai_strerror(rv));
+    }
+
+    // NOTE: I have no idea when this call can fail, so just assert it's always works.
+    BOOST_VERIFY(result != NULL);
+
+    network.hostname = result->ai_canonname;
+    freeaddrinfo(result);
+
+    // Port mapper configuration
 
     Json::Value range(root["port-mapper"]["range"]);
 
@@ -229,15 +256,11 @@ context_t::~context_t() {
 
 void
 context_t::initialize() {
-    // Initialize the ZeroMQ context.
+    // Initialize the I/O subsystems.
     m_io.reset(new zmq::context_t(config.network.threads));
-
-    // Initialize the ZeroMQ port mapper.
     m_port_mapper.reset(new port_mapper_t(config.network.ports));
 
-    // Initialize the repository, without any components yet.
+    // Initialize the repository.
     m_repository.reset(new api::repository_t());
-
-    // Register the plugins.
     m_repository->load(config.path.plugins);
 }

@@ -20,6 +20,7 @@
 
 #include "cocaine/loggers/stdout.hpp"
 
+#include <cstring>
 #include <ctime>
 
 using namespace cocaine;

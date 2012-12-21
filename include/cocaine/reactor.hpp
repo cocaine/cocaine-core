@@ -56,7 +56,6 @@ class reactor_t:
         void
         on(F callable);
 
-    protected:
         ev::loop_ref&
         loop() {
             return m_loop;
@@ -81,6 +80,9 @@ class reactor_t:
         process();
 
     private:
+        context_t& m_context;
+        std::unique_ptr<logging::log_t> m_log;
+        
         // Service I/O.
         io::shared_channel_t m_channel;
         

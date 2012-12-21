@@ -23,8 +23,6 @@
 
 #include "cocaine/helpers/format.hpp"
 
-#include <cerrno>
-#include <cstring>
 #include <exception>
 
 namespace cocaine {
@@ -68,27 +66,6 @@ struct configuration_error_t:
                           const Args&... args):
         error_t(format, args...)
     { }
-};
-
-struct system_error_t:
-    public error_t
-{
-    public:
-        template<typename... Args>
-        system_error_t(const std::string& format,
-                       const Args&... args):
-            error_t(format, args...)
-        {
-            ::strerror_r(errno, m_reason, 1024);
-        }
-
-        const char*
-        reason() const throw() {
-            return m_reason;
-        }
-
-    private:
-        char m_reason[1024];
 };
 
 } // namespace cocaine

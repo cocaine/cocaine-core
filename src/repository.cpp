@@ -70,6 +70,10 @@ repository_t::load(const std::string& path_) {
     fs::path path(path_);
     validate_t validate;
 
+    if(!fs::exists(path)) {
+        return;
+    }
+
     if(fs::is_directory(path)) {
         typedef boost::filter_iterator<
             validate_t,

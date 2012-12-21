@@ -121,7 +121,7 @@ logger(context_t& context,
     return context.get<logger_t>(
         it->second.type,
         context,
-        name,
+        cocaine::format("logger/%s", name),
         it->second.args
     );
 }

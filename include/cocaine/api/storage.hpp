@@ -216,7 +216,7 @@ storage(context_t& context,
     return context.get<storage_t>(
         it->second.type,
         context,
-        name,
+        cocaine::format("storage/%s", name),
         it->second.args
     );
 }

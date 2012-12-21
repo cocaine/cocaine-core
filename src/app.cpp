@@ -121,7 +121,7 @@ app_t::start() {
                         *m_engine
                     )
                 );
-            } catch(const std::exception& e) {
+            } catch(const cocaine::error_t& e) {
                 COCAINE_LOG_ERROR(
                     m_log,
                     "unable to initialize the '%s' driver - %s",

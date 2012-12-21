@@ -409,10 +409,17 @@ engine_t::process_bus_events() {
 
                 lock.unlock();
 
+                COCAINE_LOG_DEBUG(
+                    m_log,
+                    "slave %s is committing suicide: %s",
+                    slave_id,
+                    message
+                );
+
                 m_pool.erase(slave);
 
                 if(code == rpc::suicide::abnormal) {
-                    COCAINE_LOG_ERROR(m_log, "the app seems to be broken — %s", message);
+                    COCAINE_LOG_ERROR(m_log, "the app seems to be broken - stopping");
                     migrate(state_t::broken);
                     return;
                 }
@@ -570,7 +577,7 @@ engine_t::process_ctl_events() {
             break;
 
         default:
-            COCAINE_LOG_ERROR(m_log, "received an unknown control message, code: %d", message_id);
+            COCAINE_LOG_ERROR(m_log, "received an unknown control message type %d", message_id);
             m_ctl->drop();
     }
 }
@@ -741,14 +748,8 @@ engine_t::balance() {
             );
 
             m_pool.emplace(slave->id(), slave);
-        } catch(const system_error_t& e) {
-            COCAINE_LOG_ERROR(
-                m_log,
-                "unable to spawn more slaves - %s - %s",
-                e.what(),
-                e.reason()
-            );
-
+        } catch(const cocaine::error_t& e) {
+            COCAINE_LOG_ERROR(m_log, "unable to spawn more slaves - %s", e.what());
             return;
         }
     }

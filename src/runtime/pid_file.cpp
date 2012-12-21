@@ -28,29 +28,31 @@
 
 using namespace cocaine;
 
-pid_file_t::pid_file_t(const boost::filesystem::path& filepath):
+namespace fs = boost::filesystem;
+
+pid_file_t::pid_file_t(const fs::path& filepath):
     m_filepath(filepath)
 {
     // If the pidfile exists, check if the process is still active.
-    if(boost::filesystem::exists(m_filepath)) {
+    if(fs::exists(m_filepath)) {
         pid_t pid;
-        boost::filesystem::ifstream stream(m_filepath);
+        fs::ifstream stream(m_filepath);
 
-        if(stream) {
-            stream >> pid;
-
-            if(::kill(pid, 0) < 0 && errno == ESRCH) {
-                // Unlink the stale pid file.
-                remove();
-            } else {
-                throw cocaine::error_t("another process is active");
-            }
-        } else {
+        if(!stream) {
             throw cocaine::error_t("unable to read '%s'", m_filepath.string());
+        }
+        
+        stream >> pid;
+
+        if(::kill(pid, 0) < 0 && errno == ESRCH) {
+            // Unlink the stale pid file.
+            remove();
+        } else {
+            throw cocaine::error_t("another process is active");
         }
     }
 
-    boost::filesystem::ofstream stream(m_filepath);
+    fs::ofstream stream(m_filepath);
 
     if(!stream) {
         throw cocaine::error_t("unable to write '%s'", m_filepath.string());
@@ -71,8 +73,8 @@ pid_file_t::~pid_file_t() {
 void
 pid_file_t::remove() {
     try {
-        boost::filesystem::remove(m_filepath);
-    } catch(const boost::filesystem::filesystem_error& e) {
+        fs::remove(m_filepath);
+    } catch(const fs::filesystem_error& e) {
         throw cocaine::error_t("unable to remove '%s'", m_filepath.string());
     }
 }

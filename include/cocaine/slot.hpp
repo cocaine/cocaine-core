@@ -53,8 +53,14 @@ struct invoke {
         typedef typename mpl::next<It>::type next_type;
         
         argument_type argument;
-
-        io::type_traits<argument_type>::unpack(*tuple, argument);
+        
+        try {
+            io::type_traits<argument_type>::unpack(*tuple, argument);
+        } catch(const msgpack::type_error& e) {
+            throw cocaine::error_t("argument mismatch");
+        } catch(const std::bad_cast& e) {
+            throw cocaine::error_t("argument mismatch");
+        }
 
         return invoke<R, next_type, End>::apply(
             callable,
@@ -106,7 +112,7 @@ struct slot:
         if(tuple.type != msgpack::type::ARRAY ||
            tuple.via.array.size != mpl::size<Sequence>::value)
         {
-            throw msgpack::type_error();
+            throw cocaine::error_t("sequence mismatch");
         }
 
         R result = invoke<R, begin, end>::apply(

@@ -70,33 +70,66 @@ node_t::node_t(context_t& context,
     
     // Autodiscovery
 
-    for(Json::Value::const_iterator it = args["announce"].begin();
-        it != args["announce"].end();
-        ++it)
-    {
-        std::string endpoint((*it).asString());
+    if(!args["announce"].empty()) {
+        for(Json::Value::const_iterator it = args["announce"].begin();
+            it != args["announce"].end();
+            ++it)
+        {
+            std::string endpoint;
+            
+            try {
+                endpoint = (*it).asString();
+            } catch(const std::exception& e) {
+                COCAINE_LOG_WARNING(m_log, "ignoring and invalid announce endpoint '%s'", *it);
+                continue;
+            }
 
-        COCAINE_LOG_INFO(m_log, "announcing on %s", endpoint);
+            COCAINE_LOG_INFO(m_log, "announcing on %s", endpoint);
 
-        try {
-            m_announces.bind(endpoint);
-        } catch(const zmq::error_t& e) {
-            throw configuration_error_t("invalid announce endpoint - %s", e.what());
+            try {
+                m_announces.bind(endpoint);
+            } catch(const zmq::error_t& e) {
+                throw configuration_error_t(
+                    "unable to bind at '%s' - %s",
+                    endpoint,
+                    e.what()
+                );
+            }
         }
-    }
 
-    m_announce_timer.set<node_t, &node_t::on_announce>(this);
-    m_announce_timer.start(0.0f, interval);
+        m_announce_timer.set<node_t, &node_t::on_announce>(this);
+        m_announce_timer.start(0.0f, interval);
+    }
 
     // Runlist
 
     COCAINE_LOG_INFO(m_log, "reading the '%s' runlist", runlist_id);
-    
-    const runlist_t runlist = api::storage(m_context, "core")->get<
-        std::map<std::string, std::string>
-    >("runlists", runlist_id);
-    
-    on_start_app(runlist);
+   
+    try { 
+        const runlist_t runlist = api::storage(m_context, "core")->get<
+            std::map<std::string, std::string>
+        >("runlists", runlist_id);
+   
+        if(!runlist.empty()) {
+            COCAINE_LOG_INFO(
+                m_log,
+                "starting %d %s",
+                runlist.size(),
+                runlist.size() == 1 ? "app" : "apps"
+            );
+
+            // NOTE: Ignore the return value here, as there's nowhere to print it.
+            // It might be nice to parse and log it in case of errors or simply die.
+            on_start_app(runlist);
+        }
+    } catch(const cocaine::error_t& e) {
+        COCAINE_LOG_WARNING(
+            m_log,
+            "unable to read the '%s' runlist - %s",
+            runlist_id,
+            e.what()
+        );
+    }
 }
 
 node_t::~node_t() {
@@ -141,14 +174,14 @@ node_t::on_start_app(runlist_t runlist) {
                     it->second
                 )
             );
-        } catch(const storage_error_t& e) {
+        } catch(const cocaine::error_t& e) {
             result[it->first] = "the app was not found in the storage";
             continue;
         }
 
         try {
             app->second->start();
-        } catch(const std::exception& e) {
+        } catch(const cocaine::error_t& e) {
             m_apps.erase(app);
             result[it->first] = e.what();
             continue;
@@ -177,6 +210,7 @@ node_t::on_pause_app(std::vector<std::string> applist) {
 
         COCAINE_LOG_INFO(m_log, "stopping the '%s' app", *it);
 
+        app->second->stop();
         m_apps.erase(app);
 
         result[*it] = "the app has been stopped";

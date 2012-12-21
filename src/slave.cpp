@@ -66,7 +66,7 @@ slave_t::slave_t(context_t& context,
     args["--profile"] = m_profile.name;
     args["--uuid"] = m_id.string();
 
-    COCAINE_LOG_DEBUG(m_log, "slave %s spawning", m_id);
+    COCAINE_LOG_DEBUG(m_log, "slave %s is activating", m_id);
 
     m_handle = isolate->spawn(m_manifest.slave, args, environment);
 
@@ -191,11 +191,9 @@ namespace {
 
 void
 slave_t::on_timeout(ev::timer&, int) {
-    BOOST_ASSERT(m_state != state_t::dead);
-    
     switch(m_state) {
         case state_t::unknown:
-            COCAINE_LOG_WARNING(m_log, "slave %s has failed to initialize", m_id);
+            COCAINE_LOG_WARNING(m_log, "slave %s has failed to activate", m_id);
             break;
 
         case state_t::active:
@@ -212,8 +210,11 @@ slave_t::on_timeout(ev::timer&, int) {
             break;
 
         case state_t::inactive:
-            COCAINE_LOG_WARNING(m_log, "slave %s has failed to terminate", m_id);
+            COCAINE_LOG_WARNING(m_log, "slave %s has failed to deactivate", m_id);
             break;
+
+        case state_t::dead:
+            BOOST_ASSERT(0);
     }
     
     terminate();
@@ -221,6 +222,7 @@ slave_t::on_timeout(ev::timer&, int) {
 
 void
 slave_t::on_idle(ev::timer&, int) {
+    COCAINE_LOG_DEBUG(m_log, "slave %s is idle, deactivating", m_id);
     send<rpc::terminate>();
     m_state = state_t::inactive;
 }
@@ -230,7 +232,7 @@ slave_t::rearm() {
     if(m_state == state_t::unknown) {
         COCAINE_LOG_DEBUG(
             m_log,
-            "slave %s came alive in %.03f seconds",
+            "slave %s became active in %.03f seconds",
             m_id,
             m_profile.startup_timeout - ev_timer_remaining(
                 m_engine.loop(),
