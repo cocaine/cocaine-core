@@ -155,23 +155,25 @@ reactor_t::process() {
         std::string source;
         int message_id = -1;
         zmq::message_t message;
-        
+       
+        bool rv;
+
         try {
-            bool rv = m_channel.recv_multipart(
+            rv = m_channel.recv_multipart(
                 io::protect(source),
                 message_id,
                 message
             );
-
-            if(!rv) {
-                // NOTE: Means the non-blocking read got nothing.
-                return;
-            }
         } catch(const cocaine::error_t& e) {
             m_channel.drop();
             continue;
         }
 
+        if(!rv) {
+            // NOTE: Means the non-blocking read got nothing.
+            return;
+        }
+        
         slot_map_t::const_iterator slot = m_slots.find(message_id);
 
         if(slot == m_slots.end()) {
