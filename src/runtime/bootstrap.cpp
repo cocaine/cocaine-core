@@ -55,13 +55,20 @@ namespace {
 
             m_sigquit.set<runtime_t, &runtime_t::on_terminate>(this);
             m_sigquit.start(SIGQUIT);
-            
+           
+            COCAINE_LOG_INFO(
+                m_log,
+                "initializing %d %s",
+                services.size(),
+                services.size() == 1 ? "service" : "services"
+            );
+
             for(std::vector<std::string>::const_iterator it = services.begin();
                 it != services.end();
                 ++it)
             {
                 try {
-                    m_services.emplace(*it, api::service(m_context, *it));
+                    m_services.emplace_back(*it, api::service(m_context, *it));
                 } catch(const cocaine::error_t& e) {
                     throw cocaine::error_t(
                         "unable to initialize the '%s' service - %s", 
@@ -73,8 +80,8 @@ namespace {
         }
 
         ~runtime_t() {
-            for(service_map_t::iterator it = m_services.begin();
-                it != m_services.end();
+            for(service_list_t::reverse_iterator it = m_services.rbegin();
+                it != m_services.rend();
                 ++it)
             {
                 COCAINE_LOG_INFO(m_log, "stopping the '%s' service", it->first);
@@ -86,7 +93,7 @@ namespace {
 
         void
         run() {
-            for(service_map_t::iterator it = m_services.begin();
+            for(service_list_t::iterator it = m_services.begin();
                 it != m_services.end();
                 ++it)
             {
@@ -115,17 +122,12 @@ namespace {
         ev::sig m_sigterm;
         ev::sig m_sigquit; 
 
-#if BOOST_VERSION >= 103600
-        typedef boost::unordered_map<
-#else
-        typedef std::map<
-#endif
-            std::string,
-            std::unique_ptr<api::service_t>
-        > service_map_t;
+        typedef std::vector<
+            std::pair<std::string, std::unique_ptr<api::service_t>>
+        > service_list_t;
 
         // Services.
-        service_map_t m_services;
+        service_list_t m_services;
     };
 }
 
