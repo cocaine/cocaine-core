@@ -41,18 +41,16 @@ archive_t::archive_t(context_t& context,
     m_log(new log_t(context, "packaging")),
     m_archive(archive_read_new())
 {
-    int rv = ARCHIVE_OK;
-
     archive_read_support_format_all(m_archive);
     archive_read_support_compression_all(m_archive);
     
-    rv = archive_read_open_memory(
+    int rv = archive_read_open_memory(
         m_archive, 
         const_cast<char*>(archive.data()),
         archive.size()
     );
 
-    if(rv) {
+    if(rv != ARCHIVE_OK) {
         throw archive_error_t(m_archive);
     }
 }

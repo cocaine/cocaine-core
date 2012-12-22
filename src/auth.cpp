@@ -54,8 +54,8 @@ auth_t::auth_t(context_t& context):
         it != keys.end();
         ++it)
     {
-        std::string identity = *it;
-        std::string object = storage->get<std::string>("keys", identity);
+        const std::string identity = *it;
+        const std::string object = storage->get<std::string>("keys", identity);
 
         if(object.empty()) {
             COCAINE_LOG_ERROR(m_log, "key for user '%s' is malformed", identity);
@@ -64,9 +64,7 @@ auth_t::auth_t(context_t& context):
 
         // Read the key into the BIO object.
         BIO * bio = BIO_new_mem_buf(const_cast<char*>(object.data()), object.size());
-        EVP_PKEY * pkey = NULL;
-        
-        pkey = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
+        EVP_PKEY * pkey = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
             
         if(pkey != NULL) {
             m_keys.emplace(identity, pkey);

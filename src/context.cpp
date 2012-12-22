@@ -107,7 +107,7 @@ config_t::config_t(const std::string& config_path) {
     path.runtime = root["paths"].get("runtime", defaults::runtime_path).asString();
     path.spool = root["paths"].get("spool", defaults::spool_path).asString();
 
-    fs::path runtime(path.runtime);
+    fs::path runtime = path.runtime;
     
     validate_path(runtime);
     validate_path(runtime / "engines");
@@ -121,7 +121,7 @@ config_t::config_t(const std::string& config_path) {
 
     if(gethostname(hostname, 256) != 0) {
         char reason[1024],
-             * message;
+             * message = NULL;
 
 #ifdef _GNU_SOURCE
         message = ::strerror_r(errno, reason, 1024);
@@ -137,7 +137,7 @@ config_t::config_t(const std::string& config_path) {
     }
     
     addrinfo hints,
-             * result;
+             * result = NULL;
     
     std::memset(&hints, 0, sizeof(addrinfo));
 
@@ -157,7 +157,7 @@ config_t::config_t(const std::string& config_path) {
 
     // Port mapper configuration
 
-    Json::Value range(root["port-mapper"]["range"]);
+    Json::Value range = root["port-mapper"]["range"];
 
     network.ports = {
         range[0].asUInt(),
@@ -216,6 +216,7 @@ port_mapper_t::get() {
     }
 
     uint16_t port = m_ports.top();
+
     m_ports.pop();
 
     return port;
