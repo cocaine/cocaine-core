@@ -40,7 +40,9 @@ session_t::attach(slave_t * const slave) {
     if(!m_cache.empty()) {
         boost::unique_lock<boost::mutex> lock(m_mutex);
 
-        for(chunk_list_t::iterator it = m_cache.begin();
+        BOOST_ASSERT(m_slave->state() == slave_t::state_t::active);
+
+        for(message_cache_t::const_iterator it = m_cache.begin();
             it != m_cache.end();
             ++it)
         {
@@ -49,4 +51,13 @@ session_t::attach(slave_t * const slave) {
 
         m_cache.clear();
     }
+}
+
+void
+session_t::detach() {
+    BOOST_ASSERT(m_slave);
+
+    // NOTE: In case the client managed to get the shared_ptr to the
+    // session the same moment when it got erased in the slave's session map.
+    m_slave = NULL;
 }

@@ -41,6 +41,9 @@ struct session_t:
     void
     attach(slave_t * const slave);
 
+    void
+    detach();
+
     template<class Event, typename... Args>
     bool
     send(Args&&... args);
@@ -58,10 +61,10 @@ public:
 private:
     typedef std::vector<
         std::pair<int, std::string>
-    > chunk_list_t;
+    > message_cache_t;
 
     // Message cache.
-    chunk_list_t m_cache;
+    message_cache_t m_cache;
     boost::mutex m_mutex;
 
     // Responsible slave.
