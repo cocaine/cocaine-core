@@ -35,6 +35,8 @@ struct manifest_t:
                const std::string& name);
 
     std::string name;
+    
+    // TODO: Make it an alias instead of a executable file path.
     std::string slave;
 
     // NOTE: The apps are hosted by the sandbox plugins. This one describes
