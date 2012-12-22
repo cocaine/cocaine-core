@@ -39,6 +39,7 @@
 #include <boost/accumulators/statistics/sum.hpp>
 
 #include <boost/bind.hpp>
+#include <boost/weak_ptr.hpp>
 
 using namespace cocaine;
 using namespace cocaine::engine;
@@ -78,7 +79,11 @@ namespace {
         {
             switch(m_state) {
                 case state_t::open: {
-                    m_session->send<rpc::chunk>(std::string(chunk, size));
+                    const boost::shared_ptr<session_t> ptr = m_session.lock();
+
+                    if(ptr) {
+                        ptr->send<rpc::chunk>(std::string(chunk, size));
+                    }
 
                     break;
                 }
@@ -97,8 +102,12 @@ namespace {
                 case state_t::open: {
                     m_state = state_t::closed;
 
-                    m_session->send<rpc::error>(static_cast<int>(code), message);
-                    m_session->send<rpc::choke>();
+                    const boost::shared_ptr<session_t> ptr = m_session.lock();
+
+                    if(ptr) {
+                        ptr->send<rpc::error>(static_cast<int>(code), message);
+                        ptr->send<rpc::choke>();
+                    }
 
                     break;
                 }
@@ -115,7 +124,11 @@ namespace {
                 case state_t::open: {
                     m_state = state_t::closed;
 
-                    m_session->send<rpc::choke>();
+                    const boost::shared_ptr<session_t> ptr = m_session.lock();
+
+                    if(ptr) {
+                        ptr->send<rpc::choke>();
+                    }
                     
                     break;
                 }
@@ -126,7 +139,7 @@ namespace {
         }
 
     private:
-        const boost::shared_ptr<session_t> m_session;
+        const boost::weak_ptr<session_t> m_session;
 
         enum class state_t: int {
             open,
@@ -586,7 +599,7 @@ namespace {
     struct load_t {
         template<class T>
         bool
-        operator()(const T& lhs, const T& rhs) {
+        operator()(const T& lhs, const T& rhs) const {
             return lhs.second->load() < rhs.second->load();
         }
     };
@@ -598,7 +611,7 @@ namespace {
 
         template<class T>
         bool
-        operator()(const T& slave) {
+        operator()(const T& slave) const {
             return slave.second->state() == slave_t::state_t::active &&
                    slave.second->load() < max;
         }
