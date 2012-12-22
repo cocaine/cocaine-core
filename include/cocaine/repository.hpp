@@ -95,10 +95,6 @@ class repository_t:
         void
         insert(const std::string& type);
 
-        template<class Category>
-        void
-        dispose();
-
     private:
         void
         open(const std::string& target);
@@ -135,10 +131,10 @@ typename category_traits<Category>::ptr_type
 repository_t::get(const std::string& type,
                   Args&&... args)
 {
-    std::string id = typeid(Category).name();
+    const std::string id = typeid(Category).name();
 
-    factory_map_t& factories = m_categories[id];
-    factory_map_t::iterator it = factories.find(type);
+    const factory_map_t& factories = m_categories[id];
+    const factory_map_t::const_iterator it = factories.find(type);
     
     if(it == factories.end()) {
         throw repository_error_t("the '%s' component is not available", type);
@@ -185,12 +181,6 @@ repository_t::insert(const std::string& type) {
         type,
         boost::make_shared<typename plugin_traits<T>::factory_type>()
     );
-}
-
-template<class Category>
-void
-repository_t::dispose() {
-    m_categories.erase(typeid(Category).name());
 }
 
 typedef void (*initialize_fn_t)(repository_t&);
