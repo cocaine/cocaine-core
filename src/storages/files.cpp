@@ -26,6 +26,7 @@
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/convenience.hpp>
+
 #include <boost/iterator/filter_iterator.hpp>
 
 using namespace cocaine;
@@ -53,7 +54,8 @@ files_t::read(const std::string& collection,
 {
     boost::lock_guard<boost::mutex> lock(m_mutex);
 
-    fs::path file_path(m_storage_path / collection / key);
+    const fs::path file_path(m_storage_path / collection / key);
+    
     fs::ifstream stream(file_path);
    
     COCAINE_LOG_DEBUG(
@@ -81,7 +83,7 @@ files_t::write(const std::string& collection,
 {
     boost::lock_guard<boost::mutex> lock(m_mutex);
 
-    fs::path store_path(m_storage_path / collection);
+    const fs::path store_path(m_storage_path / collection);
 
     if(!fs::exists(store_path)) {
         COCAINE_LOG_INFO(
@@ -100,7 +102,7 @@ files_t::write(const std::string& collection,
         throw storage_error_t("the specified collection is corrupted");
     }
     
-    fs::path file_path(store_path / key);
+    const fs::path file_path(store_path / key);
     
     fs::ofstream stream(
         file_path,
@@ -127,7 +129,7 @@ namespace {
     struct validate_t {
         template<typename T>
         bool
-        operator()(const T& entry) {
+        operator()(const T& entry) const {
             return fs::is_regular(entry);
         }
     };
@@ -137,7 +139,8 @@ std::vector<std::string>
 files_t::list(const std::string& collection) {
     boost::lock_guard<boost::mutex> lock(m_mutex);
 
-    fs::path store_path(m_storage_path / collection);
+    const fs::path store_path(m_storage_path / collection);
+    
     std::vector<std::string> result;
 
     if(!fs::exists(store_path)) {
@@ -171,7 +174,7 @@ files_t::remove(const std::string& collection,
 {
     boost::lock_guard<boost::mutex> lock(m_mutex);
     
-    fs::path file_path(m_storage_path / collection / key);
+    const fs::path file_path(m_storage_path / collection / key);
     
     if(fs::exists(file_path)) {
         COCAINE_LOG_DEBUG(
