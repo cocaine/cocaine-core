@@ -22,7 +22,6 @@
 #define COCAINE_SERVICE_API_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/context.hpp"
 #include "cocaine/repository.hpp"
 
 #include "cocaine/helpers/json.hpp"
@@ -84,24 +83,9 @@ struct category_traits<service_t> {
     };
 };
 
-static inline
 category_traits<service_t>::ptr_type
 service(context_t& context,
-        const std::string& name)
-{
-    config_t::component_map_t::const_iterator it = context.config.services.find(name);
-
-    if(it == context.config.services.end()) {
-        throw configuration_error_t("the '%s' service is not configured", name);
-    }
-
-    return context.get<service_t>(
-        it->second.type,
-        context,
-        name,
-        it->second.args
-    );
-}
+        const std::string& name);
 
 }} // namespace cocaine::api
 

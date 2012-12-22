@@ -58,6 +58,7 @@ SET_TARGET_PROPERTIES(json PROPERTIES
     COMPILE_FLAGS -fPIC)
 
 ADD_LIBRARY(cocaine-core SHARED
+    src/api
     src/app
     src/archive
     src/auth

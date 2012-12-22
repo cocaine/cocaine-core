@@ -22,7 +22,6 @@
 #define COCAINE_STORAGE_API_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/context.hpp"
 #include "cocaine/repository.hpp"
 #include "cocaine/traits.hpp"
 
@@ -106,15 +105,15 @@ storage_t::get(const std::string& collection,
     try {
         msgpack::unpack(&unpacked, blob.data(), blob.size());
     } catch(const msgpack::unpack_error& e) {
-        throw storage_error_t("corrupted object");
+        throw storage_error_t("invalid object");
     }
 
     try {
         io::type_traits<T>::unpack(unpacked.get(), result);
     } catch(const msgpack::type_error& e) {
-        throw storage_error_t("corrupted object");
+        throw storage_error_t("invalid object");
     } catch(const std::bad_cast& e) {
-        throw storage_error_t("corrupted object - type mismatch");
+        throw storage_error_t("invalid object");
     }
     
     return result;
@@ -200,26 +199,9 @@ struct category_traits<storage_t> {
     };
 };
 
-static inline
 category_traits<storage_t>::ptr_type
 storage(context_t& context,
-        const std::string& name)
-{
-    config_t::component_map_t::const_iterator it(
-        context.config.storages.find(name)
-    );
-
-    if(it == context.config.storages.end()) {
-        throw configuration_error_t("the '%s' storage is not configured", name);
-    }
-
-    return context.get<storage_t>(
-        it->second.type,
-        context,
-        cocaine::format("storage/%s", name),
-        it->second.args
-    );
-}
+        const std::string& name);
 
 }} // namespace cocaine::api
 

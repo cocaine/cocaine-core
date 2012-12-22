@@ -22,7 +22,6 @@
 #define COCAINE_LOGGER_API_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/context.hpp"
 #include "cocaine/repository.hpp"
 
 #include "cocaine/helpers/json.hpp"
@@ -107,24 +106,9 @@ struct category_traits<logger_t> {
     };
 };
 
-static inline
 category_traits<logger_t>::ptr_type
 logger(context_t& context,
-        const std::string& name)
-{
-    config_t::component_map_t::const_iterator it = context.config.loggers.find(name);
-
-    if(it == context.config.loggers.end()) {
-        throw configuration_error_t("the '%s' logger is not configured", name);
-    }
-
-    return context.get<logger_t>(
-        it->second.type,
-        context,
-        cocaine::format("logger/%s", name),
-        it->second.args
-    );
-}
+       const std::string& name);
 
 }} // namespace cocaine::api
 
