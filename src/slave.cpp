@@ -129,7 +129,7 @@ slave_t::on_chunk(const unique_id_t& session_id,
 
 void
 slave_t::on_error(const unique_id_t& session_id,
-                  error_code code,
+                  const error_code code,
                   const std::string& message)
 {
     COCAINE_LOG_DEBUG(
@@ -167,7 +167,8 @@ slave_t::on_choke(const unique_id_t& session_id) {
 
     // NOTE: As we're destroying the session here, we have to close the
     // downstream, otherwise the client wouldn't be able to close it later.
-    // it->second->send<rpc::choke>();
+    it->second->send<rpc::choke>();
+    it->second->detach();
 
     m_sessions.erase(it);
 
