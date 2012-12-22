@@ -58,7 +58,7 @@ namespace {
         }
 
     private:
-        pid_t m_pid;
+        const pid_t m_pid;
     };
 }
 
