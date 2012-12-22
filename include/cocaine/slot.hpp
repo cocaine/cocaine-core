@@ -34,70 +34,72 @@ namespace mpl = boost::mpl;
 
 namespace cocaine {
 
+namespace detail {
+    template<typename R, class It, class End>
+    struct invoke {
+        template<class F, typename... Args>
+        static inline
+        R
+        apply(const F& callable,
+              const msgpack::object * tuple,
+              Args&&... args)
+        {
+            typedef typename mpl::deref<It>::type argument_type;
+            typedef typename mpl::next<It>::type next_type;
+
+            argument_type argument;
+
+            try {
+                io::type_traits<argument_type>::unpack(*tuple, argument);
+            } catch(const msgpack::type_error& e) {
+                throw cocaine::error_t("invalid argument");
+            } catch(const std::bad_cast& e) {
+                throw cocaine::error_t("invalid argument");
+            }
+
+            return invoke<R, next_type, End>::apply(
+                callable,
+                ++tuple,
+                std::forward<Args>(args)...,
+                std::move(argument)
+            );
+        }
+    };
+
+    template<typename R, class End>
+    struct invoke<R, End, End> {
+        template<class F, typename... Args>
+        static inline
+        R
+        apply(const F& callable,
+              const msgpack::object * tuple,
+              Args&&... args)
+        {
+            return callable(std::forward<Args>(args)...);
+        }
+    };
+
+    template<typename R, class Sequence>
+    struct callable {
+        typedef typename ft::function_type<
+            typename mpl::push_front<Sequence, R>::type
+        >::type function_type;
+
+        typedef boost::function<function_type> type;
+    };
+}
+
 struct slot_base_t {
     virtual
     std::string
     operator()(const msgpack::object& request) = 0;
 };
 
-template<typename R, class It, class End>
-struct invoke {
-    template<class F, typename... Args>
-    static inline
-    R
-    apply(const F& callable,
-          const msgpack::object * tuple,
-          Args&&... args)
-    {
-        typedef typename mpl::deref<It>::type argument_type;
-        typedef typename mpl::next<It>::type next_type;
-        
-        argument_type argument;
-        
-        try {
-            io::type_traits<argument_type>::unpack(*tuple, argument);
-        } catch(const msgpack::type_error& e) {
-            throw cocaine::error_t("argument mismatch");
-        } catch(const std::bad_cast& e) {
-            throw cocaine::error_t("argument mismatch");
-        }
-
-        return invoke<R, next_type, End>::apply(
-            callable,
-            ++tuple,
-            std::forward<Args>(args)...,
-            std::move(argument)
-        );
-    }
-};
-
-template<typename R, class End>
-struct invoke<R, End, End> {
-    template<class F, typename... Args>
-    static inline
-    R
-    apply(const F& callable,
-          const msgpack::object * tuple,
-          Args&&... args)
-    {
-        return callable(std::forward<Args>(args)...);
-    }
-};
-
-template<typename R, class Sequence>
-struct callable {
-    typedef typename ft::function_type<
-        typename mpl::push_front<Sequence, R>::type
-    >::type function_type;
-
-    typedef boost::function<function_type> type;
-};
-
 template<typename R, class Sequence>
 struct slot:
     public slot_base_t
 {
-    typedef typename callable<R, Sequence>::type callable_type;
+    typedef typename detail::callable<R, Sequence>::type callable_type;
 
     slot(callable_type callable):
         m_callable(callable)
@@ -112,10 +114,10 @@ struct slot:
         if(tuple.type != msgpack::type::ARRAY ||
            tuple.via.array.size != mpl::size<Sequence>::value)
         {
-            throw cocaine::error_t("sequence mismatch");
+            throw cocaine::error_t("invalid argument sequence");
         }
 
-        R result = invoke<R, begin, end>::apply(
+        const R result = detail::invoke<R, begin, end>::apply(
             m_callable,
             tuple.via.array.ptr
         );
@@ -132,7 +134,7 @@ struct slot:
     }
 
 private:
-    callable_type m_callable;
+    const callable_type m_callable;
 };
 
 } // namespace cocaine

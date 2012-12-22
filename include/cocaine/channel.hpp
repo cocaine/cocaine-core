@@ -175,7 +175,7 @@ class channel:
                     message.size()
                 );
             } catch(const msgpack::unpack_error& e) {
-                throw cocaine::error_t("corrupted object");
+                throw cocaine::error_t("invalid message");
             }
 
             try {
@@ -183,9 +183,9 @@ class channel:
                     typename event_traits<Event>::tuple_type
                 >::unpack(unpacked.get(), std::forward<Args>(args)...);
             } catch(const msgpack::type_error& e) {
-                throw cocaine::error_t("corrupted object");
+                throw cocaine::error_t("invalid message");
             } catch(const std::bad_cast& e) {
-                throw cocaine::error_t("corrupted object - type mismatch");
+                throw cocaine::error_t("invalid message");
             }
 
             return true;
