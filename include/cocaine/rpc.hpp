@@ -44,8 +44,8 @@ namespace rpc {
         };
 
         typedef boost::mpl::list<
-            int,
-            std::string
+            /* reason */  int,
+            /* message */ std::string
         > tuple_type;
     };
 
@@ -57,8 +57,8 @@ namespace rpc {
         typedef tags::rpc_tag tag;
         
         typedef boost::mpl::list<
-            unique_id_t,
-            std::string
+            /* session */ unique_id_t,
+            /* event */   std::string
         > tuple_type;
     };
 
@@ -66,8 +66,8 @@ namespace rpc {
         typedef tags::rpc_tag tag;
         
         typedef boost::mpl::list<
-            unique_id_t,
-            std::string
+            /* session */ unique_id_t,
+            /* data */    std::string
         > tuple_type;
     };
 
@@ -75,9 +75,9 @@ namespace rpc {
         typedef tags::rpc_tag tag;
         
         typedef boost::mpl::list<
-            unique_id_t,
-            int,
-            std::string
+            /* session */ unique_id_t,
+            /* code */    int,
+            /* message */ std::string
         > tuple_type;
     };
 
@@ -85,7 +85,7 @@ namespace rpc {
         typedef tags::rpc_tag tag;
 
         typedef boost::mpl::list<
-            unique_id_t
+            /* session */ unique_id_t
         > tuple_type;
     };
 }

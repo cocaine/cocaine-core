@@ -36,9 +36,9 @@ namespace io {
             typedef tags::logging_tag tag;
 
             typedef boost::mpl::list<
-                int,
-                std::string,
-                std::string
+                /* level */   int,
+                /* source */  std::string,
+                /* message */ std::string
             > tuple_type;
         };
     }
@@ -49,7 +49,7 @@ namespace io {
             logging::emit
         > type;
     };
-}
+} // namespace io
 
 namespace service {
 
@@ -82,6 +82,8 @@ class logging_t:
         log_map_t m_logs;
 };
 
-}}
+} // namespace service
+
+} // namespace cocaine
 
 #endif

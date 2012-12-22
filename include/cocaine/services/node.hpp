@@ -38,7 +38,7 @@ namespace io {
             typedef tags::node_tag tag;
 
             typedef boost::mpl::list<
-                std::map<std::string, std::string>
+                /* runlist */ std::map<std::string, std::string>
             > tuple_type;
         };
 
@@ -46,7 +46,7 @@ namespace io {
             typedef tags::node_tag tag;
 
             typedef boost::mpl::list<
-                std::vector<std::string>
+                /* applist */ std::vector<std::string>
             > tuple_type;
         };
 
@@ -63,7 +63,7 @@ namespace io {
             node::info
         > type;
     };
-}
+} // namespace io
 
 namespace service {
 
