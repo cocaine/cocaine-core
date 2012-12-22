@@ -22,6 +22,7 @@
 #define COCAINE_LOGGING_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/context.hpp"
 
 #include "cocaine/api/logger.hpp"
 
