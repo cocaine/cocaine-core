@@ -36,47 +36,24 @@ reactor_t::reactor_t(context_t& context,
     m_checker(m_loop),
     m_terminate(m_loop)
 {
-    std::vector<std::string> endpoints;
-
-    if(!args["listen"].empty() && args["listen"].isArray()) {
-        for(Json::Value::const_iterator it = args["listen"].begin();
-            it != args["listen"].end();
-            ++it)
-        {
-            try {
-                endpoints.push_back((*it).asString());
-            } catch(const std::exception& e) {
-                COCAINE_LOG_WARNING(
-                    m_log,
-                    "ignoring an invalid listen endpoint '%s'",
-                    *it
-                );
-            }
-        }
+    if(args["listen"].empty() || args["listen"].isArray()) {
+        throw cocaine::error_t("no endpoints has been specified");
     }
 
-    if(endpoints.empty()) {
-        const std::string default_endpoint = cocaine::format(
-            "ipc://%s/services/%s",
-            context.config.path.runtime,
-            name
-        );
-
-        endpoints.push_back(default_endpoint);
-    }
-
-    for(std::vector<std::string>::const_iterator it = endpoints.begin();
-        it != endpoints.end();
+    for(Json::Value::const_iterator it = args["listen"].begin();
+        it != args["listen"].end();
         ++it)
     {
-        COCAINE_LOG_INFO(m_log, "listening on '%s'", *it);
+        std::string endpoint = (*it).asString();
+
+        COCAINE_LOG_INFO(m_log, "listening on '%s'", endpoint);
 
         try {
-            m_channel.bind(*it);
+            m_channel.bind(endpoint);
         } catch(const zmq::error_t& e) {
             throw configuration_error_t(
                 "unable to bind at '%s' - %s",
-                *it,
+                endpoint,
                 e.what()
             );
         }
@@ -145,28 +122,30 @@ void
 reactor_t::process() {
     int counter = defaults::io_bulk_size;
     
-    io::scoped_option<
-        io::options::receive_timeout
-    > option(m_channel, 0);
-            
+    std::string source;
+    int message_id;
+    zmq::message_t message;
+   
+    bool rv;
+
     do {
         boost::unique_lock<io::shared_channel_t> lock(m_channel);
 
-        std::string source;
-        int message_id = -1;
-        zmq::message_t message;
-       
-        bool rv;
-
-        try {
-            rv = m_channel.recv_multipart(
-                io::protect(source),
-                message_id,
-                message
-            );
-        } catch(const cocaine::error_t& e) {
-            m_channel.drop();
-            continue;
+        {
+            io::scoped_option<
+                io::options::receive_timeout
+            > option(m_channel, 0);
+                
+            try {
+                rv = m_channel.recv_multipart(
+                    io::protect(source),
+                    message_id,
+                    message
+                );
+            } catch(const cocaine::error_t& e) {
+                m_channel.drop();
+                continue;
+            }
         }
 
         if(!rv) {

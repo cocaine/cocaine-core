@@ -366,7 +366,7 @@ engine_t::process_bus_events() {
     unsigned int counter = m_pool.size() * defaults::io_bulk_size;
     
     unique_id_t slave_id(uninitialized);
-    int message_id = -1;
+    int message_id;
     
     do {
         boost::unique_lock<io::shared_channel_t> lock(*m_bus);
@@ -415,7 +415,7 @@ engine_t::process_bus_events() {
                 break;
 
             case event_traits<rpc::suicide>::id: {
-                int code = 0;
+                int code;
                 std::string message;
 
                 m_bus->recv<rpc::suicide>(code, message);
@@ -461,7 +461,7 @@ engine_t::process_bus_events() {
          
             case event_traits<rpc::error>::id: {
                 unique_id_t session_id(uninitialized);
-                int code = 0;
+                int code;
                 std::string message;
 
                 m_bus->recv<rpc::error>(session_id, code, message);
@@ -553,7 +553,7 @@ namespace {
 
 void
 engine_t::process_ctl_events() {
-    int message_id = -1;
+    int message_id;
 
     if(!m_ctl->recv(message_id)) {
         COCAINE_LOG_ERROR(m_log, "received a corrupted control message");
@@ -763,7 +763,7 @@ engine_t::balance() {
             m_pool.emplace(slave->id(), slave);
         } catch(const cocaine::error_t& e) {
             COCAINE_LOG_ERROR(m_log, "unable to spawn more slaves - %s", e.what());
-            return;
+            break;
         }
     }
 }

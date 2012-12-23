@@ -75,15 +75,8 @@ node_t::node_t(context_t& context,
             it != args["announce"].end();
             ++it)
         {
-            std::string endpoint;
+            std::string endpoint = (*it).asString();
             
-            try {
-                endpoint = (*it).asString();
-            } catch(const std::exception& e) {
-                COCAINE_LOG_WARNING(m_log, "ignoring and invalid announce endpoint '%s'", *it);
-                continue;
-            }
-
             COCAINE_LOG_INFO(m_log, "announcing on %s", endpoint);
 
             try {
