@@ -105,15 +105,15 @@ storage_t::get(const std::string& collection,
     try {
         msgpack::unpack(&unpacked, blob.data(), blob.size());
     } catch(const msgpack::unpack_error& e) {
-        throw storage_error_t("invalid object");
+        throw storage_error_t("corrupted object");
     }
 
     try {
         io::type_traits<T>::unpack(unpacked.get(), result);
     } catch(const msgpack::type_error& e) {
-        throw storage_error_t("invalid object");
+        throw storage_error_t("object type mismatch");
     } catch(const std::bad_cast& e) {
-        throw storage_error_t("invalid object");
+        throw storage_error_t("object type mismatch");
     }
     
     return result;

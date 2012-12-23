@@ -52,9 +52,9 @@ namespace detail {
             try {
                 io::type_traits<argument_type>::unpack(*tuple, argument);
             } catch(const msgpack::type_error& e) {
-                throw cocaine::error_t("invalid argument");
+                throw cocaine::error_t("argument type mismatch");
             } catch(const std::bad_cast& e) {
-                throw cocaine::error_t("invalid argument");
+                throw cocaine::error_t("argument type mismatch");
             }
 
             return invoke<R, next_type, End>::apply(
@@ -114,7 +114,7 @@ struct slot:
         if(tuple.type != msgpack::type::ARRAY ||
            tuple.via.array.size != mpl::size<Sequence>::value)
         {
-            throw cocaine::error_t("invalid argument sequence");
+            throw cocaine::error_t("argument sequence length mismatch");
         }
 
         const R result = detail::invoke<R, begin, end>::apply(
