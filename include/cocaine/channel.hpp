@@ -118,17 +118,16 @@ class channel:
 
         // RPC messages
 
-        template<class Event, typename... Args>
-        typename boost::disable_if_c<
-            event_traits<Event>::empty,
-            bool
-        >::type
-        send(Args&&... args) {
+        template<class Event, class T, typename... Args>
+        bool
+        send(T&& head, Args&&... tail) {
             msgpack::sbuffer buffer;
 
-            type_traits<
-                typename event_traits<Event>::tuple_type
-            >::pack(buffer, std::forward<Args>(args)...);
+            type_traits<typename event_traits<Event>::tuple_type>::pack(
+                buffer,
+                std::forward<T>(head),
+                std::forward<Args>(tail)...
+            );
 
             zmq::message_t message(buffer.size());
 
@@ -145,22 +144,16 @@ class channel:
         }
 
         template<class Event>
-        typename boost::enable_if_c<
-            event_traits<Event>::empty,
-            bool
-        >::type
+        bool
         send() {
             return this->send(
                 static_cast<int>(event_traits<Event>::id)
             );
         }
 
-        template<class Event, typename... Args>
-        typename boost::disable_if_c<
-            event_traits<Event>::empty,
-            bool
-        >::type
-        recv(Args&&... args) {
+        template<class Event, class T, typename... Args>
+        bool
+        recv(T&& head, Args&&... tail) {
             zmq::message_t message;
             msgpack::unpacked unpacked;
 
@@ -179,9 +172,11 @@ class channel:
             }
 
             try {
-                type_traits<
-                    typename event_traits<Event>::tuple_type
-                >::unpack(unpacked.get(), std::forward<Args>(args)...);
+                type_traits<typename event_traits<Event>::tuple_type>::unpack(
+                    unpacked.get(),
+                    std::forward<T>(head),
+                    std::forward<Args>(tail)...
+                );
             } catch(const msgpack::type_error& e) {
                 throw cocaine::error_t("message type mismatch");
             } catch(const std::bad_cast& e) {
