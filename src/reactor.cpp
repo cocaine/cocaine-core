@@ -36,7 +36,7 @@ reactor_t::reactor_t(context_t& context,
     m_checker(m_loop),
     m_terminate(m_loop)
 {
-    if(args["listen"].empty() || args["listen"].isArray()) {
+    if(args["listen"].empty() || !args["listen"].isArray()) {
         throw cocaine::error_t("no endpoints has been specified");
     }
 
