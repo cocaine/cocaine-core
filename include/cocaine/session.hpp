@@ -30,6 +30,8 @@
 
 #include "cocaine/helpers/birth_control.hpp"
 
+#include <sstream>
+
 namespace cocaine { namespace engine {
 
 struct session_t:
@@ -75,7 +77,7 @@ template<class Event, typename... Args>
 bool
 session_t::send(Args&&... args) {
     if(!m_slave) {
-        msgpack::sbuffer buffer;
+        std::ostringstream buffer;
 
         io::type_traits<
             typename io::event_traits<Event>::tuple_type
@@ -85,7 +87,7 @@ session_t::send(Args&&... args) {
 
         m_cache.emplace_back(
             io::event_traits<Event>::id,
-            std::string(buffer.data(), buffer.size())
+            buffer.str()
         );
 
         return true;

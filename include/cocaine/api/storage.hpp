@@ -27,6 +27,8 @@
 
 #include "cocaine/helpers/json.hpp"
 
+#include <sstream>
+
 #include <boost/ref.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/weak_ptr.hpp>
@@ -125,16 +127,12 @@ storage_t::put(const std::string& collection,
                const std::string& key,
                const T& object)
 {
-    msgpack::sbuffer buffer;
-    msgpack::packer<msgpack::sbuffer> packer(buffer);
+    std::ostringstream buffer;
+    msgpack::packer<std::ostringstream> packer(buffer);
 
     io::type_traits<T>::pack(packer, object);
 
-    write(
-        collection,
-        key,
-        std::string(buffer.data(), buffer.size())
-    );
+    write(collection, key, buffer.str());
 }
 
 template<>

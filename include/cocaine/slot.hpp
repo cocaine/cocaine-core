@@ -24,6 +24,8 @@
 #include "cocaine/common.hpp"
 #include "cocaine/traits.hpp"
 
+#include <sstream>
+
 #include <boost/function.hpp>
 #include <boost/function_types/function_type.hpp>
 
@@ -41,7 +43,7 @@ namespace detail {
         static inline
         R
         apply(const F& callable,
-              const msgpack::object * tuple,
+              const msgpack::object * packed,
               Args&&... args)
         {
             typedef typename mpl::deref<It>::type argument_type;
@@ -50,7 +52,7 @@ namespace detail {
             argument_type argument;
 
             try {
-                io::type_traits<argument_type>::unpack(*tuple, argument);
+                io::type_traits<argument_type>::unpack(*packed, argument);
             } catch(const msgpack::type_error& e) {
                 throw cocaine::error_t("argument type mismatch");
             } catch(const std::bad_cast& e) {
@@ -59,7 +61,7 @@ namespace detail {
 
             return invoke<R, next_type, End>::apply(
                 callable,
-                ++tuple,
+                ++packed,
                 std::forward<Args>(args)...,
                 std::move(argument)
             );
@@ -72,7 +74,7 @@ namespace detail {
         static inline
         R
         apply(const F& callable,
-              const msgpack::object * tuple,
+              const msgpack::object * packed,
               Args&&... args)
         {
             return callable(std::forward<Args>(args)...);
@@ -92,7 +94,7 @@ namespace detail {
 struct slot_base_t {
     virtual
     std::string
-    operator()(const msgpack::object& request) = 0;
+    operator()(const msgpack::object& packed) = 0;
 };
 
 template<typename R, class Sequence>
@@ -107,30 +109,27 @@ struct slot:
 
     virtual
     std::string
-    operator()(const msgpack::object& tuple) {
+    operator()(const msgpack::object& packed) {
         typedef typename mpl::begin<Sequence>::type begin;
         typedef typename mpl::end<Sequence>::type end;
 
-        if(tuple.type != msgpack::type::ARRAY ||
-           tuple.via.array.size != mpl::size<Sequence>::value)
+        if(packed.type != msgpack::type::ARRAY ||
+           packed.via.array.size != mpl::size<Sequence>::value)
         {
             throw cocaine::error_t("argument sequence length mismatch");
         }
 
         const R result = detail::invoke<R, begin, end>::apply(
             m_callable,
-            tuple.via.array.ptr
+            packed.via.array.ptr
         );
 
-        msgpack::sbuffer buffer;
-        msgpack::packer<msgpack::sbuffer> packer(buffer);
+        std::ostringstream buffer;
+        msgpack::packer<std::ostringstream> packer(buffer);
 
         io::type_traits<R>::pack(packer, result);
 
-        return std::string(
-            buffer.data(),
-            buffer.size()
-        );
+        return buffer.str();
     }
 
 private:
