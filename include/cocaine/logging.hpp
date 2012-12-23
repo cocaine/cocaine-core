@@ -23,10 +23,9 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/context.hpp"
+#include "cocaine/format.hpp"
 
 #include "cocaine/api/logger.hpp"
-
-#include "cocaine/helpers/format.hpp"
 
 #define COCAINE_LOG(log, level, ...) \
     if(log->verbosity() >= level) log->emit(level, __VA_ARGS__);

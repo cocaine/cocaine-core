@@ -22,9 +22,8 @@
 #define COCAINE_IO_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/birth_control.hpp"
 #include "cocaine/traits.hpp"
-
-#include "cocaine/helpers/birth_control.hpp"
 
 #include <type_traits>
 

@@ -18,7 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include "cocaine/services/logging.hpp"
+#include "cocaine/essentials/logging_service.hpp"
 
 #include "cocaine/logging.hpp"
 

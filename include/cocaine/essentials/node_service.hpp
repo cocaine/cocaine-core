@@ -22,9 +22,8 @@
 #define COCAINE_NODE_SERVICE_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/json.hpp"
 #include "cocaine/reactor.hpp"
-
-#include "cocaine/helpers/json.hpp"
 
 namespace cocaine {
 

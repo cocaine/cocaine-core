@@ -22,8 +22,7 @@
 #define COCAINE_APP_HPP
 
 #include "cocaine/common.hpp"
-
-#include "cocaine/helpers/json.hpp"
+#include "cocaine/json.hpp"
 
 #include <boost/thread/thread.hpp>
 

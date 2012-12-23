@@ -22,13 +22,12 @@
 #define COCAINE_SESSION_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/birth_control.hpp"
 #include "cocaine/channel.hpp"
 #include "cocaine/slave.hpp"
 #include "cocaine/unique_id.hpp"
 
 #include "cocaine/api/event.hpp"
-
-#include "cocaine/helpers/birth_control.hpp"
 
 #include <sstream>
 

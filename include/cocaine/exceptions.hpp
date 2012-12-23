@@ -21,7 +21,7 @@
 #ifndef COCAINE_EXCEPTIONS_HPP
 #define COCAINE_EXCEPTIONS_HPP
 
-#include "cocaine/helpers/format.hpp"
+#include "cocaine/format.hpp"
 
 #include <exception>
 

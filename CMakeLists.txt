@@ -90,15 +90,15 @@ SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     COMPILE_FLAGS "-std=c++0x")
 
 ADD_LIBRARY(essentials SHARED
-    src/isolates/process
-    src/loggers/files
-    src/loggers/remote
-    src/loggers/stdout
-    src/loggers/syslog
-    src/services/logging
-    src/services/node
-    src/storages/files
-    src/essentials)
+    src/essentials/process_isolate
+    src/essentials/file_logger
+    src/essentials/remote_logger
+    src/essentials/stdout_logger
+    src/essentials/syslog_logger
+    src/essentials/logging_service
+    src/essentials/node_service
+    src/essentials/file_storage
+    src/essentials/module)
 
 TARGET_LINK_LIBRARIES(essentials
     cocaine-core)

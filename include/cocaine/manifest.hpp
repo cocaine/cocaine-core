@@ -23,8 +23,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/cached.hpp"
-
-#include "cocaine/helpers/json.hpp"
+#include "cocaine/json.hpp"
 
 namespace cocaine {
 

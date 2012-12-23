@@ -1,4 +1,3 @@
 usr/include/cocaine/*.hpp
 usr/include/cocaine/api/*.hpp
-usr/include/cocaine/helpers/*.hpp
 usr/include/json

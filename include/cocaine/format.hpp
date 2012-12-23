@@ -18,50 +18,45 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#ifndef COCAINE_HELPERS_BIRTH_CONTROL_HPP
-#define COCAINE_HELPERS_BIRTH_CONTROL_HPP
+#ifndef COCAINE_FORMAT_HPP
+#define COCAINE_FORMAT_HPP
 
-#include "cocaine/helpers/atomic.hpp"
+#include <boost/format.hpp>
 
 namespace cocaine {
 
-template<class T>
-class birth_control  {
-    public:
-        birth_control() {
-            ++g_objects_alive;
-            ++g_objects_created;
-        }
+namespace detail {
+    static inline
+    std::string
+    substitute(boost::format& message) {
+        return message.str();
+    }
 
-        static inline
-        uint64_t
-        objects_alive() {
-            return g_objects_alive;
-        }
+    template<typename T, typename... Args>
+    static inline
+    std::string
+    substitute(boost::format& message,
+               const T& argument,
+               const Args&... args)
+    {
+        return substitute(message % argument, args...);
+    }
+}
 
-        static inline
-        uint64_t
-        objects_created() {
-            return g_objects_created;
-        }
+template<typename... Args>
+static inline
+std::string
+format(const std::string& format,
+       const Args&... args)
+{
+    boost::format message(format);
 
-    protected:
-        ~birth_control() {
-            --g_objects_alive;
-        }
-
-    private:
-        static std::atomic<uint64_t> g_objects_alive;
-        static std::atomic<uint64_t> g_objects_created;
-};
-
-template<class T>
-std::atomic<uint64_t>
-birth_control<T>::g_objects_alive(0);
-
-template<class T>
-std::atomic<uint64_t>
-birth_control<T>::g_objects_created(0);
+    try {
+        return detail::substitute(message, args...);
+    } catch(const boost::io::format_error& e) {
+        return "<unable to format the message>";
+    }
+}
 
 } // namespace cocaine
 

@@ -22,9 +22,8 @@
 #define COCAINE_CONTEXT_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/json.hpp"
 #include "cocaine/repository.hpp"
-
-#include "cocaine/helpers/json.hpp"
 
 #include <queue>
 

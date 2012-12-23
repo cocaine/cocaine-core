@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#ifndef COCAINE_HELPERS_JSON
-#define COCAINE_HELPERS_JSON
+#ifndef COCAINE_JSON
+#define COCAINE_JSON
 
 #include "json/json.h"
 
