@@ -90,8 +90,6 @@ slave_t::assign(boost::shared_ptr<session_t>&& session) {
         session->id
     );
 
-    // XXX: Might as well be a better idea to attach the session after emplacing
-    // it into the session map.
     session->attach(this);
 
     m_sessions.emplace(session->id, std::move(session));
@@ -181,7 +179,7 @@ namespace {
     struct timeout_t {
         template<class T>
         void
-        operator()(T& session) {
+        operator()(T& session) const {
             session.second->upstream->error(
                 timeout_error, 
                 "the session has timed out"
@@ -206,6 +204,7 @@ slave_t::on_timeout(ev::timer&, int) {
             );
 
             std::for_each(m_sessions.begin(), m_sessions.end(), timeout_t());
+
             m_sessions.clear();
 
             break;
@@ -224,7 +223,9 @@ slave_t::on_timeout(ev::timer&, int) {
 void
 slave_t::on_idle(ev::timer&, int) {
     COCAINE_LOG_DEBUG(m_log, "slave %s is idle, deactivating", m_id);
+
     send<rpc::terminate>();
+
     m_state = state_t::inactive;
 }
 
@@ -266,7 +267,7 @@ slave_t::terminate() {
     // Ensure that the slave is not being overkilled.
     BOOST_ASSERT(m_state != state_t::dead);
 
-    // Ensure that no session is being lost here.
+    // Ensure that no sessions are being lost here.
     BOOST_ASSERT(m_sessions.empty());
 
     m_heartbeat_timer.stop();
