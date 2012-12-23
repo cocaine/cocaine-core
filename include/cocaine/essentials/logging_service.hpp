@@ -64,8 +64,8 @@ class logging_t:
     private:
         bool
         on_emit(int priority,
-                std::string source,
-                std::string message);
+                const std::string& source,
+                const std::string& message);
 
     private:
         context_t& m_context;

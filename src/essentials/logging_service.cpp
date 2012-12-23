@@ -40,8 +40,8 @@ logging_t::logging_t(context_t& context,
 
 bool
 logging_t::on_emit(int priority,
-                   std::string source,
-                   std::string message)
+                   const std::string& source,
+                   const std::string& message)
 {
     log_map_t::iterator it = m_logs.find(source);
 

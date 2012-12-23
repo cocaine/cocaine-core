@@ -82,10 +82,10 @@ class node_t:
         on_announce(ev::timer&, int);
 
         Json::Value
-        on_start_app(std::map<std::string, std::string> runlist);
+        on_start_app(const std::map<std::string, std::string>& runlist);
 
         Json::Value
-        on_pause_app(std::vector<std::string> applist);
+        on_pause_app(const std::vector<std::string>& applist);
 
         Json::Value
         on_info() const;

@@ -143,7 +143,7 @@ node_t::on_announce(ev::timer&, int) {
 }
 
 Json::Value
-node_t::on_start_app(runlist_t runlist) {
+node_t::on_start_app(const runlist_t& runlist) {
     Json::Value result(Json::objectValue);
     app_map_t::iterator app;
 
@@ -187,7 +187,7 @@ node_t::on_start_app(runlist_t runlist) {
 }
 
 Json::Value
-node_t::on_pause_app(std::vector<std::string> applist) {
+node_t::on_pause_app(const std::vector<std::string>& applist) {
     Json::Value result(Json::objectValue);
     
     for(std::vector<std::string>::const_iterator it = applist.begin();
