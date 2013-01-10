@@ -23,6 +23,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/json.hpp"
+#include "cocaine/logging.hpp"
 #include "cocaine/repository.hpp"
 
 namespace cocaine { namespace api {
@@ -46,7 +47,7 @@ resolve(const Json::Value& args) {
 }
 
 class logger_t:
-    public boost::noncopyable
+    public logging::logger_t
 {
     public:
         virtual
@@ -54,16 +55,11 @@ class logger_t:
             // Empty.
         }
 
+        virtual
         logging::priorities
         verbosity() const {
             return m_verbosity;
         }
-
-        virtual
-        void
-        emit(logging::priorities priority,
-             const std::string& source,
-             const std::string& message) = 0;
 
     protected:
         logger_t(context_t&,

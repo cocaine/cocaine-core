@@ -25,8 +25,6 @@
 #include "cocaine/context.hpp"
 #include "cocaine/format.hpp"
 
-#include "cocaine/api/logger.hpp"
-
 #define COCAINE_LOG(log, level, ...) \
     if(log->verbosity() >= level) log->emit(level, __VA_ARGS__);
 
@@ -44,6 +42,20 @@
 
 namespace cocaine { namespace logging {
 
+struct logger_t:
+    public boost::noncopyable
+{
+    virtual
+    logging::priorities
+    verbosity() const = 0;
+
+    virtual
+    void
+    emit(priorities priority,
+         const std::string& source,
+         const std::string& message) = 0;
+};
+
 struct log_t {
     log_t(context_t& context,
           const std::string& source):
@@ -51,14 +63,14 @@ struct log_t {
         m_source(source)
     { }
 
-    logging::priorities
+    priorities
     verbosity() const {
         return m_logger.verbosity();
     }
 
     template<typename... Args>
     void
-    emit(logging::priorities level,
+    emit(priorities level,
          const std::string& format,
          const Args&... args)
     {
@@ -66,14 +78,14 @@ struct log_t {
     }
 
     void
-    emit(logging::priorities level,
+    emit(priorities level,
          const std::string& message)
     {
         m_logger.emit(level, m_source, message);
     }
 
 private:
-    api::logger_t& m_logger;
+    logger_t& m_logger;
 
     // The name of this log, to be used as the logging source.
     const std::string m_source;

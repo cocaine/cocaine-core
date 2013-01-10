@@ -85,6 +85,7 @@ namespace cocaine {
             debug
         };
 
+        struct logger_t;
         struct log_t;
     }
 
