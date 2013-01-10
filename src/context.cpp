@@ -130,7 +130,7 @@ config_t::config_t(const std::string& config_path) {
             
         // NOTE: XSI-compliant strerror_r() returns int instead of the
         // string buffer, so complete the job manually.
-        message = reason
+        message = reason;
 #endif
    
         throw configuration_error_t("unable to determine the hostname - %s", message);
