@@ -48,7 +48,7 @@ logging_t::on_emit(int priority,
     if(it == m_logs.end()) {
         boost::tie(it, boost::tuples::ignore) = m_logs.emplace(
             source,
-            new log_t(m_context, source)
+            boost::make_shared<log_t>(m_context, source)
         );
     }
 
