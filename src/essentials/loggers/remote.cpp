@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include "cocaine/essentials/remote_logger.hpp"
-#include "cocaine/essentials/logging_service.hpp"
+#include "cocaine/essentials/loggers/remote.hpp"
+#include "cocaine/essentials/services/logging.hpp"
 
 using namespace cocaine;
 using namespace cocaine::logger;

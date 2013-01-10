@@ -18,25 +18,25 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include "cocaine/essentials/file_logger.hpp"
-#include "cocaine/essentials/remote_logger.hpp"
-#include "cocaine/essentials/stdout_logger.hpp"
-#include "cocaine/essentials/syslog_logger.hpp"
-#include "cocaine/essentials/process_isolate.hpp"
-#include "cocaine/essentials/logging_service.hpp"
-#include "cocaine/essentials/node_service.hpp"
-#include "cocaine/essentials/file_storage.hpp"
+#include "cocaine/essentials/isolates/process.hpp"
+#include "cocaine/essentials/loggers/files.hpp"
+#include "cocaine/essentials/loggers/remote.hpp"
+#include "cocaine/essentials/loggers/stdout.hpp"
+#include "cocaine/essentials/loggers/syslog.hpp"
+#include "cocaine/essentials/services/logging.hpp"
+#include "cocaine/essentials/services/node.hpp"
+#include "cocaine/essentials/storages/files.hpp"
 
 using namespace cocaine;
 
 extern "C" {
     void
     initialize(api::repository_t& repository) {
-        repository.insert<logger::files_t>("files");
-        repository.insert<logger::stdout_t>("stdout");
-        repository.insert<logger::remote_t>("remote");
-        repository.insert<logger::syslog_t>("syslog");
         repository.insert<isolate::process_t>("process");
+        repository.insert<logger::files_t>("files");
+        repository.insert<logger::remote_t>("remote");
+        repository.insert<logger::stdout_t>("stdout");
+        repository.insert<logger::syslog_t>("syslog");
         repository.insert<service::logging_t>("logging");
         repository.insert<service::node_t>("node");
         repository.insert<storage::files_t>("files");

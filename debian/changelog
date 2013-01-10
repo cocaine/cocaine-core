@@ -1,3 +1,28 @@
+cocaine-core (0.10.0-b4) lucid; urgency=low
+
+  * More logs.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 21 Dec 2012 01:52:11 +0400
+
+cocaine-core (0.10.0-b3) lucid; urgency=low
+
+  * More verbosity on slave termination.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 21 Dec 2012 01:37:44 +0400
+
+cocaine-core (0.10.0-b2) lucid; urgency=low
+
+  * Some new exception handling.
+  * Proper initscript.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Thu, 20 Dec 2012 22:16:34 +0400
+
+cocaine-core (0.10.0-b1) lucid; urgency=low
+
+  * Proper dependencies.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Thu, 20 Dec 2012 21:36:36 +0400
+
 cocaine-core (0.10.0-b0) lucid; urgency=low
 
   * Streaming API.

@@ -18,7 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include "cocaine/essentials/file_logger.hpp"
+#include "cocaine/essentials/loggers/files.hpp"
 
 #include <cerrno>
 #include <cstdio>

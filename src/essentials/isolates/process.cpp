@@ -18,7 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include "cocaine/essentials/process_isolate.hpp"
+#include "cocaine/essentials/isolates/process.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"

@@ -18,7 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include "cocaine/essentials/node_service.hpp"
+#include "cocaine/essentials/services/node.hpp"
 
 #include "cocaine/app.hpp"
 #include "cocaine/context.hpp"

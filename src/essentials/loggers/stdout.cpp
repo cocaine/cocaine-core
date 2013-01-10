@@ -18,7 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>. 
 */
 
-#include "cocaine/essentials/stdout_logger.hpp"
+#include "cocaine/essentials/loggers/stdout.hpp"
 
 #include <cstring>
 #include <ctime>
