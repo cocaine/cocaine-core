@@ -31,10 +31,10 @@
 
 #include <boost/mpl/push_front.hpp>
 
+namespace cocaine {
+
 namespace ft = boost::function_types;
 namespace mpl = boost::mpl;
-
-namespace cocaine {
 
 namespace detail {
     template<typename R, class It, class End>

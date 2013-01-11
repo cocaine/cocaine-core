@@ -25,8 +25,6 @@
 #include "cocaine/birth_control.hpp"
 #include "cocaine/traits.hpp"
 
-#include <type_traits>
-
 #include <boost/thread/mutex.hpp>
 
 #include <zmq.hpp>

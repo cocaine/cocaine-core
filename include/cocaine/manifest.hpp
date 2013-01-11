@@ -35,11 +35,12 @@ struct manifest_t:
 
     std::string name;
     
-    // TODO: Make it an alias instead of a executable file path.
+    // TODO: Make it an alias instead of an executable file path.
     std::string slave;
 
     // NOTE: The apps are hosted by the sandbox plugins. This one describes
     // the sandbox type and its instantiation arguments.
+    // TODO: Merge with the slave type.
     config_t::component_t sandbox;
 
     // A configuration map for drivers, similar to the generic one found
