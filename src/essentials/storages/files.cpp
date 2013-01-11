@@ -157,7 +157,7 @@ files_t::list(const std::string& collection) {
 
     while(it != end) {
 #if BOOST_FILESYSTEM_VERSION == 3
-        result.emplace_back(it->path().filename());
+        result.emplace_back(it->path().filename().string());
 #else
         result.emplace_back(it->leaf());
 #endif
