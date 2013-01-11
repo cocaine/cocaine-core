@@ -106,7 +106,7 @@ slave_t::on_ping() {
 }
 
 void
-slave_t::on_chunk(const uint64_t session_id,
+slave_t::on_chunk(uint64_t session_id,
                   const std::string& message)
 {
     COCAINE_LOG_DEBUG(
@@ -126,8 +126,8 @@ slave_t::on_chunk(const uint64_t session_id,
 }
 
 void
-slave_t::on_error(const uint64_t session_id,
-                  const error_code code,
+slave_t::on_error(uint64_t session_id,
+                  error_code code,
                   const std::string& message)
 {
     COCAINE_LOG_DEBUG(
@@ -148,7 +148,7 @@ slave_t::on_error(const uint64_t session_id,
 }
 
 void
-slave_t::on_choke(const uint64_t session_id) {
+slave_t::on_choke(uint64_t session_id) {
     COCAINE_LOG_DEBUG(
         m_log,
         "slave %s has completed session %s",
