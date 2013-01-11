@@ -25,7 +25,6 @@
 #include "cocaine/birth_control.hpp"
 #include "cocaine/channel.hpp"
 #include "cocaine/slave.hpp"
-#include "cocaine/unique_id.hpp"
 
 #include "cocaine/api/event.hpp"
 
@@ -36,7 +35,8 @@ namespace cocaine { namespace engine {
 struct session_t:
     public birth_control<session_t>
 {
-    session_t(const api::event_t& event,
+    session_t(uint64_t id,
+              const api::event_t& event,
               const boost::shared_ptr<api::stream_t>& upstream);
 
     void
@@ -51,7 +51,7 @@ struct session_t:
 
 public:
     // Session ID.
-    const unique_id_t id;
+    const uint64_t id;
 
     // Session event type and execution policy.
     const api::event_t event;

@@ -54,16 +54,16 @@ class slave_t:
         on_ping();
 
         void
-        on_chunk(const unique_id_t& session_id,
+        on_chunk(uint64_t session_id,
                  const std::string& message);
 
         void
-        on_error(const unique_id_t& session_id,
+        on_error(uint64_t session_id,
                  error_code code,
                  const std::string& message);
 
         void
-        on_choke(const unique_id_t& session_id);
+        on_choke(uint64_t session_id);
 
         template<class Event, typename... Args>
         bool
@@ -138,7 +138,7 @@ class slave_t:
 #else
         typedef std::map<
 #endif
-            unique_id_t,
+            uint64_t,
             boost::shared_ptr<session_t>
         > session_map_t;
 

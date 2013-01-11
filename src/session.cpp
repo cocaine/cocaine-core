@@ -20,12 +20,12 @@
 
 #include "cocaine/session.hpp"
 
-#include "cocaine/api/stream.hpp"
-
 using namespace cocaine::engine;
 
-session_t::session_t(const api::event_t& event_,
+session_t::session_t(uint64_t id_,
+                     const api::event_t& event_,
                      const boost::shared_ptr<api::stream_t>& upstream_):
+    id(id_),
     event(event_),
     upstream(upstream_),
     m_slave(NULL)
