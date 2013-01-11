@@ -75,14 +75,14 @@ private:
 template<class Event, typename... Args>
 bool
 session_t::send(Args&&... args) {
+    boost::unique_lock<boost::mutex> lock(m_mutex);
+    
     if(!m_slave) {
         std::ostringstream buffer;
 
         io::type_traits<
             typename io::event_traits<Event>::tuple_type
         >::pack(buffer, id, std::forward<Args>(args)...);
-
-        boost::unique_lock<boost::mutex> lock(m_mutex);
 
         m_cache.emplace_back(
             io::event_traits<Event>::id,

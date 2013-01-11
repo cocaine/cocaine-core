@@ -115,10 +115,11 @@ void
 reactor_t::on(F callable) {
     typedef decltype(callable()) result_type;;
     typedef typename io::event_traits<Event>::tuple_type sequence_type;
+    typedef slot<result_type, sequence_type> slot_type;
 
     m_slots.emplace(
         io::event_traits<Event>::id,
-        boost::make_shared<slot<result_type, sequence_type>>(callable)
+        boost::make_shared<slot_type>(callable)
     );
 }
 
