@@ -57,7 +57,7 @@ namespace rpc {
         typedef tags::rpc_tag tag;
         
         typedef boost::mpl::list<
-            /* session */ unique_id_t,
+            /* session */ uint64_t,
             /* event */   std::string
         > tuple_type;
     };
@@ -66,7 +66,7 @@ namespace rpc {
         typedef tags::rpc_tag tag;
         
         typedef boost::mpl::list<
-            /* session */ unique_id_t,
+            /* session */ uint64_t,
             /* data */    std::string
         > tuple_type;
     };
@@ -75,7 +75,7 @@ namespace rpc {
         typedef tags::rpc_tag tag;
         
         typedef boost::mpl::list<
-            /* session */ unique_id_t,
+            /* session */ uint64_t,
             /* code */    int,
             /* message */ std::string
         > tuple_type;
@@ -85,7 +85,7 @@ namespace rpc {
         typedef tags::rpc_tag tag;
 
         typedef boost::mpl::list<
-            /* session */ unique_id_t
+            /* session */ uint64_t
         > tuple_type;
     };
 }

@@ -23,6 +23,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/asio.hpp"
+#include "cocaine/atomic.hpp"
 #include "cocaine/channel.hpp"
 
 #include "cocaine/api/isolate.hpp"
@@ -171,8 +172,10 @@ class engine_t:
 
         ev::async m_notification;
 
-        // Session queue
+        // Auto-incrementing Session ID.
+        std::atomic<uint64_t> m_next_id;
 
+        // Session queue
         session_queue_t m_queue;
         boost::condition_variable_any m_condition;
 

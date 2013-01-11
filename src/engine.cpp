@@ -169,7 +169,8 @@ engine_t::engine_t(context_t& context,
     m_ctl_checker(m_loop),
     m_gc_timer(m_loop),
     m_termination_timer(m_loop),
-    m_notification(m_loop)
+    m_notification(m_loop),
+    m_next_id(0)
 {
     m_isolate = m_context.get<api::isolate_t>(
         m_profile.isolate.type,
@@ -234,6 +235,7 @@ engine_t::enqueue(const api::event_t& event,
                   engine::mode mode)
 {
     boost::shared_ptr<session_t> session = boost::make_shared<session_t>(
+        ++m_next_id,
         event,
         upstream
     );
@@ -450,7 +452,7 @@ engine_t::process_bus_events() {
             }
 
             case event_traits<rpc::chunk>::id: {
-                unique_id_t session_id(uninitialized);
+                uint64_t session_id;
                 std::string message;
                 
                 m_bus->recv<rpc::chunk>(session_id, message);
@@ -463,7 +465,7 @@ engine_t::process_bus_events() {
             }
          
             case event_traits<rpc::error>::id: {
-                unique_id_t session_id(uninitialized);
+                uint64_t session_id;
                 int code;
                 std::string message;
 
@@ -481,7 +483,7 @@ engine_t::process_bus_events() {
             }
 
             case event_traits<rpc::choke>::id: {
-                unique_id_t session_id(uninitialized);
+                uint64_t session_id;
 
                 m_bus->recv<rpc::choke>(session_id);
 
