@@ -235,7 +235,7 @@ engine_t::enqueue(const api::event_t& event,
                   engine::mode mode)
 {
     boost::shared_ptr<session_t> session = boost::make_shared<session_t>(
-        ++m_next_id,
+        m_next_id++,
         event,
         upstream
     );
