@@ -233,6 +233,11 @@ engine_t::enqueue(const api::event_t& event,
                   const boost::shared_ptr<api::stream_t>& upstream,
                   engine::mode mode)
 {
+    boost::shared_ptr<session_t> session = boost::make_shared<session_t>(
+        event,
+        upstream
+    );
+
     boost::unique_lock<session_queue_t> lock(m_queue);
 
     if(m_state != state_t::running) {
@@ -251,15 +256,13 @@ engine_t::enqueue(const api::event_t& event,
         }
     }
 
-    boost::shared_ptr<session_t> session(
-        boost::make_shared<session_t>(
-            event,
-            upstream
-        )
-    );
-
     m_queue.push(session);
   
+    // NOTE: Release the lock so that the notification could be handled
+    // immediately as opposed to instantly blocking on the same acquired lock
+    // in the engine thread.
+    lock.unlock();
+
     // Pump the queue! 
     m_notification.send();
 
@@ -500,8 +503,6 @@ engine_t::process_bus_events() {
                 m_bus->drop();
         }
     } while(--counter);
-
-    pump();
 }
 
 namespace {

@@ -172,7 +172,7 @@ class engine_t:
         ev::async m_notification;
 
         // Session queue
-        
+
         session_queue_t m_queue;
         boost::condition_variable_any m_condition;
 
