@@ -99,7 +99,7 @@ class reactor_t:
 #else
         typedef std::map<
 #endif
-            int,
+            unsigned int,
             boost::shared_ptr<slot_base_t>
         > slot_map_t;
 

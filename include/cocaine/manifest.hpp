@@ -33,7 +33,8 @@ struct manifest_t:
     manifest_t(context_t& context,
                const std::string& name);
 
-    std::string name;
+    // The application name.
+    const std::string name;
     
     // TODO: Make it an alias instead of an executable file path.
     std::string slave;

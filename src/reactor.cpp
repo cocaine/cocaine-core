@@ -120,7 +120,7 @@ reactor_t::on_terminate(ev::async&, int) {
 
 void
 reactor_t::process() {
-    int counter = defaults::io_bulk_size;
+    unsigned int counter = defaults::io_bulk_size;
     
     std::string source;
     int message_id;

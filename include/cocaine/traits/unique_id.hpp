@@ -46,7 +46,9 @@ struct type_traits<unique_id_t> {
     unpack(const msgpack::object& packed,
            unique_id_t& object)
     {
-        if(packed.type != msgpack::type::ARRAY || packed.via.array.size != 2) {
+        if(packed.type != msgpack::type::ARRAY ||
+           packed.via.array.size != 2)
+        {
             throw msgpack::type_error();
         }
 

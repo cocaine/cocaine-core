@@ -33,7 +33,8 @@ struct profile_t:
     profile_t(context_t& context,
               const std::string& name);
 
-    std::string name;
+    // The profile name.
+    const std::string name;
 
     float heartbeat_timeout;
     float idle_timeout;
