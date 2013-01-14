@@ -65,7 +65,8 @@ namespace {
             m_session(session),
             m_state(state_t::open)
         { }
-        
+       
+        virtual 
         ~downstream_t() {
             if(m_state != state_t::closed) {
                 close();
@@ -146,7 +147,6 @@ namespace {
             closed
         };
 
-        // Stream state.
         state_t m_state;
     };
 }
