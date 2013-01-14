@@ -83,6 +83,8 @@ slave_t::~slave_t() {
 
 void
 slave_t::assign(boost::shared_ptr<session_t>&& session) {
+    BOOST_ASSERT(m_state == state_t::active);
+
     COCAINE_LOG_DEBUG(
         m_log,
         "slave %s has started processing session %s",
@@ -101,7 +103,10 @@ slave_t::assign(boost::shared_ptr<session_t>&& session) {
 
 void
 slave_t::on_ping() {
+    BOOST_ASSERT(m_state != state_t::dead);
+    
     rearm();
+    
     send<rpc::heartbeat>();
 }
 
@@ -109,6 +114,8 @@ void
 slave_t::on_chunk(uint64_t session_id,
                   const std::string& message)
 {
+    BOOST_ASSERT(m_state == state_t::active);
+    
     COCAINE_LOG_DEBUG(
         m_log,
         "slave %s received session %s chunk, size: %llu bytes",
@@ -130,6 +137,8 @@ slave_t::on_error(uint64_t session_id,
                   error_code code,
                   const std::string& message)
 {
+    BOOST_ASSERT(m_state == state_t::active);
+    
     COCAINE_LOG_DEBUG(
         m_log,
         "slave %s received session %s error, code: %d, message: %s",
@@ -149,6 +158,8 @@ slave_t::on_error(uint64_t session_id,
 
 void
 slave_t::on_choke(uint64_t session_id) {
+    BOOST_ASSERT(m_state == state_t::active);
+    
     COCAINE_LOG_DEBUG(
         m_log,
         "slave %s has completed session %s",
@@ -190,6 +201,8 @@ namespace {
 
 void
 slave_t::on_timeout(ev::timer&, int) {
+    BOOST_ASSERT(m_state != state_t::dead);
+    
     switch(m_state) {
         case state_t::unknown:
             COCAINE_LOG_WARNING(m_log, "slave %s has failed to activate", m_id);
@@ -214,7 +227,8 @@ slave_t::on_timeout(ev::timer&, int) {
             break;
 
         case state_t::dead:
-            BOOST_ASSERT(0);
+            // NOTE: Unreachable.
+            std::terminate();
     }
     
     terminate();
@@ -222,6 +236,8 @@ slave_t::on_timeout(ev::timer&, int) {
 
 void
 slave_t::on_idle(ev::timer&, int) {
+    BOOST_ASSERT(m_state == state_t::active);
+    
     COCAINE_LOG_DEBUG(m_log, "slave %s is idle, deactivating", m_id);
 
     send<rpc::terminate>();

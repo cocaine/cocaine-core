@@ -391,10 +391,12 @@ engine_t::process_bus_events() {
 
         pool_map_t::iterator slave(m_pool.find(slave_id));
 
-        if(slave == m_pool.end()) {
+        if(slave == m_pool.end() ||
+           slave->second->state() == slave_t::state_t::dead)
+        {
             COCAINE_LOG_DEBUG(
                 m_log,
-                "dropping type %d message from an unknown slave %s", 
+                "dropping type %d message from an inactive slave %s", 
                 message_id,
                 slave_id
             );
