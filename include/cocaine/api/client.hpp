@@ -32,7 +32,12 @@ struct client_t:
 {
     client_t(context_t& context,
              const std::string& name,
-             uint64_t watermark):
+#if ZMQ_VERSION > 30200
+             int watermark
+#else
+             uint64_t watermark
+#endif
+    ):
         m_channel(context, ZMQ_DEALER)
     {
         std::string endpoint = cocaine::format(
@@ -43,8 +48,12 @@ struct client_t:
 
         // Set the channel high watermark, so that if the service goes down
         // it could be determined by the client within some reasonable timespan.
+#if ZMQ_VERSION > 30200
+        m_channel.setsockopt(ZMQ_SNDHWM, &watermark, sizeof(watermark));
+#else
         m_channel.setsockopt(ZMQ_HWM, &watermark, sizeof(watermark));
-        
+#endif
+
         try {
             m_channel.connect(endpoint);
         } catch(const zmq::error_t& e) {
