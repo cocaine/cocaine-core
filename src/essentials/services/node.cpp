@@ -67,7 +67,7 @@ node_t::node_t(context_t& context,
 
     const ev::tstamp interval = args.get("announce-interval", 5.0f).asDouble();
     const std::string runlist_id = args.get("runlist", "default").asString();
-    
+
     // Autodiscovery
 
     if(!args["announce"].empty()) {
@@ -96,25 +96,14 @@ node_t::node_t(context_t& context,
 
     // Runlist
 
+    runlist_t runlist;
+
     COCAINE_LOG_INFO(m_log, "reading the '%s' runlist", runlist_id);
-   
-    try { 
-        const runlist_t runlist = api::storage(m_context, "core")->get<
+
+    try {
+        runlist = api::storage(m_context, "core")->get<
             std::map<std::string, std::string>
         >("runlists", runlist_id);
-   
-        if(!runlist.empty()) {
-            COCAINE_LOG_INFO(
-                m_log,
-                "starting %d %s",
-                runlist.size(),
-                runlist.size() == 1 ? "app" : "apps"
-            );
-
-            // NOTE: Ignore the return value here, as there's nowhere to print it.
-            // It might be nice to parse and log it in case of errors or simply die.
-            on_start_app(runlist);
-        }
     } catch(const cocaine::error_t& e) {
         COCAINE_LOG_WARNING(
             m_log,
@@ -122,6 +111,19 @@ node_t::node_t(context_t& context,
             runlist_id,
             e.what()
         );
+    }
+
+    if(!runlist.empty()) {
+        COCAINE_LOG_INFO(
+            m_log,
+            "starting %d %s",
+            runlist.size(),
+            runlist.size() == 1 ? "app" : "apps"
+        );
+
+        // NOTE: Ignore the return value here, as there's nowhere to return it.
+        // It might be nice to parse and log it in case of errors or simply die.
+        on_start_app(runlist);
     }
 }
 
@@ -168,15 +170,32 @@ node_t::on_start_app(const runlist_t& runlist) {
                 )
             );
         } catch(const cocaine::error_t& e) {
-            result[it->first] = "the app was not found in the storage";
+            COCAINE_LOG_ERROR(
+                m_log,
+                "unable to initialize the '%s' app - %s",
+                it->first,
+                e.what()
+            );
+
+            result[it->first] = e.what();
+
             continue;
         }
 
         try {
             app->second->start();
         } catch(const cocaine::error_t& e) {
+            COCAINE_LOG_ERROR(
+                m_log,
+                "unable to start the '%s' app - %s",
+                it->first,
+                e.what()
+            );
+
             m_apps.erase(app);
+
             result[it->first] = e.what();
+
             continue;
         }
 
