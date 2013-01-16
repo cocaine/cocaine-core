@@ -121,7 +121,7 @@ private:
     template<class It, class Stream>
     static inline
     void
-    pack_sequence(msgpack::packer<Stream>& packer) {
+    pack_sequence(msgpack::packer<Stream>& /* packer */) {
         return;
     }
 
@@ -155,7 +155,7 @@ private:
     template<class It>
     static inline
     void
-    unpack_sequence(const msgpack::object * packed) {
+    unpack_sequence(const msgpack::object * /* packed */) {
         return;
     }
 

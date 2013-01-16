@@ -116,7 +116,7 @@ files_t::emit(logging::priorities priority,
 
     ssize_t written = ::writev(::fileno(m_file), io, sizeof(io) / sizeof(io[0]));
 
-    BOOST_ASSERT(written == out.size());
+    BOOST_ASSERT(static_cast<size_t>(written) == out.size());
 
     delete[] buffer;
 }

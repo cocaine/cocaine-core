@@ -51,11 +51,11 @@ struct null_stream_t:
 {
     virtual
     void
-    push(const char * chunk, size_t size) { }
+    push(const char *, size_t) { }
 
     virtual
     void
-    error(error_code code, const std::string& message) { }
+    error(error_code, const std::string&) { }
 
     virtual
     void

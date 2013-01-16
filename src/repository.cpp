@@ -114,10 +114,10 @@ repository_t::open(const std::string& target) {
         throw repository_error_t("unable to load '%s'", target);
     }
 
+    initialize_fn_t initialize = NULL;
+
     // Try to get the initialization routine.
-    initialize_fn_t initialize = reinterpret_cast<initialize_fn_t>(
-        lt_dlsym(plugin, "initialize")
-    );
+    *(void**)(&initialize) = lt_dlsym(plugin, "initialize");
 
     if(initialize) {
         try {

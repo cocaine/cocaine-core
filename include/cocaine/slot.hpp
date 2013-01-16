@@ -74,7 +74,7 @@ namespace detail {
         static inline
         R
         apply(const F& callable,
-              const msgpack::object * packed,
+              const msgpack::object * /* packed */,
               Args&&... args)
         {
             return callable(std::forward<Args>(args)...);
