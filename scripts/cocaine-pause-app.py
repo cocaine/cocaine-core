@@ -45,6 +45,6 @@ def main(apps):
 
 if __name__ == "__main__":
     if len(argv) == 1:
-        print "Usage: %s <app-name-1> ... <app-name-N>" % argv[0]
+        print "USAGE: %s <app-name-1> ... <app-name-N>" % argv[0]
     else:
         main(argv[1:])

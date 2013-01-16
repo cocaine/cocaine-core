@@ -35,16 +35,26 @@ def main(apps):
     request = context.socket(zmq.DEALER)
     request.connect('tcp://localhost:5000')
 
+    try:
+        runlist = dict(app.split('@') for app in apps)
+    except ValueError:
+        print "ERROR: Not all apps have their profiles specified."
+        exit(1)
+
+    if not all(runlist):
+        print "ERROR: Not all apps have valid names."
+        exit(1)
+
     # Starting the apps
     request.send_multipart([
         msgpack.packb(SLOT_START_APP),
-        msgpack.packb([dict((app, app) for app in apps)])
+        msgpack.packb([runlist])
     ])
 
     pprint(msgpack.unpackb(request.recv()))
 
 if __name__ == "__main__":
     if len(argv) == 1:
-        print "Usage: %s <app-name-1> ... <app-name-N>" % argv[0]
+        print "USAGE: %s <app-name-1>@<profile-1> ... <app-name-N>@<profile-N>" % argv[0]
     else:
         main(argv[1:])

@@ -30,6 +30,7 @@ SLOT_PAUSE_APP = 1
 SLOT_INFO      = 2
 
 def main(app, hosts, timeout):
+    complain = False
     context = zmq.Context()
 
     for host in hosts:
@@ -46,29 +47,30 @@ def main(app, hosts, timeout):
         poller = zmq.Poller()
         poller.register(request, zmq.POLLIN)
 
-        # Poll the socket for response for 3 seconds
         sockets = dict(poller.poll(timeout = timeout))
 
         if request in sockets and sockets[request] == zmq.POLLIN:
             response = msgpack.unpackb(request.recv())
-            
+
             if app not in response["apps"]:
                 print "The '%s' app was not found on '%s'." % (app, host)
                 exit(1)
 
-            if response["apps"][app]["state"] != "running":
-               print "The '%s' app is not running on '%s'." % (app, host)
-               exit(1)
+            state = response["apps"][app]["state"]
+            print "The '%s' app is %s on '%s'." % (app, state, host)
+            complain |= (state != "running")
         else:
-            print "Host '%s' is not responding." % host
-            exit(1)
+            print "ERROR: Host '%s' is not responding." % host
+            complain |= True
+
+    exit(complain)
 
 description = """This tool allows you to check if the specified app
 is up and running on one or multiple nodes. On success you'll get
 no output and an exit code of '0', otherwise the error message will
 describe the problem, and the exit code will be '1'."""
     
-usage = "Usage: %prog <app-name> [options] [<host-name-1> ... <host-name-N>]"
+usage = "USAGE: %prog <app-name> [options] [<host-name-1> ... <host-name-N>]"
 
 version = "0.10.0"
 
