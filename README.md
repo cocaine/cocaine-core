@@ -1,4 +1,4 @@
-What the hell is it? [![Build Status](https://secure.travis-ci.org/cocaine/cocaine-core.png)](http://travis-ci.org/cocaine/cocaine-core)
+What the hell is it? [![Build Status](https://travis-ci.org/cocaine/cocaine-core.png?branch=master)](https://travis-ci.org/cocaine/cocaine-core)
 ====================
 __Your personal app engine.__ Technically speaking, it's an open-source cloud platform enabling you to build your own PaaS clouds using simple yet effective dynamic components.
 
