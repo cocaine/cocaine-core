@@ -12,7 +12,7 @@ yes | sudo mk-build-deps -i
 yes | debuild -uc -us
 
 # Install packages
-sudo dpkg -i ../*.deb
+# sudo dpkg -i ../*.deb
 
 # Run stress test
 # TODO(kobolog@):
