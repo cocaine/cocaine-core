@@ -94,7 +94,9 @@ slave_t::assign(boost::shared_ptr<session_t>&& session) {
 
     session->attach(this);
 
-    m_sessions.emplace(session->id, std::move(session));
+    m_sessions.insert(
+        std::make_pair(session->id, std::move(session))
+    );
 
     if(m_idle_timer.is_active()) {
         m_idle_timer.stop();
@@ -176,7 +178,8 @@ slave_t::on_choke(uint64_t session_id) {
 
     // NOTE: As we're destroying the session here, we have to close the
     // downstream, otherwise the client wouldn't be able to close it later.
-    it->second->send<rpc::choke>();
+    // TODO: Think about it.
+    // it->second->send<rpc::choke>();
     it->second->detach();
 
     m_sessions.erase(it);

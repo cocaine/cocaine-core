@@ -133,11 +133,7 @@ class slave_t:
         // Actual slave process handle.    
         std::unique_ptr<api::handle_t> m_handle;
 
-#if BOOST_VERSION >= 103600
-        typedef boost::unordered_map<
-#else
         typedef std::map<
-#endif
             uint64_t,
             boost::shared_ptr<session_t>
         > session_map_t;
