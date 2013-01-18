@@ -50,6 +50,9 @@ class slave_t:
         void
         assign(boost::shared_ptr<session_t>&& session);
        
+        bool
+        send(const io::event_t& blob);
+
         void
         on_ping();
 
@@ -64,23 +67,6 @@ class slave_t:
 
         void
         on_choke(uint64_t session_id);
-
-        template<class Event, typename... Args>
-        bool
-        send(Args&&... args);
-
-        bool
-        send(int message_id,
-             const std::string& message)
-        {
-            BOOST_ASSERT(m_state == state_t::active);
-
-            return m_engine.send(
-                m_id,
-                message_id,
-                message
-            );
-        }
 
         unique_id_t
         id() const {
@@ -109,6 +95,10 @@ class slave_t:
 
         void
         terminate();
+
+        template<class Event, typename... Args>
+        bool
+        send(Args&&... args);
  
     private:
         context_t& m_context;
@@ -140,17 +130,15 @@ class slave_t:
 
         // Current sessions.
         session_map_t m_sessions;
+
+        // Message serializer.
+        io::codec_t m_codec;
 };
 
 template<class Event, typename... Args>
 bool
 slave_t::send(Args&&... args) {
-    BOOST_ASSERT(m_state == state_t::active);
-
-    return m_engine.send<Event>(
-        m_id,
-        std::forward<Args>(args)...
-    );
+    return send(m_codec.pack<Event>(std::forward<Args>(args)...));
 }
 
 }} // namespace cocaine::engine

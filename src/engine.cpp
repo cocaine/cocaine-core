@@ -273,13 +273,10 @@ engine_t::enqueue(const api::event_t& event,
 
 bool
 engine_t::send(const unique_id_t& uuid,
-               int message_id,
-               const std::string& message)
+               const io::event_t& blob)
 {
-    boost::unique_lock<io::shared_channel_t> lock(*m_bus);
-
     return m_bus->send(uuid, ZMQ_SNDMORE) &&
-           m_bus->send_message(message_id, message);    
+           m_bus->send(blob);
 }
 
 void
@@ -625,6 +622,7 @@ namespace {
     };
 
     template<class It, class Compare, class Predicate>
+    inline
     It
     min_element_if(It first,
                    It last,
@@ -677,6 +675,9 @@ engine_t::pump() {
             session = m_queue.front();
             m_queue.pop_front();
 
+            // Notify one of the blocked enqueue operations.
+            m_condition.notify_one();
+
             // Process the queue head outside the lock, because it might take
             // some considerable amount of time if, for example, the session has
             // expired and there's some heavy-lifting in the error handler.
@@ -700,26 +701,7 @@ engine_t::pump() {
             }
         } while(!session);
 
-        // Notify one of the blocked enqueue operations.
-        m_condition.notify_one();
-       
-        if(!send<rpc::invoke>(it->first, session->id, session->event.type)) {
-            COCAINE_LOG_ERROR(
-                m_log,
-                "slave %s has unexpectedly died",
-                it->first
-            );
-
-            m_pool.erase(it);
-
-            {
-                boost::unique_lock<session_queue_t> lock(m_queue);
-                m_queue.push_front(session);
-            }
-            
-            continue;
-        }
-
+        // Attach the session to the worker.
         it->second->assign(std::move(session));
 
         // TODO: Check if it helps.

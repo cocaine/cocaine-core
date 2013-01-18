@@ -73,15 +73,13 @@ struct type_traits<
     template<class Stream, typename... Args>
     static inline
     void
-    pack(Stream& stream,
+    pack(msgpack::packer<Stream>& packer,
          const Args&... sequence)
     {
         static_assert(
             sizeof...(sequence) == boost::mpl::size<T>::value,
             "sequence length mismatch"
         );
-
-        msgpack::packer<Stream> packer(stream);
 
         // The sequence will be packed as an array.
         packer.pack_array(sizeof...(sequence));

@@ -20,6 +20,10 @@
 
 #include "cocaine/session.hpp"
 
+#include "cocaine/rpc.hpp"
+
+#include "cocaine/traits/unique_id.hpp"
+
 using namespace cocaine::engine;
 
 session_t::session_t(uint64_t id_,
@@ -29,7 +33,10 @@ session_t::session_t(uint64_t id_,
     event(event_),
     upstream(upstream_),
     m_slave(NULL)
-{ }
+{
+    // NOTE: This will go to cache, but we save on this serialization later.
+    send<io::rpc::invoke>(event.type);
+}
 
 void
 session_t::attach(slave_t * const slave) {
@@ -39,15 +46,11 @@ session_t::attach(slave_t * const slave) {
 
     m_slave = slave;
 
-    if(!m_cache.empty()) {
-        for(message_cache_t::const_iterator it = m_cache.begin();
-            it != m_cache.end();
-            ++it)
-        {
-            m_slave->send(it->first, it->second);
-        }
-
-        m_cache.clear();
+    for(message_cache_t::const_iterator it = m_cache.begin();
+        it != m_cache.end();
+        ++it)
+    {
+        m_slave->send(*it);
     }
 }
 

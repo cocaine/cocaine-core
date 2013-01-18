@@ -60,13 +60,14 @@ public:
     const boost::shared_ptr<api::stream_t> upstream;
 
 private:
-    typedef std::vector<
-        std::pair<int, std::string>
-    > message_cache_t;
+    typedef std::vector<io::event_t> message_cache_t;
 
     // Message cache.
     message_cache_t m_cache;
     boost::mutex m_mutex;
+
+    // Message serializer.
+    io::codec_t m_codec;
 
     // Responsible slave.
     slave_t * m_slave;
@@ -76,23 +77,20 @@ template<class Event, typename... Args>
 bool
 session_t::send(Args&&... args) {
     boost::unique_lock<boost::mutex> lock(m_mutex);
+
+    // Pre-pack the message.
+    io::event_t blob = m_codec.pack<Event>(
+        id,
+        std::forward<Args>(args)...
+    );
     
-    if(!m_slave) {
-        std::ostringstream buffer;
-
-        io::type_traits<
-            typename io::event_traits<Event>::tuple_type
-        >::pack(buffer, id, std::forward<Args>(args)...);
-
-        m_cache.emplace_back(
-            io::event_traits<Event>::id,
-            buffer.str()
-        );
-
-        return true;
+    if(m_slave) {
+        return m_slave->send(blob);
+    } else {
+        m_cache.emplace_back(blob);
     }
-
-    return m_slave->send<Event>(id, std::forward<Args>(args)...);    
+    
+    return true;
 }
 
 }}

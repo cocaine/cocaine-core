@@ -90,6 +90,50 @@ struct event_traits {
     };
 };
 
+struct event_t {
+    int id;
+    std::string data;
+};
+
+struct codec_t {
+    codec_t():
+        m_packer(m_buffer)
+    { }
+
+    template<class Event, typename... Args>
+    event_t
+    pack(Args&&... args) {
+        event_t event;
+
+        event.id = event_traits<Event>::id;
+
+        if(!event_traits<Event>::empty) {
+            m_buffer.clear();
+
+            // Pack the event data.
+            type_traits<typename event_traits<Event>::tuple_type>::pack(
+                m_packer,
+                std::forward<Args>(args)...
+            );
+
+            event.data = std::string(
+                m_buffer.data(),
+                m_buffer.size()
+            );
+        }
+
+        return event;
+    }
+
+    template<class Event, typename... Args>
+    void
+    unpack();
+
+private:
+    msgpack::sbuffer m_buffer;
+    msgpack::packer<msgpack::sbuffer> m_packer;
+};
+
 template<class SharingPolicy>
 class channel:
     public socket<SharingPolicy>
@@ -118,37 +162,14 @@ class channel:
 
         // RPC messages
 
-        template<class Event, class T, typename... Args>
         bool
-        send(T&& head, Args&&... tail) {
-            msgpack::sbuffer buffer;
-
-            type_traits<typename event_traits<Event>::tuple_type>::pack(
-                buffer,
-                std::forward<T>(head),
-                std::forward<Args>(tail)...
-            );
-
-            zmq::message_t message(buffer.size());
-
-            std::memcpy(
-                message.data(),
-                buffer.data(),
-                buffer.size()
-            );
-
-            return this->send_multipart(
-                static_cast<int>(event_traits<Event>::id),
-                message
-            );
-        }
-
-        template<class Event>
-        bool
-        send() {
-            return this->send(
-                static_cast<int>(event_traits<Event>::id)
-            );
+        send(const event_t& event) {
+            if(!event.data.empty()) {
+                return this->send(event.id, ZMQ_SNDMORE) &&
+                       this->send(io::protect(event.data));
+            } else {
+                return this->send(event.id);
+            }
         }
 
         template<class Event, class T, typename... Args>
@@ -184,16 +205,6 @@ class channel:
             }
 
             return true;
-        }
-
-        // XXX: This has to go.
-
-        bool
-        send_message(int message_id,
-                     const std::string& message)
-        {
-            return this->send(message_id, message.size() ? ZMQ_SNDMORE : 0) &&
-                   (!message.size() || this->send(protect(message)));
         }
 };
 

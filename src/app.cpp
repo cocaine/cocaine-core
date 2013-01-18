@@ -157,7 +157,9 @@ app_t::stop() {
 
     COCAINE_LOG_INFO(m_log, "stopping the engine");
     
-    m_control->send<control::terminate>();
+    io::codec_t codec;
+
+    m_control->send(codec.pack<control::terminate>());
 
     m_thread->join();
     m_thread.reset();
@@ -178,7 +180,9 @@ app_t::info() const {
         return info;
     }
 
-    m_control->send<control::status>();
+    io::codec_t codec;
+
+    m_control->send(codec.pack<control::status>());
 
     {
         scoped_option<
