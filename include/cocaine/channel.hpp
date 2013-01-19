@@ -97,6 +97,7 @@ struct event_t {
 
 struct codec_t {
     codec_t():
+        m_buffer(256),
         m_packer(m_buffer)
     { }
 

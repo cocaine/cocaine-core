@@ -74,11 +74,12 @@ struct client_t:
             io::options::send_timeout
         > option(m_channel, 0);
 
-        return m_channel.send<Event>(std::forward<Args>(args)...);
+        return m_channel.send(m_codec.pack<Event>(std::forward<Args>(args)...));
     }
 
 private:
     io::shared_channel_t m_channel;
+    io::codec_t m_codec;
 };
 
 }} // namespace cocaine::api
