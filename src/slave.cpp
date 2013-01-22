@@ -104,7 +104,7 @@ slave_t::assign(boost::shared_ptr<session_t>&& session) {
 }
 
 bool
-slave_t::send(const io::event_t& blob) {
+slave_t::send(const std::string& blob) {
     BOOST_ASSERT(m_state == state_t::active);
 
     return m_engine.send(

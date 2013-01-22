@@ -90,45 +90,106 @@ struct event_traits {
     };
 };
 
-struct event_t {
-    int id;
-    std::string data;
-};
-
-struct codec_t {
-    codec_t():
-        m_buffer(256),
-        m_packer(m_buffer)
+struct message_t {
+    message_t():
+        m_id(-1)
     { }
 
-    template<class Event, typename... Args>
-    event_t
-    pack(Args&&... args) {
-        event_t event;
+    message_t(msgpack::unpacked&& u):
+        m_object(u.get()),
+        m_zone(std::move(u.zone()))
+    {
+        m_object.via.array.ptr[0] >> m_id;
+    }
 
-        event.id = event_traits<Event>::id;
+    message_t(message_t&& other) {
+        *this = std::move(other);
+    }
+    
+    message_t&
+    operator=(message_t&& other) {
+        m_id = other.m_id;
+        m_object = other.m_object;
+        m_zone = std::move(other.m_zone);
 
-        if(!event_traits<Event>::empty) {
-            m_buffer.clear();
-
-            // Pack the event data.
-            type_traits<typename event_traits<Event>::tuple_type>::pack(
-                m_packer,
-                std::forward<Args>(args)...
-            );
-
-            event.data = std::string(
-                m_buffer.data(),
-                m_buffer.size()
-            );
-        }
-
-        return event;
+        return *this;
     }
 
     template<class Event, typename... Args>
     void
-    unpack();
+    as(Args&&... args) {
+        try {
+            type_traits<typename event_traits<Event>::tuple_type>::unpack(
+                m_object,
+                std::forward<Args>(args)...
+            );
+        } catch(const msgpack::type_error& e) {
+            throw cocaine::error_t("message type mismatch");
+        } catch(const std::bad_cast& e) {
+            throw cocaine::error_t("message type mismatch");
+        }
+    }
+
+public:
+    int
+    id() const {
+        return m_id;
+    }
+
+private:
+    int m_id;
+
+    msgpack::object m_object;
+    std::unique_ptr<msgpack::zone> m_zone;
+};
+
+struct codec_t {
+    codec_t(size_t size = 1024):
+        m_buffer(size),
+        m_packer(m_buffer)
+    { }
+
+    template<class Event, typename... Args>
+    std::string
+    pack(Args&&... args) {
+        m_buffer.clear();
+        m_packer.pack_array(2);
+
+        // Pack the event code.
+        type_traits<int>::pack(
+            m_packer,
+            event_traits<Event>::id
+        );
+
+        // Pack the event data.
+        type_traits<typename event_traits<Event>::tuple_type>::pack(
+            m_packer,
+            std::forward<Args>(args)...
+        );
+
+        return std::string(m_buffer.data(), m_buffer.size());
+    }
+
+    message_t
+    unpack(const std::string& blob) {
+        msgpack::unpacked unpacked;
+
+        try {
+            msgpack::unpack(&unpacked, blob.data(), blob.size());
+        } catch(const msgpack::unpack_error& e) {
+            throw cocaine::error_t("corrupted message");
+        }
+
+        msgpack::object object = unpacked.get();
+
+        if(object.type != msgpack::type::ARRAY ||
+           object.via.array.size != 2)
+        {
+            throw cocaine::error_t("invalid message format");
+        }
+
+        return message_t(std::move(unpacked));
+    }
 
 private:
     msgpack::sbuffer m_buffer;
@@ -156,56 +217,6 @@ class channel:
             type_traits<T>::pack(packer, identity);
             
             this->setsockopt(ZMQ_IDENTITY, buffer.data(), buffer.size());
-        }
-
-        using socket<SharingPolicy>::send;
-        using socket<SharingPolicy>::recv;
-
-        // RPC messages
-
-        bool
-        send(const event_t& event) {
-            if(!event.data.empty()) {
-                return this->send(event.id, ZMQ_SNDMORE) &&
-                       this->send(io::protect(event.data));
-            } else {
-                return this->send(event.id);
-            }
-        }
-
-        template<class Event, class T, typename... Args>
-        bool
-        recv(T&& head, Args&&... tail) {
-            zmq::message_t message;
-            msgpack::unpacked unpacked;
-
-            if(!this->recv(message)) {
-                return false;
-            }
-
-            try {
-                msgpack::unpack(
-                    &unpacked,
-                    static_cast<const char*>(message.data()),
-                    message.size()
-                );
-            } catch(const msgpack::unpack_error& e) {
-                throw cocaine::error_t("corrupted message");
-            }
-
-            try {
-                type_traits<typename event_traits<Event>::tuple_type>::unpack(
-                    unpacked.get(),
-                    std::forward<T>(head),
-                    std::forward<Args>(tail)...
-                );
-            } catch(const msgpack::type_error& e) {
-                throw cocaine::error_t("message type mismatch");
-            } catch(const std::bad_cast& e) {
-                throw cocaine::error_t("message type mismatch");
-            }
-
-            return true;
         }
 };
 

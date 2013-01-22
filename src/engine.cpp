@@ -234,7 +234,7 @@ engine_t::enqueue(const api::event_t& event,
                   const boost::shared_ptr<api::stream_t>& upstream,
                   engine::mode mode)
 {
-    boost::shared_ptr<session_t> session = boost::make_shared<session_t>(
+    auto session = boost::make_shared<session_t>(
         m_next_id++,
         event,
         upstream
@@ -273,10 +273,10 @@ engine_t::enqueue(const api::event_t& event,
 
 bool
 engine_t::send(const unique_id_t& uuid,
-               const io::event_t& blob)
+               const std::string& blob)
 {
     return m_bus->send(uuid, ZMQ_SNDMORE) &&
-           m_bus->send(blob);
+           m_bus->send(io::protect(blob));
 }
 
 void
@@ -366,71 +366,69 @@ engine_t::process_bus_events() {
     // NOTE: Try to read RPC calls in bulk, where the maximum size
     // of the bulk is proportional to the number of spawned slaves.
     unsigned int counter = m_pool.size() * defaults::io_bulk_size;
-    
-    unique_id_t slave_id(uninitialized);
-    int message_id;
-    
-    do {
-        boost::unique_lock<io::shared_channel_t> lock(*m_bus);
 
-        // TEST: Ensure that we haven't missed something in a previous iteration.
-        BOOST_ASSERT(!m_bus->more());
-    
+    unique_id_t slave_id(uninitialized);
+    pool_map_t::iterator slave;
+
+    std::string blob;
+    io::message_t message;
+
+    while(counter--) {
         {
+            boost::unique_lock<io::shared_channel_t> lock(*m_bus);
+
             scoped_option<
                 options::receive_timeout
             > option(*m_bus, 0);
             
-            if(!m_bus->recv_multipart(slave_id, message_id)) {
+            if(!m_bus->recv_multipart(slave_id, io::protect(blob))) {
                 return;
             }
         }
 
-        pool_map_t::iterator slave(m_pool.find(slave_id));
+        slave = m_pool.find(slave_id);
 
         if(slave == m_pool.end() ||
            slave->second->state() == slave_t::state_t::dead)
         {
             COCAINE_LOG_DEBUG(
                 m_log,
-                "dropping type %d message from an inactive slave %s", 
-                message_id,
+                "dropping a message from inactive slave %s", 
                 slave_id
             );
             
-            m_bus->drop();
-            
             continue;
+        }
+
+        try {
+            message = m_codec.unpack(blob);
+        } catch(...) {
+            // ...
         }
 
         COCAINE_LOG_DEBUG(
             m_log,
             "received type %d message from slave %s",
-            message_id,
+            message.id(),
             slave_id
         );
 
-        switch(message_id) {
+        switch(message.id()) {
             case event_traits<rpc::heartbeat>::id:
-                lock.unlock();
-
                 slave->second->on_ping();
-
                 break;
 
             case event_traits<rpc::suicide>::id: {
                 int code;
-                std::string message;
+                std::string reason;
 
-                m_bus->recv<rpc::suicide>(code, message);
-
-                lock.unlock();
+                message.as<rpc::suicide>(code, reason);
 
                 COCAINE_LOG_DEBUG(
                     m_log,
                     "slave %s is committing suicide: %s",
                     slave_id,
-                    message
+                    reason
                 );
 
                 m_pool.erase(slave);
@@ -452,13 +450,11 @@ engine_t::process_bus_events() {
 
             case event_traits<rpc::chunk>::id: {
                 uint64_t session_id;
-                std::string message;
+                std::string chunk;
                 
-                m_bus->recv<rpc::chunk>(session_id, message);
+                message.as<rpc::chunk>(session_id, chunk);
 
-                lock.unlock();
-
-                slave->second->on_chunk(session_id, message);
+                slave->second->on_chunk(session_id, chunk);
 
                 break;
             }
@@ -466,16 +462,14 @@ engine_t::process_bus_events() {
             case event_traits<rpc::error>::id: {
                 uint64_t session_id;
                 int code;
-                std::string message;
+                std::string reason;
 
-                m_bus->recv<rpc::error>(session_id, code, message);
+                message.as<rpc::error>(session_id, code, reason);
                 
-                lock.unlock();
-
                 slave->second->on_error(
                     session_id,
                     static_cast<error_code>(code),
-                    message
+                    reason
                 );
 
                 break;
@@ -484,9 +478,7 @@ engine_t::process_bus_events() {
             case event_traits<rpc::choke>::id: {
                 uint64_t session_id;
 
-                m_bus->recv<rpc::choke>(session_id);
-
-                lock.unlock();
+                message.as<rpc::choke>(session_id);
 
                 slave->second->on_choke(session_id);
 
@@ -497,13 +489,11 @@ engine_t::process_bus_events() {
                 COCAINE_LOG_WARNING(
                     m_log,
                     "dropping unknown type %d message from slave %s",
-                    message_id,
+                    message.id(),
                     slave_id
                 );
-
-                m_bus->drop();
         }
-    } while(--counter);
+    }
 }
 
 namespace {
@@ -787,12 +777,15 @@ engine_t::migrate(state_t target) {
     // otherwise, the engine should wait for the specified timeout for slaves
     // to finish their sessions and, if they are still active, force the termination.
     
+    io::codec_t codec;
+    std::string message = codec.pack<rpc::terminate>();
+
     for(pool_map_t::iterator it = m_pool.begin();
         it != m_pool.end();
         ++it)
     {
         if(it->second->state() == slave_t::state_t::active) {
-            send<rpc::terminate>(it->first);
+            it->second->send(message);
             ++pending;
         }
     }

@@ -60,7 +60,9 @@ public:
     const boost::shared_ptr<api::stream_t> upstream;
 
 private:
-    typedef std::vector<io::event_t> message_cache_t;
+    typedef std::vector<
+        std::string
+    > message_cache_t;
 
     // Message cache.
     message_cache_t m_cache;
@@ -79,7 +81,7 @@ session_t::send(Args&&... args) {
     boost::unique_lock<boost::mutex> lock(m_mutex);
 
     // Pre-pack the message.
-    io::event_t blob = m_codec.pack<Event>(
+    std::string blob = m_codec.pack<Event>(
         id,
         std::forward<Args>(args)...
     );

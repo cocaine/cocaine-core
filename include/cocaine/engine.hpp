@@ -87,7 +87,7 @@ class engine_t:
 
         bool
         send(const unique_id_t& uuid,
-             const io::event_t& blob);
+             const std::string& blob);
 
     public:
         ev::loop_ref&
@@ -134,11 +134,6 @@ class engine_t:
         
         void
         stop();
-
-        template<class Event, typename... Args>
-        bool
-        send(const unique_id_t& uuid,
-             Args&&... args);
 
     private:
         context_t& m_context;
@@ -196,22 +191,9 @@ class engine_t:
         // only weak references to the isolate instances.
         api::category_traits<api::isolate_t>::ptr_type m_isolate;
 
-        // Message serializer.
+        // Message codec.
         io::codec_t m_codec;
 };
-
-template<class Event, typename... Args>
-bool
-engine_t::send(const unique_id_t& uuid,
-               Args&&... args)
-{
-    boost::unique_lock<io::shared_channel_t> lock(*m_bus);
-
-    return send(
-        uuid,
-        m_codec.pack<Event>(std::forward<Args>(args)...)
-    );
-}
 
 }} // namespace cocaine::engine
 

@@ -23,6 +23,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/asio.hpp"
+#include "cocaine/channel.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/unique_id.hpp"
 
@@ -51,7 +52,7 @@ class slave_t:
         assign(boost::shared_ptr<session_t>&& session);
        
         bool
-        send(const io::event_t& blob);
+        send(const std::string& blob);
 
         void
         on_ping();
@@ -68,6 +69,7 @@ class slave_t:
         void
         on_choke(uint64_t session_id);
 
+    public:
         unique_id_t
         id() const {
             return m_id;
@@ -97,9 +99,9 @@ class slave_t:
         terminate();
 
         template<class Event, typename... Args>
-        bool
+        void
         send(Args&&... args);
- 
+
     private:
         context_t& m_context;
         std::unique_ptr<logging::log_t> m_log;
@@ -131,14 +133,14 @@ class slave_t:
         // Current sessions.
         session_map_t m_sessions;
 
-        // Message serializer.
+        // Message serializing.
         io::codec_t m_codec;
 };
 
 template<class Event, typename... Args>
-bool
+void
 slave_t::send(Args&&... args) {
-    return send(m_codec.pack<Event>(std::forward<Args>(args)...));
+    send(m_codec.pack<Event>(std::forward<Args>(args)...));
 }
 
 }} // namespace cocaine::engine

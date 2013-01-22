@@ -159,7 +159,9 @@ app_t::stop() {
     
     io::codec_t codec;
 
-    m_control->send(codec.pack<control::terminate>());
+    m_control->send(
+        io::protect(codec.pack<control::terminate>())
+    );
 
     m_thread->join();
     m_thread.reset();
@@ -182,7 +184,9 @@ app_t::info() const {
 
     io::codec_t codec;
 
-    m_control->send(codec.pack<control::status>());
+    m_control->send(
+        io::protect(codec.pack<control::status>())
+    );
 
     {
         scoped_option<
