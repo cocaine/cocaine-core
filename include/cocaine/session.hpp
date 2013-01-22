@@ -91,7 +91,7 @@ session_t::send(Args&&... args) {
     } else {
         m_cache.emplace_back(blob);
     }
-    
+
     return true;
 }
 

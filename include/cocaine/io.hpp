@@ -271,7 +271,7 @@ struct socket:
         type_traits<T>::pack(packer, value);
 
         zmq::message_t message(buffer.size());
-        
+
         std::memcpy(
             message.data(),
             buffer.data(),

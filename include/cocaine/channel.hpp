@@ -105,7 +105,7 @@ struct message_t {
     message_t(message_t&& other) {
         *this = std::move(other);
     }
-    
+
     message_t&
     operator=(message_t&& other) {
         m_id = other.m_id;
