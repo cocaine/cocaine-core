@@ -185,7 +185,7 @@ struct codec_t {
             throw cocaine::error_t("corrupted message");
         }
 
-        msgpack::object object = unpacked.get();
+        const msgpack::object& object = unpacked.get();
 
         if(object.type != msgpack::type::ARRAY ||
            object.via.array.size != 2)
