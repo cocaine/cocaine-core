@@ -113,6 +113,16 @@ slave_t::send(const std::string& blob) {
     );
 }
 
+bool
+slave_t::send(const std::vector<std::string>& blobs) {
+    BOOST_ASSERT(m_state == state_t::active);
+
+    return m_engine.send(
+        m_id,
+        blobs
+    );
+}
+
 void
 slave_t::on_ping() {
     BOOST_ASSERT(m_state != state_t::dead);

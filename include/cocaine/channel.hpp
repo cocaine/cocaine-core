@@ -97,7 +97,7 @@ struct message_t {
 
     message_t(msgpack::unpacked&& u):
         m_object(u.get()),
-        m_zone(std::move(u.zone()))
+        m_zone(u.zone().release())
     {
         m_object.via.array.ptr[0] >> m_id;
     }
@@ -120,7 +120,7 @@ struct message_t {
     as(Args&&... args) {
         try {
             type_traits<typename event_traits<Event>::tuple_type>::unpack(
-                m_object,
+                m_object.via.array.ptr[1],
                 std::forward<Args>(args)...
             );
         } catch(const msgpack::type_error& e) {

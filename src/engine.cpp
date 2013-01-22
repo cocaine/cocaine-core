@@ -275,8 +275,44 @@ bool
 engine_t::send(const unique_id_t& uuid,
                const std::string& blob)
 {
+    boost::unique_lock<io::shared_channel_t> lock(*m_bus);
+
     return m_bus->send(uuid, ZMQ_SNDMORE) &&
            m_bus->send(io::protect(blob));
+}
+
+bool
+engine_t::send(const unique_id_t& uuid,
+               const std::vector<std::string>& blobs)
+{
+    COCAINE_LOG_DEBUG(
+        m_log,
+        "sending a batch of %llu messages to slave %s",
+        blobs.size(),
+        uuid
+    );
+
+    boost::unique_lock<io::shared_channel_t> lock(*m_bus);
+
+    if(!m_bus->send(uuid, ZMQ_SNDMORE)) {
+        return false;
+    }
+
+    bool success = true;
+
+    size_t i = 0,
+           end = blobs.size();
+
+    while(success && i != end) {
+        success = m_bus->send(
+            io::protect(blobs[i]),
+            i != end - 1 ? ZMQ_SNDMORE : 0
+        );
+
+        i++;
+    }
+
+    return success;
 }
 
 void
@@ -545,15 +581,15 @@ namespace {
 
 void
 engine_t::process_ctl_events() {
-    int message_id;
+    std::string blob;
 
-    if(!m_ctl->recv(message_id)) {
-        COCAINE_LOG_ERROR(m_log, "received a corrupted control message");
-        m_ctl->drop();
+    if(!m_ctl->recv(io::protect(blob))) {
         return;
     }
 
-    switch(message_id) {
+    io::message_t message = m_codec.unpack(blob);
+
+    switch(message.id()) {
         case event_traits<control::status>::id: {
             Json::Value info(Json::objectValue);
 
@@ -582,8 +618,7 @@ engine_t::process_ctl_events() {
             break;
 
         default:
-            COCAINE_LOG_ERROR(m_log, "received an unknown control message type %d", message_id);
-            m_ctl->drop();
+            COCAINE_LOG_ERROR(m_log, "received an unknown control message type %d", message.id());
     }
 }
 

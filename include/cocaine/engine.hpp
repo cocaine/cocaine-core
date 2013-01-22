@@ -89,6 +89,10 @@ class engine_t:
         send(const unique_id_t& uuid,
              const std::string& blob);
 
+        bool
+        send(const unique_id_t& uuid,
+             const std::vector<std::string>& blobs);
+
     public:
         ev::loop_ref&
         loop() {

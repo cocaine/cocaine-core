@@ -54,6 +54,9 @@ class slave_t:
         bool
         send(const std::string& blob);
 
+        bool
+        send(const std::vector<std::string>& blobs);
+
         void
         on_ping();
 
