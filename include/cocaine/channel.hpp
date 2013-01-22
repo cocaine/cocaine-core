@@ -176,7 +176,7 @@ struct codec_t {
     }
 
     message_t
-    unpack(const zmq::message_t& blob) {
+    unpack(zmq::message_t& blob) {
         msgpack::unpacked unpacked;
 
         try {

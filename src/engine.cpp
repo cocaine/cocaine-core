@@ -589,9 +589,9 @@ namespace {
 
 void
 engine_t::process_ctl_events() {
-    std::string blob;
+    zmq::message_t blob;
 
-    if(!m_ctl->recv(io::protect(blob))) {
+    if(!m_ctl->recv(blob)) {
         return;
     }
 
