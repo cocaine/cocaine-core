@@ -91,9 +91,9 @@ struct event_traits {
 };
 
 struct message_t {
-    message_t():
-        m_id(-1)
-    { }
+    message_t() {
+        // Empty.
+    }
 
     message_t(msgpack::unpacked&& u):
         m_object(u.get()),
@@ -144,8 +144,7 @@ private:
 };
 
 struct codec_t {
-    codec_t(size_t size = 1024):
-        m_buffer(size),
+    codec_t():
         m_packer(m_buffer)
     { }
 
@@ -153,6 +152,8 @@ struct codec_t {
     std::string
     pack(Args&&... args) {
         m_buffer.clear();
+
+        // Message format is [ID, [Args...]].
         m_packer.pack_array(2);
 
         // Pack the event code.
@@ -161,21 +162,25 @@ struct codec_t {
             event_traits<Event>::id
         );
 
-        // Pack the event data.
-        type_traits<typename event_traits<Event>::tuple_type>::pack(
-            m_packer,
-            std::forward<Args>(args)...
-        );
+        if(!event_traits<Event>::empty) {
+            // Pack the event data.
+            type_traits<typename event_traits<Event>::tuple_type>::pack(
+                m_packer,
+                std::forward<Args>(args)...
+            );
+        } else {
+            m_packer.pack_nil();
+        }
 
         return std::string(m_buffer.data(), m_buffer.size());
     }
 
     message_t
-    unpack(const std::string& blob) {
+    unpack(const zmq::message_t& blob) {
         msgpack::unpacked unpacked;
 
         try {
-            msgpack::unpack(&unpacked, blob.data(), blob.size());
+            msgpack::unpack(&unpacked, static_cast<const char*>(blob.data()), blob.size());
         } catch(const msgpack::unpack_error& e) {
             throw cocaine::error_t("corrupted message");
         }

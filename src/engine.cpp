@@ -275,10 +275,13 @@ bool
 engine_t::send(const unique_id_t& uuid,
                const std::string& blob)
 {
+    zmq::message_t msg(blob.size());
+    memcpy(msg.data(), blob.data(), blob.size());
+
     boost::unique_lock<io::shared_channel_t> lock(*m_bus);
 
     return m_bus->send(uuid, ZMQ_SNDMORE) &&
-           m_bus->send(io::protect(blob));
+           m_bus->send(msg);
 }
 
 bool
@@ -304,8 +307,13 @@ engine_t::send(const unique_id_t& uuid,
            end = blobs.size();
 
     while(success && i != end) {
+        const std::string& blob = blobs[i];
+        zmq::message_t msg(blob.size());
+
+        memcpy(msg.data(), blob.data(), blob.size());
+
         success = m_bus->send(
-            io::protect(blobs[i]),
+            msg,
             i != end - 1 ? ZMQ_SNDMORE : 0
         );
 
@@ -406,7 +414,7 @@ engine_t::process_bus_events() {
     unique_id_t slave_id(uninitialized);
     pool_map_t::iterator slave;
 
-    std::string blob;
+    zmq::message_t blob;
     io::message_t message;
 
     while(counter--) {
@@ -417,7 +425,7 @@ engine_t::process_bus_events() {
                 options::receive_timeout
             > option(*m_bus, 0);
             
-            if(!m_bus->recv_multipart(slave_id, io::protect(blob))) {
+            if(!m_bus->recv_multipart(slave_id, blob)) {
                 return;
             }
         }
