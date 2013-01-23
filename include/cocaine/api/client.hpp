@@ -74,7 +74,9 @@ struct client_t:
             io::options::send_timeout
         > option(m_channel, 0);
 
-        return m_channel.send(m_codec.pack<Event>(std::forward<Args>(args)...));
+        zmq::message_t blob = m_codec.pack<Event>(std::forward<Args>(args)...);
+
+        return m_channel.send(blob);
     }
 
 private:
