@@ -173,11 +173,11 @@ struct codec_t {
             m_packer.pack_nil();
         }
 
-        zmq::message_t message(m_buffer.size());
+        zmq::message_t blob(m_buffer.size());
         
-        memcpy(message.data(), m_buffer.data(), m_buffer.size());
+        memcpy(blob.data(), m_buffer.data(), m_buffer.size());
 
-        return message;
+        return blob;
     }
 
     message_t

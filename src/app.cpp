@@ -159,9 +159,9 @@ app_t::stop() {
     
     io::codec_t codec;
 
-    zmq::message_t message = codec.pack<control::terminate>();
+    zmq::message_t blob = codec.pack<control::terminate>();
 
-    m_control->send(message);
+    m_control->send(blob);
 
     m_thread->join();
     m_thread.reset();
@@ -184,9 +184,9 @@ app_t::info() const {
 
     io::codec_t codec;
 
-    zmq::message_t message = codec.pack<control::status>();
+    zmq::message_t blob = codec.pack<control::status>();
 
-    m_control->send(message);
+    m_control->send(blob);
 
     {
         scoped_option<

@@ -109,14 +109,14 @@ slave_t::on_ping() {
 
     rearm();
 
-    zmq::message_t message = m_codec.pack<rpc::heartbeat>();
+    zmq::message_t blob = m_codec.pack<rpc::heartbeat>();
 
-    send(message);
+    send(blob);
 }
 
 void
 slave_t::on_chunk(uint64_t session_id,
-                  const std::string& message)
+                  const std::string& chunk)
 {
     BOOST_ASSERT(m_state == state_t::active);
     
@@ -125,7 +125,7 @@ slave_t::on_chunk(uint64_t session_id,
         "slave %s received session %s chunk, size: %llu bytes",
         m_id,
         session_id,
-        message.size()
+        chunk.size()
     );
 
     session_map_t::iterator it(m_sessions.find(session_id));
@@ -133,13 +133,13 @@ slave_t::on_chunk(uint64_t session_id,
     // TEST: Ensure that this slave is responsible for the session.
     BOOST_ASSERT(it != m_sessions.end());
 
-    it->second->upstream->push(message.data(), message.size());
+    it->second->upstream->push(chunk.data(), chunk.size());
 }
 
 void
 slave_t::on_error(uint64_t session_id,
                   error_code code,
-                  const std::string& message)
+                  const std::string& reason)
 {
     BOOST_ASSERT(m_state == state_t::active);
     
@@ -149,7 +149,7 @@ slave_t::on_error(uint64_t session_id,
         m_id,
         session_id,
         code,
-        message
+        reason
     );
 
     session_map_t::iterator it(m_sessions.find(session_id));
@@ -157,7 +157,7 @@ slave_t::on_error(uint64_t session_id,
     // TEST: Ensure that this slave is responsible for the session.
     BOOST_ASSERT(it != m_sessions.end());
 
-    it->second->upstream->error(code, message);
+    it->second->upstream->error(code, reason);
 }
 
 void
@@ -181,7 +181,7 @@ slave_t::on_choke(uint64_t session_id) {
     // NOTE: As we're destroying the session here, we have to close the
     // downstream, otherwise the client wouldn't be able to close it later.
     // TODO: Think about it.
-    it->second->send<rpc::choke>();
+    // it->second->send<rpc::choke>();
     it->second->detach();
 
     m_sessions.erase(it);
@@ -257,9 +257,9 @@ slave_t::on_idle(ev::timer&, int) {
     
     COCAINE_LOG_DEBUG(m_log, "slave %s is idle, deactivating", m_id);
 
-    zmq::message_t message = m_codec.pack<rpc::terminate>();
+    zmq::message_t blob = m_codec.pack<rpc::terminate>();
 
-    send(message);
+    send(blob);
 
     m_state = state_t::inactive;
 }

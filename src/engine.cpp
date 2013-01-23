@@ -806,10 +806,10 @@ engine_t::migrate(state_t target) {
         it != m_pool.end();
         ++it)
     {
-        zmq::message_t message = m_codec.pack<rpc::terminate>();
+        zmq::message_t blob = m_codec.pack<rpc::terminate>();
 
         if(it->second->state() == slave_t::state_t::active) {
-            it->second->send(message);
+            it->second->send(blob);
             ++pending;
         }
     }
