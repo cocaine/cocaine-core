@@ -97,7 +97,7 @@ struct message_t {
 
     message_t(msgpack::unpacked&& unpacked):
         m_object(unpacked.get()),
-        m_zone(std::move(unpacked.zone()))
+        m_zone(std::move(unpacked.zone().release()))
     {
         m_object.via.array.ptr[0] >> m_id;
     }
