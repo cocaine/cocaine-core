@@ -46,7 +46,7 @@ struct session_t:
     detach();
 
     template<class Event, typename... Args>
-    bool
+    void
     send(Args&&... args);
 
 public:
@@ -60,39 +60,37 @@ public:
     const boost::shared_ptr<api::stream_t> upstream;
 
 private:
+    // Responsible slave.
+    slave_t * m_slave;
+
     typedef std::vector<
-        std::string
+        zmq::message_t
     > message_cache_t;
 
     // Message cache.
     message_cache_t m_cache;
     boost::mutex m_mutex;
 
-    // Message serializer.
+    // Message codec.
     io::codec_t m_codec;
-
-    // Responsible slave.
-    slave_t * m_slave;
 };
 
 template<class Event, typename... Args>
-bool
+void
 session_t::send(Args&&... args) {
     boost::unique_lock<boost::mutex> lock(m_mutex);
 
     // Pre-pack the message.
-    std::string blob = m_codec.pack<Event>(
+    zmq::message_t blob = m_codec.pack<Event>(
         id,
         std::forward<Args>(args)...
     );
     
     if(m_slave) {
-        return m_slave->send(blob);
+        m_slave->send(blob);
     } else {
-        m_cache.emplace_back(blob);
+        m_cache.emplace_back(std::move(blob));
     }
-
-    return true;
 }
 
 }}

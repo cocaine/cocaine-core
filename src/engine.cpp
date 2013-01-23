@@ -231,8 +231,7 @@ engine_t::run() {
 
 boost::shared_ptr<api::stream_t>
 engine_t::enqueue(const api::event_t& event,
-                  const boost::shared_ptr<api::stream_t>& upstream,
-                  engine::mode mode)
+                  const boost::shared_ptr<api::stream_t>& upstream)
 {
     auto session = boost::make_shared<session_t>(
         m_next_id++,
@@ -246,16 +245,10 @@ engine_t::enqueue(const api::event_t& event,
         throw cocaine::error_t("engine is not active");
     }
 
-    if(m_profile.queue_limit > 0) {
-        if(mode == engine::mode::normal &&
-           m_queue.size() >= m_profile.queue_limit)
-        {
-            throw cocaine::error_t("the queue is full");
-        }
-
-        while(m_queue.size() >= m_profile.queue_limit) {
-            m_condition.wait(lock);
-        }
+    if(m_profile.queue_limit > 0 &&
+       m_queue.size() >= m_profile.queue_limit)
+    {
+        throw cocaine::error_t("the queue is full");
     }
 
     m_queue.push(session);
@@ -271,22 +264,17 @@ engine_t::enqueue(const api::event_t& event,
     return boost::make_shared<downstream_t>(session);
 }
 
-bool
+void
 engine_t::send(const unique_id_t& uuid,
-               const std::string& blob)
+               zmq::message_t& blob)
 {
-    zmq::message_t msg(blob.size());
-    memcpy(msg.data(), blob.data(), blob.size());
-
     boost::unique_lock<io::shared_channel_t> lock(*m_bus);
-
-    return m_bus->send(uuid, ZMQ_SNDMORE) &&
-           m_bus->send(msg);
+    m_bus->send_multipart(uuid, blob);
 }
 
-bool
+void
 engine_t::send(const unique_id_t& uuid,
-               const std::vector<std::string>& blobs)
+               std::vector<zmq::message_t>& blobs)
 {
     COCAINE_LOG_DEBUG(
         m_log,
@@ -295,32 +283,21 @@ engine_t::send(const unique_id_t& uuid,
         uuid
     );
 
+    size_t i = 0,
+           size = blobs.size();
+
     boost::unique_lock<io::shared_channel_t> lock(*m_bus);
 
-    if(!m_bus->send(uuid, ZMQ_SNDMORE)) {
-        return false;
-    }
+    m_bus->send(uuid, ZMQ_SNDMORE);
 
-    bool success = true;
+    while(i != size) {
+        zmq::message_t& blob = blobs[i];
 
-    size_t i = 0,
-           end = blobs.size();
-
-    while(success && i != end) {
-        const std::string& blob = blobs[i];
-        zmq::message_t msg(blob.size());
-
-        memcpy(msg.data(), blob.data(), blob.size());
-
-        success = m_bus->send(
-            msg,
-            i != end - 1 ? ZMQ_SNDMORE : 0
+        m_bus->send(
+            blob,
+            ++i != size ? ZMQ_SNDMORE : 0
         );
-
-        i++;
     }
-
-    return success;
 }
 
 void
@@ -437,7 +414,7 @@ engine_t::process_bus_events() {
         {
             COCAINE_LOG_DEBUG(
                 m_log,
-                "dropping a message from inactive slave %s", 
+                "dropping a message from slave %s — slave is inactive",
                 slave_id
             );
             
@@ -446,8 +423,15 @@ engine_t::process_bus_events() {
 
         try {
             message = m_codec.unpack(blob);
-        } catch(...) {
-            // ...
+        } catch(const cocaine::error_t& e) {
+            COCAINE_LOG_ERROR(
+                m_log,
+                "dropping a message from slave %s — %s",
+                slave_id,
+                e.what()
+            );
+
+            continue;
         }
 
         COCAINE_LOG_DEBUG(
@@ -708,9 +692,6 @@ engine_t::pump() {
             session = m_queue.front();
             m_queue.pop_front();
 
-            // Notify one of the blocked enqueue operations.
-            m_condition.notify_one();
-
             // Process the queue head outside the lock, because it might take
             // some considerable amount of time if, for example, the session has
             // expired and there's some heavy-lifting in the error handler.
@@ -820,13 +801,13 @@ engine_t::migrate(state_t target) {
     // otherwise, the engine should wait for the specified timeout for slaves
     // to finish their sessions and, if they are still active, force the termination.
     
-    io::codec_t codec;
-    std::string message = codec.pack<rpc::terminate>();
 
     for(pool_map_t::iterator it = m_pool.begin();
         it != m_pool.end();
         ++it)
     {
+        zmq::message_t message = m_codec.pack<rpc::terminate>();
+
         if(it->second->state() == slave_t::state_t::active) {
             it->second->send(message);
             ++pending;

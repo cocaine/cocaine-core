@@ -103,33 +103,15 @@ slave_t::assign(boost::shared_ptr<session_t>&& session) {
     }
 }
 
-bool
-slave_t::send(const std::string& blob) {
-    BOOST_ASSERT(m_state == state_t::active);
-
-    return m_engine.send(
-        m_id,
-        blob
-    );
-}
-
-bool
-slave_t::send(const std::vector<std::string>& blobs) {
-    BOOST_ASSERT(m_state == state_t::active);
-
-    return m_engine.send(
-        m_id,
-        blobs
-    );
-}
-
 void
 slave_t::on_ping() {
     BOOST_ASSERT(m_state != state_t::dead);
-    
+
     rearm();
-    
-    send<rpc::heartbeat>();
+
+    zmq::message_t message = m_codec.pack<rpc::heartbeat>();
+
+    send(message);
 }
 
 void
@@ -209,6 +191,18 @@ slave_t::on_choke(uint64_t session_id) {
     }
 }
 
+void
+slave_t::send(zmq::message_t& blob) {
+    BOOST_ASSERT(m_state == state_t::active);
+    m_engine.send(m_id, blob);
+}
+
+void
+slave_t::send(std::vector<zmq::message_t>& blobs) {
+    BOOST_ASSERT(m_state == state_t::active);
+    m_engine.send(m_id, blobs);
+}
+
 namespace {
     struct timeout_t {
         template<class T>
@@ -263,7 +257,9 @@ slave_t::on_idle(ev::timer&, int) {
     
     COCAINE_LOG_DEBUG(m_log, "slave %s is idle, deactivating", m_id);
 
-    send<rpc::terminate>();
+    zmq::message_t message = m_codec.pack<rpc::terminate>();
+
+    send(message);
 
     m_state = state_t::inactive;
 }

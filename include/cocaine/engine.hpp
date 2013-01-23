@@ -82,16 +82,17 @@ class engine_t:
         
         boost::shared_ptr<api::stream_t>
         enqueue(const api::event_t& event,
-                const boost::shared_ptr<api::stream_t>& upstream,
-                engine::mode mode = engine::mode::normal);
+                const boost::shared_ptr<api::stream_t>& upstream);
 
-        bool
-        send(const unique_id_t& uuid,
-             const std::string& blob);
+        // Slave I/O
 
-        bool
+        void
         send(const unique_id_t& uuid,
-             const std::vector<std::string>& blobs);
+             zmq::message_t& blob);
+
+        void
+        send(const unique_id_t& uuid,
+             std::vector<zmq::message_t>& blobs);
 
     public:
         ev::loop_ref&
@@ -173,9 +174,8 @@ class engine_t:
         // Auto-incrementing Session ID.
         std::atomic<uint64_t> m_next_id;
 
-        // Session queue
+        // Session queue.
         session_queue_t m_queue;
-        boost::condition_variable_any m_condition;
 
         // Slave pool
 

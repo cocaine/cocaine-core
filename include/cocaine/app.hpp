@@ -49,8 +49,7 @@ class app_t {
         
         boost::shared_ptr<api::stream_t>
         enqueue(const api::event_t& event,
-                const boost::shared_ptr<api::stream_t>& upstream,
-                engine::mode mode = engine::mode::normal);
+                const boost::shared_ptr<api::stream_t>& upstream);
 
     private:
         void

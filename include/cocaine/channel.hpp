@@ -95,9 +95,9 @@ struct message_t {
         // Empty.
     }
 
-    message_t(msgpack::unpacked&& u):
-        m_object(u.get()),
-        m_zone(u.zone().release())
+    message_t(msgpack::unpacked&& unpacked):
+        m_object(unpacked.get()),
+        m_zone(std::move(unpacked.zone()))
     {
         m_object.via.array.ptr[0] >> m_id;
     }
@@ -107,7 +107,7 @@ struct message_t {
     }
 
     message_t&
-    operator=(message_t&& other) {
+    operator = (message_t&& other) {
         m_id = other.m_id;
         m_object = other.m_object;
         m_zone = std::move(other.m_zone);
@@ -139,6 +139,7 @@ public:
 private:
     int m_id;
 
+    // TODO: Might be a better idea to inherit msgpack::unpacked.
     msgpack::object m_object;
     std::unique_ptr<msgpack::zone> m_zone;
 };
@@ -149,7 +150,7 @@ struct codec_t {
     { }
 
     template<class Event, typename... Args>
-    std::string
+    zmq::message_t
     pack(Args&&... args) {
         m_buffer.clear();
 
@@ -172,15 +173,23 @@ struct codec_t {
             m_packer.pack_nil();
         }
 
-        return std::string(m_buffer.data(), m_buffer.size());
+        zmq::message_t message(m_buffer.size());
+        
+        memcpy(message.data(), m_buffer.data(), m_buffer.size());
+
+        return message;
     }
 
     message_t
-    unpack(zmq::message_t& blob) {
+    unpack(/* const */ zmq::message_t& blob) {
         msgpack::unpacked unpacked;
 
         try {
-            msgpack::unpack(&unpacked, static_cast<const char*>(blob.data()), blob.size());
+            msgpack::unpack(
+                &unpacked,
+                static_cast<const char*>(blob.data()),
+                blob.size()
+            );
         } catch(const msgpack::unpack_error& e) {
             throw cocaine::error_t("corrupted message");
         }

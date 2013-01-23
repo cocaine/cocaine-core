@@ -30,6 +30,7 @@
 
 #define BOOST_THREAD_DONT_USE_CHRONO
 #define BOOST_FILESYSTEM_VERSION 3
+#define BOOST_DISABLE_ASSERTS
 
 #include <boost/assert.hpp>
 #include <boost/make_shared.hpp>

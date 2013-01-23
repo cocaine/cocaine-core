@@ -159,9 +159,9 @@ app_t::stop() {
     
     io::codec_t codec;
 
-    m_control->send(
-        io::protect(codec.pack<control::terminate>())
-    );
+    zmq::message_t message = codec.pack<control::terminate>();
+
+    m_control->send(message);
 
     m_thread->join();
     m_thread.reset();
@@ -184,9 +184,9 @@ app_t::info() const {
 
     io::codec_t codec;
 
-    m_control->send(
-        io::protect(codec.pack<control::status>())
-    );
+    zmq::message_t message = codec.pack<control::status>();
+
+    m_control->send(message);
 
     {
         scoped_option<
@@ -213,10 +213,9 @@ app_t::info() const {
 
 boost::shared_ptr<api::stream_t>
 app_t::enqueue(const api::event_t& event,
-               const boost::shared_ptr<api::stream_t>& upstream,
-               engine::mode mode)
+               const boost::shared_ptr<api::stream_t>& upstream)
 {
-    return m_engine->enqueue(event, upstream, mode);
+    return m_engine->enqueue(event, upstream);
 }
 
 void

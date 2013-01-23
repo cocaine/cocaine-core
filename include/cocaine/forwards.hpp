@@ -48,12 +48,6 @@ namespace cocaine {
         // Unit of execution.
         struct session_t;
 
-        // Execution queueing modes.
-        enum mode: int {
-            normal,
-            blocking
-        };
-
         // Execution engine.
         class engine_t;
         class slave_t;
