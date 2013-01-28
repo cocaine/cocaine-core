@@ -29,8 +29,10 @@ template<class T>
 class birth_control  {
     public:
         birth_control() {
+#ifdef COCAINE_DEBUG
             ++g_objects_alive;
             ++g_objects_created;
+#endif
         }
 
         static inline
@@ -47,7 +49,9 @@ class birth_control  {
 
     protected:
         ~birth_control() {
+#ifdef COCAINE_DEBUG
             --g_objects_alive;
+#endif
         }
 
     private:

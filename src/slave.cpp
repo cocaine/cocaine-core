@@ -21,6 +21,7 @@
 #include "cocaine/slave.hpp"
 
 #include "cocaine/context.hpp"
+#include "cocaine/engine.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
 #include "cocaine/profile.hpp"
@@ -107,11 +108,35 @@ void
 slave_t::on_ping() {
     BOOST_ASSERT(m_state != state_t::dead);
 
-    rearm();
+    if(m_state == state_t::unknown) {
+        COCAINE_LOG_DEBUG(
+            m_log,
+            "slave %s became active in %.03f seconds",
+            m_id,
+            m_profile.startup_timeout - ev_timer_remaining(
+                m_engine.loop(),
+                static_cast<ev_timer*>(&m_heartbeat_timer)
+            )
+        );
 
-    zmq::message_t blob = m_codec.pack<rpc::heartbeat>();
+        m_state = state_t::active;
 
-    send(blob);
+        // Start the idle timer, which will kill the slave when it's not used.
+        m_idle_timer.set<slave_t, &slave_t::on_idle>(this);
+        m_idle_timer.start(m_profile.idle_timeout);
+    }
+
+    COCAINE_LOG_DEBUG(
+        m_log,
+        "slave %s resetting heartbeat timeout to %.02f seconds",
+        m_id,
+        m_profile.heartbeat_timeout
+    );
+
+    m_heartbeat_timer.stop();
+    m_heartbeat_timer.start(m_profile.heartbeat_timeout);
+
+    send(io::codec::pack<rpc::heartbeat>());
 }
 
 void
@@ -181,7 +206,7 @@ slave_t::on_choke(uint64_t session_id) {
     // NOTE: As we're destroying the session here, we have to close the
     // downstream, otherwise the client wouldn't be able to close it later.
     // TODO: Think about it.
-    // it->second->send<rpc::choke>();
+    it->second->send<rpc::choke>();
     it->second->detach();
 
     m_sessions.erase(it);
@@ -192,13 +217,13 @@ slave_t::on_choke(uint64_t session_id) {
 }
 
 void
-slave_t::send(zmq::message_t& blob) {
+slave_t::send(const std::string& blob) {
     BOOST_ASSERT(m_state == state_t::active);
     m_engine.send(m_id, blob);
 }
 
 void
-slave_t::send(std::vector<zmq::message_t>& blobs) {
+slave_t::send(const std::vector<std::string>& blobs) {
     BOOST_ASSERT(m_state == state_t::active);
     m_engine.send(m_id, blobs);
 }
@@ -254,45 +279,12 @@ slave_t::on_timeout(ev::timer&, int) {
 void
 slave_t::on_idle(ev::timer&, int) {
     BOOST_ASSERT(m_state == state_t::active);
-    
+
     COCAINE_LOG_DEBUG(m_log, "slave %s is idle, deactivating", m_id);
 
-    zmq::message_t blob = m_codec.pack<rpc::terminate>();
-
-    send(blob);
+    send(io::codec::pack<rpc::terminate>());
 
     m_state = state_t::inactive;
-}
-
-void
-slave_t::rearm() {
-    if(m_state == state_t::unknown) {
-        COCAINE_LOG_DEBUG(
-            m_log,
-            "slave %s became active in %.03f seconds",
-            m_id,
-            m_profile.startup_timeout - ev_timer_remaining(
-                m_engine.loop(),
-                static_cast<ev_timer*>(&m_heartbeat_timer)
-            )
-        );
-
-        m_state = state_t::active;
-
-        // Start the idle timer, which will kill the slave when it's not used.
-        m_idle_timer.set<slave_t, &slave_t::on_idle>(this);
-        m_idle_timer.start(m_profile.idle_timeout);
-    }
-
-    COCAINE_LOG_DEBUG(
-        m_log,
-        "slave %s resetting heartbeat timeout to %.02f seconds",
-        m_id,
-        m_profile.heartbeat_timeout
-    );
-
-    m_heartbeat_timer.stop();
-    m_heartbeat_timer.start(m_profile.heartbeat_timeout);
 }
 
 void

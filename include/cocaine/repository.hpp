@@ -134,7 +134,7 @@ repository_t::get(const std::string& type,
     const std::string id = typeid(Category).name();
 
     const factory_map_t& factories = m_categories[id];
-    const factory_map_t::const_iterator it = factories.find(type);
+    factory_map_t::const_iterator it = factories.find(type);
     
     if(it == factories.end()) {
         throw repository_error_t("the '%s' component is not available", type);

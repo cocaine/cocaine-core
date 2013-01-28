@@ -21,8 +21,8 @@
 #ifndef COCAINE_REMOTE_LOGGER_HPP
 #define COCAINE_REMOTE_LOGGER_HPP
 
-#include "cocaine/api/client.hpp"
 #include "cocaine/api/logger.hpp"
+#include "cocaine/api/client.hpp"
 
 #include <boost/circular_buffer.hpp>
 #include <boost/tuple/tuple.hpp>

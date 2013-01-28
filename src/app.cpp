@@ -23,8 +23,10 @@
 #include "cocaine/archive.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
+#include "cocaine/io.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
+#include "cocaine/messaging.hpp"
 #include "cocaine/profile.hpp"
 #include "cocaine/rpc.hpp"
 
@@ -57,7 +59,7 @@ app_t::app_t(context_t& context,
         deploy(name, path.string());
     }
 
-    m_control.reset(new io::unique_channel_t(context, ZMQ_PAIR));
+    m_control.reset(new io::socket_t(context, ZMQ_PAIR));
 
     std::string endpoint = cocaine::format(
         "inproc://%s",
@@ -157,11 +159,7 @@ app_t::stop() {
 
     COCAINE_LOG_INFO(m_log, "stopping the engine");
     
-    io::codec_t codec;
-
-    zmq::message_t blob = codec.pack<control::terminate>();
-
-    m_control->send(blob);
+    m_control->send(io::codec::pack<control::terminate>());
 
     m_thread->join();
     m_thread.reset();
@@ -182,11 +180,7 @@ app_t::info() const {
         return info;
     }
 
-    io::codec_t codec;
-
-    zmq::message_t blob = codec.pack<control::status>();
-
-    m_control->send(blob);
+    m_control->send(io::codec::pack<control::status>());
 
     {
         scoped_option<

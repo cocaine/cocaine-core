@@ -67,7 +67,7 @@ class app_t {
 
         // I/O
 
-        std::unique_ptr<io::unique_channel_t> m_control;
+        std::unique_ptr<io::socket_t> m_control;
 
         // Execution engine
 

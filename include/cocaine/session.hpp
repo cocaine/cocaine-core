@@ -23,7 +23,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/birth_control.hpp"
-#include "cocaine/channel.hpp"
+#include "cocaine/messaging.hpp"
 #include "cocaine/slave.hpp"
 
 #include "cocaine/api/event.hpp"
@@ -64,15 +64,12 @@ private:
     slave_t * m_slave;
 
     typedef std::vector<
-        zmq::message_t
+        std::string
     > message_cache_t;
 
     // Message cache.
     message_cache_t m_cache;
     boost::mutex m_mutex;
-
-    // Message codec.
-    io::codec_t m_codec;
 };
 
 template<class Event, typename... Args>
@@ -81,7 +78,7 @@ session_t::send(Args&&... args) {
     boost::unique_lock<boost::mutex> lock(m_mutex);
 
     // Pre-pack the message.
-    zmq::message_t blob = m_codec.pack<Event>(
+    auto blob = io::codec::pack<Event>(
         id,
         std::forward<Args>(args)...
     );

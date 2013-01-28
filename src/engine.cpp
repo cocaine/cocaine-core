@@ -21,6 +21,7 @@
 #include "cocaine/engine.hpp"
 
 #include "cocaine/context.hpp"
+#include "cocaine/io.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
 #include "cocaine/profile.hpp"
@@ -161,8 +162,8 @@ engine_t::engine_t(context_t& context,
     m_manifest(manifest),
     m_profile(profile),
     m_state(state_t::stopped),
-    m_bus(new io::shared_channel_t(context, ZMQ_ROUTER, m_manifest.name)),
-    m_ctl(new io::unique_channel_t(context, ZMQ_PAIR)),
+    m_bus(new io::socket_t(context, ZMQ_ROUTER, m_manifest.name)),
+    m_ctl(new io::socket_t(context, ZMQ_PAIR)),
     m_bus_watcher(m_loop),
     m_ctl_watcher(m_loop),
     m_bus_checker(m_loop),
@@ -266,15 +267,15 @@ engine_t::enqueue(const api::event_t& event,
 
 void
 engine_t::send(const unique_id_t& uuid,
-               zmq::message_t& blob)
+               const std::string& blob)
 {
-    boost::unique_lock<io::shared_channel_t> lock(*m_bus);
+    boost::unique_lock<boost::mutex> lock(m_bus_mutex);
     m_bus->send_multipart(uuid, blob);
 }
 
 void
 engine_t::send(const unique_id_t& uuid,
-               std::vector<zmq::message_t>& blobs)
+               const std::vector<std::string>& blobs)
 {
     COCAINE_LOG_DEBUG(
         m_log,
@@ -286,12 +287,12 @@ engine_t::send(const unique_id_t& uuid,
     size_t i = 0,
            size = blobs.size();
 
-    boost::unique_lock<io::shared_channel_t> lock(*m_bus);
+    boost::unique_lock<boost::mutex> lock(m_bus_mutex);
 
     m_bus->send(uuid, ZMQ_SNDMORE);
 
     while(i != size) {
-        zmq::message_t& blob = blobs[i];
+        const auto& blob = blobs[i];
 
         m_bus->send(
             blob,
@@ -305,7 +306,7 @@ engine_t::on_bus_event(ev::io&, int) {
     bool pending = false;
 
     {
-        boost::unique_lock<io::shared_channel_t> lock(*m_bus);
+        boost::unique_lock<boost::mutex> lock(m_bus_mutex);
         pending = m_bus->pending();
     }
 
@@ -388,15 +389,19 @@ engine_t::process_bus_events() {
     // of the bulk is proportional to the number of spawned slaves.
     unsigned int counter = m_pool.size() * defaults::io_bulk_size;
 
+    // RPC payload.
     unique_id_t slave_id(uninitialized);
-    pool_map_t::iterator slave;
+    std::string blob;
 
-    zmq::message_t blob;
+    // Deserialized message.
     io::message_t message;
+
+    // Originating slave.
+    pool_map_t::iterator slave;
 
     while(counter--) {
         {
-            boost::unique_lock<io::shared_channel_t> lock(*m_bus);
+            boost::unique_lock<boost::mutex> lock(m_bus_mutex);
 
             scoped_option<
                 options::receive_timeout
@@ -422,7 +427,7 @@ engine_t::process_bus_events() {
         }
 
         try {
-            message = m_codec.unpack(blob);
+            message = io::codec::unpack(blob);
         } catch(const cocaine::error_t& e) {
             COCAINE_LOG_ERROR(
                 m_log,
@@ -573,13 +578,27 @@ namespace {
 
 void
 engine_t::process_ctl_events() {
-    zmq::message_t blob;
+    // RPC payload.
+    std::string blob;
 
     if(!m_ctl->recv(blob)) {
         return;
     }
 
-    io::message_t message = m_codec.unpack(blob);
+    // Deserialized message.
+    io::message_t message;
+
+    try {
+        message = io::codec::unpack(blob);
+    } catch(const cocaine::error_t& e) {
+        COCAINE_LOG_ERROR(
+            m_log,
+            "dropping a control message — %s",
+            e.what()
+        );
+
+        return;
+    }
 
     switch(message.id()) {
         case event_traits<control::status>::id: {
@@ -610,7 +629,7 @@ engine_t::process_ctl_events() {
             break;
 
         default:
-            COCAINE_LOG_ERROR(m_log, "received an unknown control message type %d", message.id());
+            COCAINE_LOG_ERROR(m_log, "dropping unknown type %d control message", message.id());
     }
 }
 
@@ -800,16 +819,13 @@ engine_t::migrate(state_t target) {
     // If there're no active slaves, the engine can terminate right away,
     // otherwise, the engine should wait for the specified timeout for slaves
     // to finish their sessions and, if they are still active, force the termination.
-    
 
     for(pool_map_t::iterator it = m_pool.begin();
         it != m_pool.end();
         ++it)
     {
-        zmq::message_t blob = m_codec.pack<rpc::terminate>();
-
         if(it->second->state() == slave_t::state_t::active) {
-            it->second->send(blob);
+            it->second->send(io::codec::pack<rpc::terminate>());
             ++pending;
         }
     }

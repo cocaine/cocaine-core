@@ -24,13 +24,11 @@
 #include "cocaine/common.hpp"
 #include "cocaine/asio.hpp"
 #include "cocaine/atomic.hpp"
-#include "cocaine/channel.hpp"
 
 #include "cocaine/api/isolate.hpp"
 
 #include <deque>
 
-#include <boost/thread/condition.hpp>
 #include <boost/thread/mutex.hpp>
 
 namespace cocaine { namespace engine {
@@ -88,11 +86,11 @@ class engine_t:
 
         void
         send(const unique_id_t& uuid,
-             zmq::message_t& blob);
+             const std::string& blob);
 
         void
         send(const unique_id_t& uuid,
-             std::vector<zmq::message_t>& blobs);
+             const std::vector<std::string>& blobs);
 
     public:
         ev::loop_ref&
@@ -153,8 +151,10 @@ class engine_t:
 
         // I/O
         
-        std::unique_ptr<io::shared_channel_t> m_bus;
-        std::unique_ptr<io::unique_channel_t> m_ctl;
+        std::unique_ptr<io::socket_t> m_bus;
+        std::unique_ptr<io::socket_t> m_ctl;
+
+        boost::mutex m_bus_mutex;
 
         // Event loop
         
@@ -194,9 +194,6 @@ class engine_t:
         // avoids isolate destruction, as the factory stores
         // only weak references to the isolate instances.
         api::category_traits<api::isolate_t>::ptr_type m_isolate;
-
-        // Message codec.
-        io::codec_t m_codec;
 };
 
 }} // namespace cocaine::engine

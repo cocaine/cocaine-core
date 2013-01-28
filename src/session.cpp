@@ -22,8 +22,6 @@
 
 #include "cocaine/rpc.hpp"
 
-#include "cocaine/traits/unique_id.hpp"
-
 using namespace cocaine::engine;
 
 session_t::session_t(uint64_t id_,

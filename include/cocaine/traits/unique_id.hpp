@@ -33,27 +33,27 @@ struct type_traits<unique_id_t> {
     static inline
     void
     pack(msgpack::packer<Stream>& packer,
-         const unique_id_t& object)
+         const unique_id_t& source)
     {
         packer.pack_array(2);
         
-        packer << object.uuid[0];
-        packer << object.uuid[1];
+        packer << source.uuid[0];
+        packer << source.uuid[1];
     }
     
     static inline
     void
-    unpack(const msgpack::object& packed,
-           unique_id_t& object)
+    unpack(const msgpack::object& object,
+           unique_id_t& target)
     {
-        if(packed.type != msgpack::type::ARRAY ||
-           packed.via.array.size != 2)
+        if(object.type != msgpack::type::ARRAY ||
+           object.via.array.size != 2)
         {
             throw msgpack::type_error();
         }
 
-        packed.via.array.ptr[0] >> object.uuid[0];
-        packed.via.array.ptr[1] >> object.uuid[1];
+        object.via.array.ptr[0] >> target.uuid[0];
+        object.via.array.ptr[1] >> target.uuid[1];
     }
 };
 

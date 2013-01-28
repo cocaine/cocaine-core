@@ -23,9 +23,10 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/asio.hpp"
-#include "cocaine/channel.hpp"
-#include "cocaine/engine.hpp"
+#include "cocaine/messaging.hpp"
 #include "cocaine/unique_id.hpp"
+
+#include "cocaine/api/isolate.hpp"
 
 namespace cocaine { namespace engine {
 
@@ -48,9 +49,13 @@ class slave_t:
 
         ~slave_t();
 
+        // Sessions
+
         void
         assign(boost::shared_ptr<session_t>&& session);
        
+        // Slave RPC
+
         void
         on_ping();
 
@@ -66,11 +71,13 @@ class slave_t:
         void
         on_choke(uint64_t session_id);
 
-        void
-        send(zmq::message_t& blob);
+        // Slave I/O
 
         void
-        send(std::vector<zmq::message_t>& blobs);
+        send(const std::string& blob);
+
+        void
+        send(const std::vector<std::string>& blobs);
 
     public:
         unique_id_t
@@ -94,9 +101,6 @@ class slave_t:
 
         void
         on_idle(ev::timer&, int);
-
-        void
-        rearm();
 
         void
         terminate();
@@ -131,9 +135,6 @@ class slave_t:
 
         // Current sessions.
         session_map_t m_sessions;
-
-        // Message codec.
-        io::codec_t m_codec;
 };
 
 }} // namespace cocaine::engine
