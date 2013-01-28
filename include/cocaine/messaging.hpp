@@ -98,10 +98,11 @@ struct message_t:
         // Empty.
     }
 
-    message_t(msgpack::unpacked&& unpacked) {
-        m_object = unpacked.get();
-        m_zone = std::move(unpacked.zone());
-    }
+    // NOTE: Moving an auto_ptr into an unique_ptr is broken on GCC 4.4.
+    message_t(msgpack::unpacked&& unpacked):
+        m_object(unpacked.get()),
+        m_zone(unpacked.zone().release())
+    { }
 
     message_t(message_t&& other) {
         *this = std::move(other);

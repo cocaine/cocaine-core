@@ -23,7 +23,10 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/context.hpp"
-#include "cocaine/channel.hpp"
+#include "cocaine/io.hpp"
+#include "cocaine/messaging.hpp"
+
+#include <boost/thread/mutex.hpp>
 
 namespace cocaine { namespace api {
 
@@ -68,20 +71,18 @@ struct client_t:
     template<class Event, typename... Args>
     bool
     send(Args&&... args) {
-        boost::unique_lock<io::shared_channel_t> lock(m_channel);
+        boost::unique_lock<boost::mutex> lock(m_channel_mutex);
 
         io::scoped_option<
             io::options::send_timeout
         > option(m_channel, 0);
 
-        zmq::message_t blob = m_codec.pack<Event>(std::forward<Args>(args)...);
-
-        return m_channel.send(blob);
+        return m_channel.send(io::codec::pack<Event>(std::forward<Args>(args)...));
     }
 
 private:
-    io::shared_channel_t m_channel;
-    io::codec_t m_codec;
+    io::socket_t m_channel;
+    boost::mutex m_channel_mutex;
 };
 
 }} // namespace cocaine::api

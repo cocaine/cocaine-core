@@ -95,7 +95,7 @@ class node_t:
         std::unique_ptr<logging::log_t> m_log;
 
         // Node announce channel.        
-        io::unique_channel_t m_announces;
+        io::socket_t m_announces;
 
         // Node announce timer.
         ev::timer m_announce_timer;
