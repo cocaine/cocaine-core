@@ -1,7 +1,6 @@
 #!/bin/sh -ex
 
 # Travis-CI hacks
-sudo apt-get remove -y --purge zeromq
 yes | sudo add-apt-repository ppa:yandex-opensource/cocaine-dev
 sudo apt-get update -qq
 
@@ -9,10 +8,11 @@ sudo apt-get update -qq
 yes | sudo mk-build-deps -i
 
 # Build packages
-yes | debuild -uc -us
+yes | debuild -e CC -e CXX --prepend-path="/usr/local/bin/" -uc -us
+
+# TODO(kobolog@): Install depends
 
 # Install packages
-# sudo dpkg -i ../*.deb
+# sudo -- dpkg -i ../*.deb
 
-# Run stress test
-# TODO(kobolog@):
+# TODO(kobolog@): Run stress test
