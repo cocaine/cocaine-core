@@ -1,6 +1,7 @@
 language: cpp
 compiler:
   - gcc
+  - clang
 install:
   - sudo apt-get update -qq
   - sudo apt-get install -qq devscripts build-essential equivs python-software-properties
