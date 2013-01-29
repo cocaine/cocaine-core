@@ -23,7 +23,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/birth_control.hpp"
-#include "cocaine/channel.hpp"
+#include "cocaine/messaging.hpp"
 #include "cocaine/slave.hpp"
 
 #include "cocaine/api/event.hpp"
@@ -46,7 +46,7 @@ struct session_t:
     detach();
 
     template<class Event, typename... Args>
-    bool
+    void
     send(Args&&... args);
 
 public:
@@ -60,39 +60,34 @@ public:
     const boost::shared_ptr<api::stream_t> upstream;
 
 private:
+    // Responsible slave.
+    slave_t * m_slave;
+
     typedef std::vector<
-        std::pair<int, std::string>
+        std::string
     > message_cache_t;
 
     // Message cache.
     message_cache_t m_cache;
     boost::mutex m_mutex;
-
-    // Responsible slave.
-    slave_t * m_slave;
 };
 
 template<class Event, typename... Args>
-bool
+void
 session_t::send(Args&&... args) {
     boost::unique_lock<boost::mutex> lock(m_mutex);
+
+    // Pre-pack the message.
+    auto blob = io::codec::pack<Event>(
+        id,
+        std::forward<Args>(args)...
+    );
     
-    if(!m_slave) {
-        std::ostringstream buffer;
-
-        io::type_traits<
-            typename io::event_traits<Event>::tuple_type
-        >::pack(buffer, id, std::forward<Args>(args)...);
-
-        m_cache.emplace_back(
-            io::event_traits<Event>::id,
-            buffer.str()
-        );
-
-        return true;
+    if(m_slave) {
+        m_slave->send(blob);
+    } else {
+        m_cache.emplace_back(std::move(blob));
     }
-
-    return m_slave->send<Event>(id, std::forward<Args>(args)...);    
 }
 
 }}

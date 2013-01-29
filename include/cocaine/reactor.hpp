@@ -23,11 +23,13 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/asio.hpp"
-#include "cocaine/channel.hpp"
+#include "cocaine/io.hpp"
+#include "cocaine/messaging.hpp"
 #include "cocaine/slot.hpp"
 
 #include "cocaine/api/service.hpp"
 
+#include <boost/thread/mutex.hpp>
 #include <boost/thread/thread.hpp>
 
 namespace cocaine {
@@ -84,7 +86,8 @@ class reactor_t:
         std::unique_ptr<logging::log_t> m_log;
         
         // Service I/O.
-        io::shared_channel_t m_channel;
+        io::socket_t m_channel;
+        boost::mutex m_channel_mutex;
         
         // Event loop.
         ev::dynamic_loop m_loop;
@@ -113,7 +116,7 @@ class reactor_t:
 template<class Event, class F>
 void
 reactor_t::on(F callable) {
-    typedef decltype(callable()) result_type;;
+    typedef decltype(callable()) result_type;
     typedef typename io::event_traits<Event>::tuple_type sequence_type;
     typedef slot<result_type, sequence_type> slot_type;
 

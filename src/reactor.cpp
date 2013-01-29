@@ -98,7 +98,7 @@ reactor_t::on_event(ev::io&, int) {
     m_checker.stop();
 
     {
-        boost::unique_lock<io::shared_channel_t> lock(m_channel);
+        boost::unique_lock<boost::mutex> lock(m_channel_mutex);
         pending = m_channel.pending();
     }
 
@@ -121,78 +121,59 @@ reactor_t::on_terminate(ev::async&, int) {
 void
 reactor_t::process() {
     unsigned int counter = defaults::io_bulk_size;
-    
+
+    // RPC payload.
     std::string source;
-    int message_id;
-    zmq::message_t message;
-   
-    bool rv;
+    std::string blob;
 
-    do {
-        boost::unique_lock<io::shared_channel_t> lock(m_channel);
+    // Deserialized message.
+    io::message_t message;
 
+    while(counter--) {
         {
+            boost::unique_lock<boost::mutex> lock(m_channel_mutex);
+
             io::scoped_option<
                 io::options::receive_timeout
             > option(m_channel, 0);
                 
-            try {
-                rv = m_channel.recv_multipart(
-                    io::protect(source),
-                    message_id,
-                    message
-                );
-            } catch(const cocaine::error_t& e) {
-                m_channel.drop();
-                continue;
+            if(!m_channel.recv_multipart(source, blob)) {
+                // NOTE: Means the non-blocking read got nothing.
+                return;
             }
         }
 
-        if(!rv) {
-            // NOTE: Means the non-blocking read got nothing.
-            return;
-        }
-        
-        slot_map_t::const_iterator slot = m_slots.find(message_id);
-
-        if(slot == m_slots.end()) {
-            COCAINE_LOG_WARNING(m_log, "dropping an unknown message type %d", message_id);
+        try {
+            message = io::codec::unpack(blob);
+        } catch(const cocaine::error_t& e) {
+            COCAINE_LOG_WARNING(m_log, "dropping a corrupted message - %s", e.what());
             continue;
         }
 
-        msgpack::unpacked unpacked;
-        
-        try {
-            msgpack::unpack(
-                &unpacked,
-                static_cast<const char*>(message.data()),
-                message.size()
-            );
-        } catch(const msgpack::unpack_error& e) {
-            return;
+        slot_map_t::const_iterator slot = m_slots.find(message.id());
+
+        if(slot == m_slots.end()) {
+            COCAINE_LOG_WARNING(m_log, "dropping an unknown type %d message", message.id());
+            continue;
         }
 
-        const msgpack::object& request = unpacked.get();
         std::string response;
 
         try {
-            response = (*slot->second)(request);
+            response = (*slot->second)(message.args());
         } catch(const std::exception& e) {
             COCAINE_LOG_ERROR(
                 m_log,
-                "unable to process message type %d - %s",
-                message_id,
+                "unable to process type %d message - %s",
+                message.id(),
                 e.what()
             );
 
-            return;
+            continue;
         }
 
         if(!response.empty()) {
-            m_channel.send_multipart(
-                io::protect(source),
-                io::protect(response)
-            );
+            m_channel.send_multipart(source, response);
         }
-    } while(--counter);
+    }
 }

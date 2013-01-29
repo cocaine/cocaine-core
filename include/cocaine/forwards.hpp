@@ -48,32 +48,17 @@ namespace cocaine {
         // Unit of execution.
         struct session_t;
 
-        // Execution queueing modes.
-        enum mode: int {
-            normal,
-            blocking
-        };
-
         // Execution engine.
         class engine_t;
         class slave_t;
     }
 
     namespace io {
-        namespace policies {
-            struct unique;
-            struct shared;
-        }
-
         template<class>
         struct protocol;
 
         // RPC channel.
-        template<class>
-        class channel;
-
-        typedef channel<policies::unique> unique_channel_t;
-        typedef channel<policies::shared> shared_channel_t;
+        struct socket_t;
     }
 
     namespace logging {
@@ -90,11 +75,6 @@ namespace cocaine {
     }
 
     struct unique_id_t;
-}
-
-namespace zmq {
-    class context_t;
-    class message_t;
 }
 
 #endif

@@ -25,8 +25,6 @@
 #include "cocaine/birth_control.hpp"
 #include "cocaine/traits.hpp"
 
-#include <boost/thread/mutex.hpp>
-
 #include <zmq.hpp>
 
 #if ZMQ_VERSION < 20200
@@ -171,92 +169,51 @@ class scoped_option {
         size_t m_size;
 };
 
-// Socket sharing policies
+// Serializing socket
 
-namespace policies {
-    struct unique { };
-
-    struct shared {
-        void
-        lock() {
-            m_mutex.lock();
-        }
-
-        void
-        unlock() {
-            m_mutex.unlock();
-        }
-
-    private:
-        boost::mutex m_mutex;
-    };
-}
-
-// Custom serialization
-
-namespace detail {
-    template<class T>
-    struct raw {
-        raw(T&& value_):
-            value(std::forward<T>(value_))
-        { }
-
-        T&& value;
-    };
-}
-
-template<class T>
-struct raw_traits;
-
-template<>
-struct raw_traits<std::string> {
-    static inline
-    void
-    pack(zmq::message_t& message,
-         const std::string& value)
-    {
-        message.rebuild(value.size());
-        
-        std::memcpy(
-            message.data(),
-            value.data(),
-            value.size()
-        );
-    }
-
-    static inline
-    void
-    unpack(/* const */ zmq::message_t& message,
-           std::string& value)
-    {
-        value.assign(
-            static_cast<const char*>(message.data()),
-            message.size()
-        );
-    }
-};
-
-template<class T>
-static inline
-detail::raw<T>
-protect(T&& value) {
-    return detail::raw<T>(std::forward<T>(value));
-}
-
-// Shareable serializing socket
-
-template<class SharingPolicy>
-struct socket:
-    public socket_base_t,
-    public SharingPolicy
+struct socket_t:
+    public socket_base_t
 {
-    socket(context_t& context,
-           int type):
+    socket_t(context_t& context,
+             int type):
         socket_base_t(context, type)
     { }
 
+    template<class T>
+    socket_t(context_t& context,
+             int type,
+             const T& identity):
+        socket_base_t(context, type)
+    {
+        msgpack::sbuffer buffer;
+        msgpack::packer<msgpack::sbuffer> packer(buffer);
+
+        // NOTE: Allow any serializable type to be socket's identity,
+        // for example UUIDs.
+        type_traits<T>::pack(packer, identity);
+
+        setsockopt(ZMQ_IDENTITY, buffer.data(), buffer.size());
+    }
+
     using socket_base_t::send;
     using socket_base_t::recv;
+
+    // Plain strings
+
+    bool
+    send(const std::string& blob,
+         int flags = 0)
+    {
+        zmq::message_t message(blob.size());
+        
+        memcpy(
+            message.data(),
+            blob.data(),
+            blob.size()
+        );
+
+        return send(message, flags);
+    }
 
     // Serialized objects
 
@@ -271,7 +228,7 @@ struct socket:
         type_traits<T>::pack(packer, value);
 
         zmq::message_t message(buffer.size());
-        
+
         std::memcpy(
             message.data(),
             buffer.data(),
@@ -280,24 +237,6 @@ struct socket:
         
         return send(message, flags);
     }
-    
-    // Custom-serialized objects
-
-    template<class T>
-    bool
-    send(const detail::raw<T>& object,
-         int flags = 0)
-    {
-        zmq::message_t message;
-
-        typedef typename std::remove_const<
-            typename std::remove_reference<T>::type
-        >::type argument_type;
-
-        raw_traits<argument_type>::pack(message, object.value);
-
-        return send(message, flags);
-    }      
     
     // Multipart messages
 
@@ -315,8 +254,28 @@ struct socket:
         return send(head, ZMQ_SNDMORE) &&
                send_multipart(std::forward<Tail>(tail)...);
     }
-    
-    // Serialized messages
+
+    // Plain strings
+
+    bool
+    recv(std::string& blob,
+         int flags = 0)
+    {
+        zmq::message_t message;
+
+        if(!recv(message, flags)) {
+            return false;
+        }
+
+        blob.assign(
+            static_cast<const char*>(message.data()),
+            message.size()
+        );
+
+        return true;
+    }
+
+    // Serialized objects
 
     template<class T>
     bool
@@ -349,36 +308,6 @@ struct socket:
         }
 
         return true;
-    }
-
-    // Custom-serialized messages
-
-    template<class T>
-    bool
-    recv(detail::raw<T>& result,
-         int flags = 0)
-    {
-        zmq::message_t message;
-
-        if(!recv(message, flags)) {
-            return false;
-        }
-
-        typedef typename std::remove_const<
-            typename std::remove_reference<T>::type
-        >::type argument_type;
-
-        raw_traits<argument_type>::unpack(message, result.value);
-
-        return true;
-    }
-
-    template<class T>
-    bool
-    recv(detail::raw<T>&& result,
-         int flags = 0)
-    {
-        return recv(result, flags);
     }
 
     // Multipart messages

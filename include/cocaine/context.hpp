@@ -29,6 +29,10 @@
 
 #include <boost/thread/mutex.hpp>
 
+namespace zmq {
+    class context_t;
+}
+
 namespace cocaine {
 
 struct defaults {

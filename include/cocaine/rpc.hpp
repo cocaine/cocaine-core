@@ -21,7 +21,7 @@
 #ifndef COCAINE_RPC_HPP
 #define COCAINE_RPC_HPP
 
-#include "cocaine/channel.hpp"
+#include "cocaine/messaging.hpp"
 
 namespace cocaine { namespace io {
 

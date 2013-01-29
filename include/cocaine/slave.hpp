@@ -23,8 +23,10 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/asio.hpp"
-#include "cocaine/engine.hpp"
+#include "cocaine/messaging.hpp"
 #include "cocaine/unique_id.hpp"
+
+#include "cocaine/api/isolate.hpp"
 
 namespace cocaine { namespace engine {
 
@@ -47,41 +49,37 @@ class slave_t:
 
         ~slave_t();
 
+        // Sessions
+
         void
         assign(boost::shared_ptr<session_t>&& session);
        
+        // Slave RPC
+
         void
         on_ping();
 
         void
         on_chunk(uint64_t session_id,
-                 const std::string& message);
+                 const std::string& chunk);
 
         void
         on_error(uint64_t session_id,
                  error_code code,
-                 const std::string& message);
+                 const std::string& reason);
 
         void
         on_choke(uint64_t session_id);
 
-        template<class Event, typename... Args>
-        bool
-        send(Args&&... args);
+        // Slave I/O
 
-        bool
-        send(int message_id,
-             const std::string& message)
-        {
-            BOOST_ASSERT(m_state == state_t::active);
+        void
+        send(const std::string& blob);
 
-            return m_engine.send(
-                m_id,
-                message_id,
-                message
-            );
-        }
+        void
+        send(const std::vector<std::string>& blobs);
 
+    public:
         unique_id_t
         id() const {
             return m_id;
@@ -105,11 +103,8 @@ class slave_t:
         on_idle(ev::timer&, int);
 
         void
-        rearm();
-
-        void
         terminate();
- 
+
     private:
         context_t& m_context;
         std::unique_ptr<logging::log_t> m_log;
@@ -141,17 +136,6 @@ class slave_t:
         // Current sessions.
         session_map_t m_sessions;
 };
-
-template<class Event, typename... Args>
-bool
-slave_t::send(Args&&... args) {
-    BOOST_ASSERT(m_state == state_t::active);
-
-    return m_engine.send<Event>(
-        m_id,
-        std::forward<Args>(args)...
-    );
-}
 
 }} // namespace cocaine::engine
 

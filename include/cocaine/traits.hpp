@@ -33,23 +33,23 @@
 
 namespace cocaine { namespace io {
 
-template<class T, class U = void>
+template<class T, class = void>
 struct type_traits {
     template<class Stream>
     static inline
     void
     pack(msgpack::packer<Stream>& packer,
-         const T& object)
+         const T& source)
     {
-        packer << object;
+        packer << source;
     }
     
     static inline
     void
-    unpack(const msgpack::object& packed,
-           T& object)
+    unpack(const msgpack::object& unpacked,
+           T& target)
     {
-        packed >> object;
+        unpacked >> target;
     }
 };
 
@@ -73,15 +73,13 @@ struct type_traits<
     template<class Stream, typename... Args>
     static inline
     void
-    pack(Stream& stream,
+    pack(msgpack::packer<Stream>& packer,
          const Args&... sequence)
     {
         static_assert(
             sizeof...(sequence) == boost::mpl::size<T>::value,
             "sequence length mismatch"
         );
-
-        msgpack::packer<Stream> packer(stream);
 
         // The sequence will be packed as an array.
         packer.pack_array(sizeof...(sequence));
@@ -96,7 +94,7 @@ struct type_traits<
     template<typename... Args>
     static inline
     void
-    unpack(const msgpack::object& packed,
+    unpack(const msgpack::object& object,
            Args&... sequence)
     {
         static_assert(
@@ -104,15 +102,15 @@ struct type_traits<
             "sequence length mismatch"
         );
 
-        if(packed.type != msgpack::type::ARRAY ||
-           packed.via.array.size != sizeof...(sequence))
+        if(object.type != msgpack::type::ARRAY ||
+           object.via.array.size != sizeof...(sequence))
         {
             throw msgpack::type_error();
         }
 
         // Recursively unpack every tuple element while validating the types.
         unpack_sequence<typename boost::mpl::begin<T>::type>(
-            packed.via.array.ptr,
+            object.via.array.ptr,
             sequence...
         );
     }

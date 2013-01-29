@@ -23,8 +23,10 @@
 #include "cocaine/archive.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
+#include "cocaine/io.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
+#include "cocaine/messaging.hpp"
 #include "cocaine/profile.hpp"
 #include "cocaine/rpc.hpp"
 
@@ -57,7 +59,7 @@ app_t::app_t(context_t& context,
         deploy(name, path.string());
     }
 
-    m_control.reset(new io::unique_channel_t(context, ZMQ_PAIR));
+    m_control.reset(new io::socket_t(context, ZMQ_PAIR));
 
     std::string endpoint = cocaine::format(
         "inproc://%s",
@@ -157,7 +159,7 @@ app_t::stop() {
 
     COCAINE_LOG_INFO(m_log, "stopping the engine");
     
-    m_control->send<control::terminate>();
+    m_control->send(io::codec::pack<control::terminate>());
 
     m_thread->join();
     m_thread.reset();
@@ -178,7 +180,7 @@ app_t::info() const {
         return info;
     }
 
-    m_control->send<control::status>();
+    m_control->send(io::codec::pack<control::status>());
 
     {
         scoped_option<
@@ -205,10 +207,9 @@ app_t::info() const {
 
 boost::shared_ptr<api::stream_t>
 app_t::enqueue(const api::event_t& event,
-               const boost::shared_ptr<api::stream_t>& upstream,
-               engine::mode mode)
+               const boost::shared_ptr<api::stream_t>& upstream)
 {
-    return m_engine->enqueue(event, upstream, mode);
+    return m_engine->enqueue(event, upstream);
 }
 
 void

@@ -23,7 +23,7 @@
 #include "cocaine/context.hpp"
 
 #define COCAINE_EINTR_GUARD(command)        \
-    while(true) {                           \
+    do {                                    \
         try {                               \
             command;                        \
         } catch(const zmq::error_t& e) {    \
@@ -31,7 +31,7 @@
                 throw;                      \
             }                               \
         }                                   \
-    }
+    } while(true);
 
 using namespace cocaine::io;
 

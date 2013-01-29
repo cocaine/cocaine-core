@@ -139,7 +139,7 @@ node_t::on_announce(ev::timer&, int) {
     COCAINE_LOG_DEBUG(m_log, "announcing the node");
 
     m_announces.send_multipart(
-        protect(m_context.config.network.hostname),
+        m_context.config.network.hostname,
         on_info()
     );
 }

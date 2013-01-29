@@ -33,33 +33,29 @@ struct type_traits<api::policy_t> {
     static inline
     void
     pack(msgpack::packer<Stream>& packer,
-         const api::policy_t& object)
+         const api::policy_t& source)
     {
         packer.pack_array(3);
         
-        packer << object.urgent;
-        packer << object.timeout;
-        packer << object.deadline;
+        packer << source.urgent;
+        packer << source.timeout;
+        packer << source.deadline;
     }
     
     static inline
     void
-    unpack(const msgpack::object& packed,
-           api::policy_t& object)
+    unpack(const msgpack::object& object,
+           api::policy_t& target)
     {
-        if(packed.type != msgpack::type::ARRAY ||
-           packed.via.array.size != 3)
+        if(object.type != msgpack::type::ARRAY ||
+           object.via.array.size != 3)
         {
             throw msgpack::type_error();
         }
 
-        msgpack::object &urgent = packed.via.array.ptr[0],
-                        &timeout = packed.via.array.ptr[1],
-                        &deadline = packed.via.array.ptr[2];
-
-        urgent >> object.urgent;
-        timeout >> object.timeout;
-        deadline >> object.deadline;
+        object.via.array.ptr[0] >> target.urgent;
+        object.via.array.ptr[1] >> target.timeout;
+        object.via.array.ptr[2] >> target.deadline;
     }
 };
 

@@ -24,13 +24,11 @@
 #include "cocaine/common.hpp"
 #include "cocaine/asio.hpp"
 #include "cocaine/atomic.hpp"
-#include "cocaine/channel.hpp"
 
 #include "cocaine/api/isolate.hpp"
 
 #include <deque>
 
-#include <boost/thread/condition.hpp>
 #include <boost/thread/mutex.hpp>
 
 namespace cocaine { namespace engine {
@@ -82,18 +80,17 @@ class engine_t:
         
         boost::shared_ptr<api::stream_t>
         enqueue(const api::event_t& event,
-                const boost::shared_ptr<api::stream_t>& upstream,
-                engine::mode mode = engine::mode::normal);
+                const boost::shared_ptr<api::stream_t>& upstream);
 
-        template<class Event, typename... Args>
-        bool
-        send(const unique_id_t& uuid,
-             Args&&... args);
+        // Slave I/O
 
-        bool
+        void
         send(const unique_id_t& uuid,
-             int message_id,
-             const std::string& message);
+             const std::string& blob);
+
+        void
+        send(const unique_id_t& uuid,
+             const std::vector<std::string>& blobs);
 
     public:
         ev::loop_ref&
@@ -154,8 +151,10 @@ class engine_t:
 
         // I/O
         
-        std::unique_ptr<io::shared_channel_t> m_bus;
-        std::unique_ptr<io::unique_channel_t> m_ctl;
+        std::unique_ptr<io::socket_t> m_bus;
+        std::unique_ptr<io::socket_t> m_ctl;
+
+        boost::mutex m_bus_mutex;
 
         // Event loop
         
@@ -175,9 +174,8 @@ class engine_t:
         // Auto-incrementing Session ID.
         std::atomic<uint64_t> m_next_id;
 
-        // Session queue
+        // Session queue.
         session_queue_t m_queue;
-        boost::condition_variable_any m_condition;
 
         // Slave pool
 
@@ -197,17 +195,6 @@ class engine_t:
         // only weak references to the isolate instances.
         api::category_traits<api::isolate_t>::ptr_type m_isolate;
 };
-
-template<class Event, typename... Args>
-bool
-engine_t::send(const unique_id_t& uuid,
-               Args&&... args)
-{
-    boost::unique_lock<io::shared_channel_t> lock(*m_bus);
-
-    return m_bus->send(uuid, ZMQ_SNDMORE) &&
-           m_bus->send<Event>(std::forward<Args>(args)...);
-}
 
 }} // namespace cocaine::engine
 

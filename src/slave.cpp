@@ -21,6 +21,7 @@
 #include "cocaine/slave.hpp"
 
 #include "cocaine/context.hpp"
+#include "cocaine/engine.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
 #include "cocaine/profile.hpp"
@@ -106,15 +107,41 @@ slave_t::assign(boost::shared_ptr<session_t>&& session) {
 void
 slave_t::on_ping() {
     BOOST_ASSERT(m_state != state_t::dead);
-    
-    rearm();
-    
-    send<rpc::heartbeat>();
+
+    if(m_state == state_t::unknown) {
+        COCAINE_LOG_DEBUG(
+            m_log,
+            "slave %s became active in %.03f seconds",
+            m_id,
+            m_profile.startup_timeout - ev_timer_remaining(
+                m_engine.loop(),
+                static_cast<ev_timer*>(&m_heartbeat_timer)
+            )
+        );
+
+        m_state = state_t::active;
+
+        // Start the idle timer, which will kill the slave when it's not used.
+        m_idle_timer.set<slave_t, &slave_t::on_idle>(this);
+        m_idle_timer.start(m_profile.idle_timeout);
+    }
+
+    COCAINE_LOG_DEBUG(
+        m_log,
+        "slave %s resetting heartbeat timeout to %.02f seconds",
+        m_id,
+        m_profile.heartbeat_timeout
+    );
+
+    m_heartbeat_timer.stop();
+    m_heartbeat_timer.start(m_profile.heartbeat_timeout);
+
+    send(io::codec::pack<rpc::heartbeat>());
 }
 
 void
 slave_t::on_chunk(uint64_t session_id,
-                  const std::string& message)
+                  const std::string& chunk)
 {
     BOOST_ASSERT(m_state == state_t::active);
     
@@ -123,7 +150,7 @@ slave_t::on_chunk(uint64_t session_id,
         "slave %s received session %s chunk, size: %llu bytes",
         m_id,
         session_id,
-        message.size()
+        chunk.size()
     );
 
     session_map_t::iterator it(m_sessions.find(session_id));
@@ -131,13 +158,13 @@ slave_t::on_chunk(uint64_t session_id,
     // TEST: Ensure that this slave is responsible for the session.
     BOOST_ASSERT(it != m_sessions.end());
 
-    it->second->upstream->push(message.data(), message.size());
+    it->second->upstream->push(chunk.data(), chunk.size());
 }
 
 void
 slave_t::on_error(uint64_t session_id,
                   error_code code,
-                  const std::string& message)
+                  const std::string& reason)
 {
     BOOST_ASSERT(m_state == state_t::active);
     
@@ -147,7 +174,7 @@ slave_t::on_error(uint64_t session_id,
         m_id,
         session_id,
         code,
-        message
+        reason
     );
 
     session_map_t::iterator it(m_sessions.find(session_id));
@@ -155,7 +182,7 @@ slave_t::on_error(uint64_t session_id,
     // TEST: Ensure that this slave is responsible for the session.
     BOOST_ASSERT(it != m_sessions.end());
 
-    it->second->upstream->error(code, message);
+    it->second->upstream->error(code, reason);
 }
 
 void
@@ -187,6 +214,18 @@ slave_t::on_choke(uint64_t session_id) {
     if(m_sessions.empty()) {
         m_idle_timer.start(m_profile.idle_timeout);
     }
+}
+
+void
+slave_t::send(const std::string& blob) {
+    BOOST_ASSERT(m_state == state_t::active);
+    m_engine.send(m_id, blob);
+}
+
+void
+slave_t::send(const std::vector<std::string>& blobs) {
+    BOOST_ASSERT(m_state == state_t::active);
+    m_engine.send(m_id, blobs);
 }
 
 namespace {
@@ -240,43 +279,12 @@ slave_t::on_timeout(ev::timer&, int) {
 void
 slave_t::on_idle(ev::timer&, int) {
     BOOST_ASSERT(m_state == state_t::active);
-    
+
     COCAINE_LOG_DEBUG(m_log, "slave %s is idle, deactivating", m_id);
 
-    send<rpc::terminate>();
+    send(io::codec::pack<rpc::terminate>());
 
     m_state = state_t::inactive;
-}
-
-void
-slave_t::rearm() {
-    if(m_state == state_t::unknown) {
-        COCAINE_LOG_DEBUG(
-            m_log,
-            "slave %s became active in %.03f seconds",
-            m_id,
-            m_profile.startup_timeout - ev_timer_remaining(
-                m_engine.loop(),
-                static_cast<ev_timer*>(&m_heartbeat_timer)
-            )
-        );
-
-        m_state = state_t::active;
-
-        // Start the idle timer, which will kill the slave when it's not used.
-        m_idle_timer.set<slave_t, &slave_t::on_idle>(this);
-        m_idle_timer.start(m_profile.idle_timeout);
-    }
-
-    COCAINE_LOG_DEBUG(
-        m_log,
-        "slave %s resetting heartbeat timeout to %.02f seconds",
-        m_id,
-        m_profile.heartbeat_timeout
-    );
-
-    m_heartbeat_timer.stop();
-    m_heartbeat_timer.start(m_profile.heartbeat_timeout);
 }
 
 void
