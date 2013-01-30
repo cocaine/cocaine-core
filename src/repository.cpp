@@ -123,16 +123,15 @@ repository_t::open(const std::string& target) {
         try {
             initialize(*this);
             m_plugins.emplace_back(plugin);
-            return;
         } catch(const std::exception& e) {
+            lt_dlclose(plugin);
             throw repository_error_t("unable to initialize '%s' - %s", target, e.what());
         } catch(...) {
+            lt_dlclose(plugin);
             throw repository_error_t("unable to initialize '%s' - unexpected exception", target);
         }
     } else {
-        throw repository_error_t("unable to initialize '%s' - invalid interface", target);
+        throw repository_error_t("unable to initialize '%s' - initialize() is missing", target);
     }
-
-    lt_dlclose(plugin);
 }
 

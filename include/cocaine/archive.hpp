@@ -23,8 +23,6 @@
 
 #include "cocaine/common.hpp"
 
-#include <boost/filesystem/path.hpp>
-
 struct archive;
 
 namespace cocaine {
@@ -43,7 +41,7 @@ class archive_t {
         ~archive_t();
 
         void
-        deploy(const boost::filesystem::path& prefix);
+        deploy(const std::string& prefix);
         
     public:
         std::string

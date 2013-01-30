@@ -29,7 +29,6 @@
 #include "cocaine/session.hpp"
 
 #include "cocaine/api/event.hpp"
-#include "cocaine/api/isolate.hpp"
 #include "cocaine/api/stream.hpp"
 
 #include "cocaine/traits/unique_id.hpp" 

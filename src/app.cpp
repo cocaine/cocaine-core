@@ -26,7 +26,6 @@
 #include "cocaine/io.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
-#include "cocaine/messaging.hpp"
 #include "cocaine/profile.hpp"
 #include "cocaine/rpc.hpp"
 

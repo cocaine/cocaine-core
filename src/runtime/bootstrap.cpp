@@ -20,9 +20,9 @@
 
 #include "cocaine/config.hpp"
 
+#include "cocaine/common.hpp"
 #include "cocaine/asio.hpp"
 #include "cocaine/context.hpp"
-#include "cocaine/format.hpp"
 #include "cocaine/logging.hpp"
 
 #include "cocaine/api/service.hpp"

@@ -151,10 +151,11 @@ config_t::config_t(const std::string& config_path) {
         throw configuration_error_t("unable to determine the hostname - %s", gai_strerror(rv));
     }
 
-    // NOTE: I have no idea when this call can fail, so just assert it's always works.
+    // NOTE: I have no idea when this call can fail, so just assert that it always works.
     BOOST_VERIFY(result != NULL);
 
     network.hostname = result->ai_canonname;
+
     freeaddrinfo(result);
 
     // Port mapper configuration

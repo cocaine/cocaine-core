@@ -23,6 +23,8 @@
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
+#include <boost/filesystem/path.hpp>
+
 #include <archive.h>
 #include <archive_entry.h>
 
@@ -61,7 +63,9 @@ archive_t::~archive_t() {
 }
 
 void
-archive_t::deploy(const fs::path& prefix) {
+archive_t::deploy(const std::string& prefix_) {
+    fs::path prefix = prefix_;
+
     archive * target = archive_write_disk_new();
     archive_entry * entry = NULL;
 

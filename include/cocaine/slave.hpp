@@ -23,7 +23,6 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/asio.hpp"
-#include "cocaine/messaging.hpp"
 #include "cocaine/unique_id.hpp"
 
 #include "cocaine/api/isolate.hpp"
