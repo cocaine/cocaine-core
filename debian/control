@@ -31,6 +31,6 @@ Description: Cocaine - Runtime
 
 Package: cocaine-tools
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2, python, python-zmq
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2, python, python-zmq, msgpack-python
 Description: Cocaine - Toolset
  Various tools to query and manipulate running Cocaine instances.
