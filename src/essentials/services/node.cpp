@@ -71,6 +71,19 @@ node_t::node_t(context_t& context,
     // Autodiscovery
 
     if(!args["announce"].empty()) {
+#if ZMQ_VERSION > 30200
+        int watermark = 5;
+#else
+        uint64_t watermark = 5;
+#endif
+
+        // Avoids announce data being cached for every disconnected peer.
+#if ZMQ_VERSION > 30200
+        m_announces.setsockopt(ZMQ_SNDHWM, &watermark, sizeof(watermark));
+#else
+        m_announces.setsockopt(ZMQ_HWM, &watermark, sizeof(watermark));
+#endif
+
         for(Json::Value::const_iterator it = args["announce"].begin();
             it != args["announce"].end();
             ++it)
