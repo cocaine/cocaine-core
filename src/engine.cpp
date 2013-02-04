@@ -613,10 +613,12 @@ engine_t::process_ctl_events() {
             );
 
             info["load-median"] = static_cast<Json::LargestUInt>(active.median());
-            info["queue-depth"] = static_cast<Json::LargestUInt>(m_queue.size());
+            info["queue"]["capacity"] = static_cast<Json::LargestUInt>(m_profile.queue_limit);
+            info["queue"]["depth"] = static_cast<Json::LargestUInt>(m_queue.size());
             info["sessions"]["pending"] = static_cast<Json::LargestUInt>(active.sum());
-            info["slaves"]["total"] = static_cast<Json::LargestUInt>(m_pool.size());
-            info["slaves"]["busy"] = static_cast<Json::LargestUInt>(active_pool_size);
+            info["slaves"]["active"] = static_cast<Json::LargestUInt>(active_pool_size);
+            info["slaves"]["capacity"] = static_cast<Json::LargestUInt>(m_profile.pool_limit);
+            info["slaves"]["idle"] = static_cast<Json::LargestUInt>(m_pool.size() - active_pool_size);
             info["state"] = describe[static_cast<int>(m_state)];
 
             m_ctl->send(info);
