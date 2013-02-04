@@ -37,10 +37,7 @@ def main(hosts):
         request.connect('tcp://%s:5000' % host)
 
         # Statistics
-        request.send_multipart([
-            msgpack.packb(SLOT_INFO),
-            msgpack.packb([])
-        ])
+        request.send(msgpack.packb([SLOT_INFO, []]))
 
         pprint(msgpack.unpackb(request.recv()))
 
