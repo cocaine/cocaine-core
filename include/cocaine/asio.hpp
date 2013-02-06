@@ -55,6 +55,8 @@ struct write_queue {
 
     void
     write(const std::string& data) {
+        boost::unique_lock<boost::mutex> m_lock(m_pipe_mutex);
+        
         if(m_queue.empty()) {
             ssize_t length = m_pipe->write(data);
 
@@ -81,6 +83,8 @@ struct write_queue {
 private:
     void
     on_event(ev::io& io, int revents) {
+        boost::unique_lock<boost::mutex> m_lock(m_pipe_mutex);
+        
         if(m_queue.empty()) {
             m_pipe_watcher.stop();
             return;
@@ -107,6 +111,8 @@ private:
 
 private:
     boost::shared_ptr<T> m_pipe;
+    boost::mutex m_pipe_mutex;
+
     ev::io m_pipe_watcher;
 
     std::deque<
