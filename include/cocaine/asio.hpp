@@ -28,6 +28,7 @@
 
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
+#include <boost/thread/mutex.hpp>
 
 #define EV_MINIMAL       0
 #define EV_USE_MONOTONIC 1
