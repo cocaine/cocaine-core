@@ -178,13 +178,13 @@ engine_t::engine_t(context_t& context,
         m_profile.isolate.args
     );
     
-    std::string bus_endpoint = cocaine::format(
-        "ipc://%1%/engines/%2%",
+    std::string endpoint = cocaine::format(
+        "%1%/engines/%2%",
         m_context.config.path.runtime,
         m_manifest.name
     );
 
-    m_acceptor.reset(new io::acceptor_t("/var/run/cocaine/engines/test"));
+    m_acceptor.reset(new io::acceptor_t(endpoint));
     m_connection_watcher.set<engine_t, &engine_t::on_connection>(this);
     m_connection_watcher.start(m_acceptor->fd(), ev::READ);
 
@@ -213,7 +213,6 @@ engine_t::engine_t(context_t& context,
 
 engine_t::~engine_t() {
     BOOST_ASSERT(m_state == state_t::stopped);
-    ::unlink("/var/run/cocaine/engines/test");
 }
 
 void
@@ -266,6 +265,8 @@ engine_t::tie(const boost::shared_ptr<io::codex<io::pipe_t>>& codex,
     BOOST_ASSERT(it != m_pool.end());
 
     it->second->tie(codex);
+
+    pump();
 }
 
 void

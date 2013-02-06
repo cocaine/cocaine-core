@@ -51,11 +51,7 @@ void
 handshake_t::on_message(const message_t& message) {
     unique_id_t id;
 
-    // Unpack the handshake.
     message.as<rpc::handshake>(id);
-
-    std::cout << "binding codex for " << id.string() << std::endl;
-
     m_engine.tie(m_codex, id);
 }
 
@@ -110,8 +106,6 @@ slave_t::tie(const boost::shared_ptr<io::codex<io::pipe_t>>& codex) {
     m_codex->bind(boost::bind(&slave_t::on_message, this, _1));
 
     on_ping();
-
-    m_engine.pump();
 }
 
 void
@@ -150,7 +144,6 @@ slave_t::on_message(const message_t& message) {
             on_ping();
             break;
 
-        /*
         case event_traits<rpc::suicide>::id: {
             int code;
             std::string reason;
@@ -160,12 +153,11 @@ slave_t::on_message(const message_t& message) {
             COCAINE_LOG_DEBUG(
                 m_log,
                 "slave %s is committing suicide: %s",
-                slave_id,
+                m_id,
                 reason
             );
 
-            m_pool.erase(slave);
-
+            /*
             if(code == rpc::suicide::abnormal) {
                 COCAINE_LOG_ERROR(m_log, "the app seems to be broken - stopping");
                 migrate(state_t::broken);
@@ -177,17 +169,16 @@ slave_t::on_message(const message_t& message) {
                 stop();
                 return;
             }
+            */
 
             break;
         }
-        */
 
         case event_traits<rpc::chunk>::id: {
             uint64_t session_id;
             std::string chunk;
             
             message.as<rpc::chunk>(session_id, chunk);
-
             on_chunk(session_id, chunk);
 
             break;
@@ -199,12 +190,7 @@ slave_t::on_message(const message_t& message) {
             std::string reason;
 
             message.as<rpc::error>(session_id, code, reason);
-            
-            on_error(
-                session_id,
-                static_cast<error_code>(code),
-                reason
-            );
+            on_error(session_id, static_cast<error_code>(code), reason);
 
             break;
         }
@@ -213,8 +199,10 @@ slave_t::on_message(const message_t& message) {
             uint64_t session_id;
 
             message.as<rpc::choke>(session_id);
-
             on_choke(session_id);
+
+            // This is now a potentially free worker, so pump the queue.
+            m_engine.pump();
 
             break;
         }
