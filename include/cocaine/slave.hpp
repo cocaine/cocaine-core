@@ -29,6 +29,18 @@
 
 namespace cocaine { namespace engine {
 
+struct handshake_t {
+    handshake_t(engine_t& engine,
+                const boost::shared_ptr<io::pipe_t>& pipe);
+
+    void
+    on_message(const io::message_t& message);
+    
+private:
+    engine_t& m_engine;
+    boost::shared_ptr<io::codex<io::pipe_t>> m_codex;
+};
+
 class slave_t:
     public boost::noncopyable
 {
@@ -48,36 +60,21 @@ class slave_t:
 
         ~slave_t();
 
+        // Binding
+
+        void
+        tie(const boost::shared_ptr<io::codex<io::pipe_t>>& codex);
+
         // Sessions
 
         void
         assign(boost::shared_ptr<session_t>&& session);
+
+        // I/O
+
+        void
+        send(const std::string& chunk);
        
-        // Slave RPC
-
-        void
-        on_ping();
-
-        void
-        on_chunk(uint64_t session_id,
-                 const std::string& chunk);
-
-        void
-        on_error(uint64_t session_id,
-                 error_code code,
-                 const std::string& reason);
-
-        void
-        on_choke(uint64_t session_id);
-
-        // Slave I/O
-
-        void
-        send(const std::string& blob);
-
-        void
-        send(const std::vector<std::string>& blobs);
-
     public:
         unique_id_t
         id() const {
@@ -95,6 +92,28 @@ class slave_t:
         }
 
     private:
+        void
+        on_message(const io::message_t& message);
+
+        // RPC
+
+        void
+        on_ping();
+
+        void
+        on_chunk(uint64_t session_id,
+                 const std::string& chunk);
+
+        void
+        on_error(uint64_t session_id,
+                 error_code code,
+                 const std::string& reason);
+
+        void
+        on_choke(uint64_t session_id);
+
+        // Housekeeping
+
         void
         on_timeout(ev::timer&, int);
 
@@ -134,6 +153,9 @@ class slave_t:
 
         // Current sessions.
         session_map_t m_sessions;
+
+        // I/O.
+        boost::shared_ptr<io::codex<io::pipe_t>> m_codex;
 };
 
 }} // namespace cocaine::engine

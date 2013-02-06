@@ -31,6 +31,14 @@ namespace tags {
 }
 
 namespace rpc {
+    struct handshake {
+        typedef tags::rpc_tag tag;
+
+        typedef boost::mpl::list<
+            /* slave id */ unique_id_t
+        > tuple_type;
+    };
+
     struct heartbeat {
         typedef tags::rpc_tag tag;
     };
@@ -103,6 +111,7 @@ namespace control {
 template<>
 struct protocol<tags::rpc_tag> {
     typedef boost::mpl::list<
+        rpc::handshake,
         rpc::heartbeat,
         rpc::suicide,
         rpc::terminate,

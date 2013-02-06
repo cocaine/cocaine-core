@@ -130,7 +130,7 @@ public:
 public:
     template<class Event, typename... Args>
     void
-    as(Args&&... targets) {
+    as(Args&&... targets) const {
         try {
             type_traits<typename event_traits<Event>::tuple_type>::unpack(
                 args(),

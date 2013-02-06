@@ -55,7 +55,13 @@ namespace {
 
             m_sigquit.set<runtime_t, &runtime_t::on_terminate>(this);
             m_sigquit.start(SIGQUIT);
-           
+
+            sigset_t signals;
+
+            ::sigemptyset(&signals);
+            ::sigaddset(&signals, SIGPIPE);
+            ::sigprocmask(SIG_BLOCK, &signals, NULL);
+
             COCAINE_LOG_INFO(
                 m_log,
                 "initializing %d %s",

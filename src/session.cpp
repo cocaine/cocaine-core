@@ -43,7 +43,13 @@ session_t::attach(slave_t * const slave) {
     boost::unique_lock<boost::mutex> lock(m_mutex);
 
     m_slave = slave;
-    m_slave->send(m_cache);
+
+    for(message_cache_t::iterator it = m_cache.begin();
+        it != m_cache.end();
+        ++it)
+    {
+        m_slave->send(*it);
+    }
 }
 
 void

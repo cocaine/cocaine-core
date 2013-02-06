@@ -22,6 +22,7 @@
 
 #include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
+#include "cocaine/io.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
 #include "cocaine/profile.hpp"
@@ -37,6 +38,26 @@ using namespace cocaine;
 using namespace cocaine::engine;
 using namespace cocaine::io;
 using namespace cocaine::logging;
+
+handshake_t::handshake_t(engine_t& engine,
+                         const boost::shared_ptr<pipe_t>& pipe):
+    m_engine(engine),
+    m_codex(new codex<pipe_t>(engine.loop(), pipe))
+{
+    m_codex->bind(boost::bind(&handshake_t::on_message, this, _1));
+}
+
+void
+handshake_t::on_message(const message_t& message) {
+    unique_id_t id;
+
+    // Unpack the handshake.
+    message.as<rpc::handshake>(id);
+
+    std::cout << "binding codex for " << id.string() << std::endl;
+
+    m_engine.tie(m_codex, id);
+}
 
 slave_t::slave_t(context_t& context,
                  const manifest_t& manifest,
@@ -82,6 +103,18 @@ slave_t::~slave_t() {
 }
 
 void
+slave_t::tie(const boost::shared_ptr<io::codex<io::pipe_t>>& codex) {
+    COCAINE_LOG_DEBUG(m_log, "slave %s was tied to a worker", m_id);
+
+    m_codex = codex;
+    m_codex->bind(boost::bind(&slave_t::on_message, this, _1));
+
+    on_ping();
+
+    m_engine.pump();
+}
+
+void
 slave_t::assign(boost::shared_ptr<session_t>&& session) {
     BOOST_ASSERT(m_state == state_t::active);
 
@@ -100,6 +133,99 @@ slave_t::assign(boost::shared_ptr<session_t>&& session) {
 
     if(m_idle_timer.is_active()) {
         m_idle_timer.stop();
+    }
+}
+
+void
+slave_t::on_message(const message_t& message) {
+    COCAINE_LOG_DEBUG(
+        m_log,
+        "received type %d message from slave %s",
+        message.id(),
+        m_id
+    );
+
+    switch(message.id()) {
+        case event_traits<rpc::heartbeat>::id:
+            on_ping();
+            break;
+
+        /*
+        case event_traits<rpc::suicide>::id: {
+            int code;
+            std::string reason;
+
+            message.as<rpc::suicide>(code, reason);
+
+            COCAINE_LOG_DEBUG(
+                m_log,
+                "slave %s is committing suicide: %s",
+                slave_id,
+                reason
+            );
+
+            m_pool.erase(slave);
+
+            if(code == rpc::suicide::abnormal) {
+                COCAINE_LOG_ERROR(m_log, "the app seems to be broken - stopping");
+                migrate(state_t::broken);
+                return;
+            }
+
+            if(m_state != state_t::running && m_pool.empty()) {
+                // If it was the last slave, shut the engine down.
+                stop();
+                return;
+            }
+
+            break;
+        }
+        */
+
+        case event_traits<rpc::chunk>::id: {
+            uint64_t session_id;
+            std::string chunk;
+            
+            message.as<rpc::chunk>(session_id, chunk);
+
+            on_chunk(session_id, chunk);
+
+            break;
+        }
+     
+        case event_traits<rpc::error>::id: {
+            uint64_t session_id;
+            int code;
+            std::string reason;
+
+            message.as<rpc::error>(session_id, code, reason);
+            
+            on_error(
+                session_id,
+                static_cast<error_code>(code),
+                reason
+            );
+
+            break;
+        }
+
+        case event_traits<rpc::choke>::id: {
+            uint64_t session_id;
+
+            message.as<rpc::choke>(session_id);
+
+            on_choke(session_id);
+
+            break;
+        }
+
+        default:
+            COCAINE_LOG_WARNING(
+                m_log,
+                "dropping unknown type %d message from slave %s",
+                message.id(),
+                m_id
+            );
     }
 }
 
@@ -218,13 +344,7 @@ slave_t::on_choke(uint64_t session_id) {
 void
 slave_t::send(const std::string& blob) {
     BOOST_ASSERT(m_state == state_t::active);
-    m_engine.send(m_id, blob);
-}
-
-void
-slave_t::send(const std::vector<std::string>& blobs) {
-    BOOST_ASSERT(m_state == state_t::active);
-    m_engine.send(m_id, blobs);
+    m_codex->send(blob);
 }
 
 namespace {

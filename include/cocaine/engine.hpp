@@ -28,6 +28,7 @@
 #include "cocaine/api/isolate.hpp"
 
 #include <deque>
+#include <set>
 
 #include <boost/thread/mutex.hpp>
 
@@ -85,13 +86,12 @@ class engine_t:
         // Slave I/O
 
         void
-        send(const unique_id_t& uuid,
-             const std::string& blob);
+        tie(const boost::shared_ptr<io::codex<io::pipe_t>>& codex,
+            const unique_id_t& uuid);
 
         void
-        send(const unique_id_t& uuid,
-             const std::vector<std::string>& blobs);
-
+        pump();
+        
     public:
         ev::loop_ref&
         loop() {
@@ -100,11 +100,8 @@ class engine_t:
 
     private:
         void
-        on_bus_event(ev::io&, int);
-        
-        void
-        on_bus_check(ev::prepare&, int);
-        
+        on_connection(ev::io&, int);
+
         void
         on_ctl_event(ev::io&, int);
 
@@ -121,14 +118,8 @@ class engine_t:
         on_termination(ev::timer&, int);
         
         void
-        process_bus_events();
-        
-        void
         process_ctl_events();
 
-        void
-        pump();
-        
         void
         balance();
 
@@ -150,21 +141,18 @@ class engine_t:
         state_t m_state;
 
         // I/O
-        
-        std::unique_ptr<io::socket_t> m_bus;
+
+        std::unique_ptr<io::acceptor_t> m_acceptor;
         std::unique_ptr<io::socket_t> m_ctl;
 
-        boost::mutex m_bus_mutex;
-
         // Event loop
-        
+
         ev::dynamic_loop m_loop;
 
-        ev::io m_bus_watcher,
-               m_ctl_watcher;
+        ev::io m_connection_watcher;
 
-        ev::prepare m_bus_checker,
-                    m_ctl_checker;
+        ev::io m_ctl_watcher;
+        ev::prepare m_ctl_checker;
 
         ev::timer m_gc_timer,
                   m_termination_timer;
@@ -179,6 +167,8 @@ class engine_t:
 
         // Slave pool
 
+        std::set<handshake_t*> m_handshakes;
+
 #if BOOST_VERSION >= 103600
         typedef boost::unordered_map<
 #else
@@ -187,7 +177,7 @@ class engine_t:
             unique_id_t,
             boost::shared_ptr<slave_t>
         > pool_map_t;
-        
+
         pool_map_t m_pool;
 
         // NOTE: A strong isolate reference, keeping it here

@@ -25,6 +25,11 @@
 #include "cocaine/birth_control.hpp"
 #include "cocaine/traits.hpp"
 
+#include <iostream>
+
+#include <fcntl.h>
+#include <sys/un.h>
+
 #include <zmq.hpp>
 
 #if ZMQ_VERSION < 20200
@@ -326,6 +331,236 @@ struct socket_t:
         return recv(head) &&
                recv_multipart(std::forward<Tail>(tail)...);
     }
+};
+
+// New stuff
+
+struct io_error_t:
+    public cocaine::error_t
+{
+    template<typename... Args>
+    io_error_t(const std::string& format, Args&&... args):
+        cocaine::error_t(format, std::forward<Args>(args)...)
+    {
+#ifdef _GNU_SOURCE
+        m_message = ::strerror_r(errno, m_buffer, 256);
+#else
+        ::strerror_r(errno, m_buffer, 256);
+
+        // NOTE: XSI-compliant strerror_r() returns int instead of the
+        // string buffer, so complete the job manually.
+        m_message = m_buffer;
+#endif
+    }
+
+    virtual
+    const char *
+    what() const throw() {
+        return m_message;
+    }
+
+private:
+    char m_buffer[256];
+    const char * m_message;
+};
+
+struct pipe_t:
+    boost::noncopyable
+{
+    pipe_t(const std::string& path):
+        m_fd(::socket(AF_LOCAL, SOCK_STREAM, 0))
+    {
+        if(m_fd == -1) {
+            throw io_error_t("unable to create a pipe");
+        }
+        
+        // Set non-blocking and close-on-exec options.
+        configure(m_fd);
+
+        struct sockaddr_un address = { AF_LOCAL, { 0 } };
+
+        ::memcpy(address.sun_path, path.c_str(), path.size());
+
+        if(::connect(m_fd, reinterpret_cast<sockaddr*>(&address), sizeof(address)) == -1) {
+            throw io_error_t("unable to connect a pipe to '%s'", path);
+        }
+    }
+
+    pipe_t(int fd):
+        m_fd(fd)
+    { }
+
+    pipe_t(pipe_t&& other):
+        m_fd(-1)
+    {
+        *this = std::move(other);
+    }
+
+    pipe_t&
+    operator=(pipe_t&& other) {
+        std::swap(m_fd, other.m_fd);
+        return *this;
+    }
+
+    ~pipe_t() {
+        if(m_fd != -1 && ::close(m_fd) != 0) {
+            // Log.
+        }
+    }
+
+    ssize_t
+    write(const char * buffer, size_t size) {
+        ssize_t length = ::write(m_fd, buffer, size);
+        
+        if(length == -1) {
+            switch(errno) {
+                case EAGAIN || EWOULDBLOCK:
+                case EINTR:
+                    return 0;
+
+                default:
+                    throw io_error_t("unable to write to a pipe");
+            }
+        }
+
+        return length;
+    }
+
+    ssize_t
+    write(const std::string& chunk) {
+        return write(chunk.data(), chunk.size());
+    }
+
+    ssize_t
+    read(char * buffer, size_t size) {
+        ssize_t length = ::read(m_fd, buffer, size);
+    
+        if(length == -1) {
+            switch(errno) {
+                case EAGAIN || EWOULDBLOCK:
+                case EINTR:
+                    return 0;
+
+                default:
+                    throw io_error_t("unable to read from a pipe");
+            }
+        }
+
+        return length;
+    }
+
+public:
+    int
+    fd() const {
+        return m_fd;
+    }
+
+private:
+    void
+    configure(int fd) {
+        ::fcntl(fd, F_SETFD, FD_CLOEXEC);
+        ::fcntl(fd, F_SETFL, O_NONBLOCK);
+    }
+
+private:
+    int m_fd;
+};
+
+struct acceptor_t:
+    boost::noncopyable
+{
+    acceptor_t(const std::string& path,
+               int backlog = 128):
+        m_fd(::socket(AF_LOCAL, SOCK_STREAM, 0))
+    {
+        if(m_fd == -1) {
+            throw io_error_t("unable to create an acceptor");
+        }
+
+        // Set non-blocking and close-on-exec options.
+        configure(m_fd);
+
+        struct sockaddr_un address = { AF_LOCAL, { 0 } };
+
+        ::memcpy(address.sun_path, path.c_str(), path.size());
+
+        if(::bind(m_fd, reinterpret_cast<sockaddr*>(&address), sizeof(address)) == -1) {
+            throw io_error_t("unable to bind an acceptor on '%s'", path);
+        }
+
+        ::listen(m_fd, backlog);
+    }
+
+    acceptor_t(acceptor_t&& other):
+        m_fd(-1)
+    {
+        *this = std::move(other);
+    }
+
+    acceptor_t&
+    operator=(acceptor_t&& other) {
+        std::swap(m_fd, other.m_fd);
+        return *this;
+    }
+
+    ~acceptor_t() {
+        if(m_fd == -1) {
+            return;
+        }
+
+        struct sockaddr_un address = { AF_LOCAL, { 0 } };
+        socklen_t length = sizeof(address);
+
+        ::getsockname(m_fd, reinterpret_cast<sockaddr*>(&address), &length);
+
+        if(::close(m_fd) != 0) {
+            // Log.
+        }
+
+        if(::unlink(address.sun_path) != 0) {
+            // Log.
+        }
+    }
+
+    boost::shared_ptr<pipe_t>
+    accept() {
+        struct sockaddr_un address = { AF_LOCAL, { 0 } };
+        socklen_t length = sizeof(address);
+
+        int fd = ::accept(m_fd, reinterpret_cast<sockaddr*>(&address), &length);
+
+        if(fd == -1) {
+            switch(errno) {
+                case EAGAIN || EWOULDBLOCK:
+                case EINTR:
+                    return boost::shared_ptr<pipe_t>();
+
+                default:
+                    throw io_error_t("unable to accept a connection");
+            }
+        }
+
+        // Set non-blocking and close-on-exec options.
+        configure(fd);
+        
+        return boost::make_shared<pipe_t>(fd);
+    }
+
+public:
+    int
+    fd() const {
+        return m_fd;
+    }
+
+private:
+    void
+    configure(int fd) {
+        ::fcntl(fd, F_SETFD, FD_CLOEXEC);
+        ::fcntl(fd, F_SETFL, O_NONBLOCK);
+    }
+
+private:
+    int m_fd;
 };
 
 }} // namespace cocaine::io
