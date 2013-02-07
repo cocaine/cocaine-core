@@ -21,6 +21,7 @@
 #ifndef COCAINE_RPC_HPP
 #define COCAINE_RPC_HPP
 
+#include "cocaine/json.hpp"
 #include "cocaine/messaging.hpp"
 
 namespace cocaine { namespace io {
@@ -46,7 +47,7 @@ namespace rpc {
     struct suicide {
         typedef tags::rpc_tag tag;
 
-        enum reasons: int {
+        enum codes: int {
             normal,
             abnormal
         };
@@ -103,6 +104,14 @@ namespace control {
         typedef tags::control_tag tag;
     };
 
+    struct info {
+        typedef tags::control_tag tag;
+
+        typedef boost::mpl::list<
+            /* info */ Json::Value
+        > tuple_type;
+    };
+
     struct terminate {
         typedef tags::control_tag tag;
     };
@@ -126,6 +135,7 @@ template<>
 struct protocol<tags::control_tag> {
     typedef boost::mpl::list<
         control::status,
+        control::info,
         control::terminate
     >::type type;
 };

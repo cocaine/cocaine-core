@@ -60,7 +60,7 @@ class session_queue_t:
 class engine_t:
     public boost::noncopyable
 {
-    enum class state_t: int {
+    enum class states: int {
         running,
         broken,
         stopping,
@@ -70,7 +70,8 @@ class engine_t:
     public:
         engine_t(context_t& context,
                  const manifest_t& manifest,
-                 const profile_t& profile);
+                 const profile_t& profile,
+                 const boost::shared_ptr<io::pipe_t>& control);
 
         ~engine_t();
 
@@ -83,30 +84,35 @@ class engine_t:
         enqueue(const api::event_t& event,
                 const boost::shared_ptr<api::stream_t>& upstream);
 
-        // Slave I/O
-
-        void
-        tie(const boost::shared_ptr<io::codex<io::pipe_t>>& codex,
-            const unique_id_t& uuid);
-
         void
         wake();
 
+        void
+        erase(const unique_id_t& uuid,
+              int code,
+              const std::string& reason);
+
     public:
-        ev::loop_ref&
-        loop() {
-            return m_loop;
+        io::service_t&
+        service() {
+            return m_service;
+        }
+
+        const io::service_t&
+        service() const {
+            return m_service;
         }
 
     private:
         void
-        on_connection(ev::io&, int);
+        on_connection(const boost::shared_ptr<io::pipe_t>& pipe);
 
         void
-        on_ctl_event(ev::io&, int);
+        on_handshake(const boost::shared_ptr<io::codex<io::pipe_t>>& codex,
+                     const io::message_t& message);
 
         void
-        on_ctl_check(ev::prepare&, int);
+        on_control(const io::message_t& message);
 
         void
         on_cleanup(ev::timer&, int);
@@ -118,16 +124,13 @@ class engine_t:
         on_termination(ev::timer&, int);
 
         void
-        process_ctl_events();
-
-        void
         pump();
 
         void
         balance();
 
         void
-        migrate(state_t target);
+        migrate(states target);
 
         void
         stop();
@@ -141,26 +144,26 @@ class engine_t:
 
         // Engine state
 
-        state_t m_state;
-
-        // I/O
-
-        std::unique_ptr<io::acceptor_t> m_acceptor;
-        std::unique_ptr<io::socket_t> m_ctl;
+        states m_state;
 
         // Event loop
 
-        ev::dynamic_loop m_loop;
-
-        ev::io m_connection_watcher;
-
-        ev::io m_ctl_watcher;
-        ev::prepare m_ctl_checker;
+        io::service_t m_service;
 
         ev::timer m_gc_timer,
                   m_termination_timer;
 
         ev::async m_notification;
+
+        // I/O
+
+        std::unique_ptr<
+            io::connection_queue<io::acceptor_t>
+        > m_connection_queue;
+
+        std::unique_ptr<
+            io::codex<io::pipe_t>
+        > m_control_codex;
 
         // Auto-incrementing Session ID
 
@@ -172,7 +175,9 @@ class engine_t:
 
         // Slave pool
 
-        std::set<handshake_t*> m_handshakes;
+        std::set<
+            boost::shared_ptr<io::codex<io::pipe_t>>
+        > m_backlog;
 
 #if BOOST_VERSION >= 103600
         typedef boost::unordered_map<

@@ -58,18 +58,20 @@ session_queue_t::push(const_reference session) {
     }
 }
 
+// Downstream
+
 namespace {
     struct downstream_t:
         public api::stream_t
     {
         downstream_t(const boost::shared_ptr<session_t>& session):
             m_session(session),
-            m_state(state_t::open)
+            m_state(states::open)
         { }
 
         virtual
         ~downstream_t() {
-            if(m_state != state_t::closed) {
+            if(m_state != states::closed) {
                 close();
             }
         }
@@ -80,7 +82,7 @@ namespace {
              size_t size)
         {
             switch(m_state) {
-                case state_t::open: {
+                case states::open: {
                     const boost::shared_ptr<session_t> ptr = m_session.lock();
 
                     if(ptr) {
@@ -90,7 +92,7 @@ namespace {
                     break;
                 }
 
-                case state_t::closed:
+                case states::closed:
                     throw cocaine::error_t("the stream has been closed");
             }
         }
@@ -101,8 +103,8 @@ namespace {
               const std::string& message)
         {
             switch(m_state) {
-                case state_t::open: {
-                    m_state = state_t::closed;
+                case states::open: {
+                    m_state = states::closed;
 
                     const boost::shared_ptr<session_t> ptr = m_session.lock();
 
@@ -114,7 +116,7 @@ namespace {
                     break;
                 }
 
-                case state_t::closed:
+                case states::closed:
                     throw cocaine::error_t("the stream has been closed");
             }
         }
@@ -123,8 +125,8 @@ namespace {
         void
         close() {
             switch(m_state) {
-                case state_t::open: {
-                    m_state = state_t::closed;
+                case states::open: {
+                    m_state = states::closed;
 
                     const boost::shared_ptr<session_t> ptr = m_session.lock();
 
@@ -135,7 +137,7 @@ namespace {
                     break;
                 }
 
-                case state_t::closed:
+                case states::closed:
                     throw cocaine::error_t("the stream has been closed");
             }
         }
@@ -143,12 +145,12 @@ namespace {
     private:
         const boost::weak_ptr<session_t> m_session;
 
-        enum class state_t: int {
+        enum class states: int {
             open,
             closed
         };
 
-        state_t m_state;
+        states m_state;
     };
 }
 
@@ -156,19 +158,16 @@ namespace {
 
 engine_t::engine_t(context_t& context,
                    const manifest_t& manifest,
-                   const profile_t& profile):
+                   const profile_t& profile,
+                   const boost::shared_ptr<io::pipe_t>& control):
     m_context(context),
     m_log(new log_t(context, cocaine::format("app/%1%", manifest.name))),
     m_manifest(manifest),
     m_profile(profile),
-    m_state(state_t::stopped),
-    m_connection_watcher(m_loop),
-    m_ctl(new io::socket_t(context, ZMQ_PAIR)),
-    m_ctl_watcher(m_loop),
-    m_ctl_checker(m_loop),
-    m_gc_timer(m_loop),
-    m_termination_timer(m_loop),
-    m_notification(m_loop),
+    m_state(states::stopped),
+    m_gc_timer(m_service.loop()),
+    m_termination_timer(m_service.loop()),
+    m_notification(m_service.loop()),
     m_next_id(0)
 {
     m_isolate = m_context.get<api::isolate_t>(
@@ -184,25 +183,23 @@ engine_t::engine_t(context_t& context,
         m_manifest.name
     );
 
-    m_acceptor.reset(new io::acceptor_t(endpoint));
-    m_connection_watcher.set<engine_t, &engine_t::on_connection>(this);
-    m_connection_watcher.start(m_acceptor->fd(), ev::READ);
+    m_connection_queue.reset(new connection_queue<acceptor_t>(
+        m_service,
+        std::unique_ptr<acceptor_t>(new acceptor_t(endpoint))
+    ));
 
-    std::string ctl_endpoint = cocaine::format(
-        "inproc://%s",
-        m_manifest.name
+    m_connection_queue->bind(
+        boost::bind(&engine_t::on_connection, this, _1)
     );
 
-    try {
-        m_ctl->connect(ctl_endpoint);
-    } catch(const zmq::error_t& e) {
-        throw configuration_error_t("unable to connect to the engine control channel - %s", e.what());
-    }
+    m_control_codex.reset(new codex<io::pipe_t>(
+        m_service,
+        control
+    ));
 
-    m_ctl_watcher.set<engine_t, &engine_t::on_ctl_event>(this);
-    m_ctl_watcher.start(m_ctl->fd(), ev::READ);
-    m_ctl_checker.set<engine_t, &engine_t::on_ctl_check>(this);
-    m_ctl_checker.start();
+    m_control_codex->bind(
+        boost::bind(&engine_t::on_control, this, _1)
+    );
 
     m_gc_timer.set<engine_t, &engine_t::on_cleanup>(this);
     m_gc_timer.start(5.0f, 5.0f);
@@ -212,13 +209,13 @@ engine_t::engine_t(context_t& context,
 }
 
 engine_t::~engine_t() {
-    BOOST_ASSERT(m_state == state_t::stopped);
+    BOOST_ASSERT(m_state == states::stopped);
 }
 
 void
 engine_t::run() {
-    m_state = state_t::running;
-    m_loop.loop();
+    m_state = states::running;
+    m_service.loop().loop();
 }
 
 boost::shared_ptr<api::stream_t>
@@ -233,7 +230,7 @@ engine_t::enqueue(const api::event_t& event,
 
     boost::unique_lock<session_queue_t> lock(m_queue);
 
-    if(m_state != state_t::running) {
+    if(m_state != states::running) {
         throw cocaine::error_t("engine is not active");
     }
 
@@ -257,47 +254,157 @@ engine_t::enqueue(const api::event_t& event,
 }
 
 void
-engine_t::tie(const boost::shared_ptr<io::codex<io::pipe_t>>& codex,
-              const unique_id_t& uuid)
-{
-    pool_map_t::iterator it = m_pool.find(uuid);
-
-    BOOST_ASSERT(it != m_pool.end());
-
-    it->second->tie(codex);
-
-    pump();
-}
-
-void
 engine_t::wake() {
     m_notification.send();
 }
 
 void
-engine_t::on_connection(ev::io& io, int revents) {
-    boost::shared_ptr<pipe_t> pipe = m_acceptor->accept();
+engine_t::erase(const unique_id_t& uuid,
+                int code,
+                const std::string& reason)
+{
+    pool_map_t::iterator it = m_pool.find(uuid);
 
-    if(!pipe) {
+    BOOST_ASSERT(it != m_pool.end());
+
+    m_pool.erase(it);
+
+    if(code == rpc::suicide::abnormal) {
+        COCAINE_LOG_ERROR(m_log, "the app seems to be broken - stopping");
+        migrate(states::broken);
         return;
     }
 
-    m_handshakes.insert(new handshake_t(*this, pipe));
-}
-
-void
-engine_t::on_ctl_event(ev::io&, int) {
-    m_ctl_checker.stop();
-
-    if(m_ctl->pending()) {
-        m_ctl_checker.start();
-        process_ctl_events();
+    if(m_state != states::running && m_pool.empty()) {
+        // If it was the last slave, shut the engine down.
+        stop();
+        return;
     }
 }
 
 void
-engine_t::on_ctl_check(ev::prepare&, int) {
-    m_loop.feed_fd_event(m_ctl->fd(), ev::READ);
+engine_t::on_connection(const boost::shared_ptr<pipe_t>& pipe) {
+    auto codex = boost::make_shared<io::codex<io::pipe_t>>(
+        m_service,
+        pipe
+    );
+
+    COCAINE_LOG_DEBUG(m_log, "initiating a slave handshake on fd: %d", pipe->fd());
+
+    codex->bind(
+        boost::bind(&engine_t::on_handshake, this, codex, _1)
+    );
+
+    m_backlog.insert(std::move(codex));
+}
+
+void
+engine_t::on_handshake(const boost::shared_ptr<io::codex<io::pipe_t>>& codex,
+                       const message_t& message)
+{
+    unique_id_t uuid;
+
+    try {
+        message.as<rpc::handshake>(uuid);
+    } catch(const cocaine::error_t& e) {
+        COCAINE_LOG_WARNING(m_log, "dropping an invalid handshake message");
+    }
+
+    pool_map_t::iterator it = m_pool.find(uuid);
+
+    if(it != m_pool.end()) {
+        COCAINE_LOG_DEBUG(m_log, "slave %s connected", uuid);
+        it->second->tie(codex);
+        wake();
+    } else {
+        COCAINE_LOG_WARNING(m_log, "dropping a handshake from an unknown slave %s", uuid);
+    }
+
+    m_backlog.erase(codex);
+}
+
+namespace {
+    static
+    const char*
+    describe[] = {
+        "running",
+        "broken",
+        "stopping",
+        "stopped"
+    };
+}
+
+namespace {
+    struct collector_t {
+        typedef bool result_type;
+
+        template<class T>
+        bool
+        operator()(const T& slave) {
+            size_t load = slave.second->load();
+
+            m_accumulator(load);
+
+            return slave.second->state() == slave_t::states::active &&
+                   load;
+        }
+
+        size_t
+        median() const {
+            return boost::accumulators::median(m_accumulator);
+        }
+
+        size_t
+        sum() const {
+            return boost::accumulators::sum(m_accumulator);
+        }
+
+    private:
+        boost::accumulators::accumulator_set<
+            size_t,
+            boost::accumulators::features<
+                boost::accumulators::tag::median,
+                boost::accumulators::tag::sum
+            >
+        > m_accumulator;
+    };
+}
+
+void
+engine_t::on_control(const message_t& message) {
+    switch(message.id()) {
+        case event_traits<control::status>::id: {
+            Json::Value info(Json::objectValue);
+
+            collector_t collector;
+
+            size_t active = std::count_if(
+                m_pool.begin(),
+                m_pool.end(),
+                boost::bind(boost::ref(collector), _1)
+            );
+
+            info["load-median"] = static_cast<Json::LargestUInt>(collector.median());
+            info["queue"]["capacity"] = static_cast<Json::LargestUInt>(m_profile.queue_limit);
+            info["queue"]["depth"] = static_cast<Json::LargestUInt>(m_queue.size());
+            info["sessions"]["pending"] = static_cast<Json::LargestUInt>(collector.sum());
+            info["slaves"]["active"] = static_cast<Json::LargestUInt>(active);
+            info["slaves"]["capacity"] = static_cast<Json::LargestUInt>(m_profile.pool_limit);
+            info["slaves"]["idle"] = static_cast<Json::LargestUInt>(m_pool.size() - active);
+            info["state"] = describe[static_cast<int>(m_state)];
+
+            m_control_codex->send<control::info>(info);
+
+            break;
+        }
+
+        case event_traits<control::terminate>::id:
+            migrate(states::stopping);
+            break;
+
+        default:
+            COCAINE_LOG_ERROR(m_log, "dropping unknown type %d control message", message.id());
+    }
 }
 
 void
@@ -309,7 +416,7 @@ engine_t::on_cleanup(ev::timer&, int) {
     corpse_list_t corpses;
 
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
-        if(it->second->state() == slave_t::state_t::dead) {
+        if(it->second->state() == slave_t::states::dead) {
             corpses.emplace_back(it->first);
         }
     }
@@ -347,112 +454,6 @@ engine_t::on_termination(ev::timer&, int) {
 }
 
 namespace {
-    static
-    const char*
-    describe[] = {
-        "running",
-        "broken",
-        "stopping",
-        "stopped"
-    };
-}
-
-namespace {
-    struct active_t {
-        typedef bool result_type;
-
-        template<class T>
-        bool
-        operator()(const T& slave) {
-            size_t load = slave.second->load();
-
-            m_accumulator(load);
-
-            return slave.second->state() == slave_t::state_t::active &&
-                   load;
-        }
-
-        size_t
-        median() const {
-            return boost::accumulators::median(m_accumulator);
-        }
-
-        size_t
-        sum() const {
-            return boost::accumulators::sum(m_accumulator);
-        }
-
-    private:
-        boost::accumulators::accumulator_set<
-            size_t,
-            boost::accumulators::features<
-                boost::accumulators::tag::median,
-                boost::accumulators::tag::sum
-            >
-        > m_accumulator;
-    };
-}
-
-void
-engine_t::process_ctl_events() {
-    // RPC payload.
-    std::string blob;
-
-    if(!m_ctl->recv(blob)) {
-        return;
-    }
-
-    // Deserialized message.
-    io::message_t message;
-
-    try {
-        message = io::codec::unpack(blob);
-    } catch(const cocaine::error_t& e) {
-        COCAINE_LOG_ERROR(
-            m_log,
-            "dropping a control message — %s",
-            e.what()
-        );
-
-        return;
-    }
-
-    switch(message.id()) {
-        case event_traits<control::status>::id: {
-            Json::Value info(Json::objectValue);
-
-            active_t active;
-
-            size_t active_pool_size = std::count_if(
-                m_pool.begin(),
-                m_pool.end(),
-                boost::bind(boost::ref(active), _1)
-            );
-
-            info["load-median"] = static_cast<Json::LargestUInt>(active.median());
-            info["queue"]["capacity"] = static_cast<Json::LargestUInt>(m_profile.queue_limit);
-            info["queue"]["depth"] = static_cast<Json::LargestUInt>(m_queue.size());
-            info["sessions"]["pending"] = static_cast<Json::LargestUInt>(active.sum());
-            info["slaves"]["active"] = static_cast<Json::LargestUInt>(active_pool_size);
-            info["slaves"]["capacity"] = static_cast<Json::LargestUInt>(m_profile.pool_limit);
-            info["slaves"]["idle"] = static_cast<Json::LargestUInt>(m_pool.size() - active_pool_size);
-            info["state"] = describe[static_cast<int>(m_state)];
-
-            m_ctl->send(info);
-
-            break;
-        }
-
-        case event_traits<control::terminate>::id:
-            migrate(state_t::stopping);
-            break;
-
-        default:
-            COCAINE_LOG_ERROR(m_log, "dropping unknown type %d control message", message.id());
-    }
-}
-
-namespace {
     struct load_t {
         template<class T>
         bool
@@ -469,7 +470,7 @@ namespace {
         template<class T>
         bool
         operator()(const T& slave) const {
-            return slave.second->state() == slave_t::state_t::active &&
+            return slave.second->state() == slave_t::states::active &&
                    slave.second->load() < max;
         }
 
@@ -536,7 +537,7 @@ engine_t::pump() {
             lock.unlock();
 
             if(session->event.policy.deadline &&
-               session->event.policy.deadline <= m_loop.now())
+               session->event.policy.deadline <= m_service.loop().now())
             {
                 COCAINE_LOG_DEBUG(
                     m_log,
@@ -605,7 +606,7 @@ engine_t::balance() {
 }
 
 void
-engine_t::migrate(state_t target) {
+engine_t::migrate(states target) {
     boost::unique_lock<session_queue_t> lock(m_queue);
 
     m_state = target;
@@ -640,8 +641,8 @@ engine_t::migrate(state_t target) {
         it != m_pool.end();
         ++it)
     {
-        if(it->second->state() == slave_t::state_t::active) {
-            it->second->send(io::codec::pack<rpc::terminate>());
+        if(it->second->state() == slave_t::states::active) {
+            it->second->send(codec::pack<rpc::terminate>());
             ++pending;
         }
     }
@@ -671,8 +672,8 @@ engine_t::stop() {
     // NOTE: This will force the slave pool termination.
     m_pool.clear();
 
-    if(m_state == state_t::stopping) {
-        m_state = state_t::stopped;
-        m_loop.unloop(ev::ALL);
+    if(m_state == states::stopping) {
+        m_state = states::stopped;
+        m_service.loop().unloop(ev::ALL);
     }
 }

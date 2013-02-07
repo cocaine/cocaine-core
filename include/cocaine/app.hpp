@@ -67,7 +67,11 @@ class app_t {
 
         // I/O
 
-        std::unique_ptr<io::socket_t> m_control;
+        std::unique_ptr<io::service_t> m_service;
+
+        std::unique_ptr<
+            io::codex<io::pipe_t>
+        > m_control_codex;
 
         // Execution engine
 

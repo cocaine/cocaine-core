@@ -58,25 +58,23 @@ app_t::app_t(context_t& context,
         deploy(name, path.string());
     }
 
-    m_control.reset(new io::socket_t(context, ZMQ_PAIR));
+    // Create the controlling pipe.
+    auto pipes = link();
 
-    std::string endpoint = cocaine::format(
-        "inproc://%s",
-        m_manifest->name
-    );
+    m_service.reset(new io::service_t());
 
-    try {
-        m_control->bind(endpoint);
-    } catch(const zmq::error_t& e) {
-        throw configuration_error_t("unable to bind the engine control channel - %s", e.what());
-    }
+    m_control_codex.reset(new codex<pipe_t>(
+        *m_service,
+        std::get<0>(pipes)
+    ));
 
     // NOTE: The event loop is not started here yet.
     m_engine.reset(
         new engine_t(
             m_context,
             *m_manifest,
-            *m_profile
+            *m_profile,
+            std::get<1>(pipes)
         )
     );
 }
@@ -158,7 +156,7 @@ app_t::stop() {
 
     COCAINE_LOG_INFO(m_log, "stopping the engine");
 
-    m_control->send(io::codec::pack<control::terminate>());
+    m_control_codex->send<control::terminate>();
 
     m_thread->join();
     m_thread.reset();
@@ -179,8 +177,9 @@ app_t::info() const {
         return info;
     }
 
-    m_control->send(io::codec::pack<control::status>());
+    m_control_codex->send<control::status>();
 
+    /*
     {
         scoped_option<
             options::receive_timeout
@@ -191,6 +190,7 @@ app_t::info() const {
             return info;
         }
     }
+    */
 
     info["profile"] = m_profile->name;
 

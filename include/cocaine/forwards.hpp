@@ -51,7 +51,6 @@ namespace cocaine {
         // Execution engine.
         class engine_t;
         class slave_t;
-        struct handshake_t;
     }
 
     namespace io {
@@ -65,8 +64,21 @@ namespace cocaine {
         struct acceptor_t;
         struct pipe_t;
 
-        // RPC codec.
-        struct codex_t;
+        // I/O primitives
+
+        struct service_t;
+
+        template<class>
+        struct connection_queue;
+
+        template<class>
+        struct write_queue;
+
+        template<class>
+        struct read_queue;
+
+        template<class>
+        struct codex;
     }
 
     namespace logging {

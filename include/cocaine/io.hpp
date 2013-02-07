@@ -468,6 +468,8 @@ private:
 struct acceptor_t:
     boost::noncopyable
 {
+    typedef pipe_t pipe_type;
+
     acceptor_t(const std::string& path,
                int backlog = 128):
         m_fd(::socket(AF_LOCAL, SOCK_STREAM, 0))
@@ -560,6 +562,26 @@ private:
 
 private:
     int m_fd;
+};
+
+typedef std::pair<
+    boost::shared_ptr<pipe_t>,
+    boost::shared_ptr<pipe_t>
+> pipe_link_t;
+
+static inline
+pipe_link_t
+link() {
+    int fds[2] = { -1, -1 };
+
+    if(::socketpair(AF_LOCAL, SOCK_STREAM, 0, fds) != 0) {
+        throw io_error_t("unable to create a link");
+    }
+
+    return std::make_pair(
+        boost::make_shared<pipe_t>(fds[0]),
+        boost::make_shared<pipe_t>(fds[1])
+    );
 };
 
 }} // namespace cocaine::io

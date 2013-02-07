@@ -29,23 +29,11 @@
 
 namespace cocaine { namespace engine {
 
-struct handshake_t {
-    handshake_t(engine_t& engine,
-                const boost::shared_ptr<io::pipe_t>& pipe);
-
-    void
-    on_message(const io::message_t& message);
-
-private:
-    engine_t& m_engine;
-    boost::shared_ptr<io::codex<io::pipe_t>> m_codex;
-};
-
 class slave_t:
     public boost::noncopyable
 {
     public:
-        enum class state_t: int {
+        enum class states: int {
             unknown,
             active,
             inactive,
@@ -81,7 +69,7 @@ class slave_t:
             return m_id;
         }
 
-        state_t
+        states
         state() const {
             return m_state;
         }
@@ -101,12 +89,16 @@ class slave_t:
         on_ping();
 
         void
+        on_suicide(int code,
+                   const std::string& reason);
+
+        void
         on_chunk(uint64_t session_id,
                  const std::string& chunk);
 
         void
         on_error(uint64_t session_id,
-                 error_code code,
+                 int code,
                  const std::string& reason);
 
         void
@@ -137,7 +129,7 @@ class slave_t:
         const unique_id_t m_id;
 
         // Current slave state.
-        state_t m_state;
+        states m_state;
 
         // Slave health monitoring.
         ev::timer m_heartbeat_timer;

@@ -39,16 +39,111 @@
 
 namespace cocaine { namespace io {
 
-template<class Pipe>
+struct service_t {
+    service_t():
+        m_loop(new ev::dynamic_loop())
+    { }
+
+    ev::loop_ref&
+    loop() {
+        return *m_loop;
+    }
+
+    const ev::loop_ref&
+    loop() const {
+        return *m_loop;
+    }
+
+    // Lockable concept implementation
+
+    void
+    lock() {
+        m_mutex.lock();
+    }
+
+    void
+    unlock() {
+        m_mutex.unlock();
+    }
+
+private:
+    std::unique_ptr<ev::loop_ref> m_loop;
+
+    // Rumor says the event loop has to be interlocked for watcher
+    // operations, but for some reason it works fine without it.
+    boost::mutex m_mutex;
+};
+
+template<class AcceptorType>
+struct connection_queue {
+    connection_queue(service_t& service,
+                     std::unique_ptr<AcceptorType>&& acceptor):
+        m_acceptor(std::move(acceptor)),
+        m_acceptor_watcher(service.loop())
+    {
+        m_acceptor_watcher.set<connection_queue, &connection_queue::on_event>(this);
+    }
+
+    ~connection_queue() {
+        unbind();
+    }
+
+    template<class CallbackType>
+    void
+    bind(CallbackType callback) {
+        m_callback = callback;
+        m_acceptor_watcher.start(m_acceptor->fd(), ev::READ);
+    }
+
+    void
+    unbind() {
+        m_callback.clear();
+
+        if(m_acceptor_watcher.is_active()) {
+            m_acceptor_watcher.stop();
+        }
+    }
+
+private:
+    void
+    on_event(ev::io& io, int revents) {
+        const pipe_ptr_type& pipe = m_acceptor->accept();
+
+        if(!pipe) {
+            return;
+        }
+
+        m_callback(pipe);
+    }
+
+private:
+    // NOTE: It doesn't make sense to accept a connection from multiple queues,
+    // so keep at most one reference to the acceptor.
+    const std::unique_ptr<AcceptorType> m_acceptor;
+
+    // Acceptor poll object.
+    ev::io m_acceptor_watcher;
+
+    typedef boost::shared_ptr<
+        typename AcceptorType::pipe_type
+    > pipe_ptr_type;
+
+    boost::function<
+        void(const pipe_ptr_type&)
+    > m_callback;
+};
+
+template<class PipeType>
 struct write_queue {
-    write_queue(ev::loop_ref& loop,
-                const boost::shared_ptr<Pipe>& pipe):
+    write_queue(service_t& service,
+                const boost::shared_ptr<PipeType>& pipe):
         m_pipe(pipe),
-        m_pipe_watcher(loop),
+        m_pipe_watcher(service.loop()),
         m_rd_offset(0),
         m_wr_offset(0)
     {
         m_pipe_watcher.set<write_queue, &write_queue::on_event>(this);
+        m_pipe_watcher.set(m_pipe->fd(), ev::READ);
     }
 
     ~write_queue() {
@@ -100,7 +195,7 @@ struct write_queue {
         m_wr_offset += size;
 
         if(!m_pipe_watcher.is_active()) {
-            m_pipe_watcher.start(m_pipe->fd(), ev::WRITE);
+            m_pipe_watcher.start();
         }
     }
 
@@ -133,9 +228,11 @@ private:
     }
 
 private:
-    boost::shared_ptr<Pipe> m_pipe;
+    // NOTE: Pipes can be shared among multiple queues, at least to be able
+    // to write and read from two different queues.
+    const boost::shared_ptr<PipeType> m_pipe;
 
-    // The poll object.
+    // Pipe poll object.
     ev::io m_pipe_watcher;
 
     std::array<char, 65536> m_ring;
@@ -146,24 +243,36 @@ private:
     boost::mutex m_ring_mutex;
 };
 
-template<class T, size_t ChunkSize = 4096>
+template<class PipeType>
 struct read_queue {
-    template<class F>
-    read_queue(ev::loop_ref& loop,
-               const boost::shared_ptr<T>& pipe,
-               F callback):
+    read_queue(service_t& service,
+               const boost::shared_ptr<PipeType>& pipe):
         m_pipe(pipe),
-        m_pipe_watcher(loop),
-        m_callback(callback)
+        m_pipe_watcher(service.loop())
     {
         m_pipe_watcher.set<read_queue, &read_queue::on_event>(this);
+    }
+
+    template<class CallbackType>
+    void
+    bind(CallbackType callback) {
+        m_callback = callback;
         m_pipe_watcher.start(m_pipe->fd(), ev::READ);
+    }
+
+    void
+    unbind() {
+        m_callback.clear();
+
+        if(m_pipe_watcher.is_active()) {
+            m_pipe_watcher.stop();
+        }
     }
 
 private:
     void
     on_event(ev::io& io, int revents) {
-        std::array<char, ChunkSize> chunk;
+        std::array<char, 8192> chunk;
 
         // Try to read some data.
         ssize_t length = m_pipe->read(chunk.data(), chunk.size());
@@ -176,7 +285,11 @@ private:
     }
 
 private:
-    boost::shared_ptr<T> m_pipe;
+    // NOTE: Pipes can be shared among multiple queues, at least to be able
+    // to write and read from two different queues.
+    const boost::shared_ptr<PipeType> m_pipe;
+
+    // Pipe poll object.
     ev::io m_pipe_watcher;
 
     boost::function<
@@ -184,14 +297,18 @@ private:
     > m_callback;
 };
 
-template<class T>
+template<class PipeType>
 struct codex {
-    codex(ev::loop_ref& loop,
-          const boost::shared_ptr<T>& pipe):
-        m_output(new write_queue<T>(loop, pipe)),
-        m_input(new read_queue<T>(loop, pipe, boost::bind(&codex::on_message, this, _1, _2))),
+    codex(service_t& service,
+          const boost::shared_ptr<PipeType>& pipe):
+        m_output(new write_queue<PipeType>(service, pipe)),
+        m_input(new read_queue<PipeType>(service, pipe)),
         m_unpacker(new msgpack::unpacker())
-    { }
+    {
+        m_input->bind(
+            boost::bind(&codex::on_message, this, _1, _2)
+        );
+    }
 
     template<class F>
     void
@@ -202,7 +319,7 @@ struct codex {
     template<class Event, typename... Args>
     void
     send(Args&&... args) {
-        msgpack::packer<write_queue<T>> packer(*m_output);
+        msgpack::packer<write_queue<PipeType>> packer(*m_output);
 
         // NOTE: Format is [ID, [Args...]].
         packer.pack_array(2);
@@ -246,8 +363,8 @@ private:
     }
 
 private:
-    boost::shared_ptr<write_queue<T>> m_output;
-    boost::shared_ptr<read_queue<T>> m_input;
+    boost::shared_ptr<write_queue<PipeType>> m_output;
+    boost::shared_ptr<read_queue<PipeType>> m_input;
 
     boost::function<
         void(const message_t&)

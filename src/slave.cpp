@@ -39,22 +39,6 @@ using namespace cocaine::engine;
 using namespace cocaine::io;
 using namespace cocaine::logging;
 
-handshake_t::handshake_t(engine_t& engine,
-                         const boost::shared_ptr<pipe_t>& pipe):
-    m_engine(engine),
-    m_codex(new codex<pipe_t>(engine.loop(), pipe))
-{
-    m_codex->bind(boost::bind(&handshake_t::on_message, this, _1));
-}
-
-void
-handshake_t::on_message(const message_t& message) {
-    unique_id_t id;
-
-    message.as<rpc::handshake>(id);
-    m_engine.tie(m_codex, id);
-}
-
 slave_t::slave_t(context_t& context,
                  const manifest_t& manifest,
                  const profile_t& profile,
@@ -64,9 +48,9 @@ slave_t::slave_t(context_t& context,
     m_manifest(manifest),
     m_profile(profile),
     m_engine(engine),
-    m_state(state_t::unknown),
-    m_heartbeat_timer(engine.loop()),
-    m_idle_timer(engine.loop())
+    m_state(states::unknown),
+    m_heartbeat_timer(engine.service().loop()),
+    m_idle_timer(engine.service().loop())
 {
     auto isolate = m_context.get<api::isolate_t>(
         m_profile.isolate.type,
@@ -93,7 +77,7 @@ slave_t::slave_t(context_t& context,
 }
 
 slave_t::~slave_t() {
-    if(m_state != state_t::dead) {
+    if(m_state != states::dead) {
         terminate();
     }
 }
@@ -110,7 +94,7 @@ slave_t::tie(const boost::shared_ptr<io::codex<io::pipe_t>>& codex) {
 
 void
 slave_t::assign(boost::shared_ptr<session_t>&& session) {
-    BOOST_ASSERT(m_state == state_t::active);
+    BOOST_ASSERT(m_state == states::active);
 
     COCAINE_LOG_DEBUG(
         m_log,
@@ -149,27 +133,7 @@ slave_t::on_message(const message_t& message) {
             std::string reason;
 
             message.as<rpc::suicide>(code, reason);
-
-            COCAINE_LOG_DEBUG(
-                m_log,
-                "slave %s is committing suicide: %s",
-                m_id,
-                reason
-            );
-
-            /*
-            if(code == rpc::suicide::abnormal) {
-                COCAINE_LOG_ERROR(m_log, "the app seems to be broken - stopping");
-                migrate(state_t::broken);
-                return;
-            }
-
-            if(m_state != state_t::running && m_pool.empty()) {
-                // If it was the last slave, shut the engine down.
-                stop();
-                return;
-            }
-            */
+            on_suicide(code, reason);
 
             break;
         }
@@ -190,7 +154,7 @@ slave_t::on_message(const message_t& message) {
             std::string reason;
 
             message.as<rpc::error>(session_id, code, reason);
-            on_error(session_id, static_cast<error_code>(code), reason);
+            on_error(session_id, code, reason);
 
             break;
         }
@@ -219,20 +183,20 @@ slave_t::on_message(const message_t& message) {
 
 void
 slave_t::on_ping() {
-    BOOST_ASSERT(m_state != state_t::dead);
+    BOOST_ASSERT(m_state != states::dead);
 
-    if(m_state == state_t::unknown) {
+    if(m_state == states::unknown) {
         COCAINE_LOG_DEBUG(
             m_log,
             "slave %s became active in %.03f seconds",
             m_id,
             m_profile.startup_timeout - ev_timer_remaining(
-                m_engine.loop(),
+                m_engine.service().loop(),
                 static_cast<ev_timer*>(&m_heartbeat_timer)
             )
         );
 
-        m_state = state_t::active;
+        m_state = states::active;
 
         // Start the idle timer, which will kill the slave when it's not used.
         m_idle_timer.set<slave_t, &slave_t::on_idle>(this);
@@ -253,10 +217,24 @@ slave_t::on_ping() {
 }
 
 void
+slave_t::on_suicide(int code,
+                    const std::string& reason)
+{
+    COCAINE_LOG_DEBUG(
+        m_log,
+        "slave %s is committing suicide: %s",
+        m_id,
+        reason
+    );
+
+    m_engine.erase(m_id, code, reason);
+}
+
+void
 slave_t::on_chunk(uint64_t session_id,
                   const std::string& chunk)
 {
-    BOOST_ASSERT(m_state == state_t::active);
+    BOOST_ASSERT(m_state == states::active);
 
     COCAINE_LOG_DEBUG(
         m_log,
@@ -276,10 +254,12 @@ slave_t::on_chunk(uint64_t session_id,
 
 void
 slave_t::on_error(uint64_t session_id,
-                  error_code code,
+                  int code_,
                   const std::string& reason)
 {
-    BOOST_ASSERT(m_state == state_t::active);
+    BOOST_ASSERT(m_state == states::active);
+
+    error_code code = static_cast<error_code>(code_);
 
     COCAINE_LOG_DEBUG(
         m_log,
@@ -300,7 +280,7 @@ slave_t::on_error(uint64_t session_id,
 
 void
 slave_t::on_choke(uint64_t session_id) {
-    BOOST_ASSERT(m_state == state_t::active);
+    BOOST_ASSERT(m_state == states::active);
 
     COCAINE_LOG_DEBUG(
         m_log,
@@ -331,7 +311,7 @@ slave_t::on_choke(uint64_t session_id) {
 
 void
 slave_t::send(const std::string& blob) {
-    BOOST_ASSERT(m_state == state_t::active);
+    BOOST_ASSERT(m_state == states::active);
     m_codex->send(blob);
 }
 
@@ -350,14 +330,14 @@ namespace {
 
 void
 slave_t::on_timeout(ev::timer&, int) {
-    BOOST_ASSERT(m_state != state_t::dead);
+    BOOST_ASSERT(m_state != states::dead);
 
     switch(m_state) {
-        case state_t::unknown:
+        case states::unknown:
             COCAINE_LOG_WARNING(m_log, "slave %s has failed to activate", m_id);
             break;
 
-        case state_t::active:
+        case states::active:
             COCAINE_LOG_WARNING(
                 m_log,
                 "slave %s has timed out, dropping %llu sessions",
@@ -371,11 +351,11 @@ slave_t::on_timeout(ev::timer&, int) {
 
             break;
 
-        case state_t::inactive:
+        case states::inactive:
             COCAINE_LOG_WARNING(m_log, "slave %s has failed to deactivate", m_id);
             break;
 
-        case state_t::dead:
+        case states::dead:
             // NOTE: Unreachable.
             std::terminate();
     }
@@ -385,13 +365,13 @@ slave_t::on_timeout(ev::timer&, int) {
 
 void
 slave_t::on_idle(ev::timer&, int) {
-    BOOST_ASSERT(m_state == state_t::active);
+    BOOST_ASSERT(m_state == states::active);
 
     COCAINE_LOG_DEBUG(m_log, "slave %s is idle, deactivating", m_id);
 
     send(io::codec::pack<rpc::terminate>());
 
-    m_state = state_t::inactive;
+    m_state = states::inactive;
 }
 
 void
@@ -399,7 +379,7 @@ slave_t::terminate() {
     COCAINE_LOG_DEBUG(m_log, "slave %s terminating", m_id);
 
     // Ensure that the slave is not being overkilled.
-    BOOST_ASSERT(m_state != state_t::dead);
+    BOOST_ASSERT(m_state != states::dead);
 
     // Ensure that no sessions are being lost here.
     BOOST_ASSERT(m_sessions.empty());
@@ -410,6 +390,9 @@ slave_t::terminate() {
     m_handle->terminate();
     m_handle.reset();
 
-    m_state = state_t::dead;
+    // Closes our end of the pipe.
+    m_codex.reset();
+
+    m_state = states::dead;
 }
 
