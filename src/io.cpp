@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "cocaine/io.hpp"
@@ -42,15 +42,15 @@ socket_base_t::socket_base_t(context_t& context,
     m_port(0)
 {
     int linger = 0;
-   
-    // Disable the socket lingering on context termination. 
+
+    // Disable the socket lingering on context termination.
     m_socket.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
 
     size_t size = sizeof(m_fd);
-    
+
     // Get the socket's file descriptor.
     m_socket.getsockopt(ZMQ_FD, &m_fd, &size);
-} 
+}
 
 socket_base_t::~socket_base_t() {
     if(m_port) {

@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "cocaine/essentials/isolates/process.hpp"
@@ -115,11 +115,11 @@ process_t::spawn(const std::string& path,
 
         it = args.begin();
         n = 1;
-        
+
         while(it != args.end()) {
             argv[n++] = ::strdup(it->first.c_str());
-            argv[n++] = ::strdup(it->second.c_str());   
-            
+            argv[n++] = ::strdup(it->second.c_str());
+
             ++it;
         }
 
@@ -135,9 +135,9 @@ process_t::spawn(const std::string& path,
 
         while(it != environment.end()) {
             format % it->first % it->second;
-            
+
             envp[n++] = ::strdup(format.str().c_str());
-            
+
             format.clear();
             ++it;
         }
@@ -171,6 +171,6 @@ process_t::spawn(const std::string& path,
             std::exit(EXIT_FAILURE);
         }
     }
-    
+
     return std::unique_ptr<api::handle_t>(new process_handle_t(pid));
 }

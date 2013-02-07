@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "cocaine/profile.hpp"
@@ -55,7 +55,7 @@ profile_t::profile_t(context_t& context,
     if(startup_timeout <= 0.0f) {
         throw configuration_error_t("slave startup timeout must be positive");
     }
-    
+
     termination_timeout = get(
         "termination-timeout",
         defaults::termination_timeout
@@ -64,7 +64,7 @@ profile_t::profile_t(context_t& context,
     if(termination_timeout <= 0.0f) {
         throw configuration_error_t("engine termination timeout must be non-negative");
     }
-            
+
     pool_limit = get(
         "pool-limit",
         static_cast<Json::UInt>(defaults::pool_limit)

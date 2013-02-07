@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_STORAGE_API_HPP
@@ -51,7 +51,7 @@ class storage_t:
 {
     public:
         virtual
-        ~storage_t() { 
+        ~storage_t() {
             // Empty.
         }
 
@@ -74,7 +74,7 @@ class storage_t:
         void
         remove(const std::string& collection,
                const std::string& key) = 0;
-    
+
     protected:
         storage_t(context_t&,
                   const std::string& /* name */,
@@ -100,7 +100,7 @@ storage_t::get(const std::string& collection,
 {
     T result;
     msgpack::unpacked unpacked;
-    
+
     std::string blob(read(collection, key));
 
     try {
@@ -116,7 +116,7 @@ storage_t::get(const std::string& collection,
     } catch(const std::bad_cast& e) {
         throw storage_error_t("object type mismatch");
     }
-    
+
     return result;
 }
 
@@ -161,9 +161,9 @@ struct category_traits<storage_t> {
             boost::lock_guard<boost::mutex> lock(m_mutex);
 
             typename instance_map_t::iterator it(m_instances.find(name));
-            
+
             ptr_type instance;
-            
+
             if(it != m_instances.end()) {
                 instance = it->second.lock();
             }
@@ -177,7 +177,7 @@ struct category_traits<storage_t> {
 
                 m_instances.emplace(name, instance);
             }
-                
+
             return instance;
         }
 

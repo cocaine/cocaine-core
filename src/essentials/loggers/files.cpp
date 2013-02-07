@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "cocaine/essentials/loggers/files.hpp"
@@ -39,7 +39,7 @@ files_t::files_t(context_t& context,
     std::string path = args["path"].asString();
 
     m_file = std::fopen(path.c_str(), "a");
-    
+
     if(m_file == NULL) {
         char buffer[1024],
              * message;
@@ -53,7 +53,7 @@ files_t::files_t(context_t& context,
         // string buffer, so complete the job manually.
         message = buffer;
 #endif
-        
+
         throw cocaine::error_t("unable to open the '%s' log file - %s", path, message);
     }
 }

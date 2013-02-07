@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_SLAVE_HPP
@@ -35,7 +35,7 @@ struct handshake_t {
 
     void
     on_message(const io::message_t& message);
-    
+
 private:
     engine_t& m_engine;
     boost::shared_ptr<io::codex<io::pipe_t>> m_codex;
@@ -74,7 +74,7 @@ class slave_t:
 
         void
         send(const std::string& chunk);
-       
+
     public:
         unique_id_t
         id() const {
@@ -142,8 +142,8 @@ class slave_t:
         // Slave health monitoring.
         ev::timer m_heartbeat_timer;
         ev::timer m_idle_timer;
-    
-        // Actual slave process handle.    
+
+        // Actual slave process handle.
         std::unique_ptr<api::handle_t> m_handle;
 
         typedef std::map<

@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "cocaine/config.hpp"
@@ -77,7 +77,7 @@ namespace {
                     m_services.emplace_back(*it, api::service(m_context, *it));
                 } catch(const cocaine::error_t& e) {
                     throw cocaine::error_t(
-                        "unable to initialize the '%s' service - %s", 
+                        "unable to initialize the '%s' service - %s",
                         *it,
                         e.what()
                     );
@@ -126,7 +126,7 @@ namespace {
         // Signal watchers.
         ev::sig m_sigint;
         ev::sig m_sigterm;
-        ev::sig m_sigquit; 
+        ev::sig m_sigquit;
 
         typedef std::vector<
             std::pair<std::string, std::unique_ptr<api::service_t>>
@@ -141,7 +141,7 @@ int main(int argc, char * argv[]) {
     po::options_description general_options("General options"),
                             service_options("Service options"),
                             combined_options;
-    
+
     po::variables_map vm;
 
     general_options.add_options()
@@ -153,7 +153,7 @@ int main(int argc, char * argv[]) {
 
     service_options.add_options()
         ("service,s", po::value<std::vector<std::string>>(), "names of the services");
-    
+
     combined_options.add(general_options)
                     .add(service_options);
 
@@ -200,10 +200,10 @@ int main(int argc, char * argv[]) {
         config.reset(new config_t(vm["configuration"].as<std::string>()));
     } catch(const cocaine::error_t& e) {
         std::cerr << cocaine::format(
-            "ERROR: unable to initialize the configuration - %s.", 
+            "ERROR: unable to initialize the configuration - %s.",
             e.what()
         ) << std::endl;
-        
+
         return EXIT_FAILURE;
     }
 
@@ -230,7 +230,7 @@ int main(int argc, char * argv[]) {
                 "ERROR: unable to create the pidfile - %s.",
                 e.what()
             ) << std::endl;
-            
+
             return EXIT_FAILURE;
         }
     }
@@ -244,7 +244,7 @@ int main(int argc, char * argv[]) {
             "ERROR: unable to initialize the context - %s.",
             e.what()
         ) << std::endl;
-        
+
         return EXIT_FAILURE;
     }
 
@@ -260,7 +260,7 @@ int main(int argc, char * argv[]) {
             "ERROR: unable to initialize the runtime - %s.",
             e.what()
         ) << std::endl;
-        
+
         return EXIT_FAILURE;
     }
 

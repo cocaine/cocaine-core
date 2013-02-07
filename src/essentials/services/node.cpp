@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "cocaine/essentials/services/node.hpp"
@@ -42,7 +42,7 @@ namespace {
     > runlist_t;
 }
 
-node_t::node_t(context_t& context, 
+node_t::node_t(context_t& context,
                const std::string& name,
                const Json::Value& args):
     reactor_t(context, name, args),
@@ -55,7 +55,7 @@ node_t::node_t(context_t& context,
     on<io::node::start_app>(boost::bind(&node_t::on_start_app, this, _1));
     on<io::node::pause_app>(boost::bind(&node_t::on_pause_app, this, _1));
     on<io::node::info>(boost::bind(&node_t::on_info, this));
-    
+
     int minor, major, patch;
     zmq_version(&major, &minor, &patch);
 
@@ -89,7 +89,7 @@ node_t::node_t(context_t& context,
             ++it)
         {
             std::string endpoint = (*it).asString();
-            
+
             COCAINE_LOG_INFO(m_log, "announcing on %s", endpoint);
 
             try {
@@ -221,7 +221,7 @@ node_t::on_start_app(const runlist_t& runlist) {
 Json::Value
 node_t::on_pause_app(const std::vector<std::string>& applist) {
     Json::Value result(Json::objectValue);
-    
+
     for(std::vector<std::string>::const_iterator it = applist.begin();
         it != applist.end();
         ++it)
@@ -249,8 +249,8 @@ node_t::on_info() const {
     Json::Value result(Json::objectValue);
 
     for(app_map_t::const_iterator it = m_apps.begin();
-        it != m_apps.end(); 
-        ++it) 
+        it != m_apps.end();
+        ++it)
     {
         result["apps"][it->first] = it->second->info();
     }

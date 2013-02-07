@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_EVENT_API_HPP
@@ -59,7 +59,7 @@ struct event_t {
 public:
     // Event type.
     const std::string type;
-    
+
     // Event execution policy.
     const policy_t policy;
 };

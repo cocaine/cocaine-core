@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_ARCHIVE_HPP
@@ -37,12 +37,12 @@ class archive_t {
     public:
         archive_t(context_t& context,
                   const std::string& archive);
-        
+
         ~archive_t();
 
         void
         deploy(const std::string& prefix);
-        
+
     public:
         std::string
         type() const;
@@ -50,13 +50,13 @@ class archive_t {
     private:
         static
         void
-        extract(archive * source, 
+        extract(archive * source,
                 archive * target);
 
     private:
         context_t& m_context;
         std::unique_ptr<logging::log_t> m_log;
-        
+
         // The source archive.
         archive * m_archive;
 };

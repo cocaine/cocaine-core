@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "cocaine/repository.hpp"
@@ -56,7 +56,7 @@ repository_t::~repository_t() {
 
 namespace {
     struct validate_t {
-        template<typename T> 
+        template<typename T>
         bool
         operator()(const T& entry) const {
             return fs::is_regular(entry) &&
@@ -79,8 +79,8 @@ repository_t::load(const std::string& path_) {
             validate_t,
             fs::directory_iterator
         > plugin_iterator_t;
-        
-        plugin_iterator_t it = plugin_iterator_t(validate, fs::directory_iterator(path)), 
+
+        plugin_iterator_t it = plugin_iterator_t(validate, fs::directory_iterator(path)),
                           end;
 
         while(it != end) {
@@ -109,7 +109,7 @@ repository_t::open(const std::string& target) {
 
     lt_dlhandle plugin = lt_dlopenadvise(target.c_str(), advice);
     lt_dladvise_destroy(&advice);
-    
+
     if(!plugin) {
         throw repository_error_t("unable to load '%s'", target);
     }

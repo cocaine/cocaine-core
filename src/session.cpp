@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "cocaine/session.hpp"
@@ -39,7 +39,7 @@ session_t::session_t(uint64_t id_,
 void
 session_t::attach(slave_t * const slave) {
     BOOST_ASSERT(!m_slave);
-    
+
     boost::unique_lock<boost::mutex> lock(m_mutex);
 
     m_slave = slave;

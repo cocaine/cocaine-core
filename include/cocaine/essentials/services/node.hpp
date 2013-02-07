@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_NODE_SERVICE_HPP
@@ -77,7 +77,7 @@ class node_t:
         virtual
         ~node_t();
 
-    private:        
+    private:
         void
         on_announce(ev::timer&, int);
 
@@ -94,7 +94,7 @@ class node_t:
         context_t& m_context;
         std::unique_ptr<logging::log_t> m_log;
 
-        // Node announce channel.        
+        // Node announce channel.
         io::socket_t m_announces;
 
         // Node announce timer.

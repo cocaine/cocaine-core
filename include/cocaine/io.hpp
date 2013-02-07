@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_IO_HPP
@@ -40,7 +40,7 @@ namespace cocaine { namespace io {
 
 // ZeroMQ socket
 
-class socket_base_t: 
+class socket_base_t:
     public boost::noncopyable,
     public birth_control<socket_base_t>
 {
@@ -56,7 +56,7 @@ class socket_base_t:
 
         void
         bind(const std::string& endpoint);
-        
+
         void
         connect(const std::string& endpoint);
 
@@ -88,8 +88,8 @@ class socket_base_t:
         }
 
         std::string
-        endpoint() const { 
-            return m_endpoint; 
+        endpoint() const {
+            return m_endpoint;
         }
 
         bool
@@ -124,7 +124,7 @@ class socket_base_t:
 
     protected:
         zmq::socket_t m_socket;
-        
+
     private:
         context_t& m_context;
 
@@ -210,7 +210,7 @@ struct socket_t:
          int flags = 0)
     {
         zmq::message_t message(blob.size());
-        
+
         memcpy(
             message.data(),
             blob.data(),
@@ -239,10 +239,10 @@ struct socket_t:
             buffer.data(),
             buffer.size()
         );
-        
+
         return send(message, flags);
     }
-    
+
     // Multipart messages
 
     template<class Head>
@@ -293,8 +293,8 @@ struct socket_t:
         if(!recv(message, flags)) {
             return false;
         }
-       
-        try { 
+
+        try {
             msgpack::unpack(
                 &unpacked,
                 static_cast<const char*>(message.data()),
@@ -303,7 +303,7 @@ struct socket_t:
         } catch(const msgpack::unpack_error& e) {
             throw cocaine::error_t("corrupted object");
         }
-           
+
         try {
             type_traits<T>::unpack(unpacked.get(), result);
         } catch(const msgpack::type_error& e) {
@@ -353,9 +353,8 @@ struct io_error_t:
 #endif
     }
 
-    virtual
     const char *
-    what() const throw() {
+    describe() const throw() {
         return m_message;
     }
 
@@ -373,7 +372,7 @@ struct pipe_t:
         if(m_fd == -1) {
             throw io_error_t("unable to create a pipe");
         }
-        
+
         // Set non-blocking and close-on-exec options.
         configure(m_fd);
 
@@ -411,12 +410,12 @@ struct pipe_t:
     ssize_t
     write(const char * buffer, size_t size) {
         ssize_t length = ::write(m_fd, buffer, size);
-        
+
         if(length == -1) {
             switch(errno) {
                 case EAGAIN || EWOULDBLOCK:
                 case EINTR:
-                    return 0;
+                    return length;
 
                 default:
                     throw io_error_t("unable to write to a pipe");
@@ -434,12 +433,12 @@ struct pipe_t:
     ssize_t
     read(char * buffer, size_t size) {
         ssize_t length = ::read(m_fd, buffer, size);
-    
+
         if(length == -1) {
             switch(errno) {
                 case EAGAIN || EWOULDBLOCK:
                 case EINTR:
-                    return 0;
+                    return length;
 
                 default:
                     throw io_error_t("unable to read from a pipe");
@@ -542,7 +541,7 @@ struct acceptor_t:
 
         // Set non-blocking and close-on-exec options.
         configure(fd);
-        
+
         return boost::make_shared<pipe_t>(fd);
     }
 

@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "cocaine/essentials/loggers/remote.hpp"
@@ -86,6 +86,6 @@ remote_t::dump() {
 
     // Dump the ring buffer to the fallback logger, if it exists.
     std::for_each(m_ring.begin(), m_ring.end(), dump_t<decltype(logger)>(logger));
-    
+
     m_ring.clear();
 }

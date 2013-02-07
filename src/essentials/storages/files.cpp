@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "cocaine/essentials/storages/files.hpp"
@@ -55,9 +55,9 @@ files_t::read(const std::string& collection,
     boost::lock_guard<boost::mutex> lock(m_mutex);
 
     const fs::path file_path(m_storage_path / collection / key);
-    
+
     fs::ifstream stream(file_path);
-   
+
     COCAINE_LOG_DEBUG(
         m_log,
         "reading the '%s' object, collection: '%s', path: '%s'",
@@ -69,7 +69,7 @@ files_t::read(const std::string& collection,
     if(!stream) {
         throw storage_error_t("the specified object has not been found");
     }
-    
+
     std::stringstream buffer;
     buffer << stream.rdbuf();
 
@@ -79,7 +79,7 @@ files_t::read(const std::string& collection,
 void
 files_t::write(const std::string& collection,
                const std::string& key,
-               const std::string& blob) 
+               const std::string& blob)
 {
     boost::lock_guard<boost::mutex> lock(m_mutex);
 
@@ -101,14 +101,14 @@ files_t::write(const std::string& collection,
     } else if(fs::exists(store_path) && !fs::is_directory(store_path)) {
         throw storage_error_t("the specified collection is corrupted");
     }
-    
+
     const fs::path file_path(store_path / key);
-    
+
     fs::ofstream stream(
         file_path,
         fs::ofstream::out | fs::ofstream::trunc
     );
-   
+
     COCAINE_LOG_DEBUG(
         m_log,
         "writing the '%s' object, collection: '%s', path: '%s'",
@@ -118,8 +118,8 @@ files_t::write(const std::string& collection,
     );
 
     if(!stream) {
-        throw storage_error_t("unable to access the specified object"); 
-    }     
+        throw storage_error_t("unable to access the specified object");
+    }
 
     stream << blob;
     stream.close();
@@ -140,7 +140,7 @@ files_t::list(const std::string& collection) {
     boost::lock_guard<boost::mutex> lock(m_mutex);
 
     const fs::path store_path(m_storage_path / collection);
-    
+
     std::vector<std::string> result;
 
     if(!fs::exists(store_path)) {
@@ -151,8 +151,8 @@ files_t::list(const std::string& collection) {
         validate_t,
         fs::directory_iterator
     > file_iterator;
-    
-    file_iterator it = file_iterator(validate_t(), fs::directory_iterator(store_path)), 
+
+    file_iterator it = file_iterator(validate_t(), fs::directory_iterator(store_path)),
                   end;
 
     while(it != end) {
@@ -165,7 +165,7 @@ files_t::list(const std::string& collection) {
 #else
         result.emplace_back(it->leaf());
 #endif
- 
+
         ++it;
     }
 
@@ -177,9 +177,9 @@ files_t::remove(const std::string& collection,
                 const std::string& key)
 {
     boost::lock_guard<boost::mutex> lock(m_mutex);
-    
+
     const fs::path file_path(m_storage_path / collection / key);
-    
+
     if(fs::exists(file_path)) {
         COCAINE_LOG_DEBUG(
             m_log,

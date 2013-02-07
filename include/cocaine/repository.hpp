@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_REPOSITORY_HPP
@@ -38,7 +38,7 @@ struct factory_concept_t {
     ~factory_concept_t() {
         // Empty.
     }
-    
+
     virtual
     const std::type_info&
     id() const = 0;
@@ -135,14 +135,14 @@ repository_t::get(const std::string& type,
 
     const factory_map_t& factories = m_categories[id];
     factory_map_t::const_iterator it = factories.find(type);
-    
+
     if(it == factories.end()) {
         throw repository_error_t("the '%s' component is not available", type);
     }
-    
+
     // TEST: Ensure that the plugin is of the actually specified category.
     BOOST_ASSERT(it->second->id() == typeid(Category));
-    
+
     typedef category_traits<Category> traits;
 
     return dynamic_cast<typename traits::factory_type&>(

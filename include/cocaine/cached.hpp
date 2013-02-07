@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_CACHED_HPP
@@ -51,7 +51,7 @@ cached<T>::cached(context_t& context,
         object = cache->get<T>(collection, name);
     } catch(const storage_error_t& e) {
         auto storage = api::storage(context, "core");
-        
+
         try {
             // Fetch the application manifest and archive from the core storage.
             object = storage->get<T>(collection, name);
@@ -74,7 +74,7 @@ cached<T>::cached(context_t& context,
                 name,
                 e.what()
             );
-        }    
+        }
     }
 }
 

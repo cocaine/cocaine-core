@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "cocaine/essentials/loggers/syslog.hpp"
@@ -49,19 +49,19 @@ syslog_t::emit(logging::priorities priority,
         case logging::debug:
             syslog(LOG_DEBUG, "%s: %s", source.c_str(), m.c_str());
             break;
-        
+
         case logging::info:
             syslog(LOG_INFO, "%s: %s", source.c_str(), m.c_str());
             break;
-        
+
         case logging::warning:
             syslog(LOG_WARNING, "%s: %s", source.c_str(), m.c_str());
             break;
-        
+
         case logging::error:
             syslog(LOG_ERR, "%s: %s", source.c_str(), m.c_str());
             break;
-        
+
         default:
             break;
     }

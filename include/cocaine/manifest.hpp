@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_APP_MANIFEST_HPP
@@ -35,7 +35,7 @@ struct manifest_t:
 
     // The application name.
     const std::string name;
-    
+
     // TODO: Make it an alias instead of an executable file path.
     std::string slave;
 

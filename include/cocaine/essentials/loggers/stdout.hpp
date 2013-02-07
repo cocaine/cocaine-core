@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_STDOUT_LOGGER_HPP
@@ -30,7 +30,7 @@ class stdout_t:
 {
     public:
         typedef api::logger_t category_type;
-        
+
     public:
         stdout_t(context_t& context,
                  const std::string& name,

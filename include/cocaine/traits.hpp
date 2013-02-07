@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_TYPE_TRAITS_HPP
@@ -43,7 +43,7 @@ struct type_traits {
     {
         packer << source;
     }
-    
+
     static inline
     void
     unpack(const msgpack::object& unpacked,

@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_ISOLATE_API_HPP
@@ -52,7 +52,7 @@ class isolate_t:
         ~isolate_t() {
             // Empty.
         }
-        
+
         virtual
         std::unique_ptr<handle_t>
         spawn(const std::string& path,
@@ -93,9 +93,9 @@ struct category_traits<isolate_t> {
             boost::lock_guard<boost::mutex> lock(m_mutex);
 
             typename instance_map_t::iterator it(m_instances.find(name));
-            
+
             ptr_type instance;
-            
+
             if(it != m_instances.end()) {
                 instance = it->second.lock();
             }
@@ -109,7 +109,7 @@ struct category_traits<isolate_t> {
 
                 m_instances.emplace(name, instance);
             }
-                
+
             return instance;
         }
 

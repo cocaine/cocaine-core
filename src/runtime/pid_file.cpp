@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "cocaine/runtime/pid_file.hpp"
@@ -41,7 +41,7 @@ pid_file_t::pid_file_t(const fs::path& filepath):
         if(!stream) {
             throw cocaine::error_t("unable to read '%s'", m_filepath.string());
         }
-        
+
         stream >> pid;
 
         if(::kill(pid, 0) < 0 && errno == ESRCH) {

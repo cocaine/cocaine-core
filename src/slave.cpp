@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "cocaine/slave.hpp"
@@ -32,7 +32,7 @@
 #include "cocaine/api/event.hpp"
 #include "cocaine/api/stream.hpp"
 
-#include "cocaine/traits/unique_id.hpp" 
+#include "cocaine/traits/unique_id.hpp"
 
 using namespace cocaine;
 using namespace cocaine::engine;
@@ -92,7 +92,7 @@ slave_t::slave_t(context_t& context,
     m_heartbeat_timer.start(m_profile.startup_timeout);
 }
 
-slave_t::~slave_t() {    
+slave_t::~slave_t() {
     if(m_state != state_t::dead) {
         terminate();
     }
@@ -177,13 +177,13 @@ slave_t::on_message(const message_t& message) {
         case event_traits<rpc::chunk>::id: {
             uint64_t session_id;
             std::string chunk;
-            
+
             message.as<rpc::chunk>(session_id, chunk);
             on_chunk(session_id, chunk);
 
             break;
         }
-     
+
         case event_traits<rpc::error>::id: {
             uint64_t session_id;
             int code;
@@ -202,7 +202,7 @@ slave_t::on_message(const message_t& message) {
             on_choke(session_id);
 
             // This is now a potentially free worker, so pump the queue.
-            m_engine.pump();
+            m_engine.wake();
 
             break;
         }
@@ -257,7 +257,7 @@ slave_t::on_chunk(uint64_t session_id,
                   const std::string& chunk)
 {
     BOOST_ASSERT(m_state == state_t::active);
-    
+
     COCAINE_LOG_DEBUG(
         m_log,
         "slave %s received session %s chunk, size: %llu bytes",
@@ -280,7 +280,7 @@ slave_t::on_error(uint64_t session_id,
                   const std::string& reason)
 {
     BOOST_ASSERT(m_state == state_t::active);
-    
+
     COCAINE_LOG_DEBUG(
         m_log,
         "slave %s received session %s error, code: %d, message: %s",
@@ -301,7 +301,7 @@ slave_t::on_error(uint64_t session_id,
 void
 slave_t::on_choke(uint64_t session_id) {
     BOOST_ASSERT(m_state == state_t::active);
-    
+
     COCAINE_LOG_DEBUG(
         m_log,
         "slave %s has completed session %s",
@@ -341,7 +341,7 @@ namespace {
         void
         operator()(T& session) const {
             session.second->upstream->error(
-                timeout_error, 
+                timeout_error,
                 "the session has timed out"
             );
         }
@@ -351,7 +351,7 @@ namespace {
 void
 slave_t::on_timeout(ev::timer&, int) {
     BOOST_ASSERT(m_state != state_t::dead);
-    
+
     switch(m_state) {
         case state_t::unknown:
             COCAINE_LOG_WARNING(m_log, "slave %s has failed to activate", m_id);
@@ -379,7 +379,7 @@ slave_t::on_timeout(ev::timer&, int) {
             // NOTE: Unreachable.
             std::terminate();
     }
-    
+
     terminate();
 }
 

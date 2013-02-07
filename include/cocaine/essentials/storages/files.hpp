@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_FILE_STORAGE_HPP
@@ -48,8 +48,8 @@ class files_t:
 
         virtual
         void
-        write(const std::string& collection, 
-              const std::string& key, 
+        write(const std::string& collection,
+              const std::string& key,
               const std::string& blob);
 
         virtual
@@ -64,10 +64,10 @@ class files_t:
     private:
         context_t& m_context;
         std::unique_ptr<logging::log_t> m_log;
-        
+
         // TODO: Drop this, switch to atomic writes.
         boost::mutex m_mutex;
-        
+
         const boost::filesystem::path m_storage_path;
 };
 

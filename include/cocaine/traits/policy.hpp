@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_EVENT_POLICY_TYPE_TRAITS_HPP
@@ -36,12 +36,12 @@ struct type_traits<api::policy_t> {
          const api::policy_t& source)
     {
         packer.pack_array(3);
-        
+
         packer << source.urgent;
         packer << source.timeout;
         packer << source.deadline;
     }
-    
+
     static inline
     void
     unpack(const msgpack::object& object,

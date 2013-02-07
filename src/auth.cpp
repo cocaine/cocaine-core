@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "cocaine/auth.hpp"
@@ -65,21 +65,21 @@ auth_t::auth_t(context_t& context):
         // Read the key into the BIO object.
         BIO * bio = BIO_new_mem_buf(const_cast<char*>(object.data()), object.size());
         EVP_PKEY * pkey = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
-            
+
         if(pkey != NULL) {
             m_keys.emplace(identity, pkey);
-        } else { 
+        } else {
             COCAINE_LOG_ERROR(
                 m_log,
                 "key for user '%s' is invalid - %s",
-                identity, 
+                identity,
                 ERR_reason_error_string(ERR_get_error())
             );
         }
 
         BIO_free(bio);
     }
-    
+
     COCAINE_LOG_INFO(m_log, "loaded %llu public key(s)", m_keys.size());
 }
 
@@ -108,10 +108,10 @@ std::string auth_t::sign(const std::string& message,
     if(it == m_private_keys.end()) {
         throw authorization_error_t("unauthorized user");
     }
- 
+
     unsigned char buffer[EVP_PKEY_size(it->second)];
     unsigned int size = 0;
-    
+
     EVP_SignInit(m_context, EVP_sha1());
     EVP_SignUpdate(m_context, message.data(), message.size());
     EVP_SignFinal(m_context, buffer, &size, it->second);
@@ -131,10 +131,10 @@ auth_t::verify(const std::string& message,
     if(it == m_keys.end()) {
         throw authorization_error_t("unauthorized user");
     }
-    
+
     EVP_VerifyInit(m_evp_md_context, EVP_sha1());
     EVP_VerifyUpdate(m_evp_md_context, message.data(), message.size());
-    
+
     bool success = EVP_VerifyFinal(
         m_evp_md_context,
         reinterpret_cast<const unsigned char*>(signature.data()),

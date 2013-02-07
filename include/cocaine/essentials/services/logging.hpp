@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_LOGGING_SERVICE_HPP
@@ -25,7 +25,7 @@
 #include "cocaine/reactor.hpp"
 
 namespace cocaine {
-    
+
 namespace io {
     namespace tags {
         struct logging_tag;

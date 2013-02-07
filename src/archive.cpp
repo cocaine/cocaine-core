@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "cocaine/archive.hpp"
@@ -45,9 +45,9 @@ archive_t::archive_t(context_t& context,
 {
     archive_read_support_format_all(m_archive);
     archive_read_support_compression_all(m_archive);
-    
+
     int rv = archive_read_open_memory(
-        m_archive, 
+        m_archive,
         const_cast<char*>(archive.data()),
         archive.size()
     );
@@ -79,10 +79,10 @@ archive_t::deploy(const std::string& prefix_) {
 
     archive_write_disk_set_options(target, flags);
     archive_write_disk_set_standard_lookup(target);
-    
+
     while(true) {
         rv = archive_read_next_header(m_archive, &entry);
-        
+
         if(rv == ARCHIVE_EOF) {
             break;
         } else if(rv != ARCHIVE_OK) {
@@ -96,7 +96,7 @@ archive_t::deploy(const std::string& prefix_) {
         archive_entry_set_pathname(entry, (prefix / path).string().c_str());
 
         rv = archive_write_header(target, entry);
-        
+
         if(rv != ARCHIVE_OK) {
             throw archive_error_t(target);
         } else if(archive_entry_size(entry) > 0) {
@@ -127,14 +127,14 @@ archive_t::deploy(const std::string& prefix_) {
 }
 
 void
-archive_t::extract(archive * source, 
+archive_t::extract(archive * source,
                    archive * target)
 {
     int rv = ARCHIVE_OK;
 
     const void * buffer = NULL;
     size_t size = 0;
-    
+
 #if ARCHIVE_VERSION_NUMBER < 3000000
     off_t offset = 0;
 #else
@@ -143,7 +143,7 @@ archive_t::extract(archive * source,
 
     while(true) {
         rv = archive_read_data_block(source, &buffer, &size, &offset);
-        
+
         if(rv == ARCHIVE_EOF) {
             return;
         } else if(rv != ARCHIVE_OK) {
@@ -151,7 +151,7 @@ archive_t::extract(archive * source,
         }
 
         rv = archive_write_data_block(target, buffer, size, offset);
-        
+
         if(rv != ARCHIVE_OK) {
             throw archive_error_t(target);
         }

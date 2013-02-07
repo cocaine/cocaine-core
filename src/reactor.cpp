@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "cocaine/reactor.hpp"
@@ -104,7 +104,7 @@ reactor_t::on_event(ev::io&, int) {
 
     if(pending) {
         m_checker.start();
-        process();    
+        process();
     }
 }
 
@@ -136,7 +136,7 @@ reactor_t::process() {
             io::scoped_option<
                 io::options::receive_timeout
             > option(m_channel, 0);
-                
+
             if(!m_channel.recv_multipart(source, blob)) {
                 // NOTE: Means the non-blocking read got nothing.
                 return;

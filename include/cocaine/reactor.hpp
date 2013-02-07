@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_REACTOR_HPP
@@ -71,10 +71,10 @@ class reactor_t:
     private:
         void
         on_event(ev::io&, int);
-        
+
         void
         on_check(ev::prepare&, int);
-        
+
         void
         on_terminate(ev::async&, int);
 
@@ -84,14 +84,14 @@ class reactor_t:
     private:
         context_t& m_context;
         std::unique_ptr<logging::log_t> m_log;
-        
+
         // Service I/O.
         io::socket_t m_channel;
         boost::mutex m_channel_mutex;
-        
+
         // Event loop.
         ev::dynamic_loop m_loop;
-        
+
         // I/O watchers.
         ev::io m_watcher;
         ev::prepare m_checker;

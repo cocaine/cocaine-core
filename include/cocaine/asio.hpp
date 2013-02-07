@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_ASIO_HPP
@@ -24,7 +24,6 @@
 #include "cocaine/messaging.hpp"
 
 #include <array>
-#include <deque>
 
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
@@ -40,85 +39,111 @@
 
 namespace cocaine { namespace io {
 
-template<class T>
+template<class Pipe>
 struct write_queue {
     write_queue(ev::loop_ref& loop,
-                const boost::shared_ptr<T>& pipe):
+                const boost::shared_ptr<Pipe>& pipe):
         m_pipe(pipe),
-        m_pipe_watcher(loop)
+        m_pipe_watcher(loop),
+        m_rd_offset(0),
+        m_wr_offset(0)
     {
         m_pipe_watcher.set<write_queue, &write_queue::on_event>(this);
     }
 
     ~write_queue() {
-        BOOST_ASSERT(m_queue.empty());
-    }
-
-    void
-    write(const std::string& data) {
-        boost::unique_lock<boost::mutex> m_lock(m_pipe_mutex);
-        
-        if(m_queue.empty()) {
-            ssize_t length = m_pipe->write(data);
-
-            if(length != data.size()) {
-                // Enqueue the chunk.
-                m_queue.emplace_back(data, length);
-
-                // Enable the poller.
-                m_pipe_watcher.start(m_pipe->fd(), ev::WRITE);
-            }
-        } else {
-            // Queue up the the chunk.
-            m_queue.emplace_back(data, 0);
-        } 
+        BOOST_ASSERT(m_rd_offset == m_wr_offset);
     }
 
     void
     write(const char * data,
           size_t size)
     {
-        write(std::string(data, size));
+        boost::unique_lock<boost::mutex> m_lock(m_ring_mutex);
+
+        if(m_rd_offset == m_wr_offset) {
+            // Nothing is pending in the ring so try to write directly to the pipe,
+            // and enqueue only the remaining part, if any.
+            ssize_t sent = m_pipe->write(data, size);
+
+            if(sent == size) {
+                return;
+            }
+
+            if(sent > 0) {
+                data += sent;
+                size -= sent;
+            }
+        }
+
+        if(m_ring.size() - m_wr_offset <= size) {
+            size_t unsent = m_wr_offset - m_rd_offset;
+
+            if(unsent + size > m_ring.size()) {
+                throw std::length_error("write queue overflow");
+            }
+
+            // There's no space left at the end of the buffer, so copy all the unsent
+            // data to the beginning and continue filling it from there.
+            std::memcpy(
+                m_ring.data(),
+                m_ring.data() + m_rd_offset,
+                unsent
+            );
+
+            m_wr_offset = unsent;
+            m_rd_offset = 0;
+        }
+
+        std::memcpy(m_ring.data() + m_wr_offset, data, size);
+
+        m_wr_offset += size;
+
+        if(!m_pipe_watcher.is_active()) {
+            m_pipe_watcher.start(m_pipe->fd(), ev::WRITE);
+        }
+    }
+
+    void
+    write(const std::string& chunk) {
+        write(chunk.data(), chunk.size());
     }
 
 private:
     void
     on_event(ev::io& io, int revents) {
-        boost::unique_lock<boost::mutex> m_lock(m_pipe_mutex);
-        
-        if(m_queue.empty()) {
+        boost::unique_lock<boost::mutex> m_lock(m_ring_mutex);
+
+        if(m_rd_offset == m_wr_offset) {
             m_pipe_watcher.stop();
             return;
         }
 
-        // Get the top of the write queue.  
-        auto& chunk = m_queue.front();
+        size_t unsent = m_wr_offset - m_rd_offset;
 
-        // Calculate the chunk to be sent.
-        const char * ptr = chunk.first.data() + chunk.second;
-        size_t remaining = chunk.first.size() - chunk.second;
+        // Try to send all the data at once.
+        ssize_t sent = m_pipe->write(
+            m_ring.data() + m_rd_offset,
+            unsent
+        );
 
-        // Try to send the data.
-        ssize_t length = m_pipe->write(ptr, remaining);
-
-        if(length == remaining) {
-            // Chunk is sent, pop it.
-            m_queue.pop_front();
-        } else {
-            // Recalculate the next offset.
-            chunk.second += length;
+        if(sent > 0) {
+            m_rd_offset += sent;
         }
     }
 
 private:
-    boost::shared_ptr<T> m_pipe;
-    boost::mutex m_pipe_mutex;
+    boost::shared_ptr<Pipe> m_pipe;
 
+    // The poll object.
     ev::io m_pipe_watcher;
 
-    std::deque<
-        std::pair<std::string, off_t>
-    > m_queue;
+    std::array<char, 65536> m_ring;
+
+    off_t m_rd_offset,
+          m_wr_offset;
+
+    boost::mutex m_ring_mutex;
 };
 
 template<class T, size_t ChunkSize = 4096>
@@ -186,7 +211,7 @@ struct codex {
             packer,
             event_traits<Event>::id
         );
-        
+
         if(!event_traits<Event>::empty) {
             type_traits<typename event_traits<Event>::tuple_type>::pack(
                 packer,

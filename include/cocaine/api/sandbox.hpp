@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_SANDBOX_API_HPP
@@ -69,7 +69,7 @@ struct category_traits<sandbox_t> {
         public factory_type
     {
         virtual
-        ptr_type 
+        ptr_type
         get(context_t& context,
             const std::string& name,
             const Json::Value& args,

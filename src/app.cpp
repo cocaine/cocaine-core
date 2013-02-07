@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "cocaine/app.hpp"
@@ -53,7 +53,7 @@ app_t::app_t(context_t& context,
     m_profile(new profile_t(context, profile))
 {
     fs::path path = fs::path(m_context.config.path.spool) / name;
-    
+
     if(!fs::exists(path)) {
         deploy(name, path.string());
     }
@@ -65,7 +65,7 @@ app_t::app_t(context_t& context,
         m_manifest->name
     );
 
-    try { 
+    try {
         m_control->bind(endpoint);
     } catch(const zmq::error_t& e) {
         throw configuration_error_t("unable to bind the engine control channel - %s", e.what());
@@ -146,7 +146,7 @@ app_t::start() {
             boost::ref(*m_engine)
         )
     );
-    
+
     COCAINE_LOG_INFO(m_log, "the engine has started");
 }
 
@@ -157,14 +157,14 @@ app_t::stop() {
     }
 
     COCAINE_LOG_INFO(m_log, "stopping the engine");
-    
+
     m_control->send(io::codec::pack<control::terminate>());
 
     m_thread->join();
     m_thread.reset();
 
     COCAINE_LOG_INFO(m_log, "the engine has stopped");
-    
+
     // NOTE: Stop the drivers, so that there won't be any open
     // sockets and so on while the engine is stopped.
     m_drivers.clear();
@@ -196,7 +196,7 @@ app_t::info() const {
 
     for(driver_map_t::const_iterator it = m_drivers.begin();
         it != m_drivers.end();
-        ++it) 
+        ++it)
     {
         info["drivers"][it->first] = it->second->info();
     }
@@ -212,22 +212,22 @@ app_t::enqueue(const api::event_t& event,
 }
 
 void
-app_t::deploy(const std::string& name, 
+app_t::deploy(const std::string& name,
               const std::string& path)
 {
     std::string blob;
 
     COCAINE_LOG_INFO(m_log, "deploying the app to '%s'", path);
-    
+
     auto storage = api::storage(m_context, "core");
-    
+
     try {
         blob = storage->get<std::string>("apps", name);
     } catch(const storage_error_t& e) {
         COCAINE_LOG_ERROR(m_log, "unable to fetch the app from the storage - %s", e.what());
         throw configuration_error_t("the '%s' app is not available", name);
     }
-    
+
     try {
         archive_t archive(m_context, blob);
         archive.deploy(path);

@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_MESSAGING_HPP
@@ -72,7 +72,7 @@ namespace detail {
     struct tuple_type<
         Event,
         typename depend<typename Event::tuple_type>::type
-    > 
+    >
     {
         typedef typename Event::tuple_type type;
     };

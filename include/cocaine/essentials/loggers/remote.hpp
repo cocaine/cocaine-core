@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_REMOTE_LOGGER_HPP
@@ -65,7 +65,7 @@ class remote_t:
         // buffer so that if the logging service goes away, we could safely
         // dump the cached messages to the failback logger.
         boost::circular_buffer<log_entry_t> m_ring;
-        
+
         // NOTE: Fallback logger name.
         const std::string m_fallback;
 };

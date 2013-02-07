@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_APP_HPP
@@ -33,20 +33,20 @@ class app_t {
         app_t(context_t& context,
               const std::string& name,
               const std::string& profile);
-        
+
         ~app_t();
 
         void
         start();
-        
+
         void
         stop();
 
         Json::Value
         info() const;
-        
+
         // Scheduling
-        
+
         boost::shared_ptr<api::stream_t>
         enqueue(const api::event_t& event,
                 const boost::shared_ptr<api::stream_t>& upstream);
@@ -84,7 +84,7 @@ class app_t {
             std::string,
             std::unique_ptr<api::driver_t>
         > driver_map_t;
-        
+
         driver_map_t m_drivers;
 };
 

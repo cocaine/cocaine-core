@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_UNIQUE_ID_TYPE_TRAITS_HPP
@@ -36,11 +36,11 @@ struct type_traits<unique_id_t> {
          const unique_id_t& source)
     {
         packer.pack_array(2);
-        
+
         packer << source.uuid[0];
         packer << source.uuid[1];
     }
-    
+
     static inline
     void
     unpack(const msgpack::object& object,

@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_AUTH_HPP
@@ -51,8 +51,8 @@ class auth_t:
                const std::string& signature,
                const std::string& username) const;
 
-        // std::string 
-        // sign(const std::string& message, 
+        // std::string
+        // sign(const std::string& message,
         //      const std::string& username) const;
 
     private:
@@ -69,7 +69,7 @@ class auth_t:
             const std::string,
             EVP_PKEY*
         > key_map_t;
-        
+
         key_map_t m_keys;
 };
 

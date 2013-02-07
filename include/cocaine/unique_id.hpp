@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_UNIQUE_ID_HPP
@@ -54,7 +54,7 @@ struct unique_id_t {
             other.c_str(),
             reinterpret_cast<unsigned char*>(uuid)
         );
-        
+
         if(rv != 0) {
             throw cocaine::error_t("unable to parse '%s' as an unique id", other);
         }

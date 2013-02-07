@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_STREAM_API_HPP
@@ -30,7 +30,7 @@ struct stream_t {
     ~stream_t() {
         // Empty.
     }
-    
+
     virtual
     void
     push(const char * chunk,

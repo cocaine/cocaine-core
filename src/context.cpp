@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "cocaine/context.hpp"
@@ -110,13 +110,13 @@ config_t::config_t(const std::string& config_path) {
     path.spool = root["paths"].get("spool", defaults::spool_path).asString();
 
     fs::path runtime = path.runtime;
-    
+
     validate_path(runtime);
     validate_path(runtime / "engines");
     validate_path(runtime / "services");
-    
+
     validate_path(path.spool);
-    
+
     // IO configuration
 
     char hostname[256];
@@ -129,24 +129,24 @@ config_t::config_t(const std::string& config_path) {
         message = ::strerror_r(errno, reason, 1024);
 #else
         ::strerror_r(errno, reason, 1024);
-            
+
         // NOTE: XSI-compliant strerror_r() returns int instead of the
         // string buffer, so complete the job manually.
         message = reason;
 #endif
-   
+
         throw configuration_error_t("unable to determine the hostname - %s", message);
     }
-    
+
     addrinfo hints,
              * result = NULL;
-    
+
     std::memset(&hints, 0, sizeof(addrinfo));
 
     hints.ai_flags = AI_CANONNAME;
 
     int rv = getaddrinfo(hostname, NULL, &hints, &result);
-    
+
     if(rv != 0) {
         throw configuration_error_t("unable to determine the hostname - %s", gai_strerror(rv));
     }

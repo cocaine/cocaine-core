@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_SESSION_HPP
@@ -82,7 +82,7 @@ session_t::send(Args&&... args) {
         id,
         std::forward<Args>(args)...
     );
-    
+
     if(m_slave) {
         m_slave->send(blob);
     } else {

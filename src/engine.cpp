@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "cocaine/engine.hpp"
@@ -66,8 +66,8 @@ namespace {
             m_session(session),
             m_state(state_t::open)
         { }
-       
-        virtual 
+
+        virtual
         ~downstream_t() {
             if(m_state != state_t::closed) {
                 close();
@@ -131,7 +131,7 @@ namespace {
                     if(ptr) {
                         ptr->send<rpc::choke>();
                     }
-                    
+
                     break;
                 }
 
@@ -177,7 +177,7 @@ engine_t::engine_t(context_t& context,
         m_manifest.name,
         m_profile.isolate.args
     );
-    
+
     std::string endpoint = cocaine::format(
         "%1%/engines/%2%",
         m_context.config.path.runtime,
@@ -198,12 +198,12 @@ engine_t::engine_t(context_t& context,
     } catch(const zmq::error_t& e) {
         throw configuration_error_t("unable to connect to the engine control channel - %s", e.what());
     }
-    
+
     m_ctl_watcher.set<engine_t, &engine_t::on_ctl_event>(this);
     m_ctl_watcher.start(m_ctl->fd(), ev::READ);
     m_ctl_checker.set<engine_t, &engine_t::on_ctl_check>(this);
     m_ctl_checker.start();
-    
+
     m_gc_timer.set<engine_t, &engine_t::on_cleanup>(this);
     m_gc_timer.start(5.0f, 5.0f);
 
@@ -244,14 +244,14 @@ engine_t::enqueue(const api::event_t& event,
     }
 
     m_queue.push(session);
-  
+
     // NOTE: Release the lock so that the notification could be handled
     // immediately as opposed to instantly blocking on the same acquired lock
     // in the engine thread.
     lock.unlock();
 
-    // Pump the queue! 
-    m_notification.send();
+    // Pump the queue!
+    wake();
 
     return boost::make_shared<downstream_t>(session);
 }
@@ -267,6 +267,11 @@ engine_t::tie(const boost::shared_ptr<io::codex<io::pipe_t>>& codex,
     it->second->tie(codex);
 
     pump();
+}
+
+void
+engine_t::wake() {
+    m_notification.send();
 }
 
 void
@@ -286,7 +291,7 @@ engine_t::on_ctl_event(ev::io&, int) {
 
     if(m_ctl->pending()) {
         m_ctl_checker.start();
-        process_ctl_events();    
+        process_ctl_events();
     }
 }
 
@@ -300,7 +305,7 @@ engine_t::on_cleanup(ev::timer&, int) {
     typedef std::vector<
         pool_map_t::key_type
     > corpse_list_t;
-    
+
     corpse_list_t corpses;
 
     for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
@@ -335,9 +340,9 @@ engine_t::on_notification(ev::async&, int) {
 void
 engine_t::on_termination(ev::timer&, int) {
     boost::unique_lock<session_queue_t> lock(m_queue);
-    
+
     COCAINE_LOG_WARNING(m_log, "forcing the engine termination");
-    
+
     stop();
 }
 
@@ -455,7 +460,7 @@ namespace {
             return lhs.second->load() < rhs.second->load();
         }
     };
-    
+
     struct available_t {
         available_t(size_t max_):
             max(max_)
@@ -486,7 +491,7 @@ namespace {
         if(first == last) {
             return first;
         }
-     
+
         It result = first;
 
         while(++first != last) {
@@ -568,7 +573,7 @@ engine_t::balance() {
             m_queue.size() / m_profile.grow_threshold
         )
     );
-  
+
     if(target <= m_pool.size()) {
         return;
     }
@@ -649,12 +654,12 @@ engine_t::migrate(state_t target) {
             pending == 1 ? "slave" : "slaves",
             m_profile.termination_timeout
         );
-        
+
         m_termination_timer.set<engine_t, &engine_t::on_termination>(this);
         m_termination_timer.start(m_profile.termination_timeout);
     } else {
         stop();
-    }    
+    }
 }
 
 void

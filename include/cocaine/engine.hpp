@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_ENGINE_HPP
@@ -42,7 +42,7 @@ class session_queue_t:
         push(const_reference session);
 
         // Lockable concept implementation
-        
+
         void
         lock() {
             m_mutex.lock();
@@ -78,7 +78,7 @@ class engine_t:
         run();
 
         // Scheduling
-        
+
         boost::shared_ptr<api::stream_t>
         enqueue(const api::event_t& event,
                 const boost::shared_ptr<api::stream_t>& upstream);
@@ -90,8 +90,8 @@ class engine_t:
             const unique_id_t& uuid);
 
         void
-        pump();
-        
+        wake();
+
     public:
         ev::loop_ref&
         loop() {
@@ -110,22 +110,25 @@ class engine_t:
 
         void
         on_cleanup(ev::timer&, int);
-        
+
         void
         on_notification(ev::async&, int);
 
         void
         on_termination(ev::timer&, int);
-        
+
         void
         process_ctl_events();
+
+        void
+        pump();
 
         void
         balance();
 
         void
         migrate(state_t target);
-        
+
         void
         stop();
 
@@ -159,10 +162,12 @@ class engine_t:
 
         ev::async m_notification;
 
-        // Auto-incrementing Session ID.
+        // Auto-incrementing Session ID
+
         std::atomic<uint64_t> m_next_id;
 
-        // Session queue.
+        // Session queue
+
         session_queue_t m_queue;
 
         // Slave pool

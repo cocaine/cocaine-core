@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_CONTEXT_HPP
@@ -38,7 +38,7 @@ namespace cocaine {
 struct defaults {
     // Default slave.
     static const char slave[];
-    
+
     // Default profile.
     static const float heartbeat_timeout;
     static const float idle_timeout;
@@ -117,7 +117,7 @@ private:
         std::vector<uint16_t>,
         std::greater<uint16_t>
     > m_ports;
-    
+
     boost::mutex m_mutex;
 };
 
@@ -129,7 +129,7 @@ class context_t:
     public:
         context_t(config_t config,
                   const std::string& logger);
-        
+
         context_t(config_t config,
                   std::unique_ptr<logging::logger_t>&& logger);
 
@@ -150,7 +150,7 @@ class context_t:
         }
 
         // Component API
-        
+
         template<class Category, typename... Args>
         typename api::category_traits<Category>::ptr_type
         get(const std::string& type,
@@ -162,7 +162,7 @@ class context_t:
         logger() {
             return *m_logger;
         }
-        
+
     private:
         void
         initialize();
@@ -177,7 +177,7 @@ class context_t:
         // NOTE: This is the first object in the component tree, all the other
         // components, including loggers, storages or isolates have to be declared
         // after this one.
-        std::unique_ptr<api::repository_t> m_repository;        
+        std::unique_ptr<api::repository_t> m_repository;
 
         // NOTE: As the loggers themselves are components, the repository
         // have to be initialized first without a logger, unfortunately.

@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_JSON_TYPE_TRAITS_HPP
@@ -89,7 +89,7 @@ struct type_traits<Json::Value> {
                 break;
         }
     }
-    
+
     static inline
     void
     unpack(const msgpack::object& object,
@@ -120,7 +120,7 @@ struct type_traits<Json::Value> {
             case msgpack::type::ARRAY: {
                 msgpack::object * ptr = object.via.array.ptr,
                                 * const end = ptr + object.via.array.size;
-                
+
                 for(unsigned int index = 0; ptr < end; ++ptr, ++index) {
                     unpack(*ptr, target[index]);
                 }

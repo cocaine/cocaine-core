@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_FORWARDS_HPP
@@ -24,7 +24,7 @@
 namespace cocaine {
     // Runtime context.
     class context_t;
-    
+
     // App configuration.
     struct manifest_t;
     struct profile_t;
@@ -44,7 +44,7 @@ namespace cocaine {
         struct stream_t;
     }
 
-    namespace engine {        
+    namespace engine {
         // Unit of execution.
         struct session_t;
 

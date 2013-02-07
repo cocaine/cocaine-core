@@ -15,7 +15,7 @@
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>. 
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef COCAINE_RPC_HPP
@@ -63,7 +63,7 @@ namespace rpc {
 
     struct invoke {
         typedef tags::rpc_tag tag;
-        
+
         typedef boost::mpl::list<
             /* session */ uint64_t,
             /* event */   std::string
@@ -72,7 +72,7 @@ namespace rpc {
 
     struct chunk {
         typedef tags::rpc_tag tag;
-        
+
         typedef boost::mpl::list<
             /* session */ uint64_t,
             /* data */    std::string
@@ -81,7 +81,7 @@ namespace rpc {
 
     struct error {
         typedef tags::rpc_tag tag;
-        
+
         typedef boost::mpl::list<
             /* session */ uint64_t,
             /* code */    int,
