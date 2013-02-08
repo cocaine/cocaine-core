@@ -373,7 +373,7 @@ namespace {
 void
 engine_t::on_control(const message_t& message) {
     switch(message.id()) {
-        case event_traits<control::status>::id: {
+        case event_traits<control::report>::id: {
             Json::Value info(Json::objectValue);
 
             collector_t collector;
@@ -400,6 +400,7 @@ engine_t::on_control(const message_t& message) {
 
         case event_traits<control::terminate>::id:
             migrate(states::stopping);
+            m_control_codex->send<control::terminate>();
             break;
 
         default:

@@ -54,17 +54,17 @@ namespace cocaine {
     }
 
     namespace io {
-        template<class>
-        struct protocol;
-
-        // RPC channel.
-        struct socket_t;
-
-        // Unix socket wrappers.
         struct acceptor_t;
         struct pipe_t;
 
-        // I/O primitives
+        // RPC primitives
+
+        template<class>
+        struct protocol;
+
+        struct message_t;
+
+        // I/O privimites
 
         struct service_t;
 
@@ -76,6 +76,8 @@ namespace cocaine {
 
         template<class>
         struct read_queue;
+
+        // Codec
 
         template<class>
         struct codex;

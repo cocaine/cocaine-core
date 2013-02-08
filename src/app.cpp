@@ -33,9 +33,10 @@
 
 #include "cocaine/traits/json.hpp"
 
+#include <tuple>
+
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
-#include <boost/format.hpp>
 
 using namespace cocaine;
 using namespace cocaine::engine;
@@ -58,14 +59,16 @@ app_t::app_t(context_t& context,
         deploy(name, path.string());
     }
 
-    // Create the controlling pipe.
-    auto pipes = link();
+    m_service.reset(new service_t());
 
-    m_service.reset(new io::service_t());
+    boost::shared_ptr<pipe_t> lhs, rhs;
+
+    // Create the engine control pipes.
+    std::tie(lhs, rhs) = io::link();
 
     m_control_codex.reset(new codex<pipe_t>(
         *m_service,
-        std::get<0>(pipes)
+        lhs
     ));
 
     // NOTE: The event loop is not started here yet.
@@ -74,7 +77,7 @@ app_t::app_t(context_t& context,
             m_context,
             *m_manifest,
             *m_profile,
-            std::get<1>(pipes)
+            rhs
         )
     );
 }
@@ -101,30 +104,31 @@ app_t::start() {
             m_manifest->drivers.size() == 1 ? "driver" : "drivers"
         );
 
-        boost::format format("%s/%s");
+        api::category_traits<api::driver_t>::ptr_type driver;        
 
         for(config_t::component_map_t::const_iterator it = m_manifest->drivers.begin();
             it != m_manifest->drivers.end();
             ++it)
         {
-            try {
-                format % m_manifest->name % it->first;
+            const std::string name = cocaine::format(
+                "%s/%s",
+                m_manifest->name,
+                it->first
+            );
 
-                m_drivers.emplace(
-                    it->first,
-                    m_context.get<api::driver_t>(
-                        it->second.type,
-                        m_context,
-                        format.str(),
-                        it->second.args,
-                        *m_engine
-                    )
+            try {
+                driver = m_context.get<api::driver_t>(
+                    it->second.type,
+                    m_context,
+                    name,
+                    it->second.args,
+                    *m_engine
                 );
             } catch(const cocaine::error_t& e) {
                 COCAINE_LOG_ERROR(
                     m_log,
                     "unable to initialize the '%s' driver - %s",
-                    format.str(),
+                    name,
                     e.what()
                 );
 
@@ -134,7 +138,7 @@ app_t::start() {
                 throw configuration_error_t("unable to initialize the drivers");
             }
 
-            format.clear();
+            m_drivers[it->first] = std::move(driver);
         }
     }
 
@@ -148,6 +152,128 @@ app_t::start() {
     COCAINE_LOG_INFO(m_log, "the engine has started");
 }
 
+namespace {
+    namespace detail {
+        template<class It, class End, typename... Args>
+        struct fold_impl {
+            typedef typename fold_impl<
+                typename boost::mpl::next<It>::type,
+                End,
+                Args...,
+                typename boost::add_reference<
+                    typename boost::mpl::deref<It>::type
+                >::type
+            >::type type;
+        };
+
+        template<class End, typename... Args>
+        struct fold_impl<End, End, Args...> {
+            typedef std::tuple<Args...> type;
+        };
+
+        template<class TupleType, int It = 0, int End = std::tuple_size<TupleType>::value>
+        struct unfold_impl {
+            template<class Event, typename... Args>
+            static inline
+            void
+            apply(const message_t& message, TupleType& tuple, Args&&... args) {
+                unfold_impl<TupleType, It + 1, End>::template apply<Event>(
+                    message,
+                    tuple,
+                    std::forward<Args>(args)...,
+                    std::get<It>(tuple)
+                );
+            }
+        };
+
+        template<class TupleType, int End>
+        struct unfold_impl<TupleType, End, End> {
+            template<class Event, typename... Args>
+            static inline
+            void
+            apply(const message_t& message, TupleType& tuple, Args&&... args) {
+                message.as<Event>(std::forward<Args>(args)...);
+            }
+        };
+
+        template<class TupleType>
+        struct unfold_impl<TupleType, 0, 0> {
+            template<class Event>
+            static inline
+            void
+            apply(const message_t& message, TupleType& tuple) {
+                return;
+            }
+        };
+    }
+
+    template<class TypeList>
+    struct fold {
+        typedef typename detail::fold_impl<
+            typename boost::mpl::begin<TypeList>::type,
+            typename boost::mpl::end<TypeList>::type
+        >::type type;
+    };
+
+    template<class TupleType>
+    struct unfold {
+        template<class Event>
+        static inline
+        void
+        apply(const message_t& message, TupleType& tuple) {
+            return detail::unfold_impl<TupleType, 0>::template apply<Event>(message, tuple);
+        }
+    };
+
+    template<class Event>
+    struct expect {
+        template<typename... Args>
+        expect(service_t& service, Args&&... args):
+            m_service(service),
+            m_tuple(std::forward<Args>(args)...),
+            m_fired(false)
+        { }
+
+        expect(expect&& other):
+            m_service(other.m_service),
+            m_tuple(std::move(other.m_tuple)),
+            m_fired(other.m_fired)
+        { }
+
+        expect&
+        operator=(expect&& other) {
+            m_tuple = std::move(other.m_tuple);
+            return *this;
+        }
+
+        void
+        operator()(const message_t& message) {
+            if(message.id() == event_traits<Event>::id) {
+                unfold<tuple_type>::template apply<Event>(
+                    message,
+                    m_tuple
+                );
+
+                m_fired = true;
+                m_service.stop();
+            }
+        }
+
+        operator bool() {
+            return m_fired;
+        }
+
+    private:
+        typedef typename fold<
+            typename event_traits<Event>::tuple_type
+        >::type tuple_type;
+
+        service_t& m_service;
+        tuple_type m_tuple;
+        bool m_fired;
+    };
+}
+
 void
 app_t::stop() {
     if(!m_thread) {
@@ -156,16 +282,29 @@ app_t::stop() {
 
     COCAINE_LOG_INFO(m_log, "stopping the engine");
 
+    auto callback = expect<control::terminate>(*m_service);
+
+    m_control_codex->bind(boost::ref(callback));
     m_control_codex->send<control::terminate>();
 
-    m_thread->join();
-    m_thread.reset();
+    // Blocks until either the response or timeout happens.
+    m_service->run(defaults::control_timeout);
 
-    COCAINE_LOG_INFO(m_log, "the engine has stopped");
+    // Unbind the callback.
+    m_control_codex->unbind();
 
-    // NOTE: Stop the drivers, so that there won't be any open
-    // sockets and so on while the engine is stopped.
-    m_drivers.clear();
+    if(callback) {
+        m_thread->join();
+        m_thread.reset();
+
+        COCAINE_LOG_INFO(m_log, "the engine has stopped");
+
+        // NOTE: Stop the drivers, so that there won't be any open
+        // sockets and so on while the engine is stopped.
+        m_drivers.clear();
+    } else {
+        throw cocaine::error_t("the engine could not be stopped");
+    }
 }
 
 Json::Value
@@ -177,28 +316,29 @@ app_t::info() const {
         return info;
     }
 
-    m_control_codex->send<control::status>();
+    auto callback = expect<control::info>(*m_service, info);
 
-    /*
-    {
-        scoped_option<
-            options::receive_timeout
-        > option(*m_control, defaults::control_timeout);
+    // Bind the callback
+    m_control_codex->bind(boost::ref(callback));
+    m_control_codex->send<control::report>();
 
-        if(!m_control->recv(info)) {
-            info["error"] = "engine is unresponsive";
-            return info;
+    // Blocks until either the response or timeout happens.
+    m_service->run();
+
+    // Unbind the callback.
+    m_control_codex->unbind();
+
+    if(callback) {
+        info["profile"] = m_profile->name;
+
+        for(driver_map_t::const_iterator it = m_drivers.begin();
+            it != m_drivers.end();
+            ++it)
+        {
+            info["drivers"][it->first] = it->second->info();
         }
-    }
-    */
-
-    info["profile"] = m_profile->name;
-
-    for(driver_map_t::const_iterator it = m_drivers.begin();
-        it != m_drivers.end();
-        ++it)
-    {
-        info["drivers"][it->first] = it->second->info();
+    } else {
+        info["error"] = "engine is not responsive";
     }
 
     return info;

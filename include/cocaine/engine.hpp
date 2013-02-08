@@ -34,31 +34,30 @@
 
 namespace cocaine { namespace engine {
 
-class session_queue_t:
+struct session_queue_t:
     public std::deque<boost::shared_ptr<session_t>>
 {
-    public:
-        void
-        push(const_reference session);
+    void
+    push(const_reference session);
 
-        // Lockable concept implementation
+    // Lockable concept implementation
 
-        void
-        lock() {
-            m_mutex.lock();
-        }
+    void
+    lock() {
+        m_mutex.lock();
+    }
 
-        void
-        unlock() {
-            m_mutex.unlock();
-        }
+    void
+    unlock() {
+        m_mutex.unlock();
+    }
 
-    private:
-        boost::mutex m_mutex;
+private:
+    boost::mutex m_mutex;
 };
 
 class engine_t:
-    public boost::noncopyable
+    boost::noncopyable
 {
     enum class states: int {
         running,
@@ -139,6 +138,8 @@ class engine_t:
         context_t& m_context;
         std::unique_ptr<logging::log_t> m_log;
 
+        // Configuration
+
         const manifest_t& m_manifest;
         const profile_t& m_profile;
 
@@ -165,12 +166,9 @@ class engine_t:
             io::codex<io::pipe_t>
         > m_control_codex;
 
-        // Auto-incrementing Session ID
-
-        std::atomic<uint64_t> m_next_id;
-
         // Session queue
 
+        std::atomic<uint64_t> m_next_id;
         session_queue_t m_queue;
 
         // Slave pool

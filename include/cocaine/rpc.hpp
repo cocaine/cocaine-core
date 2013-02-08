@@ -100,7 +100,7 @@ namespace rpc {
 }
 
 namespace control {
-    struct status {
+    struct report {
         typedef tags::control_tag tag;
     };
 
@@ -134,7 +134,7 @@ struct protocol<tags::rpc_tag> {
 template<>
 struct protocol<tags::control_tag> {
     typedef boost::mpl::list<
-        control::status,
+        control::report,
         control::info,
         control::terminate
     >::type type;

@@ -196,6 +196,9 @@ struct codec {
     }
 };
 
+struct coder {
+};
+
 }} // namespace cocaine::io
 
 #endif

@@ -23,8 +23,6 @@
 
 #include "cocaine/messaging.hpp"
 
-#include <array>
-
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
 #include <boost/thread/mutex.hpp>
@@ -44,14 +42,24 @@ struct service_t {
         m_loop(new ev::dynamic_loop())
     { }
 
-    ev::loop_ref&
-    loop() {
-        return *m_loop;
+    void
+    run() {
+        m_loop->loop();
     }
 
-    const ev::loop_ref&
-    loop() const {
-        return *m_loop;
+    void
+    run(float timeout) {
+        ev::timer timer(loop());
+
+        timer.set<service_t, &service_t::on_timeout>(this);
+        timer.start(timeout);
+
+        run();
+    }
+
+    void
+    stop() {
+        m_loop->unloop(ev::ALL);
     }
 
     // Lockable concept implementation
@@ -64,6 +72,23 @@ struct service_t {
     void
     unlock() {
         m_mutex.unlock();
+    }
+
+public:
+    ev::loop_ref&
+    loop() {
+        return *m_loop;
+    }
+
+    const ev::loop_ref&
+    loop() const {
+        return *m_loop;
+    }
+
+private:
+    void
+    on_timeout(ev::timer&, int) {
+        stop();
     }
 
 private:
@@ -139,15 +164,15 @@ struct write_queue {
                 const boost::shared_ptr<PipeType>& pipe):
         m_pipe(pipe),
         m_pipe_watcher(service.loop()),
-        m_rd_offset(0),
+        m_tx_offset(0),
         m_wr_offset(0)
     {
         m_pipe_watcher.set<write_queue, &write_queue::on_event>(this);
-        m_pipe_watcher.set(m_pipe->fd(), ev::READ);
+        m_ring.reserve(65536);
     }
 
     ~write_queue() {
-        BOOST_ASSERT(m_rd_offset == m_wr_offset);
+        BOOST_ASSERT(m_tx_offset == m_wr_offset);
     }
 
     void
@@ -156,7 +181,7 @@ struct write_queue {
     {
         boost::unique_lock<boost::mutex> m_lock(m_ring_mutex);
 
-        if(m_rd_offset == m_wr_offset) {
+        if(m_tx_offset == m_wr_offset) {
             // Nothing is pending in the ring so try to write directly to the pipe,
             // and enqueue only the remaining part, if any.
             ssize_t sent = m_pipe->write(data, size);
@@ -171,23 +196,24 @@ struct write_queue {
             }
         }
 
-        if(m_ring.size() - m_wr_offset <= size) {
-            size_t unsent = m_wr_offset - m_rd_offset;
+        while(m_ring.capacity() - m_wr_offset < size) {
+            size_t unsent = m_wr_offset - m_tx_offset;
 
-            if(unsent + size > m_ring.size()) {
-                throw std::length_error("write queue overflow");
+            if(unsent + size > m_ring.capacity()) {
+                m_ring.reserve(m_ring.capacity() << 1);
+                continue;
             }
 
             // There's no space left at the end of the buffer, so copy all the unsent
             // data to the beginning and continue filling it from there.
             std::memcpy(
                 m_ring.data(),
-                m_ring.data() + m_rd_offset,
+                m_ring.data() + m_tx_offset,
                 unsent
             );
 
             m_wr_offset = unsent;
-            m_rd_offset = 0;
+            m_tx_offset = 0;
         }
 
         std::memcpy(m_ring.data() + m_wr_offset, data, size);
@@ -195,7 +221,7 @@ struct write_queue {
         m_wr_offset += size;
 
         if(!m_pipe_watcher.is_active()) {
-            m_pipe_watcher.start();
+            m_pipe_watcher.start(m_pipe->fd(), ev::WRITE);
         }
     }
 
@@ -209,21 +235,21 @@ private:
     on_event(ev::io& io, int revents) {
         boost::unique_lock<boost::mutex> m_lock(m_ring_mutex);
 
-        if(m_rd_offset == m_wr_offset) {
+        if(m_tx_offset == m_wr_offset) {
             m_pipe_watcher.stop();
             return;
         }
 
-        size_t unsent = m_wr_offset - m_rd_offset;
+        size_t unsent = m_wr_offset - m_tx_offset;
 
         // Try to send all the data at once.
         ssize_t sent = m_pipe->write(
-            m_ring.data() + m_rd_offset,
+            m_ring.data() + m_tx_offset,
             unsent
         );
 
         if(sent > 0) {
-            m_rd_offset += sent;
+            m_tx_offset += sent;
         }
     }
 
@@ -235,9 +261,9 @@ private:
     // Pipe poll object.
     ev::io m_pipe_watcher;
 
-    std::array<char, 65536> m_ring;
+    std::vector<char> m_ring;
 
-    off_t m_rd_offset,
+    off_t m_tx_offset,
           m_wr_offset;
 
     boost::mutex m_ring_mutex;
@@ -251,6 +277,7 @@ struct read_queue {
         m_pipe_watcher(service.loop())
     {
         m_pipe_watcher.set<read_queue, &read_queue::on_event>(this);
+        m_ring.reserve(65536);
     }
 
     template<class CallbackType>
@@ -272,16 +299,16 @@ struct read_queue {
 private:
     void
     on_event(ev::io& io, int revents) {
-        std::array<char, 8192> chunk;
-
         // Try to read some data.
-        ssize_t length = m_pipe->read(chunk.data(), chunk.size());
+        ssize_t length = m_pipe->read(m_ring.data(), m_ring.capacity());
 
         if(length == 0) {
+            // NOTE: This means that the remote peer has closed the connection.
+            m_pipe_watcher.stop();
             return;
         }
 
-        m_callback(chunk.data(), length);
+        m_callback(m_ring.data(), length);
     }
 
 private:
@@ -291,6 +318,8 @@ private:
 
     // Pipe poll object.
     ev::io m_pipe_watcher;
+
+    std::vector<char> m_ring;
 
     boost::function<
         void(const char*, size_t)
@@ -314,6 +343,11 @@ struct codex {
     void
     bind(F callback) {
         m_callback = callback;
+    }
+
+    void
+    unbind() {
+        m_callback.clear();
     }
 
     template<class Event, typename... Args>

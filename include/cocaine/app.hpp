@@ -80,11 +80,7 @@ class app_t {
 
         // Event drivers
 
-#if BOOST_VERSION >= 103600
         typedef boost::unordered_map<
-#else
-        typedef std::map<
-#endif
             std::string,
             std::unique_ptr<api::driver_t>
         > driver_map_t;
