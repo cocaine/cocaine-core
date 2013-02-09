@@ -25,10 +25,10 @@
 #include "cocaine/cached.hpp"
 #include "cocaine/json.hpp"
 
-namespace cocaine {
+namespace cocaine { namespace engine {
 
 struct manifest_t:
-    private cached<Json::Value>
+    cached<Json::Value>
 {
     manifest_t(context_t& context,
                const std::string& name);
@@ -49,6 +49,6 @@ struct manifest_t:
     config_t::component_map_t drivers;
 };
 
-} // namespace cocaine
+}} // namespace cocaine::engine
 
 #endif

@@ -24,6 +24,11 @@
 #include "cocaine/common.hpp"
 #include "cocaine/traits.hpp"
 
+#include "cocaine/asio/writable_stream.hpp"
+#include "cocaine/asio/readable_stream.hpp"
+
+#include <boost/bind.hpp>
+
 #include <boost/mpl/begin.hpp>
 #include <boost/mpl/contains.hpp>
 #include <boost/mpl/distance.hpp>
@@ -94,14 +99,8 @@ struct event_traits {
 struct message_t:
     boost::noncopyable
 {
-    message_t() {
-        // Empty.
-    }
-
-    // NOTE: Moving an auto_ptr into an unique_ptr is broken on GCC 4.4.
-    message_t(msgpack::unpacked&& unpacked):
-        m_object(unpacked.get()),
-        m_zone(unpacked.zone().release())
+    message_t(msgpack::object object):
+        m_object(object)
     { }
 
     message_t(message_t&& other) {
@@ -111,23 +110,9 @@ struct message_t:
     message_t&
     operator=(message_t&& other) {
         m_object = other.m_object;
-        m_zone = std::move(other.m_zone);
-
         return *this;
     }
 
-public:
-    int
-    id() const {
-        return m_object.via.array.ptr[0].as<int>();
-    }
-
-    const msgpack::object&
-    args() const {
-        return m_object.via.array.ptr[1];
-    }
-
-public:
     template<class Event, typename... Args>
     void
     as(Args&&... targets) const {
@@ -141,62 +126,184 @@ public:
         }
     }
 
+public:
+    int
+    id() const {
+        return m_object.via.array.ptr[0].as<int>();
+    }
+
+    const msgpack::object&
+    args() const {
+        return m_object.via.array.ptr[1];
+    }
+
 private:
     msgpack::object m_object;
-    std::unique_ptr<msgpack::zone> m_zone;
 };
 
-struct codec {
-    template<class Event, typename... Args>
-    static inline
-    std::string
-    pack(Args&&... args) {
-        msgpack::sbuffer buffer;
-        msgpack::packer<msgpack::sbuffer> packer(buffer);
+template<class Pipe>
+struct encoder:
+    boost::noncopyable
+{
+    typedef boost::shared_ptr<
+        io::writable_stream<Pipe>
+    > stream_ptr_type;
 
-        packer.pack_array(2);
+    encoder():
+        m_packer(m_buffer)
+    { }
+
+    template<class Event, typename... Args>
+    void
+    write(Args&&... args) {
+        typedef event_traits<Event> traits;
+
+        // NOTE: Format is [ID, [Args...]].
+        m_packer.pack_array(2);
 
         type_traits<int>::pack(
-            packer,
-            event_traits<Event>::id
+            m_packer,
+            static_cast<int>(traits::id)
         );
 
-        if(!event_traits<Event>::empty) {
-            type_traits<typename event_traits<Event>::tuple_type>::pack(
-                packer,
+        if(!traits::empty) {
+            type_traits<typename traits::tuple_type>::pack(
+                m_packer,
                 std::forward<Args>(args)...
             );
         } else {
-            packer.pack_nil();
+            m_packer.pack_nil();
         }
 
-        return std::string(buffer.data(), buffer.size());
+        boost::unique_lock<boost::mutex> lock(m_mutex);
+
+        if(m_stream) {
+            m_stream->write(m_buffer.data(), m_buffer.size());
+        } else {
+            m_cache.emplace_back(m_buffer.data(), m_buffer.size());
+        }
+
+        m_buffer.clear();
     }
 
-    static inline
-    message_t
-    unpack(const std::string& blob) {
-        msgpack::unpacked unpacked;
+    void
+    attach(const stream_ptr_type& stream) {
+        boost::unique_lock<boost::mutex> lock(m_mutex);
 
-        try {
-            msgpack::unpack(&unpacked, blob.data(), blob.size());
-        } catch(const msgpack::unpack_error& e) {
-            throw cocaine::error_t("corrupted message");
-        }
+        m_stream = stream;
 
-        const msgpack::object& object = unpacked.get();
-
-        if(object.type != msgpack::type::ARRAY ||
-           object.via.array.size != 2)
+        for(message_cache_t::const_iterator it = m_cache.begin();
+            it != m_cache.end();
+            ++it)
         {
-            throw cocaine::error_t("invalid message format");
+            m_stream->write(it->data(), it->size());
         }
-
-        return message_t(std::move(unpacked));
     }
+
+public:
+    stream_ptr_type
+    stream() {
+        return m_stream;
+    }
+
+private:
+    msgpack::sbuffer m_buffer;
+    msgpack::packer<msgpack::sbuffer> m_packer;
+
+    typedef std::vector<
+        std::string
+    > message_cache_t;
+
+    // Message cache.
+    message_cache_t m_cache;
+    boost::mutex m_mutex;
+
+    // Attachable stream.
+    stream_ptr_type m_stream;
 };
 
-struct coder {
+template<class Pipe>
+struct decoder:
+    boost::noncopyable
+{
+    typedef boost::shared_ptr<
+        readable_stream<Pipe>
+    > stream_ptr_type;
+
+    template<class CallbackType>
+    void
+    bind(CallbackType callback) {
+        m_callback = callback;
+
+        m_stream->bind(
+            boost::bind(&decoder::on_event, this, _1, _2)
+        );
+    }
+
+    void
+    unbind() {
+        m_callback.clear();
+        m_stream->unbind();
+    }
+
+    void
+    attach(const stream_ptr_type& stream) {
+        m_stream = stream;
+    }
+
+public:
+    stream_ptr_type
+    stream() {
+        return m_stream;
+    }
+
+private:
+    size_t
+    on_event(const char * data, size_t size) {
+        size_t offset = 0,
+               checkpoint = 0;
+
+        do {
+            msgpack::object object;
+            msgpack::zone zone;
+
+            msgpack::unpack_return rv = msgpack::unpack(
+                data,
+                size,
+                &offset,
+                &zone,
+                &object
+            );
+
+            switch(rv) {
+                case msgpack::UNPACK_EXTRA_BYTES:
+                case msgpack::UNPACK_SUCCESS:
+                    m_callback(message_t(object));
+
+                    if(rv == msgpack::UNPACK_SUCCESS) {
+                        return size;
+                    }
+
+                    checkpoint = offset;
+
+                    break;
+
+                case msgpack::UNPACK_CONTINUE:
+                    return checkpoint;
+
+                case msgpack::UNPACK_PARSE_ERROR:
+                    throw cocaine::error_t("corrupted message");
+            }
+        } while(true);
+    }
+
+private:
+    boost::function<
+        void(const message_t&)
+    > m_callback;
+
+    // Attachable stream.
+    stream_ptr_type m_stream;
 };
 
 }} // namespace cocaine::io

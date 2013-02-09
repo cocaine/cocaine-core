@@ -28,7 +28,9 @@
 
 namespace cocaine {
 
-class app_t {
+class app_t:
+    boost::noncopyable
+{
     public:
         app_t(context_t& context,
               const std::string& name,
@@ -62,16 +64,20 @@ class app_t {
 
         // Configuration
 
-        std::unique_ptr<const manifest_t> m_manifest;
-        std::unique_ptr<const profile_t> m_profile;
+        std::unique_ptr<const engine::manifest_t> m_manifest;
+        std::unique_ptr<const engine::profile_t> m_profile;
 
         // I/O
 
         std::unique_ptr<io::service_t> m_service;
 
         std::unique_ptr<
-            io::codex<io::pipe_t>
-        > m_control_codex;
+            io::encoder<io::pipe_t>
+        > m_encoder;
+
+        std::unique_ptr<
+            io::decoder<io::pipe_t>
+        > m_decoder;
 
         // Execution engine
 

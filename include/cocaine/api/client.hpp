@@ -23,66 +23,40 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/context.hpp"
-#include "cocaine/io.hpp"
 #include "cocaine/messaging.hpp"
 
-#include <boost/thread/mutex.hpp>
+#include "cocaine/asio/pipe.hpp"
 
 namespace cocaine { namespace api {
 
 struct client_t:
-    public boost::noncopyable
+    boost::noncopyable
 {
     client_t(context_t& context,
-             const std::string& name,
-#if ZMQ_VERSION > 30200
-             int watermark
-#else
-             uint64_t watermark
-#endif
-    ):
-        m_channel(context, ZMQ_DEALER)
+             const std::string& name)
     {
         std::string endpoint = cocaine::format(
-            "ipc://%1%/services/%2%",
+            "%1%/services/%2%",
             context.config.path.runtime,
             name
         );
 
-        // Set the channel high watermark, so that if the service goes down
-        // it could be determined by the client within some reasonable timespan.
-#if ZMQ_VERSION > 30200
-        m_channel.setsockopt(ZMQ_SNDHWM, &watermark, sizeof(watermark));
-#else
-        m_channel.setsockopt(ZMQ_HWM, &watermark, sizeof(watermark));
-#endif
-
-        try {
-            m_channel.connect(endpoint);
-        } catch(const zmq::error_t& e) {
-            throw configuration_error_t(
-                "unable to connect to the '%s' service channel - %s",
-                name,
-                e.what()
-            );
-        }
+        m_encoder.attach(boost::make_shared<io::writable_stream<io::pipe_t>>(
+            m_service,
+            boost::make_shared<io::pipe_t>(endpoint)
+        ));
     }
 
     template<class Event, typename... Args>
     bool
     send(Args&&... args) {
-        boost::unique_lock<boost::mutex> lock(m_channel_mutex);
-
-        io::scoped_option<
-            io::options::send_timeout
-        > option(m_channel, 0);
-
-        return m_channel.send(io::codec::pack<Event>(std::forward<Args>(args)...));
+        m_encoder.write<Event>(std::forward<Args>(args)...);
+        return true;
     }
 
 private:
-    io::socket_t m_channel;
-    boost::mutex m_channel_mutex;
+    io::service_t m_service;
+    io::encoder<io::pipe_t> m_encoder;
 };
 
 }} // namespace cocaine::api

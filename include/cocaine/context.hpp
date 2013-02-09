@@ -25,14 +25,6 @@
 #include "cocaine/json.hpp"
 #include "cocaine/repository.hpp"
 
-#include <queue>
-
-#include <boost/thread/mutex.hpp>
-
-namespace zmq {
-    class context_t;
-}
-
 namespace cocaine {
 
 struct defaults {
@@ -72,8 +64,6 @@ struct config_t {
 
     struct {
         std::string hostname;
-        std::pair<uint16_t, uint16_t> ports;
-        unsigned int threads;
     } network;
 
     struct component_t {
@@ -100,31 +90,10 @@ public:
     parse(const Json::Value& config);
 };
 
-// Port mapping
-
-struct port_mapper_t {
-    port_mapper_t(const std::pair<uint16_t, uint16_t>& limits);
-
-    uint16_t
-    get();
-
-    void
-    retain(uint16_t port);
-
-private:
-    std::priority_queue<
-        uint16_t,
-        std::vector<uint16_t>,
-        std::greater<uint16_t>
-    > m_ports;
-
-    boost::mutex m_mutex;
-};
-
 // Context
 
 class context_t:
-    public boost::noncopyable
+    boost::noncopyable
 {
     public:
         context_t(config_t config,
@@ -134,20 +103,6 @@ class context_t:
                   std::unique_ptr<logging::logger_t>&& logger);
 
         ~context_t();
-
-        // Networking
-
-        zmq::context_t&
-        io() {
-            return *m_io;
-        }
-
-        // Port mappings
-
-        port_mapper_t&
-        ports() {
-            return *m_port_mapper;
-        }
 
         // Component API
 
@@ -171,9 +126,6 @@ class context_t:
         const config_t config;
 
     private:
-        std::unique_ptr<zmq::context_t> m_io;
-        std::unique_ptr<port_mapper_t> m_port_mapper;
-
         // NOTE: This is the first object in the component tree, all the other
         // components, including loggers, storages or isolates have to be declared
         // after this one.

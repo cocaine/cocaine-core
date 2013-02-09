@@ -22,15 +22,16 @@
 #define COCAINE_SLAVE_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/asio.hpp"
 #include "cocaine/unique_id.hpp"
 
 #include "cocaine/api/isolate.hpp"
 
+#include "cocaine/asio/service.hpp"
+
 namespace cocaine { namespace engine {
 
 class slave_t:
-    public boost::noncopyable
+    boost::noncopyable
 {
     public:
         enum class states: int {
@@ -51,17 +52,18 @@ class slave_t:
         // Binding
 
         void
-        tie(const boost::shared_ptr<io::codex<io::pipe_t>>& codex);
+        bind(const boost::shared_ptr<io::readable_stream<io::pipe_t>>& readable,
+             const boost::shared_ptr<io::writable_stream<io::pipe_t>>& writable);
 
         // Sessions
 
         void
         assign(boost::shared_ptr<session_t>&& session);
 
-        // I/O
+        // Termination
 
         void
-        send(const std::string& chunk);
+        stop();
 
     public:
         unique_id_t
@@ -119,35 +121,50 @@ class slave_t:
         context_t& m_context;
         std::unique_ptr<logging::log_t> m_log;
 
+        // Configuration
+
         const manifest_t& m_manifest;
         const profile_t& m_profile;
 
-        // Controlling engine.
+        // Controlling engine
+
         engine_t& m_engine;
 
-        // Slave ID.
+        // Slave ID
+
         const unique_id_t m_id;
 
-        // Current slave state.
+        // Current slave state
+
         states m_state;
 
-        // Slave health monitoring.
+        // Slave health monitoring
+
         ev::timer m_heartbeat_timer;
         ev::timer m_idle_timer;
 
-        // Actual slave process handle.
+        // I/O
+
+        std::unique_ptr<
+            io::encoder<io::pipe_t>
+        > m_encoder;
+
+        std::unique_ptr<
+            io::decoder<io::pipe_t>
+        > m_decoder;
+
+        // Worker handle
+
         std::unique_ptr<api::handle_t> m_handle;
+
+        // Current sessions
 
         typedef std::map<
             uint64_t,
             boost::shared_ptr<session_t>
         > session_map_t;
 
-        // Current sessions.
         session_map_t m_sessions;
-
-        // I/O.
-        boost::shared_ptr<io::codex<io::pipe_t>> m_codex;
 };
 
 }} // namespace cocaine::engine

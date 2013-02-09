@@ -46,9 +46,7 @@ struct storage_error_t:
 
 namespace api {
 
-class storage_t:
-    public boost::noncopyable
-{
+class storage_t {
     public:
         virtual
         ~storage_t() {

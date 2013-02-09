@@ -21,9 +21,9 @@
 #include "cocaine/engine.hpp"
 
 #include "cocaine/context.hpp"
-#include "cocaine/io.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
+#include "cocaine/messaging.hpp"
 #include "cocaine/profile.hpp"
 #include "cocaine/rpc.hpp"
 #include "cocaine/session.hpp"
@@ -31,6 +31,10 @@
 
 #include "cocaine/api/event.hpp"
 #include "cocaine/api/stream.hpp"
+
+#include "cocaine/asio/acceptor.hpp"
+#include "cocaine/asio/connector.hpp"
+#include "cocaine/asio/pipe.hpp"
 
 #include "cocaine/traits/json.hpp"
 #include "cocaine/traits/unique_id.hpp"
@@ -183,23 +187,21 @@ engine_t::engine_t(context_t& context,
         m_manifest.name
     );
 
-    m_connection_queue.reset(new connection_queue<acceptor_t>(
+    m_connector.reset(new connector<acceptor_t>(
         m_service,
         std::unique_ptr<acceptor_t>(new acceptor_t(endpoint))
     ));
 
-    m_connection_queue->bind(
+    m_connector->bind(
         boost::bind(&engine_t::on_connection, this, _1)
     );
 
-    m_control_codex.reset(new codex<io::pipe_t>(
-        m_service,
-        control
-    ));
+    m_encoder.reset(new encoder<io::pipe_t>());
+    m_encoder->attach(boost::make_shared<writable_stream<pipe_t>>(m_service, control));
 
-    m_control_codex->bind(
-        boost::bind(&engine_t::on_control, this, _1)
-    );
+    m_decoder.reset(new decoder<io::pipe_t>());
+    m_decoder->attach(boost::make_shared<readable_stream<pipe_t>>(m_service, control));
+    m_decoder->bind(boost::bind(&engine_t::on_control, this, _1));
 
     m_gc_timer.set<engine_t, &engine_t::on_cleanup>(this);
     m_gc_timer.start(5.0f, 5.0f);
@@ -282,24 +284,45 @@ engine_t::erase(const unique_id_t& uuid,
     }
 }
 
+namespace {
+    struct handshake_t {
+        handshake_t() {
+        }
+
+        void
+        operator()(const message_t& message) {
+
+        }
+    };
+}
+
 void
 engine_t::on_connection(const boost::shared_ptr<pipe_t>& pipe) {
-    auto codex = boost::make_shared<io::codex<io::pipe_t>>(
-        m_service,
-        pipe
+    auto readable = boost::make_shared<readable_stream<pipe_t>>(m_service, pipe);
+    auto writable = boost::make_shared<writable_stream<pipe_t>>(m_service, pipe);
+    auto decoder = boost::make_shared<io::decoder<pipe_t>>();
+
+    // Attach the readable stream to a decoder and wait for a handshake.
+    decoder->attach(readable);
+
+    decoder->bind(boost::bind(
+        &engine_t::on_handshake,
+        this,
+        decoder,
+        readable,
+        writable,
+        _1)
     );
 
     COCAINE_LOG_DEBUG(m_log, "initiating a slave handshake on fd: %d", pipe->fd());
 
-    codex->bind(
-        boost::bind(&engine_t::on_handshake, this, codex, _1)
-    );
-
-    m_backlog.insert(std::move(codex));
+    m_backlog.insert(decoder);
 }
 
 void
-engine_t::on_handshake(const boost::shared_ptr<io::codex<io::pipe_t>>& codex,
+engine_t::on_handshake(const boost::shared_ptr<decoder<pipe_t>>& decoder,
+                       const boost::shared_ptr<readable_stream<pipe_t>>& readable,
+                       const boost::shared_ptr<writable_stream<pipe_t>>& writable,
                        const message_t& message)
 {
     unique_id_t uuid;
@@ -314,13 +337,18 @@ engine_t::on_handshake(const boost::shared_ptr<io::codex<io::pipe_t>>& codex,
 
     if(it != m_pool.end()) {
         COCAINE_LOG_DEBUG(m_log, "slave %s connected", uuid);
-        it->second->tie(codex);
-        wake();
+
+        // Unbind the decoder as it keeps a circular reference to itself in its callback.
+        // decoder->unbind();
+
+        it->second->bind(readable, writable);
     } else {
         COCAINE_LOG_WARNING(m_log, "dropping a handshake from an unknown slave %s", uuid);
     }
 
-    m_backlog.erase(codex);
+    m_backlog.erase(decoder);
+
+    wake();
 }
 
 namespace {
@@ -393,14 +421,18 @@ engine_t::on_control(const message_t& message) {
             info["slaves"]["idle"] = static_cast<Json::LargestUInt>(m_pool.size() - active);
             info["state"] = describe[static_cast<int>(m_state)];
 
-            m_control_codex->send<control::info>(info);
+            m_encoder->write<control::info>(info);
 
             break;
         }
 
         case event_traits<control::terminate>::id:
             migrate(states::stopping);
-            m_control_codex->send<control::terminate>();
+
+            // NOTE: This message is needed to wake up the app's event loop, which is blocked
+            // in order to allow the stream to flush the message queue.
+            m_encoder->write<control::terminate>();
+
             break;
 
         default:
@@ -643,7 +675,7 @@ engine_t::migrate(states target) {
         ++it)
     {
         if(it->second->state() == slave_t::states::active) {
-            it->second->send(codec::pack<rpc::terminate>());
+            it->second->stop();
             ++pending;
         }
     }

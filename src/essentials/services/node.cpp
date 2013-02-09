@@ -48,9 +48,10 @@ node_t::node_t(context_t& context,
     reactor_t(context, name, args),
     m_context(context),
     m_log(new log_t(context, name)),
-    m_announces(context, ZMQ_PUB),
-    m_announce_timer(loop()),
-    m_birthstamp(loop().now())
+    m_zmq(1),
+    m_announces(m_zmq, ZMQ_PUB),
+    m_announce_timer(service().loop()),
+    m_birthstamp(service().loop().now())
 {
     on<io::node::start_app>(boost::bind(&node_t::on_start_app, this, _1));
     on<io::node::pause_app>(boost::bind(&node_t::on_pause_app, this, _1));
@@ -93,7 +94,7 @@ node_t::node_t(context_t& context,
             COCAINE_LOG_INFO(m_log, "announcing on %s", endpoint);
 
             try {
-                m_announces.bind(endpoint);
+                m_announces.bind(endpoint.c_str());
             } catch(const zmq::error_t& e) {
                 throw configuration_error_t(
                     "unable to bind at '%s' - %s",
@@ -151,10 +152,35 @@ void
 node_t::on_announce(ev::timer&, int) {
     COCAINE_LOG_DEBUG(m_log, "announcing the node");
 
-    m_announces.send_multipart(
-        m_context.config.network.hostname,
+    zmq::message_t message;
+
+    message.rebuild(m_context.config.network.hostname.size());
+
+    std::memcpy(
+        message.data(),
+        m_context.config.network.hostname.data(),
+        m_context.config.network.hostname.size()
+    );
+
+    m_announces.send(message, ZMQ_SNDMORE);
+
+    msgpack::sbuffer buffer;
+    msgpack::packer<msgpack::sbuffer> packer(buffer);
+
+    io::type_traits<Json::Value>::pack(
+        packer,
         on_info()
     );
+
+    message.rebuild(buffer.size());
+
+    std::memcpy(
+        message.data(),
+        buffer.data(),
+        buffer.size()
+    );
+
+    m_announces.send(message);
 }
 
 Json::Value
@@ -256,7 +282,7 @@ node_t::on_info() const {
     }
 
     result["identity"] = m_context.config.network.hostname;
-    result["uptime"] = loop().now() - m_birthstamp;
+    result["uptime"] = service().loop().now() - m_birthstamp;
 
     return result;
 }

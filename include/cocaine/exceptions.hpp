@@ -25,6 +25,8 @@
 
 #include <exception>
 
+#include <string.h>
+
 namespace cocaine {
 
 enum error_code {
@@ -66,6 +68,34 @@ struct configuration_error_t:
                           const Args&... args):
         error_t(format, args...)
     { }
+};
+
+struct io_error_t:
+    public cocaine::error_t
+{
+    template<typename... Args>
+    io_error_t(const std::string& format, Args&&... args):
+        cocaine::error_t(format, std::forward<Args>(args)...)
+    {
+#ifdef _GNU_SOURCE
+        m_message = ::strerror_r(errno, m_buffer, 256);
+#else
+        ::strerror_r(errno, m_buffer, 256);
+
+        // NOTE: XSI-compliant strerror_r() returns int instead of the
+        // string buffer, so complete the job manually.
+        m_message = m_buffer;
+#endif
+    }
+
+    const char *
+    describe() const throw() {
+        return m_message;
+    }
+
+private:
+    char m_buffer[256];
+    const char * m_message;
 };
 
 } // namespace cocaine

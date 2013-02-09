@@ -22,7 +22,6 @@
 
 #include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
-#include "cocaine/io.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
 #include "cocaine/profile.hpp"
@@ -33,6 +32,8 @@
 #include "cocaine/api/stream.hpp"
 
 #include "cocaine/traits/unique_id.hpp"
+
+#include <boost/bind.hpp>
 
 using namespace cocaine;
 using namespace cocaine::engine;
@@ -83,11 +84,15 @@ slave_t::~slave_t() {
 }
 
 void
-slave_t::tie(const boost::shared_ptr<io::codex<io::pipe_t>>& codex) {
-    COCAINE_LOG_DEBUG(m_log, "slave %s was tied to a worker", m_id);
+slave_t::bind(const boost::shared_ptr<io::readable_stream<io::pipe_t>>& readable,
+              const boost::shared_ptr<io::writable_stream<io::pipe_t>>& writable)
+{
+    m_decoder.reset(new decoder<pipe_t>());
+    m_decoder->attach(readable);
+    m_decoder->bind(boost::bind(&slave_t::on_message, this, _1));
 
-    m_codex = codex;
-    m_codex->bind(boost::bind(&slave_t::on_message, this, _1));
+    m_encoder.reset(new encoder<pipe_t>());
+    m_encoder->attach(writable);
 
     on_ping();
 }
@@ -103,7 +108,7 @@ slave_t::assign(boost::shared_ptr<session_t>&& session) {
         session->id
     );
 
-    session->attach(this);
+    session->attach(m_encoder->stream());
 
     m_sessions.insert(
         std::make_pair(session->id, std::move(session))
@@ -112,6 +117,11 @@ slave_t::assign(boost::shared_ptr<session_t>&& session) {
     if(m_idle_timer.is_active()) {
         m_idle_timer.stop();
     }
+}
+
+void
+slave_t::stop() {
+    m_encoder->write<rpc::terminate>();
 }
 
 void
@@ -213,7 +223,7 @@ slave_t::on_ping() {
     m_heartbeat_timer.stop();
     m_heartbeat_timer.start(m_profile.heartbeat_timeout);
 
-    send(io::codec::pack<rpc::heartbeat>());
+    m_encoder->write<rpc::heartbeat>();
 }
 
 void
@@ -309,12 +319,6 @@ slave_t::on_choke(uint64_t session_id) {
     }
 }
 
-void
-slave_t::send(const std::string& blob) {
-    BOOST_ASSERT(m_state == states::active);
-    m_codex->send(blob);
-}
-
 namespace {
     struct timeout_t {
         template<class T>
@@ -369,7 +373,7 @@ slave_t::on_idle(ev::timer&, int) {
 
     COCAINE_LOG_DEBUG(m_log, "slave %s is idle, deactivating", m_id);
 
-    send(io::codec::pack<rpc::terminate>());
+    m_encoder->write<rpc::terminate>();
 
     m_state = states::inactive;
 }
@@ -391,7 +395,8 @@ slave_t::terminate() {
     m_handle.reset();
 
     // Closes our end of the pipe.
-    m_codex.reset();
+    m_decoder.reset();
+    m_encoder.reset();
 
     m_state = states::dead;
 }

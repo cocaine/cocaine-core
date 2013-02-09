@@ -58,14 +58,15 @@ SET_TARGET_PROPERTIES(json PROPERTIES
     COMPILE_FLAGS -fPIC)
 
 ADD_LIBRARY(cocaine-core SHARED
+    src/acceptor
     src/api
     src/app
     src/archive
     src/auth
     src/context
     src/engine
-    src/io
     src/manifest
+    src/pipe
     src/profile
     src/reactor
     src/repository
@@ -74,16 +75,15 @@ ADD_LIBRARY(cocaine-core SHARED
 
 TARGET_LINK_LIBRARIES(cocaine-core
     archive
-    boost_filesystem-mt
     boost_system-mt
+    boost_filesystem-mt
     boost_thread-mt
     crypto
     ev
     json
     ltdl
-    ${LIBUUID_LIBRARY}
     msgpack
-    zmq)
+    ${LIBUUID_LIBRARY})
 
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     VERSION 2
@@ -101,7 +101,8 @@ ADD_LIBRARY(essentials SHARED
     src/essentials/module)
 
 TARGET_LINK_LIBRARIES(essentials
-    cocaine-core)
+    cocaine-core
+    zmq)
 
 SET_TARGET_PROPERTIES(essentials PROPERTIES
     COMPILE_FLAGS "-std=c++0x"

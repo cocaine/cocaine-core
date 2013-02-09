@@ -27,9 +27,7 @@
 
 namespace cocaine { namespace api {
 
-class driver_t:
-    public boost::noncopyable
-{
+class driver_t {
     public:
         virtual
         ~driver_t() {

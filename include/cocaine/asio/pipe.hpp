@@ -18,36 +18,52 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/manifest.hpp"
+#ifndef COCAINE_ASIO_PIPE_HPP
+#define COCAINE_ASIO_PIPE_HPP
 
-#include "cocaine/traits/json.hpp"
+#include "cocaine/common.hpp"
 
-#include <boost/filesystem/operations.hpp>
+namespace cocaine { namespace io {
 
-using namespace cocaine;
-using namespace cocaine::engine;
-
-namespace fs = boost::filesystem;
-
-manifest_t::manifest_t(context_t& context,
-                       const std::string& name_):
-    cached<Json::Value>(context, "manifests", name_),
-    name(name_)
+struct pipe_t:
+    boost::noncopyable
 {
-    slave = get(
-        "slave",
-        defaults::slave
-    ).asString();
+    pipe_t(const std::string& path);
+    pipe_t(int fd);
 
-    if(!fs::exists(fs::system_complete(slave))) {
-        throw configuration_error_t("the '%s' slave executable file does not exist", slave);
+    ~pipe_t();
+
+    // Moving
+
+    pipe_t(pipe_t&& other);
+
+    pipe_t&
+    operator=(pipe_t&& other);
+
+    // Operations
+
+    ssize_t
+    write(const char * buffer,
+          size_t size);
+
+    ssize_t
+    read(char * buffer,
+         size_t size);
+
+public:
+    int
+    fd() const {
+        return m_fd;
     }
 
-    sandbox = {
-        get("type", "unspecified").asString(),
-        (*this)["args"]
-    };
+private:
+    void
+    configure(int fd);
 
-    drivers = config_t::parse((*this)["drivers"]);
-}
+private:
+    int m_fd;
+};
 
+}} // namespace cocaine::io
+
+#endif

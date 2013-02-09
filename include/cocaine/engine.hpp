@@ -22,10 +22,11 @@
 #define COCAINE_ENGINE_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/asio.hpp"
 #include "cocaine/atomic.hpp"
 
 #include "cocaine/api/isolate.hpp"
+
+#include "cocaine/asio/service.hpp"
 
 #include <deque>
 #include <set>
@@ -107,7 +108,9 @@ class engine_t:
         on_connection(const boost::shared_ptr<io::pipe_t>& pipe);
 
         void
-        on_handshake(const boost::shared_ptr<io::codex<io::pipe_t>>& codex,
+        on_handshake(const boost::shared_ptr<io::decoder<io::pipe_t>>& decoder,
+                     const boost::shared_ptr<io::readable_stream<io::pipe_t>>& readable,
+                     const boost::shared_ptr<io::writable_stream<io::pipe_t>>& writable,
                      const io::message_t& message);
 
         void
@@ -159,12 +162,16 @@ class engine_t:
         // I/O
 
         std::unique_ptr<
-            io::connection_queue<io::acceptor_t>
-        > m_connection_queue;
+            io::connector<io::acceptor_t>
+        > m_connector;
 
         std::unique_ptr<
-            io::codex<io::pipe_t>
-        > m_control_codex;
+            io::encoder<io::pipe_t>
+        > m_encoder;
+
+        std::unique_ptr<
+            io::decoder<io::pipe_t>
+        > m_decoder;
 
         // Session queue
 
@@ -174,7 +181,7 @@ class engine_t:
         // Slave pool
 
         std::set<
-            boost::shared_ptr<io::codex<io::pipe_t>>
+            boost::shared_ptr<io::decoder<io::pipe_t>>
         > m_backlog;
 
 #if BOOST_VERSION >= 103600

@@ -74,15 +74,15 @@ struct unique_id_t {
     }
 
     bool
-    operator == (const unique_id_t& other) const {
+    operator==(const unique_id_t& other) const {
         return uuid[0] == other.uuid[0] &&
                uuid[1] == other.uuid[1];
     }
 
     friend
     std::ostream&
-    operator << (std::ostream& stream,
-                 const unique_id_t& id)
+    operator<<(std::ostream& stream,
+               const unique_id_t& id)
     {
         stream << id.string();
         return stream;

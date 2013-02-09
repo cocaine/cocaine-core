@@ -23,42 +23,33 @@
 #include "cocaine/rpc.hpp"
 
 using namespace cocaine::engine;
+using namespace cocaine::io;
 
 session_t::session_t(uint64_t id_,
                      const api::event_t& event_,
                      const boost::shared_ptr<api::stream_t>& upstream_):
     id(id_),
     event(event_),
-    upstream(upstream_),
-    m_slave(NULL)
+    upstream(upstream_)
 {
+    m_encoder.reset(new encoder<pipe_t>());
+
     // NOTE: This will go to cache, but we save on this serialization later.
     send<io::rpc::invoke>(event.type);
 }
 
 void
-session_t::attach(slave_t * const slave) {
-    BOOST_ASSERT(!m_slave);
-
+session_t::attach(const boost::shared_ptr<writable_stream<pipe_t>>& stream) {
     boost::unique_lock<boost::mutex> lock(m_mutex);
 
-    m_slave = slave;
-
-    for(message_cache_t::iterator it = m_cache.begin();
-        it != m_cache.end();
-        ++it)
-    {
-        m_slave->send(*it);
-    }
+    // Flush all the cached messages into the stream.
+    m_encoder->attach(stream);
 }
 
 void
 session_t::detach() {
-    BOOST_ASSERT(m_slave);
-
     boost::unique_lock<boost::mutex> lock(m_mutex);
 
-    // NOTE: In case the client managed to get the shared_ptr to the
-    // session the same moment when it got erased in the slave's session map.
-    m_slave = NULL;
+    // Disable the session.
+    m_encoder.reset();
 }

@@ -23,13 +23,15 @@
 #include "cocaine/archive.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
-#include "cocaine/io.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
 #include "cocaine/profile.hpp"
 #include "cocaine/rpc.hpp"
 
 #include "cocaine/api/driver.hpp"
+
+#include "cocaine/asio/acceptor.hpp"
+#include "cocaine/asio/pipe.hpp"
 
 #include "cocaine/traits/json.hpp"
 
@@ -66,10 +68,11 @@ app_t::app_t(context_t& context,
     // Create the engine control pipes.
     std::tie(lhs, rhs) = io::link();
 
-    m_control_codex.reset(new codex<pipe_t>(
-        *m_service,
-        lhs
-    ));
+    m_encoder.reset(new encoder<pipe_t>());
+    m_encoder->attach(boost::make_shared<writable_stream<pipe_t>>(*m_service, lhs));
+
+    m_decoder.reset(new decoder<pipe_t>());
+    m_decoder->attach(boost::make_shared<readable_stream<pipe_t>>(*m_service, lhs));
 
     // NOTE: The event loop is not started here yet.
     m_engine.reset(
@@ -104,7 +107,7 @@ app_t::start() {
             m_manifest->drivers.size() == 1 ? "driver" : "drivers"
         );
 
-        api::category_traits<api::driver_t>::ptr_type driver;        
+        api::category_traits<api::driver_t>::ptr_type driver;
 
         for(config_t::component_map_t::const_iterator it = m_manifest->drivers.begin();
             it != m_manifest->drivers.end();
@@ -284,14 +287,14 @@ app_t::stop() {
 
     auto callback = expect<control::terminate>(*m_service);
 
-    m_control_codex->bind(boost::ref(callback));
-    m_control_codex->send<control::terminate>();
+    m_decoder->bind(boost::ref(callback));
+    m_encoder->write<control::terminate>();
 
     // Blocks until either the response or timeout happens.
     m_service->run(defaults::control_timeout);
 
     // Unbind the callback.
-    m_control_codex->unbind();
+    m_decoder->unbind();
 
     if(callback) {
         m_thread->join();
@@ -319,14 +322,14 @@ app_t::info() const {
     auto callback = expect<control::info>(*m_service, info);
 
     // Bind the callback
-    m_control_codex->bind(boost::ref(callback));
-    m_control_codex->send<control::report>();
+    m_decoder->bind(boost::ref(callback));
+    m_encoder->write<control::report>();
 
     // Blocks until either the response or timeout happens.
-    m_service->run();
+    m_service->run(defaults::control_timeout);
 
     // Unbind the callback.
-    m_control_codex->unbind();
+    m_decoder->unbind();
 
     if(callback) {
         info["profile"] = m_profile->name;

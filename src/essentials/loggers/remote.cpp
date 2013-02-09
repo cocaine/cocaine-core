@@ -29,7 +29,7 @@ remote_t::remote_t(context_t& context,
                    const Json::Value& args):
     category_type(context, name, args),
     m_context(context),
-    m_client(context, "logging", 10),
+    m_client(context, "logging"),
     m_ring(10),
     m_fallback(args["fallback"].asString())
 { }

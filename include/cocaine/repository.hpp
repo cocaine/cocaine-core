@@ -77,7 +77,7 @@ struct repository_error_t:
 };
 
 class repository_t:
-    public boost::noncopyable
+    boost::noncopyable
 {
     public:
         repository_t();

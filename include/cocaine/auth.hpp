@@ -40,7 +40,7 @@ struct authorization_error_t:
 namespace crypto {
 
 class auth_t:
-    public boost::noncopyable
+    boost::noncopyable
 {
     public:
         auth_t(context_t& context);

@@ -22,14 +22,13 @@
 #define COCAINE_REACTOR_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/asio.hpp"
-#include "cocaine/io.hpp"
 #include "cocaine/messaging.hpp"
 #include "cocaine/slot.hpp"
 
 #include "cocaine/api/service.hpp"
 
-#include <boost/thread/mutex.hpp>
+#include "cocaine/asio/service.hpp"
+
 #include <boost/thread/thread.hpp>
 
 namespace cocaine {
@@ -54,48 +53,53 @@ class reactor_t:
                   const std::string& name,
                   const Json::Value& args);
 
+        virtual
+        ~reactor_t();
+
         template<class Event, class F>
         void
         on(F callable);
 
-        ev::loop_ref&
-        loop() {
-            return m_loop;
+    public:
+        io::service_t&
+        service() {
+            return m_service;
         }
 
-        const ev::loop_ref&
-        loop() const {
-            return m_loop;
+        const io::service_t&
+        service() const {
+            return m_service;
         }
 
     private:
         void
-        on_event(ev::io&, int);
+        on_connection(const boost::shared_ptr<io::pipe_t>& pipe);
 
         void
-        on_check(ev::prepare&, int);
+        on_message(const unique_id_t& client_id,
+                   const io::message_t& message);
 
         void
         on_terminate(ev::async&, int);
-
-        void
-        process();
 
     private:
         context_t& m_context;
         std::unique_ptr<logging::log_t> m_log;
 
-        // Service I/O.
-        io::socket_t m_channel;
-        boost::mutex m_channel_mutex;
+        // Event loop
 
-        // Event loop.
-        ev::dynamic_loop m_loop;
-
-        // I/O watchers.
-        ev::io m_watcher;
-        ev::prepare m_checker;
+        io::service_t m_service;
         ev::async m_terminate;
+
+        // Service I/O
+
+        std::unique_ptr<
+            io::connector<io::acceptor_t>
+        > m_connector;
+
+        std::set<
+            boost::shared_ptr<io::pipe_t>
+        > m_clients;
 
 #if BOOST_VERSION >= 103600
         typedef boost::unordered_map<

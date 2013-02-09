@@ -25,10 +25,6 @@ namespace cocaine {
     // Runtime context.
     class context_t;
 
-    // App configuration.
-    struct manifest_t;
-    struct profile_t;
-
     // App container.
     class app_t;
 
@@ -45,17 +41,34 @@ namespace cocaine {
     }
 
     namespace engine {
-        // Unit of execution.
-        struct session_t;
+        // App configuration.
+        struct manifest_t;
+        struct profile_t;
 
         // Execution engine.
         class engine_t;
         class slave_t;
+
+        // Unit of execution.
+        struct session_t;
     }
 
     namespace io {
         struct acceptor_t;
         struct pipe_t;
+
+        // I/O privimites
+
+        struct service_t;
+
+        template<class>
+        struct connector;
+
+        template<class>
+        struct writable_stream;
+
+        template<class>
+        struct readable_stream;
 
         // RPC primitives
 
@@ -64,23 +77,13 @@ namespace cocaine {
 
         struct message_t;
 
-        // I/O privimites
-
-        struct service_t;
+        // Messaging
 
         template<class>
-        struct connection_queue;
+        struct encoder;
 
         template<class>
-        struct write_queue;
-
-        template<class>
-        struct read_queue;
-
-        // Codec
-
-        template<class>
-        struct codex;
+        struct decoder;
     }
 
     namespace logging {

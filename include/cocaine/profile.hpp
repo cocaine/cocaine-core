@@ -25,10 +25,10 @@
 #include "cocaine/cached.hpp"
 #include "cocaine/json.hpp"
 
-namespace cocaine {
+namespace cocaine { namespace engine {
 
 struct profile_t:
-    private cached<Json::Value>
+    cached<Json::Value>
 {
     profile_t(context_t& context,
               const std::string& name);
@@ -50,6 +50,6 @@ struct profile_t:
     config_t::component_t isolate;
 };
 
-} // namespace cocaine
+}} // namespace cocaine::engine
 
 #endif

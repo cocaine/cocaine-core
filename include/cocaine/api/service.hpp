@@ -27,9 +27,7 @@
 
 namespace cocaine { namespace api {
 
-class service_t:
-    public boost::noncopyable
-{
+class service_t {
     public:
         virtual
         ~service_t() {

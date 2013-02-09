@@ -21,11 +21,12 @@
 #include "cocaine/config.hpp"
 
 #include "cocaine/common.hpp"
-#include "cocaine/asio.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
 #include "cocaine/api/service.hpp"
+
+#include "cocaine/asio/service.hpp"
 
 #include "cocaine/runtime/pid_file.hpp"
 
@@ -33,6 +34,8 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
+
+#include <signal.h>
 
 using namespace cocaine;
 using namespace cocaine::logging;

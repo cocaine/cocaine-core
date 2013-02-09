@@ -24,23 +24,25 @@
 #include "cocaine/common.hpp"
 #include "cocaine/birth_control.hpp"
 #include "cocaine/messaging.hpp"
-#include "cocaine/slave.hpp"
 
 #include "cocaine/api/event.hpp"
 
-#include <sstream>
+#include "cocaine/asio/pipe.hpp"
+
+#include <boost/thread/mutex.hpp>
 
 namespace cocaine { namespace engine {
 
 struct session_t:
-    public birth_control<session_t>
+    public birth_control<session_t>,
+    boost::noncopyable
 {
     session_t(uint64_t id,
               const api::event_t& event,
               const boost::shared_ptr<api::stream_t>& upstream);
 
     void
-    attach(slave_t * const slave);
+    attach(const boost::shared_ptr<io::writable_stream<io::pipe_t>>& stream);
 
     void
     detach();
@@ -60,15 +62,11 @@ public:
     const boost::shared_ptr<api::stream_t> upstream;
 
 private:
-    // Responsible slave.
-    slave_t * m_slave;
+    std::unique_ptr<
+        io::encoder<io::pipe_t>
+    > m_encoder;
 
-    typedef std::vector<
-        std::string
-    > message_cache_t;
-
-    // Message cache.
-    message_cache_t m_cache;
+    // Session interlocking.
     boost::mutex m_mutex;
 };
 
@@ -77,16 +75,10 @@ void
 session_t::send(Args&&... args) {
     boost::unique_lock<boost::mutex> lock(m_mutex);
 
-    // Pre-pack the message.
-    auto blob = io::codec::pack<Event>(
-        id,
-        std::forward<Args>(args)...
-    );
-
-    if(m_slave) {
-        m_slave->send(blob);
+    if(m_encoder) {
+        m_encoder->write<Event>(id, std::forward<Args>(args)...);
     } else {
-        m_cache.emplace_back(std::move(blob));
+        throw cocaine::error_t("stream is no longer valid");
     }
 }
 

@@ -31,9 +31,7 @@
 
 namespace cocaine { namespace api {
 
-struct handle_t:
-    public boost::noncopyable
-{
+struct handle_t {
     virtual
     ~handle_t() {
         // Empty.
@@ -44,9 +42,7 @@ struct handle_t:
     terminate() = 0;
 };
 
-class isolate_t:
-    public boost::noncopyable
-{
+class isolate_t {
     public:
         virtual
         ~isolate_t() {

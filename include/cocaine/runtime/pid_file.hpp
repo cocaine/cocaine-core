@@ -28,7 +28,7 @@
 namespace cocaine {
 
 class pid_file_t:
-    public boost::noncopyable
+    boost::noncopyable
 {
     public:
         pid_file_t(const boost::filesystem::path& filepath);

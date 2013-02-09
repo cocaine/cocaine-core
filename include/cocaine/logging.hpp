@@ -42,9 +42,7 @@
 
 namespace cocaine { namespace logging {
 
-struct logger_t:
-    public boost::noncopyable
-{
+struct logger_t {
     virtual
     logging::priorities
     verbosity() const = 0;

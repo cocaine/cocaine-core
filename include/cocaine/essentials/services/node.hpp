@@ -25,6 +25,8 @@
 #include "cocaine/json.hpp"
 #include "cocaine/reactor.hpp"
 
+#include <zmq.hpp>
+
 namespace cocaine {
 
 namespace io {
@@ -95,7 +97,8 @@ class node_t:
         std::unique_ptr<logging::log_t> m_log;
 
         // Node announce channel.
-        io::socket_t m_announces;
+        zmq::context_t m_zmq;
+        zmq::socket_t m_announces;
 
         // Node announce timer.
         ev::timer m_announce_timer;

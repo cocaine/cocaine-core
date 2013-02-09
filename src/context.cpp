@@ -20,7 +20,6 @@
 
 #include "cocaine/context.hpp"
 
-#include "cocaine/io.hpp"
 #include "cocaine/logging.hpp"
 
 #include "cocaine/api/logger.hpp"
@@ -31,8 +30,6 @@
 #include <boost/filesystem/convenience.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/operations.hpp>
-
-#include <boost/iterator/counting_iterator.hpp>
 
 #include <netdb.h>
 
@@ -158,17 +155,6 @@ config_t::config_t(const std::string& config_path) {
 
     freeaddrinfo(result);
 
-    // Port mapper configuration
-
-    Json::Value range = root["port-mapper"]["range"];
-
-    network.ports = {
-        range[0].asUInt(),
-        range[1].asUInt()
-    };
-
-    network.threads = 1;
-
     // Component configuration
 
     services = parse(root["services"]);
@@ -201,36 +187,6 @@ config_t::parse(const Json::Value& config) {
     return components;
 }
 
-// Port mapper
-
-port_mapper_t::port_mapper_t(const std::pair<uint16_t, uint16_t>& limits):
-    m_ports(
-        boost::make_counting_iterator(limits.first),
-        boost::make_counting_iterator(limits.second)
-    )
-{ }
-
-uint16_t
-port_mapper_t::get() {
-    boost::unique_lock<boost::mutex> lock(m_mutex);
-
-    if(m_ports.empty()) {
-        throw cocaine::error_t("no available ports left");
-    }
-
-    uint16_t port = m_ports.top();
-
-    m_ports.pop();
-
-    return port;
-}
-
-void
-port_mapper_t::retain(uint16_t port) {
-    boost::unique_lock<boost::mutex> lock(m_mutex);
-    m_ports.push(port);
-}
-
 // Context
 
 context_t::context_t(config_t config_,
@@ -260,11 +216,6 @@ context_t::~context_t() {
 
 void
 context_t::initialize() {
-    // Initialize the I/O subsystems.
-    m_io.reset(new zmq::context_t(config.network.threads));
-    m_port_mapper.reset(new port_mapper_t(config.network.ports));
-
-    // Initialize the repository.
     m_repository.reset(new api::repository_t());
     m_repository->load(config.path.plugins);
 }

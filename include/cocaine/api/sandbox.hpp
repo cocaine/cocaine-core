@@ -27,9 +27,7 @@
 
 namespace cocaine { namespace api {
 
-class sandbox_t:
-    public boost::noncopyable
-{
+class sandbox_t {
     public:
         virtual
         ~sandbox_t() {
