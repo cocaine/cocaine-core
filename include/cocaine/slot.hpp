@@ -24,9 +24,9 @@
 #include "cocaine/common.hpp"
 #include "cocaine/traits.hpp"
 
+#include <functional>
 #include <sstream>
 
-#include <boost/function.hpp>
 #include <boost/function_types/function_type.hpp>
 
 #include <boost/mpl/push_front.hpp>
@@ -87,7 +87,7 @@ namespace detail {
             typename mpl::push_front<Sequence, R>::type
         >::type function_type;
 
-        typedef boost::function<function_type> type;
+        typedef std::function<function_type> type;
     };
 }
 

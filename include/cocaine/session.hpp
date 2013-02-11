@@ -38,10 +38,10 @@ struct session_t:
 {
     session_t(uint64_t id,
               const api::event_t& event,
-              const boost::shared_ptr<api::stream_t>& upstream);
+              const std::shared_ptr<api::stream_t>& upstream);
 
     void
-    attach(const boost::shared_ptr<io::writable_stream<io::pipe_t>>& stream);
+    attach(const std::shared_ptr<io::writable_stream<io::pipe_t>>& stream);
 
     void
     detach();
@@ -58,7 +58,7 @@ public:
     const api::event_t event;
 
     // Client's upstream for result delivery.
-    const boost::shared_ptr<api::stream_t> upstream;
+    const std::shared_ptr<api::stream_t> upstream;
 
 private:
     std::unique_ptr<

@@ -82,8 +82,8 @@ slave_t::~slave_t() {
 }
 
 void
-slave_t::bind(const boost::shared_ptr<io::readable_stream<io::pipe_t>>& readable,
-              const boost::shared_ptr<io::writable_stream<io::pipe_t>>& writable)
+slave_t::bind(const std::shared_ptr<io::readable_stream<io::pipe_t>>& readable,
+              const std::shared_ptr<io::writable_stream<io::pipe_t>>& writable)
 {
     m_decoder.reset(new decoder<pipe_t>());
     m_decoder->attach(readable);
@@ -96,7 +96,7 @@ slave_t::bind(const boost::shared_ptr<io::readable_stream<io::pipe_t>>& readable
 }
 
 void
-slave_t::assign(boost::shared_ptr<session_t>&& session) {
+slave_t::assign(std::shared_ptr<session_t>&& session) {
     BOOST_ASSERT(m_state == states::active);
 
     COCAINE_LOG_DEBUG(

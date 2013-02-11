@@ -80,7 +80,7 @@ acceptor_t::operator=(acceptor_t&& other) {
     return *this;
 }
 
-boost::shared_ptr<pipe_t>
+std::shared_ptr<pipe_t>
 acceptor_t::accept() {
     struct sockaddr_un address = { AF_LOCAL, { 0 } };
     socklen_t length = sizeof(address);
@@ -91,7 +91,7 @@ acceptor_t::accept() {
         switch(errno) {
             case EAGAIN || EWOULDBLOCK:
             case EINTR:
-                return boost::shared_ptr<pipe_t>();
+                return std::shared_ptr<pipe_t>();
 
             default:
                 throw io_error_t("unable to accept a connection");
@@ -101,7 +101,7 @@ acceptor_t::accept() {
     // Set non-blocking and close-on-exec options.
     configure(fd);
 
-    return boost::make_shared<pipe_t>(fd);
+    return std::make_shared<pipe_t>(fd);
 }
 
 void
@@ -119,7 +119,7 @@ cocaine::io::link() {
     }
 
     return std::make_pair(
-        boost::make_shared<pipe_t>(fds[0]),
-        boost::make_shared<pipe_t>(fds[1])
+        std::make_shared<pipe_t>(fds[0]),
+        std::make_shared<pipe_t>(fds[1])
     );
 };

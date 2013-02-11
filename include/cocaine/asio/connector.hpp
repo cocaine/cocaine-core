@@ -79,7 +79,7 @@ private:
     // Acceptor poll object.
     ev::io m_acceptor_watcher;
 
-    typedef boost::shared_ptr<
+    typedef std::shared_ptr<
         typename AcceptorType::pipe_type
     > pipe_ptr_type;
 

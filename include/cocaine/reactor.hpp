@@ -73,7 +73,7 @@ class reactor_t:
 
     private:
         void
-        on_connection(const boost::shared_ptr<io::pipe_t>& pipe);
+        on_connection(const std::shared_ptr<io::pipe_t>& pipe);
 
         void
         on_message(const unique_id_t& client_id,
@@ -98,7 +98,7 @@ class reactor_t:
         > m_connector;
 
         std::set<
-            boost::shared_ptr<io::pipe_t>
+            std::shared_ptr<io::pipe_t>
         > m_clients;
 
 #if BOOST_VERSION >= 103600
@@ -107,7 +107,7 @@ class reactor_t:
         typedef std::map<
 #endif
             unsigned int,
-            boost::shared_ptr<slot_base_t>
+            std::shared_ptr<slot_base_t>
         > slot_map_t;
 
         // Event slots.
@@ -126,7 +126,7 @@ reactor_t::on(F callable) {
 
     m_slots.emplace(
         io::event_traits<Event>::id,
-        boost::make_shared<slot_type>(callable)
+        std::make_shared<slot_type>(callable)
     );
 }
 

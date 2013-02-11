@@ -35,9 +35,9 @@ class sandbox_t {
         }
 
         virtual
-        boost::shared_ptr<stream_t>
+        std::shared_ptr<stream_t>
         invoke(const std::string& event,
-               const boost::shared_ptr<stream_t>& upstream) = 0;
+               const std::shared_ptr<stream_t>& upstream) = 0;
 
     protected:
         sandbox_t(context_t&,

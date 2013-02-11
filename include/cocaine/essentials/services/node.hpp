@@ -109,7 +109,7 @@ class node_t:
         typedef std::map<
 #endif
             std::string,
-            boost::shared_ptr<app_t>
+            std::shared_ptr<app_t>
         > app_map_t;
 
         // Apps.

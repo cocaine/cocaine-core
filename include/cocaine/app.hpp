@@ -49,9 +49,9 @@ class app_t:
 
         // Scheduling
 
-        boost::shared_ptr<api::stream_t>
+        std::shared_ptr<api::stream_t>
         enqueue(const api::event_t& event,
-                const boost::shared_ptr<api::stream_t>& upstream);
+                const std::shared_ptr<api::stream_t>& upstream);
 
     private:
         void

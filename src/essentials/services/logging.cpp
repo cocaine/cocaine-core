@@ -49,7 +49,7 @@ logging_t::on_emit(int priority,
     if(it == m_logs.end()) {
         std::tie(it, std::ignore) = m_logs.emplace(
             source,
-            boost::make_shared<log_t>(m_context, source)
+            std::make_shared<log_t>(m_context, source)
         );
     }
 

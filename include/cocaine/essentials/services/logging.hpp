@@ -76,7 +76,7 @@ class logging_t:
         typedef std::map<
 #endif
             std::string,
-            boost::shared_ptr<logging::log_t>
+            std::shared_ptr<logging::log_t>
         > log_map_t;
 
         log_map_t m_logs;

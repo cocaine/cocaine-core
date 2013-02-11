@@ -27,6 +27,8 @@
 #include "cocaine/asio/connector.hpp"
 #include "cocaine/asio/pipe.hpp"
 
+#include <boost/bind.hpp>
+
 using namespace cocaine;
 using namespace cocaine::io;
 
@@ -66,7 +68,7 @@ reactor_t::reactor_t(context_t& context,
     }
 
     m_connector->bind(
-        std::bind(&reactor_t::on_connection, this, _1)
+        std::bind(&reactor_t::on_connection, this, io::_1)
     );
 
     m_terminate.set<reactor_t, &reactor_t::on_terminate>(this);
@@ -81,14 +83,12 @@ void
 reactor_t::run() {
     BOOST_ASSERT(!m_thread);
 
-    /*
-    auto runnable = std::bind(
+    auto runnable = boost::bind(
         &io::service_t::run,
         &m_service
     );
 
     m_thread.reset(new std::thread(runnable));
-    */
 }
 
 void
@@ -102,7 +102,7 @@ reactor_t::terminate() {
 }
 
 void
-reactor_t::on_connection(const boost::shared_ptr<pipe_t>& pipe) {
+reactor_t::on_connection(const std::shared_ptr<pipe_t>& pipe) {
     COCAINE_LOG_INFO(m_log, "new client connection on fd: %s", pipe->fd());
     m_clients.insert(pipe);
 }

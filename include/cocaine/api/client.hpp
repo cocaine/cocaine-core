@@ -41,9 +41,9 @@ struct client_t:
             name
         );
 
-        m_encoder.attach(boost::make_shared<io::writable_stream<io::pipe_t>>(
+        m_encoder.attach(std::make_shared<io::writable_stream<io::pipe_t>>(
             m_service,
-            boost::make_shared<io::pipe_t>(endpoint)
+            std::make_shared<io::pipe_t>(endpoint)
         ));
     }
 

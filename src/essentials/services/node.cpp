@@ -202,7 +202,7 @@ node_t::on_start_app(const runlist_t& runlist) {
         try {
             std::tie(app, std::ignore) = m_apps.emplace(
                 it->first,
-                boost::make_shared<app_t>(
+                std::make_shared<app_t>(
                     m_context,
                     it->first,
                     it->second

@@ -27,8 +27,6 @@
 
 #include <mutex>
 
-#include <boost/weak_ptr.hpp>
-
 namespace cocaine { namespace api {
 
 struct handle_t {
@@ -64,7 +62,7 @@ class isolate_t {
 
 template<>
 struct category_traits<isolate_t> {
-    typedef boost::shared_ptr<isolate_t> ptr_type;
+    typedef std::shared_ptr<isolate_t> ptr_type;
 
     struct factory_type:
         public factory_base<isolate_t>
@@ -97,7 +95,7 @@ struct category_traits<isolate_t> {
             }
 
             if(!instance) {
-                instance = boost::make_shared<T>(
+                instance = std::make_shared<T>(
                     std::ref(context),
                     name,
                     args
@@ -116,7 +114,7 @@ struct category_traits<isolate_t> {
         typedef std::map<
 #endif
             std::string,
-            boost::weak_ptr<isolate_t>
+            std::weak_ptr<isolate_t>
         > instance_map_t;
 
         instance_map_t m_instances;

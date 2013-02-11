@@ -145,7 +145,7 @@ template<class Pipe>
 struct encoder:
     boost::noncopyable
 {
-    typedef boost::shared_ptr<
+    typedef std::shared_ptr<
         io::writable_stream<Pipe>
     > stream_ptr_type;
 
@@ -226,7 +226,7 @@ template<class Pipe>
 struct decoder:
     boost::noncopyable
 {
-    typedef boost::shared_ptr<
+    typedef std::shared_ptr<
         readable_stream<Pipe>
     > stream_ptr_type;
 

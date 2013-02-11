@@ -33,7 +33,7 @@ struct writable_stream:
     boost::noncopyable
 {
     writable_stream(service_t& service,
-                    const boost::shared_ptr<PipeType>& pipe):
+                    const std::shared_ptr<PipeType>& pipe):
         m_pipe(pipe),
         m_pipe_watcher(service.loop()),
         m_tx_offset(0),
@@ -128,7 +128,7 @@ private:
 private:
     // NOTE: Pipes can be shared among multiple queues, at least to be able
     // to write and read from two different queues.
-    const boost::shared_ptr<PipeType> m_pipe;
+    const std::shared_ptr<PipeType> m_pipe;
 
     // Pipe poll object.
     ev::io m_pipe_watcher;

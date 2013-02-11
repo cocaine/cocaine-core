@@ -111,7 +111,7 @@ class repository_t:
         typedef std::map<
 #endif
             std::string,
-            boost::shared_ptr<factory_concept_t>
+            std::shared_ptr<factory_concept_t>
         > factory_map_t;
 
 #if BOOST_VERSION >= 104000
@@ -179,7 +179,7 @@ repository_t::insert(const std::string& type) {
 
     factories.emplace(
         type,
-        boost::make_shared<typename plugin_traits<T>::factory_type>()
+        std::make_shared<typename plugin_traits<T>::factory_type>()
     );
 }
 

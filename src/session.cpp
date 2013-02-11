@@ -27,7 +27,7 @@ using namespace cocaine::io;
 
 session_t::session_t(uint64_t id_,
                      const api::event_t& event_,
-                     const boost::shared_ptr<api::stream_t>& upstream_):
+                     const std::shared_ptr<api::stream_t>& upstream_):
     id(id_),
     event(event_),
     upstream(upstream_)
@@ -39,7 +39,7 @@ session_t::session_t(uint64_t id_,
 }
 
 void
-session_t::attach(const boost::shared_ptr<writable_stream<pipe_t>>& stream) {
+session_t::attach(const std::shared_ptr<writable_stream<pipe_t>>& stream) {
     std::unique_lock<std::mutex> lock(m_mutex);
 
     // Flush all the cached messages into the stream.
