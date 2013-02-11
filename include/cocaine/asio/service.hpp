@@ -88,6 +88,7 @@ private:
     void
     on_timeout(ev::timer&, int) {
         stop();
+        throw cocaine::error_t("operation has timed out");
     }
 
 private:
