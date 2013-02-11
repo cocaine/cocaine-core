@@ -38,7 +38,11 @@ acceptor_t::acceptor_t(const std::string& path,
     // Set non-blocking and close-on-exec options.
     configure(m_fd);
 
+#ifdef _GNU_SOURCE
     struct sockaddr_un address = { AF_LOCAL, { 0 } };
+#else
+    struct sockaddr_un address = { sizeof(sockaddr_un), AF_LOCAL, { 0 } };
+#endif
 
     ::memcpy(address.sun_path, path.c_str(), path.size());
 
@@ -54,7 +58,12 @@ acceptor_t::~acceptor_t() {
         return;
     }
 
+#ifdef _GNU_SOURCE
     struct sockaddr_un address = { AF_LOCAL, { 0 } };
+#else
+    struct sockaddr_un address = { sizeof(sockaddr_un), AF_LOCAL, { 0 } };
+#endif
+    
     socklen_t length = sizeof(address);
 
     ::getsockname(m_fd, reinterpret_cast<sockaddr*>(&address), &length);
@@ -82,14 +91,22 @@ acceptor_t::operator=(acceptor_t&& other) {
 
 std::shared_ptr<pipe_t>
 acceptor_t::accept() {
+#ifdef _GNU_SOURCE
     struct sockaddr_un address = { AF_LOCAL, { 0 } };
+#else
+    struct sockaddr_un address = { sizeof(sockaddr_un), AF_LOCAL, { 0 } };
+#endif
+    
     socklen_t length = sizeof(address);
 
     int fd = ::accept(m_fd, reinterpret_cast<sockaddr*>(&address), &length);
 
     if(fd == -1) {
         switch(errno) {
-            case EAGAIN || EWOULDBLOCK:
+            case EAGAIN:
+#if defined(EWOULDBLOCK) && EWOULDBLOCK != EAGAIN
+            case EWOULDBLOCK:
+#endif
             case EINTR:
                 return std::shared_ptr<pipe_t>();
 

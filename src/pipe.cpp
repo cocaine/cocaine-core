@@ -36,7 +36,11 @@ pipe_t::pipe_t(const std::string& path):
     // Set non-blocking and close-on-exec options.
     configure(m_fd);
 
+#ifdef _GNU_SOURCE
     struct sockaddr_un address = { AF_LOCAL, { 0 } };
+#else
+    struct sockaddr_un address = { sizeof(sockaddr_un), AF_LOCAL, { 0 } };
+#endif
 
     ::memcpy(address.sun_path, path.c_str(), path.size());
 
@@ -75,7 +79,10 @@ pipe_t::write(const char * buffer,
 
     if(length == -1) {
         switch(errno) {
-            case EAGAIN || EWOULDBLOCK:
+            case EAGAIN:
+#if defined(EWOULDBLOCK) && EWOULDBLOCK != EAGAIN
+            case EWOULDBLOCK:
+#endif
             case EINTR:
                 return length;
 
@@ -95,7 +102,10 @@ pipe_t::read(char * buffer,
 
     if(length == -1) {
         switch(errno) {
-            case EAGAIN || EWOULDBLOCK:
+            case EAGAIN:
+#if defined(EWOULDBLOCK) && EWOULDBLOCK != EAGAIN
+            case EWOULDBLOCK:
+#endif
             case EINTR:
                 return length;
 
