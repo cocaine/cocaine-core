@@ -148,7 +148,7 @@ app_t::start() {
     m_thread.reset(
         new std::thread(
             &engine_t::run,
-            std::ref(*m_engine)
+            m_engine
         )
     );
 

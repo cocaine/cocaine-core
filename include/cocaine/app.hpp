@@ -81,7 +81,7 @@ class app_t:
 
         // Execution engine
 
-        std::unique_ptr<engine::engine_t> m_engine;
+        std::shared_ptr<engine::engine_t> m_engine;
         std::unique_ptr<std::thread> m_thread;
 
         // Event drivers
