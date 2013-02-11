@@ -22,7 +22,9 @@
 
 #include <csignal>
 
+#include <boost/filesystem/convenience.hpp>
 #include <boost/filesystem/fstream.hpp>
+#include <boost/filesystem/operations.hpp>
 
 #include <sys/types.h>
 

@@ -238,14 +238,12 @@ namespace {
         template<typename... Args>
         expect(service_t& service, Args&&... args):
             m_service(service),
-            m_tuple(std::forward<Args>(args)...),
-            m_fired(false)
+            m_tuple(std::forward<Args>(args)...)
         { }
 
         expect(expect&& other):
             m_service(other.m_service),
-            m_tuple(std::move(other.m_tuple)),
-            m_fired(other.m_fired)
+            m_tuple(std::move(other.m_tuple))
         { }
 
         expect&
@@ -262,13 +260,8 @@ namespace {
                     m_tuple
                 );
 
-                m_fired = true;
                 m_service.stop();
             }
-        }
-
-        operator bool() {
-            return m_fired;
         }
 
     private:
@@ -278,7 +271,6 @@ namespace {
 
         service_t& m_service;
         tuple_type m_tuple;
-        bool m_fired;
     };
 }
 
@@ -292,27 +284,24 @@ app_t::stop() {
 
     auto callback = expect<control::terminate>(*m_service);
 
-    m_decoder->bind(std::ref(callback));
     m_encoder->write<control::terminate>();
+    m_decoder->bind(std::ref(callback));
 
-    // Blocks until either the response or timeout happens.
-    m_service->run(defaults::control_timeout);
-
-    // Unbind the callback.
-    m_decoder->unbind();
-
-    if(callback) {
-        m_thread->join();
-        m_thread.reset();
-
-        COCAINE_LOG_INFO(m_log, "the engine has stopped");
-
-        // NOTE: Stop the drivers, so that there won't be any open
-        // sockets and so on while the engine is stopped.
-        m_drivers.clear();
-    } else {
+    try {
+        // Blocks until either the response or timeout happens.
+        m_service->run(defaults::control_timeout);
+    } catch(const cocaine::error_t& e) {
         throw cocaine::error_t("the engine could not be stopped");
     }
+
+    m_thread->join();
+    m_thread.reset();
+
+    COCAINE_LOG_INFO(m_log, "the engine has stopped");
+
+    // NOTE: Stop the drivers, so that there won't be any open
+    // sockets and so on while the engine is stopped.
+    m_drivers.clear();
 }
 
 Json::Value
@@ -326,27 +315,24 @@ app_t::info() const {
 
     auto callback = expect<control::info>(*m_service, info);
 
-    // Bind the callback
-    m_decoder->bind(std::ref(callback));
     m_encoder->write<control::report>();
+    m_decoder->bind(std::ref(callback));
 
-    // Blocks until either the response or timeout happens.
-    m_service->run(defaults::control_timeout);
-
-    // Unbind the callback.
-    m_decoder->unbind();
-
-    if(callback) {
-        info["profile"] = m_profile->name;
-
-        for(driver_map_t::const_iterator it = m_drivers.begin();
-            it != m_drivers.end();
-            ++it)
-        {
-            info["drivers"][it->first] = it->second->info();
-        }
-    } else {
+    try {
+        // Blocks until either the response or timeout happens.
+        m_service->run(defaults::control_timeout);
+    } catch(const cocaine::error_t& e) {
         info["error"] = "engine is not responsive";
+        return info;
+    }
+
+    info["profile"] = m_profile->name;
+
+    for(driver_map_t::const_iterator it = m_drivers.begin();
+        it != m_drivers.end();
+        ++it)
+    {
+        info["drivers"][it->first] = it->second->info();
     }
 
     return info;

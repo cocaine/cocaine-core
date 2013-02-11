@@ -30,12 +30,11 @@
 
 #include "cocaine/runtime/pid_file.hpp"
 
+#include <csignal>
 #include <iostream>
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
-
-#include <signal.h>
 
 using namespace cocaine;
 using namespace cocaine::logging;
