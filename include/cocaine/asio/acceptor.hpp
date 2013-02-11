@@ -44,7 +44,7 @@ struct acceptor_t:
 
     // Operations
 
-    boost::shared_ptr<pipe_t>
+    std::shared_ptr<pipe_t>
     accept();
 
 public:
@@ -62,8 +62,8 @@ private:
 };
 
 typedef std::pair<
-    boost::shared_ptr<pipe_t>,
-    boost::shared_ptr<pipe_t>
+    std::shared_ptr<pipe_t>,
+    std::shared_ptr<pipe_t>
 > pipe_link_t;
 
 pipe_link_t

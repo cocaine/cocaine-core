@@ -43,9 +43,6 @@
 #include <boost/accumulators/statistics/median.hpp>
 #include <boost/accumulators/statistics/sum.hpp>
 
-#include <boost/bind.hpp>
-#include <boost/weak_ptr.hpp>
-
 using namespace cocaine;
 using namespace cocaine::engine;
 using namespace cocaine::io;
@@ -68,7 +65,7 @@ namespace {
     struct downstream_t:
         public api::stream_t
     {
-        downstream_t(const boost::shared_ptr<session_t>& session):
+        downstream_t(const std::shared_ptr<session_t>& session):
             m_session(session),
             m_state(states::open)
         { }
@@ -87,7 +84,7 @@ namespace {
         {
             switch(m_state) {
                 case states::open: {
-                    const boost::shared_ptr<session_t> ptr = m_session.lock();
+                    const std::shared_ptr<session_t> ptr = m_session.lock();
 
                     if(ptr) {
                         ptr->send<rpc::chunk>(std::string(chunk, size));
@@ -110,7 +107,7 @@ namespace {
                 case states::open: {
                     m_state = states::closed;
 
-                    const boost::shared_ptr<session_t> ptr = m_session.lock();
+                    const std::shared_ptr<session_t> ptr = m_session.lock();
 
                     if(ptr) {
                         ptr->send<rpc::error>(static_cast<int>(code), message);
@@ -132,7 +129,7 @@ namespace {
                 case states::open: {
                     m_state = states::closed;
 
-                    const boost::shared_ptr<session_t> ptr = m_session.lock();
+                    const std::shared_ptr<session_t> ptr = m_session.lock();
 
                     if(ptr) {
                         ptr->send<rpc::choke>();
@@ -147,7 +144,7 @@ namespace {
         }
 
     private:
-        const boost::weak_ptr<session_t> m_session;
+        const std::weak_ptr<session_t> m_session;
 
         enum class states: int {
             open,
@@ -163,7 +160,7 @@ namespace {
 engine_t::engine_t(context_t& context,
                    const manifest_t& manifest,
                    const profile_t& profile,
-                   const boost::shared_ptr<io::pipe_t>& control):
+                   const std::shared_ptr<io::pipe_t>& control):
     m_context(context),
     m_log(new log_t(context, cocaine::format("app/%1%", manifest.name))),
     m_manifest(manifest),
@@ -193,15 +190,15 @@ engine_t::engine_t(context_t& context,
     ));
 
     m_connector->bind(
-        boost::bind(&engine_t::on_connection, this, _1)
+        std::bind(&engine_t::on_connection, this, _1)
     );
 
     m_encoder.reset(new encoder<io::pipe_t>());
-    m_encoder->attach(boost::make_shared<writable_stream<pipe_t>>(m_service, control));
+    m_encoder->attach(std::make_shared<writable_stream<pipe_t>>(m_service, control));
 
     m_decoder.reset(new decoder<io::pipe_t>());
-    m_decoder->attach(boost::make_shared<readable_stream<pipe_t>>(m_service, control));
-    m_decoder->bind(boost::bind(&engine_t::on_control, this, _1));
+    m_decoder->attach(std::make_shared<readable_stream<pipe_t>>(m_service, control));
+    m_decoder->bind(std::bind(&engine_t::on_control, this, _1));
 
     m_gc_timer.set<engine_t, &engine_t::on_cleanup>(this);
     m_gc_timer.start(5.0f, 5.0f);
@@ -220,17 +217,17 @@ engine_t::run() {
     m_service.loop().loop();
 }
 
-boost::shared_ptr<api::stream_t>
+std::shared_ptr<api::stream_t>
 engine_t::enqueue(const api::event_t& event,
-                  const boost::shared_ptr<api::stream_t>& upstream)
+                  const std::shared_ptr<api::stream_t>& upstream)
 {
-    auto session = boost::make_shared<session_t>(
+    auto session = std::make_shared<session_t>(
         m_next_id++,
         event,
         upstream
     );
 
-    boost::unique_lock<session_queue_t> lock(m_queue);
+    std::unique_lock<session_queue_t> lock(m_queue);
 
     if(m_state != states::running) {
         throw cocaine::error_t("engine is not active");
@@ -252,7 +249,7 @@ engine_t::enqueue(const api::event_t& event,
     // Pump the queue!
     wake();
 
-    return boost::make_shared<downstream_t>(session);
+    return std::make_shared<downstream_t>(session);
 }
 
 void
@@ -297,15 +294,15 @@ namespace {
 }
 
 void
-engine_t::on_connection(const boost::shared_ptr<pipe_t>& pipe) {
-    auto readable = boost::make_shared<readable_stream<pipe_t>>(m_service, pipe);
-    auto writable = boost::make_shared<writable_stream<pipe_t>>(m_service, pipe);
-    auto decoder = boost::make_shared<io::decoder<pipe_t>>();
+engine_t::on_connection(const std::shared_ptr<pipe_t>& pipe) {
+    auto readable = std::make_shared<readable_stream<pipe_t>>(m_service, pipe);
+    auto writable = std::make_shared<writable_stream<pipe_t>>(m_service, pipe);
+    auto decoder = std::make_shared<io::decoder<pipe_t>>();
 
     // Attach the readable stream to a decoder and wait for a handshake.
     decoder->attach(readable);
 
-    decoder->bind(boost::bind(
+    decoder->bind(std::bind(
         &engine_t::on_handshake,
         this,
         decoder,
@@ -320,9 +317,9 @@ engine_t::on_connection(const boost::shared_ptr<pipe_t>& pipe) {
 }
 
 void
-engine_t::on_handshake(const boost::shared_ptr<decoder<pipe_t>>& decoder,
-                       const boost::shared_ptr<readable_stream<pipe_t>>& readable,
-                       const boost::shared_ptr<writable_stream<pipe_t>>& writable,
+engine_t::on_handshake(const std::shared_ptr<decoder<pipe_t>>& decoder,
+                       const std::shared_ptr<readable_stream<pipe_t>>& readable,
+                       const std::shared_ptr<writable_stream<pipe_t>>& writable,
                        const message_t& message)
 {
     unique_id_t uuid;
@@ -364,7 +361,10 @@ namespace {
 
 namespace {
     struct collector_t {
-        typedef bool result_type;
+        template<class>
+        struct result {
+            typedef bool type;
+        };
 
         template<class T>
         bool
@@ -409,7 +409,7 @@ engine_t::on_control(const message_t& message) {
             size_t active = std::count_if(
                 m_pool.begin(),
                 m_pool.end(),
-                boost::bind(boost::ref(collector), _1)
+                std::bind<bool>(std::ref(collector), _1)
             );
 
             info["load-median"] = static_cast<Json::LargestUInt>(collector.median());
@@ -479,7 +479,7 @@ engine_t::on_notification(ev::async&, int) {
 
 void
 engine_t::on_termination(ev::timer&, int) {
-    boost::unique_lock<session_queue_t> lock(m_queue);
+    std::unique_lock<session_queue_t> lock(m_queue);
 
     COCAINE_LOG_WARNING(m_log, "forcing the engine termination");
 
@@ -555,7 +555,7 @@ engine_t::pump() {
         session_queue_t::value_type session;
 
         do {
-            boost::unique_lock<session_queue_t> lock(m_queue);
+            std::unique_lock<session_queue_t> lock(m_queue);
 
             if(m_queue.empty()) {
                 return;
@@ -621,8 +621,8 @@ engine_t::balance() {
 
     while(m_pool.size() != target) {
         try {
-            boost::shared_ptr<slave_t> slave(
-                boost::make_shared<slave_t>(
+            std::shared_ptr<slave_t> slave(
+                std::make_shared<slave_t>(
                     m_context,
                     m_manifest,
                     m_profile,
@@ -640,7 +640,7 @@ engine_t::balance() {
 
 void
 engine_t::migrate(states target) {
-    boost::unique_lock<session_queue_t> lock(m_queue);
+    std::unique_lock<session_queue_t> lock(m_queue);
 
     m_state = target;
 

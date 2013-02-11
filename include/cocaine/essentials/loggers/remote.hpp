@@ -24,8 +24,9 @@
 #include "cocaine/api/logger.hpp"
 #include "cocaine/api/client.hpp"
 
+#include <tuple>
+
 #include <boost/circular_buffer.hpp>
-#include <boost/tuple/tuple.hpp>
 
 namespace cocaine { namespace logger {
 
@@ -55,7 +56,7 @@ class remote_t:
 
         api::client_t m_client;
 
-        typedef boost::tuple<
+        typedef std::tuple<
             logging::priorities,
             std::string,
             std::string

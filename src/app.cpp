@@ -63,16 +63,16 @@ app_t::app_t(context_t& context,
 
     m_service.reset(new service_t());
 
-    boost::shared_ptr<pipe_t> lhs, rhs;
+    std::shared_ptr<pipe_t> lhs, rhs;
 
     // Create the engine control pipes.
     std::tie(lhs, rhs) = io::link();
 
     m_encoder.reset(new encoder<pipe_t>());
-    m_encoder->attach(boost::make_shared<writable_stream<pipe_t>>(*m_service, lhs));
+    m_encoder->attach(std::make_shared<writable_stream<pipe_t>>(*m_service, lhs));
 
     m_decoder.reset(new decoder<pipe_t>());
-    m_decoder->attach(boost::make_shared<readable_stream<pipe_t>>(*m_service, lhs));
+    m_decoder->attach(std::make_shared<readable_stream<pipe_t>>(*m_service, lhs));
 
     // NOTE: The event loop is not started here yet.
     m_engine.reset(
@@ -146,9 +146,9 @@ app_t::start() {
     }
 
     m_thread.reset(
-        new boost::thread(
+        new std::thread(
             &engine_t::run,
-            boost::ref(*m_engine)
+            std::ref(*m_engine)
         )
     );
 
@@ -230,6 +230,11 @@ namespace {
 
     template<class Event>
     struct expect {
+        template<class>
+        struct result {
+            typedef void type;
+        };
+
         template<typename... Args>
         expect(service_t& service, Args&&... args):
             m_service(service),
@@ -333,9 +338,9 @@ app_t::info() const {
     return info;
 }
 
-boost::shared_ptr<api::stream_t>
+std::shared_ptr<api::stream_t>
 app_t::enqueue(const api::event_t& event,
-               const boost::shared_ptr<api::stream_t>& upstream)
+               const std::shared_ptr<api::stream_t>& upstream)
 {
     return m_engine->enqueue(event, upstream);
 }

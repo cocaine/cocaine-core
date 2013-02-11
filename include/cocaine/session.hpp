@@ -26,10 +26,9 @@
 #include "cocaine/messaging.hpp"
 
 #include "cocaine/api/event.hpp"
-
 #include "cocaine/asio/pipe.hpp"
 
-#include <boost/thread/mutex.hpp>
+#include <mutex>
 
 namespace cocaine { namespace engine {
 
@@ -39,10 +38,10 @@ struct session_t:
 {
     session_t(uint64_t id,
               const api::event_t& event,
-              const boost::shared_ptr<api::stream_t>& upstream);
+              const std::shared_ptr<api::stream_t>& upstream);
 
     void
-    attach(const boost::shared_ptr<io::writable_stream<io::pipe_t>>& stream);
+    attach(const std::shared_ptr<io::writable_stream<io::pipe_t>>& stream);
 
     void
     detach();
@@ -59,7 +58,7 @@ public:
     const api::event_t event;
 
     // Client's upstream for result delivery.
-    const boost::shared_ptr<api::stream_t> upstream;
+    const std::shared_ptr<api::stream_t> upstream;
 
 private:
     std::unique_ptr<
@@ -67,13 +66,13 @@ private:
     > m_encoder;
 
     // Session interlocking.
-    boost::mutex m_mutex;
+    std::mutex m_mutex;
 };
 
 template<class Event, typename... Args>
 void
 session_t::send(Args&&... args) {
-    boost::unique_lock<boost::mutex> lock(m_mutex);
+    std::unique_lock<std::mutex> lock(m_mutex);
 
     if(m_encoder) {
         m_encoder->write<Event>(id, std::forward<Args>(args)...);

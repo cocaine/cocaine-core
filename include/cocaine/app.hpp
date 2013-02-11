@@ -24,7 +24,7 @@
 #include "cocaine/common.hpp"
 #include "cocaine/json.hpp"
 
-#include <boost/thread/thread.hpp>
+#include <thread>
 
 namespace cocaine {
 
@@ -49,9 +49,9 @@ class app_t:
 
         // Scheduling
 
-        boost::shared_ptr<api::stream_t>
+        std::shared_ptr<api::stream_t>
         enqueue(const api::event_t& event,
-                const boost::shared_ptr<api::stream_t>& upstream);
+                const std::shared_ptr<api::stream_t>& upstream);
 
     private:
         void
@@ -82,7 +82,7 @@ class app_t:
         // Execution engine
 
         std::unique_ptr<engine::engine_t> m_engine;
-        std::unique_ptr<boost::thread> m_thread;
+        std::unique_ptr<std::thread> m_thread;
 
         // Event drivers
 

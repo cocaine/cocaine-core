@@ -23,6 +23,8 @@
 
 #include "cocaine/asio/service.hpp"
 
+#include <functional>
+
 namespace cocaine { namespace io {
 
 template<class PipeType>
@@ -30,7 +32,7 @@ struct readable_stream:
     boost::noncopyable
 {
     readable_stream(service_t& service,
-                    const boost::shared_ptr<PipeType>& pipe):
+                    const std::shared_ptr<PipeType>& pipe):
         m_pipe(pipe),
         m_pipe_watcher(service.loop()),
         m_rd_offset(0),
@@ -67,7 +69,7 @@ struct readable_stream:
 
     void
     unbind() {
-        m_callback.clear();
+        m_callback = NULL;
 
         if(m_pipe_watcher.is_active()) {
             m_pipe_watcher.stop();
@@ -126,7 +128,7 @@ private:
 private:
     // NOTE: Pipes can be shared among multiple queues, at least to be able
     // to write and read from two different queues.
-    const boost::shared_ptr<PipeType> m_pipe;
+    const std::shared_ptr<PipeType> m_pipe;
 
     // Pipe poll object.
     ev::io m_pipe_watcher;
@@ -136,7 +138,7 @@ private:
     off_t m_rd_offset,
           m_rx_offset;
 
-    boost::function<
+    std::function<
         size_t(const char*, size_t)
     > m_callback;
 };

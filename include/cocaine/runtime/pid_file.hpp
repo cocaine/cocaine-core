@@ -23,7 +23,7 @@
 
 #include "cocaine/common.hpp"
 
-#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 
 namespace cocaine {
 

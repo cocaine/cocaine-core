@@ -29,14 +29,13 @@
 #include "cocaine/asio/service.hpp"
 
 #include <deque>
+#include <mutex>
 #include <set>
-
-#include <boost/thread/mutex.hpp>
 
 namespace cocaine { namespace engine {
 
 struct session_queue_t:
-    public std::deque<boost::shared_ptr<session_t>>
+    public std::deque<std::shared_ptr<session_t>>
 {
     void
     push(const_reference session);
@@ -54,7 +53,7 @@ struct session_queue_t:
     }
 
 private:
-    boost::mutex m_mutex;
+    std::mutex m_mutex;
 };
 
 class engine_t:
@@ -71,7 +70,7 @@ class engine_t:
         engine_t(context_t& context,
                  const manifest_t& manifest,
                  const profile_t& profile,
-                 const boost::shared_ptr<io::pipe_t>& control);
+                 const std::shared_ptr<io::pipe_t>& control);
 
         ~engine_t();
 
@@ -80,9 +79,9 @@ class engine_t:
 
         // Scheduling
 
-        boost::shared_ptr<api::stream_t>
+        std::shared_ptr<api::stream_t>
         enqueue(const api::event_t& event,
-                const boost::shared_ptr<api::stream_t>& upstream);
+                const std::shared_ptr<api::stream_t>& upstream);
 
         void
         wake();
@@ -105,12 +104,12 @@ class engine_t:
 
     private:
         void
-        on_connection(const boost::shared_ptr<io::pipe_t>& pipe);
+        on_connection(const std::shared_ptr<io::pipe_t>& pipe);
 
         void
-        on_handshake(const boost::shared_ptr<io::decoder<io::pipe_t>>& decoder,
-                     const boost::shared_ptr<io::readable_stream<io::pipe_t>>& readable,
-                     const boost::shared_ptr<io::writable_stream<io::pipe_t>>& writable,
+        on_handshake(const std::shared_ptr<io::decoder<io::pipe_t>>& decoder,
+                     const std::shared_ptr<io::readable_stream<io::pipe_t>>& readable,
+                     const std::shared_ptr<io::writable_stream<io::pipe_t>>& writable,
                      const io::message_t& message);
 
         void
@@ -181,7 +180,7 @@ class engine_t:
         // Slave pool
 
         std::set<
-            boost::shared_ptr<io::decoder<io::pipe_t>>
+            std::shared_ptr<io::decoder<io::pipe_t>>
         > m_backlog;
 
 #if BOOST_VERSION >= 103600
@@ -190,7 +189,7 @@ class engine_t:
         typedef std::map<
 #endif
             unique_id_t,
-            boost::shared_ptr<slave_t>
+            std::shared_ptr<slave_t>
         > pool_map_t;
 
         pool_map_t m_pool;

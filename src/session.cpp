@@ -27,7 +27,7 @@ using namespace cocaine::io;
 
 session_t::session_t(uint64_t id_,
                      const api::event_t& event_,
-                     const boost::shared_ptr<api::stream_t>& upstream_):
+                     const std::shared_ptr<api::stream_t>& upstream_):
     id(id_),
     event(event_),
     upstream(upstream_)
@@ -39,8 +39,8 @@ session_t::session_t(uint64_t id_,
 }
 
 void
-session_t::attach(const boost::shared_ptr<writable_stream<pipe_t>>& stream) {
-    boost::unique_lock<boost::mutex> lock(m_mutex);
+session_t::attach(const std::shared_ptr<writable_stream<pipe_t>>& stream) {
+    std::unique_lock<std::mutex> lock(m_mutex);
 
     // Flush all the cached messages into the stream.
     m_encoder->attach(stream);
@@ -48,7 +48,7 @@ session_t::attach(const boost::shared_ptr<writable_stream<pipe_t>>& stream) {
 
 void
 session_t::detach() {
-    boost::unique_lock<boost::mutex> lock(m_mutex);
+    std::unique_lock<std::mutex> lock(m_mutex);
 
     // Disable the session.
     m_encoder.reset();

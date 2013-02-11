@@ -23,6 +23,8 @@
 
 #include "cocaine/asio/service.hpp"
 
+#include <functional>
+
 namespace cocaine { namespace io {
 
 template<class AcceptorType>
@@ -50,7 +52,7 @@ struct connector:
 
     void
     unbind() {
-        m_callback.clear();
+        m_callback = NULL;
 
         if(m_acceptor_watcher.is_active()) {
             m_acceptor_watcher.stop();
@@ -77,11 +79,11 @@ private:
     // Acceptor poll object.
     ev::io m_acceptor_watcher;
 
-    typedef boost::shared_ptr<
+    typedef std::shared_ptr<
         typename AcceptorType::pipe_type
     > pipe_ptr_type;
 
-    boost::function<
+    std::function<
         void(const pipe_ptr_type&)
     > m_callback;
 };

@@ -40,7 +40,7 @@ remote_t::emit(logging::priorities priority,
                const std::string& message)
 {
     m_ring.push_front(
-        boost::make_tuple(priority, source, message)
+        std::make_tuple(priority, source, message)
     );
 
     bool success = m_client.send<io::logging::emit>(
@@ -69,9 +69,9 @@ namespace {
         void
         operator()(const T& entry) {
             m_logger->emit(
-                boost::get<0>(entry),
-                boost::get<1>(entry),
-                boost::get<2>(entry)
+                std::get<0>(entry),
+                std::get<1>(entry),
+                std::get<2>(entry)
             );
         }
 

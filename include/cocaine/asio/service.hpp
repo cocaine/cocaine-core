@@ -21,8 +21,7 @@
 #ifndef COCAINE_ASIO_SERVICE_HPP
 #define COCAINE_ASIO_SERVICE_HPP
 
-#include <boost/function.hpp>
-#include <boost/thread/mutex.hpp>
+#include <mutex>
 
 #define EV_MINIMAL       0
 #define EV_USE_MONOTONIC 1
@@ -96,7 +95,7 @@ private:
 
     // Rumor says the event loop has to be interlocked for watcher
     // operations, but for some reason it works fine without it.
-    boost::mutex m_mutex;
+    std::mutex m_mutex;
 };
 
 }} // namespace cocaine::io

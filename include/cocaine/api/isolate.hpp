@@ -25,9 +25,7 @@
 #include "cocaine/json.hpp"
 #include "cocaine/repository.hpp"
 
-#include <boost/ref.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/weak_ptr.hpp>
+#include <mutex>
 
 namespace cocaine { namespace api {
 
@@ -64,7 +62,7 @@ class isolate_t {
 
 template<>
 struct category_traits<isolate_t> {
-    typedef boost::shared_ptr<isolate_t> ptr_type;
+    typedef std::shared_ptr<isolate_t> ptr_type;
 
     struct factory_type:
         public factory_base<isolate_t>
@@ -86,7 +84,7 @@ struct category_traits<isolate_t> {
             const std::string& name,
             const Json::Value& args)
         {
-            boost::lock_guard<boost::mutex> lock(m_mutex);
+            std::unique_lock<std::mutex> lock(m_mutex);
 
             typename instance_map_t::iterator it(m_instances.find(name));
 
@@ -97,8 +95,8 @@ struct category_traits<isolate_t> {
             }
 
             if(!instance) {
-                instance = boost::make_shared<T>(
-                    boost::ref(context),
+                instance = std::make_shared<T>(
+                    std::ref(context),
                     name,
                     args
                 );
@@ -116,11 +114,11 @@ struct category_traits<isolate_t> {
         typedef std::map<
 #endif
             std::string,
-            boost::weak_ptr<isolate_t>
+            std::weak_ptr<isolate_t>
         > instance_map_t;
 
         instance_map_t m_instances;
-        boost::mutex m_mutex;
+        std::mutex m_mutex;
     };
 };
 

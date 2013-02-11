@@ -52,13 +52,13 @@ class slave_t:
         // Binding
 
         void
-        bind(const boost::shared_ptr<io::readable_stream<io::pipe_t>>& readable,
-             const boost::shared_ptr<io::writable_stream<io::pipe_t>>& writable);
+        bind(const std::shared_ptr<io::readable_stream<io::pipe_t>>& readable,
+             const std::shared_ptr<io::writable_stream<io::pipe_t>>& writable);
 
         // Sessions
 
         void
-        assign(boost::shared_ptr<session_t>&& session);
+        assign(std::shared_ptr<session_t>&& session);
 
         // Termination
 
@@ -161,7 +161,7 @@ class slave_t:
 
         typedef std::map<
             uint64_t,
-            boost::shared_ptr<session_t>
+            std::shared_ptr<session_t>
         > session_map_t;
 
         session_map_t m_sessions;
