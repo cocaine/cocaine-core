@@ -29,9 +29,20 @@
 
 #include "cocaine/asio/service.hpp"
 
+#include <functional>
 #include <thread>
 
 namespace cocaine {
+
+template<class F, bool Bound = std::is_bind_expression<F>::value>
+struct result_of {
+    typedef typename std::result_of<F>::type type;
+};
+
+template<class F>
+struct result_of<F, true> {
+    typedef typename F::result_type type;
+};
 
 class reactor_t:
     public api::service_t
@@ -120,7 +131,7 @@ class reactor_t:
 template<class Event, class F>
 void
 reactor_t::on(F callable) {
-    typedef decltype(callable()) result_type;
+    typedef typename result_of<F>::type result_type;
     typedef typename io::event_traits<Event>::tuple_type sequence_type;
     typedef slot<result_type, sequence_type> slot_type;
 
