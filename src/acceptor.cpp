@@ -139,4 +139,4 @@ cocaine::io::link() {
         std::make_shared<pipe_t>(fds[0]),
         std::make_shared<pipe_t>(fds[1])
     );
-};
+}

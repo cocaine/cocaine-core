@@ -58,11 +58,11 @@ struct writable_stream:
             // and enqueue only the remaining part, if any.
             ssize_t sent = m_pipe->write(data, size);
 
-            if(sent == size) {
-                return;
-            }
+            if(sent >= 0) {
+                if(static_cast<size_t>(sent) == size) {
+                    return;
+                }
 
-            if(sent > 0) {
                 data += sent;
                 size -= sent;
             }
@@ -104,7 +104,7 @@ struct writable_stream:
 
 private:
     void
-    on_event(ev::io& io, int revents) {
+    on_event(ev::io& /* io */, int /* revents */) {
         std::unique_lock<std::mutex> m_lock(m_ring_mutex);
 
         if(m_tx_offset == m_wr_offset) {

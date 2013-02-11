@@ -61,7 +61,7 @@ struct connector:
 
 private:
     void
-    on_event(ev::io& io, int revents) {
+    on_event(ev::io& /* io */, int /* revents */) {
         const pipe_ptr_type& pipe = m_acceptor->accept();
 
         if(!pipe) {

@@ -78,7 +78,7 @@ struct readable_stream:
 
 private:
     void
-    on_event(ev::io& io, int revents) {
+    on_event(ev::io& /* io */, int /* revents */) {
         while(m_ring.size() - m_rd_offset < 1024) {
             size_t unparsed = m_rd_offset - m_rx_offset;
 
