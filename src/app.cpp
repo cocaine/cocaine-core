@@ -285,7 +285,7 @@ app_t::stop() {
     auto callback = expect<control::terminate>(*m_service);
 
     m_encoder->write<control::terminate>();
-    m_decoder->bind(boost::ref(callback));
+    m_decoder->bind(std::ref(callback));
 
     try {
         // Blocks until either the response or timeout happens.
@@ -316,7 +316,7 @@ app_t::info() const {
     auto callback = expect<control::info>(*m_service, info);
 
     m_encoder->write<control::report>();
-    m_decoder->bind(boost::ref(callback));
+    m_decoder->bind(std::ref(callback));
 
     try {
         // Blocks until either the response or timeout happens.
