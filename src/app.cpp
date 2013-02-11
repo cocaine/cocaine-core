@@ -146,9 +146,9 @@ app_t::start() {
     }
 
     m_thread.reset(
-        new boost::thread(
+        new std::thread(
             &engine_t::run,
-            boost::ref(*m_engine)
+            std::ref(*m_engine)
         )
     );
 
@@ -230,6 +230,11 @@ namespace {
 
     template<class Event>
     struct expect {
+        template<class>
+        struct result {
+            typedef void type;
+        };
+
         template<typename... Args>
         expect(service_t& service, Args&&... args):
             m_service(service),
@@ -287,7 +292,7 @@ app_t::stop() {
 
     auto callback = expect<control::terminate>(*m_service);
 
-    m_decoder->bind(boost::ref(callback));
+    m_decoder->bind(std::ref(callback));
     m_encoder->write<control::terminate>();
 
     // Blocks until either the response or timeout happens.
@@ -322,7 +327,7 @@ app_t::info() const {
     auto callback = expect<control::info>(*m_service, info);
 
     // Bind the callback
-    m_decoder->bind(boost::ref(callback));
+    m_decoder->bind(std::ref(callback));
     m_encoder->write<control::report>();
 
     // Blocks until either the response or timeout happens.

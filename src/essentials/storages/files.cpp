@@ -52,7 +52,7 @@ std::string
 files_t::read(const std::string& collection,
               const std::string& key)
 {
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::unique_lock<std::mutex> lock(m_mutex);
 
     const fs::path file_path(m_storage_path / collection / key);
 
@@ -81,7 +81,7 @@ files_t::write(const std::string& collection,
                const std::string& key,
                const std::string& blob)
 {
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::unique_lock<std::mutex> lock(m_mutex);
 
     const fs::path store_path(m_storage_path / collection);
 
@@ -137,7 +137,7 @@ namespace {
 
 std::vector<std::string>
 files_t::list(const std::string& collection) {
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::unique_lock<std::mutex> lock(m_mutex);
 
     const fs::path store_path(m_storage_path / collection);
 
@@ -176,7 +176,7 @@ void
 files_t::remove(const std::string& collection,
                 const std::string& key)
 {
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::unique_lock<std::mutex> lock(m_mutex);
 
     const fs::path file_path(m_storage_path / collection / key);
 

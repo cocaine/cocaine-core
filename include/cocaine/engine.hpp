@@ -29,9 +29,8 @@
 #include "cocaine/asio/service.hpp"
 
 #include <deque>
+#include <mutex>
 #include <set>
-
-#include <boost/thread/mutex.hpp>
 
 namespace cocaine { namespace engine {
 
@@ -54,7 +53,7 @@ struct session_queue_t:
     }
 
 private:
-    boost::mutex m_mutex;
+    std::mutex m_mutex;
 };
 
 class engine_t:

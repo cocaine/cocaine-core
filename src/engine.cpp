@@ -43,7 +43,6 @@
 #include <boost/accumulators/statistics/median.hpp>
 #include <boost/accumulators/statistics/sum.hpp>
 
-#include <boost/bind.hpp>
 #include <boost/weak_ptr.hpp>
 
 using namespace cocaine;
@@ -193,7 +192,7 @@ engine_t::engine_t(context_t& context,
     ));
 
     m_connector->bind(
-        boost::bind(&engine_t::on_connection, this, _1)
+        std::bind(&engine_t::on_connection, this, _1)
     );
 
     m_encoder.reset(new encoder<io::pipe_t>());
@@ -201,7 +200,7 @@ engine_t::engine_t(context_t& context,
 
     m_decoder.reset(new decoder<io::pipe_t>());
     m_decoder->attach(boost::make_shared<readable_stream<pipe_t>>(m_service, control));
-    m_decoder->bind(boost::bind(&engine_t::on_control, this, _1));
+    m_decoder->bind(std::bind(&engine_t::on_control, this, _1));
 
     m_gc_timer.set<engine_t, &engine_t::on_cleanup>(this);
     m_gc_timer.start(5.0f, 5.0f);
@@ -230,7 +229,7 @@ engine_t::enqueue(const api::event_t& event,
         upstream
     );
 
-    boost::unique_lock<session_queue_t> lock(m_queue);
+    std::unique_lock<session_queue_t> lock(m_queue);
 
     if(m_state != states::running) {
         throw cocaine::error_t("engine is not active");
@@ -305,7 +304,7 @@ engine_t::on_connection(const boost::shared_ptr<pipe_t>& pipe) {
     // Attach the readable stream to a decoder and wait for a handshake.
     decoder->attach(readable);
 
-    decoder->bind(boost::bind(
+    decoder->bind(std::bind(
         &engine_t::on_handshake,
         this,
         decoder,
@@ -364,7 +363,10 @@ namespace {
 
 namespace {
     struct collector_t {
-        typedef bool result_type;
+        template<class>
+        struct result {
+            typedef bool type;
+        };
 
         template<class T>
         bool
@@ -409,7 +411,7 @@ engine_t::on_control(const message_t& message) {
             size_t active = std::count_if(
                 m_pool.begin(),
                 m_pool.end(),
-                boost::bind(boost::ref(collector), _1)
+                std::bind<bool>(std::ref(collector), _1)
             );
 
             info["load-median"] = static_cast<Json::LargestUInt>(collector.median());
@@ -479,7 +481,7 @@ engine_t::on_notification(ev::async&, int) {
 
 void
 engine_t::on_termination(ev::timer&, int) {
-    boost::unique_lock<session_queue_t> lock(m_queue);
+    std::unique_lock<session_queue_t> lock(m_queue);
 
     COCAINE_LOG_WARNING(m_log, "forcing the engine termination");
 
@@ -555,7 +557,7 @@ engine_t::pump() {
         session_queue_t::value_type session;
 
         do {
-            boost::unique_lock<session_queue_t> lock(m_queue);
+            std::unique_lock<session_queue_t> lock(m_queue);
 
             if(m_queue.empty()) {
                 return;
@@ -640,7 +642,7 @@ engine_t::balance() {
 
 void
 engine_t::migrate(states target) {
-    boost::unique_lock<session_queue_t> lock(m_queue);
+    std::unique_lock<session_queue_t> lock(m_queue);
 
     m_state = target;
 

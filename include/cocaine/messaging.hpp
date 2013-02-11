@@ -27,8 +27,6 @@
 #include "cocaine/asio/writable_stream.hpp"
 #include "cocaine/asio/readable_stream.hpp"
 
-#include <boost/bind.hpp>
-
 #include <boost/mpl/begin.hpp>
 #include <boost/mpl/contains.hpp>
 #include <boost/mpl/distance.hpp>
@@ -38,6 +36,8 @@
 #include <boost/mpl/size.hpp>
 
 namespace cocaine { namespace io {
+
+using namespace std::placeholders;
 
 namespace mpl = boost::mpl;
 
@@ -175,7 +175,7 @@ struct encoder:
             m_packer.pack_nil();
         }
 
-        boost::unique_lock<boost::mutex> lock(m_mutex);
+        std::unique_lock<std::mutex> lock(m_mutex);
 
         if(m_stream) {
             m_stream->write(m_buffer.data(), m_buffer.size());
@@ -188,7 +188,7 @@ struct encoder:
 
     void
     attach(const stream_ptr_type& stream) {
-        boost::unique_lock<boost::mutex> lock(m_mutex);
+        std::unique_lock<std::mutex> lock(m_mutex);
 
         m_stream = stream;
 
@@ -216,7 +216,7 @@ private:
 
     // Message cache.
     message_cache_t m_cache;
-    boost::mutex m_mutex;
+    std::mutex m_mutex;
 
     // Attachable stream.
     stream_ptr_type m_stream;
@@ -236,13 +236,13 @@ struct decoder:
         m_callback = callback;
 
         m_stream->bind(
-            boost::bind(&decoder::on_event, this, _1, _2)
+            std::bind(&decoder::on_event, this, _1, _2)
         );
     }
 
     void
     unbind() {
-        m_callback.clear();
+        m_callback = NULL;
         m_stream->unbind();
     }
 
@@ -298,7 +298,7 @@ private:
     }
 
 private:
-    boost::function<
+    std::function<
         void(const message_t&)
     > m_callback;
 

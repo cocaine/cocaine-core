@@ -33,8 +33,6 @@
 
 #include "cocaine/traits/unique_id.hpp"
 
-#include <boost/bind.hpp>
-
 using namespace cocaine;
 using namespace cocaine::engine;
 using namespace cocaine::io;
@@ -89,7 +87,7 @@ slave_t::bind(const boost::shared_ptr<io::readable_stream<io::pipe_t>>& readable
 {
     m_decoder.reset(new decoder<pipe_t>());
     m_decoder->attach(readable);
-    m_decoder->bind(boost::bind(&slave_t::on_message, this, _1));
+    m_decoder->bind(std::bind(&slave_t::on_message, this, _1));
 
     m_encoder.reset(new encoder<pipe_t>());
     m_encoder->attach(writable);

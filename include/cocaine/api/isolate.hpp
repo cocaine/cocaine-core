@@ -25,8 +25,8 @@
 #include "cocaine/json.hpp"
 #include "cocaine/repository.hpp"
 
-#include <boost/ref.hpp>
-#include <boost/thread/mutex.hpp>
+#include <mutex>
+
 #include <boost/weak_ptr.hpp>
 
 namespace cocaine { namespace api {
@@ -86,7 +86,7 @@ struct category_traits<isolate_t> {
             const std::string& name,
             const Json::Value& args)
         {
-            boost::lock_guard<boost::mutex> lock(m_mutex);
+            std::unique_lock<std::mutex> lock(m_mutex);
 
             typename instance_map_t::iterator it(m_instances.find(name));
 
@@ -98,7 +98,7 @@ struct category_traits<isolate_t> {
 
             if(!instance) {
                 instance = boost::make_shared<T>(
-                    boost::ref(context),
+                    std::ref(context),
                     name,
                     args
                 );
@@ -120,7 +120,7 @@ struct category_traits<isolate_t> {
         > instance_map_t;
 
         instance_map_t m_instances;
-        boost::mutex m_mutex;
+        std::mutex m_mutex;
     };
 };
 

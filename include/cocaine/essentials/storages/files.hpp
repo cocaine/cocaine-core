@@ -66,7 +66,7 @@ class files_t:
         std::unique_ptr<logging::log_t> m_log;
 
         // TODO: Drop this, switch to atomic writes.
-        boost::mutex m_mutex;
+        std::mutex m_mutex;
 
         const boost::filesystem::path m_storage_path;
 };

@@ -23,6 +23,8 @@
 
 #include "cocaine/asio/service.hpp"
 
+#include <functional>
+
 namespace cocaine { namespace io {
 
 template<class PipeType>
@@ -67,7 +69,7 @@ struct readable_stream:
 
     void
     unbind() {
-        m_callback.clear();
+        m_callback = NULL;
 
         if(m_pipe_watcher.is_active()) {
             m_pipe_watcher.stop();
@@ -136,7 +138,7 @@ private:
     off_t m_rd_offset,
           m_rx_offset;
 
-    boost::function<
+    std::function<
         size_t(const char*, size_t)
     > m_callback;
 };

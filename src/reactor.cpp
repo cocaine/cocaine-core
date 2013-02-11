@@ -66,7 +66,7 @@ reactor_t::reactor_t(context_t& context,
     }
 
     m_connector->bind(
-        boost::bind(&reactor_t::on_connection, this, _1)
+        std::bind(&reactor_t::on_connection, this, _1)
     );
 
     m_terminate.set<reactor_t, &reactor_t::on_terminate>(this);
@@ -81,12 +81,14 @@ void
 reactor_t::run() {
     BOOST_ASSERT(!m_thread);
 
-    auto runnable = boost::bind(
+    /*
+    auto runnable = std::bind(
         &io::service_t::run,
         &m_service
     );
 
-    m_thread.reset(new boost::thread(runnable));
+    m_thread.reset(new std::thread(runnable));
+    */
 }
 
 void

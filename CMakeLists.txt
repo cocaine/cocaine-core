@@ -11,9 +11,9 @@ CONFIGURE_FILE(
 
 FIND_PACKAGE(Boost 1.40.0 REQUIRED
     COMPONENTS
+        system
         filesystem
-        program_options
-        thread)
+        program_options)
 
 FIND_PACKAGE(OpenSSL REQUIRED)
 
@@ -77,7 +77,6 @@ TARGET_LINK_LIBRARIES(cocaine-core
     archive
     boost_system-mt
     boost_filesystem-mt
-    boost_thread-mt
     crypto
     ev
     json

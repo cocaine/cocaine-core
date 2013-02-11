@@ -22,8 +22,9 @@
 
 #include "cocaine/logging.hpp"
 
-#include <boost/bind.hpp>
-#include <boost/tuple/tuple.hpp>
+#include <tuple>
+
+using namespace std::placeholders;
 
 using namespace cocaine;
 using namespace cocaine::logging;
@@ -35,7 +36,7 @@ logging_t::logging_t(context_t& context,
     reactor_t(context, name, args),
     m_context(context)
 {
-    on<io::logging::emit>(boost::bind(&logging_t::on_emit, this, _1, _2, _3));
+    on<io::logging::emit>(std::bind(&logging_t::on_emit, this, _1, _2, _3));
 }
 
 bool
@@ -46,7 +47,7 @@ logging_t::on_emit(int priority,
     log_map_t::iterator it = m_logs.find(source);
 
     if(it == m_logs.end()) {
-        boost::tie(it, boost::tuples::ignore) = m_logs.emplace(
+        std::tie(it, std::ignore) = m_logs.emplace(
             source,
             boost::make_shared<log_t>(m_context, source)
         );

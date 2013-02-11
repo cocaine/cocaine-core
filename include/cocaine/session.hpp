@@ -26,10 +26,9 @@
 #include "cocaine/messaging.hpp"
 
 #include "cocaine/api/event.hpp"
-
 #include "cocaine/asio/pipe.hpp"
 
-#include <boost/thread/mutex.hpp>
+#include <mutex>
 
 namespace cocaine { namespace engine {
 
@@ -67,13 +66,13 @@ private:
     > m_encoder;
 
     // Session interlocking.
-    boost::mutex m_mutex;
+    std::mutex m_mutex;
 };
 
 template<class Event, typename... Args>
 void
 session_t::send(Args&&... args) {
-    boost::unique_lock<boost::mutex> lock(m_mutex);
+    std::unique_lock<std::mutex> lock(m_mutex);
 
     if(m_encoder) {
         m_encoder->write<Event>(id, std::forward<Args>(args)...);

@@ -28,7 +28,7 @@
 
 #include "cocaine/traits/json.hpp"
 
-#include <boost/tuple/tuple.hpp>
+#include <tuple>
 
 using namespace cocaine;
 using namespace cocaine::io;
@@ -53,9 +53,9 @@ node_t::node_t(context_t& context,
     m_announce_timer(service().loop()),
     m_birthstamp(service().loop().now())
 {
-    on<io::node::start_app>(boost::bind(&node_t::on_start_app, this, _1));
-    on<io::node::pause_app>(boost::bind(&node_t::on_pause_app, this, _1));
-    on<io::node::info>(boost::bind(&node_t::on_info, this));
+    on<io::node::start_app>(std::bind(&node_t::on_start_app, this, _1));
+    on<io::node::pause_app>(std::bind(&node_t::on_pause_app, this, _1));
+    on<io::node::info>(std::bind(&node_t::on_info, this));
 
     int minor, major, patch;
     zmq_version(&major, &minor, &patch);
@@ -200,7 +200,7 @@ node_t::on_start_app(const runlist_t& runlist) {
         COCAINE_LOG_INFO(m_log, "starting the '%s' app", it->first);
 
         try {
-            boost::tie(app, boost::tuples::ignore) = m_apps.emplace(
+            std::tie(app, std::ignore) = m_apps.emplace(
                 it->first,
                 boost::make_shared<app_t>(
                     m_context,

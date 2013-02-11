@@ -23,6 +23,9 @@
 
 #include "cocaine/asio/service.hpp"
 
+#include <cstring>
+#include <mutex>
+
 namespace cocaine { namespace io {
 
 template<class PipeType>
@@ -48,7 +51,7 @@ struct writable_stream:
     write(const char * data,
           size_t size)
     {
-        boost::unique_lock<boost::mutex> m_lock(m_ring_mutex);
+        std::unique_lock<std::mutex> m_lock(m_ring_mutex);
 
         if(m_tx_offset == m_wr_offset) {
             // Nothing is pending in the ring so try to write directly to the pipe,
@@ -102,7 +105,7 @@ struct writable_stream:
 private:
     void
     on_event(ev::io& io, int revents) {
-        boost::unique_lock<boost::mutex> m_lock(m_ring_mutex);
+        std::unique_lock<std::mutex> m_lock(m_ring_mutex);
 
         if(m_tx_offset == m_wr_offset) {
             m_pipe_watcher.stop();
@@ -135,7 +138,7 @@ private:
     off_t m_tx_offset,
           m_wr_offset;
 
-    boost::mutex m_ring_mutex;
+    std::mutex m_ring_mutex;
 };
 
 }} // namespace cocaine::io

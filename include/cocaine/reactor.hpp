@@ -29,7 +29,7 @@
 
 #include "cocaine/asio/service.hpp"
 
-#include <boost/thread/thread.hpp>
+#include <thread>
 
 namespace cocaine {
 
@@ -114,7 +114,7 @@ class reactor_t:
         slot_map_t m_slots;
 
         // Service thread.
-        std::unique_ptr<boost::thread> m_thread;
+        std::unique_ptr<std::thread> m_thread;
 };
 
 template<class Event, class F>
