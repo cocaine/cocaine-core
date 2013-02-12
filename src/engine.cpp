@@ -319,12 +319,14 @@ engine_t::on_handshake(const std::shared_ptr<decoder<pipe_t>>& decoder,
                        const std::shared_ptr<writable_stream<pipe_t>>& writable,
                        const message_t& message)
 {
-    unique_id_t uuid;
+    unique_id_t uuid(uninitialized);
 
     try {
         message.as<rpc::handshake>(uuid);
     } catch(const cocaine::error_t& e) {
         COCAINE_LOG_WARNING(m_log, "dropping an invalid handshake message");
+        m_backlog.erase(decoder);
+        return;
     }
 
     pool_map_t::iterator it = m_pool.find(uuid);
