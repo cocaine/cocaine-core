@@ -106,7 +106,7 @@ void
 reactor_t::on_connection(const std::shared_ptr<pipe_t>& pipe) {
     auto io = std::make_shared<codec<pipe_t>>(m_service, pipe);
 
-    io->decoder->bind(
+    io->d->bind(
         std::bind(&reactor_t::on_message, this, io, io::_1)
     );
 

@@ -299,15 +299,15 @@ template<class PipeType>
 struct codec {
     codec(service_t& service,
           const std::shared_ptr<PipeType>& pipe):
-        decoder(new io::decoder<PipeType>()),
-        encoder(new io::encoder<PipeType>())
+        d(new decoder<PipeType>()),
+        e(new encoder<PipeType>())
     {
-        decoder->attach(std::make_shared<readable_stream<PipeType>>(service, pipe));
-        encoder->attach(std::make_shared<writable_stream<PipeType>>(service, pipe));
+        d->attach(std::make_shared<readable_stream<PipeType>>(service, pipe));
+        e->attach(std::make_shared<writable_stream<PipeType>>(service, pipe));
     }
 
-    std::unique_ptr<decoder<PipeType>> decoder;
-    std::unique_ptr<encoder<PipeType>> encoder;
+    std::unique_ptr<decoder<PipeType>> d;
+    std::unique_ptr<encoder<PipeType>> e;
 };
 
 }} // namespace cocaine::io
