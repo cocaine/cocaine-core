@@ -57,8 +57,15 @@ namespace {
 
             sigset_t signals;
 
+#ifdef _GNU_SOURCE
             ::sigemptyset(&signals);
             ::sigaddset(&signals, SIGPIPE);
+#else
+            // It appears that these functions are implemented as macros on MacOS X.
+            sigemptyset(&signals);
+            sigaddset(&signals, SIGPIPE);
+#endif
+
             ::sigprocmask(SIG_BLOCK, &signals, NULL);
 
             COCAINE_LOG_INFO(
