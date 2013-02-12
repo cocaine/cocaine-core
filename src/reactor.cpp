@@ -82,6 +82,8 @@ void
 reactor_t::run() {
     BOOST_ASSERT(!m_thread);
 
+    // NOTE: For some reason, std::bind cannot resolve overloaded ambiguity
+    // here while boost::bind can, so stick to it for now.
     auto runnable = boost::bind(
         &io::service_t::run,
         &m_service
@@ -102,12 +104,17 @@ reactor_t::terminate() {
 
 void
 reactor_t::on_connection(const std::shared_ptr<pipe_t>& pipe) {
-    COCAINE_LOG_INFO(m_log, "new client connection on fd: %s", pipe->fd());
-    m_clients.insert(pipe);
+    auto peer = std::make_shared<client<pipe_t>>(m_service, pipe);
+
+    peer->decoder.bind(
+        std::bind(&reactor_t::on_message, this, std::ref(*peer), io::_1)
+    );
+
+    m_clients.insert(peer);
 }
 
 void
-reactor_t::on_message(const unique_id_t& client_id,
+reactor_t::on_message(client<pipe_t>& peer,
                       const message_t& message)
 {
     slot_map_t::const_iterator slot = m_slots.find(message.id());

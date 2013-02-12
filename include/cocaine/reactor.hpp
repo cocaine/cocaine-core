@@ -42,6 +42,19 @@ struct result_of<F, true> {
     typedef typename F::result_type type;
 };
 
+template<class PipeType>
+struct client {
+    client(io::service_t& service,
+           const std::shared_ptr<PipeType>& pipe)
+    {
+        encoder.attach(std::make_shared<io::writable_stream<PipeType>>(service, pipe));
+        decoder.attach(std::make_shared<io::readable_stream<PipeType>>(service, pipe));
+    }
+
+    io::encoder<PipeType> encoder;
+    io::decoder<PipeType> decoder;
+};
+
 class reactor_t:
     public api::service_t
 {
@@ -85,7 +98,7 @@ class reactor_t:
         on_connection(const std::shared_ptr<io::pipe_t>& pipe);
 
         void
-        on_message(const unique_id_t& client_id,
+        on_message(client<io::pipe_t>& client,
                    const io::message_t& message);
 
         void
@@ -107,7 +120,7 @@ class reactor_t:
         > m_connector;
 
         std::set<
-            std::shared_ptr<io::pipe_t>
+            std::shared_ptr<client<io::pipe_t>>
         > m_clients;
 
 #if BOOST_VERSION >= 103600
