@@ -22,11 +22,9 @@
 #define COCAINE_ENGINE_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/atomic.hpp"
-
 #include "cocaine/api/isolate.hpp"
-
 #include "cocaine/asio/service.hpp"
+#include "cocaine/atomic.hpp"
 
 #include <deque>
 #include <mutex>

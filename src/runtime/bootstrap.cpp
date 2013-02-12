@@ -20,14 +20,11 @@
 
 #include "cocaine/config.hpp"
 
+#include "cocaine/api/service.hpp"
+#include "cocaine/asio/service.hpp"
 #include "cocaine/common.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
-
-#include "cocaine/api/service.hpp"
-
-#include "cocaine/asio/service.hpp"
-
 #include "cocaine/runtime/pid_file.hpp"
 
 #include <csignal>

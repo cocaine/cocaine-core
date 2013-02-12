@@ -19,7 +19,6 @@
 */
 
 #include "cocaine/manifest.hpp"
-
 #include "cocaine/traits/json.hpp"
 
 #include <boost/filesystem/operations.hpp>

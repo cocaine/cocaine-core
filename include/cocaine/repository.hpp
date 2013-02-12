@@ -23,8 +23,8 @@
 
 #include "cocaine/common.hpp"
 
-#include <type_traits>
 #include <typeinfo>
+#include <type_traits>
 
 #include <ltdl.h>
 

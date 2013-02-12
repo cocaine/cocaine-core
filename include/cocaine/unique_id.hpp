@@ -29,13 +29,11 @@
 
 namespace cocaine {
 
-namespace detail {
-    struct uninitialized_t { };
-}
+struct uninitialized_t { };
 
 static
-const detail::uninitialized_t
-uninitialized = detail::uninitialized_t();
+const uninitialized_t
+uninitialized = uninitialized_t();
 
 struct unique_id_t {
     unique_id_t() {
@@ -43,7 +41,7 @@ struct unique_id_t {
     }
 
     explicit
-    unique_id_t(detail::uninitialized_t) {
+    unique_id_t(uninitialized_t) {
         // NOTE: If this UUID is going to be a target for a message, there's no
         // need to generate it, which saves a couple of ticks.
     }

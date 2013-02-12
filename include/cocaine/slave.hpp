@@ -18,15 +18,13 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_SLAVE_HPP
-#define COCAINE_SLAVE_HPP
+#ifndef COCAINE_ENGINE_SLAVE_HPP
+#define COCAINE_ENGINE_SLAVE_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/unique_id.hpp"
-
 #include "cocaine/api/isolate.hpp"
-
 #include "cocaine/asio/service.hpp"
+#include "cocaine/unique_id.hpp"
 
 namespace cocaine { namespace engine {
 

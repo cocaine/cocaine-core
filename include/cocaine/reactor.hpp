@@ -22,12 +22,10 @@
 #define COCAINE_REACTOR_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/api/service.hpp"
+#include "cocaine/asio/service.hpp"
 #include "cocaine/messaging.hpp"
 #include "cocaine/slot.hpp"
-
-#include "cocaine/api/service.hpp"
-
-#include "cocaine/asio/service.hpp"
 
 #include <functional>
 #include <thread>

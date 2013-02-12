@@ -20,6 +20,9 @@
 
 #include "cocaine/app.hpp"
 
+#include "cocaine/api/driver.hpp"
+#include "cocaine/asio/acceptor.hpp"
+#include "cocaine/asio/pipe.hpp"
 #include "cocaine/archive.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
@@ -27,12 +30,6 @@
 #include "cocaine/manifest.hpp"
 #include "cocaine/profile.hpp"
 #include "cocaine/rpc.hpp"
-
-#include "cocaine/api/driver.hpp"
-
-#include "cocaine/asio/acceptor.hpp"
-#include "cocaine/asio/pipe.hpp"
-
 #include "cocaine/traits/json.hpp"
 
 #include <tuple>

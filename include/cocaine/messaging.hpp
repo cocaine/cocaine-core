@@ -22,10 +22,9 @@
 #define COCAINE_MESSAGING_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/traits.hpp"
-
 #include "cocaine/asio/writable_stream.hpp"
 #include "cocaine/asio/readable_stream.hpp"
+#include "cocaine/traits.hpp"
 
 #include <boost/mpl/begin.hpp>
 #include <boost/mpl/contains.hpp>

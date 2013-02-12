@@ -23,9 +23,8 @@
 
 #include "cocaine/format.hpp"
 
+#include <cstring>
 #include <exception>
-
-#include <string.h>
 
 namespace cocaine {
 

@@ -20,10 +20,9 @@
 
 #include "cocaine/auth.hpp"
 
+#include "cocaine/api/storage.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
-
-#include "cocaine/api/storage.hpp"
 
 #include <openssl/bio.h>
 #include <openssl/pem.h>

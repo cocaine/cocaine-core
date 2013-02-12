@@ -28,7 +28,6 @@
 #include <sstream>
 
 #include <boost/function_types/function_type.hpp>
-
 #include <boost/mpl/push_front.hpp>
 
 namespace cocaine {

@@ -41,8 +41,7 @@ struct defaults {
     static const unsigned long concurrency;
 
     // Default I/O policy.
-    static const long control_timeout;
-    static const unsigned long io_bulk_size;
+    static const float control_timeout;
 
     // Default paths.
     static const char plugins_path[];

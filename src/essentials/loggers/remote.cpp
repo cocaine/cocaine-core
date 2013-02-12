@@ -19,6 +19,7 @@
 */
 
 #include "cocaine/essentials/loggers/remote.hpp"
+
 #include "cocaine/essentials/services/logging.hpp"
 
 using namespace cocaine;

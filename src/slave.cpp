@@ -21,16 +21,14 @@
 #include "cocaine/slave.hpp"
 
 #include "cocaine/context.hpp"
+#include "cocaine/api/event.hpp"
+#include "cocaine/api/stream.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
 #include "cocaine/profile.hpp"
 #include "cocaine/rpc.hpp"
 #include "cocaine/session.hpp"
-
-#include "cocaine/api/event.hpp"
-#include "cocaine/api/stream.hpp"
-
 #include "cocaine/traits/unique_id.hpp"
 
 using namespace cocaine;

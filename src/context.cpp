@@ -20,9 +20,8 @@
 
 #include "cocaine/context.hpp"
 
-#include "cocaine/logging.hpp"
-
 #include "cocaine/api/logger.hpp"
+#include "cocaine/logging.hpp"
 
 #include <cerrno>
 #include <cstring>
@@ -47,8 +46,7 @@ const unsigned long defaults::pool_limit = 10L;
 const unsigned long defaults::queue_limit = 100L;
 const unsigned long defaults::concurrency = 10L;
 
-const long defaults::control_timeout = 500L;
-const unsigned long defaults::io_bulk_size = 100L;
+const float defaults::control_timeout = 5.0f;
 
 const char defaults::plugins_path[] = "/usr/lib/cocaine";
 const char defaults::runtime_path[] = "/var/run/cocaine";

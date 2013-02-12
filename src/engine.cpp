@@ -20,6 +20,11 @@
 
 #include "cocaine/engine.hpp"
 
+#include "cocaine/api/event.hpp"
+#include "cocaine/api/stream.hpp"
+#include "cocaine/asio/acceptor.hpp"
+#include "cocaine/asio/connector.hpp"
+#include "cocaine/asio/pipe.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
@@ -28,14 +33,6 @@
 #include "cocaine/rpc.hpp"
 #include "cocaine/session.hpp"
 #include "cocaine/slave.hpp"
-
-#include "cocaine/api/event.hpp"
-#include "cocaine/api/stream.hpp"
-
-#include "cocaine/asio/acceptor.hpp"
-#include "cocaine/asio/connector.hpp"
-#include "cocaine/asio/pipe.hpp"
-
 #include "cocaine/traits/json.hpp"
 #include "cocaine/traits/unique_id.hpp"
 
