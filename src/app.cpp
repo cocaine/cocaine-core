@@ -286,7 +286,7 @@ app_t::stop() {
 
     try {
         // Blocks until either the response or timeout happens.
-        m_service->run(defaults::control_timeout);
+        m_service->run(/* defaults::control_timeout */);
     } catch(const cocaine::error_t& e) {
         throw cocaine::error_t("the engine could not be stopped");
     }
@@ -317,7 +317,7 @@ app_t::info() const {
 
     try {
         // Blocks until either the response or timeout happens.
-        m_service->run(defaults::control_timeout);
+        m_service->run(/* defaults::control_timeout */);
     } catch(const cocaine::error_t& e) {
         info["error"] = "engine is not responsive";
         return info;
