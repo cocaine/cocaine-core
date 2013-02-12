@@ -104,17 +104,17 @@ reactor_t::terminate() {
 
 void
 reactor_t::on_connection(const std::shared_ptr<pipe_t>& pipe) {
-    auto peer = std::make_shared<client<pipe_t>>(m_service, pipe);
+    auto io = std::make_shared<codec<pipe_t>>(m_service, pipe);
 
-    peer->decoder.bind(
-        std::bind(&reactor_t::on_message, this, std::ref(*peer), io::_1)
+    io->decoder->bind(
+        std::bind(&reactor_t::on_message, this, io, io::_1)
     );
 
-    m_clients.insert(peer);
+    m_codecs.insert(io);
 }
 
 void
-reactor_t::on_message(client<pipe_t>& peer,
+reactor_t::on_message(const std::shared_ptr<codec<pipe_t>>& io,
                       const message_t& message)
 {
     slot_map_t::const_iterator slot = m_slots.find(message.id());

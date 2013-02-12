@@ -80,15 +80,12 @@ slave_t::~slave_t() {
 }
 
 void
-slave_t::bind(const std::shared_ptr<io::readable_stream<io::pipe_t>>& readable,
-              const std::shared_ptr<io::writable_stream<io::pipe_t>>& writable)
-{
-    m_decoder.reset(new decoder<pipe_t>());
-    m_decoder->attach(readable);
-    m_decoder->bind(std::bind(&slave_t::on_message, this, _1));
+slave_t::bind(const std::shared_ptr<codec<pipe_t>>& io) {
+    m_io = io;
 
-    m_encoder.reset(new encoder<pipe_t>());
-    m_encoder->attach(writable);
+    m_io->decoder->bind(
+        std::bind(&slave_t::on_message, this, _1)
+    );
 
     on_ping();
 }
@@ -104,7 +101,7 @@ slave_t::assign(std::shared_ptr<session_t>&& session) {
         session->id
     );
 
-    session->attach(m_encoder->stream());
+    session->attach(m_io->encoder->stream());
 
     m_sessions.insert(
         std::make_pair(session->id, std::move(session))
@@ -117,7 +114,7 @@ slave_t::assign(std::shared_ptr<session_t>&& session) {
 
 void
 slave_t::stop() {
-    m_encoder->write<rpc::terminate>();
+    m_io->encoder->write<rpc::terminate>();
 }
 
 void
@@ -219,7 +216,7 @@ slave_t::on_ping() {
     m_heartbeat_timer.stop();
     m_heartbeat_timer.start(m_profile.heartbeat_timeout);
 
-    m_encoder->write<rpc::heartbeat>();
+    m_io->encoder->write<rpc::heartbeat>();
 }
 
 void
@@ -369,7 +366,7 @@ slave_t::on_idle(ev::timer&, int) {
 
     COCAINE_LOG_DEBUG(m_log, "slave %s is idle, deactivating", m_id);
 
-    m_encoder->write<rpc::terminate>();
+    m_io->encoder->write<rpc::terminate>();
 
     m_state = states::inactive;
 }
@@ -391,8 +388,7 @@ slave_t::terminate() {
     m_handle.reset();
 
     // Closes our end of the pipe.
-    m_decoder.reset();
-    m_encoder.reset();
+    m_io.reset();
 
     m_state = states::dead;
 }

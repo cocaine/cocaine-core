@@ -278,54 +278,32 @@ engine_t::erase(const unique_id_t& uuid,
     }
 }
 
-namespace {
-    struct handshake_t {
-        handshake_t() {
-        }
-
-        void
-        operator()(const message_t& message) {
-
-        }
-    };
-}
-
 void
 engine_t::on_connection(const std::shared_ptr<pipe_t>& pipe) {
-    auto readable = std::make_shared<readable_stream<pipe_t>>(m_service, pipe);
-    auto writable = std::make_shared<writable_stream<pipe_t>>(m_service, pipe);
-    auto decoder = std::make_shared<io::decoder<pipe_t>>();
+    auto io = std::make_shared<codec<pipe_t>>(m_service, pipe);
 
-    // Attach the readable stream to a decoder and wait for a handshake.
-    decoder->attach(readable);
-
-    decoder->bind(std::bind(
-        &engine_t::on_handshake,
-        this,
-        decoder,
-        readable,
-        writable,
-        _1)
+    io->decoder->bind(
+        std::bind(&engine_t::on_handshake, this, io, _1)
     );
 
     COCAINE_LOG_DEBUG(m_log, "initiating a slave handshake on fd: %d", pipe->fd());
 
-    m_backlog.insert(decoder);
+    m_backlog.insert(io);
 }
 
 void
-engine_t::on_handshake(const std::shared_ptr<decoder<pipe_t>>& decoder,
-                       const std::shared_ptr<readable_stream<pipe_t>>& readable,
-                       const std::shared_ptr<writable_stream<pipe_t>>& writable,
+engine_t::on_handshake(const std::shared_ptr<codec<pipe_t>>& io,
                        const message_t& message)
 {
     unique_id_t uuid(uninitialized);
+
+    m_backlog.erase(io);
 
     try {
         message.as<rpc::handshake>(uuid);
     } catch(const cocaine::error_t& e) {
         COCAINE_LOG_WARNING(m_log, "dropping an invalid handshake message");
-        m_backlog.erase(decoder);
+        io->decoder->unbind();
         return;
     }
 
@@ -333,18 +311,11 @@ engine_t::on_handshake(const std::shared_ptr<decoder<pipe_t>>& decoder,
 
     if(it != m_pool.end()) {
         COCAINE_LOG_DEBUG(m_log, "slave %s connected", uuid);
-
-        // Unbind the decoder as it keeps a circular reference to itself in its callback.
-        // decoder->unbind();
-
-        it->second->bind(readable, writable);
+        it->second->bind(io);
+        wake();
     } else {
         COCAINE_LOG_WARNING(m_log, "dropping a handshake from an unknown slave %s", uuid);
     }
-
-    m_backlog.erase(decoder);
-
-    wake();
 }
 
 namespace {

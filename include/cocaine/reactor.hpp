@@ -32,29 +32,6 @@
 
 namespace cocaine {
 
-template<class F, bool Bound = std::is_bind_expression<F>::value>
-struct result_of {
-    typedef typename std::result_of<F>::type type;
-};
-
-template<class F>
-struct result_of<F, true> {
-    typedef typename F::result_type type;
-};
-
-template<class PipeType>
-struct client {
-    client(io::service_t& service,
-           const std::shared_ptr<PipeType>& pipe)
-    {
-        encoder.attach(std::make_shared<io::writable_stream<PipeType>>(service, pipe));
-        decoder.attach(std::make_shared<io::readable_stream<PipeType>>(service, pipe));
-    }
-
-    io::encoder<PipeType> encoder;
-    io::decoder<PipeType> decoder;
-};
-
 class reactor_t:
     public api::service_t
 {
@@ -98,7 +75,7 @@ class reactor_t:
         on_connection(const std::shared_ptr<io::pipe_t>& pipe);
 
         void
-        on_message(client<io::pipe_t>& client,
+        on_message(const std::shared_ptr<io::codec<io::pipe_t>>& io,
                    const io::message_t& message);
 
         void
@@ -120,8 +97,10 @@ class reactor_t:
         > m_connector;
 
         std::set<
-            std::shared_ptr<client<io::pipe_t>>
-        > m_clients;
+            std::shared_ptr<io::codec<io::pipe_t>>
+        > m_codecs;
+
+        // RPC
 
 #if BOOST_VERSION >= 103600
         typedef boost::unordered_map<
@@ -132,17 +111,29 @@ class reactor_t:
             std::shared_ptr<slot_base_t>
         > slot_map_t;
 
-        // Event slots.
         slot_map_t m_slots;
 
-        // Service thread.
+        // Execution context
+
         std::unique_ptr<std::thread> m_thread;
 };
+
+namespace detail {
+    template<class F, bool Bound = std::is_bind_expression<F>::value>
+    struct result_of {
+        typedef typename std::result_of<F>::type type;
+    };
+
+    template<class F>
+    struct result_of<F, true> {
+        typedef typename F::result_type type;
+    };
+}
 
 template<class Event, class F>
 void
 reactor_t::on(F callable) {
-    typedef typename result_of<F>::type result_type;
+    typedef typename detail::result_of<F>::type result_type;
     typedef typename io::event_traits<Event>::tuple_type sequence_type;
     typedef slot<result_type, sequence_type> slot_type;
 

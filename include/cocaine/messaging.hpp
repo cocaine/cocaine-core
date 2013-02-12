@@ -102,16 +102,6 @@ struct message_t:
         m_object(object)
     { }
 
-    message_t(message_t&& other) {
-        *this = std::move(other);
-    }
-
-    message_t&
-    operator=(message_t&& other) {
-        m_object = other.m_object;
-        return *this;
-    }
-
     template<class Event, typename... Args>
     void
     as(Args&&... targets) const {
@@ -303,6 +293,21 @@ private:
 
     // Attachable stream.
     stream_ptr_type m_stream;
+};
+
+template<class PipeType>
+struct codec {
+    codec(service_t& service,
+          const std::shared_ptr<PipeType>& pipe):
+        decoder(new io::decoder<PipeType>()),
+        encoder(new io::encoder<PipeType>())
+    {
+        decoder->attach(std::make_shared<readable_stream<PipeType>>(service, pipe));
+        encoder->attach(std::make_shared<writable_stream<PipeType>>(service, pipe));
+    }
+
+    std::unique_ptr<decoder<PipeType>> decoder;
+    std::unique_ptr<encoder<PipeType>> encoder;
 };
 
 }} // namespace cocaine::io

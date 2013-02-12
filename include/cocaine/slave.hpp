@@ -50,8 +50,7 @@ class slave_t:
         // Binding
 
         void
-        bind(const std::shared_ptr<io::readable_stream<io::pipe_t>>& readable,
-             const std::shared_ptr<io::writable_stream<io::pipe_t>>& writable);
+        bind(const std::shared_ptr<io::codec<io::pipe_t>>& codec);
 
         // Sessions
 
@@ -143,13 +142,7 @@ class slave_t:
 
         // I/O
 
-        std::unique_ptr<
-            io::encoder<io::pipe_t>
-        > m_encoder;
-
-        std::unique_ptr<
-            io::decoder<io::pipe_t>
-        > m_decoder;
+        std::shared_ptr<io::codec<io::pipe_t>> m_io;
 
         // Worker handle
 

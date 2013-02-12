@@ -84,6 +84,9 @@ namespace cocaine {
 
         template<class>
         struct decoder;
+
+        template<class>
+        struct codec;
     }
 
     namespace logging {

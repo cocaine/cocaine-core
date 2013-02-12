@@ -105,9 +105,7 @@ class engine_t:
         on_connection(const std::shared_ptr<io::pipe_t>& pipe);
 
         void
-        on_handshake(const std::shared_ptr<io::decoder<io::pipe_t>>& decoder,
-                     const std::shared_ptr<io::readable_stream<io::pipe_t>>& readable,
-                     const std::shared_ptr<io::writable_stream<io::pipe_t>>& writable,
+        on_handshake(const std::shared_ptr<io::codec<io::pipe_t>>& io,
                      const io::message_t& message);
 
         void
@@ -178,7 +176,7 @@ class engine_t:
         // Slave pool
 
         std::set<
-            std::shared_ptr<io::decoder<io::pipe_t>>
+            std::shared_ptr<io::codec<io::pipe_t>>
         > m_backlog;
 
 #if BOOST_VERSION >= 103600
