@@ -61,12 +61,12 @@ namespace {
             try {
                 fs::create_directories(path);
             } catch(const fs::filesystem_error& e) {
-                throw configuration_error_t("unable to create the '%s' path", path);
+                throw configuration_error_t("unable to create the %s path", path);
             }
         }
 
         if(!fs::is_directory(path)) {
-            throw configuration_error_t("the '%s' path is not a directory", path);
+            throw configuration_error_t("the %s path is not a directory", path);
         }
     }
 }
