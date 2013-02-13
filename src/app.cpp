@@ -191,7 +191,7 @@ namespace {
             template<class Event, typename... Args>
             static inline
             void
-            apply(const message_t& message, TupleType& tuple, Args&&... args) {
+            apply(const message_t& message, TupleType& /* tuple */, Args&&... args) {
                 message.as<Event>(std::forward<Args>(args)...);
             }
         };
@@ -201,7 +201,7 @@ namespace {
             template<class Event>
             static inline
             void
-            apply(const message_t& message, TupleType& tuple) {
+            apply(const message_t& /* message */, TupleType& /* tuple */) {
                 return;
             }
         };

@@ -54,7 +54,6 @@ class archive_t {
                 archive * target);
 
     private:
-        context_t& m_context;
         std::unique_ptr<logging::log_t> m_log;
 
         // The source archive.

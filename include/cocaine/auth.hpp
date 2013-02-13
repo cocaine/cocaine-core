@@ -56,7 +56,6 @@ class auth_t:
         //      const std::string& username) const;
 
     private:
-        context_t& m_context;
         std::unique_ptr<logging::log_t> m_log;
 
         EVP_MD_CTX * m_evp_md_context;

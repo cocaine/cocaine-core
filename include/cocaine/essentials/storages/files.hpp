@@ -62,7 +62,6 @@ class files_t:
                const std::string& key);
 
     private:
-        context_t& m_context;
         std::unique_ptr<logging::log_t> m_log;
 
         // TODO: Drop this, switch to atomic writes.

@@ -257,7 +257,7 @@ engine_t::wake() {
 void
 engine_t::erase(const unique_id_t& uuid,
                 int code,
-                const std::string& reason)
+                const std::string& /* reason */)
 {
     pool_map_t::iterator it = m_pool.find(uuid);
 
@@ -282,7 +282,7 @@ void
 engine_t::on_connection(const std::shared_ptr<pipe_t>& pipe) {
     auto io = std::make_shared<codec<pipe_t>>(m_service, pipe);
 
-    io->d->bind(
+    io->rd->bind(
         std::bind(&engine_t::on_handshake, this, io, _1)
     );
 
@@ -303,7 +303,7 @@ engine_t::on_handshake(const std::shared_ptr<codec<pipe_t>>& io,
         message.as<rpc::handshake>(uuid);
     } catch(const cocaine::error_t& e) {
         COCAINE_LOG_WARNING(m_log, "dropping an invalid handshake message");
-        io->d->unbind();
+        io->rd->unbind();
         return;
     }
 

@@ -32,7 +32,6 @@ using namespace cocaine::crypto;
 using namespace cocaine::logging;
 
 auth_t::auth_t(context_t& context):
-    m_context(context),
     m_log(new log_t(context, "crypto")),
     m_evp_md_context(EVP_MD_CTX_create())
 {

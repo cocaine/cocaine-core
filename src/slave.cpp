@@ -83,7 +83,7 @@ void
 slave_t::bind(const std::shared_ptr<codec<pipe_t>>& io) {
     m_io = io;
 
-    m_io->d->bind(
+    m_io->rd->bind(
         std::bind(&slave_t::on_message, this, _1)
     );
 
@@ -101,7 +101,7 @@ slave_t::assign(std::shared_ptr<session_t>&& session) {
         session->id
     );
 
-    session->attach(m_io->e->stream());
+    session->attach(m_io->wr->stream());
 
     m_sessions.insert(
         std::make_pair(session->id, std::move(session))
@@ -114,7 +114,7 @@ slave_t::assign(std::shared_ptr<session_t>&& session) {
 
 void
 slave_t::stop() {
-    m_io->e->write<rpc::terminate>();
+    m_io->wr->write<rpc::terminate>();
 }
 
 void
@@ -216,7 +216,7 @@ slave_t::on_ping() {
     m_heartbeat_timer.stop();
     m_heartbeat_timer.start(m_profile.heartbeat_timeout);
 
-    m_io->e->write<rpc::heartbeat>();
+    m_io->wr->write<rpc::heartbeat>();
 }
 
 void
@@ -366,7 +366,7 @@ slave_t::on_idle(ev::timer&, int) {
 
     COCAINE_LOG_DEBUG(m_log, "slave %s is idle, deactivating", m_id);
 
-    m_io->e->write<rpc::terminate>();
+    m_io->wr->write<rpc::terminate>();
 
     m_state = states::inactive;
 }
