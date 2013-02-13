@@ -190,12 +190,11 @@ engine_t::engine_t(context_t& context,
         std::bind(&engine_t::on_connection, this, _1)
     );
 
-    m_encoder.reset(new encoder<io::pipe_t>());
-    m_encoder->attach(std::make_shared<writable_stream<pipe_t>>(m_service, control));
+    m_codec.reset(new codec<io::pipe_t>(m_service, control));
 
-    m_decoder.reset(new decoder<io::pipe_t>());
-    m_decoder->attach(std::make_shared<readable_stream<pipe_t>>(m_service, control));
-    m_decoder->bind(std::bind(&engine_t::on_control, this, _1));
+    m_codec->rd->bind(
+        std::bind(&engine_t::on_control, this, _1)
+    );
 
     m_gc_timer.set<engine_t, &engine_t::on_cleanup>(this);
     m_gc_timer.start(5.0f, 5.0f);
@@ -391,7 +390,7 @@ engine_t::on_control(const message_t& message) {
             info["slaves"]["idle"] = static_cast<Json::LargestUInt>(m_pool.size() - active);
             info["state"] = describe[static_cast<int>(m_state)];
 
-            m_encoder->write<control::info>(info);
+            m_codec->wr->write<control::info>(info);
 
             break;
         }
@@ -401,7 +400,7 @@ engine_t::on_control(const message_t& message) {
 
             // NOTE: This message is needed to wake up the app's event loop, which is blocked
             // in order to allow the stream to flush the message queue.
-            m_encoder->write<control::terminate>();
+            m_codec->wr->write<control::terminate>();
 
             break;
 

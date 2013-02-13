@@ -140,13 +140,13 @@ class slave_t:
         ev::timer m_heartbeat_timer;
         ev::timer m_idle_timer;
 
-        // I/O
-
-        std::shared_ptr<io::codec<io::pipe_t>> m_io;
-
         // Worker handle
 
         std::unique_ptr<api::handle_t> m_handle;
+
+        // I/O
+
+        std::shared_ptr<io::codec<io::pipe_t>> m_codec;
 
         // Current sessions
 

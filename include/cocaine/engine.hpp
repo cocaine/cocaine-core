@@ -156,17 +156,8 @@ class engine_t:
 
         // I/O
 
-        std::unique_ptr<
-            io::connector<io::acceptor_t>
-        > m_connector;
-
-        std::unique_ptr<
-            io::encoder<io::pipe_t>
-        > m_encoder;
-
-        std::unique_ptr<
-            io::decoder<io::pipe_t>
-        > m_decoder;
+        std::unique_ptr<io::connector<io::acceptor_t>> m_connector;
+        std::unique_ptr<io::codec<io::pipe_t>> m_codec;
 
         // Session queue
 

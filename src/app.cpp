@@ -65,11 +65,7 @@ app_t::app_t(context_t& context,
     // Create the engine control pipes.
     std::tie(lhs, rhs) = io::link();
 
-    m_encoder.reset(new encoder<pipe_t>());
-    m_encoder->attach(std::make_shared<writable_stream<pipe_t>>(*m_service, lhs));
-
-    m_decoder.reset(new decoder<pipe_t>());
-    m_decoder->attach(std::make_shared<readable_stream<pipe_t>>(*m_service, lhs));
+    m_codec.reset(new codec<pipe_t>(*m_service, lhs));
 
     // NOTE: The event loop is not started here yet.
     m_engine.reset(
@@ -281,8 +277,8 @@ app_t::stop() {
 
     auto callback = expect<control::terminate>(*m_service);
 
-    m_encoder->write<control::terminate>();
-    m_decoder->bind(std::ref(callback));
+    m_codec->rd->bind(std::ref(callback));
+    m_codec->wr->write<control::terminate>();
 
     try {
         // Blocks until either the response or timeout happens.
@@ -312,8 +308,8 @@ app_t::info() const {
 
     auto callback = expect<control::info>(*m_service, info);
 
-    m_encoder->write<control::report>();
-    m_decoder->bind(std::ref(callback));
+    m_codec->rd->bind(std::ref(callback));
+    m_codec->wr->write<control::report>();
 
     try {
         // Blocks until either the response or timeout happens.

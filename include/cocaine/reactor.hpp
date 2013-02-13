@@ -75,7 +75,7 @@ class reactor_t:
         on_connection(const std::shared_ptr<io::pipe_t>& pipe);
 
         void
-        on_message(const std::shared_ptr<io::codec<io::pipe_t>>& io,
+        on_message(const std::shared_ptr<io::codec<io::pipe_t>>& codec,
                    const io::message_t& message);
 
         void
