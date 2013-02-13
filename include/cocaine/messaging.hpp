@@ -252,17 +252,13 @@ private:
         size_t offset = 0,
                checkpoint = 0;
 
+        msgpack::unpack_return rv;
+
         do {
             msgpack::object object;
             msgpack::zone zone;
 
-            msgpack::unpack_return rv = msgpack::unpack(
-                data,
-                size,
-                &offset,
-                &zone,
-                &object
-            );
+            rv = msgpack::unpack(data, size, &offset, &zone, &object);
 
             switch(rv) {
                 case msgpack::UNPACK_EXTRA_BYTES:

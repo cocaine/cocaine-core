@@ -34,7 +34,7 @@
 #include "cocaine/session.hpp"
 #include "cocaine/slave.hpp"
 #include "cocaine/traits/json.hpp"
-#include "cocaine/traits/unique_id.hpp"
+#include "cocaine/traits/uuid.hpp"
 
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics/median.hpp>

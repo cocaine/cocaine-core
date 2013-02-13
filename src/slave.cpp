@@ -29,7 +29,7 @@
 #include "cocaine/profile.hpp"
 #include "cocaine/rpc.hpp"
 #include "cocaine/session.hpp"
-#include "cocaine/traits/unique_id.hpp"
+#include "cocaine/traits/uuid.hpp"
 
 using namespace cocaine;
 using namespace cocaine::engine;
@@ -114,6 +114,7 @@ slave_t::assign(std::shared_ptr<session_t>&& session) {
 
 void
 slave_t::stop() {
+    BOOST_ASSERT(m_codec);
     m_codec->wr->write<rpc::terminate>();
 }
 

@@ -22,7 +22,6 @@
 #define COCAINE_LOGGING_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/context.hpp"
 #include "cocaine/format.hpp"
 
 #define COCAINE_LOG(log, level, ...) \
@@ -56,10 +55,7 @@ struct logger_t {
 
 struct log_t {
     log_t(context_t& context,
-          const std::string& source):
-        m_logger(context.logger()),
-        m_source(source)
-    { }
+          const std::string& source);
 
     priorities
     verbosity() const {
