@@ -131,11 +131,9 @@ class slave_t:
 
         const unique_id_t m_id;
 
-        // Current slave state
+        // Slave health monitoring
 
         states m_state;
-
-        // Slave health monitoring
 
         ev::timer m_heartbeat_timer;
         ev::timer m_idle_timer;
@@ -148,7 +146,7 @@ class slave_t:
 
         std::shared_ptr<io::codec<io::pipe_t>> m_codec;
 
-        // Current sessions
+        // Active sessions
 
         typedef std::map<
             uint64_t,

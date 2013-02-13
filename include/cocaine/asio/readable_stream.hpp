@@ -23,6 +23,7 @@
 
 #include "cocaine/asio/service.hpp"
 
+#include <cstring>
 #include <functional>
 
 namespace cocaine { namespace io {
