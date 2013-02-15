@@ -138,12 +138,12 @@ app_t::start() {
         }
     }
 
-    m_thread.reset(
-        new std::thread(
-            &engine_t::run,
-            m_engine
-        )
+    auto runnable = std::bind(
+        &engine_t::run,
+        m_engine
     );
+
+    m_thread.reset(new std::thread(runnable));
 
     COCAINE_LOG_INFO(m_log, "the engine has started");
 }
