@@ -32,11 +32,10 @@
 #include <string>
 #include <vector>
 
-#define BOOST_THREAD_DONT_USE_CHRONO
 #define BOOST_FILESYSTEM_VERSION 3
 
 #ifndef COCAINE_DEBUG
- #define BOOST_DISABLE_ASSERTS
+    #define BOOST_DISABLE_ASSERTS
 #endif
 
 #include <boost/assert.hpp>
