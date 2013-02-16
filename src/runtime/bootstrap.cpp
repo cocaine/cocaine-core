@@ -66,7 +66,7 @@ namespace {
             sigaddset(&signals, SIGPIPE);
 #endif
 
-            ::sigprocmask(SIG_BLOCK, &signals, NULL);
+            ::sigprocmask(SIG_BLOCK, &signals, nullptr);
 
             COCAINE_LOG_INFO(
                 m_log,
@@ -154,7 +154,9 @@ int main(int argc, char * argv[]) {
         ("help,h", "show this message")
         ("version,v", "show version and build information")
         ("configuration,c", po::value<std::string>(), "location of the configuration file")
+#ifndef __APPLE__
         ("daemonize,d", "daemonize on start")
+#endif
         ("pidfile,p", po::value<std::string>(), "location of a pid file");
 
     service_options.add_options()
@@ -213,6 +215,7 @@ int main(int argc, char * argv[]) {
         return EXIT_FAILURE;
     }
 
+#ifndef __APPLE__
     std::unique_ptr<pid_file_t> pidfile;
 
     if(vm.count("daemonize")) {
@@ -240,6 +243,7 @@ int main(int argc, char * argv[]) {
             return EXIT_FAILURE;
         }
     }
+#endif
 
     std::unique_ptr<context_t> context;
 
