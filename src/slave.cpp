@@ -20,15 +20,17 @@
 
 #include "cocaine/slave.hpp"
 
-#include "cocaine/context.hpp"
 #include "cocaine/api/event.hpp"
 #include "cocaine/api/stream.hpp"
+
+#include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
 #include "cocaine/profile.hpp"
 #include "cocaine/rpc.hpp"
 #include "cocaine/session.hpp"
+
 #include "cocaine/traits/uuid.hpp"
 
 using namespace cocaine;

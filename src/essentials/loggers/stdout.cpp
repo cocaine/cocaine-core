@@ -34,7 +34,7 @@ stdout_t::stdout_t(context_t& context,
 
 namespace {
     static const char * describe[] = {
-        NULL,
+        nullptr,
         "ERROR",
         "WARNING",
         "INFO",

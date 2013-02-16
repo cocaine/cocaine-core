@@ -70,7 +70,7 @@ struct readable_stream:
 
     void
     unbind() {
-        m_callback = NULL;
+        m_callback = nullptr;
 
         if(m_pipe_watcher.is_active()) {
             m_pipe_watcher.stop();

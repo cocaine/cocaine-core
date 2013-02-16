@@ -118,7 +118,7 @@ config_t::config_t(const std::string& config_path) {
 
     if(gethostname(hostname, 256) != 0) {
         char reason[1024],
-             * message = NULL;
+             * message = nullptr;
 
 #ifdef _GNU_SOURCE
         message = ::strerror_r(errno, reason, 1024);
@@ -134,20 +134,20 @@ config_t::config_t(const std::string& config_path) {
     }
 
     addrinfo hints,
-             * result = NULL;
+             * result = nullptr;
 
     std::memset(&hints, 0, sizeof(addrinfo));
 
     hints.ai_flags = AI_CANONNAME;
 
-    int rv = getaddrinfo(hostname, NULL, &hints, &result);
+    int rv = getaddrinfo(hostname, nullptr, &hints, &result);
 
     if(rv != 0) {
         throw configuration_error_t("unable to determine the hostname - %s", gai_strerror(rv));
     }
 
     // NOTE: I have no idea when this call can fail, so just assert that it always works.
-    BOOST_VERIFY(result != NULL);
+    BOOST_VERIFY(result != nullptr);
 
     network.hostname = result->ai_canonname;
 

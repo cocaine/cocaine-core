@@ -93,7 +93,7 @@ private:
 private:
     std::unique_ptr<ev::loop_ref> m_loop;
 
-    // Rumor says the event loop has to be interlocked for watcher
+    // NOTE: Rumor says the event loop has to be interlocked for watcher
     // operations, but for some reason it works fine without it.
     std::mutex m_mutex;
 };

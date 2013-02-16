@@ -22,8 +22,8 @@
 #define COCAINE_MESSAGING_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/asio/writable_stream.hpp"
 #include "cocaine/asio/readable_stream.hpp"
+#include "cocaine/asio/writable_stream.hpp"
 #include "cocaine/traits.hpp"
 
 #include <boost/mpl/begin.hpp>
@@ -219,6 +219,10 @@ struct decoder:
         readable_stream<Pipe>
     > stream_ptr_type;
 
+    ~decoder() {
+        unbind();
+    }
+
     template<class CallbackType>
     void
     bind(CallbackType callback) {
@@ -231,7 +235,7 @@ struct decoder:
 
     void
     unbind() {
-        m_callback = NULL;
+        m_callback = nullptr;
         m_stream->unbind();
     }
 

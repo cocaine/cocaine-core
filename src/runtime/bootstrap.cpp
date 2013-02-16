@@ -18,11 +18,11 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/config.hpp"
-
 #include "cocaine/api/service.hpp"
-#include "cocaine/asio/service.hpp"
+
 #include "cocaine/common.hpp"
+#include "cocaine/asio/service.hpp"
+#include "cocaine/config.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/runtime/pid_file.hpp"

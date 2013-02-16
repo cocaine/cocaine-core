@@ -34,13 +34,13 @@ files_t::files_t(context_t& context,
                  const std::string& name,
                  const Json::Value& args):
     category_type(context, name, args),
-    m_file(NULL)
+    m_file(nullptr)
 {
     std::string path = args["path"].asString();
 
     m_file = std::fopen(path.c_str(), "a");
 
-    if(m_file == NULL) {
+    if(m_file == nullptr) {
         char buffer[1024],
              * message;
 
@@ -66,7 +66,7 @@ files_t::~files_t() {
 
 namespace {
     static const char * describe[] = {
-        NULL,
+        nullptr,
         "ERROR",
         "WARNING",
         "INFO",

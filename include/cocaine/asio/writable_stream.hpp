@@ -97,11 +97,6 @@ struct writable_stream:
         }
     }
 
-    void
-    write(const std::string& chunk) {
-        write(chunk.data(), chunk.size());
-    }
-
 private:
     void
     on_event(ev::io& /* io */, int /* revents */) {
