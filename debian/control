@@ -3,8 +3,8 @@ Section: utils
 Priority: extra
 Maintainer: Andrey Sibiryov <kobolog@yandex-team.ru>
 Build-Depends: cmake, cdbs, debhelper (>= 7.0.13), libzmq-dev (>= 2.2.0), libev-dev, libmsgpack-dev,
- libboost-dev, libboost-filesystem-dev, libboost-thread-dev, libboost-program-options-dev,
- libssl-dev, libltdl-dev, uuid-dev, libarchive-dev
+ libboost-dev, libboost-filesystem-dev, libboost-program-options-dev, libssl-dev, libltdl-dev, uuid-dev,
+ libarchive-dev
 Standards-Version: 3.9.1
 Vcs-Git: git://github.com/cocaine/cocaine-core.git
 Vcs-Browser: https://github.com/cocaine/cocaine-core
@@ -19,7 +19,7 @@ Package: libcocaine-dev
 Architecture: any
 Section: libdevel
 Depends: ${shlibs:Depends}, ${misc:Depends}, libzmq-dev (>= 2.2.0), libev-dev, libmsgpack-dev,
- libboost-dev, libboost-thread-dev, libltdl-dev, uuid-dev, libcocaine-core2 (>= 0.10)
+ libboost-dev, libltdl-dev, uuid-dev, libcocaine-core2 (>= 0.10)
 Description: Cocaine - Development Headers
  Cocaine development headers package.
 
