@@ -20,8 +20,6 @@
 
 #include "cocaine/session.hpp"
 
-#include "cocaine/rpc.hpp"
-
 using namespace cocaine::engine;
 using namespace cocaine::io;
 

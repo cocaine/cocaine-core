@@ -21,6 +21,7 @@
 #include "cocaine/auth.hpp"
 
 #include "cocaine/api/storage.hpp"
+
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
@@ -62,9 +63,9 @@ auth_t::auth_t(context_t& context):
 
         // Read the key into the BIO object.
         BIO * bio = BIO_new_mem_buf(const_cast<char*>(object.data()), object.size());
-        EVP_PKEY * pkey = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
+        EVP_PKEY * pkey = PEM_read_bio_PUBKEY(bio, nullptr, nullptr, nullptr);
 
-        if(pkey != NULL) {
+        if(pkey != nullptr) {
             m_keys.emplace(identity, pkey);
         } else {
             COCAINE_LOG_ERROR(

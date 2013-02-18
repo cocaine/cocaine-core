@@ -21,6 +21,10 @@
 #ifndef COCAINE_COMMON_HPP
 #define COCAINE_COMMON_HPP
 
+#if !defined(__clang__) && (defined(__GNUC__) && (__GNUC__ == 4 && __GNUC_MINOR__ < 6))
+    #define nullptr __null
+#endif
+
 #include <stdint.h>
 
 #include <map>
@@ -39,7 +43,6 @@
 #include <boost/noncopyable.hpp>
 #include <boost/unordered_map.hpp>
 #include <boost/version.hpp>
-
 
 #include "cocaine/forwards.hpp"
 #include "cocaine/exceptions.hpp"

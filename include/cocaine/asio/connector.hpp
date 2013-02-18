@@ -52,7 +52,7 @@ struct connector:
 
     void
     unbind() {
-        m_callback = NULL;
+        m_callback = nullptr;
 
         if(m_acceptor_watcher.is_active()) {
             m_acceptor_watcher.stop();

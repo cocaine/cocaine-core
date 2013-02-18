@@ -66,7 +66,7 @@ archive_t::deploy(const std::string& prefix_) {
     fs::path prefix = prefix_;
 
     archive * target = archive_write_disk_new();
-    archive_entry * entry = NULL;
+    archive_entry * entry = nullptr;
 
     int rv = ARCHIVE_OK;
 
@@ -131,7 +131,7 @@ archive_t::extract(archive * source,
 {
     int rv = ARCHIVE_OK;
 
-    const void * buffer = NULL;
+    const void * buffer = nullptr;
     size_t size = 0;
 
 #if ARCHIVE_VERSION_NUMBER < 3000000
