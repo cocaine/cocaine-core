@@ -1,4 +1,5 @@
 usr/include/cocaine/*.hpp
 usr/include/cocaine/api/*.hpp
+usr/include/cocaine/asio/*.hpp
 usr/include/cocaine/traits/*.hpp
 usr/include/json
