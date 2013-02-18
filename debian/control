@@ -3,8 +3,8 @@ Section: utils
 Priority: extra
 Maintainer: Andrey Sibiryov <kobolog@yandex-team.ru>
 Build-Depends: cmake, cdbs, debhelper (>= 7.0.13), libzmq-dev (>= 2.2.0), libev-dev, libmsgpack-dev,
- libboost-dev, libboost-filesystem-dev, libboost-thread-dev, libboost-program-options-dev,
- libssl-dev, libltdl-dev, uuid-dev, libarchive-dev
+ libboost-dev, libboost-filesystem-dev, libboost-program-options-dev, libssl-dev, libltdl-dev, uuid-dev,
+ libarchive-dev
 Standards-Version: 3.9.1
 Vcs-Git: git://github.com/cocaine/cocaine-core.git
 Vcs-Browser: https://github.com/cocaine/cocaine-core
@@ -18,8 +18,8 @@ Description: Cocaine - Core Libraries
 Package: libcocaine-dev
 Architecture: any
 Section: libdevel
-Depends: ${shlibs:Depends}, ${misc:Depends}, libzmq-dev (>= 2.2.0), libev-dev, libmsgpack-dev,
- libboost-dev, libboost-thread-dev, libltdl-dev, uuid-dev, libcocaine-core2 (>= 0.10)
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2 (= ${Source-Version}),
+ libev-dev, libmsgpack-dev, libboost-dev, libltdl-dev, uuid-dev
 Description: Cocaine - Development Headers
  Cocaine development headers package.
 
@@ -29,8 +29,15 @@ Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2, adduser
 Description: Cocaine - Runtime
  Cocaine runtime components package.
 
+Package: cocaine-dbg
+Architecture: any
+Section: debug
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2 (= ${Source-Version})
+Description: Cocaine - Debug Files
+ Cocaine debug files and symbols.
+
 Package: cocaine-tools
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2, python, python-zmq, msgpack-python
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2, python, msgpack-python
 Description: Cocaine - Toolset
  Various tools to query and manipulate running Cocaine instances.
