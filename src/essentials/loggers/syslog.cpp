@@ -20,8 +20,6 @@
 
 #include "cocaine/essentials/loggers/syslog.hpp"
 
-#include <boost/algorithm/string/replace.hpp>
-
 #include <syslog.h>
 
 using namespace cocaine;
@@ -40,25 +38,21 @@ syslog_t::emit(logging::priorities priority,
                const std::string& source,
                const std::string& message)
 {
-    // NOTE: Replacing all newlines with spaces here because certain sysloggers
-    // fail miserably interpreting them correctly.
-    std::string m(boost::algorithm::replace_all_copy(message, "\n", " "));
-
     switch(priority) {
         case logging::debug:
-            syslog(LOG_DEBUG, "%s: %s", source.c_str(), m.c_str());
+            syslog(LOG_DEBUG, "%s: %s", source.c_str(), message.c_str());
             break;
 
         case logging::info:
-            syslog(LOG_INFO, "%s: %s", source.c_str(), m.c_str());
+            syslog(LOG_INFO, "%s: %s", source.c_str(), message.c_str());
             break;
 
         case logging::warning:
-            syslog(LOG_WARNING, "%s: %s", source.c_str(), m.c_str());
+            syslog(LOG_WARNING, "%s: %s", source.c_str(), message.c_str());
             break;
 
         case logging::error:
-            syslog(LOG_ERR, "%s: %s", source.c_str(), m.c_str());
+            syslog(LOG_ERR, "%s: %s", source.c_str(), message.c_str());
             break;
 
         default:

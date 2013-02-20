@@ -88,8 +88,8 @@ class slave_t:
         on_ping();
 
         void
-        on_terminate(int code,
-                     const std::string& reason);
+        on_death(int code,
+                 const std::string& reason);
 
         void
         on_chunk(uint64_t session_id,

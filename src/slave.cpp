@@ -144,7 +144,7 @@ slave_t::on_message(const message_t& message) {
             std::string reason;
 
             message.as<rpc::terminate>(code, reason);
-            on_terminate(code, reason);
+            on_death(code, reason);
 
             break;
         }
@@ -228,8 +228,8 @@ slave_t::on_ping() {
 }
 
 void
-slave_t::on_terminate(int code,
-                      const std::string& reason)
+slave_t::on_death(int code,
+                  const std::string& reason)
 {
     COCAINE_LOG_DEBUG(
         m_log,

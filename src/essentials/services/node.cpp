@@ -21,9 +21,11 @@
 #include "cocaine/essentials/services/node.hpp"
 
 #include "cocaine/api/storage.hpp"
+
 #include "cocaine/app.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
+
 #include "cocaine/traits/json.hpp"
 
 #include <tuple>
@@ -47,8 +49,8 @@ node_t::node_t(context_t& context,
     reactor_t(context, name, args),
     m_context(context),
     m_log(new log_t(context, name)),
-    m_zmq(1),
-    m_announces(m_zmq, ZMQ_PUB),
+    m_zmq_context(1),
+    m_announces(m_zmq_context, ZMQ_PUB),
     m_announce_timer(service().loop()),
     m_birthstamp(service().loop().now())
 {

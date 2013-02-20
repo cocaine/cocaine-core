@@ -97,7 +97,7 @@ class node_t:
         std::unique_ptr<logging::log_t> m_log;
 
         // Node announce channel.
-        zmq::context_t m_zmq;
+        zmq::context_t m_zmq_context;
         zmq::socket_t m_announces;
 
         // Node announce timer.

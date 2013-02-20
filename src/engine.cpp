@@ -215,7 +215,7 @@ engine_t::enqueue(const api::event_t& event,
     std::unique_lock<session_queue_t> lock(m_queue);
 
     if(m_state != states::running) {
-        throw cocaine::error_t("engine is not active");
+        throw cocaine::error_t("the engine is not active");
     }
 
     if(m_profile.queue_limit > 0 &&
@@ -256,13 +256,11 @@ engine_t::erase(const unique_id_t& uuid,
     if(code == rpc::terminate::abnormal) {
         COCAINE_LOG_ERROR(m_log, "the app seems to be broken - stopping");
         migrate(states::broken);
-        return;
     }
 
     if(m_state != states::running && m_pool.empty()) {
         // If it was the last slave, shut the engine down.
         stop();
-        return;
     }
 }
 
@@ -297,13 +295,17 @@ engine_t::on_handshake(const std::shared_ptr<codec<pipe_t>>& io,
 
     pool_map_t::iterator it = m_pool.find(uuid);
 
-    if(it != m_pool.end()) {
-        COCAINE_LOG_DEBUG(m_log, "slave %s connected", uuid);
-        it->second->bind(io);
-        wake();
-    } else {
+    if(it == m_pool.end()) {
         COCAINE_LOG_WARNING(m_log, "dropping a handshake from an unknown slave %s", uuid);
+        io->rd->unbind();
+        return;
     }
+
+    COCAINE_LOG_DEBUG(m_log, "slave %s connected", uuid);
+
+    it->second->bind(io);
+
+    wake();
 }
 
 namespace {
@@ -665,6 +667,6 @@ engine_t::stop() {
 
     if(m_state == states::stopping) {
         m_state = states::stopped;
-        m_service.loop().unloop(ev::ALL);
+        m_service.stop();
     }
 }
