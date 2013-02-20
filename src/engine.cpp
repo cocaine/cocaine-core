@@ -25,7 +25,9 @@
 
 #include "cocaine/asio/acceptor.hpp"
 #include "cocaine/asio/connector.hpp"
+#include "cocaine/asio/local.hpp"
 #include "cocaine/asio/pipe.hpp"
+
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
@@ -45,6 +47,7 @@ using namespace cocaine;
 using namespace cocaine::engine;
 using namespace cocaine::io;
 using namespace cocaine::logging;
+using namespace std::placeholders;
 
 // Session queue
 
@@ -80,19 +83,14 @@ namespace {
         push(const char * chunk,
              size_t size)
         {
-            switch(m_state) {
-                case states::open: {
-                    const std::shared_ptr<session_t> ptr = m_session.lock();
+            if(m_state == states::closed) {
+                throw cocaine::error_t("the stream has been closed");
+            }
 
-                    if(ptr) {
-                        ptr->send<rpc::chunk>(std::string(chunk, size));
-                    }
+            const std::shared_ptr<session_t> ptr = m_session.lock();
 
-                    break;
-                }
-
-                case states::closed:
-                    throw cocaine::error_t("the stream has been closed");
+            if(ptr) {
+                ptr->send<rpc::chunk>(std::string(chunk, size));
             }
         }
 
@@ -101,43 +99,33 @@ namespace {
         error(error_code code,
               const std::string& message)
         {
-            switch(m_state) {
-                case states::open: {
-                    m_state = states::closed;
+            if(m_state == states::closed) {
+                throw cocaine::error_t("the stream has been closed");
+            }
 
-                    const std::shared_ptr<session_t> ptr = m_session.lock();
+            m_state = states::closed;
 
-                    if(ptr) {
-                        ptr->send<rpc::error>(static_cast<int>(code), message);
-                        ptr->send<rpc::choke>();
-                    }
+            const std::shared_ptr<session_t> ptr = m_session.lock();
 
-                    break;
-                }
-
-                case states::closed:
-                    throw cocaine::error_t("the stream has been closed");
+            if(ptr) {
+                ptr->send<rpc::error>(static_cast<int>(code), message);
+                ptr->send<rpc::choke>();
             }
         }
 
         virtual
         void
         close() {
-            switch(m_state) {
-                case states::open: {
-                    m_state = states::closed;
+            if(m_state == states::closed) {
+                throw cocaine::error_t("the stream has been closed");
+            }
 
-                    const std::shared_ptr<session_t> ptr = m_session.lock();
+            m_state = states::closed;
 
-                    if(ptr) {
-                        ptr->send<rpc::choke>();
-                    }
+            const std::shared_ptr<session_t> ptr = m_session.lock();
 
-                    break;
-                }
-
-                case states::closed:
-                    throw cocaine::error_t("the stream has been closed");
+            if(ptr) {
+                ptr->send<rpc::choke>();
             }
         }
 
@@ -176,11 +164,11 @@ engine_t::engine_t(context_t& context,
         m_profile.isolate.args
     );
 
-    std::string endpoint = cocaine::format(
+    auto endpoint = local::endpoint(cocaine::format(
         "%1%/engines/%2%",
         m_context.config.path.runtime,
         m_manifest.name
-    );
+    ));
 
     m_connector.reset(new connector<acceptor_t>(
         m_service,
@@ -211,7 +199,7 @@ engine_t::~engine_t() {
 void
 engine_t::run() {
     m_state = states::running;
-    m_service.loop().loop();
+    m_service.run();
 }
 
 std::shared_ptr<api::stream_t>
@@ -265,7 +253,7 @@ engine_t::erase(const unique_id_t& uuid,
 
     m_pool.erase(it);
 
-    if(code == rpc::suicide::abnormal) {
+    if(code == rpc::terminate::abnormal) {
         COCAINE_LOG_ERROR(m_log, "the app seems to be broken - stopping");
         migrate(states::broken);
         return;

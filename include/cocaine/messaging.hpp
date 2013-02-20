@@ -36,8 +36,6 @@
 
 namespace cocaine { namespace io {
 
-using namespace std::placeholders;
-
 namespace mpl = boost::mpl;
 
 template<class Tag>
@@ -227,6 +225,8 @@ struct decoder:
     void
     bind(CallbackType callback) {
         m_callback = callback;
+
+        using namespace std::placeholders;
 
         m_stream->bind(
             std::bind(&decoder::on_event, this, _1, _2)

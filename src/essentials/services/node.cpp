@@ -32,6 +32,7 @@ using namespace cocaine;
 using namespace cocaine::io;
 using namespace cocaine::logging;
 using namespace cocaine::service;
+using namespace std::placeholders;
 
 namespace {
     typedef std::map<

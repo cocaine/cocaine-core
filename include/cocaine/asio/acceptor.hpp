@@ -23,6 +23,9 @@
 
 #include "cocaine/common.hpp"
 
+#include <fcntl.h>
+#include <sys/socket.h>
+
 namespace cocaine { namespace io {
 
 struct acceptor_t:
@@ -30,8 +33,23 @@ struct acceptor_t:
 {
     typedef pipe_t pipe_type;
 
-    acceptor_t(const std::string& path,
-               int backlog = 128);
+    template<class T>
+    acceptor_t(T endpoint, int backlog = 1024):
+        m_fd(endpoint.create())
+    {
+        if(m_fd == -1) {
+            throw io_error_t("unable to create an acceptor");
+        }
+
+        ::fcntl(m_fd, F_SETFD, FD_CLOEXEC);
+        ::fcntl(m_fd, F_SETFL, O_NONBLOCK);
+
+        if(::bind(m_fd, endpoint.data(), endpoint.size()) == -1) {
+            throw io_error_t("unable to bind an acceptor on '%s'", endpoint);
+        }
+
+        ::listen(m_fd, backlog);
+    }
 
     ~acceptor_t();
 
@@ -52,10 +70,6 @@ public:
     fd() const {
         return m_fd;
     }
-
-private:
-    void
-    configure(int fd);
 
 private:
     int m_fd;

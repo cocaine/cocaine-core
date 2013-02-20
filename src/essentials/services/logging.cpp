@@ -24,11 +24,10 @@
 
 #include <tuple>
 
-using namespace std::placeholders;
-
 using namespace cocaine;
 using namespace cocaine::logging;
 using namespace cocaine::service;
+using namespace std::placeholders;
 
 logging_t::logging_t(context_t& context,
                      const std::string& name,

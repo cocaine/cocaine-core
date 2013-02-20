@@ -20,7 +20,6 @@
 
 #include "cocaine/essentials/isolates/process.hpp"
 #include "cocaine/essentials/loggers/files.hpp"
-#include "cocaine/essentials/loggers/remote.hpp"
 #include "cocaine/essentials/loggers/stdout.hpp"
 #include "cocaine/essentials/loggers/syslog.hpp"
 #include "cocaine/essentials/services/logging.hpp"
@@ -34,7 +33,6 @@ extern "C" {
     initialize(api::repository_t& repository) {
         repository.insert<isolate::process_t>("process");
         repository.insert<logger::files_t>("files");
-        repository.insert<logger::remote_t>("remote");
         repository.insert<logger::stdout_t>("stdout");
         repository.insert<logger::syslog_t>("syslog");
         repository.insert<service::logging_t>("logging");
