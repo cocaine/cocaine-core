@@ -20,38 +20,7 @@
 
 #include "cocaine/asio/pipe.hpp"
 
-#include <fcntl.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-
 using namespace cocaine::io;
-
-pipe_t::pipe_t(const std::string& path):
-    m_fd(::socket(AF_LOCAL, SOCK_STREAM, 0))
-{
-    if(m_fd == -1) {
-        throw io_error_t("unable to create a pipe");
-    }
-
-    // Set non-blocking and close-on-exec options.
-    configure(m_fd);
-
-#ifdef _GNU_SOURCE
-    struct sockaddr_un address = { AF_LOCAL, { 0 } };
-#else
-    struct sockaddr_un address = { sizeof(sockaddr_un), AF_LOCAL, { 0 } };
-#endif
-
-    ::memcpy(address.sun_path, path.c_str(), path.size());
-
-    if(::connect(m_fd, reinterpret_cast<sockaddr*>(&address), sizeof(address)) == -1) {
-        throw io_error_t("unable to connect a pipe to '%s'", path);
-    }
-}
-
-pipe_t::pipe_t(int fd):
-    m_fd(fd)
-{ }
 
 pipe_t::pipe_t(pipe_t&& other):
     m_fd(-1)
@@ -115,10 +84,4 @@ pipe_t::read(char * buffer,
     }
 
     return length;
-}
-
-void
-pipe_t::configure(int fd) {
-    ::fcntl(fd, F_SETFD, FD_CLOEXEC);
-    ::fcntl(fd, F_SETFL, O_NONBLOCK);
 }

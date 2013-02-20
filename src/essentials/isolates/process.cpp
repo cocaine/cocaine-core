@@ -98,16 +98,19 @@ process_t::spawn(const std::string& path,
     }
 
     if(pid == 0) {
-        char * argv[args.size() * 2 + 2];
-        // char * envp[environment.size() + 1];
+        size_t argc = args.size() * 2 + 2;
+        // size_t envc = environment.size() + 1;
+
+        char ** argv = new char * [argc];
+        // char ** envp[] = new char * [envc];
 
         // NOTE: The first element is the executable path,
         // the last one should be null pointer.
         argv[0] = ::strdup(path.c_str());
-        argv[sizeof(argv) / sizeof(argv[0]) - 1] = nullptr;
+        argv[argc - 1] = nullptr;
 
         // NOTE: The last element of the environment must be a null pointer.
-        // envp[sizeof(envp) / sizeof(envp[0]) - 1] = nullptr;
+        // envp[envc - 1] = nullptr;
 
         std::map<std::string, std::string>::const_iterator it;
         int n;

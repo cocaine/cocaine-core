@@ -32,8 +32,7 @@ class stdout_t:
         typedef api::logger_t category_type;
 
     public:
-        stdout_t(context_t& context,
-                 const std::string& name,
+        stdout_t(const std::string& name,
                  const Json::Value& args);
 
         virtual

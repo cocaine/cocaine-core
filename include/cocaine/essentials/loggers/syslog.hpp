@@ -32,8 +32,7 @@ class syslog_t:
         typedef api::logger_t category_type;
 
     public:
-        syslog_t(context_t& context,
-                 const std::string& name,
+        syslog_t(const std::string& name,
                  const Json::Value& args);
 
         virtual

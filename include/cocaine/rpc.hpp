@@ -44,7 +44,7 @@ namespace rpc {
         typedef tags::rpc_tag tag;
     };
 
-    struct suicide {
+    struct terminate {
         typedef tags::rpc_tag tag;
 
         enum codes: int {
@@ -56,10 +56,6 @@ namespace rpc {
             /* reason */  int,
             /* message */ std::string
         > tuple_type;
-    };
-
-    struct terminate {
-        typedef tags::rpc_tag tag;
     };
 
     struct invoke {
@@ -122,7 +118,6 @@ struct protocol<tags::rpc_tag> {
     typedef boost::mpl::list<
         rpc::handshake,
         rpc::heartbeat,
-        rpc::suicide,
         rpc::terminate,
         rpc::invoke,
         rpc::chunk,

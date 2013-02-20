@@ -92,7 +92,6 @@ SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
 ADD_LIBRARY(essentials SHARED
     src/essentials/isolates/process
     src/essentials/loggers/files
-    src/essentials/loggers/remote
     src/essentials/loggers/stdout
     src/essentials/loggers/syslog
     src/essentials/services/logging

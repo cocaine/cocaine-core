@@ -26,10 +26,9 @@
 using namespace cocaine;
 using namespace cocaine::logger;
 
-stdout_t::stdout_t(context_t& context,
-                   const std::string& name,
+stdout_t::stdout_t(const std::string& name,
                    const Json::Value& args):
-    category_type(context, name, args)
+    category_type(name, args)
 { }
 
 namespace {
@@ -48,9 +47,8 @@ stdout_t::emit(logging::priorities priority,
                const std::string& message)
 {
     time_t time = 0;
-    tm timeinfo;
+    struct tm timeinfo;
 
-    // XXX: Not sure if it's needed.
     std::memset(&timeinfo, 0, sizeof(timeinfo));
 
     std::time(&time);
@@ -58,9 +56,9 @@ stdout_t::emit(logging::priorities priority,
 
     char timestamp[128];
 
-    size_t result = std::strftime(timestamp, 128, "%c", &timeinfo);
-
-    BOOST_ASSERT(result);
+    if(std::strftime(timestamp, 128, "%c", &timeinfo) == 0) {
+        return;
+    }
 
     std::cout << cocaine::format(
         "[%s] [%s] %s: %s\n",
@@ -69,4 +67,6 @@ stdout_t::emit(logging::priorities priority,
         source,
         message
     );
+
+    std::cout << std::endl;
 }

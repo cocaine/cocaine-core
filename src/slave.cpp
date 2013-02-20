@@ -37,6 +37,7 @@ using namespace cocaine;
 using namespace cocaine::engine;
 using namespace cocaine::io;
 using namespace cocaine::logging;
+using namespace std::placeholders;
 
 slave_t::slave_t(context_t& context,
                  const manifest_t& manifest,
@@ -117,7 +118,11 @@ slave_t::assign(std::shared_ptr<session_t>&& session) {
 void
 slave_t::stop() {
     BOOST_ASSERT(m_codec);
-    m_codec->wr->write<rpc::terminate>();
+
+    m_codec->wr->write<rpc::terminate>(
+        static_cast<int>(rpc::terminate::normal),
+        std::string("shutdown")
+    );
 }
 
 void
@@ -134,12 +139,12 @@ slave_t::on_message(const message_t& message) {
             on_ping();
             break;
 
-        case event_traits<rpc::suicide>::id: {
+        case event_traits<rpc::terminate>::id: {
             int code;
             std::string reason;
 
-            message.as<rpc::suicide>(code, reason);
-            on_suicide(code, reason);
+            message.as<rpc::terminate>(code, reason);
+            on_terminate(code, reason);
 
             break;
         }
@@ -223,8 +228,8 @@ slave_t::on_ping() {
 }
 
 void
-slave_t::on_suicide(int code,
-                    const std::string& reason)
+slave_t::on_terminate(int code,
+                      const std::string& reason)
 {
     COCAINE_LOG_DEBUG(
         m_log,
@@ -369,7 +374,10 @@ slave_t::on_idle(ev::timer&, int) {
 
     COCAINE_LOG_DEBUG(m_log, "slave %s is idle, deactivating", m_id);
 
-    m_codec->wr->write<rpc::terminate>();
+    m_codec->wr->write<rpc::terminate>(
+        static_cast<int>(rpc::terminate::normal),
+        std::string("idle")
+    );
 
     m_state = states::inactive;
 }

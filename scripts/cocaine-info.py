@@ -19,10 +19,10 @@
 #    along with this program. If not, see <http://www.gnu.org/licenses/>. 
 #
 
-from sys import argv
 from pprint import pprint
+import socket
+from sys import argv
 
-import zmq
 import msgpack
 
 SLOT_START_APP = 0
@@ -30,16 +30,14 @@ SLOT_PAUSE_APP = 1
 SLOT_INFO      = 2
 
 def main(hosts):
-    context = zmq.Context()
-
     for host in hosts:
-        request = context.socket(zmq.DEALER)
-        request.connect('tcp://%s:5000' % host)
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+        sock.connect(('127.0.0.1', 12350))
 
         # Statistics
-        request.send(msgpack.packb([SLOT_INFO, []]))
-
-        pprint(msgpack.unpackb(request.recv()))
+        sock.send(msgpack.packb([SLOT_INFO, []]))
+        res = sock.recv(512)
+        pprint(msgpack.unpackb(res))
 
 if __name__ == "__main__":
     if len(argv) == 1:

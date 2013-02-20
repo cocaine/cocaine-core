@@ -23,6 +23,8 @@
 #include "cocaine/asio/acceptor.hpp"
 #include "cocaine/asio/connector.hpp"
 #include "cocaine/asio/pipe.hpp"
+#include "cocaine/asio/tcp.hpp"
+
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
@@ -47,7 +49,7 @@ reactor_t::reactor_t(context_t& context,
         it != args["listen"].end();
         ++it)
     {
-        std::string endpoint = (*it).asString();
+        auto endpoint = tcp::endpoint("127.0.0.1", (*it).asUInt());
 
         COCAINE_LOG_INFO(m_log, "listening on '%s'", endpoint);
 
@@ -67,7 +69,7 @@ reactor_t::reactor_t(context_t& context,
     }
 
     m_connector->bind(
-        std::bind(&reactor_t::on_connection, this, io::_1)
+        std::bind(&reactor_t::on_connection, this, std::placeholders::_1)
     );
 
     m_terminate.set<reactor_t, &reactor_t::on_terminate>(this);
@@ -107,14 +109,14 @@ reactor_t::on_connection(const std::shared_ptr<pipe_t>& pipe) {
     auto io = std::make_shared<codec<pipe_t>>(m_service, pipe);
 
     io->rd->bind(
-        std::bind(&reactor_t::on_message, this, io, io::_1)
+        std::bind(&reactor_t::on_message, this, io, std::placeholders::_1)
     );
 
     m_codecs.insert(io);
 }
 
 void
-reactor_t::on_message(const std::shared_ptr<codec<pipe_t>>& /* io */,
+reactor_t::on_message(const std::shared_ptr<codec<pipe_t>>& io,
                       const message_t& message)
 {
     slot_map_t::const_iterator slot = m_slots.find(message.id());
@@ -139,9 +141,9 @@ reactor_t::on_message(const std::shared_ptr<codec<pipe_t>>& /* io */,
         return;
     }
 
-    // if(!response.empty()) {
-    //    m_channel.send_multipart(source, response);
-    // }
+    if(!response.empty()) {
+        io->wr->stream()->write(response.data(), response.size());
+    }
 }
 
 void

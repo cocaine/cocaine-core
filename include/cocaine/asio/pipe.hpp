@@ -23,13 +23,34 @@
 
 #include "cocaine/common.hpp"
 
+#include <fcntl.h>
+#include <sys/socket.h>
+
 namespace cocaine { namespace io {
 
 struct pipe_t:
     boost::noncopyable
 {
-    pipe_t(const std::string& path);
-    pipe_t(int fd);
+    template<class T>
+    explicit
+    pipe_t(T endpoint):
+        m_fd(endpoint.create())
+    {
+        if(m_fd == -1) {
+            throw io_error_t("unable to create a stream");
+        }
+
+        if(::connect(m_fd, endpoint.data(), endpoint.size()) == -1) {
+            throw io_error_t("unable to connect a stream to '%s'", endpoint);
+        }
+
+        ::fcntl(m_fd, F_SETFD, FD_CLOEXEC);
+        ::fcntl(m_fd, F_SETFL, O_NONBLOCK);
+    }
+
+    pipe_t(int fd):
+        m_fd(fd)
+    { }
 
     ~pipe_t();
 
@@ -55,10 +76,6 @@ public:
     fd() const {
         return m_fd;
     }
-
-private:
-    void
-    configure(int fd);
 
 private:
     int m_fd;

@@ -30,10 +30,9 @@
 using namespace cocaine;
 using namespace cocaine::logger;
 
-files_t::files_t(context_t& context,
-                 const std::string& name,
+files_t::files_t(const std::string& name,
                  const Json::Value& args):
-    category_type(context, name, args),
+    category_type(name, args),
     m_file(nullptr)
 {
     std::string path = args["path"].asString();
@@ -80,9 +79,8 @@ files_t::emit(logging::priorities priority,
               const std::string& message)
 {
     time_t time = 0;
-    tm timeinfo;
+    struct tm timeinfo;
 
-    // XXX: Not sure if it's needed.
     std::memset(&timeinfo, 0, sizeof(timeinfo));
 
     std::time(&time);
@@ -90,9 +88,9 @@ files_t::emit(logging::priorities priority,
 
     char timestamp[128];
 
-    size_t result = std::strftime(timestamp, 128, "%c", &timeinfo);
-
-    BOOST_ASSERT(result != 0);
+    if(std::strftime(timestamp, 128, "%c", &timeinfo) == 0) {
+        return;
+    }
 
     std::string out = cocaine::format(
         "[%s] [%s] %s: %s\n",
@@ -114,9 +112,9 @@ files_t::emit(logging::priorities priority,
         { buffer, out.size() }
     };
 
-    ssize_t written = ::writev(::fileno(m_file), io, sizeof(io) / sizeof(io[0]));
-
-    BOOST_ASSERT(static_cast<size_t>(written) == out.size());
+    if(::writev(::fileno(m_file), io, sizeof(io) / sizeof(io[0])) == -1) {
+        // TODO: Do something useful.
+    }
 
     delete[] buffer;
 }

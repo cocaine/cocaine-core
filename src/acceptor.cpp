@@ -21,58 +21,20 @@
 #include "cocaine/asio/acceptor.hpp"
 #include "cocaine/asio/pipe.hpp"
 
-#include <fcntl.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 
 using namespace cocaine::io;
-
-acceptor_t::acceptor_t(const std::string& path,
-                       int backlog):
-    m_fd(::socket(AF_LOCAL, SOCK_STREAM, 0))
-{
-    if(m_fd == -1) {
-        throw io_error_t("unable to create an acceptor");
-    }
-
-    // Set non-blocking and close-on-exec options.
-    configure(m_fd);
-
-#ifdef _GNU_SOURCE
-    struct sockaddr_un address = { AF_LOCAL, { 0 } };
-#else
-    struct sockaddr_un address = { sizeof(sockaddr_un), AF_LOCAL, { 0 } };
-#endif
-
-    ::memcpy(address.sun_path, path.c_str(), path.size());
-
-    if(::bind(m_fd, reinterpret_cast<sockaddr*>(&address), sizeof(address)) == -1) {
-        throw io_error_t("unable to bind an acceptor on '%s'", path);
-    }
-
-    ::listen(m_fd, backlog);
-}
 
 acceptor_t::~acceptor_t() {
     if(m_fd == -1) {
         return;
     }
 
-#ifdef _GNU_SOURCE
-    struct sockaddr_un address = { AF_LOCAL, { 0 } };
-#else
-    struct sockaddr_un address = { sizeof(sockaddr_un), AF_LOCAL, { 0 } };
-#endif
-    
-    socklen_t length = sizeof(address);
-
-    ::getsockname(m_fd, reinterpret_cast<sockaddr*>(&address), &length);
-
     if(::close(m_fd) != 0) {
-        // Log.
-    }
-
-    if(::unlink(address.sun_path) != 0) {
         // Log.
     }
 }
@@ -92,11 +54,11 @@ acceptor_t::operator=(acceptor_t&& other) {
 std::shared_ptr<pipe_t>
 acceptor_t::accept() {
 #ifdef _GNU_SOURCE
-    struct sockaddr_un address = { AF_LOCAL, { 0 } };
+    struct sockaddr_in address = { AF_INET, 0, { 0 }, { 0 } };
 #else
-    struct sockaddr_un address = { sizeof(sockaddr_un), AF_LOCAL, { 0 } };
+    struct sockaddr_in address = { sizeof(sockaddr_in), AF_INET, 0, { 0 }, { 0 } };
 #endif
-    
+
     socklen_t length = sizeof(address);
 
     int fd = ::accept(m_fd, reinterpret_cast<sockaddr*>(&address), &length);
@@ -115,16 +77,15 @@ acceptor_t::accept() {
         }
     }
 
-    // Set non-blocking and close-on-exec options.
-    configure(fd);
+    ::fcntl(m_fd, F_SETFD, FD_CLOEXEC);
+    ::fcntl(m_fd, F_SETFL, O_NONBLOCK);
+
+    int enable = 1;
+
+    // Disable Nagle's algorithm.
+    ::setsockopt(m_fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable));
 
     return std::make_shared<pipe_t>(fd);
-}
-
-void
-acceptor_t::configure(int fd) {
-    ::fcntl(fd, F_SETFD, FD_CLOEXEC);
-    ::fcntl(fd, F_SETFL, O_NONBLOCK);
 }
 
 pipe_link_t
