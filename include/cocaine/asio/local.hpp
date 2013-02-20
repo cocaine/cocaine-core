@@ -48,7 +48,7 @@ struct endpoint {
     }
 
     int
-    create() {
+    create() const {
         return ::socket(AF_LOCAL, SOCK_STREAM, 0);
     }
 
