@@ -64,12 +64,12 @@ app_t::app_t(context_t& context,
 
     m_service.reset(new service_t());
 
-    std::shared_ptr<pipe<local>> lhs, rhs;
+    std::shared_ptr<io::pipe<local>> lhs, rhs;
 
     // Create the engine control pipes.
     std::tie(lhs, rhs) = io::link<local>();
 
-    m_codec.reset(new codec<pipe<local>>(*m_service, lhs));
+    m_codec.reset(new codec<io::pipe<local>>(*m_service, lhs));
 
     // NOTE: The event loop is not started here yet.
     m_engine.reset(

@@ -105,8 +105,8 @@ reactor_t::terminate() {
 }
 
 void
-reactor_t::on_connection(const std::shared_ptr<pipe<tcp>>& pipe_) {
-    auto codec_ = std::make_shared<codec<pipe<tcp>>>(m_service, pipe_);
+reactor_t::on_connection(const std::shared_ptr<io::pipe<tcp>>& pipe_) {
+    auto codec_ = std::make_shared<codec<io::pipe<tcp>>>(m_service, pipe_);
 
     codec_->rd->bind(
         std::bind(&reactor_t::on_message, this, codec_, std::placeholders::_1)
@@ -116,7 +116,7 @@ reactor_t::on_connection(const std::shared_ptr<pipe<tcp>>& pipe_) {
 }
 
 void
-reactor_t::on_message(const std::shared_ptr<codec<pipe<tcp>>>& codec_,
+reactor_t::on_message(const std::shared_ptr<codec<io::pipe<tcp>>>& codec_,
                       const message_t& message)
 {
     slot_map_t::const_iterator slot = m_slots.find(message.id());

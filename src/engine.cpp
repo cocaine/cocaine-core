@@ -146,7 +146,7 @@ namespace {
 engine_t::engine_t(context_t& context,
                    const manifest_t& manifest,
                    const profile_t& profile,
-                   const std::shared_ptr<pipe<local>>& control):
+                   const std::shared_ptr<io::pipe<local>>& control):
     m_context(context),
     m_log(new log_t(context, cocaine::format("app/%1%", manifest.name))),
     m_manifest(manifest),
@@ -179,7 +179,7 @@ engine_t::engine_t(context_t& context,
         std::bind(&engine_t::on_connection, this, _1)
     );
 
-    m_codec.reset(new codec<pipe<local>>(m_service, control));
+    m_codec.reset(new codec<io::pipe<local>>(m_service, control));
 
     m_codec->rd->bind(
         std::bind(&engine_t::on_control, this, _1)
@@ -265,8 +265,8 @@ engine_t::erase(const unique_id_t& uuid,
 }
 
 void
-engine_t::on_connection(const std::shared_ptr<pipe<local>>& pipe_) {
-    auto codec_ = std::make_shared<codec<pipe<local>>>(m_service, pipe_);
+engine_t::on_connection(const std::shared_ptr<io::pipe<local>>& pipe_) {
+    auto codec_ = std::make_shared<codec<io::pipe<local>>>(m_service, pipe_);
 
     codec_->rd->bind(
         std::bind(&engine_t::on_handshake, this, codec_, _1)
@@ -278,7 +278,7 @@ engine_t::on_connection(const std::shared_ptr<pipe<local>>& pipe_) {
 }
 
 void
-engine_t::on_handshake(const std::shared_ptr<codec<pipe<local>>>& codec_,
+engine_t::on_handshake(const std::shared_ptr<codec<io::pipe<local>>>& codec_,
                        const message_t& message)
 {
     unique_id_t uuid(uninitialized);

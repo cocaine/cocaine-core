@@ -85,7 +85,7 @@ slave_t::~slave_t() {
 }
 
 void
-slave_t::bind(const std::shared_ptr<codec<pipe<local>>>& codec_) {
+slave_t::bind(const std::shared_ptr<codec<io::pipe<local>>>& codec_) {
     m_codec = codec_;
 
     m_codec->rd->bind(
