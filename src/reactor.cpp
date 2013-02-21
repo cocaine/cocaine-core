@@ -54,9 +54,9 @@ reactor_t::reactor_t(context_t& context,
         COCAINE_LOG_INFO(m_log, "listening on '%s'", endpoint);
 
         try {
-            m_connector.reset(new connector<acceptor_t>(
+            m_connector.reset(new connector<acceptor<tcp>>(
                 m_service,
-                std::unique_ptr<acceptor_t>(new acceptor_t(endpoint)))
+                std::unique_ptr<acceptor<tcp>>(new acceptor<tcp>(endpoint)))
             );
         } catch(const cocaine::io_error_t& e) {
             throw configuration_error_t(
@@ -105,18 +105,18 @@ reactor_t::terminate() {
 }
 
 void
-reactor_t::on_connection(const std::shared_ptr<pipe_t>& pipe) {
-    auto io = std::make_shared<codec<pipe_t>>(m_service, pipe);
+reactor_t::on_connection(const std::shared_ptr<pipe<tcp>>& pipe_) {
+    auto codec_ = std::make_shared<codec<pipe<tcp>>>(m_service, pipe_);
 
-    io->rd->bind(
-        std::bind(&reactor_t::on_message, this, io, std::placeholders::_1)
+    codec_->rd->bind(
+        std::bind(&reactor_t::on_message, this, codec_, std::placeholders::_1)
     );
 
-    m_codecs.insert(io);
+    m_codecs.insert(codec_);
 }
 
 void
-reactor_t::on_message(const std::shared_ptr<codec<pipe_t>>& io,
+reactor_t::on_message(const std::shared_ptr<codec<pipe<tcp>>>& codec_,
                       const message_t& message)
 {
     slot_map_t::const_iterator slot = m_slots.find(message.id());
@@ -142,7 +142,7 @@ reactor_t::on_message(const std::shared_ptr<codec<pipe_t>>& io,
     }
 
     if(!response.empty()) {
-        io->wr->stream()->write(response.data(), response.size());
+        codec_->wr->stream()->write(response.data(), response.size());
     }
 }
 

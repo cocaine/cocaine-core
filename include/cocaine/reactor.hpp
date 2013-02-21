@@ -72,10 +72,10 @@ class reactor_t:
 
     private:
         void
-        on_connection(const std::shared_ptr<io::pipe_t>& pipe);
+        on_connection(const std::shared_ptr<io::pipe<io::tcp>>& pipe);
 
         void
-        on_message(const std::shared_ptr<io::codec<io::pipe_t>>& codec,
+        on_message(const std::shared_ptr<io::codec<io::pipe<io::tcp>>>& codec,
                    const io::message_t& message);
 
         void
@@ -93,11 +93,11 @@ class reactor_t:
         // Service I/O
 
         std::unique_ptr<
-            io::connector<io::acceptor_t>
+            io::connector<io::acceptor<io::tcp>>
         > m_connector;
 
         std::set<
-            std::shared_ptr<io::codec<io::pipe_t>>
+            std::shared_ptr<io::codec<io::pipe<io::tcp>>>
         > m_codecs;
 
         // RPC

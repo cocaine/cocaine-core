@@ -29,54 +29,84 @@
 // According to unix(7), this is the maximum length of a local socket path.
 #define UNIX_PATH_MAX 108
 
-namespace cocaine { namespace io { namespace local {
+namespace cocaine { namespace io {
 
-struct endpoint {
-    typedef sockaddr    base_type;
-    typedef sockaddr_un address_type;
+struct local {
+    typedef acceptor<local> acceptor;
+    typedef pipe<local> pipe;
 
-    endpoint(const std::string& address) {
-        std::memset(&m_data, 0, sizeof(m_data));
+    struct endpoint {
+        typedef sockaddr    base_type;
+        typedef sockaddr_un address_type;
+        typedef socklen_t   size_type;
 
-        m_data.local.sun_family = AF_LOCAL;
-
-        if(address.size() >= UNIX_PATH_MAX) {
-            throw cocaine::io_error_t("stream address '%s' exceeds the maximum allowed length");
+        endpoint() {
+            std::memset(&m_data, 0, sizeof(m_data));
         }
 
-        std::memcpy(m_data.local.sun_path, address.c_str(), address.size());
-    }
+        endpoint(const std::string& address) {
+            std::memset(&m_data, 0, sizeof(m_data));
 
+            m_data.local.sun_family = local::family();
+
+            if(address.size() >= UNIX_PATH_MAX) {
+                throw cocaine::io_error_t("stream address '%s' exceeds the maximum allowed length");
+            }
+
+            std::memcpy(m_data.local.sun_path, address.c_str(), address.size());
+        }
+
+        base_type*
+        data() {
+            return &m_data.base;
+        }
+
+        const base_type*
+        data() const {
+            return &m_data.base;
+        }
+
+        size_type
+        size() const {
+            return sizeof(m_data);
+        }
+
+        friend
+        std::ostream&
+        operator<<(std::ostream& stream,
+                   const local::endpoint& endpoint)
+        {
+            return stream << endpoint.m_data.local.sun_path;
+        }
+
+    private:
+        union {
+            base_type    base;
+            address_type local;
+        } m_data;
+    };
+
+    typedef endpoint endpoint_type;
+
+    static
     int
-    create() const {
-        return ::socket(AF_LOCAL, SOCK_STREAM, 0);
+    family() {
+        return AF_LOCAL;
     }
 
-    const base_type*
-    data() const {
-        return &m_data.base;
+    static
+    int
+    type() {
+        return SOCK_STREAM;
     }
 
-    socklen_t
-    size() const {
-        return sizeof(m_data);
+    static
+    int
+    protocol() {
+        return 0;
     }
-
-    friend
-    std::ostream&
-    operator<<(std::ostream& stream,
-               const local::endpoint& endpoint)
-    {
-        return stream << endpoint.m_data.local.sun_path;
-    }
-
-private:
-    union {
-        base_type    base;
-        address_type local;
-    } m_data;
 };
 
-}}} // namespace cocaine::io::local
+}} // namespace cocaine::io
 
 #endif

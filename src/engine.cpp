@@ -146,7 +146,7 @@ namespace {
 engine_t::engine_t(context_t& context,
                    const manifest_t& manifest,
                    const profile_t& profile,
-                   const std::shared_ptr<io::pipe_t>& control):
+                   const std::shared_ptr<pipe<local>>& control):
     m_context(context),
     m_log(new log_t(context, cocaine::format("app/%1%", manifest.name))),
     m_manifest(manifest),
@@ -170,16 +170,16 @@ engine_t::engine_t(context_t& context,
         m_manifest.name
     ));
 
-    m_connector.reset(new connector<acceptor_t>(
+    m_connector.reset(new connector<acceptor<local>>(
         m_service,
-        std::unique_ptr<acceptor_t>(new acceptor_t(endpoint))
+        std::unique_ptr<acceptor<local>>(new acceptor<local>(endpoint))
     ));
 
     m_connector->bind(
         std::bind(&engine_t::on_connection, this, _1)
     );
 
-    m_codec.reset(new codec<io::pipe_t>(m_service, control));
+    m_codec.reset(new codec<pipe<local>>(m_service, control));
 
     m_codec->rd->bind(
         std::bind(&engine_t::on_control, this, _1)
@@ -265,31 +265,31 @@ engine_t::erase(const unique_id_t& uuid,
 }
 
 void
-engine_t::on_connection(const std::shared_ptr<pipe_t>& pipe) {
-    auto io = std::make_shared<codec<pipe_t>>(m_service, pipe);
+engine_t::on_connection(const std::shared_ptr<pipe<local>>& pipe_) {
+    auto codec_ = std::make_shared<codec<pipe<local>>>(m_service, pipe_);
 
-    io->rd->bind(
-        std::bind(&engine_t::on_handshake, this, io, _1)
+    codec_->rd->bind(
+        std::bind(&engine_t::on_handshake, this, codec_, _1)
     );
 
-    COCAINE_LOG_DEBUG(m_log, "initiating a slave handshake on fd: %d", pipe->fd());
+    COCAINE_LOG_DEBUG(m_log, "initiating a slave handshake on fd: %d", pipe_->fd());
 
-    m_backlog.insert(io);
+    m_backlog.insert(codec_);
 }
 
 void
-engine_t::on_handshake(const std::shared_ptr<codec<pipe_t>>& io,
+engine_t::on_handshake(const std::shared_ptr<codec<pipe<local>>>& codec_,
                        const message_t& message)
 {
     unique_id_t uuid(uninitialized);
 
-    m_backlog.erase(io);
+    m_backlog.erase(codec_);
 
     try {
         message.as<rpc::handshake>(uuid);
     } catch(const cocaine::error_t& e) {
         COCAINE_LOG_WARNING(m_log, "dropping an invalid handshake message");
-        io->rd->unbind();
+        codec_->rd->unbind();
         return;
     }
 
@@ -297,13 +297,13 @@ engine_t::on_handshake(const std::shared_ptr<codec<pipe_t>>& io,
 
     if(it == m_pool.end()) {
         COCAINE_LOG_WARNING(m_log, "dropping a handshake from an unknown slave %s", uuid);
-        io->rd->unbind();
+        codec_->rd->unbind();
         return;
     }
 
     COCAINE_LOG_DEBUG(m_log, "slave %s connected", uuid);
 
-    it->second->bind(io);
+    it->second->bind(codec_);
 
     wake();
 }

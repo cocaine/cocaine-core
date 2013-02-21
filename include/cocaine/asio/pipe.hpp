@@ -28,19 +28,27 @@
 
 namespace cocaine { namespace io {
 
-struct pipe_t:
+template<class MediumType>
+struct pipe:
     boost::noncopyable
 {
-    template<class T>
+    typedef MediumType                          medium_type;
+    typedef typename medium_type::endpoint_type endpoint_type;
+    typedef typename endpoint_type::size_type   size_type;
+
     explicit
-    pipe_t(T endpoint):
-        m_fd(endpoint.create())
-    {
+    pipe(endpoint_type endpoint) {
+        m_fd = ::socket(
+            medium_type::family(),
+            medium_type::type(),
+            medium_type::protocol()
+        );
+
         if(m_fd == -1) {
             throw io_error_t("unable to create a stream");
         }
 
-        if(::connect(m_fd, endpoint.data(), endpoint.size()) == -1) {
+        if(::connect(m_fd, endpoint.data(), endpoint.size()) != 0) {
             throw io_error_t("unable to connect a stream to '%s'", endpoint);
         }
 
@@ -48,33 +56,106 @@ struct pipe_t:
         ::fcntl(m_fd, F_SETFL, O_NONBLOCK);
     }
 
-    pipe_t(int fd):
+    pipe(int fd):
         m_fd(fd)
     { }
 
-    ~pipe_t();
+    ~pipe() {
+        if(m_fd >= 0 && ::close(m_fd) != 0) {
+            // Log.
+        }
+    }
 
     // Moving
 
-    pipe_t(pipe_t&& other);
+    pipe(pipe&& other):
+        m_fd(-1)
+    {
+        *this = std::move(other);
+    }
 
-    pipe_t&
-    operator=(pipe_t&& other);
+    pipe&
+    operator=(pipe&& other) {
+        std::swap(m_fd, other.m_fd);
+        return *this;
+    }
 
     // Operations
 
     ssize_t
     write(const char * buffer,
-          size_t size);
+          size_t size)
+    {
+        ssize_t length = ::write(m_fd, buffer, size);
+
+        if(length == -1) {
+            switch(errno) {
+                case EAGAIN:
+#if defined(EWOULDBLOCK) && EWOULDBLOCK != EAGAIN
+                case EWOULDBLOCK:
+#endif
+                case EINTR:
+                    return length;
+
+                default:
+                    throw io_error_t("unable to write to a pipe");
+            }
+        }
+
+        return length;
+    }
 
     ssize_t
     read(char * buffer,
-         size_t size);
+         size_t size)
+    {
+        ssize_t length = ::read(m_fd, buffer, size);
+
+        if(length == -1) {
+            switch(errno) {
+                case EAGAIN:
+#if defined(EWOULDBLOCK) && EWOULDBLOCK != EAGAIN
+                case EWOULDBLOCK:
+#endif
+                case EINTR:
+                    return length;
+
+                default:
+                    throw io_error_t("unable to read from a pipe");
+            }
+        }
+
+        return length;
+    }
 
 public:
     int
     fd() const {
         return m_fd;
+    }
+
+    endpoint_type
+    local_endpoint() {
+        endpoint_type endpoint;
+        size_type size = endpoint.size();
+
+        if(::getsockname(m_fd, endpoint.data(), &size) != 0) {
+            throw io_error_t("unable to determine the local stream address");
+        }
+
+        return endpoint;
+    }
+
+    endpoint_type
+    remote_endpoint() {
+        endpoint_type endpoint;
+        size_type size = endpoint.size();
+
+        if(::getpeername(m_fd, endpoint.data(), &size) != 0) {
+            throw io_error_t("unable to determine the remote stream address");
+        }
+
+        return endpoint;
     }
 
 private:

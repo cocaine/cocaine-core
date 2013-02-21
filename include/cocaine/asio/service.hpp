@@ -21,6 +21,8 @@
 #ifndef COCAINE_ASIO_SERVICE_HPP
 #define COCAINE_ASIO_SERVICE_HPP
 
+#include "cocaine/common.hpp"
+
 #include <mutex>
 
 #define EV_MINIMAL       0

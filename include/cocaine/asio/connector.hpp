@@ -39,10 +39,6 @@ struct connector:
         m_acceptor_watcher.set<connector, &connector::on_event>(this);
     }
 
-    ~connector() {
-        unbind();
-    }
-
     template<class CallbackType>
     void
     bind(CallbackType callback) {

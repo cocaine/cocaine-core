@@ -28,73 +28,98 @@
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 
-namespace cocaine { namespace io { namespace tcp {
+namespace cocaine { namespace io {
 
-struct endpoint {
-    typedef sockaddr    base_type;
-    typedef sockaddr_in address_type;
+struct tcp {
+    typedef acceptor<tcp> acceptor;
+    typedef pipe<tcp> pipe;
 
-    endpoint(const std::string& address,
-             uint16_t port)
-    {
-        std::memset(&m_data, 0, sizeof(m_data));
+    struct endpoint {
+        typedef sockaddr    base_type;
+        typedef sockaddr_in address_type;
+        typedef socklen_t   size_type;
 
-        m_data.tcp4.sin_family = AF_INET;
-        m_data.tcp4.sin_port = htons(port);
-
-        if(::inet_pton(AF_INET, address.c_str(), &m_data.tcp4.sin_addr) == 0) {
-            throw cocaine::io_error_t("endpoint address '%s' is invalid", address);
+        endpoint() {
+            std::memset(&m_data, 0, sizeof(m_data));
         }
-    }
 
+        endpoint(const std::string& address,
+                 uint16_t port)
+        {
+            std::memset(&m_data, 0, sizeof(m_data));
+
+            m_data.tcp4.sin_family = tcp::family();
+            m_data.tcp4.sin_port = htons(port);
+
+            if(::inet_pton(tcp::family(), address.c_str(), &m_data.tcp4.sin_addr) == 0) {
+                throw cocaine::io_error_t("endpoint address '%s' is invalid", address);
+            }
+        }
+
+        base_type*
+        data() {
+            return &m_data.base;
+        }
+
+        const base_type*
+        data() const {
+            return &m_data.base;
+        }
+
+        size_type
+        size() const {
+            return sizeof(m_data);
+        }
+
+        friend
+        std::ostream&
+        operator<<(std::ostream& stream,
+                   const tcp::endpoint& endpoint)
+        {
+            char result[INET_ADDRSTRLEN];
+
+            ::inet_ntop(
+                tcp::family(),
+                &endpoint.m_data.tcp4.sin_addr,
+                result,
+                INET_ADDRSTRLEN
+            );
+
+            return stream << cocaine::format(
+                "%s:%d",
+                result,
+                ntohs(endpoint.m_data.tcp4.sin_port)
+            );
+        }
+
+    private:
+        union {
+            base_type    base;
+            address_type tcp4;
+        } m_data;
+    };
+
+    typedef endpoint endpoint_type;
+
+    static
     int
-    create() const {
-        int fd = ::socket(AF_INET, SOCK_STREAM, 0);
-        int enable = 1;
-
-        ::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable));
-
-        return fd;
+    family() {
+        return AF_INET;
     }
 
-    const base_type*
-    data() const {
-        return &m_data.base;
+    static
+    int
+    type() {
+        return SOCK_STREAM;
     }
 
-    socklen_t
-    size() const {
-        return sizeof(m_data);
+    static
+    int
+    protocol() {
+        return 0;
     }
-
-    friend
-    std::ostream&
-    operator<<(std::ostream& stream,
-               const tcp::endpoint& endpoint)
-    {
-        char result[INET_ADDRSTRLEN];
-
-        ::inet_ntop(
-            AF_INET,
-            &endpoint.m_data.tcp4.sin_addr,
-            result,
-            INET_ADDRSTRLEN
-        );
-
-        return stream << cocaine::format(
-            "%s:%d",
-            result,
-            ntohs(endpoint.m_data.tcp4.sin_port)
-        );
-    }
-
-private:
-    union {
-        base_type    base;
-        address_type tcp4;
-    } m_data;
 };
 
-}}} // namespace cocaine::io::tcp
+}} // namespace cocaine::io
 
 #endif

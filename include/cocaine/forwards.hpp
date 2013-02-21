@@ -57,8 +57,14 @@ namespace cocaine {
     }
 
     namespace io {
-        struct acceptor_t;
-        struct pipe_t;
+        struct local;
+        struct tcp;
+
+        template<class>
+        struct acceptor;
+
+        template<class>
+        struct pipe;
 
         // I/O privimites
 

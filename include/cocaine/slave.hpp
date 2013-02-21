@@ -50,7 +50,7 @@ class slave_t:
         // Binding
 
         void
-        bind(const std::shared_ptr<io::codec<io::pipe_t>>& codec);
+        bind(const std::shared_ptr<io::codec<io::pipe<io::local>>>& codec);
 
         // Sessions
 
@@ -144,7 +144,7 @@ class slave_t:
 
         // I/O
 
-        std::shared_ptr<io::codec<io::pipe_t>> m_codec;
+        std::shared_ptr<io::codec<io::pipe<io::local>>> m_codec;
 
         // Active sessions
 

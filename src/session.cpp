@@ -20,6 +20,9 @@
 
 #include "cocaine/session.hpp"
 
+#include "cocaine/asio/local.hpp"
+#include "cocaine/rpc.hpp"
+
 using namespace cocaine::engine;
 using namespace cocaine::io;
 
@@ -30,14 +33,14 @@ session_t::session_t(uint64_t id_,
     event(event_),
     upstream(upstream_)
 {
-    m_encoder.reset(new encoder<pipe_t>());
+    m_encoder.reset(new encoder<pipe<local>>());
 
     // NOTE: This will go to cache, but we save on this serialization later.
     send<io::rpc::invoke>(event.type);
 }
 
 void
-session_t::attach(const std::shared_ptr<writable_stream<pipe_t>>& stream) {
+session_t::attach(const std::shared_ptr<writable_stream<pipe<local>>>& stream) {
     std::unique_lock<std::mutex> lock(m_mutex);
 
     // Flush all the cached messages into the stream.

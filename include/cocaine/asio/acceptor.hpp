@@ -21,22 +21,28 @@
 #ifndef COCAINE_ASIO_ACCEPTOR_HPP
 #define COCAINE_ASIO_ACCEPTOR_HPP
 
-#include "cocaine/common.hpp"
-
-#include <fcntl.h>
-#include <sys/socket.h>
+#include "cocaine/asio/pipe.hpp"
 
 namespace cocaine { namespace io {
 
-struct acceptor_t:
+template<class MediumType>
+struct acceptor:
     boost::noncopyable
 {
-    typedef pipe_t pipe_type;
+    typedef MediumType                          medium_type;
+    typedef pipe<MediumType>                    pipe_type;
+    typedef typename medium_type::endpoint_type endpoint_type;
+    typedef typename endpoint_type::size_type   size_type;
 
-    template<class T>
-    acceptor_t(T endpoint, int backlog = 1024):
-        m_fd(endpoint.create())
+    acceptor(endpoint_type endpoint,
+             int backlog = 1024)
     {
+        m_fd = ::socket(
+            medium_type::family(),
+            medium_type::type(),
+            medium_type::protocol()
+        );
+
         if(m_fd == -1) {
             throw io_error_t("unable to create an acceptor");
         }
@@ -44,26 +50,63 @@ struct acceptor_t:
         ::fcntl(m_fd, F_SETFD, FD_CLOEXEC);
         ::fcntl(m_fd, F_SETFL, O_NONBLOCK);
 
-        if(::bind(m_fd, endpoint.data(), endpoint.size()) == -1) {
+        if(::bind(m_fd, endpoint.data(), endpoint.size()) != 0) {
             throw io_error_t("unable to bind an acceptor on '%s'", endpoint);
         }
 
-        ::listen(m_fd, backlog);
+        if(::listen(m_fd, backlog) != 0) {
+            throw io_error_t("unable to activate an acceptor on '%s'", endpoint);
+        }
     }
 
-    ~acceptor_t();
+    ~acceptor() {
+        if(m_fd >= 0 && ::close(m_fd) != 0) {
+            // Log.
+        }
+    }
 
     // Moving
 
-    acceptor_t(acceptor_t&& other);
+    acceptor(acceptor&& other):
+        m_fd(-1)
+    {
+        *this = std::move(other);
+    }
 
-    acceptor_t&
-    operator=(acceptor_t&& other);
+    acceptor&
+    operator=(acceptor&& other) {
+        std::swap(m_fd, other.m_fd);
+        return *this;
+    }
 
     // Operations
 
-    std::shared_ptr<pipe_t>
-    accept();
+    std::shared_ptr<pipe_type>
+    accept() {
+        endpoint_type endpoint;
+        size_type size = endpoint.size();
+
+        int fd = ::accept(m_fd, endpoint.data(), &size);
+
+        if(fd == -1) {
+            switch(errno) {
+                case EAGAIN:
+#if defined(EWOULDBLOCK) && EWOULDBLOCK != EAGAIN
+                case EWOULDBLOCK:
+#endif
+                case EINTR:
+                    return std::shared_ptr<pipe_type>();
+
+                default:
+                    throw io_error_t("unable to accept a connection");
+            }
+        }
+
+        ::fcntl(m_fd, F_SETFD, FD_CLOEXEC);
+        ::fcntl(m_fd, F_SETFL, O_NONBLOCK);
+
+        return std::make_shared<pipe_type>(fd);
+    }
 
 public:
     int
@@ -75,13 +118,23 @@ private:
     int m_fd;
 };
 
-typedef std::pair<
-    std::shared_ptr<pipe_t>,
-    std::shared_ptr<pipe_t>
-> pipe_link_t;
+template<class EndpointType>
+std::pair<
+    std::shared_ptr<pipe<EndpointType>>,
+    std::shared_ptr<pipe<EndpointType>>
+>
+link() {
+    int fd[] = { -1, -1 };
 
-pipe_link_t
-link();
+    if(::socketpair(AF_LOCAL, SOCK_STREAM, 0, fd)) {
+        throw io_error_t("unable to create linked streams");
+    }
+
+    return std::make_pair(
+        std::make_shared<pipe<EndpointType>>(fd[0]),
+        std::make_shared<pipe<EndpointType>>(fd[1])
+    );
+}
 
 }} // namespace cocaine::io
 

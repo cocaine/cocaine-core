@@ -23,6 +23,8 @@
 #include "cocaine/api/event.hpp"
 #include "cocaine/api/stream.hpp"
 
+#include "cocaine/asio/local.hpp"
+
 #include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/logging.hpp"
@@ -83,8 +85,8 @@ slave_t::~slave_t() {
 }
 
 void
-slave_t::bind(const std::shared_ptr<codec<pipe_t>>& io) {
-    m_codec = io;
+slave_t::bind(const std::shared_ptr<codec<pipe<local>>>& codec_) {
+    m_codec = codec_;
 
     m_codec->rd->bind(
         std::bind(&slave_t::on_message, this, _1)
