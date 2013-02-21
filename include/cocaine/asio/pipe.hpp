@@ -28,13 +28,13 @@
 
 namespace cocaine { namespace io {
 
-template<class MediumType>
+template<class Medium>
 struct pipe:
     boost::noncopyable
 {
-    typedef MediumType                          medium_type;
-    typedef typename medium_type::endpoint      endpoint_type;
-    typedef typename endpoint_type::size_type   size_type;
+    typedef Medium medium_type;
+    typedef typename medium_type::endpoint endpoint_type;
+    typedef typename endpoint_type::size_type size_type;
 
     explicit
     pipe(endpoint_type endpoint) {

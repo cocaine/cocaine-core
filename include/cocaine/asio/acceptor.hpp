@@ -25,14 +25,16 @@
 
 namespace cocaine { namespace io {
 
-template<class MediumType>
+template<class Medium>
 struct acceptor:
     boost::noncopyable
 {
-    typedef MediumType                          medium_type;
-    typedef pipe<MediumType>                    pipe_type;
-    typedef typename medium_type::endpoint      endpoint_type;
-    typedef typename endpoint_type::size_type   size_type;
+    typedef Medium medium_type;
+    typedef typename medium_type::endpoint endpoint_type;
+    typedef typename endpoint_type::size_type size_type;
+
+    // Type of the stream this acceptor yields on a new connection.
+    typedef pipe<medium_type> pipe_type;
 
     acceptor(endpoint_type endpoint,
              int backlog = 1024)
