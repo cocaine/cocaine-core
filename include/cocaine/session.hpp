@@ -22,10 +22,14 @@
 #define COCAINE_SESSION_HPP
 
 #include "cocaine/common.hpp"
+
 #include "cocaine/api/event.hpp"
+
+#include "cocaine/asio/local.hpp"
 #include "cocaine/asio/pipe.hpp"
+
 #include "cocaine/birth_control.hpp"
-#include "cocaine/messaging.hpp"
+#include "cocaine/rpc.hpp"
 
 #include <mutex>
 
