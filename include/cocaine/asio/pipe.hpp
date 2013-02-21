@@ -33,7 +33,7 @@ struct pipe:
     boost::noncopyable
 {
     typedef MediumType                          medium_type;
-    typedef typename medium_type::endpoint_type endpoint_type;
+    typedef typename medium_type::endpoint      endpoint_type;
     typedef typename endpoint_type::size_type   size_type;
 
     explicit

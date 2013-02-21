@@ -121,12 +121,12 @@ class reactor_t:
 namespace detail {
     template<class F, bool Bound = std::is_bind_expression<F>::value>
     struct result_of {
-        typedef typename std::result_of<F>::type type;
+        typedef typename F::result_type type;
     };
 
     template<class F>
-    struct result_of<F, true> {
-        typedef typename F::result_type type;
+    struct result_of<F, false> {
+        typedef typename std::result_of<F>::type type;
     };
 }
 

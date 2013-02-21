@@ -31,7 +31,7 @@ struct acceptor:
 {
     typedef MediumType                          medium_type;
     typedef pipe<MediumType>                    pipe_type;
-    typedef typename medium_type::endpoint_type endpoint_type;
+    typedef typename medium_type::endpoint      endpoint_type;
     typedef typename endpoint_type::size_type   size_type;
 
     acceptor(endpoint_type endpoint,

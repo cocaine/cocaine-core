@@ -99,8 +99,6 @@ struct tcp {
         } m_data;
     };
 
-    typedef endpoint endpoint_type;
-
     static
     int
     family() {
