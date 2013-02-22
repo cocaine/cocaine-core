@@ -283,8 +283,6 @@ engine_t::on_handshake(const std::shared_ptr<codec<io::pipe<local>>>& codec_,
 {
     unique_id_t uuid(uninitialized);
 
-    m_backlog.erase(codec_);
-
     try {
         message.as<rpc::handshake>(uuid);
     } catch(const cocaine::error_t& e) {
@@ -300,6 +298,8 @@ engine_t::on_handshake(const std::shared_ptr<codec<io::pipe<local>>>& codec_,
         codec_->rd->unbind();
         return;
     }
+
+    m_backlog.erase(codec_);
 
     COCAINE_LOG_DEBUG(m_log, "slave %s connected", uuid);
 

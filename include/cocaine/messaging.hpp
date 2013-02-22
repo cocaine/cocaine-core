@@ -151,14 +151,10 @@ struct encoder:
             static_cast<int>(traits::id)
         );
 
-        if(!traits::empty) {
-            type_traits<typename traits::tuple_type>::pack(
-                m_packer,
-                std::forward<Args>(args)...
-            );
-        } else {
-            m_packer.pack_nil();
-        }
+        type_traits<typename traits::tuple_type>::pack(
+            m_packer,
+            std::forward<Args>(args)...
+        );
 
         std::unique_lock<std::mutex> lock(m_mutex);
 

@@ -64,6 +64,10 @@ struct readable_stream:
     template<class Callback>
     void
     bind(Callback callback) {
+        if(!m_pipe_watcher.is_active()) {
+            m_pipe_watcher.start(m_pipe->fd(), ev::READ);
+        }
+
         m_callback = callback;
 
         /*
@@ -76,19 +80,15 @@ struct readable_stream:
             m_rd_offset += received;
         }
         */
-
-        if(!m_stream_watcher.is_active()) {
-            m_stream_watcher.start(m_stream->fd(), ev::READ);
-        }
     }
 
     void
     unbind() {
-        m_callback = nullptr;
-
         if(m_stream_watcher.is_active()) {
             m_stream_watcher.stop();
         }
+
+        m_callback = nullptr;
     }
 
 private:
