@@ -41,43 +41,48 @@ reactor_t::reactor_t(context_t& context,
     m_log(new logging::log_t(m_context, name)),
     m_terminate(m_service.loop())
 {
-    if(args["listen"].empty() || !args["listen"].isArray()) {
-        throw cocaine::error_t("no endpoints has been specified");
+    tcp::endpoint endpoint;
+
+    if(args["port"].empty()) {
+        endpoint = tcp::endpoint("127.0.0.1", 0);
+    } else {
+        endpoint = tcp::endpoint("127.0.0.1", args["port"].asUInt());
     }
 
-    for(Json::Value::const_iterator it = args["listen"].begin();
-        it != args["listen"].end();
-        ++it)
-    {
-        auto endpoint = tcp::endpoint("127.0.0.1", (*it).asUInt());
+    COCAINE_LOG_INFO(m_log, "listening on '%s'", endpoint);
 
-        COCAINE_LOG_INFO(m_log, "listening on '%s'", endpoint);
-
-        try {
-            m_connector.reset(new connector<acceptor<tcp>>(
-                m_service,
-                std::unique_ptr<acceptor<tcp>>(new acceptor<tcp>(endpoint)))
-            );
-        } catch(const cocaine::io_error_t& e) {
-            throw configuration_error_t(
-                "unable to bind at '%s' - %s - %s",
-                endpoint,
-                e.what(),
-                e.describe()
-            );
-        }
+    try {
+        m_connector.reset(new connector<acceptor<tcp>>(
+            m_service,
+            std::unique_ptr<acceptor<tcp>>(new acceptor<tcp>(endpoint)))
+        );
+    } catch(const cocaine::io_error_t& e) {
+        throw configuration_error_t(
+            "unable to bind at '%s' - %s - %s",
+            endpoint,
+            e.what(),
+            e.describe()
+        );
     }
 
-    m_connector->bind(
-        std::bind(&reactor_t::on_connection, this, std::placeholders::_1)
+    // NOTE: Register this service with the central dispatch, which will later
+    // be published as a service itself for dynamic endpoint resolution.
+    // m_context.dispatch().bind(name, endpoint);
+
+    auto callback = std::bind(
+        &reactor_t::on_connection,
+        this,
+        std::placeholders::_1
     );
+
+    m_connector->bind(callback);
 
     m_terminate.set<reactor_t, &reactor_t::on_terminate>(this);
     m_terminate.start();
 }
 
 reactor_t::~reactor_t() {
-    // Empty.
+    // m_context.dispatch().unbind(name);
 }
 
 void

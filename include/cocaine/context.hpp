@@ -28,9 +28,6 @@
 namespace cocaine {
 
 struct defaults {
-    // Default slave.
-    static const char slave[];
-
     // Default profile.
     static const float heartbeat_timeout;
     static const float idle_timeout;

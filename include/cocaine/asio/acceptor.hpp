@@ -39,11 +39,7 @@ struct acceptor:
     acceptor(endpoint_type endpoint,
              int backlog = 1024)
     {
-        m_fd = ::socket(
-            medium_type::family(),
-            medium_type::type(),
-            medium_type::protocol()
-        );
+        m_fd = ::socket(medium_type::family(), medium_type::type(), medium_type::protocol());
 
         if(m_fd == -1) {
             throw io_error_t("unable to create an acceptor");

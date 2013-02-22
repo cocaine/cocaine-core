@@ -36,21 +36,19 @@ using namespace cocaine;
 
 namespace fs = boost::filesystem;
 
-const char defaults::slave[] = "/usr/bin/cocaine-worker-generic";
+const float defaults::heartbeat_timeout     = 30.0f;
+const float defaults::idle_timeout          = 600.0f;
+const float defaults::startup_timeout       = 10.0f;
+const float defaults::termination_timeout   = 5.0f;
+const unsigned long defaults::pool_limit    = 10L;
+const unsigned long defaults::queue_limit   = 100L;
+const unsigned long defaults::concurrency   = 10L;
 
-const float defaults::heartbeat_timeout = 30.0f;
-const float defaults::idle_timeout = 600.0f;
-const float defaults::startup_timeout = 10.0f;
-const float defaults::termination_timeout = 5.0f;
-const unsigned long defaults::pool_limit = 10L;
-const unsigned long defaults::queue_limit = 100L;
-const unsigned long defaults::concurrency = 10L;
+const float defaults::control_timeout       = 5.0f;
 
-const float defaults::control_timeout = 5.0f;
-
-const char defaults::plugins_path[] = "/usr/lib/cocaine";
-const char defaults::runtime_path[] = "/var/run/cocaine";
-const char defaults::spool_path[] = "/var/spool/cocaine";
+const char defaults::plugins_path[]         = "/usr/lib/cocaine";
+const char defaults::runtime_path[]         = "/var/run/cocaine";
+const char defaults::spool_path[]           = "/var/spool/cocaine";
 
 // Config
 

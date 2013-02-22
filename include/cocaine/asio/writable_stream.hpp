@@ -28,18 +28,32 @@
 
 namespace cocaine { namespace io {
 
-template<class PipeType>
+template<class Stream>
 struct writable_stream:
     boost::noncopyable
 {
+    typedef Stream stream_type;
+    typedef typename stream_type::endpoint_type endpoint_type;
+
     writable_stream(service_t& service,
-                    const std::shared_ptr<PipeType>& pipe):
-        m_pipe(pipe),
-        m_pipe_watcher(service.loop()),
+                    endpoint_type endpoint):
+        m_stream(std::make_shared<stream_type>(endpoint)),
+        m_stream_watcher(service.loop()),
         m_tx_offset(0),
         m_wr_offset(0)
     {
-        m_pipe_watcher.set<writable_stream, &writable_stream::on_event>(this);
+        m_stream_watcher.set<writable_stream, &writable_stream::on_event>(this);
+        m_ring.resize(65536);
+    }
+
+    writable_stream(service_t& service,
+                    const std::shared_ptr<stream_type>& stream):
+        m_stream(stream),
+        m_stream_watcher(service.loop()),
+        m_tx_offset(0),
+        m_wr_offset(0)
+    {
+        m_stream_watcher.set<writable_stream, &writable_stream::on_event>(this);
         m_ring.resize(65536);
     }
 
@@ -54,9 +68,9 @@ struct writable_stream:
         std::unique_lock<std::mutex> m_lock(m_ring_mutex);
 
         if(m_tx_offset == m_wr_offset) {
-            // Nothing is pending in the ring so try to write directly to the pipe,
+            // Nothing is pending in the ring so try to write directly to the stream,
             // and enqueue only the remaining part, if any.
-            ssize_t sent = m_pipe->write(data, size);
+            ssize_t sent = m_stream->write(data, size);
 
             if(sent >= 0) {
                 if(static_cast<size_t>(sent) == size) {
@@ -92,8 +106,8 @@ struct writable_stream:
 
         m_wr_offset += size;
 
-        if(!m_pipe_watcher.is_active()) {
-            m_pipe_watcher.start(m_pipe->fd(), ev::WRITE);
+        if(!m_stream_watcher.is_active()) {
+            m_stream_watcher.start(m_stream->fd(), ev::WRITE);
         }
     }
 
@@ -103,14 +117,14 @@ private:
         std::unique_lock<std::mutex> m_lock(m_ring_mutex);
 
         if(m_tx_offset == m_wr_offset) {
-            m_pipe_watcher.stop();
+            m_stream_watcher.stop();
             return;
         }
 
         size_t unsent = m_wr_offset - m_tx_offset;
 
         // Try to send all the data at once.
-        ssize_t sent = m_pipe->write(
+        ssize_t sent = m_stream->write(
             m_ring.data() + m_tx_offset,
             unsent
         );
@@ -121,12 +135,12 @@ private:
     }
 
 private:
-    // NOTE: Pipes can be shared among multiple queues, at least to be able
+    // NOTE: Streams can be shared among multiple queues, at least to be able
     // to write and read from two different queues.
-    const std::shared_ptr<PipeType> m_pipe;
+    const std::shared_ptr<stream_type> m_stream;
 
-    // Pipe poll object.
-    ev::io m_pipe_watcher;
+    // Stream poll object.
+    ev::io m_stream_watcher;
 
     std::vector<char> m_ring;
 

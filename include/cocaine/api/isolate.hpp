@@ -55,8 +55,8 @@ class isolate_t {
 
     protected:
         isolate_t(context_t&,
-                  const std::string&, /* name */
-                  const Json::Value&  /* args */)
+                  const std::string& /* name */,
+                  const Json::Value& /* args */)
         { }
 };
 

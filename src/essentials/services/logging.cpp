@@ -20,6 +20,7 @@
 
 #include "cocaine/essentials/services/logging.hpp"
 
+#include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
 #include <tuple>

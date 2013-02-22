@@ -71,12 +71,17 @@ struct local {
             return sizeof(m_data);
         }
 
+        std::string
+        string() const {
+            return m_data.local.sun_path;
+        }
+
         friend
         std::ostream&
         operator<<(std::ostream& stream,
                    const local::endpoint& endpoint)
         {
-            return stream << endpoint.m_data.local.sun_path;
+            return stream << endpoint.string();
         }
 
     private:

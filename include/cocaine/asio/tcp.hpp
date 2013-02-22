@@ -52,7 +52,7 @@ struct tcp {
             m_data.tcp4.sin_port = htons(port);
 
             if(::inet_pton(tcp::family(), address.c_str(), &m_data.tcp4.sin_addr) == 0) {
-                throw cocaine::io_error_t("endpoint address '%s' is invalid", address);
+                throw cocaine::io_error_t("unable to parse '%s' as an endpoint address", address);
             }
         }
 
@@ -71,25 +71,23 @@ struct tcp {
             return sizeof(m_data);
         }
 
+        std::string
+        string() const {
+            char result[INET_ADDRSTRLEN];
+
+            if(::inet_ntop(tcp::family(), &m_data.tcp4.sin_addr, result, INET_ADDRSTRLEN) == nullptr) {
+                throw cocaine::io_error_t("unable to parse the endpoint address");
+            }
+
+            return cocaine::format("%s:%d", result, ntohs(m_data.tcp4.sin_port));
+        }
+
         friend
         std::ostream&
         operator<<(std::ostream& stream,
                    const tcp::endpoint& endpoint)
         {
-            char result[INET_ADDRSTRLEN];
-
-            ::inet_ntop(
-                tcp::family(),
-                &endpoint.m_data.tcp4.sin_addr,
-                result,
-                INET_ADDRSTRLEN
-            );
-
-            return stream << cocaine::format(
-                "%s:%d",
-                result,
-                ntohs(endpoint.m_data.tcp4.sin_port)
-            );
+            return stream << endpoint.string();
         }
 
     private:

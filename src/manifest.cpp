@@ -34,10 +34,7 @@ manifest_t::manifest_t(context_t& context,
     cached<Json::Value>(context, "manifests", name_),
     name(name_)
 {
-    slave = get(
-        "slave",
-        defaults::slave
-    ).asString();
+    slave = get("slave", "unspecified").asString();
 
     if(!fs::exists(fs::system_complete(slave))) {
         throw configuration_error_t("the '%s' slave executable file does not exist", slave);

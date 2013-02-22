@@ -120,6 +120,8 @@ class node_t:
         const ev::tstamp m_birthstamp;
 };
 
-}} // namespace cocaine::service
+} // namespace service
+
+} // namespace cocaine
 
 #endif

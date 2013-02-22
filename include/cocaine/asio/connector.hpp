@@ -27,21 +27,33 @@
 
 namespace cocaine { namespace io {
 
-template<class AcceptorType>
+template<class Acceptor>
 struct connector:
     boost::noncopyable
 {
+    typedef Acceptor acceptor_type;
+    typedef typename acceptor_type::endpoint_type endpoint_type;
+    typedef typename acceptor_type::pipe_type pipe_type;
+
     connector(service_t& service,
-              std::unique_ptr<AcceptorType>&& acceptor):
+              endpoint_type endpoint):
+        m_acceptor(new acceptor_type(endpoint)),
+        m_acceptor_watcher(service.loop())
+    {
+        m_acceptor_watcher.set<connector, &connector::on_event>(this);
+    }
+
+    connector(service_t& service,
+              std::unique_ptr<acceptor_type>&& acceptor):
         m_acceptor(std::move(acceptor)),
         m_acceptor_watcher(service.loop())
     {
         m_acceptor_watcher.set<connector, &connector::on_event>(this);
     }
 
-    template<class CallbackType>
+    template<class Callback>
     void
-    bind(CallbackType callback) {
+    bind(Callback callback) {
         m_callback = callback;
         m_acceptor_watcher.start(m_acceptor->fd(), ev::READ);
     }
@@ -58,7 +70,7 @@ struct connector:
 private:
     void
     on_event(ev::io& /* io */, int /* revents */) {
-        const pipe_ptr_type& pipe = m_acceptor->accept();
+        const std::shared_ptr<pipe_type>& pipe = m_acceptor->accept();
 
         if(!pipe) {
             return;
@@ -70,17 +82,14 @@ private:
 private:
     // NOTE: It doesn't make sense to accept a connection from multiple queues,
     // so keep at most one reference to the acceptor.
-    const std::unique_ptr<AcceptorType> m_acceptor;
+    const std::unique_ptr<acceptor_type> m_acceptor;
 
     // Acceptor poll object.
     ev::io m_acceptor_watcher;
 
-    typedef std::shared_ptr<
-        typename AcceptorType::pipe_type
-    > pipe_ptr_type;
-
+    // Acceptor connection callback.
     std::function<
-        void(const pipe_ptr_type&)
+        void(const std::shared_ptr<pipe_type>&)
     > m_callback;
 };
 

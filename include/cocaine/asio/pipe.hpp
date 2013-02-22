@@ -38,11 +38,7 @@ struct pipe:
 
     explicit
     pipe(endpoint_type endpoint) {
-        m_fd = ::socket(
-            medium_type::family(),
-            medium_type::type(),
-            medium_type::protocol()
-        );
+        m_fd = ::socket(medium_type::family(), medium_type::type(), medium_type::protocol());
 
         if(m_fd == -1) {
             throw io_error_t("unable to create a stream");

@@ -128,13 +128,11 @@ private:
     msgpack::object m_object;
 };
 
-template<class Pipe>
+template<class Stream>
 struct encoder:
     boost::noncopyable
 {
-    typedef std::shared_ptr<
-        io::writable_stream<Pipe>
-    > stream_ptr_type;
+    typedef writable_stream<Stream> stream_type;
 
     encoder():
         m_packer(m_buffer)
@@ -174,7 +172,7 @@ struct encoder:
     }
 
     void
-    attach(const stream_ptr_type& stream) {
+    attach(const std::shared_ptr<stream_type>& stream) {
         std::unique_lock<std::mutex> lock(m_mutex);
 
         m_stream = stream;
@@ -188,7 +186,7 @@ struct encoder:
     }
 
 public:
-    stream_ptr_type
+    std::shared_ptr<stream_type>
     stream() {
         return m_stream;
     }
@@ -206,24 +204,22 @@ private:
     std::mutex m_mutex;
 
     // Attachable stream.
-    stream_ptr_type m_stream;
+    std::shared_ptr<stream_type> m_stream;
 };
 
-template<class Pipe>
+template<class Stream>
 struct decoder:
     boost::noncopyable
 {
-    typedef std::shared_ptr<
-        readable_stream<Pipe>
-    > stream_ptr_type;
+    typedef readable_stream<Stream> stream_type;
 
     ~decoder() {
         unbind();
     }
 
-    template<class CallbackType>
+    template<class Callback>
     void
-    bind(CallbackType callback) {
+    bind(Callback callback) {
         m_callback = callback;
 
         using namespace std::placeholders;
@@ -240,12 +236,12 @@ struct decoder:
     }
 
     void
-    attach(const stream_ptr_type& stream) {
+    attach(const std::shared_ptr<stream_type>& stream) {
         m_stream = stream;
     }
 
 public:
-    stream_ptr_type
+    std::shared_ptr<stream_type>
     stream() {
         return m_stream;
     }
@@ -292,22 +288,22 @@ private:
     > m_callback;
 
     // Attachable stream.
-    stream_ptr_type m_stream;
+    std::shared_ptr<stream_type> m_stream;
 };
 
-template<class PipeType>
+template<class Stream>
 struct codec {
     codec(service_t& service,
-          const std::shared_ptr<PipeType>& pipe):
-        rd(new decoder<PipeType>()),
-        wr(new encoder<PipeType>())
+          const std::shared_ptr<Stream>& stream):
+        rd(new decoder<Stream>()),
+        wr(new encoder<Stream>())
     {
-        rd->attach(std::make_shared<readable_stream<PipeType>>(service, pipe));
-        wr->attach(std::make_shared<writable_stream<PipeType>>(service, pipe));
+        rd->attach(std::make_shared<readable_stream<Stream>>(service, stream));
+        wr->attach(std::make_shared<writable_stream<Stream>>(service, stream));
     }
 
-    std::unique_ptr<decoder<PipeType>> rd;
-    std::unique_ptr<encoder<PipeType>> wr;
+    std::unique_ptr<decoder<Stream>> rd;
+    std::unique_ptr<encoder<Stream>> wr;
 };
 
 }} // namespace cocaine::io

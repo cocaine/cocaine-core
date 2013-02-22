@@ -28,18 +28,32 @@
 
 namespace cocaine { namespace io {
 
-template<class PipeType>
+template<class Stream>
 struct readable_stream:
     boost::noncopyable
 {
+    typedef Stream stream_type;
+    typedef typename stream_type::endpoint_type endpoint_type;
+
     readable_stream(service_t& service,
-                    const std::shared_ptr<PipeType>& pipe):
-        m_pipe(pipe),
-        m_pipe_watcher(service.loop()),
+                    endpoint_type endpoint):
+        m_stream(std::make_shared<stream_type>(endpoint)),
+        m_stream_watcher(service.loop()),
         m_rd_offset(0),
         m_rx_offset(0)
     {
-        m_pipe_watcher.set<readable_stream, &readable_stream::on_event>(this);
+        m_stream_watcher.set<readable_stream, &readable_stream::on_event>(this);
+        m_ring.resize(65536);
+    }
+
+    readable_stream(service_t& service,
+                    const std::shared_ptr<stream_type>& stream):
+        m_stream(stream),
+        m_stream_watcher(service.loop()),
+        m_rd_offset(0),
+        m_rx_offset(0)
+    {
+        m_stream_watcher.set<readable_stream, &readable_stream::on_event>(this);
         m_ring.resize(65536);
     }
 
@@ -47,9 +61,9 @@ struct readable_stream:
         BOOST_ASSERT(m_rd_offset == m_rx_offset);
     }
 
-    template<class CallbackType>
+    template<class Callback>
     void
-    bind(CallbackType callback) {
+    bind(Callback callback) {
         m_callback = callback;
 
         /*
@@ -63,8 +77,8 @@ struct readable_stream:
         }
         */
 
-        if(!m_pipe_watcher.is_active()) {
-            m_pipe_watcher.start(m_pipe->fd(), ev::READ);
+        if(!m_stream_watcher.is_active()) {
+            m_stream_watcher.start(m_stream->fd(), ev::READ);
         }
     }
 
@@ -72,8 +86,8 @@ struct readable_stream:
     unbind() {
         m_callback = nullptr;
 
-        if(m_pipe_watcher.is_active()) {
-            m_pipe_watcher.stop();
+        if(m_stream_watcher.is_active()) {
+            m_stream_watcher.stop();
         }
     }
 
@@ -101,7 +115,7 @@ private:
         }
 
         // Try to read some data.
-        ssize_t length = m_pipe->read(
+        ssize_t length = m_stream->read(
             m_ring.data() + m_rd_offset,
             m_ring.size() - m_rd_offset
         );
@@ -109,7 +123,7 @@ private:
         if(length <= 0) {
             if(length == 0) {
                 // NOTE: This means that the remote peer has closed the connection.
-                m_pipe_watcher.stop();
+                m_stream_watcher.stop();
             }
 
             return;
@@ -127,18 +141,19 @@ private:
     }
 
 private:
-    // NOTE: Pipes can be shared among multiple queues, at least to be able
+    // NOTE: Streams can be shared among multiple queues, at least to be able
     // to write and read from two different queues.
-    const std::shared_ptr<PipeType> m_pipe;
+    const std::shared_ptr<stream_type> m_stream;
 
-    // Pipe poll object.
-    ev::io m_pipe_watcher;
+    // Stream poll object.
+    ev::io m_stream_watcher;
 
     std::vector<char> m_ring;
 
     off_t m_rd_offset,
           m_rx_offset;
 
+    // Stream data callback.
     std::function<
         size_t(const char*, size_t)
     > m_callback;
