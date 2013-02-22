@@ -43,6 +43,8 @@
 #include <boost/accumulators/statistics/median.hpp>
 #include <boost/accumulators/statistics/sum.hpp>
 
+#include <boost/filesystem/operations.hpp>
+
 using namespace cocaine;
 using namespace cocaine::engine;
 using namespace cocaine::io;
@@ -194,6 +196,14 @@ engine_t::engine_t(context_t& context,
 
 engine_t::~engine_t() {
     BOOST_ASSERT(m_state == states::stopped);
+
+    auto endpoint = cocaine::format(
+        "%1%/engines/%2%",
+        m_context.config.path.runtime,
+        m_manifest.name
+    );
+
+    boost::filesystem::remove(endpoint);
 }
 
 void

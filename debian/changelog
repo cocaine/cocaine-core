@@ -1,3 +1,10 @@
+cocaine-core (0.10.0-rc3) lucid; urgency=low
+
+  * Release candidate 3.
+  * Remove the engine's unix socket file on shutdown.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Sat, 23 Feb 2013 01:29:03 +0400
+
 cocaine-core (0.10.0-rc2) lucid; urgency=low
 
   * Release candidate 2.
