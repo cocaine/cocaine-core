@@ -64,8 +64,8 @@ struct readable_stream:
     template<class Callback>
     void
     bind(Callback callback) {
-        if(!m_pipe_watcher.is_active()) {
-            m_pipe_watcher.start(m_pipe->fd(), ev::READ);
+        if(!m_stream_watcher.is_active()) {
+            m_stream_watcher.start(m_stream->fd(), ev::READ);
         }
 
         m_callback = callback;
