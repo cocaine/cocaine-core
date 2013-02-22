@@ -1,3 +1,30 @@
+cocaine-core (0.10.0-rc2) lucid; urgency=low
+
+  * Release candidate 2.
+  * Debugging symbols are properly generated and packaged now.
+  * Dropped rpc::suicide message, effectively rendering the protocol
+    symmetric for both clients and servers (engines, slaves, services).
+  * Messages without bodies are now packed with an empty array instead of nil
+    object, which makes writing new slaves a little bit easier.
+  * Engines are now bound to local endpoints, while services are bound to TCP
+    endpoints, making them available for networking.
+  * The runtime no longer crashes when an unknown slave tries to establish a
+    connection with an engine.
+  * Fixed even more warnings (on Clang 4.2, there are no warnings at all with
+    -Wall -pedantic).
+  * Whitespace nazism mode on.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 22 Feb 2013 23:17:28 +0400
+
+cocaine-core (0.10.0-rc1) lucid; urgency=low
+
+  * Release candidate 1.
+  * Fully rewritten the I/O system using good old sockets.
+  * Motsly got rid of Boost.
+  * Fixed a lot of warnings and bugs.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 15 Feb 2013 01:33:23 +0400
+
 cocaine-core (0.10.0-rc0) lucid; urgency=low
 
   * Release candidate 0.

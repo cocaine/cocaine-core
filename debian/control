@@ -25,7 +25,9 @@ Description: Cocaine - Development Headers
 
 Package: cocaine-runtime
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2, adduser
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2 (= ${Source-Version}),
+ adduser
+Conflicts: cocaine-server
 Description: Cocaine - Runtime
  Cocaine runtime components package.
 
