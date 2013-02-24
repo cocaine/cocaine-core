@@ -44,6 +44,7 @@ struct local {
             std::memset(&m_data, 0, sizeof(m_data));
         }
 
+        explicit
         endpoint(const std::string& address) {
             std::memset(&m_data, 0, sizeof(m_data));
 

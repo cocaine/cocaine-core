@@ -159,18 +159,13 @@ engine_t::engine_t(context_t& context,
     m_notification(m_service.loop()),
     m_next_id(0)
 {
-    m_isolate = m_context.get<api::isolate_t>(
-        m_profile.isolate.type,
-        m_context,
-        m_manifest.name,
-        m_profile.isolate.args
-    );
+    m_gc_timer.set<engine_t, &engine_t::on_cleanup>(this);
+    m_gc_timer.start(5.0f, 5.0f);
 
-    auto endpoint = local::endpoint(cocaine::format(
-        "%1%/engines/%2%",
-        m_context.config.path.runtime,
-        m_manifest.name
-    ));
+    m_notification.set<engine_t, &engine_t::on_notification>(this);
+    m_notification.start();
+
+    auto endpoint = local::endpoint(m_manifest.endpoint);
 
     m_connector.reset(new connector<acceptor<local>>(
         m_service,
@@ -187,23 +182,17 @@ engine_t::engine_t(context_t& context,
         std::bind(&engine_t::on_control, this, _1)
     );
 
-    m_gc_timer.set<engine_t, &engine_t::on_cleanup>(this);
-    m_gc_timer.start(5.0f, 5.0f);
-
-    m_notification.set<engine_t, &engine_t::on_notification>(this);
-    m_notification.start();
+    m_isolate = m_context.get<api::isolate_t>(
+        m_profile.isolate.type,
+        m_context,
+        m_manifest.name,
+        m_profile.isolate.args
+    );
 }
 
 engine_t::~engine_t() {
     BOOST_ASSERT(m_state == states::stopped);
-
-    auto endpoint = cocaine::format(
-        "%1%/engines/%2%",
-        m_context.config.path.runtime,
-        m_manifest.name
-    );
-
-    boost::filesystem::remove(endpoint);
+    boost::filesystem::remove(m_manifest.endpoint);
 }
 
 void

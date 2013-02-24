@@ -34,6 +34,12 @@ manifest_t::manifest_t(context_t& context,
     cached<Json::Value>(context, "manifests", name_),
     name(name_)
 {
+    endpoint = cocaine::format(
+        "%s/engines/%s",
+        context.config.path.runtime,
+        name
+    );
+
     slave = get("slave", "unspecified").asString();
 
     if(!fs::exists(fs::system_complete(slave))) {
