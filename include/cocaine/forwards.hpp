@@ -48,12 +48,12 @@ namespace cocaine {
         struct manifest_t;
         struct profile_t;
 
+        // Unit of execution.
+        struct session_t;
+
         // Execution engine.
         class engine_t;
         class slave_t;
-
-        // Unit of execution.
-        struct session_t;
     }
 
     namespace io {
