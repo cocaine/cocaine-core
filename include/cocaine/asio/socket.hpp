@@ -80,7 +80,8 @@ struct socket:
 
     ssize_t
     write(const char * buffer,
-          size_t size)
+          size_t size,
+          std::error_code& ec)
     {
         ssize_t length = ::write(m_fd, buffer, size);
 
@@ -94,7 +95,7 @@ struct socket:
                     return length;
 
                 default:
-                    throw io_error_t("unable to write to a socket");
+                    ec = std::error_code(errno, std::system_category());
             }
         }
 
@@ -103,7 +104,8 @@ struct socket:
 
     ssize_t
     read(char * buffer,
-         size_t size)
+         size_t size,
+         std::error_code& ec)
     {
         ssize_t length = ::read(m_fd, buffer, size);
 
@@ -117,7 +119,7 @@ struct socket:
                     return length;
 
                 default:
-                    throw io_error_t("unable to read from a socket");
+                    ec = std::error_code(errno, std::system_category());
             }
         }
 

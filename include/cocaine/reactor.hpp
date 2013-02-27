@@ -79,6 +79,10 @@ class reactor_t:
                    const io::message_t& message);
 
         void
+        on_disconnect(const std::shared_ptr<io::codec<io::socket<io::tcp>>>& codec,
+                      const std::error_code& ec);
+
+        void
         on_terminate(ev::async&, int);
 
     private:

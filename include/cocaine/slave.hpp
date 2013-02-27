@@ -82,6 +82,9 @@ class slave_t:
         void
         on_message(const io::message_t& message);
 
+        void
+        on_disconnect(const std::error_code& ec);
+
         // RPC
 
         void

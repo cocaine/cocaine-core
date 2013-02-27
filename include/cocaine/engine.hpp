@@ -105,8 +105,12 @@ class engine_t:
         on_connection(const std::shared_ptr<io::socket<io::local>>& socket);
 
         void
-        on_handshake(const std::shared_ptr<io::codec<io::socket<io::local>>>& io,
+        on_handshake(const std::shared_ptr<io::codec<io::socket<io::local>>>& codec,
                      const io::message_t& message);
+
+        void
+        on_disconnect(const std::shared_ptr<io::codec<io::socket<io::local>>>& codec,
+                      const std::error_code& ec);
 
         void
         on_control(const io::message_t& message);

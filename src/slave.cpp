@@ -89,7 +89,12 @@ slave_t::bind(const std::shared_ptr<codec<io::socket<local>>>& codec_) {
     m_codec = codec_;
 
     m_codec->rd->bind(
-        std::bind(&slave_t::on_message, this, _1)
+        std::bind(&slave_t::on_message, this, _1),
+        std::bind(&slave_t::on_disconnect, this, _1)
+    );
+
+    m_codec->wr->bind(
+        std::bind(&slave_t::on_disconnect, this, _1)
     );
 
     on_ping();
@@ -192,6 +197,18 @@ slave_t::on_message(const message_t& message) {
                 m_id
             );
     }
+}
+
+void
+slave_t::on_disconnect(const std::error_code& ec) {
+    COCAINE_LOG_WARNING(
+        m_log,
+        "slave %s unexpectedly disconnected - %s",
+        m_id,
+        ec.message()
+    );
+
+    terminate();
 }
 
 void

@@ -179,7 +179,8 @@ engine_t::engine_t(context_t& context,
     m_codec.reset(new codec<io::socket<local>>(m_service, control));
 
     m_codec->rd->bind(
-        std::bind(&engine_t::on_control, this, _1)
+        std::bind(&engine_t::on_control, this, _1),
+        nullptr
     );
 
     m_isolate = m_context.get<api::isolate_t>(
@@ -268,7 +269,12 @@ engine_t::on_connection(const std::shared_ptr<io::socket<local>>& socket_) {
     auto codec_ = std::make_shared<codec<io::socket<local>>>(m_service, socket_);
 
     codec_->rd->bind(
-        std::bind(&engine_t::on_handshake, this, codec_, _1)
+        std::bind(&engine_t::on_handshake, this, codec_, _1),
+        std::bind(&engine_t::on_disconnect, this, codec_, _1)
+    );
+
+    codec_->wr->bind(
+        std::bind(&engine_t::on_disconnect, this, codec_, _1)
     );
 
     COCAINE_LOG_DEBUG(m_log, "initiating a slave handshake on fd: %d", socket_->fd());
@@ -287,6 +293,7 @@ engine_t::on_handshake(const std::shared_ptr<codec<io::socket<local>>>& codec_,
     } catch(const cocaine::error_t& e) {
         COCAINE_LOG_WARNING(m_log, "dropping an invalid handshake message");
         codec_->rd->unbind();
+        codec_->wr->unbind();
         return;
     }
 
@@ -295,6 +302,7 @@ engine_t::on_handshake(const std::shared_ptr<codec<io::socket<local>>>& codec_,
     if(it == m_pool.end()) {
         COCAINE_LOG_WARNING(m_log, "dropping a handshake from an unknown slave %s", uuid);
         codec_->rd->unbind();
+        codec_->wr->unbind();
         return;
     }
 
@@ -305,6 +313,18 @@ engine_t::on_handshake(const std::shared_ptr<codec<io::socket<local>>>& codec_,
     it->second->bind(codec_);
 
     wake();
+}
+
+void
+engine_t::on_disconnect(const std::shared_ptr<codec<io::socket<local>>>& codec_,
+                        const std::error_code& ec)
+{
+    codec_->rd->unbind();
+    codec_->wr->unbind();
+
+    m_backlog.erase(codec_);
+
+    COCAINE_LOG_INFO(m_log, "slave disconnected during the handshake - %s", ec.message());
 }
 
 namespace {

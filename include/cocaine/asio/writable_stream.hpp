@@ -61,15 +61,15 @@ struct writable_stream:
         BOOST_ASSERT(m_tx_offset == m_wr_offset);
     }
 
-    template<class WriteHandler>
+    template<class ErrorHandler>
     void
-    bind(WriteHandler handler) {
-
+    bind(ErrorHandler error_handler) {
+        m_handle_error = error_handler;
     }
 
     void
     unbind() {
-
+        m_handle_error = nullptr;
     }
 
     void
@@ -79,9 +79,11 @@ struct writable_stream:
         std::unique_lock<std::mutex> m_lock(m_ring_mutex);
 
         if(m_tx_offset == m_wr_offset) {
+            std::error_code ec;
+
             // Nothing is pending in the ring so try to write directly to the socket,
-            // and enqueue only the remaining part, if any.
-            ssize_t sent = m_socket->write(data, size);
+            // and enqueue only the remaining part, if any. Ignore any errors here.
+            ssize_t sent = m_socket->write(data, size, ec);
 
             if(sent >= 0) {
                 if(static_cast<size_t>(sent) == size) {
@@ -134,11 +136,20 @@ private:
 
         size_t unsent = m_wr_offset - m_tx_offset;
 
+        // Keep the error code if the write() operation fails.
+        std::error_code ec;
+
         // Try to send all the data at once.
         ssize_t sent = m_socket->write(
             m_ring.data() + m_tx_offset,
-            unsent
+            unsent,
+            ec
         );
+
+        if(ec) {
+            m_handle_error(ec);
+            return;
+        }
 
         if(sent > 0) {
             m_tx_offset += sent;
@@ -159,6 +170,11 @@ private:
           m_wr_offset;
 
     std::mutex m_ring_mutex;
+
+    // Write error handler.
+    std::function<
+        void(const std::error_code&)
+    > m_handle_error;
 };
 
 }} // namespace cocaine::io

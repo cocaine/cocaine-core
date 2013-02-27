@@ -61,18 +61,21 @@ struct readable_stream:
         BOOST_ASSERT(m_rd_offset == m_rx_offset);
     }
 
-    template<class ReadHandler>
+    template<class ReadHandler, class ErrorHandler>
     void
-    bind(ReadHandler handler) {
+    bind(ReadHandler read_handler,
+         ErrorHandler error_handler)
+    {
         if(!m_socket_watcher.is_active()) {
             m_socket_watcher.start(m_socket->fd(), ev::READ);
         }
 
-        m_callback = handler;
+        m_handle_read = read_handler;
+        m_handle_error = error_handler;
 
         /*
         if(m_rd_offset != m_rx_offset) {
-            size_t received = m_callback(
+            size_t received = m_handle_read(
                 m_ring.data() + m_rx_offset,
                 m_rd_offset - m_rx_offset
             );
@@ -88,7 +91,8 @@ struct readable_stream:
             m_socket_watcher.stop();
         }
 
-        m_callback = nullptr;
+        m_handle_read = nullptr;
+        m_handle_error = nullptr;
     }
 
 private:
@@ -114,11 +118,20 @@ private:
             m_rx_offset = 0;
         }
 
+        // Keep the error code if the read() operation fails.
+        std::error_code ec;
+
         // Try to read some data.
         ssize_t length = m_socket->read(
             m_ring.data() + m_rd_offset,
-            m_ring.size() - m_rd_offset
+            m_ring.size() - m_rd_offset,
+            ec
         );
+
+        if(ec) {
+            m_handle_error(ec);
+            return;
+        }
 
         if(length <= 0) {
             if(length == 0) {
@@ -132,7 +145,7 @@ private:
         m_rd_offset += length;
 
         // Try to decode some data.
-        size_t parsed = m_callback(
+        size_t parsed = m_handle_read(
             m_ring.data() + m_rx_offset,
             m_rd_offset - m_rx_offset
         );
@@ -156,7 +169,12 @@ private:
     // Socket data callback.
     std::function<
         size_t(const char*, size_t)
-    > m_callback;
+    > m_handle_read;
+
+    // Socket error callback.
+    std::function<
+        void(const std::error_code&)
+    > m_handle_error;
 };
 
 }} // namespace cocaine::io

@@ -158,15 +158,15 @@ struct encoder:
         }
     }
 
-    template<class WriteHandler>
+    template<class ErrorHandler>
     void
-    bind(WriteHandler handler) {
-
+    bind(ErrorHandler error_handler) {
+        m_stream->bind(error_handler);
     }
 
     void
     unbind() {
-
+        m_stream->unbind();
     }
 
     template<class Event, typename... Args>
@@ -235,21 +235,24 @@ struct decoder:
         m_stream = stream;
     }
 
-    template<class ReadHandler>
+    template<class MessageHandler, class ErrorHandler>
     void
-    bind(ReadHandler handler) {
-        m_callback = handler;
+    bind(MessageHandler message_handler,
+         ErrorHandler error_handler)
+    {
+        m_handle_message = message_handler;
 
         using namespace std::placeholders;
 
         m_stream->bind(
-            std::bind(&decoder::on_event, this, _1, _2)
+            std::bind(&decoder::on_event, this, _1, _2),
+            error_handler
         );
     }
 
     void
     unbind() {
-        m_callback = nullptr;
+        m_handle_message = nullptr;
         m_stream->unbind();
     }
 
@@ -276,7 +279,7 @@ private:
             switch(rv) {
                 case msgpack::UNPACK_EXTRA_BYTES:
                 case msgpack::UNPACK_SUCCESS:
-                    m_callback(message_t(object));
+                    m_handle_message(message_t(object));
 
                     if(rv == msgpack::UNPACK_SUCCESS) {
                         return size;
@@ -298,7 +301,7 @@ private:
 private:
     std::function<
         void(const message_t&)
-    > m_callback;
+    > m_handle_message;
 
     // Attachable stream.
     std::shared_ptr<stream_type> m_stream;
