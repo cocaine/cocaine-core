@@ -145,6 +145,15 @@ namespace {
 
 // Engine
 
+namespace {
+    struct ignore_t {
+        void
+        operator()(const std::error_code& ec) {
+            // Do nothing.
+        }
+    };
+}
+
 engine_t::engine_t(context_t& context,
                    const manifest_t& manifest,
                    const profile_t& profile,
@@ -180,8 +189,10 @@ engine_t::engine_t(context_t& context,
 
     m_codec->rd->bind(
         std::bind(&engine_t::on_control, this, _1),
-        nullptr
+        ignore_t()
     );
+
+    m_codec->wr->bind(ignore_t());
 
     m_isolate = m_context.get<api::isolate_t>(
         m_profile.isolate.type,

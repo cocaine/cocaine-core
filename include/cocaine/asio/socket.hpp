@@ -23,6 +23,8 @@
 
 #include "cocaine/common.hpp"
 
+#include <system_error>
+
 #include <fcntl.h>
 #include <sys/socket.h>
 

@@ -418,6 +418,7 @@ slave_t::terminate() {
     m_handle.reset();
 
     // Closes our end of the socket.
+    m_sessions.clear();
     m_codec.reset();
 
     m_state = states::dead;

@@ -261,6 +261,11 @@ namespace {
             }
         }
 
+        void
+        operator()(const std::error_code& ec) {
+            // Empty.
+        }
+
     private:
         typedef typename fold<
             typename event_traits<Event>::tuple_type
@@ -281,7 +286,7 @@ app_t::stop() {
 
     auto callback = expect<control::terminate>(*m_service);
 
-    m_codec->rd->bind(std::ref(callback), nullptr);
+    m_codec->rd->bind(std::ref(callback), std::ref(callback));
     m_codec->wr->write<control::terminate>();
 
     try {
@@ -312,7 +317,7 @@ app_t::info() const {
 
     auto callback = expect<control::info>(*m_service, info);
 
-    m_codec->rd->bind(std::ref(callback), nullptr);
+    m_codec->rd->bind(std::ref(callback), std::ref(callback));
     m_codec->wr->write<control::report>();
 
     try {

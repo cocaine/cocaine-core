@@ -32,7 +32,7 @@ SLOT_INFO      = 2
 def main(hosts):
     for host in hosts:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-        sock.connect(('127.0.0.1', 12350))
+        sock.connect(('127.0.0.1', 12500))
 
         # Statistics
         sock.send(msgpack.packb([SLOT_INFO, []]))

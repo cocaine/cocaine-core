@@ -141,7 +141,7 @@ struct encoder:
     { }
 
     ~encoder() {
-        unbind();
+        // unbind();
     }
 
     void
