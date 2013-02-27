@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_ASIO_READABLE_STREAM_HPP
-#define COCAINE_ASIO_READABLE_STREAM_HPP
+#ifndef COCAINE_ASIO_BUFFERED_READABLE_STREAM_HPP
+#define COCAINE_ASIO_BUFFERED_READABLE_STREAM_HPP
 
 #include "cocaine/asio/service.hpp"
 
@@ -28,32 +28,32 @@
 
 namespace cocaine { namespace io {
 
-template<class Stream>
+template<class Socket>
 struct readable_stream:
     boost::noncopyable
 {
-    typedef Stream stream_type;
-    typedef typename stream_type::endpoint_type endpoint_type;
+    typedef Socket socket_type;
+    typedef typename socket_type::endpoint_type endpoint_type;
 
     readable_stream(service_t& service,
                     endpoint_type endpoint):
-        m_stream(std::make_shared<stream_type>(endpoint)),
-        m_stream_watcher(service.loop()),
+        m_socket(std::make_shared<socket_type>(endpoint)),
+        m_socket_watcher(service.loop()),
         m_rd_offset(0),
         m_rx_offset(0)
     {
-        m_stream_watcher.set<readable_stream, &readable_stream::on_event>(this);
+        m_socket_watcher.set<readable_stream, &readable_stream::on_event>(this);
         m_ring.resize(65536);
     }
 
     readable_stream(service_t& service,
-                    const std::shared_ptr<stream_type>& stream):
-        m_stream(stream),
-        m_stream_watcher(service.loop()),
+                    const std::shared_ptr<socket_type>& socket):
+        m_socket(socket),
+        m_socket_watcher(service.loop()),
         m_rd_offset(0),
         m_rx_offset(0)
     {
-        m_stream_watcher.set<readable_stream, &readable_stream::on_event>(this);
+        m_socket_watcher.set<readable_stream, &readable_stream::on_event>(this);
         m_ring.resize(65536);
     }
 
@@ -61,14 +61,14 @@ struct readable_stream:
         BOOST_ASSERT(m_rd_offset == m_rx_offset);
     }
 
-    template<class Callback>
+    template<class ReadHandler>
     void
-    bind(Callback callback) {
-        if(!m_stream_watcher.is_active()) {
-            m_stream_watcher.start(m_stream->fd(), ev::READ);
+    bind(ReadHandler handler) {
+        if(!m_socket_watcher.is_active()) {
+            m_socket_watcher.start(m_socket->fd(), ev::READ);
         }
 
-        m_callback = callback;
+        m_callback = handler;
 
         /*
         if(m_rd_offset != m_rx_offset) {
@@ -84,8 +84,8 @@ struct readable_stream:
 
     void
     unbind() {
-        if(m_stream_watcher.is_active()) {
-            m_stream_watcher.stop();
+        if(m_socket_watcher.is_active()) {
+            m_socket_watcher.stop();
         }
 
         m_callback = nullptr;
@@ -115,7 +115,7 @@ private:
         }
 
         // Try to read some data.
-        ssize_t length = m_stream->read(
+        ssize_t length = m_socket->read(
             m_ring.data() + m_rd_offset,
             m_ring.size() - m_rd_offset
         );
@@ -123,7 +123,7 @@ private:
         if(length <= 0) {
             if(length == 0) {
                 // NOTE: This means that the remote peer has closed the connection.
-                m_stream_watcher.stop();
+                m_socket_watcher.stop();
             }
 
             return;
@@ -141,19 +141,19 @@ private:
     }
 
 private:
-    // NOTE: Streams can be shared among multiple queues, at least to be able
+    // NOTE: Sockets can be shared among multiple queues, at least to be able
     // to write and read from two different queues.
-    const std::shared_ptr<stream_type> m_stream;
+    const std::shared_ptr<socket_type> m_socket;
 
-    // Stream poll object.
-    ev::io m_stream_watcher;
+    // Socket poll object.
+    ev::io m_socket_watcher;
 
     std::vector<char> m_ring;
 
     off_t m_rd_offset,
           m_rx_offset;
 
-    // Stream data callback.
+    // Socket data callback.
     std::function<
         size_t(const char*, size_t)
     > m_callback;

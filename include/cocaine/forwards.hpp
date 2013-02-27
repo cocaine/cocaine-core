@@ -64,7 +64,7 @@ namespace cocaine {
         struct acceptor;
 
         template<class>
-        struct pipe;
+        struct socket;
 
         // I/O privimites
 

@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_ASIO_WRITABLE_STREAM_HPP
-#define COCAINE_ASIO_WRITABLE_STREAM_HPP
+#ifndef COCAINE_ASIO_BUFFERED_WRITABLE_STREAM_HPP
+#define COCAINE_ASIO_BUFFERED_WRITABLE_STREAM_HPP
 
 #include "cocaine/asio/service.hpp"
 
@@ -28,37 +28,48 @@
 
 namespace cocaine { namespace io {
 
-template<class Stream>
+template<class Socket>
 struct writable_stream:
     boost::noncopyable
 {
-    typedef Stream stream_type;
-    typedef typename stream_type::endpoint_type endpoint_type;
+    typedef Socket socket_type;
+    typedef typename socket_type::endpoint_type endpoint_type;
 
     writable_stream(service_t& service,
                     endpoint_type endpoint):
-        m_stream(std::make_shared<stream_type>(endpoint)),
-        m_stream_watcher(service.loop()),
+        m_socket(std::make_shared<socket_type>(endpoint)),
+        m_socket_watcher(service.loop()),
         m_tx_offset(0),
         m_wr_offset(0)
     {
-        m_stream_watcher.set<writable_stream, &writable_stream::on_event>(this);
+        m_socket_watcher.set<writable_stream, &writable_stream::on_event>(this);
         m_ring.resize(65536);
     }
 
     writable_stream(service_t& service,
-                    const std::shared_ptr<stream_type>& stream):
-        m_stream(stream),
-        m_stream_watcher(service.loop()),
+                    const std::shared_ptr<socket_type>& socket):
+        m_socket(socket),
+        m_socket_watcher(service.loop()),
         m_tx_offset(0),
         m_wr_offset(0)
     {
-        m_stream_watcher.set<writable_stream, &writable_stream::on_event>(this);
+        m_socket_watcher.set<writable_stream, &writable_stream::on_event>(this);
         m_ring.resize(65536);
     }
 
     ~writable_stream() {
         BOOST_ASSERT(m_tx_offset == m_wr_offset);
+    }
+
+    template<class WriteHandler>
+    void
+    bind(WriteHandler handler) {
+
+    }
+
+    void
+    unbind() {
+
     }
 
     void
@@ -68,9 +79,9 @@ struct writable_stream:
         std::unique_lock<std::mutex> m_lock(m_ring_mutex);
 
         if(m_tx_offset == m_wr_offset) {
-            // Nothing is pending in the ring so try to write directly to the stream,
+            // Nothing is pending in the ring so try to write directly to the socket,
             // and enqueue only the remaining part, if any.
-            ssize_t sent = m_stream->write(data, size);
+            ssize_t sent = m_socket->write(data, size);
 
             if(sent >= 0) {
                 if(static_cast<size_t>(sent) == size) {
@@ -106,8 +117,8 @@ struct writable_stream:
 
         m_wr_offset += size;
 
-        if(!m_stream_watcher.is_active()) {
-            m_stream_watcher.start(m_stream->fd(), ev::WRITE);
+        if(!m_socket_watcher.is_active()) {
+            m_socket_watcher.start(m_socket->fd(), ev::WRITE);
         }
     }
 
@@ -117,14 +128,14 @@ private:
         std::unique_lock<std::mutex> m_lock(m_ring_mutex);
 
         if(m_tx_offset == m_wr_offset) {
-            m_stream_watcher.stop();
+            m_socket_watcher.stop();
             return;
         }
 
         size_t unsent = m_wr_offset - m_tx_offset;
 
         // Try to send all the data at once.
-        ssize_t sent = m_stream->write(
+        ssize_t sent = m_socket->write(
             m_ring.data() + m_tx_offset,
             unsent
         );
@@ -135,12 +146,12 @@ private:
     }
 
 private:
-    // NOTE: Streams can be shared among multiple queues, at least to be able
+    // NOTE: Sockets can be shared among multiple queues, at least to be able
     // to write and read from two different queues.
-    const std::shared_ptr<stream_type> m_stream;
+    const std::shared_ptr<socket_type> m_socket;
 
-    // Stream poll object.
-    ev::io m_stream_watcher;
+    // Socket poll object.
+    ev::io m_socket_watcher;
 
     std::vector<char> m_ring;
 

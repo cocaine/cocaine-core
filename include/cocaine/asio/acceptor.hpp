@@ -21,7 +21,7 @@
 #ifndef COCAINE_ASIO_ACCEPTOR_HPP
 #define COCAINE_ASIO_ACCEPTOR_HPP
 
-#include "cocaine/asio/pipe.hpp"
+#include "cocaine/asio/socket.hpp"
 
 namespace cocaine { namespace io {
 
@@ -33,8 +33,8 @@ struct acceptor:
     typedef typename medium_type::endpoint endpoint_type;
     typedef typename endpoint_type::size_type size_type;
 
-    // Type of the stream this acceptor yields on a new connection.
-    typedef pipe<medium_type> pipe_type;
+    // Type of the socket this acceptor yields on a new connection.
+    typedef socket<medium_type> socket_type;
 
     acceptor(endpoint_type endpoint,
              int backlog = 1024)
@@ -79,7 +79,7 @@ struct acceptor:
 
     // Operations
 
-    std::shared_ptr<pipe_type>
+    std::shared_ptr<socket_type>
     accept() {
         endpoint_type endpoint;
         size_type size = endpoint.size();
@@ -93,7 +93,7 @@ struct acceptor:
                 case EWOULDBLOCK:
 #endif
                 case EINTR:
-                    return std::shared_ptr<pipe_type>();
+                    return std::shared_ptr<socket_type>();
 
                 default:
                     throw io_error_t("unable to accept a connection");
@@ -103,7 +103,7 @@ struct acceptor:
         ::fcntl(m_fd, F_SETFD, FD_CLOEXEC);
         ::fcntl(m_fd, F_SETFL, O_NONBLOCK);
 
-        return std::make_shared<pipe_type>(fd);
+        return std::make_shared<socket_type>(fd);
     }
 
 public:
@@ -112,25 +112,37 @@ public:
         return m_fd;
     }
 
+    endpoint_type
+    local_endpoint() {
+        endpoint_type endpoint;
+        size_type size = endpoint.size();
+
+        if(::getsockname(m_fd, endpoint.data(), &size) != 0) {
+            throw io_error_t("unable to determine the local socket address");
+        }
+
+        return endpoint;
+    }
+
 private:
     int m_fd;
 };
 
 template<class EndpointType>
 std::pair<
-    std::shared_ptr<pipe<EndpointType>>,
-    std::shared_ptr<pipe<EndpointType>>
+    std::shared_ptr<socket<EndpointType>>,
+    std::shared_ptr<socket<EndpointType>>
 >
 link() {
     int fd[] = { -1, -1 };
 
     if(::socketpair(AF_LOCAL, SOCK_STREAM, 0, fd)) {
-        throw io_error_t("unable to create linked streams");
+        throw io_error_t("unable to create linked sockets");
     }
 
     return std::make_pair(
-        std::make_shared<pipe<EndpointType>>(fd[0]),
-        std::make_shared<pipe<EndpointType>>(fd[1])
+        std::make_shared<socket<EndpointType>>(fd[0]),
+        std::make_shared<socket<EndpointType>>(fd[1])
     );
 }
 

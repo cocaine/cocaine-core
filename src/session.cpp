@@ -30,14 +30,14 @@ session_t::session_t(uint64_t id_,
     event(event_),
     upstream(upstream_)
 {
-    m_encoder.reset(new encoder<io::pipe<local>>());
+    m_encoder.reset(new encoder<io::socket<local>>());
 
     // NOTE: This will go to cache, but we save on this serialization later.
     send<io::rpc::invoke>(event.type);
 }
 
 void
-session_t::attach(const std::shared_ptr<writable_stream<io::pipe<local>>>& stream) {
+session_t::attach(const std::shared_ptr<writable_stream<io::socket<local>>>& stream) {
     std::unique_lock<std::mutex> lock(m_mutex);
 
     // Flush all the cached messages into the stream.

@@ -130,15 +130,44 @@ private:
     msgpack::object m_object;
 };
 
-template<class Stream>
+template<class Socket>
 struct encoder:
     boost::noncopyable
 {
-    typedef writable_stream<Stream> stream_type;
+    typedef writable_stream<Socket> stream_type;
 
     encoder():
         m_packer(m_buffer)
     { }
+
+    ~encoder() {
+        unbind();
+    }
+
+    void
+    attach(const std::shared_ptr<stream_type>& stream) {
+        std::unique_lock<std::mutex> lock(m_mutex);
+
+        m_stream = stream;
+
+        for(message_cache_t::const_iterator it = m_cache.begin();
+            it != m_cache.end();
+            ++it)
+        {
+            m_stream->write(it->data(), it->size());
+        }
+    }
+
+    template<class WriteHandler>
+    void
+    bind(WriteHandler handler) {
+
+    }
+
+    void
+    unbind() {
+
+    }
 
     template<class Event, typename... Args>
     void
@@ -169,20 +198,6 @@ struct encoder:
         m_buffer.clear();
     }
 
-    void
-    attach(const std::shared_ptr<stream_type>& stream) {
-        std::unique_lock<std::mutex> lock(m_mutex);
-
-        m_stream = stream;
-
-        for(message_cache_t::const_iterator it = m_cache.begin();
-            it != m_cache.end();
-            ++it)
-        {
-            m_stream->write(it->data(), it->size());
-        }
-    }
-
 public:
     std::shared_ptr<stream_type>
     stream() {
@@ -205,20 +220,25 @@ private:
     std::shared_ptr<stream_type> m_stream;
 };
 
-template<class Stream>
+template<class Socket>
 struct decoder:
     boost::noncopyable
 {
-    typedef readable_stream<Stream> stream_type;
+    typedef readable_stream<Socket> stream_type;
 
     ~decoder() {
         unbind();
     }
 
-    template<class Callback>
     void
-    bind(Callback callback) {
-        m_callback = callback;
+    attach(const std::shared_ptr<stream_type>& stream) {
+        m_stream = stream;
+    }
+
+    template<class ReadHandler>
+    void
+    bind(ReadHandler handler) {
+        m_callback = handler;
 
         using namespace std::placeholders;
 
@@ -231,11 +251,6 @@ struct decoder:
     unbind() {
         m_callback = nullptr;
         m_stream->unbind();
-    }
-
-    void
-    attach(const std::shared_ptr<stream_type>& stream) {
-        m_stream = stream;
     }
 
 public:
@@ -289,19 +304,19 @@ private:
     std::shared_ptr<stream_type> m_stream;
 };
 
-template<class Stream>
+template<class Socket>
 struct codec {
     codec(service_t& service,
-          const std::shared_ptr<Stream>& stream):
-        rd(new decoder<Stream>()),
-        wr(new encoder<Stream>())
+          const std::shared_ptr<Socket>& socket):
+        rd(new decoder<Socket>()),
+        wr(new encoder<Socket>())
     {
-        rd->attach(std::make_shared<readable_stream<Stream>>(service, stream));
-        wr->attach(std::make_shared<writable_stream<Stream>>(service, stream));
+        rd->attach(std::make_shared<readable_stream<Socket>>(service, socket));
+        wr->attach(std::make_shared<writable_stream<Socket>>(service, socket));
     }
 
-    std::unique_ptr<decoder<Stream>> rd;
-    std::unique_ptr<encoder<Stream>> wr;
+    std::unique_ptr<decoder<Socket>> rd;
+    std::unique_ptr<encoder<Socket>> wr;
 };
 
 }} // namespace cocaine::io

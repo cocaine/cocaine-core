@@ -85,7 +85,7 @@ slave_t::~slave_t() {
 }
 
 void
-slave_t::bind(const std::shared_ptr<codec<io::pipe<local>>>& codec_) {
+slave_t::bind(const std::shared_ptr<codec<io::socket<local>>>& codec_) {
     m_codec = codec_;
 
     m_codec->rd->bind(
@@ -400,7 +400,7 @@ slave_t::terminate() {
     m_handle->terminate();
     m_handle.reset();
 
-    // Closes our end of the pipe.
+    // Closes our end of the socket.
     m_codec.reset();
 
     m_state = states::dead;

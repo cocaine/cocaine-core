@@ -33,7 +33,7 @@ struct connector:
 {
     typedef Acceptor acceptor_type;
     typedef typename acceptor_type::endpoint_type endpoint_type;
-    typedef typename acceptor_type::pipe_type pipe_type;
+    typedef typename acceptor_type::socket_type socket_type;
 
     connector(service_t& service,
               endpoint_type endpoint):
@@ -51,32 +51,40 @@ struct connector:
         m_acceptor_watcher.set<connector, &connector::on_event>(this);
     }
 
-    template<class Callback>
+    template<class ConnectionHandler>
     void
-    bind(Callback callback) {
-        m_callback = callback;
-        m_acceptor_watcher.start(m_acceptor->fd(), ev::READ);
+    bind(ConnectionHandler handler) {
+        if(!m_acceptor_watcher.is_active()) {
+            m_acceptor_watcher.start(m_acceptor->fd(), ev::READ);
+        }
+
+        m_callback = handler;
     }
 
     void
     unbind() {
-        m_callback = nullptr;
-
         if(m_acceptor_watcher.is_active()) {
             m_acceptor_watcher.stop();
         }
+
+        m_callback = nullptr;
+    }
+
+    endpoint_type
+    endpoint() {
+        return m_acceptor->local_endpoint();
     }
 
 private:
     void
     on_event(ev::io& /* io */, int /* revents */) {
-        const std::shared_ptr<pipe_type>& pipe = m_acceptor->accept();
+        const std::shared_ptr<socket_type>& socket = m_acceptor->accept();
 
-        if(!pipe) {
+        if(!socket) {
             return;
         }
 
-        m_callback(pipe);
+        m_callback(socket);
     }
 
 private:
@@ -89,7 +97,7 @@ private:
 
     // Acceptor connection callback.
     std::function<
-        void(const std::shared_ptr<pipe_type>&)
+        void(const std::shared_ptr<socket_type>&)
     > m_callback;
 };
 
