@@ -24,8 +24,8 @@
 #include "cocaine/common.hpp"
 #include "cocaine/api/service.hpp"
 #include "cocaine/asio/service.hpp"
-#include "cocaine/slot.hpp"
 #include "cocaine/rpc/protocol.hpp"
+#include "cocaine/slot.hpp"
 
 #include <functional>
 #include <thread>

@@ -22,7 +22,6 @@
 #define COCAINE_JSON_TYPE_TRAITS_HPP
 
 #include "cocaine/traits.hpp"
-
 #include "cocaine/json.hpp"
 
 namespace cocaine { namespace io {

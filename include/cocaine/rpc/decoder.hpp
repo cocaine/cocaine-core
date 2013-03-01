@@ -22,7 +22,6 @@
 #define COCAINE_IO_DECODER_HPP
 
 #include "cocaine/common.hpp"
-
 #include "cocaine/rpc/message.hpp"
 
 namespace cocaine { namespace io {

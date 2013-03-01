@@ -22,7 +22,6 @@
 #define COCAINE_UUID_TYPE_TRAITS_HPP
 
 #include "cocaine/traits.hpp"
-
 #include "cocaine/unique_id.hpp"
 
 namespace cocaine { namespace io {
