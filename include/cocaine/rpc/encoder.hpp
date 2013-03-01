@@ -24,6 +24,8 @@
 #include "cocaine/common.hpp"
 #include "cocaine/rpc/message.hpp"
 
+#include <mutex>
+
 namespace cocaine { namespace io {
 
 template<class Stream>
