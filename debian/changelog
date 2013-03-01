@@ -1,3 +1,10 @@
+cocaine-core (0.10.0-rc4) lucid; urgency=low
+
+  * Release candidate 4.
+  * Properly handle unexpectedly died slaves.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 01 Mar 2013 23:26:58 +0400
+
 cocaine-core (0.10.0-rc3) lucid; urgency=low
 
   * Release candidate 3.
