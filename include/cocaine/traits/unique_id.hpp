@@ -18,44 +18,42 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_EVENT_POLICY_TYPE_TRAITS_HPP
-#define COCAINE_EVENT_POLICY_TYPE_TRAITS_HPP
+#ifndef COCAINE_UUID_TYPE_TRAITS_HPP
+#define COCAINE_UUID_TYPE_TRAITS_HPP
 
 #include "cocaine/traits.hpp"
 
-#include "cocaine/api/event.hpp"
+#include "cocaine/unique_id.hpp"
 
 namespace cocaine { namespace io {
 
 template<>
-struct type_traits<api::policy_t> {
+struct type_traits<unique_id_t> {
     template<class Stream>
     static inline
     void
     pack(msgpack::packer<Stream>& packer,
-         const api::policy_t& source)
+         const unique_id_t& source)
     {
-        packer.pack_array(3);
+        packer.pack_array(2);
 
-        packer << source.urgent;
-        packer << source.timeout;
-        packer << source.deadline;
+        packer << source.uuid[0];
+        packer << source.uuid[1];
     }
 
     static inline
     void
     unpack(const msgpack::object& object,
-           api::policy_t& target)
+           unique_id_t& target)
     {
         if(object.type != msgpack::type::ARRAY ||
-           object.via.array.size != 3)
+           object.via.array.size != 2)
         {
             throw msgpack::type_error();
         }
 
-        object.via.array.ptr[0] >> target.urgent;
-        object.via.array.ptr[1] >> target.timeout;
-        object.via.array.ptr[2] >> target.deadline;
+        object.via.array.ptr[0] >> target.uuid[0];
+        object.via.array.ptr[1] >> target.uuid[1];
     }
 };
 

@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_ASIO_BUFFERED_READABLE_STREAM_HPP
-#define COCAINE_ASIO_BUFFERED_READABLE_STREAM_HPP
+#ifndef COCAINE_IO_BUFFERED_READABLE_STREAM_HPP
+#define COCAINE_IO_BUFFERED_READABLE_STREAM_HPP
 
 #include "cocaine/asio/service.hpp"
 

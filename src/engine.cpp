@@ -29,15 +29,17 @@
 #include "cocaine/asio/socket.hpp"
 
 #include "cocaine/context.hpp"
+#include "cocaine/events.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
 #include "cocaine/profile.hpp"
-#include "cocaine/rpc.hpp"
 #include "cocaine/session.hpp"
 #include "cocaine/slave.hpp"
 
+#include "cocaine/rpc/channel.hpp"
+
 #include "cocaine/traits/json.hpp"
-#include "cocaine/traits/uuid.hpp"
+#include "cocaine/traits/unique_id.hpp"
 
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics/median.hpp>
@@ -148,7 +150,7 @@ namespace {
 namespace {
     struct ignore_t {
         void
-        operator()(const std::error_code& ec) {
+        operator()(const std::error_code& /* ec */) {
             // Do nothing.
         }
     };
@@ -185,14 +187,14 @@ engine_t::engine_t(context_t& context,
         std::bind(&engine_t::on_connection, this, _1)
     );
 
-    m_codec.reset(new codec<io::socket<local>>(m_service, control));
+    m_channel.reset(new channel<io::socket<local>>(m_service, control));
 
-    m_codec->rd->bind(
+    m_channel->rd->bind(
         std::bind(&engine_t::on_control, this, _1),
         ignore_t()
     );
 
-    m_codec->wr->bind(ignore_t());
+    m_channel->wr->bind(ignore_t());
 
     m_isolate = m_context.get<api::isolate_t>(
         m_profile.isolate.type,
@@ -277,24 +279,24 @@ engine_t::erase(const unique_id_t& uuid,
 
 void
 engine_t::on_connection(const std::shared_ptr<io::socket<local>>& socket_) {
-    auto codec_ = std::make_shared<codec<io::socket<local>>>(m_service, socket_);
+    auto channel_ = std::make_shared<channel<io::socket<local>>>(m_service, socket_);
 
-    codec_->rd->bind(
-        std::bind(&engine_t::on_handshake, this, codec_, _1),
-        std::bind(&engine_t::on_disconnect, this, codec_, _1)
+    channel_->rd->bind(
+        std::bind(&engine_t::on_handshake, this, channel_, _1),
+        std::bind(&engine_t::on_disconnect, this, channel_, _1)
     );
 
-    codec_->wr->bind(
-        std::bind(&engine_t::on_disconnect, this, codec_, _1)
+    channel_->wr->bind(
+        std::bind(&engine_t::on_disconnect, this, channel_, _1)
     );
 
     COCAINE_LOG_DEBUG(m_log, "initiating a slave handshake on fd: %d", socket_->fd());
 
-    m_backlog.insert(codec_);
+    m_backlog.insert(channel_);
 }
 
 void
-engine_t::on_handshake(const std::shared_ptr<codec<io::socket<local>>>& codec_,
+engine_t::on_handshake(const std::shared_ptr<channel<io::socket<local>>>& channel_,
                        const message_t& message)
 {
     unique_id_t uuid(uninitialized);
@@ -303,8 +305,8 @@ engine_t::on_handshake(const std::shared_ptr<codec<io::socket<local>>>& codec_,
         message.as<rpc::handshake>(uuid);
     } catch(const cocaine::error_t& e) {
         COCAINE_LOG_WARNING(m_log, "dropping an invalid handshake message");
-        codec_->rd->unbind();
-        codec_->wr->unbind();
+        channel_->rd->unbind();
+        channel_->wr->unbind();
         return;
     }
 
@@ -312,28 +314,28 @@ engine_t::on_handshake(const std::shared_ptr<codec<io::socket<local>>>& codec_,
 
     if(it == m_pool.end()) {
         COCAINE_LOG_WARNING(m_log, "dropping a handshake from an unknown slave %s", uuid);
-        codec_->rd->unbind();
-        codec_->wr->unbind();
+        channel_->rd->unbind();
+        channel_->wr->unbind();
         return;
     }
 
-    m_backlog.erase(codec_);
+    m_backlog.erase(channel_);
 
     COCAINE_LOG_DEBUG(m_log, "slave %s connected", uuid);
 
-    it->second->bind(codec_);
+    it->second->bind(channel_);
 
     wake();
 }
 
 void
-engine_t::on_disconnect(const std::shared_ptr<codec<io::socket<local>>>& codec_,
+engine_t::on_disconnect(const std::shared_ptr<channel<io::socket<local>>>& channel_,
                         const std::error_code& ec)
 {
-    codec_->rd->unbind();
-    codec_->wr->unbind();
+    channel_->rd->unbind();
+    channel_->wr->unbind();
 
-    m_backlog.erase(codec_);
+    m_backlog.erase(channel_);
 
     COCAINE_LOG_INFO(m_log, "slave disconnected during the handshake - %s", ec.message());
 }
@@ -411,7 +413,7 @@ engine_t::on_control(const message_t& message) {
             info["slaves"]["idle"] = static_cast<Json::LargestUInt>(m_pool.size() - active);
             info["state"] = describe[static_cast<int>(m_state)];
 
-            m_codec->wr->write<control::info>(info);
+            m_channel->wr->write<control::info>(info);
 
             break;
         }
@@ -421,7 +423,7 @@ engine_t::on_control(const message_t& message) {
 
             // NOTE: This message is needed to wake up the app's event loop, which is blocked
             // in order to allow the stream to flush the message queue.
-            m_codec->wr->write<control::terminate>();
+            m_channel->wr->write<control::terminate>();
 
             break;
 

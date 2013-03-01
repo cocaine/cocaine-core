@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_ASIO_BUFFERED_WRITABLE_STREAM_HPP
-#define COCAINE_ASIO_BUFFERED_WRITABLE_STREAM_HPP
+#ifndef COCAINE_IO_BUFFERED_WRITABLE_STREAM_HPP
+#define COCAINE_IO_BUFFERED_WRITABLE_STREAM_HPP
 
 #include "cocaine/asio/service.hpp"
 
@@ -73,9 +73,7 @@ struct writable_stream:
     }
 
     void
-    write(const char * data,
-          size_t size)
-    {
+    write(const char * data, size_t size) {
         std::unique_lock<std::mutex> m_lock(m_ring_mutex);
 
         if(m_tx_offset == m_wr_offset) {
@@ -134,15 +132,13 @@ private:
             return;
         }
 
-        size_t unsent = m_wr_offset - m_tx_offset;
-
         // Keep the error code if the write() operation fails.
         std::error_code ec;
 
         // Try to send all the data at once.
         ssize_t sent = m_socket->write(
             m_ring.data() + m_tx_offset,
-            unsent,
+            m_wr_offset - m_tx_offset,
             ec
         );
 

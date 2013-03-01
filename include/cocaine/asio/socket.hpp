@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_ASIO_SOCKET_HPP
-#define COCAINE_ASIO_SOCKET_HPP
+#ifndef COCAINE_IO_SOCKET_HPP
+#define COCAINE_IO_SOCKET_HPP
 
 #include "cocaine/common.hpp"
 
@@ -40,7 +40,9 @@ struct socket:
 
     explicit
     socket(endpoint_type endpoint) {
-        m_fd = ::socket(medium_type::family(), medium_type::type(), medium_type::protocol());
+        medium_type medium;
+
+        m_fd = ::socket(medium.family(), medium.type(), medium.protocol());
 
         if(m_fd == -1) {
             throw io_error_t("unable to create a socket");
@@ -81,10 +83,7 @@ struct socket:
     // Operations
 
     ssize_t
-    write(const char * buffer,
-          size_t size,
-          std::error_code& ec)
-    {
+    write(const char * buffer, size_t size, std::error_code& ec) {
         ssize_t length = ::write(m_fd, buffer, size);
 
         if(length == -1) {
@@ -94,7 +93,7 @@ struct socket:
                 case EWOULDBLOCK:
 #endif
                 case EINTR:
-                    return length;
+                    break;
 
                 default:
                     ec = std::error_code(errno, std::system_category());
@@ -105,10 +104,7 @@ struct socket:
     }
 
     ssize_t
-    read(char * buffer,
-         size_t size,
-         std::error_code& ec)
-    {
+    read(char * buffer, size_t size, std::error_code& ec) {
         ssize_t length = ::read(m_fd, buffer, size);
 
         if(length == -1) {
@@ -118,7 +114,7 @@ struct socket:
                 case EWOULDBLOCK:
 #endif
                 case EINTR:
-                    return length;
+                    break;
 
                 default:
                     ec = std::error_code(errno, std::system_category());

@@ -28,6 +28,8 @@
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
+#include "cocaine/rpc/channel.hpp"
+
 #include <boost/bind.hpp>
 
 using namespace cocaine;
@@ -111,22 +113,22 @@ reactor_t::terminate() {
 
 void
 reactor_t::on_connection(const std::shared_ptr<io::socket<tcp>>& socket_) {
-    auto codec_ = std::make_shared<codec<io::socket<tcp>>>(m_service, socket_);
+    auto channel_ = std::make_shared<channel<io::socket<tcp>>>(m_service, socket_);
 
-    codec_->rd->bind(
-        std::bind(&reactor_t::on_message, this, codec_, std::placeholders::_1),
-        std::bind(&reactor_t::on_disconnect, this, codec_, std::placeholders::_1)
+    channel_->rd->bind(
+        std::bind(&reactor_t::on_message, this, channel_, std::placeholders::_1),
+        std::bind(&reactor_t::on_disconnect, this, channel_, std::placeholders::_1)
     );
 
-    codec_->wr->bind(
-        std::bind(&reactor_t::on_disconnect, this, codec_, std::placeholders::_1)
+    channel_->wr->bind(
+        std::bind(&reactor_t::on_disconnect, this, channel_, std::placeholders::_1)
     );
 
-    m_codecs.insert(codec_);
+    m_channels.insert(channel_);
 }
 
 void
-reactor_t::on_message(const std::shared_ptr<codec<io::socket<tcp>>>& codec_,
+reactor_t::on_message(const std::shared_ptr<channel<io::socket<tcp>>>& channel_,
                       const message_t& message)
 {
     slot_map_t::const_iterator slot = m_slots.find(message.id());
@@ -152,18 +154,18 @@ reactor_t::on_message(const std::shared_ptr<codec<io::socket<tcp>>>& codec_,
     }
 
     if(!response.empty()) {
-        codec_->wr->stream()->write(response.data(), response.size());
+        channel_->wr->stream()->write(response.data(), response.size());
     }
 }
 
 void
-reactor_t::on_disconnect(const std::shared_ptr<codec<io::socket<tcp>>>& codec_,
+reactor_t::on_disconnect(const std::shared_ptr<channel<io::socket<tcp>>>& channel_,
                          const std::error_code& /* ec */)
 {
-    codec_->rd->unbind();
-    codec_->wr->unbind();
+    channel_->rd->unbind();
+    channel_->wr->unbind();
 
-    m_codecs.erase(codec_);
+    m_channels.erase(channel_);
 }
 
 void

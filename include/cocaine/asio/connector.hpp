@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_ASIO_CONNECTOR_HPP
-#define COCAINE_ASIO_CONNECTOR_HPP
+#ifndef COCAINE_IO_CONNECTOR_HPP
+#define COCAINE_IO_CONNECTOR_HPP
 
 #include "cocaine/asio/service.hpp"
 

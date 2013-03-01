@@ -24,8 +24,8 @@
 #include "cocaine/common.hpp"
 #include "cocaine/api/service.hpp"
 #include "cocaine/asio/service.hpp"
-#include "cocaine/messaging.hpp"
 #include "cocaine/slot.hpp"
+#include "cocaine/rpc/protocol.hpp"
 
 #include <functional>
 #include <thread>
@@ -75,11 +75,11 @@ class reactor_t:
         on_connection(const std::shared_ptr<io::socket<io::tcp>>& socket);
 
         void
-        on_message(const std::shared_ptr<io::codec<io::socket<io::tcp>>>& codec,
+        on_message(const std::shared_ptr<io::channel<io::socket<io::tcp>>>& channel,
                    const io::message_t& message);
 
         void
-        on_disconnect(const std::shared_ptr<io::codec<io::socket<io::tcp>>>& codec,
+        on_disconnect(const std::shared_ptr<io::channel<io::socket<io::tcp>>>& channel,
                       const std::error_code& ec);
 
         void
@@ -101,8 +101,8 @@ class reactor_t:
         > m_connector;
 
         std::set<
-            std::shared_ptr<io::codec<io::socket<io::tcp>>>
-        > m_codecs;
+            std::shared_ptr<io::channel<io::socket<io::tcp>>>
+        > m_channels;
 
         // RPC
 

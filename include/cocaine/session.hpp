@@ -27,9 +27,12 @@
 
 #include "cocaine/asio/local.hpp"
 #include "cocaine/asio/socket.hpp"
+#include "cocaine/asio/writable_stream.hpp"
 
 #include "cocaine/birth_control.hpp"
-#include "cocaine/rpc.hpp"
+#include "cocaine/events.hpp"
+
+#include "cocaine/rpc/encoder.hpp"
 
 #include <mutex>
 
@@ -65,7 +68,7 @@ public:
 
 private:
     std::unique_ptr<
-        io::encoder<io::socket<io::local>>
+        io::encoder<io::writable_stream<io::socket<io::local>>>
     > m_encoder;
 
     // Session interlocking.

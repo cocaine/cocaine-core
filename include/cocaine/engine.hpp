@@ -105,11 +105,11 @@ class engine_t:
         on_connection(const std::shared_ptr<io::socket<io::local>>& socket);
 
         void
-        on_handshake(const std::shared_ptr<io::codec<io::socket<io::local>>>& codec,
+        on_handshake(const std::shared_ptr<io::channel<io::socket<io::local>>>& channel,
                      const io::message_t& message);
 
         void
-        on_disconnect(const std::shared_ptr<io::codec<io::socket<io::local>>>& codec,
+        on_disconnect(const std::shared_ptr<io::channel<io::socket<io::local>>>& channel,
                       const std::error_code& ec);
 
         void
@@ -161,7 +161,7 @@ class engine_t:
         // I/O
 
         std::unique_ptr<io::connector<io::acceptor<io::local>>> m_connector;
-        std::unique_ptr<io::codec<io::socket<io::local>>> m_codec;
+        std::unique_ptr<io::channel<io::socket<io::local>>> m_channel;
 
         // Session queue
 
@@ -171,7 +171,7 @@ class engine_t:
         // Slave pool
 
         std::set<
-            std::shared_ptr<io::codec<io::socket<io::local>>>
+            std::shared_ptr<io::channel<io::socket<io::local>>>
         > m_backlog;
 
 #if BOOST_VERSION >= 103600

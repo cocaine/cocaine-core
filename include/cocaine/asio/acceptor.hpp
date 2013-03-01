@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_ASIO_ACCEPTOR_HPP
-#define COCAINE_ASIO_ACCEPTOR_HPP
+#ifndef COCAINE_IO_ACCEPTOR_HPP
+#define COCAINE_IO_ACCEPTOR_HPP
 
 #include "cocaine/asio/socket.hpp"
 
@@ -39,7 +39,9 @@ struct acceptor:
     acceptor(endpoint_type endpoint,
              int backlog = 1024)
     {
-        m_fd = ::socket(medium_type::family(), medium_type::type(), medium_type::protocol());
+        medium_type medium;
+
+        m_fd = ::socket(medium.family(), medium.type(), medium.protocol());
 
         if(m_fd == -1) {
             throw io_error_t("unable to create an acceptor");

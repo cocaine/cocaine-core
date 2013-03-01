@@ -18,11 +18,12 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_RPC_HPP
-#define COCAINE_RPC_HPP
+#ifndef COCAINE_IO_EVENTS_HPP
+#define COCAINE_IO_EVENTS_HPP
 
 #include "cocaine/json.hpp"
-#include "cocaine/messaging.hpp"
+
+#include "cocaine/rpc/protocol.hpp"
 
 namespace cocaine { namespace io {
 
