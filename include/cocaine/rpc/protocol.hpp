@@ -81,7 +81,7 @@ struct event_traits {
         Event
     >::type tuple_type;
 
-    enum {
+    enum constants {
         id = detail::enumerate<Event>::value
     };
 };
