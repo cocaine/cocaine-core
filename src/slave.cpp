@@ -27,13 +27,15 @@
 
 #include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
+#include "cocaine/events.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
 #include "cocaine/profile.hpp"
-#include "cocaine/rpc.hpp"
 #include "cocaine/session.hpp"
 
-#include "cocaine/traits/uuid.hpp"
+#include "cocaine/rpc/channel.hpp"
+
+#include "cocaine/traits/unique_id.hpp"
 
 using namespace cocaine;
 using namespace cocaine::engine;
@@ -85,11 +87,16 @@ slave_t::~slave_t() {
 }
 
 void
-slave_t::bind(const std::shared_ptr<codec<io::pipe<local>>>& codec_) {
-    m_codec = codec_;
+slave_t::bind(const std::shared_ptr<channel<io::socket<local>>>& channel_) {
+    m_channel = channel_;
 
-    m_codec->rd->bind(
-        std::bind(&slave_t::on_message, this, _1)
+    m_channel->rd->bind(
+        std::bind(&slave_t::on_message, this, _1),
+        std::bind(&slave_t::on_disconnect, this, _1)
+    );
+
+    m_channel->wr->bind(
+        std::bind(&slave_t::on_disconnect, this, _1)
     );
 
     on_ping();
@@ -106,7 +113,7 @@ slave_t::assign(std::shared_ptr<session_t>&& session) {
         session->id
     );
 
-    session->attach(m_codec->wr->stream());
+    session->attach(m_channel->wr->stream());
 
     m_sessions.insert(
         std::make_pair(session->id, std::move(session))
@@ -119,9 +126,9 @@ slave_t::assign(std::shared_ptr<session_t>&& session) {
 
 void
 slave_t::stop() {
-    BOOST_ASSERT(m_codec);
+    BOOST_ASSERT(m_channel);
 
-    m_codec->wr->write<rpc::terminate>(
+    m_channel->wr->write<rpc::terminate>(
         static_cast<int>(rpc::terminate::normal),
         std::string("shutdown")
     );
@@ -195,6 +202,19 @@ slave_t::on_message(const message_t& message) {
 }
 
 void
+slave_t::on_disconnect(const std::error_code& ec) {
+    COCAINE_LOG_WARNING(
+        m_log,
+        "slave %s unexpectedly disconnected - [%d] %s",
+        m_id,
+        ec.value(),
+        ec.message()
+    );
+
+    terminate();
+}
+
+void
 slave_t::on_ping() {
     BOOST_ASSERT(m_state != states::dead);
 
@@ -226,7 +246,7 @@ slave_t::on_ping() {
     m_heartbeat_timer.stop();
     m_heartbeat_timer.start(m_profile.heartbeat_timeout);
 
-    m_codec->wr->write<rpc::heartbeat>();
+    m_channel->wr->write<rpc::heartbeat>();
 }
 
 void
@@ -376,7 +396,7 @@ slave_t::on_idle(ev::timer&, int) {
 
     COCAINE_LOG_DEBUG(m_log, "slave %s is idle, deactivating", m_id);
 
-    m_codec->wr->write<rpc::terminate>(
+    m_channel->wr->write<rpc::terminate>(
         static_cast<int>(rpc::terminate::normal),
         std::string("idle")
     );
@@ -400,8 +420,9 @@ slave_t::terminate() {
     m_handle->terminate();
     m_handle.reset();
 
-    // Closes our end of the pipe.
-    m_codec.reset();
+    // Closes our end of the socket.
+    m_sessions.clear();
+    m_channel.reset();
 
     m_state = states::dead;
 }

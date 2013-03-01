@@ -23,16 +23,18 @@
 #include "cocaine/api/driver.hpp"
 
 #include "cocaine/asio/acceptor.hpp"
-#include "cocaine/asio/pipe.hpp"
 #include "cocaine/asio/local.hpp"
+#include "cocaine/asio/socket.hpp"
 
 #include "cocaine/archive.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
+#include "cocaine/events.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
 #include "cocaine/profile.hpp"
-#include "cocaine/rpc.hpp"
+
+#include "cocaine/rpc/channel.hpp"
 
 #include "cocaine/traits/json.hpp"
 
@@ -64,12 +66,12 @@ app_t::app_t(context_t& context,
 
     m_service.reset(new service_t());
 
-    std::shared_ptr<io::pipe<local>> lhs, rhs;
+    std::shared_ptr<io::socket<local>> lhs, rhs;
 
-    // Create the engine control pipes.
+    // Create the engine control sockets.
     std::tie(lhs, rhs) = io::link<local>();
 
-    m_codec.reset(new codec<io::pipe<local>>(*m_service, lhs));
+    m_channel.reset(new channel<io::socket<local>>(*m_service, lhs));
 
     // NOTE: The event loop is not started here yet.
     m_engine.reset(
@@ -261,6 +263,11 @@ namespace {
             }
         }
 
+        void
+        operator()(const std::error_code& /* ec */) {
+            // Empty.
+        }
+
     private:
         typedef typename fold<
             typename event_traits<Event>::tuple_type
@@ -281,8 +288,8 @@ app_t::stop() {
 
     auto callback = expect<control::terminate>(*m_service);
 
-    m_codec->rd->bind(std::ref(callback));
-    m_codec->wr->write<control::terminate>();
+    m_channel->rd->bind(std::ref(callback), std::ref(callback));
+    m_channel->wr->write<control::terminate>();
 
     try {
         // Blocks until either the response or timeout happens.
@@ -312,8 +319,8 @@ app_t::info() const {
 
     auto callback = expect<control::info>(*m_service, info);
 
-    m_codec->rd->bind(std::ref(callback));
-    m_codec->wr->write<control::report>();
+    m_channel->rd->bind(std::ref(callback), std::ref(callback));
+    m_channel->wr->write<control::report>();
 
     try {
         // Blocks until either the response or timeout happens.

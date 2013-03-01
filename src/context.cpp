@@ -21,6 +21,7 @@
 #include "cocaine/context.hpp"
 
 #include "cocaine/api/logger.hpp"
+
 #include "cocaine/logging.hpp"
 
 #include <cerrno>

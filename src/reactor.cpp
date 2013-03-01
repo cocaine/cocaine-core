@@ -22,11 +22,13 @@
 
 #include "cocaine/asio/acceptor.hpp"
 #include "cocaine/asio/connector.hpp"
-#include "cocaine/asio/pipe.hpp"
+#include "cocaine/asio/socket.hpp"
 #include "cocaine/asio/tcp.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
+
+#include "cocaine/rpc/channel.hpp"
 
 #include <boost/bind.hpp>
 
@@ -49,8 +51,6 @@ reactor_t::reactor_t(context_t& context,
         endpoint = tcp::endpoint("127.0.0.1", args["port"].asUInt());
     }
 
-    COCAINE_LOG_INFO(m_log, "listening on '%s'", endpoint);
-
     try {
         m_connector.reset(new connector<acceptor<tcp>>(
             m_service,
@@ -64,6 +64,8 @@ reactor_t::reactor_t(context_t& context,
             e.describe()
         );
     }
+
+    COCAINE_LOG_INFO(m_log, "listening on '%s'", m_connector->endpoint());
 
     // NOTE: Register this service with the central dispatch, which will later
     // be published as a service itself for dynamic endpoint resolution.
@@ -110,18 +112,23 @@ reactor_t::terminate() {
 }
 
 void
-reactor_t::on_connection(const std::shared_ptr<io::pipe<tcp>>& pipe_) {
-    auto codec_ = std::make_shared<codec<io::pipe<tcp>>>(m_service, pipe_);
+reactor_t::on_connection(const std::shared_ptr<io::socket<tcp>>& socket_) {
+    auto channel_ = std::make_shared<channel<io::socket<tcp>>>(m_service, socket_);
 
-    codec_->rd->bind(
-        std::bind(&reactor_t::on_message, this, codec_, std::placeholders::_1)
+    channel_->rd->bind(
+        std::bind(&reactor_t::on_message, this, channel_, std::placeholders::_1),
+        std::bind(&reactor_t::on_disconnect, this, channel_, std::placeholders::_1)
     );
 
-    m_codecs.insert(codec_);
+    channel_->wr->bind(
+        std::bind(&reactor_t::on_disconnect, this, channel_, std::placeholders::_1)
+    );
+
+    m_channels.insert(channel_);
 }
 
 void
-reactor_t::on_message(const std::shared_ptr<codec<io::pipe<tcp>>>& codec_,
+reactor_t::on_message(const std::shared_ptr<channel<io::socket<tcp>>>& channel_,
                       const message_t& message)
 {
     slot_map_t::const_iterator slot = m_slots.find(message.id());
@@ -147,8 +154,18 @@ reactor_t::on_message(const std::shared_ptr<codec<io::pipe<tcp>>>& codec_,
     }
 
     if(!response.empty()) {
-        codec_->wr->stream()->write(response.data(), response.size());
+        channel_->wr->stream()->write(response.data(), response.size());
     }
+}
+
+void
+reactor_t::on_disconnect(const std::shared_ptr<channel<io::socket<tcp>>>& channel_,
+                         const std::error_code& /* ec */)
+{
+    channel_->rd->unbind();
+    channel_->wr->unbind();
+
+    m_channels.erase(channel_);
 }
 
 void

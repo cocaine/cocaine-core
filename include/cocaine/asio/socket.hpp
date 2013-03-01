@@ -18,10 +18,12 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_ASIO_PIPE_HPP
-#define COCAINE_ASIO_PIPE_HPP
+#ifndef COCAINE_IO_SOCKET_HPP
+#define COCAINE_IO_SOCKET_HPP
 
 #include "cocaine/common.hpp"
+
+#include <system_error>
 
 #include <fcntl.h>
 #include <sys/socket.h>
@@ -29,7 +31,7 @@
 namespace cocaine { namespace io {
 
 template<class Medium>
-struct pipe:
+struct socket:
     boost::noncopyable
 {
     typedef Medium medium_type;
@@ -37,26 +39,28 @@ struct pipe:
     typedef typename endpoint_type::size_type size_type;
 
     explicit
-    pipe(endpoint_type endpoint) {
-        m_fd = ::socket(medium_type::family(), medium_type::type(), medium_type::protocol());
+    socket(endpoint_type endpoint) {
+        medium_type medium;
+
+        m_fd = ::socket(medium.family(), medium.type(), medium.protocol());
 
         if(m_fd == -1) {
-            throw io_error_t("unable to create a stream");
+            throw io_error_t("unable to create a socket");
         }
 
         if(::connect(m_fd, endpoint.data(), endpoint.size()) != 0) {
-            throw io_error_t("unable to connect a stream to '%s'", endpoint);
+            throw io_error_t("unable to connect a socket to '%s'", endpoint);
         }
 
         ::fcntl(m_fd, F_SETFD, FD_CLOEXEC);
         ::fcntl(m_fd, F_SETFL, O_NONBLOCK);
     }
 
-    pipe(int fd):
+    socket(int fd):
         m_fd(fd)
     { }
 
-    ~pipe() {
+    ~socket() {
         if(m_fd >= 0 && ::close(m_fd) != 0) {
             // Log.
         }
@@ -64,14 +68,14 @@ struct pipe:
 
     // Moving
 
-    pipe(pipe&& other):
+    socket(socket&& other):
         m_fd(-1)
     {
         *this = std::move(other);
     }
 
-    pipe&
-    operator=(pipe&& other) {
+    socket&
+    operator=(socket&& other) {
         std::swap(m_fd, other.m_fd);
         return *this;
     }
@@ -79,9 +83,7 @@ struct pipe:
     // Operations
 
     ssize_t
-    write(const char * buffer,
-          size_t size)
-    {
+    write(const char * buffer, size_t size, std::error_code& ec) {
         ssize_t length = ::write(m_fd, buffer, size);
 
         if(length == -1) {
@@ -91,10 +93,10 @@ struct pipe:
                 case EWOULDBLOCK:
 #endif
                 case EINTR:
-                    return length;
+                    break;
 
                 default:
-                    throw io_error_t("unable to write to a pipe");
+                    ec = std::error_code(errno, std::system_category());
             }
         }
 
@@ -102,9 +104,7 @@ struct pipe:
     }
 
     ssize_t
-    read(char * buffer,
-         size_t size)
-    {
+    read(char * buffer, size_t size, std::error_code& ec) {
         ssize_t length = ::read(m_fd, buffer, size);
 
         if(length == -1) {
@@ -114,10 +114,10 @@ struct pipe:
                 case EWOULDBLOCK:
 #endif
                 case EINTR:
-                    return length;
+                    break;
 
                 default:
-                    throw io_error_t("unable to read from a pipe");
+                    ec = std::error_code(errno, std::system_category());
             }
         }
 
@@ -136,7 +136,7 @@ public:
         size_type size = endpoint.size();
 
         if(::getsockname(m_fd, endpoint.data(), &size) != 0) {
-            throw io_error_t("unable to determine the local stream address");
+            throw io_error_t("unable to determine the local socket address");
         }
 
         return endpoint;
@@ -148,7 +148,7 @@ public:
         size_type size = endpoint.size();
 
         if(::getpeername(m_fd, endpoint.data(), &size) != 0) {
-            throw io_error_t("unable to determine the remote stream address");
+            throw io_error_t("unable to determine the remote socket address");
         }
 
         return endpoint;

@@ -70,7 +70,7 @@ class app_t:
         // I/O
 
         std::unique_ptr<io::service_t> m_service;
-        std::unique_ptr<io::codec<io::pipe<io::local>>> m_codec;
+        std::unique_ptr<io::channel<io::socket<io::local>>> m_channel;
 
         // Execution engine
 

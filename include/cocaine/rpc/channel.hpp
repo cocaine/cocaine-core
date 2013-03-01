@@ -18,38 +18,32 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_APP_PROFILE_HPP
-#define COCAINE_APP_PROFILE_HPP
+#ifndef COCAINE_IO_CHANNEL_HPP
+#define COCAINE_IO_CHANNEL_HPP
 
-#include "cocaine/common.hpp"
-#include "cocaine/cached.hpp"
-#include "cocaine/json.hpp"
+#include "cocaine/asio/readable_stream.hpp"
+#include "cocaine/asio/writable_stream.hpp"
 
-namespace cocaine { namespace engine {
+#include "cocaine/rpc/decoder.hpp"
+#include "cocaine/rpc/encoder.hpp"
 
-struct profile_t:
-    cached<Json::Value>
-{
-    profile_t(context_t& context,
-              const std::string& name);
+namespace cocaine { namespace io {
 
-    // The profile name.
-    std::string name;
+template<class Socket>
+struct channel {
+    channel(service_t& service,
+            const std::shared_ptr<Socket>& socket):
+        rd(new decoder<readable_stream<Socket>>()),
+        wr(new encoder<writable_stream<Socket>>())
+    {
+        rd->attach(std::make_shared<readable_stream<Socket>>(service, socket));
+        wr->attach(std::make_shared<writable_stream<Socket>>(service, socket));
+    }
 
-    float heartbeat_timeout;
-    float idle_timeout;
-    float startup_timeout;
-    float termination_timeout;
-    unsigned long pool_limit;
-    unsigned long queue_limit;
-    unsigned long grow_threshold;
-    unsigned long concurrency;
-
-    // NOTE: The slave processes are launched in sandboxed environments,
-    // called isolates. This one describes the isolate type and arguments.
-    config_t::component_t isolate;
+    std::unique_ptr<decoder<readable_stream<Socket>>> rd;
+    std::unique_ptr<encoder<writable_stream<Socket>>> wr;
 };
 
-}} // namespace cocaine::engine
+}}
 
 #endif

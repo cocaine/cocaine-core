@@ -18,44 +18,50 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_UUID_TYPE_TRAITS_HPP
-#define COCAINE_UUID_TYPE_TRAITS_HPP
+#ifndef COCAINE_IO_MESSAGE_HPP
+#define COCAINE_IO_MESSAGE_HPP
 
+#include "cocaine/common.hpp"
+#include "cocaine/rpc/protocol.hpp"
 #include "cocaine/traits.hpp"
-#include "cocaine/uuid.hpp"
 
 namespace cocaine { namespace io {
 
-template<>
-struct type_traits<unique_id_t> {
-    template<class Stream>
-    static inline
-    void
-    pack(msgpack::packer<Stream>& packer,
-         const unique_id_t& source)
-    {
-        packer.pack_array(2);
+struct message_t:
+    boost::noncopyable
+{
+    message_t(msgpack::object object):
+        m_object(object)
+    { }
 
-        packer << source.uuid[0];
-        packer << source.uuid[1];
-    }
-
-    static inline
+    template<class Event, typename... Args>
     void
-    unpack(const msgpack::object& object,
-           unique_id_t& target)
-    {
-        if(object.type != msgpack::type::ARRAY ||
-           object.via.array.size != 2)
-        {
-            throw msgpack::type_error();
+    as(Args&&... targets) const {
+        try {
+            type_traits<typename event_traits<Event>::tuple_type>::unpack(
+                args(),
+                std::forward<Args>(targets)...
+            );
+        } catch(const msgpack::type_error&) {
+            throw cocaine::error_t("invalid message type");
         }
-
-        object.via.array.ptr[0] >> target.uuid[0];
-        object.via.array.ptr[1] >> target.uuid[1];
     }
+
+public:
+    int
+    id() const {
+        return m_object.via.array.ptr[0].as<int>();
+    }
+
+    const msgpack::object&
+    args() const {
+        return m_object.via.array.ptr[1];
+    }
+
+private:
+    msgpack::object m_object;
 };
 
-}} // namespace cocaine::io
+}}
 
 #endif

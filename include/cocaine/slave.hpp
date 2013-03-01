@@ -24,7 +24,7 @@
 #include "cocaine/common.hpp"
 #include "cocaine/api/isolate.hpp"
 #include "cocaine/asio/service.hpp"
-#include "cocaine/uuid.hpp"
+#include "cocaine/unique_id.hpp"
 
 namespace cocaine { namespace engine {
 
@@ -50,7 +50,7 @@ class slave_t:
         // Binding
 
         void
-        bind(const std::shared_ptr<io::codec<io::pipe<io::local>>>& codec);
+        bind(const std::shared_ptr<io::channel<io::socket<io::local>>>& channel);
 
         // Sessions
 
@@ -81,6 +81,9 @@ class slave_t:
     private:
         void
         on_message(const io::message_t& message);
+
+        void
+        on_disconnect(const std::error_code& ec);
 
         // RPC
 
@@ -144,7 +147,9 @@ class slave_t:
 
         // I/O
 
-        std::shared_ptr<io::codec<io::pipe<io::local>>> m_codec;
+        std::shared_ptr<
+            io::channel<io::socket<io::local>>
+        > m_channel;
 
         // Active sessions
 

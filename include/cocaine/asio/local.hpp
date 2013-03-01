@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_ASIO_LOCAL_HPP
-#define COCAINE_ASIO_LOCAL_HPP
+#ifndef COCAINE_IO_LOCAL_HPP
+#define COCAINE_IO_LOCAL_HPP
 
 #include "cocaine/common.hpp"
 
@@ -44,6 +44,7 @@ struct local {
             std::memset(&m_data, 0, sizeof(m_data));
         }
 
+        explicit
         endpoint(const std::string& address) {
             std::memset(&m_data, 0, sizeof(m_data));
 

@@ -18,38 +18,44 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_APP_PROFILE_HPP
-#define COCAINE_APP_PROFILE_HPP
+#ifndef COCAINE_UUID_TYPE_TRAITS_HPP
+#define COCAINE_UUID_TYPE_TRAITS_HPP
 
-#include "cocaine/common.hpp"
-#include "cocaine/cached.hpp"
-#include "cocaine/json.hpp"
+#include "cocaine/traits.hpp"
+#include "cocaine/unique_id.hpp"
 
-namespace cocaine { namespace engine {
+namespace cocaine { namespace io {
 
-struct profile_t:
-    cached<Json::Value>
-{
-    profile_t(context_t& context,
-              const std::string& name);
+template<>
+struct type_traits<unique_id_t> {
+    template<class Stream>
+    static inline
+    void
+    pack(msgpack::packer<Stream>& packer,
+         const unique_id_t& source)
+    {
+        packer.pack_array(2);
 
-    // The profile name.
-    std::string name;
+        packer << source.uuid[0];
+        packer << source.uuid[1];
+    }
 
-    float heartbeat_timeout;
-    float idle_timeout;
-    float startup_timeout;
-    float termination_timeout;
-    unsigned long pool_limit;
-    unsigned long queue_limit;
-    unsigned long grow_threshold;
-    unsigned long concurrency;
+    static inline
+    void
+    unpack(const msgpack::object& object,
+           unique_id_t& target)
+    {
+        if(object.type != msgpack::type::ARRAY ||
+           object.via.array.size != 2)
+        {
+            throw msgpack::type_error();
+        }
 
-    // NOTE: The slave processes are launched in sandboxed environments,
-    // called isolates. This one describes the isolate type and arguments.
-    config_t::component_t isolate;
+        object.via.array.ptr[0] >> target.uuid[0];
+        object.via.array.ptr[1] >> target.uuid[1];
+    }
 };
 
-}} // namespace cocaine::engine
+}} // namespace cocaine::io
 
 #endif

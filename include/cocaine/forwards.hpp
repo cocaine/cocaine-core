@@ -48,12 +48,12 @@ namespace cocaine {
         struct manifest_t;
         struct profile_t;
 
+        // Unit of execution.
+        struct session_t;
+
         // Execution engine.
         class engine_t;
         class slave_t;
-
-        // Unit of execution.
-        struct session_t;
     }
 
     namespace io {
@@ -61,10 +61,10 @@ namespace cocaine {
         struct tcp;
 
         template<class>
-        struct acceptor;
+        struct socket;
 
         template<class>
-        struct pipe;
+        struct acceptor;
 
         // I/O privimites
 
@@ -74,10 +74,10 @@ namespace cocaine {
         struct connector;
 
         template<class>
-        struct writable_stream;
+        struct readable_stream;
 
         template<class>
-        struct readable_stream;
+        struct writable_stream;
 
         // RPC primitives
 
@@ -95,7 +95,7 @@ namespace cocaine {
         struct decoder;
 
         template<class>
-        struct codec;
+        struct channel;
     }
 
     namespace logging {

@@ -34,7 +34,10 @@ struct manifest_t:
                const std::string& name);
 
     // The application name.
-    const std::string name;
+    std::string name;
+
+    // The application engine's endpoint name.
+    std::string endpoint;
 
     // TODO: Make it an alias instead of an executable file path.
     std::string slave;

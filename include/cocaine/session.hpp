@@ -26,10 +26,13 @@
 #include "cocaine/api/event.hpp"
 
 #include "cocaine/asio/local.hpp"
-#include "cocaine/asio/pipe.hpp"
+#include "cocaine/asio/socket.hpp"
+#include "cocaine/asio/writable_stream.hpp"
 
 #include "cocaine/birth_control.hpp"
-#include "cocaine/rpc.hpp"
+#include "cocaine/events.hpp"
+
+#include "cocaine/rpc/encoder.hpp"
 
 #include <mutex>
 
@@ -44,7 +47,7 @@ struct session_t:
               const std::shared_ptr<api::stream_t>& upstream);
 
     void
-    attach(const std::shared_ptr<io::writable_stream<io::pipe<io::local>>>& stream);
+    attach(const std::shared_ptr<io::writable_stream<io::socket<io::local>>>& stream);
 
     void
     detach();
@@ -65,7 +68,7 @@ public:
 
 private:
     std::unique_ptr<
-        io::encoder<io::pipe<io::local>>
+        io::encoder<io::writable_stream<io::socket<io::local>>>
     > m_encoder;
 
     // Session interlocking.
