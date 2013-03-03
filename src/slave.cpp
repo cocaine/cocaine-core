@@ -56,6 +56,10 @@ slave_t::slave_t(context_t& context,
     m_heartbeat_timer(engine.service().loop()),
     m_idle_timer(engine.service().loop())
 {
+    // NOTE: Initialization heartbeat can be different.
+    m_heartbeat_timer.set<slave_t, &slave_t::on_timeout>(this);
+    m_heartbeat_timer.start(m_profile.startup_timeout);
+
     auto isolate = m_context.get<api::isolate_t>(
         m_profile.isolate.type,
         m_context,
@@ -74,10 +78,6 @@ slave_t::slave_t(context_t& context,
     COCAINE_LOG_DEBUG(m_log, "slave %s is activating", m_id);
 
     m_handle = isolate->spawn(m_manifest.slave, args, environment);
-
-    // NOTE: Initialization heartbeat can be different.
-    m_heartbeat_timer.set<slave_t, &slave_t::on_timeout>(this);
-    m_heartbeat_timer.start(m_profile.startup_timeout);
 }
 
 slave_t::~slave_t() {
@@ -201,15 +201,43 @@ slave_t::on_message(const message_t& message) {
     }
 }
 
+namespace {
+    struct cancel_t {
+        cancel_t(cocaine::error_code code,
+                 const std::string& message):
+            m_code(code),
+            m_message(message)
+        { }
+
+        template<class T>
+        void
+        operator()(const T& session) const {
+            session.second->upstream->error(m_code, m_message);
+        }
+
+    private:
+        cocaine::error_code m_code;
+        std::string m_message;
+    };
+}
+
 void
 slave_t::on_disconnect(const std::error_code& ec) {
     COCAINE_LOG_WARNING(
         m_log,
-        "slave %s unexpectedly disconnected - [%d] %s",
+        "slave %s has unexpectedly disconnected - [%d] %s",
         m_id,
         ec.value(),
         ec.message()
     );
+
+    std::for_each(
+        m_sessions.begin(),
+        m_sessions.end(),
+        cancel_t(resource_error, "the session has been aborted")
+    );
+
+    m_sessions.clear();
 
     terminate();
 }
@@ -342,19 +370,6 @@ slave_t::on_choke(uint64_t session_id) {
     }
 }
 
-namespace {
-    struct timeout_t {
-        template<class T>
-        void
-        operator()(T& session) const {
-            session.second->upstream->error(
-                timeout_error,
-                "the session has timed out"
-            );
-        }
-    };
-}
-
 void
 slave_t::on_timeout(ev::timer&, int) {
     BOOST_ASSERT(m_state != states::dead);
@@ -372,7 +387,11 @@ slave_t::on_timeout(ev::timer&, int) {
                 m_sessions.size()
             );
 
-            std::for_each(m_sessions.begin(), m_sessions.end(), timeout_t());
+            std::for_each(
+                m_sessions.begin(),
+                m_sessions.end(),
+                cancel_t(timeout_error, "the session had timed out")
+            );
 
             m_sessions.clear();
 
@@ -393,6 +412,7 @@ slave_t::on_timeout(ev::timer&, int) {
 void
 slave_t::on_idle(ev::timer&, int) {
     BOOST_ASSERT(m_state == states::active);
+    BOOST_ASSERT(m_sessions.empty());
 
     COCAINE_LOG_DEBUG(m_log, "slave %s is idle, deactivating", m_id);
 
@@ -421,7 +441,6 @@ slave_t::terminate() {
     m_handle.reset();
 
     // Closes our end of the socket.
-    m_sessions.clear();
     m_channel.reset();
 
     m_state = states::dead;
