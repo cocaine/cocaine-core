@@ -48,9 +48,9 @@ struct message_t:
     }
 
 public:
-    int
+    short
     id() const {
-        return m_object.via.array.ptr[0].as<int>();
+        return m_object.via.array.ptr[0].as<short>();
     }
 
     const msgpack::object&
