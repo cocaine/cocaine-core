@@ -76,13 +76,15 @@ struct type_traits<
     pack(msgpack::packer<Stream>& packer,
          const Args&... sequence)
     {
+        const size_t size = boost::mpl::size<T>::value;
+
         static_assert(
-            sizeof...(sequence) == boost::mpl::size<T>::value,
+            sizeof...(sequence) == size,
             "sequence length mismatch"
         );
 
         // The sequence will be packed as an array.
-        packer.pack_array(sizeof...(sequence));
+        packer.pack_array(size);
 
         // Recursively pack every sequence element.
         pack_sequence<typename boost::mpl::begin<T>::type>(
@@ -97,13 +99,15 @@ struct type_traits<
     unpack(const msgpack::object& object,
            Args&... sequence)
     {
+        const size_t size = boost::mpl::size<T>::value;
+
         static_assert(
-            sizeof...(sequence) == boost::mpl::size<T>::value,
+            sizeof...(sequence) == size,
             "sequence length mismatch"
         );
 
         if(object.type != msgpack::type::ARRAY ||
-           object.via.array.size != sizeof...(sequence))
+           object.via.array.size != size)
         {
             throw msgpack::type_error();
         }
