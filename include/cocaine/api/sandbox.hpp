@@ -52,7 +52,7 @@ struct category_traits<sandbox_t> {
     typedef std::unique_ptr<sandbox_t> ptr_type;
 
     struct factory_type:
-        public factory_base<sandbox_t>
+        public basic_factory<sandbox_t>
     {
         virtual
         ptr_type

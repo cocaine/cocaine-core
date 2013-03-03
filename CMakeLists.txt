@@ -87,7 +87,7 @@ SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     VERSION 2
     COMPILE_FLAGS "-std=c++0x")
 
-ADD_LIBRARY(essentials SHARED
+ADD_LIBRARY(essentials MODULE
     src/essentials/isolates/process
     src/essentials/loggers/files
     src/essentials/loggers/stdout

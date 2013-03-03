@@ -29,9 +29,6 @@
 #include "cocaine/asio/socket.hpp"
 #include "cocaine/asio/writable_stream.hpp"
 
-#include "cocaine/birth_control.hpp"
-#include "cocaine/events.hpp"
-
 #include "cocaine/rpc/encoder.hpp"
 
 #include <mutex>
@@ -39,7 +36,6 @@
 namespace cocaine { namespace engine {
 
 struct session_t:
-    public birth_control<session_t>,
     boost::noncopyable
 {
     session_t(uint64_t id,

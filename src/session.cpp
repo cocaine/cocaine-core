@@ -20,6 +20,8 @@
 
 #include "cocaine/session.hpp"
 
+#include "cocaine/events.hpp"
+
 using namespace cocaine::engine;
 using namespace cocaine::io;
 

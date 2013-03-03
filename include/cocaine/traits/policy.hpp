@@ -22,6 +22,7 @@
 #define COCAINE_EVENT_POLICY_TYPE_TRAITS_HPP
 
 #include "cocaine/traits.hpp"
+
 #include "cocaine/api/event.hpp"
 
 namespace cocaine { namespace io {

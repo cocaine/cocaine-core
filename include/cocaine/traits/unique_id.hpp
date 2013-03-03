@@ -18,10 +18,11 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_UUID_TYPE_TRAITS_HPP
-#define COCAINE_UUID_TYPE_TRAITS_HPP
+#ifndef COCAINE_UNIQUE_ID_TYPE_TRAITS_HPP
+#define COCAINE_UNIQUE_ID_TYPE_TRAITS_HPP
 
 #include "cocaine/traits.hpp"
+
 #include "cocaine/unique_id.hpp"
 
 namespace cocaine { namespace io {

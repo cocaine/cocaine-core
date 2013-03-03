@@ -54,7 +54,7 @@ struct category_traits<service_t> {
     typedef std::unique_ptr<service_t> ptr_type;
 
     struct factory_type:
-        public factory_base<service_t>
+        public basic_factory<service_t>
     {
         virtual
         ptr_type

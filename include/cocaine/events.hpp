@@ -22,8 +22,8 @@
 #define COCAINE_IO_EVENTS_HPP
 
 #include "cocaine/json.hpp"
-
 #include "cocaine/rpc/protocol.hpp"
+#include "cocaine/unique_id.hpp"
 
 namespace cocaine { namespace io {
 

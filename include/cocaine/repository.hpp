@@ -45,7 +45,7 @@ struct factory_concept_t {
 };
 
 template<class Category>
-struct factory_base:
+struct basic_factory:
     public factory_concept_t
 {
     virtual

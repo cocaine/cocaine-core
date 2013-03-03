@@ -65,7 +65,7 @@ struct category_traits<isolate_t> {
     typedef std::shared_ptr<isolate_t> ptr_type;
 
     struct factory_type:
-        public factory_base<isolate_t>
+        public basic_factory<isolate_t>
     {
         virtual
         ptr_type

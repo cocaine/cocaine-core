@@ -61,7 +61,7 @@ struct category_traits<driver_t> {
     typedef std::unique_ptr<driver_t> ptr_type;
 
     struct factory_type:
-        public factory_base<driver_t>
+        public basic_factory<driver_t>
     {
         virtual
         ptr_type

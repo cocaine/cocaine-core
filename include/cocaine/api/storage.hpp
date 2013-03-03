@@ -134,7 +134,7 @@ struct category_traits<storage_t> {
     typedef std::shared_ptr<storage_t> ptr_type;
 
     struct factory_type:
-        public factory_base<storage_t>
+        public basic_factory<storage_t>
     {
         virtual
         ptr_type
