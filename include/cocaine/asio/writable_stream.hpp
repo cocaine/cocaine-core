@@ -103,7 +103,7 @@ struct writable_stream:
 
             // There's no space left at the end of the buffer, so copy all the unsent
             // data to the beginning and continue filling it from there.
-            std::memcpy(
+            std::memmove(
                 m_ring.data(),
                 m_ring.data() + m_tx_offset,
                 unsent
