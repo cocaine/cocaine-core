@@ -23,13 +23,11 @@
 #include "cocaine/api/event.hpp"
 #include "cocaine/api/stream.hpp"
 
-#include "cocaine/asio/local.hpp"
-
 #include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
-#include "cocaine/events.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
+#include "cocaine/messages.hpp"
 #include "cocaine/profile.hpp"
 #include "cocaine/session.hpp"
 
@@ -203,8 +201,8 @@ slave_t::on_message(const message_t& message) {
 
 namespace {
     struct cancel_t {
-        cancel_t(cocaine::error_code code,
-                 const std::string& message):
+        cancel_t(error_code code,
+                 std::string message):
             m_code(code),
             m_message(message)
         { }
@@ -212,12 +210,13 @@ namespace {
         template<class T>
         void
         operator()(const T& session) const {
+            session.second->detach();
             session.second->upstream->error(m_code, m_message);
         }
 
     private:
-        cocaine::error_code m_code;
-        std::string m_message;
+        const error_code m_code;
+        const std::string m_message;
     };
 }
 
@@ -400,10 +399,6 @@ slave_t::on_timeout(ev::timer&, int) {
         case states::inactive:
             COCAINE_LOG_WARNING(m_log, "slave %s has failed to deactivate", m_id);
             break;
-
-        case states::dead:
-            // NOTE: Unreachable.
-            std::terminate();
     }
 
     terminate();
@@ -426,13 +421,10 @@ slave_t::on_idle(ev::timer&, int) {
 
 void
 slave_t::terminate() {
-    COCAINE_LOG_DEBUG(m_log, "slave %s terminating", m_id);
-
-    // Ensure that the slave is not being overkilled.
     BOOST_ASSERT(m_state != states::dead);
-
-    // Ensure that no sessions are being lost here.
     BOOST_ASSERT(m_sessions.empty());
+
+    COCAINE_LOG_DEBUG(m_log, "slave %s is being terminated", m_id);
 
     m_heartbeat_timer.stop();
     m_idle_timer.stop();

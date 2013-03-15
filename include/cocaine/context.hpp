@@ -76,9 +76,9 @@ struct config_t {
         component_t
     > component_map_t;
 
-    component_map_t storages;
     component_map_t loggers;
     component_map_t services;
+    component_map_t storages;
 
 public:
     static

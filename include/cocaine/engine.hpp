@@ -75,14 +75,14 @@ class engine_t:
         void
         run();
 
+        void
+        wake();
+
         // Scheduling
 
         std::shared_ptr<api::stream_t>
         enqueue(const api::event_t& event,
                 const std::shared_ptr<api::stream_t>& upstream);
-
-        void
-        wake();
 
         void
         erase(const unique_id_t& uuid,

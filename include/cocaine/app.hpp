@@ -67,17 +67,17 @@ class app_t:
         std::unique_ptr<const engine::manifest_t> m_manifest;
         std::unique_ptr<const engine::profile_t> m_profile;
 
-        // I/O
+        // Control
 
         std::unique_ptr<io::service_t> m_service;
         std::unique_ptr<io::channel<io::socket<io::local>>> m_channel;
 
-        // Execution engine
+        // Engine
 
         std::shared_ptr<engine::engine_t> m_engine;
         std::unique_ptr<std::thread> m_thread;
 
-        // Event drivers
+        // Drivers
 
         typedef boost::unordered_map<
             std::string,

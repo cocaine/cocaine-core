@@ -43,6 +43,11 @@ namespace cocaine { namespace logging {
 
 struct logger_t {
     virtual
+    ~logger_t() {
+        // Empty.
+    }
+
+    virtual
     logging::priorities
     verbosity() const = 0;
 

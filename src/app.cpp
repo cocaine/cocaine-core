@@ -29,9 +29,9 @@
 #include "cocaine/archive.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/engine.hpp"
-#include "cocaine/events.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
+#include "cocaine/messages.hpp"
 #include "cocaine/profile.hpp"
 
 #include "cocaine/rpc/channel.hpp"

@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_REACTOR_SLOT_HPP
-#define COCAINE_REACTOR_SLOT_HPP
+#ifndef COCAINE_ACTOR_SLOT_HPP
+#define COCAINE_ACTOR_SLOT_HPP
 
 #include "cocaine/common.hpp"
 #include "cocaine/traits.hpp"
@@ -36,11 +36,30 @@ namespace ft = boost::function_types;
 namespace mpl = boost::mpl;
 
 namespace detail {
-    template<typename R, class It, class End>
+    template<class T>
+    struct depend {
+        typedef void type;
+    };
+
+    template<class F, class U = void>
+    struct result_of {
+        typedef typename std::result_of<F>::type type;
+    };
+
+    template<class F>
+    struct result_of<
+        F,
+        typename depend<typename F::result_type>::type
+    >
+    {
+        typedef typename F::result_type type;
+    };
+
+    template<class It, class End>
     struct invoke {
         template<class F, typename... Args>
         static inline
-        R
+        typename result_of<F>::type
         apply(const F& callable,
               const msgpack::object * packed,
               Args&&... args)
@@ -58,7 +77,7 @@ namespace detail {
                 throw cocaine::error_t("argument type mismatch");
             }
 
-            return invoke<R, next_type, End>::apply(
+            return invoke<next_type, End>::apply(
                 callable,
                 ++packed,
                 std::forward<Args>(args)...,
@@ -67,11 +86,11 @@ namespace detail {
         }
     };
 
-    template<typename R, class End>
-    struct invoke<R, End, End> {
+    template<class End>
+    struct invoke<End, End> {
         template<class F, typename... Args>
         static inline
-        R
+        typename result_of<F>::type
         apply(const F& callable,
               const msgpack::object * /* packed */,
               Args&&... args)
@@ -115,10 +134,10 @@ struct slot:
         if(packed.type != msgpack::type::ARRAY ||
            packed.via.array.size != mpl::size<Sequence>::value)
         {
-            throw cocaine::error_t("argument sequence length mismatch");
+            throw cocaine::error_t("argument sequence mismatch");
         }
 
-        const R result = detail::invoke<R, begin, end>::apply(
+        const R result = detail::invoke<begin, end>::apply(
             m_callable,
             packed.via.array.ptr
         );

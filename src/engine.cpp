@@ -29,9 +29,9 @@
 #include "cocaine/asio/socket.hpp"
 
 #include "cocaine/context.hpp"
-#include "cocaine/events.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/manifest.hpp"
+#include "cocaine/messages.hpp"
 #include "cocaine/profile.hpp"
 #include "cocaine/session.hpp"
 #include "cocaine/slave.hpp"
@@ -215,6 +215,11 @@ engine_t::run() {
     m_service.run();
 }
 
+void
+engine_t::wake() {
+    m_notification.send();
+}
+
 std::shared_ptr<api::stream_t>
 engine_t::enqueue(const api::event_t& event,
                   const std::shared_ptr<api::stream_t>& upstream)
@@ -248,11 +253,6 @@ engine_t::enqueue(const api::event_t& event,
     wake();
 
     return std::make_shared<downstream_t>(session);
-}
-
-void
-engine_t::wake() {
-    m_notification.send();
 }
 
 void
@@ -332,12 +332,17 @@ void
 engine_t::on_disconnect(const std::shared_ptr<channel<io::socket<local>>>& channel_,
                         const std::error_code& ec)
 {
+    COCAINE_LOG_INFO(
+        m_log,
+        "slave disconnected during the handshake - [%d] %s",
+        ec.value(),
+        ec.message()
+    );
+
     channel_->rd->unbind();
     channel_->wr->unbind();
 
     m_backlog.erase(channel_);
-
-    COCAINE_LOG_INFO(m_log, "slave disconnected during the handshake - %s", ec.message());
 }
 
 namespace {
