@@ -1,3 +1,9 @@
+cocaine-core (0.10.0-rc4~memmove) lucid; urgency=low
+
+  * Hey!
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 15 Mar 2013 01:05:09 +0400
+
 cocaine-core (0.10.0-rc4) lucid; urgency=low
 
   * Release candidate 4.

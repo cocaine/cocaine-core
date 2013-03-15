@@ -299,7 +299,7 @@ namespace {
         }
 
         std::cout << "Cleaning up " << manifests.size() << " profile(s)." << std::endl;
-        
+
         for(std::vector<std::string>::const_iterator it = profiles.begin();
             it != profiles.end();
             ++it)
