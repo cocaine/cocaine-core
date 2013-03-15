@@ -3,6 +3,7 @@ cocaine-core (0.10.0-rc5) lucid; urgency=low
   * Release candidate 5.
   * Fixed a bug with overlapping memory regions in buffered streams leading to
     SIGSEGVs under high load.
+  * Profile operations added to the toolset.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 15 Mar 2013 21:48:16 +0400
 

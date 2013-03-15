@@ -122,18 +122,6 @@ class reactor_t:
         std::unique_ptr<std::thread> m_thread;
 };
 
-namespace detail {
-    template<class F, bool Bound = std::is_bind_expression<F>::value>
-    struct result_of {
-        typedef typename F::result_type type;
-    };
-
-    template<class F>
-    struct result_of<F, false> {
-        typedef typename std::result_of<F>::type type;
-    };
-}
-
 template<class Event, class F>
 void
 reactor_t::on(F callable) {

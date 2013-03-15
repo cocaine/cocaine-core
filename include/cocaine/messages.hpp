@@ -23,7 +23,6 @@
 
 #include "cocaine/rpc/protocol.hpp"
 
-#include "cocaine/api/event.hpp"
 #include "cocaine/json.hpp"
 #include "cocaine/unique_id.hpp"
 
@@ -66,7 +65,7 @@ namespace rpc {
 
         typedef boost::mpl::list<
             /* session */ uint64_t,
-            /* event */   api::event_t
+            /* event */   std::string
         > tuple_type;
     };
 
