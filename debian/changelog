@@ -1,8 +1,10 @@
-cocaine-core (0.10.0-rc4~memmove) lucid; urgency=low
+cocaine-core (0.10.0-rc5) lucid; urgency=low
 
-  * Hey!
+  * Release candidate 5.
+  * Fixed a bug with overlapping memory regions in buffered streams leading to
+    SIGSEGVs under high load.
 
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 15 Mar 2013 01:05:09 +0400
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 15 Mar 2013 21:48:16 +0400
 
 cocaine-core (0.10.0-rc4) lucid; urgency=low
 
