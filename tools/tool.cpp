@@ -30,6 +30,7 @@
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
+
 #include <boost/program_options.hpp>
 
 using namespace cocaine;
@@ -187,8 +188,25 @@ namespace {
     }
 
     void
+    remove_profile(context_t& context,
+                   std::string name)
+    {
+        auto storage = api::storage(context, "core");
+
+        try {
+            storage->remove("profiles", name);
+        } catch(const storage_error_t& e) {
+            std::cerr << "Error: unable to remove the profile." << std::endl;
+            std::cerr << e.what() << std::endl;
+            return;
+        }
+
+        std::cout << "The '" << name << "' profile has been successfully removed." << std::endl;
+    }
+
+    void
     cleanup(context_t& context,
-          const std::string& name)
+            const std::string& name)
     {
         std::cout << "Cleaning up the '" << name << "' app." << std::endl;
 
@@ -228,6 +246,23 @@ namespace {
     }
 
     void
+    cleanup_profile(context_t& context,
+                    const std::string& name)
+    {
+        std::cout << "Cleaning up the '" << name << "' profile." << std::endl;
+
+        auto cache = api::storage(context, "cache");
+
+        try {
+            // Remove the cached profile.
+            cache->remove("profiles", name);
+        } catch(const storage_error_t& e) {
+            std::cerr << "Unable to clean up the profile - " << std::endl;
+            std::cerr << e.what() << std::endl;
+        }
+    }
+
+    void
     purge(context_t& context) {
         auto cache = api::storage(context, "cache");
         
@@ -247,6 +282,29 @@ namespace {
             ++it)
         {
             cleanup(context, *it);
+        }
+    }
+
+    void
+    purge_profiles(context_t& context) {
+        auto cache = api::storage(context, "cache");
+
+        std::vector<std::string> profiles(
+            cache->list("profiles")
+        );
+
+        if(profiles.empty()) {
+            std::cout << "No profiles has been found in the cache." << std::endl;
+            return;
+        }
+
+        std::cout << "Cleaning up " << manifests.size() << " profile(s)." << std::endl;
+        
+        for(std::vector<std::string>::const_iterator it = profiles.begin();
+            it != profiles.end();
+            ++it)
+        {
+            cleanup_profile(context, *it);
         }
     }
 }
@@ -390,8 +448,19 @@ main(int argc, char * argv[]) {
             std::cerr << "Type '" << argv[0] << " --help' for usage information." << std::endl;
             return EXIT_FAILURE;
         }
-    
+
         remove(
+            *context,
+            vm["name"].as<std::string>()
+        );
+    } else if(operation == "profile:remove") {
+        if(!vm.count("name")) {
+            std::cerr << "Error: no profile name has been specified." << std::endl;
+            std::cerr << "Type '" << argv[0] << " --help' for usage information." << std::endl;
+            return EXIT_FAILURE;
+        }
+
+        remove_profile(
             *context,
             vm["name"].as<std::string>()
         );
@@ -404,8 +473,17 @@ main(int argc, char * argv[]) {
         } else {
             purge(*context);
         }
+    } else if(operation == "profile:cleanup") {
+        if(vm.count("name")) {
+            cleanup_profile(
+                *context,
+                vm["name"].as<std::string>()
+            );
+        } else {
+            purge_profiles(*context);
+        }
     } else {
-        std::cerr << "Error: unknown operation has been specified" << std::endl;
+        std::cerr << "Error: unknown operation has been specified." << std::endl;
         std::cerr << "Type '" << argv[0] << " --help' for usage information." << std::endl;
         return EXIT_FAILURE;
     }
