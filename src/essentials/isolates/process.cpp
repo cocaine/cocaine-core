@@ -24,8 +24,8 @@
 #include "cocaine/logging.hpp"
 
 #include <cerrno>
-#include <csignal>
 #include <cstring>
+#include <system_error>
 
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -81,20 +81,11 @@ process_t::spawn(const std::string& path,
     pid_t pid = ::fork();
 
     if(pid < 0) {
-        char buffer[1024],
-             * message;
-
-#ifdef _GNU_SOURCE
-        message = ::strerror_r(errno, buffer, 1024);
-#else
-        ::strerror_r(errno, buffer, 1024);
-
-        // NOTE: XSI-compliant strerror_r() returns int instead of the
-        // string buffer, so complete the job manually.
-        message = buffer;
-#endif
-
-        throw cocaine::error_t("unable to fork - %s", message);
+        throw std::system_error(
+            errno,
+            std::system_category(),
+            "unable to fork"
+        );
     }
 
     if(pid == 0) {
@@ -150,24 +141,13 @@ process_t::spawn(const std::string& path,
         int rv = ::execv(argv[0], argv);
 
         if(rv != 0) {
-            char buffer[1024],
-                 * message;
-
-#ifdef _GNU_SOURCE
-            message = ::strerror_r(errno, buffer, 1024);
-#else
-            ::strerror_r(errno, buffer, 1024);
-
-            // NOTE: XSI-compliant strerror_r() returns int instead of the
-            // string buffer, so complete the job manually.
-            message = buffer;
-#endif
+            std::error_code ec(errno, std::system_category());
 
             COCAINE_LOG_ERROR(
                 m_log,
                 "unable to execute '%s' - %s",
                 path,
-                message
+                ec.message()
             );
 
             std::exit(EXIT_FAILURE);

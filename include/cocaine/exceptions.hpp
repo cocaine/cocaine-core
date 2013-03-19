@@ -23,8 +23,8 @@
 
 #include "cocaine/format.hpp"
 
-#include <cstring>
 #include <exception>
+#include <system_error>
 
 namespace cocaine {
 
@@ -74,27 +74,17 @@ struct io_error_t:
 {
     template<typename... Args>
     io_error_t(const std::string& format, Args&&... args):
-        cocaine::error_t(format, std::forward<Args>(args)...)
-    {
-#ifdef _GNU_SOURCE
-        m_message = ::strerror_r(errno, m_buffer, 256);
-#else
-        ::strerror_r(errno, m_buffer, 256);
+        cocaine::error_t(format, std::forward<Args>(args)...),
+        m_errno(errno)
+    { }
 
-        // NOTE: XSI-compliant strerror_r() returns int instead of the
-        // string buffer, so complete the job manually.
-        m_message = m_buffer;
-#endif
-    }
-
-    const char *
+    std::string
     describe() const throw() {
-        return m_message;
+        return std::error_code(m_errno, std::system_category()).message();
     }
 
 private:
-    char m_buffer[256];
-    const char * m_message;
+    const int m_errno;
 };
 
 } // namespace cocaine

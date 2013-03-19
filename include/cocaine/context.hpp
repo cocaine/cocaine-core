@@ -49,6 +49,7 @@ struct defaults {
 // Configuration
 
 struct config_t {
+    config_t();
     config_t(const std::string& config_path);
 
     struct {

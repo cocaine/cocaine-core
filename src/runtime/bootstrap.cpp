@@ -61,7 +61,8 @@ namespace {
             ::sigemptyset(&signals);
             ::sigaddset(&signals, SIGPIPE);
 #else
-            // It appears that these functions are implemented as macros on MacOS X.
+            // It appears that these functions are implemented as macros on MacOS X,
+            // so global scope operator doesn't work.
             sigemptyset(&signals);
             sigaddset(&signals, SIGPIPE);
 #endif

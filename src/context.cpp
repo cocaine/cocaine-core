@@ -26,6 +26,7 @@
 
 #include <cerrno>
 #include <cstring>
+#include <system_error>
 
 #include <boost/filesystem/convenience.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -70,6 +71,13 @@ namespace {
     }
 }
 
+config_t::config_t() {
+    path.config  = "";
+    path.plugins = defaults::plugins_path;
+    path.runtime = defaults::runtime_path;
+    path.spool   = defaults::spool_path;
+}
+
 config_t::config_t(const std::string& config_path) {
     path.config = config_path;
 
@@ -99,9 +107,11 @@ config_t::config_t(const std::string& config_path) {
         throw configuration_error_t("the configuration file version is invalid");
     }
 
+    // Paths
+
     path.plugins = root["paths"].get("plugins", defaults::plugins_path).asString();
     path.runtime = root["paths"].get("runtime", defaults::runtime_path).asString();
-    path.spool = root["paths"].get("spool", defaults::spool_path).asString();
+    path.spool   = root["paths"].get("spool",   defaults::spool_path  ).asString();
 
     fs::path runtime = path.runtime;
 
@@ -111,25 +121,16 @@ config_t::config_t(const std::string& config_path) {
 
     validate_path(path.spool);
 
-    // IO configuration
+    // I/O configuration
 
     char hostname[256];
 
     if(gethostname(hostname, 256) != 0) {
-        char reason[1024],
-             * message = nullptr;
-
-#ifdef _GNU_SOURCE
-        message = ::strerror_r(errno, reason, 1024);
-#else
-        ::strerror_r(errno, reason, 1024);
-
-        // NOTE: XSI-compliant strerror_r() returns int instead of the
-        // string buffer, so complete the job manually.
-        message = reason;
-#endif
-
-        throw configuration_error_t("unable to determine the hostname - %s", message);
+        throw std::system_error(
+            errno,
+            std::system_category(),
+            "unable to determine the hostname"
+        );
     }
 
     addrinfo hints,
@@ -142,11 +143,15 @@ config_t::config_t(const std::string& config_path) {
     int rv = getaddrinfo(hostname, nullptr, &hints, &result);
 
     if(rv != 0) {
-        throw configuration_error_t("unable to determine the hostname - %s", gai_strerror(rv));
+        throw configuration_error_t(
+            "unable to determine the hostname - %s",
+            gai_strerror(rv)
+        );
     }
 
-    // NOTE: I have no idea when this call can fail, so just assert that it always works.
-    BOOST_VERIFY(result != nullptr);
+    if(result == nullptr) {
+        throw configuration_error_t("unable to determine the hostname");
+    }
 
     network.hostname = result->ai_canonname;
 
@@ -154,9 +159,9 @@ config_t::config_t(const std::string& config_path) {
 
     // Component configuration
 
+    loggers  = parse(root["loggers"]);
     services = parse(root["services"]);
     storages = parse(root["storages"]);
-    loggers = parse(root["loggers"]);
 }
 
 config_t::component_map_t

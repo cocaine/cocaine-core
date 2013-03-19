@@ -23,6 +23,8 @@
 
 #include "cocaine/common.hpp"
 
+#include <cstring>
+
 #include <sys/socket.h>
 #include <sys/un.h>
 

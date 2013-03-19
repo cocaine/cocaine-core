@@ -21,9 +21,9 @@
 #include "cocaine/essentials/loggers/files.hpp"
 
 #include <cerrno>
-#include <cstdio>
 #include <cstring>
 #include <ctime>
+#include <system_error>
 
 #include <sys/uio.h>
 
@@ -40,20 +40,11 @@ files_t::files_t(const std::string& name,
     m_file = std::fopen(path.c_str(), "a");
 
     if(m_file == nullptr) {
-        char buffer[1024],
-             * message;
-
-#ifdef _GNU_SOURCE
-        message = ::strerror_r(errno, buffer, 1024);
-#else
-        ::strerror_r(errno, buffer, 1024);
-
-        // NOTE: XSI-compliant strerror_r() returns int instead of the
-        // string buffer, so complete the job manually.
-        message = buffer;
-#endif
-
-        throw cocaine::error_t("unable to open the '%s' log file - %s", path, message);
+        throw std::system_error(
+            errno,
+            std::system_category(),
+            cocaine::format("unable to open the '%s' log file", path)
+        );
     }
 }
 
