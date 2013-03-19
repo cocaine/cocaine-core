@@ -24,6 +24,7 @@
 #include "cocaine/logging.hpp"
 
 #include <cerrno>
+#include <csignal>
 #include <cstring>
 #include <system_error>
 
