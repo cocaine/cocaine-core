@@ -43,7 +43,7 @@ files_t::files_t(const std::string& name,
         throw std::system_error(
             errno,
             std::system_category(),
-            cocaine::format("unable to open the '%s' log file", path)
+            cocaine::format("unable to open the '%s' file", path)
         );
     }
 }
@@ -70,7 +70,7 @@ files_t::emit(logging::priorities priority,
               const std::string& message)
 {
     time_t time = 0;
-    struct tm timeinfo;
+    tm timeinfo;
 
     std::memset(&timeinfo, 0, sizeof(timeinfo));
 

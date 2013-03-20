@@ -47,7 +47,7 @@ stdout_t::emit(logging::priorities priority,
                const std::string& message)
 {
     time_t time = 0;
-    struct tm timeinfo;
+    tm timeinfo;
 
     std::memset(&timeinfo, 0, sizeof(timeinfo));
 

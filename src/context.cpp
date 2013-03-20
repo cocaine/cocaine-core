@@ -22,8 +22,6 @@
 
 #include "cocaine/api/logger.hpp"
 
-#include "cocaine/logging.hpp"
-
 #include <cerrno>
 #include <cstring>
 #include <system_error>

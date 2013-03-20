@@ -25,7 +25,7 @@
 #include "cocaine/logging.hpp"
 
 #ifndef __APPLE__
- #include "cocaine/runtime/pid_file.hpp"
+    #include "cocaine/runtime/pid_file.hpp"
 #endif
 
 #include <csignal>
