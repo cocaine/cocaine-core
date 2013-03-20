@@ -43,7 +43,8 @@
 #include <boost/unordered_map.hpp>
 #include <boost/version.hpp>
 
-#include "cocaine/forwards.hpp"
+#include "cocaine/config.hpp"
 #include "cocaine/exceptions.hpp"
+#include "cocaine/forwards.hpp"
 
 #endif

@@ -21,10 +21,12 @@
 #include "cocaine/common.hpp"
 #include "cocaine/api/service.hpp"
 #include "cocaine/asio/service.hpp"
-#include "cocaine/config.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
-#include "cocaine/runtime/pid_file.hpp"
+
+#ifndef __APPLE__
+ #include "cocaine/runtime/pid_file.hpp"
+#endif
 
 #include <csignal>
 #include <iostream>
@@ -149,12 +151,12 @@ int main(int argc, char * argv[]) {
 
     general_options.add_options()
         ("help,h", "show this message")
-        ("version,v", "show version and build information")
         ("configuration,c", po::value<std::string>(), "location of the configuration file")
 #ifndef __APPLE__
         ("daemonize,d", "daemonize on start")
+        ("pidfile,p", po::value<std::string>(), "location of a pid file")
 #endif
-        ("pidfile,p", po::value<std::string>(), "location of a pid file");
+        ("version,v", "show version and build information");
 
     try {
         po::store(
