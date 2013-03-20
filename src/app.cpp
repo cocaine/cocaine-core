@@ -173,38 +173,34 @@ namespace {
             typedef std::tuple<Args...> type;
         };
 
-        template<class TupleType, int It = 0, int End = std::tuple_size<TupleType>::value>
+        template<class TupleType, int N = std::tuple_size<TupleType>::value>
         struct unfold_impl {
             template<class Event, typename... Args>
             static inline
             void
-            apply(const message_t& message, TupleType& tuple, Args&&... args) {
-                unfold_impl<TupleType, It + 1, End>::template apply<Event>(
+            apply(const message_t& message,
+                  TupleType& tuple,
+                  Args&&... args)
+            {
+                unfold_impl<TupleType, N - 1>::template apply<Event>(
                     message,
                     tuple,
-                    std::forward<Args>(args)...,
-                    std::get<It>(tuple)
+                    std::get<N - 1>(tuple),
+                    std::forward<Args>(args)...
                 );
             }
         };
 
-        template<class TupleType, int End>
-        struct unfold_impl<TupleType, End, End> {
+        template<class TupleType>
+        struct unfold_impl<TupleType, 0> {
             template<class Event, typename... Args>
             static inline
             void
-            apply(const message_t& message, TupleType& /* tuple */, Args&&... args) {
+            apply(const message_t& message,
+                  TupleType& /* tuple */,
+                  Args&&... args)
+            {
                 message.as<Event>(std::forward<Args>(args)...);
-            }
-        };
-
-        template<class TupleType>
-        struct unfold_impl<TupleType, 0, 0> {
-            template<class Event>
-            static inline
-            void
-            apply(const message_t& /* message */, TupleType& /* tuple */) {
-                return;
             }
         };
     }
@@ -222,8 +218,12 @@ namespace {
         template<class Event>
         static inline
         void
-        apply(const message_t& message, TupleType& tuple) {
-            return detail::unfold_impl<TupleType, 0>::template apply<Event>(message, tuple);
+        apply(const message_t& message,
+              TupleType& tuple)
+        {
+            return detail::unfold_impl<
+                TupleType
+            >::template apply<Event>(message, tuple);
         }
     };
 
