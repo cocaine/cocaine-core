@@ -230,24 +230,25 @@ engine_t::enqueue(const api::event_t& event,
         upstream
     );
 
-    std::unique_lock<session_queue_t> lock(m_queue);
-
-    if(m_state != states::running) {
-        throw cocaine::error_t("the engine is not active");
-    }
-
-    if(m_profile.queue_limit > 0 &&
-       m_queue.size() >= m_profile.queue_limit)
     {
-        throw cocaine::error_t("the queue is full");
+        std::unique_lock<session_queue_t> lock(m_queue);
+
+        if(m_state != states::running) {
+            throw cocaine::error_t("the engine is not active");
+        }
+
+        if(m_profile.queue_limit > 0 &&
+           m_queue.size() >= m_profile.queue_limit)
+        {
+            throw cocaine::error_t("the queue is full");
+        }
+
+        m_queue.push(session);
     }
 
-    m_queue.push(session);
-
-    // NOTE: Release the lock so that the notification could be handled
-    // immediately as opposed to instantly blocking on the same acquired lock
-    // in the engine thread.
-    lock.unlock();
+    // NOTE: This will probably go to the session cache, but we save
+    // on this serialization later.
+    session->send<rpc::invoke>(event.type);
 
     // Pump the queue!
     wake();

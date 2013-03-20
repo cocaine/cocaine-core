@@ -20,8 +20,6 @@
 
 #include "cocaine/session.hpp"
 
-#include "cocaine/messages.hpp"
-
 using namespace cocaine::engine;
 using namespace cocaine::io;
 
@@ -32,10 +30,7 @@ session_t::session_t(uint64_t id_,
     event(event_),
     upstream(upstream_)
 {
-    m_encoder.reset(new encoder<io::writable_stream<io::socket<local>>>());
-
-    // NOTE: This will go to cache, but we save on this serialization later.
-    send<io::rpc::invoke>(event.type);
+    m_encoder.reset(new encoder<writable_stream<io::socket<local>>>());
 }
 
 void
