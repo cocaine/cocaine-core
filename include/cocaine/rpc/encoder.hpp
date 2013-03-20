@@ -74,7 +74,7 @@ struct encoder:
 
         // NOTE: Format is [ID, [Args...]].
         m_packer.pack_array(2);
-        m_packer.pack_short(traits::id);
+        m_packer.pack_int(traits::id);
 
         type_traits<typename traits::tuple_type>::pack(
             m_packer,

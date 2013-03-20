@@ -29,9 +29,6 @@ class files_t:
     public api::logger_t
 {
     public:
-        typedef api::logger_t category_type;
-
-    public:
         files_t(const std::string& name,
                 const Json::Value& args);
 

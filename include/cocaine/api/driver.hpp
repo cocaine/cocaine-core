@@ -29,6 +29,9 @@ namespace cocaine { namespace api {
 
 class driver_t {
     public:
+        typedef driver_t category_type;
+
+    public:
         virtual
         ~driver_t() {
             // Empty.

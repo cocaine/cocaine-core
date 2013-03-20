@@ -36,9 +36,6 @@ class reactor_t:
     public api::service_t
 {
     public:
-        typedef api::service_t category_type;
-
-    public:
         virtual
         void
         run();

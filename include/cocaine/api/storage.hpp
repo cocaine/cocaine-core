@@ -45,6 +45,9 @@ namespace api {
 
 class storage_t {
     public:
+        typedef storage_t category_type;
+
+    public:
         virtual
         ~storage_t() {
             // Empty.

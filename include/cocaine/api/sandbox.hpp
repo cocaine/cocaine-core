@@ -29,6 +29,9 @@ namespace cocaine { namespace api {
 
 class sandbox_t {
     public:
+        typedef sandbox_t category_type;
+
+    public:
         virtual
         ~sandbox_t() {
             // Empty.

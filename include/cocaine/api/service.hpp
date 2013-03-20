@@ -29,6 +29,9 @@ namespace cocaine { namespace api {
 
 class service_t {
     public:
+        typedef service_t category_type;
+
+    public:
         virtual
         ~service_t() {
             // Empty.

@@ -79,7 +79,7 @@ session_t::send(Args&&... args) {
     if(m_encoder) {
         m_encoder->write<Event>(id, std::forward<Args>(args)...);
     } else {
-        throw cocaine::error_t("stream is no longer valid");
+        throw cocaine::error_t("the stream is no longer valid");
     }
 }
 

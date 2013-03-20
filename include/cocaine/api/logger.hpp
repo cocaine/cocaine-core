@@ -50,6 +50,9 @@ class logger_t:
     public logging::logger_t
 {
     public:
+        typedef logger_t category_type;
+
+    public:
         virtual
         ~logger_t() {
             // Empty.

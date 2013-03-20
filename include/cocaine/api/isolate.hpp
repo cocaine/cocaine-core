@@ -42,6 +42,9 @@ struct handle_t {
 
 class isolate_t {
     public:
+        typedef isolate_t category_type;
+
+    public:
         virtual
         ~isolate_t() {
             // Empty.

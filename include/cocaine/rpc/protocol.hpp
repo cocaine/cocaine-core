@@ -60,7 +60,7 @@ namespace detail {
         typedef void type;
     };
 
-    template<class Event, class U = void>
+    template<class Event, class = void>
     struct tuple_type {
         typedef mpl::list<> type;
     };

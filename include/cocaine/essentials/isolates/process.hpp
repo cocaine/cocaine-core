@@ -29,9 +29,6 @@ class process_t:
     public api::isolate_t
 {
     public:
-        typedef api::isolate_t category_type;
-
-    public:
         process_t(context_t& context,
                   const std::string& name,
                   const Json::Value& args);

@@ -41,7 +41,7 @@ namespace detail {
         typedef void type;
     };
 
-    template<class F, class U = void>
+    template<class F, class = void>
     struct result_of {
         typedef typename std::result_of<F>::type type;
     };
