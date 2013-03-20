@@ -17,7 +17,7 @@ PATH=/sbin:/bin:/usr/sbin:/usr/bin
 DESC="the omnipotent"
 NAME=cocaine-runtime
 DAEMON=/usr/bin/cocaine-runtime
-DAEMON_ARGS="--service logging --service node --daemonize"
+DAEMON_ARGS="--daemonize"
 SCRIPTNAME=/etc/init.d/$NAME
 
 # Exit if the package is not installed
