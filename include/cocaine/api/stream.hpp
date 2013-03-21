@@ -33,13 +33,13 @@ struct stream_t {
 
     virtual
     void
-    push(const char * chunk,
-         size_t size) = 0;
+    write(const char * chunk,
+          size_t size) = 0;
 
     virtual
     void
     error(error_code code,
-          const std::string& message) = 0;
+          const std::string& reason) = 0;
 
     virtual
     void
@@ -51,7 +51,7 @@ struct null_stream_t:
 {
     virtual
     void
-    push(const char *, size_t) { }
+    write(const char *, size_t) { }
 
     virtual
     void

@@ -39,7 +39,7 @@ logging_t::logging_t(context_t& context,
     on<io::logging::emit>(std::bind(&logging_t::on_emit, this, _1, _2, _3));
 }
 
-bool
+void
 logging_t::on_emit(int priority,
                    const std::string& source,
                    const std::string& message)
@@ -59,6 +59,4 @@ logging_t::on_emit(int priority,
         "%s",
         message
     );
-
-    return true;
 }

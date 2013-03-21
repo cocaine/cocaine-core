@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_REACTOR_HPP
-#define COCAINE_REACTOR_HPP
+#ifndef COCAINE_ACTOR_HPP
+#define COCAINE_ACTOR_HPP
 
 #include "cocaine/common.hpp"
 #include "cocaine/api/service.hpp"
@@ -109,7 +109,7 @@ class reactor_t:
         typedef std::map<
 #endif
             unsigned int,
-            std::shared_ptr<slot_base_t>
+            std::shared_ptr<slot_concept_t>
         > slot_map_t;
 
         slot_map_t m_slots;
@@ -124,7 +124,7 @@ void
 reactor_t::on(F callable) {
     typedef typename detail::result_of<F>::type result_type;
     typedef typename io::event_traits<Event>::tuple_type sequence_type;
-    typedef slot<result_type, sequence_type> slot_type;
+    typedef synchronous_slot<result_type, sequence_type> slot_type;
 
     m_slots.emplace(
         io::event_traits<Event>::id,

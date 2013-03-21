@@ -22,8 +22,8 @@
 #define COCAINE_NODE_SERVICE_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/actor.hpp"
 #include "cocaine/json.hpp"
-#include "cocaine/reactor.hpp"
 
 #include <zmq.hpp>
 

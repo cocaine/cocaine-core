@@ -58,6 +58,7 @@ SET_TARGET_PROPERTIES(json PROPERTIES
     COMPILE_FLAGS -fPIC)
 
 ADD_LIBRARY(cocaine-core SHARED
+    src/actor
     src/api
     src/app
     src/archive
@@ -67,7 +68,6 @@ ADD_LIBRARY(cocaine-core SHARED
     src/logging
     src/manifest
     src/profile
-    src/reactor
     src/repository
     src/session
     src/slave)

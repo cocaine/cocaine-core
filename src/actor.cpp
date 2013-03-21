@@ -18,7 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/reactor.hpp"
+#include "cocaine/actor.hpp"
 
 #include "cocaine/asio/acceptor.hpp"
 #include "cocaine/asio/connector.hpp"
@@ -27,6 +27,7 @@
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
+#include "cocaine/messages.hpp"
 
 #include "cocaine/rpc/channel.hpp"
 
@@ -34,6 +35,41 @@
 
 using namespace cocaine;
 using namespace cocaine::io;
+
+namespace {
+    struct upstream_t:
+        public api::stream_t
+    {
+        upstream_t(const std::shared_ptr<channel<socket<tcp>>>& channel):
+            m_channel(channel)
+        { }
+
+        virtual
+        void
+        write(const char * chunk,
+              size_t size)
+        {
+            m_channel->wr->write<rpc::chunk>(0ULL, std::string(chunk, size));
+        }
+
+        virtual
+        void
+        error(error_code code,
+              const std::string& reason)
+        {
+            m_channel->wr->write<rpc::error>(0ULL, static_cast<int>(code), reason);
+        }
+
+        virtual
+        void
+        close() {
+            m_channel->wr->write<rpc::choke>(0ULL);
+        }
+
+    private:
+        std::shared_ptr<channel<socket<tcp>>> m_channel;
+    };
+}
 
 reactor_t::reactor_t(context_t& context,
                      const std::string& name,
@@ -138,10 +174,10 @@ reactor_t::on_message(const std::shared_ptr<channel<io::socket<tcp>>>& channel_,
         return;
     }
 
-    std::string response;
+    auto upstream = std::make_shared<upstream_t>(channel_);
 
     try {
-        response = (*slot->second)(message.args());
+        (*slot->second)(upstream, message.args());
     } catch(const std::exception& e) {
         COCAINE_LOG_ERROR(
             m_log,
@@ -150,11 +186,8 @@ reactor_t::on_message(const std::shared_ptr<channel<io::socket<tcp>>>& channel_,
             e.what()
         );
 
-        return;
-    }
-
-    if(!response.empty()) {
-        channel_->wr->stream()->write(response.data(), response.size());
+        upstream->error(invocation_error, e.what());
+        upstream->close();
     }
 }
 

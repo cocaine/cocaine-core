@@ -22,7 +22,7 @@
 #define COCAINE_LOGGING_SERVICE_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/reactor.hpp"
+#include "cocaine/actor.hpp"
 
 namespace cocaine {
 
@@ -62,7 +62,7 @@ class logging_t:
                   const Json::Value& args);
 
     private:
-        bool
+        void
         on_emit(int priority,
                 const std::string& source,
                 const std::string& message);

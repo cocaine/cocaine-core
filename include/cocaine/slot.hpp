@@ -24,6 +24,8 @@
 #include "cocaine/common.hpp"
 #include "cocaine/traits.hpp"
 
+#include "cocaine/api/stream.hpp"
+
 #include <functional>
 #include <sstream>
 
@@ -56,30 +58,28 @@ namespace detail {
     };
 
     template<class It, class End>
-    struct invoke {
+    struct invoke_impl {
         template<class F, typename... Args>
         static inline
         typename result_of<F>::type
         apply(const F& callable,
-              const msgpack::object * packed,
+              const msgpack::object * ptr,
               Args&&... args)
         {
             typedef typename mpl::deref<It>::type argument_type;
-            typedef typename mpl::next<It>::type next_type;
+            typedef typename mpl::next<It>::type next;
 
             argument_type argument;
 
             try {
-                io::type_traits<argument_type>::unpack(*packed, argument);
+                io::type_traits<argument_type>::unpack(*ptr, argument);
             } catch(const msgpack::type_error& e) {
-                throw cocaine::error_t("argument type mismatch");
-            } catch(const std::bad_cast& e) {
                 throw cocaine::error_t("argument type mismatch");
             }
 
-            return invoke<next_type, End>::apply(
+            return invoke_impl<next, End>::apply(
                 callable,
-                ++packed,
+                ++ptr,
                 std::forward<Args>(args)...,
                 std::move(argument)
             );
@@ -87,12 +87,12 @@ namespace detail {
     };
 
     template<class End>
-    struct invoke<End, End> {
+    struct invoke_impl<End, End> {
         template<class F, typename... Args>
         static inline
         typename result_of<F>::type
         apply(const F& callable,
-              const msgpack::object * /* packed */,
+              const msgpack::object * /* ptr */,
               Args&&... args)
         {
             return callable(std::forward<Args>(args)...);
@@ -109,49 +109,121 @@ namespace detail {
     };
 }
 
-struct slot_base_t {
-    virtual
-    std::string
-    operator()(const msgpack::object& packed) = 0;
-};
+// Slot invocation mechanics
 
-template<typename R, class Sequence>
-struct slot:
-    public slot_base_t
-{
-    typedef typename detail::callable<R, Sequence>::type callable_type;
-
-    slot(callable_type callable):
-        m_callable(callable)
-    { }
-
-    virtual
-    std::string
-    operator()(const msgpack::object& packed) {
+template<class Sequence>
+struct invoke {
+    template<class F>
+    static inline
+    typename detail::result_of<F>::type
+    apply(const F& callable,
+          const msgpack::object& args)
+    {
         typedef typename mpl::begin<Sequence>::type begin;
         typedef typename mpl::end<Sequence>::type end;
 
-        if(packed.type != msgpack::type::ARRAY ||
-           packed.via.array.size != mpl::size<Sequence>::value)
+        if(args.type != msgpack::type::ARRAY ||
+           args.via.array.size != mpl::size<Sequence>::value)
         {
             throw cocaine::error_t("argument sequence mismatch");
         }
 
-        const R result = detail::invoke<begin, end>::apply(
-            m_callable,
-            packed.via.array.ptr
+        return detail::invoke_impl<begin, end>::apply(
+            callable,
+            args.via.array.ptr
+        );
+    }
+};
+
+// Slot basics
+
+struct slot_concept_t {
+    virtual
+    void
+    operator()(const std::shared_ptr<api::stream_t>& upstream,
+               const msgpack::object& args) = 0;
+};
+
+template<class R, class Sequence>
+struct basic_slot:
+    public slot_concept_t
+{
+    typedef typename detail::callable<
+        R,
+        Sequence
+    >::type callable_type;
+
+    basic_slot(callable_type callable):
+        m_callable(callable)
+    { }
+
+protected:
+    const callable_type m_callable;
+};
+
+// Synchronous slot
+
+template<class R, class Sequence>
+struct synchronous_slot:
+    public basic_slot<R, Sequence>
+{
+    typedef basic_slot<R, Sequence> base_type;
+    typedef typename base_type::callable_type callable_type;
+
+    synchronous_slot(callable_type callable):
+        base_type(callable)
+    { }
+
+    virtual
+    void
+    operator()(const std::shared_ptr<api::stream_t>& upstream,
+               const msgpack::object& args)
+    {
+        msgpack::packer<api::stream_t> packer(*upstream);
+
+        io::type_traits<R>::pack(packer, invoke<Sequence>::apply(
+            this->m_callable,
+            args
+        ));
+
+        upstream->close();
+    }
+};
+
+// Synchronous slot specialization for void functions
+
+template<class Sequence>
+struct synchronous_slot<void, Sequence>:
+    public basic_slot<void, Sequence>
+{
+    typedef basic_slot<void, Sequence> base_type;
+    typedef typename base_type::callable_type callable_type;
+
+    synchronous_slot(callable_type callable):
+        base_type(callable)
+    { }
+
+    virtual
+    void
+    operator()(const std::shared_ptr<api::stream_t>& upstream,
+               const msgpack::object& args)
+    {
+        invoke<Sequence>::apply(
+            this->m_callable,
+            args
         );
 
-        std::ostringstream buffer;
-        msgpack::packer<std::ostringstream> packer(buffer);
-
-        io::type_traits<R>::pack(packer, result);
-
-        return buffer.str();
+        upstream->close();
     }
+};
 
-private:
-    const callable_type m_callable;
+// Asynchronous slot
+
+template<class R, class Sequence>
+struct asynchronous_slot:
+    public basic_slot<R, Sequence>
+{
+
 };
 
 } // namespace cocaine

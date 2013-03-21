@@ -309,7 +309,7 @@ slave_t::on_chunk(uint64_t session_id,
     // TEST: Ensure that this slave is responsible for the session.
     BOOST_ASSERT(it != m_sessions.end());
 
-    it->second->upstream->push(chunk.data(), chunk.size());
+    it->second->upstream->write(chunk.data(), chunk.size());
 }
 
 void
