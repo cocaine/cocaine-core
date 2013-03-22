@@ -22,6 +22,8 @@
 
 #include "cocaine/api/storage.hpp"
 
+#include "cocaine/asio/service.hpp"
+
 #include "cocaine/app.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
@@ -45,17 +47,17 @@ namespace {
 node_t::node_t(context_t& context,
                const std::string& name,
                const Json::Value& args):
-    reactor_t(context, name, args),
+    service_t(context, name, args),
     m_context(context),
     m_log(new log_t(context, name)),
     m_zmq_context(1),
     m_announces(m_zmq_context, ZMQ_PUB),
-    m_announce_timer(service().loop()),
-    m_birthstamp(service().loop().now())
+    //m_announce_timer(service().loop()),
+    m_birthstamp(std::chrono::monotonic_clock::now())
 {
-    on<io::node::start_app>(std::bind(&node_t::on_start_app, this, _1));
-    on<io::node::pause_app>(std::bind(&node_t::on_pause_app, this, _1));
-    on<io::node::info>(std::bind(&node_t::on_info, this));
+    on<io::node::start_app>("start_app", std::bind(&node_t::on_start_app, this, _1));
+    on<io::node::pause_app>("pause_app", std::bind(&node_t::on_pause_app, this, _1));
+    on<io::node::info     >("info",      std::bind(&node_t::on_info,      this));
 
     int minor, major, patch;
     zmq_version(&major, &minor, &patch);
@@ -104,8 +106,8 @@ node_t::node_t(context_t& context,
             }
         }
 
-        m_announce_timer.set<node_t, &node_t::on_announce>(this);
-        m_announce_timer.start(0.0f, interval);
+        //m_announce_timer.set<node_t, &node_t::on_announce>(this);
+        //m_announce_timer.start(0.0f, interval);
     }
 
     // Runlist
@@ -148,6 +150,7 @@ node_t::~node_t() {
     }
 }
 
+/*
 void
 node_t::on_announce(ev::timer&, int) {
     COCAINE_LOG_DEBUG(m_log, "announcing the node");
@@ -182,6 +185,7 @@ node_t::on_announce(ev::timer&, int) {
 
     m_announces.send(message);
 }
+*/
 
 Json::Value
 node_t::on_start_app(const runlist_t& runlist) {
@@ -282,7 +286,12 @@ node_t::on_info() const {
     }
 
     result["identity"] = m_context.config.network.hostname;
-    result["uptime"] = service().loop().now() - m_birthstamp;
+
+    auto uptime = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::monotonic_clock::now() - m_birthstamp
+    );
+
+    result["uptime"] = static_cast<Json::LargestUInt>(uptime.count());
 
     return result;
 }

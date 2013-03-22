@@ -53,9 +53,14 @@ public:
         return m_object.via.array.ptr[0].as<int>();
     }
 
+    uint64_t
+    band() const {
+        return m_object.via.array.ptr[1].as<uint64_t>();
+    }
+
     const msgpack::object&
     args() const {
-        return m_object.via.array.ptr[1];
+        return m_object.via.array.ptr[2];
     }
 
 private:

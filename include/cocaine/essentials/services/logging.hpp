@@ -21,8 +21,7 @@
 #ifndef COCAINE_LOGGING_SERVICE_HPP
 #define COCAINE_LOGGING_SERVICE_HPP
 
-#include "cocaine/common.hpp"
-#include "cocaine/actor.hpp"
+#include "cocaine/api/service.hpp"
 
 namespace cocaine {
 
@@ -54,7 +53,7 @@ namespace io {
 namespace service {
 
 class logging_t:
-    public reactor_t
+    public api::service_t
 {
     public:
         logging_t(context_t& context,

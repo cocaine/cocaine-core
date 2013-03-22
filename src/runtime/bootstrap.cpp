@@ -19,6 +19,7 @@
 */
 
 #include "cocaine/common.hpp"
+#include "cocaine/actor.hpp"
 #include "cocaine/api/service.hpp"
 #include "cocaine/asio/service.hpp"
 #include "cocaine/context.hpp"
@@ -81,7 +82,18 @@ namespace {
 
             for(; it != end; ++it) {
                 try {
-                    m_services.emplace_back(it->first, api::service(m_context, it->first));
+                    m_services.emplace_back(
+                        it->first,
+                        std::unique_ptr<actor_t>(new actor_t(
+                            m_context.get<api::service_t>(
+                                it->second.type,
+                                m_context,
+                                cocaine::format("service/%s", it->first),
+                                it->second.args
+                            ),
+                            it->second.args
+                        ))
+                    );
                 } catch(const cocaine::error_t& e) {
                     throw cocaine::error_t(
                         "unable to initialize the '%s' service - %s",
@@ -89,7 +101,6 @@ namespace {
                         e.what()
                     );
                 }
-
             }
         }
 
@@ -137,7 +148,7 @@ namespace {
         ev::sig m_sigquit;
 
         typedef std::vector<
-            std::pair<std::string, std::unique_ptr<api::service_t>>
+            std::pair<std::string, std::unique_ptr<actor_t>>
         > service_list_t;
 
         // Services.

@@ -69,12 +69,14 @@ struct encoder:
 
     template<class Event, typename... Args>
     void
-    write(Args&&... args) {
+    write(uint64_t stream, Args&&... args) {
         typedef event_traits<Event> traits;
 
-        // NOTE: Format is [ID, [Args...]].
-        m_packer.pack_array(2);
-        m_packer.pack_int(traits::id);
+        // NOTE: Format is [ID, Band, [Args...]].
+        m_packer.pack_array(3);
+
+        m_packer.pack_uint16(traits::id);
+        m_packer.pack_uint64(stream);
 
         type_traits<typename traits::tuple_type>::pack(
             m_packer,

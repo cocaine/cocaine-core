@@ -127,6 +127,7 @@ slave_t::stop() {
     BOOST_ASSERT(m_channel);
 
     m_channel->wr->write<rpc::terminate>(
+        0UL,
         static_cast<int>(rpc::terminate::normal),
         std::string("shutdown")
     );
@@ -136,8 +137,9 @@ void
 slave_t::on_message(const message_t& message) {
     COCAINE_LOG_DEBUG(
         m_log,
-        "received type %d message from slave %s",
+        "received type %d message in band %d from slave %s",
         message.id(),
+        message.band(),
         m_id
     );
 
@@ -157,31 +159,26 @@ slave_t::on_message(const message_t& message) {
         }
 
         case event_traits<rpc::chunk>::id: {
-            uint64_t session_id;
             std::string chunk;
 
-            message.as<rpc::chunk>(session_id, chunk);
-            on_chunk(session_id, chunk);
+            message.as<rpc::chunk>(chunk);
+            on_chunk(message.band(), chunk);
 
             break;
         }
 
         case event_traits<rpc::error>::id: {
-            uint64_t session_id;
             int code;
             std::string reason;
 
-            message.as<rpc::error>(session_id, code, reason);
-            on_error(session_id, code, reason);
+            message.as<rpc::error>(code, reason);
+            on_error(message.band(), code, reason);
 
             break;
         }
 
         case event_traits<rpc::choke>::id: {
-            uint64_t session_id;
-
-            message.as<rpc::choke>(session_id);
-            on_choke(session_id);
+            on_choke(message.band());
 
             // This is now a potentially free worker, so pump the queue.
             m_engine.wake();
@@ -192,8 +189,9 @@ slave_t::on_message(const message_t& message) {
         default:
             COCAINE_LOG_WARNING(
                 m_log,
-                "dropping unknown type %d message from slave %s",
+                "dropping unknown type %d message in band %d from slave %s",
                 message.id(),
+                message.band(),
                 m_id
             );
     }
@@ -273,7 +271,7 @@ slave_t::on_ping() {
     m_heartbeat_timer.stop();
     m_heartbeat_timer.start(m_profile.heartbeat_timeout);
 
-    m_channel->wr->write<rpc::heartbeat>();
+    m_channel->wr->write<rpc::heartbeat>(0UL);
 }
 
 void
@@ -412,6 +410,7 @@ slave_t::on_idle(ev::timer&, int) {
     COCAINE_LOG_DEBUG(m_log, "slave %s is idle, deactivating", m_id);
 
     m_channel->wr->write<rpc::terminate>(
+        0UL,
         static_cast<int>(rpc::terminate::normal),
         std::string("idle")
     );

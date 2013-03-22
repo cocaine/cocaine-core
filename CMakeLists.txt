@@ -64,6 +64,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/archive
     src/auth
     src/context
+    src/dispatch
     src/engine
     src/logging
     src/manifest

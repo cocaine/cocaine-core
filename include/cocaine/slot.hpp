@@ -27,7 +27,7 @@
 #include "cocaine/api/stream.hpp"
 
 #include <functional>
-#include <sstream>
+#include <mutex>
 
 #include <boost/function_types/function_type.hpp>
 #include <boost/mpl/push_front.hpp>
@@ -98,15 +98,6 @@ namespace detail {
             return callable(std::forward<Args>(args)...);
         }
     };
-
-    template<typename R, class Sequence>
-    struct callable {
-        typedef typename ft::function_type<
-            typename mpl::push_front<Sequence, R>::type
-        >::type function_type;
-
-        typedef std::function<function_type> type;
-    };
 }
 
 // Slot invocation mechanics
@@ -138,22 +129,44 @@ struct invoke {
 // Slot basics
 
 struct slot_concept_t {
+    slot_concept_t(const std::string& name):
+        m_name(name)
+    { }
+
+    virtual
+   ~slot_concept_t() {
+       // Empty.
+    }
+
     virtual
     void
-    operator()(const std::shared_ptr<api::stream_t>& upstream,
+    operator()(const api::stream_ptr_t& upstream,
                const msgpack::object& args) = 0;
+
+public:
+    virtual
+    std::string
+    describe() const {
+        return m_name;
+    }
+
+private:
+    const std::string m_name;
 };
 
 template<class R, class Sequence>
 struct basic_slot:
     public slot_concept_t
 {
-    typedef typename detail::callable<
-        R,
-        Sequence
-    >::type callable_type;
+    typedef typename ft::function_type<
+        typename mpl::push_front<Sequence, R>::type
+    >::type function_type;
 
-    basic_slot(callable_type callable):
+    typedef std::function<function_type> callable_type;
+
+    basic_slot(const std::string& name,
+               callable_type callable):
+        slot_concept_t(name),
         m_callable(callable)
     { }
 
@@ -161,7 +174,7 @@ protected:
     const callable_type m_callable;
 };
 
-// Synchronous slot
+// Blocking slot
 
 template<class R, class Sequence>
 struct synchronous_slot:
@@ -170,27 +183,34 @@ struct synchronous_slot:
     typedef basic_slot<R, Sequence> base_type;
     typedef typename base_type::callable_type callable_type;
 
-    synchronous_slot(callable_type callable):
-        base_type(callable)
+    synchronous_slot(const std::string& name,
+                     callable_type callable):
+        base_type(name, callable),
+        m_packer(m_buffer)
     { }
 
     virtual
     void
-    operator()(const std::shared_ptr<api::stream_t>& upstream,
+    operator()(const api::stream_ptr_t& upstream,
                const msgpack::object& args)
     {
-        msgpack::packer<api::stream_t> packer(*upstream);
-
-        io::type_traits<R>::pack(packer, invoke<Sequence>::apply(
+        io::type_traits<R>::pack(m_packer, invoke<Sequence>::apply(
             this->m_callable,
             args
         ));
 
+        upstream->write(m_buffer.data(), m_buffer.size());
         upstream->close();
+
+        m_buffer.clear();
     }
+
+private:
+    msgpack::sbuffer m_buffer;
+    msgpack::packer<msgpack::sbuffer> m_packer;
 };
 
-// Synchronous slot specialization for void functions
+// Blocking slot specialization for void functions
 
 template<class Sequence>
 struct synchronous_slot<void, Sequence>:
@@ -199,13 +219,14 @@ struct synchronous_slot<void, Sequence>:
     typedef basic_slot<void, Sequence> base_type;
     typedef typename base_type::callable_type callable_type;
 
-    synchronous_slot(callable_type callable):
-        base_type(callable)
+    synchronous_slot(const std::string& name,
+                     callable_type callable):
+        base_type(name, callable)
     { }
 
     virtual
     void
-    operator()(const std::shared_ptr<api::stream_t>& upstream,
+    operator()(const api::stream_ptr_t& upstream,
                const msgpack::object& args)
     {
         invoke<Sequence>::apply(
@@ -217,13 +238,101 @@ struct synchronous_slot<void, Sequence>:
     }
 };
 
-// Asynchronous slot
+// Deferred slot
+
+template<class T>
+struct deferred {
+    deferred():
+        m_state(new state_t())
+    { }
+
+    void
+    write(const T& value) {
+        m_state->write(value);
+    }
+
+    void
+    abort(error_code code, const std::string& reason) {
+        m_state->abort(code, reason);
+    }
+
+    void
+    attach(const api::stream_ptr_t& upstream) {
+        m_state->attach(upstream);
+    }
+
+private:
+    struct state_t {
+        state_t():
+            m_packer(m_buffer)
+        { }
+
+        void
+        write(const T& value) {
+            std::unique_lock<std::mutex> lock(m_mutex);
+
+            io::type_traits<T>::pack(m_packer, value);
+
+            if(m_upstream) {
+                m_upstream->write(m_buffer.data(), m_buffer.size());
+                m_upstream->close();
+            }
+
+            m_completed = true;
+        }
+
+        void
+        abort(const std::exception_ptr& e) {
+        }
+
+        void
+        attach(const api::stream_ptr_t& upstream) {
+            std::unique_lock<std::mutex> lock(m_mutex);
+
+            m_upstream = upstream;
+
+            if(m_completed) {
+                m_upstream->write(m_buffer.data(), m_buffer.size());
+                m_upstream->close();
+            }
+        }
+
+    private:
+        msgpack::sbuffer m_buffer;
+        msgpack::packer<msgpack::sbuffer> m_packer;
+
+        bool m_completed;
+        api::stream_ptr_t m_upstream;
+        std::mutex m_mutex;
+    };
+
+    const std::shared_ptr<state_t> m_state;
+};
 
 template<class R, class Sequence>
 struct asynchronous_slot:
     public basic_slot<R, Sequence>
 {
+    typedef basic_slot<R, Sequence> base_type;
+    typedef typename base_type::callable_type callable_type;
 
+    asynchronous_slot(const std::string& name,
+                      callable_type callable):
+        base_type(name, callable)
+    { }
+
+    virtual
+    void
+    operator()(const api::stream_ptr_t& upstream,
+               const msgpack::object& args)
+    {
+        auto deferred = invoke<Sequence>::apply(
+            this->m_callable,
+            args
+        );
+
+        deferred.attach(upstream);
+    }
 };
 
 } // namespace cocaine

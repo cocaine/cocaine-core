@@ -419,7 +419,7 @@ engine_t::on_control(const message_t& message) {
             info["slaves"]["idle"] = static_cast<Json::LargestUInt>(m_pool.size() - active);
             info["state"] = describe[static_cast<int>(m_state)];
 
-            m_channel->wr->write<control::info>(info);
+            m_channel->wr->write<control::info>(0UL, info);
 
             break;
         }
@@ -429,7 +429,7 @@ engine_t::on_control(const message_t& message) {
 
             // NOTE: This message is needed to wake up the app's event loop, which is blocked
             // in order to allow the stream to flush the message queue.
-            m_channel->wr->write<control::terminate>();
+            m_channel->wr->write<control::terminate>(0UL);
 
             break;
 

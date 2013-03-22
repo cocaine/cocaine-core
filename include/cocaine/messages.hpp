@@ -64,8 +64,7 @@ namespace rpc {
         typedef tags::rpc_tag tag;
 
         typedef boost::mpl::list<
-            /* session */ uint64_t,
-            /* event */   std::string
+            /* event */ std::string
         > tuple_type;
     };
 
@@ -73,8 +72,7 @@ namespace rpc {
         typedef tags::rpc_tag tag;
 
         typedef boost::mpl::list<
-            /* session */ uint64_t,
-            /* data */    std::string
+            /* chunk */ std::string
         > tuple_type;
     };
 
@@ -82,18 +80,13 @@ namespace rpc {
         typedef tags::rpc_tag tag;
 
         typedef boost::mpl::list<
-            /* session */ uint64_t,
-            /* code */    int,
-            /* message */ std::string
+            /* code */   int,
+            /* reason */ std::string
         > tuple_type;
     };
 
     struct choke {
         typedef tags::rpc_tag tag;
-
-        typedef boost::mpl::list<
-            /* session */ uint64_t
-        > tuple_type;
     };
 }
 

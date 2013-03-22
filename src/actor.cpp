@@ -26,6 +26,7 @@
 #include "cocaine/asio/tcp.hpp"
 
 #include "cocaine/context.hpp"
+#include "cocaine/dispatch.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/messages.hpp"
 
@@ -40,52 +41,42 @@ namespace {
     struct upstream_t:
         public api::stream_t
     {
-        upstream_t(const std::shared_ptr<channel<socket<tcp>>>& channel):
-            m_channel(channel)
+        upstream_t(const std::shared_ptr<channel<io::socket<tcp>>>& channel,
+                   uint64_t band):
+            m_channel(channel),
+            m_band(band)
         { }
 
         virtual
         void
-        write(const char * chunk,
-              size_t size)
-        {
-            m_channel->wr->write<rpc::chunk>(0ULL, std::string(chunk, size));
+        write(const char * chunk, size_t size) {
+            m_channel->wr->write<rpc::chunk>(m_band, std::string(chunk, size));
         }
 
         virtual
         void
-        error(error_code code,
-              const std::string& reason)
-        {
-            m_channel->wr->write<rpc::error>(0ULL, static_cast<int>(code), reason);
+        error(error_code code, const std::string& reason) {
+            m_channel->wr->write<rpc::error>(m_band, static_cast<int>(code), reason);
         }
 
         virtual
         void
         close() {
-            m_channel->wr->write<rpc::choke>(0ULL);
+            m_channel->wr->write<rpc::choke>(m_band);
         }
 
     private:
-        std::shared_ptr<channel<socket<tcp>>> m_channel;
+        const std::shared_ptr<channel<io::socket<tcp>>> m_channel;
+        const uint64_t m_band;
     };
 }
 
-reactor_t::reactor_t(context_t& context,
-                     const std::string& name,
-                     const Json::Value& args):
-    category_type(context, name, args),
-    m_context(context),
-    m_log(new logging::log_t(m_context, name)),
+actor_t::actor_t(std::unique_ptr<dispatch_t>&& dispatch,
+                 const Json::Value& args):
+    m_dispatch(std::move(dispatch)),
     m_terminate(m_service.loop())
 {
-    tcp::endpoint endpoint;
-
-    if(args["port"].empty()) {
-        endpoint = tcp::endpoint("127.0.0.1", 0);
-    } else {
-        endpoint = tcp::endpoint("127.0.0.1", args["port"].asUInt());
-    }
+    tcp::endpoint endpoint("127.0.0.1", args["port"].asUInt());
 
     try {
         m_connector.reset(new connector<acceptor<tcp>>(
@@ -101,30 +92,24 @@ reactor_t::reactor_t(context_t& context,
         );
     }
 
-    COCAINE_LOG_INFO(m_log, "listening on '%s'", m_connector->endpoint());
-
-    // NOTE: Register this service with the central dispatch, which will later
-    // be published as a service itself for dynamic endpoint resolution.
-    // m_context.dispatch().bind(name, endpoint);
-
     auto callback = std::bind(
-        &reactor_t::on_connection,
+        &actor_t::on_connection,
         this,
         std::placeholders::_1
     );
 
     m_connector->bind(callback);
 
-    m_terminate.set<reactor_t, &reactor_t::on_terminate>(this);
+    m_terminate.set<actor_t, &actor_t::on_terminate>(this);
     m_terminate.start();
 }
 
-reactor_t::~reactor_t() {
-    // m_context.dispatch().unbind(name);
+actor_t::~actor_t() {
+    // Empty.
 }
 
 void
-reactor_t::run() {
+actor_t::run() {
     BOOST_ASSERT(!m_thread);
 
     // NOTE: For some reason, std::bind cannot resolve overloaded ambiguity
@@ -138,7 +123,7 @@ reactor_t::run() {
 }
 
 void
-reactor_t::terminate() {
+actor_t::terminate() {
     BOOST_ASSERT(m_thread);
 
     m_terminate.send();
@@ -148,52 +133,34 @@ reactor_t::terminate() {
 }
 
 void
-reactor_t::on_connection(const std::shared_ptr<io::socket<tcp>>& socket_) {
+actor_t::on_connection(const std::shared_ptr<io::socket<tcp>>& socket_) {
     auto channel_ = std::make_shared<channel<io::socket<tcp>>>(m_service, socket_);
 
     channel_->rd->bind(
-        std::bind(&reactor_t::on_message, this, channel_, std::placeholders::_1),
-        std::bind(&reactor_t::on_disconnect, this, channel_, std::placeholders::_1)
+        std::bind(&actor_t::on_message, this, channel_, std::placeholders::_1),
+        std::bind(&actor_t::on_disconnect, this, channel_, std::placeholders::_1)
     );
 
     channel_->wr->bind(
-        std::bind(&reactor_t::on_disconnect, this, channel_, std::placeholders::_1)
+        std::bind(&actor_t::on_disconnect, this, channel_, std::placeholders::_1)
     );
 
     m_channels.insert(channel_);
 }
 
 void
-reactor_t::on_message(const std::shared_ptr<channel<io::socket<tcp>>>& channel_,
-                      const message_t& message)
+actor_t::on_message(const std::shared_ptr<channel<io::socket<tcp>>>& channel_,
+                    const message_t& message)
 {
-    slot_map_t::const_iterator slot = m_slots.find(message.id());
-
-    if(slot == m_slots.end()) {
-        COCAINE_LOG_WARNING(m_log, "dropping an unknown type %d message", message.id());
-        return;
-    }
-
-    auto upstream = std::make_shared<upstream_t>(channel_);
-
-    try {
-        (*slot->second)(upstream, message.args());
-    } catch(const std::exception& e) {
-        COCAINE_LOG_ERROR(
-            m_log,
-            "unable to process type %d message - %s",
-            message.id(),
-            e.what()
-        );
-
-        upstream->error(invocation_error, e.what());
-        upstream->close();
-    }
+    m_dispatch->dispatch(message, std::make_shared<upstream_t>(
+        channel_,
+        message.band()
+    ));
 }
 
 void
-reactor_t::on_disconnect(const std::shared_ptr<channel<io::socket<tcp>>>& channel_,
-                         const std::error_code& /* ec */)
+actor_t::on_disconnect(const std::shared_ptr<channel<io::socket<tcp>>>& channel_,
+                       const std::error_code& /* ec */)
 {
     channel_->rd->unbind();
     channel_->wr->unbind();
@@ -202,7 +169,7 @@ reactor_t::on_disconnect(const std::shared_ptr<channel<io::socket<tcp>>>& channe
 }
 
 void
-reactor_t::on_terminate(ev::async&, int) {
+actor_t::on_terminate(ev::async&, int) {
     m_service.stop();
 }
 

@@ -46,24 +46,6 @@ logger(context_t& context,
     );
 }
 
-category_traits<service_t>::ptr_type
-service(context_t& context,
-        const std::string& name)
-{
-    const_component_iterator it = context.config.services.find(name);
-
-    if(it == context.config.services.end()) {
-        throw configuration_error_t("the '%s' service is not configured", name);
-    }
-
-    return context.get<service_t>(
-        it->second.type,
-        context,
-        name,
-        it->second.args
-    );
-}
-
 category_traits<storage_t>::ptr_type
 storage(context_t& context,
         const std::string& name)

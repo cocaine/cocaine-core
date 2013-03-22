@@ -21,9 +21,9 @@
 #ifndef COCAINE_NODE_SERVICE_HPP
 #define COCAINE_NODE_SERVICE_HPP
 
-#include "cocaine/common.hpp"
-#include "cocaine/actor.hpp"
-#include "cocaine/json.hpp"
+#include "cocaine/api/service.hpp"
+
+#include <chrono>
 
 #include <zmq.hpp>
 
@@ -69,7 +69,7 @@ namespace io {
 namespace service {
 
 class node_t:
-    public reactor_t
+    public api::service_t
 {
     public:
         node_t(context_t& context,
@@ -77,11 +77,11 @@ class node_t:
                const Json::Value& args);
 
         virtual
-        ~node_t();
+       ~node_t();
 
     private:
-        void
-        on_announce(ev::timer&, int);
+        // void
+        // on_announce(ev::timer&, int);
 
         Json::Value
         on_start_app(const std::map<std::string, std::string>& runlist);
@@ -102,7 +102,7 @@ class node_t:
         zmq::socket_t m_announces;
 
         // Node announce timer.
-        ev::timer m_announce_timer;
+        // ev::timer m_announce_timer;
 
 #if BOOST_VERSION >= 103600
         typedef boost::unordered_map<
@@ -117,7 +117,7 @@ class node_t:
         app_map_t m_apps;
 
         // Uptime.
-        const ev::tstamp m_birthstamp;
+        const std::chrono::monotonic_clock::time_point m_birthstamp;
 };
 
 } // namespace service

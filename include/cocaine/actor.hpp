@@ -22,50 +22,31 @@
 #define COCAINE_ACTOR_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/api/service.hpp"
-#include "cocaine/asio/service.hpp"
-#include "cocaine/rpc/protocol.hpp"
-#include "cocaine/slot.hpp"
+#include "cocaine/json.hpp"
 
-#include <functional>
+#include "cocaine/asio/service.hpp"
+
+#include <set>
 #include <thread>
 
 namespace cocaine {
 
-class reactor_t:
-    public api::service_t
+class dispatch_t;
+
+class actor_t:
+    boost::noncopyable
 {
     public:
-        virtual
+        actor_t(std::unique_ptr<dispatch_t>&& dispatch,
+                const Json::Value& args);
+
+       ~actor_t();
+
         void
         run();
 
-        virtual
         void
         terminate();
-
-    protected:
-        reactor_t(context_t& context,
-                  const std::string& name,
-                  const Json::Value& args);
-
-        virtual
-        ~reactor_t();
-
-        template<class Event, class F>
-        void
-        on(F callable);
-
-    public:
-        io::service_t&
-        service() {
-            return m_service;
-        }
-
-        const io::service_t&
-        service() const {
-            return m_service;
-        }
 
     private:
         void
@@ -83,15 +64,14 @@ class reactor_t:
         on_terminate(ev::async&, int);
 
     private:
-        context_t& m_context;
-        std::unique_ptr<logging::log_t> m_log;
+        const std::unique_ptr<dispatch_t> m_dispatch;
 
         // Event loop
 
         io::service_t m_service;
         ev::async m_terminate;
 
-        // Service I/O
+        // Actor I/O
 
         std::unique_ptr<
             io::connector<io::acceptor<io::tcp>>
@@ -101,36 +81,10 @@ class reactor_t:
             std::shared_ptr<io::channel<io::socket<io::tcp>>>
         > m_channels;
 
-        // RPC
-
-#if BOOST_VERSION >= 103600
-        typedef boost::unordered_map<
-#else
-        typedef std::map<
-#endif
-            unsigned int,
-            std::shared_ptr<slot_concept_t>
-        > slot_map_t;
-
-        slot_map_t m_slots;
-
         // Execution context
 
         std::unique_ptr<std::thread> m_thread;
 };
-
-template<class Event, class F>
-void
-reactor_t::on(F callable) {
-    typedef typename detail::result_of<F>::type result_type;
-    typedef typename io::event_traits<Event>::tuple_type sequence_type;
-    typedef synchronous_slot<result_type, sequence_type> slot_type;
-
-    m_slots.emplace(
-        io::event_traits<Event>::id,
-        std::make_shared<slot_type>(callable)
-    );
-}
 
 } // namespace cocaine
 

@@ -46,6 +46,8 @@ struct stream_t {
     close() = 0;
 };
 
+typedef std::shared_ptr<stream_t> stream_ptr_t;
+
 struct null_stream_t:
     public stream_t
 {

@@ -33,10 +33,10 @@ using namespace std::placeholders;
 logging_t::logging_t(context_t& context,
                      const std::string& name,
                      const Json::Value& args):
-    reactor_t(context, name, args),
+    service_t(context, name, args),
     m_context(context)
 {
-    on<io::logging::emit>(std::bind(&logging_t::on_emit, this, _1, _2, _3));
+    on<io::logging::emit>("emit", std::bind(&logging_t::on_emit, this, _1, _2, _3));
 }
 
 void

@@ -23,6 +23,8 @@
 
 #include "cocaine/common.hpp"
 
+#include <array>
+
 #include <boost/functional/hash.hpp>
 
 #include <uuid/uuid.h>
@@ -93,7 +95,7 @@ public:
 static inline
 size_t
 hash_value(const unique_id_t& id) {
-    return boost::hash_value(id.uuid);
+    return boost::hash_range(id.uuid.begin(), id.uuid.end());
 }
 
 } // namespace cocaine

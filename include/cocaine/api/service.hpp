@@ -22,33 +22,23 @@
 #define COCAINE_SERVICE_API_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/dispatch.hpp"
 #include "cocaine/json.hpp"
 #include "cocaine/repository.hpp"
 
 namespace cocaine { namespace api {
 
-class service_t {
+class service_t:
+    public dispatch_t
+{
     public:
         typedef service_t category_type;
 
-    public:
-        virtual
-        ~service_t() {
-            // Empty.
-        }
-
-        virtual
-        void
-        run() = 0;
-
-        virtual
-        void
-        terminate() = 0;
-
     protected:
-        service_t(context_t&,
-                  const std::string& /* name */,
-                  const Json::Value& /* args */)
+        service_t(context_t& context,
+                  const std::string& name,
+                  const Json::Value& /* args */):
+            dispatch_t(context, name)
         { }
 };
 
@@ -82,10 +72,6 @@ struct category_traits<service_t> {
         }
     };
 };
-
-category_traits<service_t>::ptr_type
-service(context_t& context,
-        const std::string& name);
 
 }} // namespace cocaine::api
 

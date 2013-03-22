@@ -289,7 +289,7 @@ app_t::stop() {
     auto callback = expect<control::terminate>(*m_service);
 
     m_channel->rd->bind(std::ref(callback), std::ref(callback));
-    m_channel->wr->write<control::terminate>();
+    m_channel->wr->write<control::terminate>(0UL);
 
     try {
         // Blocks until either the response or timeout happens.
@@ -320,7 +320,7 @@ app_t::info() const {
     auto callback = expect<control::info>(*m_service, info);
 
     m_channel->rd->bind(std::ref(callback), std::ref(callback));
-    m_channel->wr->write<control::report>();
+    m_channel->wr->write<control::report>(0UL);
 
     try {
         // Blocks until either the response or timeout happens.
