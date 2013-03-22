@@ -69,7 +69,7 @@ namespace detail {
     struct select {
         template<class Sequence>
         struct apply {
-            typedef synchronous_slot<R, Sequence> type;
+            typedef blocking_slot<R, Sequence> type;
         };
     };
 
@@ -77,7 +77,7 @@ namespace detail {
     struct select<deferred<R>> {
         template<class Sequence>
         struct apply {
-            typedef asynchronous_slot<deferred<R>, Sequence> type;
+            typedef deferred_slot<deferred<R>, Sequence> type;
         };
     };
 }

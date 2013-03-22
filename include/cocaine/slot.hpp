@@ -177,14 +177,13 @@ protected:
 // Blocking slot
 
 template<class R, class Sequence>
-struct synchronous_slot:
+struct blocking_slot:
     public basic_slot<R, Sequence>
 {
     typedef basic_slot<R, Sequence> base_type;
     typedef typename base_type::callable_type callable_type;
 
-    synchronous_slot(const std::string& name,
-                     callable_type callable):
+    blocking_slot(const std::string& name, callable_type callable):
         base_type(name, callable),
         m_packer(m_buffer)
     { }
@@ -213,14 +212,13 @@ private:
 // Blocking slot specialization for void functions
 
 template<class Sequence>
-struct synchronous_slot<void, Sequence>:
+struct blocking_slot<void, Sequence>:
     public basic_slot<void, Sequence>
 {
     typedef basic_slot<void, Sequence> base_type;
     typedef typename base_type::callable_type callable_type;
 
-    synchronous_slot(const std::string& name,
-                     callable_type callable):
+    blocking_slot(const std::string& name, callable_type callable):
         base_type(name, callable)
     { }
 
@@ -310,14 +308,13 @@ private:
 };
 
 template<class R, class Sequence>
-struct asynchronous_slot:
+struct deferred_slot:
     public basic_slot<R, Sequence>
 {
     typedef basic_slot<R, Sequence> base_type;
     typedef typename base_type::callable_type callable_type;
 
-    asynchronous_slot(const std::string& name,
-                      callable_type callable):
+    deferred_slot(const std::string& name, callable_type callable):
         base_type(name, callable)
     { }
 
