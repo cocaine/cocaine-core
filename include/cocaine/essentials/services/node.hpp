@@ -74,7 +74,7 @@ class node_t:
 {
     public:
         node_t(context_t& context,
-               service_t& service,
+               io::service_t& service,
                const std::string& name,
                const Json::Value& args);
 

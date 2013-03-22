@@ -48,7 +48,7 @@ node_t::node_t(context_t& context,
                io::service_t& service,
                const std::string& name,
                const Json::Value& args):
-    service_t(context, service, name, args),
+    category_type(context, service, name, args),
     m_context(context),
     m_log(new log_t(context, name)),
     m_zmq_context(1),
