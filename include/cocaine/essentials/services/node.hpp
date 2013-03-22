@@ -119,7 +119,11 @@ class node_t:
         app_map_t m_apps;
 
         // Uptime.
+#if defined(__clang__) || (defined(__GNUC__) && (__GNUC__ == 4 && __GNUC_MINOR__ > 6))
+        const std::chrono::steady_clock::time_point m_birthstamp;
+#else
         const std::chrono::monotonic_clock::time_point m_birthstamp;
+#endif
 };
 
 } // namespace service

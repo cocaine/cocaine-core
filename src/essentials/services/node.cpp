@@ -287,7 +287,11 @@ node_t::on_info() const {
     result["identity"] = m_context.config.network.hostname;
 
     auto uptime = std::chrono::duration_cast<std::chrono::seconds>(
+#if defined(__clang__) || (defined(__GNUC__) && (__GNUC__ == 4 && __GNUC_MINOR__ > 6))
+        std::chrono::steady_clock::now() - m_birthstamp
+#else
         std::chrono::monotonic_clock::now() - m_birthstamp
+#endif
     );
 
     result["uptime"] = static_cast<Json::LargestUInt>(uptime.count());
