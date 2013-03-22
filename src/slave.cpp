@@ -68,9 +68,8 @@ slave_t::slave_t(context_t& context,
     std::map<std::string, std::string> args,
                                        environment;
 
-    args["-c"] = m_context.config.path.config;
     args["--app"] = m_manifest.name;
-    args["--profile"] = m_profile.name;
+    args["--endpoint"] = m_manifest.endpoint;
     args["--uuid"] = m_id.string();
 
     COCAINE_LOG_DEBUG(m_log, "slave %s is activating", m_id);
