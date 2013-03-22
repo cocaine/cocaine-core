@@ -38,7 +38,7 @@ class archive_t {
         archive_t(context_t& context,
                   const std::string& archive);
 
-        ~archive_t();
+       ~archive_t();
 
         void
         deploy(const std::string& prefix);

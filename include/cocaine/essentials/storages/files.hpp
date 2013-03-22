@@ -36,7 +36,7 @@ class files_t:
                 const Json::Value& args);
 
         virtual
-        ~files_t();
+       ~files_t();
 
         virtual
         std::string

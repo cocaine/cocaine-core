@@ -35,7 +35,7 @@ struct category_traits;
 
 struct factory_concept_t {
     virtual
-    ~factory_concept_t() {
+   ~factory_concept_t() {
         // Empty.
     }
 
@@ -81,7 +81,7 @@ class repository_t:
 {
     public:
         repository_t();
-        ~repository_t();
+       ~repository_t();
 
         void
         load(const std::string& path);

@@ -45,7 +45,7 @@ class slave_t:
                 const profile_t& profile,
                 engine_t& engine);
 
-        ~slave_t();
+       ~slave_t();
 
         // Binding
 

@@ -48,7 +48,7 @@ class birth_control  {
         }
 
     protected:
-        ~birth_control() {
+       ~birth_control() {
 #ifdef COCAINE_DEBUG
             --g_objects_alive;
 #endif

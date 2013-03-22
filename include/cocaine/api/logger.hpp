@@ -29,17 +29,12 @@
 namespace cocaine { namespace api {
 
 class logger_t:
-    public logging::logger_t
+    public logging::logger_concept_t
 {
     public:
         typedef logger_t category_type;
 
     public:
-        virtual
-        ~logger_t() {
-            // Empty.
-        }
-
         virtual
         logging::priorities
         verbosity() const {

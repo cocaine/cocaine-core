@@ -208,7 +208,7 @@ context_t::context_t(config_t config_,
 }
 
 context_t::context_t(config_t config_,
-                     std::unique_ptr<logging::logger_t>&& logger):
+                     std::unique_ptr<logging::logger_concept_t>&& logger):
     config(config_)
 {
     initialize();

@@ -25,12 +25,6 @@
     #define nullptr __null
 #endif
 
-#if defined(__clang__)
-    #define unused [[gnu::unused]]
-#else
-    #define unused __attribute__((unused))
-#endif
-
 #include <stdint.h>
 
 #include <map>

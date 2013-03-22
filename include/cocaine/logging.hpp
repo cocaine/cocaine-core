@@ -41,9 +41,9 @@
 
 namespace cocaine { namespace logging {
 
-struct logger_t {
+struct logger_concept_t {
     virtual
-    ~logger_t() {
+   ~logger_concept_t() {
         // Empty.
     }
 
@@ -84,7 +84,7 @@ struct log_t {
     }
 
 private:
-    logger_t& m_logger;
+    logger_concept_t& m_logger;
 
     // The name of this log, to be used as the logging source.
     const std::string m_source;

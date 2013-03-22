@@ -31,7 +31,7 @@ namespace cocaine { namespace api {
 
 struct handle_t {
     virtual
-    ~handle_t() {
+   ~handle_t() {
         // Empty.
     }
 
@@ -46,7 +46,7 @@ class isolate_t {
 
     public:
         virtual
-        ~isolate_t() {
+       ~isolate_t() {
             // Empty.
         }
 

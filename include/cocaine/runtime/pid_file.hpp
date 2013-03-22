@@ -32,7 +32,7 @@ class pid_file_t:
 {
     public:
         pid_file_t(const boost::filesystem::path& filepath);
-        ~pid_file_t();
+       ~pid_file_t();
 
     private:
         void

@@ -44,7 +44,7 @@ class auth_t:
 {
     public:
         auth_t(context_t& context);
-        ~auth_t();
+       ~auth_t();
 
         void
         verify(const std::string& message,

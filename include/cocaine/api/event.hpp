@@ -46,19 +46,19 @@ struct policy_t {
 };
 
 struct event_t {
-    event_t(const std::string& type_):
-        type(type_)
+    event_t(const std::string& name_):
+        name(name_)
     { }
 
-    event_t(const std::string& type_,
+    event_t(const std::string& name_,
             policy_t policy_):
-        type(type_),
+        name(name_),
         policy(policy_)
     { }
 
 public:
-    // Event type.
-    const std::string type;
+    // Event name.
+    const std::string name;
 
     // Event execution policy.
     const policy_t policy;

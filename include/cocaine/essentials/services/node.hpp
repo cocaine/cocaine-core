@@ -31,40 +31,40 @@
 namespace cocaine {
 
 namespace io {
-    namespace tags {
-        struct node_tag;
-    }
 
-    namespace node {
-        struct start_app {
-            typedef tags::node_tag tag;
+struct node_tag;
 
-            typedef boost::mpl::list<
-                /* runlist */ std::map<std::string, std::string>
-            > tuple_type;
-        };
+namespace node {
+    struct start_app {
+        typedef node_tag tag;
 
-        struct pause_app {
-            typedef tags::node_tag tag;
-
-            typedef boost::mpl::list<
-                /* applist */ std::vector<std::string>
-            > tuple_type;
-        };
-
-        struct info {
-            typedef tags::node_tag tag;
-        };
-    }
-
-    template<>
-    struct protocol<tags::node_tag> {
-        typedef mpl::list<
-            node::start_app,
-            node::pause_app,
-            node::info
-        > type;
+        typedef boost::mpl::list<
+            /* runlist */ std::map<std::string, std::string>
+        > tuple_type;
     };
+
+    struct pause_app {
+        typedef node_tag tag;
+
+        typedef boost::mpl::list<
+            /* applist */ std::vector<std::string>
+        > tuple_type;
+    };
+
+    struct info {
+        typedef node_tag tag;
+    };
+}
+
+template<>
+struct protocol<node_tag> {
+    typedef mpl::list<
+        node::start_app,
+        node::pause_app,
+        node::info
+    > type;
+};
+
 } // namespace io
 
 namespace service {
@@ -74,7 +74,7 @@ class node_t:
 {
     public:
         node_t(context_t& context,
-               io::service_t& service,
+               service_t& service,
                const std::string& name,
                const Json::Value& args);
 

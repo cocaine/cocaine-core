@@ -27,19 +27,17 @@ namespace cocaine { namespace api {
 
 struct stream_t {
     virtual
-    ~stream_t() {
+   ~stream_t() {
         // Empty.
     }
 
     virtual
     void
-    write(const char * chunk,
-          size_t size) = 0;
+    write(const char * chunk, size_t size) = 0;
 
     virtual
     void
-    error(error_code code,
-          const std::string& reason) = 0;
+    error(error_code code, const std::string& reason) = 0;
 
     virtual
     void
@@ -64,6 +62,6 @@ struct null_stream_t:
     close() { }
 };
 
-}}
+}} // namespace cocaine::api
 
 #endif

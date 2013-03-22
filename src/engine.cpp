@@ -244,7 +244,7 @@ engine_t::enqueue(const api::event_t& event,
 
     // NOTE: This will probably go to the session cache, but we save
     // on this serialization later.
-    session->send<rpc::invoke>(event.type);
+    session->send<rpc::invoke>(event.name);
 
     // Pump the queue!
     wake();

@@ -70,7 +70,7 @@ class engine_t:
                  const profile_t& profile,
                  const std::shared_ptr<io::socket<io::local>>& control);
 
-        ~engine_t();
+       ~engine_t();
 
         void
         run();

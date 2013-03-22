@@ -107,7 +107,7 @@ namespace cocaine {
             debug
         };
 
-        struct logger_t;
+        struct logger_concept_t;
         struct log_t;
     }
 

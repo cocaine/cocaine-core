@@ -26,28 +26,28 @@
 namespace cocaine {
 
 namespace io {
-    namespace tags {
-        struct logging_tag;
-    }
 
-    namespace logging {
-        struct emit {
-            typedef tags::logging_tag tag;
+struct logging_tag;
 
-            typedef boost::mpl::list<
-                /* level */   int,
-                /* source */  std::string,
-                /* message */ std::string
-            > tuple_type;
-        };
-    }
+namespace logging {
+    struct emit {
+        typedef logging_tag tag;
 
-    template<>
-    struct protocol<tags::logging_tag> {
-        typedef mpl::list<
-            logging::emit
-        > type;
+        typedef boost::mpl::list<
+            /* level */   int,
+            /* source */  std::string,
+            /* message */ std::string
+        > tuple_type;
     };
+}
+
+template<>
+struct protocol<logging_tag> {
+    typedef mpl::list<
+        logging::emit
+    > type;
+};
+
 } // namespace io
 
 namespace service {
@@ -57,7 +57,7 @@ class logging_t:
 {
     public:
         logging_t(context_t& context,
-                  io::service_t& service,
+                  service_t& service,
                   const std::string& name,
                   const Json::Value& args);
 

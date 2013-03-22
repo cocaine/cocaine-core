@@ -33,7 +33,7 @@ class driver_t {
 
     public:
         virtual
-        ~driver_t() {
+       ~driver_t() {
             // Empty.
         }
 

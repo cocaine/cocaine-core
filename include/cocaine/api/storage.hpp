@@ -49,7 +49,7 @@ class storage_t {
 
     public:
         virtual
-        ~storage_t() {
+       ~storage_t() {
             // Empty.
         }
 
@@ -156,7 +156,7 @@ struct category_traits<storage_t> {
             const std::string& name,
             const Json::Value& args)
         {
-            std::lock_guard<std::mutex> lock(m_mutex);
+            std::unique_lock<std::mutex> lock(m_mutex);
 
             typename instance_map_t::iterator it(m_instances.find(name));
 

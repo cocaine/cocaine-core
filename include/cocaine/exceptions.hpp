@@ -45,7 +45,7 @@ struct error_t:
     { }
 
     virtual
-    ~error_t() throw() {
+   ~error_t() throw() {
         // Empty.
     }
 

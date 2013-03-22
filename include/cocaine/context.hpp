@@ -97,9 +97,9 @@ class context_t:
                   const std::string& logger);
 
         context_t(config_t config,
-                  std::unique_ptr<logging::logger_t>&& logger);
+                  std::unique_ptr<logging::logger_concept_t>&& logger);
 
-        ~context_t();
+       ~context_t();
 
         // Component API
 
@@ -110,7 +110,7 @@ class context_t:
 
         // Logging
 
-        logging::logger_t&
+        logging::logger_concept_t&
         logger() {
             return *m_logger;
         }
@@ -130,7 +130,7 @@ class context_t:
 
         // NOTE: As the loggers themselves are components, the repository
         // have to be initialized first without a logger, unfortunately.
-        std::unique_ptr<logging::logger_t> m_logger;
+        std::unique_ptr<logging::logger_concept_t> m_logger;
 };
 
 template<class Category, typename... Args>

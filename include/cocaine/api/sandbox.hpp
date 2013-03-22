@@ -33,7 +33,7 @@ class sandbox_t {
 
     public:
         virtual
-        ~sandbox_t() {
+       ~sandbox_t() {
             // Empty.
         }
 
