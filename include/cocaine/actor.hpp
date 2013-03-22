@@ -38,6 +38,7 @@ class actor_t:
 {
     public:
         actor_t(std::unique_ptr<dispatch_t>&& dispatch,
+                std::unique_ptr<io::service_t>&& service,
                 const Json::Value& args);
 
        ~actor_t();
@@ -68,7 +69,7 @@ class actor_t:
 
         // Event loop
 
-        io::service_t m_service;
+        std::unique_ptr<io::service_t> m_service;
         ev::async m_terminate;
 
         // Actor I/O

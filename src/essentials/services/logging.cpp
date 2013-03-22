@@ -31,6 +31,7 @@ using namespace cocaine::service;
 using namespace std::placeholders;
 
 logging_t::logging_t(context_t& context,
+                     service_t& service,
                      const std::string& name,
                      const Json::Value& args):
     service_t(context, name, args),

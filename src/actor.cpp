@@ -72,15 +72,17 @@ namespace {
 }
 
 actor_t::actor_t(std::unique_ptr<dispatch_t>&& dispatch,
+                 std::unique_ptr<service_t>&& service,
                  const Json::Value& args):
     m_dispatch(std::move(dispatch)),
-    m_terminate(m_service.loop())
+    m_service(std::move(service)),
+    m_terminate(m_service->loop())
 {
     tcp::endpoint endpoint("127.0.0.1", args["port"].asUInt());
 
     try {
         m_connector.reset(new connector<acceptor<tcp>>(
-            m_service,
+            *m_service,
             std::unique_ptr<acceptor<tcp>>(new acceptor<tcp>(endpoint)))
         );
     } catch(const cocaine::io_error_t& e) {
@@ -116,7 +118,7 @@ actor_t::run() {
     // here while boost::bind can, so stick to it for now.
     auto runnable = boost::bind(
         &io::service_t::run,
-        &m_service
+        m_service.get()
     );
 
     m_thread.reset(new std::thread(runnable));
@@ -134,7 +136,7 @@ actor_t::terminate() {
 
 void
 actor_t::on_connection(const std::shared_ptr<io::socket<tcp>>& socket_) {
-    auto channel_ = std::make_shared<channel<io::socket<tcp>>>(m_service, socket_);
+    auto channel_ = std::make_shared<channel<io::socket<tcp>>>(*m_service, socket_);
 
     channel_->rd->bind(
         std::bind(&actor_t::on_message, this, channel_, std::placeholders::_1),
@@ -170,6 +172,6 @@ actor_t::on_disconnect(const std::shared_ptr<channel<io::socket<tcp>>>& channel_
 
 void
 actor_t::on_terminate(ev::async&, int) {
-    m_service.stop();
+    m_service->stop();
 }
 

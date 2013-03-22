@@ -21,7 +21,6 @@
 #include "cocaine/context.hpp"
 
 #include "cocaine/api/logger.hpp"
-#include "cocaine/api/service.hpp"
 #include "cocaine/api/storage.hpp"
 
 namespace cocaine { namespace api {

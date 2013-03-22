@@ -81,6 +81,8 @@ namespace {
                  end = m_context.config.services.end();
 
             for(; it != end; ++it) {
+                auto loop = std::unique_ptr<io::service_t>(new io::service_t());
+
                 try {
                     m_services.emplace_back(
                         it->first,
@@ -89,8 +91,10 @@ namespace {
                                 it->second.type,
                                 m_context,
                                 cocaine::format("service/%s", it->first),
-                                it->second.args
+                                it->second.args,
+                                *loop
                             ),
+                            std::move(loop),
                             it->second.args
                         ))
                     );

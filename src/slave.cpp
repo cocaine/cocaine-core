@@ -33,8 +33,6 @@
 
 #include "cocaine/rpc/channel.hpp"
 
-#include "cocaine/traits/unique_id.hpp"
-
 using namespace cocaine;
 using namespace cocaine::engine;
 using namespace cocaine::io;
@@ -58,6 +56,8 @@ slave_t::slave_t(context_t& context,
     m_heartbeat_timer.set<slave_t, &slave_t::on_timeout>(this);
     m_heartbeat_timer.start(m_profile.startup_timeout);
 
+    COCAINE_LOG_DEBUG(m_log, "slave %s is activating", m_id);
+
     auto isolate = m_context.get<api::isolate_t>(
         m_profile.isolate.type,
         m_context,
@@ -65,14 +65,14 @@ slave_t::slave_t(context_t& context,
         m_profile.isolate.args
     );
 
-    std::map<std::string, std::string> args,
-                                       environment;
+    typedef std::map<std::string, std::string> string_map_t;
+
+    string_map_t args;
+    string_map_t environment;
 
     args["--app"] = m_manifest.name;
     args["--endpoint"] = m_manifest.endpoint;
     args["--uuid"] = m_id.string();
-
-    COCAINE_LOG_DEBUG(m_log, "slave %s is activating", m_id);
 
     m_handle = isolate->spawn(m_manifest.slave, args, environment);
 }
@@ -198,8 +198,7 @@ slave_t::on_message(const message_t& message) {
 
 namespace {
     struct cancel_t {
-        cancel_t(error_code code,
-                 std::string message):
+        cancel_t(error_code code, std::string message):
             m_code(code),
             m_message(message)
         { }

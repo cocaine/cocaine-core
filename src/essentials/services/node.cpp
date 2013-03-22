@@ -45,6 +45,7 @@ namespace {
 }
 
 node_t::node_t(context_t& context,
+               service_t& service,
                const std::string& name,
                const Json::Value& args):
     service_t(context, name, args),
