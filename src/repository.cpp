@@ -116,14 +116,20 @@ repository_t::open(const std::string& target) {
         throw repository_error_t("unable to load '%s'", target);
     }
 
-    initialize_fn_t initialize = nullptr;
+    // According to the standard, it is neither defined nor undefined to access
+    // a non-active member of a union. But GCC explicitly defines this to be
+    // okay, so we do it to avoid warnings about type-punned pointer aliasing.
 
-    // Try to get the initialization routine.
-    *(void**)(&initialize) = lt_dlsym(plugin, "initialize");
+    union {
+        void * ptr;
+        initialize_fn_t call;
+    } initialize;
 
-    if(initialize) {
+    initialize.ptr = lt_dlsym(plugin, "initialize");
+
+    if(initialize.ptr) {
         try {
-            initialize(*this);
+            initialize.call(*this);
             m_plugins.emplace_back(plugin);
         } catch(const std::exception& e) {
             lt_dlclose(plugin);
