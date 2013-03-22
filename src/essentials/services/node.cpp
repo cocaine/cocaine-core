@@ -54,7 +54,11 @@ node_t::node_t(context_t& context,
     m_zmq_context(1),
     m_announces(m_zmq_context, ZMQ_PUB),
     m_announce_timer(service.loop()),
+#if defined(__clang__) || (defined(__GNUC__) && (__GNUC__ == 4 && __GNUC_MINOR__ > 6))
+    m_birthstamp(std::chrono::steady_clock::now())
+#else
     m_birthstamp(std::chrono::monotonic_clock::now())
+#endif
 {
     on<io::node::start_app>("start_app", std::bind(&node_t::on_start_app, this, _1));
     on<io::node::pause_app>("pause_app", std::bind(&node_t::on_pause_app, this, _1));
