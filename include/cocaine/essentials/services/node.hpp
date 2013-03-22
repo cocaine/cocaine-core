@@ -22,6 +22,7 @@
 #define COCAINE_NODE_SERVICE_HPP
 
 #include "cocaine/api/service.hpp"
+#include "cocaine/asio/service.hpp"
 
 #include <chrono>
 
@@ -81,8 +82,8 @@ class node_t:
        ~node_t();
 
     private:
-        // void
-        // on_announce(ev::timer&, int);
+        void
+        on_announce(ev::timer&, int);
 
         Json::Value
         on_start_app(const std::map<std::string, std::string>& runlist);
@@ -103,7 +104,7 @@ class node_t:
         zmq::socket_t m_announces;
 
         // Node announce timer.
-        // ev::timer m_announce_timer;
+        ev::timer m_announce_timer;
 
 #if BOOST_VERSION >= 103600
         typedef boost::unordered_map<

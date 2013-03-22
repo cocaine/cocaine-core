@@ -53,7 +53,7 @@ node_t::node_t(context_t& context,
     m_log(new log_t(context, name)),
     m_zmq_context(1),
     m_announces(m_zmq_context, ZMQ_PUB),
-    //m_announce_timer(service().loop()),
+    m_announce_timer(service.loop()),
     m_birthstamp(std::chrono::monotonic_clock::now())
 {
     on<io::node::start_app>("start_app", std::bind(&node_t::on_start_app, this, _1));
@@ -107,8 +107,8 @@ node_t::node_t(context_t& context,
             }
         }
 
-        //m_announce_timer.set<node_t, &node_t::on_announce>(this);
-        //m_announce_timer.start(0.0f, interval);
+        m_announce_timer.set<node_t, &node_t::on_announce>(this);
+        m_announce_timer.start(0.0f, interval);
     }
 
     // Runlist
@@ -151,7 +151,6 @@ node_t::~node_t() {
     }
 }
 
-/*
 void
 node_t::on_announce(ev::timer&, int) {
     COCAINE_LOG_DEBUG(m_log, "announcing the node");
@@ -186,7 +185,6 @@ node_t::on_announce(ev::timer&, int) {
 
     m_announces.send(message);
 }
-*/
 
 Json::Value
 node_t::on_start_app(const runlist_t& runlist) {
