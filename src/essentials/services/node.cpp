@@ -45,10 +45,10 @@ namespace {
 }
 
 node_t::node_t(context_t& context,
-               service_t& service,
+               io::service_t& service,
                const std::string& name,
                const Json::Value& args):
-    service_t(context, name, args),
+    service_t(context, service, name, args),
     m_context(context),
     m_log(new log_t(context, name)),
     m_zmq_context(1),

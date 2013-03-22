@@ -52,14 +52,12 @@ namespace io {
 
 namespace service {
 
-using io::service_t;
-
 class logging_t:
     public api::service_t
 {
     public:
         logging_t(context_t& context,
-                  service_t& service,
+                  io::service_t& service,
                   const std::string& name,
                   const Json::Value& args);
 

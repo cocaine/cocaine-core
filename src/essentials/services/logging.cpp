@@ -31,10 +31,10 @@ using namespace cocaine::service;
 using namespace std::placeholders;
 
 logging_t::logging_t(context_t& context,
-                     service_t& service,
+                     io::service_t& service,
                      const std::string& name,
                      const Json::Value& args):
-    service_t(context, name, args),
+    service_t(context, service, name, args),
     m_context(context)
 {
     on<io::logging::emit>("emit", std::bind(&logging_t::on_emit, this, _1, _2, _3));

@@ -90,9 +90,9 @@ namespace {
                             m_context.get<api::service_t>(
                                 it->second.type,
                                 m_context,
+                                *loop,
                                 cocaine::format("service/%s", it->first),
-                                it->second.args,
-                                *loop
+                                it->second.args
                             ),
                             std::move(loop),
                             it->second.args
