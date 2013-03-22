@@ -195,8 +195,16 @@ context_t::context_t(config_t config_,
 {
     initialize();
 
-    // Get the default logger for this context.
-    m_logger = api::logger(*this, logger);
+    config_t::component_map_t::const_iterator it = config.loggers.find(logger);
+
+    if(it == config.loggers.end()) {
+        throw configuration_error_t("the '%s' logger is not configured", logger);
+    }
+
+    m_logger = get<api::logger_t>(
+        it->second.type,
+        it->second.args
+    );
 }
 
 context_t::context_t(config_t config_,

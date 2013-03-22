@@ -29,11 +29,10 @@ class files_t:
     public api::logger_t
 {
     public:
-        files_t(const std::string& name,
-                const Json::Value& args);
+        files_t(const Json::Value& args);
 
         virtual
-        ~files_t();
+       ~files_t();
 
         virtual
         void

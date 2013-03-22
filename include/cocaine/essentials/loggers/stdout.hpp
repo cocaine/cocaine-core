@@ -29,8 +29,7 @@ class stdout_t:
     public api::logger_t
 {
     public:
-        stdout_t(const std::string& name,
-                 const Json::Value& args);
+        stdout_t(const Json::Value& args);
 
         virtual
         void

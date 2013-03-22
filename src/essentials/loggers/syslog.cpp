@@ -25,11 +25,14 @@
 using namespace cocaine;
 using namespace cocaine::logger;
 
-syslog_t::syslog_t(const std::string& name,
-                   const Json::Value& args):
-    category_type(name, args),
-    m_identity(args.get("identity", name).asString())
+syslog_t::syslog_t(const Json::Value& args):
+    category_type(args),
+    m_identity(args["identity"].asString())
 {
+    if(m_identity.empty()) {
+        throw configuration_error_t("no syslog identity has been specified");
+    }
+
     openlog(m_identity.c_str(), LOG_PID, LOG_USER);
 }
 

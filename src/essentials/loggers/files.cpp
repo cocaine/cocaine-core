@@ -30,9 +30,8 @@
 using namespace cocaine;
 using namespace cocaine::logger;
 
-files_t::files_t(const std::string& name,
-                 const Json::Value& args):
-    category_type(name, args),
+files_t::files_t(const Json::Value& args):
+    category_type(args),
     m_file(nullptr)
 {
     std::string path = args["path"].asString();

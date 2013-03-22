@@ -20,30 +20,11 @@
 
 #include "cocaine/context.hpp"
 
-#include "cocaine/api/logger.hpp"
 #include "cocaine/api/storage.hpp"
 
 namespace cocaine { namespace api {
 
 typedef config_t::component_map_t::const_iterator const_component_iterator;
-
-category_traits<logger_t>::ptr_type
-logger(context_t& context,
-       const std::string& name)
-{
-    const_component_iterator it = context.config.loggers.find(name);
-
-    if(it == context.config.loggers.end()) {
-        throw configuration_error_t("the '%s' logger is not configured", name);
-    }
-
-    return context.get<logger_t>(
-        it->second.type,
-        context,
-        cocaine::format("logger/%s", name),
-        it->second.args
-    );
-}
 
 category_traits<storage_t>::ptr_type
 storage(context_t& context,

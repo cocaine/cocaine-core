@@ -28,24 +28,6 @@
 
 namespace cocaine { namespace api {
 
-static inline
-logging::priorities
-resolve(const Json::Value& args) {
-    const std::string& verbosity = args["verbosity"].asString();
-
-    if(verbosity == "ignore") {
-        return logging::ignore;
-    } else if(verbosity == "debug") {
-        return logging::debug;
-    } else if(verbosity == "warning") {
-        return logging::warning;
-    } else if(verbosity == "error") {
-        return logging::error;
-    } else {
-        return logging::info;
-    }
-}
-
 class logger_t:
     public logging::logger_t
 {
@@ -65,8 +47,25 @@ class logger_t:
         }
 
     protected:
-        logger_t(const std::string& /* name */,
-                 const Json::Value& args):
+        static
+        logging::priorities
+        resolve(const Json::Value& args) {
+            const std::string& verbosity = args["verbosity"].asString();
+
+            if(verbosity == "ignore") {
+                return logging::ignore;
+            } else if(verbosity == "debug") {
+                return logging::debug;
+            } else if(verbosity == "warning") {
+                return logging::warning;
+            } else if(verbosity == "error") {
+                return logging::error;
+            } else {
+                return logging::info;
+            }
+        }
+
+        logger_t(const Json::Value& args):
             m_verbosity(resolve(args))
         { }
 
@@ -83,9 +82,7 @@ struct category_traits<logger_t> {
     {
         virtual
         ptr_type
-        get(context_t& context,
-            const std::string& name,
-            const Json::Value& args) = 0;
+        get(const Json::Value& args) = 0;
     };
 
     template<class T>
@@ -94,18 +91,11 @@ struct category_traits<logger_t> {
     {
         virtual
         ptr_type
-        get(context_t&,
-            const std::string& name,
-            const Json::Value& args)
-        {
-            return ptr_type(new T(name, args));
+        get(const Json::Value& args) {
+            return ptr_type(new T(args));
         }
     };
 };
-
-category_traits<logger_t>::ptr_type
-logger(context_t& context,
-       const std::string& name);
 
 }} // namespace cocaine::api
 
