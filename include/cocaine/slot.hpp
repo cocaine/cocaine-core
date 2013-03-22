@@ -262,7 +262,8 @@ struct deferred {
 private:
     struct state_t {
         state_t():
-            m_packer(m_buffer)
+            m_packer(m_buffer),
+            m_completed(false)
         { }
 
         void
