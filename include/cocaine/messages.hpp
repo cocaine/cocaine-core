@@ -21,21 +21,19 @@
 #ifndef COCAINE_IO_MESSAGES_HPP
 #define COCAINE_IO_MESSAGES_HPP
 
-#include "cocaine/rpc/protocol.hpp"
-
+#include "cocaine/common.hpp"
 #include "cocaine/json.hpp"
 #include "cocaine/unique_id.hpp"
 
+#include "cocaine/rpc/protocol.hpp"
+
 namespace cocaine { namespace io {
 
-namespace tags {
-    struct rpc_tag;
-    struct control_tag;
-}
+struct rpc_tag;
 
 namespace rpc {
     struct handshake {
-        typedef tags::rpc_tag tag;
+        typedef rpc_tag tag;
 
         typedef boost::mpl::list<
             /* client id */ unique_id_t
@@ -43,11 +41,11 @@ namespace rpc {
     };
 
     struct heartbeat {
-        typedef tags::rpc_tag tag;
+        typedef rpc_tag tag;
     };
 
     struct terminate {
-        typedef tags::rpc_tag tag;
+        typedef rpc_tag tag;
 
         enum codes: int {
             normal,
@@ -61,7 +59,7 @@ namespace rpc {
     };
 
     struct invoke {
-        typedef tags::rpc_tag tag;
+        typedef rpc_tag tag;
 
         typedef boost::mpl::list<
             /* event */ std::string
@@ -69,7 +67,7 @@ namespace rpc {
     };
 
     struct chunk {
-        typedef tags::rpc_tag tag;
+        typedef rpc_tag tag;
 
         typedef boost::mpl::list<
             /* chunk */ std::string
@@ -77,7 +75,7 @@ namespace rpc {
     };
 
     struct error {
-        typedef tags::rpc_tag tag;
+        typedef rpc_tag tag;
 
         typedef boost::mpl::list<
             /* code */   int,
@@ -86,30 +84,12 @@ namespace rpc {
     };
 
     struct choke {
-        typedef tags::rpc_tag tag;
-    };
-}
-
-namespace control {
-    struct report {
-        typedef tags::control_tag tag;
-    };
-
-    struct info {
-        typedef tags::control_tag tag;
-
-        typedef boost::mpl::list<
-            /* info */ Json::Value
-        > tuple_type;
-    };
-
-    struct terminate {
-        typedef tags::control_tag tag;
+        typedef rpc_tag tag;
     };
 }
 
 template<>
-struct protocol<tags::rpc_tag> {
+struct protocol<rpc_tag> {
     typedef boost::mpl::list<
         rpc::handshake,
         rpc::heartbeat,
@@ -121,8 +101,28 @@ struct protocol<tags::rpc_tag> {
     >::type type;
 };
 
+struct control_tag;
+
+namespace control {
+    struct report {
+        typedef control_tag tag;
+    };
+
+    struct info {
+        typedef control_tag tag;
+
+        typedef boost::mpl::list<
+            /* info */ Json::Value
+        > tuple_type;
+    };
+
+    struct terminate {
+        typedef control_tag tag;
+    };
+}
+
 template<>
-struct protocol<tags::control_tag> {
+struct protocol<control_tag> {
     typedef boost::mpl::list<
         control::report,
         control::info,
