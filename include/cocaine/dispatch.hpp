@@ -21,8 +21,10 @@
 #ifndef COCAINE_DISPATCH_HPP
 #define COCAINE_DISPATCH_HPP
 
-#include "cocaine/rpc/protocol.hpp"
+#include "cocaine/common.hpp"
 #include "cocaine/slot.hpp"
+
+#include "cocaine/rpc/protocol.hpp"
 
 namespace cocaine {
 

@@ -22,8 +22,9 @@
 #define COCAINE_IO_MESSAGE_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/rpc/protocol.hpp"
 #include "cocaine/traits.hpp"
+
+#include "cocaine/rpc/protocol.hpp"
 
 namespace cocaine { namespace io {
 
@@ -58,7 +59,7 @@ public:
         return m_object.via.array.ptr[1].as<uint64_t>();
     }
 
-    const msgpack::object&
+    msgpack::object
     args() const {
         return m_object.via.array.ptr[2];
     }
