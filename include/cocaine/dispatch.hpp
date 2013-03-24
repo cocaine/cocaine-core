@@ -47,11 +47,10 @@ class dispatch_t:
         forget();
 
         void
-        dispatch(const io::message_t& message,
-                 const api::stream_ptr_t& upstream) const;
+        invoke(const io::message_t& message,
+               const api::stream_ptr_t& upstream);
 
     private:
-        context_t& m_context;
         std::unique_ptr<logging::log_t> m_log;
 
 #if BOOST_VERSION >= 103600
@@ -64,6 +63,7 @@ class dispatch_t:
         > slot_map_t;
 
         slot_map_t m_slots;
+        std::mutex m_mutex;
 };
 
 namespace detail {
@@ -94,6 +94,8 @@ dispatch_t::on(const std::string& name, F callable) {
         sequence_type
     >::type slot_type;
 
+    std::lock_guard<std::mutex> guard(m_mutex);
+
     m_slots.emplace(
         io::event_traits<Event>::id,
         std::make_shared<slot_type>(name, callable)
@@ -103,6 +105,7 @@ dispatch_t::on(const std::string& name, F callable) {
 template<class Event>
 void
 dispatch_t::forget() {
+    std::lock_guard<std::mutex> guard(m_mutex);
     m_slots.erase(io::event_traits<Event>::id);
 }
 

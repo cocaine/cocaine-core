@@ -30,7 +30,6 @@ using namespace cocaine::io;
 
 dispatch_t::dispatch_t(context_t& context,
                        const std::string& name):
-    m_context(context),
     m_log(new logging::log_t(context, name))
 { }
 
@@ -39,37 +38,52 @@ dispatch_t::~dispatch_t() {
 }
 
 void
-dispatch_t::dispatch(const message_t& message,
-                     const api::stream_ptr_t& upstream) const
+dispatch_t::invoke(const message_t& message,
+                   const api::stream_ptr_t& upstream)
 {
-    slot_map_t::const_iterator slot = m_slots.find(message.id());
+    slot_map_t::mapped_type slot;
 
-    if(slot == m_slots.end()) {
-        COCAINE_LOG_WARNING(
-            m_log,
-            "dropping an unknown type %d message",
-            message.id()
-        );
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
 
-        upstream->error(invocation_error, "unknown message type");
-        upstream->close();
+        slot_map_t::const_iterator it = m_slots.find(message.id());
+
+        if(it == m_slots.end()) {
+            COCAINE_LOG_WARNING(
+                m_log,
+                "dropping an unknown type %d: %s message",
+                message.id(),
+                message.args()
+            );
+
+            lock.unlock();
+
+            upstream->error(invocation_error, "unknown message type");
+            upstream->close();
+
+            return;
+        }
+
+        slot = it->second;
     }
 
     COCAINE_LOG_DEBUG(
         m_log,
-        "processing type [%d, '%s'] message with arguments %s",
+        "processing type %d: %s message using slot '%s'",
         message.id(),
-        slot->second->describe(),
-        message.args()
+        message.args(),
+        slot->describe()
     );
 
     try {
-        (*slot->second)(upstream, message.args());
+        (*slot)(upstream, message.args());
     } catch(const std::exception& e) {
         COCAINE_LOG_ERROR(
             m_log,
-            "unable to process type %d message - %s",
+            "unable to process type %d: %s message using slot '%s' - %s",
             message.id(),
+            message.args(),
+            slot->describe(),
             e.what()
         );
 
