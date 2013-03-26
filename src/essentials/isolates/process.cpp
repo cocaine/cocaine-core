@@ -133,7 +133,6 @@ process_t::spawn(const std::string& path,
             envp[n++] = ::strdup(format.str().c_str());
 
             format.clear();
-
             ++it;
         }
         */
