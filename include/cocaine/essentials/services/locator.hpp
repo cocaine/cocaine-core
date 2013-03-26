@@ -38,7 +38,7 @@ struct description_t {
     // languages like Python or Ruby.
     std::map<int, std::string> methods;
 
-    MSGPACK_DEFINE(endpoint, version, methods);
+    MSGPACK_DEFINE(endpoint, version, methods)
 };
 
 class locator_t:
