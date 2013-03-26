@@ -35,4 +35,22 @@ locator_t::locator_t(context_t& context,
                      const std::string& name,
                      const Json::Value& args):
     category_type(context, reactor, name, args)
-{ }
+{
+    on<locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
+}
+
+description_t
+locator_t::resolve(const std::string& name) const {
+    description_t result = {
+        "localhost:15000",
+        1,
+        {
+            { 0, "poke" },
+            { 1, "peek" }
+        }
+    };
+
+    // Do something.
+
+    return result;
+}

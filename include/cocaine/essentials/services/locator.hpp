@@ -25,6 +25,38 @@
 
 namespace cocaine {
 
+namespace service {
+
+struct description_t {
+    // An endpoint for the client to connect to in order to use the service.
+    std::string endpoint;
+
+    // Service protocol version.
+    unsigned int version;
+
+    // A mapping between method slot numbers and names for use in dynamic
+    // languages like Python or Ruby.
+    std::map<int, std::string> methods;
+
+    MSGPACK_DEFINE(endpoint, version, methods);
+};
+
+class locator_t:
+    public api::service_t
+{
+    public:
+        locator_t(context_t& context,
+                  io::reactor_t& reactor,
+                  const std::string& name,
+                  const Json::Value& args);
+
+    private:
+        description_t
+        resolve(const std::string& name) const;
+};
+
+} // namespace service
+
 namespace io {
 
 struct locator_tag;
@@ -47,20 +79,6 @@ struct protocol<locator_tag> {
 };
 
 } // namespace io
-
-namespace service {
-
-class locator_t:
-    public api::service_t
-{
-    public:
-        locator_t(context_t& context,
-                  io::reactor_t& reactor,
-                  const std::string& name,
-                  const Json::Value& args);
-};
-
-} // namespace service
 
 } // namespace cocaine
 
