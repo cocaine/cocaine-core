@@ -71,7 +71,8 @@ ADD_LIBRARY(cocaine-core SHARED
     src/profile
     src/repository
     src/session
-    src/slave)
+    src/slave
+    src/unique_id)
 
 TARGET_LINK_LIBRARIES(cocaine-core
     archive
@@ -93,6 +94,7 @@ ADD_LIBRARY(essentials MODULE
     src/essentials/loggers/files
     src/essentials/loggers/stdout
     src/essentials/loggers/syslog
+    src/essentials/services/locator
     src/essentials/services/logging
     src/essentials/services/node
     src/essentials/storages/files
