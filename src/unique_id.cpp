@@ -69,12 +69,16 @@ unique_id_t::operator==(const unique_id_t& other) const {
            uuid[1] == other.uuid[1];
 }
 
+namespace cocaine {
+
 std::ostream&
-cocaine::operator<<(std::ostream& stream, const unique_id_t& id) {
+operator<<(std::ostream& stream, const unique_id_t& id) {
     return stream << id.string();
 }
 
 size_t
-cocaine::hash_value(const unique_id_t& id) {
+hash_value(const unique_id_t& id) {
     return boost::hash_range(id.uuid.begin(), id.uuid.end());
+}
+
 }
