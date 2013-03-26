@@ -26,17 +26,19 @@
 #include "cocaine/asio/local.hpp"
 #include "cocaine/asio/socket.hpp"
 
-#include "cocaine/archive.hpp"
 #include "cocaine/context.hpp"
-#include "cocaine/engine.hpp"
+
+#include "cocaine/detail/archive.hpp"
+#include "cocaine/detail/engine.hpp"
+#include "cocaine/detail/manifest.hpp"
+#include "cocaine/detail/profile.hpp"
+
+#include "cocaine/detail/traits/json.hpp"
+
 #include "cocaine/logging.hpp"
-#include "cocaine/manifest.hpp"
 #include "cocaine/messages.hpp"
-#include "cocaine/profile.hpp"
 
 #include "cocaine/rpc/channel.hpp"
-
-#include "cocaine/traits/json.hpp"
 
 #include <tuple>
 
@@ -64,24 +66,7 @@ app_t::app_t(context_t& context,
         deploy(name, path.string());
     }
 
-    m_service.reset(new service_t());
-
-    std::shared_ptr<io::socket<local>> lhs, rhs;
-
-    // Create the engine control sockets.
-    std::tie(lhs, rhs) = io::link<local>();
-
-    m_channel.reset(new channel<io::socket<local>>(*m_service, lhs));
-
-    // NOTE: The event loop is not started here yet.
-    m_engine.reset(
-        new engine_t(
-            m_context,
-            *m_manifest,
-            *m_profile,
-            rhs
-        )
-    );
+    m_reactor.reset(new reactor_t());
 }
 
 app_t::~app_t() {
@@ -97,6 +82,8 @@ app_t::start() {
     }
 
     COCAINE_LOG_INFO(m_log, "starting the engine");
+
+    auto reactor = std::unique_ptr<reactor_t>(new reactor_t());
 
     if(!m_manifest->drivers.empty()) {
         COCAINE_LOG_INFO(
@@ -122,9 +109,10 @@ app_t::start() {
                 driver = m_context.get<api::driver_t>(
                     it->second.type,
                     m_context,
+                    *reactor,
+                    *this,
                     name,
-                    it->second.args,
-                    *m_engine
+                    it->second.args
                 );
             } catch(const cocaine::error_t& e) {
                 COCAINE_LOG_ERROR(
@@ -143,6 +131,27 @@ app_t::start() {
             m_drivers[it->first] = std::move(driver);
         }
     }
+
+    std::shared_ptr<io::socket<local>> lhs, rhs;
+
+    // Create the engine control sockets.
+    std::tie(lhs, rhs) = io::link<local>();
+
+    m_channel.reset(new channel<io::socket<local>>(
+        *m_reactor,
+        lhs
+    ));
+
+    // NOTE: The event loop is not started here yet.
+    m_engine.reset(
+        new engine_t(
+            m_context,
+            std::move(reactor),
+            *m_manifest,
+            *m_profile,
+            rhs
+        )
+    );
 
     auto runnable = std::bind(
         &engine_t::run,
@@ -235,13 +244,13 @@ namespace {
         };
 
         template<typename... Args>
-        expect(service_t& service, Args&&... args):
-            m_service(service),
+        expect(reactor_t& reactor, Args&&... args):
+            m_reactor(reactor),
             m_tuple(std::forward<Args>(args)...)
         { }
 
         expect(expect&& other):
-            m_service(other.m_service),
+            m_reactor(other.m_reactor),
             m_tuple(std::move(other.m_tuple))
         { }
 
@@ -259,7 +268,7 @@ namespace {
                     m_tuple
                 );
 
-                m_service.stop();
+                m_reactor.stop();
             }
         }
 
@@ -273,7 +282,7 @@ namespace {
             typename event_traits<Event>::tuple_type
         >::type tuple_type;
 
-        service_t& m_service;
+        reactor_t& m_reactor;
         tuple_type m_tuple;
     };
 }
@@ -286,14 +295,14 @@ app_t::stop() {
 
     COCAINE_LOG_INFO(m_log, "stopping the engine");
 
-    auto callback = expect<control::terminate>(*m_service);
+    auto callback = expect<control::terminate>(*m_reactor);
 
     m_channel->rd->bind(std::ref(callback), std::ref(callback));
     m_channel->wr->write<control::terminate>(0UL);
 
     try {
         // Blocks until either the response or timeout happens.
-        m_service->run(/* defaults::control_timeout */);
+        m_reactor->run(/* defaults::control_timeout */);
     } catch(const cocaine::error_t& e) {
         throw cocaine::error_t("the engine could not be stopped");
     }
@@ -317,14 +326,14 @@ app_t::info() const {
         return info;
     }
 
-    auto callback = expect<control::info>(*m_service, info);
+    auto callback = expect<control::info>(*m_reactor, info);
 
     m_channel->rd->bind(std::ref(callback), std::ref(callback));
     m_channel->wr->write<control::report>(0UL);
 
     try {
         // Blocks until either the response or timeout happens.
-        m_service->run(/* defaults::control_timeout */);
+        m_reactor->run(/* defaults::control_timeout */);
     } catch(const cocaine::error_t& e) {
         info["error"] = "engine is not responsive";
         return info;

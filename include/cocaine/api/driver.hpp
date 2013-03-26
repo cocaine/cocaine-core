@@ -27,6 +27,8 @@
 
 namespace cocaine { namespace api {
 
+using io::reactor_t;
+
 class driver_t {
     public:
         typedef driver_t category_type;
@@ -41,22 +43,13 @@ class driver_t {
         Json::Value
         info() const = 0;
 
-    public:
-        engine::engine_t&
-        engine() {
-            return m_engine;
-        }
-
     protected:
         driver_t(context_t&,
+                 reactor_t&,
+                 app_t&,
                  const std::string& /* name */,
-                 const Json::Value& /* args */,
-                 engine::engine_t& engine):
-            m_engine(engine)
+                 const Json::Value& /* args */)
         { }
-
-    private:
-        engine::engine_t& m_engine;
 };
 
 template<>
@@ -69,9 +62,10 @@ struct category_traits<driver_t> {
         virtual
         ptr_type
         get(context_t& context,
+            reactor_t& reactor,
+            app_t& app,
             const std::string& name,
-            const Json::Value& args,
-            engine::engine_t& engine) = 0;
+            const Json::Value& args) = 0;
     };
 
     template<class T>
@@ -81,12 +75,13 @@ struct category_traits<driver_t> {
         virtual
         ptr_type
         get(context_t& context,
+            reactor_t& reactor,
+            app_t& app,
             const std::string& name,
-            const Json::Value& args,
-            engine::engine_t& engine)
+            const Json::Value& args)
         {
             return ptr_type(
-                new T(context, name, args, engine)
+                new T(context, reactor, app, name, args)
             );
         }
     };

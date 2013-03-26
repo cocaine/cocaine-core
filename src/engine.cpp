@@ -18,7 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/engine.hpp"
+#include "cocaine/detail/engine.hpp"
 
 #include "cocaine/api/event.hpp"
 #include "cocaine/api/stream.hpp"
@@ -29,17 +29,18 @@
 #include "cocaine/asio/socket.hpp"
 
 #include "cocaine/context.hpp"
+
+#include "cocaine/detail/manifest.hpp"
+#include "cocaine/detail/profile.hpp"
+#include "cocaine/detail/session.hpp"
+#include "cocaine/detail/slave.hpp"
+
+#include "cocaine/detail/traits/json.hpp"
+
 #include "cocaine/logging.hpp"
-#include "cocaine/manifest.hpp"
 #include "cocaine/messages.hpp"
-#include "cocaine/profile.hpp"
-#include "cocaine/session.hpp"
-#include "cocaine/slave.hpp"
 
 #include "cocaine/rpc/channel.hpp"
-
-#include "cocaine/traits/json.hpp"
-#include "cocaine/traits/unique_id.hpp"
 
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics/median.hpp>
@@ -51,6 +52,7 @@ using namespace cocaine;
 using namespace cocaine::engine;
 using namespace cocaine::io;
 using namespace cocaine::logging;
+
 using namespace std::placeholders;
 
 // Session queue
@@ -153,6 +155,7 @@ namespace {
 }
 
 engine_t::engine_t(context_t& context,
+                   std::unique_ptr<reactor_t>&& reactor,
                    const manifest_t& manifest,
                    const profile_t& profile,
                    const std::shared_ptr<io::socket<local>>& control):
@@ -161,10 +164,11 @@ engine_t::engine_t(context_t& context,
     m_manifest(manifest),
     m_profile(profile),
     m_state(states::stopped),
-    m_gc_timer(m_service.loop()),
-    m_termination_timer(m_service.loop()),
-    m_notification(m_service.loop()),
-    m_next_id(0)
+    m_reactor(std::move(reactor)),
+    m_gc_timer(m_reactor->native()),
+    m_termination_timer(m_reactor->native()),
+    m_notification(m_reactor->native()),
+    m_next_id(1)
 {
     m_gc_timer.set<engine_t, &engine_t::on_cleanup>(this);
     m_gc_timer.start(5.0f, 5.0f);
@@ -175,7 +179,7 @@ engine_t::engine_t(context_t& context,
     auto endpoint = local::endpoint(m_manifest.endpoint);
 
     m_connector.reset(new connector<acceptor<local>>(
-        m_service,
+        *m_reactor,
         std::unique_ptr<acceptor<local>>(new acceptor<local>(endpoint))
     ));
 
@@ -183,7 +187,10 @@ engine_t::engine_t(context_t& context,
         std::bind(&engine_t::on_connection, this, _1)
     );
 
-    m_channel.reset(new channel<io::socket<local>>(m_service, control));
+    m_channel.reset(new channel<io::socket<local>>(
+        *m_reactor,
+        control
+    ));
 
     m_channel->rd->bind(
         std::bind(&engine_t::on_control, this, _1),
@@ -208,7 +215,7 @@ engine_t::~engine_t() {
 void
 engine_t::run() {
     m_state = states::running;
-    m_service.run();
+    m_reactor->run();
 }
 
 void
@@ -276,7 +283,7 @@ engine_t::erase(const unique_id_t& uuid,
 
 void
 engine_t::on_connection(const std::shared_ptr<io::socket<local>>& socket_) {
-    auto channel_ = std::make_shared<channel<io::socket<local>>>(m_service, socket_);
+    auto channel_ = std::make_shared<channel<io::socket<local>>>(*m_reactor, socket_);
 
     channel_->rd->bind(
         std::bind(&engine_t::on_handshake, this, channel_, _1),
@@ -299,7 +306,9 @@ engine_t::on_handshake(const std::shared_ptr<channel<io::socket<local>>>& channe
     unique_id_t uuid(uninitialized);
 
     try {
-        message.as<rpc::handshake>(uuid);
+        std::string blob;
+        message.as<rpc::handshake>(blob);
+        uuid = unique_id_t(blob);
     } catch(const cocaine::error_t& e) {
         COCAINE_LOG_WARNING(m_log, "dropping an invalid handshake message");
         channel_->rd->unbind();
@@ -564,7 +573,7 @@ engine_t::pump() {
             lock.unlock();
 
             if(session->event.policy.deadline &&
-               session->event.policy.deadline <= m_service.loop().now())
+               session->event.policy.deadline <= m_reactor->native().now())
             {
                 COCAINE_LOG_DEBUG(
                     m_log,
@@ -618,6 +627,7 @@ engine_t::balance() {
             std::shared_ptr<slave_t> slave(
                 std::make_shared<slave_t>(
                     m_context,
+                    *m_reactor,
                     m_manifest,
                     m_profile,
                     *this
@@ -701,6 +711,6 @@ engine_t::stop() {
 
     if(m_state == states::stopping) {
         m_state = states::stopped;
-        m_service.stop();
+        m_reactor->stop();
     }
 }

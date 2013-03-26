@@ -18,18 +18,20 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/slave.hpp"
+#include "cocaine/detail/slave.hpp"
+
+#include "cocaine/context.hpp"
 
 #include "cocaine/api/event.hpp"
 #include "cocaine/api/stream.hpp"
 
-#include "cocaine/context.hpp"
-#include "cocaine/engine.hpp"
+#include "cocaine/detail/engine.hpp"
+#include "cocaine/detail/manifest.hpp"
+#include "cocaine/detail/profile.hpp"
+#include "cocaine/detail/session.hpp"
+
 #include "cocaine/logging.hpp"
-#include "cocaine/manifest.hpp"
 #include "cocaine/messages.hpp"
-#include "cocaine/profile.hpp"
-#include "cocaine/session.hpp"
 
 #include "cocaine/rpc/channel.hpp"
 
@@ -37,9 +39,11 @@ using namespace cocaine;
 using namespace cocaine::engine;
 using namespace cocaine::io;
 using namespace cocaine::logging;
+
 using namespace std::placeholders;
 
 slave_t::slave_t(context_t& context,
+                 reactor_t& reactor,
                  const manifest_t& manifest,
                  const profile_t& profile,
                  engine_t& engine):
@@ -49,8 +53,13 @@ slave_t::slave_t(context_t& context,
     m_profile(profile),
     m_engine(engine),
     m_state(states::unknown),
-    m_heartbeat_timer(engine.service().loop()),
-    m_idle_timer(engine.service().loop())
+#if defined(__clang__) || defined(HAVE_GCC47)
+    m_birthstamp(std::chrono::steady_clock::now()),
+#else
+    m_birthstamp(std::chrono::monotonic_clock::now()),
+#endif
+    m_heartbeat_timer(reactor.native()),
+    m_idle_timer(reactor.native())
 {
     // NOTE: Initialization heartbeat can be different.
     m_heartbeat_timer.set<slave_t, &slave_t::on_timeout>(this);
@@ -241,15 +250,22 @@ void
 slave_t::on_ping() {
     BOOST_ASSERT(m_state != states::dead);
 
+    using namespace std::chrono;
+
     if(m_state == states::unknown) {
+        auto uptime = duration_cast<duration<float>>(
+#if defined(__clang__) || defined(HAVE_GCC47)
+            steady_clock::now() - m_birthstamp
+#else
+            monotonic_clock::now() - m_birthstamp
+#endif
+        );
+
         COCAINE_LOG_DEBUG(
             m_log,
             "slave %s became active in %.03f seconds",
             m_id,
-            m_profile.startup_timeout - ev_timer_remaining(
-                m_engine.service().loop(),
-                static_cast<ev_timer*>(&m_heartbeat_timer)
-            )
+            uptime.count()
         );
 
         m_state = states::active;
