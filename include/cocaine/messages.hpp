@@ -23,6 +23,8 @@
 
 #include "cocaine/common.hpp"
 
+#include <boost/mpl/list.hpp>
+
 namespace cocaine { namespace io {
 
 struct rpc_tag;
