@@ -251,7 +251,7 @@ context_t::initialize() {
 
     COCAINE_LOG_INFO(
         blog,
-        "initializing %d %s",
+        "starting %d %s",
         config.services.size(),
         config.services.size() == 1 ? "service" : "services"
     );
@@ -292,7 +292,7 @@ context_t::initialize() {
         it != m_services.end();
         ++it)
     {
-        COCAINE_LOG_INFO(blog, "starting the '%s' service", it->first);
+        COCAINE_LOG_INFO(blog, "publishing the '%s' service", it->first);
 
         it->second->run();
     }
