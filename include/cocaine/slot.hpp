@@ -263,7 +263,8 @@ private:
     struct state_t {
         state_t():
             m_packer(m_buffer),
-            m_completed(false)
+            m_completed(false),
+            m_failed(false)
         { }
 
         void
@@ -303,7 +304,7 @@ private:
                 m_e = e;
             }
 
-            m_completed = true;
+            m_failed = true;
         }
 
         void
@@ -313,16 +314,14 @@ private:
             m_upstream = upstream;
 
             if(m_completed) {
-                if(!m_e) {
-                    m_upstream->write(m_buffer.data(), m_buffer.size());
+                m_upstream->write(m_buffer.data(), m_buffer.size());
+                m_upstream->close();
+            } else if(m_failed) {
+                try {
+                    std::rethrow_exception(m_e);
+                } catch(const std::exception& e) {
+                    m_upstream->error(invocation_error, e.what());
                     m_upstream->close();
-                } else {
-                    try {
-                        std::rethrow_exception(m_e);
-                    } catch(const std::exception& e) {
-                        m_upstream->error(invocation_error, e.what());
-                        m_upstream->close();
-                    }
                 }
             }
         }
@@ -331,7 +330,9 @@ private:
         msgpack::sbuffer m_buffer;
         msgpack::packer<msgpack::sbuffer> m_packer;
         std::exception_ptr m_e;
-        bool m_completed;
+        
+        bool m_completed,
+             m_failed;
 
         api::stream_ptr_t m_upstream;
         std::mutex m_mutex;
