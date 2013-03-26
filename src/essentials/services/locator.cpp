@@ -41,16 +41,14 @@ locator_t::locator_t(context_t& context,
 
 description_t
 locator_t::resolve(const std::string& name) const {
-    description_t result = {
-        "localhost:15000",
-        1,
-        {
-            { 0, "poke" },
-            { 1, "peek" }
-        }
-    };
+    std::map<int, std::string> methods;
 
-    // Do something.
+    methods[0] = "poke";
+    methods[1] = "peek";
+
+    description_t result = { "localhost:15000", 1, methods };
+
+    // Do something useful.
 
     return result;
 }
