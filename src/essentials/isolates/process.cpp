@@ -138,11 +138,7 @@ process_t::spawn(const std::string& path,
         }
         */
 
-        // TODO: Merge the current environment and the passed one.
-        // It's disabled for now, as will only be needed in a proxy slave.
-        int rv = ::execv(argv[0], argv);
-
-        if(rv != 0) {
+        if(::execv(argv[0], argv) != 0) {
             std::error_code ec(errno, std::system_category());
 
             COCAINE_LOG_ERROR(
