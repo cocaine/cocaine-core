@@ -30,43 +30,6 @@
 
 namespace cocaine {
 
-namespace io {
-
-struct node_tag;
-
-namespace node {
-    struct start_app {
-        typedef node_tag tag;
-
-        typedef boost::mpl::list<
-            /* runlist */ std::map<std::string, std::string>
-        > tuple_type;
-    };
-
-    struct pause_app {
-        typedef node_tag tag;
-
-        typedef boost::mpl::list<
-            /* applist */ std::vector<std::string>
-        > tuple_type;
-    };
-
-    struct info {
-        typedef node_tag tag;
-    };
-}
-
-template<>
-struct protocol<node_tag> {
-    typedef mpl::list<
-        node::start_app,
-        node::pause_app,
-        node::info
-    > type;
-};
-
-} // namespace io
-
 namespace service {
 
 class node_t:
@@ -127,6 +90,43 @@ class node_t:
 };
 
 } // namespace service
+
+namespace io {
+
+struct node_tag;
+
+namespace node {
+    struct start_app {
+        typedef node_tag tag;
+
+        typedef boost::mpl::list<
+            /* runlist */ std::map<std::string, std::string>
+        > tuple_type;
+    };
+
+    struct pause_app {
+        typedef node_tag tag;
+
+        typedef boost::mpl::list<
+            /* applist */ std::vector<std::string>
+        > tuple_type;
+    };
+
+    struct info {
+        typedef node_tag tag;
+    };
+}
+
+template<>
+struct protocol<node_tag> {
+    typedef mpl::list<
+        node::start_app,
+        node::pause_app,
+        node::info
+    > type;
+};
+
+} // namespace io
 
 } // namespace cocaine
 
