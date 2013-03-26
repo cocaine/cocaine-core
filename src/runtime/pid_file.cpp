@@ -18,7 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/runtime/pid_file.hpp"
+#include "cocaine/detail/runtime/pid_file.hpp"
 
 #include <csignal>
 

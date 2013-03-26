@@ -21,7 +21,7 @@
 #ifndef COCAINE_IO_BUFFERED_WRITABLE_STREAM_HPP
 #define COCAINE_IO_BUFFERED_WRITABLE_STREAM_HPP
 
-#include "cocaine/asio/service.hpp"
+#include "cocaine/asio/reactor.hpp"
 
 #include <cstring>
 #include <mutex>
@@ -35,10 +35,9 @@ struct writable_stream:
     typedef Socket socket_type;
     typedef typename socket_type::endpoint_type endpoint_type;
 
-    writable_stream(service_t& service,
-                    endpoint_type endpoint):
+    writable_stream(reactor_t& reactor, endpoint_type endpoint):
         m_socket(std::make_shared<socket_type>(endpoint)),
-        m_socket_watcher(service.loop()),
+        m_socket_watcher(reactor.native()),
         m_tx_offset(0),
         m_wr_offset(0)
     {
@@ -46,10 +45,9 @@ struct writable_stream:
         m_ring.resize(65536);
     }
 
-    writable_stream(service_t& service,
-                    const std::shared_ptr<socket_type>& socket):
+    writable_stream(reactor_t& reactor, const std::shared_ptr<socket_type>& socket):
         m_socket(socket),
-        m_socket_watcher(service.loop()),
+        m_socket_watcher(reactor.native()),
         m_tx_offset(0),
         m_wr_offset(0)
     {

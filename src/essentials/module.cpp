@@ -22,6 +22,7 @@
 #include "cocaine/essentials/loggers/files.hpp"
 #include "cocaine/essentials/loggers/stdout.hpp"
 #include "cocaine/essentials/loggers/syslog.hpp"
+#include "cocaine/essentials/services/locator.hpp"
 #include "cocaine/essentials/services/logging.hpp"
 #include "cocaine/essentials/services/node.hpp"
 #include "cocaine/essentials/storages/files.hpp"
@@ -35,6 +36,7 @@ extern "C" {
         repository.insert<logger::files_t>("files");
         repository.insert<logger::stdout_t>("stdout");
         repository.insert<logger::syslog_t>("syslog");
+        repository.insert<service::locator_t>("locator");
         repository.insert<service::logging_t>("logging");
         repository.insert<service::node_t>("node");
         repository.insert<storage::files_t>("files");

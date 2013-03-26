@@ -21,7 +21,7 @@
 #ifndef COCAINE_IO_CONNECTOR_HPP
 #define COCAINE_IO_CONNECTOR_HPP
 
-#include "cocaine/asio/service.hpp"
+#include "cocaine/asio/reactor.hpp"
 
 #include <functional>
 
@@ -35,18 +35,16 @@ struct connector:
     typedef typename acceptor_type::endpoint_type endpoint_type;
     typedef typename acceptor_type::socket_type socket_type;
 
-    connector(service_t& service,
-              endpoint_type endpoint):
+    connector(reactor_t& reactor, endpoint_type endpoint):
         m_acceptor(new acceptor_type(endpoint)),
-        m_acceptor_watcher(service.loop())
+        m_acceptor_watcher(reactor.native())
     {
         m_acceptor_watcher.set<connector, &connector::on_event>(this);
     }
 
-    connector(service_t& service,
-              std::unique_ptr<acceptor_type>&& acceptor):
+    connector(reactor_t& reactor, std::unique_ptr<acceptor_type>&& acceptor):
         m_acceptor(std::move(acceptor)),
-        m_acceptor_watcher(service.loop())
+        m_acceptor_watcher(reactor.native())
     {
         m_acceptor_watcher.set<connector, &connector::on_event>(this);
     }

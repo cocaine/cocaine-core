@@ -31,13 +31,12 @@ namespace cocaine { namespace io {
 
 template<class Socket>
 struct channel {
-    channel(service_t& service,
-            const std::shared_ptr<Socket>& socket):
+    channel(reactor_t& reactor, const std::shared_ptr<Socket>& socket):
         rd(new decoder<readable_stream<Socket>>()),
         wr(new encoder<writable_stream<Socket>>())
     {
-        rd->attach(std::make_shared<readable_stream<Socket>>(service, socket));
-        wr->attach(std::make_shared<writable_stream<Socket>>(service, socket));
+        rd->attach(std::make_shared<readable_stream<Socket>>(reactor, socket));
+        wr->attach(std::make_shared<writable_stream<Socket>>(reactor, socket));
     }
 
     std::unique_ptr<decoder<readable_stream<Socket>>> rd;

@@ -24,7 +24,6 @@
 
 #include <cerrno>
 #include <cstring>
-#include <system_error>
 
 #include <boost/filesystem/convenience.hpp>
 #include <boost/filesystem/fstream.hpp>

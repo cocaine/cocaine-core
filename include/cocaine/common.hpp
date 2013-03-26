@@ -21,12 +21,13 @@
 #ifndef COCAINE_COMMON_HPP
 #define COCAINE_COMMON_HPP
 
-#if !defined(__clang__) && (defined(__GNUC__) && (__GNUC__ == 4 && __GNUC_MINOR__ < 6))
+#include "cocaine/platform.hpp"
+
+#if !defined(__clang__) && !defined(HAVE_GCC46)
     #define nullptr __null
 #endif
 
-#include <stdint.h>
-
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <string>

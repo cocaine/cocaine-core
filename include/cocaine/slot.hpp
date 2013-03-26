@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_ACTOR_SLOT_HPP
-#define COCAINE_ACTOR_SLOT_HPP
+#ifndef COCAINE_DISPATCH_SLOT_HPP
+#define COCAINE_DISPATCH_SLOT_HPP
 
 #include "cocaine/common.hpp"
 #include "cocaine/traits.hpp"
@@ -270,6 +270,10 @@ private:
         write(const T& value) {
             std::unique_lock<std::mutex> lock(m_mutex);
 
+            if(m_completed) {
+                return;
+            }
+
             io::type_traits<T>::pack(m_packer, value);
 
             if(m_upstream) {
@@ -282,6 +286,24 @@ private:
 
         void
         abort(const std::exception_ptr& e) {
+            std::unique_lock<std::mutex> lock(m_mutex);
+            
+            if(m_completed) {
+                return;
+            }
+
+            if(m_upstream) {
+                try {
+                    std::rethrow_exception(e);
+                } catch(const std::exception& e) {
+                    m_upstream->error(invocation_error, e.what());
+                    m_upstream->close();
+                }
+            } else {
+                m_e = e;
+            }
+
+            m_completed = true;
         }
 
         void
@@ -291,16 +313,26 @@ private:
             m_upstream = upstream;
 
             if(m_completed) {
-                m_upstream->write(m_buffer.data(), m_buffer.size());
-                m_upstream->close();
+                if(!m_e) {
+                    m_upstream->write(m_buffer.data(), m_buffer.size());
+                    m_upstream->close();
+                } else {
+                    try {
+                        std::rethrow_exception(m_e);
+                    } catch(const std::exception& e) {
+                        m_upstream->error(invocation_error, e.what());
+                        m_upstream->close();
+                    }
+                }
             }
         }
 
     private:
         msgpack::sbuffer m_buffer;
         msgpack::packer<msgpack::sbuffer> m_packer;
-
+        std::exception_ptr m_e;
         bool m_completed;
+
         api::stream_ptr_t m_upstream;
         std::mutex m_mutex;
     };

@@ -18,7 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/session.hpp"
+#include "cocaine/detail/session.hpp"
 
 using namespace cocaine::engine;
 using namespace cocaine::io;

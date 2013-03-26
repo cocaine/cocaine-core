@@ -60,7 +60,7 @@ struct socket:
         m_fd(fd)
     { }
 
-    ~socket() {
+   ~socket() {
         if(m_fd >= 0 && ::close(m_fd) != 0) {
             // Log.
         }

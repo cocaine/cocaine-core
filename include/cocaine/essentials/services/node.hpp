@@ -22,7 +22,7 @@
 #define COCAINE_NODE_SERVICE_HPP
 
 #include "cocaine/api/service.hpp"
-#include "cocaine/asio/service.hpp"
+#include "cocaine/asio/reactor.hpp"
 
 #include <chrono>
 
@@ -74,7 +74,7 @@ class node_t:
 {
     public:
         node_t(context_t& context,
-               io::service_t& service,
+               io::reactor_t& reactor,
                const std::string& name,
                const Json::Value& args);
 
@@ -119,7 +119,7 @@ class node_t:
         app_map_t m_apps;
 
         // Uptime.
-#if defined(__clang__) || (defined(__GNUC__) && (__GNUC__ == 4 && __GNUC_MINOR__ > 6))
+#if defined(__clang__) || defined(HAVE_GCC47)
         const std::chrono::steady_clock::time_point m_birthstamp;
 #else
         const std::chrono::monotonic_clock::time_point m_birthstamp;

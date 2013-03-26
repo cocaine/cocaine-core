@@ -22,10 +22,6 @@
 #define COCAINE_IO_MESSAGES_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/json.hpp"
-#include "cocaine/unique_id.hpp"
-
-#include "cocaine/rpc/protocol.hpp"
 
 namespace cocaine { namespace io {
 
@@ -36,7 +32,7 @@ namespace rpc {
         typedef rpc_tag tag;
 
         typedef boost::mpl::list<
-            /* client id */ unique_id_t
+            /* peer id */ std::string
         > tuple_type;
     };
 
@@ -98,35 +94,6 @@ struct protocol<rpc_tag> {
         rpc::chunk,
         rpc::error,
         rpc::choke
-    >::type type;
-};
-
-struct control_tag;
-
-namespace control {
-    struct report {
-        typedef control_tag tag;
-    };
-
-    struct info {
-        typedef control_tag tag;
-
-        typedef boost::mpl::list<
-            /* info */ Json::Value
-        > tuple_type;
-    };
-
-    struct terminate {
-        typedef control_tag tag;
-    };
-}
-
-template<>
-struct protocol<control_tag> {
-    typedef boost::mpl::list<
-        control::report,
-        control::info,
-        control::terminate
     >::type type;
 };
 

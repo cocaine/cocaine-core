@@ -18,34 +18,21 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_PROCESS_ISOLATE_HPP
-#define COCAINE_PROCESS_ISOLATE_HPP
+#ifndef COCAINE_PLATFORM_HPP
+#define COCAINE_PLATFORM_HPP
 
-#include "cocaine/api/isolate.hpp"
+#if defined(__GNUC__)
+    #if __GNUC__ == 4 && __GNUC_MINOR__ >= 4
+        #define HAVE_GCC44
+    #endif
 
-namespace cocaine { namespace isolate {
+    #if __GNUC__ == 4 && __GNUC_MINOR__ >= 6
+        #define HAVE_GCC46
+    #endif
 
-class process_t:
-    public api::isolate_t
-{
-    public:
-        process_t(context_t& context,
-                  const std::string& name,
-                  const Json::Value& args);
-
-        virtual
-       ~process_t();
-
-        virtual
-        std::unique_ptr<api::handle_t>
-        spawn(const std::string& path,
-              const std::map<std::string, std::string>& args,
-              const std::map<std::string, std::string>& environment);
-
-    private:
-        std::unique_ptr<logging::log_t> m_log;
-};
-
-}} // namespace cocaine::isolate
+    #if __GNUC__ == 4 && __GNUC_MINOR__ >= 7
+        #define HAVE_GCC47
+    #endif
+#endif
 
 #endif

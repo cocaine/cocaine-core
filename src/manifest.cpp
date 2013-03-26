@@ -18,9 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/manifest.hpp"
-
-#include "cocaine/traits/json.hpp"
+#include "cocaine/detail/manifest.hpp"
+#include "cocaine/detail/traits/json.hpp"
 
 #include <boost/filesystem/operations.hpp>
 

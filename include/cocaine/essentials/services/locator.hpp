@@ -18,45 +18,50 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_UNIQUE_ID_TYPE_TRAITS_HPP
-#define COCAINE_UNIQUE_ID_TYPE_TRAITS_HPP
+#ifndef COCAINE_LOCATOR_SERVICE_HPP
+#define COCAINE_LOCATOR_SERVICE_HPP
 
-#include "cocaine/traits.hpp"
+#include "cocaine/api/service.hpp"
 
-#include "cocaine/unique_id.hpp"
+namespace cocaine {
 
-namespace cocaine { namespace io {
+namespace io {
+
+struct locator_tag;
+
+namespace locator {
+    struct resolve {
+        typedef locator_tag tag;
+
+        typedef boost::mpl::list<
+            /* service */ std::string
+        > tuple_type;
+    };
+}
 
 template<>
-struct type_traits<unique_id_t> {
-    template<class Stream>
-    static inline
-    void
-    pack(msgpack::packer<Stream>& packer,
-         const unique_id_t& source)
-    {
-        packer.pack_array(2);
-
-        packer << source.uuid[0];
-        packer << source.uuid[1];
-    }
-
-    static inline
-    void
-    unpack(const msgpack::object& object,
-           unique_id_t& target)
-    {
-        if(object.type != msgpack::type::ARRAY ||
-           object.via.array.size != 2)
-        {
-            throw msgpack::type_error();
-        }
-
-        object.via.array.ptr[0] >> target.uuid[0];
-        object.via.array.ptr[1] >> target.uuid[1];
-    }
+struct protocol<locator_tag> {
+    typedef mpl::list<
+        locator::resolve
+    > type;
 };
 
-}} // namespace cocaine::io
+} // namespace io
+
+namespace service {
+
+class locator_t:
+    public api::service_t
+{
+    public:
+        locator_t(context_t& context,
+                  io::reactor_t& reactor,
+                  const std::string& name,
+                  const Json::Value& args);
+};
+
+} // namespace service
+
+} // namespace cocaine
 
 #endif

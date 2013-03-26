@@ -69,7 +69,7 @@ class app_t:
 
         // Control
 
-        std::unique_ptr<io::service_t> m_service;
+        std::unique_ptr<io::reactor_t> m_reactor;
         std::unique_ptr<io::channel<io::socket<io::local>>> m_channel;
 
         // Engine
@@ -79,9 +79,9 @@ class app_t:
 
         // Drivers
 
-        typedef boost::unordered_map<
+        typedef std::map<
             std::string,
-            std::unique_ptr<api::driver_t>
+            std::shared_ptr<api::driver_t>
         > driver_map_t;
 
         driver_map_t m_drivers;

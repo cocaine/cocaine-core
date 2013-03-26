@@ -26,15 +26,17 @@
 #include <tuple>
 
 using namespace cocaine;
+using namespace cocaine::io;
 using namespace cocaine::logging;
 using namespace cocaine::service;
+
 using namespace std::placeholders;
 
 logging_t::logging_t(context_t& context,
-                     io::service_t& service,
+                     reactor_t& reactor,
                      const std::string& name,
                      const Json::Value& args):
-    category_type(context, service, name, args),
+    category_type(context, reactor, name, args),
     m_context(context)
 {
     on<io::logging::emit>("emit", std::bind(&logging_t::on_emit, this, _1, _2, _3));

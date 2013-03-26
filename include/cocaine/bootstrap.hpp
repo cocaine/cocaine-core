@@ -18,34 +18,32 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_PROCESS_ISOLATE_HPP
-#define COCAINE_PROCESS_ISOLATE_HPP
+#ifndef COCAINE_BOOTSTRAP_HPP
+#define COCAINE_BOOTSTRAP_HPP
 
-#include "cocaine/api/isolate.hpp"
+#include <cocaine/common.hpp>
 
-namespace cocaine { namespace isolate {
+namespace cocaine {
 
-class process_t:
-    public api::isolate_t
-{
+class actor_t;
+
+class bootstrap_t {
     public:
-        process_t(context_t& context,
-                  const std::string& name,
-                  const Json::Value& args);
-
-        virtual
-       ~process_t();
-
-        virtual
-        std::unique_ptr<api::handle_t>
-        spawn(const std::string& path,
-              const std::map<std::string, std::string>& args,
-              const std::map<std::string, std::string>& environment);
+        bootstrap_t(context_t& context);
+       ~bootstrap_t();
 
     private:
+        context_t& m_context;
         std::unique_ptr<logging::log_t> m_log;
+
+        typedef std::vector<
+            std::pair<std::string, std::unique_ptr<actor_t>>
+        > service_list_t;
+
+        // Services.
+        service_list_t m_services;
 };
 
-}} // namespace cocaine::isolate
+}
 
 #endif

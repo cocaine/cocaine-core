@@ -18,9 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/profile.hpp"
-
-#include "cocaine/traits/json.hpp"
+#include "cocaine/detail/profile.hpp"
+#include "cocaine/detail/traits/json.hpp"
 
 using namespace cocaine;
 using namespace cocaine::engine;

@@ -34,7 +34,7 @@ namespace cocaine { namespace io {
 
 struct tcp {
     // typedef acceptor<tcp> acceptor;
-    // typedef pipe<tcp> pipe;
+    // typedef socket<tcp> socket;
 
     struct endpoint {
         typedef sockaddr    base_type;

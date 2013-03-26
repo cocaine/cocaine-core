@@ -132,8 +132,8 @@ repository_t::get(const std::string& type,
                   Args&&... args)
 {
     const std::string id = typeid(Category).name();
-
     const factory_map_t& factories = m_categories[id];
+
     factory_map_t::const_iterator it = factories.find(type);
 
     if(it == factories.end()) {
@@ -143,9 +143,7 @@ repository_t::get(const std::string& type,
     // TEST: Ensure that the plugin is of the actually specified category.
     BOOST_ASSERT(it->second->id() == typeid(Category));
 
-    typedef category_traits<Category> traits;
-
-    return dynamic_cast<typename traits::factory_type&>(
+    return dynamic_cast<typename category_traits<Category>::factory_type&>(
         *it->second
     ).get(std::forward<Args>(args)...);
 }

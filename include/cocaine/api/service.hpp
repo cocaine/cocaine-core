@@ -28,6 +28,8 @@
 
 namespace cocaine { namespace api {
 
+using io::reactor_t;
+
 class service_t:
     public dispatch_t
 {
@@ -36,7 +38,7 @@ class service_t:
 
     protected:
         service_t(context_t& context,
-                  io::service_t& /* service */,
+                  reactor_t&,
                   const std::string& name,
                   const Json::Value& /* args */):
             dispatch_t(context, name)
@@ -53,7 +55,7 @@ struct category_traits<service_t> {
         virtual
         ptr_type
         get(context_t& context,
-            io::service_t& service,
+            io::reactor_t& reactor,
             const std::string& name,
             const Json::Value& args) = 0;
     };
@@ -65,12 +67,12 @@ struct category_traits<service_t> {
         virtual
         ptr_type
         get(context_t& context,
-            io::service_t& service,
+            io::reactor_t& reactor,
             const std::string& name,
             const Json::Value& args)
         {
             return ptr_type(
-                new T(context, service, name, args)
+                new T(context, reactor, name, args)
             );
         }
     };

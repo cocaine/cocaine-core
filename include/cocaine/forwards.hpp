@@ -68,7 +68,7 @@ namespace cocaine {
 
         // I/O privimites
 
-        struct service_t;
+        struct reactor_t;
 
         template<class>
         struct connector;

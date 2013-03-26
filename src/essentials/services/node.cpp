@@ -22,19 +22,19 @@
 
 #include "cocaine/api/storage.hpp"
 
-#include "cocaine/asio/service.hpp"
-
 #include "cocaine/app.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
-#include "cocaine/traits/json.hpp"
+#include "cocaine/detail/traits/json.hpp"
 
 #include <tuple>
 
 using namespace cocaine;
+using namespace cocaine::io;
 using namespace cocaine::logging;
 using namespace cocaine::service;
+
 using namespace std::placeholders;
 
 namespace {
@@ -45,16 +45,16 @@ namespace {
 }
 
 node_t::node_t(context_t& context,
-               io::service_t& service,
+               reactor_t& reactor,
                const std::string& name,
                const Json::Value& args):
-    category_type(context, service, name, args),
+    category_type(context, reactor, name, args),
     m_context(context),
     m_log(new log_t(context, name)),
     m_zmq_context(1),
     m_announces(m_zmq_context, ZMQ_PUB),
-    m_announce_timer(service.loop()),
-#if defined(__clang__) || (defined(__GNUC__) && (__GNUC__ == 4 && __GNUC_MINOR__ > 6))
+    m_announce_timer(reactor.native()),
+#if defined(__clang__) || defined(HAVE_GCC47)
     m_birthstamp(std::chrono::steady_clock::now())
 #else
     m_birthstamp(std::chrono::monotonic_clock::now())
@@ -290,11 +290,13 @@ node_t::on_info() const {
 
     result["identity"] = m_context.config.network.hostname;
 
-    auto uptime = std::chrono::duration_cast<std::chrono::seconds>(
-#if defined(__clang__) || (defined(__GNUC__) && (__GNUC__ == 4 && __GNUC_MINOR__ > 6))
-        std::chrono::steady_clock::now() - m_birthstamp
+    using namespace std::chrono;
+
+    auto uptime = duration_cast<seconds>(
+#if defined(__clang__) || defined(HAVE_GCC47)
+        steady_clock::now() - m_birthstamp
 #else
-        std::chrono::monotonic_clock::now() - m_birthstamp
+        monotonic_clock::now() - m_birthstamp
 #endif
     );
 

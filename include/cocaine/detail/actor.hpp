@@ -24,7 +24,7 @@
 #include "cocaine/common.hpp"
 #include "cocaine/json.hpp"
 
-#include "cocaine/asio/service.hpp"
+#include "cocaine/asio/reactor.hpp"
 
 #include <set>
 #include <thread>
@@ -38,7 +38,7 @@ class actor_t:
 {
     public:
         actor_t(std::unique_ptr<dispatch_t>&& dispatch,
-                std::unique_ptr<io::service_t>&& service,
+                std::unique_ptr<io::reactor_t>&& reactor,
                 const Json::Value& args);
 
        ~actor_t();
@@ -69,7 +69,7 @@ class actor_t:
 
         // Event loop
 
-        std::unique_ptr<io::service_t> m_service;
+        std::unique_ptr<io::reactor_t> m_reactor;
         ev::async m_terminate;
 
         // Actor I/O

@@ -19,14 +19,13 @@
 */
 
 #include "cocaine/common.hpp"
-#include "cocaine/actor.hpp"
-#include "cocaine/api/service.hpp"
-#include "cocaine/asio/service.hpp"
 #include "cocaine/context.hpp"
-#include "cocaine/logging.hpp"
+#include "cocaine/bootstrap.hpp"
+
+#include "cocaine/asio/reactor.hpp"
 
 #ifndef __APPLE__
-    #include "cocaine/runtime/pid_file.hpp"
+    #include "cocaine/detail/runtime/pid_file.hpp"
 #endif
 
 #include <csignal>
@@ -36,113 +35,49 @@
 #include <boost/program_options.hpp>
 
 using namespace cocaine;
-using namespace cocaine::logging;
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
 namespace {
     struct runtime_t {
-        runtime_t(context_t& context):
-            m_context(context),
-            m_log(new log_t(context, "runtime"))
-        {
-            m_sigint.set<runtime_t, &runtime_t::on_terminate>(this);
+        runtime_t() {
+            m_sigint.set<runtime_t, &runtime_t::terminate>(this);
             m_sigint.start(SIGINT);
 
-            m_sigterm.set<runtime_t, &runtime_t::on_terminate>(this);
+            m_sigterm.set<runtime_t, &runtime_t::terminate>(this);
             m_sigterm.start(SIGTERM);
 
-            m_sigquit.set<runtime_t, &runtime_t::on_terminate>(this);
+            m_sigquit.set<runtime_t, &runtime_t::terminate>(this);
             m_sigquit.start(SIGQUIT);
 
             sigset_t signals;
 
-#ifdef _GNU_SOURCE
+        #ifdef _GNU_SOURCE
             ::sigemptyset(&signals);
             ::sigaddset(&signals, SIGPIPE);
-#else
+        #else
             // It appears that these functions are implemented as macros on MacOS X,
             // so global scope operator doesn't work.
             sigemptyset(&signals);
             sigaddset(&signals, SIGPIPE);
-#endif
+        #endif
 
             ::sigprocmask(SIG_BLOCK, &signals, nullptr);
-
-            COCAINE_LOG_INFO(
-                m_log,
-                "initializing %d %s",
-                m_context.config.services.size(),
-                m_context.config.services.size() == 1 ? "service" : "services"
-            );
-
-            auto it = m_context.config.services.begin(),
-                 end = m_context.config.services.end();
-
-            for(; it != end; ++it) {
-                auto loop = std::unique_ptr<io::service_t>(new io::service_t());
-
-                try {
-                    m_services.emplace_back(
-                        it->first,
-                        std::unique_ptr<actor_t>(new actor_t(
-                            m_context.get<api::service_t>(
-                                it->second.type,
-                                m_context,
-                                *loop,
-                                cocaine::format("service/%s", it->first),
-                                it->second.args
-                            ),
-                            std::move(loop),
-                            it->second.args
-                        ))
-                    );
-                } catch(const cocaine::error_t& e) {
-                    throw cocaine::error_t(
-                        "unable to initialize the '%s' service - %s",
-                        it->first,
-                        e.what()
-                    );
-                }
-            }
-        }
-
-        ~runtime_t() {
-            for(service_list_t::reverse_iterator it = m_services.rbegin();
-                it != m_services.rend();
-                ++it)
-            {
-                COCAINE_LOG_INFO(m_log, "stopping the '%s' service", it->first);
-                it->second->terminate();
-            }
-
-            m_services.clear();
         }
 
         void
         run() {
-            for(service_list_t::iterator it = m_services.begin();
-                it != m_services.end();
-                ++it)
-            {
-                COCAINE_LOG_INFO(m_log, "starting the '%s' service", it->first);
-                it->second->run();
-            }
-
             m_loop.loop();
         }
 
     private:
         void
-        on_terminate(ev::sig&, int) {
+        terminate(ev::sig&, int) {
             m_loop.unloop(ev::ALL);
         }
 
     private:
-        context_t& m_context;
-        std::unique_ptr<log_t> m_log;
-
         // Main event loop, able to handle signals.
         ev::default_loop m_loop;
 
@@ -150,17 +85,11 @@ namespace {
         ev::sig m_sigint;
         ev::sig m_sigterm;
         ev::sig m_sigquit;
-
-        typedef std::vector<
-            std::pair<std::string, std::unique_ptr<actor_t>>
-        > service_list_t;
-
-        // Services.
-        service_list_t m_services;
     };
 }
 
-int main(int argc, char * argv[]) {
+int
+main(int argc, char * argv[]) {
     po::options_description general_options("General options");
     po::variables_map vm;
 
@@ -248,6 +177,8 @@ int main(int argc, char * argv[]) {
     }
 #endif
 
+    runtime_t runtime;
+
     std::unique_ptr<context_t> context;
 
     try {
@@ -261,20 +192,20 @@ int main(int argc, char * argv[]) {
         return EXIT_FAILURE;
     }
 
-    std::unique_ptr<runtime_t> runtime;
+    std::unique_ptr<bootstrap_t> bootstrap;
 
     try {
-        runtime.reset(new runtime_t(*context));
+        bootstrap.reset(new bootstrap_t(*context));
     } catch(const cocaine::error_t& e) {
         std::cerr << cocaine::format(
-            "ERROR: unable to initialize the runtime - %s.",
+            "ERROR: unable to bootstrap the services - %s.",
             e.what()
         ) << std::endl;
 
         return EXIT_FAILURE;
     }
 
-    runtime->run();
+    runtime.run();
 
     return EXIT_SUCCESS;
 }

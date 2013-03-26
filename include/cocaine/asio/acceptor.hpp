@@ -36,9 +36,7 @@ struct acceptor:
     // Type of the socket this acceptor yields on a new connection.
     typedef socket<medium_type> socket_type;
 
-    acceptor(endpoint_type endpoint,
-             int backlog = 1024)
-    {
+    acceptor(endpoint_type endpoint, int backlog = 1024) {
         medium_type medium;
 
         m_fd = ::socket(medium.family(), medium.type(), medium.protocol());
@@ -59,7 +57,7 @@ struct acceptor:
         }
     }
 
-    ~acceptor() {
+   ~acceptor() {
         if(m_fd >= 0 && ::close(m_fd) != 0) {
             // Log.
         }

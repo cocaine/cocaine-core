@@ -18,7 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/auth.hpp"
+#include "cocaine/detail/auth.hpp"
 
 #include "cocaine/api/storage.hpp"
 
@@ -98,7 +98,7 @@ auth_t::~auth_t() {
     EVP_MD_CTX_destroy(m_evp_md_context);
 }
 
-/* TODO: Gotta invent something sophisticated here.
+/*
 std::string auth_t::sign(const std::string& message,
                          const std::string& username) const
 {

@@ -63,6 +63,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/app
     src/archive
     src/auth
+    src/bootstrap
     src/context
     src/dispatch
     src/engine
@@ -111,7 +112,7 @@ SET_TARGET_PROPERTIES(essentials PROPERTIES
 
 ADD_EXECUTABLE(cocaine-runtime
     src/runtime/pid_file
-    src/runtime/bootstrap)
+    src/runtime/runtime)
 
 TARGET_LINK_LIBRARIES(cocaine-runtime
     boost_program_options-mt

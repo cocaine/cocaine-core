@@ -21,7 +21,7 @@
 #ifndef COCAINE_IO_BUFFERED_READABLE_STREAM_HPP
 #define COCAINE_IO_BUFFERED_READABLE_STREAM_HPP
 
-#include "cocaine/asio/service.hpp"
+#include "cocaine/asio/reactor.hpp"
 
 #include <cstring>
 #include <functional>
@@ -35,10 +35,9 @@ struct readable_stream:
     typedef Socket socket_type;
     typedef typename socket_type::endpoint_type endpoint_type;
 
-    readable_stream(service_t& service,
-                    endpoint_type endpoint):
+    readable_stream(reactor_t& reactor, endpoint_type endpoint):
         m_socket(std::make_shared<socket_type>(endpoint)),
-        m_socket_watcher(service.loop()),
+        m_socket_watcher(reactor.native()),
         m_rd_offset(0),
         m_rx_offset(0)
     {
@@ -46,10 +45,9 @@ struct readable_stream:
         m_ring.resize(65536);
     }
 
-    readable_stream(service_t& service,
-                    const std::shared_ptr<socket_type>& socket):
+    readable_stream(reactor_t& reactor, const std::shared_ptr<socket_type>& socket):
         m_socket(socket),
-        m_socket_watcher(service.loop()),
+        m_socket_watcher(reactor.native()),
         m_rd_offset(0),
         m_rx_offset(0)
     {
@@ -57,7 +55,7 @@ struct readable_stream:
         m_ring.resize(65536);
     }
 
-    ~readable_stream() {
+   ~readable_stream() {
         BOOST_ASSERT(m_rd_offset == m_rx_offset);
     }
 

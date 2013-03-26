@@ -18,12 +18,10 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_IO_SERVICE_HPP
-#define COCAINE_IO_SERVICE_HPP
+#ifndef COCAINE_IO_REACTOR_HPP
+#define COCAINE_IO_REACTOR_HPP
 
 #include "cocaine/common.hpp"
-
-#include <mutex>
 
 #define EV_MINIMAL       0
 #define EV_USE_MONOTONIC 1
@@ -35,10 +33,12 @@
 
 namespace cocaine { namespace io {
 
-struct service_t:
+struct reactor_t:
     boost::noncopyable
 {
-    service_t():
+    typedef ev::loop_ref native_type;
+
+    reactor_t():
         m_loop(new ev::dynamic_loop())
     { }
 
@@ -48,56 +48,18 @@ struct service_t:
     }
 
     void
-    run(float timeout) {
-        ev::timer timer(loop());
-
-        timer.set<service_t, &service_t::on_timeout>(this);
-        timer.start(timeout);
-
-        run();
-    }
-
-    void
     stop() {
         m_loop->unloop(ev::ALL);
     }
 
-    // Lockable concept implementation
-
-    void
-    lock() {
-        m_mutex.lock();
-    }
-
-    void
-    unlock() {
-        m_mutex.unlock();
-    }
-
 public:
-    ev::loop_ref&
-    loop() {
-        return *m_loop;
-    }
-
-    const ev::loop_ref&
-    loop() const {
+    native_type&
+    native() {
         return *m_loop;
     }
 
 private:
-    void
-    on_timeout(ev::timer&, int) {
-        stop();
-        throw cocaine::error_t("operation has timed out");
-    }
-
-private:
-    std::unique_ptr<ev::loop_ref> m_loop;
-
-    // NOTE: Rumor says the event loop has to be interlocked for watcher
-    // operations, but for some reason it works fine without it.
-    std::mutex m_mutex;
+    std::unique_ptr<native_type> m_loop;
 };
 
 }} // namespace cocaine::io

@@ -18,13 +18,21 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_ATOMIC_HPP
-#define COCAINE_ATOMIC_HPP
+#include "cocaine/essentials/services/locator.hpp"
 
-#if defined(__clang__) || (defined(__GNUC__) && (__GNUC__ == 4 && __GNUC_MINOR__ > 4))
-    #include <atomic>
-#else
-    #include <cstdatomic>
-#endif
+#include "cocaine/context.hpp"
+#include "cocaine/logging.hpp"
 
-#endif
+using namespace cocaine;
+using namespace cocaine::io;
+using namespace cocaine::logging;
+using namespace cocaine::service;
+
+using namespace std::placeholders;
+
+locator_t::locator_t(context_t& context,
+                     reactor_t& reactor,
+                     const std::string& name,
+                     const Json::Value& args):
+    category_type(context, reactor, name, args)
+{ }
