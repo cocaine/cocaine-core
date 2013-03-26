@@ -20,7 +20,6 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/context.hpp"
-#include "cocaine/bootstrap.hpp"
 
 #include "cocaine/asio/reactor.hpp"
 
@@ -177,8 +176,6 @@ main(int argc, char * argv[]) {
     }
 #endif
 
-    runtime_t runtime;
-
     std::unique_ptr<context_t> context;
 
     try {
@@ -192,20 +189,7 @@ main(int argc, char * argv[]) {
         return EXIT_FAILURE;
     }
 
-    std::unique_ptr<bootstrap_t> bootstrap;
-
-    try {
-        bootstrap.reset(new bootstrap_t(*context));
-    } catch(const cocaine::error_t& e) {
-        std::cerr << cocaine::format(
-            "ERROR: unable to bootstrap the services - %s.",
-            e.what()
-        ) << std::endl;
-
-        return EXIT_FAILURE;
-    }
-
-    runtime.run();
+    runtime_t().run();
 
     return EXIT_SUCCESS;
 }

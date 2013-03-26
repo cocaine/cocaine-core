@@ -89,6 +89,8 @@ public:
 
 // Context
 
+class actor_t;
+
 class context_t:
     boost::noncopyable
 {
@@ -131,6 +133,14 @@ class context_t:
         // NOTE: As the loggers themselves are components, the repository
         // have to be initialized first without a logger, unfortunately.
         std::unique_ptr<logging::logger_concept_t> m_logger;
+
+        typedef std::vector<
+            std::pair<std::string, std::unique_ptr<actor_t>>
+        > service_list_t;
+
+        // NOTE: These are the instances of all the configured services, stored
+        // as a vector of pairs to preserve load ordering.
+        service_list_t m_services;
 };
 
 template<class Category, typename... Args>
