@@ -21,6 +21,9 @@
 #include "cocaine/context.hpp"
 
 #include "cocaine/api/logger.hpp"
+#include "cocaine/api/service.hpp"
+
+#include "cocaine/detail/actor.hpp"
 
 #include <cerrno>
 #include <cstring>
@@ -192,9 +195,10 @@ context_t::context_t(config_t config_,
                      const std::string& logger):
     config(config_)
 {
-    initialize();
+    m_repository.reset(new api::repository_t());
+    m_repository->load(config.path.plugins);
 
-    config_t::component_map_t::const_iterator it = config.loggers.find(logger);
+    auto it = config.loggers.find(logger);
 
     if(it == config.loggers.end()) {
         throw configuration_error_t("the '%s' logger is not configured", logger);
@@ -204,25 +208,92 @@ context_t::context_t(config_t config_,
         it->second.type,
         it->second.args
     );
+
+    initialize();
 }
 
 context_t::context_t(config_t config_,
                      std::unique_ptr<logging::logger_concept_t>&& logger):
     config(config_)
 {
-    initialize();
+    m_repository.reset(new api::repository_t());
+    m_repository->load(config.path.plugins);
 
     // NOTE: The context takes the ownership of the passed logger, so it will
     // become invalid at the calling site after this call.
     m_logger = std::move(logger);
+
+    initialize();
 }
 
 context_t::~context_t() {
-    // Empty.
+    auto blog = std::unique_ptr<logging::log_t>(
+        new logging::log_t(*this, "bootstrap")
+    );
+
+    for(service_list_t::reverse_iterator it = m_services.rbegin();
+        it != m_services.rend();
+        ++it)
+    {
+        COCAINE_LOG_INFO(blog, "stopping the '%s' service", it->first);
+
+        it->second->terminate();
+    }
+
+    m_services.clear();
 }
 
 void
 context_t::initialize() {
-    m_repository.reset(new api::repository_t());
-    m_repository->load(config.path.plugins);
+    auto blog = std::unique_ptr<logging::log_t>(
+        new logging::log_t(*this, "bootstrap")
+    );
+
+    COCAINE_LOG_INFO(
+        blog,
+        "initializing %d %s",
+        config.services.size(),
+        config.services.size() == 1 ? "service" : "services"
+    );
+
+    auto it = config.services.begin(),
+         end = config.services.end();
+
+    for(; it != end; ++it) {
+        auto reactor = std::unique_ptr<io::reactor_t>(
+            new io::reactor_t()
+        );
+
+        try {
+            m_services.emplace_back(
+                it->first,
+                std::unique_ptr<actor_t>(new actor_t(
+                    get<api::service_t>(
+                        it->second.type,
+                        *this,
+                        *reactor,
+                        cocaine::format("service/%s", it->first),
+                        it->second.args
+                    ),
+                    std::move(reactor),
+                    it->second.args
+                ))
+            );
+        } catch(const cocaine::error_t& e) {
+            throw cocaine::error_t(
+                "unable to initialize the '%s' service - %s",
+                it->first,
+                e.what()
+            );
+        }
+    }
+
+    for(service_list_t::iterator it = m_services.begin();
+        it != m_services.end();
+        ++it)
+    {
+        COCAINE_LOG_INFO(blog, "starting the '%s' service", it->first);
+
+        it->second->run();
+    }
 }

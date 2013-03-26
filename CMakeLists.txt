@@ -63,7 +63,6 @@ ADD_LIBRARY(cocaine-core SHARED
     src/app
     src/archive
     src/auth
-    src/bootstrap
     src/context
     src/dispatch
     src/engine
