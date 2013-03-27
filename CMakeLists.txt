@@ -66,6 +66,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/context
     src/dispatch
     src/engine
+    src/locator
     src/logging
     src/manifest
     src/profile
@@ -94,7 +95,6 @@ ADD_LIBRARY(essentials MODULE
     src/essentials/loggers/files
     src/essentials/loggers/stdout
     src/essentials/loggers/syslog
-    src/essentials/services/locator
     src/essentials/services/logging
     src/essentials/services/node
     src/essentials/storages/files

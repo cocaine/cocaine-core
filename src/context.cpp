@@ -24,6 +24,7 @@
 #include "cocaine/api/service.hpp"
 
 #include "cocaine/detail/actor.hpp"
+#include "cocaine/detail/locator.hpp"
 
 #include <cerrno>
 #include <cstring>
@@ -235,18 +236,6 @@ context_t::~context_t() {
 
     m_locator->terminate();
     m_locator.reset();
-
-    for(service_list_t::reverse_iterator it = m_services.rbegin();
-        it != m_services.rend();
-        ++it)
-    {
-        COCAINE_LOG_INFO(blog, "stopping the '%s' service", it->first);
-
-        // Terminate the service's thread.
-        it->second->terminate();
-    }
-
-    m_services.clear();
 }
 
 void
@@ -255,21 +244,9 @@ context_t::initialize() {
         new logging::log_t(*this, "bootstrap")
     );
 
-    auto reactor = std::unique_ptr<io::reactor_t>(
-        new io::reactor_t()
+    auto locator = std::unique_ptr<locator_t>(
+        new locator_t(*this)
     );
-
-    m_locator.reset(new actor_t(
-        get<api::service_t>(
-            "locator",
-            *this,
-            *reactor,
-            "service/locator",
-            Json::Value()
-        ),
-        std::move(reactor),
-        10053
-    ));
 
     COCAINE_LOG_INFO(
         blog,
@@ -282,12 +259,12 @@ context_t::initialize() {
          end = config.services.end();
 
     for(; it != end; ++it) {
-        reactor = std::unique_ptr<io::reactor_t>(
+        auto reactor = std::unique_ptr<io::reactor_t>(
             new io::reactor_t()
         );
 
         try {
-            m_services.emplace_back(
+            locator->attach(
                 it->first,
                 std::unique_ptr<actor_t>(new actor_t(
                     get<api::service_t>(
@@ -297,10 +274,9 @@ context_t::initialize() {
                         cocaine::format("service/%s", it->first),
                         it->second.args
                     ),
-                    std::move(reactor),
-                    it->second.args["port"].asUInt()
-                ))
-            );
+                    std::move(reactor)
+                )
+            ));
         } catch(const cocaine::error_t& e) {
             throw cocaine::error_t(
                 "unable to initialize the '%s' service - %s",
@@ -310,17 +286,13 @@ context_t::initialize() {
         }
     }
 
-    for(service_list_t::iterator it = m_services.begin();
-        it != m_services.end();
-        ++it)
-    {
-        COCAINE_LOG_INFO(blog, "publishing the '%s' service", it->first);
-
-        // Start the service's thread.
-        it->second->run();
-    }
-
     COCAINE_LOG_INFO(blog, "starting the service locator");
+
+    m_locator.reset(new actor_t(
+        std::move(locator),
+        std::unique_ptr<io::reactor_t>(new io::reactor_t()),
+        10053
+    ));
 
     m_locator->run();
 }

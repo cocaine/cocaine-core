@@ -22,11 +22,8 @@
 #define COCAINE_ENGINE_SLAVE_HPP
 
 #include "cocaine/common.hpp"
-
 #include "cocaine/api/isolate.hpp"
-
 #include "cocaine/asio/reactor.hpp"
-
 #include "cocaine/detail/unique_id.hpp"
 
 #include <chrono>
