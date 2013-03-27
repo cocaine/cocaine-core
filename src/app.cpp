@@ -66,6 +66,10 @@ app_t::app_t(context_t& context,
         deploy(name, path.string());
     }
 
+    if(!fs::exists(m_manifest->slave)) {
+        throw configuration_error_t("executable '%s' does not exist", m_manifest->slave);
+    }
+
     m_reactor.reset(new reactor_t());
 }
 

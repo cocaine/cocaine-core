@@ -40,16 +40,10 @@ manifest_t::manifest_t(context_t& context,
         name
     );
 
-    auto target = fs::complete(
+    slave = fs::complete(
         get("slave", "unspecified").asString(),
         fs::path(context.config.path.spool) / name
-    );
-
-    if(!fs::exists(target)) {
-        throw configuration_error_t("the '%s' slave executable file does not exist", slave);
-    }
-
-    slave = target.string();
+    ).string();
 
     sandbox = {
         get("type", "unspecified").asString(),
