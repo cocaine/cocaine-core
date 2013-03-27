@@ -53,6 +53,8 @@ const char defaults::plugins_path[]         = "/usr/lib/cocaine";
 const char defaults::runtime_path[]         = "/var/run/cocaine";
 const char defaults::spool_path[]           = "/var/spool/cocaine";
 
+const uint16_t defaults::locator_port       = 10053;
+
 // Config
 
 namespace {
@@ -274,7 +276,8 @@ context_t::initialize() {
                         cocaine::format("service/%s", it->first),
                         it->second.args
                     ),
-                    std::move(reactor)
+                    std::move(reactor),
+                    it->second.args.get("port", 0).asUInt()
                 )
             ));
         } catch(const cocaine::error_t& e) {
@@ -291,7 +294,7 @@ context_t::initialize() {
     m_locator.reset(new actor_t(
         std::move(locator),
         std::unique_ptr<io::reactor_t>(new io::reactor_t()),
-        10053
+        defaults::locator_port
     ));
 
     m_locator->run();

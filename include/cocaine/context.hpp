@@ -44,6 +44,9 @@ struct defaults {
     static const char plugins_path[];
     static const char runtime_path[];
     static const char spool_path[];
+
+    // Defaults for service locator.
+    static const uint16_t locator_port;
 };
 
 // Configuration
