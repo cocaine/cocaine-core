@@ -31,6 +31,20 @@ namespace cocaine {
 class dispatch_t:
     boost::noncopyable
 {
+#if BOOST_VERSION >= 103600
+    typedef boost::unordered_map<
+#else
+    typedef std::map<
+#endif
+        int,
+        std::shared_ptr<slot_concept_t>
+    > slot_map_t;
+
+    typedef std::map<
+        slot_map_t::key_type,
+        std::string
+    > id_map_t;
+
     public:
         dispatch_t(context_t& context,
                    const std::string& name);
@@ -50,17 +64,11 @@ class dispatch_t:
         invoke(const io::message_t& message,
                const api::stream_ptr_t& upstream);
 
+        id_map_t
+        describe();
+
     private:
         std::unique_ptr<logging::log_t> m_log;
-
-#if BOOST_VERSION >= 103600
-        typedef boost::unordered_map<
-#else
-        typedef std::map<
-#endif
-            int,
-            std::shared_ptr<slot_concept_t>
-        > slot_map_t;
 
         slot_map_t m_slots;
         std::mutex m_mutex;

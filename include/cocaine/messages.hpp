@@ -23,6 +23,7 @@
 
 #include "cocaine/common.hpp"
 
+#include <boost/mpl/int.hpp>
 #include <boost/mpl/list.hpp>
 
 namespace cocaine { namespace io {
@@ -88,6 +89,10 @@ namespace rpc {
 
 template<>
 struct protocol<rpc_tag> {
+    typedef boost::mpl::int_<
+        1
+    >::type version;
+
     typedef boost::mpl::list<
         rpc::handshake,
         rpc::heartbeat,
