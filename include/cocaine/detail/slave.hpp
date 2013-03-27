@@ -32,6 +32,8 @@ namespace cocaine { namespace engine {
 
 using io::reactor_t;
 
+struct session_t;
+
 class slave_t:
     boost::noncopyable
 {

@@ -22,9 +22,6 @@
 #define COCAINE_FORWARDS_HPP
 
 namespace cocaine {
-    // Runtime configuration.
-    struct config_t;
-
     // Runtime context.
     class context_t;
 
@@ -48,12 +45,8 @@ namespace cocaine {
         struct manifest_t;
         struct profile_t;
 
-        // Unit of execution.
-        struct session_t;
-
-        // Execution engine.
+        // App engine.
         class engine_t;
-        class slave_t;
     }
 
     namespace io {
@@ -110,8 +103,6 @@ namespace cocaine {
         struct logger_concept_t;
         struct log_t;
     }
-
-    struct unique_id_t;
 }
 
 #endif

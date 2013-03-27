@@ -35,6 +35,8 @@
 
 namespace cocaine {
 
+struct unique_id_t;
+
 namespace io {
 
 struct control_tag;
@@ -70,6 +72,8 @@ struct protocol<control_tag> {
 
 namespace engine {
 
+struct session_t;
+
 struct session_queue_t:
     public std::deque<std::shared_ptr<session_t>>
 {
@@ -91,6 +95,8 @@ struct session_queue_t:
 private:
     std::mutex m_mutex;
 };
+
+class slave_t;
 
 class engine_t:
     boost::noncopyable
