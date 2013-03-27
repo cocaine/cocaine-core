@@ -111,8 +111,6 @@ storage_t::get(const std::string& collection,
         io::type_traits<T>::unpack(unpacked.get(), result);
     } catch(const msgpack::type_error& e) {
         throw storage_error_t("object type mismatch");
-    } catch(const std::bad_cast& e) {
-        throw storage_error_t("object type mismatch");
     }
 
     return result;
