@@ -83,7 +83,7 @@ slave_t::slave_t(context_t& context,
     args["--endpoint"] = m_manifest.endpoint;
     args["--uuid"] = m_id.string();
 
-    COCAINE_LOG_DEBUG(m_log, "slave %s spawning %s", m_id, m_manifest.slave);
+    COCAINE_LOG_DEBUG(m_log, "slave %s spawning '%s'", m_id, m_manifest.slave);
 
     m_handle = isolate->spawn(m_manifest.slave, args, environment);
 }
