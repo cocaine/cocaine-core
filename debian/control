@@ -19,7 +19,7 @@ Package: libcocaine-dev
 Architecture: any
 Section: libdevel
 Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2 (= ${Source-Version}),
- libev-dev, libmsgpack-dev, libboost-dev, libltdl-dev, uuid-dev
+ libev-dev, libmsgpack-dev, libboost-dev, libltdl-dev
 Description: Cocaine - Development Headers
  Cocaine development headers package.
 
