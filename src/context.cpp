@@ -120,7 +120,6 @@ config_t::config_t(const std::string& config_path) {
 
     validate_path(runtime);
     validate_path(runtime / "engines");
-    validate_path(runtime / "services");
 
     validate_path(path.spool);
 
