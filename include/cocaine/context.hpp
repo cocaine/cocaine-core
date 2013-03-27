@@ -134,6 +134,10 @@ class context_t:
         // have to be initialized first without a logger, unfortunately.
         std::unique_ptr<logging::logger_concept_t> m_logger;
 
+        // NOTE: This is the magic service locator service. Have to be started first,
+        // and always listens on a well-known port.
+        std::unique_ptr<actor_t> m_locator;
+
         typedef std::vector<
             std::pair<std::string, std::unique_ptr<actor_t>>
         > service_list_t;

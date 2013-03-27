@@ -249,6 +249,24 @@ context_t::initialize() {
         new logging::log_t(*this, "bootstrap")
     );
 
+    COCAINE_LOG_INFO(blog, "starting the service locator");
+
+    auto reactor = std::unique_ptr<io::reactor_t>(
+        new io::reactor_t()
+    );
+
+    m_locator.reset(new actor_t(
+        get<api::service_t>(
+            "locator",
+            *this,
+            *reactor,
+            "service/locator",
+            Json::Value()
+        ),
+        std::move(reactor),
+        10053
+    ));
+
     COCAINE_LOG_INFO(
         blog,
         "starting %d %s",
@@ -260,7 +278,7 @@ context_t::initialize() {
          end = config.services.end();
 
     for(; it != end; ++it) {
-        auto reactor = std::unique_ptr<io::reactor_t>(
+        reactor = std::unique_ptr<io::reactor_t>(
             new io::reactor_t()
         );
 
@@ -276,7 +294,7 @@ context_t::initialize() {
                         it->second.args
                     ),
                     std::move(reactor),
-                    it->second.args
+                    it->second.args["port"].asUInt()
                 ))
             );
         } catch(const cocaine::error_t& e) {
