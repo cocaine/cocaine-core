@@ -86,13 +86,6 @@ namespace {
             return;
         }
 
-        type = manifest.get("type", "").asString();
-
-        if(type.empty()) {
-            std::cerr << "Error: no app type has been specified in the manifest." << std::endl;
-            return;
-        }
-
         fs::ifstream package_stream(
             package_path,
             std::fstream::binary | std::fstream::in
