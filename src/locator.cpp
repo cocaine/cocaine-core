@@ -32,8 +32,8 @@ using namespace cocaine::logging;
 using namespace std::placeholders;
 
 locator_t::locator_t(context_t& context):
-    dispatch_t(context, "locator"),
-    m_log(new log_t(context, "locator"))
+    dispatch_t(context, "service/locator"),
+    m_log(new log_t(context, "service/locator"))
 {
     on<locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
 }
