@@ -22,6 +22,7 @@
 #include "cocaine/detail/traits/json.hpp"
 
 #include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/path.hpp>
 
 using namespace cocaine;
 using namespace cocaine::engine;
@@ -39,11 +40,16 @@ manifest_t::manifest_t(context_t& context,
         name
     );
 
-    slave = get("slave", "unspecified").asString();
+    auto target = fs::complete(
+        get("slave", "unspecified").asString(),
+        fs::path(context.config.path.spool) / name
+    );
 
-    if(!fs::exists(fs::system_complete(slave))) {
+    if(!fs::exists(target)) {
         throw configuration_error_t("the '%s' slave executable file does not exist", slave);
     }
+
+    slave = target.string();
 
     sandbox = {
         get("type", "unspecified").asString(),

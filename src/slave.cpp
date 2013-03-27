@@ -83,6 +83,8 @@ slave_t::slave_t(context_t& context,
     args["--endpoint"] = m_manifest.endpoint;
     args["--uuid"] = m_id.string();
 
+    COCAINE_LOG_DEBUG(m_log, "slave %s spawning %s", m_id, m_manifest.slave);
+
     m_handle = isolate->spawn(m_manifest.slave, args, environment);
 }
 
@@ -437,7 +439,7 @@ slave_t::terminate() {
     BOOST_ASSERT(m_state != states::dead);
     BOOST_ASSERT(m_sessions.empty());
 
-    COCAINE_LOG_DEBUG(m_log, "slave %s is being terminated", m_id);
+    COCAINE_LOG_DEBUG(m_log, "slave %s has been terminated", m_id);
 
     m_heartbeat_timer.stop();
     m_idle_timer.stop();
