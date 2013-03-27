@@ -1,3 +1,14 @@
+cocaine-core (0.10.0-rc6) lucid; urgency=low
+
+  * Release candidate 6.
+  * Services and service discovery.
+  * Service autorun.
+  * Separation of private headers.
+  * Much less dependencies.
+  * No warnings with -pedantic.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 27 Mar 2013 22:46:47 +0400
+
 cocaine-core (0.10.0-rc5) lucid; urgency=low
 
   * Release candidate 5.
