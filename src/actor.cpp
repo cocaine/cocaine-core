@@ -134,6 +134,16 @@ actor_t::terminate() {
     m_thread.reset();
 }
 
+std::string
+actor_t::endpoint() const {
+    return m_connector->endpoint().string();
+}
+
+dispatch_t&
+actor_t::dispatch() {
+    return *m_dispatch;
+}
+
 void
 actor_t::on_connection(const std::shared_ptr<io::socket<tcp>>& socket_) {
     auto channel_ = std::make_shared<channel<io::socket<tcp>>>(*m_reactor, socket_);

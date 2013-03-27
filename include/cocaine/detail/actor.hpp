@@ -39,7 +39,7 @@ class actor_t:
     public:
         actor_t(std::unique_ptr<dispatch_t>&& dispatch,
                 std::unique_ptr<io::reactor_t>&& reactor,
-                uint16_t port);
+                uint16_t port = 0);
 
        ~actor_t();
 
@@ -48,6 +48,13 @@ class actor_t:
 
         void
         terminate();
+
+    public:
+        std::string
+        endpoint() const;
+
+        dispatch_t&
+        dispatch();
 
     private:
         void

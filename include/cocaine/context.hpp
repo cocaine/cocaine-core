@@ -135,16 +135,8 @@ class context_t:
         std::unique_ptr<logging::logger_concept_t> m_logger;
 
         // NOTE: This is the magic service locator service. Have to be started first,
-        // and always listens on a well-known port.
+        // stopped last, and always listens on a well-known port.
         std::unique_ptr<actor_t> m_locator;
-
-        typedef std::vector<
-            std::pair<std::string, std::unique_ptr<actor_t>>
-        > service_list_t;
-
-        // NOTE: These are the instances of all the configured services, stored
-        // as a vector of pairs to preserve initialization order.
-        service_list_t m_services;
 };
 
 template<class Category, typename... Args>
