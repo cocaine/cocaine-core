@@ -231,6 +231,8 @@ context_t::~context_t() {
         new logging::log_t(*this, "bootstrap")
     );
 
+    m_locator->terminate();
+
     for(service_list_t::reverse_iterator it = m_services.rbegin();
         it != m_services.rend();
         ++it)
