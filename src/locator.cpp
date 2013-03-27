@@ -43,7 +43,7 @@ locator_t::~locator_t() {
         it != m_services.rend();
         ++it)
     {
-        COCAINE_LOG_INFO(m_log, "stopping the '%s' service", it->first);
+        COCAINE_LOG_INFO(m_log, "stopping service '%s'", it->first);
 
         // Terminate the service's thread.
         it->second->terminate();
@@ -58,7 +58,7 @@ locator_t::attach(const std::string& name,
 {
     COCAINE_LOG_INFO(
         m_log,
-        "publishing the '%s' service on '%s'",
+        "publishing service '%s' on '%s'",
         name,
         service->endpoint()
     );

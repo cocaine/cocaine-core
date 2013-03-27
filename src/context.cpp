@@ -279,7 +279,7 @@ context_t::initialize() {
             ));
         } catch(const cocaine::error_t& e) {
             throw cocaine::error_t(
-                "unable to initialize the '%s' service - %s",
+                "unable to initialize service '%s' - %s",
                 it->first,
                 e.what()
             );
