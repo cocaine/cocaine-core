@@ -105,7 +105,7 @@ class repository_t:
         // details.
         std::vector<lt_dlhandle> m_plugins;
 
-#if BOOST_VERSION >= 104000
+#if BOOST_VERSION >= 103600
         typedef boost::unordered_map<
 #else
         typedef std::map<
@@ -114,7 +114,7 @@ class repository_t:
             std::shared_ptr<factory_concept_t>
         > factory_map_t;
 
-#if BOOST_VERSION >= 104000
+#if BOOST_VERSION >= 103600
         typedef boost::unordered_map<
 #else
         typedef std::map<
