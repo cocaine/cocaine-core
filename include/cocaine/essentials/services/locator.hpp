@@ -42,12 +42,14 @@ struct description_t {
     MSGPACK_DEFINE(endpoint, version, methods)
 };
 
+using io::reactor_t;
+
 class locator_t:
     public api::service_t
 {
     public:
         locator_t(context_t& context,
-                  io::reactor_t& reactor,
+                  reactor_t& reactor,
                   const std::string& name,
                   const Json::Value& args);
 
