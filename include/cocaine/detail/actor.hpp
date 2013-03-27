@@ -39,7 +39,7 @@ class actor_t:
     public:
         actor_t(std::unique_ptr<dispatch_t>&& dispatch,
                 std::unique_ptr<io::reactor_t>&& reactor,
-                const Json::Value& args);
+                uint16_t port);
 
        ~actor_t();
 

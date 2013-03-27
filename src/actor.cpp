@@ -73,12 +73,12 @@ namespace {
 
 actor_t::actor_t(std::unique_ptr<dispatch_t>&& dispatch,
                  std::unique_ptr<reactor_t>&& reactor,
-                 const Json::Value& args):
+                 uint16_t port):
     m_dispatch(std::move(dispatch)),
     m_reactor(std::move(reactor)),
     m_terminate(m_reactor->native())
 {
-    tcp::endpoint endpoint("127.0.0.1", args["port"].asUInt());
+    tcp::endpoint endpoint("127.0.0.1", port);
 
     try {
         m_connector.reset(new connector<acceptor<tcp>>(
