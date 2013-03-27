@@ -24,20 +24,20 @@
 #include "cocaine/common.hpp"
 #include "cocaine/format.hpp"
 
-#define COCAINE_LOG(__log__, __level__, ...) \
-    if(__log__->verbosity() >= __level__) __log__->emit(__level__, __VA_ARGS__);
+#define COCAINE_LOG(_log_, _level_, ...) \
+    if(_log_->verbosity() >= _level_) _log_->emit(_level_, __VA_ARGS__);
 
-#define COCAINE_LOG_DEBUG(__log__, ...) \
-    COCAINE_LOG(__log__, logging::debug, __VA_ARGS__)
+#define COCAINE_LOG_DEBUG(_log_, ...) \
+    COCAINE_LOG(_log_, logging::debug, __VA_ARGS__)
 
-#define COCAINE_LOG_INFO(__log__, ...) \
-    COCAINE_LOG(__log__, logging::info, __VA_ARGS__)
+#define COCAINE_LOG_INFO(_log_, ...) \
+    COCAINE_LOG(_log_, logging::info, __VA_ARGS__)
 
-#define COCAINE_LOG_WARNING(__log__, ...) \
-    COCAINE_LOG(__log__, logging::warning, __VA_ARGS__)
+#define COCAINE_LOG_WARNING(_log_, ...) \
+    COCAINE_LOG(_log_, logging::warning, __VA_ARGS__)
 
-#define COCAINE_LOG_ERROR(__log__, ...) \
-    COCAINE_LOG(__log__, logging::error, __VA_ARGS__)
+#define COCAINE_LOG_ERROR(_log_, ...) \
+    COCAINE_LOG(_log_, logging::error, __VA_ARGS__)
 
 namespace cocaine { namespace logging {
 
