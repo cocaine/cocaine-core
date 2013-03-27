@@ -31,7 +31,8 @@ struct description_t {
     // An endpoint for the client to connect to in order to use the service.
     std::string endpoint;
 
-    // Service protocol version.
+    // Service protocol version. If the client wishes to use the service, the
+    // protocol versions must match between them.
     unsigned int version;
 
     // A mapping between method slot numbers and names for use in dynamic
@@ -73,6 +74,10 @@ namespace locator {
 
 template<>
 struct protocol<locator_tag> {
+    typedef boost::mpl::int_<
+        1
+    >::type version;
+
     typedef mpl::list<
         locator::resolve
     > type;

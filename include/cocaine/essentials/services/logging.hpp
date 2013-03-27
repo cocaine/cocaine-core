@@ -77,6 +77,10 @@ namespace logging {
 
 template<>
 struct protocol<logging_tag> {
+    typedef boost::mpl::int_<
+        1
+    >::type version;
+
     typedef mpl::list<
         logging::emit
     > type;

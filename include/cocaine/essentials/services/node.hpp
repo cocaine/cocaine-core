@@ -119,6 +119,10 @@ namespace node {
 
 template<>
 struct protocol<node_tag> {
+    typedef boost::mpl::int_<
+        1
+    >::type version;
+
     typedef mpl::list<
         node::start_app,
         node::pause_app,

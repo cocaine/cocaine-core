@@ -231,7 +231,10 @@ context_t::~context_t() {
         new logging::log_t(*this, "bootstrap")
     );
 
+    COCAINE_LOG_INFO(blog, "stopping the service locator");
+
     m_locator->terminate();
+    m_locator.reset();
 
     for(service_list_t::reverse_iterator it = m_services.rbegin();
         it != m_services.rend();
@@ -250,8 +253,6 @@ context_t::initialize() {
     auto blog = std::unique_ptr<logging::log_t>(
         new logging::log_t(*this, "bootstrap")
     );
-
-    COCAINE_LOG_INFO(blog, "starting the service locator");
 
     auto reactor = std::unique_ptr<io::reactor_t>(
         new io::reactor_t()
@@ -316,6 +317,8 @@ context_t::initialize() {
 
         it->second->run();
     }
+
+    COCAINE_LOG_INFO(blog, "starting the service locator");
 
     m_locator->run();
 }

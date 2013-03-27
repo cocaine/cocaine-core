@@ -92,3 +92,17 @@ dispatch_t::invoke(const message_t& message,
     }
 }
 
+dispatch_t::id_map_t
+dispatch_t::describe() {
+    id_map_t result;
+
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+
+        for(auto it = m_slots.begin(); it != m_slots.end(); ++it) {
+            result[it->first] = it->second->describe();
+        }
+    }
+
+    return result;
+}
