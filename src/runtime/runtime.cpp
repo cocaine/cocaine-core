@@ -176,6 +176,10 @@ main(int argc, char * argv[]) {
     }
 #endif
 
+    // NOTE: The default event loop have to initialized first, otherwise
+    // signals wouldn't be properly handled. Probably, a bug.
+    runtime_t runtime;
+
     std::unique_ptr<context_t> context;
 
     try {
@@ -189,7 +193,7 @@ main(int argc, char * argv[]) {
         return EXIT_FAILURE;
     }
 
-    runtime_t().run();
+    runtime.run();
 
     return EXIT_SUCCESS;
 }
