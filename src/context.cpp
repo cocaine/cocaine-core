@@ -314,4 +314,6 @@ context_t::initialize() {
 
         it->second->run();
     }
+
+    m_locator->run();
 }
