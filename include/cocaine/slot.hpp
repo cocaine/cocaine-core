@@ -288,7 +288,7 @@ private:
         void
         abort(const std::exception_ptr& e) {
             std::unique_lock<std::mutex> lock(m_mutex);
-            
+
             if(m_completed) {
                 return;
             }
@@ -330,7 +330,7 @@ private:
         msgpack::sbuffer m_buffer;
         msgpack::packer<msgpack::sbuffer> m_packer;
         std::exception_ptr m_e;
-        
+
         bool m_completed,
              m_failed;
 
