@@ -117,12 +117,12 @@ class context_t:
             return *m_logger;
         }
 
+    public:
+        const config_t config;
+
     private:
         void
         initialize();
-
-    public:
-        const config_t config;
 
     private:
         // NOTE: This is the first object in the component tree, all the other
@@ -143,7 +143,7 @@ class context_t:
         > service_list_t;
 
         // NOTE: These are the instances of all the configured services, stored
-        // as a vector of pairs to preserve load ordering.
+        // as a vector of pairs to preserve initialization order.
         service_list_t m_services;
 };
 
