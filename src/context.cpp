@@ -242,6 +242,7 @@ context_t::~context_t() {
     {
         COCAINE_LOG_INFO(blog, "stopping the '%s' service", it->first);
 
+        // Terminate the service's thread.
         it->second->terminate();
     }
 
@@ -315,6 +316,7 @@ context_t::initialize() {
     {
         COCAINE_LOG_INFO(blog, "publishing the '%s' service", it->first);
 
+        // Start the service's thread.
         it->second->run();
     }
 
