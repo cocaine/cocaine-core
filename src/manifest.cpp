@@ -40,9 +40,11 @@ manifest_t::manifest_t(context_t& context,
         name
     );
 
+    auto prefix = fs::path(context.config.path.spool) / name;
+
     slave = fs::complete(
         get("slave", "unspecified").asString(),
-        fs::path(context.config.path.spool) / name
+        prefix
     ).string();
 
     sandbox = {
