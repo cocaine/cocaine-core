@@ -18,22 +18,12 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/essentials/module.hpp"
-#include "cocaine/essentials/isolates/process.hpp"
-#include "cocaine/essentials/loggers/files.hpp"
-#include "cocaine/essentials/loggers/stdout.hpp"
-#include "cocaine/essentials/loggers/syslog.hpp"
-#include "cocaine/essentials/services/logging.hpp"
-#include "cocaine/essentials/services/node.hpp"
-#include "cocaine/essentials/storages/files.hpp"
+#include "cocaine/common.hpp"
+#include "cocaine/repository.hpp"
+
+namespace cocaine { namespace essentials {
 
 void
-cocaine::essentials::initialize(api::repository_t& repository) {
-    repository.insert<isolate::process_t>("process");
-    repository.insert<logger::files_t>("files");
-    repository.insert<logger::stdout_t>("stdout");
-    repository.insert<logger::syslog_t>("syslog");
-    repository.insert<service::logging_t>("logging");
-    repository.insert<service::node_t>("node");
-    repository.insert<storage::files_t>("files");
-}
+initialize(api::repository_t& repository);
+
+}}

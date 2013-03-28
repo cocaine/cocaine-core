@@ -1,4 +1,5 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
+
 PROJECT(COCAINE-CORE)
 
 SET(COCAINE_VERSION 0.10)
@@ -66,6 +67,14 @@ ADD_LIBRARY(cocaine-core SHARED
     src/context
     src/dispatch
     src/engine
+    src/essentials/isolates/process
+    src/essentials/loggers/files
+    src/essentials/loggers/stdout
+    src/essentials/loggers/syslog
+    src/essentials/services/logging
+    src/essentials/services/node
+    src/essentials/storages/files
+    src/essentials/module
     src/locator
     src/logging
     src/manifest
@@ -84,30 +93,12 @@ TARGET_LINK_LIBRARIES(cocaine-core
     json
     ltdl
     msgpack
-    ${LIBUUID_LIBRARY})
+    ${LIBUUID_LIBRARY}
+    zmq)
 
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     VERSION 2
     COMPILE_FLAGS "-std=c++0x")
-
-ADD_LIBRARY(essentials MODULE
-    src/essentials/isolates/process
-    src/essentials/loggers/files
-    src/essentials/loggers/stdout
-    src/essentials/loggers/syslog
-    src/essentials/services/logging
-    src/essentials/services/node
-    src/essentials/storages/files
-    src/essentials/module)
-
-TARGET_LINK_LIBRARIES(essentials
-    cocaine-core
-    zmq)
-
-SET_TARGET_PROPERTIES(essentials PROPERTIES
-    COMPILE_FLAGS "-std=c++0x"
-    PREFIX ""
-    SUFFIX ".cocaine-plugin")
 
 ADD_EXECUTABLE(cocaine-runtime
     src/runtime/pid_file
@@ -130,11 +121,6 @@ INSTALL(
     RUNTIME DESTINATION bin COMPONENT runtime
     LIBRARY DESTINATION lib COMPONENT runtime
     ARCHIVE DESTINATION lib COMPONENT developement)
-
-INSTALL(
-    TARGETS
-        essentials
-    LIBRARY DESTINATION lib/cocaine COMPONENT runtime)
 
 INSTALL(
     DIRECTORY

@@ -26,6 +26,8 @@
 #include "cocaine/detail/actor.hpp"
 #include "cocaine/detail/locator.hpp"
 
+#include "cocaine/essentials/module.hpp"
+
 #include <cerrno>
 #include <cstring>
 
@@ -198,6 +200,11 @@ context_t::context_t(config_t config_,
     config(config_)
 {
     m_repository.reset(new api::repository_t());
+
+    // Load the builtins.
+    essentials::initialize(*m_repository);
+
+    // Load the plugins.
     m_repository->load(config.path.plugins);
 
     auto it = config.loggers.find(logger);
@@ -219,6 +226,11 @@ context_t::context_t(config_t config_,
     config(config_)
 {
     m_repository.reset(new api::repository_t());
+
+    // Load the builtins.
+    essentials::initialize(*m_repository);
+
+    // Load the plugins.
     m_repository->load(config.path.plugins);
 
     // NOTE: The context takes the ownership of the passed logger, so it will
