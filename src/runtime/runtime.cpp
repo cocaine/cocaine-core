@@ -45,7 +45,7 @@ namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
 namespace {
-    void complain() {
+    void stacktrace(int signum) {
         using namespace backward;
 
         StackTrace trace;
@@ -54,7 +54,11 @@ namespace {
         trace.load_here(32);
         printer.print(trace);
 
-        std::abort();
+        // Re-raise so that core dump is generated.
+        std::raise(signum);
+
+        // Just in case, if the default handler returns for some weird reason.
+        std::exit(EXIT_FAILURE);
     }
 
     struct runtime_t {
@@ -68,25 +72,51 @@ namespace {
             m_sigquit.set<runtime_t, &runtime_t::terminate>(this);
             m_sigquit.start(SIGQUIT);
 
-            m_sigsegv.set<&runtime_t::stacktrace>();
-            m_sigsegv.start(SIGSEGV);
+            // Establish an alternative signal stack
 
-            m_sigabrt.set<&runtime_t::stacktrace>();
-            m_sigabrt.start(SIGABRT);
+            size_t alt_stack_size = 8 * 1024 * 1024;
 
-            sigset_t signals;
+            m_alt_stack.ss_sp = new char[alt_stack_size];
+            m_alt_stack.ss_size = alt_stack_size;
+            m_alt_stack.ss_flags = 0;
 
-        #ifdef _GNU_SOURCE
-            ::sigemptyset(&signals);
-            ::sigaddset(&signals, SIGPIPE);
-        #else
-            // It appears that these functions are implemented as macros on MacOS X,
-            // so global scope operator doesn't work.
+            if(::sigaltstack(&m_alt_stack, nullptr) != 0) {
+                std::cerr << "ERROR: Cannot enable an alternative signal stack" << std::endl;
+            }
+
+            // Reroute the core-generating signals.
+
+            struct ::sigaction action;
+
+            std::memset(&action, 0, sizeof(action));
+
+            action.sa_handler = &stacktrace;
+            action.sa_flags = SA_ONSTACK | SA_RESETHAND | SA_NODEFER;
+
+            ::sigaction(SIGABRT, &action, nullptr);
+            ::sigaction(SIGBUS,  &action, nullptr);
+            ::sigaction(SIGSEGV, &action, nullptr);
+
+            // Block the deprecated signals.
+
+            ::sigset_t signals;
+
             sigemptyset(&signals);
             sigaddset(&signals, SIGPIPE);
-        #endif
 
             ::sigprocmask(SIG_BLOCK, &signals, nullptr);
+        }
+
+       ~runtime_t() {
+            m_alt_stack.ss_flags = SS_DISABLE;
+
+            if(::sigaltstack(&m_alt_stack, nullptr) != 0) {
+                std::cerr << "ERROR: Cannot disable an alternative signal stack" << std::endl;
+            }
+
+            auto ptr = static_cast<char*>(m_alt_stack.ss_sp);
+
+            delete[] ptr;
         }
 
         void
@@ -100,12 +130,6 @@ namespace {
             m_loop.unloop(ev::ALL);
         }
 
-        static
-        void
-        stacktrace(ev::sig&, int) {
-            complain();
-        }
-
     private:
         // Main event loop, able to handle signals.
         ev::default_loop m_loop;
@@ -114,8 +138,9 @@ namespace {
         ev::sig m_sigint;
         ev::sig m_sigterm;
         ev::sig m_sigquit;
-        ev::sig m_sigsegv;
-        ev::sig m_sigabrt;
+
+        // An alternative signal stack for SIGSEGV handling.
+        ::stack_t m_alt_stack;
     };
 }
 
@@ -162,10 +187,6 @@ main(int argc, char * argv[]) {
         std::cerr << "ERROR: no configuration file location has been specified." << std::endl;
         return EXIT_FAILURE;
     }
-
-    // Safety net
-
-    std::set_terminate(&complain);
 
     // Startup
 
