@@ -1,4 +1,3 @@
 var/cache/cocaine
 var/lib/cocaine
-var/run/cocaine
 var/spool/cocaine
