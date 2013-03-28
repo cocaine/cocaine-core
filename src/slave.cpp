@@ -413,6 +413,10 @@ slave_t::on_timeout(ev::timer&, int) {
         case states::inactive:
             COCAINE_LOG_WARNING(m_log, "slave %s has failed to deactivate", m_id);
             break;
+
+        case states::dead:
+            COCAINE_LOG_WARNING(m_log, "slave %s is being overkilled", m_id);
+            break;
     }
 
     terminate();
