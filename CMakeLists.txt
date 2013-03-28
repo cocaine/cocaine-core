@@ -25,6 +25,7 @@ LOCATE_LIBRARY(LIBMSGPACK "msgpack.hpp" "msgpack")
 LOCATE_LIBRARY(LIBZMQ "zmq.hpp" "zmq")
 LOCATE_LIBRARY(LIBARCHIVE "archive.h" "archive")
 LOCATE_LIBRARY(LIBLTDL "ltdl.h" "ltdl")
+LOCATE_LIBRARY(LIBBFD "bfd.h" "bfd")
 
 IF(NOT APPLE)
     LOCATE_LIBRARY(LIBUUID "uuid/uuid.h" "uuid")
@@ -48,6 +49,7 @@ LINK_DIRECTORIES(
 
 INCLUDE_DIRECTORIES(BEFORE
     ${PROJECT_SOURCE_DIR}/foreign/jsoncpp-0.6.0-rc2/include
+    ${PROJECT_SOURCE_DIR}/foreign/backward-cpp
     ${PROJECT_SOURCE_DIR}/include)
 
 ADD_LIBRARY(json
@@ -105,6 +107,7 @@ ADD_EXECUTABLE(cocaine-runtime
     src/runtime/runtime)
 
 TARGET_LINK_LIBRARIES(cocaine-runtime
+    bfd
     boost_program_options-mt
     cocaine-core)
 

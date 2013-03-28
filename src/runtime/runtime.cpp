@@ -27,6 +27,9 @@
     #include "cocaine/detail/runtime/pid_file.hpp"
 #endif
 
+#define BACKWARD_HAS_BFD 1
+#include "backward.hpp"
+
 #include <csignal>
 #include <iostream>
 
@@ -50,6 +53,12 @@ namespace {
             m_sigquit.set<runtime_t, &runtime_t::terminate>(this);
             m_sigquit.start(SIGQUIT);
 
+            m_sigsegv.set<&runtime_t::stacktrace>();
+            m_sigsegv.start(SIGSEGV);
+            
+            m_sigabrt.set<&runtime_t::stacktrace>();
+            m_sigabrt.start(SIGABRT);
+            
             sigset_t signals;
 
         #ifdef _GNU_SOURCE
@@ -76,6 +85,20 @@ namespace {
             m_loop.unloop(ev::ALL);
         }
 
+        static
+        void
+        stacktrace(ev::sig&, int) {
+            using namespace backward;
+
+            StackTrace trace;
+            Printer printer;
+
+            trace.load_here(32);
+            printer.print(trace);
+            
+            std::terminate();
+        }
+
     private:
         // Main event loop, able to handle signals.
         ev::default_loop m_loop;
@@ -84,6 +107,8 @@ namespace {
         ev::sig m_sigint;
         ev::sig m_sigterm;
         ev::sig m_sigquit;
+        ev::sig m_sigsegv;
+        ev::sig m_sigabrt;
     };
 }
 
