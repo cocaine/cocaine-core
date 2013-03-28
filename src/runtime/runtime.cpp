@@ -45,13 +45,20 @@ namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
 namespace {
-    void stacktrace(int signum) {
+    void stacktrace(int signum, siginfo_t * info, void * context) {
         using namespace backward;
+
+        (void)context;
 
         StackTrace trace;
         Printer printer;
 
-        trace.load_here(32);
+        if(signum == SIGSEGV || signum == SIGBUS) {
+            trace.load_from(info->si_addr, 32);
+        } else {
+            trace.load_here(32);
+        }
+
         printer.print(trace);
 
         // Re-raise so that core dump is generated.
@@ -86,12 +93,12 @@ namespace {
 
             // Reroute the core-generating signals.
 
-            struct ::sigaction action;
+            struct sigaction action;
 
             std::memset(&action, 0, sizeof(action));
 
-            action.sa_handler = &stacktrace;
-            action.sa_flags = SA_ONSTACK | SA_RESETHAND | SA_NODEFER;
+            action.sa_sigaction = &stacktrace;
+            action.sa_flags = SA_NODEFER | SA_ONSTACK | SA_RESETHAND | SA_SIGINFO;
 
             ::sigaction(SIGABRT, &action, nullptr);
             ::sigaction(SIGBUS,  &action, nullptr);
@@ -99,7 +106,7 @@ namespace {
 
             // Block the deprecated signals.
 
-            ::sigset_t signals;
+            sigset_t signals;
 
             sigemptyset(&signals);
             sigaddset(&signals, SIGPIPE);
@@ -140,7 +147,7 @@ namespace {
         ev::sig m_sigquit;
 
         // An alternative signal stack for SIGSEGV handling.
-        ::stack_t m_alt_stack;
+        stack_t m_alt_stack;
     };
 }
 
