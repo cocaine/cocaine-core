@@ -34,6 +34,7 @@
 #include <vector>
 
 #define BOOST_FILESYSTEM_VERSION 3
+#define BOOST_FILESYSTEM_NO_DEPRECATED
 
 #ifndef COCAINE_DEBUG
     #define BOOST_DISABLE_ASSERTS

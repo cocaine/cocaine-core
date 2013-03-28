@@ -86,7 +86,7 @@ config_t::config_t() {
 config_t::config_t(const std::string& config_path) {
     path.config = config_path;
 
-    if(!fs::exists(path.config) || !fs::is_regular(path.config)) {
+    if(!fs::exists(path.config) || !fs::is_regular_file(path.config)) {
         throw configuration_error_t("the configuration file path is invalid");
     }
 

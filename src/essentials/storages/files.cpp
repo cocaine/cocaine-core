@@ -129,7 +129,7 @@ namespace {
         template<typename T>
         bool
         operator()(const T& entry) const {
-            return fs::is_regular(entry);
+            return fs::is_regular_file(entry);
         }
     };
 }
@@ -155,16 +155,7 @@ files_t::list(const std::string& collection) {
                   end;
 
     while(it != end) {
-#if BOOST_FILESYSTEM_VERSION == 3
-#if BOOST_VERSION >= 104600
-        result.emplace_back(it->path().filename().string());
-#else
         result.emplace_back(it->path().filename());
-#endif
-#else
-        result.emplace_back(it->leaf());
-#endif
-
         ++it;
     }
 

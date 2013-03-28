@@ -61,7 +61,7 @@ namespace {
         template<typename T>
         bool
         operator()(const T& entry) const {
-            return fs::is_regular(entry) &&
+            return fs::is_regular_file(entry) &&
                    entry.path().extension() == ".cocaine-plugin";
         }
     };
@@ -87,14 +87,7 @@ repository_t::load(const std::string& path_) {
 
         while(it != end) {
             // Try to load the plugin.
-#if BOOST_FILESYSTEM_VERSION == 3
-            std::string leaf = it->path().string();
-#else
-            std::string leaf = it->string();
-#endif
-
-            open(leaf);
-
+            open(it->path().string());
             ++it;
         }
     } else {

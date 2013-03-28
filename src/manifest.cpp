@@ -40,12 +40,20 @@ manifest_t::manifest_t(context_t& context,
         name
     );
 
+    auto target = fs::path(get("slave", "unspecified").asString());
     auto prefix = fs::path(context.config.path.spool) / name;
 
-    slave = fs::complete(
-        get("slave", "unspecified").asString(),
-        prefix
-    ).string();
+#if BOOST_VERSION >= 104400
+    if(!target.is_absolute()) {
+        target = fs::absolute(target, prefix);
+    }
+#else
+    if(!target.is_complete()) {
+        target = fs::complete(target, prefix);
+    }
+#endif
+
+    slave = target.string();
 
     sandbox = {
         get("type", "unspecified").asString(),
