@@ -25,11 +25,15 @@ LOCATE_LIBRARY(LIBMSGPACK "msgpack.hpp" "msgpack")
 LOCATE_LIBRARY(LIBZMQ "zmq.hpp" "zmq")
 LOCATE_LIBRARY(LIBARCHIVE "archive.h" "archive")
 LOCATE_LIBRARY(LIBLTDL "ltdl.h" "ltdl")
-LOCATE_LIBRARY(LIBBFD "bfd.h" "bfd")
 
 IF(NOT APPLE)
     LOCATE_LIBRARY(LIBUUID "uuid/uuid.h" "uuid")
     SET(LIBUUID_LIBRARY "uuid")
+ENDIF()
+
+IF(${CMAKE_HOST_SYSTEM_NAME} EQUAL "Linux")
+    LOCATE_LIBRARY(LIBBFD "bfd.h" "bfd")
+    SET(LIBBFD_LIBRARY "bfd")
 ENDIF()
 
 INCLUDE_DIRECTORIES(
@@ -107,7 +111,7 @@ ADD_EXECUTABLE(cocaine-runtime
     src/runtime/runtime)
 
 TARGET_LINK_LIBRARIES(cocaine-runtime
-    bfd
+    ${LIBBFD_LIBRARY}
     boost_program_options-mt
     cocaine-core)
 
