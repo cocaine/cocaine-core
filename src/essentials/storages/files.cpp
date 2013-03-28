@@ -155,7 +155,12 @@ files_t::list(const std::string& collection) {
                   end;
 
     while(it != end) {
+#if BOOST_VERSION >= 104600
+        result.emplace_back(it->path().filename().string());
+#else
         result.emplace_back(it->path().filename());
+#endif
+
         ++it;
     }
 
