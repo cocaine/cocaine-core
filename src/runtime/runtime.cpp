@@ -42,6 +42,18 @@ namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
 namespace {
+    void complain() {
+        using namespace backward;
+
+        StackTrace trace;
+        Printer printer;
+
+        trace.load_here(32);
+        printer.print(trace);
+
+        std::abort();
+    }
+
     struct runtime_t {
         runtime_t() {
             m_sigint.set<runtime_t, &runtime_t::terminate>(this);
@@ -55,10 +67,10 @@ namespace {
 
             m_sigsegv.set<&runtime_t::stacktrace>();
             m_sigsegv.start(SIGSEGV);
-            
+
             m_sigabrt.set<&runtime_t::stacktrace>();
             m_sigabrt.start(SIGABRT);
-            
+
             sigset_t signals;
 
         #ifdef _GNU_SOURCE
@@ -88,15 +100,7 @@ namespace {
         static
         void
         stacktrace(ev::sig&, int) {
-            using namespace backward;
-
-            StackTrace trace;
-            Printer printer;
-
-            trace.load_here(32);
-            printer.print(trace);
-            
-            std::terminate();
+            complain();
         }
 
     private:
@@ -155,6 +159,10 @@ main(int argc, char * argv[]) {
         std::cerr << "ERROR: no configuration file location has been specified." << std::endl;
         return EXIT_FAILURE;
     }
+
+    // Safety net
+
+    std::set_terminate(&complain);
 
     // Startup
 
