@@ -28,7 +28,7 @@
 #endif
 
 #ifdef __linux__
-    #define BACKWARD_HAS_DW 1
+    #define BACKWARD_HAS_BFD 1
 #endif
 
 #include "backward.hpp"

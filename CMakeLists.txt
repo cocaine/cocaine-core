@@ -32,8 +32,8 @@ IF(NOT APPLE)
 ENDIF()
 
 IF(NOT APPLE)
-    LOCATE_LIBRARY(LIBDW "elfutils/libdw.h" "dw")
-    SET(LIBDW_LIBRARY "dw")
+    LOCATE_LIBRARY(LIBBFD "bfd.h" "bfd")
+    SET(LIBBFD_LIBRARY "bfd")
 ENDIF()
 
 INCLUDE_DIRECTORIES(
@@ -113,8 +113,8 @@ ADD_EXECUTABLE(cocaine-runtime
     src/runtime/runtime)
 
 TARGET_LINK_LIBRARIES(cocaine-runtime
+    ${LIBBFD_LIBRARY}
     boost_program_options-mt
-    ${LIBDW_LIBRARY}
     cocaine-core)
 
 SET_TARGET_PROPERTIES(cocaine-runtime PROPERTIES
