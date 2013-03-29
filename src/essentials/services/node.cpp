@@ -100,9 +100,10 @@ node_t::node_t(context_t& context,
 
             COCAINE_LOG_INFO(
                 m_log,
-                "announcing this node on %s every %.03f seconds",
+                "announcing this node on %s every %.01f %s",
                 endpoint,
-                interval
+                interval,
+                interval == 1.0f ? "second" : "seconds"
             );
 
             try {
