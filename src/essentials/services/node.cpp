@@ -98,7 +98,12 @@ node_t::node_t(context_t& context,
         {
             std::string endpoint = (*it).asString();
 
-            COCAINE_LOG_INFO(m_log, "announcing on %s", endpoint);
+            COCAINE_LOG_INFO(
+                m_log,
+                "announcing this node on %s every %.03f seconds",
+                endpoint,
+                interval
+            );
 
             try {
                 m_announces.bind(endpoint.c_str());
@@ -157,8 +162,6 @@ node_t::~node_t() {
 
 void
 node_t::on_announce(ev::timer&, int) {
-    COCAINE_LOG_DEBUG(m_log, "announcing the node");
-
     zmq::message_t message;
 
     message.rebuild(m_context.config.network.hostname.size());
