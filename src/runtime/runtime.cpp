@@ -61,7 +61,7 @@ namespace {
 
         printer.print(trace);
 
-        // Re-raise so that core dump is generated.
+        // Re-raise so that a core dump is generated.
         std::raise(signum);
 
         // Just in case, if the default handler returns for some weird reason.
@@ -88,7 +88,7 @@ namespace {
             m_alt_stack.ss_flags = 0;
 
             if(::sigaltstack(&m_alt_stack, nullptr) != 0) {
-                std::cerr << "ERROR: Cannot enable an alternative signal stack" << std::endl;
+                std::cerr << "ERROR: Unable to activate an alternative signal stack" << std::endl;
             }
 
             // Reroute the core-generating signals.
@@ -118,7 +118,7 @@ namespace {
             m_alt_stack.ss_flags = SS_DISABLE;
 
             if(::sigaltstack(&m_alt_stack, nullptr) != 0) {
-                std::cerr << "ERROR: Cannot disable an alternative signal stack" << std::endl;
+                std::cerr << "ERROR: Unable to deactivate an alternative signal stack" << std::endl;
             }
 
             auto ptr = static_cast<char*>(m_alt_stack.ss_sp);
