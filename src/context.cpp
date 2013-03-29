@@ -62,15 +62,15 @@ const uint16_t defaults::locator_port       = 10053;
 namespace {
     void
     validate_path(const fs::path& path) {
-        if(!fs::exists(path)) {
+        auto status = fs::status(path);
+
+        if(!fs::exists(status)) {
             try {
                 fs::create_directories(path);
             } catch(const fs::filesystem_error& e) {
                 throw configuration_error_t("unable to create the %s path", path);
             }
-        }
-
-        if(!fs::is_directory(path)) {
+        } else if(!fs::is_directory(status)) {
             throw configuration_error_t("the %s path is not a directory", path);
         }
     }
@@ -86,7 +86,9 @@ config_t::config_t() {
 config_t::config_t(const std::string& config_path) {
     path.config = config_path;
 
-    if(!fs::exists(path.config) || !fs::is_regular_file(path.config)) {
+    auto status = fs::status(path.config);
+
+    if(!fs::exists(status) || !fs::is_regular_file(status)) {
         throw configuration_error_t("the configuration file path is invalid");
     }
 
