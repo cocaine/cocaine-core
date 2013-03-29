@@ -33,7 +33,7 @@ ENDIF()
 
 IF(NOT APPLE)
     LOCATE_LIBRARY(LIBBFD "bfd.h" "bfd")
-    SET(LIBBFD_LIBRARY "bfd")
+    SET(LIBBFD_LIBRARIES "bfd" "dl")
 ENDIF()
 
 INCLUDE_DIRECTORIES(
@@ -113,7 +113,7 @@ ADD_EXECUTABLE(cocaine-runtime
     src/runtime/runtime)
 
 TARGET_LINK_LIBRARIES(cocaine-runtime
-    ${LIBBFD_LIBRARY}
+    ${LIBBFD_LIBRARIES}
     boost_program_options-mt
     cocaine-core)
 
