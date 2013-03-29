@@ -76,14 +76,18 @@ namespace {
     }
 }
 
-config_t::config_t() {
+config_t::config_t():
+    standalone(false)
+{
     path.config  = "";
     path.plugins = defaults::plugins_path;
     path.runtime = defaults::runtime_path;
     path.spool   = defaults::spool_path;
 }
 
-config_t::config_t(const std::string& config_path) {
+config_t::config_t(const std::string& config_path):
+    standalone(false)
+{
     path.config = config_path;
 
     const auto status = fs::status(path.config);
@@ -220,7 +224,11 @@ context_t::context_t(config_t config_,
         it->second.args
     );
 
-    initialize();
+    if(config.standalone) {
+        return;
+    }
+
+    bootstrap();
 }
 
 context_t::context_t(config_t config_,
@@ -239,10 +247,18 @@ context_t::context_t(config_t config_,
     // become invalid at the calling site after this call.
     m_logger = std::move(logger);
 
-    initialize();
+    if(config.standalone) {
+        return;
+    }
+
+    bootstrap();
 }
 
 context_t::~context_t() {
+    if(config.standalone) {
+        return;
+    }
+
     auto blog = std::unique_ptr<logging::log_t>(
         new logging::log_t(*this, "bootstrap")
     );
@@ -254,7 +270,7 @@ context_t::~context_t() {
 }
 
 void
-context_t::initialize() {
+context_t::bootstrap() {
     auto blog = std::unique_ptr<logging::log_t>(
         new logging::log_t(*this, "bootstrap")
     );

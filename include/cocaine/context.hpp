@@ -84,6 +84,8 @@ struct config_t {
     component_map_t services;
     component_map_t storages;
 
+    bool standalone;
+
 public:
     static
     component_map_t
@@ -125,7 +127,7 @@ class context_t:
 
     private:
         void
-        initialize();
+        bootstrap();
 
     private:
         // NOTE: This is the first object in the component tree, all the other

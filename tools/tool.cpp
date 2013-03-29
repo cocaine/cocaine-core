@@ -381,8 +381,12 @@ main(int argc, char * argv[]) {
 
     std::unique_ptr<context_t> context;
 
+    auto config = config_t(vm["configuration"].as<std::string>());
+
+    config.standalone = true;
+
     try {
-        context.reset(new context_t(vm["configuration"].as<std::string>(), "tools"));
+        context.reset(new context_t(config, "tools"));
     } catch(const std::exception& e) {
         std::cerr << "Error: unable to initialize the context - " << e.what() << std::endl;
         return EXIT_FAILURE;
