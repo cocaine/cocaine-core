@@ -69,10 +69,8 @@ namespace {
 
 void
 repository_t::load(const std::string& path_) {
-    fs::path path(path_);
-    validate_t validate;
-
-    auto status = fs::status(path);
+    const auto path = fs::path(path_);
+    const auto status = fs::status(path);
 
     if(!fs::exists(status)) {
         return;
@@ -84,7 +82,7 @@ repository_t::load(const std::string& path_) {
             fs::directory_iterator
         > plugin_iterator_t;
 
-        plugin_iterator_t it = plugin_iterator_t(validate, fs::directory_iterator(path)),
+        plugin_iterator_t it = plugin_iterator_t(validate_t(), fs::directory_iterator(path)),
                           end;
 
         while(it != end) {

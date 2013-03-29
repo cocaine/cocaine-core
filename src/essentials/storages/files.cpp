@@ -83,8 +83,9 @@ files_t::write(const std::string& collection,
     std::unique_lock<std::mutex> lock(m_mutex);
 
     const fs::path store_path(m_storage_path / collection);
+    const auto store_status = fs::status(store_path);
 
-    if(!fs::exists(store_path)) {
+    if(!fs::exists(store_status)) {
         COCAINE_LOG_INFO(
             m_log,
             "creating collection: %s, path: '%s'",
@@ -97,7 +98,7 @@ files_t::write(const std::string& collection,
         } catch(const fs::filesystem_error& e) {
             throw storage_error_t("cannot create the specified collection");
         }
-    } else if(fs::exists(store_path) && !fs::is_directory(store_path)) {
+    } else if(!fs::is_directory(store_status)) {
         throw storage_error_t("the specified collection is corrupted");
     }
 

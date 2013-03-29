@@ -62,7 +62,7 @@ const uint16_t defaults::locator_port       = 10053;
 namespace {
     void
     validate_path(const fs::path& path) {
-        auto status = fs::status(path);
+        const auto status = fs::status(path);
 
         if(!fs::exists(status)) {
             try {
@@ -86,7 +86,7 @@ config_t::config_t() {
 config_t::config_t(const std::string& config_path) {
     path.config = config_path;
 
-    auto status = fs::status(path.config);
+    const auto status = fs::status(path.config);
 
     if(!fs::exists(status) || !fs::is_regular_file(status)) {
         throw configuration_error_t("the configuration file path is invalid");
@@ -120,7 +120,7 @@ config_t::config_t(const std::string& config_path) {
     path.runtime = root["paths"].get("runtime", defaults::runtime_path).asString();
     path.spool   = root["paths"].get("spool",   defaults::spool_path  ).asString();
 
-    fs::path runtime = path.runtime;
+    const fs::path runtime = path.runtime;
 
     validate_path(runtime);
     validate_path(runtime / "engines");
@@ -139,8 +139,8 @@ config_t::config_t(const std::string& config_path) {
         );
     }
 
-    addrinfo hints,
-             * result = nullptr;
+    addrinfo hints;
+    addrinfo * result = nullptr;
 
     std::memset(&hints, 0, sizeof(addrinfo));
 
