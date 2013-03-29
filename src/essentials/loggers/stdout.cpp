@@ -60,7 +60,7 @@ stdout_t::emit(logging::priorities priority,
     }
 
     std::cout << cocaine::format(
-        "[%s] [%s] %s: %s\n",
+        "[%s] [%s] %s: %s",
         timestamp,
         describe[priority],
         source,
