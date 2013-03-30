@@ -25,8 +25,7 @@ from sys import argv
 
 import msgpack
 
-SLOT_START_APP = 0
-SLOT_PAUSE_APP = 1
+SLOT_RESOLVE   = 0
 SLOT_INFO      = 2
 
 CODES = {
@@ -38,25 +37,61 @@ CODES = {
 def main(hosts):
     for host in hosts:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-        sock.connect(('127.0.0.1', 12500))
 
-        sock.send(msgpack.packb([SLOT_INFO, 0, []]))
+        try:
+            sock.connect((host, 10053))
+        except socket.error as e:
+            print "Unable to connect to the service locator at '%s:10053': %s" % (host, e)
+            return 1
+
+        sock.send(msgpack.packb([SLOT_RESOLVE, 0, ["node"]]))
 
         unpacker = msgpack.Unpacker()
 
         while True:
-            response = sock.recv(16384)
+            response = sock.recv(8192)
             unpacker.feed(response)
 
             for message in unpacker:
-                code, seq, payload = message
-
-                print "Code: %d (%s), Seq: %d" % (code, CODES[code], seq)
+                code, tag, payload = message
 
                 if code == 4:
-                    pprint(msgpack.unpackb(payload[0]))
+                    endpoint, version, methods = msgpack.unpackb(payload[0])
+                    get_info(endpoint)
                 elif code == 5:
-                    print "Error: [%d] %s" % (payload[0], payload[1])
+                    print "Node service not found, error: [%d] %s" % (payload[0], payload[1])
+                    return 1
+                else:
+                    return 0
+
+def get_info(endpoint):
+    host, port = endpoint.split(':')
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+
+    try:
+        sock.connect((host, int(port)))
+    except socket.error as e:
+        print "Unable to connect to the Node service at '%s:%d': %s" % (host, port, e)
+        return 1
+
+    sock.send(msgpack.packb([SLOT_INFO, 0, []]))
+
+    unpacker = msgpack.Unpacker()
+
+    while True:
+        response = sock.recv(16384)
+        unpacker.feed(response)
+
+        for message in unpacker:
+            code, tag, payload = message
+
+            if code == 4:
+                pprint(msgpack.unpackb(payload[0]))
+            elif code == 5:
+                print "Error: [%d] %s" % (payload[0], payload[1])
+                return 1
+            else:
+                return 0
 
 if __name__ == "__main__":
     if len(argv) == 1:
