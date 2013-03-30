@@ -309,12 +309,10 @@ context_t::bootstrap() {
                     it->second.args.get("port", 0).asUInt()
                 )
             ));
-        } catch(const cocaine::error_t& e) {
-            throw cocaine::error_t(
-                "unable to initialize service '%s' - %s",
-                it->first,
-                e.what()
-            );
+        } catch(const std::exception& e) {
+            throw cocaine::error_t("unable to initialize service '%s' - %s", it->first, e.what());
+        } catch(...) {
+            throw cocaine::error_t("unable to initialize service '%s' - unknown exception", it->first);
         }
     }
 
