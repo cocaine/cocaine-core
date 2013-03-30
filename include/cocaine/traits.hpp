@@ -53,6 +53,19 @@ struct type_traits {
     }
 };
 
+template<int N>
+struct type_traits<char[N]> {
+    template<class Stream>
+    static inline
+    void
+    pack(msgpack::packer<Stream>& packer,
+         const char * source)
+    {
+        packer.pack_raw(N);
+        packer.pack_raw_body(source, N);
+    }
+};
+
 // NOTE: The following structure is a template specialization for type lists,
 // to support validating sequence packing and unpacking, which can be used as
 // follows:
@@ -140,7 +153,7 @@ private:
         >::type type;
 
         static_assert(
-            std::is_same<typename boost::mpl::deref<It>::type, type>::value,
+            std::is_convertible<type, typename boost::mpl::deref<It>::type>::value,
             "sequence element type mismatch"
         );
 
@@ -174,7 +187,7 @@ private:
         >::type type;
 
         static_assert(
-            std::is_same<typename boost::mpl::deref<It>::type, type>::value,
+            std::is_convertible<type, typename boost::mpl::deref<It>::type>::value,
             "sequence element type mismatch"
         );
 
