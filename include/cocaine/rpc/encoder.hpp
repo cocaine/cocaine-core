@@ -71,7 +71,7 @@ struct encoder:
     write(uint64_t stream, Args&&... args) {
         typedef event_traits<Event> traits;
 
-        // NOTE: Format is [ID, Band, [Args...]].
+        // NOTE: Format is [ID, Tag, [Args...]].
         m_packer.pack_array(3);
 
         m_packer.pack_uint16(traits::id);

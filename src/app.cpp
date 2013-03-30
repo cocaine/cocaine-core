@@ -277,8 +277,8 @@ namespace {
         }
 
         void
-        operator()(const std::error_code& /* ec */) {
-            // Empty.
+        operator()(const std::error_code& ec) {
+            throw cocaine::error_t("i/o failure — [%d] %s", ec.value(), ec.message());
         }
 
     private:
@@ -308,7 +308,7 @@ app_t::stop() {
         // Blocks until either the response or timeout happens.
         m_reactor->run(/* defaults::control_timeout */);
     } catch(const cocaine::error_t& e) {
-        throw cocaine::error_t("the engine could not be stopped");
+        throw cocaine::error_t("the engine is unresponsive - %s", e.what());
     }
 
     m_thread->join();
@@ -326,7 +326,7 @@ app_t::info() const {
     Json::Value info(Json::objectValue);
 
     if(!m_thread) {
-        info["error"] = "engine is not active";
+        info["error"] = "the engine is not active";
         return info;
     }
 
@@ -339,7 +339,7 @@ app_t::info() const {
         // Blocks until either the response or timeout happens.
         m_reactor->run(/* defaults::control_timeout */);
     } catch(const cocaine::error_t& e) {
-        info["error"] = "engine is not responsive";
+        info["error"] = "the engine is unresponsive";
         return info;
     }
 
