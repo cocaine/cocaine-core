@@ -4,6 +4,9 @@
 yes | sudo add-apt-repository ppa:yandex-opensource/cocaine-dev
 sudo apt-get update -qq
 
+# Get rid of the broken Travis ZeroMQ package
+yes | sudo apt-get remove libzmq3
+
 # Install build-depends
 yes | sudo mk-build-deps -i
 
