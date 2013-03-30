@@ -12,10 +12,10 @@ yes | sudo apt-get install wget
 yes | sudo mk-build-deps -i
 
 # Link the broken ZeroMQ library to a right place
-ln -s /usr/lib/x86_64-linux-gnu/libzmq.so /usr/lib/libzmq.so
+sudo ln -s /usr/lib/x86_64-linux-gnu/libzmq.so /usr/lib/libzmq.so
 
 # Fetch the now-gone ZeroMQ C++ bindings
-wget -O /usr/include/zmq.hpp https://raw.github.com/zeromq/cppzmq/master/zmq.hpp
+sudo wget -O /usr/include/zmq.hpp https://raw.github.com/zeromq/cppzmq/master/zmq.hpp
 
 # Build packages
 yes | debuild -e CC -e CXX --prepend-path="/usr/local/bin/" -uc -us
