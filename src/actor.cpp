@@ -32,8 +32,6 @@
 
 #include "cocaine/rpc/channel.hpp"
 
-#include <boost/bind.hpp>
-
 using namespace cocaine;
 using namespace cocaine::io;
 
@@ -71,11 +69,11 @@ namespace {
     };
 }
 
-actor_t::actor_t(std::unique_ptr<dispatch_t>&& dispatch,
-                 std::unique_ptr<reactor_t>&& reactor,
+actor_t::actor_t(const std::shared_ptr<reactor_t>& reactor,
+                 std::unique_ptr<dispatch_t>&& dispatch,
                  uint16_t port):
+    m_reactor(reactor),
     m_dispatch(std::move(dispatch)),
-    m_reactor(std::move(reactor)),
     m_terminate(m_reactor->native())
 {
     tcp::endpoint endpoint("127.0.0.1", port);
@@ -114,11 +112,9 @@ void
 actor_t::run() {
     BOOST_ASSERT(!m_thread);
 
-    // NOTE: For some reason, std::bind cannot resolve overloaded ambiguity
-    // here while boost::bind can, so stick to it for now.
-    auto runnable = boost::bind(
+    auto runnable = std::bind(
         &reactor_t::run,
-        m_reactor.get()
+        m_reactor
     );
 
     m_thread.reset(new std::thread(runnable));

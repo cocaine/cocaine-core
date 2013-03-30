@@ -37,8 +37,8 @@ class actor_t:
     boost::noncopyable
 {
     public:
-        actor_t(std::unique_ptr<dispatch_t>&& dispatch,
-                std::unique_ptr<io::reactor_t>&& reactor,
+        actor_t(const std::shared_ptr<io::reactor_t>& reactor,
+                std::unique_ptr<dispatch_t>&& dispatch,
                 uint16_t port = 0);
 
        ~actor_t();
@@ -72,11 +72,11 @@ class actor_t:
         on_terminate(ev::async&, int);
 
     private:
+        const std::shared_ptr<io::reactor_t> m_reactor;
         const std::unique_ptr<dispatch_t> m_dispatch;
 
         // Event loop
 
-        std::unique_ptr<io::reactor_t> m_reactor;
         ev::async m_terminate;
 
         // Actor I/O
