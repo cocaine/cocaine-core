@@ -14,7 +14,6 @@
 # Author: Andrey Sibiryov <kobolog@yandex-team.ru>
 
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
-DESC="the omnipotent"
 NAME=cocaine-runtime
 DAEMON=/usr/bin/cocaine-runtime
 DAEMON_ARGS="--daemonize"
@@ -45,9 +44,6 @@ do_start() {
 	#   2 if daemon could not be started
 	start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON --test > /dev/null \
 		|| return 1
-	
-    ulimit -c unlimited
-    
 	start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON --chuid cocaine -- \
 		$DAEMON_ARGS --configuration $CONFIG_PATH --pidfile $PIDFILE \
 		|| return 2
@@ -81,15 +77,15 @@ do_reload() {
 
 case "$1" in
   start)
-    [ "$VERBOSE" != no ] && log_daemon_msg "Starting $DESC " "$NAME"
-    do_start
-    case "$?" in
+	[ "$VERBOSE" != no ] && log_daemon_msg "Starting $NAME"
+	do_start
+	case "$?" in
 		0|1) [ "$VERBOSE" != no ] && log_end_msg 0 ;;
 		2) [ "$VERBOSE" != no ] && log_end_msg 1 ;;
 	esac
-  ;;
+	;;
   stop)
-	[ "$VERBOSE" != no ] && log_daemon_msg "Stopping $DESC" "$NAME"
+	[ "$VERBOSE" != no ] && log_daemon_msg "Stopping $NAME"
 	do_stop
 	case "$?" in
 		0|1) [ "$VERBOSE" != no ] && log_end_msg 0 ;;
@@ -97,15 +93,15 @@ case "$1" in
 	esac
 	;;
   status)
-       status_of_proc "$DAEMON" "$NAME" && exit 0 || exit $?
-       ;;
+	status_of_proc "$DAEMON" "$NAME" && exit 0 || exit $?
+	;;
   reload|force-reload)
-	log_daemon_msg "Reloading $DESC" "$NAME"
+	log_daemon_msg "Reloading $NAME"
 	do_reload
 	log_end_msg $?
 	;;
   restart)
-	log_daemon_msg "Restarting $DESC" "$NAME"
+	log_daemon_msg "Restarting $NAME"
 	do_stop
 	case "$?" in
 	  0|1)
