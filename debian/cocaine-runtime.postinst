@@ -10,7 +10,7 @@ case $1 in
         
         # Set the correct permissions on the cocaine
         # runtime resources directory
-        chown -R cocaine /var/{lib,cache,spool,run}/cocaine
+        chown -R cocaine /var/{lib,cache}/cocaine
         ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
