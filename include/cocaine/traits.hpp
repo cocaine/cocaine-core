@@ -53,6 +53,10 @@ struct type_traits {
     }
 };
 
+// NOTE: This magic specialization allows to pack string literals. Unpacking
+// is intentionally prohibited as it might force us to silently drop characters
+// if the buffer is not long enough.
+
 template<int N>
 struct type_traits<char[N]> {
     template<class Stream>
