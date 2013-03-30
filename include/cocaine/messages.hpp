@@ -28,6 +28,48 @@
 
 namespace cocaine { namespace io {
 
+// Service locator interface
+
+struct locator_tag;
+
+namespace locator {
+    struct description_t {
+        // An endpoint for the client to connect to in order to use the service.
+        std::string endpoint;
+
+        // Service protocol version. If the client wishes to use the service, the
+        // protocol versions must match between them.
+        unsigned int version;
+
+        // A mapping between method slot numbers and names for use in dynamic
+        // languages like Python or Ruby.
+        std::map<int, std::string> methods;
+
+        MSGPACK_DEFINE(endpoint, version, methods)
+    };
+
+    struct resolve {
+        typedef locator_tag tag;
+
+        typedef boost::mpl::list<
+            /* service */ std::string
+        > tuple_type;
+    };
+}
+
+template<>
+struct protocol<locator_tag> {
+    typedef boost::mpl::int_<
+        1
+    >::type version;
+
+    typedef boost::mpl::list<
+        locator::resolve
+    > type;
+};
+
+// Streaming service interface
+
 struct rpc_tag;
 
 namespace rpc {
@@ -102,6 +144,72 @@ struct protocol<rpc_tag> {
         rpc::error,
         rpc::choke
     >::type type;
+};
+
+// Logging service interface
+
+struct logging_tag;
+
+namespace logging {
+    struct emit {
+        typedef logging_tag tag;
+
+        typedef boost::mpl::list<
+            /* level */   int,
+            /* source */  std::string,
+            /* message */ std::string
+        > tuple_type;
+    };
+}
+
+template<>
+struct protocol<logging_tag> {
+    typedef boost::mpl::int_<
+        1
+    >::type version;
+
+    typedef boost::mpl::list<
+        logging::emit
+    > type;
+};
+
+// Node service interface
+
+struct node_tag;
+
+namespace node {
+    struct start_app {
+        typedef node_tag tag;
+
+        typedef boost::mpl::list<
+            /* runlist */ std::map<std::string, std::string>
+        > tuple_type;
+    };
+
+    struct pause_app {
+        typedef node_tag tag;
+
+        typedef boost::mpl::list<
+            /* applist */ std::vector<std::string>
+        > tuple_type;
+    };
+
+    struct info {
+        typedef node_tag tag;
+    };
+}
+
+template<>
+struct protocol<node_tag> {
+    typedef boost::mpl::int_<
+        1
+    >::type version;
+
+    typedef boost::mpl::list<
+        node::start_app,
+        node::pause_app,
+        node::info
+    > type;
 };
 
 }} // namespace cocaine::io

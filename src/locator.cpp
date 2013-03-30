@@ -22,6 +22,7 @@
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
+#include "cocaine/messages.hpp"
 
 #include "cocaine/detail/actor.hpp"
 
@@ -89,7 +90,7 @@ namespace {
     };
 }
 
-description_t
+locator::description_t
 locator_t::resolve(const std::string& name) const {
     auto it = std::find_if(
         m_services.begin(),
@@ -101,7 +102,7 @@ locator_t::resolve(const std::string& name) const {
         throw cocaine::error_t("the specified service is not available");
     }
 
-    description_t result = {
+    locator::description_t result = {
         it->second->endpoint(),
         1,
         it->second->dispatch().describe()

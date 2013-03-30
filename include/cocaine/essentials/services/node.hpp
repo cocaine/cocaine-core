@@ -28,9 +28,7 @@
 
 #include <zmq.hpp>
 
-namespace cocaine {
-
-namespace service {
+namespace cocaine { namespace service {
 
 using io::reactor_t;
 
@@ -91,49 +89,6 @@ class node_t:
 #endif
 };
 
-} // namespace service
-
-namespace io {
-
-struct node_tag;
-
-namespace node {
-    struct start_app {
-        typedef node_tag tag;
-
-        typedef boost::mpl::list<
-            /* runlist */ std::map<std::string, std::string>
-        > tuple_type;
-    };
-
-    struct pause_app {
-        typedef node_tag tag;
-
-        typedef boost::mpl::list<
-            /* applist */ std::vector<std::string>
-        > tuple_type;
-    };
-
-    struct info {
-        typedef node_tag tag;
-    };
-}
-
-template<>
-struct protocol<node_tag> {
-    typedef boost::mpl::int_<
-        1
-    >::type version;
-
-    typedef mpl::list<
-        node::start_app,
-        node::pause_app,
-        node::info
-    > type;
-};
-
-} // namespace io
-
-} // namespace cocaine
+}} // namespace cocaine::service
 
 #endif

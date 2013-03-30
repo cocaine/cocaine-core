@@ -22,6 +22,7 @@
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
+#include "cocaine/messages.hpp"
 
 #include <tuple>
 

@@ -25,20 +25,9 @@
 
 namespace cocaine {
 
-struct description_t {
-    // An endpoint for the client to connect to in order to use the service.
-    std::string endpoint;
-
-    // Service protocol version. If the client wishes to use the service, the
-    // protocol versions must match between them.
-    unsigned int version;
-
-    // A mapping between method slot numbers and names for use in dynamic
-    // languages like Python or Ruby.
-    std::map<int, std::string> methods;
-
-    MSGPACK_DEFINE(endpoint, version, methods)
-};
+namespace io { namespace locator {
+    struct description_t;
+}}
 
 class actor_t;
 
@@ -54,7 +43,7 @@ class locator_t:
                std::unique_ptr<actor_t>&& service);
 
     private:
-        description_t
+        io::locator::description_t
         resolve(const std::string& name) const;
 
     private:
@@ -68,33 +57,6 @@ class locator_t:
         // as a vector of pairs to preserve initialization order.
         service_list_t m_services;
 };
-
-namespace io {
-
-struct locator_tag;
-
-namespace locator {
-    struct resolve {
-        typedef locator_tag tag;
-
-        typedef boost::mpl::list<
-            /* service */ std::string
-        > tuple_type;
-    };
-}
-
-template<>
-struct protocol<locator_tag> {
-    typedef boost::mpl::int_<
-        1
-    >::type version;
-
-    typedef mpl::list<
-        locator::resolve
-    > type;
-};
-
-} // namespace io
 
 } // namespace cocaine
 
