@@ -92,9 +92,9 @@ dispatch_t::invoke(const message_t& message,
     }
 }
 
-dispatch_t::id_map_t
+std::map<int, std::string>
 dispatch_t::describe() {
-    id_map_t result;
+    std::map<int, std::string> result;
 
     {
         std::lock_guard<std::mutex> lock(m_mutex);
