@@ -22,12 +22,9 @@
 #define COCAINE_SERVICE_LOCATOR_HPP
 
 #include "cocaine/dispatch.hpp"
+#include "cocaine/messages.hpp"
 
 namespace cocaine {
-
-namespace io { namespace locator {
-    struct description_t;
-}}
 
 class actor_t;
 
@@ -43,8 +40,9 @@ class locator_t:
                std::unique_ptr<actor_t>&& service);
 
     private:
-        io::locator::description_t
-        resolve(const std::string& name) const;
+        auto
+        resolve(const std::string& name) const
+            -> io::fold<io::locator::resolve::reply_type>::type;
 
     private:
         std::unique_ptr<logging::log_t> m_log;

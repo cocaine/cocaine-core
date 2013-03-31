@@ -33,27 +33,25 @@ namespace cocaine { namespace io {
 struct locator_tag;
 
 namespace locator {
-    struct description_t {
-        // An endpoint for the client to connect to in order to use the service.
-        std::string endpoint;
-
-        // Service protocol version. If the client wishes to use the service, the
-        // protocol versions must match between them.
-        unsigned int version;
-
-        // A mapping between method slot numbers and names for use in dynamic
-        // languages like Python or Ruby.
-        std::map<int, std::string> methods;
-
-        MSGPACK_DEFINE(endpoint, version, methods)
-    };
-
     struct resolve {
         typedef locator_tag tag;
 
         typedef boost::mpl::list<
-            /* service */ std::string
+         /* An alias of the service to resolve */
+            std::string
         > tuple_type;
+
+        typedef boost::mpl::list<
+         /* An endpoint for the client to connect to in order to use the
+            the service */
+            std::string,
+         /* Service protocol version. If the client wishes to use the service,
+            the protocol versions must match. */
+            unsigned int,
+         /* A mapping between method slot numbers and names for use in dynamic
+            languages like Python or Ruby. */
+            std::map<int, std::string>
+        > reply_type;
     };
 }
 

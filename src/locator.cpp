@@ -90,8 +90,10 @@ namespace {
     };
 }
 
-locator::description_t
-locator_t::resolve(const std::string& name) const {
+auto
+locator_t::resolve(const std::string& name) const
+    -> io::fold<io::locator::resolve::reply_type>::type
+{
     auto it = std::find_if(
         m_services.begin(),
         m_services.end(),
@@ -102,11 +104,9 @@ locator_t::resolve(const std::string& name) const {
         throw cocaine::error_t("the specified service is not available");
     }
 
-    locator::description_t result = {
+    return std::make_tuple(
         it->second->endpoint(),
         1,
         it->second->dispatch().describe()
-    };
-
-    return result;
+    );
 }

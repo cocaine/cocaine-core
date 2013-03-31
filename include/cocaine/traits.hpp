@@ -24,9 +24,11 @@
 #include <type_traits>
 
 #include <boost/mpl/begin.hpp>
+#include <boost/mpl/deque.hpp>
 #include <boost/mpl/deref.hpp>
 #include <boost/mpl/is_sequence.hpp>
 #include <boost/mpl/next.hpp>
+#include <boost/mpl/push_back.hpp>
 #include <boost/mpl/size.hpp>
 
 #include <msgpack.hpp>
@@ -203,6 +205,113 @@ private:
             ++packed,
             tail...
         );
+    }
+};
+
+namespace detail {
+    template<class It, class End, typename... Args>
+    struct fold_impl {
+        typedef typename fold_impl<
+            typename boost::mpl::next<It>::type,
+            End,
+            Args...,
+            typename boost::mpl::deref<It>::type
+        >::type type;
+    };
+
+    template<class End, typename... Args>
+    struct fold_impl<End, End, Args...> {
+        typedef std::tuple<Args...> type;
+    };
+
+    template<class, typename...>
+    struct unfold_impl;
+
+    template<class TypeList, class Head, typename... Args>
+    struct unfold_impl<TypeList, Head, Args...> {
+        typedef typename unfold_impl<
+            typename boost::mpl::push_back<TypeList, Head>::type,
+            Args...
+        >::type type;
+    };
+
+    template<class TypeList>
+    struct unfold_impl<TypeList> {
+        typedef TypeList type;
+    };
+
+    template<int... Indexes>
+    struct splat_impl {
+        template<class TypeList, class Stream, typename... Args>
+        static inline
+        void
+        pack(msgpack::packer<Stream>& packer,
+             const std::tuple<Args...>& source)
+        {
+            type_traits<TypeList>::pack(packer, std::get<Indexes>(source)...);
+        }
+
+        template<class TypeList, typename... Args>
+        static inline
+        void
+        unpack(const msgpack::object& unpacked,
+               std::tuple<Args...>& target)
+        {
+            type_traits<TypeList>::unpack(unpacked, std::get<Indexes>(target)...);
+        }
+    };
+
+    template<int N, int... Indexes>
+    struct splat {
+        typedef typename splat<
+            N - 1,
+            N - 1,
+            Indexes...
+        >::type type;
+    };
+
+    template<int... Indexes>
+    struct splat<0, Indexes...> {
+        typedef splat_impl<Indexes...> type;
+    };
+}
+
+template<typename TypeList>
+struct fold {
+    typedef typename detail::fold_impl<
+        typename boost::mpl::begin<TypeList>::type,
+        typename boost::mpl::end<TypeList>::type
+    >::type type;
+};
+
+template<typename... Args>
+struct unfold {
+    typedef typename detail::unfold_impl<
+        boost::mpl::deque<>,
+        Args...
+    >::type type;
+};
+
+template<typename... Args>
+struct type_traits<std::tuple<Args...>> {
+    typedef typename unfold<Args...>::type sequence_type;
+    typedef typename detail::splat<sizeof...(Args)>::type invoking_type;
+
+    template<class Stream>
+    static inline
+    void
+    pack(msgpack::packer<Stream>& packer,
+         const std::tuple<Args...>& source)
+    {
+        invoking_type::template pack<sequence_type>(packer, source);
+    }
+
+    static inline
+    void
+    unpack(const msgpack::object& unpacked,
+           std::tuple<Args...>& target)
+    {
+        invoking_type::template unpack<sequence_type>(unpacked, target);
     }
 };
 
