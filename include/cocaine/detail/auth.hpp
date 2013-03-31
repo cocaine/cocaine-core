@@ -31,8 +31,7 @@ struct authorization_error_t:
     public error_t
 {
     template<typename... Args>
-    authorization_error_t(const std::string& format,
-                          const Args&... args):
+    authorization_error_t(const std::string& format, const Args&... args):
         error_t(format, args...)
     { }
 };

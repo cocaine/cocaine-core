@@ -61,8 +61,7 @@ namespace {
         template<typename T>
         bool
         operator()(const T& entry) const {
-            return fs::is_regular_file(entry) &&
-                   entry.path().extension() == ".cocaine-plugin";
+            return fs::is_regular_file(entry) && entry.path().extension() == ".cocaine-plugin";
         }
     };
 }

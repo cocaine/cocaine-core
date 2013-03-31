@@ -32,16 +32,11 @@ template<class T>
 struct cached:
     protected T
 {
-    cached(context_t& context,
-           const std::string& collection,
-           const std::string& name);
+    cached(context_t& context, const std::string& collection, const std::string& name);
 };
 
 template<class T>
-cached<T>::cached(context_t& context,
-                  const std::string& collection,
-                  const std::string& name)
-{
+cached<T>::cached(context_t& context, const std::string& collection, const std::string& name) {
     T& object = static_cast<T&>(*this);
 
     auto cache = api::storage(context, "cache");

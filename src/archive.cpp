@@ -37,8 +37,7 @@ archive_error_t::archive_error_t(archive * source):
     std::runtime_error(archive_error_string(source))
 { }
 
-archive_t::archive_t(context_t& context,
-                     const std::string& archive):
+archive_t::archive_t(context_t& context, const std::string& archive):
     m_log(new log_t(context, "packaging")),
     m_archive(archive_read_new())
 {
@@ -126,9 +125,7 @@ archive_t::deploy(const std::string& prefix_) {
 }
 
 void
-archive_t::extract(archive * source,
-                   archive * target)
-{
+archive_t::extract(archive * source, archive * target) {
     int rv = ARCHIVE_OK;
 
     const void * buffer = nullptr;

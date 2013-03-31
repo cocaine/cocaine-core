@@ -32,8 +32,7 @@ namespace cocaine { namespace engine {
 struct profile_t:
     cached<Json::Value>
 {
-    profile_t(context_t& context,
-              const std::string& name);
+    profile_t(context_t& context, const std::string& name);
 
     // The profile name.
     std::string name;

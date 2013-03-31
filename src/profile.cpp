@@ -24,8 +24,7 @@
 using namespace cocaine;
 using namespace cocaine::engine;
 
-profile_t::profile_t(context_t& context,
-                     const std::string& name_):
+profile_t::profile_t(context_t& context, const std::string& name_):
     cached<Json::Value>(context, "profiles", name_),
     name(name_)
 {

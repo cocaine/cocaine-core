@@ -35,9 +35,7 @@ struct archive_error_t:
 
 class archive_t {
     public:
-        archive_t(context_t& context,
-                  const std::string& archive);
-
+        archive_t(context_t& context, const std::string& archive);
        ~archive_t();
 
         void
@@ -50,8 +48,7 @@ class archive_t {
     private:
         static
         void
-        extract(archive * source,
-                archive * target);
+        extract(archive * source, archive * target);
 
     private:
         std::unique_ptr<logging::log_t> m_log;

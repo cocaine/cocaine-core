@@ -29,8 +29,7 @@ using namespace cocaine::engine;
 
 namespace fs = boost::filesystem;
 
-manifest_t::manifest_t(context_t& context,
-                       const std::string& name_):
+manifest_t::manifest_t(context_t& context, const std::string& name_):
     cached<Json::Value>(context, "manifests", name_),
     name(name_)
 {

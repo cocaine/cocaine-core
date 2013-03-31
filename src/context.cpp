@@ -201,8 +201,7 @@ config_t::parse(const Json::Value& config) {
 
 // Context
 
-context_t::context_t(config_t config_,
-                     const std::string& logger):
+context_t::context_t(config_t config_, const std::string& logger):
     config(config_)
 {
     m_repository.reset(new api::repository_t());
@@ -231,8 +230,7 @@ context_t::context_t(config_t config_,
     bootstrap();
 }
 
-context_t::context_t(config_t config_,
-                     std::unique_ptr<logging::logger_concept_t>&& logger):
+context_t::context_t(config_t config_, std::unique_ptr<logging::logger_concept_t>&& logger):
     config(config_)
 {
     m_repository.reset(new api::repository_t());

@@ -24,8 +24,7 @@
 
 using namespace cocaine::logging;
 
-log_t::log_t(context_t& context,
-             const std::string& source):
+log_t::log_t(context_t& context, const std::string& source):
     m_logger(context.logger()),
     m_source(source)
 { }

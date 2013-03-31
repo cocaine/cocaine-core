@@ -32,9 +32,7 @@ struct type_traits<Json::Value> {
     template<class Stream>
     static inline
     void
-    pack(msgpack::packer<Stream>& packer,
-         const Json::Value& source)
-    {
+    pack(msgpack::packer<Stream>& packer, const Json::Value& source) {
         switch(source.type()) {
             case Json::objectValue: {
                 packer.pack_map(source.size());
@@ -92,9 +90,7 @@ struct type_traits<Json::Value> {
 
     static inline
     void
-    unpack(const msgpack::object& object,
-           Json::Value& target)
-    {
+    unpack(const msgpack::object& object, Json::Value& target) {
         switch(object.type) {
             case msgpack::type::MAP: {
                 msgpack::object_kv * ptr = object.via.map.ptr,

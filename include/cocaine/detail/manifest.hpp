@@ -32,8 +32,7 @@ namespace cocaine { namespace engine {
 struct manifest_t:
     cached<Json::Value>
 {
-    manifest_t(context_t& context,
-               const std::string& name);
+    manifest_t(context_t& context, const std::string& name);
 
     // The application name.
     std::string name;

@@ -52,9 +52,7 @@ using namespace cocaine::logging;
 
 namespace fs = boost::filesystem;
 
-app_t::app_t(context_t& context,
-             const std::string& name,
-             const std::string& profile):
+app_t::app_t(context_t& context, const std::string& name, const std::string& profile):
     m_context(context),
     m_log(new log_t(context, cocaine::format("app/%1%", name))),
     m_manifest(new manifest_t(context, name)),
@@ -356,16 +354,12 @@ app_t::info() const {
 }
 
 std::shared_ptr<api::stream_t>
-app_t::enqueue(const api::event_t& event,
-               const std::shared_ptr<api::stream_t>& upstream)
-{
+app_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream) {
     return m_engine->enqueue(event, upstream);
 }
 
 void
-app_t::deploy(const std::string& name,
-              const std::string& path)
-{
+app_t::deploy(const std::string& name, const std::string& path) {
     std::string blob;
 
     COCAINE_LOG_INFO(m_log, "deploying the app to '%s'", path);
