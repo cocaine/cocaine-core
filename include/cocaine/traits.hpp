@@ -60,7 +60,7 @@ struct type_traits {
 // is intentionally prohibited as it might force us to silently drop characters
 // if the buffer is not long enough.
 
-template<int N>
+template<size_t N>
 struct type_traits<char[N]> {
     template<class Stream>
     static inline
