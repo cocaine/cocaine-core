@@ -83,7 +83,7 @@ struct socket:
     // Operations
 
     ssize_t
-    write(const char * buffer, size_t size, std::error_code& ec) {
+    write(const char* buffer, size_t size, std::error_code& ec) {
         ssize_t length = ::write(m_fd, buffer, size);
 
         if(length == -1) {
@@ -104,7 +104,7 @@ struct socket:
     }
 
     ssize_t
-    read(char * buffer, size_t size, std::error_code& ec) {
+    read(char* buffer, size_t size, std::error_code& ec) {
         ssize_t length = ::read(m_fd, buffer, size);
 
         if(length == -1) {

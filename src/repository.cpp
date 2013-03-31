@@ -113,7 +113,7 @@ repository_t::open(const std::string& target) {
     // okay, so we do it to avoid warnings about type-punned pointer aliasing.
 
     union {
-        void * ptr;
+        void* ptr;
         initialize_fn_t call;
     } initialize;
 

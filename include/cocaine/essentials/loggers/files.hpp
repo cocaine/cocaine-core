@@ -41,7 +41,7 @@ class files_t:
              const std::string& message);
 
     private:
-        FILE * m_file;
+        FILE* m_file;
 };
 
 }} // namespace cocaine::logger

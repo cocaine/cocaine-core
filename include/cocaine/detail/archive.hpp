@@ -30,7 +30,7 @@ namespace cocaine {
 struct archive_error_t:
     public std::runtime_error
 {
-    archive_error_t(archive * source);
+    archive_error_t(archive* source);
 };
 
 class archive_t {
@@ -48,13 +48,13 @@ class archive_t {
     private:
         static
         void
-        extract(archive * source, archive * target);
+        extract(archive* source, archive* target);
 
     private:
         std::unique_ptr<logging::log_t> m_log;
 
         // The source archive.
-        archive * m_archive;
+        archive* m_archive;
 };
 
 } // namespace cocaine

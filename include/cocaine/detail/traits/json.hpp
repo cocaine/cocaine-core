@@ -93,8 +93,8 @@ struct type_traits<Json::Value> {
     unpack(const msgpack::object& object, Json::Value& target) {
         switch(object.type) {
             case msgpack::type::MAP: {
-                msgpack::object_kv * ptr = object.via.map.ptr,
-                                   * const end = ptr + object.via.map.size;
+                msgpack::object_kv *ptr = object.via.map.ptr,
+                                   *const end = ptr + object.via.map.size;
 
                 for(; ptr < end; ++ptr) {
                     if(ptr->key.type != msgpack::type::RAW) {
@@ -114,8 +114,8 @@ struct type_traits<Json::Value> {
             }
 
             case msgpack::type::ARRAY: {
-                msgpack::object * ptr = object.via.array.ptr,
-                                * const end = ptr + object.via.array.size;
+                msgpack::object *ptr = object.via.array.ptr,
+                                *const end = ptr + object.via.array.size;
 
                 for(unsigned int index = 0; ptr < end; ++ptr, ++index) {
                     unpack(*ptr, target[index]);

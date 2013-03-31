@@ -69,7 +69,7 @@ public:
 
 private:
     size_t
-    on_event(const char * data, size_t size) {
+    on_event(const char* data, size_t size) {
         size_t offset = 0,
                checkpoint = 0;
 

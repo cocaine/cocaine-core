@@ -93,8 +93,8 @@ process_t::spawn(const std::string& path,
         size_t argc = args.size() * 2 + 2;
         // size_t envc = environment.size() + 1;
 
-        char ** argv = new char * [argc];
-        // char ** envp[] = new char * [envc];
+        char** argv = new char* [argc];
+        // char** envp[] = new char* [envc];
 
         // NOTE: The first element is the executable path,
         // the last one should be null pointer.

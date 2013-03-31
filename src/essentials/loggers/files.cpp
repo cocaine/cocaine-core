@@ -54,7 +54,8 @@ files_t::~files_t() {
 }
 
 namespace {
-    static const char * describe[] = {
+    static
+    const char* describe[] = {
         nullptr,
         "ERROR",
         "WARNING",
@@ -90,7 +91,7 @@ files_t::emit(logging::priorities priority,
         message
     );
 
-    char * buffer = new char[out.size()];
+    char* buffer = new char[out.size()];
 
     std::memcpy(
         buffer,

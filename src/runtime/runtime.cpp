@@ -45,7 +45,7 @@ namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
 namespace {
-    void stacktrace(int signum, siginfo_t * info, void * context) {
+    void stacktrace(int signum, siginfo_t* info, void* context) {
         using namespace backward;
 
         (void)context;
@@ -152,7 +152,7 @@ namespace {
 }
 
 int
-main(int argc, char * argv[]) {
+main(int argc, char* argv[]) {
     po::options_description general_options("General options");
     po::variables_map vm;
 

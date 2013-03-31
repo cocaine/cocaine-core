@@ -143,8 +143,8 @@ config_t::config_t(const std::string& config_path):
         );
     }
 
-    addrinfo hints;
-    addrinfo * result = nullptr;
+    addrinfo hints,
+             *result = nullptr;
 
     std::memset(&hints, 0, sizeof(addrinfo));
 

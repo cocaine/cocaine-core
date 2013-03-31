@@ -47,7 +47,7 @@ namespace {
 
         virtual
         void
-        write(const char * chunk, size_t size) {
+        write(const char* chunk, size_t size) {
             m_channel->wr->write<rpc::chunk>(m_band, std::string(chunk, size));
         }
 

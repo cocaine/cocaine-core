@@ -86,7 +86,7 @@ namespace {
 
         virtual
         void
-        write(const char * chunk, size_t size) {
+        write(const char* chunk, size_t size) {
             if(m_state == states::closed) {
                 throw cocaine::error_t("the stream has been closed");
             }

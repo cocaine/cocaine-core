@@ -33,7 +33,7 @@ struct stream_t {
 
     virtual
     void
-    write(const char * chunk, size_t size) = 0;
+    write(const char* chunk, size_t size) = 0;
 
     virtual
     void

@@ -57,7 +57,7 @@ class auth_t:
     private:
         std::unique_ptr<logging::log_t> m_log;
 
-        EVP_MD_CTX * m_evp_md_context;
+        EVP_MD_CTX* m_evp_md_context;
 
 #if BOOST_VERSION >= 103600
         typedef boost::unordered_map<

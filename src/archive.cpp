@@ -33,7 +33,7 @@ using namespace cocaine::logging;
 
 namespace fs = boost::filesystem;
 
-archive_error_t::archive_error_t(archive * source):
+archive_error_t::archive_error_t(archive* source):
     std::runtime_error(archive_error_string(source))
 { }
 
@@ -64,8 +64,8 @@ void
 archive_t::deploy(const std::string& prefix_) {
     fs::path prefix = prefix_;
 
-    archive * target = archive_write_disk_new();
-    archive_entry * entry = nullptr;
+    archive* target = archive_write_disk_new();
+    archive_entry* entry = nullptr;
 
     int rv = ARCHIVE_OK;
 
@@ -125,10 +125,10 @@ archive_t::deploy(const std::string& prefix_) {
 }
 
 void
-archive_t::extract(archive * source, archive * target) {
+archive_t::extract(archive* source, archive* target) {
     int rv = ARCHIVE_OK;
 
-    const void * buffer = nullptr;
+    const void* buffer = nullptr;
     size_t size = 0;
 
 #if ARCHIVE_VERSION_NUMBER < 3000000

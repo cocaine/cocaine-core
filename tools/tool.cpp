@@ -303,7 +303,7 @@ namespace {
 }
 
 int
-main(int argc, char * argv[]) {
+main(int argc, char* argv[]) {
     po::options_description general_options("General options"),
                             hidden_options,
                             combined_options;

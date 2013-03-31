@@ -62,8 +62,8 @@ auth_t::auth_t(context_t& context):
         }
 
         // Read the key into the BIO object.
-        BIO * bio = BIO_new_mem_buf(const_cast<char*>(object.data()), object.size());
-        EVP_PKEY * pkey = PEM_read_bio_PUBKEY(bio, nullptr, nullptr, nullptr);
+        BIO* bio = BIO_new_mem_buf(const_cast<char*>(object.data()), object.size());
+        EVP_PKEY* pkey = PEM_read_bio_PUBKEY(bio, nullptr, nullptr, nullptr);
 
         if(pkey != nullptr) {
             m_keys.emplace(identity, pkey);

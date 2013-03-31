@@ -71,7 +71,7 @@ struct writable_stream:
     }
 
     void
-    write(const char * data, size_t size) {
+    write(const char* data, size_t size) {
         std::unique_lock<std::mutex> m_lock(m_ring_mutex);
 
         if(m_tx_offset == m_wr_offset) {
