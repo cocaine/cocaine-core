@@ -106,7 +106,7 @@ locator_t::resolve(const std::string& name) const
 
     return std::make_tuple(
         it->second->endpoint(),
-        1,
+        1u,
         it->second->dispatch().describe()
     );
 }
