@@ -65,13 +65,6 @@ node_t::node_t(context_t& context,
     on<io::node::pause_app>("pause_app", std::bind(&node_t::on_pause_app, this, _1));
     on<io::node::info     >("info",      std::bind(&node_t::on_info,      this));
 
-    int minor, major, patch;
-    zmq_version(&major, &minor, &patch);
-
-    COCAINE_LOG_INFO(m_log, "using libev version %d.%d", ev_version_major(), ev_version_minor());
-    COCAINE_LOG_INFO(m_log, "using libmsgpack version %s", msgpack_version());
-    COCAINE_LOG_INFO(m_log, "using libzmq version %d.%d.%d", major, minor, patch);
-
     // Configuration
 
     const ev::tstamp interval = args.get("announce-interval", 5.0f).asDouble();
