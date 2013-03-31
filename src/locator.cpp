@@ -92,7 +92,7 @@ namespace {
 
 auto
 locator_t::resolve(const std::string& name) const
-    -> result_tuple<locator::resolve>::type
+    -> tuple::fold<locator::resolve::result_type>::type
 {
     auto it = std::find_if(
         m_services.begin(),

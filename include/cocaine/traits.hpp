@@ -246,7 +246,7 @@ namespace detail {
 
 template<typename... Args>
 struct type_traits<std::tuple<Args...>> {
-    typedef typename unfold<Args...>::type sequence_type;
+    typedef typename tuple::unfold<Args...>::type sequence_type;
     typedef typename detail::splat<sizeof...(Args)>::type splat_type;
 
     template<class Stream>

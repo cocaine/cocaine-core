@@ -30,7 +30,7 @@
 #include <boost/mpl/next.hpp>
 #include <boost/mpl/push_back.hpp>
 
-namespace cocaine {
+namespace cocaine { namespace tuple {
 
 namespace detail {
     template<class It, class End, typename... Args>
@@ -81,6 +81,6 @@ struct unfold {
     >::type type;
 };
 
-}
+}} // namespace cocaine::tuple
 
 #endif

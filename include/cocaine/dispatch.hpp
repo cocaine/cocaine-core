@@ -85,24 +85,7 @@ namespace detail {
             typedef deferred_slot<deferred<R>, Sequence> type;
         };
     };
-
-    template<class R>
-    struct result_tuple_impl {
-        typedef typename fold<R>::type type;
-    };
-
-    template<>
-    struct result_tuple_impl<void> {
-        typedef void type;
-    };
 }
-
-template<class Event>
-struct result_tuple {
-    typedef typename detail::result_tuple_impl<
-        typename io::event_traits<Event>::result_type
-    >::type type;
-};
 
 template<class Event, class F>
 void
