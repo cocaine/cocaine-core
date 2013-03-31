@@ -35,8 +35,6 @@
 
 namespace cocaine {
 
-struct unique_id_t;
-
 namespace io {
 
 struct control_tag;
@@ -69,6 +67,8 @@ struct protocol<control_tag> {
 };
 
 } // namespace io
+
+struct unique_id_t;
 
 namespace engine {
 
