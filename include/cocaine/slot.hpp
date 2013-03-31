@@ -62,10 +62,7 @@ namespace detail {
         template<class F, typename... Args>
         static inline
         typename result_of<F>::type
-        apply(const F& callable,
-              const msgpack::object * ptr,
-              Args&&... args)
-        {
+        apply(const F& callable, const msgpack::object * ptr, Args&&... args) {
             typedef typename mpl::deref<It>::type argument_type;
             typedef typename mpl::next<It>::type next;
 
@@ -91,10 +88,7 @@ namespace detail {
         template<class F, typename... Args>
         static inline
         typename result_of<F>::type
-        apply(const F& callable,
-              const msgpack::object * /* ptr */,
-              Args&&... args)
-        {
+        apply(const F& callable, const msgpack::object * /* ptr */, Args&&... args) {
             return callable(std::forward<Args>(args)...);
         }
     };
@@ -107,22 +101,15 @@ struct invoke {
     template<class F>
     static inline
     typename detail::result_of<F>::type
-    apply(const F& callable,
-          const msgpack::object& args)
-    {
-        typedef typename mpl::begin<Sequence>::type begin;
-        typedef typename mpl::end<Sequence>::type end;
-
-        if(args.type != msgpack::type::ARRAY ||
-           args.via.array.size != mpl::size<Sequence>::value)
-        {
+    apply(const F& callable, const msgpack::object& args) {
+        if(args.type != msgpack::type::ARRAY || args.via.array.size != mpl::size<Sequence>::value) {
             throw cocaine::error_t("argument sequence mismatch");
         }
 
-        return detail::invoke_impl<begin, end>::apply(
-            callable,
-            args.via.array.ptr
-        );
+        typedef typename mpl::begin<Sequence>::type begin;
+        typedef typename mpl::end<Sequence>::type end;
+
+        return detail::invoke_impl<begin, end>::apply(callable, args.via.array.ptr);
     }
 };
 
@@ -140,8 +127,7 @@ struct slot_concept_t {
 
     virtual
     void
-    operator()(const api::stream_ptr_t& upstream,
-               const msgpack::object& args) = 0;
+    operator()(const api::stream_ptr_t& upstream, const msgpack::object& args) = 0;
 
 public:
     virtual
@@ -164,8 +150,7 @@ struct basic_slot:
 
     typedef std::function<function_type> callable_type;
 
-    basic_slot(const std::string& name,
-               callable_type callable):
+    basic_slot(const std::string& name, callable_type callable):
         slot_concept_t(name),
         m_callable(callable)
     { }
@@ -190,9 +175,7 @@ struct blocking_slot:
 
     virtual
     void
-    operator()(const api::stream_ptr_t& upstream,
-               const msgpack::object& args)
-    {
+    operator()(const api::stream_ptr_t& upstream, const msgpack::object& args) {
         io::type_traits<R>::pack(m_packer, invoke<Sequence>::apply(
             this->m_callable,
             args
@@ -224,9 +207,7 @@ struct blocking_slot<void, Sequence>:
 
     virtual
     void
-    operator()(const api::stream_ptr_t& upstream,
-               const msgpack::object& args)
-    {
+    operator()(const api::stream_ptr_t& upstream, const msgpack::object& args) {
         invoke<Sequence>::apply(
             this->m_callable,
             args
@@ -354,9 +335,7 @@ struct deferred_slot:
 
     virtual
     void
-    operator()(const api::stream_ptr_t& upstream,
-               const msgpack::object& args)
-    {
+    operator()(const api::stream_ptr_t& upstream, const msgpack::object& args) {
         auto deferred = invoke<Sequence>::apply(
             this->m_callable,
             args

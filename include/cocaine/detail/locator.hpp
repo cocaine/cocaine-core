@@ -33,11 +33,12 @@ class locator_t:
 {
     public:
         locator_t(context_t& context);
+
+        virtual
        ~locator_t();
 
         void
-        attach(const std::string& name,
-               std::unique_ptr<actor_t>&& service);
+        attach(const std::string& name, std::unique_ptr<actor_t>&& service);
 
     private:
         auto

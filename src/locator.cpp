@@ -54,9 +54,7 @@ locator_t::~locator_t() {
 }
 
 void
-locator_t::attach(const std::string& name,
-                  std::unique_ptr<actor_t>&& service)
-{
+locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
     COCAINE_LOG_INFO(
         m_log,
         "publishing service '%s' on '%s'",

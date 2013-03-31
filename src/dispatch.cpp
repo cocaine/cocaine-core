@@ -95,13 +95,10 @@ dispatch_t::invoke(const message_t& message,
 std::map<int, std::string>
 dispatch_t::describe() {
     std::map<int, std::string> result;
+    std::lock_guard<std::mutex> lock(m_mutex);
 
-    {
-        std::lock_guard<std::mutex> lock(m_mutex);
-
-        for(auto it = m_slots.begin(); it != m_slots.end(); ++it) {
-            result[it->first] = it->second->describe();
-        }
+    for(auto it = m_slots.begin(); it != m_slots.end(); ++it) {
+        result[it->first] = it->second->describe();
     }
 
     return result;

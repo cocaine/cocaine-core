@@ -41,17 +41,13 @@ struct type_traits {
     template<class Stream>
     static inline
     void
-    pack(msgpack::packer<Stream>& packer,
-         const T& source)
-    {
+    pack(msgpack::packer<Stream>& packer, const T& source) {
         packer << source;
     }
 
     static inline
     void
-    unpack(const msgpack::object& unpacked,
-           T& target)
-    {
+    unpack(const msgpack::object& unpacked, T& target) {
         unpacked >> target;
     }
 };
@@ -65,9 +61,7 @@ struct type_traits<char[N]> {
     template<class Stream>
     static inline
     void
-    pack(msgpack::packer<Stream>& packer,
-         const char * source)
-    {
+    pack(msgpack::packer<Stream>& packer, const char* source) {
         packer.pack_raw(N);
         packer.pack_raw_body(source, N);
     }
@@ -93,50 +87,32 @@ struct type_traits<
     template<class Stream, typename... Args>
     static inline
     void
-    pack(msgpack::packer<Stream>& packer,
-         const Args&... sequence)
-    {
+    pack(msgpack::packer<Stream>& packer, const Args&... sequence) {
         const size_t size = boost::mpl::size<T>::value;
 
-        static_assert(
-            sizeof...(sequence) == size,
-            "sequence length mismatch"
-        );
+        static_assert(sizeof...(sequence) == size, "sequence length mismatch");
 
         // The sequence will be packed as an array.
         packer.pack_array(size);
 
         // Recursively pack every sequence element.
-        pack_sequence<typename boost::mpl::begin<T>::type>(
-            packer,
-            sequence...
-        );
+        pack_sequence<typename boost::mpl::begin<T>::type>(packer, sequence...);
     }
 
     template<typename... Args>
     static inline
     void
-    unpack(const msgpack::object& object,
-           Args&... sequence)
-    {
+    unpack(const msgpack::object& object, Args&... sequence) {
         const size_t size = boost::mpl::size<T>::value;
 
-        static_assert(
-            sizeof...(sequence) == size,
-            "sequence length mismatch"
-        );
+        static_assert(sizeof...(sequence) == size, "sequence length mismatch");
 
-        if(object.type != msgpack::type::ARRAY ||
-           object.via.array.size != size)
-        {
+        if(object.type != msgpack::type::ARRAY || object.via.array.size != size) {
             throw msgpack::type_error();
         }
 
         // Recursively unpack every tuple element while validating the types.
-        unpack_sequence<typename boost::mpl::begin<T>::type>(
-            object.via.array.ptr,
-            sequence...
-        );
+        unpack_sequence<typename boost::mpl::begin<T>::type>(object.via.array.ptr, sequence...);
     }
 
 private:
@@ -150,10 +126,7 @@ private:
     template<class It, class Stream, class Head, typename... Tail>
     static inline
     void
-    pack_sequence(msgpack::packer<Stream>& packer,
-                  const Head& head,
-                  const Tail&... tail)
-    {
+    pack_sequence(msgpack::packer<Stream>& packer, const Head& head, const Tail&... tail) {
         // Strip the type.
         typedef typename std::remove_const<
             typename std::remove_reference<Head>::type
@@ -168,26 +141,20 @@ private:
         type_traits<type>::pack(packer, head);
 
         // Recurse to the next element.
-        return pack_sequence<typename boost::mpl::next<It>::type>(
-            packer,
-            tail...
-        );
+        return pack_sequence<typename boost::mpl::next<It>::type>(packer, tail...);
     }
 
     template<class It>
     static inline
     void
-    unpack_sequence(const msgpack::object * /* packed */) {
+    unpack_sequence(const msgpack::object* /* packed */) {
         return;
     }
 
     template<class It, class Head, typename... Tail>
     static inline
     void
-    unpack_sequence(const msgpack::object * packed,
-                    Head& head,
-                    Tail&... tail)
-    {
+    unpack_sequence(const msgpack::object* packed, Head& head, Tail&... tail) {
         // Strip the type.
         typedef typename std::remove_const<
             typename std::remove_reference<Head>::type
@@ -202,10 +169,7 @@ private:
         type_traits<type>::unpack(*packed, head);
 
         // Recurse to the next element.
-        return unpack_sequence<typename boost::mpl::next<It>::type>(
-            ++packed,
-            tail...
-        );
+        return unpack_sequence<typename boost::mpl::next<It>::type>(++packed, tail...);
     }
 };
 
@@ -217,18 +181,14 @@ namespace detail {
         template<class TypeList, class Stream, typename... Args>
         static inline
         void
-        pack(msgpack::packer<Stream>& packer,
-             const std::tuple<Args...>& source)
-        {
+        pack(msgpack::packer<Stream>& packer, const std::tuple<Args...>& source) {
             type_traits<TypeList>::pack(packer, std::get<Indices>(source)...);
         }
 
         template<class TypeList, typename... Args>
         static inline
         void
-        unpack(const msgpack::object& unpacked,
-               std::tuple<Args...>& target)
-        {
+        unpack(const msgpack::object& unpacked, std::tuple<Args...>& target) {
             type_traits<TypeList>::unpack(unpacked, std::get<Indices>(target)...);
         }
     };
@@ -252,17 +212,13 @@ struct type_traits<std::tuple<Args...>> {
     template<class Stream>
     static inline
     void
-    pack(msgpack::packer<Stream>& packer,
-         const std::tuple<Args...>& source)
-    {
+    pack(msgpack::packer<Stream>& packer, const std::tuple<Args...>& source) {
         splat_type::template pack<sequence_type>(packer, source);
     }
 
     static inline
     void
-    unpack(const msgpack::object& unpacked,
-           std::tuple<Args...>& target)
-    {
+    unpack(const msgpack::object& unpacked, std::tuple<Args...>& target) {
         splat_type::template unpack<sequence_type>(unpacked, target);
     }
 };

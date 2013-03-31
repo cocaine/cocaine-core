@@ -32,10 +32,7 @@ class app_t:
     boost::noncopyable
 {
     public:
-        app_t(context_t& context,
-              const std::string& appname,
-              const std::string& profile);
-
+        app_t(context_t& context, const std::string& appname, const std::string& profile);
        ~app_t();
 
         void
@@ -50,13 +47,11 @@ class app_t:
         // Scheduling
 
         std::shared_ptr<api::stream_t>
-        enqueue(const api::event_t& event,
-                const std::shared_ptr<api::stream_t>& upstream);
+        enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream);
 
     private:
         void
-        deploy(const std::string& name,
-               const std::string& path);
+        deploy(const std::string& name, const std::string& path);
 
     private:
         context_t& m_context;

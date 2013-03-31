@@ -81,4 +81,4 @@ hash_value(const unique_id_t& id) {
     return boost::hash_range(id.uuid.begin(), id.uuid.end());
 }
 
-}
+} // namespace cocaine

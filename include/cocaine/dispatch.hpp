@@ -47,8 +47,7 @@ class dispatch_t:
         forget();
 
         void
-        invoke(const io::message_t& message,
-               const api::stream_ptr_t& upstream);
+        invoke(const io::message_t& message, const api::stream_ptr_t& upstream);
 
         std::map<int, std::string>
         describe();

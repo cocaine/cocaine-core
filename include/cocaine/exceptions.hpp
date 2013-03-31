@@ -39,8 +39,7 @@ struct error_t:
     public std::exception
 {
     template<typename... Args>
-    error_t(const std::string& format,
-            const Args&... args):
+    error_t(const std::string& format, const Args&... args):
         m_message(cocaine::format(format, args...))
     { }
 
@@ -63,8 +62,7 @@ struct configuration_error_t:
     public error_t
 {
     template<typename... Args>
-    configuration_error_t(const std::string& format,
-                          const Args&... args):
+    configuration_error_t(const std::string& format, const Args&... args):
         error_t(format, args...)
     { }
 };

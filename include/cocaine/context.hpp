@@ -100,20 +100,15 @@ class context_t:
     boost::noncopyable
 {
     public:
-        context_t(config_t config,
-                  const std::string& logger);
-
-        context_t(config_t config,
-                  std::unique_ptr<logging::logger_concept_t>&& logger);
-
+        context_t(config_t config, const std::string& logger);
+        context_t(config_t config, std::unique_ptr<logging::logger_concept_t>&& logger);
        ~context_t();
 
         // Component API
 
         template<class Category, typename... Args>
         typename api::category_traits<Category>::ptr_type
-        get(const std::string& type,
-            Args&&... args);
+        get(const std::string& type, Args&&... args);
 
         // Logging
 
@@ -146,9 +141,7 @@ class context_t:
 
 template<class Category, typename... Args>
 typename api::category_traits<Category>::ptr_type
-context_t::get(const std::string& type,
-               Args&&... args)
-{
+context_t::get(const std::string& type, Args&&... args) {
     return m_repository->get<Category>(
         type,
         std::forward<Args>(args)...

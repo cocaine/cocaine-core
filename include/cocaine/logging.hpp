@@ -53,9 +53,7 @@ struct logger_concept_t {
 
     virtual
     void
-    emit(priorities priority,
-         const std::string& source,
-         const std::string& message) = 0;
+    emit(priorities priority, const std::string& source, const std::string& message) = 0;
 };
 
 struct log_t {
@@ -69,17 +67,12 @@ struct log_t {
 
     template<typename... Args>
     void
-    emit(priorities level,
-         const std::string& format,
-         const Args&... args)
-    {
+    emit(priorities level, const std::string& format, const Args&... args) {
         m_logger.emit(level, m_source, cocaine::format(format, args...));
     }
 
     void
-    emit(priorities level,
-         const std::string& message)
-    {
+    emit(priorities level, const std::string& message) {
         m_logger.emit(level, m_source, message);
     }
 

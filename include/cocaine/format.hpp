@@ -35,10 +35,7 @@ namespace detail {
     template<typename T, typename... Args>
     static inline
     std::string
-    substitute(boost::format& message,
-               const T& argument,
-               const Args&... args)
-    {
+    substitute(boost::format& message, const T& argument, const Args&... args) {
         return substitute(message % argument, args...);
     }
 }
@@ -46,9 +43,7 @@ namespace detail {
 template<typename... Args>
 static inline
 std::string
-format(const std::string& format,
-       const Args&... args)
-{
+format(const std::string& format, const Args&... args) {
     boost::format message(format);
 
     try {

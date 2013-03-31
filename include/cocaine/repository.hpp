@@ -70,8 +70,7 @@ struct repository_error_t:
     public error_t
 {
     template<typename... Args>
-    repository_error_t(const std::string& format,
-                       const Args&... args):
+    repository_error_t(const std::string& format, const Args&... args):
         error_t(format, args...)
     { }
 };
@@ -88,8 +87,7 @@ class repository_t:
 
         template<class Category, typename... Args>
         typename category_traits<Category>::ptr_type
-        get(const std::string& type,
-            Args&&... args);
+        get(const std::string& type, Args&&... args);
 
         template<class T>
         void
@@ -128,9 +126,7 @@ class repository_t:
 
 template<class Category, typename... Args>
 typename category_traits<Category>::ptr_type
-repository_t::get(const std::string& type,
-                  Args&&... args)
-{
+repository_t::get(const std::string& type, Args&&... args) {
     const std::string id = typeid(Category).name();
     const factory_map_t& factories = m_categories[id];
 
