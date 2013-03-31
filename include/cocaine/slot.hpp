@@ -209,13 +209,8 @@ struct blocking_slot<void, Sequence>:
 
     virtual
     void
-    operator()(const api::stream_ptr_t& upstream, const msgpack::object& args) {
-        invoke<Sequence>::apply(
-            this->m_callable,
-            args
-        );
-
-        upstream->close();
+    operator()(const api::stream_ptr_t&, const msgpack::object& args) {
+        invoke<Sequence>::apply(this->m_callable, args);
     }
 };
 
