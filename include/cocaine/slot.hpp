@@ -62,7 +62,7 @@ namespace detail {
         template<class F, typename... Args>
         static inline
         typename result_of<F>::type
-        apply(const F& callable, const msgpack::object * ptr, Args&&... args) {
+        apply(const F& callable, const msgpack::object* ptr, Args&&... args) {
             typedef typename mpl::deref<It>::type argument_type;
             typedef typename mpl::next<It>::type next;
 
@@ -88,7 +88,7 @@ namespace detail {
         template<class F, typename... Args>
         static inline
         typename result_of<F>::type
-        apply(const F& callable, const msgpack::object * /* ptr */, Args&&... args) {
+        apply(const F& callable, const msgpack::object* /* ptr */, Args&&... args) {
             return callable(std::forward<Args>(args)...);
         }
     };
@@ -102,7 +102,9 @@ struct invoke {
     static inline
     typename detail::result_of<F>::type
     apply(const F& callable, const msgpack::object& args) {
-        if(args.type != msgpack::type::ARRAY || args.via.array.size != mpl::size<Sequence>::value) {
+        if(args.type != msgpack::type::ARRAY ||
+           args.via.array.size != mpl::size<Sequence>::value)
+        {
             throw cocaine::error_t("argument sequence mismatch");
         }
 
