@@ -60,26 +60,31 @@ namespace detail {
         typedef void type;
     };
 
-    template<class Event, class = void>
-    struct tuple_type {
-        typedef mpl::list<> type;
-    };
+    #define DEPENDENT_TYPE(name, default)                       \
+        template<class Event, class = void>                     \
+        struct name##_type {                                    \
+            typedef default type;                               \
+        };                                                      \
+                                                                \
+        template<class Event>                                   \
+        struct name##_type<                                     \
+            Event,                                              \
+            typename depend<typename Event::name##_type>::type  \
+        >                                                       \
+        {                                                       \
+            typedef typename Event::name##_type type;           \
+        };
 
-    template<class Event>
-    struct tuple_type<
-        Event,
-        typename depend<typename Event::tuple_type>::type
-    >
-    {
-        typedef typename Event::tuple_type type;
-    };
+    DEPENDENT_TYPE(tuple, mpl::list<>)
+    DEPENDENT_TYPE(result, void)
+
+    #undef DEPENDENT_TYPE
 }
 
 template<class Event>
 struct event_traits {
-    typedef typename detail::tuple_type<
-        Event
-    >::type tuple_type;
+    typedef typename detail::tuple_type<Event>::type tuple_type;
+    typedef typename detail::result_type<Event>::type result_type;
 
     enum constants {
         id = detail::enumerate<Event>::value

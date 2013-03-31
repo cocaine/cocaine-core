@@ -51,7 +51,7 @@ namespace locator {
          /* A mapping between method slot numbers and names for use in dynamic
             languages like Python or Ruby. */
             std::map<int, std::string>
-        > reply_type;
+        > result_type;
     };
 }
 

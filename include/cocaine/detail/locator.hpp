@@ -42,7 +42,7 @@ class locator_t:
     private:
         auto
         resolve(const std::string& name) const
-            -> io::fold<io::locator::resolve::reply_type>::type;
+            -> result_tuple<io::locator::resolve>::type;
 
     private:
         std::unique_ptr<logging::log_t> m_log;
