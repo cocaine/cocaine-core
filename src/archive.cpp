@@ -85,11 +85,19 @@ archive_t::deploy(const std::string& prefix_) {
             throw archive_error_t(m_archive);
         }
 
-        fs::path path = archive_entry_pathname(entry);
+        fs::path pathname = prefix / archive_entry_pathname(entry);
 
         // NOTE: Prepend the target path to the stored file path
         // in order to unpack it into the right place.
-        archive_entry_set_pathname(entry, (prefix / path).string().c_str());
+        archive_entry_set_pathname(entry, pathname.string().c_str());
+
+        if(archive_entry_hardlink(entry)) {
+            fs::path hardlink = prefix / archive_entry_hardlink(entry);
+
+            // NOTE: This entry might be a hardlink to some other file, for example
+            // due to tar file deduplication mechanics. We need to update this path as well.
+            archive_entry_set_hardlink(entry, hardlink.string().c_str());
+        }
 
         rv = archive_write_header(target, entry);
 
