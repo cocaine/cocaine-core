@@ -114,8 +114,7 @@ archive_t::deploy(const std::string& prefix_) {
         }
     }
 
-    // NOTE: The reported count is off by one for some reason.
-    size_t count = archive_file_count(m_archive) - 1;
+    size_t count = archive_file_count(m_archive);
 
     COCAINE_LOG_INFO(
         m_log,
