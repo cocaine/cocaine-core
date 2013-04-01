@@ -1,3 +1,13 @@
+cocaine-core (0.10.0-rc7) lucid; urgency=low
+
+  * Release candiate 7.
+  * Merged essentials module into the core.
+  * Stacktrace printer.
+  * Tuple support for services.
+  * Bugfixes.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Mon, 01 Apr 2013 17:52:50 +0400
+
 cocaine-core (0.10.0-rc6) lucid; urgency=low
 
   * Release candidate 6.
