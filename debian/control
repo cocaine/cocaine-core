@@ -40,6 +40,7 @@ Description: Cocaine - Debug Files
 
 Package: cocaine-tools
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2, python, msgpack-python
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2 (= ${Source-Version}),
+ python, python-msgpack | msgpack-python
 Description: Cocaine - Toolset
  Various tools to query and manipulate running Cocaine instances.
