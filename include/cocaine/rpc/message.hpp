@@ -49,9 +49,9 @@ struct message_t:
     }
 
 public:
-    int
+    uint32_t
     id() const {
-        return m_object.via.array.ptr[0].as<int>();
+        return m_object.via.array.ptr[0].as<uint32_t>();
     }
 
     uint64_t
@@ -59,7 +59,7 @@ public:
         return m_object.via.array.ptr[1].as<uint64_t>();
     }
 
-    msgpack::object
+    const msgpack::object&
     args() const {
         return m_object.via.array.ptr[2];
     }

@@ -74,7 +74,7 @@ struct encoder:
         // NOTE: Format is [ID, Tag, [Args...]].
         m_packer.pack_array(3);
 
-        m_packer.pack_uint16(traits::id);
+        m_packer.pack_uint32(traits::id);
         m_packer.pack_uint64(stream);
 
         type_traits<typename traits::tuple_type>::pack(
