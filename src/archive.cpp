@@ -70,9 +70,7 @@ archive_t::deploy(const std::string& prefix_) {
     int rv = ARCHIVE_OK;
 
     int flags = ARCHIVE_EXTRACT_TIME |
-                ARCHIVE_EXTRACT_PERM |
-                ARCHIVE_EXTRACT_ACL |
-                ARCHIVE_EXTRACT_FFLAGS |
+                ARCHIVE_EXTRACT_SECURE_SYMLINKS |
                 ARCHIVE_EXTRACT_SECURE_NODOTDOT;
 
     archive_write_disk_set_options(target, flags);
@@ -100,12 +98,12 @@ archive_t::deploy(const std::string& prefix_) {
         } else if(archive_entry_size(entry) > 0) {
             extract(m_archive, target);
         }
-    }
 
-    rv = archive_write_finish_entry(target);
+        rv = archive_write_finish_entry(target);
 
-    if(rv != ARCHIVE_OK) {
-        throw archive_error_t(target);
+        if(rv != ARCHIVE_OK) {
+            throw archive_error_t(target);
+        }
     }
 
     // NOTE: The reported count is off by one for some reason.
