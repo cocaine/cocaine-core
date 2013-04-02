@@ -171,6 +171,62 @@ struct protocol<logging_tag> {
     > type;
 };
 
+// Storage service interface
+
+struct storage_tag;
+
+namespace storage {
+    struct read {
+        typedef storage_tag tag;
+
+        typedef boost::mpl::list<
+            /* collection */ std::string,
+            /* key */        std::string
+        > tuple_type;
+    };
+
+    struct write {
+        typedef storage_tag tag;
+
+        typedef boost::mpl::list<
+            /* collection */ std::string,
+            /* key */        std::string,
+            /* value */      std::string
+        > tuple_type;
+    };
+
+    struct remove {
+        typedef storage_tag tag;
+
+        typedef boost::mpl::list<
+            /* collection */ std::string,
+            /* key */        std::string
+        > tuple_type;
+    };
+
+    struct list {
+        typedef storage_tag tag;
+
+        typedef boost::mpl::list<
+            /* collection */ std::string
+        > tuple_type;
+    };
+}
+
+template<>
+struct protocol<storage_tag> {
+    typedef boost::mpl::int_<
+        1
+    >::type version;
+
+    typedef boost::mpl::list<
+        storage::read,
+        storage::write,
+        storage::remove,
+        storage::list
+    > type;
+};
+
 // Node service interface
 
 struct node_tag;

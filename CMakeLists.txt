@@ -81,6 +81,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/essentials/loggers/syslog
     src/essentials/services/logging
     src/essentials/services/node
+    src/essentials/services/storage
     src/essentials/storages/files
     src/essentials/module
     src/locator

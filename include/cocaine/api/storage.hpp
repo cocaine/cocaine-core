@@ -53,10 +53,21 @@ class storage_t {
             // Empty.
         }
 
+        virtual
+        std::string
+        read(const std::string& collection,
+             const std::string& key) = 0;
+
         template<class T>
         T
         get(const std::string& collection,
             const std::string& key);
+
+        virtual
+        void
+        write(const std::string& collection,
+              const std::string& key,
+              const std::string& blob) = 0;
 
         template<class T>
         void
@@ -78,17 +89,6 @@ class storage_t {
                   const std::string& /* name */,
                   const Json::Value& /* args */)
         { }
-
-        virtual
-        std::string
-        read(const std::string& collection,
-             const std::string& key) = 0;
-
-        virtual
-        void
-        write(const std::string& collection,
-              const std::string& key,
-              const std::string& blob) = 0;
 };
 
 template<class T>
