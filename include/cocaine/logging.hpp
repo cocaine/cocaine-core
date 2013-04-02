@@ -22,7 +22,6 @@
 #define COCAINE_LOGGING_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/format.hpp"
 
 #define COCAINE_LOG(_log_, _level_, ...) \
     if(_log_->verbosity() >= _level_) _log_->emit(_level_, __VA_ARGS__);
@@ -48,7 +47,7 @@ struct logger_concept_t {
     }
 
     virtual
-    logging::priorities
+    priorities
     verbosity() const = 0;
 
     virtual
