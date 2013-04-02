@@ -1,3 +1,15 @@
+cocaine-core (0.10.0-rc8) lucid; urgency=low
+
+  * Release candidate 8.
+  * Storage service is now available! Provides synchronous uncached access to
+    the system core storage.
+  * Logging service now supports verbosity() method which reports the current
+    server's log level.
+  * Fixed a bug with extracting of hardlinks from tar archives (for example,
+    when tar deduplicates multiple occurences of the same file in the tree).
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 02 Apr 2013 16:35:26 +0400
+
 cocaine-core (0.10.0-rc7) lucid; urgency=low
 
   * Release candiate 7.
