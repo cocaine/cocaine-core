@@ -18,14 +18,14 @@ Description: Cocaine - Core Libraries
 Package: libcocaine-dev
 Architecture: any
 Section: libdevel
-Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2 (= ${Source-Version}),
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2 (= ${binary:Version}),
  libev-dev, libmsgpack-dev, libboost-dev, libltdl-dev
 Description: Cocaine - Development Headers
  Cocaine development headers package.
 
 Package: cocaine-runtime
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2 (= ${Source-Version}),
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2 (= ${binary:Version}),
  adduser
 Conflicts: cocaine-server
 Description: Cocaine - Runtime
@@ -34,13 +34,13 @@ Description: Cocaine - Runtime
 Package: cocaine-dbg
 Architecture: any
 Section: debug
-Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2 (= ${Source-Version})
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2 (= ${binary:Version})
 Description: Cocaine - Debug Files
  Cocaine debug files and symbols.
 
 Package: cocaine-tools
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2 (= ${Source-Version}),
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2,
  python, python-msgpack | msgpack-python
 Description: Cocaine - Toolset
  Various tools to query and manipulate running Cocaine instances.
