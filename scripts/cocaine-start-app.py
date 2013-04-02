@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
-#    Copyright (c) 2011-2012 Andrey Sibiryov <me@kobology.ru>
-#    Copyright (c) 2011-2012 Other contributors as noted in the AUTHORS file.
+#    Copyright (c) 2011-2013 Andrey Sibiryov <me@kobology.ru>
+#    Copyright (c) 2011-2013 Other contributors as noted in the AUTHORS file.
 #
 #    This file is part of Cocaine.
 #
