@@ -39,9 +39,7 @@ struct protocol;
 namespace detail {
     template<
         class Event,
-        class Protocol = typename protocol<
-            typename Event::tag
-        >::type
+        class Protocol = typename protocol<typename Event::tag>::type
     >
     struct enumerate:
         public mpl::distance<
