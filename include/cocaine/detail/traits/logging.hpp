@@ -18,31 +18,30 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/essentials/services/logging.hpp"
+#ifndef COCAINE_LOGGING_TYPE_TRAITS_HPP
+#define COCAINE_LOGGING_TYPE_TRAITS_HPP
 
-#include "cocaine/context.hpp"
-#include "cocaine/logging.hpp"
-#include "cocaine/messages.hpp"
+#include "cocaine/traits.hpp"
+#include "cocaine/forwards.hpp"
 
-#include "cocaine/detail/traits/logging.hpp"
+namespace cocaine { namespace io {
 
-using namespace cocaine;
-using namespace cocaine::io;
-using namespace cocaine::service;
+template<>
+struct type_traits<logging::priorities> {
+    template<class Stream>
+    static inline
+    void
+    pack(msgpack::packer<Stream>& packer, const logging::priorities& source) {
+        packer << static_cast<int>(source);
+    }
 
-using namespace std::placeholders;
+    static inline
+    void
+    unpack(const msgpack::object& unpacked, logging::priorities& target) {
+        target = static_cast<logging::priorities>(unpacked.as<int>());
+    }
+};
 
-logging_t::logging_t(context_t& context,
-                     reactor_t& reactor,
-                     const std::string& name,
-                     const Json::Value& args):
-    category_type(context, reactor, name, args)
-{
-    auto logger = std::ref(context.logger());
+}} // namespace cocaine::io
 
-    using cocaine::logging::logger_concept_t;
-
-    on<io::logging::emit     >("emit",      std::bind(&logger_concept_t::emit,      logger, _1, _2, _3));
-    on<io::logging::verbosity>("verbosity", std::bind(&logger_concept_t::verbosity, logger));
-}
-
+#endif
