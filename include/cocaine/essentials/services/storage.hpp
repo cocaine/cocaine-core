@@ -38,19 +38,9 @@ class storage_t:
                   const Json::Value& args);
 
     private:
-        std::string
-        on_read(const std::string& collection, const std::string& key);
-
-        void
-        on_write(const std::string& collection, const std::string& key, const std::string& value);
-
-        void
-        on_remove(const std::string& collection, const std::string& key);
-
-        std::vector<std::string>
-        on_list(const std::string& collection);
-
-    private:
+        // NOTE: This will keep the underlying storage active, as opposed to
+        // the usual usecase when the storage object is destroyed after the
+        // node service finishes its initialization.
         api::category_traits<api::storage_t>::ptr_type m_storage;
 };
 

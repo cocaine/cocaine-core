@@ -20,8 +20,6 @@
 
 #include "cocaine/essentials/services/storage.hpp"
 
-#include "cocaine/context.hpp"
-#include "cocaine/logging.hpp"
 #include "cocaine/messages.hpp"
 
 using namespace cocaine;
@@ -37,28 +35,8 @@ storage_t::storage_t(context_t& context,
     category_type(context, reactor, name, args),
     m_storage(api::storage(context, "core"))
 {
-    on<storage::read  >("read",   std::bind(&storage_t::on_read,   this, _1, _2));
-    on<storage::write >("write",  std::bind(&storage_t::on_write,  this, _1, _2, _3));
-    on<storage::remove>("remove", std::bind(&storage_t::on_remove, this, _1, _2));
-    on<storage::list  >("list",   std::bind(&storage_t::on_list,   this, _1));
-}
-
-std::string
-storage_t::on_read(const std::string& collection, const std::string& key) {
-    return m_storage->read(collection, key);
-}
-
-void
-storage_t::on_write(const std::string& collection, const std::string& key, const std::string& value) {
-    return m_storage->write(collection, key, value);
-}
-
-void
-storage_t::on_remove(const std::string& collection, const std::string& key) {
-    return m_storage->remove(collection, key);
-}
-
-std::vector<std::string>
-storage_t::on_list(const std::string& collection) {
-    return m_storage->list(collection);
+    on<storage::read  >("read",   std::bind(&api::storage_t::read,   m_storage, _1, _2));
+    on<storage::write >("write",  std::bind(&api::storage_t::write,  m_storage, _1, _2, _3));
+    on<storage::remove>("remove", std::bind(&api::storage_t::remove, m_storage, _1, _2));
+    on<storage::list  >("list",   std::bind(&api::storage_t::list,   m_storage, _1));
 }
