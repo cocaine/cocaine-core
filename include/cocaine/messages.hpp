@@ -149,14 +149,20 @@ struct protocol<rpc_tag> {
 struct logging_tag;
 
 namespace logging {
+    using cocaine::logging::priorities;
+
     struct emit {
         typedef logging_tag tag;
 
         typedef boost::mpl::list<
-            /* level */   int,
+            /* level */   priorities,
             /* source */  std::string,
             /* message */ std::string
         > tuple_type;
+    };
+
+    struct verbosity {
+        typedef logging_tag tag;
     };
 }
 
@@ -167,7 +173,8 @@ struct protocol<logging_tag> {
     >::type version;
 
     typedef boost::mpl::list<
-        logging::emit
+        logging::emit,
+        logging::verbosity
     > type;
 };
 

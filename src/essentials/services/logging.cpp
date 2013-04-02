@@ -24,43 +24,43 @@
 #include "cocaine/logging.hpp"
 #include "cocaine/messages.hpp"
 
-#include <tuple>
-
 using namespace cocaine;
 using namespace cocaine::io;
-using namespace cocaine::logging;
 using namespace cocaine::service;
 
 using namespace std::placeholders;
+
+namespace cocaine { namespace io {
+    using cocaine::logging::priorities;
+
+    template<>
+    struct type_traits<priorities> {
+        template<class Stream>
+        static inline
+        void
+        pack(msgpack::packer<Stream>& packer, const priorities& source) {
+            packer << static_cast<int>(source);
+        }
+
+        static inline
+        void
+        unpack(const msgpack::object& unpacked, priorities& target) {
+            target = static_cast<priorities>(unpacked.as<int>());
+        }
+    };
+}}
 
 logging_t::logging_t(context_t& context,
                      reactor_t& reactor,
                      const std::string& name,
                      const Json::Value& args):
-    category_type(context, reactor, name, args),
-    m_context(context)
+    category_type(context, reactor, name, args)
 {
-    on<io::logging::emit>("emit", std::bind(&logging_t::on_emit, this, _1, _2, _3));
+    auto logger = std::ref(context.logger());
+
+    using cocaine::logging::logger_concept_t;
+
+    on<io::logging::emit     >("emit",      std::bind(&logger_concept_t::emit,      logger, _1, _2, _3));
+    on<io::logging::verbosity>("verbosity", std::bind(&logger_concept_t::verbosity, logger));
 }
 
-void
-logging_t::on_emit(int priority,
-                   const std::string& source,
-                   const std::string& message)
-{
-    log_map_t::iterator it = m_logs.find(source);
-
-    if(it == m_logs.end()) {
-        std::tie(it, std::ignore) = m_logs.emplace(
-            source,
-            std::make_shared<log_t>(m_context, source)
-        );
-    }
-
-    COCAINE_LOG(
-        it->second,
-        static_cast<logging::priorities>(priority),
-        "%s",
-        message
-    );
-}

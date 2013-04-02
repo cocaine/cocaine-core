@@ -35,26 +35,6 @@ class logging_t:
                   reactor_t& reactor,
                   const std::string& name,
                   const Json::Value& args);
-
-    private:
-        void
-        on_emit(int priority,
-                const std::string& source,
-                const std::string& message);
-
-    private:
-        context_t& m_context;
-
-#if BOOST_VERSION >= 103600
-        typedef boost::unordered_map<
-#else
-        typedef std::map<
-#endif
-            std::string,
-            std::shared_ptr<logging::log_t>
-        > log_map_t;
-
-        log_map_t m_logs;
 };
 
 }} // namespace cocaine::service
