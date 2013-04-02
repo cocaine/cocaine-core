@@ -24,9 +24,9 @@
 #include <tuple>
 
 #include <boost/mpl/begin.hpp>
-#include <boost/mpl/end.hpp>
 #include <boost/mpl/deque.hpp>
 #include <boost/mpl/deref.hpp>
+#include <boost/mpl/end.hpp>
 #include <boost/mpl/next.hpp>
 #include <boost/mpl/push_back.hpp>
 
