@@ -10,13 +10,17 @@ CONFIGURE_FILE(
     "${PROJECT_SOURCE_DIR}/config.hpp.in"
     "${PROJECT_SOURCE_DIR}/include/cocaine/config.hpp")
 
-FIND_PACKAGE(Boost 1.40.0 REQUIRED
-    COMPONENTS
+FIND_PACKAGE(Boost 1.40.0
+    REQUIRED COMPONENTS
         system
         filesystem
         program_options)
 
-FIND_PACKAGE(OpenSSL REQUIRED)
+IF(NOT APPLE)
+    FIND_PACKAGE(OpenSSL REQUIRED)
+    SET(CRYPTO_SOURCES "auth")
+    SET(CRYPTO_LIBRARY "crypto")
+ENDIF()
 
 INCLUDE(cmake/locate_library.cmake)
 
@@ -33,7 +37,7 @@ ENDIF()
 
 IF(NOT APPLE)
     LOCATE_LIBRARY(LIBBFD "bfd.h" "bfd")
-    SET(LIBBFD_LIBRARIES "bfd" "dl")
+    SET(LIBBFD_LIBRARY "bfd" "dl")
 ENDIF()
 
 INCLUDE_DIRECTORIES(
@@ -64,15 +68,15 @@ ADD_LIBRARY(json
     foreign/jsoncpp-0.6.0-rc2/src/lib_json/json_writer)
 
 SET_TARGET_PROPERTIES(json PROPERTIES
-    COMPILE_FLAGS -fPIC)
+    COMPILE_FLAGS "-fPIC")
 
 ADD_LIBRARY(cocaine-core SHARED
     src/actor
     src/api
     src/app
     src/archive
-    src/auth
     src/context
+    ${CRYPTO_SOURCES}
     src/dispatch
     src/engine
     src/essentials/isolates/process
@@ -97,7 +101,7 @@ TARGET_LINK_LIBRARIES(cocaine-core
     archive
     boost_system-mt
     boost_filesystem-mt
-    crypto
+    ${CRYPTO_LIBRARY}
     ev
     json
     ltdl
@@ -106,20 +110,19 @@ TARGET_LINK_LIBRARIES(cocaine-core
     zmq)
 
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
-    VERSION 2
-    COMPILE_FLAGS "-std=c++0x")
+    VERSION 2)
 
 ADD_EXECUTABLE(cocaine-runtime
     src/runtime/pid_file
     src/runtime/runtime)
 
 TARGET_LINK_LIBRARIES(cocaine-runtime
-    ${LIBBFD_LIBRARIES}
+    ${LIBBFD_LIBRARY}
     boost_program_options-mt
     cocaine-core)
 
-SET_TARGET_PROPERTIES(cocaine-runtime PROPERTIES
-    COMPILE_FLAGS "-std=c++0x")
+SET_TARGET_PROPERTIES(cocaine-core cocaine-runtime PROPERTIES
+    COMPILE_FLAGS "-std=c++0x -W -Wall -Werror -pedantic")
 
 ADD_SUBDIRECTORY(tools)
 
