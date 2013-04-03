@@ -24,7 +24,6 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
 
-using namespace cocaine;
 using namespace cocaine::engine;
 
 namespace fs = boost::filesystem;
@@ -53,11 +52,6 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
 #endif
 
     slave = target.string();
-
-    sandbox = {
-        get("type", "unspecified").asString(),
-        (*this)["args"]
-    };
 
     drivers = config_t::parse((*this)["drivers"]);
 }
