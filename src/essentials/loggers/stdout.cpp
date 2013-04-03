@@ -23,7 +23,6 @@
 #include <cstring>
 #include <ctime>
 
-using namespace cocaine;
 using namespace cocaine::logger;
 
 stdout_t::stdout_t(const Json::Value& args):

@@ -22,7 +22,6 @@
 
 #include <syslog.h>
 
-using namespace cocaine;
 using namespace cocaine::logger;
 
 syslog_t::syslog_t(const Json::Value& args):

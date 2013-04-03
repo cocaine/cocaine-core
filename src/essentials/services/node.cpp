@@ -31,11 +31,7 @@
 
 #include <tuple>
 
-using namespace cocaine;
-using namespace cocaine::io;
-using namespace cocaine::logging;
 using namespace cocaine::service;
-
 using namespace std::placeholders;
 
 namespace {
@@ -51,7 +47,7 @@ node_t::node_t(context_t& context,
                const Json::Value& args):
     category_type(context, reactor, name, args),
     m_context(context),
-    m_log(new log_t(context, name)),
+    m_log(new logging::log_t(context, name)),
     m_zmq_context(1),
     m_announces(m_zmq_context, ZMQ_PUB),
     m_announce_timer(reactor.native()),

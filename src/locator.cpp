@@ -27,16 +27,13 @@
 #include "cocaine/detail/actor.hpp"
 
 using namespace cocaine;
-using namespace cocaine::io;
-using namespace cocaine::logging;
-
 using namespace std::placeholders;
 
 locator_t::locator_t(context_t& context):
     dispatch_t(context, "service/locator"),
-    m_log(new log_t(context, "service/locator"))
+    m_log(new logging::log_t(context, "service/locator"))
 {
-    on<locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
+    on<io::locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
 }
 
 locator_t::~locator_t() {
@@ -90,7 +87,7 @@ namespace {
 
 auto
 locator_t::resolve(const std::string& name) const
-    -> tuple::fold<locator::resolve::result_type>::type
+    -> tuple::fold<io::locator::resolve::result_type>::type
 {
     auto it = std::find_if(
         m_services.begin(),

@@ -27,7 +27,6 @@
 
 #include <sys/uio.h>
 
-using namespace cocaine;
 using namespace cocaine::logger;
 
 files_t::files_t(const Json::Value& args):

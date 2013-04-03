@@ -21,7 +21,6 @@
 #include "cocaine/detail/profile.hpp"
 #include "cocaine/detail/traits/json.hpp"
 
-using namespace cocaine;
 using namespace cocaine::engine;
 
 profile_t::profile_t(context_t& context, const std::string& name_):

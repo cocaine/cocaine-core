@@ -38,7 +38,6 @@
 using namespace cocaine;
 using namespace cocaine::engine;
 using namespace cocaine::io;
-using namespace cocaine::logging;
 
 using namespace std::placeholders;
 
@@ -48,7 +47,7 @@ slave_t::slave_t(context_t& context,
                  const profile_t& profile,
                  engine_t& engine):
     m_context(context),
-    m_log(new log_t(context, cocaine::format("app/%s", manifest.name))),
+    m_log(new logging::log_t(context, cocaine::format("app/%s", manifest.name))),
     m_manifest(manifest),
     m_profile(profile),
     m_engine(engine),

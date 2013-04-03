@@ -33,7 +33,6 @@
 
 using namespace cocaine;
 using namespace cocaine::isolate;
-using namespace cocaine::logging;
 
 namespace {
     struct process_handle_t:

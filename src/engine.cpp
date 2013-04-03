@@ -51,7 +51,6 @@
 using namespace cocaine;
 using namespace cocaine::engine;
 using namespace cocaine::io;
-using namespace cocaine::logging;
 
 using namespace std::placeholders;
 
@@ -160,7 +159,7 @@ engine_t::engine_t(context_t& context,
                    const profile_t& profile,
                    const std::shared_ptr<io::socket<local>>& control):
     m_context(context),
-    m_log(new log_t(context, cocaine::format("app/%1%", manifest.name))),
+    m_log(new logging::log_t(context, cocaine::format("app/%1%", manifest.name))),
     m_manifest(manifest),
     m_profile(profile),
     m_state(states::stopped),
