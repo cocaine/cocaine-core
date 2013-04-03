@@ -1,3 +1,11 @@
+cocaine-core (0.10.0-rc9) lucid; urgency=low
+
+  * Release candidate 9.
+  * Major pre-release code cleanup.
+  * Serialization traits are now includable for client code.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 03 Apr 2013 20:06:34 +0400
+
 cocaine-core (0.10.0-rc8) lucid; urgency=low
 
   * Release candidate 8.
