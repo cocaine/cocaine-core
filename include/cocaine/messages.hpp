@@ -86,14 +86,14 @@ namespace rpc {
     struct terminate {
         typedef rpc_tag tag;
 
-        enum codes: int {
-            normal,
+        enum code: int {
+            normal = 1,
             abnormal
         };
 
         typedef boost::mpl::list<
-            /* reason */  int,
-            /* message */ std::string
+            /* code */   code,
+            /* reason */ std::string
         > tuple_type;
     };
 
@@ -117,7 +117,7 @@ namespace rpc {
         typedef rpc_tag tag;
 
         typedef boost::mpl::list<
-            /* code */   int,
+            /* code */   error_code,
             /* reason */ std::string
         > tuple_type;
     };

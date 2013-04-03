@@ -134,12 +134,7 @@ slave_t::assign(std::shared_ptr<session_t>&& session) {
 void
 slave_t::stop() {
     BOOST_ASSERT(m_channel);
-
-    m_channel->wr->write<rpc::terminate>(
-        0UL,
-        static_cast<int>(rpc::terminate::normal),
-        std::string("shutdown")
-    );
+    m_channel->wr->write<rpc::terminate>(0UL, rpc::terminate::normal, "shutdown");
 }
 
 void
@@ -158,7 +153,7 @@ slave_t::on_message(const message_t& message) {
             break;
 
         case event_traits<rpc::terminate>::id: {
-            int code;
+            rpc::terminate::code code;
             std::string reason;
 
             message.as<rpc::terminate>(code, reason);
@@ -177,7 +172,7 @@ slave_t::on_message(const message_t& message) {
         }
 
         case event_traits<rpc::error>::id: {
-            int code;
+            error_code code;
             std::string reason;
 
             message.as<rpc::error>(code, reason);
@@ -327,12 +322,10 @@ slave_t::on_chunk(uint64_t session_id,
 
 void
 slave_t::on_error(uint64_t session_id,
-                  int code_,
+                  error_code code,
                   const std::string& reason)
 {
     BOOST_ASSERT(m_state == states::active);
-
-    error_code code = static_cast<error_code>(code_);
 
     COCAINE_LOG_DEBUG(
         m_log,
@@ -428,12 +421,7 @@ slave_t::on_idle(ev::timer&, int) {
 
     COCAINE_LOG_DEBUG(m_log, "slave %s is idle, deactivating", m_id);
 
-    m_channel->wr->write<rpc::terminate>(
-        0UL,
-        static_cast<int>(rpc::terminate::normal),
-        std::string("idle")
-    );
-
+    m_channel->wr->write<rpc::terminate>(0UL, rpc::terminate::normal, "idle");
     m_state = states::inactive;
 }
 

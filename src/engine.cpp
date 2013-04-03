@@ -109,7 +109,7 @@ namespace {
             const std::shared_ptr<session_t> ptr = m_session.lock();
 
             if(ptr) {
-                ptr->send<rpc::error>(static_cast<int>(code), message);
+                ptr->send<rpc::error>(code, message);
                 ptr->send<rpc::choke>();
             }
         }

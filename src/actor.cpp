@@ -54,7 +54,7 @@ namespace {
         virtual
         void
         error(error_code code, const std::string& reason) {
-            m_channel->wr->write<rpc::error>(m_band, static_cast<int>(code), reason);
+            m_channel->wr->write<rpc::error>(m_band, code, reason);
         }
 
         virtual

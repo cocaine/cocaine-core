@@ -67,6 +67,36 @@ struct type_traits<char[N]> {
     }
 };
 
+// NOTE: This another magic specialization allows to pack enumerations. On older
+// compilers it will assume that the underlying type is int, on GCC 4.7 and
+// Clang it can detect the type automatically.
+
+template<class T>
+struct type_traits<
+    T,
+    typename std::enable_if<std::is_enum<T>::value>::type
+>
+{
+#if defined(__clang__) || defined(GCC47)
+    typedef typename std::underlying_type<T>::type base_type;
+#else
+    typedef int base_type;
+#endif
+
+    template<class Stream>
+    static inline
+    void
+    pack(msgpack::packer<Stream>& packer, const T& source) {
+        packer << static_cast<base_type>(source);
+    }
+
+    static inline
+    void
+    unpack(const msgpack::object& unpacked, T& target) {
+        target = static_cast<T>(unpacked.as<base_type>());
+    }
+};
+
 // NOTE: The following structure is a template specialization for type lists,
 // to support validating sequence packing and unpacking, which can be used as
 // follows:

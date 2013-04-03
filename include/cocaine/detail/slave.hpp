@@ -107,7 +107,7 @@ class slave_t:
 
         void
         on_error(uint64_t session_id,
-                 int code,
+                 error_code code,
                  const std::string& reason);
 
         void

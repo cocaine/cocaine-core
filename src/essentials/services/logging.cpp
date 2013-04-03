@@ -24,8 +24,6 @@
 #include "cocaine/logging.hpp"
 #include "cocaine/messages.hpp"
 
-#include "cocaine/detail/traits/logging.hpp"
-
 using namespace cocaine::service;
 using namespace std::placeholders;
 
