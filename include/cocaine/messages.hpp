@@ -37,13 +37,13 @@ namespace locator {
         typedef locator_tag tag;
 
         typedef boost::mpl::list<
-         /* An alias of the service to resolve */
+         /* An alias of the service to resolve. */
             std::string
         > tuple_type;
 
         typedef boost::mpl::list<
          /* An endpoint for the client to connect to in order to use the
-            the service */
+            the service. */
             std::string,
          /* Service protocol version. If the client wishes to use the service,
             the protocol versions must match. */
@@ -155,9 +155,15 @@ namespace logging {
         typedef logging_tag tag;
 
         typedef boost::mpl::list<
-            /* level */   priorities,
-            /* source */  std::string,
-            /* message */ std::string
+         /* Log level for this message. Generally, you are not supposed to send
+            messages with log levels higher than the current verbosity. */
+            priorities,
+         /* Message source. Messages originating from the user code should be tagged
+            with 'app/<name>' so that they could be routed separately. */
+            std::string,
+         /* Log message. Some meaningful string, with no explicit limits on its
+            length, although underlying loggers might silently truncate it. */
+            std::string
         > tuple_type;
     };
 
