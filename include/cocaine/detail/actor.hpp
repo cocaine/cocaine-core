@@ -25,6 +25,7 @@
 #include "cocaine/json.hpp"
 
 #include "cocaine/asio/reactor.hpp"
+#include "cocaine/asio/tcp.hpp"
 
 #include <set>
 #include <thread>
@@ -50,7 +51,7 @@ class actor_t:
         terminate();
 
     public:
-        std::string
+        io::tcp::endpoint
         endpoint() const;
 
         dispatch_t&

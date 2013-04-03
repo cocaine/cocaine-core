@@ -74,14 +74,24 @@ struct tcp {
         }
 
         std::string
-        string() const {
+        address() const {
             char result[INET_ADDRSTRLEN];
 
             if(::inet_ntop(tcp::family(), &m_data.tcp4.sin_addr, result, INET_ADDRSTRLEN) == nullptr) {
                 throw cocaine::io_error_t("unable to parse the endpoint address");
             }
 
-            return cocaine::format("%s:%d", result, ntohs(m_data.tcp4.sin_port));
+            return result;
+        }
+
+        uint16_t
+        port() const {
+            return ntohs(m_data.tcp4.sin_port);
+        }
+
+        std::string
+        string() const {
+            return cocaine::format("%s:%d", address(), port());
         }
 
         friend

@@ -130,9 +130,9 @@ actor_t::terminate() {
     m_thread.reset();
 }
 
-std::string
+tcp::endpoint
 actor_t::endpoint() const {
-    return m_connector->endpoint().string();
+    return m_connector->endpoint();
 }
 
 dispatch_t&

@@ -99,8 +99,10 @@ locator_t::resolve(const std::string& name) const
         throw cocaine::error_t("the specified service is not available");
     }
 
+    auto endpoint = it->second->endpoint();
+
     return std::make_tuple(
-        it->second->endpoint(),
+        std::make_tuple(endpoint.address(), endpoint.port()),
         1u,
         it->second->dispatch().describe()
     );
