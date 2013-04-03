@@ -26,7 +26,6 @@
 
 using namespace cocaine;
 
-static
 const uninitialized_t
 uninitialized = uninitialized_t();
 
