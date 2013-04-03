@@ -27,16 +27,16 @@
     if(_log_->verbosity() >= _level_) _log_->emit(_level_, __VA_ARGS__);
 
 #define COCAINE_LOG_DEBUG(_log_, ...) \
-    COCAINE_LOG(_log_, logging::debug, __VA_ARGS__)
+    COCAINE_LOG(_log_, ::cocaine::logging::debug, __VA_ARGS__)
 
 #define COCAINE_LOG_INFO(_log_, ...) \
-    COCAINE_LOG(_log_, logging::info, __VA_ARGS__)
+    COCAINE_LOG(_log_, ::cocaine::logging::info, __VA_ARGS__)
 
 #define COCAINE_LOG_WARNING(_log_, ...) \
-    COCAINE_LOG(_log_, logging::warning, __VA_ARGS__)
+    COCAINE_LOG(_log_, ::cocaine::logging::warning, __VA_ARGS__)
 
 #define COCAINE_LOG_ERROR(_log_, ...) \
-    COCAINE_LOG(_log_, logging::error, __VA_ARGS__)
+    COCAINE_LOG(_log_, ::cocaine::logging::error, __VA_ARGS__)
 
 namespace cocaine { namespace logging {
 
