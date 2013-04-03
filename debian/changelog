@@ -1,3 +1,11 @@
+cocaine-core (0.10.0-rc10) lucid; urgency=low
+
+  * Release candidate 10.
+  * Enum serialization fixes.
+  * Logging macro namespace fixes.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 03 Apr 2013 21:53:57 +0400
+
 cocaine-core (0.10.0-rc9) lucid; urgency=low
 
   * Release candidate 9.
