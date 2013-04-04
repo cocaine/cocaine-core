@@ -285,7 +285,7 @@ engine_t::on_connection(const std::shared_ptr<io::socket<local>>& socket_) {
     auto channel_ = std::make_shared<channel<io::socket<local>>>(*m_reactor, socket_);
 
     channel_->rd->bind(
-        std::bind(&engine_t::on_handshake, this, channel_, _1),
+        std::bind(&engine_t::on_handshake,  this, channel_, _1),
         std::bind(&engine_t::on_disconnect, this, channel_, _1)
     );
 
