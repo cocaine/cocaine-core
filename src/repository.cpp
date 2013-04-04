@@ -105,7 +105,7 @@ repository_t::open(const std::string& target) {
     lt_dladvise_destroy(&advice);
 
     if(!plugin) {
-        throw repository_error_t("unable to load '%s'", target);
+        throw repository_error_t("unable to load '%s' - %s", target, lt_dlerror());
     }
 
     // According to the standard, it is neither defined nor undefined to access
