@@ -21,7 +21,6 @@
 #ifndef COCAINE_DISPATCH_SLOT_HPP
 #define COCAINE_DISPATCH_SLOT_HPP
 
-#include "cocaine/common.hpp"
 #include "cocaine/traits.hpp"
 
 #include "cocaine/api/stream.hpp"

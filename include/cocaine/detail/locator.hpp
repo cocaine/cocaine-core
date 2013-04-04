@@ -21,6 +21,7 @@
 #ifndef COCAINE_SERVICE_LOCATOR_HPP
 #define COCAINE_SERVICE_LOCATOR_HPP
 
+#include "cocaine/common.hpp"
 #include "cocaine/dispatch.hpp"
 #include "cocaine/messages.hpp"
 
