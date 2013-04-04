@@ -208,8 +208,11 @@ struct blocking_slot<void, Sequence>:
 
     virtual
     void
-    operator()(const api::stream_ptr_t&, const msgpack::object& args) {
+    operator()(const api::stream_ptr_t& upstream, const msgpack::object& args) {
         invoke<Sequence>::apply(this->m_callable, args);
+
+        // This is needed so that service clients could detect operation completion.
+        upstream->close();
     }
 };
 
