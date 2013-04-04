@@ -26,6 +26,7 @@
 #include <boost/mpl/distance.hpp>
 #include <boost/mpl/find.hpp>
 #include <boost/mpl/int.hpp>
+#include <boost/mpl/joint_view.hpp>
 #include <boost/mpl/list.hpp>
 #include <boost/mpl/size.hpp>
 
@@ -36,26 +37,48 @@ namespace mpl = boost::mpl;
 template<class Tag>
 struct protocol;
 
-namespace detail {
-    template<
-        class Event,
-        class Protocol = typename protocol<typename Event::tag>::type
-    >
-    struct enumerate:
-        public mpl::distance<
-            typename mpl::begin<Protocol>::type,
-            typename mpl::find<Protocol, Event>::type
-        >::type
-    {
-        static_assert(
-            mpl::contains<Protocol, Event>::value,
-            "event has not been registered with its protocol"
-        );
-    };
+template<class Tag>
+struct extends {
+    typedef protocol<Tag> parent_type;
+};
 
+namespace detail {
     template<class T>
     struct depend {
         typedef void type;
+    };
+
+    template<class Protocol, class = void>
+    struct flatten {
+        typedef typename Protocol::type type;
+    };
+
+    template<class Protocol>
+    struct flatten<
+        Protocol,
+        typename depend<typename Protocol::parent_type>::type
+    >
+    {
+        typedef typename mpl::joint_view<
+            typename flatten<typename Protocol::parent_type>::type,
+            typename Protocol::type
+        >::type type;
+    };
+
+    template<class Event>
+    struct enumerate {
+        typedef protocol<typename Event::tag> protocol_type;
+        typedef typename flatten<protocol_type>::type hierarchy_type;
+
+        static_assert(
+            mpl::contains<hierarchy_type, Event>::value,
+            "event has not been registered within its hierarchy"
+        );
+
+        typedef typename mpl::distance<
+            typename mpl::begin<hierarchy_type>::type,
+            typename mpl::find<hierarchy_type, Event>::type
+        >::type type;
     };
 
     #define DEPENDENT_TYPE(name, default)                       \
@@ -85,7 +108,7 @@ struct event_traits {
     typedef typename detail::result_type<Event>::type result_type;
 
     enum constants {
-        id = detail::enumerate<Event>::value
+        id = detail::enumerate<Event>::type::value
     };
 };
 
