@@ -62,12 +62,10 @@ class actor_t:
         on_connection(const std::shared_ptr<io::socket<io::tcp>>& socket);
 
         void
-        on_message(const std::shared_ptr<io::channel<io::socket<io::tcp>>>& channel,
-                   const io::message_t& message);
+        on_message(int fd, const io::message_t& message);
 
         void
-        on_disconnect(const std::shared_ptr<io::channel<io::socket<io::tcp>>>& channel,
-                      const std::error_code& ec);
+        on_disconnect(int fd, const std::error_code& ec);
 
         void
         on_terminate(ev::async&, int);
@@ -86,7 +84,8 @@ class actor_t:
             io::connector<io::acceptor<io::tcp>>
         > m_connector;
 
-        std::set<
+        std::map<
+            int,
             std::shared_ptr<io::channel<io::socket<io::tcp>>>
         > m_channels;
 

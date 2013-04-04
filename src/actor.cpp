@@ -34,6 +34,7 @@
 
 using namespace cocaine;
 using namespace cocaine::io;
+using namespace std::placeholders;
 
 namespace {
     struct upstream_t:
@@ -48,23 +49,35 @@ namespace {
         virtual
         void
         write(const char* chunk, size_t size) {
-            m_channel->wr->write<rpc::chunk>(m_band, std::string(chunk, size));
+            auto ptr = m_channel.lock();
+
+            if(ptr) {
+                ptr->wr->write<rpc::chunk>(m_band, std::string(chunk, size));
+            }
         }
 
         virtual
         void
         error(error_code code, const std::string& reason) {
-            m_channel->wr->write<rpc::error>(m_band, code, reason);
+            auto ptr = m_channel.lock();
+
+            if(ptr) {
+                ptr->wr->write<rpc::error>(m_band, code, reason);
+            }
         }
 
         virtual
         void
         close() {
-            m_channel->wr->write<rpc::choke>(m_band);
+            auto ptr = m_channel.lock();
+
+            if(ptr) {
+                ptr->wr->write<rpc::choke>(m_band);
+            }
         }
 
     private:
-        const std::shared_ptr<channel<io::socket<tcp>>> m_channel;
+        const std::weak_ptr<channel<io::socket<tcp>>> m_channel;
         const uint64_t m_band;
     };
 }
@@ -92,13 +105,7 @@ actor_t::actor_t(const std::shared_ptr<reactor_t>& reactor,
         );
     }
 
-    auto callback = std::bind(
-        &actor_t::on_connection,
-        this,
-        std::placeholders::_1
-    );
-
-    m_connector->bind(callback);
+    m_connector->bind(std::bind(&actor_t::on_connection, this, _1));
 
     m_terminate.set<actor_t, &actor_t::on_terminate>(this);
     m_terminate.start();
@@ -142,38 +149,42 @@ actor_t::dispatch() {
 
 void
 actor_t::on_connection(const std::shared_ptr<io::socket<tcp>>& socket_) {
+    auto fd = socket_->fd();
     auto channel_ = std::make_shared<channel<io::socket<tcp>>>(*m_reactor, socket_);
 
     channel_->rd->bind(
-        std::bind(&actor_t::on_message, this, channel_, std::placeholders::_1),
-        std::bind(&actor_t::on_disconnect, this, channel_, std::placeholders::_1)
+        std::bind(&actor_t::on_message,    this, fd, _1),
+        std::bind(&actor_t::on_disconnect, this, fd, _1)
     );
 
     channel_->wr->bind(
-        std::bind(&actor_t::on_disconnect, this, channel_, std::placeholders::_1)
+        std::bind(&actor_t::on_disconnect, this, fd, _1)
     );
 
-    m_channels.insert(channel_);
+    m_channels[fd] = channel_;
 }
 
 void
-actor_t::on_message(const std::shared_ptr<channel<io::socket<tcp>>>& channel_,
+actor_t::on_message(int fd,
                     const message_t& message)
 {
+    auto it = m_channels.find(fd);
+
+    if(it == m_channels.end()) {
+        return;
+    }
+
     m_dispatch->invoke(message, std::make_shared<upstream_t>(
-        channel_,
+        it->second,
         message.band()
     ));
 }
 
 void
-actor_t::on_disconnect(const std::shared_ptr<channel<io::socket<tcp>>>& channel_,
+actor_t::on_disconnect(int fd,
                        const std::error_code& /* ec */)
 {
-    channel_->rd->unbind();
-    channel_->wr->unbind();
-
-    m_channels.erase(channel_);
+    m_channels.erase(fd);
 }
 
 void
