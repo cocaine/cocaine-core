@@ -1,3 +1,6 @@
 [submodule "foreign/backward-cpp"]
 	path = foreign/backward-cpp
 	url = git://github.com/bombela/backward-cpp.git
+[submodule "foreign/cppzmq"]
+	path = foreign/cppzmq
+	url = git://github.com/zeromq/cppzmq.git
