@@ -34,6 +34,12 @@ PIDFILE=/var/run/cocaine/runtime.pid
 # Depend on lsb-base (>= 3.0-6) to ensure that this file is present.
 . /lib/lsb/init-functions
 
+# Fixup the default runtime path in case it's mounted on a tmpfs
+if [ ! -d $RUNTIME_PATH ]; then
+    mkdir -p $RUNTIME_PATH
+    chown -R cocaine:adm $RUNTIME_PATH
+fi
+
 #
 # Function that starts the daemon/service
 #

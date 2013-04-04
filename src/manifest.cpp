@@ -33,7 +33,7 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
     name(name_)
 {
     endpoint = cocaine::format(
-        "%s/engines/%s",
+        "%s/%s",
         context.config.path.runtime,
         name
     );

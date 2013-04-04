@@ -65,11 +65,7 @@ namespace {
         const auto status = fs::status(path);
 
         if(!fs::exists(status)) {
-            try {
-                fs::create_directories(path);
-            } catch(const fs::filesystem_error& e) {
-                throw configuration_error_t("unable to create the %s path", path);
-            }
+            throw configuration_error_t("the %s directory does not exist", path);
         } else if(!fs::is_directory(status)) {
             throw configuration_error_t("the %s path is not a directory", path);
         }
@@ -124,11 +120,7 @@ config_t::config_t(const std::string& config_path):
     path.runtime = root["paths"].get("runtime", defaults::runtime_path).asString();
     path.spool   = root["paths"].get("spool",   defaults::spool_path  ).asString();
 
-    const fs::path runtime = path.runtime;
-
-    validate_path(runtime);
-    validate_path(runtime / "engines");
-
+    validate_path(path.runtime);
     validate_path(path.spool);
 
     // I/O configuration
