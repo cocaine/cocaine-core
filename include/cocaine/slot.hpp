@@ -101,9 +101,9 @@ struct invoke {
     static inline
     typename detail::result_of<F>::type
     apply(const F& callable, const msgpack::object& args) {
-        if(args.type != msgpack::type::ARRAY ||
-           args.via.array.size != mpl::size<Sequence>::value)
-        {
+        const size_t size = mpl::size<Sequence>::value;
+
+        if(args.type != msgpack::type::ARRAY || args.via.array.size != size) {
             throw cocaine::error_t("argument sequence mismatch");
         }
 
