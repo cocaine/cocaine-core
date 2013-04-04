@@ -65,7 +65,7 @@ def main(hosts):
                     return 0
 
 def get_info(endpoint):
-    host, port = endpoint.split(':')
+    host, port = endpoint
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
 
     try:
