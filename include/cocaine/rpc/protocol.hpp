@@ -81,23 +81,23 @@ namespace detail {
         >::type type;
     };
 
-    #define DEPENDENT_TYPE(name, default)                       \
-        template<class Event, class = void>                     \
-        struct name##_type {                                    \
-            typedef default type;                               \
-        };                                                      \
-                                                                \
-        template<class Event>                                   \
-        struct name##_type<                                     \
-            Event,                                              \
-            typename depend<typename Event::name##_type>::type  \
-        >                                                       \
-        {                                                       \
-            typedef typename Event::name##_type type;           \
+    #define DEPENDENT_TYPE(name, default)               \
+        template<class E, class = void>                 \
+        struct name {                                   \
+            typedef default type;                       \
+        };                                              \
+                                                        \
+        template<class E>                               \
+        struct name<                                    \
+            E,                                          \
+            typename depend<typename E::name>::type     \
+        >                                               \
+        {                                               \
+            typedef typename E::name type;              \
         };
 
-    DEPENDENT_TYPE(tuple, mpl::list<>)
-    DEPENDENT_TYPE(result, void)
+    DEPENDENT_TYPE(tuple_type,  mpl::list<>)
+    DEPENDENT_TYPE(result_type, void)
 
     #undef DEPENDENT_TYPE
 }
