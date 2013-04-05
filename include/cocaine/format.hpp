@@ -28,15 +28,15 @@ namespace cocaine {
 namespace detail {
     static inline
     std::string
-    substitute(boost::format& message) {
+    substitute(boost::format&& message) {
         return message.str();
     }
 
     template<typename T, typename... Args>
     static inline
     std::string
-    substitute(boost::format& message, const T& argument, const Args&... args) {
-        return substitute(message % argument, args...);
+    substitute(boost::format&& message, const T& argument, const Args&... args) {
+        return substitute(std::move(message % argument), args...);
     }
 }
 
@@ -44,10 +44,8 @@ template<typename... Args>
 static inline
 std::string
 format(const std::string& format, const Args&... args) {
-    boost::format message(format);
-
     try {
-        return detail::substitute(message, args...);
+        return detail::substitute(boost::format(format), args...);
     } catch(const boost::io::format_error& e) {
         return "<unable to format the message>";
     }
