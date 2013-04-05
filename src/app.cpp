@@ -36,7 +36,6 @@
 #include "cocaine/detail/traits/json.hpp"
 
 #include "cocaine/logging.hpp"
-#include "cocaine/messages.hpp"
 
 #include "cocaine/rpc/channel.hpp"
 
