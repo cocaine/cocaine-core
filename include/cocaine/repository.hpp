@@ -99,27 +99,11 @@ class repository_t:
 
     private:
         // NOTE: Used to unload all the plugins on shutdown.
-        // Cannot use a forward declaration here due to the implementation
-        // details.
+        // Cannot use a forward declaration here due to the implementation details.
         std::vector<lt_dlhandle> m_plugins;
 
-#if BOOST_VERSION >= 103600
-        typedef boost::unordered_map<
-#else
-        typedef std::map<
-#endif
-            std::string,
-            std::shared_ptr<factory_concept_t>
-        > factory_map_t;
-
-#if BOOST_VERSION >= 103600
-        typedef boost::unordered_map<
-#else
-        typedef std::map<
-#endif
-            std::string,
-            factory_map_t
-        > category_map_t;
+        typedef std::map<std::string, std::shared_ptr<factory_concept_t>> factory_map_t;
+        typedef std::map<std::string, factory_map_t> category_map_t;
 
         category_map_t m_categories;
 };
@@ -171,10 +155,9 @@ repository_t::insert(const std::string& type) {
         throw repository_error_t("the '%s' component is a duplicate", type);
     }
 
-    factories.emplace(
-        type,
-        std::make_shared<typename plugin_traits<T>::factory_type>()
-    );
+    factories[type] = std::make_shared<
+        typename plugin_traits<T>::factory_type
+    >();
 }
 
 typedef void (*initialize_fn_t)(repository_t&);
