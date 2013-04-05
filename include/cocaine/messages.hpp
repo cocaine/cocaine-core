@@ -42,14 +42,13 @@ namespace locator {
         > tuple_type;
 
         typedef boost::mpl::list<
-         /* An endpoint for the client to connect to in order to use the
-            the service. */
+         /* An endpoint for the client to connect to in order to use the the service. */
             std::tuple<std::string, uint16_t>,
-         /* Service protocol version. If the client wishes to use the service,
-            the protocol versions must match. */
+         /* Service protocol version. If the client wishes to use the service, the protocol
+            versions must match. */
             unsigned int,
-         /* A mapping between method slot numbers and names for use in dynamic
-            languages like Python or Ruby. */
+         /* A mapping between method slot numbers and names for use in dynamic languages like
+            Python or Ruby. */
             std::map<int, std::string>
         > result_type;
     };
@@ -155,20 +154,25 @@ namespace logging {
         typedef logging_tag tag;
 
         typedef boost::mpl::list<
-         /* Log level for this message. Generally, you are not supposed to send
-            messages with log levels higher than the current verbosity. */
+         /* Log level for this message. Generally, you are not supposed to send messages with log
+            levels higher than the current verbosity. */
             priorities,
-         /* Message source. Messages originating from the user code should be tagged
-            with 'app/<name>' so that they could be routed separately. */
+         /* Message source. Messages originating from the user code should be tagged with
+            'app/<name>' so that they could be routed separately. */
             std::string,
-         /* Log message. Some meaningful string, with no explicit limits on its
-            length, although underlying loggers might silently truncate it. */
+         /* Log message. Some meaningful string, with no explicit limits on its length, although
+            underlying loggers might silently truncate it. */
             std::string
         > tuple_type;
     };
 
     struct verbosity {
         typedef logging_tag tag;
+
+        typedef
+         /* The current verbosity level of the of the core logging sink. */
+            priorities
+        result_type;
     };
 }
 
@@ -193,18 +197,31 @@ namespace storage {
         typedef storage_tag tag;
 
         typedef boost::mpl::list<
-            /* collection */ std::string,
-            /* key */        std::string
+         /* Key namespace. Currently no ACL checks are performed, so in theory any app can read
+            any other app data without restrictions. */
+            std::string,
+         /* Key. */
+            std::string
         > tuple_type;
+
+        typedef
+         /* The stored value. Typically it will be serialized with msgpack, but it's not a strict
+            requirement. But as there's no way to know the format, try to unpack it anyway. */
+            std::string
+        result_type;
     };
 
     struct write {
         typedef storage_tag tag;
 
         typedef boost::mpl::list<
-            /* collection */ std::string,
-            /* key */        std::string,
-            /* value */      std::string
+         /* Key namespace. */
+            std::string,
+         /* Key. */
+            std::string,
+         /* Value. Typically, it should be serialized with msgpack, so that the future reader could
+            assume that it can be deserialized safely. */
+            std::string
         > tuple_type;
     };
 
@@ -212,8 +229,11 @@ namespace storage {
         typedef storage_tag tag;
 
         typedef boost::mpl::list<
-            /* collection */ std::string,
-            /* key */        std::string
+         /* Key namespace. Again, due to the lack of ACL checks, any app can obliterate the whole
+            storage for all the apps in the cluster. Beware. */
+            std::string,
+         /* Key. */
+            std::string
         > tuple_type;
     };
 
@@ -221,8 +241,15 @@ namespace storage {
         typedef storage_tag tag;
 
         typedef boost::mpl::list<
-            /* collection */ std::string
+         /* Key namespace. A good start point to find all the keys to remove to render the system
+            useless! Well, one day we'll implement ACLs. */
+            std::string
         > tuple_type;
+
+        typedef
+         /* A list of all the keys in the given key namespace. */
+            std::vector<std::string>
+        result_type;
     };
 }
 
@@ -249,7 +276,9 @@ namespace node {
         typedef node_tag tag;
 
         typedef boost::mpl::list<
-            /* runlist */ std::map<std::string, std::string>
+         /* Runlist. A mapping between app names and profile names. Errors are reported on a
+            per-app basis. */
+            std::map<std::string, std::string>
         > tuple_type;
     };
 
@@ -257,7 +286,8 @@ namespace node {
         typedef node_tag tag;
 
         typedef boost::mpl::list<
-            /* applist */ std::vector<std::string>
+         /* A list of app names to suspend. Errors are reported on a per-app basis, as well. */
+            std::vector<std::string>
         > tuple_type;
     };
 
