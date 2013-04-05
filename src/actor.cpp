@@ -27,7 +27,6 @@
 
 #include "cocaine/context.hpp"
 #include "cocaine/dispatch.hpp"
-#include "cocaine/logging.hpp"
 #include "cocaine/messages.hpp"
 
 #include "cocaine/rpc/channel.hpp"
@@ -40,10 +39,9 @@ namespace {
     struct upstream_t:
         public api::stream_t
     {
-        upstream_t(const std::shared_ptr<channel<io::socket<tcp>>>& channel,
-                   uint64_t band):
+        upstream_t(const std::shared_ptr<channel<io::socket<tcp>>>& channel, uint64_t tag):
             m_channel(channel),
-            m_band(band)
+            m_tag(tag)
         { }
 
         virtual
@@ -52,7 +50,7 @@ namespace {
             auto ptr = m_channel.lock();
 
             if(ptr) {
-                ptr->wr->write<rpc::chunk>(m_band, std::string(chunk, size));
+                ptr->wr->write<rpc::chunk>(m_tag, std::string(chunk, size));
             }
         }
 
@@ -62,7 +60,7 @@ namespace {
             auto ptr = m_channel.lock();
 
             if(ptr) {
-                ptr->wr->write<rpc::error>(m_band, code, reason);
+                ptr->wr->write<rpc::error>(m_tag, code, reason);
             }
         }
 
@@ -72,13 +70,13 @@ namespace {
             auto ptr = m_channel.lock();
 
             if(ptr) {
-                ptr->wr->write<rpc::choke>(m_band);
+                ptr->wr->write<rpc::choke>(m_tag);
             }
         }
 
     private:
         const std::weak_ptr<channel<io::socket<tcp>>> m_channel;
-        const uint64_t m_band;
+        const uint64_t m_tag;
     };
 }
 
@@ -89,6 +87,9 @@ actor_t::actor_t(const std::shared_ptr<reactor_t>& reactor,
     m_dispatch(std::move(dispatch)),
     m_terminate(m_reactor->native())
 {
+    m_terminate.set<actor_t, &actor_t::on_terminate>(this);
+    m_terminate.start();
+
     tcp::endpoint endpoint("127.0.0.1", port);
 
     try {
@@ -106,9 +107,6 @@ actor_t::actor_t(const std::shared_ptr<reactor_t>& reactor,
     }
 
     m_connector->bind(std::bind(&actor_t::on_connection, this, _1));
-
-    m_terminate.set<actor_t, &actor_t::on_terminate>(this);
-    m_terminate.start();
 }
 
 actor_t::~actor_t() {
@@ -165,9 +163,7 @@ actor_t::on_connection(const std::shared_ptr<io::socket<tcp>>& socket_) {
 }
 
 void
-actor_t::on_message(int fd,
-                    const message_t& message)
-{
+actor_t::on_message(int fd, const message_t& message) {
     auto it = m_channels.find(fd);
 
     if(it == m_channels.end()) {
@@ -181,9 +177,7 @@ actor_t::on_message(int fd,
 }
 
 void
-actor_t::on_disconnect(int fd,
-                       const std::error_code& /* ec */)
-{
+actor_t::on_disconnect(int fd, const std::error_code& /* ec */) {
     m_channels.erase(fd);
 }
 

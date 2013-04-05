@@ -141,7 +141,7 @@ void
 slave_t::on_message(const message_t& message) {
     COCAINE_LOG_DEBUG(
         m_log,
-        "received type %d message in band %d from slave %s",
+        "received type %d message with tag %d from slave %s",
         message.id(),
         message.band(),
         m_id
@@ -193,7 +193,7 @@ slave_t::on_message(const message_t& message) {
         default:
             COCAINE_LOG_WARNING(
                 m_log,
-                "dropping unknown type %d message in band %d from slave %s",
+                "dropping unknown type %d message with tag %d from slave %s",
                 message.id(),
                 message.band(),
                 m_id
