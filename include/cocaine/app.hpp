@@ -28,11 +28,11 @@
 
 namespace cocaine {
 
-class app_t:
-    boost::noncopyable
-{
+class app_t {
+    COCAINE_DECLARE_NONCOPYABLE(app_t)
+
     public:
-        app_t(context_t& context, const std::string& appname, const std::string& profile);
+        app_t(context_t& context, const std::string& name, const std::string& profile);
        ~app_t();
 
         void

@@ -54,7 +54,7 @@ class locator_t:
         > service_list_t;
 
         // NOTE: These are the instances of all the configured services, stored
-        // as a vector of pairs to preserve initialization order.
+        // as a vector of pairs to preserve the initialization order.
         service_list_t m_services;
 };
 

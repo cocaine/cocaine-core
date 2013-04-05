@@ -28,9 +28,9 @@
 
 namespace cocaine {
 
-class dispatch_t:
-    boost::noncopyable
-{
+class dispatch_t {
+    COCAINE_DECLARE_NONCOPYABLE(dispatch_t)
+
     public:
         dispatch_t(context_t& context,
                    const std::string& name);

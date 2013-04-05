@@ -35,9 +35,9 @@
 
 namespace cocaine { namespace engine {
 
-struct session_t:
-    boost::noncopyable
-{
+struct session_t {
+    COCAINE_DECLARE_NONCOPYABLE(session_t)
+
     session_t(uint64_t id,
               const api::event_t& event,
               const std::shared_ptr<api::stream_t>& upstream);

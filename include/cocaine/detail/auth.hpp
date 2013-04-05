@@ -38,9 +38,9 @@ struct authorization_error_t:
 
 namespace crypto {
 
-class auth_t:
-    boost::noncopyable
-{
+class auth_t {
+    COCAINE_DECLARE_NONCOPYABLE(auth_t)
+
     public:
         auth_t(context_t& context);
        ~auth_t();

@@ -96,9 +96,9 @@ public:
 
 class actor_t;
 
-class context_t:
-    boost::noncopyable
-{
+class context_t {
+    COCAINE_DECLARE_NONCOPYABLE(context_t)
+
     public:
         context_t(config_t config, const std::string& logger);
         context_t(config_t config, std::unique_ptr<logging::logger_concept_t>&& logger);

@@ -98,9 +98,9 @@ private:
 
 class slave_t;
 
-class engine_t:
-    boost::noncopyable
-{
+class engine_t {
+    COCAINE_DECLARE_NONCOPYABLE(engine_t)
+
     enum class states: int {
         running,
         broken,

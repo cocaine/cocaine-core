@@ -29,9 +29,9 @@
 namespace cocaine { namespace io {
 
 template<class Socket>
-struct readable_stream:
-    boost::noncopyable
-{
+struct readable_stream {
+    COCAINE_DECLARE_NONCOPYABLE(readable_stream)
+
     typedef Socket socket_type;
     typedef typename socket_type::endpoint_type endpoint_type;
 

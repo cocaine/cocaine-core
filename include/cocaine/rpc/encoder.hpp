@@ -28,9 +28,9 @@
 namespace cocaine { namespace io {
 
 template<class Stream>
-struct encoder:
-    boost::noncopyable
-{
+struct encoder {
+    COCAINE_DECLARE_NONCOPYABLE(encoder)
+
     typedef Stream stream_type;
 
     encoder():

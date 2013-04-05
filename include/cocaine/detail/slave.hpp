@@ -34,9 +34,9 @@ using io::reactor_t;
 
 struct session_t;
 
-class slave_t:
-    boost::noncopyable
-{
+class slave_t {
+    COCAINE_DECLARE_NONCOPYABLE(slave_t)
+
     public:
         enum class states: int {
             unknown,

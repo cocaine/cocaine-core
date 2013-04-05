@@ -75,9 +75,9 @@ struct repository_error_t:
     { }
 };
 
-class repository_t:
-    boost::noncopyable
-{
+class repository_t {
+    COCAINE_DECLARE_NONCOPYABLE(repository_t)
+
     public:
         repository_t();
        ~repository_t();

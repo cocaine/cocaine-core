@@ -28,9 +28,9 @@
 namespace cocaine { namespace io {
 
 template<class Acceptor>
-struct connector:
-    boost::noncopyable
-{
+struct connector {
+    COCAINE_DECLARE_NONCOPYABLE(connector)
+
     typedef Acceptor acceptor_type;
     typedef typename acceptor_type::endpoint_type endpoint_type;
     typedef typename acceptor_type::socket_type socket_type;

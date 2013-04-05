@@ -34,9 +34,9 @@ namespace cocaine {
 
 class dispatch_t;
 
-class actor_t:
-    boost::noncopyable
-{
+class actor_t {
+    COCAINE_DECLARE_NONCOPYABLE(actor_t)
+
     public:
         actor_t(const std::shared_ptr<io::reactor_t>& reactor,
                 std::unique_ptr<dispatch_t>&& dispatch,

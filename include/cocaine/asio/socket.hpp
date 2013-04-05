@@ -31,9 +31,9 @@
 namespace cocaine { namespace io {
 
 template<class Medium>
-struct socket:
-    boost::noncopyable
-{
+struct socket {
+    COCAINE_DECLARE_NONCOPYABLE(socket)
+
     typedef Medium medium_type;
     typedef typename medium_type::endpoint endpoint_type;
     typedef typename endpoint_type::size_type size_type;

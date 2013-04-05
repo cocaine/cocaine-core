@@ -33,9 +33,9 @@
 
 namespace cocaine { namespace io {
 
-struct reactor_t:
-    boost::noncopyable
-{
+struct reactor_t {
+    COCAINE_DECLARE_NONCOPYABLE(reactor_t)
+
     typedef ev::loop_ref native_type;
 
     reactor_t():

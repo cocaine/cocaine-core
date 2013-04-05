@@ -52,9 +52,8 @@ struct type_traits {
     }
 };
 
-// NOTE: This magic specialization allows to pack string literals. Unpacking
-// is intentionally prohibited as it might force us to silently drop characters
-// if the buffer is not long enough.
+// NOTE: This magic specialization allows to pack string literals. Unpacking is intentionally
+// prohibited as it might force us to silently drop characters if the buffer is not long enough.
 
 template<size_t N>
 struct type_traits<char[N]> {
@@ -67,9 +66,8 @@ struct type_traits<char[N]> {
     }
 };
 
-// NOTE: This another magic specialization allows to pack enumerations. On older
-// compilers it will assume that the underlying type is int, on GCC 4.7 and
-// Clang it can detect the type automatically.
+// NOTE: This another magic specialization allows to pack enumerations. On older compilers it will
+// assume that the underlying type is int, on GCC 4.7 and Clang it can detect the underlying type.
 
 template<class T>
 struct type_traits<
@@ -97,16 +95,14 @@ struct type_traits<
     }
 };
 
-// NOTE: The following structure is a template specialization for type lists,
-// to support validating sequence packing and unpacking, which can be used as
-// follows:
+// NOTE: The following structure is a template specialization for type lists, to support validating
+// sequence packing and unpacking, which can be used as follows:
 //
 // type_traits<Sequence>::pack(buffer, std::forward<Args>(args)...);
 // type_traits<Sequence>::unpack(object, std::forward<Args>(args)...);
 //
-// It might be a better idea to do that via the type_traits<Args...> template,
-// but such kind of template argument pack expanding is not yet supported by
-// GCC 4.4, which we use on Ubuntu Lucid.
+// It might be a better idea to do that via the type_traits<Args...> template, but such kind of
+// template argument pack expanding is not yet supported by GCC 4.4, which we use on Ubuntu Lucid.
 
 template<class T>
 struct type_traits<

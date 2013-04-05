@@ -38,9 +38,8 @@ class storage_t:
                   const Json::Value& args);
 
     private:
-        // NOTE: This will keep the underlying storage active, as opposed to
-        // the usual usecase when the storage object is destroyed after the
-        // node service finishes its initialization.
+        // NOTE: This will keep the underlying storage active, as opposed to the usual usecase when
+        // the storage object is destroyed after the node service finishes its initialization.
         api::category_traits<api::storage_t>::ptr_type m_storage;
 };
 
