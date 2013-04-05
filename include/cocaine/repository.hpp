@@ -59,19 +59,18 @@ struct basic_factory:
 
 template<class T>
 struct plugin_traits {
-    typedef typename category_traits<
-        typename T::category_type
-    >::template default_factory<T> factory_type;
+    typedef category_traits<typename T::category_type> traits;
+    typedef typename traits::template default_factory<T> factory_type;
 };
 
 // Component repository
 
 struct repository_error_t:
-    public error_t
+    public cocaine::error_t
 {
     template<typename... Args>
     repository_error_t(const std::string& format, const Args&... args):
-        error_t(format, args...)
+        cocaine::error_t(format, args...)
     { }
 };
 
@@ -149,15 +148,16 @@ repository_t::insert(const std::string& type) {
         "component factory is not derived from its category"
     );
 
-    factory_map_t& factories = m_categories[typeid(category_type).name()];
+    const std::string id = typeid(category_type).name();
+    factory_map_t& factories = m_categories[id];
 
     if(factories.find(type) != factories.end()) {
         throw repository_error_t("the '%s' component is a duplicate", type);
     }
 
-    factories[type] = std::make_shared<
-        typename plugin_traits<T>::factory_type
-    >();
+    typedef typename plugin_traits<T>::factory_type factory_type;
+
+    factories[type] = std::make_shared<factory_type>();
 }
 
 typedef void (*initialize_fn_t)(repository_t&);
