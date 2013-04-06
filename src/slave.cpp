@@ -58,7 +58,8 @@ slave_t::slave_t(context_t& context,
     m_birthstamp(std::chrono::monotonic_clock::now()),
 #endif
     m_heartbeat_timer(reactor.native()),
-    m_idle_timer(reactor.native())
+    m_idle_timer(reactor.native()),
+    m_stderr_watcher(reactor.native())
 {
     // NOTE: Initialization heartbeat can be different.
     m_heartbeat_timer.set<slave_t, &slave_t::on_timeout>(this);
@@ -85,6 +86,9 @@ slave_t::slave_t(context_t& context,
     COCAINE_LOG_DEBUG(m_log, "slave %s spawning '%s'", m_id, m_manifest.slave);
 
     m_handle = isolate->spawn(m_manifest.slave, args, environment);
+
+    m_stderr_watcher.set<slave_t, &slave_t::on_stderr>(this);
+    m_stderr_watcher.start(m_handle->pipe(), ev::READ);
 }
 
 slave_t::~slave_t() {
@@ -423,6 +427,21 @@ slave_t::on_idle(ev::timer&, int) {
 
     m_channel->wr->write<rpc::terminate>(0UL, rpc::terminate::normal, "idle");
     m_state = states::inactive;
+}
+
+void
+slave_t::on_stderr(ev::io&, int) {
+    char buffer[PIPE_BUF];
+    ssize_t length = 0;
+
+    while((length = read(m_handle->pipe(), buffer, PIPE_BUF)) > 0) {
+        COCAINE_LOG_WARNING(
+            m_log,
+            "slave %s is trying to say something: %s",
+            m_id,
+            std::string(buffer, length)
+        );
+    }
 }
 
 void

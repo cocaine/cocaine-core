@@ -113,13 +113,18 @@ class slave_t {
         void
         on_choke(uint64_t session_id);
 
-        // Housekeeping
+        // Health
 
         void
         on_timeout(ev::timer&, int);
 
         void
         on_idle(ev::timer&, int);
+
+        void
+        on_stderr(ev::io&, int);
+
+        // Housekeeping
 
         void
         terminate();
@@ -153,6 +158,8 @@ class slave_t {
 
         ev::timer m_heartbeat_timer;
         ev::timer m_idle_timer;
+
+        ev::io m_stderr_watcher;
 
         // Worker handle
 

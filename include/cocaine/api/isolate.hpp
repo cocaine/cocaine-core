@@ -38,6 +38,10 @@ struct handle_t {
     virtual
     void
     terminate() = 0;
+
+    virtual
+    int
+    pipe() const = 0;
 };
 
 class isolate_t {
