@@ -27,7 +27,6 @@
 
 #include <boost/mpl/begin.hpp>
 #include <boost/mpl/deref.hpp>
-#include <boost/mpl/end.hpp>
 #include <boost/mpl/is_sequence.hpp>
 #include <boost/mpl/next.hpp>
 #include <boost/mpl/size.hpp>
@@ -85,7 +84,7 @@ struct type_traits<
     static inline
     void
     pack(msgpack::packer<Stream>& packer, const T& source) {
-        packer << static_cast<base_type>(source);
+        packer << static_cast<const base_type&>(source);
     }
 
     static inline

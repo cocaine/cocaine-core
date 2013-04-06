@@ -37,7 +37,7 @@ struct encoder {
         m_packer(m_buffer)
     { }
 
-    ~encoder() {
+   ~encoder() {
         // unbind();
     }
 
