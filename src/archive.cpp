@@ -40,8 +40,13 @@ archive_t::archive_t(context_t& context, const std::string& archive):
     m_log(new logging::log_t(context, "packaging")),
     m_archive(archive_read_new())
 {
-    archive_read_support_format_all(m_archive);
+#if ARCHIVE_VERSION_NUMBER < 3000000
     archive_read_support_compression_all(m_archive);
+#else
+    archive_read_support_filter_all(m_archive);
+#endif
+
+    archive_read_support_format_all(m_archive);
 
     int rv = archive_read_open_memory(
         m_archive,
@@ -56,7 +61,12 @@ archive_t::archive_t(context_t& context, const std::string& archive):
 
 archive_t::~archive_t() {
     archive_read_close(m_archive);
+
+#if ARCHIVE_VERSION_NUMBER < 3000000
     archive_read_finish(m_archive);
+#else
+    archive_read_free(m_archive);
+#endif
 }
 
 void
@@ -125,7 +135,12 @@ archive_t::deploy(const std::string& prefix_) {
     );
 
     archive_write_close(target);
+
+#if ARCHIVE_VERSION_NUMBER < 3000000
     archive_write_finish(target);
+#else
+    archive_write_free(target);
+#endif
 }
 
 void
@@ -160,5 +175,9 @@ archive_t::extract(archive* source, archive* target) {
 
 std::string
 archive_t::type() const {
+#if ARCHIVE_VERSION_NUMBER < 3000000
     return archive_compression_name(m_archive);
+#else
+    return archive_filter_name(m_archive, 0);
+#endif
 }
