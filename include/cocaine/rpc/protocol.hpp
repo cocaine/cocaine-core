@@ -25,10 +25,8 @@
 #include <boost/mpl/contains.hpp>
 #include <boost/mpl/distance.hpp>
 #include <boost/mpl/find.hpp>
-#include <boost/mpl/int.hpp>
 #include <boost/mpl/joint_view.hpp>
 #include <boost/mpl/list.hpp>
-#include <boost/mpl/size.hpp>
 
 namespace cocaine { namespace io {
 
