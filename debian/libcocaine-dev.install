@@ -1,6 +1,5 @@
 usr/include/cocaine/*.hpp
 usr/include/cocaine/api
 usr/include/cocaine/asio
-usr/include/cocaine/detail
 usr/include/cocaine/rpc
 usr/include/json
