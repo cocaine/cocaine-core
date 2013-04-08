@@ -1,3 +1,19 @@
+cocaine-core (0.10.1) lucid; urgency=low
+
+  * Release 10.1.
+  * Service protocol inheritance.
+  * Void service slots now respond with a single 'choke' message.
+  * Fixed a bug with disconnecting clients and async services.
+  * No runtime paths are created by the server now, now it only complains if
+    these paths are absent.
+  * SO_REUSEADDR now set for all listening sockets.
+  * Implementation detail headers are no longer installed.
+  * Support for libarchive 3.0+.
+  * More service protocol descriptions.
+  * Fixed a couple of bugs.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Mon, 08 Apr 2013 19:46:26 +0400
+
 cocaine-core (0.10.0-rc10) lucid; urgency=low
 
   * Release candidate 10.
