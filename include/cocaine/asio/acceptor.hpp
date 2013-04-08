@@ -48,6 +48,10 @@ struct acceptor {
         ::fcntl(m_fd, F_SETFD, FD_CLOEXEC);
         ::fcntl(m_fd, F_SETFL, O_NONBLOCK);
 
+        const int enable = 1;
+
+        ::setsockopt(m_fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable));
+
         if(::bind(m_fd, endpoint.data(), endpoint.size()) != 0) {
             throw io_error_t("unable to bind an acceptor on '%s'", endpoint);
         }
