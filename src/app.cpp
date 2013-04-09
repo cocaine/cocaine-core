@@ -83,7 +83,8 @@ app_t::start() {
 
     COCAINE_LOG_INFO(m_log, "starting the engine");
 
-    auto reactor = std::unique_ptr<reactor_t>(new reactor_t());
+    auto reactor = std::make_shared<reactor_t>();
+    auto drivers = driver_map_t();
 
     if(!m_manifest->drivers.empty()) {
         COCAINE_LOG_INFO(
@@ -115,20 +116,12 @@ app_t::start() {
                     it->second.args
                 );
             } catch(const cocaine::error_t& e) {
-                COCAINE_LOG_ERROR(
-                    m_log,
-                    "unable to initialize the '%s' driver - %s",
-                    name,
-                    e.what()
-                );
-
-                // NOTE: In order for driver map to be repopulated if the app is restarted.
-                m_drivers.clear();
-
-                throw configuration_error_t("unable to initialize the drivers");
+                throw configuration_error_t("unable to initialize the '%s' driver - %s", name, e.what());
+            } catch(...) {
+                throw configuration_error_t("unable to initialize the '%s' driver - unknown exception");
             }
 
-            m_drivers[it->first] = std::move(driver);
+            drivers[it->first] = std::move(driver);
         }
     }
 
@@ -146,12 +139,15 @@ app_t::start() {
     m_engine.reset(
         new engine_t(
             m_context,
-            std::move(reactor),
+            reactor,
             *m_manifest,
             *m_profile,
             rhs
         )
     );
+
+    // NOTE: We can safely set the current driver set now.
+    m_drivers.swap(drivers);
 
     auto runnable = std::bind(
         &engine_t::run,
@@ -315,6 +311,10 @@ app_t::stop() {
     // NOTE: Stop the drivers, so that there won't be any open
     // sockets and so on while the engine is stopped.
     m_drivers.clear();
+
+    // NOTE: Destroy the engine last, because it holds the only
+    // reference to the reactor which drivers use.
+    m_engine.reset();
 }
 
 Json::Value
