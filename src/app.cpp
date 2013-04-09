@@ -146,7 +146,7 @@ app_t::start() {
         )
     );
 
-    // NOTE: We can safely set the current driver set now.
+    // We can safely swap the current driver set now.
     m_drivers.swap(drivers);
 
     auto runnable = std::bind(
