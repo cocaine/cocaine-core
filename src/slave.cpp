@@ -48,6 +48,7 @@ slave_t::slave_t(context_t& context,
                  engine_t& engine):
     m_context(context),
     m_log(new logging::log_t(context, cocaine::format("app/%s", manifest.name))),
+    m_reactor(reactor),
     m_manifest(manifest),
     m_profile(profile),
     m_engine(engine),
@@ -295,7 +296,9 @@ slave_t::on_death(int code,
         reason
     );
 
-    m_engine.erase(m_id, code, reason);
+    m_reactor.post(
+        std::bind(&engine_t::erase, std::ref(m_engine), m_id, code, reason)
+    );
 }
 
 void

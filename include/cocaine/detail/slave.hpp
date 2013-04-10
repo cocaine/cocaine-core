@@ -128,6 +128,10 @@ class slave_t {
         context_t& m_context;
         std::unique_ptr<logging::log_t> m_log;
 
+        // I/O Reactor
+
+        reactor_t& m_reactor;
+
         // Configuration
 
         const manifest_t& m_manifest;
