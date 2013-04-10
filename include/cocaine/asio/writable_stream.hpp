@@ -24,7 +24,6 @@
 #include "cocaine/asio/reactor.hpp"
 
 #include <cstring>
-#include <mutex>
 
 namespace cocaine { namespace io {
 

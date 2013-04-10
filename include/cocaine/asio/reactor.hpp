@@ -24,6 +24,7 @@
 #include "cocaine/common.hpp"
 
 #include <deque>
+#include <functional>
 #include <mutex>
 
 #define EV_MINIMAL       0
@@ -40,6 +41,7 @@ struct reactor_t {
     COCAINE_DECLARE_NONCOPYABLE(reactor_t)
 
     typedef ev::loop_ref native_type;
+    typedef std::function<void()> job_type;
 
     reactor_t():
         m_loop(new ev::dynamic_loop()),
@@ -64,7 +66,7 @@ struct reactor_t {
     }
 
     void
-    post(const std::function<void()>& job) {
+    post(const job_type& job) {
         std::lock_guard<std::mutex> guard(m_job_queue_mutex);
         m_job_queue.push_back(job);
     }
@@ -91,7 +93,7 @@ private:
     std::unique_ptr<native_type> m_loop;
     std::unique_ptr<ev::prepare> m_loop_prepare;
 
-    std::deque<std::function<void()>> m_job_queue;
+    std::deque<job_type> m_job_queue;
     std::mutex m_job_queue_mutex;
 };
 
