@@ -15,3 +15,4 @@ install/cocaine-tools::
 	install -m755 scripts/cocaine-start-app.py $(DEB_DESTDIR)usr/bin/cocaine-start-app
 	install -m755 scripts/cocaine-pause-app.py $(DEB_DESTDIR)usr/bin/cocaine-pause-app
 	install -m755 scripts/cocaine-check-app.py $(DEB_DESTDIR)usr/bin/cocaine-check-app
+	install -m755 scripts/cocaine-tool.py $(DEB_DESTDIR)usr/bin/cocaine-tool
