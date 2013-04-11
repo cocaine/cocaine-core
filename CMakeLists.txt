@@ -125,7 +125,6 @@ TARGET_LINK_LIBRARIES(cocaine-runtime
 SET_TARGET_PROPERTIES(cocaine-core cocaine-runtime PROPERTIES
     COMPILE_FLAGS "-std=c++0x -W -Wall -Werror -pedantic")
 
-#ADD_SUBDIRECTORY(tools)
 
 INSTALL(
     TARGETS
