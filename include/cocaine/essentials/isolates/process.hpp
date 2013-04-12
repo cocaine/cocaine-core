@@ -43,6 +43,7 @@ class process_t:
               const std::map<std::string, std::string>& environment);
 
     private:
+        std::string m_working_directory;
         std::unique_ptr<logging::log_t> m_log;
 };
 

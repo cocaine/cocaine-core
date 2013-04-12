@@ -23,6 +23,8 @@
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
+#include <boost/filesystem/path.hpp>
+
 #include <cerrno>
 #include <csignal>
 #include <cstring>
@@ -33,6 +35,8 @@
 
 using namespace cocaine;
 using namespace cocaine::isolate;
+
+namespace fs = boost::filesystem;
 
 namespace {
     struct process_handle_t:
@@ -66,6 +70,7 @@ process_t::process_t(context_t& context,
                      const std::string& name,
                      const Json::Value& args):
     category_type(context, name, args),
+    m_working_directory((fs::path(context.config.path.spool) / name).native()),
     m_log(new logging::log_t(context, name))
 { }
 
@@ -135,6 +140,19 @@ process_t::spawn(const std::string& path,
             ++it;
         }
         */
+
+        if(::chdir(m_working_directory.c_str())) {
+            std::error_code ec(errno, std::system_category());
+
+            COCAINE_LOG_ERROR(
+                m_log,
+                "unable to change working directory to '%s' - %s",
+                path,
+                ec.message()
+            );
+
+            std::exit(EXIT_FAILURE);
+        }
 
         if(::execv(argv[0], argv) != 0) {
             std::error_code ec(errno, std::system_category());
