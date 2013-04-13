@@ -72,7 +72,11 @@ process_t::process_t(context_t& context,
                      const Json::Value& args):
     category_type(context, name, args),
     m_log(new logging::log_t(context, name)),
+#if BOOST_VERSION >= 104600
     m_working_directory((fs::path(context.config.path.spool) / name).native())
+#else
+    m_working_directory((fs::path(context.config.path.spool) / name).string())
+#endif
 { }
 
 process_t::~process_t() {
