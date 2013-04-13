@@ -23,12 +23,13 @@
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
-#include <boost/filesystem/path.hpp>
-
 #include <cerrno>
 #include <csignal>
 #include <cstring>
 #include <system_error>
+
+#include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/path.hpp>
 
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -70,8 +71,8 @@ process_t::process_t(context_t& context,
                      const std::string& name,
                      const Json::Value& args):
     category_type(context, name, args),
-    m_working_directory((fs::path(context.config.path.spool) / name).native()),
-    m_log(new logging::log_t(context, name))
+    m_log(new logging::log_t(context, name)),
+    m_working_directory((fs::path(context.config.path.spool) / name).native())
 { }
 
 process_t::~process_t() {
@@ -141,14 +142,14 @@ process_t::spawn(const std::string& path,
         }
         */
 
-        if(::chdir(m_working_directory.c_str())) {
-            std::error_code ec(errno, std::system_category());
-
+        try {
+            fs::current_path(m_working_directory);
+        } catch(const fs::filesystem_error& e) {
             COCAINE_LOG_ERROR(
                 m_log,
                 "unable to change working directory to '%s' - %s",
                 path,
-                ec.message()
+                e.what()
             );
 
             std::exit(EXIT_FAILURE);
