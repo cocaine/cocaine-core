@@ -77,7 +77,7 @@ namespace {
         { }
 
         virtual
-        ~downstream_t() {
+       ~downstream_t() {
             if(m_state != states::closed) {
                 close();
             }

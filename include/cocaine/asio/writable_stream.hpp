@@ -54,7 +54,7 @@ struct writable_stream {
         m_ring.resize(65536);
     }
 
-    ~writable_stream() {
+   ~writable_stream() {
         BOOST_ASSERT(m_tx_offset == m_wr_offset);
     }
 
