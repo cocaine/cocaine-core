@@ -184,7 +184,13 @@ main(int argc, char* argv[]) {
     }
 
     if(vm.count("version")) {
-        std::cout << cocaine::format("Cocaine %d", COCAINE_VERSION) << std::endl;
+        std::cout << cocaine::format(
+            "Cocaine %d.%d.%d",
+            COCAINE_VERSION_MAJOR,
+            COCAINE_VERSION_MINOR,
+            COCAINE_VERSION_RELEASE
+        ) << std::endl;
+
         return EXIT_SUCCESS;
     }
 
