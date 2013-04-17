@@ -36,7 +36,6 @@ recurring_timer_t::recurring_timer_t(context_t& context,
                                      const std::string& name,
                                      const Json::Value& args):
     category_type(context, reactor, app, name, args),
-    m_context(context),
     m_log(new logging::log_t(context, cocaine::format("app/%s", name))),
     m_app(app),
     m_event(args["emit"].asString()),
