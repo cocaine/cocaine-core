@@ -19,6 +19,8 @@
 */
 
 #include "cocaine/essentials/module.hpp"
+#include "cocaine/essentials/drivers/fs.hpp"
+#include "cocaine/essentials/drivers/time.hpp"
 #include "cocaine/essentials/isolates/process.hpp"
 #include "cocaine/essentials/loggers/files.hpp"
 #include "cocaine/essentials/loggers/stdout.hpp"
@@ -30,6 +32,8 @@
 
 void
 cocaine::essentials::initialize(api::repository_t& repository) {
+    repository.insert<driver::fs_t>("fs");
+    repository.insert<driver::recurring_timer_t>("time");
     repository.insert<isolate::process_t>("process");
     repository.insert<logger::files_t>("files");
     repository.insert<logger::stdout_t>("stdout");

@@ -82,6 +82,8 @@ ADD_LIBRARY(cocaine-core SHARED
     ${CRYPTO_SOURCES}
     src/dispatch
     src/engine
+    src/essentials/drivers/fs
+    src/essentials/drivers/time
     src/essentials/isolates/process
     src/essentials/loggers/files
     src/essentials/loggers/stdout
