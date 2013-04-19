@@ -69,8 +69,10 @@ namespace {
     }
 
     struct runtime_t {
-        runtime_t():
-            m_loop(EVFLAG_SIGNALFD)
+        runtime_t()
+#if defined(EVFLAG_SIGNALFD)
+            : m_loop(EVFLAG_SIGNALFD)
+#endif
         {
             m_sigint.set<runtime_t, &runtime_t::terminate>(this);
             m_sigint.start(SIGINT);
