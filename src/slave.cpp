@@ -203,12 +203,12 @@ slave_t::on_message(const message_t& message) {
 }
 
 namespace {
-    struct cancel_t {
+    struct detach_with {
         template<class T>
         void
         operator()(const T& session) const {
-            session.second->detach();
             session.second->upstream->error(code, message);
+            session.second->detach();
         }
 
         const error_code code;
@@ -226,11 +226,12 @@ slave_t::on_disconnect(const std::error_code& ec) {
         ec.message()
     );
 
-    std::for_each(
-        m_sessions.begin(),
-        m_sessions.end(),
-        cancel_t{resource_error, "the session has been aborted"}
-    );
+    m_state = states::inactive;
+
+    std::for_each(m_sessions.begin(), m_sessions.end(), detach_with {
+        resource_error,
+        "the session has been aborted"
+    });
 
     m_sessions.clear();
 
@@ -389,11 +390,12 @@ slave_t::on_timeout(ev::timer&, int) {
                 m_sessions.size()
             );
 
-            std::for_each(
-                m_sessions.begin(),
-                m_sessions.end(),
-                cancel_t{timeout_error, "the session had timed out"}
-            );
+            m_state = states::inactive;
+
+            std::for_each(m_sessions.begin(), m_sessions.end(), detach_with {
+                timeout_error,
+                "the session had timed out"
+            });
 
             m_sessions.clear();
 
