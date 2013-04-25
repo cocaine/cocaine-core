@@ -25,6 +25,7 @@
 
 #include <cerrno>
 #include <csignal>
+#include <cstdlib>
 #include <cstring>
 #include <system_error>
 
@@ -169,7 +170,7 @@ process_t::spawn(const std::string& path,
                 ec.message()
             );
 
-            std::exit(EXIT_FAILURE);
+            std::_Exit(EXIT_FAILURE);
         }
     }
 

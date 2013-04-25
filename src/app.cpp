@@ -58,7 +58,13 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
 {
     fs::path path = fs::path(m_context.config.path.spool) / name;
 
-    if(!fs::exists(path)) {
+    if(!fs::exists(path) || m_manifest->source() != sources::cache) {
+        try {
+            fs::remove_all(path);
+        } catch(const fs::filesystem_error& e) {
+            throw cocaine::error_t("unable to clean up the app spool %s - %s", path, e.what());
+        }
+
         deploy(name, path.string());
     }
 

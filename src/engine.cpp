@@ -352,16 +352,13 @@ engine_t::on_disconnect(const std::shared_ptr<channel<io::socket<local>>>& chann
 
 namespace {
     static
-    const char*
-    describe[] = {
+    const char* describe[] = {
         "running",
         "broken",
         "stopping",
         "stopped"
     };
-}
 
-namespace {
     struct collector_t {
         template<class>
         struct result {
@@ -498,10 +495,6 @@ namespace {
     };
 
     struct available_t {
-        available_t(size_t max_):
-            max(max_)
-        { }
-
         template<class T>
         bool
         operator()(const T& slave) const {
@@ -547,7 +540,7 @@ engine_t::pump() {
             m_pool.begin(),
             m_pool.end(),
             load_t(),
-            available_t(m_profile.concurrency)
+            available_t{m_profile.concurrency}
         );
 
         if(it == m_pool.end()) {
