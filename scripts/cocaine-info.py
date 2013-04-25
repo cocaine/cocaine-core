@@ -24,7 +24,7 @@ from optparse import OptionParser
 import sys
 import errno
 
-from cocaine.service.services import Service
+from cocaine.services import Service
 
 DESCRIPTION=""
 USAGE="USAGE: %prog [options]"
@@ -34,7 +34,10 @@ DEFAULT_HOST="localhost"
 
 def main(hostname, port):
     node = Service("node", hostname, port)
-    pprint(node.perform_sync("info"))
+    info = node.perform_sync("info")
+    for i in info:
+        pprint(i)
+    
 
 
 if __name__ == "__main__":

@@ -24,7 +24,7 @@ from optparse import OptionParser
 import sys
 import errno
 
-from cocaine.service.services import Service
+from cocaine.services import Service
 from cocaine.exceptions import ServiceError
 
 DESCRIPTION=""
@@ -46,7 +46,9 @@ def main(apps, hostname, port):
 
     node = Service("node", hostname, port)
     try:
-        pprint(node.perform_sync("start_app", runlist))
+        res = node.perform_sync("start_app", runlist)
+        for i in res:
+            pprint(i)
     except ServiceError as err:
         print err
         sys.exit(1)

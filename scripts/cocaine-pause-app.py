@@ -24,7 +24,7 @@ from optparse import OptionParser
 import sys
 import errno
 
-from cocaine.service.services import Service
+from cocaine.services import Service
 
 DESCRIPTION=""
 USAGE="USAGE: %prog --name [APP_NAME] --host [host] --port [port]"
@@ -33,7 +33,9 @@ USAGE="USAGE: %prog --name [APP_NAME] --host [host] --port [port]"
 
 def main(name, hostname, port):
     node = Service("node", hostname, port)
-    pprint(node.perform_sync("pause_app", [name]))
+    res = node.perform_sync("pause_app", [name])
+    for i in res:
+        pprint(i)
 
 
 if __name__ == "__main__":
