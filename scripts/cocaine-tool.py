@@ -22,16 +22,15 @@
 import errno
 import json
 import tarfile
-from pprint import pprint
 from optparse import OptionParser
 import sys
 
 import msgpack
 
-from cocaine.service.services import Service
+from cocaine.services import Service
 
 DESCRIPTION = ""
-ACTIONS=("app:list", "app:upload",  "app:remove",\
+ACTIONS=("app:list", "app:view", "app:upload",  "app:remove",\
             "profile:upload", "profile:remove", "profile:list", "profile:view",\
             "runlist:list", "runlist:remove", "runlist:upload", "runlist:view")
 USAGE="Usage: %prog " + "%s <options>" % '|'.join(ACTIONS)
@@ -39,10 +38,33 @@ USAGE="Usage: %prog " + "%s <options>" % '|'.join(ACTIONS)
 DEFAULT_HOST="localhost"
 DEFAULT_PORT=10053
 
+def sync_decorator(func):
+    def wrapper(*args, **kwargs):
+        try:
+            info = func(*args, **kwargs)
+            res = info.next()
+            info.next()
+        except StopIteration:
+            return res
+    return wrapper
+
+class Sync_wrapper(object):
+
+    def __init__(self, obj):
+        self._obj = obj
+
+    def __getattr__(self, name):
+        _async = getattr(self._obj, name)
+        return sync_decorator(_async)
+
+def print_json(data):
+    print json.dumps(data, indent=2)      
+
 class Storage(object):
 
     def __init__(self, hostname, port):
-        self._st = Service("storage", hostname, port)
+        #self._st = Service("storage", hostname, port)
+        self._st = Sync_wrapper(Service("storage", hostname, port))
 
     def _list(self, namespace):
         return self._st.perform_sync("list", namespace)
@@ -52,6 +74,15 @@ class Storage(object):
         for app in self._list("manifests"):
             print "\t" + app
         exit(0)
+
+    def view(self, name):
+        try:
+            print_json(msgpack.unpackb(self._st.perform_sync("read", "manifests", name)))
+        except Exception as err:
+            print "Error: unable to view application. %s" % str(err)
+            exit(1)
+        exit(0)
+
 
     def upload(self, manifest_path, archive_path, name):
         # Validate manifest
@@ -147,7 +178,7 @@ class Storage(object):
 
     def view_profile(self, name):
         try:
-            pprint(msgpack.unpackb(self._st.perform_sync("read", "profiles", name)))
+            print_json(msgpack.unpackb(self._st.perform_sync("read", "profiles", name)))
         except Exception as err:
             print "Error: unable to view profile. %s" % str(err)
             exit(1)
@@ -161,7 +192,7 @@ class Storage(object):
 
     def view_runlist(self, name):
         try:
-            pprint(msgpack.unpackb(self._st.perform_sync("read", "runlists", name)))
+            print_json(msgpack.unpackb(self._st.perform_sync("read", "runlists", name)))
         except Exception as err:
             print "Error: unable to view runlist. %s" % str(err)
             exit(1)
@@ -222,6 +253,12 @@ def main():
         # Operation with applications
         if action == "app:list":
             S.apps()
+
+        elif action == "app:view":
+            if options.name is not None:
+                S.view(options.name)
+            else:
+                print "Specify name of application"
 
         elif action == "app:upload":
             if options.name is not None and options.manifest is not None and options.package is not None:
