@@ -41,6 +41,7 @@ DEFAULT_PORT=10053
 def sync_decorator(func):
     def wrapper(*args, **kwargs):
         try:
+            res = ""
             info = func(*args, **kwargs)
             res = info.next()
             info.next()
