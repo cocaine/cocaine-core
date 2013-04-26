@@ -38,7 +38,7 @@ class slave_t {
     COCAINE_DECLARE_NONCOPYABLE(slave_t)
 
     public:
-        enum class states: int {
+        enum class states {
             unknown,
             active,
             inactive,

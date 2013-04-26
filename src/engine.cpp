@@ -133,7 +133,7 @@ namespace {
     private:
         const std::weak_ptr<session_t> m_session;
 
-        enum class states: int {
+        enum class states {
             open,
             closed
         };

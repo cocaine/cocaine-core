@@ -28,7 +28,7 @@
 
 namespace cocaine {
 
-enum error_code {
+enum error_code: int {
     invocation_error = 1,
     resource_error,
     timeout_error,
