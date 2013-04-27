@@ -52,6 +52,7 @@ namespace cocaine {
     namespace io {
         struct local;
         struct tcp;
+        struct udp;
 
         template<class>
         struct socket;
