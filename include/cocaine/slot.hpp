@@ -218,28 +218,7 @@ struct blocking_slot<void, Sequence>:
 
 // Deferred slot
 
-template<class T>
-struct deferred {
-    deferred():
-        m_state(new state_t())
-    { }
-
-    void
-    write(const T& value) {
-        m_state->write(value);
-    }
-
-    void
-    abort(error_code code, const std::string& reason) {
-        m_state->abort(code, reason);
-    }
-
-    void
-    attach(const api::stream_ptr_t& upstream) {
-        m_state->attach(upstream);
-    }
-
-private:
+namespace detail {
     struct state_t {
         state_t():
             m_packer(m_buffer),
@@ -247,6 +226,7 @@ private:
             m_failed(false)
         { }
 
+        template<class T>
         void
         write(const T& value) {
             std::unique_lock<std::mutex> lock(m_mutex);
@@ -266,7 +246,26 @@ private:
         }
 
         void
-        abort(const std::exception_ptr& e) {
+        abort(error_code code, const std::string& reason) {
+            std::unique_lock<std::mutex> lock(m_mutex);
+
+            if(m_completed) {
+                return;
+            }
+
+            m_code = code;
+            m_reason = reason;
+
+            if(m_upstream) {
+                m_upstream->error(m_code, m_reason);
+                m_upstream->close();
+            }
+
+            m_failed = true;
+        }
+
+        void
+        close() {
             std::unique_lock<std::mutex> lock(m_mutex);
 
             if(m_completed) {
@@ -274,17 +273,10 @@ private:
             }
 
             if(m_upstream) {
-                try {
-                    std::rethrow_exception(e);
-                } catch(const std::exception& e) {
-                    m_upstream->error(invocation_error, e.what());
-                    m_upstream->close();
-                }
-            } else {
-                m_e = e;
+                m_upstream->close();
             }
 
-            m_failed = true;
+            m_completed = true;
         }
 
         void
@@ -293,23 +285,22 @@ private:
 
             m_upstream = upstream;
 
-            if(m_completed) {
-                m_upstream->write(m_buffer.data(), m_buffer.size());
-                m_upstream->close();
-            } else if(m_failed) {
-                try {
-                    std::rethrow_exception(m_e);
-                } catch(const std::exception& e) {
-                    m_upstream->error(invocation_error, e.what());
-                    m_upstream->close();
+            if(m_completed || m_failed) {
+                if(m_completed) {
+                    m_upstream->write(m_buffer.data(), m_buffer.size());
+                } else if(m_failed) {
+                    m_upstream->error(m_code, m_reason);
                 }
+
+                m_upstream->close();
             }
         }
 
     private:
         msgpack::sbuffer m_buffer;
         msgpack::packer<msgpack::sbuffer> m_packer;
-        std::exception_ptr m_e;
+        error_code m_code;
+        std::string m_reason;
 
         bool m_completed,
              m_failed;
@@ -317,8 +308,45 @@ private:
         api::stream_ptr_t m_upstream;
         std::mutex m_mutex;
     };
+}
 
-    const std::shared_ptr<state_t> m_state;
+struct basic_deferred_t {
+    basic_deferred_t():
+        m_state(new detail::state_t())
+    { }
+
+    void
+    attach(const api::stream_ptr_t& upstream) {
+        m_state->attach(upstream);
+    }
+
+    void
+    abort(error_code code, const std::string& reason) {
+        m_state->abort(code, reason);
+    }
+
+protected:
+    const std::shared_ptr<detail::state_t> m_state;
+};
+
+template<class T>
+struct deferred:
+    public basic_deferred_t
+{
+    void
+    write(const T& value) {
+        m_state->write(value);
+    }
+};
+
+template<>
+struct deferred<void>:
+    public basic_deferred_t
+{
+    void
+    close() {
+        m_state->close();
+    }
 };
 
 template<class R, class Sequence>
