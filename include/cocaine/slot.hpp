@@ -166,6 +166,10 @@ namespace detail {
 
 // Slot invocation mechanics
 
+#if defined(__GNUC__) && !defined(HAVE_GCC46)
+    #pragma GCC diagnostic ignored "-Wtype-limits"
+#endif
+
 template<class Sequence>
 struct invoke {
     template<class F>
@@ -181,8 +185,13 @@ struct invoke {
             throw cocaine::error_t("argument sequence type mismatch");
         }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wtautological-compare"
+        #if defined(__clang__)
+            #pragma clang diagnostic push
+            #pragma clang diagnostic ignored "-Wtautological-compare"
+        #elif defined(__GNUC__) && defined (HAVE_GCC46)
+            #pragma GCC diagnostic push
+            #pragma GCC diagnostic ignored "-Wtype-limits"
+        #endif
 
         // NOTE: In cases when the callable is nullary or every parameter is optional, this
         // comparison becomes tautological and emits dead code.
@@ -194,7 +203,11 @@ struct invoke {
             );
         }
 
-#pragma clang diagnostic pop
+        #if defined(__clang__)
+            #pragma clang diagnostic pop
+        #elif defined(__GNUC__) && defined (HAVE_GCC46)
+            #pragma GCC diagnostic pop
+        #endif
 
         typedef typename mpl::begin<Sequence>::type begin;
         typedef typename mpl::end<Sequence>::type end;
