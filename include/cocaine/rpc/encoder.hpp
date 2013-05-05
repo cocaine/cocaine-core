@@ -73,6 +73,8 @@ struct encoder {
     write(uint64_t stream, Args&&... args) {
         typedef event_traits<Event> traits;
 
+        std::unique_lock<std::mutex> lock(m_mutex);
+
         // NOTE: Format is [ID, Tag, [Args...]].
         m_packer.pack_array(3);
 
@@ -83,8 +85,6 @@ struct encoder {
             m_packer,
             std::forward<Args>(args)...
         );
-
-        std::unique_lock<std::mutex> lock(m_mutex);
 
         if(m_stream) {
             m_stream->write(m_buffer.data(), m_buffer.size());
