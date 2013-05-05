@@ -30,7 +30,6 @@
 
 #include <boost/function_types/function_type.hpp>
 
-#include <boost/mpl/bool.hpp>
 #include <boost/mpl/count_if.hpp>
 #include <boost/mpl/push_front.hpp>
 #include <boost/mpl/transform.hpp>
@@ -85,7 +84,7 @@ namespace detail {
 
     template<class T>
     struct is_required:
-        public mpl::bool_<true>
+        public std::true_type
     { };
 
     template<class T>
@@ -108,7 +107,7 @@ namespace detail {
 
     template<class T>
     struct is_required<optional<T>>:
-        public mpl::bool_<false>
+        public std::false_type
     { };
 
     template<class T, T t>
@@ -131,7 +130,7 @@ namespace detail {
 
     template<class T, T t>
     struct is_required<optional_with_default<T, t>>:
-        public mpl::bool_<false>
+        public std::false_type
     { };
 
     template<class It, class End>
