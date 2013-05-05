@@ -72,7 +72,7 @@ dispatch_t::invoke(const io::message_t& message, const api::stream_ptr_t& upstre
     );
 
     try {
-        (*slot)(upstream, message.args());
+        (*slot)(message.args(), upstream);
     } catch(const std::exception& e) {
         COCAINE_LOG_ERROR(
             m_log,

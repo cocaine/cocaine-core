@@ -29,12 +29,22 @@
 #include <mutex>
 
 #include <boost/function_types/function_type.hpp>
+
+#include <boost/mpl/bool.hpp>
+#include <boost/mpl/count_if.hpp>
 #include <boost/mpl/push_front.hpp>
+#include <boost/mpl/transform.hpp>
 
 namespace cocaine {
 
 namespace ft = boost::function_types;
 namespace mpl = boost::mpl;
+
+template<class T>
+struct optional;
+
+template<class T, T t>
+struct optional_with_default;
 
 namespace detail {
     template<class T>
@@ -56,26 +66,87 @@ namespace detail {
         typedef typename F::result_type type;
     };
 
+    template<class T>
+    struct extract {
+        typedef T type;
+
+        static inline
+        void
+        apply(const msgpack::object* ptr, type& argument) {
+            io::type_traits<T>::unpack(*ptr, argument);
+        }
+    };
+
+    template<class T>
+    struct is_required:
+        public mpl::bool_<true>
+    { };
+
+    template<class T>
+    struct extract<optional<T>> {
+        typedef T type;
+
+        static inline
+        void
+        apply(const msgpack::object* ptr, type& argument) {
+            if(ptr) {
+                extract<T>::apply(ptr, argument);
+            } else {
+                argument = T();
+            }
+        }
+    };
+
+    template<class T>
+    struct is_required<optional<T>>:
+        public mpl::bool_<false>
+    { };
+
+    template<class T, T t>
+    struct extract<optional_with_default<T, t>> {
+        typedef T type;
+
+        static inline
+        void
+        apply(const msgpack::object* ptr, type& argument) {
+            if(ptr) {
+                extract<T>::apply(ptr, argument);
+            } else {
+                argument = t;
+            }
+        }
+    };
+
+    template<class T, T t>
+    struct is_required<optional_with_default<T, t>>:
+        public mpl::bool_<false>
+    { };
+
     template<class It, class End>
     struct invoke_impl {
-        template<class F, typename... Args>
+        template<class F, class ArgumentIterator, typename... Args>
         static inline
         typename result_of<F>::type
-        apply(const F& callable, const msgpack::object* ptr, Args&&... args) {
+        apply(const F& callable, ArgumentIterator it, ArgumentIterator end, Args&&... args) {
             typedef typename mpl::deref<It>::type argument_type;
-            typedef typename mpl::next<It>::type next;
-
-            argument_type argument;
+            typename extract<argument_type>::type argument;
 
             try {
-                io::type_traits<argument_type>::unpack(*ptr, argument);
+                if(it != end) {
+                    extract<argument_type>::apply(*it++, argument);
+                } else {
+                    extract<argument_type>::apply(nullptr, argument);
+                }
             } catch(const msgpack::type_error& e) {
                 throw cocaine::error_t("argument type mismatch");
             }
 
+            typedef typename mpl::next<It>::type next;
+
             return invoke_impl<next, End>::apply(
                 callable,
-                ++ptr,
+                it,
+                end,
                 std::forward<Args>(args)...,
                 std::move(argument)
             );
@@ -84,10 +155,10 @@ namespace detail {
 
     template<class End>
     struct invoke_impl<End, End> {
-        template<class F, typename... Args>
+        template<class F, class ArgumentIterator, typename... Args>
         static inline
         typename result_of<F>::type
-        apply(const F& callable, const msgpack::object* /* ptr */, Args&&... args) {
+        apply(const F& callable, ArgumentIterator, ArgumentIterator, Args&&... args) {
             return callable(std::forward<Args>(args)...);
         }
     };
@@ -100,17 +171,40 @@ struct invoke {
     template<class F>
     static inline
     typename detail::result_of<F>::type
-    apply(const F& callable, const msgpack::object& args) {
-        const size_t size = mpl::size<Sequence>::value;
+    apply(const F& callable, const msgpack::object& unpacked) {
+        const size_t required = mpl::count_if<
+            Sequence,
+            mpl::lambda<detail::is_required<mpl::arg<1>>>
+        >::value;
 
-        if(args.type != msgpack::type::ARRAY || args.via.array.size != size) {
-            throw cocaine::error_t("argument sequence mismatch");
+        if(unpacked.type != msgpack::type::ARRAY) {
+            throw cocaine::error_t("argument sequence type mismatch");
         }
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wtautological-compare"
+
+        // NOTE: In cases when the callable is nullary or every parameter is optional, this
+        // comparison becomes tautological and emits dead code.
+        if(unpacked.via.array.size < required) {
+            throw cocaine::error_t(
+                "argument sequence length mismatch - expected at least %d, got %d",
+                required,
+                unpacked.via.array.size
+            );
+        }
+
+#pragma clang diagnostic pop
 
         typedef typename mpl::begin<Sequence>::type begin;
         typedef typename mpl::end<Sequence>::type end;
 
-        return detail::invoke_impl<begin, end>::apply(callable, args.via.array.ptr);
+        const std::vector<msgpack::object*> args(
+            &unpacked.via.array.ptr,
+            &unpacked.via.array.ptr + unpacked.via.array.size
+        );
+
+        return detail::invoke_impl<begin, end>::apply(callable, args.begin(), args.end());
     }
 };
 
@@ -128,7 +222,7 @@ struct slot_concept_t {
 
     virtual
     void
-    operator()(const api::stream_ptr_t& upstream, const msgpack::object& args) = 0;
+    operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) = 0;
 
 public:
     virtual
@@ -145,8 +239,13 @@ template<class R, class Sequence>
 struct basic_slot:
     public slot_concept_t
 {
+    typedef typename mpl::transform<
+        Sequence,
+        mpl::lambda<detail::extract<mpl::arg<1>>>
+    >::type sequence_type;
+
     typedef typename ft::function_type<
-        typename mpl::push_front<Sequence, R>::type
+        typename mpl::push_front<sequence_type, R>::type
     >::type function_type;
 
     typedef std::function<function_type> callable_type;
@@ -176,10 +275,10 @@ struct blocking_slot:
 
     virtual
     void
-    operator()(const api::stream_ptr_t& upstream, const msgpack::object& args) {
+    operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) {
         io::type_traits<R>::pack(m_packer, invoke<Sequence>::apply(
             this->m_callable,
-            args
+            unpacked
         ));
 
         upstream->write(m_buffer.data(), m_buffer.size());
@@ -208,8 +307,8 @@ struct blocking_slot<void, Sequence>:
 
     virtual
     void
-    operator()(const api::stream_ptr_t& upstream, const msgpack::object& args) {
-        invoke<Sequence>::apply(this->m_callable, args);
+    operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) {
+        invoke<Sequence>::apply(this->m_callable, unpacked);
 
         // This is needed so that service clients could detect operation completion.
         upstream->close();
@@ -310,8 +409,9 @@ namespace detail {
     };
 }
 
-struct basic_deferred_t {
-    basic_deferred_t():
+template<class T>
+struct deferred {
+    deferred():
         m_state(new detail::state_t())
     { }
 
@@ -321,32 +421,42 @@ struct basic_deferred_t {
     }
 
     void
+    write(const T& value) {
+        m_state->write(value);
+    }
+
+    void
     abort(error_code code, const std::string& reason) {
         m_state->abort(code, reason);
     }
 
-protected:
+private:
     const std::shared_ptr<detail::state_t> m_state;
 };
 
-template<class T>
-struct deferred:
-    public basic_deferred_t
-{
-    void
-    write(const T& value) {
-        m_state->write(value);
-    }
-};
-
 template<>
-struct deferred<void>:
-    public basic_deferred_t
-{
+struct deferred<void> {
+    deferred():
+        m_state(new detail::state_t())
+    { }
+
+    void
+    attach(const api::stream_ptr_t& upstream) {
+        m_state->attach(upstream);
+    }
+
     void
     close() {
         m_state->close();
     }
+
+    void
+    abort(error_code code, const std::string& reason) {
+        m_state->abort(code, reason);
+    }
+
+private:
+    const std::shared_ptr<detail::state_t> m_state;
 };
 
 template<class R, class Sequence>
@@ -362,10 +472,10 @@ struct deferred_slot:
 
     virtual
     void
-    operator()(const api::stream_ptr_t& upstream, const msgpack::object& args) {
+    operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) {
         auto deferred = invoke<Sequence>::apply(
             this->m_callable,
-            args
+            unpacked
         );
 
         deferred.attach(upstream);
