@@ -196,7 +196,7 @@ struct invoke {
         #if defined(__clang__)
             #pragma clang diagnostic push
             #pragma clang diagnostic ignored "-Wtautological-compare"
-        #elif defined(__GNUC__) && defined (HAVE_GCC46)
+        #elif defined(__GNUC__) && defined(HAVE_GCC46)
             #pragma GCC diagnostic push
             #pragma GCC diagnostic ignored "-Wtype-limits"
         #endif
@@ -213,7 +213,7 @@ struct invoke {
 
         #if defined(__clang__)
             #pragma clang diagnostic pop
-        #elif defined(__GNUC__) && defined (HAVE_GCC46)
+        #elif defined(__GNUC__) && defined(HAVE_GCC46)
             #pragma GCC diagnostic pop
         #endif
 
@@ -340,11 +340,7 @@ struct blocking_slot<void, Sequence>:
 
 namespace detail {
     struct state_t {
-        state_t():
-            m_packer(m_buffer),
-            m_completed(false),
-            m_failed(false)
-        { }
+        state_t();
 
         template<class T>
         void
@@ -366,55 +362,13 @@ namespace detail {
         }
 
         void
-        abort(error_code code, const std::string& reason) {
-            std::unique_lock<std::mutex> lock(m_mutex);
-
-            if(m_completed) {
-                return;
-            }
-
-            m_code = code;
-            m_reason = reason;
-
-            if(m_upstream) {
-                m_upstream->error(m_code, m_reason);
-                m_upstream->close();
-            }
-
-            m_failed = true;
-        }
+        abort(error_code code, const std::string& reason);
 
         void
-        close() {
-            std::unique_lock<std::mutex> lock(m_mutex);
-
-            if(m_completed) {
-                return;
-            }
-
-            if(m_upstream) {
-                m_upstream->close();
-            }
-
-            m_completed = true;
-        }
+        close();
 
         void
-        attach(const api::stream_ptr_t& upstream) {
-            std::unique_lock<std::mutex> lock(m_mutex);
-
-            m_upstream = upstream;
-
-            if(m_completed || m_failed) {
-                if(m_completed) {
-                    m_upstream->write(m_buffer.data(), m_buffer.size());
-                } else if(m_failed) {
-                    m_upstream->error(m_code, m_reason);
-                }
-
-                m_upstream->close();
-            }
-        }
+        attach(const api::stream_ptr_t& upstream);
 
     private:
         msgpack::sbuffer m_buffer;
