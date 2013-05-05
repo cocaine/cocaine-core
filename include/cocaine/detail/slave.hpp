@@ -30,8 +30,6 @@
 
 namespace cocaine { namespace engine {
 
-using io::reactor_t;
-
 struct session_t;
 
 class slave_t {
@@ -47,7 +45,7 @@ class slave_t {
 
     public:
         slave_t(context_t& context,
-                reactor_t& reactor,
+                io::reactor_t& reactor,
                 const manifest_t& manifest,
                 const profile_t& profile,
                 engine_t& engine);
@@ -130,7 +128,7 @@ class slave_t {
 
         // I/O Reactor
 
-        reactor_t& m_reactor;
+        io::reactor_t& m_reactor;
 
         // Configuration
 

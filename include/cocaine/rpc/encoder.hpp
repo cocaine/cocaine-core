@@ -23,7 +23,9 @@
 
 #include "cocaine/rpc/message.hpp"
 
+#include <memory>
 #include <mutex>
+#include <vector>
 
 namespace cocaine { namespace io {
 

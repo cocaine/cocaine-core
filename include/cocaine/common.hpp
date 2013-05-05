@@ -44,11 +44,11 @@
 #include <boost/unordered_map.hpp>
 #include <boost/version.hpp>
 
-#define COCAINE_DECLARE_NONCOPYABLE(name)   \
-    name(const name& other) = delete;       \
-                                            \
-    name&                                   \
-    operator=(const name& other) = delete;
+#define COCAINE_DECLARE_NONCOPYABLE(_name_)     \
+    _name_(const _name_& other) = delete;       \
+                                                \
+    _name_&                                     \
+    operator=(const _name_& other) = delete;
 
 #include "cocaine/config.hpp"
 #include "cocaine/exceptions.hpp"
