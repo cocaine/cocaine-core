@@ -70,10 +70,16 @@ namespace detail {
     struct extract {
         typedef T type;
 
+        template<class ArgumentIterator>
         static inline
-        void
-        apply(const msgpack::object* ptr, type& argument) {
-            io::type_traits<T>::unpack(*ptr, argument);
+        ArgumentIterator
+        apply(ArgumentIterator it, ArgumentIterator end, type& argument) {
+            BOOST_VERIFY(it != end);
+
+            // NOTE: This is the only place where the argument tuple iterator is advanced.
+            io::type_traits<T>::unpack(*it++, argument);
+
+            return it;
         }
     };
 
@@ -86,14 +92,17 @@ namespace detail {
     struct extract<optional<T>> {
         typedef T type;
 
+        template<class ArgumentIterator>
         static inline
-        void
-        apply(const msgpack::object* ptr, type& argument) {
-            if(ptr) {
-                extract<T>::apply(ptr, argument);
+        ArgumentIterator
+        apply(ArgumentIterator it, ArgumentIterator end, type& argument) {
+            if(it != end) {
+                return extract<T>::apply(it, end, argument);
             } else {
                 argument = T();
             }
+
+            return it;
         }
     };
 
@@ -106,14 +115,17 @@ namespace detail {
     struct extract<optional_with_default<T, t>> {
         typedef T type;
 
+        template<class ArgumentIterator>
         static inline
-        void
-        apply(const msgpack::object* ptr, type& argument) {
-            if(ptr) {
-                extract<T>::apply(ptr, argument);
+        ArgumentIterator
+        apply(ArgumentIterator it, ArgumentIterator end, type& argument) {
+            if(it != end) {
+                return extract<T>::apply(it, end, argument);
             } else {
                 argument = t;
             }
+
+            return it;
         }
     };
 
@@ -132,11 +144,7 @@ namespace detail {
             typename extract<argument_type>::type argument;
 
             try {
-                if(it != end) {
-                    extract<argument_type>::apply(*it++, argument);
-                } else {
-                    extract<argument_type>::apply(nullptr, argument);
-                }
+                it = extract<argument_type>::apply(it, end, argument);
             } catch(const msgpack::type_error& e) {
                 throw cocaine::error_t("argument type mismatch");
             }
@@ -212,9 +220,9 @@ struct invoke {
         typedef typename mpl::begin<Sequence>::type begin;
         typedef typename mpl::end<Sequence>::type end;
 
-        const std::vector<msgpack::object*> args(
-            &unpacked.via.array.ptr,
-            &unpacked.via.array.ptr + unpacked.via.array.size
+        const std::vector<msgpack::object> args(
+            unpacked.via.array.ptr,
+            unpacked.via.array.ptr + unpacked.via.array.size
         );
 
         return detail::invoke_impl<begin, end>::apply(callable, args.begin(), args.end());
