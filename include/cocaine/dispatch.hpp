@@ -91,7 +91,8 @@ dispatch_t::on(const std::string& name, F callable) {
     typedef typename detail::result_of<F>::type result_type;
     typedef typename io::event_traits<Event>::tuple_type tuple_type;
 
-    typedef typename detail::select<result_type>::template apply<
+    typedef typename mpl::apply<
+        detail::select<result_type>,
         tuple_type
     >::type slot_type;
 
