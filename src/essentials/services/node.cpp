@@ -42,7 +42,7 @@ namespace {
 }
 
 node_t::node_t(context_t& context,
-               reactor_t& reactor,
+               io::reactor_t& reactor,
                const std::string& name,
                const Json::Value& args):
     category_type(context, reactor, name, args),
