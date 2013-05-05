@@ -25,14 +25,12 @@
 
 namespace cocaine { namespace service {
 
-using io::reactor_t;
-
 class logging_t:
     public api::service_t
 {
     public:
         logging_t(context_t& context,
-                  reactor_t& reactor,
+                  io::reactor_t& reactor,
                   const std::string& name,
                   const Json::Value& args);
 };
