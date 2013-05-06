@@ -25,6 +25,10 @@
 #include "cocaine/dispatch.hpp"
 #include "cocaine/messages.hpp"
 
+namespace ev {
+    struct timer;
+}
+
 namespace cocaine {
 
 class actor_t;
@@ -33,7 +37,7 @@ class locator_t:
     public dispatch_t
 {
     public:
-        locator_t(context_t& context);
+        locator_t(context_t& context, io::reactor_t& reactor);
 
         virtual
        ~locator_t();
@@ -46,7 +50,11 @@ class locator_t:
         resolve(const std::string& name) const
             -> tuple::fold<io::locator::resolve::result_type>::type;
 
+        void
+        on_announce(ev::timer&, int);
+
     private:
+        context_t& m_context;
         std::unique_ptr<logging::log_t> m_log;
 
         typedef std::vector<
@@ -56,6 +64,10 @@ class locator_t:
         // NOTE: These are the instances of all the configured services, stored
         // as a vector of pairs to preserve the initialization order.
         service_list_t m_services;
+
+        // Multicast announce socket.
+        std::unique_ptr<io::socket<io::udp>> m_announce;
+        std::unique_ptr<ev::timer> m_announce_timer;
 };
 
 } // namespace cocaine

@@ -20,6 +20,10 @@
 
 #include "cocaine/detail/locator.hpp"
 
+#include "cocaine/asio/reactor.hpp"
+#include "cocaine/asio/socket.hpp"
+#include "cocaine/asio/udp.hpp"
+
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/messages.hpp"
@@ -29,11 +33,20 @@
 using namespace cocaine;
 using namespace std::placeholders;
 
-locator_t::locator_t(context_t& context):
+locator_t::locator_t(context_t& context, io::reactor_t& reactor):
     dispatch_t(context, "service/locator"),
+    m_context(context),
     m_log(new logging::log_t(context, "service/locator"))
 {
     on<io::locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
+
+    m_announce.reset(new io::socket<io::udp>(
+        io::udp::endpoint("226.0.0.10", 13555)
+    ));
+
+    m_announce_timer.reset(new ev::timer(reactor.native()));
+    m_announce_timer->set<locator_t, &locator_t::on_announce>(this);
+    m_announce_timer->start(0.0f, 5.0f);
 }
 
 locator_t::~locator_t() {
@@ -101,4 +114,19 @@ locator_t::resolve(const std::string& name) const
         1u,
         it->second->dispatch().describe()
     );
+}
+
+void
+locator_t::on_announce(ev::timer&, int) {
+    std::error_code ec;
+
+    m_announce->write(
+        m_context.config.network.hostname.data(),
+        m_context.config.network.hostname.size(),
+        ec
+    );
+
+    if(ec) {
+        COCAINE_LOG_WARNING(m_log, "unable to announce the node - [%d] %s", ec.value(), ec.message());
+    }
 }

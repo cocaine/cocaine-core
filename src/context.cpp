@@ -265,9 +265,8 @@ context_t::bootstrap() {
         new logging::log_t(*this, "bootstrap")
     );
 
-    auto locator = std::unique_ptr<locator_t>(
-        new locator_t(*this)
-    );
+    auto reactor = std::make_shared<io::reactor_t>();
+    auto locator = std::unique_ptr<locator_t>(new locator_t(*this, *reactor));
 
     COCAINE_LOG_INFO(
         blog,
@@ -277,17 +276,17 @@ context_t::bootstrap() {
     );
 
     for(auto it = config.services.begin(); it != config.services.end(); ++it) {
-        auto reactor = std::make_shared<io::reactor_t>();
+        auto service_reactor = std::make_shared<io::reactor_t>();
 
         try {
             locator->attach(
                 it->first,
                 std::unique_ptr<actor_t>(new actor_t(
-                    reactor,
+                    service_reactor,
                     get<api::service_t>(
                         it->second.type,
                         *this,
-                        *reactor,
+                        *service_reactor,
                         cocaine::format("service/%s", it->first),
                         it->second.args
                     )
@@ -303,7 +302,7 @@ context_t::bootstrap() {
     COCAINE_LOG_INFO(blog, "starting the service locator");
 
     m_locator.reset(new actor_t(
-        std::make_shared<io::reactor_t>(),
+        reactor,
         std::move(locator),
         defaults::locator_port
     ));
