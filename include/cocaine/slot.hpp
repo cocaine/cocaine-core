@@ -168,17 +168,13 @@ namespace detail {
 
 // Slot invocation mechanics
 
-#if defined(__GNUC__) && !defined(HAVE_GCC46)
-    #pragma GCC diagnostic ignored "-Wtype-limits"
-#endif
-
 template<class Sequence>
 struct invoke {
     template<class F>
     static inline
     typename detail::result_of<F>::type
     apply(const F& callable, const msgpack::object& unpacked) {
-        const size_t required = mpl::count_if<
+        const ssize_t required = mpl::count_if<
             Sequence,
             mpl::lambda<detail::is_required<mpl::arg<1>>>
         >::value;
@@ -187,29 +183,16 @@ struct invoke {
             throw cocaine::error_t("argument sequence type mismatch");
         }
 
-        #if defined(__clang__)
-            #pragma clang diagnostic push
-            #pragma clang diagnostic ignored "-Wtautological-compare"
-        #elif defined(__GNUC__) && defined(HAVE_GCC46)
-            #pragma GCC diagnostic push
-            #pragma GCC diagnostic ignored "-Wtype-limits"
-        #endif
-
         // NOTE: In cases when the callable is nullary or every parameter is optional, this
-        // comparison becomes tautological and emits dead code.
-        if(unpacked.via.array.size < required) {
+        // comparison becomes tautological and emits a warning. To circumvent this, we declare
+        // 'required' as a signed value.
+        if(required && unpacked.via.array.size < required) {
             throw cocaine::error_t(
                 "argument sequence length mismatch - expected at least %d, got %d",
                 required,
                 unpacked.via.array.size
             );
         }
-
-        #if defined(__clang__)
-            #pragma clang diagnostic pop
-        #elif defined(__GNUC__) && defined(HAVE_GCC46)
-            #pragma GCC diagnostic pop
-        #endif
 
         typedef typename mpl::begin<Sequence>::type begin;
         typedef typename mpl::end<Sequence>::type end;
