@@ -25,6 +25,9 @@
 
 #include "cocaine/api/stream.hpp"
 
+#include "cocaine/rpc/optional.hpp"
+#include "cocaine/rpc/protocol.hpp"
+
 #include <functional>
 #include <mutex>
 
@@ -38,12 +41,6 @@ namespace cocaine {
 
 namespace ft = boost::function_types;
 namespace mpl = boost::mpl;
-
-template<class T>
-struct optional;
-
-template<class T, T t>
-struct optional_with_default;
 
 namespace detail {
     template<class T>
@@ -75,8 +72,12 @@ namespace detail {
         apply(ArgumentIterator it, ArgumentIterator end, type& argument) {
             BOOST_VERIFY(it != end);
 
-            // NOTE: This is the only place where the argument tuple iterator is advanced.
-            io::type_traits<T>::unpack(*it++, argument);
+            try {
+                // NOTE: This is the only place where the argument tuple iterator is advanced.
+                io::type_traits<T>::unpack(*it++, argument);
+            } catch(const msgpack::type_error& e) {
+                throw cocaine::error_t("argument type mismatch");
+            }
 
             return it;
         }
@@ -110,8 +111,8 @@ namespace detail {
         public std::false_type
     { };
 
-    template<class T, T t>
-    struct extract<optional_with_default<T, t>> {
+    template<class T, T Default>
+    struct extract<optional_with_default<T, Default>> {
         typedef T type;
 
         template<class ArgumentIterator>
@@ -121,15 +122,15 @@ namespace detail {
             if(it != end) {
                 return extract<T>::apply(it, end, argument);
             } else {
-                argument = t;
+                argument = Default;
             }
 
             return it;
         }
     };
 
-    template<class T, T t>
-    struct is_required<optional_with_default<T, t>>:
+    template<class T, T Default>
+    struct is_required<optional_with_default<T, Default>>:
         public std::false_type
     { };
 
@@ -142,15 +143,9 @@ namespace detail {
             typedef typename mpl::deref<It>::type argument_type;
             typename extract<argument_type>::type argument;
 
-            try {
-                it = extract<argument_type>::apply(it, end, argument);
-            } catch(const msgpack::type_error& e) {
-                throw cocaine::error_t("argument type mismatch");
-            }
+            it = extract<argument_type>::apply(it, end, argument);
 
-            typedef typename mpl::next<It>::type next;
-
-            return invoke_impl<next, End>::apply(
+            return invoke_impl<typename mpl::next<It>::type, End>::apply(
                 callable,
                 it,
                 end,

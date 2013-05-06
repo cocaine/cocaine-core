@@ -24,8 +24,6 @@
 #include "cocaine/common.hpp"
 #include "cocaine/slot.hpp"
 
-#include "cocaine/rpc/protocol.hpp"
-
 namespace cocaine {
 
 class dispatch_t {
