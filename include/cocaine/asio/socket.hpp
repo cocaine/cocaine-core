@@ -38,6 +38,19 @@ struct socket {
     typedef typename medium_type::endpoint endpoint_type;
     typedef typename endpoint_type::size_type size_type;
 
+    socket() {
+        medium_type medium;
+
+        m_fd = ::socket(medium.family(), medium.type(), medium.protocol());
+
+        if(m_fd == -1) {
+            throw io_error_t("unable to create a socket");
+        }
+
+        ::fcntl(m_fd, F_SETFD, FD_CLOEXEC);
+        ::fcntl(m_fd, F_SETFL, O_NONBLOCK);
+    }
+
     explicit
     socket(endpoint_type endpoint) {
         medium_type medium;
@@ -56,14 +69,13 @@ struct socket {
         ::fcntl(m_fd, F_SETFL, O_NONBLOCK);
     }
 
+    explicit
     socket(int fd):
         m_fd(fd)
     { }
 
    ~socket() {
-        if(m_fd >= 0 && ::close(m_fd) != 0) {
-            // Log.
-        }
+        if(m_fd >= 0) ::close(m_fd);
     }
 
     // Moving

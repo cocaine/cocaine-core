@@ -18,10 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_TYPE_TRAITS_HPP
-#define COCAINE_TYPE_TRAITS_HPP
-
-#include "cocaine/tuples.hpp"
+#ifndef COCAINE_SERIALIZATION_TRAITS_HPP
+#define COCAINE_SERIALIZATION_TRAITS_HPP
 
 #include <type_traits>
 
@@ -32,6 +30,8 @@
 #include <boost/mpl/size.hpp>
 
 #include <msgpack.hpp>
+
+#include "cocaine/tuples.hpp"
 
 namespace cocaine { namespace io {
 
@@ -84,7 +84,7 @@ struct type_traits<
     static inline
     void
     pack(msgpack::packer<Stream>& packer, const T& source) {
-        packer << static_cast<const base_type&>(source);
+        packer << static_cast<base_type>(source);
     }
 
     static inline

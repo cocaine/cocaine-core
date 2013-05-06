@@ -1,3 +1,20 @@
+cocaine-core (0.10.2) lucid; urgency=low
+
+  * Release 10.2.
+  * Service-based tools, rewritten in Python.
+  * Slave's working directory is set to its parent directory instead of root.
+  * Chrono and Filesystem drivers are merged into the core.
+  * An ability to disable the caching subsystem. Useful for development when
+    applications are often re-uploaded.
+  * Bugfix: do not die if the application cannot be initialized because the
+    engine's listening socket binding has failed.
+  * Bugfix: properly handle situations when the specified worker binary cannot
+    be executed.
+  * Bugfix: explicitly request the signalfd support in libev.
+  * Bugfix: gently handle dying workers with sessions.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Thu, 25 Apr 2013 19:46:52 +0400
+
 cocaine-core (0.10.1) lucid; urgency=low
 
   * Release 10.1.

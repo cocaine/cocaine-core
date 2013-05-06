@@ -101,7 +101,7 @@ class slave_t;
 class engine_t {
     COCAINE_DECLARE_NONCOPYABLE(engine_t)
 
-    enum class states: int {
+    enum class states {
         running,
         broken,
         stopping,

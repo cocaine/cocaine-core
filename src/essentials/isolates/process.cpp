@@ -157,7 +157,7 @@ process_t::spawn(const std::string& path,
                 e.what()
             );
 
-            std::exit(EXIT_FAILURE);
+            std::_Exit(EXIT_FAILURE);
         }
 
         if(::execv(argv[0], argv) != 0) {

@@ -4,7 +4,7 @@ PROJECT(COCAINE-CORE)
 
 SET(COCAINE_VERSION_MAJOR   0)
 SET(COCAINE_VERSION_MINOR   10)
-SET(COCAINE_VERSION_RELEASE 1)
+SET(COCAINE_VERSION_RELEASE 2)
 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
@@ -51,6 +51,12 @@ INCLUDE_DIRECTORIES(
     ${LIBARCHIVE_INCLUDE_DIRS}
     ${LIBLTDL_INCLUDE_DIRS})
 
+INCLUDE_DIRECTORIES(BEFORE
+    ${PROJECT_SOURCE_DIR}/foreign/jsoncpp-0.6.0-rc2/include
+    ${PROJECT_SOURCE_DIR}/foreign/backward-cpp
+    ${PROJECT_SOURCE_DIR}/foreign/cppzmq
+    ${PROJECT_SOURCE_DIR}/include)
+
 LINK_DIRECTORIES(
     ${Boost_LIBRARY_DIRS}
     ${LIBEV_LIBRARY_DIRS}
@@ -58,12 +64,6 @@ LINK_DIRECTORIES(
     ${LIBZMQ_LIBRARY_DIRS}
     ${LIBARCHIVE_LIBRARY_DIRS}
     ${LIBLTDL_LIBRARY_DIRS})
-
-INCLUDE_DIRECTORIES(BEFORE
-    ${PROJECT_SOURCE_DIR}/foreign/jsoncpp-0.6.0-rc2/include
-    ${PROJECT_SOURCE_DIR}/foreign/backward-cpp
-    ${PROJECT_SOURCE_DIR}/foreign/cppzmq
-    ${PROJECT_SOURCE_DIR}/include)
 
 ADD_LIBRARY(json
     foreign/jsoncpp-0.6.0-rc2/src/lib_json/json_value
@@ -100,6 +100,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/repository
     src/session
     src/slave
+    src/slot
     src/unique_id)
 
 TARGET_LINK_LIBRARIES(cocaine-core
@@ -128,7 +129,6 @@ TARGET_LINK_LIBRARIES(cocaine-runtime
 
 SET_TARGET_PROPERTIES(cocaine-core cocaine-runtime PROPERTIES
     COMPILE_FLAGS "-std=c++0x -W -Wall -Werror -pedantic")
-
 
 INSTALL(
     TARGETS
