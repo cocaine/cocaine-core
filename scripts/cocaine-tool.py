@@ -35,14 +35,15 @@ ACTIONS=("app:list", "app:view", "app:upload",  "app:remove",\
             "runlist:list", "runlist:remove", "runlist:upload", "runlist:view")
 USAGE="Usage: %prog " + "%s <options>" % '|'.join(ACTIONS)
 
-DEFAULT_HOST="localhost"
-DEFAULT_PORT=10053
+DEFAULT_HOST = "localhost"
+DEFAULT_PORT = 10053
+DEFAULT_TIMEOUT = 2
 
-def sync_decorator(func):
+def sync_decorator(func, timeout):
     def wrapper(*args, **kwargs):
         try:
             res = ""
-            info = func(*args, **kwargs)
+            info = func(timeout = kwargs.get("timeout") or timeout, *args, **kwargs)
             res = info.next()
             info.next()
         except StopIteration:
@@ -51,21 +52,22 @@ def sync_decorator(func):
 
 class Sync_wrapper(object):
 
-    def __init__(self, obj):
+    def __init__(self, obj, timeout):
         self._obj = obj
+        self._timeout = timeout
 
     def __getattr__(self, name):
         _async = getattr(self._obj, name)
-        return sync_decorator(_async)
+        return sync_decorator(_async, self._timeout)
 
 def print_json(data):
-    print json.dumps(data, indent=2)      
+    print json.dumps(data, indent=2)
 
 class Storage(object):
 
-    def __init__(self, hostname, port):
+    def __init__(self, hostname, port, timeout):
         #self._st = Service("storage", hostname, port)
-        self._st = Sync_wrapper(Service("storage", hostname, port))
+        self._st = Sync_wrapper(Service("storage", hostname, port), timeout)
 
     def _list(self, namespace):
         return self._st.perform_sync("list", namespace)
@@ -240,6 +242,7 @@ def main():
     parser.add_option("-m",  type = "str", dest="manifest", help="location of the app manifest or runlist, profile", metavar="manifest.json")
     parser.add_option("-n",  type = "str", dest="name", help="name of the app or profile", metavar="examplename")
     parser.add_option("-p",  type = "str", dest="package", help="location of the app source package", metavar="package.tar.gz")
+    parser.add_option("--timeout",  type = "float", default=DEFAULT_TIMEOUT, help="timeout for synchronous operations [default: %default]", metavar=DEFAULT_TIMEOUT)
     parser.add_option("--port", type = "int", default=DEFAULT_PORT, help="Port number\t [default: %default]", metavar=DEFAULT_PORT)
     parser.add_option("--host", type = "str", default=DEFAULT_HOST, help="Hostname\t [default: %default]", metavar=DEFAULT_HOST)
     (options, args) = parser.parse_args()
@@ -249,7 +252,7 @@ def main():
         print "Empty action. Use %s" % '|'.join(ACTIONS)
         exit(0)
     else:
-        S = Storage(options.host, options.port)
+        S = Storage(options.host, options.port, options.timeout)
         action = args[0]
         # Operation with applications
         if action == "app:list":
