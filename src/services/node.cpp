@@ -59,7 +59,7 @@ node_t::node_t(context_t& context,
 {
     on<io::node::start_app>("start_app", std::bind(&node_t::on_start_app, this, _1));
     on<io::node::pause_app>("pause_app", std::bind(&node_t::on_pause_app, this, _1));
-    on<io::node::info     >("info",      std::bind(&node_t::on_info,      this));
+    on<io::node::info>("info", std::bind(&node_t::on_info, this));
 
     // Configuration
 

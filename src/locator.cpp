@@ -39,7 +39,7 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
     m_log(new logging::log_t(context, "service/locator"))
 {
     on<io::locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
-    on<io::locator::dump   >("dump",    std::bind(&locator_t::dump,    this));
+    on<io::locator::dump>("dump", std::bind(&locator_t::dump, this));
 
     if(!context.config.network.group.empty()) {
         auto endpoint = io::udp::endpoint(context.config.network.group, 10054);
@@ -137,7 +137,7 @@ namespace {
     };
 
     inline
-    tuple::fold<io::locator::resolve::result_type>::type
+    resolve_result_type
     define(const std::unique_ptr<actor_t>& actor) {
         return std::make_tuple(
             actor->endpoint().tuple(),
@@ -147,10 +147,8 @@ namespace {
     }
 }
 
-auto
-locator_t::resolve(const std::string& name) const
-    -> tuple::fold<io::locator::resolve::result_type>::type
-{
+resolve_result_type
+locator_t::resolve(const std::string& name) const {
     auto it = std::find_if(m_services.begin(), m_services.end(), match {
         name
     });
@@ -170,15 +168,13 @@ namespace {
             target[service.first] = define(service.second);
         }
 
-        io::locator::dump::result_type& target;
+        dump_result_type& target;
     };
 }
 
-auto
-locator_t::dump() const
-    -> io::locator::dump::result_type
-{
-    io::locator::dump::result_type result;
+dump_result_type
+locator_t::dump() const {
+    dump_result_type result;
 
     std::for_each(m_services.begin(), m_services.end(), dump_to {
         result

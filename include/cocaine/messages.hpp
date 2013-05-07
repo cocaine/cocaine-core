@@ -57,12 +57,10 @@ namespace locator {
     struct dump {
         typedef locator_tag tag;
 
-        typedef tuple::fold<resolve::result_type>::type description_tuple;
-
         typedef
          /* A full dump of all available services on this node. Used by metalocator to aggregate
             node information from the cluster. */
-            std::map<std::string, description_tuple>
+            std::map<std::string, tuple::fold<resolve::result_type>::type>
         result_type;
     };
 }

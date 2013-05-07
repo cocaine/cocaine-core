@@ -34,6 +34,9 @@ namespace cocaine {
 
 class actor_t;
 
+typedef io::event_traits<io::locator::resolve>::result_type resolve_result_type;
+typedef io::event_traits<io::locator::dump>::result_type dump_result_type;
+
 class locator_t:
     public dispatch_t
 {
@@ -47,13 +50,11 @@ class locator_t:
         attach(const std::string& name, std::unique_ptr<actor_t>&& service);
 
     private:
-        auto
-        resolve(const std::string& name) const
-            -> tuple::fold<io::locator::resolve::result_type>::type;
+        resolve_result_type
+        resolve(const std::string& name) const;
 
-        auto
-        dump() const
-            -> io::locator::dump::result_type;
+        dump_result_type
+        dump() const;
 
         // Cluster discovery
 

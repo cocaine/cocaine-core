@@ -32,8 +32,8 @@ storage_t::storage_t(context_t& context,
     category_type(context, reactor, name, args),
     m_storage(api::storage(context, "core"))
 {
-    on<io::storage::read  >("read",   std::bind(&api::storage_t::read,   m_storage, _1, _2));
-    on<io::storage::write >("write",  std::bind(&api::storage_t::write,  m_storage, _1, _2, _3));
+    on<io::storage::read>("read", std::bind(&api::storage_t::read, m_storage, _1, _2));
+    on<io::storage::write>("write", std::bind(&api::storage_t::write, m_storage, _1, _2, _3));
     on<io::storage::remove>("remove", std::bind(&api::storage_t::remove, m_storage, _1, _2));
-    on<io::storage::list  >("list",   std::bind(&api::storage_t::list,   m_storage, _1));
+    on<io::storage::list>("list", std::bind(&api::storage_t::list, m_storage, _1));
 }
