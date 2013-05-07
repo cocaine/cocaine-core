@@ -41,12 +41,51 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
     on<io::locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
 
     if(!context.config.network.group.empty()) {
-        auto endpoint = io::udp::endpoint(context.config.network.group, 10053);
+        auto endpoint = io::udp::endpoint(context.config.network.group, 10054);
+
+        // TODO: Make a bound-connect constructor.
+        m_announce.reset(new io::socket<io::udp>());
+
+        if(context.config.network.aggregate) {
+            const int loop = 0;
+            const int ttl  = IP_DEFAULT_MULTICAST_TTL;
+
+            // NOTE: I don't think these calls might fail at all.
+            ::setsockopt(m_announce->fd(), IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop));
+            ::setsockopt(m_announce->fd(), IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(ttl));
+
+            group_req request;
+
+            std::memset(&request, 0, sizeof(request));
+
+            request.gr_interface = 0;
+
+            io::udp::endpoint local("0.0.0.0", 10054);
+
+            COCAINE_LOG_INFO(m_log, "joining multicast group '%s' on '%s'", endpoint.address(), local);
+
+            if(::bind(m_announce->fd(), local.data(), local.size()) != 0) {
+                throw std::system_error(errno, std::system_category(), "unable to bind an announce socket");
+            }
+
+            std::memcpy(&request.gr_group, endpoint.data(), endpoint.size());
+
+            if(::setsockopt(m_announce->fd(), IPPROTO_IP, MCAST_JOIN_GROUP, &request, sizeof(request)) != 0) {
+                throw std::system_error(errno, std::system_category(), "unable to join a multicast group");
+            }
+
+            m_announce_watcher.reset(new ev::io(reactor.native()));
+
+            m_announce_watcher->set<locator_t, &locator_t::on_event>(this);
+            m_announce_watcher->start(m_announce->fd(), ev::READ);
+        }
 
         COCAINE_LOG_INFO(m_log, "announcing the node on '%s'", endpoint);
 
         // NOTE: Connect an UDP socket so that we could send announces via write() instead of sendto().
-        m_announce.reset(new io::socket<io::udp>(endpoint));
+        if(::connect(m_announce->fd(), endpoint.data(), endpoint.size()) != 0) {
+            throw std::system_error(errno, std::system_category(), "unable to connect a socket");
+        }
 
         m_announce_timer.reset(new ev::timer(reactor.native()));
         m_announce_timer->set<locator_t, &locator_t::on_announce>(this);
@@ -131,4 +170,19 @@ locator_t::on_announce(ev::timer&, int) {
             COCAINE_LOG_ERROR(m_log, "unable to announce the node - unexpected exception");
         }
     }
+}
+
+void
+locator_t::on_event(ev::io&, int) {
+    char buffer[1024];
+    std::error_code ec;
+
+    size_t r = m_announce->read(buffer, 1024, ec);
+
+    if(ec) {
+        COCAINE_LOG_ERROR(m_log, "something happened - [%d] %s", ec.value(), ec.message());
+        return;
+    }
+
+    COCAINE_LOG_INFO(m_log, "got '%s'", std::string(buffer, r));
 }

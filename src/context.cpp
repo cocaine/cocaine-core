@@ -113,6 +113,7 @@ config_t::config_t(const std::string& config_path) {
 
     // I/O configuration
 
+    network.aggregate = root.get("aggregate", false).asBool();
     network.group = root.get("group", "").asString();
 
     char hostname[256];

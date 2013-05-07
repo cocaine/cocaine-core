@@ -62,6 +62,7 @@ struct config_t {
     } path;
 
     struct {
+        bool aggregate;
         std::string group;
         std::string hostname;
     } network;

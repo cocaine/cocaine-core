@@ -26,6 +26,7 @@
 #include "cocaine/messages.hpp"
 
 namespace ev {
+    struct io;
     struct timer;
 }
 
@@ -55,6 +56,9 @@ class locator_t:
         void
         on_announce(ev::timer&, int);
 
+        void
+        on_event(ev::io&, int);
+
     private:
         context_t& m_context;
         std::unique_ptr<logging::log_t> m_log;
@@ -67,9 +71,10 @@ class locator_t:
         // as a vector of pairs to preserve the initialization order.
         service_list_t m_services;
 
-        // Multicast announce socket.
+        // Multicast announces.
         std::unique_ptr<io::socket<io::udp>> m_announce;
         std::unique_ptr<ev::timer> m_announce_timer;
+        std::unique_ptr<ev::io> m_announce_watcher;
 };
 
 } // namespace cocaine
