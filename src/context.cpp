@@ -243,15 +243,15 @@ context_t::bootstrap() {
         new logging::log_t(*this, "bootstrap")
     );
 
-    auto reactor = std::make_shared<io::reactor_t>();
-    auto locator = std::unique_ptr<locator_t>(new locator_t(*this, *reactor));
-
     COCAINE_LOG_INFO(
         blog,
         "starting %d %s",
         config.services.size(),
         config.services.size() == 1 ? "service" : "services"
     );
+
+    auto reactor = std::make_shared<io::reactor_t>();
+    auto locator = std::unique_ptr<locator_t>(new locator_t(*this, *reactor));
 
     for(auto it = config.services.begin(); it != config.services.end(); ++it) {
         auto service_reactor = std::make_shared<io::reactor_t>();

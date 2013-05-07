@@ -43,6 +43,8 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
     if(!context.config.network.group.empty()) {
         auto endpoint = io::udp::endpoint(context.config.network.group, 10053);
 
+        COCAINE_LOG_INFO(m_log, "announcing the node on '%s'", endpoint);
+
         // NOTE: Connect an UDP socket so that we could send announces via write() instead of sendto().
         m_announce.reset(new io::socket<io::udp>(endpoint));
 
