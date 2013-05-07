@@ -240,9 +240,8 @@ struct slot_concept_t {
     operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) = 0;
 
 public:
-    virtual
     std::string
-    describe() const {
+    name() const {
         return m_name;
     }
 

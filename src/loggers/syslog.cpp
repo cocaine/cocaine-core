@@ -18,7 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/essentials/loggers/syslog.hpp"
+#include "cocaine/detail/loggers/syslog.hpp"
 
 #include <syslog.h>
 

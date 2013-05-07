@@ -91,11 +91,14 @@ struct udp {
             return cocaine::format("%s:%d", address(), port());
         }
 
+        std::tuple<std::string, uint16_t>
+        tuple() const {
+            return std::make_tuple(address(), port());
+        }
+
         friend
         std::ostream&
-        operator<<(std::ostream& stream,
-                   const udp::endpoint& endpoint)
-        {
+        operator<<(std::ostream& stream, const udp::endpoint& endpoint) {
             return stream << endpoint.string();
         }
 

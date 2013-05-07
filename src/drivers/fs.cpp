@@ -18,7 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/essentials/drivers/fs.hpp"
+#include "cocaine/detail/drivers/fs.hpp"
 
 #include "cocaine/app.hpp"
 #include "cocaine/context.hpp"

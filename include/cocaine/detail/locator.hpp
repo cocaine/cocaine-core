@@ -50,6 +50,8 @@ class locator_t:
         resolve(const std::string& name) const
             -> tuple::fold<io::locator::resolve::result_type>::type;
 
+        // Node discovery
+
         void
         on_announce(ev::timer&, int);
 

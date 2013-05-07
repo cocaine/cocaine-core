@@ -40,13 +40,16 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
 {
     on<io::locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
 
-    m_announce.reset(new io::socket<io::udp>(
-        io::udp::endpoint("226.0.0.10", 13555)
-    ));
+    if(!context.config.network.group.empty()) {
+        auto endpoint = io::udp::endpoint(context.config.network.group, 10053);
 
-    m_announce_timer.reset(new ev::timer(reactor.native()));
-    m_announce_timer->set<locator_t, &locator_t::on_announce>(this);
-    m_announce_timer->start(0.0f, 5.0f);
+        // NOTE: Connect an UDP socket so that we could send announces via write() instead of sendto().
+        m_announce.reset(new io::socket<io::udp>(endpoint));
+
+        m_announce_timer.reset(new ev::timer(reactor.native()));
+        m_announce_timer->set<locator_t, &locator_t::on_announce>(this);
+        m_announce_timer->start(0.0f, 5.0f);
+    }
 }
 
 locator_t::~locator_t() {
@@ -82,7 +85,7 @@ locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
 }
 
 namespace {
-    struct match_t {
+    struct match {
         template<class T>
         bool
         operator()(const T& service) {
@@ -97,20 +100,16 @@ auto
 locator_t::resolve(const std::string& name) const
     -> tuple::fold<io::locator::resolve::result_type>::type
 {
-    auto it = std::find_if(
-        m_services.begin(),
-        m_services.end(),
-        match_t{name}
-    );
+    auto it = std::find_if(m_services.begin(), m_services.end(), match {
+        name
+    });
 
     if(it == m_services.end()) {
         throw cocaine::error_t("the specified service is not available");
     }
 
-    auto endpoint = it->second->endpoint();
-
     return std::make_tuple(
-        std::make_tuple(endpoint.address(), endpoint.port()),
+        it->second->endpoint().tuple(),
         1u,
         it->second->dispatch().describe()
     );
@@ -120,13 +119,14 @@ void
 locator_t::on_announce(ev::timer&, int) {
     std::error_code ec;
 
-    m_announce->write(
-        m_context.config.network.hostname.data(),
-        m_context.config.network.hostname.size(),
-        ec
-    );
+    const std::string& hostname = m_context.config.network.hostname;
+    const size_t size = hostname.size();
 
-    if(ec) {
-        COCAINE_LOG_WARNING(m_log, "unable to announce the node - [%d] %s", ec.value(), ec.message());
+    if(m_announce->write(hostname.data(), size, ec) != static_cast<ssize_t>(size)) {
+        if(ec) {
+            COCAINE_LOG_ERROR(m_log, "unable to announce the node - [%d] %s", ec.value(), ec.message());
+        } else {
+            COCAINE_LOG_ERROR(m_log, "unable to announce the node - unexpected exception");
+        }
     }
 }

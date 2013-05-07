@@ -81,26 +81,26 @@ ADD_LIBRARY(cocaine-core SHARED
     src/context
     ${CRYPTO_SOURCES}
     src/dispatch
+    src/drivers/fs
+    src/drivers/time
     src/engine
-    src/essentials/drivers/fs
-    src/essentials/drivers/time
-    src/essentials/isolates/process
-    src/essentials/loggers/files
-    src/essentials/loggers/stdout
-    src/essentials/loggers/syslog
-    src/essentials/services/logging
-    src/essentials/services/node
-    src/essentials/services/storage
-    src/essentials/storages/files
-    src/essentials/module
+    src/essentials
+    src/isolates/process
     src/locator
+    src/loggers/files
+    src/loggers/stdout
+    src/loggers/syslog
     src/logging
     src/manifest
     src/profile
     src/repository
+    src/services/logging
+    src/services/node
+    src/services/storage
     src/session
     src/slave
     src/slot
+    src/storages/files
     src/unique_id)
 
 TARGET_LINK_LIBRARIES(cocaine-core
