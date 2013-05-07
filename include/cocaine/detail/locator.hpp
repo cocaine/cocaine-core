@@ -65,7 +65,7 @@ class locator_t:
         on_announce_timer(ev::timer&, int);
 
         void
-        on_response(const io::message_t& message);
+        on_response(const std::string& hostname, const io::message_t& message);
 
     private:
         context_t& m_context;

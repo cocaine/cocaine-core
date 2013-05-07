@@ -203,10 +203,10 @@ namespace {
 
 void
 locator_t::on_announce_event(ev::io&, int) {
-    char hostname[1024];
+    char buffer[1024];
     std::error_code ec;
 
-    ssize_t size = m_announce->read(hostname, sizeof(hostname), ec);
+    ssize_t size = m_announce->read(buffer, sizeof(buffer), ec);
 
     if(size <= 0) {
         if(ec) {
@@ -216,16 +216,25 @@ locator_t::on_announce_event(ev::io&, int) {
         return;
     }
 
-    if(m_remotes.find(hostname) == m_remotes.end()) {
-        COCAINE_LOG_INFO(m_log, "discovered a new node at '%s'", std::string(hostname, size));
+    const std::string hostname(buffer, size);
 
-        auto channel = std::make_shared<io::channel<io::socket<io::tcp>>>(
-            m_reactor,
-            std::make_shared<io::socket<io::tcp>>(io::tcp::endpoint(hostname, 10053))
-        );
+    if(m_remotes.find(hostname) == m_remotes.end()) {
+        COCAINE_LOG_INFO(m_log, "discovered node '%s', querying...", hostname);
+
+        std::shared_ptr<io::channel<io::socket<io::tcp>>> channel;
+
+        try {
+            channel = std::make_shared<io::channel<io::socket<io::tcp>>>(
+                m_reactor,
+                std::make_shared<io::socket<io::tcp>>(io::tcp::endpoint(hostname, 10053))
+            );
+        } catch(const std::exception& e) {
+            COCAINE_LOG_ERROR(m_log, "unable to connect to node '%s' - %s", hostname, e.what());
+            return;
+        }
 
         channel->wr->bind(ignore());
-        channel->rd->bind(std::bind(&locator_t::on_response, this, _1), ignore());
+        channel->rd->bind(std::bind(&locator_t::on_response, this, hostname, _1), ignore());
 
         m_remotes[hostname] = channel;
 
@@ -250,7 +259,7 @@ locator_t::on_announce_timer(ev::timer&, int) {
 }
 
 void
-locator_t::on_response(const io::message_t& message) {
+locator_t::on_response(const std::string& hostname, const io::message_t& message) {
     switch(message.id()) {
         case io::event_traits<io::rpc::chunk>::id: {
             std::string chunk;
@@ -260,7 +269,9 @@ locator_t::on_response(const io::message_t& message) {
             msgpack::unpacked unpacked;
             msgpack::unpack(&unpacked, chunk.data(), chunk.size());
 
-            COCAINE_LOG_INFO(m_log, "discovered remote services: %s", unpacked.get());
+            COCAINE_LOG_INFO(m_log, "...remote node '%s' services: %s", hostname, unpacked.get());
+
+            break;
         }
 
         case io::event_traits<io::rpc::error>::id: {
