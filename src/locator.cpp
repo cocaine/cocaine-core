@@ -39,6 +39,7 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
     m_log(new logging::log_t(context, "service/locator"))
 {
     on<io::locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
+    on<io::locator::dump   >("dump",    std::bind(&locator_t::dump,    this));
 
     if(!context.config.network.group.empty()) {
         auto endpoint = io::udp::endpoint(context.config.network.group, 10054);
@@ -75,21 +76,20 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
             }
 
             m_announce_watcher.reset(new ev::io(reactor.native()));
-
-            m_announce_watcher->set<locator_t, &locator_t::on_event>(this);
+            m_announce_watcher->set<locator_t, &locator_t::on_announce_event>(this);
             m_announce_watcher->start(m_announce->fd(), ev::READ);
+        } else {
+            COCAINE_LOG_INFO(m_log, "announcing the node on '%s'", endpoint);
+
+            // NOTE: Connect an UDP socket so that we could send announces via write() instead of sendto().
+            if(::connect(m_announce->fd(), endpoint.data(), endpoint.size()) != 0) {
+                throw std::system_error(errno, std::system_category(), "unable to connect a socket");
+            }
+
+            m_announce_timer.reset(new ev::timer(reactor.native()));
+            m_announce_timer->set<locator_t, &locator_t::on_announce_timer>(this);
+            m_announce_timer->start(0.0f, 5.0f);
         }
-
-        COCAINE_LOG_INFO(m_log, "announcing the node on '%s'", endpoint);
-
-        // NOTE: Connect an UDP socket so that we could send announces via write() instead of sendto().
-        if(::connect(m_announce->fd(), endpoint.data(), endpoint.size()) != 0) {
-            throw std::system_error(errno, std::system_category(), "unable to connect a socket");
-        }
-
-        m_announce_timer.reset(new ev::timer(reactor.native()));
-        m_announce_timer->set<locator_t, &locator_t::on_announce>(this);
-        m_announce_timer->start(0.0f, 5.0f);
     }
 }
 
@@ -129,12 +129,22 @@ namespace {
     struct match {
         template<class T>
         bool
-        operator()(const T& service) {
+        operator()(const T& service) const {
             return name == service.first;
         }
 
         const std::string name;
     };
+
+    inline
+    tuple::fold<io::locator::resolve::result_type>::type
+    define(const std::unique_ptr<actor_t>& actor) {
+        return std::make_tuple(
+            actor->endpoint().tuple(),
+            1u,
+            actor->dispatch().describe()
+        );
+    }
 }
 
 auto
@@ -149,15 +159,51 @@ locator_t::resolve(const std::string& name) const
         throw cocaine::error_t("the specified service is not available");
     }
 
-    return std::make_tuple(
-        it->second->endpoint().tuple(),
-        1u,
-        it->second->dispatch().describe()
-    );
+    return define(it->second);
+}
+
+namespace {
+    struct dump_to {
+        template<class T>
+        void
+        operator()(const T& service) {
+            target[service.first] = define(service.second);
+        }
+
+        io::locator::dump::result_type& target;
+    };
+}
+
+auto
+locator_t::dump() const
+    -> io::locator::dump::result_type
+{
+    io::locator::dump::result_type result;
+
+    std::for_each(m_services.begin(), m_services.end(), dump_to {
+        result
+    });
+
+    return result;
 }
 
 void
-locator_t::on_announce(ev::timer&, int) {
+locator_t::on_announce_event(ev::io&, int) {
+    char buffer[1024];
+    std::error_code ec;
+
+    size_t r = m_announce->read(buffer, 1024, ec);
+
+    if(ec) {
+        COCAINE_LOG_ERROR(m_log, "something happened - [%d] %s", ec.value(), ec.message());
+        return;
+    }
+
+    COCAINE_LOG_INFO(m_log, "got '%s'", std::string(buffer, r));
+}
+
+void
+locator_t::on_announce_timer(ev::timer&, int) {
     std::error_code ec;
 
     const std::string& hostname = m_context.config.network.hostname;
@@ -170,19 +216,4 @@ locator_t::on_announce(ev::timer&, int) {
             COCAINE_LOG_ERROR(m_log, "unable to announce the node - unexpected exception");
         }
     }
-}
-
-void
-locator_t::on_event(ev::io&, int) {
-    char buffer[1024];
-    std::error_code ec;
-
-    size_t r = m_announce->read(buffer, 1024, ec);
-
-    if(ec) {
-        COCAINE_LOG_ERROR(m_log, "something happened - [%d] %s", ec.value(), ec.message());
-        return;
-    }
-
-    COCAINE_LOG_INFO(m_log, "got '%s'", std::string(buffer, r));
 }

@@ -147,7 +147,7 @@ namespace {
 namespace {
     struct ignore_t {
         void
-        operator()(const std::error_code& /* ec */) {
+        operator()(const std::error_code& /* ec */) const {
             // Do nothing.
         }
     };

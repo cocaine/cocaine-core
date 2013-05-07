@@ -51,13 +51,17 @@ class locator_t:
         resolve(const std::string& name) const
             -> tuple::fold<io::locator::resolve::result_type>::type;
 
-        // Node discovery
+        auto
+        dump() const
+            -> io::locator::dump::result_type;
+
+        // Cluster discovery
 
         void
-        on_announce(ev::timer&, int);
+        on_announce_event(ev::io&, int);
 
         void
-        on_event(ev::io&, int);
+        on_announce_timer(ev::timer&, int);
 
     private:
         context_t& m_context;
@@ -71,7 +75,6 @@ class locator_t:
         // as a vector of pairs to preserve the initialization order.
         service_list_t m_services;
 
-        // Multicast announces.
         std::unique_ptr<io::socket<io::udp>> m_announce;
         std::unique_ptr<ev::timer> m_announce_timer;
         std::unique_ptr<ev::io> m_announce_watcher;

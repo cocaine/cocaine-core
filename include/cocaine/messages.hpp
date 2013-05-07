@@ -22,6 +22,7 @@
 #define COCAINE_IO_MESSAGES_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/tuples.hpp"
 
 #include <boost/mpl/int.hpp>
 #include <boost/mpl/list.hpp>
@@ -52,6 +53,18 @@ namespace locator {
             std::map<int, std::string>
         > result_type;
     };
+
+    struct dump {
+        typedef locator_tag tag;
+
+        typedef tuple::fold<resolve::result_type>::type description_tuple;
+
+        typedef
+         /* A full dump of all available services on this node. Used by metalocator to aggregate
+            node information from the cluster. */
+            std::map<std::string, description_tuple>
+        result_type;
+    };
 }
 
 template<>
@@ -61,7 +74,8 @@ struct protocol<locator_tag> {
     >::type version;
 
     typedef boost::mpl::list<
-        locator::resolve
+        locator::resolve,
+        locator::dump
     > type;
 };
 
