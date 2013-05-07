@@ -64,9 +64,15 @@ class locator_t:
         void
         on_announce_timer(ev::timer&, int);
 
+        void
+        on_response(const io::message_t& message);
+
     private:
         context_t& m_context;
         std::unique_ptr<logging::log_t> m_log;
+
+        // For future cluster locator interconnections.
+        io::reactor_t& m_reactor;
 
         typedef std::vector<
             std::pair<std::string, std::unique_ptr<actor_t>>
@@ -79,6 +85,13 @@ class locator_t:
         std::unique_ptr<io::socket<io::udp>> m_announce;
         std::unique_ptr<ev::timer> m_announce_timer;
         std::unique_ptr<ev::io> m_announce_watcher;
+
+        typedef std::map<
+            std::string,
+            std::shared_ptr<io::channel<io::socket<io::tcp>>>
+        > remote_map_t;
+
+        remote_map_t m_remotes;
 };
 
 } // namespace cocaine

@@ -22,13 +22,17 @@
 
 #include "cocaine/asio/reactor.hpp"
 #include "cocaine/asio/socket.hpp"
+#include "cocaine/asio/tcp.hpp"
 #include "cocaine/asio/udp.hpp"
 
 #include "cocaine/context.hpp"
+
+#include "cocaine/detail/actor.hpp"
+
 #include "cocaine/logging.hpp"
 #include "cocaine/messages.hpp"
 
-#include "cocaine/detail/actor.hpp"
+#include "cocaine/rpc/channel.hpp"
 
 using namespace cocaine;
 using namespace std::placeholders;
@@ -36,64 +40,69 @@ using namespace std::placeholders;
 locator_t::locator_t(context_t& context, io::reactor_t& reactor):
     dispatch_t(context, "service/locator"),
     m_context(context),
-    m_log(new logging::log_t(context, "service/locator"))
+    m_log(new logging::log_t(context, "service/locator")),
+    m_reactor(reactor)
 {
     on<io::locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
     on<io::locator::dump>("dump", std::bind(&locator_t::dump, this));
 
-    if(!context.config.network.group.empty()) {
-        auto endpoint = io::udp::endpoint(context.config.network.group, 10054);
+    if(context.config.network.group.empty()) {
+        return;
+    }
 
-        // TODO: Make a bound-connect constructor.
-        m_announce.reset(new io::socket<io::udp>());
+    auto endpoint = io::udp::endpoint(context.config.network.group, 10054);
 
-        if(context.config.network.aggregate) {
-            const int loop = 0;
-            const int ttl  = IP_DEFAULT_MULTICAST_TTL;
+    // TODO: Make a bound-connect constructor.
+    m_announce.reset(new io::socket<io::udp>());
 
-            // NOTE: I don't think these calls might fail at all.
-            ::setsockopt(m_announce->fd(), IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop));
-            ::setsockopt(m_announce->fd(), IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(ttl));
+    if(context.config.network.aggregate) {
+        const int loop = 0;
+        const int ttl  = IP_DEFAULT_MULTICAST_TTL;
 
-            group_req request;
+        // NOTE: I don't think these calls might fail at all.
+        ::setsockopt(m_announce->fd(), IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop));
+        ::setsockopt(m_announce->fd(), IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(ttl));
 
-            std::memset(&request, 0, sizeof(request));
+        group_req request;
 
-            request.gr_interface = 0;
+        std::memset(&request, 0, sizeof(request));
 
-            io::udp::endpoint local("0.0.0.0", 10054);
+        request.gr_interface = 0;
 
-            COCAINE_LOG_INFO(m_log, "joining multicast group '%s' on '%s'", endpoint.address(), local);
+        io::udp::endpoint local("0.0.0.0", 10054);
 
-            if(::bind(m_announce->fd(), local.data(), local.size()) != 0) {
-                throw std::system_error(errno, std::system_category(), "unable to bind an announce socket");
-            }
+        COCAINE_LOG_INFO(m_log, "joining multicast group '%s' on '%s'", endpoint.address(), local);
 
-            std::memcpy(&request.gr_group, endpoint.data(), endpoint.size());
-
-            if(::setsockopt(m_announce->fd(), IPPROTO_IP, MCAST_JOIN_GROUP, &request, sizeof(request)) != 0) {
-                throw std::system_error(errno, std::system_category(), "unable to join a multicast group");
-            }
-
-            m_announce_watcher.reset(new ev::io(reactor.native()));
-            m_announce_watcher->set<locator_t, &locator_t::on_announce_event>(this);
-            m_announce_watcher->start(m_announce->fd(), ev::READ);
-        } else {
-            COCAINE_LOG_INFO(m_log, "announcing the node on '%s'", endpoint);
-
-            // NOTE: Connect an UDP socket so that we could send announces via write() instead of sendto().
-            if(::connect(m_announce->fd(), endpoint.data(), endpoint.size()) != 0) {
-                throw std::system_error(errno, std::system_category(), "unable to connect a socket");
-            }
-
-            m_announce_timer.reset(new ev::timer(reactor.native()));
-            m_announce_timer->set<locator_t, &locator_t::on_announce_timer>(this);
-            m_announce_timer->start(0.0f, 5.0f);
+        if(::bind(m_announce->fd(), local.data(), local.size()) != 0) {
+            throw std::system_error(errno, std::system_category(), "unable to bind an announce socket");
         }
+
+        std::memcpy(&request.gr_group, endpoint.data(), endpoint.size());
+
+        if(::setsockopt(m_announce->fd(), IPPROTO_IP, MCAST_JOIN_GROUP, &request, sizeof(request)) != 0) {
+            throw std::system_error(errno, std::system_category(), "unable to join a multicast group");
+        }
+
+        m_announce_watcher.reset(new ev::io(m_reactor.native()));
+        m_announce_watcher->set<locator_t, &locator_t::on_announce_event>(this);
+        m_announce_watcher->start(m_announce->fd(), ev::READ);
+    } else {
+        COCAINE_LOG_INFO(m_log, "announcing the node on '%s'", endpoint);
+
+        // NOTE: Connect an UDP socket so that we could send announces via write() instead of sendto().
+        if(::connect(m_announce->fd(), endpoint.data(), endpoint.size()) != 0) {
+            throw std::system_error(errno, std::system_category(), "unable to connect a socket");
+        }
+
+        m_announce_timer.reset(new ev::timer(m_reactor.native()));
+        m_announce_timer->set<locator_t, &locator_t::on_announce_timer>(this);
+        m_announce_timer->start(0.0f, 5.0f);
     }
 }
 
 locator_t::~locator_t() {
+    m_remotes.clear();
+
     for(service_list_t::reverse_iterator it = m_services.rbegin();
         it != m_services.rend();
         ++it)
@@ -183,19 +192,45 @@ locator_t::dump() const {
     return result;
 }
 
+namespace {
+    struct ignore {
+        void
+        operator()(const std::error_code& /* ec */) const {
+            // Do nothing.
+        }
+    };
+}
+
 void
 locator_t::on_announce_event(ev::io&, int) {
-    char buffer[1024];
+    char hostname[1024];
     std::error_code ec;
 
-    size_t r = m_announce->read(buffer, 1024, ec);
+    ssize_t size = m_announce->read(hostname, sizeof(hostname), ec);
 
-    if(ec) {
-        COCAINE_LOG_ERROR(m_log, "something happened - [%d] %s", ec.value(), ec.message());
+    if(size <= 0) {
+        if(ec) {
+            COCAINE_LOG_ERROR(m_log, "unable to receive the announce - [%d] %s", ec.value(), ec.message());
+        }
+
         return;
     }
 
-    COCAINE_LOG_INFO(m_log, "got '%s'", std::string(buffer, r));
+    if(m_remotes.find(hostname) == m_remotes.end()) {
+        COCAINE_LOG_INFO(m_log, "discovered a new node at '%s'", std::string(hostname, size));
+
+        auto channel = std::make_shared<io::channel<io::socket<io::tcp>>>(
+            m_reactor,
+            std::make_shared<io::socket<io::tcp>>(io::tcp::endpoint(hostname, 10053))
+        );
+
+        channel->wr->bind(ignore());
+        channel->rd->bind(std::bind(&locator_t::on_response, this, _1), ignore());
+
+        m_remotes[hostname] = channel;
+
+        channel->wr->write<io::locator::dump>(0UL);
+    }
 }
 
 void
@@ -210,6 +245,30 @@ locator_t::on_announce_timer(ev::timer&, int) {
             COCAINE_LOG_ERROR(m_log, "unable to announce the node - [%d] %s", ec.value(), ec.message());
         } else {
             COCAINE_LOG_ERROR(m_log, "unable to announce the node - unexpected exception");
+        }
+    }
+}
+
+void
+locator_t::on_response(const io::message_t& message) {
+    switch(message.id()) {
+        case io::event_traits<io::rpc::chunk>::id: {
+            std::string chunk;
+
+            message.as<io::rpc::chunk>(chunk);
+
+            msgpack::unpacked unpacked;
+            msgpack::unpack(&unpacked, chunk.data(), chunk.size());
+
+            COCAINE_LOG_INFO(m_log, "discovered remote services: %s", unpacked.get());
+        }
+
+        case io::event_traits<io::rpc::error>::id: {
+            break;
+        }
+
+        case io::event_traits<io::rpc::choke>::id: {
+            break;
         }
     }
 }
