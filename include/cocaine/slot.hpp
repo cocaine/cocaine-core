@@ -63,13 +63,11 @@ namespace detail {
     };
 
     template<class T>
-    struct extract {
-        typedef T type;
-
+    struct unpack {
         template<class ArgumentIterator>
         static inline
         ArgumentIterator
-        apply(ArgumentIterator it, ArgumentIterator end, type& argument) {
+        apply(ArgumentIterator it, ArgumentIterator end, T& argument) {
             BOOST_VERIFY(it != end);
 
             try {
@@ -84,20 +82,13 @@ namespace detail {
     };
 
     template<class T>
-    struct is_required:
-        public std::true_type
-    { };
-
-    template<class T>
-    struct extract<optional<T>> {
-        typedef T type;
-
+    struct unpack<optional<T>> {
         template<class ArgumentIterator>
         static inline
         ArgumentIterator
-        apply(ArgumentIterator it, ArgumentIterator end, type& argument) {
+        apply(ArgumentIterator it, ArgumentIterator end, T& argument) {
             if(it != end) {
-                return extract<T>::apply(it, end, argument);
+                return unpack<T>::apply(it, end, argument);
             } else {
                 argument = T();
             }
@@ -106,21 +97,16 @@ namespace detail {
         }
     };
 
-    template<class T>
-    struct is_required<optional<T>>:
-        public std::false_type
-    { };
-
     template<class T, T Default>
-    struct extract<optional_with_default<T, Default>> {
+    struct unpack<optional_with_default<T, Default>> {
         typedef T type;
 
         template<class ArgumentIterator>
         static inline
         ArgumentIterator
-        apply(ArgumentIterator it, ArgumentIterator end, type& argument) {
+        apply(ArgumentIterator it, ArgumentIterator end, T& argument) {
             if(it != end) {
-                return extract<T>::apply(it, end, argument);
+                return unpack<T>::apply(it, end, argument);
             } else {
                 argument = Default;
             }
@@ -129,11 +115,6 @@ namespace detail {
         }
     };
 
-    template<class T, T Default>
-    struct is_required<optional_with_default<T, Default>>:
-        public std::false_type
-    { };
-
     template<class It, class End>
     struct invoke_impl {
         template<class F, class ArgumentIterator, typename... Args>
@@ -141,9 +122,9 @@ namespace detail {
         typename result_of<F>::type
         apply(const F& callable, ArgumentIterator it, ArgumentIterator end, Args&&... args) {
             typedef typename mpl::deref<It>::type argument_type;
-            typename extract<argument_type>::type argument;
+            typename unwrap_type<argument_type>::type argument;
 
-            it = extract<argument_type>::apply(it, end, argument);
+            it = unpack<argument_type>::apply(it, end, argument);
 
             return invoke_impl<typename mpl::next<It>::type, End>::apply(
                 callable,
@@ -256,7 +237,7 @@ struct basic_slot:
 {
     typedef typename mpl::transform<
         Sequence,
-        mpl::lambda<detail::extract<mpl::arg<1>>>
+        mpl::lambda<detail::unwrap_type<mpl::arg<1>>>
     >::type sequence_type;
 
     typedef typename ft::function_type<
