@@ -21,6 +21,7 @@
 #include "cocaine/detail/locator.hpp"
 
 #include "cocaine/asio/reactor.hpp"
+#include "cocaine/asio/resolver.hpp"
 #include "cocaine/asio/socket.hpp"
 #include "cocaine/asio/tcp.hpp"
 #include "cocaine/asio/udp.hpp"
@@ -147,7 +148,7 @@ namespace {
 
     inline
     resolve_result_type
-    define(const std::unique_ptr<actor_t>& actor) {
+    query(const std::unique_ptr<actor_t>& actor) {
         return std::make_tuple(
             actor->endpoint().tuple(),
             1u,
@@ -166,7 +167,7 @@ locator_t::resolve(const std::string& name) const {
         throw cocaine::error_t("the specified service is not available");
     }
 
-    return define(it->second);
+    return query(it->second);
 }
 
 namespace {
@@ -174,7 +175,7 @@ namespace {
         template<class T>
         void
         operator()(const T& service) {
-            target[service.first] = define(service.second);
+            target[service.first] = query(service.second);
         }
 
         dump_result_type& target;
@@ -190,15 +191,6 @@ locator_t::dump() const {
     });
 
     return result;
-}
-
-namespace {
-    struct ignore {
-        void
-        operator()(const std::error_code& /* ec */) const {
-            // Do nothing.
-        }
-    };
 }
 
 void
@@ -224,17 +216,24 @@ locator_t::on_announce_event(ev::io&, int) {
         std::shared_ptr<io::channel<io::socket<io::tcp>>> channel;
 
         try {
+            auto endpoint = io::resolver<io::tcp>::query(hostname);
+
+            endpoint.port(10053);
+
             channel = std::make_shared<io::channel<io::socket<io::tcp>>>(
                 m_reactor,
-                std::make_shared<io::socket<io::tcp>>(io::tcp::endpoint(hostname, 10053))
+                std::make_shared<io::socket<io::tcp>>(endpoint)
             );
         } catch(const std::exception& e) {
             COCAINE_LOG_ERROR(m_log, "unable to connect to node '%s' - %s", hostname, e.what());
             return;
         }
 
-        channel->wr->bind(ignore());
-        channel->rd->bind(std::bind(&locator_t::on_response, this, hostname, _1), ignore());
+        auto on_response = std::bind(&locator_t::on_response, this, hostname, _1);
+        auto on_shutdown = std::bind(&locator_t::on_shutdown, this, hostname, _1);
+
+        channel->wr->bind(on_shutdown);
+        channel->rd->bind(on_response, on_shutdown);
 
         m_remotes[hostname] = channel;
 
@@ -269,7 +268,7 @@ locator_t::on_response(const std::string& hostname, const io::message_t& message
             msgpack::unpacked unpacked;
             msgpack::unpack(&unpacked, chunk.data(), chunk.size());
 
-            COCAINE_LOG_INFO(m_log, "...remote node '%s' services: %s", hostname, unpacked.get());
+            COCAINE_LOG_INFO(m_log, "...discovered node '%s' services: %s", hostname, unpacked.get());
 
             break;
         }
@@ -282,4 +281,17 @@ locator_t::on_response(const std::string& hostname, const io::message_t& message
             break;
         }
     }
+}
+
+void
+locator_t::on_shutdown(const std::string& hostname, const std::error_code& ec) {
+    COCAINE_LOG_INFO(
+        m_log,
+        "node '%s' has disconnected - [%d] %s",
+        hostname,
+        ec.value(),
+        ec.message()
+    );
+
+    m_remotes.erase(hostname);
 }

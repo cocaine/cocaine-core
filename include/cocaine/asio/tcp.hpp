@@ -87,6 +87,11 @@ struct tcp {
             return ntohs(m_data.tcp4.sin_port);
         }
 
+        void
+        port(uint16_t port_) {
+            m_data.tcp4.sin_port = htons(port_);
+        }
+
         std::tuple<std::string, uint16_t>
         tuple() const {
             return std::make_tuple(address(), port());

@@ -67,6 +67,9 @@ class locator_t:
         void
         on_response(const std::string& hostname, const io::message_t& message);
 
+        void
+        on_shutdown(const std::string& hostname, const std::error_code& ec);
+
     private:
         context_t& m_context;
         std::unique_ptr<logging::log_t> m_log;
