@@ -51,7 +51,7 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
         return;
     }
 
-    auto endpoint = io::udp::endpoint(context.config.network.group, 10054);
+    auto endpoint = io::udp::endpoint(context.config.network.group, 0);
 
     if(context.config.network.aggregate) {
         io::udp::endpoint bindpoint("0.0.0.0", 10054);
@@ -61,13 +61,6 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
         if(::bind(m_sink->fd(), bindpoint.data(), bindpoint.size()) != 0) {
             throw std::system_error(errno, std::system_category(), "unable to bind an announce socket");
         }
-
-        const int loop = 0;
-        const int life = IP_DEFAULT_MULTICAST_TTL;
-
-        // NOTE: I don't think these calls might fail at all.
-        ::setsockopt(m_sink->fd(), IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop));
-        ::setsockopt(m_sink->fd(), IPPROTO_IP, IP_MULTICAST_TTL,  &life, sizeof(life));
 
         COCAINE_LOG_INFO(m_log, "joining multicast group '%s' on '%s'", endpoint.address(), bindpoint);
 
@@ -88,10 +81,19 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
         m_sink_watcher->start(m_sink->fd(), ev::READ);
     }
 
+    endpoint.port(10054);
+
     COCAINE_LOG_INFO(m_log, "announcing the node on '%s'", endpoint);
 
     // NOTE: Connect an UDP socket so that we could send announces via write() instead of sendto().
     m_announce.reset(new io::socket<io::udp>(endpoint));
+
+    const int loop = 0;
+    const int life = IP_DEFAULT_MULTICAST_TTL;
+
+    // NOTE: I don't think these calls might fail at all.
+    ::setsockopt(m_announce->fd(), IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop));
+    ::setsockopt(m_announce->fd(), IPPROTO_IP, IP_MULTICAST_TTL,  &life, sizeof(life));
 
     m_announce_timer.reset(new ev::timer(m_reactor.native()));
     m_announce_timer->set<locator_t, &locator_t::on_announce_timer>(this);
