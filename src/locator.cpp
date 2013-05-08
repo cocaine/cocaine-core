@@ -195,7 +195,7 @@ locator_t::on_announce_event(ev::io&, int) {
     char buffer[1024];
     std::error_code ec;
 
-    ssize_t size = m_announce->read(buffer, sizeof(buffer), ec);
+    ssize_t size = m_sink->read(buffer, sizeof(buffer), ec);
 
     if(size <= 0) {
         if(ec) {
