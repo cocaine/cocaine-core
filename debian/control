@@ -40,6 +40,6 @@ Description: Cocaine - Runtime
 
 Package: cocaine-tools
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, cocaine-framework-python (>= 0.10.2)
+Depends: ${shlibs:Depends}, ${misc:Depends}, cocaine-framework-python (>= 0.10.2-1)
 Description: Cocaine - Toolset
  Various tools to query and manipulate running Cocaine instances.
