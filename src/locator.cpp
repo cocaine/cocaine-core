@@ -53,16 +53,23 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
 
     auto endpoint = io::udp::endpoint(context.config.network.group, 10054);
 
-    // TODO: Make a bound-connect constructor.
-    m_announce.reset(new io::socket<io::udp>());
-
     if(context.config.network.aggregate) {
+        io::udp::endpoint bindpoint("0.0.0.0", 10054);
+
+        m_sink.reset(new io::socket<io::udp>());
+
+        if(::bind(m_sink->fd(), bindpoint.data(), bindpoint.size()) != 0) {
+            throw std::system_error(errno, std::system_category(), "unable to bind an announce socket");
+        }
+
         const int loop = 0;
-        const int ttl  = IP_DEFAULT_MULTICAST_TTL;
+        const int life = IP_DEFAULT_MULTICAST_TTL;
 
         // NOTE: I don't think these calls might fail at all.
-        ::setsockopt(m_announce->fd(), IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop));
-        ::setsockopt(m_announce->fd(), IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(ttl));
+        ::setsockopt(m_sink->fd(), IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop));
+        ::setsockopt(m_sink->fd(), IPPROTO_IP, IP_MULTICAST_TTL,  &life, sizeof(life));
+
+        COCAINE_LOG_INFO(m_log, "joining multicast group '%s' on '%s'", endpoint.address(), bindpoint);
 
         group_req request;
 
@@ -70,35 +77,25 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
 
         request.gr_interface = 0;
 
-        io::udp::endpoint local("0.0.0.0", 10054);
-
-        COCAINE_LOG_INFO(m_log, "joining multicast group '%s' on '%s'", endpoint.address(), local);
-
-        if(::bind(m_announce->fd(), local.data(), local.size()) != 0) {
-            throw std::system_error(errno, std::system_category(), "unable to bind an announce socket");
-        }
-
         std::memcpy(&request.gr_group, endpoint.data(), endpoint.size());
 
-        if(::setsockopt(m_announce->fd(), IPPROTO_IP, MCAST_JOIN_GROUP, &request, sizeof(request)) != 0) {
+        if(::setsockopt(m_sink->fd(), IPPROTO_IP, MCAST_JOIN_GROUP, &request, sizeof(request)) != 0) {
             throw std::system_error(errno, std::system_category(), "unable to join a multicast group");
         }
 
-        m_announce_watcher.reset(new ev::io(m_reactor.native()));
-        m_announce_watcher->set<locator_t, &locator_t::on_announce_event>(this);
-        m_announce_watcher->start(m_announce->fd(), ev::READ);
-    } else {
-        COCAINE_LOG_INFO(m_log, "announcing the node on '%s'", endpoint);
-
-        // NOTE: Connect an UDP socket so that we could send announces via write() instead of sendto().
-        if(::connect(m_announce->fd(), endpoint.data(), endpoint.size()) != 0) {
-            throw std::system_error(errno, std::system_category(), "unable to connect a socket");
-        }
-
-        m_announce_timer.reset(new ev::timer(m_reactor.native()));
-        m_announce_timer->set<locator_t, &locator_t::on_announce_timer>(this);
-        m_announce_timer->start(0.0f, 5.0f);
+        m_sink_watcher.reset(new ev::io(m_reactor.native()));
+        m_sink_watcher->set<locator_t, &locator_t::on_announce_event>(this);
+        m_sink_watcher->start(m_sink->fd(), ev::READ);
     }
+
+    COCAINE_LOG_INFO(m_log, "announcing the node on '%s'", endpoint);
+
+    // NOTE: Connect an UDP socket so that we could send announces via write() instead of sendto().
+    m_announce.reset(new io::socket<io::udp>(endpoint));
+
+    m_announce_timer.reset(new ev::timer(m_reactor.native()));
+    m_announce_timer->set<locator_t, &locator_t::on_announce_timer>(this);
+    m_announce_timer->start(0.0f, 5.0f);
 }
 
 locator_t::~locator_t() {
@@ -208,34 +205,47 @@ locator_t::on_announce_event(ev::io&, int) {
         return;
     }
 
-    const std::string hostname(buffer, size);
+    msgpack::unpacked unpacked;
+    msgpack::unpack(&unpacked, buffer, size);
 
-    if(m_remotes.find(hostname) == m_remotes.end()) {
-        COCAINE_LOG_INFO(m_log, "discovered node '%s', querying...", hostname);
+    std::tuple<std::string, std::string> key;
+
+    try {
+        key = unpacked.get().as<std::tuple<std::string, std::string>>();
+    } catch(const std::exception& e) {
+        COCAINE_LOG_ERROR(m_log, "unable to decode the announce");
+        return;
+    }
+
+    if(m_remotes.find(key) == m_remotes.end()) {
+        std::string hostname;
+        std::string uuid;
+
+        std::tie(hostname, uuid) = key;
+
+        COCAINE_LOG_INFO(m_log, "discovered node '%s' on '%s', querying...", uuid, hostname);
 
         std::shared_ptr<io::channel<io::socket<io::tcp>>> channel;
 
         try {
-            auto endpoint = io::resolver<io::tcp>::query(hostname);
-
-            endpoint.port(10053);
-
             channel = std::make_shared<io::channel<io::socket<io::tcp>>>(
                 m_reactor,
-                std::make_shared<io::socket<io::tcp>>(endpoint)
+                std::make_shared<io::socket<io::tcp>>(
+                    io::resolver<io::tcp>::query(hostname, 10053)
+                )
             );
         } catch(const std::exception& e) {
             COCAINE_LOG_ERROR(m_log, "unable to connect to node '%s' - %s", hostname, e.what());
             return;
         }
 
-        auto on_response = std::bind(&locator_t::on_response, this, hostname, _1);
-        auto on_shutdown = std::bind(&locator_t::on_shutdown, this, hostname, _1);
+        auto on_response = std::bind(&locator_t::on_response, this, key, _1);
+        auto on_shutdown = std::bind(&locator_t::on_shutdown, this, key, _1);
 
         channel->wr->bind(on_shutdown);
         channel->rd->bind(on_response, on_shutdown);
 
-        m_remotes[hostname] = channel;
+        m_remotes[key] = channel;
 
         channel->wr->write<io::locator::dump>(0UL);
     }
@@ -243,12 +253,14 @@ locator_t::on_announce_event(ev::io&, int) {
 
 void
 locator_t::on_announce_timer(ev::timer&, int) {
+    msgpack::sbuffer buffer;
+    msgpack::packer<msgpack::sbuffer> packer(buffer);
+
+    packer << std::make_tuple(m_context.config.network.hostname, m_id.string());
+
     std::error_code ec;
 
-    const std::string& hostname = m_context.config.network.hostname;
-    const size_t size = hostname.size();
-
-    if(m_announce->write(hostname.data(), size, ec) != static_cast<ssize_t>(size)) {
+    if(m_announce->write(buffer.data(), buffer.size(), ec) != static_cast<ssize_t>(buffer.size())) {
         if(ec) {
             COCAINE_LOG_ERROR(m_log, "unable to announce the node - [%d] %s", ec.value(), ec.message());
         } else {
@@ -258,7 +270,7 @@ locator_t::on_announce_timer(ev::timer&, int) {
 }
 
 void
-locator_t::on_response(const std::string& hostname, const io::message_t& message) {
+locator_t::on_response(const remote_map_t::key_type& key, const io::message_t& message) {
     switch(message.id()) {
         case io::event_traits<io::rpc::chunk>::id: {
             std::string chunk;
@@ -268,7 +280,7 @@ locator_t::on_response(const std::string& hostname, const io::message_t& message
             msgpack::unpacked unpacked;
             msgpack::unpack(&unpacked, chunk.data(), chunk.size());
 
-            COCAINE_LOG_INFO(m_log, "...discovered node '%s' services: %s", hostname, unpacked.get());
+            COCAINE_LOG_INFO(m_log, "...discovered node '%s' services: %s", std::get<1>(key), unpacked.get());
 
             break;
         }
@@ -284,14 +296,14 @@ locator_t::on_response(const std::string& hostname, const io::message_t& message
 }
 
 void
-locator_t::on_shutdown(const std::string& hostname, const std::error_code& ec) {
+locator_t::on_shutdown(const remote_map_t::key_type& key, const std::error_code& ec) {
     COCAINE_LOG_INFO(
         m_log,
         "node '%s' has disconnected - [%d] %s",
-        hostname,
+        std::get<1>(key),
         ec.value(),
         ec.message()
     );
 
-    m_remotes.erase(hostname);
+    m_remotes.erase(key);
 }

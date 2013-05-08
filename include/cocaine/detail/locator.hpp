@@ -22,6 +22,9 @@
 #define COCAINE_SERVICE_LOCATOR_HPP
 
 #include "cocaine/common.hpp"
+
+#include "cocaine/detail/unique_id.hpp"
+
 #include "cocaine/dispatch.hpp"
 #include "cocaine/messages.hpp"
 
@@ -64,11 +67,16 @@ class locator_t:
         void
         on_announce_timer(ev::timer&, int);
 
-        void
-        on_response(const std::string& hostname, const io::message_t& message);
+        typedef std::map<
+            std::tuple<std::string, std::string>,
+            std::shared_ptr<io::channel<io::socket<io::tcp>>>
+        > remote_map_t;
 
         void
-        on_shutdown(const std::string& hostname, const std::error_code& ec);
+        on_response(const remote_map_t::key_type& key, const io::message_t& message);
+
+        void
+        on_shutdown(const remote_map_t::key_type& key, const std::error_code& ec);
 
     private:
         context_t& m_context;
@@ -85,14 +93,16 @@ class locator_t:
         // as a vector of pairs to preserve the initialization order.
         service_list_t m_services;
 
+        // Node's UUID in the cluster.
+        unique_id_t m_id;
+
+        // Announce emitter.
         std::unique_ptr<io::socket<io::udp>> m_announce;
         std::unique_ptr<ev::timer> m_announce_timer;
-        std::unique_ptr<ev::io> m_announce_watcher;
 
-        typedef std::map<
-            std::string,
-            std::shared_ptr<io::channel<io::socket<io::tcp>>>
-        > remote_map_t;
+        // Announce receiver.
+        std::unique_ptr<io::socket<io::udp>> m_sink;
+        std::unique_ptr<ev::io> m_sink_watcher;
 
         remote_map_t m_remotes;
 };

@@ -38,7 +38,7 @@ struct resolver {
 
     static inline
     endpoint_type
-    query(const std::string& name) {
+    query(const std::string& name, uint16_t port) {
         medium_type medium;
         endpoint_type endpoint;
 
@@ -65,6 +65,8 @@ struct resolver {
         std::memcpy(endpoint.data(), result->ai_addr, result->ai_addrlen);
 
         ::freeaddrinfo(result);
+
+        endpoint.port(port);
 
         return endpoint;
     }
