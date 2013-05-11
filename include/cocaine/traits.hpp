@@ -24,12 +24,16 @@
 #include <type_traits>
 
 #include <boost/mpl/begin.hpp>
+#include <boost/mpl/count_if.hpp>
 #include <boost/mpl/deref.hpp>
 #include <boost/mpl/is_sequence.hpp>
 #include <boost/mpl/next.hpp>
 #include <boost/mpl/size.hpp>
+#include <boost/mpl/transform.hpp>
 
 #include <msgpack.hpp>
+
+#include "cocaine/rpc/optional.hpp"
 
 #include "cocaine/tuples.hpp"
 
@@ -163,15 +167,23 @@ struct type_traits<
     static inline
     void
     pack(msgpack::packer<Stream>& packer, const Args&... sequence) {
-        const size_t size = boost::mpl::size<T>::value;
+        const size_t minimal = boost::mpl::count_if<
+            T,
+            boost::mpl::lambda<detail::is_required<boost::mpl::arg<1>>>
+        >::value;
 
-        static_assert(sizeof...(sequence) == size, "sequence length mismatch");
+        static_assert(sizeof...(sequence) >= minimal, "sequence length mismatch");
 
         // The sequence will be packed as an array.
-        packer.pack_array(size);
+        packer.pack_array(sizeof...(sequence));
+
+        typedef typename boost::mpl::transform<
+            T,
+            boost::mpl::lambda<detail::unwrap_type<boost::mpl::arg<1>>>
+        >::type sequence_type;
 
         // Recursively pack every sequence element.
-        pack_sequence<typename boost::mpl::begin<T>::type>(packer, sequence...);
+        pack_sequence<typename boost::mpl::begin<sequence_type>::type>(packer, sequence...);
     }
 
     template<typename... Args>
@@ -186,8 +198,13 @@ struct type_traits<
             throw msgpack::type_error();
         }
 
+        typedef typename boost::mpl::transform<
+            T,
+            boost::mpl::lambda<detail::unwrap_type<boost::mpl::arg<1>>>
+        >::type sequence_type;
+
         // Recursively unpack every tuple element while validating the types.
-        unpack_sequence<typename boost::mpl::begin<T>::type>(object.via.array.ptr, sequence...);
+        unpack_sequence<typename boost::mpl::begin<sequence_type>::type>(object.via.array.ptr, sequence...);
     }
 
 private:

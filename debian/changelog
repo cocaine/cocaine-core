@@ -1,4 +1,16 @@
-cocaine-core (0.10.2) lucid; urgency=low
+cocaine-core (0.10.3) unstable; urgency=low
+
+  * Release 10.3.
+  * Deferred void functions. Allow services to signal asynchronous method
+    completion even if the method does not return anything.
+  * Optional method parameters.
+  * Bugfix: quick exit is used under all circumstances in the process isolate.
+  * Bugfix: lock encoder early, render output buffer corruption impossible.
+  * Bugfix: cocaine-tool can handle uploads larger than 640KB.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 08 May 2013 19:33:07 +0400
+
+cocaine-core (0.10.2) unstable; urgency=low
 
   * Release 10.2.
   * Service-based tools, rewritten in Python.
@@ -15,7 +27,7 @@ cocaine-core (0.10.2) lucid; urgency=low
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Thu, 25 Apr 2013 19:46:52 +0400
 
-cocaine-core (0.10.1) lucid; urgency=low
+cocaine-core (0.10.1) unstable; urgency=low
 
   * Release 10.1.
   * Service protocol inheritance.
@@ -31,7 +43,7 @@ cocaine-core (0.10.1) lucid; urgency=low
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Mon, 08 Apr 2013 19:46:26 +0400
 
-cocaine-core (0.10.0-rc10) lucid; urgency=low
+cocaine-core (0.10.0-rc10) unstable; urgency=low
 
   * Release candidate 10.
   * Enum serialization fixes.
@@ -39,7 +51,7 @@ cocaine-core (0.10.0-rc10) lucid; urgency=low
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 03 Apr 2013 21:53:57 +0400
 
-cocaine-core (0.10.0-rc9) lucid; urgency=low
+cocaine-core (0.10.0-rc9) unstable; urgency=low
 
   * Release candidate 9.
   * Major pre-release code cleanup.
@@ -47,7 +59,7 @@ cocaine-core (0.10.0-rc9) lucid; urgency=low
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 03 Apr 2013 20:06:34 +0400
 
-cocaine-core (0.10.0-rc8) lucid; urgency=low
+cocaine-core (0.10.0-rc8) unstable; urgency=low
 
   * Release candidate 8.
   * Storage service is now available! Provides synchronous uncached access to
@@ -59,7 +71,7 @@ cocaine-core (0.10.0-rc8) lucid; urgency=low
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 02 Apr 2013 16:35:26 +0400
 
-cocaine-core (0.10.0-rc7) lucid; urgency=low
+cocaine-core (0.10.0-rc7) unstable; urgency=low
 
   * Release candiate 7.
   * Merged essentials module into the core.
@@ -69,7 +81,7 @@ cocaine-core (0.10.0-rc7) lucid; urgency=low
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Mon, 01 Apr 2013 17:52:50 +0400
 
-cocaine-core (0.10.0-rc6) lucid; urgency=low
+cocaine-core (0.10.0-rc6) unstable; urgency=low
 
   * Release candidate 6.
   * Services and service discovery.
@@ -80,7 +92,7 @@ cocaine-core (0.10.0-rc6) lucid; urgency=low
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 27 Mar 2013 22:46:47 +0400
 
-cocaine-core (0.10.0-rc5) lucid; urgency=low
+cocaine-core (0.10.0-rc5) unstable; urgency=low
 
   * Release candidate 5.
   * Fixed a bug with overlapping memory regions in buffered streams leading to
@@ -89,21 +101,21 @@ cocaine-core (0.10.0-rc5) lucid; urgency=low
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 15 Mar 2013 21:48:16 +0400
 
-cocaine-core (0.10.0-rc4) lucid; urgency=low
+cocaine-core (0.10.0-rc4) unstable; urgency=low
 
   * Release candidate 4.
   * Properly handle unexpectedly died slaves.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 01 Mar 2013 23:26:58 +0400
 
-cocaine-core (0.10.0-rc3) lucid; urgency=low
+cocaine-core (0.10.0-rc3) unstable; urgency=low
 
   * Release candidate 3.
   * Remove the engine's unix socket file on shutdown.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Sat, 23 Feb 2013 01:29:03 +0400
 
-cocaine-core (0.10.0-rc2) lucid; urgency=low
+cocaine-core (0.10.0-rc2) unstable; urgency=low
 
   * Release candidate 2.
   * Debugging symbols are properly generated and packaged now.
@@ -121,7 +133,7 @@ cocaine-core (0.10.0-rc2) lucid; urgency=low
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 22 Feb 2013 23:17:28 +0400
 
-cocaine-core (0.10.0-rc1) lucid; urgency=low
+cocaine-core (0.10.0-rc1) unstable; urgency=low
 
   * Release candidate 1.
   * Fully rewritten the I/O system using good old sockets.
@@ -130,7 +142,7 @@ cocaine-core (0.10.0-rc1) lucid; urgency=low
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 15 Feb 2013 01:33:23 +0400
 
-cocaine-core (0.10.0-rc0) lucid; urgency=low
+cocaine-core (0.10.0-rc0) unstable; urgency=low
 
   * Release candidate 0.
   * Streaming API.
@@ -144,57 +156,57 @@ cocaine-core (0.10.0-rc0) lucid; urgency=low
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 29 Jan 2013 19:28:49 +0400
 
-cocaine-core (0.9.8) lucid; urgency=low
+cocaine-core (0.9.8) unstable; urgency=low
 
   * Binding announce socket instead of connecting it
 
  -- Rim Zaidullin <rimz@yandex-team.ru>  Tue, 13 Nov 2012 19:01:18 +0400
 
-cocaine-core (0.9.7) lucid; urgency=low
+cocaine-core (0.9.7) unstable; urgency=low
 
   * support cocaine-default.conf; 
 
  -- Andrey Godin <agodin@yandex-team.ru>  Thu, 08 Nov 2012 17:32:26 +0400
 
-cocaine-core (0.9.6) lucid; urgency=low
+cocaine-core (0.9.6) unstable; urgency=low
 
   * Enhanced the cocaine-engine-status tool.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 12 Oct 2012 05:08:27 +0400
 
-cocaine-core (0.9.5) lucid; urgency=low
+cocaine-core (0.9.5) unstable; urgency=low
 
   * Do not assert in the slave on broken binary app.
   * Fixes for cocaine-scripts.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Thu, 11 Oct 2012 21:32:36 +0400
 
-cocaine-core (0.9.4) lucid; urgency=low
+cocaine-core (0.9.4) unstable; urgency=low
 
   * Pump queue events even if no workers are available (fixes an issue when all the
     slaves unexpectedly died and the queue is full already).
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 02 Oct 2012 19:16:59 +0400
 
-cocaine-core (0.9.3) lucid; urgency=low
+cocaine-core (0.9.3) unstable; urgency=low
 
   * Rearm slave heartbeat timer on all event types.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 04 Sep 2012 21:21:57 +0400
 
-cocaine-core (0.9.2) lucid; urgency=low
+cocaine-core (0.9.2) unstable; urgency=low
 
   * Fixed a build issue on 32-bit Ubuntu Precise due to the variable size mismatch.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 29 Aug 2012 17:53:48 +0400
 
-cocaine-core (0.9.1) lucid; urgency=low
+cocaine-core (0.9.1) unstable; urgency=low
 
   * Reworked the hostname determination logic to fix incorrect behavior in some cases.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 28 Aug 2012 18:31:49 +0400
 
-cocaine-core (0.9.0) lucid; urgency=low
+cocaine-core (0.9.0) unstable; urgency=low
 
   * Debianization is back.
 
