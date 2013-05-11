@@ -201,7 +201,7 @@ locator_t::on_announce_event(ev::io&, int) {
 
     if(size <= 0) {
         if(ec) {
-            COCAINE_LOG_ERROR(m_log, "unable to receive the announce - [%d] %s", ec.value(), ec.message());
+            COCAINE_LOG_ERROR(m_log, "unable to receive an announce - [%d] %s", ec.value(), ec.message());
         }
 
         return;
@@ -215,7 +215,7 @@ locator_t::on_announce_event(ev::io&, int) {
     try {
         key = unpacked.get().as<std::tuple<std::string, std::string>>();
     } catch(const std::exception& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to decode the announce");
+        COCAINE_LOG_ERROR(m_log, "unable to decode an announce");
         return;
     }
 
@@ -273,6 +273,11 @@ locator_t::on_announce_timer(ev::timer&, int) {
 
 void
 locator_t::on_response(const remote_map_t::key_type& key, const io::message_t& message) {
+    std::string hostname;
+    std::string uuid;
+
+    std::tie(hostname, uuid) = key;
+
     switch(message.id()) {
         case io::event_traits<io::rpc::chunk>::id: {
             std::string chunk;
@@ -282,7 +287,7 @@ locator_t::on_response(const remote_map_t::key_type& key, const io::message_t& m
             msgpack::unpacked unpacked;
             msgpack::unpack(&unpacked, chunk.data(), chunk.size());
 
-            COCAINE_LOG_INFO(m_log, "...discovered node '%s' services: %s", std::get<1>(key), unpacked.get());
+            COCAINE_LOG_INFO(m_log, "...discovered node '%s' services: %s", uuid, unpacked.get());
 
             break;
         }
