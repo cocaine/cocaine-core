@@ -29,7 +29,7 @@ struct optional;
 template<class T, T Default>
 struct optional_with_default;
 
-namespace detail {
+namespace io { namespace detail {
     template<class T>
     struct is_required:
         public std::true_type
@@ -59,7 +59,7 @@ namespace detail {
     struct unwrap_type<optional_with_default<T, Default>> {
         typedef T type;
     };
-}
+}}
 
 }
 
