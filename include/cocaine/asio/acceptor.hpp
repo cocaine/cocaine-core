@@ -117,7 +117,7 @@ public:
     }
 
     endpoint_type
-    local_endpoint() {
+    local_endpoint() const {
         endpoint_type endpoint;
         size_type size = endpoint.size();
 

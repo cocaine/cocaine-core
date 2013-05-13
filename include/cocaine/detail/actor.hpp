@@ -38,9 +38,9 @@ class actor_t {
     COCAINE_DECLARE_NONCOPYABLE(actor_t)
 
     public:
-        actor_t(const std::shared_ptr<io::reactor_t>& reactor,
+        actor_t(std::shared_ptr<io::reactor_t> reactor,
                 std::unique_ptr<dispatch_t>&& dispatch,
-                uint16_t port = 0);
+                std::vector<io::tcp::endpoint> endpoints);
 
        ~actor_t();
 
@@ -80,9 +80,9 @@ class actor_t {
 
         // Actor I/O
 
-        std::unique_ptr<
+        std::list<
             io::connector<io::acceptor<io::tcp>>
-        > m_connector;
+        > m_connectors;
 
         std::map<
             int,

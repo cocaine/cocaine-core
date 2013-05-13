@@ -228,9 +228,7 @@ context_t::context_t(config_t config_, std::unique_ptr<logging::logger_concept_t
 }
 
 context_t::~context_t() {
-    auto blog = std::unique_ptr<logging::log_t>(
-        new logging::log_t(*this, "bootstrap")
-    );
+    auto blog = std::unique_ptr<logging::log_t>(new logging::log_t(*this, "bootstrap"));
 
     COCAINE_LOG_INFO(blog, "stopping the service locator");
 
@@ -240,9 +238,7 @@ context_t::~context_t() {
 
 void
 context_t::bootstrap() {
-    auto blog = std::unique_ptr<logging::log_t>(
-        new logging::log_t(*this, "bootstrap")
-    );
+    auto blog = std::unique_ptr<logging::log_t>(new logging::log_t(*this, "bootstrap"));
 
     COCAINE_LOG_INFO(
         blog,
@@ -255,20 +251,25 @@ context_t::bootstrap() {
     auto locator = std::unique_ptr<locator_t>(new locator_t(*this, *reactor));
 
     for(auto it = config.services.begin(); it != config.services.end(); ++it) {
-        auto service_reactor = std::make_shared<io::reactor_t>();
+        auto reactor = std::make_shared<io::reactor_t>();
+
+        std::vector<io::tcp::endpoint> endpoints = {
+            { "0.0.0.0", 0 }
+        };
 
         try {
             locator->attach(
                 it->first,
                 std::unique_ptr<actor_t>(new actor_t(
-                    service_reactor,
+                    reactor,
                     get<api::service_t>(
                         it->second.type,
                         *this,
-                        *service_reactor,
+                        *reactor,
                         cocaine::format("service/%s", it->first),
                         it->second.args
-                    )
+                    ),
+                    endpoints
                 )
             ));
         } catch(const std::exception& e) {
@@ -280,10 +281,14 @@ context_t::bootstrap() {
 
     COCAINE_LOG_INFO(blog, "starting the service locator");
 
+    std::vector<io::tcp::endpoint> endpoints = {
+        { "0.0.0.0", defaults::locator_port }
+    };
+
     m_locator.reset(new actor_t(
         reactor,
         std::move(locator),
-        defaults::locator_port
+        endpoints
     ));
 
     m_locator->run();

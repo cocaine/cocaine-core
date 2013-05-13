@@ -285,6 +285,6 @@ operator<<(packer<Stream>& o, const std::tuple<Args...>& t) {
     return o;
 }
 
-}
+} // namespace msgpack
 
 #endif
