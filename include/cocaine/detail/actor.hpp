@@ -27,6 +27,7 @@
 #include "cocaine/asio/reactor.hpp"
 #include "cocaine/asio/tcp.hpp"
 
+#include <list>
 #include <set>
 #include <thread>
 
