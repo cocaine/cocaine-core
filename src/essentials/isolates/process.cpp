@@ -97,10 +97,10 @@ process_t::spawn(const std::string& path,
         throw std::system_error(errno, std::system_category(), "unable to fork");
     }
 
-    ::dup2(pipe, STDOUT_FILENO);
-    ::dup2(pipe, STDERR_FILENO);
-
     if(pid == 0) {
+        ::dup2(pipe, STDOUT_FILENO);
+        ::dup2(pipe, STDERR_FILENO);
+
         size_t argc = args.size() * 2 + 2;
         // size_t envc = environment.size() + 1;
 
