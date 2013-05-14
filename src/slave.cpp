@@ -360,9 +360,7 @@ slave_t::on_ping() {
 }
 
 void
-slave_t::on_death(int code,
-                  const std::string& reason)
-{
+slave_t::on_death(int code, const std::string& reason) {
     COCAINE_LOG_DEBUG(
         m_log,
         "slave %s is committing suicide: %s",
@@ -370,15 +368,22 @@ slave_t::on_death(int code,
         reason
     );
 
+    m_state = states::inactive;
+
+    std::for_each(m_sessions.begin(), m_sessions.end(), detach_with {
+        resource_error,
+        "the session has been aborted"
+    });
+
+    m_sessions.clear();
+
     m_reactor.post(
         std::bind(&engine_t::erase, std::ref(m_engine), m_id, code, reason)
     );
 }
 
 void
-slave_t::on_chunk(uint64_t session_id,
-                  const std::string& chunk)
-{
+slave_t::on_chunk(uint64_t session_id, const std::string& chunk) {
     BOOST_ASSERT(m_state == states::active);
 
     COCAINE_LOG_DEBUG(
@@ -398,10 +403,7 @@ slave_t::on_chunk(uint64_t session_id,
 }
 
 void
-slave_t::on_error(uint64_t session_id,
-                  error_code code,
-                  const std::string& reason)
-{
+slave_t::on_error(uint64_t session_id, error_code code, const std::string& reason) {
     BOOST_ASSERT(m_state == states::active);
 
     COCAINE_LOG_DEBUG(
