@@ -145,7 +145,7 @@ namespace {
 // Engine
 
 namespace {
-    struct ignore_t {
+    struct ignore {
         void
         operator()(const std::error_code& /* ec */) {
             // Do nothing.
@@ -193,10 +193,10 @@ engine_t::engine_t(context_t& context,
 
     m_channel->rd->bind(
         std::bind(&engine_t::on_control, this, _1),
-        ignore_t()
+        ignore()
     );
 
-    m_channel->wr->bind(ignore_t());
+    m_channel->wr->bind(ignore());
 
     m_isolate = m_context.get<api::isolate_t>(
         m_profile.isolate.type,

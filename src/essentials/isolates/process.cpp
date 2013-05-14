@@ -40,13 +40,12 @@ namespace {
     struct process_handle_t:
         public api::handle_t
     {
-        process_handle_t(pid_t pid, int pipe):
-            m_pid(pid),
-            m_pipe(pipe)
+        process_handle_t(pid_t pid):
+            m_pid(pid)
         { }
 
         virtual
-        ~process_handle_t() {
+       ~process_handle_t() {
             terminate();
         }
 
@@ -60,15 +59,8 @@ namespace {
             }
         }
 
-        virtual
-        int
-        pipe() const {
-            return m_pipe;
-        }
-
     private:
         const pid_t m_pid;
-        const int m_pipe;
     };
 }
 
@@ -86,28 +78,17 @@ process_t::~process_t() {
 std::unique_ptr<api::handle_t>
 process_t::spawn(const std::string& path,
                  const std::map<std::string, std::string>& args,
-                 const std::map<std::string, std::string>& environment)
+                 const std::map<std::string, std::string>& environment,
+                 int pipe)
 {
-    int pipes[] = { -1, -1 };
-
-    ::pipe(pipes);
-
-    ::fcntl(pipes[0], F_SETFL, O_NONBLOCK);
-    ::fcntl(pipes[0], F_SETFD, FD_CLOEXEC);
-    ::fcntl(pipes[1], F_SETFD, FD_CLOEXEC);
-
     pid_t pid = ::fork();
 
     if(pid < 0) {
-        throw std::system_error(
-            errno,
-            std::system_category(),
-            "unable to fork"
-        );
+        throw std::system_error(errno, std::system_category(), "unable to fork");
     }
 
-    ::dup2(pipes[1], STDOUT_FILENO);
-    ::dup2(pipes[1], STDERR_FILENO);
+    ::dup2(pipe, STDOUT_FILENO);
+    ::dup2(pipe, STDERR_FILENO);
 
     if(pid == 0) {
         size_t argc = args.size() * 2 + 2;
@@ -171,7 +152,5 @@ process_t::spawn(const std::string& path,
         }
     }
 
-    ::close(pipes[1]);
-
-    return std::unique_ptr<api::handle_t>(new process_handle_t(pid, pipes[0]));
+    return std::unique_ptr<api::handle_t>(new process_handle_t(pid));
 }
