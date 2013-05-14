@@ -28,7 +28,25 @@
 
 #include <chrono>
 
+#include <boost/circular_buffer.hpp>
+
 namespace cocaine { namespace engine {
+
+struct pipe_t {
+    typedef int endpoint_type;
+
+    pipe_t(endpoint_type endpoint);
+   ~pipe_t();
+
+    int
+    fd() const;
+
+    ssize_t
+    read(char* buffer, size_t size, std::error_code& ec);
+
+private:
+    int m_pipe;
+};
 
 struct session_t;
 
@@ -111,13 +129,21 @@ class slave_t {
         void
         on_choke(uint64_t session_id);
 
-        // Housekeeping
+        // Health
 
         void
         on_timeout(ev::timer&, int);
 
         void
         on_idle(ev::timer&, int);
+
+        ssize_t
+        on_output(const char* data, size_t size);
+
+        // Housekeeping
+
+        void
+        dump();
 
         void
         terminate();
@@ -156,15 +182,18 @@ class slave_t {
         ev::timer m_heartbeat_timer;
         ev::timer m_idle_timer;
 
-        // Worker handle
+        // Slave handling
 
         std::unique_ptr<api::handle_t> m_handle;
 
+        // Slave output capture
+
+        std::unique_ptr<io::readable_stream<pipe_t>> m_pipe;
+        boost::circular_buffer<std::string> m_output_ring;
+
         // I/O
 
-        std::shared_ptr<
-            io::channel<io::socket<io::local>>
-        > m_channel;
+        std::shared_ptr<io::channel<io::socket<io::local>>> m_channel;
 
         // Active sessions
 

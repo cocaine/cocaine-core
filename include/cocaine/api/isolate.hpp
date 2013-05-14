@@ -54,7 +54,8 @@ class isolate_t {
         std::unique_ptr<handle_t>
         spawn(const std::string& path,
               const std::map<std::string, std::string>& args,
-              const std::map<std::string, std::string>& environment) = 0;
+              const std::map<std::string, std::string>& environment,
+              int pipe) = 0;
 
     protected:
         isolate_t(context_t&,

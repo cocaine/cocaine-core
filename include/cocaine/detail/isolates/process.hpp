@@ -40,7 +40,8 @@ class process_t:
         std::unique_ptr<api::handle_t>
         spawn(const std::string& path,
               const std::map<std::string, std::string>& args,
-              const std::map<std::string, std::string>& environment);
+              const std::map<std::string, std::string>& environment,
+              int pipe);
 
     private:
         std::unique_ptr<logging::log_t> m_log;

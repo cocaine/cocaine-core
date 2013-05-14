@@ -34,6 +34,7 @@
 
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 using namespace cocaine;
 using namespace cocaine::isolate;
@@ -87,19 +88,19 @@ process_t::~process_t() {
 std::unique_ptr<api::handle_t>
 process_t::spawn(const std::string& path,
                  const std::map<std::string, std::string>& args,
-                 const std::map<std::string, std::string>& environment)
+                 const std::map<std::string, std::string>& environment,
+                 int pipe)
 {
     pid_t pid = ::fork();
 
     if(pid < 0) {
-        throw std::system_error(
-            errno,
-            std::system_category(),
-            "unable to fork"
-        );
+        throw std::system_error(errno, std::system_category(), "unable to fork");
     }
 
     if(pid == 0) {
+        ::dup2(pipe, STDOUT_FILENO);
+        ::dup2(pipe, STDERR_FILENO);
+
         size_t argc = args.size() * 2 + 2;
         // size_t envc = environment.size() + 1;
 

@@ -35,11 +35,57 @@
 
 #include "cocaine/rpc/channel.hpp"
 
+#include <fcntl.h>
+#include <unistd.h>
+
 using namespace cocaine;
 using namespace cocaine::engine;
 using namespace cocaine::io;
 
 using namespace std::placeholders;
+
+pipe_t::pipe_t(endpoint_type endpoint):
+    m_pipe(endpoint)
+{ }
+
+pipe_t::~pipe_t() {
+    ::close(m_pipe);
+}
+
+int
+pipe_t::fd() const {
+    return m_pipe;
+}
+
+ssize_t
+pipe_t::read(char* buffer, size_t size, std::error_code& ec) {
+    ssize_t length = ::read(m_pipe, buffer, size);
+
+    if(length == -1) {
+        switch(errno) {
+            case EAGAIN:
+#if defined(EWOULDBLOCK) && EWOULDBLOCK != EAGAIN
+            case EWOULDBLOCK:
+#endif
+            case EINTR:
+                break;
+
+            default:
+                ec = std::error_code(errno, std::system_category());
+        }
+    }
+
+    return length;
+}
+
+namespace {
+    struct ignore {
+        void
+        operator()(const std::error_code& /* ec */) {
+            // Do nothing.
+        }
+    };
+}
 
 slave_t::slave_t(context_t& context,
                  reactor_t& reactor,
@@ -59,7 +105,8 @@ slave_t::slave_t(context_t& context,
     m_birthstamp(std::chrono::monotonic_clock::now()),
 #endif
     m_heartbeat_timer(reactor.native()),
-    m_idle_timer(reactor.native())
+    m_idle_timer(reactor.native()),
+    m_output_ring(50)
 {
     // NOTE: Initialization heartbeat can be different.
     m_heartbeat_timer.set<slave_t, &slave_t::on_timeout>(this);
@@ -83,9 +130,40 @@ slave_t::slave_t(context_t& context,
     args["--endpoint"] = m_manifest.endpoint;
     args["--uuid"] = m_id.string();
 
+    // Standard output capture
+
+    std::array<int, 2> pipes;
+
+    if(::pipe(pipes.data()) != 0) {
+        throw std::system_error(errno, std::system_category(), "unable to create an output pipe");
+    }
+
+    // Our end.
+    ::fcntl(pipes[0], F_SETFD, FD_CLOEXEC);
+    ::fcntl(pipes[0], F_SETFL, O_NONBLOCK);
+
+    // Slave's end.
+    ::fcntl(pipes[1], F_SETFD, FD_CLOEXEC);
+
     COCAINE_LOG_DEBUG(m_log, "slave %s spawning '%s'", m_id, m_manifest.slave);
 
-    m_handle = isolate->spawn(m_manifest.slave, args, environment);
+    try {
+        m_handle = isolate->spawn(m_manifest.slave, args, environment, pipes[1]);
+    } catch(...) {
+        ::close(pipes[0]);
+        ::close(pipes[1]);
+
+        throw;
+    }
+
+    m_pipe.reset(new readable_stream<pipe_t>(reactor, pipes[0]));
+
+    m_pipe->bind(
+        std::bind(&slave_t::on_output, this, _1, _2),
+        ignore()
+    );
+
+    ::close(pipes[1]);
 }
 
 slave_t::~slave_t() {
@@ -235,6 +313,7 @@ slave_t::on_disconnect(const std::error_code& ec) {
 
     m_sessions.clear();
 
+    dump();
     terminate();
 }
 
@@ -281,9 +360,7 @@ slave_t::on_ping() {
 }
 
 void
-slave_t::on_death(int code,
-                  const std::string& reason)
-{
+slave_t::on_death(int code, const std::string& reason) {
     COCAINE_LOG_DEBUG(
         m_log,
         "slave %s is committing suicide: %s",
@@ -291,15 +368,22 @@ slave_t::on_death(int code,
         reason
     );
 
+    m_state = states::inactive;
+
+    std::for_each(m_sessions.begin(), m_sessions.end(), detach_with {
+        resource_error,
+        "the session has been aborted"
+    });
+
+    m_sessions.clear();
+
     m_reactor.post(
         std::bind(&engine_t::erase, std::ref(m_engine), m_id, code, reason)
     );
 }
 
 void
-slave_t::on_chunk(uint64_t session_id,
-                  const std::string& chunk)
-{
+slave_t::on_chunk(uint64_t session_id, const std::string& chunk) {
     BOOST_ASSERT(m_state == states::active);
 
     COCAINE_LOG_DEBUG(
@@ -319,10 +403,7 @@ slave_t::on_chunk(uint64_t session_id,
 }
 
 void
-slave_t::on_error(uint64_t session_id,
-                  error_code code,
-                  const std::string& reason)
-{
+slave_t::on_error(uint64_t session_id, error_code code, const std::string& reason) {
     BOOST_ASSERT(m_state == states::active);
 
     COCAINE_LOG_DEBUG(
@@ -410,6 +491,7 @@ slave_t::on_timeout(ev::timer&, int) {
             break;
     }
 
+    dump();
     terminate();
 }
 
@@ -423,6 +505,43 @@ slave_t::on_idle(ev::timer&, int) {
     m_channel->wr->write<rpc::terminate>(0UL, rpc::terminate::normal, "idle");
 
     m_state = states::inactive;
+}
+
+ssize_t
+slave_t::on_output(const char* data, size_t size) {
+    std::string input(data, size),
+                line;
+
+    std::istringstream stream(input);
+
+    while(stream) {
+        std::getline(stream, line);
+
+        if(stream.eof()) {
+            return stream.tellg() - static_cast<std::streamoff>(line.size());
+        }
+
+        m_output_ring.push_back(line);
+    }
+
+    return size;
+}
+
+void
+slave_t::dump() {
+    if(m_output_ring.empty()) {
+        COCAINE_LOG_INFO(m_log, "slave %s died in silence", m_id);
+        return;
+    }
+
+    std::string key = cocaine::format("%s:%s", m_manifest.name, m_id);
+
+    COCAINE_LOG_INFO(m_log, "slave %s dumping output to 'crashlogs/%s'", m_id, key);
+
+    std::vector<std::string> dump;
+    std::copy(m_output_ring.begin(), m_output_ring.end(), std::back_inserter(dump));
+
+    api::storage(m_context, "core")->put("crashlogs", key, dump);
 }
 
 void
