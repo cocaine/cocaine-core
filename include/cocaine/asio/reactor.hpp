@@ -23,11 +23,9 @@
 
 #include "cocaine/common.hpp"
 
-#define EV_MINIMAL       0
-#define EV_USE_MONOTONIC 1
-#define EV_USE_REALTIME  1
-#define EV_USE_NANOSLEEP 1
-#define EV_USE_EVENTFD   1
+#include <deque>
+#include <functional>
+#include <mutex>
 
 #include <ev++.h>
 
@@ -37,10 +35,19 @@ struct reactor_t {
     COCAINE_DECLARE_NONCOPYABLE(reactor_t)
 
     typedef ev::loop_ref native_type;
+    typedef std::function<void()> job_type;
 
     reactor_t():
-        m_loop(new ev::dynamic_loop())
-    { }
+        m_loop(new ev::dynamic_loop()),
+        m_loop_prepare(new ev::prepare(*m_loop))
+    {
+        m_loop_prepare->set<reactor_t, &reactor_t::process>(this);
+        m_loop_prepare->start();
+    }
+
+   ~reactor_t() {
+        m_loop_prepare->stop();
+    }
 
     void
     run() {
@@ -52,6 +59,12 @@ struct reactor_t {
         m_loop->unloop(ev::ALL);
     }
 
+    void
+    post(const job_type& job) {
+        std::lock_guard<std::mutex> guard(m_job_queue_mutex);
+        m_job_queue.push_back(job);
+    }
+
 public:
     native_type&
     native() {
@@ -59,7 +72,23 @@ public:
     }
 
 private:
+    void
+    process(ev::prepare&, int) {
+        std::lock_guard<std::mutex> guard(m_job_queue_mutex);
+
+        for(auto it = m_job_queue.begin(); it != m_job_queue.end(); ++it) {
+            (*it)();
+        }
+
+        m_job_queue.clear();
+    }
+
+private:
     std::unique_ptr<native_type> m_loop;
+    std::unique_ptr<ev::prepare> m_loop_prepare;
+
+    std::deque<job_type> m_job_queue;
+    std::mutex m_job_queue_mutex;
 };
 
 }} // namespace cocaine::io

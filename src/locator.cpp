@@ -70,18 +70,13 @@ locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
 
 namespace {
     struct match_t {
-        match_t(const std::string& name):
-            m_name(name)
-        { }
-
         template<class T>
         bool
         operator()(const T& service) {
-            return m_name == service.first;
+            return name == service.first;
         }
 
-    private:
-        const std::string m_name;
+        const std::string name;
     };
 }
 
@@ -92,7 +87,7 @@ locator_t::resolve(const std::string& name) const
     auto it = std::find_if(
         m_services.begin(),
         m_services.end(),
-        match_t(name)
+        match_t{name}
     );
 
     if(it == m_services.end()) {

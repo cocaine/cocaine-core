@@ -18,40 +18,48 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_COMMON_HPP
-#define COCAINE_COMMON_HPP
+#ifndef COCAINE_FILESYSTEM_DRIVER_HPP
+#define COCAINE_FILESYSTEM_DRIVER_HPP
 
-#include "cocaine/platform.hpp"
+#include "cocaine/api/driver.hpp"
 
-#if !defined(__clang__) && !defined(HAVE_GCC46)
-    #define nullptr __null
-#endif
+// TODO: Either forward or wrap libev types.
+#include "cocaine/asio/reactor.hpp"
 
-#include <cstdint>
-#include <map>
-#include <memory>
-#include <string>
-#include <vector>
+namespace cocaine { namespace driver {
 
-#define BOOST_FILESYSTEM_VERSION 3
-#define BOOST_FILESYSTEM_NO_DEPRECATED
+class fs_t:
+    public api::driver_t
+{
+    public:
+        fs_t(context_t& context,
+             io::reactor_t& reactor,
+             app_t& app,
+             const std::string& name,
+             const Json::Value& args);
 
-#ifndef COCAINE_DEBUG
-    #define BOOST_DISABLE_ASSERTS
-#endif
+        virtual
+       ~fs_t();
 
-#include <boost/assert.hpp>
-#include <boost/unordered_map.hpp>
-#include <boost/version.hpp>
+        virtual
+        Json::Value
+        info() const;
 
-#define COCAINE_DECLARE_NONCOPYABLE(_name_)     \
-    _name_(const _name_& other) = delete;       \
-                                                \
-    _name_&                                     \
-    operator=(const _name_& other) = delete;
+    private:
+        void
+        on_event(ev::stat&, int);
 
-#include "cocaine/config.hpp"
-#include "cocaine/exceptions.hpp"
-#include "cocaine/forwards.hpp"
+    private:
+        std::unique_ptr<logging::log_t> m_log;
+
+        app_t& m_app;
+
+        const std::string m_event;
+        const std::string m_path;
+
+        ev::stat m_watcher;
+};
+
+}} // namespace cocaine::driver
 
 #endif

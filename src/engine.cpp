@@ -77,7 +77,7 @@ namespace {
         { }
 
         virtual
-        ~downstream_t() {
+       ~downstream_t() {
             if(m_state != states::closed) {
                 close();
             }
@@ -133,7 +133,7 @@ namespace {
     private:
         const std::weak_ptr<session_t> m_session;
 
-        enum class states: int {
+        enum class states {
             open,
             closed
         };
@@ -154,7 +154,7 @@ namespace {
 }
 
 engine_t::engine_t(context_t& context,
-                   std::unique_ptr<reactor_t>&& reactor,
+                   const std::shared_ptr<reactor_t>& reactor,
                    const manifest_t& manifest,
                    const profile_t& profile,
                    const std::shared_ptr<io::socket<local>>& control):
@@ -163,7 +163,7 @@ engine_t::engine_t(context_t& context,
     m_manifest(manifest),
     m_profile(profile),
     m_state(states::stopped),
-    m_reactor(std::move(reactor)),
+    m_reactor(reactor),
     m_gc_timer(m_reactor->native()),
     m_termination_timer(m_reactor->native()),
     m_notification(m_reactor->native()),
@@ -352,16 +352,13 @@ engine_t::on_disconnect(const std::shared_ptr<channel<io::socket<local>>>& chann
 
 namespace {
     static
-    const char*
-    describe[] = {
+    const char* describe[] = {
         "running",
         "broken",
         "stopping",
         "stopped"
     };
-}
 
-namespace {
     struct collector_t {
         template<class>
         struct result {
@@ -498,10 +495,6 @@ namespace {
     };
 
     struct available_t {
-        available_t(size_t max_):
-            max(max_)
-        { }
-
         template<class T>
         bool
         operator()(const T& slave) const {
@@ -547,7 +540,7 @@ engine_t::pump() {
             m_pool.begin(),
             m_pool.end(),
             load_t(),
-            available_t(m_profile.concurrency)
+            available_t{m_profile.concurrency}
         );
 
         if(it == m_pool.end()) {

@@ -25,16 +25,21 @@
 
 #include <cerrno>
 #include <csignal>
+#include <cstdlib>
 #include <cstring>
 #include <system_error>
 
-#include <fcntl.h>
+#include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/path.hpp>
+
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 using namespace cocaine;
 using namespace cocaine::isolate;
+
+namespace fs = boost::filesystem;
 
 namespace {
     struct process_handle_t:
@@ -68,7 +73,12 @@ process_t::process_t(context_t& context,
                      const std::string& name,
                      const Json::Value& args):
     category_type(context, name, args),
-    m_log(new logging::log_t(context, name))
+    m_log(new logging::log_t(context, name)),
+#if BOOST_VERSION >= 104600
+    m_working_directory((fs::path(context.config.path.spool) / name).native())
+#else
+    m_working_directory((fs::path(context.config.path.spool) / name).string())
+#endif
 { }
 
 process_t::~process_t() {
@@ -138,6 +148,19 @@ process_t::spawn(const std::string& path,
         }
         */
 
+        try {
+            fs::current_path(m_working_directory);
+        } catch(const fs::filesystem_error& e) {
+            COCAINE_LOG_ERROR(
+                m_log,
+                "unable to change working directory to '%s' - %s",
+                path,
+                e.what()
+            );
+
+            std::_Exit(EXIT_FAILURE);
+        }
+
         if(::execv(argv[0], argv) != 0) {
             std::error_code ec(errno, std::system_category());
 
@@ -148,7 +171,7 @@ process_t::spawn(const std::string& path,
                 ec.message()
             );
 
-            std::exit(EXIT_FAILURE);
+            std::_Exit(EXIT_FAILURE);
         }
     }
 

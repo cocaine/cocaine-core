@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-#    Copyright (c) 2011-2013 Andrey Sibiryov <me@kobology.ru>
+#    Copyright (c) 2011-2013 Anton Tyurin <noxiouz@yandex.ru>
 #    Copyright (c) 2011-2013 Other contributors as noted in the AUTHORS file.
 #
 #    This file is part of Cocaine.
@@ -19,32 +19,42 @@
 #    along with this program. If not, see <http://www.gnu.org/licenses/>. 
 #
 
-from sys import argv
 from pprint import pprint
+from optparse import OptionParser
+import sys
+import errno
 
-import zmq
-import msgpack
+from cocaine.services import Service
 
-SLOT_START_APP = 0
-SLOT_PAUSE_APP = 1
-SLOT_INFO      = 2
+DESCRIPTION=""
+USAGE="USAGE: %prog --name [APP_NAME] --host [host] --port [port]"
 
-def main(apps):
-    context = zmq.Context()
-    
-    request = context.socket(zmq.DEALER)
-    request.connect('tcp://localhost:5000')
 
-    # Pausing the apps
-    request.send_multipart([
-        msgpack.packb(SLOT_PAUSE_APP),
-        msgpack.packb([apps])
-    ])
 
-    pprint(msgpack.unpackb(request.recv()))
+def main(name, hostname, port):
+    node = Service("node", hostname, port)
+    res = node.perform_sync("pause_app", [name])
+    for i in res:
+        pprint(i)
+
 
 if __name__ == "__main__":
-    if len(argv) == 1:
-        print "USAGE: %s <app-name-1> ... <app-name-N>" % argv[0]
-    else:
-        main(argv[1:])
+    parser = OptionParser(usage=USAGE, description=DESCRIPTION)
+    parser.add_option("--port", type = "int", default=10053, help="Port number [default: %default]")
+    parser.add_option("--host", type = "str", default="localhost", help="Hostname [default: %default]")
+    parser.add_option("-n", "--name", type = "str", help="Application name")
+
+    (options, args) = parser.parse_args()
+    if (not options.name):
+        parser.print_usage()
+        print "Specify application name"
+        sys.exit(1)
+    try:
+        main(options.name, options.host, options.port)
+    except Exception as err:
+        if err.args[0] == errno.ECONNREFUSED:
+            parser.print_usage()
+            print "Invalid endpoint: %s:%d. Specify another endpoint by optionts" % (options.host, options.port)
+            sys.exit(1)
+        else:
+            print err

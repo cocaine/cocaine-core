@@ -24,7 +24,6 @@
 #include "cocaine/asio/reactor.hpp"
 
 #include <cstring>
-#include <mutex>
 
 namespace cocaine { namespace io {
 
@@ -55,7 +54,7 @@ struct writable_stream {
         m_ring.resize(65536);
     }
 
-    ~writable_stream() {
+   ~writable_stream() {
         BOOST_ASSERT(m_tx_offset == m_wr_offset);
     }
 

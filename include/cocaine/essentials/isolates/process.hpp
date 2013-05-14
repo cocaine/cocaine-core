@@ -45,6 +45,7 @@ class process_t:
 
     private:
         std::unique_ptr<logging::log_t> m_log;
+        const std::string m_working_directory;
 };
 
 }} // namespace cocaine::isolate

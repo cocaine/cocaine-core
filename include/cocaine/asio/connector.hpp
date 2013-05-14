@@ -23,8 +23,6 @@
 
 #include "cocaine/asio/reactor.hpp"
 
-#include <functional>
-
 namespace cocaine { namespace io {
 
 template<class Acceptor>

@@ -35,6 +35,9 @@
 
 #include "cocaine/rpc/channel.hpp"
 
+#include <fcntl.h>
+#include <unistd.h>
+
 using namespace cocaine;
 using namespace cocaine::engine;
 using namespace cocaine::io;
@@ -91,6 +94,7 @@ slave_t::slave_t(context_t& context,
                  engine_t& engine):
     m_context(context),
     m_log(new logging::log_t(context, cocaine::format("app/%s", manifest.name))),
+    m_reactor(reactor),
     m_manifest(manifest),
     m_profile(profile),
     m_engine(engine),
@@ -277,22 +281,16 @@ slave_t::on_message(const message_t& message) {
 }
 
 namespace {
-    struct cancel_t {
-        cancel_t(error_code code, std::string message):
-            m_code(code),
-            m_message(message)
-        { }
-
+    struct detach_with {
         template<class T>
         void
         operator()(const T& session) const {
+            session.second->upstream->error(code, message);
             session.second->detach();
-            session.second->upstream->error(m_code, m_message);
         }
 
-    private:
-        const error_code m_code;
-        const std::string m_message;
+        const error_code code;
+        const std::string message;
     };
 }
 
@@ -306,11 +304,12 @@ slave_t::on_disconnect(const std::error_code& ec) {
         ec.message()
     );
 
-    std::for_each(
-        m_sessions.begin(),
-        m_sessions.end(),
-        cancel_t(resource_error, "the session has been aborted")
-    );
+    m_state = states::inactive;
+
+    std::for_each(m_sessions.begin(), m_sessions.end(), detach_with {
+        resource_error,
+        "the session has been aborted"
+    });
 
     m_sessions.clear();
 
@@ -371,7 +370,9 @@ slave_t::on_death(int code,
         reason
     );
 
-    m_engine.erase(m_id, code, reason);
+    m_reactor.post(
+        std::bind(&engine_t::erase, std::ref(m_engine), m_id, code, reason)
+    );
 }
 
 void
@@ -468,11 +469,12 @@ slave_t::on_timeout(ev::timer&, int) {
                 m_sessions.size()
             );
 
-            std::for_each(
-                m_sessions.begin(),
-                m_sessions.end(),
-                cancel_t(timeout_error, "the session had timed out")
-            );
+            m_state = states::inactive;
+
+            std::for_each(m_sessions.begin(), m_sessions.end(), detach_with {
+                timeout_error,
+                "the session had timed out"
+            });
 
             m_sessions.clear();
 
@@ -499,6 +501,7 @@ slave_t::on_idle(ev::timer&, int) {
     COCAINE_LOG_DEBUG(m_log, "slave %s is idle, deactivating", m_id);
 
     m_channel->wr->write<rpc::terminate>(0UL, rpc::terminate::normal, "idle");
+
     m_state = states::inactive;
 }
 

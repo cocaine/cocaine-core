@@ -28,8 +28,6 @@
 
 namespace cocaine { namespace api {
 
-using io::reactor_t;
-
 class service_t:
     public dispatch_t
 {
@@ -38,7 +36,7 @@ class service_t:
 
     protected:
         service_t(context_t& context,
-                  reactor_t&,
+                  io::reactor_t&,
                   const std::string& name,
                   const Json::Value& /* args */):
             dispatch_t(context, name)

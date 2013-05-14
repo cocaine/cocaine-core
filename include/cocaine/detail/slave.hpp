@@ -32,8 +32,6 @@
 
 namespace cocaine { namespace engine {
 
-using io::reactor_t;
-
 struct pipe_t {
     typedef int endpoint_type;
 
@@ -56,7 +54,7 @@ class slave_t {
     COCAINE_DECLARE_NONCOPYABLE(slave_t)
 
     public:
-        enum class states: int {
+        enum class states {
             unknown,
             active,
             inactive,
@@ -65,7 +63,7 @@ class slave_t {
 
     public:
         slave_t(context_t& context,
-                reactor_t& reactor,
+                io::reactor_t& reactor,
                 const manifest_t& manifest,
                 const profile_t& profile,
                 engine_t& engine);
@@ -153,6 +151,10 @@ class slave_t {
     private:
         context_t& m_context;
         std::unique_ptr<logging::log_t> m_log;
+
+        // I/O Reactor
+
+        io::reactor_t& m_reactor;
 
         // Configuration
 

@@ -105,9 +105,7 @@ struct event_traits {
     typedef typename detail::tuple_type<Event>::type tuple_type;
     typedef typename detail::result_type<Event>::type result_type;
 
-    enum constants {
-        id = detail::enumerate<Event>::type::value
-    };
+    enum constants { id = detail::enumerate<Event>::type::value };
 };
 
 }}

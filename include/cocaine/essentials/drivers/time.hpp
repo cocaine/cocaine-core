@@ -18,29 +18,48 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_STORAGE_SERVICE_HPP
-#define COCAINE_STORAGE_SERVICE_HPP
+#ifndef COCAINE_TIME_DRIVER_HPP
+#define COCAINE_TIME_DRIVER_HPP
 
-#include "cocaine/api/service.hpp"
-#include "cocaine/api/storage.hpp"
+#include "cocaine/api/driver.hpp"
 
-namespace cocaine { namespace service {
+// TODO: Either forward or wrap libev types.
+#include "cocaine/asio/reactor.hpp"
 
-class storage_t:
-    public api::service_t
+namespace cocaine { namespace driver {
+
+class recurring_timer_t:
+    public api::driver_t
 {
     public:
-        storage_t(context_t& context,
-                  io::reactor_t& reactor,
-                  const std::string& name,
-                  const Json::Value& args);
+        recurring_timer_t(context_t& context,
+                          io::reactor_t& reactor,
+                          app_t& app,
+                          const std::string& name,
+                          const Json::Value& args);
+
+        virtual
+       ~recurring_timer_t();
+
+        virtual
+        Json::Value
+        info() const;
 
     private:
-        // NOTE: This will keep the underlying storage active, as opposed to the usual usecase when
-        // the storage object is destroyed after the node service finishes its initialization.
-        api::category_traits<api::storage_t>::ptr_type m_storage;
+        void
+        on_event(ev::timer&, int);
+
+    protected:
+        std::unique_ptr<logging::log_t> m_log;
+
+        app_t& m_app;
+
+        const std::string m_event;
+        const double m_interval;
+
+        ev::timer m_watcher;
 };
 
-}} // namespace cocaine::service
+}} // namespace cocaine::driver
 
 #endif

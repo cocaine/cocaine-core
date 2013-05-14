@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_IO_TCP_HPP
-#define COCAINE_IO_TCP_HPP
+#ifndef COCAINE_IO_UDP_HPP
+#define COCAINE_IO_UDP_HPP
 
 #include "cocaine/common.hpp"
 
@@ -27,14 +27,13 @@
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include <netinet/tcp.h>
 #include <sys/socket.h>
 
 namespace cocaine { namespace io {
 
-struct tcp {
-    // typedef acceptor<tcp> acceptor;
-    // typedef socket<tcp> socket;
+struct udp {
+    // typedef acceptor<udp> acceptor;
+    // typedef socket<udp> socket;
 
     struct endpoint {
         typedef sockaddr    base_type;
@@ -45,15 +44,13 @@ struct tcp {
             std::memset(&m_data, 0, sizeof(m_data));
         }
 
-        endpoint(const std::string& address,
-                 uint16_t port)
-        {
+        endpoint(const std::string& address, uint16_t port) {
             std::memset(&m_data, 0, sizeof(m_data));
 
-            m_data.tcp4.sin_family = tcp::family();
-            m_data.tcp4.sin_port = htons(port);
+            m_data.udp4.sin_family = udp::family();
+            m_data.udp4.sin_port = htons(port);
 
-            if(::inet_pton(tcp::family(), address.c_str(), &m_data.tcp4.sin_addr) == 0) {
+            if(::inet_pton(udp::family(), address.c_str(), &m_data.udp4.sin_addr) == 0) {
                 throw cocaine::io_error_t("unable to parse '%s' as an endpoint address", address);
             }
         }
@@ -77,7 +74,7 @@ struct tcp {
         address() const {
             char result[INET_ADDRSTRLEN];
 
-            if(::inet_ntop(tcp::family(), &m_data.tcp4.sin_addr, result, INET_ADDRSTRLEN) == nullptr) {
+            if(::inet_ntop(udp::family(), &m_data.udp4.sin_addr, result, INET_ADDRSTRLEN) == nullptr) {
                 throw cocaine::io_error_t("unable to parse the endpoint address");
             }
 
@@ -86,7 +83,7 @@ struct tcp {
 
         uint16_t
         port() const {
-            return ntohs(m_data.tcp4.sin_port);
+            return ntohs(m_data.udp4.sin_port);
         }
 
         std::string
@@ -97,7 +94,7 @@ struct tcp {
         friend
         std::ostream&
         operator<<(std::ostream& stream,
-                   const tcp::endpoint& endpoint)
+                   const udp::endpoint& endpoint)
         {
             return stream << endpoint.string();
         }
@@ -105,7 +102,7 @@ struct tcp {
     private:
         union {
             base_type    base;
-            address_type tcp4;
+            address_type udp4;
         } m_data;
     };
 
@@ -118,13 +115,13 @@ struct tcp {
     static
     int
     type() {
-        return SOCK_STREAM;
+        return SOCK_DGRAM;
     }
 
     static
     int
     protocol() {
-        return IPPROTO_TCP;
+        return IPPROTO_UDP;
     }
 };
 

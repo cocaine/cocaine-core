@@ -101,7 +101,7 @@ class slave_t;
 class engine_t {
     COCAINE_DECLARE_NONCOPYABLE(engine_t)
 
-    enum class states: int {
+    enum class states {
         running,
         broken,
         stopping,
@@ -110,7 +110,7 @@ class engine_t {
 
     public:
         engine_t(context_t& context,
-                 std::unique_ptr<io::reactor_t>&& reactor,
+                 const std::shared_ptr<io::reactor_t>& reactor,
                  const manifest_t& manifest,
                  const profile_t& profile,
                  const std::shared_ptr<io::socket<io::local>>& control);
@@ -185,7 +185,7 @@ class engine_t {
 
         // Event loop
 
-        std::unique_ptr<io::reactor_t> m_reactor;
+        std::shared_ptr<io::reactor_t> m_reactor;
 
         ev::timer m_gc_timer,
                   m_termination_timer;

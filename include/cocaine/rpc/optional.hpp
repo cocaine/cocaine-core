@@ -18,40 +18,49 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_COMMON_HPP
-#define COCAINE_COMMON_HPP
+#ifndef COCAINE_IO_OPTIONAL_HPP
+#define COCAINE_IO_OPTIONAL_HPP
 
-#include "cocaine/platform.hpp"
+namespace cocaine {
 
-#if !defined(__clang__) && !defined(HAVE_GCC46)
-    #define nullptr __null
-#endif
+template<class T>
+struct optional;
 
-#include <cstdint>
-#include <map>
-#include <memory>
-#include <string>
-#include <vector>
+template<class T, T Default>
+struct optional_with_default;
 
-#define BOOST_FILESYSTEM_VERSION 3
-#define BOOST_FILESYSTEM_NO_DEPRECATED
+namespace detail {
+    template<class T>
+    struct is_required:
+        public std::true_type
+    { };
 
-#ifndef COCAINE_DEBUG
-    #define BOOST_DISABLE_ASSERTS
-#endif
+    template<class T>
+    struct unwrap_type {
+        typedef T type;
+    };
 
-#include <boost/assert.hpp>
-#include <boost/unordered_map.hpp>
-#include <boost/version.hpp>
+    template<class T>
+    struct is_required<optional<T>>:
+        public std::false_type
+    { };
 
-#define COCAINE_DECLARE_NONCOPYABLE(_name_)     \
-    _name_(const _name_& other) = delete;       \
-                                                \
-    _name_&                                     \
-    operator=(const _name_& other) = delete;
+    template<class T>
+    struct unwrap_type<optional<T>> {
+        typedef T type;
+    };
 
-#include "cocaine/config.hpp"
-#include "cocaine/exceptions.hpp"
-#include "cocaine/forwards.hpp"
+    template<class T, T Default>
+    struct is_required<optional_with_default<T, Default>>:
+        public std::false_type
+    { };
+
+    template<class T, T Default>
+    struct unwrap_type<optional_with_default<T, Default>> {
+        typedef T type;
+    };
+}
+
+}
 
 #endif

@@ -23,6 +23,13 @@ Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2 (= ${binary:Versio
 Description: Cocaine - Development Headers
  Cocaine development headers package.
 
+Package: cocaine-dbg
+Architecture: any
+Section: debug
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2 (= ${binary:Version})
+Description: Cocaine - Debug Files
+ Cocaine debug files and symbols.
+
 Package: cocaine-runtime
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2 (= ${binary:Version}),
@@ -31,16 +38,8 @@ Conflicts: cocaine-server
 Description: Cocaine - Runtime
  Cocaine runtime components package.
 
-Package: cocaine-dbg
-Architecture: any
-Section: debug
-Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2 (= ${binary:Version})
-Description: Cocaine - Debug Files
- Cocaine debug files and symbols.
-
 Package: cocaine-tools
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2,
- python, python-msgpack | msgpack-python
+Depends: ${shlibs:Depends}, ${misc:Depends}, cocaine-framework-python (>= 0.10.2-1)
 Description: Cocaine - Toolset
  Various tools to query and manipulate running Cocaine instances.

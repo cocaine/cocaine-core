@@ -24,16 +24,13 @@
 #include "cocaine/common.hpp"
 #include "cocaine/slot.hpp"
 
-#include "cocaine/rpc/protocol.hpp"
-
 namespace cocaine {
 
 class dispatch_t {
     COCAINE_DECLARE_NONCOPYABLE(dispatch_t)
 
     public:
-        dispatch_t(context_t& context,
-                   const std::string& name);
+        dispatch_t(context_t& context, const std::string& name);
 
         virtual
        ~dispatch_t();
@@ -90,10 +87,11 @@ template<class Event, class F>
 void
 dispatch_t::on(const std::string& name, F callable) {
     typedef typename detail::result_of<F>::type result_type;
-    typedef typename io::event_traits<Event>::tuple_type sequence_type;
+    typedef typename io::event_traits<Event>::tuple_type tuple_type;
 
-    typedef typename detail::select<result_type>::template apply<
-        sequence_type
+    typedef typename mpl::apply<
+        detail::select<result_type>,
+        tuple_type
     >::type slot_type;
 
     std::lock_guard<std::mutex> guard(m_mutex);

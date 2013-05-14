@@ -28,39 +28,49 @@
 
 namespace cocaine {
 
+enum class sources {
+    cache,
+    storage
+};
+
 template<class T>
 struct cached:
     protected T
 {
     cached(context_t& context, const std::string& collection, const std::string& name);
+
+    sources
+    source() const {
+        return m_source;
+    }
+
+private:
+    void
+    download(context_t& context, const std::string& collection, const std::string& name);
+
+private:
+    sources m_source;
 };
 
 template<class T>
 cached<T>::cached(context_t& context, const std::string& collection, const std::string& name) {
-    T& object = static_cast<T&>(*this);
-
-    auto cache = api::storage(context, "cache");
+    api::category_traits<api::storage_t>::ptr_type cache;
 
     try {
-        // Try to load the object from the cache.
+        cache = api::storage(context, "cache");
+    } catch(const cocaine::error_t& e) {
+        download(context, collection, name);
+        return;
+    }
+
+    T& object = static_cast<T&>(*this);
+
+    try {
         object = cache->get<T>(collection, name);
     } catch(const storage_error_t& e) {
-        auto storage = api::storage(context, "core");
+        download(context, collection, name);
 
         try {
-            // Fetch the application manifest and archive from the core storage.
-            object = storage->get<T>(collection, name);
-        } catch(const storage_error_t& e) {
-            throw storage_error_t(
-                "unable to fetch the '%s/%s' object from the storage - %s",
-                collection,
-                name,
-                e.what()
-            );
-        }
-
-        try {
-            // Put the application object into the cache for future reference.
             cache->put(collection, name, object);
         } catch(const storage_error_t& e) {
             throw storage_error_t(
@@ -70,7 +80,28 @@ cached<T>::cached(context_t& context, const std::string& collection, const std::
                 e.what()
             );
         }
+
+        return;
     }
+
+    m_source = sources::cache;
+}
+
+template<class T>
+void
+cached<T>::download(context_t& context, const std::string& collection, const std::string& name) {
+    try {
+        static_cast<T&>(*this) = api::storage(context, "core")->get<T>(collection, name);
+    } catch(const storage_error_t& e) {
+        throw storage_error_t(
+            "unable to fetch the '%s/%s' object from the storage - %s",
+            collection,
+            name,
+            e.what()
+        );
+    }
+
+    m_source = sources::storage;
 }
 
 } // namespace cocaine

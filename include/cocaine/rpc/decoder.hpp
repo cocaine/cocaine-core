@@ -23,6 +23,9 @@
 
 #include "cocaine/rpc/message.hpp"
 
+#include <functional>
+#include <memory>
+
 namespace cocaine { namespace io {
 
 template<class Stream>
