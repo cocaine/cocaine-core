@@ -22,11 +22,8 @@
 #define COCAINE_NODE_SERVICE_HPP
 
 #include "cocaine/api/service.hpp"
-#include "cocaine/asio/reactor.hpp"
 
 #include <chrono>
-
-#include <zmq.hpp>
 
 namespace cocaine { namespace service {
 
@@ -43,9 +40,6 @@ class node_t:
        ~node_t();
 
     private:
-        void
-        on_announce(ev::timer&, int);
-
         Json::Value
         on_start_app(const std::map<std::string, std::string>& runlist);
 
@@ -58,14 +52,6 @@ class node_t:
     private:
         context_t& m_context;
         std::unique_ptr<logging::log_t> m_log;
-
-        // Node announce channel.
-        // DEPRECATED: Drop when Dealer switches to ASIO.
-        zmq::context_t m_zmq_context;
-        zmq::socket_t m_announces;
-
-        // Node announce timer.
-        ev::timer m_announce_timer;
 
 #if BOOST_VERSION >= 103600
         typedef boost::unordered_map<

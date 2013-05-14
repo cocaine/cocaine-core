@@ -48,9 +48,6 @@ node_t::node_t(context_t& context,
     category_type(context, reactor, name, args),
     m_context(context),
     m_log(new logging::log_t(context, name)),
-    m_zmq_context(1),
-    m_announces(m_zmq_context, ZMQ_PUB),
-    m_announce_timer(reactor.native()),
 #if defined(__clang__) || defined(HAVE_GCC47)
     m_birthstamp(std::chrono::steady_clock::now())
 #else
@@ -63,53 +60,7 @@ node_t::node_t(context_t& context,
 
     // Configuration
 
-    const ev::tstamp interval = args.get("announce-interval", 5.0f).asDouble();
     const std::string runlist_id = args.get("runlist", "default").asString();
-
-    // Autodiscovery
-
-    if(!args["announce"].empty()) {
-#if ZMQ_VERSION > 30200
-        int watermark = 5;
-#else
-        uint64_t watermark = 5;
-#endif
-
-        // Avoids announce data being cached for every disconnected peer.
-#if ZMQ_VERSION > 30200
-        m_announces.setsockopt(ZMQ_SNDHWM, &watermark, sizeof(watermark));
-#else
-        m_announces.setsockopt(ZMQ_HWM, &watermark, sizeof(watermark));
-#endif
-
-        for(Json::Value::const_iterator it = args["announce"].begin();
-            it != args["announce"].end();
-            ++it)
-        {
-            std::string endpoint = (*it).asString();
-
-            COCAINE_LOG_INFO(
-                m_log,
-                "announcing this node on %s every %.01f %s",
-                endpoint,
-                interval,
-                interval == 1.0f ? "second" : "seconds"
-            );
-
-            try {
-                m_announces.bind(endpoint.c_str());
-            } catch(const zmq::error_t& e) {
-                throw configuration_error_t(
-                    "unable to bind at '%s' - %s",
-                    endpoint,
-                    e.what()
-                );
-            }
-        }
-
-        m_announce_timer.set<node_t, &node_t::on_announce>(this);
-        m_announce_timer.start(0.0f, interval);
-    }
 
     // Runlist
 
@@ -149,39 +100,6 @@ node_t::~node_t() {
         COCAINE_LOG_INFO(m_log, "stopping the apps");
         m_apps.clear();
     }
-}
-
-void
-node_t::on_announce(ev::timer&, int) {
-    zmq::message_t message;
-
-    message.rebuild(m_context.config.network.hostname.size());
-
-    std::memcpy(
-        message.data(),
-        m_context.config.network.hostname.data(),
-        m_context.config.network.hostname.size()
-    );
-
-    m_announces.send(message, ZMQ_SNDMORE);
-
-    msgpack::sbuffer buffer;
-    msgpack::packer<msgpack::sbuffer> packer(buffer);
-
-    io::type_traits<Json::Value>::pack(
-        packer,
-        on_info()
-    );
-
-    message.rebuild(buffer.size());
-
-    std::memcpy(
-        message.data(),
-        buffer.data(),
-        buffer.size()
-    );
-
-    m_announces.send(message);
 }
 
 Json::Value

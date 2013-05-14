@@ -28,7 +28,6 @@ INCLUDE(cmake/locate_library.cmake)
 
 LOCATE_LIBRARY(LIBEV "ev++.h" "ev" "libev")
 LOCATE_LIBRARY(LIBMSGPACK "msgpack.hpp" "msgpack")
-LOCATE_LIBRARY(LIBZMQ "zmq.h" "zmq")
 LOCATE_LIBRARY(LIBARCHIVE "archive.h" "archive")
 LOCATE_LIBRARY(LIBLTDL "ltdl.h" "ltdl")
 
@@ -47,21 +46,18 @@ INCLUDE_DIRECTORIES(
     ${OPENSSL_INCLUDE_DIR}
     ${LIBEV_INCLUDE_DIRS}
     ${LIBMSGPACK_INCLUDE_DIRS}
-    ${LIBZMQ_INCLUDE_DIRS}
     ${LIBARCHIVE_INCLUDE_DIRS}
     ${LIBLTDL_INCLUDE_DIRS})
 
 INCLUDE_DIRECTORIES(BEFORE
     ${PROJECT_SOURCE_DIR}/foreign/jsoncpp-0.6.0-rc2/include
     ${PROJECT_SOURCE_DIR}/foreign/backward-cpp
-    ${PROJECT_SOURCE_DIR}/foreign/cppzmq
     ${PROJECT_SOURCE_DIR}/include)
 
 LINK_DIRECTORIES(
     ${Boost_LIBRARY_DIRS}
     ${LIBEV_LIBRARY_DIRS}
     ${LIBMSGPACK_LIBRARY_DIRS}
-    ${LIBZMQ_LIBRARY_DIRS}
     ${LIBARCHIVE_LIBRARY_DIRS}
     ${LIBLTDL_LIBRARY_DIRS})
 
@@ -112,8 +108,7 @@ TARGET_LINK_LIBRARIES(cocaine-core
     json
     ltdl
     msgpack
-    ${LIBUUID_LIBRARY}
-    zmq)
+    ${LIBUUID_LIBRARY})
 
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     VERSION 2)
