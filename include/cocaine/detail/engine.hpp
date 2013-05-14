@@ -197,9 +197,12 @@ class engine_t {
         std::unique_ptr<io::connector<io::acceptor<io::local>>> m_connector;
         std::unique_ptr<io::channel<io::socket<io::local>>> m_channel;
 
-        // Session queue
+        // Session tagging
 
         std::atomic<uint64_t> m_next_id;
+
+        // Session queue
+
         session_queue_t m_queue;
 
         // Slave pool

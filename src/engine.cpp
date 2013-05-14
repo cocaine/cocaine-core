@@ -223,9 +223,7 @@ engine_t::wake() {
 }
 
 std::shared_ptr<api::stream_t>
-engine_t::enqueue(const api::event_t& event,
-                  const std::shared_ptr<api::stream_t>& upstream)
-{
+engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream) {
     auto session = std::make_shared<session_t>(
         m_next_id++,
         event,
@@ -259,10 +257,7 @@ engine_t::enqueue(const api::event_t& event,
 }
 
 void
-engine_t::erase(const unique_id_t& uuid,
-                int code,
-                const std::string& /* reason */)
-{
+engine_t::erase(const unique_id_t& uuid, int code, const std::string& /* reason */) {
     pool_map_t::iterator it = m_pool.find(uuid);
 
     BOOST_ASSERT(it != m_pool.end());
@@ -486,7 +481,7 @@ engine_t::on_termination(ev::timer&, int) {
 }
 
 namespace {
-    struct load_t {
+    struct load {
         template<class T>
         bool
         operator()(const T& lhs, const T& rhs) const {
@@ -494,7 +489,7 @@ namespace {
         }
     };
 
-    struct available_t {
+    struct available {
         template<class T>
         bool
         operator()(const T& slave) const {
@@ -508,11 +503,7 @@ namespace {
     template<class It, class Compare, class Predicate>
     inline
     It
-    min_element_if(It first,
-                   It last,
-                   Compare compare,
-                   Predicate predicate)
-    {
+    min_element_if(It first, It last, Compare compare, Predicate predicate) {
         while(first != last && !predicate(*first)) {
             ++first;
         }
@@ -536,12 +527,9 @@ namespace {
 void
 engine_t::pump() {
     while(!m_queue.empty()) {
-        pool_map_t::iterator it = min_element_if(
-            m_pool.begin(),
-            m_pool.end(),
-            load_t(),
-            available_t{m_profile.concurrency}
-        );
+        auto it = min_element_if(m_pool.begin(), m_pool.end(), load(), available {
+            m_profile.concurrency
+        });
 
         if(it == m_pool.end()) {
             return;

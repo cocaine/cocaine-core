@@ -32,23 +32,25 @@
 
 namespace cocaine { namespace engine {
 
-struct pipe_t {
-    typedef int endpoint_type;
-
-    pipe_t(endpoint_type endpoint);
-   ~pipe_t();
-
-    int
-    fd() const;
-
-    ssize_t
-    read(char* buffer, size_t size, std::error_code& ec);
-
-private:
-    int m_pipe;
-};
-
 struct session_t;
+
+namespace detail {
+    struct pipe_t {
+        typedef int endpoint_type;
+
+        pipe_t(endpoint_type endpoint);
+       ~pipe_t();
+
+        int
+        fd() const;
+
+        ssize_t
+        read(char* buffer, size_t size, std::error_code& ec);
+
+    private:
+        int m_pipe;
+    };
+}
 
 class slave_t {
     COCAINE_DECLARE_NONCOPYABLE(slave_t)
@@ -188,14 +190,14 @@ class slave_t {
 
         // Slave output capture
 
-        std::unique_ptr<io::readable_stream<pipe_t>> m_pipe;
+        std::unique_ptr<io::readable_stream<detail::pipe_t>> m_pipe;
         boost::circular_buffer<std::string> m_output_ring;
 
         // I/O
 
         std::shared_ptr<io::channel<io::socket<io::local>>> m_channel;
 
-        // Active sessions
+        // Sessions
 
         typedef std::map<
             uint64_t,

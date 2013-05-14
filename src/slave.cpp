@@ -40,6 +40,7 @@
 
 using namespace cocaine;
 using namespace cocaine::engine;
+using namespace cocaine::engine::detail;
 using namespace cocaine::io;
 
 using namespace std::placeholders;
