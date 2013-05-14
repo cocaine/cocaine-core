@@ -527,14 +527,19 @@ slave_t::on_output(const char* data, size_t size) {
 
 void
 slave_t::dump() {
+    if(m_output_ring.empty()) {
+        COCAINE_LOG_INFO(m_log, "slave %s died in silence", m_id);
+        return;
+    }
+
     std::string key = cocaine::format("%s:%s", m_manifest.name, m_id);
 
-    COCAINE_LOG_INFO(m_log, "dumping slave %s output to 'crashlogs/%s'", m_id, key);
+    COCAINE_LOG_INFO(m_log, "slave %s dumping output to 'crashlogs/%s'", m_id, key);
 
     std::vector<std::string> dump;
     std::copy(m_output_ring.begin(), m_output_ring.end(), std::back_inserter(dump));
 
-    api::storage(m_context, "core")->put("crashdumps", key, dump);
+    api::storage(m_context, "core")->put("crashlogs", key, dump);
 }
 
 void
