@@ -2,8 +2,8 @@ Source: cocaine-core
 Section: utils
 Priority: extra
 Maintainer: Andrey Sibiryov <kobolog@yandex-team.ru>
-Build-Depends: cmake, cdbs, debhelper (>= 7.0.13), libzmq-dev (>= 3.2), libev-dev, libmsgpack-dev,
- libboost-dev, libboost-filesystem-dev, libboost-program-options-dev, libssl-dev, libltdl-dev, uuid-dev,
+Build-Depends: cmake, cdbs, debhelper (>= 7.0.13), libev-dev, libmsgpack-dev, libboost-dev,
+ libboost-filesystem-dev, libboost-program-options-dev, libssl-dev, libltdl-dev, uuid-dev,
  libarchive-dev, binutils-dev
 Standards-Version: 3.9.1
 Vcs-Git: git://github.com/cocaine/cocaine-core.git
