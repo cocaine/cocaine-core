@@ -137,7 +137,7 @@ class slave_t {
         void
         on_idle(ev::timer&, int);
 
-        ssize_t
+        size_t
         on_output(const char* data, size_t size);
 
         // Housekeeping

@@ -507,24 +507,24 @@ slave_t::on_idle(ev::timer&, int) {
     m_state = states::inactive;
 }
 
-ssize_t
+size_t
 slave_t::on_output(const char* data, size_t size) {
     std::string input(data, size),
                 line;
 
     std::istringstream stream(input);
 
+    size_t leftovers = 0;
+
     while(stream) {
-        std::getline(stream, line);
-
-        if(stream.eof()) {
-            return stream.tellg() - static_cast<std::streamoff>(line.size());
+        if(std::getline(stream, line)) {
+            m_output_ring.push_back(line);
+        } else {
+            leftovers = line.size();
         }
-
-        m_output_ring.push_back(line);
     }
 
-    return size;
+    return size - leftovers;
 }
 
 void
