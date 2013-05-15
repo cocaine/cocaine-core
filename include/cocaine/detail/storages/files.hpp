@@ -47,16 +47,18 @@ class files_t:
         void
         write(const std::string& collection,
               const std::string& key,
-              const std::string& blob);
-
-        virtual
-        std::vector<std::string>
-        list(const std::string& collection);
+              const std::string& blob,
+              const std::vector<std::string>& tags);
 
         virtual
         void
         remove(const std::string& collection,
                const std::string& key);
+
+        virtual
+        std::vector<std::string>
+        find(const std::string& collection,
+             const std::vector<std::string>& tags);
 
     private:
         std::unique_ptr<logging::log_t> m_log;

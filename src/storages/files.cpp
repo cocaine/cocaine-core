@@ -27,15 +27,11 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/convenience.hpp>
 
-#include <boost/iterator/filter_iterator.hpp>
-
 using namespace cocaine::storage;
 
 namespace fs = boost::filesystem;
 
-files_t::files_t(context_t& context,
-                 const std::string& name,
-                 const Json::Value& args):
+files_t::files_t(context_t& context, const std::string& name, const Json::Value& args):
     category_type(context, name, args),
     m_log(new logging::log_t(context, name)),
     m_storage_path(args["path"].asString())
@@ -46,9 +42,7 @@ files_t::~files_t() {
 }
 
 std::string
-files_t::read(const std::string& collection,
-              const std::string& key)
-{
+files_t::read(const std::string& collection, const std::string& key) {
     std::unique_lock<std::mutex> lock(m_mutex);
 
     const fs::path file_path(m_storage_path / collection / key);
@@ -76,7 +70,8 @@ files_t::read(const std::string& collection,
 void
 files_t::write(const std::string& collection,
                const std::string& key,
-               const std::string& blob)
+               const std::string& blob,
+               const std::vector<std::string>& tags)
 {
     std::unique_lock<std::mutex> lock(m_mutex);
 
@@ -119,60 +114,33 @@ files_t::write(const std::string& collection,
         throw storage_error_t("unable to access the specified object");
     }
 
+    for(auto it = tags.begin(); it != tags.end(); ++it) {
+        const auto tag_path = store_path / *it;
+        const auto tag_status = fs::status(tag_path);
+
+        if(!fs::exists(tag_status)) {
+            try {
+                fs::create_directory(tag_path);
+            } catch(const fs::filesystem_error& e) {
+                throw storage_error_t("cannot create the specified tag");
+            }
+        } else if(!fs::is_directory(tag_status)) {
+            throw storage_error_t("the specified tag is corrupted");
+        }
+
+        fs::create_symlink(file_path, tag_path / key);
+    }
+
     stream << blob;
     stream.close();
 }
 
-namespace {
-    struct validate_t {
-        template<typename T>
-        bool
-        operator()(const T& entry) const {
-            return fs::is_regular_file(entry);
-        }
-    };
-}
-
-std::vector<std::string>
-files_t::list(const std::string& collection) {
-    std::unique_lock<std::mutex> lock(m_mutex);
-
-    const fs::path store_path(m_storage_path / collection);
-
-    std::vector<std::string> result;
-
-    if(!fs::exists(store_path)) {
-        return result;
-    }
-
-    typedef boost::filter_iterator<
-        validate_t,
-        fs::directory_iterator
-    > file_iterator;
-
-    file_iterator it = file_iterator(validate_t(), fs::directory_iterator(store_path)),
-                  end;
-
-    while(it != end) {
-#if BOOST_VERSION >= 104600
-        result.emplace_back(it->path().filename().string());
-#else
-        result.emplace_back(it->path().filename());
-#endif
-
-        ++it;
-    }
-
-    return result;
-}
-
 void
-files_t::remove(const std::string& collection,
-                const std::string& key)
-{
+files_t::remove(const std::string& collection, const std::string& key) {
     std::unique_lock<std::mutex> lock(m_mutex);
 
-    const fs::path file_path(m_storage_path / collection / key);
+    const auto store_path(m_storage_path / collection);
+    const auto file_path(store_path / key);
 
     if(fs::exists(file_path)) {
         COCAINE_LOG_DEBUG(
@@ -189,4 +157,48 @@ files_t::remove(const std::string& collection,
             throw storage_error_t("unable to remove the specified object");
         }
     }
+}
+
+std::vector<std::string>
+files_t::find(const std::string& collection, const std::vector<std::string>& tags) {
+    std::unique_lock<std::mutex> lock(m_mutex);
+
+    const fs::path store_path(m_storage_path / collection);
+
+    std::vector<std::string> result;
+
+    if(!fs::exists(store_path)) {
+        return result;
+    }
+
+    for(auto tag = tags.begin(); tag != tags.end(); ++tag) {
+        if(!fs::exists(store_path / *tag)) {
+            continue;
+        }
+
+        fs::directory_iterator it(store_path / *tag), end;
+
+        while(it != end) {
+            if(!fs::exists(*it)) {
+                // Remove the symlink if the object was removed.
+                fs::remove(*it++);
+                continue;
+            }
+
+#if BOOST_VERSION >= 104600
+            result.emplace_back(it->path().filename().string());
+#else
+            result.emplace_back(it->path().filename());
+#endif
+
+            ++it;
+        }
+    }
+
+    std::sort(result.begin(), result.end());
+
+    // Remove the duplicates, if any.
+    result.erase(std::unique(result.begin(), result.end()), result.end());
+
+    return result;
 }

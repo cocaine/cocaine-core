@@ -40,9 +40,10 @@ auth_t::auth_t(context_t& context):
     auto storage = api::storage(context, "core");
 
     std::vector<std::string> keys;
+    std::vector<std::string> tags = { "rsa-key" };
 
     try {
-        keys = storage->list("keys");
+        keys = storage->find("keys", tags);
     } catch(const storage_error_t& e) {
         COCAINE_LOG_WARNING(m_log, "unable to read the key directory - %s", e.what());
         return;

@@ -24,6 +24,8 @@
 #include "cocaine/common.hpp"
 #include "cocaine/tuples.hpp"
 
+#include "cocaine/rpc/optional.hpp"
+
 #include <boost/mpl/int.hpp>
 #include <boost/mpl/list.hpp>
 
@@ -233,7 +235,9 @@ namespace storage {
             std::string,
          /* Value. Typically, it should be serialized with msgpack, so that the future reader could
             assume that it can be deserialized safely. */
-            std::string
+            std::string,
+         /* Tag list. Imagine these are your indexes. */
+            optional<std::vector<std::string>>
         > tuple_type;
     };
 
@@ -249,13 +253,15 @@ namespace storage {
         > tuple_type;
     };
 
-    struct list {
+    struct find {
         typedef storage_tag tag;
 
         typedef boost::mpl::list<
          /* Key namespace. A good start point to find all the keys to remove to render the system
             useless! Well, one day we'll implement ACLs. */
-            std::string
+            std::string,
+         /* Tag list. This is actually your query. */
+            std::vector<std::string>
         > tuple_type;
 
         typedef
@@ -275,7 +281,7 @@ struct protocol<storage_tag> {
         storage::read,
         storage::write,
         storage::remove,
-        storage::list
+        storage::find
     > type;
 };
 
