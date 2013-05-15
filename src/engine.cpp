@@ -264,6 +264,8 @@ engine_t::erase(const unique_id_t& uuid, int code, const std::string& /* reason 
     if(m_state != states::running && m_pool.empty()) {
         // If it was the last slave, shut the engine down.
         stop();
+    } else {
+        wake();
     }
 }
 
