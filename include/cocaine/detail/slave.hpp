@@ -55,13 +55,11 @@ namespace detail {
 class slave_t {
     COCAINE_DECLARE_NONCOPYABLE(slave_t)
 
-    public:
-        enum class states {
-            unknown,
-            active,
-            inactive,
-            dead
-        };
+    enum class states {
+        unknown,
+        active,
+        inactive
+    };
 
     public:
         slave_t(context_t& context,
@@ -93,9 +91,9 @@ class slave_t {
             return m_id;
         }
 
-        states
-        state() const {
-            return m_state;
+        bool
+        active() const {
+            return m_state == states::active;
         }
 
         size_t
@@ -116,17 +114,13 @@ class slave_t {
         on_ping();
 
         void
-        on_death(int code,
-                 const std::string& reason);
+        on_death(int code, const std::string& reason);
 
         void
-        on_chunk(uint64_t session_id,
-                 const std::string& chunk);
+        on_chunk(uint64_t session_id, const std::string& chunk);
 
         void
-        on_error(uint64_t session_id,
-                 error_code code,
-                 const std::string& reason);
+        on_error(uint64_t session_id, error_code code, const std::string& reason);
 
         void
         on_choke(uint64_t session_id);
@@ -148,7 +142,7 @@ class slave_t {
         dump();
 
         void
-        terminate();
+        terminate(int code, const std::string& reason);
 
     private:
         context_t& m_context;
