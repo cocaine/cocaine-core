@@ -146,7 +146,9 @@ slave_t::slave_t(context_t& context,
     }
 
     // Mark both ends of the pipe as close-on-exec.
-    std::for_each(pipes.begin(), pipes.end(), std::bind(::fcntl, _1, F_SETFD, FD_CLOEXEC));
+    for(auto it = pipes.begin(); it != pipes.end(); ++it) {
+        ::fcntl(*it, F_SETFD, FD_CLOEXEC);
+    }
 
     try {
         m_handle = isolate->spawn(m_manifest.slave, args, environment, pipes[1]);
