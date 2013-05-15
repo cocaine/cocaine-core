@@ -570,7 +570,7 @@ engine_t::pump() {
             }
         } while(!session);
 
-        // Attach the session to the worker.
+        // Attach the session to the slave.
         it->second->assign(std::move(session));
     }
 }

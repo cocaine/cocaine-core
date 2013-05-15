@@ -261,7 +261,7 @@ slave_t::on_message(const message_t& message) {
         case event_traits<rpc::choke>::id: {
             on_choke(message.band());
 
-            // This is now a potentially free worker, so pump the queue.
+            // This is now a potentially free slave, so pump the queue.
             m_engine.wake();
 
             break;
