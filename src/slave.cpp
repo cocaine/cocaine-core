@@ -541,7 +541,9 @@ slave_t::dump() {
     std::vector<std::string> dump;
     std::copy(m_output_ring.begin(), m_output_ring.end(), std::back_inserter(dump));
 
-    api::storage(m_context, "core")->put("crashlogs", key, dump);
+    api::storage(m_context, "core")->put("crashlogs", key, dump, std::vector<std::string> {
+        m_manifest.name
+    });
 }
 
 void

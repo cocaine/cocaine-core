@@ -76,8 +76,11 @@ files_t::read(const std::string& collection,
 void
 files_t::write(const std::string& collection,
                const std::string& key,
-               const std::string& blob)
+               const std::string& blob,
+               const std::vector<std::string>& tags)
 {
+    (void)tags;
+
     std::unique_lock<std::mutex> lock(m_mutex);
 
     const fs::path store_path(m_storage_path / collection);
@@ -123,6 +126,31 @@ files_t::write(const std::string& collection,
     stream.close();
 }
 
+void
+files_t::remove(const std::string& collection,
+                const std::string& key)
+{
+    std::unique_lock<std::mutex> lock(m_mutex);
+
+    const fs::path file_path(m_storage_path / collection / key);
+
+    if(fs::exists(file_path)) {
+        COCAINE_LOG_DEBUG(
+            m_log,
+            "removing the '%s' object, collection: '%s', path: %s",
+            key,
+            collection,
+            file_path.string()
+        );
+
+        try {
+            fs::remove(file_path);
+        } catch(const fs::filesystem_error& e) {
+            throw storage_error_t("unable to remove the specified object");
+        }
+    }
+}
+
 namespace {
     struct validate_t {
         template<typename T>
@@ -134,7 +162,11 @@ namespace {
 }
 
 std::vector<std::string>
-files_t::list(const std::string& collection) {
+files_t::find(const std::string& collection,
+              const std::vector<std::string>& tags)
+{
+    (void)tags;
+
     std::unique_lock<std::mutex> lock(m_mutex);
 
     const fs::path store_path(m_storage_path / collection);
@@ -164,29 +196,4 @@ files_t::list(const std::string& collection) {
     }
 
     return result;
-}
-
-void
-files_t::remove(const std::string& collection,
-                const std::string& key)
-{
-    std::unique_lock<std::mutex> lock(m_mutex);
-
-    const fs::path file_path(m_storage_path / collection / key);
-
-    if(fs::exists(file_path)) {
-        COCAINE_LOG_DEBUG(
-            m_log,
-            "removing the '%s' object, collection: '%s', path: %s",
-            key,
-            collection,
-            file_path.string()
-        );
-
-        try {
-            fs::remove(file_path);
-        } catch(const fs::filesystem_error& e) {
-            throw storage_error_t("unable to remove the specified object");
-        }
-    }
 }

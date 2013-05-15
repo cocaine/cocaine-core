@@ -58,31 +58,36 @@ class storage_t {
         read(const std::string& collection,
              const std::string& key) = 0;
 
-        template<class T>
-        T
-        get(const std::string& collection,
-            const std::string& key);
-
         virtual
         void
         write(const std::string& collection,
               const std::string& key,
-              const std::string& blob) = 0;
-
-        template<class T>
-        void
-        put(const std::string& collection,
-            const std::string& key,
-            const T& object);
-
-        virtual
-        std::vector<std::string>
-        list(const std::string& collection) = 0;
+              const std::string& blob,
+              const std::vector<std::string>& tags) = 0;
 
         virtual
         void
         remove(const std::string& collection,
                const std::string& key) = 0;
+
+        virtual
+        std::vector<std::string>
+        find(const std::string& collection,
+             const std::vector<std::string>& tags) = 0;
+
+        // Helper methods
+
+        template<class T>
+        T
+        get(const std::string& collection,
+            const std::string& key);
+
+        template<class T>
+        void
+        put(const std::string& collection,
+            const std::string& key,
+            const T& object,
+            const std::vector<std::string>& tags);
 
     protected:
         storage_t(context_t&,
@@ -120,14 +125,15 @@ template<class T>
 void
 storage_t::put(const std::string& collection,
                const std::string& key,
-               const T& object)
+               const T& object,
+               const std::vector<std::string>& tags)
 {
     std::ostringstream buffer;
     msgpack::packer<std::ostringstream> packer(buffer);
 
     io::type_traits<T>::pack(packer, object);
 
-    write(collection, key, buffer.str());
+    write(collection, key, buffer.str(), tags);
 }
 
 template<>
