@@ -47,7 +47,9 @@ using namespace std::placeholders;
 
 pipe_t::pipe_t(endpoint_type endpoint):
     m_pipe(endpoint)
-{ }
+{
+    ::fcntl(m_pipe, F_SETFL, O_NONBLOCK);
+}
 
 pipe_t::~pipe_t() {
     ::close(m_pipe);
@@ -122,6 +124,8 @@ slave_t::slave_t(context_t& context,
         m_profile.isolate.args
     );
 
+    COCAINE_LOG_DEBUG(m_log, "slave %s is spawning '%s'", m_id, m_manifest.slave);
+
     typedef std::map<std::string, std::string> string_map_t;
 
     string_map_t args;
@@ -139,32 +143,25 @@ slave_t::slave_t(context_t& context,
         throw std::system_error(errno, std::system_category(), "unable to create an output pipe");
     }
 
-    // Our end.
-    ::fcntl(pipes[0], F_SETFD, FD_CLOEXEC);
-    ::fcntl(pipes[0], F_SETFL, O_NONBLOCK);
-
-    // Slave's end.
-    ::fcntl(pipes[1], F_SETFD, FD_CLOEXEC);
-
-    COCAINE_LOG_DEBUG(m_log, "slave %s spawning '%s'", m_id, m_manifest.slave);
+    // Mark both ends of the pipe as close-on-exec.
+    std::for_each(pipes.begin(), pipes.end(), std::bind(::fcntl, _1, F_SETFD, FD_CLOEXEC));
 
     try {
         m_handle = isolate->spawn(m_manifest.slave, args, environment, pipes[1]);
     } catch(...) {
-        ::close(pipes[0]);
-        ::close(pipes[1]);
-
+        std::for_each(pipes.begin(), pipes.end(), ::close);
         throw;
     }
 
-    m_pipe.reset(new readable_stream<pipe_t>(reactor, pipes[0]));
+    // This end of the pipe is already cloned by the isolate, so we can safely close it.
+    ::close(pipes[1]);
 
-    m_pipe->bind(
+    m_output_pipe.reset(new readable_stream<pipe_t>(reactor, pipes[0]));
+
+    m_output_pipe->bind(
         std::bind(&slave_t::on_output, this, _1, _2),
         ignore()
     );
-
-    ::close(pipes[1]);
 }
 
 slave_t::~slave_t() {

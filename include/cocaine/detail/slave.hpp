@@ -190,7 +190,7 @@ class slave_t {
 
         // Slave output capture
 
-        std::unique_ptr<io::readable_stream<detail::pipe_t>> m_pipe;
+        std::unique_ptr<io::readable_stream<detail::pipe_t>> m_output_pipe;
         boost::circular_buffer<std::string> m_output_ring;
 
         // I/O
