@@ -253,11 +253,11 @@ engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t
 }
 
 void
-engine_t::erase(const unique_id_t& uuid, int code, const std::string& /* reason */) {
+engine_t::erase(const unique_id_t& uuid, int code, const std::string& reason) {
     m_pool.erase(uuid);
 
     if(code == rpc::terminate::abnormal) {
-        COCAINE_LOG_ERROR(m_log, "the app seems to be broken - stopping");
+        COCAINE_LOG_ERROR(m_log, "the app seems to be broken - %s", reason);
         migrate(states::broken);
     }
 
