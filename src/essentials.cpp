@@ -35,6 +35,14 @@ void
 cocaine::essentials::initialize(api::repository_t& repository) {
     repository.insert<driver::fs_t>("fs");
     repository.insert<driver::recurring_timer_t>("time");
+
+    try {
+        repository.insert<driver::fs_t>("filesystem-monitor");
+        repository.insert<driver::recurring_timer_t>("recurring-timer");
+    } catch(const api::repository_error_t& e) {
+        // Ignore it.
+    }
+
     repository.insert<isolate::process_t>("process");
     repository.insert<logger::files_t>("files");
     repository.insert<logger::stdout_t>("stdout");
