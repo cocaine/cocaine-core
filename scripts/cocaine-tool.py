@@ -154,8 +154,6 @@ class Storage(object):
     def remove(self, name):
         try:
             self._st.perform_sync("remove", "manifests", name)
-            # Clean symlinks in fs
-            self._list("manifests", APPS_TAGS)
         except Exception as err:
             print "Error: unable to remove manifest for app. %s" % str(err)
         else:
@@ -204,8 +202,6 @@ class Storage(object):
     def remove_profile(self, name):
         try:
             self._st.perform_sync("remove", "profiles", name)
-            # Clear sumlinks in file storage:
-            self._list("profiles", PROFILES_TAGS)
         except Exception as err:
             print "Error: unable to remove profile. %s" % str(err)
             exit(1)
@@ -264,8 +260,6 @@ class Storage(object):
     def remove_runlist(self, name):
         try:
             self._st.perform_sync("remove", "runlists", name)
-            # Clear sumlinks in file storage:
-            self._list("runlists", RUNLISTS_TAGS)
         except Exception as err:
             print "Error: unable to remove runlist. %s" % str(err)
             exit(1)
