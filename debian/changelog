@@ -1,3 +1,14 @@
+cocaine-core (0.10.4~pre0) lucid; urgency=low
+
+  * Release 10.4.
+  * Slave output capturing. When a slave crashes, its stdout and stderr output
+    is stored into the designated system storage for future inspection.
+  * Storage API v2. The list() method was superseded by the find() method,
+    which supports tags and indexing. New blobs can be tagged via a new
+    parameter to write().
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Thu, 16 May 2013 21:05:20 +0400
+
 cocaine-core (0.10.3) unstable; urgency=low
 
   * Release 10.3.
