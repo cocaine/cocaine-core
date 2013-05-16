@@ -38,9 +38,9 @@ DEFAULT_HOST = "localhost"
 DEFAULT_PORT = 10053
 DEFAULT_TIMEOUT = 2
 
-APPS_TAGS = ("APPS",)
-RUNLISTS_TAGS = ("RUNLISTS",)
-PROFILES_TAGS = ("PROFILES",)
+APPS_TAGS = ("apps",)
+RUNLISTS_TAGS = ("runlists",)
+PROFILES_TAGS = ("profiles",)
 
 def sync_decorator(func, timeout):
     def wrapper(*args, **kwargs):
@@ -161,8 +161,6 @@ class Storage(object):
 
         try:
             self._st.perform_sync("remove", "apps", name)
-            # Clean symlinks in fs
-            self._list("apps", APPS_TAGS)
         except Exception as err:
             print "Error: unable to remove app source. %s" % str(err)
         else:
