@@ -51,10 +51,10 @@ files_t::read(const std::string& collection, const std::string& key) {
 
     COCAINE_LOG_DEBUG(
         m_log,
-        "reading the '%s' object, collection: '%s', path: '%s'",
+        "reading object '%s', collection: %s, path: %s",
         key,
         collection,
-        file_path.string()
+        file_path
     );
 
     if(!stream) {
@@ -79,17 +79,12 @@ files_t::write(const std::string& collection,
     const auto store_status = fs::status(store_path);
 
     if(!fs::exists(store_status)) {
-        COCAINE_LOG_INFO(
-            m_log,
-            "creating collection: %s, path: '%s'",
-            collection,
-            store_path.string()
-        );
+        COCAINE_LOG_INFO(m_log, "creating collection: %s, path: %s", collection, store_path);
 
         try {
             fs::create_directories(store_path);
         } catch(const fs::filesystem_error& e) {
-            throw storage_error_t("cannot create the specified collection");
+            throw storage_error_t("unable to create the specified collection");
         }
     } else if(!fs::is_directory(store_status)) {
         throw storage_error_t("the specified collection is corrupted");
@@ -104,15 +99,18 @@ files_t::write(const std::string& collection,
 
     COCAINE_LOG_DEBUG(
         m_log,
-        "writing the '%s' object, collection: '%s', path: '%s'",
+        "writing object '%s', collection: %s, path: %s",
         key,
         collection,
-        file_path.string()
+        file_path
     );
 
     if(!stream) {
         throw storage_error_t("unable to access the specified object");
     }
+
+    stream << blob;
+    stream.close();
 
     for(auto it = tags.begin(); it != tags.end(); ++it) {
         const auto tag_path = store_path / *it;
@@ -122,17 +120,20 @@ files_t::write(const std::string& collection,
             try {
                 fs::create_directory(tag_path);
             } catch(const fs::filesystem_error& e) {
-                throw storage_error_t("cannot create the specified tag");
+                throw storage_error_t("unable to create the specified tag");
             }
         } else if(!fs::is_directory(tag_status)) {
             throw storage_error_t("the specified tag is corrupted");
         }
 
-        fs::create_symlink(file_path, tag_path / key);
+        if(!fs::is_symlink(tag_path / key)) {
+            try {
+                fs::create_symlink(file_path, tag_path / key);
+            } catch(const fs::filesystem_error& e) {
+                throw storage_error_t("unable to tag the specified object");
+            }
+        }
     }
-
-    stream << blob;
-    stream.close();
 }
 
 void
@@ -145,10 +146,10 @@ files_t::remove(const std::string& collection, const std::string& key) {
     if(fs::exists(file_path)) {
         COCAINE_LOG_DEBUG(
             m_log,
-            "removing the '%s' object, collection: '%s', path: %s",
+            "removing object '%s', collection: %s, path: %s",
             key,
             collection,
-            file_path.string()
+            file_path
         );
 
         try {
@@ -179,17 +180,22 @@ files_t::find(const std::string& collection, const std::vector<std::string>& tag
         fs::directory_iterator it(store_path / *tag), end;
 
         while(it != end) {
+#if BOOST_VERSION >= 104600
+            auto object = it->path().filename().string();
+#else
+            auto object = it->path().filename();
+#endif
+
             if(!fs::exists(*it)) {
+                COCAINE_LOG_DEBUG(m_log, "purging object %s from tag %s", object, *tag);
+
                 // Remove the symlink if the object was removed.
                 fs::remove(*it++);
+
                 continue;
             }
 
-#if BOOST_VERSION >= 104600
-            result.emplace_back(it->path().filename().string());
-#else
-            result.emplace_back(it->path().filename());
-#endif
+            result.emplace_back(object);
 
             ++it;
         }
