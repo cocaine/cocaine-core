@@ -23,7 +23,6 @@ import errno
 import json
 import tarfile
 from optparse import OptionParser
-import sys
 
 import msgpack
 
@@ -39,6 +38,10 @@ DEFAULT_HOST = "localhost"
 DEFAULT_PORT = 10053
 DEFAULT_TIMEOUT = 2
 
+APPS_TAGS = ("apps",)
+RUNLISTS_TAGS = ("runlists",)
+PROFILES_TAGS = ("profiles",)
+
 def sync_decorator(func, timeout):
     def wrapper(*args, **kwargs):
         try:
@@ -49,6 +52,28 @@ def sync_decorator(func, timeout):
         except StopIteration:
             return res
     return wrapper
+
+def exists(namespace, tag, entity_name=""):
+    def decorator(func):
+        def wrapper(self, *args, **kwargs):
+            name = args[0]
+            if not name in self._list(namespace, tag):
+                print "%s %s is not uploaded" % (entity_name, name)
+                exit(0)
+            return func(self, *args, **kwargs)
+        return wrapper
+    return decorator
+
+def not_exists(namespace, tag, entity_name=""):
+    def decorator(func):
+        def wrapper(self, *args, **kwargs):
+            name = args[0]
+            if name in self._list(namespace, tag):
+                print "%s %s has been already uploaded" % (entity_name, name)
+                exit(0)
+            return func(self, *args, **kwargs)
+        return wrapper
+    return decorator
 
 class Sync_wrapper(object):
 
@@ -66,18 +91,19 @@ def print_json(data):
 class Storage(object):
 
     def __init__(self, hostname, port, timeout):
-        #self._st = Service("storage", hostname, port)
         self._st = Sync_wrapper(Service("storage", hostname, port), timeout)
 
-    def _list(self, namespace):
-        return self._st.perform_sync("list", namespace)
+    def _list(self, namespace, tags):
+        return self._st.perform_sync("find", namespace, tags)
 
     def apps(self):
         print "Currently uploaded apps:"
-        for app in self._list("manifests"):
-            print "\t" + app
+        for n, app in enumerate(self._list("manifests", APPS_TAGS)):
+            print "\t%d. %s" % (n + 1, app)
         exit(0)
 
+    @exists("manifests", APPS_TAGS, "manifest")
+    @exists("apps", APPS_TAGS, "app")
     def view(self, name):
         try:
             print_json(msgpack.unpackb(self._st.perform_sync("read", "manifests", name)))
@@ -86,8 +112,9 @@ class Storage(object):
             exit(1)
         exit(0)
 
-
-    def upload(self, manifest_path, archive_path, name):
+    @not_exists("manifests", APPS_TAGS, "manifest")
+    @not_exists("apps", APPS_TAGS, "Source of app")
+    def upload(self, name, manifest_path, archive_path):
         # Validate manifest
         try:
             with open(manifest_path,'rb') as manifest_file:
@@ -115,8 +142,8 @@ class Storage(object):
 
         # Upload
         try:
-            self._st.perform_sync("write", "manifests", name, manifest)
-            self._st.perform_sync("write", "apps", name, blob)
+            self._st.perform_sync("write", "manifests", name, manifest, APPS_TAGS)
+            self._st.perform_sync("write", "apps", name, blob, APPS_TAGS)
         except Exception as err:
             print "Error: unable to upload app. %s" % str(err)
             exit(1)
@@ -125,26 +152,29 @@ class Storage(object):
             exit(0)
 
     def remove(self, name):
-        if not name in self._list("apps"):
-            print "app %s is not uploaded" % name
-            exit(0)
         try:
             self._st.perform_sync("remove", "manifests", name)
+        except Exception as err:
+            print "Error: unable to remove manifest for app. %s" % str(err)
+        else:
+            print "The %s manifest of app has been successfully removed." % name
+
+        try:
             self._st.perform_sync("remove", "apps", name)
         except Exception as err:
-            print "Error: unable to remove app. %s" % str(err)
-            exit(1)
+            print "Error: unable to remove app source. %s" % str(err)
         else:
-            print "The %s app has been successfully removed." % name
-            exit(0)
+            print "The %s source of app has been successfully removed." % name
+        exit(0)
 
     def profiles(self):
         print "Currently uploaded profiles:"
-        for profile in self._list("profiles"):
-            print "\t" + profile
+        for n, profile in enumerate(self._list("profiles", PROFILES_TAGS)):
+            print  "\t%d. %s" %(n + 1, profile)
         exit(0)
 
-    def upload_profile(self, profile_path, name):
+    @not_exists("profiles", PROFILES_TAGS, "profile")
+    def upload_profile(self, name, profile_path):
         try:
             with open(profile_path,'rb') as profile_file:
                 profile = profile_file.read()
@@ -158,7 +188,7 @@ class Storage(object):
             exit(1)
 
         try:
-            self._st.perform_sync("write", "profiles", name, profile)
+            self._st.perform_sync("write", "profiles", name, profile, PROFILES_TAGS)
         except Exception as err:
             print "Error: unable to upload profile. %s" % str(err)
             exit(1)
@@ -166,10 +196,8 @@ class Storage(object):
             print "The %s profile has been successfully uploaded." % name
             exit(0)
 
+    @exists("profiles", PROFILES_TAGS, "profile")
     def remove_profile(self, name):
-        if not name in self._list("profiles"):
-            print "profile %s is not uploaded" % name
-            exit(0)
         try:
             self._st.perform_sync("remove", "profiles", name)
         except Exception as err:
@@ -179,6 +207,7 @@ class Storage(object):
             print "The %s profile has been successfully removed." % name
             exit(0)
 
+    @exists("profiles", PROFILES_TAGS, "profile")
     def view_profile(self, name):
         try:
             print_json(msgpack.unpackb(self._st.perform_sync("read", "profiles", name)))
@@ -189,10 +218,11 @@ class Storage(object):
 
     def runlists(self):
         print "Currently uploaded runlists:"
-        for profile in self._list("runlists"):
-            print "\t" + profile
+        for n, runlist in enumerate(self._list("runlists", RUNLISTS_TAGS)):
+            print "\t%d. %s" % (n + 1, runlist)
         exit(0)
 
+    @exists("runlists", RUNLISTS_TAGS, "runlist")
     def view_runlist(self, name):
         try:
             print_json(msgpack.unpackb(self._st.perform_sync("read", "runlists", name)))
@@ -201,7 +231,8 @@ class Storage(object):
             exit(1)
         exit(0)
 
-    def upload_runlist(self, runlist_path, name):
+    @not_exists("runlists", RUNLISTS_TAGS, "runlist")
+    def upload_runlist(self, name, runlist_path):
         try:
             with open(runlist_path,'rb') as runlist_file:
                 runlist = runlist_file.read()
@@ -215,7 +246,7 @@ class Storage(object):
             exit(1)
 
         try:
-            self._st.perform_sync("write", "runlists", name, runlist)
+            self._st.perform_sync("write", "runlists", name, runlist, RUNLISTS_TAGS)
         except Exception as err:
             print "Error: unable to upload runlist. %s" % str(err)
             exit(1)
@@ -223,10 +254,8 @@ class Storage(object):
             print "The %s runlist has been successfully uploaded." % name
             exit(0)
 
+    @exists("runlists", RUNLISTS_TAGS, "runlist")
     def remove_runlist(self, name):
-        if not name in self._list("runlists"):
-            print "runlist %s is not uploaded" % name
-            exit(0)
         try:
             self._st.perform_sync("remove", "runlists", name)
         except Exception as err:
@@ -252,8 +281,15 @@ def main():
         print "Empty action. Use %s" % '|'.join(ACTIONS)
         exit(0)
     else:
-        S = Storage(options.host, options.port, options.timeout)
+        try:
+            S = Storage(options.host, options.port, options.timeout)
+        except Exception as err:
+            if err.args[0] == errno.ECONNREFUSED:
+                print "Invalid cocaine-runtime endpoint: %s:%d" % (options.host, options.port)
+                exit(1)
+
         action = args[0]
+
         # Operation with applications
         if action == "app:list":
             S.apps()
@@ -266,7 +302,7 @@ def main():
 
         elif action == "app:upload":
             if options.name is not None and options.manifest is not None and options.package is not None:
-                S.upload(options.manifest, options.package, options.name)
+                S.upload(options.name, options.manifest, options.package)
             else:
                 print "Specify name, manifest, package of the app"
 
@@ -282,7 +318,7 @@ def main():
 
         elif action == "profile:upload":
             if options.name is not None and options.manifest is not None:
-                S.upload_profile(options.manifest, options.name)
+                S.upload_profile(options.name, options.manifest)
             else:
                 print "Specify the name of the profile and profile filepath"
 
@@ -304,7 +340,7 @@ def main():
 
         elif action == "runlist:upload":
             if options.name is not None and options.manifest is not None:
-                S.upload_runlist(options.manifest, options.name)
+                S.upload_runlist(options.name, options.manifest)
             else:
                 print "Specify the name of the runlist and profile filepath"
 
@@ -320,8 +356,7 @@ def main():
             else:
                 print "Empty runlist name"
         else:
-            print "Invalid action %s. Use %s" % (action, '|'.join(ACTIONS))
-
+            print "Invalid action %s. Use: \n\t%s" % (action, '\n\t'.join(ACTIONS))
             exit(0)
 
 if __name__ == "__main__":
