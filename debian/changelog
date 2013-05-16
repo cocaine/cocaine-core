@@ -6,6 +6,7 @@ cocaine-core (0.10.4~pre0) lucid; urgency=low
   * Storage API v2. The list() method was superseded by the find() method,
     which supports tags and indexing. New blobs can be tagged via a new
     parameter to write().
+  * Old names support for Filesystem and Chrono drivers.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Thu, 16 May 2013 21:05:20 +0400
 
