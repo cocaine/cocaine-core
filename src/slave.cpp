@@ -530,20 +530,30 @@ slave_t::on_output(const char* data, size_t size) {
 void
 slave_t::dump() {
     if(m_output_ring.empty()) {
-        COCAINE_LOG_INFO(m_log, "slave %s died in silence", m_id);
+        COCAINE_LOG_WARNING(m_log, "slave %s has died in silence", m_id);
         return;
     }
 
-    std::string key = cocaine::format("%s:%s", m_manifest.name, m_id);
+#if defined(__clang__) || defined(HAVE_GCC47)
+    auto now = std::chrono::steady_clock::now().time_since_epoch().count();
+#else
+    auto now = std::chrono::monotonic_clock::now().time_since_epoch().count();
+#endif
 
-    COCAINE_LOG_INFO(m_log, "slave %s dumping output to 'crashlogs/%s'", m_id, key);
+    std::string key = cocaine::format("%lld:%s", now, m_id);
+
+    COCAINE_LOG_INFO(m_log, "slave %s is dumping output to 'crashlogs/%s'", m_id, key);
 
     std::vector<std::string> dump;
     std::copy(m_output_ring.begin(), m_output_ring.end(), std::back_inserter(dump));
 
-    api::storage(m_context, "core")->put("crashlogs", key, dump, std::vector<std::string> {
-        m_manifest.name
-    });
+    try {
+        api::storage(m_context, "core")->put("crashlogs", key, dump, std::vector<std::string> {
+            m_manifest.name
+        });
+    } catch(const std::exception& e) {
+        COCAINE_LOG_ERROR(m_log, "slave %s is unable to save the crashlog - %s", m_id, e.what());
+    }
 }
 
 void
