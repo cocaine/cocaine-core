@@ -134,7 +134,7 @@ actor_t::terminate() {
 
 actor_t::endpoint_type
 actor_t::endpoint() const {
-    return std::make_tuple(
+    return endpoint_type(
         m_context.config.network.hostname,
         m_connectors.front().endpoint().port()
     );

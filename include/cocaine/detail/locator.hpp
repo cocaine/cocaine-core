@@ -87,11 +87,11 @@ class locator_t:
 
         typedef std::vector<
             std::pair<std::string, std::unique_ptr<actor_t>>
-        > service_list_t;
+        > local_service_list_t;
 
-        // NOTE: These are the instances of all the configured services, stored
-        // as a vector of pairs to preserve the initialization order.
-        service_list_t m_services;
+        // These are the instances of all the configured services, stored as a vector of pairs to
+        // preserve the initialization order.
+        local_service_list_t m_services;
 
         // Node's UUID in the cluster.
         unique_id_t m_id;
@@ -104,7 +104,16 @@ class locator_t:
         std::unique_ptr<io::socket<io::udp>> m_sink;
         std::unique_ptr<ev::io> m_sink_watcher;
 
+        // These are remote channels indexed by (hostname, id) tuples. The unique id is required to
+        // distinguish between different runtime instances on the same host.
         remote_map_t m_remotes;
+
+        typedef std::multimap<
+            std::string,
+            resolve_result_type
+        > remote_service_map_t;
+
+        remote_service_map_t m_remote_services;
 };
 
 } // namespace cocaine

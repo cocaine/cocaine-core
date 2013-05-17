@@ -103,7 +103,7 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
 locator_t::~locator_t() {
     m_remotes.clear();
 
-    for(service_list_t::reverse_iterator it = m_services.rbegin();
+    for(local_service_list_t::reverse_iterator it = m_services.rbegin();
         it != m_services.rend();
         ++it)
     {
@@ -148,7 +148,7 @@ namespace {
     inline
     resolve_result_type
     query(const std::unique_ptr<actor_t>& actor) {
-        return std::make_tuple(
+        return resolve_result_type(
             actor->endpoint(),
             1u,
             actor->dispatch().describe()
@@ -163,7 +163,13 @@ locator_t::resolve(const std::string& name) const {
     });
 
     if(it == m_services.end()) {
-        throw cocaine::error_t("the specified service is not available");
+        auto remote = m_remote_services.find(name);
+
+        if(remote != m_remote_services.end()) {
+            return remote->second;
+        } else {
+            throw cocaine::error_t("the specified service is not available");
+        }
     }
 
     return query(it->second);
@@ -291,6 +297,10 @@ locator_t::on_response(const remote_map_t::key_type& key, const io::message_t& m
             unpacked.get() >> dump;
 
             COCAINE_LOG_INFO(m_log, "discovered %llu services on node '%s'", dump.size(), uuid);
+
+            for(auto it = dump.begin(); it != dump.end(); ++it) {
+                m_remote_services.insert(*it);
+            }
 
             break;
         }
