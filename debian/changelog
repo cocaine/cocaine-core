@@ -1,4 +1,18 @@
-cocaine-core (0.10.4) lucid; urgency=low
+cocaine-core (0.10.5) unstable; urgency=low
+
+  * Release 10.5.
+  * Cocaine is no longer standalone. Multiple nodes can be linked together to
+    form a cloud, at last. For now, nodes share services only, apps are still
+    local. When an app requests a service which is not available locally, a
+    request is made to resolve the specified service remotely.
+  * ZeroMQ has gone completely.
+  * Bugfix: engines will now try to rebalance when the last slave dies and
+    there're still sessions in the queue.
+  * Bugfix: engines will now display the reason for app stop in the log.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 17 May 2013 23:09:11 +0400
+
+cocaine-core (0.10.4) unstable; urgency=low
 
   * Release 10.4.
   * Slave output capturing. When a slave crashes, its stdout and stderr output
