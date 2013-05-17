@@ -261,6 +261,7 @@ context_t::bootstrap() {
             locator->attach(
                 it->first,
                 std::unique_ptr<actor_t>(new actor_t(
+                    *this,
                     reactor,
                     get<api::service_t>(
                         it->second.type,
@@ -286,6 +287,7 @@ context_t::bootstrap() {
     };
 
     m_locator.reset(new actor_t(
+        *this,
         reactor,
         std::move(locator),
         endpoints

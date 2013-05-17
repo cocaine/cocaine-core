@@ -92,11 +92,6 @@ struct tcp {
             m_data.tcp4.sin_port = htons(port_);
         }
 
-        std::tuple<std::string, uint16_t>
-        tuple() const {
-            return std::make_tuple(address(), port());
-        }
-
         std::string
         string() const {
             return cocaine::format("%s:%d", address(), port());

@@ -80,9 +80,11 @@ namespace {
     };
 }
 
-actor_t::actor_t(std::shared_ptr<reactor_t> reactor,
+actor_t::actor_t(context_t& context,
+                 std::shared_ptr<reactor_t> reactor,
                  std::unique_ptr<dispatch_t>&& dispatch,
                  std::vector<tcp::endpoint> endpoints):
+    m_context(context),
     m_reactor(reactor),
     m_dispatch(std::move(dispatch)),
     m_terminate(m_reactor->native())
@@ -130,9 +132,12 @@ actor_t::terminate() {
     m_thread.reset();
 }
 
-tcp::endpoint
+actor_t::endpoint_type
 actor_t::endpoint() const {
-    return m_connectors.front().endpoint();
+    return std::make_tuple(
+        m_context.config.network.hostname,
+        m_connectors.front().endpoint().port()
+    );
 }
 
 dispatch_t&

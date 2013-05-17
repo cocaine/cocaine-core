@@ -120,9 +120,9 @@ void
 locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
     COCAINE_LOG_INFO(
         m_log,
-        "publishing service '%s' on '%s'",
+        "publishing service '%s' on :%s",
         name,
-        service->endpoint()
+        std::get<1>(service->endpoint())
     );
 
     // Start the service's thread.
@@ -149,7 +149,7 @@ namespace {
     resolve_result_type
     query(const std::unique_ptr<actor_t>& actor) {
         return std::make_tuple(
-            actor->endpoint().tuple(),
+            actor->endpoint(),
             1u,
             actor->dispatch().describe()
         );
@@ -225,7 +225,7 @@ locator_t::on_announce_event(ev::io&, int) {
 
         std::tie(hostname, uuid) = key;
 
-        COCAINE_LOG_INFO(m_log, "discovered node '%s' on '%s', querying...", uuid, hostname);
+        COCAINE_LOG_INFO(m_log, "discovered node '%s' on '%s'", uuid, hostname);
 
         std::shared_ptr<io::channel<io::socket<io::tcp>>> channel;
 
@@ -281,13 +281,16 @@ locator_t::on_response(const remote_map_t::key_type& key, const io::message_t& m
     switch(message.id()) {
         case io::event_traits<io::rpc::chunk>::id: {
             std::string chunk;
+            dump_result_type dump;
 
             message.as<io::rpc::chunk>(chunk);
 
             msgpack::unpacked unpacked;
             msgpack::unpack(&unpacked, chunk.data(), chunk.size());
 
-            COCAINE_LOG_INFO(m_log, "...discovered node '%s' services: %s", uuid, unpacked.get());
+            unpacked.get() >> dump;
+
+            COCAINE_LOG_INFO(m_log, "discovered %llu services on node '%s'", dump.size(), uuid);
 
             break;
         }
