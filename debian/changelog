@@ -1,4 +1,4 @@
-cocaine-core (0.10.4~pre1) lucid; urgency=low
+cocaine-core (0.10.4) lucid; urgency=low
 
   * Release 10.4.
   * Slave output capturing. When a slave crashes, its stdout and stderr output
