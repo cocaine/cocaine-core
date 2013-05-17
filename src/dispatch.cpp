@@ -68,7 +68,7 @@ dispatch_t::invoke(const io::message_t& message, const api::stream_ptr_t& upstre
         "processing type %d: %s message using slot '%s'",
         message.id(),
         message.args(),
-        slot->describe()
+        slot->name()
     );
 
     try {
@@ -79,7 +79,7 @@ dispatch_t::invoke(const io::message_t& message, const api::stream_ptr_t& upstre
             "unable to process type %d: %s message using slot '%s' - %s",
             message.id(),
             message.args(),
-            slot->describe(),
+            slot->name(),
             e.what()
         );
 
@@ -94,7 +94,7 @@ dispatch_t::describe() {
     std::lock_guard<std::mutex> lock(m_mutex);
 
     for(auto it = m_slots.begin(); it != m_slots.end(); ++it) {
-        result[it->first] = it->second->describe();
+        result[it->first] = it->second->name();
     }
 
     return result;

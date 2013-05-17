@@ -147,7 +147,7 @@ namespace {
 namespace {
     struct ignore {
         void
-        operator()(const std::error_code& /* ec */) {
+        operator()(const std::error_code& /* ec */) const {
             // Do nothing.
         }
     };
@@ -164,14 +164,10 @@ engine_t::engine_t(context_t& context,
     m_profile(profile),
     m_state(states::stopped),
     m_reactor(reactor),
-    m_gc_timer(m_reactor->native()),
-    m_termination_timer(m_reactor->native()),
     m_notification(m_reactor->native()),
+    m_termination_timer(m_reactor->native()),
     m_next_id(1)
 {
-    m_gc_timer.set<engine_t, &engine_t::on_cleanup>(this);
-    m_gc_timer.start(5.0f, 5.0f);
-
     m_notification.set<engine_t, &engine_t::on_notification>(this);
     m_notification.start();
 
@@ -223,9 +219,7 @@ engine_t::wake() {
 }
 
 std::shared_ptr<api::stream_t>
-engine_t::enqueue(const api::event_t& event,
-                  const std::shared_ptr<api::stream_t>& upstream)
-{
+engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream) {
     auto session = std::make_shared<session_t>(
         m_next_id++,
         event,
@@ -259,50 +253,48 @@ engine_t::enqueue(const api::event_t& event,
 }
 
 void
-engine_t::erase(const unique_id_t& uuid,
-                int code,
-                const std::string& /* reason */)
-{
-    pool_map_t::iterator it = m_pool.find(uuid);
-
-    BOOST_ASSERT(it != m_pool.end());
-
-    m_pool.erase(it);
+engine_t::erase(const unique_id_t& uuid, int code, const std::string& reason) {
+    m_pool.erase(uuid);
 
     if(code == rpc::terminate::abnormal) {
-        COCAINE_LOG_ERROR(m_log, "the app seems to be broken - stopping");
+        COCAINE_LOG_ERROR(m_log, "the app seems to be broken - %s", reason);
         migrate(states::broken);
     }
 
     if(m_state != states::running && m_pool.empty()) {
         // If it was the last slave, shut the engine down.
         stop();
+    } else {
+        wake();
     }
 }
 
 void
 engine_t::on_connection(const std::shared_ptr<io::socket<local>>& socket_) {
+    auto fd = socket_->fd();
     auto channel_ = std::make_shared<channel<io::socket<local>>>(*m_reactor, socket_);
 
     channel_->rd->bind(
-        std::bind(&engine_t::on_handshake,  this, channel_, _1),
-        std::bind(&engine_t::on_disconnect, this, channel_, _1)
+        std::bind(&engine_t::on_handshake,  this, fd, _1),
+        std::bind(&engine_t::on_disconnect, this, fd, _1)
     );
 
     channel_->wr->bind(
-        std::bind(&engine_t::on_disconnect, this, channel_, _1)
+        std::bind(&engine_t::on_disconnect, this, fd, _1)
     );
 
     COCAINE_LOG_DEBUG(m_log, "initiating a slave handshake on fd: %d", socket_->fd());
 
-    m_backlog.insert(channel_);
+    m_backlog[fd] = channel_;
 }
 
 void
-engine_t::on_handshake(const std::shared_ptr<channel<io::socket<local>>>& channel_,
-                       const message_t& message)
-{
+engine_t::on_handshake(int fd, const message_t& message) {
     unique_id_t uuid(uninitialized);
+    backlog_t::mapped_type channel_ = m_backlog[fd];
+
+    // Pop the channel.
+    m_backlog.erase(fd);
 
     try {
         std::string blob;
@@ -310,8 +302,6 @@ engine_t::on_handshake(const std::shared_ptr<channel<io::socket<local>>>& channe
         uuid = unique_id_t(blob);
     } catch(const cocaine::error_t& e) {
         COCAINE_LOG_WARNING(m_log, "dropping an invalid handshake message");
-        channel_->rd->unbind();
-        channel_->wr->unbind();
         return;
     }
 
@@ -319,12 +309,8 @@ engine_t::on_handshake(const std::shared_ptr<channel<io::socket<local>>>& channe
 
     if(it == m_pool.end()) {
         COCAINE_LOG_WARNING(m_log, "dropping a handshake from an unknown slave %s", uuid);
-        channel_->rd->unbind();
-        channel_->wr->unbind();
         return;
     }
-
-    m_backlog.erase(channel_);
 
     COCAINE_LOG_DEBUG(m_log, "slave %s connected", uuid);
 
@@ -334,9 +320,7 @@ engine_t::on_handshake(const std::shared_ptr<channel<io::socket<local>>>& channe
 }
 
 void
-engine_t::on_disconnect(const std::shared_ptr<channel<io::socket<local>>>& channel_,
-                        const std::error_code& ec)
-{
+engine_t::on_disconnect(int fd, const std::error_code& ec) {
     COCAINE_LOG_INFO(
         m_log,
         "slave disconnected during the handshake - [%d] %s",
@@ -344,10 +328,7 @@ engine_t::on_disconnect(const std::shared_ptr<channel<io::socket<local>>>& chann
         ec.message()
     );
 
-    channel_->rd->unbind();
-    channel_->wr->unbind();
-
-    m_backlog.erase(channel_);
+    m_backlog.erase(fd);
 }
 
 namespace {
@@ -372,8 +353,7 @@ namespace {
 
             m_accumulator(load);
 
-            return slave.second->state() == slave_t::states::active &&
-                   load;
+            return slave.second->active() && load;
         }
 
         size_t
@@ -440,37 +420,6 @@ engine_t::on_control(const message_t& message) {
 }
 
 void
-engine_t::on_cleanup(ev::timer&, int) {
-    typedef std::vector<
-        pool_map_t::key_type
-    > corpse_list_t;
-
-    corpse_list_t corpses;
-
-    for(pool_map_t::iterator it = m_pool.begin(); it != m_pool.end(); ++it) {
-        if(it->second->state() == slave_t::states::dead) {
-            corpses.emplace_back(it->first);
-        }
-    }
-
-    if(!corpses.empty()) {
-        for(corpse_list_t::iterator it = corpses.begin();
-            it != corpses.end();
-            ++it)
-        {
-            m_pool.erase(*it);
-        }
-
-        COCAINE_LOG_DEBUG(
-            m_log,
-            "recycled %llu dead %s",
-            corpses.size(),
-            corpses.size() == 1 ? "slave" : "slaves"
-        );
-    }
-}
-
-void
 engine_t::on_notification(ev::async&, int) {
     pump();
     balance();
@@ -486,7 +435,7 @@ engine_t::on_termination(ev::timer&, int) {
 }
 
 namespace {
-    struct load_t {
+    struct load {
         template<class T>
         bool
         operator()(const T& lhs, const T& rhs) const {
@@ -494,12 +443,11 @@ namespace {
         }
     };
 
-    struct available_t {
+    struct available {
         template<class T>
         bool
         operator()(const T& slave) const {
-            return slave.second->state() == slave_t::states::active &&
-                   slave.second->load() < max;
+            return slave.second->active() && slave.second->load() < max;
         }
 
         const size_t max;
@@ -508,11 +456,7 @@ namespace {
     template<class It, class Compare, class Predicate>
     inline
     It
-    min_element_if(It first,
-                   It last,
-                   Compare compare,
-                   Predicate predicate)
-    {
+    min_element_if(It first, It last, Compare compare, Predicate predicate) {
         while(first != last && !predicate(*first)) {
             ++first;
         }
@@ -536,12 +480,9 @@ namespace {
 void
 engine_t::pump() {
     while(!m_queue.empty()) {
-        pool_map_t::iterator it = min_element_if(
-            m_pool.begin(),
-            m_pool.end(),
-            load_t(),
-            available_t{m_profile.concurrency}
-        );
+        auto it = min_element_if(m_pool.begin(), m_pool.end(), load(), available {
+            m_profile.concurrency
+        });
 
         if(it == m_pool.end()) {
             return;
@@ -582,7 +523,7 @@ engine_t::pump() {
             }
         } while(!session);
 
-        // Attach the session to the worker.
+        // Attach the session to the slave.
         it->second->assign(std::move(session));
     }
 }
@@ -666,30 +607,27 @@ engine_t::migrate(states target) {
     // otherwise, the engine should wait for the specified timeout for slaves
     // to finish their sessions and, if they are still active, force the termination.
 
-    for(pool_map_t::iterator it = m_pool.begin();
-        it != m_pool.end();
-        ++it)
-    {
-        if(it->second->state() == slave_t::states::active) {
+    for(auto it = m_pool.begin(); it != m_pool.end(); ++it) {
+        if(it->second->active()) {
             it->second->stop();
             ++pending;
         }
     }
 
-    if(pending) {
-        COCAINE_LOG_INFO(
-            m_log,
-            "waiting for %d active %s to terminate, timeout: %.02f seconds",
-            pending,
-            pending == 1 ? "slave" : "slaves",
-            m_profile.termination_timeout
-        );
-
-        m_termination_timer.set<engine_t, &engine_t::on_termination>(this);
-        m_termination_timer.start(m_profile.termination_timeout);
-    } else {
-        stop();
+    if(!pending) {
+        return stop();
     }
+
+    COCAINE_LOG_INFO(
+        m_log,
+        "waiting for %d active %s to terminate, timeout: %.02f seconds",
+        pending,
+        pending == 1 ? "slave" : "slaves",
+        m_profile.termination_timeout
+    );
+
+    m_termination_timer.set<engine_t, &engine_t::on_termination>(this);
+    m_termination_timer.start(m_profile.termination_timeout);
 }
 
 void

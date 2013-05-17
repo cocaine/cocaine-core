@@ -18,17 +18,18 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/essentials/module.hpp"
-#include "cocaine/essentials/drivers/fs.hpp"
-#include "cocaine/essentials/drivers/time.hpp"
-#include "cocaine/essentials/isolates/process.hpp"
-#include "cocaine/essentials/loggers/files.hpp"
-#include "cocaine/essentials/loggers/stdout.hpp"
-#include "cocaine/essentials/loggers/syslog.hpp"
-#include "cocaine/essentials/services/logging.hpp"
-#include "cocaine/essentials/services/node.hpp"
-#include "cocaine/essentials/services/storage.hpp"
-#include "cocaine/essentials/storages/files.hpp"
+#include "cocaine/detail/drivers/fs.hpp"
+#include "cocaine/detail/drivers/time.hpp"
+#include "cocaine/detail/isolates/process.hpp"
+#include "cocaine/detail/loggers/files.hpp"
+#include "cocaine/detail/loggers/stdout.hpp"
+#include "cocaine/detail/loggers/syslog.hpp"
+#include "cocaine/detail/services/logging.hpp"
+#include "cocaine/detail/services/node.hpp"
+#include "cocaine/detail/services/storage.hpp"
+#include "cocaine/detail/storages/files.hpp"
+
+#include "cocaine/detail/essentials.hpp"
 
 void
 cocaine::essentials::initialize(api::repository_t& repository) {

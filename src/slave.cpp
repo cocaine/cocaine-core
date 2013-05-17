@@ -35,18 +35,23 @@
 
 #include "cocaine/rpc/channel.hpp"
 
+#include <sstream>
+
 #include <fcntl.h>
 #include <unistd.h>
 
 using namespace cocaine;
 using namespace cocaine::engine;
+using namespace cocaine::engine::detail;
 using namespace cocaine::io;
 
 using namespace std::placeholders;
 
 pipe_t::pipe_t(endpoint_type endpoint):
     m_pipe(endpoint)
-{ }
+{
+    ::fcntl(m_pipe, F_SETFL, O_NONBLOCK);
+}
 
 pipe_t::~pipe_t() {
     ::close(m_pipe);
@@ -121,6 +126,8 @@ slave_t::slave_t(context_t& context,
         m_profile.isolate.args
     );
 
+    COCAINE_LOG_DEBUG(m_log, "slave %s is spawning '%s'", m_id, m_manifest.slave);
+
     typedef std::map<std::string, std::string> string_map_t;
 
     string_map_t args;
@@ -138,38 +145,39 @@ slave_t::slave_t(context_t& context,
         throw std::system_error(errno, std::system_category(), "unable to create an output pipe");
     }
 
-    // Our end.
-    ::fcntl(pipes[0], F_SETFD, FD_CLOEXEC);
-    ::fcntl(pipes[0], F_SETFL, O_NONBLOCK);
-
-    // Slave's end.
-    ::fcntl(pipes[1], F_SETFD, FD_CLOEXEC);
-
-    COCAINE_LOG_DEBUG(m_log, "slave %s spawning '%s'", m_id, m_manifest.slave);
+    // Mark both ends of the pipe as close-on-exec.
+    for(auto it = pipes.begin(); it != pipes.end(); ++it) {
+        ::fcntl(*it, F_SETFD, FD_CLOEXEC);
+    }
 
     try {
         m_handle = isolate->spawn(m_manifest.slave, args, environment, pipes[1]);
     } catch(...) {
-        ::close(pipes[0]);
-        ::close(pipes[1]);
-
+        std::for_each(pipes.begin(), pipes.end(), ::close);
         throw;
     }
 
-    m_pipe.reset(new readable_stream<pipe_t>(reactor, pipes[0]));
+    // This end of the pipe is already cloned by the isolate, so we can safely close it.
+    ::close(pipes[1]);
 
-    m_pipe->bind(
+    m_output_pipe.reset(new readable_stream<pipe_t>(reactor, pipes[0]));
+
+    m_output_pipe->bind(
         std::bind(&slave_t::on_output, this, _1, _2),
         ignore()
     );
-
-    ::close(pipes[1]);
 }
 
 slave_t::~slave_t() {
-    if(m_state != states::dead) {
-        terminate();
-    }
+    BOOST_ASSERT(m_state == states::inactive);
+
+    m_heartbeat_timer.stop();
+    m_idle_timer.stop();
+
+    m_handle->terminate();
+    m_handle.reset();
+
+    COCAINE_LOG_DEBUG(m_log, "slave %s has been terminated", m_id);
 }
 
 void
@@ -199,10 +207,8 @@ slave_t::assign(std::shared_ptr<session_t>&& session) {
         session->id
     );
 
-    session->attach(m_channel->wr->stream());
-
-    m_sessions.insert(
-        std::make_pair(session->id, std::move(session))
+    m_sessions.insert(std::make_pair(session->id, std::move(session))).first->second->attach(
+        m_channel->wr->stream()
     );
 
     if(m_idle_timer.is_active()) {
@@ -212,18 +218,21 @@ slave_t::assign(std::shared_ptr<session_t>&& session) {
 
 void
 slave_t::stop() {
-    BOOST_ASSERT(m_channel);
-    m_channel->wr->write<rpc::terminate>(0UL, rpc::terminate::normal, "shutdown");
+    BOOST_ASSERT(m_state == states::active);
+
+    m_state = states::inactive;
+
+    m_channel->wr->write<rpc::terminate>(0UL, rpc::terminate::normal, "engine shutdown");
 }
 
 void
 slave_t::on_message(const message_t& message) {
     COCAINE_LOG_DEBUG(
         m_log,
-        "received type %d message in session %d from slave %s",
+        "slave %s received type %d message in session %d",
+        m_id,
         message.id(),
-        message.band(),
-        m_id
+        message.band()
     );
 
     switch(message.id()) {
@@ -263,7 +272,7 @@ slave_t::on_message(const message_t& message) {
         case event_traits<rpc::choke>::id: {
             on_choke(message.band());
 
-            // This is now a potentially free worker, so pump the queue.
+            // This is now a potentially free slave, so pump the queue.
             m_engine.wake();
 
             break;
@@ -272,10 +281,10 @@ slave_t::on_message(const message_t& message) {
         default:
             COCAINE_LOG_WARNING(
                 m_log,
-                "dropping unknown type %d message in session %d from slave %s",
+                "slave %s dropped unknown type %d message in session %d",
+                m_id,
                 message.id(),
-                message.band(),
-                m_id
+                message.band()
             );
     }
 }
@@ -306,6 +315,8 @@ slave_t::on_disconnect(const std::error_code& ec) {
 
     m_state = states::inactive;
 
+    COCAINE_LOG_WARNING(m_log, "slave %s dropping %llu sessions", m_id, m_sessions.size());
+
     std::for_each(m_sessions.begin(), m_sessions.end(), detach_with {
         resource_error,
         "the session has been aborted"
@@ -314,7 +325,7 @@ slave_t::on_disconnect(const std::error_code& ec) {
     m_sessions.clear();
 
     dump();
-    terminate();
+    terminate(rpc::terminate::code::abnormal, "unexpectedly disconnected");
 }
 
 void
@@ -348,7 +359,7 @@ slave_t::on_ping() {
 
     COCAINE_LOG_DEBUG(
         m_log,
-        "slave %s resetting heartbeat timeout to %.02f seconds",
+        "slave %s is resetting heartbeat timeout to %.02f seconds",
         m_id,
         m_profile.heartbeat_timeout
     );
@@ -370,6 +381,8 @@ slave_t::on_death(int code, const std::string& reason) {
 
     m_state = states::inactive;
 
+    COCAINE_LOG_WARNING(m_log, "slave %s dropping %llu sessions", m_id, m_sessions.size());
+
     std::for_each(m_sessions.begin(), m_sessions.end(), detach_with {
         resource_error,
         "the session has been aborted"
@@ -377,9 +390,7 @@ slave_t::on_death(int code, const std::string& reason) {
 
     m_sessions.clear();
 
-    m_reactor.post(
-        std::bind(&engine_t::erase, std::ref(m_engine), m_id, code, reason)
-    );
+    terminate(code, reason);
 }
 
 void
@@ -464,14 +475,11 @@ slave_t::on_timeout(ev::timer&, int) {
             break;
 
         case states::active:
-            COCAINE_LOG_WARNING(
-                m_log,
-                "slave %s has timed out, dropping %llu sessions",
-                m_id,
-                m_sessions.size()
-            );
+            COCAINE_LOG_WARNING(m_log, "slave %s has timed out", m_id);
 
             m_state = states::inactive;
+
+            COCAINE_LOG_WARNING(m_log, "slave %s dropping %llu sessions", m_id, m_sessions.size());
 
             std::for_each(m_sessions.begin(), m_sessions.end(), detach_with {
                 timeout_error,
@@ -485,14 +493,10 @@ slave_t::on_timeout(ev::timer&, int) {
         case states::inactive:
             COCAINE_LOG_WARNING(m_log, "slave %s has failed to deactivate", m_id);
             break;
-
-        case states::dead:
-            COCAINE_LOG_WARNING(m_log, "slave %s is being overkilled", m_id);
-            break;
     }
 
     dump();
-    terminate();
+    terminate(rpc::terminate::code::normal, "timed out");
 }
 
 void
@@ -502,9 +506,9 @@ slave_t::on_idle(ev::timer&, int) {
 
     COCAINE_LOG_DEBUG(m_log, "slave %s is idle, deactivating", m_id);
 
-    m_channel->wr->write<rpc::terminate>(0UL, rpc::terminate::normal, "idle");
-
     m_state = states::inactive;
+
+    m_channel->wr->write<rpc::terminate>(0UL, rpc::terminate::normal, "idle");
 }
 
 size_t
@@ -557,21 +561,14 @@ slave_t::dump() {
 }
 
 void
-slave_t::terminate() {
-    BOOST_ASSERT(m_state != states::dead);
+slave_t::terminate(int code, const std::string& reason) {
+    BOOST_ASSERT(m_state == states::inactive);
     BOOST_ASSERT(m_sessions.empty());
-
-    COCAINE_LOG_DEBUG(m_log, "slave %s has been terminated", m_id);
-
-    m_heartbeat_timer.stop();
-    m_idle_timer.stop();
-
-    m_handle->terminate();
-    m_handle.reset();
 
     // Closes our end of the socket.
     m_channel.reset();
 
-    m_state = states::dead;
+    // Schedule the termination.
+    m_reactor.post(std::bind(&engine_t::erase, std::ref(m_engine), m_id, code, reason));
 }
 

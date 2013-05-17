@@ -80,9 +80,11 @@ namespace {
     };
 }
 
-actor_t::actor_t(const std::shared_ptr<reactor_t>& reactor,
+actor_t::actor_t(context_t& context,
+                 std::shared_ptr<reactor_t> reactor,
                  std::unique_ptr<dispatch_t>&& dispatch,
-                 uint16_t port):
+                 std::vector<tcp::endpoint> endpoints):
+    m_context(context),
     m_reactor(reactor),
     m_dispatch(std::move(dispatch)),
     m_terminate(m_reactor->native())
@@ -90,23 +92,18 @@ actor_t::actor_t(const std::shared_ptr<reactor_t>& reactor,
     m_terminate.set<actor_t, &actor_t::on_terminate>(this);
     m_terminate.start();
 
-    tcp::endpoint endpoint("127.0.0.1", port);
+    for(auto it = endpoints.begin(); it != endpoints.end(); ++it) {
+        try {
+            m_connectors.emplace_back(
+                *m_reactor,
+                std::unique_ptr<acceptor<tcp>>(new acceptor<tcp>(*it))
+            );
+        } catch(const cocaine::io_error_t& e) {
+            throw configuration_error_t("unable to bind at '%s' - %s - %s", *it, e.what(), e.describe());
+        }
 
-    try {
-        m_connector.reset(new connector<acceptor<tcp>>(
-            *m_reactor,
-            std::unique_ptr<acceptor<tcp>>(new acceptor<tcp>(endpoint)))
-        );
-    } catch(const cocaine::io_error_t& e) {
-        throw configuration_error_t(
-            "unable to bind at '%s' - %s - %s",
-            endpoint,
-            e.what(),
-            e.describe()
-        );
+        m_connectors.back().bind(std::bind(&actor_t::on_connection, this, _1));
     }
-
-    m_connector->bind(std::bind(&actor_t::on_connection, this, _1));
 }
 
 actor_t::~actor_t() {
@@ -135,9 +132,12 @@ actor_t::terminate() {
     m_thread.reset();
 }
 
-tcp::endpoint
+actor_t::endpoint_type
 actor_t::endpoint() const {
-    return m_connector->endpoint();
+    return endpoint_type(
+        m_context.config.network.hostname,
+        m_connectors.front().endpoint().port()
+    );
 }
 
 dispatch_t&

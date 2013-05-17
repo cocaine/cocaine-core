@@ -45,9 +45,7 @@ struct tcp {
             std::memset(&m_data, 0, sizeof(m_data));
         }
 
-        endpoint(const std::string& address,
-                 uint16_t port)
-        {
+        endpoint(const std::string& address, uint16_t port) {
             std::memset(&m_data, 0, sizeof(m_data));
 
             m_data.tcp4.sin_family = tcp::family();
@@ -89,6 +87,11 @@ struct tcp {
             return ntohs(m_data.tcp4.sin_port);
         }
 
+        void
+        port(uint16_t port_) {
+            m_data.tcp4.sin_port = htons(port_);
+        }
+
         std::string
         string() const {
             return cocaine::format("%s:%d", address(), port());
@@ -96,9 +99,7 @@ struct tcp {
 
         friend
         std::ostream&
-        operator<<(std::ostream& stream,
-                   const tcp::endpoint& endpoint)
-        {
+        operator<<(std::ostream& stream, const tcp::endpoint& endpoint) {
             return stream << endpoint.string();
         }
 

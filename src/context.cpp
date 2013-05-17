@@ -24,9 +24,8 @@
 #include "cocaine/api/service.hpp"
 
 #include "cocaine/detail/actor.hpp"
+#include "cocaine/detail/essentials.hpp"
 #include "cocaine/detail/locator.hpp"
-
-#include "cocaine/essentials/module.hpp"
 
 #include <cerrno>
 #include <cstring>
@@ -72,18 +71,7 @@ namespace {
     }
 }
 
-config_t::config_t():
-    standalone(false)
-{
-    path.config  = "";
-    path.plugins = defaults::plugins_path;
-    path.runtime = defaults::runtime_path;
-    path.spool   = defaults::spool_path;
-}
-
-config_t::config_t(const std::string& config_path):
-    standalone(false)
-{
+config_t::config_t(const std::string& config_path) {
     path.config = config_path;
 
     const auto status = fs::status(path.config);
@@ -124,6 +112,9 @@ config_t::config_t(const std::string& config_path):
     validate_path(path.spool);
 
     // I/O configuration
+
+    network.aggregate = root.get("aggregate", false).asBool();
+    network.group = root.get("group", "").asString();
 
     char hostname[256];
 
@@ -215,10 +206,6 @@ context_t::context_t(config_t config_, const std::string& logger):
         it->second.args
     );
 
-    if(config.standalone) {
-        return;
-    }
-
     bootstrap();
 }
 
@@ -237,21 +224,11 @@ context_t::context_t(config_t config_, std::unique_ptr<logging::logger_concept_t
     // become invalid at the calling site after this call.
     m_logger = std::move(logger);
 
-    if(config.standalone) {
-        return;
-    }
-
     bootstrap();
 }
 
 context_t::~context_t() {
-    if(config.standalone) {
-        return;
-    }
-
-    auto blog = std::unique_ptr<logging::log_t>(
-        new logging::log_t(*this, "bootstrap")
-    );
+    auto blog = std::unique_ptr<logging::log_t>(new logging::log_t(*this, "bootstrap"));
 
     COCAINE_LOG_INFO(blog, "stopping the service locator");
 
@@ -261,13 +238,7 @@ context_t::~context_t() {
 
 void
 context_t::bootstrap() {
-    auto blog = std::unique_ptr<logging::log_t>(
-        new logging::log_t(*this, "bootstrap")
-    );
-
-    auto locator = std::unique_ptr<locator_t>(
-        new locator_t(*this)
-    );
+    auto blog = std::unique_ptr<logging::log_t>(new logging::log_t(*this, "bootstrap"));
 
     COCAINE_LOG_INFO(
         blog,
@@ -276,13 +247,21 @@ context_t::bootstrap() {
         config.services.size() == 1 ? "service" : "services"
     );
 
+    auto reactor = std::make_shared<io::reactor_t>();
+    auto locator = std::unique_ptr<locator_t>(new locator_t(*this, *reactor));
+
     for(auto it = config.services.begin(); it != config.services.end(); ++it) {
         auto reactor = std::make_shared<io::reactor_t>();
+
+        std::vector<io::tcp::endpoint> endpoints = {
+            { "0.0.0.0", 0 }
+        };
 
         try {
             locator->attach(
                 it->first,
                 std::unique_ptr<actor_t>(new actor_t(
+                    *this,
                     reactor,
                     get<api::service_t>(
                         it->second.type,
@@ -290,7 +269,8 @@ context_t::bootstrap() {
                         *reactor,
                         cocaine::format("service/%s", it->first),
                         it->second.args
-                    )
+                    ),
+                    endpoints
                 )
             ));
         } catch(const std::exception& e) {
@@ -302,10 +282,15 @@ context_t::bootstrap() {
 
     COCAINE_LOG_INFO(blog, "starting the service locator");
 
+    std::vector<io::tcp::endpoint> endpoints = {
+        { "0.0.0.0", defaults::locator_port }
+    };
+
     m_locator.reset(new actor_t(
-        std::make_shared<io::reactor_t>(),
+        *this,
+        reactor,
         std::move(locator),
-        defaults::locator_port
+        endpoints
     ));
 
     m_locator->run();

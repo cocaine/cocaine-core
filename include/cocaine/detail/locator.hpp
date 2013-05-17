@@ -22,18 +22,29 @@
 #define COCAINE_SERVICE_LOCATOR_HPP
 
 #include "cocaine/common.hpp"
+
+#include "cocaine/detail/unique_id.hpp"
+
 #include "cocaine/dispatch.hpp"
 #include "cocaine/messages.hpp"
+
+namespace ev {
+    struct io;
+    struct timer;
+}
 
 namespace cocaine {
 
 class actor_t;
 
+typedef io::event_traits<io::locator::resolve>::result_type resolve_result_type;
+typedef io::event_traits<io::locator::dump>::result_type dump_result_type;
+
 class locator_t:
     public dispatch_t
 {
     public:
-        locator_t(context_t& context);
+        locator_t(context_t& context, io::reactor_t& reactor);
 
         virtual
        ~locator_t();
@@ -42,20 +53,67 @@ class locator_t:
         attach(const std::string& name, std::unique_ptr<actor_t>&& service);
 
     private:
-        auto
-        resolve(const std::string& name) const
-            -> tuple::fold<io::locator::resolve::result_type>::type;
+        resolve_result_type
+        resolve(const std::string& name) const;
+
+        dump_result_type
+        dump() const;
+
+        // Cluster discovery
+
+        void
+        on_announce_event(ev::io&, int);
+
+        void
+        on_announce_timer(ev::timer&, int);
+
+        typedef std::map<
+            std::tuple<std::string, std::string>,
+            std::shared_ptr<io::channel<io::socket<io::tcp>>>
+        > remote_map_t;
+
+        void
+        on_response(const remote_map_t::key_type& key, const io::message_t& message);
+
+        void
+        on_shutdown(const remote_map_t::key_type& key, const std::error_code& ec);
 
     private:
+        context_t& m_context;
         std::unique_ptr<logging::log_t> m_log;
+
+        // For future cluster locator interconnections.
+        io::reactor_t& m_reactor;
 
         typedef std::vector<
             std::pair<std::string, std::unique_ptr<actor_t>>
-        > service_list_t;
+        > local_service_list_t;
 
-        // NOTE: These are the instances of all the configured services, stored
-        // as a vector of pairs to preserve the initialization order.
-        service_list_t m_services;
+        // These are the instances of all the configured services, stored as a vector of pairs to
+        // preserve the initialization order.
+        local_service_list_t m_services;
+
+        // Node's UUID in the cluster.
+        unique_id_t m_id;
+
+        // Announce emitter.
+        std::unique_ptr<io::socket<io::udp>> m_announce;
+        std::unique_ptr<ev::timer> m_announce_timer;
+
+        // Announce receiver.
+        std::unique_ptr<io::socket<io::udp>> m_sink;
+        std::unique_ptr<ev::io> m_sink_watcher;
+
+        // These are remote channels indexed by (hostname, id) tuples. The unique id is required to
+        // distinguish between different runtime instances on the same host.
+        remote_map_t m_remotes;
+
+        typedef std::multimap<
+            std::string,
+            resolve_result_type
+        > remote_service_map_t;
+
+        remote_service_map_t m_remote_services;
 };
 
 } // namespace cocaine

@@ -122,7 +122,7 @@ namespace detail {
         typename result_of<F>::type
         apply(const F& callable, ArgumentIterator it, ArgumentIterator end, Args&&... args) {
             typedef typename mpl::deref<It>::type argument_type;
-            typename unwrap_type<argument_type>::type argument;
+            typename io::detail::unwrap_type<argument_type>::type argument;
 
             it = unpack<argument_type>::apply(it, end, argument);
 
@@ -161,7 +161,7 @@ struct invoke {
     apply(const F& callable, const msgpack::object& unpacked) {
         const size_t required = mpl::count_if<
             Sequence,
-            mpl::lambda<detail::is_required<mpl::arg<1>>>
+            mpl::lambda<io::detail::is_required<mpl::arg<1>>>
         >::value;
 
         if(unpacked.type != msgpack::type::ARRAY) {
@@ -221,9 +221,8 @@ struct slot_concept_t {
     operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) = 0;
 
 public:
-    virtual
     std::string
-    describe() const {
+    name() const {
         return m_name;
     }
 
@@ -237,7 +236,7 @@ struct basic_slot:
 {
     typedef typename mpl::transform<
         Sequence,
-        mpl::lambda<detail::unwrap_type<mpl::arg<1>>>
+        mpl::lambda<io::detail::unwrap_type<mpl::arg<1>>>
     >::type sequence_type;
 
     typedef typename ft::function_type<

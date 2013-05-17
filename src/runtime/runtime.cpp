@@ -24,7 +24,7 @@
 #include "cocaine/asio/reactor.hpp"
 
 #ifndef __APPLE__
-    #include "cocaine/runtime/pid_file.hpp"
+    #include "cocaine/detail/runtime/pid_file.hpp"
 #endif
 
 #ifdef __linux__

@@ -25,8 +25,11 @@
 #include <boost/mpl/contains.hpp>
 #include <boost/mpl/distance.hpp>
 #include <boost/mpl/find.hpp>
+#include <boost/mpl/is_sequence.hpp>
 #include <boost/mpl/joint_view.hpp>
 #include <boost/mpl/list.hpp>
+
+#include "cocaine/tuples.hpp"
 
 namespace cocaine { namespace io {
 
@@ -79,25 +82,47 @@ namespace detail {
         >::type type;
     };
 
-    #define DEPENDENT_TYPE(name, default)               \
-        template<class E, class = void>                 \
-        struct name {                                   \
-            typedef default type;                       \
-        };                                              \
-                                                        \
-        template<class E>                               \
-        struct name<                                    \
-            E,                                          \
-            typename depend<typename E::name>::type     \
-        >                                               \
-        {                                               \
-            typedef typename E::name type;              \
+    template<class Event, class = void>
+    struct tuple_type {
+        typedef mpl::list<> type;
+    };
+
+    template<class Event>
+    struct tuple_type<
+        Event,
+        typename depend<typename Event::tuple_type>::type
+    >
+    {
+        typedef typename Event::tuple_type type;
+    };
+
+    template<class Event, class = void>
+    struct result_type {
+        typedef void type;
+    };
+
+    template<class Event>
+    struct result_type<
+        Event,
+        typename depend<typename Event::result_type>::type
+    >
+    {
+        template<class Result, class = void>
+        struct fold {
+            typedef Result type;
         };
 
-    DEPENDENT_TYPE(tuple_type,  mpl::list<>)
-    DEPENDENT_TYPE(result_type, void)
+        template<class Result>
+        struct fold<
+            Result,
+            typename std::enable_if<mpl::is_sequence<Result>::value>::type
+        >
+        {
+            typedef typename tuple::fold<Result>::type type;
+        };
 
-    #undef DEPENDENT_TYPE
+        typedef typename fold<typename Event::result_type>::type type;
+    };
 }
 
 template<class Event>

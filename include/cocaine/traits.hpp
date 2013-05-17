@@ -55,7 +55,7 @@ struct type_traits {
     }
 };
 
-// NOTE: This magic specialization allows to pack string literals. Unpacking is intentionally
+// This magic specialization allows to pack string literals. Unpacking is intentionally
 // prohibited as it might force us to silently drop characters if the buffer is not long enough.
 
 template<size_t N>
@@ -69,7 +69,7 @@ struct type_traits<char[N]> {
     }
 };
 
-// NOTE: This another magic specialization allows to pack enumerations. On older compilers it will
+// This another magic specialization allows to pack enumerations. On older compilers it will
 // assume that the underlying type is int, on GCC 4.7 and Clang it can detect the underlying type.
 
 template<class T>
@@ -95,6 +95,56 @@ struct type_traits<
     void
     unpack(const msgpack::object& unpacked, T& target) {
         target = static_cast<T>(unpacked.as<base_type>());
+    }
+};
+
+// Tuple serialization
+
+namespace detail {
+    template<size_t... Indices>
+    struct splat_impl {
+        template<class TypeList, class Stream, typename... Args>
+        static inline
+        void
+        pack(msgpack::packer<Stream>& packer, const std::tuple<Args...>& source) {
+            type_traits<TypeList>::pack(packer, std::get<Indices>(source)...);
+        }
+
+        template<class TypeList, typename... Args>
+        static inline
+        void
+        unpack(const msgpack::object& unpacked, std::tuple<Args...>& target) {
+            type_traits<TypeList>::unpack(unpacked, std::get<Indices>(target)...);
+        }
+    };
+
+    template<size_t N, size_t... Indices>
+    struct splat {
+        typedef typename splat<N - 1, N - 1, Indices...>::type type;
+    };
+
+    template<size_t... Indices>
+    struct splat<0, Indices...> {
+        typedef splat_impl<Indices...> type;
+    };
+}
+
+template<typename... Args>
+struct type_traits<std::tuple<Args...>> {
+    typedef typename tuple::unfold<Args...>::type sequence_type;
+    typedef typename detail::splat<sizeof...(Args)>::type splat_type;
+
+    template<class Stream>
+    static inline
+    void
+    pack(msgpack::packer<Stream>& packer, const std::tuple<Args...>& source) {
+        splat_type::template pack<sequence_type>(packer, source);
+    }
+
+    static inline
+    void
+    unpack(const msgpack::object& unpacked, std::tuple<Args...>& target) {
+        splat_type::template unpack<sequence_type>(unpacked, target);
     }
 };
 
@@ -215,56 +265,26 @@ private:
     }
 };
 
-// Tuple serialization
+}} // namespace cocaine::io
 
-namespace detail {
-    template<size_t... Indices>
-    struct splat_impl {
-        template<class TypeList, class Stream, typename... Args>
-        static inline
-        void
-        pack(msgpack::packer<Stream>& packer, const std::tuple<Args...>& source) {
-            type_traits<TypeList>::pack(packer, std::get<Indices>(source)...);
-        }
-
-        template<class TypeList, typename... Args>
-        static inline
-        void
-        unpack(const msgpack::object& unpacked, std::tuple<Args...>& target) {
-            type_traits<TypeList>::unpack(unpacked, std::get<Indices>(target)...);
-        }
-    };
-
-    template<size_t N, size_t... Indices>
-    struct splat {
-        typedef typename splat<N - 1, N - 1, Indices...>::type type;
-    };
-
-    template<size_t... Indices>
-    struct splat<0, Indices...> {
-        typedef splat_impl<Indices...> type;
-    };
-}
+namespace msgpack {
 
 template<typename... Args>
-struct type_traits<std::tuple<Args...>> {
-    typedef typename tuple::unfold<Args...>::type sequence_type;
-    typedef typename detail::splat<sizeof...(Args)>::type splat_type;
+inline
+std::tuple<Args...>&
+operator>>(object o, std::tuple<Args...>& t) {
+    cocaine::io::type_traits<std::tuple<Args...>>::unpack(o, t);
+    return t;
+}
 
-    template<class Stream>
-    static inline
-    void
-    pack(msgpack::packer<Stream>& packer, const std::tuple<Args...>& source) {
-        splat_type::template pack<sequence_type>(packer, source);
-    }
+template<class Stream, typename... Args>
+inline
+packer<Stream>&
+operator<<(packer<Stream>& o, const std::tuple<Args...>& t) {
+    cocaine::io::type_traits<std::tuple<Args...>>::pack(o, t);
+    return o;
+}
 
-    static inline
-    void
-    unpack(const msgpack::object& unpacked, std::tuple<Args...>& target) {
-        splat_type::template unpack<sequence_type>(unpacked, target);
-    }
-};
-
-}} // namespace cocaine::io
+} // namespace msgpack
 
 #endif

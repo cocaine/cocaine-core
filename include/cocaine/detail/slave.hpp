@@ -32,34 +32,34 @@
 
 namespace cocaine { namespace engine {
 
-struct pipe_t {
-    typedef int endpoint_type;
-
-    pipe_t(endpoint_type endpoint);
-   ~pipe_t();
-
-    int
-    fd() const;
-
-    ssize_t
-    read(char* buffer, size_t size, std::error_code& ec);
-
-private:
-    int m_pipe;
-};
-
 struct session_t;
+
+namespace detail {
+    struct pipe_t {
+        typedef int endpoint_type;
+
+        pipe_t(endpoint_type endpoint);
+       ~pipe_t();
+
+        int
+        fd() const;
+
+        ssize_t
+        read(char* buffer, size_t size, std::error_code& ec);
+
+    private:
+        int m_pipe;
+    };
+}
 
 class slave_t {
     COCAINE_DECLARE_NONCOPYABLE(slave_t)
 
-    public:
-        enum class states {
-            unknown,
-            active,
-            inactive,
-            dead
-        };
+    enum class states {
+        unknown,
+        active,
+        inactive
+    };
 
     public:
         slave_t(context_t& context,
@@ -91,9 +91,9 @@ class slave_t {
             return m_id;
         }
 
-        states
-        state() const {
-            return m_state;
+        bool
+        active() const {
+            return m_state == states::active;
         }
 
         size_t
@@ -114,17 +114,13 @@ class slave_t {
         on_ping();
 
         void
-        on_death(int code,
-                 const std::string& reason);
+        on_death(int code, const std::string& reason);
 
         void
-        on_chunk(uint64_t session_id,
-                 const std::string& chunk);
+        on_chunk(uint64_t session_id, const std::string& chunk);
 
         void
-        on_error(uint64_t session_id,
-                 error_code code,
-                 const std::string& reason);
+        on_error(uint64_t session_id, error_code code, const std::string& reason);
 
         void
         on_choke(uint64_t session_id);
@@ -146,7 +142,7 @@ class slave_t {
         dump();
 
         void
-        terminate();
+        terminate(int code, const std::string& reason);
 
     private:
         context_t& m_context;
@@ -188,14 +184,14 @@ class slave_t {
 
         // Slave output capture
 
-        std::unique_ptr<io::readable_stream<pipe_t>> m_pipe;
+        std::unique_ptr<io::readable_stream<detail::pipe_t>> m_output_pipe;
         boost::circular_buffer<std::string> m_output_ring;
 
         // I/O
 
         std::shared_ptr<io::channel<io::socket<io::local>>> m_channel;
 
-        // Active sessions
+        // Sessions
 
         typedef std::map<
             uint64_t,

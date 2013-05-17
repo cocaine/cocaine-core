@@ -28,7 +28,6 @@ INCLUDE(cmake/locate_library.cmake)
 
 LOCATE_LIBRARY(LIBEV "ev++.h" "ev" "libev")
 LOCATE_LIBRARY(LIBMSGPACK "msgpack.hpp" "msgpack")
-LOCATE_LIBRARY(LIBZMQ "zmq.h" "zmq")
 LOCATE_LIBRARY(LIBARCHIVE "archive.h" "archive")
 LOCATE_LIBRARY(LIBLTDL "ltdl.h" "ltdl")
 
@@ -47,21 +46,18 @@ INCLUDE_DIRECTORIES(
     ${OPENSSL_INCLUDE_DIR}
     ${LIBEV_INCLUDE_DIRS}
     ${LIBMSGPACK_INCLUDE_DIRS}
-    ${LIBZMQ_INCLUDE_DIRS}
     ${LIBARCHIVE_INCLUDE_DIRS}
     ${LIBLTDL_INCLUDE_DIRS})
 
 INCLUDE_DIRECTORIES(BEFORE
     ${PROJECT_SOURCE_DIR}/foreign/jsoncpp-0.6.0-rc2/include
     ${PROJECT_SOURCE_DIR}/foreign/backward-cpp
-    ${PROJECT_SOURCE_DIR}/foreign/cppzmq
     ${PROJECT_SOURCE_DIR}/include)
 
 LINK_DIRECTORIES(
     ${Boost_LIBRARY_DIRS}
     ${LIBEV_LIBRARY_DIRS}
     ${LIBMSGPACK_LIBRARY_DIRS}
-    ${LIBZMQ_LIBRARY_DIRS}
     ${LIBARCHIVE_LIBRARY_DIRS}
     ${LIBLTDL_LIBRARY_DIRS})
 
@@ -81,26 +77,26 @@ ADD_LIBRARY(cocaine-core SHARED
     src/context
     ${CRYPTO_SOURCES}
     src/dispatch
+    src/drivers/fs
+    src/drivers/time
     src/engine
-    src/essentials/drivers/fs
-    src/essentials/drivers/time
-    src/essentials/isolates/process
-    src/essentials/loggers/files
-    src/essentials/loggers/stdout
-    src/essentials/loggers/syslog
-    src/essentials/services/logging
-    src/essentials/services/node
-    src/essentials/services/storage
-    src/essentials/storages/files
-    src/essentials/module
+    src/essentials
+    src/isolates/process
     src/locator
+    src/loggers/files
+    src/loggers/stdout
+    src/loggers/syslog
     src/logging
     src/manifest
     src/profile
     src/repository
+    src/services/logging
+    src/services/node
+    src/services/storage
     src/session
     src/slave
     src/slot
+    src/storages/files
     src/unique_id)
 
 TARGET_LINK_LIBRARIES(cocaine-core
@@ -112,8 +108,7 @@ TARGET_LINK_LIBRARIES(cocaine-core
     json
     ltdl
     msgpack
-    ${LIBUUID_LIBRARY}
-    zmq)
+    ${LIBUUID_LIBRARY})
 
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     VERSION 2)

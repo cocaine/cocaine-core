@@ -52,7 +52,6 @@ struct defaults {
 // Configuration
 
 struct config_t {
-    config_t();
     config_t(const std::string& config_path);
 
     struct {
@@ -63,6 +62,8 @@ struct config_t {
     } path;
 
     struct {
+        bool aggregate;
+        std::string group;
         std::string hostname;
     } network;
 
@@ -83,8 +84,6 @@ struct config_t {
     component_map_t loggers;
     component_map_t services;
     component_map_t storages;
-
-    bool standalone;
 
 public:
     static

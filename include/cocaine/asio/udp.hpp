@@ -86,6 +86,11 @@ struct udp {
             return ntohs(m_data.udp4.sin_port);
         }
 
+        void
+        port(uint16_t port_) {
+            m_data.udp4.sin_port = htons(port_);
+        }
+
         std::string
         string() const {
             return cocaine::format("%s:%d", address(), port());
@@ -93,9 +98,7 @@ struct udp {
 
         friend
         std::ostream&
-        operator<<(std::ostream& stream,
-                   const udp::endpoint& endpoint)
-        {
+        operator<<(std::ostream& stream, const udp::endpoint& endpoint) {
             return stream << endpoint.string();
         }
 

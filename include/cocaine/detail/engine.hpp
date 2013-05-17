@@ -130,27 +130,20 @@ class engine_t {
                 const std::shared_ptr<api::stream_t>& upstream);
 
         void
-        erase(const unique_id_t& uuid,
-              int code,
-              const std::string& reason);
+        erase(const unique_id_t& uuid, int code, const std::string& reason);
 
     private:
         void
         on_connection(const std::shared_ptr<io::socket<io::local>>& socket);
 
         void
-        on_handshake(const std::shared_ptr<io::channel<io::socket<io::local>>>& channel,
-                     const io::message_t& message);
+        on_handshake(int fd, const io::message_t& message);
 
         void
-        on_disconnect(const std::shared_ptr<io::channel<io::socket<io::local>>>& channel,
-                      const std::error_code& ec);
+        on_disconnect(int fd, const std::error_code& ec);
 
         void
         on_control(const io::message_t& message);
-
-        void
-        on_cleanup(ev::timer&, int);
 
         void
         on_notification(ev::async&, int);
@@ -187,26 +180,30 @@ class engine_t {
 
         std::shared_ptr<io::reactor_t> m_reactor;
 
-        ev::timer m_gc_timer,
-                  m_termination_timer;
-
         ev::async m_notification;
+        ev::timer m_termination_timer;
 
         // I/O
 
         std::unique_ptr<io::connector<io::acceptor<io::local>>> m_connector;
         std::unique_ptr<io::channel<io::socket<io::local>>> m_channel;
 
-        // Session queue
+        // Session tagging
 
         std::atomic<uint64_t> m_next_id;
+
+        // Session queue
+
         session_queue_t m_queue;
 
         // Slave pool
 
-        std::set<
+        typedef std::map<
+            int,
             std::shared_ptr<io::channel<io::socket<io::local>>>
-        > m_backlog;
+        > backlog_t;
+
+        backlog_t m_backlog;
 
 #if BOOST_VERSION >= 103600
         typedef boost::unordered_map<

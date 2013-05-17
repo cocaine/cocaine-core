@@ -18,16 +18,39 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/essentials/loggers/stdout.hpp"
+#include "cocaine/detail/loggers/files.hpp"
 
+#include <cerrno>
 #include <cstring>
 #include <ctime>
+#include <system_error>
+
+#include <sys/uio.h>
 
 using namespace cocaine::logger;
 
-stdout_t::stdout_t(const Json::Value& args):
-    category_type(args)
-{ }
+files_t::files_t(const Json::Value& args):
+    category_type(args),
+    m_file(nullptr)
+{
+    std::string path = args["path"].asString();
+
+    m_file = std::fopen(path.c_str(), "a");
+
+    if(m_file == nullptr) {
+        throw std::system_error(
+            errno,
+            std::system_category(),
+            cocaine::format("unable to open the '%s' file", path)
+        );
+    }
+}
+
+files_t::~files_t() {
+    if(m_file) {
+        std::fclose(m_file);
+    }
+}
 
 namespace {
     static
@@ -41,9 +64,9 @@ namespace {
 }
 
 void
-stdout_t::emit(logging::priorities priority,
-               const std::string& source,
-               const std::string& message)
+files_t::emit(logging::priorities priority,
+              const std::string& source,
+              const std::string& message)
 {
     time_t time = 0;
     tm timeinfo;
@@ -59,13 +82,29 @@ stdout_t::emit(logging::priorities priority,
         return;
     }
 
-    std::cout << cocaine::format(
-        "[%s] [%s] %s: %s",
+    std::string out = cocaine::format(
+        "[%s] [%s] %s: %s\n",
         timestamp,
         describe[priority],
         source,
         message
     );
 
-    std::cout << std::endl;
+    char* buffer = new char[out.size()];
+
+    std::memcpy(
+        buffer,
+        out.data(),
+        out.size()
+    );
+
+    iovec io[] = {
+        { buffer, out.size() }
+    };
+
+    if(::writev(::fileno(m_file), io, sizeof(io) / sizeof(io[0])) == -1) {
+        // TODO: Do something useful.
+    }
+
+    delete[] buffer;
 }

@@ -67,7 +67,7 @@ struct connector {
     }
 
     endpoint_type
-    endpoint() {
+    endpoint() const {
         return m_acceptor->local_endpoint();
     }
 
