@@ -34,6 +34,7 @@
 #include "cocaine/detail/profile.hpp"
 #include "cocaine/detail/session.hpp"
 #include "cocaine/detail/slave.hpp"
+#include "cocaine/detail/unique_id.hpp"
 
 #include "cocaine/detail/traits/json.hpp"
 
@@ -220,6 +221,10 @@ engine_t::wake() {
 
 std::shared_ptr<api::stream_t>
 engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream) {
+    if(m_state != states::running) {
+        throw cocaine::error_t("the engine is not active");
+    }
+
     auto session = std::make_shared<session_t>(
         m_next_id++,
         event,
@@ -228,10 +233,6 @@ engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t
 
     {
         std::unique_lock<session_queue_t> lock(m_queue);
-
-        if(m_state != states::running) {
-            throw cocaine::error_t("the engine is not active");
-        }
 
         if(m_profile.queue_limit > 0 &&
            m_queue.size() >= m_profile.queue_limit)
@@ -242,19 +243,57 @@ engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t
         m_queue.push(session);
     }
 
-    // NOTE: This will probably go to the session cache, but we save
-    // on this serialization later.
-    session->send<rpc::invoke>(event.name);
-
     // Pump the queue!
     wake();
+
+    // NOTE: This will probably go to the session cache, but we save on this serialization later.
+    session->send<rpc::invoke>(event.name);
+
+    return std::make_shared<downstream_t>(session);
+}
+
+std::shared_ptr<api::stream_t>
+engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream, const std::string& tag) {
+    if(m_state != states::running) {
+        throw cocaine::error_t("the engine is not active");
+    }
+
+    auto session = std::make_shared<session_t>(
+        m_next_id++,
+        event,
+        upstream
+    );
+
+    {
+        std::unique_lock<std::mutex> lock(m_pool_mutex);
+
+        auto it = m_pool.find(tag);
+
+        if(it == m_pool.end()) {
+            if(m_pool.size() >= m_profile.pool_limit) {
+                throw cocaine::error_t("the pool is full");
+            }
+
+            std::tie(it, std::ignore) = m_pool.emplace(
+                tag,
+                std::make_shared<slave_t>(m_context, *m_reactor, m_manifest, m_profile, tag, *this)
+            );
+        }
+
+        it->second->assign(session);
+    }
+
+    // NOTE: This will probably go to the session cache, but we save on this serialization later.
+    session->send<rpc::invoke>(event.name);
 
     return std::make_shared<downstream_t>(session);
 }
 
 void
-engine_t::erase(const unique_id_t& uuid, int code, const std::string& reason) {
-    m_pool.erase(uuid);
+engine_t::erase(const std::string& id, int code, const std::string& reason) {
+    std::unique_lock<std::mutex> lock(m_pool_mutex);
+
+    m_pool.erase(id);
 
     if(code == rpc::terminate::abnormal) {
         COCAINE_LOG_ERROR(m_log, "the app seems to be broken - %s", reason);
@@ -290,33 +329,31 @@ engine_t::on_connection(const std::shared_ptr<io::socket<local>>& socket_) {
 
 void
 engine_t::on_handshake(int fd, const message_t& message) {
-    unique_id_t uuid(uninitialized);
+    std::string id;
     backlog_t::mapped_type channel_ = m_backlog[fd];
 
     // Pop the channel.
     m_backlog.erase(fd);
 
     try {
-        std::string blob;
-        message.as<rpc::handshake>(blob);
-        uuid = unique_id_t(blob);
+        message.as<rpc::handshake>(id);
     } catch(const cocaine::error_t& e) {
         COCAINE_LOG_WARNING(m_log, "dropping an invalid handshake message");
         return;
     }
 
-    pool_map_t::iterator it = m_pool.find(uuid);
+    std::unique_lock<std::mutex> lock(m_pool_mutex);
+
+    pool_map_t::iterator it = m_pool.find(id);
 
     if(it == m_pool.end()) {
-        COCAINE_LOG_WARNING(m_log, "dropping a handshake from an unknown slave %s", uuid);
+        COCAINE_LOG_WARNING(m_log, "dropping a handshake from an unknown slave %s", id);
         return;
     }
 
-    COCAINE_LOG_DEBUG(m_log, "slave %s connected", uuid);
+    COCAINE_LOG_DEBUG(m_log, "slave %s connected", id);
 
     it->second->bind(channel_);
-
-    wake();
 }
 
 void
@@ -385,6 +422,8 @@ engine_t::on_control(const message_t& message) {
 
             collector_t collector;
 
+            std::unique_lock<std::mutex> lock(m_pool_mutex);
+
             size_t active = std::count_if(
                 m_pool.begin(),
                 m_pool.end(),
@@ -405,7 +444,10 @@ engine_t::on_control(const message_t& message) {
             break;
         }
 
-        case event_traits<control::terminate>::id:
+        case event_traits<control::terminate>::id: {
+            std::unique_lock<std::mutex> lock(m_pool_mutex);
+
+            // Prepare for the shutdown.
             migrate(states::stopping);
 
             // NOTE: This message is needed to wake up the app's event loop, which is blocked
@@ -413,6 +455,7 @@ engine_t::on_control(const message_t& message) {
             m_channel->wr->write<control::terminate>(0UL);
 
             break;
+        }
 
         default:
             COCAINE_LOG_ERROR(m_log, "dropping unknown type %d control message", message.id());
@@ -480,6 +523,8 @@ namespace {
 void
 engine_t::pump() {
     while(!m_queue.empty()) {
+        std::unique_lock<std::mutex> lock(m_pool_mutex);
+
         auto it = min_element_if(m_pool.begin(), m_pool.end(), load(), available {
             m_profile.concurrency
         });
@@ -524,12 +569,14 @@ engine_t::pump() {
         } while(!session);
 
         // Attach the session to the slave.
-        it->second->assign(std::move(session));
+        it->second->assign(session);
     }
 }
 
 void
 engine_t::balance() {
+    std::unique_lock<std::mutex> lock(m_pool_mutex);
+
     if(m_pool.size() >= m_profile.pool_limit ||
        m_pool.size() * m_profile.grow_threshold >= m_queue.size())
     {
@@ -556,18 +603,20 @@ engine_t::balance() {
     );
 
     while(m_pool.size() != target) {
+        auto id = unique_id_t().string();
+
         try {
-            std::shared_ptr<slave_t> slave(
+            m_pool.emplace(
+                id,
                 std::make_shared<slave_t>(
                     m_context,
                     *m_reactor,
                     m_manifest,
                     m_profile,
+                    id,
                     *this
                 )
             );
-
-            m_pool.emplace(slave->id(), slave);
         } catch(const cocaine::error_t& e) {
             COCAINE_LOG_ERROR(m_log, "unable to spawn more slaves - %s", e.what());
             break;

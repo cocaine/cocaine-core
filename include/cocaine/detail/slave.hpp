@@ -24,7 +24,7 @@
 #include "cocaine/common.hpp"
 #include "cocaine/api/isolate.hpp"
 #include "cocaine/asio/reactor.hpp"
-#include "cocaine/detail/unique_id.hpp"
+#include "cocaine/detail/engine.hpp"
 
 #include <chrono>
 
@@ -66,6 +66,7 @@ class slave_t {
                 io::reactor_t& reactor,
                 const manifest_t& manifest,
                 const profile_t& profile,
+                const std::string& id,
                 engine_t& engine);
 
        ~slave_t();
@@ -78,7 +79,7 @@ class slave_t {
         // Sessions
 
         void
-        assign(std::shared_ptr<session_t>&& session);
+        assign(const std::shared_ptr<session_t>& session);
 
         // Termination
 
@@ -86,11 +87,6 @@ class slave_t {
         stop();
 
     public:
-        unique_id_t
-        id() const {
-            return m_id;
-        }
-
         bool
         active() const {
             return m_state == states::active;
@@ -108,7 +104,7 @@ class slave_t {
         void
         on_disconnect(const std::error_code& ec);
 
-        // RPC
+        // Streaming RPC
 
         void
         on_ping();
@@ -139,6 +135,9 @@ class slave_t {
         // Housekeeping
 
         void
+        pump();
+
+        void
         dump();
 
         void
@@ -157,13 +156,13 @@ class slave_t {
         const manifest_t& m_manifest;
         const profile_t& m_profile;
 
+        // Slave ID
+
+        const std::string m_id;
+
         // Controlling engine
 
         engine_t& m_engine;
-
-        // Slave ID
-
-        const unique_id_t m_id;
 
         // Slave health monitoring
 
@@ -199,6 +198,10 @@ class slave_t {
         > session_map_t;
 
         session_map_t m_sessions;
+
+        // Tagged session queue
+
+        session_queue_t m_queue;
 };
 
 }} // namespace cocaine::engine

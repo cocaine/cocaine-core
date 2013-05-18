@@ -96,12 +96,14 @@ slave_t::slave_t(context_t& context,
                  reactor_t& reactor,
                  const manifest_t& manifest,
                  const profile_t& profile,
+                 const std::string& id,
                  engine_t& engine):
     m_context(context),
     m_log(new logging::log_t(context, cocaine::format("app/%s", manifest.name))),
     m_reactor(reactor),
     m_manifest(manifest),
     m_profile(profile),
+    m_id(id),
     m_engine(engine),
     m_state(states::unknown),
 #if defined(__clang__) || defined(HAVE_GCC47)
@@ -135,7 +137,7 @@ slave_t::slave_t(context_t& context,
 
     args["--app"] = m_manifest.name;
     args["--endpoint"] = m_manifest.endpoint;
-    args["--uuid"] = m_id.string();
+    args["--uuid"] = m_id;
 
     // Standard output capture
 
@@ -170,6 +172,8 @@ slave_t::slave_t(context_t& context,
 
 slave_t::~slave_t() {
     BOOST_ASSERT(m_state == states::inactive);
+    BOOST_ASSERT(m_sessions.empty());
+    BOOST_ASSERT(m_queue.empty());
 
     m_heartbeat_timer.stop();
     m_idle_timer.stop();
@@ -197,7 +201,12 @@ slave_t::bind(const std::shared_ptr<channel<io::socket<local>>>& channel_) {
 }
 
 void
-slave_t::assign(std::shared_ptr<session_t>&& session) {
+slave_t::assign(const std::shared_ptr<session_t>& session) {
+    if(m_sessions.size() >= m_profile.concurrency || m_state == states::unknown) {
+        m_queue.push_back(session);
+        return;
+    }
+
     BOOST_ASSERT(m_state == states::active);
 
     COCAINE_LOG_DEBUG(
@@ -207,7 +216,7 @@ slave_t::assign(std::shared_ptr<session_t>&& session) {
         session->id
     );
 
-    m_sessions.insert(std::make_pair(session->id, std::move(session))).first->second->attach(
+    m_sessions.insert(std::make_pair(session->id, session)).first->second->attach(
         m_channel->wr->stream()
     );
 
@@ -269,14 +278,9 @@ slave_t::on_message(const message_t& message) {
             break;
         }
 
-        case event_traits<rpc::choke>::id: {
+        case event_traits<rpc::choke>::id:
             on_choke(message.band());
-
-            // This is now a potentially free slave, so pump the queue.
-            m_engine.wake();
-
             break;
-        }
 
         default:
             COCAINE_LOG_WARNING(
@@ -355,6 +359,8 @@ slave_t::on_ping() {
         // Start the idle timer, which will kill the slave when it's not used.
         m_idle_timer.set<slave_t, &slave_t::on_idle>(this);
         m_idle_timer.start(m_profile.idle_timeout);
+
+        pump();
     }
 
     COCAINE_LOG_DEBUG(
@@ -451,18 +457,16 @@ slave_t::on_choke(uint64_t session_id) {
     BOOST_ASSERT(it != m_sessions.end());
 
     it->second->upstream->close();
+    it->second->detach();
 
     // NOTE: As we're destroying the session here, we have to close the
     // downstream, otherwise the client wouldn't be able to close it later.
     // TODO: Think about it.
-    it->second->send<rpc::choke>();
-    it->second->detach();
+    // it->second->send<rpc::choke>();
 
     m_sessions.erase(it);
 
-    if(m_sessions.empty()) {
-        m_idle_timer.start(m_profile.idle_timeout);
-    }
+    pump();
 }
 
 void
@@ -472,6 +476,9 @@ slave_t::on_timeout(ev::timer&, int) {
     switch(m_state) {
         case states::unknown:
             COCAINE_LOG_WARNING(m_log, "slave %s has failed to activate", m_id);
+
+            m_state = states::inactive;
+
             break;
 
         case states::active:
@@ -503,6 +510,7 @@ void
 slave_t::on_idle(ev::timer&, int) {
     BOOST_ASSERT(m_state == states::active);
     BOOST_ASSERT(m_sessions.empty());
+    BOOST_ASSERT(m_queue.empty());
 
     COCAINE_LOG_DEBUG(m_log, "slave %s is idle, deactivating", m_id);
 
@@ -529,6 +537,21 @@ slave_t::on_output(const char* data, size_t size) {
     }
 
     return size - leftovers;
+}
+
+void
+slave_t::pump() {
+    if(m_queue.empty()) {
+        // This is now a potentially free slave, so pump the queue.
+        m_engine.wake();
+
+        if(m_sessions.empty()) {
+            m_idle_timer.start(m_profile.idle_timeout);
+        }
+    } else {
+        assign(m_queue.front());
+        m_queue.pop_front();
+    }
 }
 
 void
@@ -562,13 +585,9 @@ slave_t::dump() {
 
 void
 slave_t::terminate(int code, const std::string& reason) {
-    BOOST_ASSERT(m_state == states::inactive);
-    BOOST_ASSERT(m_sessions.empty());
-
     // Closes our end of the socket.
     m_channel.reset();
 
     // Schedule the termination.
     m_reactor.post(std::bind(&engine_t::erase, std::ref(m_engine), m_id, code, reason));
 }
-

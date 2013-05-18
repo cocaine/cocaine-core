@@ -68,8 +68,6 @@ struct protocol<control_tag> {
 
 } // namespace io
 
-struct unique_id_t;
-
 namespace engine {
 
 struct session_t;
@@ -129,8 +127,13 @@ class engine_t {
         enqueue(const api::event_t& event,
                 const std::shared_ptr<api::stream_t>& upstream);
 
+        std::shared_ptr<api::stream_t>
+        enqueue(const api::event_t& event,
+                const std::shared_ptr<api::stream_t>& upstream,
+                const std::string& tag);
+
         void
-        erase(const unique_id_t& uuid, int code, const std::string& reason);
+        erase(const std::string& id, int code, const std::string& reason);
 
     private:
         void
@@ -210,11 +213,14 @@ class engine_t {
 #else
         typedef std::map<
 #endif
-            unique_id_t,
+            std::string,
             std::shared_ptr<slave_t>
         > pool_map_t;
 
         pool_map_t m_pool;
+
+        // Spawning mutex.
+        std::mutex m_pool_mutex;
 
         // NOTE: A strong isolate reference, keeping it here
         // avoids isolate destruction, as the factory stores
