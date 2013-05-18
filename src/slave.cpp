@@ -175,6 +175,9 @@ slave_t::~slave_t() {
     BOOST_ASSERT(m_state == states::inactive);
     BOOST_ASSERT(m_sessions.empty() && m_queue.empty());
 
+    // Closes our end of the socket.
+    m_channel.reset();
+
     m_heartbeat_timer.stop();
     m_idle_timer.stop();
 
@@ -192,7 +195,7 @@ slave_t::bind(const std::shared_ptr<channel<io::socket<local>>>& channel_) {
     m_channel = channel_;
 
     m_channel->rd->bind(
-        std::bind(&slave_t::on_message, this, _1),
+        std::bind(&slave_t::on_message,    this, _1),
         std::bind(&slave_t::on_disconnect, this, _1)
     );
 
@@ -624,6 +627,8 @@ slave_t::pump() {
 
         assign(session);
     }
+
+    m_engine.wake();
 }
 
 void
@@ -657,9 +662,5 @@ slave_t::dump() {
 
 void
 slave_t::terminate(int code, const std::string& reason) {
-    // Closes our end of the socket.
-    m_channel.reset();
-
-    // Schedule the termination.
     m_reactor.post(std::bind(&engine_t::erase, std::ref(m_engine), m_id, code, reason));
 }
