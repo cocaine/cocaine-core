@@ -35,6 +35,7 @@
 
 #include "cocaine/rpc/channel.hpp"
 
+#include <array>
 #include <sstream>
 
 #include <fcntl.h>
