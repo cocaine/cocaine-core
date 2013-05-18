@@ -172,8 +172,7 @@ slave_t::slave_t(context_t& context,
 
 slave_t::~slave_t() {
     BOOST_ASSERT(m_state == states::inactive);
-    BOOST_ASSERT(m_sessions.empty());
-    BOOST_ASSERT(m_queue.empty());
+    BOOST_ASSERT(m_sessions.empty() && m_queue.empty());
 
     m_heartbeat_timer.stop();
     m_idle_timer.stop();
@@ -186,6 +185,9 @@ slave_t::~slave_t() {
 
 void
 slave_t::bind(const std::shared_ptr<channel<io::socket<local>>>& channel_) {
+    BOOST_ASSERT(m_state == states::unknown);
+    BOOST_ASSERT(!m_channel);
+
     m_channel = channel_;
 
     m_channel->rd->bind(
@@ -202,6 +204,10 @@ slave_t::bind(const std::shared_ptr<channel<io::socket<local>>>& channel_) {
 
 void
 slave_t::assign(const std::shared_ptr<session_t>& session) {
+    BOOST_ASSERT(m_state != states::inactive);
+
+    std::unique_lock<std::mutex> lock(m_mutex);
+
     if(m_sessions.size() >= m_profile.concurrency || m_state == states::unknown) {
         m_queue.push_back(session);
         return;
@@ -319,14 +325,18 @@ slave_t::on_disconnect(const std::error_code& ec) {
 
     m_state = states::inactive;
 
-    COCAINE_LOG_WARNING(m_log, "slave %s dropping %llu sessions", m_id, m_sessions.size());
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
 
-    std::for_each(m_sessions.begin(), m_sessions.end(), detach_with {
-        resource_error,
-        "the session has been aborted"
-    });
+        COCAINE_LOG_WARNING(m_log, "slave %s dropping %llu sessions", m_id, m_sessions.size());
 
-    m_sessions.clear();
+        std::for_each(m_sessions.begin(), m_sessions.end(), detach_with {
+            resource_error,
+            "the session has been aborted"
+        });
+
+        m_sessions.clear();
+    }
 
     dump();
     terminate(rpc::terminate::code::abnormal, "unexpectedly disconnected");
@@ -334,11 +344,9 @@ slave_t::on_disconnect(const std::error_code& ec) {
 
 void
 slave_t::on_ping() {
-    BOOST_ASSERT(m_state != states::dead);
-
-    using namespace std::chrono;
-
     if(m_state == states::unknown) {
+        using namespace std::chrono;
+
         auto uptime = duration_cast<duration<float>>(
 #if defined(__clang__) || defined(HAVE_GCC47)
             steady_clock::now() - m_birthstamp
@@ -387,14 +395,18 @@ slave_t::on_death(int code, const std::string& reason) {
 
     m_state = states::inactive;
 
-    COCAINE_LOG_WARNING(m_log, "slave %s dropping %llu sessions", m_id, m_sessions.size());
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
 
-    std::for_each(m_sessions.begin(), m_sessions.end(), detach_with {
-        resource_error,
-        "the session has been aborted"
-    });
+        COCAINE_LOG_WARNING(m_log, "slave %s dropping %llu sessions", m_id, m_sessions.size());
 
-    m_sessions.clear();
+        std::for_each(m_sessions.begin(), m_sessions.end(), detach_with {
+            resource_error,
+            "the session has been aborted"
+        });
+
+        m_sessions.clear();
+    }
 
     terminate(code, reason);
 }
@@ -411,10 +423,16 @@ slave_t::on_chunk(uint64_t session_id, const std::string& chunk) {
         chunk.size()
     );
 
-    session_map_t::iterator it(m_sessions.find(session_id));
+    session_map_t::iterator it;
 
-    // TEST: Ensure that this slave is responsible for the session.
-    BOOST_ASSERT(it != m_sessions.end());
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+
+        it = m_sessions.find(session_id);
+
+        // TEST: Ensure that this slave is responsible for the session.
+        BOOST_ASSERT(it != m_sessions.end());
+    }
 
     it->second->upstream->write(chunk.data(), chunk.size());
 }
@@ -432,10 +450,16 @@ slave_t::on_error(uint64_t session_id, error_code code, const std::string& reaso
         reason
     );
 
-    session_map_t::iterator it(m_sessions.find(session_id));
+    session_map_t::iterator it;
 
-    // TEST: Ensure that this slave is responsible for the session.
-    BOOST_ASSERT(it != m_sessions.end());
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+
+        it = m_sessions.find(session_id);
+
+        // TEST: Ensure that this slave is responsible for the session.
+        BOOST_ASSERT(it != m_sessions.end());
+    }
 
     it->second->upstream->error(code, reason);
 }
@@ -451,28 +475,35 @@ slave_t::on_choke(uint64_t session_id) {
         session_id
     );
 
-    session_map_t::iterator it(m_sessions.find(session_id));
+    session_map_t::iterator it;
 
-    // TEST: Ensure that this slave is responsible for the session.
-    BOOST_ASSERT(it != m_sessions.end());
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+
+        it = m_sessions.find(session_id);
+
+        // TEST: Ensure that this slave is responsible for the session.
+        BOOST_ASSERT(it != m_sessions.end());
+    }
 
     it->second->upstream->close();
-    it->second->detach();
 
     // NOTE: As we're destroying the session here, we have to close the
     // downstream, otherwise the client wouldn't be able to close it later.
-    // TODO: Think about it.
     // it->second->send<rpc::choke>();
 
-    m_sessions.erase(it);
+    it->second->detach();
+
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        m_sessions.erase(it);
+    }
 
     pump();
 }
 
 void
 slave_t::on_timeout(ev::timer&, int) {
-    BOOST_ASSERT(m_state != states::dead);
-
     switch(m_state) {
         case states::unknown:
             COCAINE_LOG_WARNING(m_log, "slave %s has failed to activate", m_id);
@@ -486,14 +517,18 @@ slave_t::on_timeout(ev::timer&, int) {
 
             m_state = states::inactive;
 
-            COCAINE_LOG_WARNING(m_log, "slave %s dropping %llu sessions", m_id, m_sessions.size());
+            {
+                std::unique_lock<std::mutex> lock(m_mutex);
 
-            std::for_each(m_sessions.begin(), m_sessions.end(), detach_with {
-                timeout_error,
-                "the session had timed out"
-            });
+                COCAINE_LOG_WARNING(m_log, "slave %s dropping %llu sessions", m_id, m_sessions.size());
 
-            m_sessions.clear();
+                std::for_each(m_sessions.begin(), m_sessions.end(), detach_with {
+                    timeout_error,
+                    "the session had timed out"
+                });
+
+                m_sessions.clear();
+            }
 
             break;
 
@@ -509,8 +544,7 @@ slave_t::on_timeout(ev::timer&, int) {
 void
 slave_t::on_idle(ev::timer&, int) {
     BOOST_ASSERT(m_state == states::active);
-    BOOST_ASSERT(m_sessions.empty());
-    BOOST_ASSERT(m_queue.empty());
+    BOOST_ASSERT(m_sessions.empty() && m_queue.empty());
 
     COCAINE_LOG_DEBUG(m_log, "slave %s is idle, deactivating", m_id);
 
@@ -541,16 +575,53 @@ slave_t::on_output(const char* data, size_t size) {
 
 void
 slave_t::pump() {
-    if(m_queue.empty()) {
-        // This is now a potentially free slave, so pump the queue.
-        m_engine.wake();
+    while(!m_queue.empty()) {
+        session_queue_t::value_type session;
 
-        if(m_sessions.empty()) {
-            m_idle_timer.start(m_profile.idle_timeout);
-        }
-    } else {
-        assign(m_queue.front());
-        m_queue.pop_front();
+        do {
+            std::unique_lock<session_queue_t> lock(m_queue);
+
+            if(m_sessions.size() >= m_profile.concurrency) {
+                return;
+            }
+
+            if(m_queue.empty()) {
+                m_engine.wake();
+
+                if(m_sessions.empty()) {
+                    m_idle_timer.start(m_profile.idle_timeout);
+                }
+
+                return;
+            }
+
+            session = m_queue.front();
+            m_queue.pop_front();
+
+            // Process the queue head outside the lock, because it might take
+            // some considerable amount of time if, for example, the session has
+            // expired and there's some heavy-lifting in the error handler.
+            lock.unlock();
+
+            if(session->event.policy.deadline &&
+               session->event.policy.deadline <= m_reactor.native().now())
+            {
+                COCAINE_LOG_DEBUG(
+                    m_log,
+                    "session %s has expired, dropping",
+                    session->id
+                );
+
+                session->upstream->error(
+                    deadline_error,
+                    "the session has expired in the queue"
+                );
+
+                session.reset();
+            }
+        } while(!session);
+
+        assign(session);
     }
 }
 

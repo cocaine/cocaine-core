@@ -190,7 +190,7 @@ class slave_t {
 
         std::shared_ptr<io::channel<io::socket<io::local>>> m_channel;
 
-        // Sessions
+        // Active sessions
 
         typedef std::map<
             uint64_t,
@@ -202,6 +202,10 @@ class slave_t {
         // Tagged session queue
 
         session_queue_t m_queue;
+
+        // Slave interlocking
+
+        std::mutex m_mutex;
 };
 
 }} // namespace cocaine::engine
