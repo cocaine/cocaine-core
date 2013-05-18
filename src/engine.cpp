@@ -322,7 +322,7 @@ engine_t::on_connection(const std::shared_ptr<io::socket<local>>& socket_) {
         std::bind(&engine_t::on_disconnect, this, fd, _1)
     );
 
-    COCAINE_LOG_DEBUG(m_log, "initiating a slave handshake on fd: %d", socket_->fd());
+    COCAINE_LOG_DEBUG(m_log, "initiating a slave handshake on fd %d", socket_->fd());
 
     m_backlog[fd] = channel_;
 }
@@ -338,7 +338,7 @@ engine_t::on_handshake(int fd, const message_t& message) {
     try {
         message.as<rpc::handshake>(id);
     } catch(const cocaine::error_t& e) {
-        COCAINE_LOG_WARNING(m_log, "dropping an invalid handshake message");
+        COCAINE_LOG_WARNING(m_log, "disconnecting a malfunctioning slave on fd %d", fd);
         return;
     }
 
@@ -347,11 +347,11 @@ engine_t::on_handshake(int fd, const message_t& message) {
     pool_map_t::iterator it = m_pool.find(id);
 
     if(it == m_pool.end()) {
-        COCAINE_LOG_WARNING(m_log, "dropping a handshake from an unknown slave %s", id);
+        COCAINE_LOG_WARNING(m_log, "disconnecting an unknown slave %s on fd %d", id, fd);
         return;
     }
 
-    COCAINE_LOG_DEBUG(m_log, "slave %s connected", id);
+    COCAINE_LOG_DEBUG(m_log, "slave %s connected on fd %d", id, fd);
 
     it->second->bind(channel_);
 }
@@ -360,7 +360,8 @@ void
 engine_t::on_disconnect(int fd, const std::error_code& ec) {
     COCAINE_LOG_INFO(
         m_log,
-        "slave disconnected during the handshake - [%d] %s",
+        "slave has disconnected during the handshake on fd %d - [%d] %s",
+        fd,
         ec.value(),
         ec.message()
     );
