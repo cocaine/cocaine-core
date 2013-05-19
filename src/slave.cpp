@@ -181,11 +181,11 @@ slave_t::~slave_t() {
     BOOST_ASSERT(m_state == states::inactive);
     BOOST_ASSERT(m_sessions.empty() && m_queue.empty());
 
-    // Closes our end of the socket.
-    m_channel.reset();
-
     m_heartbeat_timer.stop();
     m_idle_timer.stop();
+
+    // Closes our end of the socket.
+    m_channel.reset();
 
     m_handle->terminate();
     m_handle.reset();
@@ -225,6 +225,25 @@ slave_t::assign(const std::shared_ptr<session_t>& session) {
 
     BOOST_ASSERT(m_state == states::active);
 
+    if(session->event.policy.deadline &&
+       session->event.policy.deadline <= m_reactor.native().now())
+    {
+        lock.unlock();
+
+        COCAINE_LOG_DEBUG(
+            m_log,
+            "session %s has expired, dropping",
+            session->id
+        );
+
+        session->upstream->error(
+            deadline_error,
+            "the session has expired in the queue"
+        );
+
+        return;
+    }
+
     COCAINE_LOG_DEBUG(
         m_log,
         "slave %s has started processing session %s",
@@ -232,9 +251,13 @@ slave_t::assign(const std::shared_ptr<session_t>& session) {
         session->id
     );
 
-    m_sessions.insert(std::make_pair(session->id, session)).first->second->attach(
-        m_channel->wr->stream()
-    );
+    session_map_t::iterator it;
+
+    std::tie(it, std::ignore) = m_sessions.insert(std::make_pair(session->id, session));
+
+    lock.unlock();
+
+    it->second->attach(m_channel->wr->stream());
 
     m_idle_timer.stop();
 }
@@ -584,50 +607,25 @@ slave_t::on_output(const char* data, size_t size) {
 void
 slave_t::pump() {
     while(!m_queue.empty()) {
-        session_queue_t::value_type session;
+        std::unique_lock<std::mutex> lock(m_mutex);
 
-        do {
-            std::unique_lock<session_queue_t> lock(m_queue);
+        if(m_sessions.size() >= m_profile.concurrency) {
+            return;
+        }
 
-            if(m_sessions.size() >= m_profile.concurrency) {
-                return;
+        if(m_queue.empty()) {
+            if(m_sessions.empty() && m_profile.idle_timeout > 0.0f) {
+                m_idle_timer.start(m_profile.idle_timeout);
             }
 
-            if(m_queue.empty()) {
-                m_engine.wake();
+            break;
+        }
 
-                if(m_sessions.empty()) {
-                    m_idle_timer.start(m_profile.idle_timeout);
-                }
+        session_queue_t::value_type session = m_queue.front();
+        m_queue.pop_front();
 
-                return;
-            }
-
-            session = m_queue.front();
-            m_queue.pop_front();
-
-            // Process the queue head outside the lock, because it might take
-            // some considerable amount of time if, for example, the session has
-            // expired and there's some heavy-lifting in the error handler.
-            lock.unlock();
-
-            if(session->event.policy.deadline &&
-               session->event.policy.deadline <= m_reactor.native().now())
-            {
-                COCAINE_LOG_DEBUG(
-                    m_log,
-                    "session %s has expired, dropping",
-                    session->id
-                );
-
-                session->upstream->error(
-                    deadline_error,
-                    "the session has expired in the queue"
-                );
-
-                session.reset();
-            }
-        } while(!session);
+        // This lock is reacquired inside the assign() method.
+        lock.unlock();
 
         assign(session);
     }

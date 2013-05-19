@@ -513,7 +513,7 @@ namespace {
 void
 engine_t::pump() {
     while(!m_queue.empty()) {
-        std::unique_lock<std::mutex> lock(m_pool_mutex);
+        std::unique_lock<std::mutex> pool_lock(m_pool_mutex);
 
         auto it = min_element_if(m_pool.begin(), m_pool.end(), load(), available {
             m_profile.concurrency
@@ -523,40 +523,18 @@ engine_t::pump() {
             return;
         }
 
-        session_queue_t::value_type session;
+        std::unique_lock<session_queue_t> queue_lock(m_queue);
 
-        do {
-            std::unique_lock<session_queue_t> lock(m_queue);
+        if(m_queue.empty()) {
+            return;
+        }
 
-            if(m_queue.empty()) {
-                return;
-            }
+        session_queue_t::value_type session = m_queue.front();
+        m_queue.pop_front();
 
-            session = m_queue.front();
-            m_queue.pop_front();
-
-            // Process the queue head outside the lock, because it might take
-            // some considerable amount of time if, for example, the session has
-            // expired and there's some heavy-lifting in the error handler.
-            lock.unlock();
-
-            if(session->event.policy.deadline &&
-               session->event.policy.deadline <= m_reactor->native().now())
-            {
-                COCAINE_LOG_DEBUG(
-                    m_log,
-                    "session %s has expired, dropping",
-                    session->id
-                );
-
-                session->upstream->error(
-                    deadline_error,
-                    "the session has expired in the queue"
-                );
-
-                session.reset();
-            }
-        } while(!session);
+        // Process the queue head outside the lock, because it might take some considerable amount
+        // of time if the session has expired and there's some heavy-lifting in the error handler.
+        queue_lock.unlock();
 
         // Attach the session to the slave.
         it->second->assign(session);
