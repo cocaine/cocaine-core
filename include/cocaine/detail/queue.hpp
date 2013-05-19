@@ -22,6 +22,7 @@
 #define COCAINE_ENGINE_QUEUE_HPP
 
 #include <deque>
+#include <memory>
 #include <mutex>
 
 namespace cocaine { namespace engine {
