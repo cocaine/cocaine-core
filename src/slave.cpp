@@ -43,46 +43,52 @@
 
 using namespace cocaine;
 using namespace cocaine::engine;
-using namespace cocaine::engine::detail;
 using namespace cocaine::io;
 
 using namespace std::placeholders;
 
-pipe_t::pipe_t(endpoint_type endpoint):
-    m_pipe(endpoint)
-{
-    ::fcntl(m_pipe, F_SETFL, O_NONBLOCK);
-}
+struct engine::pipe_t {
+    typedef int endpoint_type;
 
-pipe_t::~pipe_t() {
-    ::close(m_pipe);
-}
-
-int
-pipe_t::fd() const {
-    return m_pipe;
-}
-
-ssize_t
-pipe_t::read(char* buffer, size_t size, std::error_code& ec) {
-    ssize_t length = ::read(m_pipe, buffer, size);
-
-    if(length == -1) {
-        switch(errno) {
-            case EAGAIN:
-#if defined(EWOULDBLOCK) && EWOULDBLOCK != EAGAIN
-            case EWOULDBLOCK:
-#endif
-            case EINTR:
-                break;
-
-            default:
-                ec = std::error_code(errno, std::system_category());
-        }
+    pipe_t(endpoint_type endpoint):
+        m_pipe(endpoint)
+    {
+        ::fcntl(m_pipe, F_SETFL, O_NONBLOCK);
     }
 
-    return length;
-}
+   ~pipe_t() {
+        ::close(m_pipe);
+    }
+
+    int
+    fd() const {
+        return m_pipe;
+    }
+
+    ssize_t
+    read(char* buffer, size_t size, std::error_code& ec) {
+        ssize_t length = ::read(m_pipe, buffer, size);
+
+        if(length == -1) {
+            switch(errno) {
+                case EAGAIN:
+    #if defined(EWOULDBLOCK) && EWOULDBLOCK != EAGAIN
+                case EWOULDBLOCK:
+    #endif
+                case EINTR:
+                    break;
+
+                default:
+                    ec = std::error_code(errno, std::system_category());
+            }
+        }
+
+        return length;
+    }
+
+private:
+    int m_pipe;
+};
 
 namespace {
     struct ignore {
@@ -230,9 +236,7 @@ slave_t::assign(const std::shared_ptr<session_t>& session) {
         m_channel->wr->stream()
     );
 
-    if(m_idle_timer.is_active()) {
-        m_idle_timer.stop();
-    }
+    m_idle_timer.stop();
 }
 
 void

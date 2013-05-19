@@ -55,17 +55,6 @@ using namespace cocaine::io;
 
 using namespace std::placeholders;
 
-// Session queue
-
-void
-session_queue_t::push(const_reference session) {
-    if(session->event.policy.urgent) {
-        emplace_front(session);
-    } else {
-        emplace_back(session);
-    }
-}
-
 // Downstream
 
 namespace {

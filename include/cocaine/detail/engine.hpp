@@ -24,10 +24,12 @@
 #include "cocaine/common.hpp"
 #include "cocaine/api/isolate.hpp"
 #include "cocaine/asio/reactor.hpp"
+
 #include "cocaine/detail/atomic.hpp"
+#include "cocaine/detail/queue.hpp"
+
 #include "cocaine/json.hpp"
 
-#include <deque>
 #include <mutex>
 #include <set>
 
@@ -69,30 +71,6 @@ struct protocol<control_tag> {
 } // namespace io
 
 namespace engine {
-
-struct session_t;
-
-struct session_queue_t:
-    public std::deque<std::shared_ptr<session_t>>
-{
-    void
-    push(const_reference session);
-
-    // Lockable concept implementation
-
-    void
-    lock() {
-        m_mutex.lock();
-    }
-
-    void
-    unlock() {
-        m_mutex.unlock();
-    }
-
-private:
-    std::mutex m_mutex;
-};
 
 class slave_t;
 

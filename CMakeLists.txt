@@ -89,6 +89,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/logging
     src/manifest
     src/profile
+    src/queue
     src/repository
     src/services/logging
     src/services/node
