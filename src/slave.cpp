@@ -35,6 +35,7 @@
 
 #include "cocaine/rpc/channel.hpp"
 
+#include <array>
 #include <sstream>
 
 #include <fcntl.h>
@@ -42,46 +43,52 @@
 
 using namespace cocaine;
 using namespace cocaine::engine;
-using namespace cocaine::engine::detail;
 using namespace cocaine::io;
 
 using namespace std::placeholders;
 
-pipe_t::pipe_t(endpoint_type endpoint):
-    m_pipe(endpoint)
-{
-    ::fcntl(m_pipe, F_SETFL, O_NONBLOCK);
-}
+struct engine::pipe_t {
+    typedef int endpoint_type;
 
-pipe_t::~pipe_t() {
-    ::close(m_pipe);
-}
-
-int
-pipe_t::fd() const {
-    return m_pipe;
-}
-
-ssize_t
-pipe_t::read(char* buffer, size_t size, std::error_code& ec) {
-    ssize_t length = ::read(m_pipe, buffer, size);
-
-    if(length == -1) {
-        switch(errno) {
-            case EAGAIN:
-#if defined(EWOULDBLOCK) && EWOULDBLOCK != EAGAIN
-            case EWOULDBLOCK:
-#endif
-            case EINTR:
-                break;
-
-            default:
-                ec = std::error_code(errno, std::system_category());
-        }
+    pipe_t(endpoint_type endpoint):
+        m_pipe(endpoint)
+    {
+        ::fcntl(m_pipe, F_SETFL, O_NONBLOCK);
     }
 
-    return length;
-}
+   ~pipe_t() {
+        ::close(m_pipe);
+    }
+
+    int
+    fd() const {
+        return m_pipe;
+    }
+
+    ssize_t
+    read(char* buffer, size_t size, std::error_code& ec) {
+        ssize_t length = ::read(m_pipe, buffer, size);
+
+        if(length == -1) {
+            switch(errno) {
+                case EAGAIN:
+    #if defined(EWOULDBLOCK) && EWOULDBLOCK != EAGAIN
+                case EWOULDBLOCK:
+    #endif
+                case EINTR:
+                    break;
+
+                default:
+                    ec = std::error_code(errno, std::system_category());
+            }
+        }
+
+        return length;
+    }
+
+private:
+    int m_pipe;
+};
 
 namespace {
     struct ignore {
@@ -96,12 +103,14 @@ slave_t::slave_t(context_t& context,
                  reactor_t& reactor,
                  const manifest_t& manifest,
                  const profile_t& profile,
+                 const std::string& id,
                  engine_t& engine):
     m_context(context),
     m_log(new logging::log_t(context, cocaine::format("app/%s", manifest.name))),
     m_reactor(reactor),
     m_manifest(manifest),
     m_profile(profile),
+    m_id(id),
     m_engine(engine),
     m_state(states::unknown),
 #if defined(__clang__) || defined(HAVE_GCC47)
@@ -135,7 +144,7 @@ slave_t::slave_t(context_t& context,
 
     args["--app"] = m_manifest.name;
     args["--endpoint"] = m_manifest.endpoint;
-    args["--uuid"] = m_id.string();
+    args["--uuid"] = m_id;
 
     // Standard output capture
 
@@ -170,9 +179,13 @@ slave_t::slave_t(context_t& context,
 
 slave_t::~slave_t() {
     BOOST_ASSERT(m_state == states::inactive);
+    BOOST_ASSERT(m_sessions.empty() && m_queue.empty());
 
     m_heartbeat_timer.stop();
     m_idle_timer.stop();
+
+    // Closes our end of the socket.
+    m_channel.reset();
 
     m_handle->terminate();
     m_handle.reset();
@@ -182,10 +195,13 @@ slave_t::~slave_t() {
 
 void
 slave_t::bind(const std::shared_ptr<channel<io::socket<local>>>& channel_) {
+    BOOST_ASSERT(m_state == states::unknown);
+    BOOST_ASSERT(!m_channel);
+
     m_channel = channel_;
 
     m_channel->rd->bind(
-        std::bind(&slave_t::on_message, this, _1),
+        std::bind(&slave_t::on_message,    this, _1),
         std::bind(&slave_t::on_disconnect, this, _1)
     );
 
@@ -197,8 +213,36 @@ slave_t::bind(const std::shared_ptr<channel<io::socket<local>>>& channel_) {
 }
 
 void
-slave_t::assign(std::shared_ptr<session_t>&& session) {
+slave_t::assign(const std::shared_ptr<session_t>& session) {
+    BOOST_ASSERT(m_state != states::inactive);
+
+    std::unique_lock<std::mutex> lock(m_mutex);
+
+    if(m_sessions.size() >= m_profile.concurrency || m_state == states::unknown) {
+        m_queue.push_back(session);
+        return;
+    }
+
     BOOST_ASSERT(m_state == states::active);
+
+    if(session->event.policy.deadline &&
+       session->event.policy.deadline <= m_reactor.native().now())
+    {
+        lock.unlock();
+
+        COCAINE_LOG_DEBUG(
+            m_log,
+            "session %s has expired, dropping",
+            session->id
+        );
+
+        session->upstream->error(
+            deadline_error,
+            "the session has expired in the queue"
+        );
+
+        return;
+    }
 
     COCAINE_LOG_DEBUG(
         m_log,
@@ -207,13 +251,15 @@ slave_t::assign(std::shared_ptr<session_t>&& session) {
         session->id
     );
 
-    m_sessions.insert(std::make_pair(session->id, std::move(session))).first->second->attach(
-        m_channel->wr->stream()
-    );
+    session_map_t::iterator it;
 
-    if(m_idle_timer.is_active()) {
-        m_idle_timer.stop();
-    }
+    std::tie(it, std::ignore) = m_sessions.insert(std::make_pair(session->id, session));
+
+    lock.unlock();
+
+    it->second->attach(m_channel->wr->stream());
+
+    m_idle_timer.stop();
 }
 
 void
@@ -269,14 +315,9 @@ slave_t::on_message(const message_t& message) {
             break;
         }
 
-        case event_traits<rpc::choke>::id: {
+        case event_traits<rpc::choke>::id:
             on_choke(message.band());
-
-            // This is now a potentially free slave, so pump the queue.
-            m_engine.wake();
-
             break;
-        }
 
         default:
             COCAINE_LOG_WARNING(
@@ -315,14 +356,18 @@ slave_t::on_disconnect(const std::error_code& ec) {
 
     m_state = states::inactive;
 
-    COCAINE_LOG_WARNING(m_log, "slave %s dropping %llu sessions", m_id, m_sessions.size());
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
 
-    std::for_each(m_sessions.begin(), m_sessions.end(), detach_with {
-        resource_error,
-        "the session has been aborted"
-    });
+        COCAINE_LOG_WARNING(m_log, "slave %s dropping %llu sessions", m_id, m_sessions.size());
 
-    m_sessions.clear();
+        std::for_each(m_sessions.begin(), m_sessions.end(), detach_with {
+            resource_error,
+            "the session has been aborted"
+        });
+
+        m_sessions.clear();
+    }
 
     dump();
     terminate(rpc::terminate::code::abnormal, "unexpectedly disconnected");
@@ -330,11 +375,9 @@ slave_t::on_disconnect(const std::error_code& ec) {
 
 void
 slave_t::on_ping() {
-    BOOST_ASSERT(m_state != states::dead);
-
-    using namespace std::chrono;
-
     if(m_state == states::unknown) {
+        using namespace std::chrono;
+
         auto uptime = duration_cast<duration<float>>(
 #if defined(__clang__) || defined(HAVE_GCC47)
             steady_clock::now() - m_birthstamp
@@ -355,6 +398,8 @@ slave_t::on_ping() {
         // Start the idle timer, which will kill the slave when it's not used.
         m_idle_timer.set<slave_t, &slave_t::on_idle>(this);
         m_idle_timer.start(m_profile.idle_timeout);
+
+        pump();
     }
 
     COCAINE_LOG_DEBUG(
@@ -381,14 +426,18 @@ slave_t::on_death(int code, const std::string& reason) {
 
     m_state = states::inactive;
 
-    COCAINE_LOG_WARNING(m_log, "slave %s dropping %llu sessions", m_id, m_sessions.size());
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
 
-    std::for_each(m_sessions.begin(), m_sessions.end(), detach_with {
-        resource_error,
-        "the session has been aborted"
-    });
+        COCAINE_LOG_WARNING(m_log, "slave %s dropping %llu sessions", m_id, m_sessions.size());
 
-    m_sessions.clear();
+        std::for_each(m_sessions.begin(), m_sessions.end(), detach_with {
+            resource_error,
+            "the session has been aborted"
+        });
+
+        m_sessions.clear();
+    }
 
     terminate(code, reason);
 }
@@ -405,10 +454,16 @@ slave_t::on_chunk(uint64_t session_id, const std::string& chunk) {
         chunk.size()
     );
 
-    session_map_t::iterator it(m_sessions.find(session_id));
+    session_map_t::iterator it;
 
-    // TEST: Ensure that this slave is responsible for the session.
-    BOOST_ASSERT(it != m_sessions.end());
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+
+        it = m_sessions.find(session_id);
+
+        // TEST: Ensure that this slave is responsible for the session.
+        BOOST_ASSERT(it != m_sessions.end());
+    }
 
     it->second->upstream->write(chunk.data(), chunk.size());
 }
@@ -426,10 +481,16 @@ slave_t::on_error(uint64_t session_id, error_code code, const std::string& reaso
         reason
     );
 
-    session_map_t::iterator it(m_sessions.find(session_id));
+    session_map_t::iterator it;
 
-    // TEST: Ensure that this slave is responsible for the session.
-    BOOST_ASSERT(it != m_sessions.end());
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+
+        it = m_sessions.find(session_id);
+
+        // TEST: Ensure that this slave is responsible for the session.
+        BOOST_ASSERT(it != m_sessions.end());
+    }
 
     it->second->upstream->error(code, reason);
 }
@@ -445,33 +506,41 @@ slave_t::on_choke(uint64_t session_id) {
         session_id
     );
 
-    session_map_t::iterator it(m_sessions.find(session_id));
+    session_map_t::iterator it;
 
-    // TEST: Ensure that this slave is responsible for the session.
-    BOOST_ASSERT(it != m_sessions.end());
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+
+        it = m_sessions.find(session_id);
+
+        // TEST: Ensure that this slave is responsible for the session.
+        BOOST_ASSERT(it != m_sessions.end());
+    }
 
     it->second->upstream->close();
 
     // NOTE: As we're destroying the session here, we have to close the
     // downstream, otherwise the client wouldn't be able to close it later.
-    // TODO: Think about it.
-    it->second->send<rpc::choke>();
+    // it->second->send<rpc::choke>();
+
     it->second->detach();
 
-    m_sessions.erase(it);
-
-    if(m_sessions.empty()) {
-        m_idle_timer.start(m_profile.idle_timeout);
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        m_sessions.erase(it);
     }
+
+    pump();
 }
 
 void
 slave_t::on_timeout(ev::timer&, int) {
-    BOOST_ASSERT(m_state != states::dead);
-
     switch(m_state) {
         case states::unknown:
             COCAINE_LOG_WARNING(m_log, "slave %s has failed to activate", m_id);
+
+            m_state = states::inactive;
+
             break;
 
         case states::active:
@@ -479,14 +548,18 @@ slave_t::on_timeout(ev::timer&, int) {
 
             m_state = states::inactive;
 
-            COCAINE_LOG_WARNING(m_log, "slave %s dropping %llu sessions", m_id, m_sessions.size());
+            {
+                std::unique_lock<std::mutex> lock(m_mutex);
 
-            std::for_each(m_sessions.begin(), m_sessions.end(), detach_with {
-                timeout_error,
-                "the session had timed out"
-            });
+                COCAINE_LOG_WARNING(m_log, "slave %s dropping %llu sessions", m_id, m_sessions.size());
 
-            m_sessions.clear();
+                std::for_each(m_sessions.begin(), m_sessions.end(), detach_with {
+                    timeout_error,
+                    "the session had timed out"
+                });
+
+                m_sessions.clear();
+            }
 
             break;
 
@@ -502,7 +575,7 @@ slave_t::on_timeout(ev::timer&, int) {
 void
 slave_t::on_idle(ev::timer&, int) {
     BOOST_ASSERT(m_state == states::active);
-    BOOST_ASSERT(m_sessions.empty());
+    BOOST_ASSERT(m_sessions.empty() && m_queue.empty());
 
     COCAINE_LOG_DEBUG(m_log, "slave %s is idle, deactivating", m_id);
 
@@ -529,6 +602,35 @@ slave_t::on_output(const char* data, size_t size) {
     }
 
     return size - leftovers;
+}
+
+void
+slave_t::pump() {
+    while(!m_queue.empty()) {
+        std::unique_lock<std::mutex> lock(m_mutex);
+
+        if(m_sessions.size() >= m_profile.concurrency) {
+            return;
+        }
+
+        if(m_queue.empty()) {
+            if(m_sessions.empty() && m_profile.idle_timeout > 0.0f) {
+                m_idle_timer.start(m_profile.idle_timeout);
+            }
+
+            break;
+        }
+
+        session_queue_t::value_type session = m_queue.front();
+        m_queue.pop_front();
+
+        // This lock is reacquired inside the assign() method.
+        lock.unlock();
+
+        assign(session);
+    }
+
+    m_engine.wake();
 }
 
 void
@@ -562,13 +664,5 @@ slave_t::dump() {
 
 void
 slave_t::terminate(int code, const std::string& reason) {
-    BOOST_ASSERT(m_state == states::inactive);
-    BOOST_ASSERT(m_sessions.empty());
-
-    // Closes our end of the socket.
-    m_channel.reset();
-
-    // Schedule the termination.
     m_reactor.post(std::bind(&engine_t::erase, std::ref(m_engine), m_id, code, reason));
 }
-

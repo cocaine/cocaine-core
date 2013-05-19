@@ -24,7 +24,7 @@
 #include "cocaine/common.hpp"
 #include "cocaine/api/isolate.hpp"
 #include "cocaine/asio/reactor.hpp"
-#include "cocaine/detail/unique_id.hpp"
+#include "cocaine/detail/queue.hpp"
 
 #include <chrono>
 
@@ -32,25 +32,9 @@
 
 namespace cocaine { namespace engine {
 
+struct pipe_t;
+
 struct session_t;
-
-namespace detail {
-    struct pipe_t {
-        typedef int endpoint_type;
-
-        pipe_t(endpoint_type endpoint);
-       ~pipe_t();
-
-        int
-        fd() const;
-
-        ssize_t
-        read(char* buffer, size_t size, std::error_code& ec);
-
-    private:
-        int m_pipe;
-    };
-}
 
 class slave_t {
     COCAINE_DECLARE_NONCOPYABLE(slave_t)
@@ -66,19 +50,20 @@ class slave_t {
                 io::reactor_t& reactor,
                 const manifest_t& manifest,
                 const profile_t& profile,
+                const std::string& id,
                 engine_t& engine);
 
        ~slave_t();
 
-        // Binding
+        // I/O
 
         void
         bind(const std::shared_ptr<io::channel<io::socket<io::local>>>& channel);
 
-        // Sessions
+        // Session scheduling
 
         void
-        assign(std::shared_ptr<session_t>&& session);
+        assign(const std::shared_ptr<session_t>& session);
 
         // Termination
 
@@ -86,11 +71,6 @@ class slave_t {
         stop();
 
     public:
-        unique_id_t
-        id() const {
-            return m_id;
-        }
-
         bool
         active() const {
             return m_state == states::active;
@@ -108,7 +88,7 @@ class slave_t {
         void
         on_disconnect(const std::error_code& ec);
 
-        // RPC
+        // Streaming RPC
 
         void
         on_ping();
@@ -139,6 +119,9 @@ class slave_t {
         // Housekeeping
 
         void
+        pump();
+
+        void
         dump();
 
         void
@@ -157,15 +140,15 @@ class slave_t {
         const manifest_t& m_manifest;
         const profile_t& m_profile;
 
+        // Slave ID
+
+        const std::string m_id;
+
         // Controlling engine
 
         engine_t& m_engine;
 
-        // Slave ID
-
-        const unique_id_t m_id;
-
-        // Slave health monitoring
+        // Health
 
         states m_state;
 
@@ -178,20 +161,20 @@ class slave_t {
         ev::timer m_heartbeat_timer;
         ev::timer m_idle_timer;
 
-        // Slave handling
+        // Native handle
 
         std::unique_ptr<api::handle_t> m_handle;
 
-        // Slave output capture
+        // Output capture
 
-        std::unique_ptr<io::readable_stream<detail::pipe_t>> m_output_pipe;
+        std::unique_ptr<io::readable_stream<pipe_t>> m_output_pipe;
         boost::circular_buffer<std::string> m_output_ring;
 
-        // I/O
+        // I/O channel
 
         std::shared_ptr<io::channel<io::socket<io::local>>> m_channel;
 
-        // Sessions
+        // Active sessions
 
         typedef std::map<
             uint64_t,
@@ -199,6 +182,14 @@ class slave_t {
         > session_map_t;
 
         session_map_t m_sessions;
+
+        // Tagged session queue
+
+        session_queue_t m_queue;
+
+        // Slave interlocking
+
+        std::mutex m_mutex;
 };
 
 }} // namespace cocaine::engine

@@ -362,6 +362,11 @@ app_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& 
     return m_engine->enqueue(event, upstream);
 }
 
+std::shared_ptr<api::stream_t>
+app_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream, const std::string& tag) {
+    return m_engine->enqueue(event, upstream, tag);
+}
+
 void
 app_t::deploy(const std::string& name, const std::string& path) {
     std::string blob;
