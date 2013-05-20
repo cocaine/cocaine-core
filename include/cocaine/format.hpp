@@ -47,7 +47,13 @@ format(const std::string& format, const Args&... args) {
     try {
         return detail::substitute(boost::format(format), args...);
     } catch(const boost::io::format_error& e) {
-        return "<unable to format the message>";
+        std::stringstream stream;
+
+        stream << "<unable to format the message - "
+               << e.what()
+               << ">";
+
+        return stream.str();
     }
 }
 

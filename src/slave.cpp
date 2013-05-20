@@ -230,11 +230,7 @@ slave_t::assign(const std::shared_ptr<session_t>& session) {
     {
         lock.unlock();
 
-        COCAINE_LOG_DEBUG(
-            m_log,
-            "session %s has expired, dropping",
-            session->id
-        );
+        COCAINE_LOG_DEBUG(m_log, "session %s has expired, dropping", session->id);
 
         session->upstream->error(
             deadline_error,
@@ -244,12 +240,7 @@ slave_t::assign(const std::shared_ptr<session_t>& session) {
         return;
     }
 
-    COCAINE_LOG_DEBUG(
-        m_log,
-        "slave %s has started processing session %s",
-        m_id,
-        session->id
-    );
+    COCAINE_LOG_DEBUG(m_log, "slave %s has started processing session %s", m_id, session->id);
 
     session_map_t::iterator it;
 
