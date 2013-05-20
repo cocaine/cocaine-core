@@ -1,3 +1,9 @@
+cocaine-core (0.10.4-1) lucid; urgency=low
+
+  * Cocaine Tool now supports crashlog operations.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Mon, 20 May 2013 16:03:51 +0400
+
 cocaine-core (0.10.4) lucid; urgency=low
 
   * Release 10.4.
