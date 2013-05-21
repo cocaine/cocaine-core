@@ -54,10 +54,6 @@ struct readable_stream {
         m_ring.resize(65536);
     }
 
-   ~readable_stream() {
-        BOOST_ASSERT(m_rd_offset == m_rx_offset);
-    }
-
     template<class ReadHandler, class ErrorHandler>
     void
     bind(ReadHandler read_handler,

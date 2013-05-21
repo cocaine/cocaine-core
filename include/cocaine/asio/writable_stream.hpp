@@ -54,10 +54,6 @@ struct writable_stream {
         m_ring.resize(65536);
     }
 
-   ~writable_stream() {
-        BOOST_ASSERT(m_tx_offset == m_wr_offset);
-    }
-
     template<class ErrorHandler>
     void
     bind(ErrorHandler error_handler) {
