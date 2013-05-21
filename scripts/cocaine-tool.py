@@ -22,6 +22,7 @@
 import errno
 import json
 import tarfile
+from time import ctime
 from optparse import OptionParser
 
 import msgpack
@@ -31,7 +32,8 @@ from cocaine.services import Service
 DESCRIPTION = ""
 ACTIONS=("app:list", "app:view", "app:upload",  "app:remove",\
             "profile:upload", "profile:remove", "profile:list", "profile:view",\
-            "runlist:list", "runlist:remove", "runlist:upload", "runlist:view")
+            "runlist:list", "runlist:remove", "runlist:upload", "runlist:view",
+            "crashlog:list", "crashlog:view", "crashlog:remove", "crashlog:removeall")
 USAGE="Usage: %prog " + "%s <options>" % '|'.join(ACTIONS)
 
 DEFAULT_HOST = "localhost"
@@ -75,6 +77,11 @@ def not_exists(namespace, tag, entity_name=""):
         return wrapper
     return decorator
 
+
+def parse_crashlog_name(crashlog_name):
+    timestamp, worker_uuid = crashlog_name.split(':')
+    return timestamp, str(ctime(float(timestamp)/1000000)).strip('\n'), worker_uuid
+
 class Sync_wrapper(object):
 
     def __init__(self, obj, timeout):
@@ -112,8 +119,8 @@ class Storage(object):
             exit(1)
         exit(0)
 
-    @not_exists("manifests", APPS_TAGS, "manifest")
-    @not_exists("apps", APPS_TAGS, "Source of app")
+    #@not_exists("manifests", APPS_TAGS, "manifest")
+    #@not_exists("apps", APPS_TAGS, "Source of app")
     def upload(self, name, manifest_path, archive_path):
         # Validate manifest
         try:
@@ -264,6 +271,42 @@ class Storage(object):
         else:
             print "The %s runlist has been successfully removed." % name
             exit(0)
+    
+    def _crashlogs_list(self, app_name, timestamp=None):
+        if timestamp is None:
+            flt = lambda x: True
+        else:
+            flt = lambda x: x == timestamp
+        _lst = (log.split(':') for log in self._list("crashlogs", (app_name, )))
+        return [(tmst, ctime(float(tmst)/1000000), name) for tmst, name in _lst if flt(tmst)]
+
+    def crashlogs(self, app_name):
+        print "Currently available crashlogs for application %s \n" % app_name
+        for item in self._crashlogs_list(app_name):
+            print ' '.join(item)
+        exit(0)
+
+    def crashlogs_view(self, app_name, timestamp):
+        try:
+            for item in self._crashlogs_list(app_name, timestamp):
+                key = "%s:%s" % (item[0], item[2])
+                print "Crashlog %s:" % key
+                print '\n'.join(msgpack.unpackb(self._st.perform_sync("read", "crashlogs", key)))
+        except Exception as err:
+            print "Error: unable to view crashlog. %s" % str(err)
+            exit(1)
+        exit(0)
+
+    def crashlogs_remove(self, app_name, timestamp=None):
+        try:
+            for item in self._crashlogs_list(app_name, timestamp):
+                key = "%s:%s" % (item[0], item[2])
+                self._st.perform_sync("remove", "crashlogs", key)
+                print "Crashlog for %s succesfully removed" % app_name
+        except Exception as err:
+            print "Error: unable to remove crashlog. %s" % str(err)
+            exit(1)
+        exit(0)
 
 
 def main():
@@ -355,6 +398,33 @@ def main():
                 S.view_runlist(options.name)
             else:
                 print "Empty runlist name"
+
+        # crashlogs
+
+        elif action == "crashlog:list":
+            if options.name is not None:
+                S.crashlogs(options.name)
+            else:
+                print "Empty application name"
+
+        elif action == "crashlog:view":
+            if options.name is not None and options.manifest is not None:
+                S.crashlogs_view(options.name, options.manifest)
+            else:
+                print "Empty application name or timestamp"
+
+        elif action == "crashlog:remove":
+            if options.name is not None and options.manifest is not None:
+                S.crashlogs_remove(options.name, options.manifest)
+            else:
+                print "Empty application name or timestamp"
+
+        elif action == "crashlog:removeall":
+            if options.name is not None:
+                S.crashlogs_remove(options.name)
+            else:
+                print "Empty application name"
+
         else:
             print "Invalid action %s. Use: \n\t%s" % (action, '\n\t'.join(ACTIONS))
             exit(0)
