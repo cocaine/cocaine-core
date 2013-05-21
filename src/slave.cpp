@@ -397,9 +397,11 @@ slave_t::on_ping() {
 
         m_state = states::active;
 
-        // Start the idle timer, which will kill the slave when it's not used.
-        m_idle_timer.set<slave_t, &slave_t::on_idle>(this);
-        m_idle_timer.start(m_profile.idle_timeout);
+        if(m_profile.idle_timeout) {
+            // Start the idle timer, which will kill the slave when it's not used.
+            m_idle_timer.set<slave_t, &slave_t::on_idle>(this);
+            m_idle_timer.start(m_profile.idle_timeout);
+        }
 
         pump();
     }
@@ -602,7 +604,7 @@ slave_t::pump() {
         }
 
         if(m_queue.empty()) {
-            if(m_sessions.empty() && m_profile.idle_timeout > 0.0f) {
+            if(m_sessions.empty() && m_profile.idle_timeout) {
                 m_idle_timer.start(m_profile.idle_timeout);
             }
 
