@@ -365,6 +365,18 @@ slave_t::on_disconnect(const std::error_code& ec) {
 
 void
 slave_t::on_ping() {
+    COCAINE_LOG_DEBUG(
+        m_log,
+        "slave %s is resetting heartbeat timeout to %.02f seconds",
+        m_id,
+        m_profile.heartbeat_timeout
+    );
+
+    m_heartbeat_timer.stop();
+    m_heartbeat_timer.start(m_profile.heartbeat_timeout);
+
+    m_channel->wr->write<rpc::heartbeat>(0UL);
+
     if(m_state == states::unknown) {
         using namespace std::chrono;
 
@@ -391,18 +403,6 @@ slave_t::on_ping() {
 
         pump();
     }
-
-    COCAINE_LOG_DEBUG(
-        m_log,
-        "slave %s is resetting heartbeat timeout to %.02f seconds",
-        m_id,
-        m_profile.heartbeat_timeout
-    );
-
-    m_heartbeat_timer.stop();
-    m_heartbeat_timer.start(m_profile.heartbeat_timeout);
-
-    m_channel->wr->write<rpc::heartbeat>(0UL);
 }
 
 void
