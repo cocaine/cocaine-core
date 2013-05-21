@@ -36,6 +36,7 @@ struct defaults {
     static const unsigned long pool_limit;
     static const unsigned long queue_limit;
     static const unsigned long concurrency;
+    static const unsigned long crashlog_limit;
 
     // Default I/O policy.
     static const float control_timeout;

@@ -203,11 +203,6 @@ engine_t::run() {
     m_reactor->run();
 }
 
-void
-engine_t::wake() {
-    m_notification.send();
-}
-
 std::shared_ptr<api::stream_t>
 engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream) {
     if(m_state != states::running) {
@@ -298,6 +293,11 @@ engine_t::erase(const std::string& id, int code, const std::string& reason) {
 }
 
 void
+engine_t::wake() {
+    m_notification.send();
+}
+
+void
 engine_t::on_connection(const std::shared_ptr<io::socket<local>>& socket_) {
     auto fd = socket_->fd();
     auto channel_ = std::make_shared<channel<io::socket<local>>>(*m_reactor, socket_);
@@ -331,13 +331,17 @@ engine_t::on_handshake(int fd, const message_t& message) {
         return;
     }
 
-    std::unique_lock<std::mutex> lock(m_pool_mutex);
+    pool_map_t::iterator it;
 
-    pool_map_t::iterator it = m_pool.find(id);
+    {
+        std::unique_lock<std::mutex> lock(m_pool_mutex);
 
-    if(it == m_pool.end()) {
-        COCAINE_LOG_WARNING(m_log, "disconnecting an unknown slave %s on fd %d", id, fd);
-        return;
+        it = m_pool.find(id);
+
+        if(it == m_pool.end()) {
+            COCAINE_LOG_WARNING(m_log, "disconnecting an unknown slave %s on fd %d", id, fd);
+            return;
+        }
     }
 
     COCAINE_LOG_DEBUG(m_log, "slave %s connected on fd %d", id, fd);
@@ -501,8 +505,8 @@ namespace {
         It result = first;
 
         while(++first != last) {
-	        if(predicate(*first) && compare(*first, *result)) {
-	            result = first;
+            if(predicate(*first) && compare(*first, *result)) {
+                result = first;
             }
         }
 

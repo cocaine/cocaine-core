@@ -94,6 +94,11 @@ profile_t::profile_t(context_t& context, const std::string& name_):
         )
     ).asUInt();
 
+    crashlog_limit = get(
+        "crashlog-limit",
+        static_cast<Json::UInt>(defaults::crashlog_limit)
+    ).asUInt();
+
     // Isolation
 
     isolate = {

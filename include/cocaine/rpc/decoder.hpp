@@ -81,10 +81,10 @@ private:
                checkpoint = 0;
 
         msgpack::unpack_return rv;
+        msgpack::zone zone;
 
         do {
             msgpack::object object;
-            msgpack::zone zone;
 
             rv = msgpack::unpack(data, size, &offset, &zone, &object);
 

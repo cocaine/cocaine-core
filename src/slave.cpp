@@ -120,7 +120,7 @@ slave_t::slave_t(context_t& context,
 #endif
     m_heartbeat_timer(reactor.native()),
     m_idle_timer(reactor.native()),
-    m_output_ring(50)
+    m_output_ring(profile.crashlog_limit)
 {
     // NOTE: Initialization heartbeat can be different.
     m_heartbeat_timer.set<slave_t, &slave_t::on_timeout>(this);
@@ -230,11 +230,7 @@ slave_t::assign(const std::shared_ptr<session_t>& session) {
     {
         lock.unlock();
 
-        COCAINE_LOG_DEBUG(
-            m_log,
-            "session %s has expired, dropping",
-            session->id
-        );
+        COCAINE_LOG_DEBUG(m_log, "session %s has expired, dropping", session->id);
 
         session->upstream->error(
             deadline_error,
@@ -244,22 +240,16 @@ slave_t::assign(const std::shared_ptr<session_t>& session) {
         return;
     }
 
-    COCAINE_LOG_DEBUG(
-        m_log,
-        "slave %s has started processing session %s",
-        m_id,
-        session->id
-    );
+    m_idle_timer.stop();
 
-    session_map_t::iterator it;
+    m_sessions.insert(std::make_pair(session->id, session));
 
-    std::tie(it, std::ignore) = m_sessions.insert(std::make_pair(session->id, session));
-
+    // NOTE: Allows other sessions to be processed while this one is being attached.
     lock.unlock();
 
-    it->second->attach(m_channel->wr->stream());
+    COCAINE_LOG_DEBUG(m_log, "slave %s has started processing session %s", m_id, session->id);
 
-    m_idle_timer.stop();
+    session->attach(m_channel->wr->stream());
 }
 
 void
@@ -346,7 +336,7 @@ namespace {
 
 void
 slave_t::on_disconnect(const std::error_code& ec) {
-    COCAINE_LOG_WARNING(
+    COCAINE_LOG_ERROR(
         m_log,
         "slave %s has unexpectedly disconnected - [%d] %s",
         m_id,
@@ -537,14 +527,14 @@ void
 slave_t::on_timeout(ev::timer&, int) {
     switch(m_state) {
         case states::unknown:
-            COCAINE_LOG_WARNING(m_log, "slave %s has failed to activate", m_id);
+            COCAINE_LOG_ERROR(m_log, "slave %s has failed to activate", m_id);
 
             m_state = states::inactive;
 
             break;
 
         case states::active:
-            COCAINE_LOG_WARNING(m_log, "slave %s has timed out", m_id);
+            COCAINE_LOG_ERROR(m_log, "slave %s has timed out", m_id);
 
             m_state = states::inactive;
 
@@ -564,7 +554,7 @@ slave_t::on_timeout(ev::timer&, int) {
             break;
 
         case states::inactive:
-            COCAINE_LOG_WARNING(m_log, "slave %s has failed to deactivate", m_id);
+            COCAINE_LOG_ERROR(m_log, "slave %s has failed to deactivate", m_id);
             break;
     }
 
@@ -630,7 +620,7 @@ slave_t::pump() {
         assign(session);
     }
 
-    m_engine.wake();
+    m_engine.pump();
 }
 
 void
