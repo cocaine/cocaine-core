@@ -104,8 +104,8 @@ struct acceptor {
             }
         }
 
-        ::fcntl(m_fd, F_SETFD, FD_CLOEXEC);
-        ::fcntl(m_fd, F_SETFL, O_NONBLOCK);
+        ::fcntl(fd, F_SETFD, FD_CLOEXEC);
+        ::fcntl(fd, F_SETFL, O_NONBLOCK);
 
         return std::make_shared<socket_type>(fd);
     }
