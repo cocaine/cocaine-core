@@ -496,29 +496,27 @@ slave_t::on_choke(uint64_t session_id) {
         session_id
     );
 
-    session_map_t::iterator it;
+    session_map_t::mapped_type session;
 
     {
         std::unique_lock<std::mutex> lock(m_mutex);
 
-        it = m_sessions.find(session_id);
+        session_map_t::iterator it = m_sessions.find(session_id);
 
         // TEST: Ensure that this slave is responsible for the session.
         BOOST_ASSERT(it != m_sessions.end());
+
+        session = it->second;
+
+        m_sessions.erase(it);
     }
 
-    it->second->upstream->close();
+    session->upstream->close();
+    session->detach();
 
     // NOTE: As we're destroying the session here, we have to close the
     // downstream, otherwise the client wouldn't be able to close it later.
     // it->second->send<rpc::choke>();
-
-    it->second->detach();
-
-    {
-        std::unique_lock<std::mutex> lock(m_mutex);
-        m_sessions.erase(it);
-    }
 
     pump();
 }
