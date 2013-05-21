@@ -248,8 +248,8 @@ context_t::bootstrap() {
         config.services.size() == 1 ? "service" : "services"
     );
 
-    auto reactor = std::make_shared<io::reactor_t>();
-    auto locator = std::unique_ptr<locator_t>(new locator_t(*this, *reactor));
+    auto locator_reactor = std::make_shared<io::reactor_t>();
+    auto locator = std::unique_ptr<locator_t>(new locator_t(*this, *locator_reactor));
 
     for(auto it = config.services.begin(); it != config.services.end(); ++it) {
         auto reactor = std::make_shared<io::reactor_t>();
@@ -289,7 +289,7 @@ context_t::bootstrap() {
 
     m_locator.reset(new actor_t(
         *this,
-        reactor,
+        locator_reactor,
         std::move(locator),
         endpoints
     ));
