@@ -126,6 +126,9 @@ slave_t::slave_t(context_t& context,
     m_heartbeat_timer.set<slave_t, &slave_t::on_timeout>(this);
     m_heartbeat_timer.start(m_profile.startup_timeout);
 
+    // NOTE: Idle timer will be started on the first heartbeat.
+    m_idle_timer.set<slave_t, &slave_t::on_idle>(this);
+
     COCAINE_LOG_DEBUG(m_log, "slave %s is activating", m_id);
 
     auto isolate = m_context.get<api::isolate_t>(
@@ -242,7 +245,7 @@ slave_t::assign(const std::shared_ptr<session_t>& session) {
 
     m_idle_timer.stop();
 
-    m_sessions.insert(std::make_pair(session->id, session));
+    m_sessions[session->id] = session;
 
     // NOTE: Allows other sessions to be processed while this one is being attached.
     lock.unlock();
@@ -399,7 +402,6 @@ slave_t::on_ping() {
 
         if(m_profile.idle_timeout) {
             // Start the idle timer, which will kill the slave when it's not used.
-            m_idle_timer.set<slave_t, &slave_t::on_idle>(this);
             m_idle_timer.start(m_profile.idle_timeout);
         }
 
