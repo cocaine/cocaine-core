@@ -122,14 +122,21 @@ slave_t::slave_t(context_t& context,
     m_idle_timer(reactor.native()),
     m_output_ring(profile.crashlog_limit)
 {
+    ev_now_update(reactor.native());
+
+    COCAINE_LOG_DEBUG(
+        m_log,
+        "slave %s is activating, timeout: %.02f seconds",
+        m_id,
+        m_profile.startup_timeout
+    );
+
     // NOTE: Initialization heartbeat can be different.
     m_heartbeat_timer.set<slave_t, &slave_t::on_timeout>(this);
     m_heartbeat_timer.start(m_profile.startup_timeout);
 
     // NOTE: Idle timer will be started on the first heartbeat.
     m_idle_timer.set<slave_t, &slave_t::on_idle>(this);
-
-    COCAINE_LOG_DEBUG(m_log, "slave %s is activating", m_id);
 
     auto isolate = m_context.get<api::isolate_t>(
         m_profile.isolate.type,
@@ -211,8 +218,6 @@ slave_t::bind(const std::shared_ptr<channel<io::socket<local>>>& channel_) {
     m_channel->wr->bind(
         std::bind(&slave_t::on_disconnect, this, _1)
     );
-
-    on_ping();
 }
 
 void
@@ -245,7 +250,7 @@ slave_t::assign(const std::shared_ptr<session_t>& session) {
 
     m_idle_timer.stop();
 
-    m_sessions[session->id] = session;
+    m_sessions.insert(std::make_pair(session->id, session));
 
     // NOTE: Allows other sessions to be processed while this one is being attached.
     lock.unlock();
