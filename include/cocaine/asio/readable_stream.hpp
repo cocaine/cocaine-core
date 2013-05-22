@@ -65,17 +65,6 @@ struct readable_stream {
 
         m_handle_read = read_handler;
         m_handle_error = error_handler;
-
-        /*
-        if(m_rd_offset != m_rx_offset) {
-            size_t received = m_handle_read(
-                m_ring.data() + m_rx_offset,
-                m_rd_offset - m_rx_offset
-            );
-
-            m_rd_offset += received;
-        }
-        */
     }
 
     void
