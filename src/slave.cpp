@@ -593,6 +593,10 @@ slave_t::on_output(const char* data, size_t size) {
     while(stream) {
         if(std::getline(stream, line)) {
             m_output_ring.push_back(line);
+
+            if(m_profile.log_output) {
+                COCAINE_LOG_DEBUG(m_log, "slave %s output: %s", m_id, line);
+            }
         } else {
             leftovers = line.size();
         }

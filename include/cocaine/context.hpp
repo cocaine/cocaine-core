@@ -29,6 +29,7 @@ namespace cocaine {
 
 struct defaults {
     // Default profile.
+    static const bool log_output;
     static const float heartbeat_timeout;
     static const float idle_timeout;
     static const float startup_timeout;

@@ -40,14 +40,15 @@ using namespace cocaine;
 
 namespace fs = boost::filesystem;
 
+const bool defaults::log_output              = false;
 const float defaults::heartbeat_timeout      = 30.0f;
 const float defaults::idle_timeout           = 600.0f;
 const float defaults::startup_timeout        = 10.0f;
 const float defaults::termination_timeout    = 5.0f;
-const unsigned long defaults::pool_limit     = 10L;
-const unsigned long defaults::queue_limit    = 100L;
 const unsigned long defaults::concurrency    = 10L;
 const unsigned long defaults::crashlog_limit = 50L;
+const unsigned long defaults::pool_limit     = 10L;
+const unsigned long defaults::queue_limit    = 100L;
 
 const float defaults::control_timeout        = 5.0f;
 

@@ -36,15 +36,21 @@ struct profile_t:
     // The profile name.
     std::string name;
 
+    // Copy all the slave output to the runtime log.
+    bool log_output;
+
+    // Timeouts.
     float heartbeat_timeout;
     float idle_timeout;
     float startup_timeout;
     float termination_timeout;
-    unsigned long pool_limit;
-    unsigned long queue_limit;
-    unsigned long grow_threshold;
+
+    // Limits.
     unsigned long concurrency;
     unsigned long crashlog_limit;
+    unsigned long grow_threshold;
+    unsigned long pool_limit;
+    unsigned long queue_limit;
 
     // NOTE: The slave processes are launched in sandboxed environments,
     // called isolates. This one describes the isolate type and arguments.

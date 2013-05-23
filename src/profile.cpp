@@ -27,6 +27,11 @@ profile_t::profile_t(context_t& context, const std::string& name_):
     cached<Json::Value>(context, "profiles", name_),
     name(name_)
 {
+    log_output = get(
+        "log-output",
+        defaults::log_output
+    ).asBool();
+
     heartbeat_timeout = get(
         "heartbeat-timeout",
         defaults::heartbeat_timeout
@@ -63,6 +68,16 @@ profile_t::profile_t(context_t& context, const std::string& name_):
         throw configuration_error_t("engine termination timeout must be non-negative");
     }
 
+    concurrency = get(
+        "concurrency",
+        static_cast<Json::UInt>(defaults::concurrency)
+    ).asUInt();
+
+    crashlog_limit = get(
+        "crashlog-limit",
+        static_cast<Json::UInt>(defaults::crashlog_limit)
+    ).asUInt();
+
     pool_limit = get(
         "pool-limit",
         static_cast<Json::UInt>(defaults::pool_limit)
@@ -77,11 +92,6 @@ profile_t::profile_t(context_t& context, const std::string& name_):
         static_cast<Json::UInt>(defaults::queue_limit)
     ).asUInt();
 
-    concurrency = get(
-        "concurrency",
-        static_cast<Json::UInt>(defaults::concurrency)
-    ).asUInt();
-
     if(concurrency == 0) {
         throw configuration_error_t("engine concurrency must be positive");
     }
@@ -92,11 +102,6 @@ profile_t::profile_t(context_t& context, const std::string& name_):
             static_cast<Json::UInt>(1UL),
             static_cast<Json::UInt>(queue_limit / pool_limit * concurrency)
         )
-    ).asUInt();
-
-    crashlog_limit = get(
-        "crashlog-limit",
-        static_cast<Json::UInt>(defaults::crashlog_limit)
     ).asUInt();
 
     // Isolation
