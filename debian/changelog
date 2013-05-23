@@ -1,4 +1,4 @@
-cocaine-core (0.10.5~pre14) unstable; urgency=low
+cocaine-core (0.10.5) unstable; urgency=low
 
   * Release 10.5.
   * Cocaine is no longer standalone. Multiple nodes can be linked together to
@@ -9,10 +9,14 @@ cocaine-core (0.10.5~pre14) unstable; urgency=low
     with some human-readable name. The sessions in named queues will be
     processed before any anonymous sessions in the engine's shared queue.
   * ZeroMQ has gone completely.
+  * A pair of new profile options: crashlog-limit and log-output. The first
+    one limits the number of lines of captured stdout and stderr of a dead
+    to save, the second one enables the copying of the output to the log.
   * Bugfix: engines will now try to rebalance when the last slave dies and
     there're still sessions in the queue.
   * Bugfix: engines will now display the reason for app stop in the log.
   * Bugfix: set the nonblocking mode on proper sockets.
+  * Bugfix: unblock all signals before slave execve().
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Sun, 19 May 2013 21:56:55 +0400
 
