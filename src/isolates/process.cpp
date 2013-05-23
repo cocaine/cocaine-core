@@ -101,14 +101,23 @@ process_t::spawn(const std::string& path,
         ::dup2(pipe, STDOUT_FILENO);
         ::dup2(pipe, STDERR_FILENO);
 
+        // Unblock all the signals.
+
+        sigset_t signals;
+
+        sigfillset(&signals);
+
+        ::sigprocmask(SIG_UNBLOCK, &signals, nullptr);
+
+        // Prepare the arguments and environment.
+
         size_t argc = args.size() * 2 + 2;
         // size_t envc = environment.size() + 1;
 
         char** argv = new char* [argc];
         // char** envp[] = new char* [envc];
 
-        // NOTE: The first element is the executable path,
-        // the last one should be null pointer.
+        // NOTE: The first element is the executable path, the last one should be null pointer.
         argv[0] = ::strdup(path.c_str());
         argv[argc - 1] = nullptr;
 
