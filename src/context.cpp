@@ -152,6 +152,8 @@ config_t::config_t(const std::string& config_path) {
 
     freeaddrinfo(result);
 
+    network.locator = root.get("locator", defaults::locator_port).asUInt();
+
     // Component configuration
 
     loggers  = parse(root["loggers"]);
@@ -285,7 +287,7 @@ context_t::bootstrap() {
     COCAINE_LOG_INFO(blog, "starting the service locator");
 
     std::vector<io::tcp::endpoint> endpoints = {
-        { "0.0.0.0", defaults::locator_port }
+        { "0.0.0.0", config.network.locator }
     };
 
     m_locator.reset(new actor_t(

@@ -67,6 +67,7 @@ struct config_t {
         bool aggregate;
         std::string group;
         std::string hostname;
+        uint16_t locator;
     } network;
 
     struct component_t {
