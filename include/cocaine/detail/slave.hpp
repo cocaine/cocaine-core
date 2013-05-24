@@ -100,7 +100,7 @@ class slave_t {
         on_chunk(uint64_t session_id, const std::string& chunk);
 
         void
-        on_error(uint64_t session_id, error_code code, const std::string& reason);
+        on_error(uint64_t session_id, int code, const std::string& reason);
 
         void
         on_choke(uint64_t session_id);

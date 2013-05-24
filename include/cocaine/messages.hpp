@@ -130,7 +130,7 @@ namespace rpc {
         typedef rpc_tag tag;
 
         typedef boost::mpl::list<
-            /* code */   error_code,
+            /* code */   int,
             /* reason */ std::string
         > tuple_type;
     };

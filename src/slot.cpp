@@ -29,7 +29,7 @@ state_t::state_t():
 { }
 
 void
-state_t::abort(error_code code, const std::string& reason) {
+state_t::abort(int code, const std::string& reason) {
     std::unique_lock<std::mutex> lock(m_mutex);
 
     if(m_completed) {

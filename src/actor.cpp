@@ -56,7 +56,7 @@ namespace {
 
         virtual
         void
-        error(error_code code, const std::string& reason) {
+        error(int code, const std::string& reason) {
             auto ptr = m_channel.lock();
 
             if(ptr) {

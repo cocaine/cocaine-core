@@ -89,7 +89,7 @@ namespace {
 
         virtual
         void
-        error(error_code code, const std::string& message) {
+        error(int code, const std::string& message) {
             if(m_state == states::closed) {
                 throw cocaine::error_t("the stream has been closed");
             }

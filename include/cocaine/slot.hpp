@@ -336,7 +336,7 @@ namespace detail {
         }
 
         void
-        abort(error_code code, const std::string& reason);
+        abort(int code, const std::string& reason);
 
         void
         close();
@@ -347,7 +347,8 @@ namespace detail {
     private:
         msgpack::sbuffer m_buffer;
         msgpack::packer<msgpack::sbuffer> m_packer;
-        error_code m_code;
+
+        int m_code;
         std::string m_reason;
 
         bool m_completed,
@@ -375,7 +376,7 @@ struct deferred {
     }
 
     void
-    abort(error_code code, const std::string& reason) {
+    abort(int code, const std::string& reason) {
         m_state->abort(code, reason);
     }
 
@@ -400,7 +401,7 @@ struct deferred<void> {
     }
 
     void
-    abort(error_code code, const std::string& reason) {
+    abort(int code, const std::string& reason) {
         m_state->abort(code, reason);
     }
 

@@ -304,7 +304,7 @@ slave_t::on_message(const message_t& message) {
         }
 
         case event_traits<rpc::error>::id: {
-            error_code code;
+            int code;
             std::string reason;
 
             message.as<rpc::error>(code, reason);
@@ -337,7 +337,7 @@ namespace {
             session.second->detach();
         }
 
-        const error_code code;
+        const int code;
         const std::string message;
     };
 }
@@ -468,7 +468,7 @@ slave_t::on_chunk(uint64_t session_id, const std::string& chunk) {
 }
 
 void
-slave_t::on_error(uint64_t session_id, error_code code, const std::string& reason) {
+slave_t::on_error(uint64_t session_id, int code, const std::string& reason) {
     BOOST_ASSERT(m_state == states::active);
 
     COCAINE_LOG_DEBUG(
