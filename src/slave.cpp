@@ -152,6 +152,7 @@ slave_t::slave_t(context_t& context,
     string_map_t args;
     string_map_t environment;
 
+    args["--app"] = m_manifest.name;
     args["--endpoint"] = m_manifest.endpoint;
     args["--locator"] = m_context.config.network.locator;
     args["--uuid"] = m_id;
