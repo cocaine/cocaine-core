@@ -82,7 +82,7 @@ namespace detail {
     };
 
     template<class T>
-    struct unpack<optional<T>> {
+    struct unpack<io::optional<T>> {
         template<class ArgumentIterator>
         static inline
         ArgumentIterator
@@ -98,7 +98,7 @@ namespace detail {
     };
 
     template<class T, T Default>
-    struct unpack<optional_with_default<T, Default>> {
+    struct unpack<io::optional_with_default<T, Default>> {
         typedef T type;
 
         template<class ArgumentIterator>

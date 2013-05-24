@@ -21,7 +21,7 @@
 #ifndef COCAINE_IO_OPTIONAL_HPP
 #define COCAINE_IO_OPTIONAL_HPP
 
-namespace cocaine {
+namespace cocaine { namespace io {
 
 template<class T>
 struct optional;
@@ -29,7 +29,7 @@ struct optional;
 template<class T, T Default>
 struct optional_with_default;
 
-namespace io { namespace detail {
+namespace detail {
     template<class T>
     struct is_required:
         public std::true_type
@@ -59,7 +59,7 @@ namespace io { namespace detail {
     struct unwrap_type<optional_with_default<T, Default>> {
         typedef T type;
     };
-}}
+}} // namespace cocaine::io
 
 }
 
