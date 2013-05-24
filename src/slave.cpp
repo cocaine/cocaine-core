@@ -38,6 +38,8 @@
 #include <array>
 #include <sstream>
 
+#include <boost/lexical_cast.hpp>
+
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -154,7 +156,7 @@ slave_t::slave_t(context_t& context,
 
     args["--app"] = m_manifest.name;
     args["--endpoint"] = m_manifest.endpoint;
-    args["--locator"] = m_context.config.network.locator;
+    args["--locator"] = boost::lexical_cast<std::string>(m_context.config.network.locator);
     args["--uuid"] = m_id;
 
     // Standard output capture
