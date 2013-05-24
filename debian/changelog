@@ -12,6 +12,8 @@ cocaine-core (0.10.5) unstable; urgency=low
   * A pair of new profile options: crashlog-limit and log-output. The first
     one limits the number of lines of captured stdout and stderr of a dead
     to save, the second one enables the copying of the output to the log.
+  * The Locator can now be bound to a configurable port, allowing users to get
+    multiple Runtimes on a single host.
   * Bugfix: engines will now try to rebalance when the last slave dies and
     there're still sessions in the queue.
   * Bugfix: engines will now display the reason for app stop in the log.
