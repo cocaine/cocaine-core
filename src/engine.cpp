@@ -580,14 +580,7 @@ engine_t::balance() {
         try {
             m_pool.emplace(
                 id,
-                std::make_shared<slave_t>(
-                    m_context,
-                    *m_reactor,
-                    m_manifest,
-                    m_profile,
-                    id,
-                    *this
-                )
+                std::make_shared<slave_t>(m_context, *m_reactor, m_manifest, m_profile, id, *this)
             );
         } catch(const cocaine::error_t& e) {
             COCAINE_LOG_ERROR(m_log, "unable to spawn more slaves - %s", e.what());
@@ -653,15 +646,14 @@ engine_t::migrate(states target) {
 
 void
 engine_t::stop() {
-    if(m_termination_timer.is_active()) {
-        m_termination_timer.stop();
-    }
+    m_termination_timer.stop();
 
     // NOTE: This will force the slave pool termination.
     m_pool.clear();
 
     if(m_state == states::stopping) {
         m_state = states::stopped;
-        m_reactor->stop();
     }
+
+    m_reactor->stop();
 }
