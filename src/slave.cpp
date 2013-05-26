@@ -74,9 +74,9 @@ struct engine::pipe_t {
         if(length == -1) {
             switch(errno) {
                 case EAGAIN:
-    #if defined(EWOULDBLOCK) && EWOULDBLOCK != EAGAIN
+#if defined(EWOULDBLOCK) && EWOULDBLOCK != EAGAIN
                 case EWOULDBLOCK:
-    #endif
+#endif
                 case EINTR:
                     break;
 
@@ -347,31 +347,39 @@ namespace {
 
 void
 slave_t::on_disconnect(const std::error_code& ec) {
-    COCAINE_LOG_ERROR(
-        m_log,
-        "slave %s has unexpectedly disconnected - [%d] %s",
-        m_id,
-        ec.value(),
-        ec.message()
-    );
+    switch(m_state) {
+        case states::unknown:
+        case states::active:
+            COCAINE_LOG_ERROR(
+                m_log,
+                "slave %s has unexpectedly disconnected - [%d] %s",
+                m_id,
+                ec.value(),
+                ec.message()
+            );
 
-    m_state = states::inactive;
+            m_state = states::inactive;
 
-    {
-        std::unique_lock<std::mutex> lock(m_mutex);
+            dump();
+            terminate(rpc::terminate::code::abnormal, "slave has unexpectedly disconnected");
 
-        COCAINE_LOG_WARNING(m_log, "slave %s dropping %llu sessions", m_id, m_sessions.size());
+            break;
 
-        std::for_each(m_sessions.begin(), m_sessions.end(), detach_with {
-            resource_error,
-            "the session has been aborted"
-        });
-
-        m_sessions.clear();
+        case states::inactive:
+            terminate(rpc::terminate::code::normal, "on request");
+            break;
     }
 
-    dump();
-    terminate(rpc::terminate::code::abnormal, "unexpectedly disconnected");
+    std::unique_lock<std::mutex> lock(m_mutex);
+
+    COCAINE_LOG_WARNING(m_log, "slave %s dropping %llu sessions", m_id, m_sessions.size());
+
+    std::for_each(m_sessions.begin(), m_sessions.end(), detach_with {
+        resource_error,
+        "the session has been aborted"
+    });
+
+    m_sessions.clear();
 }
 
 void
