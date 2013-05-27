@@ -80,7 +80,7 @@ files_t::read(const std::string& collection, const std::string& key) {
             );
         }
 
-        throw storage_error_t("unable to access object '%s' in '%s' — unknown error", key, collection);
+        throw storage_error_t("unable to access object '%s' in '%s' - unknown error", key, collection);
     }
 
     std::stringstream buffer;
@@ -146,7 +146,7 @@ files_t::write(const std::string& collection,
             );
         }
 
-        throw storage_error_t("unable to access object '%s' in '%s' — unknown error", key, collection);
+        throw storage_error_t("unable to access object '%s' in '%s' - unknown error", key, collection);
     }
 
     for(auto it = tags.begin(); it != tags.end(); ++it) {
