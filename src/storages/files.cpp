@@ -47,7 +47,9 @@ files_t::read(const std::string& collection, const std::string& key) {
 
     const fs::path file_path(m_storage_path / collection / key);
 
-    fs::ifstream stream(file_path);
+    if(!fs::exists(file_path)) {
+        throw storage_error_t("object '%s' has not been found in '%s'", key, collection);
+    }
 
     COCAINE_LOG_DEBUG(
         m_log,
@@ -57,8 +59,22 @@ files_t::read(const std::string& collection, const std::string& key) {
         file_path
     );
 
+    fs::ifstream stream(file_path);
+
     if(!stream) {
-        throw storage_error_t("the specified object has not been found");
+        try {
+            stream.exceptions(fs::ifstream::failbit);
+        } catch(const fs::ifstream::failure& e) {
+            throw storage_error_t(
+                "unable to access object '%s' in '%s' - [%d] %s",
+                e.code(),
+                e.what(),
+                key,
+                collection
+            );
+        }
+
+        throw storage_error_t("unable to access object '%s' in '%s' — unknown error", key, collection);
     }
 
     std::stringstream buffer;
@@ -84,18 +100,13 @@ files_t::write(const std::string& collection,
         try {
             fs::create_directories(store_path);
         } catch(const fs::filesystem_error& e) {
-            throw storage_error_t("unable to create the specified collection");
+            throw storage_error_t("unable to create collection '%s'", collection);
         }
     } else if(!fs::is_directory(store_status)) {
-        throw storage_error_t("the specified collection is corrupted");
+        throw storage_error_t("collection '%s' is corrupted", collection);
     }
 
     const fs::path file_path(store_path / key);
-
-    fs::ofstream stream(
-        file_path,
-        fs::ofstream::out | fs::ofstream::trunc
-    );
 
     COCAINE_LOG_DEBUG(
         m_log,
@@ -105,12 +116,26 @@ files_t::write(const std::string& collection,
         file_path
     );
 
-    if(!stream) {
-        throw storage_error_t("unable to access the specified object");
-    }
+    fs::ofstream stream(
+        file_path,
+        fs::ofstream::out | fs::ofstream::trunc
+    );
 
-    stream << blob;
-    stream.close();
+    if(!stream) {
+        try {
+            stream.exceptions(fs::ofstream::failbit);
+        } catch(const fs::ofstream::failure& e) {
+            throw storage_error_t(
+                "unable to access object '%s' in '%s' - [%d] %s",
+                e.code(),
+                e.what(),
+                key,
+                collection
+            );
+        }
+
+        throw storage_error_t("unable to access object '%s' in '%s' — unknown error", key, collection);
+    }
 
     for(auto it = tags.begin(); it != tags.end(); ++it) {
         const auto tag_path = store_path / *it;
@@ -120,20 +145,28 @@ files_t::write(const std::string& collection,
             try {
                 fs::create_directory(tag_path);
             } catch(const fs::filesystem_error& e) {
-                throw storage_error_t("unable to create the specified tag");
+                throw storage_error_t("unable to create tag '%s'", *it);
             }
         } else if(!fs::is_directory(tag_status)) {
-            throw storage_error_t("the specified tag is corrupted");
+            throw storage_error_t("tag '%s' is corrupted", *it);
         }
 
         if(!fs::is_symlink(tag_path / key)) {
             try {
                 fs::create_symlink(file_path, tag_path / key);
             } catch(const fs::filesystem_error& e) {
-                throw storage_error_t("unable to tag the specified object");
+                throw storage_error_t(
+                    "unable to assign tag '%s' on object '%s' in '%s'",
+                    *it,
+                    key,
+                    collection
+                );
             }
         }
     }
+
+    stream << blob;
+    stream.close();
 }
 
 void
@@ -155,7 +188,7 @@ files_t::remove(const std::string& collection, const std::string& key) {
         try {
             fs::remove(file_path);
         } catch(const fs::filesystem_error& e) {
-            throw storage_error_t("unable to remove the specified object");
+            throw storage_error_t("unable to remove object '%s' from '%s'", key, collection);
         }
     }
 }
@@ -187,7 +220,7 @@ files_t::find(const std::string& collection, const std::vector<std::string>& tag
 #endif
 
             if(!fs::exists(*it)) {
-                COCAINE_LOG_DEBUG(m_log, "purging object %s from tag %s", object, *tag);
+                COCAINE_LOG_DEBUG(m_log, "purging object '%s' from tag '%s'", object, *tag);
 
                 // Remove the symlink if the object was removed.
                 fs::remove(*it++);
