@@ -66,11 +66,17 @@ files_t::read(const std::string& collection, const std::string& key) {
             stream.exceptions(fs::ifstream::failbit);
         } catch(const fs::ifstream::failure& e) {
             throw storage_error_t(
+#if defined(__clang__)
                 "unable to access object '%s' in '%s' - [%d] %s",
-                e.code(),
-                e.what(),
+#else
+                "unable to access object '%s' in '%s' - %s",
+#endif
                 key,
-                collection
+                collection,
+#if defined(__clang__)
+                e.code(),
+#endif
+                e.what()
             );
         }
 
@@ -126,11 +132,17 @@ files_t::write(const std::string& collection,
             stream.exceptions(fs::ofstream::failbit);
         } catch(const fs::ofstream::failure& e) {
             throw storage_error_t(
+#if defined(__clang__)
                 "unable to access object '%s' in '%s' - [%d] %s",
-                e.code(),
-                e.what(),
+#else
+                "unable to access object '%s' in '%s' - %s",
+#endif
                 key,
-                collection
+                collection,
+#if defined(__clang__)
+                e.code(),
+#endif
+                e.what()
             );
         }
 
