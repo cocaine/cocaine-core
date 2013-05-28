@@ -26,7 +26,7 @@
 namespace cocaine { namespace io {
 
 struct timeout_t {
-    COCAINE_DECLARE_NONCOPYABLE(timeout_t);
+    COCAINE_DECLARE_NONCOPYABLE(timeout_t)
 
     timeout_t(reactor_t& reactor):
         m_time_watcher(reactor.native())
