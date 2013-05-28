@@ -24,6 +24,7 @@
 #include "cocaine/asio/resolver.hpp"
 #include "cocaine/asio/socket.hpp"
 #include "cocaine/asio/tcp.hpp"
+#include "cocaine/asio/timeout.hpp"
 #include "cocaine/asio/udp.hpp"
 
 #include "cocaine/context.hpp"
@@ -103,10 +104,7 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
 locator_t::~locator_t() {
     m_remotes.clear();
 
-    for(local_service_list_t::reverse_iterator it = m_services.rbegin();
-        it != m_services.rend();
-        ++it)
-    {
+    for(auto it = m_services.rbegin(); it != m_services.rend(); ++it) {
         COCAINE_LOG_INFO(m_log, "stopping service '%s'", it->first);
 
         // Terminate the service's thread.
@@ -120,7 +118,7 @@ void
 locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
     COCAINE_LOG_INFO(
         m_log,
-        "publishing service '%s' on :%s",
+        "publishing service '%s' on port %s",
         name,
         std::get<1>(service->endpoint())
     );
@@ -216,10 +214,10 @@ locator_t::on_announce_event(ev::io&, int) {
     msgpack::unpacked unpacked;
     msgpack::unpack(&unpacked, buffer, size);
 
-    std::tuple<std::string, std::string> key;
+    remote_t::key_type key;
 
     try {
-        key = unpacked.get().as<std::tuple<std::string, std::string>>();
+        key = unpacked.get().as<remote_t::key_type>();
     } catch(const std::exception& e) {
         COCAINE_LOG_ERROR(m_log, "unable to decode an announce");
         return;
@@ -227,11 +225,12 @@ locator_t::on_announce_event(ev::io&, int) {
 
     if(m_remotes.find(key) == m_remotes.end()) {
         std::string hostname;
+        uint16_t port;
         std::string uuid;
 
-        std::tie(hostname, uuid) = key;
+        std::tie(hostname, port, uuid) = key;
 
-        COCAINE_LOG_INFO(m_log, "discovered node '%s' on '%s'", uuid, hostname);
+        COCAINE_LOG_INFO(m_log, "discovered node '%s' on '%s:%d'", uuid, hostname, port);
 
         std::shared_ptr<io::channel<io::socket<io::tcp>>> channel;
 
@@ -239,7 +238,7 @@ locator_t::on_announce_event(ev::io&, int) {
             channel = std::make_shared<io::channel<io::socket<io::tcp>>>(
                 m_reactor,
                 std::make_shared<io::socket<io::tcp>>(
-                    io::resolver<io::tcp>::query(hostname, 10053)
+                    io::resolver<io::tcp>::query(hostname, port)
                 )
             );
         } catch(const std::exception& e) {
@@ -249,14 +248,25 @@ locator_t::on_announce_event(ev::io&, int) {
 
         auto on_response = std::bind(&locator_t::on_response, this, key, _1);
         auto on_shutdown = std::bind(&locator_t::on_shutdown, this, key, _1);
+        auto on_timedout = std::bind(&locator_t::on_timedout, this, key);
 
         channel->wr->bind(on_shutdown);
         channel->rd->bind(on_response, on_shutdown);
 
-        m_remotes[key] = channel;
+        auto timeout = std::make_shared<io::timeout_t>(m_reactor);
+
+        timeout->bind(on_timedout);
+
+        m_remotes[key] = remote_t {
+            channel,
+            timeout
+        };
 
         channel->wr->write<io::locator::dump>(0UL);
     }
+
+    m_remotes[key].timeout->stop();
+    m_remotes[key].timeout->start(60.0f);
 }
 
 void
@@ -264,7 +274,11 @@ locator_t::on_announce_timer(ev::timer&, int) {
     msgpack::sbuffer buffer;
     msgpack::packer<msgpack::sbuffer> packer(buffer);
 
-    packer << std::make_tuple(m_context.config.network.hostname, m_id.string());
+    packer << remote_t::key_type(
+        m_context.config.network.hostname,
+        m_context.config.network.locator,
+        m_id.string()
+    );
 
     std::error_code ec;
 
@@ -278,11 +292,10 @@ locator_t::on_announce_timer(ev::timer&, int) {
 }
 
 void
-locator_t::on_response(const remote_map_t::key_type& key, const io::message_t& message) {
-    std::string hostname;
+locator_t::on_response(const remote_t::key_type& key, const io::message_t& message) {
     std::string uuid;
 
-    std::tie(hostname, uuid) = key;
+    std::tie(std::ignore, std::ignore, uuid) = key;
 
     switch(message.id()) {
         case io::event_traits<io::rpc::chunk>::id: {
@@ -316,14 +329,29 @@ locator_t::on_response(const remote_map_t::key_type& key, const io::message_t& m
 }
 
 void
-locator_t::on_shutdown(const remote_map_t::key_type& key, const std::error_code& ec) {
+locator_t::on_shutdown(const remote_t::key_type& key, const std::error_code& ec) {
+    std::string uuid;
+
+    std::tie(std::ignore, std::ignore, uuid) = key;
+
     COCAINE_LOG_INFO(
         m_log,
         "node '%s' has disconnected - [%d] %s",
-        std::get<1>(key),
+        uuid,
         ec.value(),
         ec.message()
     );
+
+    m_remotes.erase(key);
+}
+
+void
+locator_t::on_timedout(const remote_t::key_type& key) {
+    std::string uuid;
+
+    std::tie(std::ignore, std::ignore, uuid) = key;
+
+    COCAINE_LOG_WARNING(m_log, "node '%s' has timed out", uuid);
 
     m_remotes.erase(key);
 }

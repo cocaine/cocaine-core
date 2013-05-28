@@ -73,6 +73,8 @@ namespace cocaine {
         template<class>
         struct writable_stream;
 
+        struct timeout_t;
+
         // RPC primitives
 
         template<class>

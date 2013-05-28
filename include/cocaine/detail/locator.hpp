@@ -37,6 +37,17 @@ namespace cocaine {
 
 class actor_t;
 
+struct remote_t {
+    typedef std::tuple<
+        std::string,
+        uint16_t,
+        std::string
+    > key_type;
+
+    std::shared_ptr<io::channel<io::socket<io::tcp>>> channel;
+    std::shared_ptr<io::timeout_t> timeout;
+};
+
 typedef io::event_traits<io::locator::resolve>::result_type resolve_result_type;
 typedef io::event_traits<io::locator::dump>::result_type dump_result_type;
 
@@ -67,16 +78,14 @@ class locator_t:
         void
         on_announce_timer(ev::timer&, int);
 
-        typedef std::map<
-            std::tuple<std::string, std::string>,
-            std::shared_ptr<io::channel<io::socket<io::tcp>>>
-        > remote_map_t;
+        void
+        on_response(const remote_t::key_type& key, const io::message_t& message);
 
         void
-        on_response(const remote_map_t::key_type& key, const io::message_t& message);
+        on_shutdown(const remote_t::key_type& key, const std::error_code& ec);
 
         void
-        on_shutdown(const remote_map_t::key_type& key, const std::error_code& ec);
+        on_timedout(const remote_t::key_type& key);
 
     private:
         context_t& m_context;
@@ -103,6 +112,11 @@ class locator_t:
         // Announce receiver.
         std::unique_ptr<io::socket<io::udp>> m_sink;
         std::unique_ptr<ev::io> m_sink_watcher;
+
+        typedef std::map<
+            remote_t::key_type,
+            remote_t
+        > remote_map_t;
 
         // These are remote channels indexed by (hostname, id) tuples. The unique id is required to
         // distinguish between different runtime instances on the same host.
