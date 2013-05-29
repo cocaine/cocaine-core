@@ -37,14 +37,6 @@ Group:		Development/Libraries
 %description -n cocaine-runtime
 Cocaine runtime components package.
 
-%package -n cocaine-tools
-Summary:	Cocaine - Toolset
-Group:		Development/Libraries
-Requires:	%{name} = %{version}-%{release}
-
-%description -n cocaine-tools
-Various tools to query and manipulate running Cocaine instances.
-
 %prep
 %setup -q
 
@@ -71,13 +63,6 @@ install -m 755 debian/cocaine-runtime.init %{buildroot}%{_sysconfdir}/init.d/coc
 install -d %{buildroot}%{_sysconfdir}/cocaine
 install -m644 debian/cocaine-runtime.conf %{buildroot}%{_sysconfdir}/cocaine/cocaine-default.conf
 
-install -d %{buildroot}%{_bindir}
-install -m755 scripts/cocaine-info.py %{buildroot}%{_bindir}/cocaine-info
-install -m755 scripts/cocaine-start-app.py %{buildroot}%{_bindir}/cocaine-start-app
-install -m755 scripts/cocaine-pause-app.py %{buildroot}%{_bindir}/cocaine-pause-app
-install -m755 scripts/cocaine-check-app.py %{buildroot}%{_bindir}/cocaine-check-app
-install -m755 scripts/cocaine-tool.py %{buildroot}%{_bindir}/cocaine-tool
-
 %post -p /sbin/ldconfig
 %postun -p /sbin/ldconfig
 
@@ -98,11 +83,3 @@ rm -rf %{buildroot}
 %{_sysconfdir}/init.d/*
 %{_sysconfdir}/cocaine/cocaine-default.conf
 %{_bindir}/cocaine-runtime
-
-%files -n cocaine-tools
-%defattr(-,root,root,-)
-%{_bindir}/cocaine-info
-%{_bindir}/cocaine-start-app
-%{_bindir}/cocaine-pause-app
-%{_bindir}/cocaine-check-app
-%{_bindir}/cocaine-tool
