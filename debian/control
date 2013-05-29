@@ -37,9 +37,3 @@ Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2 (= ${binary:Versio
 Conflicts: cocaine-server
 Description: Cocaine - Runtime
  Cocaine runtime components package.
-
-Package: cocaine-tools
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, cocaine-framework-python (>= 0.10.2-1)
-Description: Cocaine - Toolset
- Various tools to query and manipulate running Cocaine instances.
