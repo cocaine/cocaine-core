@@ -1,3 +1,9 @@
+cocaine-core (0.10.4-3) unstable; urgency=low
+
+  * Cocaine Tools rewritten and moved to the Cocaine Framework.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 29 May 2013 16:30:05 +0400
+
 cocaine-core (0.10.4-2) unstable; urgency=low
 
   * Set the non-blocking socket flag on the right sockets.
