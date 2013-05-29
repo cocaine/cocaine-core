@@ -32,8 +32,7 @@ Description: Cocaine - Debug Files
 
 Package: cocaine-runtime
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2 (= ${binary:Version}),
- adduser
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core2 (= ${binary:Version}), adduser
 Conflicts: cocaine-server
 Description: Cocaine - Runtime
  Cocaine runtime components package.
