@@ -23,7 +23,13 @@ cocaine-core (0.10.5) unstable; urgency=low
   * Bugfix: unblock all signals before slave execve().
   * Bugfix: properly shutdown the engine when the app is broken.
 
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Sun, 19 May 2013 21:56:55 +0400
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 29 May 2013 16:30:05 +0400
+
+cocaine-core (0.10.4-3) unstable; urgency=low
+
+  * Cocaine Tools rewritten and moved to the Cocaine Framework.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 29 May 2013 16:30:05 +0400
 
 cocaine-core (0.10.4-2) unstable; urgency=low
 
