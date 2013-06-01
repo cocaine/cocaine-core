@@ -227,20 +227,9 @@ void
 slave_t::assign(const std::shared_ptr<session_t>& session) {
     BOOST_ASSERT(m_state != states::inactive);
 
-    std::unique_lock<std::mutex> lock(m_mutex);
-
-    if(m_sessions.size() >= m_profile.concurrency || m_state == states::unknown) {
-        m_queue.push_back(session);
-        return;
-    }
-
-    BOOST_ASSERT(m_state == states::active);
-
     if(session->event.policy.deadline &&
        session->event.policy.deadline <= m_reactor.native().now())
     {
-        lock.unlock();
-
         COCAINE_LOG_DEBUG(m_log, "session %s has expired, dropping", session->id);
 
         session->upstream->error(
@@ -250,6 +239,15 @@ slave_t::assign(const std::shared_ptr<session_t>& session) {
 
         return;
     }
+
+    std::unique_lock<std::mutex> lock(m_mutex);
+
+    if(m_sessions.size() >= m_profile.concurrency || m_state == states::unknown) {
+        m_queue.push_back(session);
+        return;
+    }
+
+    BOOST_ASSERT(m_state == states::active);
 
     m_idle_timer.stop();
 
