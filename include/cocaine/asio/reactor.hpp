@@ -34,7 +34,7 @@ namespace cocaine { namespace io {
 struct reactor_t {
     COCAINE_DECLARE_NONCOPYABLE(reactor_t)
 
-    typedef ev::loop_ref native_type;
+    typedef ev::dynamic_loop native_type;
     typedef std::function<void()> job_type;
 
     reactor_t():
