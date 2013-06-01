@@ -49,12 +49,8 @@ struct encoder {
 
         m_stream = stream;
 
-        for(message_cache_t::const_iterator it = m_cache.begin();
-            it != m_cache.end();
-            ++it)
-        {
-            m_stream->write(it->data(), it->size());
-        }
+        m_stream->write(m_buffer.data(), m_buffer.size());
+        m_buffer.clear();
     }
 
     template<class ErrorHandler>
@@ -88,11 +84,8 @@ struct encoder {
 
         if(m_stream) {
             m_stream->write(m_buffer.data(), m_buffer.size());
-        } else {
-            m_cache.emplace_back(m_buffer.data(), m_buffer.size());
+            m_buffer.clear();
         }
-
-        m_buffer.clear();
     }
 
 public:
@@ -105,12 +98,7 @@ private:
     msgpack::sbuffer m_buffer;
     msgpack::packer<msgpack::sbuffer> m_packer;
 
-    typedef std::vector<
-        std::string
-    > message_cache_t;
-
-    // Message cache.
-    message_cache_t m_cache;
+    // Message buffer interlocking.
     std::mutex m_mutex;
 
     // Attachable stream.
