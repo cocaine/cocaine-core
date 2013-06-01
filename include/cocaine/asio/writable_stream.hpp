@@ -90,7 +90,7 @@ struct writable_stream {
             size_t unsent = m_wr_offset - m_tx_offset;
 
             if(unsent + size > m_ring.size()) {
-                m_ring.resize(m_ring.size() << 1);
+                m_ring.resize(m_ring.size() * 2);
                 continue;
             }
 

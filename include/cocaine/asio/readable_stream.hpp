@@ -84,7 +84,7 @@ private:
             size_t unparsed = m_rd_offset - m_rx_offset;
 
             if(unparsed + 1024 > m_ring.size()) {
-                m_ring.resize(m_ring.size() << 1);
+                m_ring.resize(m_ring.size() * 2);
                 continue;
             }
 
