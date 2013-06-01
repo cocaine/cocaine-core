@@ -75,11 +75,7 @@ struct config_t {
         Json::Value args;
     };
 
-#if BOOST_VERSION >= 103600
-    typedef boost::unordered_map<
-#else
     typedef std::map<
-#endif
         std::string,
         component_t
     > component_map_t;

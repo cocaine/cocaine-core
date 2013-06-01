@@ -53,11 +53,7 @@ class node_t:
         context_t& m_context;
         std::unique_ptr<logging::log_t> m_log;
 
-#if BOOST_VERSION >= 103600
-        typedef boost::unordered_map<
-#else
         typedef std::map<
-#endif
             std::string,
             std::shared_ptr<app_t>
         > app_map_t;

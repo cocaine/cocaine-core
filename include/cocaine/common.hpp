@@ -41,7 +41,6 @@
 #endif
 
 #include <boost/assert.hpp>
-#include <boost/unordered_map.hpp>
 #include <boost/version.hpp>
 
 #define COCAINE_DECLARE_NONCOPYABLE(_name_)     \

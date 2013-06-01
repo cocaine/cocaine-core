@@ -186,11 +186,7 @@ class engine_t {
 
         backlog_t m_backlog;
 
-#if BOOST_VERSION >= 103600
-        typedef boost::unordered_map<
-#else
         typedef std::map<
-#endif
             std::string,
             std::shared_ptr<slave_t>
         > pool_map_t;

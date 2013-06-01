@@ -66,7 +66,7 @@ auth_t::auth_t(context_t& context):
         EVP_PKEY* pkey = PEM_read_bio_PUBKEY(bio, nullptr, nullptr, nullptr);
 
         if(pkey != nullptr) {
-            m_keys.emplace(identity, pkey);
+            m_keys[identity] = pkey;
         } else {
             COCAINE_LOG_ERROR(
                 m_log,

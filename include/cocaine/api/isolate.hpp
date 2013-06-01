@@ -105,18 +105,14 @@ struct category_traits<isolate_t> {
                     args
                 );
 
-                m_instances.emplace(name, instance);
+                m_instances[name] = instance;
             }
 
             return instance;
         }
 
     private:
-#if BOOST_VERSION >= 103600
-        typedef boost::unordered_map<
-#else
         typedef std::map<
-#endif
             std::string,
             std::weak_ptr<isolate_t>
         > instance_map_t;

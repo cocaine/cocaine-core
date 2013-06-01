@@ -215,6 +215,8 @@ engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t
         upstream
     );
 
+    session->send<rpc::invoke>(event.name);
+
     {
         std::unique_lock<session_queue_t> lock(m_queue);
 
@@ -229,9 +231,6 @@ engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t
 
     // Pump the queue!
     wake();
-
-    // NOTE: This will probably go to the session cache, but we save on this serialization later.
-    session->send<rpc::invoke>(event.name);
 
     return std::make_shared<downstream_t>(session);
 }
@@ -248,27 +247,28 @@ engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t
         upstream
     );
 
+    session->send<rpc::invoke>(event.name);
+
+    pool_map_t::iterator it;
+
     {
         std::unique_lock<std::mutex> lock(m_pool_mutex);
 
-        auto it = m_pool.find(tag);
+        it = m_pool.find(tag);
 
         if(it == m_pool.end()) {
             if(m_pool.size() >= m_profile.pool_limit) {
                 throw cocaine::error_t("the pool is full");
             }
 
-            std::tie(it, std::ignore) = m_pool.emplace(
+            std::tie(it, std::ignore) = m_pool.insert(std::make_pair(
                 tag,
                 std::make_shared<slave_t>(m_context, *m_reactor, m_manifest, m_profile, tag, *this)
-            );
+            ));
         }
-
-        it->second->assign(session);
     }
 
-    // NOTE: This will probably go to the session cache, but we save on this serialization later.
-    session->send<rpc::invoke>(event.name);
+    it->second->assign(session);
 
     return std::make_shared<downstream_t>(session);
 }
@@ -578,10 +578,10 @@ engine_t::balance() {
         auto id = unique_id_t().string();
 
         try {
-            m_pool.emplace(
+            m_pool.insert(std::make_pair(
                 id,
                 std::make_shared<slave_t>(m_context, *m_reactor, m_manifest, m_profile, id, *this)
-            );
+            ));
         } catch(const cocaine::error_t& e) {
             COCAINE_LOG_ERROR(m_log, "unable to spawn more slaves - %s", e.what());
             break;

@@ -119,14 +119,14 @@ node_t::on_start_app(const runlist_t& runlist) {
         COCAINE_LOG_INFO(m_log, "starting the '%s' app", it->first);
 
         try {
-            std::tie(app, std::ignore) = m_apps.emplace(
+            std::tie(app, std::ignore) = m_apps.insert(std::make_pair(
                 it->first,
                 std::make_shared<app_t>(
                     m_context,
                     it->first,
                     it->second
                 )
-            );
+            ));
         } catch(const cocaine::error_t& e) {
             COCAINE_LOG_ERROR(
                 m_log,

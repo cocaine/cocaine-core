@@ -52,11 +52,7 @@ class dispatch_t {
     private:
         std::unique_ptr<logging::log_t> m_log;
 
-#if BOOST_VERSION >= 103600
-        typedef boost::unordered_map<
-#else
         typedef std::map<
-#endif
             int,
             std::shared_ptr<slot_concept_t>
         > slot_map_t;
@@ -96,9 +92,9 @@ dispatch_t::on(const std::string& name, F callable) {
 
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    m_slots.emplace(
-        io::event_traits<Event>::id,
-        std::make_shared<slot_type>(name, callable)
+    m_slots[io::event_traits<Event>::id] = std::make_shared<slot_type>(
+        name,
+        callable
     );
 }
 

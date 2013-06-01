@@ -175,12 +175,10 @@ config_t::parse(const Json::Value& config) {
         it != names.end();
         ++it)
     {
-        component_t info = {
+        components[*it] = {
             config[*it].get("type", "unspecified").asString(),
             config[*it]["args"]
         };
-
-        components.emplace(*it, info);
     }
 
     return components;
