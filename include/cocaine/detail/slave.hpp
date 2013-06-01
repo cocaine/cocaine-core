@@ -32,8 +32,6 @@
 
 namespace cocaine { namespace engine {
 
-struct pipe_t;
-
 struct session_t;
 
 class slave_t {
@@ -166,6 +164,8 @@ class slave_t {
         std::unique_ptr<api::handle_t> m_handle;
 
         // Output capture
+
+        struct pipe_t;
 
         std::unique_ptr<io::readable_stream<pipe_t>> m_output_pipe;
         boost::circular_buffer<std::string> m_output_ring;

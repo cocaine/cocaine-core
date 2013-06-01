@@ -22,8 +22,9 @@
 #define COCAINE_ISOLATE_API_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/json.hpp"
 #include "cocaine/repository.hpp"
+
+#include "json/json.h"
 
 #include <mutex>
 

@@ -22,7 +22,6 @@
 #define COCAINE_ACTOR_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/json.hpp"
 
 #include "cocaine/asio/reactor.hpp"
 #include "cocaine/asio/tcp.hpp"

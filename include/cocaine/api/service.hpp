@@ -23,8 +23,9 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/dispatch.hpp"
-#include "cocaine/json.hpp"
 #include "cocaine/repository.hpp"
+
+#include "json/json.h"
 
 namespace cocaine { namespace api {
 

@@ -22,8 +22,9 @@
 #define COCAINE_DRIVER_API_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/json.hpp"
 #include "cocaine/repository.hpp"
+
+#include "json/json.h"
 
 namespace cocaine { namespace api {
 

@@ -173,7 +173,7 @@ namespace {
                 typename boost::mpl::next<It>::type,
                 End,
                 Args...,
-                typename boost::add_reference<
+                typename std::add_lvalue_reference<
                     typename boost::mpl::deref<It>::type
                 >::type
             >::type type;

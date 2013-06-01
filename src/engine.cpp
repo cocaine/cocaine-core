@@ -327,7 +327,7 @@ engine_t::on_handshake(int fd, const message_t& message) {
     try {
         message.as<rpc::handshake>(id);
     } catch(const cocaine::error_t& e) {
-        COCAINE_LOG_WARNING(m_log, "disconnecting a malfunctioning slave on fd %d", fd);
+        COCAINE_LOG_WARNING(m_log, "disconnecting an incompatible slave on fd %d", fd);
         return;
     }
 

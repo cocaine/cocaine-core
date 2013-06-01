@@ -23,7 +23,7 @@
 
 #include "cocaine/traits.hpp"
 
-#include "cocaine/json.hpp"
+#include "json/json.h"
 
 namespace cocaine { namespace io {
 

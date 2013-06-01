@@ -49,7 +49,7 @@ using namespace cocaine::io;
 
 using namespace std::placeholders;
 
-struct engine::pipe_t {
+struct slave_t::pipe_t {
     typedef int endpoint_type;
 
     pipe_t(endpoint_type endpoint):

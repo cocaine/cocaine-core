@@ -22,9 +22,10 @@
 #define COCAINE_APP_MANIFEST_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/json.hpp"
 
 #include "cocaine/detail/cached.hpp"
+
+#include "json/json.h"
 
 namespace cocaine { namespace engine {
 

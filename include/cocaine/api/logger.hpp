@@ -22,9 +22,10 @@
 #define COCAINE_LOGGER_API_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/json.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/repository.hpp"
+
+#include "json/json.h"
 
 namespace cocaine { namespace api {
 

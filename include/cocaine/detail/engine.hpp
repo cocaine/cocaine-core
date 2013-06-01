@@ -28,7 +28,7 @@
 #include "cocaine/detail/atomic.hpp"
 #include "cocaine/detail/queue.hpp"
 
-#include "cocaine/json.hpp"
+#include "json/json.h"
 
 #include <mutex>
 #include <set>

@@ -22,12 +22,9 @@
 #define COCAINE_IO_MESSAGES_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/tuples.hpp"
 
 #include "cocaine/rpc/optional.hpp"
-
-#include <boost/mpl/int.hpp>
-#include <boost/mpl/list.hpp>
+#include "cocaine/rpc/protocol.hpp"
 
 namespace cocaine { namespace io {
 
