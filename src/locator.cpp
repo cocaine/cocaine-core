@@ -121,10 +121,7 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
     m_log(new logging::log_t(context, "service/locator")),
     m_reactor(reactor)
 {
-    m_synchronizer = std::make_shared<synchronize_t>(this);
-
     on<io::locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
-    on<io::locator::synchronize>(m_synchronizer);
 
     if(context.config.network.group.empty()) {
         return;
@@ -181,12 +178,18 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
     m_announce_timer.reset(new ev::timer(m_reactor.native()));
     m_announce_timer->set<locator_t, &locator_t::on_announce_timer>(this);
     m_announce_timer->start(0.0f, 5.0f);
+
+    m_synchronizer = std::make_shared<synchronize_t>(this);
+
+    on<io::locator::synchronize>(m_synchronizer);
 }
 
 locator_t::~locator_t() {
-    // Notify all the remote clients about this node shutdown.
-    m_synchronizer->shutdown();
-    m_synchronizer.reset();
+    if(m_synchronizer) {
+        // Notify all the remote clients about this node shutdown.
+        m_synchronizer->shutdown();
+        m_synchronizer.reset();
+    }
 
     // Disconnect all the remote nodes.
     m_remotes.clear();
