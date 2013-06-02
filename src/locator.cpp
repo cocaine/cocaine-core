@@ -277,7 +277,7 @@ locator_t::resolve(const std::string& name) const {
         return std::get<1>(begin->second);
     }
 
-    COCAINE_LOG_DEBUG(m_log, "providing service '%s' using local node");
+    COCAINE_LOG_DEBUG(m_log, "providing service '%s' using local node", name);
 
     return query(local->second);
 }
