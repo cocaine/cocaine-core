@@ -418,7 +418,13 @@ locator_t::on_response(const remote_t::key_type& key, const io::message_t& messa
 
             unpacked.get() >> dump;
 
-            COCAINE_LOG_INFO(m_log, "discovered %llu services on node '%s'", dump.size(), std::get<0>(key));
+            COCAINE_LOG_INFO(
+                m_log,
+                "discovered %llu %s on node '%s'",
+                dump.size(),
+                dump.size() == 1 ? "service" : "services",
+                std::get<0>(key)
+            );
 
             for(auto it = dump.begin(); it != dump.end(); ++it) {
                 m_remote_services.insert(std::make_pair(
