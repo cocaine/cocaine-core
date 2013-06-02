@@ -46,8 +46,8 @@ class locator_t:
     struct remote_t {
         typedef std::tuple<
             std::string,
-            uint16_t,
-            std::string
+            std::string,
+            uint16_t
         > key_type;
 
         std::shared_ptr<io::channel<io::socket<io::tcp>>> channel;
@@ -89,6 +89,11 @@ class locator_t:
         void
         on_timedout(const remote_t::key_type& key);
 
+        // Housekeeping
+
+        void
+        purge(const remote_t::key_type& key);
+
     private:
         context_t& m_context;
         std::unique_ptr<logging::log_t> m_log;
@@ -123,13 +128,13 @@ class locator_t:
             remote_t
         > remote_map_t;
 
-        // These are remote channels indexed by (hostname, id) tuples. The unique id is required to
+        // These are remote channels indexed by (endpoint, id) tuples. The unique id is required to
         // distinguish between different runtime instances on the same host.
         remote_map_t m_remotes;
 
         typedef std::multimap<
             std::string,
-            resolve_result_type
+            std::tuple<remote_t::key_type, resolve_result_type>
         > remote_service_map_t;
 
         remote_service_map_t m_remote_services;

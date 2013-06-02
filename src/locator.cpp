@@ -266,7 +266,18 @@ locator_t::resolve(const std::string& name) const {
 
         std::advance(begin, distribution(engine));
 
-        return begin->second;
+        const auto& key = std::get<0>(begin->second);
+
+        COCAINE_LOG_DEBUG(
+            m_log,
+            "providing service '%s' using remote node '%s' on '%s:%d'",
+            name,
+            std::get<0>(key),
+            std::get<1>(key),
+            std::get<2>(key)
+        );
+
+        return std::get<1>(begin->second);
     }
 
     return query(local->second);
@@ -323,11 +334,11 @@ locator_t::on_announce_event(ev::io&, int) {
     }
 
     if(m_remotes.find(key) == m_remotes.end()) {
+        std::string uuid;
         std::string hostname;
         uint16_t port;
-        std::string uuid;
 
-        std::tie(hostname, port, uuid) = key;
+        std::tie(uuid, hostname, port) = key;
 
         COCAINE_LOG_INFO(m_log, "discovered node '%s' on '%s:%d'", uuid, hostname, port);
 
@@ -364,6 +375,8 @@ locator_t::on_announce_event(ev::io&, int) {
         channel->wr->write<io::locator::synchronize>(0UL);
     }
 
+    COCAINE_LOG_DEBUG(m_log, "resetting the heartbeat timeout for node '%s'", std::get<0>(key));
+
     m_remotes[key].timeout->stop();
     m_remotes[key].timeout->start(60.0f);
 }
@@ -374,9 +387,9 @@ locator_t::on_announce_timer(ev::timer&, int) {
     msgpack::packer<msgpack::sbuffer> packer(buffer);
 
     packer << remote_t::key_type(
+        m_id.string(),
         m_context.config.network.hostname,
-        m_context.config.network.locator,
-        m_id.string()
+        m_context.config.network.locator
     );
 
     std::error_code ec;
@@ -392,10 +405,6 @@ locator_t::on_announce_timer(ev::timer&, int) {
 
 void
 locator_t::on_response(const remote_t::key_type& key, const io::message_t& message) {
-    std::string uuid;
-
-    std::tie(std::ignore, std::ignore, uuid) = key;
-
     switch(message.id()) {
         case io::event_traits<io::rpc::chunk>::id: {
             std::string chunk;
@@ -408,10 +417,13 @@ locator_t::on_response(const remote_t::key_type& key, const io::message_t& messa
 
             unpacked.get() >> dump;
 
-            COCAINE_LOG_INFO(m_log, "discovered %llu services on node '%s'", dump.size(), uuid);
+            COCAINE_LOG_INFO(m_log, "discovered %llu services on node '%s'", dump.size(), std::get<0>(key));
 
             for(auto it = dump.begin(); it != dump.end(); ++it) {
-                m_remote_services.insert(*it);
+                m_remote_services.insert(std::make_pair(
+                    it->first,
+                    std::make_tuple(key, it->second)
+                ));
             }
 
             break;
@@ -419,9 +431,9 @@ locator_t::on_response(const remote_t::key_type& key, const io::message_t& messa
 
         case io::event_traits<io::rpc::error>::id:
         case io::event_traits<io::rpc::choke>::id:
-            COCAINE_LOG_INFO(m_log, "node '%s' has been shut down", uuid);
+            COCAINE_LOG_INFO(m_log, "node '%s' has been shut down", std::get<0>(key));
 
-            m_remotes.erase(key);
+            purge(key);
 
             break;
     }
@@ -429,28 +441,43 @@ locator_t::on_response(const remote_t::key_type& key, const io::message_t& messa
 
 void
 locator_t::on_shutdown(const remote_t::key_type& key, const std::error_code& ec) {
-    std::string uuid;
-
-    std::tie(std::ignore, std::ignore, uuid) = key;
-
     COCAINE_LOG_INFO(
         m_log,
         "node '%s' has unexpectedly disconnected - [%d] %s",
-        uuid,
+        std::get<0>(key),
         ec.value(),
         ec.message()
     );
 
-    m_remotes.erase(key);
+    purge(key);
 }
 
 void
 locator_t::on_timedout(const remote_t::key_type& key) {
-    std::string uuid;
+    COCAINE_LOG_WARNING(m_log, "node '%s' has timed out", std::get<0>(key));
+    purge(key);
+}
 
-    std::tie(std::ignore, std::ignore, uuid) = key;
+void
+locator_t::purge(const remote_t::key_type& key) {
+    auto it = m_remote_services.begin(),
+         end = m_remote_services.end();
 
-    COCAINE_LOG_WARNING(m_log, "node '%s' has timed out", uuid);
+    COCAINE_LOG_DEBUG(
+        m_log,
+        "purging services for node '%s' on '%s:%d'",
+        std::get<0>(key),
+        std::get<1>(key),
+        std::get<2>(key)
+    );
+
+    while(it != end) {
+        if(std::get<0>(it->second) == key) {
+            m_remote_services.erase(it++);
+        } else {
+            ++it;
+        }
+    }
 
     m_remotes.erase(key);
 }
