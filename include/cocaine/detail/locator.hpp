@@ -114,25 +114,20 @@ class locator_t:
         // Node's UUID in the cluster.
         unique_id_t m_id;
 
+        // Announce receiver.
+        std::unique_ptr<io::socket<io::udp>> m_sink;
+        std::unique_ptr<ev::io> m_sink_watcher;
+
+        // These are remote channels indexed by (endpoint, id) tuples. The unique id is required to
+        // distinguish between different runtime instances on the same host.
+        std::map<remote_t::key_type, remote_t> m_remotes;
+
         // Announce emitter.
         std::unique_ptr<io::socket<io::udp>> m_announce;
         std::unique_ptr<ev::timer> m_announce_timer;
 
         // Synchronizing slot.
         std::shared_ptr<synchronize_t> m_synchronizer;
-
-        // Announce receiver.
-        std::unique_ptr<io::socket<io::udp>> m_sink;
-        std::unique_ptr<ev::io> m_sink_watcher;
-
-        typedef std::map<
-            remote_t::key_type,
-            remote_t
-        > remote_map_t;
-
-        // These are remote channels indexed by (endpoint, id) tuples. The unique id is required to
-        // distinguish between different runtime instances on the same host.
-        remote_map_t m_remotes;
 
 #if defined(__clang__) || defined(HAVE_GCC46)
         mutable std::default_random_engine m_random_generator;

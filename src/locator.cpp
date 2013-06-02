@@ -50,7 +50,7 @@ struct locator_t::synchronize_t:
 
     virtual
     void
-    operator()(const msgpack::object&, const api::stream_ptr_t& upstream) {
+    operator()(const msgpack::object& /* unpacked */, const api::stream_ptr_t& upstream) {
         dump(upstream);
 
         // Save this upstream for the future notifications.
@@ -123,6 +123,8 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
 {
     on<io::locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
 
+    COCAINE_LOG_INFO(m_log, "this node's id is '%s'", m_id);
+
     if(context.config.network.group.empty()) {
         return;
     }
@@ -185,14 +187,14 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
 }
 
 locator_t::~locator_t() {
+    // Disconnect all the remote nodes.
+    m_remotes.clear();
+
     if(m_synchronizer) {
         // Notify all the remote clients about this node shutdown.
         m_synchronizer->shutdown();
         m_synchronizer.reset();
     }
-
-    // Disconnect all the remote nodes.
-    m_remotes.clear();
 
     for(auto it = m_services.rbegin(); it != m_services.rend(); ++it) {
         COCAINE_LOG_INFO(m_log, "stopping service '%s'", it->first);
@@ -216,7 +218,7 @@ locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
     // Start the service's thread.
     service->run();
 
-    // Get the actor ownership.
+    // Get the service's actor ownership.
     m_services.emplace_back(name, std::move(service));
 }
 
