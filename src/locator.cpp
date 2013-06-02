@@ -216,10 +216,8 @@ locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
     // Start the service's thread.
     service->run();
 
-    m_services.emplace_back(
-        name,
-        std::move(service)
-    );
+    // Get the actor ownership.
+    m_services.emplace_back(name, std::move(service));
 }
 
 namespace {
@@ -448,7 +446,7 @@ locator_t::on_response(const remote_t::key_type& key, const io::message_t& messa
 
 void
 locator_t::on_shutdown(const remote_t::key_type& key, const std::error_code& ec) {
-    COCAINE_LOG_INFO(
+    COCAINE_LOG_WARNING(
         m_log,
         "node '%s' has unexpectedly disconnected - [%d] %s",
         std::get<0>(key),
@@ -461,12 +459,7 @@ locator_t::on_shutdown(const remote_t::key_type& key, const std::error_code& ec)
 
 void
 locator_t::on_timedout(const remote_t::key_type& key) {
-    COCAINE_LOG_WARNING(
-        m_log,
-        "node '%s' has timed out",
-        std::get<0>(key)
-    );
-
+    COCAINE_LOG_WARNING(m_log, "node '%s' has timed out", std::get<0>(key));
     purge(key);
 }
 
