@@ -80,22 +80,25 @@ class actor_t {
         context_t& m_context;
 
         const std::shared_ptr<io::reactor_t> m_reactor;
+
+        // Actor I/O channels
+
+        std::map<
+            int,
+            std::shared_ptr<io::channel<io::socket<io::tcp>>>
+        > m_channels;
+
         const std::unique_ptr<dispatch_t> m_dispatch;
 
         // Event loop
 
         ev::async m_terminate;
 
-        // Actor I/O
+        // Actor I/O connectors
 
         std::list<
             io::connector<io::acceptor<io::tcp>>
         > m_connectors;
-
-        std::map<
-            int,
-            std::shared_ptr<io::channel<io::socket<io::tcp>>>
-        > m_channels;
 
         // Execution context
 
