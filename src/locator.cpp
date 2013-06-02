@@ -51,45 +51,59 @@ struct locator_t::synchronize_t:
     virtual
     void
     operator()(const msgpack::object&, const api::stream_ptr_t& upstream) {
-        m_upstreams.push_back(upstream);
+        dump(upstream);
 
-        io::type_traits<dump_result_type>::pack(
+        // Save this upstream for the future notifications.
+        m_upstreams.push_back(upstream);
+    }
+
+    void
+    update() {
+        auto disconnected = std::partition(
+            m_upstreams.begin(),
+            m_upstreams.end(),
+            std::bind(&synchronize_t::dump, this, _1)
+        );
+
+        m_upstreams.erase(disconnected, m_upstreams.end());
+    }
+
+    void
+    shutdown() {
+        std::for_each(
+            m_upstreams.begin(),
+            m_upstreams.end(),
+            std::bind(&synchronize_t::close, _1)
+        );
+    }
+
+private:
+    bool
+    dump(const api::stream_ptr_t& upstream) {
+        m_buffer.clear();
+
+        io::type_traits<synchronize_result_type>::pack(
             m_packer,
             m_self->dump()
         );
 
-        upstream->write(m_buffer.data(), m_buffer.size());
+        try {
+            upstream->write(m_buffer.data(), m_buffer.size());
+        } catch(...) {
+            return false;
+        }
+
+        return true;
     }
 
-    struct dump {
-        template<class T>
-        bool
-        operator()(const T& upstream) {
-            return !!upstream;
-        }
-    };
-
+    static
     void
-    update() {
-        auto disconnected = std::partition(m_upstreams.begin(), m_upstreams.end(), dump());
-        m_upstreams.erase(disconnected, m_upstreams.end());
-    }
-
-    struct close {
-        template<class T>
-        void
-        operator()(const T& upstream) {
-            try {
-                upstream->close();
-            } catch(...) {
-                // Ignore.
-            }
+    close(const api::stream_ptr_t& upstream) {
+        try {
+            upstream->close();
+        } catch(...) {
+            // Ignore.
         }
-    };
-
-    void
-    shutdown() {
-        std::for_each(m_upstreams.begin(), m_upstreams.end(), close());
     }
 
 private:
@@ -110,7 +124,7 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
     m_synchronizer = std::make_shared<synchronize_t>(this);
 
     on<io::locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
-    on<io::locator::dump>(m_synchronizer);
+    on<io::locator::synchronize>(m_synchronizer);
 
     if(context.config.network.group.empty()) {
         return;
@@ -250,13 +264,13 @@ namespace {
             target[service.first] = query(service.second);
         }
 
-        dump_result_type& target;
+        synchronize_result_type& target;
     };
 }
 
-dump_result_type
+synchronize_result_type
 locator_t::dump() const {
-    dump_result_type result;
+    synchronize_result_type result;
 
     std::for_each(m_services.begin(), m_services.end(), dump_to {
         result
@@ -331,7 +345,7 @@ locator_t::on_announce_event(ev::io&, int) {
             timeout
         };
 
-        channel->wr->write<io::locator::dump>(0UL);
+        channel->wr->write<io::locator::synchronize>(0UL);
     }
 
     m_remotes[key].timeout->stop();
@@ -369,7 +383,7 @@ locator_t::on_response(const remote_t::key_type& key, const io::message_t& messa
     switch(message.id()) {
         case io::event_traits<io::rpc::chunk>::id: {
             std::string chunk;
-            dump_result_type dump;
+            synchronize_result_type dump;
 
             message.as<io::rpc::chunk>(chunk);
 

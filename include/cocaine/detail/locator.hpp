@@ -38,7 +38,7 @@ namespace cocaine {
 class actor_t;
 
 typedef io::event_traits<io::locator::resolve>::result_type resolve_result_type;
-typedef io::event_traits<io::locator::dump>::result_type dump_result_type;
+typedef io::event_traits<io::locator::synchronize>::result_type synchronize_result_type;
 
 class locator_t:
     public dispatch_t
@@ -69,7 +69,7 @@ class locator_t:
         resolve_result_type
         resolve(const std::string& name) const;
 
-        dump_result_type
+        synchronize_result_type
         dump() const;
 
         // Cluster discovery

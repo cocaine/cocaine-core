@@ -53,7 +53,7 @@ namespace locator {
         > result_type;
     };
 
-    struct dump {
+    struct synchronize {
         typedef locator_tag tag;
 
         typedef
@@ -72,7 +72,7 @@ struct protocol<locator_tag> {
 
     typedef boost::mpl::list<
         locator::resolve,
-        locator::dump
+        locator::synchronize
     > type;
 };
 
