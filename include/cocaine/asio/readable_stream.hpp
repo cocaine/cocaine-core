@@ -119,6 +119,7 @@ private:
             if(length == 0) {
                 // NOTE: This means that the remote peer has closed the connection.
                 m_socket_watcher.stop();
+                m_handle_error(ec);
             }
 
             return;
