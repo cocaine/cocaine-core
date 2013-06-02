@@ -36,7 +36,7 @@ dispatch_t::~dispatch_t() {
 }
 
 void
-dispatch_t::invoke(const io::message_t& message, const api::stream_ptr_t& upstream) {
+dispatch_t::invoke(const io::message_t& message, const api::stream_ptr_t& upstream) const {
     slot_map_t::mapped_type slot;
 
     {
@@ -89,7 +89,7 @@ dispatch_t::invoke(const io::message_t& message, const api::stream_ptr_t& upstre
 }
 
 auto
-dispatch_t::describe() -> dispatch_map_t {
+dispatch_t::describe() const -> dispatch_map_t {
     std::lock_guard<std::mutex> guard(m_mutex);
 
     dispatch_map_t result;

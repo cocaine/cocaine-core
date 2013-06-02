@@ -28,6 +28,8 @@
 #include "cocaine/dispatch.hpp"
 #include "cocaine/messages.hpp"
 
+#include <random>
+
 namespace ev {
     struct io;
     struct timer;
@@ -131,6 +133,12 @@ class locator_t:
         // These are remote channels indexed by (endpoint, id) tuples. The unique id is required to
         // distinguish between different runtime instances on the same host.
         remote_map_t m_remotes;
+
+#if defined(__clang__) || defined(HAVE_GCC46)
+        mutable std::default_random_engine m_random_generator;
+#else
+        mutable std::minstd_rand0 m_random_generator;
+#endif
 
         typedef std::multimap<
             std::string,

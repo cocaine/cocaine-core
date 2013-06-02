@@ -49,12 +49,12 @@ class dispatch_t {
 
     public:
         void
-        invoke(const io::message_t& message, const api::stream_ptr_t& upstream);
+        invoke(const io::message_t& message, const api::stream_ptr_t& upstream) const;
 
         typedef std::map<int, std::string> dispatch_map_t;
 
         dispatch_map_t
-        describe();
+        describe() const;
 
     private:
         std::unique_ptr<logging::log_t> m_log;
@@ -65,7 +65,9 @@ class dispatch_t {
         > slot_map_t;
 
         slot_map_t m_slots;
-        std::mutex m_mutex;
+
+        // It's mutable to enable invoke() and describe() to be const.
+        mutable std::mutex m_mutex;
 };
 
 namespace detail {

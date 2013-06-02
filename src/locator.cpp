@@ -36,8 +36,6 @@
 
 #include "cocaine/rpc/channel.hpp"
 
-#include <random>
-
 using namespace cocaine;
 using namespace std::placeholders;
 
@@ -131,6 +129,10 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
     if(context.config.network.group.empty()) {
         return;
     }
+
+    std::random_device device;
+
+    m_random_generator.seed(device());
 
     auto endpoint = io::udp::endpoint(context.config.network.group, 0);
 
@@ -254,27 +256,21 @@ locator_t::resolve(const std::string& name) const {
             throw cocaine::error_t("the specified service is not available");
         }
 
-        std::random_device device;
-
 #if defined(__clang__) || defined(HAVE_GCC46)
-        std::default_random_engine engine(device());
         std::uniform_int_distribution<int> distribution(0, std::distance(begin, end) - 1);
 #else
-        std::minstd_rand0 engine(device());
         std::uniform_int<int> distribution(0, std::distance(begin, end) - 1);
 #endif
 
-        std::advance(begin, distribution(engine));
-
-        const auto& key = std::get<0>(begin->second);
+        std::advance(begin, distribution(m_random_generator));
 
         COCAINE_LOG_DEBUG(
             m_log,
             "providing service '%s' using remote node '%s' on '%s:%d'",
             name,
-            std::get<0>(key),
-            std::get<1>(key),
-            std::get<2>(key)
+            std::get<0>(std::get<0>(begin->second)),
+            std::get<1>(std::get<0>(begin->second)),
+            std::get<2>(std::get<0>(begin->second))
         );
 
         return std::get<1>(begin->second);
@@ -456,7 +452,12 @@ locator_t::on_shutdown(const remote_t::key_type& key, const std::error_code& ec)
 
 void
 locator_t::on_timedout(const remote_t::key_type& key) {
-    COCAINE_LOG_WARNING(m_log, "node '%s' has timed out", std::get<0>(key));
+    COCAINE_LOG_WARNING(
+        m_log,
+        "node '%s' has timed out",
+        std::get<0>(key)
+    );
+
     purge(key);
 }
 
