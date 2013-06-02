@@ -241,11 +241,11 @@ namespace {
 
 resolve_result_type
 locator_t::resolve(const std::string& name) const {
-    auto it = std::find_if(m_services.begin(), m_services.end(), match {
+    auto local = std::find_if(m_services.begin(), m_services.end(), match {
         name
     });
 
-    if(it == m_services.end()) {
+    if(local == m_services.end()) {
         remote_service_map_t::const_iterator begin, end;
 
         std::tie(begin, end) = m_remote_services.equal_range(name);
@@ -264,12 +264,12 @@ locator_t::resolve(const std::string& name) const {
         std::uniform_int<int> distribution(0, std::distance(begin, end) - 1);
 #endif
 
-        std::advance(it, distribution(engine));
+        std::advance(begin, distribution(engine));
 
         return begin->second;
     }
 
-    return query(it->second);
+    return query(local->second);
 }
 
 namespace {
