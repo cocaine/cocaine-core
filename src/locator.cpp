@@ -36,6 +36,8 @@
 
 #include "cocaine/rpc/channel.hpp"
 
+#include <random>
+
 using namespace cocaine;
 using namespace std::placeholders;
 
@@ -244,13 +246,20 @@ locator_t::resolve(const std::string& name) const {
     });
 
     if(it == m_services.end()) {
-        auto remote = m_remote_services.find(name);
+        remote_service_map_t::const_iterator begin, end;
 
-        if(remote != m_remote_services.end()) {
-            return remote->second;
-        } else {
+        std::tie(begin, end) = m_remote_services.equal_range(name);
+
+        if(begin == end) {
             throw cocaine::error_t("the specified service is not available");
         }
+
+        std::random_device device;
+        std::default_random_engine engine(device());
+        std::uniform_int_distribution<int> distribution(0, std::distance(begin, end) - 1);
+        std::advance(it, distribution(engine));
+
+        return begin->second;
     }
 
     return query(it->second);
