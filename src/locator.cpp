@@ -39,14 +39,78 @@
 using namespace cocaine;
 using namespace std::placeholders;
 
+struct locator_t::synchronize_t:
+    public slot_concept_t
+{
+    synchronize_t(locator_t* self):
+        slot_concept_t("synchronize"),
+        m_packer(m_buffer),
+        m_self(self)
+    { }
+
+    virtual
+    void
+    operator()(const msgpack::object&, const api::stream_ptr_t& upstream) {
+        m_upstreams.push_back(upstream);
+
+        io::type_traits<dump_result_type>::pack(
+            m_packer,
+            m_self->dump()
+        );
+
+        upstream->write(m_buffer.data(), m_buffer.size());
+    }
+
+    struct dump {
+        template<class T>
+        bool
+        operator()(const T& upstream) {
+            return !!upstream;
+        }
+    };
+
+    void
+    update() {
+        auto disconnected = std::partition(m_upstreams.begin(), m_upstreams.end(), dump());
+        m_upstreams.erase(disconnected, m_upstreams.end());
+    }
+
+    struct close {
+        template<class T>
+        void
+        operator()(const T& upstream) {
+            try {
+                upstream->close();
+            } catch(...) {
+                // Ignore.
+            }
+        }
+    };
+
+    void
+    shutdown() {
+        std::for_each(m_upstreams.begin(), m_upstreams.end(), close());
+    }
+
+private:
+    msgpack::sbuffer m_buffer;
+    msgpack::packer<msgpack::sbuffer> m_packer;
+
+    locator_t* m_self;
+
+    std::vector<api::stream_ptr_t> m_upstreams;
+};
+
 locator_t::locator_t(context_t& context, io::reactor_t& reactor):
     dispatch_t(context, "service/locator"),
     m_context(context),
     m_log(new logging::log_t(context, "service/locator")),
     m_reactor(reactor)
 {
+    m_synchronizer = std::make_shared<synchronize_t>(this);
+
     on<io::locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
-    on<io::locator::dump>("dump", std::bind(&locator_t::dump, this));
+    on<io::locator::dump>(m_synchronizer);
 
     if(context.config.network.group.empty()) {
         return;
@@ -102,6 +166,11 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
 }
 
 locator_t::~locator_t() {
+    // Notify all the remote clients about this node shutdown.
+    m_synchronizer->shutdown();
+    m_synchronizer.reset();
+
+    // Disconnect all the remote nodes.
     m_remotes.clear();
 
     for(auto it = m_services.rbegin(); it != m_services.rend(); ++it) {
@@ -318,13 +387,13 @@ locator_t::on_response(const remote_t::key_type& key, const io::message_t& messa
             break;
         }
 
-        case io::event_traits<io::rpc::error>::id: {
-            break;
-        }
+        case io::event_traits<io::rpc::error>::id:
+        case io::event_traits<io::rpc::choke>::id:
+            COCAINE_LOG_INFO(m_log, "node '%s' has been shut down", uuid);
 
-        case io::event_traits<io::rpc::choke>::id: {
+            m_remotes.erase(key);
+
             break;
-        }
     }
 }
 
@@ -336,7 +405,7 @@ locator_t::on_shutdown(const remote_t::key_type& key, const std::error_code& ec)
 
     COCAINE_LOG_INFO(
         m_log,
-        "node '%s' has disconnected - [%d] %s",
+        "node '%s' has unexpectedly disconnected - [%d] %s",
         uuid,
         ec.value(),
         ec.message()

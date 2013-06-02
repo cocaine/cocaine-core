@@ -41,12 +41,19 @@ class dispatch_t {
 
         template<class Event>
         void
+        on(std::shared_ptr<slot_concept_t> ptr);
+
+        template<class Event>
+        void
         forget();
 
+    public:
         void
         invoke(const io::message_t& message, const api::stream_ptr_t& upstream);
 
-        std::map<int, std::string>
+        typedef std::map<int, std::string> dispatch_map_t;
+
+        dispatch_map_t
         describe();
 
     private:
@@ -90,12 +97,21 @@ dispatch_t::on(const std::string& name, F callable) {
         tuple_type
     >::type slot_type;
 
+    on<Event>(std::make_shared<slot_type>(name, callable));
+}
+
+template<class Event>
+void
+dispatch_t::on(std::shared_ptr<slot_concept_t> ptr) {
+    const int id = io::event_traits<Event>::id;
+
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    m_slots[io::event_traits<Event>::id] = std::make_shared<slot_type>(
-        name,
-        callable
-    );
+    if(m_slots.find(id) != m_slots.end()) {
+        throw cocaine::error_t("duplicate slot %d: %s", id, ptr->name());
+    }
+
+    m_slots[id] = ptr;
 }
 
 template<class Event>

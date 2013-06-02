@@ -88,12 +88,13 @@ dispatch_t::invoke(const io::message_t& message, const api::stream_ptr_t& upstre
     }
 }
 
-std::map<int, std::string>
-dispatch_t::describe() {
-    std::map<int, std::string> result;
-    std::lock_guard<std::mutex> lock(m_mutex);
+auto
+dispatch_t::describe() -> dispatch_map_t {
+    std::lock_guard<std::mutex> guard(m_mutex);
 
-    for(auto it = m_slots.begin(); it != m_slots.end(); ++it) {
+    dispatch_map_t result;
+
+    for(auto it = m_slots.cbegin(); it != m_slots.cend(); ++it) {
         result[it->first] = it->second->name();
     }
 

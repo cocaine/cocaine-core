@@ -37,23 +37,25 @@ namespace cocaine {
 
 class actor_t;
 
-struct remote_t {
-    typedef std::tuple<
-        std::string,
-        uint16_t,
-        std::string
-    > key_type;
-
-    std::shared_ptr<io::channel<io::socket<io::tcp>>> channel;
-    std::shared_ptr<io::timeout_t> timeout;
-};
-
 typedef io::event_traits<io::locator::resolve>::result_type resolve_result_type;
 typedef io::event_traits<io::locator::dump>::result_type dump_result_type;
 
 class locator_t:
     public dispatch_t
 {
+    struct remote_t {
+        typedef std::tuple<
+            std::string,
+            uint16_t,
+            std::string
+        > key_type;
+
+        std::shared_ptr<io::channel<io::socket<io::tcp>>> channel;
+        std::shared_ptr<io::timeout_t> timeout;
+    };
+
+    struct synchronize_t;
+
     public:
         locator_t(context_t& context, io::reactor_t& reactor);
 
@@ -108,6 +110,9 @@ class locator_t:
         // Announce emitter.
         std::unique_ptr<io::socket<io::udp>> m_announce;
         std::unique_ptr<ev::timer> m_announce_timer;
+
+        // Synchronizing slot.
+        std::shared_ptr<synchronize_t> m_synchronizer;
 
         // Announce receiver.
         std::unique_ptr<io::socket<io::udp>> m_sink;
