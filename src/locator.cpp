@@ -255,8 +255,15 @@ locator_t::resolve(const std::string& name) const {
         }
 
         std::random_device device;
+
+#if defined(__clang__) || defined(HAVE_GCC46)
         std::default_random_engine engine(device());
         std::uniform_int_distribution<int> distribution(0, std::distance(begin, end) - 1);
+#else
+        std::minstd_rand0 engine(device());
+        std::uniform_int<int> distribution(0, std::distance(begin, end) - 1);
+#endif
+
         std::advance(it, distribution(engine));
 
         return begin->second;
