@@ -121,7 +121,7 @@ class context_t {
         void
         attach(const std::string& name, std::unique_ptr<actor_t>&& actor);
 
-        void
+        std::unique_ptr<actor_t>
         detach(const std::string& name);
 
     public:

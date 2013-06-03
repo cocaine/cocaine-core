@@ -235,6 +235,13 @@ context_t::~context_t() {
     COCAINE_LOG_INFO(blog, "stopping the service locator");
 
     m_locator->terminate();
+
+    COCAINE_LOG_INFO(blog, "stopping the services");
+    
+    for(auto it = config.services.rbegin(); it != config.services.rend(); ++it) {
+        detach(it->first)->terminate();
+    }
+
     m_locator.reset();
 }
 
@@ -243,9 +250,9 @@ context_t::attach(const std::string& name, std::unique_ptr<actor_t>&& actor) {
     dynamic_cast<locator_t&>(m_locator->dispatch()).attach(name, std::move(actor));
 }
 
-void
+std::unique_ptr<actor_t>
 context_t::detach(const std::string& name) {
-    dynamic_cast<locator_t&>(m_locator->dispatch()).detach(name);
+    return dynamic_cast<locator_t&>(m_locator->dispatch()).detach(name);
 }
 
 void
@@ -282,27 +289,32 @@ context_t::bootstrap() {
             { "0.0.0.0", 0 }
         };
 
+        std::unique_ptr<actor_t> service;
+
         try {
-            attach(
-                it->first,
-                std::unique_ptr<actor_t>(new actor_t(
+            service.reset(new actor_t(
+                *this,
+                reactor,
+                get<api::service_t>(
+                    it->second.type,
                     *this,
-                    reactor,
-                    get<api::service_t>(
-                        it->second.type,
-                        *this,
-                        *reactor,
-                        cocaine::format("service/%s", it->first),
-                        it->second.args
-                    ),
-                    endpoints
-                )
+                    *reactor,
+                    cocaine::format("service/%s", it->first),
+                    it->second.args
+                ),
+                endpoints
             ));
         } catch(const std::exception& e) {
             throw cocaine::error_t("unable to initialize service '%s' - %s", it->first, e.what());
         } catch(...) {
             throw cocaine::error_t("unable to initialize service '%s' - unknown exception", it->first);
         }
+
+        COCAINE_LOG_INFO(blog, "starting service '%s'", it->first);
+
+        service->run();
+
+        attach(it->first, std::move(service));
     }
 
     m_locator->run();

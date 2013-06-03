@@ -54,5 +54,7 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
     slave = target.string();
 
     drivers = config_t::parse((*this)["drivers"]);
+
+    local = get("local", false).asBool();
 }
 

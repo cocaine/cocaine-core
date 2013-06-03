@@ -196,14 +196,7 @@ locator_t::~locator_t() {
         m_synchronizer.reset();
     }
 
-    for(auto it = m_services.rbegin(); it != m_services.rend(); ++it) {
-        COCAINE_LOG_INFO(m_log, "stopping service '%s'", it->first);
-
-        // Terminate the service's thread.
-        it->second->terminate();
-    }
-
-    m_services.clear();
+    BOOST_VERIFY(m_services.empty());
 }
 
 namespace {
@@ -228,19 +221,19 @@ locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
 
     COCAINE_LOG_INFO(
         m_log,
-        "publishing service '%s' on port %s",
+        "publishing service '%s' on port %d",
         name,
         std::get<1>(service->endpoint())
     );
 
-    // Start the service's thread.
-    service->run();
-
     // Get the service's actor ownership.
     m_services.emplace_back(name, std::move(service));
+
+    // Notify the peers.
+    m_synchronizer->update();
 }
 
-void
+std::unique_ptr<actor_t>
 locator_t::detach(const std::string& name) {
     auto service = std::find_if(m_services.begin(), m_services.end(), match {
         name
@@ -248,10 +241,23 @@ locator_t::detach(const std::string& name) {
 
     BOOST_VERIFY(service != m_services.end());
 
-    COCAINE_LOG_INFO(m_log, "stopping service '%s'", service->first);
+    COCAINE_LOG_INFO(
+        m_log,
+        "withholding service '%s' on port %d",
+        name,
+        std::get<1>(service->second->endpoint())
+    );
 
-    service->second->terminate();
+    // Release the service's actor ownership.
+    std::unique_ptr<actor_t> actor = std::move(service->second);
+
+    // Drop the service's record.
     m_services.erase(service);
+
+    // Notify the peers.
+    m_synchronizer->update();
+
+    return actor;
 }
 
 namespace {
@@ -448,6 +454,9 @@ locator_t::on_response(const remote_t::key_type& key, const io::message_t& messa
                 std::get<0>(key)
             );
 
+            // Drop the remote node services.
+            prune(key);
+
             for(auto it = dump.begin(); it != dump.end(); ++it) {
                 m_remote_services.insert(std::make_pair(
                     it->first,
@@ -462,7 +471,11 @@ locator_t::on_response(const remote_t::key_type& key, const io::message_t& messa
         case io::event_traits<io::rpc::choke>::id:
             COCAINE_LOG_INFO(m_log, "node '%s' has been shut down", std::get<0>(key));
 
-            purge(key);
+            // Drop the remote node services.
+            prune(key);
+
+            // Disconnect.
+            m_remotes.erase(key);
 
             break;
     }
@@ -478,23 +491,32 @@ locator_t::on_disconnect(const remote_t::key_type& key, const std::error_code& e
         ec.message()
     );
 
-    purge(key);
+    // Drop the remote node services.
+    prune(key);
+
+    // Disconnect.
+    m_remotes.erase(key);
 }
 
 void
 locator_t::on_timeout(const remote_t::key_type& key) {
     COCAINE_LOG_WARNING(m_log, "node '%s' has timed out", std::get<0>(key));
-    purge(key);
+
+    // Drop the remote node services.
+    prune(key);
+
+    // Disconnect.
+    m_remotes.erase(key);
 }
 
 void
-locator_t::purge(const remote_t::key_type& key) {
+locator_t::prune(const remote_t::key_type& key) {
     auto it = m_remote_services.begin(),
          end = m_remote_services.end();
 
     COCAINE_LOG_DEBUG(
         m_log,
-        "purging services for node '%s' on '%s:%d'",
+        "pruning services for node '%s' on '%s:%d'",
         std::get<0>(key),
         std::get<1>(key),
         std::get<2>(key)
@@ -507,6 +529,4 @@ locator_t::purge(const remote_t::key_type& key) {
             ++it;
         }
     }
-
-    m_remotes.erase(key);
 }

@@ -65,7 +65,7 @@ class locator_t:
         void
         attach(const std::string& name, std::unique_ptr<actor_t>&& service);
 
-        void
+        std::unique_ptr<actor_t>
         detach(const std::string& name);
 
     private:
@@ -95,7 +95,7 @@ class locator_t:
         // Housekeeping
 
         void
-        purge(const remote_t::key_type& key);
+        prune(const remote_t::key_type& key);
 
     private:
         context_t& m_context;

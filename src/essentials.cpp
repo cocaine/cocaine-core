@@ -33,6 +33,7 @@
 
 void
 cocaine::essentials::initialize(api::repository_t& repository) {
+    repository.insert<driver::fs_t>("filesystem-monitor");
     repository.insert<driver::fs_t>("fs");
     repository.insert<driver::recurring_timer_t>("time");
     repository.insert<isolate::process_t>("process");

@@ -46,6 +46,9 @@ struct manifest_t:
     // A configuration map for drivers, similar to the generic one found
     // in the config_t structure.
     config_t::component_map_t drivers;
+
+    // Disables the publication of this app via the Locator.
+    bool local;
 };
 
 }} // namespace cocaine::engine

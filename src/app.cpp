@@ -203,23 +203,24 @@ app_t::start() {
 
     // Invocation service
 
-    std::vector<io::tcp::endpoint> endpoints = {
-        { "0.0.0.0", 0 }
-    };
+    if(!m_manifest->local) {
+        std::vector<io::tcp::endpoint> endpoints = {
+            { "0.0.0.0", 0 }
+        };
 
-    auto service = std::unique_ptr<invocation_service_t>(
-        new invocation_service_t(m_context, *this, m_manifest->name)
-    );
-
-    m_context.attach(
-        m_manifest->name,
-        std::unique_ptr<actor_t>(new actor_t(
+        auto service = std::unique_ptr<actor_t>(new actor_t(
             m_context,
             std::make_shared<reactor_t>(),
-            std::move(service),
+            std::unique_ptr<invocation_service_t>(
+                new invocation_service_t(m_context, *this, m_manifest->name)
+            ),
             endpoints
-        ))
-    );
+        ));
+
+        service->run();
+
+        m_context.attach(m_manifest->name, std::move(service));
+    }
 
     COCAINE_LOG_INFO(m_log, "the engine has started");
 }
@@ -356,9 +357,10 @@ app_t::stop() {
 
     COCAINE_LOG_INFO(m_log, "stopping the engine");
 
-    // Invocation service
-
-    m_context.detach(m_manifest->name);
+    if(!m_manifest->local) {
+        // Stop the invocation service.
+        m_context.detach(m_manifest->name)->terminate();
+    }
 
     auto callback = expect<control::terminate>(*m_reactor);
 
