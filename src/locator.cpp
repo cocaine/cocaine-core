@@ -213,6 +213,8 @@ namespace {
 
 void
 locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
+    std::lock_guard<std::mutex> guard(m_services_mutex);
+
     auto existing = std::find_if(m_services.begin(), m_services.end(), match {
         name
     });
@@ -235,6 +237,8 @@ locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
 
 std::unique_ptr<actor_t>
 locator_t::detach(const std::string& name) {
+    std::lock_guard<std::mutex> guard(m_services_mutex);
+
     auto service = std::find_if(m_services.begin(), m_services.end(), match {
         name
     });
@@ -274,11 +278,15 @@ namespace {
 
 resolve_result_type
 locator_t::resolve(const std::string& name) const {
+    std::unique_lock<std::mutex> lock(m_services_mutex);
+
     auto local = std::find_if(m_services.begin(), m_services.end(), match {
         name
     });
 
     if(local == m_services.end()) {
+        lock.unlock();
+
         remote_service_map_t::const_iterator begin, end;
 
         std::tie(begin, end) = m_remote_services.equal_range(name);
@@ -446,6 +454,9 @@ locator_t::on_response(const remote_t::key_type& key, const io::message_t& messa
 
             unpacked.get() >> dump;
 
+            // Clear the old remote node services.
+            prune(key);
+
             COCAINE_LOG_INFO(
                 m_log,
                 "discovered %llu %s on node '%s'",
@@ -453,9 +464,6 @@ locator_t::on_response(const remote_t::key_type& key, const io::message_t& messa
                 dump.size() == 1 ? "service" : "services",
                 std::get<0>(key)
             );
-
-            // Drop the remote node services.
-            prune(key);
 
             for(auto it = dump.begin(); it != dump.end(); ++it) {
                 m_remote_services.insert(std::make_pair(

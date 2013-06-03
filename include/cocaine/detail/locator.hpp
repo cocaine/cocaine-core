@@ -112,6 +112,10 @@ class locator_t:
         // preserve the initialization order.
         local_service_list_t m_services;
 
+        // As, for example, the Node Service can manipulate services from its actor thread,
+        // the service list should be interlocked.
+        mutable std::mutex m_services_mutex;
+
         // Node's UUID in the cluster.
         unique_id_t m_id;
 
