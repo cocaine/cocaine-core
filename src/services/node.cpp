@@ -68,10 +68,11 @@ node_t::node_t(context_t& context,
 
     COCAINE_LOG_INFO(m_log, "reading the '%s' runlist", runlist_id);
 
+    // It's here to keep the reference alive.
+    auto storage = api::storage(m_context, "core");
+
     try {
-        runlist = api::storage(m_context, "core")->get<
-            std::map<std::string, std::string>
-        >("runlists", runlist_id);
+        runlist = storage->get<runlist_t>("runlists", runlist_id);
     } catch(const cocaine::error_t& e) {
         COCAINE_LOG_WARNING(
             m_log,
