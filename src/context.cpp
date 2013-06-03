@@ -203,10 +203,9 @@ context_t::context_t(config_t config_, const std::string& logger):
         throw configuration_error_t("the '%s' logger is not configured", logger);
     }
 
-    m_logger = get<api::logger_t>(
-        it->second.type,
-        it->second.args
-    );
+    // Try to initialize the logger. If this fails, there's no way to report the failure,
+    // unfortunately, except printing it to the standart output.
+    m_logger = get<api::logger_t>(it->second.type, it->second.args);
 
     bootstrap();
 }
@@ -258,8 +257,6 @@ context_t::detach(const std::string& name) {
 void
 context_t::bootstrap() {
     auto blog = std::unique_ptr<logging::log_t>(new logging::log_t(*this, "bootstrap"));
-
-    COCAINE_LOG_INFO(blog, "starting the service locator");
 
     auto locator_reactor = std::make_shared<io::reactor_t>();
     auto locator = std::unique_ptr<locator_t>(new locator_t(*this, *locator_reactor));
@@ -316,6 +313,8 @@ context_t::bootstrap() {
 
         attach(it->first, std::move(service));
     }
+
+    COCAINE_LOG_INFO(blog, "starting the service locator");
 
     m_locator->run();
 }
