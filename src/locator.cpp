@@ -129,9 +129,12 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
         return;
     }
 
+#if defined(__clang__) || defined(HAVE_GCC46)
     std::random_device device;
-
     m_random_generator.seed(device());
+#else
+    m_random_generator.seed(static_cast<unsigned long>(::time(nullptr)));
+#endif
 
     auto endpoint = io::udp::endpoint(context.config.network.group, 0);
 
