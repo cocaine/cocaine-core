@@ -5,6 +5,8 @@ cocaine-core (0.10.5) unstable; urgency=low
     form a cloud, at last. For now, nodes share services only, apps are still
     local. When an app requests a service which is not available locally, a
     request is made to resolve the specified service remotely.
+  * Apps are now exposed as services by default. If a specific application
+    should not be published, set the 'local' flag in the manifest.
   * Named queues. Drivers can now enqueue their sessions to a specific worker
     with some human-readable name. The sessions in named queues will be
     processed before any anonymous sessions in the engine's shared queue.
