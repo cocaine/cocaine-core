@@ -199,7 +199,20 @@ locator_t::~locator_t() {
         m_synchronizer.reset();
     }
 
-    BOOST_VERIFY(m_services.empty());
+    if(!m_services.empty()) {
+        COCAINE_LOG_WARNING(
+            m_log,
+            "disposing of %llu orphan %s",
+            m_services.size(),
+            m_services.size() == 1 ? "service" : "services"
+        );
+
+        for(auto it = m_services.begin(); it != m_services.end(); ++it) {
+            it->second->terminate();
+        }
+
+        m_services.clear();
+    }
 }
 
 namespace {
