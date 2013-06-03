@@ -1,4 +1,4 @@
-cocaine-core (0.10.5) unstable; urgency=low
+cocaine-core (0.10.5-0) unstable; urgency=low
 
   * Release 10.5.
   * Cocaine is no longer standalone. Multiple nodes can be linked together to
