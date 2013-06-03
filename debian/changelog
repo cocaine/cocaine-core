@@ -17,9 +17,9 @@ cocaine-core (0.10.5) unstable; urgency=low
   * The Locator can now be bound to a configurable port, allowing users to get
     multiple Runtimes on a single host.
   * File storage error messages are now much more informative.
+  * Engines will now display the reason for app stop in the log.
   * Bugfix: engines will now try to rebalance when the last slave dies and
     there're still sessions in the queue.
-  * Bugfix: engines will now display the reason for app stop in the log.
   * Bugfix: unblock all signals before slave execve().
   * Bugfix: properly shutdown the engine when the app is broken.
 
