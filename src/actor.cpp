@@ -87,7 +87,7 @@ actor_t::actor_t(context_t& context,
     m_context(context),
     m_reactor(reactor),
     m_dispatch(std::move(dispatch)),
-    m_terminate(m_reactor->native())
+    m_terminate(reactor->native())
 {
     m_terminate.set<actor_t, &actor_t::on_terminate>(this);
     m_terminate.start();

@@ -239,6 +239,16 @@ context_t::~context_t() {
 }
 
 void
+context_t::attach(const std::string& name, std::unique_ptr<actor_t>&& actor) {
+    dynamic_cast<locator_t&>(m_locator->dispatch()).attach(name, std::move(actor));
+}
+
+void
+context_t::detach(const std::string& name) {
+    dynamic_cast<locator_t&>(m_locator->dispatch()).detach(name);
+}
+
+void
 context_t::bootstrap() {
     auto blog = std::unique_ptr<logging::log_t>(new logging::log_t(*this, "bootstrap"));
 

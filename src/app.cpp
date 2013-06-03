@@ -21,13 +21,17 @@
 #include "cocaine/app.hpp"
 
 #include "cocaine/api/driver.hpp"
+#include "cocaine/api/event.hpp"
 
 #include "cocaine/asio/acceptor.hpp"
 #include "cocaine/asio/local.hpp"
 #include "cocaine/asio/socket.hpp"
+#include "cocaine/asio/tcp.hpp"
 
 #include "cocaine/context.hpp"
+#include "cocaine/dispatch.hpp"
 
+#include "cocaine/detail/actor.hpp"
 #include "cocaine/detail/archive.hpp"
 #include "cocaine/detail/engine.hpp"
 #include "cocaine/detail/manifest.hpp"
@@ -36,6 +40,7 @@
 #include "cocaine/detail/traits/json.hpp"
 
 #include "cocaine/logging.hpp"
+#include "cocaine/messages.hpp"
 
 #include "cocaine/rpc/channel.hpp"
 
@@ -49,6 +54,53 @@ using namespace cocaine::engine;
 using namespace cocaine::io;
 
 namespace fs = boost::filesystem;
+
+struct app_t::invocation_service_t:
+    public dispatch_t
+{
+    struct invocation_t:
+        public slot_concept_t
+    {
+        invocation_t(invocation_service_t& self):
+            slot_concept_t("invoke"),
+            m_self(self)
+        { }
+
+        virtual
+        void
+        operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) {
+            std::string event;
+            std::string blob;
+
+            io::type_traits<io::event_traits<io::app::invoke>::tuple_type>::unpack(
+                unpacked,
+                event,
+                blob
+            );
+
+            m_self.enqueue(api::event_t(event), upstream)->write(blob.data(), blob.size());
+        }
+
+    private:
+        invocation_service_t& m_self;
+    };
+
+    invocation_service_t(context_t& context, app_t& app, const std::string& name):
+        dispatch_t(context, cocaine::format("app/%1%/service", name)),
+        m_app(app)
+    {
+        on<app::invoke>(std::make_shared<invocation_t>(*this));
+    }
+
+private:
+    std::shared_ptr<api::stream_t>
+    enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream) {
+        return m_app.enqueue(event, upstream);
+    }
+
+private:
+    app_t& m_app;
+};
 
 app_t::app_t(context_t& context, const std::string& name, const std::string& profile):
     m_context(context),
@@ -136,21 +188,8 @@ app_t::start() {
     // Create the engine control sockets.
     std::tie(lhs, rhs) = io::link<local>();
 
-    m_channel.reset(new channel<io::socket<local>>(
-        *m_reactor,
-        lhs
-    ));
-
-    // NOTE: The event loop is not started here yet.
-    m_engine.reset(
-        new engine_t(
-            m_context,
-            reactor,
-            *m_manifest,
-            *m_profile,
-            rhs
-        )
-    );
+    m_engine_control.reset(new channel<io::socket<local>>(*m_reactor, lhs));
+    m_engine.reset(new engine_t(m_context, reactor, *m_manifest, *m_profile, rhs));
 
     // We can safely swap the current driver set now.
     m_drivers.swap(drivers);
@@ -161,6 +200,26 @@ app_t::start() {
     );
 
     m_thread.reset(new std::thread(runnable));
+
+    // Invocation service
+
+    std::vector<io::tcp::endpoint> endpoints = {
+        { "0.0.0.0", 0 }
+    };
+
+    auto service = std::unique_ptr<invocation_service_t>(
+        new invocation_service_t(m_context, *this, m_manifest->name)
+    );
+
+    m_context.attach(
+        m_manifest->name,
+        std::unique_ptr<actor_t>(new actor_t(
+            m_context,
+            std::make_shared<reactor_t>(),
+            std::move(service),
+            endpoints
+        ))
+    );
 
     COCAINE_LOG_INFO(m_log, "the engine has started");
 }
@@ -297,10 +356,14 @@ app_t::stop() {
 
     COCAINE_LOG_INFO(m_log, "stopping the engine");
 
+    // Invocation service
+
+    m_context.detach(m_manifest->name);
+
     auto callback = expect<control::terminate>(*m_reactor);
 
-    m_channel->rd->bind(std::ref(callback), std::ref(callback));
-    m_channel->wr->write<control::terminate>(0UL);
+    m_engine_control->rd->bind(std::ref(callback), std::ref(callback));
+    m_engine_control->wr->write<control::terminate>(0UL);
 
     try {
         // Blocks until either the response or timeout happens.
@@ -334,8 +397,8 @@ app_t::info() const {
 
     auto callback = expect<control::info>(*m_reactor, info);
 
-    m_channel->rd->bind(std::ref(callback), std::ref(callback));
-    m_channel->wr->write<control::report>(0UL);
+    m_engine_control->rd->bind(std::ref(callback), std::ref(callback));
+    m_engine_control->wr->write<control::report>(0UL);
 
     try {
         // Blocks until either the response or timeout happens.

@@ -76,6 +76,37 @@ struct protocol<locator_tag> {
     > type;
 };
 
+struct app_tag;
+
+namespace app {
+    struct invoke {
+        typedef app_tag tag;
+
+        typedef boost::mpl::list<
+         /* Event name. */
+            std::string,
+         /* Data. */
+            std::string
+        > tuple_type;
+
+        typedef
+         /* Result. */
+            std::string
+        result_type;
+    };
+}
+
+template<>
+struct protocol<app_tag> {
+    typedef boost::mpl::int_<
+        1
+    >::type version;
+
+    typedef boost::mpl::list<
+        app::invoke
+    > type;
+};
+
 // Streaming service interface
 
 struct rpc_tag;

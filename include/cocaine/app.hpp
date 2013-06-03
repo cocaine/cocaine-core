@@ -69,7 +69,7 @@ class app_t {
         // Control
 
         std::unique_ptr<io::reactor_t> m_reactor;
-        std::unique_ptr<io::channel<io::socket<io::local>>> m_channel;
+        std::unique_ptr<io::channel<io::socket<io::local>>> m_engine_control;
 
         // Engine
 
@@ -84,6 +84,10 @@ class app_t {
         > driver_map_t;
 
         driver_map_t m_drivers;
+
+        // App dispatching
+
+        struct invocation_service_t;
 };
 
 } // namespace cocaine

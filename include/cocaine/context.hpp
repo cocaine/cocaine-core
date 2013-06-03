@@ -116,6 +116,14 @@ class context_t {
             return *m_logger;
         }
 
+        // Locator
+
+        void
+        attach(const std::string& name, std::unique_ptr<actor_t>&& actor);
+
+        void
+        detach(const std::string& name);
+
     public:
         const config_t config;
 
