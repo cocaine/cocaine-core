@@ -22,8 +22,13 @@
 #define COCAINE_ENGINE_SLAVE_HPP
 
 #include "cocaine/common.hpp"
+
 #include "cocaine/api/isolate.hpp"
+
+// TODO: Either forward or wrap libev types.
 #include "cocaine/asio/reactor.hpp"
+
+#include "cocaine/detail/atomic.hpp"
 #include "cocaine/detail/queue.hpp"
 
 #include <chrono>

@@ -29,16 +29,15 @@
 #include "cocaine/asio/tcp.hpp"
 
 #include "cocaine/context.hpp"
-#include "cocaine/dispatch.hpp"
 
 #include "cocaine/detail/actor.hpp"
 #include "cocaine/detail/archive.hpp"
 #include "cocaine/detail/engine.hpp"
 #include "cocaine/detail/manifest.hpp"
 #include "cocaine/detail/profile.hpp"
-
 #include "cocaine/detail/traits/json.hpp"
 
+#include "cocaine/dispatch.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/messages.hpp"
 
@@ -154,10 +153,7 @@ app_t::start() {
 
         api::category_traits<api::driver_t>::ptr_type driver;
 
-        for(config_t::component_map_t::const_iterator it = m_manifest->drivers.begin();
-            it != m_manifest->drivers.end();
-            ++it)
-        {
+        for(auto it = m_manifest->drivers.begin(); it != m_manifest->drivers.end(); ++it) {
             const std::string name = cocaine::format(
                 "%s/%s",
                 m_manifest->name,
@@ -412,10 +408,7 @@ app_t::info() const {
 
     info["profile"] = m_profile->name;
 
-    for(driver_map_t::const_iterator it = m_drivers.begin();
-        it != m_drivers.end();
-        ++it)
-    {
+    for(auto it = m_drivers.begin(); it != m_drivers.end(); ++it) {
         info["drivers"][it->first] = it->second->info();
     }
 

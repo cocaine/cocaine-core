@@ -279,14 +279,14 @@ context_t::bootstrap() {
         config.services.size() == 1 ? "service" : "services"
     );
 
+    std::unique_ptr<actor_t> service;
+
     for(auto it = config.services.begin(); it != config.services.end(); ++it) {
         auto reactor = std::make_shared<io::reactor_t>();
 
         std::vector<io::tcp::endpoint> endpoints = {
             { "0.0.0.0", 0 }
         };
-
-        std::unique_ptr<actor_t> service;
 
         try {
             service.reset(new actor_t(

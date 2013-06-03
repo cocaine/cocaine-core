@@ -22,9 +22,10 @@
 #define COCAINE_CACHED_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/context.hpp"
 
 #include "cocaine/api/storage.hpp"
+
+#include "cocaine/context.hpp"
 
 namespace cocaine {
 

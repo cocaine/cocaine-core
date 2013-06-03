@@ -51,10 +51,13 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
     }
 #endif
 
+    // TODO: Check if it is a valid slave argument.
     slave = target.string();
 
+    // TODO: Validate driver availability.
     drivers = config_t::parse((*this)["drivers"]);
 
+    // TODO: Ability to choose app bindpoint.
     local = get("local", false).asBool();
 }
 

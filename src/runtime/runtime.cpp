@@ -19,9 +19,10 @@
 */
 
 #include "cocaine/common.hpp"
-#include "cocaine/context.hpp"
 
 #include "cocaine/asio/reactor.hpp"
+
+#include "cocaine/context.hpp"
 
 #ifndef __APPLE__
     #include "cocaine/detail/runtime/pid_file.hpp"

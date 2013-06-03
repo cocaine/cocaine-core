@@ -19,7 +19,6 @@
 */
 
 #include "cocaine/detail/queue.hpp"
-
 #include "cocaine/detail/session.hpp"
 
 using namespace cocaine::engine;

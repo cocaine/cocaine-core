@@ -21,12 +21,12 @@
 #ifndef COCAINE_DISPATCH_SLOT_HPP
 #define COCAINE_DISPATCH_SLOT_HPP
 
-#include "cocaine/traits.hpp"
-
 #include "cocaine/api/stream.hpp"
 
 #include "cocaine/rpc/optional.hpp"
 #include "cocaine/rpc/protocol.hpp"
+
+#include "cocaine/traits.hpp"
 
 #include <functional>
 #include <mutex>

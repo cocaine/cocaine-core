@@ -20,15 +20,13 @@
 
 #include "cocaine/detail/drivers/fs.hpp"
 
+#include "cocaine/api/event.hpp"
+#include "cocaine/api/stream.hpp"
+
 #include "cocaine/app.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/traits.hpp"
-
-#include "cocaine/api/event.hpp"
-#include "cocaine/api/stream.hpp"
-
-#include "cocaine/asio/reactor.hpp"
 
 using namespace cocaine;
 using namespace cocaine::driver;

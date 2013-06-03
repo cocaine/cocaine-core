@@ -34,9 +34,8 @@
 #include "cocaine/detail/profile.hpp"
 #include "cocaine/detail/session.hpp"
 #include "cocaine/detail/slave.hpp"
-#include "cocaine/detail/unique_id.hpp"
-
 #include "cocaine/detail/traits/json.hpp"
+#include "cocaine/detail/unique_id.hpp"
 
 #include "cocaine/logging.hpp"
 #include "cocaine/messages.hpp"

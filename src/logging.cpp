@@ -19,7 +19,6 @@
 */
 
 #include "cocaine/logging.hpp"
-
 #include "cocaine/context.hpp"
 
 using namespace cocaine::logging;

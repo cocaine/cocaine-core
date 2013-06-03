@@ -20,12 +20,12 @@
 
 #include "cocaine/detail/drivers/time.hpp"
 
+#include "cocaine/api/event.hpp"
+#include "cocaine/api/stream.hpp"
+
 #include "cocaine/app.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
-
-#include "cocaine/api/event.hpp"
-#include "cocaine/api/stream.hpp"
 
 using namespace cocaine;
 using namespace cocaine::driver;
