@@ -59,9 +59,6 @@ class app_t {
 
     private:
         context_t& m_context;
-
-        // Logging
-
         std::unique_ptr<logging::log_t> m_log;
 
         // Configuration

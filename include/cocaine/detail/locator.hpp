@@ -56,8 +56,6 @@ class locator_t:
         std::shared_ptr<io::timeout_t> timeout;
     };
 
-    struct synchronize_t;
-
     public:
         locator_t(context_t& context, io::reactor_t& reactor);
 
@@ -66,6 +64,9 @@ class locator_t:
 
         void
         attach(const std::string& name, std::unique_ptr<actor_t>&& service);
+
+        void
+        detach(const std::string& name);
 
     private:
         resolve_result_type
@@ -86,10 +87,10 @@ class locator_t:
         on_response(const remote_t::key_type& key, const io::message_t& message);
 
         void
-        on_shutdown(const remote_t::key_type& key, const std::error_code& ec);
+        on_disconnect(const remote_t::key_type& key, const std::error_code& ec);
 
         void
-        on_timedout(const remote_t::key_type& key);
+        on_timeout(const remote_t::key_type& key);
 
         // Housekeeping
 
@@ -125,6 +126,8 @@ class locator_t:
         // Announce emitter.
         std::unique_ptr<io::socket<io::udp>> m_announce;
         std::unique_ptr<ev::timer> m_announce_timer;
+
+        struct synchronize_t;
 
         // Synchronizing slot.
         std::shared_ptr<synchronize_t> m_synchronizer;

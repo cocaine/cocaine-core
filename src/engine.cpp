@@ -130,11 +130,7 @@ namespace {
 
         states m_state;
     };
-}
 
-// Engine
-
-namespace {
     struct ignore {
         void
         operator()(const std::error_code& /* ec */) const {

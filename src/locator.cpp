@@ -206,8 +206,26 @@ locator_t::~locator_t() {
     m_services.clear();
 }
 
+namespace {
+    struct match {
+        template<class T>
+        bool
+        operator()(const T& service) const {
+            return name == service.first;
+        }
+
+        const std::string name;
+    };
+}
+
 void
 locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
+    auto existing = std::find_if(m_services.begin(), m_services.end(), match {
+        name
+    });
+
+    BOOST_VERIFY(existing == m_services.end());
+
     COCAINE_LOG_INFO(
         m_log,
         "publishing service '%s' on port %s",
@@ -222,17 +240,21 @@ locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
     m_services.emplace_back(name, std::move(service));
 }
 
+void
+locator_t::detach(const std::string& name) {
+    auto service = std::find_if(m_services.begin(), m_services.end(), match {
+        name
+    });
+
+    BOOST_VERIFY(service != m_services.end());
+
+    COCAINE_LOG_INFO(m_log, "stopping service '%s'", service->first);
+
+    service->second->terminate();
+    m_services.erase(service);
+}
+
 namespace {
-    struct match {
-        template<class T>
-        bool
-        operator()(const T& service) const {
-            return name == service.first;
-        }
-
-        const std::string name;
-    };
-
     inline
     resolve_result_type
     query(const std::unique_ptr<actor_t>& actor) {
@@ -358,15 +380,15 @@ locator_t::on_announce_event(ev::io&, int) {
         }
 
         auto on_response = std::bind(&locator_t::on_response, this, key, _1);
-        auto on_shutdown = std::bind(&locator_t::on_shutdown, this, key, _1);
-        auto on_timedout = std::bind(&locator_t::on_timedout, this, key);
+        auto on_disconnect = std::bind(&locator_t::on_disconnect, this, key, _1);
+        auto on_timeout = std::bind(&locator_t::on_timeout, this, key);
 
-        channel->wr->bind(on_shutdown);
-        channel->rd->bind(on_response, on_shutdown);
+        channel->wr->bind(on_disconnect);
+        channel->rd->bind(on_response, on_disconnect);
 
         auto timeout = std::make_shared<io::timeout_t>(m_reactor);
 
-        timeout->bind(on_timedout);
+        timeout->bind(on_timeout);
 
         m_remotes[key] = remote_t {
             channel,
@@ -447,7 +469,7 @@ locator_t::on_response(const remote_t::key_type& key, const io::message_t& messa
 }
 
 void
-locator_t::on_shutdown(const remote_t::key_type& key, const std::error_code& ec) {
+locator_t::on_disconnect(const remote_t::key_type& key, const std::error_code& ec) {
     COCAINE_LOG_WARNING(
         m_log,
         "node '%s' has unexpectedly disconnected - [%d] %s",
@@ -460,7 +482,7 @@ locator_t::on_shutdown(const remote_t::key_type& key, const std::error_code& ec)
 }
 
 void
-locator_t::on_timedout(const remote_t::key_type& key) {
+locator_t::on_timeout(const remote_t::key_type& key) {
     COCAINE_LOG_WARNING(m_log, "node '%s' has timed out", std::get<0>(key));
     purge(key);
 }
