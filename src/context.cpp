@@ -252,15 +252,28 @@ void
 context_t::bootstrap() {
     auto blog = std::unique_ptr<logging::log_t>(new logging::log_t(*this, "bootstrap"));
 
+    COCAINE_LOG_INFO(blog, "starting the service locator");
+
+    auto locator_reactor = std::make_shared<io::reactor_t>();
+    auto locator = std::unique_ptr<locator_t>(new locator_t(*this, *locator_reactor));
+
+    std::vector<io::tcp::endpoint> endpoints = {
+        { "0.0.0.0", config.network.locator }
+    };
+
+    m_locator.reset(new actor_t(
+        *this,
+        locator_reactor,
+        std::move(locator),
+        endpoints
+    ));
+
     COCAINE_LOG_INFO(
         blog,
         "starting %d %s",
         config.services.size(),
         config.services.size() == 1 ? "service" : "services"
     );
-
-    auto locator_reactor = std::make_shared<io::reactor_t>();
-    auto locator = std::unique_ptr<locator_t>(new locator_t(*this, *locator_reactor));
 
     for(auto it = config.services.begin(); it != config.services.end(); ++it) {
         auto reactor = std::make_shared<io::reactor_t>();
@@ -270,7 +283,7 @@ context_t::bootstrap() {
         };
 
         try {
-            locator->attach(
+            attach(
                 it->first,
                 std::unique_ptr<actor_t>(new actor_t(
                     *this,
@@ -291,19 +304,6 @@ context_t::bootstrap() {
             throw cocaine::error_t("unable to initialize service '%s' - unknown exception", it->first);
         }
     }
-
-    COCAINE_LOG_INFO(blog, "starting the service locator");
-
-    std::vector<io::tcp::endpoint> endpoints = {
-        { "0.0.0.0", config.network.locator }
-    };
-
-    m_locator.reset(new actor_t(
-        *this,
-        locator_reactor,
-        std::move(locator),
-        endpoints
-    ));
 
     m_locator->run();
 }
