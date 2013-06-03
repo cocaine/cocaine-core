@@ -234,8 +234,10 @@ locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
     // Get the service's actor ownership.
     m_services.emplace_back(name, std::move(service));
 
-    // Notify the peers.
-    m_synchronizer->update();
+    if(m_synchronizer) {
+        // Notify the peers.
+        m_synchronizer->update();
+    }
 }
 
 std::unique_ptr<actor_t>
@@ -261,8 +263,10 @@ locator_t::detach(const std::string& name) {
     // Drop the service's record.
     m_services.erase(service);
 
-    // Notify the peers.
-    m_synchronizer->update();
+    if(m_synchronizer) {
+        // Notify the peers.
+        m_synchronizer->update();
+    }
 
     return actor;
 }
