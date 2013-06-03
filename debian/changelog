@@ -1,3 +1,16 @@
+cocaine-core (0.10.5-2) lucid; urgency=low
+
+  * Bugfix: dispose of orphan services when bootstrap fails.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 04 Jun 2013 00:16:22 +0400
+
+cocaine-core (0.10.5-1) lucid; urgency=low
+
+  * Bugfix: keep the storage reference alive during the node startup to avoid
+    connecting to the Elliptics every time we need to read something.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 04 Jun 2013 00:00:01 +0400
+
 cocaine-core (0.10.5-0) unstable; urgency=low
 
   * Release 10.5.
