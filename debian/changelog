@@ -3,6 +3,7 @@ cocaine-core (0.10.5-3) lucid; urgency=low
   * Bugfix: generate default event names in the builtin drivers to be equal to
     the given driver names.
   * Bugfix: properly handle resource errors in app invocation service.
+  * Bugfix: catch all exceptions during the initialization.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 04 Jun 2013 12:34:24 +0400
 
