@@ -42,7 +42,7 @@ using namespace std::placeholders;
 struct locator_t::synchronize_t:
     public slot_concept_t
 {
-    synchronize_t(locator_t* self):
+    synchronize_t(locator_t& self):
         slot_concept_t("synchronize"),
         m_packer(m_buffer),
         m_self(self)
@@ -84,7 +84,7 @@ private:
 
         io::type_traits<synchronize_result_type>::pack(
             m_packer,
-            m_self->dump()
+            m_self.dump()
         );
 
         try {
@@ -110,7 +110,7 @@ private:
     msgpack::sbuffer m_buffer;
     msgpack::packer<msgpack::sbuffer> m_packer;
 
-    locator_t* m_self;
+    locator_t& m_self;
 
     std::vector<api::stream_ptr_t> m_upstreams;
 };

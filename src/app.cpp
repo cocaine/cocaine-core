@@ -88,8 +88,8 @@ struct app_t::invocation_service_t:
         invocation_service_t& m_self;
     };
 
-    invocation_service_t(context_t& context, app_t& app, const std::string& name):
-        dispatch_t(context, cocaine::format("app/%1%/service", name)),
+    invocation_service_t(context_t& context, const std::string& name, app_t& app):
+        dispatch_t(context, cocaine::format("service/%1%", name)),
         m_app(app)
     {
         on<app::invoke>(std::make_shared<invocation_t>(*this));
@@ -194,31 +194,27 @@ app_t::start() {
     // We can safely swap the current driver set now.
     m_drivers.swap(drivers);
 
-    auto runnable = std::bind(
-        &engine_t::run,
-        m_engine
-    );
-
-    m_thread.reset(new std::thread(runnable));
-
-    // Invocation service
+    // Start the engine thread.
+    m_thread.reset(new std::thread(std::bind(&engine_t::run, m_engine)));
 
     if(!m_manifest->local) {
         std::vector<io::tcp::endpoint> endpoints = {
             { "0.0.0.0", 0 }
         };
 
+        // Initialize the app invocation service.
         auto service = std::unique_ptr<actor_t>(new actor_t(
             m_context,
             std::make_shared<reactor_t>(),
             std::unique_ptr<invocation_service_t>(
-                new invocation_service_t(m_context, *this, m_manifest->name)
+                new invocation_service_t(m_context, m_manifest->name, *this)
             ),
             endpoints
         ));
 
         service->run();
 
+        // Publish it in the cluster.
         m_context.attach(m_manifest->name, std::move(service));
     }
 
