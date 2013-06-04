@@ -23,6 +23,8 @@
 #include "cocaine/api/driver.hpp"
 #include "cocaine/api/event.hpp"
 
+#include "cocaine/detail/actor.hpp"
+
 #include "cocaine/asio/acceptor.hpp"
 #include "cocaine/asio/local.hpp"
 #include "cocaine/asio/socket.hpp"
@@ -30,7 +32,6 @@
 
 #include "cocaine/context.hpp"
 
-#include "cocaine/detail/actor.hpp"
 #include "cocaine/detail/archive.hpp"
 #include "cocaine/detail/engine.hpp"
 #include "cocaine/detail/manifest.hpp"
@@ -199,7 +200,8 @@ app_t::start() {
 
     if(!m_manifest->local) {
         std::vector<io::tcp::endpoint> endpoints = {
-            { "0.0.0.0", 0 }
+            { boost::asio::ip::address::from_string("0.0.0.0"), 0 },
+            { boost::asio::ip::address::from_string("::"),      0 },
         };
 
         COCAINE_LOG_DEBUG(m_log, "starting the invocation service");

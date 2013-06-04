@@ -34,21 +34,17 @@ template<class Medium>
 struct resolver {
     typedef Medium medium_type;
     typedef typename medium_type::endpoint endpoint_type;
-    typedef typename endpoint_type::size_type size_type;
 
     static inline
     endpoint_type
     query(const std::string& name, uint16_t port) {
-        medium_type medium;
         endpoint_type endpoint;
-
         addrinfo hints, *result = nullptr;
 
         std::memset(&hints, 0, sizeof(addrinfo));
 
-        hints.ai_family = medium.family();
-        hints.ai_socktype = medium.type();
-        hints.ai_protocol = medium.protocol();
+        hints.ai_socktype = endpoint.protocol().type();
+        hints.ai_protocol = endpoint.protocol().protocol();
 
         int rv = ::getaddrinfo(name.c_str(), nullptr, &hints, &result);
 

@@ -31,15 +31,14 @@ struct acceptor {
 
     typedef Medium medium_type;
     typedef typename medium_type::endpoint endpoint_type;
-    typedef typename endpoint_type::size_type size_type;
 
     // Type of the socket this acceptor yields on a new connection.
     typedef socket<medium_type> socket_type;
 
     acceptor(endpoint_type endpoint, int backlog = 1024) {
-        medium_type medium;
+        typename endpoint_type::protocol_type protocol = endpoint.protocol();
 
-        m_fd = ::socket(medium.family(), medium.type(), medium.protocol());
+        m_fd = ::socket(protocol.family(), protocol.type(), protocol.protocol());
 
         if(m_fd == -1) {
             throw io_error_t("unable to create an acceptor");
@@ -86,7 +85,7 @@ struct acceptor {
     std::shared_ptr<socket_type>
     accept() {
         endpoint_type endpoint;
-        size_type size = endpoint.size();
+        socklen_t size = endpoint.size();
 
         int fd = ::accept(m_fd, endpoint.data(), &size);
 
@@ -119,7 +118,7 @@ public:
     endpoint_type
     local_endpoint() const {
         endpoint_type endpoint;
-        size_type size = endpoint.size();
+        socklen_t size = endpoint.size();
 
         if(::getsockname(m_fd, endpoint.data(), &size) != 0) {
             throw io_error_t("unable to determine the local socket address");

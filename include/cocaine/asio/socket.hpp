@@ -36,12 +36,11 @@ struct socket {
 
     typedef Medium medium_type;
     typedef typename medium_type::endpoint endpoint_type;
-    typedef typename endpoint_type::size_type size_type;
 
     socket() {
-        medium_type medium;
+        typename endpoint_type::protocol_type protocol(endpoint_type().protocol());
 
-        m_fd = ::socket(medium.family(), medium.type(), medium.protocol());
+        m_fd = ::socket(protocol.family(), protocol.type(), protocol.protocol());
 
         if(m_fd == -1) {
             throw io_error_t("unable to create a socket");
@@ -53,9 +52,9 @@ struct socket {
 
     explicit
     socket(endpoint_type endpoint) {
-        medium_type medium;
+        typename endpoint_type::protocol_type protocol = endpoint.protocol();
 
-        m_fd = ::socket(medium.family(), medium.type(), medium.protocol());
+        m_fd = ::socket(protocol.family(), protocol.type(), protocol.protocol());
 
         if(m_fd == -1) {
             throw io_error_t("unable to create a socket");
@@ -145,7 +144,7 @@ public:
     endpoint_type
     local_endpoint() const {
         endpoint_type endpoint;
-        size_type size = endpoint.size();
+        size_t size = endpoint.size();
 
         if(::getsockname(m_fd, endpoint.data(), &size) != 0) {
             throw io_error_t("unable to determine the local socket address");
@@ -157,7 +156,7 @@ public:
     endpoint_type
     remote_endpoint() const {
         endpoint_type endpoint;
-        size_type size = endpoint.size();
+        size_t size = endpoint.size();
 
         if(::getpeername(m_fd, endpoint.data(), &size) != 0) {
             throw io_error_t("unable to determine the remote socket address");

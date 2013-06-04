@@ -21,112 +21,12 @@
 #ifndef COCAINE_IO_TCP_HPP
 #define COCAINE_IO_TCP_HPP
 
-#include "cocaine/common.hpp"
-
-#include <cstring>
-
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <sys/socket.h>
+#include <boost/asio/ip/tcp.hpp>
 
 namespace cocaine { namespace io {
 
 struct tcp {
-    // typedef acceptor<tcp> acceptor;
-    // typedef socket<tcp> socket;
-
-    struct endpoint {
-        typedef sockaddr    base_type;
-        typedef sockaddr_in address_type;
-        typedef socklen_t   size_type;
-
-        endpoint() {
-            std::memset(&m_data, 0, sizeof(m_data));
-        }
-
-        endpoint(const std::string& address, uint16_t port) {
-            std::memset(&m_data, 0, sizeof(m_data));
-
-            m_data.tcp4.sin_family = tcp::family();
-            m_data.tcp4.sin_port = htons(port);
-
-            if(::inet_pton(tcp::family(), address.c_str(), &m_data.tcp4.sin_addr) == 0) {
-                throw cocaine::io_error_t("unable to parse '%s' as an endpoint address", address);
-            }
-        }
-
-        base_type*
-        data() {
-            return &m_data.base;
-        }
-
-        const base_type*
-        data() const {
-            return &m_data.base;
-        }
-
-        size_type
-        size() const {
-            return sizeof(m_data);
-        }
-
-        std::string
-        address() const {
-            char result[INET_ADDRSTRLEN];
-
-            if(::inet_ntop(tcp::family(), &m_data.tcp4.sin_addr, result, INET_ADDRSTRLEN) == nullptr) {
-                throw cocaine::io_error_t("unable to parse the endpoint address");
-            }
-
-            return result;
-        }
-
-        uint16_t
-        port() const {
-            return ntohs(m_data.tcp4.sin_port);
-        }
-
-        void
-        port(uint16_t port_) {
-            m_data.tcp4.sin_port = htons(port_);
-        }
-
-        std::string
-        string() const {
-            return cocaine::format("%s:%d", address(), port());
-        }
-
-        friend
-        std::ostream&
-        operator<<(std::ostream& stream, const tcp::endpoint& endpoint) {
-            return stream << endpoint.string();
-        }
-
-    private:
-        union {
-            base_type    base;
-            address_type tcp4;
-        } m_data;
-    };
-
-    static
-    int
-    family() {
-        return AF_INET;
-    }
-
-    static
-    int
-    type() {
-        return SOCK_STREAM;
-    }
-
-    static
-    int
-    protocol() {
-        return IPPROTO_TCP;
-    }
+    typedef boost::asio::ip::tcp::endpoint endpoint;
 };
 
 }} // namespace cocaine::io

@@ -262,7 +262,8 @@ context_t::bootstrap() {
     auto locator = std::unique_ptr<locator_t>(new locator_t(*this, *locator_reactor));
 
     std::vector<io::tcp::endpoint> endpoints = {
-        { "0.0.0.0", config.network.locator }
+        { boost::asio::ip::address::from_string("0.0.0.0"), config.network.locator },
+        { boost::asio::ip::address::from_string("::"),      config.network.locator }
     };
 
     m_locator.reset(new actor_t(
@@ -285,7 +286,8 @@ context_t::bootstrap() {
         auto reactor = std::make_shared<io::reactor_t>();
 
         std::vector<io::tcp::endpoint> endpoints = {
-            { "0.0.0.0", 0 }
+            { boost::asio::ip::address::from_string("0.0.0.0"), 0 },
+            { boost::asio::ip::address::from_string("::"),      0 }
         };
 
         try {
