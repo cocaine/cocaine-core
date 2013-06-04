@@ -39,7 +39,7 @@ fs_t::fs_t(context_t& context,
     category_type(context, reactor, app, name, args),
     m_log(new logging::log_t(context, cocaine::format("app/%s", name))),
     m_app(app),
-    m_event(args.get("emit", "").asString()),
+    m_event(args.get("emit", name).asString()),
     m_path(args.get("path", "").asString()),
     m_watcher(reactor.native())
 {

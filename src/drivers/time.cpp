@@ -38,7 +38,7 @@ recurring_timer_t::recurring_timer_t(context_t& context,
     category_type(context, reactor, app, name, args),
     m_log(new logging::log_t(context, cocaine::format("app/%s", name))),
     m_app(app),
-    m_event(args["emit"].asString()),
+    m_event(args.get("emit", name).asString()),
     m_interval(args.get("interval", 0.0f).asInt() / 1000.0f),
     m_watcher(reactor.native())
 {
