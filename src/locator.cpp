@@ -301,6 +301,8 @@ locator_t::dump() const {
 
 void
 locator_t::connect() {
+    using namespace boost::asio::ip;
+
 #if defined(__clang__) || defined(HAVE_GCC46)
     std::random_device device;
     m_random_generator.seed(device());
@@ -308,13 +310,13 @@ locator_t::connect() {
     m_random_generator.seed(static_cast<unsigned long>(::time(nullptr)));
 #endif
 
-    auto endpoint = io::udp::endpoint(
-        boost::asio::ip::address::from_string(m_context.config.network.group),
+    io::udp::endpoint endpoint = {
+        address::from_string(m_context.config.network.group),
         0
-    );
+    };
 
     if(m_context.config.network.aggregate) {
-        io::udp::endpoint bindpoint(boost::asio::ip::address::from_string("0.0.0.0"), 10054);
+        io::udp::endpoint bindpoint = { address::from_string("0.0.0.0"), 10054 };
 
         m_sink.reset(new io::socket<io::udp>());
 

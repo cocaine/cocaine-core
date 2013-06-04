@@ -200,8 +200,7 @@ app_t::start() {
 
     if(!m_manifest->local) {
         std::vector<io::tcp::endpoint> endpoints = {
-            { boost::asio::ip::address::from_string("0.0.0.0"), 0 },
-            { boost::asio::ip::address::from_string("::"),      0 },
+            { boost::asio::ip::address::from_string("::"), 0 },
         };
 
         COCAINE_LOG_DEBUG(m_log, "starting the invocation service");
