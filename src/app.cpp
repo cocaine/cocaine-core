@@ -68,16 +68,20 @@ struct app_t::invocation_service_t:
         virtual
         void
         operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) {
+            typedef event_traits<app::invoke>::tuple_type tuple_type;
+
             std::string event;
             std::string blob;
 
-            io::type_traits<io::event_traits<io::app::invoke>::tuple_type>::unpack(
-                unpacked,
-                event,
-                blob
-            );
+            // NOTE: No try-block here, as the enclosing dispatch is handling all exceptions.
+            type_traits<tuple_type>::unpack(unpacked, event, blob);
 
-            m_self.enqueue(api::event_t(event), upstream)->write(blob.data(), blob.size());
+            try {
+                m_self.enqueue(api::event_t(event), upstream)->write(blob.data(), blob.size());
+            } catch(const cocaine::error_t& e) {
+                upstream->error(resource_error, e.what());
+                upstream->close();
+            }
         }
 
     private:
