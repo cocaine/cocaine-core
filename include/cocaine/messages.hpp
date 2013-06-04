@@ -76,6 +76,8 @@ struct protocol<locator_tag> {
     > type;
 };
 
+// App invocation service interface
+
 struct app_tag;
 
 namespace app {

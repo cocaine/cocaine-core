@@ -32,9 +32,7 @@ struct policy_t {
         deadline(0.0f)
     { }
 
-    policy_t(bool urgent_,
-             double timeout_,
-             double deadline_):
+    policy_t(bool urgent_, double timeout_, double deadline_):
         urgent(urgent_),
         timeout(timeout_),
         deadline(deadline_)
@@ -50,17 +48,12 @@ struct event_t {
         name(name_)
     { }
 
-    event_t(const std::string& name_,
-            policy_t policy_):
+    event_t(const std::string& name_, policy_t policy_):
         name(name_),
         policy(policy_)
     { }
 
-public:
-    // Event name.
     const std::string name;
-
-    // Event execution policy.
     const policy_t policy;
 };
 
