@@ -259,7 +259,7 @@ main(int argc, char* argv[]) {
 
     try {
         context.reset(new context_t(*config, "core"));
-    } catch(const cocaine::error_t& e) {
+    } catch(const std::exception& e) {
         std::cerr << cocaine::format(
             "ERROR: unable to initialize the context - %s.",
             e.what()
