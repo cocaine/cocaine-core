@@ -57,6 +57,8 @@ archive_t::archive_t(context_t& context, const std::string& archive):
     if(rv != ARCHIVE_OK) {
         throw archive_error_t(m_archive);
     }
+
+    COCAINE_LOG_INFO(m_log, "compression: %s, size: %llu bytes", type(), archive.size());
 }
 
 archive_t::~archive_t() {
@@ -108,6 +110,8 @@ archive_t::deploy(const std::string& prefix_) {
             archive_entry_set_hardlink(entry, hardlink.string().c_str());
         }
 
+        COCAINE_LOG_DEBUG(m_log, "extracting %s", pathname);
+
         rv = archive_write_header(target, entry);
 
         if(rv != ARCHIVE_OK) {
@@ -123,17 +127,6 @@ archive_t::deploy(const std::string& prefix_) {
         }
     }
 
-    size_t count = archive_file_count(m_archive);
-
-    COCAINE_LOG_INFO(
-        m_log,
-        "archive type: %s, extracted %d %s to '%s'",
-        type(),
-        count,
-        count == 1 ? "file" : "files",
-        prefix.string()
-    );
-
     archive_write_close(target);
 
 #if ARCHIVE_VERSION_NUMBER < 3000000
@@ -141,6 +134,10 @@ archive_t::deploy(const std::string& prefix_) {
 #else
     archive_write_free(target);
 #endif
+
+    size_t count = archive_file_count(m_archive);
+
+    COCAINE_LOG_INFO(m_log, "extracted %d %s", count, count == 1 ? "file" : "files");
 }
 
 void

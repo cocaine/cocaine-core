@@ -146,7 +146,7 @@ app_t::start() {
     auto drivers = driver_map_t();
 
     if(!m_manifest->drivers.empty()) {
-        COCAINE_LOG_INFO(
+        COCAINE_LOG_DEBUG(
             m_log,
             "starting %llu %s",
             m_manifest->drivers.size(),
@@ -161,6 +161,8 @@ app_t::start() {
                 m_manifest->name,
                 it->first
             );
+
+            COCAINE_LOG_DEBUG(m_log, "starting driver '%s', type: %s", it->first, it->second.type);
 
             try {
                 driver = m_context.get<api::driver_t>(
@@ -199,6 +201,8 @@ app_t::start() {
         std::vector<io::tcp::endpoint> endpoints = {
             { "0.0.0.0", 0 }
         };
+
+        COCAINE_LOG_DEBUG(m_log, "starting the invocation service");
 
         // Initialize the app invocation service.
         auto service = std::unique_ptr<actor_t>(new actor_t(
@@ -371,8 +375,6 @@ app_t::stop() {
     m_thread->join();
     m_thread.reset();
 
-    COCAINE_LOG_INFO(m_log, "the engine has stopped");
-
     // NOTE: Stop the drivers, so that there won't be any open
     // sockets and so on while the engine is stopped.
     m_drivers.clear();
@@ -380,6 +382,8 @@ app_t::stop() {
     // NOTE: Destroy the engine last, because it holds the only
     // reference to the reactor which drivers use.
     m_engine.reset();
+
+    COCAINE_LOG_INFO(m_log, "the engine has stopped");
 }
 
 Json::Value

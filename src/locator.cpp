@@ -204,12 +204,7 @@ locator_t::detach(const std::string& name) {
 
     BOOST_VERIFY(service != m_services.end());
 
-    COCAINE_LOG_INFO(
-        m_log,
-        "withholding service '%s' on port %d",
-        name,
-        std::get<1>(service->second->endpoint())
-    );
+    COCAINE_LOG_INFO(m_log, "withdrawing service '%s'", name);
 
     // Release the service's actor ownership.
     std::unique_ptr<actor_t> actor = std::move(service->second);
@@ -480,7 +475,7 @@ locator_t::on_response(const remote_t::key_type& key, const io::message_t& messa
             // Clear the old remote node services.
             prune(key);
 
-            COCAINE_LOG_INFO(
+            COCAINE_LOG_DEBUG(
                 m_log,
                 "discovered %llu %s on node '%s'",
                 dump.size(),
