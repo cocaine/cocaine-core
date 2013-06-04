@@ -131,8 +131,6 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
 }
 
 app_t::~app_t() {
-    // NOTE: Stop the engine first, so that there won't be any
-    // new events during the drivers shutdown process.
     stop();
 }
 
@@ -354,7 +352,7 @@ app_t::stop() {
     COCAINE_LOG_INFO(m_log, "stopping the engine");
 
     if(!m_manifest->local) {
-        // Stop the invocation service.
+        // Stop the app invocation service.
         m_context.detach(m_manifest->name)->terminate();
     }
 

@@ -121,72 +121,13 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
     m_log(new logging::log_t(context, "service/locator")),
     m_reactor(reactor)
 {
-    on<io::locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
-
     COCAINE_LOG_INFO(m_log, "this node's id is '%s'", m_id);
 
-    if(context.config.network.group.empty()) {
-        return;
+    on<io::locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
+
+    if(!context.config.network.group.empty()) {
+        connect();
     }
-
-#if defined(__clang__) || defined(HAVE_GCC46)
-    std::random_device device;
-    m_random_generator.seed(device());
-#else
-    m_random_generator.seed(static_cast<unsigned long>(::time(nullptr)));
-#endif
-
-    auto endpoint = io::udp::endpoint(context.config.network.group, 0);
-
-    if(context.config.network.aggregate) {
-        io::udp::endpoint bindpoint("0.0.0.0", 10054);
-
-        m_sink.reset(new io::socket<io::udp>());
-
-        if(::bind(m_sink->fd(), bindpoint.data(), bindpoint.size()) != 0) {
-            throw std::system_error(errno, std::system_category(), "unable to bind an announce socket");
-        }
-
-        COCAINE_LOG_INFO(m_log, "joining multicast group '%s' on '%s'", endpoint.address(), bindpoint);
-
-        group_req request;
-
-        std::memset(&request, 0, sizeof(request));
-
-        request.gr_interface = 0;
-
-        std::memcpy(&request.gr_group, endpoint.data(), endpoint.size());
-
-        if(::setsockopt(m_sink->fd(), IPPROTO_IP, MCAST_JOIN_GROUP, &request, sizeof(request)) != 0) {
-            throw std::system_error(errno, std::system_category(), "unable to join a multicast group");
-        }
-
-        m_sink_watcher.reset(new ev::io(m_reactor.native()));
-        m_sink_watcher->set<locator_t, &locator_t::on_announce_event>(this);
-        m_sink_watcher->start(m_sink->fd(), ev::READ);
-    }
-
-    endpoint.port(10054);
-
-    COCAINE_LOG_INFO(m_log, "announcing the node on '%s'", endpoint);
-
-    // NOTE: Connect an UDP socket so that we could send announces via write() instead of sendto().
-    m_announce.reset(new io::socket<io::udp>(endpoint));
-
-    const int loop = 0;
-    const int life = IP_DEFAULT_MULTICAST_TTL;
-
-    // NOTE: I don't think these calls might fail at all.
-    ::setsockopt(m_announce->fd(), IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop));
-    ::setsockopt(m_announce->fd(), IPPROTO_IP, IP_MULTICAST_TTL,  &life, sizeof(life));
-
-    m_announce_timer.reset(new ev::timer(m_reactor.native()));
-    m_announce_timer->set<locator_t, &locator_t::on_announce_timer>(this);
-    m_announce_timer->start(0.0f, 5.0f);
-
-    m_synchronizer = std::make_shared<synchronize_t>(this);
-
-    on<io::locator::synchronize>(m_synchronizer);
 }
 
 locator_t::~locator_t() {
@@ -361,6 +302,68 @@ locator_t::dump() const {
     });
 
     return result;
+}
+
+void
+locator_t::connect() {
+#if defined(__clang__) || defined(HAVE_GCC46)
+    std::random_device device;
+    m_random_generator.seed(device());
+#else
+    m_random_generator.seed(static_cast<unsigned long>(::time(nullptr)));
+#endif
+
+    auto endpoint = io::udp::endpoint(m_context.config.network.group, 0);
+
+    if(m_context.config.network.aggregate) {
+        io::udp::endpoint bindpoint("0.0.0.0", 10054);
+
+        m_sink.reset(new io::socket<io::udp>());
+
+        if(::bind(m_sink->fd(), bindpoint.data(), bindpoint.size()) != 0) {
+            throw std::system_error(errno, std::system_category(), "unable to bind an announce socket");
+        }
+
+        COCAINE_LOG_INFO(m_log, "joining multicast group '%s' on '%s'", endpoint.address(), bindpoint);
+
+        group_req request;
+
+        std::memset(&request, 0, sizeof(request));
+
+        request.gr_interface = 0;
+
+        std::memcpy(&request.gr_group, endpoint.data(), endpoint.size());
+
+        if(::setsockopt(m_sink->fd(), IPPROTO_IP, MCAST_JOIN_GROUP, &request, sizeof(request)) != 0) {
+            throw std::system_error(errno, std::system_category(), "unable to join a multicast group");
+        }
+
+        m_sink_watcher.reset(new ev::io(m_reactor.native()));
+        m_sink_watcher->set<locator_t, &locator_t::on_announce_event>(this);
+        m_sink_watcher->start(m_sink->fd(), ev::READ);
+    }
+
+    endpoint.port(10054);
+
+    COCAINE_LOG_INFO(m_log, "announcing the node on '%s'", endpoint);
+
+    // NOTE: Connect an UDP socket so that we could send announces via write() instead of sendto().
+    m_announce.reset(new io::socket<io::udp>(endpoint));
+
+    const int loop = 0;
+    const int life = IP_DEFAULT_MULTICAST_TTL;
+
+    // NOTE: I don't think these calls might fail at all.
+    ::setsockopt(m_announce->fd(), IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop));
+    ::setsockopt(m_announce->fd(), IPPROTO_IP, IP_MULTICAST_TTL,  &life, sizeof(life));
+
+    m_announce_timer.reset(new ev::timer(m_reactor.native()));
+    m_announce_timer->set<locator_t, &locator_t::on_announce_timer>(this);
+    m_announce_timer->start(0.0f, 5.0f);
+
+    m_synchronizer = std::make_shared<synchronize_t>(*this);
+
+    on<io::locator::synchronize>(m_synchronizer);
 }
 
 void

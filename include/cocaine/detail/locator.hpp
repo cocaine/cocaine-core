@@ -78,6 +78,9 @@ class locator_t:
         // Cluster discovery
 
         void
+        connect();
+
+        void
         on_announce_event(ev::io&, int);
 
         void
