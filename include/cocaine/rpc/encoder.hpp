@@ -40,17 +40,19 @@ struct encoder {
     { }
 
    ~encoder() {
-        // unbind();
+        // Empty.
     }
 
     void
     attach(const std::shared_ptr<stream_type>& stream) {
-        std::unique_lock<std::mutex> lock(m_mutex);
+        std::lock_guard<std::mutex> guard(m_mutex);
 
         m_stream = stream;
 
-        m_stream->write(m_buffer.data(), m_buffer.size());
-        m_buffer.clear();
+        if(m_buffer.size() != 0) {
+            m_stream->write(m_buffer.data(), m_buffer.size());
+            m_buffer.clear();
+        }
     }
 
     template<class ErrorHandler>
@@ -69,7 +71,7 @@ struct encoder {
     write(uint64_t stream, Args&&... args) {
         typedef event_traits<Event> traits;
 
-        std::unique_lock<std::mutex> lock(m_mutex);
+        std::lock_guard<std::mutex> guard(m_mutex);
 
         // NOTE: Format is [ID, Tag, [Args...]].
         m_packer.pack_array(3);
