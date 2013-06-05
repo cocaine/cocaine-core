@@ -42,6 +42,7 @@ struct defaults {
 
     // Default I/O policy.
     static const float control_timeout;
+    static const unsigned decoder_granularity;
 
     // Default paths.
     static const char plugins_path[];

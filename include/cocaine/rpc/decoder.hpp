@@ -78,7 +78,8 @@ private:
     size_t
     on_event(const char* data, size_t size) {
         size_t offset = 0,
-               checkpoint = 0;
+               checkpoint = 0,
+               bulk = 0;
 
         msgpack::unpack_return rv;
         msgpack::zone zone;
@@ -98,6 +99,10 @@ private:
                     }
 
                     checkpoint = offset;
+
+                    if(++bulk == 256) {
+                        return checkpoint;
+                    }
 
                     break;
 

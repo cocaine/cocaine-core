@@ -51,6 +51,7 @@ const unsigned long defaults::pool_limit     = 10L;
 const unsigned long defaults::queue_limit    = 100L;
 
 const float defaults::control_timeout        = 5.0f;
+const unsigned defaults::decoder_granularity = 256;
 
 const char defaults::plugins_path[]          = "/usr/lib/cocaine";
 const char defaults::runtime_path[]          = "/var/run/cocaine";
