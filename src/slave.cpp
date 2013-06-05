@@ -643,7 +643,11 @@ slave_t::pump() {
         assign(session);
     }
 
-    m_engine.pump();
+    if(m_sessions.empty() && m_profile.idle_timeout) {
+        m_idle_timer.start(m_profile.idle_timeout);
+    }
+
+    m_engine.wake();
 }
 
 void
