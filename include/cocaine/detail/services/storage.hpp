@@ -22,7 +22,6 @@
 #define COCAINE_STORAGE_SERVICE_HPP
 
 #include "cocaine/api/service.hpp"
-#include "cocaine/api/storage.hpp"
 
 namespace cocaine { namespace service {
 
@@ -34,11 +33,6 @@ class storage_t:
                   io::reactor_t& reactor,
                   const std::string& name,
                   const Json::Value& args);
-
-    private:
-        // NOTE: This will keep the underlying storage active, as opposed to the usual usecase when
-        // the storage object is destroyed after the node service finishes its initialization.
-        api::category_traits<api::storage_t>::ptr_type m_storage;
 };
 
 }} // namespace cocaine::service

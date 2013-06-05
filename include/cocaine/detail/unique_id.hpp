@@ -55,9 +55,6 @@ public:
     std::array<uint64_t, 2> uuid;
 };
 
-size_t
-hash_value(const unique_id_t& id);
-
 } // namespace cocaine
 
 #endif

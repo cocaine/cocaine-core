@@ -319,7 +319,7 @@ namespace detail {
         template<class T>
         void
         write(const T& value) {
-            std::unique_lock<std::mutex> lock(m_mutex);
+            std::lock_guard<std::mutex> guard(m_mutex);
 
             if(m_completed) {
                 return;

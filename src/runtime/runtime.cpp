@@ -28,17 +28,17 @@
     #include "cocaine/detail/runtime/pid_file.hpp"
 #endif
 
-#ifdef __linux__
-    #define BACKWARD_HAS_BFD 1
-#endif
-
-#include "backward.hpp"
-
 #include <csignal>
 #include <iostream>
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
+
+#ifdef __linux__
+    #define BACKWARD_HAS_BFD 1
+#endif
+
+#include "backward.hpp"
 
 using namespace cocaine;
 

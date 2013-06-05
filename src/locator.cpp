@@ -32,7 +32,6 @@
 #include "cocaine/detail/actor.hpp"
 
 #include "cocaine/logging.hpp"
-#include "cocaine/messages.hpp"
 
 #include "cocaine/rpc/channel.hpp"
 

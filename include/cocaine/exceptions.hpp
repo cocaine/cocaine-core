@@ -21,6 +21,7 @@
 #ifndef COCAINE_EXCEPTIONS_HPP
 #define COCAINE_EXCEPTIONS_HPP
 
+#include "cocaine/common.hpp"
 #include "cocaine/format.hpp"
 
 #include <exception>
@@ -28,7 +29,7 @@
 
 namespace cocaine {
 
-enum error_code: int {
+enum error_code {
     invocation_error = 1,
     resource_error,
     timeout_error,

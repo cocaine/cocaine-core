@@ -32,7 +32,6 @@ namespace cocaine {
         class driver_t;
         class isolate_t;
         class logger_t;
-        class sandbox_t;
         class service_t;
         class storage_t;
 

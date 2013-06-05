@@ -43,6 +43,11 @@ class logger_t:
         }
 
     protected:
+        logger_t(const Json::Value& args):
+            m_verbosity(resolve(args))
+        { }
+
+    private:
         static
         logging::priorities
         resolve(const Json::Value& args) {
@@ -60,10 +65,6 @@ class logger_t:
                 return logging::info;
             }
         }
-
-        logger_t(const Json::Value& args):
-            m_verbosity(resolve(args))
-        { }
 
     private:
         const logging::priorities m_verbosity;

@@ -20,6 +20,8 @@
 
 #include "cocaine/detail/actor.hpp"
 
+#include "cocaine/api/stream.hpp"
+
 #include "cocaine/asio/acceptor.hpp"
 #include "cocaine/asio/connector.hpp"
 #include "cocaine/asio/socket.hpp"

@@ -30,7 +30,7 @@ state_t::state_t():
 
 void
 state_t::abort(int code, const std::string& reason) {
-    std::unique_lock<std::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> guard(m_mutex);
 
     if(m_completed) {
         return;
@@ -49,7 +49,7 @@ state_t::abort(int code, const std::string& reason) {
 
 void
 state_t::close() {
-    std::unique_lock<std::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> guard(m_mutex);
 
     if(m_completed) {
         return;
@@ -64,7 +64,7 @@ state_t::close() {
 
 void
 state_t::attach(const api::stream_ptr_t& upstream) {
-    std::unique_lock<std::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> guard(m_mutex);
 
     m_upstream = upstream;
 

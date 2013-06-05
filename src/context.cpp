@@ -258,7 +258,6 @@ context_t::detach(const std::string& name) {
 void
 context_t::bootstrap() {
     auto blog = std::unique_ptr<logging::log_t>(new logging::log_t(*this, "bootstrap"));
-
     auto locator_reactor = std::make_shared<io::reactor_t>();
     auto locator = std::unique_ptr<locator_t>(new locator_t(*this, *locator_reactor));
 

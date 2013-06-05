@@ -43,7 +43,7 @@ files_t::~files_t() {
 
 std::string
 files_t::read(const std::string& collection, const std::string& key) {
-    std::unique_lock<std::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> guard(m_mutex);
 
     const fs::path file_path(m_storage_path / collection / key);
 
@@ -95,7 +95,7 @@ files_t::write(const std::string& collection,
                const std::string& blob,
                const std::vector<std::string>& tags)
 {
-    std::unique_lock<std::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> guard(m_mutex);
 
     const fs::path store_path(m_storage_path / collection);
     const auto store_status = fs::status(store_path);
@@ -183,7 +183,7 @@ files_t::write(const std::string& collection,
 
 void
 files_t::remove(const std::string& collection, const std::string& key) {
-    std::unique_lock<std::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> guard(m_mutex);
 
     const auto store_path(m_storage_path / collection);
     const auto file_path(store_path / key);
@@ -207,7 +207,7 @@ files_t::remove(const std::string& collection, const std::string& key) {
 
 std::vector<std::string>
 files_t::find(const std::string& collection, const std::vector<std::string>& tags) {
-    std::unique_lock<std::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> guard(m_mutex);
 
     const fs::path store_path(m_storage_path / collection);
 
