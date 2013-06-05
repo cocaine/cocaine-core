@@ -37,20 +37,24 @@ struct readable_stream {
     readable_stream(reactor_t& reactor, endpoint_type endpoint):
         m_socket(std::make_shared<socket_type>(endpoint)),
         m_socket_watcher(reactor.native()),
+        m_idle_watcher(reactor.native()),
         m_rd_offset(0),
         m_rx_offset(0)
     {
         m_socket_watcher.set<readable_stream, &readable_stream::on_event>(this);
+        m_idle_watcher.set<readable_stream, &readable_stream::on_idle>(this);
         m_ring.resize(65536);
     }
 
     readable_stream(reactor_t& reactor, const std::shared_ptr<socket_type>& socket):
         m_socket(socket),
         m_socket_watcher(reactor.native()),
+        m_idle_watcher(reactor.native()),
         m_rd_offset(0),
         m_rx_offset(0)
     {
         m_socket_watcher.set<readable_stream, &readable_stream::on_event>(this);
+        m_idle_watcher.set<readable_stream, &readable_stream::on_idle>(this);
         m_ring.resize(65536);
     }
 
@@ -128,22 +132,38 @@ private:
         m_rd_offset += length;
 
         // Try to decode some data.
-        size_t parsed = m_handle_read(
+        m_rx_offset += m_handle_read(
             m_ring.data() + m_rx_offset,
             m_rd_offset - m_rx_offset
         );
 
-        m_rx_offset += parsed;
+        if(m_rd_offset != m_rx_offset) {
+            m_idle_watcher.start();
+        }
+    }
+
+    void
+    on_idle(ev::idle&, int) {
+        if(m_rd_offset == m_rx_offset) {
+            m_idle_watcher.stop();
+            return;
+        }
+
+        // Try to decode some more data.
+        m_rx_offset += m_handle_read(
+            m_ring.data() + m_rx_offset,
+            m_rd_offset - m_rx_offset
+        );
     }
 
 private:
-    // NOTE: Sockets can be shared among multiple queues, at least to be able
-    // to write and read from two different queues.
     const std::shared_ptr<socket_type> m_socket;
 
     // Socket poll object.
     ev::io m_socket_watcher;
+    ev::idle m_idle_watcher;
 
+    // Ring buffer.
     std::vector<char> m_ring;
 
     off_t m_rd_offset,
