@@ -104,6 +104,8 @@ struct acceptor {
             }
         }
 
+        medium_type::configure(fd);
+
         ::fcntl(fd, F_SETFD, FD_CLOEXEC);
         ::fcntl(fd, F_SETFL, O_NONBLOCK);
 

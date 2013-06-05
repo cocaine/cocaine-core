@@ -32,8 +32,11 @@
 namespace cocaine { namespace io {
 
 struct udp {
-    // typedef acceptor<udp> acceptor;
-    // typedef socket<udp> socket;
+    static
+    void
+    configure(int /* fd */) {
+        // Nothing to do here.
+    }
 
     struct endpoint {
         typedef sockaddr    base_type;

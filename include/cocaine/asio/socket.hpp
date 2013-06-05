@@ -47,6 +47,8 @@ struct socket {
             throw io_error_t("unable to create a socket");
         }
 
+        medium_type::configure(m_fd);
+
         ::fcntl(m_fd, F_SETFD, FD_CLOEXEC);
         ::fcntl(m_fd, F_SETFL, O_NONBLOCK);
     }
@@ -60,6 +62,8 @@ struct socket {
         if(m_fd == -1) {
             throw io_error_t("unable to create a socket");
         }
+
+        medium_type::configure(m_fd);
 
         if(::connect(m_fd, endpoint.data(), endpoint.size()) != 0) {
             throw io_error_t("unable to connect a socket to '%s'", endpoint);

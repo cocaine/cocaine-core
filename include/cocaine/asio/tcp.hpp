@@ -33,8 +33,14 @@
 namespace cocaine { namespace io {
 
 struct tcp {
-    // typedef acceptor<tcp> acceptor;
-    // typedef socket<tcp> socket;
+    static
+    void
+    configure(int fd) {
+        int enable = 1;
+
+        // Enable TCP_NODELAY option to boost the performance a little.
+        ::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable));
+    }
 
     struct endpoint {
         typedef sockaddr    base_type;

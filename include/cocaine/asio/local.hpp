@@ -34,8 +34,11 @@
 namespace cocaine { namespace io {
 
 struct local {
-    // typedef acceptor<local> acceptor;
-    // typedef pipe<local> pipe;
+    static
+    void
+    configure(int /* fd */) {
+        // Nothing to do here.
+    }
 
     struct endpoint {
         typedef sockaddr    base_type;
