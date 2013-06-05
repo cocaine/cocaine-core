@@ -100,7 +100,7 @@ class engine_t {
         run();
 
         void
-        pump();
+        wake();
 
         // Scheduling
 
@@ -118,9 +118,6 @@ class engine_t {
 
     private:
         void
-        wake();
-
-        void
         on_connection(const std::shared_ptr<io::socket<io::local>>& socket);
 
         void
@@ -137,6 +134,9 @@ class engine_t {
 
         void
         on_termination(ev::timer&, int);
+
+        void
+        pump();
 
         void
         balance();

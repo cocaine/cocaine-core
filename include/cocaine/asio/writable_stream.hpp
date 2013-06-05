@@ -146,13 +146,12 @@ private:
     }
 
 private:
-    // NOTE: Sockets can be shared among multiple queues, at least to be able
-    // to write and read from two different queues.
     const std::shared_ptr<socket_type> m_socket;
 
     // Socket poll object.
     ev::io m_socket_watcher;
 
+    // Ring buffer.
     std::vector<char> m_ring;
 
     off_t m_tx_offset,

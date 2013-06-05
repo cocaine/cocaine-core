@@ -31,7 +31,7 @@ namespace cocaine { namespace io {
 struct message_t {
     COCAINE_DECLARE_NONCOPYABLE(message_t)
 
-    message_t(msgpack::object object):
+    message_t(const msgpack::object& object):
         m_object(object)
     { }
 
@@ -65,7 +65,7 @@ public:
     }
 
 private:
-    msgpack::object m_object;
+    const msgpack::object& m_object;
 };
 
 }}
