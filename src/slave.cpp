@@ -619,22 +619,19 @@ slave_t::on_output(const char* data, size_t size) {
 
 void
 slave_t::pump() {
+    session_queue_t::value_type session;
+
     while(!m_queue.empty()) {
         std::unique_lock<std::mutex> lock(m_mutex);
 
-        if(m_sessions.size() >= m_profile.concurrency) {
-            return;
-        }
-
         if(m_queue.empty()) {
-            if(m_sessions.empty() && m_profile.idle_timeout) {
-                m_idle_timer.start(m_profile.idle_timeout);
-            }
-
             break;
         }
 
-        session_queue_t::value_type session = m_queue.front();
+        // Move out a new session from the queue.
+        session = std::move(m_queue.front());
+
+        // Destroy an empty session husk.
         m_queue.pop_front();
 
         // This lock is reacquired inside the assign() method.

@@ -224,7 +224,6 @@ engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t
         m_queue.push(session);
     }
 
-    // Pump the queue!
     wake();
 
     return std::make_shared<downstream_t>(session);
@@ -511,6 +510,8 @@ namespace {
 
 void
 engine_t::pump() {
+    session_queue_t::value_type session;
+
     while(!m_queue.empty()) {
         std::unique_lock<std::mutex> pool_lock(m_pool_mutex);
 
@@ -528,7 +529,10 @@ engine_t::pump() {
             return;
         }
 
-        session_queue_t::value_type session = m_queue.front();
+        // Move out a new session from the queue.
+        session = std::move(m_queue.front());
+
+        // Destroy an empty session husk.
         m_queue.pop_front();
 
         // Process the queue head outside the lock, because it might take some considerable amount
