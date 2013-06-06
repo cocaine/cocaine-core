@@ -85,22 +85,18 @@ private:
     void
     on_event(ev::io& /* io */, int /* revents */) {
         while(m_ring.size() - m_rd_offset < 1024) {
-            size_t unparsed = m_rd_offset - m_rx_offset;
+            size_t pending = m_rd_offset - m_rx_offset;
 
-            if(unparsed + 1024 > m_ring.size()) {
+            if(pending > m_ring.size() / 2) {
                 m_ring.resize(m_ring.size() * 2);
                 continue;
             }
 
             // There's no space left at the end of the buffer, so copy all the unparsed
             // data to the beginning and continue filling it from there.
-            std::memmove(
-                m_ring.data(),
-                m_ring.data() + m_rx_offset,
-                unparsed
-            );
+            std::memmove(m_ring.data(), m_ring.data() + m_rx_offset, pending);
 
-            m_rd_offset = unparsed;
+            m_rd_offset = pending;
             m_rx_offset = 0;
         }
 
@@ -108,7 +104,7 @@ private:
         std::error_code ec;
 
         // Try to read some data.
-        ssize_t length = m_socket->read(
+        ssize_t received = m_socket->read(
             m_ring.data() + m_rd_offset,
             m_ring.size() - m_rd_offset,
             ec
@@ -119,8 +115,8 @@ private:
             return;
         }
 
-        if(length <= 0) {
-            if(length == 0) {
+        if(received <= 0) {
+            if(received == 0) {
                 // NOTE: This means that the remote peer has closed the connection.
                 m_socket_watcher.stop();
                 m_handle_error(ec);
@@ -129,7 +125,7 @@ private:
             return;
         }
 
-        m_rd_offset += length;
+        m_rd_offset += received;
 
         // Try to decode some data.
         m_rx_offset += m_handle_read(

@@ -87,22 +87,18 @@ struct writable_stream {
         }
 
         while(m_ring.size() - m_wr_offset < size) {
-            size_t unsent = m_wr_offset - m_tx_offset;
+            size_t pending = m_wr_offset - m_tx_offset;
 
-            if(unsent + size > m_ring.size()) {
+            if(pending > m_ring.size() / 2) {
                 m_ring.resize(m_ring.size() * 2);
                 continue;
             }
 
             // There's no space left at the end of the buffer, so copy all the unsent
             // data to the beginning and continue filling it from there.
-            std::memmove(
-                m_ring.data(),
-                m_ring.data() + m_tx_offset,
-                unsent
-            );
+            std::memmove(m_ring.data(), m_ring.data() + m_tx_offset, pending);
 
-            m_wr_offset = unsent;
+            m_wr_offset = pending;
             m_tx_offset = 0;
         }
 
@@ -118,7 +114,7 @@ struct writable_stream {
 private:
     void
     on_event(ev::io& /* io */, int /* revents */) {
-        std::unique_lock<std::mutex> m_lock(m_ring_mutex);
+        std::unique_lock<std::mutex> lock(m_ring_mutex);
 
         if(m_tx_offset == m_wr_offset) {
             m_socket_watcher.stop();
