@@ -54,21 +54,21 @@ using namespace cocaine::io;
 
 namespace fs = boost::filesystem;
 
-struct app_t::invocation_service_t:
+struct app_t::service_t:
     public dispatch_t
 {
-    struct invocation_t:
+    struct enqueue_action_t:
         public slot_concept_t
     {
-        invocation_t(invocation_service_t& self):
-            slot_concept_t("invoke"),
+        enqueue_action_t(app_t::service_t& self):
+            slot_concept_t("enqueue"),
             m_self(self)
         { }
 
         virtual
         void
         operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) {
-            typedef event_traits<app::invoke>::tuple_type tuple_type;
+            typedef event_traits<app::enqueue>::tuple_type tuple_type;
 
             std::string event;
             std::string blob;
@@ -85,14 +85,14 @@ struct app_t::invocation_service_t:
         }
 
     private:
-        invocation_service_t& m_self;
+        app_t::service_t& m_self;
     };
 
-    invocation_service_t(context_t& context, const std::string& name, app_t& app):
+    service_t(context_t& context, const std::string& name, app_t& app):
         dispatch_t(context, cocaine::format("service/%1%", name)),
         m_app(app)
     {
-        on<app::invoke>(std::make_shared<invocation_t>(*this));
+        on<app::enqueue>(std::make_shared<enqueue_action_t>(*this));
     }
 
 private:
@@ -204,12 +204,12 @@ app_t::start() {
 
         COCAINE_LOG_DEBUG(m_log, "starting the invocation service");
 
-        // Initialize the app invocation service.
+        // Initialize the app service.
         auto service = std::unique_ptr<actor_t>(new actor_t(
             m_context,
             std::make_shared<reactor_t>(),
-            std::unique_ptr<invocation_service_t>(
-                new invocation_service_t(m_context, m_manifest->name, *this)
+            std::unique_ptr<app_t::service_t>(
+                new app_t::service_t(m_context, m_manifest->name, *this)
             ),
             endpoints
         ));
@@ -356,7 +356,7 @@ app_t::stop() {
     COCAINE_LOG_INFO(m_log, "stopping the engine");
 
     if(!m_manifest->local) {
-        // Stop the app invocation service.
+        // Stop the app service.
         m_context.detach(m_manifest->name)->terminate();
     }
 

@@ -76,23 +76,25 @@ struct protocol<locator_tag> {
     > type;
 };
 
-// App invocation service interface
+// App service interface
 
 struct app_tag;
 
 namespace app {
-    struct invoke {
+    struct enqueue {
         typedef app_tag tag;
 
         typedef boost::mpl::list<
-         /* Event name. */
+         /* Event name. This name is intentionally dynamic so that the underlying application can
+            do whatever it wants using these event names, for example handle every possible one. */
             std::string,
-         /* Data. */
+         /* Data. Some arbitrary sequence of bytes. By convention, this is usually an object packed
+            with MessagePack, but that's not some rule of thumb, do whatever you want. */
             std::string
         > tuple_type;
 
         typedef
-         /* Result. */
+         /* Some other arbitrary sequence of bytes, streamed back to the client in chunks. */
             std::string
         result_type;
     };
@@ -105,7 +107,7 @@ struct protocol<app_tag> {
     >::type version;
 
     typedef boost::mpl::list<
-        app::invoke
+        app::enqueue
     > type;
 };
 

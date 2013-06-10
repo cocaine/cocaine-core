@@ -115,8 +115,8 @@ class locator_t:
         // preserve the initialization order.
         local_service_list_t m_services;
 
-        // As, for example, the Node Service can manipulate services from its actor thread,
-        // the service list should be interlocked.
+        // As, for example, the Node Service can manipulate service list from its actor thread, the
+        // service list access should be synchronized.
         mutable std::mutex m_services_mutex;
 
         // Node's UUID in the cluster.
@@ -126,8 +126,8 @@ class locator_t:
         std::unique_ptr<io::socket<io::udp>> m_sink;
         std::unique_ptr<ev::io> m_sink_watcher;
 
-        // These are remote channels indexed by (endpoint, id) tuples. The unique id is required to
-        // distinguish between different runtime instances on the same host.
+        // These are remote channels indexed by endpoint and uuid. The uuid is required to easily
+        // disambiguate between different runtime instances on the same host.
         std::map<remote_t::key_type, remote_t> m_remotes;
 
         // Announce emitter.
