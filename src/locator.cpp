@@ -132,7 +132,7 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor, std::tuple<uint
 
     std::tie(min, max) = ports;
 
-    COCAINE_LOG_INFO(m_log, "%u ports available: port numbers %u through %u", max - min, min, max);
+    COCAINE_LOG_INFO(m_log, "%u ports available, port numbers %u through %u", max - min, min, max);
 
     while(min != max) {
         m_ports.push(--max);
