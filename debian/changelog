@@ -2,7 +2,7 @@ cocaine-core (0.10.6) lucid; urgency=low
 
   * Port ranges. Instead of binding on random ports, services will now bind on
     a configured list of available ports.
-  * Bugfix: better intelocking in the Locator implementation, no more crashes
+  * Bugfix: better interlocking in the Locator implementation, no more crashes
     in synchronizer_t::dump() method.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 19 Jun 2013 23:16:21 +0400
