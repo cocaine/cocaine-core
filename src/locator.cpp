@@ -114,7 +114,7 @@ private:
     std::vector<api::stream_ptr_t> m_upstreams;
 };
 
-locator_t::locator_t(context_t& context, io::reactor_t& reactor):
+locator_t::locator_t(context_t& context, io::reactor_t& reactor, std::tuple<uint16_t, uint16_t> ports):
     dispatch_t(context, "service/locator"),
     m_context(context),
     m_log(new logging::log_t(context, "service/locator")),
@@ -126,6 +126,10 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
 
     if(!context.config.network.group.empty()) {
         connect();
+    }
+
+    for(uint16_t it = std::get<0>(ports); it != std::get<1>(ports); ++it) {
+        m_ports.push(it);
     }
 }
 
@@ -177,20 +181,31 @@ locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
 
     BOOST_VERIFY(existing == m_services.end());
 
-    COCAINE_LOG_INFO(
-        m_log,
-        "publishing service '%s' on port %d",
-        name,
-        std::get<1>(service->endpoint())
-    );
+    if(m_ports.empty()) {
+        throw cocaine::error_t("no ports left for allocation");
+    }
 
-    // Get the service's actor ownership.
+    auto port = m_ports.top();
+
+    std::vector<io::tcp::endpoint> endpoints = {
+        { "0.0.0.0", port }
+    };
+
+    // Start the service's actor thread.
+    service->run(endpoints);
+
+    // Put the service into the local services list.
     m_services.emplace_back(name, std::move(service));
+
+    // Remove the taken port from the free pool.
+    m_ports.pop();
 
     if(m_synchronizer) {
         // Notify the peers.
         m_synchronizer->update();
     }
+    // Pass the new service to the service locator.
+    COCAINE_LOG_INFO(m_log, "service '%s' published on port %d", name, port);
 }
 
 std::unique_ptr<actor_t>
@@ -203,18 +218,24 @@ locator_t::detach(const std::string& name) {
 
     BOOST_VERIFY(service != m_services.end());
 
-    COCAINE_LOG_INFO(m_log, "withdrawing service '%s'", name);
-
     // Release the service's actor ownership.
     std::unique_ptr<actor_t> actor = std::move(service->second);
 
-    // Drop the service's record.
+    // Retain the freed port.
+    m_ports.push(std::get<1>(actor->endpoint()));
+
+    // Drop the service from the local services list.
     m_services.erase(service);
+
+    // Stop the service's actor thread.
+    actor->terminate();
 
     if(m_synchronizer) {
         // Notify the peers.
         m_synchronizer->update();
     }
+
+    COCAINE_LOG_INFO(m_log, "service '%s' withdrawn", name);
 
     return actor;
 }

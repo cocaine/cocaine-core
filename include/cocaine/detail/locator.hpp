@@ -28,6 +28,7 @@
 #include "cocaine/dispatch.hpp"
 #include "cocaine/messages.hpp"
 
+#include <queue>
 #include <random>
 
 namespace ev {
@@ -57,7 +58,7 @@ class locator_t:
     };
 
     public:
-        locator_t(context_t& context, io::reactor_t& reactor);
+        locator_t(context_t& context, io::reactor_t& reactor, std::tuple<uint16_t, uint16_t> ports);
 
         virtual
        ~locator_t();
@@ -114,6 +115,9 @@ class locator_t:
         // These are the instances of all the configured services, stored as a vector of pairs to
         // preserve the initialization order.
         local_service_list_t m_services;
+
+        // Ports available for allocation.
+        std::priority_queue<uint16_t, std::vector<uint16_t>, std::greater<uint16_t>> m_ports;
 
         // As, for example, the Node Service can manipulate service list from its actor thread, the
         // service list access should be synchronized.

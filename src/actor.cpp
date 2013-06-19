@@ -84,8 +84,7 @@ namespace {
 
 actor_t::actor_t(context_t& context,
                  std::shared_ptr<reactor_t> reactor,
-                 std::unique_ptr<dispatch_t>&& dispatch,
-                 std::vector<tcp::endpoint> endpoints):
+                 std::unique_ptr<dispatch_t>&& dispatch):
     m_context(context),
     m_reactor(reactor),
     m_dispatch(std::move(dispatch)),
@@ -93,6 +92,15 @@ actor_t::actor_t(context_t& context,
 {
     m_terminate.set<actor_t, &actor_t::on_terminate>(this);
     m_terminate.start();
+}
+
+actor_t::~actor_t() {
+    // Empty.
+}
+
+void
+actor_t::run(std::vector<tcp::endpoint> endpoints) {
+    BOOST_ASSERT(!m_thread);
 
     for(auto it = endpoints.begin(); it != endpoints.end(); ++it) {
         try {
@@ -106,15 +114,6 @@ actor_t::actor_t(context_t& context,
 
         m_connectors.back().bind(std::bind(&actor_t::on_connection, this, _1));
     }
-}
-
-actor_t::~actor_t() {
-    // Empty.
-}
-
-void
-actor_t::run() {
-    BOOST_ASSERT(!m_thread);
 
     auto runnable = std::bind(
         &reactor_t::run,

@@ -51,6 +51,8 @@ struct defaults {
 
     // Defaults for service locator.
     static const uint16_t locator_port;
+    static const uint16_t min_port;
+    static const uint16_t max_port;
 };
 
 // Configuration
@@ -69,7 +71,12 @@ struct config_t {
         bool aggregate;
         std::string group;
         std::string hostname;
+
+        // Service locator port.
         uint16_t locator;
+
+        // Ports available for allocation.
+        std::tuple<uint16_t, uint16_t> ports;
     } network;
 
     struct component_t {

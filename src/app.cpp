@@ -198,10 +198,6 @@ app_t::start() {
     m_thread.reset(new std::thread(std::bind(&engine_t::run, m_engine)));
 
     if(!m_manifest->local) {
-        std::vector<io::tcp::endpoint> endpoints = {
-            { "0.0.0.0", 0 }
-        };
-
         COCAINE_LOG_DEBUG(m_log, "starting the invocation service");
 
         // Initialize the app service.
@@ -210,11 +206,8 @@ app_t::start() {
             std::make_shared<reactor_t>(),
             std::unique_ptr<app_t::service_t>(
                 new app_t::service_t(m_context, m_manifest->name, *this)
-            ),
-            endpoints
+            )
         ));
-
-        service->run();
 
         // Publish it in the cluster.
         m_context.attach(m_manifest->name, std::move(service));

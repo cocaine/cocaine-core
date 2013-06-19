@@ -58,6 +58,8 @@ const char defaults::runtime_path[]          = "/var/run/cocaine";
 const char defaults::spool_path[]            = "/var/spool/cocaine";
 
 const uint16_t defaults::locator_port        = 10053;
+const uint16_t defaults::min_port            = 32768;
+const uint16_t defaults::max_port            = 61000;
 
 // Config
 
@@ -114,10 +116,12 @@ config_t::config_t(const std::string& config_path) {
     validate_path(path.runtime);
     validate_path(path.spool);
 
-    // I/O configuration
+    // Multicast configuration
 
     network.aggregate = root.get("aggregate", false).asBool();
     network.group = root.get("group", "").asString();
+
+    // Hostname configuration
 
     char hostname[256];
 
@@ -153,7 +157,14 @@ config_t::config_t(const std::string& config_path) {
 
     freeaddrinfo(result);
 
+    // Port configuration
+
     network.locator = root.get("locator", defaults::locator_port).asUInt();
+
+    network.ports = {
+        root.get("port-range", Json::Value()).get(0u, defaults::min_port).asUInt(),
+        root.get("port-range", Json::Value()).get(1u, defaults::max_port).asUInt()
+    };
 
     // Component configuration
 
@@ -258,18 +269,17 @@ context_t::detach(const std::string& name) {
 void
 context_t::bootstrap() {
     auto blog = std::unique_ptr<logging::log_t>(new logging::log_t(*this, "bootstrap"));
-    auto locator_reactor = std::make_shared<io::reactor_t>();
-    auto locator = std::unique_ptr<locator_t>(new locator_t(*this, *locator_reactor));
 
-    std::vector<io::tcp::endpoint> endpoints = {
-        { "0.0.0.0", config.network.locator }
-    };
+    COCAINE_LOG_INFO(blog, "starting the service locator");
+
+    // Service locator internals.
+    auto locator_reactor = std::make_shared<io::reactor_t>();
+    auto locator = std::unique_ptr<locator_t>(new locator_t(*this, *locator_reactor, config.network.ports));
 
     m_locator.reset(new actor_t(
         *this,
         locator_reactor,
-        std::move(locator),
-        endpoints
+        std::move(locator)
     ));
 
     COCAINE_LOG_INFO(
@@ -284,9 +294,7 @@ context_t::bootstrap() {
     for(auto it = config.services.begin(); it != config.services.end(); ++it) {
         auto reactor = std::make_shared<io::reactor_t>();
 
-        std::vector<io::tcp::endpoint> endpoints = {
-            { "0.0.0.0", 0 }
-        };
+        COCAINE_LOG_INFO(blog, "starting service '%s'", it->first);
 
         try {
             service.reset(new actor_t(
@@ -298,8 +306,7 @@ context_t::bootstrap() {
                     *reactor,
                     cocaine::format("service/%s", it->first),
                     it->second.args
-                ),
-                endpoints
+                )
             ));
         } catch(const std::exception& e) {
             throw cocaine::error_t("unable to initialize service '%s' - %s", it->first, e.what());
@@ -307,14 +314,12 @@ context_t::bootstrap() {
             throw cocaine::error_t("unable to initialize service '%s' - unknown exception", it->first);
         }
 
-        COCAINE_LOG_INFO(blog, "starting service '%s'", it->first);
-
-        service->run();
-
         attach(it->first, std::move(service));
     }
 
-    COCAINE_LOG_INFO(blog, "starting the service locator");
+    std::vector<io::tcp::endpoint> endpoints = {
+        { "0.0.0.0", config.network.locator }
+    };
 
-    m_locator->run();
+    m_locator->run(endpoints);
 }

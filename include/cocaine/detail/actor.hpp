@@ -41,13 +41,12 @@ class actor_t {
     public:
         actor_t(context_t& context,
                 std::shared_ptr<io::reactor_t> reactor,
-                std::unique_ptr<dispatch_t>&& dispatch,
-                std::vector<io::tcp::endpoint> endpoints);
+                std::unique_ptr<dispatch_t>&& dispatch);
 
        ~actor_t();
 
         void
-        run();
+        run(std::vector<io::tcp::endpoint> endpoints);
 
         void
         terminate();
