@@ -316,6 +316,8 @@ namespace {
 
 synchronize_result_type
 locator_t::dump() const {
+    std::lock_guard<std::mutex> guard(m_services_mutex);
+
     synchronize_result_type result;
 
     std::for_each(m_services.begin(), m_services.end(), dump_to {
