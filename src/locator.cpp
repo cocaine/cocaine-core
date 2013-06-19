@@ -179,69 +179,77 @@ namespace {
 
 void
 locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
-    std::lock_guard<std::mutex> guard(m_services_mutex);
+    uint16_t port;
 
-    auto existing = std::find_if(m_services.begin(), m_services.end(), match {
-        name
-    });
+    {
+        std::lock_guard<std::mutex> guard(m_services_mutex);
 
-    BOOST_VERIFY(existing == m_services.end());
+        auto existing = std::find_if(m_services.begin(), m_services.end(), match {
+            name
+        });
 
-    if(m_ports.empty()) {
-        throw cocaine::error_t("no ports left for allocation");
+        BOOST_VERIFY(existing == m_services.end());
+
+        if(m_ports.empty()) {
+            throw cocaine::error_t("no ports left for allocation");
+        }
+
+        port = m_ports.top();
+
+        std::vector<io::tcp::endpoint> endpoints = {
+            { "0.0.0.0", port }
+        };
+
+        // Start the service's actor thread.
+        service->run(endpoints);
+
+        // Put the service into the local services list.
+        m_services.emplace_back(name, std::move(service));
+
+        // Remove the taken port from the free pool.
+        m_ports.pop();
     }
 
-    auto port = m_ports.top();
-
-    std::vector<io::tcp::endpoint> endpoints = {
-        { "0.0.0.0", port }
-    };
-
-    // Start the service's actor thread.
-    service->run(endpoints);
-
-    // Put the service into the local services list.
-    m_services.emplace_back(name, std::move(service));
-
-    // Remove the taken port from the free pool.
-    m_ports.pop();
-
+    COCAINE_LOG_INFO(m_log, "service '%s' published on port %d", name, port);
+    
     if(m_synchronizer) {
         // Notify the peers.
         m_synchronizer->update();
     }
-    // Pass the new service to the service locator.
-    COCAINE_LOG_INFO(m_log, "service '%s' published on port %d", name, port);
 }
 
 std::unique_ptr<actor_t>
 locator_t::detach(const std::string& name) {
-    std::lock_guard<std::mutex> guard(m_services_mutex);
+    std::unique_ptr<actor_t> actor;
+    
+    {
+        std::lock_guard<std::mutex> guard(m_services_mutex);
 
-    auto service = std::find_if(m_services.begin(), m_services.end(), match {
-        name
-    });
+        auto service = std::find_if(m_services.begin(), m_services.end(), match {
+            name
+        });
 
-    BOOST_VERIFY(service != m_services.end());
+        BOOST_VERIFY(service != m_services.end());
 
-    // Release the service's actor ownership.
-    std::unique_ptr<actor_t> actor = std::move(service->second);
+        // Release the service's actor ownership.
+        actor = std::move(service->second);
 
-    // Retain the freed port.
-    m_ports.push(std::get<1>(actor->endpoint()));
+        // Retain the freed port.
+        m_ports.push(std::get<1>(actor->endpoint()));
 
-    // Drop the service from the local services list.
-    m_services.erase(service);
+        // Drop the service from the local services list.
+        m_services.erase(service);
 
-    // Stop the service's actor thread.
-    actor->terminate();
+        // Stop the service's actor thread.
+        actor->terminate();
+    }
+
+    COCAINE_LOG_INFO(m_log, "service '%s' withdrawn", name);
 
     if(m_synchronizer) {
         // Notify the peers.
         m_synchronizer->update();
     }
-
-    COCAINE_LOG_INFO(m_log, "service '%s' withdrawn", name);
 
     return actor;
 }
