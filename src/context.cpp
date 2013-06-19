@@ -250,7 +250,7 @@ context_t::~context_t() {
     COCAINE_LOG_INFO(blog, "stopping the services");
     
     for(auto it = config.services.rbegin(); it != config.services.rend(); ++it) {
-        detach(it->first)->terminate();
+        detach(it->first);
     }
 
     m_locator.reset();

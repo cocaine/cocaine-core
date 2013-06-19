@@ -350,7 +350,7 @@ app_t::stop() {
 
     if(!m_manifest->local) {
         // Stop the app service.
-        m_context.detach(m_manifest->name)->terminate();
+        m_context.detach(m_manifest->name);
     }
 
     auto callback = expect<control::terminate>(*m_reactor);
