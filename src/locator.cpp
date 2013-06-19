@@ -128,8 +128,14 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor, std::tuple<uint
         connect();
     }
 
-    for(uint16_t it = std::get<0>(ports); it != std::get<1>(ports); ++it) {
-        m_ports.push(it);
+    uint16_t min, max;
+
+    std::tie(min, max) = ports;
+
+    COCAINE_LOG_INFO(m_log, "%u ports available: port numbers %u through %u", max - min, min, max);
+
+    while(min != max) {
+        m_ports.push(--max);
     }
 }
 
