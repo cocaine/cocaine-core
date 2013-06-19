@@ -127,7 +127,7 @@ class context_t {
         // Locator
 
         void
-        attach(const std::string& name, std::unique_ptr<actor_t>&& actor);
+        attach(const std::string& name, std::unique_ptr<actor_t>&& service);
 
         std::unique_ptr<actor_t>
         detach(const std::string& name);

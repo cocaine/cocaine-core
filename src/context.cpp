@@ -257,8 +257,8 @@ context_t::~context_t() {
 }
 
 void
-context_t::attach(const std::string& name, std::unique_ptr<actor_t>&& actor) {
-    dynamic_cast<locator_t&>(m_locator->dispatch()).attach(name, std::move(actor));
+context_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
+    dynamic_cast<locator_t&>(m_locator->dispatch()).attach(name, std::move(service));
 }
 
 std::unique_ptr<actor_t>

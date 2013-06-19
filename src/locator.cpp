@@ -220,28 +220,28 @@ locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
 
 std::unique_ptr<actor_t>
 locator_t::detach(const std::string& name) {
-    std::unique_ptr<actor_t> actor;
+    std::unique_ptr<actor_t> service;
     
     {
         std::lock_guard<std::mutex> guard(m_services_mutex);
 
-        auto service = std::find_if(m_services.begin(), m_services.end(), match {
+        auto it = std::find_if(m_services.begin(), m_services.end(), match {
             name
         });
 
-        BOOST_VERIFY(service != m_services.end());
+        BOOST_VERIFY(it != m_services.end());
 
         // Release the service's actor ownership.
-        actor = std::move(service->second);
+        service = std::move(it->second);
 
         // Retain the freed port.
-        m_ports.push(std::get<1>(actor->endpoint()));
+        m_ports.push(std::get<1>(service->endpoint()));
 
         // Drop the service from the local services list.
-        m_services.erase(service);
+        m_services.erase(it);
 
         // Stop the service's actor thread.
-        actor->terminate();
+        service->terminate();
     }
 
     COCAINE_LOG_INFO(m_log, "service '%s' withdrawn", name);
@@ -251,7 +251,7 @@ locator_t::detach(const std::string& name) {
         m_synchronizer->update();
     }
 
-    return actor;
+    return service;
 }
 
 namespace {
