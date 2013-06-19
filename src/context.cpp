@@ -161,10 +161,10 @@ config_t::config_t(const std::string& config_path) {
 
     network.locator = root.get("locator", defaults::locator_port).asUInt();
 
-    network.ports = {
+    network.ports = std::make_tuple(
         root.get("port-range", Json::Value()).get(0u, defaults::min_port).asUInt(),
         root.get("port-range", Json::Value()).get(1u, defaults::max_port).asUInt()
-    };
+    );
 
     // Component configuration
 
