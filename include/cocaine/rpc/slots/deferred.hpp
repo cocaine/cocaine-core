@@ -43,12 +43,7 @@ struct deferred_slot:
     virtual
     void
     operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) {
-        auto deferred = invoke<Sequence>::apply(
-            this->m_callable,
-            unpacked
-        );
-
-        deferred.attach(upstream);
+        this->call(unpacked).attach(upstream);
     }
 };
 

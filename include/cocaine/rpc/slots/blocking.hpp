@@ -42,10 +42,7 @@ struct blocking_slot:
     virtual
     void
     operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) {
-        type_traits<R>::pack(m_packer, invoke<Sequence>::apply(
-            this->m_callable,
-            unpacked
-        ));
+        type_traits<R>::pack(m_packer, this->call(unpacked));
 
         upstream->write(m_buffer.data(), m_buffer.size());
         upstream->close();
@@ -74,7 +71,7 @@ struct blocking_slot<void, Sequence>:
     virtual
     void
     operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) {
-        invoke<Sequence>::apply(this->m_callable, unpacked);
+        this->call(unpacked);
 
         // This is needed so that service clients could detect operation completion.
         upstream->close();

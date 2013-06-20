@@ -137,64 +137,62 @@ namespace detail {
             return callable(std::forward<Args>(args)...);
         }
     };
-}
 
-// Slot invocation mechanics
+    #if defined(__GNUC__) && !defined(HAVE_GCC46)
+        #pragma GCC diagnostic ignored "-Wtype-limits"
+    #endif
 
-#if defined(__GNUC__) && !defined(HAVE_GCC46)
-    #pragma GCC diagnostic ignored "-Wtype-limits"
-#endif
+    template<class Sequence>
+    struct invoke {
+        template<class F>
+        static inline
+        typename result_of<F>::type
+        apply(const F& callable, const msgpack::object& unpacked) {
+            const size_t required = mpl::count_if<
+                Sequence,
+                mpl::lambda<is_required<mpl::arg<1>>>
+            >::value;
 
-template<class Sequence>
-struct invoke {
-    template<class F>
-    static inline
-    typename detail::result_of<F>::type
-    apply(const F& callable, const msgpack::object& unpacked) {
-        const size_t required = mpl::count_if<
-            Sequence,
-            mpl::lambda<detail::is_required<mpl::arg<1>>>
-        >::value;
+            if(unpacked.type != msgpack::type::ARRAY) {
+                throw cocaine::error_t("argument sequence type mismatch");
+            }
 
-        if(unpacked.type != msgpack::type::ARRAY) {
-            throw cocaine::error_t("argument sequence type mismatch");
-        }
+            #if defined(__clang__)
+                #pragma clang diagnostic push
+                #pragma clang diagnostic ignored "-Wtautological-compare"
+            #elif defined(__GNUC__) && defined(HAVE_GCC46)
+                #pragma GCC diagnostic push
+                #pragma GCC diagnostic ignored "-Wtype-limits"
+            #endif
 
-        #if defined(__clang__)
-            #pragma clang diagnostic push
-            #pragma clang diagnostic ignored "-Wtautological-compare"
-        #elif defined(__GNUC__) && defined(HAVE_GCC46)
-            #pragma GCC diagnostic push
-            #pragma GCC diagnostic ignored "-Wtype-limits"
-        #endif
+            // NOTE: In cases when the callable is nullary or every parameter is optional, this
+            // comparison becomes tautological and emits dead code.
+            if(unpacked.via.array.size < required) {
+                throw cocaine::error_t(
+                    "argument sequence length mismatch - expected at least %d, got %d",
+                    required,
+                    unpacked.via.array.size
+                );
+            }
 
-        // NOTE: In cases when the callable is nullary or every parameter is optional, this
-        // comparison becomes tautological and emits dead code.
-        if(unpacked.via.array.size < required) {
-            throw cocaine::error_t(
-                "argument sequence length mismatch - expected at least %d, got %d",
-                required,
-                unpacked.via.array.size
+            #if defined(__clang__)
+                #pragma clang diagnostic pop
+            #elif defined(__GNUC__) && defined(HAVE_GCC46)
+                #pragma GCC diagnostic pop
+            #endif
+
+            typedef typename mpl::begin<Sequence>::type begin;
+            typedef typename mpl::end<Sequence>::type end;
+
+            const std::vector<msgpack::object> args(
+                unpacked.via.array.ptr,
+                unpacked.via.array.ptr + unpacked.via.array.size
             );
+
+            return invoke_impl<begin, end>::apply(callable, args.begin(), args.end());
         }
-
-        #if defined(__clang__)
-            #pragma clang diagnostic pop
-        #elif defined(__GNUC__) && defined(HAVE_GCC46)
-            #pragma GCC diagnostic pop
-        #endif
-
-        typedef typename mpl::begin<Sequence>::type begin;
-        typedef typename mpl::end<Sequence>::type end;
-
-        const std::vector<msgpack::object> args(
-            unpacked.via.array.ptr,
-            unpacked.via.array.ptr + unpacked.via.array.size
-        );
-
-        return detail::invoke_impl<begin, end>::apply(callable, args.begin(), args.end());
-    }
-};
+    };
+}
 
 template<class R, class Sequence>
 struct function_slot:
@@ -216,7 +214,11 @@ struct function_slot:
         m_callable(callable)
     { }
 
-protected:
+    R call(const msgpack::object& packed) const {
+        return detail::invoke<Sequence>::apply(m_callable, packed);
+    }
+
+private:
     const callable_type m_callable;
 };
 
