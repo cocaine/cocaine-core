@@ -20,10 +20,10 @@
 
 #include "cocaine/detail/slave.hpp"
 
-#include "cocaine/context.hpp"
-
 #include "cocaine/api/event.hpp"
 #include "cocaine/api/stream.hpp"
+
+#include "cocaine/context.hpp"
 
 #include "cocaine/detail/engine.hpp"
 #include "cocaine/detail/manifest.hpp"

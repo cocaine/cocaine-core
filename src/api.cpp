@@ -24,13 +24,11 @@
 
 namespace cocaine { namespace api {
 
-typedef config_t::component_map_t::const_iterator const_component_iterator;
-
 category_traits<storage_t>::ptr_type
 storage(context_t& context,
         const std::string& name)
 {
-    const_component_iterator it = context.config.storages.find(name);
+    auto it = context.config.storages.find(name);
 
     if(it == context.config.storages.end()) {
         throw configuration_error_t("the '%s' storage is not configured", name);

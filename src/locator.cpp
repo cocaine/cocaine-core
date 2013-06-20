@@ -38,6 +38,7 @@
 #include "cocaine/traits/tuple.hpp"
 
 using namespace cocaine;
+
 using namespace std::placeholders;
 
 struct locator_t::synchronize_t:

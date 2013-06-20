@@ -35,6 +35,7 @@
 
 using namespace cocaine;
 using namespace cocaine::io;
+
 using namespace std::placeholders;
 
 namespace {
