@@ -18,8 +18,10 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_IO_OPTIONAL_HPP
-#define COCAINE_IO_OPTIONAL_HPP
+#ifndef COCAINE_IO_TYPE_TAGS_HPP
+#define COCAINE_IO_TYPE_TAGS_HPP
+
+#include "cocaine/rpc/protocol.hpp"
 
 namespace cocaine { namespace io {
 
@@ -29,19 +31,17 @@ struct optional;
 template<class T, T Default>
 struct optional_with_default;
 
+template<class T>
+struct streamed;
+
 namespace detail {
     template<class T>
-    struct is_required:
-        public std::true_type
+    struct is_required<optional<T>>:
+        public std::false_type
     { };
 
-    template<class T>
-    struct unwrap_type {
-        typedef T type;
-    };
-
-    template<class T>
-    struct is_required<optional<T>>:
+    template<class T, T Default>
+    struct is_required<optional_with_default<T, Default>>:
         public std::false_type
     { };
 
@@ -51,16 +51,16 @@ namespace detail {
     };
 
     template<class T, T Default>
-    struct is_required<optional_with_default<T, Default>>:
-        public std::false_type
-    { };
-
-    template<class T, T Default>
     struct unwrap_type<optional_with_default<T, Default>> {
         typedef T type;
     };
-}} // namespace cocaine::io
 
+    template<class T>
+    struct unwrap_type<streamed<T>> {
+        typedef T type;
+    };
 }
+
+}} // namespace cocaine::io
 
 #endif

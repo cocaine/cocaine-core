@@ -23,6 +23,8 @@
 
 #include "cocaine/rpc/message.hpp"
 
+#include "cocaine/traits/typelist.hpp"
+
 #include <memory>
 #include <mutex>
 #include <vector>

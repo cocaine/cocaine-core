@@ -18,28 +18,41 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/detail/services/logging.hpp"
+#ifndef COCAINE_IO_SLOT_HPP
+#define COCAINE_IO_SLOT_HPP
 
-#include "cocaine/context.hpp"
-#include "cocaine/logging.hpp"
-#include "cocaine/messages.hpp"
+#include "cocaine/api/stream.hpp"
 
-#include "cocaine/traits/enum.hpp"
+#include "cocaine/traits.hpp"
 
-using namespace cocaine::service;
-using namespace std::placeholders;
+namespace cocaine {
 
-logging_t::logging_t(context_t& context,
-                     io::reactor_t& reactor,
-                     const std::string& name,
-                     const Json::Value& args):
-    category_type(context, reactor, name, args)
-{
-    auto logger = std::ref(context.logger());
+// Slot basics
 
-    using cocaine::logging::logger_concept_t;
+struct slot_concept_t {
+    slot_concept_t(const std::string& name):
+        m_name(name)
+    { }
 
-    on<io::logging::emit>("emit", std::bind(&logger_concept_t::emit, logger, _1, _2, _3));
-    on<io::logging::verbosity>("verbosity", std::bind(&logger_concept_t::verbosity, logger));
-}
+    virtual
+   ~slot_concept_t() {
+       // Empty.
+    }
 
+    virtual
+    void
+    operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) = 0;
+
+public:
+    std::string
+    name() const {
+        return m_name;
+    }
+
+private:
+    const std::string m_name;
+};
+
+} // namespace cocaine
+
+#endif

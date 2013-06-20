@@ -22,7 +22,11 @@
 #define COCAINE_DISPATCH_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/slot.hpp"
+
+#include "cocaine/rpc/slots/blocking.hpp"
+#include "cocaine/rpc/slots/deferred.hpp"
+
+#include <boost/mpl/apply.hpp>
 
 namespace cocaine {
 
@@ -75,7 +79,7 @@ namespace detail {
     struct select {
         template<class Sequence>
         struct apply {
-            typedef blocking_slot<R, Sequence> type;
+            typedef io::blocking_slot<R, Sequence> type;
         };
     };
 
@@ -83,7 +87,7 @@ namespace detail {
     struct select<deferred<R>> {
         template<class Sequence>
         struct apply {
-            typedef deferred_slot<deferred<R>, Sequence> type;
+            typedef io::deferred_slot<deferred<R>, Sequence> type;
         };
     };
 }
@@ -91,10 +95,10 @@ namespace detail {
 template<class Event, class F>
 void
 dispatch_t::on(const std::string& name, F callable) {
-    typedef typename detail::result_of<F>::type result_type;
+    typedef typename io::detail::result_of<F>::type result_type;
     typedef typename io::event_traits<Event>::tuple_type tuple_type;
 
-    typedef typename mpl::apply<
+    typedef typename boost::mpl::apply<
         detail::select<result_type>,
         tuple_type
     >::type slot_type;

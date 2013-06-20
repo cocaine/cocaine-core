@@ -19,7 +19,7 @@
 */
 
 #include "cocaine/detail/profile.hpp"
-#include "cocaine/detail/traits/json.hpp"
+#include "cocaine/traits/json.hpp"
 
 using namespace cocaine::engine;
 

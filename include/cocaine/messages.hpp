@@ -23,8 +23,8 @@
 
 #include "cocaine/common.hpp"
 
-#include "cocaine/rpc/optional.hpp"
 #include "cocaine/rpc/protocol.hpp"
+#include "cocaine/rpc/tags.hpp"
 
 namespace cocaine { namespace io {
 
@@ -56,11 +56,11 @@ namespace locator {
     struct synchronize {
         typedef locator_tag tag;
 
-        typedef
+        typedef streamed<
          /* A full dump of all available services on this node. Used by metalocator to aggregate
             node information from the cluster. */
             std::map<std::string, tuple::fold<resolve::result_type>::type>
-        result_type;
+        > result_type;
     };
 }
 

@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_TUPLES_HPP
-#define COCAINE_TUPLES_HPP
+#ifndef COCAINE_TUPLE_HPP
+#define COCAINE_TUPLE_HPP
 
 #include <tuple>
 

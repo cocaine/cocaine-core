@@ -35,6 +35,8 @@
 
 #include "cocaine/rpc/channel.hpp"
 
+#include "cocaine/traits/tuple.hpp"
+
 using namespace cocaine;
 using namespace std::placeholders;
 

@@ -35,13 +35,14 @@
 #include "cocaine/detail/engine.hpp"
 #include "cocaine/detail/manifest.hpp"
 #include "cocaine/detail/profile.hpp"
-#include "cocaine/detail/traits/json.hpp"
 
 #include "cocaine/dispatch.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/messages.hpp"
 
 #include "cocaine/rpc/channel.hpp"
+
+#include "cocaine/traits/json.hpp"
 
 #include <tuple>
 

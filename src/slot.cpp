@@ -18,9 +18,9 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/slot.hpp"
+#include "cocaine/rpc/slots/deferred.hpp"
 
-namespace cocaine { namespace detail {
+using namespace cocaine::detail;
 
 state_t::state_t():
     m_packer(m_buffer),
@@ -78,5 +78,3 @@ state_t::attach(const api::stream_ptr_t& upstream) {
         m_upstream->close();
     }
 }
-
-}} // namespace cocaine::detail

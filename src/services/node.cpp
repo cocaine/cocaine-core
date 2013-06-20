@@ -25,10 +25,10 @@
 #include "cocaine/app.hpp"
 #include "cocaine/context.hpp"
 
-#include "cocaine/detail/traits/json.hpp"
-
 #include "cocaine/logging.hpp"
 #include "cocaine/messages.hpp"
+
+#include "cocaine/traits/json.hpp"
 
 #include <tuple>
 

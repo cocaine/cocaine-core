@@ -18,26 +18,41 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_SERIALIZATION_TRAITS_HPP
-#define COCAINE_SERIALIZATION_TRAITS_HPP
+#ifndef COCAINE_ENUM_TYPE_TRAITS_HPP
+#define COCAINE_ENUM_TYPE_TRAITS_HPP
 
-#include <msgpack.hpp>
+#include "cocaine/traits.hpp"
+
+#include <type_traits>
 
 namespace cocaine { namespace io {
 
-template<class T, class = void>
-struct type_traits {
+// This magic specialization allows to pack enumerations. On older compilers it will assume that
+// the underlying type is int, on GCC 4.7 and Clang it can detect the underlying type.
+
+template<class T>
+struct type_traits<
+    T,
+    typename std::enable_if<std::is_enum<T>::value>::type
+>
+{
+#if defined(__clang__) || defined(GCC47)
+    typedef typename std::underlying_type<T>::type base_type;
+#else
+    typedef int base_type;
+#endif
+
     template<class Stream>
     static inline
     void
     pack(msgpack::packer<Stream>& packer, const T& source) {
-        packer << source;
+        packer << static_cast<base_type>(source);
     }
 
     static inline
     void
     unpack(const msgpack::object& unpacked, T& target) {
-        unpacked >> target;
+        target = static_cast<T>(unpacked.as<base_type>());
     }
 };
 

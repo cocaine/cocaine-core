@@ -18,28 +18,27 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/detail/services/logging.hpp"
+#ifndef COCAINE_LITERAL_TYPE_TRAITS_HPP
+#define COCAINE_LITERAL_TYPE_TRAITS_HPP
 
-#include "cocaine/context.hpp"
-#include "cocaine/logging.hpp"
-#include "cocaine/messages.hpp"
+#include "cocaine/traits.hpp"
 
-#include "cocaine/traits/enum.hpp"
+namespace cocaine { namespace io {
 
-using namespace cocaine::service;
-using namespace std::placeholders;
+// This magic specialization allows to pack string literals. Unpacking is intentionally
+// prohibited as it might force us to silently drop characters if the buffer is not long enough.
 
-logging_t::logging_t(context_t& context,
-                     io::reactor_t& reactor,
-                     const std::string& name,
-                     const Json::Value& args):
-    category_type(context, reactor, name, args)
-{
-    auto logger = std::ref(context.logger());
+template<size_t N>
+struct type_traits<char[N]> {
+    template<class Stream>
+    static inline
+    void
+    pack(msgpack::packer<Stream>& packer, const char* source) {
+        packer.pack_raw(N);
+        packer.pack_raw_body(source, N);
+    }
+};
 
-    using cocaine::logging::logger_concept_t;
+}} // namespace cocaine::io
 
-    on<io::logging::emit>("emit", std::bind(&logger_concept_t::emit, logger, _1, _2, _3));
-    on<io::logging::verbosity>("verbosity", std::bind(&logger_concept_t::verbosity, logger));
-}
-
+#endif
