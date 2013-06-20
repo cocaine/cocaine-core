@@ -24,16 +24,8 @@
 
 using namespace cocaine;
 
-const uninitialized_t
-uninitialized = uninitialized_t();
-
 unique_id_t::unique_id_t() {
     uuid_generate(reinterpret_cast<unsigned char*>(uuid.data()));
-}
-
-unique_id_t::unique_id_t(uninitialized_t) {
-    // NOTE: If this UUID is going to be a target for a message, there's no
-    // need to generate it, which saves a couple of ticks.
 }
 
 unique_id_t::unique_id_t(const std::string& other) {

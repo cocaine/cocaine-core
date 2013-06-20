@@ -27,15 +27,8 @@
 
 namespace cocaine {
 
-struct uninitialized_t { };
-
-extern const uninitialized_t uninitialized;
-
 struct unique_id_t {
     unique_id_t();
-
-    explicit
-    unique_id_t(uninitialized_t);
 
     explicit
     unique_id_t(const std::string& other);
