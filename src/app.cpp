@@ -59,10 +59,10 @@ namespace fs = boost::filesystem;
 struct app_t::service_t:
     public dispatch_t
 {
-    struct enqueue_action_t:
+    struct enqueue_slot_t:
         public slot_concept_t
     {
-        enqueue_action_t(app_t::service_t& self):
+        enqueue_slot_t(app_t::service_t& self):
             slot_concept_t("enqueue"),
             m_self(self)
         { }
@@ -70,15 +70,10 @@ struct app_t::service_t:
         virtual
         void
         operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) {
-            try {
-                io::detail::invoke<event_traits<app::enqueue>::tuple_type>::apply(
-                    boost::bind(&app_t::service_t::enqueue, &m_self, upstream, _1, _2, _3),
-                    unpacked
-                );
-            } catch(const cocaine::error_t& e) {
-                upstream->error(resource_error, e.what());
-                upstream->close();
-            }
+            io::detail::invoke<event_traits<app::enqueue>::tuple_type>::apply(
+                boost::bind(&app_t::service_t::enqueue, &m_self, upstream, _1, _2, _3),
+                unpacked
+            );
         }
 
     private:
@@ -89,7 +84,7 @@ struct app_t::service_t:
         dispatch_t(context, cocaine::format("service/%1%", name)),
         m_app(app)
     {
-        on<app::enqueue>(std::make_shared<enqueue_action_t>(*this));
+        on<app::enqueue>(std::make_shared<enqueue_slot_t>(*this));
     }
 
 private:
@@ -97,10 +92,17 @@ private:
     enqueue(const api::stream_ptr_t& upstream, const std::string& event, const std::string& blob, const std::string& tag) {
         api::stream_ptr_t downstream;
 
-        if(tag.empty()) {
-            downstream = m_app.enqueue(api::event_t(event), upstream);
-        } else {
-            downstream = m_app.enqueue(api::event_t(event), upstream, tag);
+        try {
+            if(tag.empty()) {
+                downstream = m_app.enqueue(api::event_t(event), upstream);
+            } else {
+                downstream = m_app.enqueue(api::event_t(event), upstream, tag);
+            }
+        } catch(const cocaine::error_t& e) {
+            upstream->error(resource_error, e.what());
+            upstream->close();
+
+            return;
         }
 
         downstream->write(blob.data(), blob.size());
