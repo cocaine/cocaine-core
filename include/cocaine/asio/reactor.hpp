@@ -56,8 +56,10 @@ struct reactor_t {
 
     void
     run_with_timeout(float timeout) {
-        ev::timer timeout_guard(native());
+        update();
+
         throw_action_t action = { *this };
+        ev::timer timeout_guard(*m_loop);
 
         timeout_guard.set(&action);
         timeout_guard.start(timeout);
@@ -76,6 +78,11 @@ struct reactor_t {
     post(const job_type& job) {
         std::lock_guard<std::mutex> guard(m_job_queue_mutex);
         m_job_queue.push_back(job);
+    }
+
+    void
+    update() {
+        ev_now_update(*m_loop);
     }
 
 public:

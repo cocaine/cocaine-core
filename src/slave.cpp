@@ -127,7 +127,7 @@ slave_t::slave_t(context_t& context,
     m_idle_timer(reactor.native()),
     m_output_ring(profile.crashlog_limit)
 {
-    ev_now_update(reactor.native());
+    reactor.update();
 
     COCAINE_LOG_DEBUG(
         m_log,
