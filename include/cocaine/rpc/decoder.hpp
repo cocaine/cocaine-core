@@ -53,22 +53,19 @@ struct decoder {
          ErrorHandler error_handler)
     {
         m_handle_message = message_handler;
-        m_handle_error = error_handler;
 
         using namespace std::placeholders;
 
         m_stream->bind(
             std::bind(&decoder::on_event, this, _1, _2),
-            m_handle_error
+            error_handler
         );
     }
 
     void
     unbind() {
         m_stream->unbind();
-
         m_handle_message = nullptr;
-        m_handle_error = nullptr;
     }
 
 public:
@@ -95,13 +92,13 @@ private:
             switch(rv) {
                 case msgpack::UNPACK_EXTRA_BYTES:
                 case msgpack::UNPACK_SUCCESS:
+                    checkpoint = offset;
+
                     m_handle_message(message_t(object));
 
                     if(rv == msgpack::UNPACK_SUCCESS) {
                         return size;
                     }
-
-                    checkpoint = offset;
 
                     if(++bulk == 256) {
                         return checkpoint;
@@ -113,10 +110,7 @@ private:
                     return checkpoint;
 
                 case msgpack::UNPACK_PARSE_ERROR:
-                    m_handle_error(std::error_code(
-                        msgpack_errc::unpack_parse_error,
-                        msgpack_category()
-                    ));
+                    throw std::system_error(make_error_code(rpc_errc::parse_error));
             }
         } while(true);
     }
@@ -125,10 +119,6 @@ private:
     std::function<
         void(const message_t&)
     > m_handle_message;
-
-    std::function<
-        void(const std::error_code&)
-    > m_handle_error;
 
     // Attachable stream.
     std::shared_ptr<stream_type> m_stream;

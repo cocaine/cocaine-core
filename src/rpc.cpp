@@ -18,31 +18,28 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/traits.hpp"
+#include "cocaine/rpc/message.hpp"
 
 using namespace cocaine::io;
 
-class msgpack_category_t:
+class rpc_category_t:
     public std::error_category
 {
     virtual
     const char*
     name() const throw() {
-        return "msgpack";
+        return "rpc";
     }
 
     virtual
     std::string
     message(int code) const {
         switch(code) {
-            case msgpack_errc::unpack_extra_bytes:
-                return "extra bytes in the buffer";
+            case rpc_errc::parse_error:
+                return "invalid bytes";
 
-            case msgpack_errc::unpack_continue:
-                return "insufficient bytes in the buffer";
-
-            case msgpack_errc::unpack_parse_error:
-                return "invalid bytes in the buffer";
+            case rpc_errc::invalid_format:
+                return "invalid format";
 
             default:
                 return "unknown error";
@@ -50,23 +47,23 @@ class msgpack_category_t:
     }
 };
 
-static msgpack_category_t category_impl;
+static rpc_category_t category_impl;
 
 namespace cocaine { namespace io {
 
 const std::error_category&
-msgpack_category() {
+rpc_category() {
     return category_impl;
 }
 
 std::error_code
-make_error_code(msgpack_errc e) {
-    return std::error_code(static_cast<int>(e), msgpack_category());
+make_error_code(rpc_errc e) {
+    return std::error_code(static_cast<int>(e), rpc_category());
 }
 
 std::error_condition
-make_error_condition(msgpack_errc e) {
-    return std::error_condition(static_cast<int>(e), msgpack_category());
+make_error_condition(rpc_errc e) {
+    return std::error_condition(static_cast<int>(e), rpc_category());
 }
 
 }} // namespace cocaine::io

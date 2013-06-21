@@ -77,6 +77,10 @@ struct readable_stream {
             m_socket_watcher.stop();
         }
 
+        if(m_idle_watcher.is_active()) {
+            m_idle_watcher.stop();
+        }
+
         m_handle_read = nullptr;
         m_handle_error = nullptr;
     }
@@ -118,8 +122,11 @@ private:
         if(received <= 0) {
             if(received == 0) {
                 // NOTE: This means that the remote peer has closed the connection.
-                m_socket_watcher.stop();
                 m_handle_error(ec);
+
+                // NOTE: Stop only the socket watcher, so that the remaining bytes could still be
+                // parsed, if any messages are stuck in the ring.
+                m_socket_watcher.stop();
             }
 
             return;
@@ -127,11 +134,12 @@ private:
 
         m_rd_offset += received;
 
-        // Try to decode some data.
-        m_rx_offset += m_handle_read(
-            m_ring.data() + m_rx_offset,
-            m_rd_offset - m_rx_offset
-        );
+        try {
+            m_rx_offset += m_handle_read(m_ring.data() + m_rx_offset, m_rd_offset - m_rx_offset);
+        } catch(const std::system_error& e) {
+            m_handle_error(e.code());
+            return;
+        }
 
         if(m_rd_offset != m_rx_offset) {
             m_idle_watcher.start();
@@ -145,11 +153,12 @@ private:
             return;
         }
 
-        // Try to decode some more data.
-        m_rx_offset += m_handle_read(
-            m_ring.data() + m_rx_offset,
-            m_rd_offset - m_rx_offset
-        );
+        try {
+            m_rx_offset += m_handle_read(m_ring.data() + m_rx_offset, m_rd_offset - m_rx_offset);
+        } catch(const std::system_error& e) {
+            m_handle_error(e.code());
+            return;
+        }
     }
 
 private:

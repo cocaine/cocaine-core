@@ -4,6 +4,7 @@ cocaine-core (0.10.6) lucid; urgency=low
     a preconfigured list of available ports.
   * Bugfix: better interlocking in the Locator implementation, no more crashes
     in synchronizer_t::dump() method.
+  * Bugfix: do not die when an invalid message is received by an actor.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 19 Jun 2013 23:16:21 +0400
 
