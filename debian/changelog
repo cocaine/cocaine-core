@@ -3,6 +3,7 @@ cocaine-core (0.10.5-5) lucid; urgency=low
   * Port ranges. Instead of binding on random ports, services can now bind on
     a preconfigured list of available ports.
   * An ability to pick a storage backend for the simple storage service.
+  * App service support for tagged enqueue.
   * Bugfix: better interlocking in the Locator implementation, no more crashes
     in synchronizer_t::dump() method.
   * Bugfix: use wall clock for crashlog timestamps to avoid strange timestamps
