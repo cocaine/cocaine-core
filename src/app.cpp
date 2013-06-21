@@ -46,6 +46,7 @@
 
 #include <tuple>
 
+#include <boost/bind.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
 
@@ -69,11 +70,9 @@ struct app_t::service_t:
         virtual
         void
         operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) {
-            using namespace std::placeholders;
-
             try {
                 io::detail::invoke<event_traits<app::enqueue>::tuple_type>::apply(
-                    std::bind(&app_t::service_t::enqueue, &m_self, upstream, _1, _2, _3),
+                    boost::bind(&app_t::service_t::enqueue, &m_self, upstream, _1, _2, _3),
                     unpacked
                 );
             } catch(const cocaine::error_t& e) {
