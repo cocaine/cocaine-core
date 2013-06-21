@@ -23,8 +23,6 @@
 
 #include "cocaine/common.hpp"
 
-#include "cocaine/rpc/protocol.hpp"
-
 #include "cocaine/traits/typelist.hpp"
 
 namespace cocaine { namespace io {
