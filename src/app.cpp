@@ -360,7 +360,7 @@ app_t::stop() {
 
     try {
         // Blocks until either the response or timeout happens.
-        m_reactor->run(/* defaults::control_timeout */);
+        m_reactor->run_with_timeout(defaults::control_timeout);
     } catch(const cocaine::error_t& e) {
         throw cocaine::error_t("the engine is unresponsive - %s", e.what());
     }
@@ -395,7 +395,7 @@ app_t::info() const {
 
     try {
         // Blocks until either the response or timeout happens.
-        m_reactor->run(/* defaults::control_timeout */);
+        m_reactor->run_with_timeout(defaults::control_timeout);
     } catch(const cocaine::error_t& e) {
         info["error"] = "the engine is unresponsive";
         return info;

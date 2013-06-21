@@ -55,6 +55,19 @@ struct reactor_t {
     }
 
     void
+    run_with_timeout(float timeout) {
+        ev::timer timeout_guard(native());
+        throw_action_t action = { *this };
+
+        timeout_guard.set(&action);
+        timeout_guard.start(timeout);
+
+        m_loop->loop();
+
+        timeout_guard.stop();
+    }
+
+    void
     stop() {
         m_loop->unloop(ev::ALL);
     }
@@ -84,6 +97,18 @@ private:
     }
 
 private:
+    struct throw_action_t {
+        void
+        operator()(ev::timer&, int) {
+            self.stop();
+
+            // This will destroy the timer in the run() stack frame as well.
+            throw cocaine::error_t("timed out");
+        }
+
+        reactor_t& self;
+    };
+
     std::unique_ptr<native_type> m_loop;
     std::unique_ptr<ev::prepare> m_loop_prepare;
 
