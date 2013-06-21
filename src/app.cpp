@@ -73,12 +73,13 @@ struct app_t::service_t:
 
             std::string event;
             std::string blob;
+            std::string tag;
 
             // NOTE: No try-block here, as the enclosing dispatch is handling all exceptions.
-            type_traits<tuple_type>::unpack(unpacked, event, blob);
+            type_traits<tuple_type>::unpack(unpacked, event, blob, tag);
 
             try {
-                m_self.enqueue(api::event_t(event), upstream)->write(blob.data(), blob.size());
+                m_self.enqueue(api::event_t(event), upstream, tag)->write(blob.data(), blob.size());
             } catch(const cocaine::error_t& e) {
                 upstream->error(resource_error, e.what());
                 upstream->close();
@@ -98,8 +99,12 @@ struct app_t::service_t:
 
 private:
     std::shared_ptr<api::stream_t>
-    enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream) {
-        return m_app.enqueue(event, upstream);
+    enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream, const std::string& tag) {
+        if(tag.empty()) {
+            return m_app.enqueue(event, upstream);
+        } else {
+            return m_app.enqueue(event, upstream, tag);
+        }
     }
 
 private:

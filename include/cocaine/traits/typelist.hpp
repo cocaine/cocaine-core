@@ -53,24 +53,26 @@ struct type_traits<
     typename std::enable_if<boost::mpl::is_sequence<T>::value>::type
 >
 {
+    enum {
+        minimal = boost::mpl::count_if<
+            T,
+            boost::mpl::lambda<detail::is_required<boost::mpl::arg<1>>>
+        >::value
+    };
+
+    typedef typename boost::mpl::transform<
+        T,
+        boost::mpl::lambda<detail::unwrap_type<boost::mpl::arg<1>>>
+    >::type sequence_type;
+
     template<class Stream, typename... Args>
     static inline
     void
     pack(msgpack::packer<Stream>& packer, const Args&... sequence) {
-        const size_t minimal = boost::mpl::count_if<
-            T,
-            boost::mpl::lambda<detail::is_required<boost::mpl::arg<1>>>
-        >::value;
-
         static_assert(sizeof...(sequence) >= minimal, "sequence length mismatch");
 
         // The sequence will be packed as an array.
         packer.pack_array(sizeof...(sequence));
-
-        typedef typename boost::mpl::transform<
-            T,
-            boost::mpl::lambda<detail::unwrap_type<boost::mpl::arg<1>>>
-        >::type sequence_type;
 
         // Recursively pack every sequence element.
         pack_sequence<typename boost::mpl::begin<sequence_type>::type>(packer, sequence...);
@@ -80,18 +82,11 @@ struct type_traits<
     static inline
     void
     unpack(const msgpack::object& object, Args&... sequence) {
-        const size_t size = boost::mpl::size<T>::value;
+        static_assert(sizeof...(sequence) >= minimal, "sequence length mismatch");
 
-        static_assert(sizeof...(sequence) == size, "sequence length mismatch");
-
-        if(object.type != msgpack::type::ARRAY || object.via.array.size != size) {
+        if(object.type != msgpack::type::ARRAY || object.via.array.size < minimal) {
             throw msgpack::type_error();
         }
-
-        typedef typename boost::mpl::transform<
-            T,
-            boost::mpl::lambda<detail::unwrap_type<boost::mpl::arg<1>>>
-        >::type sequence_type;
 
         // Recursively unpack every tuple element while validating the types.
         unpack_sequence<typename boost::mpl::begin<sequence_type>::type>(object.via.array.ptr, sequence...);

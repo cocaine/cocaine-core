@@ -90,7 +90,9 @@ namespace app {
             std::string,
          /* Data. Some arbitrary sequence of bytes. By convention, this is usually an object packed
             with MessagePack, but that's not some rule of thumb, do whatever you want. */
-            std::string
+            std::string,
+         /* Tag. Event can be enqueued to a specific worker with some user-defined name. */
+            optional<std::string>
         > tuple_type;
 
         typedef streamed<

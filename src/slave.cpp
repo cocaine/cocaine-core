@@ -36,7 +36,7 @@
 #include "cocaine/rpc/channel.hpp"
 
 #include "cocaine/traits/enum.hpp"
-#include "cocaine/traits/string_literal.hpp"
+#include "cocaine/traits/literal.hpp"
 
 #include <array>
 #include <sstream>
