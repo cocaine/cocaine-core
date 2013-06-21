@@ -161,10 +161,12 @@ config_t::config_t(const std::string& config_path) {
 
     network.locator = root.get("locator", defaults::locator_port).asUInt();
 
-    network.ports = std::make_tuple(
-        root.get("port-range", Json::Value()).get(0u, defaults::min_port).asUInt(),
-        root.get("port-range", Json::Value()).get(1u, defaults::max_port).asUInt()
-    );
+    if(!root["port-range"].empty()) {
+        uint16_t min_port = root["port-range"].get(0u, defaults::min_port).asUInt();
+        uint16_t max_port = root["port-range"].get(1u, defaults::max_port).asUInt();
+
+        network.ports = std::make_tuple(min_port, max_port);
+    }
 
     // Component configuration
 
@@ -274,10 +276,9 @@ context_t::bootstrap() {
 
     // Service locator internals.
     auto locator_reactor = std::make_shared<io::reactor_t>();
-    auto locator = std::unique_ptr<locator_t>(new locator_t(*this, *locator_reactor, config.network.ports));
+    auto locator = std::unique_ptr<locator_t>(new locator_t(*this, *locator_reactor));
 
     m_locator.reset(new actor_t(
-        *this,
         locator_reactor,
         std::move(locator)
     ));
@@ -298,7 +299,6 @@ context_t::bootstrap() {
 
         try {
             service.reset(new actor_t(
-                *this,
                 reactor,
                 get<api::service_t>(
                     it->second.type,

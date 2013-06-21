@@ -117,7 +117,7 @@ private:
     std::vector<api::stream_ptr_t> m_upstreams;
 };
 
-locator_t::locator_t(context_t& context, io::reactor_t& reactor, std::tuple<uint16_t, uint16_t> ports):
+locator_t::locator_t(context_t& context, io::reactor_t& reactor):
     dispatch_t(context, "service/locator"),
     m_context(context),
     m_log(new logging::log_t(context, "service/locator")),
@@ -127,18 +127,20 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor, std::tuple<uint
 
     on<io::locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
 
-    if(!context.config.network.group.empty()) {
+    if(!m_context.config.network.group.empty()) {
         connect();
     }
 
-    uint16_t min, max;
+    if(m_context.config.network.ports) {
+        uint16_t min, max;
 
-    std::tie(min, max) = ports;
+        std::tie(min, max) = m_context.config.network.ports.get();
 
-    COCAINE_LOG_INFO(m_log, "%u ports available, port numbers %u through %u", max - min, min, max);
+        COCAINE_LOG_INFO(m_log, "%u ports available, port numbers %u through %u", max - min, min, max);
 
-    while(min != max) {
-        m_ports.push(--max);
+        while(min != max) {
+            m_ports.push(--max);
+        }
     }
 }
 
@@ -182,7 +184,7 @@ namespace {
 
 void
 locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
-    uint16_t port;
+    uint16_t port = 0;
 
     {
         std::lock_guard<std::mutex> guard(m_services_mutex);
@@ -193,30 +195,30 @@ locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
 
         BOOST_VERIFY(existing == m_services.end());
 
-        if(m_ports.empty()) {
-            throw cocaine::error_t("no ports left for allocation");
+        if(m_context.config.network.ports) {
+            if(m_ports.empty()) {
+                throw cocaine::error_t("no ports left for allocation");
+            }
+
+            port = m_ports.top();
+
+            // NOTE: Remove the taken port from the free pool. If, for any reason, this port is
+            // unavailable for binding, it's okay to keep it removed forever.
+            m_ports.pop();
         }
 
-        port = m_ports.top();
-
-        std::vector<io::tcp::endpoint> endpoints = {
+        const std::vector<io::tcp::endpoint> endpoints = {
             { "0.0.0.0", port }
         };
 
-        // Start the service's actor thread.
         service->run(endpoints);
 
-        // Put the service into the local services list.
-        m_services.emplace_back(name, std::move(service));
+        COCAINE_LOG_INFO(m_log, "service '%s' published on port %d", name, service->endpoints().front().port());
 
-        // Remove the taken port from the free pool.
-        m_ports.pop();
+        m_services.emplace_back(name, std::move(service));
     }
 
-    COCAINE_LOG_INFO(m_log, "service '%s' published on port %d", name, port);
-    
     if(m_synchronizer) {
-        // Notify the peers.
         m_synchronizer->update();
     }
 }
@@ -234,39 +236,39 @@ locator_t::detach(const std::string& name) {
 
         BOOST_VERIFY(it != m_services.end());
 
+        const std::vector<io::tcp::endpoint> endpoints = it->second->endpoints();
+
+        it->second->terminate();
+
+        if(m_context.config.network.ports) {
+            m_ports.push(endpoints.front().port());
+        }
+
+        COCAINE_LOG_INFO(m_log, "service '%s' withdrawn from port %d", name, endpoints.front().port());
+
         // Release the service's actor ownership.
         service = std::move(it->second);
 
-        // Retain the freed port.
-        m_ports.push(std::get<1>(service->endpoint()));
-
-        // Drop the service from the local services list.
         m_services.erase(it);
-
-        // Stop the service's actor thread.
-        service->terminate();
     }
 
-    COCAINE_LOG_INFO(m_log, "service '%s' withdrawn", name);
-
     if(m_synchronizer) {
-        // Notify the peers.
         m_synchronizer->update();
     }
 
     return service;
 }
 
-namespace {
-    inline
-    resolve_result_type
-    query(const std::unique_ptr<actor_t>& actor) {
-        return resolve_result_type(
-            actor->endpoint(),
-            1u,
-            actor->dispatch().describe()
-        );
-    }
+resolve_result_type
+locator_t::query(const std::unique_ptr<actor_t>& actor) const {
+    auto port = actor->endpoints().front().port();
+    auto endpoint = std::make_tuple(m_context.config.network.hostname, port);
+
+    return resolve_result_type(
+        endpoint,
+        1u,
+        actor->dispatch().describe()
+    );
 }
 
 resolve_result_type
@@ -313,27 +315,15 @@ locator_t::resolve(const std::string& name) const {
     return query(local->second);
 }
 
-namespace {
-    struct dump_to {
-        template<class T>
-        void
-        operator()(const T& service) {
-            target[service.first] = query(service.second);
-        }
-
-        synchronize_result_type& target;
-    };
-}
-
 synchronize_result_type
 locator_t::dump() const {
     std::lock_guard<std::mutex> guard(m_services_mutex);
 
     synchronize_result_type result;
 
-    std::for_each(m_services.begin(), m_services.end(), dump_to {
-        result
-    });
+    for(auto it = m_services.begin(); it != m_services.end(); ++it) {
+        result[it->first] = query(it->second);
+    }
 
     return result;
 }

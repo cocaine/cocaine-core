@@ -26,6 +26,8 @@
 
 #include "json/json.h"
 
+#include <boost/optional.hpp>
+
 namespace cocaine {
 
 struct defaults {
@@ -75,8 +77,8 @@ struct config_t {
         // Service locator port.
         uint16_t locator;
 
-        // Ports available for allocation.
-        std::tuple<uint16_t, uint16_t> ports;
+        // Optional port range available for allocation.
+        boost::optional<std::tuple<uint16_t, uint16_t>> ports;
     } network;
 
     struct component_t {

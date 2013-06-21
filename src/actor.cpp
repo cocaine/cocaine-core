@@ -27,7 +27,6 @@
 #include "cocaine/asio/socket.hpp"
 #include "cocaine/asio/tcp.hpp"
 
-#include "cocaine/context.hpp"
 #include "cocaine/dispatch.hpp"
 #include "cocaine/messages.hpp"
 
@@ -83,10 +82,8 @@ namespace {
     };
 }
 
-actor_t::actor_t(context_t& context,
-                 std::shared_ptr<reactor_t> reactor,
+actor_t::actor_t(std::shared_ptr<reactor_t> reactor,
                  std::unique_ptr<dispatch_t>&& dispatch):
-    m_context(context),
     m_reactor(reactor),
     m_dispatch(std::move(dispatch)),
     m_terminate(reactor->native())
@@ -132,14 +129,21 @@ actor_t::terminate() {
 
     m_thread->join();
     m_thread.reset();
+
+    m_connectors.clear();
 }
 
-actor_t::endpoint_type
-actor_t::endpoint() const {
-    return endpoint_type(
-        m_context.config.network.hostname,
-        m_connectors.front().endpoint().port()
-    );
+std::vector<tcp::endpoint>
+actor_t::endpoints() const {
+    BOOST_ASSERT(!m_connectors.empty());
+
+    std::vector<tcp::endpoint> endpoints;
+
+    for(auto it = m_connectors.begin(); it != m_connectors.end(); ++it) {
+        endpoints.push_back(it->endpoint());
+    }
+
+    return endpoints;
 }
 
 dispatch_t&

@@ -203,7 +203,6 @@ app_t::start() {
 
         // Initialize the app service.
         auto service = std::unique_ptr<actor_t>(new actor_t(
-            m_context,
             std::make_shared<reactor_t>(),
             std::unique_ptr<app_t::service_t>(
                 new app_t::service_t(m_context, m_manifest->name, *this)

@@ -58,7 +58,7 @@ class locator_t:
     };
 
     public:
-        locator_t(context_t& context, io::reactor_t& reactor, std::tuple<uint16_t, uint16_t> ports);
+        locator_t(context_t& context, io::reactor_t& reactor);
 
         virtual
        ~locator_t();
@@ -70,6 +70,9 @@ class locator_t:
         detach(const std::string& name);
 
     private:
+        resolve_result_type
+        query(const std::unique_ptr<actor_t>& actor) const;
+
         resolve_result_type
         resolve(const std::string& name) const;
 
