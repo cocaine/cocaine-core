@@ -358,12 +358,8 @@ app_t::stop() {
     m_engine_control->rd->bind(std::ref(callback), std::ref(callback));
     m_engine_control->wr->write<control::terminate>(0UL);
 
-    try {
-        // Blocks until either the response or timeout happens.
-        m_reactor->run_with_timeout(defaults::control_timeout);
-    } catch(const cocaine::error_t& e) {
-        throw cocaine::error_t("the engine is unresponsive - %s", e.what());
-    }
+    // Blocks until the engine is stopped.
+    m_reactor->run();
 
     m_thread->join();
     m_thread.reset();
