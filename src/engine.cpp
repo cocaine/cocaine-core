@@ -653,7 +653,8 @@ engine_t::stop() {
 
     if(m_state == states::stopping) {
         m_state = states::stopped;
-    }
 
-    m_reactor->stop();
+        // Don't stop the event loop if the engine is becoming broken.
+        m_reactor->stop();
+    }
 }
