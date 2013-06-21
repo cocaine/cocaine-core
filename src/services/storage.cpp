@@ -34,7 +34,7 @@ storage_t::storage_t(context_t& context,
                      const Json::Value& args):
     category_type(context, reactor, name, args)
 {
-    auto storage = api::storage(context, "core");
+    auto storage = api::storage(context, args.get("backend", "core").asString());
 
     on<io::storage::read>("read", std::bind(&api::storage_t::read, storage, _1, _2));
     on<io::storage::write>("write", std::bind(&api::storage_t::write, storage, _1, _2, _3, _4));
