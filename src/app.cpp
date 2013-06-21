@@ -69,17 +69,13 @@ struct app_t::service_t:
         virtual
         void
         operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) {
-            typedef event_traits<app::enqueue>::tuple_type tuple_type;
-
-            std::string event;
-            std::string blob;
-            std::string tag;
-
-            // NOTE: No try-block here, as the enclosing dispatch is handling all exceptions.
-            type_traits<tuple_type>::unpack(unpacked, event, blob, tag);
+            using namespace std::placeholders;
 
             try {
-                m_self.enqueue(api::event_t(event), upstream, tag)->write(blob.data(), blob.size());
+                io::detail::invoke<event_traits<app::enqueue>::tuple_type>::apply(
+                    std::bind(&app_t::service_t::enqueue, &m_self, upstream, _1, _2, _3),
+                    unpacked
+                );
             } catch(const cocaine::error_t& e) {
                 upstream->error(resource_error, e.what());
                 upstream->close();
@@ -98,13 +94,17 @@ struct app_t::service_t:
     }
 
 private:
-    std::shared_ptr<api::stream_t>
-    enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream, const std::string& tag) {
+    void
+    enqueue(const api::stream_ptr_t& upstream, const std::string& event, const std::string& blob, const std::string& tag) {
+        api::stream_ptr_t downstream;
+
         if(tag.empty()) {
-            return m_app.enqueue(event, upstream);
+            downstream = m_app.enqueue(api::event_t(event), upstream);
         } else {
-            return m_app.enqueue(event, upstream, tag);
+            downstream = m_app.enqueue(api::event_t(event), upstream, tag);
         }
+
+        downstream->write(blob.data(), blob.size());
     }
 
 private:
