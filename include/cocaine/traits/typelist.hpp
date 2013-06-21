@@ -84,9 +84,18 @@ struct type_traits<
     unpack(const msgpack::object& object, Args&... sequence) {
         static_assert(sizeof...(sequence) >= minimal, "sequence length mismatch");
 
+        #if defined(__GNUC__) && defined(HAVE_GCC46)
+            #pragma GCC diagnostic push
+            #pragma GCC diagnostic ignored "-Wtype-limits"
+        #endif
+
         if(object.type != msgpack::type::ARRAY || object.via.array.size < minimal) {
             throw msgpack::type_error();
         }
+
+        #if defined(__GNUC__) && defined(HAVE_GCC46)
+            #pragma GCC diagnostic pop
+        #endif
 
         // Recursively unpack every tuple element while validating the types.
         unpack_sequence<typename boost::mpl::begin<sequence_type>::type>(object.via.array.ptr, sequence...);
