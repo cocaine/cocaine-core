@@ -71,7 +71,7 @@ class locator_t:
 
     private:
         resolve_result_type
-        query(const std::unique_ptr<actor_t>& actor) const;
+        query(const std::unique_ptr<actor_t>& service) const;
 
         resolve_result_type
         resolve(const std::string& name) const;

@@ -260,14 +260,14 @@ locator_t::detach(const std::string& name) {
 }
 
 resolve_result_type
-locator_t::query(const std::unique_ptr<actor_t>& actor) const {
-    auto port = actor->endpoints().front().port();
+locator_t::query(const std::unique_ptr<actor_t>& service) const {
+    auto port = service->endpoints().front().port();
     auto endpoint = std::make_tuple(m_context.config.network.hostname, port);
 
     return resolve_result_type(
         endpoint,
         1u,
-        actor->dispatch().describe()
+        service->dispatch().describe()
     );
 }
 
