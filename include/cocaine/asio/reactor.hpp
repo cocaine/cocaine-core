@@ -39,14 +39,21 @@ struct reactor_t {
 
     reactor_t():
         m_loop(new ev::dynamic_loop()),
-        m_loop_prepare(new ev::prepare(*m_loop))
+        m_loop_queue_pump(new ev::prepare(*m_loop)),
+        m_loop_async_wake(new ev::async(*m_loop))
     {
-        m_loop_prepare->set<reactor_t, &reactor_t::process>(this);
-        m_loop_prepare->start();
+        // Pumps queued jobs on beginning of each loop iteration.
+        m_loop_queue_pump->set<reactor_t, &reactor_t::process>(this);
+        m_loop_queue_pump->start();
+
+        // Wakeups the loop when new jobs are queued.
+        m_loop_async_wake->set<reactor_t, &reactor_t::wakeup>(this);
+        m_loop_async_wake->start();
     }
 
    ~reactor_t() {
-        m_loop_prepare->stop();
+        m_loop_async_wake->stop();
+        m_loop_queue_pump->stop();
     }
 
     void
@@ -76,8 +83,18 @@ struct reactor_t {
 
     void
     post(const job_type& job) {
-        std::lock_guard<std::mutex> guard(m_job_queue_mutex);
+        std::unique_lock<std::mutex> lock(m_job_queue_mutex);
+
+        // Push the new job into the queue.
         m_job_queue.push_back(job);
+
+        if(m_job_queue.size() == 1) {
+            lock.unlock();
+
+            // Wake up the event loop, in case it's the only job in the queue,
+            // otherwise it's probably already awake.
+            m_loop_async_wake->send();
+        }
     }
 
     void
@@ -103,6 +120,11 @@ private:
         m_job_queue.clear();
     }
 
+    void
+    wakeup(ev::async&, int) {
+        // Pass.
+    }
+
 private:
     struct throw_action_t {
         void
@@ -117,7 +139,8 @@ private:
     };
 
     std::unique_ptr<native_type> m_loop;
-    std::unique_ptr<ev::prepare> m_loop_prepare;
+    std::unique_ptr<ev::prepare> m_loop_queue_pump;
+    std::unique_ptr<ev::async>   m_loop_async_wake;
 
     std::deque<job_type> m_job_queue;
     std::mutex m_job_queue_mutex;
