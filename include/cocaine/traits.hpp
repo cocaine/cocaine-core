@@ -21,6 +21,8 @@
 #ifndef COCAINE_SERIALIZATION_TRAITS_HPP
 #define COCAINE_SERIALIZATION_TRAITS_HPP
 
+#include <system_error>
+
 #include <msgpack.hpp>
 
 namespace cocaine { namespace io {
@@ -41,6 +43,30 @@ struct type_traits {
     }
 };
 
+// MessagePack support for system_error
+
+enum msgpack_errc {
+    unpack_extra_bytes = msgpack::UNPACK_EXTRA_BYTES,
+    unpack_continue    = msgpack::UNPACK_CONTINUE,
+    unpack_parse_error = msgpack::UNPACK_PARSE_ERROR
+};
+
+const std::error_category&
+msgpack_category();
+
+std::error_code
+make_error_code(msgpack_errc e);
+
+std::error_condition
+make_error_condition(msgpack_errc e);
+
 }} // namespace cocaine::io
+
+namespace std {
+    template<>
+    struct is_error_code_enum<cocaine::io::msgpack_errc>:
+        public true_type
+    { };
+} // namespace std
 
 #endif

@@ -98,6 +98,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/slave
     src/slot
     src/storages/files
+    src/traits
     src/unique_id)
 
 TARGET_LINK_LIBRARIES(cocaine-core
