@@ -93,10 +93,10 @@ namespace app {
             std::string
         > tuple_type;
 
-        typedef
+        typedef streamed<
          /* Some other arbitrary sequence of bytes, streamed back to the client in chunks. */
             std::string
-        result_type;
+        > result_type;
     };
 }
 

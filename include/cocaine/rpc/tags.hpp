@@ -46,6 +46,11 @@ namespace detail {
     { };
 
     template<class T>
+    struct is_streamed<streamed<T>>:
+        public std::true_type
+    { };
+
+    template<class T>
     struct unwrap_type<optional<T>> {
         typedef T type;
     };
