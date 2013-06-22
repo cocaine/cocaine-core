@@ -5,7 +5,7 @@ cocaine-core (0.10.5-5) lucid; urgency=low
   * An ability to pick a storage backend for the simple storage service.
   * App service support for tagged enqueue.
   * Bugfix: better interlocking in the Locator implementation, no more crashes
-    in synchronizer_t::dump() method.
+    in synchronize_slot_t::dump() method.
   * Bugfix: use wall clock for crashlog timestamps to avoid strange timestamps
     on MacOS and probably some other OSes.
   * Bugfix: do not die when an invalid message is received by an actor.
@@ -45,27 +45,25 @@ cocaine-core (0.10.5-1) unstable; urgency=low
 cocaine-core (0.10.5-0) unstable; urgency=low
 
   * Release 10.5.
+  * ZeroMQ has gone completely.
   * Cocaine is no longer standalone. Multiple nodes can be linked together to
-    form a cloud, at last. For now, nodes share services only, apps are still
-    local. When an app requests a service which is not available locally, a
-    request is made to resolve the specified service remotely.
+    form a cloud, at last. When an app requests a service which is not local,
+    a request is made to resolve the specified service remotely.
   * Apps are now exposed as services by default. If a specific application
     should not be published, set the 'local' flag in the manifest.
   * Named queues. Drivers can now enqueue their sessions to a specific worker
-    with some human-readable name. The sessions in named queues will be
-    processed before any anonymous sessions in the engine's shared queue.
-  * ZeroMQ has gone completely.
+    with some human-readable name. The sessions in named queues will be pumped
+    before any anonymous sessions in the engine's shared queue.
   * A pair of new profile options: crashlog-limit and log-output. The first
     one limits the number of lines of captured stdout and stderr of a dead
     to save, the second one enables the copying of the output to the log.
   * The Locator can now be bound to a configurable port, allowing users to get
     multiple Runtimes on a single host.
-  * File storage error messages are now much more informative.
   * Engines will now display the reason for app stop in the log.
   * Bugfix: engines will now try to rebalance when the last slave dies and
     there're still sessions in the queue.
-  * Bugfix: unblock all signals before slave execve().
-  * Bugfix: properly shutdown the engine when the app is broken.
+  * Bugfix: unblock all signals before slave execve(), allowing slaves to be
+    killed with SIGTERM on termination.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 29 May 2013 16:30:05 +0400
 
@@ -257,59 +255,3 @@ cocaine-core (0.10.0-rc0) unstable; urgency=low
   * Services.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 29 Jan 2013 19:28:49 +0400
-
-cocaine-core (0.9.8) unstable; urgency=low
-
-  * Binding announce socket instead of connecting it
-
- -- Rim Zaidullin <rimz@yandex-team.ru>  Tue, 13 Nov 2012 19:01:18 +0400
-
-cocaine-core (0.9.7) unstable; urgency=low
-
-  * support cocaine-default.conf; 
-
- -- Andrey Godin <agodin@yandex-team.ru>  Thu, 08 Nov 2012 17:32:26 +0400
-
-cocaine-core (0.9.6) unstable; urgency=low
-
-  * Enhanced the cocaine-engine-status tool.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 12 Oct 2012 05:08:27 +0400
-
-cocaine-core (0.9.5) unstable; urgency=low
-
-  * Do not assert in the slave on broken binary app.
-  * Fixes for cocaine-scripts.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Thu, 11 Oct 2012 21:32:36 +0400
-
-cocaine-core (0.9.4) unstable; urgency=low
-
-  * Pump queue events even if no workers are available (fixes an issue when all the
-    slaves unexpectedly died and the queue is full already).
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 02 Oct 2012 19:16:59 +0400
-
-cocaine-core (0.9.3) unstable; urgency=low
-
-  * Rearm slave heartbeat timer on all event types.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 04 Sep 2012 21:21:57 +0400
-
-cocaine-core (0.9.2) unstable; urgency=low
-
-  * Fixed a build issue on 32-bit Ubuntu Precise due to the variable size mismatch.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 29 Aug 2012 17:53:48 +0400
-
-cocaine-core (0.9.1) unstable; urgency=low
-
-  * Reworked the hostname determination logic to fix incorrect behavior in some cases.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 28 Aug 2012 18:31:49 +0400
-
-cocaine-core (0.9.0) unstable; urgency=low
-
-  * Debianization is back.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Mon, 31 Oct 2011 19:37:29 +0300
