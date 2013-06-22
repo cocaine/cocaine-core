@@ -20,40 +20,40 @@
 
 #include "cocaine/rpc/message.hpp"
 
-using namespace cocaine::io;
-
-class rpc_category_t:
-    public std::error_category
-{
-    virtual
-    const char*
-    name() const throw() {
-        return "rpc";
-    }
-
-    virtual
-    std::string
-    message(int code) const {
-        switch(code) {
-            case rpc_errc::parse_error:
-                return "invalid bytes";
-
-            case rpc_errc::invalid_format:
-                return "invalid format";
-
-            default:
-                return "unknown error";
+namespace {
+    class rpc_category_t:
+        public std::error_category
+    {
+        virtual
+        const char*
+        name() const throw() {
+            return "rpc";
         }
-    }
-};
 
-static rpc_category_t category_impl;
+        virtual
+        std::string
+        message(int code) const {
+            switch(code) {
+                case cocaine::io::rpc_errc::parse_error:
+                    return "invalid bytes";
+
+                case cocaine::io::rpc_errc::invalid_format:
+                    return "invalid format";
+
+                default:
+                    return "unknown error";
+            }
+        }
+    };
+
+    static rpc_category_t category_instance;
+}
 
 namespace cocaine { namespace io {
 
 const std::error_category&
 rpc_category() {
-    return category_impl;
+    return category_instance;
 }
 
 std::error_code
